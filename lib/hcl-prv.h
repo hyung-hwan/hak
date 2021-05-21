@@ -858,35 +858,30 @@ enum hcl_bcode_t
 	/* UNUSED - 0xE5 - 0xE7 */
 
 	HCL_CODE_STORE_INTO_OBJVAR_X      = 0xE8, /* 232 ## */
-
 	HCL_CODE_MAKE_ARRAY               = 0xE9, /* 233 ## */
 	HCL_CODE_MAKE_BYTEARRAY           = 0xEA, /* 234 ## */
 	HCL_CODE_MAKE_DIC                 = 0xEB, /* 235 ## */
 
 	HCL_CODE_POP_INTO_OBJVAR_X        = 0xEC, /* 236 ## */
-
 	HCL_CODE_POP_INTO_ARRAY           = 0xED, /* 237 ## */
 	HCL_CODE_POP_INTO_BYTEARRAY       = 0xEE, /* 238 ## */
 	HCL_CODE_POP_INTO_DIC             = 0xEF, /* 239 */
 
 	HCL_CODE_SEND_MESSAGE_X           = 0xF0, /* 240 ## */
-
 	HCL_CODE_MAKE_CONS                = 0xF1, /* 241 */
 	HCL_CODE_POP_INTO_CONS            = 0xF2, /* 242 */
 	HCL_CODE_POP_INTO_CONS_END        = 0xF3, /* 243 */
 
 	HCL_CODE_SEND_MESSAGE_TO_SUPER_X  = 0xF4, /* 244 ## */
-
 	HCL_CODE_POP_INTO_CONS_CDR        = 0xF5, /* 245 */
 	/* -------------------------------------- */
 
-	/* UNUSED 0xF6 */
-
-	HCL_CODE_DUP_STACKTOP             = 0xF7,
-	HCL_CODE_POP_STACKTOP             = 0xF8,
-	HCL_CODE_RETURN_STACKTOP          = 0xF9, /* ^something */
-	HCL_CODE_RETURN_RECEIVER          = 0xFA, /* ^self */
-	HCL_CODE_RETURN_FROM_BLOCK        = 0xFB, /* return the stack top from a block */
+	HCL_CODE_MAKE_CLASS               = 0xF6, /* 246 ## ## */
+	HCL_CODE_DUP_STACKTOP             = 0xF7, /* 247 */
+	HCL_CODE_POP_STACKTOP             = 0xF8, /* 248 */
+	HCL_CODE_RETURN_STACKTOP          = 0xF9, /* 249 */
+	HCL_CODE_RETURN_RECEIVER          = 0xFA, /* 250 */
+	HCL_CODE_RETURN_FROM_BLOCK        = 0xFB, /* 251, return the stack top from a block */
 
 	HCL_CODE_MAKE_FUNCTION            = 0xFC, /* 252 */
 	HCL_CODE_MAKE_BLOCK               = 0xFD, /* 253 */

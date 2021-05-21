@@ -3727,6 +3727,30 @@ static int execute (hcl_t* hcl)
 
 			/* -------------------------------------------------------- */
 
+			case HCL_CODE_MAKE_CLASS:
+			{
+				hcl_oop_t t, sc, nivars, ncvars;
+
+				LOG_INST_0 (hcl, "make_class");
+
+				sc = HCL_STACK_GETTOP(hcl); HCL_STACK_POP(hcl);
+				nivars = HCL_STACK_GETTOP(hcl); HCL_STACK_POP(hcl);
+				ncvars = HCL_STACK_GETTOP(hcl); HCL_STACK_POP(hcl);
+				HCL_ASSERT (hcl, HCL_OOP_IS_SMOOI(nivars));
+				HCL_ASSERT (hcl, HCL_OOP_IS_SMOOI(ncvars));
+				t = hcl_makeclass(hcl, sc, HCL_OOP_TO_SMOOI(nivars), HCL_OOP_TO_SMOOI(ncvars));
+
+				if (HCL_UNLIKELY(!t)) 
+				{
+					supplement_errmsg (hcl, fetched_instruction_pointer);
+					goto oops;
+				}
+
+				HCL_STACK_PUSH (hcl, t); /* push the class created */
+				break;
+			}
+			/* -------------------------------------------------------- */
+
 			case HCL_CODE_DUP_STACKTOP:
 			{
 				hcl_oop_t t;

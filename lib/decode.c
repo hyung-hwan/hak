@@ -594,6 +594,11 @@ int hcl_decode (hcl_t* hcl, hcl_oow_t start, hcl_oow_t end)
 				break;
 			/* -------------------------------------------------------- */
 
+			case HCL_CODE_MAKE_CLASS:
+				LOG_INST_0 (hcl, "make_class");
+				break;
+
+			/* -------------------------------------------------------- */
 			case HCL_CODE_DUP_STACKTOP:
 				LOG_INST_0 (hcl, "dup_stacktop");
 				break;

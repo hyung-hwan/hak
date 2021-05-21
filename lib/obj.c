@@ -286,7 +286,7 @@ hcl_oop_t hcl_makebigint (hcl_t* hcl, int brand, const hcl_liw_t* ptr, hcl_oow_t
 #else
 #	error UNSUPPORTED LIW BIT SIZE
 #endif
-	if (!oop) return HCL_NULL;
+	if (HCL_UNLIKELY(!oop)) return HCL_NULL;
 
 	HCL_OBJ_SET_FLAGS_BRAND (oop, brand);
 	return oop;
@@ -300,7 +300,7 @@ hcl_oop_t hcl_makecons (hcl_t* hcl, hcl_oop_t car, hcl_oop_t cdr)
 	hcl_pushvolat (hcl, &cdr);
 
 	cons = (hcl_oop_cons_t)hcl_allocoopobj(hcl, HCL_BRAND_CONS, 2);
-	if (cons)
+	if (HCL_LIKELY(cons))
 	{
 		cons->car = car;
 		cons->cdr = cdr;
@@ -342,15 +342,32 @@ hcl_oop_t hcl_makefpdec (hcl_t* hcl, hcl_oop_t value, hcl_ooi_t scale)
 	}
 
 	hcl_pushvolat (hcl, &value);
-	f = (hcl_oop_fpdec_t)hcl_allocoopobj (hcl, HCL_BRAND_FPDEC, HCL_FPDEC_NAMED_INSTVARS);
+	f = (hcl_oop_fpdec_t)hcl_allocoopobj(hcl, HCL_BRAND_FPDEC, HCL_FPDEC_NAMED_INSTVARS);
 	hcl_popvolat (hcl);
 
-	if (!f) return HCL_NULL;
+	if (HCL_UNLIKELY(!f)) return HCL_NULL;
 
 	f->value = value;
 	f->scale = HCL_SMOOI_TO_OOP(scale);
 
 	return (hcl_oop_t)f;
+}
+
+hcl_oop_t hcl_makeclass (hcl_t* hcl, hcl_oop_t superclass, hcl_ooi_t nivars, hcl_ooi_t ncvars)
+{
+	hcl_oop_class_t c;
+
+	hcl_pushvolat (hcl, &superclass);
+	c = (hcl_oop_class_t)hcl_allocoopobj(hcl, HCL_BRAND_CLASS, HCL_CLASS_NAMED_INSTVARS);
+	hcl_popvolat (hcl);
+	if (HCL_UNLIKELY(!c)) return HCL_NULL;
+
+	c->superclass = superclass;
+	c->nivars = HCL_SMOOI_TO_OOP(nivars);
+	c->ncvars = HCL_SMOOI_TO_OOP(ncvars);
+
+
+	return (hcl_oop_t)c;
 }
 
 /* ------------------------------------------------------------------------ *
@@ -376,8 +393,8 @@ hcl_oop_t hcl_remakengcbytearray (hcl_t* hcl, hcl_oop_t obj, hcl_oow_t newsize)
 	/* no hcl_pushvolat() is needed because 'obj' is a non-GC object. */
 	/* TODO: improve this by using realloc */
 
-	tmp = hcl_makengcbytearray (hcl, HCL_NULL, newsize);
-	if (tmp)
+	tmp = hcl_makengcbytearray(hcl, HCL_NULL, newsize);
+	if (HCL_LIKELY(tmp))
 	{
 		if (obj)
 		{
@@ -404,8 +421,8 @@ hcl_oop_t hcl_remakengcarray (hcl_t* hcl, hcl_oop_t obj, hcl_oow_t newsize)
 	/* no hcl_pushvolat() is needed because 'obj' is a non-GC object. */
 	/* TODO: improve this by using realloc */
 
-	tmp = hcl_makengcarray (hcl, newsize);
-	if (tmp)
+	tmp = hcl_makengcarray(hcl, newsize);
+	if (HCL_LIKELY(tmp))
 	{
 		if (obj)
 		{

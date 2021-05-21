@@ -815,6 +815,76 @@ struct hcl_process_scheduler_t
 	} suspended;
 };
 
+
+#define HCL_CLASS_NAMED_INSTVARS 7
+typedef struct hcl_class_t hcl_class_t;
+typedef struct hcl_class_t* hcl_oop_class_t;
+struct hcl_class_t
+{
+	HCL_OBJ_HEADER;
+
+	/* === the following five fields must be in sync with hcl_methowner_t === */
+	/* [0] - instance methods, MethodDictionary
+	 * [1] - class methods, MethodDictionary */
+	hcl_oop_dic_t  mthdic[2];      
+	/* ===================================================================== */
+
+	hcl_oop_t superclass;
+	hcl_oop_t nivars; /* smooi. */
+	hcl_oop_t ncvars; /* smooi. */
+
+	hcl_oop_char_t ivarnames;
+	hcl_oop_char_t cvarnames;
+
+	/* indexed part afterwards */
+	hcl_oop_t      cvar[1];   /* class variables. */
+};
+
+#if 0
+struct hcl_class_t
+{
+	HCL_OBJ_HEADER;
+
+	/* === the following five fields must be in sync with hcl_methowner_t === */
+	hcl_oop_char_t name; /* Symbol */
+
+	/* [0] - instance methods, MethodDictionary
+	 * [1] - class methods, MethodDictionary */
+	hcl_oop_dic_t  mthdic[2];      
+
+	hcl_oop_nsdic_t nsup; /* pointer to the upper namespace */
+	hcl_oop_nsdic_t nsdic; /* dictionary used for namespacing - may be nil when there are no subitems underneath */
+	/* ===================================================================== */
+
+	hcl_oop_t      spec;          /* SmallInteger. instance specification */
+	hcl_oop_t      selfspec;      /* SmallInteger. specification of the class object itself */
+
+	hcl_oop_t      superclass;    /* Another class */
+	hcl_oop_t      subclasses;    /* Array of subclasses */
+
+	hcl_oop_t      modname;       /* Symbol if importing a module. nil if not. */
+
+	/* == NEVER CHANGE THIS ORDER OF 3 ITEMS BELOW == */
+	hcl_oop_char_t ivars;  /* String */
+	hcl_oop_char_t civars; /* String */
+	hcl_oop_char_t cvars;  /* String */
+	/* == NEVER CHANGE THE ORDER OF 3 ITEMS ABOVE == */
+
+#if 0
+	hcl_oop_char_t pooldics;      /* String - pool dictionaries imported */
+
+	hcl_oop_t      trsize; /* trailer size for new instances */
+	hcl_oop_t      trgc; /* trailer gc callback */
+
+	/* [0] - initial values for instance variables of new instances 
+	 * [1] - initial values for class instance variables */
+	hcl_oop_t      initv[2]; 
+#endif
+	/* indexed part afterwards */
+	hcl_oop_t      cvar[1];   /* class instance variables and class variables. */
+};
+#endif
+
 /**
  * The HCL_BRANDOF() macro return the brand of an object including a numeric
  * object encoded into a pointer.
@@ -1696,7 +1766,8 @@ enum hcl_brand_t
 	HCL_BRAND_PROCESS,
 	HCL_BRAND_PROCESS_SCHEDULER,
 	HCL_BRAND_SEMAPHORE,
-	HCL_BRAND_SEMAPHORE_GROUP
+	HCL_BRAND_SEMAPHORE_GROUP,
+	HCL_BRAND_CLASS
 };
 typedef enum hcl_brand_t hcl_brand_t;
 
@@ -2355,6 +2426,13 @@ HCL_EXPORT hcl_oop_t hcl_makedic (
 HCL_EXPORT hcl_oop_t hcl_makecontext (
 	hcl_t*            hcl,
 	hcl_ooi_t         ntmprs
+);
+
+HCL_EXPORT hcl_oop_t hcl_makeclass (
+	hcl_t*            hcl,
+	hcl_oop_t         superclass,
+	hcl_ooi_t         nivars,
+	hcl_ooi_t         ncvars
 );
 
 HCL_EXPORT void hcl_freengcobj (
