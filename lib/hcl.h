@@ -393,7 +393,7 @@ typedef enum hcl_obj_type_t hcl_obj_type_t;
 #define HCL_OBJ_SET_FLAGS_BRAND(oop,v)    HCL_SETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_BRAND_SHIFT,   HCL_OBJ_FLAGS_BRAND_BITS,    v)
 
 #define HCL_OBJ_GET_SIZE(oop) ((oop)->_size)
-/*#define HCL_OBJ_GET_CLASS(oop) ((oop)->_class)*/
+#define HCL_OBJ_GET_CLASS(oop) ((oop)->_class)
 
 #define HCL_OBJ_SET_SIZE(oop,v) ((oop)->_size = (v))
 #define HCL_OBJ_SET_CLASS(oop,c) ((oop)->_class = (c))
@@ -424,7 +424,8 @@ typedef enum hcl_obj_type_t hcl_obj_type_t;
 
 #define HCL_OBJ_HEADER \
 	hcl_oow_t _flags; \
-	hcl_oow_t _size
+	hcl_oow_t _size; \
+	hcl_oop_t _class
 
 struct hcl_obj_t
 {
@@ -482,7 +483,7 @@ struct hcl_obj_word_t
 #define HCL_OBJ_GET_WORD_VAL(oop,idx)     ((((hcl_oop_word_t)(oop))->slot)[idx])
 #define HCL_OBJ_GET_LIWORD_VAL(oop,idx)   ((((hcl_oop_liword_t)(oop))->slot)[idx])
 
-#define HCL_OBJ_SET_OOP_VAL(oop,idx,val)      ((((hcl_oop_oop_t)(oop))->slot)[idx] = (val)) /* [NOTE] HCL_STORE_OOP() */
+#define HCL_OBJ_SET_OOP_VAL(oop,idx,val)      ((((hcl_oop_oop_t)(oop))->slot)[idx] = (val))
 #define HCL_OBJ_SET_CHAR_VAL(oop,idx,val)     ((((hcl_oop_char_t)(oop))->slot)[idx] = (val))
 #define HCL_OBJ_SET_BYTE_VAL(oop,idx,val)     ((((hcl_oop_byte_t)(oop))->slot)[idx] = (val))
 #define HCL_OBJ_SET_HALFWORD_VAL(oop,idx,val) ((((hcl_oop_halfword_t)(oop))->slot)[idx] = (val))
@@ -981,6 +982,7 @@ typedef enum hcl_log_mask_t hcl_log_mask_t;
 #	define HCL_DEBUG4(hcl,fmt,a1,a2,a3,a4)
 #	define HCL_DEBUG5(hcl,fmt,a1,a2,a3,a4,a5)
 #	define HCL_DEBUG6(hcl,fmt,a1,a2,a3,a4,a5,a6)
+#	define HCL_DEBUG7(hcl,fmt,a1,a2,a3,a4,a5,a6,a7)
 #else
 #	define HCL_DEBUG0(hcl,fmt) HCL_LOG0(hcl, HCL_LOG_DEBUG | HCL_LOG_UNTYPED, fmt)
 #	define HCL_DEBUG1(hcl,fmt,a1) HCL_LOG1(hcl, HCL_LOG_DEBUG | HCL_LOG_UNTYPED, fmt, a1)
@@ -989,6 +991,7 @@ typedef enum hcl_log_mask_t hcl_log_mask_t;
 #	define HCL_DEBUG4(hcl,fmt,a1,a2,a3,a4) HCL_LOG4(hcl, HCL_LOG_DEBUG | HCL_LOG_UNTYPED, fmt, a1, a2, a3, a4)
 #	define HCL_DEBUG5(hcl,fmt,a1,a2,a3,a4,a5) HCL_LOG5(hcl, HCL_LOG_DEBUG | HCL_LOG_UNTYPED, fmt, a1, a2, a3, a4, a5)
 #	define HCL_DEBUG6(hcl,fmt,a1,a2,a3,a4,a5,a6) HCL_LOG6(hcl, HCL_LOG_DEBUG | HCL_LOG_UNTYPED, fmt, a1, a2, a3, a4, a5, a6)
+#	define HCL_DEBUG7(hcl,fmt,a1,a2,a3,a4,a5,a6,a7) HCL_LOG6(hcl, HCL_LOG_DEBUG | HCL_LOG_UNTYPED, fmt, a1, a2, a3, a4, a5, a6, a7)
 #endif
 
 #define HCL_INFO0(hcl,fmt) HCL_LOG0(hcl, HCL_LOG_INFO | HCL_LOG_UNTYPED, fmt)
@@ -998,6 +1001,7 @@ typedef enum hcl_log_mask_t hcl_log_mask_t;
 #define HCL_INFO4(hcl,fmt,a1,a2,a3,a4) HCL_LOG4(hcl, HCL_LOG_INFO | HCL_LOG_UNTYPED, fmt, a1, a2, a3, a4)
 #define HCL_INFO5(hcl,fmt,a1,a2,a3,a4,a5) HCL_LOG5(hcl, HCL_LOG_INFO | HCL_LOG_UNTYPED, fmt, a1, a2, a3, a4, a5)
 #define HCL_INFO6(hcl,fmt,a1,a2,a3,a4,a5,a6) HCL_LOG6(hcl, HCL_LOG_INFO | HCL_LOG_UNTYPED, fmt, a1, a2, a3, a4, a5, a6)
+#define HCL_INFO7(hcl,fmt,a1,a2,a3,a4,a5,a6,a7) HCL_LOG6(hcl, HCL_LOG_INFO | HCL_LOG_UNTYPED, fmt, a1, a2, a3, a4, a5, a6, a7)
 
 
 /* =========================================================================
@@ -1767,7 +1771,8 @@ enum hcl_brand_t
 	HCL_BRAND_PROCESS_SCHEDULER,
 	HCL_BRAND_SEMAPHORE,
 	HCL_BRAND_SEMAPHORE_GROUP,
-	HCL_BRAND_CLASS
+	HCL_BRAND_CLASS,
+	HCL_BRAND_INSTANCE
 };
 typedef enum hcl_brand_t hcl_brand_t;
 

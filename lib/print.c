@@ -93,7 +93,8 @@ enum
 	WORD_PROCESS_SCHEDULER,
 	WORD_SEMAPHORE,
 	WORD_SEMAPHORE_GROUP,
-	WORD_CLASS
+	WORD_CLASS,
+	WORD_INSTANCE
 };
 
 static struct 
@@ -116,7 +117,9 @@ static struct
 	{  20, { '#','<','P','R','O','C','E','S','S','-','S','C','H','E','D','U','L','E','R','>' } },
 	{  12, { '#','<','S','E','M','A','P','H','O','R','E','>' } },
 	{  18, { '#','<','S','E','M','A','P','H','O','R','E','-','G','R','O','U','P','>' } },
-	{  8,  { '#','<','C','L','A','S','S','>' } }
+
+	{  8,  { '#','<','C','L','A','S','S','>' } },
+	{  11, { '#','<','I','N','S','T','A','N','C','E','>' } }
 };
 
 static HCL_INLINE int print_single_char (hcl_fmtout_t* fmtout, hcl_ooch_t ch)
@@ -690,6 +693,11 @@ next:
 		case HCL_BRAND_CLASS:
 			/* TODO: print the class name */
 			word_index = WORD_CLASS;
+			goto print_word;
+
+		case HCL_BRAND_INSTANCE:
+			/* TODO: print the class name also */
+			word_index = WORD_INSTANCE;
 			goto print_word;
 
 		default:

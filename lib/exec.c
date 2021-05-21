@@ -974,7 +974,7 @@ static void resume_process (hcl_t* hcl, hcl_oop_process_t proc)
 		/* don't switch to this process. just change the state to RUNNABLE.
 		 * process switching should be triggerd by the process scheduler. */
 		chain_into_processor (hcl, proc, PROC_STATE_RUNNABLE); 
-		/*HCL_STORE_OOP (hcl, &proc->current_context = proc->initial_context);*/
+		/*proc->current_context = proc->initial_context;*/
 	}
 #if 0
 	else if (proc->state == HCL_SMOOI_TO_OOP(PROC_STATE_RUNNABLE))

@@ -370,6 +370,106 @@ hcl_oop_t hcl_makeclass (hcl_t* hcl, hcl_oop_t superclass, hcl_ooi_t nivars, hcl
 	return (hcl_oop_t)c;
 }
 
+static HCL_INLINE int decode_spec (hcl_t* hcl, hcl_oop_class_t _class, hcl_oow_t num_flexi_fields, hcl_obj_type_t* type, hcl_oow_t* outlen)
+{
+	/* TODO: */
+	return 0;
+}
+
+hcl_oop_t hcl_instantiate (hcl_t*hcl, hcl_oop_class_t _class, const void* vptr, hcl_oow_t vlen)
+{
+	hcl_oop_t oop;
+	hcl_obj_type_t type;
+	hcl_oow_t alloclen;
+	hcl_oow_t tmp_count = 0;
+
+	HCL_ASSERT (hcl, hcl->_nil != HCL_NULL);
+
+	if (decode_spec(hcl, _class, vlen, &type, &alloclen) <= -1) return HCL_NULL;
+
+	hcl_pushvolat (hcl, (hcl_oop_t*)&_class); tmp_count++;
+
+	switch (type)
+	{
+		case HCL_OBJ_TYPE_OOP:
+			/* both the fixed part(named instance variables) and
+			 * the variable part(indexed instance variables) are allowed. */
+			oop = hcl_allocoopobj(hcl, HCL_BRAND_INSTANCE, alloclen);
+			if (HCL_LIKELY(oop))
+			{
+		#if 0
+					/* initialize named instance variables with default values */
+					if (_class->initv[0] != hcl->_nil)
+					{
+						hcl_oow_t i = HCL_OBJ_GET_SIZE(_class->initv[0]);
+
+						/* [NOTE] i don't deep-copy initial values.
+						 *   if you change the contents of compound values like arrays,
+						 *   it affects subsequent instantiation of the class.
+						 *   it's important that the compiler should mark compound initial
+						 *   values read-only. */
+						while (i > 0)
+						{
+							--i;
+							HCL_OBJ_SET_OOP_VAL (oop, i, HCL_OBJ_GET_OOP_VAL(_class->initv[0], i));
+						}
+					}
+		#endif
+			}
+			HCL_ASSERT (hcl, vptr == HCL_NULL);
+			/*
+			This function is not GC-safe. so i don't want to initialize
+			the payload of a pointer object. The caller can call this
+			function and initialize payloads then.
+			if (oop && vptr && vlen > 0)
+			{
+					hcl_oop_oop_t hdr = (hcl_oop_oop_t)oop;
+					HCL_MEMCPY (&hdr->slot[named_instvar], vptr, vlen * HCL_SIZEOF(hcl_oop_t));
+			}
+
+			For the above code to work, it should protect the elements of
+			the vptr array with hcl_pushvolat(). So it might be better
+			to disallow a non-NULL vptr when indexed_type is OOP. See
+			the assertion above this comment block.
+			*/
+			break;
+
+		case HCL_OBJ_TYPE_CHAR:
+			oop = hcl_alloccharobj(hcl, HCL_BRAND_INSTANCE, vptr, alloclen);
+			break;
+
+		case HCL_OBJ_TYPE_BYTE:
+			oop = hcl_allocbyteobj(hcl, HCL_BRAND_INSTANCE, vptr, alloclen);
+			break;
+
+		case HCL_OBJ_TYPE_HALFWORD:
+			oop = hcl_allochalfwordobj(hcl, HCL_BRAND_INSTANCE, vptr, alloclen);
+			break;
+
+		case HCL_OBJ_TYPE_WORD:
+			oop = hcl_allocwordobj(hcl, HCL_BRAND_INSTANCE, vptr, alloclen);
+			break;
+
+		default:
+			hcl_seterrnum (hcl, HCL_EINTERN);
+			oop = HCL_NULL;
+			break;
+	}
+		
+	if (HCL_LIKELY(oop))
+	{
+		hcl_ooi_t spec;
+		HCL_OBJ_SET_CLASS (oop, (hcl_oop_t)_class);
+	#if 0
+		spec = HCL_OOP_TO_SMOOI(_class->spec);
+		if (HCL_CLASS_SPEC_IS_IMMUTABLE(spec)) HCL_OBJ_SET_FLAGS_RDONLY (oop, 1);
+		if (HCL_CLASS_SPEC_IS_UNCOPYABLE(spec)) HCL_OBJ_SET_FLAGS_UNCOPYABLE (oop, 1);
+	#endif
+	}
+	hcl_popvolats (hcl, tmp_count);
+	return oop;
+}
+
 /* ------------------------------------------------------------------------ *
  * NGC HANDLING
  * ------------------------------------------------------------------------ */
