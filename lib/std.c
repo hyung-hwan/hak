@@ -77,7 +77,7 @@
 #	include <sys/socket.h> /* for socketpair */
 #	include <sys/time.h>
 #	include <sys/ioctl.h> /* FIONBIO */
-#   include <nerrno.h> /* for SOCEXXX error codes */
+#	include <nerrno.h> /* for SOCEXXX error codes */
 
 #	define BSD_SELECT
 #	if defined(TCPV40HDRS)
