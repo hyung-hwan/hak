@@ -1505,6 +1505,7 @@ struct hcl_t
 	hcl_oop_t _break;  /* symbol */
 	hcl_oop_t _catch; /* symbol */
 	hcl_oop_t _continue; /* symbol */
+	hcl_oop_t _defclass; /* symbol */
 	hcl_oop_t _defun;  /* symbol */
 	hcl_oop_t _do;     /* symbol */
 	hcl_oop_t _elif;   /* symbol */
@@ -1784,6 +1785,7 @@ enum hcl_syncode_t
 	HCL_SYNCODE_BREAK,
 	HCL_SYNCODE_CATCH,
 	HCL_SYNCODE_CONTINUE,
+	HCL_SYNCODE_DEFCLASS,
 	HCL_SYNCODE_DEFUN,
 	HCL_SYNCODE_DO,
 	HCL_SYNCODE_ELIF,

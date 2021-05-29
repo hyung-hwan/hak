@@ -1588,6 +1588,90 @@ static HCL_INLINE int compile_else (hcl_t* hcl)
 }
 
 /* ========================================================================= */
+static int compile_defclass (hcl_t* hcl, hcl_cnode_t* src)
+{
+	/*
+	(defclass A
+		| x y | ; instance variables
+		| ::: x y z | ; class variables <--- how to initialize the class variables???
+
+		
+		(defcmethod new (a b c)
+(printf "%O\n" self) ; self is A
+			(set obj super.new)
+			(obj.init a b c)
+			;(obj.x 10)
+			;(obj.y 20)
+			(return obj)
+		)
+	)
+ 
+	(defclass B ::: A ; A is a parent class
+		| p q |
+ 
+		....
+	)
+
+	*/
+	hcl_cnode_t* cmd, * obj, * args;
+	hcl_cnode_t* defun_name;
+
+	cmd = HCL_CNODE_CONS_CAR(src);
+	obj = HCL_CNODE_CONS_CDR(src);
+
+	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_DEFUN));
+
+	if (!obj)
+	{
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMELIST, HCL_CNODE_GET_LOC(src), HCL_NULL, "no name in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		return -1;
+	}
+	else if (!HCL_CNODE_IS_CONS(obj))
+	{
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(obj), HCL_CNODE_GET_TOK(obj), "redundant cdr in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		return -1;
+	}
+
+	class_name = HCL_CNODE_CONS_CAR(obj);
+	if (HCL_CNODE_IS_SYMBOL(class_name))
+	{
+		/* defclass followed by a class name */
+		if (HCL_CNODE_SYMBOL_SYNCODE(class_name)) /*|| HCL_OBJ_GET_FLAGS_KERNEL(class_name) >= 1) */
+		{
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(class_name), HCL_CNODE_GET_TOK(class_name), "special symbol not to be used as a defun name");
+			return -1;
+		}
+
+		obj = HCL_CNODE_CONS_CDR(obj);
+	}
+	else
+	{
+		/* no class name specified */
+		class_name = HCL_NULL;
+	}
+
+	if (HCL_CNODE_IS_ELLIPSIS(arg))
+	{
+		/* superclass */
+	}
+
+	if (!obj)
+	{
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMELIST, HCL_CNODE_GET_LOC(src), HCL_NULL, "no argument list in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		return -1;
+	}
+	else if (!HCL_CNODE_IS_CONS(obj))
+	{
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(obj), HCL_CNODE_GET_TOK(obj), "redundant cdr in argument list in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		return -1;
+	}
+	HCL_CNODE_CONS_CAR(obj);
+
+
+	return 0;
+}
+
+/* ========================================================================= */
 
 static int collect_local_vardcl (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t** nextobj, hcl_oow_t tv_dup_check_start, hcl_oow_t* nvardcls)
 {
@@ -2571,6 +2655,10 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 			case HCL_SYNCODE_CONTINUE:
 				/* (continue)*/
 				if (compile_continue(hcl, obj) <= -1) return -1;
+				break;
+
+			case HCL_SYNCODE_DEFCLASS:
+				if (compile_defclass(hcl, obj) <= -1) return -1;
 				break;
 
 			case HCL_SYNCODE_DEFUN:

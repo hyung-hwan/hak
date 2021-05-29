@@ -43,6 +43,7 @@ static struct
 	{  5, { 'b','r','e','a','k' },              HCL_SYNCODE_BREAK,     HCL_OFFSETOF(hcl_t,_break)  },
 	{  5, { 'c','a','t','c','h' },              HCL_SYNCODE_CATCH,     HCL_OFFSETOF(hcl_t,_catch)  },
 	{  8, { 'c','o','n','t','i','n','u','e' },  HCL_SYNCODE_CONTINUE,  HCL_OFFSETOF(hcl_t,_continue)  },
+	{  8, { 'd','e','f','c','l','a','s','s' },  HCL_SYNCODE_DEFCLASS,  HCL_OFFSETOF(hcl_t,_defclass)  },
 	{  5, { 'd','e','f','u','n' },              HCL_SYNCODE_DEFUN,     HCL_OFFSETOF(hcl_t,_defun)  },
 	{  2, { 'd','o' },                          HCL_SYNCODE_DO,        HCL_OFFSETOF(hcl_t,_do)  },
 	{  4, { 'e','l','i','f' },                  HCL_SYNCODE_ELIF,      HCL_OFFSETOF(hcl_t,_elif)   },
