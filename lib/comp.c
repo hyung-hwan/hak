@@ -1588,6 +1588,25 @@ static HCL_INLINE int compile_else (hcl_t* hcl)
 }
 
 /* ========================================================================= */
+
+static int next_require_symbol (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t* prev, hcl_cnode_t* container, hcl_synerrnum_t errnum, const hcl_bch_t* bmsg)
+{
+
+	obj = HCL_CNODE_CONS_CDR(obj);
+	if (!obj)
+	{
+		hcl_setsynerrbfmt (hcl, errnum, HCL_CNODE_GET_LOC(prev), HCL_NULL, "%hs in %.*js", bmsg, HCL_CNODE_GET_TOKLEN(container), HCL_CNODE_GET_TOKPTR(container));
+		return -1;
+	}
+	else if (!HCL_CNODE_IS_CONS(obj))
+	{
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(prev), HCL_CNODE_GET_TOK(obj), "redundant cdr in superclass in %.*js", HCL_CNODE_GET_TOKLEN(container), HCL_CNODE_GET_TOKPTR(container));
+		return -1;
+	}
+
+	return 0;
+}
+
 static int compile_defclass (hcl_t* hcl, hcl_cnode_t* src)
 {
 	/*
@@ -1614,23 +1633,15 @@ static int compile_defclass (hcl_t* hcl, hcl_cnode_t* src)
 
 	*/
 	hcl_cnode_t* cmd, * obj, * args;
-	hcl_cnode_t* defun_name;
+	hcl_cnode_t* defun_name, * class_name;
 
 	cmd = HCL_CNODE_CONS_CAR(src);
 	obj = HCL_CNODE_CONS_CDR(src);
 
 	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_DEFUN));
 
-	if (!obj)
-	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMELIST, HCL_CNODE_GET_LOC(src), HCL_NULL, "no name in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
-		return -1;
-	}
-	else if (!HCL_CNODE_IS_CONS(obj))
-	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(obj), HCL_CNODE_GET_TOK(obj), "redundant cdr in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
-		return -1;
-	}
+	if (check(hcl, obj, src, cmd, HCL_SYNERR_VARNAME, "no class name") <= -1) return -1;
+
 
 	class_name = HCL_CNODE_CONS_CAR(obj);
 	if (HCL_CNODE_IS_SYMBOL(class_name))
@@ -1638,7 +1649,7 @@ static int compile_defclass (hcl_t* hcl, hcl_cnode_t* src)
 		/* defclass followed by a class name */
 		if (HCL_CNODE_SYMBOL_SYNCODE(class_name)) /*|| HCL_OBJ_GET_FLAGS_KERNEL(class_name) >= 1) */
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(class_name), HCL_CNODE_GET_TOK(class_name), "special symbol not to be used as a defun name");
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(class_name), HCL_CNODE_GET_TOK(class_name), "special symbol not to be used as a class name");
 			return -1;
 		}
 
@@ -1650,9 +1661,25 @@ static int compile_defclass (hcl_t* hcl, hcl_cnode_t* src)
 		class_name = HCL_NULL;
 	}
 
-	if (HCL_CNODE_IS_ELLIPSIS(arg))
+	if (obj)
 	{
 		/* superclass */
+		tmp = HCL_CNODE_CONS_CAR(obj);
+		if (HCL_CNODE_IS_ELLIPSIS(tmp))
+		{
+			obj = HCL_CNODE_CONS_CDR(obj);
+			if (!obj)
+			{
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMELIST, HCL_CNODE_GET_LOC(tmp), HCL_NULL, "no superclass in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+				return -1;
+			}
+			else if (!HCL_CNODE_IS_CONS(obj))
+			{
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(tmp), HCL_CNODE_GET_TOK(obj), "redundant cdr in superclass in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+				return -1;
+			}
+
+		}
 	}
 
 	if (!obj)
@@ -1775,7 +1802,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 
 		if (HCL_CNODE_SYMBOL_SYNCODE(defun_name)) /*|| HCL_OBJ_GET_FLAGS_KERNEL(defun_name) >= 1) */
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(defun_name), HCL_CNODE_GET_TOK(defun_name), "special symbol not to be used as a defun name");
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(defun_name), HCL_CNODE_GET_TOK(defun_name), "special symbol not to be used as a function name");
 			return -1;
 		}
 
