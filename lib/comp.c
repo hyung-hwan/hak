@@ -1007,6 +1007,7 @@ enum
 	COP_POST_CATCH, 
 
 	COP_POST_LAMBDA,
+	COP_POST_CLASS,
 	COP_POST_AND_EXPR,
 	COP_POST_OR_EXPR,
 
@@ -1591,7 +1592,6 @@ static HCL_INLINE int compile_else (hcl_t* hcl)
 
 static int check_if_plain_cnode (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t* prev, hcl_cnode_t* container, hcl_synerrnum_t errnum, const hcl_bch_t* bname)
 {
-	obj = HCL_CNODE_CONS_CDR(obj);
 	if (!obj)
 	{
 		hcl_setsynerrbfmt (hcl, errnum, HCL_CNODE_GET_LOC(prev), HCL_NULL, "no %hs in %.*js", bname, HCL_CNODE_GET_TOKLEN(container), HCL_CNODE_GET_TOKPTR(container));
@@ -1606,15 +1606,20 @@ static int check_if_plain_cnode (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t* prev
 	return 0;
 }
 
-static int compile_defclass (hcl_t* hcl, hcl_cnode_t* src)
+static int compile_class (hcl_t* hcl, hcl_cnode_t* src)
 {
 	/*
 	(defclass A
 		| x y | ; instance variables
 		| ::: x y z | ; class variables <--- how to initialize the class variables???
 
-		
-		(defcmethod new (a b c)
+		; everything inside defclass after the variable declarations are normal expressions.
+		; however, the resolution of some variables will fall under the enclosing class.
+		(set x 20)
+		(printf "normal statement ....\n");
+
+
+		(defun new (a b c)
 (printf "%O\n" self) ; self is A
 			(set obj super.new)
 			(obj.init a b c)
@@ -1625,8 +1630,7 @@ static int compile_defclass (hcl_t* hcl, hcl_cnode_t* src)
 	)
  
 	(defclass B ::: A ; A is a parent class
-		| p q |
- 
+		| p q | 
 		....
 	)
 
@@ -1655,46 +1659,109 @@ static int compile_defclass (hcl_t* hcl, hcl_cnode_t* src)
 		obj = HCL_CNODE_CONS_CDR(obj);
 	}
 
-printf ("00000000000000\n");
 	if (obj)
 	{
 		/* superclass */
 		tmp = HCL_CNODE_CONS_CAR(obj);
-		if (HCL_CNODE_IS_ELLIPSIS(tmp))
+		if (HCL_CNODE_IS_TRPCOLONS(tmp))
 		{
 			obj = HCL_CNODE_CONS_CDR(obj);
+
+			/* TODO: multiple subclasses? interfaces? */
 			if (check_if_plain_cnode(hcl, obj, tmp, cmd, HCL_SYNERR_VARNAME, "superclass name") <= -1) return -1;
 			superclass_name = HCL_CNODE_CONS_CAR(obj);
 			if (HCL_CNODE_IS_SYMBOL(superclass_name))
 			{
-				if (HCL_CNODE_SYMBOL_SYNCODE(class_name)) /*|| HCL_OBJ_GET_FLAGS_KERNEL(class_name) >= 1) */
+				if (HCL_CNODE_SYMBOL_SYNCODE(superclass_name)) /*|| HCL_OBJ_GET_FLAGS_KERNEL(superclass_name) >= 1) */
 				{
-					hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(class_name), HCL_CNODE_GET_TOK(class_name), "special symbol not to be used as a superclass name");
+					hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(superclass_name), HCL_CNODE_GET_TOK(superclass_name), "special symbol not to be used as a superclass name");
 					return -1;
 				}
 				obj = HCL_CNODE_CONS_CDR(obj);
 			}
 			else
 			{
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(class_name), HCL_CNODE_GET_TOK(class_name), "non-symbol not to be used as a superclass name");
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(superclass_name), HCL_CNODE_GET_TOK(superclass_name), "non-symbol not to be used as a superclass name");
 				return -1;
 			}
 		}
 	}
-printf ("1111111111111111111\n");
 
+//HCL_DEBUG2 (hcl, ">>> [%js] [%js]\n", HCL_CNODE_GET_TOKPTR(class_name), HCL_CNODE_GET_TOKPTR(superclass_name));
 	while (obj)
 	{
 		/* instance variables and/or class variables */
 		hcl_cnode_t* vars;
+printf ("VLIST....\n");
 		if (check_if_plain_cnode(hcl, obj, src, cmd, HCL_SYNERR_VARNAME, "variable list") <= -1) return -1;
-		if (!HCL_CNODE_IS_CONS_CONCODED(obj, HCL_CONCODE_VLIST)) break;
-
 		vars = HCL_CNODE_CONS_CAR(obj);
+		if (!HCL_CNODE_IS_CONS_CONCODED(vars, HCL_CONCODE_VLIST)) break;
 
 printf ("22222222222\n");
 		obj = HCL_CNODE_CONS_CDR(obj);
 	}
+
+	/* TODO: emit make_class code...
+	*/
+
+
+	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_LIST, obj); /* 1 */
+	PUSH_SUBCFRAME (hcl, COP_POST_CLASS, class_name); /* 2*/
+
+	return 0;
+}
+
+
+static HCL_INLINE int post_class (hcl_t* hcl)
+{
+	hcl_cframe_t* cf;
+
+	cf = GET_TOP_CFRAME(hcl);
+	HCL_ASSERT (hcl, cf->opcode == COP_POST_CLASS);
+
+#if 0
+	pop_fnblk (hcl); TODO: do pop class???
+
+	if (cf->operand)
+	{
+		/* (defun x()  ; this x refers to a variable in the outer scope.
+		 *     | t1 t2 x |
+		 *     (set x 10)  ; this x refers to the local variable.
+		 * )
+		 *
+		 * the block has been exited(blk.depth--) before finding 'x' in the outer scope.
+		 */
+		hcl_cnode_t* class_name = cf->operand;
+
+		hcl_oow_t index;
+
+
+		if (find_temporary_variable_backward(hcl, HCL_CNODE_GET_TOK(defun_name), &index) <= -1)
+		{
+			SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, defun_name);
+			cf = GET_TOP_CFRAME(hcl);
+			cf->u.set.var_type = VAR_NAMED;
+		}
+		else
+		{
+			HCL_ASSERT (hcl, index <= HCL_SMOOI_MAX); 
+			SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, defun_name); 
+			cf = GET_TOP_CFRAME(hcl);
+			cf->u.set.var_type = VAR_INDEXED;
+			cf->u.set.index = index;
+		}
+		cf->u.set.pop = 0;
+
+	}
+	else
+	{
+		POP_CFRAME (hcl);
+	}
+#else
+/* should i make the assignment in POST?  or after variable declarations immediately? */
+	printf ("end of CLASS DEFINITION\n");
+	POP_CFRAME (hcl);
+#endif
 
 	return 0;
 }
@@ -2686,7 +2753,7 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 				break;
 
 			case HCL_SYNCODE_DEFCLASS:
-				if (compile_defclass(hcl, obj) <= -1) return -1;
+				if (compile_class(hcl, obj) <= -1) return -1;
 				break;
 
 			case HCL_SYNCODE_DEFUN:
@@ -3364,7 +3431,7 @@ static int compile_object_list (hcl_t* hcl)
 		    cop == COP_COMPILE_TRY_OBJECT_LIST_TAIL)
 		{
 			/* emit POP_STACKTOP before evaluating the second objects 
-			 * and onwards. this goes above COP_COMPILE_OBJECT.
+			 * and onwards. this goes above COP_COMPILE_OBJECT.*/
 
 			/* TODO: if the previous operators is known to divert execution flow, it may skip this.
 			 *       for instance, some 'RETURN" or 'JUMP' operators */
@@ -4321,6 +4388,10 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 
 			case COP_POST_LAMBDA:
 				if (post_lambda(hcl) <= -1) goto oops;
+				break;
+
+			case COP_POST_CLASS:
+				if (post_class(hcl) <= -1) goto oops;
 				break;
 
 			case COP_POST_AND_EXPR:
