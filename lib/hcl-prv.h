@@ -401,12 +401,14 @@ typedef struct hcl_cblk_info_t hcl_cblk_info_t;
 /* function block information */
 struct hcl_fnblk_info_t
 {
-	hcl_oow_t tmprlen;
-	hcl_oow_t tmprcnt;
-	hcl_oow_t tmpr_va;
-	hcl_oow_t tmpr_nargs;
-	hcl_oow_t tmpr_nrvars;
-	hcl_oow_t tmpr_nlvars;
+	hcl_oow_t tmprlen; /* accumulated length of the temporaries string including outer blocks */
+	hcl_oow_t tmprcnt; /* accumulated number of temporaries including outer blocks */
+
+	hcl_oow_t tmpr_va; /* 0 or 1 */
+	hcl_oow_t tmpr_nargs; /* number of fixed arguments */
+	hcl_oow_t tmpr_nrvars; /* number of return variables */
+	hcl_oow_t tmpr_nlvars; /* number of local variables */
+
 	hcl_oow_t make_inst_pos;
 	hcl_oow_t lfbase;
 
