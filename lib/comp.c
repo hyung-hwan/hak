@@ -820,6 +820,52 @@ static void pop_cblk (hcl_t* hcl)
 	hcl->c->cblk.depth--;
 }
 
+
+static int push_clsblk (hcl_t* hcl, const hcl_ioloc_t* errloc, hcl_oow_t nivars, hcl_oow_t ncvars)
+{
+	hcl_oow_t new_depth;
+
+	HCL_ASSERT (hcl, hcl->c->clsblk.depth >= -1);
+
+	if (hcl->c->clsblk.depth == HCL_TYPE_MAX(hcl_ooi_t))
+	{
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_BLKDEPTH, errloc, HCL_NULL, "class block depth too deep"); 
+		return -1;
+	}
+
+	new_depth = hcl->c->clsblk.depth + 1;
+	if (hcl->c->clsblk.depth >= hcl->c->clsblk.info_capa)
+	{
+		hcl_clsblk_info_t* tmp;
+		hcl_oow_t newcapa;
+
+		newcapa = HCL_ALIGN(new_depth + 1, BLK_INFO_BUFFER_ALIGN);
+		tmp = (hcl_clsblk_info_t*)hcl_reallocmem(hcl, hcl->c->clsblk.info, newcapa * HCL_SIZEOF(*tmp));
+		if (HCL_UNLIKELY(!tmp)) return -1;
+		
+		hcl->c->clsblk.info_capa = newcapa;
+		hcl->c->clsblk.info = tmp;
+	}
+
+	HCL_MEMSET (&hcl->c->clsblk.info[new_depth], 0, HCL_SIZEOF(hcl->c->clsblk.info[new_depth]));
+	hcl->c->clsblk.info[new_depth].nivars = nivars;
+	hcl->c->clsblk.info[new_depth].ncvars = ncvars;
+
+	/* remember the function block depth before the class block is entered */
+	hcl->c->clsblk.info[new_depth].fnblk_base = hcl->c->fnblk.depth; 
+
+	hcl->c->clsblk.depth = new_depth;
+	return 0;
+}
+
+static void pop_clsblk (hcl_t* hcl)
+{
+	HCL_ASSERT (hcl, hcl->c->clsblk.depth >= 0);
+	
+	HCL_ASSERT (hcl, hcl->c->clsblk.depth - 1 >= hcl->c->clsblk.info[hcl->c->clsblk.depth].fnblk_base);
+	hcl->c->clsblk.depth--;
+}
+
 /* ========================================================================= */
 static HCL_INLINE int _insert_cframe (hcl_t* hcl, hcl_ooi_t index, int opcode, hcl_cnode_t* operand)
 {
@@ -1701,6 +1747,8 @@ printf ("22222222222\n");
 		obj = HCL_CNODE_CONS_CDR(obj);
 	}
 
+	if (push_clsblk(hcl, XXXX, 0, 0) <= -1) return -1;
+
 	/* TODO: emit make_class code...
 	*/
 
@@ -1719,9 +1767,9 @@ static HCL_INLINE int post_class (hcl_t* hcl)
 	cf = GET_TOP_CFRAME(hcl);
 	HCL_ASSERT (hcl, cf->opcode == COP_POST_CLASS);
 
-#if 0
-	pop_fnblk (hcl); TODO: do pop class???
+	pop_clsblk (hcl);
 
+#if 0
 	if (cf->operand)
 	{
 		/* (defun x()  ; this x refers to a variable in the outer scope.
@@ -4224,9 +4272,10 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 		HCL_ASSERT (hcl, hcl->c->tv.s.len == 0);
 		HCL_ASSERT (hcl, hcl->c->tv.wcount == 0);
 
-/* TODO: HCL_TYPE_MAX(hcl_oow_t) as make_inst_pos is wrong for this top-level. fix it later ... 
- * fixing it is needed to support exception variable at the top-level... */
-		/* keep a virtual function block for the top-level compilation */
+		/* keep a virtual function block for the top-level compilation.
+		 * pass HCL_TYPE_MAX(hcl_oow_t) as make_inst_pos because there is 
+		 * no actual MAKE_BLOCK/MAKE_FUNCTION instruction which otherwise
+		 * would be patched in pop_fnblk(). */
 		if (push_fnblk(hcl, HCL_NULL, 0, 0, 0, hcl->c->tv.wcount, hcl->c->tv.wcount, hcl->c->tv.s.len, HCL_TYPE_MAX(hcl_oow_t), 0) <= -1) return -1;
 	}
 	top_fnblk_saved = hcl->c->fnblk.info[0];
@@ -4445,6 +4494,7 @@ oops:
 	hcl->c->tv.s.len = 0;
 	hcl->c->tv.wcount = 0;
 	hcl->c->cblk.depth = -1;
+	hcl->c->clsblk.depth = -1;
 
 	/*hcl->c->fnblk.depth = -1;*/
 	if (hcl->c->fnblk.depth > 0) 

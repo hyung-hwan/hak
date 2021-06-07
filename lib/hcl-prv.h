@@ -391,14 +391,14 @@ enum hcl_cblk_type_t
 };
 typedef enum hcl_cblk_type_t hcl_cblk_type_t;
 
-/* control block information */
+/* control block information for the compiler */
 struct hcl_cblk_info_t
 {
 	hcl_cblk_type_t _type;
 };
 typedef struct hcl_cblk_info_t hcl_cblk_info_t;
 
-/* function block information */
+/* function block information for the compiler */
 struct hcl_fnblk_info_t
 {
 	hcl_oow_t tmprlen; /* accumulated length of the temporaries string including outer blocks */
@@ -419,8 +419,22 @@ struct hcl_fnblk_info_t
 };
 typedef struct hcl_fnblk_info_t hcl_fnblk_info_t;
 
+/* class block information for the compiler */
+
+struct hcl_clsblk_info_t
+{
+	hcl_oow_t nivars;
+	hcl_oow_t ncvars;
+	hcl_oow_t spec; /* TODO: byte indexed, word indexed? */
+
+	hcl_ooi_t fnblk_base;
+};
+typedef struct hcl_clsblk_info_t hcl_clsblk_info_t;
+
+
+/* reader stack for list reading */
 typedef struct hcl_rstl_t hcl_rstl_t;
-struct hcl_rstl_t /* reader stack for list reading */
+struct hcl_rstl_t 
 {
 	hcl_cnode_t* head;
 	hcl_cnode_t* tail;
@@ -429,6 +443,7 @@ struct hcl_rstl_t /* reader stack for list reading */
 	hcl_oow_t count;
 	hcl_rstl_t* prev;
 };
+
 
 struct hcl_compiler_t
 {
@@ -504,6 +519,13 @@ struct hcl_compiler_t
 		hcl_fnblk_info_t* info;
 		hcl_oow_t  info_capa;
 	} fnblk; /* lambda/function block */
+
+	struct
+	{
+		hcl_ooi_t depth; /* signed because it starts with -1 */
+		hcl_clsblk_info_t* info;
+		hcl_oow_t info_capa;
+	} clsblk; /* class block */
 };
 #endif
 
