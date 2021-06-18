@@ -654,27 +654,40 @@ static int emit_indexed_variable_access (hcl_t* hcl, hcl_oow_t index, hcl_oob_t 
 	HCL_ASSERT (hcl, index < fbi->tmprcnt);
 	for (i = hcl->c->fnblk.depth; i >= 0; i--)
 	{
-		hcl_oow_t parent_tmprcnt;
-
-		parent_tmprcnt = (i > 0)? hcl->c->fnblk.info[i - 1].tmprcnt: 0;
-		if (index >= parent_tmprcnt)
+#if 0
+		if (i > 0 && hcl->c->fnblk.info[hcl->c->fnblk.info[i - 1].type == FNBLK_CLASS) 
 		{
-			hcl_oow_t ctx_offset, index_in_ctx;
-			ctx_offset = hcl->c->fnblk.depth - i;
-			index_in_ctx = index - parent_tmprcnt;
-			/* ctx_offset 0 means the current context.
-			 *            1 means current->home.
-			 *            2 means current->home->home. 
-			 * index_in_ctx is a relative index within the context found.
-			 */
-			if (emit_double_param_instruction(hcl, baseinst1, ctx_offset, index_in_ctx, srcloc) <= -1) return -1;
-			if (ctx_offset > 0) 
-			{
-				fbi->access_outer = 1; /* the current function block accesses temporaries in an outer function block */
-				hcl->c->fnblk.info[i].accessed_by_inner = 1; /* temporaries in an outer function block is accessed by the current function block */
-			}
-			return 0;
+			break;
 		}
+		else
+		{
+#endif
+			hcl_oow_t parent_tmprcnt;
+
+			parent_tmprcnt = (i > 0)? hcl->c->fnblk.info[i - 1].tmprcnt: 0;
+			if (index >= parent_tmprcnt)
+			{
+				hcl_oow_t ctx_offset, index_in_ctx;
+				ctx_offset = hcl->c->fnblk.depth - i;
+				index_in_ctx = index - parent_tmprcnt;
+				/* ctx_offset 0 means the current context.
+				 *            1 means current->home.
+				 *            2 means current->home->home. 
+				 * index_in_ctx is a relative index within the context found.
+				 */
+				if (emit_double_param_instruction(hcl, baseinst1, ctx_offset, index_in_ctx, srcloc) <= -1) return -1;
+				if (ctx_offset > 0) 
+				{
+					fbi->access_outer = 1; /* the current function block accesses temporaries in an outer function block */
+					hcl->c->fnblk.info[i].accessed_by_inner = 1; /* temporaries in an outer function block is accessed by the current function block */
+				}
+				return 0;
+			}
+#if 0
+		}
+#endif
+
+//if (i > 0 && hcl->c->fnblk.info[hcl->c->fnblk.info[i - 1].type == FNBLK_CLASS) break;
 	}
 
 /* THIS PART MUST NOT BE REACHED */
@@ -1747,7 +1760,7 @@ printf ("22222222222\n");
 		obj = HCL_CNODE_CONS_CDR(obj);
 	}
 
-	if (push_clsblk(hcl, XXXX, 0, 0) <= -1) return -1;
+	if (push_clsblk(hcl, HCL_CNODE_GET_LOC(cmd), 0, 0) <= -1) return -1;
 
 	/* TODO: emit make_class code...
 	*/

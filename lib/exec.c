@@ -3203,7 +3203,14 @@ static int execute (hcl_t* hcl)
 							break;
 
 						case HCL_BRAND_PRIM:
-							if (call_primitive(hcl, b1) <= -1) goto call_failed;
+							if (call_primitive(hcl, b1) <= -1) 
+							{
+/*
+TODO: translate a certain primitive failure to a catchable exception. this seems to work . i need to capture the throw value instead of hcl->_nil .
+if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
+*/
+								goto call_failed;
+							}
 							break;
 
 						default:
