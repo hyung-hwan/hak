@@ -2177,6 +2177,7 @@ static int compile_return (hcl_t* hcl, hcl_cnode_t* src, int ret_from_home)
 	hcl_cnode_t* obj, * val;
 	hcl_cframe_t* cf;
 	hcl_fnblk_info_t* fbi;
+	hcl_ooi_t i;
 
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
 	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_RETURN) || 
@@ -2184,6 +2185,22 @@ static int compile_return (hcl_t* hcl, hcl_cnode_t* src, int ret_from_home)
 
 	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
 	obj = HCL_CNODE_CONS_CDR(src);
+
+	for (i = hcl->c->cblk.depth; i > hcl->c->fnblk.info[hcl->c->fnblk.depth].cblk_base; --i)
+	{
+		switch (hcl->c->cblk.info[i]._type)
+		{
+			case HCL_CBLK_TYPE_TRY:
+				if (emit_byte_instruction(hcl, HCL_CODE_TRY_EXIT, HCL_CNODE_GET_LOC(src)) <= -1) return -1;
+				break;
+
+#if 0
+			case HCL_CBLK_TYPE_CLASS:
+				if (emit_byte_instruction(hcl, HCL_CODE_TRY_CLASS, HCL_CNODE_GET_LOC(src)) <= -1) return -1;
+				break;
+#endif
+		}
+	}
 
 	if (fbi->tmpr_nrvars > 0)
 	{
