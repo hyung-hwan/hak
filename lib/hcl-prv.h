@@ -414,6 +414,9 @@ struct hcl_fnblk_info_t
 
 	hcl_ooi_t cblk_base;
 
+	hcl_ooi_t clsblk_base;
+	hcl_ooi_t clsblk_top;
+
 	unsigned int access_outer: 1;
 	unsigned int accessed_by_inner: 1;
 };
@@ -876,7 +879,9 @@ enum hcl_bcode_t
 	/* UNUSED - 0xDD - 0xDF */
 
 	HCL_CODE_PUSH_CTXTEMPVAR_X        = 0xE0, /* 224 ## */
-	/* UNUSED - 0xE1 - 0xE3 */
+	HCL_CODE_CLASS_ENTER              = 0xE1, /* 225 ## */
+	HCL_CODE_CLASS_EXIT               = 0xE2,  /* 226 */
+	/* UNUSED - 0xE3 */
 
 	HCL_CODE_PUSH_OBJVAR_X            = 0xE4, /* 228 ## */
 	/* UNUSED - 0xE5 - 0xE7 */

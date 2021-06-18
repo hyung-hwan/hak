@@ -645,7 +645,6 @@ static int emit_indexed_variable_access (hcl_t* hcl, hcl_oow_t index, hcl_oob_t 
 	hcl_oow_t i;
 	hcl_fnblk_info_t* fbi;
 
-
 	HCL_ASSERT (hcl, hcl->c->fnblk.depth >= 0);
 	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
 
@@ -654,14 +653,17 @@ static int emit_indexed_variable_access (hcl_t* hcl, hcl_oow_t index, hcl_oob_t 
 	HCL_ASSERT (hcl, index < fbi->tmprcnt);
 	for (i = hcl->c->fnblk.depth; i >= 0; i--)
 	{
+		
 #if 0
-		if (i > 0 && hcl->c->fnblk.info[hcl->c->fnblk.info[i - 1].type == FNBLK_CLASS) 
+		if (fbi->clsblk_top >= 0)
 		{
+			/* inside a class context */
+			
 			break;
 		}
 		else
+		#endif
 		{
-#endif
 			hcl_oow_t parent_tmprcnt;
 
 			parent_tmprcnt = (i > 0)? hcl->c->fnblk.info[i - 1].tmprcnt: 0;
@@ -683,11 +685,7 @@ static int emit_indexed_variable_access (hcl_t* hcl, hcl_oow_t index, hcl_oob_t 
 				}
 				return 0;
 			}
-#if 0
 		}
-#endif
-
-//if (i > 0 && hcl->c->fnblk.info[hcl->c->fnblk.info[i - 1].type == FNBLK_CLASS) break;
 	}
 
 /* THIS PART MUST NOT BE REACHED */
@@ -703,6 +701,7 @@ static int push_fnblk (hcl_t* hcl, const hcl_ioloc_t* errloc,
 	hcl_oow_t tmpr_count, hcl_oow_t tmpr_len, hcl_oow_t make_inst_pos, hcl_oow_t lfbase)
 {
 	hcl_oow_t new_depth;
+	hcl_fnblk_info_t* fbi;
 
 	HCL_ASSERT (hcl, hcl->c->fnblk.depth >= -1);
 	if (hcl->c->fnblk.depth == HCL_TYPE_MAX(hcl_ooi_t))
@@ -725,22 +724,28 @@ static int push_fnblk (hcl_t* hcl, const hcl_ioloc_t* errloc,
 		hcl->c->fnblk.info = tmp;
 	}
 
-	HCL_MEMSET (&hcl->c->fnblk.info[new_depth], 0, HCL_SIZEOF(hcl->c->fnblk.info[new_depth]));
+	fbi = &hcl->c->fnblk.info[new_depth];
+	HCL_MEMSET (fbi, 0, HCL_SIZEOF(*fbi));
 
-	hcl->c->fnblk.info[new_depth].tmprlen = tmpr_len;
-	hcl->c->fnblk.info[new_depth].tmprcnt = tmpr_count;
-	hcl->c->fnblk.info[new_depth].tmpr_va = tmpr_va;
-	hcl->c->fnblk.info[new_depth].tmpr_nargs = tmpr_nargs;
-	hcl->c->fnblk.info[new_depth].tmpr_nrvars = tmpr_nrvars;
-	hcl->c->fnblk.info[new_depth].tmpr_nlvars = tmpr_nlvars;
+	fbi->tmprlen = tmpr_len;
+	fbi->tmprcnt = tmpr_count;
+	fbi->tmpr_va = tmpr_va;
+	fbi->tmpr_nargs = tmpr_nargs;
+	fbi->tmpr_nrvars = tmpr_nrvars;
+	fbi->tmpr_nlvars = tmpr_nlvars;
 
 	/* remember the control block depth before the function block is entered */
-	hcl->c->fnblk.info[new_depth].cblk_base = hcl->c->cblk.depth; 
+	fbi->cblk_base = hcl->c->cblk.depth; 
 
-	hcl->c->fnblk.info[new_depth].make_inst_pos = make_inst_pos;
-	hcl->c->fnblk.info[new_depth].lfbase = lfbase;
-	hcl->c->fnblk.info[new_depth].access_outer = 0;
-	hcl->c->fnblk.info[new_depth].accessed_by_inner = 0;
+	/* no class block when the funtion block is entered */
+	fbi->clsblk_base = -1;
+	fbi->clsblk_top = -1;
+
+	fbi->make_inst_pos = make_inst_pos;
+	fbi->lfbase = lfbase;
+	fbi->access_outer = 0;
+	fbi->accessed_by_inner = 0;
+
 	hcl->c->fnblk.depth = new_depth;
 	return 0;
 }
@@ -748,13 +753,14 @@ static int push_fnblk (hcl_t* hcl, const hcl_ioloc_t* errloc,
 static void pop_fnblk (hcl_t* hcl)
 {
 	hcl_fnblk_info_t* fbi;
-	
+
 	HCL_ASSERT (hcl, hcl->c->fnblk.depth >= 0);
 	/* if pop_cblk() has been called properly, the following assertion must be true
 	 * and the assignment on the next line isn't necessary */
 
 	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
 	HCL_ASSERT (hcl, hcl->c->cblk.depth == fbi->cblk_base); 
+	HCL_ASSERT (hcl, fbi->clsblk_base <= -1 && fbi->clsblk_top <= -1);
 	hcl->c->cblk.depth = fbi->cblk_base;
 	/* keep hcl->code.lit.len without restoration */
 
@@ -824,7 +830,7 @@ static int push_cblk (hcl_t* hcl, const hcl_ioloc_t* errloc, hcl_cblk_type_t typ
 
 static void pop_cblk (hcl_t* hcl)
 {
-	HCL_ASSERT (hcl, hcl->c->cblk.depth >= 0);
+	HCL_ASSERT (hcl, hcl->c->cblk.depth >= 0); /* depth is of a signed type */
 	
 	/* a control block stays inside a function block.
 	 * the control block stack must not be popped past the starting base 
@@ -833,10 +839,11 @@ static void pop_cblk (hcl_t* hcl)
 	hcl->c->cblk.depth--;
 }
 
-
 static int push_clsblk (hcl_t* hcl, const hcl_ioloc_t* errloc, hcl_oow_t nivars, hcl_oow_t ncvars)
 {
 	hcl_oow_t new_depth;
+	hcl_clsblk_info_t* ci;
+	hcl_fnblk_info_t* fbi;
 
 	HCL_ASSERT (hcl, hcl->c->clsblk.depth >= -1);
 
@@ -855,17 +862,23 @@ static int push_clsblk (hcl_t* hcl, const hcl_ioloc_t* errloc, hcl_oow_t nivars,
 		newcapa = HCL_ALIGN(new_depth + 1, BLK_INFO_BUFFER_ALIGN);
 		tmp = (hcl_clsblk_info_t*)hcl_reallocmem(hcl, hcl->c->clsblk.info, newcapa * HCL_SIZEOF(*tmp));
 		if (HCL_UNLIKELY(!tmp)) return -1;
-		
+
 		hcl->c->clsblk.info_capa = newcapa;
 		hcl->c->clsblk.info = tmp;
 	}
 
-	HCL_MEMSET (&hcl->c->clsblk.info[new_depth], 0, HCL_SIZEOF(hcl->c->clsblk.info[new_depth]));
-	hcl->c->clsblk.info[new_depth].nivars = nivars;
-	hcl->c->clsblk.info[new_depth].ncvars = ncvars;
+	ci = &hcl->c->clsblk.info[new_depth];
+	HCL_MEMSET (ci, 0, HCL_SIZEOF(*ci));
+	ci->nivars = nivars;
+	ci->ncvars = ncvars;
 
 	/* remember the function block depth before the class block is entered */
-	hcl->c->clsblk.info[new_depth].fnblk_base = hcl->c->fnblk.depth; 
+	ci->fnblk_base = hcl->c->fnblk.depth; 
+
+	/* attach the class block to the current function block */
+	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
+	if (fbi->clsblk_base <= -1) fbi->clsblk_base = new_depth;
+	fbi->clsblk_top = new_depth;
 
 	hcl->c->clsblk.depth = new_depth;
 	return 0;
@@ -873,9 +886,24 @@ static int push_clsblk (hcl_t* hcl, const hcl_ioloc_t* errloc, hcl_oow_t nivars,
 
 static void pop_clsblk (hcl_t* hcl)
 {
-	HCL_ASSERT (hcl, hcl->c->clsblk.depth >= 0);
-	
-	HCL_ASSERT (hcl, hcl->c->clsblk.depth - 1 >= hcl->c->clsblk.info[hcl->c->clsblk.depth].fnblk_base);
+	hcl_fnblk_info_t* fbi;
+
+	HCL_ASSERT (hcl, hcl->c->clsblk.depth >= 0); /* depth is of a signed type */
+	HCL_ASSERT (hcl, hcl->c->fnblk.depth >= 0);
+
+	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
+	HCL_ASSERT (hcl, fbi->clsblk_base >= 0 && fbi->clsblk_top >= 0 && fbi->clsblk_top >= fbi->clsblk_base);
+	HCL_ASSERT (hcl, fbi->clsblk_top == hcl->c->clsblk.depth);
+	if (fbi->clsblk_top == fbi->clsblk_base) 
+	{
+		fbi->clsblk_base = -1;
+		fbi->clsblk_top = -1;
+	}
+	else
+	{
+		fbi->clsblk_top--;
+	}
+
 	hcl->c->clsblk.depth--;
 }
 
@@ -1018,7 +1046,7 @@ enum
 
 	COP_COMPILE_ARGUMENT_LIST,
 	COP_COMPILE_OBJECT_LIST,
-	COP_COMPILE_OBJECT_LIST_TAIL,	
+	COP_COMPILE_OBJECT_LIST_TAIL,
 	COP_COMPILE_IF_OBJECT_LIST,
 	COP_COMPILE_IF_OBJECT_LIST_TAIL,
 	COP_COMPILE_TRY_OBJECT_LIST,
@@ -1288,15 +1316,21 @@ static int compile_break (hcl_t* hcl, hcl_cnode_t* src)
 
 	for (i = hcl->c->cblk.depth; i > hcl->c->fnblk.info[hcl->c->fnblk.depth].cblk_base; --i)
 	{
-		if (hcl->c->cblk.info[i]._type == HCL_CBLK_TYPE_LOOP)
+		switch (hcl->c->cblk.info[i]._type)
 		{
-			goto inside_loop;
-		}
-		else if (hcl->c->cblk.info[i]._type == HCL_CBLK_TYPE_TRY)
-		{
-			/*must emit an instruction to exit from the try loop.*/
+			case HCL_CBLK_TYPE_LOOP:
+				goto inside_loop;
 
-			if (emit_byte_instruction(hcl, HCL_CODE_TRY_EXIT, HCL_CNODE_GET_LOC(src)) <= -1) return -1;
+			case HCL_CBLK_TYPE_TRY:
+				/*must emit an instruction to exit from the try loop.*/
+				if (emit_byte_instruction(hcl, HCL_CODE_TRY_EXIT, HCL_CNODE_GET_LOC(src)) <= -1) return -1;
+				break;
+
+#if 0
+			case HCL_CBLK_TYPE_CLASS:
+				if (emit_byte_instruction(hcl, HCL_CODE_TRY_CLASS, HCL_CNODE_GET_LOC(src)) <= -1) return -1;
+				break;
+#endif
 		}
 	}
 
@@ -1394,14 +1428,21 @@ static int compile_continue (hcl_t* hcl, hcl_cnode_t* src)
 
 	for (i = hcl->c->cblk.depth; i > hcl->c->fnblk.info[hcl->c->fnblk.depth].cblk_base; --i)
 	{
-		if (hcl->c->cblk.info[i]._type == HCL_CBLK_TYPE_LOOP)
+		switch (hcl->c->cblk.info[i]._type)
 		{
-			goto inside_loop;
-		}
-		else if (hcl->c->cblk.info[i]._type == HCL_CBLK_TYPE_TRY)
-		{
-			/*must emit an instruction to exit from the try loop.*/
-			if (emit_byte_instruction(hcl, HCL_CODE_TRY_EXIT, HCL_CNODE_GET_LOC(src)) <= -1) return -1;
+			case HCL_CBLK_TYPE_LOOP:
+				goto inside_loop;
+
+			case HCL_CBLK_TYPE_TRY:
+				/*must emit an instruction to exit from the try loop.*/
+				if (emit_byte_instruction(hcl, HCL_CODE_TRY_EXIT, HCL_CNODE_GET_LOC(src)) <= -1) return -1;
+				break;
+
+#if 0
+			case HCL_CBLK_TYPE_CLASS:
+				if (emit_byte_instruction(hcl, HCL_CODE_CLASS_EXIT, HCL_CNODE_GET_LOC(src)) <= -1) return -1;
+				break;
+#endif
 		}
 	}
 
