@@ -387,7 +387,8 @@ typedef struct hcl_cframe_t hcl_cframe_t;
 enum hcl_cblk_type_t
 {
 	HCL_CBLK_TYPE_LOOP,
-	HCL_CBLK_TYPE_TRY
+	HCL_CBLK_TYPE_TRY,
+	HCL_CBLK_TYPE_CLASS
 };
 typedef enum hcl_cblk_type_t hcl_cblk_type_t;
 

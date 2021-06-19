@@ -3268,6 +3268,23 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				if (do_throw(hcl, return_value, fetched_instruction_pointer) <= -1) goto oops;
 				break;
 			/* -------------------------------------------------------- */
+			case HCL_CODE_CLASS_ENTER:
+			{
+				hcl_oop_t c;
+
+				/* the class_enter instruct must follow the class_make instruction... */
+				LOG_INST_0 (hcl, "class_enter");
+				c = HCL_STACK_GETTOP(hcl); /* the class object */
+				//HCL_CLSTACK_PUSH (hcl, c);
+				break;
+			}
+			
+			case HCL_CODE_CLASS_EXIT:
+				LOG_INST_0 (hcl, "class_exit");
+				/* TODO: stack underflow check? */
+				//HCL_CLSTACK_POP (hcl);
+				break;
+			/* -------------------------------------------------------- */
 
 			case HCL_CODE_PUSH_CTXTEMPVAR_X:
 			case HCL_CODE_STORE_INTO_CTXTEMPVAR_X:

@@ -377,6 +377,14 @@ int hcl_decode (hcl_t* hcl, hcl_oow_t start, hcl_oow_t end)
 				LOG_INST_0 (hcl, "throw");
 				break;
 			/* -------------------------------------------------------- */
+			case HCL_CODE_CLASS_ENTER:
+				LOG_INST_0 (hcl, "class_enter");
+				break;
+				
+			case HCL_CODE_CLASS_EXIT:
+				LOG_INST_0 (hcl, "class_exit");
+				break;
+			/* -------------------------------------------------------- */
 
 			case HCL_CODE_PUSH_CTXTEMPVAR_X:
 			case HCL_CODE_STORE_INTO_CTXTEMPVAR_X:

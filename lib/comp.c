@@ -1326,11 +1326,9 @@ static int compile_break (hcl_t* hcl, hcl_cnode_t* src)
 				if (emit_byte_instruction(hcl, HCL_CODE_TRY_EXIT, HCL_CNODE_GET_LOC(src)) <= -1) return -1;
 				break;
 
-#if 0
 			case HCL_CBLK_TYPE_CLASS:
-				if (emit_byte_instruction(hcl, HCL_CODE_TRY_CLASS, HCL_CNODE_GET_LOC(src)) <= -1) return -1;
+				if (emit_byte_instruction(hcl, HCL_CODE_CLASS_EXIT, HCL_CNODE_GET_LOC(src)) <= -1) return -1;
 				break;
-#endif
 		}
 	}
 
@@ -1438,11 +1436,9 @@ static int compile_continue (hcl_t* hcl, hcl_cnode_t* src)
 				if (emit_byte_instruction(hcl, HCL_CODE_TRY_EXIT, HCL_CNODE_GET_LOC(src)) <= -1) return -1;
 				break;
 
-#if 0
 			case HCL_CBLK_TYPE_CLASS:
 				if (emit_byte_instruction(hcl, HCL_CODE_CLASS_EXIT, HCL_CNODE_GET_LOC(src)) <= -1) return -1;
 				break;
-#endif
 		}
 	}
 
@@ -1801,11 +1797,12 @@ printf ("22222222222\n");
 		obj = HCL_CNODE_CONS_CDR(obj);
 	}
 
+
 	if (push_clsblk(hcl, HCL_CNODE_GET_LOC(cmd), 0, 0) <= -1) return -1;
 
 	/* TODO: emit make_class code...
 	*/
-
+	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_ENTER, HCL_CNODE_GET_LOC(cmd)) <= -1) return -1;
 
 	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_LIST, obj); /* 1 */
 	PUSH_SUBCFRAME (hcl, COP_POST_CLASS, class_name); /* 2*/
@@ -1861,6 +1858,7 @@ static HCL_INLINE int post_class (hcl_t* hcl)
 	}
 #else
 /* should i make the assignment in POST?  or after variable declarations immediately? */
+	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_EXIT, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
 	printf ("end of CLASS DEFINITION\n");
 	POP_CFRAME (hcl);
 #endif
@@ -2190,15 +2188,17 @@ static int compile_return (hcl_t* hcl, hcl_cnode_t* src, int ret_from_home)
 	{
 		switch (hcl->c->cblk.info[i]._type)
 		{
+			case HCL_CBLK_TYPE_LOOP:
+				/* do nothing */
+				break;
+
 			case HCL_CBLK_TYPE_TRY:
 				if (emit_byte_instruction(hcl, HCL_CODE_TRY_EXIT, HCL_CNODE_GET_LOC(src)) <= -1) return -1;
 				break;
 
-#if 0
 			case HCL_CBLK_TYPE_CLASS:
-				if (emit_byte_instruction(hcl, HCL_CODE_TRY_CLASS, HCL_CNODE_GET_LOC(src)) <= -1) return -1;
+				if (emit_byte_instruction(hcl, HCL_CODE_CLASS_EXIT, HCL_CNODE_GET_LOC(src)) <= -1) return -1;
 				break;
-#endif
 		}
 	}
 
