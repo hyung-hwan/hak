@@ -646,7 +646,7 @@ struct hcl_context_t
 	hcl_oop_t          slot[1]; /* arguments, return variables, local variables, other arguments, etc */
 };
 
-#define HCL_PROCESS_NAMED_INSTVARS 13
+#define HCL_PROCESS_NAMED_INSTVARS 15
 typedef struct hcl_process_t hcl_process_t;
 typedef struct hcl_process_t* hcl_oop_process_t;
 
@@ -666,10 +666,15 @@ struct hcl_process_t
 
 	hcl_oop_t         id; /* SmallInteger */
 	hcl_oop_t         state; /* SmallInteger */
+
 	hcl_oop_t         sp;    /* stack pointer. SmallInteger */
-	hcl_oop_t         ss;    /* process stack size. SmallInteger */
+	hcl_oop_t         st;   /* stack top */
+
 	hcl_oop_t         exsp;  /* exception stack pointer. SmallInteger */
-	hcl_oop_t         exss;  /* exception stack size. SmallInteger */
+	hcl_oop_t         exst; /* exception stack top */
+
+	hcl_oop_t         clsp; /* class stack pointer */
+	hcl_oop_t         clst; /* class stack  top */
 
 	struct
 	{
@@ -1690,7 +1695,7 @@ struct hcl_t
 /* TODO: stack bound check when pushing */
 #define HCL_STACK_PUSH(hcl,v) \
 	do { \
-		if ((hcl)->sp >= HCL_OOP_TO_SMOOI((hcl)->processor->active->ss) - 1) \
+		if ((hcl)->sp >= HCL_OOP_TO_SMOOI((hcl)->processor->active->st)) \
 		{ \
 			hcl_seterrbfmt (hcl, HCL_EOOMEM, "process stack overflow"); \
 			(hcl)->abort_req = -1; \

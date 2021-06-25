@@ -144,14 +144,13 @@ static void terminate_all_processes (hcl_t* hcl);
 	do { \
 		hcl_oop_process_t ap = (hcl)->processor->active; \
 		hcl_ooi_t exsp = HCL_OOP_TO_SMOOI(ap->exsp); \
-		hcl_ooi_t ss = HCL_OOP_TO_SMOOI(ap->ss); \
-		if (exsp >= HCL_OOP_TO_SMOOI(ap->exss) - 2) \
+		if (exsp >= HCL_OOP_TO_SMOOI(ap->exst) - 1) \
 		{ \
 			hcl_seterrbfmt (hcl, HCL_EOOMEM, "process exception stack overflow"); \
 			(hcl)->abort_req = -1; \
 		} \
-		exsp++; ap->slot[ss + exsp] = (ctx); \
-		exsp++; ap->slot[ss + exsp] = HCL_SMOOI_TO_OOP(ip); \
+		exsp++; ap->slot[exsp] = (ctx); \
+		exsp++; ap->slot[exsp] = HCL_SMOOI_TO_OOP(ip); \
 		ap->exsp = HCL_SMOOI_TO_OOP(exsp); \
 	} while (0)
 		
@@ -167,13 +166,46 @@ static void terminate_all_processes (hcl_t* hcl);
 	do { \
 		hcl_oop_process_t ap = (hcl)->processor->active; \
 		hcl_ooi_t exsp = HCL_OOP_TO_SMOOI(ap->exsp); \
-		hcl_ooi_t ss = HCL_OOP_TO_SMOOI(ap->ss); \
-		ip = HCL_OOP_TO_SMOOI(ap->slot[ss + exsp]); exsp--; \
-		ctx = ap->slot[ss + exsp]; exsp--; \
+		ip = HCL_OOP_TO_SMOOI(ap->slot[exsp]); exsp--; \
+		ctx = ap->slot[exsp]; exsp--; \
 		ap->exsp = HCL_SMOOI_TO_OOP(exsp); \
 	} while (0)
 		
-#define HCL_EXSTACK_ISEMPTY(hcl) (HCL_OOP_TO_SMOOI(((hcl)->processor->active)->exsp) <= -1)
+#define HCL_EXSTACK_ISEMPTY(hcl) (HCL_OOP_TO_SMOOI(((hcl)->processor->active)->exsp) <= HCL_OOP_TO_SMOOI(((hcl)->processor->active)->st))
+
+
+/* ------------------------------------------------------------------------- */
+
+#define HCL_CLSTACK_PUSH(hcl, v) \
+	do { \
+		hcl_oop_process_t ap = (hcl)->processor->active; \
+		hcl_ooi_t clsp = HCL_OOP_TO_SMOOI(ap->clsp); \
+		if (clsp >= HCL_OOP_TO_SMOOI(ap->clst)) \
+		{ \
+			hcl_seterrbfmt (hcl, HCL_EOOMEM, "process class stack overflow"); \
+			(hcl)->abort_req = -1; \
+		} \
+		clsp++; ap->slot[clsp] = (v); \
+		ap->clsp = HCL_SMOOI_TO_OOP(clsp); \
+	} while (0)
+		
+#define HCL_CLSTACK_POP(hcl) \
+	do { \
+		hcl_oop_process_t ap = (hcl)->processor->active; \
+		hcl_ooi_t clsp = HCL_OOP_TO_SMOOI(ap->clsp); \
+		clsp--; \
+		ap->clsp = HCL_SMOOI_TO_OOP(clsp); \
+	} while (0)
+
+#define HCL_CLSTACK_POP_TO(hcl, v) \
+	do { \
+		hcl_oop_process_t ap = (hcl)->processor->active; \
+		hcl_ooi_t clsp = HCL_OOP_TO_SMOOI(ap->clsp); \
+		v = ap->slot[clsp]; clsp--; \
+		ap->clsp = HCL_SMOOI_TO_OOP(clsp); \
+	} while (0)
+		
+#define HCL_CLSTACK_ISEMPTY(hcl) (HCL_OOP_TO_SMOOI(((hcl)->processor->active)->clsp) <= HCL_OOP_TO_SMOOI(((hcl)->processor->active)->exst))
 
 /* ------------------------------------------------------------------------- */
 
@@ -462,7 +494,7 @@ static HCL_INLINE void free_pid (hcl_t* hcl, hcl_oop_process_t proc)
 static hcl_oop_process_t make_process (hcl_t* hcl, hcl_oop_context_t c)
 {
 	hcl_oop_process_t proc;
-	hcl_oow_t stksize, exstksize;
+	hcl_oow_t stksize, exstksize, clstksize, maxsize;
 	hcl_ooi_t total_count;
 	hcl_ooi_t suspended_count;
 
@@ -478,24 +510,23 @@ static hcl_oop_process_t make_process (hcl_t* hcl, hcl_oop_context_t c)
 
 	if (hcl->proc_map_free_first <= -1 && prepare_to_alloc_pid(hcl) <= -1) return HCL_NULL;
 
-	stksize = hcl->option.dfl_procstk_size;
+	stksize = hcl->option.dfl_procstk_size; /* stack */
 	exstksize = 128; /* exception stack size */ /* TODO: make it configurable */
+	clstksize = 64; /* class stack size */ /* TODO: make it configurable too */
+	
+	maxsize = (HCL_TYPE_MAX(hcl_ooi_t) - HCL_PROCESS_NAMED_INSTVARS) / 3;
 
-#if 0	
-	if (stksize > HCL_TYPE_MAX(hcl_ooi_t) - HCL_PROCESS_NAMED_INSTVARS)
-		stksize = HCL_TYPE_MAX(hcl_ooi_t) - HCL_PROCESS_NAMED_INSTVARS;
-	else if (stksize < 128) stksize = 128;
-#else
-	if (stksize > (HCL_TYPE_MAX(hcl_ooi_t) - HCL_PROCESS_NAMED_INSTVARS) / 2)
-		stksize = (HCL_TYPE_MAX(hcl_ooi_t) - HCL_PROCESS_NAMED_INSTVARS) / 2;
-	else if (stksize < 128) stksize = 128;
-	if (exstksize > (HCL_TYPE_MAX(hcl_ooi_t) - HCL_PROCESS_NAMED_INSTVARS) / 2)
-		exstksize = (HCL_TYPE_MAX(hcl_ooi_t) - HCL_PROCESS_NAMED_INSTVARS) / 2;
+	if (stksize > maxsize) stksize = maxsize;
+	else if (stksize < 192) stksize = 192;
+
+	if (exstksize > maxsize) exstksize = maxsize;
 	else if (exstksize < 128) exstksize = 128;
-#endif
+
+	if (clstksize > maxsize) clstksize = maxsize;
+	else if (clstksize < 32) clstksize = 32;
 
 	hcl_pushvolat (hcl, (hcl_oop_t*)&c);
-	proc = (hcl_oop_process_t)hcl_allocoopobj(hcl, HCL_BRAND_PROCESS, HCL_PROCESS_NAMED_INSTVARS + stksize + exstksize);
+	proc = (hcl_oop_process_t)hcl_allocoopobj(hcl, HCL_BRAND_PROCESS, HCL_PROCESS_NAMED_INSTVARS + stksize + exstksize + clstksize);
 	hcl_popvolat (hcl);
 	if (HCL_UNLIKELY(!proc)) return HCL_NULL;
 
@@ -512,10 +543,18 @@ static hcl_oop_process_t make_process (hcl_t* hcl, hcl_oop_context_t c)
 
 	proc->initial_context = c;
 	proc->current_context = c;
-	proc->sp = HCL_SMOOI_TO_OOP(-1);
-	proc->ss = HCL_SMOOI_TO_OOP(stksize);
-	proc->exsp = HCL_SMOOI_TO_OOP(-1);
-	proc->exss = HCL_SMOOI_TO_OOP(exstksize);
+
+	/* stack */
+	proc->sp = HCL_SMOOI_TO_OOP(-1); /* no item */
+	proc->st = HCL_SMOOI_TO_OOP(stksize);
+
+	/* exception stack */
+	proc->exsp = proc->st; /* no item pushed yet*/
+	proc->exst = HCL_SMOOI_TO_OOP(stksize + exstksize - 1);
+
+	/* class stack */
+	proc->clsp = proc->exst; /* no item pushed yet */
+	proc->clst = HCL_SMOOI_TO_OOP(stksize + exstksize + clstksize - 1);
 
 	HCL_ASSERT (hcl, (hcl_oop_t)c->sender == hcl->_nil);
 
@@ -3264,7 +3303,6 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				LOG_INST_0 (hcl, "throw");
 				return_value = HCL_STACK_GETTOP(hcl);
 				HCL_STACK_POP (hcl);
-
 				if (do_throw(hcl, return_value, fetched_instruction_pointer) <= -1) goto oops;
 				break;
 			/* -------------------------------------------------------- */
@@ -3274,15 +3312,15 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 
 				/* the class_enter instruct must follow the class_make instruction... */
 				LOG_INST_0 (hcl, "class_enter");
-				c = HCL_STACK_GETTOP(hcl); /* the class object */
-				//HCL_CLSTACK_PUSH (hcl, c);
+				c = HCL_STACK_GETTOP(hcl); /* the class object created with make_class */
+				HCL_CLSTACK_PUSH (hcl, c);
 				break;
 			}
 			
 			case HCL_CODE_CLASS_EXIT:
 				LOG_INST_0 (hcl, "class_exit");
 				/* TODO: stack underflow check? */
-				//HCL_CLSTACK_POP (hcl);
+				HCL_CLSTACK_POP (hcl);
 				break;
 			/* -------------------------------------------------------- */
 
@@ -3753,23 +3791,26 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 
 			case HCL_CODE_MAKE_CLASS:
 			{
-				/* push nivars
-				   push ncvars
-				   push superclass
-				   //push ivarnames
-				   //push cvarnames
+				/* push superclass
+				   push ivars
+				   push cvars
 				   make_classs
 				 */
 				hcl_oop_t t, sc, nivars, ncvars;
+				hcl_oow_t b3;
+				
+				FETCH_PARAM_CODE_TO (hcl, b1); /* nsuperclasses */
+				FETCH_PARAM_CODE_TO (hcl, b2); /* nivars */
+				FETCH_PARAM_CODE_TO (hcl, b3); /* ncvars */
+				
+				LOG_INST_3 (hcl, "make_class %zu %zu %zu", b1, b2, b3);
 
-				LOG_INST_0 (hcl, "make_class");
-
-				sc = HCL_STACK_GETTOP(hcl); HCL_STACK_POP(hcl);
-				ncvars = HCL_STACK_GETTOP(hcl); HCL_STACK_POP(hcl);
-				nivars = HCL_STACK_GETTOP(hcl); HCL_STACK_POP(hcl);
-				HCL_ASSERT (hcl, HCL_OOP_IS_SMOOI(ncvars));
-				HCL_ASSERT (hcl, HCL_OOP_IS_SMOOI(nivars));
-				t = hcl_makeclass(hcl, sc, HCL_OOP_TO_SMOOI(nivars), HCL_OOP_TO_SMOOI(ncvars));
+			/* TODO: get extra information from the stack according to b1, b2, b3*/
+				/* critical error if the superclass is not a class ...
+				 * critical error if ivars is not a string...
+				 * critical errro if cvars is not a string ....
+				 */
+				t = hcl_makeclass(hcl, hcl->_nil, b2, b3); // TOOD: pass variable information... 
 
 				if (HCL_UNLIKELY(!t)) 
 				{
@@ -3980,7 +4021,7 @@ hcl_oop_t hcl_execute (hcl_t* hcl)
 	#endif
 	}
 
-	/* create a virtual function object that hold the bytes codes generated */
+	/* create a virtual function object that hold the bytes codes generated plus the literal frame */
 	func = make_function(hcl, hcl->code.lit.len, hcl->code.bc.ptr, hcl->code.bc.len, hcl->code.dbgi);
 	if (HCL_UNLIKELY(!func)) return HCL_NULL;
 

@@ -380,6 +380,13 @@ struct hcl_cframe_t
 		{
 			hcl_ooi_t jump_inst_pos;
 		} _break;
+
+		/* COP_COMPILE_CLASS_P1, COP_COMPILE_CLASS_P2 */
+		struct 
+		{
+			hcl_ooi_t nsuperclasses;
+			hcl_ioloc_t start_loc;
+		} _class;
 	} u;
 };
 typedef struct hcl_cframe_t hcl_cframe_t;
@@ -447,7 +454,6 @@ struct hcl_rstl_t
 	hcl_oow_t count;
 	hcl_rstl_t* prev;
 };
-
 
 struct hcl_compiler_t
 {

@@ -389,7 +389,6 @@ static int emit_single_param_instruction (hcl_t* hcl, int cmd, hcl_oow_t param_1
 		case HCL_CODE_PUSH_NEGINTLIT:
 		case HCL_CODE_PUSH_CHARLIT:
 
-
 		case HCL_CODE_MAKE_DIC: /* TODO: don't these need write_long2? */
 		case HCL_CODE_MAKE_ARRAY:
 		case HCL_CODE_MAKE_BYTEARRAY:
@@ -1057,11 +1056,20 @@ enum
 	COP_COMPILE_DIC_LIST,
 	COP_COMPILE_QLIST, /* compile data list */
 
-	COP_COMPILE_AND_EXPR,
-	COP_COMPILE_OR_EXPR,
 	COP_COMPILE_ELIF,
 	COP_COMPILE_ELSE,
 	COP_COMPILE_CATCH,
+	
+	COP_COMPILE_AND_P1,
+	COP_COMPILE_AND_P2,
+
+	COP_COMPILE_BREAK_P1,
+
+	COP_COMPILE_OR_P1,
+	COP_COMPILE_OR_P2,
+	
+	COP_COMPILE_CLASS_P1,
+	COP_COMPILE_CLASS_P2,
 
 	COP_EMIT_CALL,
 
@@ -1094,11 +1102,7 @@ enum
 	COP_POST_CATCH, 
 
 	COP_POST_LAMBDA,
-	COP_POST_CLASS,
-	COP_POST_AND_EXPR,
-	COP_POST_OR_EXPR,
 
-	COP_POST_BREAK
 };
 
 /* ========================================================================= */
@@ -1129,20 +1133,20 @@ static int compile_and (hcl_t* hcl, hcl_cnode_t* src)
 	obj = HCL_CNODE_CONS_CDR(obj);
 
 	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, expr); /* 1 */
-	if (obj) PUSH_SUBCFRAME (hcl, COP_COMPILE_AND_EXPR, obj); /* 2 */
+	if (obj) PUSH_SUBCFRAME (hcl, COP_COMPILE_AND_P1, obj); /* 2 */
 
 	return 0;
 }
 
 
-static HCL_INLINE int compile_and_expr (hcl_t* hcl)
+static HCL_INLINE int compile_and_p1 (hcl_t* hcl)
 {
 	hcl_cnode_t* obj, * expr;
 	hcl_cframe_t* cf;
 	hcl_ooi_t jump_inst_pos;
 	
 	cf = GET_TOP_CFRAME(hcl);
-	HCL_ASSERT (hcl, cf->opcode == COP_COMPILE_AND_EXPR);
+	HCL_ASSERT (hcl, cf->opcode == COP_COMPILE_AND_P1);
 	HCL_ASSERT (hcl, cf->operand != HCL_NULL);
 
 /* TODO: optimization - eat away all true expressions */
@@ -1156,37 +1160,38 @@ static HCL_INLINE int compile_and_expr (hcl_t* hcl)
 	HCL_ASSERT (hcl, hcl->code.bc.len < HCL_SMOOI_MAX);
 	jump_inst_pos = hcl->code.bc.len;
 
+	/* this conditional jump make evaluation short-circuited. the actual jump point is to be patched in compile_and_p2() */
 	if (emit_single_param_instruction(hcl, HCL_CODE_JUMP_FORWARD_IF_FALSE, MAX_CODE_JUMP, HCL_CNODE_GET_LOC(obj)) <= -1) return -1;
 	if (emit_byte_instruction(hcl, HCL_CODE_POP_STACKTOP, HCL_CNODE_GET_LOC(obj)) <= -1) return -1; 
 
 	expr = HCL_CNODE_CONS_CAR(obj);
 	obj = HCL_CNODE_CONS_CDR(obj);
 
-	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, expr); /* 1 */
+	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, expr); /* 1 - compile the current part */
 	
-	PUSH_SUBCFRAME (hcl, COP_POST_AND_EXPR, expr); /* 3 */
+	PUSH_SUBCFRAME (hcl, COP_COMPILE_AND_P2, expr); /* 3 - patch the conditional jump instruction */
 	cf = GET_SUBCFRAME(hcl);
 	cf->u.post_and.jump_inst_pos = jump_inst_pos;
 
-	if (obj) PUSH_SUBCFRAME (hcl, COP_COMPILE_AND_EXPR, obj); /* 2 */
-
+	if (obj) PUSH_SUBCFRAME (hcl, COP_COMPILE_AND_P1, obj); /* 2 - recurse to compile remaining parts */
 	return 0;
 }
 
-static HCL_INLINE int post_and_expr (hcl_t* hcl)
+static HCL_INLINE int compile_and_p2 (hcl_t* hcl)
 {
 	hcl_cframe_t* cf;
 	hcl_ooi_t jip;
 	hcl_oow_t jump_offset;
 
 	cf = GET_TOP_CFRAME(hcl);
-	HCL_ASSERT (hcl, cf->opcode == COP_POST_AND_EXPR);
+	HCL_ASSERT (hcl, cf->opcode == COP_COMPILE_AND_P2);
 	HCL_ASSERT (hcl, cf->operand != HCL_NULL);
 
 	HCL_ASSERT (hcl, hcl->code.bc.len < HCL_SMOOI_MAX);
 	jip = cf->u.post_and.jump_inst_pos;
 
-	/* patch the jump insruction emitted after each expression inside the 'and' expression */
+	/* patch the jump insruction emitted after each expression inside the 'and' expression 
+	 * the jump make evaluation short-circuited. */
 	jump_offset = hcl->code.bc.len - jip - (HCL_CODE_LONG_PARAM_SIZE + 1);
 	patch_long_jump (hcl, jip, jump_offset);
 
@@ -1222,20 +1227,20 @@ static int compile_or (hcl_t* hcl, hcl_cnode_t* src)
 	obj = HCL_CNODE_CONS_CDR(obj);
 
 	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, expr); /* 1 */
-	PUSH_SUBCFRAME (hcl, COP_COMPILE_OR_EXPR, obj); /* 2 */
+	PUSH_SUBCFRAME (hcl, COP_COMPILE_OR_P1, obj); /* 2 */
 
 	return 0;
 }
 
 
-static HCL_INLINE int compile_or_expr (hcl_t* hcl)
+static HCL_INLINE int compile_or_p1 (hcl_t* hcl)
 {
 	hcl_cnode_t* obj, * expr;
 	hcl_cframe_t* cf;
 	hcl_ooi_t jump_inst_pos;
 	
 	cf = GET_TOP_CFRAME(hcl);
-	HCL_ASSERT (hcl, cf->opcode == COP_COMPILE_OR_EXPR);
+	HCL_ASSERT (hcl, cf->opcode == COP_COMPILE_OR_P1);
 	HCL_ASSERT (hcl, cf->operand != HCL_NULL);
 
 /* TODO: optimization - eat away all false expressions */
@@ -1250,6 +1255,7 @@ static HCL_INLINE int compile_or_expr (hcl_t* hcl)
 	HCL_ASSERT (hcl, hcl->code.bc.len < HCL_SMOOI_MAX);
 	jump_inst_pos = hcl->code.bc.len;
 
+	/* this conditional jump makes evaluation short-circuited. the actual jump point is to be patched in compile_or_p2() */
 	if (emit_single_param_instruction(hcl, HCL_CODE_JUMP_FORWARD_IF_TRUE, MAX_CODE_JUMP, HCL_CNODE_GET_LOC(obj)) <= -1) return -1;
 	if (emit_byte_instruction(hcl, HCL_CODE_POP_STACKTOP, HCL_CNODE_GET_LOC(obj)) <= -1) return -1; 
 
@@ -1258,23 +1264,23 @@ static HCL_INLINE int compile_or_expr (hcl_t* hcl)
 
 	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, expr); /* 1 */
 
-	PUSH_SUBCFRAME (hcl, COP_POST_OR_EXPR, expr); /* 3 */
+	PUSH_SUBCFRAME (hcl, COP_COMPILE_OR_P2, expr); /* 3 */
 	cf = GET_SUBCFRAME(hcl);
 	cf->u.post_or.jump_inst_pos = jump_inst_pos;
 
-	if (obj) PUSH_SUBCFRAME (hcl, COP_COMPILE_OR_EXPR, obj); /* 2 */
+	if (obj) PUSH_SUBCFRAME (hcl, COP_COMPILE_OR_P1, obj); /* 2 */
 
 	return 0;
 }
 
-static HCL_INLINE int post_or_expr (hcl_t* hcl)
+static HCL_INLINE int compile_or_p2 (hcl_t* hcl)
 {
 	hcl_cframe_t* cf;
 	hcl_ooi_t jip;
 	hcl_oow_t jump_offset;
 
 	cf = GET_TOP_CFRAME(hcl);
-	HCL_ASSERT (hcl, cf->opcode == COP_POST_OR_EXPR);
+	HCL_ASSERT (hcl, cf->opcode == COP_COMPILE_OR_P2);
 	HCL_ASSERT (hcl, cf->operand != HCL_NULL);
 
 	HCL_ASSERT (hcl, hcl->code.bc.len < HCL_SMOOI_MAX);
@@ -1359,7 +1365,7 @@ inside_loop:
 			jump_inst_pos = hcl->code.bc.len;
 
 			if (emit_single_param_instruction(hcl, HCL_CODE_JUMP_FORWARD_0, MAX_CODE_JUMP, HCL_CNODE_GET_LOC(cmd)) <= -1) return -1;
-			INSERT_CFRAME (hcl, i, COP_POST_BREAK, cmd);
+			INSERT_CFRAME (hcl, i, COP_COMPILE_BREAK_P1, cmd);
 			cf = GET_CFRAME(hcl, i);
 			cf->u._break.jump_inst_pos = jump_inst_pos;
 
@@ -1374,13 +1380,13 @@ inside_loop:
 	return -1;
 }
 
-static int post_break (hcl_t* hcl)
+static int compile_break_p1 (hcl_t* hcl)
 {
 	hcl_cframe_t* cf;
 	hcl_ooi_t jip, jump_offset;
 
 	cf = GET_TOP_CFRAME(hcl);
-	HCL_ASSERT (hcl, cf->opcode == COP_POST_BREAK);
+	HCL_ASSERT (hcl, cf->opcode == COP_COMPILE_BREAK_P1);
 	HCL_ASSERT (hcl, cf->operand != HCL_NULL);
 
 	jip = cf->u._break.jump_inst_pos;;
@@ -1702,6 +1708,7 @@ static int check_if_plain_cnode (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t* prev
 	return 0;
 }
 
+#if 0
 static int compile_class (hcl_t* hcl, hcl_cnode_t* src)
 {
 	/*
@@ -1733,6 +1740,7 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src)
 	*/
 	hcl_cnode_t* cmd, * obj, * tmp;
 	hcl_cnode_t* class_name, * superclass_name;
+	hcl_ooi_t nsuperclasses, nivars, ncvars;
 
 	cmd = HCL_CNODE_CONS_CAR(src);
 	obj = HCL_CNODE_CONS_CDR(src);
@@ -1758,11 +1766,30 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src)
 	if (obj)
 	{
 		/* superclass */
+		
+		
+ 
+ 
 		tmp = HCL_CNODE_CONS_CAR(obj);
 		if (HCL_CNODE_IS_TRPCOLONS(tmp))
 		{
 			obj = HCL_CNODE_CONS_CDR(obj);
 
+/* TODO: this can actually be dynamic. so it doesn't have to be a symbol name,
+ *        even an expression is possible ... 
+ *  (defclass A 
+ *   ...
+ *  )
+ *  (defun get-your-class() A)
+ *  (defclass B ::: (get-your-class)
+ *    ....
+ *  )
+ * 
+ *  this code is wrong... 
+ */
+			
+ 
+#if 0
 			/* TODO: multiple subclasses? interfaces? */
 			if (check_if_plain_cnode(hcl, obj, tmp, cmd, HCL_SYNERR_VARNAME, "superclass name") <= -1) return -1;
 			superclass_name = HCL_CNODE_CONS_CAR(obj);
@@ -1780,10 +1807,31 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src)
 				hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(superclass_name), HCL_CNODE_GET_TOK(superclass_name), "non-symbol not to be used as a superclass name");
 				return -1;
 			}
+#else
+
+
+	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, expr); /* 1 */
+	
+	PUSH_SUBCFRAME (hcl, COP_COMPILE_AND_P2, expr); /* 3 */
+	cf = GET_SUBCFRAME(hcl);
+	cf->u.post_and.jump_inst_pos = jump_inst_pos;
+
+	if (obj) PUSH_SUBCFRAME (hcl, COP_COMPILE_AND_P1, obj); /* 2 */
+
+			SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, obj); /* 1 */
+#endif
+		}
+		else
+		{
+			SWITCH_TO_CFRAME (hcl, COP_EMIT_PUSH_NIL, obj); /* 1*/
 		}
 	}
+	
+	PUSH_SUBCFRAME (hcl, COP_CLASS_SUPERCLASS
 
+#if 0
 //HCL_DEBUG2 (hcl, ">>> [%js] [%js]\n", HCL_CNODE_GET_TOKPTR(class_name), HCL_CNODE_GET_TOKPTR(superclass_name));
+	nivars = ncvars = 0;
 	while (obj)
 	{
 		/* instance variables and/or class variables */
@@ -1793,15 +1841,44 @@ printf ("VLIST....\n");
 		vars = HCL_CNODE_CONS_CAR(obj);
 		if (!HCL_CNODE_IS_CONS_CONCODED(vars, HCL_CONCODE_VLIST)) break;
 
+// TODO increment nivars and ncvars
+// also remember actual variable names...
 printf ("22222222222\n");
 		obj = HCL_CNODE_CONS_CDR(obj);
 	}
+	
+#else
+	PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_VARS, obj);
+#endif
+	
+// superclass name? 
+// nivars and ncvars.. must include inherited ones...
+	if (push_clsblk(hcl, HCL_CNODE_GET_LOC(cmd), nivars, ncvars) <= -1) return -1;
 
 
-	if (push_clsblk(hcl, HCL_CNODE_GET_LOC(cmd), 0, 0) <= -1) return -1;
 
-	/* TODO: emit make_class code...
-	*/
+
+/* TODO: push the instance variables string and class variables string */
+// superclass name is an variable...
+
+	//if (emit_push_literal(hcl, tmp, HCL_CNODE_GET_LOC(cmd))
+	if (nivars > 0)
+	{
+		tmp = hcl_makestring(hcl, varg, len, 0);
+		if (HCL_UNLIKELY(!tmp)) return -1;
+		if (emit_push_literal(hcl, tmp, HCL_CNODE_GET_LOC(cmd)) <= -1) return-1;
+	}
+	
+	if (ncvars > 0)
+	{
+	
+	}
+
+	/* make_class nsuperclasses, nivars, ncvars - this will use the pushed literal */
+	if (emit_byte_instruction(hcl, HCL_CODE_MAKE_CLASS, HCL_CNODE_GET_LOC(cmd)) <= -1) return -1;
+	if (emit_long_param(hcl, nivars) <= -1) return -1;
+	if (emit_long_param(hcl, ncvars) <= -1) return -1;
+
 	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_ENTER, HCL_CNODE_GET_LOC(cmd)) <= -1) return -1;
 
 	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_LIST, obj); /* 1 */
@@ -1809,14 +1886,146 @@ printf ("22222222222\n");
 
 	return 0;
 }
+#endif
+
+static int compile_class (hcl_t* hcl, hcl_cnode_t* src)
+{
+	hcl_cnode_t* cmd, * obj;
+	hcl_cnode_t* class_name;
+	hcl_cframe_t* cf;
+
+	cmd = HCL_CNODE_CONS_CAR(src);
+	obj = HCL_CNODE_CONS_CDR(src);
+
+	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_DEFCLASS));
+
+	class_name = HCL_NULL;
+
+	if (check_if_plain_cnode(hcl, obj, src, cmd, HCL_SYNERR_VARNAME, "class name") <= -1) return -1;
+	class_name = HCL_CNODE_CONS_CAR(obj);
+	if (HCL_CNODE_IS_SYMBOL(class_name))
+	{
+/* TODO: make the classname optional? */
+		/* defclass followed by a class name */
+		if (HCL_CNODE_SYMBOL_SYNCODE(class_name)) /*|| HCL_OBJ_GET_FLAGS_KERNEL(class_name) >= 1) */
+		{
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(class_name), HCL_CNODE_GET_TOK(class_name), "special symbol not to be used as a class name");
+			return -1;
+		}
+		obj = HCL_CNODE_CONS_CDR(obj);
+	}
+
+	if (obj)
+	{
+		hcl_cnode_t* tmp;
+
+		tmp = HCL_CNODE_CONS_CAR(obj);
+		if (!HCL_CNODE_IS_TRPCOLONS(tmp)) goto no_superclass;
+		{
+			obj = HCL_CNODE_CONS_CDR(obj);
+
+			/* superclass part */
+			SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, obj); /* 1 */
+
+			PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_P2, class_name); /* 3 */
+			cf = GET_SUBCFRAME(hcl);
+			cf->u._class.nsuperclasses = 0; /* unsed for CLASS_P2 */
+			cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
+			
+			obj = HCL_CNODE_CONS_CDR(obj);
+			PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_P1, obj); /* 2 */
+			cf = GET_SUBCFRAME(hcl);
+			cf->u._class.nsuperclasses = 1; /* this one needs to change if we support multiple superclasses... */
+		}
+	}
+	else
+	{
+	no_superclass:
+		SWITCH_TOP_CFRAME(hcl, COP_COMPILE_CLASS_P1, obj); /* 1 */
+		cf = GET_TOP_CFRAME(hcl);
+		cf->u._class.nsuperclasses = 0; /* this one needs to change if we support multiple superclasses... */
+		cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
+
+		PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_P2, class_name); /* 2 */
+		cf = GET_SUBCFRAME(hcl);
+		cf->u._class.nsuperclasses = 0; /* unsed for CLASS_P2 */
+		cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
+	}
+
+	return 0;
+}
+
+static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
+{
+	/* collect information about declared variables */
+	hcl_cframe_t* cf;
+	hcl_ooi_t nivars, ncvars;
+	hcl_cnode_t* obj;
+	hcl_oop_t tmp;
+
+	cf = GET_TOP_CFRAME(hcl);
+	obj = cf->operand;
+
+	nivars = ncvars = 0;
+	while (obj)
+	{
+		/* instance variables and/or class variables */
+		hcl_cnode_t* vars;
+
+		HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(obj)); /* must not get CDR. the reader must ensure this */
+
+printf ("VLIST....\n");
+		vars = HCL_CNODE_CONS_CAR(obj);
+		if (!HCL_CNODE_IS_CONS_CONCODED(vars, HCL_CONCODE_VLIST)) break;
+
+// TODO increment nivars and ncvars
+// also remember actual variable names...
+printf ("22222222222\n");
+		obj = HCL_CNODE_CONS_CDR(obj);
+	}
+	
+	/* TODO: push the instance variables string and class variables string */
+// superclass name is an variable...
+
+	//if (emit_push_literal(hcl, tmp, HCL_CNODE_GET_LOC(cmd))
+	if (nivars > 0)
+	{
+		//tmp = hcl_makestring(hcl, varg, len, 0);
+		tmp = hcl_makestring(hcl, HCL_NULL, 0, 0);
+		if (HCL_UNLIKELY(!tmp)) return -1;
+		if (emit_push_literal(hcl, tmp, &cf->u._class.start_loc) <= -1) return-1;
+	}
+	
+	if (ncvars > 0)
+	{
+		tmp = hcl_makestring(hcl, HCL_NULL, 0, 0);
+		if (HCL_UNLIKELY(!tmp)) return -1;
+		if (emit_push_literal(hcl, tmp, &cf->u._class.start_loc) <= -1) return-1;
+	}
+	
+	if (push_clsblk(hcl, &cf->u._class.start_loc, nivars, ncvars) <= -1) return -1;
+
+	/* make_class nsuperclasses, nivars, ncvars - this will use the pushed literal */
+	if (emit_byte_instruction(hcl, HCL_CODE_MAKE_CLASS, &cf->u._class.start_loc) <= -1) return -1;
+	if (emit_long_param(hcl, cf->u._class.nsuperclasses) <= -1) return -1;
+	if (emit_long_param(hcl, nivars) <= -1) return -1;
+	if (emit_long_param(hcl, ncvars) <= -1) return -1;
+
+	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_ENTER, &cf->u._class.start_loc) <= -1) return -1; // TODO: do i need this separater instruction?
+
+	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_LIST, obj); /* 1 */
+	
+
+	return 0;
+}
 
 
-static HCL_INLINE int post_class (hcl_t* hcl)
+static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 {
 	hcl_cframe_t* cf;
 
 	cf = GET_TOP_CFRAME(hcl);
-	HCL_ASSERT (hcl, cf->opcode == COP_POST_CLASS);
+	HCL_ASSERT (hcl, cf->opcode == COP_COMPILE_CLASS_P2);
 
 	pop_clsblk (hcl);
 
@@ -1858,6 +2067,7 @@ static HCL_INLINE int post_class (hcl_t* hcl)
 	}
 #else
 /* should i make the assignment in POST?  or after variable declarations immediately? */
+/* TODO: emit instruction to store into the class name...? */
 	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_EXIT, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
 	printf ("end of CLASS DEFINITION\n");
 	POP_CFRAME (hcl);
@@ -4409,13 +4619,36 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 				if (compile_catch(hcl) <= -1) goto oops;
 				break;
 
-			case COP_COMPILE_AND_EXPR:
-				if (compile_and_expr(hcl) <= -1) goto oops;
+
+
+			case COP_COMPILE_AND_P1:
+				if (compile_and_p1(hcl) <= -1) goto oops;
 				break;
 
-			case COP_COMPILE_OR_EXPR:
-				if (compile_or_expr(hcl) <= -1) goto oops;
+			case COP_COMPILE_AND_P2:
+				if (compile_and_p2(hcl) <= -1) goto oops;
 				break;
+
+			case COP_COMPILE_BREAK_P1:
+				if (compile_break_p1(hcl) <= -1) goto oops;
+				break;
+
+			case COP_COMPILE_CLASS_P1:
+				if (compile_class_p1(hcl) <= -1) goto oops;
+				break;
+
+			case COP_COMPILE_CLASS_P2:
+				if (compile_class_p2(hcl) <= -1) goto oops;
+				break;
+
+			case COP_COMPILE_OR_P1:
+				if (compile_or_p1(hcl) <= -1) goto oops;
+				break;
+
+			case COP_COMPILE_OR_P2:
+				if (compile_or_p2(hcl) <= -1) goto oops;
+				break;
+
 
 			case COP_EMIT_CALL:
 				if (emit_call(hcl) <= -1) goto oops;
@@ -4508,22 +4741,6 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 
 			case COP_POST_LAMBDA:
 				if (post_lambda(hcl) <= -1) goto oops;
-				break;
-
-			case COP_POST_CLASS:
-				if (post_class(hcl) <= -1) goto oops;
-				break;
-
-			case COP_POST_AND_EXPR:
-				if (post_and_expr(hcl) <= -1) goto oops;
-				break;
-				
-			case COP_POST_OR_EXPR:
-				if (post_or_expr(hcl) <= -1) goto oops;
-				break;
-
-			case COP_POST_BREAK:
-				if (post_break(hcl) <= -1) goto oops;
 				break;
 
 			default:

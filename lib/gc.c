@@ -233,31 +233,45 @@ static HCL_INLINE void gc_ms_scan_stack (hcl_t* hcl)
 	{
 		oop = hcl->gci.stack.ptr[--hcl->gci.stack.len];
 
-		/*gc_ms_mark_object (hcl, (hcl_oop_t)HCL_OBJ_GET_CLASS(oop));*/
+		gc_ms_mark_object (hcl, (hcl_oop_t)HCL_OBJ_GET_CLASS(oop));
 
 		if (HCL_OBJ_GET_FLAGS_TYPE(oop) == HCL_OBJ_TYPE_OOP)
 		{
-			hcl_oow_t size, i;
+			hcl_ooi_t i, ll;
 
 			/* is it really better to use a flag bit in the header to
 			 * determine that it is an instance of process? */
 			/* if (HCL_UNLIKELY(HCL_OBJ_GET_FLAGS_PROC(oop))) */
 			if (HCL_OBJ_GET_FLAGS_BRAND(oop) == HCL_BRAND_PROCESS)
 			{
+				hcl_oop_process_t proc;
+				
 				/* the stack in a process object doesn't need to be 
 				 * scanned in full. the slots above the stack pointer 
 				 * are garbages. */
-				size = HCL_PROCESS_NAMED_INSTVARS + HCL_OOP_TO_SMOOI(((hcl_oop_process_t)oop)->sp) + 1;
-				HCL_ASSERT (hcl, size <= HCL_OBJ_GET_SIZE(oop));
+				proc = (hcl_oop_process_t)oop;
+
+				/* the fixed part */
+				ll = HCL_PROCESS_NAMED_INSTVARS;
+				for (i = 0; i < ll; i++) gc_ms_mark_object (hcl, HCL_OBJ_GET_OOP_VAL(oop, i));
+
+				/* stack */
+				ll = HCL_OOP_TO_SMOOI(proc->sp);
+				HCL_ASSERT (hcl, ll < (hcl_ooi_t)(HCL_OBJ_GET_SIZE(oop) - HCL_PROCESS_NAMED_INSTVARS));
+				for (i = 0; i <= ll; i++) gc_ms_mark_object (hcl, proc->slot[i]);
+				/* exception stack */
+				ll = HCL_OOP_TO_SMOOI(proc->exsp);
+				HCL_ASSERT (hcl, ll < (hcl_ooi_t)(HCL_OBJ_GET_SIZE(oop) - HCL_PROCESS_NAMED_INSTVARS));
+				for (i = HCL_OOP_TO_SMOOI(proc->st) + 1; i <= ll; i++) gc_ms_mark_object (hcl, proc->slot[i]);
+				/* class stack */
+				ll = HCL_OOP_TO_SMOOI(proc->clsp);
+				HCL_ASSERT (hcl, ll < (hcl_ooi_t)(HCL_OBJ_GET_SIZE(oop) - HCL_PROCESS_NAMED_INSTVARS));
+				for (i = HCL_OOP_TO_SMOOI(proc->exst) + 1; i <= ll; i++) gc_ms_mark_object (hcl, proc->slot[i]);
 			}
 			else
 			{
-				size = HCL_OBJ_GET_SIZE(oop);
-			}
-
-			for (i = 0; i < size; i++)
-			{
-				gc_ms_mark_object (hcl, HCL_OBJ_GET_OOP_VAL(oop, i));
+				ll = HCL_OBJ_GET_SIZE(oop);
+				for (i = 0; i < ll; i++) gc_ms_mark_object (hcl, HCL_OBJ_GET_OOP_VAL(oop, i));
 			}
 		}
 	}
