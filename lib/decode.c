@@ -378,9 +378,17 @@ int hcl_decode (hcl_t* hcl, hcl_oow_t start, hcl_oow_t end)
 				break;
 			/* -------------------------------------------------------- */
 			case HCL_CODE_CLASS_ENTER:
-				LOG_INST_0 (hcl, "class_enter");
-				break;
+			{
+				hcl_oow_t b3;
 				
+				FETCH_PARAM_CODE_TO (hcl, b1);
+				FETCH_PARAM_CODE_TO (hcl, b2);
+				FETCH_PARAM_CODE_TO (hcl, b3);
+				LOG_INST_3 (hcl, "class_enter %zu %zu %zu", b1, b2, b3);
+
+				break;
+			}
+
 			case HCL_CODE_CLASS_EXIT:
 				LOG_INST_0 (hcl, "class_exit");
 				break;
@@ -602,19 +610,6 @@ int hcl_decode (hcl_t* hcl, hcl_oow_t start, hcl_oow_t end)
 				break;
 			/* -------------------------------------------------------- */
 
-			case HCL_CODE_MAKE_CLASS:
-			{
-				hcl_oow_t b3;
-				
-				FETCH_PARAM_CODE_TO (hcl, b1);
-				FETCH_PARAM_CODE_TO (hcl, b2);
-				FETCH_PARAM_CODE_TO (hcl, b3);
-				LOG_INST_3 (hcl, "make_class %zu %zu %zu", b1, b2, b3);
-			
-				break;
-			}
-
-			/* -------------------------------------------------------- */
 			case HCL_CODE_DUP_STACKTOP:
 				LOG_INST_0 (hcl, "dup_stacktop");
 				break;

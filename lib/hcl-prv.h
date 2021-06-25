@@ -912,7 +912,7 @@ enum hcl_bcode_t
 	HCL_CODE_POP_INTO_CONS_CDR        = 0xF5, /* 245 */
 	/* -------------------------------------- */
 
-	HCL_CODE_MAKE_CLASS               = 0xF6, /* 246 ## ## */
+	/* UNUSED - 0xF6 */
 	HCL_CODE_DUP_STACKTOP             = 0xF7, /* 247 */
 	HCL_CODE_POP_STACKTOP             = 0xF8, /* 248 */
 	HCL_CODE_RETURN_STACKTOP          = 0xF9, /* 249 */

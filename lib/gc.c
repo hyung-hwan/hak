@@ -813,7 +813,16 @@ int hcl_ignite (hcl_t* hcl, hcl_oow_t heapsize)
 		 * only accessible by VM. not exported via the global dictionary. */
 		hcl->nil_process = (hcl_oop_process_t)hcl_allocoopobj(hcl, HCL_BRAND_PROCESS, HCL_PROCESS_NAMED_INSTVARS);
 		if (HCL_UNLIKELY(!hcl->nil_process)) return -1;
+
+		/* unusable stack */
 		hcl->nil_process->sp = HCL_SMOOI_TO_OOP(-1);
+		hcl->nil_process->st = HCL_SMOOI_TO_OOP(-1);
+		/* unusable exception stack */
+		hcl->nil_process->exsp = HCL_SMOOI_TO_OOP(-1);
+		hcl->nil_process->exst = HCL_SMOOI_TO_OOP(-1);
+		/* unusable class stack */
+		hcl->nil_process->clsp = HCL_SMOOI_TO_OOP(-1);
+		hcl->nil_process->clst =  HCL_SMOOI_TO_OOP(-1);
 	}
 
 	if (!hcl->processor)

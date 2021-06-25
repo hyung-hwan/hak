@@ -1974,13 +1974,11 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 
 		HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(obj)); /* must not get CDR. the reader must ensure this */
 
-printf ("VLIST....\n");
 		vars = HCL_CNODE_CONS_CAR(obj);
 		if (!HCL_CNODE_IS_CONS_CONCODED(vars, HCL_CONCODE_VLIST)) break;
 
 // TODO increment nivars and ncvars
 // also remember actual variable names...
-printf ("22222222222\n");
 		obj = HCL_CNODE_CONS_CDR(obj);
 	}
 	
@@ -2005,20 +2003,16 @@ printf ("22222222222\n");
 	
 	if (push_clsblk(hcl, &cf->u._class.start_loc, nivars, ncvars) <= -1) return -1;
 
-	/* make_class nsuperclasses, nivars, ncvars - this will use the pushed literal */
-	if (emit_byte_instruction(hcl, HCL_CODE_MAKE_CLASS, &cf->u._class.start_loc) <= -1) return -1;
+	/* class_enter nsuperclasses, nivars, ncvars  */
+	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_ENTER, &cf->u._class.start_loc) <= -1) return -1;
 	if (emit_long_param(hcl, cf->u._class.nsuperclasses) <= -1) return -1;
 	if (emit_long_param(hcl, nivars) <= -1) return -1;
 	if (emit_long_param(hcl, ncvars) <= -1) return -1;
 
-	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_ENTER, &cf->u._class.start_loc) <= -1) return -1; // TODO: do i need this separater instruction?
-
 	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_LIST, obj); /* 1 */
-	
 
 	return 0;
 }
-
 
 static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 {
@@ -2068,6 +2062,8 @@ static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 #else
 /* should i make the assignment in POST?  or after variable declarations immediately? */
 /* TODO: emit instruction to store into the class name...? */
+/* TODO: NEED TO EMIT POP_STACKTOP???? IN THIS CASE CLASS_EXIT MUST PUSH SOMETHING? */
+
 	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_EXIT, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
 	printf ("end of CLASS DEFINITION\n");
 	POP_CFRAME (hcl);

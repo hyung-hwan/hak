@@ -513,7 +513,7 @@ static hcl_oop_process_t make_process (hcl_t* hcl, hcl_oop_context_t c)
 	stksize = hcl->option.dfl_procstk_size; /* stack */
 	exstksize = 128; /* exception stack size */ /* TODO: make it configurable */
 	clstksize = 64; /* class stack size */ /* TODO: make it configurable too */
-	
+
 	maxsize = (HCL_TYPE_MAX(hcl_ooi_t) - HCL_PROCESS_NAMED_INSTVARS) / 3;
 
 	if (stksize > maxsize) stksize = maxsize;
@@ -3306,22 +3306,58 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				if (do_throw(hcl, return_value, fetched_instruction_pointer) <= -1) goto oops;
 				break;
 			/* -------------------------------------------------------- */
+
 			case HCL_CODE_CLASS_ENTER:
+			{
+				/* push superclass
+				   push ivars
+				   push cvars
+				   class_enter nsuperclasses nivars ncvars
+				 */
+				hcl_oop_t t, sc, nivars, ncvars;
+				hcl_oow_t b3;
+				
+				FETCH_PARAM_CODE_TO (hcl, b1); /* nsuperclasses */
+				FETCH_PARAM_CODE_TO (hcl, b2); /* nivars */
+				FETCH_PARAM_CODE_TO (hcl, b3); /* ncvars */
+				
+				LOG_INST_3 (hcl, "class_enter %zu %zu %zu", b1, b2, b3);
+
+			/* TODO: get extra information from the stack according to b1, b2, b3*/
+				/* critical error if the superclass is not a class ...
+				 * critical error if ivars is not a string...
+				 * critical errro if cvars is not a string ....
+				 */
+				t = hcl_makeclass(hcl, hcl->_nil, b2, b3); // TOOD: pass variable information... 
+
+				if (HCL_UNLIKELY(!t)) 
+				{
+					supplement_errmsg (hcl, fetched_instruction_pointer);
+					goto oops;
+				}
+
+				HCL_CLSTACK_PUSH (hcl, t); /* push the class created to the class stack*/
+				break;
+			}
+
+			/*case HCL_CODE_MAKE_METHOD:
+			{
+			}*/
+
+			case HCL_CODE_CLASS_EXIT:
 			{
 				hcl_oop_t c;
 
-				/* the class_enter instruct must follow the class_make instruction... */
-				LOG_INST_0 (hcl, "class_enter");
-				c = HCL_STACK_GETTOP(hcl); /* the class object created with make_class */
-				HCL_CLSTACK_PUSH (hcl, c);
-				break;
-			}
-			
-			case HCL_CODE_CLASS_EXIT:
 				LOG_INST_0 (hcl, "class_exit");
 				/* TODO: stack underflow check? */
+			#if 0
+				HCL_CLSTACK_POP_TO (hcl, c);
+				HCL_STACK_PUSH (hcl, c);
+			#else
 				HCL_CLSTACK_POP (hcl);
+			#endif
 				break;
+			}
 			/* -------------------------------------------------------- */
 
 			case HCL_CODE_PUSH_CTXTEMPVAR_X:
@@ -3788,46 +3824,6 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 			}
 
 			/* -------------------------------------------------------- */
-
-			case HCL_CODE_MAKE_CLASS:
-			{
-				/* push superclass
-				   push ivars
-				   push cvars
-				   make_classs
-				 */
-				hcl_oop_t t, sc, nivars, ncvars;
-				hcl_oow_t b3;
-				
-				FETCH_PARAM_CODE_TO (hcl, b1); /* nsuperclasses */
-				FETCH_PARAM_CODE_TO (hcl, b2); /* nivars */
-				FETCH_PARAM_CODE_TO (hcl, b3); /* ncvars */
-				
-				LOG_INST_3 (hcl, "make_class %zu %zu %zu", b1, b2, b3);
-
-			/* TODO: get extra information from the stack according to b1, b2, b3*/
-				/* critical error if the superclass is not a class ...
-				 * critical error if ivars is not a string...
-				 * critical errro if cvars is not a string ....
-				 */
-				t = hcl_makeclass(hcl, hcl->_nil, b2, b3); // TOOD: pass variable information... 
-
-				if (HCL_UNLIKELY(!t)) 
-				{
-					supplement_errmsg (hcl, fetched_instruction_pointer);
-					goto oops;
-				}
-
-				HCL_STACK_PUSH (hcl, t); /* push the class created */
-				break;
-			}
-
-			/*case HCL_CODE_MAKE_METHOD:
-			{
-			}*/
-
-			/* -------------------------------------------------------- */
-
 			case HCL_CODE_DUP_STACKTOP:
 			{
 				hcl_oop_t t;
