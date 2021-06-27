@@ -3314,7 +3314,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				   push cvars
 				   class_enter nsuperclasses nivars ncvars
 				 */
-				hcl_oop_t t, sc, nivars, ncvars;
+				hcl_oop_t t, sc, ivars_str, cvars_str;
 				hcl_oow_t b3;
 				
 				FETCH_PARAM_CODE_TO (hcl, b1); /* nsuperclasses */
@@ -3323,20 +3323,41 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				
 				LOG_INST_3 (hcl, "class_enter %zu %zu %zu", b1, b2, b3);
 
-			/* TODO: get extra information from the stack according to b1, b2, b3*/
-				/* critical error if the superclass is not a class ...
-				 * critical error if ivars is not a string...
-				 * critical errro if cvars is not a string ....
-				 */
-				t = hcl_makeclass(hcl, hcl->_nil, b2, b3); // TOOD: pass variable information... 
+				if (b3 > 0)
+				{
+					HCL_STACK_POP_TO (hcl, cvars_str);
+					HCL_ASSERT (hcl, HCL_IS_STRING(hcl, cvars_str));
+				}
+				else cvars_str = hcl->_nil;
 
+				if (b2 > 0) 
+				{
+					HCL_STACK_POP_TO (hcl, ivars_str);
+					HCL_ASSERT (hcl, HCL_IS_STRING(hcl, ivars_str));
+				}
+				else ivars_str = hcl->_nil;
+
+				if (b1 > 0) 
+				{	
+					HCL_STACK_POP_TO (hcl, sc); /* TODO: support more than 1 later when the compiler supports more */
+					if (!HCL_IS_CLASS(hcl, sc))
+					{
+						hcl_seterrbfmt (hcl, HCL_ECALL, "invalid superclass %O", sc);
+						supplement_errmsg (hcl, fetched_instruction_pointer);
+						goto oops;
+					}
+ 				}
+				else sc = hcl->_nil;
+
+				t = hcl_makeclass(hcl, sc, b2, b3, ivars_str, cvars_str); // TOOD: pass variable information... 
 				if (HCL_UNLIKELY(!t)) 
 				{
 					supplement_errmsg (hcl, fetched_instruction_pointer);
 					goto oops;
 				}
 
-				HCL_CLSTACK_PUSH (hcl, t); /* push the class created to the class stack*/
+				/* push the class created to the class stack. but don't push to the normal operation stack */
+				HCL_CLSTACK_PUSH (hcl, t); 
 				break;
 			}
 

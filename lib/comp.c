@@ -694,6 +694,147 @@ static int emit_indexed_variable_access (hcl_t* hcl, hcl_oow_t index, hcl_oob_t 
 }
 
 /* ========================================================================= */
+static int push_cblk (hcl_t* hcl, const hcl_ioloc_t* errloc, hcl_cblk_type_t type)
+{
+	hcl_oow_t new_depth;
+
+	HCL_ASSERT (hcl, hcl->c->cblk.depth >= -1);
+
+	if (hcl->c->cblk.depth == HCL_TYPE_MAX(hcl_ooi_t))
+	{
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_BLKDEPTH, errloc, HCL_NULL, "control block depth too deep"); 
+		return -1;
+	}
+
+	new_depth = hcl->c->cblk.depth + 1;
+	if (hcl->c->cblk.depth >= hcl->c->cblk.info_capa)
+	{
+		hcl_cblk_info_t* tmp;
+		hcl_oow_t newcapa;
+		
+		newcapa = HCL_ALIGN(new_depth + 1, BLK_INFO_BUFFER_ALIGN);
+		tmp = (hcl_cblk_info_t*)hcl_reallocmem(hcl, hcl->c->cblk.info, newcapa * HCL_SIZEOF(*tmp));
+		if (HCL_UNLIKELY(!tmp)) return -1;
+		
+		hcl->c->cblk.info_capa = newcapa;
+		hcl->c->cblk.info = tmp;
+	}
+
+	HCL_MEMSET (&hcl->c->cblk.info[new_depth], 0, HCL_SIZEOF(hcl->c->cblk.info[new_depth]));
+	hcl->c->cblk.info[new_depth]._type = type;
+	hcl->c->cblk.depth = new_depth;
+	return 0;
+}
+
+static void pop_cblk (hcl_t* hcl)
+{
+	HCL_ASSERT (hcl, hcl->c->cblk.depth >= 0); /* depth is of a signed type */
+	
+	/* a control block stays inside a function block.
+	 * the control block stack must not be popped past the starting base 
+	 * of the owning function block */
+	HCL_ASSERT (hcl, hcl->c->cblk.depth - 1 >= hcl->c->fnblk.info[hcl->c->fnblk.depth].cblk_base);
+	hcl->c->cblk.depth--;
+}
+
+static int push_clsblk (hcl_t* hcl, const hcl_ioloc_t* errloc, hcl_oow_t nivars, hcl_oow_t ncvars, const hcl_ooch_t*  ivars_str, const hcl_ooch_t* cvars_str)
+{
+	hcl_oow_t new_depth;
+	hcl_clsblk_info_t* ci;
+	hcl_fnblk_info_t* fbi;
+
+	HCL_ASSERT (hcl, hcl->c->clsblk.depth >= -1);
+
+	if (hcl->c->clsblk.depth == HCL_TYPE_MAX(hcl_ooi_t))
+	{
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_BLKDEPTH, errloc, HCL_NULL, "class block depth too deep"); 
+		return -1;
+	}
+
+	new_depth = hcl->c->clsblk.depth + 1;
+	if (hcl->c->clsblk.depth >= hcl->c->clsblk.info_capa)
+	{
+		hcl_clsblk_info_t* tmp;
+		hcl_oow_t newcapa;
+
+		newcapa = HCL_ALIGN(new_depth + 1, BLK_INFO_BUFFER_ALIGN);
+		tmp = (hcl_clsblk_info_t*)hcl_reallocmem(hcl, hcl->c->clsblk.info, newcapa * HCL_SIZEOF(*tmp));
+		if (HCL_UNLIKELY(!tmp)) return -1;
+
+		hcl->c->clsblk.info_capa = newcapa;
+		hcl->c->clsblk.info = tmp;
+	}
+
+	ci = &hcl->c->clsblk.info[new_depth];
+	HCL_MEMSET (ci, 0, HCL_SIZEOF(*ci));
+	ci->nivars = nivars;
+	ci->ncvars = ncvars;
+
+	if (ivars_str)
+	{
+		HCL_ASSERT (hcl, ci->nivars > 0);
+		ci->ivars_str = hcl_dupoocstr(hcl, ivars_str, HCL_NULL);
+		if (HCL_UNLIKELY(!ci->ivars_str)) return -1;
+	}
+	if (cvars_str)
+	{
+		HCL_ASSERT (hcl, ci->ncvars > 0);
+		ci->cvars_str = hcl_dupoocstr(hcl, cvars_str, HCL_NULL);
+		if (HCL_UNLIKELY(!ci->cvars_str))
+		{
+			if (ci->ivars_str) hcl_freemem (hcl, ci->ivars_str);
+			return -1;
+		}
+	}
+
+	/* remember the function block depth before the class block is entered */
+	ci->fnblk_base = hcl->c->fnblk.depth; 
+
+	/* attach the class block to the current function block */
+	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
+	if (fbi->clsblk_base <= -1) fbi->clsblk_base = new_depth;
+	fbi->clsblk_top = new_depth;
+
+	hcl->c->clsblk.depth = new_depth;
+	return 0;
+}
+
+static void pop_clsblk (hcl_t* hcl)
+{
+	hcl_fnblk_info_t* fbi;
+	hcl_clsblk_info_t* cbi;
+
+	HCL_ASSERT (hcl, hcl->c->clsblk.depth >= 0); /* depth is of a signed type */
+	HCL_ASSERT (hcl, hcl->c->fnblk.depth >= 0);
+
+	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
+	HCL_ASSERT (hcl, fbi->clsblk_base >= 0 && fbi->clsblk_top >= 0 && fbi->clsblk_top >= fbi->clsblk_base);
+	HCL_ASSERT (hcl, fbi->clsblk_top == hcl->c->clsblk.depth);
+	if (fbi->clsblk_top == fbi->clsblk_base) 
+	{
+		/* the first class block inside a function block */
+		fbi->clsblk_base = -1;
+		fbi->clsblk_top = -1;
+	}
+	else
+	{
+		fbi->clsblk_top--;
+	}
+
+	cbi = &hcl->c->clsblk.info[hcl->c->clsblk.depth];
+	if (cbi->cvars_str)
+	{
+		hcl_freemem (hcl, cbi->cvars_str);
+		cbi->cvars_str = HCL_NULL;
+	}
+	if (cbi->ivars_str)
+	{
+		hcl_freemem (hcl, cbi->ivars_str);
+		cbi->ivars_str = HCL_NULL;
+	}
+	hcl->c->clsblk.depth--;
+}
+
 
 static int push_fnblk (hcl_t* hcl, const hcl_ioloc_t* errloc, 
 	hcl_oow_t tmpr_va, hcl_oow_t tmpr_nargs, hcl_oow_t tmpr_nrvars, hcl_oow_t tmpr_nlvars,
@@ -749,6 +890,14 @@ static int push_fnblk (hcl_t* hcl, const hcl_ioloc_t* errloc,
 	return 0;
 }
 
+static void clear_fnblk_inners (hcl_t* hcl)
+{
+	hcl_fnblk_info_t* fbi;
+	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
+	while (hcl->c->cblk.depth > fbi->cblk_base) pop_cblk (hcl);
+	while (!(fbi->clsblk_base <= -1 && fbi->clsblk_top <= -1)) pop_clsblk (hcl);
+}
+
 static void pop_fnblk (hcl_t* hcl)
 {
 	hcl_fnblk_info_t* fbi;
@@ -757,9 +906,12 @@ static void pop_fnblk (hcl_t* hcl)
 	/* if pop_cblk() has been called properly, the following assertion must be true
 	 * and the assignment on the next line isn't necessary */
 
+	clear_fnblk_inners (hcl);
+
 	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
-	HCL_ASSERT (hcl, hcl->c->cblk.depth == fbi->cblk_base); 
+	HCL_ASSERT (hcl, hcl->c->cblk.depth == fbi->cblk_base); 		
 	HCL_ASSERT (hcl, fbi->clsblk_base <= -1 && fbi->clsblk_top <= -1);
+
 	hcl->c->cblk.depth = fbi->cblk_base;
 	/* keep hcl->code.lit.len without restoration */
 
@@ -793,117 +945,6 @@ static void pop_fnblk (hcl_t* hcl)
 		tmpr_mask = ENCODE_BLKTMPR_MASK(fbi->tmpr_va, fbi->tmpr_nargs, fbi->tmpr_nrvars, fbi->tmpr_nlvars);
 		patch_double_long_params_with_oow (hcl, fbi->make_inst_pos + 1, tmpr_mask);
 	}
-}
-
-static int push_cblk (hcl_t* hcl, const hcl_ioloc_t* errloc, hcl_cblk_type_t type)
-{
-	hcl_oow_t new_depth;
-
-	HCL_ASSERT (hcl, hcl->c->cblk.depth >= -1);
-
-	if (hcl->c->cblk.depth == HCL_TYPE_MAX(hcl_ooi_t))
-	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_BLKDEPTH, errloc, HCL_NULL, "control block depth too deep"); 
-		return -1;
-	}
-
-	new_depth = hcl->c->cblk.depth + 1;
-	if (hcl->c->cblk.depth >= hcl->c->cblk.info_capa)
-	{
-		hcl_cblk_info_t* tmp;
-		hcl_oow_t newcapa;
-		
-		newcapa = HCL_ALIGN(new_depth + 1, BLK_INFO_BUFFER_ALIGN);
-		tmp = (hcl_cblk_info_t*)hcl_reallocmem(hcl, hcl->c->cblk.info, newcapa * HCL_SIZEOF(*tmp));
-		if (HCL_UNLIKELY(!tmp)) return -1;
-		
-		hcl->c->cblk.info_capa = newcapa;
-		hcl->c->cblk.info = tmp;
-	}
-
-	HCL_MEMSET (&hcl->c->cblk.info[new_depth], 0, HCL_SIZEOF(hcl->c->cblk.info[new_depth]));
-	hcl->c->cblk.info[new_depth]._type = type;
-	hcl->c->cblk.depth = new_depth;
-	return 0;
-}
-
-static void pop_cblk (hcl_t* hcl)
-{
-	HCL_ASSERT (hcl, hcl->c->cblk.depth >= 0); /* depth is of a signed type */
-	
-	/* a control block stays inside a function block.
-	 * the control block stack must not be popped past the starting base 
-	 * of the owning function block */
-	HCL_ASSERT (hcl, hcl->c->cblk.depth - 1 >= hcl->c->fnblk.info[hcl->c->fnblk.depth].cblk_base);
-	hcl->c->cblk.depth--;
-}
-
-static int push_clsblk (hcl_t* hcl, const hcl_ioloc_t* errloc, hcl_oow_t nivars, hcl_oow_t ncvars)
-{
-	hcl_oow_t new_depth;
-	hcl_clsblk_info_t* ci;
-	hcl_fnblk_info_t* fbi;
-
-	HCL_ASSERT (hcl, hcl->c->clsblk.depth >= -1);
-
-	if (hcl->c->clsblk.depth == HCL_TYPE_MAX(hcl_ooi_t))
-	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_BLKDEPTH, errloc, HCL_NULL, "class block depth too deep"); 
-		return -1;
-	}
-
-	new_depth = hcl->c->clsblk.depth + 1;
-	if (hcl->c->clsblk.depth >= hcl->c->clsblk.info_capa)
-	{
-		hcl_clsblk_info_t* tmp;
-		hcl_oow_t newcapa;
-
-		newcapa = HCL_ALIGN(new_depth + 1, BLK_INFO_BUFFER_ALIGN);
-		tmp = (hcl_clsblk_info_t*)hcl_reallocmem(hcl, hcl->c->clsblk.info, newcapa * HCL_SIZEOF(*tmp));
-		if (HCL_UNLIKELY(!tmp)) return -1;
-
-		hcl->c->clsblk.info_capa = newcapa;
-		hcl->c->clsblk.info = tmp;
-	}
-
-	ci = &hcl->c->clsblk.info[new_depth];
-	HCL_MEMSET (ci, 0, HCL_SIZEOF(*ci));
-	ci->nivars = nivars;
-	ci->ncvars = ncvars;
-
-	/* remember the function block depth before the class block is entered */
-	ci->fnblk_base = hcl->c->fnblk.depth; 
-
-	/* attach the class block to the current function block */
-	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
-	if (fbi->clsblk_base <= -1) fbi->clsblk_base = new_depth;
-	fbi->clsblk_top = new_depth;
-
-	hcl->c->clsblk.depth = new_depth;
-	return 0;
-}
-
-static void pop_clsblk (hcl_t* hcl)
-{
-	hcl_fnblk_info_t* fbi;
-
-	HCL_ASSERT (hcl, hcl->c->clsblk.depth >= 0); /* depth is of a signed type */
-	HCL_ASSERT (hcl, hcl->c->fnblk.depth >= 0);
-
-	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
-	HCL_ASSERT (hcl, fbi->clsblk_base >= 0 && fbi->clsblk_top >= 0 && fbi->clsblk_top >= fbi->clsblk_base);
-	HCL_ASSERT (hcl, fbi->clsblk_top == hcl->c->clsblk.depth);
-	if (fbi->clsblk_top == fbi->clsblk_base) 
-	{
-		fbi->clsblk_base = -1;
-		fbi->clsblk_top = -1;
-	}
-	else
-	{
-		fbi->clsblk_top--;
-	}
-
-	hcl->c->clsblk.depth--;
 }
 
 /* ========================================================================= */
@@ -1692,6 +1733,69 @@ static HCL_INLINE int compile_else (hcl_t* hcl)
 
 /* ========================================================================= */
 
+static int collect_vardcl (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t** nextobj, hcl_oow_t tv_dup_check_start, hcl_oow_t* nvardcls, const hcl_bch_t* desc)
+{
+	hcl_oow_t ndcls = 0;
+
+	while (obj && HCL_CNODE_IS_CONS(obj))
+	{
+		hcl_cnode_t* dcl;
+
+		dcl = HCL_CNODE_CONS_CAR(obj);
+		if (HCL_CNODE_IS_CONS_CONCODED(dcl, HCL_CONCODE_VLIST))
+		{
+			hcl_cnode_t* var;
+			do
+			{
+				var = HCL_CNODE_CONS_CAR(dcl);
+			#if 0
+				if (!HCL_CNODE_IS_SYMBOL(var))
+				{
+					hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAME, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "local variable not a symbol");
+					return -1;
+				}
+
+				if (HCL_CNODE_IS_SYMBOL(var) && HCL_CNODE_SYMBOL_SYNCODE(var) /* || HCL_OBJ_GET_FLAGS_KERNEL(var) >= 2 */)
+				{
+					hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDARGNAME, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "special symbol not to be declared as a local variable");
+					return -1;
+				}
+			#else
+				/* the above checks are not needed as the reader guarantees the followings */
+				HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_PLAIN(var));
+			#endif
+
+				if (add_temporary_variable(hcl, HCL_CNODE_GET_TOK(var), tv_dup_check_start) <= -1) 
+				{
+					if (hcl->errnum == HCL_EEXIST)
+					{
+						hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMEDUP, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "duplicate %hs variable", desc);
+					}
+					return -1;
+				}
+				ndcls++;
+
+				dcl = HCL_CNODE_CONS_CDR(dcl);
+				if (!dcl) break;
+
+				if (!HCL_CNODE_IS_CONS(dcl)) 
+				{
+					hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(dcl), HCL_CNODE_GET_TOK(dcl), "redundant cdr in %hs variable list", desc);
+					return -1;
+				}
+			}
+			while (1);
+
+			obj = HCL_CNODE_CONS_CDR(obj);
+		}
+		else break;
+	}
+
+	*nvardcls = ndcls;
+	*nextobj = obj;
+	return 0;
+}
+
 static int check_if_plain_cnode (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t* prev, hcl_cnode_t* container, hcl_synerrnum_t errnum, const hcl_bch_t* bname)
 {
 	if (!obj)
@@ -1708,10 +1812,7 @@ static int check_if_plain_cnode (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t* prev
 	return 0;
 }
 
-#if 0
-static int compile_class (hcl_t* hcl, hcl_cnode_t* src)
-{
-	/*
+/*
 	(defclass A
 		| x y | ; instance variables
 		| ::: x y z | ; class variables <--- how to initialize the class variables???
@@ -1737,156 +1838,7 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src)
 		....
 	)
 
-	*/
-	hcl_cnode_t* cmd, * obj, * tmp;
-	hcl_cnode_t* class_name, * superclass_name;
-	hcl_ooi_t nsuperclasses, nivars, ncvars;
-
-	cmd = HCL_CNODE_CONS_CAR(src);
-	obj = HCL_CNODE_CONS_CDR(src);
-
-	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_DEFCLASS));
-
-	class_name = HCL_NULL;
-	superclass_name = HCL_NULL;
-
-	if (check_if_plain_cnode(hcl, obj, src, cmd, HCL_SYNERR_VARNAME, "class name") <= -1) return -1;
-	class_name = HCL_CNODE_CONS_CAR(obj);
-	if (HCL_CNODE_IS_SYMBOL(class_name))
-	{
-		/* defclass followed by a class name */
-		if (HCL_CNODE_SYMBOL_SYNCODE(class_name)) /*|| HCL_OBJ_GET_FLAGS_KERNEL(class_name) >= 1) */
-		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(class_name), HCL_CNODE_GET_TOK(class_name), "special symbol not to be used as a class name");
-			return -1;
-		}
-		obj = HCL_CNODE_CONS_CDR(obj);
-	}
-
-	if (obj)
-	{
-		/* superclass */
-		
-		
- 
- 
-		tmp = HCL_CNODE_CONS_CAR(obj);
-		if (HCL_CNODE_IS_TRPCOLONS(tmp))
-		{
-			obj = HCL_CNODE_CONS_CDR(obj);
-
-/* TODO: this can actually be dynamic. so it doesn't have to be a symbol name,
- *        even an expression is possible ... 
- *  (defclass A 
- *   ...
- *  )
- *  (defun get-your-class() A)
- *  (defclass B ::: (get-your-class)
- *    ....
- *  )
- * 
- *  this code is wrong... 
- */
-			
- 
-#if 0
-			/* TODO: multiple subclasses? interfaces? */
-			if (check_if_plain_cnode(hcl, obj, tmp, cmd, HCL_SYNERR_VARNAME, "superclass name") <= -1) return -1;
-			superclass_name = HCL_CNODE_CONS_CAR(obj);
-			if (HCL_CNODE_IS_SYMBOL(superclass_name))
-			{
-				if (HCL_CNODE_SYMBOL_SYNCODE(superclass_name)) /*|| HCL_OBJ_GET_FLAGS_KERNEL(superclass_name) >= 1) */
-				{
-					hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(superclass_name), HCL_CNODE_GET_TOK(superclass_name), "special symbol not to be used as a superclass name");
-					return -1;
-				}
-				obj = HCL_CNODE_CONS_CDR(obj);
-			}
-			else
-			{
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(superclass_name), HCL_CNODE_GET_TOK(superclass_name), "non-symbol not to be used as a superclass name");
-				return -1;
-			}
-#else
-
-
-	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, expr); /* 1 */
-	
-	PUSH_SUBCFRAME (hcl, COP_COMPILE_AND_P2, expr); /* 3 */
-	cf = GET_SUBCFRAME(hcl);
-	cf->u.post_and.jump_inst_pos = jump_inst_pos;
-
-	if (obj) PUSH_SUBCFRAME (hcl, COP_COMPILE_AND_P1, obj); /* 2 */
-
-			SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, obj); /* 1 */
-#endif
-		}
-		else
-		{
-			SWITCH_TO_CFRAME (hcl, COP_EMIT_PUSH_NIL, obj); /* 1*/
-		}
-	}
-	
-	PUSH_SUBCFRAME (hcl, COP_CLASS_SUPERCLASS
-
-#if 0
-//HCL_DEBUG2 (hcl, ">>> [%js] [%js]\n", HCL_CNODE_GET_TOKPTR(class_name), HCL_CNODE_GET_TOKPTR(superclass_name));
-	nivars = ncvars = 0;
-	while (obj)
-	{
-		/* instance variables and/or class variables */
-		hcl_cnode_t* vars;
-printf ("VLIST....\n");
-		if (check_if_plain_cnode(hcl, obj, src, cmd, HCL_SYNERR_VARNAME, "variable list") <= -1) return -1;
-		vars = HCL_CNODE_CONS_CAR(obj);
-		if (!HCL_CNODE_IS_CONS_CONCODED(vars, HCL_CONCODE_VLIST)) break;
-
-// TODO increment nivars and ncvars
-// also remember actual variable names...
-printf ("22222222222\n");
-		obj = HCL_CNODE_CONS_CDR(obj);
-	}
-	
-#else
-	PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_VARS, obj);
-#endif
-	
-// superclass name? 
-// nivars and ncvars.. must include inherited ones...
-	if (push_clsblk(hcl, HCL_CNODE_GET_LOC(cmd), nivars, ncvars) <= -1) return -1;
-
-
-
-
-/* TODO: push the instance variables string and class variables string */
-// superclass name is an variable...
-
-	//if (emit_push_literal(hcl, tmp, HCL_CNODE_GET_LOC(cmd))
-	if (nivars > 0)
-	{
-		tmp = hcl_makestring(hcl, varg, len, 0);
-		if (HCL_UNLIKELY(!tmp)) return -1;
-		if (emit_push_literal(hcl, tmp, HCL_CNODE_GET_LOC(cmd)) <= -1) return-1;
-	}
-	
-	if (ncvars > 0)
-	{
-	
-	}
-
-	/* make_class nsuperclasses, nivars, ncvars - this will use the pushed literal */
-	if (emit_byte_instruction(hcl, HCL_CODE_MAKE_CLASS, HCL_CNODE_GET_LOC(cmd)) <= -1) return -1;
-	if (emit_long_param(hcl, nivars) <= -1) return -1;
-	if (emit_long_param(hcl, ncvars) <= -1) return -1;
-
-	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_ENTER, HCL_CNODE_GET_LOC(cmd)) <= -1) return -1;
-
-	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_LIST, obj); /* 1 */
-	PUSH_SUBCFRAME (hcl, COP_POST_CLASS, class_name); /* 2*/
-
-	return 0;
-}
-#endif
+*/
 
 static int compile_class (hcl_t* hcl, hcl_cnode_t* src)
 {
@@ -1962,56 +1914,49 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 	hcl_ooi_t nivars, ncvars;
 	hcl_cnode_t* obj;
 	hcl_oop_t tmp;
+	hcl_oow_t saved_tv_wcount, tv_dup_start;
 
 	cf = GET_TOP_CFRAME(hcl);
 	obj = cf->operand;
 
+	saved_tv_wcount = hcl->c->tv.wcount;
+	tv_dup_start = hcl->c->tv.s.len;
+
+/* TODO: class variables */	
 	nivars = ncvars = 0;
-	while (obj)
-	{
-		/* instance variables and/or class variables */
-		hcl_cnode_t* vars;
+	if (collect_vardcl(hcl, obj, &obj, tv_dup_start, &nivars, "instance") <= -1) goto oops;
 
-		HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(obj)); /* must not get CDR. the reader must ensure this */
-
-		vars = HCL_CNODE_CONS_CAR(obj);
-		if (!HCL_CNODE_IS_CONS_CONCODED(vars, HCL_CONCODE_VLIST)) break;
-
-// TODO increment nivars and ncvars
-// also remember actual variable names...
-		obj = HCL_CNODE_CONS_CDR(obj);
-	}
-	
-	/* TODO: push the instance variables string and class variables string */
-// superclass name is an variable...
-
-	//if (emit_push_literal(hcl, tmp, HCL_CNODE_GET_LOC(cmd))
 	if (nivars > 0)
 	{
-		//tmp = hcl_makestring(hcl, varg, len, 0);
-		tmp = hcl_makestring(hcl, HCL_NULL, 0, 0);
-		if (HCL_UNLIKELY(!tmp)) return -1;
-		if (emit_push_literal(hcl, tmp, &cf->u._class.start_loc) <= -1) return-1;
+		/* set starting point past the added space (+1 to index, -1 to length) */
+		tmp = hcl_makestring(hcl, &hcl->c->tv.s.ptr[tv_dup_start + 1], hcl->c->tv.s.len - tv_dup_start - 1, 0); 
+		if (HCL_UNLIKELY(!tmp)) goto oops;
+		if (emit_push_literal(hcl, tmp, &cf->u._class.start_loc) <= -1) goto oops;
 	}
 	
 	if (ncvars > 0)
 	{
-		tmp = hcl_makestring(hcl, HCL_NULL, 0, 0);
-		if (HCL_UNLIKELY(!tmp)) return -1;
-		if (emit_push_literal(hcl, tmp, &cf->u._class.start_loc) <= -1) return-1;
+		tmp = hcl_makestring(hcl, HCL_NULL, 0, 0); /* TODO: set this to the proper string pointer and length ... */
+		if (HCL_UNLIKELY(!tmp)) goto oops;
+		if (emit_push_literal(hcl, tmp, &cf->u._class.start_loc) <= -1) goto oops;
 	}
 	
-	if (push_clsblk(hcl, &cf->u._class.start_loc, nivars, ncvars) <= -1) return -1;
+	if (push_clsblk(hcl, &cf->u._class.start_loc, nivars, ncvars, &hcl->c->tv.s.ptr[tv_dup_start + 1], HCL_NULL) <= -1) goto oops;
 
 	/* class_enter nsuperclasses, nivars, ncvars  */
-	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_ENTER, &cf->u._class.start_loc) <= -1) return -1;
-	if (emit_long_param(hcl, cf->u._class.nsuperclasses) <= -1) return -1;
-	if (emit_long_param(hcl, nivars) <= -1) return -1;
-	if (emit_long_param(hcl, ncvars) <= -1) return -1;
+	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_ENTER, &cf->u._class.start_loc) <= -1) goto oops;
+	if (emit_long_param(hcl, cf->u._class.nsuperclasses) <= -1) goto oops;
+	if (emit_long_param(hcl, nivars) <= -1) goto oops;
+	if (emit_long_param(hcl, ncvars) <= -1) goto oops;
 
 	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_LIST, obj); /* 1 */
 
 	return 0;
+
+oops:
+	hcl->c->tv.s.len = tv_dup_start;
+	hcl->c->tv.wcount = saved_tv_wcount;
+	return -1;
 }
 
 static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
@@ -2073,69 +2018,6 @@ static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 }
 
 /* ========================================================================= */
-
-static int collect_local_vardcl (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t** nextobj, hcl_oow_t tv_dup_check_start, hcl_oow_t* nvardcls)
-{
-	hcl_oow_t ndcls = 0;
-
-	while (obj && HCL_CNODE_IS_CONS(obj))
-	{
-		hcl_cnode_t* dcl;
-
-		dcl = HCL_CNODE_CONS_CAR(obj);
-		if (HCL_CNODE_IS_CONS_CONCODED(dcl, HCL_CONCODE_VLIST))
-		{
-			hcl_cnode_t* var;
-			do
-			{
-				var = HCL_CNODE_CONS_CAR(dcl);
-			#if 0
-				if (!HCL_CNODE_IS_SYMBOL(var))
-				{
-					hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAME, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "local variable not a symbol");
-					return -1;
-				}
-
-				if (HCL_CNODE_IS_SYMBOL(var) && HCL_CNODE_SYMBOL_SYNCODE(var) /* || HCL_OBJ_GET_FLAGS_KERNEL(var) >= 2 */)
-				{
-					hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDARGNAME, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "special symbol not to be declared as a local variable");
-					return -1;
-				}
-			#else
-				/* the above checks are not needed as the reader guarantees the followings */
-				HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL(var) && !HCL_CNODE_SYMBOL_SYNCODE(var));
-			#endif
-
-				if (add_temporary_variable(hcl, HCL_CNODE_GET_TOK(var), tv_dup_check_start) <= -1) 
-				{
-					if (hcl->errnum == HCL_EEXIST)
-					{
-						hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMEDUP, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "duplicate local variable");
-					}
-					return -1;
-				}
-				ndcls++;
-
-				dcl = HCL_CNODE_CONS_CDR(dcl);
-				if (!dcl) break;
-
-				if (!HCL_CNODE_IS_CONS(dcl)) 
-				{
-					hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(dcl), HCL_CNODE_GET_TOK(dcl), "redundant cdr in local variable list");
-					return -1;
-				}
-			}
-			while (1);
-
-			obj = HCL_CNODE_CONS_CDR(obj);
-		}
-		else break;
-	}
-
-	*nvardcls = ndcls;
-	*nextobj = obj;
-	return 0;
-}
 
 static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 {
@@ -2327,7 +2209,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 
 	obj = HCL_CNODE_CONS_CDR(obj);
 	tv_dup_start = hcl->c->tv.s.len;
-	if (collect_local_vardcl(hcl, obj, &obj, tv_dup_start, &nlvars) <= -1) return -1;
+	if (collect_vardcl(hcl, obj, &obj, tv_dup_start, &nlvars, "local") <= -1) return -1;
 	
 	if (nlvars > MAX_CODE_NBLKLVARS)
 	{
@@ -4553,7 +4435,7 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 		 * pass HCL_TYPE_MAX(hcl_oow_t) as make_inst_pos because there is 
 		 * no actual MAKE_BLOCK/MAKE_FUNCTION instruction which otherwise
 		 * would be patched in pop_fnblk(). */
-		if (push_fnblk(hcl, HCL_NULL, 0, 0, 0, hcl->c->tv.wcount, hcl->c->tv.wcount, hcl->c->tv.s.len, HCL_TYPE_MAX(hcl_oow_t), 0) <= -1) return -1;
+		if (push_fnblk(hcl, HCL_NULL, 0, 0, 0, hcl->c->tv.wcount, hcl->c->tv.wcount, hcl->c->tv.s.len, HCL_TYPE_MAX(hcl_oow_t), 0) <= -1) return -1; /* must not goto oops */
 	}
 	top_fnblk_saved = hcl->c->fnblk.info[0];
 	HCL_ASSERT (hcl, hcl->c->fnblk.depth == 0); /* ensure the virtual function block is added */
@@ -4762,7 +4644,7 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 		HCL_ASSERT (hcl, hcl->c->fnblk.depth == -1);
 	}
 
-	hcl ->log.default_type_mask = log_default_type_mask;
+	hcl->log.default_type_mask = log_default_type_mask;
 	return 0;
 
 oops:
@@ -4774,19 +4656,23 @@ oops:
 	hcl->code.bc.len = saved_bc_len;
 	hcl->code.lit.len = saved_lit_len;
 
-	/* quick way to call pop_cblk() and pop_fnblk() as many times as necessary */
 	hcl->c->tv.s.len = 0;
 	hcl->c->tv.wcount = 0;
-	hcl->c->cblk.depth = -1;
-	hcl->c->clsblk.depth = -1;
 
-	/*hcl->c->fnblk.depth = -1;*/
-	if (hcl->c->fnblk.depth > 0) 
+	while (hcl->c->fnblk.depth > 0) pop_fnblk (hcl);
+
+	if (flags & HCL_COMPILE_CLEAR_FNBLK)
 	{
-		hcl->c->fnblk.depth = 0;
+		pop_fnblk (hcl);
+		HCL_ASSERT (hcl, hcl->c->fnblk.depth == -1);
+	}
+	else
+	{
+		/* restore the top level function block as it's first captured in this functio */
+		clear_fnblk_inners (hcl);
+		HCL_ASSERT (hcl, hcl->c->fnblk.depth == 0);
 		hcl->c->fnblk.info[0] = top_fnblk_saved;
 	}
-	
 
 	return -1;
 }

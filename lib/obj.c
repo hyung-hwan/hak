@@ -353,19 +353,20 @@ hcl_oop_t hcl_makefpdec (hcl_t* hcl, hcl_oop_t value, hcl_ooi_t scale)
 	return (hcl_oop_t)f;
 }
 
-hcl_oop_t hcl_makeclass (hcl_t* hcl, hcl_oop_t superclass, hcl_ooi_t nivars, hcl_ooi_t ncvars)
+hcl_oop_t hcl_makeclass (hcl_t* hcl, hcl_oop_t superclass, hcl_ooi_t nivars, hcl_ooi_t ncvars, hcl_oop_t ivars_str, hcl_oop_t cvars_str)
 {
 	hcl_oop_class_t c;
 
 	hcl_pushvolat (hcl, &superclass);
+	hcl_pushvolat (hcl, &ivars_str);
+	hcl_pushvolat (hcl, &cvars_str);
 	c = (hcl_oop_class_t)hcl_allocoopobj(hcl, HCL_BRAND_CLASS, HCL_CLASS_NAMED_INSTVARS);
-	hcl_popvolat (hcl);
+	hcl_popvolats (hcl, 3);
 	if (HCL_UNLIKELY(!c)) return HCL_NULL;
 
 	c->superclass = superclass;
 	c->nivars = HCL_SMOOI_TO_OOP(nivars);
 	c->ncvars = HCL_SMOOI_TO_OOP(ncvars);
-
 
 	return (hcl_oop_t)c;
 }
@@ -458,7 +459,9 @@ hcl_oop_t hcl_instantiate (hcl_t*hcl, hcl_oop_class_t _class, const void* vptr, 
 		
 	if (HCL_LIKELY(oop))
 	{
+	#if 0
 		hcl_ooi_t spec;
+	#endif
 		HCL_OBJ_SET_CLASS (oop, (hcl_oop_t)_class);
 	#if 0
 		spec = HCL_OOP_TO_SMOOI(_class->spec);

@@ -216,6 +216,7 @@ typedef enum hcl_cnode_type_t hcl_cnode_type_t;
 #define HCL_CNODE_IS_TRPCOLONS(x) ((x)->cn_type == HCL_CNODE_TRPCOLONS)
 
 #define HCL_CNODE_IS_SYMBOL(x) ((x)->cn_type == HCL_CNODE_SYMBOL)
+#define HCL_CNODE_IS_SYMBOL_PLAIN(x) ((x)->cn_type == HCL_CNODE_SYMBOL && (x)->u.symbol.syncode == 0)
 #define HCL_CNODE_IS_SYMBOL_SYNCODED(x, code) ((x)->cn_type == HCL_CNODE_SYMBOL && (x)->u.symbol.syncode == (code))
 #define HCL_CNODE_SYMBOL_SYNCODE(x) ((x)->u.symbol.syncode)
 
@@ -436,6 +437,8 @@ struct hcl_clsblk_info_t
 {
 	hcl_oow_t nivars;
 	hcl_oow_t ncvars;
+	hcl_ooch_t* ivars_str;
+	hcl_ooch_t* cvars_str;
 	hcl_oow_t spec; /* TODO: byte indexed, word indexed? */
 
 	hcl_ooi_t fnblk_base;

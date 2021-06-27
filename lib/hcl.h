@@ -1712,6 +1712,11 @@ struct hcl_t
 
 #define HCL_STACK_POP(hcl) ((hcl)->sp = (hcl)->sp - 1)
 #define HCL_STACK_POPS(hcl,count) ((hcl)->sp = (hcl)->sp - (count))
+#define HCL_STACK_POP_TO(hcl,v) \
+	do { \
+		v = HCL_STACK_GETTOP(hcl); \
+		HCL_STACK_POP (hcl); \
+	} while(0)
 #define HCL_STACK_ISEMPTY(hcl) ((hcl)->sp <= -1)
 
 /* get the stack pointer of the argument at the given index */
@@ -1829,6 +1834,7 @@ typedef enum hcl_concode_t hcl_concode_t;
 #define HCL_IS_CONTEXT(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_CONTEXT)
 #define HCL_IS_FUNCTION(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_FUNCTION)
 #define HCL_IS_BLOCK(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_BLOCK)
+#define HCL_IS_CLASS(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_CLASS)
 #define HCL_IS_PROCESS(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_PROCESS)
 #define HCL_IS_CONS(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_CONS)
 #define HCL_IS_CONS_CONCODED(hcl,v,concode) (HCL_IS_CONS(hcl,v) && HCL_OBJ_GET_FLAGS_SYNCODE(v) == (concode))
@@ -2444,7 +2450,9 @@ HCL_EXPORT hcl_oop_t hcl_makeclass (
 	hcl_t*            hcl,
 	hcl_oop_t         superclass,
 	hcl_ooi_t         nivars,
-	hcl_ooi_t         ncvars
+	hcl_ooi_t         ncvars,
+	hcl_oop_t         ivars_str,
+	hcl_oop_t         cvars_str
 );
 
 HCL_EXPORT void hcl_freengcobj (
