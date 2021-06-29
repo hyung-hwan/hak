@@ -652,38 +652,26 @@ static int emit_indexed_variable_access (hcl_t* hcl, hcl_oow_t index, hcl_oob_t 
 	HCL_ASSERT (hcl, index < fbi->tmprcnt);
 	for (i = hcl->c->fnblk.depth; i >= 0; i--)
 	{
-		
-#if 0
-		if (fbi->clsblk_top >= 0)
-		{
-			/* inside a class context */
-			
-			break;
-		}
-		else
-		#endif
-		{
-			hcl_oow_t parent_tmprcnt;
+		hcl_oow_t parent_tmprcnt;
 
-			parent_tmprcnt = (i > 0)? hcl->c->fnblk.info[i - 1].tmprcnt: 0;
-			if (index >= parent_tmprcnt)
+		parent_tmprcnt = (i > 0)? hcl->c->fnblk.info[i - 1].tmprcnt: 0;
+		if (index >= parent_tmprcnt)
+		{
+			hcl_oow_t ctx_offset, index_in_ctx;
+			ctx_offset = hcl->c->fnblk.depth - i;
+			index_in_ctx = index - parent_tmprcnt;
+			/* ctx_offset 0 means the current context.
+				*            1 means current->home.
+				*            2 means current->home->home. 
+				* index_in_ctx is a relative index within the context found.
+				*/
+			if (emit_double_param_instruction(hcl, baseinst1, ctx_offset, index_in_ctx, srcloc) <= -1) return -1;
+			if (ctx_offset > 0) 
 			{
-				hcl_oow_t ctx_offset, index_in_ctx;
-				ctx_offset = hcl->c->fnblk.depth - i;
-				index_in_ctx = index - parent_tmprcnt;
-				/* ctx_offset 0 means the current context.
-				 *            1 means current->home.
-				 *            2 means current->home->home. 
-				 * index_in_ctx is a relative index within the context found.
-				 */
-				if (emit_double_param_instruction(hcl, baseinst1, ctx_offset, index_in_ctx, srcloc) <= -1) return -1;
-				if (ctx_offset > 0) 
-				{
-					fbi->access_outer = 1; /* the current function block accesses temporaries in an outer function block */
-					hcl->c->fnblk.info[i].accessed_by_inner = 1; /* temporaries in an outer function block is accessed by the current function block */
-				}
-				return 0;
+				fbi->access_outer = 1; /* the current function block accesses temporaries in an outer function block */
+				hcl->c->fnblk.info[i].accessed_by_inner = 1; /* temporaries in an outer function block is accessed by the current function block */
 			}
+			return 0;
 		}
 	}
 
@@ -692,6 +680,23 @@ static int emit_indexed_variable_access (hcl_t* hcl, hcl_oow_t index, hcl_oob_t 
 	if (emit_single_param_instruction(hcl, baseinst2, index, srcloc) <= -1) return -1;
 	return 0;
 }
+
+#if 0
+static int emit_instance_variable_access (hcl_t* hcl, hcl_oow_t index, hcl_oob_t baseinst1, hcl_oob_t baseinst2, const hcl_ioloc_t* srcloc)
+{
+	if (fbi->clsblk_top >= 0)
+	{
+		/* inside a class context */
+		hcl_clsblk_info_t* cbi;
+		HCL_ASSERT (hcl, fbi->clsblk_base >= 0 && fbi->clsblk_base <= fbi->clsblk_top);
+
+		cbi = &hcl->c->clsblk.info[fbi->clsblk_top]; /* can only find the self variable?? */
+		
+	}
+
+	return 0;
+}
+#endif
 
 /* ========================================================================= */
 static int push_cblk (hcl_t* hcl, const hcl_ioloc_t* errloc, hcl_cblk_type_t type)
@@ -1911,10 +1916,9 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 {
 	/* collect information about declared variables */
 	hcl_cframe_t* cf;
-	hcl_ooi_t nivars, ncvars;
 	hcl_cnode_t* obj;
 	hcl_oop_t tmp;
-	hcl_oow_t saved_tv_wcount, tv_dup_start;
+	hcl_oow_t nivars, ncvars, saved_tv_wcount, tv_dup_start;
 
 	cf = GET_TOP_CFRAME(hcl);
 	obj = cf->operand;
@@ -1928,6 +1932,11 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 
 	if (nivars > 0)
 	{
+		if (nivars > HCL_SMOOI_MAX)
+		{
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARFLOOD, HCL_CNODE_GET_LOC(cf->operand), HCL_NULL, "too many(%zu) instance variables", nivars);
+			goto oops;
+		}
 		/* set starting point past the added space (+1 to index, -1 to length) */
 		tmp = hcl_makestring(hcl, &hcl->c->tv.s.ptr[tv_dup_start + 1], hcl->c->tv.s.len - tv_dup_start - 1, 0); 
 		if (HCL_UNLIKELY(!tmp)) goto oops;
@@ -1936,6 +1945,13 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 	
 	if (ncvars > 0)
 	{
+		if (ncvars > HCL_SMOOI_MAX)
+		{
+			/* TOOD: change the error location ?? */
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARFLOOD, HCL_CNODE_GET_LOC(cf->operand), HCL_NULL, "too many(%zu) class variables", ncvars); 
+			goto oops;
+		}
+
 		tmp = hcl_makestring(hcl, HCL_NULL, 0, 0); /* TODO: set this to the proper string pointer and length ... */
 		if (HCL_UNLIKELY(!tmp)) goto oops;
 		if (emit_push_literal(hcl, tmp, &cf->u._class.start_loc) <= -1) goto oops;
@@ -3174,6 +3190,19 @@ static HCL_INLINE int compile_dsymbol (hcl_t* hcl, hcl_cnode_t* obj)
  *       must differentiate module access and dictioary member access...
  *       must implementate dictionary member access syntax... */
 
+	{ /* HACK FOR NOW */
+		const hcl_ooch_t* sep;
+
+		sep = hcl_find_oochar(HCL_CNODE_GET_TOKPTR(obj), HCL_CNODE_GET_TOKLEN(obj), '.');
+		HCL_ASSERT (hcl, sep != HCL_NULL);
+		if (hcl_comp_oochars_bcstr(HCL_CNODE_GET_TOKPTR(obj), sep - HCL_CNODE_GET_TOKPTR(obj), "self") == 0)
+		{
+			/* instance variable?  or instance method? */
+HCL_DEBUG1 (hcl, ">>>> instance variable or method %js\n", sep + 1);
+		}
+		/* TODO: super? */
+	}
+
 	sym = hcl_makesymbol(hcl, HCL_CNODE_GET_TOKPTR(obj), HCL_CNODE_GET_TOKLEN(obj));
 	if (HCL_UNLIKELY(!sym)) return -1;
 	cons = (hcl_oop_t)hcl_getatsysdic(hcl, sym);
@@ -3190,7 +3219,6 @@ static HCL_INLINE int compile_dsymbol (hcl_t* hcl, hcl_cnode_t* obj)
 		pfbase = hcl_querymod(hcl, HCL_CNODE_GET_TOKPTR(obj), HCL_CNODE_GET_TOKLEN(obj), &mod);
 		if (!pfbase)
 		{
-			/* TODO switch to syntax error */
 			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(obj), HCL_CNODE_GET_TOK(obj), "unknown dotted symbol");
 			return -1;
 		}
