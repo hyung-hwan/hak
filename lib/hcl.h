@@ -169,7 +169,14 @@ enum hcl_option_t
 	HCL_TRAIT,
 	HCL_LOG_MASK,
 	HCL_LOG_MAXCAPA,
-	HCL_LOG_TARGET,
+	HCL_LOG_TARGET_B,
+	HCL_LOG_TARGET_U,
+#if defined(HCL_OOCH_IS_UCH)
+#	define HCL_LOG_TARGET HCL_LOG_TARGET_U
+#else
+#	define HCL_LOG_TARGET HCL_LOG_TARGET_B
+#endif
+
 	HCL_SYMTAB_SIZE,  /* default system table size */
 	HCL_SYSDIC_SIZE,  /* default system dictionary size */
 	HCL_PROCSTK_SIZE, /* default process stack size */
@@ -1466,12 +1473,8 @@ struct hcl_t
 		hcl_bitmask_t trait;
 		hcl_bitmask_t log_mask;
 		hcl_oow_t log_maxcapa;
-		hcl_ooch_t* log_target;
-	#if defined(HCL_OOCH_IS_UCH)
-		hcl_bch_t* log_targetx;
-	#else
-		hcl_uch_t* log_targetx;
-	#endif
+		hcl_bch_t* log_target_b;
+		hcl_uch_t* log_target_u;
 		hcl_oow_t dfl_symtab_size;
 		hcl_oow_t dfl_sysdic_size;
 		hcl_oow_t dfl_procstk_size;

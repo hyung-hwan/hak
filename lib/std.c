@@ -2744,13 +2744,13 @@ static void cb_opt_set (hcl_t* hcl, hcl_option_t id, const void* value)
 	if (id != HCL_LOG_TARGET) return; /* return success. not interested */
 
 #if defined(_WIN32)
-	fd = _open(hcl->option.log_target, _O_CREAT | _O_WRONLY | _O_APPEND | _O_BINARY , 0644);
-#else
 	#if defined(HCL_OOCH_IS_UCH)
-	fd = open(hcl->option.log_targetx, O_CREAT | O_WRONLY | O_APPEND , 0644);
+	fd = _open(hcl->option.log_target_u, _O_CREAT | _O_WRONLY | _O_APPEND | _O_BINARY , 0644);
 	#else
-	fd = open(hcl->option.log_target, O_CREAT | O_WRONLY | O_APPEND , 0644);
+	fd = _open(hcl->option.log_target_b, _O_CREAT | _O_WRONLY | _O_APPEND | _O_BINARY , 0644);
 	#endif
+#else
+	fd = open(hcl->option.log_target_b, O_CREAT | O_WRONLY | O_APPEND , 0644);
 #endif
 	if (fd == -1)
 	{

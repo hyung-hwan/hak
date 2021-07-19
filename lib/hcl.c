@@ -315,16 +315,16 @@ void hcl_fini (hcl_t* hcl)
 		hcl->log.len = 0;
 	}
 
-	if (hcl->option.log_target)
+	if (hcl->option.log_target_u)
 	{
-		hcl_freemem (hcl, hcl->option.log_target);
-		hcl->option.log_target = HCL_NULL;
+		hcl_freemem (hcl, hcl->option.log_target_u);
+		hcl->option.log_target_u = HCL_NULL;
 	}
 
-	if (hcl->option.log_targetx)
+	if (hcl->option.log_target_b)
 	{
-		hcl_freemem (hcl, hcl->option.log_targetx);
-		hcl->option.log_targetx = HCL_NULL;
+		hcl_freemem (hcl, hcl->option.log_target_b);
+		hcl->option.log_target_b = HCL_NULL;
 	}
 
 	if (hcl->inttostr.xbuf.ptr)
@@ -406,33 +406,46 @@ int hcl_setoption (hcl_t* hcl, hcl_option_t id, const void* value)
 			hcl->option.log_maxcapa = *(hcl_oow_t*)value;
 			break;
 
-		case HCL_LOG_TARGET:
-		{
-			hcl_ooch_t* v1;
-		#if defined(HCL_OOCH_IS_UCH)
-			hcl_bch_t* v2;
-		#else
-			hcl_uch_t* v2;
-		#endif
 
-			v1 = hcl_dupoochars(hcl, value, hcl_count_oocstr(value));
+		case HCL_LOG_TARGET_B:
+		{
+			hcl_bch_t* v1;
+			hcl_uch_t* v2;
+
+			v1 = hcl_dupbcstr(hcl, value, HCL_NULL);
 			if (HCL_UNLIKELY(!v1)) return -1;
 
-		#if defined(HCL_OOCH_IS_UCH)
-			v2 = hcl_dupootobcstr(hcl, value, HCL_NULL);
-		#else
-			v2 = hcl_dupootoucstr(hcl, value, HCL_NULL);
-		#endif
+			v2 = hcl_dupbtoucstr(hcl, value, HCL_NULL);
 			if (HCL_UNLIKELY(!v2))
 			{
 				hcl_freemem (hcl, v1);
 				return -1;
 			}
-			hcl->option.log_targetx = v2;
-			hcl->option.log_target = v1;
+
+			hcl->option.log_target_u = v2;
+			hcl->option.log_target_b = v1;
 			break;
 		}
 
+		case HCL_LOG_TARGET_U:
+		{
+			hcl_uch_t* v1;
+			hcl_bch_t* v2;
+
+			v1 = hcl_dupucstr(hcl, value, HCL_NULL);
+			if (HCL_UNLIKELY(!v1)) return -1;
+
+			v2 = hcl_duputobcstr(hcl, value, HCL_NULL);
+			if (HCL_UNLIKELY(!v2))
+			{
+				hcl_freemem (hcl, v1);
+				return -1;
+			}
+
+			hcl->option.log_target_u = v1;
+			hcl->option.log_target_b = v2;
+			break;
+		}
 
 		case HCL_SYMTAB_SIZE:
 		{
@@ -504,8 +517,12 @@ int hcl_getoption (hcl_t* hcl, hcl_option_t id, void* value)
 			*(hcl_oow_t*)value = hcl->option.log_maxcapa;
 			return 0;
 
-		case HCL_LOG_TARGET:
-			*(hcl_ooch_t**)value = hcl->option.log_target;
+		case HCL_LOG_TARGET_B:
+			*(hcl_bch_t**)value = hcl->option.log_target_b;
+			return 0;
+
+		case HCL_LOG_TARGET_U:
+			*(hcl_uch_t**)value = hcl->option.log_target_u;
 			return 0;
 
 		case HCL_SYMTAB_SIZE:
