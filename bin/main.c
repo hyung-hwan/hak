@@ -435,8 +435,49 @@ static int handle_logopt (hcl_t* hcl, const hcl_bch_t* logstr)
 {
 	hcl_bch_t* cm, * flt;
 	hcl_bitmask_t logmask;
-	hcl_oow_t tlen;
+	hcl_oow_t tlen, i;
 	hcl_bcs_t fname;
+
+	static struct
+	{
+		const char* name;
+		int op; /* 0: bitwise-OR, 1: bitwise-AND */
+		hcl_bitmask_t mask;
+	} xtab[] =
+	{
+		{ "",           0, 0 },
+
+		{ "app",        0, HCL_LOG_APP },
+		{ "compiler",   0, HCL_LOG_COMPILER },
+		{ "vm",         0, HCL_LOG_VM },
+		{ "mnemonic",   0, HCL_LOG_MNEMONIC },
+		{ "gc",         0, HCL_LOG_GC },
+		{ "ic",         0, HCL_LOG_IC },
+		{ "primitive",  0, HCL_LOG_PRIMITIVE },
+
+		{ "fatal",      0, HCL_LOG_FATAL },
+		{ "error",      0, HCL_LOG_ERROR },
+		{ "warn",       0, HCL_LOG_WARN },
+		{ "info",       0, HCL_LOG_INFO },
+		{ "debug",      0, HCL_LOG_DEBUG },
+
+		{ "fatal+",     0, HCL_LOG_FATAL },
+		{ "error+",     0, HCL_LOG_FATAL | HCL_LOG_ERROR },
+		{ "warn+",      0, HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN },
+		{ "info+",      0, HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN | HCL_LOG_INFO },
+		{ "debug+",     0, HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN | HCL_LOG_INFO | HCL_LOG_DEBUG },
+
+		{ "fatal-",     0, HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN | HCL_LOG_INFO | HCL_LOG_DEBUG },
+		{ "error-",     0, HCL_LOG_ERROR | HCL_LOG_WARN | HCL_LOG_INFO | HCL_LOG_DEBUG },
+		{ "warn-",      0, HCL_LOG_WARN | HCL_LOG_INFO | HCL_LOG_DEBUG },
+		{ "info-",      0, HCL_LOG_INFO | HCL_LOG_DEBUG },
+		{ "debug-",     0, HCL_LOG_DEBUG },
+
+		{ "-fatal",     1, (~HCL_LOG_FATAL & HCL_LOG_ALL_LEVELS) },
+		{ "-error",     1, (~HCL_LOG_ERROR & HCL_LOG_ALL_LEVELS) },
+		{ "-warn",      1, (~HCL_LOG_WARN & HCL_LOG_ALL_LEVELS) },
+		{ "-info",      1, (~HCL_LOG_INFO & HCL_LOG_ALL_LEVELS) }
+	};
 
 	cm = hcl_find_bchar_in_bcstr(logstr, ',');
 	if (cm)
@@ -451,41 +492,19 @@ static int handle_logopt (hcl_t* hcl, const hcl_bch_t* logstr)
 			cm = hcl_find_bchar_in_bcstr(flt, ',');
 			tlen = (cm)? (cm - flt): hcl_count_bcstr(flt);
 
-			if (hcl_comp_bchars_bcstr(flt, tlen, "app") == 0) logmask |= HCL_LOG_APP;
-			else if (hcl_comp_bchars_bcstr(flt, tlen, "compiler") == 0) logmask |= HCL_LOG_COMPILER;
-			else if (hcl_comp_bchars_bcstr(flt, tlen, "vm") == 0) logmask |= HCL_LOG_VM;
-			else if (hcl_comp_bchars_bcstr(flt, tlen, "mnemonic") == 0) logmask |= HCL_LOG_MNEMONIC;
-			else if (hcl_comp_bchars_bcstr(flt, tlen, "gc") == 0) logmask |= HCL_LOG_GC;
-			else if (hcl_comp_bchars_bcstr(flt, tlen, "ic") == 0) logmask |= HCL_LOG_IC;
-			else if (hcl_comp_bchars_bcstr(flt, tlen, "primitive") == 0) logmask |= HCL_LOG_PRIMITIVE;
-
-			else if (hcl_comp_bchars_bcstr(flt, tlen, "fatal") == 0) logmask |= HCL_LOG_FATAL;
-			else if (hcl_comp_bchars_bcstr(flt, tlen, "error") == 0) logmask |= HCL_LOG_ERROR;
-			else if (hcl_comp_bchars_bcstr(flt, tlen, "warn") == 0) logmask |= HCL_LOG_WARN;
-			else if (hcl_comp_bchars_bcstr(flt, tlen, "info") == 0) logmask |= HCL_LOG_INFO;
-			else if (hcl_comp_bchars_bcstr(flt, tlen, "debug") == 0) logmask |= HCL_LOG_DEBUG;
-
-			else if (hcl_comp_bchars_bcstr(flt, tlen, "fatal+") == 0) logmask |= HCL_LOG_FATAL;
-			else if (hcl_comp_bchars_bcstr(flt, tlen, "error+") == 0) logmask |= HCL_LOG_FATAL | HCL_LOG_ERROR;
-			else if (hcl_comp_bchars_bcstr(flt, tlen, "warn+") == 0) logmask |= HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN;
-			else if (hcl_comp_bchars_bcstr(flt, tlen, "info+") == 0) logmask |= HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN | HCL_LOG_INFO;
-			else if (hcl_comp_bchars_bcstr(flt, tlen, "debug+") == 0) logmask |= HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN | HCL_LOG_INFO | HCL_LOG_DEBUG;
-
-			else if (hcl_comp_bchars_bcstr(flt, tlen, "fatal-") == 0) logmask |= HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN | HCL_LOG_INFO | HCL_LOG_DEBUG;
-			else if (hcl_comp_bchars_bcstr(flt, tlen, "error-") == 0) logmask |= HCL_LOG_ERROR | HCL_LOG_WARN | HCL_LOG_INFO | HCL_LOG_DEBUG;
-			else if (hcl_comp_bchars_bcstr(flt, tlen, "warn-") == 0) logmask |= HCL_LOG_WARN | HCL_LOG_INFO | HCL_LOG_DEBUG;
-			else if (hcl_comp_bchars_bcstr(flt, tlen, "info-") == 0) logmask |= HCL_LOG_INFO | HCL_LOG_DEBUG;
-			else if (hcl_comp_bchars_bcstr(flt, tlen, "debug-") == 0) logmask |= HCL_LOG_DEBUG;
-
-			else if (hcl_comp_bchars_bcstr(flt, tlen, "-fatal") == 0) logmask &= (~HCL_LOG_FATAL & HCL_LOG_ALL_LEVELS);
-			else if (hcl_comp_bchars_bcstr(flt, tlen, "-error") == 0) logmask &= (~HCL_LOG_ERROR & HCL_LOG_ALL_LEVELS);
-			else if (hcl_comp_bchars_bcstr(flt, tlen, "-warn") == 0) logmask &= (~HCL_LOG_WARN & HCL_LOG_ALL_LEVELS);
-			else if (hcl_comp_bchars_bcstr(flt, tlen, "-info") == 0) logmask &= (~HCL_LOG_INFO & HCL_LOG_ALL_LEVELS);
-			else if (hcl_comp_bchars_bcstr(flt, tlen, "-debug") == 0) logmask &= (~HCL_LOG_DEBUG & HCL_LOG_ALL_LEVELS);
-
-			else
+			for (i = 0; i < HCL_COUNTOF(xtab); i++)
 			{
-				fprintf (stderr, "ERROR: invalid value - %s\n", logstr);
+				if (hcl_comp_bchars_bcstr(flt, tlen, xtab[i].name) == 0)
+				{
+					if (xtab[i].op) logmask &= xtab[i].mask;
+					else logmask |= xtab[i].mask;
+					break;
+				}
+			}
+
+			if (i >= HCL_COUNTOF(xtab))
+			{
+				fprintf (stderr, "ERROR: unrecognized value  - [%.*s] - [%s]\n", (int)tlen, flt, logstr);
 				return -1;
 			}
 		}
@@ -501,7 +520,7 @@ static int handle_logopt (hcl_t* hcl, const hcl_bch_t* logstr)
 		fname.len = hcl_count_bcstr(logstr);
 	}
 
-	fname.ptr = logstr;
+	fname.ptr = (hcl_bch_t*)logstr;
 	hcl_setoption (hcl, HCL_LOG_TARGET_BCS, &fname);
 	hcl_setoption (hcl, HCL_LOG_MASK, &logmask);
 	return 0;
