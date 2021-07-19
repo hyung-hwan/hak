@@ -407,7 +407,7 @@ int hcl_setoption (hcl_t* hcl, hcl_option_t id, const void* value)
 			break;
 
 
-		case HCL_LOG_TARGET_B:
+		case HCL_LOG_TARGET_BCSTR:
 		{
 			hcl_bch_t* v1;
 			hcl_uch_t* v2;
@@ -427,7 +427,7 @@ int hcl_setoption (hcl_t* hcl, hcl_option_t id, const void* value)
 			break;
 		}
 
-		case HCL_LOG_TARGET_U:
+		case HCL_LOG_TARGET_UCSTR:
 		{
 			hcl_uch_t* v1;
 			hcl_bch_t* v2;
@@ -436,6 +436,48 @@ int hcl_setoption (hcl_t* hcl, hcl_option_t id, const void* value)
 			if (HCL_UNLIKELY(!v1)) return -1;
 
 			v2 = hcl_duputobcstr(hcl, value, HCL_NULL);
+			if (HCL_UNLIKELY(!v2))
+			{
+				hcl_freemem (hcl, v1);
+				return -1;
+			}
+
+			hcl->option.log_target_u = v1;
+			hcl->option.log_target_b = v2;
+			break;
+		}
+
+		case HCL_LOG_TARGET_BCS:
+		{
+			hcl_bch_t* v1;
+			hcl_uch_t* v2;
+			hcl_bcs_t* v = (hcl_bcs_t*)value;
+
+			v1 = hcl_dupbchars(hcl, v->ptr, v->len);
+			if (HCL_UNLIKELY(!v1)) return -1;
+
+			v2 = hcl_dupbtouchars(hcl, v->ptr, v->len, HCL_NULL);
+			if (HCL_UNLIKELY(!v2))
+			{
+				hcl_freemem (hcl, v1);
+				return -1;
+			}
+
+			hcl->option.log_target_u = v2;
+			hcl->option.log_target_b = v1;
+			break;
+		}
+
+		case HCL_LOG_TARGET_UCS:
+		{
+			hcl_uch_t* v1;
+			hcl_bch_t* v2;
+			hcl_ucs_t* v = (hcl_bcs_t*)value;
+
+			v1 = hcl_dupuchars(hcl, v->ptr, v->len);
+			if (HCL_UNLIKELY(!v1)) return -1;
+
+			v2 = hcl_duputobchars(hcl, v->ptr, v->len, HCL_NULL);
 			if (HCL_UNLIKELY(!v2))
 			{
 				hcl_freemem (hcl, v1);
@@ -517,12 +559,22 @@ int hcl_getoption (hcl_t* hcl, hcl_option_t id, void* value)
 			*(hcl_oow_t*)value = hcl->option.log_maxcapa;
 			return 0;
 
-		case HCL_LOG_TARGET_B:
+		case HCL_LOG_TARGET_BCSTR:
 			*(hcl_bch_t**)value = hcl->option.log_target_b;
 			return 0;
 
-		case HCL_LOG_TARGET_U:
+		case HCL_LOG_TARGET_UCSTR:
 			*(hcl_uch_t**)value = hcl->option.log_target_u;
+			return 0;
+
+		case HCL_LOG_TARGET_BCS:
+			((hcl_bcs_t*)value)->ptr = hcl->option.log_target_b;
+			((hcl_bcs_t*)value)->len = hcl_count_bcstr(hcl->option.log_target_b);
+			return 0;
+
+		case HCL_LOG_TARGET_UCS:
+			((hcl_ucs_t*)value)->ptr = hcl->option.log_target_u;
+			((hcl_ucs_t*)value)->len = hcl_count_ucstr(hcl->option.log_target_u);
 			return 0;
 
 		case HCL_SYMTAB_SIZE:

@@ -2741,7 +2741,8 @@ static void cb_opt_set (hcl_t* hcl, hcl_option_t id, const void* value)
 	xtn_t* xtn = GET_XTN(hcl);
 	int fd;
 
-	if (id != HCL_LOG_TARGET) return; /* return success. not interested */
+	if (id != HCL_LOG_TARGET_BCSTR && id != HCL_LOG_TARGET_UCSTR &&
+	    id != HCL_LOG_TARGET_BCS && id != HCL_LOG_TARGET_UCS) return; /* return success. not interested */
 
 #if defined(_WIN32)
 	#if defined(HCL_OOCH_IS_UCH)

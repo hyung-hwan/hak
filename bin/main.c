@@ -431,58 +431,61 @@ static void gc_hcl (hcl_t* hcl)
 
 /* ========================================================================= */
 
-static int handle_logopt (hcl_t* hcl, const hcl_bch_t* str)
+static int handle_logopt (hcl_t* hcl, const hcl_bch_t* logstr)
 {
-	hcl_ooch_t* xstr, * cm, * flt;
+	hcl_bch_t* cm, * flt;
 	hcl_bitmask_t logmask;
+	hcl_oow_t tlen;
+	hcl_bcs_t fname;
 
-	xstr = hcl_dupbtooochars(hcl, str, hcl_count_bcstr(str), HCL_NULL);
-	if (!xstr)
-	{
-		fprintf (stderr, "ERROR: out of memory in duplicating %s\n", str);
-		return -1;
-	}
-
-	cm = hcl_find_oochar_in_oocstr(xstr, ',');
+	cm = hcl_find_bchar_in_bcstr(logstr, ',');
 	if (cm)
 	{
-		/* i duplicate this string for open() below as open() doesn't
-		 * accept a length-bounded string */
-		cm = hcl_find_oochar_in_oocstr(xstr, ',');
-		*cm = '\0';
-
+		fname.len = cm - logstr;
 		logmask = 0;
+
 		do
 		{
 			flt = cm + 1;
 
-			cm = hcl_find_oochar_in_oocstr(flt, ',');
-			if (cm) *cm = '\0';
+			cm = hcl_find_bchar_in_bcstr(flt, ',');
+			tlen = (cm)? (cm - flt): hcl_count_bcstr(flt);
 
-			if (hcl_comp_oocstr_bcstr(flt, "app") == 0) logmask |= HCL_LOG_APP;
-			else if (hcl_comp_oocstr_bcstr(flt, "compiler") == 0) logmask |= HCL_LOG_COMPILER;
-			else if (hcl_comp_oocstr_bcstr(flt, "vm") == 0) logmask |= HCL_LOG_VM;
-			else if (hcl_comp_oocstr_bcstr(flt, "mnemonic") == 0) logmask |= HCL_LOG_MNEMONIC;
-			else if (hcl_comp_oocstr_bcstr(flt, "gc") == 0) logmask |= HCL_LOG_GC;
-			else if (hcl_comp_oocstr_bcstr(flt, "ic") == 0) logmask |= HCL_LOG_IC;
-			else if (hcl_comp_oocstr_bcstr(flt, "primitive") == 0) logmask |= HCL_LOG_PRIMITIVE;
+			if (hcl_comp_bchars_bcstr(flt, tlen, "app") == 0) logmask |= HCL_LOG_APP;
+			else if (hcl_comp_bchars_bcstr(flt, tlen, "compiler") == 0) logmask |= HCL_LOG_COMPILER;
+			else if (hcl_comp_bchars_bcstr(flt, tlen, "vm") == 0) logmask |= HCL_LOG_VM;
+			else if (hcl_comp_bchars_bcstr(flt, tlen, "mnemonic") == 0) logmask |= HCL_LOG_MNEMONIC;
+			else if (hcl_comp_bchars_bcstr(flt, tlen, "gc") == 0) logmask |= HCL_LOG_GC;
+			else if (hcl_comp_bchars_bcstr(flt, tlen, "ic") == 0) logmask |= HCL_LOG_IC;
+			else if (hcl_comp_bchars_bcstr(flt, tlen, "primitive") == 0) logmask |= HCL_LOG_PRIMITIVE;
 
-			else if (hcl_comp_oocstr_bcstr(flt, "fatal") == 0) logmask |= HCL_LOG_FATAL;
-			else if (hcl_comp_oocstr_bcstr(flt, "error") == 0) logmask |= HCL_LOG_ERROR;
-			else if (hcl_comp_oocstr_bcstr(flt, "warn") == 0) logmask |= HCL_LOG_WARN;
-			else if (hcl_comp_oocstr_bcstr(flt, "info") == 0) logmask |= HCL_LOG_INFO;
-			else if (hcl_comp_oocstr_bcstr(flt, "debug") == 0) logmask |= HCL_LOG_DEBUG;
+			else if (hcl_comp_bchars_bcstr(flt, tlen, "fatal") == 0) logmask |= HCL_LOG_FATAL;
+			else if (hcl_comp_bchars_bcstr(flt, tlen, "error") == 0) logmask |= HCL_LOG_ERROR;
+			else if (hcl_comp_bchars_bcstr(flt, tlen, "warn") == 0) logmask |= HCL_LOG_WARN;
+			else if (hcl_comp_bchars_bcstr(flt, tlen, "info") == 0) logmask |= HCL_LOG_INFO;
+			else if (hcl_comp_bchars_bcstr(flt, tlen, "debug") == 0) logmask |= HCL_LOG_DEBUG;
 
-			else if (hcl_comp_oocstr_bcstr(flt, "fatal+") == 0) logmask |= HCL_LOG_FATAL;
-			else if (hcl_comp_oocstr_bcstr(flt, "error+") == 0) logmask |= HCL_LOG_FATAL | HCL_LOG_ERROR;
-			else if (hcl_comp_oocstr_bcstr(flt, "warn+") == 0) logmask |= HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN;
-			else if (hcl_comp_oocstr_bcstr(flt, "info+") == 0) logmask |= HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN | HCL_LOG_INFO;
-			else if (hcl_comp_oocstr_bcstr(flt, "debug+") == 0) logmask |= HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN | HCL_LOG_INFO | HCL_LOG_DEBUG;
+			else if (hcl_comp_bchars_bcstr(flt, tlen, "fatal+") == 0) logmask |= HCL_LOG_FATAL;
+			else if (hcl_comp_bchars_bcstr(flt, tlen, "error+") == 0) logmask |= HCL_LOG_FATAL | HCL_LOG_ERROR;
+			else if (hcl_comp_bchars_bcstr(flt, tlen, "warn+") == 0) logmask |= HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN;
+			else if (hcl_comp_bchars_bcstr(flt, tlen, "info+") == 0) logmask |= HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN | HCL_LOG_INFO;
+			else if (hcl_comp_bchars_bcstr(flt, tlen, "debug+") == 0) logmask |= HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN | HCL_LOG_INFO | HCL_LOG_DEBUG;
+
+			else if (hcl_comp_bchars_bcstr(flt, tlen, "fatal-") == 0) logmask |= HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN | HCL_LOG_INFO | HCL_LOG_DEBUG;
+			else if (hcl_comp_bchars_bcstr(flt, tlen, "error-") == 0) logmask |= HCL_LOG_ERROR | HCL_LOG_WARN | HCL_LOG_INFO | HCL_LOG_DEBUG;
+			else if (hcl_comp_bchars_bcstr(flt, tlen, "warn-") == 0) logmask |= HCL_LOG_WARN | HCL_LOG_INFO | HCL_LOG_DEBUG;
+			else if (hcl_comp_bchars_bcstr(flt, tlen, "info-") == 0) logmask |= HCL_LOG_INFO | HCL_LOG_DEBUG;
+			else if (hcl_comp_bchars_bcstr(flt, tlen, "debug-") == 0) logmask |= HCL_LOG_DEBUG;
+
+			else if (hcl_comp_bchars_bcstr(flt, tlen, "-fatal") == 0) logmask &= (~HCL_LOG_FATAL & HCL_LOG_ALL_LEVELS);
+			else if (hcl_comp_bchars_bcstr(flt, tlen, "-error") == 0) logmask &= (~HCL_LOG_ERROR & HCL_LOG_ALL_LEVELS);
+			else if (hcl_comp_bchars_bcstr(flt, tlen, "-warn") == 0) logmask &= (~HCL_LOG_WARN & HCL_LOG_ALL_LEVELS);
+			else if (hcl_comp_bchars_bcstr(flt, tlen, "-info") == 0) logmask &= (~HCL_LOG_INFO & HCL_LOG_ALL_LEVELS);
+			else if (hcl_comp_bchars_bcstr(flt, tlen, "-debug") == 0) logmask &= (~HCL_LOG_DEBUG & HCL_LOG_ALL_LEVELS);
 
 			else
 			{
-				fprintf (stderr, "ERROR: invalid value - %s\n", str);
-				hcl_freemem (hcl, xstr);
+				fprintf (stderr, "ERROR: invalid value - %s\n", logstr);
 				return -1;
 			}
 		}
@@ -495,13 +498,11 @@ static int handle_logopt (hcl_t* hcl, const hcl_bch_t* str)
 	else
 	{
 		logmask = HCL_LOG_ALL_LEVELS | HCL_LOG_ALL_TYPES;
+		fname.len = hcl_count_bcstr(logstr);
 	}
 
-
-	hcl_setoption (hcl, HCL_LOG_TARGET, xstr);
-	hcl_freemem (hcl, xstr);
-
-
+	fname.ptr = logstr;
+	hcl_setoption (hcl, HCL_LOG_TARGET_BCS, &fname);
 	hcl_setoption (hcl, HCL_LOG_MASK, &logmask);
 	return 0;
 }
