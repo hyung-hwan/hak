@@ -947,33 +947,33 @@ struct hcl_heap_t
 
 enum hcl_log_mask_t
 {
-	HCL_LOG_DEBUG       = (1u << 0),
-	HCL_LOG_INFO        = (1u << 1),
-	HCL_LOG_WARN        = (1u << 2),
-	HCL_LOG_ERROR       = (1u << 3),
-	HCL_LOG_FATAL       = (1u << 4),
+	HCL_LOG_DEBUG       = ((hcl_bitmask_t)1 << 0),
+	HCL_LOG_INFO        = ((hcl_bitmask_t)1 << 1),
+	HCL_LOG_WARN        = ((hcl_bitmask_t)1 << 2),
+	HCL_LOG_ERROR       = ((hcl_bitmask_t)1 << 3),
+	HCL_LOG_FATAL       = ((hcl_bitmask_t)1 << 4),
 
-	HCL_LOG_UNTYPED     = (1u << 6), /* only to be used by HCL_DEBUGx() and HCL_INFOx() */
-	HCL_LOG_COMPILER    = (1u << 7),
-	HCL_LOG_VM          = (1u << 8),
-	HCL_LOG_MNEMONIC    = (1u << 9), /* bytecode mnemonic */
-	HCL_LOG_GC          = (1u << 10),
-	HCL_LOG_IC          = (1u << 11), /* instruction cycle, fetch-decode-execute */
-	HCL_LOG_PRIMITIVE   = (1u << 12),
+	HCL_LOG_UNTYPED     = ((hcl_bitmask_t)1 << 6), /* only to be used by HCL_DEBUGx() and HCL_INFOx() */
+	HCL_LOG_COMPILER    = ((hcl_bitmask_t)1 << 7),
+	HCL_LOG_VM          = ((hcl_bitmask_t)1 << 8),
+	HCL_LOG_MNEMONIC    = ((hcl_bitmask_t)1 << 9), /* bytecode mnemonic */
+	HCL_LOG_GC          = ((hcl_bitmask_t)1 << 10),
+	HCL_LOG_IC          = ((hcl_bitmask_t)1 << 11), /* instruction cycle, fetch-decode-execute */
+	HCL_LOG_PRIMITIVE   = ((hcl_bitmask_t)1 << 12),
 
-	HCL_LOG_APP         = (1u << 13), /* hcl applications, set by hcl logging primitive */
-	HCL_LOG_APP_X1      = (1u << 14), /* more hcl applications, you can choose to use one of APP_X? randomly */
-	HCL_LOG_APP_X2      = (1u << 15),
-	HCL_LOG_APP_X3      = (1u << 16),
+	HCL_LOG_APP         = ((hcl_bitmask_t)1 << 13), /* hcl applications, set by hcl logging primitive */
+	HCL_LOG_APP_X1      = ((hcl_bitmask_t)1 << 14), /* more hcl applications, you can choose to use one of APP_X? randomly */
+	HCL_LOG_APP_X2      = ((hcl_bitmask_t)1 << 15),
+	HCL_LOG_APP_X3      = ((hcl_bitmask_t)1 << 16),
 
 	HCL_LOG_ALL_LEVELS  = (HCL_LOG_DEBUG  | HCL_LOG_INFO | HCL_LOG_WARN | HCL_LOG_ERROR | HCL_LOG_FATAL),
 	HCL_LOG_ALL_TYPES   = (HCL_LOG_UNTYPED | HCL_LOG_COMPILER | HCL_LOG_VM | HCL_LOG_MNEMONIC | HCL_LOG_GC | HCL_LOG_IC | HCL_LOG_PRIMITIVE | HCL_LOG_APP | HCL_LOG_APP_X1 | HCL_LOG_APP_X2 | HCL_LOG_APP_X3),
 
 
-	HCL_LOG_STDOUT      = (1u << 20),  /* write log messages to stdout without timestamp. HCL_LOG_STDOUT wins over HCL_LOG_STDERR. */
-	HCL_LOG_STDERR      = (1u << 21),  /* write log messages to stderr without timestamp. */
+	HCL_LOG_STDOUT      = ((hcl_bitmask_t)1 << 20),  /* write log messages to stdout without timestamp. HCL_LOG_STDOUT wins over HCL_LOG_STDERR. */
+	HCL_LOG_STDERR      = ((hcl_bitmask_t)1 << 21),  /* write log messages to stderr without timestamp. */
 
-	HCL_LOG_PREFER_JSON = (1u << 30)   /* write a object in the json format. don't set this explicitly. use %J instead */
+	HCL_LOG_PREFER_JSON = ((hcl_bitmask_t)1 << 30)   /* write a object in the json format. don't set this explicitly. use %J instead */
 };
 typedef enum hcl_log_mask_t hcl_log_mask_t;
 

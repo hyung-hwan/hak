@@ -472,7 +472,7 @@ int hcl_setoption (hcl_t* hcl, hcl_option_t id, const void* value)
 		{
 			hcl_uch_t* v1;
 			hcl_bch_t* v2;
-			hcl_ucs_t* v = (hcl_bcs_t*)value;
+			hcl_ucs_t* v = (hcl_ucs_t*)value;
 
 			v1 = hcl_dupuchars(hcl, v->ptr, v->len);
 			if (HCL_UNLIKELY(!v1)) return -1;
