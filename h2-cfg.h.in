@@ -1,0 +1,247 @@
+/* h2-cfg.h.in.  Generated from configure.ac by autoheader.  */
+
+/* Define if building universal (internal helper macro) */
+#undef AC_APPLE_UNIVERSAL_BUILD
+
+/* Define h2_char_t to h2_mchar_t */
+#undef H2_CHAR_IS_MCHAR
+
+/* Define h2_char_t to h2_wchar_t */
+#undef H2_CHAR_IS_WCHAR
+
+/* Define h2_char_t to h2_wwchar_t */
+#undef H2_CHAR_IS_WWCHAR
+
+/* link modules statically into the main library */
+#undef H2_ENABLE_STATIC_MODULE
+
+/* Big Endian */
+#undef H2_ENDIAN_BIG
+
+/* Little Endian */
+#undef H2_ENDIAN_LITTLE
+
+/* Unknown Endian */
+#undef H2_ENDIAN_UNKNOWN
+
+/* Author */
+#undef H2_PACKAGE_AUTHOR
+
+/* package name */
+#undef H2_PACKAGE_NAME
+
+/* Project URL */
+#undef H2_PACKAGE_URL
+
+/* Package version */
+#undef H2_PACKAGE_VERSION
+
+/* Major version number */
+#undef H2_PACKAGE_VERSION_MAJOR
+
+/* Minor version number */
+#undef H2_PACKAGE_VERSION_MINOR
+
+/* Patch level */
+#undef H2_PACKAGE_VERSION_PATCH
+
+/* sizeof(char) */
+#undef H2_SIZEOF_CHAR
+
+/* sizeof(double) */
+#undef H2_SIZEOF_DOUBLE
+
+/* sizeof(float) */
+#undef H2_SIZEOF_FLOAT
+
+/* sizeof(int) */
+#undef H2_SIZEOF_INT
+
+/* sizeof(long) */
+#undef H2_SIZEOF_LONG
+
+/* sizeof(long double) */
+#undef H2_SIZEOF_LONG_DOUBLE
+
+/* sizeof(long long) */
+#undef H2_SIZEOF_LONG_LONG
+
+/* sizeof(off64_t) */
+#undef H2_SIZEOF_OFF64_T
+
+/* sizeof(off_t) */
+#undef H2_SIZEOF_OFF_T
+
+/* sizeof(short) */
+#undef H2_SIZEOF_SHORT
+
+/* sizeof(void*) */
+#undef H2_SIZEOF_VOID_P
+
+/* sizeof(__float128) */
+#undef H2_SIZEOF___FLOAT128
+
+/* sizeof(__int128) */
+#undef H2_SIZEOF___INT128
+
+/* sizeof(__int128_t) */
+#undef H2_SIZEOF___INT128_T
+
+/* sizeof(__int16) */
+#undef H2_SIZEOF___INT16
+
+/* sizeof(__int32) */
+#undef H2_SIZEOF___INT32
+
+/* sizeof(__int64) */
+#undef H2_SIZEOF___INT64
+
+/* sizeof(__int8) */
+#undef H2_SIZEOF___INT8
+
+/* Define to 1 if you have the <dlfcn.h> header file. */
+#undef HAVE_DLFCN_H
+
+/* Define to 1 if you have the <inttypes.h> header file. */
+#undef HAVE_INTTYPES_H
+
+/* Define to 1 if you have the <memory.h> header file. */
+#undef HAVE_MEMORY_H
+
+/* Define to 1 if you have the <stdint.h> header file. */
+#undef HAVE_STDINT_H
+
+/* Define to 1 if you have the <stdlib.h> header file. */
+#undef HAVE_STDLIB_H
+
+/* Define to 1 if you have the <strings.h> header file. */
+#undef HAVE_STRINGS_H
+
+/* Define to 1 if you have the <string.h> header file. */
+#undef HAVE_STRING_H
+
+/* Define to 1 if you have the <sys/stat.h> header file. */
+#undef HAVE_SYS_STAT_H
+
+/* Define to 1 if you have the <sys/types.h> header file. */
+#undef HAVE_SYS_TYPES_H
+
+/* Define to 1 if you have the <unistd.h> header file. */
+#undef HAVE_UNISTD_H
+
+/* va_copy is available */
+#undef HAVE_VA_COPY
+
+/* __va_copy is available */
+#undef HAVE___VA_COPY
+
+/* Define to the sub-directory where libtool stores uninstalled libraries. */
+#undef LT_OBJDIR
+
+/* Name of package */
+#undef PACKAGE
+
+/* Define to the address where bug reports for this package should be sent. */
+#undef PACKAGE_BUGREPORT
+
+/* Define to the full name of this package. */
+#undef PACKAGE_NAME
+
+/* Define to the full name and version of this package. */
+#undef PACKAGE_STRING
+
+/* Define to the one symbol short name of this package. */
+#undef PACKAGE_TARNAME
+
+/* Define to the home page for this package. */
+#undef PACKAGE_URL
+
+/* Define to the version of this package. */
+#undef PACKAGE_VERSION
+
+/* The size of `char', as computed by sizeof. */
+#undef SIZEOF_CHAR
+
+/* The size of `double', as computed by sizeof. */
+#undef SIZEOF_DOUBLE
+
+/* The size of `float', as computed by sizeof. */
+#undef SIZEOF_FLOAT
+
+/* The size of `int', as computed by sizeof. */
+#undef SIZEOF_INT
+
+/* The size of `long', as computed by sizeof. */
+#undef SIZEOF_LONG
+
+/* The size of `long double', as computed by sizeof. */
+#undef SIZEOF_LONG_DOUBLE
+
+/* The size of `long long', as computed by sizeof. */
+#undef SIZEOF_LONG_LONG
+
+/* The size of `off64_t', as computed by sizeof. */
+#undef SIZEOF_OFF64_T
+
+/* The size of `off_t', as computed by sizeof. */
+#undef SIZEOF_OFF_T
+
+/* The size of `short', as computed by sizeof. */
+#undef SIZEOF_SHORT
+
+/* The size of `void *', as computed by sizeof. */
+#undef SIZEOF_VOID_P
+
+/* The size of `wchar_t', as computed by sizeof. */
+#undef SIZEOF_WCHAR_T
+
+/* The size of `__float128', as computed by sizeof. */
+#undef SIZEOF___FLOAT128
+
+/* The size of `__int128', as computed by sizeof. */
+#undef SIZEOF___INT128
+
+/* The size of `__int128_t', as computed by sizeof. */
+#undef SIZEOF___INT128_T
+
+/* The size of `__int16', as computed by sizeof. */
+#undef SIZEOF___INT16
+
+/* The size of `__int16_t', as computed by sizeof. */
+#undef SIZEOF___INT16_T
+
+/* The size of `__int32', as computed by sizeof. */
+#undef SIZEOF___INT32
+
+/* The size of `__int32_t', as computed by sizeof. */
+#undef SIZEOF___INT32_T
+
+/* The size of `__int64', as computed by sizeof. */
+#undef SIZEOF___INT64
+
+/* The size of `__int64_t', as computed by sizeof. */
+#undef SIZEOF___INT64_T
+
+/* The size of `__int8', as computed by sizeof. */
+#undef SIZEOF___INT8
+
+/* The size of `__int8_t', as computed by sizeof. */
+#undef SIZEOF___INT8_T
+
+/* Define to 1 if you have the ANSI C header files. */
+#undef STDC_HEADERS
+
+/* Version number of package */
+#undef VERSION
+
+/* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
+   significant byte first (like Motorola and SPARC, unlike Intel). */
+#if defined AC_APPLE_UNIVERSAL_BUILD
+# if defined __BIG_ENDIAN__
+#  define WORDS_BIGENDIAN 1
+# endif
+#else
+# ifndef WORDS_BIGENDIAN
+#  undef WORDS_BIGENDIAN
+# endif
+#endif

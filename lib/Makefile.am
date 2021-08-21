@@ -1,7 +1,5 @@
 AUTOMAKE_OPTIONS = nostdinc subdir-objects
 
-SUBDIRS = cmn
-
 EXTRA_DIST =  \
 	h2.ads \
 	h2-pool.ads \
