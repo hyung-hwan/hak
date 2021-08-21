@@ -65,7 +65,7 @@ package body H2.Pool is
 
 		if P = null then
 			declare
-				procedure Dealloc is new Ada.Unchecked_Deallocation (Normal_Type, Pointer_Type);
+				procedure Dealloc is new Ada.Unchecked_Deallocation(Normal_Type, Pointer_Type);
 			begin
 				Dealloc (Target);
 			end;
@@ -73,9 +73,9 @@ package body H2.Pool is
 			declare
 				type Pooled_Pointer is access Normal_Type;
 				for Pooled_Pointer'Storage_Pool use P.all;
-				function To_Pooled_Pointer is new Ada.Unchecked_Conversion (Pointer_Type, Pooled_Pointer);
-				procedure Dealloc is new Ada.Unchecked_Deallocation (Normal_Type, Pooled_Pointer);
-				Tmp: Pooled_Pointer := To_Pooled_Pointer (Target);
+				function To_Pooled_Pointer is new Ada.Unchecked_Conversion(Pointer_Type, Pooled_Pointer);
+				procedure Dealloc is new Ada.Unchecked_Deallocation(Normal_Type, Pooled_Pointer);
+				Tmp: Pooled_Pointer := To_Pooled_Pointer(Target);
 			begin
 				Dealloc (Tmp);
 				Target := null;	

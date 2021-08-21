@@ -1,7 +1,7 @@
 AUTOMAKE_OPTION = foreign
 ACLOCAL_AMFLAGS = -I m4
 
-SUBDIRS = lib cmd
+SUBDIRS = lib bin
 DIST_SUBDIRS = $(SUBDIRS) 
 
 distclean-local:

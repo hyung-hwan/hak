@@ -44,6 +44,33 @@ procedure scheme is
 
 begin
 	--h2init;
+ada.text_io.put ("Object_Size'Last: ");
+ada.text_io.put_line (Scheme.Object_Size'Image(Scheme.Object_Size'Last));
+
+ada.text_io.put ("Object_Byte'Size: ");
+ada.text_io.put_line (Scheme.Object_Size'Image(Scheme.Object_Byte'Size));
+ada.text_io.put ("Object_Word'Size: ");
+ada.text_io.put_line (Scheme.Object_Size'Image(Scheme.Object_Word'Size));
+ada.text_io.put ("Object_Pointer'Size: ");
+ada.text_io.put_line (Scheme.Object_Size'Image(Scheme.Object_Pointer'Size));
+
+
+ada.text_io.put ("Object_Pointer_Bits: ");
+ada.text_io.put_line (Scheme.Object_Size'Image(Scheme.Object_Pointer_Bits));
+ada.text_io.put ("Object_Pointer_Bytes: ");
+ada.text_io.put_line (Scheme.Object_Size'Image(Scheme.Object_Pointer_Bytes));
+ada.text_io.put ("Object_Header_Bytes: ");
+ada.text_io.put_line (Scheme.Object_Size'Image(Scheme.Object_Header_Bytes));
+ada.text_io.put ("Object_Payload_Max_Bytes: ");
+ada.text_io.put_line (Scheme.Object_Size'Image(Scheme.Object_Payload_Max_Bytes));
+
+ada.text_io.put ("Byte_Object_Size_last: ");
+ada.text_io.put_line (Scheme.Object_Size'Image(Scheme.Byte_Object_Size_Last));
+ada.text_io.put ("Pointer_Object_Size_last: ");
+ada.text_io.put_line (Scheme.Object_Size'Image(Scheme.Pointer_Object_Size_Last));
+
+ada.text_io.put_line (Scheme.Object_Size'Image(Scheme.Empty_Object_Record'Size));
+ada.text_io.put_line (Scheme.Object_Size'Image(Scheme.Empty_Object_Record'Max_Size_In_Storage_Elements));
 
 declare
 	package OS is new H2.OS (
@@ -176,8 +203,8 @@ end;
 
 	-- Specify the named stream handler
 	Scheme.Set_Option (SI, (Scheme.Stream_Option,
-	                   Stream.Allocate_Stream'Access,
-	                   Stream.Deallocate_Stream'Access)
+	                        Stream.Allocate_Stream'Access,
+	                        Stream.Deallocate_Stream'Access)
 	);
 
 Scheme.Set_Option (SI, (Scheme.Trait_Option, Scheme.No_Optimization));

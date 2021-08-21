@@ -1,4 +1,4 @@
-AUTOMAKE_OPTIONS = nostdinc
+AUTOMAKE_OPTIONS = nostdinc subdir-objects
 
 SUBDIRS = cmn
 

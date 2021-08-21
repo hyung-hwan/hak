@@ -458,7 +458,7 @@ package body H2.Scheme is
 			when Integer_Token =>
 				-- TODO: bignum
 				--return String_To_Integer_Pointer(Token.Value.Ptr.all(1..Token.Value.Last));
-				return Bigint.From_String (Interp, Token.Value.Ptr.all(1..Token.Value.Last),  10);
+				return Bigint.From_String(Interp, Token.Value.Ptr.all(1..Token.Value.Last),  10);
 
 			when Character_Token =>
 				pragma Assert (Token.Value.Last = 1);
@@ -733,8 +733,8 @@ ada.text_io.put_line ("HEAP SOURCE IS NIL");
 		--pragma Import (Ada, Src);
 
 		-- So let me turn to unchecked conversion instead.
-		function Conv1 is new Ada.Unchecked_Conversion (Object_Pointer, Thin_Heap_Element_Array_Pointer);
-		function Conv2 is new Ada.Unchecked_Conversion (Heap_Element_Pointer, Thin_Heap_Element_Array_Pointer);
+		function Conv1 is new Ada.Unchecked_Conversion(Object_Pointer, Thin_Heap_Element_Array_Pointer);
+		function Conv2 is new Ada.Unchecked_Conversion(Heap_Element_Pointer, Thin_Heap_Element_Array_Pointer);
 		Src: Thin_Heap_Element_Array_Pointer := Conv1(Source);
 		Tgt: Thin_Heap_Element_Array_Pointer := Conv2(Target);
 	begin
@@ -1027,7 +1027,7 @@ end if;
 		for Result'Address use Ptr'Address;
 		pragma Import (Ada, Result);
 	begin
-		Ptr := Allocate_Bytes (
+		Ptr := Allocate_Bytes(
 			Interp,
 			Heap_Size'(Pointer_Object_Record'Max_Size_In_Storage_Elements)
 		);
@@ -1226,7 +1226,7 @@ end if;
 		Push_Top (Interp.all, Aliased_Car'Unchecked_Access);
 		Push_Top (Interp.all, Aliased_Cdr'Unchecked_Access);
 
-		Cons := Allocate_Pointer_Object (Interp, Cons_Object_Size, Nil_Pointer);
+		Cons := Allocate_Pointer_Object(Interp, Cons_Object_Size, Nil_Pointer);
 		Cons.Pointer_Slot(Cons_Car_Index) := Aliased_Car;
 		Cons.Pointer_Slot(Cons_Cdr_Index) := Aliased_Cdr;
 		Cons.Tag := Cons_Object;
@@ -2009,9 +2009,9 @@ end if;
 	                Storage_Pool:      in     Storage_Pool_Pointer := null) is
 
 		procedure Initialize_Heap (Size: Heap_Size) is
-			subtype Target_Heap_Record is Heap_Record (Size);
+			subtype Target_Heap_Record is Heap_Record(Size);
 			type Target_Heap_Pointer is access all Target_Heap_Record;
-			package Pool is new H2.Pool (Target_Heap_Record, Target_Heap_Pointer, Interp.Storage_Pool);
+			package Pool is new H2.Pool(Target_Heap_Record, Target_Heap_Pointer, Interp.Storage_Pool);
 		begin
 			for I in Interp.Heap'Range loop
 				Interp.Heap(I) := null; -- just in case
@@ -2036,58 +2036,58 @@ end if;
 		procedure Make_Syntax_Objects is
 			Dummy: Object_Pointer;
 		begin
-			Dummy := Make_Syntax (Interp.Self, And_Syntax,    Label_And); -- "and"
-			Dummy := Make_Syntax (Interp.Self, Begin_Syntax,  Label_Begin); -- "begin"
-			Dummy := Make_Syntax (Interp.Self, Case_Syntax,   Label_Case); -- "case"
-			Dummy := Make_Syntax (Interp.Self, Cond_Syntax,   Label_Cond); -- "cond"
-			Dummy := Make_Syntax (Interp.Self, Define_Syntax, Label_Define); -- "define"
-			Dummy := Make_Syntax (Interp.Self, Do_Syntax,     Label_Do); -- "do"
-			Dummy := Make_Syntax (Interp.Self, If_Syntax,     Label_If); -- "if"
-			Dummy := Make_Syntax (Interp.Self, Lambda_Syntax, Label_Lambda); -- "lamba"
-			Dummy := Make_Syntax (Interp.Self, Let_Syntax,    Label_Let); -- "let"
-			Dummy := Make_Syntax (Interp.Self, Letast_Syntax, Label_Letast); -- "let*"
-			Dummy := Make_Syntax (Interp.Self, Letrec_Syntax, Label_Letrec); -- "letrec"
-			Dummy := Make_Syntax (Interp.Self, Or_Syntax,     Label_Or); -- "or"
-			Interp.Quote_Symbol := Make_Syntax (Interp.Self, Quote_Syntax,  Label_Quote); -- "quote"
-			Interp.Quasiquote_Symbol := Make_Syntax (Interp.Self, Quasiquote_Syntax,  Label_Quasiquote); -- "quasiquote"
-			Dummy := Make_Syntax (Interp.Self, Set_Syntax,    Label_Set); -- "set!"
+			Dummy := Make_Syntax(Interp.Self, And_Syntax,    Label_And); -- "and"
+			Dummy := Make_Syntax(Interp.Self, Begin_Syntax,  Label_Begin); -- "begin"
+			Dummy := Make_Syntax(Interp.Self, Case_Syntax,   Label_Case); -- "case"
+			Dummy := Make_Syntax(Interp.Self, Cond_Syntax,   Label_Cond); -- "cond"
+			Dummy := Make_Syntax(Interp.Self, Define_Syntax, Label_Define); -- "define"
+			Dummy := Make_Syntax(Interp.Self, Do_Syntax,     Label_Do); -- "do"
+			Dummy := Make_Syntax(Interp.Self, If_Syntax,     Label_If); -- "if"
+			Dummy := Make_Syntax(Interp.Self, Lambda_Syntax, Label_Lambda); -- "lamba"
+			Dummy := Make_Syntax(Interp.Self, Let_Syntax,    Label_Let); -- "let"
+			Dummy := Make_Syntax(Interp.Self, Letast_Syntax, Label_Letast); -- "let*"
+			Dummy := Make_Syntax(Interp.Self, Letrec_Syntax, Label_Letrec); -- "letrec"
+			Dummy := Make_Syntax(Interp.Self, Or_Syntax,     Label_Or); -- "or"
+			Interp.Quote_Symbol := Make_Syntax(Interp.Self, Quote_Syntax,  Label_Quote); -- "quote"
+			Interp.Quasiquote_Symbol := Make_Syntax(Interp.Self, Quasiquote_Syntax,  Label_Quasiquote); -- "quasiquote"
+			Dummy := Make_Syntax(Interp.Self, Set_Syntax,    Label_Set); -- "set!"
 		end Make_Syntax_Objects;
 
 		procedure Make_Procedure_Objects is
 			Dummy: Object_Pointer;
 		begin
 
-			Dummy := Make_Procedure (Interp.Self, Callcc_Procedure,       Label_Callcc); -- "call-with-current-continuation"
-			Dummy := Make_Procedure (Interp.Self, Car_Procedure,          Label_Car); -- "car"
-			Dummy := Make_Procedure (Interp.Self, Cdr_Procedure,          Label_Cdr); -- "cdr"
-			Dummy := Make_Procedure (Interp.Self, Cons_Procedure,         Label_Cons); -- "cons"
-			Dummy := Make_Procedure (Interp.Self, Not_Procedure,          Label_Not); -- "not"
+			Dummy := Make_Procedure(Interp.Self, Callcc_Procedure,       Label_Callcc); -- "call-with-current-continuation"
+			Dummy := Make_Procedure(Interp.Self, Car_Procedure,          Label_Car); -- "car"
+			Dummy := Make_Procedure(Interp.Self, Cdr_Procedure,          Label_Cdr); -- "cdr"
+			Dummy := Make_Procedure(Interp.Self, Cons_Procedure,         Label_Cons); -- "cons"
+			Dummy := Make_Procedure(Interp.Self, Not_Procedure,          Label_Not); -- "not"
 
 
-			Dummy := Make_Procedure (Interp.Self, N_Add_Procedure,        Label_N_Add); -- "+"
-			Dummy := Make_Procedure (Interp.Self, N_EQ_Procedure,         Label_N_EQ); -- "="
-			Dummy := Make_Procedure (Interp.Self, N_GE_Procedure,         Label_N_GE); -- ">="
-			Dummy := Make_Procedure (Interp.Self, N_GT_Procedure,         Label_N_GT); -- ">"
-			Dummy := Make_Procedure (Interp.Self, N_LE_Procedure,         Label_N_LE); -- "<="
-			Dummy := Make_Procedure (Interp.Self, N_LT_Procedure,         Label_N_LT); -- "<"
-			Dummy := Make_Procedure (Interp.Self, N_Multiply_Procedure,   Label_N_Multiply); -- "*"
-			Dummy := Make_Procedure (Interp.Self, N_Quotient_Procedure,   Label_N_Quotient); -- "quotient"
-			Dummy := Make_Procedure (Interp.Self, N_Remainder_Procedure,  Label_N_Remainder); -- "remainder"
-			Dummy := Make_Procedure (Interp.Self, N_Subtract_Procedure,   Label_N_Subtract); -- "-"
+			Dummy := Make_Procedure(Interp.Self, N_Add_Procedure,        Label_N_Add); -- "+"
+			Dummy := Make_Procedure(Interp.Self, N_EQ_Procedure,         Label_N_EQ); -- "="
+			Dummy := Make_Procedure(Interp.Self, N_GE_Procedure,         Label_N_GE); -- ">="
+			Dummy := Make_Procedure(Interp.Self, N_GT_Procedure,         Label_N_GT); -- ">"
+			Dummy := Make_Procedure(Interp.Self, N_LE_Procedure,         Label_N_LE); -- "<="
+			Dummy := Make_Procedure(Interp.Self, N_LT_Procedure,         Label_N_LT); -- "<"
+			Dummy := Make_Procedure(Interp.Self, N_Multiply_Procedure,   Label_N_Multiply); -- "*"
+			Dummy := Make_Procedure(Interp.Self, N_Quotient_Procedure,   Label_N_Quotient); -- "quotient"
+			Dummy := Make_Procedure(Interp.Self, N_Remainder_Procedure,  Label_N_Remainder); -- "remainder"
+			Dummy := Make_Procedure(Interp.Self, N_Subtract_Procedure,   Label_N_Subtract); -- "-"
 
-			Dummy := Make_Procedure (Interp.Self, Q_Boolean_Procedure,    Label_Q_Boolean); -- "boolean?"
-			Dummy := Make_Procedure (Interp.Self, Q_Eq_Procedure,         Label_Q_Eq); -- "eq?"
-			Dummy := Make_Procedure (Interp.Self, Q_Eqv_Procedure,        Label_Q_Eqv); -- "eqv?"
-			Dummy := Make_Procedure (Interp.Self, Q_Null_Procedure,       Label_Q_Null); -- "null?"
-			Dummy := Make_Procedure (Interp.Self, Q_Number_Procedure,     Label_Q_Number); -- "number?"
-			Dummy := Make_Procedure (Interp.Self, Q_Pair_Procedure,       Label_Q_Pair); -- "pair?"
-			Dummy := Make_Procedure (Interp.Self, Q_Procedure_Procedure,  Label_Q_Procedure); -- "procedure?"
-			Dummy := Make_Procedure (Interp.Self, Q_String_Procedure,     Label_Q_String); -- "string?"
-			Dummy := Make_Procedure (Interp.Self, Q_String_EQ_Procedure,  Label_Q_String_EQ); -- "string=?"
-			Dummy := Make_Procedure (Interp.Self, Q_Symbol_Procedure,     Label_Q_Symbol); -- "symbol?"
+			Dummy := Make_Procedure(Interp.Self, Q_Boolean_Procedure,    Label_Q_Boolean); -- "boolean?"
+			Dummy := Make_Procedure(Interp.Self, Q_Eq_Procedure,         Label_Q_Eq); -- "eq?"
+			Dummy := Make_Procedure(Interp.Self, Q_Eqv_Procedure,        Label_Q_Eqv); -- "eqv?"
+			Dummy := Make_Procedure(Interp.Self, Q_Null_Procedure,       Label_Q_Null); -- "null?"
+			Dummy := Make_Procedure(Interp.Self, Q_Number_Procedure,     Label_Q_Number); -- "number?"
+			Dummy := Make_Procedure(Interp.Self, Q_Pair_Procedure,       Label_Q_Pair); -- "pair?"
+			Dummy := Make_Procedure(Interp.Self, Q_Procedure_Procedure,  Label_Q_Procedure); -- "procedure?"
+			Dummy := Make_Procedure(Interp.Self, Q_String_Procedure,     Label_Q_String); -- "string?"
+			Dummy := Make_Procedure(Interp.Self, Q_String_EQ_Procedure,  Label_Q_String_EQ); -- "string=?"
+			Dummy := Make_Procedure(Interp.Self, Q_Symbol_Procedure,     Label_Q_Symbol); -- "symbol?"
 
-			Dummy := Make_Procedure (Interp.Self, Setcar_Procedure,       Label_Setcar); -- "set-car!"
-			Dummy := Make_Procedure (Interp.Self, Setcdr_Procedure,       Label_Setcdr); -- "set-cdr!"
+			Dummy := Make_Procedure(Interp.Self, Setcar_Procedure,       Label_Setcar); -- "set-car!"
+			Dummy := Make_Procedure(Interp.Self, Setcdr_Procedure,       Label_Setcdr); -- "set-cdr!"
 
 		end Make_Procedure_Objects;
 

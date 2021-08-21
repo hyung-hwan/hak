@@ -61,16 +61,18 @@ package H2.Scheme is
 	-- While I could define Heap_Element and Heap_Size to be
 	-- the subtype of Object_Byte and Object_Size each, they are not
 	-- logically the same thing.
-	-- subtype Storage_Element is Object_Byte;
-	-- subtype Storage_Count is Object_Size;
-	type Heap_Element is mod 2 ** System.Storage_Unit;
-	type Heap_Size is range 0 .. (2 ** (System.Word_Size - 1)) - 1;
+	-- subtype Heap_Element is Object_Byte;
+	-- subtype Heap_Size is Object_Size;
+	--type Heap_Element is mod 2 ** System_Byte_Bits;
+	--type Heap_Size is range 0 .. (2 ** (System_Word_Bits - 1)) - 1;
+	subtype Heap_Element is System_Byte;
+	subtype Heap_Size is System_Size;
 
 	-- -----------------------------------------------------------------------
 
 	-- An object pointer takes up as many bytes as a system word.
-	Object_Pointer_Bits: constant := System.Word_Size;
-	Object_Pointer_Bytes: constant := Object_Pointer_Bits / System.Storage_Unit;
+	Object_Pointer_Bits: constant := System_Word_Bits;
+	Object_Pointer_Bytes: constant := Object_Pointer_Bits / System_Byte_Bits;
 
 	-- I use the lower 2 bits to indicate the type of an object pointer.
 	-- A real object pointer is typically allocated on a word boundary.
@@ -134,15 +136,13 @@ package H2.Scheme is
 
 	-- The Object_Size type defines the size of object payload.
 	-- It is the number of payload items for each object kind.
-	--type Object_Size is new Object_Word range 0 .. (2 ** (System.Word_Size - 1)) - 1;
-	--type Object_Size is new Object_Word range 0 .. 1000;
-	--type Object_Size is new Object_Word;
 	type Object_Size is new System_Size;
 	for Object_Size'Size use Object_Pointer_Bits; -- for GC
 	subtype Object_Index is Object_Size range Object_Size(System_Index'First) .. Object_Size(System_Index'Last);
 
-	type Object_Byte is mod 2 ** System.Storage_Unit;
-	for Object_Byte'Size use System.Storage_Unit;
+	--type Object_Byte is mod 2 ** System_Byte_Bits;
+	--for Object_Byte'Size use System_Byte_Bits;
+	subtype Object_Byte is System_Byte;
 
 	subtype Object_Character is Character_Type;
 
@@ -272,10 +272,13 @@ package H2.Scheme is
 	for Object_Record'Alignment use Object_Pointer_Bytes;
 
 	-- the following 3 size types are defined for limiting the object size range.
-	subtype Empty_Object_Record is Object_Record (Byte_Object, 0);
+	subtype Empty_Object_Record is Object_Record(Byte_Object, 0);
 
+
+	Object_Header_Bits: constant Object_Size := Empty_Object_Record'Size;
 	-- the number of bytes in an object header. this is fixed in size
-	Object_Header_Bytes: constant Object_Size := Empty_Object_Record'Max_Size_In_Storage_Elements;
+	-- Object_Header_Bytes: constant Object_Size := Empty_Object_Record'Max_Size_In_Storage_Elements;
+	Object_Header_Bytes: constant Object_Size := Object_Header_Bits / System_Byte_Bits;
 	-- the largest number of bytes that an object can hold after the header
 	Object_Payload_Max_Bytes: constant Object_Size := Object_Size'Last - Object_Header_Bytes;
 
@@ -283,16 +286,17 @@ package H2.Scheme is
 	-- the upper bound is set to the maximum that don't cause overflow in calcuating the size in bits.
 	-- the compiler doesn't seem to be able to return 'Size or 'Max_Size_In_Storage_Elements properly
 	-- when the number of bits calculated overflows.
-	subtype Byte_Object_Size is Object_Size range
-		Object_Size'First .. (Object_Payload_Max_Bytes / (Object_Byte'Max_Size_In_Storage_Elements * System.Storage_Unit));
-	subtype Character_Object_Size is Object_Size range
-		Object_Size'First .. (Object_Payload_Max_Bytes / (Object_Character'Max_Size_In_Storage_Elements * System.Storage_Unit));
-	subtype Pointer_Object_Size is Object_Size range
-		Object_Size'First .. (Object_Payload_Max_Bytes / (Object_Pointer'Max_Size_In_Storage_Elements * System.Storage_Unit));
-	subtype Word_Object_Size is Object_Size range
-		Object_Size'First .. (Object_Payload_Max_Bytes / (Object_Word'Max_Size_In_Storage_Elements * System.Storage_Unit));
-	subtype Half_Word_Object_Size is Object_Size range
-		Object_Size'First .. (Object_Payload_Max_Bytes / (Object_Half_Word'Max_Size_In_Storage_Elements * System.Storage_Unit));
+	Byte_Object_Size_Last: constant Object_Size := Object_Payload_Max_Bytes / (Object_Byte'Size / System_Byte_Bits);
+	Character_Object_Size_Last: constant Object_Size := Object_Payload_Max_Bytes / (Object_Character'Size / System_Byte_Bits);
+	Pointer_Object_Size_Last: constant Object_Size := Object_Payload_Max_Bytes / (Object_Pointer'Size / System_Byte_Bits);
+	Word_Object_Size_Last: constant Object_Size := Object_Payload_Max_Bytes / (Object_Word'Size / System_Byte_Bits);
+	Half_Word_Object_Size_Last: constant Object_Size := Object_Payload_Max_Bytes / (Object_Half_Word'Size / System_Byte_Bits);
+
+	subtype Byte_Object_Size is Object_Size range Object_Size'First .. Byte_Object_Size_Last;
+	subtype Character_Object_Size is Object_Size range Object_Size'First .. Character_Object_Size_Last;
+	subtype Pointer_Object_Size is Object_Size range Object_Size'First .. Pointer_Object_Size_Last;
+	subtype Word_Object_Size is Object_Size range Object_Size'First .. Word_Object_Size_Last;
+	subtype Half_Word_Object_Size is Object_Size range Object_Size'First .. Half_Word_Object_Size_Last;
 
 	-- -----------------------------------------------------------------------------
 	-- Various pointer classification and conversion procedures
@@ -391,7 +395,7 @@ package H2.Scheme is
 
 	-- -----------------------------------------------------------------------------
 
-	type Trait_Mask is mod 2 ** System.Word_Size;
+	type Trait_Mask is mod 2 ** System_Word_Bits;
 	No_Garbage_Collection: constant Trait_Mask := 2#0000_0000_0000_0001#;
 	No_Optimization:       constant Trait_Mask := 2#0000_0000_0000_0010#;
 

@@ -15,6 +15,7 @@ AC_LANG(C)
 
 dnl initialize automake
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
+AM_PROG_AR
 
 dnl enable silent rules if automake supports them.
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([no])])
@@ -49,32 +50,6 @@ RM="$RM -f"
 dnl initialize libtool
 LT_INIT
 AC_SUBST(LIBTOOL_DEPS)
-
-dnl 'recursive' type seems to have problems in setting LT_CONFIG_H
-dnl so i use the classic 'subproject' type here
-LT_CONFIG_LTDL_DIR([libltdl])
-
-save_CFLAGS="$CFLAGS"
-save_LDFLAGS="$LDFLAGS"
-save_LIBS="$LIBS"
-LTDL_INIT
-LDFLAGS="$save_LDFLAGS"
-CFLAGS="$save_CFLAGS"
-LIBS="$save_LIBS"
-
-dnl The lt_dladvise_init symbol was added with libtool-2.2
-if test "x$with_included_ltdl" != "xyes"; then
-	save_CFLAGS="$CFLAGS"
-	save_LDFLAGS="$LDFLAGS"
-	save_LIBS="$LIBS"
-	CFLAGS="$CFLAGS $LTDLINCL"
-	LDFLAGS="$LDFLAGS $LIBLTDL"
-	AC_CHECK_LIB([ltdl], [lt_dladvise_init], [],
-	             [AC_MSG_ERROR([installed libltdl is too old. install a newer libltdl or specify --with-included-ltdl])])
-	LDFLAGS="$save_LDFLAGS"
-	CFLAGS="$save_CFLAGS"
-	LIBS="$save_LIBS"
-fi
 
 dnl overrides the default CFLAGS setting
 if test "$ac_test_CFLAGS" != "set"
@@ -700,8 +675,8 @@ AC_CONFIG_FILES([
 	lib/cmn/Makefile
 	lib/lib.gpr
 	lib/libh2.gpr
-	cmd/Makefile
-	cmd/scheme.gpr
+	bin/Makefile
+	bin/scheme.gpr
 ])
 
 AC_OUTPUT

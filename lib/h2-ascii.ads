@@ -1,5 +1,5 @@
 -- Generated with ascii.txt and ascii.awk
--- Run qseawk -f ascii.awk ascii.txt > h2-ascii.ads for regeneration
+-- Run hawk -f ascii.awk ascii.txt > h2-ascii.ads for regeneration
 
 generic
 	type Slim_Character is (<>);
