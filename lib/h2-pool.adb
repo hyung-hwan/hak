@@ -19,11 +19,11 @@ package body H2.Pool is
 			declare
 				type Pooled_Pointer is access Normal_Type;
 				for Pooled_Pointer'Storage_Pool use P.all;
-				function To_Pointer_Type is new Ada.Unchecked_Conversion (Pooled_Pointer, Pointer_Type);
+				function To_Pointer_Type is new Ada.Unchecked_Conversion(Pooled_Pointer, Pointer_Type);
 				Tmp: Pooled_Pointer;
 			begin
 				Tmp := new Normal_Type;
-				return To_Pointer_Type (Tmp);
+				return To_Pointer_Type(Tmp);
 			end; 
 		end if;
 	end Allocate;
@@ -48,7 +48,7 @@ package body H2.Pool is
 --				Tmp: Pooled_Pointer;
 --			begin
 --				Tmp := new Normal_Type'(Source);
---				return To_Pointer_Type (Tmp);
+--				return To_Pointer_Type(Tmp);
 --			end; 
 --		end if;
 --	end Allocate;
