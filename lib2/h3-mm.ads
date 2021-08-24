@@ -7,7 +7,8 @@ package H3.MM is
 	type Item_Pointer is access all Item_Type;
 
 	type Ref_Counted_Record is record
-		Ref_Count: System.Atomic_Counters.Atomic_Counter;
+		--Ref_Count: System.Atomic_Counters.Atomic_Counter;
+		Ref_Count: System_Size;
 		Item: aliased Item_Type;
 	end record;
 

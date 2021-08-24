@@ -1,6 +1,5 @@
 with System;
 with System.Storage_Pools;
-with System.Atomic_Counters;
 with Ada.Finalization;
 
 package H3 is
@@ -35,21 +34,4 @@ package H3 is
 	function Align (X: in System_Size; Y: in System_Size) return System_Size;
 	pragma Inline(Align);
 
-	-- ---------------------------------------------------------------------
-	-- Reference Counting
-	-- ---------------------------------------------------------------------
---	type Ref_Counted is abstract tagged record
---		--Ref_Count: System.Atomic_Counters.Atomic_Counter;
---		Ref_Count: System_Size;
---	end record;
-
---	type Ref_Counted_Pointer is access all Ref_Counted'Class;
---	type Ref is new Ada.Finalization.Controlled with record
---		Data: Ref_Counted_Pointer;
---	end record;
-
---	procedure Set (R: in out Ref; Data: in Ref_Counted_Pointer);
---	function Get (R: in Ref) return Ref_Counted_Pointer;
---	overriding procedure Adjust (R: in out Ref);
---	overriding procedure Finalize (R: in out Ref);
 end H3;

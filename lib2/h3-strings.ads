@@ -16,28 +16,28 @@ package H3.Strings is
 	function To_Character_Array (Str: in Elastic_String) return Character_Array;
 
 	function Get_Capacity (Str: in Elastic_String) return System_Size;
-	pragma inline (Get_Capacity);
+	pragma Inline (Get_Capacity);
 
 	function Get_Length (Str: in Elastic_String) return System_Size;
-	pragma inline (Get_Length);
+	pragma Inline (Get_Length);
 
 	-- the return type is System_Size for consistency with Get_FIrst_Index.
 	function Get_First_Index (Str: in Elastic_String) return System_Size;
-	pragma inline (Get_First_Index);
+	pragma Inline (Get_First_Index);
 
 	-- the return type is System_Size because the Last index can be -1 off the System_Index'First.
 	function Get_Last_Index (Str: in Elastic_String) return System_Size;
-	pragma inline (Get_Last_index);
+	pragma Inline (Get_Last_index);
 
 	function Get_Item (Str: in Elastic_String; Pos: in System_Index) return Character_Type;
-	pragma inline (Get_Item);
+	pragma Inline (Get_Item);
 
 	-- unsafe
 	function Get_Slot_Pointer (Str: in Elastic_String) return Thin_Character_Array_Pointer;
-	pragma inline (Get_Slot_Pointer);
+	pragma Inline (Get_Slot_Pointer);
 
 	function Is_Shared(Str: in Elastic_String) return Standard.Boolean;
-	pragma inline (Is_Shared);
+	pragma Inline (Is_Shared);
 
 	procedure Purge (Str: in out Elastic_String);
 	procedure Clear (Str: in out Elastic_String);

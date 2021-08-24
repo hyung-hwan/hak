@@ -19,7 +19,7 @@ package body H3.Strings is
 	begin
 		return Str.Buffer.Slot'Length;
 	end Get_Hard_Capacity;
-	pragma inline (Get_Hard_Capacity);
+	pragma Inline (Get_Hard_Capacity);
 
 	function Get_Length (Str: in Elastic_String) return System_Size is
 	begin
