@@ -1,8 +1,5 @@
 with Ada.Unchecked_Deallocation;
 
-with system.address_image;	
-with ada.text_io;
-
 package body H3.Strings is
 	BUFFER_ALIGN: constant := 16;
 
@@ -17,7 +14,7 @@ package body H3.Strings is
 		return Str.Buffer.Slot'Length - 1;
 	end Get_Capacity;
 
-	-- return the buffer capacity including the terminator
+	-- private. return the buffer capacity including the terminator
 	function Get_Hard_Capacity (Str: in Elastic_String) return System_Size is
 	begin
 		return Str.Buffer.Slot'Length;
@@ -102,6 +99,7 @@ package body H3.Strings is
 		return Tmp;
 	end New_Buffer_Container;
 
+	-- prepare the buffer for writing 
 	procedure Prepare_Buffer (Str: in out Elastic_String) is
 		Tmp: Elastic_String;
 	begin
@@ -187,7 +185,7 @@ package body H3.Strings is
 		Append (Str, Tmp);
 	end Append;
 
-	procedure Delete (Str: in out Elastic_String; Pos: in System_Index; Length: in System_Length) is
+	procedure Delete (Str: in out Elastic_String; Pos: in System_Index; Length: in System_Size) is
 	begin
 		null;
 	end Delete;
@@ -197,6 +195,8 @@ package body H3.Strings is
 	-- ---------------------------------------------------------------------
 	procedure Initialize (Str: in out Elastic_String) is
 	begin
+		-- the string is initialized to the empty buffer all the time.
+		-- there is no need to reference the buffer.
 		null;
 	end Initialize;
 

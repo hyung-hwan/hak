@@ -21,7 +21,6 @@ package H3 is
 
 	--type System_Size is new System_Word range 0 .. (2 ** System_Word_Bits) - 1;
 	subtype System_Size is System_Word range 0 .. (2 ** System_Word_Bits) - 1;
-	subtype System_Length is System_Size;
 
 	--subtype System_Index is System_Size range 0 .. (System_Size'Last - 1);
 	subtype System_Index is System_Size range 1 .. System_Size'Last;
