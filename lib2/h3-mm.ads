@@ -21,7 +21,7 @@ package H3.MM is
 	procedure Create (R: in out Ref_Counted);
 	procedure Create (R: in out Ref_Counted; V: in Item_Type);
 
-	function Get_Item_Pointer (R: in out Ref_Counted) return Item_Pointer;
+	function Get_Item_Pointer (R: in Ref_Counted) return Item_Pointer;
 	pragma Inline(Get_Item_Pointer);
 
 	function Is_Shared (R: in Ref_Counted) return Standard.Boolean;

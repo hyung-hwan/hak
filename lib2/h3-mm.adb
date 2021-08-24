@@ -15,7 +15,7 @@ package body H3.MM is
 		R.Data.Item := V;
 	end Create;
 
-	function Get_Item_Pointer (R: in out Ref_Counted) return Item_Pointer is
+	function Get_Item_Pointer (R: in Ref_Counted) return Item_Pointer is
 	begin
 		if R.Data /= null then
 			return R.Data.Item'Access;
