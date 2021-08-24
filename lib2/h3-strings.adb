@@ -1,5 +1,6 @@
 with Ada.Unchecked_Deallocation;
 
+with system.address_image;	
 with ada.text_io;
 
 package body H3.Strings is
@@ -10,15 +11,33 @@ package body H3.Strings is
 		return Str.Buffer.Slot(Str.Buffer.Slot'First .. Str.Buffer.Last);
 	end To_Character_Array;
 
+	-- return the buffer capacity excluding the terminator
 	function Get_Capacity (Str: in Elastic_String) return System_Size is
 	begin
 		return Str.Buffer.Slot'Length - 1;
 	end Get_Capacity;
 
+	-- return the buffer capacity including the terminator
+	function Get_Hard_Capacity (Str: in Elastic_String) return System_Size is
+	begin
+		return Str.Buffer.Slot'Length;
+	end Get_Hard_Capacity;
+	pragma inline (Get_Hard_Capacity);
+
 	function Get_Length (Str: in Elastic_String) return System_Size is
 	begin
-		return Str.Buffer.Last - Str.Buffer.Slot'First + 1;
+		return 1 + Str.Buffer.Last - Str.Buffer.Slot'First;
 	end Get_Length;
+
+	function Get_First_Index (Str: in Elastic_String) return System_Size is
+	begin
+		return Str.Buffer.Slot'First;
+	end Get_First_Index;
+
+	function Get_Last_Index (Str: in Elastic_String) return System_Size is
+	begin
+		return Str.Buffer.Last;
+	end Get_Last_Index;
 
 	function Get_Item (Str: in Elastic_String; Pos: in System_Index) return Character_Type is
 	begin
@@ -55,54 +74,86 @@ package body H3.Strings is
 	procedure Ref_Buffer (Buf: in out Buffer_Pointer) is
 	begin
 		if Buf /= Empty_Buffer'Access then
-ada.text_io.put_line ("ref_buffer -> " & Buf.Refs'Img);
 			Buf.Refs := Buf.Refs + 1;
 		end if;
 	end Ref_Buffer;
 
-	procedure Deref_Buffer (Buf: in out Buffer_Pointer) is
+	procedure Unref_Buffer (Buf: in out Buffer_Pointer) is
 	begin
 		if Buf /= Empty_Buffer'Access then
-ada.text_io.put_line ("deref_buffer -> " & Buf.Refs'Img);
 			if Buf.Refs = 1 then
 				declare
 					procedure Free is new Ada.Unchecked_Deallocation(Buffer_Record, Buffer_Pointer);
 				begin
 					Free (Buf);
 				end;
+				Buf := Empty_Buffer'Access;
 			else
 				Buf.Refs := Buf.Refs - 1;
 			end if;
 		end if;
-	end Deref_Buffer;
+	end Unref_Buffer;
+
+	function New_Buffer_Container (Hard_Capa: in System_Size) return Elastic_String is
+		Tmp: Elastic_String;
+	begin
+		Tmp.Buffer := new Buffer_Record(Hard_Capa);
+		Tmp.Buffer.Refs := 1;
+		return Tmp;
+	end New_Buffer_Container;
 
 	procedure Prepare_Buffer (Str: in out Elastic_String) is
-		Tmp: Buffer_Pointer;
+		Tmp: Elastic_String;
 	begin
 		if Str.Buffer /= Empty_Buffer'Access then
 			if Is_Shared(Str) then
-				Tmp := new Buffer_Record(Str.Buffer.Slot'Length);
-				Tmp.Slot := Str.Buffer.Slot;
-				Tmp.Last := Str.Buffer.Last;
-				Tmp.Refs := 1;	--Ref_Buffer (Tmp);
-				Deref_Buffer (Str.Buffer);
-				Str.Buffer := Tmp;
+				-- The code like this doesn't work correctly in terms of finalization.
+				-- The buffer pointer held inside a finalization controlled record must be 
+				-- manipluated through the record itself. otherwise, the Adjust and Finalize
+				-- calls goes incompatible with the reference counting implementation.
+				-- It is because finalization is set on the record rather than the buffer pointer.
+				--Tmp: Buffer_Pointer;
+				--Tmp := new Buffer_Record(Get_Hard_Capacity(Str));
+				--Tmp.Slot := Str.Buffer.Slot;
+				--Tmp.Last := Str.Buffer.Last;
+				--Tmp.Refs := 1;
+				--Unref_Buffer (Str.Buffer);
+				--Str.Buffer := Tmp;
+				Tmp := Str;
+				Str := New_Buffer_Container(Get_Hard_Capacity(Str));
+				Str.Buffer.Slot := Tmp.Buffer.Slot;
+				Str.Buffer.Last := Tmp.Buffer.Last;
 			end if;
 		end if;
 	end Prepare_Buffer;
 
-	procedure Prepare_Buffer (Str: in out Elastic_String; ReqCapa: in System_Size) is
-		Tmp: Buffer_Pointer;
+	-- prepare the buffer for writing 
+	procedure Prepare_Buffer (Str: in out Elastic_String; Req_Hard_Capa: in System_Size) is
+		Tmp: Elastic_String;
+		First, Last: System_Size;
+		Hard_Capa: System_Size;
 	begin
-		if Str.Buffer /= Empty_Buffer'Access then
-			if Is_Shared(Str) then
-				-- ReqCapa must be greater than Str.Buffer.Slot'Length
-				Tmp := new Buffer_Record(ReqCapa);
-				Tmp.Slot(Str.Buffer.Slot'First .. Str.Buffer.Last + 1) := Str.Buffer.Slot(Str.Buffer.Slot'First .. Str.Buffer.Last + 1);
-				Tmp.Last := Str.Buffer.Last;
-				Tmp.Refs := 1; --Ref_Buffer (Tmp);
-				Deref_Buffer (Str.Buffer);
-				Str.Buffer := Tmp;
+		First := Get_First_Index(Str);
+		Last := Get_Last_Index(Str);
+
+		if Str.Buffer /= Empty_Buffer'Access and then Is_Shared(Str) then
+			if Req_Hard_Capa < Get_Hard_Capacity(Str) then
+				Hard_Capa := Get_Hard_Capacity(Str);
+			else
+				Hard_Capa := Req_Hard_Capa;
+			end if;
+
+			Tmp := New_Buffer_Container(Hard_Capa);
+			Tmp.Buffer.Slot(First .. Last + 1) := Str.Buffer.Slot(First .. Last + 1);
+			Tmp.Buffer.Last := Last;
+
+			Str := Tmp;
+		else
+			if Req_Hard_Capa > Get_Hard_Capacity(Str) then
+				Tmp := Str;
+				Str := New_Buffer_Container(Req_Hard_Capa);
+				Str.Buffer.Slot(First .. Last + 1) := Tmp.Buffer.Slot(First .. Last + 1);
+				Str.Buffer.Last := Last;
 			end if;
 		end if;
 	end Prepare_Buffer;
@@ -110,32 +161,20 @@ ada.text_io.put_line ("deref_buffer -> " & Buf.Refs'Img);
 	procedure Clear (Str: in out Elastic_String) is
 	begin
 		Prepare_Buffer (Str);
-		Str.Buffer.Last := Str.Buffer.Slot'First - 1;
+		Str.Buffer.Last := Get_First_Index(Str) - 1;
 	end Clear;
 
 	procedure Purge (Str: in out Elastic_String) is
 	begin 
-		Deref_Buffer (Str.Buffer);
+		Unref_Buffer (Str.Buffer);
 		Str.Buffer := Empty_Buffer'Access;
 	end Purge;
 
 -- TODO: operator "&"
 	procedure Append (Str: in out Elastic_String; V: in Character_Array) is
-		ReqCapa: System_Size;
-		Tmp: Buffer_Pointer;
 	begin
-		if V'Length > 0 then
-			ReqCapa := H3.Align(Str.Buffer.Last + V'Length + 1, BUFFER_ALIGN);
-			Prepare_Buffer (Str, ReqCapa);
-
-			if ReqCapa > Get_Capacity(Str) then
-				Tmp := new Buffer_Record(ReqCapa);
-				Tmp.Slot(Str.Buffer.Slot'First .. Str.Buffer.Last) := Str.Buffer.Slot(Str.Buffer.Slot'First .. Str.Buffer.Last);
-				Tmp.Last := Str.Buffer.Last;
-				Free_Buffer (Str);
-				Str.Buffer := Tmp;
-			end if;
-
+		if V'Length > 0 then	
+			Prepare_Buffer (Str, H3.Align(Get_Length(Str) + V'Length + 1, BUFFER_ALIGN));
 			Str.Buffer.Slot(Str.Buffer.Last + 1 .. Str.Buffer.Last + V'Length) := V;
 			Str.Buffer.Last := Str.Buffer.Last + V'Length;
 			Str.Buffer.Slot(Str.Buffer.Last + 1) := Null_Character;
@@ -153,26 +192,21 @@ ada.text_io.put_line ("deref_buffer -> " & Buf.Refs'Img);
 		null;
 	end Delete;
 
-
-
 	-- ---------------------------------------------------------------------
 	-- Controlled Management
 	-- ---------------------------------------------------------------------
 	procedure Initialize (Str: in out Elastic_String) is
 	begin
-ada.text_io.put_line("ES Initialize");
 		null;
 	end Initialize;
 
 	procedure Adjust (Str: in out Elastic_String) is
 	begin
-ada.text_io.put_line("ES Adhust");
 		Ref_Buffer (Str.Buffer);
 	end Adjust;
 
 	procedure Finalize (Str: in out Elastic_String) is
 	begin
-ada.text_io.put_line("ES Finalize");
-		Deref_Buffer (Str.Buffer);
+		Unref_Buffer (Str.Buffer);
 	end Finalize;
 end H3.Strings;

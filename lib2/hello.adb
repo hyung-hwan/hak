@@ -9,6 +9,7 @@ with System.Pool_Global;
 with Ada.Unchecked_Deallocation;
 with Ada.Text_IO;
 with Ada.Wide_Text_IO;
+with Ada.Assertions;
 
 procedure hello is
 	package S is new H3.Strings(Wide_Character, Wide_Character'Val(0));
@@ -84,28 +85,40 @@ begin
 	
 	declare
 		str: S.Elastic_String;
+		str2: S.Elastic_String;
 		len: H3.System_Size;
 		capa: H3.System_Size;
+		first: H3.System_Size;
+		last: H3.System_Size;
 	begin
 		len := S.Get_Length(Str);
 		capa := S.Get_Capacity(Str);
-		Ada.Text_IO.Put_Line ("length=>" & len'Img & " Capacity=>" & capa'Img);
+		first := S.Get_First_Index(Str);
+		last := S.Get_Last_Index(Str);
+		Ada.Text_IO.Put_Line ("length=>" & len'Img & " Capacity=>" & capa'Img & " First=>" & first'img & " Last=>" & last'img);
 
 		S.Append(Str, "Hello, world");
 		len := S.Get_Length(Str);
 		capa := S.Get_Capacity(Str);
-		Ada.Text_IO.Put_Line ("length=>" & len'Img & " Capacity=>" & capa'Img);
+		first := S.Get_First_Index(Str);
+		last := S.Get_Last_Index(Str);
+		Ada.Text_IO.Put_Line ("length=>" & len'Img & " Capacity=>" & capa'Img & " First=>" & first'img & " Last=>" & last'img);
+		
 
 		S.Append(Str, "");
 		len := S.Get_Length(Str);
 		capa := S.Get_Capacity(Str);
-		Ada.Text_IO.Put_Line ("length=>" & len'Img & " Capacity=>" & capa'Img);
-
-		S.Append(Str, "donkey");
+		first := S.Get_First_Index(Str);
+		last := S.Get_Last_Index(Str);
+		Ada.Text_IO.Put_Line ("length=>" & len'Img & " Capacity=>" & capa'Img & " First=>" & first'img & " Last=>" & last'img);
+		
+--		S.Append(Str, "donkey");
 		len := S.Get_Length(Str);
 		capa := S.Get_Capacity(Str);
-		Ada.Text_IO.Put_Line ("length=>" & len'Img & " Capacity=>" & capa'Img);
-
+		first := S.Get_First_Index(Str);
+		last := S.Get_Last_Index(Str);
+		Ada.Text_IO.Put_Line ("length=>" & len'Img & " Capacity=>" & capa'Img & " First=>" & first'img & " Last=>" & last'img);
+		
 		
 		declare
 			arr: constant S.Character_Array := S.To_Character_Array(str);
@@ -119,13 +132,43 @@ begin
 		
 		-- unsafe way to access the internal buffer.
 		S.Append (Str, 'X');
+		S.Append(Str, "donkeyX");
+		S.Append(Str, "ABCDE");
+
+		Str2 := Str;
+		S.Append (Str2, "EXTRA");
+		S.Append (Str2, " THIS IS FANTASTIC ELASTIC STRING WRITTEN FOR H3");
+	
+
 		declare
 			arr: constant S.Thin_Character_Array_Pointer := S.Get_Slot_Pointer(Str);
+			arr2: constant S.Thin_Character_Array_Pointer := S.Get_Slot_Pointer(Str2);
 			use type H3.System_Word;
 		begin
+			Ada.Assertions.Assert (S.Get_Length(Str) = 25, "invalid string length");
+			Ada.Assertions.Assert (S.Get_Length(Str2) = 78, "invalid string length");
+
+			len := S.Get_Length(Str);
+			capa := S.Get_Capacity(Str);
+			first := S.Get_First_Index(Str);
+			last := S.Get_Last_Index(Str);
+			Ada.Text_IO.Put_Line ("STR length=>" & len'Img & " Capacity=>" & capa'Img & " First=>" & first'img & " Last=>" & last'img);
+			
 			Ada.Wide_Text_IO.Put ("[");	
-			for i in 1 .. S.Get_Length(Str) + 1 loop
+			for i in S.Get_First_Index(Str) .. S.Get_Last_Index(Str) + 1 loop
 				Ada.Wide_Text_IO.Put (arr.all(i));
+			end loop;
+			Ada.Wide_Text_IO.Put_Line ("]");	
+
+			len := S.Get_Length(Str2);
+			capa := S.Get_Capacity(Str2);
+			first := S.Get_First_Index(Str2);
+			last := S.Get_Last_Index(Str2);
+			Ada.Text_IO.Put_Line ("STR2 length=>" & len'Img & " Capacity=>" & capa'Img & " First=>" & first'img & " Last=>" & last'img);
+		
+			Ada.Wide_Text_IO.Put ("[");	
+			for i in S.Get_First_Index(Str2) .. S.Get_Last_Index(Str2) + 1 loop
+				Ada.Wide_Text_IO.Put (arr2.all(i));
 			end loop;
 			Ada.Wide_Text_IO.Put_Line ("]");	
 		end;
