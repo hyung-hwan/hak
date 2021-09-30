@@ -21,11 +21,11 @@ package H3.Strings is
 	function Get_Length (Str: in Elastic_String) return System_Size;
 	pragma Inline (Get_Length);
 
-	-- the return type is System_Size for consistency with Get_FIrst_Index.
+	-- the return type is System_Size for consistency with Get_Last_Index.
 	function Get_First_Index (Str: in Elastic_String) return System_Size;
 	pragma Inline (Get_First_Index);
 
-	-- the return type is System_Size because the Last index can be -1 off the System_Index'First.
+	-- the return type is System_Size because the Last index is -1 off the System_Index'First for an empty string
 	function Get_Last_Index (Str: in Elastic_String) return System_Size;
 	pragma Inline (Get_Last_index);
 
@@ -44,6 +44,8 @@ package H3.Strings is
 
 	procedure Append (Str: in out Elastic_String; V: in Character_Array);
 	procedure Append (Str: in out Elastic_String; V: in Character_Type);
+
+	procedure Replace (Str: in out Elastic_String; Pos: in System_Index; New_Char: in Character_Type);
 
 private
 	type Buffer_Record(Capa: System_Size) is limited record

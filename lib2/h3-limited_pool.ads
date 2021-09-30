@@ -1,8 +1,9 @@
 --------------------------------------------------------------------
 -- Instantantiate this package before using. To allocate integers,
 --
+--   P1: aliased System.Pool_Global.Unbounded_No_Reclaim_Pool;
 --   type Integer_Pointer is access Integer_Pointer;
---   package Integer_Pool is new Pool(Integer, Integer_Pointer, Storage_Pool'Unchecked_Access);
+--   package Integer_Pool is new Pool(Integer, Integer_Pointer, P1'Unchecked_Access);
 --   x: Integer_Pointer;
 --
 --   x := Integer_Pool.Allocate(10);

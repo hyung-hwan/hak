@@ -187,8 +187,31 @@ package body H3.Strings is
 
 	procedure Delete (Str: in out Elastic_String; Pos: in System_Index; Length: in System_Size) is
 	begin
-		null;
+		if Pos <= Str.Buffer.Last then
+			Prepare_Buffer (Str);
+		else
+			raise Standard.Constraint_Error;
+		end if;
 	end Delete;
+
+	procedure Insert (Str: in out Elastic_String; Pos: in System_Index; Char: in Character_Type) is
+	begin
+		if Pos <= Str.Buffer.Last then
+			Prepare_Buffer (Str, H3.Align(Get_Length(Str) + V'Length + 1, BUFFER_ALIGN));
+			Str.Buffer.Slot(Pos) := New_Char;
+		end if;
+	end Insert;
+
+	procedure Replace (Str: in out Elastic_String; Pos: in System_Index; New_Char: in Character_Type) is
+	begin
+		if Pos <= Str.Buffer.Last then
+			Prepare_Buffer (Str);
+			Str.Buffer.Slot(Pos) := New_Char;
+		else
+		--	raise Index_Error;
+			raise Standard.Constraint_Error;
+		end if;
+	end Replace;
 
 	-- ---------------------------------------------------------------------
 	-- Controlled Management

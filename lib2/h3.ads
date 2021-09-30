@@ -12,6 +12,7 @@ package H3 is
 	for System_Byte'Size use System_Byte_Bits;
 
 	type System_Word is mod 2 ** System_Word_Bits;
+	--type System_Word is range 0 .. (2 ** System_Word_Bits) - 1;
 	for System_Word'Size use System_Word_Bits;
 
 	type System_Signed_Word is range -(2 ** (System_Word_Bits - 1)) ..
@@ -22,7 +23,7 @@ package H3 is
 	subtype System_Size is System_Word range 0 .. (2 ** System_Word_Bits) - 1;
 
 	--subtype System_Index is System_Size range 0 .. (System_Size'Last - 1);
-	subtype System_Index is System_Size range 1 .. System_Size'Last;
+	subtype System_Index is System_Size range (System_Size'First + 1) .. System_Size'Last;
 
 	type Storage_Pool_Pointer is access all System.Storage_Pools.Root_Storage_Pool'Class;
 
@@ -34,4 +35,5 @@ package H3 is
 	function Align (X: in System_Size; Y: in System_Size) return System_Size;
 	pragma Inline(Align);
 
+	Index_Error: exception;
 end H3;

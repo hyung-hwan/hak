@@ -11,6 +11,7 @@ with Ada.Text_IO;
 with Ada.Wide_Text_IO;
 with Ada.Assertions;
 
+use type H3.System_Size;
 procedure hello is
 	package S is new H3.Strings(Wide_Character, Wide_Character'Val(0));
 
@@ -47,7 +48,23 @@ procedure hello is
 	y: L_Pointer;
 
 	SS: S.Elastic_String;
+
 begin
+	declare
+		TTT: H3.System_Size := H3.System_Size'Last;
+		--NNN: Standard.Natural := Standard.Natural'Last;
+	begin
+		TTT := TTT + 1;
+		ada.text_io.put_line ("-----------------");
+		ada.text_io.put_line (TTT'Img);
+		ada.text_io.put_line ("-----------------");
+
+		--NNN := NNN + 1;
+		--ada.text_io.put_line ("-----------------");
+		--ada.text_io.put_line (NNN'Img);
+		--ada.text_io.put_line ("-----------------");
+	end;
+
 	x := TP.Allocate((A => 900, B => 800, C => 1.1));
 	i := IP.Allocate(200);
 
@@ -128,6 +145,10 @@ begin
 				Ada.Wide_Text_IO.Put (arr(i));	
 			end loop;
 			Ada.Wide_Text_IO.Put_Line ("]");	
+
+			Ada.Wide_Text_IO.Put ("PRINTING AGAIN [");	
+			Ada.Wide_Text_IO.Put (Standard.Wide_String(arr));
+			Ada.Wide_Text_IO.Put_Line ("]");	
 		end;
 		
 		-- unsafe way to access the internal buffer.
@@ -139,6 +160,8 @@ begin
 		S.Append (Str2, "EXTRA");
 		S.Append (Str2, " THIS IS FANTASTIC ELASTIC STRING WRITTEN FOR H3");
 	
+		S.Replace (Str2, 1, 'Q');
+		--S.Replace (Str2, 10000, 'Q'); -- constraint error
 
 		declare
 			arr: constant S.Thin_Character_Array_Pointer := S.Get_Slot_Pointer(Str);
@@ -154,8 +177,8 @@ begin
 			last := S.Get_Last_Index(Str);
 			Ada.Text_IO.Put_Line ("STR length=>" & len'Img & " Capacity=>" & capa'Img & " First=>" & first'img & " Last=>" & last'img);
 			
-			Ada.Wide_Text_IO.Put ("[");	
-			for i in S.Get_First_Index(Str) .. S.Get_Last_Index(Str) + 1 loop
+			Ada.Wide_Text_IO.Put ("STR(By-Pointer) [");	
+			for i in S.Get_First_Index(Str) .. S.Get_Last_Index(Str) + 1 loop -- this must loop to the terminating null.
 				Ada.Wide_Text_IO.Put (arr.all(i));
 			end loop;
 			Ada.Wide_Text_IO.Put_Line ("]");	
@@ -166,7 +189,7 @@ begin
 			last := S.Get_Last_Index(Str2);
 			Ada.Text_IO.Put_Line ("STR2 length=>" & len'Img & " Capacity=>" & capa'Img & " First=>" & first'img & " Last=>" & last'img);
 		
-			Ada.Wide_Text_IO.Put ("[");	
+			Ada.Wide_Text_IO.Put ("Str2(By-Pointer) [");	 -- this must loop to the terminating null.
 			for i in S.Get_First_Index(Str2) .. S.Get_Last_Index(Str2) + 1 loop
 				Ada.Wide_Text_IO.Put (arr2.all(i));
 			end loop;
