@@ -45,6 +45,7 @@ package H3.Strings is
 	procedure Append (Str: in out Elastic_String; V: in Character_Array);
 	procedure Append (Str: in out Elastic_String; V: in Character_Type);
 
+	procedure Insert (Str: in out Elastic_String; Pos: in System_Index; New_Char: in Character_Type);
 	procedure Replace (Str: in out Elastic_String; Pos: in System_Index; New_Char: in Character_Type);
 
 private

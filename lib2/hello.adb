@@ -161,6 +161,8 @@ begin
 		S.Append (Str2, " THIS IS FANTASTIC ELASTIC STRING WRITTEN FOR H3");
 	
 		S.Replace (Str2, 1, 'Q');
+		S.Insert (Str2, 1, 'B');
+		S.Insert (Str2, 1, 'A');
 		--S.Replace (Str2, 10000, 'Q'); -- constraint error
 
 		declare

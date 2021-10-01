@@ -1,5 +1,7 @@
 with Ada.Unchecked_Deallocation;
 
+with ada.text_io;
+
 package body H3.Strings is
 	BUFFER_ALIGN: constant := 16;
 
@@ -126,13 +128,35 @@ package body H3.Strings is
 	end Prepare_Buffer;
 
 	-- prepare the buffer for writing 
-	procedure Prepare_Buffer (Str: in out Elastic_String; Req_Hard_Capa: in System_Size) is
+	procedure Prepare_Buffer (Str: in out Elastic_String; Req_Hard_Capa: in System_Size; Shift_Pos: in System_Size := 0; Shift_Size: in System_Size := 0) is
 		Tmp: Elastic_String;
 		First, Last: System_Size;
 		Hard_Capa: System_Size;
 	begin
 		First := Get_First_Index(Str);
 		Last := Get_Last_Index(Str);
+
+--		if Str.Buffer /= Empty_Buffer'Access and then Is_Shared(Str) then
+--			if Req_Hard_Capa < Get_Hard_Capacity(Str) then
+--				Hard_Capa := Get_Hard_Capacity(Str);
+--			else
+--				Hard_Capa := Req_Hard_Capa;
+--			end if;
+--
+--			Tmp := New_Buffer_Container(Hard_Capa);
+--			Tmp.Buffer.Slot(First .. Last + 1) := Str.Buffer.Slot(First .. Last + 1);
+--			Tmp.Buffer.Last := Last;
+--
+--			Str := Tmp;
+--		else
+--			if Req_Hard_Capa > Get_Hard_Capacity(Str) then
+--				Tmp := Str;
+--				Str := New_Buffer_Container(Req_Hard_Capa);
+--
+--				Str.Buffer.Slot(First .. Last + 1) := Tmp.Buffer.Slot(First .. Last + 1);
+--				Str.Buffer.Last := Last;
+--			end if;
+--		end if;
 
 		if Str.Buffer /= Empty_Buffer'Access and then Is_Shared(Str) then
 			if Req_Hard_Capa < Get_Hard_Capacity(Str) then
@@ -141,18 +165,37 @@ package body H3.Strings is
 				Hard_Capa := Req_Hard_Capa;
 			end if;
 
-			Tmp := New_Buffer_Container(Hard_Capa);
-			Tmp.Buffer.Slot(First .. Last + 1) := Str.Buffer.Slot(First .. Last + 1);
-			Tmp.Buffer.Last := Last;
-
-			Str := Tmp;
+			Tmp := Str;
+			Str := New_Buffer_Container(Hard_Capa);
+			goto COPY_OVER;
 		else
 			if Req_Hard_Capa > Get_Hard_Capacity(Str) then
 				Tmp := Str;
 				Str := New_Buffer_Container(Req_Hard_Capa);
-				Str.Buffer.Slot(First .. Last + 1) := Tmp.Buffer.Slot(First .. Last + 1);
-				Str.Buffer.Last := Last;
+				goto COPY_OVER;
+			elsif Shift_Pos > 0 then
+				Tmp := Str;
+				goto COPY_OVER;
 			end if;
+		end if;
+
+		return;
+
+	<<COPY_OVER>>
+		if Shift_Pos > 0 then
+			-- it is an internal function. perform no sanity check.
+			-- if Shift_Pos or Shift_Size is beyond the allocated capacity, 
+			-- it will end up in an exception.
+			Str.Buffer.Slot(First .. Shift_Pos - 1) := Tmp.Buffer.Slot(First .. Shift_Pos - 1);
+	ada.text_io.put_line ("Shift_Pos " & Shift_Pos'Img);
+	ada.text_io.put_line ("Shift_Size " & Shift_Size'Img);
+	ada.text_io.put_line ("Last " & Last'Img);
+	ada.text_io.put_line ("Capa " & Get_Hard_Capacity(Tmp)'Img);
+			Str.Buffer.Slot(Shift_Pos + Shift_Size .. Last + Shift_Size + 1) := Tmp.Buffer.Slot(Shift_Pos .. Last + 1);
+			Str.Buffer.Last := Last + Shift_Size;
+		else
+			Str.Buffer.Slot(First .. Last + 1) := Tmp.Buffer.Slot(First .. Last + 1);
+			Str.Buffer.Last := Last;
 		end if;
 	end Prepare_Buffer;
 
@@ -194,10 +237,11 @@ package body H3.Strings is
 		end if;
 	end Delete;
 
-	procedure Insert (Str: in out Elastic_String; Pos: in System_Index; Char: in Character_Type) is
+	procedure Insert (Str: in out Elastic_String; Pos: in System_Index; New_Char: in Character_Type) is
 	begin
 		if Pos <= Str.Buffer.Last then
-			Prepare_Buffer (Str, H3.Align(Get_Length(Str) + V'Length + 1, BUFFER_ALIGN));
+	ada.text_io.put_line ( "INSERT ");
+			Prepare_Buffer (Str, H3.Align(Get_Length(Str) + 1, BUFFER_ALIGN), Pos, 1);
 			Str.Buffer.Slot(Pos) := New_Char;
 		end if;
 	end Insert;
