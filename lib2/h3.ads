@@ -25,6 +25,8 @@ package H3 is
 	--subtype System_Index is System_Size range 0 .. (System_Size'Last - 1);
 	subtype System_Index is System_Size range (System_Size'First + 1) .. System_Size'Last;
 
+	subtype System_Zero_Or_One is System_Word range 0 .. 1;
+
 	type Storage_Pool_Pointer is access all System.Storage_Pools.Root_Storage_Pool'Class;
 
 	type System_Byte_Array is array(System_Index range<>) of System_Byte;

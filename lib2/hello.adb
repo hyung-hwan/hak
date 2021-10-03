@@ -12,8 +12,10 @@ with Ada.Wide_Text_IO;
 with Ada.Assertions;
 
 use type H3.System_Size;
+
 procedure hello is
-	package S is new H3.Strings(Wide_Character, Wide_Character'Val(0));
+	package S is new H3.Strings(Standard.Wide_Character, 1, Wide_Character'Val(0));
+	package S_I is new H3.Strings(Integer, 1, 16#FF#);
 
 	--type Global_Pool is new System.Storage_Pools.Root_Storage_Pool with null record;
 	P1: aliased System.Pool_Global.Unbounded_No_Reclaim_Pool;
@@ -60,9 +62,11 @@ procedure hello is
 		first := S.Get_First_Index(Str);
 		last := S.Get_Last_Index(Str);
 		Ada.Text_IO.Put (Name & " len:" & len'Img & " capa:" & capa'Img & " first:" & first'img & " last:" & last'img & " => ");
-		Ada.Wide_Text_IO.Put_line (Standard.Wide_String(S.To_Character_Array(Str)));
+		Ada.Wide_Text_IO.Put_line (Standard.Wide_String(S.To_Item_Array(Str)));
 
-		pragma Assert (S.Get_Item(Str, S.Get_Last_Index(Str) + 1) = Wide_Character'Val(0));
+		if S.Terminator_Length > 0 then
+			pragma Assert (S.Get_Item(Str, S.Get_Last_Index(Str) + 1) = S.Terminator_Value);
+		end if;
 	end print_string_info;
 
 begin
@@ -170,7 +174,7 @@ begin
 
 		declare
 			-- unsafe way to access the internal buffer.
-			arr: constant S.Character_Array := S.To_Character_Array(Str);
+			arr: constant S.Item_Array := S.To_Item_Array(Str);
 		begin
 			Ada.Wide_Text_IO.Put ("STR[1] => [");	
 			for i in arr'Range loop
@@ -284,7 +288,6 @@ begin
 		pragma Assert (S.Get_First_Index(Str2) = 1);
 		pragma Assert (S.Get_Last_Index(Str2) = 107);
 		pragma Assert (S."="(Str2, "AACCABQh! Hello, world!  donkey>donkeyXABCDEEXTRA THIS IS FANTASTIC ELASTIC STRING WRITTEN FOR H3 => ABCDEF"));
-		--S.Replace (Str2, 10000, 'Q'); -- constraint error
 
 		S.Prepend (Str2, '>', 3);
 		print_string_info (Str2, "Str2");
@@ -342,15 +345,22 @@ begin
 		pragma Assert (S.Get_Last_Index(Str2) = 85);
 		pragma Assert (S."="(Str2, "Hello, bee!  donkey>donkeyXABCDEEXTRA THIS IS FANTASTIC ELASTIC STRING WRITTEN FOR HH"));
 
+		S.Replace (Str2, 8, 10, "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ"); 
+		print_string_info (Str2, "Str2");
+		pragma Assert (S.Get_Length(Str2) = 160);
+		pragma Assert (S.Get_First_Index(Str2) = 1);
+		pragma Assert (S.Get_Last_Index(Str2) = 160);
+		pragma Assert (S."="(Str2, "Hello, ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ!  donkey>donkeyXABCDEEXTRA THIS IS FANTASTIC ELASTIC STRING WRITTEN FOR HH"));
+
 		declare
-			arr: constant S.Thin_Character_Array_Pointer := S.Get_Slot_Pointer(Str);
-			arr2: constant S.Thin_Character_Array_Pointer := S.Get_Slot_Pointer(Str2);
+			arr: constant S.Thin_Item_Array_Pointer := S.Get_Slot_Pointer(Str);
+			arr2: constant S.Thin_Item_Array_Pointer := S.Get_Slot_Pointer(Str2);
 			use type H3.System_Word;
 		begin
 			print_string_info (Str, "Str");
 			
 			Ada.Wide_Text_IO.Put ("STR(By-Pointer) [");	
-			for i in S.Get_First_Index(Str) .. S.Get_Last_Index(Str) + 1 loop -- this must loop to the terminating null.
+			for i in S.Get_First_Index(Str) .. S.Get_Last_Index(Str) + S.Terminator_Length loop -- this must loop to the terminating null.
 				Ada.Wide_Text_IO.Put (arr.all(i));
 			end loop;
 			Ada.Wide_Text_IO.Put_Line ("]");	
@@ -358,14 +368,14 @@ begin
 			print_string_info (Str2, "Str2");
 		
 			Ada.Wide_Text_IO.Put ("Str2(By-Pointer) [");	 -- this must loop to the terminating null.
-			for i in S.Get_First_Index(Str2) .. S.Get_Last_Index(Str2) + 1 loop
+			for i in S.Get_First_Index(Str2) .. S.Get_Last_Index(Str2) + S.Terminator_Length loop
 				Ada.Wide_Text_IO.Put (arr2.all(i));
 			end loop;
 			Ada.Wide_Text_IO.Put_Line ("]");	
 		end;
 
 		--declare
-		--	arr: constant Standard.Wide_String := S.To_Character_Array(str);
+		--	arr: constant Standard.Wide_String := S.To_Item_Array(str);
 		--begin
 		--	Ada.Wide_Text_IO.Put_Line (arr);	
 		--end;
@@ -403,5 +413,18 @@ begin
 		Ada.Text_IO.Put_Line(Q.Get_Item_Pointer(T2).X'Img);
 	end;
 
+
+	declare
+		t1: S_I.Elastic_String;
+	begin
+		S_I.Append (t1, 20, 5);
+		S_I.Prepend (t1, 30, 2);
+
+		Ada.Text_IO.Put_Line ("-------------------------------");
+		for i in S_I.Get_First_Index(t1) .. S_I.Get_Last_Index(t1) loop
+			Ada.Text_IO.Put  (" " & S_I.Get_Item(t1, i)'Img);
+		end loop;
+		Ada.Text_IO.Put_Line ("");
+	end;
 end;
 
