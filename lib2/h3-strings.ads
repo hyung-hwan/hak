@@ -3,7 +3,7 @@ with Ada.Finalization;
 generic
 	--type Character_Type is private;
 	type Character_Type is (<>);
-	Null_Character: Character_Type;
+	Terminator: Character_Type;
 package H3.Strings is
 
 	type Elastic_String is private;
@@ -42,11 +42,22 @@ package H3.Strings is
 	procedure Purge (Str: in out Elastic_String);
 	procedure Clear (Str: in out Elastic_String);
 
-	procedure Append (Str: in out Elastic_String; V: in Character_Array);
-	procedure Append (Str: in out Elastic_String; V: in Character_Type);
+	procedure Insert (Str: in out Elastic_String; Pos: in System_Index; V: in Character_Type; Repeat: in System_Size := 1);
+	procedure Insert (Str: in out Elastic_String; Pos: in System_Index; V: in Character_Array);
 
-	procedure Insert (Str: in out Elastic_String; Pos: in System_Index; New_Char: in Character_Type);
-	procedure Replace (Str: in out Elastic_String; Pos: in System_Index; New_Char: in Character_Type);
+	procedure Append (Str: in out Elastic_String; V: in Character_Type; Repeat: in System_Size := 1);
+	procedure Append (Str: in out Elastic_String; V: in Character_Array);
+
+	procedure Prepend (Str: in out Elastic_String; V: in Character_Type; Repeat: in System_Size := 1);
+	procedure Prepend (Str: in out Elastic_String; V: in Character_Array);
+	
+	procedure Replace (Str: in out Elastic_String; From_Pos: in System_Index; To_Pos: in System_Size; V: in Character_Type; Repeat: in System_Size := 1);
+	procedure Replace (Str: in out Elastic_String; From_Pos: in System_Index; To_Pos: in System_Size; V: in Character_Array);
+
+	procedure Delete (Str: in out Elastic_String; From_Pos: in System_Index; To_Pos: in System_Size);
+
+	function "=" (Str: in Elastic_String; Str2: in Elastic_String) return Standard.Boolean;
+	function "=" (Str: in Elastic_String; Str2: in Character_Array) return Standard.Boolean;
 
 private
 	type Buffer_Record(Capa: System_Size) is limited record
@@ -58,7 +69,7 @@ private
 	type Buffer_Pointer is access all Buffer_Record;
 
 	--Empty_Buffer: aliased Buffer_Record(1);
-	Empty_Buffer: aliased Buffer_Record := (Capa => 1, Refs => 0, Slot => (1 => Null_Character), Last => 0);
+	Empty_Buffer: aliased Buffer_Record := (Capa => 1, Refs => 0, Slot => (1 => Terminator), Last => 0);
 
 	type Elastic_String is new Ada.Finalization.Controlled with record
 		Buffer: Buffer_Pointer := Empty_Buffer'Access;

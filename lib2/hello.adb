@@ -49,6 +49,22 @@ procedure hello is
 
 	SS: S.Elastic_String;
 
+	procedure print_string_info (Str: in S.Elastic_String; Name: in Standard.String) is
+		len: H3.System_Size;
+		capa: H3.System_Size;
+		first: H3.System_Size;
+		last: H3.System_Size;
+	begin
+		len := S.Get_Length(Str);
+		capa := S.Get_Capacity(Str);
+		first := S.Get_First_Index(Str);
+		last := S.Get_Last_Index(Str);
+		Ada.Text_IO.Put (Name & " len:" & len'Img & " capa:" & capa'Img & " first:" & first'img & " last:" & last'img & " => ");
+		Ada.Wide_Text_IO.Put_line (Standard.Wide_String(S.To_Character_Array(Str)));
+
+		pragma Assert (S.Get_Item(Str, S.Get_Last_Index(Str) + 1) = Wide_Character'Val(0));
+	end print_string_info;
+
 begin
 	declare
 		TTT: H3.System_Size := H3.System_Size'Last;
@@ -97,87 +113,241 @@ begin
 	TP.Deallocate (x);
 	LP.Deallocate (y);
 	
- 	--GNAT.Debug_Pools.Print_Info_Stdout(P2);
- 	--GNAT.Debug_Pools.Dump_Stdout(P2,  100);
+	--GNAT.Debug_Pools.Print_Info_Stdout(P2);
+	--GNAT.Debug_Pools.Dump_Stdout(P2,  100);
 	
 	declare
 		str: S.Elastic_String;
 		str2: S.Elastic_String;
-		len: H3.System_Size;
-		capa: H3.System_Size;
-		first: H3.System_Size;
-		last: H3.System_Size;
-	begin
-		len := S.Get_Length(Str);
-		capa := S.Get_Capacity(Str);
-		first := S.Get_First_Index(Str);
-		last := S.Get_Last_Index(Str);
-		Ada.Text_IO.Put_Line ("length=>" & len'Img & " Capacity=>" & capa'Img & " First=>" & first'img & " Last=>" & last'img);
-
-		S.Append(Str, "Hello, world");
-		len := S.Get_Length(Str);
-		capa := S.Get_Capacity(Str);
-		first := S.Get_First_Index(Str);
-		last := S.Get_Last_Index(Str);
-		Ada.Text_IO.Put_Line ("length=>" & len'Img & " Capacity=>" & capa'Img & " First=>" & first'img & " Last=>" & last'img);
 		
+	begin
+		print_string_info (Str, "Str");
+		pragma Assert (S.Get_Length(Str) = 0);
+		pragma Assert (S.Get_First_Index(Str) = 1);
+		pragma Assert (S.Get_Last_Index(Str) = 0);
+
+		S.Append(Str, "Hello, world!");
+		print_string_info (Str, "Str");
+		pragma Assert (S.Get_Length(Str) = 13);
+		pragma Assert (S.Get_First_Index(Str) = 1);
+		pragma Assert (S.Get_Last_Index(Str) = 13);
 
 		S.Append(Str, "");
-		len := S.Get_Length(Str);
-		capa := S.Get_Capacity(Str);
-		first := S.Get_First_Index(Str);
-		last := S.Get_Last_Index(Str);
-		Ada.Text_IO.Put_Line ("length=>" & len'Img & " Capacity=>" & capa'Img & " First=>" & first'img & " Last=>" & last'img);
+		print_string_info (Str, "Str");
+		pragma Assert (S.Get_Length(Str) = 13);
+		pragma Assert (S.Get_First_Index(Str) = 1);
+		pragma Assert (S.Get_Last_Index(Str) = 13);
+
+		S.Append(Str, ' ', 0);
+		print_string_info (Str, "Str");
+		pragma Assert (S.Get_Length(Str) = 13);
+		pragma Assert (S.Get_First_Index(Str) = 1);
+		pragma Assert (S.Get_Last_Index(Str) = 13);
+
+		S.Prepend(Str, ' ', 0);
+		print_string_info (Str, "Str");
+		pragma Assert (S.Get_Length(Str) = 13);
+		pragma Assert (S.Get_First_Index(Str) = 1);
+		pragma Assert (S.Get_Last_Index(Str) = 13);
+
+		S.Append(Str, ' ', 2);
+		print_string_info (Str, "Str");
+		pragma Assert (S.Get_Length(Str) = 15);
+		pragma Assert (S.Get_First_Index(Str) = 1);
+		pragma Assert (S.Get_Last_Index(Str) = 15);
 		
---		S.Append(Str, "donkey");
-		len := S.Get_Length(Str);
-		capa := S.Get_Capacity(Str);
-		first := S.Get_First_Index(Str);
-		last := S.Get_Last_Index(Str);
-		Ada.Text_IO.Put_Line ("length=>" & len'Img & " Capacity=>" & capa'Img & " First=>" & first'img & " Last=>" & last'img);
-		
-		
+		S.Append(Str, "donkey");
+		print_string_info (Str, "Str");
+		pragma Assert (S.Get_Length(Str) = 21);
+		pragma Assert (S.Get_First_Index(Str) = 1);
+		pragma Assert (S.Get_Last_Index(Str) = 21);
+
+		S.Prepend(Str, "Oh! ");
+		print_string_info (Str, "Str");
+		pragma Assert (S.Get_Length(Str) = 25);
+		pragma Assert (S.Get_First_Index(Str) = 1);
+		pragma Assert (S.Get_Last_Index(Str) = 25);
+
 		declare
-			arr: constant S.Character_Array := S.To_Character_Array(str);
+			-- unsafe way to access the internal buffer.
+			arr: constant S.Character_Array := S.To_Character_Array(Str);
 		begin
-			Ada.Wide_Text_IO.Put ("[");	
+			Ada.Wide_Text_IO.Put ("STR[1] => [");	
 			for i in arr'Range loop
 				Ada.Wide_Text_IO.Put (arr(i));	
 			end loop;
-			Ada.Wide_Text_IO.Put_Line ("]");	
+			Ada.Wide_Text_IO.Put_Line ("]");
 
-			Ada.Wide_Text_IO.Put ("PRINTING AGAIN [");	
+			Ada.Wide_Text_IO.Put ("STR[2] => [");	
+			for i in S.Get_First_Index(Str) .. S.Get_Last_Index(Str) loop
+				Ada.Wide_Text_IO.Put (S.Get_Item(Str, i));	
+			end loop;
+			Ada.Wide_Text_IO.Put_Line ("]");
+
+			Ada.Wide_Text_IO.Put ("STR[3] => [");	
 			Ada.Wide_Text_IO.Put (Standard.Wide_String(arr));
-			Ada.Wide_Text_IO.Put_Line ("]");	
+			Ada.Wide_Text_IO.Put_Line ("]");
 		end;
-		
-		-- unsafe way to access the internal buffer.
-		S.Append (Str, 'X');
-		S.Append(Str, "donkeyX");
-		S.Append(Str, "ABCDE");
+
+		pragma Assert (S."="(Str, "Oh! Hello, world!  donkey"));
+
+		S.Append (Str, '>');
+		print_string_info (Str, "Str");
+		pragma Assert (S.Get_Length(Str) = 26);
+		pragma Assert (S.Get_First_Index(Str) = 1);
+		pragma Assert (S.Get_Last_Index(Str) = 26);
+		pragma Assert (S."="(Str, "Oh! Hello, world!  donkey>"));
+
+
+		S.Append (Str, "donkeyX");
+		print_string_info (Str, "Str");
+		pragma Assert (S.Get_Length(Str) = 33);
+		pragma Assert (S.Get_First_Index(Str) = 1);
+		pragma Assert (S.Get_Last_Index(Str) = 33);
+		pragma Assert (S."="(Str, "Oh! Hello, world!  donkey>donkeyX"));
+
+		S.Append (Str, "ABCDE");
+		print_string_info (Str, "Str");
+		pragma Assert (S.Get_Length(Str) = 38);
+		pragma Assert (S.Get_First_Index(Str) = 1);
+		pragma Assert (S.Get_Last_Index(Str) = 38);
+		pragma Assert (S."="(Str, "Oh! Hello, world!  donkey>donkeyXABCDE"));
 
 		Str2 := Str;
 		S.Append (Str2, "EXTRA");
+		print_string_info (Str2, "Str2");
+		pragma Assert (S.Get_Length(Str2) = 43);
+		pragma Assert (S.Get_First_Index(Str2) = 1);
+		pragma Assert (S.Get_Last_Index(Str2) = 43);
+		pragma Assert (S."="(Str2, "Oh! Hello, world!  donkey>donkeyXABCDEEXTRA"));
+		pragma Assert (S.Get_Length(Str) = 38);
+		pragma Assert (S.Get_First_Index(Str) = 1);
+		pragma Assert (S.Get_Last_Index(Str) = 38);
+		pragma Assert (S."="(Str, "Oh! Hello, world!  donkey>donkeyXABCDE"));
+
 		S.Append (Str2, " THIS IS FANTASTIC ELASTIC STRING WRITTEN FOR H3");
+		print_string_info (Str2, "Str2");
+		pragma Assert (S.Get_Length(Str2) = 91);
+		pragma Assert (S.Get_First_Index(Str2) = 1);
+		pragma Assert (S.Get_Last_Index(Str2) = 91);
+		pragma Assert (S."="(Str2, "Oh! Hello, world!  donkey>donkeyXABCDEEXTRA THIS IS FANTASTIC ELASTIC STRING WRITTEN FOR H3"));
+		pragma Assert (S.Get_Length(Str) = 38);
+		pragma Assert (S.Get_First_Index(Str) = 1);
+		pragma Assert (S.Get_Last_Index(Str) = 38);
+		pragma Assert (S."="(Str, "Oh! Hello, world!  donkey>donkeyXABCDE"));
 	
-		S.Replace (Str2, 1, 'Q');
+		S.Replace (Str2, 1, 1, 'Q');
+		print_string_info (Str2, "Str2");
+		pragma Assert (S.Get_Length(Str2) = 91);
+		pragma Assert (S.Get_First_Index(Str2) = 1);
+		pragma Assert (S.Get_Last_Index(Str2) = 91);
+		pragma Assert (S."="(Str2, "Qh! Hello, world!  donkey>donkeyXABCDEEXTRA THIS IS FANTASTIC ELASTIC STRING WRITTEN FOR H3"));
+
 		S.Insert (Str2, 1, 'B');
-		S.Insert (Str2, 1, 'A');
+		print_string_info (Str2, "Str2");
+		pragma Assert (S.Get_Length(Str2) = 92);
+		pragma Assert (S.Get_First_Index(Str2) = 1);
+		pragma Assert (S.Get_Last_Index(Str2) = 92);
+		pragma Assert (S."="(Str2, "BQh! Hello, world!  donkey>donkeyXABCDEEXTRA THIS IS FANTASTIC ELASTIC STRING WRITTEN FOR H3"));
+
+		S.Insert (Str2, 1, 'A', 3);
+		print_string_info (Str2, "Str2");
+		pragma Assert (S.Get_Length(Str2) = 95);
+		pragma Assert (S.Get_First_Index(Str2) = 1);
+		pragma Assert (S.Get_Last_Index(Str2) = 95);
+		pragma Assert (S."="(Str2, "AAABQh! Hello, world!  donkey>donkeyXABCDEEXTRA THIS IS FANTASTIC ELASTIC STRING WRITTEN FOR H3"));
+
+		S.Insert (Str2, 3, 'C', 2);
+		print_string_info (Str2, "Str2");
+		pragma Assert (S.Get_Length(Str2) = 97);
+		pragma Assert (S.Get_First_Index(Str2) = 1);
+		pragma Assert (S.Get_Last_Index(Str2) = 97);
+		pragma Assert (S."="(Str2, "AACCABQh! Hello, world!  donkey>donkeyXABCDEEXTRA THIS IS FANTASTIC ELASTIC STRING WRITTEN FOR H3"));
+
+		S.Insert (Str2, 5, "");
+		print_string_info (Str2, "Str2");
+		pragma Assert (S.Get_Length(Str2) = 97);
+		pragma Assert (S.Get_First_Index(Str2) = 1);
+		pragma Assert (S.Get_Last_Index(Str2) = 97);
+		pragma Assert (S."="(Str2, "AACCABQh! Hello, world!  donkey>donkeyXABCDEEXTRA THIS IS FANTASTIC ELASTIC STRING WRITTEN FOR H3"));
+
+		S.Insert (Str2, S.Get_Last_Index(Str2) + 1, "");
+		print_string_info (Str2, "Str2");
+		pragma Assert (S.Get_Length(Str2) = 97);
+		pragma Assert (S.Get_First_Index(Str2) = 1);
+		pragma Assert (S.Get_Last_Index(Str2) = 97);
+		pragma Assert (S."="(Str2, "AACCABQh! Hello, world!  donkey>donkeyXABCDEEXTRA THIS IS FANTASTIC ELASTIC STRING WRITTEN FOR H3"));
+
+		S.Insert (Str2, S.Get_Last_Index(Str2) + 1, " => ABCDEF");
+		print_string_info (Str2, "Str2");
+		pragma Assert (S.Get_Length(Str2) = 107);
+		pragma Assert (S.Get_First_Index(Str2) = 1);
+		pragma Assert (S.Get_Last_Index(Str2) = 107);
+		pragma Assert (S."="(Str2, "AACCABQh! Hello, world!  donkey>donkeyXABCDEEXTRA THIS IS FANTASTIC ELASTIC STRING WRITTEN FOR H3 => ABCDEF"));
 		--S.Replace (Str2, 10000, 'Q'); -- constraint error
+
+		S.Prepend (Str2, '>', 3);
+		print_string_info (Str2, "Str2");
+		pragma Assert (S.Get_Length(Str2) = 110);
+		pragma Assert (S.Get_First_Index(Str2) = 1);
+		pragma Assert (S.Get_Last_Index(Str2) = 110);
+		pragma Assert (S."="(Str2, ">>>AACCABQh! Hello, world!  donkey>donkeyXABCDEEXTRA THIS IS FANTASTIC ELASTIC STRING WRITTEN FOR H3 => ABCDEF"));
+
+		S.Delete (Str2, 1, 3);
+		print_string_info (Str2, "Str2");
+		pragma Assert (S.Get_Length(Str2) = 107);
+		pragma Assert (S.Get_First_Index(Str2) = 1);
+		pragma Assert (S.Get_Last_Index(Str2) = 107);
+		pragma Assert (S."="(Str2, "AACCABQh! Hello, world!  donkey>donkeyXABCDEEXTRA THIS IS FANTASTIC ELASTIC STRING WRITTEN FOR H3 => ABCDEF"));
+
+		S.Delete (Str2, S.Get_Last_Index(Str2) - 9, S.Get_Last_Index(Str2));
+		print_string_info (Str2, "Str2");
+		pragma Assert (S.Get_Length(Str2) = 97);
+		pragma Assert (S.Get_First_Index(Str2) = 1);
+		pragma Assert (S.Get_Last_Index(Str2) = 97);
+		pragma Assert (S."="(Str2, "AACCABQh! Hello, world!  donkey>donkeyXABCDEEXTRA THIS IS FANTASTIC ELASTIC STRING WRITTEN FOR H3"));
+
+		S.Delete (Str2, 5, 9);
+		print_string_info (Str2, "Str2");
+		pragma Assert (S.Get_Length(Str2) = 92);
+		pragma Assert (S.Get_First_Index(Str2) = 1);
+		pragma Assert (S.Get_Last_Index(Str2) = 92);
+		pragma Assert (S."="(Str2, "AACC Hello, world!  donkey>donkeyXABCDEEXTRA THIS IS FANTASTIC ELASTIC STRING WRITTEN FOR H3"));
+
+		S.Replace (Str2, 1, 5, ""); 
+		print_string_info (Str2, "Str2");
+		pragma Assert (S.Get_Length(Str2) = 87);
+		pragma Assert (S.Get_First_Index(Str2) = 1);
+		pragma Assert (S.Get_Last_Index(Str2) = 87);
+		pragma Assert (S."="(Str2, "Hello, world!  donkey>donkeyXABCDEEXTRA THIS IS FANTASTIC ELASTIC STRING WRITTEN FOR H3"));
+
+		S.Replace (Str2, 8, 12, "cougar"); 
+		print_string_info (Str2, "Str2");
+		pragma Assert (S.Get_Length(Str2) = 88);
+		pragma Assert (S.Get_First_Index(Str2) = 1);
+		pragma Assert (S.Get_Last_Index(Str2) = 88);
+		pragma Assert (S."="(Str2, "Hello, cougar!  donkey>donkeyXABCDEEXTRA THIS IS FANTASTIC ELASTIC STRING WRITTEN FOR H3"));
+
+		S.Replace (Str2, S.Get_Last_Index(Str2) - 1, S.Get_Last_Index(Str2) + 100, "HH"); 
+		print_string_info (Str2, "Str2");
+		pragma Assert (S.Get_Length(Str2) = 88);
+		pragma Assert (S.Get_First_Index(Str2) = 1);
+		pragma Assert (S.Get_Last_Index(Str2) = 88);
+		pragma Assert (S."="(Str2, "Hello, cougar!  donkey>donkeyXABCDEEXTRA THIS IS FANTASTIC ELASTIC STRING WRITTEN FOR HH"));
+
+		S.Replace (Str2, 8, 13, "bee"); 
+		print_string_info (Str2, "Str2");
+		pragma Assert (S.Get_Length(Str2) = 85);
+		pragma Assert (S.Get_First_Index(Str2) = 1);
+		pragma Assert (S.Get_Last_Index(Str2) = 85);
+		pragma Assert (S."="(Str2, "Hello, bee!  donkey>donkeyXABCDEEXTRA THIS IS FANTASTIC ELASTIC STRING WRITTEN FOR HH"));
 
 		declare
 			arr: constant S.Thin_Character_Array_Pointer := S.Get_Slot_Pointer(Str);
 			arr2: constant S.Thin_Character_Array_Pointer := S.Get_Slot_Pointer(Str2);
 			use type H3.System_Word;
 		begin
-			Ada.Assertions.Assert (S.Get_Length(Str) = 25, "invalid string length");
-			Ada.Assertions.Assert (S.Get_Length(Str2) = 78, "invalid string length");
-
-			len := S.Get_Length(Str);
-			capa := S.Get_Capacity(Str);
-			first := S.Get_First_Index(Str);
-			last := S.Get_Last_Index(Str);
-			Ada.Text_IO.Put_Line ("STR length=>" & len'Img & " Capacity=>" & capa'Img & " First=>" & first'img & " Last=>" & last'img);
+			print_string_info (Str, "Str");
 			
 			Ada.Wide_Text_IO.Put ("STR(By-Pointer) [");	
 			for i in S.Get_First_Index(Str) .. S.Get_Last_Index(Str) + 1 loop -- this must loop to the terminating null.
@@ -185,11 +355,7 @@ begin
 			end loop;
 			Ada.Wide_Text_IO.Put_Line ("]");	
 
-			len := S.Get_Length(Str2);
-			capa := S.Get_Capacity(Str2);
-			first := S.Get_First_Index(Str2);
-			last := S.Get_Last_Index(Str2);
-			Ada.Text_IO.Put_Line ("STR2 length=>" & len'Img & " Capacity=>" & capa'Img & " First=>" & first'img & " Last=>" & last'img);
+			print_string_info (Str2, "Str2");
 		
 			Ada.Wide_Text_IO.Put ("Str2(By-Pointer) [");	 -- this must loop to the terminating null.
 			for i in S.Get_First_Index(Str2) .. S.Get_Last_Index(Str2) + 1 loop

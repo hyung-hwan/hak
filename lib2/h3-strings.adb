@@ -1,9 +1,9 @@
 with Ada.Unchecked_Deallocation;
 
-with ada.text_io;
-
 package body H3.Strings is
 	BUFFER_ALIGN: constant := 16;
+
+	type Shift_Direction is (SHIFT_LEFT, SHIFT_RIGHT);
 
 	function To_Character_Array (Str: in Elastic_String) return Character_Array is
 	begin
@@ -128,35 +128,13 @@ package body H3.Strings is
 	end Prepare_Buffer;
 
 	-- prepare the buffer for writing 
-	procedure Prepare_Buffer (Str: in out Elastic_String; Req_Hard_Capa: in System_Size; Shift_Pos: in System_Size := 0; Shift_Size: in System_Size := 0) is
+	procedure Prepare_Buffer (Str: in out Elastic_String; Req_Hard_Capa: in System_Size; Shift_Pos: in System_Size := 0; Shift_Size: in System_Size := 0; Shift_Dir: in Shift_Direction := Shift_Right) is
 		Tmp: Elastic_String;
 		First, Last: System_Size;
 		Hard_Capa: System_Size;
 	begin
 		First := Get_First_Index(Str);
 		Last := Get_Last_Index(Str);
-
---		if Str.Buffer /= Empty_Buffer'Access and then Is_Shared(Str) then
---			if Req_Hard_Capa < Get_Hard_Capacity(Str) then
---				Hard_Capa := Get_Hard_Capacity(Str);
---			else
---				Hard_Capa := Req_Hard_Capa;
---			end if;
---
---			Tmp := New_Buffer_Container(Hard_Capa);
---			Tmp.Buffer.Slot(First .. Last + 1) := Str.Buffer.Slot(First .. Last + 1);
---			Tmp.Buffer.Last := Last;
---
---			Str := Tmp;
---		else
---			if Req_Hard_Capa > Get_Hard_Capacity(Str) then
---				Tmp := Str;
---				Str := New_Buffer_Container(Req_Hard_Capa);
---
---				Str.Buffer.Slot(First .. Last + 1) := Tmp.Buffer.Slot(First .. Last + 1);
---				Str.Buffer.Last := Last;
---			end if;
---		end if;
 
 		if Str.Buffer /= Empty_Buffer'Access and then Is_Shared(Str) then
 			if Req_Hard_Capa < Get_Hard_Capacity(Str) then
@@ -175,27 +153,38 @@ package body H3.Strings is
 				goto COPY_OVER;
 			elsif Shift_Pos > 0 then
 				Tmp := Str;
-				goto COPY_OVER;
+				goto COPY_OVER_WITH_SHIFT;
+			else
+				-- no shift, no change in the buffer
+				null;
 			end if;
 		end if;
 
 		return;
 
 	<<COPY_OVER>>
-		if Shift_Pos > 0 then
-			-- it is an internal function. perform no sanity check.
-			-- if Shift_Pos or Shift_Size is beyond the allocated capacity, 
-			-- it will end up in an exception.
-			Str.Buffer.Slot(First .. Shift_Pos - 1) := Tmp.Buffer.Slot(First .. Shift_Pos - 1);
-	ada.text_io.put_line ("Shift_Pos " & Shift_Pos'Img);
-	ada.text_io.put_line ("Shift_Size " & Shift_Size'Img);
-	ada.text_io.put_line ("Last " & Last'Img);
-	ada.text_io.put_line ("Capa " & Get_Hard_Capacity(Tmp)'Img);
-			Str.Buffer.Slot(Shift_Pos + Shift_Size .. Last + Shift_Size + 1) := Tmp.Buffer.Slot(Shift_Pos .. Last + 1);
-			Str.Buffer.Last := Last + Shift_Size;
-		else
+		if Shift_Pos <= 0 then
+			-- no shift is required. copy the entire string including th
 			Str.Buffer.Slot(First .. Last + 1) := Tmp.Buffer.Slot(First .. Last + 1);
 			Str.Buffer.Last := Last;
+			return;
+		end if;
+	<<COPY_OVER_WITH_SHIFT>>
+		-- it is an internal function. perform no sanity check.
+		-- if Shift_Pos or Shift_Size is beyond the allocated capacity, 
+		-- it will end up in an exception.
+		if Shift_Dir = SHIFT_LEFT then
+			declare
+				Mid: System_Size := Shift_Pos - Shift_Size;
+			begin
+				Str.Buffer.Slot(First .. Mid) := Tmp.Buffer.Slot(First .. Mid);
+				Str.Buffer.Slot(Mid + 1 .. Last - Shift_Size + 1) := Tmp.Buffer.Slot(Shift_Pos + 1 .. Last + 1);
+				Str.Buffer.Last := Last - Shift_Size;
+			end;
+		else
+			Str.Buffer.Slot(First .. Shift_Pos - 1) := Tmp.Buffer.Slot(First .. Shift_Pos - 1);
+			Str.Buffer.Slot(Shift_Pos + Shift_Size .. Last + Shift_Size + 1) := Tmp.Buffer.Slot(Shift_Pos .. Last + 1);
+			Str.Buffer.Last := Last + Shift_Size;
 		end if;
 	end Prepare_Buffer;
 
@@ -211,51 +200,117 @@ package body H3.Strings is
 		Str.Buffer := Empty_Buffer'Access;
 	end Purge;
 
--- TODO: operator "&"
+	procedure Insert (Str: in out Elastic_String; Pos: in System_Index; V: in Character_Type; Repeat: in System_Size := 1) is
+		Act_Pos: System_Index := Pos;
+		Act_Inc: System_Size := Repeat;
+	begin
+		if Act_Pos > Str.Buffer.Last then
+			Act_Pos := Str.Buffer.Last + 1;
+		end if;
+
+		Prepare_Buffer (Str, H3.Align(Get_Length(Str) + Act_Inc + 1, BUFFER_ALIGN), Act_Pos, Act_Inc);
+		Str.Buffer.Slot(Act_Pos .. Act_Pos + Act_Inc - 1) := (others => V);
+	end Insert;
+
+	procedure Insert (Str: in out Elastic_String; Pos: in System_Index; V: in Character_Array) is
+		Act_Pos: System_Index := Pos;
+	begin
+		if Act_Pos > Str.Buffer.Last then
+			Act_Pos := Str.Buffer.Last + 1;
+		end if;
+
+		Prepare_Buffer (Str, H3.Align(Get_Length(Str) + V'Length + 1, BUFFER_ALIGN), Act_Pos, V'Length);
+		Str.Buffer.Slot(Act_Pos .. Act_Pos + V'Length - 1) := V;
+	end Insert;
+
+-- TODO: operator "&" that returns a new Elastic_String
+	procedure Append (Str: in out Elastic_String; V: in Character_Type; Repeat: in System_Size := 1) is
+	begin
+		Insert (Str, Get_Last_Index(Str) + 1, V, Repeat);
+	end Append;
+
 	procedure Append (Str: in out Elastic_String; V: in Character_Array) is
 	begin
-		if V'Length > 0 then	
-			Prepare_Buffer (Str, H3.Align(Get_Length(Str) + V'Length + 1, BUFFER_ALIGN));
-			Str.Buffer.Slot(Str.Buffer.Last + 1 .. Str.Buffer.Last + V'Length) := V;
-			Str.Buffer.Last := Str.Buffer.Last + V'Length;
-			Str.Buffer.Slot(Str.Buffer.Last + 1) := Null_Character;
+		Insert (Str, Get_Last_Index(Str) + 1, V);
+	end Append;
+
+	procedure Prepend (Str: in out Elastic_String; V: in Character_Type; Repeat: in System_Size := 1) is
+	begin
+		Insert (Str, Get_First_Index(Str), V, Repeat);
+	end Prepend;
+
+	procedure Prepend (Str: in out Elastic_String; V: in Character_Array) is
+	begin
+		Insert (Str, Get_First_Index(Str), V);
+	end Prepend;
+
+	procedure Replace (Str: in out Elastic_String; From_Pos: in System_Index; To_Pos: in System_Size; V: in Character_Type; Repeat: in System_Size := 1) is
+		Act_To_Pos, Repl_Len: System_Size;
+	begin
+		if From_Pos <= To_Pos and then From_Pos <= Str.Buffer.Last then
+			Act_To_Pos := To_Pos;
+			if Act_To_Pos > Str.Buffer.Last then
+				Act_To_Pos := Str.Buffer.Last;
+			end if;
+
+			Repl_Len := Act_To_Pos - From_Pos + 1;
+			if Repeat < Repl_Len then
+				Prepare_Buffer (Str, Get_Hard_Capacity(Str), Act_To_Pos, Repl_Len - Repeat, SHIFT_LEFT);
+				Act_To_Pos := From_Pos + Repeat - 1;
+			elsif Repeat > Repl_Len then
+				Prepare_Buffer (Str, Get_Hard_Capacity(Str), From_Pos, Repeat - Repl_Len, SHIFT_RIGHT);
+				Act_To_Pos := From_Pos + Repeat - 1;
+			else
+				Prepare_Buffer (Str);
+			end if;
+			Str.Buffer.Slot(From_Pos .. Act_To_Pos) := (others => V);
 		end if;
-	end Append;
+	end Replace;
 
-	procedure Append (Str: in out Elastic_String; V: in Character_Type) is
-		Tmp: Character_Array(1 .. 1) := (1 => V);
+	procedure Replace (Str: in out Elastic_String; From_Pos: in System_Index; To_Pos: in System_Size; V: in Character_Array) is
+		Act_To_Pos, Repl_Len: System_Size;
 	begin
-		Append (Str, Tmp);
-	end Append;
+		if From_Pos <= To_Pos and then From_Pos <= Str.Buffer.Last then
+			Act_To_Pos := To_Pos;
+			if Act_To_Pos > Str.Buffer.Last then
+				Act_To_Pos := Str.Buffer.Last;
+			end if;
 
-	procedure Delete (Str: in out Elastic_String; Pos: in System_Index; Length: in System_Size) is
+			Repl_Len := Act_To_Pos - From_Pos + 1;
+			if V'Length < Repl_Len then
+				Prepare_Buffer (Str, Get_Hard_Capacity(Str), Act_To_Pos, Repl_Len - V'Length, SHIFT_LEFT);
+				Act_To_Pos := From_Pos + V'Length - 1;
+			elsif V'Length > Repl_Len then
+				Prepare_Buffer (Str, Get_Hard_Capacity(Str), From_Pos, V'Length - Repl_Len, SHIFT_RIGHT);
+				Act_To_Pos := From_Pos + V'Length - 1;
+			else
+				Prepare_Buffer (Str);	
+			end if;
+			Str.Buffer.Slot(From_Pos .. Act_To_Pos) := V;
+		end if;
+	end Replace;
+
+	procedure Delete (Str: in out Elastic_String; From_Pos: in System_Index; To_Pos: in System_Size) is
+		Act_To_Pos: System_Size;
 	begin
-		if Pos <= Str.Buffer.Last then
-			Prepare_Buffer (Str);
-		else
-			raise Standard.Constraint_Error;
+		if From_Pos <= To_Pos and then From_Pos <= Str.Buffer.Last then
+			Act_To_Pos := To_Pos;
+			if Act_To_Pos > Str.Buffer.Last then
+				Act_To_Pos := Str.Buffer.Last;
+			end if;
+			Prepare_Buffer (Str, Get_Hard_Capacity(Str), Act_To_Pos, Act_To_Pos - From_Pos + 1, SHIFT_LEFT);
 		end if;
 	end Delete;
 
-	procedure Insert (Str: in out Elastic_String; Pos: in System_Index; New_Char: in Character_Type) is
+	function "=" (Str: in Elastic_String; Str2: in Elastic_String) return Standard.Boolean is
 	begin
-		if Pos <= Str.Buffer.Last then
-	ada.text_io.put_line ( "INSERT ");
-			Prepare_Buffer (Str, H3.Align(Get_Length(Str) + 1, BUFFER_ALIGN), Pos, 1);
-			Str.Buffer.Slot(Pos) := New_Char;
-		end if;
-	end Insert;
+		return Str.Buffer = Str2.Buffer or else Str.Buffer.Slot(Get_First_Index(Str) .. Get_Last_Index(Str)) = Str2.Buffer.Slot(Get_First_Index(Str2) .. Get_Last_Index(Str2));
+	end "=";
 
-	procedure Replace (Str: in out Elastic_String; Pos: in System_Index; New_Char: in Character_Type) is
+	function "=" (Str: in Elastic_String; Str2: in Character_Array) return Standard.Boolean is
 	begin
-		if Pos <= Str.Buffer.Last then
-			Prepare_Buffer (Str);
-			Str.Buffer.Slot(Pos) := New_Char;
-		else
-		--	raise Index_Error;
-			raise Standard.Constraint_Error;
-		end if;
-	end Replace;
+		return Str.Buffer.Slot(Get_First_Index(Str) .. Get_Last_Index(Str)) = Str2;
+	end "=";
 
 	-- ---------------------------------------------------------------------
 	-- Controlled Management
