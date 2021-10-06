@@ -1,5 +1,6 @@
 with H3.Pool;
 with H3.Limited_Pool;
+with H3.Arrays;
 with H3.Strings;
 with H3.Storage_Pools;
 with H3.MM;
@@ -14,8 +15,8 @@ with Ada.Assertions;
 use type H3.System_Size;
 
 procedure hello is
-	package S is new H3.Strings(Standard.Wide_Character, 1, Wide_Character'Val(0));
-	package S_I is new H3.Strings(Integer, 1, 16#FF#);
+	package S is new H3.Strings(Standard.Wide_Character, Wide_Character'Val(0));
+	package S_I is new H3.Arrays(Integer, 1, 16#FF#);
 
 	--type Global_Pool is new System.Storage_Pools.Root_Storage_Pool with null record;
 	P1: aliased System.Pool_Global.Unbounded_No_Reclaim_Pool;
@@ -174,7 +175,8 @@ begin
 
 		declare
 			-- unsafe way to access the internal buffer.
-			arr: constant S.Item_Array := S.To_Item_Array(Str);
+			--arr: constant S.P.Item_Array := S.To_Item_Array(Str);
+			arr: constant S.Character_Array := S.To_Item_Array(Str);
 		begin
 			Ada.Wide_Text_IO.Put ("STR[1] => [");	
 			for i in arr'Range loop
@@ -353,8 +355,10 @@ begin
 		pragma Assert (S."="(Str2, "Hello, ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ!  donkey>donkeyXABCDEEXTRA THIS IS FANTASTIC ELASTIC STRING WRITTEN FOR HH"));
 
 		declare
-			arr: constant S.Thin_Item_Array_Pointer := S.Get_Slot_Pointer(Str);
-			arr2: constant S.Thin_Item_Array_Pointer := S.Get_Slot_Pointer(Str2);
+			--arr: constant S.P.Thin_Item_Array_Pointer := S.Get_Slot_Pointer(Str);
+			--arr2: constant S.P.Thin_Item_Array_Pointer := S.Get_Slot_Pointer(Str2);
+			arr: constant S.Thin_Character_Array_Pointer := S.Get_Slot_Pointer(Str);
+			arr2: constant S.Thin_Character_Array_Pointer := S.Get_Slot_Pointer(Str2);
 			use type H3.System_Word;
 		begin
 			print_string_info (Str, "Str");
@@ -415,7 +419,7 @@ begin
 
 
 	declare
-		t1: S_I.Elastic_String;
+		t1: S_I.Elastic_Array;
 	begin
 		S_I.Append (t1, 20, 5);
 		S_I.Prepend (t1, 30, 2);
