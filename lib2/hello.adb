@@ -16,7 +16,7 @@ use type H3.System_Size;
 
 procedure hello is
 	package S is new H3.Strings(Standard.Wide_Character, Wide_Character'Val(0));
-	package S_I is new H3.Arrays(Integer, 1, 16#FF#);
+	
 
 	--type Global_Pool is new System.Storage_Pools.Root_Storage_Pool with null record;
 	P1: aliased System.Pool_Global.Unbounded_No_Reclaim_Pool;
@@ -423,6 +423,7 @@ begin
 
 
 	declare
+	package S_I is new H3.Arrays(Integer, 1, 16#FF#);
 		t1: S_I.Elastic_Array;
 	begin
 		S_I.Append (t1, 20, 5);
@@ -438,6 +439,13 @@ begin
 		Ada.Text_IO.Put_Line (t1.Find(30, t1.Get_Last_Index, S_I.DIRECTION_BACKWARD)'Img);
 		Ada.Text_IO.Put_Line (t1.Find(30, t1.Get_First_Index)'Img);
 		Ada.Text_IO.Put_Line (t1.Find(90, t1.Get_First_Index)'Img);
+		Ada.Text_IO.Put_Line (t1.Find(90, t1.Get_First_Index)'Img);
+
+		Ada.Text_IO.Put_Line (t1.Find((30, 30, 30, 30), t1.Get_First_Index)'Img);
+		Ada.Text_IO.Put_Line (t1.Find((20, 20), t1.Get_First_Index, S_I.DIRECTION_FORWARD)'Img);
+		Ada.Text_IO.Put_Line (t1.Find((20, 20), t1.Get_Last_Index, S_I.DIRECTION_BACKWARD)'Img);
+		Ada.Text_IO.Put_Line (t1.Find((30, 20, 20), t1.Get_First_Index, S_I.DIRECTION_FORWARD)'Img);
+		Ada.Text_IO.Put_Line (t1.Find((30, 20, 20), t1.Get_Last_Index, S_I.DIRECTION_BACKWARD)'Img);
 	end;
 end;
 

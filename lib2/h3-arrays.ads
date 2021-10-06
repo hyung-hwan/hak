@@ -62,9 +62,8 @@ package H3.Arrays is
 
 	procedure Delete (Obj: in out Elastic_Array; From_Pos: in System_Index; To_Pos: in System_Size);
 
-
 	function Find (Obj: in Elastic_Array; V: In Item_Type; Start_Pos: in System_Index; Find_Dir: in Direction := DIRECTION_FORWARD) return System_Size;
-	--function Find (Obj: in Elastic_Array; V: In Item_Array; Start_Pos: in System_Index; Find_Dir: in Direction := DIRECTION_FORWARD);
+	function Find (Obj: in Elastic_Array; V: In Item_Array; Start_Pos: in System_Index; Find_Dir: in Direction := DIRECTION_FORWARD) return System_Size;
 
 	function "=" (Obj: in Elastic_Array; Obj2: in Elastic_Array) return Standard.Boolean;
 	function "=" (Obj: in Elastic_Array; Obj2: in Item_Array) return Standard.Boolean;

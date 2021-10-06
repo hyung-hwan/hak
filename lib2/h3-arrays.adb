@@ -320,8 +320,32 @@ package body H3.Arrays is
 
 		return System_Size'First;
 	end Find;
-	--function Find (Obj: in Elastic_Array; V: In Item_Array; From_Pos: in System_Index; Find_Dir: in Direction := DIRECTION_FORWARD);
 
+	function Find (Obj: in Elastic_Array; V: In Item_Array; Start_Pos: in System_Index; Find_Dir: in Direction := DIRECTION_FORWARD) return System_Size is
+		End_Pos: System_Size;
+	begin
+		if Get_Length(Obj) > 0 and then V'Length > 0 and then V'Length <= Get_Length(Obj) then
+			End_Pos := Get_Last_Index(Obj) - V'Length + 1;
+
+			if Find_Dir = DIRECTION_FORWARD then
+				for i in Start_Pos .. End_Pos loop
+					if Obj.Buffer.Slot(i .. i + V'Length - 1) = V then
+						return i;
+					end if;
+				end loop;
+			else
+				if Start_Pos < End_Pos then
+					End_Pos := Start_Pos;
+				end if;
+				for i in reverse Get_First_Index(Obj) .. End_Pos loop
+					if Obj.Buffer.Slot(i .. i + V'Length - 1) = V then
+						return i;
+					end if;
+				end loop;
+			end if;
+		end if;
+		return System_Size'First;
+	end Find;
 
 	function "=" (Obj: in Elastic_Array; Obj2: in Elastic_Array) return Standard.Boolean is
 	begin
