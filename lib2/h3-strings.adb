@@ -1,8 +1,8 @@
 package body H3.Strings is
 
-	procedure Append (Str: in out Elastic_String; V: in Character_Array) is
+	procedure Append (Obj: in out Elastic_String; V: in Character_Array) is
 	begin
-		P.Append (P.Elastic_Array(Str), V);
+		P.Append (P.Elastic_Array(Obj), V);
 	end;
 
 end H3.Strings;

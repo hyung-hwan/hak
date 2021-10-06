@@ -19,55 +19,55 @@ package H3.Arrays is
 	subtype Thin_Item_Array is Item_Array(System_Index'Range);
 	type Thin_Item_Array_Pointer is access Thin_Item_Array;
 
-	function To_Item_Array (Str: in Elastic_Array) return Item_Array;
+	function To_Item_Array (Obj: in Elastic_Array) return Item_Array;
 
-	function Get_Capacity (Str: in Elastic_Array) return System_Size;
+	function Get_Capacity (Obj: in Elastic_Array) return System_Size;
 	pragma Inline (Get_Capacity);
 
-	function Get_Length (Str: in Elastic_Array) return System_Size;
+	function Get_Length (Obj: in Elastic_Array) return System_Size;
 	pragma Inline (Get_Length);
 
 	-- the return type is System_Size for consistency with Get_Last_Index.
-	function Get_First_Index (Str: in Elastic_Array) return System_Size;
+	function Get_First_Index (Obj: in Elastic_Array) return System_Size;
 	pragma Inline (Get_First_Index);
 
 	-- the return type is System_Size because the Last index is -1 off the System_Index'First for an empty array
-	function Get_Last_Index (Str: in Elastic_Array) return System_Size;
+	function Get_Last_Index (Obj: in Elastic_Array) return System_Size;
 	pragma Inline (Get_Last_index);
 
-	function Get_Item (Str: in Elastic_Array; Pos: in System_Index) return Item_Type;
+	function Get_Item (Obj: in Elastic_Array; Pos: in System_Index) return Item_Type;
 	pragma Inline (Get_Item);
 
 	-- unsafe
-	function Get_Slot_Pointer (Str: in Elastic_Array) return Thin_Item_Array_Pointer;
+	function Get_Slot_Pointer (Obj: in Elastic_Array) return Thin_Item_Array_Pointer;
 	pragma Inline (Get_Slot_Pointer);
 
-	function Is_Shared(Str: in Elastic_Array) return Standard.Boolean;
+	function Is_Shared(Obj: in Elastic_Array) return Standard.Boolean;
 	pragma Inline (Is_Shared);
 
-	procedure Clear (Str: in out Elastic_Array);
-	procedure Purge (Str: in out Elastic_Array); -- clear and reset the buffer to Empty_Buffer.
+	procedure Clear (Obj: in out Elastic_Array);
+	procedure Purge (Obj: in out Elastic_Array); -- clear and reset the buffer to Empty_Buffer.
 
-	procedure Insert (Str: in out Elastic_Array; Pos: in System_Index; V: in Item_Type; Repeat: in System_Size := 1);
-	procedure Insert (Str: in out Elastic_Array; Pos: in System_Index; V: in Item_Array);
+	procedure Insert (Obj: in out Elastic_Array; Pos: in System_Index; V: in Item_Type; Repeat: in System_Size := 1);
+	procedure Insert (Obj: in out Elastic_Array; Pos: in System_Index; V: in Item_Array);
 
-	procedure Append (Str: in out Elastic_Array; V: in Item_Type; Repeat: in System_Size := 1);
-	procedure Append (Str: in out Elastic_Array; V: in Item_Array);
+	procedure Append (Obj: in out Elastic_Array; V: in Item_Type; Repeat: in System_Size := 1);
+	procedure Append (Obj: in out Elastic_Array; V: in Item_Array);
 
-	procedure Prepend (Str: in out Elastic_Array; V: in Item_Type; Repeat: in System_Size := 1);
-	procedure Prepend (Str: in out Elastic_Array; V: in Item_Array);
+	procedure Prepend (Obj: in out Elastic_Array; V: in Item_Type; Repeat: in System_Size := 1);
+	procedure Prepend (Obj: in out Elastic_Array; V: in Item_Array);
 	
-	procedure Replace (Str: in out Elastic_Array; From_Pos: in System_Index; To_Pos: in System_Size; V: in Item_Type; Repeat: in System_Size := 1);
-	procedure Replace (Str: in out Elastic_Array; From_Pos: in System_Index; To_Pos: in System_Size; V: in Item_Array);
+	procedure Replace (Obj: in out Elastic_Array; From_Pos: in System_Index; To_Pos: in System_Size; V: in Item_Type; Repeat: in System_Size := 1);
+	procedure Replace (Obj: in out Elastic_Array; From_Pos: in System_Index; To_Pos: in System_Size; V: in Item_Array);
 
-	procedure Delete (Str: in out Elastic_Array; From_Pos: in System_Index; To_Pos: in System_Size);
+	procedure Delete (Obj: in out Elastic_Array; From_Pos: in System_Index; To_Pos: in System_Size);
 
 
-	function Find (Str: in Elastic_Array; V: In Item_Type; Start_Pos: in System_Index; Find_Dir: in Direction := DIRECTION_FORWARD) return System_Size;
-	--function Find (Str: in Elastic_Array; V: In Item_Array; Start_Pos: in System_Index; Find_Dir: in Direction := DIRECTION_FORWARD);
+	function Find (Obj: in Elastic_Array; V: In Item_Type; Start_Pos: in System_Index; Find_Dir: in Direction := DIRECTION_FORWARD) return System_Size;
+	--function Find (Obj: in Elastic_Array; V: In Item_Array; Start_Pos: in System_Index; Find_Dir: in Direction := DIRECTION_FORWARD);
 
-	function "=" (Str: in Elastic_Array; Str2: in Elastic_Array) return Standard.Boolean;
-	function "=" (Str: in Elastic_Array; Str2: in Item_Array) return Standard.Boolean;
+	function "=" (Obj: in Elastic_Array; Obj2: in Elastic_Array) return Standard.Boolean;
+	function "=" (Obj: in Elastic_Array; Obj2: in Item_Array) return Standard.Boolean;
 
 private
 	type Buffer_Record(Capa: System_Size) is limited record
@@ -86,8 +86,8 @@ private
 		Buffer: Buffer_Pointer := Empty_Buffer'Access;
 	end record;
 
-	overriding procedure Initialize (Str: in out Elastic_Array);
-	overriding procedure Adjust     (Str: in out Elastic_Array);
-	overriding procedure Finalize   (Str: in out Elastic_Array);
+	overriding procedure Initialize (Obj: in out Elastic_Array);
+	overriding procedure Adjust     (Obj: in out Elastic_Array);
+	overriding procedure Finalize   (Obj: in out Elastic_Array);
 
 end H3.Arrays;

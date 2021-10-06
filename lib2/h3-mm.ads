@@ -7,8 +7,8 @@ package H3.MM is
 	type Item_Pointer is access all Item_Type;
 
 	type Ref_Counted_Record is record
-		--Ref_Count: System.Atomic_Counters.Atomic_Counter;
-		Ref_Count: System_Size;
+		--Refs: System.Atomic_Counters.Atomic_Counter;
+		Refs: System_Size;
 		Item: aliased Item_Type;
 	end record;
 
@@ -27,10 +27,8 @@ package H3.MM is
 	function Is_Shared (R: in Ref_Counted) return Standard.Boolean;
 	pragma Inline(Is_Shared);
 
-
 	overriding procedure Initialize (R: in out Ref_Counted);
 	overriding procedure Adjust (R: in out Ref_Counted);
 	overriding procedure Finalize (R: in out Ref_Counted);
-
 	
 end H3.MM;

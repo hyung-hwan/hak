@@ -18,6 +18,6 @@ package H3.Strings is
 		null;
 	end record;
 
-	overriding procedure Append (Str: in out Elastic_String; V: in Character_Array);
+	overriding procedure Append (Obj: in out Elastic_String; V: in Character_Array);
 
 end H3.Strings;

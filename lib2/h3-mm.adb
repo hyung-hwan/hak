@@ -5,7 +5,7 @@ package body H3.MM is
 	begin
 		Finalize (R);
 		R.Data := new Ref_Counted_Record;
-		R.Data.Ref_Count := 1;
+		R.Data.Refs := 1;
 		--System.Atomic_Counters.Initialize (R.Data.Ref_Count); -- initialize to 1
 	end Create;
  
@@ -26,8 +26,8 @@ package body H3.MM is
 
 	function Is_Shared (R: in Ref_Counted) return Standard.Boolean is
 	begin
-		--return R.Data /= null and then not System.Atomic_Counters.Is_One(R.Data.Ref_Count);
-		return R.Data /= null and then R.Data.Ref_Count > 1;
+		--return R.Data /= null and then not System.Atomic_Counters.Is_One(R.Data.Refs);
+		return R.Data /= null and then R.Data.Refs > 1;
 	end Is_Shared;
 
 	procedure Initialize (R: in out Ref_Counted) is
@@ -38,8 +38,8 @@ package body H3.MM is
 	procedure Adjust (R: in out Ref_Counted) is
 	begin
 		if R.Data /= null then
-			R.Data.Ref_Count := R.Data.Ref_Count + 1;
-			--System.Atomic_Counters.Increment (R.Data.Ref_Count);
+			R.Data.Refs := R.Data.Refs + 1;
+			--System.Atomic_Counters.Increment (R.Data.Refs);
 		end if;
 	end Adjust;
 
@@ -52,10 +52,10 @@ package body H3.MM is
 			--	Dealloc (R.Data); 
 			--	-- R.DAta must be null here
 			--end if;
-			if R.Data.Ref_Count = 1 then
+			if R.Data.Refs = 1 then
 				Dealloc (R.Data); 
 			else
-				R.Data.Ref_Count := R.Data.Ref_Count - 1;
+				R.Data.Refs := R.Data.Refs - 1;
 			end if;
 		end if;
 	end Finalize;
