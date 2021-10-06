@@ -378,12 +378,16 @@ begin
 			Ada.Wide_Text_IO.Put_Line ("]");	
 		end;
 
+		S.Clear (Str2);
+		print_string_info (Str2, "Str2");
+
 		--declare
 		--	arr: constant Standard.Wide_String := S.To_Item_Array(str);
 		--begin
 		--	Ada.Wide_Text_IO.Put_Line (arr);	
 		--end;
 		SS := Str;
+
 	end;
 
 	declare
@@ -423,12 +427,17 @@ begin
 	begin
 		S_I.Append (t1, 20, 5);
 		S_I.Prepend (t1, 30, 2);
+		S_I.Append (t1, 30, 5);
 
 		Ada.Text_IO.Put_Line ("-------------------------------");
 		for i in S_I.Get_First_Index(t1) .. S_I.Get_Last_Index(t1) loop
 			Ada.Text_IO.Put  (" " & S_I.Get_Item(t1, i)'Img);
 		end loop;
 		Ada.Text_IO.Put_Line ("");
+
+		Ada.Text_IO.Put_Line (t1.Find(30, t1.Get_Last_Index, S_I.DIRECTION_BACKWARD)'Img);
+		Ada.Text_IO.Put_Line (t1.Find(30, t1.Get_First_Index)'Img);
+		Ada.Text_IO.Put_Line (t1.Find(90, t1.Get_First_Index)'Img);
 	end;
 end;
 

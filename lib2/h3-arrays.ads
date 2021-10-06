@@ -10,6 +10,8 @@ package H3.Arrays is
 	Terminator_Length: constant System_Zero_Or_One := G_Terminator_Length;
 	Terminator_Value: constant Item_Type := G_Terminator_Value;
 
+	type Direction is (DIRECTION_BACKWARD, DIRECTION_FORWARD);
+
 	type Elastic_Array is tagged private;
 	type Item_Array is array(System_Index range <>) of Item_Type;
 	--type Item_Array_Pointer is access all Item_Array;
@@ -59,6 +61,10 @@ package H3.Arrays is
 	procedure Replace (Str: in out Elastic_Array; From_Pos: in System_Index; To_Pos: in System_Size; V: in Item_Array);
 
 	procedure Delete (Str: in out Elastic_Array; From_Pos: in System_Index; To_Pos: in System_Size);
+
+
+	function Find (Str: in Elastic_Array; V: In Item_Type; Start_Pos: in System_Index; Find_Dir: in Direction := DIRECTION_FORWARD) return System_Size;
+	--function Find (Str: in Elastic_Array; V: In Item_Array; Start_Pos: in System_Index; Find_Dir: in Direction := DIRECTION_FORWARD);
 
 	function "=" (Str: in Elastic_Array; Str2: in Elastic_Array) return Standard.Boolean;
 	function "=" (Str: in Elastic_Array; Str2: in Item_Array) return Standard.Boolean;

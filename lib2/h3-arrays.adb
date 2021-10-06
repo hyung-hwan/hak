@@ -3,8 +3,6 @@ with Ada.Unchecked_Deallocation;
 package body H3.Arrays is
 	BUFFER_ALIGN: constant := 128; -- TODO: change it to a reasonably large value.
 
-	type Shift_Direction is (SHIFT_LEFT, SHIFT_RIGHT);
-
 	function To_Item_Array (Str: in Elastic_Array) return Item_Array is
 	begin
 		return Str.Buffer.Slot(Str.Buffer.Slot'First .. Str.Buffer.Last);
@@ -128,7 +126,7 @@ package body H3.Arrays is
 	end Prepare_Buffer;
 
 	-- prepare the buffer for writing 
-	procedure Prepare_Buffer (Str: in out Elastic_Array; Req_Hard_Capa: in System_Size; Shift_Pos: in System_Size := 0; Shift_Size: in System_Size := 0; Shift_Dir: in Shift_Direction := Shift_Right) is
+	procedure Prepare_Buffer (Str: in out Elastic_Array; Req_Hard_Capa: in System_Size; Shift_Pos: in System_Size := 0; Shift_Size: in System_Size := 0; Shift_Dir: in Direction := DIRECTION_FORWARD) is
 		Tmp: Elastic_Array;
 		First, Last: System_Size;
 		Hard_Capa: System_Size;
@@ -173,7 +171,7 @@ package body H3.Arrays is
 		-- it is an internal function. perform no sanity check.
 		-- if Shift_Pos or Shift_Size is beyond the allocated capacity, 
 		-- it will end up in an exception.
-		if Shift_Dir = SHIFT_LEFT then
+		if Shift_Dir = DIRECTION_BACKWARD then
 			declare
 				Mid: System_Size := Shift_Pos - Shift_Size;
 			begin
@@ -261,10 +259,10 @@ package body H3.Arrays is
 
 			Repl_Len := Act_To_Pos - From_Pos + 1;
 			if Repeat < Repl_Len then
-				Prepare_Buffer (Elastic_Array(Str), Get_Hard_Capacity(Str), Act_To_Pos, Repl_Len - Repeat, SHIFT_LEFT);
+				Prepare_Buffer (Elastic_Array(Str), Get_Hard_Capacity(Str), Act_To_Pos, Repl_Len - Repeat, DIRECTION_BACKWARD);
 				Act_To_Pos := From_Pos + Repeat - 1;
 			elsif Repeat > Repl_Len then
-				Prepare_Buffer (Elastic_Array(Str), Calc_Inc_Capa(Str, Repeat - Repl_Len), From_Pos, Repeat - Repl_Len, SHIFT_RIGHT);
+				Prepare_Buffer (Elastic_Array(Str), Calc_Inc_Capa(Str, Repeat - Repl_Len), From_Pos, Repeat - Repl_Len, DIRECTION_FORWARD);
 				Act_To_Pos := From_Pos + Repeat - 1;
 			else
 				Prepare_Buffer (Elastic_Array(Str));
@@ -284,10 +282,10 @@ package body H3.Arrays is
 
 			Repl_Len := Act_To_Pos - From_Pos + 1;
 			if V'Length < Repl_Len then
-				Prepare_Buffer (Elastic_Array(Str), Get_Hard_Capacity(Str), Act_To_Pos, Repl_Len - V'Length, SHIFT_LEFT);
+				Prepare_Buffer (Elastic_Array(Str), Get_Hard_Capacity(Str), Act_To_Pos, Repl_Len - V'Length, DIRECTION_BACKWARD);
 				Act_To_Pos := From_Pos + V'Length - 1;
 			elsif V'Length > Repl_Len then
-				Prepare_Buffer (Elastic_Array(Str), Calc_Inc_Capa(Str, V'Length - Repl_Len), From_Pos, V'Length - Repl_Len, SHIFT_RIGHT);
+				Prepare_Buffer (Elastic_Array(Str), Calc_Inc_Capa(Str, V'Length - Repl_Len), From_Pos, V'Length - Repl_Len, DIRECTION_FORWARD);
 				Act_To_Pos := From_Pos + V'Length - 1;
 			else
 				Prepare_Buffer (Elastic_Array(Str));
@@ -304,9 +302,34 @@ package body H3.Arrays is
 			if Act_To_Pos > Str.Buffer.Last then
 				Act_To_Pos := Str.Buffer.Last;
 			end if;
-			Prepare_Buffer (Elastic_Array(Str), Get_Hard_Capacity(Str), Act_To_Pos, Act_To_Pos - From_Pos + 1, SHIFT_LEFT);
+			Prepare_Buffer (Elastic_Array(Str), Get_Hard_Capacity(Str), Act_To_Pos, Act_To_Pos - From_Pos + 1, DIRECTION_BACKWARD);
 		end if;
 	end Delete;
+
+	function Find (Str: in Elastic_Array; V: In Item_Type; Start_Pos: in System_Index; Find_Dir: in Direction := DIRECTION_FORWARD) return System_Size is
+		Act_Start_Pos: System_Index := Start_Pos;
+	begin
+		if  Find_Dir = DIRECTION_FORWARD then
+			for i in Act_Start_Pos .. Get_Last_Index(Str) loop
+				if Get_Item(Str, i) = V then
+					return i;
+				end if;
+			end loop;
+		else
+			if Act_Start_Pos > Get_Last_Index(Str) then
+				Act_Start_Pos := Get_Last_Index(Str);
+			end if;
+			for i in reverse Get_First_Index(Str) .. Act_Start_Pos loop
+				if Get_Item(Str, i) = V then
+					return i;
+				end if;
+			end loop;
+		end if;
+
+		return System_Size'First;
+	end Find;
+	--function Find (Str: in Elastic_Array; V: In Item_Array; From_Pos: in System_Index; Find_Dir: in Direction := DIRECTION_FORWARD);
+
 
 	function "=" (Str: in Elastic_Array; Str2: in Elastic_Array) return Standard.Boolean is
 	begin
