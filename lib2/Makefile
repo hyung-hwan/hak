@@ -1,3 +1,3 @@
 all:
-	gnat make -gnata hello && valgrind ./hello
-	gnat make -gnata hello2 && valgrind ./hello2
+	gnat make -gnata -gnatW8 hello && valgrind ./hello
+	gnat make -gnata -gnatW8 hello2 && valgrind ./hello2

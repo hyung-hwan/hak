@@ -76,7 +76,8 @@ procedure hello2 is
 		end case;
 	end is_class;
 
-	Empty_String: aliased Standard.String := "";
+	--Empty_String: aliased Standard.String := "en_US.utf8" & Standard.Character'Val(0);
+	Empty_String: aliased Standard.String := "" & Standard.Character'Val(0);
 begin
 	--setlocale (6, Interfaces.C.Strings.To_Chars_Ptr(Empty_String'access));
 	setlocale (6, Empty_String'Address);
