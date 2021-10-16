@@ -6,8 +6,8 @@ package body H3.CC is
 	use type System.UTF_32.Category;
 
 	SP: constant Item_Type := Item_Type'Val(32);
-	VT: constant Item_Type := Item_Type'Val(9);
-	
+	HT: constant Item_Type := Item_Type'Val(9);
+
 	function Is_Alpha (V: in Item_Type) return Standard.Boolean is
 	begin
 		return UC.Is_UTF_32_Letter(Item_Type'Pos(V));
@@ -21,7 +21,7 @@ package body H3.CC is
 
 	function Is_Blank (V: in Item_Type) return Standard.Boolean is
 	begin
-		return V = SP or else V = VT;
+		return V = SP or else V = HT;
 	end Is_Blank;
 
 	function Is_Cntrl (V: in Item_Type) return Standard.Boolean is
@@ -36,8 +36,7 @@ package body H3.CC is
 
 	function Is_Graph (V: in Item_Type) return Standard.Boolean is
 	begin
-		--return UC.Is_UTF_32_Graphic(Item_Type'Pos(V));
-		return True;
+		return Is_Print(V) and then V /= SP;
 	end Is_Graph;
 
 	function Is_Lower (V: in Item_Type) return Standard.Boolean is
@@ -47,19 +46,20 @@ package body H3.CC is
 
 	function Is_Print (V: in Item_Type) return Standard.Boolean is
 	begin
-		--TODO:
-		return True;
+		return not UC.IS_UTF_32_Non_Graphic(Item_Type'Pos(V));
 	end Is_Print;
 
 	function Is_Punct (V: in Item_Type) return Standard.Boolean is
 	begin
-		return UC.Is_UTF_32_Punctuation(Item_Type'Pos(V));
+		--return UC.Is_UTF_32_Punctuation(Item_Type'Pos(V));
+		return Is_Print(V) and then not Is_Space(V) and then not Is_Alnum(V);
 	end Is_Punct;
 
 	function Is_Space (V: in Item_Type) return Standard.Boolean is
 	begin
 		return UC.Is_UTF_32_Space(Item_Type'Pos(V)) or else
-		       UC.Is_UTF_32_Line_Terminator(Item_Type'Pos(V));
+		       UC.Is_UTF_32_Line_Terminator(Item_Type'Pos(V)) or else 
+		       V = HT;
 	end Is_Space;
 
 	function Is_Upper (V: in Item_Type) return Standard.Boolean is
@@ -84,9 +84,9 @@ package body H3.CC is
 		return Item_Type'Val(UC.UTF_32_To_Upper_Case(Item_Type'Pos(V)));
 	end To_Upper;
 
-	function Is_Class (V: in Item_Type; C: in Class) return Standard.Boolean is
+	function Is_Class (V: in Item_Type; Cls: in Class) return Standard.Boolean is
 	begin
-		case C is
+		case Cls is
 			when ALPHA => return Is_Alpha(V);
 			when ALNUM => return Is_Alnum(V);
 			when BLANK => return Is_Blank(V);
@@ -97,8 +97,8 @@ package body H3.CC is
 			when PRINT => return Is_Print(V);
 			when PUNCT => return Is_Punct(V);
 			when SPACE => return Is_Space(V);
-			when XDIGIT => return Is_Xdigit(V);
 			when UPPER => return Is_Upper(V);
+			when XDIGIT => return Is_Xdigit(V);
 		end case;
 	end Is_Class;
 end H3.CC;

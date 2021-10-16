@@ -4,8 +4,8 @@ package H3.CC is
 	-- <ctype.h>-like character classification package
 	-- unicode-based. no system locale honored.
 
-	type Class is (ALPHA, ALNUM, BLANK, CNTRL, DIGIT, GRAPH, LOWER, PRINT, PUNCT, SPACE, XDIGIT, UPPER);
-	function Is_Class (V: in Item_Type; C: in Class) return Standard.Boolean;	
+	type Class is (ALPHA, ALNUM, BLANK, CNTRL, DIGIT, GRAPH, LOWER, PRINT, PUNCT, SPACE, UPPER, XDIGIT);
+	function Is_Class (V: in Item_Type; Cls: in Class) return Standard.Boolean;	
 
 	function Is_Alpha (V: in Item_Type) return Standard.Boolean;
 	function Is_Alnum (V: in Item_Type) return Standard.Boolean;

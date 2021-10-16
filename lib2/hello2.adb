@@ -5,12 +5,16 @@ with Ada.Text_IO;
 with Ada.Wide_Text_IO;
 with Ada.Assertions;
 with Interfaces.C;
+--with Interfaces.C.Strings;
+with System;
 
 use type H3.System_Size;
 
 procedure hello2 is
 	package A is new H3.Arrays(Standard.Wide_Character, 1, Wide_Character'Val(0));
 	package S is new H3.Strings(Standard.Wide_Character, Wide_Character'Val(0));
+	package CC is new H3.CC(Standard.Wide_Character);
+	package C renames Interfaces.C;
 
 	--package S_I is new H3.Arrays(Integer, 1, 16#FF#);
 	Arr: A.Elastic_Array;
@@ -20,23 +24,77 @@ procedure hello2 is
 	Str2: S.Elastic_String;
 
 	use type S.Elastic_String;
+
+	--procedure setlocale(a: C.int; b: Interfaces.C.Strings.chars_ptr);
+	procedure setlocale(a: C.int; b: System.Address);
+	pragma Import (C, setlocale, "setlocale");
+
+	function is_class (V: Standard.Wide_Character; Cls: CC.Class) return Standard.Boolean is
+		
+
+		function iswalpha(a: C.int) return C.int;
+		pragma Import (C, iswalpha, "iswalpha");
+		function iswalnum(a: C.int) return C.int;
+		pragma Import (C, iswalnum, "iswalnum");
+		function iswblank(a: C.int) return C.int;
+		pragma Import (C, iswblank, "iswblank");
+		function iswcntrl(a: C.int) return C.int;
+		pragma Import (C, iswcntrl, "iswcntrl");
+		function iswdigit(a: C.int) return C.int;
+		pragma Import (C, iswdigit, "iswdigit");
+		function iswgraph(a: C.int) return C.int;
+		pragma Import (C, iswgraph, "iswgraph");
+		function iswlower(a: C.int) return C.int;
+		pragma Import (C, iswlower, "iswlower");
+		function iswprint(a: C.int) return C.int;
+		pragma Import (C, iswprint, "iswprint");
+		function iswpunct(a: C.int) return C.int;
+		pragma Import (C, iswpunct, "iswpunct");
+		function iswspace(a: C.int) return C.int;
+		pragma Import (C, iswspace, "iswspace");
+		function iswupper(a: C.int) return C.int;
+		pragma Import (C, iswupper, "iswupper");
+		function iswxdigit(a: C.int) return C.int;
+		pragma Import (C, iswxdigit, "iswxdigit");
+
+		use type C.int;
+		X: C.int := Standard.Wide_Character'Pos(V);
+	begin
+		case Cls is
+			when CC.ALPHA => return IswAlpha(X) /= 0;
+			when CC.ALNUM => return IswAlnum(X) /= 0;
+			when CC.BLANK => return IswBlank(X) /= 0;
+			when CC.CNTRL => return IswCntrl(X) /= 0;
+			when CC.DIGIT => return IswDigit(X) /= 0;
+			when CC.GRAPH => return IswGraph(X) /= 0;
+			when CC.LOWER => return IswLower(X) /= 0;
+			when CC.PRINT => return IswPrint(X) /= 0;
+			when CC.PUNCT => return IswPunct(X) /= 0;
+			when CC.SPACE => return IswSpace(X) /= 0;
+			when CC.UPPER => return IswUpper(X) /= 0;
+			when CC.XDIGIT => return IswXdigit(X) /= 0;
+		end case;
+	end is_class;
+
+	Empty_String: aliased Standard.String := "";
 begin
+	--setlocale (6, Interfaces.C.Strings.To_Chars_Ptr(Empty_String'access));
+	setlocale (6, Empty_String'Address);
+
 	A.Append (Arr, "hello");
 	A.Append (Arr, "world");
 
 	Arr.Append ("fantastic");
 
-
 	Arr2 := Arr;
 	A.Delete (Arr2, 1, 5);
-
 
 	Str.Append ("wonderful");
 	Str.Delete (2, 3);
 
 	Str2 := Str;
 	Str2.Clear;
-	Str2.Append ("savage");
+	Str2.Append ("saxage");
 
 	Str := Str2;
 	Str.Clear;
@@ -55,27 +113,27 @@ begin
 	Ada.Wide_Text_IO.Put_Line (Standard.Wide_String(Str2.To_Item_Array));
 
 	declare
-		package C renames Interfaces.C;
-		package CC is new H3.CC(Standard.Wide_Character);
-
 		--function isspace(a: Standard.Character) return C.int
 		--	with Import => True, Convention => C, External_Name => "isspace";
-		function isspace(a: Standard.Character) return C.int;
-		pragma Import (C, isspace, "isspace");
-
 		ch: Standard.Wide_Character;
 	begin
-		for i in 0 .. 255 loop
+		for i in 0 .. 10000 loop
 			ch := Standard.Wide_Character'Val(i);
 			Ada.Text_IO.Put (I'img & "[" & ch'Img & "]");
 
 			for j in CC.Class'Range loop
-				Ada.Text_IO.Put (" " & J'Img & ":" & CC.Is_Class(ch, j)'Img);	
+				Ada.Text_IO.Put (" " & J'Img & ":" & CC.Is_Class(ch, j)'Img);
+				if CC.Is_Class(ch, j) /= Is_Class(ch, j) then
+					Ada.Text_IO.Put ("[X]");
+				--else
+				--	Ada.Text_IO.Put ("[O]");
+				end if;
 			end loop;
 
 			Ada.Text_IO.Put_Line ("");
 		end loop;
 	
+		Ada.Text_IO.Put_line (CC.Is_Alpha('σ')'Img);
 	end;
 end;	
 
