@@ -76,6 +76,7 @@ private
 	end record;
 
 	type Buffer_Pointer is access all Buffer_Record;
+	--for Buffer_Pointer'Storage_Pool use <<TODO: custom storage pool?>> H3'Storage_Pool;
 
 	--Empty_Buffer: aliased Buffer_Record(1);
 	-- Use 1 slot to hold the terminator value regardless of th terminator length in Empty_Buffer.

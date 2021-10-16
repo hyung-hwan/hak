@@ -1,8 +1,10 @@
 with H3.Arrays;
 with H3.Strings;
+with H3.CC;
 with Ada.Text_IO;
 with Ada.Wide_Text_IO;
 with Ada.Assertions;
+with Interfaces.C;
 
 use type H3.System_Size;
 
@@ -51,5 +53,29 @@ begin
 	-- ---------------------
 	Ada.Wide_Text_IO.Put_Line (Standard.Wide_String(Str.To_Item_Array));
 	Ada.Wide_Text_IO.Put_Line (Standard.Wide_String(Str2.To_Item_Array));
-end;
+
+	declare
+		package C renames Interfaces.C;
+		package CC is new H3.CC(Standard.Wide_Character);
+
+		--function isspace(a: Standard.Character) return C.int
+		--	with Import => True, Convention => C, External_Name => "isspace";
+		function isspace(a: Standard.Character) return C.int;
+		pragma Import (C, isspace, "isspace");
+
+		ch: Standard.Wide_Character;
+	begin
+		for i in 0 .. 255 loop
+			ch := Standard.Wide_Character'Val(i);
+			Ada.Text_IO.Put (I'img & "[" & ch'Img & "]");
+
+			for j in CC.Class'Range loop
+				Ada.Text_IO.Put (" " & J'Img & ":" & CC.Is_Class(ch, j)'Img);	
+			end loop;
+
+			Ada.Text_IO.Put_Line ("");
+		end loop;
+	
+	end;
+end;	
 
