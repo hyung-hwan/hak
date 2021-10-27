@@ -2,7 +2,7 @@ with Ada.Unchecked_Conversion;
 with Ada.Unchecked_Deallocation;
 
 package body H3.Limited_Pool is
-				
+
 	function Allocate (Pool: in Storage_Pool_Pointer := null) return Pointer_Type is
 		P: Storage_Pool_Pointer;
 
@@ -24,7 +24,7 @@ package body H3.Limited_Pool is
 			begin
 				Tmp := new Normal_Type;
 				return To_Pointer_Type(Tmp);
-			end; 
+			end;
 		end if;
 	end Allocate;
 
@@ -53,7 +53,7 @@ package body H3.Limited_Pool is
 				Tmp: Pooled_Pointer := To_Pooled_Pointer(Target);
 			begin
 				Dealloc (Tmp);
-				Target := null;	
+				Target := null;
 			end;
 		end if;
 	end Deallocate;

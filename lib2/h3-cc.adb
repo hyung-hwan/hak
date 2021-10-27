@@ -84,9 +84,9 @@ package body H3.CC is
 		return Item_Type'Val(UC.UTF_32_To_Upper_Case(Item_Type'Pos(V)));
 	end To_Upper;
 
-	function Is_Class (V: in Item_Type; Cls: in Class) return Boolean is
+	function Is_Class (V: in Item_Type; Class: in Item_Class) return Boolean is
 	begin
-		case Cls is
+		case Class is
 			when ALPHA => return Is_Alpha(V);
 			when ALNUM => return Is_Alnum(V);
 			when BLANK => return Is_Blank(V);

@@ -18,7 +18,7 @@ package H3.Pool is
 
 	function Allocate (Pool: in Storage_Pool_Pointer := null) return Pointer_Type;
 
-	function Allocate (Source: in Normal_Type; 
+	function Allocate (Source: in Normal_Type;
 	                   Pool:   in Storage_Pool_Pointer := null) return Pointer_Type;
 
 	procedure Deallocate (Target: in out Pointer_Type;

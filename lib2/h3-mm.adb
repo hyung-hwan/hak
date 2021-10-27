@@ -8,7 +8,7 @@ package body H3.MM is
 		R.Data.Refs := 1;
 		--System.Atomic_Counters.Initialize (R.Data.Ref_Count); -- initialize to 1
 	end Create;
- 
+
 	procedure Create (R: in out Ref_Counted; V: in Item_Type) is
 	begin
 		Create (R);
@@ -46,14 +46,14 @@ package body H3.MM is
 	procedure Finalize (R: in out Ref_Counted) is
 		procedure Dealloc is new Ada.Unchecked_Deallocation(Ref_Counted_Record, Ref_Counted_Pointer);
 	begin
-		if R.Data /= null then	
+		if R.Data /= null then
 			--if System.Atomic_Counters.Decrement(R.Data.Ref_Count) then
 			--	-- The reference count reached 0
-			--	Dealloc (R.Data); 
+			--	Dealloc (R.Data);
 			--	-- R.DAta must be null here
 			--end if;
 			if R.Data.Refs = 1 then
-				Dealloc (R.Data); 
+				Dealloc (R.Data);
 			else
 				R.Data.Refs := R.Data.Refs - 1;
 			end if;

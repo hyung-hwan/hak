@@ -30,5 +30,5 @@ package H3.MM is
 	overriding procedure Initialize (R: in out Ref_Counted);
 	overriding procedure Adjust (R: in out Ref_Counted);
 	overriding procedure Finalize (R: in out Ref_Counted);
-	
+
 end H3.MM;

@@ -2,7 +2,7 @@ with Ada.Unchecked_Conversion;
 with Ada.Unchecked_Deallocation;
 
 package body H3.Pool is
-				
+
 	function Allocate (Pool: in Storage_Pool_Pointer := null) return Pointer_Type is
 		P: Storage_Pool_Pointer;
 
@@ -24,11 +24,11 @@ package body H3.Pool is
 			begin
 				Tmp := new Normal_Type;
 				return To_Pointer_Type(Tmp);
-			end; 
+			end;
 		end if;
 	end Allocate;
 
---	function Allocate (Source: in Normal_Type; 
+--	function Allocate (Source: in Normal_Type;
 --	                   Pool:   in Storage_Pool_Pointer := null) return Pointer_Type is
 --		V: Pointer_Type;
 --	begin
@@ -37,7 +37,7 @@ package body H3.Pool is
 --		return V;
 --	end Allocate;
 
-	function Allocate (Source: in Normal_Type; 
+	function Allocate (Source: in Normal_Type;
 	                   Pool:   in Storage_Pool_Pointer := null) return Pointer_Type is
 		P: Storage_Pool_Pointer;
 	begin
@@ -58,7 +58,7 @@ package body H3.Pool is
 			begin
 				Tmp := new Normal_Type'(Source);
 				return To_Pointer_Type(Tmp);
-			end; 
+			end;
 		end if;
 	end Allocate;
 

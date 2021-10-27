@@ -29,9 +29,7 @@ procedure hello2 is
 	procedure setlocale(a: C.int; b: System.Address);
 	pragma Import (C, setlocale, "setlocale");
 
-	function is_class (V: Standard.Wide_Character; Cls: CC.Class) return Standard.Boolean is
-		
-
+	function is_class (V: Standard.Wide_Character; Class: CC.Item_Class) return Standard.Boolean is
 		function iswalpha(a: C.int) return C.int;
 		pragma Import (C, iswalpha, "iswalpha");
 		function iswalnum(a: C.int) return C.int;
@@ -60,7 +58,7 @@ procedure hello2 is
 		use type C.int;
 		X: C.int := Standard.Wide_Character'Pos(V);
 	begin
-		case Cls is
+		case Class is
 			when CC.ALPHA => return IswAlpha(X) /= 0;
 			when CC.ALNUM => return IswAlnum(X) /= 0;
 			when CC.BLANK => return IswBlank(X) /= 0;
@@ -122,7 +120,7 @@ begin
 			ch := Standard.Wide_Character'Val(i);
 			Ada.Text_IO.Put (I'img & "[" & ch'Img & "]");
 
-			for j in CC.Class'Range loop
+			for j in CC.Item_Class'Range loop
 				Ada.Text_IO.Put (" " & J'Img & ":" & CC.Is_Class(ch, j)'Img);
 				if CC.Is_Class(ch, j) /= Is_Class(ch, j) then
 					Ada.Text_IO.Put ("[X]");

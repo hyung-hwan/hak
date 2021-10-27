@@ -7,15 +7,15 @@ package H3.CC is
 	subtype Item_Code is H3.Natural;
 
 	Colon: constant Item_Code := System_Character'Pos(':');
-	SemicoloN: constant Item_Code := System_Character'Pos(';');
+	Semicolon: constant Item_Code := System_Character'Pos(';');
 	Tilde: constant Item_Code := System_Character'Pos('~');
 	Underline: constant Item_Code := System_Character'Pos('_');
 	Equal: constant Item_Code := System_Character'Pos('=');
 	L_Arrow: constant Item_Code := System_Character'Pos('<');
 	R_Arrow: constant Item_Code := System_Character'Pos('>');
 
-	type Class is (ALPHA, ALNUM, BLANK, CNTRL, DIGIT, GRAPH, LOWER, PRINT, PUNCT, SPACE, UPPER, XDIGIT);
-	function Is_Class (V: in Item_Type; Cls: in Class) return Boolean;
+	type Item_Class is (ALPHA, ALNUM, BLANK, CNTRL, DIGIT, GRAPH, LOWER, PRINT, PUNCT, SPACE, UPPER, XDIGIT);
+	function Is_Class (V: in Item_Type; Class: in Item_Class) return Boolean;
 
 	function Is_Alpha (V: in Item_Type) return Boolean;
 	function Is_Alnum (V: in Item_Type) return Boolean;
