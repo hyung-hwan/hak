@@ -1,9 +1,13 @@
 with System;
 with System.Storage_Pools;
-with Ada.Finalization;
 
 package H3 is
-	--pragma Preelaborate (H2);
+	--pragma Preelaborate (H3);
+	subtype Boolean is Standard.Boolean;
+	subtype Natural is Standard.Natural;
+
+	subtype System_Character is Standard.Wide_Character;
+
 	System_Byte_Bits: constant := System.Storage_Unit;
 	System_Word_Bits: constant := System.Word_Size;
 	System_Word_Bytes: constant := System_Word_Bits / System_Byte_Bits;

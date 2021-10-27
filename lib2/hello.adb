@@ -15,7 +15,7 @@ with Ada.Assertions;
 use type H3.System_Size;
 
 procedure hello is
-	package S is new H3.Strings(Standard.Wide_Character, Wide_Character'Val(0));
+	package S is new H3.Strings(Standard.Wide_Character);
 	
 
 	--type Global_Pool is new System.Storage_Pools.Root_Storage_Pool with null record;

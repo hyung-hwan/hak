@@ -52,12 +52,12 @@ package body H3.Arrays is
 		return P;
 	end Get_Slot_Pointer;
 
-	function Is_Shared(Obj: in Elastic_Array) return Standard.Boolean is
+	function Is_Shared(Obj: in Elastic_Array) return Boolean is
 	begin
 		return Obj.Buffer /= Empty_Buffer'Access and then Obj.Buffer.Refs > 1;
 	end Is_Shared;
 
-	procedure Ref_Buffer (Buf: in out Buffer_Pointer) is
+	procedure Ref_Buffer (Buf: in Buffer_Pointer) is
 	begin
 		if Buf /= Empty_Buffer'Access then
 			Buf.Refs := Buf.Refs + 1;
@@ -88,14 +88,14 @@ package body H3.Arrays is
 		return Tmp;
 	end New_Buffer_Container;
 
-	-- prepare the buffer for writing 
+	-- prepare the buffer for writing
 	procedure Prepare_Buffer (Obj: in out Elastic_Array) is
 		Tmp: Elastic_Array;
 	begin
 		if Obj.Buffer /= Empty_Buffer'Access then
 			if Is_Shared(Obj) then
 				-- The code like this doesn't work correctly in terms of finalization.
-				-- The buffer pointer held inside a finalization controlled record must be 
+				-- The buffer pointer held inside a finalization controlled record must be
 				-- manipluated through the record itself. otherwise, the Adjust and Finalize
 				-- calls goes incompatible with the reference counting implementation.
 				-- It is because finalization is set on the record rather than the buffer pointer.
@@ -114,7 +114,7 @@ package body H3.Arrays is
 		end if;
 	end Prepare_Buffer;
 
-	-- prepare the buffer for writing 
+	-- prepare the buffer for writing
 	procedure Prepare_Buffer (Obj: in out Elastic_Array; Req_Hard_Capa: in System_Size; Shift_Pos: in System_Size := 0; Shift_Size: in System_Size := 0; Shift_Dir: in Direction := DIRECTION_FORWARD) is
 		Tmp: Elastic_Array;
 		First, Last: System_Size;
@@ -158,11 +158,11 @@ package body H3.Arrays is
 		end if;
 	<<COPY_OVER_WITH_SHIFT>>
 		-- it is an internal function. perform no sanity check.
-		-- if Shift_Pos or Shift_Size is beyond the allocated capacity, 
+		-- if Shift_Pos or Shift_Size is beyond the allocated capacity,
 		-- it will end up in an exception.
 		if Shift_Dir = DIRECTION_BACKWARD then
 			declare
-				Mid: System_Size := Shift_Pos - Shift_Size;
+				Mid: constant System_Size := Shift_Pos - Shift_Size;
 			begin
 				Obj.Buffer.Slot(First .. Mid) := Tmp.Buffer.Slot(First .. Mid);
 				Obj.Buffer.Slot(Mid + 1 .. Last - Shift_Size + Terminator_Length) := Tmp.Buffer.Slot(Shift_Pos + 1 .. Last + Terminator_Length);
@@ -183,7 +183,7 @@ package body H3.Arrays is
 	end Clear;
 
 	procedure Purge (Obj: in out Elastic_Array) is
-	begin 
+	begin
 		Unref_Buffer (Obj.Buffer);
 		Obj.Buffer := Empty_Buffer'Access;
 	end Purge;
@@ -195,7 +195,7 @@ package body H3.Arrays is
 
 	procedure Insert (Obj: in out Elastic_Array; Pos: in System_Index; V: in Item_Type; Repeat: in System_Size := 1) is
 		Act_Pos: System_Index := Pos;
-		Act_Inc: System_Size := Repeat;
+		Act_Inc: constant System_Size := Repeat;
 	begin
 		if Act_Pos > Obj.Buffer.Last then
 			Act_Pos := Obj.Buffer.Last + 1;
@@ -295,7 +295,7 @@ package body H3.Arrays is
 		end if;
 	end Delete;
 
-	function Find (Obj: in Elastic_Array; V: In Item_Type; Start_Pos: in System_Index; Find_Dir: in Direction := DIRECTION_FORWARD) return System_Size is
+	function Find (Obj: in Elastic_Array; V: in Item_Type; Start_Pos: in System_Index; Find_Dir: in Direction := DIRECTION_FORWARD) return System_Size is
 		Act_Start_Pos: System_Index := Start_Pos;
 	begin
 		if Find_Dir = DIRECTION_FORWARD then
@@ -321,7 +321,7 @@ package body H3.Arrays is
 		return System_Size'First;
 	end Find;
 
-	function Find (Obj: in Elastic_Array; V: In Item_Array; Start_Pos: in System_Index; Find_Dir: in Direction := DIRECTION_FORWARD) return System_Size is
+	function Find (Obj: in Elastic_Array; V: in Item_Array; Start_Pos: in System_Index; Find_Dir: in Direction := DIRECTION_FORWARD) return System_Size is
 		End_Pos: System_Size;
 	begin
 		if Get_Length(Obj) > 0 and then V'Length > 0 and then V'Length <= Get_Length(Obj) then
@@ -347,12 +347,12 @@ package body H3.Arrays is
 		return System_Size'First;
 	end Find;
 
-	function "=" (Obj: in Elastic_Array; Obj2: in Elastic_Array) return Standard.Boolean is
+	function "=" (Obj: in Elastic_Array; Obj2: in Elastic_Array) return Boolean is
 	begin
 		return Obj.Buffer = Obj2.Buffer or else Obj.Buffer.Slot(Get_First_Index(Obj) .. Get_Last_Index(Obj)) = Obj2.Buffer.Slot(Get_First_Index(Obj2) .. Get_Last_Index(Obj2));
 	end "=";
 
-	function "=" (Obj: in Elastic_Array; Obj2: in Item_Array) return Standard.Boolean is
+	function "=" (Obj: in Elastic_Array; Obj2: in Item_Array) return Boolean is
 	begin
 		return Obj.Buffer.Slot(Get_First_Index(Obj) .. Get_Last_Index(Obj)) = Obj2;
 	end "=";

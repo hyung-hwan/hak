@@ -11,8 +11,8 @@ with System;
 use type H3.System_Size;
 
 procedure hello2 is
-	package A is new H3.Arrays(Standard.Wide_Character, 1, Wide_Character'Val(0));
-	package S is new H3.Strings(Standard.Wide_Character, Wide_Character'Val(0));
+	package A is new H3.Arrays(Standard.Wide_Character, 1, Wide_Character'First);
+	package S is new H3.Strings(Standard.Wide_Character);
 	package CC is new H3.CC(Standard.Wide_Character);
 	package C renames Interfaces.C;
 

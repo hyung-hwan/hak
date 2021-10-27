@@ -24,7 +24,7 @@ package body H3.MM is
 		end if;
 	end Get_Item_Pointer;
 
-	function Is_Shared (R: in Ref_Counted) return Standard.Boolean is
+	function Is_Shared (R: in Ref_Counted) return Boolean is
 	begin
 		--return R.Data /= null and then not System.Atomic_Counters.Is_One(R.Data.Refs);
 		return R.Data /= null and then R.Data.Refs > 1;

@@ -24,7 +24,7 @@ package H3.MM is
 	function Get_Item_Pointer (R: in Ref_Counted) return Item_Pointer;
 	pragma Inline(Get_Item_Pointer);
 
-	function Is_Shared (R: in Ref_Counted) return Standard.Boolean;
+	function Is_Shared (R: in Ref_Counted) return Boolean;
 	pragma Inline(Is_Shared);
 
 	overriding procedure Initialize (R: in out Ref_Counted);

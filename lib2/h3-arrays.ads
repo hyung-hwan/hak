@@ -13,6 +13,7 @@ package H3.Arrays is
 	type Direction is (DIRECTION_BACKWARD, DIRECTION_FORWARD);
 
 	type Elastic_Array is tagged private;
+	--type Item_Array is array(System_Index range <>) of aliased Item_Type;
 	type Item_Array is array(System_Index range <>) of Item_Type;
 	--type Item_Array_Pointer is access all Item_Array;
 
@@ -42,7 +43,7 @@ package H3.Arrays is
 	function Get_Slot_Pointer (Obj: in Elastic_Array) return Thin_Item_Array_Pointer;
 	pragma Inline (Get_Slot_Pointer);
 
-	function Is_Shared(Obj: in Elastic_Array) return Standard.Boolean;
+	function Is_Shared(Obj: in Elastic_Array) return Boolean;
 	pragma Inline (Is_Shared);
 
 	procedure Clear (Obj: in out Elastic_Array);
@@ -56,17 +57,17 @@ package H3.Arrays is
 
 	procedure Prepend (Obj: in out Elastic_Array; V: in Item_Type; Repeat: in System_Size := 1);
 	procedure Prepend (Obj: in out Elastic_Array; V: in Item_Array);
-	
+
 	procedure Replace (Obj: in out Elastic_Array; From_Pos: in System_Index; To_Pos: in System_Size; V: in Item_Type; Repeat: in System_Size := 1);
 	procedure Replace (Obj: in out Elastic_Array; From_Pos: in System_Index; To_Pos: in System_Size; V: in Item_Array);
 
 	procedure Delete (Obj: in out Elastic_Array; From_Pos: in System_Index; To_Pos: in System_Size);
 
-	function Find (Obj: in Elastic_Array; V: In Item_Type; Start_Pos: in System_Index; Find_Dir: in Direction := DIRECTION_FORWARD) return System_Size;
-	function Find (Obj: in Elastic_Array; V: In Item_Array; Start_Pos: in System_Index; Find_Dir: in Direction := DIRECTION_FORWARD) return System_Size;
+	function Find (Obj: in Elastic_Array; V: in Item_Type; Start_Pos: in System_Index; Find_Dir: in Direction := DIRECTION_FORWARD) return System_Size;
+	function Find (Obj: in Elastic_Array; V: in Item_Array; Start_Pos: in System_Index; Find_Dir: in Direction := DIRECTION_FORWARD) return System_Size;
 
-	function "=" (Obj: in Elastic_Array; Obj2: in Elastic_Array) return Standard.Boolean;
-	function "=" (Obj: in Elastic_Array; Obj2: in Item_Array) return Standard.Boolean;
+	function "=" (Obj: in Elastic_Array; Obj2: in Elastic_Array) return Boolean;
+	function "=" (Obj: in Elastic_Array; Obj2: in Item_Array) return Boolean;
 
 private
 	type Buffer_Record(Capa: System_Size) is limited record
