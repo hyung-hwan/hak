@@ -1,6 +1,6 @@
 with H3.Arrays;
 with H3.Strings;
-with H3.CC;
+with H3.Runes;
 with Ada.Text_IO;
 with Ada.Wide_Text_IO;
 with Ada.Assertions;
@@ -13,7 +13,7 @@ use type H3.System_Size;
 procedure hello2 is
 	package A is new H3.Arrays(Standard.Wide_Character, 1, Wide_Character'First);
 	package S is new H3.Strings(Standard.Wide_Character);
-	package CC is new H3.CC(Standard.Wide_Character);
+	package R is new H3.Runes(Standard.Wide_Character);
 	package C renames Interfaces.C;
 
 	--package S_I is new H3.Arrays(Integer, 1, 16#FF#);
@@ -29,7 +29,7 @@ procedure hello2 is
 	procedure setlocale(a: C.int; b: System.Address);
 	pragma Import (C, setlocale, "setlocale");
 
-	function is_class (V: Standard.Wide_Character; Class: CC.Item_Class) return Standard.Boolean is
+	function is_class (V: Standard.Wide_Character; Class: R.Item_Class) return Standard.Boolean is
 		function iswalpha(a: C.int) return C.int;
 		pragma Import (C, iswalpha, "iswalpha");
 		function iswalnum(a: C.int) return C.int;
@@ -59,18 +59,18 @@ procedure hello2 is
 		X: C.int := Standard.Wide_Character'Pos(V);
 	begin
 		case Class is
-			when CC.ALPHA => return IswAlpha(X) /= 0;
-			when CC.ALNUM => return IswAlnum(X) /= 0;
-			when CC.BLANK => return IswBlank(X) /= 0;
-			when CC.CNTRL => return IswCntrl(X) /= 0;
-			when CC.DIGIT => return IswDigit(X) /= 0;
-			when CC.GRAPH => return IswGraph(X) /= 0;
-			when CC.LOWER => return IswLower(X) /= 0;
-			when CC.PRINT => return IswPrint(X) /= 0;
-			when CC.PUNCT => return IswPunct(X) /= 0;
-			when CC.SPACE => return IswSpace(X) /= 0;
-			when CC.UPPER => return IswUpper(X) /= 0;
-			when CC.XDIGIT => return IswXdigit(X) /= 0;
+			when R.ALPHA => return IswAlpha(X) /= 0;
+			when R.ALNUM => return IswAlnum(X) /= 0;
+			when R.BLANK => return IswBlank(X) /= 0;
+			when R.CNTRL => return IswCntrl(X) /= 0;
+			when R.DIGIT => return IswDigit(X) /= 0;
+			when R.GRAPH => return IswGraph(X) /= 0;
+			when R.LOWER => return IswLower(X) /= 0;
+			when R.PRINT => return IswPrint(X) /= 0;
+			when R.PUNCT => return IswPunct(X) /= 0;
+			when R.SPACE => return IswSpace(X) /= 0;
+			when R.UPPER => return IswUpper(X) /= 0;
+			when R.XDIGIT => return IswXdigit(X) /= 0;
 		end case;
 	end is_class;
 
@@ -120,9 +120,9 @@ begin
 			ch := Standard.Wide_Character'Val(i);
 			Ada.Text_IO.Put (I'img & "[" & ch'Img & "]");
 
-			for j in CC.Item_Class'Range loop
-				Ada.Text_IO.Put (" " & J'Img & ":" & CC.Is_Class(ch, j)'Img);
-				if CC.Is_Class(ch, j) /= Is_Class(ch, j) then
+			for j in R.Item_Class'Range loop
+				Ada.Text_IO.Put (" " & J'Img & ":" & R.Is_Class(ch, j)'Img);
+				if R.Is_Class(ch, j) /= Is_Class(ch, j) then
 					Ada.Text_IO.Put ("[X]");
 				--else
 				--	Ada.Text_IO.Put ("[O]");
@@ -132,7 +132,7 @@ begin
 			Ada.Text_IO.Put_Line ("");
 		end loop;
 	
-		Ada.Text_IO.Put_line (CC.Is_Alpha('σ')'Img);
+		Ada.Text_IO.Put_line (R.Is_Alpha('σ')'Img);
 	end;
 end;	
 

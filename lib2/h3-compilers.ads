@@ -1,10 +1,10 @@
-with H3.CC;
+with H3.Runes;
 with H3.Strings;
 
 generic
 	type Rune_Type is (<>);
 package H3.Compilers is
-	package R is new H3.CC(Rune_Type);
+	package R is new H3.Runes(Rune_Type);
 	package S is new H3.Strings(Rune_Type);
 
 	Syntax_Error: exception;

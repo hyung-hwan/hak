@@ -6,6 +6,7 @@ generic
 	G_Terminator_Length: System_Zero_Or_One;
 	G_Terminator_Value: Item_Type;
 package H3.Arrays is
+	--pragma Preelaborate (Arrays);
 
 	subtype Item is Item_Type;
 

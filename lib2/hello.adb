@@ -176,7 +176,7 @@ begin
 		declare
 			-- unsafe way to access the internal buffer.
 			--arr: constant S.P.Item_Array := S.To_Item_Array(Str);
-			arr: constant S.Character_Array := S.To_Item_Array(Str);
+			arr: constant S.Rune_Array := S.To_Item_Array(Str);
 		begin
 			Ada.Wide_Text_IO.Put ("STR[1] => [");	
 			for i in arr'Range loop
@@ -357,8 +357,8 @@ begin
 		declare
 			--arr: constant S.P.Thin_Item_Array_Pointer := S.Get_Slot_Pointer(Str);
 			--arr2: constant S.P.Thin_Item_Array_Pointer := S.Get_Slot_Pointer(Str2);
-			arr: constant S.Thin_Character_Array_Pointer := S.Get_Slot_Pointer(Str);
-			arr2: constant S.Thin_Character_Array_Pointer := S.Get_Slot_Pointer(Str2);
+			arr: constant S.Thin_Rune_Array_Pointer := S.Get_Slot_Pointer(Str);
+			arr2: constant S.Thin_Rune_Array_Pointer := S.Get_Slot_Pointer(Str2);
 			use type H3.System_Word;
 		begin
 			print_string_info (Str, "Str");

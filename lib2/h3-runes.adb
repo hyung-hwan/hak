@@ -1,6 +1,6 @@
 with System.UTF_32; -- TOOD: remove dependency on this package. create a seperate unicode package.
 
-package body H3.CC is
+package body H3.Runes is
 
 	package UC renames System.UTF_32;
 	use type System.UTF_32.Category;
@@ -195,4 +195,4 @@ package body H3.CC is
 		return Rune'Pos(V);
 	end To_Code;
 
-end H3.CC;
+end H3.Runes;

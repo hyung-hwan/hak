@@ -2,7 +2,7 @@ generic
 	-- any discrete type accepted.
 	-- can't ada limit type to one of Character, Wide_Character, Wide_Wide_Character?
 	type Rune_Type is (<>); 
-package H3.CC is
+package H3.Runes is
 	-- <ctype.h>-like character classification plus other features.
 	-- unicode-based. no system locale honored.
 
@@ -102,4 +102,4 @@ package H3.CC is
 	function To_Code (V: in Rune) return Code;
 	pragma Inline (To_Code);
 
-end H3.CC;
+end H3.Runes;

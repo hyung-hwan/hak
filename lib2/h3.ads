@@ -3,6 +3,7 @@ with System.Storage_Pools;
 
 package H3 is
 	--pragma Preelaborate (H3);
+
 	subtype Boolean is Standard.Boolean;
 	subtype Natural is Standard.Natural;
 
