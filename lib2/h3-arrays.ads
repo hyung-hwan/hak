@@ -7,6 +7,8 @@ generic
 	G_Terminator_Value: Item_Type;
 package H3.Arrays is
 
+	subtype Item is Item_Type;
+
 	Terminator_Length: constant System_Zero_Or_One := G_Terminator_Length;
 	Terminator_Value: constant Item_Type := G_Terminator_Value;
 

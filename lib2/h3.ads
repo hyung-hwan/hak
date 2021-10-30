@@ -6,7 +6,7 @@ package H3 is
 	subtype Boolean is Standard.Boolean;
 	subtype Natural is Standard.Natural;
 
-	subtype System_Character is Standard.Wide_Character;
+	subtype System_Rune is Standard.Wide_Character;
 
 	System_Byte_Bits: constant := System.Storage_Unit;
 	System_Word_Bits: constant := System.Word_Size;
