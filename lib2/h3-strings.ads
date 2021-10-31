@@ -18,6 +18,9 @@ package H3.Strings is
 		null;
 	end record;
 
+	function Get_Rune (Obj: in Elastic_String; Pos: in System_Index) return Rune;
+	function To_Rune_Array (Obj: in Elastic_String) return Rune_Array;
+
 	overriding procedure Append (Obj: in out Elastic_String; V: in Rune_Array);
 
 end H3.Strings;

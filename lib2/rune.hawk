@@ -8,13 +8,14 @@ BEGIN {
 	printf ("package H2.Runes is\n\n");
 	#printf ("\tpragma Preelaborate (Runes);\n\n");
 	printf ("\tpackage P is\n");
+	printf ("\t\t\%-20s: constant Code := %d; -- Code'First\n", "EOF", -1);
 }
 
 {
 	t = sprintf ("%c", NR - 1);
 	if (str::isprint(t)) t = " -- " t;
 	else t="";
-	printf ("\t\t%-20s: constant := %d;%s\n", $1, NR-1, t);
+	printf ("\t\t%-20s: constant Code := %d;%s\n", $1, NR-1, t);
 	X[NR - 1] = $1; 
 }
 
@@ -31,4 +32,19 @@ END {
 	printf ("\n");
 
 	printf ("\nend H2.Runes;\n");
+
+
+	if (STR !== @nil)
+	{
+		printf ("(");
+		for (j = 1; j <= length(STR); j++)
+		{
+			tmp = substr(STR, j, 1);
+			if (j > 1) printf (",");
+			printf ("R.V.%s", X[str::tocharcode(tmp)]);
+		}
+		printf (") -- %s", STR);
+		
+	}
+
 }

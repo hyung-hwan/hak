@@ -169,7 +169,7 @@ package body H3.Runes is
 
 	function Is_Eof (C: in Code) return Boolean is
 	begin
-		return C = EOF;
+		return C = P.EOF;
 	end Is_Eof;
 
 	function Is_Code (V: in Rune; C: in Code) return Boolean is

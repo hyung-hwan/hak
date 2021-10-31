@@ -1,6 +1,8 @@
 with ada.text_io;
 
 package body H3.Compilers is
+	LB_EOF: constant S.Rune_Array := (R.V.Left_Arrow,R.V.UC_E,R.V.UC_O,R.V.UC_F,R.V.Right_Arrow); -- <EOF>
+
 	procedure Set_Lexer_State (C: in out Compiler; State: in Lexer_State) is
 	begin
 		C.Lx.State := State;
@@ -26,7 +28,14 @@ package body H3.Compilers is
 		--		null;
 		--end case;
 
-ada.text_io.put_line (C.Tk.Id'Img);
+ada.text_io.put (C.Tk.Id'Img);
+ada.text_io.put (" ");
+for i in C.Tk.Buf.Get_First_Index .. C.Tk.Buf.Get_Last_Index loop
+	ada.text_io.put (standard.character'val(S.Rune'Pos(C.Tk.Buf.Get_Item(i))));
+end loop;
+ada.text_io.put_line("");
+
+
 		case C.Tk.Id is
 			when TK_BSTR =>
 				null;
@@ -123,7 +132,7 @@ ada.text_io.put_line (C.Tk.Id'Img);
 		case C.Lx.State is
 			when LX_START =>
 				if R.Is_Eof(Code) then
-					Start_Token (C, S.Rune_Array'(R.V.Left_Arrow, R.V.UC_E, R.V.UC_O, R.V.UC_F, R.V.Right_Arrow));
+					Start_Token (C, LB_EOF);
 					End_Token (C, TK_EOF);
 					-- this procedure doesn't prevent you from feeding more
 					-- after EOF. but it's not desirable to feed more after EOF.
@@ -191,7 +200,7 @@ ada.text_io.put_line (C.Tk.Id'Img);
 
 	procedure End_Feed (C: in out Compiler) is
 	begin
-		Feed_Char_Code (C, R.EOF);
+		Feed_Char_Code (C, R.P.EOF);
 	end End_Feed;
 
 end H3.Compilers;
