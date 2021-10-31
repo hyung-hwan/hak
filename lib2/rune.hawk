@@ -1,0 +1,34 @@
+# This script requires HAWK.
+
+BEGIN {
+	printf ("-- Generated with rune.txt and rune.awk\n");
+	printf ("-- Run hawk -f rune.awk rune.txt > h2-runes.ads for regeneration\n\n");
+	printf ("generic\n");
+	printf ("\ttype Rune_Type is (<>);\n");
+	printf ("package H2.Runes is\n\n");
+	#printf ("\tpragma Preelaborate (Runes);\n\n");
+	printf ("\tpackage P is\n");
+}
+
+{
+	t = sprintf ("%c", NR - 1);
+	if (str::isprint(t)) t = " -- " t;
+	else t="";
+	printf ("\t\t%-20s: constant := %d;%s\n", $1, NR-1, t);
+	X[NR - 1] = $1; 
+}
+
+END {
+	printf ("\tend P;\n\n");
+
+	printf ("\tpackage V is\n");
+	for (i = 0; i < length(X); i++)
+	{
+		printf ("\t\t%-20s: constant Rune := Rune'Val(P.%s);\n", X[i], X[i]);
+	}
+	printf ("\tend V;\n");
+
+	printf ("\n");
+
+	printf ("\nend H2.Runes;\n");
+}

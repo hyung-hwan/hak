@@ -123,7 +123,7 @@ ada.text_io.put_line (C.Tk.Id'Img);
 		case C.Lx.State is
 			when LX_START =>
 				if R.Is_Eof(Code) then
-					Start_Token (C, S.Rune_Array'(R.Left_Arrow, R.UC_E, R.UC_O, R.UC_F, R.Right_Arrow));
+					Start_Token (C, S.Rune_Array'(R.V.Left_Arrow, R.V.UC_E, R.V.UC_O, R.V.UC_F, R.V.Right_Arrow));
 					End_Token (C, TK_EOF);
 					-- this procedure doesn't prevent you from feeding more
 					-- after EOF. but it's not desirable to feed more after EOF.
@@ -134,19 +134,19 @@ ada.text_io.put_line (C.Tk.Id'Img);
 					Set_Lexer_State (C, LX_IDENT, Code);
 				elsif R.Is_Digit(Code) then
 					Set_Lexer_State (C, LX_NUMBER, Code);
-				elsif R.Is_Rune(Code, R.Semicolon) then
+				elsif R.Is_Rune(Code, R.V.Semicolon) then
 					Start_Token (C, Code);
 					End_Token (C, TK_SEMICOLON);
-				elsif R.Is_Rune(Code, R.Left_Arrow) then
+				elsif R.Is_Rune(Code, R.V.Left_Arrow) then
 					Set_Lexer_State (C, LX_OP_LESS, Code);
-				elsif R.Is_Rune(Code, R.Right_Arrow) then
+				elsif R.Is_Rune(Code, R.V.Right_Arrow) then
 					Set_Lexer_State (C, LX_OP_GREATER, Code);
 				else
 					raise Syntax_Error;
 				end if;
 
 			when LX_OP_GREATER =>
-				if R.Is_Rune(Code, R.Equal) then
+				if R.Is_Rune(Code, R.V.Equal_Sign) then
 					End_Token (C, TK_GE, Code);
 				else
 					End_Token (C, TK_GT);
@@ -154,7 +154,7 @@ ada.text_io.put_line (C.Tk.Id'Img);
 				end if;
 
 			when LX_OP_LESS =>
-				if R.Is_Rune(Code, R.Equal) then
+				if R.Is_Rune(Code, R.V.Equal_sign) then
 					End_Token (C, TK_LE, Code);
 				else
 					End_Token (C, TK_LT);
@@ -165,7 +165,7 @@ ada.text_io.put_line (C.Tk.Id'Img);
 				null;
 
 			when LX_IDENT =>
-				if R.Is_Alnum(Code) or else R.Is_Rune(Code, R.Underline) then
+				if R.Is_Alnum(Code) or else R.Is_Rune(Code, R.V.Underline) then
 					Feed_Token (C, Code);
 				else
 					End_Token (C, TK_IDENT);
