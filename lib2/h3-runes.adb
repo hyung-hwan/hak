@@ -5,9 +5,6 @@ package body H3.Runes is
 	package UC renames System.UTF_32;
 	use type System.UTF_32.Category;
 
-	SP: constant Rune := Rune'Val(32);
-	HT: constant Rune := Rune'Val(9);
-
 	function Is_Alpha (V: in Rune) return Boolean is
 	begin
 		return UC.Is_UTF_32_Letter(Rune'Pos(V));
@@ -31,7 +28,7 @@ package body H3.Runes is
 
 	function Is_Blank (V: in Rune) return Boolean is
 	begin
-		return V = SP or else V = HT;
+		return V = Runes.V.Space or else V = Runes.V.HT;
 	end Is_Blank;
 
 	function Is_Blank (C: in Code) return Boolean is
@@ -61,7 +58,7 @@ package body H3.Runes is
 
 	function Is_Graph (V: in Rune) return Boolean is
 	begin
-		return Is_Print(V) and then V /= SP;
+		return Is_Print(V) and then V /= Runes.V.Space;
 	end Is_Graph;
 
 	function Is_Graph (C: in Code) return Boolean is
@@ -104,7 +101,7 @@ package body H3.Runes is
 	begin
 		return UC.Is_UTF_32_Space(Rune'Pos(V)) or else
 		       UC.Is_UTF_32_Line_Terminator(Rune'Pos(V)) or else
-		       V = HT;
+		       V = Runes.V.HT;
 	end Is_Space;
 
 	function Is_Space (C: in Code) return Boolean is

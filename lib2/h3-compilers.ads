@@ -18,6 +18,7 @@ private
 	type Lexer_State is (
 		LX_START,
 		LX_COMMENT,
+		LX_DIRECTIVE,
 		LX_IDENT,
 		LX_NUMBER,
 		LX_OP_GREATER,
@@ -32,6 +33,7 @@ private
 		TK_BYTE,
 		TK_CHAR,
 		TK_CSTR,
+		TK_DIRECTIVE,
 		TK_EOF,
 		TK_EOL,
 		TK_IDENT,

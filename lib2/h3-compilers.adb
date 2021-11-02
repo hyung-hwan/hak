@@ -45,6 +45,9 @@ ada.text_io.put_line("");
 				null;
 			when TK_CSTR =>
 				null;
+			when TK_DIRECTIVE =>
+				--Push_Feed_Layer (...
+				null;
 			when TK_EOF =>
 				null;
 			when TK_EOL =>
@@ -124,11 +127,11 @@ ada.text_io.put_line("");
 	procedure Feed_Char_Code (C: in out Compiler; Code: in R.Code) is
 	begin
 	<<Start_Over>>
-	if R.Is_Eof(Code) then
+if R.Is_Eof(Code) then
 	ada.text_io.put_line ("EOF");
-	else
+else
 	ada.text_io.put_line (R.To_Rune(Code)'Img);
-	end if;
+end if;
 		case C.Lx.State is
 			when LX_START =>
 				if R.Is_Eof(Code) then
@@ -150,8 +153,18 @@ ada.text_io.put_line("");
 					Set_Lexer_State (C, LX_OP_LESS, Code);
 				elsif R.Is_Rune(Code, R.V.Right_Arrow) then
 					Set_Lexer_State (C, LX_OP_GREATER, Code);
+				elsif R.Is_Rune(Code, R.V.Number_Sign) then
+					Set_Lexer_State (C, LX_DIRECTIVE);
 				else
 					raise Syntax_Error;
+				end if;
+
+			when LX_DIRECTIVE =>
+				if R.Is_Alnum(Code) or else R.Is_Rune(Code, R.V.Underline) then
+					Feed_Token (C, Code);
+				else
+					End_Token (C, TK_DIRECTIVE);
+					goto Start_Over;
 				end if;
 
 			when LX_OP_GREATER =>
