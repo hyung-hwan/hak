@@ -6,6 +6,6 @@ procedure hello3 is
 
 	Compiler: C.Compiler;
 begin
-	Compiler.Feed ("<<=hello world");
+	Compiler.Feed ("#include 'abc.txt'");
 	Compiler.End_Feed;
 end hello3;

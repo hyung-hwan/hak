@@ -1,5 +1,6 @@
 with H3.Runes;
 with H3.Strings;
+with Ada.Text_IO;
 
 generic
 	type Rune_Type is (<>);
@@ -9,7 +10,7 @@ package H3.Compilers is
 
 	Syntax_Error: exception;
 
-	type Compiler is tagged private;
+	type Compiler is tagged limited private;
 
 	procedure Feed (C: in out Compiler; Data: in S.Rune_Array);
 	procedure End_Feed (C: in out Compiler);
@@ -28,6 +29,17 @@ private
 		State: Lexer_State := LX_START;
 	end record;
 
+	type Stream is record
+		Handle: Ada.Text_IO.File_Type;
+		--Handle: System_Size;
+	end record;
+
+	type Stream_Array is array(System_Index range <>) of Stream;
+	type Stream_Stack(Capa: System_Index) is record
+		Items: Stream_Array(System_Index'First .. Capa);
+		Top: System_Size := 0;
+	end record;
+	
 	type Token_Id is (
 		TK_BSTR,
 		TK_BYTE,
@@ -48,13 +60,18 @@ private
 		Buf: S.Elastic_String;
 	end record;
 
-	type Parser_State is (START, INCLUDE);
+	type Parser_State is (
+		PS_START,
+		PS_INCLUDE
+	);
 	type Parser is record
-		State: Parser_State := START;
+		State: Parser_State := PS_START;
 	end record;
 
-	type Compiler is tagged record
+	type Compiler is tagged limited record
 		Lx: Lexer;
 		Tk: Token;
+		Ps: Parser;
+		St: Stream_Stack(32);
 	end record;
 end H3.Compilers;

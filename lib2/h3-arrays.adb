@@ -347,15 +347,15 @@ package body H3.Arrays is
 		return System_Size'First;
 	end Find;
 
-	function "=" (Obj: in Elastic_Array; Obj2: in Elastic_Array) return Boolean is
+	function Equals (Obj: in Elastic_Array; Obj2: in Elastic_Array) return Boolean is
 	begin
 		return Obj.Buffer = Obj2.Buffer or else Obj.Buffer.Slot(Get_First_Index(Obj) .. Get_Last_Index(Obj)) = Obj2.Buffer.Slot(Get_First_Index(Obj2) .. Get_Last_Index(Obj2));
-	end "=";
+	end Equals;
 
-	function "=" (Obj: in Elastic_Array; Obj2: in Item_Array) return Boolean is
+	function Equals (Obj: in Elastic_Array; Obj2: in Item_Array) return Boolean is
 	begin
 		return Obj.Buffer.Slot(Get_First_Index(Obj) .. Get_Last_Index(Obj)) = Obj2;
-	end "=";
+	end Equals;
 
 	-- ---------------------------------------------------------------------
 	-- Controlled Management

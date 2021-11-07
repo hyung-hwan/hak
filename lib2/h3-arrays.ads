@@ -69,8 +69,11 @@ package H3.Arrays is
 	function Find (Obj: in Elastic_Array; V: in Item_Type; Start_Pos: in System_Index; Find_Dir: in Direction := DIRECTION_FORWARD) return System_Size;
 	function Find (Obj: in Elastic_Array; V: in Item_Array; Start_Pos: in System_Index; Find_Dir: in Direction := DIRECTION_FORWARD) return System_Size;
 
-	function "=" (Obj: in Elastic_Array; Obj2: in Elastic_Array) return Boolean;
-	function "=" (Obj: in Elastic_Array; Obj2: in Item_Array) return Boolean;
+	function Equals (Obj: in Elastic_Array; Obj2: in Elastic_Array) return Boolean;
+	function Equals (Obj: in Elastic_Array; Obj2: in Item_Array) return Boolean;
+
+	function "=" (Obj: in Elastic_Array; Obj2: in Elastic_Array) return Boolean renames Equals;
+	function "=" (Obj: in Elastic_Array; Obj2: in Item_Array) return Boolean renames Equals;
 
 private
 	type Buffer_Record(Capa: System_Size) is limited record
