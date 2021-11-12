@@ -18,7 +18,9 @@ package H3.Compilers is
 private
 	type Lexer_State is (
 		LX_START,
+
 		LX_COMMENT,
+		LX_CSTR,
 		LX_DIRECTIVE,
 		LX_IDENT,
 		LX_NUMBER,
