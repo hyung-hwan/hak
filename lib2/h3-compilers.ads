@@ -31,17 +31,6 @@ private
 		State: Lexer_State := LX_START;
 	end record;
 
-	type Stream is record
-		Handle: Ada.Text_IO.File_Type;
-		--Handle: System_Size;
-	end record;
-
-	type Stream_Array is array(System_Index range <>) of Stream;
-	type Stream_Stack(Capa: System_Index) is record
-		Items: Stream_Array(System_Index'First .. Capa);
-		Top: System_Size := 0;
-	end record;
-	
 	type Token_Id is (
 		TK_BSTR,
 		TK_BYTE,
@@ -64,16 +53,35 @@ private
 
 	type Parser_State is (
 		PS_START,
-		PS_INCLUDE
+		PS_INCLUDE_TARGET,
+		PS_INCLUDE_TERMINATOR
 	);
 	type Parser is record
 		State: Parser_State := PS_START;
+		Prev_State: Parser_State := PS_START;
+		Level: System_Index := 1;
+	end record;
+
+	type Stream is record
+		Handle: Ada.Text_IO.File_Type;
+		--Handle: System_Size;
+
+		
+		Initial_Level: System_Index; -- the block level where this inclusion is entered
+		Initial_Parser_State: Parser_State;  -- the parser state before the #include has been seen?
+		Next_Parser_State: Parser_State;
+	end record;
+
+	type Stream_Array is array(System_Index range <>) of Stream;
+	type Include_Stack(Capa: System_Index) is record
+		Streams: Stream_Array(System_Index'First .. Capa);
+		Top: System_Size := 0;
 	end record;
 
 	type Compiler is tagged limited record
 		Lx: Lexer;
 		Tk: Token;
 		Ps: Parser;
-		St: Stream_Stack(32);
+		Inc: Include_Stack(32);
 	end record;
 end H3.Compilers;

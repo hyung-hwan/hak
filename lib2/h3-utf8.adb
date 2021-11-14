@@ -25,7 +25,7 @@ package body H3.Utf8 is
 		Lower: Uint32;
 		Upper: Uint32;
 
-		Fbyte: Uint8; 
+		Fbyte: Uint8;
 		Mask: Uint8; -- Mask for getting the fixed bits in the first byte.
 		             -- (First-Byte and Mask) = Fbyte
 
@@ -92,7 +92,7 @@ package body H3.Utf8 is
 		Tmp := 0;
 		for I in Str'Range loop
 			declare
-				Utf8: Utf8_String := From_Unicode_Character(Chr => Str(I));
+				Utf8: constant Utf8_String := From_Unicode_Character(Chr => Str(I));
 			begin
 				Tmp := Tmp + Utf8'Length;
 			end;
@@ -104,7 +104,7 @@ package body H3.Utf8 is
 			Tmp := Result'First;
 			for I in Str'Range loop
 				declare
-					Utf8: Utf8_String := From_Unicode_Character(Str(I));
+					Utf8: constant Utf8_String := From_Unicode_Character(Str(I));
 				begin
 					Result(Tmp .. Tmp + Utf8'Length - 1) := Utf8;
 					Tmp := Tmp + Utf8'Length;
@@ -124,7 +124,7 @@ package body H3.Utf8 is
 		return System_Size'First;
 	end Sequence_Length;
 
-	procedure To_Unicode_Character (Seq:     in  Utf8_String; 
+	procedure To_Unicode_Character (Seq:     in  Utf8_String;
 	                                Seq_Len: out System_Size;
 	                                Chr:     out Unicode_Character) is
 		W: Uint32;
@@ -133,7 +133,7 @@ package body H3.Utf8 is
 
 			-- Check if the first byte matches the desired bit patterns.
 			if (Utf8_Character'Pos(Seq(Seq'First)) and Conv_Table(I).Mask) = Conv_Table(I).Fbyte then
-				
+
 				if Seq'Length < Conv_Table(I).Length then
 					raise Insufficient_Utf8_Sequence;
 				end if;
@@ -147,7 +147,7 @@ package body H3.Utf8 is
 						-- Each UTF8 byte except the first must be set with 2#1000_0000.
 						raise Invalid_Utf8_Sequence;
 					end if;
-					W := Interfaces.Shift_Left(W, 6) or (Utf8_Character'Pos(Seq(Seq'First + J)) and Uint32'(2#0011_1111#)); 
+					W := Interfaces.Shift_Left(W, 6) or (Utf8_Character'Pos(Seq(Seq'First + J)) and Uint32'(2#0011_1111#));
 				end loop;
 
 				-- Return the character matching the word
@@ -156,7 +156,7 @@ package body H3.Utf8 is
 				return;
 			end if;
 		end loop;
-		
+
 		raise Invalid_Utf8_Sequence;
 	end To_Unicode_Character;
 
@@ -168,7 +168,7 @@ package body H3.Utf8 is
 		return Chr;
 	end To_Unicode_Character;
 
-	procedure To_Unicode_String (Seq:     in  Utf8_String; 
+	procedure To_Unicode_String (Seq:     in  Utf8_String;
 	                             Seq_Len: out System_Size;
 	                             Str:     out Unicode_String;
 	                             Str_Len: out System_Size) is

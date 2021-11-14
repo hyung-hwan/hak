@@ -1,7 +1,7 @@
 generic
 	-- any discrete type accepted.
 	-- can't ada limit type to one of Character, Wide_Character, Wide_Wide_Character?
-	type Rune_Type is (<>); 
+	type Rune_Type is (<>);
 package H3.Runes is
 	-- <ctype.h>-like character classification plus other features.
 	-- unicode-based. no system locale honored.
@@ -46,7 +46,7 @@ package H3.Runes is
 		GS                  : constant Code := 29;
 		RS                  : constant Code := 30;
 		US                  : constant Code := 31;
-		Space               : constant Code := 32; --  
+		Space               : constant Code := 32;
 		Exclamation         : constant Code := 33; -- !
 		Quotation           : constant Code := 34; -- "
 		Number_Sign         : constant Code := 35; -- #
@@ -303,7 +303,7 @@ package H3.Runes is
 	function Is_Xdigit (V: in Rune) return Boolean;
 	function Is_Lower (V: in Rune) return Boolean;
 	function Is_Upper (V: in Rune) return Boolean;
-	
+
 	function To_Lower (V: in Rune) return Rune;
 	function To_Upper (V: in Rune) return Rune;
 

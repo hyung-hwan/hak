@@ -1,4 +1,4 @@
-generic 
+generic
 	type Slim_Character is (<>);
 	type Wide_Character is (<>);
 	type Slim_String is array(System_Index range<>) of Slim_Character;
@@ -31,16 +31,16 @@ package H3.Utf8 is
 
 	function From_Unicode_Character (Chr: in Unicode_Character) return Utf8_String;
 	function From_Unicode_String (Str: in Unicode_String) return Utf8_String;
-	--| The Sequence_Length function returns the length of a full UTF8 
+	--| The Sequence_Length function returns the length of a full UTF8
 	--| sequence representing a single Unicode character given the first
 	--| sequence byte. It returns 0 if the first byte is invalid.
 	function Sequence_Length (Seq: in Utf8_Character) return System_Size;
 
-	procedure To_Unicode_Character (Seq:     in  Utf8_String; 
+	procedure To_Unicode_Character (Seq:     in  Utf8_String;
 	                                Seq_Len: out System_Size;
 	                                Chr:     out Unicode_Character);
 
-	procedure To_Unicode_String (Seq:     in  Utf8_String; 
+	procedure To_Unicode_String (Seq:     in  Utf8_String;
 	                             Seq_Len: out System_Size;
 	                             Str:     out Unicode_String;
 	                             Str_Len: out System_Size);
