@@ -5,6 +5,9 @@ package H3 is
 	--pragma Preelaborate (H3);
 
 	subtype Boolean is Standard.Boolean;
+	True: constant Boolean := (1 = 1);
+	False: constant Boolean := (1 /= 1);
+
 	subtype Natural is Standard.Natural;
 
 	subtype System_Rune is Standard.Wide_Character;
