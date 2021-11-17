@@ -1,4 +1,4 @@
-OPTS := -gnata -gnatW8 -gnatwa -gnatya -gnatyb -gnatyk -gnatyn -gnatyp ##-gnatyt
+OPTS := -gnata -gnatW8 -gnatwa -gnatya -gnatyb -gnatyk -gnatyn -gnatyp -gnat05 ##-gnatyt
 all: hello hello2 hello3
 
 hello: hello.adb
@@ -11,4 +11,7 @@ hello3: hello3.adb
 	gnat make $(OPTS) hello3
 
 clean:
-	rm -rf *.o *.ali hello hello2 hello3
+	gnat clean hello
+	gnat clean hello2
+	gnat clean hello3
+
