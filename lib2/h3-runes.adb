@@ -1,9 +1,11 @@
-with System.UTF_32; -- TOOD: remove dependency on this package. create a seperate unicode package.
+--with System.UTF_32; -- TOOD: remove dependency on this package. create a seperate unicode package.
+with H3.UTF_32;
 
 package body H3.Runes is
 
-	package UC renames System.UTF_32;
-	use type System.UTF_32.Category;
+	--package UC renames System.UTF_32;
+	package UC renames H3.UTF_32;
+	use type UC.Category;
 
 	function Is_Alpha (V: in Rune) return Boolean is
 	begin
