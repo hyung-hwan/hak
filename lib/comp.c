@@ -35,6 +35,23 @@ enum
 #define TV_BUFFER_ALIGN 256
 #define BLK_INFO_BUFFER_ALIGN 128
 
+
+struct var_info_t
+{
+	int type;
+
+
+	/* ctx_offset 0 means the current context.
+	 *            1 means current->home.
+	 *            2 means current->home->home. 
+	 * index_in_ctx is a relative index within the context found.
+	 */
+	hcl_oow_t ctx_offset; /* context offset */
+	hcl_oow_t index_in_ctx; /* index in the current scope */
+};
+typedef struct var_info_t var_info_t;
+
+
 /* --------------------------------------------
 
                                                      
@@ -133,6 +150,7 @@ static int __find_word_in_string (const hcl_oocs_t* haystack, const hcl_oocs_t* 
 		{
 			if (last)
 			{
+				/* if last is true, find the last matching entry */
 				found = index;
 			}
 			else
@@ -164,7 +182,6 @@ static int __find_word_in_string (const hcl_oocs_t* haystack, const hcl_oocs_t* 
 
 	return -1; /* not found */
 }
-
 
 static int add_temporary_variable (hcl_t* hcl, const hcl_oocs_t* name, hcl_oow_t dup_check_start)
 {
@@ -198,7 +215,6 @@ static void kill_temporary_variable_at_offset (hcl_t* hcl, hcl_oow_t offset)
 	/* this is a hacky function. it's better to implement kill_temporary_variables() which uses word positions */
 	HCL_ASSERT (hcl, offset < hcl->c->tv.s.len);
 	HCL_ASSERT (hcl, hcl->c->tv.s.ptr[offset] != ' ');
-	
 	hcl->c->tv.s.ptr[offset] = '('; /* put a special character which can't form a variable name */
 }
 
@@ -206,6 +222,86 @@ static int find_temporary_variable_backward (hcl_t* hcl, const hcl_oocs_t* name,
 {
 	/* find the last element */
 	return __find_word_in_string(&hcl->c->tv.s, name, 1, index);
+}
+
+
+
+
+#if 0
+	HCL_ASSERT (hcl, hcl->c->fnblk.depth >= 0);
+	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
+
+	/* if a temporary variable is accessed inside a block,
+	 * use a special instruction to indicate it */
+	HCL_ASSERT (hcl, index < fbi->tmprcnt);
+	for (i = hcl->c->fnblk.depth; i >= 0; i--)
+	{
+		hcl_oow_t parent_tmprcnt;
+
+		parent_tmprcnt = (i > 0)? hcl->c->fnblk.info[i - 1].tmprcnt: 0;
+		if (index >= parent_tmprcnt)
+		{
+			hcl_oow_t ctx_offset, index_in_ctx;
+			ctx_offset = hcl->c->fnblk.depth - i;
+			index_in_ctx = index - parent_tmprcnt;
+			/* ctx_offset 0 means the current context.
+			 *            1 means current->home.
+			 *            2 means current->home->home. 
+			 * index_in_ctx is a relative index within the context found.
+			 */
+			if (emit_double_param_instruction(hcl, baseinst1, ctx_offset, index_in_ctx, srcloc) <= -1) return -1;
+			if (ctx_offset > 0) 
+			{
+				fbi->access_outer = 1; /* the current function block accesses temporaries in an outer function block */
+				hcl->c->fnblk.info[i].accessed_by_inner = 1; /* temporaries in an outer function block is accessed by the current function block */
+			}
+			return 0;
+		}
+	}
+#endif
+
+static int find_variable_backward (hcl_t* hcl, const hcl_oocs_t* name, var_info_t* vi)
+{
+	hcl_fnblk_info_t* fbi;
+	hcl_oow_t parent_tmprcnt, parent_tmprlen;
+	hcl_oow_t i, index;
+	hcl_oocs_t haystack;
+
+	HCL_ASSERT (hcl, hcl->c->fnblk.info[hcl->c->fnblk.depth].tmprlen = hcl->c->tv.s.len);
+
+	/* depth begins at -1. so it is the actual index. let the looping begin at depth + 1 
+	 * to avoid an extra exit check without it */
+	for (i = hcl->c->fnblk.depth + 1; i > 0; )
+	{
+		fbi = &hcl->c->fnblk.info[--i];
+		if (i > 0)
+		{
+			parent_tmprlen = hcl->c->fnblk.info[i - 1].tmprlen;
+			parent_tmprcnt = hcl->c->fnblk.info[i - 1].tmprcnt;
+		}
+		else
+		{
+			parent_tmprlen = 0;
+			parent_tmprcnt = 0;
+		}
+
+		/* narrow the search scope to the current block */
+		haystack.ptr = &hcl->c->tv.s.ptr[parent_tmprlen];
+		haystack.len = fbi->tmprlen - parent_tmprlen;
+
+		if (__find_word_in_string(&haystack, name, 1, &index) >= 0)
+		{
+			/* temporary variables or arguments */
+			vi->type = VAR_INDEXED;
+			vi->ctx_offset = hcl->c->fnblk.depth - i; /* context offset */
+			vi->index_in_ctx = index;
+HCL_INFO4 (hcl, "FOUND ...[%.*js]................ ===> ctx_offset %d index %d\n", name->len, name->ptr, (int)(vi->ctx_offset), (int)vi->index_in_ctx);
+			return 0;
+		}
+	}
+
+HCL_INFO2 (hcl, "NOT FOUND => %.*js\n", name->len, name->ptr);
+	return -1;
 }
 
 /* ========================================================================= */
@@ -661,10 +757,10 @@ static int emit_indexed_variable_access (hcl_t* hcl, hcl_oow_t index, hcl_oob_t 
 			ctx_offset = hcl->c->fnblk.depth - i;
 			index_in_ctx = index - parent_tmprcnt;
 			/* ctx_offset 0 means the current context.
-				*            1 means current->home.
-				*            2 means current->home->home. 
-				* index_in_ctx is a relative index within the context found.
-				*/
+			 *            1 means current->home.
+			 *            2 means current->home->home. 
+			 * index_in_ctx is a relative index within the context found.
+			 */
 			if (emit_double_param_instruction(hcl, baseinst1, ctx_offset, index_in_ctx, srcloc) <= -1) return -1;
 			if (ctx_offset > 0) 
 			{
@@ -1918,17 +2014,19 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 	hcl_cframe_t* cf;
 	hcl_cnode_t* obj;
 	hcl_oop_t tmp;
-	hcl_oow_t nivars, ncvars, saved_tv_wcount, tv_dup_start;
+	hcl_oow_t nivars, ncvars, saved_tv_wcount, tv_dup_check_start;
 
 	cf = GET_TOP_CFRAME(hcl);
 	obj = cf->operand;
 
 	saved_tv_wcount = hcl->c->tv.wcount;
-	tv_dup_start = hcl->c->tv.s.len;
+	tv_dup_check_start = hcl->c->tv.s.len;
 
-/* TODO: class variables */	
+/* TODO: class variables */
 	nivars = ncvars = 0;
-	if (collect_vardcl(hcl, obj, &obj, tv_dup_start, &nivars, "instance") <= -1) goto oops;
+	/* use the temporary variable collection buffer for convenience when scanning 
+	 * instance variables and class variables */
+	if (collect_vardcl(hcl, obj, &obj, tv_dup_check_start, &nivars, "instance") <= -1) goto oops;
 
 	if (nivars > 0)
 	{
@@ -1938,7 +2036,7 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 			goto oops;
 		}
 		/* set starting point past the added space (+1 to index, -1 to length) */
-		tmp = hcl_makestring(hcl, &hcl->c->tv.s.ptr[tv_dup_start + 1], hcl->c->tv.s.len - tv_dup_start - 1, 0); 
+		tmp = hcl_makestring(hcl, &hcl->c->tv.s.ptr[tv_dup_check_start + 1], hcl->c->tv.s.len - tv_dup_check_start - 1, 0); 
 		if (HCL_UNLIKELY(!tmp)) goto oops;
 		if (emit_push_literal(hcl, tmp, &cf->u._class.start_loc) <= -1) goto oops;
 	}
@@ -1956,8 +2054,13 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 		if (HCL_UNLIKELY(!tmp)) goto oops;
 		if (emit_push_literal(hcl, tmp, &cf->u._class.start_loc) <= -1) goto oops;
 	}
-	
-	if (push_clsblk(hcl, &cf->u._class.start_loc, nivars, ncvars, &hcl->c->tv.s.ptr[tv_dup_start + 1], HCL_NULL) <= -1) goto oops;
+
+	if (push_clsblk(hcl, &cf->u._class.start_loc, nivars, ncvars, &hcl->c->tv.s.ptr[tv_dup_check_start + 1], HCL_NULL) <= -1) goto oops;
+
+	/* discard the instance variables and class variables in the temporary variable collection buffe
+	 * because they have been pushed to the class block structure */
+	hcl->c->tv.s.len = tv_dup_check_start;
+	hcl->c->tv.wcount = saved_tv_wcount;
 
 	/* class_enter nsuperclasses, nivars, ncvars  */
 	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_ENTER, &cf->u._class.start_loc) <= -1) goto oops;
@@ -1970,7 +2073,7 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 	return 0;
 
 oops:
-	hcl->c->tv.s.len = tv_dup_start;
+	hcl->c->tv.s.len = tv_dup_check_start;
 	hcl->c->tv.wcount = saved_tv_wcount;
 	return -1;
 }
@@ -2236,7 +2339,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 	HCL_ASSERT (hcl, nargs + nrvars + nlvars == hcl->c->tv.wcount - saved_tv_wcount);
 
 	if (push_fnblk(hcl, HCL_CNODE_GET_LOC(src), va, nargs, nrvars, nlvars, hcl->c->tv.wcount, hcl->c->tv.s.len, hcl->code.bc.len, hcl->code.lit.len) <= -1) return -1;
-	
+
 	if (hcl->option.trait & HCL_TRAIT_INTERACTIVE)
 	{
 		/* MAKE_FUNCTION tmpr_mask_1 tmpr_mask_2 lfbase lfsize */
@@ -3150,7 +3253,10 @@ static HCL_INLINE int compile_symbol (hcl_t* hcl, hcl_cnode_t* obj)
 		hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(obj), HCL_CNODE_GET_TOK(obj), "special symbol not to be used as a variable name");
 		return -1;
 	}
-
+{
+var_info_t vi;
+find_variable_backward(hcl, HCL_CNODE_GET_TOK(obj), &vi);
+}
 	/* check if a symbol is a local variable */
 	if (find_temporary_variable_backward(hcl, HCL_CNODE_GET_TOK(obj), &index) <= -1)
 	{

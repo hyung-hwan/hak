@@ -455,24 +455,28 @@ static int handle_logopt (hcl_t* hcl, const hcl_bch_t* logstr)
 		{ "ic",         0, HCL_LOG_IC },
 		{ "primitive",  0, HCL_LOG_PRIMITIVE },
 
+		/* select a specific level */
 		{ "fatal",      0, HCL_LOG_FATAL },
 		{ "error",      0, HCL_LOG_ERROR },
 		{ "warn",       0, HCL_LOG_WARN },
 		{ "info",       0, HCL_LOG_INFO },
 		{ "debug",      0, HCL_LOG_DEBUG },
 
+		/* select a specific level or higher */
 		{ "fatal+",     0, HCL_LOG_FATAL },
 		{ "error+",     0, HCL_LOG_FATAL | HCL_LOG_ERROR },
 		{ "warn+",      0, HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN },
 		{ "info+",      0, HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN | HCL_LOG_INFO },
 		{ "debug+",     0, HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN | HCL_LOG_INFO | HCL_LOG_DEBUG },
 
+		/* select a specific level or lower */
 		{ "fatal-",     0, HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN | HCL_LOG_INFO | HCL_LOG_DEBUG },
 		{ "error-",     0, HCL_LOG_ERROR | HCL_LOG_WARN | HCL_LOG_INFO | HCL_LOG_DEBUG },
 		{ "warn-",      0, HCL_LOG_WARN | HCL_LOG_INFO | HCL_LOG_DEBUG },
 		{ "info-",      0, HCL_LOG_INFO | HCL_LOG_DEBUG },
 		{ "debug-",     0, HCL_LOG_DEBUG },
 
+		/* exclude a specific level */
 		{ "-fatal",     1, ~HCL_LOG_FATAL },
 		{ "-error",     1, ~HCL_LOG_ERROR },
 		{ "-warn",      1, ~HCL_LOG_WARN },
@@ -542,8 +546,8 @@ static int handle_dbgopt (hcl_t* hcl, const hcl_bch_t* str)
 
 		cm = hcl_find_bchar_in_bcstr(flt, ',');
 		len = cm? (cm - flt): hcl_count_bcstr(flt);
-		if (hcl_comp_bchars_bcstr (flt, len, "gc") == 0)  dbgopt |= HCL_TRAIT_DEBUG_GC;
-		else if (hcl_comp_bchars_bcstr (flt, len, "bigint") == 0)  dbgopt |= HCL_TRAIT_DEBUG_BIGINT;
+		if (hcl_comp_bchars_bcstr(flt, len, "gc") == 0)  dbgopt |= HCL_TRAIT_DEBUG_GC;
+		else if (hcl_comp_bchars_bcstr(flt, len, "bigint") == 0)  dbgopt |= HCL_TRAIT_DEBUG_BIGINT;
 		else
 		{
 			fprintf (stderr, "ERROR: unknown debug option value - %.*s\n", (int)len, flt);
@@ -806,7 +810,7 @@ int main (int argc, char* argv[])
 #if defined(HCL_BUILD_DEBUG)
 	if (dbgopt)
 	{
-		if (handle_dbgopt (hcl, dbgopt) <= -1) goto oops;
+		if (handle_dbgopt(hcl, dbgopt) <= -1) goto oops;
 	}
 #endif
 
