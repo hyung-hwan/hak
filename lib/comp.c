@@ -267,14 +267,15 @@ static int find_variable_backward (hcl_t* hcl, const hcl_oocs_t* name, var_info_
 	hcl_oow_t i, index;
 	hcl_oocs_t haystack;
 
-	HCL_ASSERT (hcl, hcl->c->fnblk.info[hcl->c->fnblk.depth].tmprlen = hcl->c->tv.s.len);
+	HCL_ASSERT (hcl, hcl->c->fnblk.depth >= 0);
+	HCL_ASSERT (hcl, hcl->c->fnblk.info[hcl->c->fnblk.depth].tmprlen == hcl->c->tv.s.len);
 
 	/* depth begins at -1. so it is the actual index. let the looping begin at depth + 1 
 	 * to avoid an extra exit check without it */
 	for (i = hcl->c->fnblk.depth + 1; i > 0; )
 	{
 		fbi = &hcl->c->fnblk.info[--i];
-		if (i > 0)
+		if (HCL_LIKELY(i > 0))
 		{
 			parent_tmprlen = hcl->c->fnblk.info[i - 1].tmprlen;
 			parent_tmprcnt = hcl->c->fnblk.info[i - 1].tmprcnt;
