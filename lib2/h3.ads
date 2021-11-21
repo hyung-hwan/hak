@@ -2,7 +2,9 @@ with System;
 with System.Storage_Pools;
 
 package H3 is
-	--pragma Preelaborate (H3);
+	--pragma Pure; -- can be pure if not for System.Storage_Pools;
+	--pragma Preelabotrate;
+	--pragma Preelaborate(H3);
 
 	subtype Boolean is Standard.Boolean;
 	True: constant Boolean := (1 = 1);
