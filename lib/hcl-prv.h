@@ -276,6 +276,20 @@ struct hcl_cnode_t
 	} u;
 };
 
+struct hcl_var_info_t
+{
+	int type;
+	/* ctx_offset 0 means the current context.
+	 *            1 means current->home.
+	 *            2 means current->home->home. 
+	 * index_in_ctx is a relative index within the context found.
+	 */
+	hcl_oow_t ctx_offset; /* context offset */
+	hcl_oow_t index_in_ctx; /* index in the current scope */
+};
+typedef struct hcl_var_info_t hcl_var_info_t;
+
+
 /* NOTE: hcl_cframe_t used by the built-in compiler is not an OOP object */
 struct hcl_cframe_t
 {
@@ -301,9 +315,7 @@ struct hcl_cframe_t
 		struct
 		{
 			int pop;
-			int var_type;
-			hcl_ooi_t ctx_offset;
-			hcl_ooi_t index_in_ctx;
+			hcl_var_info_t vi;
 		} set;
 
 		struct
@@ -361,7 +373,6 @@ struct hcl_cframe_t
 		{
 			hcl_ooi_t index;
 		} dic_list;
-
 
 		/* COP_EMIT_LAMBDA */
 		struct
