@@ -297,6 +297,16 @@ static int find_variable_backward (hcl_t* hcl, const hcl_oocs_t* name, var_info_
 			vi->ctx_offset = hcl->c->fnblk.depth - i; /* context offset */
 			vi->index_in_ctx = index;
 HCL_INFO4 (hcl, "FOUND ...[%.*js]................ ===> ctx_offset %d index %d\n", name->len, name->ptr, (int)(vi->ctx_offset), (int)vi->index_in_ctx);
+
+
+			if (vi->ctx_offset > 0) 
+			{
+				/* the current function block accesses temporaries in an outer function block */
+				hcl->c->fnblk.info[hcl->c->fnblk.depth].access_outer = 1; 
+				/* temporaries in an outer function block is accessed by the current function block */
+				hcl->c->fnblk.info[i - 1].accessed_by_inner = 1; 
+			}
+
 			return 0;
 		}
 	}
@@ -2473,6 +2483,7 @@ static int compile_set (hcl_t* hcl, hcl_cnode_t* src)
 	hcl_cframe_t* cf;
 	hcl_cnode_t* cmd, * obj, * var, * val;
 	hcl_oow_t index;
+	var_info_t vi;
 
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
 	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_SET));
@@ -2527,7 +2538,8 @@ static int compile_set (hcl_t* hcl, hcl_cnode_t* src)
 
 	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, val);
 
-	if (find_temporary_variable_backward(hcl, HCL_CNODE_GET_TOK(var), &index) <= -1)
+	//if (find_temporary_variable_backward(hcl, HCL_CNODE_GET_TOK(var), &index) <= -1)
+	if (find_temporary_variable_backward(hcl, HCL_CNODE_GET_TOK(var), &vi) <= -1)
 	{
 		PUSH_SUBCFRAME (hcl, COP_EMIT_SET, var); /* set doesn't evaluate the variable name */
 		cf = GET_SUBCFRAME(hcl);
@@ -2541,7 +2553,8 @@ static int compile_set (hcl_t* hcl, hcl_cnode_t* src)
 		PUSH_SUBCFRAME (hcl, COP_EMIT_SET, cmd); 
 		cf = GET_SUBCFRAME(hcl);
 		cf->u.set.var_type = VAR_INDEXED;
-		cf->u.set.index = index;
+		cf->u.set.ctx_offset = vi.ctx_offset;
+		cf->u.set.index_in_ctx = vi.index_in_ctx;
 	}
 	cf->u.set.pop = 0;
 
@@ -2553,6 +2566,7 @@ static int compile_set_r (hcl_t* hcl, hcl_cnode_t* src)
 	hcl_cframe_t* cf;
 	hcl_cnode_t* cmd, * obj, * var, * val, * var_start;
 	hcl_oow_t index, nvars, i;
+	var_info_t vi;
 
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
 	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_SET_R));
@@ -2622,7 +2636,8 @@ static int compile_set_r (hcl_t* hcl, hcl_cnode_t* src)
 	for (i  = 0, obj = var_start; i < nvars; i++, obj = HCL_CNODE_CONS_CDR(obj))
 	{
 		var = HCL_CNODE_CONS_CAR(obj);
-		if (find_temporary_variable_backward(hcl, HCL_CNODE_GET_TOK(var), &index) <= -1)
+		//if (find_temporary_variable_backward(hcl, HCL_CNODE_GET_TOK(var), &index) <= -1)
+		if (find_temporary_variable_backward(hcl, HCL_CNODE_GET_TOK(var), &vi) <= -1)
 		{
 			PUSH_SUBCFRAME (hcl, COP_EMIT_SET, var); /* set_r doesn't evaluate the variable name */
 			cf = GET_SUBCFRAME(hcl);
@@ -2636,7 +2651,8 @@ static int compile_set_r (hcl_t* hcl, hcl_cnode_t* src)
 			PUSH_SUBCFRAME (hcl, COP_EMIT_SET, cmd); 
 			cf = GET_SUBCFRAME(hcl);
 			cf->u.set.var_type = VAR_INDEXED;
-			cf->u.set.index = index;
+			cf->u.set.ctx_offset = vi.ctx_offset;
+			cf->u.set.index_in_ctx = vi.index_in_ctx;
 		}
 
 		cf->u.set.pop = (i > 0); /* STORE_INTO or POP_INTO  */
@@ -2799,7 +2815,8 @@ static HCL_INLINE int compile_catch (hcl_t* hcl)
 	patch_nearest_post_try (hcl, &jump_inst_pos); 
 
 	/* produce an instruction to store the exception value to an exception variable pushed by the 'throw' instruction */
-	if (emit_indexed_variable_access(hcl, exarg_index, HCL_CODE_POP_INTO_CTXTEMPVAR_0, HCL_CODE_POP_INTO_TEMPVAR_0, HCL_CNODE_GET_LOC(src)) <= -1) return -1;
+	//if (emit_indexed_variable_access(hcl, exarg_index, HCL_CODE_POP_INTO_CTXTEMPVAR_0, HCL_CODE_POP_INTO_TEMPVAR_0, HCL_CNODE_GET_LOC(src)) <= -1) return -1;
+	if (emit_double_param_instruction(hcl, HCL_CODE_POP_INTO_CTXTEMPVAR_0, 0, exarg_index, HCL_CNODE_GET_LOC(src)) <= -1) return -1;
 
 	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_LIST, obj);
 
@@ -3245,7 +3262,7 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 
 static HCL_INLINE int compile_symbol (hcl_t* hcl, hcl_cnode_t* obj)
 {
-	hcl_oow_t index;
+	var_info_t vi;
 
 	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL(obj));
 
@@ -3254,14 +3271,13 @@ static HCL_INLINE int compile_symbol (hcl_t* hcl, hcl_cnode_t* obj)
 		hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(obj), HCL_CNODE_GET_TOK(obj), "special symbol not to be used as a variable name");
 		return -1;
 	}
-{
-var_info_t vi;
-find_variable_backward(hcl, HCL_CNODE_GET_TOK(obj), &vi);
-}
+
 	/* check if a symbol is a local variable */
-	if (find_temporary_variable_backward(hcl, HCL_CNODE_GET_TOK(obj), &index) <= -1)
+	//if (find_temporary_variable_backward(hcl, HCL_CNODE_GET_TOK(obj), &index) <= -1)
+	if (find_variable_backward(hcl, HCL_CNODE_GET_TOK(obj), &vi) <= -1)
 	{
 		hcl_oop_t sym, cons;
+		hcl_oow_t index;
 /* TODO: if i require all variables to be declared, this part is not needed and should handle it as an error */
 /* TODO: change the scheme... allow declaration??? */
 		/* global variable */
@@ -3276,7 +3292,6 @@ find_variable_backward(hcl, HCL_CNODE_GET_TOK(obj), &vi);
 		}
 
 		/* add the entire cons pair to the literal frame */
-
 		if (add_literal(hcl, cons, &index) <= -1 ||
 		    emit_single_param_instruction(hcl, HCL_CODE_PUSH_OBJECT_0, index, HCL_CNODE_GET_LOC(obj)) <= -1) return -1;
 
@@ -3284,7 +3299,8 @@ find_variable_backward(hcl, HCL_CNODE_GET_TOK(obj), &vi);
 	}
 	else
 	{
-		return emit_indexed_variable_access(hcl, index, HCL_CODE_PUSH_CTXTEMPVAR_0, HCL_CODE_PUSH_TEMPVAR_0, HCL_CNODE_GET_LOC(obj));
+		//return emit_indexed_variable_access(hcl, index, HCL_CODE_PUSH_CTXTEMPVAR_0, HCL_CODE_PUSH_TEMPVAR_0, HCL_CNODE_GET_LOC(obj));
+		return emit_double_param_instruction(hcl, HCL_CODE_PUSH_CTXTEMPVAR_0, vi.ctx_offset, vi.index_in_ctx, HCL_CNODE_GET_LOC(obj));
 	}
 }
 
@@ -4391,8 +4407,10 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 		 */
 		hcl_cnode_t* defun_name = cf->operand;
 		hcl_oow_t index;
+		var_info_t vi;
 
-		if (find_temporary_variable_backward(hcl, HCL_CNODE_GET_TOK(defun_name), &index) <= -1)
+		//if (find_temporary_variable_backward(hcl, HCL_CNODE_GET_TOK(defun_name), &index) <= -1)
+		if (find_variable_backward(hcl, HCL_CNODE_GET_TOK(defun_name), &vi) <= -1)
 		{
 			SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, defun_name);
 			cf = GET_TOP_CFRAME(hcl);
@@ -4404,7 +4422,8 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 			SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, defun_name); 
 			cf = GET_TOP_CFRAME(hcl);
 			cf->u.set.var_type = VAR_INDEXED;
-			cf->u.set.index = index;
+			cf->u.set.ctx_offset = vi.ctx_offset;
+			cf->u.set.index_in_ctx = vi.index_in_ctx;
 		}
 		cf->u.set.pop = 0;
 	}
@@ -4479,10 +4498,13 @@ static HCL_INLINE int emit_set (hcl_t* hcl)
 	{
 		HCL_ASSERT (hcl, cf->u.set.var_type == VAR_INDEXED);
 		HCL_ASSERT (hcl, cf->operand != HCL_NULL);
-		if (emit_indexed_variable_access(hcl, cf->u.set.index, 
+		//if (emit_indexed_variable_access(hcl, cf->u.set.index_in_ctx, 
+		//	(cf->u.set.pop? HCL_CODE_POP_INTO_CTXTEMPVAR_0: HCL_CODE_STORE_INTO_CTXTEMPVAR_0),
+		//	(cf->u.set.pop? HCL_CODE_POP_INTO_TEMPVAR_0: HCL_CODE_STORE_INTO_TEMPVAR_0),
+		//	HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+		if (emit_double_param_instruction(hcl, 
 			(cf->u.set.pop? HCL_CODE_POP_INTO_CTXTEMPVAR_0: HCL_CODE_STORE_INTO_CTXTEMPVAR_0),
-			(cf->u.set.pop? HCL_CODE_POP_INTO_TEMPVAR_0: HCL_CODE_STORE_INTO_TEMPVAR_0),
-			HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+			cf->u.set.ctx_offset, cf->u.set.index_in_ctx, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
 	}
 
 	POP_CFRAME (hcl);

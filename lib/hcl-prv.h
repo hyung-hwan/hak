@@ -302,7 +302,8 @@ struct hcl_cframe_t
 		{
 			int pop;
 			int var_type;
-			hcl_ooi_t index;
+			hcl_ooi_t ctx_offset;
+			hcl_ooi_t index_in_ctx;
 		} set;
 
 		struct
