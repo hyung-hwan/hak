@@ -314,7 +314,7 @@ struct hcl_cframe_t
 		/* COP_EMIT_SET */
 		struct
 		{
-			int pop;
+			int mode; /* VAR_ACCESS_STORE or VAR_ACCESS_POP */
 			hcl_var_info_t vi;
 		} set;
 
