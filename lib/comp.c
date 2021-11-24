@@ -768,21 +768,6 @@ static int emit_variable_access (hcl_t* hcl, int mode, const hcl_var_info_t* vi,
 	return -1;
 }
 
-#if 0
-static int emit_instance_variable_access (hcl_t* hcl, hcl_oow_t index, hcl_oob_t baseinst1, hcl_oob_t baseinst2, const hcl_ioloc_t* srcloc)
-{
-	if (fbi->clsblk_top >= 0)
-	{
-		/* inside a class context */
-		hcl_clsblk_info_t* cbi;
-		HCL_ASSERT (hcl, fbi->clsblk_base >= 0 && fbi->clsblk_base <= fbi->clsblk_top);
-		cbi = &hcl->c->clsblk.info[fbi->clsblk_top]; /* can only find the self variable?? */
-	}
-
-	return 0;
-}
-#endif
-
 /* ========================================================================= */
 static int push_cblk (hcl_t* hcl, const hcl_ioloc_t* errloc, hcl_cblk_type_t type)
 {
