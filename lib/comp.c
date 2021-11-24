@@ -746,60 +746,13 @@ static HCL_INLINE void patch_double_long_params_with_oow (hcl_t* hcl, hcl_ooi_t 
 #endif
 }
 
-#if 0
-static int emit_indexed_variable_access (hcl_t* hcl, hcl_oow_t index, hcl_oob_t baseinst1, hcl_oob_t baseinst2, const hcl_ioloc_t* srcloc)
-{
-	hcl_oow_t i;
-	hcl_fnblk_info_t* fbi;
-
-	HCL_ASSERT (hcl, hcl->c->fnblk.depth >= 0);
-	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
-
-	/* if a temporary variable is accessed inside a block,
-	 * use a special instruction to indicate it */
-	HCL_ASSERT (hcl, index < fbi->tmprcnt);
-	for (i = hcl->c->fnblk.depth; i >= 0; i--)
-	{
-		hcl_oow_t parent_tmprcnt;
-
-		parent_tmprcnt = (i > 0)? hcl->c->fnblk.info[i - 1].tmprcnt: 0;
-		if (index >= parent_tmprcnt)
-		{
-			hcl_oow_t ctx_offset, index_in_ctx;
-			ctx_offset = hcl->c->fnblk.depth - i;
-			index_in_ctx = index - parent_tmprcnt;
-			/* ctx_offset 0 means the current context.
-			 *            1 means current->home.
-			 *            2 means current->home->home. 
-			 * index_in_ctx is a relative index within the context found.
-			 */
-			if (emit_double_param_instruction(hcl, baseinst1, ctx_offset, index_in_ctx, srcloc) <= -1) return -1;
-			if (ctx_offset > 0) 
-			{
-				fbi->access_outer = 1; /* the current function block accesses temporaries in an outer function block */
-				hcl->c->fnblk.info[i].accessed_by_inner = 1; /* temporaries in an outer function block is accessed by the current function block */
-			}
-			return 0;
-		}
-	}
-
-/* THIS PART MUST NOT BE REACHED */
-	/* TODO: top-level... verify this. this will vary depending on how i implement the top-level and global variables... */
-	if (emit_single_param_instruction(hcl, baseinst2, index, srcloc) <= -1) return -1;
-	return 0;
-}
-#else
-
 static int emit_variable_access (hcl_t* hcl, int mode, const hcl_var_info_t* vi, const hcl_ioloc_t* srcloc)
 {
 	static hcl_oob_t inst_map[2][3] =
 	{
 		{ HCL_CODE_PUSH_CTXTEMPVAR_0, HCL_CODE_POP_INTO_CTXTEMPVAR_0, HCL_CODE_STORE_INTO_CTXTEMPVAR_0 },
-/* TODO: modify INSTVAR instruction */
-/*		{ HCL_CODE_PUSH_INSTVAR_0,    HCL_CODE_POP_INTO_INSTVAR_0,    HCL_CODE_STORE_INTO_INSTVAR_0    }, */
-		{ HCL_CODE_PUSH_CTXTEMPVAR_0, HCL_CODE_POP_INTO_CTXTEMPVAR_0, HCL_CODE_STORE_INTO_CTXTEMPVAR_0 },
+		{ HCL_CODE_PUSH_INSTVAR_0,    HCL_CODE_POP_INTO_INSTVAR_0,    HCL_CODE_STORE_INTO_INSTVAR_0    }
 	};
-
 
 	switch (vi->type)
 	{
@@ -808,14 +761,12 @@ static int emit_variable_access (hcl_t* hcl, int mode, const hcl_var_info_t* vi,
 
 		case VAR_INST:
 		case VAR_CLASS:
-/* TODO: this part is wrong as of now... */
-			return emit_double_param_instruction(hcl, inst_map[1][mode], vi->ctx_offset, vi->index_in_ctx, srcloc);
+			HCL_ASSERT (hcl, vi->ctx_offset == 0);
+			return emit_single_param_instruction(hcl, inst_map[1][mode], vi->index_in_ctx, srcloc);
 	}
-
 
 	return -1;
 }
-#endif
 
 #if 0
 static int emit_instance_variable_access (hcl_t* hcl, hcl_oow_t index, hcl_oob_t baseinst1, hcl_oob_t baseinst2, const hcl_ioloc_t* srcloc)
