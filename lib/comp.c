@@ -242,7 +242,7 @@ static int find_variable_backward (hcl_t* hcl, const hcl_oocs_t* name, hcl_var_i
 			{
 				clsbi = &hcl->c->clsblk.info[--j];
 
-				if (clsbi->ivars_str)
+				if (i < hcl->c->fnblk.depth && clsbi->ivars_str)
 				{
 					haystack.ptr = clsbi->ivars_str;
 					haystack.len = hcl_count_oocstr(clsbi->ivars_str);
@@ -273,6 +273,15 @@ HCL_INFO6 (hcl, "FOUND CLASS VAR [%.*js]...[%.*js]................ ===> ctx_offs
 				}
 			}
 
+			if (i == hcl->c->fnblk.depth) 
+			{
+				/* this condition indicates that the current function level contains a class defintion
+				 * and this variable is looked up inside the class defintion */
+HCL_INFO2 (hcl, "CLASS NAMED VAR [%.*js]\n", name->len, name->ptr);
+				vi->type = VAR_CLASS;//_NAMED; // TODO: create VAR_CLASS_NAMED???
+				vi->ctx_offset = 0;
+				vi->index_in_ctx = 0;
+			}
 			break;
 		}
 
@@ -751,7 +760,8 @@ static int emit_variable_access (hcl_t* hcl, int mode, const hcl_var_info_t* vi,
 	static hcl_oob_t inst_map[2][3] =
 	{
 		{ HCL_CODE_PUSH_CTXTEMPVAR_0, HCL_CODE_POP_INTO_CTXTEMPVAR_0, HCL_CODE_STORE_INTO_CTXTEMPVAR_0 },
-		{ HCL_CODE_PUSH_INSTVAR_0,    HCL_CODE_POP_INTO_INSTVAR_0,    HCL_CODE_STORE_INTO_INSTVAR_0    }
+		{ HCL_CODE_PUSH_INSTVAR_0,    HCL_CODE_POP_INTO_INSTVAR_0,    HCL_CODE_STORE_INTO_INSTVAR_0    },
+		{ HCL_CODE_PUSH_OBJVAR_0,     HCL_CODE_POP_INTO_OBJVAR_0,     HCL_CODE_STORE_INTO_OBJVAR_0     },
 	};
 
 	switch (vi->type)
@@ -760,9 +770,12 @@ static int emit_variable_access (hcl_t* hcl, int mode, const hcl_var_info_t* vi,
 			return emit_double_param_instruction(hcl, inst_map[0][mode], vi->ctx_offset, vi->index_in_ctx, srcloc);
 
 		case VAR_INST:
-		case VAR_CLASS:
 			HCL_ASSERT (hcl, vi->ctx_offset == 0);
 			return emit_single_param_instruction(hcl, inst_map[1][mode], vi->index_in_ctx, srcloc);
+
+		case VAR_CLASS:
+			HCL_ASSERT (hcl, vi->ctx_offset == 0);
+			return emit_double_param_instruction(hcl, inst_map[2][mode], vi->index_in_ctx, <<index to the class name in literal table>>, srcloc);
 	}
 
 	return -1;

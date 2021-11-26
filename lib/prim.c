@@ -865,6 +865,27 @@ static hcl_pfrc_t pf_va_get (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 }
 
 
+static hcl_pfrc_t pf_object_new (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+{
+/* TODO: accept the object size if the class is variable-sized. */
+	hcl_oop_t obj;
+	hcl_oop_t class_;
+
+	class_ = HCL_STACK_GETARG(hcl, nargs, 0);
+	if (!HCL_IS_CLASS(hcl, class_))
+	{
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "not a class - %O", class_);
+		return HCL_PF_FAILURE;
+	}
+
+	obj = hcl_instantiate(hcl, class_, HCL_NULL, 0);
+	if (HCL_UNLIKELY(!obj)) return HCL_PF_FAILURE;
+
+
+	HCL_STACK_SETRET (hcl, nargs, obj);
+	return HCL_PF_SUCCESS;
+}
+
 /* ------------------------------------------------------------------------- */
 
 static pf_t builtin_prims[] =
@@ -934,26 +955,28 @@ static pf_t builtin_prims[] =
 	{ 0, 1,                       pf_va_count,        8,  { 'v','a','-','c','o','u','n','t' } },
 	{ 1, 2,                       pf_va_get,          6,  { 'v','a','-','g','e','t' } },
 
-	{ 0, 0,                       hcl_pf_process_current,   15, { 'c','u','r','r','e','n','t','-','p','r','o','c','e','s','s'} },
-	{ 1, HCL_TYPE_MAX(hcl_oow_t), hcl_pf_process_fork,      4,  { 'f','o','r','k'} },
-	{ 1, 1,                       hcl_pf_process_resume,    6,  { 'r','e','s','u','m','e' } },
-	{ 0, 1,                       hcl_pf_process_suspend,   7,  { 's','u','s','p','e','n','d' } },
-	{ 0, 1,                       hcl_pf_process_terminate, 9,  { 't','e','r','m','i','n','a','t','e' } },
-	{ 0, 0,                       hcl_pf_process_terminate_all, 13,  { 't','e','r','m','i','n','a','t','e','-','a','l','l' } },
-	{ 0, 0,                       hcl_pf_process_yield,     5,  { 'y','i','e','l','d'} },
+	{ 1, 1,                       pf_object_new,                           10, { 'o','b','j','e','c','t','-','n','e','w' } },
+
+	{ 0, 0,                       hcl_pf_process_current,                  15, { 'c','u','r','r','e','n','t','-','p','r','o','c','e','s','s'} },
+	{ 1, HCL_TYPE_MAX(hcl_oow_t), hcl_pf_process_fork,                      4,  { 'f','o','r','k'} },
+	{ 1, 1,                       hcl_pf_process_resume,                    6,  { 'r','e','s','u','m','e' } },
+	{ 0, 1,                       hcl_pf_process_suspend,                   7,  { 's','u','s','p','e','n','d' } },
+	{ 0, 1,                       hcl_pf_process_terminate,                 9,  { 't','e','r','m','i','n','a','t','e' } },
+	{ 0, 0,                       hcl_pf_process_terminate_all,            13,  { 't','e','r','m','i','n','a','t','e','-','a','l','l' } },
+	{ 0, 0,                       hcl_pf_process_yield,                     5,  { 'y','i','e','l','d'} },
 
 
-	{ 0, 0,                       hcl_pf_semaphore_new,      7,  { 's','e','m','-','n','e','w'} },
-	{ 1, 1,                       hcl_pf_semaphore_wait,     8,  { 's','e','m','-','w','a','i','t'} },
-	{ 1, 3,                       hcl_pf_semaphore_signal,   10, { 's','e','m','-','s','i','g','n','a','l'} },
-	{ 2, 2,                       hcl_pf_semaphore_signal_on_input,   19, { 's','e','m','-','s','i','g','n','a','l','-','o','n','-','i','n','p','u','t'} },
-	{ 2, 2,                       hcl_pf_semaphore_signal_on_output,  20, { 's','e','m','-','s','i','g','n','a','l','-','o','n','-','o','u','t','p','u','t'} },
-	{ 1, 1,                       hcl_pf_semaphore_unsignal, 12, { 's','e','m','-','u','n','s','i','g','n','a','l'} },
+	{ 0, 0,                       hcl_pf_semaphore_new,                     7,  { 's','e','m','-','n','e','w'} },
+	{ 1, 1,                       hcl_pf_semaphore_wait,                    8,  { 's','e','m','-','w','a','i','t'} },
+	{ 1, 3,                       hcl_pf_semaphore_signal,                 10, { 's','e','m','-','s','i','g','n','a','l'} },
+	{ 2, 2,                       hcl_pf_semaphore_signal_on_input,        19, { 's','e','m','-','s','i','g','n','a','l','-','o','n','-','i','n','p','u','t'} },
+	{ 2, 2,                       hcl_pf_semaphore_signal_on_output,       20, { 's','e','m','-','s','i','g','n','a','l','-','o','n','-','o','u','t','p','u','t'} },
+	{ 1, 1,                       hcl_pf_semaphore_unsignal,               12, { 's','e','m','-','u','n','s','i','g','n','a','l'} },
 
-	{ 0, 0,                       hcl_pf_semaphore_group_new, 9, { 's','e','m','g','r','-','n','e','w'} },
-	{ 1, 2,                       hcl_pf_semaphore_group_add_semaphore, 9, { 's','e','m','g','r','-','a','d','d'} },
+	{ 0, 0,                       hcl_pf_semaphore_group_new,               9, { 's','e','m','g','r','-','n','e','w'} },
+	{ 1, 2,                       hcl_pf_semaphore_group_add_semaphore,     9, { 's','e','m','g','r','-','a','d','d'} },
 	{ 1, 2,                       hcl_pf_semaphore_group_remove_semaphore, 12, { 's','e','m','g','r','-','r','e','m','o','v','e'} },
-	{ 1, 1,                       hcl_pf_semaphore_group_wait, 10, { 's','e','m','g','r','-','w','a','i','t'} }
+	{ 1, 1,                       hcl_pf_semaphore_group_wait,             10, { 's','e','m','g','r','-','w','a','i','t'} }
 };
 
 int hcl_addbuiltinprims (hcl_t* hcl)
