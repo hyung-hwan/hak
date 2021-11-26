@@ -997,7 +997,7 @@ static void pop_fnblk (hcl_t* hcl)
 	clear_fnblk_inners (hcl);
 
 	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
-	HCL_ASSERT (hcl, hcl->c->cblk.depth == fbi->cblk_base); 		
+	HCL_ASSERT (hcl, hcl->c->cblk.depth == fbi->cblk_base);
 	HCL_ASSERT (hcl, fbi->clsblk_base <= -1 && fbi->clsblk_top <= -1);
 
 	hcl->c->cblk.depth = fbi->cblk_base;
