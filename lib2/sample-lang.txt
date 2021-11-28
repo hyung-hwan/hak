@@ -1,0 +1,115 @@
+ls -laF
+
+print @get-jobs
+print $(get-jobs)
+
+(defun a (a b c)
+	ddddd		
+)
+
+
+
+fun a (a b c) => e f
+	e = 20
+	f = 30		
+end
+
+
+class t
+	fun a(a b c) => e f
+		while a < b
+			if a < b
+			else
+			end
+		end
+
+		for i = 1 to 20
+		end
+	end
+end
+
+
+#####################################################
+
+$() <--- process execution expansion
+{...} <--- range?
+[ 1 2 3 ] <--- array
+
+#() <-- array???
+#[] <-- hash table??
+#{} <-- ???
+#<> <--?
+
+$() <---
+$[] <---
+${} <---
+$<> <---
+
+
+if cmd
+	
+end
+
+while cmd
+end
+
+fun fib a
+	let a = 20 <-- use it as if it's an declaration + init??
+	"let" a = 20 <--- call the command let
+	@a = 20 <-- lvalue
+	$a      <-- rvalue
+	return $a
+end
+
+"fun" fib a  <--- call the command 'fun', fun it not special??
+
+function name as lvalue? function name as rvalue??
+	fib 10 <--- call the function. 
+	let x = fib <--- what is this syntax? assigning the function fib to x? it's not call?
+	let x = $[fib]
+	let x = $[fib < /dev/null >/dev/null]
+
+$(fib a) <-- capture 
+
+@a = $[fib 20]   <-- capture return value
+@a = $(fib 20)  <-- capture stdout??
+
+@a = $[fib $[ls -laF]]  
+@a = $[fib $(ls -laF)]
+
+
+complex expression inside $[] and $()??
+$(
+	printf "abc"; 
+	if ...
+		...
+	else
+		...
+	end
+)
+
+
+class X   ### class X Y <--- Y is a parent class?
+	names := #[] <- array?
+	tools := #{} <- hash table?
+
+	fun __construct name
+		names.add name
+		let k := 20
+		k := $(20 + 30)
+		return k
+
+		@names<20> = "jelly"
+		@tools<"donkey"> = names;
+		@tools.donkey = names?
+		@k = $tools.donkey  >>>> "${tools.donkey}"  ${tools.donkey} "${tools}.donkey"
+	end
+
+	fun say_hi msg
+		print msg
+		ls -laF << execute external command  if the global variable PATH is not null
+		        << external command is disabled if PATH is null
+		/bin/ls -alF  << if the command begins with /, it still allows execution if this feature is not disabled
+		return 20
+	end
+end

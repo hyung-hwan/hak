@@ -5,6 +5,7 @@ package body H3.Compilers is
 	package Utf8 is new H3.Utf8(Standard.Character, S.Rune, Char_Array, S.Rune_Array);
 
 	LB_EOF: constant S.Rune_Array := (R.V.Left_Arrow,R.V.UC_E,R.V.UC_O,R.V.UC_F,R.V.Right_Arrow); -- <EOF>
+	LB_EOL: constant S.Rune_Array := (R.V.Left_Arrow,R.V.UC_E,R.V.UC_O,R.V.UC_L,R.V.Right_Arrow); -- <EOL>
 	LB_XINCLUDE: constant S.Rune_Array := (R.V.Number_Sign,R.V.LC_I,R.V.LC_N,R.V.LC_C,R.V.LC_L,R.V.LC_U,R.V.LC_D,R.V.LC_E); -- #include
 
 
@@ -165,7 +166,7 @@ package body H3.Compilers is
 		Ada.Text_IO.Close (C.Inc.Streams(C.Inc.Top).Handle);
 		if Check then
 			if C.Prs.Top /= C.Inc.Streams(C.Inc.Top).Prs_Level + 1 then
-				raise Syntax_Error with "unblanced inclusion content";
+					raise Syntax_Error with "unblanced inclusion content";
 			end if;
 		end if;
 		C.Inc.Top := C.Inc.Top - 1;
@@ -263,6 +264,16 @@ package body H3.Compilers is
 
 	end Got_Token;
 
+	function Is_Ident_Starter(Code: in R.Code) return Boolean is
+	begin
+		return R.Is_Alnum(Code) or else R.Is_Rune(Code, R.V.Minus_Sign);
+	end Is_Ident_Starter;
+
+	function Is_Ident_Char(Code: in R.Code) return Boolean is
+	begin
+		return Is_Ident_Starter(Code) or else R.Is_Rune(Code, R.V.Underline); -- or else R.Is_Rune(C, ...);
+	end Is_Ident_Char;
+
 	procedure Feed_Char_Code (C: in out Compiler; Code: in R.Code) is
 	begin
 	<<Start_Over>>
@@ -275,10 +286,41 @@ package body H3.Compilers is
 					End_Token (C, TK_EOF);
 					-- this procedure doesn't prevent you from feeding more runes
 					-- after EOF. but it's not desirable to feed more after EOF.
+				elsif R.Is_Rune(Code, R.V.LF) then  -- TODO: support a different EOL scheme
+					Start_Token (C, LB_EOL);
+					End_Token (C, TK_EOL);
 				elsif R.Is_Space(Code) then
 					-- ignore. carry on
 					null;
-				elsif R.Is_Alpha(Code) then
+
+				elsif R.Is_Rune(Code, R.V.Number_Sign) then -- #
+					Set_Lexer_State (C, LX_HASHED, Code);
+				elsif R.Is_Rune(Code, R.V.Dollar_Sign) then -- $
+					Set_Lexer_State (C, LX_DOLLARED, Code);
+
+				elsif R.Is_Rune(Code, R.V.Left_Curly_Bracket) then -- {
+					Start_Token (C, Code);
+					End_Token (C, TK_LBRACE);
+				elsif R.Is_Rune(Code, R.V.Right_Curly_Bracket) then -- }
+					Start_Token (C, Code);
+					End_Token (C, TK_RBRACE);
+				elsif R.Is_Rune(Code, R.V.Left_Square_Bracket) then -- [
+					Start_Token (C, Code);
+					End_Token (C, TK_LBRACK);
+				elsif R.Is_Rune(Code, R.V.Right_Square_Bracket) then -- ]
+					Start_Token (C, Code);
+					End_Token (C, TK_RBRACK);
+				elsif R.Is_Rune(Code, R.V.Left_Parenthesis) then -- (
+					Start_Token (C, Code);
+					End_Token (C, TK_LPAREN);
+				elsif R.Is_Rune(Code, R.V.Right_Parenthesis) then -- )
+					Start_Token (C, Code);
+					End_Token (C, TK_RPAREN);
+				elsif R.Is_Rune(Code, R.V.Semicolon) then -- ;
+					Start_Token (C, Code);
+					End_Token (C, TK_SEMICOLON);
+
+				elsif Is_Ident_Starter(Code) then
 					Set_Lexer_State (C, LX_IDENT, Code);
 				elsif R.Is_Digit(Code) then
 					Set_Lexer_State (C, LX_NUMBER, Code);
@@ -294,13 +336,8 @@ package body H3.Compilers is
 					Set_Lexer_State (C, LX_OP_LESS, Code);
 				elsif R.Is_Rune(Code, R.V.Right_Arrow) then -- >
 					Set_Lexer_State (C, LX_OP_GREATER, Code);
-				elsif R.Is_Rune(Code, R.V.Number_Sign) then -- #
-					Set_Lexer_State (C, LX_DIRECTIVE, Code);
 				elsif R.Is_Rune(Code, R.V.Quotation) then -- "
 					Set_Lexer_State (C, LX_CSTR);
-				elsif R.Is_Rune(Code, R.V.Semicolon) then
-					Start_Token (C, Code);
-					End_Token (C, TK_SEMICOLON);
 				else
 					raise Syntax_Error;
 				end if;
@@ -314,7 +351,13 @@ package body H3.Compilers is
 				end if;
 
 			when LX_COMMENT =>
-				null;
+				if R.Is_Eof(Code) then
+					Set_Lexer_State (C, LX_START);
+					goto Start_Over;
+				elsif R.Is_Rune(Code, R.V.LF) then -- TODO: support a different EOL scheme
+					Start_Token (C, LB_EOL);
+					End_Token (C, TK_EOL);
+				end if;
 
 			when LX_CSTR =>
 				-- TODO: escaping...
@@ -324,8 +367,35 @@ package body H3.Compilers is
 					Feed_Token (C, Code);
 				end if;
 
-			when LX_IDENT =>
+			when LX_DOLLARED =>
+				if R.Is_Rune(Code, R.V.Left_Curly_Bracket) then
+					End_Token (C, TK_DOLLARED_LBRACE, Code);
+				elsif R.Is_Rune(Code, R.V.Left_Square_Bracket) then
+					End_Token (C, TK_DOLLARED_LBRACK, Code);
+				elsif R.Is_Rune(Code, R.V.Left_Parenthesis) then
+					End_Token (C, TK_DOLLARED_LPAREN, Code);
+				else
+					raise Syntax_Error with "invalid dollared token";
+				end if;
+
+			when LX_HASHED =>
 				if R.Is_Alnum(Code) or else R.Is_Rune(Code, R.V.Underline) then
+					Feed_Token (C, Code);
+					Switch_Lexer_State (C, LX_DIRECTIVE);
+				elsif R.Is_Rune(Code, R.V.Number_Sign) then -- ##
+					Set_Lexer_State (C, LX_COMMENT);
+				elsif R.Is_Rune(Code, R.V.Left_Curly_Bracket) then
+					End_Token (C, TK_HASHED_LBRACE, Code);
+				elsif R.Is_Rune(Code, R.V.Left_Square_Bracket) then
+					End_Token (C, TK_HASHED_LBRACK, Code);
+				elsif R.Is_Rune(Code, R.V.Left_Parenthesis) then
+					End_Token (C, TK_HASHED_LPAREN, Code);
+				else
+					raise Syntax_Error with "invalid hashed token";
+				end if;
+
+			when LX_IDENT =>
+				if Is_Ident_Char(Code) then
 					Feed_Token (C, Code);
 				else
 					End_Token (C, TK_IDENT);
@@ -392,14 +462,28 @@ package body H3.Compilers is
 	end Feed_Char_Code;
 
 	procedure Feed_Inc (C: in out Compiler) is
+		-- Feed the contents of a included stream.	
 		Entry_Top: constant System_Index := C.Inc.Top;
+		Use_Immediate: constant Boolean := True;
 	begin
 		loop
 			while not Ada.Text_IO.End_Of_File(C.Inc.Streams(C.Inc.Top).Handle) loop
 				declare
 					Ch: Standard.Character;
 				begin
-					Ada.Text_IO.Get (C.Inc.Streams(C.Inc.Top).Handle, Ch);
+					-- Get() skips line terminators. End_Of_Line() checks if it reaches EOL 
+					-- but can't handle multiple consecutive EOLs. Get_Immediate() doesn't
+					-- skip EOLs. As detecting every EOL in the multiple consecutive sequence
+					-- is not required, End_Of_Line()+Get() is good too.
+					if Use_Immediate then
+						Ada.Text_IO.Get_Immediate (C.Inc.Streams(C.Inc.Top).Handle, Ch);
+					else
+						if Ada.Text_IO.End_Of_Line(C.Inc.Streams(C.Inc.Top).Handle) then
+							Feed_Char_Code (C, R.P.LF);
+						end if;
+						Ada.Text_IO.Get (C.Inc.Streams(C.Inc.Top).Handle, Ch);
+					end if;
+
 					Feed_Char_Code (C, Standard.Character'Pos(Ch));
 				end;
 				-- After each feed, C.Inc.Top may get incremented if an inclusion
@@ -424,7 +508,6 @@ package body H3.Compilers is
 	begin
 		for i in Data'Range loop
 			Feed_Char_Code (C, R.To_Code(Data(i)));
-
 			if C.Inc.Top > 0 then
 				Feed_Inc (C);
 			end if;
