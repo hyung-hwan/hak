@@ -7,7 +7,18 @@ package body H3.Compilers is
 	LB_EOF: constant S.Rune_Array := (R.V.Left_Arrow,R.V.UC_E,R.V.UC_O,R.V.UC_F,R.V.Right_Arrow); -- <EOF>
 	LB_EOL: constant S.Rune_Array := (R.V.Left_Arrow,R.V.UC_E,R.V.UC_O,R.V.UC_L,R.V.Right_Arrow); -- <EOL>
 	LB_XINCLUDE: constant S.Rune_Array := (R.V.Number_Sign,R.V.LC_I,R.V.LC_N,R.V.LC_C,R.V.LC_L,R.V.LC_U,R.V.LC_D,R.V.LC_E); -- #include
-
+	LB_CLASS: constant S.Rune_Array := (R.V.LC_C,R.V.LC_L,R.V.LC_A,R.V.LC_S,R.V.LC_S); -- class
+	LB_FUN: constant S.Rune_Array := (R.V.LC_F,R.V.LC_U,R.V.LC_N); -- fun
+	LB_END: constant S.Rune_Array := (R.V.LC_E,R.V.LC_N,R.V.LC_D); -- end
+	LB_IF: constant S.Rune_Array := (R.V.LC_I,R.V.LC_F); -- if
+	LB_ELIF: constant S.Rune_Array := (R.V.LC_E,R.V.LC_L,R.V.LC_I,R.V.LC_F); -- elif
+	LB_ELSE: constant S.Rune_Array := (R.V.LC_E,R.V.LC_L,R.V.LC_S,R.V.LC_E); -- else
+	LB_WHILE: constant S.Rune_Array := (R.V.LC_W,R.V.LC_H,R.V.LC_I,R.V.LC_L,R.V.LC_E); -- while
+	LB_BREAK: constant S.Rune_Array := (R.V.LC_B,R.V.LC_R,R.V.LC_E,R.V.LC_A,R.V.LC_K); -- break
+	LB_CONTINUE: constant S.Rune_Array := (R.V.LC_C,R.V.LC_O,R.V.LC_N,R.V.LC_T,R.V.LC_I,R.V.LC_N,R.V.LC_U,R.V.LC_E); -- continue
+	LB_TRY: constant S.Rune_Array := (R.V.LC_T,R.V.LC_R,R.V.LC_Y); -- try
+	LB_CATCH: constant S.Rune_Array := (R.V.LC_C,R.V.LC_A,R.V.LC_T,R.V.LC_T,R.V.LC_H); -- catch
+	LB_RAISE: constant S.Rune_Array := (R.V.LC_R,R.V.LC_A,R.V.LC_I,R.V.LC_S,R.V.LC_E); -- raise
 
 	procedure Dump_Token (Tk: in Token) is
 	begin
@@ -174,6 +185,30 @@ package body H3.Compilers is
 	end Pop_Inclusion;
 
 	-- -------------------------------------------------------------------
+	procedure Parse_Ident (C: in out Compiler) is
+	begin
+		if C.Tk.Buf.Equals(LB_CLASS) then
+			null;
+			Push_Parse_State (C, PS_CLASS_1);
+		elsif C.Tk.Buf.Equals(LB_FUN) then
+			null;
+		else
+			-- probably a command name or a variable name?
+			null;
+		end if;
+ 	end Parse_Ident;
+
+	procedure Parse_Class_1 (C: in out Compiler) is
+	begin
+		null;
+	end Parse_Class_1;
+
+	procedure Parse_Class_2 (C: in out Compiler) is
+	begin
+		null;
+	end Parse_Class_2;
+
+	-- -------------------------------------------------------------------
 
 	procedure Parse_Start (C: in out Compiler) is
 	begin
@@ -207,18 +242,21 @@ package body H3.Compilers is
 				null;
 
 			when TK_IDENT =>
-				null;
+				Parse_Ident (C);
 
 			--when TK_NUMBER =>
 			--	null;
-
-			--when TK_CLASS =>
-			--when TK_FUNC =>
-
 			-- plus or minus signed may be allowed here too.
 			-- plusplus or miniusminus may be allowed here too.
 
 			when TK_SEMICOLON =>
+				null;
+
+			when TK_HASHED_LBRACE =>
+				null;
+			when TK_HASHED_LBRACK =>
+				null;
+			when TK_HASHED_LPAREN =>
 				null;
 
 			when others =>
@@ -266,12 +304,14 @@ package body H3.Compilers is
 
 	function Is_Ident_Starter(Code: in R.Code) return Boolean is
 	begin
-		return R.Is_Alnum(Code) or else R.Is_Rune(Code, R.V.Minus_Sign);
+		return R.Is_Alnum(Code) or else
+		       R.Is_Rune(Code, R.V.Underline) or else
+		       R.Is_Rune(Code, R.V.Minus_Sign);
 	end Is_Ident_Starter;
 
 	function Is_Ident_Char(Code: in R.Code) return Boolean is
 	begin
-		return Is_Ident_Starter(Code) or else R.Is_Rune(Code, R.V.Underline); -- or else R.Is_Rune(C, ...);
+		return Is_Ident_Starter(Code); -- or else R.Is_Rune(Code, R.V.Underline); -- or else R.Is_Rune(C, ...);
 	end Is_Ident_Char;
 
 	procedure Feed_Char_Code (C: in out Compiler; Code: in R.Code) is
@@ -319,34 +359,39 @@ package body H3.Compilers is
 				elsif R.Is_Rune(Code, R.V.Semicolon) then -- ;
 					Start_Token (C, Code);
 					End_Token (C, TK_SEMICOLON);
+				elsif R.Is_Rune(Code, R.V.Colon) then -- :
+					Set_Lexer_State (C, LX_COLON, Code);
+
+				elsif R.Is_Rune(Code, R.V.Quotation) then -- "
+					Set_Lexer_State (C, LX_CSTR);
 
 				elsif Is_Ident_Starter(Code) then
 					Set_Lexer_State (C, LX_IDENT, Code);
 				elsif R.Is_Digit(Code) then
 					Set_Lexer_State (C, LX_NUMBER, Code);
-				elsif R.Is_Rune(Code, R.V.Plus_Sign) then -- +
-					Set_Lexer_State (C, LX_OP_PLUS, Code);
-				elsif R.Is_Rune(Code, R.V.Minus_Sign) then -- -
-					Set_Lexer_State (C, LX_OP_MINUS, Code);
-				elsif R.Is_Rune(Code, R.V.Asterisk) then -- *
-					Set_Lexer_State (C, LX_OP_MUL, Code);
-				elsif R.Is_Rune(Code, R.V.Slash) then -- /
-					Set_Lexer_State (C, LX_OP_DIV, Code);
-				elsif R.Is_Rune(Code, R.V.Left_Arrow) then -- <
-					Set_Lexer_State (C, LX_OP_LESS, Code);
-				elsif R.Is_Rune(Code, R.V.Right_Arrow) then -- >
-					Set_Lexer_State (C, LX_OP_GREATER, Code);
-				elsif R.Is_Rune(Code, R.V.Quotation) then -- "
-					Set_Lexer_State (C, LX_CSTR);
+
+				--elsif R.Is_Rune(Code, R.V.Plus_Sign) then -- +
+				--	Set_Lexer_State (C, LX_OP_PLUS, Code);
+				--elsif R.Is_Rune(Code, R.V.Minus_Sign) then -- -
+				--	Set_Lexer_State (C, LX_OP_MINUS, Code);
+				--elsif R.Is_Rune(Code, R.V.Asterisk) then -- *
+				--	Set_Lexer_State (C, LX_OP_MUL, Code);
+				--elsif R.Is_Rune(Code, R.V.Slash) then -- /
+				--	Set_Lexer_State (C, LX_OP_DIV, Code);
+				--elsif R.Is_Rune(Code, R.V.Left_Arrow) then -- <
+				--	Set_Lexer_State (C, LX_OP_LESS, Code);
+				--elsif R.Is_Rune(Code, R.V.Right_Arrow) then -- >
+				--	Set_Lexer_State (C, LX_OP_GREATER, Code);
+				
 				else
 					raise Syntax_Error;
 				end if;
 
-			when LX_DIRECTIVE =>
-				if R.Is_Alnum(Code) or else R.Is_Rune(Code, R.V.Underline) then
-					Feed_Token (C, Code);
+			when LX_COLON =>
+				if R.Is_Rune(Code, R.V.Equal_Sign) then -- :=
+					End_Token (C, TK_ASSIGN, Code);
 				else
-					End_Token (C, TK_DIRECTIVE);
+					End_Token (C, TK_COLON);
 					goto Start_Over;
 				end if;
 
@@ -367,6 +412,14 @@ package body H3.Compilers is
 					Feed_Token (C, Code);
 				end if;
 
+			when LX_DIRECTIVE =>
+				if R.Is_Alnum(Code) or else R.Is_Rune(Code, R.V.Underline) then
+					Feed_Token (C, Code);
+				else
+					End_Token (C, TK_DIRECTIVE);
+					goto Start_Over;
+				end if;
+
 			when LX_DOLLARED =>
 				if R.Is_Rune(Code, R.V.Left_Curly_Bracket) then
 					End_Token (C, TK_DOLLARED_LBRACE, Code);
@@ -382,7 +435,7 @@ package body H3.Compilers is
 				if R.Is_Alnum(Code) or else R.Is_Rune(Code, R.V.Underline) then
 					Feed_Token (C, Code);
 					Switch_Lexer_State (C, LX_DIRECTIVE);
-				elsif R.Is_Rune(Code, R.V.Number_Sign) then -- ##
+				elsif R.Is_Rune(Code, R.V.Number_Sign) or else R.Is_Rune(Code, R.V.Exclamation) then -- ## or #!
 					Set_Lexer_State (C, LX_COMMENT);
 				elsif R.Is_Rune(Code, R.V.Left_Curly_Bracket) then
 					End_Token (C, TK_HASHED_LBRACE, Code);

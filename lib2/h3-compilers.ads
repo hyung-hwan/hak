@@ -24,6 +24,7 @@ private
 	type Lexer_State is (
 		LX_START,
 
+		LX_COLON,
 		LX_COMMENT,
 		LX_CSTR,
 		LX_DIRECTIVE,
@@ -43,9 +44,11 @@ private
 	end record;
 
 	type Token_Id is (
+		TK_ASSIGN,
 		TK_BSTR,
 		TK_BYTE,
 		TK_CHAR,
+		TK_COLON,
 		TK_CSTR,
 		TK_DIRECTIVE,
 		TK_DIV,
@@ -86,8 +89,12 @@ private
 
 	type Parse_State_Code is (
 		PS_START,
+
 		PS_INCLUDE_TARGET,
-		PS_INCLUDE_TERMINATOR
+		PS_INCLUDE_TERMINATOR,
+
+		PS_CLASS_1,
+		PS_CLASS_2
 	);
 
 	type Parse_State is record
