@@ -94,11 +94,34 @@ private
 		PS_INCLUDE_TERMINATOR,
 
 		PS_CLASS_1,
-		PS_CLASS_2
+		PS_CLASS_2,
+
+		PS_FUN_1,
+		PS_FUN_2,
+
+		PS_PLAIN_STATEMENT_START
 	);
+
+	type Parse_Data_Code is (
+		PD_VOID,
+		PD_STATEMENT,
+		PD_ASSIGNMENT
+	);
+
+	type Parse_Data(Code: Parse_Data_Code := PD_VOID) is record
+		case Code is
+			when PD_VOID =>
+				null;
+			when PD_STATEMENT =>
+				Cmd_Name: S.Elastic_String;
+			when PD_ASSIGNMENT =>
+				Var_Name: S.Elastic_String;
+		end case;
+	end record;
 
 	type Parse_State is record
 		Current: Parse_State_Code := PS_START;
+		Data: Parse_Data;
 	end record;
 
 	type Parse_State_Array is array(System_Index range<>) of Parse_State;

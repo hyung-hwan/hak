@@ -185,16 +185,16 @@ package body H3.Compilers is
 	end Pop_Inclusion;
 
 	-- -------------------------------------------------------------------
+
 	procedure Parse_Ident (C: in out Compiler) is
 	begin
 		if C.Tk.Buf.Equals(LB_CLASS) then
-			null;
 			Push_Parse_State (C, PS_CLASS_1);
 		elsif C.Tk.Buf.Equals(LB_FUN) then
-			null;
+			Push_Parse_State (C, PS_FUN_1);
 		else
 			-- probably a command name or a variable name?
-			null;
+			Push_Parse_State (C, PS_PLAIN_STATEMENT_START);
 		end if;
  	end Parse_Ident;
 
@@ -208,6 +208,11 @@ package body H3.Compilers is
 		null;
 	end Parse_Class_2;
 
+	-- -------------------------------------------------------------------
+	procedure Parse_Plain_Statement_Start (C: in out Compiler) is
+	begin
+		null;
+	end Parse_Plain_Statement_Start;
 	-- -------------------------------------------------------------------
 
 	procedure Parse_Start (C: in out Compiler) is
@@ -292,10 +297,15 @@ package body H3.Compilers is
 		case C.Prs.States(C.Prs.Top).Current is
 			when PS_START =>
 				Parse_Start (C);
+
 			when PS_INCLUDE_TARGET =>
 				Parse_Include_Target (C);
 			when PS_INCLUDE_TERMINATOR =>
 				Parse_Include_Terminator (C);
+
+			when PS_PLAIN_STATEMENT_START =>
+				Parse_Plain_Statement_Start (C);
+
 			when others =>
 				raise Syntax_Error with "unknown parser state"; -- TODO: change this...
 		end case;
