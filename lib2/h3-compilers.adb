@@ -139,11 +139,13 @@ package body H3.Compilers is
 			S.Current := Code;
 		end;
 		C.Prs.Top := Top;
+--ada.text_io.put_line ("Push_Parse_State " & Code'Img);
 	end Push_Parse_State;
 
 	procedure Pop_Parse_State (C: in out Compiler) is
 	begin
-		C.Prs.top := C.Prs.Top - 1;
+--ada.text_io.put_line ("Pop_Parse_State " & C.Prs.States(C.Prs.Top).Current'Img);
+		C.Prs.Top := C.Prs.Top - 1;
 	end Pop_Parse_State;
 
 	-- -------------------------------------------------------------------
@@ -172,12 +174,13 @@ package body H3.Compilers is
 		Push_Parse_State (C, C.Prs.States(C.Prs.Top - 1).Current);
 	end Push_Inclusion;
 
-	procedure Pop_Inclusion (C: in out Compiler; Check: Boolean) is
+	procedure Pop_Inclusion (C: in out Compiler; Check: in Boolean) is
 	begin
 		Ada.Text_IO.Close (C.Inc.Streams(C.Inc.Top).Handle);
 		if Check then
 			if C.Prs.Top /= C.Inc.Streams(C.Inc.Top).Prs_Level + 1 then
-					raise Syntax_Error with "unblanced inclusion content";
+ada.text_io.put_line (">>>>>>>>>>> UNBALANCED INCLUSION CONTEXT..." & C.Prs.Top'Img & "  " & C.Inc.Streams(C.Inc.Top).Prs_Level'Img);
+					raise Syntax_Error with "unbalanced inclusion content";
 			end if;
 		end if;
 		C.Inc.Top := C.Inc.Top - 1;
@@ -195,6 +198,10 @@ package body H3.Compilers is
 		else
 			-- probably a command name or a variable name?
 			Push_Parse_State (C, PS_PLAIN_STATEMENT_START);
+			C.Prs.States(C.Prs.Top).Data := (
+				Code => PD_STATEMENT,
+				Stmt_Starter => C.Tk.Buf
+			); 
 		end if;
  	end Parse_Ident;
 
@@ -211,8 +218,42 @@ package body H3.Compilers is
 	-- -------------------------------------------------------------------
 	procedure Parse_Plain_Statement_Start (C: in out Compiler) is
 	begin
-		null;
+		case C.Tk.Id is
+			when TK_EOL =>
+				Pop_Parse_State (C);
+
+			when TK_EOF =>
+				Pop_Parse_State (C);
+
+				if C.Inc.Top > 0 then
+					Pop_Inclusion (C, True);
+				else
+					-- end of really the input??
+					null;
+				end if;
+
+			when TK_CSTR =>
+				null;
+
+			when TK_IDENT =>
+				null;
+
+			when TK_DOLLARED_LPAREN =>  -- $(
+				Push_Parse_State (C, PS_START);
+
+			when TK_RPAREN =>
+				Pop_Parse_State (C); -- pop as if EOL is seen.
+				Pop_Parse_State (C); -- pop against TK_DOLLARED_LPAREN
+
+			when TK_SEMICOLON =>
+				-- end of the current statement. go on to the next statement
+				Set_Parse_State (C, PS_PLAIN_STATEMENT_START);
+
+			when others =>
+				raise Syntax_Error with "invalid token in in plain statement";
+		end case;
 	end Parse_Plain_Statement_Start;
+
 	-- -------------------------------------------------------------------
 
 	procedure Parse_Start (C: in out Compiler) is
@@ -257,12 +298,16 @@ package body H3.Compilers is
 			when TK_SEMICOLON =>
 				null;
 
-			when TK_HASHED_LBRACE =>
-				null;
-			when TK_HASHED_LBRACK =>
-				null;
-			when TK_HASHED_LPAREN =>
-				null;
+			--when TK_HASHED_LBRACE =>
+			--	null;
+			--when TK_HASHED_LBRACK =>
+			--	null;
+
+			when TK_DOLLARED_LPAREN =>
+				Push_Parse_State (C, PS_START);
+
+			when TK_RPAREN =>
+				Pop_Parse_State (C);
 
 			when others =>
 				raise Syntax_Error with "unexpected token";

@@ -113,9 +113,9 @@ private
 			when PD_VOID =>
 				null;
 			when PD_STATEMENT =>
-				Cmd_Name: S.Elastic_String;
+				Stmt_Starter: S.Elastic_String;
 			when PD_ASSIGNMENT =>
-				Var_Name: S.Elastic_String;
+				Assign_Starter: S.Elastic_String;
 		end case;
 	end record;
 
