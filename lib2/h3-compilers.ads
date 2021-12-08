@@ -1,5 +1,6 @@
 with H3.Runes;
 with H3.Strings;
+with H3.Trees;
 with Ada.Finalization;
 with Ada.Text_IO;
 

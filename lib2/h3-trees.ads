@@ -1,23 +1,25 @@
-use H3.Arrays;
+with Ada.Finalization;
 
 package H3.Trees is
-
-	-- parse tree
 
 	--package A is new H3.Arrays(XXXX, 0);
 
 	type Node_Code is (
 		NODE_ASSIGN,
 		NODE_CALL,
-		NODE_CLASS
+		NODE_CLASS,
 		NODE_IF,
 		NODE_FUN,
 		NODE_VOID,
 		NODE_WHILE
 	);
 
+	type Node;
+	type Node_Pointer is access Node;
+
 	type Node(Code: Node_Code := NODE_VOID) is record
 		-- Loc: location.
+		Next: Node_Pointer;
 		case Code is
 			when NODE_ASSIGN =>
 				null;
@@ -33,11 +35,18 @@ package H3.Trees is
 				null;
 			when NODE_WHILE =>
 				null;
+		end case;
 	end record;
 
-	type Tree is record
-		Next_Node: System_Index := System_Index'First;
-		Toplevel_Node := Node
-	end Tree;
+	
 
+	-- parse tree
+	type Tree is new Ada.Finalization.Limited_Controlled with record
+		--Next_Node: System_Index := System_Index'First;
+		--Toplevel_Node := Node;
+		Top: Node_Pointer := null;
+	end record;
+
+	overriding procedure Initialize (C: in out Tree);
+	overriding procedure Finalize (C: in out Tree);
 end H3.Trees;

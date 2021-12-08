@@ -1,12 +1,14 @@
+with Ada.Unchecked_Deallocation;
 
 package body H3.Trees is
 
-	procedure Add_Node (Tr: in out Tree; N: in Node) is
-	begin 
-		--Tr.Nodes, 
-		
-		null;
-	end Add_Node;
+	procedure New_Node (Tr: in out Tree; Code: Node_Code) is
+		N: Node_Pointer;
+	begin
+		N := new Node(Code);
+		N.Next := Tr.Top;
+		Tr.Top := N;
+	end New_Node;
 
 	procedure Free_Node (Tr: in out Tree; N: in out Node) is
 	begin
@@ -16,4 +18,15 @@ package body H3.Trees is
 		null;
 	end Free_Node;
 
+	-- ------------------------------------------------------------------
+
+	overriding procedure Initialize (C: in out Tree) is
+	begin
+		null;
+	end Initialize;
+
+	overriding procedure Finalize (C: in out Tree) is
+	begin
+		null;
+	end Finalize;
 end H3.Trees;
