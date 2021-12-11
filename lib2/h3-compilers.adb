@@ -632,6 +632,12 @@ ada.text_io.put_line (">>>>>>>>>>> UNBALANCED INCLUSION CONTEXT..." & C.Prs.Top'
 	procedure Initialize (C: in out Compiler) is
 	begin
 		Push_Parse_State (C, PS_START);
+
+		declare
+			X: H3.Trees.Tree;
+		begin
+			H3.Trees.New_Node (X);
+		end;
 	end Initialize;
 
 	procedure Finalize (C: in out Compiler) is

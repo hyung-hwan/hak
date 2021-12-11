@@ -38,8 +38,6 @@ package H3.Trees is
 		end case;
 	end record;
 
-	
-
 	-- parse tree
 	type Tree is new Ada.Finalization.Limited_Controlled with record
 		--Next_Node: System_Index := System_Index'First;
@@ -47,6 +45,10 @@ package H3.Trees is
 		Top: Node_Pointer := null;
 	end record;
 
-	overriding procedure Initialize (C: in out Tree);
-	overriding procedure Finalize (C: in out Tree);
+	-- ------------------------------------------------------------------
+	procedure New_Node (Tr: in out Tree);
+
+
+	overriding procedure Initialize (Tr: in out Tree);
+	overriding procedure Finalize (Tr: in out Tree);
 end H3.Trees;
