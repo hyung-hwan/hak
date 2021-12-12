@@ -320,7 +320,7 @@ HCL_INFO2 (hcl, "CLASS NAMED VAR [%.*js]\n", name->len, name->ptr);
 		}
 	}
 
-//HCL_INFO2 (hcl, "NOT FOUND => %.*js\n", name->len, name->ptr);
+HCL_INFO2 (hcl, "NOT FOUND => %.*js\n", name->len, name->ptr);
 	return -1;
 }
 
@@ -775,7 +775,7 @@ static int emit_variable_access (hcl_t* hcl, int mode, const hcl_var_info_t* vi,
 
 		case VAR_CLASS:
 			HCL_ASSERT (hcl, vi->ctx_offset == 0);
-			return emit_double_param_instruction(hcl, inst_map[2][mode], vi->index_in_ctx, <<index to the class name in literal table>>, srcloc);
+			//return emit_double_param_instruction(hcl, inst_map[2][mode], vi->index_in_ctx, <<index to the class name in literal table>>, srcloc);
 	}
 
 	return -1;
@@ -1199,6 +1199,7 @@ enum
 	
 	COP_COMPILE_CLASS_P1,
 	COP_COMPILE_CLASS_P2,
+	COP_COMPILE_CLASS_P3,
 
 	COP_EMIT_CALL,
 
@@ -2065,19 +2066,38 @@ oops:
 	return -1;
 }
 
+static HCL_INLINE int compile_class_p3 (hcl_t* hcl)
+{
+	hcl_cframe_t* cf;
+
+	cf = GET_TOP_CFRAME(hcl);
+	HCL_ASSERT (hcl, cf->opcode == COP_COMPILE_CLASS_P3);
+
+	/* should i make the assignment in POST?  or after variable declarations immediately? */
+/* TODO: emit instruction to store into the class name...? */
+/* TODO: NEED TO EMIT POP_STACKTOP???? IN THIS CASE CLASS_EXIT MUST PUSH SOMETHING? */
+	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_EXIT, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+	printf ("end of CLASS DEFINITION\n");
+	POP_CFRAME (hcl);
+	return 0;
+}
+
 static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 {
 	hcl_cframe_t* cf;
 
 	cf = GET_TOP_CFRAME(hcl);
 	HCL_ASSERT (hcl, cf->opcode == COP_COMPILE_CLASS_P2);
+	HCL_ASSERT (hcl, cf->operand != HCL_NULL);
 
-	pop_clsblk (hcl);
+	pop_clsblk (hcl);  /* end of the class block */
 
-#if 0
-	if (cf->operand)
+	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_EXIT, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+	printf ("end of CLASS DEFINITION\n");
+	
+//	if (cf->operand)
 	{
-		/* (defun x()  ; this x refers to a variable in the outer scope.
+		/* (defclass X()  ; this x refers to a variable in the outer scope.
 		 *     | t1 t2 x |
 		 *     (set x 10)  ; this x refers to the local variable.
 		 * )
@@ -2087,36 +2107,36 @@ static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 		hcl_cnode_t* class_name = cf->operand;
 		hcl_var_info_t vi;
 
-		if (find_variable_backward(hcl, HCL_CNODE_GET_TOK(defun_name), &vi) <= -1)
+		if (find_variable_backward(hcl, HCL_CNODE_GET_TOK(class_name), &vi) <= -1)
 		{
-			SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, defun_name);
+			SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, class_name);
 			cf = GET_TOP_CFRAME(hcl);
 			cf->u.set.vi.type = VAR_NAMED;
 		}
 		else
 		{
-			HCL_ASSERT (hcl, index <= HCL_SMOOI_MAX); 
-			SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, defun_name); 
+			//HCL_ASSERT (hcl, index <= HCL_SMOOI_MAX); 
+			SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, class_name); 
 			cf = GET_TOP_CFRAME(hcl);
 			cf->u.set.vi = vi;
 		}
 		cf->u.set.mode = VAR_ACCESS_STORE;
+
+#if 0
+		PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_P3, cf->operand);
 	}
 	else
 	{
-		POP_CFRAME (hcl);
-	}
-#else
-/* should i make the assignment in POST?  or after variable declarations immediately? */
-/* TODO: emit instruction to store into the class name...? */
-/* TODO: NEED TO EMIT POP_STACKTOP???? IN THIS CASE CLASS_EXIT MUST PUSH SOMETHING? */
-	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_EXIT, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
-	printf ("end of CLASS DEFINITION\n");
-	POP_CFRAME (hcl);
+		//POP_CFRAME (hcl);
+		SWITCH_TOP_CFRAME (hcl, COP_COMPILE_CLASS_P3, cf->operand);
 #endif
+	}
+
 
 	return 0;
 }
+
+
 
 /* ========================================================================= */
 
@@ -3265,7 +3285,7 @@ static HCL_INLINE int compile_symbol (hcl_t* hcl, hcl_cnode_t* obj)
 	}
 	else
 	{
-		HCL_ASSERT (hcl, vi.type == VAR_INDEXED);
+		HCL_ASSERT (hcl, vi.type != VAR_NAMED);
 		return emit_variable_access(hcl, VAR_ACCESS_PUSH, &vi, HCL_CNODE_GET_LOC(obj));
 	}
 }
@@ -4630,6 +4650,10 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 
 			case COP_COMPILE_CLASS_P2:
 				if (compile_class_p2(hcl) <= -1) goto oops;
+				break;
+
+			case COP_COMPILE_CLASS_P3:
+				if (compile_class_p3(hcl) <= -1) goto oops;
 				break;
 
 			case COP_COMPILE_OR_P1:
