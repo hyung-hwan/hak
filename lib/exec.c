@@ -140,7 +140,7 @@ static void terminate_all_processes (hcl_t* hcl);
 
 /* ------------------------------------------------------------------------- */
 
-#define HCL_EXSTACK_PUSH(hcl, ctx, ip) \
+#define HCL_EXSTACK_PUSH(hcl, ctx, ip, clsp_) \
 	do { \
 		hcl_oop_process_t ap = (hcl)->processor->active; \
 		hcl_ooi_t exsp = HCL_OOP_TO_SMOOI(ap->exsp); \
@@ -151,6 +151,7 @@ static void terminate_all_processes (hcl_t* hcl);
 		} \
 		exsp++; ap->slot[exsp] = (ctx); \
 		exsp++; ap->slot[exsp] = HCL_SMOOI_TO_OOP(ip); \
+		exsp++; ap->slot[exsp] = HCL_SMOOI_TO_OOP(clsp_); \
 		ap->exsp = HCL_SMOOI_TO_OOP(exsp); \
 	} while (0)
 		
@@ -158,14 +159,15 @@ static void terminate_all_processes (hcl_t* hcl);
 	do { \
 		hcl_oop_process_t ap = (hcl)->processor->active; \
 		hcl_ooi_t exsp = HCL_OOP_TO_SMOOI(ap->exsp); \
-		exsp -= 2; \
+		exsp -= 3; \
 		ap->exsp = HCL_SMOOI_TO_OOP(exsp); \
 	} while (0)
 
-#define HCL_EXSTACK_POP_TO(hcl, ctx, ip) \
+#define HCL_EXSTACK_POP_TO(hcl, ctx, ip, clsp) \
 	do { \
 		hcl_oop_process_t ap = (hcl)->processor->active; \
 		hcl_ooi_t exsp = HCL_OOP_TO_SMOOI(ap->exsp); \
+		clsp = HCL_OOP_TO_SMOOI(ap->slot[exsp]); exsp--; \
 		ip = HCL_OOP_TO_SMOOI(ap->slot[exsp]); exsp--; \
 		ctx = ap->slot[exsp]; exsp--; \
 		ap->exsp = HCL_SMOOI_TO_OOP(exsp); \
@@ -179,32 +181,40 @@ static void terminate_all_processes (hcl_t* hcl);
 #define HCL_CLSTACK_PUSH(hcl, v) \
 	do { \
 		hcl_oop_process_t ap = (hcl)->processor->active; \
-		hcl_ooi_t clsp = HCL_OOP_TO_SMOOI(ap->clsp); \
-		if (clsp >= HCL_OOP_TO_SMOOI(ap->clst)) \
+		hcl_ooi_t clsp_ = HCL_OOP_TO_SMOOI(ap->clsp); \
+		if (clsp_ >= HCL_OOP_TO_SMOOI(ap->clst)) \
 		{ \
 			hcl_seterrbfmt (hcl, HCL_EOOMEM, "process class stack overflow"); \
 			(hcl)->abort_req = -1; \
 		} \
-		clsp++; ap->slot[clsp] = (v); \
-		ap->clsp = HCL_SMOOI_TO_OOP(clsp); \
+		clsp_++; ap->slot[clsp_] = (v); \
+		ap->clsp = HCL_SMOOI_TO_OOP(clsp_); \
 	} while (0)
 		
 #define HCL_CLSTACK_POP(hcl) \
 	do { \
 		hcl_oop_process_t ap = (hcl)->processor->active; \
-		hcl_ooi_t clsp = HCL_OOP_TO_SMOOI(ap->clsp); \
-		clsp--; \
-		ap->clsp = HCL_SMOOI_TO_OOP(clsp); \
+		hcl_ooi_t clsp_ = HCL_OOP_TO_SMOOI(ap->clsp); \
+		clsp_--; \
+		ap->clsp = HCL_SMOOI_TO_OOP(clsp_); \
 	} while (0)
 
 #define HCL_CLSTACK_POP_TO(hcl, v) \
 	do { \
 		hcl_oop_process_t ap = (hcl)->processor->active; \
-		hcl_ooi_t clsp = HCL_OOP_TO_SMOOI(ap->clsp); \
-		v = ap->slot[clsp]; clsp--; \
+		hcl_ooi_t clsp_ = HCL_OOP_TO_SMOOI(ap->clsp); \
+		v = ap->slot[clsp_]; clsp_--; \
+		ap->clsp = HCL_SMOOI_TO_OOP(clsp_); \
+	} while (0)
+
+#define HCL_CLSTACK_CHOP(hcl, clsp) \
+	do { \
+		hcl_oop_process_t ap = (hcl)->processor->active; \
 		ap->clsp = HCL_SMOOI_TO_OOP(clsp); \
 	} while (0)
-		
+
+#define HCL_CLSTACK_GET_SP(hcl) HCL_OOP_TO_SMOOI(((hcl)->processor->active)->clsp)
+
 #define HCL_CLSTACK_ISEMPTY(hcl) (HCL_OOP_TO_SMOOI(((hcl)->processor->active)->clsp) <= HCL_OOP_TO_SMOOI(((hcl)->processor->active)->exst))
 
 /* ------------------------------------------------------------------------- */
@@ -2071,7 +2081,7 @@ static HCL_INLINE int call_primitive (hcl_t* hcl, hcl_ooi_t nargs)
 static HCL_INLINE int do_throw (hcl_t* hcl, hcl_oop_t val, hcl_ooi_t ip)
 {
 	hcl_oop_context_t catch_ctx;
-	hcl_ooi_t catch_ip;
+	hcl_ooi_t catch_ip, Xclsp;
 
 	if (HCL_EXSTACK_ISEMPTY(hcl))
 	{
@@ -2098,10 +2108,10 @@ static HCL_INLINE int do_throw (hcl_t* hcl, hcl_oop_t val, hcl_ooi_t ip)
 		return -1;
 	}
 
-/* TODO: unwind the nested class stack */
 	/* must rewind context */
-	HCL_EXSTACK_POP_TO(hcl, catch_ctx, catch_ip);
+	HCL_EXSTACK_POP_TO(hcl, catch_ctx, catch_ip, Xclsp);
 
+	
 /* the below code is similar to do_return_from_block() */
 	hcl->ip = -1; /* mark context dead. saved into hcl->active_context->ip in SWITCH_ACTIVE_CONTEXT */
 	SWITCH_ACTIVE_CONTEXT (hcl, catch_ctx);
@@ -2761,6 +2771,19 @@ static HCL_INLINE void do_return_from_block (hcl_t* hcl)
 	}
 	else
 	{
+
+		/* 
+TODO: should i restore the class stack pointer too??? 
+      let context remeber the it and use it to restore  
+
+		(defclass X
+			; ....
+			(return 20) ;  the class defintion isn't over, but return is executed?? or simply disallow return in the class context outside a method?
+			; ....
+		)
+		 * /
+
+
 		/* it is a normal block return as the active block context 
 		 * is not the initial context of a process */
 		hcl->ip = -1; /* mark context dead. saved into hcl->active_context->ip in SWITCH_ACTIVE_CONTEXT */
@@ -3276,25 +3299,28 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 			/* -------------------------------------------------------- */
 			case HCL_CODE_TRY_ENTER:
 			{
-				hcl_ooi_t catch_ip;
-				
+				hcl_ooi_t catch_ip, clsp;
+
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				LOG_INST_1 (hcl, "try_enter %zu", b1);
 
 				catch_ip = hcl->ip + b1;
 				/* TODO: ip overflow check? */
-				HCL_EXSTACK_PUSH (hcl, hcl->active_context, catch_ip);
+				clsp = HCL_CLSTACK_GET_SP(hcl);
+				HCL_EXSTACK_PUSH (hcl, hcl->active_context, catch_ip, clsp);
 				break;
 			}
 				
 			case HCL_CODE_TRY_ENTER2:
 			{
-				hcl_oow_t catch_ip;
+				hcl_ooi_t catch_ip, clsp;
+
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				LOG_INST_1 (hcl, "try_enter2 %zu", b1);
 				catch_ip = hcl->ip + MAX_CODE_JUMP + b1;
 				/* TODO: ip overflow check? */
-				HCL_EXSTACK_PUSH (hcl, hcl->active_context, catch_ip);
+				clsp = HCL_CLSTACK_GET_SP(hcl);
+				HCL_EXSTACK_PUSH (hcl, hcl->active_context, catch_ip, clsp);
 				break;
 			}
 
@@ -3325,7 +3351,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				FETCH_PARAM_CODE_TO (hcl, b1); /* nsuperclasses */
 				FETCH_PARAM_CODE_TO (hcl, b2); /* nivars */
 				FETCH_PARAM_CODE_TO (hcl, b3); /* ncvars */
-				
+
 				LOG_INST_3 (hcl, "class_enter %zu %zu %zu", b1, b2, b3);
 
 				if (b3 > 0)
