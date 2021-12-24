@@ -454,6 +454,7 @@ struct hcl_clsblk_info_t
 	hcl_oow_t spec; /* TODO: byte indexed, word indexed? */
 
 	hcl_ooi_t fnblk_base;
+	hcl_ooi_t class_start_inst_pos; /* the position of the first instruction in the class body after CLASS_ENTER */
 };
 typedef struct hcl_clsblk_info_t hcl_clsblk_info_t;
 
@@ -902,8 +903,8 @@ enum hcl_bcode_t
 
 	HCL_CODE_PUSH_CTXTEMPVAR_X        = 0xE0, /* 224 ## */
 	HCL_CODE_CLASS_ENTER              = 0xE1, /* 225 ## */
-	HCL_CODE_CLASS_EXIT               = 0xE2,  /* 226 */
-	/* UNUSED - 0xE3 */
+	HCL_CODE_CLASS_EXIT               = 0xE2, /* 226 */
+	HCL_CODE_CLASS_PUSH_EXIT          = 0xE3, /* 227 */
 
 	HCL_CODE_PUSH_OBJVAR_X            = 0xE4, /* 228 ## */
 	/* UNUSED - 0xE5 - 0xE7 */

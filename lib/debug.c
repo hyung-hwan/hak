@@ -32,7 +32,7 @@ void hcl_dumpsymtab (hcl_t* hcl)
 	hcl_oop_char_t symbol;
 
 	HCL_DEBUG0 (hcl, "--------------------------------------------\n");
-	HCL_DEBUG1 (hcl, "Stix Symbol Table %zu\n", HCL_OBJ_GET_SIZE(hcl->symtab->bucket));
+	HCL_DEBUG1 (hcl, "HCL Symbol Table %zu\n", HCL_OBJ_GET_SIZE(hcl->symtab->bucket));
 	HCL_DEBUG0 (hcl, "--------------------------------------------\n");
 
 	for (i = 0; i < HCL_OBJ_GET_SIZE(hcl->symtab->bucket); i++)

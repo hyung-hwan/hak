@@ -757,7 +757,7 @@ static HCL_INLINE void patch_double_long_params_with_oow (hcl_t* hcl, hcl_ooi_t 
 
 static int emit_variable_access (hcl_t* hcl, int mode, const hcl_var_info_t* vi, const hcl_ioloc_t* srcloc)
 {
-	static hcl_oob_t inst_map[2][3] =
+	static hcl_oob_t inst_map[][3] =
 	{
 		{ HCL_CODE_PUSH_CTXTEMPVAR_0, HCL_CODE_POP_INTO_CTXTEMPVAR_0, HCL_CODE_STORE_INTO_CTXTEMPVAR_0 },
 		{ HCL_CODE_PUSH_INSTVAR_0,    HCL_CODE_POP_INTO_INSTVAR_0,    HCL_CODE_STORE_INTO_INSTVAR_0    },
@@ -858,15 +858,15 @@ static int push_clsblk (hcl_t* hcl, const hcl_ioloc_t* errloc, hcl_oow_t nivars,
 	ci->nivars = nivars;
 	ci->ncvars = ncvars;
 
-	if (ivars_str)
+	if (nivars > 0)
 	{
-		HCL_ASSERT (hcl, ci->nivars > 0);
+		HCL_ASSERT (hcl, ivars_str != HCL_NULL);
 		ci->ivars_str = hcl_dupoocstr(hcl, ivars_str, HCL_NULL);
 		if (HCL_UNLIKELY(!ci->ivars_str)) return -1;
 	}
-	if (cvars_str)
+	if (ncvars > 0)
 	{
-		HCL_ASSERT (hcl, ci->ncvars > 0);
+		HCL_ASSERT (hcl, cvars_str != HCL_NULL);
 		ci->cvars_str = hcl_dupoocstr(hcl, cvars_str, HCL_NULL);
 		if (HCL_UNLIKELY(!ci->cvars_str))
 		{
@@ -1488,7 +1488,7 @@ inside_loop:
 			 * function call, i generate PUSH_NIL so nil becomes a return value.
 			 *     (set x (until #f (break)))
 			 * x will get nill. */
-			if (emit_byte_instruction (hcl, HCL_CODE_PUSH_NIL, HCL_CNODE_GET_LOC(cmd)) <= -1) return -1;
+			if (emit_byte_instruction(hcl, HCL_CODE_PUSH_NIL, HCL_CNODE_GET_LOC(cmd)) <= -1) return -1;
 
 /* TODO: study if supporting expression after break is good like return. (break (+ 10 20)) */
 			HCL_ASSERT (hcl, hcl->code.bc.len < HCL_SMOOI_MAX);
@@ -2056,7 +2056,12 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 	if (emit_long_param(hcl, nivars) <= -1) goto oops;
 	if (emit_long_param(hcl, ncvars) <= -1) goto oops;
 
-	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_LIST, obj); /* 1 */
+	/* remember the first byte code position to be emitted for the body of 
+	 * this class. this posistion is used for empty class body check at the
+	 * end of the class before 'class_exit' is generated */
+	hcl->c->clsblk.info[hcl->c->clsblk.depth].class_start_inst_pos = hcl->code.bc.len;
+
+	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_LIST, obj);
 
 	return 0;
 
@@ -2077,7 +2082,7 @@ static HCL_INLINE int compile_class_p3 (hcl_t* hcl)
 /* TODO: emit instruction to store into the class name...? */
 /* TODO: NEED TO EMIT POP_STACKTOP???? IN THIS CASE CLASS_EXIT MUST PUSH SOMETHING? */
 	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_EXIT, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
-	printf ("end of CLASS DEFINITION\n");
+
 	POP_CFRAME (hcl);
 	return 0;
 }
@@ -2090,11 +2095,17 @@ static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 	HCL_ASSERT (hcl, cf->opcode == COP_COMPILE_CLASS_P2);
 	HCL_ASSERT (hcl, cf->operand != HCL_NULL);
 
+	if (hcl->code.bc.len > hcl->c->clsblk.info[hcl->c->clsblk.depth].class_start_inst_pos)
+	{
+		/* no instructions generated after the class_enter instruction */
+		if (emit_byte_instruction(hcl, HCL_CODE_POP_STACKTOP, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+	}
+
 	pop_clsblk (hcl);  /* end of the class block */
 
-	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_EXIT, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
-	printf ("end of CLASS DEFINITION\n");
-	
+
+	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_PUSH_EXIT, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+
 //	if (cf->operand)
 	{
 		/* (defclass X()  ; this x refers to a variable in the outer scope.
@@ -2863,7 +2874,7 @@ static HCL_INLINE int post_catch (hcl_t* hcl)
 static int compile_throw (hcl_t* hcl, hcl_cnode_t* src)
 {
 	hcl_cnode_t* obj, * val;
-	hcl_cframe_t* cf;
+	/*hcl_cframe_t* cf;*/
 
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
 	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_THROW));
@@ -4629,7 +4640,6 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 			case COP_COMPILE_CATCH:
 				if (compile_catch(hcl) <= -1) goto oops;
 				break;
-
 
 
 			case COP_COMPILE_AND_P1:

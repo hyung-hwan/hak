@@ -3367,16 +3367,21 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 
 			case HCL_CODE_CLASS_EXIT:
 			{
-				hcl_oop_t c;
-
 				LOG_INST_0 (hcl, "class_exit");
 				/* TODO: stack underflow check? */
-			#if 0
+				HCL_CLSTACK_POP (hcl);
+				break;
+			}
+
+			case HCL_CODE_CLASS_PUSH_EXIT:
+			{
+				hcl_oop_t c;
+
+				LOG_INST_0 (hcl, "class_push_exit");
+				/* TODO: stack underflow check? */
 				HCL_CLSTACK_POP_TO (hcl, c);
 				HCL_STACK_PUSH (hcl, c);
-			#else
-				HCL_CLSTACK_POP (hcl);
-			#endif
+
 				break;
 			}
 			/* -------------------------------------------------------- */
