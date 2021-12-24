@@ -2075,6 +2075,10 @@ static HCL_INLINE int do_throw (hcl_t* hcl, hcl_oop_t val, hcl_ooi_t ip)
 
 	if (HCL_EXSTACK_ISEMPTY(hcl))
 	{
+		/* the exception stack is empty.
+		 * clear the class stack if it is not empty */
+		while (!HCL_CLSTACK_ISEMPTY(hcl)) HCL_CLSTACK_POP (hcl);
+
 		if (hcl->active_function->dbgi != hcl->_nil)
 		{
 			hcl_dbgi_t* dbgi;
@@ -2087,13 +2091,14 @@ static HCL_INLINE int do_throw (hcl_t* hcl, hcl_oop_t val, hcl_ooi_t ip)
 			HCL_LOG0 (hcl, HCL_LOG_IC | HCL_LOG_WARN, "Warning - exception not handled");
 			hcl_seterrbfmt (hcl, HCL_EEXCEPT, "exception not handled");
 		}
-		
+
 		/* exception not handled. terminate the active process */
 		/*terminate_process (hcl, hcl->processor->active); <- the vm cleanup code will do this */
 
 		return -1;
 	}
 
+/* TODO: unwind the nested class stack */
 	/* must rewind context */
 	HCL_EXSTACK_POP_TO(hcl, catch_ctx, catch_ip);
 
