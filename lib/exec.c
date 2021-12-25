@@ -140,7 +140,7 @@ static void terminate_all_processes (hcl_t* hcl);
 
 /* ------------------------------------------------------------------------- */
 
-#define HCL_EXSTACK_PUSH(hcl, ctx, ip, clsp_) \
+#define HCL_EXSTACK_PUSH(hcl, ctx_, ip_, clsp_) \
 	do { \
 		hcl_oop_process_t ap = (hcl)->processor->active; \
 		hcl_ooi_t exsp = HCL_OOP_TO_SMOOI(ap->exsp); \
@@ -149,8 +149,8 @@ static void terminate_all_processes (hcl_t* hcl);
 			hcl_seterrbfmt (hcl, HCL_EOOMEM, "process exception stack overflow"); \
 			(hcl)->abort_req = -1; \
 		} \
-		exsp++; ap->slot[exsp] = (ctx); \
-		exsp++; ap->slot[exsp] = HCL_SMOOI_TO_OOP(ip); \
+		exsp++; ap->slot[exsp] = (ctx_); \
+		exsp++; ap->slot[exsp] = HCL_SMOOI_TO_OOP(ip_); \
 		exsp++; ap->slot[exsp] = HCL_SMOOI_TO_OOP(clsp_); \
 		ap->exsp = HCL_SMOOI_TO_OOP(exsp); \
 	} while (0)
@@ -163,17 +163,20 @@ static void terminate_all_processes (hcl_t* hcl);
 		ap->exsp = HCL_SMOOI_TO_OOP(exsp); \
 	} while (0)
 
-#define HCL_EXSTACK_POP_TO(hcl, ctx, ip, clsp) \
+#define HCL_EXSTACK_POP_TO(hcl, ctx_, ip_, clsp_) \
 	do { \
 		hcl_oop_process_t ap = (hcl)->processor->active; \
 		hcl_ooi_t exsp = HCL_OOP_TO_SMOOI(ap->exsp); \
-		clsp = HCL_OOP_TO_SMOOI(ap->slot[exsp]); exsp--; \
-		ip = HCL_OOP_TO_SMOOI(ap->slot[exsp]); exsp--; \
-		ctx = ap->slot[exsp]; exsp--; \
+		clsp_ = HCL_OOP_TO_SMOOI(ap->slot[exsp]); exsp--; \
+		ip_ = HCL_OOP_TO_SMOOI(ap->slot[exsp]); exsp--; \
+		ctx_ = ap->slot[exsp]; exsp--; \
 		ap->exsp = HCL_SMOOI_TO_OOP(exsp); \
 	} while (0)
-		
-#define HCL_EXSTACK_ISEMPTY(hcl) (HCL_OOP_TO_SMOOI(((hcl)->processor->active)->exsp) <= HCL_OOP_TO_SMOOI(((hcl)->processor->active)->st))
+
+#define HCL_EXSTACK_GET_ST(hcl) HCL_OOP_TO_SMOOI(((hcl)->processor->active)->exst)
+#define HCL_EXSTACK_GET_SP(hcl) HCL_OOP_TO_SMOOI(((hcl)->processor->active)->exsp)
+
+#define HCL_EXSTACK_IS_EMPTY(hcl) (HCL_OOP_TO_SMOOI(((hcl)->processor->active)->exsp) <= HCL_OOP_TO_SMOOI(((hcl)->processor->active)->st))
 
 
 /* ------------------------------------------------------------------------- */
@@ -198,6 +201,14 @@ static void terminate_all_processes (hcl_t* hcl);
 		clsp_--; \
 		ap->clsp = HCL_SMOOI_TO_OOP(clsp_); \
 	} while (0)
+	
+#define HCL_CLSTACK_POPS(hcl, count) \
+	do { \
+		hcl_oop_process_t ap = (hcl)->processor->active; \
+		hcl_ooi_t clsp_ = HCL_OOP_TO_SMOOI(ap->clsp); \
+		clsp_ -= count; \
+		ap->clsp = HCL_SMOOI_TO_OOP(clsp_); \
+	} while (0)
 
 #define HCL_CLSTACK_POP_TO(hcl, v) \
 	do { \
@@ -207,15 +218,12 @@ static void terminate_all_processes (hcl_t* hcl);
 		ap->clsp = HCL_SMOOI_TO_OOP(clsp_); \
 	} while (0)
 
-#define HCL_CLSTACK_CHOP(hcl, clsp) \
-	do { \
-		hcl_oop_process_t ap = (hcl)->processor->active; \
-		ap->clsp = HCL_SMOOI_TO_OOP(clsp); \
-	} while (0)
+#define HCL_CLSTACK_CHOP(hcl, clsp_) ((hcl)->processor->active->clsp = HCL_SMOOI_TO_OOP(clsp_))
 
+#define HCL_CLSTACK_GET_ST(hcl) HCL_OOP_TO_SMOOI(((hcl)->processor->active)->clst)
 #define HCL_CLSTACK_GET_SP(hcl) HCL_OOP_TO_SMOOI(((hcl)->processor->active)->clsp)
 
-#define HCL_CLSTACK_ISEMPTY(hcl) (HCL_OOP_TO_SMOOI(((hcl)->processor->active)->clsp) <= HCL_OOP_TO_SMOOI(((hcl)->processor->active)->exst))
+#define HCL_CLSTACK_IS_EMPTY(hcl) (HCL_OOP_TO_SMOOI(((hcl)->processor->active)->clsp) <= HCL_OOP_TO_SMOOI(((hcl)->processor->active)->exst))
 
 /* ------------------------------------------------------------------------- */
 
@@ -556,10 +564,10 @@ static hcl_oop_process_t make_process (hcl_t* hcl, hcl_oop_context_t c)
 
 	/* stack */
 	proc->sp = HCL_SMOOI_TO_OOP(-1); /* no item */
-	proc->st = HCL_SMOOI_TO_OOP(stksize);
+	proc->st = HCL_SMOOI_TO_OOP(stksize - 1);
 
 	/* exception stack */
-	proc->exsp = proc->st; /* no item pushed yet*/
+	proc->exsp = proc->st; /* no item pushed yet */
 	proc->exst = HCL_SMOOI_TO_OOP(stksize + exstksize - 1);
 
 	/* class stack */
@@ -884,6 +892,22 @@ static void dump_process_info (hcl_t* hcl, hcl_bitmask_t log_mask)
 	}
 }
 
+static HCL_INLINE void reset_process_stack_pointers (hcl_t* hcl, hcl_oop_process_t proc)
+{
+#if defined(HCL_DEBUG_VM_PROCESSOR)
+	HCL_LOG9 (hcl, HCL_LOG_IC | HCL_LOG_DEBUG, 
+		"Processor - process[%zd] SP: %zd ST: %zd EXSP: %zd(%zd) EXST: %zd CLSP: %zd(%zd) CLST: %zd\n", 
+		HCL_OOP_TO_SMOOI(proc->id),
+		HCL_OOP_TO_SMOOI(proc->sp), HCL_OOP_TO_SMOOI(proc->st), 
+		HCL_OOP_TO_SMOOI(proc->exsp), HCL_OOP_TO_SMOOI(proc->exsp) - HCL_OOP_TO_SMOOI(proc->st), HCL_OOP_TO_SMOOI(proc->exst),
+		HCL_OOP_TO_SMOOI(proc->clsp), HCL_OOP_TO_SMOOI(proc->clsp) - HCL_OOP_TO_SMOOI(proc->exst), HCL_OOP_TO_SMOOI(proc->clst));
+#endif
+
+	proc->sp = HCL_SMOOI_TO_OOP(-1); /* invalidate the process stack */
+	proc->exsp = proc->st;
+	proc->clsp = proc->clst;
+}
+
 static void terminate_process (hcl_t* hcl, hcl_oop_process_t proc)
 {
 	if (proc->state == HCL_SMOOI_TO_OOP(PROC_STATE_RUNNING) ||
@@ -901,7 +925,7 @@ static void terminate_process (hcl_t* hcl, hcl_oop_process_t proc)
 			nrp = find_next_runnable_process(hcl);
 
 			unchain_from_processor (hcl, proc, PROC_STATE_TERMINATED);
-			proc->sp = HCL_SMOOI_TO_OOP(-1); /* invalidate the process stack */
+			reset_process_stack_pointers (hcl, proc); /* invalidate the process stack */
 			proc->current_context = proc->initial_context; /* not needed but just in case */
 
 			/* a runnable or running process must not be chanined to the
@@ -934,7 +958,7 @@ static void terminate_process (hcl_t* hcl, hcl_oop_process_t proc)
 		else
 		{
 			unchain_from_processor (hcl, proc, PROC_STATE_TERMINATED);
-			proc->sp = HCL_SMOOI_TO_OOP(-1); /* invalidate the process stack */
+			reset_process_stack_pointers (hcl, proc); /* invalidate the process stack */
 		}
 
 		/* when terminated, clear it from the pid table and set the process id to a negative number */
@@ -949,7 +973,7 @@ static void terminate_process (hcl_t* hcl, hcl_oop_process_t proc)
 
 		/*proc->state = HCL_SMOOI_TO_OOP(PROC_STATE_TERMINATED);*/
 		unchain_from_processor (hcl, proc, PROC_STATE_TERMINATED);
-		proc->sp = HCL_SMOOI_TO_OOP(-1); /* invalidate the proce stack */
+		reset_process_stack_pointers (hcl, proc); /* invalidate the process stack */
 
 		if ((hcl_oop_t)proc->sem != hcl->_nil)
 		{
@@ -2081,13 +2105,13 @@ static HCL_INLINE int call_primitive (hcl_t* hcl, hcl_ooi_t nargs)
 static HCL_INLINE int do_throw (hcl_t* hcl, hcl_oop_t val, hcl_ooi_t ip)
 {
 	hcl_oop_context_t catch_ctx;
-	hcl_ooi_t catch_ip, Xclsp;
+	hcl_ooi_t catch_ip, clsp;
 
-	if (HCL_EXSTACK_ISEMPTY(hcl))
+	if (HCL_EXSTACK_IS_EMPTY(hcl))
 	{
 		/* the exception stack is empty.
 		 * clear the class stack if it is not empty */
-		while (!HCL_CLSTACK_ISEMPTY(hcl)) HCL_CLSTACK_POP (hcl);
+		while (!HCL_CLSTACK_IS_EMPTY(hcl)) HCL_CLSTACK_POP (hcl);
 
 		if (hcl->active_function->dbgi != hcl->_nil)
 		{
@@ -2108,11 +2132,22 @@ static HCL_INLINE int do_throw (hcl_t* hcl, hcl_oop_t val, hcl_ooi_t ip)
 		return -1;
 	}
 
-	/* must rewind context */
-	HCL_EXSTACK_POP_TO(hcl, catch_ctx, catch_ip, Xclsp);
+	/* pop the exception stack to get information to rewind context */
+	HCL_EXSTACK_POP_TO (hcl, catch_ctx, catch_ip, clsp);
 
-	
-/* the below code is similar to do_return_from_block() */
+	/* discard the unfinished class definitions for the exception thrown.
+	 * 
+	 * (try 
+	 *    (defclass X
+	 *      (throw "exception")
+	 *  catch (x)
+	 *    (printf "exception %O\n" x)
+	 * )
+	 * 'throw' is triggered before the end of defintion of X is reached.
+	 */
+	HCL_CLSTACK_CHOP (hcl, clsp); 
+
+	/* the below code is similar to do_return_from_block() */
 	hcl->ip = -1; /* mark context dead. saved into hcl->active_context->ip in SWITCH_ACTIVE_CONTEXT */
 	SWITCH_ACTIVE_CONTEXT (hcl, catch_ctx);
 	hcl->ip = catch_ip; /* override the instruction pointer */
@@ -2781,7 +2816,7 @@ TODO: should i restore the class stack pointer too???
 			(return 20) ;  the class defintion isn't over, but return is executed?? or simply disallow return in the class context outside a method?
 			; ....
 		)
-		 * /
+		 */
 
 
 		/* it is a normal block return as the active block context 
@@ -3885,7 +3920,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 			{
 				hcl_oop_t t;
 				LOG_INST_0 (hcl, "dup_stacktop");
-				HCL_ASSERT (hcl, !HCL_STACK_ISEMPTY(hcl));
+				HCL_ASSERT (hcl, !HCL_STACK_IS_EMPTY(hcl));
 				t = HCL_STACK_GETTOP(hcl);
 				HCL_STACK_PUSH (hcl, t);
 				break;
@@ -3893,7 +3928,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 
 			case HCL_CODE_POP_STACKTOP:
 				LOG_INST_0 (hcl, "pop_stacktop");
-				HCL_ASSERT (hcl, !HCL_STACK_ISEMPTY(hcl));
+				HCL_ASSERT (hcl, !HCL_STACK_IS_EMPTY(hcl));
 
 				/* at the top level, the value is just popped off the stack
 				 * after evaluation of an expression. so it's likely the
@@ -4112,7 +4147,6 @@ hcl_oop_t hcl_execute (hcl_t* hcl)
 	if (n >= 0) 
 	{
 		hcl->last_retv = hcl->_nil;
-
 		n = execute(hcl);
 		HCL_INFO1 (hcl, "RETURNED VALUE - %O\n", hcl->last_retv);
 	}

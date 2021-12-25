@@ -988,6 +988,8 @@ typedef enum hcl_log_mask_t hcl_log_mask_t;
 #define HCL_LOG5(hcl,mask,fmt,a1,a2,a3,a4,a5) do { if (HCL_LOG_ENABLED(hcl,mask)) hcl_logbfmt(hcl, mask, fmt, a1, a2, a3, a4, a5); } while(0)
 #define HCL_LOG6(hcl,mask,fmt,a1,a2,a3,a4,a5,a6) do { if (HCL_LOG_ENABLED(hcl,mask)) hcl_logbfmt(hcl, mask, fmt, a1, a2, a3, a4, a5, a6); } while(0)
 #define HCL_LOG7(hcl,mask,fmt,a1,a2,a3,a4,a5,a6,a7) do { if (HCL_LOG_ENABLED(hcl,mask)) hcl_logbfmt(hcl, mask, fmt, a1, a2, a3, a4, a5, a6, a7); } while(0)
+#define HCL_LOG8(hcl,mask,fmt,a1,a2,a3,a4,a5,a6,a7,a8) do { if (HCL_LOG_ENABLED(hcl,mask)) hcl_logbfmt(hcl, mask, fmt, a1, a2, a3, a4, a5, a6, a7, a8); } while(0)
+#define HCL_LOG9(hcl,mask,fmt,a1,a2,a3,a4,a5,a6,a7,a8,a9) do { if (HCL_LOG_ENABLED(hcl,mask)) hcl_logbfmt(hcl, mask, fmt, a1, a2, a3, a4, a5, a6, a7, a8, a9); } while(0)
 
 #if defined(HCL_BUILD_RELEASE)
 	/* [NOTE]
@@ -1002,6 +1004,8 @@ typedef enum hcl_log_mask_t hcl_log_mask_t;
 #	define HCL_DEBUG5(hcl,fmt,a1,a2,a3,a4,a5)
 #	define HCL_DEBUG6(hcl,fmt,a1,a2,a3,a4,a5,a6)
 #	define HCL_DEBUG7(hcl,fmt,a1,a2,a3,a4,a5,a6,a7)
+#	define HCL_DEBUG8(hcl,fmt,a1,a2,a3,a4,a5,a6,a7,a8)
+#	define HCL_DEBUG9(hcl,fmt,a1,a2,a3,a4,a5,a6,a7,a8,a9)
 #else
 #	define HCL_DEBUG0(hcl,fmt) HCL_LOG0(hcl, HCL_LOG_DEBUG | HCL_LOG_UNTYPED, fmt)
 #	define HCL_DEBUG1(hcl,fmt,a1) HCL_LOG1(hcl, HCL_LOG_DEBUG | HCL_LOG_UNTYPED, fmt, a1)
@@ -1010,7 +1014,9 @@ typedef enum hcl_log_mask_t hcl_log_mask_t;
 #	define HCL_DEBUG4(hcl,fmt,a1,a2,a3,a4) HCL_LOG4(hcl, HCL_LOG_DEBUG | HCL_LOG_UNTYPED, fmt, a1, a2, a3, a4)
 #	define HCL_DEBUG5(hcl,fmt,a1,a2,a3,a4,a5) HCL_LOG5(hcl, HCL_LOG_DEBUG | HCL_LOG_UNTYPED, fmt, a1, a2, a3, a4, a5)
 #	define HCL_DEBUG6(hcl,fmt,a1,a2,a3,a4,a5,a6) HCL_LOG6(hcl, HCL_LOG_DEBUG | HCL_LOG_UNTYPED, fmt, a1, a2, a3, a4, a5, a6)
-#	define HCL_DEBUG7(hcl,fmt,a1,a2,a3,a4,a5,a6,a7) HCL_LOG6(hcl, HCL_LOG_DEBUG | HCL_LOG_UNTYPED, fmt, a1, a2, a3, a4, a5, a6, a7)
+#	define HCL_DEBUG7(hcl,fmt,a1,a2,a3,a4,a5,a6,a7) HCL_LOG7(hcl, HCL_LOG_DEBUG | HCL_LOG_UNTYPED, fmt, a1, a2, a3, a4, a5, a6, a7)
+#	define HCL_DEBUG8(hcl,fmt,a1,a2,a3,a4,a5,a6,a7,a8) HCL_LOG8(hcl, HCL_LOG_DEBUG | HCL_LOG_UNTYPED, fmt, a1, a2, a3, a4, a5, a6, a7, a8)
+#	define HCL_DEBUG9(hcl,fmt,a1,a2,a3,a4,a5,a6,a7,a8,a9) HCL_LOG9(hcl, HCL_LOG_DEBUG | HCL_LOG_UNTYPED, fmt, a1, a2, a3, a4, a5, a6, a7, a8, a9)
 #endif
 
 #define HCL_INFO0(hcl,fmt) HCL_LOG0(hcl, HCL_LOG_INFO | HCL_LOG_UNTYPED, fmt)
@@ -1020,7 +1026,9 @@ typedef enum hcl_log_mask_t hcl_log_mask_t;
 #define HCL_INFO4(hcl,fmt,a1,a2,a3,a4) HCL_LOG4(hcl, HCL_LOG_INFO | HCL_LOG_UNTYPED, fmt, a1, a2, a3, a4)
 #define HCL_INFO5(hcl,fmt,a1,a2,a3,a4,a5) HCL_LOG5(hcl, HCL_LOG_INFO | HCL_LOG_UNTYPED, fmt, a1, a2, a3, a4, a5)
 #define HCL_INFO6(hcl,fmt,a1,a2,a3,a4,a5,a6) HCL_LOG6(hcl, HCL_LOG_INFO | HCL_LOG_UNTYPED, fmt, a1, a2, a3, a4, a5, a6)
-#define HCL_INFO7(hcl,fmt,a1,a2,a3,a4,a5,a6,a7) HCL_LOG6(hcl, HCL_LOG_INFO | HCL_LOG_UNTYPED, fmt, a1, a2, a3, a4, a5, a6, a7)
+#define HCL_INFO7(hcl,fmt,a1,a2,a3,a4,a5,a6,a7) HCL_LOG7(hcl, HCL_LOG_INFO | HCL_LOG_UNTYPED, fmt, a1, a2, a3, a4, a5, a6, a7)
+#define HCL_INFO8(hcl,fmt,a1,a2,a3,a4,a5,a6,a7,a8) HCL_LOG8(hcl, HCL_LOG_INFO | HCL_LOG_UNTYPED, fmt, a1, a2, a3, a4, a5, a6, a7, a8)
+#define HCL_INFO9(hcl,fmt,a1,a2,a3,a4,a5,a6,a7,a8,a9) HCL_LOG9(hcl, HCL_LOG_INFO | HCL_LOG_UNTYPED, fmt, a1, a2, a3, a4, a5, a6, a7, a8, a9)
 
 
 /* =========================================================================
@@ -1727,7 +1735,10 @@ struct hcl_t
 		v = HCL_STACK_GETTOP(hcl); \
 		HCL_STACK_POP (hcl); \
 	} while(0)
-#define HCL_STACK_ISEMPTY(hcl) ((hcl)->sp <= -1)
+	
+#define HCL_STACK_GET_ST(hcl) HCL_OOP_TO_SMOOI((hcl)->processor->active->st)
+#define HCL_STACK_GET_SP(hcl) ((hcl)->sp)
+#define HCL_STACK_IS_EMPTY(hcl) ((hcl)->sp <= -1)
 
 /* get the stack pointer of the argument at the given index */
 #define HCL_STACK_GETARGSP(hcl,nargs,idx) ((hcl)->sp - ((nargs) - (idx) - 1))
@@ -2845,6 +2856,5 @@ HCL_EXPORT void hcl_assertfailed (
 #if defined(__cplusplus)
 }
 #endif
-
 
 #endif
