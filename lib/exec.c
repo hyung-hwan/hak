@@ -2135,7 +2135,7 @@ static HCL_INLINE int do_throw (hcl_t* hcl, hcl_oop_t val, hcl_ooi_t ip)
 	/* pop the exception stack to get information to rewind context */
 	HCL_EXSTACK_POP_TO (hcl, catch_ctx, catch_ip, clsp);
 
-	/* discard the unfinished class definitions for the exception thrown.
+	/* discard unfinished class definitions for the exception thrown.
 	 * 
 	 * (try 
 	 *    (defclass X

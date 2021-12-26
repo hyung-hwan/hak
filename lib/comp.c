@@ -2045,7 +2045,7 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 
 	if (push_clsblk(hcl, &cf->u._class.start_loc, nivars, ncvars, &hcl->c->tv.s.ptr[tv_dup_check_start + 1], HCL_NULL) <= -1) goto oops;
 
-	/* discard the instance variables and class variables in the temporary variable collection buffe
+	/* discard the instance variables and class variables in the temporary variable collection buffer
 	 * because they have been pushed to the class block structure */
 	hcl->c->tv.s.len = tv_dup_check_start;
 	hcl->c->tv.wcount = saved_tv_wcount;
@@ -2752,6 +2752,9 @@ static HCL_INLINE int compile_catch (hcl_t* hcl)
 	hcl_oow_t exarg_offset;
 	hcl_var_info_t vi;
 	hcl_fnblk_info_t* fbi;
+#if !defined(HCL_BUILD_RELEASE)
+	hcl_oow_t par_tmprcnt;
+#endif
 
 	cf = GET_TOP_CFRAME(hcl);
 	HCL_ASSERT (hcl, cf->opcode == COP_COMPILE_CATCH);
@@ -2800,13 +2803,26 @@ static HCL_INLINE int compile_catch (hcl_t* hcl)
 	vi.index_in_ctx = hcl->c->tv.wcount;
 	if (add_temporary_variable(hcl, HCL_CNODE_GET_TOK(exarg), hcl->c->tv.s.len) <= -1) return -1;
 
+#if !defined(HCL_BUILD_RELEASE)
+	if (hcl->c->fnblk.depth >= 0)
+	{
+		fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth - 1]; /* parent block */
+		par_tmprcnt = fbi->tmprcnt;
+	}
+	else 
+	{
+		par_tmprcnt = 0;
+	}
+#endif
+
 	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
 	HCL_ASSERT (hcl, fbi->tmprlen == hcl->c->tv.s.len - HCL_CNODE_GET_TOKLEN(exarg) - 1);
 	HCL_ASSERT (hcl, fbi->tmprcnt == vi.index_in_ctx);
 	fbi->tmprlen = hcl->c->tv.s.len;
 	fbi->tmprcnt = hcl->c->tv.wcount;
 	fbi->tmpr_nlvars = fbi->tmpr_nlvars + 1;
-	HCL_ASSERT (hcl, fbi->tmpr_nargs + fbi->tmpr_nrvars + fbi->tmpr_nlvars == fbi->tmprcnt);
+
+	HCL_ASSERT (hcl, fbi->tmpr_nargs + fbi->tmpr_nrvars + fbi->tmpr_nlvars == fbi->tmprcnt - par_tmprcnt);
 
 	obj = HCL_CNODE_CONS_CDR(obj);
 
@@ -2821,7 +2837,7 @@ static HCL_INLINE int compile_catch (hcl_t* hcl)
 	PUSH_SUBCFRAME (hcl, COP_POST_CATCH, cmd);
 	cf = GET_SUBCFRAME(hcl);
 	cf->u.post_catch.jump_inst_pos = jump_inst_pos;
-	cf->u.post_catch.exarg_offset = exarg_offset; /* there is only 1 exception varilable. using the offset is easier than to use the variable position */
+	cf->u.post_catch.exarg_offset = exarg_offset; /* there is only 1 exception variable. using the offset is easier than to use the variable position */
 
 	return 0;
 }
@@ -2865,6 +2881,8 @@ static HCL_INLINE int post_catch (hcl_t* hcl)
 
 	patch_long_jump (hcl, jip, block_code_size); /* patch the jump between the try block and the catch block */
 
+	/* make the exception variable unsearchable outside the catch block.
+	 * the variable entity is still be accounted into the local variable list. */
 	kill_temporary_variable_at_offset (hcl, cf->u.post_catch.exarg_offset);
 
 	POP_CFRAME (hcl);
