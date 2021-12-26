@@ -2804,7 +2804,7 @@ static HCL_INLINE int compile_catch (hcl_t* hcl)
 	if (add_temporary_variable(hcl, HCL_CNODE_GET_TOK(exarg), hcl->c->tv.s.len) <= -1) return -1;
 
 #if !defined(HCL_BUILD_RELEASE)
-	if (hcl->c->fnblk.depth >= 0)
+	if (hcl->c->fnblk.depth > 0)
 	{
 		fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth - 1]; /* parent block */
 		par_tmprcnt = fbi->tmprcnt;
