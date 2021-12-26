@@ -2752,9 +2752,7 @@ static HCL_INLINE int compile_catch (hcl_t* hcl)
 	hcl_oow_t exarg_offset;
 	hcl_var_info_t vi;
 	hcl_fnblk_info_t* fbi;
-#if !defined(HCL_BUILD_RELEASE)
 	hcl_oow_t par_tmprcnt;
-#endif
 
 	cf = GET_TOP_CFRAME(hcl);
 	HCL_ASSERT (hcl, cf->opcode == COP_COMPILE_CATCH);
@@ -2795,15 +2793,6 @@ static HCL_INLINE int compile_catch (hcl_t* hcl)
 	/* add the exception variable to the local variable list. increase the number of local variables */
 	exarg_offset = hcl->c->tv.s.len + 1; /* when the variable name is added, its offset will be the current length + 1 for a space character added */
 
-	/* fill the variable information structure as if it's found by find_variable_backward().
-	 * we know it's the last variable as add_temporary_variable() is called below. 
-	 * there is no need to call find_variable_backward() */
-	vi.type = VAR_INDEXED;
-	vi.ctx_offset = 0;
-	vi.index_in_ctx = hcl->c->tv.wcount;
-	if (add_temporary_variable(hcl, HCL_CNODE_GET_TOK(exarg), hcl->c->tv.s.len) <= -1) return -1;
-
-#if !defined(HCL_BUILD_RELEASE)
 	if (hcl->c->fnblk.depth > 0)
 	{
 		fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth - 1]; /* parent block */
@@ -2813,11 +2802,19 @@ static HCL_INLINE int compile_catch (hcl_t* hcl)
 	{
 		par_tmprcnt = 0;
 	}
-#endif
+
+	/* fill the variable information structure as if it's found by find_variable_backward().
+	 * we know it's the last variable as add_temporary_variable() is called below. 
+	 * there is no need to call find_variable_backward() */
+	vi.type = VAR_INDEXED;
+	vi.ctx_offset = 0;
+	vi.index_in_ctx = hcl->c->tv.wcount - par_tmprcnt;
+	if (add_temporary_variable(hcl, HCL_CNODE_GET_TOK(exarg), hcl->c->tv.s.len) <= -1) return -1;
+
 
 	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
 	HCL_ASSERT (hcl, fbi->tmprlen == hcl->c->tv.s.len - HCL_CNODE_GET_TOKLEN(exarg) - 1);
-	HCL_ASSERT (hcl, fbi->tmprcnt == vi.index_in_ctx);
+	HCL_ASSERT (hcl, fbi->tmprcnt == vi.index_in_ctx + par_tmprcnt);
 	fbi->tmprlen = hcl->c->tv.s.len;
 	fbi->tmprcnt = hcl->c->tv.wcount;
 	fbi->tmpr_nlvars = fbi->tmpr_nlvars + 1;
