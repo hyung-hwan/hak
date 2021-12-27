@@ -371,9 +371,12 @@ hcl_oop_t hcl_makeclass (hcl_t* hcl, hcl_oop_t superclass, hcl_ooi_t nivars, hcl
 	return (hcl_oop_t)c;
 }
 
-static HCL_INLINE int decode_spec (hcl_t* hcl, hcl_oop_class_t _class, hcl_oow_t num_flexi_fields, hcl_obj_type_t* type, hcl_oow_t* outlen)
+static HCL_INLINE int decode_spec (hcl_t* hcl, hcl_oop_class_t _class, hcl_obj_type_t* type, hcl_oow_t* outlen)
 {
 	/* TODO: */
+
+	*type = HCL_OBJ_TYPE_OOP;
+	*outlen = HCL_OOP_TO_SMOOI(_class->nivars);
 	return 0;
 }
 
@@ -386,7 +389,7 @@ hcl_oop_t hcl_instantiate (hcl_t*hcl, hcl_oop_class_t _class, const void* vptr, 
 
 	HCL_ASSERT (hcl, hcl->_nil != HCL_NULL);
 
-	if (decode_spec(hcl, _class, vlen, &type, &alloclen) <= -1) return HCL_NULL;
+	if (decode_spec(hcl, _class, &type, &alloclen) <= -1) return HCL_NULL;
 
 	hcl_pushvolat (hcl, (hcl_oop_t*)&_class); tmp_count++;
 
