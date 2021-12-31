@@ -1061,6 +1061,13 @@ hcl_oop_t hcl_allocwordobj (
 	hcl_oow_t        len
 );
 
+hcl_oop_t hcl_instantiate (
+	hcl_t*          hcl,
+	hcl_oop_class_t _class,
+	const void*     vptr,
+	hcl_oow_t       vlen
+);
+
 /* ========================================================================= */
 /* sym.c                                                                     */
 /* ========================================================================= */

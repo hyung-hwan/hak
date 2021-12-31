@@ -380,7 +380,7 @@ static HCL_INLINE int decode_spec (hcl_t* hcl, hcl_oop_class_t _class, hcl_obj_t
 	return 0;
 }
 
-hcl_oop_t hcl_instantiate (hcl_t*hcl, hcl_oop_class_t _class, const void* vptr, hcl_oow_t vlen)
+hcl_oop_t hcl_instantiate (hcl_t* hcl, hcl_oop_class_t _class, const void* vptr, hcl_oow_t vlen)
 {
 	hcl_oop_t oop;
 	hcl_obj_type_t type;
@@ -402,22 +402,22 @@ hcl_oop_t hcl_instantiate (hcl_t*hcl, hcl_oop_class_t _class, const void* vptr, 
 			if (HCL_LIKELY(oop))
 			{
 		#if 0
-					/* initialize named instance variables with default values */
-					if (_class->initv[0] != hcl->_nil)
-					{
-						hcl_oow_t i = HCL_OBJ_GET_SIZE(_class->initv[0]);
+				/* initialize named instance variables with default values */
+				if (_class->initv[0] != hcl->_nil)
+				{
+					hcl_oow_t i = HCL_OBJ_GET_SIZE(_class->initv[0]);
 
-						/* [NOTE] i don't deep-copy initial values.
-						 *   if you change the contents of compound values like arrays,
-						 *   it affects subsequent instantiation of the class.
-						 *   it's important that the compiler should mark compound initial
-						 *   values read-only. */
-						while (i > 0)
-						{
-							--i;
-							HCL_OBJ_SET_OOP_VAL (oop, i, HCL_OBJ_GET_OOP_VAL(_class->initv[0], i));
-						}
+					/* [NOTE] i don't deep-copy initial values.
+					 *   if you change the contents of compound values like arrays,
+					 *   it affects subsequent instantiation of the class.
+					 *   it's important that the compiler should mark compound initial
+					 *   values read-only. */
+					while (i > 0)
+					{
+						--i;
+						HCL_OBJ_SET_OOP_VAL (oop, i, HCL_OBJ_GET_OOP_VAL(_class->initv[0], i));
 					}
+				}
 		#endif
 			}
 			HCL_ASSERT (hcl, vptr == HCL_NULL);
