@@ -131,7 +131,7 @@ static HCL_INLINE int open_input (hcl_t* hcl, hcl_ioinarg_t* arg)
 
 		fn = ((bb_t*)arg->includer->handle)->fn;
 
-		fb = get_base_name (fn);
+		fb = get_base_name(fn);
 		parlen = fb - fn;
 
 		bb = (bb_t*)hcl_callocmem (hcl, HCL_SIZEOF(*bb) + (HCL_SIZEOF(hcl_bch_t) * (parlen + bcslen + 1)));
@@ -166,7 +166,7 @@ static HCL_INLINE int open_input (hcl_t* hcl, hcl_ioinarg_t* arg)
 #endif
 	if (!bb->fp)
 	{
-		hcl_seterrnum (hcl, HCL_EIOERR);
+		hcl_seterrbfmt (hcl, HCL_EIOERR, "unable to open %hs", bb->fn);
 		goto oops;
 	}
 
@@ -309,7 +309,10 @@ static HCL_INLINE int open_output (hcl_t* hcl, hcl_iooutarg_t* arg)
 #endif
 	if (!fp)
 	{
-		hcl_seterrnum (hcl, HCL_EIOERR);
+		if (xtn->print_path) 
+			hcl_seterrbfmt (hcl, HCL_EIOERR, "unable to open %hs", xtn->print_path);
+		else	
+			hcl_seterrnum (hcl, HCL_EIOERR);
 		return -1;
 	}
 
