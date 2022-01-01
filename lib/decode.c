@@ -501,6 +501,23 @@ int hcl_decode (hcl_t* hcl, hcl_oow_t start, hcl_oow_t end)
 
 			/* -------------------------------------------------------- */
 
+			case HCL_CODE_PUSH_CLSVAR_X:
+				FETCH_PARAM_CODE_TO (hcl, b1);
+				LOG_INST_1 (hcl, "push_clsvar %zu", b1);
+				break;
+
+			case HCL_CODE_STORE_INTO_CLSVAR_X:
+				FETCH_PARAM_CODE_TO (hcl, b1);
+				LOG_INST_1 (hcl, "store_into_clsvar %zu", b1);
+				break;
+
+			case HCL_CODE_POP_INTO_CLSVAR_X:
+				FETCH_PARAM_CODE_TO (hcl, b1);
+				LOG_INST_1 (hcl, "pop_into_clsvar %zu", b1);
+				break;
+
+			/* -------------------------------------------------------- */
+
 			case HCL_CODE_PUSH_RECEIVER:
 				LOG_INST_0 (hcl, "push_receiver");
 				break;

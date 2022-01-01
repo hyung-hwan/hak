@@ -534,6 +534,13 @@ struct hcl_compiler_t
 
 	struct
 	{
+		hcl_oocs_t s; /* buffer */
+		hcl_oow_t capa; /* bufer capacity */
+		hcl_oow_t wcount; /* word count */
+	} cv; /* class variables */
+
+	struct
+	{
 		hcl_ooi_t depth; /* signed because it starts with -1 */
 		hcl_cblk_info_t* info;
 		hcl_oow_t info_capa;
@@ -672,7 +679,11 @@ SHORT INSTRUCTION CODE                                        LONG INSTRUCTION C
 116-119  0111 01XX YYYYYYYY SEND_MESSAGE_TO_SUPER             244  1111 0100 XXXXXXXX YYYYYYYY SEND_MESSAGE_TO_SUPER_X        (bit 2 on)
 # XXX args, YYYYYYYY message
 
-120-123  0111 10XX  UNUSED
+120      0111 1000 YYYYYYYY PUSH_CLSVAR_X
+121      0111 1001 YYYYYYYY STORE_INTO_CLSVAR_X
+122      0111 1010 YYYYYYYY POP_INTO_CLSVAR_X
+
+123      0111 1011  UNUSED
 124-127  0111 11XX  UNUSED
 
 ##
@@ -817,17 +828,21 @@ enum hcl_bcode_t
 	HCL_CODE_POP_INTO_OBJVAR_2        = 0x6E,
 	HCL_CODE_POP_INTO_OBJVAR_3        = 0x6F,
 
-	HCL_CODE_SEND_MESSAGE_0           = 0x70,
-	HCL_CODE_SEND_MESSAGE_1           = 0x71,
-	HCL_CODE_SEND_MESSAGE_2           = 0x72,
-	HCL_CODE_SEND_MESSAGE_3           = 0x73,
+	HCL_CODE_SEND_MESSAGE_0           = 0x70, /* 112 */
+	HCL_CODE_SEND_MESSAGE_1           = 0x71, /* 113 */
+	HCL_CODE_SEND_MESSAGE_2           = 0x72, /* 114 */
+	HCL_CODE_SEND_MESSAGE_3           = 0x73, /* 115 */
 
-	HCL_CODE_SEND_MESSAGE_TO_SUPER_0  = 0x74,
-	HCL_CODE_SEND_MESSAGE_TO_SUPER_1  = 0x75,
-	HCL_CODE_SEND_MESSAGE_TO_SUPER_2  = 0x76,
-	HCL_CODE_SEND_MESSAGE_TO_SUPER_3  = 0x77,
+	HCL_CODE_SEND_MESSAGE_TO_SUPER_0  = 0x74, /* 116 */
+	HCL_CODE_SEND_MESSAGE_TO_SUPER_1  = 0x75, /* 117 */
+	HCL_CODE_SEND_MESSAGE_TO_SUPER_2  = 0x76, /* 118 */
+	HCL_CODE_SEND_MESSAGE_TO_SUPER_3  = 0x77, /* 119 */
 
-	/* UNUSED 0x78 - 0x7F */
+	HCL_CODE_PUSH_CLSVAR_X            = 0x78, /* 120 */
+	HCL_CODE_STORE_INTO_CLSVAR_X      = 0x79, /* 121 */
+	HCL_CODE_POP_INTO_CLSVAR_X        = 0x7A, /* 122 */
+	/* UNUSED 0x7B */
+	/* UNUSED 0x7C - 0x7F */
 
 	HCL_CODE_STORE_INTO_INSTVAR_X     = 0x80, /* 128 */
 

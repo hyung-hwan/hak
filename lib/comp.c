@@ -499,6 +499,11 @@ static int emit_single_param_instruction (hcl_t* hcl, int cmd, hcl_oow_t param_1
 		case HCL_CODE_JUMP2_BACKWARD_IF_TRUE:
 		case HCL_CODE_JUMP2_BACKWARD_IF_FALSE:
 		case HCL_CODE_JUMP2_BACKWARD:
+
+		case HCL_CODE_PUSH_CLSVAR_X:
+		case HCL_CODE_STORE_INTO_CLSVAR_X:
+		case HCL_CODE_POP_INTO_CLSVAR_X:
+
 		case HCL_CODE_TRY_ENTER:
 		case HCL_CODE_TRY_ENTER2:
 		case HCL_CODE_PUSH_INTLIT:

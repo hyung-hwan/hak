@@ -218,6 +218,14 @@ static void terminate_all_processes (hcl_t* hcl);
 		ap->clsp = HCL_SMOOI_TO_OOP(clsp_); \
 	} while (0)
 
+#define HCL_CLSTACK_FETCH_TOP_TO(hcl, v) \
+	do { \
+		hcl_oop_process_t ap = (hcl)->processor->active; \
+		hcl_ooi_t clsp_ = HCL_OOP_TO_SMOOI(ap->clsp); \
+		v = ap->slot[clsp_]; \
+	} while (0)
+
+
 #define HCL_CLSTACK_CHOP(hcl, clsp_) ((hcl)->processor->active->clsp = HCL_SMOOI_TO_OOP(clsp_))
 
 #define HCL_CLSTACK_GET_ST(hcl) HCL_OOP_TO_SMOOI(((hcl)->processor->active)->clst)
@@ -3538,7 +3546,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 			{
 				hcl_oop_oop_t t;
 
-				/* b1 -> variable index to the object indicated by b2.
+				/* b1 -> variable index in the object indicated by b2.
 				 * b2 -> object index stored in the literal frame. */
 				b1 = bcode & 0x3; /* low 2 bits */
 				FETCH_BYTE_CODE_TO (hcl, b2);
@@ -3558,8 +3566,8 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 					if ((bcode >> 2) & 1)
 					{
 						/* pop */
-						HCL_STACK_POP (hcl);
 						LOG_INST_2 (hcl, "pop_into_objvar %zu %zu", b1, b2);
+						HCL_STACK_POP (hcl);
 					}
 					else
 					{
@@ -3609,6 +3617,38 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				break; /* CMD_SEND_MESSAGE */
 			}
 #endif
+			/* -------------------------------------------------------- */
+			case HCL_CODE_PUSH_CLSVAR_X:
+			{
+				hcl_oop_class_t t;
+				FETCH_PARAM_CODE_TO (hcl, b1);
+				LOG_INST_1 (hcl, "push_clsvar %zu", b1);
+				HCL_CLSTACK_FETCH_TOP_TO(hcl, t);
+				HCL_STACK_PUSH (hcl, t->cvar[b1]); /* TODO: consider the base size... */
+				break;
+			}
+
+			case HCL_CODE_STORE_INTO_CLSVAR_X:
+			{
+				hcl_oop_class_t t;
+				FETCH_PARAM_CODE_TO (hcl, b1);
+				LOG_INST_1 (hcl, "store_into_clsvar %zu", b1);
+				HCL_CLSTACK_FETCH_TOP_TO(hcl, t);
+				t->cvar[b1] = HCL_STACK_GETTOP(hcl);
+				break;
+			}
+
+			case HCL_CODE_POP_INTO_CLSVAR_X:
+			{
+				hcl_oop_class_t t;
+				FETCH_PARAM_CODE_TO (hcl, b1);
+				LOG_INST_1 (hcl, "pop_into_clsvar %zu", b1);
+				HCL_CLSTACK_FETCH_TOP_TO(hcl, t);
+				t->cvar[b1] = HCL_STACK_GETTOP(hcl);
+				HCL_STACK_POP (hcl);
+				break;
+			}
+
 			/* -------------------------------------------------------- */
 
 			case HCL_CODE_PUSH_RECEIVER: /* push self or super */
