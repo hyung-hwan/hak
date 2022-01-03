@@ -534,13 +534,6 @@ struct hcl_compiler_t
 
 	struct
 	{
-		hcl_oocs_t s; /* buffer */
-		hcl_oow_t capa; /* bufer capacity */
-		hcl_oow_t wcount; /* word count */
-	} cv; /* class variables */
-
-	struct
-	{
 		hcl_ooi_t depth; /* signed because it starts with -1 */
 		hcl_cblk_info_t* info;
 		hcl_oow_t info_capa;

@@ -207,13 +207,7 @@ static void kill_temporary_variable_at_offset (hcl_t* hcl, hcl_oow_t offset)
 	/* this is a hacky function. it's better to implement kill_temporary_variables() which uses word positions */
 	HCL_ASSERT (hcl, offset < hcl->c->tv.s.len);
 	HCL_ASSERT (hcl, hcl->c->tv.s.ptr[offset] != ' ');
-	hcl->c->tv.s.ptr[offset] = '('; /* put a special character which can't form a variable name */
-}
-
-static int find_temporary_variable_backward (hcl_t* hcl, const hcl_oocs_t* name, hcl_oow_t* index)
-{
-	/* find the last element */
-	return __find_word_in_string(&hcl->c->tv.s, name, 1, index);
+	hcl->c->tv.s.ptr[offset] = '('; /* HACK!! put a special character which can't form a variable name */
 }
 
 static int find_variable_backward (hcl_t* hcl, const hcl_oocs_t* name, hcl_var_info_t* vi)
@@ -830,7 +824,7 @@ static void pop_cblk (hcl_t* hcl)
 	hcl->c->cblk.depth--;
 }
 
-static int push_clsblk (hcl_t* hcl, const hcl_ioloc_t* errloc, hcl_oow_t nivars, hcl_oow_t ncvars, const hcl_ooch_t*  ivars_str, const hcl_ooch_t* cvars_str)
+static int push_clsblk (hcl_t* hcl, const hcl_ioloc_t* errloc, hcl_oow_t nivars, hcl_oow_t ncvars, const hcl_ooch_t*  ivars_str, hcl_oow_t ivars_strlen, const hcl_ooch_t* cvars_str, hcl_oow_t cvars_strlen)
 {
 	hcl_oow_t new_depth;
 	hcl_clsblk_info_t* ci;
@@ -866,13 +860,13 @@ static int push_clsblk (hcl_t* hcl, const hcl_ioloc_t* errloc, hcl_oow_t nivars,
 	if (nivars > 0)
 	{
 		HCL_ASSERT (hcl, ivars_str != HCL_NULL);
-		ci->ivars_str = hcl_dupoocstr(hcl, ivars_str, HCL_NULL);
+		ci->ivars_str = hcl_dupoochars(hcl, ivars_str, ivars_strlen);
 		if (HCL_UNLIKELY(!ci->ivars_str)) return -1;
 	}
 	if (ncvars > 0)
 	{
 		HCL_ASSERT (hcl, cvars_str != HCL_NULL);
-		ci->cvars_str = hcl_dupoocstr(hcl, cvars_str, HCL_NULL);
+		ci->cvars_str = hcl_dupoochars(hcl, cvars_str, cvars_strlen);
 		if (HCL_UNLIKELY(!ci->cvars_str))
 		{
 			if (ci->ivars_str) hcl_freemem (hcl, ci->ivars_str);
@@ -1829,60 +1823,77 @@ static HCL_INLINE int compile_else (hcl_t* hcl)
 
 static int collect_vardcl (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t** nextobj, hcl_oow_t tv_dup_check_start, hcl_oow_t* nvardcls, const hcl_bch_t* desc)
 {
+	/* process a single variable declaration list */
+
+	hcl_oow_t ndcls = 0;
+	hcl_cnode_t* dcl;
+
+	dcl = HCL_CNODE_CONS_CAR(obj);
+	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS_CONCODED(dcl, HCL_CONCODE_VLIST));
+
+	hcl_cnode_t* var;
+	do
+	{
+		var = HCL_CNODE_CONS_CAR(dcl);
+	#if 0
+		if (!HCL_CNODE_IS_SYMBOL(var))
+		{
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAME, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "local variable not a symbol");
+			return -1;
+		}
+
+		if (HCL_CNODE_IS_SYMBOL(var) && HCL_CNODE_SYMBOL_SYNCODE(var) /* || HCL_OBJ_GET_FLAGS_KERNEL(var) >= 2 */)
+		{
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDARGNAME, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "special symbol not to be declared as a local variable");
+			return -1;
+		}
+	#else
+		/* the above checks are not needed as the reader guarantees the followings */
+		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_PLAIN(var));
+	#endif
+
+		if (add_temporary_variable(hcl, HCL_CNODE_GET_TOK(var), tv_dup_check_start) <= -1) 
+		{
+			if (hcl->errnum == HCL_EEXIST)
+			{
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMEDUP, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "duplicate %hs variable", desc);
+			}
+			return -1;
+		}
+		ndcls++;
+
+		dcl = HCL_CNODE_CONS_CDR(dcl);
+		if (!dcl) break;
+
+		if (!HCL_CNODE_IS_CONS(dcl)) 
+		{
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(dcl), HCL_CNODE_GET_TOK(dcl), "redundant cdr in %hs variable list", desc);
+			return -1;
+		}
+	}
+	while (1);
+
+	*nextobj = HCL_CNODE_CONS_CDR(obj);
+	*nvardcls = ndcls;
+	return 0;
+}
+
+static int collect_vardcls (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t** nextobj, hcl_oow_t tv_dup_check_start, hcl_oow_t* nvardcls, const hcl_bch_t* desc)
+{
+	/* process zero or more variable declaration lists in a row */
+
 	hcl_oow_t ndcls = 0;
 
 	while (obj && HCL_CNODE_IS_CONS(obj))
 	{
 		hcl_cnode_t* dcl;
+		hcl_oow_t dclcount;
 
 		dcl = HCL_CNODE_CONS_CAR(obj);
-		if (HCL_CNODE_IS_CONS_CONCODED(dcl, HCL_CONCODE_VLIST))
-		{
-			hcl_cnode_t* var;
-			do
-			{
-				var = HCL_CNODE_CONS_CAR(dcl);
-			#if 0
-				if (!HCL_CNODE_IS_SYMBOL(var))
-				{
-					hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAME, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "local variable not a symbol");
-					return -1;
-				}
+		if (!HCL_CNODE_IS_CONS_CONCODED(dcl, HCL_CONCODE_VLIST)) break;
 
-				if (HCL_CNODE_IS_SYMBOL(var) && HCL_CNODE_SYMBOL_SYNCODE(var) /* || HCL_OBJ_GET_FLAGS_KERNEL(var) >= 2 */)
-				{
-					hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDARGNAME, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "special symbol not to be declared as a local variable");
-					return -1;
-				}
-			#else
-				/* the above checks are not needed as the reader guarantees the followings */
-				HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_PLAIN(var));
-			#endif
-
-				if (add_temporary_variable(hcl, HCL_CNODE_GET_TOK(var), tv_dup_check_start) <= -1) 
-				{
-					if (hcl->errnum == HCL_EEXIST)
-					{
-						hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMEDUP, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "duplicate %hs variable", desc);
-					}
-					return -1;
-				}
-				ndcls++;
-
-				dcl = HCL_CNODE_CONS_CDR(dcl);
-				if (!dcl) break;
-
-				if (!HCL_CNODE_IS_CONS(dcl)) 
-				{
-					hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(dcl), HCL_CNODE_GET_TOK(dcl), "redundant cdr in %hs variable list", desc);
-					return -1;
-				}
-			}
-			while (1);
-
-			obj = HCL_CNODE_CONS_CDR(obj);
-		}
-		else break;
+		if (collect_vardcl(hcl, obj, &obj, tv_dup_check_start, &dclcount, desc) <= -1) return -1;
+		ndcls += dclcount;
 	}
 
 	*nvardcls = ndcls;
@@ -1963,26 +1974,41 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src)
 
 	if (obj)
 	{
-		hcl_cnode_t* tmp;
+		hcl_cnode_t* tmp, * dcl;
 
 		tmp = HCL_CNODE_CONS_CAR(obj);
 		if (!HCL_CNODE_IS_TRPCOLONS(tmp)) goto no_superclass;
+
+		tmp = obj;
+		obj = HCL_CNODE_CONS_CDR(obj);
+		if (!obj || !HCL_CNODE_IS_CONS(obj))
 		{
-			obj = HCL_CNODE_CONS_CDR(obj);
-
-			/* superclass part */
-			SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, obj); /* 1 */
-
-			PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_P2, class_name); /* 3 */
-			cf = GET_SUBCFRAME(hcl);
-			cf->u._class.nsuperclasses = 0; /* unsed for CLASS_P2 */
-			cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
-			
-			obj = HCL_CNODE_CONS_CDR(obj);
-			PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_P1, obj); /* 2 */
-			cf = GET_SUBCFRAME(hcl);
-			cf->u._class.nsuperclasses = 1; /* this one needs to change if we support multiple superclasses... */
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_EOX, HCL_CNODE_GET_LOC(tmp), HCL_NULL, "no expression or declaration after triple colons");
+			return -1;
 		}
+
+		/* if the tricolons symbol is followed by a variable declaration list,
+		 * there is no superclass */
+		dcl = HCL_CNODE_CONS_CAR(obj);
+		if (HCL_CNODE_IS_CONS_CONCODED(dcl, HCL_CONCODE_VLIST)) 
+		{
+			obj = tmp; /* rewind to the cons cell of the triple colons */
+			goto no_superclass;
+		}
+
+		/* superclass part */
+		tmp = HCL_CNODE_CONS_CAR(obj);
+		SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, tmp); /* 1 - superclass expression */
+
+		PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_P2, class_name); /* 3 - class name */
+		cf = GET_SUBCFRAME(hcl);
+		cf->u._class.nsuperclasses = 0; /* unsed for CLASS_P2 */
+		cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
+		
+		obj = HCL_CNODE_CONS_CDR(obj);
+		PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_P1, obj); /* 2 - variables declaraions and actual body */
+		cf = GET_SUBCFRAME(hcl);
+		cf->u._class.nsuperclasses = 1; /* this one needs to change if we support multiple superclasses... */
 	}
 	else
 	{
@@ -2006,8 +2032,7 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 	/* collect information about declared variables */
 	hcl_cframe_t* cf;
 	hcl_cnode_t* obj;
-	hcl_oop_t tmp;
-	hcl_oow_t nivars, ncvars, saved_tv_wcount, tv_dup_check_start;
+	hcl_oow_t nivars, ncvars, saved_tv_wcount, tv_dup_check_start, cv_dup_check_start;
 
 	cf = GET_TOP_CFRAME(hcl);
 	obj = cf->operand;
@@ -2015,14 +2040,58 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 	saved_tv_wcount = hcl->c->tv.wcount;
 	tv_dup_check_start = hcl->c->tv.s.len;
 
-/* TODO: class variables */
+cv_dup_check_start = hcl->c->tv.s.len; // this is buggy... correct this...
 	nivars = ncvars = 0;
+
 	/* use the temporary variable collection buffer for convenience when scanning 
 	 * instance variables and class variables */
-	if (collect_vardcl(hcl, obj, &obj, tv_dup_check_start, &nivars, "instance") <= -1) goto oops;
+	while (obj && HCL_CNODE_IS_CONS(obj))
+	{
+		hcl_cnode_t* tmp, * tmp2;
+		hcl_oow_t dclcount;
+/*
+ (defclass X ::: T
+    ::: | a b c | ; class variables
+ )
+ (defclass X
+    ::: T | a b c | ; instance varaiables.
+ )
+ (defclass X
+    ::: | a b c | ; class variables
+ )
+*/
+		tmp2 = obj;
+		tmp = HCL_CNODE_CONS_CAR(obj);
+		if (HCL_CNODE_IS_TRPCOLONS(tmp)) 
+		{
+			obj = HCL_CNODE_CONS_CDR(obj);
+			if (!obj || !HCL_CNODE_IS_CONS(obj))
+			{
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_EOX, HCL_CNODE_GET_LOC(tmp), HCL_NULL, "no expression or declaration after triple colons");
+				return -1;
+			}
+
+			tmp = HCL_CNODE_CONS_CAR(obj);
+			if (!HCL_CNODE_IS_CONS_CONCODED(tmp, HCL_CONCODE_VLIST)) 
+			{
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_EOX, HCL_CNODE_GET_LOC(tmp), HCL_NULL, "no declaration after triple colons");
+				return -1;
+			}
+
+			if (collect_vardcl(hcl, obj, &obj, tv_dup_check_start, &dclcount, "class") <= -1) return -1;
+			ncvars += dclcount;
+		}
+		else
+		{
+			if (!HCL_CNODE_IS_CONS_CONCODED(tmp, HCL_CONCODE_VLIST)) break;
+			if (collect_vardcl(hcl, obj, &obj, tv_dup_check_start, &dclcount, "instance") <= -1) return -1;
+			nivars += dclcount;
+		}
+	}
 
 	if (nivars > 0)
 	{
+		hcl_oop_t tmp;
 		if (nivars > HCL_SMOOI_MAX)
 		{
 			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARFLOOD, HCL_CNODE_GET_LOC(cf->operand), HCL_NULL, "too many(%zu) instance variables", nivars);
@@ -2036,6 +2105,7 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 	
 	if (ncvars > 0)
 	{
+		hcl_oop_t tmp;
 		if (ncvars > HCL_SMOOI_MAX)
 		{
 			/* TOOD: change the error location ?? */
@@ -2043,12 +2113,14 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 			goto oops;
 		}
 
-		tmp = hcl_makestring(hcl, HCL_NULL, 0, 0); /* TODO: set this to the proper string pointer and length ... */
+		tmp = hcl_makestring(hcl, &hcl->c->tv.s.ptr[cv_dup_check_start + 1], hcl->c->tv.s.len - cv_dup_check_start - 1, 0);
 		if (HCL_UNLIKELY(!tmp)) goto oops;
 		if (emit_push_literal(hcl, tmp, &cf->u._class.start_loc) <= -1) goto oops;
 	}
 
-	if (push_clsblk(hcl, &cf->u._class.start_loc, nivars, ncvars, &hcl->c->tv.s.ptr[tv_dup_check_start + 1], HCL_NULL) <= -1) goto oops;
+	if (push_clsblk(hcl, &cf->u._class.start_loc, nivars, ncvars, 
+		&hcl->c->tv.s.ptr[tv_dup_check_start + 1], 0, /* TODO: wrong length.... */
+		&hcl->c->tv.s.ptr[cv_dup_check_start + 1], hcl->c->tv.s.len - cv_dup_check_start - 1) <= -1) goto oops;
 
 	/* discard the instance variables and class variables in the temporary variable collection buffer
 	 * because they have been pushed to the class block structure */
@@ -2066,6 +2138,10 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 	 * end of the class before 'class_exit' is generated */
 	hcl->c->clsblk.info[hcl->c->clsblk.depth].class_start_inst_pos = hcl->code.bc.len;
 
+{
+hcl_cnode_t* tmp = HCL_CNODE_CONS_CAR(obj);
+HCL_DEBUG2 (hcl, "^^JJJJJJJJJJJJJJJJJJJJ %d[%js]\n", HCL_CNODE_GET_TYPE(tmp), HCL_CNODE_GET_TOKPTR(tmp));
+}
 	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_LIST, obj);
 
 	return 0;
@@ -2108,14 +2184,13 @@ static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 
 	pop_clsblk (hcl);  /* end of the class block */
 
-
 	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_PUSH_EXIT, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
 
 //	if (cf->operand)
 	{
 		/* (defclass X()  ; this x refers to a variable in the outer scope.
-		 *     | t1 t2 x |
-		 *     (set x 10)  ; this x refers to the local variable.
+		 *     ::: | t1 t2 x |
+		 *     (set x 10)  ; this x refers to the class variable.
 		 * )
 		 *
 		 * the block has been exited(blk.depth--) before finding 'x' in the outer scope.
@@ -2346,7 +2421,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 
 	obj = HCL_CNODE_CONS_CDR(obj);
 	tv_dup_start = hcl->c->tv.s.len;
-	if (collect_vardcl(hcl, obj, &obj, tv_dup_start, &nlvars, "local") <= -1) return -1;
+	if (collect_vardcls(hcl, obj, &obj, tv_dup_start, &nlvars, "local") <= -1) return -1;
 	
 	if (nlvars > MAX_CODE_NBLKLVARS)
 	{
@@ -3723,6 +3798,7 @@ static int compile_object_list (hcl_t* hcl)
 	{
 		hcl_cnode_t* car, * cdr;
 
+#if 0
 		if (cop != COP_COMPILE_ARGUMENT_LIST)
 		{
 			/* eliminate unnecessary non-function calls. keep the last one */
@@ -3740,13 +3816,14 @@ static int compile_object_list (hcl_t* hcl)
 				}
 
 				car = HCL_CNODE_CONS_CAR(oprnd);
-				if (HCL_CNODE_IS_CONS(car) || (HCL_CNODE_IS_SYMBOL(car) && HCL_CNODE_SYMBOL_SYNCODE(car))) break;
+/* this optimization is buggy for now... need to perfect the break condition here */
+				if (HCL_CNODE_IS_CONS(car) || (HCL_CNODE_IS_SYMBOL(car) && HCL_CNODE_SYMBOL_SYNCODE(car)) || HCL_CNODE_IS_ELLIPSIS(car) || HCL_CNODE_IS_TRPCOLONS(car)) break;
 				oprnd = cdr;
 			}
 
 			HCL_ASSERT (hcl, oprnd != HCL_NULL);
 		}
-
+#endif
 		if (!HCL_CNODE_IS_CONS(oprnd))
 		{
 			hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(oprnd), HCL_CNODE_GET_TOK(oprnd), "redundant cdr in the object list");

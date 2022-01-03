@@ -113,6 +113,7 @@ enum hcl_synerrnum_t
 	HCL_SYNERR_RADIX,         /* invalid radix for a numeric literal */
 
 	HCL_SYNERR_EOF,           /* sudden end of input */
+	HCL_SYNERR_EOX,           /* sudden end of expression */
 	HCL_SYNERR_LPAREN,        /* ( expected */
 	HCL_SYNERR_RPAREN,        /* ) expected */
 	HCL_SYNERR_RBRACK,        /* ] expected */
@@ -130,7 +131,7 @@ enum hcl_synerrnum_t
 	HCL_SYNERR_COLONBANNED,   /* : disallowed */
 	HCL_SYNERR_COMMANOVALUE,  /* no value after , */
 	HCL_SYNERR_COLONNOVALUE,  /* no value after : */
-	HCL_SYNERR_NOSEP,         /* no seperator between array/dictionary elements */
+	HCL_SYNERR_NOSEP,         /* no separator between array/dictionary elements */
 	HCL_SYNERR_INCLUDE,       /* #include error */
 
 	HCL_SYNERR_ELLIPSISBANNED, /* ... disallowed */

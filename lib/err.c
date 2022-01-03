@@ -107,6 +107,7 @@ static char* synerrstr[] =
 	"invalid radix for a numeric literal",
 
 	"sudden end of input",
+	"sudden end of expression",
 	"( expected",
 	") expected",
 	"] expected",
