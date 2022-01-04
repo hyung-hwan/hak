@@ -2138,10 +2138,6 @@ cv_dup_check_start = hcl->c->tv.s.len; // this is buggy... correct this...
 	 * end of the class before 'class_exit' is generated */
 	hcl->c->clsblk.info[hcl->c->clsblk.depth].class_start_inst_pos = hcl->code.bc.len;
 
-{
-hcl_cnode_t* tmp = HCL_CNODE_CONS_CAR(obj);
-HCL_DEBUG2 (hcl, "^^JJJJJJJJJJJJJJJJJJJJ %d[%js]\n", HCL_CNODE_GET_TYPE(tmp), HCL_CNODE_GET_TOKPTR(tmp));
-}
 	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_LIST, obj);
 
 	return 0;
