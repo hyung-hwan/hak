@@ -418,6 +418,76 @@ hcl_bch_t* hcl_find_bchar_in_bcstr (const hcl_bch_t* ptr, hcl_bch_t c)
 
 /* ----------------------------------------------------------------------- */
 
+hcl_oow_t hcl_rotate_uchars (hcl_uch_t* str, hcl_oow_t len, int dir, hcl_oow_t n)
+{
+	hcl_oow_t first, last, count, index, nk;
+	hcl_uch_t c;
+
+	if (dir == 0 || len == 0) return len;
+	if ((n %= len) == 0) return len;
+
+	if (dir > 0) n = len - n;
+	first = 0; nk = len - n; count = 0;
+
+	while (count < n)
+	{
+		last = first + nk;
+		index = first;
+		c = str[first];
+		do
+		{
+			count++;
+			while (index < nk)
+			{
+				str[index] = str[index + n];
+				index += n;
+			}
+			if (index == last) break;
+			str[index] = str[index - nk];
+			index -= nk;
+		}
+		while (1);
+		str[last] = c; first++;
+	}
+	return len;
+}
+
+hcl_oow_t hcl_rotate_bchars (hcl_bch_t* str, hcl_oow_t len, int dir, hcl_oow_t n)
+{
+	hcl_oow_t first, last, count, index, nk;
+	hcl_bch_t c;
+
+	if (dir == 0 || len == 0) return len;
+	if ((n %= len) == 0) return len;
+
+	if (dir > 0) n = len - n;
+	first = 0; nk = len - n; count = 0;
+
+	while (count < n)
+	{
+		last = first + nk;
+		index = first;
+		c = str[first];
+		do
+		{
+			count++;
+			while (index < nk)
+			{
+				str[index] = str[index + n];
+				index += n;
+			}
+			if (index == last) break;
+			str[index] = str[index - nk];
+			index -= nk;
+		}
+		while (1);
+		str[last] = c; first++;
+	}
+	return len;
+}
+
+/* ----------------------------------------------------------------------- */
+
 hcl_oow_t hcl_byte_to_bcstr (hcl_uint8_t byte, hcl_bch_t* buf, hcl_oow_t size, int flagged_radix, hcl_bch_t fill)
 {
 	hcl_bch_t tmp[(HCL_SIZEOF(hcl_uint8_t) * HCL_BITS_PER_BYTE)];

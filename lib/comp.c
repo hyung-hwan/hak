@@ -2032,22 +2032,23 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 	/* collect information about declared variables */
 	hcl_cframe_t* cf;
 	hcl_cnode_t* obj;
-	hcl_oow_t nivars, ncvars, saved_tv_wcount, tv_dup_check_start, cv_dup_check_start;
+	hcl_oow_t nivars, ncvars, saved_tv_wcount, tv_dup_check_start;
+	hcl_oow_t ivar_start, ivar_len, cvar_start, cvar_len;
 
 	cf = GET_TOP_CFRAME(hcl);
 	obj = cf->operand;
 
 	saved_tv_wcount = hcl->c->tv.wcount;
 	tv_dup_check_start = hcl->c->tv.s.len;
-
-cv_dup_check_start = hcl->c->tv.s.len; // this is buggy... correct this...
+	ivar_start = cvar_start = tv_dup_check_start;
+	ivar_len = cvar_len = 0;
 	nivars = ncvars = 0;
 
 	/* use the temporary variable collection buffer for convenience when scanning 
 	 * instance variables and class variables */
 	while (obj && HCL_CNODE_IS_CONS(obj))
 	{
-		hcl_cnode_t* tmp, * tmp2;
+		hcl_cnode_t* tmp;
 		hcl_oow_t dclcount;
 /*
  (defclass X ::: T
@@ -2060,10 +2061,12 @@ cv_dup_check_start = hcl->c->tv.s.len; // this is buggy... correct this...
     ::: | a b c | ; class variables
  )
 */
-		tmp2 = obj;
 		tmp = HCL_CNODE_CONS_CAR(obj);
 		if (HCL_CNODE_IS_TRPCOLONS(tmp)) 
 		{
+			/* class variables */
+			hcl_oow_t checkpoint;
+
 			obj = HCL_CNODE_CONS_CDR(obj);
 			if (!obj || !HCL_CNODE_IS_CONS(obj))
 			{
@@ -2078,27 +2081,49 @@ cv_dup_check_start = hcl->c->tv.s.len; // this is buggy... correct this...
 				return -1;
 			}
 
+			checkpoint = hcl->c->tv.s.len;
 			if (collect_vardcl(hcl, obj, &obj, tv_dup_check_start, &dclcount, "class") <= -1) return -1;
 			ncvars += dclcount;
+			if (cvar_len <= 0) cvar_start = checkpoint;
+			cvar_len += hcl->c->tv.s.len - checkpoint;
 		}
 		else
 		{
+			/* instance variables */
+			hcl_oow_t checkpoint;
 			if (!HCL_CNODE_IS_CONS_CONCODED(tmp, HCL_CONCODE_VLIST)) break;
+			checkpoint = hcl->c->tv.s.len;
 			if (collect_vardcl(hcl, obj, &obj, tv_dup_check_start, &dclcount, "instance") <= -1) return -1;
 			nivars += dclcount;
+
+			if (ivar_len <= 0) ivar_start = checkpoint;
+			ivar_len += hcl->c->tv.s.len - checkpoint;
+
+			if (cvar_len > 0)
+			{
+				hcl_rotate_oochars (&hcl->c->tv.s.ptr[cvar_start], hcl->c->tv.s.len - cvar_start, -1, cvar_len); 
+				ivar_start = cvar_start;
+				cvar_start += hcl->c->tv.s.len - checkpoint;
+			}
 		}
 	}
+
+//HCL_DEBUG4 (hcl, "AAAAAAAAAAAAAAAAAAAAAAA>>>> [%.*js]  [%.*js]\n", ivar_len, &hcl->c->tv.s.ptr[ivar_start], cvar_len, &hcl->c->tv.s.ptr[cvar_start]);
 
 	if (nivars > 0)
 	{
 		hcl_oop_t tmp;
+		int adj;
+
 		if (nivars > HCL_SMOOI_MAX)
 		{
 			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARFLOOD, HCL_CNODE_GET_LOC(cf->operand), HCL_NULL, "too many(%zu) instance variables", nivars);
 			goto oops;
 		}
+
 		/* set starting point past the added space (+1 to index, -1 to length) */
-		tmp = hcl_makestring(hcl, &hcl->c->tv.s.ptr[tv_dup_check_start + 1], hcl->c->tv.s.len - tv_dup_check_start - 1, 0); 
+		adj = (hcl->c->tv.s.ptr[ivar_start] == ' ');
+		tmp = hcl_makestring(hcl, &hcl->c->tv.s.ptr[ivar_start + adj], ivar_len - adj, 0); 
 		if (HCL_UNLIKELY(!tmp)) goto oops;
 		if (emit_push_literal(hcl, tmp, &cf->u._class.start_loc) <= -1) goto oops;
 	}
@@ -2106,6 +2131,8 @@ cv_dup_check_start = hcl->c->tv.s.len; // this is buggy... correct this...
 	if (ncvars > 0)
 	{
 		hcl_oop_t tmp;
+		int adj;
+
 		if (ncvars > HCL_SMOOI_MAX)
 		{
 			/* TOOD: change the error location ?? */
@@ -2113,14 +2140,13 @@ cv_dup_check_start = hcl->c->tv.s.len; // this is buggy... correct this...
 			goto oops;
 		}
 
-		tmp = hcl_makestring(hcl, &hcl->c->tv.s.ptr[cv_dup_check_start + 1], hcl->c->tv.s.len - cv_dup_check_start - 1, 0);
+		adj = (hcl->c->tv.s.ptr[cvar_start] == ' ');
+		tmp = hcl_makestring(hcl, &hcl->c->tv.s.ptr[cvar_start + adj], cvar_len - adj, 0);
 		if (HCL_UNLIKELY(!tmp)) goto oops;
 		if (emit_push_literal(hcl, tmp, &cf->u._class.start_loc) <= -1) goto oops;
 	}
 
-	if (push_clsblk(hcl, &cf->u._class.start_loc, nivars, ncvars, 
-		&hcl->c->tv.s.ptr[tv_dup_check_start + 1], 0, /* TODO: wrong length.... */
-		&hcl->c->tv.s.ptr[cv_dup_check_start + 1], hcl->c->tv.s.len - cv_dup_check_start - 1) <= -1) goto oops;
+	if (push_clsblk(hcl, &cf->u._class.start_loc, nivars, ncvars, &hcl->c->tv.s.ptr[ivar_start], ivar_len, &hcl->c->tv.s.ptr[cvar_start], cvar_len) <= -1) goto oops;
 
 	/* discard the instance variables and class variables in the temporary variable collection buffer
 	 * because they have been pushed to the class block structure */
@@ -2139,7 +2165,6 @@ cv_dup_check_start = hcl->c->tv.s.len; // this is buggy... correct this...
 	hcl->c->clsblk.info[hcl->c->clsblk.depth].class_start_inst_pos = hcl->code.bc.len;
 
 	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_LIST, obj);
-
 	return 0;
 
 oops:

@@ -548,6 +548,20 @@ HCL_EXPORT hcl_bch_t* hcl_find_bchar_in_bcstr (
 	hcl_bch_t        c
 );
 
+HCL_EXPORT hcl_oow_t hcl_rotate_uchars (
+	hcl_uch_t*       str,
+	hcl_oow_t        len,
+	int              dir,
+	hcl_oow_t        n
+);
+
+HCL_EXPORT hcl_oow_t hcl_rotate_bchars (
+	hcl_bch_t*       str,
+	hcl_oow_t        len,
+	int              dir,
+	hcl_oow_t        n
+);
+
 HCL_EXPORT hcl_oow_t hcl_count_ucstr (
 	const hcl_uch_t* str
 );
@@ -576,11 +590,12 @@ HCL_EXPORT hcl_oow_t hcl_count_bcstr (
 #	define hcl_copy_oocstr(dst,len,src) hcl_copy_ucstr(dst,len,src)
 #	define hcl_copy_oocstr_unlimited(dst,src) hcl_copy_ucstr_unlimited(dst,src)
 
-#	define hcl_fill_oochars(dst,ch,len) hcl_fill_uchars(dst,ch,len)
-#	define hcl_find_oochar(ptr,len,c) hcl_find_uchar(ptr,len,c)
-#	define hcl_rfind_oochar(ptr,len,c) hcl_rfind_uchar(ptr,len,c)
-#	define hcl_find_oochar_in_oocstr(ptr,c) hcl_find_uchar_in_ucstr(ptr,c)
-#	define hcl_count_oocstr(str) hcl_count_ucstr(str)
+#	define hcl_fill_oochars hcl_fill_uchars
+#	define hcl_find_oochar hcl_find_uchar
+#	define hcl_rfind_oochar hcl_rfind_uchar
+#	define hcl_find_oochar_in_oocstr hcl_find_uchar_in_ucstr
+#	define hcl_rotate_oochars hcl_rotate_uchars
+#	define hcl_count_oocstr hcl_count_ucstr
 #else
 #	define hcl_equal_oochars(str1,str2,len) hcl_equal_bchars(str1,str2,len)
 #	define hcl_comp_oochars(str1,len1,str2,len2) hcl_comp_bchars(str1,len1,str2,len2)
@@ -601,11 +616,12 @@ HCL_EXPORT hcl_oow_t hcl_count_bcstr (
 #	define hcl_copy_oocstr(dst,len,src) hcl_copy_bcstr(dst,len,src)
 #	define hcl_copy_oocstr_unlimited(dst,src) hcl_copy_bcstr_unlimited(dst,src)
 
-#	define hcl_fill_oochars(dst,ch,len) hcl_fill_bchars(dst,ch,len)
-#	define hcl_find_oochar(ptr,len,c) hcl_find_bchar(ptr,len,c)
-#	define hcl_rfind_oochar(ptr,len,c) hcl_rfind_bchar(ptr,len,c)
-#	define hcl_find_oochar_in_oocstr(ptr,c) hcl_find_bchar_in_bcstr(ptr,c)
-#	define hcl_count_oocstr(str) hcl_count_bcstr(str)
+#	define hcl_fill_oochars hcl_fill_bchars
+#	define hcl_find_oochar hcl_find_bchar
+#	define hcl_rfind_oochar hcl_rfind_bchar
+#	define hcl_find_oochar_in_oocstr hcl_find_bchar_in_bcstr
+#	define hcl_rotate_oochars hcl_rotate_bchars
+#	define hcl_count_oocstr hcl_count_bcstr
 #endif
 
 #define HCL_BYTE_TO_BCSTR_RADIXMASK (0xFF)
