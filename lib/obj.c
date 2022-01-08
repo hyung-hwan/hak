@@ -360,7 +360,7 @@ hcl_oop_t hcl_makeclass (hcl_t* hcl, hcl_oop_t superclass, hcl_ooi_t nivars, hcl
 	hcl_pushvolat (hcl, &superclass);
 	hcl_pushvolat (hcl, &ivars_str);
 	hcl_pushvolat (hcl, &cvars_str);
-	c = (hcl_oop_class_t)hcl_allocoopobj(hcl, HCL_BRAND_CLASS, HCL_CLASS_NAMED_INSTVARS);
+	c = (hcl_oop_class_t)hcl_allocoopobj(hcl, HCL_BRAND_CLASS, HCL_CLASS_NAMED_INSTVARS + ncvars);
 	hcl_popvolats (hcl, 3);
 	if (HCL_UNLIKELY(!c)) return HCL_NULL;
 

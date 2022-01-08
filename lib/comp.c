@@ -760,7 +760,7 @@ static int emit_variable_access (hcl_t* hcl, int mode, const hcl_var_info_t* vi,
 	{
 		{ HCL_CODE_PUSH_CTXTEMPVAR_0, HCL_CODE_POP_INTO_CTXTEMPVAR_0, HCL_CODE_STORE_INTO_CTXTEMPVAR_0 },
 		{ HCL_CODE_PUSH_INSTVAR_0,    HCL_CODE_POP_INTO_INSTVAR_0,    HCL_CODE_STORE_INTO_INSTVAR_0    },
-		{ HCL_CODE_PUSH_OBJVAR_0,     HCL_CODE_POP_INTO_OBJVAR_0,     HCL_CODE_STORE_INTO_OBJVAR_0     },
+		{ HCL_CODE_PUSH_CLSVAR_X,     HCL_CODE_POP_INTO_CLSVAR_X,     HCL_CODE_STORE_INTO_CLSVAR_X     },
 	};
 
 	switch (vi->type)
@@ -774,7 +774,7 @@ static int emit_variable_access (hcl_t* hcl, int mode, const hcl_var_info_t* vi,
 
 		case VAR_CLASS:
 			HCL_ASSERT (hcl, vi->ctx_offset == 0);
-			//return emit_double_param_instruction(hcl, inst_map[2][mode], vi->index_in_ctx, <<index to the class name in literal table>>, srcloc);
+			return emit_single_param_instruction(hcl, inst_map[2][mode], vi->index_in_ctx, srcloc);
 	}
 
 	return -1;
@@ -2091,24 +2091,27 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 		{
 			/* instance variables */
 			hcl_oow_t checkpoint;
+
 			if (!HCL_CNODE_IS_CONS_CONCODED(tmp, HCL_CONCODE_VLIST)) break;
 			checkpoint = hcl->c->tv.s.len;
+
 			if (collect_vardcl(hcl, obj, &obj, tv_dup_check_start, &dclcount, "instance") <= -1) return -1;
 			nivars += dclcount;
 
-			if (ivar_len <= 0) ivar_start = checkpoint;
+			if (ivar_len <= 0) ivar_start = (cvar_len <= 0)? checkpoint: cvar_start;
 			ivar_len += hcl->c->tv.s.len - checkpoint;
 
 			if (cvar_len > 0)
 			{
+				/* place the instance variables before the class variables 
+				 * if class variables "a b" has been collected before instance variables "cc dd ee"
+				 * the rotation below manipulates the buffer to contain "cc dd ee a b".
+				 */ 
 				hcl_rotate_oochars (&hcl->c->tv.s.ptr[cvar_start], hcl->c->tv.s.len - cvar_start, -1, cvar_len); 
-				ivar_start = cvar_start;
 				cvar_start += hcl->c->tv.s.len - checkpoint;
 			}
 		}
 	}
-
-//HCL_DEBUG4 (hcl, "AAAAAAAAAAAAAAAAAAAAAAA>>>> [%.*js]  [%.*js]\n", ivar_len, &hcl->c->tv.s.ptr[ivar_start], cvar_len, &hcl->c->tv.s.ptr[cvar_start]);
 
 	if (nivars > 0)
 	{
@@ -3710,7 +3713,7 @@ redo:
 			switch (HCL_CNODE_ELIST_CONCODE(oprnd))
 			{
 				case HCL_CONCODE_XLIST:
-					hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARDCLBANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "empty executable list");
+					hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "empty executable list");
 					return -1;
 
 				case HCL_CONCODE_ARRAY:
@@ -3730,7 +3733,7 @@ redo:
 					goto done;
 
 				case HCL_CONCODE_VLIST:
-					hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARDCLBANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "variable declaration disallowed");
+					hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "empty variable declaration");
 					return -1;
 
 				default:

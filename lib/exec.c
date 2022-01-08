@@ -3442,7 +3442,12 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 			case HCL_CODE_CLASS_EXIT:
 			{
 				LOG_INST_0 (hcl, "class_exit");
-				/* TODO: stack underflow check? */
+				if (HCL_CLSTACK_IS_EMPTY(hcl))
+				{
+					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "class stack underflow");
+					supplement_errmsg (hcl, fetched_instruction_pointer);
+					goto oops;
+				}
 				HCL_CLSTACK_POP (hcl);
 				break;
 			}
@@ -3452,7 +3457,13 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				hcl_oop_t c;
 
 				LOG_INST_0 (hcl, "class_push_exit");
-				/* TODO: stack underflow check? */
+
+				if (HCL_CLSTACK_IS_EMPTY(hcl))
+				{
+					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "class stack underflow");
+					supplement_errmsg (hcl, fetched_instruction_pointer);
+					goto oops;
+				}
 				HCL_CLSTACK_POP_TO (hcl, c);
 				HCL_STACK_PUSH (hcl, c);
 
@@ -3633,6 +3644,12 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				hcl_oop_class_t t;
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				LOG_INST_1 (hcl, "store_into_clsvar %zu", b1);
+				if (HCL_CLSTACK_IS_EMPTY(hcl))
+				{
+					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "empty class stack");
+					supplement_errmsg (hcl, fetched_instruction_pointer);
+					goto oops;
+				}
 				HCL_CLSTACK_FETCH_TOP_TO(hcl, t);
 				t->cvar[b1] = HCL_STACK_GETTOP(hcl);
 				break;
@@ -3643,6 +3660,12 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				hcl_oop_class_t t;
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				LOG_INST_1 (hcl, "pop_into_clsvar %zu", b1);
+				if (HCL_CLSTACK_IS_EMPTY(hcl))
+				{
+					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "empty class stack");
+					supplement_errmsg (hcl, fetched_instruction_pointer);
+					goto oops;
+				}
 				HCL_CLSTACK_FETCH_TOP_TO(hcl, t);
 				t->cvar[b1] = HCL_STACK_GETTOP(hcl);
 				HCL_STACK_POP (hcl);
