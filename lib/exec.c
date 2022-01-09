@@ -3629,21 +3629,21 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 			}
 #endif
 			/* -------------------------------------------------------- */
-			case HCL_CODE_PUSH_CLSVAR_X:
+			case HCL_CODE_PUSH_CLSVAR_I_X:
 			{
 				hcl_oop_class_t t;
 				FETCH_PARAM_CODE_TO (hcl, b1);
-				LOG_INST_1 (hcl, "push_clsvar %zu", b1);
+				LOG_INST_1 (hcl, "push_clsvar_i %zu", b1);
 				HCL_CLSTACK_FETCH_TOP_TO(hcl, t);
-				HCL_STACK_PUSH (hcl, t->cvar[b1]); /* TODO: consider the base size... */
+				HCL_STACK_PUSH (hcl, t->cvar[b1]);
 				break;
 			}
 
-			case HCL_CODE_STORE_INTO_CLSVAR_X:
+			case HCL_CODE_STORE_INTO_CLSVAR_I_X:
 			{
 				hcl_oop_class_t t;
 				FETCH_PARAM_CODE_TO (hcl, b1);
-				LOG_INST_1 (hcl, "store_into_clsvar %zu", b1);
+				LOG_INST_1 (hcl, "store_into_clsvar_i %zu", b1);
 				if (HCL_CLSTACK_IS_EMPTY(hcl))
 				{
 					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "empty class stack");
@@ -3655,11 +3655,11 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				break;
 			}
 
-			case HCL_CODE_POP_INTO_CLSVAR_X:
+			case HCL_CODE_POP_INTO_CLSVAR_I_X:
 			{
 				hcl_oop_class_t t;
 				FETCH_PARAM_CODE_TO (hcl, b1);
-				LOG_INST_1 (hcl, "pop_into_clsvar %zu", b1);
+				LOG_INST_1 (hcl, "pop_into_clsvar_i %zu", b1);
 				if (HCL_CLSTACK_IS_EMPTY(hcl))
 				{
 					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "empty class stack");
@@ -3667,6 +3667,61 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 					goto oops;
 				}
 				HCL_CLSTACK_FETCH_TOP_TO(hcl, t);
+				t->cvar[b1] = HCL_STACK_GETTOP(hcl);
+				HCL_STACK_POP (hcl);
+				break;
+			}
+			
+			/* -------------------------------------------------------- */
+
+			case HCL_CODE_PUSH_CLSVAR_M_X:
+			{
+				hcl_oop_class_t t;
+				FETCH_PARAM_CODE_TO (hcl, b1);
+				LOG_INST_1 (hcl, "push_clsvar_m %zu", b1);
+	/* TODO: finish implementing CLSVAR_M_X instructions ....*/
+				t = (hcl_oop_oop_t)hcl->active_context->origin->receiver_or_base;
+				if (!HCL_IS_INSTANCE(hcl, t))
+				{
+					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "non-instance receiver");
+					supplement_errmsg (hcl, fetched_instruction_pointer);
+					goto oops;
+				}
+				t = HCL_OBJ_GET_CLASS(t);
+				HCL_STACK_PUSH (hcl, t->cvar[b1]);
+				break;
+			}
+
+			case HCL_CODE_STORE_INTO_CLSVAR_M_X:
+			{
+				hcl_oop_class_t t;
+				FETCH_PARAM_CODE_TO (hcl, b1);
+				LOG_INST_1 (hcl, "store_into_clsvar_m %zu", b1);				
+				t = (hcl_oop_oop_t)hcl->active_context->origin->receiver_or_base;
+				if (!HCL_IS_INSTANCE(hcl, t))
+				{
+					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "non-instance receiver");
+					supplement_errmsg (hcl, fetched_instruction_pointer);
+					goto oops;
+				}
+				t = HCL_OBJ_GET_CLASS(t);
+				t->cvar[b1] = HCL_STACK_GETTOP(hcl);
+				break;
+			}
+
+			case HCL_CODE_POP_INTO_CLSVAR_M_X:
+			{
+				hcl_oop_class_t t;
+				FETCH_PARAM_CODE_TO (hcl, b1);
+				LOG_INST_1 (hcl, "pop_into_clsvar_m %zu", b1);
+				t = (hcl_oop_oop_t)hcl->active_context->origin->receiver_or_base;
+				if (!HCL_IS_INSTANCE(hcl, t))
+				{
+					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "non-instance receiver");
+					supplement_errmsg (hcl, fetched_instruction_pointer);
+					goto oops;
+				}
+				t = HCL_OBJ_GET_CLASS(t);
 				t->cvar[b1] = HCL_STACK_GETTOP(hcl);
 				HCL_STACK_POP (hcl);
 				break;

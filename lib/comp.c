@@ -31,7 +31,9 @@ enum
 	VAR_NAMED,
 	VAR_INDEXED,
 	VAR_INST,
-	VAR_CLASS
+	VAR_CLASS_I, /* class variable in class initialization scope */
+	VAR_CLASS_CM, /* class variable in class method scope */
+	VAR_CLASS_IM, /* class variable in instance method scope */
 };
 
 enum 
@@ -210,12 +212,15 @@ static void kill_temporary_variable_at_offset (hcl_t* hcl, hcl_oow_t offset)
 	hcl->c->tv.s.ptr[offset] = '('; /* HACK!! put a special character which can't form a variable name */
 }
 
-static int find_variable_backward (hcl_t* hcl, const hcl_oocs_t* name, hcl_var_info_t* vi)
+static int find_variable_backward (hcl_t* hcl, const hcl_cnode_t* token, hcl_var_info_t* vi)
 {
 	hcl_oow_t i, j;
+	const hcl_oocs_t* name;
 
 	HCL_ASSERT (hcl, hcl->c->fnblk.depth >= 0);
 	HCL_ASSERT (hcl, hcl->c->fnblk.info[hcl->c->fnblk.depth].tmprlen == hcl->c->tv.s.len);
+	
+	name = HCL_CNODE_GET_TOK(token);
 
 	/* depth begins at -1. so it is the actual index. let the looping begin at depth + 1 
 	 * to avoid an extra exit check without it */
@@ -229,25 +234,38 @@ static int find_variable_backward (hcl_t* hcl, const hcl_oocs_t* name, hcl_var_i
 
 		if (fbi->clsblk_top >= 0)
 		{
-			/* this function block has a class defined */
+			/* this function block has a class defined. 
+			 * that is, it is in the class defintion scope. 
+			 * variable lookup must be limited to class scope */
 			hcl_clsblk_info_t* clsbi;
 
-			for (j = fbi->clsblk_top + 1; j > fbi->clsblk_base;)
+		#if 0
+			for (j = fbi->clsblk_top + 1; j > fbi->clsblk_base; )
 			{
 				clsbi = &hcl->c->clsblk.info[--j];
+		#endif
+				clsbi = &hcl->c->clsblk.info[fbi->clsblk_top];
 
-				if (i < hcl->c->fnblk.depth && clsbi->ivars_str)
+				if (clsbi->ivars_str)
 				{
 					haystack.ptr = clsbi->ivars_str;
 					haystack.len = hcl_count_oocstr(clsbi->ivars_str);
 					if (__find_word_in_string(&haystack, name, 1, &index) >= 0)
 					{
+						if (i >= hcl->c->fnblk.depth)
+						{
+							/* instance variables are not accessible if not in class method scope.
+							 * it is in class initialization scope */
+							hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(token), name, "prohibited to access an instance variable");
+							return -1;
+						}
+						
 						vi->type = VAR_INST;
 						vi->ctx_offset = 0;
 						vi->index_in_ctx = index;
 HCL_INFO6 (hcl, "FOUND INST VAR [%.*js]...[%.*js]................ ===> ctx_offset %d index %d\n",
 	haystack.len, haystack.ptr, name->len, name->ptr, (int)(vi->ctx_offset), (int)vi->index_in_ctx);
-						return 0;
+						return 1;
 					}
 				}
 
@@ -257,14 +275,16 @@ HCL_INFO6 (hcl, "FOUND INST VAR [%.*js]...[%.*js]................ ===> ctx_offse
 					haystack.len = hcl_count_oocstr(clsbi->cvars_str);
 					if (__find_word_in_string(&haystack, name, 1, &index) >= 0)
 					{
-						vi->type = VAR_CLASS;
+						/* TODO: VAR_CLASS_CM vs VAR_CLASS_IM, need to know if it's an instance method or a class method */
+						vi->type = (i >= hcl->c->fnblk.depth? VAR_CLASS_I: VAR_CLASS_IM);
 						vi->ctx_offset = 0;
 						vi->index_in_ctx = index;
 HCL_INFO6 (hcl, "FOUND CLASS VAR [%.*js]...[%.*js]................ ===> ctx_offset %d index %d\n",
 	haystack.len, haystack.ptr, name->len, name->ptr, (int)(vi->ctx_offset), (int)vi->index_in_ctx);
-						return 0;
+						return 1;
 					}
 				}
+	#if 0
 			}
 
 			if (i == hcl->c->fnblk.depth) 
@@ -276,7 +296,9 @@ HCL_INFO2 (hcl, "CLASS NAMED VAR [%.*js]\n", name->len, name->ptr);
 				vi->ctx_offset = 0;
 				vi->index_in_ctx = 0;
 			}
-			break;
+	#endif
+			
+			break; /* stop searching beyond class definition */
 		}
 
 		if (HCL_LIKELY(i > 0))
@@ -310,12 +332,12 @@ HCL_INFO2 (hcl, "CLASS NAMED VAR [%.*js]\n", name->len, name->ptr);
 				hcl->c->fnblk.info[i - 1].accessed_by_inner = 1; 
 			}
 
-			return 0;
+			return 1;
 		}
 	}
 
 HCL_INFO2 (hcl, "NOT FOUND => %.*js\n", name->len, name->ptr);
-	return -1;
+	return 0; /* not found */
 }
 
 /* ========================================================================= */
@@ -494,9 +516,12 @@ static int emit_single_param_instruction (hcl_t* hcl, int cmd, hcl_oow_t param_1
 		case HCL_CODE_JUMP2_BACKWARD_IF_FALSE:
 		case HCL_CODE_JUMP2_BACKWARD:
 
-		case HCL_CODE_PUSH_CLSVAR_X:
-		case HCL_CODE_STORE_INTO_CLSVAR_X:
-		case HCL_CODE_POP_INTO_CLSVAR_X:
+		case HCL_CODE_PUSH_CLSVAR_I_X:
+		case HCL_CODE_STORE_INTO_CLSVAR_I_X:
+		case HCL_CODE_POP_INTO_CLSVAR_I_X:
+		case HCL_CODE_PUSH_CLSVAR_M_X:
+		case HCL_CODE_STORE_INTO_CLSVAR_M_X:
+		case HCL_CODE_POP_INTO_CLSVAR_M_X:
 
 		case HCL_CODE_TRY_ENTER:
 		case HCL_CODE_TRY_ENTER2:
@@ -760,7 +785,8 @@ static int emit_variable_access (hcl_t* hcl, int mode, const hcl_var_info_t* vi,
 	{
 		{ HCL_CODE_PUSH_CTXTEMPVAR_0, HCL_CODE_POP_INTO_CTXTEMPVAR_0, HCL_CODE_STORE_INTO_CTXTEMPVAR_0 },
 		{ HCL_CODE_PUSH_INSTVAR_0,    HCL_CODE_POP_INTO_INSTVAR_0,    HCL_CODE_STORE_INTO_INSTVAR_0    },
-		{ HCL_CODE_PUSH_CLSVAR_X,     HCL_CODE_POP_INTO_CLSVAR_X,     HCL_CODE_STORE_INTO_CLSVAR_X     },
+		{ HCL_CODE_PUSH_CLSVAR_I_X,   HCL_CODE_POP_INTO_CLSVAR_I_X,   HCL_CODE_STORE_INTO_CLSVAR_I_X   },
+		{ HCL_CODE_PUSH_CLSVAR_M_X,   HCL_CODE_POP_INTO_CLSVAR_M_X,   HCL_CODE_STORE_INTO_CLSVAR_M_X   }
 	};
 
 	switch (vi->type)
@@ -769,12 +795,17 @@ static int emit_variable_access (hcl_t* hcl, int mode, const hcl_var_info_t* vi,
 			return emit_double_param_instruction(hcl, inst_map[0][mode], vi->ctx_offset, vi->index_in_ctx, srcloc);
 
 		case VAR_INST:
+		case VAR_CLASS_CM:
 			HCL_ASSERT (hcl, vi->ctx_offset == 0);
 			return emit_single_param_instruction(hcl, inst_map[1][mode], vi->index_in_ctx, srcloc);
 
-		case VAR_CLASS:
+		case VAR_CLASS_I:
 			HCL_ASSERT (hcl, vi->ctx_offset == 0);
 			return emit_single_param_instruction(hcl, inst_map[2][mode], vi->index_in_ctx, srcloc);
+
+		case VAR_CLASS_IM:
+			HCL_ASSERT (hcl, vi->ctx_offset == 0);
+			return emit_single_param_instruction(hcl, inst_map[3][mode], vi->index_in_ctx, srcloc);
 	}
 
 	return -1;
@@ -2221,8 +2252,12 @@ static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 		 */
 		hcl_cnode_t* class_name = cf->operand;
 		hcl_var_info_t vi;
+		int x;
 
-		if (find_variable_backward(hcl, HCL_CNODE_GET_TOK(class_name), &vi) <= -1)
+		x = find_variable_backward(hcl, class_name, &vi);
+		if (x <= -1) return -1;
+		
+		if (x == 0)
 		{
 			SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, class_name);
 			cf = GET_TOP_CFRAME(hcl);
@@ -2230,7 +2265,6 @@ static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 		}
 		else
 		{
-			//HCL_ASSERT (hcl, index <= HCL_SMOOI_MAX); 
 			SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, class_name); 
 			cf = GET_TOP_CFRAME(hcl);
 			cf->u.set.vi = vi;
@@ -2589,6 +2623,7 @@ static int compile_set (hcl_t* hcl, hcl_cnode_t* src)
 	hcl_cframe_t* cf;
 	hcl_cnode_t* cmd, * obj, * var, * val;
 	hcl_var_info_t vi;
+	int x;
 
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
 	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_SET));
@@ -2643,7 +2678,10 @@ static int compile_set (hcl_t* hcl, hcl_cnode_t* src)
 
 	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, val);
 
-	if (find_variable_backward(hcl, HCL_CNODE_GET_TOK(var), &vi) <= -1)
+	x = find_variable_backward(hcl, var, &vi);
+	if (x <= -1) return -1;
+	
+	if (x == 0)
 	{
 		PUSH_SUBCFRAME (hcl, COP_EMIT_SET, var); /* set doesn't evaluate the variable name */
 		cf = GET_SUBCFRAME(hcl);
@@ -2735,9 +2773,14 @@ static int compile_set_r (hcl_t* hcl, hcl_cnode_t* src)
 
 	for (i  = 0, obj = var_start; i < nvars; i++, obj = HCL_CNODE_CONS_CDR(obj))
 	{
+		int x;
+		
 		var = HCL_CNODE_CONS_CAR(obj);
 
-		if (find_variable_backward(hcl, HCL_CNODE_GET_TOK(var), &vi) <= -1)
+		x = find_variable_backward(hcl, var, &vi);
+		if (x <= -1) return -1;
+		
+		if (x == 0)
 		{
 			PUSH_SUBCFRAME (hcl, COP_EMIT_SET, var); /* set_r doesn't evaluate the variable name */
 			cf = GET_SUBCFRAME(hcl);
@@ -3380,6 +3423,7 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 static HCL_INLINE int compile_symbol (hcl_t* hcl, hcl_cnode_t* obj)
 {
 	hcl_var_info_t vi;
+	int x;
 
 	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL(obj));
 
@@ -3390,7 +3434,10 @@ static HCL_INLINE int compile_symbol (hcl_t* hcl, hcl_cnode_t* obj)
 	}
 
 	/* check if a symbol is a local variable */
-	if (find_variable_backward(hcl, HCL_CNODE_GET_TOK(obj), &vi) <= -1)
+	x = find_variable_backward(hcl, obj, &vi);
+	if (x <= -1) return -1;
+	
+	if (x == 0)
 	{
 		hcl_oop_t sym, cons;
 		hcl_oow_t index;
@@ -4526,8 +4573,12 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 		hcl_cnode_t* defun_name = cf->operand;
 		hcl_oow_t index;
 		hcl_var_info_t vi;
-
-		if (find_variable_backward(hcl, HCL_CNODE_GET_TOK(defun_name), &vi) <= -1)
+		int x;
+		
+		x = find_variable_backward(hcl, defun_name, &vi);
+		if (x <= -1) return -1;
+		
+		if (x == 0)
 		{
 			SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, defun_name);
 			cf = GET_TOP_CFRAME(hcl);
