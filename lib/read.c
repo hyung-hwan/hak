@@ -1043,6 +1043,21 @@ retry:
 		}
 
 		case '(':
+			oldc = c;
+			GET_CHAR_TO (hcl, c);
+			if(c == ':')
+			{
+				SET_TOKEN_TYPE (hcl, HCL_IOTOK_LPARCOLON);
+				ADD_TOKEN_CHAR (hcl, oldc);
+				ADD_TOKEN_CHAR (hcl, c);
+				break;
+			}
+			else
+			{
+				unget_char (hcl, &hcl->c->lxc);
+			}
+			c = oldc;
+
 			ADD_TOKEN_CHAR(hcl, c);
 			SET_TOKEN_TYPE (hcl, HCL_IOTOK_LPAREN);
 			break;
@@ -1811,22 +1826,27 @@ static hcl_cnode_t* read_object (hcl_t* hcl)
 				LIST_FLAG_SET_CONCODE (flagv, HCL_CONCODE_ARRAY);
 				goto start_list;
 
-			case HCL_IOTOK_BAPAREN: /* #[] */
+			case HCL_IOTOK_BAPAREN: /* #[ */
 				flagv = 0;
 				LIST_FLAG_SET_CONCODE (flagv, HCL_CONCODE_BYTEARRAY);
 				goto start_list;
 
-			case HCL_IOTOK_LBRACE: /* {} */
+			case HCL_IOTOK_LBRACE: /* { */
 				flagv = 0;
 				LIST_FLAG_SET_CONCODE (flagv, HCL_CONCODE_DIC);
 				goto start_list;
 
-			case HCL_IOTOK_QLPAREN: /* #() */
+			case HCL_IOTOK_QLPAREN: /* #( */
 				flagv = 0;
 				LIST_FLAG_SET_CONCODE (flagv, HCL_CONCODE_QLIST);
 				goto start_list;
 
-			case HCL_IOTOK_LPAREN: /* () */
+			case HCL_IOTOK_LPARCOLON: /* (: */
+				flagv = 0;
+				LIST_FLAG_SET_CONCODE (flagv, HCL_CONCODE_MLIST);
+				goto start_list;
+				
+			case HCL_IOTOK_LPAREN: /* ( */
 				flagv = 0;
 				LIST_FLAG_SET_CONCODE (flagv, HCL_CONCODE_XLIST);
 			start_list:
@@ -1891,11 +1911,12 @@ static hcl_cnode_t* read_object (hcl_t* hcl)
 					hcl_synerrnum_t synerr;
 				} req[] =
 				{
-					{ HCL_IOTOK_RPAREN, HCL_SYNERR_RPAREN }, /* XLIST     ()  */
-					{ HCL_IOTOK_RBRACK, HCL_SYNERR_RBRACK }, /* ARRAY     [] */
-					{ HCL_IOTOK_RBRACK, HCL_SYNERR_RBRACK }, /* BYTEARRAY #[] */
-					{ HCL_IOTOK_RBRACE, HCL_SYNERR_RBRACE }, /* DIC       {} */
-					{ HCL_IOTOK_RPAREN, HCL_SYNERR_RPAREN }  /* QLIST     #()  */
+					{ HCL_IOTOK_RPAREN, HCL_SYNERR_RPAREN }, /* XLIST     ( )  */
+					{ HCL_IOTOK_RPAREN, HCL_SYNERR_RPAREN }, /* MLIST     (: ) */
+					{ HCL_IOTOK_RBRACK, HCL_SYNERR_RBRACK }, /* ARRAY     [ ] */
+					{ HCL_IOTOK_RBRACK, HCL_SYNERR_RBRACK }, /* BYTEARRAY #[ ] */
+					{ HCL_IOTOK_RBRACE, HCL_SYNERR_RBRACE }, /* DIC       { } */
+					{ HCL_IOTOK_RPAREN, HCL_SYNERR_RPAREN }  /* QLIST     #( )  */
 				};
 
 				int oldflagv;

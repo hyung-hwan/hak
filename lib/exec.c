@@ -2167,6 +2167,38 @@ static HCL_INLINE int do_throw (hcl_t* hcl, hcl_oop_t val, hcl_ooi_t ip)
 
 /* ------------------------------------------------------------------------- */
 
+static void supplement_errmsg (hcl_t* hcl, hcl_ooi_t ip)
+{
+	if (hcl->active_function->dbgi != hcl->_nil)
+	{
+		hcl_dbgi_t* dbgi;
+		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+		hcl_errnum_t orgnum = hcl_geterrnum(hcl);
+
+		HCL_ASSERT (hcl, HCL_IS_BYTEARRAY(hcl, hcl->active_function->dbgi));
+		dbgi = (hcl_dbgi_t*)HCL_OBJ_GET_BYTE_SLOT(hcl->active_function->dbgi);
+
+		hcl_seterrbfmt (hcl, orgnum, "%js (%js:%zu)", orgmsg,
+			(dbgi[ip].fname? dbgi[ip].fname: oocstr_dash), dbgi[ip].sline);
+	}
+}
+
+static int do_throw_with_internal_errmsg (hcl_t* hcl, hcl_ooi_t ip)
+{
+	hcl_oop_t ex;
+/* TODO: considuer throwing an exception object instead of a string? */
+	ex = hcl_makestring(hcl, hcl->errmsg.buf, hcl->errmsg.len, 0);
+	if (HCL_UNLIKELY(!ex))
+	{
+		supplement_errmsg (hcl, ip);
+		return -1;
+	}
+	if (do_throw(hcl, ex, ip) <= -1) return -1;
+	return 0;
+}
+
+/* ------------------------------------------------------------------------- */
+
 
 #if 0
 /* EXPERIMENTAL CODE INTEGRATING EXTERNAL COMMANDS */
@@ -2844,22 +2876,6 @@ static void xma_dumper (void* ctx, const char* fmt, ...)
 	va_end (ap);
 }
 
-static void supplement_errmsg (hcl_t* hcl, hcl_ooi_t ip)
-{
-	if (hcl->active_function->dbgi != hcl->_nil)
-	{
-		hcl_dbgi_t* dbgi;
-		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_errnum_t orgnum = hcl_geterrnum(hcl);
-
-		HCL_ASSERT (hcl, HCL_IS_BYTEARRAY(hcl, hcl->active_function->dbgi));
-		dbgi = (hcl_dbgi_t*)HCL_OBJ_GET_BYTE_SLOT(hcl->active_function->dbgi);
-
-		hcl_seterrbfmt (hcl, orgnum, "%js (%js:%zu)", orgmsg,
-			(dbgi[ip].fname? dbgi[ip].fname: oocstr_dash), dbgi[ip].sline);
-	}
-}
-
 static int execute (hcl_t* hcl)
 {
 	hcl_oob_t bcode;
@@ -2918,7 +2934,6 @@ static int execute (hcl_t* hcl)
 		{
 			/* ------------------------------------------------- */
 
-#if 0
 			case HCL_CODE_PUSH_INSTVAR_X:
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				goto push_instvar;
@@ -2934,6 +2949,7 @@ static int execute (hcl_t* hcl)
 			push_instvar:
 				LOG_INST_1 (hcl, "push_instvar %zu", b1);
 				HCL_ASSERT (hcl, HCL_OBJ_GET_FLAGS_TYPE(hcl->active_context->origin->receiver_or_base) == HCL_OBJ_TYPE_OOP);
+	/* TODO: FIX TO OFFSET THE INHERTED PART... */
 				HCL_STACK_PUSH (hcl, ((hcl_oop_oop_t)hcl->active_context->origin->receiver_or_base)->slot[b1]);
 				break;
 
@@ -2976,7 +2992,6 @@ static int execute (hcl_t* hcl)
 				((hcl_oop_oop_t)hcl->active_context->origin->receiver_or_base)->slot[b1] = HCL_STACK_GETTOP(hcl);
 				HCL_STACK_POP (hcl);
 				break;
-#endif
 
 			/* ------------------------------------------------- */
 			case HCL_CODE_PUSH_TEMPVAR_X:
@@ -3648,6 +3663,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				{
 					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "empty class stack");
 					supplement_errmsg (hcl, fetched_instruction_pointer);
+				/* TODO: do throw??? instead */
 					goto oops;
 				}
 				HCL_CLSTACK_FETCH_TOP_TO(hcl, t);
@@ -3664,6 +3680,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				{
 					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "empty class stack");
 					supplement_errmsg (hcl, fetched_instruction_pointer);
+				/* TODO: do throw??? instead */
 					goto oops;
 				}
 				HCL_CLSTACK_FETCH_TOP_TO(hcl, t);
@@ -3685,6 +3702,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				{
 					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "non-instance receiver");
 					supplement_errmsg (hcl, fetched_instruction_pointer);
+				/* TODO: do throw??? instead */
 					goto oops;
 				}
 				t = HCL_OBJ_GET_CLASS(t);
@@ -3702,6 +3720,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				{
 					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "non-instance receiver");
 					supplement_errmsg (hcl, fetched_instruction_pointer);
+				/* TODO: do throw??? instead */
 					goto oops;
 				}
 				t = HCL_OBJ_GET_CLASS(t);
@@ -3831,8 +3850,9 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				t2 = HCL_STACK_GETTOP(hcl); /* array */
 				if (HCL_UNLIKELY(b1 >= HCL_OBJ_GET_SIZE(t2)))
 				{
-					hcl_seterrbfmt (hcl, HCL_ECALL, "index %zu out of upper bound %zd ", b1, (hcl_oow_t)HCL_OBJ_GET_SIZE(t2));
-					goto oops;
+					hcl_seterrbfmt (hcl, HCL_ECALL, "array index %zu out of upper bound %zd ", b1, (hcl_oow_t)HCL_OBJ_GET_SIZE(t2));
+					if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) <= -1) goto oops;
+					break;
 				}
 
 				((hcl_oop_oop_t)t2)->slot[b1] = t1;
@@ -3870,10 +3890,18 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				if (!HCL_OOP_IS_SMOOI(t1) || (bv = HCL_OOP_TO_SMOOI(t1)) < 0 || bv > 255)
 				{
 					hcl_seterrbfmt (hcl, HCL_ERANGE, "not a byte or out of byte range - %O", t1);
-					goto oops;
+					if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) <= -1) goto oops;
+					break;
 				}
 				HCL_STACK_POP (hcl);
-				t2 = HCL_STACK_GETTOP(hcl); /* array */
+				t2 = HCL_STACK_GETTOP(hcl); /* byte array */
+
+				if (HCL_UNLIKELY(b1 >= HCL_OBJ_GET_SIZE(t2)))
+				{
+					hcl_seterrbfmt (hcl, HCL_ECALL, "bytearray index %zu out of upper bound %zd ", b1, (hcl_oow_t)HCL_OBJ_GET_SIZE(t2));
+					if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) <= -1) goto oops;
+					break;
+				}
 				((hcl_oop_byte_t)t2)->slot[b1] = bv;
 				break;
 			}

@@ -158,7 +158,8 @@ static char* synerrstr[] =
 	"invalid callable",
 	"unbalanced key/value pair",
 	"unbalanced parenthesis/brace/bracket",
-	"empty x-list"
+	"empty x-list",
+	"empty m-list"
 };
 
 /* -------------------------------------------------------------------------- 

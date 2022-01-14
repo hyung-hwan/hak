@@ -214,26 +214,29 @@ int hcl_fmt_object_ (hcl_fmtout_t* fmtout, hcl_oop_t obj)
 
 	static const hcl_bch_t *opening_parens[][2] =
 	{
-		{ "(",   "(" },  /*HCL_CONCODE_XLIST */
-		{ "[",   "[" },  /*HCL_CONCODE_ARRAY */
-		{ "#[",  "[" },  /*HCL_CONCODE_BYTEARRAY */ 
-		{ "{",   "{" },  /*HCL_CONCODE_DIC */
-		{ "#(",  "[" }   /*HCL_CONCODE_QLIST */
+		/* navtive   json */
+		{ "(",       "(" },  /*HCL_CONCODE_XLIST */
+		{ "(:",      "(" },  /*HCL_CONCODE_MLIST */
+		{ "[",       "[" },  /*HCL_CONCODE_ARRAY */
+		{ "#[",      "[" },  /*HCL_CONCODE_BYTEARRAY */ 
+		{ "{",       "{" },  /*HCL_CONCODE_DIC */
+		{ "#(",      "[" }   /*HCL_CONCODE_QLIST */
 	};
 
 	static const hcl_bch_t *closing_parens[][2] =
 	{
-		{ ")",  ")" },   /*HCL_CONCODE_XLIST */
-		{ "]",  "]" },   /*HCL_CONCODE_ARRAY */
-		{ "]",  "]" },   /*HCL_CONCODE_BYTEARRAY */
-		{ "}",  "}" },   /*HCL_CONCODE_DIC */
-		{ ")",  "]" },   /*HCL_CONCODE_QLIST */
+		{ ")",       ")" },   /*HCL_CONCODE_XLIST */
+		{ ")",       ")" },   /*HCL_CONCODE_MLIST */
+		{ "]",       "]" },   /*HCL_CONCODE_ARRAY */
+		{ "]",       "]" },   /*HCL_CONCODE_BYTEARRAY */
+		{ "}",       "}" },   /*HCL_CONCODE_DIC */
+		{ ")",       "]" },   /*HCL_CONCODE_QLIST */
 	};
 
 	static const hcl_bch_t* breakers[][2] = 
 	{
-		{ " ", "," }, /* item breaker */
-		{ " ", ":" }  /* key value breaker */
+		{ " ",       "," }, /* item breaker */
+		{ " ",       ":" }  /* key value breaker */
 	};
 
 	json = !!(fmtout->mask & HCL_LOG_PREFER_JSON);

@@ -163,7 +163,8 @@ enum hcl_synerrnum_t
 	HCL_SYNERR_CALLABLE,      /* invalid callable */
 	HCL_SYNERR_UNBALKV,       /* unbalanced key/value pair */
 	HCL_SYNERR_UNBALPBB,      /* unbalanced parenthesis/brace/bracket */
-	HCL_SYNERR_EMPTYXLIST     /* empty x-list */
+	HCL_SYNERR_EMPTYXLIST,    /* empty x-list */
+	HCL_SYNERR_EMPTYMLIST     /* empty m-list */
 };
 typedef enum hcl_synerrnum_t hcl_synerrnum_t;
 
@@ -1841,11 +1842,12 @@ typedef enum hcl_syncode_t hcl_syncode_t;
 enum hcl_concode_t
 {
 	/* these can be set in the SYNCODE flags for a cons cell */
-	HCL_CONCODE_XLIST = 0,  /* () - executable list */
-	HCL_CONCODE_ARRAY,      /* [] */
-	HCL_CONCODE_BYTEARRAY,  /* #[] */
-	HCL_CONCODE_DIC,        /* {} */
-	HCL_CONCODE_QLIST,      /* #() - data list */
+	HCL_CONCODE_XLIST = 0,  /* ( ) - executable list */
+	HCL_CONCODE_MLIST,      /* (: ) - message send list */
+	HCL_CONCODE_ARRAY,      /* [ ] */
+	HCL_CONCODE_BYTEARRAY,  /* #[ ] */
+	HCL_CONCODE_DIC,        /* { } */
+	HCL_CONCODE_QLIST,      /* #( ) - data list */
 	HCL_CONCODE_VLIST       /* | | - symbol list */
 };
 typedef enum hcl_concode_t hcl_concode_t;

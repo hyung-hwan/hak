@@ -212,6 +212,33 @@ static void kill_temporary_variable_at_offset (hcl_t* hcl, hcl_oow_t offset)
 	hcl->c->tv.s.ptr[offset] = '('; /* HACK!! put a special character which can't form a variable name */
 }
 
+static int is_in_class_init_scope (hcl_t* hcl)
+{
+	hcl_fnblk_info_t* fbi;
+	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
+	return (fbi->clsblk_top >= 0);
+}
+
+static int is_in_class_method_scope (hcl_t* hcl)
+{
+	hcl_oow_t i, j;
+
+	for (i = hcl->c->fnblk.depth + 1; i > 0; )
+	{
+		hcl_fnblk_info_t* fbi;
+
+		fbi = &hcl->c->fnblk.info[--i];
+
+		if (fbi->clsblk_top >= 0)
+		{
+			if (i >= hcl->c->fnblk.depth) return 0; /* in class initialization scope */
+			return 1; /* in class method scope */
+		}
+	}
+
+	return 0; /* in plain function scope */
+}
+
 static int find_variable_backward (hcl_t* hcl, const hcl_cnode_t* token, hcl_var_info_t* vi)
 {
 	hcl_oow_t i, j;
@@ -1226,7 +1253,7 @@ enum
 
 	COP_COMPILE_OR_P1,
 	COP_COMPILE_OR_P2,
-	
+
 	COP_COMPILE_CLASS_P1,
 	COP_COMPILE_CLASS_P2,
 	COP_COMPILE_CLASS_P3,
@@ -2361,7 +2388,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 	{
 		/* empty list - no argument - (lambda () (+ 10 20)) */
 	}
-	else if (!HCL_CNODE_IS_CONS(args))
+	else if (!HCL_CNODE_IS_CONS_CONCODED(args, HCL_CONCODE_XLIST))
 	{
 		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMELIST, HCL_CNODE_GET_LOC(args), HCL_CNODE_GET_TOK(args), "not an argument list in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 		return -1;
@@ -2924,9 +2951,9 @@ static HCL_INLINE int compile_catch (hcl_t* hcl)
 	}
 
 	exarg = HCL_CNODE_CONS_CAR(obj);
-	if (HCL_CNODE_IS_ELIST_CONCODED(exarg, HCL_CONCODE_XLIST) || !HCL_CNODE_IS_CONS(exarg) || hcl_countcnodecons(hcl, exarg) != 1)
+	if (!HCL_CNODE_IS_CONS_CONCODED(exarg, HCL_CONCODE_XLIST) || hcl_countcnodecons(hcl, exarg) != 1)
 	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(exarg), HCL_NULL, "not single exception variable in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(exarg), HCL_NULL, "not proper exception variable in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 		return -1;
 	}
 
@@ -3420,6 +3447,20 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 	return 0;
 }
 
+static int compile_cons_mlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nrets)
+{
+	hcl_cnode_t* car;
+	int syncode; /* syntax code of the first element */
+
+	/* message sending 
+	 *  (: receiver message argument-list)
+	 */
+	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS_CONCODED(obj, HCL_CONCODE_MLIST));
+
+	car = HCL_CNODE_CONS_CAR(obj);
+	return 0;
+}
+
 static HCL_INLINE int compile_symbol (hcl_t* hcl, hcl_cnode_t* obj)
 {
 	hcl_var_info_t vi;
@@ -3726,6 +3767,10 @@ redo:
 					if (compile_cons_xlist_expression(hcl, oprnd, 0) <= -1) return -1;
 					break;
 
+				case HCL_CONCODE_MLIST:
+					if (compile_cons_mlist_expression(hcl, oprnd, 0) <= -1) return -1;
+					break;
+
 				case HCL_CONCODE_ARRAY:
 					if (compile_cons_array_expression(hcl, oprnd) <= -1) return -1;
 					break;
@@ -3761,6 +3806,10 @@ redo:
 			{
 				case HCL_CONCODE_XLIST:
 					hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "empty executable list");
+					return -1;
+
+				case HCL_CONCODE_MLIST:
+					hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "empty message send list");
 					return -1;
 
 				case HCL_CONCODE_ARRAY:
@@ -3827,7 +3876,6 @@ static int compile_object_r (hcl_t* hcl)
 {
 	hcl_cframe_t* cf;
 	hcl_cnode_t* oprnd;
-	hcl_oop_t lit;
 
 	cf = GET_TOP_CFRAME(hcl);
 	HCL_ASSERT (hcl, cf->opcode == COP_COMPILE_OBJECT_R);
@@ -4574,24 +4622,44 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 		hcl_oow_t index;
 		hcl_var_info_t vi;
 		int x;
-		
-		x = find_variable_backward(hcl, defun_name, &vi);
-		if (x <= -1) return -1;
-		
-		if (x == 0)
+
+		if (is_in_class_init_scope(hcl))
 		{
-			SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, defun_name);
-			cf = GET_TOP_CFRAME(hcl);
-			cf->u.set.vi.type = VAR_NAMED;
+			/* method definition */
+			x = find_variable_backward(hcl, defun_name, &vi);
+			if (x <= -1) return -1;
+			if (x == 0)
+			{
+				/* save to the method slot */
+printf ("this is a method defintion...^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^.\n");
+			}
+			else
+			{
+/* TODO: proper error code */
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAMEDUP, HCL_CNODE_GET_LOC(defun_name), HCL_CNODE_GET_TOK(defun_name), "duplicate name");
+				return -1;
+			}
+			cf->u.set.mode = VAR_ACCESS_STORE;
 		}
 		else
 		{
-			HCL_ASSERT (hcl, index <= HCL_SMOOI_MAX); 
-			SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, defun_name); 
-			cf = GET_TOP_CFRAME(hcl);
-			cf->u.set.vi = vi;
+			x = find_variable_backward(hcl, defun_name, &vi);
+			if (x <= -1) return -1;
+			if (x == 0)
+			{
+				SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, defun_name);
+				cf = GET_TOP_CFRAME(hcl);
+				cf->u.set.vi.type = VAR_NAMED;
+			}
+			else
+			{
+				HCL_ASSERT (hcl, index <= HCL_SMOOI_MAX); 
+				SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, defun_name); 
+				cf = GET_TOP_CFRAME(hcl);
+				cf->u.set.vi = vi;
+			}
+			cf->u.set.mode = VAR_ACCESS_STORE;
 		}
-		cf->u.set.mode = VAR_ACCESS_STORE;
 	}
 	else
 	{

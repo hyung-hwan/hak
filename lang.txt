@@ -1,0 +1,165 @@
+## dictionary list (DIC)
+	{ 1 2 3 4 }
+	{ 1: 2, 3: 4}
+	{} -> empty dictionary
+	{ 1 } -> error, no value.  dictionary requires even number of items.
+
+## array list
+	[ 1 2 3 4]
+	[ 1, 2, 3, 4 ]
+	[] -> empty array
+
+## byte array list
+	#[ 1 2 3 4 ]
+	#[  1, 2, 3, 4 ]
+	each item must be in the byte range.
+	if a given value is not a number in the allowed range, an exception error is raised.
+	(try
+		(set a 20)
+		#[ 1 2 3 (+ a 300)]  ; this throws an catchable exception.
+	catch(e)
+		(printf "EXCEPTION - %O\n" e)
+	)
+
+## non-executable list (QLIST)
+	#(1 2 3 4)
+	#(1 2 3 4 . 5)
+	#() -> same as null
+	comma not allowed to seperate items.
+
+## varaible declaration list (VLIST)
+	| a b c |
+
+
+## class declaration with methods.
+
+(defclass X 
+
+	| x y |                 ; instance variables 
+	::: | bob jim |             ; class variables
+
+	; instance variables and class variables must not collide with those of parent classes.
+	; they must not collide with method names of parent classes
+
+	(set bob "Bob")         ; can access class variables. disallowed to access instance variables
+
+	(defun setX (a)
+		(set self.x a)
+		;(super.setX a) 
+	)
+
+	; instance method. a method name must not collide with instance variable names and class variable names.
+	; the name can be the same as method names of parent classes.
+	(defun K (a b)
+		(self.Y a)
+		(return (+ a b x y))
+	)
+
+	(defun Y (a)
+		(printf ("Y=>%d [%s]\n", a, bob) 
+	)
+
+	(defun ::: KK (a b)
+		(printf "K=>%s\n", bob) ; a class method can access class variables but not instance variables
+		(return (+ a b))
+	)
+
+	(set jim (lambda (a b) (+ a b))) ; the anonymous function created is 
+)
+
+
+## method invocation
+
+a period isn't a good token to use for chaining method invocation.
+	super.a().b().c()
+		push super
+		send_to_super a
+		send_to_self b
+		send_to_self c
+		(send_to_xxx is lookup + call)
+
+
+we need a way to swap the first parameter and the called function
+(: a b 2 3 4)
+
+(a b 2 3 4)
+	(a.b.c 20 30 40) 
+	((a:b 20 30):c 30)
+	
+
+normal function call
+(f arg1 arg2 arg3)
+(rcv f arg1 arg2)
+
+(:X (f) arg1 arg2)
+as long as f returns a symbol, it can also invoke a method??
+
+
+(defun getX() X) ; ->it must return an object
+((getX)->show "hello")
+
+X.Y
+ push X
+ push_symbol Y
+ lookup
+
+(X.Y)
+ push X
+ push_symbol Y
+ lookup
+ call 0
+
+X.Y.Z
+ push X
+ push_symbol Y
+ lookup
+ push_symbol Z
+ lookup
+ 
+ --- if this is within a method, it must become push_instvar
+ self.x
+  push self
+  push symbol x
+  lookup
+
+
+
+
+fun f(a, b) 
+{
+}
+
+fun f(a, b) -> (c, d)
+{
+
+}
+
+class X
+{
+	var x, y, z
+	var! printer;
+
+	printer := Printer.new();
+
+	fun! new(a, b)
+	{
+		return super.new().init(a, b);
+	}
+
+	fun init(a, b)
+	{
+	}
+
+	fun show(a, b)
+	{
+		Printer.dump(a, b);
+	}
+
+}
+
+x := X.new(10, 20);
+x.show (40, 50);
+
+
+
+---------------

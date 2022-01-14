@@ -152,16 +152,17 @@ enum hcl_iotok_type_t
 	HCL_IOTOK_COLON,
 	HCL_IOTOK_TRPCOLONS,
 	HCL_IOTOK_COMMA,
-	HCL_IOTOK_LPAREN,
-	HCL_IOTOK_RPAREN,
-	HCL_IOTOK_BAPAREN,  /* #[ */
-	HCL_IOTOK_QLPAREN,  /* #( */
-	HCL_IOTOK_LBRACK,   /* [ */
-	HCL_IOTOK_RBRACK,   /* ] */
-	HCL_IOTOK_LBRACE,   /* { */
-	HCL_IOTOK_RBRACE,   /* } */
-	HCL_IOTOK_VBAR,
-	HCL_IOTOK_EOL,      /* end of line */
+	HCL_IOTOK_LPAREN,    /* ( */
+	HCL_IOTOK_RPAREN,    /* ) */
+	HCL_IOTOK_LPARCOLON, /* (: */
+	HCL_IOTOK_BAPAREN,   /* #[ */
+	HCL_IOTOK_QLPAREN,   /* #( */
+	HCL_IOTOK_LBRACK,    /* [ */
+	HCL_IOTOK_RBRACK,    /* ] */
+	HCL_IOTOK_LBRACE,    /* { */
+	HCL_IOTOK_RBRACE,    /* } */
+	HCL_IOTOK_VBAR,      /* | */
+	HCL_IOTOK_EOL,       /* end of line */
 
 	HCL_IOTOK_INCLUDE
 };
