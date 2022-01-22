@@ -312,6 +312,13 @@ struct hcl_cframe_t
 			hcl_ooi_t nrets;
 		} call;
 
+		/* COP_EMIT_SEND_MESSAGE */
+		struct
+		{
+			hcl_ooi_t nargs;
+			hcl_ooi_t nrets;
+		} sendmsg;
+
 		/* COP_EMIT_SET */
 		struct
 		{

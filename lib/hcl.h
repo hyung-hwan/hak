@@ -1749,15 +1749,24 @@ struct hcl_t
 /* get the argument at the given index */
 #define HCL_STACK_GETARG(hcl,nargs,idx) HCL_STACK_GET(hcl, (hcl)->sp - ((nargs) - (idx) - 1))
 /* get the receiver of a message */
-#define HCL_STACK_GETRCV(hcl,nargs) HCL_STACK_GET(hcl, (hcl)->sp - nargs)
+#define HCL_STACK_GETRCV(hcl,nargs) HCL_STACK_GET(hcl, (hcl)->sp - nargs - 1)
+/* get the operator such as the called function/block/method */
+#define HCL_STACK_GETOP(hcl,nargs) HCL_STACK_GET(hcl, (hcl)->sp - nargs)
 
+/* 
+ * .....
+ * argument 1
+ * argument 0
+ * operator
+ * receiver
+ */
 
 /* you can't access arguments and receiver after this macro.
  * also you must not call this macro more than once */
 
 #define HCL_STACK_SETRET(hcl,nargs,retv) \
 	do { \
-		HCL_STACK_POPS(hcl, nargs); \
+		HCL_STACK_POPS(hcl, nargs + 1); \
 		HCL_STACK_SETTOP(hcl, (retv)); \
 	} while(0)
 

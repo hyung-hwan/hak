@@ -1976,7 +1976,7 @@ static HCL_INLINE int activate_block (hcl_t* hcl, hcl_ooi_t nargs, hcl_ooi_t nrv
 	hcl_oop_block_t rcv;
 	hcl_oop_context_t newctx;
 
-	rcv = (hcl_oop_block_t)HCL_STACK_GETRCV(hcl, nargs);
+	rcv = (hcl_oop_block_t)HCL_STACK_GETOP(hcl, nargs);
 	HCL_ASSERT (hcl, HCL_IS_BLOCK(hcl, rcv));
 
 	x = prepare_new_context(
@@ -1989,7 +1989,7 @@ static HCL_INLINE int activate_block (hcl_t* hcl, hcl_ooi_t nargs, hcl_ooi_t nrv
 		&newctx);
 	if (HCL_UNLIKELY(x <= -1)) return -1;
 
-	HCL_STACK_POPS (hcl, nargs + 1); /* pop arguments and receiver */
+	HCL_STACK_POPS (hcl, nargs + 2); /* pop arguments, called block/function/method, and receiver */
 	newctx->sender = hcl->active_context;
 
 	SWITCH_ACTIVE_CONTEXT (hcl, newctx);
@@ -2061,7 +2061,7 @@ static int __activate_function (hcl_t* hcl, hcl_oop_function_t rcv_func, hcl_ooi
 		functx->slot[i] = HCL_STACK_GETARG(hcl, nargs, j);
 	}
 
-	HCL_STACK_POPS (hcl, nargs + 1); /* pop arguments and receiver */
+	HCL_STACK_POPS (hcl, nargs + 2); /* pop arguments, called function/block/method, and receiver */
 
 	HCL_ASSERT (hcl, (hcl_oop_t)functx->home != hcl->_nil);
 	functx->sender = hcl->active_context;
@@ -2076,7 +2076,7 @@ static HCL_INLINE int activate_function (hcl_t* hcl, hcl_ooi_t nargs)
 	hcl_oop_function_t rcv;
 	hcl_oop_context_t newctx;
 
-	rcv = (hcl_oop_function_t)HCL_STACK_GETRCV(hcl, nargs);
+	rcv = (hcl_oop_function_t)HCL_STACK_GETOP(hcl, nargs);
 	HCL_ASSERT (hcl, HCL_IS_FUNCTION(hcl, rcv));
 
 	x = __activate_function(hcl, rcv, nargs, &newctx);
@@ -2091,7 +2091,7 @@ static HCL_INLINE int call_primitive (hcl_t* hcl, hcl_ooi_t nargs)
 {
 	hcl_oop_prim_t rcv;
 
-	rcv = (hcl_oop_prim_t)HCL_STACK_GETRCV(hcl, nargs);
+	rcv = (hcl_oop_prim_t)HCL_STACK_GETOP(hcl, nargs);
 	HCL_ASSERT (hcl, HCL_IS_PRIM(hcl, rcv));
 	HCL_ASSERT (hcl, HCL_OBJ_GET_SIZE(rcv) == HCL_PRIM_NUM_WORDS);
 
@@ -2284,7 +2284,7 @@ static HCL_INLINE int exec_syscmd (hcl_t* hcl, hcl_ooi_t nargs)
 	hcl_bch_t* cmd = HCL_NULL;
 	hcl_bch_t* xcmd = HCL_NULL;
 
-	rcv = (hcl_oop_word_t)HCL_STACK_GETRCV(hcl, nargs);
+	rcv = (hcl_oop_word_t)HCL_STACK_GETOP(hcl, nargs);
 	/*HCL_ASSERT (hcl, HCL_IS_STRING(hcl, rcv) || HCL_IS_SYMBOL(hcl, rcv));*/
 	HCL_ASSERT (hcl, HCL_OBJ_IS_CHAR_POINTER(rcv));
 
@@ -3283,7 +3283,7 @@ static int execute (hcl_t* hcl)
 				FETCH_PARAM_CODE_TO (hcl, b2); /* nrvars */
 				LOG_INST_2 (hcl, "call %zu %zu", b1, b2);
 
-				rcv = HCL_STACK_GETRCV(hcl, b1);
+				rcv = HCL_STACK_GETOP(hcl, b1);
 				if (HCL_IS_BLOCK(hcl, rcv))
 				{
 					if (activate_block(hcl, b1, b2) <= -1) goto call2_failed;
@@ -3314,7 +3314,7 @@ static int execute (hcl_t* hcl)
 			handle_call:
 				LOG_INST_1 (hcl, "call %zu", b1);
 
-				rcv = HCL_STACK_GETRCV(hcl, b1);
+				rcv = HCL_STACK_GETOP(hcl, b1);
 				if (HCL_OOP_IS_POINTER(rcv))
 				{
 					switch (HCL_OBJ_GET_FLAGS_BRAND(rcv))

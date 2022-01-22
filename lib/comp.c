@@ -1258,7 +1258,9 @@ enum
 	COP_COMPILE_CLASS_P2,
 	COP_COMPILE_CLASS_P3,
 
+	COP_EMIT_PUSH_NIL,
 	COP_EMIT_CALL,
+	COP_EMIT_SEND_MESSAGE,
 
 	COP_EMIT_MAKE_ARRAY,
 	COP_EMIT_MAKE_BYTEARRAY,
@@ -2794,7 +2796,7 @@ static int compile_set_r (hcl_t* hcl, hcl_cnode_t* src)
 		return -1;
 	}
 
-	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_R, val);
+	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_R, val); /* special for set_r */
 	cf = GET_TOP_CFRAME(hcl);
 	cf->u.obj_r.nrets = nvars;
 
@@ -3359,7 +3361,9 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 				return -1;
 		}
 	}
-	else if (HCL_CNODE_IS_SYMBOL(car)  || HCL_CNODE_IS_DSYMBOL(car) || HCL_CNODE_IS_CONS_CONCODED(car, HCL_CONCODE_XLIST))
+	else if (HCL_CNODE_IS_SYMBOL(car)  || HCL_CNODE_IS_DSYMBOL(car) || 
+	         HCL_CNODE_IS_CONS_CONCODED(car, HCL_CONCODE_XLIST) ||
+	         HCL_CNODE_IS_CONS_CONCODED(car, HCL_CONCODE_MLIST))
 	{
 		/* normal function call 
 		 *  (<operator> <operand1> ...) */
@@ -3377,10 +3381,10 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 		oldtop = GET_TOP_CFRAME_INDEX(hcl); 
 		HCL_ASSERT (hcl, oldtop >= 0);
 
-		SWITCH_TOP_CFRAME (hcl, COP_EMIT_CALL, car);
+		SWITCH_TOP_CFRAME (hcl, COP_EMIT_CALL, car); /* <4> */
 
 		/* compile <operator> */
-		PUSH_CFRAME (hcl, COP_COMPILE_OBJECT, car);
+		PUSH_CFRAME (hcl, COP_COMPILE_OBJECT, car); /* <2> */
 
 		/* compile <operand1> ... etc */
 		cdr = HCL_CNODE_CONS_CDR(obj);
@@ -3430,13 +3434,16 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 		}
 
 		/* redundant cdr check is performed inside compile_object_list() */
-		PUSH_SUBCFRAME (hcl, COP_COMPILE_ARGUMENT_LIST, cdr);
+		PUSH_SUBCFRAME (hcl, COP_COMPILE_ARGUMENT_LIST, cdr); /* <3> */
 
 		/* patch the argument count in the operand field of the COP_EMIT_CALL frame */
 		cf = GET_CFRAME(hcl, oldtop);
 		HCL_ASSERT (hcl, cf->opcode == COP_EMIT_CALL);
 		cf->u.call.index = nargs;
 		cf->u.call.nrets = nrets;
+
+		/* arrange to push a dummy receiver to make the call look like a message send */
+		PUSH_CFRAME (hcl, COP_EMIT_PUSH_NIL, car); /* <1> this will be executed the COP_COMPILE_OBJECT car frame */
 	}
 	else
 	{
@@ -3450,14 +3457,109 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 static int compile_cons_mlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nrets)
 {
 	hcl_cnode_t* car;
+	hcl_ooi_t nargs;
+	hcl_ooi_t oldtop;
+	hcl_cframe_t* cf;
+	hcl_cnode_t* cdr;
 	int syncode; /* syntax code of the first element */
 
 	/* message sending 
-	 *  (: receiver message argument-list)
+	 *  (:<receiver> <operator> <operand1> ...)
 	 */
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS_CONCODED(obj, HCL_CONCODE_MLIST));
 
 	car = HCL_CNODE_CONS_CAR(obj);
+	if (HCL_CNODE_IS_SYMBOL(car) && (syncode = HCL_CNODE_SYMBOL_SYNCODE(car)))
+	{
+		/* special symbols such as 'if' is not permitted here */
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(car), HCL_CNODE_GET_TOK(car), "unpermitted message receiver");
+		return -1;
+	}
+
+	/* store the position of COP_EMIT_CALL to be produced with
+	 * SWITCH_TOP_CFRAME() in oldtop for argument count patching 
+	 * further down */
+	oldtop = GET_TOP_CFRAME_INDEX(hcl); 
+	HCL_ASSERT (hcl, oldtop >= 0);
+
+	SWITCH_TOP_CFRAME (hcl, COP_EMIT_SEND_MESSAGE, car);
+
+	/* compile <receiver> */
+	PUSH_CFRAME (hcl, COP_COMPILE_OBJECT, car);
+
+	/* compile <operator> */
+	cdr = HCL_CNODE_CONS_CDR(obj);
+	if (!cdr)
+	{
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_CALLABLE, HCL_CNODE_GET_LOC(car), HCL_CNODE_GET_TOK(car), "missing message");
+		return -1;
+	}
+	if (!HCL_CNODE_IS_CONS(cdr))
+	{
+		/* (<receiver> . 10) */
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(cdr), HCL_CNODE_GET_TOK(cdr), "redundant cdr in message send");
+		return -1;
+	}
+	car = HCL_CNODE_CONS_CAR(cdr);
+	PUSH_CFRAME (hcl, COP_COMPILE_OBJECT, car);
+
+	/* compile <operand1> ... etc */
+	cdr = HCL_CNODE_CONS_CDR(cdr);
+	if (!cdr) 
+	{
+		nargs = 0;
+	}
+	else
+	{
+		if (!HCL_CNODE_IS_CONS(cdr))
+		{
+			/* (funname . 10) */
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(cdr), HCL_CNODE_GET_TOK(cdr), "redundant cdr in function call");
+			return -1;
+		}
+
+		nargs = hcl_countcnodecons(hcl, cdr);
+		if (nargs > MAX_CODE_PARAM) 
+		{
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGFLOOD, HCL_CNODE_GET_LOC(cdr), HCL_NULL, "too many(%zd) parameters in function call", nargs); 
+			return -1;
+		}
+	}
+
+#if 0
+	if (HCL_CNODE_IS_SYMBOL(car) || HCL_CNODE_IS_DSYMBOL(car))
+	{
+		hcl_oop_cons_t sdc;
+
+		/* only symbols are added to the system dictionary. 
+		 * perform this lookup only if car is a symbol */
+		sdc = hcl_lookupsysdicforsymbol_noseterr(hcl, HCL_CNODE_GET_TOK(car));
+		if (sdc)
+		{
+			hcl_oop_word_t sdv;
+			sdv = (hcl_oop_word_t)HCL_CONS_CDR(sdc);
+			if (HCL_IS_PRIM(hcl, sdv))
+			{
+				if (nargs < sdv->slot[1] || nargs > sdv->slot[2])
+				{
+					hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGCOUNT, HCL_CNODE_GET_LOC(car), HCL_NULL, 
+						"parameters count(%zd) mismatch in function call - %.*js - expecting %zu-%zu parameters", nargs, HCL_CNODE_GET_TOKLEN(car), HCL_CNODE_GET_TOKPTR(car), sdv->slot[1], sdv->slot[2]); 
+					return -1;
+				}
+			}
+		}
+	}
+#endif
+
+	/* redundant cdr check is performed inside compile_object_list() */
+	PUSH_SUBCFRAME (hcl, COP_COMPILE_ARGUMENT_LIST, cdr);
+
+	/* patch the argument count in the operand field of the COP_EMIT_CALL frame */
+	cf = GET_CFRAME(hcl, oldtop);
+	HCL_ASSERT (hcl, cf->opcode == COP_EMIT_SEND_MESSAGE);
+	cf->u.sendmsg.nargs = nargs;
+	cf->u.sendmsg.nrets = nrets;
+
 	return 0;
 }
 
@@ -4412,6 +4514,42 @@ static HCL_INLINE int emit_call (hcl_t* hcl)
 	return n;
 }
 
+static HCL_INLINE int emit_push_nil (hcl_t* hcl)
+{
+	hcl_cframe_t* cf;
+	int n;
+
+	cf = GET_TOP_CFRAME(hcl);
+	HCL_ASSERT (hcl, cf->opcode == COP_EMIT_PUSH_NIL);
+	HCL_ASSERT (hcl, cf->operand != HCL_NULL);
+
+	n = emit_byte_instruction(hcl, HCL_CODE_PUSH_NIL, HCL_CNODE_GET_LOC(cf->operand));
+	POP_CFRAME (hcl);
+	return n;
+}
+
+static HCL_INLINE int emit_send_message (hcl_t* hcl)
+{
+	hcl_cframe_t* cf;
+	int n;
+
+	cf = GET_TOP_CFRAME(hcl);
+	HCL_ASSERT (hcl, cf->opcode == COP_EMIT_SEND_MESSAGE);
+	HCL_ASSERT (hcl, cf->operand != HCL_NULL);
+
+	if (cf->u.sendmsg.nrets > 0)
+	{
+		//n = emit_double_param_instruction(hcl, HCL_CODE_CALL_R, cf->u.sendmsg.nargs, cf->u.sendmsg.nrets, HCL_CNODE_GET_LOC(cf->operand));
+	}
+	else
+	{
+		//n = emit_single_param_instruction(hcl, HCL_CODE_CALL_0, cf->u.sendmsg.nargs, HCL_CNODE_GET_LOC(cf->operand));
+	}
+
+	POP_CFRAME (hcl);
+	return n;
+}
+
 /* ========================================================================= */
 
 static HCL_INLINE int emit_make_array (hcl_t* hcl)
@@ -4914,9 +5052,16 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 				if (compile_or_p2(hcl) <= -1) goto oops;
 				break;
 
-
 			case COP_EMIT_CALL:
 				if (emit_call(hcl) <= -1) goto oops;
+				break;
+
+			case COP_EMIT_PUSH_NIL:
+				if (emit_push_nil(hcl) <= -1) goto oops;
+				break;
+
+			case COP_EMIT_SEND_MESSAGE:
+				if (emit_send_message(hcl) <= -1) goto oops;
 				break;
 
 			case COP_EMIT_MAKE_ARRAY:

@@ -2842,8 +2842,6 @@ int hcl_logfmtcallstack (hcl_t* hcl, hcl_ooi_t nargs)
 	return format_stack_args(&fo, nargs, 0);
 }
 
-
-
 /* --------------------------------------------------------------------------
  * DYNAMIC STRING FORMATTING
  * -------------------------------------------------------------------------- */
