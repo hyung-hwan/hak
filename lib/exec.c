@@ -2125,13 +2125,13 @@ static HCL_INLINE int do_throw (hcl_t* hcl, hcl_oop_t val, hcl_ooi_t ip)
 		{
 			hcl_dbgi_t* dbgi;
 			dbgi = (hcl_dbgi_t*)HCL_OBJ_GET_BYTE_SLOT(hcl->active_function->dbgi);
-			HCL_LOG2 (hcl, HCL_LOG_IC | HCL_LOG_WARN, "Warning - exception not handled %js:%zu", (dbgi[ip].fname? dbgi[ip].fname: oocstr_dash), dbgi[ip].sline);
-			hcl_seterrbfmt (hcl, HCL_EEXCEPT, "exception not handled in %js:%zu", (dbgi[ip].fname? dbgi[ip].fname: oocstr_dash), dbgi[ip].sline);
+			HCL_LOG3 (hcl, HCL_LOG_IC | HCL_LOG_WARN, "Warning - exception not handled %js:%zu- %O", (dbgi[ip].fname? dbgi[ip].fname: oocstr_dash), dbgi[ip].sline, val);
+			hcl_seterrbfmt (hcl, HCL_EEXCEPT, "exception not handled in %js:%zu - %O", (dbgi[ip].fname? dbgi[ip].fname: oocstr_dash), dbgi[ip].sline, val);
 		}
 		else
 		{
-			HCL_LOG0 (hcl, HCL_LOG_IC | HCL_LOG_WARN, "Warning - exception not handled");
-			hcl_seterrbfmt (hcl, HCL_EEXCEPT, "exception not handled");
+			HCL_LOG1 (hcl, HCL_LOG_IC | HCL_LOG_WARN, "Warning - exception not handled - %O", val);
+			hcl_seterrbfmt (hcl, HCL_EEXCEPT, "exception not handled - %O", val);
 		}
 
 		/* exception not handled. terminate the active process */
@@ -3308,16 +3308,19 @@ static int execute (hcl_t* hcl)
 			case HCL_CODE_CALL_2:
 			case HCL_CODE_CALL_3:
 			{
-				hcl_oop_t rcv;
+				hcl_oop_t op;
 
 				b1 = bcode & 0x3; /* low 2 bits */
 			handle_call:
 				LOG_INST_1 (hcl, "call %zu", b1);
 
-				rcv = HCL_STACK_GETOP(hcl, b1);
-				if (HCL_OOP_IS_POINTER(rcv))
+			/* TODO: check if the rcv is the dummy receiver 
+				rcv = HCL_STACK_GETRCV(hcl, b1);
+			 * */
+				op = HCL_STACK_GETOP(hcl, b1);
+				if (HCL_OOP_IS_POINTER(op))
 				{
-					switch (HCL_OBJ_GET_FLAGS_BRAND(rcv))
+					switch (HCL_OBJ_GET_FLAGS_BRAND(op))
 					{
 						case HCL_BRAND_FUNCTION:
 							if (activate_function(hcl, b1) <= -1) goto call_failed;
@@ -3346,7 +3349,8 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				{
 				cannot_call:
 					/* run time error */
-					hcl_seterrbfmt (hcl, HCL_ECALL, "cannot call %O", rcv);
+					hcl_seterrbfmt (hcl, HCL_ECALL, "cannot call %O", op);
+					if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
 				call_failed:
 					supplement_errmsg (hcl, fetched_instruction_pointer);
 					goto oops;
@@ -3611,25 +3615,38 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 
 			/* -------------------------------------------------------- */
 #if 0
-			case HCL_CODE_SEND_MESSAGE_X:
-			case HCL_CODE_SEND_MESSAGE_TO_SUPER_X:
+			case HCL_CODE_SEND_R:
+			case HCL_CODE_SEND_TO_SUPER_R:
+			/* TODO ........ */
+				break;
+#endif
+
+			case HCL_CODE_SEND_X:
+			case HCL_CODE_SEND_TO_SUPER_X:
+			#if 0
 				/* b1 -> number of arguments 
 				 * b2 -> selector index stored in the literal frame */
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				FETCH_PARAM_CODE_TO (hcl, b2);
 				goto handle_send_message;
+			#else
+				FETCH_PARAM_CODE_TO (hcl, b1);
+				goto handle_send;
+			#endif
 
-			case HCL_CODE_SEND_MESSAGE_0:
-			case HCL_CODE_SEND_MESSAGE_1:
-			case HCL_CODE_SEND_MESSAGE_2:
-			case HCL_CODE_SEND_MESSAGE_3:
-			case HCL_CODE_SEND_MESSAGE_TO_SUPER_0:
-			case HCL_CODE_SEND_MESSAGE_TO_SUPER_1:
-			case HCL_CODE_SEND_MESSAGE_TO_SUPER_2:
-			case HCL_CODE_SEND_MESSAGE_TO_SUPER_3:
+			case HCL_CODE_SEND_0:
+			case HCL_CODE_SEND_1:
+			case HCL_CODE_SEND_2:
+			case HCL_CODE_SEND_3:
+			case HCL_CODE_SEND_TO_SUPER_0:
+			case HCL_CODE_SEND_TO_SUPER_1:
+			case HCL_CODE_SEND_TO_SUPER_2:
+			case HCL_CODE_SEND_TO_SUPER_3:
 			{
+			#if 0
 				hcl_oop_char_t selector;
 
+			
 				b1 = bcode & 0x3; /* low 2 bits */
 				FETCH_BYTE_CODE_TO (hcl, b2);
 
@@ -3637,12 +3654,59 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				/* get the selector from the literal frame */
 				selector = (hcl_oop_char_t)hcl->active_method->slot[b2];
 
-				LOG_INST_3 (hcl, "send_message%hs %zu @%zu", (((bcode >> 2) & 1)? "_to_super": ""), b1, b2);
+				LOG_INST_3 (hcl, "send%hs %zu @%zu", (((bcode >> 2) & 1)? "_to_super": ""), b1, b2);
 
 				if (send_message(hcl, selector, ((bcode >> 2) & 1), b1) <= -1) goto oops;
-				break; /* CMD_SEND_MESSAGE */
+				break;
+			#else
+				hcl_oop_t rcv, op;
+
+				b1 = bcode & 0x3; /* low 2 bits */
+			handle_send:
+				LOG_INST_2 (hcl, "send%hs %zu", (((bcode >> 2) & 1)? "_to_super": ""), b1);
+
+				rcv = HCL_STACK_GETRCV(hcl, b1);
+				op = HCL_STACK_GETOP(hcl, b1);
+				if (HCL_OOP_IS_POINTER(op))
+				{
+					switch (HCL_OBJ_GET_FLAGS_BRAND(op))
+					{
+						case HCL_BRAND_FUNCTION:
+							if (activate_function(hcl, b1) <= -1) goto call_failed;
+							break;
+
+						case HCL_BRAND_BLOCK:
+							if (activate_block(hcl, b1, 0) <= -1) goto call_failed;
+							break;
+
+						case HCL_BRAND_PRIM:
+							if (call_primitive(hcl, b1) <= -1) 
+							{
+/*
+TODO: translate a certain primitive failure to a catchable exception. this seems to work . i need to capture the throw value instead of hcl->_nil .
+if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
+*/
+								goto call_failed;
+							}
+							break;
+
+						default:
+							goto cannot_send;
+					}
+				}
+				else
+				{
+				cannot_send:
+					hcl_seterrbfmt (hcl, HCL_ECALL, "cannot send %O to %O", op, rcv); /* TODO: change to HCL_ESEND?? */
+					if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
+				send_failed:
+					supplement_errmsg (hcl, fetched_instruction_pointer);
+					goto oops;
+				}
+				break;
+			#endif
 			}
-#endif
+
 			/* -------------------------------------------------------- */
 			case HCL_CODE_PUSH_CLSVAR_I_X:
 			{

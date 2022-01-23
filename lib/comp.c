@@ -519,6 +519,8 @@ static int emit_single_param_instruction (hcl_t* hcl, int cmd, hcl_oow_t param_1
 		case HCL_CODE_JUMP_FORWARD_0:
 		case HCL_CODE_JUMP_BACKWARD_0:
 		case HCL_CODE_CALL_0:
+		case HCL_CODE_SEND_0:
+		case HCL_CODE_SEND_TO_SUPER_0:
 			if (param_1 < 4)
 			{
 				/* low 2 bits to hold the parameter */
@@ -620,8 +622,6 @@ static int emit_double_param_instruction (hcl_t* hcl, int cmd, hcl_oow_t param_1
 		case HCL_CODE_PUSH_OBJVAR_0:
 		case HCL_CODE_STORE_INTO_OBJVAR_0:
 		case HCL_CODE_POP_INTO_OBJVAR_0:
-		case HCL_CODE_SEND_MESSAGE_0:
-		case HCL_CODE_SEND_MESSAGE_TO_SUPER_0:
 			if (param_1 < 4 && param_2 < 0xFF)
 			{
 				/* low 2 bits of the instruction code is the first parameter */
@@ -1260,7 +1260,7 @@ enum
 
 	COP_EMIT_PUSH_NIL,
 	COP_EMIT_CALL,
-	COP_EMIT_SEND_MESSAGE,
+	COP_EMIT_SEND,
 
 	COP_EMIT_MAKE_ARRAY,
 	COP_EMIT_MAKE_BYTEARRAY,
@@ -3456,11 +3456,10 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 
 static int compile_cons_mlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nrets)
 {
-	hcl_cnode_t* car;
+	hcl_cnode_t* car, * cdr, * rcv;
 	hcl_ooi_t nargs;
 	hcl_ooi_t oldtop;
 	hcl_cframe_t* cf;
-	hcl_cnode_t* cdr;
 	int syncode; /* syntax code of the first element */
 
 	/* message sending 
@@ -3482,10 +3481,10 @@ static int compile_cons_mlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 	oldtop = GET_TOP_CFRAME_INDEX(hcl); 
 	HCL_ASSERT (hcl, oldtop >= 0);
 
-	SWITCH_TOP_CFRAME (hcl, COP_EMIT_SEND_MESSAGE, car);
+	SWITCH_TOP_CFRAME (hcl, COP_EMIT_SEND, car);
 
 	/* compile <receiver> */
-	PUSH_CFRAME (hcl, COP_COMPILE_OBJECT, car);
+	rcv = car; /* remember the receiver node to to push it later */
 
 	/* compile <operator> */
 	cdr = HCL_CNODE_CONS_CDR(obj);
@@ -3501,6 +3500,9 @@ static int compile_cons_mlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 		return -1;
 	}
 	car = HCL_CNODE_CONS_CAR(cdr);
+/* TODO: if car is a normal symbol, it is a method name of the receiver's class.
+ *       don't evalutate it.
+ *       however, if it's enclosed in another () or (:), evaluate it... */
 	PUSH_CFRAME (hcl, COP_COMPILE_OBJECT, car);
 
 	/* compile <operand1> ... etc */
@@ -3556,10 +3558,11 @@ static int compile_cons_mlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 
 	/* patch the argument count in the operand field of the COP_EMIT_CALL frame */
 	cf = GET_CFRAME(hcl, oldtop);
-	HCL_ASSERT (hcl, cf->opcode == COP_EMIT_SEND_MESSAGE);
+	HCL_ASSERT (hcl, cf->opcode == COP_EMIT_SEND);
 	cf->u.sendmsg.nargs = nargs;
 	cf->u.sendmsg.nrets = nrets;
 
+	PUSH_CFRAME (hcl, COP_COMPILE_OBJECT, rcv);
 	return 0;
 }
 
@@ -4528,22 +4531,22 @@ static HCL_INLINE int emit_push_nil (hcl_t* hcl)
 	return n;
 }
 
-static HCL_INLINE int emit_send_message (hcl_t* hcl)
+static HCL_INLINE int emit_send (hcl_t* hcl)
 {
 	hcl_cframe_t* cf;
 	int n;
 
 	cf = GET_TOP_CFRAME(hcl);
-	HCL_ASSERT (hcl, cf->opcode == COP_EMIT_SEND_MESSAGE);
+	HCL_ASSERT (hcl, cf->opcode == COP_EMIT_SEND);
 	HCL_ASSERT (hcl, cf->operand != HCL_NULL);
 
 	if (cf->u.sendmsg.nrets > 0)
 	{
-		//n = emit_double_param_instruction(hcl, HCL_CODE_CALL_R, cf->u.sendmsg.nargs, cf->u.sendmsg.nrets, HCL_CNODE_GET_LOC(cf->operand));
+		n = emit_double_param_instruction(hcl, HCL_CODE_SEND_R, cf->u.sendmsg.nargs, cf->u.sendmsg.nrets, HCL_CNODE_GET_LOC(cf->operand));
 	}
 	else
 	{
-		//n = emit_single_param_instruction(hcl, HCL_CODE_CALL_0, cf->u.sendmsg.nargs, HCL_CNODE_GET_LOC(cf->operand));
+		n = emit_single_param_instruction(hcl, HCL_CODE_SEND_0, cf->u.sendmsg.nargs, HCL_CNODE_GET_LOC(cf->operand));
 	}
 
 	POP_CFRAME (hcl);
@@ -5060,8 +5063,8 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 				if (emit_push_nil(hcl) <= -1) goto oops;
 				break;
 
-			case COP_EMIT_SEND_MESSAGE:
-				if (emit_send_message(hcl) <= -1) goto oops;
+			case COP_EMIT_SEND:
+				if (emit_send(hcl) <= -1) goto oops;
 				break;
 
 			case COP_EMIT_MAKE_ARRAY:

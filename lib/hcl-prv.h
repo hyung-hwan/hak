@@ -676,8 +676,8 @@ SHORT INSTRUCTION CODE                                        LONG INSTRUCTION C
 # XXXth instance variable of YYYYYYYY object
 
                                                                          v
-112-115  0111 00XX YYYYYYYY SEND_MESSAGE                      240  1111 0000 XXXXXXXX YYYYYYYY SEND_MESSAGE_X                 (bit 2 off)
-116-119  0111 01XX YYYYYYYY SEND_MESSAGE_TO_SUPER             244  1111 0100 XXXXXXXX YYYYYYYY SEND_MESSAGE_TO_SUPER_X        (bit 2 on)
+112-115  0111 00XX YYYYYYYY SEND_MESSAGE                      240  1111 0000 XXXXXXXX YYYYYYYY SEND_X                 (bit 2 off)
+116-119  0111 01XX YYYYYYYY SEND_TO_SUPER                     244  1111 0100 XXXXXXXX YYYYYYYY SEND_TO_SUPER_X        (bit 2 on)
 # XXX args, YYYYYYYY message
 
 120      0111 1000 YYYYYYYY PUSH_CLSVAR_I_X
@@ -833,28 +833,26 @@ enum hcl_bcode_t
 	HCL_CODE_POP_INTO_OBJVAR_2        = 0x6E,
 	HCL_CODE_POP_INTO_OBJVAR_3        = 0x6F,
 
-	HCL_CODE_SEND_MESSAGE_0           = 0x70, /* 112 */
-	HCL_CODE_SEND_MESSAGE_1           = 0x71, /* 113 */
-	HCL_CODE_SEND_MESSAGE_2           = 0x72, /* 114 */
-	HCL_CODE_SEND_MESSAGE_3           = 0x73, /* 115 */
+	HCL_CODE_SEND_0                   = 0x70, /* 112 */
+	HCL_CODE_SEND_1                   = 0x71, /* 113 */
+	HCL_CODE_SEND_2                   = 0x72, /* 114 */
+	HCL_CODE_SEND_3                   = 0x73, /* 115 */
 
-	HCL_CODE_SEND_MESSAGE_TO_SUPER_0  = 0x74, /* 116 */
-	HCL_CODE_SEND_MESSAGE_TO_SUPER_1  = 0x75, /* 117 */
-	HCL_CODE_SEND_MESSAGE_TO_SUPER_2  = 0x76, /* 118 */
-	HCL_CODE_SEND_MESSAGE_TO_SUPER_3  = 0x77, /* 119 */
+	HCL_CODE_SEND_TO_SUPER_0          = 0x74, /* 116 */
+	HCL_CODE_SEND_TO_SUPER_1          = 0x75, /* 117 */
+	HCL_CODE_SEND_TO_SUPER_2          = 0x76, /* 118 */
+	HCL_CODE_SEND_TO_SUPER_3          = 0x77, /* 119 */
 
-	HCL_CODE_PUSH_CLSVAR_I_X           = 0x78, /* 120 */
-	HCL_CODE_STORE_INTO_CLSVAR_I_X     = 0x79, /* 121 */
-	HCL_CODE_POP_INTO_CLSVAR_I_X       = 0x7A, /* 122 */
+	HCL_CODE_PUSH_CLSVAR_I_X          = 0x78, /* 120 */
+	HCL_CODE_STORE_INTO_CLSVAR_I_X    = 0x79, /* 121 */
+	HCL_CODE_POP_INTO_CLSVAR_I_X      = 0x7A, /* 122 */
 
-	HCL_CODE_PUSH_CLSVAR_M_X           = 0x7B, /* 123 */
-	HCL_CODE_STORE_INTO_CLSVAR_M_X     = 0x7C, /* 124 */
-	HCL_CODE_POP_INTO_CLSVAR_M_X       = 0x7D, /* 125 */
-	
+	HCL_CODE_PUSH_CLSVAR_M_X          = 0x7B, /* 123 */
+	HCL_CODE_STORE_INTO_CLSVAR_M_X    = 0x7C, /* 124 */
+	HCL_CODE_POP_INTO_CLSVAR_M_X      = 0x7D, /* 125 */
+
 	/* UNUSED 0x7E - 0x7F */
-
 	HCL_CODE_STORE_INTO_INSTVAR_X     = 0x80, /* 128 */
-
 
 	HCL_CODE_PUSH_RECEIVER            = 0x81, /* 129 */
 	HCL_CODE_PUSH_NIL                 = 0x82, /* 130 */
@@ -915,7 +913,6 @@ enum hcl_bcode_t
 	HCL_CODE_CALL_R                   = 0xD5, /* 213 ## ##*/
 	HCL_CODE_PUSH_RETURN_R            = 0xD6, /* 214 */ 
 	HCL_CODE_TRY_ENTER                = 0xD7, /* 215 ## */ 
-	
 
 	HCL_CODE_STORE_INTO_CTXTEMPVAR_X  = 0xD8, /* 216 ## */
 	HCL_CODE_TRY_ENTER2               = 0xD9, /* 217 ## */ 
@@ -943,25 +940,27 @@ enum hcl_bcode_t
 	HCL_CODE_POP_INTO_BYTEARRAY       = 0xEE, /* 238 ## */
 	HCL_CODE_POP_INTO_DIC             = 0xEF, /* 239 */
 
-	HCL_CODE_SEND_MESSAGE_X           = 0xF0, /* 240 ## */
-	HCL_CODE_MAKE_CONS                = 0xF1, /* 241 */
-	HCL_CODE_POP_INTO_CONS            = 0xF2, /* 242 */
-	HCL_CODE_POP_INTO_CONS_END        = 0xF3, /* 243 */
+	HCL_CODE_SEND_X                   = 0xF0, /* 240 ## */
+	HCL_CODE_SEND_R                   = 0xF1, /* 241 ## ## */
 
-	HCL_CODE_SEND_MESSAGE_TO_SUPER_X  = 0xF4, /* 244 ## */
-	HCL_CODE_POP_INTO_CONS_CDR        = 0xF5, /* 245 */
+	HCL_CODE_MAKE_CONS                = 0xF2, /* 242 */
+	HCL_CODE_POP_INTO_CONS            = 0xF3, /* 243 */
+
+	HCL_CODE_SEND_TO_SUPER_X          = 0xF4, /* 244 ## */
+	HCL_CODE_SEND_TO_SUPER_R          = 0xF5, /* 245 ## ## */
+
+	HCL_CODE_POP_INTO_CONS_END        = 0xF6, /* 246 */
+	HCL_CODE_POP_INTO_CONS_CDR        = 0xF7, /* 247 */
 	/* -------------------------------------- */
 
-	/* UNUSED - 0xF6 */
-	HCL_CODE_DUP_STACKTOP             = 0xF7, /* 247 */
-	HCL_CODE_POP_STACKTOP             = 0xF8, /* 248 */
-	HCL_CODE_RETURN_STACKTOP          = 0xF9, /* 249 */
-	HCL_CODE_RETURN_RECEIVER          = 0xFA, /* 250 */
-	HCL_CODE_RETURN_FROM_BLOCK        = 0xFB, /* 251, return the stack top from a block */
+	HCL_CODE_DUP_STACKTOP             = 0xF8, /* 248 */
+	HCL_CODE_POP_STACKTOP             = 0xF9, /* 249 */
+	HCL_CODE_RETURN_STACKTOP          = 0xFA, /* 250 */
+	HCL_CODE_RETURN_RECEIVER          = 0xFB, /* 251 */
+	HCL_CODE_RETURN_FROM_BLOCK        = 0xFC, /* 252, return the stack top from a block */
 
-	HCL_CODE_MAKE_FUNCTION            = 0xFC, /* 252 */
-	HCL_CODE_MAKE_BLOCK               = 0xFD, /* 253 */
-	/* UNUSED 254 */
+	HCL_CODE_MAKE_FUNCTION            = 0xFD, /* 253 */
+	HCL_CODE_MAKE_BLOCK               = 0xFE, /* 254 */
 	HCL_CODE_NOOP                     = 0xFF  /* 255 */
 };
 

@@ -476,27 +476,35 @@ int hcl_decode (hcl_t* hcl, hcl_oow_t start, hcl_oow_t end)
 				break;
 
 			/* -------------------------------------------------------- */
-			case HCL_CODE_SEND_MESSAGE_X:
-			case HCL_CODE_SEND_MESSAGE_TO_SUPER_X:
-				/* b1 -> number of arguments
-				 * b2 -> selector index stored in the literal frame */
+
+			case HCL_CODE_SEND_R:
+				FETCH_PARAM_CODE_TO (hcl, b1); /* nargs */
+				FETCH_PARAM_CODE_TO (hcl, b2); /* nrvars */
+				LOG_INST_2 (hcl, "send_r %zu %zu", b1, b2);
+				break;
+			case HCL_CODE_SEND_TO_SUPER_R:
+				FETCH_PARAM_CODE_TO (hcl, b1); /* nargs */
+				FETCH_PARAM_CODE_TO (hcl, b2); /* nrvars */
+				LOG_INST_2 (hcl, "send_to_super_r %zu %zu", b1, b2);
+				break;
+
+			case HCL_CODE_SEND_X:
+			case HCL_CODE_SEND_TO_SUPER_X:
 				FETCH_PARAM_CODE_TO (hcl, b1);
-				FETCH_PARAM_CODE_TO (hcl, b2);
-				goto handle_send_message;
+				goto handle_send;
 
-			case HCL_CODE_SEND_MESSAGE_0:
-			case HCL_CODE_SEND_MESSAGE_1:
-			case HCL_CODE_SEND_MESSAGE_2:
-			case HCL_CODE_SEND_MESSAGE_3:
-			case HCL_CODE_SEND_MESSAGE_TO_SUPER_0:
-			case HCL_CODE_SEND_MESSAGE_TO_SUPER_1:
-			case HCL_CODE_SEND_MESSAGE_TO_SUPER_2:
-			case HCL_CODE_SEND_MESSAGE_TO_SUPER_3:
+			case HCL_CODE_SEND_0:
+			case HCL_CODE_SEND_1:
+			case HCL_CODE_SEND_2:
+			case HCL_CODE_SEND_3:
+			case HCL_CODE_SEND_TO_SUPER_0:
+			case HCL_CODE_SEND_TO_SUPER_1:
+			case HCL_CODE_SEND_TO_SUPER_2:
+			case HCL_CODE_SEND_TO_SUPER_3:
 				b1 = bcode & 0x3; /* low 2 bits */
-				FETCH_BYTE_CODE_TO (hcl, b2);
 
-			handle_send_message:
-				LOG_INST_3 (hcl, "send_message%hs %zu @%zu", (((bcode >> 2) & 1)? "_to_super": ""), b1, b2);
+			handle_send:
+				LOG_INST_2 (hcl, "send%hs %zu", (((bcode >> 2) & 1)? "_to_super": ""), b1);
 				break;
 
 			/* -------------------------------------------------------- */
