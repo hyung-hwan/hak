@@ -1259,6 +1259,7 @@ enum
 	COP_COMPILE_CLASS_P3,
 
 	COP_EMIT_PUSH_NIL,
+	COP_EMIT_PUSH_SYMBOL,
 	COP_EMIT_CALL,
 	COP_EMIT_SEND,
 
@@ -2190,7 +2191,7 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 		if (HCL_UNLIKELY(!tmp)) goto oops;
 		if (emit_push_literal(hcl, tmp, &cf->u._class.start_loc) <= -1) goto oops;
 	}
-	
+
 	if (ncvars > 0)
 	{
 		hcl_oop_t tmp;
@@ -3500,10 +3501,15 @@ static int compile_cons_mlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 		return -1;
 	}
 	car = HCL_CNODE_CONS_CAR(cdr);
-/* TODO: if car is a normal symbol, it is a method name of the receiver's class.
- *       don't evalutate it.
- *       however, if it's enclosed in another () or (:), evaluate it... */
-	PUSH_CFRAME (hcl, COP_COMPILE_OBJECT, car);
+	if (HCL_CNODE_IS_SYMBOL_PLAIN(car))
+	{
+		PUSH_CFRAME (hcl, COP_EMIT_PUSH_SYMBOL, car);
+	}
+	else
+	{
+/* TODO: more sanity check on what can be used as a method */
+		PUSH_CFRAME (hcl, COP_COMPILE_OBJECT, car);
+	}
 
 	/* compile <operand1> ... etc */
 	cdr = HCL_CNODE_CONS_CDR(cdr);
@@ -3958,7 +3964,6 @@ redo:
 			hcl_setsynerrbfmt (hcl, HCL_SYNERR_TRPCOLONSBANNED, HCL_CNODE_GET_LOC(oprnd), HCL_CNODE_GET_TOK(oprnd), "triple colons disallowed in this context", HCL_CNODE_GET_TYPE(oprnd));
 			return -1;
 
-			
 		default:
 			hcl_setsynerrbfmt (hcl, HCL_SYNERR_INTERN, HCL_CNODE_GET_LOC(oprnd), HCL_CNODE_GET_TOK(oprnd), "internal error - unexpected object type %d", HCL_CNODE_GET_TYPE(oprnd));
 			return -1;
@@ -4531,6 +4536,23 @@ static HCL_INLINE int emit_push_nil (hcl_t* hcl)
 	return n;
 }
 
+static HCL_INLINE int emit_push_symbol (hcl_t* hcl)
+{
+	hcl_cframe_t* cf;
+	hcl_oop_t lit;
+
+	cf = GET_TOP_CFRAME(hcl);
+	HCL_ASSERT (hcl, cf->opcode == COP_EMIT_PUSH_SYMBOL);
+	HCL_ASSERT (hcl, cf->operand != HCL_NULL);
+
+	lit = hcl_makesymbol(hcl, HCL_CNODE_GET_TOKPTR(cf->operand), HCL_CNODE_GET_TOKLEN(cf->operand));
+	if (HCL_UNLIKELY(!lit)) return -1;
+	if (emit_push_literal(hcl, lit, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+
+	POP_CFRAME (hcl);
+	return 0;
+}
+
 static HCL_INLINE int emit_send (hcl_t* hcl)
 {
 	hcl_cframe_t* cf;
@@ -5061,6 +5083,10 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 
 			case COP_EMIT_PUSH_NIL:
 				if (emit_push_nil(hcl) <= -1) goto oops;
+				break;
+
+			case COP_EMIT_PUSH_SYMBOL:
+				if (emit_push_symbol(hcl) <= -1) goto oops;
 				break;
 
 			case COP_EMIT_SEND:

@@ -1900,8 +1900,8 @@ static int prepare_new_context (hcl_t* hcl, hcl_oop_block_t rcv_blk, hcl_ooi_t n
 
 	tmpr_mask = HCL_OOP_TO_SMOOI(rcv_blk->tmpr_mask);
 
-	fblk_nrvars = GET_BLKTMPR_MASK_NRVARS(tmpr_mask);	
-	fblk_nlvars = GET_BLKTMPR_MASK_NLVARS(tmpr_mask);	
+	fblk_nrvars = GET_BLKTMPR_MASK_NRVARS(tmpr_mask);
+	fblk_nlvars = GET_BLKTMPR_MASK_NLVARS(tmpr_mask);
 	fixed_nargs = GET_BLKTMPR_MASK_NARGS(tmpr_mask);
 	actual_nargs = nargs - nargs_offset;
 	excess_nargs = actual_nargs - fixed_nargs;
@@ -2021,8 +2021,8 @@ static int __activate_function (hcl_t* hcl, hcl_oop_function_t rcv_func, hcl_ooi
 	HCL_ASSERT (hcl, HCL_IS_FUNCTION(hcl, rcv_func));
 
 	tmpr_mask = HCL_OOP_TO_SMOOI(rcv_func->tmpr_mask);
-	nrvars = GET_BLKTMPR_MASK_NRVARS(tmpr_mask);	
-	nlvars = GET_BLKTMPR_MASK_NLVARS(tmpr_mask);	
+	nrvars = GET_BLKTMPR_MASK_NRVARS(tmpr_mask);
+	nlvars = GET_BLKTMPR_MASK_NLVARS(tmpr_mask);
 	fixed_nargs = GET_BLKTMPR_MASK_NARGS(tmpr_mask);
 	actual_nargs = nargs - nargs_offset;
 	excess_nargs = actual_nargs - fixed_nargs;
@@ -2106,6 +2106,16 @@ static HCL_INLINE int call_primitive (hcl_t* hcl, hcl_ooi_t nargs)
 	}
 
 	return ((hcl_pfimpl_t)rcv->impl)(hcl, (hcl_mod_t*)rcv->mod, nargs);
+}
+
+/* ------------------------------------------------------------------------- */
+static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t op, int to_super, hcl_ooi_t nargs)
+{
+	HCL_ASSERT (hcl, HCL_IS_INSTANCE(hcl, rcv));
+	HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl, op));
+
+
+	return 0;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -3667,32 +3677,9 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 
 				rcv = HCL_STACK_GETRCV(hcl, b1);
 				op = HCL_STACK_GETOP(hcl, b1);
-				if (HCL_OOP_IS_POINTER(op))
+				if (HCL_IS_INSTANCE(hcl, rcv) && HCL_IS_SYMBOL(hcl, op))
 				{
-					switch (HCL_OBJ_GET_FLAGS_BRAND(op))
-					{
-						case HCL_BRAND_FUNCTION:
-							if (activate_function(hcl, b1) <= -1) goto call_failed;
-							break;
-
-						case HCL_BRAND_BLOCK:
-							if (activate_block(hcl, b1, 0) <= -1) goto call_failed;
-							break;
-
-						case HCL_BRAND_PRIM:
-							if (call_primitive(hcl, b1) <= -1) 
-							{
-/*
-TODO: translate a certain primitive failure to a catchable exception. this seems to work . i need to capture the throw value instead of hcl->_nil .
-if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
-*/
-								goto call_failed;
-							}
-							break;
-
-						default:
-							goto cannot_send;
-					}
+					if (send_message(hcl, rcv, op, ((bcode >> 2) & 1), b1) <= -1) goto send_failed;
 				}
 				else
 				{
