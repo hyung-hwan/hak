@@ -840,18 +840,14 @@ struct hcl_process_scheduler_t
 };
 
 
-#define HCL_CLASS_NAMED_INSTVARS 7
+#define HCL_CLASS_NAMED_INSTVARS 6
 typedef struct hcl_class_t hcl_class_t;
 typedef struct hcl_class_t* hcl_oop_class_t;
 struct hcl_class_t
 {
 	HCL_OBJ_HEADER;
 
-	/* === the following five fields must be in sync with hcl_methowner_t === */
-	/* [0] - instance methods, MethodDictionary
-	 * [1] - class methods, MethodDictionary */
-	hcl_oop_dic_t  mthdic[2];      
-	/* ===================================================================== */
+	hcl_oop_dic_t memdic; /* dictionary of named elements including methods and variables */
 
 	hcl_oop_t superclass;
 	hcl_oop_t nivars; /* smooi. */
@@ -860,7 +856,7 @@ struct hcl_class_t
 	hcl_oop_char_t ivarnames;
 	hcl_oop_char_t cvarnames;
 
-	/* indexed part afterwards */
+	/* indexed part afterwards - not included in HCL_CLASS_NAMED_INSTVARS */
 	hcl_oop_t      cvar[1];   /* class variables. */
 };
 
@@ -2620,12 +2616,12 @@ HCL_EXPORT hcl_oop_cons_t hcl_getatsysdic (
 	hcl_oop_t  key
 );
 
-hcl_oop_cons_t hcl_lookupsysdicforsymbol (
+HCL_EXPORT hcl_oop_cons_t hcl_lookupsysdicforsymbol (
 	hcl_t*            hcl,
 	const hcl_oocs_t* name
 );
 
-hcl_oop_cons_t hcl_lookupsysdicforsymbol_noseterr (
+HCL_EXPORT hcl_oop_cons_t hcl_lookupsysdicforsymbol_noseterr (
 	hcl_t*            hcl,
 	const hcl_oocs_t* name
 );
@@ -2633,6 +2629,18 @@ hcl_oop_cons_t hcl_lookupsysdicforsymbol_noseterr (
 HCL_EXPORT int hcl_zapatsysdic (
 	hcl_t*     hcl,
 	hcl_oop_t  key
+);
+
+HCL_EXPORT hcl_oop_cons_t hcl_lookupdicforsymbol (
+	hcl_t*            hcl,
+	hcl_oop_dic_t     dic,
+	const hcl_oocs_t* name
+);
+
+HCL_EXPORT hcl_oop_cons_t hcl_lookupdicforsymbol_noseterr (
+	hcl_t*            hcl,
+	hcl_oop_dic_t     dic,
+	const hcl_oocs_t* name
 );
 
 HCL_EXPORT hcl_oop_cons_t hcl_putatdic (

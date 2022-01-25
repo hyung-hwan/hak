@@ -211,7 +211,7 @@ static hcl_oop_cons_t find_or_upsert (hcl_t* hcl, hcl_oop_dic_t dic, hcl_oop_t k
 
 	/* create a new assocation of a key and a value since 
 	 * the key isn't found in the root dictionary */
-	ass = (hcl_oop_cons_t)hcl_makecons (hcl, (hcl_oop_t)key, value);
+	ass = (hcl_oop_cons_t)hcl_makecons(hcl, (hcl_oop_t)key, value);
 	if (!ass) goto oops;
 
 	/* the current tally must be less than the maximum value. otherwise,
@@ -273,6 +273,17 @@ static HCL_INLINE hcl_oop_cons_t lookupdic (hcl_t* hcl, hcl_oop_dic_t dic, const
 	if (!ass) hcl_seterrbfmt(hcl, HCL_ENOENT, "unable to find %.*js in a dictionary", name->len, name->ptr);
 	return ass;
 }
+
+hcl_oop_cons_t hcl_lookupdicforsymbol_noseterr (hcl_t* hcl, hcl_oop_dic_t dic, const hcl_oocs_t* name)
+{
+	return lookupdic_noseterr(hcl, dic, name);
+}
+
+hcl_oop_cons_t hcl_lookupdicforsymbol (hcl_t* hcl, hcl_oop_dic_t dic, const hcl_oocs_t* name)
+{
+	return lookupdic(hcl, dic, name);
+}
+
 
 hcl_oop_cons_t hcl_putatsysdic (hcl_t* hcl, hcl_oop_t key, hcl_oop_t value)
 {

@@ -1998,7 +1998,7 @@ static HCL_INLINE int activate_block (hcl_t* hcl, hcl_ooi_t nargs, hcl_ooi_t nrv
 
 /* ------------------------------------------------------------------------- */
 
-static int __activate_function (hcl_t* hcl, hcl_oop_function_t rcv_func, hcl_ooi_t nargs, hcl_oop_context_t* pnewctx)
+static int __activate_function (hcl_t* hcl, hcl_oop_function_t op_func, hcl_ooi_t nargs, hcl_oop_context_t* pnewctx)
 {
 	/* prepare a new block context for activation.
 	 * the receiver must be a block context which becomes the base
@@ -2018,9 +2018,9 @@ static int __activate_function (hcl_t* hcl, hcl_oop_function_t rcv_func, hcl_ooi
 	 */
 
 	/* the receiver must be a function */
-	HCL_ASSERT (hcl, HCL_IS_FUNCTION(hcl, rcv_func));
+	HCL_ASSERT (hcl, HCL_IS_FUNCTION(hcl, op_func));
 
-	tmpr_mask = HCL_OOP_TO_SMOOI(rcv_func->tmpr_mask);
+	tmpr_mask = HCL_OOP_TO_SMOOI(op_func->tmpr_mask);
 	nrvars = GET_BLKTMPR_MASK_NRVARS(tmpr_mask);
 	nlvars = GET_BLKTMPR_MASK_NLVARS(tmpr_mask);
 	fixed_nargs = GET_BLKTMPR_MASK_NARGS(tmpr_mask);
@@ -2031,22 +2031,22 @@ static int __activate_function (hcl_t* hcl, hcl_oop_function_t rcv_func, hcl_ooi
 	{
 		HCL_LOG3 (hcl, HCL_LOG_IC | HCL_LOG_ERROR, 
 			"Error - wrong number of arguments to a function %O - expecting %zd, got %zd\n",
-			rcv_func, fixed_nargs, nargs);
+			op_func, fixed_nargs, nargs);
 		hcl_seterrnum (hcl, HCL_ECALLARG);
 		return -1;
 	}
 
-	/* create a new block context to clone rcv_func */
-	hcl_pushvolat (hcl, (hcl_oop_t*)&rcv_func);
+	/* create a new block context to clone op_func */
+	hcl_pushvolat (hcl, (hcl_oop_t*)&op_func);
 	functx = make_context(hcl, fixed_nargs + nrvars + nlvars + excess_nargs); 
 	hcl_popvolat (hcl);
 	if (HCL_UNLIKELY(!functx)) return -1;
 
 	functx->ip = HCL_SMOOI_TO_OOP(0);
 	functx->req_nrets = HCL_SMOOI_TO_OOP(1);
-	functx->tmpr_mask = rcv_func->tmpr_mask;
-	functx->receiver_or_base = (hcl_oop_t)rcv_func;
-	functx->home = rcv_func->home;
+	functx->tmpr_mask = op_func->tmpr_mask;
+	functx->receiver_or_base = (hcl_oop_t)op_func;
+	functx->home = op_func->home;
 	functx->origin = functx; /* the origin of the context over a function should be itself */
 
 	/* copy the fixed arguments to the beginning of the variable part of the context block */
@@ -2073,13 +2073,13 @@ static int __activate_function (hcl_t* hcl, hcl_oop_function_t rcv_func, hcl_ooi
 static HCL_INLINE int activate_function (hcl_t* hcl, hcl_ooi_t nargs)
 {
 	int x;
-	hcl_oop_function_t rcv;
+	hcl_oop_function_t op;
 	hcl_oop_context_t newctx;
 
-	rcv = (hcl_oop_function_t)HCL_STACK_GETOP(hcl, nargs);
-	HCL_ASSERT (hcl, HCL_IS_FUNCTION(hcl, rcv));
+	op = (hcl_oop_function_t)HCL_STACK_GETOP(hcl, nargs);
+	HCL_ASSERT (hcl, HCL_IS_FUNCTION(hcl, op));
 
-	x = __activate_function(hcl, rcv, nargs, &newctx);
+	x = __activate_function(hcl, op, nargs, &newctx);
 	if (HCL_UNLIKELY(x <= -1)) return -1;
 
 	SWITCH_ACTIVE_CONTEXT (hcl, newctx);
@@ -2109,12 +2109,60 @@ static HCL_INLINE int call_primitive (hcl_t* hcl, hcl_ooi_t nargs)
 }
 
 /* ------------------------------------------------------------------------- */
+
+static hcl_oop_function_t find_method_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oop_t op)
+{
+	hcl_oocs_t name;
+
+	HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, class_));
+	HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl, op));
+
+	name.ptr = HCL_OBJ_GET_CHAR_SLOT(op);
+	name.len = HCL_OBJ_GET_SIZE(op);
+
+	do
+	{
+		hcl_oop_cons_t ass;
+
+		ass = (hcl_oop_cons_t)hcl_lookupdicforsymbol_noseterr(hcl, class_->memdic, &name );
+		if (!ass)
+		{
+			hcl_oop_t val;
+			val = HCL_CONS_CDR(ass);
+			if (HCL_IS_FUNCTION(hcl, val))
+			{
+				/* TODO: futher check if it's a method */
+				return (hcl_oop_function_t)val;
+			}
+		}
+		class_ = (hcl_oop_class_t)class_->superclass;
+	}
+	while (HCL_IS_CLASS(hcl, class_));
+
+	return HCL_NULL;
+}
+
 static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t op, int to_super, hcl_ooi_t nargs)
 {
+	hcl_oop_function_t mth;
+	hcl_oop_context_t newctx;
+	int x;
+
 	HCL_ASSERT (hcl, HCL_IS_INSTANCE(hcl, rcv));
 	HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl, op));
 
+	HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, rcv->_class));
+	mth = find_method_noseterr(hcl, (hcl_oop_class_t)rcv->_class, op);
+	if (!mth)
+	{
+		/* TODO: error message?, do throw?? */
+		return -1;
+	}
 
+	x = __activate_function(hcl, mth, nargs, &newctx);
+	if (HCL_UNLIKELY(x <= -1)) return -1;
+
+	SWITCH_ACTIVE_CONTEXT (hcl, newctx);
 	return 0;
 }
 
@@ -3653,22 +3701,6 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 			case HCL_CODE_SEND_TO_SUPER_2:
 			case HCL_CODE_SEND_TO_SUPER_3:
 			{
-			#if 0
-				hcl_oop_char_t selector;
-
-			
-				b1 = bcode & 0x3; /* low 2 bits */
-				FETCH_BYTE_CODE_TO (hcl, b2);
-
-			handle_send_message:
-				/* get the selector from the literal frame */
-				selector = (hcl_oop_char_t)hcl->active_method->slot[b2];
-
-				LOG_INST_3 (hcl, "send%hs %zu @%zu", (((bcode >> 2) & 1)? "_to_super": ""), b1, b2);
-
-				if (send_message(hcl, selector, ((bcode >> 2) & 1), b1) <= -1) goto oops;
-				break;
-			#else
 				hcl_oop_t rcv, op;
 
 				b1 = bcode & 0x3; /* low 2 bits */
@@ -3681,6 +3713,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				{
 					if (send_message(hcl, rcv, op, ((bcode >> 2) & 1), b1) <= -1) goto send_failed;
 				}
+				/* TODO: support non-symbol op? */
 				else
 				{
 				cannot_send:
@@ -3691,7 +3724,6 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 					goto oops;
 				}
 				break;
-			#endif
 			}
 
 			/* -------------------------------------------------------- */
