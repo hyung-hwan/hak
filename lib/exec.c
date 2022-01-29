@@ -2124,15 +2124,20 @@ static hcl_oop_function_t find_method_noseterr (hcl_t* hcl, hcl_oop_class_t clas
 	{
 		hcl_oop_cons_t ass;
 
-		ass = (hcl_oop_cons_t)hcl_lookupdicforsymbol_noseterr(hcl, class_->memdic, &name );
-		if (!ass)
+		HCL_ASSERT (hcl, HCL_IS_NIL(hcl, class_->memdic) || HCL_IS_DIC(hcl, class_->memdic));
+
+		if (HCL_LIKELY(!HCL_IS_NIL(hcl, class_->memdic)))
 		{
-			hcl_oop_t val;
-			val = HCL_CONS_CDR(ass);
-			if (HCL_IS_FUNCTION(hcl, val))
+			ass = (hcl_oop_cons_t)hcl_lookupdicforsymbol_noseterr(hcl, class_->memdic, &name );
+			if (HCL_LIKELY(!ass))
 			{
-				/* TODO: futher check if it's a method */
-				return (hcl_oop_function_t)val;
+				hcl_oop_t val;
+				val = HCL_CONS_CDR(ass);
+				if (HCL_IS_FUNCTION(hcl, val))
+				{
+					/* TODO: futher check if it's a method */
+					return (hcl_oop_function_t)val;
+				}
 			}
 		}
 		class_ = (hcl_oop_class_t)class_->superclass;
@@ -2155,7 +2160,7 @@ static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t op, int
 	mth = find_method_noseterr(hcl, (hcl_oop_class_t)rcv->_class, op);
 	if (!mth)
 	{
-		/* TODO: error message?, do throw?? */
+		hcl_seterrbfmt (hcl, HCL_ENOENT, "'%.*js' not found in the %O", HCL_OBJ_GET_SIZE(op), HCL_OBJ_GET_CHAR_SLOT(op), rcv->_class);
 		return -1;
 	}
 
@@ -3711,15 +3716,19 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				op = HCL_STACK_GETOP(hcl, b1);
 				if (HCL_IS_INSTANCE(hcl, rcv) && HCL_IS_SYMBOL(hcl, op))
 				{
-					if (send_message(hcl, rcv, op, ((bcode >> 2) & 1), b1) <= -1) goto send_failed;
+					if (send_message(hcl, rcv, op, ((bcode >> 2) & 1), b1) <= -1) 
+					{
+						const hcl_ooch_t* msg = hcl_backuperrmsg (hcl);
+						hcl_seterrbfmt (hcl, HCL_ECALL, "unable to send %O to %O - %js", op, rcv, msg); /* TODO: change to HCL_ESEND?? */
+						goto cannot_send;
+					}
 				}
 				/* TODO: support non-symbol op? */
 				else
 				{
+					hcl_seterrbfmt (hcl, HCL_ECALL, "unable to send %O to %O - invalid receiver", op, rcv); /* TODO: change to HCL_ESEND?? */
 				cannot_send:
-					hcl_seterrbfmt (hcl, HCL_ECALL, "cannot send %O to %O", op, rcv); /* TODO: change to HCL_ESEND?? */
 					if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
-				send_failed:
 					supplement_errmsg (hcl, fetched_instruction_pointer);
 					goto oops;
 				}
