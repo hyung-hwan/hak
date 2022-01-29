@@ -925,10 +925,11 @@ enum hcl_bcode_t
 	HCL_CODE_PUSH_CTXTEMPVAR_X        = 0xE0, /* 224 ## */
 	HCL_CODE_CLASS_ENTER              = 0xE1, /* 225 ## */
 	HCL_CODE_CLASS_EXIT               = 0xE2, /* 226 */
-	HCL_CODE_CLASS_PUSH_EXIT          = 0xE3, /* 227 */
+	HCL_CODE_CLASS_PEXIT              = 0xE3, /* 227 */
 
 	HCL_CODE_PUSH_OBJVAR_X            = 0xE4, /* 228 ## */
-	/* UNUSED - 0xE5 - 0xE7 */
+	HCL_CODE_CLASS_SET                = 0xE5, /* 229 */
+	/* UNUSED - 0xE6 - 0xE7 */
 
 	HCL_CODE_STORE_INTO_OBJVAR_X      = 0xE8, /* 232 ## */
 	HCL_CODE_MAKE_ARRAY               = 0xE9, /* 233 ## */

@@ -3534,11 +3534,11 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				break;
 			}
 
-			case HCL_CODE_CLASS_PUSH_EXIT:
+			case HCL_CODE_CLASS_PEXIT:
 			{
 				hcl_oop_t c;
 
-				LOG_INST_0 (hcl, "class_push_exit");
+				LOG_INST_0 (hcl, "class_pexit");
 
 				if (HCL_CLSTACK_IS_EMPTY(hcl))
 				{
@@ -3550,6 +3550,12 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				HCL_STACK_PUSH (hcl, c);
 
 				break;
+			}
+
+			case HCL_CODE_CLASS_SET:
+			{
+				FETCH_PARAM_CODE_TO (hcl, b1);
+				LOG_INST_1 (hcl, "class_set %zu", b1);
 			}
 			/* -------------------------------------------------------- */
 

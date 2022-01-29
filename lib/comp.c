@@ -246,7 +246,7 @@ static int find_variable_backward (hcl_t* hcl, const hcl_cnode_t* token, hcl_var
 
 	HCL_ASSERT (hcl, hcl->c->fnblk.depth >= 0);
 	HCL_ASSERT (hcl, hcl->c->fnblk.info[hcl->c->fnblk.depth].tmprlen == hcl->c->tv.s.len);
-	
+
 	name = HCL_CNODE_GET_TOK(token);
 
 	/* depth begins at -1. so it is the actual index. let the looping begin at depth + 1 
@@ -552,6 +552,7 @@ static int emit_single_param_instruction (hcl_t* hcl, int cmd, hcl_oow_t param_1
 		case HCL_CODE_STORE_INTO_CLSVAR_M_X:
 		case HCL_CODE_POP_INTO_CLSVAR_M_X:
 
+		case HCL_CODE_CLASS_SET:
 		case HCL_CODE_TRY_ENTER:
 		case HCL_CODE_TRY_ENTER2:
 		case HCL_CODE_PUSH_INTLIT:
@@ -1278,6 +1279,7 @@ enum
 	COP_EMIT_POP_STACKTOP,
 	COP_EMIT_RETURN,
 	COP_EMIT_SET,
+	COP_EMIT_CLASS_SET,
 	COP_EMIT_THROW,
 
 	COP_POST_IF_COND,
@@ -2269,7 +2271,7 @@ static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 
 	pop_clsblk (hcl);  /* end of the class block */
 
-	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_PUSH_EXIT, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_PEXIT, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
 
 //	if (cf->operand)
 	{
@@ -4793,8 +4795,9 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 			if (x <= -1) return -1;
 			if (x == 0)
 			{
-				/* save to the method slot */
-printf ("this is a method defintion...^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^.\n");
+				/* arrange to save to the method slot */
+				SWITCH_TOP_CFRAME (hcl, COP_EMIT_CLASS_SET, defun_name);
+				cf = GET_TOP_CFRAME(hcl);
 			}
 			else
 			{
@@ -4802,7 +4805,6 @@ printf ("this is a method defintion...^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^.\n");
 				hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAMEDUP, HCL_CNODE_GET_LOC(defun_name), HCL_CNODE_GET_TOK(defun_name), "duplicate name");
 				return -1;
 			}
-			cf->u.set.mode = VAR_ACCESS_STORE;
 		}
 		else
 		{
@@ -4897,6 +4899,26 @@ static HCL_INLINE int emit_set (hcl_t* hcl)
 		HCL_ASSERT (hcl, cf->operand != HCL_NULL);
 		if (emit_variable_access(hcl, cf->u.set.mode, &cf->u.set.vi, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
 	}
+
+	POP_CFRAME (hcl);
+	return 0;
+}
+
+static HCL_INLINE int emit_class_set (hcl_t* hcl)
+{
+	hcl_cframe_t* cf;
+	hcl_oop_t lit;
+	hcl_oow_t index;
+
+	cf = GET_TOP_CFRAME(hcl);
+	HCL_ASSERT (hcl, cf->opcode == COP_EMIT_CLASS_SET);
+
+	lit = hcl_makesymbol(hcl, HCL_CNODE_GET_TOKPTR(cf->operand), HCL_CNODE_GET_TOKLEN(cf->operand));
+	if (HCL_UNLIKELY(!lit)) return -1;
+
+	if (add_literal(hcl, lit, &index) <= -1) return -1;
+	if (emit_single_param_instruction(hcl,  HCL_CODE_CLASS_SET, index, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+
 
 	POP_CFRAME (hcl);
 	return 0;
@@ -5147,6 +5169,10 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 
 			case COP_EMIT_SET:
 				if (emit_set(hcl) <= -1) goto oops;
+				break;
+
+			case COP_EMIT_CLASS_SET:
+				if (emit_class_set(hcl) <= -1) goto oops;
 				break;
 
 			case COP_EMIT_THROW:

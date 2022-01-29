@@ -382,8 +382,13 @@ int hcl_decode (hcl_t* hcl, hcl_oow_t start, hcl_oow_t end)
 				LOG_INST_0 (hcl, "class_exit");
 				break;
 
-			case HCL_CODE_CLASS_PUSH_EXIT:
-				LOG_INST_0 (hcl, "class_push_exit");
+			case HCL_CODE_CLASS_PEXIT:
+				LOG_INST_0 (hcl, "class_pexit");
+				break;
+
+			case HCL_CODE_CLASS_SET:
+				FETCH_PARAM_CODE_TO (hcl, b1);
+				LOG_INST_1 (hcl, "class_set %zu", b1);
 				break;
 			/* -------------------------------------------------------- */
 
