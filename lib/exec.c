@@ -3356,8 +3356,7 @@ static int execute (hcl_t* hcl)
 				{
 					hcl_seterrbfmt (hcl, HCL_ECALL, "cannot call %O", rcv);
 				call2_failed:
-					supplement_errmsg (hcl, fetched_instruction_pointer);
-					goto oops;
+					goto oops_with_errmsg_supplement;
 				}
 
 				break;
@@ -3415,8 +3414,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 					hcl_seterrbfmt (hcl, HCL_ECALL, "cannot call %O", op);
 					if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
 				call_failed:
-					supplement_errmsg (hcl, fetched_instruction_pointer);
-					goto oops;
+					goto oops_with_errmsg_supplement;
 				}
 				break;
 			}
@@ -3494,23 +3492,18 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				else ivars_str = hcl->_nil;
 
 				if (b1 > 0) 
-				{	
+				{
 					HCL_STACK_POP_TO (hcl, sc); /* TODO: support more than 1 later when the compiler supports more */
 					if (!HCL_IS_CLASS(hcl, sc))
 					{
 						hcl_seterrbfmt (hcl, HCL_ECALL, "invalid superclass %O", sc);
-						supplement_errmsg (hcl, fetched_instruction_pointer);
-						goto oops;
+						goto oops_with_errmsg_supplement;
 					}
  				}
 				else sc = hcl->_nil;
 
 				t = hcl_makeclass(hcl, sc, b2, b3, ivars_str, cvars_str); // TOOD: pass variable information... 
-				if (HCL_UNLIKELY(!t)) 
-				{
-					supplement_errmsg (hcl, fetched_instruction_pointer);
-					goto oops;
-				}
+				if (HCL_UNLIKELY(!t)) goto oops_with_errmsg_supplement;
 
 				/* push the class created to the class stack. but don't push to the normal operation stack */
 				HCL_CLSTACK_PUSH (hcl, t); 
@@ -3527,8 +3520,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				if (HCL_CLSTACK_IS_EMPTY(hcl))
 				{
 					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "class stack underflow");
-					supplement_errmsg (hcl, fetched_instruction_pointer);
-					goto oops;
+					goto oops_with_errmsg_supplement;
 				}
 				HCL_CLSTACK_POP (hcl);
 				break;
@@ -3543,8 +3535,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				if (HCL_CLSTACK_IS_EMPTY(hcl))
 				{
 					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "class stack underflow");
-					supplement_errmsg (hcl, fetched_instruction_pointer);
-					goto oops;
+					goto oops_with_errmsg_supplement;
 				}
 				HCL_CLSTACK_POP_TO (hcl, c);
 				HCL_STACK_PUSH (hcl, c);
@@ -3552,10 +3543,35 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				break;
 			}
 
-			case HCL_CODE_CLASS_SET:
+			case HCL_CODE_CLASS_MSTORE:
 			{
+				hcl_oop_t class_;
+				hcl_oop_t dic;
+
 				FETCH_PARAM_CODE_TO (hcl, b1);
-				LOG_INST_1 (hcl, "class_set %zu", b1);
+				LOG_INST_1 (hcl, "class_mstore %zu", b1);
+
+				/* store the stack top in the member dictionary of the currect class with the key indicated by 'b1' */
+
+				HCL_ASSERT (hcl, !HCL_CLSTACK_IS_EMPTY(hcl));
+
+				HCL_CLSTACK_FETCH_TOP_TO (hcl, class_);
+				HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, class_));
+
+				dic = ((hcl_oop_class_t)class_)->memdic;
+				HCL_ASSERT (hcl, HCL_IS_NIL(hcl, dic) || HCL_IS_DIC(hcl, dic));
+				if (HCL_IS_NIL(hcl, dic))
+				{
+					hcl_pushvolat (hcl, (hcl_oop_t*)&class_);
+					dic = hcl_makedic(hcl, 16); /* TODO: configurable initial size? */
+					hcl_popvolat (hcl);
+					if (HCL_UNLIKELY(!dic))  goto oops_with_errmsg_supplement;
+					((hcl_oop_class_t)class_)->memdic = dic;
+				}
+
+HCL_DEBUG2 (hcl, "class_mstore %O %O\n", hcl->active_function->literal_frame[b1], HCL_STACK_GETTOP(hcl));
+				if (!hcl_putatdic(hcl, dic, hcl->active_function->literal_frame[b1], HCL_STACK_GETTOP(hcl))) goto oops_with_errmsg_supplement;
+				break;
 			}
 			/* -------------------------------------------------------- */
 
@@ -3735,8 +3751,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 					hcl_seterrbfmt (hcl, HCL_ECALL, "unable to send %O to %O - invalid receiver", op, rcv); /* TODO: change to HCL_ESEND?? */
 				cannot_send:
 					if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
-					supplement_errmsg (hcl, fetched_instruction_pointer);
-					goto oops;
+					goto oops_with_errmsg_supplement;
 				}
 				break;
 			}
@@ -3760,9 +3775,8 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				if (HCL_CLSTACK_IS_EMPTY(hcl))
 				{
 					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "empty class stack");
-					supplement_errmsg (hcl, fetched_instruction_pointer);
 				/* TODO: do throw??? instead */
-					goto oops;
+					goto oops_with_errmsg_supplement;
 				}
 				HCL_CLSTACK_FETCH_TOP_TO(hcl, t);
 				t->cvar[b1] = HCL_STACK_GETTOP(hcl);
@@ -3777,9 +3791,8 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				if (HCL_CLSTACK_IS_EMPTY(hcl))
 				{
 					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "empty class stack");
-					supplement_errmsg (hcl, fetched_instruction_pointer);
 				/* TODO: do throw??? instead */
-					goto oops;
+					goto oops_with_errmsg_supplement;
 				}
 				HCL_CLSTACK_FETCH_TOP_TO(hcl, t);
 				t->cvar[b1] = HCL_STACK_GETTOP(hcl);
@@ -3799,9 +3812,8 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				if (!HCL_IS_INSTANCE(hcl, t))
 				{
 					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "non-instance receiver");
-					supplement_errmsg (hcl, fetched_instruction_pointer);
 				/* TODO: do throw??? instead */
-					goto oops;
+					goto oops_with_errmsg_supplement;
 				}
 				t = HCL_OBJ_GET_CLASS(t);
 				HCL_STACK_PUSH (hcl, t->cvar[b1]);
@@ -3817,9 +3829,8 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				if (!HCL_IS_INSTANCE(hcl, t))
 				{
 					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "non-instance receiver");
-					supplement_errmsg (hcl, fetched_instruction_pointer);
 				/* TODO: do throw??? instead */
-					goto oops;
+					goto oops_with_errmsg_supplement;
 				}
 				t = HCL_OBJ_GET_CLASS(t);
 				t->cvar[b1] = HCL_STACK_GETTOP(hcl);
@@ -3835,8 +3846,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				if (!HCL_IS_INSTANCE(hcl, t))
 				{
 					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "non-instance receiver");
-					supplement_errmsg (hcl, fetched_instruction_pointer);
-					goto oops;
+					goto oops_with_errmsg_supplement;
 				}
 				t = HCL_OBJ_GET_CLASS(t);
 				t->cvar[b1] = HCL_STACK_GETTOP(hcl);
@@ -3928,11 +3938,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 
 				/* create an empty array */
 				t = hcl_makearray(hcl, b1, 0);
-				if (HCL_UNLIKELY(!t)) 
-				{
-					supplement_errmsg (hcl, fetched_instruction_pointer);
-					goto oops;
-				}
+				if (HCL_UNLIKELY(!t)) goto oops_with_errmsg_supplement;
 
 				HCL_STACK_PUSH (hcl, t); /* push the array created */
 				break;
@@ -3966,11 +3972,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 
 				/* create an empty array */
 				t = hcl_makebytearray(hcl, HCL_NULL, b1);
-				if (HCL_UNLIKELY(!t)) 
-				{
-					supplement_errmsg (hcl, fetched_instruction_pointer);
-					goto oops;
-				}
+				if (HCL_UNLIKELY(!t)) goto oops_with_errmsg_supplement;
 
 				HCL_STACK_PUSH (hcl, t); /* push the byte array created */
 				break;
@@ -4011,11 +4013,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				LOG_INST_1 (hcl, "make_dic %zu", b1);
 				t = (hcl_oop_t)hcl_makedic(hcl, b1 + 10);
-				if (HCL_UNLIKELY(!t))
-				{
-					supplement_errmsg (hcl, fetched_instruction_pointer);
-					goto oops;
-				}
+				if (HCL_UNLIKELY(!t)) goto oops_with_errmsg_supplement;
 				HCL_STACK_PUSH (hcl, t);
 				break;
 			}
@@ -4041,11 +4039,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				LOG_INST_0 (hcl, "make_cons");
 
 				t = hcl_makecons(hcl, hcl->_nil, hcl->_nil);
-				if (HCL_UNLIKELY(!t)) 
-				{
-					supplement_errmsg (hcl, fetched_instruction_pointer);
-					goto oops;
-				}
+				if (HCL_UNLIKELY(!t)) goto oops_with_errmsg_supplement;
 
 				HCL_STACK_PUSH (hcl, t); /* push the head cons cell */
 				HCL_STACK_PUSH (hcl, hcl->_nil); /* sentinnel */
@@ -4309,6 +4303,9 @@ done:
 	HCL_LOG1 (hcl, HCL_LOG_IC | HCL_LOG_INFO, "EXEC OK - TOTAL INST COUTNER = %zu\n", inst_counter);
 #endif
 	return 0;
+
+oops_with_errmsg_supplement:
+	supplement_errmsg (hcl, fetched_instruction_pointer);
 
 oops:
 	hcl->gci.lazy_sweep = 1;

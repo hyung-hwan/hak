@@ -847,7 +847,7 @@ struct hcl_class_t
 {
 	HCL_OBJ_HEADER;
 
-	hcl_oop_dic_t memdic; /* dictionary of named elements including methods and variables */
+	hcl_oop_t memdic; /* nil or dictionary of named elements including methods and variables */
 
 	hcl_oop_t superclass;
 	hcl_oop_t nivars; /* smooi. */
