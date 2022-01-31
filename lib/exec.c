@@ -1970,27 +1970,39 @@ static int prepare_new_context (hcl_t* hcl, hcl_oop_block_t rcv_blk, hcl_ooi_t n
 	return 0;
 }
 
-static HCL_INLINE int activate_block (hcl_t* hcl, hcl_ooi_t nargs, hcl_ooi_t nrvars)
+static HCL_INLINE int __activate_block (hcl_t* hcl, hcl_oop_block_t op, hcl_ooi_t nargs, hcl_ooi_t nrvars, hcl_oop_context_t* pnewctx)
 {
 	int x;
-	hcl_oop_block_t rcv;
-	hcl_oop_context_t newctx;
 
-	rcv = (hcl_oop_block_t)HCL_STACK_GETOP(hcl, nargs);
-	HCL_ASSERT (hcl, HCL_IS_BLOCK(hcl, rcv));
+	HCL_ASSERT (hcl, HCL_IS_BLOCK(hcl, op));
 
 	x = prepare_new_context(
 		hcl,
-		rcv,
+		op,
 		nargs, /* nargs */
 		0, /* nargs_offset */
 		nrvars,
 		1, /* copy_args */
-		&newctx);
+		pnewctx);
 	if (HCL_UNLIKELY(x <= -1)) return -1;
 
 	HCL_STACK_POPS (hcl, nargs + 2); /* pop arguments, called block/function/method, and receiver */
-	newctx->sender = hcl->active_context;
+	(*pnewctx)->sender = hcl->active_context;
+
+	return 0;
+}
+
+static HCL_INLINE int activate_block (hcl_t* hcl, hcl_ooi_t nargs, hcl_ooi_t nrvars)
+{
+	hcl_oop_block_t op;
+	hcl_oop_context_t newctx;
+	int x;
+
+	op = (hcl_oop_block_t)HCL_STACK_GETOP(hcl, nargs);
+	HCL_ASSERT (hcl, HCL_IS_BLOCK(hcl, op));
+
+	x = __activate_block(hcl, op, nargs, nrvars, &newctx);
+	if (HCL_UNLIKELY(x <= -1)) return -1;
 
 	SWITCH_ACTIVE_CONTEXT (hcl, newctx);
 	return 0;
@@ -2110,7 +2122,7 @@ static HCL_INLINE int call_primitive (hcl_t* hcl, hcl_ooi_t nargs)
 
 /* ------------------------------------------------------------------------- */
 
-static hcl_oop_function_t find_method_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oop_t op)
+static hcl_oop_block_t find_method_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oop_t op)
 {
 	hcl_oocs_t name;
 
@@ -2122,21 +2134,23 @@ static hcl_oop_function_t find_method_noseterr (hcl_t* hcl, hcl_oop_class_t clas
 
 	do
 	{
-		hcl_oop_cons_t ass;
+		hcl_oop_t dic;
 
-		HCL_ASSERT (hcl, HCL_IS_NIL(hcl, class_->memdic) || HCL_IS_DIC(hcl, class_->memdic));
+		dic = class_->memdic;
+		HCL_ASSERT (hcl, HCL_IS_NIL(hcl, dic) || HCL_IS_DIC(hcl, dic));
 
-		if (HCL_LIKELY(!HCL_IS_NIL(hcl, class_->memdic)))
+		if (HCL_LIKELY(!HCL_IS_NIL(hcl, dic)))
 		{
-			ass = (hcl_oop_cons_t)hcl_lookupdicforsymbol_noseterr(hcl, class_->memdic, &name );
-			if (HCL_LIKELY(!ass))
+			hcl_oop_cons_t ass;
+			ass = (hcl_oop_cons_t)hcl_lookupdicforsymbol_noseterr(hcl, dic, &name);
+			if (HCL_LIKELY(ass))
 			{
 				hcl_oop_t val;
 				val = HCL_CONS_CDR(ass);
-				if (HCL_IS_FUNCTION(hcl, val))
+				if (HCL_IS_BLOCK(hcl, val))
 				{
 					/* TODO: futher check if it's a method */
-					return (hcl_oop_function_t)val;
+					return (hcl_oop_block_t)val;
 				}
 			}
 		}
@@ -2149,7 +2163,7 @@ static hcl_oop_function_t find_method_noseterr (hcl_t* hcl, hcl_oop_class_t clas
 
 static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t op, int to_super, hcl_ooi_t nargs)
 {
-	hcl_oop_function_t mth;
+	hcl_oop_block_t mth;
 	hcl_oop_context_t newctx;
 	int x;
 
@@ -2164,7 +2178,7 @@ static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t op, int
 		return -1;
 	}
 
-	x = __activate_function(hcl, mth, nargs, &newctx);
+	x = __activate_block(hcl, mth, nargs, 0 /* TODO: not 0 */ , &newctx);
 	if (HCL_UNLIKELY(x <= -1)) return -1;
 
 	SWITCH_ACTIVE_CONTEXT (hcl, newctx);
