@@ -878,7 +878,7 @@ static hcl_pfrc_t pf_object_new (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 		return HCL_PF_FAILURE;
 	}
 
-	obj = hcl_instantiate(hcl, class_, HCL_NULL, 0);
+	obj = hcl_instantiate(hcl, (hcl_oop_class_t)class_, HCL_NULL, 0);
 	if (HCL_UNLIKELY(!obj)) return HCL_PF_FAILURE;
 
 	HCL_STACK_SETRET (hcl, nargs, obj);

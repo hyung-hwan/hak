@@ -577,7 +577,7 @@ typedef struct hcl_function_t* hcl_oop_function_t;
 typedef struct hcl_block_t hcl_block_t;
 typedef struct hcl_block_t* hcl_oop_block_t;
 
-#define HCL_CONTEXT_NAMED_INSTVARS 7
+#define HCL_CONTEXT_NAMED_INSTVARS 8
 typedef struct hcl_context_t hcl_context_t;
 typedef struct hcl_context_t* hcl_oop_context_t;
 
@@ -624,6 +624,8 @@ struct hcl_context_t
 	/* SmallInteger, instruction pointer */
 	hcl_oop_t          ip;
 
+	hcl_oop_t          base; /* either a block or a function */
+
 	/* it points to the active context at the moment when
 	 * this context object has been activated. a new method context
 	 * is activated as a result of normal message sending and a block
@@ -634,7 +636,7 @@ struct hcl_context_t
 	/* it points to the receiver of the message for a method context.
 	 * a block context points to a block object and a function context
 	 * points to a function object */
-	hcl_oop_t          receiver_or_base; /* when used as a base, it's either a block or a function */
+	hcl_oop_t          receiver;
 
 	/* it is set to nil for a method context.
 	 * for a block context, it points to the active context at the
@@ -647,13 +649,13 @@ struct hcl_context_t
 	 * context creation is based on a function object(initial or lambda/defun).
 	 *
 	 * a block context is created over a block object. it stores
-	 * a function context points to itself in this field. a block context
+	 * a function context that points to itself in this field. a block context
 	 * points to the function context where it is created. another block context
 	 * created within the block context also points to the same function context.
 	 *
 	 * take note of the following points:
 	 *   ctx->origin: function context
-	 *   ctx->origin->receiver_or_base: actual function containing byte codes pertaining to ctx.
+	 *   ctx->origin->base: actual function containing byte codes pertaining to ctx.
 	 *
 	 * a base of a block context is a block object but ctx->origin is guaranteed to be
 	 * a function context. so its base is also a function object all the time.

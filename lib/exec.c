@@ -93,7 +93,7 @@ static hcl_ooch_t oocstr_dash[] = { '-', '\0' };
 	{ \
 		STORE_ACTIVE_IP (hcl); \
 		(hcl)->active_context = (v_ctx); \
-		(hcl)->active_function = (hcl)->active_context->origin->receiver_or_base; \
+		(hcl)->active_function = (hcl)->active_context->origin->base; \
 		(hcl)->active_code = HCL_FUNCTION_GET_CODE_BYTE((hcl)->active_function); \
 		LOAD_ACTIVE_IP (hcl); \
 		(hcl)->processor->active->current_context = (hcl)->active_context; \
@@ -1885,10 +1885,10 @@ void hcl_releaseiohandle (hcl_t* hcl, hcl_ooi_t io_handle)
 
 /* ------------------------------------------------------------------------- */
 
-static int prepare_new_context (hcl_t* hcl, hcl_oop_block_t rcv_blk, hcl_ooi_t nargs, int nargs_offset, hcl_ooi_t req_nrvars, int copy_args, hcl_oop_context_t* pnewctx)
+static int prepare_new_context (hcl_t* hcl, hcl_oop_block_t op_blk, hcl_ooi_t nargs, int nargs_offset, hcl_ooi_t req_nrvars, int copy_args, int is_msgsend, hcl_oop_context_t* pnewctx)
 {
-	/* prepare a new block context for activation. the receiver must be a block
-	 * context which becomes the base for a new block context. */
+	/* prepare a new block context for activation. 
+	 * the passed block context becomes the base for a new block context. */
 
 	hcl_oop_context_t blkctx;
 	hcl_ooi_t tmpr_mask;
@@ -1896,9 +1896,9 @@ static int prepare_new_context (hcl_t* hcl, hcl_oop_block_t rcv_blk, hcl_ooi_t n
 	hcl_ooi_t fixed_nargs, actual_nargs, excess_nargs;
 
 	/* the receiver must be a block context */
-	HCL_ASSERT (hcl, HCL_IS_BLOCK(hcl, rcv_blk));
+	HCL_ASSERT (hcl, HCL_IS_BLOCK(hcl, op_blk));
 
-	tmpr_mask = HCL_OOP_TO_SMOOI(rcv_blk->tmpr_mask);
+	tmpr_mask = HCL_OOP_TO_SMOOI(op_blk->tmpr_mask);
 
 	fblk_nrvars = GET_BLKTMPR_MASK_NRVARS(tmpr_mask);
 	fblk_nlvars = GET_BLKTMPR_MASK_NLVARS(tmpr_mask);
@@ -1910,7 +1910,7 @@ static int prepare_new_context (hcl_t* hcl, hcl_oop_block_t rcv_blk, hcl_ooi_t n
 	{
 		HCL_LOG3 (hcl, HCL_LOG_IC | HCL_LOG_ERROR, 
 			"Error - wrong number of arguments to a block %O - expecting %zd, got %zd\n",
-			rcv_blk, fixed_nargs, actual_nargs);
+			op_blk, fixed_nargs, actual_nargs);
 		hcl_seterrbfmt (hcl, HCL_ECALLARG, "wrong number of argument passed to function block - %zd expected, %zd passed", fixed_nargs, actual_nargs);
 		return -1;
 	}
@@ -1919,13 +1919,13 @@ static int prepare_new_context (hcl_t* hcl, hcl_oop_block_t rcv_blk, hcl_ooi_t n
 	{
 		HCL_LOG3 (hcl, HCL_LOG_IC | HCL_LOG_ERROR, 
 			"Error - wrong number of returns specified of a block %O - max expected %zd, requested %zd\n",
-			rcv_blk, fblk_nrvars, req_nrvars);
+			op_blk, fblk_nrvars, req_nrvars);
 		hcl_seterrbfmt (hcl, HCL_ECALLRET, "wrong number of returns requested of function block - %zd expected at most, %zd requested", fblk_nrvars, req_nrvars);
 		return -1;
 	}
 
-	/* create a new block context to clone rcv_blk */
-	hcl_pushvolat (hcl, (hcl_oop_t*)&rcv_blk);
+	/* create a new block context to clone op_blk */
+	hcl_pushvolat (hcl, (hcl_oop_t*)&op_blk);
 	blkctx = make_context(hcl, fixed_nargs + fblk_nrvars + fblk_nlvars + excess_nargs); 
 	hcl_popvolat (hcl);
 	if (HCL_UNLIKELY(!blkctx)) return -1;
@@ -1934,16 +1934,17 @@ static int prepare_new_context (hcl_t* hcl, hcl_oop_block_t rcv_blk, hcl_ooi_t n
 	/* shallow-copy the named part including home, origin, etc. */
 	for (i = 0; i < HCL_CONTEXT_NAMED_INSTVARS; i++)
 	{
-		((hcl_oop_oop_t)blkctx)->slot[i] = ((hcl_oop_oop_t)rcv_blk)->slot[i];
+		((hcl_oop_oop_t)blkctx)->slot[i] = ((hcl_oop_oop_t)op_blk)->slot[i];
 	}
 #else
-	blkctx->ip = rcv_blk->ip;
+	blkctx->ip = op_blk->ip;
 	blkctx->req_nrets = HCL_SMOOI_TO_OOP(req_nrvars);
-	blkctx->tmpr_mask = rcv_blk->tmpr_mask;
-	blkctx->receiver_or_base = (hcl_oop_t)rcv_blk;
-	blkctx->home = rcv_blk->home;
-	/* blkctx->origin = rcv_blk->origin; */
-	blkctx->origin = rcv_blk->home->origin;
+	blkctx->tmpr_mask = op_blk->tmpr_mask;
+	blkctx->base = (hcl_oop_t)op_blk;
+	blkctx->home = op_blk->home;
+	/* blkctx->origin = op_blk->origin; */
+	blkctx->origin = op_blk->home->origin;
+	blkctx->receiver = is_msgsend? HCL_STACK_GETRCV(hcl, nargs): op_blk->home->receiver;
 #endif
 
 	if (HCL_LIKELY(copy_args))
@@ -1970,7 +1971,7 @@ static int prepare_new_context (hcl_t* hcl, hcl_oop_block_t rcv_blk, hcl_ooi_t n
 	return 0;
 }
 
-static HCL_INLINE int __activate_block (hcl_t* hcl, hcl_oop_block_t op, hcl_ooi_t nargs, hcl_ooi_t nrvars, hcl_oop_context_t* pnewctx)
+static HCL_INLINE int __activate_block (hcl_t* hcl, hcl_oop_block_t op, hcl_ooi_t nargs, hcl_ooi_t nrvars, int is_msgsend, hcl_oop_context_t* pnewctx)
 {
 	int x;
 
@@ -1983,6 +1984,7 @@ static HCL_INLINE int __activate_block (hcl_t* hcl, hcl_oop_block_t op, hcl_ooi_
 		0, /* nargs_offset */
 		nrvars,
 		1, /* copy_args */
+		is_msgsend,
 		pnewctx);
 	if (HCL_UNLIKELY(x <= -1)) return -1;
 
@@ -2001,7 +2003,7 @@ static HCL_INLINE int activate_block (hcl_t* hcl, hcl_ooi_t nargs, hcl_ooi_t nrv
 	op = (hcl_oop_block_t)HCL_STACK_GETOP(hcl, nargs);
 	HCL_ASSERT (hcl, HCL_IS_BLOCK(hcl, op));
 
-	x = __activate_block(hcl, op, nargs, nrvars, &newctx);
+	x = __activate_block(hcl, op, nargs, nrvars, 0, &newctx);
 	if (HCL_UNLIKELY(x <= -1)) return -1;
 
 	SWITCH_ACTIVE_CONTEXT (hcl, newctx);
@@ -2057,9 +2059,10 @@ static int __activate_function (hcl_t* hcl, hcl_oop_function_t op_func, hcl_ooi_
 	functx->ip = HCL_SMOOI_TO_OOP(0);
 	functx->req_nrets = HCL_SMOOI_TO_OOP(1);
 	functx->tmpr_mask = op_func->tmpr_mask;
-	functx->receiver_or_base = (hcl_oop_t)op_func;
+	functx->base = (hcl_oop_t)op_func;
 	functx->home = op_func->home;
 	functx->origin = functx; /* the origin of the context over a function should be itself */
+	functx->receiver = HCL_STACK_GETRCV(hcl, nargs);
 
 	/* copy the fixed arguments to the beginning of the variable part of the context block */
 	for (i = 0, j = nargs_offset; i < fixed_nargs; i++, j++)
@@ -2178,7 +2181,7 @@ static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t op, int
 		return -1;
 	}
 
-	x = __activate_block(hcl, mth, nargs, 0 /* TODO: not 0 */ , &newctx);
+	x = __activate_block(hcl, mth, nargs, 0 /* TODO: not 0 */, 1 , &newctx);
 	if (HCL_UNLIKELY(x <= -1)) return -1;
 
 	SWITCH_ACTIVE_CONTEXT (hcl, newctx);
@@ -2498,7 +2501,8 @@ static int start_initial_process_and_context (hcl_t* hcl, hcl_ooi_t initial_ip, 
 	ctx->origin = ctx; /* the origin of the initial context is itself as this is created over the initial function */
 	ctx->home = hcl->initial_function->home; /* this should be nil */
 	ctx->sender = (hcl_oop_context_t)hcl->_nil;
-	ctx->receiver_or_base = hcl->initial_function;
+	ctx->base = hcl->initial_function;
+	ctx->receiver = (hcl_oop_context_t)hcl->_nil; /* TODO: change this? keep this in sync with the fake receiver used in the call instruction */
 	HCL_ASSERT (hcl, (hcl_oop_t)ctx->home == hcl->_nil);
 
 	/* [NOTE]
@@ -3025,9 +3029,10 @@ static int execute (hcl_t* hcl)
 				b1 = bcode & 0x7; /* low 3 bits */
 			push_instvar:
 				LOG_INST_1 (hcl, "push_instvar %zu", b1);
-				HCL_ASSERT (hcl, HCL_OBJ_GET_FLAGS_TYPE(hcl->active_context->origin->receiver_or_base) == HCL_OBJ_TYPE_OOP);
+				HCL_ASSERT (hcl, HCL_OBJ_GET_FLAGS_TYPE(hcl->active_context->origin->receiver) == HCL_OBJ_TYPE_OOP);
 	/* TODO: FIX TO OFFSET THE INHERTED PART... */
-				HCL_STACK_PUSH (hcl, ((hcl_oop_oop_t)hcl->active_context->origin->receiver_or_base)->slot[b1]);
+				//HCL_STACK_PUSH (hcl, ((hcl_oop_oop_t)hcl->active_context->origin->receiver)->slot[b1]);
+				HCL_STACK_PUSH (hcl, ((hcl_oop_oop_t)hcl->active_context->receiver)->slot[b1]);
 				break;
 
 			/* ------------------------------------------------- */
@@ -3046,8 +3051,8 @@ static int execute (hcl_t* hcl)
 				b1 = bcode & 0x7; /* low 3 bits */
 			store_instvar:
 				LOG_INST_1 (hcl, "store_into_instvar %zu", b1);
-				HCL_ASSERT (hcl, HCL_OBJ_GET_FLAGS_TYPE(hcl->active_context->receiver_or_base) == HCL_OBJ_TYPE_OOP);
-				((hcl_oop_oop_t)hcl->active_context->origin->receiver_or_base)->slot[b1] = HCL_STACK_GETTOP(hcl);
+				HCL_ASSERT (hcl, HCL_OBJ_GET_FLAGS_TYPE(hcl->active_context->receiver) == HCL_OBJ_TYPE_OOP);
+				((hcl_oop_oop_t)hcl->active_context->origin->receiver)->slot[b1] = HCL_STACK_GETTOP(hcl);
 				break;
 
 			/* ------------------------------------------------- */
@@ -3065,8 +3070,8 @@ static int execute (hcl_t* hcl)
 				b1 = bcode & 0x7; /* low 3 bits */
 			pop_into_instvar:
 				LOG_INST_1 (hcl, "pop_into_instvar %zu", b1);
-				HCL_ASSERT (hcl, HCL_OBJ_GET_FLAGS_TYPE(hcl->active_context->receiver_or_base) == HCL_OBJ_TYPE_OOP);
-				((hcl_oop_oop_t)hcl->active_context->origin->receiver_or_base)->slot[b1] = HCL_STACK_GETTOP(hcl);
+				HCL_ASSERT (hcl, HCL_OBJ_GET_FLAGS_TYPE(hcl->active_context->receiver) == HCL_OBJ_TYPE_OOP);
+				((hcl_oop_oop_t)hcl->active_context->origin->receiver)->slot[b1] = HCL_STACK_GETTOP(hcl);
 				HCL_STACK_POP (hcl);
 				break;
 
@@ -3822,7 +3827,7 @@ HCL_DEBUG2 (hcl, "class_mstore %O %O\n", hcl->active_function->literal_frame[b1]
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				LOG_INST_1 (hcl, "push_clsvar_m %zu", b1);
 	/* TODO: finish implementing CLSVAR_M_X instructions ....*/
-				t = (hcl_oop_oop_t)hcl->active_context->origin->receiver_or_base;
+				t = (hcl_oop_oop_t)hcl->active_context->origin->receiver;
 				if (!HCL_IS_INSTANCE(hcl, t))
 				{
 					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "non-instance receiver");
@@ -3838,8 +3843,8 @@ HCL_DEBUG2 (hcl, "class_mstore %O %O\n", hcl->active_function->literal_frame[b1]
 			{
 				hcl_oop_class_t t;
 				FETCH_PARAM_CODE_TO (hcl, b1);
-				LOG_INST_1 (hcl, "store_into_clsvar_m %zu", b1);				
-				t = (hcl_oop_oop_t)hcl->active_context->origin->receiver_or_base;
+				LOG_INST_1 (hcl, "store_into_clsvar_m %zu", b1);
+				t = (hcl_oop_oop_t)hcl->active_context->origin->receiver;
 				if (!HCL_IS_INSTANCE(hcl, t))
 				{
 					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "non-instance receiver");
@@ -3856,7 +3861,7 @@ HCL_DEBUG2 (hcl, "class_mstore %O %O\n", hcl->active_function->literal_frame[b1]
 				hcl_oop_class_t t;
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				LOG_INST_1 (hcl, "pop_into_clsvar_m %zu", b1);
-				t = (hcl_oop_oop_t)hcl->active_context->origin->receiver_or_base;
+				t = (hcl_oop_oop_t)hcl->active_context->origin->receiver;
 				if (!HCL_IS_INSTANCE(hcl, t))
 				{
 					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "non-instance receiver");
@@ -3872,7 +3877,7 @@ HCL_DEBUG2 (hcl, "class_mstore %O %O\n", hcl->active_function->literal_frame[b1]
 
 			case HCL_CODE_PUSH_RECEIVER: /* push self or super */
 				LOG_INST_0 (hcl, "push_receiver");
-				HCL_STACK_PUSH (hcl, hcl->active_context->origin->receiver_or_base);
+				HCL_STACK_PUSH (hcl, hcl->active_context->origin->receiver);
 				break;
 
 			case HCL_CODE_PUSH_NIL:
@@ -4196,11 +4201,10 @@ HCL_DEBUG2 (hcl, "class_mstore %O %O\n", hcl->active_function->literal_frame[b1]
 				return_value = HCL_STACK_GETTOP(hcl);
 				HCL_STACK_POP (hcl);
 				goto handle_return;
-				
-/* the current HCL compiler doesn't produce HCL_CODE_RETURN_RECEIVER as the receiver concept is not implemented */
+
 			case HCL_CODE_RETURN_RECEIVER:
 				LOG_INST_0 (hcl, "return_receiver");
-				return_value = hcl->active_context->origin->receiver_or_base;
+				return_value = hcl->active_context->origin->receiver;
 
 			handle_return:
 				hcl->last_retv = return_value;
@@ -4373,7 +4377,7 @@ hcl_oop_t hcl_execute (hcl_t* hcl)
 
 	hcl->initial_function = func; /* the initial function is ready */
 
-#if 0 
+#if 0
 	/* unless the system is buggy, hcl->proc_map_used should be 0.
 	 * the standard library terminates all processes before halting.
 	 *
@@ -4469,6 +4473,7 @@ hcl_pfrc_t hcl_pf_process_fork (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 		1, /* nargs_offset */
 		0, /* number of return variables expected */
 		1, /* copy_args */
+		0, /* is_msgsend */
 		&newctx);
 	if (HCL_UNLIKELY(x <= -1)) return HCL_PF_FAILURE;
 
