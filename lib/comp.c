@@ -1983,13 +1983,12 @@ static int check_if_plain_cnode (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t* prev
 /*
 	(defclass A
 		| x y | ; instance variables
-		| ::: x y z | ; class variables <--- how to initialize the class variables???
+		::: | x y z | ; class variables <--- how to initialize the class variables???
 
 		; everything inside defclass after the variable declarations are normal expressions.
 		; however, the resolution of some variables will fall under the enclosing class.
 		(set x 20)
 		(printf "normal statement ....\n");
-
 
 		(defun new (a b c)
 (printf "%O\n" self) ; self is A
@@ -2990,7 +2989,6 @@ static HCL_INLINE int compile_catch (hcl_t* hcl)
 	vi.index_in_ctx = hcl->c->tv.wcount - par_tmprcnt;
 	if (add_temporary_variable(hcl, HCL_CNODE_GET_TOK(exarg), hcl->c->tv.s.len) <= -1) return -1;
 
-
 	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
 	HCL_ASSERT (hcl, fbi->tmprlen == hcl->c->tv.s.len - HCL_CNODE_GET_TOKLEN(exarg) - 1);
 	HCL_ASSERT (hcl, fbi->tmprcnt == vi.index_in_ctx + par_tmprcnt);
@@ -3630,6 +3628,8 @@ static HCL_INLINE int compile_dsymbol (hcl_t* hcl, hcl_cnode_t* obj)
  *       must differentiate module access and dictioary member access...
  *       must implementate dictionary member access syntax... */
 
+#if 0
+the dot notation collides with car/cdr separator???
 	{ /* HACK FOR NOW */
 		const hcl_ooch_t* sep;
 
@@ -3642,6 +3642,7 @@ HCL_DEBUG1 (hcl, ">>>> instance variable or method %js\n", sep + 1);
 		}
 		/* TODO: super? */
 	}
+#endif
 
 	sym = hcl_makesymbol(hcl, HCL_CNODE_GET_TOKPTR(obj), HCL_CNODE_GET_TOKLEN(obj));
 	if (HCL_UNLIKELY(!sym)) return -1;
@@ -3831,6 +3832,12 @@ redo:
 		case HCL_CNODE_FALSE:
 			if (emit_byte_instruction(hcl, HCL_CODE_PUSH_FALSE, HCL_CNODE_GET_LOC(oprnd)) <= -1) return -1;
 			goto done;
+
+		case HCL_CNODE_SELF:
+			if (emit_byte_instruction(hcl, HCL_CODE_PUSH_RECEIVER, HCL_CNODE_GET_LOC(oprnd)) <= -1) return -1;
+			goto done;
+
+		/* TODO: super, this-context */
 
 		case HCL_CNODE_CHARLIT:
 			lit = HCL_CHAR_TO_OOP(oprnd->u.charlit.v);
@@ -4918,7 +4925,6 @@ static HCL_INLINE int emit_class_mstore (hcl_t* hcl)
 
 	if (add_literal(hcl, lit, &index) <= -1) return -1;
 	if (emit_single_param_instruction(hcl,  HCL_CODE_CLASS_MSTORE, index, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
-
 
 	POP_CFRAME (hcl);
 	return 0;

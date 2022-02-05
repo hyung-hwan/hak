@@ -144,6 +144,7 @@ enum hcl_iotok_type_t
 	HCL_IOTOK_NIL,
 	HCL_IOTOK_TRUE,
 	HCL_IOTOK_FALSE,
+	HCL_IOTOK_SELF,
 
 	HCL_IOTOK_IDENT,
 	HCL_IOTOK_IDENT_DOTTED,
@@ -198,6 +199,7 @@ enum hcl_cnode_type_t
 	HCL_CNODE_NIL,
 	HCL_CNODE_TRUE,
 	HCL_CNODE_FALSE,
+	HCL_CNODE_SELF,
 	HCL_CNODE_ELLIPSIS,
 	HCL_CNODE_TRPCOLONS,
 
@@ -1501,6 +1503,7 @@ int hcl_emitbyteinstruction (
 hcl_cnode_t* hcl_makecnodenil (hcl_t* hcl, const hcl_ioloc_t* loc, const hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodetrue (hcl_t* hcl, const hcl_ioloc_t* loc, const  hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodefalse (hcl_t* hcl, const hcl_ioloc_t* loc, const  hcl_oocs_t* tok);
+hcl_cnode_t* hcl_makecnodeself (hcl_t* hcl, const hcl_ioloc_t* loc, const  hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodeellipsis (hcl_t* hcl, const hcl_ioloc_t* loc, const  hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodecharlit (hcl_t* hcl, const hcl_ioloc_t* loc, const  hcl_oocs_t* tok, const hcl_ooch_t v);
 hcl_cnode_t* hcl_makecnodesymbol (hcl_t* hcl, const hcl_ioloc_t* loc, const  hcl_oocs_t* tok);

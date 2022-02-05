@@ -376,7 +376,7 @@ typedef enum hcl_obj_type_t hcl_obj_type_t;
 #define HCL_OBJ_FLAGS_MOVED_BITS    2
 #define HCL_OBJ_FLAGS_NGC_BITS      1
 #define HCL_OBJ_FLAGS_TRAILER_BITS  1
-#define HCL_OBJ_FLAGS_SYNCODE_BITS  4
+#define HCL_OBJ_FLAGS_SYNCODE_BITS  5
 #define HCL_OBJ_FLAGS_BRAND_BITS    6
 
 
@@ -624,7 +624,31 @@ struct hcl_context_t
 	/* SmallInteger, instruction pointer */
 	hcl_oop_t          ip;
 
-	hcl_oop_t          base; /* either a block or a function */
+	/* the initial context is created with the initial function object in this field.
+	 * a function-based context is created with the activating function object.
+	 * a block-based context is created with the function object that the base field of 
+	 * the home context of the activating block context points to. */
+	hcl_oop_function_t base; /* function */
+
+/* TODO: get rid of origin. or rename base to origin??? with the base pointing to 
+ *       the originating function object and a separate receiver pointer,
+ *       the originating function context isn't that useful.... */
+	/* a function context is created with itself in this field. The function
+	 * context creation is based on a function object(initial or lambda/defun).
+	 *
+	 * a block context is created over a block object. it stores
+	 * a function context that points to itself in this field. a block context
+	 * points to the function context where it is created. another block context
+	 * created within the block context also points to the same function context.
+	 *
+	 * take note of the following points:
+	 *   ctx->origin: function context
+	 *   ctx->origin->base: actual function containing byte codes pertaining to ctx.
+	 *
+	 * a base of a block context is a block object but ctx->origin is guaranteed to be
+	 * a function context. so its base is also a function object all the time.
+	 */
+	hcl_oop_context_t  origin;
 
 	/* it points to the active context at the moment when
 	 * this context object has been activated. a new method context
@@ -643,24 +667,8 @@ struct hcl_context_t
 	 * moment the block context was created. that is, it points to
 	 * a method context where the base block has been defined.
 	 * an activated block context copies this field from the base block context. */
-	hcl_oop_context_t home; /* context or nil */
+	hcl_oop_context_t  home; /* context or nil */
 
-	/* a function context is created with itself in this field. The function
-	 * context creation is based on a function object(initial or lambda/defun).
-	 *
-	 * a block context is created over a block object. it stores
-	 * a function context that points to itself in this field. a block context
-	 * points to the function context where it is created. another block context
-	 * created within the block context also points to the same function context.
-	 *
-	 * take note of the following points:
-	 *   ctx->origin: function context
-	 *   ctx->origin->base: actual function containing byte codes pertaining to ctx.
-	 *
-	 * a base of a block context is a block object but ctx->origin is guaranteed to be
-	 * a function context. so its base is also a function object all the time.
-	 */
-	hcl_oop_context_t  origin;
 
 	/* variable indexed part */
 	hcl_oop_t          slot[1]; /* arguments, return variables, local variables, other arguments, etc */
@@ -1528,7 +1536,7 @@ struct hcl_t
 
 	hcl_oop_t _and;    /* symbol */
 	hcl_oop_t _break;  /* symbol */
-	hcl_oop_t _catch; /* symbol */
+	hcl_oop_t _catch;  /* symbol */
 	hcl_oop_t _continue; /* symbol */
 	hcl_oop_t _defclass; /* symbol */
 	hcl_oop_t _defun;  /* symbol */
@@ -1842,7 +1850,8 @@ enum hcl_syncode_t
 	HCL_SYNCODE_THROW,
 	HCL_SYNCODE_TRY,
 	HCL_SYNCODE_UNTIL,
-	HCL_SYNCODE_WHILE
+	HCL_SYNCODE_WHILE,
+	
 };
 typedef enum hcl_syncode_t hcl_syncode_t;
 
