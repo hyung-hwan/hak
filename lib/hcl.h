@@ -1850,7 +1850,7 @@ enum hcl_syncode_t
 	HCL_SYNCODE_THROW,
 	HCL_SYNCODE_TRY,
 	HCL_SYNCODE_UNTIL,
-	HCL_SYNCODE_WHILE,
+	HCL_SYNCODE_WHILE
 	
 };
 typedef enum hcl_syncode_t hcl_syncode_t;
