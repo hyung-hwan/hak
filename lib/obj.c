@@ -368,6 +368,17 @@ hcl_oop_t hcl_makeclass (hcl_t* hcl, hcl_oop_t superclass, hcl_ooi_t nivars, hcl
 	c->nivars = HCL_SMOOI_TO_OOP(nivars);
 	c->ncvars = HCL_SMOOI_TO_OOP(ncvars);
 
+	if ((hcl_oop_t)superclass != hcl->_nil)
+	{
+		hcl_ooi_t nivars_super;
+		nivars_super = HCL_OOP_TO_SMOOI(((hcl_oop_class_t)superclass)->nivars_super) + HCL_OOP_TO_SMOOI(((hcl_oop_class_t)superclass)->nivars);
+		c->nivars_super =  HCL_SMOOI_TO_OOP(nivars_super);
+	}
+	else
+	{
+		c->nivars_super = HCL_SMOOI_TO_OOP(0);
+	}
+
 	return (hcl_oop_t)c;
 }
 

@@ -2066,11 +2066,12 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src)
 		cf = GET_SUBCFRAME(hcl);
 		cf->u._class.nsuperclasses = 0; /* unsed for CLASS_P2 */
 		cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
-		
+
 		obj = HCL_CNODE_CONS_CDR(obj);
 		PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_P1, obj); /* 2 - variables declaraions and actual body */
 		cf = GET_SUBCFRAME(hcl);
 		cf->u._class.nsuperclasses = 1; /* this one needs to change if we support multiple superclasses... */
+		cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
 	}
 	else
 	{

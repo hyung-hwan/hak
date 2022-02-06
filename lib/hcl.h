@@ -577,7 +577,7 @@ typedef struct hcl_function_t* hcl_oop_function_t;
 typedef struct hcl_block_t hcl_block_t;
 typedef struct hcl_block_t* hcl_oop_block_t;
 
-#define HCL_CONTEXT_NAMED_INSTVARS 8
+#define HCL_CONTEXT_NAMED_INSTVARS 9
 typedef struct hcl_context_t hcl_context_t;
 typedef struct hcl_context_t* hcl_oop_context_t;
 
@@ -669,6 +669,8 @@ struct hcl_context_t
 	 * an activated block context copies this field from the base block context. */
 	hcl_oop_context_t  home; /* context or nil */
 
+
+	hcl_oop_t          instoff;
 
 	/* variable indexed part */
 	hcl_oop_t          slot[1]; /* arguments, return variables, local variables, other arguments, etc */
@@ -850,7 +852,7 @@ struct hcl_process_scheduler_t
 };
 
 
-#define HCL_CLASS_NAMED_INSTVARS 6
+#define HCL_CLASS_NAMED_INSTVARS 7
 typedef struct hcl_class_t hcl_class_t;
 typedef struct hcl_class_t* hcl_oop_class_t;
 struct hcl_class_t
@@ -862,6 +864,7 @@ struct hcl_class_t
 	hcl_oop_t superclass;
 	hcl_oop_t nivars; /* smooi. */
 	hcl_oop_t ncvars; /* smooi. */
+	hcl_oop_t nivars_super; /* smooi */
 
 	hcl_oop_char_t ivarnames;
 	hcl_oop_char_t cvarnames;

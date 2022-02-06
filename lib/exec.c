@@ -1899,7 +1899,7 @@ void hcl_releaseiohandle (hcl_t* hcl, hcl_ooi_t io_handle)
 
 /* ------------------------------------------------------------------------- */
 
-static int prepare_new_context (hcl_t* hcl, hcl_oop_block_t op_blk, hcl_ooi_t nargs, int nargs_offset, hcl_ooi_t req_nrvars, int copy_args, int is_msgsend, hcl_oop_context_t* pnewctx)
+static int prepare_new_context (hcl_t* hcl, hcl_oop_block_t op_blk, hcl_ooi_t nargs, int nargs_offset, hcl_ooi_t req_nrvars, int copy_args, int is_msgsend, hcl_ooi_t msg_instoff, hcl_oop_context_t* pnewctx)
 {
 	/* prepare a new block context for activation. 
 	 * the passed block context becomes the base for a new block context. */
@@ -1962,11 +1962,13 @@ static int prepare_new_context (hcl_t* hcl, hcl_oop_block_t op_blk, hcl_ooi_t na
 	{
 		blkctx->home = blkctx; /* itself */
 		blkctx->receiver = HCL_STACK_GETRCV(hcl, nargs);
+		blkctx->instoff = HCL_SMOOI_TO_OOP(msg_instoff);
 	}
 	else
 	{
 		blkctx->home = op_blk->home;
 		blkctx->receiver = op_blk->home->receiver;
+		blkctx->instoff = HCL_SMOOI_TO_OOP(0); /* not useful if it's not message send */
 	}
 #endif
 
@@ -1994,7 +1996,7 @@ static int prepare_new_context (hcl_t* hcl, hcl_oop_block_t op_blk, hcl_ooi_t na
 	return 0;
 }
 
-static HCL_INLINE int __activate_block (hcl_t* hcl, hcl_oop_block_t op, hcl_ooi_t nargs, hcl_ooi_t nrvars, int is_msgsend, hcl_oop_context_t* pnewctx)
+static HCL_INLINE int __activate_block (hcl_t* hcl, hcl_oop_block_t op, hcl_ooi_t nargs, hcl_ooi_t nrvars, int is_msgsend, hcl_oop_t msg_instoff, hcl_oop_context_t* pnewctx)
 {
 	int x;
 
@@ -2008,6 +2010,7 @@ static HCL_INLINE int __activate_block (hcl_t* hcl, hcl_oop_block_t op, hcl_ooi_
 		nrvars,
 		1, /* copy_args */
 		is_msgsend,
+		msg_instoff,
 		pnewctx);
 	if (HCL_UNLIKELY(x <= -1)) return -1;
 
@@ -2026,7 +2029,7 @@ static HCL_INLINE int activate_block (hcl_t* hcl, hcl_ooi_t nargs, hcl_ooi_t nrv
 	op = (hcl_oop_block_t)HCL_STACK_GETOP(hcl, nargs);
 	HCL_ASSERT (hcl, HCL_IS_BLOCK(hcl, op));
 
-	x = __activate_block(hcl, op, nargs, nrvars, 0, &newctx);
+	x = __activate_block(hcl, op, nargs, nrvars, 0, 0, &newctx);
 	if (HCL_UNLIKELY(x <= -1)) return -1;
 
 	SWITCH_ACTIVE_CONTEXT (hcl, newctx);
@@ -2145,7 +2148,7 @@ static HCL_INLINE int call_primitive (hcl_t* hcl, hcl_ooi_t nargs)
 
 /* ------------------------------------------------------------------------- */
 
-static hcl_oop_block_t find_method_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oop_t op)
+static hcl_oop_block_t find_method_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oop_t op, hcl_ooi_t* instoff)
 {
 	hcl_oocs_t name;
 
@@ -2172,7 +2175,8 @@ static hcl_oop_block_t find_method_noseterr (hcl_t* hcl, hcl_oop_class_t class_,
 				val = HCL_CONS_CDR(ass);
 				if (HCL_IS_BLOCK(hcl, val))
 				{
-					/* TODO: futher check if it's a method */
+					/* TODO: futher check if it's a method block? */
+					*instoff = HCL_OOP_TO_SMOOI(class_->nivars_super);
 					return (hcl_oop_block_t)val;
 				}
 			}
@@ -2184,24 +2188,27 @@ static hcl_oop_block_t find_method_noseterr (hcl_t* hcl, hcl_oop_class_t class_,
 	return HCL_NULL;
 }
 
-static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t op, int to_super, hcl_ooi_t nargs)
+static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t msg, int to_super, hcl_ooi_t nargs)
 {
 	hcl_oop_block_t mth;
 	hcl_oop_context_t newctx;
+	hcl_ooi_t instoff;
 	int x;
 
 	HCL_ASSERT (hcl, HCL_IS_INSTANCE(hcl, rcv));
-	HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl, op));
+	HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl, msg));
+
+/* TODO: implement method cache */
 
 	HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, rcv->_class));
-	mth = find_method_noseterr(hcl, (hcl_oop_class_t)rcv->_class, op);
+	mth = find_method_noseterr(hcl, (hcl_oop_class_t)rcv->_class, msg, &instoff);
 	if (!mth)
 	{
-		hcl_seterrbfmt (hcl, HCL_ENOENT, "'%.*js' not found in the %O", HCL_OBJ_GET_SIZE(op), HCL_OBJ_GET_CHAR_SLOT(op), rcv->_class);
+		hcl_seterrbfmt (hcl, HCL_ENOENT, "'%.*js' not found in the %O", HCL_OBJ_GET_SIZE(msg), HCL_OBJ_GET_CHAR_SLOT(msg), rcv->_class);
 		return -1;
 	}
 
-	x = __activate_block(hcl, mth, nargs, 0 /* TODO: not 0 */, 1 , &newctx);
+	x = __activate_block(hcl, mth, nargs, 0 /* TODO: not always 0, support nrvars */, 1, instoff, &newctx);
 	if (HCL_UNLIKELY(x <= -1)) return -1;
 
 	SWITCH_ACTIVE_CONTEXT (hcl, newctx);
@@ -3052,6 +3059,8 @@ static int execute (hcl_t* hcl)
 				HCL_ASSERT (hcl, HCL_OBJ_GET_FLAGS_TYPE(hcl->active_context->receiver) == HCL_OBJ_TYPE_OOP);
 	/* TODO: FIX TO OFFSET THE INHERTED PART... */
 				//HCL_STACK_PUSH (hcl, ((hcl_oop_oop_t)hcl->active_context->origin->receiver)->slot[b1]);
+				b1 += HCL_OOP_TO_SMOOI(hcl->active_context->home->instoff);
+HCL_DEBUG2 (hcl, "+++++ %O %zu\n", hcl->active_context->home->instoff, b1);
 				HCL_STACK_PUSH (hcl, ((hcl_oop_oop_t)hcl->active_context->receiver)->slot[b1]);
 				break;
 
@@ -3073,6 +3082,8 @@ static int execute (hcl_t* hcl)
 				LOG_INST_1 (hcl, "store_into_instvar %zu", b1);
 				HCL_ASSERT (hcl, HCL_OBJ_GET_FLAGS_TYPE(hcl->active_context->receiver) == HCL_OBJ_TYPE_OOP);
 				//((hcl_oop_oop_t)hcl->active_context->origin->receiver)->slot[b1] = HCL_STACK_GETTOP(hcl);
+				b1 += HCL_OOP_TO_SMOOI(hcl->active_context->home->instoff);
+HCL_DEBUG2 (hcl, "@@@@@ %O %zu\n", hcl->active_context->home->instoff, b1);
 				((hcl_oop_oop_t)hcl->active_context->receiver)->slot[b1] = HCL_STACK_GETTOP(hcl);
 				break;
 
@@ -3092,7 +3103,10 @@ static int execute (hcl_t* hcl)
 			pop_into_instvar:
 				LOG_INST_1 (hcl, "pop_into_instvar %zu", b1);
 				HCL_ASSERT (hcl, HCL_OBJ_GET_FLAGS_TYPE(hcl->active_context->receiver) == HCL_OBJ_TYPE_OOP);
+
 				//((hcl_oop_oop_t)hcl->active_context->origin->receiver)->slot[b1] = HCL_STACK_GETTOP(hcl);
+				b1 += HCL_OOP_TO_SMOOI(hcl->active_context->home->instoff);
+HCL_DEBUG2 (hcl, "~~~~~ %O %zu\n", hcl->active_context->home->instoff, b1);
 				((hcl_oop_oop_t)hcl->active_context->receiver)->slot[b1] = HCL_STACK_GETTOP(hcl);
 				HCL_STACK_POP (hcl);
 				break;
@@ -3514,7 +3528,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				 */
 				hcl_oop_t t, sc, ivars_str, cvars_str;
 				hcl_oow_t b3;
-				
+
 				FETCH_PARAM_CODE_TO (hcl, b1); /* nsuperclasses */
 				FETCH_PARAM_CODE_TO (hcl, b2); /* nivars */
 				FETCH_PARAM_CODE_TO (hcl, b3); /* ncvars */
@@ -3541,6 +3555,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 					if (!HCL_IS_CLASS(hcl, sc))
 					{
 						hcl_seterrbfmt (hcl, HCL_ECALL, "invalid superclass %O", sc);
+						if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
 						goto oops_with_errmsg_supplement;
 					}
  				}
@@ -3553,10 +3568,6 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				HCL_CLSTACK_PUSH (hcl, t); 
 				break;
 			}
-
-			/*case HCL_CODE_MAKE_METHOD:
-			{
-			}*/
 
 			case HCL_CODE_CLASS_EXIT:
 			{
@@ -3613,7 +3624,6 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 					((hcl_oop_class_t)class_)->memdic = dic;
 				}
 
-HCL_DEBUG2 (hcl, "class_mstore %O %O\n", hcl->active_function->literal_frame[b1], HCL_STACK_GETTOP(hcl));
 				if (!hcl_putatdic(hcl, dic, hcl->active_function->literal_frame[b1], HCL_STACK_GETTOP(hcl))) goto oops_with_errmsg_supplement;
 				break;
 			}
@@ -4508,6 +4518,7 @@ hcl_pfrc_t hcl_pf_process_fork (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 		0, /* number of return variables expected */
 		1, /* copy_args */
 		0, /* is_msgsend */
+		0, /* msg_instoff */
 		&newctx);
 	if (HCL_UNLIKELY(x <= -1)) return HCL_PF_FAILURE;
 
