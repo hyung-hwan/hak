@@ -662,15 +662,26 @@ struct hcl_context_t
 	 * points to a function object */
 	hcl_oop_t          receiver;
 
-	/* it is set to nil for a method context.
+	/* it is set to itself for a method context.
 	 * for a block context, it points to the active context at the
 	 * moment the block context was created. that is, it points to
 	 * a method context where the base block has been defined.
 	 * an activated block context copies this field from the base block context. */
 	hcl_oop_context_t  home; /* context or nil */
 
-
-	hcl_oop_t          instoff;
+	/* instance variable access instructions hold the index to a variable within
+	 * the the containing class. If the class inherits from a superclass and the
+	 * superclass chain contains instance variables, the actual index must be
+	 * added with the number of instance variables in the superclass chain. 
+	 *
+	 * for example, the following instruction accesses the instance variable slot
+	 * at index 3. if the class of the instance has 4 instance variables in the 
+	 * superclass side, the method context activated has 4 in thie field. 
+	 * therefore, the instruction accesses the instance variable slot at index 7.
+	 *   push_instvar 3
+	 * the debug output shows this instruction as "push_instvar 3; [4]"
+	 */
+	hcl_oop_t          ivaroff;
 
 	/* variable indexed part */
 	hcl_oop_t          slot[1]; /* arguments, return variables, local variables, other arguments, etc */

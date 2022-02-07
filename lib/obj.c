@@ -387,7 +387,7 @@ static HCL_INLINE int decode_spec (hcl_t* hcl, hcl_oop_class_t _class, hcl_obj_t
 	/* TODO: */
 
 	*type = HCL_OBJ_TYPE_OOP;
-	*outlen = HCL_OOP_TO_SMOOI(_class->nivars);
+	*outlen = HCL_OOP_TO_SMOOI(_class->nivars_super) + HCL_OOP_TO_SMOOI(_class->nivars);
 	return 0;
 }
 

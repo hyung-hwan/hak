@@ -1899,7 +1899,7 @@ void hcl_releaseiohandle (hcl_t* hcl, hcl_ooi_t io_handle)
 
 /* ------------------------------------------------------------------------- */
 
-static int prepare_new_context (hcl_t* hcl, hcl_oop_block_t op_blk, hcl_ooi_t nargs, int nargs_offset, hcl_ooi_t req_nrvars, int copy_args, int is_msgsend, hcl_ooi_t msg_instoff, hcl_oop_context_t* pnewctx)
+static int prepare_new_context (hcl_t* hcl, hcl_oop_block_t op_blk, hcl_ooi_t nargs, int nargs_offset, hcl_ooi_t req_nrvars, int copy_args, int is_msgsend, hcl_ooi_t msg_ivaroff, hcl_oop_context_t* pnewctx)
 {
 	/* prepare a new block context for activation. 
 	 * the passed block context becomes the base for a new block context. */
@@ -1962,13 +1962,13 @@ static int prepare_new_context (hcl_t* hcl, hcl_oop_block_t op_blk, hcl_ooi_t na
 	{
 		blkctx->home = blkctx; /* itself */
 		blkctx->receiver = HCL_STACK_GETRCV(hcl, nargs);
-		blkctx->instoff = HCL_SMOOI_TO_OOP(msg_instoff);
+		blkctx->ivaroff = HCL_SMOOI_TO_OOP(msg_ivaroff);
 	}
 	else
 	{
 		blkctx->home = op_blk->home;
 		blkctx->receiver = op_blk->home->receiver;
-		blkctx->instoff = HCL_SMOOI_TO_OOP(0); /* not useful if it's not message send */
+		blkctx->ivaroff = HCL_SMOOI_TO_OOP(0); /* not useful if it's not message send */
 	}
 #endif
 
@@ -1996,7 +1996,7 @@ static int prepare_new_context (hcl_t* hcl, hcl_oop_block_t op_blk, hcl_ooi_t na
 	return 0;
 }
 
-static HCL_INLINE int __activate_block (hcl_t* hcl, hcl_oop_block_t op, hcl_ooi_t nargs, hcl_ooi_t nrvars, int is_msgsend, hcl_oop_t msg_instoff, hcl_oop_context_t* pnewctx)
+static HCL_INLINE int __activate_block (hcl_t* hcl, hcl_oop_block_t op, hcl_ooi_t nargs, hcl_ooi_t nrvars, int is_msgsend, hcl_oop_t msg_ivaroff, hcl_oop_context_t* pnewctx)
 {
 	int x;
 
@@ -2010,7 +2010,7 @@ static HCL_INLINE int __activate_block (hcl_t* hcl, hcl_oop_block_t op, hcl_ooi_
 		nrvars,
 		1, /* copy_args */
 		is_msgsend,
-		msg_instoff,
+		msg_ivaroff,
 		pnewctx);
 	if (HCL_UNLIKELY(x <= -1)) return -1;
 
@@ -2148,7 +2148,7 @@ static HCL_INLINE int call_primitive (hcl_t* hcl, hcl_ooi_t nargs)
 
 /* ------------------------------------------------------------------------- */
 
-static hcl_oop_block_t find_method_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oop_t op, hcl_ooi_t* instoff)
+static hcl_oop_block_t find_method_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oop_t op, hcl_ooi_t* ivaroff)
 {
 	hcl_oocs_t name;
 
@@ -2176,7 +2176,7 @@ static hcl_oop_block_t find_method_noseterr (hcl_t* hcl, hcl_oop_class_t class_,
 				if (HCL_IS_BLOCK(hcl, val))
 				{
 					/* TODO: futher check if it's a method block? */
-					*instoff = HCL_OOP_TO_SMOOI(class_->nivars_super);
+					*ivaroff = HCL_OOP_TO_SMOOI(class_->nivars_super);
 					return (hcl_oop_block_t)val;
 				}
 			}
@@ -2192,7 +2192,7 @@ static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t msg, in
 {
 	hcl_oop_block_t mth;
 	hcl_oop_context_t newctx;
-	hcl_ooi_t instoff;
+	hcl_ooi_t ivaroff;
 	int x;
 
 	HCL_ASSERT (hcl, HCL_IS_INSTANCE(hcl, rcv));
@@ -2201,14 +2201,14 @@ static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t msg, in
 /* TODO: implement method cache */
 
 	HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, rcv->_class));
-	mth = find_method_noseterr(hcl, (hcl_oop_class_t)rcv->_class, msg, &instoff);
+	mth = find_method_noseterr(hcl, (hcl_oop_class_t)rcv->_class, msg, &ivaroff);
 	if (!mth)
 	{
 		hcl_seterrbfmt (hcl, HCL_ENOENT, "'%.*js' not found in the %O", HCL_OBJ_GET_SIZE(msg), HCL_OBJ_GET_CHAR_SLOT(msg), rcv->_class);
 		return -1;
 	}
 
-	x = __activate_block(hcl, mth, nargs, 0 /* TODO: not always 0, support nrvars */, 1, instoff, &newctx);
+	x = __activate_block(hcl, mth, nargs, 0 /* TODO: not always 0, support nrvars */, 1, ivaroff, &newctx);
 	if (HCL_UNLIKELY(x <= -1)) return -1;
 
 	SWITCH_ACTIVE_CONTEXT (hcl, newctx);
@@ -3055,12 +3055,10 @@ static int execute (hcl_t* hcl)
 			case HCL_CODE_PUSH_INSTVAR_7:
 				b1 = bcode & 0x7; /* low 3 bits */
 			push_instvar:
-				LOG_INST_1 (hcl, "push_instvar %zu", b1);
+				LOG_INST_2 (hcl, "push_instvar %zu ; [%zd]", b1, HCL_OOP_TO_SMOOI(hcl->active_context->home->ivaroff));
 				HCL_ASSERT (hcl, HCL_OBJ_GET_FLAGS_TYPE(hcl->active_context->receiver) == HCL_OBJ_TYPE_OOP);
-	/* TODO: FIX TO OFFSET THE INHERTED PART... */
 				//HCL_STACK_PUSH (hcl, ((hcl_oop_oop_t)hcl->active_context->origin->receiver)->slot[b1]);
-				b1 += HCL_OOP_TO_SMOOI(hcl->active_context->home->instoff);
-HCL_DEBUG2 (hcl, "+++++ %O %zu\n", hcl->active_context->home->instoff, b1);
+				b1 += HCL_OOP_TO_SMOOI(hcl->active_context->home->ivaroff);
 				HCL_STACK_PUSH (hcl, ((hcl_oop_oop_t)hcl->active_context->receiver)->slot[b1]);
 				break;
 
@@ -3079,11 +3077,10 @@ HCL_DEBUG2 (hcl, "+++++ %O %zu\n", hcl->active_context->home->instoff, b1);
 			case HCL_CODE_STORE_INTO_INSTVAR_7:
 				b1 = bcode & 0x7; /* low 3 bits */
 			store_instvar:
-				LOG_INST_1 (hcl, "store_into_instvar %zu", b1);
+				LOG_INST_2 (hcl, "store_into_instvar %zu ; [%zd]", b1, HCL_OOP_TO_SMOOI(hcl->active_context->home->ivaroff));
 				HCL_ASSERT (hcl, HCL_OBJ_GET_FLAGS_TYPE(hcl->active_context->receiver) == HCL_OBJ_TYPE_OOP);
 				//((hcl_oop_oop_t)hcl->active_context->origin->receiver)->slot[b1] = HCL_STACK_GETTOP(hcl);
-				b1 += HCL_OOP_TO_SMOOI(hcl->active_context->home->instoff);
-HCL_DEBUG2 (hcl, "@@@@@ %O %zu\n", hcl->active_context->home->instoff, b1);
+				b1 += HCL_OOP_TO_SMOOI(hcl->active_context->home->ivaroff);
 				((hcl_oop_oop_t)hcl->active_context->receiver)->slot[b1] = HCL_STACK_GETTOP(hcl);
 				break;
 
@@ -3101,12 +3098,11 @@ HCL_DEBUG2 (hcl, "@@@@@ %O %zu\n", hcl->active_context->home->instoff, b1);
 			case HCL_CODE_POP_INTO_INSTVAR_7:
 				b1 = bcode & 0x7; /* low 3 bits */
 			pop_into_instvar:
-				LOG_INST_1 (hcl, "pop_into_instvar %zu", b1);
+				LOG_INST_2 (hcl, "pop_into_instvar %zu ; [%zd]", b1, HCL_OOP_TO_SMOOI(hcl->active_context->home->ivaroff));
 				HCL_ASSERT (hcl, HCL_OBJ_GET_FLAGS_TYPE(hcl->active_context->receiver) == HCL_OBJ_TYPE_OOP);
 
 				//((hcl_oop_oop_t)hcl->active_context->origin->receiver)->slot[b1] = HCL_STACK_GETTOP(hcl);
-				b1 += HCL_OOP_TO_SMOOI(hcl->active_context->home->instoff);
-HCL_DEBUG2 (hcl, "~~~~~ %O %zu\n", hcl->active_context->home->instoff, b1);
+				b1 += HCL_OOP_TO_SMOOI(hcl->active_context->home->ivaroff);
 				((hcl_oop_oop_t)hcl->active_context->receiver)->slot[b1] = HCL_STACK_GETTOP(hcl);
 				HCL_STACK_POP (hcl);
 				break;
@@ -4518,7 +4514,7 @@ hcl_pfrc_t hcl_pf_process_fork (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 		0, /* number of return variables expected */
 		1, /* copy_args */
 		0, /* is_msgsend */
-		0, /* msg_instoff */
+		0, /* msg_ivaroff */
 		&newctx);
 	if (HCL_UNLIKELY(x <= -1)) return HCL_PF_FAILURE;
 
