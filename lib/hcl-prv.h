@@ -1505,6 +1505,7 @@ hcl_cnode_t* hcl_makecnodetrue (hcl_t* hcl, const hcl_ioloc_t* loc, const  hcl_o
 hcl_cnode_t* hcl_makecnodefalse (hcl_t* hcl, const hcl_ioloc_t* loc, const  hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodeself (hcl_t* hcl, const hcl_ioloc_t* loc, const  hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodeellipsis (hcl_t* hcl, const hcl_ioloc_t* loc, const  hcl_oocs_t* tok);
+hcl_cnode_t* hcl_makecnodetrpcolons (hcl_t* hcl, const hcl_ioloc_t* loc, const  hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodecharlit (hcl_t* hcl, const hcl_ioloc_t* loc, const  hcl_oocs_t* tok, const hcl_ooch_t v);
 hcl_cnode_t* hcl_makecnodesymbol (hcl_t* hcl, const hcl_ioloc_t* loc, const  hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodedsymbol (hcl_t* hcl, const hcl_ioloc_t* loc, const  hcl_oocs_t* tok);

@@ -1906,7 +1906,7 @@ static int prepare_new_context (hcl_t* hcl, hcl_oop_block_t op_blk, hcl_ooi_t na
 
 	hcl_oop_context_t blkctx;
 	hcl_ooi_t tmpr_mask;
-	hcl_ooi_t fblk_nrvars, fblk_nlvars, flags;
+	hcl_ooi_t fblk_nrvars, fblk_nlvars;
 	hcl_ooi_t fixed_nargs, actual_nargs, excess_nargs;
 
 	/* the receiver must be a block context */

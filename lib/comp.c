@@ -4792,7 +4792,6 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 		 * the block has been exited(blk.depth--) before finding 'x' in the outer scope.
 		 */
 		hcl_cnode_t* defun_name = cf->operand;
-		hcl_oow_t index;
 		hcl_var_info_t vi;
 		int x;
 
@@ -4826,7 +4825,6 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 			}
 			else
 			{
-				HCL_ASSERT (hcl, index <= HCL_SMOOI_MAX); 
 				SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, defun_name); 
 				cf = GET_TOP_CFRAME(hcl);
 				cf->u.set.vi = vi;
