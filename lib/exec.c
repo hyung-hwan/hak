@@ -1996,7 +1996,7 @@ static int prepare_new_context (hcl_t* hcl, hcl_oop_block_t op_blk, hcl_ooi_t na
 	return 0;
 }
 
-static HCL_INLINE int __activate_block (hcl_t* hcl, hcl_oop_block_t op, hcl_ooi_t nargs, hcl_ooi_t nrvars, int is_msgsend, hcl_oop_t msg_ivaroff, hcl_oop_context_t* pnewctx)
+static HCL_INLINE int __activate_block (hcl_t* hcl, hcl_oop_block_t op, hcl_ooi_t nargs, hcl_ooi_t nrvars, int is_msgsend, hcl_ooi_t msg_ivaroff, hcl_oop_context_t* pnewctx)
 {
 	int x;
 
@@ -2168,7 +2168,7 @@ static hcl_oop_block_t find_method_noseterr (hcl_t* hcl, hcl_oop_class_t class_,
 		if (HCL_LIKELY(!HCL_IS_NIL(hcl, dic)))
 		{
 			hcl_oop_cons_t ass;
-			ass = (hcl_oop_cons_t)hcl_lookupdicforsymbol_noseterr(hcl, dic, &name);
+			ass = (hcl_oop_cons_t)hcl_lookupdicforsymbol_noseterr(hcl, (hcl_oop_dic_t)dic, &name);
 			if (HCL_LIKELY(ass))
 			{
 				hcl_oop_t val;
@@ -3620,7 +3620,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 					((hcl_oop_class_t)class_)->memdic = dic;
 				}
 
-				if (!hcl_putatdic(hcl, dic, hcl->active_function->literal_frame[b1], HCL_STACK_GETTOP(hcl))) goto oops_with_errmsg_supplement;
+				if (!hcl_putatdic(hcl, (hcl_oop_dic_t)dic, hcl->active_function->literal_frame[b1], HCL_STACK_GETTOP(hcl))) goto oops_with_errmsg_supplement;
 				break;
 			}
 			/* -------------------------------------------------------- */
@@ -3812,17 +3812,18 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 			 * the class object is at the class stack top */
 			case HCL_CODE_PUSH_CLSVAR_I_X:
 			{
-				hcl_oop_class_t t;
+				hcl_oop_t t;
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				LOG_INST_1 (hcl, "push_clsvar_i %zu", b1);
 				HCL_CLSTACK_FETCH_TOP_TO(hcl, t);
-				HCL_STACK_PUSH (hcl, t->cvar[b1]);
+				HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, t));
+				HCL_STACK_PUSH (hcl, ((hcl_oop_class_t)t)->cvar[b1]);
 				break;
 			}
 
 			case HCL_CODE_STORE_INTO_CLSVAR_I_X:
 			{
-				hcl_oop_class_t t;
+				hcl_oop_t t;
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				LOG_INST_1 (hcl, "store_into_clsvar_i %zu", b1);
 				if (HCL_CLSTACK_IS_EMPTY(hcl))
@@ -3832,13 +3833,14 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 					goto oops_with_errmsg_supplement;
 				}
 				HCL_CLSTACK_FETCH_TOP_TO(hcl, t);
-				t->cvar[b1] = HCL_STACK_GETTOP(hcl);
+				HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, t));
+				((hcl_oop_class_t)t)->cvar[b1] = HCL_STACK_GETTOP(hcl);
 				break;
 			}
 
 			case HCL_CODE_POP_INTO_CLSVAR_I_X:
 			{
-				hcl_oop_class_t t;
+				hcl_oop_t t;
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				LOG_INST_1 (hcl, "pop_into_clsvar_i %zu", b1);
 				if (HCL_CLSTACK_IS_EMPTY(hcl))
@@ -3848,7 +3850,8 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 					goto oops_with_errmsg_supplement;
 				}
 				HCL_CLSTACK_FETCH_TOP_TO(hcl, t);
-				t->cvar[b1] = HCL_STACK_GETTOP(hcl);
+				HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, t));
+				((hcl_oop_class_t)t)->cvar[b1] = HCL_STACK_GETTOP(hcl);
 				HCL_STACK_POP (hcl);
 				break;
 			}
@@ -3859,11 +3862,11 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 			 * the receiver's class is accessed. */
 			case HCL_CODE_PUSH_CLSVAR_M_X:
 			{
-				hcl_oop_class_t t;
+				hcl_oop_t t;
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				LOG_INST_1 (hcl, "push_clsvar_m %zu", b1);
 				//t = (hcl_oop_oop_t)hcl->active_context->origin->receiver;
-				t = (hcl_oop_oop_t)hcl->active_context->receiver;
+				t = hcl->active_context->receiver;
 				if (!HCL_IS_INSTANCE(hcl, t))
 				{
 					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "non-instance receiver");
@@ -3871,17 +3874,18 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 					goto oops_with_errmsg_supplement;
 				}
 				t = HCL_OBJ_GET_CLASS(t);
-				HCL_STACK_PUSH (hcl, t->cvar[b1]);
+				HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, t));
+				HCL_STACK_PUSH (hcl, ((hcl_oop_class_t)t)->cvar[b1]);
 				break;
 			}
 
 			case HCL_CODE_STORE_INTO_CLSVAR_M_X:
 			{
-				hcl_oop_class_t t;
+				hcl_oop_t t;
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				LOG_INST_1 (hcl, "store_into_clsvar_m %zu", b1);
 				//t = (hcl_oop_oop_t)hcl->active_context->origin->receiver;
-				t = (hcl_oop_oop_t)hcl->active_context->receiver;
+				t = hcl->active_context->receiver;
 				if (!HCL_IS_INSTANCE(hcl, t))
 				{
 					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "non-instance receiver");
@@ -3889,24 +3893,26 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 					goto oops_with_errmsg_supplement;
 				}
 				t = HCL_OBJ_GET_CLASS(t);
-				t->cvar[b1] = HCL_STACK_GETTOP(hcl);
+				HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, t));
+				((hcl_oop_class_t)t)->cvar[b1] = HCL_STACK_GETTOP(hcl);
 				break;
 			}
 
 			case HCL_CODE_POP_INTO_CLSVAR_M_X:
 			{
-				hcl_oop_class_t t;
+				hcl_oop_t t;
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				LOG_INST_1 (hcl, "pop_into_clsvar_m %zu", b1);
 				//t = (hcl_oop_oop_t)hcl->active_context->origin->receiver;
-				t = (hcl_oop_oop_t)hcl->active_context->receiver;
+				t = hcl->active_context->receiver;
 				if (!HCL_IS_INSTANCE(hcl, t))
 				{
 					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "non-instance receiver");
 					goto oops_with_errmsg_supplement;
 				}
 				t = HCL_OBJ_GET_CLASS(t);
-				t->cvar[b1] = HCL_STACK_GETTOP(hcl);
+				HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, t));
+				((hcl_oop_class_t)t)->cvar[b1] = HCL_STACK_GETTOP(hcl);
 				HCL_STACK_POP (hcl);
 				break;
 			}
