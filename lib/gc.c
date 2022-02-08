@@ -849,7 +849,7 @@ int hcl_ignite (hcl_t* hcl, hcl_oow_t heapsize)
 
 	if (!hcl->code.dbgi)
 	{
-		hcl->code.dbgi = (hcl_oow_t*)hcl_allocmem(hcl, HCL_SIZEOF(*hcl->code.dbgi) * HCL_BC_BUFFER_INIT);
+		hcl->code.dbgi = (hcl_dbgi_t*)hcl_allocmem(hcl, HCL_SIZEOF(*hcl->code.dbgi) * HCL_BC_BUFFER_INIT);
 		if (HCL_UNLIKELY(!hcl->code.dbgi)) 
 		{
 			/* bc.ptr and dbgi go together. so free bc.ptr if dbgi allocation fails */
@@ -873,8 +873,6 @@ int hcl_ignite (hcl_t* hcl, hcl_oow_t heapsize)
 	hcl->p.e = hcl->_nil;
 	return 0;
 }
-
-
 
 int hcl_getsyncodebyoocs_noseterr (hcl_t* hcl, const hcl_oocs_t* name)
 {
