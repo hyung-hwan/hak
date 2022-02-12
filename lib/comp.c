@@ -552,7 +552,8 @@ static int emit_single_param_instruction (hcl_t* hcl, int cmd, hcl_oow_t param_1
 		case HCL_CODE_STORE_INTO_CLSVAR_M_X:
 		case HCL_CODE_POP_INTO_CLSVAR_M_X:
 
-		case HCL_CODE_CLASS_MSTORE:
+		case HCL_CODE_CLASS_CMSTORE:
+		case HCL_CODE_CLASS_IMSTORE:
 		case HCL_CODE_TRY_ENTER:
 		case HCL_CODE_TRY_ENTER2:
 		case HCL_CODE_PUSH_INTLIT:
@@ -1279,7 +1280,8 @@ enum
 	COP_EMIT_POP_STACKTOP,
 	COP_EMIT_RETURN,
 	COP_EMIT_SET,
-	COP_EMIT_CLASS_MSTORE,
+	COP_EMIT_CLASS_CMSTORE,
+	COP_EMIT_CLASS_IMSTORE,
 	COP_EMIT_THROW,
 
 	COP_POST_IF_COND,
@@ -4803,7 +4805,16 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 			if (x == 0)
 			{
 				/* arrange to save to the method slot */
-				SWITCH_TOP_CFRAME (hcl, COP_EMIT_CLASS_MSTORE, defun_name);
+				if (xxxx)
+				{
+					/* class method */
+					SWITCH_TOP_CFRAME (hcl, COP_EMIT_CLASS_CMSTORE, defun_name);
+				}
+				else
+				{
+					/* instance method */
+					SWITCH_TOP_CFRAME (hcl, COP_EMIT_CLASS_IMSTORE, defun_name);
+				}
 				cf = GET_TOP_CFRAME(hcl);
 			}
 			else
@@ -4910,20 +4921,39 @@ static HCL_INLINE int emit_set (hcl_t* hcl)
 	return 0;
 }
 
-static HCL_INLINE int emit_class_mstore (hcl_t* hcl)
+static HCL_INLINE int emit_class_cmstore (hcl_t* hcl)
 {
 	hcl_cframe_t* cf;
 	hcl_oop_t lit;
 	hcl_oow_t index;
 
 	cf = GET_TOP_CFRAME(hcl);
-	HCL_ASSERT (hcl, cf->opcode == COP_EMIT_CLASS_MSTORE);
+	HCL_ASSERT (hcl, cf->opcode == COP_EMIT_CLASS_CMSTORE);
 
 	lit = hcl_makesymbol(hcl, HCL_CNODE_GET_TOKPTR(cf->operand), HCL_CNODE_GET_TOKLEN(cf->operand));
 	if (HCL_UNLIKELY(!lit)) return -1;
 
 	if (add_literal(hcl, lit, &index) <= -1) return -1;
-	if (emit_single_param_instruction(hcl,  HCL_CODE_CLASS_MSTORE, index, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+	if (emit_single_param_instruction(hcl,  HCL_CODE_CLASS_CMSTORE, index, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+
+	POP_CFRAME (hcl);
+	return 0;
+}
+
+static HCL_INLINE int emit_class_imstore (hcl_t* hcl)
+{
+	hcl_cframe_t* cf;
+	hcl_oop_t lit;
+	hcl_oow_t index;
+
+	cf = GET_TOP_CFRAME(hcl);
+	HCL_ASSERT (hcl, cf->opcode == COP_EMIT_CLASS_IMSTORE);
+
+	lit = hcl_makesymbol(hcl, HCL_CNODE_GET_TOKPTR(cf->operand), HCL_CNODE_GET_TOKLEN(cf->operand));
+	if (HCL_UNLIKELY(!lit)) return -1;
+
+	if (add_literal(hcl, lit, &index) <= -1) return -1;
+	if (emit_single_param_instruction(hcl,  HCL_CODE_CLASS_IMSTORE, index, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
 
 	POP_CFRAME (hcl);
 	return 0;
@@ -5176,8 +5206,12 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 				if (emit_set(hcl) <= -1) goto oops;
 				break;
 
-			case COP_EMIT_CLASS_MSTORE:
-				if (emit_class_mstore(hcl) <= -1) goto oops;
+			case COP_EMIT_CLASS_CMSTORE:
+				if (emit_class_cmstore(hcl) <= -1) goto oops;
+				break;
+
+			case COP_EMIT_CLASS_IMSTORE:
+				if (emit_class_imstore(hcl) <= -1) goto oops;
 				break;
 
 			case COP_EMIT_THROW:

@@ -930,8 +930,9 @@ enum hcl_bcode_t
 	HCL_CODE_CLASS_PEXIT              = 0xE3, /* 227 */
 
 	HCL_CODE_PUSH_OBJVAR_X            = 0xE4, /* 228 ## */
-	HCL_CODE_CLASS_MSTORE             = 0xE5, /* 229 */
-	/* UNUSED - 0xE6 - 0xE7 */
+	HCL_CODE_CLASS_CMSTORE            = 0xE5, /* 229 */
+	HCL_CODE_CLASS_IMSTORE            = 0xE6, /* 230 */
+	/* UNUSED - 0xE7 */
 
 	HCL_CODE_STORE_INTO_OBJVAR_X      = 0xE8, /* 232 ## */
 	HCL_CODE_MAKE_ARRAY               = 0xE9, /* 233 ## */

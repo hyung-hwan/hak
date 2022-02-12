@@ -3594,13 +3594,44 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				break;
 			}
 
-			case HCL_CODE_CLASS_MSTORE:
+			case HCL_CODE_CLASS_CMSTORE:
+			{
+/* TODO: change this part */
+				hcl_oop_t class_;
+				hcl_oop_t dic;
+
+				FETCH_PARAM_CODE_TO (hcl, b1);
+				LOG_INST_1 (hcl, "class_cmstore %zu", b1);
+
+				/* store the stack top in the member dictionary of the currect class with the key indicated by 'b1' */
+
+				HCL_ASSERT (hcl, !HCL_CLSTACK_IS_EMPTY(hcl));
+
+				HCL_CLSTACK_FETCH_TOP_TO (hcl, class_);
+				HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, class_));
+
+				dic = ((hcl_oop_class_t)class_)->memdic;
+				HCL_ASSERT (hcl, HCL_IS_NIL(hcl, dic) || HCL_IS_DIC(hcl, dic));
+				if (HCL_IS_NIL(hcl, dic))
+				{
+					hcl_pushvolat (hcl, (hcl_oop_t*)&class_);
+					dic = hcl_makedic(hcl, 16); /* TODO: configurable initial size? */
+					hcl_popvolat (hcl);
+					if (HCL_UNLIKELY(!dic))  goto oops_with_errmsg_supplement;
+					((hcl_oop_class_t)class_)->memdic = dic;
+				}
+
+				if (!hcl_putatdic(hcl, (hcl_oop_dic_t)dic, hcl->active_function->literal_frame[b1], HCL_STACK_GETTOP(hcl))) goto oops_with_errmsg_supplement;
+				break;
+			}
+
+			case HCL_CODE_CLASS_IMSTORE:
 			{
 				hcl_oop_t class_;
 				hcl_oop_t dic;
 
 				FETCH_PARAM_CODE_TO (hcl, b1);
-				LOG_INST_1 (hcl, "class_mstore %zu", b1);
+				LOG_INST_1 (hcl, "class_imstore %zu", b1);
 
 				/* store the stack top in the member dictionary of the currect class with the key indicated by 'b1' */
 

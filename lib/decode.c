@@ -386,9 +386,14 @@ int hcl_decode (hcl_t* hcl, hcl_oow_t start, hcl_oow_t end)
 				LOG_INST_0 (hcl, "class_pexit");
 				break;
 
-			case HCL_CODE_CLASS_MSTORE:
+			case HCL_CODE_CLASS_CMSTORE:
 				FETCH_PARAM_CODE_TO (hcl, b1);
-				LOG_INST_1 (hcl, "class_mstore %zu", b1);
+				LOG_INST_1 (hcl, "class_cmstore %zu", b1);
+				break;
+
+			case HCL_CODE_CLASS_IMSTORE:
+				FETCH_PARAM_CODE_TO (hcl, b1);
+				LOG_INST_1 (hcl, "class_imstore %zu", b1);
 				break;
 			/* -------------------------------------------------------- */
 
