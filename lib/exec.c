@@ -2148,7 +2148,47 @@ static HCL_INLINE int call_primitive (hcl_t* hcl, hcl_ooi_t nargs)
 
 /* ------------------------------------------------------------------------- */
 
-static hcl_oop_block_t find_method_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oop_t op, hcl_ooi_t* ivaroff)
+static hcl_oop_block_t find_cmethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oop_t op)
+{
+	hcl_oocs_t name;
+
+/* TODO: implement method cache */
+	HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, class_));
+	HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl, op));
+
+	name.ptr = HCL_OBJ_GET_CHAR_SLOT(op);
+	name.len = HCL_OBJ_GET_SIZE(op);
+
+	do
+	{
+		hcl_oop_t dic;
+
+		dic = class_->cdic;
+		HCL_ASSERT (hcl, HCL_IS_NIL(hcl, dic) || HCL_IS_DIC(hcl, dic));
+
+		if (HCL_LIKELY(!HCL_IS_NIL(hcl, dic)))
+		{
+			hcl_oop_cons_t ass;
+			ass = (hcl_oop_cons_t)hcl_lookupdicforsymbol_noseterr(hcl, (hcl_oop_dic_t)dic, &name);
+			if (HCL_LIKELY(ass))
+			{
+				hcl_oop_t val;
+				val = HCL_CONS_CDR(ass);
+				if (HCL_IS_BLOCK(hcl, val))
+				{
+					/* TODO: futher check if it's a method block? */
+					return (hcl_oop_block_t)val;
+				}
+			}
+		}
+		class_ = (hcl_oop_class_t)class_->superclass;
+	}
+	while (HCL_IS_CLASS(hcl, class_));
+
+	return HCL_NULL;
+}
+
+static hcl_oop_block_t find_imethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oop_t op, hcl_ooi_t* ivaroff)
 {
 	hcl_oocs_t name;
 
@@ -2162,7 +2202,7 @@ static hcl_oop_block_t find_method_noseterr (hcl_t* hcl, hcl_oop_class_t class_,
 	{
 		hcl_oop_t dic;
 
-		dic = class_->memdic;
+		dic = class_->idic;
 		HCL_ASSERT (hcl, HCL_IS_NIL(hcl, dic) || HCL_IS_DIC(hcl, dic));
 
 		if (HCL_LIKELY(!HCL_IS_NIL(hcl, dic)))
@@ -2195,13 +2235,19 @@ static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t msg, in
 	hcl_ooi_t ivaroff;
 	int x;
 
-	HCL_ASSERT (hcl, HCL_IS_INSTANCE(hcl, rcv));
 	HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl, msg));
 
 /* TODO: implement method cache */
-
-	HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, rcv->_class));
-	mth = find_method_noseterr(hcl, (hcl_oop_class_t)rcv->_class, msg, &ivaroff);
+	if (HCL_IS_CLASS(hcl, rcv))
+	{
+		mth = find_cmethod_noseterr(hcl, (hcl_oop_class_t)rcv, msg);
+	}
+	else
+	{
+		HCL_ASSERT (hcl, HCL_IS_INSTANCE(hcl, rcv));
+		HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, rcv->_class));
+		mth = find_imethod_noseterr(hcl, (hcl_oop_class_t)rcv->_class, msg, &ivaroff);
+	}
 	if (!mth)
 	{
 		hcl_seterrbfmt (hcl, HCL_ENOENT, "'%.*js' not found in the %O", HCL_OBJ_GET_SIZE(msg), HCL_OBJ_GET_CHAR_SLOT(msg), rcv->_class);
@@ -3596,7 +3642,6 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 
 			case HCL_CODE_CLASS_CMSTORE:
 			{
-/* TODO: change this part */
 				hcl_oop_t class_;
 				hcl_oop_t dic;
 
@@ -3610,7 +3655,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				HCL_CLSTACK_FETCH_TOP_TO (hcl, class_);
 				HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, class_));
 
-				dic = ((hcl_oop_class_t)class_)->memdic;
+				dic = ((hcl_oop_class_t)class_)->cdic; /* class-side dictionary */
 				HCL_ASSERT (hcl, HCL_IS_NIL(hcl, dic) || HCL_IS_DIC(hcl, dic));
 				if (HCL_IS_NIL(hcl, dic))
 				{
@@ -3618,7 +3663,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 					dic = hcl_makedic(hcl, 16); /* TODO: configurable initial size? */
 					hcl_popvolat (hcl);
 					if (HCL_UNLIKELY(!dic))  goto oops_with_errmsg_supplement;
-					((hcl_oop_class_t)class_)->memdic = dic;
+					((hcl_oop_class_t)class_)->cdic = dic;
 				}
 
 				if (!hcl_putatdic(hcl, (hcl_oop_dic_t)dic, hcl->active_function->literal_frame[b1], HCL_STACK_GETTOP(hcl))) goto oops_with_errmsg_supplement;
@@ -3640,7 +3685,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				HCL_CLSTACK_FETCH_TOP_TO (hcl, class_);
 				HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, class_));
 
-				dic = ((hcl_oop_class_t)class_)->memdic;
+				dic = ((hcl_oop_class_t)class_)->idic; /* instance-side dictionary */
 				HCL_ASSERT (hcl, HCL_IS_NIL(hcl, dic) || HCL_IS_DIC(hcl, dic));
 				if (HCL_IS_NIL(hcl, dic))
 				{
@@ -3648,7 +3693,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 					dic = hcl_makedic(hcl, 16); /* TODO: configurable initial size? */
 					hcl_popvolat (hcl);
 					if (HCL_UNLIKELY(!dic))  goto oops_with_errmsg_supplement;
-					((hcl_oop_class_t)class_)->memdic = dic;
+					((hcl_oop_class_t)class_)->idic = dic;
 				}
 
 				if (!hcl_putatdic(hcl, (hcl_oop_dic_t)dic, hcl->active_function->literal_frame[b1], HCL_STACK_GETTOP(hcl))) goto oops_with_errmsg_supplement;
@@ -3817,9 +3862,14 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 
 				rcv = HCL_STACK_GETRCV(hcl, b1);
 				op = HCL_STACK_GETOP(hcl, b1);
-				if (HCL_IS_INSTANCE(hcl, rcv) && HCL_IS_SYMBOL(hcl, op))
+				if (!HCL_IS_SYMBOL(hcl, op))
 				{
-					if (send_message(hcl, rcv, op, ((bcode >> 2) & 1), b1) <= -1) 
+					hcl_seterrbfmt (hcl, HCL_ECALL, "unable to send %O to %O - invalid message", op, rcv); /* TODO: change to HCL_ESEND?? */
+					goto cannot_send;
+				}
+				else if (HCL_IS_CLASS(hcl, rcv) || HCL_IS_INSTANCE(hcl, rcv))
+				{
+					if (send_message(hcl, rcv, op, ((bcode >> 2) & 1) /* to_super */, b1 /* nargs */) <= -1) 
 					{
 						const hcl_ooch_t* msg = hcl_backuperrmsg (hcl);
 						hcl_seterrbfmt (hcl, HCL_ECALL, "unable to send %O to %O - %js", op, rcv, msg); /* TODO: change to HCL_ESEND?? */

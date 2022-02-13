@@ -30,7 +30,7 @@ enum
 {
 	VAR_NAMED,
 	VAR_INDEXED,
-	VAR_INST,
+	VAR_INST, /* instance variable */
 	VAR_CLASS_I, /* class variable in class initialization scope */
 	VAR_CLASS_CM, /* class variable in class method scope */
 	VAR_CLASS_IM, /* class variable in instance method scope */
@@ -281,7 +281,7 @@ static int find_variable_backward (hcl_t* hcl, const hcl_cnode_t* token, hcl_var
 					{
 						if (i >= hcl->c->fnblk.depth)
 						{
-							/* instance variables are not accessible if not in class method scope.
+							/* instance variables are not accessible if not in method definition scope.
 							 * it is in class initialization scope */
 							hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(token), name, "prohibited to access an instance variable");
 							return -1;
@@ -303,6 +303,7 @@ HCL_INFO6 (hcl, "FOUND INST VAR [%.*js]...[%.*js]................ ===> ctx_offse
 					if (__find_word_in_string(&haystack, name, 1, &index) >= 0)
 					{
 						/* TODO: VAR_CLASS_CM vs VAR_CLASS_IM, need to know if it's an instance method or a class method */
+/* TODO: check if it's in the class variable .... */
 						vi->type = (i >= hcl->c->fnblk.depth? VAR_CLASS_I: VAR_CLASS_IM);
 						vi->ctx_offset = 0;
 						vi->index_in_ctx = index;
@@ -824,15 +825,15 @@ static int emit_variable_access (hcl_t* hcl, int mode, const hcl_var_info_t* vi,
 			return emit_double_param_instruction(hcl, inst_map[0][mode], vi->ctx_offset, vi->index_in_ctx, srcloc);
 
 		case VAR_INST:
-		case VAR_CLASS_CM:
+		case VAR_CLASS_CM: /* class variable in class method scope */
 			HCL_ASSERT (hcl, vi->ctx_offset == 0);
 			return emit_single_param_instruction(hcl, inst_map[1][mode], vi->index_in_ctx, srcloc);
 
-		case VAR_CLASS_I:
+		case VAR_CLASS_I: /* class variable in initialization scope */
 			HCL_ASSERT (hcl, vi->ctx_offset == 0);
 			return emit_single_param_instruction(hcl, inst_map[2][mode], vi->index_in_ctx, srcloc);
 
-		case VAR_CLASS_IM:
+		case VAR_CLASS_IM: /* class variable in instance method scope */
 			HCL_ASSERT (hcl, vi->ctx_offset == 0);
 			return emit_single_param_instruction(hcl, inst_map[3][mode], vi->index_in_ctx, srcloc);
 	}

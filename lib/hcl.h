@@ -863,14 +863,15 @@ struct hcl_process_scheduler_t
 };
 
 
-#define HCL_CLASS_NAMED_INSTVARS 7
+#define HCL_CLASS_NAMED_INSTVARS 8
 typedef struct hcl_class_t hcl_class_t;
 typedef struct hcl_class_t* hcl_oop_class_t;
 struct hcl_class_t
 {
 	HCL_OBJ_HEADER;
 
-	hcl_oop_t memdic; /* nil or dictionary of named elements including methods and variables */
+	hcl_oop_t idic; /* nil or dictionary of named elements including instance methods and variables */
+	hcl_oop_t cdic; /* nil or dictionary of named elements including class methods and variables */
 
 	hcl_oop_t superclass;
 	hcl_oop_t nivars; /* smooi. */
