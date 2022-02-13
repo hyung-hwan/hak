@@ -2331,6 +2331,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 	hcl_oow_t saved_tv_wcount, tv_dup_start;
 	hcl_cnode_t* defun_name;
 	hcl_cframe_t* cf;
+	int is_class_method = 0;
 
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
 
@@ -2354,6 +2355,20 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 		}
 
 		defun_name = HCL_CNODE_CONS_CAR(obj);
+		if (is_in_class_init_scope(hcl) && HCL_CNODE_IS_TRPCOLONS(defun_name))
+		{
+			/* class method - (defun ::: xxxx () ...) inside class definition */
+			obj = HCL_CNODE_CONS_CDR(obj);
+			if (!obj)
+			{
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMELIST, HCL_CNODE_GET_LOC(src), HCL_NULL, "no method name name in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+				return -1;
+			}
+
+			is_class_method = 1;
+			defun_name = HCL_CNODE_CONS_CAR(obj); /* advance to the actual name */
+		}
+
 		if (!HCL_CNODE_IS_SYMBOL(defun_name))
 		{
 			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(defun_name), HCL_CNODE_GET_TOK(defun_name), "name not a symbol in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
@@ -2548,9 +2563,12 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 
 	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_LIST, obj); /* 1 */
 	PUSH_SUBCFRAME (hcl, COP_POST_LAMBDA, defun_name); /* 3*/
+	cf = GET_SUBCFRAME(hcl);
+	cf->u.lambda.is_class_method = is_class_method;
 
 	PUSH_SUBCFRAME (hcl, COP_EMIT_LAMBDA, src); /* 2 */
-	cf = GET_SUBCFRAME (hcl);
+	cf = GET_SUBCFRAME(hcl);
+	cf->u.lambda.is_class_method = is_class_method;
 	cf->u.lambda.jump_inst_pos = jump_inst_pos;
 
 	if (hcl->option.trait & HCL_TRAIT_INTERACTIVE)
@@ -4805,9 +4823,8 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 			if (x == 0)
 			{
 				/* arrange to save to the method slot */
-				if (xxxx)
+				if (cf->u.lambda.is_class_method)
 				{
-					/* class method */
 					SWITCH_TOP_CFRAME (hcl, COP_EMIT_CLASS_CMSTORE, defun_name);
 				}
 				else
@@ -4820,7 +4837,7 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 			else
 			{
 /* TODO: proper error code */
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAMEDUP, HCL_CNODE_GET_LOC(defun_name), HCL_CNODE_GET_TOK(defun_name), "duplicate name");
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAMEDUP, HCL_CNODE_GET_LOC(defun_name), HCL_CNODE_GET_TOK(defun_name), "duplicate method name");
 				return -1;
 			}
 		}
@@ -5100,7 +5117,6 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 			case COP_COMPILE_CATCH:
 				if (compile_catch(hcl) <= -1) goto oops;
 				break;
-
 
 			case COP_COMPILE_AND_P1:
 				if (compile_and_p1(hcl) <= -1) goto oops;

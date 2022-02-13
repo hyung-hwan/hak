@@ -384,9 +384,10 @@ struct hcl_cframe_t
 			hcl_ooi_t index;
 		} dic_list;
 
-		/* COP_EMIT_LAMBDA */
+		/* COP_POST_LAMBDA, COP_EMIT_LAMBDA */
 		struct
 		{
+			int is_class_method;
 			hcl_oow_t jump_inst_pos;
 			hcl_ooi_t lfbase_pos;
 			hcl_ooi_t lfsize_pos;
