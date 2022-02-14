@@ -1954,7 +1954,6 @@ static int prepare_new_context (hcl_t* hcl, hcl_oop_block_t op_blk, hcl_ooi_t na
 	blkctx->ip = op_blk->ip;
 	blkctx->req_nrets = HCL_SMOOI_TO_OOP(req_nrvars);
 	blkctx->tmpr_mask = op_blk->tmpr_mask;
-	//blkctx->base = (hcl_oop_t)op_blk;
 	blkctx->base = op_blk->home->base;
 	blkctx->origin = op_blk->home->origin;
 
@@ -1996,15 +1995,15 @@ static int prepare_new_context (hcl_t* hcl, hcl_oop_block_t op_blk, hcl_ooi_t na
 	return 0;
 }
 
-static HCL_INLINE int __activate_block (hcl_t* hcl, hcl_oop_block_t op, hcl_ooi_t nargs, hcl_ooi_t nrvars, int is_msgsend, hcl_ooi_t msg_ivaroff, hcl_oop_context_t* pnewctx)
+static HCL_INLINE int __activate_block (hcl_t* hcl, hcl_oop_block_t op_blk, hcl_ooi_t nargs, hcl_ooi_t nrvars, int is_msgsend, hcl_ooi_t msg_ivaroff, hcl_oop_context_t* pnewctx)
 {
 	int x;
 
-	HCL_ASSERT (hcl, HCL_IS_BLOCK(hcl, op));
+	HCL_ASSERT (hcl, HCL_IS_BLOCK(hcl, op_blk));
 
 	x = prepare_new_context(
 		hcl,
-		op,
+		op_blk,
 		nargs, /* nargs */
 		0, /* nargs_offset */
 		nrvars,
@@ -2237,7 +2236,7 @@ static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t msg, in
 
 	HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl, msg));
 
-/* TODO: implement method cache */
+/* TODO: implement methods cache */
 	if (HCL_IS_CLASS(hcl, rcv))
 	{
 		mth = find_cmethod_noseterr(hcl, (hcl_oop_class_t)rcv, msg);
