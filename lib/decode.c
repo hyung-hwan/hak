@@ -80,54 +80,54 @@ int hcl_decode (hcl_t* hcl, hcl_oow_t start, hcl_oow_t end)
 
 		switch (bcode)
 		{
-			case HCL_CODE_PUSH_INSTVAR_X:
+			case HCL_CODE_PUSH_IVAR_X:
 				FETCH_PARAM_CODE_TO (hcl, b1);
-				goto push_instvar;
-			case HCL_CODE_PUSH_INSTVAR_0:
-			case HCL_CODE_PUSH_INSTVAR_1:
-			case HCL_CODE_PUSH_INSTVAR_2:
-			case HCL_CODE_PUSH_INSTVAR_3:
-			case HCL_CODE_PUSH_INSTVAR_4:
-			case HCL_CODE_PUSH_INSTVAR_5:
-			case HCL_CODE_PUSH_INSTVAR_6:
-			case HCL_CODE_PUSH_INSTVAR_7:
+				goto push_ivar;
+			case HCL_CODE_PUSH_IVAR_0:
+			case HCL_CODE_PUSH_IVAR_1:
+			case HCL_CODE_PUSH_IVAR_2:
+			case HCL_CODE_PUSH_IVAR_3:
+			case HCL_CODE_PUSH_IVAR_4:
+			case HCL_CODE_PUSH_IVAR_5:
+			case HCL_CODE_PUSH_IVAR_6:
+			case HCL_CODE_PUSH_IVAR_7:
 				b1 = bcode & 0x7; /* low 3 bits */
-			push_instvar:
-				LOG_INST_1 (hcl, "push_instvar %zu", b1);
+			push_ivar:
+				LOG_INST_1 (hcl, "push_ivar %zu", b1);
 				break;
 
 			/* ------------------------------------------------- */
 
-			case HCL_CODE_STORE_INTO_INSTVAR_X:
+			case HCL_CODE_STORE_INTO_IVAR_X:
 				FETCH_PARAM_CODE_TO (hcl, b1);
-				goto store_instvar;
-			case HCL_CODE_STORE_INTO_INSTVAR_0:
-			case HCL_CODE_STORE_INTO_INSTVAR_1:
-			case HCL_CODE_STORE_INTO_INSTVAR_2:
-			case HCL_CODE_STORE_INTO_INSTVAR_3:
-			case HCL_CODE_STORE_INTO_INSTVAR_4:
-			case HCL_CODE_STORE_INTO_INSTVAR_5:
-			case HCL_CODE_STORE_INTO_INSTVAR_6:
-			case HCL_CODE_STORE_INTO_INSTVAR_7:
+				goto store_into_ivar;
+			case HCL_CODE_STORE_INTO_IVAR_0:
+			case HCL_CODE_STORE_INTO_IVAR_1:
+			case HCL_CODE_STORE_INTO_IVAR_2:
+			case HCL_CODE_STORE_INTO_IVAR_3:
+			case HCL_CODE_STORE_INTO_IVAR_4:
+			case HCL_CODE_STORE_INTO_IVAR_5:
+			case HCL_CODE_STORE_INTO_IVAR_6:
+			case HCL_CODE_STORE_INTO_IVAR_7:
 				b1 = bcode & 0x7; /* low 3 bits */
-			store_instvar:
-				LOG_INST_1 (hcl, "store_into_instvar %zu", b1);
+			store_into_ivar:
+				LOG_INST_1 (hcl, "store_into_ivar %zu", b1);
 				break;
 
-			case HCL_CODE_POP_INTO_INSTVAR_X:
+			case HCL_CODE_POP_INTO_IVAR_X:
 				FETCH_PARAM_CODE_TO (hcl, b1);
-				goto pop_into_instvar;
-			case HCL_CODE_POP_INTO_INSTVAR_0:
-			case HCL_CODE_POP_INTO_INSTVAR_1:
-			case HCL_CODE_POP_INTO_INSTVAR_2:
-			case HCL_CODE_POP_INTO_INSTVAR_3:
-			case HCL_CODE_POP_INTO_INSTVAR_4:
-			case HCL_CODE_POP_INTO_INSTVAR_5:
-			case HCL_CODE_POP_INTO_INSTVAR_6:
-			case HCL_CODE_POP_INTO_INSTVAR_7:
+				goto pop_into_ivar;
+			case HCL_CODE_POP_INTO_IVAR_0:
+			case HCL_CODE_POP_INTO_IVAR_1:
+			case HCL_CODE_POP_INTO_IVAR_2:
+			case HCL_CODE_POP_INTO_IVAR_3:
+			case HCL_CODE_POP_INTO_IVAR_4:
+			case HCL_CODE_POP_INTO_IVAR_5:
+			case HCL_CODE_POP_INTO_IVAR_6:
+			case HCL_CODE_POP_INTO_IVAR_7:
 				b1 = bcode & 0x7; /* low 3 bits */
-			pop_into_instvar:
-				LOG_INST_1 (hcl, "pop_into_instvar %zu", b1);
+			pop_into_ivar:
+				LOG_INST_1 (hcl, "pop_into_ivar %zu", b1);
 				break;
 
 			/* ------------------------------------------------- */
@@ -519,36 +519,36 @@ int hcl_decode (hcl_t* hcl, hcl_oow_t start, hcl_oow_t end)
 
 			/* -------------------------------------------------------- */
 
-			case HCL_CODE_PUSH_CLSVAR_I_X:
+			case HCL_CODE_PUSH_CVAR_I_X:
 				FETCH_PARAM_CODE_TO (hcl, b1);
-				LOG_INST_1 (hcl, "push_clsvar_i %zu", b1);
+				LOG_INST_1 (hcl, "push_cvar_i %zu", b1);
 				break;
 
-			case HCL_CODE_STORE_INTO_CLSVAR_I_X:
+			case HCL_CODE_STORE_INTO_CVAR_I_X:
 				FETCH_PARAM_CODE_TO (hcl, b1);
-				LOG_INST_1 (hcl, "store_into_clsvar_i %zu", b1);
+				LOG_INST_1 (hcl, "store_into_cvar_i %zu", b1);
 				break;
 
-			case HCL_CODE_POP_INTO_CLSVAR_I_X:
+			case HCL_CODE_POP_INTO_CVAR_I_X:
 				FETCH_PARAM_CODE_TO (hcl, b1);
-				LOG_INST_1 (hcl, "pop_into_clsvar_i %zu", b1);
+				LOG_INST_1 (hcl, "pop_into_cvar_i %zu", b1);
 				break;
 				
 			/* -------------------------------------------------------- */				
 
-			case HCL_CODE_PUSH_CLSVAR_M_X:
+			case HCL_CODE_PUSH_CVAR_M_X:
 				FETCH_PARAM_CODE_TO (hcl, b1);
-				LOG_INST_1 (hcl, "push_clsvar_m %zu", b1);
+				LOG_INST_1 (hcl, "push_cvar_m %zu", b1);
 				break;
 
-			case HCL_CODE_STORE_INTO_CLSVAR_M_X:
+			case HCL_CODE_STORE_INTO_CVAR_M_X:
 				FETCH_PARAM_CODE_TO (hcl, b1);
-				LOG_INST_1 (hcl, "store_into_clsvar_m %zu", b1);
+				LOG_INST_1 (hcl, "store_into_cvar_m %zu", b1);
 				break;
 
-			case HCL_CODE_POP_INTO_CLSVAR_M_X:
+			case HCL_CODE_POP_INTO_CVAR_M_X:
 				FETCH_PARAM_CODE_TO (hcl, b1);
-				LOG_INST_1 (hcl, "pop_into_clsvar_m %zu", b1);
+				LOG_INST_1 (hcl, "pop_into_cvar_m %zu", b1);
 				break;
 
 			/* -------------------------------------------------------- */

@@ -628,11 +628,11 @@ struct hcl_compiler_t
 SHORT INSTRUCTION CODE                                        LONG INSTRUCTION CODE
 ----------------------------------------------------------------------------------------------------------------
                                                                       v v
-0-3      0000 00XX STORE_INTO_INSTVAR                         128  1000 0000 XXXXXXXX STORE_INTO_INSTVAR_X                    (bit 4 off, bit 3 off)
+0-3      0000 00XX STORE_INTO_INSTVAR                         128  1000 0000 XXXXXXXX STORE_INTO_IVAR_X                    (bit 4 off, bit 3 off)
 4-7      0000 01XX STORE_INTO_INSTVAR
-8-11     0000 10XX POP_INTO_INSTVAR                           136  1000 1000 XXXXXXXX POP_INTO_INSTVAR_X                      (bit 4 off, bit 3 on)
+8-11     0000 10XX POP_INTO_INSTVAR                           136  1000 1000 XXXXXXXX POP_INTO_IVAR_X                      (bit 4 off, bit 3 on)
 12-15    0000 11XX POP_INTO_INSTVAR
-16-19    0001 00XX PUSH_INSTVAR                               144  1001 0000 XXXXXXXX PUSH_INSTVAR_X                          (bit 4 on)
+16-19    0001 00XX PUSH_INSTVAR                               144  1001 0000 XXXXXXXX PUSH_IVAR_X                          (bit 4 on)
 20-23    0001 01XX PUSH_INSTVAR
 
                                                                       v v
@@ -683,13 +683,13 @@ SHORT INSTRUCTION CODE                                        LONG INSTRUCTION C
 116-119  0111 01XX YYYYYYYY SEND_TO_SUPER                     244  1111 0100 XXXXXXXX YYYYYYYY SEND_TO_SUPER_X        (bit 2 on)
 # XXX args, YYYYYYYY message
 
-120      0111 1000 YYYYYYYY PUSH_CLSVAR_I_X
-121      0111 1001 YYYYYYYY STORE_INTO_CLSVAR_I_X
-122      0111 1010 YYYYYYYY POP_INTO_CLSVAR_I_X
+120      0111 1000 YYYYYYYY PUSH_CVAR_I_X
+121      0111 1001 YYYYYYYY STORE_INTO_CVAR_I_X
+122      0111 1010 YYYYYYYY POP_INTO_CVAR_I_X
 
-123      0111 1011 YYYYYYYY PUSH_CLSVAR_M_X
-124      0111 1100 YYYYYYYY STORE_INTO_CLSVAR_M_X
-125      0111 1101 YYYYYYYY POP_INTO_CLSVAR_M_X
+123      0111 1011 YYYYYYYY PUSH_CVAR_M_X
+124      0111 1100 YYYYYYYY STORE_INTO_CVAR_M_X
+125      0111 1101 YYYYYYYY POP_INTO_CVAR_M_X
 
 126      0111 1110  UNUSED
 127      0111 1111  UNUSED
@@ -702,35 +702,35 @@ SHORT INSTRUCTION CODE                                        LONG INSTRUCTION C
 
 enum hcl_bcode_t
 {
-	HCL_CODE_STORE_INTO_INSTVAR_0     = 0x00,
-	HCL_CODE_STORE_INTO_INSTVAR_1     = 0x01,
-	HCL_CODE_STORE_INTO_INSTVAR_2     = 0x02,
-	HCL_CODE_STORE_INTO_INSTVAR_3     = 0x03,
+	HCL_CODE_STORE_INTO_IVAR_0        = 0x00,
+	HCL_CODE_STORE_INTO_IVAR_1        = 0x01,
+	HCL_CODE_STORE_INTO_IVAR_2        = 0x02,
+	HCL_CODE_STORE_INTO_IVAR_3        = 0x03,
 
-	HCL_CODE_STORE_INTO_INSTVAR_4     = 0x04,
-	HCL_CODE_STORE_INTO_INSTVAR_5     = 0x05,
-	HCL_CODE_STORE_INTO_INSTVAR_6     = 0x06,
-	HCL_CODE_STORE_INTO_INSTVAR_7     = 0x07,
+	HCL_CODE_STORE_INTO_IVAR_4        = 0x04,
+	HCL_CODE_STORE_INTO_IVAR_5        = 0x05,
+	HCL_CODE_STORE_INTO_IVAR_6        = 0x06,
+	HCL_CODE_STORE_INTO_IVAR_7        = 0x07,
 
-	HCL_CODE_POP_INTO_INSTVAR_0       = 0x08,
-	HCL_CODE_POP_INTO_INSTVAR_1       = 0x09,
-	HCL_CODE_POP_INTO_INSTVAR_2       = 0x0A,
-	HCL_CODE_POP_INTO_INSTVAR_3       = 0x0B,
+	HCL_CODE_POP_INTO_IVAR_0          = 0x08,
+	HCL_CODE_POP_INTO_IVAR_1          = 0x09,
+	HCL_CODE_POP_INTO_IVAR_2          = 0x0A,
+	HCL_CODE_POP_INTO_IVAR_3          = 0x0B,
 
-	HCL_CODE_POP_INTO_INSTVAR_4       = 0x0C,
-	HCL_CODE_POP_INTO_INSTVAR_5       = 0x0D,
-	HCL_CODE_POP_INTO_INSTVAR_6       = 0x0E,
-	HCL_CODE_POP_INTO_INSTVAR_7       = 0x0F,
+	HCL_CODE_POP_INTO_IVAR_4          = 0x0C,
+	HCL_CODE_POP_INTO_IVAR_5          = 0x0D,
+	HCL_CODE_POP_INTO_IVAR_6          = 0x0E,
+	HCL_CODE_POP_INTO_IVAR_7          = 0x0F,
 
-	HCL_CODE_PUSH_INSTVAR_0           = 0x10,
-	HCL_CODE_PUSH_INSTVAR_1           = 0x11,
-	HCL_CODE_PUSH_INSTVAR_2           = 0x12,
-	HCL_CODE_PUSH_INSTVAR_3           = 0x13,
+	HCL_CODE_PUSH_IVAR_0              = 0x10,
+	HCL_CODE_PUSH_IVAR_1              = 0x11,
+	HCL_CODE_PUSH_IVAR_2              = 0x12,
+	HCL_CODE_PUSH_IVAR_3              = 0x13,
 
-	HCL_CODE_PUSH_INSTVAR_4           = 0x14,
-	HCL_CODE_PUSH_INSTVAR_5           = 0x15,
-	HCL_CODE_PUSH_INSTVAR_6           = 0x16,
-	HCL_CODE_PUSH_INSTVAR_7           = 0x17,
+	HCL_CODE_PUSH_IVAR_4              = 0x14,
+	HCL_CODE_PUSH_IVAR_5              = 0x15,
+	HCL_CODE_PUSH_IVAR_6              = 0x16,
+	HCL_CODE_PUSH_IVAR_7              = 0x17,
 
 	HCL_CODE_PUSH_TEMPVAR_0           = 0x18,
 	HCL_CODE_PUSH_TEMPVAR_1           = 0x19,
@@ -846,16 +846,16 @@ enum hcl_bcode_t
 	HCL_CODE_SEND_TO_SUPER_2          = 0x76, /* 118 */
 	HCL_CODE_SEND_TO_SUPER_3          = 0x77, /* 119 */
 
-	HCL_CODE_PUSH_CLSVAR_I_X          = 0x78, /* 120 */
-	HCL_CODE_STORE_INTO_CLSVAR_I_X    = 0x79, /* 121 */
-	HCL_CODE_POP_INTO_CLSVAR_I_X      = 0x7A, /* 122 */
+	HCL_CODE_PUSH_CVAR_I_X            = 0x78, /* 120 */
+	HCL_CODE_STORE_INTO_CVAR_I_X      = 0x79, /* 121 */
+	HCL_CODE_POP_INTO_CVAR_I_X        = 0x7A, /* 122 */
 
-	HCL_CODE_PUSH_CLSVAR_M_X          = 0x7B, /* 123 */
-	HCL_CODE_STORE_INTO_CLSVAR_M_X    = 0x7C, /* 124 */
-	HCL_CODE_POP_INTO_CLSVAR_M_X      = 0x7D, /* 125 */
+	HCL_CODE_PUSH_CVAR_M_X            = 0x7B, /* 123 */
+	HCL_CODE_STORE_INTO_CVAR_M_X      = 0x7C, /* 124 */
+	HCL_CODE_POP_INTO_CVAR_M_X        = 0x7D, /* 125 */
 
 	/* UNUSED 0x7E - 0x7F */
-	HCL_CODE_STORE_INTO_INSTVAR_X     = 0x80, /* 128 */
+	HCL_CODE_STORE_INTO_IVAR_X        = 0x80, /* 128 */
 
 	HCL_CODE_PUSH_RECEIVER            = 0x81, /* 129 */
 	HCL_CODE_PUSH_NIL                 = 0x82, /* 130 */
@@ -865,14 +865,14 @@ enum hcl_bcode_t
 	HCL_CODE_PUSH_PROCESS             = 0x86, /* 134 */
 	/* UNUSED 135 */
 
-	HCL_CODE_POP_INTO_INSTVAR_X       = 0x88, /* 136 ## */
+	HCL_CODE_POP_INTO_IVAR_X          = 0x88, /* 136 ## */
 
 	HCL_CODE_PUSH_NEGONE              = 0x89, /* 137 */
 	HCL_CODE_PUSH_ZERO                = 0x8A, /* 138 */
 	HCL_CODE_PUSH_ONE                 = 0x8B, /* 139 */
 	HCL_CODE_PUSH_TWO                 = 0x8C, /* 140 */
 
-	HCL_CODE_PUSH_INSTVAR_X           = 0x90, /* 144 ## */
+	HCL_CODE_PUSH_IVAR_X              = 0x90, /* 144 ## */
 	HCL_CODE_PUSH_TEMPVAR_X           = 0x98, /* 152 ## */
 	HCL_CODE_STORE_INTO_TEMPVAR_X     = 0xA0, /* 160 ## */
 	HCL_CODE_POP_INTO_TEMPVAR_X       = 0xA8, /* 168 ## */

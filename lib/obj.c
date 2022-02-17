@@ -439,7 +439,7 @@ hcl_oop_t hcl_instantiate (hcl_t* hcl, hcl_oop_class_t _class, const void* vptr,
 			if (oop && vptr && vlen > 0)
 			{
 				hcl_oop_oop_t hdr = (hcl_oop_oop_t)oop;
-				HCL_MEMCPY (&hdr->slot[named_instvar], vptr, vlen * HCL_SIZEOF(hcl_oop_t));
+				HCL_MEMCPY (&hdr->slot[named_ivar], vptr, vlen * HCL_SIZEOF(hcl_oop_t));
 			}
 
 			For the above code to work, it should protect the elements of

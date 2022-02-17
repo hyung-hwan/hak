@@ -630,26 +630,6 @@ struct hcl_context_t
 	 * the home context of the activating block context points to. */
 	hcl_oop_function_t base; /* function */
 
-/* TODO: get rid of origin. or rename base to origin??? with the base pointing to 
- *       the originating function object and a separate receiver pointer,
- *       the originating function context isn't that useful.... */
-	/* a function context is created with itself in this field. The function
-	 * context creation is based on a function object(initial or lambda/defun).
-	 *
-	 * a block context is created over a block object. it stores
-	 * a function context that points to itself in this field. a block context
-	 * points to the function context where it is created. another block context
-	 * created within the block context also points to the same function context.
-	 *
-	 * take note of the following points:
-	 *   ctx->origin: function context
-	 *   ctx->origin->base: actual function containing byte codes pertaining to ctx.
-	 *
-	 * a base of a block context is a block object but ctx->origin is guaranteed to be
-	 * a function context. so its base is also a function object all the time.
-	 */
-	hcl_oop_context_t  origin;
-
 	/* it points to the active context at the moment when
 	 * this context object has been activated. a new method context
 	 * is activated as a result of normal message sending and a block
@@ -678,10 +658,13 @@ struct hcl_context_t
 	 * at index 3. if the class of the instance has 4 instance variables in the 
 	 * superclass side, the method context activated has 4 in thie field. 
 	 * therefore, the instruction accesses the instance variable slot at index 7.
-	 *   push_instvar 3
-	 * the debug output shows this instruction as "push_instvar 3; [4]"
+	 *   push_ivar 3
+	 * the debug output shows this instruction as "push_ivar 3; [4]"
 	 */
 	hcl_oop_t          ivaroff;
+
+	/* method owner if this context is created of a message send. nil otherwise */
+	hcl_oop_t          owner;  /* class(hcl_oop_class_t) or nil */
 
 	/* variable indexed part */
 	hcl_oop_t          slot[1]; /* arguments, return variables, local variables, other arguments, etc */

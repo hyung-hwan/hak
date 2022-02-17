@@ -88,19 +88,6 @@ static hcl_ooch_t oocstr_dash[] = { '-', '\0' };
 #define LOAD_ACTIVE_SP(hcl) LOAD_SP(hcl, (hcl)->processor->active)
 #define STORE_ACTIVE_SP(hcl) STORE_SP(hcl, (hcl)->processor->active)
 
-#if 0
-// THIS PART IS TO BE REMOVED
-#define SWITCH_ACTIVE_CONTEXT(hcl,v_ctx) \
-	do \
-	{ \
-		STORE_ACTIVE_IP (hcl); \
-		(hcl)->active_context = (v_ctx); \
-		(hcl)->active_function = (hcl)->active_context->origin->base; \
-		(hcl)->active_code = HCL_FUNCTION_GET_CODE_BYTE((hcl)->active_function); \
-		LOAD_ACTIVE_IP (hcl); \
-		(hcl)->processor->active->current_context = (hcl)->active_context; \
-	} while (0)
-#else
 #define SWITCH_ACTIVE_CONTEXT(hcl,v_ctx) \
 	do \
 	{ \
@@ -111,7 +98,6 @@ static hcl_ooch_t oocstr_dash[] = { '-', '\0' };
 		LOAD_ACTIVE_IP (hcl); \
 		(hcl)->processor->active->current_context = (hcl)->active_context; \
 	} while (0)
-#endif
 
 /*#define FETCH_BYTE_CODE(hcl) ((hcl)->code.bc.arr->slot[(hcl)->ip++])*/
 #define FETCH_BYTE_CODE(hcl) ((hcl)->active_code[(hcl)->ip++])
@@ -1955,7 +1941,6 @@ static int prepare_new_context (hcl_t* hcl, hcl_oop_block_t op_blk, hcl_ooi_t na
 	blkctx->req_nrets = HCL_SMOOI_TO_OOP(req_nrvars);
 	blkctx->tmpr_mask = op_blk->tmpr_mask;
 	blkctx->base = op_blk->home->base;
-	blkctx->origin = op_blk->home->origin;
 
 	if (is_msgsend)
 	{
@@ -2083,7 +2068,6 @@ static int __activate_function (hcl_t* hcl, hcl_oop_function_t op_func, hcl_ooi_
 	functx->tmpr_mask = op_func->tmpr_mask;
 	functx->base = op_func;
 	functx->home = op_func->home;
-	functx->origin = functx; /* the origin of the context over a function should be itself */
 	functx->receiver = HCL_STACK_GETRCV(hcl, nargs);
 
 	/* copy the fixed arguments to the beginning of the variable part of the context block */
@@ -2147,16 +2131,16 @@ static HCL_INLINE int call_primitive (hcl_t* hcl, hcl_ooi_t nargs)
 
 /* ------------------------------------------------------------------------- */
 
-static hcl_oop_block_t find_cmethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oop_t op)
+static hcl_oop_block_t find_cmethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oop_t op_name, hcl_oop_class_t* owner)
 {
 	hcl_oocs_t name;
 
 /* TODO: implement method cache */
 	HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, class_));
-	HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl, op));
+	HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl, op_name));
 
-	name.ptr = HCL_OBJ_GET_CHAR_SLOT(op);
-	name.len = HCL_OBJ_GET_SIZE(op);
+	name.ptr = HCL_OBJ_GET_CHAR_SLOT(op_name);
+	name.len = HCL_OBJ_GET_SIZE(op_name);
 
 	do
 	{
@@ -2176,6 +2160,7 @@ static hcl_oop_block_t find_cmethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_
 				if (HCL_IS_BLOCK(hcl, val))
 				{
 					/* TODO: futher check if it's a method block? */
+					*owner = class_;
 					return (hcl_oop_block_t)val;
 				}
 			}
@@ -2187,7 +2172,7 @@ static hcl_oop_block_t find_cmethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_
 	return HCL_NULL;
 }
 
-static hcl_oop_block_t find_imethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oop_t op, hcl_ooi_t* ivaroff)
+static hcl_oop_block_t find_imethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oop_t op, hcl_ooi_t* ivaroff, hcl_oop_class_t* owner)
 {
 	hcl_oocs_t name;
 
@@ -2215,6 +2200,7 @@ static hcl_oop_block_t find_imethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_
 				if (HCL_IS_BLOCK(hcl, val))
 				{
 					/* TODO: futher check if it's a method block? */
+					*owner = class_;
 					*ivaroff = HCL_OOP_TO_SMOOI(class_->nivars_super);
 					return (hcl_oop_block_t)val;
 				}
@@ -2229,32 +2215,40 @@ static hcl_oop_block_t find_imethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_
 
 static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t msg, int to_super, hcl_ooi_t nargs)
 {
-	hcl_oop_block_t mth;
+	hcl_oop_block_t mth_blk;
 	hcl_oop_context_t newctx;
+	hcl_oop_class_t class_, owner;
 	hcl_ooi_t ivaroff;
 	int x;
 
 	HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl, msg));
 
+/* ============================= */
 /* TODO: implement methods cache */
+/* ============================= */
 	if (HCL_IS_CLASS(hcl, rcv))
 	{
-		mth = find_cmethod_noseterr(hcl, (hcl_oop_class_t)rcv, msg);
+		class_ = (hcl_oop_class_t)rcv;
+		mth_blk = find_cmethod_noseterr(hcl, class_, msg, &owner);
 	}
 	else
 	{
 		HCL_ASSERT (hcl, HCL_IS_INSTANCE(hcl, rcv));
 		HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, rcv->_class));
-		mth = find_imethod_noseterr(hcl, (hcl_oop_class_t)rcv->_class, msg, &ivaroff);
+		class_ = (hcl_oop_class_t)rcv->_class;
+		mth_blk = find_imethod_noseterr(hcl, class_, msg, &ivaroff, &owner);
 	}
-	if (!mth)
+	if (!mth_blk)
 	{
-		hcl_seterrbfmt (hcl, HCL_ENOENT, "'%.*js' not found in the %O", HCL_OBJ_GET_SIZE(msg), HCL_OBJ_GET_CHAR_SLOT(msg), rcv->_class);
+		hcl_seterrbfmt (hcl, HCL_ENOENT, "'%.*js' not found in %O", HCL_OBJ_GET_SIZE(msg), HCL_OBJ_GET_CHAR_SLOT(msg), class_);
 		return -1;
 	}
 
-	x = __activate_block(hcl, mth, nargs, 0 /* TODO: not always 0, support nrvars */, 1, ivaroff, &newctx);
+	x = __activate_block(hcl, mth_blk, nargs, 0 /* TODO: not always 0, support nrvars */, 1, ivaroff, &newctx);
 	if (HCL_UNLIKELY(x <= -1)) return -1;
+
+	/* update the method owner field of the new context created */
+	newctx->owner = owner;
 
 	SWITCH_ACTIVE_CONTEXT (hcl, newctx);
 	return 0;
@@ -2570,7 +2564,6 @@ static int start_initial_process_and_context (hcl_t* hcl, hcl_ooi_t initial_ip, 
 	ctx->ip = HCL_SMOOI_TO_OOP(initial_ip);
 	ctx->req_nrets = HCL_SMOOI_TO_OOP(1);
 	ctx->tmpr_mask = HCL_SMOOI_TO_OOP(tmpr_mask);
-	ctx->origin = ctx; /* the origin of the initial context is itself as this is created over the initial function */
 	ctx->home = hcl->initial_function->home; /* this should be nil */
 	ctx->sender = (hcl_oop_context_t)hcl->_nil;
 	ctx->base = hcl->initial_function;
@@ -3087,66 +3080,62 @@ static int execute (hcl_t* hcl)
 		{
 			/* ------------------------------------------------- */
 
-			case HCL_CODE_PUSH_INSTVAR_X:
+			case HCL_CODE_PUSH_IVAR_X:
 				FETCH_PARAM_CODE_TO (hcl, b1);
-				goto push_instvar;
-			case HCL_CODE_PUSH_INSTVAR_0:
-			case HCL_CODE_PUSH_INSTVAR_1:
-			case HCL_CODE_PUSH_INSTVAR_2:
-			case HCL_CODE_PUSH_INSTVAR_3:
-			case HCL_CODE_PUSH_INSTVAR_4:
-			case HCL_CODE_PUSH_INSTVAR_5:
-			case HCL_CODE_PUSH_INSTVAR_6:
-			case HCL_CODE_PUSH_INSTVAR_7:
+				goto push_ivar;
+			case HCL_CODE_PUSH_IVAR_0:
+			case HCL_CODE_PUSH_IVAR_1:
+			case HCL_CODE_PUSH_IVAR_2:
+			case HCL_CODE_PUSH_IVAR_3:
+			case HCL_CODE_PUSH_IVAR_4:
+			case HCL_CODE_PUSH_IVAR_5:
+			case HCL_CODE_PUSH_IVAR_6:
+			case HCL_CODE_PUSH_IVAR_7:
 				b1 = bcode & 0x7; /* low 3 bits */
-			push_instvar:
-				LOG_INST_2 (hcl, "push_instvar %zu ; [%zd]", b1, HCL_OOP_TO_SMOOI(hcl->active_context->home->ivaroff));
+			push_ivar:
+				LOG_INST_2 (hcl, "push_ivar %zu ; [%zd]", b1, HCL_OOP_TO_SMOOI(hcl->active_context->home->ivaroff));
 				HCL_ASSERT (hcl, HCL_OBJ_GET_FLAGS_TYPE(hcl->active_context->receiver) == HCL_OBJ_TYPE_OOP);
-				//HCL_STACK_PUSH (hcl, ((hcl_oop_oop_t)hcl->active_context->origin->receiver)->slot[b1]);
 				b1 += HCL_OOP_TO_SMOOI(hcl->active_context->home->ivaroff);
 				HCL_STACK_PUSH (hcl, ((hcl_oop_oop_t)hcl->active_context->receiver)->slot[b1]);
 				break;
 
 			/* ------------------------------------------------- */
 
-			case HCL_CODE_STORE_INTO_INSTVAR_X:
+			case HCL_CODE_STORE_INTO_IVAR_X:
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				goto store_instvar;
-			case HCL_CODE_STORE_INTO_INSTVAR_0:
-			case HCL_CODE_STORE_INTO_INSTVAR_1:
-			case HCL_CODE_STORE_INTO_INSTVAR_2:
-			case HCL_CODE_STORE_INTO_INSTVAR_3:
-			case HCL_CODE_STORE_INTO_INSTVAR_4:
-			case HCL_CODE_STORE_INTO_INSTVAR_5:
-			case HCL_CODE_STORE_INTO_INSTVAR_6:
-			case HCL_CODE_STORE_INTO_INSTVAR_7:
+			case HCL_CODE_STORE_INTO_IVAR_0:
+			case HCL_CODE_STORE_INTO_IVAR_1:
+			case HCL_CODE_STORE_INTO_IVAR_2:
+			case HCL_CODE_STORE_INTO_IVAR_3:
+			case HCL_CODE_STORE_INTO_IVAR_4:
+			case HCL_CODE_STORE_INTO_IVAR_5:
+			case HCL_CODE_STORE_INTO_IVAR_6:
+			case HCL_CODE_STORE_INTO_IVAR_7:
 				b1 = bcode & 0x7; /* low 3 bits */
 			store_instvar:
-				LOG_INST_2 (hcl, "store_into_instvar %zu ; [%zd]", b1, HCL_OOP_TO_SMOOI(hcl->active_context->home->ivaroff));
+				LOG_INST_2 (hcl, "store_into_ivar %zu ; [%zd]", b1, HCL_OOP_TO_SMOOI(hcl->active_context->home->ivaroff));
 				HCL_ASSERT (hcl, HCL_OBJ_GET_FLAGS_TYPE(hcl->active_context->receiver) == HCL_OBJ_TYPE_OOP);
-				//((hcl_oop_oop_t)hcl->active_context->origin->receiver)->slot[b1] = HCL_STACK_GETTOP(hcl);
 				b1 += HCL_OOP_TO_SMOOI(hcl->active_context->home->ivaroff);
 				((hcl_oop_oop_t)hcl->active_context->receiver)->slot[b1] = HCL_STACK_GETTOP(hcl);
 				break;
 
 			/* ------------------------------------------------- */
-			case HCL_CODE_POP_INTO_INSTVAR_X:
+			case HCL_CODE_POP_INTO_IVAR_X:
 				FETCH_PARAM_CODE_TO (hcl, b1);
-				goto pop_into_instvar;
-			case HCL_CODE_POP_INTO_INSTVAR_0:
-			case HCL_CODE_POP_INTO_INSTVAR_1:
-			case HCL_CODE_POP_INTO_INSTVAR_2:
-			case HCL_CODE_POP_INTO_INSTVAR_3:
-			case HCL_CODE_POP_INTO_INSTVAR_4:
-			case HCL_CODE_POP_INTO_INSTVAR_5:
-			case HCL_CODE_POP_INTO_INSTVAR_6:
-			case HCL_CODE_POP_INTO_INSTVAR_7:
+				goto pop_into_ivar;
+			case HCL_CODE_POP_INTO_IVAR_0:
+			case HCL_CODE_POP_INTO_IVAR_1:
+			case HCL_CODE_POP_INTO_IVAR_2:
+			case HCL_CODE_POP_INTO_IVAR_3:
+			case HCL_CODE_POP_INTO_IVAR_4:
+			case HCL_CODE_POP_INTO_IVAR_5:
+			case HCL_CODE_POP_INTO_IVAR_6:
+			case HCL_CODE_POP_INTO_IVAR_7:
 				b1 = bcode & 0x7; /* low 3 bits */
-			pop_into_instvar:
-				LOG_INST_2 (hcl, "pop_into_instvar %zu ; [%zd]", b1, HCL_OOP_TO_SMOOI(hcl->active_context->home->ivaroff));
+			pop_into_ivar:
+				LOG_INST_2 (hcl, "pop_into_ivar %zu ; [%zd]", b1, HCL_OOP_TO_SMOOI(hcl->active_context->home->ivaroff));
 				HCL_ASSERT (hcl, HCL_OBJ_GET_FLAGS_TYPE(hcl->active_context->receiver) == HCL_OBJ_TYPE_OOP);
-
-				//((hcl_oop_oop_t)hcl->active_context->origin->receiver)->slot[b1] = HCL_STACK_GETTOP(hcl);
 				b1 += HCL_OOP_TO_SMOOI(hcl->active_context->home->ivaroff);
 				((hcl_oop_oop_t)hcl->active_context->receiver)->slot[b1] = HCL_STACK_GETTOP(hcl);
 				HCL_STACK_POP (hcl);
@@ -3890,22 +3879,22 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 
 			/* access the class variables in the initialization context.
 			 * the class object is at the class stack top */
-			case HCL_CODE_PUSH_CLSVAR_I_X:
+			case HCL_CODE_PUSH_CVAR_I_X:
 			{
 				hcl_oop_t t;
 				FETCH_PARAM_CODE_TO (hcl, b1);
-				LOG_INST_1 (hcl, "push_clsvar_i %zu", b1);
+				LOG_INST_1 (hcl, "push_cvar_i %zu", b1);
 				HCL_CLSTACK_FETCH_TOP_TO(hcl, t);
 				HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, t));
 				HCL_STACK_PUSH (hcl, ((hcl_oop_class_t)t)->cvar[b1]);
 				break;
 			}
 
-			case HCL_CODE_STORE_INTO_CLSVAR_I_X:
+			case HCL_CODE_STORE_INTO_CVAR_I_X:
 			{
 				hcl_oop_t t;
 				FETCH_PARAM_CODE_TO (hcl, b1);
-				LOG_INST_1 (hcl, "store_into_clsvar_i %zu", b1);
+				LOG_INST_1 (hcl, "store_into_cvar_i %zu", b1);
 				if (HCL_CLSTACK_IS_EMPTY(hcl))
 				{
 					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "empty class stack");
@@ -3918,11 +3907,11 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				break;
 			}
 
-			case HCL_CODE_POP_INTO_CLSVAR_I_X:
+			case HCL_CODE_POP_INTO_CVAR_I_X:
 			{
 				hcl_oop_t t;
 				FETCH_PARAM_CODE_TO (hcl, b1);
-				LOG_INST_1 (hcl, "pop_into_clsvar_i %zu", b1);
+				LOG_INST_1 (hcl, "pop_into_cvar_i %zu", b1);
 				if (HCL_CLSTACK_IS_EMPTY(hcl))
 				{
 					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "empty class stack");
@@ -3938,60 +3927,53 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 			
 			/* -------------------------------------------------------- */
 
-			/* access the class variables in the instance method context.
-			 * the receiver's class is accessed. */
-			case HCL_CODE_PUSH_CLSVAR_M_X:
+
+			/* access class variables referenced in a method context.
+			 * the class variables slots in the owning class of the method that triggerred the current active context */
+			case HCL_CODE_PUSH_CVAR_M_X:
 			{
 				hcl_oop_t t;
 				FETCH_PARAM_CODE_TO (hcl, b1);
-				LOG_INST_1 (hcl, "push_clsvar_m %zu", b1);
-				//t = (hcl_oop_oop_t)hcl->active_context->origin->receiver;
-				t = hcl->active_context->receiver;
-				if (!HCL_IS_INSTANCE(hcl, t))
+				LOG_INST_1 (hcl, "push_cvar_m %zu", b1);
+				t = hcl->active_context->owner;
+				if (HCL_UNLIKELY(!HCL_IS_CLASS(hcl, t)))
 				{
-					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "non-instance receiver");
-				/* TODO: do throw??? instead */
+					/* this is an internal error or the bytecodes are compromised */
+					hcl_seterrbfmt (hcl, HCL_EINTERN, "non-class owner in class variable access");
 					goto oops_with_errmsg_supplement;
 				}
-				t = HCL_OBJ_GET_CLASS(t);
-				HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, t));
 				HCL_STACK_PUSH (hcl, ((hcl_oop_class_t)t)->cvar[b1]);
 				break;
 			}
 
-			case HCL_CODE_STORE_INTO_CLSVAR_M_X:
+			case HCL_CODE_STORE_INTO_CVAR_M_X:
 			{
 				hcl_oop_t t;
 				FETCH_PARAM_CODE_TO (hcl, b1);
-				LOG_INST_1 (hcl, "store_into_clsvar_m %zu", b1);
-				//t = (hcl_oop_oop_t)hcl->active_context->origin->receiver;
-				t = hcl->active_context->receiver;
-				if (!HCL_IS_INSTANCE(hcl, t))
+				LOG_INST_1 (hcl, "store_into_cvar_m %zu", b1);
+				t = hcl->active_context->owner;
+				if (HCL_UNLIKELY(!HCL_IS_CLASS(hcl, t)))
 				{
-					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "non-instance receiver");
-				/* TODO: do throw??? instead */
+					/* this is an internal error or the bytecodes are compromised */
+					hcl_seterrbfmt (hcl, HCL_EINTERN, "non-class owner in class variable access");
 					goto oops_with_errmsg_supplement;
 				}
-				t = HCL_OBJ_GET_CLASS(t);
-				HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, t));
 				((hcl_oop_class_t)t)->cvar[b1] = HCL_STACK_GETTOP(hcl);
 				break;
 			}
 
-			case HCL_CODE_POP_INTO_CLSVAR_M_X:
+			case HCL_CODE_POP_INTO_CVAR_M_X:
 			{
 				hcl_oop_t t;
 				FETCH_PARAM_CODE_TO (hcl, b1);
-				LOG_INST_1 (hcl, "pop_into_clsvar_m %zu", b1);
-				//t = (hcl_oop_oop_t)hcl->active_context->origin->receiver;
-				t = hcl->active_context->receiver;
-				if (!HCL_IS_INSTANCE(hcl, t))
+				LOG_INST_1 (hcl, "pop_into_cvar_m %zu", b1);
+				t = hcl->active_context->owner;
+				if (HCL_UNLIKELY(!HCL_IS_CLASS(hcl, t)))
 				{
-					hcl_seterrbfmt (hcl, HCL_ESTKUNDFLW, "non-instance receiver");
+					/* this is an internal error or the bytecodes are compromised */
+					hcl_seterrbfmt (hcl, HCL_EINTERN, "non-class owner in class variable access");
 					goto oops_with_errmsg_supplement;
 				}
-				t = HCL_OBJ_GET_CLASS(t);
-				HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, t));
 				((hcl_oop_class_t)t)->cvar[b1] = HCL_STACK_GETTOP(hcl);
 				HCL_STACK_POP (hcl);
 				break;
@@ -4001,7 +3983,6 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 
 			case HCL_CODE_PUSH_RECEIVER: /* push self or super */
 				LOG_INST_0 (hcl, "push_receiver");
-				//HCL_STACK_PUSH (hcl, hcl->active_context->origin->receiver);
 				HCL_STACK_PUSH (hcl, hcl->active_context->receiver);
 				break;
 
@@ -4329,7 +4310,6 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 
 			case HCL_CODE_RETURN_RECEIVER:
 				LOG_INST_0 (hcl, "return_receiver");
-				//return_value = hcl->active_context->origin->receiver;
 				return_value = hcl->active_context->receiver;
 
 			handle_return:

@@ -477,9 +477,9 @@ static int emit_single_param_instruction (hcl_t* hcl, int cmd, hcl_oow_t param_1
 
 	switch (cmd)
 	{
-		case HCL_CODE_PUSH_INSTVAR_0:
-		case HCL_CODE_STORE_INTO_INSTVAR_0:
-		case HCL_CODE_POP_INTO_INSTVAR_0:
+		case HCL_CODE_PUSH_IVAR_0:
+		case HCL_CODE_STORE_INTO_IVAR_0:
+		case HCL_CODE_POP_INTO_IVAR_0:
 		case HCL_CODE_PUSH_TEMPVAR_0:
 		case HCL_CODE_STORE_INTO_TEMPVAR_0:
 		case HCL_CODE_POP_INTO_TEMPVAR_0:
@@ -546,12 +546,12 @@ static int emit_single_param_instruction (hcl_t* hcl, int cmd, hcl_oow_t param_1
 		case HCL_CODE_JUMP2_BACKWARD_IF_FALSE:
 		case HCL_CODE_JUMP2_BACKWARD:
 
-		case HCL_CODE_PUSH_CLSVAR_I_X:
-		case HCL_CODE_STORE_INTO_CLSVAR_I_X:
-		case HCL_CODE_POP_INTO_CLSVAR_I_X:
-		case HCL_CODE_PUSH_CLSVAR_M_X:
-		case HCL_CODE_STORE_INTO_CLSVAR_M_X:
-		case HCL_CODE_POP_INTO_CLSVAR_M_X:
+		case HCL_CODE_PUSH_CVAR_I_X:
+		case HCL_CODE_STORE_INTO_CVAR_I_X:
+		case HCL_CODE_POP_INTO_CVAR_I_X:
+		case HCL_CODE_PUSH_CVAR_M_X:
+		case HCL_CODE_STORE_INTO_CVAR_M_X:
+		case HCL_CODE_POP_INTO_CVAR_M_X:
 
 		case HCL_CODE_CLASS_CMSTORE:
 		case HCL_CODE_CLASS_IMSTORE:
@@ -814,9 +814,9 @@ static int emit_variable_access (hcl_t* hcl, int mode, const hcl_var_info_t* vi,
 	static hcl_oob_t inst_map[][3] =
 	{
 		{ HCL_CODE_PUSH_CTXTEMPVAR_0, HCL_CODE_POP_INTO_CTXTEMPVAR_0, HCL_CODE_STORE_INTO_CTXTEMPVAR_0 },
-		{ HCL_CODE_PUSH_INSTVAR_0,    HCL_CODE_POP_INTO_INSTVAR_0,    HCL_CODE_STORE_INTO_INSTVAR_0    },
-		{ HCL_CODE_PUSH_CLSVAR_I_X,   HCL_CODE_POP_INTO_CLSVAR_I_X,   HCL_CODE_STORE_INTO_CLSVAR_I_X   },
-		{ HCL_CODE_PUSH_CLSVAR_M_X,   HCL_CODE_POP_INTO_CLSVAR_M_X,   HCL_CODE_STORE_INTO_CLSVAR_M_X   }
+		{ HCL_CODE_PUSH_IVAR_0,       HCL_CODE_POP_INTO_IVAR_0,       HCL_CODE_STORE_INTO_IVAR_0    },
+		{ HCL_CODE_PUSH_CVAR_I_X,     HCL_CODE_POP_INTO_CVAR_I_X,     HCL_CODE_STORE_INTO_CVAR_I_X   },
+		{ HCL_CODE_PUSH_CVAR_M_X,     HCL_CODE_POP_INTO_CVAR_M_X,     HCL_CODE_STORE_INTO_CVAR_M_X   }
 	};
 
 	switch (vi->type)
@@ -825,7 +825,6 @@ static int emit_variable_access (hcl_t* hcl, int mode, const hcl_var_info_t* vi,
 			return emit_double_param_instruction(hcl, inst_map[0][mode], vi->ctx_offset, vi->index_in_ctx, srcloc);
 
 		case VAR_INST:
-		case VAR_CLASS_CM: /* class variable in class method scope */
 			HCL_ASSERT (hcl, vi->ctx_offset == 0);
 			return emit_single_param_instruction(hcl, inst_map[1][mode], vi->index_in_ctx, srcloc);
 
@@ -833,6 +832,7 @@ static int emit_variable_access (hcl_t* hcl, int mode, const hcl_var_info_t* vi,
 			HCL_ASSERT (hcl, vi->ctx_offset == 0);
 			return emit_single_param_instruction(hcl, inst_map[2][mode], vi->index_in_ctx, srcloc);
 
+		case VAR_CLASS_CM: /* class variable in class method scope */
 		case VAR_CLASS_IM: /* class variable in instance method scope */
 			HCL_ASSERT (hcl, vi->ctx_offset == 0);
 			return emit_single_param_instruction(hcl, inst_map[3][mode], vi->index_in_ctx, srcloc);
