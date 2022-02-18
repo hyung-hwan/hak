@@ -993,7 +993,8 @@ static hcl_iotok_type_t classify_ident_token (hcl_t* hcl, const hcl_oocs_t* v)
 		{ 4, { 'n','u','l','l' },     HCL_IOTOK_NIL },
 		{ 4, { 't','r','u','e' },     HCL_IOTOK_TRUE },
 		{ 5, { 'f','a','l','s','e' }, HCL_IOTOK_FALSE },
-		{ 4, { 's','e','l','f' },     HCL_IOTOK_SELF }
+		{ 4, { 's','e','l','f' },     HCL_IOTOK_SELF },
+		{ 5, { 's','u','p','e','r' }, HCL_IOTOK_SUPER }
 	};
 
 	for (i = 0; i < HCL_COUNTOF(tab); i++)
@@ -1993,6 +1994,10 @@ static hcl_cnode_t* read_object (hcl_t* hcl)
 
 			case HCL_IOTOK_SELF:
 				obj = hcl_makecnodeself(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+				break;
+
+			case HCL_IOTOK_SUPER:
+				obj = hcl_makecnodesuper(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 				break;
 
 			case HCL_IOTOK_ELLIPSIS:

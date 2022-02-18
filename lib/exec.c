@@ -2131,7 +2131,7 @@ static HCL_INLINE int call_primitive (hcl_t* hcl, hcl_ooi_t nargs)
 
 /* ------------------------------------------------------------------------- */
 
-static hcl_oop_block_t find_cmethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oop_t op_name, hcl_oop_class_t* owner)
+static hcl_oop_block_t find_cmethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oop_t op_name, int to_super, hcl_oop_class_t* owner)
 {
 	hcl_oocs_t name;
 
@@ -2142,10 +2142,17 @@ static hcl_oop_block_t find_cmethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_
 	name.ptr = HCL_OBJ_GET_CHAR_SLOT(op_name);
 	name.len = HCL_OBJ_GET_SIZE(op_name);
 
+	if (to_super) 
+	{
+		class_ = (hcl_oop_class_t)class_->superclass;
+		if (!HCL_IS_CLASS(hcl, class_)) return HCL_NULL;
+	}
+
 	do
 	{
 		hcl_oop_t dic;
 
+		
 		dic = class_->cdic;
 		HCL_ASSERT (hcl, HCL_IS_NIL(hcl, dic) || HCL_IS_DIC(hcl, dic));
 
@@ -2172,7 +2179,7 @@ static hcl_oop_block_t find_cmethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_
 	return HCL_NULL;
 }
 
-static hcl_oop_block_t find_imethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oop_t op, hcl_ooi_t* ivaroff, hcl_oop_class_t* owner)
+static hcl_oop_block_t find_imethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oop_t op, int to_super, hcl_ooi_t* ivaroff, hcl_oop_class_t* owner)
 {
 	hcl_oocs_t name;
 
@@ -2181,6 +2188,12 @@ static hcl_oop_block_t find_imethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_
 
 	name.ptr = HCL_OBJ_GET_CHAR_SLOT(op);
 	name.len = HCL_OBJ_GET_SIZE(op);
+
+	if (to_super) 
+	{
+		class_ = (hcl_oop_class_t)class_->superclass;
+		if (!HCL_IS_CLASS(hcl, class_)) return HCL_NULL;
+	}
 
 	do
 	{
@@ -2229,14 +2242,14 @@ static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t msg, in
 	if (HCL_IS_CLASS(hcl, rcv))
 	{
 		class_ = (hcl_oop_class_t)rcv;
-		mth_blk = find_cmethod_noseterr(hcl, class_, msg, &owner);
+		mth_blk = find_cmethod_noseterr(hcl, class_, msg, to_super, &owner);
 	}
 	else
 	{
 		HCL_ASSERT (hcl, HCL_IS_INSTANCE(hcl, rcv));
 		HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, rcv->_class));
 		class_ = (hcl_oop_class_t)rcv->_class;
-		mth_blk = find_imethod_noseterr(hcl, class_, msg, &ivaroff, &owner);
+		mth_blk = find_imethod_noseterr(hcl, class_, msg, to_super, &ivaroff, &owner);
 	}
 	if (!mth_blk)
 	{
@@ -3822,16 +3835,8 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 
 			case HCL_CODE_SEND_X:
 			case HCL_CODE_SEND_TO_SUPER_X:
-			#if 0
-				/* b1 -> number of arguments 
-				 * b2 -> selector index stored in the literal frame */
-				FETCH_PARAM_CODE_TO (hcl, b1);
-				FETCH_PARAM_CODE_TO (hcl, b2);
-				goto handle_send_message;
-			#else
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				goto handle_send;
-			#endif
 
 			case HCL_CODE_SEND_0:
 			case HCL_CODE_SEND_1:

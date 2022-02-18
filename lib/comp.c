@@ -3856,10 +3856,11 @@ redo:
 			goto done;
 
 		case HCL_CNODE_SELF:
+		case HCL_CNODE_SUPER:
 			if (emit_byte_instruction(hcl, HCL_CODE_PUSH_RECEIVER, HCL_CNODE_GET_LOC(oprnd)) <= -1) return -1;
 			goto done;
 
-		/* TODO: super, this-context */
+		/* TODO: this-context */
 
 		case HCL_CNODE_CHARLIT:
 			lit = HCL_CHAR_TO_OOP(oprnd->u.charlit.v);

@@ -72,6 +72,11 @@ hcl_cnode_t* hcl_makecnodeself (hcl_t* hcl, const hcl_ioloc_t* loc, const  hcl_o
 	return make_cnode(hcl, HCL_CNODE_SELF, loc, tok);
 }
 
+hcl_cnode_t* hcl_makecnodesuper (hcl_t* hcl, const hcl_ioloc_t* loc, const  hcl_oocs_t* tok)
+{
+	return make_cnode(hcl, HCL_CNODE_SUPER, loc, tok);
+}
+
 hcl_cnode_t* hcl_makecnodeellipsis (hcl_t* hcl, const hcl_ioloc_t* loc, const  hcl_oocs_t* tok)
 {
 	return make_cnode(hcl, HCL_CNODE_ELLIPSIS, loc, tok);
