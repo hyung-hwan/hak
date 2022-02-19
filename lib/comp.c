@@ -2756,7 +2756,7 @@ static int compile_set_r (hcl_t* hcl, hcl_cnode_t* src)
 {
 	hcl_cframe_t* cf;
 	hcl_cnode_t* cmd, * obj, * var, * val, * var_start;
-	hcl_oow_t index, nvars, i;
+	hcl_oow_t nvars, i;
 	hcl_var_info_t vi;
 
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
@@ -2822,7 +2822,7 @@ static int compile_set_r (hcl_t* hcl, hcl_cnode_t* src)
 
 	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_R, val); /* special for set_r */
 	cf = GET_TOP_CFRAME(hcl);
-	cf->u.obj_r.nrets = nvars;
+	cf->u.obj_r.nrets = nvars; /* number of return variables to get assigned */
 
 	for (i  = 0, obj = var_start; i < nvars; i++, obj = HCL_CNODE_CONS_CDR(obj))
 	{
@@ -2841,13 +2841,30 @@ static int compile_set_r (hcl_t* hcl, hcl_cnode_t* src)
 		}
 		else
 		{
-			/* the check in compile_lambda() must ensure this condition */
-			HCL_ASSERT (hcl, index <= HCL_SMOOI_MAX);
 			PUSH_SUBCFRAME (hcl, COP_EMIT_SET, cmd); 
 			cf = GET_SUBCFRAME(hcl);
 			cf->u.set.vi = vi;
 		}
-		cf->u.set.mode = (i > 0)? VAR_ACCESS_STORE: VAR_ACCESS_POP; /* STORE_INTO or POP_INTO  */
+
+		/* 
+		 * (defun f(x y ::: aa bb cc) ....) 
+		 * (set_r a b c (f 1 2))
+		 *
+		 *    the call to f 
+		 *       call 2 3  ; 2 arguments, 3 return variables (CALL_R)
+		 *                 ; 3 to be emitted from cf->u.obj_r.nrets
+		 *                 ; this gets remembered in req_nrvars of the created context.
+		 *   
+		 *    the return from f must push 3 values.
+		 *        push_return_r  ; as remembered in the ctx->req_nrvars
+		 * 
+		 *    emit store_into_xxx instruction for the first return variable assignment.
+		 *    emit pop_into_xxx instructions for the rest.
+		 *        pop_into c
+		 *        pop_into b
+		 *        store_into a
+		 */
+		cf->u.set.mode = (i <= 0)? VAR_ACCESS_STORE: VAR_ACCESS_POP; /* STORE_INTO or POP_INTO  */
 	}
 
 	return 0;

@@ -3430,6 +3430,7 @@ static int execute (hcl_t* hcl)
 				/* return variables are placed after the fixed arguments */
 				for (i = 0; i < req_nrets; i++)
 				{
+HCL_DEBUG1 (hcl, "PUSHING %O\n", ctx->slot[fixed_nargs + i]);
 					HCL_STACK_PUSH (hcl, ctx->slot[fixed_nargs + i]);
 				}
 
@@ -3940,7 +3941,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				hcl_oop_t t;
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				LOG_INST_1 (hcl, "push_cvar_m %zu", b1);
-				t = hcl->active_context->owner;
+				t = hcl->active_context->home->owner;
 				if (HCL_UNLIKELY(!HCL_IS_CLASS(hcl, t)))
 				{
 					/* this is an internal error or the bytecodes are compromised */
@@ -3956,7 +3957,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				hcl_oop_t t;
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				LOG_INST_1 (hcl, "store_into_cvar_m %zu", b1);
-				t = hcl->active_context->owner;
+				t = hcl->active_context->home->owner;
 				if (HCL_UNLIKELY(!HCL_IS_CLASS(hcl, t)))
 				{
 					/* this is an internal error or the bytecodes are compromised */
@@ -3972,7 +3973,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				hcl_oop_t t;
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				LOG_INST_1 (hcl, "pop_into_cvar_m %zu", b1);
-				t = hcl->active_context->owner;
+				t = hcl->active_context->home->owner;
 				if (HCL_UNLIKELY(!HCL_IS_CLASS(hcl, t)))
 				{
 					/* this is an internal error or the bytecodes are compromised */
