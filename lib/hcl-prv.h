@@ -321,6 +321,7 @@ struct hcl_cframe_t
 		{
 			hcl_ooi_t nargs;
 			hcl_ooi_t nrets;
+			int to_super;
 		} sendmsg;
 
 		/* COP_EMIT_SET */

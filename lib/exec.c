@@ -3941,6 +3941,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				hcl_oop_t t;
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				LOG_INST_1 (hcl, "push_cvar_m %zu", b1);
+				HCL_ASSERT (hcl, (hcl_oop_t)hcl->active_context->home != hcl->_nil);
 				t = hcl->active_context->home->owner;
 				if (HCL_UNLIKELY(!HCL_IS_CLASS(hcl, t)))
 				{
@@ -3957,6 +3958,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				hcl_oop_t t;
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				LOG_INST_1 (hcl, "store_into_cvar_m %zu", b1);
+				HCL_ASSERT (hcl, (hcl_oop_t)hcl->active_context->home != hcl->_nil);
 				t = hcl->active_context->home->owner;
 				if (HCL_UNLIKELY(!HCL_IS_CLASS(hcl, t)))
 				{
@@ -3973,6 +3975,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				hcl_oop_t t;
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				LOG_INST_1 (hcl, "pop_into_cvar_m %zu", b1);
+				HCL_ASSERT (hcl, (hcl_oop_t)hcl->active_context->home != hcl->_nil);
 				t = hcl->active_context->home->owner;
 				if (HCL_UNLIKELY(!HCL_IS_CLASS(hcl, t)))
 				{

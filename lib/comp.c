@@ -3521,10 +3521,9 @@ static int compile_cons_mlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 	oldtop = GET_TOP_CFRAME_INDEX(hcl); 
 	HCL_ASSERT (hcl, oldtop >= 0);
 
-	SWITCH_TOP_CFRAME (hcl, COP_EMIT_SEND, car);
-
 	/* compile <receiver> */
 	rcv = car; /* remember the receiver node to to push it later */
+	SWITCH_TOP_CFRAME (hcl, COP_EMIT_SEND, rcv);
 
 	/* compile <operator> */
 	cdr = HCL_CNODE_CONS_CDR(obj);
@@ -3606,6 +3605,7 @@ static int compile_cons_mlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 	HCL_ASSERT (hcl, cf->opcode == COP_EMIT_SEND);
 	cf->u.sendmsg.nargs = nargs;
 	cf->u.sendmsg.nrets = nrets;
+	cf->u.sendmsg.to_super = (HCL_CNODE_GET_TYPE(rcv) == HCL_CNODE_SUPER);
 
 	PUSH_CFRAME (hcl, COP_COMPILE_OBJECT, rcv);
 	return 0;
@@ -4613,11 +4613,11 @@ static HCL_INLINE int emit_send (hcl_t* hcl)
 
 	if (cf->u.sendmsg.nrets > 0)
 	{
-		n = emit_double_param_instruction(hcl, HCL_CODE_SEND_R, cf->u.sendmsg.nargs, cf->u.sendmsg.nrets, HCL_CNODE_GET_LOC(cf->operand));
+		n = emit_double_param_instruction(hcl, (cf->u.sendmsg.to_super? HCL_CODE_SEND_TO_SUPER_R: HCL_CODE_SEND_R), cf->u.sendmsg.nargs, cf->u.sendmsg.nrets, HCL_CNODE_GET_LOC(cf->operand));
 	}
 	else
 	{
-		n = emit_single_param_instruction(hcl, HCL_CODE_SEND_0, cf->u.sendmsg.nargs, HCL_CNODE_GET_LOC(cf->operand));
+		n = emit_single_param_instruction(hcl, (cf->u.sendmsg.to_super? HCL_CODE_SEND_TO_SUPER_0: HCL_CODE_SEND_0), cf->u.sendmsg.nargs, HCL_CNODE_GET_LOC(cf->operand));
 	}
 
 	POP_CFRAME (hcl);
