@@ -949,13 +949,13 @@ enum hcl_bcode_t
 	HCL_CODE_POP_INTO_DIC             = 0xEF, /* 239 */
 
 	HCL_CODE_SEND_X                   = 0xF0, /* 240 ## */
-	HCL_CODE_SEND_R                   = 0xF1, /* 241 ## ## */
+	HCL_CODE_SEND_R                   = 0xF1, /* 241 ## ## - [NOTE] ((code >> 2) & 1) must be 0 */
 
 	HCL_CODE_MAKE_CONS                = 0xF2, /* 242 */
 	HCL_CODE_POP_INTO_CONS            = 0xF3, /* 243 */
 
 	HCL_CODE_SEND_TO_SUPER_X          = 0xF4, /* 244 ## */
-	HCL_CODE_SEND_TO_SUPER_R          = 0xF5, /* 245 ## ## */
+	HCL_CODE_SEND_TO_SUPER_R          = 0xF5, /* 245 ## ## - [NOTE] ((code >> 2) & 1) must be 0 */
 
 	HCL_CODE_POP_INTO_CONS_END        = 0xF6, /* 246 */
 	HCL_CODE_POP_INTO_CONS_CDR        = 0xF7, /* 247 */

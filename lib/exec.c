@@ -2226,7 +2226,7 @@ static hcl_oop_block_t find_imethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_
 	return HCL_NULL;
 }
 
-static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t msg, int to_super, hcl_ooi_t nargs)
+static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t msg, int to_super, hcl_ooi_t nargs, hcl_ooi_t nrvars)
 {
 	hcl_oop_block_t mth_blk;
 	hcl_oop_context_t newctx;
@@ -2257,7 +2257,7 @@ static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t msg, in
 		return -1;
 	}
 
-	x = __activate_block(hcl, mth_blk, nargs, 0 /* TODO: not always 0, support nrvars */, 1, ivaroff, &newctx);
+	x = __activate_block(hcl, mth_blk, nargs, nrvars, 1 /* is_msgsend */, ivaroff, &newctx);
 	if (HCL_UNLIKELY(x <= -1)) return -1;
 
 	/* update the method owner field of the new context created */
@@ -3430,7 +3430,6 @@ static int execute (hcl_t* hcl)
 				/* return variables are placed after the fixed arguments */
 				for (i = 0; i < req_nrets; i++)
 				{
-HCL_DEBUG1 (hcl, "PUSHING %O\n", ctx->slot[fixed_nargs + i]);
 					HCL_STACK_PUSH (hcl, ctx->slot[fixed_nargs + i]);
 				}
 
@@ -3827,12 +3826,15 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 			}
 
 			/* -------------------------------------------------------- */
-#if 0
 			case HCL_CODE_SEND_R:
 			case HCL_CODE_SEND_TO_SUPER_R:
-			/* TODO ........ */
-				break;
-#endif
+
+				FETCH_PARAM_CODE_TO (hcl, b1); /* nargs */
+				FETCH_PARAM_CODE_TO (hcl, b2); /* nrvars */
+
+				LOG_INST_3 (hcl, "send%hs %zu %zu", (((bcode >> 2) & 1)? "_to_super": ""), b1, b2);
+				goto handle_send_2;
+
 
 			case HCL_CODE_SEND_X:
 			case HCL_CODE_SEND_TO_SUPER_X:
@@ -3851,9 +3853,11 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				hcl_oop_t rcv, op;
 
 				b1 = bcode & 0x3; /* low 2 bits */
+				b2 = 0;
 			handle_send:
 				LOG_INST_2 (hcl, "send%hs %zu", (((bcode >> 2) & 1)? "_to_super": ""), b1);
 
+			handle_send_2:
 				rcv = HCL_STACK_GETRCV(hcl, b1);
 				op = HCL_STACK_GETOP(hcl, b1);
 				if (!HCL_IS_SYMBOL(hcl, op))
@@ -3863,7 +3867,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				}
 				else if (HCL_IS_CLASS(hcl, rcv) || HCL_IS_INSTANCE(hcl, rcv))
 				{
-					if (send_message(hcl, rcv, op, ((bcode >> 2) & 1) /* to_super */, b1 /* nargs */) <= -1) 
+					if (send_message(hcl, rcv, op, ((bcode >> 2) & 1) /* to_super */, b1 /* nargs */, b2 /* nrvars */) <= -1) 
 					{
 						const hcl_ooch_t* msg = hcl_backuperrmsg (hcl);
 						hcl_seterrbfmt (hcl, HCL_ECALL, "unable to send %O to %O - %js", op, rcv, msg); /* TODO: change to HCL_ESEND?? */

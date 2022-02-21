@@ -646,6 +646,7 @@ static int emit_double_param_instruction (hcl_t* hcl, int cmd, hcl_oow_t param_1
 		case HCL_CODE_MAKE_BLOCK:
 		case HCL_CODE_MAKE_FUNCTION:
 		case HCL_CODE_CALL_R:
+		case HCL_CODE_SEND_R:
 			bc = cmd;
 			goto write_long;
 	}
@@ -4030,7 +4031,6 @@ done:
 	return 0;
 }
 
-
 static int compile_object_r (hcl_t* hcl)
 {
 	hcl_cframe_t* cf;
@@ -4041,13 +4041,17 @@ static int compile_object_r (hcl_t* hcl)
 	HCL_ASSERT (hcl, cf->operand != HCL_NULL);
 
 	oprnd = cf->operand;
-	if (!HCL_CNODE_IS_CONS_CONCODED(oprnd, HCL_CONCODE_XLIST))
+	if (HCL_CNODE_IS_CONS_CONCODED(oprnd, HCL_CONCODE_XLIST))
 	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "non-function call disallowed");
-		return -1;
+		return compile_cons_xlist_expression(hcl, oprnd, cf->u.obj_r.nrets);
 	}
-
-	return compile_cons_xlist_expression(hcl, oprnd, cf->u.obj_r.nrets);
+	else if (HCL_CNODE_IS_CONS_CONCODED(oprnd, HCL_CONCODE_MLIST))
+	{
+		return compile_cons_mlist_expression(hcl, oprnd, cf->u.obj_r.nrets);
+	}
+	
+	hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "non-function call/non-message send disallowed");
+	return -1;
 }
 
 static int compile_object_list (hcl_t* hcl)
