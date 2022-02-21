@@ -6,12 +6,12 @@ EXTRA_DIST = t t/test-bi.hcl
 SUBDIRS =
 
 if ENABLE_STATIC_MODULE
-SUBDIRS += mod lib bin
+SUBDIRS += mod lib bin t
 else
-SUBDIRS += lib mod bin
+SUBDIRS += lib mod bin t
 endif
 
-DIST_SUBDIRS = $(SUBDIRS) ##t
+DIST_SUBDIRS = $(SUBDIRS)
 
 distclean-local:
 	@rm -rf $(top_srcdir)/autom4te.cache
