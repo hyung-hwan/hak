@@ -1153,6 +1153,15 @@ retry:
 					ADD_TOKEN_CHAR (hcl, c);
 					break;
 				}
+				else if (c == '*')
+				{
+					/* double-cloned star */
+					SET_TOKEN_TYPE (hcl, HCL_IOTOK_DCSTAR);
+					ADD_TOKEN_CHAR (hcl, oldc);
+					ADD_TOKEN_CHAR (hcl, oldc2);
+					ADD_TOKEN_CHAR (hcl, c);
+					break;
+				}
 
 				unget_char (hcl, &hcl->c->lxc);
 				unget_char (hcl, &sd);
@@ -2006,6 +2015,10 @@ static hcl_cnode_t* read_object (hcl_t* hcl)
 
 			case HCL_IOTOK_TRPCOLONS:
 				obj = hcl_makecnodetrpcolons(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+				break;
+
+			case HCL_IOTOK_DCSTAR:
+				obj = hcl_makecnodedcstar(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 				break;
 
 			case HCL_IOTOK_SMPTRLIT:

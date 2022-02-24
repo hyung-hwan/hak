@@ -43,6 +43,14 @@ enum
 	VAR_ACCESS_STORE
 };
 
+enum
+{
+	FUN_PLAIN, /* plain function */
+	FUN_IM,    /* instance method */
+	FUN_CM,    /* class method */
+	FUN_CIM    /* class instantiation method */
+};
+
 #define TV_BUFFER_ALIGN 256
 #define BLK_INFO_BUFFER_ALIGN 128
 
@@ -216,7 +224,7 @@ static int is_in_class_init_scope (hcl_t* hcl)
 {
 	hcl_fnblk_info_t* fbi;
 	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
-	return (fbi->clsblk_top >= 0);
+	return fbi->clsblk_top >= 0;
 }
 
 static int is_in_class_method_scope (hcl_t* hcl)
@@ -262,8 +270,8 @@ static int find_variable_backward (hcl_t* hcl, const hcl_cnode_t* token, hcl_var
 		if (fbi->clsblk_top >= 0)
 		{
 			/* this function block has a class defined. 
-			 * that is, it is in the class defintion scope. 
-			 * variable lookup must be limited to class scope */
+			 * that is, it is in a class defintion.
+			 * variable lookup must be limited to the class scope */
 			hcl_clsblk_info_t* clsbi;
 
 		#if 0
@@ -281,12 +289,20 @@ static int find_variable_backward (hcl_t* hcl, const hcl_cnode_t* token, hcl_var
 					{
 						if (i >= hcl->c->fnblk.depth)
 						{
-							/* instance variables are not accessible if not in method definition scope.
+							/* instance variables are accessible only in an instance method defintion scope.
 							 * it is in class initialization scope */
-							hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(token), name, "prohibited to access an instance variable");
+							hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(token), name, "prohibited access to an instance variable");
 							return -1;
 						}
-						
+
+						if (hcl->c->fnblk.info[hcl->c->fnblk.depth].fun_type == FUN_CM)
+						{
+/* TODO: check if it's a block inside a method ... */
+							/* the function where this variable is defined is a class method */
+							hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(token), name, "prohibited access to an instance variable in a class method");
+							return -1;
+						}
+
 						vi->type = VAR_INST;
 						vi->ctx_offset = 0;
 						vi->index_in_ctx = index;
@@ -987,7 +1003,7 @@ static void pop_clsblk (hcl_t* hcl)
 
 static int push_fnblk (hcl_t* hcl, const hcl_ioloc_t* errloc, 
 	hcl_oow_t tmpr_va, hcl_oow_t tmpr_nargs, hcl_oow_t tmpr_nrvars, hcl_oow_t tmpr_nlvars,
-	hcl_oow_t tmpr_count, hcl_oow_t tmpr_len, hcl_oow_t make_inst_pos, hcl_oow_t lfbase)
+	hcl_oow_t tmpr_count, hcl_oow_t tmpr_len, hcl_oow_t make_inst_pos, hcl_oow_t lfbase, int fun_type)
 {
 	hcl_oow_t new_depth;
 	hcl_fnblk_info_t* fbi;
@@ -1016,6 +1032,8 @@ static int push_fnblk (hcl_t* hcl, const hcl_ioloc_t* errloc,
 	fbi = &hcl->c->fnblk.info[new_depth];
 	HCL_MEMSET (fbi, 0, HCL_SIZEOF(*fbi));
 
+	fbi->fun_type = fun_type;
+
 	fbi->tmprlen = tmpr_len;
 	fbi->tmprcnt = tmpr_count;
 	fbi->tmpr_va = tmpr_va;
@@ -1032,6 +1050,7 @@ static int push_fnblk (hcl_t* hcl, const hcl_ioloc_t* errloc,
 
 	fbi->make_inst_pos = make_inst_pos;
 	fbi->lfbase = lfbase;
+
 	fbi->access_outer = 0;
 	fbi->accessed_by_inner = 0;
 
@@ -2277,7 +2296,9 @@ static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 
 	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_PEXIT, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
 
-//	if (cf->operand)
+#if 0
+	if (cf->operand)
+#endif
 	{
 		/* (defclass X()  ; this x refers to a variable in the outer scope.
 		 *     ::: | t1 t2 x |
@@ -2317,11 +2338,8 @@ static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 #endif
 	}
 
-
 	return 0;
 }
-
-
 
 /* ========================================================================= */
 
@@ -2333,7 +2351,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 	hcl_oow_t saved_tv_wcount, tv_dup_start;
 	hcl_cnode_t* defun_name;
 	hcl_cframe_t* cf;
-	int is_class_method = 0;
+	int fun_type = FUN_PLAIN;
 
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
 
@@ -2357,18 +2375,25 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 		}
 
 		defun_name = HCL_CNODE_CONS_CAR(obj);
-		if (is_in_class_init_scope(hcl) && HCL_CNODE_IS_TRPCOLONS(defun_name))
+		if (is_in_class_init_scope(hcl))
 		{
-			/* class method - (defun ::: xxxx () ...) inside class definition */
-			obj = HCL_CNODE_CONS_CDR(obj);
-			if (!obj)
+			if ((HCL_CNODE_IS_TRPCOLONS(defun_name) || HCL_CNODE_IS_DCSTAR(defun_name)))
 			{
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMELIST, HCL_CNODE_GET_LOC(src), HCL_NULL, "no method name name in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
-				return -1;
-			}
+				/* class method - (defun ::: xxxx () ...) inside class definition */
+				obj = HCL_CNODE_CONS_CDR(obj);
+				if (!obj)
+				{
+					hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMELIST, HCL_CNODE_GET_LOC(src), HCL_NULL, "no name in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+					return -1;
+				}
 
-			is_class_method = 1;
-			defun_name = HCL_CNODE_CONS_CAR(obj); /* advance to the actual name */
+				fun_type = HCL_CNODE_IS_TRPCOLONS(defun_name)? FUN_CM: FUN_CIM;
+				defun_name = HCL_CNODE_CONS_CAR(obj); /* advance to the actual name */
+			}
+			else
+			{
+				fun_type = FUN_IM;
+			}
 		}
 
 		if (!HCL_CNODE_IS_SYMBOL(defun_name))
@@ -2540,7 +2565,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 
 	HCL_ASSERT (hcl, nargs + nrvars + nlvars == hcl->c->tv.wcount - saved_tv_wcount);
 
-	if (push_fnblk(hcl, HCL_CNODE_GET_LOC(src), va, nargs, nrvars, nlvars, hcl->c->tv.wcount, hcl->c->tv.s.len, hcl->code.bc.len, hcl->code.lit.len) <= -1) return -1;
+	if (push_fnblk(hcl, HCL_CNODE_GET_LOC(src), va, nargs, nrvars, nlvars, hcl->c->tv.wcount, hcl->c->tv.s.len, hcl->code.bc.len, hcl->code.lit.len, fun_type) <= -1) return -1;
 
 	if (hcl->option.trait & HCL_TRAIT_INTERACTIVE)
 	{
@@ -2566,11 +2591,11 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_LIST, obj); /* 1 */
 	PUSH_SUBCFRAME (hcl, COP_POST_LAMBDA, defun_name); /* 3*/
 	cf = GET_SUBCFRAME(hcl);
-	cf->u.lambda.is_class_method = is_class_method;
+	cf->u.lambda.fun_type = fun_type;
 
 	PUSH_SUBCFRAME (hcl, COP_EMIT_LAMBDA, src); /* 2 */
 	cf = GET_SUBCFRAME(hcl);
-	cf->u.lambda.is_class_method = is_class_method;
+	cf->u.lambda.fun_type = fun_type;
 	cf->u.lambda.jump_inst_pos = jump_inst_pos;
 
 	if (hcl->option.trait & HCL_TRAIT_INTERACTIVE)
@@ -2825,7 +2850,7 @@ static int compile_set_r (hcl_t* hcl, hcl_cnode_t* src)
 	cf = GET_TOP_CFRAME(hcl);
 	cf->u.obj_r.nrets = nvars; /* number of return variables to get assigned */
 
-	for (i  = 0, obj = var_start; i < nvars; i++, obj = HCL_CNODE_CONS_CDR(obj))
+	for (i = 0, obj = var_start; i < nvars; i++, obj = HCL_CNODE_CONS_CDR(obj))
 	{
 		int x;
 		
@@ -4846,14 +4871,22 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 			if (x == 0)
 			{
 				/* arrange to save to the method slot */
-				if (cf->u.lambda.is_class_method)
+				switch (cf->u.lambda.fun_type)
 				{
-					SWITCH_TOP_CFRAME (hcl, COP_EMIT_CLASS_CMSTORE, defun_name);
-				}
-				else
-				{
-					/* instance method */
-					SWITCH_TOP_CFRAME (hcl, COP_EMIT_CLASS_IMSTORE, defun_name);
+					case FUN_CM: /* class method */
+					case FUN_CIM: /* class instantiation method */
+						SWITCH_TOP_CFRAME (hcl, COP_EMIT_CLASS_CMSTORE, defun_name);
+						break;
+
+					case FUN_IM: /* instance method */
+						SWITCH_TOP_CFRAME (hcl, COP_EMIT_CLASS_IMSTORE, defun_name);
+						break;
+
+					default:
+						/* in the class initialization scope, the type must not be other than the listed above */
+						HCL_DEBUG1 (hcl, "Internal error - invalid method type %d\n", cf->u.lambda.fun_type);
+						hcl_seterrbfmt (hcl, HCL_EINTERN, "internal error - invalid method type %d", cf->u.lambda.fun_type);
+						break;
 				}
 				cf = GET_TOP_CFRAME(hcl);
 			}
@@ -5079,7 +5112,7 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 		 * pass HCL_TYPE_MAX(hcl_oow_t) as make_inst_pos because there is 
 		 * no actual MAKE_BLOCK/MAKE_FUNCTION instruction which otherwise
 		 * would be patched in pop_fnblk(). */
-		if (push_fnblk(hcl, HCL_NULL, 0, 0, 0, hcl->c->tv.wcount, hcl->c->tv.wcount, hcl->c->tv.s.len, HCL_TYPE_MAX(hcl_oow_t), 0) <= -1) return -1; /* must not goto oops */
+		if (push_fnblk(hcl, HCL_NULL, 0, 0, 0, hcl->c->tv.wcount, hcl->c->tv.wcount, hcl->c->tv.s.len, HCL_TYPE_MAX(hcl_oow_t), 0, FUN_PLAIN) <= -1) return -1; /* must not goto oops */
 	}
 	top_fnblk_saved = hcl->c->fnblk.info[0];
 	HCL_ASSERT (hcl, hcl->c->fnblk.depth == 0); /* ensure the virtual function block is added */
@@ -5288,7 +5321,7 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 
 			default:
 				HCL_DEBUG1 (hcl, "Internal error - invalid compiler opcode %d\n", cf->opcode);
-				hcl_seterrbfmt (hcl, HCL_EINTERN, "invalid compiler opcode %d", cf->opcode);
+				hcl_seterrbfmt (hcl, HCL_EINTERN, "internal error - invalid compiler opcode %d", cf->opcode);
 				goto oops;
 		}
 	}

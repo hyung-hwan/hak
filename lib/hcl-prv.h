@@ -152,7 +152,8 @@ enum hcl_iotok_type_t
 	HCL_IOTOK_DOT,
 	HCL_IOTOK_ELLIPSIS,
 	HCL_IOTOK_COLON,
-	HCL_IOTOK_TRPCOLONS,
+	HCL_IOTOK_TRPCOLONS, /* ::: */
+	HCL_IOTOK_DCSTAR,    /* ::* */
 	HCL_IOTOK_COMMA,
 	HCL_IOTOK_LPAREN,    /* ( */
 	HCL_IOTOK_RPAREN,    /* ) */
@@ -204,6 +205,7 @@ enum hcl_cnode_type_t
 	HCL_CNODE_SUPER,
 	HCL_CNODE_ELLIPSIS,
 	HCL_CNODE_TRPCOLONS,
+	HCL_CNODE_DCSTAR,
 
 	HCL_CNODE_CONS,
 	HCL_CNODE_ELIST, /* empty list */
@@ -219,6 +221,7 @@ typedef enum hcl_cnode_type_t hcl_cnode_type_t;
 
 #define HCL_CNODE_IS_ELLIPSIS(x) ((x)->cn_type == HCL_CNODE_ELLIPSIS)
 #define HCL_CNODE_IS_TRPCOLONS(x) ((x)->cn_type == HCL_CNODE_TRPCOLONS)
+#define HCL_CNODE_IS_DCSTAR(x) ((x)->cn_type == HCL_CNODE_DCSTAR)
 
 #define HCL_CNODE_IS_SYMBOL(x) ((x)->cn_type == HCL_CNODE_SYMBOL)
 #define HCL_CNODE_IS_SYMBOL_PLAIN(x) ((x)->cn_type == HCL_CNODE_SYMBOL && (x)->u.symbol.syncode == 0)
@@ -390,7 +393,7 @@ struct hcl_cframe_t
 		/* COP_POST_LAMBDA, COP_EMIT_LAMBDA */
 		struct
 		{
-			int is_class_method;
+			int fun_type;
 			hcl_oow_t jump_inst_pos;
 			hcl_ooi_t lfbase_pos;
 			hcl_ooi_t lfsize_pos;
@@ -436,6 +439,8 @@ typedef struct hcl_cblk_info_t hcl_cblk_info_t;
 /* function block information for the compiler */
 struct hcl_fnblk_info_t
 {
+	int fun_type;
+
 	hcl_oow_t tmprlen; /* accumulated length of the temporaries string including outer blocks */
 	hcl_oow_t tmprcnt; /* accumulated number of temporaries including outer blocks */
 
@@ -1512,6 +1517,7 @@ hcl_cnode_t* hcl_makecnodeself (hcl_t* hcl, const hcl_ioloc_t* loc, const  hcl_o
 hcl_cnode_t* hcl_makecnodesuper (hcl_t* hcl, const hcl_ioloc_t* loc, const  hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodeellipsis (hcl_t* hcl, const hcl_ioloc_t* loc, const  hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodetrpcolons (hcl_t* hcl, const hcl_ioloc_t* loc, const  hcl_oocs_t* tok);
+hcl_cnode_t* hcl_makecnodedcstar (hcl_t* hcl, const hcl_ioloc_t* loc, const  hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodecharlit (hcl_t* hcl, const hcl_ioloc_t* loc, const  hcl_oocs_t* tok, const hcl_ooch_t v);
 hcl_cnode_t* hcl_makecnodesymbol (hcl_t* hcl, const hcl_ioloc_t* loc, const  hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodedsymbol (hcl_t* hcl, const hcl_ioloc_t* loc, const  hcl_oocs_t* tok);
