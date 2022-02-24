@@ -287,6 +287,8 @@ static int find_variable_backward (hcl_t* hcl, const hcl_cnode_t* token, hcl_var
 					haystack.len = hcl_count_oocstr(clsbi->ivars_str);
 					if (__find_word_in_string(&haystack, name, 1, &index) >= 0)
 					{
+						hcl_oow_t fi;
+
 						if (i >= hcl->c->fnblk.depth)
 						{
 							/* instance variables are accessible only in an instance method defintion scope.
@@ -295,12 +297,17 @@ static int find_variable_backward (hcl_t* hcl, const hcl_cnode_t* token, hcl_var
 							return -1;
 						}
 
-						if (hcl->c->fnblk.info[hcl->c->fnblk.depth].fun_type == FUN_CM)
+						for (fi = hcl->c->fnblk.depth + 1; fi > i; ) /* TOOD: review this loop for correctness */
 						{
-/* TODO: check if it's a block inside a method ... */
-							/* the function where this variable is defined is a class method */
-							hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(token), name, "prohibited access to an instance variable in a class method");
-							return -1;
+							if (hcl->c->fnblk.info[--fi].fun_type == FUN_CM)
+							{
+								/* the function where this variable is defined is a class method */
+								hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(token), name, "prohibited access to an instance variable in a class method");
+								return -1;
+							}
+
+							/* instance methods and instantiation methods can access instance variables */
+							if (hcl->c->fnblk.info[fi].fun_type != FUN_PLAIN) break;
 						}
 
 						vi->type = VAR_INST;
