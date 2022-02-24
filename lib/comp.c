@@ -301,8 +301,8 @@ static int find_variable_backward (hcl_t* hcl, const hcl_cnode_t* token, hcl_var
 						{
 							if (hcl->c->fnblk.info[--fi].fun_type == FUN_CM)
 							{
-								/* the function where this variable is defined is a class method */
-								hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(token), name, "prohibited access to an instance variable in a class method");
+								/* the function where this variable is defined is a class method or an plain function block within a class method*/
+								hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(token), name, "prohibited access to an instance variable in a class method context");
 								return -1;
 							}
 
