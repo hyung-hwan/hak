@@ -140,7 +140,7 @@ static void terminate_all_processes (hcl_t* hcl);
 
 /* ------------------------------------------------------------------------- */
 
-#define HCL_EXSTACK_PUSH(hcl, ctx_, ip_, clsp_) \
+#define HCL_EXSTACK_PUSH(hcl, ctx_, ip_, clsp_, sp_) \
 	do { \
 		hcl_oop_process_t ap = (hcl)->processor->active; \
 		hcl_ooi_t exsp = HCL_OOP_TO_SMOOI(ap->exsp); \
@@ -152,6 +152,7 @@ static void terminate_all_processes (hcl_t* hcl);
 		exsp++; ap->slot[exsp] = (ctx_); \
 		exsp++; ap->slot[exsp] = HCL_SMOOI_TO_OOP(ip_); \
 		exsp++; ap->slot[exsp] = HCL_SMOOI_TO_OOP(clsp_); \
+		exsp++; ap->slot[exsp] = HCL_SMOOI_TO_OOP(sp_); \
 		ap->exsp = HCL_SMOOI_TO_OOP(exsp); \
 	} while (0)
 		
@@ -159,14 +160,15 @@ static void terminate_all_processes (hcl_t* hcl);
 	do { \
 		hcl_oop_process_t ap = (hcl)->processor->active; \
 		hcl_ooi_t exsp = HCL_OOP_TO_SMOOI(ap->exsp); \
-		exsp -= 3; \
+		exsp -= 4; \
 		ap->exsp = HCL_SMOOI_TO_OOP(exsp); \
 	} while (0)
 
-#define HCL_EXSTACK_POP_TO(hcl, ctx_, ip_, clsp_) \
+#define HCL_EXSTACK_POP_TO(hcl, ctx_, ip_, clsp_, sp_) \
 	do { \
 		hcl_oop_process_t ap = (hcl)->processor->active; \
 		hcl_ooi_t exsp = HCL_OOP_TO_SMOOI(ap->exsp); \
+		sp_ = HCL_OOP_TO_SMOOI(ap->slot[exsp]); exsp--; \
 		clsp_ = HCL_OOP_TO_SMOOI(ap->slot[exsp]); exsp--; \
 		ip_ = HCL_OOP_TO_SMOOI(ap->slot[exsp]); exsp--; \
 		ctx_ = ap->slot[exsp]; exsp--; \
@@ -602,7 +604,7 @@ static hcl_oop_process_t make_process (hcl_t* hcl, hcl_oop_context_t c)
 
 static HCL_INLINE void sleep_active_process (hcl_t* hcl, int state)
 {
-	STORE_ACTIVE_SP(hcl);
+	STORE_ACTIVE_SP (hcl);
 
 	/* store the current active context to the current process.
 	 * it is the suspended context of the process to be suspended */
@@ -644,7 +646,7 @@ static void switch_to_process (hcl_t* hcl, hcl_oop_process_t proc, int new_state
 
 	/* the new process must be in the runnable state */
 	HCL_ASSERT (hcl, proc->state == HCL_SMOOI_TO_OOP(PROC_STATE_RUNNABLE) ||
-	            proc->state == HCL_SMOOI_TO_OOP(PROC_STATE_WAITING));
+	                 proc->state == HCL_SMOOI_TO_OOP(PROC_STATE_WAITING));
 
 	sleep_active_process (hcl, new_state_for_old_active);
 	wake_process (hcl, proc);
@@ -903,10 +905,12 @@ static void dump_process_info (hcl_t* hcl, hcl_bitmask_t log_mask)
 static HCL_INLINE void reset_process_stack_pointers (hcl_t* hcl, hcl_oop_process_t proc)
 {
 #if defined(HCL_DEBUG_VM_PROCESSOR)
-	HCL_LOG9 (hcl, HCL_LOG_IC | HCL_LOG_DEBUG, 
-		"Processor - process[%zd] SP: %zd ST: %zd EXSP: %zd(%zd) EXST: %zd CLSP: %zd(%zd) CLST: %zd\n", 
+	HCL_LOG4 (hcl, HCL_LOG_IC | HCL_LOG_DEBUG, 
+		"Processor - process[%zd] SP: %zd(%zd) ST: %zd", 
 		HCL_OOP_TO_SMOOI(proc->id),
-		HCL_OOP_TO_SMOOI(proc->sp), HCL_OOP_TO_SMOOI(proc->st), 
+		HCL_OOP_TO_SMOOI(proc->sp), HCL_OOP_TO_SMOOI(proc->sp) - (-1), HCL_OOP_TO_SMOOI(proc->st));
+	HCL_LOG6 (hcl, HCL_LOG_IC | HCL_LOG_DEBUG, 
+		" EXSP: %zd(%zd) EXST: %zd CLSP: %zd(%zd) CLST: %zd\n", 
 		HCL_OOP_TO_SMOOI(proc->exsp), HCL_OOP_TO_SMOOI(proc->exsp) - HCL_OOP_TO_SMOOI(proc->st), HCL_OOP_TO_SMOOI(proc->exst),
 		HCL_OOP_TO_SMOOI(proc->clsp), HCL_OOP_TO_SMOOI(proc->clsp) - HCL_OOP_TO_SMOOI(proc->exst), HCL_OOP_TO_SMOOI(proc->clst));
 #endif
@@ -930,12 +934,16 @@ static void terminate_process (hcl_t* hcl, hcl_oop_process_t proc)
 		{
 			hcl_oop_process_t nrp;
 
+			/* terminating the active process */
+			HCL_ASSERT (hcl, proc->state == HCL_SMOOI_TO_OOP(PROC_STATE_RUNNING));
+
 			nrp = find_next_runnable_process(hcl);
+
+			STORE_ACTIVE_SP (hcl); /* commit the stack pointer before termination */
 
 			unchain_from_processor (hcl, proc, PROC_STATE_TERMINATED);
 			reset_process_stack_pointers (hcl, proc); /* invalidate the process stack */
 			proc->current_context = proc->initial_context; /* not needed but just in case */
-
 			/* a runnable or running process must not be chanined to the
 			 * process list of a semaphore */
 			HCL_ASSERT (hcl, (hcl_oop_t)proc->sem == hcl->_nil);
@@ -960,11 +968,14 @@ static void terminate_process (hcl_t* hcl, hcl_oop_process_t proc)
 			}
 			else
 			{
+				/* there are other processes to schedule */
 				switch_to_process (hcl, nrp, PROC_STATE_TERMINATED);
 			}
 		}
 		else
 		{
+			/* termiante a runnable process which is not an actively running process */
+			HCL_ASSERT (hcl, proc->state == HCL_SMOOI_TO_OOP(PROC_STATE_RUNNABLE));
 			unchain_from_processor (hcl, proc, PROC_STATE_TERMINATED);
 			reset_process_stack_pointers (hcl, proc); /* invalidate the process stack */
 		}
@@ -2137,7 +2148,8 @@ static hcl_oop_block_t find_cmethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_
 
 /* TODO: implement method cache */
 	HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, class_));
-	HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl, op_name));
+	/*HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl, op_name));*/
+	HCL_ASSERT (hcl, HCL_OBJ_IS_CHAR_POINTER(op_name)); 
 
 	name.ptr = HCL_OBJ_GET_CHAR_SLOT(op_name);
 	name.len = HCL_OBJ_GET_SIZE(op_name);
@@ -2179,15 +2191,16 @@ static hcl_oop_block_t find_cmethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_
 	return HCL_NULL;
 }
 
-static hcl_oop_block_t find_imethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oop_t op, int to_super, hcl_ooi_t* ivaroff, hcl_oop_class_t* owner)
+static hcl_oop_block_t find_imethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oop_t op_name, int to_super, hcl_ooi_t* ivaroff, hcl_oop_class_t* owner)
 {
 	hcl_oocs_t name;
 
 	HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, class_));
-	HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl, op));
+	/*HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl, op_name));*/
+	HCL_ASSERT (hcl, HCL_OBJ_IS_CHAR_POINTER(op_name)); 
 
-	name.ptr = HCL_OBJ_GET_CHAR_SLOT(op);
-	name.len = HCL_OBJ_GET_SIZE(op);
+	name.ptr = HCL_OBJ_GET_CHAR_SLOT(op_name);
+	name.len = HCL_OBJ_GET_SIZE(op_name);
 
 	if (to_super) 
 	{
@@ -2234,7 +2247,8 @@ static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t msg, in
 	hcl_ooi_t ivaroff;
 	int x;
 
-	HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl, msg));
+	HCL_ASSERT (hcl, HCL_OBJ_IS_CHAR_POINTER(msg));
+	/*HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl, msg));*/
 
 /* ============================= */
 /* TODO: implement methods cache */
@@ -2272,7 +2286,7 @@ static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t msg, in
 static HCL_INLINE int do_throw (hcl_t* hcl, hcl_oop_t val, hcl_ooi_t ip)
 {
 	hcl_oop_context_t catch_ctx;
-	hcl_ooi_t catch_ip, clsp;
+	hcl_ooi_t catch_ip, clsp, sp;
 
 	if (HCL_EXSTACK_IS_EMPTY(hcl))
 	{
@@ -2300,7 +2314,7 @@ static HCL_INLINE int do_throw (hcl_t* hcl, hcl_oop_t val, hcl_ooi_t ip)
 	}
 
 	/* pop the exception stack to get information to rewind context */
-	HCL_EXSTACK_POP_TO (hcl, catch_ctx, catch_ip, clsp);
+	HCL_EXSTACK_POP_TO (hcl, catch_ctx, catch_ip, clsp, sp);
 
 	/* discard unfinished class definitions for the exception thrown.
 	 * 
@@ -2318,6 +2332,8 @@ static HCL_INLINE int do_throw (hcl_t* hcl, hcl_oop_t val, hcl_ooi_t ip)
 	hcl->ip = -1; /* mark context dead. saved into hcl->active_context->ip in SWITCH_ACTIVE_CONTEXT */
 	SWITCH_ACTIVE_CONTEXT (hcl, catch_ctx);
 	hcl->ip = catch_ip; /* override the instruction pointer */
+
+	hcl->sp = sp; /* restore the stack pointer of the active process context */
 
 	/* push the exception value to the stack */
 	HCL_STACK_PUSH (hcl, val);
@@ -2893,7 +2909,7 @@ switch_to_next:
 
 /* ------------------------------------------------------------------------- */
 
-static HCL_INLINE int do_return (hcl_t* hcl, hcl_oop_t return_value)
+static HCL_INLINE int do_return_from_home (hcl_t* hcl, hcl_oop_t return_value)
 {
 	/* if (hcl->active_context == hcl->processor->active->initial_context) // read the interactive mode note below... */
 	if ((hcl_oop_t)hcl->active_context->home == hcl->_nil)
@@ -2967,12 +2983,12 @@ static HCL_INLINE int do_return (hcl_t* hcl, hcl_oop_t return_value)
 		}
 
 		hcl->active_context->home->ip = HCL_SMOOI_TO_OOP(-1); /* mark that this context has returned */
-		hcl->ip = -1; /* mark that the active context has returned. saved into hcl->active_context->ip in SWITCH_ACTIVE_CONTEXT() */
+
+		hcl->ip = -1; /* mark that the active context has returned. committed to hcl->active_context->ip in SWITCH_ACTIVE_CONTEXT() */
 		SWITCH_ACTIVE_CONTEXT (hcl, hcl->active_context->home->sender);
 
 		/* push the return value to the stack of the new active context */
 		HCL_STACK_PUSH (hcl, return_value);
-
 
 #if 0
 		/* stack dump */
@@ -3005,18 +3021,69 @@ static HCL_INLINE void do_return_from_block (hcl_t* hcl)
 	}
 	else
 	{
+		/* The compiler produces the class_exit instruction and the try_exit instruction
+		 * for return, break, continue in a class defintion scope and in a try-catch scope
+		 * respectively.
 
-		/* 
-TODO: should i restore the class stack pointer too??? 
-      let context remeber the it and use it to restore  
-
+		[CASE 1]
 		(defclass X
 			; ....
-			(return 20) ;  the class defintion isn't over, but return is executed?? or simply disallow return in the class context outside a method?
+			(return 20) ;  the class defintion isn't over, but return is executed,
 			; ....
 		)
-		 */
 
+		[CASE 2]
+		(try
+			(defclass C
+				(return 200)
+				(printf "============================\n"))
+		catch (e)
+			(printf "EXCEPTION => %O\n" e)
+		)
+
+		[CASE 3]
+		(defclass C
+			(try
+			    (return 99)
+			catch (e)
+			    (printf "EXCEPTOIN => %O\n" e)
+			)
+			(printf "============================\n")
+		)
+
+		[CASE 4]
+		(try
+			(defclass C
+				(try
+				    (return 99)
+				catch (e)
+				    (printf "EXCEPTOIN => %O\n" e)
+				)
+				(printf "============================\n")
+			)
+		catch (e)
+			(printf "EXCEPTOIN => %O\n" e)
+		)
+
+		[CASE 5]
+		(try
+			(defclass D
+				(defclass C
+					(try
+					    (return 99)
+					catch (e)
+					    (printf "EXCEPTOIN => %O\n" e)
+					)
+					(printf "============================\n")
+				)
+			}
+		catch (e)
+			(printf "EXCEPTOIN => %O\n" e)
+		)
+
+		 * the actual return instruction handler doesn't need to care about the
+		 * class stack and exception stack.
+		 */
 
 		/* it is a normal block return as the active block context 
 		 * is not the initial context of a process */
@@ -3063,9 +3130,34 @@ static int execute (hcl_t* hcl)
 		if (hcl->abort_req < 0) goto oops;
 		if (hcl->abort_req > 0 || (!hcl->no_proc_switch && switch_process_if_needed(hcl) == 0)) break;
 
-		if (HCL_UNLIKELY(hcl->ip >= HCL_FUNCTION_GET_CODE_SIZE(hcl->active_function)))
+		if (HCL_UNLIKELY(hcl->ip < 0 || hcl->ip >= HCL_FUNCTION_GET_CODE_SIZE(hcl->active_function)))
 		{
-			HCL_DEBUG2 (hcl, "Stopping execution as IP reached the end of bytecode(%zu) - SP %zd\n", hcl->code.bc.len, hcl->sp);
+			if (hcl->ip < 0)
+			{
+				/* do_return_from_home() implements a simple check against a dead context. 
+				 * but the check is far from perfect. there are many ways to return from an 
+				 * active context and enter a dead context thereafter.
+					(defun t(f)
+						(set q (lambda()
+							(printf "hello word\n")
+							(return-from-home 200)
+						))
+						(f)
+					)
+					(defun x()
+						(t (lambda() (return-from-home 100)))
+						(printf ">>>>>>>>>>>>>>>>>>>>>>>>\n");
+					)
+					(x) ; x is exited by (return-from-home 100) triggered by (f)
+					(printf "------------------------\n")
+					(q) ; (return-from-home 200) exits t and since t is called from x, it flows back to the dead x.
+				 */
+				HCL_DEBUG1 (hcl, "Stopping execution as a dead context gets active  - IP %zd\n", hcl->ip);
+			}
+			else
+			{
+				HCL_DEBUG2 (hcl, "Stopping execution as IP reached the end of bytecode(%zu) - IP %zd\n", hcl->code.bc.len, hcl->ip);
+			}
 			return_value = hcl->_nil;
 			goto handle_return;
 		}
@@ -3531,20 +3623,23 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				catch_ip = hcl->ip + b1;
 				/* TODO: ip overflow check? */
 				clsp = HCL_CLSTACK_GET_SP(hcl);
-				HCL_EXSTACK_PUSH (hcl, hcl->active_context, catch_ip, clsp);
+
+				HCL_EXSTACK_PUSH (hcl, hcl->active_context, catch_ip, clsp, hcl->sp);
 				break;
 			}
-				
+
 			case HCL_CODE_TRY_ENTER2:
 			{
 				hcl_ooi_t catch_ip, clsp;
 
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				LOG_INST_1 (hcl, "try_enter2 %zu", b1);
+
 				catch_ip = hcl->ip + MAX_CODE_JUMP + b1;
 				/* TODO: ip overflow check? */
 				clsp = HCL_CLSTACK_GET_SP(hcl);
-				HCL_EXSTACK_PUSH (hcl, hcl->active_context, catch_ip, clsp);
+
+				HCL_EXSTACK_PUSH (hcl, hcl->active_context, catch_ip, clsp, hcl->sp);
 				break;
 			}
 
@@ -3860,7 +3955,8 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 			handle_send_2:
 				rcv = HCL_STACK_GETRCV(hcl, b1);
 				op = HCL_STACK_GETOP(hcl, b1);
-				if (!HCL_IS_SYMBOL(hcl, op))
+				/*if (!HCL_IS_SYMBOL(hcl, op))*/
+				if (!HCL_OBJ_IS_CHAR_POINTER(op))
 				{
 					hcl_seterrbfmt (hcl, HCL_ECALL, "unable to send %O to %O - invalid message", op, rcv); /* TODO: change to HCL_ESEND?? */
 					goto cannot_send;
@@ -3879,6 +3975,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				{
 					hcl_seterrbfmt (hcl, HCL_ECALL, "unable to send %O to %O - invalid receiver", op, rcv); /* TODO: change to HCL_ESEND?? */
 				cannot_send:
+					//HCL_STACK_POPS (hcl, b1 + 2); /* pop the receiver, message, and arguments as the call fails. TODO: check if this clearing is correct */
 					if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
 					goto oops_with_errmsg_supplement;
 				}
@@ -4315,7 +4412,8 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				break;
 
 			case HCL_CODE_RETURN_STACKTOP:
-/* this implements the non-local return. the non-local return is not compatible with stack based try-catch implementation. */
+/* [NOTE] this implements the non-local return. the non-local return is not compatible with stack based try-catch implementation. 
+ * [TODO] can make it compatiable? */
 				LOG_INST_0 (hcl, "return_stacktop");
 				return_value = HCL_STACK_GETTOP(hcl);
 				HCL_STACK_POP (hcl);
@@ -4327,7 +4425,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 
 			handle_return:
 				hcl->last_retv = return_value;
-				if (do_return(hcl, return_value) <= -1) goto oops;
+				if (do_return_from_home(hcl, return_value) <= -1) goto oops;
 				break;
 
 			case HCL_CODE_RETURN_FROM_BLOCK:

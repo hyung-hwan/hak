@@ -608,7 +608,7 @@ struct hcl_block_t
 
 	hcl_oop_t         tmpr_mask; /* smooi */
 	hcl_oop_context_t home; /* home context */
-	hcl_oop_t         ip; /* smooi. instruction pointer where the byte code begins in home->origin */
+	hcl_oop_t         ip; /* smooi. instruction pointer where the byte code begins in home->base */
 };
 
 struct hcl_context_t
@@ -1730,12 +1730,16 @@ struct hcl_t
 		(hcl)->processor->active->slot[(hcl)->sp] = v; \
 	} while (0)
 
-#define HCL_STACK_GET(hcl,v_sp) ((hcl)->processor->active->slot[v_sp])
-#define HCL_STACK_SET(hcl,v_sp,v_obj) ((hcl)->processor->active->slot[v_sp] = v_obj)
+#define HCL_STACK_GET(hcl,sp_) ((hcl)->processor->active->slot[sp_])
+#define HCL_STACK_SET(hcl,sp_,obj_) ((hcl)->processor->active->slot[sp_] = obj_)
 
 #define HCL_STACK_GETTOP(hcl) HCL_STACK_GET(hcl, (hcl)->sp)
-#define HCL_STACK_SETTOP(hcl,v_obj) HCL_STACK_SET(hcl, (hcl)->sp, v_obj)
+#define HCL_STACK_SETTOP(hcl,obj_) HCL_STACK_SET(hcl, (hcl)->sp, obj_)
 
+/* [NOTE] 
+ *  the following macros don't commit the active stack pointer(hcl->sp) 
+ *  to hcl->processor->active->sp immediately.
+ */
 #define HCL_STACK_POP(hcl) ((hcl)->sp = (hcl)->sp - 1)
 #define HCL_STACK_POPS(hcl,count) ((hcl)->sp = (hcl)->sp - (count))
 #define HCL_STACK_POP_TO(hcl,v) \
@@ -1743,7 +1747,7 @@ struct hcl_t
 		v = HCL_STACK_GETTOP(hcl); \
 		HCL_STACK_POP (hcl); \
 	} while(0)
-	
+
 #define HCL_STACK_GET_ST(hcl) HCL_OOP_TO_SMOOI((hcl)->processor->active->st)
 #define HCL_STACK_GET_SP(hcl) ((hcl)->sp)
 #define HCL_STACK_IS_EMPTY(hcl) ((hcl)->sp <= -1)

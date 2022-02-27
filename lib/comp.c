@@ -299,6 +299,7 @@ static int find_variable_backward (hcl_t* hcl, const hcl_cnode_t* token, hcl_var
 
 						for (fi = hcl->c->fnblk.depth + 1; fi > i; ) /* TOOD: review this loop for correctness */
 						{
+							/* 'i' is the function level that hold the class defintion block. the check must not go past it */
 							if (hcl->c->fnblk.info[--fi].fun_type == FUN_CM)
 							{
 								/* the function where this variable is defined is a class method or an plain function block within a class method*/
@@ -1550,11 +1551,12 @@ static int compile_break (hcl_t* hcl, hcl_cnode_t* src)
 				goto inside_loop;
 
 			case HCL_CBLK_TYPE_TRY:
-				/*must emit an instruction to exit from the try loop.*/
+				/* emit an instruction to exit from the try loop. */
 				if (emit_byte_instruction(hcl, HCL_CODE_TRY_EXIT, HCL_CNODE_GET_LOC(src)) <= -1) return -1;
 				break;
 
 			case HCL_CBLK_TYPE_CLASS:
+				/* emit an instruction to exit from the class definition scope being defined */
 				if (emit_byte_instruction(hcl, HCL_CODE_CLASS_EXIT, HCL_CNODE_GET_LOC(src)) <= -1) return -1;
 				break;
 		}
@@ -2243,6 +2245,7 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 	}
 
 	if (push_clsblk(hcl, &cf->u._class.start_loc, nivars, ncvars, &hcl->c->tv.s.ptr[ivar_start], ivar_len, &hcl->c->tv.s.ptr[cvar_start], cvar_len) <= -1) goto oops;
+	if (push_cblk(hcl, &cf->u._class.start_loc, HCL_CBLK_TYPE_CLASS) <= -1) goto oops; /* the class block shall be treated as a control block, too */
 
 	/* discard the instance variables and class variables in the temporary variable collection buffer
 	 * because they have been pushed to the class block structure */
@@ -2299,6 +2302,7 @@ static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 		if (emit_byte_instruction(hcl, HCL_CODE_POP_STACKTOP, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
 	}
 
+	pop_cblk (hcl); 
 	pop_clsblk (hcl);  /* end of the class block */
 
 	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_PEXIT, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;

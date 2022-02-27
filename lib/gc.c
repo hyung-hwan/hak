@@ -566,10 +566,10 @@ void hcl_gc (hcl_t* hcl)
 	{
 		HCL_ASSERT (hcl, (hcl_oop_t)hcl->processor != hcl->_nil);
 		HCL_ASSERT (hcl, (hcl_oop_t)hcl->processor->active != hcl->_nil);
-		/* store the stack pointer to the active process */
+		HCL_ASSERT (hcl, HCL_IS_PROCESS(hcl, hcl->processor->active));
+		/* commit the stack pointer to the active process */
 		hcl->processor->active->sp = HCL_SMOOI_TO_OOP(hcl->sp);
-
-		/* store the instruction pointer to the active context */
+		/* commit the instruction pointer to the active context */
 		hcl->active_context->ip = HCL_SMOOI_TO_OOP(hcl->ip);
 	}
 

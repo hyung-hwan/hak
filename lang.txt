@@ -33,64 +33,82 @@
 
 ## class declaration with methods.
 
-(defclass X 
+	(defclass X 
 
-	| x y |                 ; instance variables 
-	::: | bob jim |             ; class variables
+		| x y |                 ; instance variables 
+		::: | bob jim |             ; class variables
 
-	; instance variables and class variables must not collide with those of parent classes.
-	; they must not collide with method names of parent classes
+		; instance variables and class variables must not collide with those of parent classes.
+		; they must not collide with method names of parent classes
+	
+		(set bob "Bob")         ; can access class variables. disallowed to access instance variables
 
-	(set bob "Bob")         ; can access class variables. disallowed to access instance variables
+		(defun setX (a)
+			(set x a)
+		)
 
-	(defun setX (a)
-		(set self.x a)
-		;(super.setX a) 
+		; instance method. a method name must not collide with instance variable names and class variable names.
+		; the name can be the same as method names of parent classes.
+		(defun K (a b)
+			(:self Y a)
+			(return (+ a b x y))
+		)
+	
+		(defun Y (a)
+			(printf "Y=>%d [%s]\n" a bob) 
+		)
+
+		(defun ::: KK (a b)
+			(printf "K=>%s\n" bob) ; a class method can access class variables but not instance variables
+			(return (+ a b))
+		)
+
+		(set jim (lambda (a b) (+ a b))) ; an anonymous function created 
 	)
 
-	; instance method. a method name must not collide with instance variable names and class variable names.
-	; the name can be the same as method names of parent classes.
-	(defun K (a b)
-		(self.Y a)
-		(return (+ a b x y))
-	)
-
-	(defun Y (a)
-		(printf ("Y=>%d [%s]\n", a, bob) 
-	)
-
-	(defun ::: KK (a b)
-		(printf "K=>%s\n", bob) ; a class method can access class variables but not instance variables
-		(return (+ a b))
-	)
-
-	(set jim (lambda (a b) (+ a b))) ; the anonymous function created is 
-)
+	(set r (object-new X))
+	(:r Y 10)
+	(printf ">>%d\n" (:X KK 77 99))
 
 
 ## method invocation
 
-a period isn't a good token to use for chaining method invocation.
-	super.a().b().c()
-		push super
-		send_to_super a
-		send_to_self b
-		send_to_self c
-		(send_to_xxx is lookup + call)
+send the message aaa to the receiver
+	(:self aaa)
 
+send the message aaa to the receiver but let it resolve the method in the superclass side.
+	(:super aaa)
 
-we need a way to swap the first parameter and the called function
-(: a b 2 3 4)
+send the message dump to the object pointed to by x with arguments 1, 2, 3.
+	(:x dump 1 2 3)
 
-(a b 2 3 4)
-	(a.b.c 20 30 40) 
-	((a:b 20 30):c 30)
-	
+## method types
+
+- class method
+- class instantiation method
+- instance method
+
+## dynamic dispatching by method name
+	(defclass X
+		(defun t1 (x) (printf "t1 = %d\n" (+ x x x)))
+		(defun t2 (x) (printf "t2 = %d\n" (* x x x)))
+	)
+
+	(defun get-name-1() "t1")
+	(defun get-name-2() "t2")
+
+	(set x (object-new X))
+
+	(:x (get-name-1) 100) ; must be same as (:x t1 100)
+	(:x (get-name-2) 100) ; must be same as (:x t2 100)
+
+## Something to look into..
 
 normal function call
 (f arg1 arg2 arg3)
 (rcv f arg1 arg2)
 
+## dynamic method invocation???
 (:X (f) arg1 arg2)
 as long as f returns a symbol, it can also invoke a method??
 
