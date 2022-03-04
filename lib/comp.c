@@ -3519,7 +3519,9 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 		cf->u.call.index = nargs;
 		cf->u.call.nrets = nrets;
 
-		/* arrange to push a dummy receiver to make the call look like a message send */
+		/* arrange to push a dummy receiver to make the call look like a message send.
+		 * if you change the dummy receiver instruction to something else, you must change
+		 * the receiver value of the initial context in start_initial_process_and_context(), too */
 		PUSH_CFRAME (hcl, COP_EMIT_PUSH_NIL, car); /* <1> this will be executed the COP_COMPILE_OBJECT car frame */
 	}
 	else

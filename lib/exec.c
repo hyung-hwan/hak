@@ -2017,14 +2017,14 @@ static HCL_INLINE int __activate_block (hcl_t* hcl, hcl_oop_block_t op_blk, hcl_
 
 static HCL_INLINE int activate_block (hcl_t* hcl, hcl_ooi_t nargs, hcl_ooi_t nrvars)
 {
-	hcl_oop_block_t op;
+	hcl_oop_block_t op_blk;
 	hcl_oop_context_t newctx;
 	int x;
 
-	op = (hcl_oop_block_t)HCL_STACK_GETOP(hcl, nargs);
-	HCL_ASSERT (hcl, HCL_IS_BLOCK(hcl, op));
+	op_blk = (hcl_oop_block_t)HCL_STACK_GETOP(hcl, nargs);
+	HCL_ASSERT (hcl, HCL_IS_BLOCK(hcl, op_blk));
 
-	x = __activate_block(hcl, op, nargs, nrvars, 0, 0, &newctx);
+	x = __activate_block(hcl, op_blk, nargs, nrvars, 0, 0, &newctx);
 	if (HCL_UNLIKELY(x <= -1)) return -1;
 
 	SWITCH_ACTIVE_CONTEXT (hcl, newctx);
@@ -2361,7 +2361,7 @@ static void supplement_errmsg (hcl_t* hcl, hcl_ooi_t ip)
 static int do_throw_with_internal_errmsg (hcl_t* hcl, hcl_ooi_t ip)
 {
 	hcl_oop_t ex;
-/* TODO: considuer throwing an exception object instead of a string? */
+/* TODO: consider throwing an exception object instead of a string? */
 	ex = hcl_makestring(hcl, hcl->errmsg.buf, hcl->errmsg.len, 0);
 	if (HCL_UNLIKELY(!ex))
 	{
@@ -2594,9 +2594,9 @@ static int start_initial_process_and_context (hcl_t* hcl, hcl_ooi_t initial_ip, 
 	ctx->req_nrets = HCL_SMOOI_TO_OOP(1);
 	ctx->tmpr_mask = HCL_SMOOI_TO_OOP(tmpr_mask);
 	ctx->home = hcl->initial_function->home; /* this should be nil */
-	ctx->sender = (hcl_oop_context_t)hcl->_nil;
+	ctx->sender = (hcl_oop_context_t)hcl->_nil; /* the initial context has nil in the sender field */
 	ctx->base = hcl->initial_function;
-	ctx->receiver = (hcl_oop_context_t)hcl->_nil; /* TODO: change this? keep this in sync with the fake receiver used in the call instruction */
+	ctx->receiver = (hcl_oop_context_t)hcl->_nil; /* TODO: change this? keep this in sync with the dummy receiver used in the call instruction generated for xlist */
 	HCL_ASSERT (hcl, (hcl_oop_t)ctx->home == hcl->_nil);
 
 	/* [NOTE]
@@ -2909,7 +2909,7 @@ switch_to_next:
 
 /* ------------------------------------------------------------------------- */
 
-static HCL_INLINE void do_return_from_block (hcl_t* hcl)
+static HCL_INLINE int do_return_from_block (hcl_t* hcl)
 {
 	/*if (hcl->active_context == hcl->processor->active->initial_context)*/
 	if ((hcl_oop_t)hcl->active_context->home == hcl->_nil)
@@ -2921,6 +2921,7 @@ static HCL_INLINE void do_return_from_block (hcl_t* hcl)
 		HCL_ASSERT (hcl, (hcl_oop_t)hcl->active_context->sender == hcl->_nil);
 		hcl->active_context->ip = HCL_SMOOI_TO_OOP(-1); /* mark context dead */
 		terminate_process (hcl, hcl->processor->active);
+		return 1; /* indiate process termination */
 	}
 	else
 	{
@@ -2988,20 +2989,31 @@ static HCL_INLINE void do_return_from_block (hcl_t* hcl)
 		 * class stack and exception stack.
 		 */
 
+		HCL_ASSERT (hcl, (hcl_oop_t)hcl->active_context->sender != hcl->_nil);
+		if (HCL_UNLIKELY(hcl->active_context->sender->ip == HCL_SMOOI_TO_OOP(-1)))
+		{
+			HCL_LOG0 (hcl, HCL_LOG_IC | HCL_LOG_ERROR, "Error - cannot return to dead context\n");
+			hcl_seterrbfmt (hcl, HCL_EINTERN, "unable to return to dead context"); /* TODO: can i make this error catchable at the hcl level? */
+			return -1;
+		}
+
 		/* it is a normal block return as the active block context 
 		 * is not the initial context of a process */
 		hcl->ip = -1; /* mark context dead. saved into hcl->active_context->ip in SWITCH_ACTIVE_CONTEXT */
 		SWITCH_ACTIVE_CONTEXT (hcl, (hcl_oop_context_t)hcl->active_context->sender);
+		return 0; /* normal return */
 	}
 }
 
-static HCL_INLINE int do_return_from_home (hcl_t* hcl, hcl_oop_t return_value)
+static HCL_INLINE int do_return_from_home (hcl_t* hcl, hcl_oop_t return_value, hcl_ooi_t ip)
 {
+#if 0
 	/* if (hcl->active_context == hcl->processor->active->initial_context) // read the interactive mode note below... */
 	if ((hcl_oop_t)hcl->active_context->home == hcl->_nil)
 	{
 		/* returning from the intial context.
-		 *  (return-from-home 999) */
+		 *  (return-from-home 999) 
+		 * the return-from-home is executed in the initial context */
 		HCL_ASSERT (hcl, (hcl_oop_t)hcl->active_context->sender == hcl->_nil);
 		hcl->active_context->ip = HCL_SMOOI_TO_OOP(-1); /* mark the active context dead */
 
@@ -3030,12 +3042,12 @@ static HCL_INLINE int do_return_from_home (hcl_t* hcl, hcl_oop_t return_value)
 		 *   (defun y(x) (return-from-home (* x x))) <-- initial context
 		 *   (y 999) <- another initial context
 		 * when y is called from the second initial context, the home context to return
-		 * from the the first initial context. comparing hcl->active_context->home againt
+		 * from the the first initial context. comparing hcl->active_context->home against
 		 * hcl->initial_context doesn't return true in this case.
 		 */
 
 		HCL_ASSERT (hcl, (hcl_oop_t)hcl->active_context->home->sender == hcl->_nil);
-		hcl->active_context->home->ip = HCL_SMOOI_TO_OOP(-1); /* mark that this context has returned */
+		hcl->active_context->home->ip = HCL_SMOOI_TO_OOP(-1); /* mark that the home context has returned */
 
 		if (hcl->sp >= 0)
 		{
@@ -3049,8 +3061,6 @@ static HCL_INLINE int do_return_from_home (hcl_t* hcl, hcl_oop_t return_value)
 	}
 	else
 	{
-		hcl_oop_context_t sender;
-
 		/*
 		(defun f(x)
 			(defun y(x) (return-from-home (* x  x)))
@@ -3070,27 +3080,14 @@ static HCL_INLINE int do_return_from_home (hcl_t* hcl, hcl_oop_t return_value)
 			return -1;
 		}
 
-	#if 0
-		hcl->active_context->home->ip = HCL_SMOOI_TO_OOP(-1); /* mark that this context has returned */
-
+		hcl->active_context->home->ip = HCL_SMOOI_TO_OOP(-1); /* mark that the home context has returned */
 		hcl->ip = -1; /* mark that the active context has returned. committed to hcl->active_context->ip in SWITCH_ACTIVE_CONTEXT() */
 		SWITCH_ACTIVE_CONTEXT (hcl, hcl->active_context->home->sender);
-	#else
-		sender = hcl->active_context->home->sender;
-		while (1)
-		{
-			do_return_from_block (hcl);
-			if (hcl->active_context == sender)
-			{
-				break;
-			}
-		}
-	#endif
 
-		/* push the return value to the stack of the new active context */
+		/* push the return value to the stack of the final active context */
 		HCL_STACK_PUSH (hcl, return_value);
 
-#if 0
+	#if 0
 		/* stack dump */
 		HCL_DEBUG1 (hcl, "****** non local returning %O\n", return_value);
 		{
@@ -3100,8 +3097,97 @@ static HCL_INLINE int do_return_from_home (hcl_t* hcl, hcl_oop_t return_value)
 				HCL_DEBUG2 (hcl, "STACK[%d] => %O\n", i, HCL_STACK_GET(hcl, i));
 			}
 		}
-#endif
+	#endif
 	}
+
+#else
+
+	/* this part implements the non-local return by traversing the call chain
+	 * until the sender of the home context is reached.
+	 * it is slower than immediat return from the home context but detetts
+	 * dead context better */
+
+	if ((hcl_oop_t)hcl->active_context->home == hcl->_nil)
+	{
+		/* non-local return from the intial context.
+		 *  (return-from-home 999) 
+		 */
+
+		/* the current active context must be the initial context of the active process */
+		HCL_ASSERT (hcl, hcl->active_context == hcl->processor->active->initial_context);
+		HCL_ASSERT (hcl, (hcl_oop_t)hcl->active_context->sender == hcl->_nil);
+
+		hcl->active_context->ip = HCL_SMOOI_TO_OOP(-1); /* mark the active context dead */
+
+	term_proc:
+		if (hcl->sp >= 0)
+		{
+			/* return-from-home has been called from where it shouldn't be. for instance,
+			 *  (printf "xxx %d\n" (return-from-home 999))
+			 *  -----------------------------------------------
+			 *  (if (>  19 (return-from-home 20)) 30) */
+			HCL_LOG1 (hcl, HCL_LOG_IC | HCL_LOG_WARN, "Warning - stack not empty on return-from-home - SP %zd\n", hcl->sp); /* TODO: include line number and file name */
+		}
+
+		/* as the process is terminated here, the nonempty stack or not invalidating the 
+		 * intermediates contexts deson't really matter. */
+		terminate_process (hcl, hcl->processor->active);
+	}
+	else
+	{
+		hcl_oop_context_t sender, home, ctx;
+
+		home = hcl->active_context->home;
+		sender = hcl->active_context->home->sender;
+
+		/* check if the home context is in the current call chain */
+		ctx = hcl->active_context;
+		while ((hcl_oop_t)ctx != hcl->_nil)
+		{
+			ctx = ctx->sender;
+			if (ctx == home) goto do_return;
+		}
+
+		HCL_LOG0 (hcl, HCL_LOG_IC | HCL_LOG_ERROR, "Error - cannot return from dead context - throwing an exception\n");
+		hcl_seterrbfmt (hcl, HCL_EINTERN, "unable to return from dead context"); /* TODO: can i make this error catchable at the hcl level? */
+		return do_throw_with_internal_errmsg(hcl, ip);
+
+	do_return:
+		while (hcl->active_context != home)
+		{
+			hcl->ip = -1; /* mark context dead. saved into hcl->active_context->ip in SWITCH_ACTIVE_CONTEXT */
+			SWITCH_ACTIVE_CONTEXT (hcl, (hcl_oop_context_t)hcl->active_context->sender);
+		}
+
+		if (HCL_UNLIKELY(sender == hcl->_nil))
+		{
+			/* non-local return out of the initial context 
+			 *   (defun y(x) (return-from-home (* x x))) 
+			 *   (y 999)
+			 * when y is activated, y's home context is itself. but the 
+			 *
+			 * [NOTE]
+			 * in the interactive mode, a new initial context/function/process is created
+			 * for each expression (as implemented bin/main.c)
+			 * hcl->active_context may be the intial context of the previous expression.
+			 *   (defun y(x) (return-from-home (* x x))) <-- initial context
+			 *   (y 999) <- another initial context
+			 * when y is called from the second initial context, the home context to return
+			 * from the the first initial context. comparing hcl->active_context->home against
+			 * hcl->initial_context doesn't return true in this case. */
+			HCL_ASSERT (hcl, home->home == hcl->_nil);
+			HCL_ASSERT (hcl, hcl->active_context->sender == hcl->_nil);
+
+			home->ip = HCL_SMOOI_TO_OOP(-1); /* mark the home context dead */
+			goto term_proc;
+		}
+
+		HCL_ASSERT (hcl, hcl->active_context->sender == sender);
+		hcl->ip = -1; /* mark context dead. saved into hcl->active_context->ip in SWITCH_ACTIVE_CONTEXT */
+		SWITCH_ACTIVE_CONTEXT (hcl, (hcl_oop_context_t)hcl->active_context->sender);
+		HCL_STACK_PUSH (hcl, return_value);
+	}
+#endif
 
 	return 0;
 }
@@ -4439,7 +4525,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 
 			handle_return:
 				hcl->last_retv = return_value;
-				if (do_return_from_home(hcl, return_value) <= -1) goto oops;
+				if (do_return_from_home(hcl, return_value, fetched_instruction_pointer) <= -1) goto oops_with_errmsg_supplement;
 				break;
 
 			case HCL_CODE_RETURN_FROM_BLOCK:
@@ -4535,7 +4621,6 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				/* do nothing */
 				LOG_INST_0 (hcl, "noop");
 				break;
-
 
 			default:
 				HCL_LOG1 (hcl, HCL_LOG_IC | HCL_LOG_FATAL, "Fatal error - unknown byte code 0x%zx\n", bcode);
