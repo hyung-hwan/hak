@@ -53,5 +53,5 @@
 	(if (/= c 899) (printf "ERROR: c must be 899\n"))
 	(if (/= d 788) (printf "ERROR: d must be 788\n"))
 
-	(printf "OK: a=%d b=%d c=%d d=%d\n" a b c d)
+	(printf "OK a=%d b=%d c=%d d=%d\n" a b c d)
 ))
