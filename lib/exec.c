@@ -2362,7 +2362,7 @@ static int do_throw_with_internal_errmsg (hcl_t* hcl, hcl_ooi_t ip)
 {
 	hcl_oop_t ex;
 /* TODO: consider throwing an exception object instead of a string? */
-	ex = hcl_makestring(hcl, hcl->errmsg.buf, hcl->errmsg.len, 0);
+	ex = hcl_makestring(hcl, hcl->errmsg.buf, hcl->errmsg.len, 0); /* TODO: include error location in the message? */
 	if (HCL_UNLIKELY(!ex))
 	{
 		supplement_errmsg (hcl, ip);
@@ -3148,7 +3148,15 @@ static HCL_INLINE int do_return_from_home (hcl_t* hcl, hcl_oop_t return_value, h
 			if (ctx == home) goto do_return;
 		}
 
-		HCL_LOG0 (hcl, HCL_LOG_IC | HCL_LOG_ERROR, "Error - cannot return from dead context - throwing an exception\n");
+		if (hcl->active_function->dbgi != hcl->_nil)
+		{
+			hcl_dbgi_t* dbgi = (hcl_dbgi_t*)HCL_OBJ_GET_BYTE_SLOT(hcl->active_function->dbgi);
+			HCL_LOG2 (hcl, HCL_LOG_IC | HCL_LOG_ERROR, "Error - cannot return from dead context - throwing an exception (%js:%zu)\n", (dbgi[ip].fname? dbgi[ip].fname: oocstr_dash), dbgi[ip].sline);
+		}
+		else
+		{
+			HCL_LOG0 (hcl, HCL_LOG_IC | HCL_LOG_ERROR, "Error - cannot return from dead context - throwing an exception\n");
+		}
 		hcl_seterrbfmt (hcl, HCL_EINTERN, "unable to return from dead context"); /* TODO: can i make this error catchable at the hcl level? */
 		return do_throw_with_internal_errmsg(hcl, ip);
 
