@@ -587,7 +587,7 @@ struct hcl_function_t
 {
 	HCL_OBJ_HEADER;
 
-	hcl_oop_t         tmpr_mask; /* smooi */
+	hcl_oop_t         attr_mask; /* smooi */
 	hcl_oop_context_t home; /* home context. nil for the initial function */
 
 	hcl_oop_t dbgi; /* byte array containing debug information. nil if not available */
@@ -606,7 +606,7 @@ struct hcl_block_t
 {
 	HCL_OBJ_HEADER;
 
-	hcl_oop_t         tmpr_mask; /* smooi */
+	hcl_oop_t         attr_mask; /* smooi */
 	hcl_oop_context_t home; /* home context */
 	hcl_oop_t         ip; /* smooi. instruction pointer where the byte code begins in home->base */
 };
@@ -619,7 +619,7 @@ struct hcl_context_t
 	hcl_oop_t          req_nrets;
 
 	/* SmallInteger. */
-	hcl_oop_t          tmpr_mask;
+	hcl_oop_t          attr_mask;
 
 	/* SmallInteger, instruction pointer */
 	hcl_oop_t          ip;
@@ -846,15 +846,14 @@ struct hcl_process_scheduler_t
 };
 
 
-#define HCL_CLASS_NAMED_INSTVARS 8
+#define HCL_CLASS_NAMED_INSTVARS 7
 typedef struct hcl_class_t hcl_class_t;
 typedef struct hcl_class_t* hcl_oop_class_t;
 struct hcl_class_t
 {
 	HCL_OBJ_HEADER;
 
-	hcl_oop_t idic; /* nil or dictionary of named elements including instance methods and variables */
-	hcl_oop_t cdic; /* nil or dictionary of named elements including class methods and variables */
+	hcl_oop_t mdic; /* method dictioanry. nil or a dictionary object */
 
 	hcl_oop_t superclass;
 	hcl_oop_t nivars; /* smooi. */
@@ -1760,6 +1759,9 @@ struct hcl_t
 #define HCL_STACK_GETRCV(hcl,nargs) HCL_STACK_GET(hcl, (hcl)->sp - nargs - 1)
 /* get the operator such as the called function/block/method */
 #define HCL_STACK_GETOP(hcl,nargs) HCL_STACK_GET(hcl, (hcl)->sp - nargs)
+
+/* change the receiver of a message */
+#define HCL_STACK_SETRCV(hcl,nargs,newrcv) HCL_STACK_SET(hcl, (hcl)->sp - nargs - 1, newrcv)
 
 /* 
  * .....

@@ -192,7 +192,7 @@ static hcl_oop_cons_t find_or_upsert (hcl_t* hcl, hcl_oop_dic_t dic, hcl_oop_t k
 		 * make sure that it has at least one free slot left
 		 * after having added a new symbol. this is to help
 		 * traversal end at a _nil slot if no entry is found. */
-		bucket = expand_bucket (hcl, dic->bucket);
+		bucket = expand_bucket(hcl, dic->bucket);
 		if (!bucket) goto oops;
 
 		dic->bucket = bucket;

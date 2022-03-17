@@ -1,6 +1,7 @@
 AUTOMAKE_OPTIONS = nostdinc
 
 check_SCRIPTS = \
+	insta-01.hcl \
 	ret-01.hcl \
 	retvar-01.hcl
 

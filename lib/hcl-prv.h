@@ -596,35 +596,37 @@ struct hcl_compiler_t
  
 #if defined(HCL_CODE_LONG_PARAM_SIZE) && (HCL_CODE_LONG_PARAM_SIZE == 1)
 
-#	define MAX_CODE_NBLKARGS            (0xFu) /* 15 */
-#	define MAX_CODE_NBLKRVARS           (0xFu) /* 15 */
-#	define MAX_CODE_NBLKLVARS           (0x7Fu) /* 127 */
+#	define MAX_CODE_NBLKARGS            (0xFu) /* 15 - 4 bits*/
+#	define MAX_CODE_NBLKRVARS           (0xFu) /* 15 - 4 bits*/
+#	define MAX_CODE_NBLKLVARS           (0x3Fu) /* 63 - 6 bits */
 
-#	define ENCODE_BLKTMPR_MASK(va,nargs,nrvars,nlvars) \
-		((((va) & 0x1) << 15) | (((nargs) & 0xF) << 11) | (((nrvars) & 0xF) << 7) | (((nlvars) & 0x7F)))
-#	define GET_BLKTMPR_MASK_VA(x) (((x) >> 15) & 0x1)
-#	define GET_BLKTMPR_MASK_NARGS(x) (((x) >> 11) & 0xF)
-#	define GET_BLKTMPR_MASK_NRVARS(x) (((x) >> 7) & 0xF)
-#	define GET_BLKTMPR_MASK_NLVARS(x) ((x) & 0x7F)
+#	define ENCODE_BLK_MASK(insta,va,nargs,nrvars,nlvars) \
+		((((insta) & 0x1) << 15) | (((va) & 0x1) << 14) | (((nargs) & 0xF) << 10) | (((nrvars) & 0xF) << 6) | (((nlvars) & 0x3FF)))
+#	define GET_BLK_MASK_INSTA(x) (((x) >> 15) & 0x1)
+#	define GET_BLK_MASK_VA(x) (((x) >> 14) & 0x1)
+#	define GET_BLK_MASK_NARGS(x) (((x) >> 10) & 0xF)
+#	define GET_BLK_MASK_NRVARS(x) (((x) >> 6) & 0xF)
+#	define GET_BLK_MASK_NLVARS(x) ((x) & 0x3F)
 
 #	define MAX_CODE_JUMP                (0xFFu)
 #	define MAX_CODE_PARAM               (0xFFu)
-#	define MAX_CODE_PARAM2              (0xFFFFu)
+#	define MAX_CODE_PARAM2              (0xFFFFu) /* 16 bits */
 #elif defined(HCL_CODE_LONG_PARAM_SIZE) && (HCL_CODE_LONG_PARAM_SIZE == 2)
 
-#	define MAX_CODE_NBLKARGS            (0xFFu) /* 255 */
-#	define MAX_CODE_NBLKRVARS           (0xFFu) /* 255 */
-#	define MAX_CODE_NBLKLVARS           (0xFFFu) /* 4095 */
-#	define ENCODE_BLKTMPR_MASK(va,nargs,nrvars,nlvars) \
-		((((va) & 0x1) << 28) | (((nargs) & 0xFF) << 20) | (((nrvars) & 0xFF) << 12) | (((nlvars) & 0xFFF)))
-#	define GET_BLKTMPR_MASK_VA(x) (((x) >> 28) & 0x1)
-#	define GET_BLKTMPR_MASK_NARGS(x) (((x) >> 20) & 0xFF)
-#	define GET_BLKTMPR_MASK_NRVARS(x) (((x) >> 12) & 0xFF)
-#	define GET_BLKTMPR_MASK_NLVARS(x) ((x) & 0xFFF)
+#	define MAX_CODE_NBLKARGS            (0xFFu) /* 255, 8 bits */
+#	define MAX_CODE_NBLKRVARS           (0xFFu) /* 255, 8 bits */
+#	define MAX_CODE_NBLKLVARS           (0xFFFu) /* 4095, 12 bits */
+#	define ENCODE_BLK_MASK(insta,va,nargs,nrvars,nlvars) \
+		((((insta) & 0x1) << 29) | (((va) & 0x1) << 28) | (((nargs) & 0xFF) << 20) | (((nrvars) & 0xFF) << 12) | (((nlvars) & 0xFFF)))
+#	define GET_BLK_MASK_INSTA(x) (((x) >> 29) & 0x1)
+#	define GET_BLK_MASK_VA(x) (((x) >> 28) & 0x1)
+#	define GET_BLK_MASK_NARGS(x) (((x) >> 20) & 0xFF)
+#	define GET_BLK_MASK_NRVARS(x) (((x) >> 12) & 0xFF)
+#	define GET_BLK_MASK_NLVARS(x) ((x) & 0xFFF)
 	
 #	define MAX_CODE_JUMP                (0xFFFFu)
 #	define MAX_CODE_PARAM               (0xFFFFu)
-#	define MAX_CODE_PARAM2              (0xFFFFFFFFu)
+#	define MAX_CODE_PARAM2              (0xFFFFFFFFu) /* 32 bits */
 #else
 #	error Unsupported HCL_CODE_LONG_PARAM_SIZE
 #endif
@@ -940,8 +942,8 @@ enum hcl_bcode_t
 
 	HCL_CODE_PUSH_OBJVAR_X            = 0xE4, /* 228 ## */
 	HCL_CODE_CLASS_CMSTORE            = 0xE5, /* 229 */
-	HCL_CODE_CLASS_IMSTORE            = 0xE6, /* 230 */
-	/* UNUSED - 0xE7 */
+	HCL_CODE_CLASS_CIMSTORE           = 0xE6, /* 230 */
+	HCL_CODE_CLASS_IMSTORE            = 0xE7, /* 231 */
 
 	HCL_CODE_STORE_INTO_OBJVAR_X      = 0xE8, /* 232 ## */
 	HCL_CODE_MAKE_ARRAY               = 0xE9, /* 233 ## */

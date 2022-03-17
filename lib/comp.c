@@ -299,7 +299,7 @@ static int find_variable_backward (hcl_t* hcl, const hcl_cnode_t* token, hcl_var
 
 						for (fi = hcl->c->fnblk.depth + 1; fi > i; ) /* TOOD: review this loop for correctness */
 						{
-							/* 'i' is the function level that hold the class defintion block. the check must not go past it */
+							/* 'i' is the function level that holds the class defintion block. the check must not go past it */
 							if (hcl->c->fnblk.info[--fi].fun_type == FUN_CM)
 							{
 								/* the function where this variable is defined is a class method or an plain function block within a class method*/
@@ -578,6 +578,7 @@ static int emit_single_param_instruction (hcl_t* hcl, int cmd, hcl_oow_t param_1
 		case HCL_CODE_POP_INTO_CVAR_M_X:
 
 		case HCL_CODE_CLASS_CMSTORE:
+		case HCL_CODE_CLASS_CIMSTORE:
 		case HCL_CODE_CLASS_IMSTORE:
 		case HCL_CODE_TRY_ENTER:
 		case HCL_CODE_TRY_ENTER2:
@@ -1106,7 +1107,7 @@ static void pop_fnblk (hcl_t* hcl)
 
 	if (fbi->make_inst_pos < hcl->code.bc.len)
 	{
-		hcl_oow_t tmpr_mask;
+		hcl_oow_t attr_mask;
 
 		/* patch the temporaries mask parameter for the MAKE_BLOCK or MAKE_FUNCTION instruction */
 		HCL_ASSERT (hcl, hcl->code.bc.ptr[fbi->make_inst_pos] == HCL_CODE_MAKE_BLOCK || 
@@ -1118,8 +1119,8 @@ static void pop_fnblk (hcl_t* hcl)
 
 		/* the temporaries mask is a bit-mask that encodes the counts of different temporary variables.
 		 * and it's split to two intruction parameters when used with MAKE_BLOCK and MAKE_FUNCTION */
-		tmpr_mask = ENCODE_BLKTMPR_MASK(fbi->tmpr_va, fbi->tmpr_nargs, fbi->tmpr_nrvars, fbi->tmpr_nlvars);
-		patch_double_long_params_with_oow (hcl, fbi->make_inst_pos + 1, tmpr_mask);
+		attr_mask = ENCODE_BLK_MASK((fbi->fun_type == FUN_CIM), fbi->tmpr_va, fbi->tmpr_nargs, fbi->tmpr_nrvars, fbi->tmpr_nlvars);
+		patch_double_long_params_with_oow (hcl, fbi->make_inst_pos + 1, attr_mask);
 	}
 }
 
@@ -1310,6 +1311,7 @@ enum
 	COP_EMIT_RETURN,
 	COP_EMIT_SET,
 	COP_EMIT_CLASS_CMSTORE,
+	COP_EMIT_CLASS_CIMSTORE,
 	COP_EMIT_CLASS_IMSTORE,
 	COP_EMIT_THROW,
 
@@ -2581,7 +2583,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 
 	if (hcl->option.trait & HCL_TRAIT_INTERACTIVE)
 	{
-		/* MAKE_FUNCTION tmpr_mask_1 tmpr_mask_2 lfbase lfsize */
+		/* MAKE_FUNCTION attr_mask_1 attr_mask_2 lfbase lfsize */
 		if (emit_double_param_instruction(hcl, HCL_CODE_MAKE_FUNCTION, 0, 0, HCL_CNODE_GET_LOC(cmd)) <= -1) return -1;
 		lfbase_pos = hcl->code.bc.len;
 		if (emit_long_param(hcl, hcl->code.lit.len - hcl->c->fnblk.info[hcl->c->fnblk.depth - 1].lfbase) <= -1) return -1; /* literal frame base */
@@ -2590,7 +2592,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 	}
 	else
 	{
-		/* MAKE_BLOCK tmpr_mask_1 tmpr_mask_2 - will patch tmpr_mask in pop_fnblk() */
+		/* MAKE_BLOCK attr_mask_1 attr_mask_2 - will patch attr_mask in pop_fnblk() */
 		if (emit_double_param_instruction(hcl, HCL_CODE_MAKE_BLOCK, 0, 0, HCL_CNODE_GET_LOC(cmd)) <= -1) return -1;
 	}
 
@@ -4888,8 +4890,11 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 				switch (cf->u.lambda.fun_type)
 				{
 					case FUN_CM: /* class method */
-					case FUN_CIM: /* class instantiation method */
 						SWITCH_TOP_CFRAME (hcl, COP_EMIT_CLASS_CMSTORE, defun_name);
+						break;
+
+					case FUN_CIM: /* class instantiation method */
+						SWITCH_TOP_CFRAME (hcl, COP_EMIT_CLASS_CIMSTORE, defun_name);
 						break;
 
 					case FUN_IM: /* instance method */
@@ -5021,7 +5026,26 @@ static HCL_INLINE int emit_class_cmstore (hcl_t* hcl)
 	if (HCL_UNLIKELY(!lit)) return -1;
 
 	if (add_literal(hcl, lit, &index) <= -1) return -1;
-	if (emit_single_param_instruction(hcl,  HCL_CODE_CLASS_CMSTORE, index, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+	if (emit_single_param_instruction(hcl, HCL_CODE_CLASS_CMSTORE, index, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+
+	POP_CFRAME (hcl);
+	return 0;
+}
+
+static HCL_INLINE int emit_class_cimstore (hcl_t* hcl)
+{
+	hcl_cframe_t* cf;
+	hcl_oop_t lit;
+	hcl_oow_t index;
+
+	cf = GET_TOP_CFRAME(hcl);
+	HCL_ASSERT (hcl, cf->opcode == COP_EMIT_CLASS_CIMSTORE);
+
+	lit = hcl_makesymbol(hcl, HCL_CNODE_GET_TOKPTR(cf->operand), HCL_CNODE_GET_TOKLEN(cf->operand));
+	if (HCL_UNLIKELY(!lit)) return -1;
+
+	if (add_literal(hcl, lit, &index) <= -1) return -1;
+	if (emit_single_param_instruction(hcl, HCL_CODE_CLASS_CIMSTORE, index, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
 
 	POP_CFRAME (hcl);
 	return 0;
@@ -5040,7 +5064,7 @@ static HCL_INLINE int emit_class_imstore (hcl_t* hcl)
 	if (HCL_UNLIKELY(!lit)) return -1;
 
 	if (add_literal(hcl, lit, &index) <= -1) return -1;
-	if (emit_single_param_instruction(hcl,  HCL_CODE_CLASS_IMSTORE, index, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+	if (emit_single_param_instruction(hcl, HCL_CODE_CLASS_IMSTORE, index, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
 
 	POP_CFRAME (hcl);
 	return 0;
@@ -5294,6 +5318,10 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 
 			case COP_EMIT_CLASS_CMSTORE:
 				if (emit_class_cmstore(hcl) <= -1) goto oops;
+				break;
+
+			case COP_EMIT_CLASS_CIMSTORE:
+				if (emit_class_cimstore(hcl) <= -1) goto oops;
 				break;
 
 			case COP_EMIT_CLASS_IMSTORE:

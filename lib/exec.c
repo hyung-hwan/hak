@@ -123,7 +123,7 @@ static hcl_ooch_t oocstr_dash[] = { '-', '\0' };
 #	define LOG_INST_4(hcl,fmt,a1,a2,a3,a4) HCL_LOG5(hcl, LOG_MASK_INST, "%010zd " fmt "\n", fetched_instruction_pointer, a1, a2, a3, a4)
 #	define LOG_INST_5(hcl,fmt,a1,a2,a3,a4,a5) HCL_LOG6(hcl, LOG_MASK_INST, "%010zd " fmt "\n", fetched_instruction_pointer, a1, a2, a3, a4, a5)
 #	define LOG_INST_6(hcl,fmt,a1,a2,a3,a4,a5,a6) HCL_LOG7(hcl, LOG_MASK_INST, "%010zd " fmt "\n", fetched_instruction_pointer, a1, a2, a3, a4, a5, a6)
-
+#	define LOG_INST_7(hcl,fmt,a1,a2,a3,a4,a5,a6,a7) HCL_LOG8(hcl, LOG_MASK_INST, "%010zd " fmt "\n", fetched_instruction_pointer, a1, a2, a3, a4, a5, a6, a7)
 #else
 #	define LOG_INST_0(hcl,fmt)
 #	define LOG_INST_1(hcl,fmt,a1)
@@ -132,6 +132,7 @@ static hcl_ooch_t oocstr_dash[] = { '-', '\0' };
 #	define LOG_INST_4(hcl,fmt,a1,a2,a3,a4)
 #	define LOG_INST_5(hcl,fmt,a1,a2,a3,a4,a5)
 #	define LOG_INST_6(hcl,fmt,a1,a2,a3,a4,a5,a6)
+#	define LOG_INST_7(hcl,fmt,a1,a2,a3,a4,a5,a6,a7)
 #endif
 
 static int delete_sem_from_sem_io_tuple (hcl_t* hcl, hcl_oop_semaphore_t sem, int force);
@@ -403,13 +404,13 @@ static HCL_INLINE hcl_oop_function_t make_function (hcl_t* hcl, hcl_oow_t lfsize
 	return func;
 }
 
-static HCL_INLINE void fill_function_data (hcl_t* hcl, hcl_oop_function_t func, hcl_ooi_t tmpr_mask, hcl_oop_context_t homectx, const hcl_oop_t* lfptr, hcl_oow_t lfsize)
+static HCL_INLINE void fill_function_data (hcl_t* hcl, hcl_oop_function_t func, hcl_ooi_t attr_mask, hcl_oop_context_t homectx, const hcl_oop_t* lfptr, hcl_oow_t lfsize)
 {
 	/* Although this function could be integrated into make_function(),
 	 * this function has been separated from make_function() to make GC handling simpler */
 	hcl_oow_t i;
 
-	HCL_ASSERT (hcl, tmpr_mask >= 0 && tmpr_mask <= HCL_SMOOI_MAX);
+	HCL_ASSERT (hcl, attr_mask >= 0 && attr_mask <= HCL_SMOOI_MAX);
 
 	/* copy literal frames */
 	HCL_ASSERT (hcl, lfsize <= HCL_OBJ_GET_SIZE(func) - HCL_FUNCTION_NAMED_INSTVARS);
@@ -423,7 +424,7 @@ static HCL_INLINE void fill_function_data (hcl_t* hcl, hcl_oop_function_t func, 
 
 	/* initialize other fields */
 	func->home = homectx;
-	func->tmpr_mask = HCL_SMOOI_TO_OOP(tmpr_mask);
+	func->attr_mask = HCL_SMOOI_TO_OOP(attr_mask);
 }
 
 static HCL_INLINE hcl_oop_block_t make_block (hcl_t* hcl)
@@ -432,14 +433,14 @@ static HCL_INLINE hcl_oop_block_t make_block (hcl_t* hcl)
 	return (hcl_oop_block_t)hcl_allocoopobj(hcl, HCL_BRAND_BLOCK, HCL_BLOCK_NAMED_INSTVARS);
 }
 
-static HCL_INLINE void fill_block_data (hcl_t* hcl, hcl_oop_block_t blk, hcl_ooi_t tmpr_mask, hcl_ooi_t ip, hcl_oop_context_t homectx)
+static HCL_INLINE void fill_block_data (hcl_t* hcl, hcl_oop_block_t blk, hcl_ooi_t attr_mask, hcl_ooi_t ip, hcl_oop_context_t homectx)
 {
-	HCL_ASSERT (hcl, tmpr_mask >= 0 && tmpr_mask <= HCL_SMOOI_MAX);
+	HCL_ASSERT (hcl, attr_mask >= 0 && attr_mask <= HCL_SMOOI_MAX);
 	HCL_ASSERT (hcl, ip >= 0 && ip <= HCL_SMOOI_MAX);
 
 	blk->home = homectx;
 	blk->ip = HCL_SMOOI_TO_OOP(ip);
-	blk->tmpr_mask = HCL_SMOOI_TO_OOP(tmpr_mask);
+	blk->attr_mask = HCL_SMOOI_TO_OOP(attr_mask);
 }
 
 static HCL_INLINE int prepare_to_alloc_pid (hcl_t* hcl)
@@ -1902,22 +1903,22 @@ static int prepare_new_context (hcl_t* hcl, hcl_oop_block_t op_blk, hcl_ooi_t na
 	 * the passed block context becomes the base for a new block context. */
 
 	hcl_oop_context_t blkctx;
-	hcl_ooi_t tmpr_mask;
+	hcl_ooi_t attr_mask;
 	hcl_ooi_t fblk_nrvars, fblk_nlvars;
 	hcl_ooi_t fixed_nargs, actual_nargs, excess_nargs;
 
 	/* the receiver must be a block context */
 	HCL_ASSERT (hcl, HCL_IS_BLOCK(hcl, op_blk));
 
-	tmpr_mask = HCL_OOP_TO_SMOOI(op_blk->tmpr_mask);
+	attr_mask = HCL_OOP_TO_SMOOI(op_blk->attr_mask);
 
-	fblk_nrvars = GET_BLKTMPR_MASK_NRVARS(tmpr_mask);
-	fblk_nlvars = GET_BLKTMPR_MASK_NLVARS(tmpr_mask);
-	fixed_nargs = GET_BLKTMPR_MASK_NARGS(tmpr_mask);
+	fblk_nrvars = GET_BLK_MASK_NRVARS(attr_mask);
+	fblk_nlvars = GET_BLK_MASK_NLVARS(attr_mask);
+	fixed_nargs = GET_BLK_MASK_NARGS(attr_mask);
 	actual_nargs = nargs - nargs_offset;
 	excess_nargs = actual_nargs - fixed_nargs;
 
-	if (actual_nargs < fixed_nargs || (!GET_BLKTMPR_MASK_VA(tmpr_mask) && actual_nargs > fixed_nargs))
+	if (actual_nargs < fixed_nargs || (!GET_BLK_MASK_VA(attr_mask) && actual_nargs > fixed_nargs))
 	{
 		HCL_LOG3 (hcl, HCL_LOG_IC | HCL_LOG_ERROR, 
 			"Error - wrong number of arguments to a block %O - expecting %zd, got %zd\n",
@@ -1950,7 +1951,7 @@ static int prepare_new_context (hcl_t* hcl, hcl_oop_block_t op_blk, hcl_ooi_t na
 #else
 	blkctx->ip = op_blk->ip;
 	blkctx->req_nrets = HCL_SMOOI_TO_OOP(req_nrvars);
-	blkctx->tmpr_mask = op_blk->tmpr_mask;
+	blkctx->attr_mask = op_blk->attr_mask;
 	blkctx->base = op_blk->home->base;
 
 	if (is_msgsend)
@@ -2039,7 +2040,7 @@ static int __activate_function (hcl_t* hcl, hcl_oop_function_t op_func, hcl_ooi_
 
 	hcl_oop_context_t functx;
 	hcl_ooi_t i, j;
-	hcl_ooi_t tmpr_mask;
+	hcl_ooi_t attr_mask;
 	hcl_ooi_t nrvars, nlvars, fixed_nargs, actual_nargs, excess_nargs;
 	hcl_ooi_t nargs_offset = 0;
 
@@ -2052,14 +2053,14 @@ static int __activate_function (hcl_t* hcl, hcl_oop_function_t op_func, hcl_ooi_
 
 	HCL_ASSERT (hcl, HCL_IS_FUNCTION(hcl, op_func));
 
-	tmpr_mask = HCL_OOP_TO_SMOOI(op_func->tmpr_mask);
-	nrvars = GET_BLKTMPR_MASK_NRVARS(tmpr_mask);
-	nlvars = GET_BLKTMPR_MASK_NLVARS(tmpr_mask);
-	fixed_nargs = GET_BLKTMPR_MASK_NARGS(tmpr_mask);
+	attr_mask = HCL_OOP_TO_SMOOI(op_func->attr_mask);
+	nrvars = GET_BLK_MASK_NRVARS(attr_mask);
+	nlvars = GET_BLK_MASK_NLVARS(attr_mask);
+	fixed_nargs = GET_BLK_MASK_NARGS(attr_mask);
 	actual_nargs = nargs - nargs_offset;
 	excess_nargs = actual_nargs - fixed_nargs;
 
-	if (actual_nargs < fixed_nargs || (!GET_BLKTMPR_MASK_VA(tmpr_mask) && actual_nargs > fixed_nargs))
+	if (actual_nargs < fixed_nargs || (!GET_BLK_MASK_VA(attr_mask) && actual_nargs > fixed_nargs))
 	{
 		HCL_LOG3 (hcl, HCL_LOG_IC | HCL_LOG_ERROR, 
 			"Error - wrong number of arguments to a function %O - expecting %zd, got %zd\n",
@@ -2076,7 +2077,7 @@ static int __activate_function (hcl_t* hcl, hcl_oop_function_t op_func, hcl_ooi_
 
 	functx->ip = HCL_SMOOI_TO_OOP(0);
 	functx->req_nrets = HCL_SMOOI_TO_OOP(1);
-	functx->tmpr_mask = op_func->tmpr_mask;
+	functx->attr_mask = op_func->attr_mask;
 	functx->base = op_func;
 	functx->home = op_func->home;
 	functx->receiver = HCL_STACK_GETRCV(hcl, nargs);
@@ -2142,7 +2143,7 @@ static HCL_INLINE int call_primitive (hcl_t* hcl, hcl_ooi_t nargs)
 
 /* ------------------------------------------------------------------------- */
 
-static hcl_oop_block_t find_cmethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oop_t op_name, int to_super, hcl_oop_class_t* owner)
+static hcl_oop_block_t find_cmethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oop_t op_name, int to_super, hcl_ooi_t* ivaroff, hcl_oop_class_t* owner)
 {
 	hcl_oocs_t name;
 
@@ -2165,7 +2166,7 @@ static hcl_oop_block_t find_cmethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_
 		hcl_oop_t dic;
 
 		
-		dic = class_->cdic;
+		dic = class_->mdic;
 		HCL_ASSERT (hcl, HCL_IS_NIL(hcl, dic) || HCL_IS_DIC(hcl, dic));
 
 		if (HCL_LIKELY(!HCL_IS_NIL(hcl, dic)))
@@ -2176,11 +2177,14 @@ static hcl_oop_block_t find_cmethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_
 			{
 				hcl_oop_t val;
 				val = HCL_CONS_CDR(ass);
-				if (HCL_IS_BLOCK(hcl, val))
+				if (HCL_IS_CONS(hcl, val) && !HCL_IS_NIL(hcl, HCL_CONS_CAR(val)))
 				{
 					/* TODO: futher check if it's a method block? */
 					*owner = class_;
-					return (hcl_oop_block_t)val;
+					/* ivaroff isn't useful for a clas smethod but is useful for class instatiation method 
+					 * (INSTA bit on in the mask field) */
+					*ivaroff = HCL_OOP_TO_SMOOI(class_->nivars_super); 
+					return (hcl_oop_block_t)HCL_CONS_CAR(val); /* car - class method, cdr - instance method */
 				}
 			}
 		}
@@ -2212,7 +2216,7 @@ static hcl_oop_block_t find_imethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_
 	{
 		hcl_oop_t dic;
 
-		dic = class_->idic;
+		dic = class_->mdic;
 		HCL_ASSERT (hcl, HCL_IS_NIL(hcl, dic) || HCL_IS_DIC(hcl, dic));
 
 		if (HCL_LIKELY(!HCL_IS_NIL(hcl, dic)))
@@ -2223,12 +2227,12 @@ static hcl_oop_block_t find_imethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_
 			{
 				hcl_oop_t val;
 				val = HCL_CONS_CDR(ass);
-				if (HCL_IS_BLOCK(hcl, val))
+				if (HCL_IS_CONS(hcl, val) && !HCL_IS_NIL(hcl, HCL_CONS_CDR(val)))
 				{
 					/* TODO: futher check if it's a method block? */
 					*owner = class_;
 					*ivaroff = HCL_OOP_TO_SMOOI(class_->nivars_super);
-					return (hcl_oop_block_t)val;
+					return (hcl_oop_block_t)HCL_CONS_CDR(val); /* car - class method, cdr - instance method */
 				}
 			}
 		}
@@ -2256,7 +2260,23 @@ static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t msg, in
 	if (HCL_IS_CLASS(hcl, rcv))
 	{
 		class_ = (hcl_oop_class_t)rcv;
-		mth_blk = find_cmethod_noseterr(hcl, class_, msg, to_super, &owner);
+		mth_blk = find_cmethod_noseterr(hcl, class_, msg, to_super, &ivaroff, &owner);
+
+		if (!mth_blk) goto msg_not_found;
+
+		if (GET_BLK_MASK_INSTA(HCL_OOP_TO_SMOOI(mth_blk->attr_mask)))
+		{
+			hcl_oop_t newrcv;
+
+			hcl_pushvolat (hcl, (hcl_oop_t*)&mth_blk);
+			hcl_pushvolat (hcl, &msg);
+			hcl_pushvolat (hcl, &rcv);
+			newrcv = hcl_instantiate(hcl, (hcl_oop_class_t)class_, HCL_NULL, 0);
+			hcl_popvolats (hcl, 3);
+			if (HCL_UNLIKELY(!newrcv)) return -1;
+
+			HCL_STACK_SETRCV (hcl, nargs, newrcv); /* prepare_new_context() will take this as a receiver */
+		}
 	}
 	else
 	{
@@ -2264,11 +2284,12 @@ static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t msg, in
 		HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, rcv->_class));
 		class_ = (hcl_oop_class_t)rcv->_class;
 		mth_blk = find_imethod_noseterr(hcl, class_, msg, to_super, &ivaroff, &owner);
-	}
-	if (!mth_blk)
-	{
-		hcl_seterrbfmt (hcl, HCL_ENOENT, "'%.*js' not found in %O", HCL_OBJ_GET_SIZE(msg), HCL_OBJ_GET_CHAR_SLOT(msg), class_);
-		return -1;
+		if (!mth_blk)
+		{
+		msg_not_found:
+			hcl_seterrbfmt (hcl, HCL_ENOENT, "'%.*js' not found in %O", HCL_OBJ_GET_SIZE(msg), HCL_OBJ_GET_CHAR_SLOT(msg), class_);
+			return -1;
+		}
 	}
 
 	x = __activate_block(hcl, mth_blk, nargs, nrvars, 1 /* is_msgsend */, ivaroff, &newctx);
@@ -2580,9 +2601,9 @@ static int start_initial_process_and_context (hcl_t* hcl, hcl_ooi_t initial_ip, 
 {
 	hcl_oop_context_t ctx;
 	hcl_oop_process_t proc;
-	hcl_ooi_t tmpr_mask;
+	hcl_ooi_t attr_mask;
 
-	tmpr_mask = ENCODE_BLKTMPR_MASK(0, 0, 0, nlvars);
+	attr_mask = ENCODE_BLK_MASK(0, 0, 0, 0, nlvars);
 	/* create the initial context over the initial function */
 	ctx = make_context(hcl, nlvars);
 	if (HCL_UNLIKELY(!ctx)) return -1;
@@ -2592,7 +2613,7 @@ static int start_initial_process_and_context (hcl_t* hcl, hcl_ooi_t initial_ip, 
 
 	ctx->ip = HCL_SMOOI_TO_OOP(initial_ip);
 	ctx->req_nrets = HCL_SMOOI_TO_OOP(1);
-	ctx->tmpr_mask = HCL_SMOOI_TO_OOP(tmpr_mask);
+	ctx->attr_mask = HCL_SMOOI_TO_OOP(attr_mask);
 	ctx->home = hcl->initial_function->home; /* this should be nil */
 	ctx->sender = (hcl_oop_context_t)hcl->_nil; /* the initial context has nil in the sender field */
 	ctx->base = hcl->initial_function;
@@ -3607,7 +3628,7 @@ static int execute (hcl_t* hcl)
 			{
 				hcl_oop_context_t ctx;
 				hcl_oow_t i;
-				hcl_ooi_t tmpr_mask, fixed_nargs, req_nrets;
+				hcl_ooi_t attr_mask, fixed_nargs, req_nrets;
 
 				LOG_INST_0 (hcl, "push_return_r");
 
@@ -3615,8 +3636,8 @@ static int execute (hcl_t* hcl)
 
 				ctx = hcl->active_context;
 
-				tmpr_mask = HCL_OOP_TO_SMOOI(ctx->tmpr_mask);
-				fixed_nargs = GET_BLKTMPR_MASK_NARGS(tmpr_mask);
+				attr_mask = HCL_OOP_TO_SMOOI(ctx->attr_mask);
+				fixed_nargs = GET_BLK_MASK_NARGS(attr_mask);
 
 				req_nrets = HCL_OOP_TO_SMOOI(ctx->req_nrets); 
 
@@ -3845,42 +3866,14 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 			}
 
 			case HCL_CODE_CLASS_CMSTORE:
-			{
-				hcl_oop_t class_;
-				hcl_oop_t dic;
-
-				FETCH_PARAM_CODE_TO (hcl, b1);
-				LOG_INST_1 (hcl, "class_cmstore %zu", b1);
-
-				/* store the stack top in the member dictionary of the currect class with the key indicated by 'b1' */
-
-				HCL_ASSERT (hcl, !HCL_CLSTACK_IS_EMPTY(hcl));
-
-				HCL_CLSTACK_FETCH_TOP_TO (hcl, class_);
-				HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, class_));
-
-				dic = ((hcl_oop_class_t)class_)->cdic; /* class-side dictionary */
-				HCL_ASSERT (hcl, HCL_IS_NIL(hcl, dic) || HCL_IS_DIC(hcl, dic));
-				if (HCL_IS_NIL(hcl, dic))
-				{
-					hcl_pushvolat (hcl, (hcl_oop_t*)&class_);
-					dic = hcl_makedic(hcl, 16); /* TODO: configurable initial size? */
-					hcl_popvolat (hcl);
-					if (HCL_UNLIKELY(!dic))  goto oops_with_errmsg_supplement;
-					((hcl_oop_class_t)class_)->cdic = dic;
-				}
-
-				if (!hcl_putatdic(hcl, (hcl_oop_dic_t)dic, hcl->active_function->literal_frame[b1], HCL_STACK_GETTOP(hcl))) goto oops_with_errmsg_supplement;
-				break;
-			}
-
+			case HCL_CODE_CLASS_CIMSTORE:
 			case HCL_CODE_CLASS_IMSTORE:
 			{
 				hcl_oop_t class_;
-				hcl_oop_t dic;
+				hcl_oop_t mdic, cons, blk;
 
 				FETCH_PARAM_CODE_TO (hcl, b1);
-				LOG_INST_1 (hcl, "class_imstore %zu", b1);
+				LOG_INST_2 (hcl, "class_%hsmstore %zu", (bcode == HCL_CODE_CLASS_CMSTORE? "c": (bcode == HCL_CODE_CLASS_CIMSTORE? "ci": "i")), b1);
 
 				/* store the stack top in the member dictionary of the currect class with the key indicated by 'b1' */
 
@@ -3889,18 +3882,24 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				HCL_CLSTACK_FETCH_TOP_TO (hcl, class_);
 				HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, class_));
 
-				dic = ((hcl_oop_class_t)class_)->idic; /* instance-side dictionary */
-				HCL_ASSERT (hcl, HCL_IS_NIL(hcl, dic) || HCL_IS_DIC(hcl, dic));
-				if (HCL_IS_NIL(hcl, dic))
+				mdic = ((hcl_oop_class_t)class_)->mdic; /* instance-side dictionary */
+				HCL_ASSERT (hcl, HCL_IS_NIL(hcl, mdic) || HCL_IS_DIC(hcl, mdic));
+				if (HCL_IS_NIL(hcl, mdic))
 				{
 					hcl_pushvolat (hcl, (hcl_oop_t*)&class_);
-					dic = hcl_makedic(hcl, 16); /* TODO: configurable initial size? */
+					mdic = hcl_makedic(hcl, 16); /* TODO: configurable initial size? */
 					hcl_popvolat (hcl);
-					if (HCL_UNLIKELY(!dic))  goto oops_with_errmsg_supplement;
-					((hcl_oop_class_t)class_)->idic = dic;
+					if (HCL_UNLIKELY(!mdic)) goto oops_with_errmsg_supplement;
+					((hcl_oop_class_t)class_)->mdic = mdic;
 				}
 
-				if (!hcl_putatdic(hcl, (hcl_oop_dic_t)dic, hcl->active_function->literal_frame[b1], HCL_STACK_GETTOP(hcl))) goto oops_with_errmsg_supplement;
+				blk = HCL_STACK_GETTOP(hcl);
+				hcl_pushvolat (hcl, (hcl_oop_t*)&mdic);
+				cons = hcl_makecons(hcl, (bcode == HCL_CODE_CLASS_IMSTORE? hcl->_nil: blk), (bcode == HCL_CODE_CLASS_CMSTORE? hcl->_nil: blk));
+				hcl_popvolat (hcl);
+				if (HCL_UNLIKELY(!cons)) goto oops_with_errmsg_supplement;
+
+				if (!hcl_putatdic(hcl, (hcl_oop_dic_t)mdic, hcl->active_function->literal_frame[b1], cons)) goto oops_with_errmsg_supplement;
 				break;
 			}
 			/* -------------------------------------------------------- */
@@ -4063,8 +4062,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 			handle_send_2:
 				rcv = HCL_STACK_GETRCV(hcl, b1);
 				op = HCL_STACK_GETOP(hcl, b1);
-				/*if (!HCL_IS_SYMBOL(hcl, op))*/
-				if (!HCL_OBJ_IS_CHAR_POINTER(op))
+				if (!HCL_OBJ_IS_CHAR_POINTER(op)) /*if (!HCL_IS_SYMBOL(hcl, op))*/
 				{
 					hcl_seterrbfmt (hcl, HCL_ECALL, "unable to send %O to %O - invalid message", op, rcv); /* TODO: change to HCL_ESEND?? */
 					goto cannot_send;
@@ -4073,7 +4071,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				{
 					if (send_message(hcl, rcv, op, ((bcode >> 2) & 1) /* to_super */, b1 /* nargs */, b2 /* nrvars */) <= -1) 
 					{
-						const hcl_ooch_t* msg = hcl_backuperrmsg (hcl);
+						const hcl_ooch_t* msg = hcl_backuperrmsg(hcl);
 						hcl_seterrbfmt (hcl, HCL_ECALL, "unable to send %O to %O - %js", op, rcv, msg); /* TODO: change to HCL_ESEND?? */
 						goto cannot_send;
 					}
@@ -4083,7 +4081,6 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				{
 					hcl_seterrbfmt (hcl, HCL_ECALL, "unable to send %O to %O - invalid receiver", op, rcv); /* TODO: change to HCL_ESEND?? */
 				cannot_send:
-					//HCL_STACK_POPS (hcl, b1 + 2); /* pop the receiver, message, and arguments as the call fails. TODO: check if this clearing is correct */
 					if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
 					goto oops_with_errmsg_supplement;
 				}
@@ -4561,11 +4558,12 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				FETCH_PARAM_CODE_TO (hcl, b4);
 
 				b1 = (b1 << (8 * HCL_CODE_LONG_PARAM_SIZE)) | b2;
-				LOG_INST_6 (hcl, "make_function %zu %zu %zu %zu %zu %zu", 
-					GET_BLKTMPR_MASK_VA(b1),
-					GET_BLKTMPR_MASK_NARGS(b1),
-					GET_BLKTMPR_MASK_NRVARS(b1),
-					GET_BLKTMPR_MASK_NLVARS(b1),
+				LOG_INST_7 (hcl, "make_function %zu %zu %zu %zu %zu %zu %zu", 
+					GET_BLK_MASK_INSTA(b1),
+					GET_BLK_MASK_VA(b1),
+					GET_BLK_MASK_NARGS(b1),
+					GET_BLK_MASK_NRVARS(b1),
+					GET_BLK_MASK_NLVARS(b1),
 					b3, b4);
 
 				HCL_ASSERT (hcl, b1 >= 0);
@@ -4603,11 +4601,12 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				FETCH_PARAM_CODE_TO (hcl, b2);
 				b1 = (b1 << (8 * HCL_CODE_LONG_PARAM_SIZE)) | b2;
-				LOG_INST_4 (hcl, "make_block %zu %zu %zu %zu", 
-					GET_BLKTMPR_MASK_VA(b1),
-					GET_BLKTMPR_MASK_NARGS(b1),
-					GET_BLKTMPR_MASK_NRVARS(b1),
-					GET_BLKTMPR_MASK_NLVARS(b1));
+				LOG_INST_5 (hcl, "make_block %zu %zu %zu %zu %zu", 
+					GET_BLK_MASK_INSTA(b1),
+					GET_BLK_MASK_VA(b1),
+					GET_BLK_MASK_NARGS(b1),
+					GET_BLK_MASK_NRVARS(b1),
+					GET_BLK_MASK_NLVARS(b1));
 
 				HCL_ASSERT (hcl, b1 >= 0);
 
@@ -4697,7 +4696,7 @@ hcl_oop_t hcl_execute (hcl_t* hcl)
 	if (HCL_UNLIKELY(!funcobj)) return HCL_NULL;
 
 	/* pass nil for the home context of the initial function */
-	fill_function_data (hcl, funcobj, ENCODE_BLKTMPR_MASK(0,0,0,hcl->code.ngtmprs), (hcl_oop_context_t)hcl->_nil, hcl->code.lit.arr->slot, hcl->code.lit.len);
+	fill_function_data (hcl, funcobj, ENCODE_BLK_MASK(0,0,0,0,hcl->code.ngtmprs), (hcl_oop_context_t)hcl->_nil, hcl->code.lit.arr->slot, hcl->code.lit.len);
 
 	hcl->initial_function = funcobj; /* the initial function is ready */
 

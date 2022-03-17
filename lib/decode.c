@@ -35,6 +35,7 @@
 #define LOG_INST_4(hcl,fmt,a1,a2,a3,a4) HCL_LOG5(hcl, DECODE_LOG_MASK, " %06zd " fmt "\n", fetched_instruction_pointer, a1, a2, a3, a4)
 #define LOG_INST_5(hcl,fmt,a1,a2,a3,a4,a5) HCL_LOG6(hcl, DECODE_LOG_MASK, " %06zd " fmt "\n", fetched_instruction_pointer, a1, a2, a3, a4, a5)
 #define LOG_INST_6(hcl,fmt,a1,a2,a3,a4,a5,a6) HCL_LOG7(hcl, DECODE_LOG_MASK, " %06zd " fmt "\n", fetched_instruction_pointer, a1, a2, a3, a4, a5, a6)
+#define LOG_INST_7(hcl,fmt,a1,a2,a3,a4,a5,a6,a7) HCL_LOG8(hcl, DECODE_LOG_MASK, " %06zd " fmt "\n", fetched_instruction_pointer, a1, a2, a3, a4, a5, a6, a7)
 
 
 #define FETCH_BYTE_CODE(hcl) (cdptr[ip++])
@@ -391,6 +392,11 @@ int hcl_decode (hcl_t* hcl, hcl_oow_t start, hcl_oow_t end)
 				LOG_INST_1 (hcl, "class_cmstore %zu", b1);
 				break;
 
+			case HCL_CODE_CLASS_CIMSTORE:
+				FETCH_PARAM_CODE_TO (hcl, b1);
+				LOG_INST_1 (hcl, "class_cimstore %zu", b1);
+				break;
+
 			case HCL_CODE_CLASS_IMSTORE:
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				LOG_INST_1 (hcl, "class_imstore %zu", b1);
@@ -678,8 +684,8 @@ int hcl_decode (hcl_t* hcl, hcl_oow_t start, hcl_oow_t end)
 			case HCL_CODE_MAKE_FUNCTION:
 			{
 				hcl_oow_t b3, b4;
-				/* b1 - block temporaries mask 
-				 * b2 - block temporaries mask
+				/* b1 - block mask 
+				 * b2 - block mask
 				 * b3 - base literal frame start
 				 * b4 - base literal frame end */
 				FETCH_PARAM_CODE_TO (hcl, b1);
@@ -688,11 +694,12 @@ int hcl_decode (hcl_t* hcl, hcl_oow_t start, hcl_oow_t end)
 				FETCH_PARAM_CODE_TO (hcl, b4);
 
 				b1 = (b1 << (8 * HCL_CODE_LONG_PARAM_SIZE)) | b2;
-				LOG_INST_6 (hcl, "make_function %zu %zu %zu %zu %zu %zu", 
-					GET_BLKTMPR_MASK_VA(b1),
-					GET_BLKTMPR_MASK_NARGS(b1),
-					GET_BLKTMPR_MASK_NRVARS(b1),
-					GET_BLKTMPR_MASK_NLVARS(b1),
+				LOG_INST_7 (hcl, "make_function %zu %zu %zu %zu %zu %zu %zu", 
+					GET_BLK_MASK_INSTA(b1),
+					GET_BLK_MASK_VA(b1),
+					GET_BLK_MASK_NARGS(b1),
+					GET_BLK_MASK_NRVARS(b1),
+					GET_BLK_MASK_NLVARS(b1),
 					b3, b4);
 
 				HCL_ASSERT (hcl, b1 >= 0);
@@ -700,17 +707,18 @@ int hcl_decode (hcl_t* hcl, hcl_oow_t start, hcl_oow_t end)
 			}
 
 			case HCL_CODE_MAKE_BLOCK:
-				/* b1 - block temporaries mask
-				 * b2 - block temporaries mask */
+				/* b1 - block mask
+				 * b2 - block mask */
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				FETCH_PARAM_CODE_TO (hcl, b2);
 				b1 = (b1 << (8 * HCL_CODE_LONG_PARAM_SIZE)) | b2;
 
-				LOG_INST_4 (hcl, "make_block %zu %zu %zu %zu", 
-					GET_BLKTMPR_MASK_VA(b1),
-					GET_BLKTMPR_MASK_NARGS(b1),
-					GET_BLKTMPR_MASK_NRVARS(b1),
-					GET_BLKTMPR_MASK_NLVARS(b1));
+				LOG_INST_5 (hcl, "make_block %zu %zu %zu %zu %zu", 
+					GET_BLK_MASK_INSTA(b1),
+					GET_BLK_MASK_VA(b1),
+					GET_BLK_MASK_NARGS(b1),
+					GET_BLK_MASK_NRVARS(b1),
+					GET_BLK_MASK_NLVARS(b1));
 
 				HCL_ASSERT (hcl, b1 >= 0);
 				break;
