@@ -579,13 +579,13 @@ struct hcl_compiler_t
 /* hcl_context_t, hcl_block_t, hcl_function_t stores the local variable information
  * 
  * Use up to 29 bits in a 32-bit hcl_ooi_t. Exclude the tag bit and the sign bit.
- * | SIGN | VA | NARGS | NRVARS | NLVARS | TAG |
- *     1    1     8       8        12        2    <= 32
+ * | SIGN | INSTA | VA | NARGS | NRVARS | NLVARS | TAG |
+ *     1            1     8       8        11        2    <= 32
  * -----------------------------------------------------------
  * Parameters to the MAKE_BLOCK or MAKE_FUNCTION instructions
- *  | VA | NARGS | NRVARS | NLVARS 
- *    1      4      4        7         <= 16 (HCL_CODE_LONG_PARAM_SIZE 1, two params)
- *    1      8      8        12        <= 32 (HCL_CODE_LONG_PARAM_SIZE 2, two params, use 29 bits to avoid collection when converted to a smooi)
+ *  | INSTA | VA | NARGS | NRVARS | NLVARS 
+ *    1       1      4      4        6         <= 16 (HCL_CODE_LONG_PARAM_SIZE 1, two params)
+ *    1       1      8      8        11        <= 32 (HCL_CODE_LONG_PARAM_SIZE 2, two params, use 29 bits to avoid collection when converted to a smooi)
  *
  *
  * NARGS and NRVARS are also used for the CALL and CALL2 instructions.
@@ -615,14 +615,14 @@ struct hcl_compiler_t
 
 #	define MAX_CODE_NBLKARGS            (0xFFu) /* 255, 8 bits */
 #	define MAX_CODE_NBLKRVARS           (0xFFu) /* 255, 8 bits */
-#	define MAX_CODE_NBLKLVARS           (0xFFFu) /* 4095, 12 bits */
+#	define MAX_CODE_NBLKLVARS           (0x7FFu) /* 2047, 11 bits */
 #	define ENCODE_BLK_MASK(insta,va,nargs,nrvars,nlvars) \
-		((((insta) & 0x1) << 29) | (((va) & 0x1) << 28) | (((nargs) & 0xFF) << 20) | (((nrvars) & 0xFF) << 12) | (((nlvars) & 0xFFF)))
-#	define GET_BLK_MASK_INSTA(x) (((x) >> 29) & 0x1)
-#	define GET_BLK_MASK_VA(x) (((x) >> 28) & 0x1)
-#	define GET_BLK_MASK_NARGS(x) (((x) >> 20) & 0xFF)
-#	define GET_BLK_MASK_NRVARS(x) (((x) >> 12) & 0xFF)
-#	define GET_BLK_MASK_NLVARS(x) ((x) & 0xFFF)
+		((((insta) & 0x1) << 28) | (((va) & 0x1) << 27) | (((nargs) & 0xFF) << 19) | (((nrvars) & 0xFF) << 11) | (((nlvars) & 0x7FF)))
+#	define GET_BLK_MASK_INSTA(x) (((x) >> 28) & 0x1)
+#	define GET_BLK_MASK_VA(x) (((x) >> 27) & 0x1)
+#	define GET_BLK_MASK_NARGS(x) (((x) >> 19) & 0xFF)
+#	define GET_BLK_MASK_NRVARS(x) (((x) >> 11) & 0xFF)
+#	define GET_BLK_MASK_NLVARS(x) ((x) & 0x7FF)
 	
 #	define MAX_CODE_JUMP                (0xFFFFu)
 #	define MAX_CODE_PARAM               (0xFFFFu)
