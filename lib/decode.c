@@ -81,6 +81,12 @@ int hcl_decode (hcl_t* hcl, hcl_oow_t start, hcl_oow_t end)
 
 		switch (bcode)
 		{
+			/* -------------------------------------------------------- */
+			case HCL_CODE_PLUS:
+				LOG_INST_0 (hcl, "plus");
+				break;
+
+			/* -------------------------------------------------------- */
 			case HCL_CODE_PUSH_IVAR_X:
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				goto push_ivar;

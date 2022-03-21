@@ -1543,6 +1543,7 @@ struct hcl_t
 	hcl_oop_t _if;     /* symbol */
 	hcl_oop_t _lambda; /* symbol */
 	hcl_oop_t _or;     /* symbol */
+	hcl_oop_t _plus;     /* symbol */
 	hcl_oop_t _return; /* symbol */
 	hcl_oop_t _return_from_home; /* symbol */
 	hcl_oop_t _set;    /* symbol */
@@ -1847,6 +1848,7 @@ enum hcl_syncode_t
 	HCL_SYNCODE_IF,
 	HCL_SYNCODE_LAMBDA,
 	HCL_SYNCODE_OR,
+	HCL_SYNCODE_PLUS,
 	HCL_SYNCODE_RETURN,
 	HCL_SYNCODE_RETURN_FROM_HOME,
 	HCL_SYNCODE_SET,

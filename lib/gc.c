@@ -51,6 +51,7 @@ static struct
 	{  2, { 'i','f' },                          HCL_SYNCODE_IF,        HCL_OFFSETOF(hcl_t,_if)     },
 	{  6, { 'l','a','m','b','d','a' },          HCL_SYNCODE_LAMBDA,    HCL_OFFSETOF(hcl_t,_lambda) },
 	{  2, { 'o','r' },                          HCL_SYNCODE_OR,        HCL_OFFSETOF(hcl_t,_or)  },
+	{  4, { 'p','l','u','s' },                  HCL_SYNCODE_PLUS,      HCL_OFFSETOF(hcl_t,_plus)   },
 	{  6, { 'r','e','t','u','r','n'},           HCL_SYNCODE_RETURN,    HCL_OFFSETOF(hcl_t,_return) },
 	{ 16, { 'r','e','t','u','r','n','-','f','r','o','m','-','h','o','m','e'},
 	                                            HCL_SYNCODE_RETURN_FROM_HOME,  HCL_OFFSETOF(hcl_t,_return_from_home) },

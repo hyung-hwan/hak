@@ -1307,6 +1307,7 @@ enum
 	COP_EMIT_POP_INTO_CONS_CDR,
 
 	COP_EMIT_LAMBDA,
+	COP_EMIT_PLUS,
 	COP_EMIT_POP_STACKTOP,
 	COP_EMIT_RETURN,
 	COP_EMIT_SET,
@@ -1516,6 +1517,75 @@ static HCL_INLINE int compile_or_p2 (hcl_t* hcl)
 	patch_long_jump (hcl, jip, jump_offset);
 
 	POP_CFRAME(hcl);
+	return 0;
+}
+
+/* ========================================================================= */
+
+
+/* EXPERIMENT WITH BINOP */
+static int compile_plus (hcl_t* hcl, hcl_cnode_t* src)
+{
+	hcl_cnode_t* obj, * expr;
+
+	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
+	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_PLUS));
+
+	obj = HCL_CNODE_CONS_CDR(src);
+
+	if (!obj)
+	{
+		/* no value */
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGCOUNT, HCL_CNODE_GET_LOC(src), HCL_NULL, "no expression specified in plus");
+		return -1;
+	}
+	else if (!HCL_CNODE_IS_CONS(obj))
+	{
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(obj), HCL_CNODE_GET_TOK(obj), "redundant cdr in plus");
+		return -1;
+	}
+
+	expr = HCL_CNODE_CONS_CAR(obj);
+	obj = HCL_CNODE_CONS_CDR(obj);
+
+	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, expr); /* 1 */
+
+	if (!obj)
+	{
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGCOUNT, HCL_CNODE_GET_LOC(src), HCL_NULL, "no second expression specified in plus");
+		return -1;
+	}
+	else if (!HCL_CNODE_IS_CONS(obj))
+	{
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(obj), HCL_CNODE_GET_TOK(obj), "redundant cdr in plus");
+		return -1;
+	}
+
+	expr = HCL_CNODE_CONS_CAR(obj);
+	obj = HCL_CNODE_CONS_CDR(obj);
+
+	if (obj)
+	{
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(obj), HCL_CNODE_GET_TOK(obj), "redundant cdr in plus");
+		return -1;
+	}
+
+/* TODO: more check on obj */
+	PUSH_SUBCFRAME (hcl, COP_EMIT_PLUS, src); /* 3 */
+	PUSH_SUBCFRAME (hcl, COP_COMPILE_OBJECT, expr); /* 2 */
+	return 0;
+}
+
+static HCL_INLINE int emit_plus (hcl_t* hcl)
+{
+	hcl_cframe_t* cf;
+
+	cf = GET_TOP_CFRAME(hcl);
+	HCL_ASSERT (hcl, cf->opcode == COP_EMIT_PLUS);
+
+	if (emit_byte_instruction(hcl, HCL_CODE_PLUS, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+
+	POP_CFRAME (hcl);
 	return 0;
 }
 
@@ -1924,11 +1994,11 @@ static int collect_vardcl (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t** nextobj, 
 
 	hcl_oow_t ndcls = 0;
 	hcl_cnode_t* dcl;
+	hcl_cnode_t* var;
 
 	dcl = HCL_CNODE_CONS_CAR(obj);
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS_CONCODED(dcl, HCL_CONCODE_VLIST));
 
-	hcl_cnode_t* var;
 	do
 	{
 		var = HCL_CNODE_CONS_CAR(dcl);
@@ -3396,6 +3466,10 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 
 			case HCL_SYNCODE_OR:
 				if (compile_or(hcl, obj) <= -1) return -1;
+				break;
+
+			case HCL_SYNCODE_PLUS:
+				if (compile_plus(hcl, obj) <= -1) return -1;
 				break;
 
 			case HCL_SYNCODE_SET:
@@ -5302,6 +5376,10 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 
 			case COP_EMIT_LAMBDA:
 				if (emit_lambda(hcl) <= -1) goto oops;
+				break;
+
+			case COP_EMIT_PLUS:
+				if (emit_plus(hcl) <= -1) goto oops;
 				break;
 
 			case COP_EMIT_POP_STACKTOP:

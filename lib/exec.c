@@ -3312,8 +3312,25 @@ static int execute (hcl_t* hcl)
 
 		switch (bcode)
 		{
-			/* ------------------------------------------------- */
+			/* -------------------------------------------------------- */
+			case HCL_CODE_PLUS:
+			{
+				/* TODO: support other binary arithmetic operators */
+				hcl_oop_t x1, x2, x3;
+				LOG_INST_0 (hcl, "plus");
+				x2 = HCL_STACK_GETTOP(hcl); HCL_STACK_POP (hcl);
+				x1 = HCL_STACK_GETTOP(hcl); HCL_STACK_POP(hcl);
+				x3 = hcl_addnums(hcl, x1, x2);
+				if (HCL_UNLIKELY(!x3)) 
+				{
+					if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
+					goto oops_with_errmsg_supplement;
+				}
+				HCL_STACK_PUSH(hcl, x3);
+				break;
+			}
 
+			/* ------------------------------------------------- */
 			case HCL_CODE_PUSH_IVAR_X:
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				goto push_ivar;

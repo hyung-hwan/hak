@@ -873,7 +873,7 @@ enum hcl_bcode_t
 	HCL_CODE_PUSH_FALSE               = 0x84, /* 132 */
 	HCL_CODE_PUSH_CONTEXT             = 0x85, /* 133 */
 	HCL_CODE_PUSH_PROCESS             = 0x86, /* 134 */
-	/* UNUSED 135 */
+	/* UNUSED 0x87 */
 
 	HCL_CODE_POP_INTO_IVAR_X          = 0x88, /* 136 ## */
 
@@ -894,7 +894,8 @@ enum hcl_bcode_t
 	HCL_CODE_PUSH_NEGINTLIT           = 0xB3, /* 179 */
 	HCL_CODE_PUSH_CHARLIT             = 0xB4, /* 180 */
 
-	/* UNUSED - 0xB5 - 0xB7 */
+	HCL_CODE_PLUS = 0xB5, /* 181 TOOD: move it to a lower code number later after killing OBJVAR instructions */
+	/* UNUSED - 0xB6 - 0xB7 */
 
 	HCL_CODE_STORE_INTO_OBJECT_X      = 0xB8, /* 184 ## */
 	HCL_CODE_POP_INTO_OBJECT_X        = 0xBC, /* 188 ## */
