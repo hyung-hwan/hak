@@ -85,8 +85,40 @@ send the message dump to the object pointed to by x with arguments 1, 2, 3.
 ## method types
 
 - class method
+
+
 - class instantiation method
+
+	(defclass P
+		| x y |
+		(defun ::* new ()
+			(set x 1)	
+			(set y 1)	
+			(return self)
+		)
+		(defun get-x() x)
+		(defun get-y() y)
+	)
+	(defclass X ::: P
+		| x y |
+		(defun ::* new (a b)
+			(:super new)
+			x = a
+			y = b
+			(return self)
+		)
+		(defun get-xx() x)
+		(defun get-yy() y)
+	)
+
+	(set t (:X new 10 20)) ;t is an instance of X
+	(printf "%d %d %d %d\n" (:t get-x) (:t get-y) (:t get-xx) (:t get-yy)) ; must print 1 1 10 20
+	(:t new 100 300)  ;the x, y in the X part get reset to 100 and 300. doesn't create a new instance
+	(printf "%d %d %d %d\n" (:t get-x) (:t get-y) (:t get-xx) (:t get-yy)) ; must print 1 1 100 300
+
 - instance method
+
+
 
 ## dynamic dispatching by method name
 	(defclass X
