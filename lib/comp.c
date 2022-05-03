@@ -207,9 +207,16 @@ static int kill_temporary_variables (hcl_t* hcl, hcl_oow_t start_wpos, hcl_oow_t
 	/* this function doesn't remove the added temporary variable nor does it lower the word count.
 	 * it simply changes a word at the given postion to some garbage characters so that
 	 * the variable can't be found in the search */
+	hcl_oow_t i;
 
-/* TODO: .... */
-	 return 0;
+	for (i = start_wpos; i < end_wpos; i++)
+	{
+		if (hcl->c->tv.s.ptr[i] != ' ')
+		{
+			hcl->c->tv.s.ptr[i] = '('; /* HACK!! put a special character which can't form a variable name */
+		}
+	}
+	return 0;
 }
 
 static void kill_temporary_variable_at_offset (hcl_t* hcl, hcl_oow_t offset)
@@ -1096,6 +1103,8 @@ static void pop_fnblk (hcl_t* hcl)
 	
 	if (hcl->c->fnblk.depth >= 0)
 	{
+		/* restore the string length and the word count to the values captured
+		 * at the previous level */
 		hcl->c->tv.s.len = hcl->c->fnblk.info[hcl->c->fnblk.depth].tmprlen;
 		hcl->c->tv.wcount = hcl->c->fnblk.info[hcl->c->fnblk.depth].tmprcnt;
 	}
@@ -1256,6 +1265,111 @@ static HCL_INLINE hcl_cframe_t* find_cframe_from_top (hcl_t* hcl, int opcode)
 
 #define GET_SUBCFRAME(hcl) (&hcl->c->cfs.ptr[hcl->c->cfs.top - 1])
 
+/* ========================================================================= */
+
+static int collect_vardcl (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t** nextobj, hcl_oow_t tv_dup_check_start, hcl_oow_t* nvardcls, const hcl_bch_t* desc)
+{
+	/* process a single variable declaration list */
+
+	hcl_oow_t ndcls = 0;
+	hcl_oow_t old_wcount = hcl->c->tv.wcount;
+	hcl_cnode_t* dcl;
+	hcl_cnode_t* var;
+
+	dcl = HCL_CNODE_CONS_CAR(obj);
+	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS_CONCODED(dcl, HCL_CONCODE_VLIST));
+
+	do
+	{
+		var = HCL_CNODE_CONS_CAR(dcl);
+	#if 0
+		if (!HCL_CNODE_IS_SYMBOL(var))
+		{
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAME, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "local variable not a symbol");
+			return -1;
+		}
+
+		if (HCL_CNODE_IS_SYMBOL(var) && HCL_CNODE_SYMBOL_SYNCODE(var) /* || HCL_OBJ_GET_FLAGS_KERNEL(var) >= 2 */)
+		{
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDARGNAME, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "special symbol not to be declared as a local variable");
+			return -1;
+		}
+	#else
+		/* the above checks are not needed as the reader guarantees the followings */
+		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_PLAIN(var));
+	#endif
+
+		if (add_temporary_variable(hcl, HCL_CNODE_GET_TOK(var), tv_dup_check_start) <= -1) 
+		{
+			if (hcl->errnum == HCL_EEXIST)
+			{
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMEDUP, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "duplicate %hs variable", desc);
+			}
+			return -1;
+		}
+		ndcls++;
+
+		dcl = HCL_CNODE_CONS_CDR(dcl);
+		if (!dcl) break;
+
+		if (!HCL_CNODE_IS_CONS(dcl)) 
+		{
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(dcl), HCL_CNODE_GET_TOK(dcl), "redundant cdr in %hs variable list", desc);
+			return -1;
+		}
+	}
+	while (1);
+
+	HCL_ASSERT (hcl, ndcls == hcl->c->tv.wcount - old_wcount);
+	*nextobj = HCL_CNODE_CONS_CDR(obj);
+	*nvardcls = ndcls;
+
+	return 0;
+}
+
+static int collect_vardcls (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t** nextobj, hcl_oow_t tv_dup_check_start, hcl_oow_t* nvardcls, const hcl_bch_t* desc)
+{
+	/* process zero or more variable declaration lists in a row */
+
+	hcl_oow_t ndcls = 0;
+	hcl_oow_t old_wcount = hcl->c->tv.wcount;
+
+	while (obj && HCL_CNODE_IS_CONS(obj))
+	{
+		hcl_cnode_t* dcl;
+		hcl_oow_t dclcount;
+
+		dcl = HCL_CNODE_CONS_CAR(obj);
+		if (!HCL_CNODE_IS_CONS_CONCODED(dcl, HCL_CONCODE_VLIST)) break;
+
+		if (collect_vardcl(hcl, obj, &obj, tv_dup_check_start, &dclcount, desc) <= -1) return -1;
+		ndcls += dclcount;
+	}
+
+	HCL_ASSERT (hcl, ndcls == hcl->c->tv.wcount - old_wcount);
+	*nvardcls = ndcls;
+	*nextobj = obj;
+	return 0;
+}
+
+static int check_if_plain_cnode (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t* prev, hcl_cnode_t* container, hcl_synerrnum_t errnum, const hcl_bch_t* bname)
+{
+	if (!obj)
+	{
+		hcl_setsynerrbfmt (hcl, errnum, HCL_CNODE_GET_LOC(prev), HCL_NULL, "no %hs in %.*js", bname, HCL_CNODE_GET_TOKLEN(container), HCL_CNODE_GET_TOKPTR(container));
+		return -1;
+	}
+	else if (!HCL_CNODE_IS_CONS(obj))
+	{
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(prev), HCL_CNODE_GET_TOK(obj), "redundant cdr where %.*js is expected in %.*js", bname, HCL_CNODE_GET_TOKLEN(container), HCL_CNODE_GET_TOKPTR(container));
+		return -1;
+	}
+
+	return 0;
+}
+
+/* ========================================================================= */
+
 enum 
 {
 	COP_COMPILE_OBJECT,
@@ -1282,6 +1396,8 @@ enum
 	COP_COMPILE_AND_P2,
 
 	COP_COMPILE_BREAK_P1,
+
+	COP_COMPILE_DO_P1,
 
 	COP_COMPILE_OR_P1,
 	COP_COMPILE_OR_P2,
@@ -1328,7 +1444,6 @@ enum
 	COP_POST_CATCH, 
 
 	COP_POST_LAMBDA,
-
 };
 
 /* ========================================================================= */
@@ -1779,7 +1894,11 @@ inside_loop:
 
 static int compile_do (hcl_t* hcl, hcl_cnode_t* src)
 {
-	hcl_cnode_t* cmd, * obj;
+	hcl_cnode_t* cmd, * obj, * tmp;
+	hcl_oow_t nlvars, tvslen;
+	hcl_fnblk_info_t* fbi;
+	hcl_cframe_t* cf;
+
 
 	/* (do 
 	 *   (+ 10 20)
@@ -1807,7 +1926,37 @@ static int compile_do (hcl_t* hcl, hcl_cnode_t* src)
 		return -1;
 	}
 
-	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_LIST, obj); 
+	tmp = obj;
+	tvslen = hcl->c->tv.s.len;
+	if (collect_vardcls(hcl, obj, &obj, tvslen, &nlvars, "do") <= -1) return -1;
+
+	if (nlvars > MAX_CODE_NBLKLVARS)
+	{
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARFLOOD, HCL_CNODE_GET_LOC(tmp), HCL_NULL, "too many(%zu) variables in %.*js", nlvars, HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd)); 
+		return -1;
+	}
+
+	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
+	fbi->tmprlen = hcl->c->tv.s.len;
+	fbi->tmprcnt = hcl->c->tv.wcount;
+	fbi->tmpr_nlvars = fbi->tmpr_nlvars + nlvars;
+
+	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_LIST, obj);  /* 1 */
+
+	PUSH_SUBCFRAME (hcl, COP_COMPILE_DO_P1, src); /* 2 */
+	cf = GET_SUBCFRAME(hcl);
+	cf->u.post_do.lvar_start = tvslen;
+	cf->u.post_do.lvar_end = fbi->tmprlen;
+
+	return 0;
+}
+
+static int compile_do_p1 (hcl_t* hcl)
+{
+	hcl_cframe_t* cf;
+	cf = GET_TOP_CFRAME(hcl);
+	kill_temporary_variables (hcl, cf->u.post_do.lvar_start, cf->u.post_do.lvar_end);
+	POP_CFRAME (hcl);
 	return 0;
 }
 
@@ -1987,102 +2136,6 @@ static HCL_INLINE int compile_else (hcl_t* hcl)
 }
 
 /* ========================================================================= */
-
-static int collect_vardcl (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t** nextobj, hcl_oow_t tv_dup_check_start, hcl_oow_t* nvardcls, const hcl_bch_t* desc)
-{
-	/* process a single variable declaration list */
-
-	hcl_oow_t ndcls = 0;
-	hcl_cnode_t* dcl;
-	hcl_cnode_t* var;
-
-	dcl = HCL_CNODE_CONS_CAR(obj);
-	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS_CONCODED(dcl, HCL_CONCODE_VLIST));
-
-	do
-	{
-		var = HCL_CNODE_CONS_CAR(dcl);
-	#if 0
-		if (!HCL_CNODE_IS_SYMBOL(var))
-		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAME, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "local variable not a symbol");
-			return -1;
-		}
-
-		if (HCL_CNODE_IS_SYMBOL(var) && HCL_CNODE_SYMBOL_SYNCODE(var) /* || HCL_OBJ_GET_FLAGS_KERNEL(var) >= 2 */)
-		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDARGNAME, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "special symbol not to be declared as a local variable");
-			return -1;
-		}
-	#else
-		/* the above checks are not needed as the reader guarantees the followings */
-		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_PLAIN(var));
-	#endif
-
-		if (add_temporary_variable(hcl, HCL_CNODE_GET_TOK(var), tv_dup_check_start) <= -1) 
-		{
-			if (hcl->errnum == HCL_EEXIST)
-			{
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMEDUP, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "duplicate %hs variable", desc);
-			}
-			return -1;
-		}
-		ndcls++;
-
-		dcl = HCL_CNODE_CONS_CDR(dcl);
-		if (!dcl) break;
-
-		if (!HCL_CNODE_IS_CONS(dcl)) 
-		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(dcl), HCL_CNODE_GET_TOK(dcl), "redundant cdr in %hs variable list", desc);
-			return -1;
-		}
-	}
-	while (1);
-
-	*nextobj = HCL_CNODE_CONS_CDR(obj);
-	*nvardcls = ndcls;
-	return 0;
-}
-
-static int collect_vardcls (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t** nextobj, hcl_oow_t tv_dup_check_start, hcl_oow_t* nvardcls, const hcl_bch_t* desc)
-{
-	/* process zero or more variable declaration lists in a row */
-
-	hcl_oow_t ndcls = 0;
-
-	while (obj && HCL_CNODE_IS_CONS(obj))
-	{
-		hcl_cnode_t* dcl;
-		hcl_oow_t dclcount;
-
-		dcl = HCL_CNODE_CONS_CAR(obj);
-		if (!HCL_CNODE_IS_CONS_CONCODED(dcl, HCL_CONCODE_VLIST)) break;
-
-		if (collect_vardcl(hcl, obj, &obj, tv_dup_check_start, &dclcount, desc) <= -1) return -1;
-		ndcls += dclcount;
-	}
-
-	*nvardcls = ndcls;
-	*nextobj = obj;
-	return 0;
-}
-
-static int check_if_plain_cnode (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t* prev, hcl_cnode_t* container, hcl_synerrnum_t errnum, const hcl_bch_t* bname)
-{
-	if (!obj)
-	{
-		hcl_setsynerrbfmt (hcl, errnum, HCL_CNODE_GET_LOC(prev), HCL_NULL, "no %hs in %.*js", bname, HCL_CNODE_GET_TOKLEN(container), HCL_CNODE_GET_TOKPTR(container));
-		return -1;
-	}
-	else if (!HCL_CNODE_IS_CONS(obj))
-	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(prev), HCL_CNODE_GET_TOK(obj), "redundant cdr where %.*js is expected in %.*js", bname, HCL_CNODE_GET_TOKLEN(container), HCL_CNODE_GET_TOKPTR(container));
-		return -1;
-	}
-
-	return 0;
-}
 
 /*
 	(defclass A
@@ -5308,6 +5361,10 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 
 			case COP_COMPILE_CLASS_P3:
 				if (compile_class_p3(hcl) <= -1) goto oops;
+				break;
+
+			case COP_COMPILE_DO_P1:
+				if (compile_do_p1(hcl) <= -1) goto oops;
 				break;
 
 			case COP_COMPILE_OR_P1:

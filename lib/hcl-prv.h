@@ -372,6 +372,12 @@ struct hcl_cframe_t
 			hcl_oow_t exarg_offset;
 		} post_catch;
 
+		struct
+		{
+			hcl_oow_t lvar_start;
+			hcl_oow_t lvar_end;
+		} post_do;
+
 		/* COP_COMPILE_ARRAY_LIST, COP_POP_INTO_ARRAY, COP_EMIT_MAKE_ARRAY */
 		struct
 		{
