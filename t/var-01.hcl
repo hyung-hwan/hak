@@ -63,3 +63,30 @@
 ) 
 
 (x)
+
+
+(defclass T
+	| j |
+
+	(defun ::* new()
+		(set j 99)
+		(return self)
+	)
+
+	(defun x()
+		(do 
+			| x |
+			(set x 1)
+			(while (< x j)
+				(defun Q() x)
+				(set x (+ x 1))
+			)
+		}
+	)
+)
+
+(set t (:T new))
+(:t x)
+(set t (Q))
+(if (/= t 99) (print "ERROR: t is not 99\n")
+ else (printf "OK: %d\n" t))

@@ -465,7 +465,8 @@ check_SCRIPTS = \
 	insta-01.hcl \
 	insta-02.hcl \
 	ret-01.hcl \
-	retvar-01.hcl
+	retvar-01.hcl \
+	var-01.hcl 
 
 EXTRA_DIST = $(check_SCRIPTS)
 TEST_EXTENSIONS = .hcl
@@ -838,7 +839,6 @@ uninstall-am:
 
 .PRECIOUS: Makefile
 
-	var-01.hcl 
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

@@ -12,6 +12,7 @@ A HCL program is composed of expressions.
 ## Special Form Expression
 * and
 * break
+* defclass
 * defun
 * do
 * elif
