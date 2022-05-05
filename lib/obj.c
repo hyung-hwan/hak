@@ -257,6 +257,10 @@ hcl_oop_t hcl_allocwordobj (hcl_t* hcl, int brand, const hcl_oow_t* ptr, hcl_oow
  * COMMON OBJECTS
  * ------------------------------------------------------------------------ */
 
+hcl_oop_t hcl_makeundef (hcl_t* hcl)
+{
+	return hcl_allocoopobj(hcl, HCL_BRAND_UNDEF, 0);
+}
 
 hcl_oop_t hcl_makenil (hcl_t* hcl)
 {

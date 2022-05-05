@@ -3220,7 +3220,7 @@ static HCL_INLINE int compile_catch (hcl_t* hcl)
 
 static HCL_INLINE int post_try (hcl_t* hcl)
 {
-/* TODO: */
+/* TODO: anything else? */
 	pop_cblk (hcl);
 	POP_CFRAME (hcl);
 	return 0;
@@ -3810,7 +3810,7 @@ static HCL_INLINE int compile_symbol (hcl_t* hcl, hcl_cnode_t* obj)
 		cons = (hcl_oop_t)hcl_getatsysdic(hcl, sym);
 		if (!cons) 
 		{
-			cons = (hcl_oop_t)hcl_putatsysdic(hcl, sym, hcl->_nil);
+			cons = (hcl_oop_t)hcl_putatsysdic(hcl, sym, hcl->_undef);
 			if (HCL_UNLIKELY(!cons)) return -1;
 		}
 

@@ -583,6 +583,7 @@ void hcl_gc (hcl_t* hcl)
 	old_nil = hcl->_nil;
 
 	/* move _nil and the root object table */
+	hcl->_undef = hcl_moveoop(hcl, hcl->_undef);
 	hcl->_nil = hcl_moveoop(hcl, hcl->_nil);
 	hcl->_true = hcl_moveoop(hcl, hcl->_true);
 	hcl->_false = hcl_moveoop(hcl, hcl->_false);
@@ -764,6 +765,12 @@ int hcl_ignite (hcl_t* hcl, hcl_oow_t heapsize)
 	{
 		hcl->heap = hcl_makeheap(hcl, heapsize);
 		if (HCL_UNLIKELY(!hcl->heap)) return -1;
+	}
+
+	if (!hcl->_undef)
+	{
+		hcl->_undef = hcl_makeundef(hcl);
+		if (HCL_UNLIKELY(!hcl->_undef)) return -1;
 	}
 
 	if (!hcl->_nil) 

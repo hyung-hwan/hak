@@ -1,0 +1,65 @@
+(defun x (a b ::: r)
+	
+	| x y |
+
+	(set x a)
+	(set y b)
+
+	(if (> a b)
+		(do
+			| a b |
+			(set a (mod x y))
+			(set b (+ x y))
+			(set r (* a b))
+		)
+	else
+		(do
+
+			| a b |
+			(set a (* x y))
+			(set b (- x y))
+			(set r (* a b))
+		)
+	)
+
+	(if (/= x a) (printf "ERROR: x is not equal to a\n"))
+	(if (/= y b) (printf "ERROR: y is not equal to b\n"))
+)
+
+(set t (x 10 20))
+(if (/= t -2000) (printf "ERROR: t is not equal to -2000\n")
+ else (printf "OK: %d\n" t))
+(set t (x 30 20))
+(if (/= t 500) (printf "ERROR: t is not equal to 500\n")
+ else (printf "OK: %d\n" t))
+
+
+(defun x ()
+
+	(do
+		| x y |
+
+		(set x 99)
+		(try
+
+			(do
+				| x |
+				(set x 88)
+				(if (/= x 88) (printf "ERROR: x is not 88\n")
+		 	 	 else (printf "OK: %d\n" x))
+				(throw 1000)
+			)
+		catch (x)
+			(if (/= x 1000) (printf "ERROR: x is not 1000\n")
+		 	 else (printf "OK: %d\n" x))
+			(set y x)
+		)	
+
+		(if (/= x 99) (printf "ERROR: x is not 99\n")
+		 else (printf "OK: %d\n" x))
+		(if (/= y 1000) (print "ERROR: y is not 1000\n")
+		 else (printf "OK: %d\n" y))
+	)
+) 
+
+(x)

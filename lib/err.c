@@ -80,6 +80,7 @@ static hcl_ooch_t errstr_38[] = {'e','x','c','e','p','a','i','o','n',' ','n','o'
 static hcl_ooch_t errstr_39[] = {'s','t','a','c','k',' ','u','n','d','e','r','f','l','o','w','\0'};
 
 static hcl_ooch_t errstr_40[] = {'s','t','a','c','k',' ','o','v','e','r','f','l','o','w','\0'};
+static hcl_ooch_t errstr_41[] = {'u','n','d','e','f','i','n','e','d',' ','v','a','r','i','a','b','l','e',' ','a','c','c','e','s','s','\0'};
 
 static hcl_ooch_t* errstr[] =
 {
@@ -88,7 +89,7 @@ static hcl_ooch_t* errstr[] =
 	errstr_16, errstr_17, errstr_18, errstr_19, errstr_20, errstr_21, errstr_22, errstr_23,
 	errstr_24, errstr_25, errstr_26, errstr_27, errstr_28, errstr_29, errstr_30, errstr_31,
 	errstr_32, errstr_33, errstr_34, errstr_35, errstr_36, errstr_37, errstr_38, errstr_39,
-	errstr_40
+	errstr_40, errstr_41
 };
 
 

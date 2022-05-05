@@ -79,6 +79,7 @@ static HCL_INLINE void pop (hcl_t* hcl, print_stack_t* info)
 
 enum
 {
+	WORD_UNDEF,
 	WORD_NIL,
 	WORD_TRUE,
 	WORD_FALSE,
@@ -103,6 +104,7 @@ static struct
 	hcl_ooch_t ptr[20];
 } word[] =
 {
+	{  8,  { '#', '<', 'U', 'N', 'D', 'D', 'F', '>' } },
 	{  4,  { 'n', 'u', 'l', 'l' } },
 	{  4,  { 't', 'r', 'u', 'e' } },
 	{  5,  { 'f', 'a', 'l', 's', 'e' } },
@@ -264,6 +266,10 @@ next:
 			    hcl_bfmt_out(fmtout, "\'") <= -1) return -1;
 			goto done;
 		}
+
+		case HCL_BRAND_UNDEF:
+			word_index = WORD_UNDEF;
+			goto print_word;
 
 		case HCL_BRAND_NIL:
 			word_index = WORD_NIL;

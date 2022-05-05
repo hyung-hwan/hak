@@ -2384,11 +2384,7 @@ static int do_throw_with_internal_errmsg (hcl_t* hcl, hcl_ooi_t ip)
 	hcl_oop_t ex;
 /* TODO: consider throwing an exception object instead of a string? */
 	ex = hcl_makestring(hcl, hcl->errmsg.buf, hcl->errmsg.len, 0); /* TODO: include error location in the message? */
-	if (HCL_UNLIKELY(!ex))
-	{
-		supplement_errmsg (hcl, ip);
-		return -1;
-	}
+	if (HCL_UNLIKELY(!ex)) return -1;
 	if (do_throw(hcl, ex, ip) <= -1) return -1;
 	return 0;
 }
@@ -3542,6 +3538,12 @@ static int execute (hcl_t* hcl)
 				{
 					/* push */
 					LOG_INST_1 (hcl, "push_object @%zu", b1);
+					if (HCL_IS_UNDEF(hcl, ass->cdr))
+					{
+						hcl_seterrbfmt (hcl, HCL_EUNDEFVAR, "%.*js accessed without initization", HCL_OBJ_GET_SIZE(ass->car), HCL_OBJ_GET_CHAR_SLOT(ass->car));
+						if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
+						goto oops_with_errmsg_supplement;
+					}
 					HCL_STACK_PUSH (hcl, ass->cdr);
 				}
 				break;
@@ -4312,8 +4314,8 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				if (HCL_UNLIKELY(b1 >= HCL_OBJ_GET_SIZE(t2)))
 				{
 					hcl_seterrbfmt (hcl, HCL_ECALL, "array index %zu out of upper bound %zd ", b1, (hcl_oow_t)HCL_OBJ_GET_SIZE(t2));
-					if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) <= -1) goto oops;
-					break;
+					if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
+					goto oops_with_errmsg_supplement;
 				}
 
 				((hcl_oop_oop_t)t2)->slot[b1] = t1;
@@ -4347,8 +4349,8 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				if (!HCL_OOP_IS_SMOOI(t1) || (bv = HCL_OOP_TO_SMOOI(t1)) < 0 || bv > 255)
 				{
 					hcl_seterrbfmt (hcl, HCL_ERANGE, "not a byte or out of byte range - %O", t1);
-					if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) <= -1) goto oops;
-					break;
+					if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
+					goto oops_with_errmsg_supplement;
 				}
 				HCL_STACK_POP (hcl);
 				t2 = HCL_STACK_GETTOP(hcl); /* byte array */
@@ -4356,8 +4358,8 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				if (HCL_UNLIKELY(b1 >= HCL_OBJ_GET_SIZE(t2)))
 				{
 					hcl_seterrbfmt (hcl, HCL_ECALL, "bytearray index %zu out of upper bound %zd ", b1, (hcl_oow_t)HCL_OBJ_GET_SIZE(t2));
-					if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) <= -1) goto oops;
-					break;
+					if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
+					goto oops_with_errmsg_supplement;
 				}
 				((hcl_oop_byte_t)t2)->slot[b1] = bv;
 				break;

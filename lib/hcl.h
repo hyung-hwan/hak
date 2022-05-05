@@ -92,7 +92,8 @@ enum hcl_errnum_t
 	HCL_ESEMFLOOD,  /**< runtime error - too many semaphores */
 	HCL_EEXCEPT,    /**< runtime error - exception not handled */
 	HCL_ESTKOVRFLW, /**< runtime error - stack overflow */
-	HCL_ESTKUNDFLW  /**< runtime error - stack overflow */
+	HCL_ESTKUNDFLW, /**< runtime error - stack overflow */
+	HCL_EUNDEFVAR,  /**< runtime error - undefined variable access */
 };
 typedef enum hcl_errnum_t hcl_errnum_t;
 
@@ -1527,6 +1528,7 @@ struct hcl_t
 	hcl_heap_t* heap;
 
 	/* ========================= */
+	hcl_oop_t _undef; /* special internal value for uninitialized global variables */
 	hcl_oop_t _nil;  /* pointer to the nil object */
 	hcl_oop_t _true;
 	hcl_oop_t _false;
@@ -1803,6 +1805,7 @@ enum hcl_brand_t
 	HCL_BRAND_ERROR,
 	HCL_BRAND_CHARACTER,
 
+	HCL_BRAND_UNDEF,
 	HCL_BRAND_NIL,
 	HCL_BRAND_TRUE,
 	HCL_BRAND_FALSE,
@@ -1829,6 +1832,10 @@ enum hcl_brand_t
 	HCL_BRAND_SEMAPHORE_GROUP,
 	HCL_BRAND_CLASS,
 	HCL_BRAND_INSTANCE
+
+
+	/* [NOTE] each enumerator must not exceed the maximum value that can be
+	 *        represented with HCL_OBJ_FLAGS_BRAND_BITS bits */
 };
 typedef enum hcl_brand_t hcl_brand_t;
 
@@ -1874,6 +1881,7 @@ enum hcl_concode_t
 };
 typedef enum hcl_concode_t hcl_concode_t;
 
+#define HCL_IS_UNDEF(hcl,v) (v == (hcl)->_undef)
 #define HCL_IS_NIL(hcl,v) (v == (hcl)->_nil)
 #define HCL_IS_TRUE(hcl,v) (v == (hcl)->_true)
 #define HCL_IS_FALSE(hcl,v) (v == (hcl)->_false)
@@ -2441,6 +2449,10 @@ HCL_EXPORT hcl_oow_t hcl_fmttobcstr (
 /* =========================================================================
  * OBJECT MANAGEMENT
  * ========================================================================= */
+HCL_EXPORT hcl_oop_t hcl_makeundef (
+	hcl_t*     hcl
+);
+
 HCL_EXPORT hcl_oop_t hcl_makenil (
 	hcl_t*     hcl
 );
