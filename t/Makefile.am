@@ -5,6 +5,7 @@ check_SCRIPTS = \
 	insta-02.hcl \
 	ret-01.hcl \
 	retvar-01.hcl \
+	va-01.hcl \
 	var-01.hcl 
 
 ##noinst_SCRIPTS = $(check_SCRIPTS)

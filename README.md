@@ -90,6 +90,44 @@ A HCL program is composed of expressions.
 (printf "%d\n" (+ 10 20))
 ```
 
+## Variadic arguments
+
+```
+(defun fn-y (t1 t2 va-ctx)
+        | i |
+        (set i 0)
+        (while (< i (va-count va-ctx))
+                (printf "fn-y=>Y-VA[%d]=>[%d]\n" i (va-get i va-ctx))
+                (set i (+ i 1))
+        )
+)
+
+(defun x(a b ... ::: x y z)
+        |i|
+
+;       (printf "VA_COUNT(x) = %d\n" (va-count))
+        (set x "xxx")
+        (set y "yyy")
+        (set z "zzz")
+        (set z (+ a b))
+
+        (set i 0)
+        (while (< i (va-count))
+                (printf "VA[%d]=>[%d]\n" i (va-get i))
+                (set i (+ i 1))
+        )
+        (fn-y "hello" "world" (va-context))
+
+        (return)
+)
+
+(printf "--------------------------\n")
+(printf "[%O]\n" (x 10 20 30))
+(printf "--------------------------\n")
+(set q (set-r a b c (x 10 20 30 40 50)))
+(printf "--------------------------\n")
+```
+
 ## HCL Exchange Protocol
 
 The HCL library contains a simple server/client libraries that can exchange
