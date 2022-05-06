@@ -777,18 +777,18 @@ static hcl_pfrc_t pf_integer_bshift (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs
 /* ------------------------------------------------------------------------- */
 static hcl_pfrc_t pf_va_context (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
-	HCL_STACK_SETRET (hcl, nargs, hcl->active_context);
+	HCL_STACK_SETRET (hcl, nargs, (hcl_oop_t)hcl->active_context);
 	return HCL_PF_SUCCESS;
 }
 
 static hcl_pfrc_t pf_va_count (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
-	hcl_context_t* ctx;
+	hcl_oop_context_t ctx;
 	hcl_ooi_t attr_mask, va, fixed_nargs, nrvars, nlvars, nvaargs;
 
 	if (nargs >= 1) 
 	{
-		ctx = HCL_STACK_GETARG(hcl, nargs, 0);
+		ctx = (hcl_oop_context_t)HCL_STACK_GETARG(hcl, nargs, 0);
 		if (!HCL_IS_CONTEXT(hcl, ctx))
 		{
 			hcl_seterrbfmt (hcl, HCL_EINVAL, "not a proper va context - %O", ctx);
@@ -819,13 +819,13 @@ static hcl_pfrc_t pf_va_count (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 static hcl_pfrc_t pf_va_get (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
 	hcl_oop_t ret;
-	hcl_context_t* ctx;
+	hcl_oop_context_t ctx;
 	hcl_ooi_t attr_mask, va, fixed_nargs, nrvars, nlvars, nvaargs;
 	hcl_oow_t index;
 
 	if (nargs >= 2) 
 	{
-		ctx = HCL_STACK_GETARG(hcl, nargs, 1);
+		ctx = (hcl_oop_context_t)HCL_STACK_GETARG(hcl, nargs, 1);
 		if (!HCL_IS_CONTEXT(hcl, ctx))
 		{
 			hcl_seterrbfmt (hcl, HCL_EINVAL, "not a proper va context - %O", ctx);

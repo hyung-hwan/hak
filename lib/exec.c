@@ -150,7 +150,7 @@ static void terminate_all_processes (hcl_t* hcl);
 			hcl_seterrbfmt (hcl, HCL_EOOMEM, "process exception stack overflow"); \
 			(hcl)->abort_req = -1; \
 		} \
-		exsp++; ap->slot[exsp] = (ctx_); \
+		exsp++; ap->slot[exsp] = (hcl_oop_t)(ctx_); \
 		exsp++; ap->slot[exsp] = HCL_SMOOI_TO_OOP(ip_); \
 		exsp++; ap->slot[exsp] = HCL_SMOOI_TO_OOP(clsp_); \
 		exsp++; ap->slot[exsp] = HCL_SMOOI_TO_OOP(sp_); \
@@ -172,7 +172,7 @@ static void terminate_all_processes (hcl_t* hcl);
 		sp_ = HCL_OOP_TO_SMOOI(ap->slot[exsp]); exsp--; \
 		clsp_ = HCL_OOP_TO_SMOOI(ap->slot[exsp]); exsp--; \
 		ip_ = HCL_OOP_TO_SMOOI(ap->slot[exsp]); exsp--; \
-		ctx_ = ap->slot[exsp]; exsp--; \
+		ctx_ = (hcl_oop_context_t)ap->slot[exsp]; exsp--; \
 		ap->exsp = HCL_SMOOI_TO_OOP(exsp); \
 	} while (0)
 
@@ -2296,7 +2296,7 @@ static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t msg, in
 	if (HCL_UNLIKELY(x <= -1)) return -1;
 
 	/* update the method owner field of the new context created */
-	newctx->owner = owner;
+	newctx->owner = (hcl_oop_t)owner;
 
 	SWITCH_ACTIVE_CONTEXT (hcl, newctx);
 	return 0;
@@ -2613,7 +2613,7 @@ static int start_initial_process_and_context (hcl_t* hcl, hcl_ooi_t initial_ip, 
 	ctx->home = hcl->initial_function->home; /* this should be nil */
 	ctx->sender = (hcl_oop_context_t)hcl->_nil; /* the initial context has nil in the sender field */
 	ctx->base = hcl->initial_function;
-	ctx->receiver = (hcl_oop_context_t)hcl->_nil; /* TODO: change this? keep this in sync with the dummy receiver used in the call instruction generated for xlist */
+	ctx->receiver = hcl->_nil; /* TODO: change this? keep this in sync with the dummy receiver used in the call instruction generated for xlist */
 	HCL_ASSERT (hcl, (hcl_oop_t)ctx->home == hcl->_nil);
 
 	/* [NOTE]
@@ -3184,7 +3184,7 @@ static HCL_INLINE int do_return_from_home (hcl_t* hcl, hcl_oop_t return_value, h
 			SWITCH_ACTIVE_CONTEXT (hcl, (hcl_oop_context_t)hcl->active_context->sender);
 		}
 
-		if (HCL_UNLIKELY(sender == hcl->_nil))
+		if (HCL_UNLIKELY((hcl_oop_t)sender == hcl->_nil))
 		{
 			/* non-local return out of the initial context 
 			 *   (defun y(x) (return-from-home (* x x))) 
@@ -3200,8 +3200,8 @@ static HCL_INLINE int do_return_from_home (hcl_t* hcl, hcl_oop_t return_value, h
 			 * when y is called from the second initial context, the home context to return
 			 * from the the first initial context. comparing hcl->active_context->home against
 			 * hcl->initial_context doesn't return true in this case. */
-			HCL_ASSERT (hcl, home->home == hcl->_nil);
-			HCL_ASSERT (hcl, hcl->active_context->sender == hcl->_nil);
+			HCL_ASSERT (hcl, (hcl_oop_t)home->home == hcl->_nil);
+			HCL_ASSERT (hcl, (hcl_oop_t)hcl->active_context->sender == hcl->_nil);
 
 			home->ip = HCL_SMOOI_TO_OOP(-1); /* mark the home context dead */
 			goto term_proc;
