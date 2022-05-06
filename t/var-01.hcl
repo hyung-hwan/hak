@@ -74,14 +74,16 @@
 	)
 
 	(defun x()
-		(do 
-			| x |
-			(set x 1)
-			(while (< x j)
-				(defun Q() x)
-				(set x (+ x 1))
+		(set R
+			(do 
+				| x |
+				(set x 1)
+				(while (< x j)
+					(defun Q() x)
+					(set x (+ x 1))
+				)
 			)
-		}
+		)
 	)
 )
 
@@ -90,3 +92,6 @@
 (set t (Q))
 (if (/= t 99) (print "ERROR: t is not 99\n")
  else (printf "OK: %d\n" t))
+
+(if (nqv? R false) (print "ERROR: R is not false\n")
+ else (printf "OK: %O\n" R))
