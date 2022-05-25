@@ -856,16 +856,6 @@ int main (int argc, char* argv[])
 	set_signal (SIGINT, handle_sigint);
 
 #if 0
-hcl_prbfmt (hcl, "this is good %s %10hs %hs\n", "whole new world. 1234567890 from this point onward, any failure leasd to jumping to oops label",  "as이거 좋은거잖아dkfjsdakfjsadklfjasd", "1111");
-{
-	hcl_uch_t fmt[] = {'G','G','%','l','s', 'a','b','c','-','-','%','0','2','0','x','\0'};
-hcl_uch_t ustr[] = {'A','B','C', 'X','Y','Z','Q','Q','\0'};
-hcl_prufmt (hcl, fmt, ustr, 0x6789);
-hcl_logufmt (hcl, HCL_LOG_WARN, fmt, ustr, 0x6789);
-}
-#endif
-
-#if 0
 // TODO: change the option name
 // in the INTERACTIVE mode, the compiler generates MAKE_FUNCTION for lambda functions.
 // in the non-INTERACTIVE mode, the compiler generates MAKE_BLOCK for lambda functions.
@@ -878,6 +868,22 @@ hcl_logufmt (hcl, HCL_LOG_WARN, fmt, ustr, 0x6789);
 #endif
 	cflags = 0;
 	if (xtn->reader_istty) cflags = HCL_COMPILE_CLEAR_CODE | HCL_COMPILE_CLEAR_FNBLK;
+
+#if 0
+{
+hcl_oow_t slen;
+hcl_ooch_t* scr = hcl_dupbtooocstr(hcl, "(:::::..##..|,:{{}}..\n....)(#(#[", &slen);
+if (hcl_feed (hcl, scr, slen) <= -1)
+{
+	if (hcl->errnum == HCL_ESYNERR) print_synerr (hcl);
+	else hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: cannot feed - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
+}
+
+hcl_endfeed (hcl);
+}
+hcl_close (hcl);
+return 0;
+#endif
 
 	while (1)
 	{

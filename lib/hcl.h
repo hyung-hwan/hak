@@ -2192,6 +2192,15 @@ HCL_EXPORT hcl_ooi_t hcl_proutufmt (
 );
 
 #if defined(HCL_INCLUDE_COMPILER)
+
+HCL_EXPORT int hcl_feed (
+	hcl_t*            hcl,
+	const hcl_ooch_t* data,
+	hcl_oow_t         len
+);
+
+#define hcl_endfeed(hcl) (hcl_feed((hcl), HCL_NULL, 0))
+
 HCL_EXPORT int hcl_compile (
 	hcl_t*       hcl,
 	hcl_cnode_t* obj,

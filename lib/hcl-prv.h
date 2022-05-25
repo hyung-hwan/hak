@@ -149,12 +149,14 @@ enum hcl_iotok_type_t
 
 	HCL_IOTOK_IDENT,
 	HCL_IOTOK_IDENT_DOTTED,
-	HCL_IOTOK_DOT,
-	HCL_IOTOK_ELLIPSIS,
-	HCL_IOTOK_COLON,
+	HCL_IOTOK_DOT,       /* . */
+	HCL_IOTOK_DBLDOTS,   /* .. */
+	HCL_IOTOK_ELLIPSIS,  /* ... */
+	HCL_IOTOK_COLON,     /* : */
+	HCL_IOTOK_DBLCOLONS, /* :: */
 	HCL_IOTOK_TRPCOLONS, /* ::: */
 	HCL_IOTOK_DCSTAR,    /* ::* */
-	HCL_IOTOK_COMMA,
+	HCL_IOTOK_COMMA,     /* , */
 	HCL_IOTOK_LPAREN,    /* ( */
 	HCL_IOTOK_RPAREN,    /* ) */
 	HCL_IOTOK_LPARCOLON, /* (: */
@@ -496,6 +498,23 @@ struct hcl_rstl_t
 	hcl_rstl_t* prev;
 };
 
+typedef struct hcl_feed_dt_t hcl_feed_dt_t;
+struct hcl_feed_dt_t
+{
+	int row_start;
+	int row_end;
+	int col_next;
+};
+
+enum hcl_feed_lx_state_t
+{
+	HCL_FEED_LX_START,
+	HCL_FEED_LX_DELIM_TOKEN,
+	HCL_FEED_LX_COMMENT,
+	HCL_FEED_LX_SHARP_TOKEN
+};
+typedef enum hcl_feed_lx_state_t hcl_feed_lx_state_t;
+
 struct hcl_compiler_t
 {
 	/* output handler */
@@ -541,6 +560,33 @@ struct hcl_compiler_t
 	} r; /* reading */
 	/* == END READER == */
 
+	struct
+	{
+		struct
+		{
+			hcl_feed_lx_state_t state;
+			hcl_ioloc_t loc;
+		} lx;
+		hcl_feed_dt_t dt; /* delimiter token */
+
+		struct
+		{
+			int code;
+			union
+			{
+				struct
+				{
+					int x;
+				} xxx;
+				struct
+				{
+					int x;
+				} yyy;
+			} u;
+		} st[100];
+		hcl_ooi_t top;
+	} feed;
+
 	/* == COMPILER STACK == */
 	struct
 	{
@@ -577,6 +623,8 @@ struct hcl_compiler_t
 		hcl_clsblk_info_t* info;
 		hcl_oow_t info_capa;
 	} clsblk; /* class block */
+
+	
 };
 #endif
 

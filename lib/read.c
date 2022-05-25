@@ -289,6 +289,12 @@ static HCL_INLINE int is_spacechar (hcl_ooci_t c)
 	}
 }
 
+static HCL_INLINE int is_linebreak (hcl_ooci_t c)
+{
+	/* TODO: different line end conventions? */
+	return c == '\n';
+}
+
 static HCL_INLINE int is_alphachar (hcl_ooci_t c)
 {
 /* TODO: support full unicode */
@@ -313,11 +319,12 @@ static HCL_INLINE int is_alnumchar (hcl_ooci_t c)
 	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
 }
 
-static HCL_INLINE int is_delimiter (hcl_ooci_t c)
+static HCL_INLINE int is_delimchar (hcl_ooci_t c)
 {
 	return c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' ||
-	       c == '\"' || c == '\'' || c == '#' || c == ';' || c == '|' || c == '.' ||
-	       c == ',' || c == ':' || is_spacechar(c) || c == HCL_UCI_EOF;
+	       c == ';' || c == '|' || c == ',' || c == '.' || c == ':' || 
+	       /* the first characters of tokens in delim_token_tab up to this point */
+	       c == '#'  || c == '\"' || c == '\'' || is_spacechar(c) || c == HCL_UCI_EOF;
 }
 
 static int copy_string_to (hcl_t* hcl, const hcl_oocs_t* src, hcl_oocs_t* dst, hcl_oow_t* dst_capa, int append, hcl_ooch_t add_delim)
@@ -733,14 +740,14 @@ static int get_radix_number (hcl_t* hcl, hcl_ooci_t rc, int radix)
 	}
 	while (CHAR_TO_NUM(c, radix) < radix);
 
-	if (!is_delimiter(c))
+	if (!is_delimchar(c))
 	{
 		do
 		{
 			ADD_TOKEN_CHAR(hcl, c);
 			GET_CHAR_TO (hcl, c);
 		}
-		while (!is_delimiter(c));
+		while (!is_delimchar(c));
 
 		hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
 			"invalid digit in radixed number in %.*js", hcl->c->tok.name.len, hcl->c->tok.name.ptr);
@@ -763,19 +770,26 @@ static int get_sharp_token (hcl_t* hcl)
 	GET_CHAR_TO (hcl, c);
 
 	/*
-	 * #bBBBB binary
-	 * #oOOOO octal
 	 * #xXXXX hexadecimal
+	 * #oOOOO octal
+	 * #bBBBB binary
 	 * #eDDD   error
 	 * #pHHH   smptr
-	 * #nil
-	 * #true
-	 * #false
-	 * #include
 	 * #\C      character
 	 * #\xHHHH  unicode character
 	 * #\UHHHH  unicode character
 	 * #\uHHHH  unicode character
+	 * #\backspace
+	 * #\linefeed
+	 * #\newline
+	 * #\nul
+	 * #\page
+	 * #\return
+	 * #\rubout
+	 * #\space
+	 * #\tab
+	 * #\vtab
+	 * #include
 	 * #[ ]     byte array
 	 * #( )     qlist
 	 */
@@ -809,7 +823,7 @@ static int get_sharp_token (hcl_t* hcl)
 			ADD_TOKEN_CHAR (hcl, '\\');
 
 			GET_CHAR_TO (hcl, c);
-			if (is_delimiter(c))
+			if (is_delimchar(c))
 			{
 				hcl_setsynerrbfmt (hcl, HCL_SYNERR_CHARLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
 					"no valid character after #\\ in %.*js", hcl->c->tok.name.len, hcl->c->tok.name.ptr);
@@ -822,7 +836,7 @@ static int get_sharp_token (hcl_t* hcl)
 				ADD_TOKEN_CHAR (hcl, c);
 				GET_CHAR_TO (hcl, c);
 			}
-			while (!is_delimiter(c));
+			while (!is_delimchar(c));
 
 			if (TOKEN_NAME_LEN(hcl) >= 4)
 			{
@@ -849,10 +863,8 @@ static int get_sharp_token (hcl_t* hcl)
 								"invalid hexadecimal character in %.*js", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
 							return -1;
 						}
-
 						c = c * 16 + CHAR_TO_NUM(hcl->c->tok.name.ptr[i], 16); /* don't care if it is for 'p' */
 					}
-
 				}
 			#if (HCL_SIZEOF_OOCH_T >= 2)
 				else if (TOKEN_NAME_CHAR(hcl, 2) == 'u')
@@ -868,26 +880,22 @@ static int get_sharp_token (hcl_t* hcl)
 					goto hexcharlit;
 				}
 			#endif
-				else if (does_token_name_match(hcl, VOCA_SPACE))
+				else if (does_token_name_match(hcl, VOCA_BACKSPACE))
 				{
-					c = ' ';
+					c = '\b';
+				}
+				else if (does_token_name_match(hcl, VOCA_LINEFEED))
+				{
+					c = '\n';
 				}
 				else if (does_token_name_match(hcl, VOCA_NEWLINE))
 				{
 					/* TODO: convert it to host newline convention. how to handle if it's composed of 2 letters like \r\n? */
 					c = '\n';
 				}
-				else if (does_token_name_match(hcl, VOCA_BACKSPACE))
+				else if (does_token_name_match(hcl, VOCA_NUL)) /* null character. not #nil */
 				{
-					c = '\b';
-				}
-				else if (does_token_name_match(hcl, VOCA_TAB))
-				{
-					c = '\t';
-				}
-				else if (does_token_name_match(hcl, VOCA_LINEFEED))
-				{
-					c = '\n';
+					c = '\0';
 				}
 				else if (does_token_name_match(hcl, VOCA_PAGE))
 				{
@@ -897,17 +905,21 @@ static int get_sharp_token (hcl_t* hcl)
 				{
 					c = '\r';
 				}
-				else if (does_token_name_match(hcl, VOCA_NUL)) /* null character. not #nil */
+				else if (does_token_name_match(hcl, VOCA_RUBOUT))
 				{
-					c = '\0';
+					c = '\x7F'; /* DEL */
+				}
+				else if (does_token_name_match(hcl, VOCA_SPACE))
+				{
+					c = ' ';
+				}
+				else if (does_token_name_match(hcl, VOCA_TAB))
+				{
+					c = '\t';
 				}
 				else if (does_token_name_match(hcl, VOCA_VTAB))
 				{
 					c = '\v';
-				}
-				else if (does_token_name_match(hcl, VOCA_RUBOUT))
-				{
-					c = '\x7F'; /* DEL */
 				}
 				else
 				{
@@ -945,7 +957,7 @@ static int get_sharp_token (hcl_t* hcl)
 			break;
 
 		default:
-			if (is_delimiter(c))
+			if (is_delimchar(c))
 			{
 				/* EOF, whitespace, etc */
 				hcl_setsynerrbfmt (hcl, HCL_SYNERR_HASHLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
@@ -954,15 +966,14 @@ static int get_sharp_token (hcl_t* hcl)
 			}
 
 			ADD_TOKEN_CHAR (hcl, '#');
-		long_name:
 			do
 			{
 				ADD_TOKEN_CHAR (hcl, c);
 				GET_CHAR_TO (hcl, c);
 			}
-			while (!is_delimiter(c));
+			while (!is_delimchar(c));
 
-			if (does_token_name_match (hcl, VOCA_INCLUDE))
+			if (does_token_name_match(hcl, VOCA_INCLUDE))
 			{
 				SET_TOKEN_TYPE (hcl, HCL_IOTOK_INCLUDE);
 			}
@@ -1275,7 +1286,7 @@ retry:
 
 		default:
 		ident:
-			if (is_delimiter(c))
+			if (is_delimchar(c))
 			{
 				hcl_setsynerrbfmt (hcl, HCL_SYNERR_ILCHR, TOKEN_LOC(hcl), HCL_NULL, "illegal character %jc encountered", c);
 				return -1;
@@ -1304,7 +1315,7 @@ retry:
 
 				read_more_seg:
 					GET_CHAR_TO (hcl, c);
-					if (!is_delimiter(c))
+					if (!is_delimchar(c))
 					{
 						hcl_oow_t start;
 						hcl_oocs_t seg;
@@ -1318,7 +1329,7 @@ retry:
 							ADD_TOKEN_CHAR (hcl, c);
 							GET_CHAR_TO (hcl, c);
 						}
-						while (!is_delimiter(c));
+						while (!is_delimchar(c));
 
 						seg.ptr = &TOKEN_NAME_CHAR(hcl,start);
 						seg.len = TOKEN_NAME_LEN(hcl) - start;
@@ -1340,7 +1351,7 @@ retry:
 					}
 					break;
 				}
-				else if (is_delimiter(c))
+				else if (is_delimchar(c))
 				{
 					unget_char (hcl, &hcl->c->lxc);
 					break;
@@ -2412,3 +2423,580 @@ void hcl_detachio (hcl_t* hcl)
 	}
 }
 
+
+
+/* ---------------------------------------------------------------------- */
+
+static void init_feed (hcl_t* hcl)
+{
+	hcl->c->feed.lx.state = HCL_FEED_LX_START;
+	hcl->c->feed.lx.loc.line = 1;
+	hcl->c->feed.lx.loc.colm = 1;
+	hcl->c->feed.lx.loc.file = HCL_NULL;
+
+	hcl->c->feed.top = -1;
+}
+
+static int push_feed_state (hcl_t* hcl, int code)
+{
+	if (hcl->c->feed.top >= HCL_COUNTOF(hcl->c->feed.st) - 1) /* TODO: use a dynamically allocated stack? */
+	{
+		hcl_seterrbfmt (hcl, HCL_EBUFFULL, "feed state stack full"); 
+		return -1;
+	}
+
+	hcl->c->feed.top++;
+	HCL_MEMSET (&hcl->c->feed.st[hcl->c->feed.top], 0, HCL_SIZEOF(hcl->c->feed.st[hcl->c->feed.top]));
+	hcl->c->feed.st[hcl->c->feed.top].code = code;
+	return 0;
+}
+
+static void pop_feed_state (hcl_t* hcl)
+{
+	HCL_ASSERT (hcl, hcl->c->feed.top >= 0);
+	hcl->c->feed.top--;
+}
+
+struct delim_token_t
+{
+	const char*      t_value;
+	hcl_oow_t        t_len;
+	hcl_iotok_type_t t_type;
+};
+typedef struct delim_token_t delim_token_t;
+
+static delim_token_t delim_token_tab[] =
+{
+	/* [NOTE 1] 
+	 *  if you add a new token, ensure the first character is listed in is_delimchar() 
+	 * 
+	 * [NOTE 2]
+	 *  for the implementation limitation in find_delim_token_char(),
+	 *  the entries in this table must be laid out in a certain way.
+	 * 
+	 *    Group the items with the same prefix together.
+	 *    List the shorter before the longer items in the same group.
+	 *    The length must not differ by greater than 1 between 2 items in the same group.
+	 */
+
+	{ "(",        1, HCL_IOTOK_LPAREN },
+	{ "(:",       2, HCL_IOTOK_LPARCOLON },
+	{ ")",        1, HCL_IOTOK_RPAREN },
+
+	{ "[",        1, HCL_IOTOK_LBRACK },
+	{ "]",        1, HCL_IOTOK_RBRACK },
+	
+	{ "{",        1, HCL_IOTOK_LBRACE },
+	{ "}",        1, HCL_IOTOK_RBRACE },
+
+	{ "|",        1, HCL_IOTOK_VBAR },
+	{ ",",        1, HCL_IOTOK_COMMA },
+
+	{ ".",        1, HCL_IOTOK_DOT },
+	{ "..",       2, HCL_IOTOK_DBLDOTS },
+	{ "...",      3, HCL_IOTOK_ELLIPSIS },
+
+	{ ":",        1, HCL_IOTOK_COLON },
+	{ "::",       2, HCL_IOTOK_DBLCOLONS },
+	{ "::*",      3, HCL_IOTOK_DCSTAR },
+	{ ":::",      3, HCL_IOTOK_TRPCOLONS  }
+};
+
+static int find_delim_token_char (hcl_t* hcl, const hcl_ooci_t c, int row_start, int row_end, int col, hcl_feed_dt_t* dt)
+{
+	int found = 0, i;
+
+	for (i = row_start; i <= row_end; i++)
+	{
+//printf (">>> %d %d %d  col=>%d  c=>%jc\n", i, row_start, row_end, col, c);
+		if (col < delim_token_tab[i].t_len && c == delim_token_tab[i].t_value[col]) 
+		{
+//printf ("MATCH [%jc] [%jc]\n", c, delim_token_tab[i].t_value[col]);
+			if (!found) dt->row_start = i;
+			dt->row_end = i;
+			found = 1;
+		}
+		else if (found) break;
+	}
+
+	if (found) dt->col_next = col + 1;
+//printf ("**** return %d %d\n", dt->row_start, dt->row_end);
+	return found;
+}
+
+static HCL_INLINE int feed_wrap_up (hcl_t* hcl, hcl_iotok_type_t type)
+{
+	SET_TOKEN_TYPE (hcl, type);
+
+HCL_DEBUG4 (hcl, "TOKEN LEN %zu=>[%.*js] %d\n", TOKEN_NAME_LEN(hcl), TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl), TOKEN_TYPE(hcl));
+/* TOOD: fire token callback or something */
+
+	hcl->c->feed.lx.state = HCL_FEED_LX_START;
+	return 0;
+}
+
+static int feed_wrap_up_with_char (hcl_t* hcl, hcl_ooci_t c, hcl_iotok_type_t type)
+{
+	ADD_TOKEN_CHAR (hcl, c);
+	return feed_wrap_up(hcl, type);
+}
+
+static int feed_wrap_up_with_str (hcl_t* hcl, const hcl_ooch_t* str, hcl_oow_t len, hcl_iotok_type_t type)
+{
+	ADD_TOKEN_STR (hcl, str, len);
+	return feed_wrap_up(hcl, type);
+}
+
+static int feed_continue (hcl_t* hcl, hcl_feed_lx_state_t state)
+{
+	hcl->c->feed.lx.state = state;
+	return 0;
+}
+
+static int feed_continue_with_char (hcl_t* hcl, hcl_ooci_t c, hcl_feed_lx_state_t state)
+{
+	ADD_TOKEN_CHAR (hcl, c);
+	hcl->c->feed.lx.state = state;
+	return 0;
+}
+
+
+
+#define FEED_WRAP_UP(hcl, type) do { if (feed_wrap_up(hcl, type) <= -1) return -1; } while(0)
+#define FEED_WRAP_UP_WITH_CHAR(hcl, c, type) do { if (feed_wrap_up_with_char(hcl, c, type) <= -1) return -1; } while(0)
+#define FEED_WRAP_UP_WITH_CHARS(hcl, str, len, type) do { if (feed_wrap_up_with_str(hcl, str, len, type) <= -1) return -1; } while(0)
+#define FEED_CONTINUE(hcl, state) do { if (feed_continue(hcl, state) <= -1) return -1; } while(0)
+#define FEED_CONTINUE_WITH_CHAR(hcl, c, state) do { if (feed_continue_with_char(hcl, c, state) <= -1) return -1; } while(0)
+
+#define FEED_LX_STATE(hcl) ((hcl)->c->feed.lx.state)
+#define FEED_LX_LOC(hcl) (&((hcl)->c->feed.lx.loc))
+
+static int feed_lx_start (hcl_t* hcl, hcl_ooci_t c)
+{
+	HCL_ASSERT (hcl, FEED_LX_STATE(hcl) == HCL_FEED_LX_START);
+
+	/* clear the token name, reset its location */
+	SET_TOKEN_TYPE (hcl, HCL_IOTOK_EOF); /* is it correct? */
+	CLEAR_TOKEN_NAME (hcl);
+
+//HCL_DEBUG1 (hcl, "XXX[%jc]\n", c);
+	if (find_delim_token_char(hcl, c, 0, HCL_COUNTOF(delim_token_tab) - 1, 0, &hcl->c->feed.dt)) 
+	{
+		/* the character is one of the first character of a delimiter token */
+		if (hcl->c->feed.dt.row_start == hcl->c->feed.dt.row_end && hcl->c->feed.dt.col_next == delim_token_tab[hcl->c->feed.dt.row_start].t_len)
+		{
+			FEED_WRAP_UP_WITH_CHAR (hcl, c, delim_token_tab[hcl->c->feed.dt.row_start].t_type);
+		}
+		else
+		{
+			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FEED_LX_DELIM_TOKEN); /* consume c and move to HCL_FEED_LX_DELIM_TOKEN state */
+		}
+		goto consumed;
+	}
+
+	switch (c)
+	{
+		case HCL_OOCI_EOF:
+		{
+			int n;
+#if 0
+			n = end_include(hcl);
+			if (n <= -1) return -1;
+			if (n >= 1) goto retry;
+#endif
+			FEED_WRAP_UP_WITH_CHARS (hcl, vocas[VOCA_EOF].str, vocas[VOCA_EOF].len, HCL_IOTOK_EOF);
+			break;
+		}
+
+		case ';':
+			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FEED_LX_COMMENT);
+			break;
+
+		case '#':
+			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FEED_LX_SHARP_TOKEN);
+			break;
+
+#if 0
+		case '\"':
+			if (get_string(hcl, '\"', '\\', 0, 0) <= -1) return -1;
+			break;
+
+		case '\'':
+			if (get_string(hcl, '\'', '\\', 0, 0) <= -1) return -1;
+			if (hcl->c->tok.name.len != 1)
+			{
+				hcl_setsynerr (hcl, HCL_SYNERR_CHARLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+				return -1;
+			}
+			SET_TOKEN_TYPE (hcl, HCL_IOTOK_CHARLIT);
+			break;
+
+		case '#':
+			if (get_sharp_token(hcl) <= -1) return -1;
+			break;
+
+		case '+':
+		case '-':
+			oldc = c;
+			GET_CHAR_TO (hcl, c);
+			if(is_digitchar(c))
+			{
+				unget_char (hcl, &hcl->c->lxc);
+				c = oldc;
+				goto numlit;
+			}
+			else if (c == '#')
+			{
+				int radix;
+				hcl_iolxc_t sharp;
+
+				sharp = hcl->c->lxc; /* back up '#' */
+
+				GET_CHAR_TO (hcl, c);
+				switch (c)
+				{
+					case 'b':
+						radix = 2;
+						goto radnumlit;
+					case 'o':
+						radix = 8;
+						goto radnumlit;
+					case 'x':
+						radix = 16;
+					radnumlit:
+						ADD_TOKEN_CHAR (hcl, oldc);
+						if (get_radix_number(hcl, c, radix) <= -1) return -1;
+						break;
+
+					default:
+						unget_char (hcl, &hcl->c->lxc);
+						unget_char (hcl, &sharp);
+						c = oldc;
+						goto ident;
+				}
+			}
+			else
+			{
+				unget_char (hcl, &hcl->c->lxc);
+				c = oldc;
+				goto ident;
+			}
+			break;
+
+		case '0': case '1': case '2': case '3': case '4':
+		case '5': case '6': case '7': case '8': case '9':
+		numlit:
+			SET_TOKEN_TYPE (hcl, HCL_IOTOK_NUMLIT);
+			while (1)
+			{
+				ADD_TOKEN_CHAR (hcl, c);
+				GET_CHAR_TO (hcl, c);
+				if (TOKEN_TYPE(hcl) == HCL_IOTOK_NUMLIT && c == '.')
+				{
+					SET_TOKEN_TYPE (hcl, HCL_IOTOK_FPDECLIT);
+					ADD_TOKEN_CHAR (hcl, c);
+					GET_CHAR_TO (hcl, c);
+					if (!is_digitchar(c))
+					{
+						/* the first character after the decimal point is not a decimal digit */
+						hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "invalid numeric literal with no digit after decimal point");
+						return -1;
+					}
+				}
+
+				if (!is_digitchar(c))
+				{
+					unget_char (hcl, &hcl->c->lxc);
+					break;
+				}
+			}
+
+			break;
+
+		default:
+		ident:
+			if (is_delimchar(c))
+			{
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_ILCHR, TOKEN_LOC(hcl), HCL_NULL, "illegal character %jc encountered", c);
+				return -1;
+			}
+
+			SET_TOKEN_TYPE (hcl, HCL_IOTOK_IDENT);
+			while (1)
+			{
+				ADD_TOKEN_CHAR (hcl, c);
+				GET_CHAR_TO (hcl, c);
+
+				if (c == '.')
+				{
+					hcl_iolxc_t period;
+					hcl_iotok_type_t type;
+
+					type = classify_ident_token(hcl, TOKEN_NAME(hcl));
+					if (type != HCL_IOTOK_IDENT)
+					{
+						SET_TOKEN_TYPE (hcl, type);
+						unget_char (hcl, &hcl->c->lxc);
+						break;
+					}
+
+					period = hcl->c->lxc;
+
+				read_more_seg:
+					GET_CHAR_TO (hcl, c);
+					if (!is_delimchar(c))
+					{
+						hcl_oow_t start;
+						hcl_oocs_t seg;
+
+						SET_TOKEN_TYPE (hcl, HCL_IOTOK_IDENT_DOTTED);
+						ADD_TOKEN_CHAR (hcl, '.');
+
+						start = TOKEN_NAME_LEN(hcl);
+						do
+						{
+							ADD_TOKEN_CHAR (hcl, c);
+							GET_CHAR_TO (hcl, c);
+						}
+						while (!is_delimchar(c));
+
+						seg.ptr = &TOKEN_NAME_CHAR(hcl,start);
+						seg.len = TOKEN_NAME_LEN(hcl) - start;
+						if (classify_ident_token(hcl, &seg) != HCL_IOTOK_IDENT)
+						{
+							hcl_setsynerr (hcl, HCL_SYNERR_MSEGIDENT, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+							return -1;
+						}
+
+						if (c == '.') goto read_more_seg;
+
+						unget_char (hcl, &hcl->c->lxc);
+						break;
+					}
+					else
+					{
+						unget_char (hcl, &hcl->c->lxc);
+						unget_char (hcl, &period);
+					}
+					break;
+				}
+				else if (is_delimchar(c))
+				{
+					unget_char (hcl, &hcl->c->lxc);
+					break;
+				}
+			}
+
+			if (TOKEN_TYPE(hcl) == HCL_IOTOK_IDENT)
+			{
+				hcl_iotok_type_t type;
+				type = classify_ident_token(hcl, TOKEN_NAME(hcl));
+				SET_TOKEN_TYPE (hcl, type);
+			}
+			break;
+#endif
+	}
+
+consumed:
+	return 1;
+
+not_consumed:
+	return 0;
+}
+
+static int feed_lx_delim_token (hcl_t* hcl, hcl_ooci_t c)
+{
+	if (find_delim_token_char(hcl, c, hcl->c->feed.dt.row_start, hcl->c->feed.dt.row_end, hcl->c->feed.dt.col_next, &hcl->c->feed.dt)) 
+	{
+		if (hcl->c->feed.dt.row_start == hcl->c->feed.dt.row_end && hcl->c->feed.dt.col_next == delim_token_tab[hcl->c->feed.dt.row_start].t_len)
+		{
+			/* complete token and switch to the HCL_FEED_LX_START state */
+			FEED_WRAP_UP_WITH_CHAR (hcl, c, delim_token_tab[hcl->c->feed.dt.row_start].t_type); 
+		}
+		else
+		{
+			ADD_TOKEN_CHAR(hcl, c);
+		}
+		goto consumed;
+	}
+	else
+	{
+		/* the longest match so far */
+		FEED_WRAP_UP(hcl, delim_token_tab[hcl->c->feed.dt.row_start].t_type); 
+		goto not_consumed;
+	}
+
+consumed:
+	return 1;
+
+not_consumed:
+	return 0;
+}
+
+static int feed_lx_comment (hcl_t* hcl, hcl_ooci_t c)
+{
+	if (is_linebreak(c)) FEED_CONTINUE (hcl, HCL_FEED_LX_START);
+	return 1; /* consumed */
+}
+
+static int feed_lx_sharp_token (hcl_t* hcl, hcl_ooci_t c)
+{
+	/*
+	 * #xXXXX hexadecimal
+	 * #oOOOO octal
+	 * #bBBBB binary
+	 * #eDDD   error
+	 * #pHHH   smptr
+	 * #\C      character
+	 * #\xHHHH  unicode character
+	 * #\UHHHH  unicode character
+	 * #\uHHHH  unicode character
+	 * #\backspace
+	 * #\linefeed
+	 * #\newline
+	 * #\nul
+	 * #\page
+	 * #\return
+	 * #\rubout
+	 * #\space
+	 * #\tab
+	 * #\vtab
+	 * #include
+	 * #[ ]     byte array
+	 * #( )     qlist
+	 */
+
+	switch (c)
+	{
+		case '#':
+		case '!':
+			/* ## comment start
+			 * #! also comment start.
+			 * ; comment start */
+			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FEED_LX_COMMENT);
+			goto consumed;
+
+		case '[':
+			FEED_WRAP_UP_WITH_CHAR (hcl, c, HCL_IOTOK_BAPAREN);
+			goto consumed;
+
+		case '(':
+			FEED_WRAP_UP_WITH_CHAR (hcl, c, HCL_IOTOK_QLPAREN);
+			goto consumed;
+
+		default:
+// TODO: fix this part
+			if (is_spacechar(c) || c == HCL_UCI_EOF)
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_HASHLIT, FEED_LX_LOC(hcl), HCL_NULL,
+					"no character after the hash sign");
+			else
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_HASHLIT, FEED_LX_LOC(hcl), HCL_NULL,
+					"invalid character after the hash sign - %jc", c);
+			return -1;
+	}
+
+consumed:
+	return 1;
+
+not_consumed:
+	return 0;
+}
+
+static int feed_char (hcl_t* hcl, hcl_ooci_t c)
+{
+/* TODO: track line number and column number? */
+	switch (FEED_LX_STATE(hcl))
+	{
+		case HCL_FEED_LX_START:       return feed_lx_start(hcl, c);
+		case HCL_FEED_LX_DELIM_TOKEN: return feed_lx_delim_token(hcl, c);
+		case HCL_FEED_LX_COMMENT:     return feed_lx_comment(hcl, c);
+		case HCL_FEED_LX_SHARP_TOKEN: return feed_lx_sharp_token(hcl, c);
+
+/*
+		case HCL_FEED_LX_DQSTR:
+ 			return feed_lx_dqstr(hcl, c);
+
+		case HCL_FEED_LX_SQSTR:
+			return feed_lxsqstr(hcl, c);
+
+		case HCL_FEED_LX_COMMENT:
+			break;
+
+		case HCL_FEED_LX_CSTR:
+			break;
+
+		case HCL_FEED_LX_DIRECTIVE:
+			break;
+*/
+
+		default:
+			/* INVALID STATE */
+			break;
+	}
+
+
+	return 0;
+}
+
+int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
+{
+/* TODO: need to return the number of processed characters?
+ *       need to stop after the first complete expression? */
+
+	hcl_oow_t i;
+	int x;
+
+	if (data) 
+	{
+		for (i = 0; i < len; ) 
+		{
+			x = feed_char(hcl, data[i]);
+			if (x <= -1) return -1;
+			i += x;
+			if (x > 0)
+			{
+				if (is_linebreak(data[i]))
+				{
+					hcl->c->feed.lx.loc.line++;
+					hcl->c->feed.lx.loc.colm = 1;
+				}
+				else
+				{
+					hcl->c->feed.lx.loc.colm++;
+				}
+			}
+		}
+	}
+	else
+	{
+		for (i = 0; i < 1;)
+		{
+			x = feed_char(hcl, HCL_OOCI_EOF);
+			if (x <= -1) return -1;
+			i += x;
+		}
+	}
+
+	return 0;
+}
+
+
+/*
+hcl_setopt (ON_EXPRESSION CALLBACK??? );
+
+
+
+hcl_feed (hcl, "(hello) (10)", 12);
+	> on_token
+	> on_expression
+	> on_eof
+
+default callback for on_expression?
+	compile
+	execute??/ if in the interactive mode? (say it's used as a network protocol. execute each expression when received....)
+
+default callback for on_eof?
+ 	execute or terminate?
+
+
+*/
