@@ -2952,9 +2952,10 @@ int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
 		{
 			x = feed_char(hcl, data[i]);
 			if (x <= -1) return -1;
-			i += x;
+			
 			if (x > 0)
 			{
+				/* consumed */
 				if (is_linebreak(data[i]))
 				{
 					hcl->c->feed.lx.loc.line++;
@@ -2964,7 +2965,9 @@ int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
 				{
 					hcl->c->feed.lx.loc.colm++;
 				}
+				i += x;
 			}
+			/* feed again if not consumed */
 		}
 	}
 	else
