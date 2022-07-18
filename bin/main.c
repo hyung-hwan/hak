@@ -844,11 +844,11 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int cflags, int verbose)
 			}
 			len = len + n - iilen; /* residue length after conversion */
 			if (len > 0) memmove (buf, &buf[iilen], len);
-hcl_logbfmt (hcl, HCL_LOG_STDERR, "FEEDIONG [%.*js] iilen = %d, oolen => %d, remlen =%d\n", oolen, oobuf, (int)iilen, (int)oolen, (int)len);
+
 			x = hcl_feed(hcl, oobuf, oolen);
 		#else
 			x = hcl_feed(hcl, buf, n);
-			/* 'len' must remain 0 all the time */
+			/* 'len' must remain 0 in this case */
 		#endif
 
 	/* the compiler must be invoked whenever feed() sees a complete object */
