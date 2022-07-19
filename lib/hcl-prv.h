@@ -98,19 +98,45 @@
 #		define HCL_MEMCMP(dst,src,size)  memcmp(dst,src,size)
 #	endif
 
-#elif defined(__GNUC__) && (__GNUC__  >= 3 || (defined(__GNUC_MINOR) && __GNUC__ == 2 && __GNUC_MINOR__ >= 91))
-	/* gcc 2.91 or higher */
-#	define HCL_MEMSET(dst,src,size)  __builtin_memset(dst,src,size)
-#	define HCL_MEMCPY(dst,src,size)  __builtin_memcpy(dst,src,size)
-#	define HCL_MEMMOVE(dst,src,size) __builtin_memmove(dst,src,size)
-#	define HCL_MEMCMP(dst,src,size)  __builtin_memcmp(dst,src,size)
-
 #else
-#	include <string.h>
-#	define HCL_MEMSET(dst,src,size)  memset(dst,src,size)
-#	define HCL_MEMCPY(dst,src,size)  memcpy(dst,src,size)
-#	define HCL_MEMMOVE(dst,src,size) memmove(dst,src,size)
-#	define HCL_MEMCMP(dst,src,size)  memcmp(dst,src,size)
+
+	/* g++ 2.95 had a problem with __builtin_memxxx functions:
+	 * implicit declaration of function `__builtin_memmove' */
+#	if defined(__cplusplus) && defined(__GNUC__) && (__GNUC__ <= 2)
+#		undef HAVE___BUILTIN_MEMSET
+#		undef HAVE___BUILTIN_MEMCPY
+#		undef HAVE___BUILTIN_MEMMOVE
+#		undef HAVE___BUILTIN_MEMCMP
+#	endif
+
+#	if !defined(HAVE___BUILTIN_MEMSET) || \
+	   !defined(HAVE___BUILTIN_MEMCPY) || \
+	   !defined(HAVE___BUILTIN_MEMMOVE) || \
+	   !defined(HAVE___BUILTIN_MEMCMP) 
+#		include <string.h>
+#	endif
+
+#	if defined(HAVE___BUILTIN_MEMSET)
+#		define HCL_MEMSET(dst,src,size)  __builtin_memset(dst,src,size)
+#       else
+#		define HCL_MEMSET(dst,src,size)  memset(dst,src,size)
+#       endif
+#       if defined(HAVE___BUILTIN_MEMCPY)
+#		define HCL_MEMCPY(dst,src,size)  __builtin_memcpy(dst,src,size)
+#       else
+#		define HCL_MEMCPY(dst,src,size)  memcpy(dst,src,size)
+#       endif
+#       if defined(HAVE___BUILTIN_MEMMOVE)
+#		define HCL_MEMMOVE(dst,src,size)  __builtin_memmove(dst,src,size)
+#       else
+#		define HCL_MEMMOVE(dst,src,size)  memmove(dst,src,size)
+#       endif
+#       if defined(HAVE___BUILTIN_MEMCMP)
+#		define HCL_MEMCMP(dst,src,size)  __builtin_memcmp(dst,src,size)
+#       else
+#		define HCL_MEMCMP(dst,src,size)  memcmp(dst,src,size)
+#       endif
+
 #endif
 
 #if defined(HCL_LIMIT_OBJ_SIZE)
