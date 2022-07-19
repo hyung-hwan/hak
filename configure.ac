@@ -73,32 +73,36 @@ AX_PTHREAD()
 
 dnl check some compiler builtins
 AC_MSG_CHECKING([__builtin_memset])
-AC_COMPILE_IFELSE(
-	[AC_LANG_PROGRAM([], [__builtin_memset ((void*)1, ' ', 10);])],
+AC_TRY_LINK(
+	[],
+	[__builtin_memset ((void*)1, ' ', 10);],
 	[AC_MSG_RESULT(yes)
 	 AC_DEFINE([HAVE___BUILTIN_MEMSET], [1], [__builtin_memset])],
 	[AC_MSG_RESULT(no)]
 )
 
 AC_MSG_CHECKING([__builtin_memcpy])
-AC_COMPILE_IFELSE(
-	[AC_LANG_PROGRAM([], [__builtin_memcpy ((void*)1, (void*)2, 10);])],
+AC_TRY_LINK(
+	[],
+	[__builtin_memcpy ((void*)1, (void*)2, 10);],
 	[AC_MSG_RESULT(yes)
 	 AC_DEFINE([HAVE___BUILTIN_MEMCPY], [1], [__builtin_memcpy])],
 	[AC_MSG_RESULT(no)]
 )
 
 AC_MSG_CHECKING([__builtin_memmove])
-AC_COMPILE_IFELSE(
-	[AC_LANG_PROGRAM([], [__builtin_memmove ((void*)1, (void*)2, 10);])],
+AC_TRY_LINK(
+	[],
+	[__builtin_memmove ((void*)1, (void*)2, 10);],
 	[AC_MSG_RESULT(yes)
 	 AC_DEFINE([HAVE___BUILTIN_MEMMOVE], [1], [__builtin_memmove])],
 	[AC_MSG_RESULT(no)]
 )
 
 AC_MSG_CHECKING([__builtin_memcmp])
-AC_COMPILE_IFELSE(
-	[AC_LANG_PROGRAM([], [int a = __builtin_memcmp ((void*)1, (void*)2, 10);])],
+AC_TRY_LINK(
+	[],
+	[int a = __builtin_memcmp ((void*)1, (void*)2, 10);],
 	[AC_MSG_RESULT(yes)
 	 AC_DEFINE([HAVE___BUILTIN_MEMCMP], [1], [__builtin_memcmp])],
 	[AC_MSG_RESULT(no)]
