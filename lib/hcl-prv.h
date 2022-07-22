@@ -524,22 +524,41 @@ struct hcl_rstl_t
 	hcl_rstl_t* prev;
 };
 
-typedef struct hcl_feed_dt_t hcl_feed_dt_t;
-struct hcl_feed_dt_t
+typedef struct hcl_flx_dt_t hcl_flx_dt_t; /* delemiter token */
+struct hcl_flx_dt_t
 {
 	int row_start;
 	int row_end;
 	int col_next;
 };
 
-enum hcl_feed_lx_state_t
+typedef struct hcl_flx_qt_t hcl_flx_qt_t; /* quoted token */
+struct hcl_flx_qt_t
 {
-	HCL_FEED_LX_START,
-	HCL_FEED_LX_DELIM_TOKEN,
-	HCL_FEED_LX_COMMENT,
-	HCL_FEED_LX_SHARP_TOKEN
+	/* input data */
+	hcl_ooch_t end_char;
+	hcl_ooch_t esc_char;
+	hcl_oow_t min_len;
+	hcl_oow_t max_len;
+	hcl_iotok_type_t tok_type;
+	hcl_synerrnum_t synerr_code;
+	int regex;
+
+	/* state data */
+	int escaped;
+	int digit_count;
+	hcl_ooci_t c_acc;
 };
-typedef enum hcl_feed_lx_state_t hcl_feed_lx_state_t;
+
+enum hcl_flx_state_t
+{
+	HCL_FLX_START,
+	HCL_FLX_DELIM_TOKEN,
+	HCL_FLX_COMMENT,
+	HCL_FLX_SHARP_TOKEN,
+	HCL_FLX_QUOTED_TOKEN
+};
+typedef enum hcl_flx_state_t hcl_flx_state_t;
 
 struct hcl_compiler_t
 {
@@ -590,10 +609,15 @@ struct hcl_compiler_t
 	{
 		struct
 		{
-			hcl_feed_lx_state_t state;
+			hcl_flx_state_t state;
 			hcl_ioloc_t loc;
+
+			union 
+			{
+				hcl_flx_dt_t dt; /* delimiter token */
+				hcl_flx_qt_t qt; /* quoted token */
+			} u;
 		} lx;
-		hcl_feed_dt_t dt; /* delimiter token */
 
 		struct
 		{

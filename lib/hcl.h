@@ -105,9 +105,9 @@ enum hcl_synerrnum_t
 	HCL_SYNERR_ILCHR,         /* illegal character */
 	HCL_SYNERR_ILTOK,         /* invalid token */
 	HCL_SYNERR_CMTNC,         /* comment not closed */
-	HCL_SYNERR_STRCHRNC,      /* string/character not closed */
-	HCL_SYNERR_HASHLIT,       /* wrong hashed literal */
 	HCL_SYNERR_CHARLIT,       /* wrong character literal */
+	HCL_SYNERR_STRLIT,        /* wrong string literal */
+	HCL_SYNERR_HASHLIT,       /* wrong hashed literal */
 	HCL_SYNERR_NUMLIT ,       /* invalid numeric literal */
 	HCL_SYNERR_NUMRANGE,      /* number range error */
 	HCL_SYNERR_ERRLIT,        /* wrong error literal */

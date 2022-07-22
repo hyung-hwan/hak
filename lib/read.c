@@ -391,6 +391,7 @@ static int copy_string_to (hcl_t* hcl, const hcl_oocs_t* src, hcl_oocs_t* dst, h
 
 #define CLEAR_TOKEN_NAME(hcl) ((hcl)->c->tok.name.len = 0)
 #define SET_TOKEN_TYPE(hcl,tv) ((hcl)->c->tok.type = (tv))
+#define SET_TOKEN_LOC(hcl,locv) ((hcl)->c->tok.loc = *(locv))
 
 #define TOKEN_TYPE(hcl) ((hcl)->c->tok.type)
 #define TOKEN_NAME(hcl) (&(hcl)->c->tok.name)
@@ -552,7 +553,7 @@ static int skip_comment (hcl_t* hcl)
 	return 0;
 }
 
-static int get_string (hcl_t* hcl, hcl_ooch_t end_char, hcl_ooch_t esc_char, int regex, hcl_oow_t preescaped)
+static int get_string (hcl_t* hcl, hcl_ooch_t end_char, hcl_ooch_t esc_char, int regex, hcl_oow_t preescaped, hcl_synerrnum_t synerr_code)
 {
 	hcl_ooci_t c;
 	hcl_oow_t escaped = preescaped;
@@ -567,7 +568,7 @@ static int get_string (hcl_t* hcl, hcl_ooch_t end_char, hcl_ooch_t esc_char, int
 
 		if (c == HCL_OOCI_EOF)
 		{
-			hcl_setsynerr (hcl, HCL_SYNERR_STRCHRNC, TOKEN_LOC(hcl) /*LEXER_LOC(hcl)*/, HCL_NULL);
+			hcl_setsynerr (hcl, synerr_code, TOKEN_LOC(hcl) /*LEXER_LOC(hcl)*/, HCL_NULL);
 			return -1;
 		}
 
@@ -1036,7 +1037,7 @@ retry:
 	/* clear the token name, reset its location */
 	SET_TOKEN_TYPE (hcl, HCL_IOTOK_EOF); /* is it correct? */
 	CLEAR_TOKEN_NAME (hcl);
-	hcl->c->tok.loc = hcl->c->lxc.l; /* set token location */
+	SET_TOKEN_LOC (hcl, LEXER_LOC(hcl));
 
 	c = hcl->c->lxc.c;
 
@@ -1187,14 +1188,13 @@ retry:
 			ADD_TOKEN_CHAR (hcl, c);
 			break;
 
-
 		case '\"':
-			if (get_string(hcl, '\"', '\\', 0, 0) <= -1) return -1;
+			if (get_string(hcl, '\"', '\\', 0, 0, HCL_SYNERR_STRLIT) <= -1) return -1;
 			break;
 
 		case '\'':
-			if (get_string(hcl, '\'', '\\', 0, 0) <= -1) return -1;
-			if (hcl->c->tok.name.len != 1)
+			if (get_string(hcl, '\'', '\\', 0, 0, HCL_SYNERR_CHARLIT) <= -1) return -1;
+			if (TOKEN_NAME_LEN(hcl) != 1)
 			{
 				hcl_setsynerr (hcl, HCL_SYNERR_CHARLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 				return -1;
@@ -2218,218 +2218,11 @@ hcl_cnodetoobj (hcl_t* hcl, hcl_cnode_t* x)
 }
 */ 
 
-/* ------------------------------------------------------------------------ */
-
-/* TODO: rename compiler to something else that can include reader, printer, and compiler
- * move compiler intialization/finalization here to more common place */
-
-static void gc_compiler (hcl_t* hcl)
-{
-	hcl->c->r.s = hcl_moveoop(hcl, hcl->c->r.s);
-	hcl->c->r.e = hcl_moveoop(hcl, hcl->c->r.e);
-}
-
-static void fini_compiler (hcl_t* hcl)
-{
-	/* called before the hcl object is closed */
-	if (hcl->c)
-	{
-		if (hcl->c->cfs.ptr)
-		{
-			hcl_freemem (hcl, hcl->c->cfs.ptr);
-			hcl->c->cfs.ptr = HCL_NULL;
-			hcl->c->cfs.top = -1;
-			hcl->c->cfs.capa = 0;
-		}
-
-		if (hcl->c->tv.s.ptr)
-		{
-			hcl_freemem (hcl, hcl->c->tv.s.ptr);
-			hcl->c->tv.s.ptr = HCL_NULL;
-			hcl->c->tv.s.len = 0;
-			hcl->c->tv.capa = 0;
-			hcl->c->tv.wcount = 0;
-		}
-		HCL_ASSERT (hcl, hcl->c->tv.capa == 0);
-		HCL_ASSERT (hcl, hcl->c->tv.wcount == 0);
-
-		if (hcl->c->cblk.info)
-		{
-			hcl_freemem (hcl, hcl->c->cblk.info);
-			hcl->c->cblk.info = HCL_NULL;
-			hcl->c->cblk.info_capa = 0;
-			hcl->c->cblk.depth = -1;
-		}
-
-		if (hcl->c->clsblk.info)
-		{
-			hcl_freemem (hcl, hcl->c->clsblk.info);
-			hcl->c->clsblk.info = HCL_NULL;
-			hcl->c->clsblk.info_capa = 0;
-			hcl->c->clsblk.depth = -1;
-		}
-
-		if (hcl->c->fnblk.info)
-		{
-			hcl_freemem (hcl, hcl->c->fnblk.info);
-			hcl->c->fnblk.info = HCL_NULL;
-			hcl->c->fnblk.info_capa = 0;
-			hcl->c->fnblk.depth = -1;
-		}
-
-		clear_io_names (hcl);
-		if (hcl->c->tok.name.ptr) hcl_freemem (hcl, hcl->c->tok.name.ptr);
-
-		hcl_detachio (hcl);
-
-		hcl_freemem (hcl, hcl->c);
-		hcl->c = HCL_NULL;
-	}
-}
-
-int hcl_attachio (hcl_t* hcl, hcl_ioimpl_t reader, hcl_ioimpl_t printer)
-{
-	int n;
-	hcl_cb_t* cbp = HCL_NULL;
-
-	if (!reader || !printer)
-	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "reader and/or printer not supplied");
-		return -1;
-	}
-
-	if (!hcl->c)
-	{
-		hcl_cb_t cb;
-
-		HCL_MEMSET (&cb, 0, HCL_SIZEOF(cb));
-		cb.gc = gc_compiler;
-		cb.fini = fini_compiler;
-		cbp = hcl_regcb(hcl, &cb);
-		if (!cbp) return -1;
-
-		hcl->c = (hcl_compiler_t*)hcl_callocmem(hcl, HCL_SIZEOF(*hcl->c));
-		if (HCL_UNLIKELY(!hcl->c))
-		{
-			hcl_deregcb (hcl, cbp);
-			return -1;
-		}
-
-		hcl->c->ilchr_ucs.ptr = &hcl->c->ilchr;
-		hcl->c->ilchr_ucs.len = 1;
-
-		hcl->c->r.s = hcl->_nil;
-		hcl->c->r.e = hcl->_nil;
-
-		hcl->c->cfs.top = -1;
-		hcl->c->cblk.depth = -1;
-		hcl->c->clsblk.depth = -1;
-		hcl->c->fnblk.depth = -1;
-	}
-	else if (hcl->c->reader || hcl->c->printer)
-	{
-		hcl_seterrnum (hcl, HCL_EPERM); /* TODO: change this error code */
-		return -1;
-	}
-
-	/* Some IO names could have been stored in earlier calls to this function.
-	 * I clear such names before i begin this function. i don't clear it
-	 * at the end of this function because i may be referenced as an error
-	 * location */
-	clear_io_names (hcl);
-
-	/* initialize some key fields */
-	hcl->c->printer = printer;
-	hcl->c->reader = reader;
-	hcl->c->nungots = 0;
-
-	/* The name field and the includer field are HCL_NULL
-	 * for the main stream */
-	HCL_MEMSET (&hcl->c->inarg, 0, HCL_SIZEOF(hcl->c->inarg));
-	hcl->c->inarg.line = 1;
-	hcl->c->inarg.colm = 1;
-
-	/* open the top-level stream */
-	n = hcl->c->reader(hcl, HCL_IO_OPEN, &hcl->c->inarg);
-	if (n <= -1) goto oops;
-
-	HCL_MEMSET (&hcl->c->outarg, 0, HCL_SIZEOF(hcl->c->outarg));
-	n = hcl->c->printer(hcl, HCL_IO_OPEN, &hcl->c->outarg);
-	if (n <= -1)
-	{
-		hcl->c->reader (hcl, HCL_IO_CLOSE, &hcl->c->inarg);
-		goto oops;
-	}
-
-	/* the stream is open. set it as the current input stream */
-	hcl->c->curinp = &hcl->c->inarg;
-	return 0;
-
-oops:
-	if (cbp)
-	{
-		hcl_deregcb (hcl, cbp);
-		hcl_freemem (hcl, hcl->c);
-		hcl->c = HCL_NULL;
-	}
-	else
-	{
-		hcl->c->printer = HCL_NULL;
-		hcl->c->reader = HCL_NULL;
-	}
-	return -1;
-}
-
-void hcl_flushio (hcl_t* hcl)
-{
-	if (hcl->c)
-	{
-		if (hcl->c->printer) hcl->c->printer (hcl, HCL_IO_FLUSH, &hcl->c->outarg);
-	}
-}
-
-void hcl_detachio (hcl_t* hcl)
-{
-	/* an error occurred and control has reached here
-	 * probably, some included files might not have been
-	 * closed. close them */
-
-	if (hcl->c)
-	{
-		if (hcl->c->reader)
-		{
-			while (hcl->c->curinp != &hcl->c->inarg)
-			{
-				hcl_ioinarg_t* prev;
-
-				/* nothing much to do about a close error */
-				hcl->c->reader (hcl, HCL_IO_CLOSE, hcl->c->curinp);
-
-				prev = hcl->c->curinp->includer;
-				HCL_ASSERT (hcl, hcl->c->curinp->name != HCL_NULL);
-				hcl_freemem (hcl, hcl->c->curinp);
-				hcl->c->curinp = prev;
-			}
-
-			hcl->c->reader (hcl, HCL_IO_CLOSE, hcl->c->curinp);
-			hcl->c->reader = HCL_NULL; /* ready for another attachment */
-		}
-
-		if (hcl->c->printer)
-		{
-			hcl->c->printer (hcl, HCL_IO_CLOSE, &hcl->c->outarg);
-			hcl->c->printer = HCL_NULL; /* ready for another attachment */
-		}
-	}
-}
-
-
-
 /* ---------------------------------------------------------------------- */
 
 static void init_feed (hcl_t* hcl)
 {
-	hcl->c->feed.lx.state = HCL_FEED_LX_START;
+	hcl->c->feed.lx.state = HCL_FLX_START;
 	hcl->c->feed.lx.loc.line = 1;
 	hcl->c->feed.lx.loc.colm = 1;
 	hcl->c->feed.lx.loc.file = HCL_NULL;
@@ -2502,7 +2295,7 @@ static delim_token_t delim_token_tab[] =
 	{ ":::",      3, HCL_IOTOK_TRPCOLONS  }
 };
 
-static int find_delim_token_char (hcl_t* hcl, const hcl_ooci_t c, int row_start, int row_end, int col, hcl_feed_dt_t* dt)
+static int find_delim_token_char (hcl_t* hcl, const hcl_ooci_t c, int row_start, int row_end, int col, hcl_flx_dt_t* dt)
 {
 	int found = 0, i;
 
@@ -2528,10 +2321,10 @@ static HCL_INLINE int feed_wrap_up (hcl_t* hcl, hcl_iotok_type_t type)
 {
 	SET_TOKEN_TYPE (hcl, type);
 
-HCL_DEBUG4 (hcl, "TOKEN LEN %zu=>[%.*js] %d\n", TOKEN_NAME_LEN(hcl), TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl), TOKEN_TYPE(hcl));
+HCL_DEBUG6 (hcl, "TOKEN LEN %zu=>[%.*js] %d  LOC=%d,%d\n", TOKEN_NAME_LEN(hcl), TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl), TOKEN_TYPE(hcl), (int)TOKEN_LOC(hcl)->line, (int)TOKEN_LOC(hcl)->colm);
 /* TOOD: fire token callback or something */
 
-	hcl->c->feed.lx.state = HCL_FEED_LX_START;
+	hcl->c->feed.lx.state = HCL_FLX_START;
 	return 0;
 }
 
@@ -2547,20 +2340,18 @@ static int feed_wrap_up_with_str (hcl_t* hcl, const hcl_ooch_t* str, hcl_oow_t l
 	return feed_wrap_up(hcl, type);
 }
 
-static int feed_continue (hcl_t* hcl, hcl_feed_lx_state_t state)
+static int feed_continue (hcl_t* hcl, hcl_flx_state_t state)
 {
 	hcl->c->feed.lx.state = state;
 	return 0;
 }
 
-static int feed_continue_with_char (hcl_t* hcl, hcl_ooci_t c, hcl_feed_lx_state_t state)
+static int feed_continue_with_char (hcl_t* hcl, hcl_ooci_t c, hcl_flx_state_t state)
 {
 	ADD_TOKEN_CHAR (hcl, c);
 	hcl->c->feed.lx.state = state;
 	return 0;
 }
-
-
 
 #define FEED_WRAP_UP(hcl, type) do { if (feed_wrap_up(hcl, type) <= -1) return -1; } while(0)
 #define FEED_WRAP_UP_WITH_CHAR(hcl, c, type) do { if (feed_wrap_up_with_char(hcl, c, type) <= -1) return -1; } while(0)
@@ -2568,28 +2359,37 @@ static int feed_continue_with_char (hcl_t* hcl, hcl_ooci_t c, hcl_feed_lx_state_
 #define FEED_CONTINUE(hcl, state) do { if (feed_continue(hcl, state) <= -1) return -1; } while(0)
 #define FEED_CONTINUE_WITH_CHAR(hcl, c, state) do { if (feed_continue_with_char(hcl, c, state) <= -1) return -1; } while(0)
 
-#define FEED_LX_STATE(hcl) ((hcl)->c->feed.lx.state)
-#define FEED_LX_LOC(hcl) (&((hcl)->c->feed.lx.loc))
+#define FLX_STATE(hcl) ((hcl)->c->feed.lx.state)
+#define FLX_LOC(hcl) (&((hcl)->c->feed.lx.loc))
 
-static int feed_lx_start (hcl_t* hcl, hcl_ooci_t c)
+/* short-cuts to lexer state data */
+#define FLX_DT(hcl) (&((hcl)->c->feed.lx.u.dt))
+#define FLX_QT(hcl) (&((hcl)->c->feed.lx.u.qt))
+
+static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 {
-	HCL_ASSERT (hcl, FEED_LX_STATE(hcl) == HCL_FEED_LX_START);
+	HCL_ASSERT (hcl, FLX_STATE(hcl) == HCL_FLX_START);
+
+	if (is_spacechar(c)) goto consumed; /* skip spaces */
 
 	/* clear the token name, reset its location */
 	SET_TOKEN_TYPE (hcl, HCL_IOTOK_EOF); /* is it correct? */
 	CLEAR_TOKEN_NAME (hcl);
+	SET_TOKEN_LOC (hcl, &hcl->c->feed.lx.loc);
 
 //HCL_DEBUG1 (hcl, "XXX[%jc]\n", c);
-	if (find_delim_token_char(hcl, c, 0, HCL_COUNTOF(delim_token_tab) - 1, 0, &hcl->c->feed.dt)) 
+	if (find_delim_token_char(hcl, c, 0, HCL_COUNTOF(delim_token_tab) - 1, 0, FLX_DT(hcl))) 
 	{
-		/* the character is one of the first character of a delimiter token */
-		if (hcl->c->feed.dt.row_start == hcl->c->feed.dt.row_end && hcl->c->feed.dt.col_next == delim_token_tab[hcl->c->feed.dt.row_start].t_len)
+		/* the character is one of the first character of a delimiter token such as (, [, :, etc */
+		if (FLX_DT(hcl)->row_start == FLX_DT(hcl)->row_end && 
+		    FLX_DT(hcl)->col_next == delim_token_tab[FLX_DT(hcl)->row_start].t_len)
 		{
-			FEED_WRAP_UP_WITH_CHAR (hcl, c, delim_token_tab[hcl->c->feed.dt.row_start].t_type);
+			/* single character delimiter token */
+			FEED_WRAP_UP_WITH_CHAR (hcl, c, delim_token_tab[FLX_DT(hcl)->row_start].t_type);
 		}
 		else
 		{
-			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FEED_LX_DELIM_TOKEN); /* consume c and move to HCL_FEED_LX_DELIM_TOKEN state */
+			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_DELIM_TOKEN); /* consume c and move to HCL_FLX_DELIM_TOKEN state */
 		}
 		goto consumed;
 	}
@@ -2609,28 +2409,36 @@ static int feed_lx_start (hcl_t* hcl, hcl_ooci_t c)
 		}
 
 		case ';':
-			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FEED_LX_COMMENT);
+			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_COMMENT);
 			break;
 
 		case '#':
-			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FEED_LX_SHARP_TOKEN);
+			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_SHARP_TOKEN);
 			break;
 
-#if 0
 		case '\"':
-			if (get_string(hcl, '\"', '\\', 0, 0) <= -1) return -1;
+			HCL_MEMSET (FLX_QT(hcl), 0, HCL_SIZEOF(*FLX_QT(hcl)));
+			FLX_QT(hcl)->end_char = c;
+			FLX_QT(hcl)->esc_char = '\\';
+			FLX_QT(hcl)->min_len = 0;
+			FLX_QT(hcl)->max_len = HCL_TYPE_MAX(hcl_oow_t);
+			FLX_QT(hcl)->tok_type = HCL_IOTOK_STRLIT;
+			FLX_QT(hcl)->synerr_code = HCL_SYNERR_STRLIT;
+			FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard the quote itself. move on the the QUOTED_TOKEN state */
 			break;
 
 		case '\'':
-			if (get_string(hcl, '\'', '\\', 0, 0) <= -1) return -1;
-			if (hcl->c->tok.name.len != 1)
-			{
-				hcl_setsynerr (hcl, HCL_SYNERR_CHARLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-				return -1;
-			}
-			SET_TOKEN_TYPE (hcl, HCL_IOTOK_CHARLIT);
+			HCL_MEMSET (FLX_QT(hcl), 0, HCL_SIZEOF(*FLX_QT(hcl)));
+			FLX_QT(hcl)->end_char = c;
+			FLX_QT(hcl)->esc_char = '\\';
+			FLX_QT(hcl)->min_len = 1;
+			FLX_QT(hcl)->max_len = 1;
+			FLX_QT(hcl)->tok_type = HCL_IOTOK_CHARLIT;
+			FLX_QT(hcl)->synerr_code = HCL_SYNERR_CHARLIT;
+			FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard the quote itself. move on the the QUOTED_TOKEN state */
 			break;
 
+#if 0
 		case '#':
 			if (get_sharp_token(hcl) <= -1) return -1;
 			break;
@@ -2804,14 +2612,15 @@ not_consumed:
 	return 0;
 }
 
-static int feed_lx_delim_token (hcl_t* hcl, hcl_ooci_t c)
+static int flx_delim_token (hcl_t* hcl, hcl_ooci_t c)
 {
-	if (find_delim_token_char(hcl, c, hcl->c->feed.dt.row_start, hcl->c->feed.dt.row_end, hcl->c->feed.dt.col_next, &hcl->c->feed.dt)) 
+	if (find_delim_token_char(hcl, c, FLX_DT(hcl)->row_start, FLX_DT(hcl)->row_end, FLX_DT(hcl)->col_next, FLX_DT(hcl))) 
 	{
-		if (hcl->c->feed.dt.row_start == hcl->c->feed.dt.row_end && hcl->c->feed.dt.col_next == delim_token_tab[hcl->c->feed.dt.row_start].t_len)
+		if (FLX_DT(hcl)->row_start == FLX_DT(hcl)->row_end && 
+		    FLX_DT(hcl)->col_next == delim_token_tab[FLX_DT(hcl)->row_start].t_len)
 		{
-			/* complete token and switch to the HCL_FEED_LX_START state */
-			FEED_WRAP_UP_WITH_CHAR (hcl, c, delim_token_tab[hcl->c->feed.dt.row_start].t_type); 
+			/* complete token and switch to the HCL_FLX_START state */
+			FEED_WRAP_UP_WITH_CHAR (hcl, c, delim_token_tab[FLX_DT(hcl)->row_start].t_type); 
 		}
 		else
 		{
@@ -2822,7 +2631,7 @@ static int feed_lx_delim_token (hcl_t* hcl, hcl_ooci_t c)
 	else
 	{
 		/* the longest match so far */
-		FEED_WRAP_UP(hcl, delim_token_tab[hcl->c->feed.dt.row_start].t_type); 
+		FEED_WRAP_UP(hcl, delim_token_tab[FLX_DT(hcl)->row_start].t_type); 
 		goto not_consumed;
 	}
 
@@ -2833,13 +2642,13 @@ not_consumed:
 	return 0;
 }
 
-static int feed_lx_comment (hcl_t* hcl, hcl_ooci_t c)
+static int flx_comment (hcl_t* hcl, hcl_ooci_t c)
 {
-	if (is_linebreak(c)) FEED_CONTINUE (hcl, HCL_FEED_LX_START);
+	if (is_linebreak(c)) FEED_CONTINUE (hcl, HCL_FLX_START);
 	return 1; /* consumed */
 }
 
-static int feed_lx_sharp_token (hcl_t* hcl, hcl_ooci_t c)
+static int flx_sharp_token (hcl_t* hcl, hcl_ooci_t c)
 {
 	/*
 	 * #xXXXX hexadecimal
@@ -2873,7 +2682,7 @@ static int feed_lx_sharp_token (hcl_t* hcl, hcl_ooci_t c)
 			/* ## comment start
 			 * #! also comment start.
 			 * ; comment start */
-			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FEED_LX_COMMENT);
+			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_COMMENT);
 			goto consumed;
 
 		case '[':
@@ -2887,10 +2696,10 @@ static int feed_lx_sharp_token (hcl_t* hcl, hcl_ooci_t c)
 		default:
 // TODO: fix this part
 			if (is_spacechar(c) || c == HCL_UCI_EOF)
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_HASHLIT, FEED_LX_LOC(hcl), HCL_NULL,
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_HASHLIT, FLX_LOC(hcl), HCL_NULL,
 					"no character after the hash sign");
 			else
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_HASHLIT, FEED_LX_LOC(hcl), HCL_NULL,
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_HASHLIT, FLX_LOC(hcl), HCL_NULL,
 					"invalid character after the hash sign - %jc", c);
 			return -1;
 	}
@@ -2902,30 +2711,186 @@ not_consumed:
 	return 0;
 }
 
+static int flx_quoted_token (hcl_t* hcl, hcl_ooci_t c) /* double-quoted string */
+{
+	hcl_flx_qt_t* qt = FLX_QT(hcl);
+
+	if (c == HCL_OOCI_EOF)
+	{
+		hcl_setsynerr (hcl, qt->synerr_code, TOKEN_LOC(hcl) /*hcl->c->feed.lx.loc?*/, HCL_NULL);
+		return -1;
+	}
+
+	if (qt->escaped == 3)
+	{
+		if (c >= '0' && c <= '7')
+		{
+			/* more octal digits */
+			qt->c_acc = qt->c_acc * 8 + c - '0';
+			qt->digit_count++;
+			if (qt->digit_count >= qt->escaped)
+			{
+				/* should i limit the max to 0xFF/0377?
+				 * if (qt->c_acc > 0377) qt->c_acc = 0377;*/
+				ADD_TOKEN_CHAR (hcl, qt->c_acc);
+				qt->escaped = 0;
+			}
+			goto consumed;
+		}
+		else
+		{
+			ADD_TOKEN_CHAR (hcl, qt->c_acc);
+			qt->escaped = 0;
+		}
+	}
+	else if (qt->escaped == 2 || qt->escaped == 4 || qt->escaped == 8)
+	{
+		if (c >= '0' && c <= '9')
+		{
+			qt->c_acc = qt->c_acc * 16 + c - '0';
+			qt->digit_count++;
+			if (qt->digit_count >= qt->escaped)
+			{
+				ADD_TOKEN_CHAR (hcl, qt->c_acc);
+				qt->escaped = 0;
+			}
+			goto consumed;
+		}
+		else if (c >= 'A' && c <= 'F')
+		{
+			qt->c_acc = qt->c_acc * 16 + c - 'A' + 10;
+			qt->digit_count++;
+			if (qt->digit_count >= qt->escaped)
+			{
+				ADD_TOKEN_CHAR (hcl, qt->c_acc);
+				qt->escaped = 0;
+			}
+			goto consumed;
+		}
+		else if (c >= 'a' && c <= 'f')
+		{
+			qt->c_acc = qt->c_acc * 16 + c - 'a' + 10;
+			qt->digit_count++;
+			if (qt->digit_count >= qt->escaped)
+			{
+				ADD_TOKEN_CHAR (hcl, qt->c_acc);
+				qt->escaped = 0;
+			}
+			goto consumed;
+		}
+		else
+		{
+			hcl_ooch_t rc;
+			rc = (qt->escaped == 2)? 'x':
+				 (qt->escaped == 4)? 'u': 'U';
+			if (qt->digit_count == 0)
+				ADD_TOKEN_CHAR (hcl, rc);
+			else ADD_TOKEN_CHAR (hcl, qt->c_acc);
+
+			qt->escaped = 0;
+		}
+	}
+
+	if (qt->escaped == 0 && c == qt->end_char)
+	{
+		/* terminating quote */
+		FEED_WRAP_UP (hcl, qt->tok_type); /* HCL_IOTOK_STRLIT or HCL_IOTOK_CHARLIT */
+		if (TOKEN_NAME_LEN(hcl) < qt->min_len)
+		{
+			hcl_setsynerr (hcl, qt->synerr_code, TOKEN_LOC(hcl), HCL_NULL);
+			return -1;
+		}
+		goto consumed;
+	}
+
+	if (qt->escaped == 0 && c == qt->esc_char)
+	{
+		qt->escaped = 1;
+		goto consumed;
+	}
+
+	if (qt->escaped == 1)
+	{
+		if (c == 'a') c = '\a';
+		else if (c == 'b') c = '\b';
+		else if (c == 'f') c = '\f';
+		else if (c == 'n') c = '\n';
+		else if (c == 'r') c = '\r';
+		else if (c == 't') c = '\t';
+		else if (c == 'v') c = '\v';
+		else if (c >= '0' && c <= '7' && !qt->regex)
+		{
+			/* i don't support the octal notation for a regular expression.
+			 * it conflicts with the backreference notation between \1 and \7 inclusive. */
+			qt->escaped = 3;
+			qt->digit_count = 1;
+			qt->c_acc = c - '0';
+			goto consumed;
+		}
+		else if (c == 'x')
+		{
+			qt->escaped = 2;
+			qt->digit_count = 0;
+			qt->c_acc = 0;
+			goto consumed;
+		}
+	#if (HCL_SIZEOF_OOCH_T >= 2)
+		else if (c == 'u')
+		{
+			qt->escaped = 4;
+			qt->digit_count = 0;
+			qt->c_acc = 0;
+			goto consumed;
+		}
+	#endif
+	#if (HCL_SIZEOF_OOCH_T >= 4)
+		else if (c == 'U')
+		{
+			qt->escaped = 8;
+			qt->digit_count = 0;
+			qt->c_acc = 0;
+			goto consumed;
+		}
+	#endif
+		else if (qt->regex)
+		{
+			/* if the following character doesn't compose a proper
+			 * escape sequence, keep the escape character.
+			 * an unhandled escape sequence can be handled
+			 * outside this function since the escape character
+			 * is preserved.*/
+			ADD_TOKEN_CHAR (hcl, qt->esc_char);
+		}
+
+		qt->escaped = 0;
+	}
+
+	ADD_TOKEN_CHAR (hcl, c);
+
+consumed:
+	if (TOKEN_NAME_LEN(hcl) > qt->max_len)
+	{
+		hcl_setsynerr (hcl, qt->synerr_code, TOKEN_LOC(hcl), HCL_NULL);
+		return -1;
+	}
+	return 1;
+}
+
 static int feed_char (hcl_t* hcl, hcl_ooci_t c)
 {
-/* TODO: track line number and column number? */
-	switch (FEED_LX_STATE(hcl))
+	switch (FLX_STATE(hcl))
 	{
-		case HCL_FEED_LX_START:       return feed_lx_start(hcl, c);
-		case HCL_FEED_LX_DELIM_TOKEN: return feed_lx_delim_token(hcl, c);
-		case HCL_FEED_LX_COMMENT:     return feed_lx_comment(hcl, c);
-		case HCL_FEED_LX_SHARP_TOKEN: return feed_lx_sharp_token(hcl, c);
+		case HCL_FLX_START:        return flx_start(hcl, c);
+		case HCL_FLX_DELIM_TOKEN:  return flx_delim_token(hcl, c);
+		case HCL_FLX_COMMENT:      return flx_comment(hcl, c);
+		case HCL_FLX_SHARP_TOKEN:  return flx_sharp_token(hcl, c);
+		case HCL_FLX_QUOTED_TOKEN: return flx_quoted_token(hcl, c);
 
 /*
-		case HCL_FEED_LX_DQSTR:
- 			return feed_lx_dqstr(hcl, c);
+		case HCL_FLX_SQSTR:
+			return flx_sqstr(hcl, c);
 
-		case HCL_FEED_LX_SQSTR:
-			return feed_lxsqstr(hcl, c);
-
-		case HCL_FEED_LX_COMMENT:
-			break;
-
-		case HCL_FEED_LX_CSTR:
-			break;
-
-		case HCL_FEED_LX_DIRECTIVE:
+		case HCL_FLX_DIRECTIVE:
 			break;
 */
 
@@ -3003,3 +2968,211 @@ default callback for on_eof?
 
 
 */
+
+
+/* ------------------------------------------------------------------------ */
+
+/* TODO: rename compiler to something else that can include reader, printer, and compiler
+ * move compiler intialization/finalization here to more common place */
+
+static void gc_compiler (hcl_t* hcl)
+{
+	hcl->c->r.s = hcl_moveoop(hcl, hcl->c->r.s);
+	hcl->c->r.e = hcl_moveoop(hcl, hcl->c->r.e);
+}
+
+static void fini_compiler (hcl_t* hcl)
+{
+	/* called before the hcl object is closed */
+	if (hcl->c)
+	{
+		if (hcl->c->cfs.ptr)
+		{
+			hcl_freemem (hcl, hcl->c->cfs.ptr);
+			hcl->c->cfs.ptr = HCL_NULL;
+			hcl->c->cfs.top = -1;
+			hcl->c->cfs.capa = 0;
+		}
+
+		if (hcl->c->tv.s.ptr)
+		{
+			hcl_freemem (hcl, hcl->c->tv.s.ptr);
+			hcl->c->tv.s.ptr = HCL_NULL;
+			hcl->c->tv.s.len = 0;
+			hcl->c->tv.capa = 0;
+			hcl->c->tv.wcount = 0;
+		}
+		HCL_ASSERT (hcl, hcl->c->tv.capa == 0);
+		HCL_ASSERT (hcl, hcl->c->tv.wcount == 0);
+
+		if (hcl->c->cblk.info)
+		{
+			hcl_freemem (hcl, hcl->c->cblk.info);
+			hcl->c->cblk.info = HCL_NULL;
+			hcl->c->cblk.info_capa = 0;
+			hcl->c->cblk.depth = -1;
+		}
+
+		if (hcl->c->clsblk.info)
+		{
+			hcl_freemem (hcl, hcl->c->clsblk.info);
+			hcl->c->clsblk.info = HCL_NULL;
+			hcl->c->clsblk.info_capa = 0;
+			hcl->c->clsblk.depth = -1;
+		}
+
+		if (hcl->c->fnblk.info)
+		{
+			hcl_freemem (hcl, hcl->c->fnblk.info);
+			hcl->c->fnblk.info = HCL_NULL;
+			hcl->c->fnblk.info_capa = 0;
+			hcl->c->fnblk.depth = -1;
+		}
+
+		clear_io_names (hcl);
+		if (hcl->c->tok.name.ptr) hcl_freemem (hcl, hcl->c->tok.name.ptr);
+
+		hcl_detachio (hcl);
+
+		hcl_freemem (hcl, hcl->c);
+		hcl->c = HCL_NULL;
+	}
+}
+
+int hcl_attachio (hcl_t* hcl, hcl_ioimpl_t reader, hcl_ioimpl_t printer)
+{
+	int n;
+	hcl_cb_t* cbp = HCL_NULL;
+
+	if (!reader || !printer)
+	{
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "reader and/or printer not supplied");
+		return -1;
+	}
+
+	if (!hcl->c)
+	{
+		hcl_cb_t cb;
+
+		HCL_MEMSET (&cb, 0, HCL_SIZEOF(cb));
+		cb.gc = gc_compiler;
+		cb.fini = fini_compiler;
+		cbp = hcl_regcb(hcl, &cb);
+		if (!cbp) return -1;
+
+		hcl->c = (hcl_compiler_t*)hcl_callocmem(hcl, HCL_SIZEOF(*hcl->c));
+		if (HCL_UNLIKELY(!hcl->c))
+		{
+			hcl_deregcb (hcl, cbp);
+			return -1;
+		}
+
+		hcl->c->ilchr_ucs.ptr = &hcl->c->ilchr;
+		hcl->c->ilchr_ucs.len = 1;
+
+		hcl->c->r.s = hcl->_nil;
+		hcl->c->r.e = hcl->_nil;
+
+		hcl->c->cfs.top = -1;
+		hcl->c->cblk.depth = -1;
+		hcl->c->clsblk.depth = -1;
+		hcl->c->fnblk.depth = -1;
+
+		init_feed (hcl);
+	}
+	else if (hcl->c->reader || hcl->c->printer)
+	{
+		hcl_seterrnum (hcl, HCL_EPERM); /* TODO: change this error code */
+		return -1;
+	}
+
+	/* Some IO names could have been stored in earlier calls to this function.
+	 * I clear such names before i begin this function. i don't clear it
+	 * at the end of this function because i may be referenced as an error
+	 * location */
+	clear_io_names (hcl);
+
+	/* initialize some key fields */
+	hcl->c->printer = printer;
+	hcl->c->reader = reader;
+	hcl->c->nungots = 0;
+
+	/* The name field and the includer field are HCL_NULL
+	 * for the main stream */
+	HCL_MEMSET (&hcl->c->inarg, 0, HCL_SIZEOF(hcl->c->inarg));
+	hcl->c->inarg.line = 1;
+	hcl->c->inarg.colm = 1;
+
+	/* open the top-level stream */
+	n = hcl->c->reader(hcl, HCL_IO_OPEN, &hcl->c->inarg);
+	if (n <= -1) goto oops;
+
+	HCL_MEMSET (&hcl->c->outarg, 0, HCL_SIZEOF(hcl->c->outarg));
+	n = hcl->c->printer(hcl, HCL_IO_OPEN, &hcl->c->outarg);
+	if (n <= -1)
+	{
+		hcl->c->reader (hcl, HCL_IO_CLOSE, &hcl->c->inarg);
+		goto oops;
+	}
+
+	/* the stream is open. set it as the current input stream */
+	hcl->c->curinp = &hcl->c->inarg;
+	return 0;
+
+oops:
+	if (cbp)
+	{
+		hcl_deregcb (hcl, cbp);
+		hcl_freemem (hcl, hcl->c);
+		hcl->c = HCL_NULL;
+	}
+	else
+	{
+		hcl->c->printer = HCL_NULL;
+		hcl->c->reader = HCL_NULL;
+	}
+	return -1;
+}
+
+void hcl_flushio (hcl_t* hcl)
+{
+	if (hcl->c)
+	{
+		if (hcl->c->printer) hcl->c->printer (hcl, HCL_IO_FLUSH, &hcl->c->outarg);
+	}
+}
+
+void hcl_detachio (hcl_t* hcl)
+{
+	/* an error occurred and control has reached here
+	 * probably, some included files might not have been
+	 * closed. close them */
+
+	if (hcl->c)
+	{
+		if (hcl->c->reader)
+		{
+			while (hcl->c->curinp != &hcl->c->inarg)
+			{
+				hcl_ioinarg_t* prev;
+
+				/* nothing much to do about a close error */
+				hcl->c->reader (hcl, HCL_IO_CLOSE, hcl->c->curinp);
+
+				prev = hcl->c->curinp->includer;
+				HCL_ASSERT (hcl, hcl->c->curinp->name != HCL_NULL);
+				hcl_freemem (hcl, hcl->c->curinp);
+				hcl->c->curinp = prev;
+			}
+
+			hcl->c->reader (hcl, HCL_IO_CLOSE, hcl->c->curinp);
+			hcl->c->reader = HCL_NULL; /* ready for another attachment */
+		}
+
+		if (hcl->c->printer)
+		{
+			hcl->c->printer (hcl, HCL_IO_CLOSE, &hcl->c->outarg);
+			hcl->c->printer = HCL_NULL; /* ready for another attachment */
+		}
+	}
+}

@@ -821,11 +821,14 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int cflags, int verbose)
 		return -1;
 	}
 
+	/*(setvbuf (fp, NULL, _IONBF, 0);*/
+
 	while (1)
 	{
 		hcl_oow_t n;
 
-		n = fread(&buf[len], 1, HCL_COUNTOF(buf) - len, fp);
+		/*n = fread(&buf[len], 1, HCL_COUNTOF(buf) - len, fp);*/
+		n = read(fileno(fp), &buf[len], HCL_COUNTOF(buf) - len);
 		if (n > 0)
 		{
 			int x;
@@ -861,7 +864,7 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int cflags, int verbose)
 			}
 		}
 
-		if (feof(fp)) 
+		if (n == 0 || feof(fp)) 
 		{
 			if (len > 0)
 			{
