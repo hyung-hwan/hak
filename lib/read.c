@@ -2283,7 +2283,7 @@ static delim_token_t delim_token_tab[] =
 	{ "{",        1, HCL_IOTOK_LBRACE },
 	{ "}",        1, HCL_IOTOK_RBRACE },
 
-	{ "|",        1, HCL_IOTOK_VBAR },
+	{ "|",        1, HCL_IOTOK_VBAR },	
 	{ ",",        1, HCL_IOTOK_COMMA },
 
 	{ ".",        1, HCL_IOTOK_DOT },
@@ -2366,23 +2366,27 @@ static int feed_continue_with_char (hcl_t* hcl, hcl_ooci_t c, hcl_flx_state_t st
 /* short-cuts to lexer state data */
 #define FLX_DT(hcl) (&((hcl)->c->feed.lx.u.dt))
 #define FLX_HC(hcl) (&((hcl)->c->feed.lx.u.hc))
-#define FLX_RN(hcl) (&((hcl)->c->feed.lx.u.rn))
+#define FLX_HI(hcl) (&((hcl)->c->feed.lx.u.hi))
+#define FLX_HN(hcl) (&((hcl)->c->feed.lx.u.hn))
 #define FLX_QT(hcl) (&((hcl)->c->feed.lx.u.qt))
-
-static HCL_INLINE void init_flx_rn (hcl_flx_rn_t* rn, hcl_iotok_type_t tok_type, hcl_synerrnum_t synerr_code, int radix)
-{
-	HCL_MEMSET (rn, 0, HCL_SIZEOF(*rn));
-	rn->tok_type = tok_type;
-	rn->synerr_code = synerr_code;
-	rn->radix = radix;
-}
 
 static HCL_INLINE void init_flx_hc (hcl_flx_hc_t* hc)
 {
 	HCL_MEMSET (hc, 0, HCL_SIZEOF(*hc));
 }
 
+static HCL_INLINE void init_flx_hi (hcl_flx_hi_t* hi)
+{
+	HCL_MEMSET (hi, 0, HCL_SIZEOF(*hi));
+}
 
+static HCL_INLINE void init_flx_hn (hcl_flx_hn_t* rn, hcl_iotok_type_t tok_type, hcl_synerrnum_t synerr_code, int radix)
+{
+	HCL_MEMSET (rn, 0, HCL_SIZEOF(*rn));
+	rn->tok_type = tok_type;
+	rn->synerr_code = synerr_code;
+	rn->radix = radix;
+}
 
 static HCL_INLINE void init_flx_qt (hcl_flx_qt_t* qt, hcl_iotok_type_t tok_type, hcl_synerrnum_t synerr_code, hcl_ooch_t end_char, hcl_ooch_t esc_char, hcl_oow_t min_len, hcl_oow_t max_len)
 {
@@ -2394,7 +2398,6 @@ static HCL_INLINE void init_flx_qt (hcl_flx_qt_t* qt, hcl_iotok_type_t tok_type,
 	qt->min_len = min_len;
 	qt->max_len = max_len;
 }
-
 
 static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 {
@@ -2702,26 +2705,26 @@ static int flx_hashed_token (hcl_t* hcl, hcl_ooci_t c)
 		/* --------------------------- */
 
 		case 'x':
-			init_flx_rn (FLX_RN(hcl), HCL_IOTOK_RADNUMLIT, HCL_SYNERR_NUMLIT, 16);
+			init_flx_hn (FLX_HN(hcl), HCL_IOTOK_RADNUMLIT, HCL_SYNERR_NUMLIT, 16);
 			goto radixed_number;
 
 		case 'o':
-			init_flx_rn (FLX_RN(hcl), HCL_IOTOK_RADNUMLIT, HCL_SYNERR_NUMLIT, 8);
+			init_flx_hn (FLX_HN(hcl), HCL_IOTOK_RADNUMLIT, HCL_SYNERR_NUMLIT, 8);
 			goto radixed_number;
 
 		case 'b':
-			init_flx_rn (FLX_RN(hcl), HCL_IOTOK_RADNUMLIT, HCL_SYNERR_NUMLIT, 2);
+			init_flx_hn (FLX_HN(hcl), HCL_IOTOK_RADNUMLIT, HCL_SYNERR_NUMLIT, 2);
 			goto radixed_number;
 
 		case 'e':
-			init_flx_rn (FLX_RN(hcl), HCL_IOTOK_ERRLIT, HCL_SYNERR_ERRLIT, 10);
+			init_flx_hn (FLX_HN(hcl), HCL_IOTOK_ERRLIT, HCL_SYNERR_ERRLIT, 10);
 			goto radixed_number;
 
 		case 'p':
-			init_flx_rn (FLX_RN(hcl), HCL_IOTOK_SMPTRLIT, HCL_SYNERR_SMPTRLIT, 16);
+			init_flx_hn (FLX_HN(hcl), HCL_IOTOK_SMPTRLIT, HCL_SYNERR_SMPTRLIT, 16);
 		radixed_number:
-			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_RADIXED_NUMBER);
-			break;
+			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_HASHED_NUMBER);
+			goto consumed;
 
 		/* --------------------------- */
 		case '\\':
@@ -2738,17 +2741,11 @@ static int flx_hashed_token (hcl_t* hcl, hcl_ooci_t c)
 			goto consumed;
 
 		/* --------------------------- */
-/* TODO: #include... etc more directives? */
-
 		default:
-// TODO: fix this part
-			if (is_spacechar(c) || c == HCL_UCI_EOF)
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_HASHLIT, FLX_LOC(hcl), HCL_NULL,
-					"no character after the hash sign");
-			else
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_HASHLIT, FLX_LOC(hcl), HCL_NULL,
-					"invalid character after the hash sign - %jc", c);
-			return -1;
+			/* the character used as case values above can never be the first character of a hash-marked identifier */
+			init_flx_hi (FLX_HI(hcl));
+			FEED_CONTINUE (hcl, HCL_FLX_HASHED_IDENT);
+			goto not_consumed;
 	}
 
 consumed:
@@ -2840,7 +2837,6 @@ static int flx_hashed_char (hcl_t* hcl, hcl_ooci_t c)
 		CLEAR_TOKEN_NAME (hcl);
 		ADD_TOKEN_CHAR (hcl, c);
 		FEED_WRAP_UP (hcl, HCL_IOTOK_CHARLIT);
-
 		goto not_consumed;
 	}
 	else
@@ -2857,9 +2853,48 @@ not_consumed:
 	return 0;
 }
 
-static int flx_radixed_number (hcl_t* hcl, hcl_ooci_t c)
+static int flx_hashed_ident (hcl_t* hcl, hcl_ooci_t c)
 {
-	hcl_flx_rn_t* rn = FLX_RN(hcl);
+	hcl_flx_hi_t* hi = FLX_HI(hcl);
+
+	if (is_delimchar(c))
+	{
+		if (hi->char_count == 0)
+		{
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_HASHLIT, FLX_LOC(hcl), HCL_NULL,
+				"no valid character after the hash sign");
+			return -1;
+		}
+
+		if (does_token_name_match(hcl, VOCA_INCLUDE))
+		{
+			FEED_WRAP_UP (hcl, HCL_IOTOK_INCLUDE);
+			goto not_consumed;
+		}
+		else
+		{
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_HASHLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
+				"invalid hashed literal %.*js", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
+			return -1;
+		}
+	}
+	else
+	{
+		ADD_TOKEN_CHAR (hcl, c);
+		hi->char_count++;
+		goto consumed;
+	}
+
+consumed:
+	return 1;
+
+not_consumed:
+	return 0;
+}
+
+static int flx_hashed_number (hcl_t* hcl, hcl_ooci_t c)
+{
+	hcl_flx_hn_t* rn = FLX_HN(hcl);
 
 	if (CHAR_TO_NUM(c, rn->radix) >= rn->radix)
 	{
@@ -3078,7 +3113,8 @@ static int feed_char (hcl_t* hcl, hcl_ooci_t c)
 		case HCL_FLX_DELIM_TOKEN:      return flx_delim_token(hcl, c);
 		case HCL_FLX_HASHED_TOKEN:     return flx_hashed_token(hcl, c);
 		case HCL_FLX_HASHED_CHAR:      return flx_hashed_char(hcl, c);
-		case HCL_FLX_RADIXED_NUMBER:   return flx_radixed_number(hcl, c);
+		case HCL_FLX_HASHED_IDENT:     return flx_hashed_ident(hcl, c);
+		case HCL_FLX_HASHED_NUMBER:    return flx_hashed_number(hcl, c);
 		case HCL_FLX_QUOTED_TOKEN:     return flx_quoted_token(hcl, c);
 /*
 		case HCL_FLX_DIRECTIVE:

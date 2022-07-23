@@ -540,8 +540,15 @@ struct hcl_flx_hc_t
 	hcl_oow_t char_count;
 };
 
-typedef struct hcl_flx_rn_t hcl_flx_rn_t; /* radixed number */
-struct hcl_flx_rn_t
+typedef struct hcl_flx_hi_t hcl_flx_hi_t; /* hash-marked identifier */
+struct hcl_flx_hi_t
+{
+	/* state data */
+	hcl_oow_t char_count;
+};
+
+typedef struct hcl_flx_hn_t hcl_flx_hn_t; /* hash-marked number - radixed number */
+struct hcl_flx_hn_t
 {
 	/* input data */
 	hcl_iotok_type_t tok_type;
@@ -578,7 +585,8 @@ enum hcl_flx_state_t
 	HCL_FLX_DELIM_TOKEN,
 	HCL_FLX_HASHED_TOKEN, /* hash-marked token */
 	HCL_FLX_HASHED_CHAR, /* hash-marked character that begins with #\ */
-	HCL_FLX_RADIXED_NUMBER,
+	HCL_FLX_HASHED_IDENT, /* hash-marked identifier like #include, etc */
+	HCL_FLX_HASHED_NUMBER, /* hash-marked number - radixed number like #xABCD */
 	HCL_FLX_QUOTED_TOKEN
 };
 typedef enum hcl_flx_state_t hcl_flx_state_t;
@@ -639,7 +647,8 @@ struct hcl_compiler_t
 			{
 				hcl_flx_dt_t dt; /* delimiter token */
 				hcl_flx_hc_t hc; /* hash-marked character */
-				hcl_flx_rn_t rn; /* radixed number */
+				hcl_flx_hi_t hi; /* hash-marked identifier */
+				hcl_flx_hn_t hn; /* hash-marked number - radixed number */
 				hcl_flx_qt_t qt; /* quoted token */
 			} u;
 		} lx;
@@ -698,8 +707,6 @@ struct hcl_compiler_t
 		hcl_clsblk_info_t* info;
 		hcl_oow_t info_capa;
 	} clsblk; /* class block */
-
-	
 };
 #endif
 
