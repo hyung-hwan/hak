@@ -583,10 +583,10 @@ enum hcl_flx_state_t
 	HCL_FLX_START,
 	HCL_FLX_COMMENT,
 	HCL_FLX_DELIM_TOKEN,
-	HCL_FLX_HASHED_TOKEN, /* hash-marked token */
-	HCL_FLX_HASHED_CHAR, /* hash-marked character that begins with #\ */
-	HCL_FLX_HASHED_IDENT, /* hash-marked identifier like #include, etc */
-	HCL_FLX_HASHED_NUMBER, /* hash-marked number - radixed number like #xABCD */
+	HCL_FLX_HMARKED_TOKEN, /* hash-marked token */
+	HCL_FLX_HMARKED_CHAR, /* hash-marked character that begins with #\ */
+	HCL_FLX_HMARKED_IDENT, /* hash-marked identifier like #include, etc */
+	HCL_FLX_HMARKED_NUMBER, /* hash-marked number - radixed number like #xABCD */
 	HCL_FLX_QUOTED_TOKEN
 };
 typedef enum hcl_flx_state_t hcl_flx_state_t;

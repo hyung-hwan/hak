@@ -762,7 +762,7 @@ static int get_radixed_number (hcl_t* hcl, hcl_ooci_t rc, int radix)
 	return 0;
 }
 
-static int get_hashed_token (hcl_t* hcl)
+static int get_hmarked_token (hcl_t* hcl)
 {
 	hcl_ooci_t c;
 	int radix;
@@ -963,7 +963,7 @@ static int get_hashed_token (hcl_t* hcl)
 			{
 				/* EOF, whitespace, etc */
 				hcl_setsynerrbfmt (hcl, HCL_SYNERR_HASHLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
-					"invalid hashed literal #%jc", c);
+					"invalid hash-marked literal #%jc", c);
 				return -1;
 			}
 
@@ -982,7 +982,7 @@ static int get_hashed_token (hcl_t* hcl)
 			else
 			{
 				hcl_setsynerrbfmt (hcl, HCL_SYNERR_HASHLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
-					"invalid hashed literal %.*js", hcl->c->tok.name.len, hcl->c->tok.name.ptr);
+					"invalid hash-marked literal %.*js", hcl->c->tok.name.len, hcl->c->tok.name.ptr);
 				return -1;
 			}
 
@@ -1204,7 +1204,7 @@ retry:
 			break;
 
 		case '#':
-			if (get_hashed_token(hcl) <= -1) return -1;
+			if (get_hmarked_token(hcl) <= -1) return -1;
 			break;
 
 		case '+':
@@ -2446,7 +2446,7 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 			break;
 
 		case '#':
-			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_HASHED_TOKEN);
+			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_HMARKED_TOKEN);
 			break;
 
 		case '\"':
@@ -2665,7 +2665,7 @@ not_consumed:
 	return 0;
 }
 
-static int flx_hashed_token (hcl_t* hcl, hcl_ooci_t c)
+static int flx_hmarked_token (hcl_t* hcl, hcl_ooci_t c)
 {
 	/*
 	 * #xXXXX hexadecimal
@@ -2723,12 +2723,12 @@ static int flx_hashed_token (hcl_t* hcl, hcl_ooci_t c)
 		case 'p':
 			init_flx_hn (FLX_HN(hcl), HCL_IOTOK_SMPTRLIT, HCL_SYNERR_SMPTRLIT, 16);
 		radixed_number:
-			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_HASHED_NUMBER);
+			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_HMARKED_NUMBER);
 			goto consumed;
 
 		/* --------------------------- */
 		case '\\':
-			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_HASHED_CHAR);
+			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_HMARKED_CHAR);
 			goto consumed;
 
 		/* --------------------------- */
@@ -2744,7 +2744,7 @@ static int flx_hashed_token (hcl_t* hcl, hcl_ooci_t c)
 		default:
 			/* the character used as case values above can never be the first character of a hash-marked identifier */
 			init_flx_hi (FLX_HI(hcl));
-			FEED_CONTINUE (hcl, HCL_FLX_HASHED_IDENT);
+			FEED_CONTINUE (hcl, HCL_FLX_HMARKED_IDENT);
 			goto not_consumed;
 	}
 
@@ -2755,7 +2755,7 @@ not_consumed:
 	return 0;
 }
 
-static int flx_hashed_char (hcl_t* hcl, hcl_ooci_t c)
+static int flx_hmarked_char (hcl_t* hcl, hcl_ooci_t c)
 {
 	hcl_flx_hc_t* hc = FLX_HC(hcl);
 
@@ -2853,7 +2853,7 @@ not_consumed:
 	return 0;
 }
 
-static int flx_hashed_ident (hcl_t* hcl, hcl_ooci_t c)
+static int flx_hmarked_ident (hcl_t* hcl, hcl_ooci_t c)
 {
 	hcl_flx_hi_t* hi = FLX_HI(hcl);
 
@@ -2874,7 +2874,7 @@ static int flx_hashed_ident (hcl_t* hcl, hcl_ooci_t c)
 		else
 		{
 			hcl_setsynerrbfmt (hcl, HCL_SYNERR_HASHLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
-				"invalid hashed literal %.*js", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
+				"invalid hash-marked literal %.*js", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
 			return -1;
 		}
 	}
@@ -2892,7 +2892,7 @@ not_consumed:
 	return 0;
 }
 
-static int flx_hashed_number (hcl_t* hcl, hcl_ooci_t c)
+static int flx_hmarked_number (hcl_t* hcl, hcl_ooci_t c)
 {
 	hcl_flx_hn_t* rn = FLX_HN(hcl);
 
@@ -3111,18 +3111,16 @@ static int feed_char (hcl_t* hcl, hcl_ooci_t c)
 		case HCL_FLX_START:            return flx_start(hcl, c);
 		case HCL_FLX_COMMENT:          return flx_comment(hcl, c);
 		case HCL_FLX_DELIM_TOKEN:      return flx_delim_token(hcl, c);
-		case HCL_FLX_HASHED_TOKEN:     return flx_hashed_token(hcl, c);
-		case HCL_FLX_HASHED_CHAR:      return flx_hashed_char(hcl, c);
-		case HCL_FLX_HASHED_IDENT:     return flx_hashed_ident(hcl, c);
-		case HCL_FLX_HASHED_NUMBER:    return flx_hashed_number(hcl, c);
+		case HCL_FLX_HMARKED_TOKEN:    return flx_hmarked_token(hcl, c);
+		case HCL_FLX_HMARKED_CHAR:     return flx_hmarked_char(hcl, c);
+		case HCL_FLX_HMARKED_IDENT:    return flx_hmarked_ident(hcl, c);
+		case HCL_FLX_HMARKED_NUMBER:    return flx_hmarked_number(hcl, c);
 		case HCL_FLX_QUOTED_TOKEN:     return flx_quoted_token(hcl, c);
-/*
-		case HCL_FLX_DIRECTIVE:
-			break;
-*/
 
 		default:
 			/* INVALID STATE */
+			HCL_ASSERT (hcl, !"internal error - this must never happen");
+			hcl_seterrnum (hcl, HCL_EINTERN);
 			break;
 	}
 
