@@ -718,7 +718,7 @@ static int get_string (hcl_t* hcl, hcl_ooch_t end_char, hcl_ooch_t esc_char, int
 	return 0;
 }
 
-static int get_radix_number (hcl_t* hcl, hcl_ooci_t rc, int radix)
+static int get_radixed_number (hcl_t* hcl, hcl_ooci_t rc, int radix)
 {
 	hcl_ooci_t c;
 
@@ -743,6 +743,7 @@ static int get_radix_number (hcl_t* hcl, hcl_ooci_t rc, int radix)
 
 	if (!is_delimchar(c))
 	{
+		/* collect more characters to form a complete token for the error message below */
 		do
 		{
 			ADD_TOKEN_CHAR(hcl, c);
@@ -761,7 +762,7 @@ static int get_radix_number (hcl_t* hcl, hcl_ooci_t rc, int radix)
 	return 0;
 }
 
-static int get_sharp_token (hcl_t* hcl)
+static int get_hashed_token (hcl_t* hcl)
 {
 	hcl_ooci_t c;
 	int radix;
@@ -806,16 +807,16 @@ static int get_sharp_token (hcl_t* hcl)
 		case 'b':
 			radix = 2;
 		radixnum:
-			if (get_radix_number (hcl, c, radix) <= -1) return -1;
+			if (get_radixed_number (hcl, c, radix) <= -1) return -1;
 			break;
 
 		case 'e':
-			if (get_radix_number(hcl, c, 10) <= -1) return -1;
+			if (get_radixed_number(hcl, c, 10) <= -1) return -1;
 			SET_TOKEN_TYPE (hcl, HCL_IOTOK_ERRLIT);
 			break;
 
 		case 'p':
-			if (get_radix_number(hcl, c, 16) <= -1) return -1;
+			if (get_radixed_number(hcl, c, 16) <= -1) return -1;
 			SET_TOKEN_TYPE (hcl, HCL_IOTOK_SMPTRLIT);
 			break;
 
@@ -864,7 +865,7 @@ static int get_sharp_token (hcl_t* hcl)
 								"invalid hexadecimal character in %.*js", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
 							return -1;
 						}
-						c = c * 16 + CHAR_TO_NUM(hcl->c->tok.name.ptr[i], 16); /* don't care if it is for 'p' */
+						c = c * 16 + CHAR_TO_NUM(TOKEN_NAME_CHAR(hcl, i), 16); /* don't care if it is for 'p' */
 					}
 				}
 			#if (HCL_SIZEOF_OOCH_T >= 2)
@@ -1203,7 +1204,7 @@ retry:
 			break;
 
 		case '#':
-			if (get_sharp_token(hcl) <= -1) return -1;
+			if (get_hashed_token(hcl) <= -1) return -1;
 			break;
 
 		case '+':
@@ -1236,7 +1237,7 @@ retry:
 						radix = 16;
 					radnumlit:
 						ADD_TOKEN_CHAR (hcl, oldc);
-						if (get_radix_number(hcl, c, radix) <= -1) return -1;
+						if (get_radixed_number(hcl, c, radix) <= -1) return -1;
 						break;
 
 					default:
@@ -2364,7 +2365,36 @@ static int feed_continue_with_char (hcl_t* hcl, hcl_ooci_t c, hcl_flx_state_t st
 
 /* short-cuts to lexer state data */
 #define FLX_DT(hcl) (&((hcl)->c->feed.lx.u.dt))
+#define FLX_HC(hcl) (&((hcl)->c->feed.lx.u.hc))
+#define FLX_RN(hcl) (&((hcl)->c->feed.lx.u.rn))
 #define FLX_QT(hcl) (&((hcl)->c->feed.lx.u.qt))
+
+static HCL_INLINE void init_flx_rn (hcl_flx_rn_t* rn, hcl_iotok_type_t tok_type, hcl_synerrnum_t synerr_code, int radix)
+{
+	HCL_MEMSET (rn, 0, HCL_SIZEOF(*rn));
+	rn->tok_type = tok_type;
+	rn->synerr_code = synerr_code;
+	rn->radix = radix;
+}
+
+static HCL_INLINE void init_flx_hc (hcl_flx_hc_t* hc)
+{
+	HCL_MEMSET (hc, 0, HCL_SIZEOF(*hc));
+}
+
+
+
+static HCL_INLINE void init_flx_qt (hcl_flx_qt_t* qt, hcl_iotok_type_t tok_type, hcl_synerrnum_t synerr_code, hcl_ooch_t end_char, hcl_ooch_t esc_char, hcl_oow_t min_len, hcl_oow_t max_len)
+{
+	HCL_MEMSET (qt, 0, HCL_SIZEOF(*qt));
+	qt->tok_type = tok_type;
+	qt->synerr_code = synerr_code;
+	qt->end_char = end_char;
+	qt->esc_char = esc_char;
+	qt->min_len = min_len;
+	qt->max_len = max_len;
+}
+
 
 static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 {
@@ -2413,36 +2443,20 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 			break;
 
 		case '#':
-			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_SHARP_TOKEN);
+			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_HASHED_TOKEN);
 			break;
 
 		case '\"':
-			HCL_MEMSET (FLX_QT(hcl), 0, HCL_SIZEOF(*FLX_QT(hcl)));
-			FLX_QT(hcl)->end_char = c;
-			FLX_QT(hcl)->esc_char = '\\';
-			FLX_QT(hcl)->min_len = 0;
-			FLX_QT(hcl)->max_len = HCL_TYPE_MAX(hcl_oow_t);
-			FLX_QT(hcl)->tok_type = HCL_IOTOK_STRLIT;
-			FLX_QT(hcl)->synerr_code = HCL_SYNERR_STRLIT;
+			init_flx_qt (FLX_QT(hcl), HCL_IOTOK_STRLIT, HCL_SYNERR_STRLIT, c, '\\', 0, HCL_TYPE_MAX(hcl_oow_t));
 			FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard the quote itself. move on the the QUOTED_TOKEN state */
 			break;
 
 		case '\'':
-			HCL_MEMSET (FLX_QT(hcl), 0, HCL_SIZEOF(*FLX_QT(hcl)));
-			FLX_QT(hcl)->end_char = c;
-			FLX_QT(hcl)->esc_char = '\\';
-			FLX_QT(hcl)->min_len = 1;
-			FLX_QT(hcl)->max_len = 1;
-			FLX_QT(hcl)->tok_type = HCL_IOTOK_CHARLIT;
-			FLX_QT(hcl)->synerr_code = HCL_SYNERR_CHARLIT;
+			init_flx_qt (FLX_QT(hcl), HCL_IOTOK_CHARLIT, HCL_SYNERR_CHARLIT, c, '\\', 1, 1);
 			FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard the quote itself. move on the the QUOTED_TOKEN state */
 			break;
 
 #if 0
-		case '#':
-			if (get_sharp_token(hcl) <= -1) return -1;
-			break;
-
 		case '+':
 		case '-':
 			oldc = c;
@@ -2473,7 +2487,7 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 						radix = 16;
 					radnumlit:
 						ADD_TOKEN_CHAR (hcl, oldc);
-						if (get_radix_number(hcl, c, radix) <= -1) return -1;
+						if (get_radixed_number(hcl, c, radix) <= -1) return -1;
 						break;
 
 					default:
@@ -2612,6 +2626,12 @@ not_consumed:
 	return 0;
 }
 
+static int flx_comment (hcl_t* hcl, hcl_ooci_t c)
+{
+	if (is_linebreak(c)) FEED_CONTINUE (hcl, HCL_FLX_START);
+	return 1; /* consumed */
+}
+
 static int flx_delim_token (hcl_t* hcl, hcl_ooci_t c)
 {
 	if (find_delim_token_char(hcl, c, FLX_DT(hcl)->row_start, FLX_DT(hcl)->row_end, FLX_DT(hcl)->col_next, FLX_DT(hcl))) 
@@ -2642,13 +2662,7 @@ not_consumed:
 	return 0;
 }
 
-static int flx_comment (hcl_t* hcl, hcl_ooci_t c)
-{
-	if (is_linebreak(c)) FEED_CONTINUE (hcl, HCL_FLX_START);
-	return 1; /* consumed */
-}
-
-static int flx_sharp_token (hcl_t* hcl, hcl_ooci_t c)
+static int flx_hashed_token (hcl_t* hcl, hcl_ooci_t c)
 {
 	/*
 	 * #xXXXX hexadecimal
@@ -2685,6 +2699,36 @@ static int flx_sharp_token (hcl_t* hcl, hcl_ooci_t c)
 			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_COMMENT);
 			goto consumed;
 
+		/* --------------------------- */
+
+		case 'x':
+			init_flx_rn (FLX_RN(hcl), HCL_IOTOK_RADNUMLIT, HCL_SYNERR_NUMLIT, 16);
+			goto radixed_number;
+
+		case 'o':
+			init_flx_rn (FLX_RN(hcl), HCL_IOTOK_RADNUMLIT, HCL_SYNERR_NUMLIT, 8);
+			goto radixed_number;
+
+		case 'b':
+			init_flx_rn (FLX_RN(hcl), HCL_IOTOK_RADNUMLIT, HCL_SYNERR_NUMLIT, 2);
+			goto radixed_number;
+
+		case 'e':
+			init_flx_rn (FLX_RN(hcl), HCL_IOTOK_ERRLIT, HCL_SYNERR_ERRLIT, 10);
+			goto radixed_number;
+
+		case 'p':
+			init_flx_rn (FLX_RN(hcl), HCL_IOTOK_SMPTRLIT, HCL_SYNERR_SMPTRLIT, 16);
+		radixed_number:
+			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_RADIXED_NUMBER);
+			break;
+
+		/* --------------------------- */
+		case '\\':
+			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_HASHED_CHAR);
+			goto consumed;
+
+		/* --------------------------- */
 		case '[':
 			FEED_WRAP_UP_WITH_CHAR (hcl, c, HCL_IOTOK_BAPAREN);
 			goto consumed;
@@ -2692,6 +2736,9 @@ static int flx_sharp_token (hcl_t* hcl, hcl_ooci_t c)
 		case '(':
 			FEED_WRAP_UP_WITH_CHAR (hcl, c, HCL_IOTOK_QLPAREN);
 			goto consumed;
+
+		/* --------------------------- */
+/* TODO: #include... etc more directives? */
 
 		default:
 // TODO: fix this part
@@ -2711,13 +2758,159 @@ not_consumed:
 	return 0;
 }
 
-static int flx_quoted_token (hcl_t* hcl, hcl_ooci_t c) /* double-quoted string */
+static int flx_hashed_char (hcl_t* hcl, hcl_ooci_t c)
+{
+	hcl_flx_hc_t* hc = FLX_HC(hcl);
+
+	if (is_delimchar(c))
+	{
+		if (hc->char_count == 0)
+		{
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_CHARLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
+				"no valid character in character literal %.*js", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
+			return -1;
+		}
+
+		if (TOKEN_NAME_LEN(hcl) >= 4)
+		{
+			int max_digit_count = 0;
+
+			if (TOKEN_NAME_CHAR(hcl, 2) == 'x')
+			{
+				hcl_oow_t i;
+				max_digit_count = 2;
+
+			hexcharlit:
+				if (TOKEN_NAME_LEN(hcl) - 3 > max_digit_count)
+				{
+					hcl_setsynerrbfmt (hcl, HCL_SYNERR_CHARLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
+						"invalid hexadecimal character character literal %.*js", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
+					return -1;
+				}
+				c = 0;
+				for (i = 3; i < TOKEN_NAME_LEN(hcl); i++)
+				{
+					if (!is_xdigitchar(TOKEN_NAME_CHAR(hcl, i)))
+					{
+						hcl_setsynerrbfmt (hcl, HCL_SYNERR_CHARLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
+							"invalid hexadecimal character character literal %.*js", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
+						return -1;
+					}
+					c = c * 16 + CHAR_TO_NUM(TOKEN_NAME_CHAR(hcl, i), 16); /* don't care if it is for 'p' */
+				}
+			}
+		#if (HCL_SIZEOF_OOCH_T >= 2)
+			else if (TOKEN_NAME_CHAR(hcl, 2) == 'u')
+			{
+				max_digit_count = 4;
+				goto hexcharlit;
+			}
+		#endif
+		#if (HCL_SIZEOF_OOCH_T >= 4)
+			else if (TOKEN_NAME_CHAR(hcl, 2) == 'U')
+			{
+				max_digit_count = 8;
+				goto hexcharlit;
+			}
+		#endif
+			else if (does_token_name_match(hcl, VOCA_BACKSPACE)) c = '\b';
+			else if (does_token_name_match(hcl, VOCA_LINEFEED))  c = '\n';
+			else if (does_token_name_match(hcl, VOCA_NEWLINE))   c = '\n'; 	/* TODO: convert it to host newline convention. how to handle if it's composed of 2 letters like \r\n? */
+			else if (does_token_name_match(hcl, VOCA_NUL))       c = '\0';  /* null character. not the object null */
+			else if (does_token_name_match(hcl, VOCA_PAGE))      c = '\f';
+			else if (does_token_name_match(hcl, VOCA_RETURN))    c = '\r';
+			else if (does_token_name_match(hcl, VOCA_RUBOUT))    c = '\x7F'; /* DEL */
+			else if (does_token_name_match(hcl, VOCA_SPACE))     c = ' ';
+			else if (does_token_name_match(hcl, VOCA_TAB))       c = '\t';
+			else if (does_token_name_match(hcl, VOCA_VTAB))      c = '\v';
+			else
+			{
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_CHARLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
+					"invalid character literal %.*js", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
+				return -1;
+			}
+		}
+		else
+		{
+			HCL_ASSERT (hcl, TOKEN_NAME_LEN(hcl) == 3);
+			c = TOKEN_NAME_CHAR(hcl, 2);
+		}
+
+		/* reset the token name to the converted character */
+		CLEAR_TOKEN_NAME (hcl);
+		ADD_TOKEN_CHAR (hcl, c);
+		FEED_WRAP_UP (hcl, HCL_IOTOK_CHARLIT);
+
+		goto not_consumed;
+	}
+	else
+	{
+		ADD_TOKEN_CHAR (hcl, c);
+		hc->char_count++;
+		goto consumed;
+	}
+
+consumed:
+	return 1;
+
+not_consumed:
+	return 0;
+}
+
+static int flx_radixed_number (hcl_t* hcl, hcl_ooci_t c)
+{
+	hcl_flx_rn_t* rn = FLX_RN(hcl);
+
+	if (CHAR_TO_NUM(c, rn->radix) >= rn->radix)
+	{
+		if (rn->digit_count == 0)
+		{
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
+				"no valid digit after radix specifier in %.*js", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
+			return -1;
+		}
+		else if (is_delimchar(c))
+		{
+			if (rn->invalid)
+			{
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
+					"invalid digit in radixed number in %.*js", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
+				return -1;
+			}
+
+			FEED_WRAP_UP (hcl, rn->tok_type);
+			goto not_consumed;
+		}
+		else
+		{
+			ADD_TOKEN_CHAR(hcl, c);
+			rn->digit_count++;
+			rn->invalid = 1;
+			goto consumed;
+		}
+	}
+	else
+	{
+		HCL_ASSERT (hcl, !is_delimchar(c));
+		ADD_TOKEN_CHAR(hcl, c);
+		rn->digit_count++;
+		goto consumed;
+	}
+
+consumed:
+	return 1;
+
+not_consumed:
+	return 0;
+}
+
+static int flx_quoted_token (hcl_t* hcl, hcl_ooci_t c) /* string, character */
 {
 	hcl_flx_qt_t* qt = FLX_QT(hcl);
 
 	if (c == HCL_OOCI_EOF)
 	{
-		hcl_setsynerr (hcl, qt->synerr_code, TOKEN_LOC(hcl) /*hcl->c->feed.lx.loc?*/, HCL_NULL);
+		hcl_setsynerr (hcl, qt->synerr_code, TOKEN_LOC(hcl) /*FLX_LOC(hcl) instead?*/, HCL_NULL);
 		return -1;
 	}
 
@@ -2880,16 +3073,14 @@ static int feed_char (hcl_t* hcl, hcl_ooci_t c)
 {
 	switch (FLX_STATE(hcl))
 	{
-		case HCL_FLX_START:        return flx_start(hcl, c);
-		case HCL_FLX_DELIM_TOKEN:  return flx_delim_token(hcl, c);
-		case HCL_FLX_COMMENT:      return flx_comment(hcl, c);
-		case HCL_FLX_SHARP_TOKEN:  return flx_sharp_token(hcl, c);
-		case HCL_FLX_QUOTED_TOKEN: return flx_quoted_token(hcl, c);
-
+		case HCL_FLX_START:            return flx_start(hcl, c);
+		case HCL_FLX_COMMENT:          return flx_comment(hcl, c);
+		case HCL_FLX_DELIM_TOKEN:      return flx_delim_token(hcl, c);
+		case HCL_FLX_HASHED_TOKEN:     return flx_hashed_token(hcl, c);
+		case HCL_FLX_HASHED_CHAR:      return flx_hashed_char(hcl, c);
+		case HCL_FLX_RADIXED_NUMBER:   return flx_radixed_number(hcl, c);
+		case HCL_FLX_QUOTED_TOKEN:     return flx_quoted_token(hcl, c);
 /*
-		case HCL_FLX_SQSTR:
-			return flx_sqstr(hcl, c);
-
 		case HCL_FLX_DIRECTIVE:
 			break;
 */

@@ -855,13 +855,7 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int cflags, int verbose)
 		#endif
 
 	/* the compiler must be invoked whenever feed() sees a complete object */
-
-			if (x <= -1)
-			{
-				if (hcl->errnum == HCL_ESYNERR) print_synerr (hcl);
-				else hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: cannot feed - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
-				goto oops; /* TODO: proceed or just exit? */
-			}
+			if (x <= -1) goto feed_error;
 		}
 
 		if (n == 0 || feof(fp)) 
@@ -880,12 +874,20 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int cflags, int verbose)
 			goto oops;
 		}
 	}
-	hcl_endfeed (hcl);
+	if (hcl_endfeed (hcl) <= -1)
+	{
+	feed_error:
+		if (hcl->errnum == HCL_ESYNERR) print_synerr (hcl);
+		else hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: cannot feed - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
+		goto oops; /* TODO: proceed or just exit? */
+	}
+
 	fclose (fp);
 
 /* TODO: execute code? */
 	if (hcl_getbclen(hcl) > 0)
 	{
+/* TODO: execute code... */
 	}
 
 	return 0;

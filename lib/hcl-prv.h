@@ -532,16 +532,37 @@ struct hcl_flx_dt_t
 	int col_next;
 };
 
+
+typedef struct hcl_flx_hc_t hcl_flx_hc_t; /* hash-marked character like #\, #\newline */
+struct hcl_flx_hc_t
+{
+	/* state data */
+	hcl_oow_t char_count;
+};
+
+typedef struct hcl_flx_rn_t hcl_flx_rn_t; /* radixed number */
+struct hcl_flx_rn_t
+{
+	/* input data */
+	hcl_iotok_type_t tok_type;
+	hcl_synerrnum_t synerr_code;
+	int radix;
+
+	/* state data */
+	int invalid;
+	hcl_oow_t digit_count;
+};
+
 typedef struct hcl_flx_qt_t hcl_flx_qt_t; /* quoted token */
 struct hcl_flx_qt_t
 {
 	/* input data */
+	hcl_iotok_type_t tok_type;
+	hcl_synerrnum_t synerr_code;
 	hcl_ooch_t end_char;
 	hcl_ooch_t esc_char;
 	hcl_oow_t min_len;
 	hcl_oow_t max_len;
-	hcl_iotok_type_t tok_type;
-	hcl_synerrnum_t synerr_code;
 	int regex;
 
 	/* state data */
@@ -553,9 +574,11 @@ struct hcl_flx_qt_t
 enum hcl_flx_state_t
 {
 	HCL_FLX_START,
-	HCL_FLX_DELIM_TOKEN,
 	HCL_FLX_COMMENT,
-	HCL_FLX_SHARP_TOKEN,
+	HCL_FLX_DELIM_TOKEN,
+	HCL_FLX_HASHED_TOKEN, /* hash-marked token */
+	HCL_FLX_HASHED_CHAR, /* hash-marked character that begins with #\ */
+	HCL_FLX_RADIXED_NUMBER,
 	HCL_FLX_QUOTED_TOKEN
 };
 typedef enum hcl_flx_state_t hcl_flx_state_t;
@@ -615,6 +638,8 @@ struct hcl_compiler_t
 			union 
 			{
 				hcl_flx_dt_t dt; /* delimiter token */
+				hcl_flx_hc_t hc; /* hash-marked character */
+				hcl_flx_rn_t rn; /* radixed number */
 				hcl_flx_qt_t qt; /* quoted token */
 			} u;
 		} lx;
