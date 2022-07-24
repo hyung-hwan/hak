@@ -195,7 +195,8 @@ enum hcl_iotok_type_t
 	HCL_IOTOK_VBAR,      /* | */
 	HCL_IOTOK_EOL,       /* end of line */
 
-	HCL_IOTOK_INCLUDE
+	HCL_IOTOK_INCLUDE,
+	HCL_IOTOK_PRAGMA
 };
 typedef enum hcl_iotok_type_t hcl_iotok_type_t;
 
@@ -556,8 +557,8 @@ struct hcl_flx_hn_t
 	int radix;
 
 	/* state data */
-	int invalid;
 	hcl_oow_t digit_count;
+	hcl_oow_t invalid_digit_count;
 };
 
 typedef struct hcl_flx_qt_t hcl_flx_qt_t; /* quoted token */

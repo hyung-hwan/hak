@@ -46,6 +46,7 @@ static struct voca_t
 } vocas[] =
 {
 	{  8, { '#','i','n','c','l','u','d','e'                               } },
+	{  7, { '#','p','r','a','g','m','a'                                   } },
 	{ 11, { '#','\\','b','a','c','k','s','p','a','c','e'                  } },
 	{ 10, { '#','\\','l','i','n','e','f','e','e','d'                      } },
 	{  9, { '#','\\','n','e','w','l','i','n','e'                          } },
@@ -63,6 +64,8 @@ static struct voca_t
 enum voca_id_t
 {
 	VOCA_INCLUDE,
+	VOCA_PRAGMA,
+
 	VOCA_BACKSPACE,
 	VOCA_LINEFEED,
 	VOCA_NEWLINE,
@@ -363,7 +366,6 @@ static int copy_string_to (hcl_t* hcl, const hcl_oocs_t* src, hcl_oocs_t* dst, h
 	return 0;
 }
 
-
 #define GET_CHAR(hcl) \
 	do { if (get_char(hcl) <= -1) return -1; } while (0)
 
@@ -430,6 +432,22 @@ static HCL_INLINE void unget_char (hcl_t* hcl, const hcl_iolxc_t* c)
 	/* Make sure that the unget buffer is large enough */
 	HCL_ASSERT (hcl, hcl->c->nungots < HCL_COUNTOF(hcl->c->ungot));
 	hcl->c->ungot[hcl->c->nungots++] = *c;
+}
+
+static int get_directive_token_type (hcl_t* hcl, hcl_iotok_type_t* tok_type)
+{
+	if (does_token_name_match(hcl, VOCA_INCLUDE)) 
+	{
+		*tok_type = HCL_IOTOK_INCLUDE;
+		return 0;
+	}
+	else if (does_token_name_match(hcl, VOCA_PRAGMA)) 
+	{
+		*tok_type = HCL_IOTOK_PRAGMA;
+		return 0;
+	}
+
+	return -1;
 }
 
 static int get_char (hcl_t* hcl)
@@ -959,6 +977,9 @@ static int get_hmarked_token (hcl_t* hcl)
 			break;
 
 		default:
+		{
+			hcl_iotok_type_t tok_type;
+
 			if (is_delimchar(c))
 			{
 				/* EOF, whitespace, etc */
@@ -975,19 +996,20 @@ static int get_hmarked_token (hcl_t* hcl)
 			}
 			while (!is_delimchar(c));
 
-			if (does_token_name_match(hcl, VOCA_INCLUDE))
-			{
-				SET_TOKEN_TYPE (hcl, HCL_IOTOK_INCLUDE);
-			}
-			else
+			if (get_directive_token_type(hcl, &tok_type) <= -1)
 			{
 				hcl_setsynerrbfmt (hcl, HCL_SYNERR_HASHLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
 					"invalid hash-marked literal %.*js", hcl->c->tok.name.len, hcl->c->tok.name.ptr);
 				return -1;
 			}
+			else
+			{
+				SET_TOKEN_TYPE (hcl, tok_type);
+			}
 
 			unget_char (hcl, &hcl->c->lxc);
 			break;
+		}
 	}
 
 	return 0;
@@ -2859,6 +2881,8 @@ static int flx_hmarked_ident (hcl_t* hcl, hcl_ooci_t c)
 
 	if (is_delimchar(c))
 	{
+		hcl_iotok_type_t tok_type;
+
 		if (hi->char_count == 0)
 		{
 			hcl_setsynerrbfmt (hcl, HCL_SYNERR_HASHLIT, FLX_LOC(hcl), HCL_NULL,
@@ -2866,16 +2890,16 @@ static int flx_hmarked_ident (hcl_t* hcl, hcl_ooci_t c)
 			return -1;
 		}
 
-		if (does_token_name_match(hcl, VOCA_INCLUDE))
-		{
-			FEED_WRAP_UP (hcl, HCL_IOTOK_INCLUDE);
-			goto not_consumed;
-		}
-		else
+		if (get_directive_token_type(hcl, &tok_type) <= -1)
 		{
 			hcl_setsynerrbfmt (hcl, HCL_SYNERR_HASHLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
 				"invalid hash-marked literal %.*js", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
 			return -1;
+		}
+		else
+		{
+			FEED_WRAP_UP (hcl, tok_type);
+			goto not_consumed;
 		}
 	}
 	else
@@ -2898,19 +2922,30 @@ static int flx_hmarked_number (hcl_t* hcl, hcl_ooci_t c)
 
 	if (CHAR_TO_NUM(c, rn->radix) >= rn->radix)
 	{
-		if (rn->digit_count == 0)
+		if (is_delimchar(c))
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
-				"no valid digit after radix specifier in %.*js", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
-			return -1;
-		}
-		else if (is_delimchar(c))
-		{
-			if (rn->invalid)
+			if (rn->digit_count == 0)
 			{
 				hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
-					"invalid digit in radixed number in %.*js", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
+					"no valid digit after radix specifier in %.*js", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
 				return -1;
+			}
+			else if (rn->invalid_digit_count > 0)
+			{
+				/* invalid as a number, but this could be a hash-marked directive */
+				hcl_iotok_type_t tok_type;
+
+				if (get_directive_token_type(hcl, &tok_type) <= -1)
+				{
+					hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
+						"neither valid radixed number nor valid directive %.*js", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
+					return -1;
+				}
+				else
+				{
+					FEED_WRAP_UP (hcl, tok_type);
+					goto not_consumed;
+				}
 			}
 
 			FEED_WRAP_UP (hcl, rn->tok_type);
@@ -2920,7 +2955,7 @@ static int flx_hmarked_number (hcl_t* hcl, hcl_ooci_t c)
 		{
 			ADD_TOKEN_CHAR(hcl, c);
 			rn->digit_count++;
-			rn->invalid = 1;
+			rn->invalid_digit_count++;
 			goto consumed;
 		}
 	}
