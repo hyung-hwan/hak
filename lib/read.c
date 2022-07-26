@@ -2293,6 +2293,10 @@ static delim_token_t delim_token_tab[] =
 	 *    Group the items with the same prefix together.
 	 *    List the shorter before the longer items in the same group.
 	 *    The length must not differ by greater than 1 between 2 items in the same group.
+	 * 
+	 * [NOTE 3]
+	 *  don't list #( and #[ here because of overlapping use of # for various purposes.
+	 *  however, # is included in is_delimchar().
 	 */
 
 	{ "(",        1, HCL_IOTOK_LPAREN },
@@ -2305,7 +2309,7 @@ static delim_token_t delim_token_tab[] =
 	{ "{",        1, HCL_IOTOK_LBRACE },
 	{ "}",        1, HCL_IOTOK_RBRACE },
 
-	{ "|",        1, HCL_IOTOK_VBAR },	
+	{ "|",        1, HCL_IOTOK_VBAR },
 	{ ",",        1, HCL_IOTOK_COMMA },
 
 	{ ".",        1, HCL_IOTOK_DOT },
@@ -2390,7 +2394,10 @@ static int feed_continue_with_char (hcl_t* hcl, hcl_ooci_t c, hcl_flx_state_t st
 #define FLX_HC(hcl) (&((hcl)->c->feed.lx.u.hc))
 #define FLX_HI(hcl) (&((hcl)->c->feed.lx.u.hi))
 #define FLX_HN(hcl) (&((hcl)->c->feed.lx.u.hn))
+#define FLX_PI(hcl) (&((hcl)->c->feed.lx.u.pi))
+#define FLX_PN(hcl) (&((hcl)->c->feed.lx.u.pn))
 #define FLX_QT(hcl) (&((hcl)->c->feed.lx.u.qt))
+#define FLX_ST(hcl) (&((hcl)->c->feed.lx.u.st))
 
 static HCL_INLINE void init_flx_hc (hcl_flx_hc_t* hc)
 {
@@ -2402,12 +2409,12 @@ static HCL_INLINE void init_flx_hi (hcl_flx_hi_t* hi)
 	HCL_MEMSET (hi, 0, HCL_SIZEOF(*hi));
 }
 
-static HCL_INLINE void init_flx_hn (hcl_flx_hn_t* rn, hcl_iotok_type_t tok_type, hcl_synerrnum_t synerr_code, int radix)
+static HCL_INLINE void init_flx_hn (hcl_flx_hn_t* hn, hcl_iotok_type_t tok_type, hcl_synerrnum_t synerr_code, int radix)
 {
-	HCL_MEMSET (rn, 0, HCL_SIZEOF(*rn));
-	rn->tok_type = tok_type;
-	rn->synerr_code = synerr_code;
-	rn->radix = radix;
+	HCL_MEMSET (hn, 0, HCL_SIZEOF(*hn));
+	hn->tok_type = tok_type;
+	hn->synerr_code = synerr_code;
+	hn->radix = radix;
 }
 
 static HCL_INLINE void init_flx_qt (hcl_flx_qt_t* qt, hcl_iotok_type_t tok_type, hcl_synerrnum_t synerr_code, hcl_ooch_t end_char, hcl_ooch_t esc_char, hcl_oow_t min_len, hcl_oow_t max_len)
@@ -2421,16 +2428,37 @@ static HCL_INLINE void init_flx_qt (hcl_flx_qt_t* qt, hcl_iotok_type_t tok_type,
 	qt->max_len = max_len;
 }
 
+static HCL_INLINE void init_flx_pi (hcl_flx_pi_t* pi)
+{
+	HCL_MEMSET (pi, 0, HCL_SIZEOF(*pi));
+}
+
+static HCL_INLINE void init_flx_pn (hcl_flx_pn_t* pn)
+{
+	HCL_MEMSET (pn, 0, HCL_SIZEOF(*pn));
+}
+
+static HCL_INLINE void init_flx_st (hcl_flx_st_t* st, hcl_ooch_t sign_c)
+{
+	HCL_MEMSET (st, 0, HCL_SIZEOF(*st));
+	st->sign_c = sign_c;
+}
+
+static void reset_flx_token (hcl_t* hcl)
+{
+	/* clear the token name, reset its location */
+	SET_TOKEN_TYPE (hcl, HCL_IOTOK_EOF); /* is it correct? */
+	CLEAR_TOKEN_NAME (hcl);
+	SET_TOKEN_LOC (hcl, &hcl->c->feed.lx.loc);
+}
+
 static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 {
 	HCL_ASSERT (hcl, FLX_STATE(hcl) == HCL_FLX_START);
 
 	if (is_spacechar(c)) goto consumed; /* skip spaces */
 
-	/* clear the token name, reset its location */
-	SET_TOKEN_TYPE (hcl, HCL_IOTOK_EOF); /* is it correct? */
-	CLEAR_TOKEN_NAME (hcl);
-	SET_TOKEN_LOC (hcl, &hcl->c->feed.lx.loc);
+	reset_flx_token (hcl);
 
 //HCL_DEBUG1 (hcl, "XXX[%jc]\n", c);
 	if (find_delim_token_char(hcl, c, 0, HCL_COUNTOF(delim_token_tab) - 1, 0, FLX_DT(hcl))) 
@@ -2460,188 +2488,45 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 			if (n >= 1) goto retry;
 #endif
 			FEED_WRAP_UP_WITH_CHARS (hcl, vocas[VOCA_EOF].str, vocas[VOCA_EOF].len, HCL_IOTOK_EOF);
-			break;
+			goto consumed;
 		}
 
 		case ';':
 			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_COMMENT);
-			break;
+			goto consumed;
 
 		case '#':
+			/* no state date to initialize. just change the state */
 			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_HMARKED_TOKEN);
-			break;
+			goto consumed;
 
 		case '\"':
 			init_flx_qt (FLX_QT(hcl), HCL_IOTOK_STRLIT, HCL_SYNERR_STRLIT, c, '\\', 0, HCL_TYPE_MAX(hcl_oow_t));
 			FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard the quote itself. move on the the QUOTED_TOKEN state */
-			break;
+			goto consumed;
 
 		case '\'':
 			init_flx_qt (FLX_QT(hcl), HCL_IOTOK_CHARLIT, HCL_SYNERR_CHARLIT, c, '\\', 1, 1);
 			FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard the quote itself. move on the the QUOTED_TOKEN state */
-			break;
+			goto consumed;
 
-#if 0
 		case '+':
 		case '-':
-			oldc = c;
-			GET_CHAR_TO (hcl, c);
-			if(is_digitchar(c))
-			{
-				unget_char (hcl, &hcl->c->lxc);
-				c = oldc;
-				goto numlit;
-			}
-			else if (c == '#')
-			{
-				int radix;
-				hcl_iolxc_t sharp;
-
-				sharp = hcl->c->lxc; /* back up '#' */
-
-				GET_CHAR_TO (hcl, c);
-				switch (c)
-				{
-					case 'b':
-						radix = 2;
-						goto radnumlit;
-					case 'o':
-						radix = 8;
-						goto radnumlit;
-					case 'x':
-						radix = 16;
-					radnumlit:
-						ADD_TOKEN_CHAR (hcl, oldc);
-						if (get_radixed_number(hcl, c, radix) <= -1) return -1;
-						break;
-
-					default:
-						unget_char (hcl, &hcl->c->lxc);
-						unget_char (hcl, &sharp);
-						c = oldc;
-						goto ident;
-				}
-			}
-			else
-			{
-				unget_char (hcl, &hcl->c->lxc);
-				c = oldc;
-				goto ident;
-			}
-			break;
+			init_flx_st (FLX_ST(hcl), c);
+			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_SIGNED_TOKEN);
+			goto consumed;
 
 		case '0': case '1': case '2': case '3': case '4':
 		case '5': case '6': case '7': case '8': case '9':
-		numlit:
-			SET_TOKEN_TYPE (hcl, HCL_IOTOK_NUMLIT);
-			while (1)
-			{
-				ADD_TOKEN_CHAR (hcl, c);
-				GET_CHAR_TO (hcl, c);
-				if (TOKEN_TYPE(hcl) == HCL_IOTOK_NUMLIT && c == '.')
-				{
-					SET_TOKEN_TYPE (hcl, HCL_IOTOK_FPDECLIT);
-					ADD_TOKEN_CHAR (hcl, c);
-					GET_CHAR_TO (hcl, c);
-					if (!is_digitchar(c))
-					{
-						/* the first character after the decimal point is not a decimal digit */
-						hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "invalid numeric literal with no digit after decimal point");
-						return -1;
-					}
-				}
-
-				if (!is_digitchar(c))
-				{
-					unget_char (hcl, &hcl->c->lxc);
-					break;
-				}
-			}
-
-			break;
+			init_flx_pn (FLX_PN(hcl));
+			FEED_CONTINUE (hcl, HCL_FLX_PLAIN_NUMBER);
+			goto not_consumed;
 
 		default:
-		ident:
-			if (is_delimchar(c))
-			{
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_ILCHR, TOKEN_LOC(hcl), HCL_NULL, "illegal character %jc encountered", c);
-				return -1;
-			}
+			init_flx_pi (FLX_PI(hcl));
+			FEED_CONTINUE (hcl, HCL_FLX_PLAIN_IDENT);
+			goto not_consumed;
 
-			SET_TOKEN_TYPE (hcl, HCL_IOTOK_IDENT);
-			while (1)
-			{
-				ADD_TOKEN_CHAR (hcl, c);
-				GET_CHAR_TO (hcl, c);
-
-				if (c == '.')
-				{
-					hcl_iolxc_t period;
-					hcl_iotok_type_t type;
-
-					type = classify_ident_token(hcl, TOKEN_NAME(hcl));
-					if (type != HCL_IOTOK_IDENT)
-					{
-						SET_TOKEN_TYPE (hcl, type);
-						unget_char (hcl, &hcl->c->lxc);
-						break;
-					}
-
-					period = hcl->c->lxc;
-
-				read_more_seg:
-					GET_CHAR_TO (hcl, c);
-					if (!is_delimchar(c))
-					{
-						hcl_oow_t start;
-						hcl_oocs_t seg;
-
-						SET_TOKEN_TYPE (hcl, HCL_IOTOK_IDENT_DOTTED);
-						ADD_TOKEN_CHAR (hcl, '.');
-
-						start = TOKEN_NAME_LEN(hcl);
-						do
-						{
-							ADD_TOKEN_CHAR (hcl, c);
-							GET_CHAR_TO (hcl, c);
-						}
-						while (!is_delimchar(c));
-
-						seg.ptr = &TOKEN_NAME_CHAR(hcl,start);
-						seg.len = TOKEN_NAME_LEN(hcl) - start;
-						if (classify_ident_token(hcl, &seg) != HCL_IOTOK_IDENT)
-						{
-							hcl_setsynerr (hcl, HCL_SYNERR_MSEGIDENT, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-							return -1;
-						}
-
-						if (c == '.') goto read_more_seg;
-
-						unget_char (hcl, &hcl->c->lxc);
-						break;
-					}
-					else
-					{
-						unget_char (hcl, &hcl->c->lxc);
-						unget_char (hcl, &period);
-					}
-					break;
-				}
-				else if (is_delimchar(c))
-				{
-					unget_char (hcl, &hcl->c->lxc);
-					break;
-				}
-			}
-
-			if (TOKEN_TYPE(hcl) == HCL_IOTOK_IDENT)
-			{
-				hcl_iotok_type_t type;
-				type = classify_ident_token(hcl, TOKEN_NAME(hcl));
-				SET_TOKEN_TYPE (hcl, type);
-			}
-			break;
-#endif
 	}
 
 consumed:
@@ -2932,7 +2817,7 @@ static int flx_hmarked_number (hcl_t* hcl, hcl_ooci_t c)
 			}
 			else if (rn->invalid_digit_count > 0)
 			{
-				/* invalid as a number, but this could be a hash-marked directive */
+				/* invalid as a radixed number, but this could be a hash-marked directive */
 				hcl_iotok_type_t tok_type;
 
 				if (get_directive_token_type(hcl, &tok_type) <= -1)
@@ -2965,6 +2850,120 @@ static int flx_hmarked_number (hcl_t* hcl, hcl_ooci_t c)
 		ADD_TOKEN_CHAR(hcl, c);
 		rn->digit_count++;
 		goto consumed;
+	}
+
+consumed:
+	return 1;
+
+not_consumed:
+	return 0;
+}
+
+static int flx_plain_ident (hcl_t* hcl, hcl_ooci_t c) /* identifier */
+{
+	hcl_flx_pi_t* pi = FLX_PI(hcl);
+
+	if (is_delimchar(c)) /* [NOTE] . is one of the delimiter character */
+	{
+		hcl_oow_t start;
+		hcl_oocs_t seg;
+		hcl_iotok_type_t tok_type;
+
+		if (pi->seg_len == 0)
+		{
+			/* this must be the second segment if flx_plain_ident() has been scheduled 
+			 * with a valid identifier character at first */
+			HCL_ASSERT (hcl, pi->seg_count >= 1); 
+			hcl_setsynerr (hcl, HCL_SYNERR_MSEGIDENT, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			return -1;
+		}
+
+		start = TOKEN_NAME_LEN(hcl) - pi->seg_len;
+		seg.ptr = &TOKEN_NAME_CHAR(hcl, start);
+		seg.len = pi->seg_len;
+		tok_type = classify_ident_token(hcl, &seg);
+		if (tok_type != HCL_IOTOK_IDENT) 
+		{
+			pi->non_ident_seg_count++;
+			pi->last_non_ident_type = tok_type;
+		}
+
+		pi->seg_len = 0; /* the length of the segment to be worked on */
+		pi->seg_count++; /* total number of segments completed */
+
+		if (c == '.')
+		{
+			/* move on to the next segment */
+			ADD_TOKEN_CHAR(hcl, c);
+			pi->char_count++;
+			goto consumed;
+		}
+
+		/* finish */
+		if (pi->non_ident_seg_count > 0)
+		{
+			if (pi->seg_count == 1)
+			{
+				FEED_WRAP_UP (hcl, pi->last_non_ident_type);
+				goto not_consumed;
+			}
+			else
+			{
+				hcl_setsynerr (hcl, HCL_SYNERR_MSEGIDENT, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+				return -1;
+			}
+		}
+
+		FEED_WRAP_UP (hcl, (pi->seg_count == 1? HCL_IOTOK_IDENT: HCL_IOTOK_IDENT_DOTTED));
+		goto not_consumed;
+	}
+	else
+	{
+		ADD_TOKEN_CHAR(hcl, c);
+		pi->char_count++;
+		pi->seg_len++;
+		goto consumed;
+	}
+
+consumed:
+	return 1;
+
+not_consumed:
+	return 0;
+}
+
+static int flx_plain_number (hcl_t* hcl, hcl_ooci_t c) /* number */
+{
+	hcl_flx_pn_t* pn = FLX_PN(hcl);
+
+	if (is_digitchar(c))
+	{
+		ADD_TOKEN_CHAR (hcl, c);
+		pn->digit_count[pn->fpdec]++;
+		goto consumed;
+	}
+	else
+	{
+		if (!pn->fpdec && c == '.')
+		{
+			pn->fpdec = 1;
+			ADD_TOKEN_CHAR (hcl, c);
+			goto consumed;
+		}
+
+		if (pn->digit_count[0] == 0)
+		{
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "invalid numeric literal with no digit before decimal point");
+			return -1;
+		}
+		else if (pn->fpdec && pn->digit_count[1] == 0)
+		{
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "invalid numeric literal with no digit after decimal point");
+			return -1;
+		}
+
+		FEED_WRAP_UP (hcl, (pn->fpdec? HCL_IOTOK_FPDECLIT: HCL_IOTOK_NUMLIT));
+		goto not_consumed;
 	}
 
 consumed:
@@ -3139,6 +3138,69 @@ consumed:
 	return 1;
 }
 
+static int flx_signed_token (hcl_t* hcl, hcl_ooci_t c)
+{
+	hcl_flx_st_t* st = FLX_ST(hcl);
+
+	if (st->char_count == 0 && c == '#')
+	{
+		ADD_TOKEN_CHAR (hcl, c);
+		st->hmarked = 1;
+		st->char_count++;
+		goto consumed;
+	}
+
+	if (st->hmarked)
+	{
+		HCL_ASSERT (hcl, st->char_count == 1);
+
+		if (c == 'b' || c == 'o' || c == 'x')
+		{
+			init_flx_hn (FLX_HN(hcl), HCL_IOTOK_RADNUMLIT, HCL_SYNERR_NUMLIT, (c == 'b'? 2: (c == 'o'? 8: 16)));
+			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_HMARKED_NUMBER);
+			goto consumed;
+		}
+		else
+		{
+			/* at this point, the token name buffer holds +# or -# */
+			HCL_ASSERT (hcl, TOKEN_NAME_LEN(hcl) == 2);
+			TOKEN_NAME_LEN(hcl)--; /* remove the ending # from the name buffer */
+			FEED_WRAP_UP (hcl, HCL_IOTOK_IDENT);
+
+			/* reset the token information as if it enters HMARKED_TOKEN from START */
+			reset_flx_token (hcl);
+
+			/* the current character is on the same line as the hash mark, the column must be greater than 1 */
+			HCL_ASSERT (hcl, FLX_LOC(hcl)->colm > 1); 
+			FLX_LOC(hcl)->colm--; /* move back one character location by decrementing the column number */
+			ADD_TOKEN_CHAR (hcl, '#');
+			FEED_CONTINUE (hcl, HCL_FLX_HMARKED_TOKEN);
+			goto not_consumed;
+		}
+	}
+
+	HCL_ASSERT (hcl, st->char_count == 0);
+	if (is_digitchar(c))
+	{
+		init_flx_pn (FLX_PN(hcl)); /* the sign is not part of the pn->digit_count[0] so keep it at 0 here */
+		FEED_CONTINUE (hcl, HCL_FLX_PLAIN_NUMBER);
+		goto not_consumed;
+	}
+	else
+	{
+		init_flx_pi (FLX_PI(hcl));
+		FLX_PI(hcl)->char_count++; /* the sign becomes the part of the identifier. */
+		FEED_CONTINUE (hcl, HCL_FLX_PLAIN_IDENT);
+		goto not_consumed;
+	}
+
+consumed:
+	return 1;
+
+not_consumed:
+	return 0;
+}
+
 static int feed_char (hcl_t* hcl, hcl_ooci_t c)
 {
 	switch (FLX_STATE(hcl))
@@ -3149,8 +3211,11 @@ static int feed_char (hcl_t* hcl, hcl_ooci_t c)
 		case HCL_FLX_HMARKED_TOKEN:    return flx_hmarked_token(hcl, c);
 		case HCL_FLX_HMARKED_CHAR:     return flx_hmarked_char(hcl, c);
 		case HCL_FLX_HMARKED_IDENT:    return flx_hmarked_ident(hcl, c);
-		case HCL_FLX_HMARKED_NUMBER:    return flx_hmarked_number(hcl, c);
+		case HCL_FLX_HMARKED_NUMBER:   return flx_hmarked_number(hcl, c);
+		case HCL_FLX_PLAIN_IDENT:      return flx_plain_ident(hcl, c);
+		case HCL_FLX_PLAIN_NUMBER:      return flx_plain_number(hcl, c);
 		case HCL_FLX_QUOTED_TOKEN:     return flx_quoted_token(hcl, c);
+		case HCL_FLX_SIGNED_TOKEN:     return flx_signed_token(hcl, c);
 
 		default:
 			/* INVALID STATE */

@@ -561,6 +561,25 @@ struct hcl_flx_hn_t
 	hcl_oow_t invalid_digit_count;
 };
 
+typedef struct hcl_flx_pi_t hcl_flx_pi_t;
+struct hcl_flx_pi_t
+{
+	/* state data */
+	hcl_oow_t char_count;
+	hcl_oow_t seg_count;
+	hcl_oow_t seg_len;
+	hcl_oow_t non_ident_seg_count;
+	hcl_iotok_type_t last_non_ident_type;
+};
+
+typedef struct hcl_flx_pn_t hcl_flx_pn_t;
+struct hcl_flx_pn_t
+{
+	/* state data */
+	int fpdec;
+	hcl_oow_t digit_count[2];
+};
+
 typedef struct hcl_flx_qt_t hcl_flx_qt_t; /* quoted token */
 struct hcl_flx_qt_t
 {
@@ -579,16 +598,31 @@ struct hcl_flx_qt_t
 	hcl_ooci_t c_acc;
 };
 
+typedef struct hcl_flx_st_t hcl_flx_st_t;
+struct hcl_flx_st_t
+{
+	/* input data */
+	hcl_ooch_t sign_c;
+
+	/* state data */
+	hcl_oow_t char_count;
+	int hmarked;
+};
+
+
 enum hcl_flx_state_t
 {
 	HCL_FLX_START,
 	HCL_FLX_COMMENT,
 	HCL_FLX_DELIM_TOKEN,
-	HCL_FLX_HMARKED_TOKEN, /* hash-marked token */
-	HCL_FLX_HMARKED_CHAR, /* hash-marked character that begins with #\ */
-	HCL_FLX_HMARKED_IDENT, /* hash-marked identifier like #include, etc */
+	HCL_FLX_HMARKED_TOKEN,  /* hash-marked token */
+	HCL_FLX_HMARKED_CHAR,   /* hash-marked character that begins with #\ */
+	HCL_FLX_HMARKED_IDENT,  /* hash-marked identifier like #include, etc */
 	HCL_FLX_HMARKED_NUMBER, /* hash-marked number - radixed number like #xABCD */
-	HCL_FLX_QUOTED_TOKEN
+	HCL_FLX_PLAIN_IDENT,    /* plain identifier */
+	HCL_FLX_PLAIN_NUMBER,   /* plain number */
+	HCL_FLX_QUOTED_TOKEN,   /* string, character */
+	HCL_FLX_SIGNED_TOKEN    /* prefixed with + or - */
 };
 typedef enum hcl_flx_state_t hcl_flx_state_t;
 
@@ -650,7 +684,10 @@ struct hcl_compiler_t
 				hcl_flx_hc_t hc; /* hash-marked character */
 				hcl_flx_hi_t hi; /* hash-marked identifier */
 				hcl_flx_hn_t hn; /* hash-marked number - radixed number */
+				hcl_flx_pi_t pi; /* plain identifier */
+				hcl_flx_pn_t pn; /* plain number */
 				hcl_flx_qt_t qt; /* quoted token */
+				hcl_flx_st_t st; /* signed token */
 			} u;
 		} lx;
 
