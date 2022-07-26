@@ -626,6 +626,15 @@ enum hcl_flx_state_t
 };
 typedef enum hcl_flx_state_t hcl_flx_state_t;
 
+typedef struct hcl_frd_t hcl_frd_t;
+struct hcl_frd_t
+{
+	int level;
+	int array_level;
+	int flagv;
+	hcl_cnode_t* obj;
+};
+
 struct hcl_compiler_t
 {
 	/* output handler */
@@ -694,19 +703,14 @@ struct hcl_compiler_t
 		struct
 		{
 			int code;
-			union
+			/*union
 			{
-				struct
-				{
-					int x;
-				} xxx;
-				struct
-				{
-					int x;
-				} yyy;
-			} u;
+				
+			} u;*/
 		} st[100];
 		hcl_ooi_t top;
+
+		struct hcl_frd_t rd;
 	} feed;
 
 	/* == COMPILER STACK == */
