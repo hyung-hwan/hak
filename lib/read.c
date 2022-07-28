@@ -461,6 +461,7 @@ static int get_char (hcl_t* hcl)
 		return 0;
 	}
 
+/* <<B.STATE>> -> probably not needed any more?
 	if (hcl->c->curinp->b.state == -1)
 	{
 		hcl->c->curinp->b.state = 0;
@@ -471,6 +472,7 @@ static int get_char (hcl_t* hcl)
 		hcl->c->curinp->b.state = 0;
 		goto return_eof;
 	}
+*/
 
 	if (hcl->c->curinp->b.pos >= hcl->c->curinp->b.len)
 	{
@@ -478,7 +480,9 @@ static int get_char (hcl_t* hcl)
 
 		if (hcl->c->curinp->xlen <= 0)
 		{
+/* <<B.STATE>>
 		return_eof:
+ */
 			hcl->c->curinp->lxc.c = HCL_OOCI_EOF;
 			hcl->c->curinp->lxc.l.line = hcl->c->curinp->line;
 			hcl->c->curinp->lxc.l.colm = hcl->c->curinp->colm;
@@ -2277,377 +2281,437 @@ static void fst_pop (hcl_t* hcl)
 	hcl->c->feed.top--;
 }
 
+static int feed_begin_include (hcl_t* hcl)
+{
+	hcl_ioinarg_t* arg;
+	const hcl_ooch_t* io_name;
+
+	io_name = add_io_name(hcl, TOKEN_NAME(hcl));
+	if (HCL_UNLIKELY(!io_name)) return -1;
+
+	arg = (hcl_ioinarg_t*)hcl_callocmem(hcl, HCL_SIZEOF(*arg));
+	if (HCL_UNLIKELY(!arg)) goto oops;
+
+	arg->name = io_name;
+	arg->line = 1;
+	arg->colm = 1;
+	/*arg->nl = '\0';*/
+	arg->includer = hcl->c->curinp;
+
+	if (hcl->c->reader(hcl, HCL_IO_OPEN, arg) <= -1)
+	{
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_INCLUDE, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "unable to include %js", io_name);
+		goto oops;
+	}
+
+	/* switch to the includee's stream */
+	hcl->c->curinp = arg;
+	/* hcl->c->depth.incl++; */
+
+	return 0;
+
+oops:
+	if (arg) hcl_freemem (hcl, arg);
+	return -1;
+}
+
+static int feed_end_include (hcl_t* hcl)
+{
+	int x;
+	hcl_ioinarg_t* cur;
+
+	if (hcl->c->curinp == &hcl->c->inarg) return 0; /* no include */
+
+	/* if it is an included file, close it and
+	 * retry to read a character from an outer file */
+
+	x = hcl->c->reader(hcl, HCL_IO_CLOSE, hcl->c->curinp);
+
+	/* if closing has failed, still destroy the
+	 * sio structure first as normal and return
+	 * the failure below. this way, the caller
+	 * does not call HCL_IO_CLOSE on
+	 * hcl->c->curinp again. */
+
+	cur = hcl->c->curinp;
+	hcl->c->curinp = hcl->c->curinp->includer;
+
+	HCL_ASSERT (hcl, cur->name != HCL_NULL);
+	hcl_freemem (hcl, cur);
+	/* hcl->parse.depth.incl--; */
+
+	if (x != 0)
+	{
+		/* the failure mentioned above is returned here */
+		return -1;
+	}
+
+	hcl->c->lxc = hcl->c->curinp->lxc;
+	return 1; /* ended the included file successfully */
+}
+
 static int feed_process_token (hcl_t* hcl)
 {
 	hcl_frd_t* frd = &hcl->c->feed.rd;
 
-HCL_DEBUG6 (hcl, "TOKEN LEN %zu=>[%.*js] %d  LOC=%d,%d\n", TOKEN_NAME_LEN(hcl), TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl), TOKEN_TYPE(hcl), (int)TOKEN_LOC(hcl)->line, (int)TOKEN_LOC(hcl)->colm);
-#if 0
-	/* this function read an s-expression non-recursively
+	/* this function composes an s-expression non-recursively
 	 * by manipulating its own stack. */
 
-	int level = 0, array_level = 0, flagv = 0;
-	hcl_cnode_t* obj = HCL_NULL;
-#endif
-
-/*
-	while (1)
+/*hcl_logbfmt (hcl, HCL_LOG_STDERR, "TOKEN => [%.*js] type=%d\n", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl), TOKEN_TYPE(hcl));*/
+	if (frd->expect_include_file)
 	{
-	redo:
-*/
-		switch (TOKEN_TYPE(hcl))
+		if (TOKEN_TYPE(hcl) != HCL_IOTOK_STRLIT)
 		{
-			default:
-				hcl_setsynerr (hcl, HCL_SYNERR_ILTOK, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-				goto oops;
+			hcl_setsynerr (hcl, HCL_SYNERR_STRING, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			goto oops;
+		}
 
-			case HCL_IOTOK_EOF:
-				hcl_setsynerr (hcl, HCL_SYNERR_EOF, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-				goto oops;
+		frd->expect_include_file = 0;
+		if (feed_begin_include(hcl) <= -1) goto oops;
+		goto ok;
+	}
 
-#if 0
-/* this one is special?? */
-			case HCL_IOTOK_INCLUDE:
-				/* TODO: should i limit where #include can be specified?
-				 *       disallow it inside a list literal or an array literal? */
-				GET_TOKEN_WITH_GOTO (hcl, oops);
-				if (TOKEN_TYPE(hcl) != HCL_IOTOK_STRLIT)
-				{
-					hcl_setsynerr (hcl, HCL_SYNERR_STRING, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-					goto oops;
-				}
-				if (begin_include(hcl) <= -1) goto oops;
-				goto redo;
-#endif
+	switch (TOKEN_TYPE(hcl))
+	{
+		default:
+			hcl_setsynerr (hcl, HCL_SYNERR_ILTOK, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			goto oops;
 
-			case HCL_IOTOK_LBRACK: /* [] */
-				frd->flagv = 0;
-				LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_ARRAY);
-				goto start_list;
+		case HCL_IOTOK_EOF:
+		/* TODO: change the code. not an error? */
+			hcl_setsynerr (hcl, HCL_SYNERR_EOF, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			goto oops;
 
-			case HCL_IOTOK_BAPAREN: /* #[ */
-				frd->flagv = 0;
-				LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_BYTEARRAY);
-				goto start_list;
+		case HCL_IOTOK_INCLUDE:
+			/* TODO: should i limit where #include can be specified?
+			 *       disallow it inside a list literal or an array literal? */
+			frd->expect_include_file = 1;
+			goto ok;
 
-			case HCL_IOTOK_LBRACE: /* { */
-				frd->flagv = 0;
-				LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_DIC);
-				goto start_list;
+		case HCL_IOTOK_LBRACK: /* [] */
+			frd->flagv = 0;
+			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_ARRAY);
+			goto start_list;
 
-			case HCL_IOTOK_QLPAREN: /* #( */
-				frd->flagv = 0;
-				LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_QLIST);
-				goto start_list;
+		case HCL_IOTOK_BAPAREN: /* #[ */
+			frd->flagv = 0;
+			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_BYTEARRAY);
+			goto start_list;
 
-			case HCL_IOTOK_LPARCOLON: /* (: */
-				frd->flagv = 0;
-				LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_MLIST);
-				goto start_list;
-				
-			case HCL_IOTOK_LPAREN: /* ( */
-				frd->flagv = 0;
-				LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_XLIST);
-			start_list:
-				if (frd->level >= HCL_TYPE_MAX(int))
-				{
-					/* the nesting frd->level has become too deep */
-					hcl_setsynerr (hcl, HCL_SYNERR_NESTING, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-					goto oops;
-				}
+		case HCL_IOTOK_LBRACE: /* { */
+			frd->flagv = 0;
+			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_DIC);
+			goto start_list;
 
-				/* push some data to simulate recursion into
-				 * a list literal or an array literal */
-				if (enter_list(hcl, TOKEN_LOC(hcl), frd->flagv) <= -1) goto oops;
-				frd->level++;
-				if (LIST_FLAG_GET_CONCODE(frd->flagv) == HCL_CONCODE_ARRAY) frd->array_level++;
+		case HCL_IOTOK_QLPAREN: /* #( */
+			frd->flagv = 0;
+			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_QLIST);
+			goto start_list;
 
-				/* read the next token */
-//				GET_TOKEN_WITH_GOTO (hcl, oops);
-				goto redo;
-
-			case HCL_IOTOK_DOT:
-				if (frd->level <= 0 || !can_dot_list(hcl))
-				{
-					/* cannot have a period:
-					 *   1. at the top frd->level - not inside ()
-					 *   2. at the beginning of a list
-					 *   3. inside an array, byte-array, dictionary, xlist */
-					hcl_setsynerr (hcl, HCL_SYNERR_DOTBANNED, TOKEN_LOC(hcl), HCL_NULL);
-					goto oops;
-				}
-
-//				GET_TOKEN_WITH_GOTO (hcl, oops);
-				goto redo;
-
-			case HCL_IOTOK_COLON:
-				if (frd->level <= 0 || !can_colon_list(hcl))
-				{
-					hcl_setsynerr (hcl, HCL_SYNERR_COLONBANNED, TOKEN_LOC(hcl), HCL_NULL);
-					goto oops;
-				}
-
-//				GET_TOKEN_WITH_GOTO (hcl, oops);
-				goto redo;
-
-			case HCL_IOTOK_COMMA:
-				if (frd->level <= 0 || !can_comma_list(hcl))
-				{
-					hcl_setsynerr (hcl, HCL_SYNERR_COMMABANNED, TOKEN_LOC(hcl), HCL_NULL);
-					goto oops;
-				}
-
-//				GET_TOKEN_WITH_GOTO (hcl, oops);
-				goto redo;
-
-			case HCL_IOTOK_RPAREN: /* xlist (), qlist #() */
-			case HCL_IOTOK_RBRACK: /* bytearray #[], array[] */
-			case HCL_IOTOK_RBRACE: /* dictionary {} */
+		case HCL_IOTOK_LPARCOLON: /* (: */
+			frd->flagv = 0;
+			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_MLIST);
+			goto start_list;
+			
+		case HCL_IOTOK_LPAREN: /* ( */
+			frd->flagv = 0;
+			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_XLIST);
+		start_list:
+			if (frd->level >= HCL_TYPE_MAX(int))
 			{
-				static struct
-				{
-					int             closer;
-					hcl_synerrnum_t synerr;
-				} req[] =
-				{
-					{ HCL_IOTOK_RPAREN, HCL_SYNERR_RPAREN }, /* XLIST     ( )  */
-					{ HCL_IOTOK_RPAREN, HCL_SYNERR_RPAREN }, /* MLIST     (: ) */
-					{ HCL_IOTOK_RBRACK, HCL_SYNERR_RBRACK }, /* ARRAY     [ ] */
-					{ HCL_IOTOK_RBRACK, HCL_SYNERR_RBRACK }, /* BYTEARRAY #[ ] */
-					{ HCL_IOTOK_RBRACE, HCL_SYNERR_RBRACE }, /* DIC       { } */
-					{ HCL_IOTOK_RPAREN, HCL_SYNERR_RPAREN }  /* QLIST     #( )  */
-				};
-
-				int oldflagv;
-				int concode;
-
-				if (frd->level <= 0)
-				{
-					hcl_setsynerr (hcl, HCL_SYNERR_UNBALPBB, TOKEN_LOC(hcl), HCL_NULL);
-					goto oops;
-				}
-
-				concode = LIST_FLAG_GET_CONCODE(frd->flagv);
-
-				if (req[concode].closer != TOKEN_TYPE(hcl))
-				{
-					hcl_setsynerr (hcl, req[concode].synerr, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-					goto oops;
-				}
-
-#if 0
-				if ((flagv & QUOTED) || frd->level <= 0)
-				{
-					/* the right parenthesis can never appear while
-					 * 'quoted' is true. 'quoted' is set to false when
-					 * entering a normal list. 'quoted' is set to true
-					 * when entering a quoted list. a quoted list does
-					 * not have an explicit right parenthesis.
-					 * so the right parenthesis can only pair up with
-					 * the left parenthesis for the normal list.
-					 *
-					 * For example, '(1 2 3 ') 5 6)
-					 *
-					 * this condition is triggerred when the first ) is
-					 * met after the second quote.
-					 *
-					 * also it is illegal to have the right parenthesis
-					 * with no opening(left) parenthesis, which is
-					 * indicated by frd->level<=0.
-					 */
-					hcl_setsynerr (hcl, HCL_SYNERR_LPAREN, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-					goto oops;
-				}
-#endif
-				frd->obj =leave_list(hcl, &frd->flagv, &oldflagv);
-
-				frd->level--;
-				if (LIST_FLAG_GET_CONCODE(oldflagv) == HCL_CONCODE_ARRAY) frd->array_level--;
-				break;
+				/* the nesting frd->level has become too deep */
+				hcl_setsynerr (hcl, HCL_SYNERR_NESTING, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+				goto oops;
 			}
 
-			case HCL_IOTOK_VBAR:
+			/* push some data to simulate recursion into
+			 * a list literal or an array literal */
+			if (enter_list(hcl, TOKEN_LOC(hcl), frd->flagv) <= -1) goto oops;
+			frd->level++;
+			if (LIST_FLAG_GET_CONCODE(frd->flagv) == HCL_CONCODE_ARRAY) frd->array_level++;
+
+			/* read the next token */
+			goto ok;
+
+		case HCL_IOTOK_DOT:
+			if (frd->level <= 0 || !can_dot_list(hcl))
+			{
+				/* cannot have a period:
+				 *   1. at the top frd->level - not inside ()
+				 *   2. at the beginning of a list
+				 *   3. inside an array, byte-array, dictionary, xlist */
+				hcl_setsynerr (hcl, HCL_SYNERR_DOTBANNED, TOKEN_LOC(hcl), HCL_NULL);
+				goto oops;
+			}
+
+			goto ok;
+
+		case HCL_IOTOK_COLON:
+			if (frd->level <= 0 || !can_colon_list(hcl))
+			{
+				hcl_setsynerr (hcl, HCL_SYNERR_COLONBANNED, TOKEN_LOC(hcl), HCL_NULL);
+				goto oops;
+			}
+
+			goto ok;
+
+		case HCL_IOTOK_COMMA:
+			if (frd->level <= 0 || !can_comma_list(hcl))
+			{
+				hcl_setsynerr (hcl, HCL_SYNERR_COMMABANNED, TOKEN_LOC(hcl), HCL_NULL);
+				goto oops;
+			}
+
+			goto ok;
+
+		case HCL_IOTOK_RPAREN: /* xlist (), qlist #() */
+		case HCL_IOTOK_RBRACK: /* bytearray #[], array[] */
+		case HCL_IOTOK_RBRACE: /* dictionary {} */
+		{
+			static struct
+			{
+				int             closer;
+				hcl_synerrnum_t synerr;
+			} req[] =
+			{
+				{ HCL_IOTOK_RPAREN, HCL_SYNERR_RPAREN }, /* XLIST     ( )  */
+				{ HCL_IOTOK_RPAREN, HCL_SYNERR_RPAREN }, /* MLIST     (: ) */
+				{ HCL_IOTOK_RBRACK, HCL_SYNERR_RBRACK }, /* ARRAY     [ ] */
+				{ HCL_IOTOK_RBRACK, HCL_SYNERR_RBRACK }, /* BYTEARRAY #[ ] */
+				{ HCL_IOTOK_RBRACE, HCL_SYNERR_RBRACE }, /* DIC       { } */
+				{ HCL_IOTOK_RPAREN, HCL_SYNERR_RPAREN }  /* QLIST     #( )  */
+			};
+
+			int oldflagv;
+			int concode;
+
+			if (frd->level <= 0)
+			{
+				hcl_setsynerr (hcl, HCL_SYNERR_UNBALPBB, TOKEN_LOC(hcl), HCL_NULL);
+				goto oops;
+			}
+
+			concode = LIST_FLAG_GET_CONCODE(frd->flagv);
+
+			if (req[concode].closer != TOKEN_TYPE(hcl))
+			{
+				hcl_setsynerr (hcl, req[concode].synerr, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+				goto oops;
+			}
+
+#if 0
+			if ((flagv & QUOTED) || frd->level <= 0)
+			{
+				/* the right parenthesis can never appear while
+				 * 'quoted' is true. 'quoted' is set to false when
+				 * entering a normal list. 'quoted' is set to true
+				 * when entering a quoted list. a quoted list does
+				 * not have an explicit right parenthesis.
+				 * so the right parenthesis can only pair up with
+				 * the left parenthesis for the normal list.
+				 *
+				 * For example, '(1 2 3 ') 5 6)
+				 *
+				 * this condition is triggerred when the first ) is
+				 * met after the second quote.
+				 *
+				 * also it is illegal to have the right parenthesis
+				 * with no opening(left) parenthesis, which is
+				 * indicated by frd->level<=0.
+				 */
+				hcl_setsynerr (hcl, HCL_SYNERR_LPAREN, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+				goto oops;
+			}
+#endif
+			frd->obj = leave_list(hcl, &frd->flagv, &oldflagv);
+
+			frd->level--;
+			if (LIST_FLAG_GET_CONCODE(oldflagv) == HCL_CONCODE_ARRAY) frd->array_level--;
+			break;
+		}
+
+		case HCL_IOTOK_VBAR:
 /* TODO: think wheter to allow | | inside a quoted list... */
 /* TODO: revise this part ... */
-				if (frd->array_level > 0) /* TODO: this check is wrong... i think .. */
-				{
-					hcl_setsynerr (hcl, HCL_SYNERR_VBARBANNED, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-					goto oops;
-				}
-				frd->obj =read_vlist(hcl);
-				break;
-
-			case HCL_IOTOK_NIL:
-				frd->obj =hcl_makecnodenil(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-				break;
-
-			case HCL_IOTOK_TRUE:
-				frd->obj =hcl_makecnodetrue(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-				break;
-
-			case HCL_IOTOK_FALSE:
-				frd->obj =hcl_makecnodefalse(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-				break;
-
-			case HCL_IOTOK_SELF:
-				frd->obj =hcl_makecnodeself(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-				break;
-
-			case HCL_IOTOK_SUPER:
-				frd->obj =hcl_makecnodesuper(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-				break;
-
-			case HCL_IOTOK_ELLIPSIS:
-				frd->obj =hcl_makecnodeellipsis(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-				break;
-
-			case HCL_IOTOK_TRPCOLONS:
-				frd->obj =hcl_makecnodetrpcolons(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-				break;
-
-			case HCL_IOTOK_DCSTAR:
-				frd->obj =hcl_makecnodedcstar(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-				break;
-
-			case HCL_IOTOK_SMPTRLIT:
+			if (frd->array_level > 0) /* TODO: this check is wrong... i think .. */
 			{
-				hcl_oow_t i;
-				hcl_oow_t v = 0;
+				hcl_setsynerr (hcl, HCL_SYNERR_VBARBANNED, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+				goto oops;
+			}
+			frd->obj = read_vlist(hcl);
+			break;
 
-				HCL_ASSERT (hcl, TOKEN_NAME_LEN(hcl) >= 3);
-				for (i = 2; i < TOKEN_NAME_LEN(hcl); i++)
-				{
-					HCL_ASSERT (hcl, is_xdigitchar(TOKEN_NAME_CHAR(hcl, i)));
-					v = v * 16 + CHAR_TO_NUM(TOKEN_NAME_CHAR(hcl, i), 16);
-				}
+		case HCL_IOTOK_NIL:
+			frd->obj = hcl_makecnodenil(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			break;
 
-				if (!HCL_IN_SMPTR_RANGE(v))
-				{
-					hcl_setsynerr (hcl, HCL_SYNERR_SMPTRLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-					goto oops;
-				}
+		case HCL_IOTOK_TRUE:
+			frd->obj = hcl_makecnodetrue(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			break;
 
-				frd->obj =hcl_makecnodesmptrlit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl), v);
-				break;
+		case HCL_IOTOK_FALSE:
+			frd->obj = hcl_makecnodefalse(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			break;
+
+		case HCL_IOTOK_SELF:
+			frd->obj = hcl_makecnodeself(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			break;
+
+		case HCL_IOTOK_SUPER:
+			frd->obj = hcl_makecnodesuper(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			break;
+
+		case HCL_IOTOK_ELLIPSIS:
+			frd->obj = hcl_makecnodeellipsis(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			break;
+
+		case HCL_IOTOK_TRPCOLONS:
+			frd->obj = hcl_makecnodetrpcolons(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			break;
+
+		case HCL_IOTOK_DCSTAR:
+			frd->obj = hcl_makecnodedcstar(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			break;
+
+		case HCL_IOTOK_SMPTRLIT:
+		{
+			hcl_oow_t i;
+			hcl_oow_t v = 0;
+
+			HCL_ASSERT (hcl, TOKEN_NAME_LEN(hcl) >= 3);
+			for (i = 2; i < TOKEN_NAME_LEN(hcl); i++)
+			{
+				HCL_ASSERT (hcl, is_xdigitchar(TOKEN_NAME_CHAR(hcl, i)));
+				v = v * 16 + CHAR_TO_NUM(TOKEN_NAME_CHAR(hcl, i), 16);
 			}
 
-			case HCL_IOTOK_ERRLIT:
+			if (!HCL_IN_SMPTR_RANGE(v))
 			{
-				hcl_oow_t i;
-				hcl_ooi_t v = 0;
-
-				HCL_ASSERT (hcl, TOKEN_NAME_LEN(hcl) >= 3);
-				for (i = 2; i < TOKEN_NAME_LEN(hcl); i++)
-				{
-					HCL_ASSERT (hcl, is_digitchar(TOKEN_NAME_CHAR(hcl, i)));
-					v = v * 10 + CHAR_TO_NUM(TOKEN_NAME_CHAR(hcl, i), 10);
-
-					if (v > HCL_ERROR_MAX)
-					{
-						hcl_setsynerr (hcl, HCL_SYNERR_ERRLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-						goto oops;
-					}
-				}
-
-				frd->obj =hcl_makecnodeerrlit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl), v);
-				break;
+				hcl_setsynerr (hcl, HCL_SYNERR_SMPTRLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+				goto oops;
 			}
 
-			case HCL_IOTOK_CHARLIT:
-				frd->obj =hcl_makecnodecharlit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl), TOKEN_NAME_CHAR(hcl, 0));
-				break;
-
-			case HCL_IOTOK_NUMLIT:
-				frd->obj =hcl_makecnodenumlit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-				break;
-
-			case HCL_IOTOK_RADNUMLIT:
-				frd->obj =hcl_makecnoderadnumlit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-				break;
-
-			case HCL_IOTOK_FPDECLIT:
-				frd->obj =hcl_makecnodefpdeclit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-				break;
-
-			/*
-			case HCL_IOTOK_REAL:
-				frd->obj =hcl_makerealnum(hcl, HCL_IOTOK_RVAL(hcl));
-				break;
-			*/
-
-			case HCL_IOTOK_STRLIT:
-				frd->obj =hcl_makecnodestrlit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-				break;
-
-			case HCL_IOTOK_IDENT:
-				frd->obj =hcl_makecnodesymbol(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-				break;
-
-			case HCL_IOTOK_IDENT_DOTTED:
-				frd->obj =hcl_makecnodedsymbol(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-				break;
-
+			frd->obj = hcl_makecnodesmptrlit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl), v);
+			break;
 		}
 
-		if (!frd->obj) goto oops;
+		case HCL_IOTOK_ERRLIT:
+		{
+			hcl_oow_t i;
+			hcl_ooi_t v = 0;
+
+			HCL_ASSERT (hcl, TOKEN_NAME_LEN(hcl) >= 3);
+			for (i = 2; i < TOKEN_NAME_LEN(hcl); i++)
+			{
+				HCL_ASSERT (hcl, is_digitchar(TOKEN_NAME_CHAR(hcl, i)));
+				v = v * 10 + CHAR_TO_NUM(TOKEN_NAME_CHAR(hcl, i), 10);
+
+				if (v > HCL_ERROR_MAX)
+				{
+					hcl_setsynerr (hcl, HCL_SYNERR_ERRLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+					goto oops;
+				}
+			}
+
+			frd->obj = hcl_makecnodeerrlit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl), v);
+			break;
+		}
+
+		case HCL_IOTOK_CHARLIT:
+			frd->obj = hcl_makecnodecharlit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl), TOKEN_NAME_CHAR(hcl, 0));
+			break;
+
+		case HCL_IOTOK_NUMLIT:
+			frd->obj = hcl_makecnodenumlit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			break;
+
+		case HCL_IOTOK_RADNUMLIT:
+			frd->obj = hcl_makecnoderadnumlit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			break;
+
+		case HCL_IOTOK_FPDECLIT:
+			frd->obj = hcl_makecnodefpdeclit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			break;
+
+		/*
+		case HCL_IOTOK_REAL:
+			frd->obj = hcl_makerealnum(hcl, HCL_IOTOK_RVAL(hcl));
+			break;
+		*/
+
+		case HCL_IOTOK_STRLIT:
+			frd->obj = hcl_makecnodestrlit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			break;
+
+		case HCL_IOTOK_IDENT:
+			frd->obj = hcl_makecnodesymbol(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			break;
+
+		case HCL_IOTOK_IDENT_DOTTED:
+			frd->obj = hcl_makecnodedsymbol(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			break;
+	}
+
+	if (!frd->obj) goto oops;
 
 #if 0
-		/* check if the element is read for a quoted list */
-		while (flagv & QUOTED)
-		{
-			int oldflagv;
+	/* check if the element is read for a quoted list */
+	while (flagv & QUOTED)
+	{
+		int oldflagv;
 
-			HCL_ASSERT (hcl, frd->level > 0);
+		HCL_ASSERT (hcl, frd->level > 0);
 
-			/* if so, append the element read into the quote list */
-			if (chain_to_list(hcl, obj) <= -1) goto oops;
+		/* if so, append the element read into the quote list */
+		if (chain_to_list(hcl, obj) <= -1) goto oops;
 
-			/* exit out of the quoted list. the quoted list can have one element only. */
-			obj = leave_list(hcl, &flagv, &oldflagv);
+		/* exit out of the quoted list. the quoted list can have one element only. */
+		obj = leave_list(hcl, &flagv, &oldflagv);
 
-			/* one frd->level up toward the top */
-			frd->level--;
+		/* one frd->level up toward the top */
+		frd->level--;
 
-			if (LIST_FLAG_GET_CONCODE(oldflagv) == HCL_CONCODE_ARRAY) frd->array_level--;
-		}
-#endif
-
-		/* check if we are at the top frd->level */
-		if (frd->level <= 0) 
-		{
-			// TOOD: callback with frd->obj in case it's complete
-
-			/* upon exit, we must be at the top level */
-			HCL_ASSERT (hcl, frd->level == 0);
-			HCL_ASSERT (hcl, frd->array_level == 0);
-
-			HCL_ASSERT (hcl, hcl->c->r.st == HCL_NULL);
-			HCL_ASSERT (hcl, frd->obj != HCL_NULL);
-
-hcl_logbfmt (hcl, HCL_LOG_STDERR, "GOT CNODE %p\n", frd->obj);
-		}
-		else
-		{
-			/* if not, append the element read into the current list.
-			 * if we are not at the top frd->level, we must be in a list */
-			if (chain_to_list(hcl, frd->obj) <= -1) goto oops;
-
-			/* because it has been chained to the list, it belongs to the current stack top. 
-			 * mark that obj is not stand-alone by nullifying it. without this, if a jump
-			 * is made to oops, the momory block pointed to by obj may get freed twice. */
-			frd->obj = HCL_NULL; 
-
-			clear_comma_colon_flag (hcl);
-		}
-
-#if 0
-		/* read the next token */
-		GET_TOKEN_WITH_GOTO (hcl, oops);
+		if (LIST_FLAG_GET_CONCODE(oldflagv) == HCL_CONCODE_ARRAY) frd->array_level--;
 	}
 #endif
 
+	/* check if we are at the top frd->level */
+	if (frd->level <= 0) 
+	{
+		// TOOD: callback with frd->obj in case it's complete
 
-redo:
+		/* upon exit, we must be at the top level */
+		HCL_ASSERT (hcl, frd->level == 0);
+		HCL_ASSERT (hcl, frd->array_level == 0);
+
+		HCL_ASSERT (hcl, hcl->c->r.st == HCL_NULL);
+		HCL_ASSERT (hcl, frd->obj != HCL_NULL);
+
+/* TODO: error handling, etc */
+hcl_compile(hcl, frd->obj, HCL_COMPILE_CLEAR_CODE | HCL_COMPILE_CLEAR_FNBLK); /* flags 0 if non-interactive */
+hcl_freecnode (hcl, frd->obj); /* not needed any more */
+frd->obj = HCL_NULL;
+hcl_decode (hcl, 0, hcl_getbclen(hcl));
+hcl_execute (hcl);
+hcl_flushio (hcl);
+
+	}
+	else
+	{
+		/* if not, append the element read into the current list.
+		 * if we are not at the top frd->level, we must be in a list */
+		if (chain_to_list(hcl, frd->obj) <= -1) goto oops;
+
+		/* because it has been chained to the list, it belongs to the current stack top. 
+		 * mark that obj is not stand-alone by nullifying it. without this, if a jump
+		 * is made to oops, the momory block pointed to by obj may get freed twice. */
+		frd->obj = HCL_NULL; 
+
+		clear_comma_colon_flag (hcl);
+	}
+
+
+ok:
 	return 0;
 
 oops:
@@ -3270,10 +3334,7 @@ static int flx_plain_ident (hcl_t* hcl, hcl_ooci_t c) /* identifier */
 
 		if (pi->seg_len == 0)
 		{
-			/* this must be the second segment if flx_plain_ident() has been scheduled 
-			 * with a valid identifier character at first */
-			HCL_ASSERT (hcl, pi->seg_count >= 1); 
-			hcl_setsynerr (hcl, HCL_SYNERR_MSEGIDENT, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_MSEGIDENT, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "blank segment");
 			return -1;
 		}
 
@@ -3588,7 +3649,14 @@ static int flx_signed_token (hcl_t* hcl, hcl_ooci_t c)
 	else
 	{
 		init_flx_pi (FLX_PI(hcl));
-		FLX_PI(hcl)->char_count++; /* the sign becomes the part of the identifier. */
+
+		/* the sign is already in the token name buffer. 
+		 * adjust the state data for the sign. */
+		HCL_ASSERT (hcl, TOKEN_NAME_LEN(hcl) == 1);
+		FLX_PI(hcl)->char_count++; 
+		FLX_PI(hcl)->seg_len++;
+
+		/* let refeeding of 'c' happen at the next iteration */
 		FEED_CONTINUE (hcl, HCL_FLX_PLAIN_IDENT);
 		goto not_consumed;
 	}
@@ -3604,6 +3672,7 @@ not_consumed:
 
 static int feed_char (hcl_t* hcl, hcl_ooci_t c)
 {
+/*hcl_logbfmt (hcl, HCL_LOG_STDERR, "FEED->[%jc] %d STATE->%d\n", c, c, FLX_STATE(hcl));*/
 	switch (FLX_STATE(hcl))
 	{
 		case HCL_FLX_START:            return flx_start(hcl, c);
@@ -3628,6 +3697,54 @@ static int feed_char (hcl_t* hcl, hcl_ooci_t c)
 	return -1;
 }
 
+
+static int feed_from_included (hcl_t* hcl)
+{
+	int x;
+	hcl_ooch_t lc;
+
+	HCL_ASSERT (hcl, hcl->c->curinp != HCL_NULL && hcl->c->curinp != &hcl->c->inarg);
+
+	do
+	{
+		if (hcl->c->curinp->b.pos >= hcl->c->curinp->b.len)
+		{
+			if (hcl->c->reader(hcl, HCL_IO_READ, hcl->c->curinp) <= -1)
+			{
+				return -1;
+			}
+
+			if (hcl->c->curinp->xlen <= 0)
+			{
+				/* got EOF */
+				#if 0
+				x = feed_char(hcl, HCL_OOCI_EOF); /* TODO: or call feed_end_include? */
+				if (x <= -1) return -1;
+				#else
+				feed_end_include (hcl);
+				if (hcl->c->curinp != &hcl->c->inarg)
+				{
+					/* advance the pointer that should have been done when the include file name has been read */
+					hcl->c->curinp->b.pos++; 
+				}
+				continue;
+				#endif
+			}
+
+			hcl->c->curinp->b.pos = 0;
+			hcl->c->curinp->b.len = hcl->c->curinp->xlen;
+		}
+
+		lc = hcl->c->curinp->buf[hcl->c->curinp->b.pos];
+		x = feed_char(hcl, lc);
+		if (x <= -1) return -1;
+		hcl->c->curinp->b.pos += x;
+	}
+	while (hcl->c->curinp != &hcl->c->inarg);
+
+	return 0;
+}
+
 int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
 {
 /* TODO: need to return the number of processed characters?
@@ -3641,7 +3758,7 @@ int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
 		for (i = 0; i < len; ) 
 		{
 			x = feed_char(hcl, data[i]);
-			if (x <= -1) return -1;
+			if (x <= -1) return -1; /* TODO: return the number of processed characters via an argument? */
 			
 			if (x > 0)
 			{
@@ -3655,9 +3772,16 @@ int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
 				{
 					hcl->c->feed.lx.loc.colm++;
 				}
-				i += x;
+				i += x; /* x is supposed to be 1. otherwise, some characters may get skipped. */
 			}
-			/* feed again if not consumed */
+
+			if (hcl->c->curinp != &hcl->c->inarg && feed_from_included(hcl) <= -1) 
+			{
+				/* TODO: return the number of processed characters via an argument? */
+				return -1;
+			}
+
+			/* feed data[i] again if not consumed */
 		}
 	}
 	else

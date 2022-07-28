@@ -126,7 +126,7 @@ static HCL_INLINE int open_input (hcl_t* hcl, hcl_ioinarg_t* arg)
 	#if defined(HCL_OOCH_IS_UCH)
 		if (hcl_convootobcstr(hcl, arg->name, &ucslen, HCL_NULL, &bcslen) <= -1) goto oops;
 	#else
-		bcslen = hcl_count_bcstr (arg->name);
+		bcslen = hcl_count_bcstr(arg->name);
 	#endif
 
 		fn = ((bb_t*)arg->includer->handle)->fn;
@@ -134,7 +134,7 @@ static HCL_INLINE int open_input (hcl_t* hcl, hcl_ioinarg_t* arg)
 		fb = get_base_name(fn);
 		parlen = fb - fn;
 
-		bb = (bb_t*)hcl_callocmem (hcl, HCL_SIZEOF(*bb) + (HCL_SIZEOF(hcl_bch_t) * (parlen + bcslen + 1)));
+		bb = (bb_t*)hcl_callocmem(hcl, HCL_SIZEOF(*bb) + (HCL_SIZEOF(hcl_bch_t) * (parlen + bcslen + 1)));
 		if (!bb) goto oops;
 
 		bb->fn = (hcl_bch_t*)(bb + 1);
@@ -825,7 +825,7 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int cflags, int verbose)
 
 	while (1)
 	{
-		hcl_oow_t n;
+		hcl_ooi_t n;
 
 		/*n = fread(&buf[len], 1, HCL_COUNTOF(buf) - len, fp);*/
 		n = read(fileno(fp), &buf[len], HCL_COUNTOF(buf) - len);
@@ -868,7 +868,7 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int cflags, int verbose)
 			}
 			break;
 		}
-		if (ferror(fp)) 
+		if (n <= -1 || ferror(fp)) 
 		{
 			hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: unable to read %hs - %hs\n", xtn->read_path, strerror(errno));
 			goto oops;

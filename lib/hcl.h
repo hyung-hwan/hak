@@ -1257,7 +1257,8 @@ struct hcl_ioinarg_t
 	{
 		hcl_oow_t pos;
 		hcl_oow_t len;
-		int state;
+		/* <<B.STATE>>
+		int state;*/
 	} b;
 
 	hcl_oow_t line;

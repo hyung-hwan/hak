@@ -632,6 +632,7 @@ struct hcl_frd_t
 	int level;
 	int array_level;
 	int flagv;
+	int expect_include_file;
 	hcl_cnode_t* obj;
 };
 
