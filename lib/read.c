@@ -2367,7 +2367,12 @@ static int feed_process_token (hcl_t* hcl)
 		}
 
 		frd->expect_include_file = 0;
-		if (feed_begin_include(hcl) <= -1) goto oops;
+
+		/* indicate that the file inclusion should be performed soon.
+		 * don't perform actual inclusion here so that the return value of 
+		 * feed_char() advances the input pointers properly. */
+		frd->do_include_file = 1; 
+
 		goto ok;
 	}
 
@@ -3722,11 +3727,6 @@ static int feed_from_included (hcl_t* hcl)
 				if (x <= -1) return -1;
 				#else
 				feed_end_include (hcl);
-				if (hcl->c->curinp != &hcl->c->inarg)
-				{
-					/* advance the pointer that should have been done when the include file name has been read */
-					hcl->c->curinp->b.pos++; 
-				}
 				continue;
 				#endif
 			}
@@ -3739,6 +3739,14 @@ static int feed_from_included (hcl_t* hcl)
 		x = feed_char(hcl, lc);
 		if (x <= -1) return -1;
 		hcl->c->curinp->b.pos += x;
+
+		if (hcl->c->feed.rd.do_include_file)
+		{
+			/* perform delayed file inclusion. the token buffer must remain unchanged 
+			 * since do_include_file has been set to true in feed_process_token(). */
+			if (feed_begin_include(hcl) <= -1) return -1;
+			hcl->c->feed.rd.do_include_file = 0;
+		}
 	}
 	while (hcl->c->curinp != &hcl->c->inarg);
 
@@ -3773,6 +3781,12 @@ int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
 					hcl->c->feed.lx.loc.colm++;
 				}
 				i += x; /* x is supposed to be 1. otherwise, some characters may get skipped. */
+			}
+
+			if (hcl->c->feed.rd.do_include_file)
+			{
+				if (feed_begin_include(hcl) <= -1) return -1;
+				hcl->c->feed.rd.do_include_file = 0;
 			}
 
 			if (hcl->c->curinp != &hcl->c->inarg && feed_from_included(hcl) <= -1) 
