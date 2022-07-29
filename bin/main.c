@@ -429,90 +429,11 @@ static void vm_checkbc (hcl_t* hcl, hcl_oob_t bcode)
 }
 */
 
-
 static void gc_hcl (hcl_t* hcl)
 {
 	xtn_t* xtn = (xtn_t*)hcl_getxtn(hcl);
 	/*if (xtn->sym_errstr) xtn->sym_errstr = hcl_moveoop(hcl, xtn->sym_errstr);*/
 }
-
-/* ========================================================================= */
-
-static hcl_oop_t execute_in_interactive_mode (hcl_t* hcl)
-{
-	hcl_oop_t retv;
-
-	hcl_decode (hcl, 0, hcl_getbclen(hcl));
-	HCL_LOG0 (hcl, HCL_LOG_MNEMONIC, "------------------------------------------\n");
-	g_hcl = hcl;
-	/*setup_tick ();*/
-
-	retv = hcl_execute(hcl);
-
-	/* flush pending output data in the interactive mode(e.g. printf without a newline) */
-	hcl_flushio (hcl);
-
-	if (!retv)
-	{
-		hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: cannot execute - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
-	}
-	else
-	{
-		/* print the result in the interactive mode regardless 'verbose' */
-		hcl_logbfmt (hcl, HCL_LOG_STDOUT, "%O\n", retv); /* TODO: show this go to the output handler?? */
-		/*
-		 * print the value of ERRSTR.
-		hcl_oop_cons_t cons = hcl_getatsysdic(hcl, xtn->sym_errstr);
-		if (cons)
-		{
-			HCL_ASSERT (hcl, HCL_IS_CONS(hcl, cons));
-			HCL_ASSERT (hcl, HCL_CONS_CAR(cons) == xtn->sym_errstr);
-			hcl_print (hcl, HCL_CONS_CDR(cons));
-		}
-		*/
-	}
-	/*cancel_tick();*/
-	g_hcl = HCL_NULL;
-
-	return retv;
-}
-
-
-static hcl_oop_t execute_in_batch_mode (hcl_t* hcl, int verbose)
-{
-	hcl_oop_t retv;
-
-	hcl_decode (hcl, 0, hcl_getbclen(hcl));
-	HCL_LOG2 (hcl, HCL_LOG_MNEMONIC, "BYTECODES bclen = > %zu lflen => %zu\n", hcl_getbclen(hcl), hcl_getlflen(hcl));
-	g_hcl = hcl;
-	/*setup_tick ();*/
-
-	retv = hcl_execute(hcl);
-	hcl_flushio (hcl);
-
-	if (!retv)
-	{
-		hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: cannot execute - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
-	}
-	else if (verbose)
-	{
-		hcl_logbfmt (hcl, HCL_LOG_STDERR, "EXECUTION OK - EXITED WITH %O\n", retv);
-	}
-
-	/*cancel_tick();*/
-	g_hcl = HCL_NULL;
-	/*hcl_dumpsymtab (hcl);*/
-
-	return retv;
-}
-
-static int on_fed_cnode_in_interactive_mode (hcl_t* hcl, hcl_cnode_t* obj)
-{
-	if (hcl_compile(hcl, obj, HCL_COMPILE_CLEAR_CODE | HCL_COMPILE_CLEAR_FNBLK) <= -1) return -1;
-	execute_in_interactive_mode (hcl);
-	return 0;
-}
-
 
 /* ========================================================================= */
 
@@ -755,6 +676,74 @@ static void print_synerr (hcl_t* hcl)
 }
 
 
+static hcl_oop_t execute_in_interactive_mode (hcl_t* hcl)
+{
+	hcl_oop_t retv;
+
+	hcl_decode (hcl, 0, hcl_getbclen(hcl));
+	HCL_LOG0 (hcl, HCL_LOG_MNEMONIC, "------------------------------------------\n");
+	g_hcl = hcl;
+	/*setup_tick ();*/
+
+	retv = hcl_execute(hcl);
+
+	/* flush pending output data in the interactive mode(e.g. printf without a newline) */
+	hcl_flushio (hcl);
+
+	if (!retv)
+	{
+		hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: cannot execute - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
+	}
+	else
+	{
+		/* print the result in the interactive mode regardless 'verbose' */
+		hcl_logbfmt (hcl, HCL_LOG_STDOUT, "%O\n", retv); /* TODO: show this go to the output handler?? */
+		/*
+		 * print the value of ERRSTR.
+		hcl_oop_cons_t cons = hcl_getatsysdic(hcl, xtn->sym_errstr);
+		if (cons)
+		{
+			HCL_ASSERT (hcl, HCL_IS_CONS(hcl, cons));
+			HCL_ASSERT (hcl, HCL_CONS_CAR(cons) == xtn->sym_errstr);
+			hcl_print (hcl, HCL_CONS_CDR(cons));
+		}
+		*/
+	}
+	/*cancel_tick();*/
+	g_hcl = HCL_NULL;
+
+	return retv;
+}
+
+
+static hcl_oop_t execute_in_batch_mode (hcl_t* hcl, int verbose)
+{
+	hcl_oop_t retv;
+
+	hcl_decode (hcl, 0, hcl_getbclen(hcl));
+	HCL_LOG2 (hcl, HCL_LOG_MNEMONIC, "BYTECODES bclen = > %zu lflen => %zu\n", hcl_getbclen(hcl), hcl_getlflen(hcl));
+	g_hcl = hcl;
+	/*setup_tick ();*/
+
+	retv = hcl_execute(hcl);
+	hcl_flushio (hcl);
+
+	if (!retv)
+	{
+		hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: cannot execute - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
+	}
+	else if (verbose)
+	{
+		hcl_logbfmt (hcl, HCL_LOG_STDERR, "EXECUTION OK - EXITED WITH %O\n", retv);
+	}
+
+	/*cancel_tick();*/
+	g_hcl = HCL_NULL;
+	/*hcl_dumpsymtab (hcl);*/
+
+	return retv;
+}
+
 static int main_loop (hcl_t* hcl, xtn_t* xtn, int cflags, int verbose)
 {
 	while (1)
@@ -824,6 +813,13 @@ oops:
 	return -1;
 }
 
+static int on_fed_cnode_in_interactive_mode (hcl_t* hcl, hcl_cnode_t* obj)
+{
+	if (hcl_compile(hcl, obj, HCL_COMPILE_CLEAR_CODE | HCL_COMPILE_CLEAR_FNBLK) <= -1) return -1;
+	execute_in_interactive_mode (hcl);
+	return 0;
+}
+
 static int feed_loop (hcl_t* hcl, xtn_t* xtn, int cflags, int verbose)
 {
 	FILE* fp = HCL_NULL;
@@ -842,11 +838,15 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int cflags, int verbose)
 		return -1;
 	}
 
-	/*(setvbuf (fp, NULL, _IONBF, 0);*/
-	
-	if (xtn->reader_istty) hcl_beginfeed (hcl, on_fed_cnode_in_interactive_mode); /* override the default cnode handler */
+	if (xtn->reader_istty) 
+	{
+		/* override the default cnode handler. the default one simply
+		 * compiles the expression node without execution */
+		hcl_beginfeed (hcl, on_fed_cnode_in_interactive_mode); 
+	}
 
 /* TODO: use the io handler attached .. */
+	/*(setvbuf (fp, NULL, _IONBF, 0);*/
 	while (1)
 	{
 		hcl_ooi_t n;
