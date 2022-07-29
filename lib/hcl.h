@@ -1459,6 +1459,8 @@ struct hcl_dbgi_t
 typedef struct hcl_compiler_t hcl_compiler_t;
 typedef struct hcl_cnode_t hcl_cnode_t;
 
+typedef int (*hcl_on_cnode_t) (hcl_t* hcl, hcl_cnode_t* obj);
+
 enum hcl_compile_flag_t
 {
 	/* clear byte codes at the beginnign of hcl_compile() */
@@ -2082,7 +2084,6 @@ HCL_EXPORT int hcl_setoption (
 	const void*   value
 );
 
-
 HCL_EXPORT hcl_cb_t* hcl_regcb (
 	hcl_t*    hcl,
 	hcl_cb_t* tmpl
@@ -2151,9 +2152,9 @@ HCL_EXPORT void hcl_abort (
 
 
 HCL_EXPORT int hcl_attachio (
-	hcl_t*       hcl,
-	hcl_ioimpl_t reader,
-	hcl_ioimpl_t printer
+	hcl_t*         hcl,
+	hcl_ioimpl_t   reader,
+	hcl_ioimpl_t   printer
 );
 
 HCL_EXPORT void hcl_detachio (
@@ -2166,11 +2167,6 @@ HCL_EXPORT void hcl_flushio (
 
 HCL_EXPORT hcl_cnode_t* hcl_read (
 	hcl_t*       hcl
-);
-
-HCL_EXPORT void hcl_freecnode (
-	hcl_t*       hcl,
-	hcl_cnode_t* cnode
 );
 
 HCL_EXPORT int hcl_print (
@@ -2193,6 +2189,16 @@ HCL_EXPORT hcl_ooi_t hcl_proutufmt (
 );
 
 #if defined(HCL_INCLUDE_COMPILER)
+
+HCL_EXPORT void hcl_freecnode (
+	hcl_t*       hcl,
+	hcl_cnode_t* cnode
+);
+
+HCL_EXPORT void hcl_beginfeed (
+	hcl_t*            hcl,
+	hcl_on_cnode_t    on_cnode
+);
 
 HCL_EXPORT int hcl_feed (
 	hcl_t*            hcl,

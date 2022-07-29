@@ -702,17 +702,8 @@ struct hcl_compiler_t
 			} u;
 		} lx;
 
-		struct
-		{
-			int code;
-			/*union
-			{
-				
-			} u;*/
-		} st[100];
-		hcl_ooi_t top;
-
 		struct hcl_frd_t rd;
+		hcl_on_cnode_t on_cnode;
 	} feed;
 
 	/* == COMPILER STACK == */

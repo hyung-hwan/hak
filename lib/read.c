@@ -2247,6 +2247,14 @@ hcl_cnodetoobj (hcl_t* hcl, hcl_cnode_t* x)
 
 /* ---------------------------------------------------------------------- */
 
+static int on_fed_cnode (hcl_t* hcl, hcl_cnode_t* obj)
+{
+	/* the default handler for a cnode composed via feeding - just compile the object node. */
+	return hcl_compile(hcl, obj, 0);
+}
+
+/* ---------------------------------------------------------------------- */
+
 static void init_feed (hcl_t* hcl)
 {
 	HCL_MEMSET (&hcl->c->feed, 0, HCL_SIZEOF(hcl->c->feed));
@@ -2256,30 +2264,10 @@ static void init_feed (hcl_t* hcl)
 	hcl->c->feed.lx.loc.colm = 1;
 	hcl->c->feed.lx.loc.file = HCL_NULL;
 
-	hcl->c->feed.top = -1;
+	hcl->c->feed.on_cnode = on_fed_cnode;
 }
 
 /* ------------------------------------------------------------------------ */
-
-static int fst_push (hcl_t* hcl, int code)
-{
-	if (hcl->c->feed.top >= HCL_COUNTOF(hcl->c->feed.st) - 1) /* TODO: use a dynamically allocated stack? */
-	{
-		hcl_seterrbfmt (hcl, HCL_EBUFFULL, "feed stack full"); 
-		return -1;
-	}
-
-	hcl->c->feed.top++;
-	HCL_MEMSET (&hcl->c->feed.st[hcl->c->feed.top], 0, HCL_SIZEOF(hcl->c->feed.st[hcl->c->feed.top]));
-	hcl->c->feed.st[hcl->c->feed.top].code = code;
-	return 0;
-}
-
-static void fst_pop (hcl_t* hcl)
-{
-	HCL_ASSERT (hcl, hcl->c->feed.top >= 0);
-	hcl->c->feed.top--;
-}
 
 static int feed_begin_include (hcl_t* hcl)
 {
@@ -2327,11 +2315,9 @@ static int feed_end_include (hcl_t* hcl)
 
 	x = hcl->c->reader(hcl, HCL_IO_CLOSE, hcl->c->curinp);
 
-	/* if closing has failed, still destroy the
-	 * sio structure first as normal and return
-	 * the failure below. this way, the caller
-	 * does not call HCL_IO_CLOSE on
-	 * hcl->c->curinp again. */
+	/* if closing has failed, still destroy the sio structure 
+	 * first as normal and return the failure below. this way, 
+	 * the caller doesn't call HCL_IO_CLOSE on hcl->c->curinp again. */
 
 	cur = hcl->c->curinp;
 	hcl->c->curinp = hcl->c->curinp->includer;
@@ -2683,7 +2669,8 @@ static int feed_process_token (hcl_t* hcl)
 	/* check if we are at the top frd->level */
 	if (frd->level <= 0) 
 	{
-		// TOOD: callback with frd->obj in case it's complete
+		int n;
+		hcl_cb_t* cb;
 
 		/* upon exit, we must be at the top level */
 		HCL_ASSERT (hcl, frd->level == 0);
@@ -2692,14 +2679,10 @@ static int feed_process_token (hcl_t* hcl)
 		HCL_ASSERT (hcl, hcl->c->r.st == HCL_NULL);
 		HCL_ASSERT (hcl, frd->obj != HCL_NULL);
 
-/* TODO: error handling, etc */
-hcl_compile(hcl, frd->obj, HCL_COMPILE_CLEAR_CODE | HCL_COMPILE_CLEAR_FNBLK); /* flags 0 if non-interactive */
-hcl_freecnode (hcl, frd->obj); /* not needed any more */
-frd->obj = HCL_NULL;
-hcl_decode (hcl, 0, hcl_getbclen(hcl));
-hcl_execute (hcl);
-hcl_flushio (hcl);
-
+		n = hcl->c->feed.on_cnode(hcl, frd->obj);
+		hcl_freecnode (hcl, frd->obj); /* not needed any more */
+		frd->obj = HCL_NULL;
+		if (n <= -1) goto oops;
 	}
 	else
 	{
@@ -2714,7 +2697,6 @@ hcl_flushio (hcl);
 
 		clear_comma_colon_flag (hcl);
 	}
-
 
 ok:
 	return 0;
@@ -2949,16 +2931,10 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 	switch (c)
 	{
 		case HCL_OOCI_EOF:
-		{
-			int n;
-#if 0
-			n = end_include(hcl);
-			if (n <= -1) return -1;
-			if (n >= 1) goto retry;
-#endif
+			/* only EOF of the top-level stream is supposed to be fed in.
+			 * the internal logic discard EOFs of included streams */
 			FEED_WRAP_UP_WITH_CHARS (hcl, vocas[VOCA_EOF].str, vocas[VOCA_EOF].len, HCL_IOTOK_EOF);
 			goto consumed;
-		}
 
 		case ';':
 			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_COMMENT);
@@ -3706,7 +3682,6 @@ static int feed_char (hcl_t* hcl, hcl_ooci_t c)
 static int feed_from_included (hcl_t* hcl)
 {
 	int x;
-	hcl_ooch_t lc;
 
 	HCL_ASSERT (hcl, hcl->c->curinp != HCL_NULL && hcl->c->curinp != &hcl->c->inarg);
 
@@ -3721,7 +3696,7 @@ static int feed_from_included (hcl_t* hcl)
 
 			if (hcl->c->curinp->xlen <= 0)
 			{
-				/* got EOF */
+				/* got EOF from an included stream */
 				#if 0
 				x = feed_char(hcl, HCL_OOCI_EOF); /* TODO: or call feed_end_include? */
 				if (x <= -1) return -1;
@@ -3735,22 +3710,28 @@ static int feed_from_included (hcl_t* hcl)
 			hcl->c->curinp->b.len = hcl->c->curinp->xlen;
 		}
 
-		lc = hcl->c->curinp->buf[hcl->c->curinp->b.pos];
-		x = feed_char(hcl, lc);
+		x = feed_char(hcl, hcl->c->curinp->buf[hcl->c->curinp->b.pos]);
 		if (x <= -1) return -1;
 		hcl->c->curinp->b.pos += x;
 
 		if (hcl->c->feed.rd.do_include_file)
 		{
-			/* perform delayed file inclusion. the token buffer must remain unchanged 
-			 * since do_include_file has been set to true in feed_process_token(). */
+			/* feed_process_token(), called for the "filename" token for the #include 
+			 * directive, sets hcl->c->feed.rd.do_include_file to 1 instead of attepmting
+			 * to include the file. the file inclusion is attempted here after the return
+			 * value of feed_char() is used to advance the hcl->c->curinp->b.pos pointer. */
+			hcl->c->feed.rd.do_include_file = 0; /* clear this regardless of inclusion result */
 			if (feed_begin_include(hcl) <= -1) return -1;
-			hcl->c->feed.rd.do_include_file = 0;
 		}
 	}
 	while (hcl->c->curinp != &hcl->c->inarg);
 
 	return 0;
+}
+
+void hcl_beginfeed (hcl_t* hcl, hcl_on_cnode_t on_cnode)
+{
+	hcl->c->feed.on_cnode = on_cnode;
 }
 
 int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
@@ -3760,6 +3741,7 @@ int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
 
 	hcl_oow_t i;
 	int x;
+
 
 	if (data) 
 	{
@@ -3800,10 +3782,23 @@ int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
 	}
 	else
 	{
-		for (i = 0; i < 1;)
+		for (i = 0; i < 1;) /* weird loop in case feed_char() returns 0 */
 		{
 			x = feed_char(hcl, HCL_OOCI_EOF);
-			if (x <= -1) return -1;
+			if (x <= -1) 
+			{
+				if (hcl->c->feed.rd.level <= 0 && hcl_geterrnum(hcl) == HCL_ESYNERR && hcl_getsynerrnum(hcl) == HCL_SYNERR_EOF)
+				{
+					/* convert this EOF error to success as the caller knows EOF in the feed mode. 
+					 * the caller can safely stop feeding after gettting success from hcl_feed(hcl, HCL_NULL, 0); 
+					 * in the feed mode, this function doesn't set HCL_EFINIS. */
+					x = 1;
+				}
+				else
+				{
+					return -1;
+				}
+			}
 			i += x;
 		}
 	}

@@ -96,6 +96,9 @@ struct xtn_t
 	/*hcl_oop_t sym_errstr;*/
 };
 
+/* ========================================================================= */
+
+static hcl_t* g_hcl = HCL_NULL;
 
 /* ========================================================================= */
 
@@ -426,11 +429,90 @@ static void vm_checkbc (hcl_t* hcl, hcl_oob_t bcode)
 }
 */
 
+
 static void gc_hcl (hcl_t* hcl)
 {
 	xtn_t* xtn = (xtn_t*)hcl_getxtn(hcl);
 	/*if (xtn->sym_errstr) xtn->sym_errstr = hcl_moveoop(hcl, xtn->sym_errstr);*/
 }
+
+/* ========================================================================= */
+
+static hcl_oop_t execute_in_interactive_mode (hcl_t* hcl)
+{
+	hcl_oop_t retv;
+
+	hcl_decode (hcl, 0, hcl_getbclen(hcl));
+	HCL_LOG0 (hcl, HCL_LOG_MNEMONIC, "------------------------------------------\n");
+	g_hcl = hcl;
+	/*setup_tick ();*/
+
+	retv = hcl_execute(hcl);
+
+	/* flush pending output data in the interactive mode(e.g. printf without a newline) */
+	hcl_flushio (hcl);
+
+	if (!retv)
+	{
+		hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: cannot execute - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
+	}
+	else
+	{
+		/* print the result in the interactive mode regardless 'verbose' */
+		hcl_logbfmt (hcl, HCL_LOG_STDOUT, "%O\n", retv); /* TODO: show this go to the output handler?? */
+		/*
+		 * print the value of ERRSTR.
+		hcl_oop_cons_t cons = hcl_getatsysdic(hcl, xtn->sym_errstr);
+		if (cons)
+		{
+			HCL_ASSERT (hcl, HCL_IS_CONS(hcl, cons));
+			HCL_ASSERT (hcl, HCL_CONS_CAR(cons) == xtn->sym_errstr);
+			hcl_print (hcl, HCL_CONS_CDR(cons));
+		}
+		*/
+	}
+	/*cancel_tick();*/
+	g_hcl = HCL_NULL;
+
+	return retv;
+}
+
+
+static hcl_oop_t execute_in_batch_mode (hcl_t* hcl, int verbose)
+{
+	hcl_oop_t retv;
+
+	hcl_decode (hcl, 0, hcl_getbclen(hcl));
+	HCL_LOG2 (hcl, HCL_LOG_MNEMONIC, "BYTECODES bclen = > %zu lflen => %zu\n", hcl_getbclen(hcl), hcl_getlflen(hcl));
+	g_hcl = hcl;
+	/*setup_tick ();*/
+
+	retv = hcl_execute(hcl);
+	hcl_flushio (hcl);
+
+	if (!retv)
+	{
+		hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: cannot execute - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
+	}
+	else if (verbose)
+	{
+		hcl_logbfmt (hcl, HCL_LOG_STDERR, "EXECUTION OK - EXITED WITH %O\n", retv);
+	}
+
+	/*cancel_tick();*/
+	g_hcl = HCL_NULL;
+	/*hcl_dumpsymtab (hcl);*/
+
+	return retv;
+}
+
+static int on_fed_cnode_in_interactive_mode (hcl_t* hcl, hcl_cnode_t* obj)
+{
+	if (hcl_compile(hcl, obj, HCL_COMPILE_CLEAR_CODE | HCL_COMPILE_CLEAR_FNBLK) <= -1) return -1;
+	execute_in_interactive_mode (hcl);
+	return 0;
+}
+
 
 /* ========================================================================= */
 
@@ -565,12 +647,6 @@ static int handle_dbgopt (hcl_t* hcl, const hcl_bch_t* str)
 	return 0;
 }
 #endif
-/* ========================================================================= */
-
-static hcl_t* g_hcl = HCL_NULL;
-
-/* ========================================================================= */
-
 
 /* ========================================================================= */
 
@@ -704,7 +780,7 @@ count++;
 				print_synerr (hcl);
 				if (xtn->reader_istty && hcl_getsynerrnum(hcl) != HCL_SYNERR_EOF)
 				{
-					/* TODO: drain remaining data in the reader including the actual inputstream and buffered data in hcl */
+					/* TODO: drain remaining data in the reader including the actual input stream and buffered data in hcl */
 					continue;
 				}
 			}
@@ -736,66 +812,11 @@ count++;
 		else if (xtn->reader_istty)
 		{
 			/* interactive mode */
-			hcl_oop_t retv;
-
-			hcl_decode (hcl, 0, hcl_getbclen(hcl));
-			HCL_LOG0 (hcl, HCL_LOG_MNEMONIC, "------------------------------------------\n");
-			g_hcl = hcl;
-			/*setup_tick ();*/
-
-			retv = hcl_execute(hcl);
-
-			/* flush pending output data in the interactive mode(e.g. printf without a newline) */
-			hcl_flushio (hcl);
-
-			if (!retv)
-			{
-				hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: cannot execute - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
-			}
-			else
-			{
-				/* print the result in the interactive mode regardless 'verbose' */
-				hcl_logbfmt (hcl, HCL_LOG_STDOUT, "%O\n", retv); /* TODO: show this go to the output handler?? */
-
-				/*
-				 * print the value of ERRSTR.
-				hcl_oop_cons_t cons = hcl_getatsysdic(hcl, xtn->sym_errstr);
-				if (cons)
-				{
-					HCL_ASSERT (hcl, HCL_IS_CONS(hcl, cons));
-					HCL_ASSERT (hcl, HCL_CONS_CAR(cons) == xtn->sym_errstr);
-					hcl_print (hcl, HCL_CONS_CDR(cons));
-				}
-				*/
-			}
-			/*cancel_tick();*/
-			g_hcl = HCL_NULL;
+			execute_in_interactive_mode (hcl);
 		}
 	}
 
-	if (!xtn->reader_istty && hcl_getbclen(hcl) > 0)
-	{
-		hcl_oop_t retv;
-
-		hcl_decode (hcl, 0, hcl_getbclen(hcl));
-		HCL_LOG2 (hcl, HCL_LOG_MNEMONIC, "BYTECODES bclen = > %zu lflen => %zu\n", hcl_getbclen(hcl), hcl_getlflen(hcl));
-		g_hcl = hcl;
-		/*setup_tick ();*/
-
-		retv = hcl_execute(hcl);
-		if (!retv)
-		{
-			hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: cannot execute - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
-		}
-		else if (verbose)
-		{
-			hcl_logbfmt (hcl, HCL_LOG_STDERR, "EXECUTION OK - EXITED WITH %O\n", retv);
-		}
-
-		/*cancel_tick();*/
-		g_hcl = HCL_NULL;
-		/*hcl_dumpsymtab (hcl);*/
-	}
+	if (!xtn->reader_istty && hcl_getbclen(hcl) > 0) execute_in_batch_mode (hcl, verbose);
 
 	return 0;
 
@@ -822,7 +843,10 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int cflags, int verbose)
 	}
 
 	/*(setvbuf (fp, NULL, _IONBF, 0);*/
+	
+	if (xtn->reader_istty) hcl_beginfeed (hcl, on_fed_cnode_in_interactive_mode); /* override the default cnode handler */
 
+/* TODO: use the io handler attached .. */
 	while (1)
 	{
 		hcl_ooi_t n;
@@ -854,7 +878,6 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int cflags, int verbose)
 			/* 'len' must remain 0 in this case */
 		#endif
 
-	/* the compiler must be invoked whenever feed() sees a complete object */
 			if (x <= -1) goto feed_error;
 		}
 
@@ -884,11 +907,7 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int cflags, int verbose)
 
 	fclose (fp);
 
-/* TODO: execute code? */
-	if (hcl_getbclen(hcl) > 0)
-	{
-/* TODO: execute code... */
-	}
+	if (!xtn->reader_istty && hcl_getbclen(hcl) > 0) execute_in_batch_mode (hcl, verbose);
 
 	return 0;
 
@@ -1025,7 +1044,7 @@ int main (int argc, char* argv[])
 
 	memset (&hclcb, 0, HCL_SIZEOF(hclcb));
 	hclcb.gc = gc_hcl;
-	hclcb.vm_startup =  vm_startup;
+	hclcb.vm_startup = vm_startup;
 	hclcb.vm_cleanup = vm_cleanup;
 	/*hclcb.vm_checkbc = vm_checkbc;*/
 	hcl_regcb (hcl, &hclcb);
