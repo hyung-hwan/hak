@@ -17,5 +17,5 @@ check_PROGRAMS =
 TESTS = $(check_PROGRAMS) $(check_SCRIPTS)
 
 TEST_EXTENSIONS = .hcl
-HCL_LOG_COMPILER = sh $(abs_srcdir)/run.sh ../bin/hcl
+HCL_LOG_COMPILER = sh $(abs_srcdir)/run.sh ../bin/hcl -x
 AM_HCL_LOG_FLAGS =
