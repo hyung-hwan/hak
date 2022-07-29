@@ -2150,6 +2150,9 @@ HCL_EXPORT void hcl_abort (
 #	define hcl_switchprocess(hcl) ((hcl)->switch_proc = 1)
 #endif
 
+HCL_EXPORT hcl_ioinarg_t* hcl_getbaseioarg (
+	hcl_t* hcl
+);
 
 HCL_EXPORT int hcl_attachio (
 	hcl_t*         hcl,

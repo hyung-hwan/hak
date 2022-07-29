@@ -227,7 +227,6 @@ static HCL_INLINE int close_input (hcl_t* hcl, hcl_ioinarg_t* arg)
 	return 0;
 }
 
-
 static HCL_INLINE int read_input (hcl_t* hcl, hcl_ioinarg_t* arg)
 {
 	/*xtn_t* xtn = (xtn_t*)hcl_getxtn(hcl);*/
@@ -239,7 +238,7 @@ static HCL_INLINE int read_input (hcl_t* hcl, hcl_ioinarg_t* arg)
 	HCL_ASSERT (hcl, bb != HCL_NULL && bb->fp != HCL_NULL);
 	do
 	{
-		x = fgetc (bb->fp);
+		x = fgetc(bb->fp);
 		if (x == EOF)
 		{
 			if (ferror((FILE*)bb->fp))
@@ -822,21 +821,7 @@ static int on_fed_cnode_in_interactive_mode (hcl_t* hcl, hcl_cnode_t* obj)
 
 static int feed_loop (hcl_t* hcl, xtn_t* xtn, int cflags, int verbose)
 {
-	FILE* fp = HCL_NULL;
-#define FEED_READ_BUF_SIZE (10)  /* TOOD: change the buffer size */
-	hcl_bch_t buf[FEED_READ_BUF_SIZE];
-	hcl_oow_t len = 0;
-
-#if defined(__DOS__) || defined(_WIN32) || defined(__OS2__)
-	fp = fopen(xtn->read_path, "rb");
-#else
-	fp = fopen(xtn->read_path, "r");
-	if (!fp)
-#endif
-	{
-		hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: unable to open %hs\n", xtn->read_path);
-		return -1;
-	}
+	hcl_ioinarg_t* inarg;
 
 	if (xtn->reader_istty) 
 	{
@@ -845,59 +830,15 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int cflags, int verbose)
 		hcl_beginfeed (hcl, on_fed_cnode_in_interactive_mode); 
 	}
 
-/* TODO: use the io handler attached .. */
-	/*(setvbuf (fp, NULL, _IONBF, 0);*/
+	/* [NOTE] it isn't a very nice idea to get this internal data and use it with read_input() */
+	inarg = hcl_getbaseioarg(hcl); 
 	while (1)
 	{
-		hcl_ooi_t n;
-
-		/*n = fread(&buf[len], 1, HCL_COUNTOF(buf) - len, fp);*/
-		n = read(fileno(fp), &buf[len], HCL_COUNTOF(buf) - len);
-		if (n > 0)
-		{
-			int x;
-		#if defined(HCL_OOCH_IS_UCH)
-			hcl_ooch_t oobuf[FEED_READ_BUF_SIZE]; /* the wide character strings can't be longer than the byte strings */
-			hcl_oow_t iilen = len + n;
-			hcl_oow_t oolen = HCL_COUNTOF(oobuf);
-
-			if ((x = hcl_convbtooochars(hcl, buf, &iilen, oobuf, &oolen)) <= -1)
-			{
-				if (x != -3) /* incomplete sequence */
-				{
-					hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: inconvertable data on %hs - %js\n", xtn->read_path, hcl_geterrmsg(hcl));
-					goto oops;
-				}
-			}
-			len = len + n - iilen; /* residue length after conversion */
-			if (len > 0) memmove (buf, &buf[iilen], len);
-
-			x = hcl_feed(hcl, oobuf, oolen);
-		#else
-			x = hcl_feed(hcl, buf, n);
-			/* 'len' must remain 0 in this case */
-		#endif
-
-			if (x <= -1) goto feed_error;
-		}
-
-		if (n == 0 || feof(fp)) 
-		{
-			if (len > 0)
-			{
-				/* eof detected, but the input is not complete. there must be some trailing garbage */
-				hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: garbage data on %hs\n", xtn->read_path);
-				goto oops;
-			}
-			break;
-		}
-		if (n <= -1 || ferror(fp)) 
-		{
-			hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: unable to read %hs - %hs\n", xtn->read_path, strerror(errno));
-			goto oops;
-		}
+		if (read_input(hcl, inarg) <= -1) goto oops;
+		if (inarg->xlen <= 0) break;
+		if (hcl_feed(hcl, inarg->buf, inarg->xlen) <= -1) goto feed_error;
 	}
-	if (hcl_endfeed (hcl) <= -1)
+	if (hcl_endfeed(hcl) <= -1)
 	{
 	feed_error:
 		if (hcl->errnum == HCL_ESYNERR) print_synerr (hcl);
@@ -905,15 +846,11 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int cflags, int verbose)
 		goto oops; /* TODO: proceed or just exit? */
 	}
 
-	fclose (fp);
-
 	if (!xtn->reader_istty && hcl_getbclen(hcl) > 0) execute_in_batch_mode (hcl, verbose);
-
 	return 0;
 
 oops:
 	hcl_endfeed (hcl);
-	if (fp) fclose (fp);
 	return -1;
 }
 
@@ -1116,7 +1053,7 @@ int main (int argc, char* argv[])
 
 	if (experimental)
 	{
-		/* this is to test the 'feed'-based reader */
+		/* this is to test the feed-based reader */
 		if (feed_loop(hcl, xtn, cflags, verbose) <= -1) goto oops;
 	}
 	else

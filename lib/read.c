@@ -3731,7 +3731,10 @@ static int feed_from_included (hcl_t* hcl)
 
 void hcl_beginfeed (hcl_t* hcl, hcl_on_cnode_t on_cnode)
 {
-	hcl->c->feed.on_cnode = on_cnode;
+	init_feed (hcl);
+	if (on_cnode) hcl->c->feed.on_cnode = on_cnode;
+	/* if you pass HCL_NULL for on_cnode, hcl->c->feed.on_cnode resets 
+	 * back to the default handler in init_feed() */
 }
 
 int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
@@ -4033,4 +4036,9 @@ void hcl_detachio (hcl_t* hcl)
 			hcl->c->printer = HCL_NULL; /* ready for another attachment */
 		}
 	}
+}
+
+hcl_ioinarg_t* hcl_getbaseioarg (hcl_t* hcl)
+{
+	return &hcl->c->inarg;
 }
