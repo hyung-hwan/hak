@@ -850,7 +850,6 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int cflags, int verbose)
 	return 0;
 
 oops:
-	hcl_endfeed (hcl);
 	return -1;
 }
 

@@ -630,9 +630,10 @@ typedef struct hcl_frd_t hcl_frd_t;
 struct hcl_frd_t
 {
 	int level;
-	int array_level;
+	int data_list_level;
 	int flagv;
 	int expect_include_file;
+	int expect_vlist_item;
 	int do_include_file;
 	hcl_cnode_t* obj;
 };

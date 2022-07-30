@@ -90,7 +90,8 @@ enum list_flag_t
 	COMMAED    = (1 << 2),
 	COLONED    = (1 << 3),
 	CLOSED     = (1 << 4),
-	JSON       = (1 << 5)
+	JSON       = (1 << 5),
+	DATA_LIST  = (1 << 6)
 };
 
 #define LIST_FLAG_GET_CONCODE(x) (((x) >> 8) & 0xFF)
@@ -1842,7 +1843,7 @@ static hcl_cnode_t* read_object (hcl_t* hcl)
 	/* this function read an s-expression non-recursively
 	 * by manipulating its own stack. */
 
-	int level = 0, array_level = 0, flagv = 0;
+	int level = 0, data_list_level = 0, flagv = 0;
 	hcl_cnode_t* obj = HCL_NULL;
 
 	while (1)
@@ -1871,22 +1872,22 @@ static hcl_cnode_t* read_object (hcl_t* hcl)
 				goto redo;
 
 			case HCL_IOTOK_LBRACK: /* [] */
-				flagv = 0;
+				flagv = DATA_LIST;
 				LIST_FLAG_SET_CONCODE (flagv, HCL_CONCODE_ARRAY);
 				goto start_list;
 
 			case HCL_IOTOK_BAPAREN: /* #[ */
-				flagv = 0;
+				flagv = DATA_LIST;
 				LIST_FLAG_SET_CONCODE (flagv, HCL_CONCODE_BYTEARRAY);
 				goto start_list;
 
 			case HCL_IOTOK_LBRACE: /* { */
-				flagv = 0;
+				flagv = DATA_LIST;
 				LIST_FLAG_SET_CONCODE (flagv, HCL_CONCODE_DIC);
 				goto start_list;
 
 			case HCL_IOTOK_QLPAREN: /* #( */
-				flagv = 0;
+				flagv = DATA_LIST;
 				LIST_FLAG_SET_CONCODE (flagv, HCL_CONCODE_QLIST);
 				goto start_list;
 
@@ -1910,7 +1911,7 @@ static hcl_cnode_t* read_object (hcl_t* hcl)
 				 * a list literal or an array literal */
 				if (enter_list(hcl, TOKEN_LOC(hcl), flagv) <= -1) goto oops;
 				level++;
-				if (LIST_FLAG_GET_CONCODE(flagv) == HCL_CONCODE_ARRAY) array_level++;
+				if (flagv & DATA_LIST) data_list_level++;
 
 				/* read the next token */
 				GET_TOKEN_WITH_GOTO (hcl, oops);
@@ -2012,14 +2013,14 @@ static hcl_cnode_t* read_object (hcl_t* hcl)
 				obj = leave_list(hcl, &flagv, &oldflagv);
 
 				level--;
-				if (LIST_FLAG_GET_CONCODE(oldflagv) == HCL_CONCODE_ARRAY) array_level--;
+				if (oldflagv & DATA_LIST) data_list_level--;
 				break;
 			}
 
 			case HCL_IOTOK_VBAR:
 /* TODO: think wheter to allow | | inside a quoted list... */
 /* TODO: revise this part ... */
-				if (array_level > 0) /* TODO: this check is wrong... i think .. */
+				if (data_list_level > 0) /* TODO: this check is wrong... i think .. */
 				{
 					hcl_setsynerr (hcl, HCL_SYNERR_VBARBANNED, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 					goto oops;
@@ -2158,7 +2159,7 @@ static hcl_cnode_t* read_object (hcl_t* hcl)
 			/* one level up toward the top */
 			level--;
 
-			if (LIST_FLAG_GET_CONCODE(oldflagv) == HCL_CONCODE_ARRAY) array_level--;
+			if (oldflagv & DATA_LIST) data_list_level--;
 		}
 #endif
 
@@ -2182,7 +2183,7 @@ static hcl_cnode_t* read_object (hcl_t* hcl)
 
 	/* upon exit, we must be at the top level */
 	HCL_ASSERT (hcl, level == 0);
-	HCL_ASSERT (hcl, array_level == 0);
+	HCL_ASSERT (hcl, data_list_level == 0);
 
 	HCL_ASSERT (hcl, hcl->c->r.st == HCL_NULL);
 	HCL_ASSERT (hcl, obj != HCL_NULL);
@@ -2343,9 +2344,12 @@ static int feed_process_token (hcl_t* hcl)
 	/* this function composes an s-expression non-recursively
 	 * by manipulating its own stack. */
 
-/*hcl_logbfmt (hcl, HCL_LOG_STDERR, "TOKEN => [%.*js] type=%d\n", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl), TOKEN_TYPE(hcl));*/
+/*hcl_logbfmt (hcl, HCL_LOG_STDERR, "TOKEN => [%.*js] type=%d LOC=%d.%d\n", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl), TOKEN_TYPE(hcl), TOKEN_LOC(hcl)->line, TOKEN_LOC(hcl)->colm);*/
 	if (frd->expect_include_file)
 	{
+		/* the #include directive is an exception to the general expression rule.
+		 * use this exceptional code block to divert the major token processing */
+
 		if (TOKEN_TYPE(hcl) != HCL_IOTOK_STRLIT)
 		{
 			hcl_setsynerr (hcl, HCL_SYNERR_STRING, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
@@ -2362,6 +2366,13 @@ static int feed_process_token (hcl_t* hcl)
 		goto ok;
 	}
 
+	if (frd->expect_vlist_item && TOKEN_TYPE(hcl) != HCL_IOTOK_IDENT && TOKEN_TYPE(hcl) != HCL_IOTOK_VBAR)
+	{
+		/* vlist also has special requirement that it can only contain variable names. */
+		hcl_setsynerr (hcl, HCL_SYNERR_VARNAME, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+		goto oops;
+	}
+
 	switch (TOKEN_TYPE(hcl))
 	{
 		default:
@@ -2369,7 +2380,6 @@ static int feed_process_token (hcl_t* hcl)
 			goto oops;
 
 		case HCL_IOTOK_EOF:
-		/* TODO: change the code. not an error? */
 			hcl_setsynerr (hcl, HCL_SYNERR_EOF, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto oops;
 
@@ -2379,23 +2389,56 @@ static int feed_process_token (hcl_t* hcl)
 			frd->expect_include_file = 1;
 			goto ok;
 
-		case HCL_IOTOK_LBRACK: /* [] */
-			frd->flagv = 0;
+		case HCL_IOTOK_VBAR:
+			if (frd->expect_vlist_item)
+			{
+				/* closer */
+				int oldflagv;
+				frd->expect_vlist_item = 0;
+				frd->obj = leave_list(hcl, &frd->flagv, &oldflagv);
+				frd->level--;
+				break;
+			}
+			else
+			{
+				/* opener */
+
+				/* the vlist is different from other lists in that
+				 *   it uses the same opener and the closer
+				 *   it allows only variable names.
+				 *   it prohibits nesting of other lists
+				 */
+				if (frd->data_list_level > 0) /* TODO: this check is wrong... i think .. */
+				{
+					hcl_setsynerr (hcl, HCL_SYNERR_VBARBANNED, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+					goto oops;
+				}
+
+				/* neither a data list nor an executable list. handle this specially using
+				 * a dedicated frd->expect_vlist_item variable */
+				frd->flagv = 0; 
+				LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_VLIST);
+				frd->expect_vlist_item = 1;
+				goto start_list;
+			}
+
+		case HCL_IOTOK_LBRACK: /* [ */
+			frd->flagv = DATA_LIST;
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_ARRAY);
 			goto start_list;
 
 		case HCL_IOTOK_BAPAREN: /* #[ */
-			frd->flagv = 0;
+			frd->flagv = DATA_LIST;
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_BYTEARRAY);
 			goto start_list;
 
 		case HCL_IOTOK_LBRACE: /* { */
-			frd->flagv = 0;
+			frd->flagv = DATA_LIST;
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_DIC);
 			goto start_list;
 
 		case HCL_IOTOK_QLPAREN: /* #( */
-			frd->flagv = 0;
+			frd->flagv = DATA_LIST;
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_QLIST);
 			goto start_list;
 
@@ -2410,7 +2453,7 @@ static int feed_process_token (hcl_t* hcl)
 		start_list:
 			if (frd->level >= HCL_TYPE_MAX(int))
 			{
-				/* the nesting frd->level has become too deep */
+				/* the nesting level has become too deep */
 				hcl_setsynerr (hcl, HCL_SYNERR_NESTING, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 				goto oops;
 			}
@@ -2419,7 +2462,7 @@ static int feed_process_token (hcl_t* hcl)
 			 * a list literal or an array literal */
 			if (enter_list(hcl, TOKEN_LOC(hcl), frd->flagv) <= -1) goto oops;
 			frd->level++;
-			if (LIST_FLAG_GET_CONCODE(frd->flagv) == HCL_CONCODE_ARRAY) frd->array_level++;
+			if (frd->flagv & DATA_LIST) frd->data_list_level++;
 
 			/* read the next token */
 			goto ok;
@@ -2515,22 +2558,23 @@ static int feed_process_token (hcl_t* hcl)
 			}
 #endif
 			frd->obj = leave_list(hcl, &frd->flagv, &oldflagv);
-
 			frd->level--;
-			if (LIST_FLAG_GET_CONCODE(oldflagv) == HCL_CONCODE_ARRAY) frd->array_level--;
+			if (oldflagv & DATA_LIST) frd->data_list_level--;
 			break;
 		}
 
+#if 0
 		case HCL_IOTOK_VBAR:
 /* TODO: think wheter to allow | | inside a quoted list... */
 /* TODO: revise this part ... */
-			if (frd->array_level > 0) /* TODO: this check is wrong... i think .. */
+			if (frd->data_list_level > 0) /* TODO: this check is wrong... i think .. */
 			{
 				hcl_setsynerr (hcl, HCL_SYNERR_VBARBANNED, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 				goto oops;
 			}
 			frd->obj = read_vlist(hcl);
 			break;
+#endif
 
 		case HCL_IOTOK_NIL:
 			frd->obj = hcl_makecnodenil(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
@@ -2662,7 +2706,7 @@ static int feed_process_token (hcl_t* hcl)
 		/* one frd->level up toward the top */
 		frd->level--;
 
-		if (LIST_FLAG_GET_CONCODE(oldflagv) == HCL_CONCODE_ARRAY) frd->array_level--;
+		if (oldflagv & DATA_LIST) frd->data_list_level--;
 	}
 #endif
 
@@ -2674,7 +2718,7 @@ static int feed_process_token (hcl_t* hcl)
 
 		/* upon exit, we must be at the top level */
 		HCL_ASSERT (hcl, frd->level == 0);
-		HCL_ASSERT (hcl, frd->array_level == 0);
+		HCL_ASSERT (hcl, frd->data_list_level == 0);
 
 		HCL_ASSERT (hcl, hcl->c->r.st == HCL_NULL);
 		HCL_ASSERT (hcl, frd->obj != HCL_NULL);
