@@ -95,3 +95,17 @@
 
 (if (nqv? R false) (print "ERROR: R is not false\n")
  else (printf "OK: %O\n" R))
+
+(set v 
+	#(
+		(do |a b| (set a 10) (set b 20) (+ a b) )
+ 		(do |a b| (set a 11) (set b 21) (+ a b) )
+   		999
+	)
+)
+
+(set v2 #(30 32 999))
+
+(if (nql? v v2) (print "ERROR: v1 and v2 are not equal\n")
+ else (printf "OK: v and v2 equal\n"))
+
