@@ -1911,7 +1911,6 @@ static hcl_cnode_t* read_object (hcl_t* hcl)
 				 * a list literal or an array literal */
 				if (enter_list(hcl, TOKEN_LOC(hcl), flagv) <= -1) goto oops;
 				level++;
-				if (flagv & DATA_LIST) data_list_level++;
 
 				/* read the next token */
 				GET_TOKEN_WITH_GOTO (hcl, oops);
@@ -2013,14 +2012,11 @@ static hcl_cnode_t* read_object (hcl_t* hcl)
 				obj = leave_list(hcl, &flagv, &oldflagv);
 
 				level--;
-				if (oldflagv & DATA_LIST) data_list_level--;
 				break;
 			}
 
 			case HCL_IOTOK_VBAR:
-/* TODO: think wheter to allow | | inside a quoted list... */
-/* TODO: revise this part ... */
-				if (data_list_level > 0) /* TODO: this check is wrong... i think .. */
+				if (hcl->c->r.st && (hcl->c->r.st->flagv & DATA_LIST))
 				{
 					hcl_setsynerr (hcl, HCL_SYNERR_VBARBANNED, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 					goto oops;
@@ -2158,8 +2154,6 @@ static hcl_cnode_t* read_object (hcl_t* hcl)
 
 			/* one level up toward the top */
 			level--;
-
-			if (oldflagv & DATA_LIST) data_list_level--;
 		}
 #endif
 
@@ -2183,7 +2177,6 @@ static hcl_cnode_t* read_object (hcl_t* hcl)
 
 	/* upon exit, we must be at the top level */
 	HCL_ASSERT (hcl, level == 0);
-	HCL_ASSERT (hcl, data_list_level == 0);
 
 	HCL_ASSERT (hcl, hcl->c->r.st == HCL_NULL);
 	HCL_ASSERT (hcl, obj != HCL_NULL);
@@ -2402,14 +2395,15 @@ static int feed_process_token (hcl_t* hcl)
 			else
 			{
 				/* opener */
-
+			
 				/* the vlist is different from other lists in that
 				 *   it uses the same opener and the closer
 				 *   it allows only variable names.
 				 *   it prohibits nesting of other lists
 				 */
-				if (frd->data_list_level > 0) /* TODO: this check is wrong... i think .. */
+				if (hcl->c->r.st && (hcl->c->r.st->flagv & DATA_LIST))
 				{
+					/* if the outer list is a data list */
 					hcl_setsynerr (hcl, HCL_SYNERR_VBARBANNED, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 					goto oops;
 				}
@@ -2462,7 +2456,6 @@ static int feed_process_token (hcl_t* hcl)
 			 * a list literal or an array literal */
 			if (enter_list(hcl, TOKEN_LOC(hcl), frd->flagv) <= -1) goto oops;
 			frd->level++;
-			if (frd->flagv & DATA_LIST) frd->data_list_level++;
 
 			/* read the next token */
 			goto ok;
@@ -2559,22 +2552,8 @@ static int feed_process_token (hcl_t* hcl)
 #endif
 			frd->obj = leave_list(hcl, &frd->flagv, &oldflagv);
 			frd->level--;
-			if (oldflagv & DATA_LIST) frd->data_list_level--;
 			break;
 		}
-
-#if 0
-		case HCL_IOTOK_VBAR:
-/* TODO: think wheter to allow | | inside a quoted list... */
-/* TODO: revise this part ... */
-			if (frd->data_list_level > 0) /* TODO: this check is wrong... i think .. */
-			{
-				hcl_setsynerr (hcl, HCL_SYNERR_VBARBANNED, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-				goto oops;
-			}
-			frd->obj = read_vlist(hcl);
-			break;
-#endif
 
 		case HCL_IOTOK_NIL:
 			frd->obj = hcl_makecnodenil(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
@@ -2705,8 +2684,6 @@ static int feed_process_token (hcl_t* hcl)
 
 		/* one frd->level up toward the top */
 		frd->level--;
-
-		if (oldflagv & DATA_LIST) frd->data_list_level--;
 	}
 #endif
 
@@ -2718,7 +2695,6 @@ static int feed_process_token (hcl_t* hcl)
 
 		/* upon exit, we must be at the top level */
 		HCL_ASSERT (hcl, frd->level == 0);
-		HCL_ASSERT (hcl, frd->data_list_level == 0);
 
 		HCL_ASSERT (hcl, hcl->c->r.st == HCL_NULL);
 		HCL_ASSERT (hcl, frd->obj != HCL_NULL);
