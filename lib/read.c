@@ -1395,7 +1395,6 @@ retry:
 			break;
 	}
 
-done:
 #if defined(HCL_DEBUG_LEXER)
 	HCL_DEBUG2 (hcl, "TOKEN: [%.*js]\n", (hcl_ooi_t)TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
 #endif
@@ -1543,7 +1542,7 @@ static HCL_INLINE int enter_list (hcl_t* hcl, const hcl_ioloc_t* loc, int flagv)
 static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, int* flagv, int* oldflagv)
 {
 	hcl_rstl_t* rstl;
-	hcl_cnode_t* head, * list;
+	hcl_cnode_t* head;
 	hcl_ioloc_t loc;
 	int fv, concode;
 
@@ -1843,7 +1842,7 @@ static hcl_cnode_t* read_object (hcl_t* hcl)
 	/* this function read an s-expression non-recursively
 	 * by manipulating its own stack. */
 
-	int level = 0, data_list_level = 0, flagv = 0;
+	int level = 0, flagv = 0;
 	hcl_cnode_t* obj = HCL_NULL;
 
 	while (1)
@@ -2691,7 +2690,6 @@ static int feed_process_token (hcl_t* hcl)
 	if (frd->level <= 0) 
 	{
 		int n;
-		hcl_cb_t* cb;
 
 		/* upon exit, we must be at the top level */
 		HCL_ASSERT (hcl, frd->level == 0);
