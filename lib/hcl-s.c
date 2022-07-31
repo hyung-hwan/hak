@@ -1360,7 +1360,7 @@ int hcl_server_proto_handle_request (hcl_server_proto_t* proto)
 			hcl_ooci_t c;
 			int n;
 
-			hcl_setinloc (proto->hcl, 1, 1);
+			hcl_setbaseinloc (proto->hcl, 1, 1);
 
 			/* do a special check bypassing get_token(). it checks if the script contents
 			 * come on the same line as .SCRIPT */
@@ -1396,7 +1396,10 @@ int hcl_server_proto_handle_request (hcl_server_proto_t* proto)
 			}
 
 			proto->worker->opstate = HCL_SERVER_WORKER_OPSTATE_COMPILE;
-			n = hcl_compile(proto->hcl, obj, HCL_COMPILE_CLEAR_CODE | HCL_COMPILE_CLEAR_FNBLK);
+
+			/*n = hcl_compile(proto->hcl, obj, HCL_COMPILE_CLEAR_CODE | HCL_COMPILE_CLEAR_FNBLK);*/
+			n = hcl_compile(proto->hcl, obj, 0);
+
 			hcl_freecnode (proto->hcl, obj);
 			if (n <= -1)
 			{

@@ -1969,12 +1969,6 @@ HCL_EXPORT void hcl_reset (
 	hcl_t*   hcl
 );
 
-HCL_EXPORT void hcl_setinloc (
-	hcl_t*    hcl,
-	hcl_oow_t line,
-	hcl_oow_t colm
-);
-
 #if defined(HCL_HAVE_INLINE)
 static HCL_INLINE void* hcl_getxtn (hcl_t* hcl) { return (void*)((hcl_uint8_t*)hcl + hcl->_instsize); }
 static HCL_INLINE hcl_mmgr_t* hcl_getmmgr (hcl_t* hcl) { return hcl->_mmgr; }
@@ -2150,8 +2144,14 @@ HCL_EXPORT void hcl_abort (
 #	define hcl_switchprocess(hcl) ((hcl)->switch_proc = 1)
 #endif
 
-HCL_EXPORT hcl_ioinarg_t* hcl_getbaseioarg (
+HCL_EXPORT hcl_ioinarg_t* hcl_getbaseinarg (
 	hcl_t* hcl
+);
+
+HCL_EXPORT void hcl_setbaseinloc (
+	hcl_t*    hcl,
+	hcl_oow_t line,
+	hcl_oow_t colm
 );
 
 HCL_EXPORT int hcl_attachio (

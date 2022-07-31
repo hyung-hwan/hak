@@ -831,7 +831,7 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int cflags, int verbose)
 	}
 
 	/* [NOTE] it isn't a very nice idea to get this internal data and use it with read_input() */
-	inarg = hcl_getbaseioarg(hcl); 
+	inarg = hcl_getbaseinarg(hcl); 
 	while (1)
 	{
 		if (read_input(hcl, inarg) <= -1) goto oops;

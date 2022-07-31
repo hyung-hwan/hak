@@ -137,6 +137,26 @@ briefly.
 ### Request message
 TODO: fill here
 
+.BEGIN
+.SCRIPT
+.END
+.EXIT
+.KILL-WORKER
+.SHOW-WORKERS
+
+
+You can send a single-line script with a .SCRIPT command.
+
+ .SCRIPT (printf "hello, world\n")
+
+If the script is long and contains line-breaks, enclose multiple .SCRIPT commands 
+with the .BEGIN and .END command.
+
+  .BEGIN
+  .SCRIPT (printf "hello ")
+  .SCRIPT (printf "world\n")
+  .END
+
 ### Reponse message
 
 There are two types of response messages.

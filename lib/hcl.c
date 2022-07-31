@@ -379,12 +379,6 @@ void hcl_reset (hcl_t* hcl)
 	hcl_gc (hcl, 1);
 }
 
-void hcl_setinloc (hcl_t* hcl, hcl_oow_t line, hcl_oow_t colm)
-{
-	hcl->c->inarg.line = line;
-	hcl->c->inarg.colm = colm;
-}
-
 int hcl_setoption (hcl_t* hcl, hcl_option_t id, const void* value)
 {
 	hcl_cb_t* cb;

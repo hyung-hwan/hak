@@ -4056,7 +4056,13 @@ void hcl_detachio (hcl_t* hcl)
 	}
 }
 
-hcl_ioinarg_t* hcl_getbaseioarg (hcl_t* hcl)
+hcl_ioinarg_t* hcl_getbaseinarg (hcl_t* hcl)
 {
 	return &hcl->c->inarg;
+}
+
+void hcl_setbaseinloc (hcl_t* hcl, hcl_oow_t line, hcl_oow_t colm)
+{
+	hcl->c->inarg.line = line;
+	hcl->c->inarg.colm = colm;
 }
