@@ -310,6 +310,7 @@ static HCL_INLINE void gc_ms_mark_roots (hcl_t* hcl)
 		hcl->processor->active->sp = HCL_SMOOI_TO_OOP(hcl->sp);
 	}
 
+	gc_ms_mark (hcl, hcl->_undef);
 	gc_ms_mark (hcl, hcl->_nil);
 	gc_ms_mark (hcl, hcl->_true);
 	gc_ms_mark (hcl, hcl->_false);

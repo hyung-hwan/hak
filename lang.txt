@@ -213,3 +213,28 @@ x.show (40, 50);
 
 
 ---------------
+
+
+variadic arguments -> supported
+
+multiple return variables -> supported
+        (defun ff(a b ::: x y z)
+                (set x (+ a b))
+                (set y (+ x x))
+                (set z (+ 999 x))
+        )
+        (set-r v1 v2 v3 (ff 10 20))
+	(printf "%d %d %d\n" v1 v2 v3)
+
+variadic multiple return variables -> not supported as of now
+	
+        (defun ff(a b ::: x y z ...) <--- can i support something like this???
+                (set x (+ a b))
+                (set y (+ x x))
+                (set z (+ 999 x))
+        )
+        (set-r v1 v2 v3 (ff 10 20))
+	(printf "%d %d %d\n" v1 v2 v3)
+
+	since va-get is used to get a variadic argument, can i create vr-put
+	to set a variadic return variable?
