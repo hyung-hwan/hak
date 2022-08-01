@@ -1911,8 +1911,8 @@ static int compile_do (hcl_t* hcl, hcl_cnode_t* src)
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
 	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_DO));
 
-	cmd = HCL_CNODE_CONS_CDR(src);
-	obj = HCL_CNODE_CONS_CDR(src);
+	cmd = HCL_CNODE_CONS_CAR(src); /* do itself */
+	obj = HCL_CNODE_CONS_CDR(src); /* expression list after it */
 
 	if (!obj)
 	{

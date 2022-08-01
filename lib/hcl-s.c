@@ -422,7 +422,6 @@ static HCL_INLINE int close_input (hcl_t* hcl, hcl_ioinarg_t* arg)
 	return 0;
 }
 
-
 static HCL_INLINE int read_input (hcl_t* hcl, hcl_ioinarg_t* arg)
 {
 	worker_hcl_xtn_t* xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);
@@ -477,7 +476,7 @@ static HCL_INLINE int read_input (hcl_t* hcl, hcl_ioinarg_t* arg)
 				return -1;
 			}
 		}
-		
+
 		x = recv(bb->fd, &bb->buf[bb->len], HCL_COUNTOF(bb->buf) - bb->len, 0);
 		if (x <= -1)
 		{
@@ -494,7 +493,8 @@ static HCL_INLINE int read_input (hcl_t* hcl, hcl_ioinarg_t* arg)
 		x = read(bb->fd, &bb->buf[bb->len], HCL_COUNTOF(bb->buf) - bb->len);
 		if (x <= -1)
 		{
-			hcl_seterrnum (hcl, HCL_EIOERR);
+			/* TODO: if (errno == EINTR) retry? */
+			hcl_seterrwithsyserr (hcl, 0, errno);
 			return -1;
 		}
 
@@ -504,7 +504,7 @@ static HCL_INLINE int read_input (hcl_t* hcl, hcl_ioinarg_t* arg)
 #if defined(HCL_OOCH_IS_UCH)
 	bcslen = bb->len;
 	ucslen = HCL_COUNTOF(arg->buf);
-	x = hcl_convbtooochars (hcl, bb->buf, &bcslen, arg->buf, &ucslen);
+	x = hcl_convbtooochars(hcl, bb->buf, &bcslen, arg->buf, &ucslen);
 	if (x <= -1 && ucslen <= 0) return -1;
 	/* if ucslen is greater than 0, i see that some characters have been
 	 * converted properly */
@@ -515,7 +515,7 @@ static HCL_INLINE int read_input (hcl_t* hcl, hcl_ioinarg_t* arg)
 #endif
 
 	remlen = bb->len - bcslen;
-	if (remlen > 0) memmove (bb->buf, &bb->buf[bcslen], remlen);
+	if (remlen > 0) HCL_MEMMOVE (bb->buf, &bb->buf[bcslen], remlen);
 	bb->len = remlen;
 
 	arg->xlen = ucslen;
@@ -528,13 +528,13 @@ static int read_handler (hcl_t* hcl, hcl_iocmd_t cmd, void* arg)
 	switch (cmd)
 	{
 		case HCL_IO_OPEN:
-			return open_input (hcl, (hcl_ioinarg_t*)arg);
-			
+			return open_input(hcl, (hcl_ioinarg_t*)arg);
+
 		case HCL_IO_CLOSE:
-			return close_input (hcl, (hcl_ioinarg_t*)arg);
+			return close_input(hcl, (hcl_ioinarg_t*)arg);
 
 		case HCL_IO_READ:
-			return read_input (hcl, (hcl_ioinarg_t*)arg);
+			return read_input(hcl, (hcl_ioinarg_t*)arg);
 
 		default:
 			hcl_seterrnum (hcl, HCL_EINTERN);
@@ -1021,7 +1021,7 @@ static int get_token (hcl_server_proto_t* proto)
 		case HCL_OOCI_EOF:
 			SET_TOKEN_TYPE (proto, HCL_SERVER_PROTO_TOKEN_EOF);
 			break;
-			
+
 		case '\n':
 			SET_TOKEN_TYPE (proto, HCL_SERVER_PROTO_TOKEN_NL);
 			break;

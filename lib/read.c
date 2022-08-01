@@ -3715,13 +3715,8 @@ static int feed_from_included (hcl_t* hcl)
 			if (hcl->c->curinp->xlen <= 0)
 			{
 				/* got EOF from an included stream */
-				#if 0
-				x = feed_char(hcl, HCL_OOCI_EOF); /* TODO: or call feed_end_include? */
-				if (x <= -1) return -1;
-				#else
 				feed_end_include (hcl);
 				continue;
-				#endif
 			}
 
 			hcl->c->curinp->b.pos = 0;
