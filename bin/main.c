@@ -258,8 +258,11 @@ static HCL_INLINE int read_input (hcl_t* hcl, hcl_ioinarg_t* arg)
 	ucslen = HCL_COUNTOF(arg->buf);
 	x = hcl_convbtooochars(hcl, bb->buf, &bcslen, arg->buf, &ucslen);
 	if (x <= -1 && ucslen <= 0) return -1;
-	/* if ucslen is greater than 0, i see that some characters have been
-	 * converted properly */
+	/* if ucslen is greater than 0, i assume that some characters have been
+	 * converted properly. as the loop above reads an entire line if not too 
+	 * large, the incomplete sequence error (x == -3) must happen after 
+	 * successful conversion of at least 1 ooch character. so no explicit
+	 * check for the incomplete sequence error is required */
 #else
 	bcslen = (bb->len < HCL_COUNTOF(arg->buf))? bb->len: HCL_COUNTOF(arg->buf);
 	ucslen = bcslen;

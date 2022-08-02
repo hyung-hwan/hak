@@ -568,19 +568,96 @@ static int feed_data (hcl_client_t* client, const void* ptr, hcl_oow_t len)
 
 /* ========================================================================= */
 
+static int send_iov (int sck, struct iovec* iov, int count)
+{
+	int index = 0;
+
+	while (1)
+	{
+		ssize_t nwritten;
+		struct msghdr msg;
+
+		memset (&msg, 0, HCL_SIZEOF(msg));
+		msg.msg_iov = (struct iovec*)&iov[index];
+		msg.msg_iovlen = count - index;
+		nwritten = sendmsg(sck, &msg, 0);
+		/*nwritten = writev(proto->worker->sck, (const struct iovec*)&iov[index], count - index);*/
+		if (nwritten <= -1) 
+		{
+			/* error occurred inside the worker thread shouldn't affect the error information
+			 * in the server object. so here, i just log a message */
+			fprintf (stderr, "Unable to sendmsg on %d - %s\n", sck, strerror(errno));
+			return -1;
+		}
+
+		while (index < count && (size_t)nwritten >= iov[index].iov_len)
+			nwritten -= iov[index++].iov_len;
+
+		if (index == count) break;
+
+		iov[index].iov_base = (void*)((hcl_uint8_t*)iov[index].iov_base + nwritten);
+		iov[index].iov_len -= nwritten;
+	}
+
+	return 0;
+}
+
+static int send_script_line (int sck, const char* line, size_t len)
+{
+	struct iovec iov[3];
+	int count;
+
+	count = 0;
+	iov[count].iov_base = ".SCRIPT ";
+	iov[count++].iov_len = 8;
+	iov[count].iov_base = (char*)line;
+	iov[count++].iov_len = len;
+	iov[count].iov_base = "\n";
+	iov[count++].iov_len = 1;
+
+	return send_iov(sck, iov, count);
+}
+
+static int send_begin_line (int sck)
+{
+	struct iovec iov[2];
+	int count;
+
+	count = 0;
+	iov[count].iov_base = ".BEGIN";
+	iov[count++].iov_len = 6;
+	iov[count].iov_base = "\n";
+	iov[count++].iov_len = 1;
+
+	return send_iov(sck, iov, count);
+}
+
+static int send_end_line (int sck)
+{
+	struct iovec iov[2];
+	int count;
+
+	count = 0;
+	iov[count].iov_base = ".END";
+	iov[count++].iov_len = 4;
+	iov[count].iov_base = "\n";
+	iov[count++].iov_len = 1;
+
+	return send_iov(sck, iov, count);
+}
+
 static int handle_request (hcl_client_t* client, const char* ipaddr, const char* script, int reuse_addr, int shut_wr_after_req)
 {
 	hcl_sckaddr_t sckaddr;
 	hcl_scklen_t scklen;
 	int sckfam;
 	int sck = -1;
-	struct iovec iov[3];
-	int index, count;
 
 	hcl_oow_t used, avail;
 	int x;
 	hcl_bch_t buf[256];
 	ssize_t n;
+	const char* scptr;
 
 	client_xtn_t* client_xtn;
 
@@ -628,42 +705,19 @@ static int handle_request (hcl_client_t* client, const char* ipaddr, const char*
 		goto oops;
 	}
 
-	count = 0;
-	iov[count].iov_base = ".SCRIPT (do ";
-	iov[count++].iov_len = 12;
-	iov[count].iov_base = (char*)script;
-	iov[count++].iov_len = strlen(script);
-	/* the script above must not include trailing newlines */
-	iov[count].iov_base = ")\n";
-	iov[count++].iov_len = 2;
+	if (send_begin_line(sck) <= -1) goto oops;
 
-	index = 0;
+	scptr = script;
 	while (1)
 	{
-		ssize_t nwritten;
-		struct msghdr msg;
-
-		memset (&msg, 0, HCL_SIZEOF(msg));
-		msg.msg_iov = (struct iovec*)&iov[index];
-		msg.msg_iovlen = count - index;
-		nwritten = sendmsg(sck, &msg, 0);
-		/*nwritten = writev(proto->worker->sck, (const struct iovec*)&iov[index], count - index);*/
-		if (nwritten <= -1) 
-		{
-			/* error occurred inside the worker thread shouldn't affect the error information
-			 * in the server object. so here, i just log a message */
-			fprintf (stderr, "Unable to sendmsg on %d - %s\n", sck, strerror(errno));
-			goto oops;
-		}
-
-		while (index < count && (size_t)nwritten >= iov[index].iov_len)
-			nwritten -= iov[index++].iov_len;
-
-		if (index == count) break;
-
-		iov[index].iov_base = (void*)((hcl_uint8_t*)iov[index].iov_base + nwritten);
-		iov[index].iov_len -= nwritten;
+		const char* nl;
+		nl = strchr(scptr, '\n');
+		if (send_script_line(sck, scptr, (nl? (nl - scptr): strlen(scptr))) <= -1) goto oops;
+		if (!nl) break;
+		scptr = nl + 1;
 	}
+
+	if (send_end_line(sck) <= -1) goto oops;
 
 	if (shut_wr_after_req) shutdown (sck, SHUT_WR);
 

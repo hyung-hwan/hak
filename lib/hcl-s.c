@@ -151,6 +151,8 @@ struct hcl_server_proto_t
 
 	hcl_t* hcl;
 	hcl_iolxc_t* lxc;
+	hcl_oow_t unread_count;
+	hcl_iolxc_t unread_lxc;
 	hcl_server_proto_token_t tok;
 	hcl_tmr_index_t exec_runtime_event_index;
 
@@ -428,28 +430,29 @@ static HCL_INLINE int read_input (hcl_t* hcl, hcl_ioinarg_t* arg)
 	bb_t* bb;
 	hcl_oow_t bcslen, ucslen, remlen;
 	hcl_server_worker_t* worker;
-	int x;
+	ssize_t x;
+	int y;
 
 	bb = (bb_t*)arg->handle;
 	HCL_ASSERT (hcl, bb != HCL_NULL && bb->fd >= 0);
 
 	worker = xtn->proto->worker;
 
+start_over:
 	if (bb->fd == worker->sck)
 	{
-		ssize_t x;
 		hcl_server_t* server;
 
+		HCL_ASSERT (hcl, arg->includer == HCL_NULL);
 		server = worker->server;
 
-	start_over:
 		while (1)
 		{
 			int n;
 			struct pollfd pfd;
 			int tmout, actual_tmout;
 
-			if (server->stopreq)
+			if (HCL_UNLIKELY(server->stopreq))
 			{
 				hcl_seterrbfmt (hcl, HCL_EGENERIC, "stop requested");
 				return -1;
@@ -489,11 +492,18 @@ static HCL_INLINE int read_input (hcl_t* hcl, hcl_ioinarg_t* arg)
 	}
 	else
 	{
-		ssize_t x;
+		HCL_ASSERT (hcl, arg->includer != HCL_NULL);
+
+		if (HCL_UNLIKELY(worker->server->stopreq))
+		{
+			hcl_seterrbfmt (hcl, HCL_EGENERIC, "stop requested");
+			return -1;
+		}
+
 		x = read(bb->fd, &bb->buf[bb->len], HCL_COUNTOF(bb->buf) - bb->len);
 		if (x <= -1)
 		{
-			/* TODO: if (errno == EINTR) retry? */
+			if (errno == EINTR) goto start_over;
 			hcl_seterrwithsyserr (hcl, 0, errno);
 			return -1;
 		}
@@ -504,8 +514,12 @@ static HCL_INLINE int read_input (hcl_t* hcl, hcl_ioinarg_t* arg)
 #if defined(HCL_OOCH_IS_UCH)
 	bcslen = bb->len;
 	ucslen = HCL_COUNTOF(arg->buf);
-	x = hcl_convbtooochars(hcl, bb->buf, &bcslen, arg->buf, &ucslen);
-	if (x <= -1 && ucslen <= 0) return -1;
+	y = hcl_convbtooochars(hcl, bb->buf, &bcslen, arg->buf, &ucslen);
+	if (y <= -1 && ucslen <= 0) 
+	{
+		if (y == -3 && x != 0) goto start_over; /* incomplete sequence and not EOF yet */
+		return -1;
+	}
 	/* if ucslen is greater than 0, i see that some characters have been
 	 * converted properly */
 #else
@@ -919,26 +933,42 @@ static HCL_INLINE int is_digitchar (hcl_ooci_t c)
 
 static HCL_INLINE int read_char (hcl_server_proto_t* proto)
 {
-	proto->lxc = hcl_readchar(proto->hcl);
+	if (proto->unread_count > 0) 
+	{
+		proto->lxc = &proto->unread_lxc;
+		proto->unread_count--;
+		return 0;
+	}
+
+	proto->lxc = hcl_readbaseinchar(proto->hcl);
 	if (!proto->lxc) return -1;
 	return 0;
 }
 
 static HCL_INLINE int unread_last_char (hcl_server_proto_t* proto)
 {
-	return hcl_unreadchar(proto->hcl, proto->lxc);
+	if (proto->unread_count >= 1)
+	{
+		/* only 1 character can be unread */
+		hcl_seterrbfmt (proto->hcl, HCL_EFLOOD, "too many unread characters");
+		return -1;
+	}
+
+	if (proto->lxc != &proto->unread_lxc) proto->unread_lxc = *proto->lxc;
+	proto->unread_count++;
+	return 0;
 }
 
-#define GET_CHAR_TO(proto,c) \
+#define GET_CHAR_TO(proto,ch) \
 	do { \
 		if (read_char(proto) <= -1) return -1; \
-		c = (proto)->lxc->c; \
+		ch = (proto)->lxc->c; \
 	} while(0)
 
-#define GET_CHAR_TO_WITH_GOTO(proto,c,oops) \
+#define GET_CHAR_TO_WITH_GOTO(proto,ch,oops) \
 	do { \
 		if (read_char(proto) <= -1) goto oops; \
-		c = (proto)->lxc->c; \
+		ch = (proto)->lxc->c; \
 	} while(0)
 
 #define UNGET_LAST_CHAR(proto) \
@@ -947,8 +977,8 @@ static HCL_INLINE int unread_last_char (hcl_server_proto_t* proto)
 	} while (0)
 
 #define SET_TOKEN_TYPE(proto,tv) ((proto)->tok.type = (tv))
-#define ADD_TOKEN_CHAR(proto,c) \
-	do { if (add_token_char(proto, c) <= -1) return -1; } while (0)
+#define ADD_TOKEN_CHAR(proto,ch) \
+	do { if (add_token_char(proto, ch) <= -1) return -1; } while (0)
 
 
 static HCL_INLINE int add_token_char (hcl_server_proto_t* proto, hcl_ooch_t c)
@@ -1060,7 +1090,7 @@ static int get_token (hcl_server_proto_t* proto)
 					GET_CHAR_TO(proto, c);
 				}
 				while (is_digitchar(c));
-				
+
 				UNGET_LAST_CHAR (proto);
 				break;
 			}
@@ -1198,6 +1228,30 @@ static void send_error_message (hcl_server_proto_t* proto, const hcl_ooch_t* err
 	{
 		HCL_LOG1 (proto->hcl, SERVER_LOGMASK_ERROR, "Unable to send error message - %s\n", errmsg);
 	}
+}
+
+static void send_proto_hcl_error (hcl_server_proto_t* proto)
+{
+	hcl_errnum_t err;
+
+	err = hcl_geterrnum(proto->hcl);
+	if (err == HCL_ESYNERR)
+	{
+		const hcl_ooch_t* bem;
+		hcl_synerr_t synerr;
+		static hcl_ooch_t nullstr[] = { '\0' };
+
+		/* concatenate the error message with the error location */
+		hcl_getsynerr (proto->hcl, &synerr);
+		bem = hcl_backuperrmsg(proto->hcl);
+		hcl_seterrbfmt (proto->hcl, HCL_ESYNERR, "%js (%js%hs%zu,%zu)", 
+			bem, 
+			(synerr.loc.file? synerr.loc.file: nullstr),
+			(synerr.loc.file? ":": ""),
+			synerr.loc.line, synerr.loc.colm);
+	}
+	
+	send_error_message (proto, hcl_geterrmsg(proto->hcl));
 }
 
 static void show_server_workers (hcl_server_proto_t* proto)
@@ -1346,6 +1400,8 @@ int hcl_server_proto_handle_request (hcl_server_proto_t* proto)
 				goto fail_with_errmsg;
 			}
 
+			if (hcl_endfeed(proto->hcl) <= -1) goto fail_with_errmsg;
+
 			proto->worker->opstate = HCL_SERVER_WORKER_OPSTATE_EXECUTE;
 			/* i must not jump to fail_with_errmsg when execute_script() fails.
 			 * it may have produced some normal output already. so the function
@@ -1356,59 +1412,62 @@ int hcl_server_proto_handle_request (hcl_server_proto_t* proto)
 
 		case HCL_SERVER_PROTO_TOKEN_SCRIPT:
 		{
-			hcl_cnode_t* obj;
 			hcl_ooci_t c;
-			int n;
+			hcl_ooch_t ch;
+			hcl_oow_t feed_count = 0;
 
-			hcl_setbaseinloc (proto->hcl, 1, 1);
+			if (proto->req.state == HCL_SERVER_PROTO_REQ_IN_TOP_LEVEL) 
+			{
+				hcl_setbaseinloc (proto->hcl, 1, 1);
+				hcl_reset(proto->hcl);
+			}
 
-			/* do a special check bypassing get_token(). it checks if the script contents
-			 * come on the same line as .SCRIPT */
+			/* check the first character after .SCRIPT */
 			GET_CHAR_TO_WITH_GOTO (proto, c, fail_with_errmsg);
-			while (is_spacechar(c)) GET_CHAR_TO (proto, c);
-			if (c == HCL_OOCI_EOF || c == '\n')
+			if (c == HCL_OOCI_EOF)
 			{
 				hcl_seterrbfmt (proto->hcl, HCL_EINVAL, "No contents on the .SCRIPT line");
 				goto fail_with_errmsg;
 			}
-			UNGET_LAST_CHAR (proto);
 
-			if (proto->req.state == HCL_SERVER_PROTO_REQ_IN_TOP_LEVEL) hcl_reset(proto->hcl);
+			if (c == '\n') goto script_eol;
 
-			proto->worker->opstate = HCL_SERVER_WORKER_OPSTATE_READ;
-			obj = hcl_read(proto->hcl);
-			if (!obj)
+			if (!is_spacechar(c))
 			{
-				if (hcl_geterrnum(proto->hcl) == HCL_ESYNERR) reformat_synerr (proto->hcl);
+				hcl_seterrbfmt (proto->hcl, HCL_EINVAL, "No space after .SCRIPT");
 				goto fail_with_errmsg;
 			}
 
-			if (get_token(proto) <= -1) 
+			while (1)
 			{
-				hcl_freecnode (proto->hcl, obj);
-				goto fail_with_errmsg;
-			}
-			if (proto->tok.type != HCL_SERVER_PROTO_TOKEN_NL)
-			{
-				hcl_seterrbfmt (proto->hcl, HCL_EINVAL, "No new line after .SCRIPT contents");
-				hcl_freecnode (proto->hcl, obj);
-				goto fail_with_errmsg;
+				GET_CHAR_TO_WITH_GOTO (proto, c, fail_with_errmsg);
+				if (c == '\n' || c == HCL_OOCI_EOF)
+				{
+					if (c == '\n')
+					{
+					script_eol:
+						ch = c;
+						if (hcl_feed(proto->hcl, &ch, 1) <= -1) goto fail_with_errmsg;
+						feed_count++;
+					}
+					break;
+				}
+
+				ch = c;
+				if (hcl_feed(proto->hcl, &ch, 1) <= -1) goto fail_with_errmsg;
+				feed_count++;
 			}
 
-			proto->worker->opstate = HCL_SERVER_WORKER_OPSTATE_COMPILE;
-
-			/*n = hcl_compile(proto->hcl, obj, HCL_COMPILE_CLEAR_CODE | HCL_COMPILE_CLEAR_FNBLK);*/
-			n = hcl_compile(proto->hcl, obj, 0);
-
-			hcl_freecnode (proto->hcl, obj);
-			if (n <= -1)
+			/*
+			if (feed_count == 0)
 			{
-				if (hcl_geterrnum(proto->hcl) == HCL_ESYNERR) reformat_synerr (proto->hcl);
+				hcl_seterrbfmt (proto->hcl, HCL_EINVAL, "No contents on the .SCRIPT line");
 				goto fail_with_errmsg;
-			}
+			}*/
 
 			if (proto->req.state == HCL_SERVER_PROTO_REQ_IN_TOP_LEVEL)
 			{
+				if (hcl_endfeed(proto->hcl) <= -1) goto fail_with_errmsg;
 				proto->worker->opstate = HCL_SERVER_WORKER_OPSTATE_EXECUTE;
 				if (execute_script(proto, ".SCRIPT") <= -1) return -1;
 			}
@@ -1488,7 +1547,7 @@ int hcl_server_proto_handle_request (hcl_server_proto_t* proto)
 	return 1;
 
 fail_with_errmsg:
-	send_error_message (proto, hcl_geterrmsg(proto->hcl));
+	send_proto_hcl_error (proto);
 	HCL_LOG1 (proto->hcl, SERVER_LOGMASK_ERROR, "Unable to compile .SCRIPT contents - %js\n", hcl_geterrmsg(proto->hcl));
 	return -1;
 }

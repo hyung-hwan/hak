@@ -688,6 +688,7 @@ struct hcl_compiler_t
 		{
 			hcl_flx_state_t state;
 			hcl_ioloc_t loc;
+			hcl_ioloc_t _oloc;
 
 			union 
 			{

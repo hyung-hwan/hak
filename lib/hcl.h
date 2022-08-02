@@ -1257,8 +1257,6 @@ struct hcl_ioinarg_t
 	{
 		hcl_oow_t pos;
 		hcl_oow_t len;
-		/* <<B.STATE>>
-		int state;*/
 	} b;
 
 	hcl_oow_t line;
@@ -2154,6 +2152,12 @@ HCL_EXPORT void hcl_setbaseinloc (
 	hcl_oow_t colm
 );
 
+/* if you should read charcters from the input stream before hcl_read(),
+ * you can call hcl_readbaseinchar() */
+HCL_EXPORT hcl_iolxc_t* hcl_readbaseinchar (
+	hcl_t* hcl
+);
+
 HCL_EXPORT int hcl_attachio (
 	hcl_t*         hcl,
 	hcl_ioimpl_t   reader,
@@ -2239,20 +2243,6 @@ HCL_EXPORT int hcl_decode (
 #	define hcl_getip(hcl) ((hcl)->ip)
 #endif
 
-
-/* if you should read charcters from the input stream before hcl_read(),
- * you can call hcl_readchar() */
-HCL_EXPORT hcl_iolxc_t* hcl_readchar (
-	hcl_t* hcl
-);
-
-/* If you use hcl_readchar() to read the input stream, you may use
- * hcl_unreadchar() to put back characters read for hcl_readchar()
- * to return before reading the stream again. */
-HCL_EXPORT int hcl_unreadchar (
-	hcl_t*             hcl,
-	const hcl_iolxc_t* c
-);
 
 /* =========================================================================
  * SYNTAX ERROR HANDLING
@@ -2429,7 +2419,7 @@ HCL_EXPORT hcl_oow_t hcl_vfmttoucstr (
 	hcl_uch_t*       buf,
 	hcl_oow_t        bufsz,
 	const hcl_uch_t* fmt,
-	va_list           ap
+	va_list          ap
 );
 
 HCL_EXPORT hcl_oow_t hcl_fmttoucstr (
@@ -2445,7 +2435,7 @@ HCL_EXPORT hcl_oow_t hcl_vfmttobcstr (
 	hcl_bch_t*       buf,
 	hcl_oow_t        bufsz,
 	const hcl_bch_t* fmt,
-	va_list           ap
+	va_list          ap
 );
 
 HCL_EXPORT hcl_oow_t hcl_fmttobcstr (

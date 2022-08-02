@@ -451,64 +451,39 @@ static int get_directive_token_type (hcl_t* hcl, hcl_iotok_type_t* tok_type)
 	return -1;
 }
 
-static int get_char (hcl_t* hcl)
+static int _get_char (hcl_t* hcl, hcl_ioinarg_t* inp)
 {
 	hcl_ooci_t lc;
 
-	if (hcl->c->nungots > 0)
+	if (inp->b.pos >= inp->b.len)
 	{
-		/* something in the unget buffer */
-		hcl->c->lxc = hcl->c->ungot[--hcl->c->nungots];
-		return 0;
-	}
+		if (hcl->c->reader(hcl, HCL_IO_READ, inp) <= -1) return -1;
 
-/* <<B.STATE>> -> probably not needed any more?
-	if (hcl->c->curinp->b.state == -1)
-	{
-		hcl->c->curinp->b.state = 0;
-		return -1;
-	}
-	else if (hcl->c->curinp->b.state == 1)
-	{
-		hcl->c->curinp->b.state = 0;
-		goto return_eof;
-	}
-*/
-
-	if (hcl->c->curinp->b.pos >= hcl->c->curinp->b.len)
-	{
-		if (hcl->c->reader(hcl, HCL_IO_READ, hcl->c->curinp) <= -1) return -1;
-
-		if (hcl->c->curinp->xlen <= 0)
+		if (inp->xlen <= 0)
 		{
-/* <<B.STATE>>
-		return_eof:
- */
-			hcl->c->curinp->lxc.c = HCL_OOCI_EOF;
-			hcl->c->curinp->lxc.l.line = hcl->c->curinp->line;
-			hcl->c->curinp->lxc.l.colm = hcl->c->curinp->colm;
-			hcl->c->curinp->lxc.l.file = hcl->c->curinp->name;
-			hcl->c->lxc = hcl->c->curinp->lxc;
-
+			inp->lxc.c = HCL_OOCI_EOF;
+			inp->lxc.l.line = inp->line;
+			inp->lxc.l.colm = inp->colm;
+			inp->lxc.l.file = inp->name;
 			/* indicate that EOF has been read. lxc.c is also set to EOF. */
 			return 0;
 		}
 
-		hcl->c->curinp->b.pos = 0;
-		hcl->c->curinp->b.len = hcl->c->curinp->xlen;
+		inp->b.pos = 0;
+		inp->b.len = inp->xlen;
 	}
 
-	if (hcl->c->curinp->lxc.c == '\n' || hcl->c->curinp->lxc.c == '\r')
+	if (inp->lxc.c == '\n' || inp->lxc.c == '\r')
 	{
-		/* hcl->c->curinp->lxc.c is a previous character. the new character
-		 * to be read is still in the buffer (hcl->c->curinp->buf).
+		/* inp->lxc.c is a previous character. the new character
+		 * to be read is still in the buffer (inp->buf).
 		 * hcl->cu->curinp->colm has been incremented when the previous
 		 * character has been read. */
-		if (hcl->c->curinp->line > 1 && hcl->c->curinp->colm == 2 && hcl->c->curinp->nl != hcl->c->curinp->lxc.c)
+		if (inp->line > 1 && inp->colm == 2 && inp->nl != inp->lxc.c)
 		{
 			/* most likely, it's the second character in '\r\n' or '\n\r'
 			 * sequence. let's not update the line and column number. */
-			/*hcl->c->curinp->colm = 1;*/
+			/*inp->colm = 1;*/
 		}
 		else
 		{
@@ -517,21 +492,36 @@ static int get_char (hcl_t* hcl)
 			 * incrementing the line number here instead of
 			 * updating inp->lxc causes the line number for
 			 * TOK_EOF to be the same line as the lxc newline. */
-			hcl->c->curinp->line++;
-			hcl->c->curinp->colm = 1;
-			hcl->c->curinp->nl = hcl->c->curinp->lxc.c;
+			inp->line++;
+			inp->colm = 1;
+			inp->nl = inp->lxc.c;
 		}
 	}
 
-	lc = hcl->c->curinp->buf[hcl->c->curinp->b.pos++];
+	lc = inp->buf[inp->b.pos++];
 
-	hcl->c->curinp->lxc.c = lc;
-	hcl->c->curinp->lxc.l.line = hcl->c->curinp->line;
-	hcl->c->curinp->lxc.l.colm = hcl->c->curinp->colm++;
-	hcl->c->curinp->lxc.l.file = hcl->c->curinp->name;
-	hcl->c->lxc = hcl->c->curinp->lxc;
+	inp->lxc.c = lc;
+	inp->lxc.l.line = inp->line;
+	inp->lxc.l.colm = inp->colm++;
+	inp->lxc.l.file = inp->name;
 
 	return 1; /* indicate that a normal character has been read */
+}
+
+static int get_char (hcl_t* hcl)
+{
+	int n;
+
+	if (hcl->c->nungots > 0)
+	{
+		/* something in the unget buffer */
+		hcl->c->lxc = hcl->c->ungot[--hcl->c->nungots];
+		return 0;
+	}
+
+	n = _get_char(hcl, hcl->c->curinp);
+	if (n >= 0) hcl->c->lxc = hcl->c->curinp->lxc;
+	return n;
 }
 
 static int skip_comment (hcl_t* hcl)
@@ -2211,25 +2201,6 @@ hcl_cnode_t* hcl_read (hcl_t* hcl)
 
 /* ------------------------------------------------------------------------ */
 
-hcl_iolxc_t* hcl_readchar (hcl_t* hcl)
-{
-	int n = get_char(hcl);
-	if (n <= -1) return HCL_NULL;
-	return &hcl->c->lxc;
-}
-
-int hcl_unreadchar (hcl_t* hcl, const hcl_iolxc_t* c)
-{
-	if (hcl->c->nungots >= HCL_COUNTOF(hcl->c->ungot))
-	{
-		hcl_seterrbfmt (hcl, HCL_EBUFFULL, "character unread buffer full");
-		return -1;
-	}
-
-	unget_char (hcl, c);
-	return 0;
-}
-
 /* TODO:
 hcl_cnodetoobj (hcl_t* hcl, hcl_cnode_t* x)
 {
@@ -2285,6 +2256,24 @@ static int feed_begin_include (hcl_t* hcl)
 		goto oops;
 	}
 
+	if (arg->includer == &hcl->c->inarg)
+	{
+		/* TODO: remove hcl_readbaseinchar() and clean up this part.
+		 * hcl_readbaseinchar(), if called in the middle of feeds,
+		 * updates hcl->c->inarg's line and colm. so use a separate
+		 * field to store the current feed location for now */
+		hcl->c->feed.lx._oloc = hcl->c->feed.lx.loc;
+	}
+	else
+	{
+		arg->includer->name = hcl->c->feed.lx.loc.file;
+		arg->includer->line = hcl->c->feed.lx.loc.line;
+		arg->includer->colm = hcl->c->feed.lx.loc.colm;
+	}
+	hcl->c->feed.lx.loc.file = arg->name;
+	hcl->c->feed.lx.loc.line = arg->line;
+	hcl->c->feed.lx.loc.colm = arg->colm;
+
 	/* switch to the includee's stream */
 	hcl->c->curinp = arg;
 	/* hcl->c->depth.incl++; */
@@ -2314,6 +2303,17 @@ static int feed_end_include (hcl_t* hcl)
 
 	cur = hcl->c->curinp;
 	hcl->c->curinp = hcl->c->curinp->includer;
+
+	if (hcl->c->curinp == &hcl->c->inarg)
+	{
+		hcl->c->feed.lx.loc = hcl->c->feed.lx._oloc;
+	}
+	else
+	{
+		hcl->c->feed.lx.loc.file = hcl->c->curinp->name;
+		hcl->c->feed.lx.loc.line = hcl->c->curinp->line;
+		hcl->c->feed.lx.loc.colm = hcl->c->curinp->colm;
+	}
 
 	HCL_ASSERT (hcl, cur->name != HCL_NULL);
 	hcl_freemem (hcl, cur);
@@ -3692,10 +3692,22 @@ static int feed_char (hcl_t* hcl, hcl_ooci_t c)
 	}
 
 	HCL_ASSERT (hcl, !"internal error - this must never happen");
-	hcl_seterrnum (hcl, HCL_EINTERN);
+	hcl_seterrbfmt (hcl, HCL_EINTERN, "internal error - unknown flx state - %d", FLX_STATE(hcl));
 	return -1;
 }
 
+static void feed_update_lx_loc (hcl_t* hcl, hcl_ooci_t ch)
+{
+	if (is_linebreak(ch))
+	{
+		hcl->c->feed.lx.loc.line++;
+		hcl->c->feed.lx.loc.colm = 1;
+	}
+	else
+	{
+		hcl->c->feed.lx.loc.colm++;
+	}
+}
 
 static int feed_from_included (hcl_t* hcl)
 {
@@ -3725,7 +3737,12 @@ static int feed_from_included (hcl_t* hcl)
 
 		x = feed_char(hcl, hcl->c->curinp->buf[hcl->c->curinp->b.pos]);
 		if (x <= -1) return -1;
-		hcl->c->curinp->b.pos += x;
+		if (x >= 1) 
+		{
+			/* consumed */
+			feed_update_lx_loc (hcl, hcl->c->curinp->buf[hcl->c->curinp->b.pos]);
+			hcl->c->curinp->b.pos += x;
+		}
 
 		if (hcl->c->feed.rd.do_include_file)
 		{
@@ -3758,7 +3775,6 @@ int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
 	hcl_oow_t i;
 	int x;
 
-
 	if (data) 
 	{
 		for (i = 0; i < len; ) 
@@ -3769,15 +3785,7 @@ int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
 			if (x > 0)
 			{
 				/* consumed */
-				if (is_linebreak(data[i]))
-				{
-					hcl->c->feed.lx.loc.line++;
-					hcl->c->feed.lx.loc.colm = 1;
-				}
-				else
-				{
-					hcl->c->feed.lx.loc.colm++;
-				}
+				feed_update_lx_loc (hcl, data[i]);
 				i += x; /* x is supposed to be 1. otherwise, some characters may get skipped. */
 			}
 
@@ -4060,4 +4068,14 @@ void hcl_setbaseinloc (hcl_t* hcl, hcl_oow_t line, hcl_oow_t colm)
 {
 	hcl->c->inarg.line = line;
 	hcl->c->inarg.colm = colm;
+}
+
+hcl_iolxc_t* hcl_readbaseinchar (hcl_t* hcl)
+{
+	/* read a character using the base input stream. the caller must care extra 
+	 * care when using this function. this function reads the main stream regardless
+	 * of the inclusion status and ignores the ungot characters. */
+	int n = _get_char(hcl, &hcl->c->inarg);
+	if (n <= -1) return HCL_NULL;
+	return &hcl->c->inarg.lxc;
 }

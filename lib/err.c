@@ -184,7 +184,7 @@ static const hcl_bch_t* synerr_to_errstr (hcl_synerrnum_t errnum)
 
 const hcl_ooch_t* hcl_geterrstr (hcl_t* hcl)
 {
-	return hcl_errnum_to_errstr (hcl->errnum);
+	return hcl_errnum_to_errstr(hcl->errnum);
 }
 
 const hcl_ooch_t* hcl_geterrmsg (hcl_t* hcl)
