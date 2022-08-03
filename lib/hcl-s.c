@@ -315,29 +315,6 @@ static const hcl_bch_t* get_base_name (const hcl_bch_t* path)
 	return (last == HCL_NULL)? path: (last + 1);
 }
 
-static bb_t* bb_open (hcl_t* hcl, int fd, const char* fn)
-{
-	hcl_oow_t fnlen;
-	bb_t* bb;
-
-	fnlen = hcl_count_bcstr(fn);
-	bb = (bb_t*)hcl_callocmem(hcl, HCL_SIZEOF(*bb) + (HCL_SIZEOF(hcl_bch_t) * (fnlen + 1)));
-	if (!bb) return HCL_NULL;
-
-	/* copy ane empty string as a main stream's name */
-	bb->fn = (hcl_bch_t*)(bb + 1);
-	hcl_copy_bcstr (bb->fn, fnlen + 1, fn);
-	bb->fd = fd;
-
-	return bb;
-/*
-	if (bb->fd <= -1)
-	{
-		hcl_seterrnum (hcl, HCL_EIOERR);
-		goto oops;
-	}
-*/
-}
 
 static HCL_INLINE int open_input (hcl_t* hcl, hcl_ioinarg_t* arg)
 {
@@ -350,7 +327,6 @@ static HCL_INLINE int open_input (hcl_t* hcl, hcl_ioinarg_t* arg)
 	if (arg->includer)
 	{
 		/* includee */
-#if 1
 		/* TOOD: Do i need to skip prepending the include path if the included path is an absolute path? 
 		 *       it may be good for security if i don't skip it. we can lock the included files in a given directory */
 		hcl_oow_t ucslen, bcslen, parlen;
@@ -407,22 +383,10 @@ static HCL_INLINE int open_input (hcl_t* hcl, hcl_ioinarg_t* arg)
 			hcl_seterrnum (hcl, HCL_EIOERR);
 			goto oops;
 		}
-#else
-		bb = bb_open(hcl, -1, "");
-		if (!bb) goto oops;
-
-		bb->fd = open(bb->fn, O_RDONLY, 0);
-		if (bb->fd <= -1)
-		{
-			hcl_seterrnum (hcl, HCL_EIOERR);
-			goto oops;
-		}
-#endif
 	}
 	else
 	{
 		/* main stream */
-#if 1
 		hcl_oow_t pathlen = 0;
 		bb = (bb_t*)hcl_callocmem(hcl, HCL_SIZEOF(*bb) + (HCL_SIZEOF(hcl_bch_t) * (pathlen + 1)));
 		if (!bb) goto oops;
@@ -432,10 +396,6 @@ static HCL_INLINE int open_input (hcl_t* hcl, hcl_ioinarg_t* arg)
 		hcl_copy_bcstr (bb->fn, pathlen + 1, "");
 
 		bb->fd = xtn->proto->worker->sck;
-#else
-		bb = bb_open(hcl, xtn->proto->worker->sck, "");
-		if (!bb) goto oops;
-#endif
 	}
 
 	HCL_ASSERT (hcl, bb->fd >= 0);
@@ -482,11 +442,31 @@ static HCL_INLINE int read_input (hcl_t* hcl, hcl_ioinarg_t* arg)
 	worker = xtn->proto->worker;
 
 start_over:
-	if (bb->fd == worker->sck)
+	if (arg->includer)
 	{
+		/* includee */
+		if (HCL_UNLIKELY(worker->server->stopreq))
+		{
+			hcl_seterrbfmt (hcl, HCL_EGENERIC, "stop requested");
+			return -1;
+		}
+
+		x = read(bb->fd, &bb->buf[bb->len], HCL_COUNTOF(bb->buf) - bb->len);
+		if (x <= -1)
+		{
+			if (errno == EINTR) goto start_over;
+			hcl_seterrwithsyserr (hcl, 0, errno);
+			return -1;
+		}
+
+		bb->len += x;
+	}
+	else 
+	{
+		/* main stream */
 		hcl_server_t* server;
 
-		HCL_ASSERT (hcl, arg->includer == HCL_NULL);
+		HCL_ASSERT (hcl, bb->fd == worker->sck);
 		server = worker->server;
 
 		while (1)
@@ -518,32 +498,12 @@ start_over:
 			/* timed out - no activity on the pfd */
 			if (tmout > 0)
 			{
-				hcl_seterrbfmt (hcl, HCL_EGENERIC, "no activity on the worker socket %d", worker->sck);
+				hcl_seterrbfmt (hcl, HCL_EGENERIC, "no activity on the worker socket %d", bb->fd);
 				return -1;
 			}
 		}
 
 		x = recv(bb->fd, &bb->buf[bb->len], HCL_COUNTOF(bb->buf) - bb->len, 0);
-		if (x <= -1)
-		{
-			if (errno == EINTR) goto start_over;
-			hcl_seterrwithsyserr (hcl, 0, errno);
-			return -1;
-		}
-
-		bb->len += x;
-	}
-	else
-	{
-		HCL_ASSERT (hcl, arg->includer != HCL_NULL);
-
-		if (HCL_UNLIKELY(worker->server->stopreq))
-		{
-			hcl_seterrbfmt (hcl, HCL_EGENERIC, "stop requested");
-			return -1;
-		}
-
-		x = read(bb->fd, &bb->buf[bb->len], HCL_COUNTOF(bb->buf) - bb->len);
 		if (x <= -1)
 		{
 			if (errno == EINTR) goto start_over;
@@ -1273,27 +1233,30 @@ static void send_error_message (hcl_server_proto_t* proto, const hcl_ooch_t* err
 	}
 }
 
+static void reformat_synerr (hcl_t* hcl)
+{
+	hcl_synerr_t synerr;
+	const hcl_ooch_t* orgmsg;
+	static hcl_ooch_t nullstr[] = { '\0' };
+
+	hcl_getsynerr (hcl, &synerr);
+
+	orgmsg = hcl_backuperrmsg(hcl);
+	hcl_seterrbfmt (
+		hcl, HCL_ESYNERR,
+		"%js%hs%.*js at %js%hsline %zu column %zu", 
+		orgmsg,
+		(synerr.tgt.len > 0? " near ": ""),
+		synerr.tgt.len, synerr.tgt.val,
+		(synerr.loc.file? synerr.loc.file: nullstr),
+		(synerr.loc.file? " ": ""),
+		synerr.loc.line, synerr.loc.colm
+	);
+}
+
 static void send_proto_hcl_error (hcl_server_proto_t* proto)
 {
-	hcl_errnum_t err;
-
-	err = hcl_geterrnum(proto->hcl);
-	if (err == HCL_ESYNERR)
-	{
-		const hcl_ooch_t* bem;
-		hcl_synerr_t synerr;
-		static hcl_ooch_t nullstr[] = { '\0' };
-
-		/* concatenate the error message with the error location */
-		hcl_getsynerr (proto->hcl, &synerr);
-		bem = hcl_backuperrmsg(proto->hcl);
-		hcl_seterrbfmt (proto->hcl, HCL_ESYNERR, "%js (%js%hs%zu,%zu)", 
-			bem, 
-			(synerr.loc.file? synerr.loc.file: nullstr),
-			(synerr.loc.file? ":": ""),
-			synerr.loc.line, synerr.loc.colm);
-	}
-	
+	if (hcl_geterrnum(proto->hcl) == HCL_ESYNERR) reformat_synerr (proto->hcl);
 	send_error_message (proto, hcl_geterrmsg(proto->hcl));
 }
 
@@ -1350,24 +1313,6 @@ static int kill_server_worker (hcl_server_proto_t* proto, hcl_oow_t wid)
 	}
 	pthread_mutex_unlock (&server->worker_mutex);
 	return xret;
-}
-
-static void reformat_synerr (hcl_t* hcl)
-{
-	hcl_synerr_t synerr;
-	const hcl_ooch_t* orgmsg;
-
-	hcl_getsynerr (hcl, &synerr);
-
-	orgmsg = hcl_backuperrmsg(hcl);
-	hcl_seterrbfmt (
-		hcl, HCL_ESYNERR,
-		"%js%s%.*js at line %zu column %zu", 
-		orgmsg,
-		(synerr.tgt.len > 0? " near ": ""),
-		synerr.tgt.len, synerr.tgt.val,
-		synerr.loc.line, synerr.loc.colm
-	);
 }
 
 int hcl_server_proto_handle_request (hcl_server_proto_t* proto)
@@ -1583,7 +1528,7 @@ int hcl_server_proto_handle_request (hcl_server_proto_t* proto)
 		}
 
 		default:
-			hcl_seterrbfmt (proto->hcl, HCL_EINVAL, "Unknown token %.*js of type %d", proto->tok.len, proto->tok.ptr, (int)proto->tok.type);
+			hcl_seterrbfmt (proto->hcl, HCL_EINVAL, "Unknown token %.*js", proto->tok.len, proto->tok.ptr);
 			goto fail_with_errmsg;
 	}
 
