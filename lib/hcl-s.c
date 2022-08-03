@@ -315,6 +315,30 @@ static const hcl_bch_t* get_base_name (const hcl_bch_t* path)
 	return (last == HCL_NULL)? path: (last + 1);
 }
 
+static bb_t* bb_open (hcl_t* hcl, int fd, const char* fn)
+{
+	hcl_oow_t fnlen;
+	bb_t* bb;
+
+	fnlen = hcl_count_bcstr(fn);
+	bb = (bb_t*)hcl_callocmem(hcl, HCL_SIZEOF(*bb) + (HCL_SIZEOF(hcl_bch_t) * (fnlen + 1)));
+	if (!bb) return HCL_NULL;
+
+	/* copy ane empty string as a main stream's name */
+	bb->fn = (hcl_bch_t*)(bb + 1);
+	hcl_copy_bcstr (bb->fn, fnlen + 1, fn);
+	bb->fd = fd;
+
+	return bb;
+/*
+	if (bb->fd <= -1)
+	{
+		hcl_seterrnum (hcl, HCL_EIOERR);
+		goto oops;
+	}
+*/
+}
+
 static HCL_INLINE int open_input (hcl_t* hcl, hcl_ioinarg_t* arg)
 {
 	worker_hcl_xtn_t* xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);
@@ -326,7 +350,7 @@ static HCL_INLINE int open_input (hcl_t* hcl, hcl_ioinarg_t* arg)
 	if (arg->includer)
 	{
 		/* includee */
-
+#if 1
 		/* TOOD: Do i need to skip prepending the include path if the included path is an absolute path? 
 		 *       it may be good for security if i don't skip it. we can lock the included files in a given directory */
 		hcl_oow_t ucslen, bcslen, parlen;
@@ -377,10 +401,28 @@ static HCL_INLINE int open_input (hcl_t* hcl, hcl_ioinarg_t* arg)
 		hcl_copy_bcstr (&bb->fn[parlen], bcslen + 1, arg->name);
 	#endif
 		bb->fd = open(bb->fn, O_RDONLY, 0);
+
+		if (bb->fd <= -1)
+		{
+			hcl_seterrnum (hcl, HCL_EIOERR);
+			goto oops;
+		}
+#else
+		bb = bb_open(hcl, -1, "");
+		if (!bb) goto oops;
+
+		bb->fd = open(bb->fn, O_RDONLY, 0);
+		if (bb->fd <= -1)
+		{
+			hcl_seterrnum (hcl, HCL_EIOERR);
+			goto oops;
+		}
+#endif
 	}
 	else
 	{
 		/* main stream */
+#if 1
 		hcl_oow_t pathlen = 0;
 		bb = (bb_t*)hcl_callocmem(hcl, HCL_SIZEOF(*bb) + (HCL_SIZEOF(hcl_bch_t) * (pathlen + 1)));
 		if (!bb) goto oops;
@@ -390,12 +432,13 @@ static HCL_INLINE int open_input (hcl_t* hcl, hcl_ioinarg_t* arg)
 		hcl_copy_bcstr (bb->fn, pathlen + 1, "");
 
 		bb->fd = xtn->proto->worker->sck;
+#else
+		bb = bb_open(hcl, xtn->proto->worker->sck, "");
+		if (!bb) goto oops;
+#endif
 	}
-	if (bb->fd <= -1)
-	{
-		hcl_seterrnum (hcl, HCL_EIOERR);
-		goto oops;
-	}
+
+	HCL_ASSERT (hcl, bb->fd >= 0);
 
 	arg->handle = bb;
 	return 0;
