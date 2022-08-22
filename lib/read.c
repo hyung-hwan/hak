@@ -3709,7 +3709,7 @@ static void feed_update_lx_loc (hcl_t* hcl, hcl_ooci_t ch)
 	}
 }
 
-static int feed_from_included (hcl_t* hcl)
+static int feed_from_includee (hcl_t* hcl)
 {
 	int x;
 
@@ -3795,7 +3795,7 @@ int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
 				hcl->c->feed.rd.do_include_file = 0;
 			}
 
-			if (hcl->c->curinp != &hcl->c->inarg && feed_from_included(hcl) <= -1) 
+			if (hcl->c->curinp != &hcl->c->inarg && feed_from_includee(hcl) <= -1) 
 			{
 				/* TODO: return the number of processed characters via an argument? */
 				return -1;
