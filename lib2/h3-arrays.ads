@@ -1,17 +1,19 @@
 with Ada.Finalization;
+with H3.Storage;
 
 generic
-	--type Item_Type is private;
-	type Item_Type is (<>);
-	G_Terminator_Length: System_Zero_Or_One;
-	G_Terminator_Value: Item_Type;
+	type Item_Type is private; -- any limited definite type
+	--type Item_Type is (<>); -- any discrete type
+
+	Terminator_Length: in System_Zero_Or_One;
+	Terminator_Value: in Item_Type;
+
+	with package Storage_Pool_Box is new H3.Storage.Pool_Box(<>);
+
 package H3.Arrays is
 	--pragma Preelaborate (Arrays);
 
 	subtype Item is Item_Type;
-
-	Terminator_Length: constant System_Zero_Or_One := G_Terminator_Length;
-	Terminator_Value: constant Item_Type := G_Terminator_Value;
 
 	type Direction is (DIRECTION_BACKWARD, DIRECTION_FORWARD);
 
@@ -22,6 +24,12 @@ package H3.Arrays is
 
 	subtype Thin_Item_Array is Item_Array(System_Index'Range);
 	type Thin_Item_Array_Pointer is access Thin_Item_Array;
+
+	function Get_Terminator_Length(Obj: in Elastic_Array) return System_Zero_Or_One;
+	pragma Inline (Get_Terminator_Length);
+
+	function Get_Terminator_Value(Obj: in Elastic_Array) return Item_Type;
+	pragma Inline (Get_Terminator_Value);
 
 	function To_Item_Array (Obj: in Elastic_Array) return Item_Array;
 
@@ -83,10 +91,10 @@ private
 	end record;
 
 	type Buffer_Pointer is access all Buffer_Record;
-	--for Buffer_Pointer'Storage_Pool use <<TODO: custom storage pool?>> H3'Storage_Pool;
+	for Buffer_Pointer'Storage_Pool use Storage_Pool_Box.Storage_Pool;
 
 	--Empty_Buffer: aliased Buffer_Record(1);
-	-- Use 1 slot to hold the terminator value regardless of th terminator length in Empty_Buffer.
+	-- Use 1 slot to hold the terminator value regardless of the terminator length in Empty_Buffer.
 	Empty_Buffer: aliased Buffer_Record := (Capa => 1, Refs => 0, Slot => (1 => Terminator_Value), Last => 0);
 
 	type Elastic_Array is new Ada.Finalization.Controlled with record

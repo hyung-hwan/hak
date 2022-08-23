@@ -1,6 +1,7 @@
 with H3.Arrays;
 with H3.Strings;
 with H3.Runes;
+with H3.Storage;
 with Ada.Text_IO;
 with Ada.Wide_Text_IO;
 with Ada.Assertions;
@@ -8,11 +9,11 @@ with Interfaces.C;
 --with Interfaces.C.Strings;
 with System;
 
-use type H3.System_Size;
+--use type H3.System_Size;
 
 procedure hello2 is
-	package A is new H3.Arrays(Standard.Wide_Character, 1, Wide_Character'First);
-	package S is new H3.Strings(Standard.Wide_Character);
+	package A is new H3.Arrays(Standard.Wide_Character, 1, Wide_Character'First, H3.Storage.Global_Pool_Box);
+	package S is new H3.Strings(Standard.Wide_Character, H3.Storage.Global_Pool_Box);
 	package R is new H3.Runes(Standard.Wide_Character);
 	package C renames Interfaces.C;
 

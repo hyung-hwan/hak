@@ -2,6 +2,7 @@ with H3.Pool;
 with H3.Limited_Pool;
 with H3.Arrays;
 with H3.Strings;
+with H3.Storage;
 with H3.Storage_Pools;
 with H3.MM;
 with GNAT.Debug_Pools;
@@ -15,8 +16,7 @@ with Ada.Assertions;
 use type H3.System_Size;
 
 procedure hello is
-	package S is new H3.Strings(Standard.Wide_Character);
-	
+	package S is new H3.Strings(Standard.Wide_Character, H3.Storage.Global_Pool_Box);
 
 	--type Global_Pool is new System.Storage_Pools.Root_Storage_Pool with null record;
 	P1: aliased System.Pool_Global.Unbounded_No_Reclaim_Pool;
@@ -62,11 +62,12 @@ procedure hello is
 		capa := S.Get_Capacity(Str);
 		first := S.Get_First_Index(Str);
 		last := S.Get_Last_Index(Str);
-		Ada.Text_IO.Put (Name & " len:" & len'Img & " capa:" & capa'Img & " first:" & first'img & " last:" & last'img & " => ");
+		Ada.Text_IO.Put (Name & " len:" & len'Img & " capa:" & capa'Img & " first:" & first'Img & " last:" & last'Img & " => ");
 		Ada.Wide_Text_IO.Put_line (Standard.Wide_String(S.To_Item_Array(Str)));
 
-		if S.Terminator_Length > 0 then
-			pragma Assert (S.Get_Item(Str, S.Get_Last_Index(Str) + 1) = S.Terminator_Value);
+		if S.Get_Terminator_Length(Str) > 0 then
+			pragma Assert (S.Get_Item(Str, S.Get_Last_Index(Str) + 1) = S.Get_Terminator_Value(Str));
+			null;
 		end if;
 	end print_string_info;
 
@@ -103,7 +104,7 @@ begin
 		z: LL_Pointer;
 		procedure Dealloc is new Ada.Unchecked_Deallocation(L, LL_Pointer);
 	begin
-		z := new L'(A => 9900, B => 9800, C => 99.1);	
+		z := new L'(A => 9900, B => 9800, C => 99.1);
 		Ada.Text_IO.Put_Line (Z.A'Img);
 		Dealloc (z);
 	end;
@@ -117,14 +118,13 @@ begin
 	IP.Deallocate (i);
 	TP.Deallocate (x);
 	LP.Deallocate (y);
-	
+
 	--GNAT.Debug_Pools.Print_Info_Stdout(P2);
 	--GNAT.Debug_Pools.Dump_Stdout(P2,  100);
-	
+
 	declare
 		str: S.Elastic_String;
 		str2: S.Elastic_String;
-		
 	begin
 		print_string_info (Str, "Str");
 		pragma Assert (S.Get_Length(Str) = 0);
@@ -160,7 +160,7 @@ begin
 		pragma Assert (S.Get_Length(Str) = 15);
 		pragma Assert (S.Get_First_Index(Str) = 1);
 		pragma Assert (S.Get_Last_Index(Str) = 15);
-		
+
 		S.Append(Str, "donkey");
 		print_string_info (Str, "Str");
 		pragma Assert (S.Get_Length(Str) = 21);
@@ -178,19 +178,19 @@ begin
 			--arr: constant S.P.Item_Array := S.To_Item_Array(Str);
 			arr: constant S.Rune_Array := S.To_Item_Array(Str);
 		begin
-			Ada.Wide_Text_IO.Put ("STR[1] => [");	
+			Ada.Wide_Text_IO.Put ("STR[1] => [");
 			for i in arr'Range loop
-				Ada.Wide_Text_IO.Put (arr(i));	
+				Ada.Wide_Text_IO.Put (arr(i));
 			end loop;
 			Ada.Wide_Text_IO.Put_Line ("]");
 
-			Ada.Wide_Text_IO.Put ("STR[2] => [");	
+			Ada.Wide_Text_IO.Put ("STR[2] => [");
 			for i in S.Get_First_Index(Str) .. S.Get_Last_Index(Str) loop
-				Ada.Wide_Text_IO.Put (S.Get_Item(Str, i));	
+				Ada.Wide_Text_IO.Put (S.Get_Item(Str, i));
 			end loop;
 			Ada.Wide_Text_IO.Put_Line ("]");
 
-			Ada.Wide_Text_IO.Put ("STR[3] => [");	
+			Ada.Wide_Text_IO.Put ("STR[3] => [");
 			Ada.Wide_Text_IO.Put (Standard.Wide_String(arr));
 			Ada.Wide_Text_IO.Put_Line ("]");
 		end;
@@ -241,7 +241,7 @@ begin
 		pragma Assert (S.Get_First_Index(Str) = 1);
 		pragma Assert (S.Get_Last_Index(Str) = 38);
 		pragma Assert (S."="(Str, "Oh! Hello, world!  donkey>donkeyXABCDE"));
-	
+
 		S.Replace (Str2, 1, 1, 'Q');
 		print_string_info (Str2, "Str2");
 		pragma Assert (S.Get_Length(Str2) = 91);
@@ -319,35 +319,35 @@ begin
 		pragma Assert (S.Get_Last_Index(Str2) = 92);
 		pragma Assert (S."="(Str2, "AACC Hello, world!  donkey>donkeyXABCDEEXTRA THIS IS FANTASTIC ELASTIC STRING WRITTEN FOR H3"));
 
-		S.Replace (Str2, 1, 5, ""); 
+		S.Replace (Str2, 1, 5, "");
 		print_string_info (Str2, "Str2");
 		pragma Assert (S.Get_Length(Str2) = 87);
 		pragma Assert (S.Get_First_Index(Str2) = 1);
 		pragma Assert (S.Get_Last_Index(Str2) = 87);
 		pragma Assert (S."="(Str2, "Hello, world!  donkey>donkeyXABCDEEXTRA THIS IS FANTASTIC ELASTIC STRING WRITTEN FOR H3"));
 
-		S.Replace (Str2, 8, 12, "cougar"); 
+		S.Replace (Str2, 8, 12, "cougar");
 		print_string_info (Str2, "Str2");
 		pragma Assert (S.Get_Length(Str2) = 88);
 		pragma Assert (S.Get_First_Index(Str2) = 1);
 		pragma Assert (S.Get_Last_Index(Str2) = 88);
 		pragma Assert (S."="(Str2, "Hello, cougar!  donkey>donkeyXABCDEEXTRA THIS IS FANTASTIC ELASTIC STRING WRITTEN FOR H3"));
 
-		S.Replace (Str2, S.Get_Last_Index(Str2) - 1, S.Get_Last_Index(Str2) + 100, "HH"); 
+		S.Replace (Str2, S.Get_Last_Index(Str2) - 1, S.Get_Last_Index(Str2) + 100, "HH");
 		print_string_info (Str2, "Str2");
 		pragma Assert (S.Get_Length(Str2) = 88);
 		pragma Assert (S.Get_First_Index(Str2) = 1);
 		pragma Assert (S.Get_Last_Index(Str2) = 88);
 		pragma Assert (S."="(Str2, "Hello, cougar!  donkey>donkeyXABCDEEXTRA THIS IS FANTASTIC ELASTIC STRING WRITTEN FOR HH"));
 
-		S.Replace (Str2, 8, 13, "bee"); 
+		S.Replace (Str2, 8, 13, "bee");
 		print_string_info (Str2, "Str2");
 		pragma Assert (S.Get_Length(Str2) = 85);
 		pragma Assert (S.Get_First_Index(Str2) = 1);
 		pragma Assert (S.Get_Last_Index(Str2) = 85);
 		pragma Assert (S."="(Str2, "Hello, bee!  donkey>donkeyXABCDEEXTRA THIS IS FANTASTIC ELASTIC STRING WRITTEN FOR HH"));
 
-		S.Replace (Str2, 8, 10, "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ"); 
+		S.Replace (Str2, 8, 10, "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ");
 		print_string_info (Str2, "Str2");
 		pragma Assert (S.Get_Length(Str2) = 160);
 		pragma Assert (S.Get_First_Index(Str2) = 1);
@@ -362,20 +362,20 @@ begin
 			use type H3.System_Word;
 		begin
 			print_string_info (Str, "Str");
-			
-			Ada.Wide_Text_IO.Put ("STR(By-Pointer) [");	
-			for i in S.Get_First_Index(Str) .. S.Get_Last_Index(Str) + S.Terminator_Length loop -- this must loop to the terminating null.
+
+			Ada.Wide_Text_IO.Put ("STR(By-Pointer) [");
+			for i in S.Get_First_Index(Str) .. S.Get_Last_Index(Str) + S.Get_Terminator_Length(Str) loop -- this must loop to the terminating null.
 				Ada.Wide_Text_IO.Put (arr.all(i));
 			end loop;
-			Ada.Wide_Text_IO.Put_Line ("]");	
+			Ada.Wide_Text_IO.Put_Line ("]");
 
 			print_string_info (Str2, "Str2");
-		
+
 			Ada.Wide_Text_IO.Put ("Str2(By-Pointer) [");	 -- this must loop to the terminating null.
-			for i in S.Get_First_Index(Str2) .. S.Get_Last_Index(Str2) + S.Terminator_Length loop
+			for i in S.Get_First_Index(Str2) .. S.Get_Last_Index(Str2) + S.Get_Terminator_Length(Str) loop
 				Ada.Wide_Text_IO.Put (arr2.all(i));
 			end loop;
-			Ada.Wide_Text_IO.Put_Line ("]");	
+			Ada.Wide_Text_IO.Put_Line ("]");
 		end;
 
 		S.Clear (Str2);
@@ -384,7 +384,7 @@ begin
 		--declare
 		--	arr: constant Standard.Wide_String := S.To_Item_Array(str);
 		--begin
-		--	Ada.Wide_Text_IO.Put_Line (arr);	
+		--	Ada.Wide_Text_IO.Put_Line (arr);
 		--end;
 		SS := Str;
 
@@ -406,7 +406,7 @@ begin
 		declare
 			T3: Q.Ref_Counted;
 		begin
-			Q.Create (T3, (X => 20, Y => 30));	
+			Q.Create (T3, (X => 20, Y => 30));
 			T := T3;
 			--Q.Create (T);
 		end;
@@ -416,14 +416,50 @@ begin
 		Q.Get_Item_Pointer(T).X := 12345;
 		Ada.Text_IO.Put_Line(Q.Get_Item_Pointer(T).Y'Img);
 		Ada.Text_IO.Put_Line(Q.Get_Item_Pointer(T).X'Img);
-		
+
 		Ada.Text_IO.Put_Line(Q.Get_Item_Pointer(T2).Y'Img);
 		Ada.Text_IO.Put_Line(Q.Get_Item_Pointer(T2).X'Img);
 	end;
 
+	declare
+		type RR is record
+			X: Standard.Integer := 3;
+			Y: Standard.Integer := 4;
+		end record;
+		package PP is new H3.Arrays(RR, 1, RR'(X=>1, Y=>4), H3.Storage.Global_Pool_Box);
+		p1: PP.Elastic_Array;
+	begin
+		p1.Append (RR'(X=>9, Y=>9));
+		p1.Append (RR'(X=>10, Y=>8));
+		p1.Append (RR'(X=>11, Y=>7));
+		Ada.Text_IO.Put_Line ("-------------------------------");
+		for i in p1.Get_First_Index .. p1.Get_Last_Index loop
+			Ada.Text_IO.Put  (" " & p1.Get_Item(i).X'Img);
+		end loop;
+		Ada.Text_IO.Put_Line ("");
+		for i in p1.Get_First_Index .. p1.Get_Last_Index loop
+			Ada.Text_IO.Put  (" " & p1.Get_Item(i).Y'Img);
+		end loop;
+		Ada.Text_IO.Put_Line ("");
+	end;
 
 	declare
-	package S_I is new H3.Arrays(Integer, 1, 16#FF#);
+		T: S.Elastic_String;
+		package PP is new H3.Arrays(S.Elastic_String, 0, T, H3.Storage.Global_Pool_Box);
+		p1: PP.Elastic_Array;
+		tt: S.Elastic_String;
+	begin
+		p1.Append (T);
+		p1.Append (T);
+		Ada.Text_IO.Put_Line ("-------------------------------");
+		for i in p1.Get_First_Index .. p1.Get_Last_Index loop
+			Ada.Wide_Text_IO.Put (Standard.Wide_String(p1.Get_Item(i).To_Item_Array));
+		end loop;
+		Ada.Text_IO.Put_Line ("");
+	end;
+
+	declare
+		package S_I is new H3.Arrays(Integer, 1, 16#FF#, H3.Storage.Global_Pool_Box);
 		t1: S_I.Elastic_Array;
 	begin
 		S_I.Append (t1, 20, 5);

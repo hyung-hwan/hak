@@ -20,6 +20,8 @@ package H3.Storage_Pools is
 
 	function Storage_Size (Pool: in Global_Pool) return SSE.Storage_Count;
 
+	-- TODO: implement more pools
+
 private
 	type Global_Pool is new SSP.Root_Storage_Pool with null record;
 

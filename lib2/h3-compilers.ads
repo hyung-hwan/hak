@@ -1,16 +1,19 @@
 with H3.Runes;
 with H3.Strings;
+with H3.Storage;
 with H3.Trees;
 with Ada.Finalization;
 with Ada.Text_IO;
 
 generic
 	type Rune_Type is (<>);
+	with package Storage_Pool_box is new H3.Storage.Pool_Box(<>);
 package H3.Compilers is
 	package R is new H3.Runes(Rune_Type);
-	package S is new H3.Strings(Rune_Type);
+	package S is new H3.Strings(Rune_Type, Storage_Pool_Box);
 
 	Syntax_Error: exception;
+	Internal_Error: exception;
 
 	--type Compiler is tagged limited private;
 	type Compiler is new Ada.Finalization.Limited_Controlled with private;
@@ -22,28 +25,6 @@ package H3.Compilers is
 	overriding procedure Finalize (C: in out Compiler);
 
 private
-	type Lexer_State is (
-		LX_START,
-
-		LX_COLON,
-		LX_COMMENT,
-		LX_CSTR,
-		LX_DIRECTIVE,
-		LX_DOLLARED,
-		LX_HASHED,
-		LX_IDENT,
-		LX_NUMBER,
-		LX_OP_DIV,
-		LX_OP_GREATER,
-		LX_OP_LESS,
-		LX_OP_MINUS,
-		LX_OP_MUL,
-		LX_OP_PLUS
-	);
-	type Lexer is record
-		State: Lexer_State := LX_START;
-	end record;
-
 	type Token_Id is (
 		TK_ASSIGN,
 		TK_BSTR,
@@ -85,6 +66,67 @@ private
 		Id: Token_Id := TK_EOF;
 		Buf: S.Elastic_String;
 	end record;
+
+	-- ------------------------------------------------------------------
+	type Location is record
+		line: System_Size := 0;
+		colm: System_Size := 0;
+		-- file: S.Bounded_String_Pointer := null;
+	end record;
+
+	package Feeder is
+		type Lex_State_Code is (LX_START, LX_COMMENT, LX_DT, LX_HC);
+
+		type Lex_Data(State: Lex_State_Code := LX_START) is record
+			case State is
+				when LX_START =>
+					null;
+				when LX_COMMENT =>
+					null;
+				when LX_DT =>
+					Row_Start: Integer;
+					Row_End: Integer;
+					Col_NexT: Integer;
+				when LX_HC =>
+					Char_Count: System_Size;
+			end case;
+		end record;
+
+		type Lex is record
+			loc: Location;
+			oloc: Location;
+			data: Lex_Data;
+		end record;
+
+		type Read is record
+			level: Integer;
+			flagv: Integer;
+			expect_include_file: Boolean;
+			expect_vlist_item: Boolean;
+			do_include_file: Boolean;
+			-- TODO: obj: Cnode;
+		end record;
+
+		type Feed is record
+			lx: Lex;
+			rd: Read;
+		end record;
+
+		procedure Start (C: in out Compiler; Code: in R.Code; Consumed: out Boolean);
+		procedure Comment (C: in out Compiler; Code: in R.Code; Consumed: out Boolean);
+		procedure Delim_Token (C: in out Compiler; Code: in R.Code; Consumed: out Boolean);
+		procedure Hmarked_Token (C: in out Compiler; Code: in R.Code; Consumed: out Boolean);
+
+		procedure Update_Location (C: in out Compiler; Code: in R.Code);
+		procedure Begin_Include (C: in out Compiler);
+		procedure Feed_From_Includee (C: in out Compiler);
+	end Feeder;
+
+	-- ------------------------------------------------------------------
+
+	package Parser is
+		-- move parser types here.
+	end Parser;
 
 	-- ------------------------------------------------------------------
 
@@ -149,10 +191,12 @@ private
 
 	--type Compiler is tagged limited record
 	type Compiler is new Ada.Finalization.Limited_Controlled with record
-		Lx: Lexer;
+		F: Feeder.Feed;
+
 		Tk: Token;
 		Prs: Parse_State_Stack(128);  -- TODO: make this dynamic. single access type. dynamic allocation
 		Inc: Include_Stack(32); -- TODO: make this dynamic. single access type. dynamic allocation
+
 	end record;
 
 end H3.Compilers;

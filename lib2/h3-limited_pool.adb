@@ -5,7 +5,6 @@ package body H3.Limited_Pool is
 
 	function Allocate (Pool: in Storage_Pool_Pointer := null) return Pointer_Type is
 		P: Storage_Pool_Pointer;
-
 	begin
 		if Pool = null then
 			P := Storage_Pool;

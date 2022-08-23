@@ -3,6 +3,18 @@ with Ada.Unchecked_Deallocation;
 package body H3.Arrays is
 	BUFFER_ALIGN: constant := 128; -- TODO: change it to a reasonably large value.
 
+	function Get_Terminator_Length (Obj: in Elastic_Array) return System_Zero_Or_One is
+	begin
+		-- Obj unused
+		return Terminator_Length;
+	end Get_Terminator_Length;
+
+	function Get_Terminator_Value (Obj: in Elastic_Array) return Item_Type is
+	begin
+		-- Obj unused
+		return Terminator_Value;
+	end Get_Terminator_Value;
+
 	function To_Item_Array (Obj: in Elastic_Array) return Item_Array is
 	begin
 		return Obj.Buffer.Slot(Obj.Buffer.Slot'First .. Obj.Buffer.Last);
@@ -362,7 +374,7 @@ package body H3.Arrays is
 	-- ---------------------------------------------------------------------
 	procedure Initialize (Obj: in out Elastic_Array) is
 	begin
-		-- the Array is initialized to the empty buffer all the time.
+		-- the Buffer is initialized to Empty_Buffer all the time.
 		-- there is no need to reference the buffer.
 		null;
 	end Initialize;

@@ -1,4 +1,4 @@
-OPTS := -gnata -gnatW8 -gnatwa -gnatya -gnatyb -gnatyk -gnatyn -gnatyp -gnat05 ##-gnatyt
+OPTS := -gnata -gnatW8 -gnatwa -gnatya -gnatyb -gnatyk -gnatyn -gnatyp -gnat2005 ##-gnatyt
 all: hello hello2 hello3
 
 hello: hello.adb

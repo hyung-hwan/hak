@@ -1,7 +1,7 @@
 with System;
 with System.Address_Image;
 
-with Ada.Text_IO;
+--with Ada.Text_IO;
 
 package body H3.Storage_Pools is
 
@@ -20,10 +20,11 @@ package body H3.Storage_Pools is
 	begin
 		tmp := Sys_Malloc(System_Size(((Size + Alignment - 1) / Alignment) * Alignment));
 		if System."="(tmp, System.Null_Address) then
-			raise Storage_Error;
+			--raise H3.Storage_Error;
+			raise Standard.Storage_Error;
 		else
 			Address := tmp;
-Ada.Text_IO.Put_Line ("Global_Pool Allocating Size: " & SSE.Storage_Count'Image (Size) & " Actual-Size: " & SSE.Storage_Count'Image (((Size + Alignment - 1) / Alignment) * Alignment) & "Address: " & System.Address_Image(Address));
+--Ada.Text_IO.Put_Line ("Global_Pool Allocating Size: " & SSE.Storage_Count'Image (Size) & " Actual-Size: " & SSE.Storage_Count'Image (((Size + Alignment - 1) / Alignment) * Alignment) & "Address: " & System.Address_Image(Address));
 		end if;
 	end Allocate;
 
@@ -33,14 +34,14 @@ Ada.Text_IO.Put_Line ("Global_Pool Allocating Size: " & SSE.Storage_Count'Image 
 	                      Alignment: in     SSE.Storage_Count) is
 
 	begin
---Ada.Text_IO.Put_Line ("Global_Pool Deallocating Address: " & System.Address'Img);
-Ada.Text_IO.Put_Line ("Global_Pool Deallocating " & System.Address_Image(Address));
+----Ada.Text_IO.Put_Line ("Global_Pool Deallocating Address: " & System.Address'Img);
+--Ada.Text_IO.Put_Line ("Global_Pool Deallocating " & System.Address_Image(Address));
 		Sys_Free (Address);
 	end Deallocate;
 
 	function Storage_Size (Pool: in Global_Pool) return SSE.Storage_Count is
 	begin
-Ada.Text_IO.Put_Line ("Global_Pool Storage_Size ");
+--Ada.Text_IO.Put_Line ("Global_Pool Storage_Size ");
 		return SSE.Storage_Count'Last;
 	end Storage_Size;
 
@@ -59,7 +60,7 @@ Ada.Text_IO.Put_Line ("Global_Pool Storage_Size ");
 	                         Size:      in     SSE.Storage_Count;
 	                         Alignment: in     SSE.Storage_Count) is
 	begin
-ada.text_io.put_line ("system__storage_pools__allocate...");
+--ada.text_io.put_line ("system__storage_pools__allocate...");
 		SSP.Allocate (Pool, Address, Size, Alignment);
 	end Allocate_315P;
 
@@ -67,7 +68,7 @@ ada.text_io.put_line ("system__storage_pools__allocate...");
 	pragma Export (Ada, Deallocate_315P, "system__storage_pools__deallocate");
 	procedure Deallocate_315P (Pool: in out SSP.Root_Storage_Pool'Class; Address : in System.Address; Size: in SSE.Storage_Count; Alignment: in SSE.Storage_Count) is
 	begin
-ada.text_io.put_line ("system__storage_pools__deallocate...");
+--ada.text_io.put_line ("system__storage_pools__deallocate...");
 		SSP.Deallocate (Pool, Address, Size, Alignment);
 	end Deallocate_315P;
 

@@ -87,7 +87,7 @@ package body H3.Pool is
 				Tmp: Pooled_Pointer := To_Pooled_Pointer(Target);
 			begin
 				Dealloc (Tmp);
-				Target := null;	
+				Target := null;
 			end;
 		end if;
 	end Deallocate;
