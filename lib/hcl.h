@@ -2165,16 +2165,6 @@ HCL_EXPORT void hcl_abort (
 #	define hcl_switchprocess(hcl) ((hcl)->switch_proc = 1)
 #endif
 
-/* TODO: don't expose hcl_getbaseinarg(), and hcl_readbaseinraw()
- *       find a better way not to use them */
-HCL_EXPORT hcl_ioinarg_t* hcl_getbaseinarg (
-	hcl_t* hcl
-);
-
-HCL_EXPORT int hcl_readbaseinraw (
-	hcl_t* hcl
-);
-
 HCL_EXPORT void hcl_setbaseinloc (
 	hcl_t*    hcl,
 	hcl_oow_t line,
@@ -2187,6 +2177,13 @@ HCL_EXPORT hcl_iolxc_t* hcl_readbaseinchar (
 	hcl_t* hcl
 );
 
+/* TODO: don't expose hcl_readbaseinraw()
+ *       find a better way not to use them */
+HCL_EXPORT hcl_ooch_t* hcl_readbaseinraw (
+	hcl_t*     hcl,
+	hcl_oow_t* xlen
+);
+
 HCL_EXPORT int hcl_attachio (
 	hcl_t*         hcl,
 	hcl_ioimpl_t   reader,
@@ -2197,6 +2194,12 @@ HCL_EXPORT int hcl_attachiostdwithbcstr (
 	hcl_t*           hcl,
 	const hcl_bch_t* read_file,
 	const hcl_bch_t* print_file
+);
+
+HCL_EXPORT int hcl_attachiostdwithucstr (
+	hcl_t*           hcl,
+	const hcl_uch_t* read_file,
+	const hcl_uch_t* print_file
 );
 
 HCL_EXPORT int hcl_isstdreadertty (

@@ -280,8 +280,13 @@ struct xtn_t
 	hcl_t* next;
 	hcl_t* prev;
 
+	/* hcl_attachiostdwithbcstr() and hcl_attachiostdwithucstr()
+	 * set these two field and reset them at the end.
+	 * since hcl_attachio() callls the open handler, these fields
+	 * are valid only inside the open handelr */
 	const char* read_path; /* main source file */
-	const char* print_path;
+	const char* print_path; /* runtime output file */
+
         int reader_istty;
 
 	int vm_running;
@@ -3494,9 +3499,50 @@ static int print_handler (hcl_t* hcl, hcl_iocmd_t cmd, void* arg)
 int hcl_attachiostdwithbcstr (hcl_t* hcl, const hcl_bch_t* read_file, const hcl_bch_t* print_file)
 {
 	xtn_t* xtn = GET_XTN(hcl);
+	int n;
+
+	HCL_ASSERT (hcl, xtn->read_path == HCL_NULL);
+	HCL_ASSERT (hcl, xtn->print_path == HCL_NULL);
+
 	xtn->read_path = read_file;
 	xtn->print_path = print_file;
-	return hcl_attachio(hcl, read_handler, print_handler);
+
+	n = hcl_attachio(hcl, read_handler, print_handler);
+
+	xtn->read_path = HCL_NULL;
+	xtn->print_path = HCL_NULL;
+
+	return n;
+}
+
+int hcl_attachiostdwithucstr (hcl_t* hcl, const hcl_uch_t* read_file, const hcl_uch_t* print_file)
+{
+	xtn_t* xtn = GET_XTN(hcl);
+	int n;
+
+	HCL_ASSERT (hcl, xtn->read_path == HCL_NULL);
+	HCL_ASSERT (hcl, xtn->print_path == HCL_NULL);
+
+	xtn->read_path = hcl_duputobcstr(hcl, read_file, HCL_NULL);
+	if (HCL_UNLIKELY(!xtn->read_path)) return -1;
+
+	xtn->print_path = hcl_duputobcstr(hcl, print_file, HCL_NULL);
+	if (HCL_UNLIKELY(!xtn->print_path)) 
+	{
+		hcl_freemem (hcl, xtn->read_path);
+		xtn->read_path = HCL_NULL;
+		return -1;
+	}
+
+	n = hcl_attachio(hcl, read_handler, print_handler);
+
+	hcl_freemem (hcl, xtn->read_path);
+	hcl_freemem (hcl, xtn->print_path);
+
+	xtn->read_path = HCL_NULL;
+	xtn->print_path = HCL_NULL;
+
+	return n;
 }
 
 int hcl_isstdreadertty (hcl_t* hcl)
@@ -3505,4 +3551,3 @@ int hcl_isstdreadertty (hcl_t* hcl)
 	return xtn->reader_istty;
 }
 
-/* TODO: hio_attachiostdwithucstr() */

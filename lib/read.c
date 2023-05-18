@@ -4101,11 +4101,6 @@ void hcl_detachio (hcl_t* hcl)
 	}
 }
 
-hcl_ioinarg_t* hcl_getbaseinarg (hcl_t* hcl)
-{
-	return &hcl->c->inarg;
-}
-
 void hcl_setbaseinloc (hcl_t* hcl, hcl_oow_t line, hcl_oow_t colm)
 {
 	hcl->c->inarg.line = line;
@@ -4123,8 +4118,16 @@ hcl_iolxc_t* hcl_readbaseinchar (hcl_t* hcl)
 }
 
 
-int hcl_readbaseinraw (hcl_t* hcl)
+hcl_ooch_t* hcl_readbaseinraw (hcl_t* hcl, hcl_oow_t* xlen)
 {
-	return hcl->c->reader(hcl, HCL_IO_READ, &hcl->c->inarg);
+	/* this function provides the raw input interface to the attached source
+	 * input handler. it doesn't increment line/column number, nor does it
+	 * care about ungot characters. it must be used with extra care */
+
+	HCL_ASSERT (hcl, hcl->c != HCL_NULL); // call hio_attachio() or hio_attachiostd() first
+
+	if (hcl->c->reader(hcl, HCL_IO_READ, &hcl->c->inarg) <= -1) return HCL_NULL;
+	*xlen = hcl->c->inarg.xlen;
+	return hcl->c->inarg.buf;
 }
 

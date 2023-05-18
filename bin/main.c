@@ -513,8 +513,6 @@ static int on_fed_cnode_in_interactive_mode (hcl_t* hcl, hcl_cnode_t* obj)
 
 static int feed_loop (hcl_t* hcl, xtn_t* xtn, int cflags, int verbose)
 {
-	hcl_ioinarg_t* inarg;
-
 	/* override the default cnode handler. the default one simply
 	 * compiles the expression node without execution */
 	if (hcl_beginfeed (hcl, hcl_isstdreadertty(hcl)? on_fed_cnode_in_interactive_mode: HCL_NULL) <= -1)
@@ -524,13 +522,15 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int cflags, int verbose)
 	}
 
 	/* [NOTE] it isn't a very nice idea to get this internal data and use it with read_input() */
-	inarg = hcl_getbaseinarg(hcl); 
 	while (1)
 	{
-		//if (read_input(hcl, inarg) <= -1) goto oops;
-		if (hcl_readbaseinraw(hcl) <= -1) goto oops;
-		if (inarg->xlen <= 0) break;
-		if (hcl_feed(hcl, inarg->buf, inarg->xlen) <= -1) goto feed_error;
+		hcl_ooch_t* ptr;
+		hcl_oow_t xlen;
+
+		ptr = hcl_readbaseinraw(hcl, &xlen);
+		if (HCL_UNLIKELY(!ptr)) goto oops;
+		if (xlen <= 0) break;
+		if (hcl_feed(hcl, ptr, xlen) <= -1) goto feed_error;
 	}
 	if (hcl_endfeed(hcl) <= -1)
 	{
