@@ -97,6 +97,7 @@ enum list_flag_t
 #define LIST_FLAG_GET_CONCODE(x) (((x) >> 8) & 0xFF)
 #define LIST_FLAG_SET_CONCODE(x,type) ((x) = ((x) & ~0xFF00) | ((type) << 8))
 
+static int init_compiler (hcl_t* hcl);
 
 static int string_to_ooi (hcl_t* hcl, hcl_oocs_t* str, int radixed, hcl_ooi_t* num)
 {
@@ -326,7 +327,7 @@ static HCL_INLINE int is_alnumchar (hcl_ooci_t c)
 static HCL_INLINE int is_delimchar (hcl_ooci_t c)
 {
 	return c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' ||
-	       c == ';' || c == '|' || c == ',' || c == '.' || c == ':' || 
+	       c == ';' || c == '|' || c == ',' || c == '.' || c == ':' ||
 	       /* the first characters of tokens in delim_token_tab up to this point */
 	       c == '#'  || c == '\"' || c == '\'' || is_spacechar(c) || c == HCL_UCI_EOF;
 }
@@ -437,12 +438,12 @@ static HCL_INLINE void unget_char (hcl_t* hcl, const hcl_iolxc_t* c)
 
 static int get_directive_token_type (hcl_t* hcl, hcl_iotok_type_t* tok_type)
 {
-	if (does_token_name_match(hcl, VOCA_INCLUDE)) 
+	if (does_token_name_match(hcl, VOCA_INCLUDE))
 	{
 		*tok_type = HCL_IOTOK_INCLUDE;
 		return 0;
 	}
-	else if (does_token_name_match(hcl, VOCA_PRAGMA)) 
+	else if (does_token_name_match(hcl, VOCA_PRAGMA))
 	{
 		*tok_type = HCL_IOTOK_PRAGMA;
 		return 0;
@@ -1132,7 +1133,7 @@ retry:
 				hcl_iolxc_t sd;
 				hcl_ooci_t oldc2;
 
-				sd = hcl->c->lxc; 
+				sd = hcl->c->lxc;
 
 				oldc2 = c;
 				GET_CHAR_TO (hcl, c);
@@ -1446,7 +1447,8 @@ static int begin_include (hcl_t* hcl)
 
 	if (hcl->c->reader(hcl, HCL_IO_OPEN, arg) <= -1)
 	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_INCLUDE, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "unable to include %js", io_name);
+		const hcl_ooch_t* org_errmsg = hcl_backuperrmsg(hcl);
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_INCLUDE, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "unable to include %js - %js", io_name, org_errmsg);
 		goto oops;
 	}
 
@@ -1574,7 +1576,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, int* flagv, int* oldflagv
 	 *      (lambda () ...) is equivalent to  (lambda #nil ...)
 	 *      (defun x() ...) */
 
-	if (head) 
+	if (head)
 	{
 		HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(head));
 		HCL_CNODE_CONS_CONCODE(head) = concode;
@@ -1694,7 +1696,7 @@ static int chain_to_list (hcl_t* hcl, hcl_cnode_t* obj)
 			hcl_cnode_t* shell;
 
 			/* if the last element is another non-data list
-			 * for example, #( 1 2 . [ 3 4 5  ]) 
+			 * for example, #( 1 2 . [ 3 4 5  ])
 			 * use a shell node to wrap the actual object list node head
 			 * for the compiler.
 			 */
@@ -1785,7 +1787,7 @@ static hcl_cnode_t* read_vlist (hcl_t* hcl)
 		if (HCL_UNLIKELY(!sym)) goto oops;
 
 		cons = hcl_makecnodecons(hcl, HCL_CNODE_GET_LOC(sym), sym, HCL_NULL);
-		if (HCL_UNLIKELY(!cons)) 
+		if (HCL_UNLIKELY(!cons))
 		{
 			hcl_freesinglecnode (hcl, sym); /* manual disposal because sym is not chained to the list */
 			goto oops;
@@ -1884,7 +1886,7 @@ static hcl_cnode_t* read_object (hcl_t* hcl)
 				flagv = 0;
 				LIST_FLAG_SET_CONCODE (flagv, HCL_CONCODE_MLIST);
 				goto start_list;
-				
+
 			case HCL_IOTOK_LPAREN: /* ( */
 				flagv = 0;
 				LIST_FLAG_SET_CONCODE (flagv, HCL_CONCODE_XLIST);
@@ -2153,10 +2155,10 @@ static hcl_cnode_t* read_object (hcl_t* hcl)
 		 * if we are not at the top level, we must be in a list */
 		if (chain_to_list(hcl, obj) <= -1) goto oops;
 
-		/* because it has been chained to the list, it belongs to the current stack top. 
+		/* because it has been chained to the list, it belongs to the current stack top.
 		 * mark that obj is not stand-alone by nullifying it. without this, if a jump
 		 * is made to oops, the momory block pointed to by obj may get freed twice. */
-		obj = HCL_NULL; 
+		obj = HCL_NULL;
 
 		clear_comma_colon_flag (hcl);
 
@@ -2205,9 +2207,9 @@ hcl_cnode_t* hcl_read (hcl_t* hcl)
 hcl_cnodetoobj (hcl_t* hcl, hcl_cnode_t* x)
 {
  * drop location information and compose object ??
- * is it doable? can convert a dotted symbol to a proper value? 
+ * is it doable? can convert a dotted symbol to a proper value?
 }
-*/ 
+*/
 
 /* ---------------------------------------------------------------------- */
 
@@ -2252,11 +2254,12 @@ static int feed_begin_include (hcl_t* hcl)
 
 	if (hcl->c->reader(hcl, HCL_IO_OPEN, arg) <= -1)
 	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_INCLUDE, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "unable to include %js", io_name);
+		const hcl_ooch_t* org_errmsg = hcl_backuperrmsg(hcl);
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_INCLUDE, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "unable to feed-include %js - %js", io_name, org_errmsg);
 		goto oops;
 	}
 
-	if (arg->includer == &hcl->c->inarg)
+	if (arg->includer == &hcl->c->inarg) /* top-level include */
 	{
 		/* TODO: remove hcl_readbaseinchar() and clean up this part.
 		 * hcl_readbaseinchar(), if called in the middle of feeds,
@@ -2297,8 +2300,8 @@ static int feed_end_include (hcl_t* hcl)
 
 	x = hcl->c->reader(hcl, HCL_IO_CLOSE, hcl->c->curinp);
 
-	/* if closing has failed, still destroy the sio structure 
-	 * first as normal and return the failure below. this way, 
+	/* if closing has failed, still destroy the sio structure
+	 * first as normal and return the failure below. this way,
 	 * the caller doesn't call HCL_IO_CLOSE on hcl->c->curinp again. */
 
 	cur = hcl->c->curinp;
@@ -2351,9 +2354,9 @@ static int feed_process_token (hcl_t* hcl)
 		frd->expect_include_file = 0;
 
 		/* indicate that the file inclusion should be performed soon.
-		 * don't perform actual inclusion here so that the return value of 
+		 * don't perform actual inclusion here so that the return value of
 		 * feed_char() advances the input pointers properly. */
-		frd->do_include_file = 1; 
+		frd->do_include_file = 1;
 
 		goto ok;
 	}
@@ -2394,7 +2397,7 @@ static int feed_process_token (hcl_t* hcl)
 			else
 			{
 				/* opener */
-			
+
 				/* the vlist is different from other lists in that
 				 *   it uses the same opener and the closer
 				 *   it allows only variable names.
@@ -2409,7 +2412,7 @@ static int feed_process_token (hcl_t* hcl)
 
 				/* neither a data list nor an executable list. handle this specially using
 				 * a dedicated frd->expect_vlist_item variable */
-				frd->flagv = 0; 
+				frd->flagv = 0;
 				LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_VLIST);
 				frd->expect_vlist_item = 1;
 				goto start_list;
@@ -2439,7 +2442,7 @@ static int feed_process_token (hcl_t* hcl)
 			frd->flagv = 0;
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_MLIST);
 			goto start_list;
-			
+
 		case HCL_IOTOK_LPAREN: /* ( */
 			frd->flagv = 0;
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_XLIST);
@@ -2687,7 +2690,7 @@ static int feed_process_token (hcl_t* hcl)
 #endif
 
 	/* check if we are at the top frd->level */
-	if (frd->level <= 0) 
+	if (frd->level <= 0)
 	{
 		int n;
 
@@ -2708,10 +2711,10 @@ static int feed_process_token (hcl_t* hcl)
 		 * if we are not at the top frd->level, we must be in a list */
 		if (chain_to_list(hcl, frd->obj) <= -1) goto oops;
 
-		/* because it has been chained to the list, it belongs to the current stack top. 
+		/* because it has been chained to the list, it belongs to the current stack top.
 		 * mark that obj is not stand-alone by nullifying it. without this, if a jump
 		 * is made to oops, the momory block pointed to by obj may get freed twice. */
-		frd->obj = HCL_NULL; 
+		frd->obj = HCL_NULL;
 
 		clear_comma_colon_flag (hcl);
 	}
@@ -2720,7 +2723,7 @@ ok:
 	return 0;
 
 oops:
-	if (frd->obj) 
+	if (frd->obj)
 	{
 		hcl_freecnode (hcl, frd->obj);
 		frd->obj = HCL_NULL;
@@ -2752,17 +2755,17 @@ typedef struct delim_token_t delim_token_t;
 
 static delim_token_t delim_token_tab[] =
 {
-	/* [NOTE 1] 
-	 *  if you add a new token, ensure the first character is listed in is_delimchar() 
-	 * 
+	/* [NOTE 1]
+	 *  if you add a new token, ensure the first character is listed in is_delimchar()
+	 *
 	 * [NOTE 2]
 	 *  for the implementation limitation in find_delim_token_char(),
 	 *  the entries in this table must be laid out in a certain way.
-	 * 
+	 *
 	 *    Group the items with the same prefix together.
 	 *    List the shorter before the longer items in the same group.
 	 *    The length must not differ by greater than 1 between 2 items in the same group.
-	 * 
+	 *
 	 * [NOTE 3]
 	 *  don't list #( and #[ here because of overlapping use of # for various purposes.
 	 *  however, # is included in is_delimchar().
@@ -2774,7 +2777,7 @@ static delim_token_t delim_token_tab[] =
 
 	{ "[",        1, HCL_IOTOK_LBRACK },
 	{ "]",        1, HCL_IOTOK_RBRACK },
-	
+
 	{ "{",        1, HCL_IOTOK_LBRACE },
 	{ "}",        1, HCL_IOTOK_RBRACE },
 
@@ -2797,7 +2800,7 @@ static int find_delim_token_char (hcl_t* hcl, const hcl_ooci_t c, int row_start,
 
 	for (i = row_start; i <= row_end; i++)
 	{
-		if (col < delim_token_tab[i].t_len && c == delim_token_tab[i].t_value[col]) 
+		if (col < delim_token_tab[i].t_len && c == delim_token_tab[i].t_value[col])
 		{
 			if (!found) dt->row_start = i;
 			dt->row_end = i;
@@ -2930,10 +2933,10 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 	reset_flx_token (hcl);
 
 //HCL_DEBUG1 (hcl, "XXX[%jc]\n", c);
-	if (find_delim_token_char(hcl, c, 0, HCL_COUNTOF(delim_token_tab) - 1, 0, FLX_DT(hcl))) 
+	if (find_delim_token_char(hcl, c, 0, HCL_COUNTOF(delim_token_tab) - 1, 0, FLX_DT(hcl)))
 	{
 		/* the character is one of the first character of a delimiter token such as (, [, :, etc */
-		if (FLX_DT(hcl)->row_start == FLX_DT(hcl)->row_end && 
+		if (FLX_DT(hcl)->row_start == FLX_DT(hcl)->row_end &&
 		    FLX_DT(hcl)->col_next == delim_token_tab[FLX_DT(hcl)->row_start].t_len)
 		{
 			/* single character delimiter token */
@@ -3006,13 +3009,13 @@ static int flx_comment (hcl_t* hcl, hcl_ooci_t c)
 
 static int flx_delim_token (hcl_t* hcl, hcl_ooci_t c)
 {
-	if (find_delim_token_char(hcl, c, FLX_DT(hcl)->row_start, FLX_DT(hcl)->row_end, FLX_DT(hcl)->col_next, FLX_DT(hcl))) 
+	if (find_delim_token_char(hcl, c, FLX_DT(hcl)->row_start, FLX_DT(hcl)->row_end, FLX_DT(hcl)->col_next, FLX_DT(hcl)))
 	{
-		if (FLX_DT(hcl)->row_start == FLX_DT(hcl)->row_end && 
+		if (FLX_DT(hcl)->row_start == FLX_DT(hcl)->row_end &&
 		    FLX_DT(hcl)->col_next == delim_token_tab[FLX_DT(hcl)->row_start].t_len)
 		{
 			/* complete token and switch to the HCL_FLX_START state */
-			FEED_WRAP_UP_WITH_CHAR (hcl, c, delim_token_tab[FLX_DT(hcl)->row_start].t_type); 
+			FEED_WRAP_UP_WITH_CHAR (hcl, c, delim_token_tab[FLX_DT(hcl)->row_start].t_type);
 		}
 		else
 		{
@@ -3023,7 +3026,7 @@ static int flx_delim_token (hcl_t* hcl, hcl_ooci_t c)
 	else
 	{
 		/* the longest match so far */
-		FEED_WRAP_UP(hcl, delim_token_tab[FLX_DT(hcl)->row_start].t_type); 
+		FEED_WRAP_UP(hcl, delim_token_tab[FLX_DT(hcl)->row_start].t_type);
 		goto not_consumed;
 	}
 
@@ -3341,7 +3344,7 @@ static int flx_plain_ident (hcl_t* hcl, hcl_ooci_t c) /* identifier */
 		seg.ptr = &TOKEN_NAME_CHAR(hcl, start);
 		seg.len = pi->seg_len;
 		tok_type = classify_ident_token(hcl, &seg);
-		if (tok_type != HCL_IOTOK_IDENT) 
+		if (tok_type != HCL_IOTOK_IDENT)
 		{
 			pi->non_ident_seg_count++;
 			pi->last_non_ident_type = tok_type;
@@ -3630,7 +3633,7 @@ static int flx_signed_token (hcl_t* hcl, hcl_ooci_t c)
 			reset_flx_token (hcl);
 
 			/* the current character is on the same line as the hash mark, the column must be greater than 1 */
-			HCL_ASSERT (hcl, FLX_LOC(hcl)->colm > 1); 
+			HCL_ASSERT (hcl, FLX_LOC(hcl)->colm > 1);
 			FLX_LOC(hcl)->colm--; /* move back one character location by decrementing the column number */
 			ADD_TOKEN_CHAR (hcl, '#');
 			FEED_CONTINUE (hcl, HCL_FLX_HMARKED_TOKEN);
@@ -3649,10 +3652,10 @@ static int flx_signed_token (hcl_t* hcl, hcl_ooci_t c)
 	{
 		init_flx_pi (FLX_PI(hcl));
 
-		/* the sign is already in the token name buffer. 
+		/* the sign is already in the token name buffer.
 		 * adjust the state data for the sign. */
 		HCL_ASSERT (hcl, TOKEN_NAME_LEN(hcl) == 1);
-		FLX_PI(hcl)->char_count++; 
+		FLX_PI(hcl)->char_count++;
 		FLX_PI(hcl)->seg_len++;
 
 		/* let refeeding of 'c' happen at the next iteration */
@@ -3737,7 +3740,7 @@ static int feed_from_includee (hcl_t* hcl)
 
 		x = feed_char(hcl, hcl->c->curinp->buf[hcl->c->curinp->b.pos]);
 		if (x <= -1) return -1;
-		if (x >= 1) 
+		if (x >= 1)
 		{
 			/* consumed */
 			feed_update_lx_loc (hcl, hcl->c->curinp->buf[hcl->c->curinp->b.pos]);
@@ -3746,7 +3749,7 @@ static int feed_from_includee (hcl_t* hcl)
 
 		if (hcl->c->feed.rd.do_include_file)
 		{
-			/* feed_process_token(), called for the "filename" token for the #include 
+			/* feed_process_token(), called for the "filename" token for the #include
 			 * directive, sets hcl->c->feed.rd.do_include_file to 1 instead of attepmting
 			 * to include the file. the file inclusion is attempted here after the return
 			 * value of feed_char() is used to advance the hcl->c->curinp->b.pos pointer. */
@@ -3759,29 +3762,38 @@ static int feed_from_includee (hcl_t* hcl)
 	return 0;
 }
 
-void hcl_beginfeed (hcl_t* hcl, hcl_on_cnode_t on_cnode)
+int hcl_beginfeed (hcl_t* hcl, hcl_on_cnode_t on_cnode)
 {
+	HCL_ASSERT (hcl, hcl->c != HCL_NULL); /* call hcl_attachio() or hcl_attachiostd() first */
+
 	init_feed (hcl);
 	if (on_cnode) hcl->c->feed.on_cnode = on_cnode;
-	/* if you pass HCL_NULL for on_cnode, hcl->c->feed.on_cnode resets 
+	/* if you pass HCL_NULL for on_cnode, hcl->c->feed.on_cnode resets
 	 * back to the default handler in init_feed() */
+
+	return 0;
+}
+
+int hcl_endfeed (hcl_t* hcl)
+{
+	return hcl_feed(hcl, HCL_NULL, 0);
 }
 
 int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
 {
 /* TODO: need to return the number of processed characters?
  *       need to stop after the first complete expression? */
-
 	hcl_oow_t i;
 	int x;
 
-	if (data) 
+	HCL_ASSERT (hcl, hcl->c != HCL_NULL);
+	if (data)
 	{
-		for (i = 0; i < len; ) 
+		for (i = 0; i < len; )
 		{
 			x = feed_char(hcl, data[i]);
 			if (x <= -1) return -1; /* TODO: return the number of processed characters via an argument? */
-			
+
 			if (x > 0)
 			{
 				/* consumed */
@@ -3795,7 +3807,7 @@ int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
 				hcl->c->feed.rd.do_include_file = 0;
 			}
 
-			if (hcl->c->curinp != &hcl->c->inarg && feed_from_includee(hcl) <= -1) 
+			if (hcl->c->curinp && hcl->c->curinp != &hcl->c->inarg && feed_from_includee(hcl) <= -1)
 			{
 				/* TODO: return the number of processed characters via an argument? */
 				return -1;
@@ -3809,12 +3821,12 @@ int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
 		for (i = 0; i < 1;) /* weird loop in case feed_char() returns 0 */
 		{
 			x = feed_char(hcl, HCL_OOCI_EOF);
-			if (x <= -1) 
+			if (x <= -1)
 			{
 				if (hcl->c->feed.rd.level <= 0 && hcl_geterrnum(hcl) == HCL_ESYNERR && hcl_getsynerrnum(hcl) == HCL_SYNERR_EOF)
 				{
-					/* convert this EOF error to success as the caller knows EOF in the feed mode. 
-					 * the caller can safely stop feeding after gettting success from hcl_feed(hcl, HCL_NULL, 0); 
+					/* convert this EOF error to success as the caller knows EOF in the feed mode.
+					 * the caller can safely stop feeding after gettting success from hcl_feed(hcl, HCL_NULL, 0);
 					 * in the feed mode, this function doesn't set HCL_EFINIS. */
 					x = 1;
 				}
@@ -3857,13 +3869,16 @@ default callback for on_eof?
 /* TODO: rename compiler to something else that can include reader, printer, and compiler
  * move compiler intialization/finalization here to more common place */
 
-static void gc_compiler (hcl_t* hcl)
+static void gc_compiler_cb (hcl_t* hcl)
 {
-	hcl->c->r.s = hcl_moveoop(hcl, hcl->c->r.s);
-	hcl->c->r.e = hcl_moveoop(hcl, hcl->c->r.e);
+	if (hcl->c)
+	{
+		hcl->c->r.s = hcl_moveoop(hcl, hcl->c->r.s);
+		hcl->c->r.e = hcl_moveoop(hcl, hcl->c->r.e);
+	}
 }
 
-static void fini_compiler (hcl_t* hcl)
+static void fini_compiler_cb (hcl_t* hcl)
 {
 	/* called before the hcl object is closed */
 	if (hcl->c)
@@ -3921,10 +3936,60 @@ static void fini_compiler (hcl_t* hcl)
 	}
 }
 
+
+static void fini_compiler (hcl_t* hcl)
+{
+	/* unlike fini_compiler_cb(), this is to be used in some error handling
+	 * between init_compiler success and subquent operation failure */
+	if (hcl->c)
+	{
+		hcl_deregcb (hcl, hcl->c->cbp);
+		fini_compiler_cb (hcl);
+	}
+}
+
+static int init_compiler (hcl_t* hcl)
+{
+	hcl_cb_t cb, * cbp = HCL_NULL;
+
+	HCL_ASSERT (hcl, hcl->c == HCL_NULL);
+
+	HCL_MEMSET (&cb, 0, HCL_SIZEOF(cb));
+	cb.gc = gc_compiler_cb;
+	cb.fini = fini_compiler_cb;
+	cbp = hcl_regcb(hcl, &cb);
+	if (HCL_UNLIKELY(!cbp)) return -1;
+
+	hcl->c = (hcl_compiler_t*)hcl_callocmem(hcl, HCL_SIZEOF(*hcl->c));
+	if (HCL_UNLIKELY(!hcl->c))
+	{
+		hcl_deregcb (hcl, cbp);
+		return -1;
+	}
+
+	hcl->c->ilchr_ucs.ptr = &hcl->c->ilchr;
+	hcl->c->ilchr_ucs.len = 1;
+
+	hcl->c->r.s = hcl->_nil;
+	hcl->c->r.e = hcl->_nil;
+
+	hcl->c->cfs.top = -1;
+	hcl->c->cblk.depth = -1;
+	hcl->c->clsblk.depth = -1;
+	hcl->c->fnblk.depth = -1;
+
+	init_feed (hcl);
+	hcl->c->cbp = cbp;
+
+	return 0;
+}
+
 int hcl_attachio (hcl_t* hcl, hcl_ioimpl_t reader, hcl_ioimpl_t printer)
 {
 	int n;
-	hcl_cb_t* cbp = HCL_NULL;
+	int inited_compiler = 0;
+	hcl_ioinarg_t new_inarg;
+	hcl_iooutarg_t new_outarg;
 
 	if (!reader || !printer)
 	{
@@ -3934,94 +3999,70 @@ int hcl_attachio (hcl_t* hcl, hcl_ioimpl_t reader, hcl_ioimpl_t printer)
 
 	if (!hcl->c)
 	{
-		hcl_cb_t cb;
-
-		HCL_MEMSET (&cb, 0, HCL_SIZEOF(cb));
-		cb.gc = gc_compiler;
-		cb.fini = fini_compiler;
-		cbp = hcl_regcb(hcl, &cb);
-		if (!cbp) return -1;
-
-		hcl->c = (hcl_compiler_t*)hcl_callocmem(hcl, HCL_SIZEOF(*hcl->c));
-		if (HCL_UNLIKELY(!hcl->c))
-		{
-			hcl_deregcb (hcl, cbp);
-			return -1;
-		}
-
-		hcl->c->ilchr_ucs.ptr = &hcl->c->ilchr;
-		hcl->c->ilchr_ucs.len = 1;
-
-		hcl->c->r.s = hcl->_nil;
-		hcl->c->r.e = hcl->_nil;
-
-		hcl->c->cfs.top = -1;
-		hcl->c->cblk.depth = -1;
-		hcl->c->clsblk.depth = -1;
-		hcl->c->fnblk.depth = -1;
-
-		init_feed (hcl);
-	}
-	else if (hcl->c->reader || hcl->c->printer)
-	{
-		hcl_seterrnum (hcl, HCL_EPERM); /* TODO: change this error code */
-		return -1;
+		if (init_compiler(hcl) <= -1) return -1;
+		inited_compiler = 1;
 	}
 
+#if 0
 	/* Some IO names could have been stored in earlier calls to this function.
-	 * I clear such names before i begin this function. i don't clear it
-	 * at the end of this function because i may be referenced as an error
+	 * I clear such names before i begin this function. i don't clear them
+	 * at the end of this function because they may be referenced as an error
 	 * location */
 	clear_io_names (hcl);
-
-	/* initialize some key fields */
-	hcl->c->printer = printer;
-	hcl->c->reader = reader;
-	hcl->c->nungots = 0;
+#endif
 
 	/* The name field and the includer field are HCL_NULL
 	 * for the main stream */
-	HCL_MEMSET (&hcl->c->inarg, 0, HCL_SIZEOF(hcl->c->inarg));
-	hcl->c->inarg.line = 1;
-	hcl->c->inarg.colm = 1;
+	HCL_MEMSET (&new_inarg, 0, HCL_SIZEOF(new_inarg));
+	new_inarg.line = 1;
+	new_inarg.colm = 1;
 
-	/* open the top-level stream */
-	n = hcl->c->reader(hcl, HCL_IO_OPEN, &hcl->c->inarg);
+	/* open the top-level source input stream */
+	n = reader(hcl, HCL_IO_OPEN, &new_inarg);
 	if (n <= -1) goto oops;
 
-	HCL_MEMSET (&hcl->c->outarg, 0, HCL_SIZEOF(hcl->c->outarg));
-	n = hcl->c->printer(hcl, HCL_IO_OPEN, &hcl->c->outarg);
+	/* open the new output stream */
+	HCL_MEMSET (&new_outarg, 0, HCL_SIZEOF(new_outarg));
+	n = printer(hcl, HCL_IO_OPEN, &new_outarg);
 	if (n <= -1)
 	{
-		hcl->c->reader (hcl, HCL_IO_CLOSE, &hcl->c->inarg);
+		reader (hcl, HCL_IO_CLOSE, &new_inarg);
 		goto oops;
 	}
 
-	/* the stream is open. set it as the current input stream */
+	if (hcl->c->reader)
+	{
+		/* close the old source input stream */
+		hcl->c->reader (hcl, HCL_IO_CLOSE, &hcl->c->inarg);
+	}
+	hcl->c->reader = reader;
+	hcl->c->inarg = new_inarg;
+
+	if (hcl->io.printer)
+	{
+		/* close the old output stream */
+		hcl->io.printer (hcl, HCL_IO_CLOSE, &hcl->io.outarg);
+	}
+	hcl->io.printer = printer;
+	hcl->io.outarg = new_outarg;
+
+	/* initialize some other key fields */
+	hcl->c->nungots = 0;
+
+	/* the source stream is open. set it as the current input stream */
 	hcl->c->curinp = &hcl->c->inarg;
+
+	clear_io_names (hcl);
 	return 0;
 
 oops:
-	if (cbp)
-	{
-		hcl_deregcb (hcl, cbp);
-		hcl_freemem (hcl, hcl->c);
-		hcl->c = HCL_NULL;
-	}
-	else
-	{
-		hcl->c->printer = HCL_NULL;
-		hcl->c->reader = HCL_NULL;
-	}
+	if (inited_compiler) fini_compiler (hcl);
 	return -1;
 }
 
 void hcl_flushio (hcl_t* hcl)
 {
-	if (hcl->c)
-	{
-		if (hcl->c->printer) hcl->c->printer (hcl, HCL_IO_FLUSH, &hcl->c->outarg);
-	}
+	if (hcl->io.printer) hcl->io.printer (hcl, HCL_IO_FLUSH, &hcl->io.outarg);
 }
 
 void hcl_detachio (hcl_t* hcl)
@@ -4051,11 +4092,12 @@ void hcl_detachio (hcl_t* hcl)
 			hcl->c->reader = HCL_NULL; /* ready for another attachment */
 		}
 
-		if (hcl->c->printer)
-		{
-			hcl->c->printer (hcl, HCL_IO_CLOSE, &hcl->c->outarg);
-			hcl->c->printer = HCL_NULL; /* ready for another attachment */
-		}
+	}
+
+	if (hcl->io.printer)
+	{
+		hcl->io.printer (hcl, HCL_IO_CLOSE, &hcl->io.outarg);
+		hcl->io.printer = HCL_NULL; /* ready for another attachment */
 	}
 }
 
@@ -4072,10 +4114,17 @@ void hcl_setbaseinloc (hcl_t* hcl, hcl_oow_t line, hcl_oow_t colm)
 
 hcl_iolxc_t* hcl_readbaseinchar (hcl_t* hcl)
 {
-	/* read a character using the base input stream. the caller must care extra 
+	/* read a character using the base input stream. the caller must care extra
 	 * care when using this function. this function reads the main stream regardless
 	 * of the inclusion status and ignores the ungot characters. */
 	int n = _get_char(hcl, &hcl->c->inarg);
 	if (n <= -1) return HCL_NULL;
 	return &hcl->c->inarg.lxc;
 }
+
+
+int hcl_readbaseinraw (hcl_t* hcl)
+{
+	return hcl->c->reader(hcl, HCL_IO_READ, &hcl->c->inarg);
+}
+

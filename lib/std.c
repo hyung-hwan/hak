@@ -280,6 +280,10 @@ struct xtn_t
 	hcl_t* next;
 	hcl_t* prev;
 
+	const char* read_path; /* main source file */
+	const char* print_path;
+        int reader_istty;
+
 	int vm_running;
 	int rcv_tick;
 
@@ -831,7 +835,7 @@ static hcl_errnum_t _syserrstrb (hcl_t* hcl, int syserr_type, int syserr_code, h
 		case 2:
 		#if defined(__OS2__)
 			#if defined(TCPV40HDRS)
-			if (buf) 
+			if (buf)
 			{
 				char tmp[64];
 				sprintf (tmp, "socket error %d", (int)syserr_code);
@@ -2793,7 +2797,7 @@ attempt_to_bind:
 	/* OS/2 mandates the socket name should begin with \socket\ */
 	sprintf (sa.sun_path, "\\socket\\hcl-%08lx-%08lx-%08lx", (unsigned long int)pib->pib_ulpid, (unsigned long int)tib->tib_ptib2->tib2_ultid, (unsigned long int)idx);
 
-	if (bind(x, (struct sockaddr*)&sa, HCL_SIZEOF(sa)) <= -1) 
+	if (bind(x, (struct sockaddr*)&sa, HCL_SIZEOF(sa)) <= -1)
 	{
 		if (sock_errno() != SOCEADDRINUSE) goto oops;
 		if (idx - msec > 9999) goto oops; /* failure after many attempts */
@@ -2813,7 +2817,7 @@ attempt_to_bind:
 	p[0] = z;
 	p[1] = y;
 	return 0;
-	
+
 oops:
 	if (y >= 0) soclose (y);
 	if (x >= 0) soclose (x);
@@ -3158,3 +3162,347 @@ hcl_t* hcl_openstd (hcl_oow_t xtnsize, hcl_errnum_t* errnum)
 {
 	return hcl_openstdwithmmgr(&sys_mmgr, xtnsize, errnum);
 }
+
+
+/* --------------------------------------------------------------------- */
+
+
+typedef struct bb_t bb_t;
+struct bb_t
+{
+	char buf[4096];
+	hcl_oow_t pos;
+	hcl_oow_t len;
+
+	FILE* fp;
+	hcl_bch_t* fn;
+};
+
+static const hcl_bch_t* get_base_name (const hcl_bch_t* path)
+{
+	const hcl_bch_t* p, * last = HCL_NULL;
+
+	for (p = path; *p != '\0'; p++)
+	{
+		if (HCL_IS_PATH_SEP(*p)) last = p;
+	}
+
+	return (last == HCL_NULL)? path: (last + 1);
+}
+
+static HCL_INLINE int open_input (hcl_t* hcl, hcl_ioinarg_t* arg)
+{
+	xtn_t* xtn = GET_XTN(hcl);
+	bb_t* bb = HCL_NULL;
+
+#if defined(__DOS__) || defined(_WIN32) || defined(__OS2__)
+#define FOPEN_R_FLAGS "rb"
+#else
+#define FOPEN_R_FLAGS "r"
+#endif
+
+/* TOOD: support predefined include directory as well */
+	if (arg->includer)
+	{
+		/* includee */
+		hcl_oow_t ucslen, bcslen, parlen;
+		const hcl_bch_t* fn, * fb;
+
+	#if defined(HCL_OOCH_IS_UCH)
+		if (hcl_convootobcstr(hcl, arg->name, &ucslen, HCL_NULL, &bcslen) <= -1) goto oops;
+	#else
+		bcslen = hcl_count_bcstr(arg->name);
+	#endif
+
+		fn = ((bb_t*)arg->includer->handle)->fn;
+
+		fb = get_base_name(fn);
+		parlen = fb - fn;
+
+		bb = (bb_t*)hcl_callocmem(hcl, HCL_SIZEOF(*bb) + (HCL_SIZEOF(hcl_bch_t) * (parlen + bcslen + 1)));
+		if (!bb) goto oops;
+
+		bb->fn = (hcl_bch_t*)(bb + 1);
+		hcl_copy_bchars (bb->fn, fn, parlen);
+	#if defined(HCL_OOCH_IS_UCH)
+		hcl_convootobcstr (hcl, arg->name, &ucslen, &bb->fn[parlen], &bcslen);
+	#else
+		hcl_copy_bcstr (&bb->fn[parlen], bcslen + 1, arg->name);
+	#endif
+
+		bb->fp = fopen(bb->fn, FOPEN_R_FLAGS);
+	}
+	else
+	{
+		/* main stream */
+		hcl_oow_t pathlen;
+
+		pathlen = xtn->read_path? hcl_count_bcstr(xtn->read_path): 0;
+
+		bb = (bb_t*)hcl_callocmem(hcl, HCL_SIZEOF(*bb) + (HCL_SIZEOF(hcl_bch_t) * (pathlen + 1)));
+		if (!bb) goto oops;
+
+		bb->fn = (hcl_bch_t*)(bb + 1);
+		if (pathlen > 0 && xtn->read_path)
+		{
+			hcl_copy_bcstr (bb->fn, pathlen + 1, xtn->read_path);
+			bb->fp = fopen(bb->fn, FOPEN_R_FLAGS);
+		}
+		else
+		{
+			bb->fn[0] = '\0';
+			bb->fp = stdin;
+		}
+	}
+
+	if (!bb->fp)
+	{
+		hcl_seterrbfmt (hcl, HCL_EIOERR, "unable to open %hs", bb->fn);
+		goto oops;
+	}
+
+	if (!arg->includer) /* if main stream */
+	{
+	#if defined(HAVE_ISATTY)
+		xtn->reader_istty = isatty(fileno(bb->fp));
+	#endif
+
+	/* HACK */
+		HCL_ASSERT (hcl, arg->name == HCL_NULL);
+		arg->name = hcl_dupbtooocstr(hcl, bb->fn, HCL_NULL);
+		/* ignore duplication failure */
+/* TODO: change the type of arg->name from const hcl_ooch_t* to hcl_ooch_t*.
+ *       change its specification from [IN] only to [INOUT] in hcl_ioinarg_t. */
+	/* END HACK */
+	}
+
+	arg->handle = bb;
+	return 0;
+
+oops:
+	if (bb)
+	{
+		if (bb->fp && bb->fp != stdin) fclose (bb->fp);
+		hcl_freemem (hcl, bb);
+	}
+	return -1;
+}
+
+static HCL_INLINE int close_input (hcl_t* hcl, hcl_ioinarg_t* arg)
+{
+	/*xtn_t* xtn = GET_XTN(hcl);*/
+	bb_t* bb;
+
+	bb = (bb_t*)arg->handle;
+	HCL_ASSERT (hcl, bb != HCL_NULL && bb->fp != HCL_NULL);
+
+/* HACK */
+	if (!arg->includer && arg->name)
+	{
+		hcl_freemem (hcl, arg->name);
+		arg->name = HCL_NULL;
+	}
+/* END HACK */
+
+	if (bb->fp != stdin) fclose (bb->fp);
+	hcl_freemem (hcl, bb);
+
+	arg->handle = HCL_NULL;
+	return 0;
+}
+
+static HCL_INLINE int read_input (hcl_t* hcl, hcl_ioinarg_t* arg)
+{
+	/*xtn_t* xtn = GET_XTN(hcl);*/
+	bb_t* bb;
+	hcl_oow_t bcslen, ucslen, remlen;
+	int x;
+
+	bb = (bb_t*)arg->handle;
+	HCL_ASSERT (hcl, bb != HCL_NULL && bb->fp != HCL_NULL);
+	do
+	{
+		x = fgetc(bb->fp);
+		if (x == EOF)
+		{
+			if (ferror((FILE*)bb->fp))
+			{
+				hcl_seterrnum (hcl, HCL_EIOERR);
+				return -1;
+			}
+			break;
+		}
+
+		bb->buf[bb->len++] = x;
+	}
+	while (bb->len < HCL_COUNTOF(bb->buf) && x != '\r' && x != '\n');
+
+#if defined(HCL_OOCH_IS_UCH)
+	bcslen = bb->len;
+	ucslen = HCL_COUNTOF(arg->buf);
+	x = hcl_convbtooochars(hcl, bb->buf, &bcslen, arg->buf, &ucslen);
+	if (x <= -1 && ucslen <= 0) return -1;
+	/* if ucslen is greater than 0, i assume that some characters have been
+	 * converted properly. as the loop above reads an entire line if not too
+	 * large, the incomplete sequence error (x == -3) must happen after
+	 * successful conversion of at least 1 ooch character. so no explicit
+	 * check for the incomplete sequence error is required */
+#else
+	bcslen = (bb->len < HCL_COUNTOF(arg->buf))? bb->len: HCL_COUNTOF(arg->buf);
+	ucslen = bcslen;
+	hcl_copy_bchars (arg->buf, bb->buf, bcslen);
+#endif
+
+	remlen = bb->len - bcslen;
+	if (remlen > 0) memmove (bb->buf, &bb->buf[bcslen], remlen);
+	bb->len = remlen;
+
+	arg->xlen = ucslen;
+	return 0;
+}
+
+static int read_handler (hcl_t* hcl, hcl_iocmd_t cmd, void* arg)
+{
+	switch (cmd)
+	{
+		case HCL_IO_OPEN:
+			return open_input(hcl, (hcl_ioinarg_t*)arg);
+
+		case HCL_IO_CLOSE:
+			return close_input(hcl, (hcl_ioinarg_t*)arg);
+
+		case HCL_IO_READ:
+			return read_input(hcl, (hcl_ioinarg_t*)arg);
+
+		case HCL_IO_FLUSH:
+			/* no effect on an input stream */
+			return 0;
+
+		default:
+			hcl_seterrnum (hcl, HCL_EINTERN);
+			return -1;
+	}
+}
+
+static HCL_INLINE int open_output (hcl_t* hcl, hcl_iooutarg_t* arg)
+{
+	xtn_t* xtn = GET_XTN(hcl);
+	FILE* fp;
+#if defined(__DOS__) || defined(_WIN32) || defined(__OS2__)
+#define FOPEN_W_FLAGS "wb"
+#else
+#define FOPEN_W_FLAGS "w"
+#endif
+
+	fp = (xtn->print_path && xtn->print_path[0] != '\0'? fopen(xtn->print_path, FOPEN_W_FLAGS): stdout);
+	if (!fp)
+	{
+		if (xtn->print_path)
+			hcl_seterrbfmt (hcl, HCL_EIOERR, "unable to open %hs", xtn->print_path);
+		else
+			hcl_seterrnum (hcl, HCL_EIOERR);
+		return -1;
+	}
+
+	arg->handle = fp;
+	return 0;
+}
+
+static HCL_INLINE int close_output (hcl_t* hcl, hcl_iooutarg_t* arg)
+{
+	/*xtn_t* xtn = GET_XTN(hcl);*/
+	FILE* fp;
+
+	fp = (FILE*)arg->handle;
+	HCL_ASSERT (hcl, fp != HCL_NULL);
+	if (fp != stdout) fclose (fp);
+	arg->handle = HCL_NULL;
+	return 0;
+}
+
+static HCL_INLINE int write_output (hcl_t* hcl, hcl_iooutarg_t* arg)
+{
+	/*xtn_t* xtn = GET_XTN(hcl);*/
+	hcl_bch_t bcsbuf[1024];
+	hcl_oow_t bcslen, ucslen, donelen;
+	int x;
+
+	donelen = 0;
+
+	do
+	{
+	#if defined(HCL_OOCH_IS_UCH)
+		bcslen = HCL_COUNTOF(bcsbuf);
+		ucslen = arg->len - donelen;
+		x = hcl_convootobchars(hcl, &arg->ptr[donelen], &ucslen, bcsbuf, &bcslen);
+		if (x <= -1 && ucslen <= 0) return -1;
+	#else
+		bcslen = HCL_COUNTOF(bcsbuf);
+		ucslen = arg->len - donelen;
+		if (ucslen > bcslen) ucslen = bcslen;
+		else if (ucslen < bcslen) bcslen = ucslen;
+		hcl_copy_bchars (bcsbuf, &arg->ptr[donelen], bcslen);
+	#endif
+
+		if (fwrite(bcsbuf, HCL_SIZEOF(bcsbuf[0]), bcslen, (FILE*)arg->handle) < bcslen)
+		{
+			hcl_seterrnum (hcl, HCL_EIOERR);
+			return -1;
+		}
+
+		donelen += ucslen;
+	}
+	while (donelen < arg->len);
+
+	arg->xlen = arg->len;
+	return 0;
+}
+
+static HCL_INLINE int flush_output (hcl_t* hcl, hcl_iooutarg_t* arg)
+{
+	FILE* fp;
+
+	fp = (FILE*)arg->handle;
+	HCL_ASSERT (hcl, fp != HCL_NULL);
+
+	fflush (fp);
+	return 0;
+}
+
+static int print_handler (hcl_t* hcl, hcl_iocmd_t cmd, void* arg)
+{
+	switch (cmd)
+	{
+		case HCL_IO_OPEN:
+			return open_output(hcl, (hcl_iooutarg_t*)arg);
+
+		case HCL_IO_CLOSE:
+			return close_output(hcl, (hcl_iooutarg_t*)arg);
+
+		case HCL_IO_WRITE:
+			return write_output(hcl, (hcl_iooutarg_t*)arg);
+
+		case HCL_IO_FLUSH:
+			return flush_output(hcl, (hcl_iooutarg_t*)arg);
+
+		default:
+			hcl_seterrnum (hcl, HCL_EINTERN);
+			return -1;
+	}
+}
+
+int hcl_attachiostdwithbcstr (hcl_t* hcl, const hcl_bch_t* read_file, const hcl_bch_t* print_file)
+{
+	xtn_t* xtn = GET_XTN(hcl);
+	xtn->read_path = read_file;
+	xtn->print_path = print_file;
+	return hcl_attachio(hcl, read_handler, print_handler);
+}
+
+int hcl_isstdreadertty (hcl_t* hcl)
+{
+	xtn_t* xtn = GET_XTN(hcl);
+	return xtn->reader_istty;
+}
+
+/* TODO: hio_attachiostdwithucstr() */

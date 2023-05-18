@@ -1487,8 +1487,14 @@ struct hcl_t
 			hcl_bch_t bch[HCL_ERRMSG_CAPA];
 			hcl_uch_t uch[HCL_ERRMSG_CAPA];
 		} tmpbuf;
+	#if defined(HCL_OOCH_IS_BCH)
+		hcl_uch_t  xerrmsg[HCL_ERRMSG_CAPA];
+	#else
+		hcl_bch_t  xerrmsg[HCL_ERRMSG_CAPA * 2];
+	#endif
 		hcl_ooch_t buf[HCL_ERRMSG_CAPA];
 		hcl_oow_t len;
+
 	} errmsg;
 	int shuterr;
 
@@ -1714,6 +1720,13 @@ struct hcl_t
 			hcl_ntime_t sweep;
 		} stat;
 	} gci;
+
+	struct
+	{
+		/* output handler */
+		hcl_ioimpl_t printer;
+		hcl_iooutarg_t outarg;
+	} io;
 
 #if defined(HCL_INCLUDE_COMPILER)
 	hcl_compiler_t* c;
@@ -2040,9 +2053,19 @@ HCL_EXPORT const hcl_ooch_t* hcl_geterrstr (
 	hcl_t* hcl
 );
 
-HCL_EXPORT const hcl_ooch_t* hcl_geterrmsg (
-	hcl_t* hcl
+HCL_EXPORT const hcl_uch_t* hcl_geterrumsg (
+	hcl_t* hio
 );
+
+HCL_EXPORT const hcl_bch_t* hcl_geterrbmsg (
+	hcl_t* hio
+);
+
+#if defined(HCL_OOCH_IS_UCH)
+#	define hcl_geterrmsg hcl_geterrumsg
+#else
+#	define hcl_geterrmsg hcl_geterrbmsg
+#endif
 
 HCL_EXPORT const hcl_ooch_t* hcl_backuperrmsg (
 	hcl_t* hcl
@@ -2142,7 +2165,13 @@ HCL_EXPORT void hcl_abort (
 #	define hcl_switchprocess(hcl) ((hcl)->switch_proc = 1)
 #endif
 
+/* TODO: don't expose hcl_getbaseinarg(), and hcl_readbaseinraw()
+ *       find a better way not to use them */
 HCL_EXPORT hcl_ioinarg_t* hcl_getbaseinarg (
+	hcl_t* hcl
+);
+
+HCL_EXPORT int hcl_readbaseinraw (
 	hcl_t* hcl
 );
 
@@ -2162,6 +2191,16 @@ HCL_EXPORT int hcl_attachio (
 	hcl_t*         hcl,
 	hcl_ioimpl_t   reader,
 	hcl_ioimpl_t   printer
+);
+
+HCL_EXPORT int hcl_attachiostdwithbcstr (
+	hcl_t*           hcl,
+	const hcl_bch_t* read_file,
+	const hcl_bch_t* print_file
+);
+
+HCL_EXPORT int hcl_isstdreadertty (
+	hcl_t*       hcl
 );
 
 HCL_EXPORT void hcl_detachio (
@@ -2202,7 +2241,7 @@ HCL_EXPORT void hcl_freecnode (
 	hcl_cnode_t* cnode
 );
 
-HCL_EXPORT void hcl_beginfeed (
+HCL_EXPORT int hcl_beginfeed (
 	hcl_t*            hcl,
 	hcl_on_cnode_t    on_cnode
 );
@@ -2213,7 +2252,9 @@ HCL_EXPORT int hcl_feed (
 	hcl_oow_t         len
 );
 
-#define hcl_endfeed(hcl) (hcl_feed((hcl), HCL_NULL, 0))
+HCL_EXPORT int hcl_endfeed (
+	hcl_t*            hcl
+);
 
 HCL_EXPORT int hcl_compile (
 	hcl_t*       hcl,

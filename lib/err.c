@@ -187,10 +187,46 @@ const hcl_ooch_t* hcl_geterrstr (hcl_t* hcl)
 	return hcl_errnum_to_errstr(hcl->errnum);
 }
 
+/*
 const hcl_ooch_t* hcl_geterrmsg (hcl_t* hcl)
 {
 	if (hcl->errmsg.len <= 0) return hcl_errnum_to_errstr(hcl->errnum);
 	return hcl->errmsg.buf;
+}
+*/
+
+const hcl_bch_t* hcl_geterrbmsg (hcl_t* hcl)
+{
+#if defined(HCL_OOCH_IS_BCH)
+	return (hcl->errmsg.len <= 0)? hcl_errnum_to_errstr(hcl->errnum): hcl->errmsg.buf;
+#else
+	const hcl_ooch_t* msg;
+	hcl_oow_t wcslen, mbslen;
+
+	msg = (hcl->errmsg.len <= 0)? hcl_errnum_to_errstr(hcl->errnum): hcl->errmsg.buf;
+
+	mbslen = HCL_COUNTOF(hcl->errmsg.xerrmsg);
+	hcl_conv_ucstr_to_bcstr_with_cmgr (msg, &wcslen, hcl->errmsg.xerrmsg, &mbslen, hcl_getcmgr(hcl));
+
+	return hcl->errmsg.xerrmsg;
+#endif
+}
+
+const hcl_uch_t* hcl_geterrumsg (hcl_t* hcl)
+{
+#if defined(HCL_OOCH_IS_BCH)
+	const hcl_ooch_t* msg;
+	hcl_oow_t wcslen, mbslen;
+
+	msg = (hcl->errmsg.len <= 0)? hcl_errnum_to_errstrerrstr(hcl->errnum): hcl->errmsg.buf;
+
+	wcslen = HCL_COUNTOF(hcl->errmsg.xerrmsg);
+	hcl_conv_bcstr_to_ucstr_with_cmgr (msg, &mbslen, hcl->errmsg.xerrmsg, &wcslen, hcl_getcmgr(hcl), 1);
+
+	return hcl->errmsg.xerrmsg;
+#else
+	return (hcl->errmsg.len == '\0')? hcl_errnum_to_errstr(hcl->errnum): hcl->errmsg.buf;
+#endif
 }
 
 const hcl_ooch_t* hcl_backuperrmsg (hcl_t* hcl)

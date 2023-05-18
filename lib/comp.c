@@ -395,7 +395,7 @@ HCL_INFO2 (hcl, "CLASS NAMED VAR [%.*js]\n", name->len, name->ptr);
 		}
 	}
 
-HCL_INFO2 (hcl, "NOT FOUND => %.*js\n", name->len, name->ptr);
+//HCL_INFO2 (hcl, "NOT FOUND => %.*js\n", name->len, name->ptr);
 	return 0; /* not found */
 }
 

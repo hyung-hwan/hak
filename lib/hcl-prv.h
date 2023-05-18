@@ -639,9 +639,8 @@ struct hcl_frd_t
 
 struct hcl_compiler_t
 {
-	/* output handler */
-	hcl_ioimpl_t printer;
-	hcl_iooutarg_t outarg;
+	/* callback pointer registerd upon compiler creation */
+	hcl_cb_t* cbp;
 
 	/* input handler */
 	hcl_ioimpl_t reader;

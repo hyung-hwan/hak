@@ -1803,15 +1803,15 @@ static int print_bcs (hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hcl_oow_t len)
 		ucsptr = ucsbuf;
 		while (ucslen > 0)
 		{
-			hcl->c->outarg.ptr = ucsptr;
-			hcl->c->outarg.len = ucslen;
+			hcl->io.outarg.ptr = ucsptr;
+			hcl->io.outarg.len = ucslen;
 
-			if (hcl->c->printer(hcl, HCL_IO_WRITE, &hcl->c->outarg) <= -1) return -1;
-			if (hcl->c->outarg.xlen <= 0) return 0; /* end of stream. but not failure */
+			if (hcl->io.printer(hcl, HCL_IO_WRITE, &hcl->io.outarg) <= -1) return -1;
+			if (hcl->io.outarg.xlen <= 0) return 0; /* end of stream. but not failure */
 
-			HCL_ASSERT (hcl, hcl->c->outarg.xlen <= len);
-			ucsptr += hcl->c->outarg.xlen;
-			ucslen -= hcl->c->outarg.xlen;
+			HCL_ASSERT (hcl, hcl->io.outarg.xlen <= len);
+			ucsptr += hcl->io.outarg.xlen;
+			ucslen -= hcl->io.outarg.xlen;
 		}
 
 		ptr += bcslen;
@@ -1823,15 +1823,15 @@ static int print_bcs (hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hcl_oow_t len)
 	optr = (hcl_bch_t*)ptr;
 	while (len > 0)
 	{
-		hcl->c->outarg.ptr = optr;
-		hcl->c->outarg.len = len;
+		hcl->io.outarg.ptr = optr;
+		hcl->io.outarg.len = len;
 
-		if (hcl->c->printer(hcl, HCL_IO_WRITE, &hcl->c->outarg) <= -1) return -1;
-		if (hcl->c->outarg.xlen <= 0) return 0; /* end of stream. but not failure */
+		if (hcl->io.printer(hcl, HCL_IO_WRITE, &hcl->io.outarg) <= -1) return -1;
+		if (hcl->io.outarg.xlen <= 0) return 0; /* end of stream. but not failure */
 
-		HCL_ASSERT (hcl, hcl->c->outarg.xlen <= len);
-		optr += hcl->c->outarg.xlen;
-		len -= hcl->c->outarg.xlen;
+		HCL_ASSERT (hcl, hcl->io.outarg.xlen <= len);
+		optr += hcl->io.outarg.xlen;
+		len -= hcl->io.outarg.xlen;
 	}
 #endif
 
@@ -1848,15 +1848,15 @@ static int print_ucs (hcl_fmtout_t* fmtout, const hcl_uch_t* ptr, hcl_oow_t len)
 	optr = (hcl_uch_t*)ptr;
 	while (len > 0)
 	{
-		hcl->c->outarg.ptr = optr;
-		hcl->c->outarg.len = len;
+		hcl->io.outarg.ptr = optr;
+		hcl->io.outarg.len = len;
 
-		if (hcl->c->printer(hcl, HCL_IO_WRITE, &hcl->c->outarg) <= -1) return -1;
-		if (hcl->c->outarg.xlen <= 0) return 0; /* end of stream. but not failure */
+		if (hcl->io.printer(hcl, HCL_IO_WRITE, &hcl->io.outarg) <= -1) return -1;
+		if (hcl->io.outarg.xlen <= 0) return 0; /* end of stream. but not failure */
 
-		HCL_ASSERT (hcl, hcl->c->outarg.xlen <= len);
-		optr += hcl->c->outarg.xlen;
-		len -= hcl->c->outarg.xlen;
+		HCL_ASSERT (hcl, hcl->io.outarg.xlen <= len);
+		optr += hcl->io.outarg.xlen;
+		len -= hcl->io.outarg.xlen;
 	}
 #else
 	hcl_oow_t bcslen, ucslen;
@@ -1871,15 +1871,15 @@ static int print_ucs (hcl_fmtout_t* fmtout, const hcl_uch_t* ptr, hcl_oow_t len)
 		bcsptr = bcsbuf;
 		while (bcslen > 0)
 		{
-			hcl->c->outarg.ptr = bcsptr;
-			hcl->c->outarg.len = bcslen;
+			hcl->io.outarg.ptr = bcsptr;
+			hcl->io.outarg.len = bcslen;
 
-			if (hcl->c->printer(hcl, HCL_IO_WRITE, &hcl->c->outarg) <= -1) return -1;
-			if (hcl->c->outarg.xlen <= 0) return 0; /* end of stream. but not failure */
+			if (hcl->io.printer(hcl, HCL_IO_WRITE, &hcl->io.outarg) <= -1) return -1;
+			if (hcl->io.outarg.xlen <= 0) return 0; /* end of stream. but not failure */
 
-			HCL_ASSERT (hcl, hcl->c->outarg.xlen <= len);
-			bcsptr += hcl->c->outarg.xlen;
-			bcslen -= hcl->c->outarg.xlen;
+			HCL_ASSERT (hcl, hcl->io.outarg.xlen <= len);
+			bcsptr += hcl->io.outarg.xlen;
+			bcslen -= hcl->io.outarg.xlen;
 		}
 
 		ptr += ucslen;

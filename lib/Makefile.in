@@ -170,10 +170,12 @@ libhcl_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 @ENABLE_HCLX_TRUE@libhclx_la_DEPENDENCIES = libhcl.la \
 @ENABLE_HCLX_TRUE@	$(am__DEPENDENCIES_5)
 am__libhclx_la_SOURCES_DIST = tmr.c hcl-tmr.h xutl.c xutl-sa.h \
-	hcl-xutl.h json.c hcl-json.h hcl-s.c hcl-s.h hcl-c.c hcl-c.h
+	hcl-xutl.h json.c hcl-json.h hcl-s.c hcl-s2.c hcl-s.h hcl-c.c \
+	hcl-c.h
 @ENABLE_HCLX_TRUE@am_libhclx_la_OBJECTS = libhclx_la-tmr.lo \
 @ENABLE_HCLX_TRUE@	libhclx_la-xutl.lo libhclx_la-json.lo \
-@ENABLE_HCLX_TRUE@	libhclx_la-hcl-s.lo libhclx_la-hcl-c.lo
+@ENABLE_HCLX_TRUE@	libhclx_la-hcl-s.lo libhclx_la-hcl-s2.lo \
+@ENABLE_HCLX_TRUE@	libhclx_la-hcl-c.lo
 libhclx_la_OBJECTS = $(am_libhclx_la_OBJECTS)
 libhclx_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
@@ -209,6 +211,7 @@ am__depfiles_remade = ./$(DEPDIR)/libhcl_la-bigint.Plo \
 	./$(DEPDIR)/libhcl_la-utl.Plo ./$(DEPDIR)/libhcl_la-xma.Plo \
 	./$(DEPDIR)/libhclx_la-hcl-c.Plo \
 	./$(DEPDIR)/libhclx_la-hcl-s.Plo \
+	./$(DEPDIR)/libhclx_la-hcl-s2.Plo \
 	./$(DEPDIR)/libhclx_la-json.Plo ./$(DEPDIR)/libhclx_la-tmr.Plo \
 	./$(DEPDIR)/libhclx_la-xutl.Plo
 am__mv = mv -f
@@ -468,7 +471,7 @@ libhcl_la_LIBADD = $(LIBADD_LIB_COMMON) $(am__append_6)
 @ENABLE_HCLX_TRUE@	tmr.c hcl-tmr.h \
 @ENABLE_HCLX_TRUE@	xutl.c xutl-sa.h hcl-xutl.h \
 @ENABLE_HCLX_TRUE@	json.c hcl-json.h \
-@ENABLE_HCLX_TRUE@	hcl-s.c hcl-s.h \
+@ENABLE_HCLX_TRUE@	hcl-s.c hcl-s2.c hcl-s.h \
 @ENABLE_HCLX_TRUE@	hcl-c.c hcl-c.h
 
 @ENABLE_HCLX_TRUE@libhclx_la_CPPFLAGS = $(CPPFLAGS_LIB_COMMON) $(CPPFLAGS_PFMOD)
@@ -597,6 +600,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhcl_la-xma.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhclx_la-hcl-c.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhclx_la-hcl-s.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhclx_la-hcl-s2.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhclx_la-json.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhclx_la-tmr.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhclx_la-xutl.Plo@am__quote@ # am--include-marker
@@ -827,6 +831,13 @@ libhclx_la-hcl-s.lo: hcl-s.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhclx_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libhclx_la-hcl-s.lo `test -f 'hcl-s.c' || echo '$(srcdir)/'`hcl-s.c
 
+libhclx_la-hcl-s2.lo: hcl-s2.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhclx_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libhclx_la-hcl-s2.lo -MD -MP -MF $(DEPDIR)/libhclx_la-hcl-s2.Tpo -c -o libhclx_la-hcl-s2.lo `test -f 'hcl-s2.c' || echo '$(srcdir)/'`hcl-s2.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libhclx_la-hcl-s2.Tpo $(DEPDIR)/libhclx_la-hcl-s2.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='hcl-s2.c' object='libhclx_la-hcl-s2.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhclx_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libhclx_la-hcl-s2.lo `test -f 'hcl-s2.c' || echo '$(srcdir)/'`hcl-s2.c
+
 libhclx_la-hcl-c.lo: hcl-c.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhclx_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libhclx_la-hcl-c.lo -MD -MP -MF $(DEPDIR)/libhclx_la-hcl-c.Tpo -c -o libhclx_la-hcl-c.lo `test -f 'hcl-c.c' || echo '$(srcdir)/'`hcl-c.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libhclx_la-hcl-c.Tpo $(DEPDIR)/libhclx_la-hcl-c.Plo
@@ -1015,6 +1026,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/libhcl_la-xma.Plo
 	-rm -f ./$(DEPDIR)/libhclx_la-hcl-c.Plo
 	-rm -f ./$(DEPDIR)/libhclx_la-hcl-s.Plo
+	-rm -f ./$(DEPDIR)/libhclx_la-hcl-s2.Plo
 	-rm -f ./$(DEPDIR)/libhclx_la-json.Plo
 	-rm -f ./$(DEPDIR)/libhclx_la-tmr.Plo
 	-rm -f ./$(DEPDIR)/libhclx_la-xutl.Plo
@@ -1090,6 +1102,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/libhcl_la-xma.Plo
 	-rm -f ./$(DEPDIR)/libhclx_la-hcl-c.Plo
 	-rm -f ./$(DEPDIR)/libhclx_la-hcl-s.Plo
+	-rm -f ./$(DEPDIR)/libhclx_la-hcl-s2.Plo
 	-rm -f ./$(DEPDIR)/libhclx_la-json.Plo
 	-rm -f ./$(DEPDIR)/libhclx_la-tmr.Plo
 	-rm -f ./$(DEPDIR)/libhclx_la-xutl.Plo
