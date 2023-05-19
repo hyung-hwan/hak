@@ -705,9 +705,8 @@ int main (int argc, char* argv[])
 
 	xtn->read_path = argv[opt.ind++];
 	if (opt.ind < argc) xtn->print_path = argv[opt.ind++];
-
-	//if (hcl_attachio(hcl, read_handler, print_handler) <= -1)
-	if (hcl_attachiostdwithbcstr(hcl, xtn->read_path, xtn->print_path) <= -1)
+/* TODO: add scan path */
+	if (hcl_attachiostdwithbcstr(hcl, xtn->read_path, "", xtn->print_path) <= -1)
 	{
 		hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: cannot attach IO streams - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
 		goto oops;

@@ -3875,6 +3875,15 @@ int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
 	return 0;
 
 oops:
+	/* if enter_list() is in feed_process_token(), the stack grows.
+	 * leave_list() pops an element off the stack. the stack can be
+	 * not empty if an error occurs outside feed_process_token() after
+	 * leave_list() in it. for example,
+	 *
+	 *  (              #aaa
+	 *  ^              ^
+	 *  leave_list()   error in flx_hmarked_ident() before a full cnode is processed
+	 */
 	feed_clean_up_reader_stack (hcl);
 	return -1;
 }

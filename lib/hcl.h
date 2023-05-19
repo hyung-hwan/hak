@@ -2220,12 +2220,14 @@ HCL_EXPORT int hcl_attachio (
 HCL_EXPORT int hcl_attachiostdwithbcstr (
 	hcl_t*           hcl,
 	const hcl_bch_t* read_file,
+	const hcl_bch_t* scan_file,
 	const hcl_bch_t* print_file
 );
 
 HCL_EXPORT int hcl_attachiostdwithucstr (
 	hcl_t*           hcl,
 	const hcl_uch_t* read_file,
+	const hcl_uch_t* scan_file,
 	const hcl_uch_t* print_file
 );
 

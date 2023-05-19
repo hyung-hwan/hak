@@ -285,6 +285,7 @@ struct xtn_t
 	 * since hcl_attachio() callls the open handler, these fields
 	 * are valid only inside the open handelr */
 	const char* read_path; /* main source file */
+	const char* scan_path; /* runtime input file */
 	const char* print_path; /* runtime output file */
 
         int reader_istty;
@@ -3389,6 +3390,139 @@ static int read_handler (hcl_t* hcl, hcl_iocmd_t cmd, void* arg)
 	}
 }
 
+/* --------------------------------------------------------------------- */
+static HCL_INLINE int open_in_stream (hcl_t* hcl, hcl_ioinarg_t* arg)
+{
+	xtn_t* xtn = GET_XTN(hcl);
+	bb_t* bb = HCL_NULL;
+
+	hcl_oow_t pathlen;
+
+	pathlen = xtn->read_path? hcl_count_bcstr(xtn->read_path): 0;
+
+	bb = (bb_t*)hcl_callocmem(hcl, HCL_SIZEOF(*bb) + (HCL_SIZEOF(hcl_bch_t) * (pathlen + 1)));
+	if (!bb) goto oops;
+
+	bb->fn = (hcl_bch_t*)(bb + 1);
+	if (pathlen > 0 && xtn->read_path)
+	{
+		hcl_copy_bcstr (bb->fn, pathlen + 1, xtn->read_path);
+		bb->fp = fopen(bb->fn, FOPEN_R_FLAGS);
+	}
+	else
+	{
+		bb->fn[0] = '\0';
+		bb->fp = stdin;
+	}
+
+	if (!bb->fp)
+	{
+		hcl_seterrbfmt (hcl, HCL_EIOERR, "unable to open %hs", bb->fn);
+		goto oops;
+	}
+
+	arg->handle = bb;
+	return 0;
+
+oops:
+	if (bb)
+	{
+		if (bb->fp && bb->fp != stdin) fclose (bb->fp);
+		hcl_freemem (hcl, bb);
+	}
+	return -1;
+}
+
+static HCL_INLINE int close_in_stream (hcl_t* hcl, hcl_ioinarg_t* arg)
+{
+	/*xtn_t* xtn = GET_XTN(hcl);*/
+	bb_t* bb;
+
+	bb = (bb_t*)arg->handle;
+	HCL_ASSERT (hcl, bb != HCL_NULL && bb->fp != HCL_NULL);
+
+	if (bb->fp != stdin) fclose (bb->fp);
+	hcl_freemem (hcl, bb);
+
+	arg->handle = HCL_NULL;
+	return 0;
+}
+
+static HCL_INLINE int read_in_stream (hcl_t* hcl, hcl_ioinarg_t* arg)
+{
+	/*xtn_t* xtn = GET_XTN(hcl);*/
+	bb_t* bb;
+	hcl_oow_t bcslen, ucslen, remlen;
+	int x;
+
+	bb = (bb_t*)arg->handle;
+	HCL_ASSERT (hcl, bb != HCL_NULL && bb->fp != HCL_NULL);
+	do
+	{
+		x = fgetc(bb->fp);
+		if (x == EOF)
+		{
+			if (ferror((FILE*)bb->fp))
+			{
+				hcl_seterrnum (hcl, HCL_EIOERR);
+				return -1;
+			}
+			break;
+		}
+
+		bb->buf[bb->len++] = x;
+	}
+	while (bb->len < HCL_COUNTOF(bb->buf) && x != '\r' && x != '\n');
+
+#if defined(HCL_OOCH_IS_UCH)
+	bcslen = bb->len;
+	ucslen = HCL_COUNTOF(arg->buf);
+	x = hcl_convbtooochars(hcl, bb->buf, &bcslen, arg->buf, &ucslen);
+	if (x <= -1 && ucslen <= 0) return -1;
+	/* if ucslen is greater than 0, i assume that some characters have been
+	 * converted properly. as the loop above reads an entire line if not too
+	 * large, the incomplete sequence error (x == -3) must happen after
+	 * successful conversion of at least 1 ooch character. so no explicit
+	 * check for the incomplete sequence error is required */
+#else
+	bcslen = (bb->len < HCL_COUNTOF(arg->buf))? bb->len: HCL_COUNTOF(arg->buf);
+	ucslen = bcslen;
+	hcl_copy_bchars (arg->buf, bb->buf, bcslen);
+#endif
+
+	remlen = bb->len - bcslen;
+	if (remlen > 0) memmove (bb->buf, &bb->buf[bcslen], remlen);
+	bb->len = remlen;
+
+	arg->xlen = ucslen;
+	return 0;
+}
+
+static int scan_handler (hcl_t* hcl, hcl_iocmd_t cmd, void* arg)
+{
+	switch (cmd)
+	{
+		case HCL_IO_OPEN:
+			return open_in_stream(hcl, (hcl_ioinarg_t*)arg);
+
+		case HCL_IO_CLOSE:
+			return close_in_stream(hcl, (hcl_ioinarg_t*)arg);
+
+		case HCL_IO_READ:
+			return read_in_stream(hcl, (hcl_ioinarg_t*)arg);
+
+		case HCL_IO_FLUSH:
+			/* no effect on an input stream */
+			return 0;
+
+		default:
+			hcl_seterrnum (hcl, HCL_EINTERN);
+			return -1;
+	}
+}
+
+/* --------------------------------------------------------------------- */
+
 static HCL_INLINE int open_out_stream (hcl_t* hcl, hcl_iooutarg_t* arg)
 {
 	xtn_t* xtn = GET_XTN(hcl);
@@ -3496,50 +3630,68 @@ static int print_handler (hcl_t* hcl, hcl_iocmd_t cmd, void* arg)
 	}
 }
 
-int hcl_attachiostdwithbcstr (hcl_t* hcl, const hcl_bch_t* read_file, const hcl_bch_t* print_file)
+/* --------------------------------------------------------------------- */
+
+int hcl_attachiostdwithbcstr (hcl_t* hcl, const hcl_bch_t* read_file, const hcl_bch_t* scan_file, const hcl_bch_t* print_file)
 {
 	xtn_t* xtn = GET_XTN(hcl);
 	int n;
 
 	HCL_ASSERT (hcl, xtn->read_path == HCL_NULL);
+	HCL_ASSERT (hcl, xtn->scan_path == HCL_NULL);
 	HCL_ASSERT (hcl, xtn->print_path == HCL_NULL);
 
 	xtn->read_path = read_file;
+	xtn->scan_path = scan_file;
 	xtn->print_path = print_file;
 
-	n = hcl_attachio(hcl, read_handler, HCL_NULL, print_handler);
+	n = hcl_attachio(hcl, read_handler, scan_handler, print_handler);
 
 	xtn->read_path = HCL_NULL;
+	xtn->scan_path = HCL_NULL;
 	xtn->print_path = HCL_NULL;
 
 	return n;
 }
 
-int hcl_attachiostdwithucstr (hcl_t* hcl, const hcl_uch_t* read_file, const hcl_uch_t* print_file)
+int hcl_attachiostdwithucstr (hcl_t* hcl, const hcl_uch_t* read_file, const hcl_uch_t* scan_file, const hcl_uch_t* print_file)
 {
 	xtn_t* xtn = GET_XTN(hcl);
 	int n;
 
 	HCL_ASSERT (hcl, xtn->read_path == HCL_NULL);
+	HCL_ASSERT (hcl, xtn->scan_path == HCL_NULL);
 	HCL_ASSERT (hcl, xtn->print_path == HCL_NULL);
 
 	xtn->read_path = hcl_duputobcstr(hcl, read_file, HCL_NULL);
 	if (HCL_UNLIKELY(!xtn->read_path)) return -1;
 
-	xtn->print_path = hcl_duputobcstr(hcl, print_file, HCL_NULL);
-	if (HCL_UNLIKELY(!xtn->print_path)) 
+	xtn->scan_path = hcl_duputobcstr(hcl, scan_file, HCL_NULL);
+	if (HCL_UNLIKELY(!xtn->scan_path)) 
 	{
 		hcl_freemem (hcl, xtn->read_path);
 		xtn->read_path = HCL_NULL;
 		return -1;
 	}
 
-	n = hcl_attachio(hcl, read_handler, HCL_NULL, print_handler);
+	xtn->print_path = hcl_duputobcstr(hcl, print_file, HCL_NULL);
+	if (HCL_UNLIKELY(!xtn->print_path)) 
+	{
+		hcl_freemem (hcl, xtn->scan_path);
+		hcl_freemem (hcl, xtn->read_path);
+		xtn->scan_path = HCL_NULL;
+		xtn->read_path = HCL_NULL;
+		return -1;
+	}
+
+	n = hcl_attachio(hcl, read_handler, scan_handler, print_handler);
 
 	hcl_freemem (hcl, xtn->read_path);
+	hcl_freemem (hcl, xtn->scan_path);
 	hcl_freemem (hcl, xtn->print_path);
 
 	xtn->read_path = HCL_NULL;
+	xtn->scan_path = HCL_NULL;
 	xtn->print_path = HCL_NULL;
 
 	return n;
@@ -3550,4 +3702,3 @@ int hcl_isstdreadertty (hcl_t* hcl)
 	xtn_t* xtn = GET_XTN(hcl);
 	return xtn->reader_istty;
 }
-
