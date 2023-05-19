@@ -854,7 +854,7 @@ struct hcl_class_t
 {
 	HCL_OBJ_HEADER;
 
-	hcl_oop_t mdic; /* method dictioanry. nil or a dictionary object */
+	hcl_oop_t mdic; /* method dictionary. nil or a dictionary object */
 
 	hcl_oop_t superclass;
 	hcl_oop_t nivars; /* smooi. */
@@ -1217,8 +1217,8 @@ struct hcl_iolxc_t
 };
 typedef struct hcl_iolxc_t hcl_iolxc_t;
 
-typedef struct hcl_ioinarg_t hcl_ioinarg_t;
-struct hcl_ioinarg_t
+typedef struct hcl_iosrarg_t hcl_iosrarg_t;
+struct hcl_iosrarg_t
 {
 	/**
 	 * [IN] I/O object name.
@@ -1249,7 +1249,7 @@ struct hcl_ioinarg_t
 	 * [IN] points to the data of the includer. It is #HCL_NULL for the
 	 * main stream.
 	 */
-	hcl_ioinarg_t* includer;
+	hcl_iosrarg_t* includer;
 
 	/*-----------------------------------------------------------------*/
 	/*----------- from here down, internal use only -------------------*/
@@ -1267,12 +1267,34 @@ struct hcl_ioinarg_t
 	/*-----------------------------------------------------------------*/
 };
 
+typedef struct hcl_ioinarg_t hcl_ioinarg_t;
+struct hcl_ioinarg_t
+{
+	/**
+	 * [OUT] I/O handle set by a handler.
+	 * The stream handler can set this field when it opens a stream.
+	 * All subsequent operations on the stream see this field as set
+	 * during opening.
+	 */
+	void* handle;
+
+	/**
+	 * [OUT] place data here for #HCL_IO_READ
+	 */
+	hcl_ooch_t buf[2048]; /* TODO: resize this if necessary */
+
+	/**
+	 * [OUT] place the number of characters read here for #HCL_IO_READ
+	 */
+	hcl_oow_t  xlen;
+};
+
 typedef struct hcl_iooutarg_t hcl_iooutarg_t;
 struct hcl_iooutarg_t
 {
 	/**
 	 * [OUT] I/O handle set by a handler.
-	 * The source stream handler can set this field when it opens a stream.
+	 * The stream handler can set this field when it opens a stream.
 	 * All subsequent operations on the stream see this field as set
 	 * during opening.
 	 */
@@ -1302,7 +1324,7 @@ struct hcl_iooutarg_t
 typedef int (*hcl_ioimpl_t) (
 	hcl_t*        hcl,
 	hcl_iocmd_t   cmd,
-	void*         arg /* hcl_ioinarg_t* or hcl_iooutarg_t* */
+	void*         arg /* hcl_iosrarg_t* or hcl_iooutarg_t* */
 );
 
 /* =========================================================================
@@ -1723,6 +1745,10 @@ struct hcl_t
 
 	struct
 	{
+		/* input handler */
+		hcl_ioimpl_t scanner;
+		hcl_ioinarg_t inarg;
+
 		/* output handler */
 		hcl_ioimpl_t printer;
 		hcl_iooutarg_t outarg;
@@ -2165,29 +2191,30 @@ HCL_EXPORT void hcl_abort (
 #	define hcl_switchprocess(hcl) ((hcl)->switch_proc = 1)
 #endif
 
-HCL_EXPORT void hcl_setbaseinloc (
+HCL_EXPORT void hcl_setbasesrloc (
 	hcl_t*    hcl,
 	hcl_oow_t line,
 	hcl_oow_t colm
 );
 
 /* if you should read charcters from the input stream before hcl_read(),
- * you can call hcl_readbaseinchar() */
-HCL_EXPORT hcl_iolxc_t* hcl_readbaseinchar (
+ * you can call hcl_readbasesrchar() */
+HCL_EXPORT hcl_iolxc_t* hcl_readbasesrchar (
 	hcl_t* hcl
 );
 
-/* TODO: don't expose hcl_readbaseinraw()
+/* TODO: don't expose hcl_readbasesrraw()
  *       find a better way not to use them */
-HCL_EXPORT hcl_ooch_t* hcl_readbaseinraw (
+HCL_EXPORT hcl_ooch_t* hcl_readbasesrraw (
 	hcl_t*     hcl,
 	hcl_oow_t* xlen
 );
 
 HCL_EXPORT int hcl_attachio (
 	hcl_t*         hcl,
-	hcl_ioimpl_t   reader,
-	hcl_ioimpl_t   printer
+	hcl_ioimpl_t   reader, /* source stream heandler */
+	hcl_ioimpl_t   scanner, /* runtime input stream handler */
+	hcl_ioimpl_t   printer /* runtime output stream handler */
 );
 
 HCL_EXPORT int hcl_attachiostdwithbcstr (

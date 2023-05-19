@@ -646,10 +646,10 @@ struct hcl_compiler_t
 	hcl_ioimpl_t reader;
 
 	/* static input data buffer */
-	hcl_ioinarg_t  inarg;
+	hcl_iosrarg_t  srarg;
 
 	/* pointer to the current input data. initially, it points to &inarg */
-	hcl_ioinarg_t* curinp;
+	hcl_iosrarg_t* curinp;
 
 	/* information about the last meaningful character read.
 	 * this is a copy of curinp->lxc if no ungetting is performed.
@@ -664,7 +664,7 @@ struct hcl_compiler_t
 
 	/* the last token read */
 	hcl_iotok_t  tok;
-	hcl_iolink_t* io_names;
+	hcl_iolink_t* sr_names;
 
 	hcl_synerr_t synerr;
 

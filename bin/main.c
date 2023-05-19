@@ -527,7 +527,7 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int cflags, int verbose)
 		hcl_ooch_t* ptr;
 		hcl_oow_t xlen;
 
-		ptr = hcl_readbaseinraw(hcl, &xlen);
+		ptr = hcl_readbasesrraw(hcl, &xlen);
 		if (HCL_UNLIKELY(!ptr)) goto oops;
 		if (xlen <= 0) break;
 		if (hcl_feed(hcl, ptr, xlen) <= -1) goto feed_error;

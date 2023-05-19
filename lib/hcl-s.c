@@ -316,7 +316,7 @@ static const hcl_bch_t* get_base_name (const hcl_bch_t* path)
 }
 
 
-static HCL_INLINE int open_input (hcl_t* hcl, hcl_ioinarg_t* arg)
+static HCL_INLINE int open_input (hcl_t* hcl, hcl_iosrarg_t* arg)
 {
 	worker_hcl_xtn_t* xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);
 	bb_t* bb = HCL_NULL;
@@ -412,7 +412,7 @@ oops:
 	return -1;
 }
 
-static HCL_INLINE int close_input (hcl_t* hcl, hcl_ioinarg_t* arg)
+static HCL_INLINE int close_input (hcl_t* hcl, hcl_iosrarg_t* arg)
 {
 	worker_hcl_xtn_t* xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);
 	bb_t* bb;
@@ -427,7 +427,7 @@ static HCL_INLINE int close_input (hcl_t* hcl, hcl_ioinarg_t* arg)
 	return 0;
 }
 
-static HCL_INLINE int read_input (hcl_t* hcl, hcl_ioinarg_t* arg)
+static HCL_INLINE int read_input (hcl_t* hcl, hcl_iosrarg_t* arg)
 {
 	worker_hcl_xtn_t* xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);
 	bb_t* bb;
@@ -545,13 +545,13 @@ static int read_handler (hcl_t* hcl, hcl_iocmd_t cmd, void* arg)
 	switch (cmd)
 	{
 		case HCL_IO_OPEN:
-			return open_input(hcl, (hcl_ioinarg_t*)arg);
+			return open_input(hcl, (hcl_iosrarg_t*)arg);
 
 		case HCL_IO_CLOSE:
-			return close_input(hcl, (hcl_ioinarg_t*)arg);
+			return close_input(hcl, (hcl_iosrarg_t*)arg);
 
 		case HCL_IO_READ:
-			return read_input(hcl, (hcl_ioinarg_t*)arg);
+			return read_input(hcl, (hcl_iosrarg_t*)arg);
 
 		default:
 			hcl_seterrnum (hcl, HCL_EINTERN);
@@ -700,7 +700,7 @@ hcl_server_proto_t* hcl_server_proto_open (hcl_oow_t xtnsize, hcl_server_worker_
 	if (hcl_ignite(proto->hcl, worker->server->cfg.actor_heap_size) <= -1) goto oops;
 	if (hcl_addbuiltinprims(proto->hcl) <= -1) goto oops;
 
-	if (hcl_attachio(proto->hcl, read_handler, print_handler) <= -1) goto oops;
+	if (hcl_attachio(proto->hcl, read_handler, HCL_NULL, print_handler) <= -1) goto oops;
 	return proto;
 
 oops:
@@ -943,7 +943,7 @@ static HCL_INLINE int read_char (hcl_server_proto_t* proto)
 		return 0;
 	}
 
-	proto->lxc = hcl_readbaseinchar(proto->hcl);
+	proto->lxc = hcl_readbasesrchar(proto->hcl);
 	if (!proto->lxc) return -1;
 	return 0;
 }
@@ -1406,7 +1406,7 @@ int hcl_server_proto_handle_request (hcl_server_proto_t* proto)
 
 			if (proto->req.state == HCL_SERVER_PROTO_REQ_IN_TOP_LEVEL) 
 			{
-				hcl_setbaseinloc (proto->hcl, 1, 1);
+				hcl_setbasesrloc (proto->hcl, 1, 1);
 				hcl_reset(proto->hcl);
 			}
 
