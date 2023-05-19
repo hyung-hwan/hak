@@ -4111,7 +4111,7 @@ int hcl_attachio (hcl_t* hcl, hcl_ioimpl_t reader, hcl_ioimpl_t scanner, hcl_ioi
 	if (reader)
 	{
 		/* clear unneeded source stream names */
-		/*clear_sr_names (hcl, 0); */
+		/*clear_sr_names (hcl); <---- TODO: tricky to clean up here */
 
 		/* initialize some other key fields */
 		hcl->c->nungots = 0;

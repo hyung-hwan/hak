@@ -1,0 +1,11 @@
+kind: pipeline
+type: docker
+name: hcl
+
+steps:
+- name: build-with-gcc13
+  image: docker.io/gcc:13.1.0
+  commands:
+    - mkdir bld-gcc13 && cd bld-gcc13
+    - ../configure
+    - make && make test
