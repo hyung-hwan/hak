@@ -8,4 +8,4 @@ steps:
   commands:
     - mkdir bld-gcc13 && cd bld-gcc13
     - ../configure
-    - make && make test
+    - make && make check
