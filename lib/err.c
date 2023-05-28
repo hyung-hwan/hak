@@ -242,6 +242,17 @@ void hcl_seterrnum (hcl_t* hcl, hcl_errnum_t errnum)
 	hcl->errmsg.len = 0; 
 }
 
+void hcl_seterrbmsg (hcl_t* hcl, hcl_errnum_t errnum, const hcl_bch_t* errmsg)
+{
+	hcl_seterrbfmt(hcl, errnum, "%hs", errmsg);
+}
+
+
+void hcl_seterrumsg (hcl_t* hcl, hcl_errnum_t errnum, const hcl_uch_t* errmsg)
+{
+	hcl_seterrbfmt(hcl, errnum, "%ls", errmsg);
+}
+
 
 static int err_bcs (hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hcl_oow_t len)
 {

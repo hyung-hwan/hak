@@ -4038,13 +4038,10 @@ int hcl_attachio (hcl_t* hcl, hcl_ioimpl_t reader, hcl_ioimpl_t scanner, hcl_ioi
 	hcl_ioinarg_t new_inarg;
 	hcl_iooutarg_t new_outarg;
 
-	if (reader)
+	if (!hcl->c)
 	{
-		if (!hcl->c)
-		{
-			if (init_compiler(hcl) <= -1) return -1;
-			inited_compiler = 1;
-		}
+		if (init_compiler(hcl) <= -1) return -1;
+		inited_compiler = 1;
 	}
 
 	if (reader)

@@ -2025,13 +2025,25 @@ HCL_EXPORT void hcl_seterrnum (
 	hcl_errnum_t errnum
 );
 
+HCL_EXPORT void hcl_seterrbmsg (
+	hcl_t*           hcl,
+	hcl_errnum_t     errnum,
+	const hcl_bch_t* errmsg
+);
+
+HCL_EXPORT void hcl_seterrumsg (
+	hcl_t*           hcl,
+	hcl_errnum_t     errnum,
+	const hcl_uch_t* errmsg
+);
+
 HCL_EXPORT void hcl_seterrwithsyserr (
 	hcl_t*       hcl,
 	int          syserr_type,
 	int          syserr_code
 );
 
-void hcl_seterrbfmtwithsyserr (
+HCL_EXPORT void hcl_seterrbfmtwithsyserr (
 	hcl_t*           hcl,
 	int              syserr_type,
 	int              syserr_code,
@@ -2039,7 +2051,7 @@ void hcl_seterrbfmtwithsyserr (
        	...
 );
 
-void hcl_seterrufmtwithsyserr (
+HCL_EXPORT void hcl_seterrufmtwithsyserr (
 	hcl_t*           hcl,
 	int              syserr_type,
 	int              syserr_code,
@@ -2089,8 +2101,10 @@ HCL_EXPORT const hcl_bch_t* hcl_geterrbmsg (
 
 #if defined(HCL_OOCH_IS_UCH)
 #	define hcl_geterrmsg hcl_geterrumsg
+#	define hcl_seterrmsg hcl_seterrumsg
 #else
 #	define hcl_geterrmsg hcl_geterrbmsg
+#	define hcl_seterrmsg hcl_seterrbmsg
 #endif
 
 HCL_EXPORT const hcl_ooch_t* hcl_backuperrmsg (
