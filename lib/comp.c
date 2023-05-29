@@ -404,18 +404,27 @@ HCL_INFO2 (hcl, "CLASS NAMED VAR [%.*js]\n", name->len, name->ptr);
 static int add_literal (hcl_t* hcl, hcl_oop_t obj, hcl_oow_t* index)
 {
 	hcl_oow_t capa, i, lfbase = 0;
-
+	hcl_oop_t tmp;
 
 	lfbase = (hcl->option.trait & HCL_TRAIT_INTERACTIVE)? hcl->c->fnblk.info[hcl->c->fnblk.depth].lfbase: 0;
 
 	/* TODO: speed up the following duplicate check loop */
 	for (i = lfbase; i < hcl->code.lit.len; i++)
 	{
-		/* this removes redundancy of symbols, characters, and integers. */
-		if (((hcl_oop_oop_t)hcl->code.lit.arr)->slot[i] == obj)
+		tmp = ((hcl_oop_oop_t)hcl->code.lit.arr)->slot[i];
+
+		if (tmp == obj)
 		{
+			/* this removes redundancy of symbols, characters, and integers. */
 			*index = i - lfbase;
-			return i;
+			return 0;
+		}
+		else if (HCL_IS_STRING(hcl, obj) && HCL_IS_STRING(hcl, tmp) && hcl_equalobjs(hcl, obj, tmp))
+		{
+			/* a string object requires equality check. however, the string created to the literal frame
+			 * must be made immutable. non-immutable string literals are source of various problems */
+			*index = i - lfbase;
+			return 0;
 		}
 	}
 
@@ -435,6 +444,8 @@ static int add_literal (hcl_t* hcl, hcl_oop_t obj, hcl_oow_t* index)
 	*index = hcl->code.lit.len - lfbase;
 
 	((hcl_oop_oop_t)hcl->code.lit.arr)->slot[hcl->code.lit.len++] = obj;
+	/* TODO: RDONLY? */
+	/*if (HCL_IS_OOP_POINTER(obj)) HCL_OBJ_SET_FLAGS_RDONLY(obj, 1); */
 	return 0;
 }
 
