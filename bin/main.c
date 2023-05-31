@@ -122,7 +122,7 @@ static void vm_checkbc (hcl_t* hcl, hcl_oob_t bcode)
 
 static void gc_hcl (hcl_t* hcl)
 {
-	xtn_t* xtn = (xtn_t*)hcl_getxtn(hcl);
+	/*xtn_t* xtn = (xtn_t*)hcl_getxtn(hcl);*/
 	/*if (xtn->sym_errstr) xtn->sym_errstr = hcl_moveoop(hcl, xtn->sym_errstr);*/
 }
 

@@ -3562,10 +3562,12 @@ static HCL_INLINE int close_out_stream (hcl_t* hcl, hcl_iooutarg_t* arg)
 static HCL_INLINE int write_out_stream (hcl_t* hcl, hcl_iooutarg_t* arg)
 {
 	/*xtn_t* xtn = GET_XTN(hcl);*/
+	const hcl_ooch_t* ptr;
 	hcl_bch_t bcsbuf[1024];
 	hcl_oow_t bcslen, ucslen, donelen;
 	int x;
 
+	ptr = (const hcl_ooch_t*)arg->ptr;
 	donelen = 0;
 
 	do
@@ -3573,14 +3575,14 @@ static HCL_INLINE int write_out_stream (hcl_t* hcl, hcl_iooutarg_t* arg)
 	#if defined(HCL_OOCH_IS_UCH)
 		bcslen = HCL_COUNTOF(bcsbuf);
 		ucslen = arg->len - donelen;
-		x = hcl_convootobchars(hcl, &arg->ptr[donelen], &ucslen, bcsbuf, &bcslen);
+		x = hcl_convootobchars(hcl, &ptr[donelen], &ucslen, bcsbuf, &bcslen);
 		if (x <= -1 && ucslen <= 0) return -1;
 	#else
 		bcslen = HCL_COUNTOF(bcsbuf);
 		ucslen = arg->len - donelen;
 		if (ucslen > bcslen) ucslen = bcslen;
 		else if (ucslen < bcslen) bcslen = ucslen;
-		hcl_copy_bchars (bcsbuf, &arg->ptr[donelen], bcslen);
+		hcl_copy_bchars (bcsbuf, &ptr[donelen], bcslen);
 	#endif
 
 		if (fwrite(bcsbuf, HCL_SIZEOF(bcsbuf[0]), bcslen, (FILE*)arg->handle) < bcslen)
@@ -3592,6 +3594,23 @@ static HCL_INLINE int write_out_stream (hcl_t* hcl, hcl_iooutarg_t* arg)
 		donelen += ucslen;
 	}
 	while (donelen < arg->len);
+
+	arg->xlen = arg->len;
+	return 0;
+}
+
+static HCL_INLINE int write_bytes_out_stream (hcl_t* hcl, hcl_iooutarg_t* arg)
+{
+	/*xtn_t* xtn = GET_XTN(hcl);*/
+	const hcl_uint8_t* ptr;
+
+	ptr = (const hcl_uint8_t*)arg->ptr; // take the buffer as a byte series
+
+	if (fwrite(ptr, HCL_SIZEOF(*ptr), arg->len, (FILE*)arg->handle) < arg->len)
+	{
+		hcl_seterrnum (hcl, HCL_EIOERR);
+		return -1;
+	}
 
 	arg->xlen = arg->len;
 	return 0;
@@ -3620,6 +3639,9 @@ static int print_handler (hcl_t* hcl, hcl_iocmd_t cmd, void* arg)
 
 		case HCL_IO_WRITE:
 			return write_out_stream(hcl, (hcl_iooutarg_t*)arg);
+
+		case HCL_IO_WRITE_BYTES:
+			return write_bytes_out_stream(hcl, (hcl_iooutarg_t*)arg);
 
 		case HCL_IO_FLUSH:
 			return flush_out_stream(hcl, (hcl_iooutarg_t*)arg);

@@ -198,7 +198,7 @@ struct hcl_server_worker_t
 	hcl_sckaddr_t peeraddr;
 
 	int claimed;
-	
+
 	hcl_ntime_t alloc_time;
 	hcl_server_worker_state_t state;
 	hcl_server_worker_opstate_t opstate;
@@ -241,7 +241,7 @@ struct hcl_server_t
 	 *  the code must ensure that the logging functions are called in the
 	 *  context of the main server thraed only.  error message setting is
 	 *  also performed in the main thread context for the same reason.
-	 * 
+	 *
 	 *  however, you may have noticed mixed use of HCL_ASSERT with dummy_hcl
 	 *  in both the server thread context and the client thread contexts.
 	 *  it should be ok as assertion is only for debugging and it's operation
@@ -327,7 +327,7 @@ static HCL_INLINE int open_input (hcl_t* hcl, hcl_iosrarg_t* arg)
 	if (arg->includer)
 	{
 		/* includee */
-		/* TOOD: Do i need to skip prepending the include path if the included path is an absolute path? 
+		/* TOOD: Do i need to skip prepending the include path if the included path is an absolute path?
 		 *       it may be good for security if i don't skip it. we can lock the included files in a given directory */
 		hcl_oow_t ucslen, bcslen, parlen;
 		const hcl_bch_t* fn, * fb;
@@ -404,7 +404,7 @@ static HCL_INLINE int open_input (hcl_t* hcl, hcl_iosrarg_t* arg)
 	return 0;
 
 oops:
-	if (bb) 
+	if (bb)
 	{
 		if (bb->fd >= 0 && bb->fd != xtn->proto->worker->sck) close (bb->fd);
 		hcl_freemem (hcl, bb);
@@ -461,7 +461,7 @@ start_over:
 
 		bb->len += x;
 	}
-	else 
+	else
 	{
 		/* main stream */
 		hcl_server_t* server;
@@ -518,7 +518,7 @@ start_over:
 	bcslen = bb->len;
 	ucslen = HCL_COUNTOF(arg->buf);
 	y = hcl_convbtooochars(hcl, bb->buf, &bcslen, arg->buf, &ucslen);
-	if (y <= -1 && ucslen <= 0) 
+	if (y <= -1 && ucslen <= 0)
 	{
 		if (y == -3 && x != 0) goto start_over; /* incomplete sequence and not EOF yet */
 		return -1;
@@ -574,12 +574,12 @@ static int print_handler (hcl_t* hcl, hcl_iocmd_t cmd, void* arg)
 			worker_hcl_xtn_t* xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);
 			hcl_iooutarg_t* outarg = (hcl_iooutarg_t*)arg;
 
-			if (hcl_server_proto_feed_reply(xtn->proto, outarg->ptr, outarg->len, 0) <= -1) 
+			if (hcl_server_proto_feed_reply(xtn->proto, outarg->ptr, outarg->len, 0) <= -1)
 			{
 				/* TODO: change error code and message. propagage the errormessage from proto */
 				hcl_seterrbfmt (hcl, HCL_EIOERR, "failed to write message via proto");
 
-				/* writing failure on the socket is a critical failure. 
+				/* writing failure on the socket is a critical failure.
 				 * execution must get aborted */
 				hcl_abort (hcl);
 				return -1;
@@ -588,6 +588,24 @@ static int print_handler (hcl_t* hcl, hcl_iocmd_t cmd, void* arg)
 			return 0;
 		}
 
+		case HCL_IO_WRITE_BYTES:
+		{
+			worker_hcl_xtn_t* xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);
+			hcl_iooutarg_t* outarg = (hcl_iooutarg_t*)arg;
+
+			if (hcl_server_proto_feed_reply_bytes(xtn->proto, outarg->ptr, outarg->len, 0) <= -1)
+			{
+				/* TODO: change error code and message. propagage the errormessage from proto */
+				hcl_seterrbfmt (hcl, HCL_EIOERR, "failed to write message via proto");
+
+				/* writing failure on the socket is a critical failure.
+				 * execution must get aborted */
+				hcl_abort (hcl);
+				return -1;
+			}
+			outarg->xlen = outarg->len;
+			return 0;
+		}
 		default:
 			hcl_seterrnum (hcl, HCL_EINTERN);
 			return -1;
@@ -736,7 +754,7 @@ static int write_reply_chunk (hcl_server_proto_t* proto)
 		}
 
 		iov[count].iov_base = cl,
-		iov[count++].iov_len = snprintf(cl, HCL_SIZEOF(cl), "%zu:", proto->reply.len); 
+		iov[count++].iov_len = snprintf(cl, HCL_SIZEOF(cl), "%zu:", proto->reply.len);
 	}
 	iov[count].iov_base = proto->reply.buf;
 	iov[count++].iov_len = proto->reply.len;
@@ -750,12 +768,12 @@ static int write_reply_chunk (hcl_server_proto_t* proto)
 		msg.msg_iovlen = count - index;
 		nwritten = sendmsg(proto->worker->sck, &msg, 0);
 		/*nwritten = writev(proto->worker->sck, (const struct iovec*)&iov[index], count - index);*/
-		if (nwritten <= -1) 
+		if (nwritten <= -1)
 		{
 			/* error occurred inside the worker thread shouldn't affect the error information
 			 * in the server object. so here, i just log a message */
 			HCL_LOG2 (proto->hcl, SERVER_LOGMASK_ERROR, "Unable to sendmsg on %d - %hs\n", proto->worker->sck, strerror(errno));
-			return -1; 
+			return -1;
 		}
 
 		while (index < count && (size_t)nwritten >= iov[index].iov_len)
@@ -850,6 +868,24 @@ int hcl_server_proto_feed_reply (hcl_server_proto_t* proto, const hcl_ooch_t* pt
 #endif
 }
 
+int hcl_server_proto_feed_reply_bytes (hcl_server_proto_t* proto, const hcl_bch_t* ptr, hcl_oow_t len, int escape)
+{
+	while (len > 0)
+	{
+		if (escape && (*ptr == '\\' || *ptr == '\"'))
+		{
+			if (proto->reply.len >= HCL_COUNTOF(proto->reply.buf) && write_reply_chunk(proto) <=-1) return -1;
+			proto->reply.buf[proto->reply.len++] = '\\';
+		}
+
+		if (proto->reply.len >= HCL_COUNTOF(proto->reply.buf) && write_reply_chunk(proto) <=-1) return -1;
+		proto->reply.buf[proto->reply.len++] = *ptr++;
+		len--;
+	}
+
+	return 0;
+}
+
 int hcl_server_proto_end_reply (hcl_server_proto_t* proto, const hcl_ooch_t* failmsg)
 {
 	HCL_ASSERT (proto->hcl, proto->reply.type == HCL_SERVER_PROTO_REPLY_CHUNKED);
@@ -869,7 +905,7 @@ int hcl_server_proto_end_reply (hcl_server_proto_t* proto, const hcl_ooch_t* fai
 
 			if (write_reply_chunk(proto) <= -1) return -1;
 		}
-		else 
+		else
 		{
 			/* some chunks have beed emitted. but at the end, an error has occurred.
 			 * send -1: as the last chunk. the receiver must rub out the reply
@@ -936,7 +972,7 @@ static HCL_INLINE int is_digitchar (hcl_ooci_t c)
 
 static HCL_INLINE int read_char (hcl_server_proto_t* proto)
 {
-	if (proto->unread_count > 0) 
+	if (proto->unread_count > 0)
 	{
 		proto->lxc = &proto->unread_lxc;
 		proto->unread_count--;
@@ -993,7 +1029,7 @@ static HCL_INLINE int add_token_char (hcl_server_proto_t* proto, hcl_ooch_t c)
 
 		capa = HCL_ALIGN_POW2(proto->tok.len + 1, HCL_SERVER_TOKEN_NAME_ALIGN);
 		tmp = (hcl_ooch_t*)hcl_server_reallocmem(proto->worker->server, proto->tok.ptr, capa * HCL_SIZEOF(*tmp));
-		if (!tmp) 
+		if (!tmp)
 		{
 			hcl_seterrbfmt (proto->hcl, HCL_ESYSMEM, "Out of memory in allocating token buffer");
 			return -1;
@@ -1013,13 +1049,13 @@ static void classify_current_ident_token (hcl_server_proto_t* proto)
 	{
 		hcl_server_proto_token_type_t type;
 		hcl_ooch_t name[32];
-	} tab[] = 
+	} tab[] =
 	{
 		{ HCL_SERVER_PROTO_TOKEN_BEGIN,          { '.','B','E','G','I','N','\0' } },
 		{ HCL_SERVER_PROTO_TOKEN_END,            { '.','E','N','D','\0' } },
 		{ HCL_SERVER_PROTO_TOKEN_SCRIPT,         { '.','S','C','R','I','P','T','\0' } },
 		{ HCL_SERVER_PROTO_TOKEN_EXIT,           { '.','E','X','I','T','\0' } },
-		
+
 		{ HCL_SERVER_PROTO_TOKEN_KILL_WORKER,    { '.','K','I','L','L','-','W','O','R','K','E','R','\0' } },
 		{ HCL_SERVER_PROTO_TOKEN_SHOW_WORKERS,   { '.','S','H','O','W','-','W','O','R','K','E','R','S','\0' } },
 		/* TODO: add more */
@@ -1028,7 +1064,7 @@ static void classify_current_ident_token (hcl_server_proto_t* proto)
 
 	for (i = 0; i < HCL_COUNTOF(tab); i++)
 	{
-		if (hcl_comp_oochars_oocstr(proto->tok.ptr, proto->tok.len, tab[i].name) == 0) 
+		if (hcl_comp_oochars_oocstr(proto->tok.ptr, proto->tok.len, tab[i].name) == 0)
 		{
 			SET_TOKEN_TYPE (proto, tab[i].type);
 			break;
@@ -1106,7 +1142,7 @@ static int get_token (hcl_server_proto_t* proto)
 
 static void exec_runtime_handler (hcl_tmr_t* tmr, const hcl_ntime_t* now, hcl_tmr_event_t* evt)
 {
-	/* [NOTE] this handler is executed in the main server thread 
+	/* [NOTE] this handler is executed in the main server thread
 	 *         when it calls hcl_tmr_fire().  */
 
 	hcl_server_proto_t* proto;
@@ -1118,14 +1154,14 @@ static void exec_runtime_handler (hcl_tmr_t* tmr, const hcl_ntime_t* now, hcl_tm
 
 static void exec_runtime_updater (hcl_tmr_t* tmr, hcl_tmr_index_t old_index, hcl_tmr_index_t new_index, hcl_tmr_event_t* evt)
 {
-	/* [NOTE] this handler is executed in the main server thread 
+	/* [NOTE] this handler is executed in the main server thread
 	 *        when it calls hcl_tmr_fire() */
 
 	hcl_server_proto_t* proto;
 	proto = (hcl_server_proto_t*)evt->ctx;
 	HCL_ASSERT (proto->hcl, proto->exec_runtime_event_index == old_index);
-	
-	/* the event is being removed by hcl_tmr_fire() or by hcl_tmr_delete() 
+
+	/* the event is being removed by hcl_tmr_fire() or by hcl_tmr_delete()
 	 * if new_index is HCL_TMR_INVALID_INDEX. it's being updated if not. */
 	proto->exec_runtime_event_index = new_index;
 }
@@ -1133,7 +1169,7 @@ static void exec_runtime_updater (hcl_tmr_t* tmr, hcl_tmr_index_t old_index, hcl
 static int insert_exec_timer (hcl_server_proto_t* proto, const hcl_ntime_t* tmout)
 {
 	/* [NOTE] this is executed in the worker thread */
-	
+
 	hcl_tmr_event_t event;
 	hcl_tmr_index_t index;
 	hcl_server_t* server;
@@ -1165,7 +1201,7 @@ static int insert_exec_timer (hcl_server_proto_t* proto, const hcl_ntime_t* tmou
 static void delete_exec_timer (hcl_server_proto_t* proto)
 {
 	/* [NOTE] this is executed in the worker thread. if the event has been fired
-	 *        in the server thread, proto->exec_runtime_event_index should be 
+	 *        in the server thread, proto->exec_runtime_event_index should be
 	 *        HCL_TMR_INVALID_INDEX as set by exec_runtime_handler */
 	hcl_server_t* server;
 
@@ -1174,7 +1210,7 @@ static void delete_exec_timer (hcl_server_proto_t* proto)
 	pthread_mutex_lock (&server->tmr_mutex);
 	if (proto->exec_runtime_event_index != HCL_TMR_INVALID_INDEX)
 	{
-		/* the event has not been fired yet. let's delete it 
+		/* the event has not been fired yet. let's delete it
 		 * if it has been fired, the index it shall be HCL_TMR_INVALID_INDEX already */
 
 		hcl_tmr_delete (server->tmr, proto->exec_runtime_event_index);
@@ -1214,7 +1250,7 @@ static int execute_script (hcl_server_proto_t* proto, const hcl_bch_t* trigger)
 		}
 	}
 
-	if (hcl_server_proto_end_reply(proto, failmsg) <= -1) 
+	if (hcl_server_proto_end_reply(proto, failmsg) <= -1)
 	{
 		HCL_LOG1 (proto->hcl, SERVER_LOGMASK_ERROR, "Cannot finalize reply for %hs\n", trigger);
 		return -1;
@@ -1244,7 +1280,7 @@ static void reformat_synerr (hcl_t* hcl)
 	orgmsg = hcl_backuperrmsg(hcl);
 	hcl_seterrbfmt (
 		hcl, HCL_ESYNERR,
-		"%js%hs%.*js at %js%hsline %zu column %zu", 
+		"%js%hs%.*js at %js%hsline %zu column %zu",
 		orgmsg,
 		(synerr.tgt.len > 0? " near ": ""),
 		synerr.tgt.len, synerr.tgt.val,
@@ -1299,7 +1335,7 @@ static int kill_server_worker (hcl_server_proto_t* proto, hcl_oow_t wid)
 		else
 		{
 			worker = server->wid_map.ptr[wid].u.worker;
-			if (!worker) 
+			if (!worker)
 			{
 				hcl_server_seterrnum (server, HCL_ENOENT);
 				xret = -1;
@@ -1347,9 +1383,9 @@ int hcl_server_proto_handle_request (hcl_server_proto_t* proto)
 				hcl_seterrbfmt (proto->hcl, HCL_EINVAL, "No new line after .EXIT");
 				goto fail_with_errmsg;
 			}
-			
+
 			hcl_server_proto_start_reply (proto);
-			if (hcl_server_proto_end_reply(proto, HCL_NULL) <= -1) 
+			if (hcl_server_proto_end_reply(proto, HCL_NULL) <= -1)
 			{
 				HCL_LOG0 (proto->hcl, SERVER_LOGMASK_ERROR, "Unable to finalize reply for .EXIT\n");
 				return -1;
@@ -1394,7 +1430,7 @@ int hcl_server_proto_handle_request (hcl_server_proto_t* proto)
 			/* i must not jump to fail_with_errmsg when execute_script() fails.
 			 * it may have produced some normal output already. so the function
 			 * is supposed to handle an error in itself */
-			if (execute_script(proto, ".END") <= -1) return -1; 
+			if (execute_script(proto, ".END") <= -1) return -1;
 			proto->req.state = HCL_SERVER_PROTO_REQ_IN_TOP_LEVEL;
 			break;
 
@@ -1404,7 +1440,7 @@ int hcl_server_proto_handle_request (hcl_server_proto_t* proto)
 			hcl_ooch_t ch;
 			hcl_oow_t feed_count = 0;
 
-			if (proto->req.state == HCL_SERVER_PROTO_REQ_IN_TOP_LEVEL) 
+			if (proto->req.state == HCL_SERVER_PROTO_REQ_IN_TOP_LEVEL)
 			{
 				hcl_setbasesrloc (proto->hcl, 1, 1);
 				hcl_reset(proto->hcl);
@@ -1475,7 +1511,7 @@ int hcl_server_proto_handle_request (hcl_server_proto_t* proto)
 				hcl_seterrbfmt (proto->hcl, HCL_EINVAL, "No new line after .SHOW-WORKERS");
 				goto fail_with_errmsg;
 			}
-			
+
 			hcl_server_proto_start_reply (proto);
 			proto->worker->opstate = HCL_SERVER_WORKER_OPSTATE_EXECUTE;
 			show_server_workers (proto);
@@ -1484,7 +1520,7 @@ int hcl_server_proto_handle_request (hcl_server_proto_t* proto)
 				HCL_LOG0 (proto->hcl, SERVER_LOGMASK_ERROR, "Unable to finalize reply for .SHOW-WORKERS\n");
 				return -1;
 			}
-			
+
 			break;
 
 		case HCL_SERVER_PROTO_TOKEN_KILL_WORKER:
@@ -1552,7 +1588,7 @@ hcl_server_t* hcl_server_open (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, hcl_server_p
 	hcl_bitmask_t trait;
 
 	server = (hcl_server_t*)HCL_MMGR_ALLOC(mmgr, HCL_SIZEOF(*server) + xtnsize);
-	if (!server) 
+	if (!server)
 	{
 		if (errnum) *errnum = HCL_ESYSMEM;
 		return HCL_NULL;
@@ -1579,7 +1615,7 @@ hcl_server_t* hcl_server_open (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, hcl_server_p
 
 #if defined(O_NONBLOCK) || defined(O_CLOEXEC)
 	fcv = fcntl(pfd[0], F_GETFD, 0);
-	if (fcv >= 0) 
+	if (fcv >= 0)
 	{
 	#if defined(O_NONBLOCK)
 		fcv |= O_NONBLOCK;
@@ -1591,7 +1627,7 @@ hcl_server_t* hcl_server_open (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, hcl_server_p
 	}
 
 	fcv = fcntl(pfd[1], F_GETFD, 0);
-	if (fcv >= 0) 
+	if (fcv >= 0)
 	{
 	#if defined(O_NONBLOCK)
 		fcv |= O_NONBLOCK;
@@ -1602,7 +1638,7 @@ hcl_server_t* hcl_server_open (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, hcl_server_p
 		fcntl(pfd[1], F_SETFD, fcv);
 	}
 #endif
-	
+
 	xtn = (server_hcl_xtn_t*)hcl_getxtn(hcl);
 	xtn->server = server;
 
@@ -1615,7 +1651,7 @@ hcl_server_t* hcl_server_open (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, hcl_server_p
 	server->tmr = tmr;
 
 	server->cfg.logmask = ~(hcl_bitmask_t)0;
-	server->cfg.worker_stack_size = 512000UL; 
+	server->cfg.worker_stack_size = 512000UL;
 	server->cfg.actor_heap_size = 512000UL;
 
 	HCL_INIT_NTIME (&server->cfg.worker_idle_timeout, 0, 0);
@@ -1634,7 +1670,7 @@ hcl_server_t* hcl_server_open (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, hcl_server_p
 	pthread_mutex_init (&server->log_mutex, HCL_NULL);
 
 	/* the dummy hcl is used for this server to perform primitive operations
-	 * such as getting system time or logging. so the heap size doesn't 
+	 * such as getting system time or logging. so the heap size doesn't
 	 * need to be changed from the tiny value set above. */
 	hcl_setoption (server->dummy_hcl, HCL_LOG_MASK, &server->cfg.logmask);
 	hcl_setcmgr (server->dummy_hcl, hcl_server_getcmgr(server));
@@ -1646,7 +1682,7 @@ hcl_server_t* hcl_server_open (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, hcl_server_p
 	hcl_setoption (server->dummy_hcl, HCL_TRAIT, &trait);
 
 	return server;
-	
+
 oops:
 	/* NOTE: pipe should be closed if jump to here is made after pipe() above */
 	if (tmr) hcl_tmr_close (tmr);
@@ -1669,7 +1705,7 @@ void hcl_server_close (hcl_server_t* server)
 		server->wid_map.free_first = HCL_SERVER_WID_INVALID;
 		server->wid_map.free_last = HCL_SERVER_WID_INVALID;
 	}
-	
+
 	pthread_mutex_destroy (&server->log_mutex);
 	pthread_mutex_destroy (&server->tmr_mutex);
 	pthread_mutex_destroy (&server->worker_mutex);
@@ -1772,10 +1808,10 @@ static hcl_server_worker_t* alloc_worker (hcl_server_t* server, int cli_sck, con
 	worker->sck = cli_sck;
 	worker->peeraddr = *peeraddr;
 	worker->server = server;
-	
+
 	server->dummy_hcl->vmprim.vm_gettime (server->dummy_hcl, &worker->alloc_time); /* TODO: the callback may return monotonic time. find a way to guarantee it is realtime??? */
 
-	if (server->wid_map.free_first == HCL_SERVER_WID_INVALID && prepare_to_acquire_wid(server) <= -1) 
+	if (server->wid_map.free_first == HCL_SERVER_WID_INVALID && prepare_to_acquire_wid(server) <= -1)
 	{
 		hcl_server_freemem (server, worker);
 		return HCL_NULL;
@@ -1787,7 +1823,7 @@ static hcl_server_worker_t* alloc_worker (hcl_server_t* server, int cli_sck, con
 
 static void close_worker_socket (hcl_server_worker_t* worker)
 {
-	if (worker->sck >= 0) 
+	if (worker->sck >= 0)
 	{
 		if (worker->proto)
 		{
@@ -1806,7 +1842,7 @@ static void close_worker_socket (hcl_server_worker_t* worker)
 static void free_worker (hcl_server_worker_t* worker)
 {
 	close_worker_socket (worker);
-	
+
 	if (worker->proto)
 	{
 		HCL_LOG1 (worker->proto->hcl, SERVER_LOGMASK_INFO, "Killing worker [%zu]\n", worker->wid);
@@ -1847,7 +1883,7 @@ static void add_worker_to_server (hcl_server_t* server, hcl_server_worker_state_
 static void zap_worker_in_server (hcl_server_t* server, hcl_server_worker_t* worker)
 {
 	hcl_server_worker_state_t wstate;
-	
+
 	HCL_ASSERT (server->dummy_hcl, worker->server == server);
 
 	wstate = worker->state;
@@ -1887,7 +1923,7 @@ static void* worker_main (void* ctx)
 	while (!server->stopreq)
 	{
 		worker->opstate = HCL_SERVER_WORKER_OPSTATE_WAIT;
-		if (hcl_server_proto_handle_request(worker->proto) <= 0) 
+		if (hcl_server_proto_handle_request(worker->proto) <= 0)
 		{
 			worker->opstate = HCL_SERVER_WORKER_OPSTATE_ERROR;
 			break;
@@ -1898,7 +1934,7 @@ static void* worker_main (void* ctx)
 	worker->proto = HCL_NULL;
 
 	pthread_mutex_lock (&server->worker_mutex);
-	close_worker_socket (worker); 
+	close_worker_socket (worker);
 	if (!worker->claimed)
 	{
 		zap_worker_in_server (server, worker);
@@ -1917,7 +1953,7 @@ static void purge_all_workers (hcl_server_t* server, hcl_server_worker_state_t w
 	{
 		pthread_mutex_lock (&server->worker_mutex);
 		worker = server->worker_list[wstate].head;
-		if (worker) 
+		if (worker)
 		{
 			zap_worker_in_server (server, worker);
 			worker->claimed = 1;
@@ -1953,7 +1989,7 @@ static void set_err_with_syserr (hcl_server_t* server, int syserr_type, int syse
 	hcl_errnum_t errnum;
 	hcl_oow_t tmplen, tmplen2;
 	va_list ap;
-	
+
 	static hcl_bch_t b_dash[] = { ' ', '-', ' ', '\0' };
 	static hcl_uch_t u_dash[] = { ' ', '-', ' ', '\0' };
 
@@ -2072,7 +2108,7 @@ static int setup_listeners (hcl_server_t* server, const hcl_bch_t* addrs)
 		/* [NOTE] no whitespaces are allowed before and after a comma */
 
 		sck_fam = hcl_bchars_to_sckaddr(addr_ptr, addr_len, &srv_addr, &srv_len);
-		if (sck_fam <= -1) 
+		if (sck_fam <= -1)
 		{
 			hcl_server_seterrbfmt (server, HCL_EINVAL, "unable to convert address - %.*hs", addr_len, addr_ptr);
 			HCL_LOG1 (server->dummy_hcl, SERVER_LOGMASK_ERROR, "%js\n", hcl_server_geterrmsg(server));
@@ -2092,7 +2128,7 @@ static int setup_listeners (hcl_server_t* server, const hcl_bch_t* addrs)
 
 	#if defined(O_NONBLOCK) || defined(O_CLOEXEC)
 		fcv = fcntl(srv_fd, F_GETFD, 0);
-		if (fcv >= 0) 
+		if (fcv >= 0)
 		{
 		#if defined(O_NONBLOCK)
 			fcv |= O_NONBLOCK;
@@ -2245,7 +2281,7 @@ int hcl_server_start (hcl_server_t* server, const hcl_bch_t* addrs)
 
 			#if defined(O_NONBLOCK) || defined(O_CLOEXEC)
 				fcv = fcntl(cli_fd, F_GETFD, 0);
-				if (fcv >= 0) 
+				if (fcv >= 0)
 				{
 				#if defined(O_NONBLOCK)
 					fcv &= ~O_NONBLOCK; // force the accepted socket to be blocking
@@ -2263,7 +2299,7 @@ int hcl_server_start (hcl_server_t* server, const hcl_bch_t* addrs)
 					pthread_mutex_lock (&server->worker_mutex);
 					flood = (server->worker_list[HCL_SERVER_WORKER_STATE_ALIVE].count >= server->cfg.worker_max_count);
 					pthread_mutex_unlock (&server->worker_mutex);
-					if (flood) 
+					if (flood)
 					{
 						HCL_LOG1 (server->dummy_hcl, SERVER_LOGMASK_ERROR, "Not accepting connection for too many workers - socket %d\n", cli_fd);
 						goto drop_connection;
@@ -2313,8 +2349,8 @@ int hcl_server_setoption (hcl_server_t* server, hcl_server_option_t id, const vo
 			if (server->dummy_hcl)
 			{
 				/* setting this affects the dummy hcl immediately.
-				 * existing hcl instances inside worker threads won't get 
-				 * affected. new hcl instances to be created later 
+				 * existing hcl instances inside worker threads won't get
+				 * affected. new hcl instances to be created later
 				 * is supposed to use the new value */
 				hcl_bitmask_t trait;
 
@@ -2329,11 +2365,11 @@ int hcl_server_setoption (hcl_server_t* server, hcl_server_option_t id, const vo
 
 		case HCL_SERVER_LOG_MASK:
 			server->cfg.logmask = *(const hcl_bitmask_t*)value;
-			if (server->dummy_hcl) 
+			if (server->dummy_hcl)
 			{
 				/* setting this affects the dummy hcl immediately.
-				 * existing hcl instances inside worker threads won't get 
-				 * affected. new hcl instances to be created later 
+				 * existing hcl instances inside worker threads won't get
+				 * affected. new hcl instances to be created later
 				 * is supposed to use the new value */
 				hcl_setoption (server->dummy_hcl, HCL_LOG_MASK, value);
 			}
@@ -2342,11 +2378,11 @@ int hcl_server_setoption (hcl_server_t* server, hcl_server_option_t id, const vo
 		case HCL_SERVER_WORKER_MAX_COUNT:
 			server->cfg.worker_max_count = *(hcl_oow_t*)value;
 			return 0;
-			
+
 		case HCL_SERVER_WORKER_STACK_SIZE:
 			server->cfg.worker_stack_size = *(hcl_oow_t*)value;
 			return 0;
-			
+
 		case HCL_SERVER_WORKER_IDLE_TIMEOUT:
 			server->cfg.worker_idle_timeout = *(hcl_ntime_t*)value;
 			return 0;
@@ -2354,7 +2390,7 @@ int hcl_server_setoption (hcl_server_t* server, hcl_server_option_t id, const vo
 		case HCL_SERVER_ACTOR_HEAP_SIZE:
 			server->cfg.actor_heap_size = *(hcl_oow_t*)value;
 			return 0;
-			
+
 		case HCL_SERVER_ACTOR_MAX_RUNTIME:
 			server->cfg.actor_max_runtime = *(hcl_ntime_t*)value;
 			return 0;
@@ -2391,7 +2427,7 @@ int hcl_server_getoption (hcl_server_t* server, hcl_server_option_t id, void* va
 		case HCL_SERVER_WORKER_STACK_SIZE:
 			*(hcl_oow_t*)value = server->cfg.worker_stack_size;
 			return 0;
-			
+
 		case HCL_SERVER_WORKER_IDLE_TIMEOUT:
 			*(hcl_ntime_t*)value = server->cfg.worker_idle_timeout;
 			return 0;

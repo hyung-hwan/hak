@@ -1790,6 +1790,7 @@ static int print_bcs (hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hcl_oow_t len)
 {
 	hcl_t* hcl = (hcl_t*)fmtout->ctx;
 
+#if 0
 #if defined(HCL_OOCH_IS_UCH)
 	hcl_oow_t ucslen, bcslen;
 	hcl_ooch_t ucsbuf[64], * ucsptr;
@@ -1827,6 +1828,23 @@ static int print_bcs (hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hcl_oow_t len)
 		hcl->io.outarg.len = len;
 
 		if (hcl->io.printer(hcl, HCL_IO_WRITE, &hcl->io.outarg) <= -1) return -1;
+		if (hcl->io.outarg.xlen <= 0) return 0; /* end of stream. but not failure */
+
+		HCL_ASSERT (hcl, hcl->io.outarg.xlen <= len);
+		optr += hcl->io.outarg.xlen;
+		len -= hcl->io.outarg.xlen;
+	}
+#endif
+#else
+	hcl_bch_t* optr;
+
+	optr = (hcl_bch_t*)ptr;
+	while (len > 0)
+	{
+		hcl->io.outarg.ptr = optr;
+		hcl->io.outarg.len = len;
+
+		if (hcl->io.printer(hcl, HCL_IO_WRITE_BYTES, &hcl->io.outarg) <= -1) return -1;
 		if (hcl->io.outarg.xlen <= 0) return 0; /* end of stream. but not failure */
 
 		HCL_ASSERT (hcl, hcl->io.outarg.xlen <= len);

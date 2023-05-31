@@ -627,7 +627,7 @@ struct hcl_context_t
 
 	/* the initial context is created with the initial function object in this field.
 	 * a function-based context is created with the activating function object.
-	 * a block-based context is created with the function object that the base field of 
+	 * a block-based context is created with the function object that the base field of
 	 * the home context of the activating block context points to. */
 	hcl_oop_function_t base; /* function */
 
@@ -653,11 +653,11 @@ struct hcl_context_t
 	/* instance variable access instructions hold the index to a variable within
 	 * the the containing class. If the class inherits from a superclass and the
 	 * superclass chain contains instance variables, the actual index must be
-	 * added with the number of instance variables in the superclass chain. 
+	 * added with the number of instance variables in the superclass chain.
 	 *
 	 * for example, the following instruction accesses the instance variable slot
-	 * at index 3. if the class of the instance has 4 instance variables in the 
-	 * superclass side, the method context activated has 4 in thie field. 
+	 * at index 3. if the class of the instance has 4 instance variables in the
+	 * superclass side, the method context activated has 4 in thie field.
 	 * therefore, the instruction accesses the instance variable slot at index 7.
 	 *   push_ivar 3
 	 * the debug output shows this instruction as "push_ivar 3; [4]"
@@ -717,7 +717,7 @@ struct hcl_process_t
 
 	/* == variable indexed part == */
 	hcl_oop_t slot[1]; /* process stack */
-	
+
 	/* after the process stack comes the exception stack.
 	 * the exception stack is composed of instruction pointers and some context values.
 	 * the instruction pointers are OOPs of small integers. safe without GC.
@@ -878,7 +878,7 @@ struct hcl_class_t
 
 	/* [0] - instance methods, MethodDictionary
 	 * [1] - class methods, MethodDictionary */
-	hcl_oop_dic_t  mthdic[2];      
+	hcl_oop_dic_t  mthdic[2];
 
 	hcl_oop_nsdic_t nsup; /* pointer to the upper namespace */
 	hcl_oop_nsdic_t nsdic; /* dictionary used for namespacing - may be nil when there are no subitems underneath */
@@ -904,9 +904,9 @@ struct hcl_class_t
 	hcl_oop_t      trsize; /* trailer size for new instances */
 	hcl_oop_t      trgc; /* trailer gc callback */
 
-	/* [0] - initial values for instance variables of new instances 
+	/* [0] - initial values for instance variables of new instances
 	 * [1] - initial values for class instance variables */
-	hcl_oop_t      initv[2]; 
+	hcl_oop_t      initv[2];
 #endif
 	/* indexed part afterwards */
 	hcl_oop_t      cvar[1];   /* class instance variables and class variables. */
@@ -1198,6 +1198,7 @@ enum hcl_iocmd_t
 	HCL_IO_CLOSE,
 	HCL_IO_READ,
 	HCL_IO_WRITE,
+	HCL_IO_WRITE_BYTES,
 	HCL_IO_FLUSH
 };
 typedef enum hcl_iocmd_t hcl_iocmd_t;
@@ -1301,18 +1302,21 @@ struct hcl_iooutarg_t
 	void*        handle;
 
 	/**
-	 * [IN] the pointer to the beginning of the character string
-	 *      to write
+	 * [IN] the pointer to the beginning of the character/byte string
+	 *      to write.
+	 *      hcl_ooch_t* for HCL_IO_WRITE
+	 *      hcl_bch_t* or hcl_uint8_t* for HCL_IO_WRITE_BYTES
 	 */
-	hcl_ooch_t*  ptr;
+	void*  ptr;
 
 	/**
-	 * [IN] total number of characters to write
+	 * [IN] total number of characters/bytes to write
 	 */
 	hcl_oow_t    len;
 
 	/**
-	 * [OUT] place the number of characters written here for HCL_IO_WRITE
+	 * [OUT] place the number of characters/bytes written here for
+	 *       HCL_IO_WRITE or HCL_IO_WRITE_BYTES
 	 */
 	hcl_oow_t    xlen;
 };
@@ -1696,7 +1700,7 @@ struct hcl_t
 		} lit;
 
 		/* the cumulative number of temporaries collected at the global(top-level) level */
-		hcl_oow_t ngtmprs; 
+		hcl_oow_t ngtmprs;
 
 		/* array that holds the location of the byte code emitted */
 		hcl_dbgi_t* dbgi;
@@ -1778,8 +1782,8 @@ struct hcl_t
 #define HCL_STACK_GETTOP(hcl) HCL_STACK_GET(hcl, (hcl)->sp)
 #define HCL_STACK_SETTOP(hcl,obj_) HCL_STACK_SET(hcl, (hcl)->sp, obj_)
 
-/* [NOTE] 
- *  the following macros don't commit the active stack pointer(hcl->sp) 
+/* [NOTE]
+ *  the following macros don't commit the active stack pointer(hcl->sp)
  *  to hcl->processor->active->sp immediately.
  */
 #define HCL_STACK_POP(hcl) ((hcl)->sp = (hcl)->sp - 1)
@@ -1806,7 +1810,7 @@ struct hcl_t
 /* change the receiver of a message */
 #define HCL_STACK_SETRCV(hcl,nargs,newrcv) HCL_STACK_SET(hcl, (hcl)->sp - nargs - 1, newrcv)
 
-/* 
+/*
  * .....
  * argument 1
  * argument 0
@@ -1904,7 +1908,7 @@ enum hcl_syncode_t
 	HCL_SYNCODE_TRY,
 	HCL_SYNCODE_UNTIL,
 	HCL_SYNCODE_WHILE
-	
+
 };
 typedef enum hcl_syncode_t hcl_syncode_t;
 
