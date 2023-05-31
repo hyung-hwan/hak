@@ -16,7 +16,7 @@ steps:
   image: docker.io/silkeh/clang:15
   commands:
     - mkdir bld-clang15 && cd bld-clang15
-    - ../configure
+    - ../configure CC=clang
     - make && make check
   depends_on:
     - clone
