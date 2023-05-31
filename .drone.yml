@@ -9,3 +9,14 @@ steps:
     - mkdir bld-gcc13 && cd bld-gcc13
     - ../configure
     - make && make check
+  depends_on:
+    - clone
+
+- name: build-with-clang15
+  image: docker.io/silkeh/clang:15
+  commands:
+    - mkdir bld-clang15 && cd bld-clang15
+    - ../configure
+    - make && make check
+  depends_on:
+    - clone
