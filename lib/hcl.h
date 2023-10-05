@@ -2261,10 +2261,6 @@ HCL_EXPORT void hcl_flushio (
 	hcl_t*       hcl
 );
 
-HCL_EXPORT hcl_cnode_t* hcl_read (
-	hcl_t*       hcl
-);
-
 HCL_EXPORT int hcl_print (
 	hcl_t*       hcl,
 	hcl_oop_t    obj

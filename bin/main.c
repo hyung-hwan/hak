@@ -435,75 +435,6 @@ static hcl_oop_t execute_in_batch_mode (hcl_t* hcl, int verbose)
 	return retv;
 }
 
-static int main_loop (hcl_t* hcl, xtn_t* xtn, int cflags, int verbose)
-{
-	while (1)
-	{
-		hcl_cnode_t* obj;
-		int n;
-
-/*
-static int count = 0;
-if (count %5 == 0) hcl_reset (hcl);
-count++;
-*/
-		obj = hcl_read(hcl);
-		if (!obj)
-		{
-			if (hcl->errnum == HCL_EFINIS)
-			{
-				/* end of input */
-				break;
-			}
-			else if (hcl->errnum == HCL_ESYNERR)
-			{
-				print_synerr (hcl);
-				if (hcl_isstdreadertty(hcl) && hcl_getsynerrnum(hcl) != HCL_SYNERR_EOF)
-				{
-					/* TODO: drain remaining data in the reader including the actual input stream and buffered data in hcl */
-					continue;
-				}
-			}
-			else
-			{
-				hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: cannot read object - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
-			}
-			goto oops;
-		}
-
-		if (verbose) hcl_prbfmt (hcl, "\n"); /* flush the output buffer by hcl_print above */
-		n = hcl_compile(hcl, obj, cflags);
-		hcl_freecnode (hcl, obj); /* not needed any more */
-
-		if (n <= -1)
-		{
-			if (hcl->errnum == HCL_ESYNERR)
-			{
-				print_synerr (hcl);
-			}
-			else
-			{
-				hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: cannot compile object - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
-			}
-			/* carry on? */
-
-			if (!hcl_isstdreadertty(hcl)) goto oops;
-		}
-		else if (hcl_isstdreadertty(hcl))
-		{
-			/* interactive mode */
-			execute_in_interactive_mode (hcl);
-		}
-	}
-
-	if (!hcl_isstdreadertty(hcl) && hcl_getbclen(hcl) > 0) execute_in_batch_mode (hcl, verbose);
-
-	return 0;
-
-oops:
-	return -1;
-}
-
 static int on_fed_cnode_in_interactive_mode (hcl_t* hcl, hcl_cnode_t* obj)
 {
 	if (hcl_compile(hcl, obj, HCL_COMPILE_CLEAR_CODE | HCL_COMPILE_CLEAR_FNBLK) <= -1) return -1;
@@ -568,7 +499,7 @@ int main (int argc, char* argv[])
 	};
 	static hcl_bopt_t opt =
 	{
-		"l:xv",
+		"l:v",
 		lopt
 	};
 
@@ -576,7 +507,7 @@ int main (int argc, char* argv[])
 	hcl_oow_t heapsize = DEFAULT_HEAPSIZE;
 	int cflags;
 	int verbose = 0;
-	int experimental = 0;
+	/*int experimental = 0;*/
 
 #if defined(HCL_BUILD_DEBUG)
 	const char* dbgopt = HCL_NULL;
@@ -600,9 +531,9 @@ int main (int argc, char* argv[])
 				logopt = opt.arg;
 				break;
 
-			case 'x':
+			/*case 'x':
 				experimental = 1;
-				break;
+				break;*/
 
 			case 'v':
 				verbose = 1;
@@ -744,15 +675,7 @@ int main (int argc, char* argv[])
 	cflags = 0;
 	if (hcl_isstdreadertty(hcl)) cflags = HCL_COMPILE_CLEAR_CODE | HCL_COMPILE_CLEAR_FNBLK;
 
-	if (experimental)
-	{
-		/* this is to test the feed-based reader */
-		if (feed_loop(hcl, xtn, cflags, verbose) <= -1) goto oops;
-	}
-	else
-	{
-		if (main_loop(hcl, xtn, cflags, verbose) <= -1) goto oops;
-	}
+	if (feed_loop(hcl, xtn, cflags, verbose) <= -1) goto oops;
 
 	set_signal_to_default (SIGINT);
 	hcl_close (hcl);
