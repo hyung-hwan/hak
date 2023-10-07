@@ -17373,6 +17373,23 @@ HCL_PROJECT_AUTHOR="${PACKAGE_BUGREPORT}"
 HCL_PROJECT_URL="${PACKAGE_URL}"
 
 
+if test `expr " $0" : " '.*"` = 0; then
+	hcl_configure_cmd="'$0'"
+else
+	hcl_configure_cmd="$0"
+fi
+
+
+cat >>confdefs.h <<_ACEOF
+#define HCL_CONFIGURE_ARGS "$ac_configure_args"
+_ACEOF
+
+
+cat >>confdefs.h <<_ACEOF
+#define HCL_CONFIGURE_CMD "$hcl_configure_cmd"
+_ACEOF
+
+
 ac_config_files="$ac_config_files Makefile lib/Makefile mod/Makefile bin/Makefile t/Makefile"
 
 cat >confcache <<\_ACEOF
@@ -19102,9 +19119,7 @@ $as_echo X/"$am_mf" |
     { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
 $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
 as_fn_error $? "Something went wrong bootstrapping makefile fragments
-    for automatic dependency tracking.  If GNU make was not used, consider
-    re-running the configure script with MAKE=\"gmake\" (or whatever is
-    necessary).  You can also try re-running configure with the
+    for automatic dependency tracking.  Try re-running configure with the
     '--disable-dependency-tracking' option to at least be able to build
     the package (albeit without support for automatic dependency tracking).
 See \`config.log' for more details" "$LINENO" 5; }

@@ -291,6 +291,12 @@
 /* build release/debug */
 #undef HCL_BUILD_RELEASE
 
+/* configure arguments */
+#undef HCL_CONFIGURE_ARGS
+
+/* configure command */
+#undef HCL_CONFIGURE_CMD
+
 /* enable dynamic module capability */
 #undef HCL_ENABLE_DYNAMIC_MODULE
 

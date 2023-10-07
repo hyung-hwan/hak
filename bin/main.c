@@ -335,6 +335,11 @@ static void set_signal_to_default (int sig)
 
 /* ========================================================================= */
 
+static void print_info (void)
+{
+	printf ("Configured with: %s %s\n", HCL_CONFIGURE_CMD, HCL_CONFIGURE_ARGS);
+}
+
 static void print_synerr (hcl_t* hcl)
 {
 	hcl_synerr_t synerr;
@@ -494,6 +499,7 @@ int main (int argc, char* argv[])
 #endif
 		{ ":heapsize",    '\0' },
 		{ ":log",         'l' },
+		{ ":info",        '\0' },
 
 		{ HCL_NULL,       '\0' }
 	};
@@ -507,6 +513,7 @@ int main (int argc, char* argv[])
 	hcl_oow_t heapsize = DEFAULT_HEAPSIZE;
 	int cflags;
 	int verbose = 0;
+	int show_info = 0;
 	/*int experimental = 0;*/
 
 #if defined(HCL_BUILD_DEBUG)
@@ -552,6 +559,11 @@ int main (int argc, char* argv[])
 					break;
 				}
 			#endif
+				else if (hcl_comp_bcstr(opt.lngopt, "info") == 0)
+				{
+					show_info = 1;
+					break;
+				}
 
 				goto print_usage;
 
@@ -621,6 +633,13 @@ int main (int argc, char* argv[])
 		if (handle_dbgopt(hcl, dbgopt) <= -1) goto oops;
 	}
 #endif
+
+	if (show_info)
+	{
+		print_info ();
+		return 0;
+	}
+
 
 	if (hcl_ignite(hcl, heapsize) <= -1)
 	{

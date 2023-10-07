@@ -680,6 +680,16 @@ dnl ====  subsititution of some key items ====
 AC_SUBST(HCL_PROJECT_AUTHOR, "${PACKAGE_BUGREPORT}")
 AC_SUBST(HCL_PROJECT_URL, "${PACKAGE_URL}")
 
+dnl === configure arguments
+if test `expr " [$]0" : " '.*"` = 0; then
+	hcl_configure_cmd="'[$]0'"
+else
+	hcl_configure_cmd="[$]0"
+fi
+
+AC_DEFINE_UNQUOTED(HCL_CONFIGURE_ARGS, ["$ac_configure_args"], [configure arguments])
+AC_DEFINE_UNQUOTED(HCL_CONFIGURE_CMD, ["$hcl_configure_cmd"], [configure command])
+
 AC_CONFIG_FILES([
 	Makefile 
 	lib/Makefile 
