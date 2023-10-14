@@ -316,7 +316,7 @@ static const hcl_bch_t* get_base_name (const hcl_bch_t* path)
 }
 
 
-static HCL_INLINE int open_input (hcl_t* hcl, hcl_iosrarg_t* arg)
+static HCL_INLINE int open_read_stream (hcl_t* hcl, hcl_iosrarg_t* arg)
 {
 	worker_hcl_xtn_t* xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);
 	bb_t* bb = HCL_NULL;
@@ -412,7 +412,7 @@ oops:
 	return -1;
 }
 
-static HCL_INLINE int close_input (hcl_t* hcl, hcl_iosrarg_t* arg)
+static HCL_INLINE int close_read_stream (hcl_t* hcl, hcl_iosrarg_t* arg)
 {
 	worker_hcl_xtn_t* xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);
 	bb_t* bb;
@@ -545,10 +545,10 @@ static int read_handler (hcl_t* hcl, hcl_iocmd_t cmd, void* arg)
 	switch (cmd)
 	{
 		case HCL_IO_OPEN:
-			return open_input(hcl, (hcl_iosrarg_t*)arg);
+			return open_read_stream(hcl, (hcl_iosrarg_t*)arg);
 
 		case HCL_IO_CLOSE:
-			return close_input(hcl, (hcl_iosrarg_t*)arg);
+			return close_read_stream(hcl, (hcl_iosrarg_t*)arg);
 
 		case HCL_IO_READ:
 			return read_input(hcl, (hcl_iosrarg_t*)arg);

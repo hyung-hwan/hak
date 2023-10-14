@@ -204,6 +204,18 @@ HCL_EXPORT int hcl_server_proto_feed_reply (
 	int                 escape
 );
 
+HCL_EXPORT int hcl_server_proto_feed_reply_bytes (
+	hcl_server_proto_t* proto,
+	const hcl_bch_t*    ptr,
+	hcl_oow_t           len,
+	int                 escape
+);
+
+
+HCL_EXPORT int hcl_server_proto_handle_request (
+	hcl_server_proto_t* proto
+);
+
 #if defined(__cplusplus)
 }
 #endif
