@@ -221,7 +221,7 @@ int hcl_fmt_object_ (hcl_fmtout_t* fmtout, hcl_oop_t obj)
 		{ "(:",      "(" },  /*HCL_CONCODE_MLIST */
 		{ "[",       "[" },  /*HCL_CONCODE_ARRAY */
 		{ "#[",      "[" },  /*HCL_CONCODE_BYTEARRAY */ 
-		{ "{",       "{" },  /*HCL_CONCODE_DIC */
+		{ "#{",      "{" },  /*HCL_CONCODE_DIC */
 		{ "#(",      "[" }   /*HCL_CONCODE_QLIST */
 	};
 

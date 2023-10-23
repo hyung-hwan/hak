@@ -112,7 +112,7 @@
 #	if !defined(HAVE___BUILTIN_MEMSET) || \
 	   !defined(HAVE___BUILTIN_MEMCPY) || \
 	   !defined(HAVE___BUILTIN_MEMMOVE) || \
-	   !defined(HAVE___BUILTIN_MEMCMP) 
+	   !defined(HAVE___BUILTIN_MEMCMP)
 #		include <string.h>
 #	endif
 
@@ -186,11 +186,12 @@ enum hcl_iotok_type_t
 	HCL_IOTOK_LPAREN,    /* ( */
 	HCL_IOTOK_RPAREN,    /* ) */
 	HCL_IOTOK_LPARCOLON, /* (: */
-	HCL_IOTOK_BAPAREN,   /* #[ */
-	HCL_IOTOK_QLPAREN,   /* #( */
-	HCL_IOTOK_LBRACK,    /* [ */
+	HCL_IOTOK_BAPAREN,   /* #[ - byte array parenthesis */
+	HCL_IOTOK_QLPAREN,   /* #( - quoted-list parenthesis */
+	HCL_IOTOK_DLPAREN,   /* #{ - dictionary parenthese */
+	HCL_IOTOK_LBRACK,    /* [ - array */
 	HCL_IOTOK_RBRACK,    /* ] */
-	HCL_IOTOK_LBRACE,    /* { */
+	HCL_IOTOK_LBRACE,    /* { - block */
 	HCL_IOTOK_RBRACE,    /* } */
 	HCL_IOTOK_VBAR,      /* | */
 	HCL_IOTOK_EOL,       /* end of line */
@@ -318,7 +319,7 @@ struct hcl_var_info_t
 	int type;
 	/* ctx_offset 0 means the current context.
 	 *            1 means current->home.
-	 *            2 means current->home->home. 
+	 *            2 means current->home->home.
 	 * index_in_ctx is a relative index within the context found.
 	 */
 	hcl_oow_t ctx_offset; /* context offset */
@@ -447,7 +448,7 @@ struct hcl_cframe_t
 		} _break;
 
 		/* COP_COMPILE_CLASS_P1, COP_COMPILE_CLASS_P2 */
-		struct 
+		struct
 		{
 			hcl_ooi_t nsuperclasses;
 			hcl_ioloc_t start_loc;
@@ -515,7 +516,7 @@ typedef struct hcl_clsblk_info_t hcl_clsblk_info_t;
 
 /* reader stack for list reading */
 typedef struct hcl_rstl_t hcl_rstl_t;
-struct hcl_rstl_t 
+struct hcl_rstl_t
 {
 	hcl_cnode_t* head;
 	hcl_cnode_t* tail;
@@ -689,7 +690,7 @@ struct hcl_compiler_t
 			hcl_ioloc_t loc;
 			hcl_ioloc_t _oloc;
 
-			union 
+			union
 			{
 				hcl_flx_dt_t dt; /* delimiter token */
 				hcl_flx_hc_t hc; /* hash-marked character */
@@ -748,13 +749,13 @@ struct hcl_compiler_t
 
 
 /* hcl_context_t, hcl_block_t, hcl_function_t stores the local variable information
- * 
+ *
  * Use up to 29 bits in a 32-bit hcl_ooi_t. Exclude the tag bit and the sign bit.
  * | SIGN | INSTA | VA | NARGS | NRVARS | NLVARS | TAG |
  *     1            1     8       8        11        2    <= 32
  * -----------------------------------------------------------
  * Parameters to the MAKE_BLOCK or MAKE_FUNCTION instructions
- *  | INSTA | VA | NARGS | NRVARS | NLVARS 
+ *  | INSTA | VA | NARGS | NRVARS | NLVARS
  *    1       1      4      4        6         <= 16 (HCL_CODE_LONG_PARAM_SIZE 1, two params)
  *    1       1      8      8        11        <= 32 (HCL_CODE_LONG_PARAM_SIZE 2, two params, use 29 bits to avoid collection when converted to a smooi)
  *
@@ -762,9 +763,9 @@ struct hcl_compiler_t
  * NARGS and NRVARS are also used for the CALL and CALL2 instructions.
  * CALL encodes NARGS in one parameter.
  * CALLR encodes NARGS in one parameter and NRVARS in another parameter.
- * NARGS and NRVARS must not exceed a single parameter size. 
+ * NARGS and NRVARS must not exceed a single parameter size.
  */
- 
+
 #if defined(HCL_CODE_LONG_PARAM_SIZE) && (HCL_CODE_LONG_PARAM_SIZE == 1)
 
 #	define MAX_CODE_NBLKARGS            (0xFu) /* 15 - 4 bits*/
@@ -794,7 +795,7 @@ struct hcl_compiler_t
 #	define GET_BLK_MASK_NARGS(x) (((x) >> 19) & 0xFF)
 #	define GET_BLK_MASK_NRVARS(x) (((x) >> 11) & 0xFF)
 #	define GET_BLK_MASK_NLVARS(x) ((x) & 0x7FF)
-	
+
 #	define MAX_CODE_JUMP                (0xFFFFu)
 #	define MAX_CODE_PARAM               (0xFFFFu)
 #	define MAX_CODE_PARAM2              (0xFFFFFFFFu) /* 32 bits */
@@ -1096,11 +1097,11 @@ enum hcl_bcode_t
 
 	HCL_CODE_CALL_X                   = 0xD4, /* 212 ## */
 	HCL_CODE_CALL_R                   = 0xD5, /* 213 ## ##*/
-	HCL_CODE_PUSH_RETURN_R            = 0xD6, /* 214 */ 
-	HCL_CODE_TRY_ENTER                = 0xD7, /* 215 ## */ 
+	HCL_CODE_PUSH_RETURN_R            = 0xD6, /* 214 */
+	HCL_CODE_TRY_ENTER                = 0xD7, /* 215 ## */
 
 	HCL_CODE_STORE_INTO_CTXTEMPVAR_X  = 0xD8, /* 216 ## */
-	HCL_CODE_TRY_ENTER2               = 0xD9, /* 217 ## */ 
+	HCL_CODE_TRY_ENTER2               = 0xD9, /* 217 ## */
 	HCL_CODE_TRY_EXIT                 = 0xDA, /* 218 */
 	HCL_CODE_THROW                    = 0xDB, /* 219 */
 
