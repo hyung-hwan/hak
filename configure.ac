@@ -1,4 +1,4 @@
-dnl AC_PREREQ([2.67])
+AC_PREREQ([2.71])
 
 AC_INIT([hcl],[0.1.0],[Chung, Hyung-Hwan (hyunghwan.chung@gmail.com)],[],[http://code.miflux.com/@hcl])
 
@@ -19,6 +19,9 @@ dnl m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 dnl determine a C compiler to use
 AC_PROG_CC
+
+dnl determine a go compiler to use
+AC_PROG_GO
 
 dnl determine some key programs
 AC_PROG_INSTALL
@@ -104,7 +107,9 @@ AC_LINK_IFELSE(
 )
 
 dnl check header files.
-AC_HEADER_STDC
+AC_CHECK_INCLUDES_DEFAULT
+AC_PROG_EGREP
+
 AC_CHECK_HEADERS([stddef.h wchar.h wctype.h errno.h signal.h fcntl.h dirent.h])
 AC_CHECK_HEADERS([time.h sys/time.h utime.h spawn.h execinfo.h ucontext.h])
 AC_CHECK_HEADERS([dlfcn.h ltdl.h sys/mman.h sys/uio.h])
@@ -172,36 +177,27 @@ AC_SUBST(UNICOWS_LIBS)
 AC_CHECK_LIB([rt], [clock_gettime], [LIBS="$LIBS -lrt"])
 
 AC_MSG_CHECKING([for va_copy])
-AC_TRY_LINK(
-	[#include <stdarg.h>],
-	[
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <stdarg.h>]], [[
 		va_list x, y;
 		va_copy(x,y);
-	],
-	[
+	]])],[
 		AC_MSG_RESULT(yes)
 		AC_DEFINE([HAVE_VA_COPY], [1], [va_copy is available])
-	],
-	[AC_MSG_RESULT(no)]
-)
+	],[AC_MSG_RESULT(no)
+])
 
 AC_MSG_CHECKING([for __va_copy])
-AC_TRY_LINK(
-	[#include <stdarg.h>],
-	[
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <stdarg.h>]], [[
 		va_list x, y;
 		__va_copy(x,y); 
-	],
-	[
+	]])],[
 		AC_MSG_RESULT(yes)
 		AC_DEFINE([HAVE___VA_COPY], [1], [__va_copy is available])
-	],
-	[AC_MSG_RESULT(no)]
-)
+	],[AC_MSG_RESULT(no)
+])
 
 AC_MSG_CHECKING([for strftime %z])
-AC_TRY_RUN(
-	[#include <string.h>
+AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <string.h>
 	 #if defined(HAVE_SYS_TIME_H)
 	 #include <sys/time.h>
 	 #endif
@@ -214,18 +210,15 @@ AC_TRY_RUN(
 		time_t t = 0;
 		strftime (buf, sizeof(buf), "%z", gmtime(&t));
 		return (strcmp(buf, "%z") == 0 || strcmp(buf, "z") == 0)? 1: 0;
-	}],
-	[
+	}]])],[
 	 	AC_MSG_RESULT(yes)
 		AC_DEFINE([HAVE_STRFTIME_SMALL_Z], [1], [strftime supports %z])
-	],
-	[AC_MSG_RESULT(no)],
-	[
+	],[AC_MSG_RESULT(no)],[
 	 	dnl cross-compiling, assume yes
 	 	AC_MSG_RESULT(unknown)
 		AC_DEFINE([HAVE_STRFTIME_SMALL_Z], [1], [strftime supports %z])
-	]
-)
+	
+])
 
 dnl check the size of primitive data types
 AC_CHECK_SIZEOF(char,,[[]])
@@ -411,19 +404,15 @@ dnl even if the type is available.
 if test ${ac_cv_sizeof___float128} -gt 0
 then
 	AC_MSG_CHECKING([__float128 with linking])
-	AC_TRY_LINK(
-		[#include <stdio.h>],
-		[
+	AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <stdio.h>]], [[
 			__float128 x, y, z;
 			z = x * y + x;
 			printf ("%p", (char*)(int)z);
-		],
-		[AC_MSG_RESULT(yes)],
-		[
+		]])],[AC_MSG_RESULT(yes)],[
 			AC_MSG_RESULT(no)
 			ac_cv_sizeof___float128=0
-		]
-	)
+		
+	])
 fi
 
 dnl Quadmath functions may not be in the default c library.
@@ -695,6 +684,9 @@ AC_CONFIG_FILES([
 	lib/Makefile 
 	mod/Makefile 
 	bin/Makefile
+	go/Makefile
+	go/cfg/go.mod
+	go/cfg/cfg.go
 	t/Makefile
 ])
 AC_OUTPUT

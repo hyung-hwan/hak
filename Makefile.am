@@ -11,6 +11,8 @@ else
 SUBDIRS += lib mod bin t
 endif
 
+SUBDIRS += go
+
 DIST_SUBDIRS = $(SUBDIRS)
 
 distclean-local:
