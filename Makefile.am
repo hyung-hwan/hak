@@ -11,7 +11,9 @@ else
 SUBDIRS += lib mod bin t
 endif
 
+if ENABLE_HCLGO
 SUBDIRS += go
+endif
 
 DIST_SUBDIRS = $(SUBDIRS)
 

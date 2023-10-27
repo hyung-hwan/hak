@@ -20,9 +20,6 @@ dnl m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 dnl determine a C compiler to use
 AC_PROG_CC
 
-dnl determine a go compiler to use
-AC_PROG_GO
-
 dnl determine some key programs
 AC_PROG_INSTALL
 AC_PROG_EGREP
@@ -664,6 +661,15 @@ AC_ARG_ENABLE([hclx],
 	enable_hclx_is=no
 )
 AM_CONDITIONAL(ENABLE_HCLX, test "x${enable_hclx_is}" = "xyes")
+
+dnl ===== enable-hclgo =====
+AC_ARG_ENABLE([hclgo],
+	[AS_HELP_STRING([--enable-hclgo],[build the go wrapper(default. no)])],
+	enable_hclgo_is=$enableval,
+	enable_hclgo_is=no
+)
+AM_CONDITIONAL(ENABLE_HCLGO, test "x${enable_hclgo_is}" = "xyes")
+
 
 dnl ====  subsititution of some key items ====
 AC_SUBST(HCL_PROJECT_AUTHOR, "${PACKAGE_BUGREPORT}")

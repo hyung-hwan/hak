@@ -1,0 +1,5 @@
+package cfg
+
+
+
+const BINDIR string = "@bindir@"
