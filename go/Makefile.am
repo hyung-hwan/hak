@@ -21,13 +21,13 @@ hclgo_DEPENDENCIES = hclgo.bin
 hclgo_LINK = mv -f hclgo.bin hclgo$(EXEEXT) || echo "FAILED TO LINK"
 
 hclgo.bin:
-	cp -pf $(abs_srcdir)/go.mod $(abs_builddir)/go.mod >/dev/null 2>&1 || true
-	chmod u+w $(abs_builddir)/go.mod ## with `make distcheck`, the echo's redirection to the file fails without this permission change
-	sed -ri "/^[[:space:]]*replace[[:space:]]+cfg[[:space:]]*=>/d" $(abs_builddir)/go.mod
-	echo -e "\nreplace cfg => $(abs_builddir)/cfg" >> $(abs_builddir)/go.mod
-	[ -f $(abs_srcdir)/go.sum ] && cp -pf $(abs_srcdir)/go.sum $(abs_builddir)/go.sum >/dev/null 2>&1 || true
-	go build -x -o $(abs_builddir)/hclgo.bin -C $(srcdir) -modfile $(abs_builddir)/go.mod
-	go clean -x -C $(srcdir) -modfile $(abs_builddir)/go.mod
+	cp -pf $(srcdir)/go.mod $(builddir)/go.mod >/dev/null 2>&1 || true
+	chmod u+w $(builddir)/go.mod ## with `make distcheck`, the echo's redirection to the file fails without this permission change
+	sed -ri "/^[[:space:]]*replace[[:space:]]+cfg[[:space:]]*=>/d" $(builddir)/go.mod
+	echo -e "\nreplace cfg => $(abs_builddir)/cfg" >> $(builddir)/go.mod
+	[ -f $(srcdir)/go.sum ] && cp -pf $(srcdir)/go.sum $(builddir)/go.sum >/dev/null 2>&1 || true
+	go build -C $(srcdir) -x -o $(abs_builddir)/hclgo.bin -modfile $(abs_builddir)/go.mod
+	go clean -C $(srcdir) -x -modfile $(abs_builddir)/go.mod
 
 ## the go to o recipe is fake to deceive make
 .go.o:
