@@ -626,6 +626,7 @@ hclgo.bin:
 	[ -f $(srcdir)/go.sum ] && cp -pf $(srcdir)/go.sum $(builddir)/go.sum >/dev/null 2>&1 || true
 	go build -C $(srcdir) -x -o $(abs_builddir)/hclgo.bin -modfile $(abs_builddir)/go.mod
 	go clean -C $(srcdir) -x -modfile $(abs_builddir)/go.mod
+	rm -rf $(builddir)/go.mod $(builddir)/go.sum
 
 .go.o:
 	echo $< > $@
@@ -634,7 +635,7 @@ hclgo.bin:
 	echo $< > $@
 
 clean-local:
-	rm -rf $(abs_builddir)/go.mod $(abs_builddir)/go.sum
+	rm -rf $(builddir)/go.mod $(builddir)/go.sum
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

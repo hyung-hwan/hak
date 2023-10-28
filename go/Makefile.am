@@ -28,6 +28,7 @@ hclgo.bin:
 	[ -f $(srcdir)/go.sum ] && cp -pf $(srcdir)/go.sum $(builddir)/go.sum >/dev/null 2>&1 || true
 	go build -C $(srcdir) -x -o $(abs_builddir)/hclgo.bin -modfile $(abs_builddir)/go.mod
 	go clean -C $(srcdir) -x -modfile $(abs_builddir)/go.mod
+	rm -rf $(builddir)/go.mod $(builddir)/go.sum
 
 ## the go to o recipe is fake to deceive make
 .go.o:
@@ -38,4 +39,4 @@ hclgo.bin:
 
 
 clean-local:
-	rm -rf $(abs_builddir)/go.mod $(abs_builddir)/go.sum
+	rm -rf $(builddir)/go.mod $(builddir)/go.sum
