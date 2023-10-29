@@ -30,8 +30,9 @@ int print_handler (hcl_t* hcl, hcl_iocmd_t cmd, void* arg)
 
 import (
 	"fmt"
-	hcl "hcl/go"
+	hcl "code.miflux.com/hyung-hwan/hcl/go"
 	"os"
+	_ "cfg"
 )
 
 /*
