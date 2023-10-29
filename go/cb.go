@@ -1,26 +1,24 @@
 package hcl
 
 /*
-#cgo CFLAGS: -I/home/hyung-hwan/xxx/include -g -Wall
-#cgo LDFLAGS: -L/home/hyung-hwan/xxx/lib -lhcl -ldl -lquadmath
-
 #include <hcl.h>
 #include <hcl-utl.h>
 */
 import "C"
 
 import (
-//	"bufio"
-//	"io"
+	//	"bufio"
+	//	"io"
 	"os"
-//	"sync"
-//	"unsafe"
+	// "sync"
+	// "unsafe"
 )
 
 type IOHandle struct {
 	file *os.File
 	ioif interface{}
 }
+
 /*
 type IOHandleTable struct {
 	mtx        sync.Mutex
@@ -408,7 +406,7 @@ func (p *PrintFileHandler) Open(g *HCL) error {
 		f *os.File
 	//	err error
 	)
-	
+
 //		f, err = os.OpenFile("/dev/stdout", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 //		if err != nil {
 //			return err

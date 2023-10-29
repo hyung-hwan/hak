@@ -48,6 +48,8 @@ hclgo.bin:
 	sed -ri "/^[[:space:]]*replace[[:space:]]+cfg[[:space:]]*=>/d" $(builddir)/go.mod
 	echo -e "\nreplace cfg => $(abs_builddir)/go/cfg" >> $(builddir)/go.mod
 	[ -f $(srcdir)/go.sum ] && cp -pf $(srcdir)/go.sum $(builddir)/go.sum >/dev/null 2>&1 || true
+	CGO_CFLAGS="-I$(abs_srcdir)/lib -I$(abs_builddir)/lib $(CFLAGS)" \
+	CGO_LDFLAGS="-L$(abs_builddir)/lib -L$(abs_builddir)/lib/.libs -lhcl -ldl -lquadmath"  \
 	go build -C $(srcdir) -x -o $(abs_builddir)/hclgo.bin -modfile $(abs_builddir)/go.mod
 	go clean -C $(srcdir) -x -modfile $(abs_builddir)/go.mod
 	rm -rf $(builddir)/go.mod $(builddir)/go.sum
