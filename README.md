@@ -5,36 +5,43 @@
 A HCL program is composed of expressions.
 
 ## Keywords
-* nil
-* true
-* false
+- nil
+- true
+- false
 
 ## Special Form Expression
-* and
-* break
-* defclass
-* defun
-* do
-* elif
-* else
-* if
-* lambda
-* or
-* return
-* set
-* until
-* while
+- and
+- break
+- defclass
+- defun
+- do
+- elif
+- else
+- if
+- lambda
+- or
+- return
+- set
+- until
+- while
 
 
-## literals
-* integer
-* character
-* small pointer
-* error
-* string
-* dictionary
-* array
-* byte array
+## Literals
+- integer
+- character
+- small pointer
+- error
+- string
+- dictionary `#{ }`
+- array `[ ]`
+- byte array `#[ ]`
+- list `#( )`
+
+## Basic Expressions
+- function calls `( )`
+- message sends `(: )`
+- variable declaration `| |`
+- class variable delcarations `::: | |`
 
 ## Builtin functions
 
@@ -77,6 +84,28 @@ A HCL program is composed of expressions.
 	| local variables |
 	function body
 )
+```
+
+## Class
+
+```
+(defclass T
+        ::: | A B C | ; class variables
+
+        (printf "initializing....\n")
+
+        (defun ::: dump()
+                (printf "%d %d %d\n" A B C)
+        )
+
+        (set A 10)
+        (set B 20)
+        (set C 30)
+
+        (printf "initialization done....\n")
+)
+
+(:T dump)
 ```
 
 ## Redefining a primitive function

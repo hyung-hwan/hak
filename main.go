@@ -30,9 +30,8 @@ int print_handler (hcl_t* hcl, hcl_iocmd_t cmd, void* arg)
 
 import (
 	"fmt"
-	hcl "hcl/pkg"
+	hcl "hcl/go"
 	"os"
-	"cfg"
 )
 
 /*
@@ -102,33 +101,54 @@ import (
 func main() {
 	//run_hcl()
 
+	var x *hcl.HCL = nil
+	var err error = nil
 
-/*
-	var rfh hcl.ReadFileHandler
-	var sfh hcl.ScanFileHandler
-	var pfh hcl.PrintFileHandler
-*/
-	fmt.Printf ("bindir = %s\n", cfg.BINDIR)
+	/*
+		var rfh hcl.ReadFileHandler
+		var sfh hcl.ScanFileHandler
+		var pfh hcl.PrintFileHandler
+	*/
 
-	x, err := hcl.New()
+	x, err = hcl.New()
 	if err != nil {
-		fmt.Printf("ERROR %s\n", err)
+		fmt.Printf("ERROR failed to instantiate hcl - %s\n", err.Error())
 		os.Exit(1)
 	}
-	x.Ignite(1000000)
-	x.AddBuiltinPrims()
-
-/*
-	err = x.AttachIO(&rfh, &sfh, &pfh)
+	err = x.Ignite(1000000)
 	if err != nil {
-		fmt.Printf("Error - %s", err.Error())
+		fmt.Printf("ERROR failed to ignite - %s\n", err.Error())
+		goto oops
 	}
-	x.FeedString(`(printf ">>>>>>>>> [%d]\n" (+ 30 455))
-(printf ">>>>>>>>> [%d]\n" (+ 11 455))
-#include "a.hcl"
-(printf ">>>>>>>>> [%d]\n" (+ 20 455))`)
-	x.EndFeed()
-	x.Execute()
+	err = x.AddBuiltinPrims()
+	if err != nil {
+		fmt.Printf("ERROR failed to add builtin primitives - %s\n", err.Error())
+		goto oops
+	}
+
+	/*
+	   	err = x.AttachIO(&rfh, &sfh, &pfh)
+	   	if err != nil {
+	   		fmt.Printf("Error - %s", err.Error())
+	   	}
+	   	x.FeedString(`(printf ">>>>>>>>> [%d]\n" (+ 30 455))
+
+	   (printf ">>>>>>>>> [%d]\n" (+ 11 455))
+	   #include "a.hcl"
+	   (printf ">>>>>>>>> [%d]\n" (+ 20 455))`)
+
+	   	x.EndFeed()
+	   	x.Execute()
+
+	*/
 	x.Close()
-*/
+
+	os.Exit(0)
+
+oops:
+	if x != nil {
+		x.Close()
+		x = nil
+	}
+	os.Exit(1)
 }

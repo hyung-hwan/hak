@@ -1,6 +1,9 @@
 package hcl
 
 /*
+#cgo CFLAGS: -I/home/hyung-hwan/xxx/include -g -Wall
+#cgo LDFLAGS: -L/home/hyung-hwan/xxx/lib -lhcl -ldl -lquadmath
+
 #include <hcl.h>
 */
 import "C"

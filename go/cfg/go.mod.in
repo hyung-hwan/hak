@@ -1,3 +1,6 @@
 module cfg
 
 go 1.20
+
+// this package is not supposed to be used by other parties.
+// it's intended for internal use only to work around buld issues with autotools.

@@ -13,6 +13,7 @@
 # PARTICULAR PURPOSE.
 
 @SET_MAKE@
+
 VPATH = @srcdir@
 am__is_gnu_make = { \
   if test -z '$(MAKELEVEL)'; then \
@@ -89,7 +90,7 @@ build_triplet = @build@
 host_triplet = @host@
 @ENABLE_STATIC_MODULE_TRUE@am__append_1 = mod lib bin t
 @ENABLE_STATIC_MODULE_FALSE@am__append_2 = lib mod bin t
-@ENABLE_HCLGO_TRUE@am__append_3 = go
+@ENABLE_HCLGO_TRUE@bin_PROGRAMS = hclgo$(EXEEXT)
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_check_sign.m4 \
@@ -107,6 +108,15 @@ mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/lib/hcl-cfg.h
 CONFIG_CLEAN_FILES = go/cfg/go.mod go/cfg/cfg.go
 CONFIG_CLEAN_VPATH_FILES =
+am__installdirs = "$(DESTDIR)$(bindir)"
+PROGRAMS = $(bin_PROGRAMS)
+am__hclgo_SOURCES_DIST = go/hcl.go go/cb.go go/inst.go main.go go.mod
+am__dirstamp = $(am__leading_dot)dirstamp
+@ENABLE_HCLGO_TRUE@am_hclgo_OBJECTS = go/hcl.$(OBJEXT) go/cb.$(OBJEXT) \
+@ENABLE_HCLGO_TRUE@	go/inst.$(OBJEXT) main.$(OBJEXT) \
+@ENABLE_HCLGO_TRUE@	go.$(OBJEXT)
+hclgo_OBJECTS = $(am_hclgo_OBJECTS)
+hclgo_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -119,8 +129,9 @@ AM_V_at = $(am__v_at_@AM_V@)
 am__v_at_ = $(am__v_at_@AM_DEFAULT_V@)
 am__v_at_0 = @
 am__v_at_1 = 
-SOURCES =
-DIST_SOURCES =
+DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/lib
+SOURCES = $(hclgo_SOURCES)
+DIST_SOURCES = $(am__hclgo_SOURCES_DIST)
 RECURSIVE_TARGETS = all-recursive check-recursive cscopelist-recursive \
 	ctags-recursive dvi-recursive html-recursive info-recursive \
 	install-data-recursive install-dvi-recursive \
@@ -351,11 +362,21 @@ top_srcdir = @top_srcdir@
 AUTOMAKE_OPTION = foreign
 ACLOCAL_AMFLAGS = -I m4
 EXTRA_DIST = t t/test-bi.hcl
-SUBDIRS = $(am__append_1) $(am__append_2) $(am__append_3)
+SUBDIRS = $(am__append_1) $(am__append_2)
 DIST_SUBDIRS = $(SUBDIRS)
+@ENABLE_HCLGO_TRUE@hclgo_SOURCES = \
+@ENABLE_HCLGO_TRUE@	go/hcl.go \
+@ENABLE_HCLGO_TRUE@	go/cb.go \
+@ENABLE_HCLGO_TRUE@	go/inst.go \
+@ENABLE_HCLGO_TRUE@	main.go \
+@ENABLE_HCLGO_TRUE@	go.mod
+
+@ENABLE_HCLGO_TRUE@hclgo_DEPENDENCIES = hclgo.bin
+@ENABLE_HCLGO_TRUE@hclgo_LINK = mv -f hclgo.bin hclgo$(EXEEXT) || echo "FAILED TO LINK"
 all: all-recursive
 
 .SUFFIXES:
+.SUFFIXES: .go .mod .o
 am--refresh: Makefile
 	@:
 $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
@@ -393,6 +414,75 @@ go/cfg/go.mod: $(top_builddir)/config.status $(top_srcdir)/go/cfg/go.mod.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
 go/cfg/cfg.go: $(top_builddir)/config.status $(top_srcdir)/go/cfg/cfg.go.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
+install-binPROGRAMS: $(bin_PROGRAMS)
+	@$(NORMAL_INSTALL)
+	@list='$(bin_PROGRAMS)'; test -n "$(bindir)" || list=; \
+	if test -n "$$list"; then \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(bindir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(bindir)" || exit 1; \
+	fi; \
+	for p in $$list; do echo "$$p $$p"; done | \
+	sed 's/$(EXEEXT)$$//' | \
+	while read p p1; do if test -f $$p \
+	 || test -f $$p1 \
+	  ; then echo "$$p"; echo "$$p"; else :; fi; \
+	done | \
+	sed -e 'p;s,.*/,,;n;h' \
+	    -e 's|.*|.|' \
+	    -e 'p;x;s,.*/,,;s/$(EXEEXT)$$//;$(transform);s/$$/$(EXEEXT)/' | \
+	sed 'N;N;N;s,\n, ,g' | \
+	$(AWK) 'BEGIN { files["."] = ""; dirs["."] = 1 } \
+	  { d=$$3; if (dirs[d] != 1) { print "d", d; dirs[d] = 1 } \
+	    if ($$2 == $$4) files[d] = files[d] " " $$1; \
+	    else { print "f", $$3 "/" $$4, $$1; } } \
+	  END { for (d in files) print "f", d, files[d] }' | \
+	while read type dir files; do \
+	    if test "$$dir" = .; then dir=; else dir=/$$dir; fi; \
+	    test -z "$$files" || { \
+	    echo " $(INSTALL_PROGRAM_ENV) $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(INSTALL_PROGRAM) $$files '$(DESTDIR)$(bindir)$$dir'"; \
+	    $(INSTALL_PROGRAM_ENV) $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(INSTALL_PROGRAM) $$files "$(DESTDIR)$(bindir)$$dir" || exit $$?; \
+	    } \
+	; done
+
+uninstall-binPROGRAMS:
+	@$(NORMAL_UNINSTALL)
+	@list='$(bin_PROGRAMS)'; test -n "$(bindir)" || list=; \
+	files=`for p in $$list; do echo "$$p"; done | \
+	  sed -e 'h;s,^.*/,,;s/$(EXEEXT)$$//;$(transform)' \
+	      -e 's/$$/$(EXEEXT)/' \
+	`; \
+	test -n "$$list" || exit 0; \
+	echo " ( cd '$(DESTDIR)$(bindir)' && rm -f" $$files ")"; \
+	cd "$(DESTDIR)$(bindir)" && rm -f $$files
+
+clean-binPROGRAMS:
+	@list='$(bin_PROGRAMS)'; test -n "$$list" || exit 0; \
+	echo " rm -f" $$list; \
+	rm -f $$list || exit $$?; \
+	test -n "$(EXEEXT)" || exit 0; \
+	list=`for p in $$list; do echo "$$p"; done | sed 's/$(EXEEXT)$$//'`; \
+	echo " rm -f" $$list; \
+	rm -f $$list
+go/$(am__dirstamp):
+	@$(MKDIR_P) go
+	@: > go/$(am__dirstamp)
+go/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) go/$(DEPDIR)
+	@: > go/$(DEPDIR)/$(am__dirstamp)
+go/hcl.$(OBJEXT): go/$(am__dirstamp) go/$(DEPDIR)/$(am__dirstamp)
+go/cb.$(OBJEXT): go/$(am__dirstamp) go/$(DEPDIR)/$(am__dirstamp)
+go/inst.$(OBJEXT): go/$(am__dirstamp) go/$(DEPDIR)/$(am__dirstamp)
+
+hclgo$(EXEEXT): $(hclgo_OBJECTS) $(hclgo_DEPENDENCIES) $(EXTRA_hclgo_DEPENDENCIES) 
+	@rm -f hclgo$(EXEEXT)
+	$(AM_V_GEN)$(hclgo_LINK) $(hclgo_OBJECTS) $(hclgo_LDADD) $(LIBS)
+
+mostlyclean-compile:
+	-rm -f *.$(OBJEXT)
+	-rm -f go/*.$(OBJEXT)
+
+distclean-compile:
+	-rm -f *.tab.c
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -707,9 +797,12 @@ distcleancheck: distclean
 	       exit 1; } >&2
 check-am: all-am
 check: check-recursive
-all-am: Makefile
+all-am: Makefile $(PROGRAMS)
 installdirs: installdirs-recursive
 installdirs-am:
+	for dir in "$(DESTDIR)$(bindir)"; do \
+	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
+	done
 install: install-recursive
 install-exec: install-exec-recursive
 install-data: install-data-recursive
@@ -736,19 +829,22 @@ clean-generic:
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
+	-rm -f go/$(DEPDIR)/$(am__dirstamp)
+	-rm -f go/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-recursive
 
-clean-am: clean-generic clean-libtool mostlyclean-am
+clean-am: clean-binPROGRAMS clean-generic clean-libtool clean-local \
+	mostlyclean-am
 
 distclean: distclean-recursive
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -f Makefile
-distclean-am: clean-am distclean-generic distclean-libtool \
-	distclean-local distclean-tags
+distclean-am: clean-am distclean-compile distclean-generic \
+	distclean-libtool distclean-local distclean-tags
 
 dvi: dvi-recursive
 
@@ -768,7 +864,7 @@ install-dvi: install-dvi-recursive
 
 install-dvi-am:
 
-install-exec-am:
+install-exec-am: install-binPROGRAMS
 
 install-html: install-html-recursive
 
@@ -798,7 +894,8 @@ maintainer-clean-am: distclean-am maintainer-clean-generic
 
 mostlyclean: mostlyclean-recursive
 
-mostlyclean-am: mostlyclean-generic mostlyclean-libtool
+mostlyclean-am: mostlyclean-compile mostlyclean-generic \
+	mostlyclean-libtool
 
 pdf: pdf-recursive
 
@@ -808,32 +905,53 @@ ps: ps-recursive
 
 ps-am:
 
-uninstall-am:
+uninstall-am: uninstall-binPROGRAMS
 
 .MAKE: $(am__recursive_targets) install-am install-strip
 
 .PHONY: $(am__recursive_targets) CTAGS GTAGS TAGS all all-am \
-	am--refresh check check-am clean clean-cscope clean-generic \
-	clean-libtool cscope cscopelist-am ctags ctags-am dist \
-	dist-all dist-bzip2 dist-gzip dist-lzip dist-shar dist-tarZ \
-	dist-xz dist-zip dist-zstd distcheck distclean \
+	am--refresh check check-am clean clean-binPROGRAMS \
+	clean-cscope clean-generic clean-libtool clean-local cscope \
+	cscopelist-am ctags ctags-am dist dist-all dist-bzip2 \
+	dist-gzip dist-lzip dist-shar dist-tarZ dist-xz dist-zip \
+	dist-zstd distcheck distclean distclean-compile \
 	distclean-generic distclean-libtool distclean-local \
 	distclean-tags distcleancheck distdir distuninstallcheck dvi \
 	dvi-am html html-am info info-am install install-am \
-	install-data install-data-am install-dvi install-dvi-am \
-	install-exec install-exec-am install-html install-html-am \
-	install-info install-info-am install-man install-pdf \
-	install-pdf-am install-ps install-ps-am install-strip \
-	installcheck installcheck-am installdirs installdirs-am \
-	maintainer-clean maintainer-clean-generic mostlyclean \
-	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
-	tags tags-am uninstall uninstall-am
+	install-binPROGRAMS install-data install-data-am install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-info install-info-am install-man \
+	install-pdf install-pdf-am install-ps install-ps-am \
+	install-strip installcheck installcheck-am installdirs \
+	installdirs-am maintainer-clean maintainer-clean-generic \
+	mostlyclean mostlyclean-compile mostlyclean-generic \
+	mostlyclean-libtool pdf pdf-am ps ps-am tags tags-am uninstall \
+	uninstall-am uninstall-binPROGRAMS
 
 .PRECIOUS: Makefile
 
 
 distclean-local:
 	@rm -rf $(top_srcdir)/autom4te.cache
+
+clean-local:
+	rm -rf $(builddir)/go.mod $(builddir)/go.sum
+
+@ENABLE_HCLGO_TRUE@hclgo.bin:
+@ENABLE_HCLGO_TRUE@	cp -pf $(srcdir)/go.mod $(builddir)/go.mod >/dev/null 2>&1 || true
+@ENABLE_HCLGO_TRUE@	chmod u+w $(builddir)/go.mod ## with `make distcheck`, the echo's redirection to the file fails without this permission change
+@ENABLE_HCLGO_TRUE@	sed -ri "/^[[:space:]]*replace[[:space:]]+cfg[[:space:]]*=>/d" $(builddir)/go.mod
+@ENABLE_HCLGO_TRUE@	echo -e "\nreplace cfg => $(abs_builddir)/go/cfg" >> $(builddir)/go.mod
+@ENABLE_HCLGO_TRUE@	[ -f $(srcdir)/go.sum ] && cp -pf $(srcdir)/go.sum $(builddir)/go.sum >/dev/null 2>&1 || true
+@ENABLE_HCLGO_TRUE@	go build -C $(srcdir) -x -o $(abs_builddir)/hclgo.bin -modfile $(abs_builddir)/go.mod
+@ENABLE_HCLGO_TRUE@	go clean -C $(srcdir) -x -modfile $(abs_builddir)/go.mod
+@ENABLE_HCLGO_TRUE@	rm -rf $(builddir)/go.mod $(builddir)/go.sum
+
+@ENABLE_HCLGO_TRUE@.go.o:
+@ENABLE_HCLGO_TRUE@	echo $< > $@
+
+@ENABLE_HCLGO_TRUE@.mod.o:
+@ENABLE_HCLGO_TRUE@	echo $< > $@
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

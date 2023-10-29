@@ -129,6 +129,10 @@
 
 #else
 
+#	if !defined(_GNU_SOURCE)
+#		define _GNU_SOURCE
+#	endif
+
 #	include <sys/types.h>
 #	include <unistd.h>
 #	include <fcntl.h>
@@ -3691,7 +3695,7 @@ int hcl_attachiostdwithucstr (hcl_t* hcl, const hcl_uch_t* read_file, const hcl_
 	xtn->scan_path = hcl_duputobcstr(hcl, scan_file, HCL_NULL);
 	if (HCL_UNLIKELY(!xtn->scan_path)) 
 	{
-		hcl_freemem (hcl, xtn->read_path);
+		hcl_freemem (hcl, (void*)xtn->read_path);
 		xtn->read_path = HCL_NULL;
 		return -1;
 	}
@@ -3699,8 +3703,8 @@ int hcl_attachiostdwithucstr (hcl_t* hcl, const hcl_uch_t* read_file, const hcl_
 	xtn->print_path = hcl_duputobcstr(hcl, print_file, HCL_NULL);
 	if (HCL_UNLIKELY(!xtn->print_path)) 
 	{
-		hcl_freemem (hcl, xtn->scan_path);
-		hcl_freemem (hcl, xtn->read_path);
+		hcl_freemem (hcl, (void*)xtn->scan_path);
+		hcl_freemem (hcl, (void*)xtn->read_path);
 		xtn->scan_path = HCL_NULL;
 		xtn->read_path = HCL_NULL;
 		return -1;
@@ -3708,9 +3712,9 @@ int hcl_attachiostdwithucstr (hcl_t* hcl, const hcl_uch_t* read_file, const hcl_
 
 	n = hcl_attachio(hcl, read_handler, scan_handler, print_handler);
 
-	hcl_freemem (hcl, xtn->read_path);
-	hcl_freemem (hcl, xtn->scan_path);
-	hcl_freemem (hcl, xtn->print_path);
+	hcl_freemem (hcl, (void*)xtn->read_path);
+	hcl_freemem (hcl, (void*)xtn->scan_path);
+	hcl_freemem (hcl, (void*)xtn->print_path);
 
 	xtn->read_path = HCL_NULL;
 	xtn->scan_path = HCL_NULL;
