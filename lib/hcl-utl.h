@@ -452,6 +452,18 @@ HCL_EXPORT void hcl_copy_uchars_to_bchars (
 	hcl_oow_t        len
 );
 
+HCL_EXPORT hcl_oow_t hcl_copy_bcstr_to_ucstr (
+	hcl_uch_t*       dst,
+	hcl_oow_t        len,
+	const hcl_bch_t* src
+);
+
+HCL_EXPORT hcl_oow_t hcl_copy_ucstr_to_bcstr (
+	hcl_bch_t*       dst,
+	hcl_oow_t        len,
+	const hcl_uch_t* src
+);
+
 HCL_EXPORT hcl_oow_t hcl_copy_uchars_to_ucstr_unlimited (
 	hcl_uch_t*       dst,
 	const hcl_uch_t* src,
@@ -628,7 +640,7 @@ HCL_EXPORT hcl_oow_t hcl_count_bcstr (
 #define HCL_BYTE_TO_BCSTR_LOWERCASE (1 << 8)
 
 hcl_oow_t hcl_byte_to_bcstr (
-	hcl_uint8_t   byte,  
+	hcl_uint8_t   byte,
 	hcl_bch_t*    buf,
 	hcl_oow_t     size,
 	int           flagged_radix,
@@ -644,7 +656,7 @@ HCL_EXPORT int hcl_conv_bcstr_to_ucstr_with_cmgr (
 	hcl_cmgr_t*      cmgr,
 	int              all
 );
-	
+
 HCL_EXPORT int hcl_conv_bchars_to_uchars_with_cmgr (
 	const hcl_bch_t* bcs,
 	hcl_oow_t*       bcslen,
@@ -660,7 +672,7 @@ HCL_EXPORT int hcl_conv_ucstr_to_bcstr_with_cmgr (
 	hcl_bch_t*       bcs,
 	hcl_oow_t*       bcslen,
 	hcl_cmgr_t*      cmgr
-);	
+);
 
 HCL_EXPORT int hcl_conv_uchars_to_bchars_with_cmgr (
 	const hcl_uch_t* ucs,
@@ -683,7 +695,7 @@ HCL_EXPORT hcl_cmgr_t* hcl_get_utf8_cmgr (
 );
 
 /**
- * The hcl_conv_uchars_to_utf8() function converts a unicode character string \a ucs 
+ * The hcl_conv_uchars_to_utf8() function converts a unicode character string \a ucs
  * to a UTF8 string and writes it into the buffer pointed to by \a bcs, but
  * not more than \a bcslen bytes including the terminating null.
  *
@@ -732,7 +744,7 @@ HCL_EXPORT int hcl_conv_uchars_to_utf8 (
  *  n = hcl_conv_utf8_to_uchars (bcs, &bcslen, ucs, &ucslen);
  *  if (n <= -1) { invalid/incomplenete sequence or buffer to small }
  * \endcode
- * 
+ *
  * The resulting \a ucslen can still be greater than 0 even if the return
  * value is negative. The value indiates the number of characters converted
  * before the error has occurred.
@@ -785,19 +797,19 @@ HCL_EXPORT int hcl_ucwidth (
  * TIME CALCULATION WITH OVERFLOW/UNDERFLOW DETECTION
  * ========================================================================= */
 
-/** 
+/**
  * The hcl_add_ntime() function adds two time structures pointed to by \a x and \a y
  * and stores the result in the structure pointed to by \a z. If it detects overflow/
  * underflow, it stores the largest/least possible value respectively.
  * You may use the HCL_ADD_NTIME() macro if overflow/underflow check isn't needed.
  */
 HCL_EXPORT void hcl_add_ntime (
-	hcl_ntime_t*       z, 
+	hcl_ntime_t*       z,
 	const hcl_ntime_t* x,
 	const hcl_ntime_t* y
 );
 
-/** 
+/**
  * The hcl_sub_ntime() function subtracts the time value \a y from the time value \a x
  * and stores the result in the structure pointed to by \a z. If it detects overflow/
  * underflow, it stores the largest/least possible value respectively.
@@ -856,9 +868,9 @@ static HCL_INLINE hcl_uint32_t hcl_bswap32 (hcl_uint32_t x)
 	);
 	return x;
 #else
-	return ((x >> 24)) | 
-	       ((x >>  8) & ((hcl_uint32_t)0xff << 8)) | 
-	       ((x <<  8) & ((hcl_uint32_t)0xff << 16)) | 
+	return ((x >> 24)) |
+	       ((x >>  8) & ((hcl_uint32_t)0xff << 8)) |
+	       ((x <<  8) & ((hcl_uint32_t)0xff << 16)) |
 	       ((x << 24));
 #endif
 }
@@ -876,13 +888,13 @@ static HCL_INLINE hcl_uint64_t hcl_bswap64 (hcl_uint64_t x)
 	__asm__ /*volatile*/ ("rev %0, %0" : "+r"(x));
 	return x;
 #else
-	return ((x >> 56)) | 
-	       ((x >> 40) & ((hcl_uint64_t)0xff << 8)) | 
-	       ((x >> 24) & ((hcl_uint64_t)0xff << 16)) | 
-	       ((x >>  8) & ((hcl_uint64_t)0xff << 24)) | 
-	       ((x <<  8) & ((hcl_uint64_t)0xff << 32)) | 
-	       ((x << 24) & ((hcl_uint64_t)0xff << 40)) | 
-	       ((x << 40) & ((hcl_uint64_t)0xff << 48)) | 
+	return ((x >> 56)) |
+	       ((x >> 40) & ((hcl_uint64_t)0xff << 8)) |
+	       ((x >> 24) & ((hcl_uint64_t)0xff << 16)) |
+	       ((x >>  8) & ((hcl_uint64_t)0xff << 24)) |
+	       ((x <<  8) & ((hcl_uint64_t)0xff << 32)) |
+	       ((x << 24) & ((hcl_uint64_t)0xff << 40)) |
+	       ((x << 40) & ((hcl_uint64_t)0xff << 48)) |
 	       ((x << 56));
 #endif
 }
@@ -894,7 +906,7 @@ static HCL_INLINE hcl_uint128_t hcl_bswap128 (hcl_uint128_t x)
 #if defined(HCL_HAVE_BUILTIN_BSWAP128)
 	return __builtin_bswap128(x);
 #else
-	return ((x >> 120)) | 
+	return ((x >> 120)) |
 	       ((x >> 104) & ((hcl_uint128_t)0xff << 8)) |
 	       ((x >>  88) & ((hcl_uint128_t)0xff << 16)) |
 	       ((x >>  72) & ((hcl_uint128_t)0xff << 24)) |
@@ -919,7 +931,7 @@ static HCL_INLINE hcl_uint128_t hcl_bswap128 (hcl_uint128_t x)
 #if defined(HCL_HAVE_UINT16_T)
 #	if defined(HCL_HAVE_BUILTIN_BSWAP16)
 #	define hcl_bswap16(x) ((hcl_uint16_t)__builtin_bswap16((hcl_uint16_t)(x)))
-#	else 
+#	else
 #	define hcl_bswap16(x) ((hcl_uint16_t)(((hcl_uint16_t)(x)) << 8) | (((hcl_uint16_t)(x)) >> 8))
 #	endif
 #endif
@@ -927,7 +939,7 @@ static HCL_INLINE hcl_uint128_t hcl_bswap128 (hcl_uint128_t x)
 #if defined(HCL_HAVE_UINT32_T)
 #	if defined(HCL_HAVE_BUILTIN_BSWAP32)
 #	define hcl_bswap32(x) ((hcl_uint32_t)__builtin_bswap32((hcl_uint32_t)(x)))
-#	else 
+#	else
 #	define hcl_bswap32(x) ((hcl_uint32_t)(((((hcl_uint32_t)(x)) >> 24)) | \
 	                                      ((((hcl_uint32_t)(x)) >>  8) & ((hcl_uint32_t)0xff << 8)) | \
 	                                      ((((hcl_uint32_t)(x)) <<  8) & ((hcl_uint32_t)0xff << 16)) | \
@@ -938,7 +950,7 @@ static HCL_INLINE hcl_uint128_t hcl_bswap128 (hcl_uint128_t x)
 #if defined(HCL_HAVE_UINT64_T)
 #	if defined(HCL_HAVE_BUILTIN_BSWAP64)
 #	define hcl_bswap64(x) ((hcl_uint64_t)__builtin_bswap64((hcl_uint64_t)(x)))
-#	else 
+#	else
 #	define hcl_bswap64(x) ((hcl_uint64_t)(((((hcl_uint64_t)(x)) >> 56)) | \
 	                                      ((((hcl_uint64_t)(x)) >> 40) & ((hcl_uint64_t)0xff << 8)) | \
 	                                      ((((hcl_uint64_t)(x)) >> 24) & ((hcl_uint64_t)0xff << 16)) | \
@@ -953,7 +965,7 @@ static HCL_INLINE hcl_uint128_t hcl_bswap128 (hcl_uint128_t x)
 #if defined(HCL_HAVE_UINT128_T)
 #	if defined(HCL_HAVE_BUILTIN_BSWAP128)
 #	define hcl_bswap128(x) ((hcl_uint128_t)__builtin_bswap128((hcl_uint128_t)(x)))
-#	else 
+#	else
 #	define hcl_bswap128(x) ((hcl_uint128_t)(((((hcl_uint128_t)(x)) >> 120)) |  \
 	                                        ((((hcl_uint128_t)(x)) >> 104) & ((hcl_uint128_t)0xff << 8)) | \
 	                                        ((((hcl_uint128_t)(x)) >>  88) & ((hcl_uint128_t)0xff << 16)) | \
@@ -1098,7 +1110,7 @@ static HCL_INLINE int hcl_get_pos_of_msb_set_pow2 (hcl_oow_t x)
 		: "=r"(n) /* output */
 		: "r"(x) /* input */
 	);
-	return (int)(HCL_OOW_BITS - n - 1); 
+	return (int)(HCL_OOW_BITS - n - 1);
 	/* TODO: PPC - use cntlz, cntlzw, cntlzd, SPARC - use lzcnt, MIPS clz */
 #else
 	int pos = 0;
@@ -1132,7 +1144,7 @@ static HCL_INLINE int hcl_get_pos_of_msb_set (hcl_oow_t x)
 		: "=r"(n) /* output */
 		: "r"(x) /* input */
 	);
-	return (int)(HCL_OOW_BITS - n - 1); 
+	return (int)(HCL_OOW_BITS - n - 1);
 	/* TODO: PPC - use cntlz, cntlzw, cntlzd, SPARC - use lzcnt, MIPS clz */
 #else
 	int pos = 0;

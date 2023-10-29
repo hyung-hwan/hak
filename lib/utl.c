@@ -229,6 +229,42 @@ void hcl_copy_uchars_to_bchars (hcl_bch_t* dst, const hcl_uch_t* src, hcl_oow_t 
 	for (i = 0; i < len; i++) dst[i] = src[i];
 }
 
+hcl_oow_t hcl_copy_bcstr_to_ucstr (hcl_uch_t* dst, hcl_oow_t len, const hcl_bch_t* src)
+{
+	/* copy without conversions.
+	 * the code is the same as hcl_copy_bcstr() except type of src */
+	hcl_uch_t* p, * p2;
+
+	p = dst; p2 = dst + len - 1;
+
+	while (p < p2)
+	{
+		 if (*src == '\0') break;
+		 *p++ = *src++;
+	}
+
+	if (len > 0) *p = '\0';
+	return p - dst;
+}
+
+hcl_oow_t hcl_copy_ucstr_to_bcstr (hcl_bch_t* dst, hcl_oow_t len, const hcl_uch_t* src)
+{
+	/* copy without conversions */
+	hcl_bch_t* p, * p2;
+
+	p = dst; p2 = dst + len - 1;
+
+	while (p < p2)
+	{
+		 if (*src == '\0') break;
+		 *p++ = *src++;
+	}
+
+	if (len > 0) *p = '\0';
+	return p - dst;
+}
+
+
 hcl_oow_t hcl_copy_uchars_to_ucstr (hcl_uch_t* dst, hcl_oow_t dlen, const hcl_uch_t* src, hcl_oow_t slen)
 {
 	hcl_oow_t i;

@@ -63,7 +63,7 @@ static hcl_ooch_t errstr_24[] = {'b','y','t','e','-','c','o','d','e',' ','f','u'
 
 static hcl_ooch_t errstr_25[] = {'d','i','c','t','i','o','n','a','r','y',' ','f','u','l','l','\0'};
 static hcl_ooch_t errstr_26[] = {'p','r','o','c','e','s','s','o','r',' ','f','u','l','l','\0'};
-static hcl_ooch_t errstr_27[] = {'n','o',' ','m','o','r','e',' ','i','n','p','u','t','\0'}; 
+static hcl_ooch_t errstr_27[] = {'n','o',' ','m','o','r','e',' ','i','n','p','u','t','\0'};
 static hcl_ooch_t errstr_28[] = {'t','o','o',' ','m','a','n','y',' ','i','t','e','m','s','\0'};
 static hcl_ooch_t errstr_29[] = {'d','i','v','i','d','e',' ','b','y',' ','z','e','r','o','\0'};
 
@@ -93,7 +93,7 @@ static hcl_ooch_t* errstr[] =
 };
 
 
-static char* synerrstr[] = 
+static char* synerrstr[] =
 {
 	"no error",
 	"internal error",
@@ -163,7 +163,7 @@ static char* synerrstr[] =
 	"empty m-list"
 };
 
-/* -------------------------------------------------------------------------- 
+/* --------------------------------------------------------------------------
  * ERROR NUMBER TO STRING CONVERSION
  * -------------------------------------------------------------------------- */
 const hcl_ooch_t* hcl_errnum_to_errstr (hcl_errnum_t errnum)
@@ -172,13 +172,38 @@ const hcl_ooch_t* hcl_errnum_to_errstr (hcl_errnum_t errnum)
 	return (errnum >= 0 && errnum < HCL_COUNTOF(errstr))? errstr[errnum]: e_unknown;
 }
 
+const hcl_bch_t* hcl_errnum_to_errbcstr (hcl_errnum_t errnum, hcl_bch_t* buf, hcl_oow_t len)
+{
+	static hcl_bch_t e_unknown[] = {'u','n','k','n','o','w','n',' ','e','r','r','o','r','\0'};
+
+	/* it's ok to copy without conversion because the messages above are simple acsii text */
+#if defined(HCL_OOCH_IS_BCH)
+	hcl_copy_bcstr(buf, len, (errnum >= 0 && errnum < HCL_COUNTOF(errstr))? errstr[errnum]: e_unknown);
+#else
+	hcl_copy_ucstr_to_bcstr(buf, len, (errnum >= 0 && errnum < HCL_COUNTOF(errstr))? errstr[errnum]: e_unknown);
+#endif
+	return buf;
+}
+
+const hcl_uch_t* hcl_errnum_to_errucstr (hcl_errnum_t errnum, hcl_uch_t* buf, hcl_oow_t len)
+{
+	static hcl_uch_t e_unknown[] = {'u','n','k','n','o','w','n',' ','e','r','r','o','r','\0'};
+	/* it's ok to copy without conversion because the messages above are simple acsii text */
+#if defined(HCL_OOCH_IS_BCH)
+	hcl_copy_bcstr_to_ucstr(buf, len, (errnum >= 0 && errnum < HCL_COUNTOF(errstr))? errstr[errnum]: e_unknown);
+#else
+	hcl_copy_ucstr(buf, len, (errnum >= 0 && errnum < HCL_COUNTOF(errstr))? errstr[errnum]: e_unknown);
+#endif
+	return buf;
+}
+
 static const hcl_bch_t* synerr_to_errstr (hcl_synerrnum_t errnum)
 {
 	static hcl_bch_t e_unknown[] = "unknown error";
 	return (errnum >= 0 && errnum < HCL_COUNTOF(synerrstr))? synerrstr[errnum]: e_unknown;
 }
 
-/* -------------------------------------------------------------------------- 
+/* --------------------------------------------------------------------------
  * ERROR NUMBER/MESSAGE HANDLING
  * -------------------------------------------------------------------------- */
 
@@ -238,8 +263,8 @@ const hcl_ooch_t* hcl_backuperrmsg (hcl_t* hcl)
 void hcl_seterrnum (hcl_t* hcl, hcl_errnum_t errnum)
 {
 	if (hcl->shuterr) return;
-	hcl->errnum = errnum; 
-	hcl->errmsg.len = 0; 
+	hcl->errnum = errnum;
+	hcl->errmsg.len = 0;
 }
 
 void hcl_seterrbmsg (hcl_t* hcl, hcl_errnum_t errnum, const hcl_bch_t* errmsg)
@@ -405,11 +430,11 @@ void hcl_seterrbfmtwithsyserr (hcl_t* hcl, int syserr_type, int syserr_code, con
 	va_list ap;
 
 	if (hcl->shuterr) return;
-	
+
 	if (hcl->vmprim.syserrstrb)
 	{
 		errnum = hcl->vmprim.syserrstrb(hcl, syserr_type, syserr_code, hcl->errmsg.tmpbuf.bch, HCL_COUNTOF(hcl->errmsg.tmpbuf.bch));
-		
+
 		va_start (ap, fmt);
 		hcl_seterrbfmtv (hcl, errnum, fmt, ap);
 		va_end (ap);
@@ -462,7 +487,7 @@ void hcl_seterrufmtwithsyserr (hcl_t* hcl, int syserr_type, int syserr_code, con
 	va_list ap;
 
 	if (hcl->shuterr) return;
-	
+
 	if (hcl->vmprim.syserrstrb)
 	{
 		errnum = hcl->vmprim.syserrstrb(hcl, syserr_type, syserr_code, hcl->errmsg.tmpbuf.bch, HCL_COUNTOF(hcl->errmsg.tmpbuf.bch));
@@ -534,7 +559,7 @@ void hcl_setsynerrbfmt (hcl_t* hcl, hcl_synerrnum_t num, const hcl_ioloc_t* loc,
 
 	if (hcl->shuterr) return;
 
-	if (msgfmt) 
+	if (msgfmt)
 	{
 		va_list ap;
 		int i, selen;
@@ -548,73 +573,14 @@ void hcl_setsynerrbfmt (hcl_t* hcl, hcl_synerrnum_t num, const hcl_ioloc_t* loc,
 		for (i = 0; i < selen; i++) hcl->errmsg.buf[i] = syntax_error[i];
 		hcl->errmsg.buf[HCL_COUNTOF(hcl->errmsg.buf) - 1] = '\0';
 	}
-	else 
-	{
-		hcl_seterrbfmt (hcl, HCL_ESYNERR, "%hs%hs", syntax_error, synerr_to_errstr(num));
-	}
-	hcl->c->synerr.num = num;
-
-	/* The SCO compiler complains of this ternary operation saying:
-	 *    error: operands have incompatible types: op ":" 
-	 * it seems to complain of type mismatch between *loc and
-	 * hcl->c->tok.loc due to 'const' prefixed to loc. */
-	/*hcl->c->synerr.loc = loc? *loc: hcl->c->tok.loc;*/
-	if (loc)
-	{
-		hcl->c->synerr.loc = *loc;
-	}
 	else
 	{
-		hcl->c->synerr.loc = hcl->c->tok.loc;
-	}
-
-	if (tgt) 
-	{
-		hcl_oow_t n;
-		n = hcl_copy_oochars_to_oocstr(hcl->c->synerr.tgt.val, HCL_COUNTOF(hcl->c->synerr.tgt.val), tgt->ptr, tgt->len);
-		if (n < tgt->len)
-		{
-			hcl->c->synerr.tgt.val[n - 1] = '.';
-			hcl->c->synerr.tgt.val[n - 2] = '.';
-			hcl->c->synerr.tgt.val[n - 3] = '.';
-		}
-		hcl->c->synerr.tgt.len = n;
-	}
-	else 
-	{
-		hcl->c->synerr.tgt.val[0] = '\0';
-		hcl->c->synerr.tgt.len = 0;
-	}
-}
-
-void hcl_setsynerrufmt (hcl_t* hcl, hcl_synerrnum_t num, const hcl_ioloc_t* loc, const hcl_oocs_t* tgt, const hcl_uch_t* msgfmt, ...)
-{
-	static hcl_bch_t syntax_error[] = "syntax error - ";
-
-	if (hcl->shuterr) return;
-
-	if (msgfmt) 
-	{
-		va_list ap;
-		int i, selen;
-
-		va_start (ap, msgfmt);
-		hcl_seterrufmtv (hcl, HCL_ESYNERR, msgfmt, ap);
-		va_end (ap);
-
-		selen = HCL_COUNTOF(syntax_error) - 1;
-		HCL_MEMMOVE (&hcl->errmsg.buf[selen], &hcl->errmsg.buf[0], HCL_SIZEOF(hcl->errmsg.buf[0]) * (HCL_COUNTOF(hcl->errmsg.buf) - selen));
-		for (i = 0; i < selen; i++) hcl->errmsg.buf[i] = syntax_error[i];
-		hcl->errmsg.buf[HCL_COUNTOF(hcl->errmsg.buf) - 1] = '\0';
-	}
-	else 
-	{
 		hcl_seterrbfmt (hcl, HCL_ESYNERR, "%hs%hs", syntax_error, synerr_to_errstr(num));
 	}
 	hcl->c->synerr.num = num;
 
 	/* The SCO compiler complains of this ternary operation saying:
-	 *    error: operands have incompatible types: op ":" 
+	 *    error: operands have incompatible types: op ":"
 	 * it seems to complain of type mismatch between *loc and
 	 * hcl->c->tok.loc due to 'const' prefixed to loc. */
 	/*hcl->c->synerr.loc = loc? *loc: hcl->c->tok.loc;*/
@@ -639,7 +605,66 @@ void hcl_setsynerrufmt (hcl_t* hcl, hcl_synerrnum_t num, const hcl_ioloc_t* loc,
 		}
 		hcl->c->synerr.tgt.len = n;
 	}
-	else 
+	else
+	{
+		hcl->c->synerr.tgt.val[0] = '\0';
+		hcl->c->synerr.tgt.len = 0;
+	}
+}
+
+void hcl_setsynerrufmt (hcl_t* hcl, hcl_synerrnum_t num, const hcl_ioloc_t* loc, const hcl_oocs_t* tgt, const hcl_uch_t* msgfmt, ...)
+{
+	static hcl_bch_t syntax_error[] = "syntax error - ";
+
+	if (hcl->shuterr) return;
+
+	if (msgfmt)
+	{
+		va_list ap;
+		int i, selen;
+
+		va_start (ap, msgfmt);
+		hcl_seterrufmtv (hcl, HCL_ESYNERR, msgfmt, ap);
+		va_end (ap);
+
+		selen = HCL_COUNTOF(syntax_error) - 1;
+		HCL_MEMMOVE (&hcl->errmsg.buf[selen], &hcl->errmsg.buf[0], HCL_SIZEOF(hcl->errmsg.buf[0]) * (HCL_COUNTOF(hcl->errmsg.buf) - selen));
+		for (i = 0; i < selen; i++) hcl->errmsg.buf[i] = syntax_error[i];
+		hcl->errmsg.buf[HCL_COUNTOF(hcl->errmsg.buf) - 1] = '\0';
+	}
+	else
+	{
+		hcl_seterrbfmt (hcl, HCL_ESYNERR, "%hs%hs", syntax_error, synerr_to_errstr(num));
+	}
+	hcl->c->synerr.num = num;
+
+	/* The SCO compiler complains of this ternary operation saying:
+	 *    error: operands have incompatible types: op ":"
+	 * it seems to complain of type mismatch between *loc and
+	 * hcl->c->tok.loc due to 'const' prefixed to loc. */
+	/*hcl->c->synerr.loc = loc? *loc: hcl->c->tok.loc;*/
+	if (loc)
+	{
+		hcl->c->synerr.loc = *loc;
+	}
+	else
+	{
+		hcl->c->synerr.loc = hcl->c->tok.loc;
+	}
+
+	if (tgt)
+	{
+		hcl_oow_t n;
+		n = hcl_copy_oochars_to_oocstr(hcl->c->synerr.tgt.val, HCL_COUNTOF(hcl->c->synerr.tgt.val), tgt->ptr, tgt->len);
+		if (n < tgt->len)
+		{
+			hcl->c->synerr.tgt.val[n - 1] = '.';
+			hcl->c->synerr.tgt.val[n - 2] = '.';
+			hcl->c->synerr.tgt.val[n - 3] = '.';
+		}
+		hcl->c->synerr.tgt.len = n;
+	}
+	else
 	{
 		hcl->c->synerr.tgt.val[0] = '\0';
 		hcl->c->synerr.tgt.len = 0;

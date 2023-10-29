@@ -2119,6 +2119,18 @@ HCL_EXPORT const hcl_ooch_t* hcl_errnum_to_errstr (
 	hcl_errnum_t errnum
 );
 
+HCL_EXPORT const hcl_bch_t* hcl_errnum_to_errbcstr (
+	hcl_errnum_t errnum,
+	hcl_bch_t*   buf,
+	hcl_oow_t    len
+);
+
+HCL_EXPORT const hcl_uch_t* hcl_errnum_to_errucstr (
+	hcl_errnum_t errnum,
+	hcl_uch_t*   buf,
+	hcl_oow_t    len
+);
+
 /**
  * The hcl_getoption() function gets the value of an option
  * specified by \a id into the buffer pointed to by \a value.
