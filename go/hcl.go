@@ -12,13 +12,23 @@ import (
 	"unsafe"
 )
 
+type IOImpl interface {
+	Open(g *HCL, name string, includer_name string) (int, error)
+	Close(fd int)
+	Read(fd int, buf []rune) (int, error)
+	Write(data []rune) error
+	WriteBytes(data []byte) error
+	Flush() error
+}
+
 type HCL struct {
 	c       *C.hcl_t
 	inst_no int
 
 	io struct {
-		r IOHandle
-		w IOHandle
+		r IOImpl
+		s IOImpl
+		p IOImpl
 	}
 }
 
@@ -82,7 +92,14 @@ func (hcl *HCL) AddBuiltinPrims() error {
 	return nil
 }
 
-func (hcl *HCL) AttachIO() error {
+func (hcl *HCL) AttachIO(r IOImpl, w IOImpl, p IOImpl) error {
+	hcl.io.r = r
+	hcl.io.s = s
+	hcl.io.p = p
+	if C.hcl_attachio(hcl.c, go_read_handler, go_scan_handler, go_print_handler) <= -1 {
+		// TODO: restore to the old value..
+		return fmt.Errorf("unable to attach I/O handlers: %s", string(ucstr_to_rune_slice(C.hcl_geterrstr(hcl.c))))
+	}
 	return nil
 }
 

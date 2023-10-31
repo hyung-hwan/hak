@@ -9,7 +9,11 @@ import "C"
 import (
 	//	"bufio"
 	//	"io"
+	"bufio"
+	"io"
 	"os"
+	"sync"
+	"unsafe"
 	// "sync"
 	// "unsafe"
 )
@@ -19,7 +23,6 @@ type IOHandle struct {
 	ioif interface{}
 }
 
-/*
 type IOHandleTable struct {
 	mtx        sync.Mutex
 	handles    []IOHandle
@@ -348,10 +351,10 @@ func (p *ScanFileHandler) Open(g *HCL) error {
 	)
 
 	f = os.Stdin
-		//f, err = os.Open("/dev/stdin")
-		//if err != nil {
-		//	return err
-		//}
+	//f, err = os.Open("/dev/stdin")
+	//if err != nil {
+	//	return err
+	//}
 
 	p.r = bufio.NewReader(f)
 	p.f = f
@@ -407,10 +410,10 @@ func (p *PrintFileHandler) Open(g *HCL) error {
 	//	err error
 	)
 
-//		f, err = os.OpenFile("/dev/stdout", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
-//		if err != nil {
-//			return err
-//		}
+	//		f, err = os.OpenFile("/dev/stdout", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	//		if err != nil {
+	//			return err
+	//		}
 
 	f = os.Stdout
 
@@ -455,4 +458,3 @@ func (p *PrintFileHandler) Flush() error {
 	//fmt.Fprintf(os.Stderr, "XXXXXXXXXX flush porint\n")
 	return p.w.Flush()
 }
-*/

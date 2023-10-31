@@ -45,7 +45,7 @@ hclgo_LINK = mv -f hclgo.bin hclgo$(EXEEXT) || echo "FAILED TO LINK"
 hclgo.bin:
 	cp -pf $(srcdir)/go.mod $(builddir)/go.mod >/dev/null 2>&1 || true
 	chmod u+w $(builddir)/go.mod ## with `make distcheck`, the echo's redirection to the file fails without this permission change
-	sed -ri "/^[[:space:]]*replace[[:space:]]+cfg[[:space:]]*=>/d" $(builddir)/go.mod
+	sed -r -i -e "/^[[:space:]]*replace[[:space:]]+cfg[[:space:]]*=>/d" $(builddir)/go.mod
 	echo -e "\nreplace cfg => $(abs_builddir)/go/cfg" >> $(builddir)/go.mod
 	[ -f $(srcdir)/go.sum ] && cp -pf $(srcdir)/go.sum $(builddir)/go.sum >/dev/null 2>&1 || true
 	CGO_CFLAGS="-I$(abs_srcdir)/lib -I$(abs_builddir)/lib $(CFLAGS)" \
