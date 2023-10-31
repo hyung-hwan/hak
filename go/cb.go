@@ -80,8 +80,8 @@ func (io *IOHandleTable) slot_to_io_handle(slot int) IOHandle {
 
 var io_tab IOHandleTable = IOHandleTable{}
 
-//export go_read_handler
-func go_read_handler(c *C.hcl_t, cmd C.hcl_iocmd_t, arg unsafe.Pointer) C.int {
+//export hcl_go_read_handler
+func hcl_go_read_handler(c *C.hcl_t, cmd C.hcl_iocmd_t, arg unsafe.Pointer) C.int {
 	var (
 		g   *HCL
 		err error
@@ -154,8 +154,8 @@ func go_read_handler(c *C.hcl_t, cmd C.hcl_iocmd_t, arg unsafe.Pointer) C.int {
 	return -1
 }
 
-//export go_scan_handler
-func go_scan_handler(c *C.hcl_t, cmd C.hcl_iocmd_t, arg unsafe.Pointer) C.int {
+//export hcl_go_scan_handler
+func hcl_go_scan_handler(c *C.hcl_t, cmd C.hcl_iocmd_t, arg unsafe.Pointer) C.int {
 	var (
 		g   *HCL
 		err error
@@ -202,8 +202,8 @@ func go_scan_handler(c *C.hcl_t, cmd C.hcl_iocmd_t, arg unsafe.Pointer) C.int {
 	return -1
 }
 
-//export go_print_handler
-func go_print_handler(c *C.hcl_t, cmd C.hcl_iocmd_t, arg unsafe.Pointer) C.int {
+//export hcl_go_print_handler
+func hcl_go_print_handler(c *C.hcl_t, cmd C.hcl_iocmd_t, arg unsafe.Pointer) C.int {
 	var (
 		g   *HCL
 		err error

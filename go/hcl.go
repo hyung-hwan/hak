@@ -3,6 +3,20 @@ package hcl
 /*
 #include <hcl.h>
 #include <hcl-utl.h>
+
+extern int hcl_go_read_handler (hcl_t hcl, hcl_iocmd_t cmd, void* arg);
+extern int hcl_go_scan_handler (hcl_t hcl, hcl_iocmd_t cmd, void* arg);
+extern int hcl_go_print_handler (hcl_t hcl, hcl_iocmd_t cmd, void* arg);
+
+int hcl_read_handler_for_go (hcl_t hcl, hcl_iocmd_t cmd, void* arg) {
+    return hcl_go_read_handler(hcl, cmd, arg);
+}
+int hcl_scan_handler_for_go (hcl_t hcl, hcl_iocmd_t cmd, void* arg) {
+    return hcl_go_scan_handler(hcl, cmd, arg);
+}
+int hcl_print_handler_for_go (hcl_t hcl, hcl_iocmd_t cmd, void* arg) {
+    return hcl_go_print_handler(hcl, cmd, arg);
+}
 */
 import "C"
 
@@ -12,24 +26,36 @@ import (
 	"unsafe"
 )
 
-type IOImpl interface {
+type IOReadImpl interface {
 	Open(g *HCL, name string, includer_name string) (int, error)
 	Close(fd int)
 	Read(fd int, buf []rune) (int, error)
+}
+
+type IOScanImpl interface {
+	Open(g *HCL) error
+	Close()
+	Read(buf []rune) (int, error)
+}
+
+type IOPrintImpl interface {
+	Open(g *HCL) error
+	Close()
 	Write(data []rune) error
 	WriteBytes(data []byte) error
 	Flush() error
 }
 
+type IOImplSet struct {
+	r IOReadImpl
+	s IOScanImpl
+	p IOPrintImpl
+}
+
 type HCL struct {
 	c       *C.hcl_t
 	inst_no int
-
-	io struct {
-		r IOImpl
-		s IOImpl
-		p IOImpl
-	}
+	io IOImplSet
 }
 
 type Ext struct {
@@ -92,12 +118,22 @@ func (hcl *HCL) AddBuiltinPrims() error {
 	return nil
 }
 
-func (hcl *HCL) AttachIO(r IOImpl, w IOImpl, p IOImpl) error {
+func (hcl *HCL) AttachIO(r IOReadImpl, s IOScanImpl, p IOPrintImpl) error {
+	var x C.int
+	var io IOImplSet
+
+	io = hcl.io
+
 	hcl.io.r = r
 	hcl.io.s = s
 	hcl.io.p = p
-	if C.hcl_attachio(hcl.c, go_read_handler, go_scan_handler, go_print_handler) <= -1 {
-		// TODO: restore to the old value..
+
+	x = C.hcl_attachio(hcl.c,
+		C.hcl_ioimpl_t(C.hcl_read_handler_for_go),
+		C.hcl_ioimpl_t(C.hcl_scan_handler_for_go),
+		C.hcl_ioimpl_t(C.hcl_print_handler_for_go))
+	if x <= -1 {
+		hcl.io = io // restore the set
 		return fmt.Errorf("unable to attach I/O handlers: %s", string(ucstr_to_rune_slice(C.hcl_geterrstr(hcl.c))))
 	}
 	return nil

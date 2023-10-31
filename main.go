@@ -126,14 +126,14 @@ func main() {
 		goto oops
 	}
 
-	err = x.AttachIO(rfh, sfh, pfh)
+	err = x.AttachIO(&rfh, &sfh, &pfh)
 	if err != nil {
 		fmt.Printf("Error - %s", err.Error())
 	}
-	x.FeedString(`(printf ">>>>>>>>> [%d]\n" (+ 30 455))
+	x.FeedString([]rune(`(printf ">>>>>>>>> [%d]\n" (+ 30 455))
 	   (printf ">>>>>>>>> [%d]\n" (+ 11 455))
 	   #include "a.hcl"
-	   (printf ">>>>>>>>> [%d]\n" (+ 20 455))`)
+	   (printf ">>>>>>>>> [%d]\n" (+ 20 455))`))
 
 	x.EndFeed()
 	x.Execute()
