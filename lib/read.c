@@ -896,7 +896,7 @@ static int feed_begin_include (hcl_t* hcl)
 	if (hcl->c->reader(hcl, HCL_IO_OPEN, arg) <= -1)
 	{
 		const hcl_ooch_t* org_errmsg = hcl_backuperrmsg(hcl);
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_INCLUDE, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "unable to feed-include %js - %js", io_name, org_errmsg);
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_INCLUDE, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "unable to include %js - %js", io_name, org_errmsg);
 		goto oops;
 	}
 

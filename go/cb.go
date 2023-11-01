@@ -7,15 +7,11 @@ package hcl
 import "C"
 
 import (
-	//	"bufio"
-	//	"io"
 	"bufio"
 	"io"
 	"os"
 	"sync"
 	"unsafe"
-	// "sync"
-	// "unsafe"
 )
 
 type IOHandle struct {
@@ -115,7 +111,7 @@ func hcl_go_read_handler(c *C.hcl_t, cmd C.hcl_iocmd_t, arg unsafe.Pointer) C.in
 
 		fd, err = g.io.r.Open(g, name, includer_name)
 		if err != nil {
-			C.hcl_seterrbmsg(c, C.HCL_ENOIMPL, C.CString(err.Error()))
+			g.set_errmsg (C.HCL_EIOERR, err.Error())
 			return -1
 		}
 
@@ -139,7 +135,7 @@ func hcl_go_read_handler(c *C.hcl_t, cmd C.hcl_iocmd_t, arg unsafe.Pointer) C.in
 		buf = make([]rune, 1024) // TODO:  different size...
 		n, err = g.io.r.Read(int(uintptr(ioarg.handle)), buf)
 		if err != nil {
-			C.hcl_seterrbmsg(c, C.HCL_ENOIMPL, C.CString(err.Error()))
+			g.set_errmsg (C.HCL_EIOERR, err.Error())
 			return -1
 		}
 
@@ -150,7 +146,7 @@ func hcl_go_read_handler(c *C.hcl_t, cmd C.hcl_iocmd_t, arg unsafe.Pointer) C.in
 		return 0
 	}
 
-	C.hcl_seterrnum(c, C.HCL_ENOIMPL)
+	C.hcl_seterrnum(c, C.HCL_EIOERR)
 	return -1
 }
 
@@ -167,7 +163,7 @@ func hcl_go_scan_handler(c *C.hcl_t, cmd C.hcl_iocmd_t, arg unsafe.Pointer) C.in
 	case C.HCL_IO_OPEN:
 		err = g.io.s.Open(g)
 		if err != nil {
-			C.hcl_seterrbmsg(c, C.HCL_ENOIMPL, C.CString(err.Error()))
+			g.set_errmsg (C.HCL_EIOERR, err.Error())
 			return -1
 		}
 
@@ -191,14 +187,14 @@ func hcl_go_scan_handler(c *C.hcl_t, cmd C.hcl_iocmd_t, arg unsafe.Pointer) C.in
 		buf = make([]rune, 1024) // TODO:  different size...
 		n, err = g.io.s.Read(buf)
 		if err != nil {
-			C.hcl_seterrbmsg(c, C.HCL_ENOIMPL, C.CString(err.Error()))
+			g.set_errmsg (C.HCL_EIOERR, err.Error())
 			return -1
 		}
 		ioarg.xlen = C.ulong(n)
 		return 0
 	}
 
-	C.hcl_seterrnum(c, C.HCL_ENOIMPL)
+	C.hcl_seterrnum(c, C.HCL_EIOERR)
 	return -1
 }
 
@@ -215,7 +211,7 @@ func hcl_go_print_handler(c *C.hcl_t, cmd C.hcl_iocmd_t, arg unsafe.Pointer) C.i
 	case C.HCL_IO_OPEN:
 		err = g.io.p.Open(g)
 		if err != nil {
-			C.hcl_seterrbmsg(c, C.HCL_ENOIMPL, C.CString(err.Error()))
+			g.set_errmsg (C.HCL_EIOERR, err.Error())
 			return -1
 		}
 
@@ -237,7 +233,7 @@ func hcl_go_print_handler(c *C.hcl_t, cmd C.hcl_iocmd_t, arg unsafe.Pointer) C.i
 		data = uchars_to_rune_slice((*C.hcl_uch_t)(ioarg.ptr), uintptr(ioarg.len))
 		err = g.io.p.Write(data)
 		if err != nil {
-			C.hcl_seterrbmsg(c, C.HCL_ENOIMPL, C.CString(err.Error()))
+			g.set_errmsg (C.HCL_EIOERR, err.Error())
 			return -1
 		}
 		ioarg.xlen = C.hcl_oow_t(len(data))
@@ -253,7 +249,7 @@ func hcl_go_print_handler(c *C.hcl_t, cmd C.hcl_iocmd_t, arg unsafe.Pointer) C.i
 		data = unsafe.Slice((*byte)(ioarg.ptr), ioarg.len)
 		err = g.io.p.WriteBytes(data)
 		if err != nil {
-			C.hcl_seterrbmsg(c, C.HCL_ENOIMPL, C.CString(err.Error()))
+			g.set_errmsg (C.HCL_EIOERR, err.Error())
 			return -1
 		}
 		ioarg.xlen = C.hcl_oow_t(len(data))
@@ -262,13 +258,13 @@ func hcl_go_print_handler(c *C.hcl_t, cmd C.hcl_iocmd_t, arg unsafe.Pointer) C.i
 	case C.HCL_IO_FLUSH:
 		var err error = g.io.p.Flush()
 		if err != nil {
-			C.hcl_seterrbmsg(c, C.HCL_ENOIMPL, C.CString(err.Error()))
+			g.set_errmsg (C.HCL_EIOERR, err.Error())
 			return -1
 		}
 		return 0
 	}
 
-	C.hcl_seterrnum(c, C.HCL_ENOIMPL)
+	C.hcl_seterrnum(c, C.HCL_EIOERR)
 	return -1
 }
 
