@@ -40,9 +40,9 @@ hclgo_SOURCES = \
 hclgo_DEPENDENCIES = hclgo.bin
 
 ## let the linker to move hclgo.bin to the actual target
-hclgo_LINK = mv -f hclgo.bin hclgo$(EXEEXT) || echo "FAILED TO LINK"
+hclgo_LINK = cp -pf hclgo.bin hclgo$(EXEEXT) || echo "FAILED TO LINK"
 
-hclgo.bin: lib/libhcl.la
+hclgo.bin: lib/libhcl.la $(hclgo_OBJECTS)
 	cp -pf $(srcdir)/go.mod $(builddir)/go.mod >/dev/null 2>&1 || true
 	chmod u+w $(builddir)/go.mod ## with `make distcheck`, the echo's redirection to the file fails without this permission change
 	sed -r -i -e "/^[[:space:]]*replace[[:space:]]+cfg[[:space:]]*=>/d" $(builddir)/go.mod

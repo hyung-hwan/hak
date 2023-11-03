@@ -125,7 +125,6 @@ func main() {
 	}
 
 	x.Close()
-
 	os.Exit(0)
 
 oops:

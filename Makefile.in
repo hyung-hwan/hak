@@ -372,7 +372,7 @@ DIST_SUBDIRS = $(SUBDIRS)
 @ENABLE_HCLGO_TRUE@	go.mod
 
 @ENABLE_HCLGO_TRUE@hclgo_DEPENDENCIES = hclgo.bin
-@ENABLE_HCLGO_TRUE@hclgo_LINK = mv -f hclgo.bin hclgo$(EXEEXT) || echo "FAILED TO LINK"
+@ENABLE_HCLGO_TRUE@hclgo_LINK = cp -pf hclgo.bin hclgo$(EXEEXT) || echo "FAILED TO LINK"
 all: all-recursive
 
 .SUFFIXES:
@@ -937,7 +937,7 @@ distclean-local:
 clean-local:
 	rm -rf $(builddir)/go.mod $(builddir)/go.sum
 
-@ENABLE_HCLGO_TRUE@hclgo.bin: lib/libhcl.la
+@ENABLE_HCLGO_TRUE@hclgo.bin: lib/libhcl.la $(hclgo_OBJECTS)
 @ENABLE_HCLGO_TRUE@	cp -pf $(srcdir)/go.mod $(builddir)/go.mod >/dev/null 2>&1 || true
 @ENABLE_HCLGO_TRUE@	chmod u+w $(builddir)/go.mod ## with `make distcheck`, the echo's redirection to the file fails without this permission change
 @ENABLE_HCLGO_TRUE@	sed -r -i -e "/^[[:space:]]*replace[[:space:]]+cfg[[:space:]]*=>/d" $(builddir)/go.mod
