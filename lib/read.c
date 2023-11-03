@@ -2436,6 +2436,15 @@ int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
 	int x;
 
 	HCL_ASSERT (hcl, hcl->c != HCL_NULL);
+
+#if defined(HCL_OOCH_IS_UCH)
+	if (hcl->c->feed.rsd.len > 0 && !hcl->c->feed.rsd.no_check)
+	{
+		hcl_seterrbfmt (hcl, HCL_EPERM, "feed disallowed for incomplete sequence pending more feeding");
+		return -1;
+	}
+#endif
+
 	if (data)
 	{
 		for (i = 0; i < len; )
@@ -2504,6 +2513,138 @@ oops:
 	return -1;
 }
 
+int hcl_feedbchars (hcl_t* hcl, const hcl_bch_t* data, hcl_oow_t len)
+{
+#if defined(HCL_OOCH_IS_UCH)
+	hcl_uch_t outbuf[128];
+	hcl_oow_t inlen, outlen, inpos, brwlen;
+	int n;
+
+	HCL_ASSERT (hcl, hcl->c != HCL_NULL);
+
+	inpos = 0;
+
+	if (hcl->c->feed.rsd.len > 0)
+	{
+		hcl_oow_t rsdlen;
+
+		/* handle the residue bytes from the previous feeding */
+		rsdlen = hcl->c->feed.rsd.len; /* original residue length*/
+		brwlen = HCL_COUNTOF(hcl->c->feed.rsd.buf) - rsdlen;
+		if (len < brwlen) brwlen = len;
+		HCL_MEMCPY(&hcl->c->feed.rsd.buf[rsdlen], data, brwlen);
+		hcl->c->feed.rsd.len += brwlen;
+
+		inlen = hcl->c->feed.rsd.len;
+		outlen = 1; /* ensure that it can only convert 1 character */
+		n = hcl_conv_bchars_to_uchars_with_cmgr(hcl->c->feed.rsd.buf, &inlen, outbuf, &outlen, hcl_getcmgr(hcl), 0);
+
+		if (outlen > 0)
+		{
+			int x;
+			hcl->c->feed.rsd.no_check = 1;
+			x = hcl_feed(hcl, outbuf, outlen);
+			hcl->c->feed.rsd.no_check = 0;
+			if (x <= -1) return -1;
+		}
+
+		if (n <= -1)
+		{
+			if (n == -3 || (n == -2 && outlen > 0))
+			{
+				/* n == -3. invalid sequence. more feeding is required */
+				/* n == -2. there were extra bytes for the second character in the input */
+				HCL_ASSERT (hcl, (n == -3 && inlen == 0 && outlen == 0) || (n == -2 && inlen > 0));
+				/* nothing to do. carry on */
+			}
+			else
+			{
+				hcl_seterrnum (hcl, (n == -2)? HCL_EBUFFULL: HCL_EECERR);
+				return -1;
+			}
+		}
+
+		/*
+		 * | rsdlen   |  brwlen  |
+		 * | inlen        |
+		 */
+		if (inlen < rsdlen)
+		{
+			HCL_ASSERT (hcl, inlen == 0);
+			HCL_ASSERT (hcl, brwlen ==  len);
+			/* brwlen needs no change */
+			/* hcl->c->feed.rsd.len nees no change */
+		}
+		else
+		{
+			HCL_ASSERT (hcl, inlen > rsdlen);
+			brwlen = inlen - rsdlen; /* actual bytes borrowed and converted */
+			hcl->c->feed.rsd.len = 0;
+		}
+		inpos += brwlen;
+		len -= brwlen;
+	}
+
+	while (len > 0)
+	{
+		inlen = len;
+		outlen = HCL_COUNTOF(outbuf);
+
+		/* hcl_convbtouchars() does not differentiate between illegal charcter and incomplete sequence.
+		 * use a lower-level function that hcl_convbtouchars() uses */
+		n = hcl_conv_bchars_to_uchars_with_cmgr(&data[inpos], &inlen, outbuf, &outlen, hcl_getcmgr(hcl), 0);
+		if (outlen > 0 && hcl_feed(hcl, outbuf, outlen) <= -1) return -1;
+
+		if (n <= -1)
+		{
+			if (n == -2 || n == -3)
+			{
+				hcl_oow_t rsdlen;
+
+				HCL_ASSERT (hcl, len > inlen);
+				rsdlen = len - inlen;
+				HCL_ASSERT (hcl, rsdlen <= HCL_COUNTOF(hcl->c->feed.rsd.buf));
+				HCL_MEMCPY (hcl->c->feed.rsd.buf, &data[inpos + inlen], rsdlen);
+				hcl->c->feed.rsd.len = len - inlen;
+				break;
+			}
+
+			hcl_seterrnum (hcl, HCL_EECERR);
+			return -1;
+		}
+
+		inpos += inlen;
+		len -= inlen;
+	}
+
+	return 0;
+#else
+	return hcl_feed(hcl, data, len);
+#endif
+}
+
+int hcl_feeduchars (hcl_t* hcl, const hcl_uch_t* data, hcl_oow_t len)
+{
+#if defined(HCL_OOCH_IS_UCH)
+	return hcl_feed(hcl, data, len);
+#else
+	hcl_bch_t outbuf[HCL_BCSIZE_MAX * 128];
+	hcl_oow_t inlen, outlen, inpos;
+
+	inpos = 0;
+	while (len > 0)
+	{
+		inlen = len;
+		outlen = HCL_COUNTOF(outbuf);
+		n = hcl_convutobchars(hcl, &data[inpos], &inlen, outbuf, &outlen);
+		if (outlen > 0 && hcl_feed(hcl, outbuf, outlen) <= -1) return -1;
+		inpos += inlen;
+		len -= inlen;
+		if (n <= -1) return -1
+	}
+	return 0;
+#endif
+}
 
 /*
 hcl_setopt (ON_EXPRESSION CALLBACK??? );
@@ -2597,7 +2738,6 @@ static void fini_compiler_cb (hcl_t* hcl)
 		hcl->c = HCL_NULL;
 	}
 }
-
 
 static void fini_compiler (hcl_t* hcl)
 {

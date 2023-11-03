@@ -589,7 +589,7 @@ HCL_INLINE int hcl_conv_bchars_to_uchars_with_cmgr (const hcl_bch_t* bcs, hcl_oo
 				break;
 			}
 
-			n = cmgr->bctouc (p, mlen, q);
+			n = cmgr->bctouc(p, mlen, q);
 			if (n == 0)
 			{
 				/* invalid sequence */
@@ -645,7 +645,7 @@ HCL_INLINE int hcl_conv_bchars_to_uchars_with_cmgr (const hcl_bch_t* bcs, hcl_oo
 		{
 			hcl_oow_t n;
 
-			n = cmgr->bctouc (p, mlen, &w);
+			n = cmgr->bctouc(p, mlen, &w);
 			if (n == 0)
 			{
 				/* invalid sequence */
@@ -720,7 +720,7 @@ HCL_INLINE int hcl_conv_uchars_to_bchars_with_cmgr (const hcl_uch_t* ucs, hcl_oo
 				break;
 			}
 
-			n = cmgr->uctobc (*p, bcs, rem);
+			n = cmgr->uctobc(*p, bcs, rem);
 			if (n == 0)
 			{
 				ret = -1;
@@ -745,7 +745,7 @@ HCL_INLINE int hcl_conv_uchars_to_bchars_with_cmgr (const hcl_uch_t* ucs, hcl_oo
 		{
 			hcl_oow_t n;
 
-			n = cmgr->uctobc (*p, bcsbuf, HCL_COUNTOF(bcsbuf));
+			n = cmgr->uctobc(*p, bcsbuf, HCL_COUNTOF(bcsbuf));
 			if (n == 0)
 			{
 				ret = -1;
@@ -786,7 +786,7 @@ HCL_INLINE int hcl_conv_ucstr_to_bcstr_with_cmgr (const hcl_uch_t* ucs, hcl_oow_
 				break;
 			}
 
-			n = cmgr->uctobc (*p, bcs, rem);
+			n = cmgr->uctobc(*p, bcs, rem);
 			if (n == 0)
 			{
 				ret = -1;
@@ -824,7 +824,7 @@ HCL_INLINE int hcl_conv_ucstr_to_bcstr_with_cmgr (const hcl_uch_t* ucs, hcl_oow_
 		{
 			hcl_oow_t n;
 
-			n = cmgr->uctobc (*p, bcsbuf, HCL_COUNTOF(bcsbuf));
+			n = cmgr->uctobc(*p, bcsbuf, HCL_COUNTOF(bcsbuf));
 			if (n == 0)
 			{
 				ret = -1;

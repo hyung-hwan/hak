@@ -684,6 +684,15 @@ struct hcl_compiler_t
 
 	struct
 	{
+	#if defined(HCL_OOCH_IS_UCH)
+		struct
+		{
+			hcl_bch_t buf[HCL_BCSIZE_MAX];
+			hcl_oow_t len;
+			int no_check;
+		} rsd; /* residue - incomplete sequence at the end of the last data fed by hcl_feedbchars() */
+	#endif
+
 		struct
 		{
 			hcl_flx_state_t state;

@@ -22,7 +22,10 @@ int hcl_print_handler_for_go (hcl_t hcl, hcl_iocmd_t cmd, void* arg) {
 import "C"
 
 import (
+	"bufio"
 	"fmt"
+	"io"
+	"os"
 	"runtime"
 	"unsafe"
 )
@@ -199,6 +202,28 @@ func (hcl *HCL) AttachIO(r IOReadImpl, s IOScanImpl, p IOPrintImpl) error {
 	return nil
 }
 
+func (hcl *HCL) BeginFeed() error {
+	var x C.int
+
+	x = C.hcl_beginfeed(hcl.c, nil)
+	if x <= -1 {
+		return fmt.Errorf("unable to begin feeding - %s", hcl.get_errmsg())
+	}
+
+	return nil
+}
+
+func (hcl *HCL) EndFeed() error {
+	var x C.int
+
+	x = C.hcl_endfeed(hcl.c)
+	if x <= -1 {
+		return fmt.Errorf("unable to end feeding - %s", hcl.get_errmsg())
+	}
+
+	return nil
+}
+
 func (hcl *HCL) FeedString(str string) error {
 	var x C.int
 	var q []C.hcl_uch_t
@@ -223,26 +248,40 @@ func (hcl *HCL) FeedRunes(str []rune) error {
 	return nil
 }
 
-func (hcl *HCL) BeginFeed() error {
+func (hcl *HCL) FeedFromReader(rdr io.Reader) error {
+	var err error
+	var n int
 	var x C.int
+	var buf [1024]byte
 
-	x = C.hcl_beginfeed(hcl.c, nil)
-	if x <= -1 {
-		return fmt.Errorf("unable to begin feeding - %s", hcl.get_errmsg())
+	for {
+		n, err = rdr.Read(buf[:])
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return fmt.Errorf("unable to read bytes - %s", err.Error())
+		}
+
+		x = C.hcl_feedbchars(hcl.c, (*C.hcl_bch_t)(unsafe.Pointer(&buf[0])), C.hcl_oow_t(n));
+		if x <= -1 {
+			return fmt.Errorf("unable to feed bytes - %s", hcl.get_errmsg())
+		}
 	}
 
 	return nil
 }
 
-func (hcl *HCL) EndFeed() error {
-	var x C.int
+func (hcl *HCL) FeedFromFile (file string) error {
+	var f *os.File
+	var err error
 
-	x = C.hcl_endfeed(hcl.c)
-	if x <= -1 {
-		return fmt.Errorf("unable to end feeding - %s", hcl.get_errmsg())
+	f, err = os.Open(file);
+	if err != nil {
+		return fmt.Errorf("unable to open %s - %s", file, err.Error())
 	}
 
-	return nil
+	defer f.Close()
+	return hcl.FeedFromReader(bufio.NewReader(f))
 }
 
 func (hcl *HCL) Execute() error {

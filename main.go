@@ -4,6 +4,7 @@ import (
 	_ "cfg"
 	"fmt"
 	"os"
+	"strings"
 
 	hcl "code.miflux.com/hyung-hwan/hcl/go"
 )
@@ -17,14 +18,52 @@ import (
 (printf ">>>>>>>>> [%d]\n" (+ 20 455))
 `))
 */
+
+type Param struct {
+	log_file string
+	input_file string
+}
+
+func handle_arguments(param *Param) error {
+	var nargs int = len(os.Args)
+	var i int
+
+	for i = 1; i < nargs; i++ {
+		if strings.HasPrefix(os.Args[i], "--log=")	{
+			param.log_file = os.Args[i][6:]
+		} else if (os.Args[i] == "--log") {
+			i++
+			param.log_file = os.Args[i]
+		} else if strings.HasPrefix(os.Args[i], "--") || strings.HasPrefix(os.Args[i], "-") {
+			return fmt.Errorf("unknown option - %s", os.Args[i])
+		} else {
+			break
+		}
+	}
+
+	if i >= nargs {
+		return fmt.Errorf("no input file specified")
+	}
+
+	param.input_file = os.Args[i]
+	return nil
+}
+
 func main() {
 
 	var x *hcl.HCL = nil
 	var err error = nil
+	var param Param
 
 	var rfh hcl.ReadFileHandler
 	var sfh hcl.ScanFileHandler
 	var pfh hcl.PrintFileHandler
+
+	err = handle_arguments(&param);
+	if err != nil {
+		fmt.Printf("Error: %s\n", err.Error())
+		os.Exit(1)
+	}
 
 	x, err = hcl.New()
 	if err != nil {
@@ -32,8 +71,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	x.SetLogMask (^hcl.BitMask(0))
-	x.SetLogTarget ("/dev/stderr")
+	if param.log_file != "" {
+		x.SetLogMask (^hcl.BitMask(0))
+		x.SetLogTarget ("/dev/stderr")
+	}
 
 	err = x.Ignite(1000000)
 	if err != nil {
@@ -52,10 +93,17 @@ func main() {
 		goto oops
 	}
 
-	err = x.FeedString(`(printf ">>>>>>>>> [%d]\n" (+ 30 455))
-	   (printf ">>>>>>>>> [%d]\n" (+ 11 455))
-	   #include "a.hcl"
-	   (printf ">>>>>>>>> [%d]\n" (+ 20 455))`)
+	err = x.BeginFeed();
+	if err != nil {
+		fmt.Printf("Error: %s\n", err.Error())
+		goto oops
+	}
+
+	err = x.FeedFromFile(param.input_file)
+	//err = x.FeedString(`(printf ">>>>>>>>> [%d]\n" (+ 30 455))
+	//   (printf ">>>>>>>>> [%d]\n" (+ 11 455))
+	//   #include "a.hcl"
+	//   (printf ">>>>>>>>> [%d]\n" (+ 20 455))`)
 	if err != nil {
 		fmt.Printf("Error: %s\n", err.Error())
 		goto oops

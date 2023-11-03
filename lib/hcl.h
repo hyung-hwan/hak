@@ -2310,6 +2310,18 @@ HCL_EXPORT int hcl_feed (
 	hcl_oow_t         len
 );
 
+HCL_EXPORT int hcl_feeduchars (
+	hcl_t*           hcl,
+	const hcl_uch_t* data,
+	hcl_oow_t        len
+);
+
+HCL_EXPORT int hcl_feedbchars (
+	hcl_t*           hcl,
+	const hcl_bch_t* data,
+	hcl_oow_t        len
+);
+
 HCL_EXPORT int hcl_endfeed (
 	hcl_t*            hcl
 );
