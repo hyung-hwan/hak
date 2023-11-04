@@ -446,7 +446,7 @@ static int _get_char (hcl_t* hcl, hcl_io_sciarg_t* inp)
 
 	if (inp->b.pos >= inp->b.len)
 	{
-		if (hcl->c->reader(hcl, HCL_IO_READ, inp) <= -1) return -1;
+		if (hcl->c->sci_rdr(hcl, HCL_IO_READ, inp) <= -1) return -1;
 
 		if (inp->xlen <= 0)
 		{
@@ -893,18 +893,18 @@ static int feed_begin_include (hcl_t* hcl)
 	/*arg->nl = '\0';*/
 	arg->includer = hcl->c->curinp;
 
-	if (hcl->c->reader(hcl, HCL_IO_OPEN, arg) <= -1)
+	if (hcl->c->sci_rdr(hcl, HCL_IO_OPEN, arg) <= -1)
 	{
 		const hcl_ooch_t* org_errmsg = hcl_backuperrmsg(hcl);
 		hcl_setsynerrbfmt (hcl, HCL_SYNERR_INCLUDE, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "unable to include %js - %js", io_name, org_errmsg);
 		goto oops;
 	}
 
-	if (arg->includer == &hcl->c->sciarg) /* top-level include */
+	if (arg->includer == &hcl->c->sci_arg) /* top-level include */
 	{
 		/* TODO: remove hcl_readbasesrchar() and clean up this part.
 		 * hcl_readbasesrchar(), if called in the middle of feeds,
-		 * updates hcl->c->sciarg's line and colm. so use a separate
+		 * updates hcl->c->sci_arg's line and colm. so use a separate
 		 * field to store the current feed location for now */
 		hcl->c->feed.lx._oloc = hcl->c->feed.lx.loc;
 	}
@@ -934,12 +934,12 @@ static int feed_end_include (hcl_t* hcl)
 	int x;
 	hcl_io_sciarg_t* cur;
 
-	if (hcl->c->curinp == &hcl->c->sciarg) return 0; /* no include */
+	if (hcl->c->curinp == &hcl->c->sci_arg) return 0; /* no include */
 
 	/* if it is an included file, close it and
 	 * retry to read a character from an outer file */
 
-	x = hcl->c->reader(hcl, HCL_IO_CLOSE, hcl->c->curinp);
+	x = hcl->c->sci_rdr(hcl, HCL_IO_CLOSE, hcl->c->curinp);
 
 	/* if closing has failed, still destroy the sio structure
 	 * first as normal and return the failure below. this way,
@@ -948,7 +948,7 @@ static int feed_end_include (hcl_t* hcl)
 	cur = hcl->c->curinp;
 	hcl->c->curinp = hcl->c->curinp->includer;
 
-	if (hcl->c->curinp == &hcl->c->sciarg)
+	if (hcl->c->curinp == &hcl->c->sci_arg)
 	{
 		hcl->c->feed.lx.loc = hcl->c->feed.lx._oloc;
 	}
@@ -2365,13 +2365,13 @@ static int feed_from_includee (hcl_t* hcl)
 {
 	int x;
 
-	HCL_ASSERT (hcl, hcl->c->curinp != HCL_NULL && hcl->c->curinp != &hcl->c->sciarg);
+	HCL_ASSERT (hcl, hcl->c->curinp != HCL_NULL && hcl->c->curinp != &hcl->c->sci_arg);
 
 	do
 	{
 		if (hcl->c->curinp->b.pos >= hcl->c->curinp->b.len)
 		{
-			if (hcl->c->reader(hcl, HCL_IO_READ, hcl->c->curinp) <= -1)
+			if (hcl->c->sci_rdr(hcl, HCL_IO_READ, hcl->c->curinp) <= -1)
 			{
 				return -1;
 			}
@@ -2406,7 +2406,7 @@ static int feed_from_includee (hcl_t* hcl)
 			if (feed_begin_include(hcl) <= -1) return -1;
 		}
 	}
-	while (hcl->c->curinp != &hcl->c->sciarg);
+	while (hcl->c->curinp != &hcl->c->sci_arg);
 
 	return 0;
 }
@@ -2465,7 +2465,7 @@ int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
 				hcl->c->feed.rd.do_include_file = 0;
 			}
 
-			if (hcl->c->curinp && hcl->c->curinp != &hcl->c->sciarg && feed_from_includee(hcl) <= -1)
+			if (hcl->c->curinp && hcl->c->curinp != &hcl->c->sci_arg && feed_from_includee(hcl) <= -1)
 			{
 				/* TODO: return the number of processed characters via an argument? */
 				goto oops;
@@ -2786,7 +2786,7 @@ static int init_compiler (hcl_t* hcl)
 	return 0;
 }
 
-int hcl_attachio (hcl_t* hcl, hcl_io_impl_t reader, hcl_io_impl_t scanner, hcl_io_impl_t printer)
+int hcl_attachio (hcl_t* hcl, hcl_io_impl_t sci_rdr, hcl_io_impl_t scanner, hcl_io_impl_t printer)
 {
 	int n;
 	int inited_compiler = 0;
@@ -2800,7 +2800,7 @@ int hcl_attachio (hcl_t* hcl, hcl_io_impl_t reader, hcl_io_impl_t scanner, hcl_i
 		inited_compiler = 1;
 	}
 
-	if (reader)
+	if (sci_rdr)
 	{
 		/* The name field and the includer field are HCL_NULL
 		 * for the main stream */
@@ -2809,7 +2809,7 @@ int hcl_attachio (hcl_t* hcl, hcl_io_impl_t reader, hcl_io_impl_t scanner, hcl_i
 		new_sciarg.colm = 1;
 
 		/* open the top-level source input stream */
-		n = reader(hcl, HCL_IO_OPEN, &new_sciarg);
+		n = sci_rdr(hcl, HCL_IO_OPEN, &new_sciarg);
 		if (n <= -1) goto oops;
 	}
 
@@ -2819,7 +2819,7 @@ int hcl_attachio (hcl_t* hcl, hcl_io_impl_t reader, hcl_io_impl_t scanner, hcl_i
 		n = scanner(hcl, HCL_IO_OPEN, &new_inarg);
 		if (n <= -1)
 		{
-			reader (hcl, HCL_IO_CLOSE, &new_sciarg);
+			sci_rdr (hcl, HCL_IO_CLOSE, &new_sciarg);
 			goto oops;
 		}
 	}
@@ -2832,20 +2832,20 @@ int hcl_attachio (hcl_t* hcl, hcl_io_impl_t reader, hcl_io_impl_t scanner, hcl_i
 		if (n <= -1)
 		{
 			if (scanner) scanner (hcl, HCL_IO_CLOSE, &new_inarg);
-			if (reader) reader (hcl, HCL_IO_CLOSE, &new_sciarg);
+			if (sci_rdr) sci_rdr (hcl, HCL_IO_CLOSE, &new_sciarg);
 			goto oops;
 		}
 	}
 
-	if (reader)
+	if (sci_rdr)
 	{
-		if (hcl->c->reader)
+		if (hcl->c->sci_rdr)
 		{
 			/* close the old source input stream */
-			hcl->c->reader (hcl, HCL_IO_CLOSE, &hcl->c->sciarg);
+			hcl->c->sci_rdr (hcl, HCL_IO_CLOSE, &hcl->c->sci_arg);
 		}
-		hcl->c->reader = reader;
-		hcl->c->sciarg = new_sciarg;
+		hcl->c->sci_rdr = sci_rdr;
+		hcl->c->sci_arg = new_sciarg;
 	}
 
 	if (scanner)
@@ -2870,7 +2870,7 @@ int hcl_attachio (hcl_t* hcl, hcl_io_impl_t reader, hcl_io_impl_t scanner, hcl_i
 		hcl->io.outarg = new_outarg;
 	}
 
-	if (reader)
+	if (sci_rdr)
 	{
 		/* clear unneeded source stream names */
 		/*clear_sr_names (hcl); <---- TODO: tricky to clean up here */
@@ -2878,7 +2878,7 @@ int hcl_attachio (hcl_t* hcl, hcl_io_impl_t reader, hcl_io_impl_t scanner, hcl_i
 		/* initialize some other key fields */
 		hcl->c->nungots = 0;
 		/* the source stream is open. set it as the current input stream */
-		hcl->c->curinp = &hcl->c->sciarg;
+		hcl->c->curinp = &hcl->c->sci_arg;
 	}
 
 	return 0;
@@ -2901,14 +2901,14 @@ void hcl_detachio (hcl_t* hcl)
 
 	if (hcl->c)
 	{
-		if (hcl->c->reader)
+		if (hcl->c->sci_rdr)
 		{
-			while (hcl->c->curinp != &hcl->c->sciarg)
+			while (hcl->c->curinp != &hcl->c->sci_arg)
 			{
 				hcl_io_sciarg_t* prev;
 
 				/* nothing much to do about a close error */
-				hcl->c->reader (hcl, HCL_IO_CLOSE, hcl->c->curinp);
+				hcl->c->sci_rdr (hcl, HCL_IO_CLOSE, hcl->c->curinp);
 
 				prev = hcl->c->curinp->includer;
 				HCL_ASSERT (hcl, hcl->c->curinp->name != HCL_NULL);
@@ -2916,8 +2916,8 @@ void hcl_detachio (hcl_t* hcl)
 				hcl->c->curinp = prev;
 			}
 
-			hcl->c->reader (hcl, HCL_IO_CLOSE, hcl->c->curinp);
-			hcl->c->reader = HCL_NULL; /* ready for another attachment */
+			hcl->c->sci_rdr (hcl, HCL_IO_CLOSE, hcl->c->curinp);
+			hcl->c->sci_rdr = HCL_NULL; /* ready for another attachment */
 		}
 
 	}
@@ -2937,8 +2937,8 @@ void hcl_detachio (hcl_t* hcl)
 
 void hcl_setbasesrloc (hcl_t* hcl, hcl_oow_t line, hcl_oow_t colm)
 {
-	hcl->c->sciarg.line = line;
-	hcl->c->sciarg.colm = colm;
+	hcl->c->sci_arg.line = line;
+	hcl->c->sci_arg.colm = colm;
 }
 
 hcl_lxc_t* hcl_readbasesrchar (hcl_t* hcl)
@@ -2946,9 +2946,9 @@ hcl_lxc_t* hcl_readbasesrchar (hcl_t* hcl)
 	/* read a character using the base input stream. the caller must care extra
 	 * care when using this function. this function reads the main stream regardless
 	 * of the inclusion status and ignores the ungot characters. */
-	int n = _get_char(hcl, &hcl->c->sciarg);
+	int n = _get_char(hcl, &hcl->c->sci_arg);
 	if (n <= -1) return HCL_NULL;
-	return &hcl->c->sciarg.lxc;
+	return &hcl->c->sci_arg.lxc;
 }
 
 hcl_ooch_t* hcl_readbasesrraw (hcl_t* hcl, hcl_oow_t* xlen)
@@ -2959,7 +2959,7 @@ hcl_ooch_t* hcl_readbasesrraw (hcl_t* hcl, hcl_oow_t* xlen)
 
 	HCL_ASSERT (hcl, hcl->c != HCL_NULL); /* call hio_attachio() or hio_attachiostd() with proper arguments first */
 
-	if (hcl->c->reader(hcl, HCL_IO_READ, &hcl->c->sciarg) <= -1) return HCL_NULL;
-	*xlen = hcl->c->sciarg.xlen;
-	return hcl->c->sciarg.buf;
+	if (hcl->c->sci_rdr(hcl, HCL_IO_READ, &hcl->c->sci_arg) <= -1) return HCL_NULL;
+	*xlen = hcl->c->sci_arg.xlen;
+	return hcl->c->sci_arg.buf;
 }

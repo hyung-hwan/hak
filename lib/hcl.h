@@ -1287,7 +1287,7 @@ struct hcl_io_inarg_t
 	/**
 	 * [OUT] place the number of characters read here for #HCL_IO_READ
 	 */
-	hcl_oow_t  xlen;
+	hcl_oow_t xlen;
 };
 
 typedef struct hcl_io_outarg_t hcl_io_outarg_t;
@@ -1299,7 +1299,7 @@ struct hcl_io_outarg_t
 	 * All subsequent operations on the stream see this field as set
 	 * during opening.
 	 */
-	void*        handle;
+	void* handle;
 
 	/**
 	 * [IN] the pointer to the beginning of the character/byte string
@@ -1307,18 +1307,18 @@ struct hcl_io_outarg_t
 	 *      hcl_ooch_t* for HCL_IO_WRITE
 	 *      hcl_bch_t* or hcl_uint8_t* for HCL_IO_WRITE_BYTES
 	 */
-	void*  ptr;
+	void* ptr;
 
 	/**
 	 * [IN] total number of characters/bytes to write
 	 */
-	hcl_oow_t    len;
+	hcl_oow_t len;
 
 	/**
 	 * [OUT] place the number of characters/bytes written here for
 	 *       HCL_IO_WRITE or HCL_IO_WRITE_BYTES
 	 */
-	hcl_oow_t    xlen;
+	hcl_oow_t xlen;
 };
 
 /**
@@ -1327,7 +1327,7 @@ struct hcl_io_outarg_t
  */
 typedef int (*hcl_io_impl_t) (
 	hcl_t*        hcl,
-	hcl_io_cmd_t   cmd,
+	hcl_io_cmd_t  cmd,
 	void*         arg /* one of hcl_io_sciarg_t*, hcl_io_inarg_t*, hcl_io_outarg_t* */
 );
 
@@ -2241,10 +2241,10 @@ HCL_EXPORT hcl_ooch_t* hcl_readbasesrraw (
 );
 
 HCL_EXPORT int hcl_attachio (
-	hcl_t*         hcl,
-	hcl_io_impl_t   reader, /* source stream heandler */
-	hcl_io_impl_t   scanner, /* runtime input stream handler */
-	hcl_io_impl_t   printer /* runtime output stream handler */
+	hcl_t*          hcl,
+	hcl_io_impl_t   sci_rdr, /* source code input handler */
+	hcl_io_impl_t   scanner, /* user data input handler */
+	hcl_io_impl_t   printer /* user data output handler */
 );
 
 HCL_EXPORT int hcl_attachiostdwithbcstr (

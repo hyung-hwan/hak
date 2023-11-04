@@ -644,10 +644,10 @@ struct hcl_compiler_t
 	hcl_cb_t* cbp;
 
 	/* input handler */
-	hcl_io_impl_t reader;
+	hcl_io_impl_t sci_rdr;
 
 	/* static input data buffer */
-	hcl_io_sciarg_t  sciarg;
+	hcl_io_sciarg_t  sci_arg;
 
 	/* pointer to the current input data. initially, it points to &inarg */
 	hcl_io_sciarg_t* curinp;
@@ -661,10 +661,10 @@ struct hcl_compiler_t
 
 	/* unget buffer */
 	hcl_lxc_t  ungot[10];
-	int          nungots;
+	int        nungots;
 
 	/* the last token read */
-	hcl_tok_t  tok;
+	hcl_tok_t   tok;
 	hcl_link_t* sr_names;
 
 	hcl_synerr_t synerr;
