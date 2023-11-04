@@ -553,7 +553,7 @@ hcl_synerrnum_t hcl_getsynerrnum (hcl_t* hcl)
 	return hcl->c->synerr.num;
 }
 
-void hcl_setsynerrbfmt (hcl_t* hcl, hcl_synerrnum_t num, const hcl_ioloc_t* loc, const hcl_oocs_t* tgt, const hcl_bch_t* msgfmt, ...)
+void hcl_setsynerrbfmt (hcl_t* hcl, hcl_synerrnum_t num, const hcl_loc_t* loc, const hcl_oocs_t* tgt, const hcl_bch_t* msgfmt, ...)
 {
 	static hcl_bch_t syntax_error[] = "syntax error - ";
 
@@ -612,7 +612,7 @@ void hcl_setsynerrbfmt (hcl_t* hcl, hcl_synerrnum_t num, const hcl_ioloc_t* loc,
 	}
 }
 
-void hcl_setsynerrufmt (hcl_t* hcl, hcl_synerrnum_t num, const hcl_ioloc_t* loc, const hcl_oocs_t* tgt, const hcl_uch_t* msgfmt, ...)
+void hcl_setsynerrufmt (hcl_t* hcl, hcl_synerrnum_t num, const hcl_loc_t* loc, const hcl_oocs_t* tgt, const hcl_uch_t* msgfmt, ...)
 {
 	static hcl_bch_t syntax_error[] = "syntax error - ";
 

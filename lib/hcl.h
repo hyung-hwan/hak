@@ -1192,7 +1192,7 @@ typedef struct hcl_vmprim_t hcl_vmprim_t;
  * IO MANIPULATION
  * ========================================================================= */
 
-enum hcl_iocmd_t
+enum hcl_io_cmd_t
 {
 	HCL_IO_OPEN,
 	HCL_IO_CLOSE,
@@ -1201,25 +1201,25 @@ enum hcl_iocmd_t
 	HCL_IO_WRITE_BYTES,
 	HCL_IO_FLUSH
 };
-typedef enum hcl_iocmd_t hcl_iocmd_t;
+typedef enum hcl_io_cmd_t hcl_io_cmd_t;
 
-struct hcl_ioloc_t
+struct hcl_loc_t
 {
 	hcl_oow_t line; /**< line */
 	hcl_oow_t colm; /**< column */
 	const hcl_ooch_t*  file; /**< file specified in #include */
 };
-typedef struct hcl_ioloc_t hcl_ioloc_t;
+typedef struct hcl_loc_t hcl_loc_t;
 
-struct hcl_iolxc_t
+struct hcl_lxc_t
 {
 	hcl_ooci_t   c; /**< character */
-	hcl_ioloc_t  l; /**< location */
+	hcl_loc_t    l; /**< location */
 };
-typedef struct hcl_iolxc_t hcl_iolxc_t;
+typedef struct hcl_lxc_t hcl_lxc_t;
 
-typedef struct hcl_iosrarg_t hcl_iosrarg_t;
-struct hcl_iosrarg_t
+typedef struct hcl_io_sciarg_t hcl_io_sciarg_t;
+struct hcl_io_sciarg_t
 {
 	/**
 	 * [IN] I/O object name.
@@ -1250,7 +1250,7 @@ struct hcl_iosrarg_t
 	 * [IN] points to the data of the includer. It is #HCL_NULL for the
 	 * main stream.
 	 */
-	hcl_iosrarg_t* includer;
+	hcl_io_sciarg_t* includer;
 
 	/*-----------------------------------------------------------------*/
 	/*----------- from here down, internal use only -------------------*/
@@ -1264,12 +1264,12 @@ struct hcl_iosrarg_t
 	hcl_oow_t colm;
 	hcl_ooci_t nl;
 
-	hcl_iolxc_t lxc;
+	hcl_lxc_t lxc;
 	/*-----------------------------------------------------------------*/
 };
 
-typedef struct hcl_ioinarg_t hcl_ioinarg_t;
-struct hcl_ioinarg_t
+typedef struct hcl_io_inarg_t hcl_io_inarg_t;
+struct hcl_io_inarg_t
 {
 	/**
 	 * [OUT] I/O handle set by a handler.
@@ -1290,8 +1290,8 @@ struct hcl_ioinarg_t
 	hcl_oow_t  xlen;
 };
 
-typedef struct hcl_iooutarg_t hcl_iooutarg_t;
-struct hcl_iooutarg_t
+typedef struct hcl_io_outarg_t hcl_io_outarg_t;
+struct hcl_io_outarg_t
 {
 	/**
 	 * [OUT] I/O handle set by a handler.
@@ -1322,13 +1322,13 @@ struct hcl_iooutarg_t
 };
 
 /**
- * The hcl_ioimpl_t type defines a callback function prototype
+ * The hcl_io_impl_t type defines a callback function prototype
  * for I/O operations.
  */
-typedef int (*hcl_ioimpl_t) (
+typedef int (*hcl_io_impl_t) (
 	hcl_t*        hcl,
-	hcl_iocmd_t   cmd,
-	void*         arg /* hcl_iosrarg_t* or hcl_iooutarg_t* */
+	hcl_io_cmd_t   cmd,
+	void*         arg /* one of hcl_io_sciarg_t*, hcl_io_inarg_t*, hcl_io_outarg_t* */
 );
 
 /* =========================================================================
@@ -1463,7 +1463,7 @@ typedef struct hcl_synerr_t hcl_synerr_t;
 struct hcl_synerr_t
 {
 	hcl_synerrnum_t num;
-	hcl_ioloc_t     loc;
+	hcl_loc_t     loc;
 	struct
 	{
 		hcl_ooch_t val[256];
@@ -1750,12 +1750,12 @@ struct hcl_t
 	struct
 	{
 		/* input handler */
-		hcl_ioimpl_t scanner;
-		hcl_ioinarg_t inarg;
+		hcl_io_impl_t scanner;
+		hcl_io_inarg_t inarg;
 
 		/* output handler */
-		hcl_ioimpl_t printer;
-		hcl_iooutarg_t outarg;
+		hcl_io_impl_t printer;
+		hcl_io_outarg_t outarg;
 	} io;
 
 #if defined(HCL_INCLUDE_COMPILER)
@@ -2229,7 +2229,7 @@ HCL_EXPORT void hcl_setbasesrloc (
 
 /* if you should read charcters from the input stream before hcl_read(),
  * you can call hcl_readbasesrchar() */
-HCL_EXPORT hcl_iolxc_t* hcl_readbasesrchar (
+HCL_EXPORT hcl_lxc_t* hcl_readbasesrchar (
 	hcl_t* hcl
 );
 
@@ -2242,9 +2242,9 @@ HCL_EXPORT hcl_ooch_t* hcl_readbasesrraw (
 
 HCL_EXPORT int hcl_attachio (
 	hcl_t*         hcl,
-	hcl_ioimpl_t   reader, /* source stream heandler */
-	hcl_ioimpl_t   scanner, /* runtime input stream handler */
-	hcl_ioimpl_t   printer /* runtime output stream handler */
+	hcl_io_impl_t   reader, /* source stream heandler */
+	hcl_io_impl_t   scanner, /* runtime input stream handler */
+	hcl_io_impl_t   printer /* runtime output stream handler */
 );
 
 HCL_EXPORT int hcl_attachiostdwithbcstr (
@@ -2370,7 +2370,7 @@ HCL_EXPORT hcl_synerrnum_t hcl_getsynerrnum (
 HCL_EXPORT void hcl_setsynerrbfmt (
 	hcl_t*              hcl,
 	hcl_synerrnum_t     num,
-	const hcl_ioloc_t*  loc,
+	const hcl_loc_t*  loc,
 	const hcl_oocs_t*   tgt,
 	const hcl_bch_t*    msgfmt,
 	...
@@ -2379,14 +2379,14 @@ HCL_EXPORT void hcl_setsynerrbfmt (
 HCL_EXPORT void hcl_setsynerrufmt (
 	hcl_t*              hcl,
 	hcl_synerrnum_t     num,
-	const hcl_ioloc_t*  loc,
+	const hcl_loc_t*  loc,
 	const hcl_oocs_t*   tgt,
 	const hcl_uch_t*    msgfmt,
 	...
 );
 
 #if defined(HCL_HAVE_INLINE)
-	static HCL_INLINE void hcl_setsynerr (hcl_t* hcl, hcl_synerrnum_t num, const hcl_ioloc_t* loc, const hcl_oocs_t* tgt)
+	static HCL_INLINE void hcl_setsynerr (hcl_t* hcl, hcl_synerrnum_t num, const hcl_loc_t* loc, const hcl_oocs_t* tgt)
 	{
 		hcl_setsynerrbfmt (hcl, num, loc, tgt, HCL_NULL);
 	}

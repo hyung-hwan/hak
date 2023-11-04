@@ -3200,7 +3200,7 @@ static const hcl_bch_t* get_base_name (const hcl_bch_t* path)
 	return (last == HCL_NULL)? path: (last + 1);
 }
 
-static HCL_INLINE int open_sin_stream (hcl_t* hcl, hcl_iosrarg_t* arg)
+static HCL_INLINE int open_sci_stream (hcl_t* hcl, hcl_io_sciarg_t* arg)
 {
 	xtn_t* xtn = GET_XTN(hcl);
 	bb_t* bb = HCL_NULL;
@@ -3282,7 +3282,7 @@ static HCL_INLINE int open_sin_stream (hcl_t* hcl, hcl_iosrarg_t* arg)
 		arg->name = hcl_dupbtooocstr(hcl, bb->fn, HCL_NULL);
 		/* ignore duplication failure */
 /* TODO: change the type of arg->name from const hcl_ooch_t* to hcl_ooch_t*.
- *       change its specification from [IN] only to [INOUT] in hcl_iosrarg_t. */
+ *       change its specification from [IN] only to [INOUT] in hcl_io_sciarg_t. */
 	/* END HACK */
 	}
 
@@ -3298,7 +3298,7 @@ oops:
 	return -1;
 }
 
-static HCL_INLINE int close_sin_stream (hcl_t* hcl, hcl_iosrarg_t* arg)
+static HCL_INLINE int close_sci_stream (hcl_t* hcl, hcl_io_sciarg_t* arg)
 {
 	/*xtn_t* xtn = GET_XTN(hcl);*/
 	bb_t* bb;
@@ -3321,7 +3321,7 @@ static HCL_INLINE int close_sin_stream (hcl_t* hcl, hcl_iosrarg_t* arg)
 	return 0;
 }
 
-static HCL_INLINE int read_sin_stream (hcl_t* hcl, hcl_iosrarg_t* arg)
+static HCL_INLINE int read_sci_stream (hcl_t* hcl, hcl_io_sciarg_t* arg)
 {
 	/*xtn_t* xtn = GET_XTN(hcl);*/
 	bb_t* bb;
@@ -3371,19 +3371,19 @@ static HCL_INLINE int read_sin_stream (hcl_t* hcl, hcl_iosrarg_t* arg)
 	return 0;
 }
 
-/* source input stream handler */
-static int sin_handler (hcl_t* hcl, hcl_iocmd_t cmd, void* arg) 
+/* source code input handler */
+static int sci_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg) 
 {
 	switch (cmd)
 	{
 		case HCL_IO_OPEN:
-			return open_sin_stream(hcl, (hcl_iosrarg_t*)arg);
+			return open_sci_stream(hcl, (hcl_io_sciarg_t*)arg);
 
 		case HCL_IO_CLOSE:
-			return close_sin_stream(hcl, (hcl_iosrarg_t*)arg);
+			return close_sci_stream(hcl, (hcl_io_sciarg_t*)arg);
 
 		case HCL_IO_READ:
-			return read_sin_stream(hcl, (hcl_iosrarg_t*)arg);
+			return read_sci_stream(hcl, (hcl_io_sciarg_t*)arg);
 
 		case HCL_IO_FLUSH:
 			/* no effect on an input stream */
@@ -3396,7 +3396,7 @@ static int sin_handler (hcl_t* hcl, hcl_iocmd_t cmd, void* arg)
 }
 
 /* --------------------------------------------------------------------- */
-static HCL_INLINE int open_in_stream (hcl_t* hcl, hcl_ioinarg_t* arg)
+static HCL_INLINE int open_in_stream (hcl_t* hcl, hcl_io_inarg_t* arg)
 {
 	xtn_t* xtn = GET_XTN(hcl);
 	bb_t* bb = HCL_NULL;
@@ -3438,7 +3438,7 @@ oops:
 	return -1;
 }
 
-static HCL_INLINE int close_in_stream (hcl_t* hcl, hcl_ioinarg_t* arg)
+static HCL_INLINE int close_in_stream (hcl_t* hcl, hcl_io_inarg_t* arg)
 {
 	/*xtn_t* xtn = GET_XTN(hcl);*/
 	bb_t* bb;
@@ -3453,7 +3453,7 @@ static HCL_INLINE int close_in_stream (hcl_t* hcl, hcl_ioinarg_t* arg)
 	return 0;
 }
 
-static HCL_INLINE int read_in_stream (hcl_t* hcl, hcl_ioinarg_t* arg)
+static HCL_INLINE int read_in_stream (hcl_t* hcl, hcl_io_inarg_t* arg)
 {
 	/*xtn_t* xtn = GET_XTN(hcl);*/
 	bb_t* bb;
@@ -3503,18 +3503,18 @@ static HCL_INLINE int read_in_stream (hcl_t* hcl, hcl_ioinarg_t* arg)
 	return 0;
 }
 
-static int scan_handler (hcl_t* hcl, hcl_iocmd_t cmd, void* arg)
+static int scan_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg)
 {
 	switch (cmd)
 	{
 		case HCL_IO_OPEN:
-			return open_in_stream(hcl, (hcl_ioinarg_t*)arg);
+			return open_in_stream(hcl, (hcl_io_inarg_t*)arg);
 
 		case HCL_IO_CLOSE:
-			return close_in_stream(hcl, (hcl_ioinarg_t*)arg);
+			return close_in_stream(hcl, (hcl_io_inarg_t*)arg);
 
 		case HCL_IO_READ:
-			return read_in_stream(hcl, (hcl_ioinarg_t*)arg);
+			return read_in_stream(hcl, (hcl_io_inarg_t*)arg);
 
 		case HCL_IO_FLUSH:
 			/* no effect on an input stream */
@@ -3528,7 +3528,7 @@ static int scan_handler (hcl_t* hcl, hcl_iocmd_t cmd, void* arg)
 
 /* --------------------------------------------------------------------- */
 
-static HCL_INLINE int open_out_stream (hcl_t* hcl, hcl_iooutarg_t* arg)
+static HCL_INLINE int open_out_stream (hcl_t* hcl, hcl_io_outarg_t* arg)
 {
 	xtn_t* xtn = GET_XTN(hcl);
 	FILE* fp;
@@ -3552,7 +3552,7 @@ static HCL_INLINE int open_out_stream (hcl_t* hcl, hcl_iooutarg_t* arg)
 	return 0;
 }
 
-static HCL_INLINE int close_out_stream (hcl_t* hcl, hcl_iooutarg_t* arg)
+static HCL_INLINE int close_out_stream (hcl_t* hcl, hcl_io_outarg_t* arg)
 {
 	/*xtn_t* xtn = GET_XTN(hcl);*/
 	FILE* fp;
@@ -3564,7 +3564,7 @@ static HCL_INLINE int close_out_stream (hcl_t* hcl, hcl_iooutarg_t* arg)
 	return 0;
 }
 
-static HCL_INLINE int write_out_stream (hcl_t* hcl, hcl_iooutarg_t* arg)
+static HCL_INLINE int write_out_stream (hcl_t* hcl, hcl_io_outarg_t* arg)
 {
 	/*xtn_t* xtn = GET_XTN(hcl);*/
 	const hcl_ooch_t* ptr;
@@ -3604,7 +3604,7 @@ static HCL_INLINE int write_out_stream (hcl_t* hcl, hcl_iooutarg_t* arg)
 	return 0;
 }
 
-static HCL_INLINE int write_bytes_out_stream (hcl_t* hcl, hcl_iooutarg_t* arg)
+static HCL_INLINE int write_bytes_out_stream (hcl_t* hcl, hcl_io_outarg_t* arg)
 {
 	/*xtn_t* xtn = GET_XTN(hcl);*/
 	const hcl_uint8_t* ptr;
@@ -3621,7 +3621,7 @@ static HCL_INLINE int write_bytes_out_stream (hcl_t* hcl, hcl_iooutarg_t* arg)
 	return 0;
 }
 
-static HCL_INLINE int flush_out_stream (hcl_t* hcl, hcl_iooutarg_t* arg)
+static HCL_INLINE int flush_out_stream (hcl_t* hcl, hcl_io_outarg_t* arg)
 {
 	FILE* fp;
 
@@ -3632,24 +3632,24 @@ static HCL_INLINE int flush_out_stream (hcl_t* hcl, hcl_iooutarg_t* arg)
 	return 0;
 }
 
-static int print_handler (hcl_t* hcl, hcl_iocmd_t cmd, void* arg)
+static int print_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg)
 {
 	switch (cmd)
 	{
 		case HCL_IO_OPEN:
-			return open_out_stream(hcl, (hcl_iooutarg_t*)arg);
+			return open_out_stream(hcl, (hcl_io_outarg_t*)arg);
 
 		case HCL_IO_CLOSE:
-			return close_out_stream(hcl, (hcl_iooutarg_t*)arg);
+			return close_out_stream(hcl, (hcl_io_outarg_t*)arg);
 
 		case HCL_IO_WRITE:
-			return write_out_stream(hcl, (hcl_iooutarg_t*)arg);
+			return write_out_stream(hcl, (hcl_io_outarg_t*)arg);
 
 		case HCL_IO_WRITE_BYTES:
-			return write_bytes_out_stream(hcl, (hcl_iooutarg_t*)arg);
+			return write_bytes_out_stream(hcl, (hcl_io_outarg_t*)arg);
 
 		case HCL_IO_FLUSH:
-			return flush_out_stream(hcl, (hcl_iooutarg_t*)arg);
+			return flush_out_stream(hcl, (hcl_io_outarg_t*)arg);
 
 		default:
 			hcl_seterrnum (hcl, HCL_EINTERN);
@@ -3672,7 +3672,7 @@ int hcl_attachiostdwithbcstr (hcl_t* hcl, const hcl_bch_t* read_file, const hcl_
 	xtn->scan_path = scan_file;
 	xtn->print_path = print_file;
 
-	n = hcl_attachio(hcl, sin_handler, scan_handler, print_handler);
+	n = hcl_attachio(hcl, sci_handler, scan_handler, print_handler);
 
 	xtn->read_path = HCL_NULL;
 	xtn->scan_path = HCL_NULL;
@@ -3711,7 +3711,7 @@ int hcl_attachiostdwithucstr (hcl_t* hcl, const hcl_uch_t* read_file, const hcl_
 		return -1;
 	}
 
-	n = hcl_attachio(hcl, sin_handler, scan_handler, print_handler);
+	n = hcl_attachio(hcl, sci_handler, scan_handler, print_handler);
 
 	hcl_freemem (hcl, (void*)xtn->read_path);
 	hcl_freemem (hcl, (void*)xtn->scan_path);

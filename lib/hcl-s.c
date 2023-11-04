@@ -129,7 +129,7 @@ struct hcl_server_proto_token_t
 	hcl_ooch_t* ptr;
 	hcl_oow_t len;
 	hcl_oow_t capa;
-	hcl_ioloc_t loc;
+	hcl_loc_t loc;
 };
 
 enum hcl_server_proto_req_state_t
@@ -150,9 +150,9 @@ struct hcl_server_proto_t
 	hcl_server_worker_t* worker;
 
 	hcl_t* hcl;
-	hcl_iolxc_t* lxc;
+	hcl_lxc_t* lxc;
 	hcl_oow_t unread_count;
-	hcl_iolxc_t unread_lxc;
+	hcl_lxc_t unread_lxc;
 	hcl_server_proto_token_t tok;
 	hcl_tmr_index_t exec_runtime_event_index;
 
@@ -316,7 +316,7 @@ static const hcl_bch_t* get_base_name (const hcl_bch_t* path)
 }
 
 
-static HCL_INLINE int open_read_stream (hcl_t* hcl, hcl_iosrarg_t* arg)
+static HCL_INLINE int open_read_stream (hcl_t* hcl, hcl_io_sciarg_t* arg)
 {
 	worker_hcl_xtn_t* xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);
 	bb_t* bb = HCL_NULL;
@@ -412,7 +412,7 @@ oops:
 	return -1;
 }
 
-static HCL_INLINE int close_read_stream (hcl_t* hcl, hcl_iosrarg_t* arg)
+static HCL_INLINE int close_read_stream (hcl_t* hcl, hcl_io_sciarg_t* arg)
 {
 	worker_hcl_xtn_t* xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);
 	bb_t* bb;
@@ -427,7 +427,7 @@ static HCL_INLINE int close_read_stream (hcl_t* hcl, hcl_iosrarg_t* arg)
 	return 0;
 }
 
-static HCL_INLINE int read_input (hcl_t* hcl, hcl_iosrarg_t* arg)
+static HCL_INLINE int read_input (hcl_t* hcl, hcl_io_sciarg_t* arg)
 {
 	worker_hcl_xtn_t* xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);
 	bb_t* bb;
@@ -540,18 +540,18 @@ start_over:
 }
 
 
-static int read_handler (hcl_t* hcl, hcl_iocmd_t cmd, void* arg)
+static int read_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg)
 {
 	switch (cmd)
 	{
 		case HCL_IO_OPEN:
-			return open_read_stream(hcl, (hcl_iosrarg_t*)arg);
+			return open_read_stream(hcl, (hcl_io_sciarg_t*)arg);
 
 		case HCL_IO_CLOSE:
-			return close_read_stream(hcl, (hcl_iosrarg_t*)arg);
+			return close_read_stream(hcl, (hcl_io_sciarg_t*)arg);
 
 		case HCL_IO_READ:
-			return read_input(hcl, (hcl_iosrarg_t*)arg);
+			return read_input(hcl, (hcl_io_sciarg_t*)arg);
 
 		default:
 			hcl_seterrnum (hcl, HCL_EINTERN);
@@ -559,7 +559,7 @@ static int read_handler (hcl_t* hcl, hcl_iocmd_t cmd, void* arg)
 	}
 }
 
-static int print_handler (hcl_t* hcl, hcl_iocmd_t cmd, void* arg)
+static int print_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg)
 {
 	switch (cmd)
 	{
@@ -572,7 +572,7 @@ static int print_handler (hcl_t* hcl, hcl_iocmd_t cmd, void* arg)
 		case HCL_IO_WRITE:
 		{
 			worker_hcl_xtn_t* xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);
-			hcl_iooutarg_t* outarg = (hcl_iooutarg_t*)arg;
+			hcl_io_outarg_t* outarg = (hcl_io_outarg_t*)arg;
 
 			if (hcl_server_proto_feed_reply(xtn->proto, outarg->ptr, outarg->len, 0) <= -1)
 			{
@@ -591,7 +591,7 @@ static int print_handler (hcl_t* hcl, hcl_iocmd_t cmd, void* arg)
 		case HCL_IO_WRITE_BYTES:
 		{
 			worker_hcl_xtn_t* xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);
-			hcl_iooutarg_t* outarg = (hcl_iooutarg_t*)arg;
+			hcl_io_outarg_t* outarg = (hcl_io_outarg_t*)arg;
 
 			if (hcl_server_proto_feed_reply_bytes(xtn->proto, outarg->ptr, outarg->len, 0) <= -1)
 			{

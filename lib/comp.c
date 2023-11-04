@@ -458,7 +458,7 @@ static HCL_INLINE void patch_instruction (hcl_t* hcl, hcl_oow_t index, hcl_oob_t
 	hcl->code.bc.ptr[index] = bc;
 }
 
-static int emit_byte_instruction (hcl_t* hcl, hcl_oob_t bc, const hcl_ioloc_t* srcloc)
+static int emit_byte_instruction (hcl_t* hcl, hcl_oob_t bc, const hcl_loc_t* srcloc)
 {
 	/* the context object has the ip field. it should be representable
 	 * in a small integer. for simplicity, limit the total byte code length
@@ -513,7 +513,7 @@ int hcl_emitbyteinstruction (hcl_t* hcl, hcl_oob_t bc)
 	return emit_byte_instruction(hcl, bc, HCL_NULL);
 }*/
 
-static int emit_single_param_instruction (hcl_t* hcl, int cmd, hcl_oow_t param_1, const hcl_ioloc_t* srcloc)
+static int emit_single_param_instruction (hcl_t* hcl, int cmd, hcl_oow_t param_1, const hcl_loc_t* srcloc)
 {
 	hcl_oob_t bc;
 
@@ -656,7 +656,7 @@ write_long2:
 	return 0;
 }
 
-static int emit_double_param_instruction (hcl_t* hcl, int cmd, hcl_oow_t param_1, hcl_oow_t param_2, const hcl_ioloc_t* srcloc)
+static int emit_double_param_instruction (hcl_t* hcl, int cmd, hcl_oow_t param_1, hcl_oow_t param_2, const hcl_loc_t* srcloc)
 {
 	hcl_oob_t bc;
 
@@ -738,7 +738,7 @@ static HCL_INLINE int emit_long_param (hcl_t* hcl, hcl_oow_t param)
 #endif
 }
 
-static int emit_push_literal (hcl_t* hcl, hcl_oop_t obj, const hcl_ioloc_t* srcloc)
+static int emit_push_literal (hcl_t* hcl, hcl_oop_t obj, const hcl_loc_t* srcloc)
 {
 	hcl_oow_t index;
 
@@ -853,7 +853,7 @@ static HCL_INLINE void patch_double_long_params_with_oow (hcl_t* hcl, hcl_ooi_t 
 #endif
 }
 
-static int emit_variable_access (hcl_t* hcl, int mode, const hcl_var_info_t* vi, const hcl_ioloc_t* srcloc)
+static int emit_variable_access (hcl_t* hcl, int mode, const hcl_var_info_t* vi, const hcl_loc_t* srcloc)
 {
 	static hcl_oob_t inst_map[][3] =
 	{
@@ -886,7 +886,7 @@ static int emit_variable_access (hcl_t* hcl, int mode, const hcl_var_info_t* vi,
 }
 
 /* ========================================================================= */
-static int push_cblk (hcl_t* hcl, const hcl_ioloc_t* errloc, hcl_cblk_type_t type)
+static int push_cblk (hcl_t* hcl, const hcl_loc_t* errloc, hcl_cblk_type_t type)
 {
 	hcl_oow_t new_depth;
 
@@ -929,7 +929,7 @@ static void pop_cblk (hcl_t* hcl)
 	hcl->c->cblk.depth--;
 }
 
-static int push_clsblk (hcl_t* hcl, const hcl_ioloc_t* errloc, hcl_oow_t nivars, hcl_oow_t ncvars, const hcl_ooch_t*  ivars_str, hcl_oow_t ivars_strlen, const hcl_ooch_t* cvars_str, hcl_oow_t cvars_strlen)
+static int push_clsblk (hcl_t* hcl, const hcl_loc_t* errloc, hcl_oow_t nivars, hcl_oow_t ncvars, const hcl_ooch_t*  ivars_str, hcl_oow_t ivars_strlen, const hcl_ooch_t* cvars_str, hcl_oow_t cvars_strlen)
 {
 	hcl_oow_t new_depth;
 	hcl_clsblk_info_t* ci;
@@ -1028,7 +1028,7 @@ static void pop_clsblk (hcl_t* hcl)
 }
 
 
-static int push_fnblk (hcl_t* hcl, const hcl_ioloc_t* errloc, 
+static int push_fnblk (hcl_t* hcl, const hcl_loc_t* errloc, 
 	hcl_oow_t tmpr_va, hcl_oow_t tmpr_nargs, hcl_oow_t tmpr_nrvars, hcl_oow_t tmpr_nlvars,
 	hcl_oow_t tmpr_count, hcl_oow_t tmpr_len, hcl_oow_t make_inst_pos, hcl_oow_t lfbase, int fun_type)
 {
@@ -3927,7 +3927,7 @@ HCL_DEBUG1 (hcl, ">>>> instance variable or method %js\n", sep + 1);
 	return 0;
 }
 
-static hcl_oop_t string_to_num (hcl_t* hcl, hcl_oocs_t* str, const hcl_ioloc_t* loc, int radixed)
+static hcl_oop_t string_to_num (hcl_t* hcl, hcl_oocs_t* str, const hcl_loc_t* loc, int radixed)
 {
 	int negsign, base;
 	const hcl_ooch_t* ptr, * end;
@@ -3992,7 +3992,7 @@ static hcl_oop_t string_to_num (hcl_t* hcl, hcl_oocs_t* str, const hcl_ioloc_t* 
 	return hcl_strtoint(hcl, ptr, end - ptr, base);
 }
 
-static hcl_oop_t string_to_fpdec (hcl_t* hcl, hcl_oocs_t* str, const hcl_ioloc_t* loc)
+static hcl_oop_t string_to_fpdec (hcl_t* hcl, hcl_oocs_t* str, const hcl_loc_t* loc)
 {
 	hcl_oow_t pos;
 	hcl_oow_t scale = 0;
@@ -4625,7 +4625,7 @@ static HCL_INLINE int post_while_cond (hcl_t* hcl)
 	hcl_cframe_t* cf;
 	hcl_ooi_t jump_inst_pos;
 	hcl_ooi_t cond_pos, body_pos;
-	hcl_ioloc_t start_loc;
+	hcl_loc_t start_loc;
 	int jump_inst, next_cop;
 	hcl_cnode_t* cond, * body;
 

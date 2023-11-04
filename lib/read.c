@@ -239,7 +239,7 @@ static hcl_oop_t string_to_num (hcl_t* hcl, hcl_oocs_t* str, int radixed)
 	return hcl_strtoint(hcl, ptr, end - ptr, base);
 }
 
-static hcl_oop_t string_to_fpdec (hcl_t* hcl, hcl_oocs_t* str, const hcl_ioloc_t* loc)
+static hcl_oop_t string_to_fpdec (hcl_t* hcl, hcl_oocs_t* str, const hcl_loc_t* loc)
 {
 	hcl_oow_t pos;
 	hcl_oow_t scale = 0;
@@ -417,14 +417,14 @@ static HCL_INLINE int add_token_char (hcl_t* hcl, hcl_ooch_t c)
 	return copy_string_to(hcl, &tmp, TOKEN_NAME(hcl), &TOKEN_NAME_CAPA(hcl), 1, '\0');
 }
 
-static HCL_INLINE void unget_char (hcl_t* hcl, const hcl_iolxc_t* c)
+static HCL_INLINE void unget_char (hcl_t* hcl, const hcl_lxc_t* c)
 {
 	/* Make sure that the unget buffer is large enough */
 	HCL_ASSERT (hcl, hcl->c->nungots < HCL_COUNTOF(hcl->c->ungot));
 	hcl->c->ungot[hcl->c->nungots++] = *c;
 }
 
-static int get_directive_token_type (hcl_t* hcl, hcl_iotok_type_t* tok_type)
+static int get_directive_token_type (hcl_t* hcl, hcl_tok_type_t* tok_type)
 {
 	if (does_token_name_match(hcl, VOCA_INCLUDE))
 	{
@@ -440,7 +440,7 @@ static int get_directive_token_type (hcl_t* hcl, hcl_iotok_type_t* tok_type)
 	return -1;
 }
 
-static int _get_char (hcl_t* hcl, hcl_iosrarg_t* inp)
+static int _get_char (hcl_t* hcl, hcl_io_sciarg_t* inp)
 {
 	hcl_ooci_t lc;
 
@@ -513,14 +513,14 @@ static int get_char (hcl_t* hcl)
 	return n;
 }
 
-static hcl_iotok_type_t classify_ident_token (hcl_t* hcl, const hcl_oocs_t* v)
+static hcl_tok_type_t classify_ident_token (hcl_t* hcl, const hcl_oocs_t* v)
 {
 	hcl_oow_t i;
 	struct
 	{
 		hcl_oow_t len;
 		hcl_ooch_t name[10];
-		hcl_iotok_type_t type;
+		hcl_tok_type_t type;
 	} tab[] =
 	{
 		{ 4, { 'n','u','l','l' },     HCL_IOTOK_NIL },
@@ -544,7 +544,7 @@ static int is_sr_name_in_use (hcl_t* hcl, const hcl_ooch_t* sr_name)
 	 *  this is very error prone. if there are changes in refernece
 	 *  points of this sr_name in the source code, this function also
 	 *  must be modifed. */
-	hcl_iosrarg_t* cur;
+	hcl_io_sciarg_t* cur;
 
 	if (hcl->c->synerr.loc.file == sr_name) return 1;
 
@@ -559,7 +559,7 @@ static int is_sr_name_in_use (hcl_t* hcl, const hcl_ooch_t* sr_name)
 
 static void clear_sr_names (hcl_t* hcl)
 {
-	hcl_iolink_t* cur;
+	hcl_link_t* cur;
 
 	HCL_ASSERT (hcl, hcl->c != HCL_NULL);
 
@@ -573,7 +573,7 @@ static void clear_sr_names (hcl_t* hcl)
 
 static const hcl_ooch_t* add_sr_name (hcl_t* hcl, const hcl_oocs_t* name)
 {
-	hcl_iolink_t* link;
+	hcl_link_t* link;
 	hcl_ooch_t* nptr;
 
 	/* TODO: make search faster */
@@ -585,7 +585,7 @@ static const hcl_ooch_t* add_sr_name (hcl_t* hcl, const hcl_oocs_t* name)
 		link = link->link;
 	}
 
-	link = (hcl_iolink_t*)hcl_callocmem (hcl, HCL_SIZEOF(*link) + HCL_SIZEOF(hcl_ooch_t) * (name->len + 1));
+	link = (hcl_link_t*)hcl_callocmem (hcl, HCL_SIZEOF(*link) + HCL_SIZEOF(hcl_ooch_t) * (name->len + 1));
 	if (HCL_UNLIKELY(!link)) return HCL_NULL;
 
 	nptr = (hcl_ooch_t*)(link + 1);
@@ -601,7 +601,7 @@ static const hcl_ooch_t* add_sr_name (hcl_t* hcl, const hcl_oocs_t* name)
 
 /* -------------------------------------------------------------------------- */
 
-static HCL_INLINE int enter_list (hcl_t* hcl, const hcl_ioloc_t* loc, int flagv)
+static HCL_INLINE int enter_list (hcl_t* hcl, const hcl_loc_t* loc, int flagv)
 {
 	hcl_rstl_t* rstl;
 	rstl = hcl_callocmem(hcl, HCL_SIZEOF(*rstl));
@@ -617,7 +617,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, int* flagv, int* oldflagv
 {
 	hcl_rstl_t* rstl;
 	hcl_cnode_t* head;
-	hcl_ioloc_t loc;
+	hcl_loc_t loc;
 	int fv, concode;
 
 	/* the stack must not be empty - cannot leave a list without entering it */
@@ -878,13 +878,13 @@ static void init_feed (hcl_t* hcl)
 
 static int feed_begin_include (hcl_t* hcl)
 {
-	hcl_iosrarg_t* arg;
+	hcl_io_sciarg_t* arg;
 	const hcl_ooch_t* io_name;
 
 	io_name = add_sr_name(hcl, TOKEN_NAME(hcl));
 	if (HCL_UNLIKELY(!io_name)) return -1;
 
-	arg = (hcl_iosrarg_t*)hcl_callocmem(hcl, HCL_SIZEOF(*arg));
+	arg = (hcl_io_sciarg_t*)hcl_callocmem(hcl, HCL_SIZEOF(*arg));
 	if (HCL_UNLIKELY(!arg)) goto oops;
 
 	arg->name = io_name;
@@ -900,11 +900,11 @@ static int feed_begin_include (hcl_t* hcl)
 		goto oops;
 	}
 
-	if (arg->includer == &hcl->c->srarg) /* top-level include */
+	if (arg->includer == &hcl->c->sciarg) /* top-level include */
 	{
 		/* TODO: remove hcl_readbasesrchar() and clean up this part.
 		 * hcl_readbasesrchar(), if called in the middle of feeds,
-		 * updates hcl->c->srarg's line and colm. so use a separate
+		 * updates hcl->c->sciarg's line and colm. so use a separate
 		 * field to store the current feed location for now */
 		hcl->c->feed.lx._oloc = hcl->c->feed.lx.loc;
 	}
@@ -932,9 +932,9 @@ oops:
 static int feed_end_include (hcl_t* hcl)
 {
 	int x;
-	hcl_iosrarg_t* cur;
+	hcl_io_sciarg_t* cur;
 
-	if (hcl->c->curinp == &hcl->c->srarg) return 0; /* no include */
+	if (hcl->c->curinp == &hcl->c->sciarg) return 0; /* no include */
 
 	/* if it is an included file, close it and
 	 * retry to read a character from an outer file */
@@ -948,7 +948,7 @@ static int feed_end_include (hcl_t* hcl)
 	cur = hcl->c->curinp;
 	hcl->c->curinp = hcl->c->curinp->includer;
 
-	if (hcl->c->curinp == &hcl->c->srarg)
+	if (hcl->c->curinp == &hcl->c->sciarg)
 	{
 		hcl->c->feed.lx.loc = hcl->c->feed.lx._oloc;
 	}
@@ -1394,7 +1394,7 @@ struct delim_token_t
 {
 	const char*      t_value;
 	hcl_oow_t        t_len;
-	hcl_iotok_type_t t_type;
+	hcl_tok_type_t t_type;
 };
 typedef struct delim_token_t delim_token_t;
 
@@ -1458,7 +1458,7 @@ static int find_delim_token_char (hcl_t* hcl, const hcl_ooci_t c, int row_start,
 	return found;
 }
 
-static HCL_INLINE int feed_wrap_up (hcl_t* hcl, hcl_iotok_type_t type)
+static HCL_INLINE int feed_wrap_up (hcl_t* hcl, hcl_tok_type_t type)
 {
 	int n;
 	SET_TOKEN_TYPE (hcl, type);
@@ -1469,13 +1469,13 @@ static HCL_INLINE int feed_wrap_up (hcl_t* hcl, hcl_iotok_type_t type)
 	return n;
 }
 
-static int feed_wrap_up_with_char (hcl_t* hcl, hcl_ooci_t c, hcl_iotok_type_t type)
+static int feed_wrap_up_with_char (hcl_t* hcl, hcl_ooci_t c, hcl_tok_type_t type)
 {
 	ADD_TOKEN_CHAR (hcl, c);
 	return feed_wrap_up(hcl, type);
 }
 
-static int feed_wrap_up_with_str (hcl_t* hcl, const hcl_ooch_t* str, hcl_oow_t len, hcl_iotok_type_t type)
+static int feed_wrap_up_with_str (hcl_t* hcl, const hcl_ooch_t* str, hcl_oow_t len, hcl_tok_type_t type)
 {
 	ADD_TOKEN_STR (hcl, str, len);
 	return feed_wrap_up(hcl, type);
@@ -1526,7 +1526,7 @@ static HCL_INLINE void init_flx_hi (hcl_flx_hi_t* hi)
 	HCL_MEMSET (hi, 0, HCL_SIZEOF(*hi));
 }
 
-static HCL_INLINE void init_flx_hn (hcl_flx_hn_t* hn, hcl_iotok_type_t tok_type, hcl_synerrnum_t synerr_code, int radix)
+static HCL_INLINE void init_flx_hn (hcl_flx_hn_t* hn, hcl_tok_type_t tok_type, hcl_synerrnum_t synerr_code, int radix)
 {
 	HCL_MEMSET (hn, 0, HCL_SIZEOF(*hn));
 	hn->tok_type = tok_type;
@@ -1534,7 +1534,7 @@ static HCL_INLINE void init_flx_hn (hcl_flx_hn_t* hn, hcl_iotok_type_t tok_type,
 	hn->radix = radix;
 }
 
-static HCL_INLINE void init_flx_qt (hcl_flx_qt_t* qt, hcl_iotok_type_t tok_type, hcl_synerrnum_t synerr_code, hcl_ooch_t end_char, hcl_ooch_t esc_char, hcl_oow_t min_len, hcl_oow_t max_len)
+static HCL_INLINE void init_flx_qt (hcl_flx_qt_t* qt, hcl_tok_type_t tok_type, hcl_synerrnum_t synerr_code, hcl_ooch_t end_char, hcl_ooch_t esc_char, hcl_oow_t min_len, hcl_oow_t max_len)
 {
 	HCL_MEMSET (qt, 0, HCL_SIZEOF(*qt));
 	qt->tok_type = tok_type;
@@ -1880,7 +1880,7 @@ static int flx_hmarked_ident (hcl_t* hcl, hcl_ooci_t c)
 
 	if (is_delimchar(c))
 	{
-		hcl_iotok_type_t tok_type;
+		hcl_tok_type_t tok_type;
 
 		if (hi->char_count == 0)
 		{
@@ -1932,7 +1932,7 @@ static int flx_hmarked_number (hcl_t* hcl, hcl_ooci_t c)
 			else if (rn->invalid_digit_count > 0)
 			{
 				/* invalid as a radixed number, but this could be a hash-marked directive */
-				hcl_iotok_type_t tok_type;
+				hcl_tok_type_t tok_type;
 
 				if (get_directive_token_type(hcl, &tok_type) <= -1)
 				{
@@ -1981,7 +1981,7 @@ static int flx_plain_ident (hcl_t* hcl, hcl_ooci_t c) /* identifier */
 	{
 		hcl_oow_t start;
 		hcl_oocs_t seg;
-		hcl_iotok_type_t tok_type;
+		hcl_tok_type_t tok_type;
 
 		if (pi->seg_len == 0)
 		{
@@ -2365,7 +2365,7 @@ static int feed_from_includee (hcl_t* hcl)
 {
 	int x;
 
-	HCL_ASSERT (hcl, hcl->c->curinp != HCL_NULL && hcl->c->curinp != &hcl->c->srarg);
+	HCL_ASSERT (hcl, hcl->c->curinp != HCL_NULL && hcl->c->curinp != &hcl->c->sciarg);
 
 	do
 	{
@@ -2406,7 +2406,7 @@ static int feed_from_includee (hcl_t* hcl)
 			if (feed_begin_include(hcl) <= -1) return -1;
 		}
 	}
-	while (hcl->c->curinp != &hcl->c->srarg);
+	while (hcl->c->curinp != &hcl->c->sciarg);
 
 	return 0;
 }
@@ -2465,7 +2465,7 @@ int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
 				hcl->c->feed.rd.do_include_file = 0;
 			}
 
-			if (hcl->c->curinp && hcl->c->curinp != &hcl->c->srarg && feed_from_includee(hcl) <= -1)
+			if (hcl->c->curinp && hcl->c->curinp != &hcl->c->sciarg && feed_from_includee(hcl) <= -1)
 			{
 				/* TODO: return the number of processed characters via an argument? */
 				goto oops;
@@ -2786,13 +2786,13 @@ static int init_compiler (hcl_t* hcl)
 	return 0;
 }
 
-int hcl_attachio (hcl_t* hcl, hcl_ioimpl_t reader, hcl_ioimpl_t scanner, hcl_ioimpl_t printer)
+int hcl_attachio (hcl_t* hcl, hcl_io_impl_t reader, hcl_io_impl_t scanner, hcl_io_impl_t printer)
 {
 	int n;
 	int inited_compiler = 0;
-	hcl_iosrarg_t new_srarg;
-	hcl_ioinarg_t new_inarg;
-	hcl_iooutarg_t new_outarg;
+	hcl_io_sciarg_t new_sciarg;
+	hcl_io_inarg_t new_inarg;
+	hcl_io_outarg_t new_outarg;
 
 	if (!hcl->c)
 	{
@@ -2804,12 +2804,12 @@ int hcl_attachio (hcl_t* hcl, hcl_ioimpl_t reader, hcl_ioimpl_t scanner, hcl_ioi
 	{
 		/* The name field and the includer field are HCL_NULL
 		 * for the main stream */
-		HCL_MEMSET (&new_srarg, 0, HCL_SIZEOF(new_srarg));
-		new_srarg.line = 1;
-		new_srarg.colm = 1;
+		HCL_MEMSET (&new_sciarg, 0, HCL_SIZEOF(new_sciarg));
+		new_sciarg.line = 1;
+		new_sciarg.colm = 1;
 
 		/* open the top-level source input stream */
-		n = reader(hcl, HCL_IO_OPEN, &new_srarg);
+		n = reader(hcl, HCL_IO_OPEN, &new_sciarg);
 		if (n <= -1) goto oops;
 	}
 
@@ -2819,7 +2819,7 @@ int hcl_attachio (hcl_t* hcl, hcl_ioimpl_t reader, hcl_ioimpl_t scanner, hcl_ioi
 		n = scanner(hcl, HCL_IO_OPEN, &new_inarg);
 		if (n <= -1)
 		{
-			reader (hcl, HCL_IO_CLOSE, &new_srarg);
+			reader (hcl, HCL_IO_CLOSE, &new_sciarg);
 			goto oops;
 		}
 	}
@@ -2832,7 +2832,7 @@ int hcl_attachio (hcl_t* hcl, hcl_ioimpl_t reader, hcl_ioimpl_t scanner, hcl_ioi
 		if (n <= -1)
 		{
 			if (scanner) scanner (hcl, HCL_IO_CLOSE, &new_inarg);
-			if (reader) reader (hcl, HCL_IO_CLOSE, &new_srarg);
+			if (reader) reader (hcl, HCL_IO_CLOSE, &new_sciarg);
 			goto oops;
 		}
 	}
@@ -2842,10 +2842,10 @@ int hcl_attachio (hcl_t* hcl, hcl_ioimpl_t reader, hcl_ioimpl_t scanner, hcl_ioi
 		if (hcl->c->reader)
 		{
 			/* close the old source input stream */
-			hcl->c->reader (hcl, HCL_IO_CLOSE, &hcl->c->srarg);
+			hcl->c->reader (hcl, HCL_IO_CLOSE, &hcl->c->sciarg);
 		}
 		hcl->c->reader = reader;
-		hcl->c->srarg = new_srarg;
+		hcl->c->sciarg = new_sciarg;
 	}
 
 	if (scanner)
@@ -2878,7 +2878,7 @@ int hcl_attachio (hcl_t* hcl, hcl_ioimpl_t reader, hcl_ioimpl_t scanner, hcl_ioi
 		/* initialize some other key fields */
 		hcl->c->nungots = 0;
 		/* the source stream is open. set it as the current input stream */
-		hcl->c->curinp = &hcl->c->srarg;
+		hcl->c->curinp = &hcl->c->sciarg;
 	}
 
 	return 0;
@@ -2903,9 +2903,9 @@ void hcl_detachio (hcl_t* hcl)
 	{
 		if (hcl->c->reader)
 		{
-			while (hcl->c->curinp != &hcl->c->srarg)
+			while (hcl->c->curinp != &hcl->c->sciarg)
 			{
-				hcl_iosrarg_t* prev;
+				hcl_io_sciarg_t* prev;
 
 				/* nothing much to do about a close error */
 				hcl->c->reader (hcl, HCL_IO_CLOSE, hcl->c->curinp);
@@ -2937,18 +2937,18 @@ void hcl_detachio (hcl_t* hcl)
 
 void hcl_setbasesrloc (hcl_t* hcl, hcl_oow_t line, hcl_oow_t colm)
 {
-	hcl->c->srarg.line = line;
-	hcl->c->srarg.colm = colm;
+	hcl->c->sciarg.line = line;
+	hcl->c->sciarg.colm = colm;
 }
 
-hcl_iolxc_t* hcl_readbasesrchar (hcl_t* hcl)
+hcl_lxc_t* hcl_readbasesrchar (hcl_t* hcl)
 {
 	/* read a character using the base input stream. the caller must care extra
 	 * care when using this function. this function reads the main stream regardless
 	 * of the inclusion status and ignores the ungot characters. */
-	int n = _get_char(hcl, &hcl->c->srarg);
+	int n = _get_char(hcl, &hcl->c->sciarg);
 	if (n <= -1) return HCL_NULL;
-	return &hcl->c->srarg.lxc;
+	return &hcl->c->sciarg.lxc;
 }
 
 hcl_ooch_t* hcl_readbasesrraw (hcl_t* hcl, hcl_oow_t* xlen)
@@ -2959,7 +2959,7 @@ hcl_ooch_t* hcl_readbasesrraw (hcl_t* hcl, hcl_oow_t* xlen)
 
 	HCL_ASSERT (hcl, hcl->c != HCL_NULL); /* call hio_attachio() or hio_attachiostd() with proper arguments first */
 
-	if (hcl->c->reader(hcl, HCL_IO_READ, &hcl->c->srarg) <= -1) return HCL_NULL;
-	*xlen = hcl->c->srarg.xlen;
-	return hcl->c->srarg.buf;
+	if (hcl->c->reader(hcl, HCL_IO_READ, &hcl->c->sciarg) <= -1) return HCL_NULL;
+	*xlen = hcl->c->sciarg.xlen;
+	return hcl->c->sciarg.buf;
 }
