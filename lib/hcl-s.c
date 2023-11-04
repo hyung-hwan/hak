@@ -572,7 +572,7 @@ static int print_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg)
 		case HCL_IO_WRITE:
 		{
 			worker_hcl_xtn_t* xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);
-			hcl_io_outarg_t* outarg = (hcl_io_outarg_t*)arg;
+			hcl_io_udoarg_t* outarg = (hcl_io_udoarg_t*)arg;
 
 			if (hcl_server_proto_feed_reply(xtn->proto, outarg->ptr, outarg->len, 0) <= -1)
 			{
@@ -591,7 +591,7 @@ static int print_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg)
 		case HCL_IO_WRITE_BYTES:
 		{
 			worker_hcl_xtn_t* xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);
-			hcl_io_outarg_t* outarg = (hcl_io_outarg_t*)arg;
+			hcl_io_udoarg_t* outarg = (hcl_io_udoarg_t*)arg;
 
 			if (hcl_server_proto_feed_reply_bytes(xtn->proto, outarg->ptr, outarg->len, 0) <= -1)
 			{

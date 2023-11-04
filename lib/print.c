@@ -778,7 +778,7 @@ int hcl_outfmtobj (hcl_t* hcl, hcl_bitmask_t mask, hcl_oop_t obj, hcl_outbfmt_t 
 
 int hcl_print (hcl_t* hcl, hcl_oop_t obj)
 {
-	HCL_ASSERT (hcl, hcl->io.printer != HCL_NULL);
+	HCL_ASSERT (hcl, hcl->io.udo_wrtr != HCL_NULL);
 	/*return hcl_outfmtobj(hcl, HCL_LOG_APP | HCL_LOG_FATAL, obj);*/
 	return hcl_prbfmt(hcl, "%O", obj);
 }

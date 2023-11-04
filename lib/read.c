@@ -2669,7 +2669,7 @@ default callback for on_eof?
 
 /* ------------------------------------------------------------------------ */
 
-/* TODO: rename compiler to something else that can include reader, printer, and compiler
+/* TODO: rename compiler to something else that can include reader, udo_wrtr, and compiler
  * move compiler intialization/finalization here to more common place */
 
 static void gc_compiler_cb (hcl_t* hcl)
@@ -2786,13 +2786,13 @@ static int init_compiler (hcl_t* hcl)
 	return 0;
 }
 
-int hcl_attachio (hcl_t* hcl, hcl_io_impl_t sci_rdr, hcl_io_impl_t scanner, hcl_io_impl_t printer)
+int hcl_attachio (hcl_t* hcl, hcl_io_impl_t sci_rdr, hcl_io_impl_t udi_rdr, hcl_io_impl_t udo_wrtr)
 {
 	int n;
 	int inited_compiler = 0;
 	hcl_io_sciarg_t new_sciarg;
-	hcl_io_inarg_t new_inarg;
-	hcl_io_outarg_t new_outarg;
+	hcl_io_udiarg_t new_udiarg;
+	hcl_io_udoarg_t new_udoarg;
 
 	if (!hcl->c)
 	{
@@ -2813,10 +2813,10 @@ int hcl_attachio (hcl_t* hcl, hcl_io_impl_t sci_rdr, hcl_io_impl_t scanner, hcl_
 		if (n <= -1) goto oops;
 	}
 
-	if (scanner)
+	if (udi_rdr)
 	{
-		HCL_MEMSET (&new_inarg, 0, HCL_SIZEOF(new_inarg));
-		n = scanner(hcl, HCL_IO_OPEN, &new_inarg);
+		HCL_MEMSET (&new_udiarg, 0, HCL_SIZEOF(new_udiarg));
+		n = udi_rdr(hcl, HCL_IO_OPEN, &new_udiarg);
 		if (n <= -1)
 		{
 			sci_rdr (hcl, HCL_IO_CLOSE, &new_sciarg);
@@ -2824,14 +2824,14 @@ int hcl_attachio (hcl_t* hcl, hcl_io_impl_t sci_rdr, hcl_io_impl_t scanner, hcl_
 		}
 	}
 
-	if (printer)
+	if (udo_wrtr)
 	{
 		/* open the new output stream */
-		HCL_MEMSET (&new_outarg, 0, HCL_SIZEOF(new_outarg));
-		n = printer(hcl, HCL_IO_OPEN, &new_outarg);
+		HCL_MEMSET (&new_udoarg, 0, HCL_SIZEOF(new_udoarg));
+		n = udo_wrtr(hcl, HCL_IO_OPEN, &new_udoarg);
 		if (n <= -1)
 		{
-			if (scanner) scanner (hcl, HCL_IO_CLOSE, &new_inarg);
+			if (udi_rdr) udi_rdr (hcl, HCL_IO_CLOSE, &new_udiarg);
 			if (sci_rdr) sci_rdr (hcl, HCL_IO_CLOSE, &new_sciarg);
 			goto oops;
 		}
@@ -2848,26 +2848,26 @@ int hcl_attachio (hcl_t* hcl, hcl_io_impl_t sci_rdr, hcl_io_impl_t scanner, hcl_
 		hcl->c->sci_arg = new_sciarg;
 	}
 
-	if (scanner)
+	if (udi_rdr)
 	{
-		if (hcl->io.scanner)
+		if (hcl->io.udi_rdr)
 		{
 			/* close the old input stream */
-			hcl->io.scanner (hcl, HCL_IO_CLOSE, &hcl->io.inarg);
+			hcl->io.udi_rdr (hcl, HCL_IO_CLOSE, &hcl->io.udi_arg);
 		}
-		hcl->io.scanner = scanner;
-		hcl->io.inarg = new_inarg;
+		hcl->io.udi_rdr = udi_rdr;
+		hcl->io.udi_arg = new_udiarg;
 	}
 
-	if (printer)
+	if (udo_wrtr)
 	{
-		if (hcl->io.printer)
+		if (hcl->io.udo_wrtr)
 		{
 			/* close the old output stream */
-			hcl->io.printer (hcl, HCL_IO_CLOSE, &hcl->io.outarg);
+			hcl->io.udo_wrtr (hcl, HCL_IO_CLOSE, &hcl->io.udo_arg);
 		}
-		hcl->io.printer = printer;
-		hcl->io.outarg = new_outarg;
+		hcl->io.udo_wrtr = udo_wrtr;
+		hcl->io.udo_arg = new_udoarg;
 	}
 
 	if (sci_rdr)
@@ -2890,7 +2890,7 @@ oops:
 
 void hcl_flushio (hcl_t* hcl)
 {
-	if (hcl->io.printer) hcl->io.printer (hcl, HCL_IO_FLUSH, &hcl->io.outarg);
+	if (hcl->io.udo_wrtr) hcl->io.udo_wrtr (hcl, HCL_IO_FLUSH, &hcl->io.udo_arg);
 }
 
 void hcl_detachio (hcl_t* hcl)
@@ -2922,16 +2922,16 @@ void hcl_detachio (hcl_t* hcl)
 
 	}
 
-	if (hcl->io.scanner)
+	if (hcl->io.udi_rdr)
 	{
-		hcl->io.scanner (hcl, HCL_IO_CLOSE, &hcl->io.inarg);
-		hcl->io.scanner = HCL_NULL; /* ready for another attachment */
+		hcl->io.udi_rdr (hcl, HCL_IO_CLOSE, &hcl->io.udi_arg);
+		hcl->io.udi_rdr = HCL_NULL; /* ready for another attachment */
 	}
 
-	if (hcl->io.printer)
+	if (hcl->io.udo_wrtr)
 	{
-		hcl->io.printer (hcl, HCL_IO_CLOSE, &hcl->io.outarg);
-		hcl->io.printer = HCL_NULL; /* ready for another attachment */
+		hcl->io.udo_wrtr (hcl, HCL_IO_CLOSE, &hcl->io.udo_arg);
+		hcl->io.udo_wrtr = HCL_NULL; /* ready for another attachment */
 	}
 }
 

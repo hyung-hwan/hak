@@ -1268,8 +1268,8 @@ struct hcl_io_sciarg_t
 	/*-----------------------------------------------------------------*/
 };
 
-typedef struct hcl_io_inarg_t hcl_io_inarg_t;
-struct hcl_io_inarg_t
+typedef struct hcl_io_udiarg_t hcl_io_udiarg_t;
+struct hcl_io_udiarg_t
 {
 	/**
 	 * [OUT] I/O handle set by a handler.
@@ -1290,8 +1290,8 @@ struct hcl_io_inarg_t
 	hcl_oow_t xlen;
 };
 
-typedef struct hcl_io_outarg_t hcl_io_outarg_t;
-struct hcl_io_outarg_t
+typedef struct hcl_io_udoarg_t hcl_io_udoarg_t;
+struct hcl_io_udoarg_t
 {
 	/**
 	 * [OUT] I/O handle set by a handler.
@@ -1328,7 +1328,7 @@ struct hcl_io_outarg_t
 typedef int (*hcl_io_impl_t) (
 	hcl_t*        hcl,
 	hcl_io_cmd_t  cmd,
-	void*         arg /* one of hcl_io_sciarg_t*, hcl_io_inarg_t*, hcl_io_outarg_t* */
+	void*         arg /* one of hcl_io_sciarg_t*, hcl_io_udiarg_t*, hcl_io_udoarg_t* */
 );
 
 /* =========================================================================
@@ -1706,7 +1706,7 @@ struct hcl_t
 		hcl_dbgi_t* dbgi;
 	} code;
 
-	/* == PRINTER == */
+	/* == PRINTER to udo stream == */
 	struct
 	{
 		struct
@@ -1717,7 +1717,7 @@ struct hcl_t
 		} s;
 		hcl_oop_t e; /* top entry being printed */
 	} p;
-	/* == PRINTER == */
+	/* == PRINTER to udo stream == */
 
 	struct
 	{
@@ -1750,12 +1750,12 @@ struct hcl_t
 	struct
 	{
 		/* input handler */
-		hcl_io_impl_t scanner;
-		hcl_io_inarg_t inarg;
+		hcl_io_impl_t udi_rdr;
+		hcl_io_udiarg_t udi_arg;
 
 		/* output handler */
-		hcl_io_impl_t printer;
-		hcl_io_outarg_t outarg;
+		hcl_io_impl_t udo_wrtr;
+		hcl_io_udoarg_t udo_arg;
 	} io;
 
 #if defined(HCL_INCLUDE_COMPILER)
@@ -2243,8 +2243,8 @@ HCL_EXPORT hcl_ooch_t* hcl_readbasesrraw (
 HCL_EXPORT int hcl_attachio (
 	hcl_t*          hcl,
 	hcl_io_impl_t   sci_rdr, /* source code input handler */
-	hcl_io_impl_t   scanner, /* user data input handler */
-	hcl_io_impl_t   printer /* user data output handler */
+	hcl_io_impl_t   udi_rdr, /* user data input handler */
+	hcl_io_impl_t   udo_wrtr /* user data output handler */
 );
 
 HCL_EXPORT int hcl_attachiostdwithbcstr (
