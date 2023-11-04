@@ -451,7 +451,7 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int cflags, int verbose)
 {
 	/* override the default cnode handler. the default one simply
 	 * compiles the expression node without execution */
-	if (hcl_beginfeed (hcl, hcl_isstdreadertty(hcl)? on_fed_cnode_in_interactive_mode: HCL_NULL) <= -1)
+	if (hcl_beginfeed(hcl, hcl_isstdreadertty(hcl)? on_fed_cnode_in_interactive_mode: HCL_NULL) <= -1)
 	{
 		hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: cannot begin feed - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
 		goto oops;
