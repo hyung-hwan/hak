@@ -219,6 +219,10 @@ void hcl_fini (hcl_t* hcl)
 	/* deregister all callbacks */
 	while (hcl->cblist) hcl_deregcb (hcl, hcl->cblist);
 
+
+	/* detach the user data io handlers just in case */
+	hcl_detachudio (hcl);
+
 	if (hcl->sem_list)
 	{
 		hcl_freemem (hcl, hcl->sem_list);

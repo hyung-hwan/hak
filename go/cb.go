@@ -77,7 +77,7 @@ func (io *IOHandleTable) slot_to_io_handle(slot int) IOHandle {
 var io_tab IOHandleTable = IOHandleTable{}
 
 //export hcl_go_read_handler
-func hcl_go_read_handler(c *C.hcl_t, cmd C.hcl_iocmd_t, arg unsafe.Pointer) C.int {
+func hcl_go_read_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.int {
 	var (
 		g   *HCL
 		err error
@@ -88,13 +88,13 @@ func hcl_go_read_handler(c *C.hcl_t, cmd C.hcl_iocmd_t, arg unsafe.Pointer) C.in
 	switch cmd {
 	case C.HCL_IO_OPEN:
 		var (
-			ioarg         *C.hcl_iosrarg_t
+			ioarg         *C.hcl_io_sciarg_t
 			name          string
 			includer_name string
 			fd            int
 		)
 
-		ioarg = (*C.hcl_iosrarg_t)(arg)
+		ioarg = (*C.hcl_io_sciarg_t)(arg)
 		if ioarg.name == nil { // main stream when it's not feed based.
 			name = ""
 		} else {
@@ -119,18 +119,18 @@ func hcl_go_read_handler(c *C.hcl_t, cmd C.hcl_iocmd_t, arg unsafe.Pointer) C.in
 		return 0
 
 	case C.HCL_IO_CLOSE:
-		var ioarg *C.hcl_iosrarg_t = (*C.hcl_iosrarg_t)(arg)
+		var ioarg *C.hcl_io_sciarg_t = (*C.hcl_io_sciarg_t)(arg)
 		g.io.r.Close(int(uintptr(ioarg.handle)))
 		return 0
 
 	case C.HCL_IO_READ:
 		var (
-			ioarg *C.hcl_iosrarg_t
+			ioarg *C.hcl_io_sciarg_t
 			n     int
 			i     int
 			buf   []rune
 		)
-		ioarg = (*C.hcl_iosrarg_t)(arg)
+		ioarg = (*C.hcl_io_sciarg_t)(arg)
 
 		buf = make([]rune, 1024) // TODO:  different size...
 		n, err = g.io.r.Read(int(uintptr(ioarg.handle)), buf)
@@ -151,7 +151,7 @@ func hcl_go_read_handler(c *C.hcl_t, cmd C.hcl_iocmd_t, arg unsafe.Pointer) C.in
 }
 
 //export hcl_go_scan_handler
-func hcl_go_scan_handler(c *C.hcl_t, cmd C.hcl_iocmd_t, arg unsafe.Pointer) C.int {
+func hcl_go_scan_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.int {
 	var (
 		g   *HCL
 		err error
@@ -177,12 +177,12 @@ func hcl_go_scan_handler(c *C.hcl_t, cmd C.hcl_iocmd_t, arg unsafe.Pointer) C.in
 
 	case C.HCL_IO_READ:
 		var (
-			ioarg *C.hcl_ioinarg_t
+			ioarg *C.hcl_io_udiarg_t
 			n     int
 			err   error
 			buf   []rune
 		)
-		ioarg = (*C.hcl_ioinarg_t)(arg)
+		ioarg = (*C.hcl_io_udiarg_t)(arg)
 
 		buf = make([]rune, 1024) // TODO:  different size...
 		n, err = g.io.s.Read(buf)
@@ -199,7 +199,7 @@ func hcl_go_scan_handler(c *C.hcl_t, cmd C.hcl_iocmd_t, arg unsafe.Pointer) C.in
 }
 
 //export hcl_go_print_handler
-func hcl_go_print_handler(c *C.hcl_t, cmd C.hcl_iocmd_t, arg unsafe.Pointer) C.int {
+func hcl_go_print_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.int {
 	var (
 		g   *HCL
 		err error
@@ -225,11 +225,11 @@ func hcl_go_print_handler(c *C.hcl_t, cmd C.hcl_iocmd_t, arg unsafe.Pointer) C.i
 
 	case C.HCL_IO_WRITE:
 		var (
-			ioarg *C.hcl_iooutarg_t
+			ioarg *C.hcl_io_udoarg_t
 			data  []rune
 			err   error
 		)
-		ioarg = (*C.hcl_iooutarg_t)(arg)
+		ioarg = (*C.hcl_io_udoarg_t)(arg)
 		data = uchars_to_rune_slice((*C.hcl_uch_t)(ioarg.ptr), uintptr(ioarg.len))
 		err = g.io.p.Write(data)
 		if err != nil {
@@ -241,11 +241,11 @@ func hcl_go_print_handler(c *C.hcl_t, cmd C.hcl_iocmd_t, arg unsafe.Pointer) C.i
 
 	case C.HCL_IO_WRITE_BYTES:
 		var (
-			ioarg *C.hcl_iooutarg_t
+			ioarg *C.hcl_io_udoarg_t
 			data  []byte
 			err   error
 		)
-		ioarg = (*C.hcl_iooutarg_t)(arg)
+		ioarg = (*C.hcl_io_udoarg_t)(arg)
 		data = unsafe.Slice((*byte)(ioarg.ptr), ioarg.len)
 		err = g.io.p.WriteBytes(data)
 		if err != nil {

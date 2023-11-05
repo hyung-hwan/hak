@@ -87,7 +87,13 @@ func main() {
 		goto oops
 	}
 
-	err = x.AttachIO(&rfh, &sfh, &pfh)
+	err = x.AttachSCIO(&rfh)
+	if err != nil {
+		fmt.Printf("Error: %s\n", err.Error())
+		goto oops
+	}
+
+	err = x.AttachUDIO(&sfh, &pfh)
 	if err != nil {
 		fmt.Printf("Error: %s\n", err.Error())
 		goto oops

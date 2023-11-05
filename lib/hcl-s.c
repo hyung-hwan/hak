@@ -718,7 +718,8 @@ hcl_server_proto_t* hcl_server_proto_open (hcl_oow_t xtnsize, hcl_server_worker_
 	if (hcl_ignite(proto->hcl, worker->server->cfg.actor_heap_size) <= -1) goto oops;
 	if (hcl_addbuiltinprims(proto->hcl) <= -1) goto oops;
 
-	if (hcl_attachio(proto->hcl, read_handler, HCL_NULL, print_handler) <= -1) goto oops;
+	if (hcl_attachscio(proto->hcl, read_handler) <= -1) goto oops;
+	if (hcl_attachudio(proto->hcl, HCL_NULL, print_handler) <= -1) goto oops;
 	return proto;
 
 oops:

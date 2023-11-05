@@ -71,7 +71,12 @@
 #	if defined(HAVE_SIGNAL_H)
 #		include <signal.h>
 #	endif
+#endif
 
+#if defined(__DOS__) || defined(_WIN32) || defined(__OS2__)
+#define FOPEN_R_FLAGS "rb"
+#else
+#define FOPEN_R_FLAGS "r"
 #endif
 
 typedef struct bb_t bb_t;
@@ -88,8 +93,8 @@ struct bb_t
 typedef struct xtn_t xtn_t;
 struct xtn_t
 {
-	const char* read_path; /* main source file */
-	const char* print_path;
+	const char* sci_path; /* main source file */
+	const char* udo_path;
 
 	int vm_running;
 	/*hcl_oop_t sym_errstr;*/
@@ -355,7 +360,7 @@ static void print_synerr (hcl_t* hcl)
 	}
 	else
 	{
-		hcl_logbfmt (hcl, HCL_LOG_STDERR, "%s", xtn->read_path);
+		hcl_logbfmt (hcl, HCL_LOG_STDERR, "%s", xtn->sci_path);
 	}
 
 	hcl_logbfmt (hcl, HCL_LOG_STDERR, "[%zu,%zu] %js",
@@ -384,7 +389,7 @@ static hcl_oop_t execute_in_interactive_mode (hcl_t* hcl)
 	retv = hcl_execute(hcl);
 
 	/* flush pending output data in the interactive mode(e.g. printf without a newline) */
-	hcl_flushio (hcl);
+	hcl_flushudio (hcl);
 
 	if (!retv)
 	{
@@ -422,7 +427,7 @@ static hcl_oop_t execute_in_batch_mode (hcl_t* hcl, int verbose)
 	/*setup_tick ();*/
 
 	retv = hcl_execute(hcl);
-	hcl_flushio (hcl);
+	hcl_flushudio (hcl);
 
 	if (!retv)
 	{
@@ -447,11 +452,25 @@ static int on_fed_cnode_in_interactive_mode (hcl_t* hcl, hcl_cnode_t* obj)
 	return 0;
 }
 
-static int feed_loop (hcl_t* hcl, xtn_t* xtn, int cflags, int verbose)
+static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 {
+	FILE* fp = HCL_NULL;
+	hcl_bch_t buf[1024];
+	hcl_oow_t xlen;
+	int is_tty;
+
+	fp = fopen(xtn->sci_path, FOPEN_R_FLAGS);
+	if (!fp)
+	{
+		hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: failed to open - %hs - %hs\n", xtn->sci_path, strerror(errno));
+		goto oops;
+	}
+
+	is_tty = isatty(fileno(fp));
+
 	/* override the default cnode handler. the default one simply
 	 * compiles the expression node without execution */
-	if (hcl_beginfeed(hcl, hcl_isstdreadertty(hcl)? on_fed_cnode_in_interactive_mode: HCL_NULL) <= -1)
+	if (hcl_beginfeed(hcl, is_tty? on_fed_cnode_in_interactive_mode: HCL_NULL) <= -1)
 	{
 		hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: cannot begin feed - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
 		goto oops;
@@ -460,14 +479,19 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int cflags, int verbose)
 	/* [NOTE] it isn't a very nice idea to get this internal data and use it with read_input() */
 	while (1)
 	{
-		hcl_ooch_t* ptr;
-		hcl_oow_t xlen;
-
-		ptr = hcl_readbasesrraw(hcl, &xlen);
-		if (HCL_UNLIKELY(!ptr)) goto oops;
-		if (xlen <= 0) break;
-		if (hcl_feed(hcl, ptr, xlen) <= -1) goto feed_error;
+		xlen = fread(buf, HCL_SIZEOF(buf[0]), HCL_COUNTOF(buf), fp);
+		if (xlen > 0 && hcl_feedbchars(hcl, buf, xlen) <= -1) goto feed_error;
+		if (xlen < HCL_COUNTOF(buf))
+		{
+			if (ferror(fp))
+			{
+				hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: failed to read - %hs - %hs\n", xtn->sci_path, strerror(errno));
+				goto oops;
+			}
+			break;
+		}
 	}
+
 	if (hcl_endfeed(hcl) <= -1)
 	{
 	feed_error:
@@ -475,11 +499,13 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int cflags, int verbose)
 		else hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: cannot feed - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
 		goto oops; /* TODO: proceed or just exit? */
 	}
+	fclose (fp);
 
-	if (!hcl_isstdreadertty(hcl) && hcl_getbclen(hcl) > 0) execute_in_batch_mode (hcl, verbose);
+	if (!is_tty && hcl_getbclen(hcl) > 0) execute_in_batch_mode (hcl, verbose);
 	return 0;
 
 oops:
+	if (fp) fclose (fp);
 	return -1;
 }
 
@@ -511,7 +537,6 @@ int main (int argc, char* argv[])
 
 	const char* logopt = HCL_NULL;
 	hcl_oow_t heapsize = DEFAULT_HEAPSIZE;
-	int cflags;
 	int verbose = 0;
 	int show_info = 0;
 	/*int experimental = 0;*/
@@ -640,7 +665,6 @@ int main (int argc, char* argv[])
 		return 0;
 	}
 
-
 	if (hcl_ignite(hcl, heapsize) <= -1)
 	{
 		hcl_logbfmt (hcl, HCL_LOG_STDERR, "cannot ignite hcl - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
@@ -653,12 +677,18 @@ int main (int argc, char* argv[])
 		goto oops;
 	}
 
-	xtn->read_path = argv[opt.ind++];
-	if (opt.ind < argc) xtn->print_path = argv[opt.ind++];
-/* TODO: add scan path */
-	if (hcl_attachiostdwithbcstr(hcl, xtn->read_path, "", xtn->print_path) <= -1)
+	xtn->sci_path = argv[opt.ind++]; /* input source code file */
+	if (opt.ind < argc) xtn->udo_path = argv[opt.ind++];
+
+	if (hcl_attachsciostdwithbcstr(hcl, xtn->sci_path) <= -1)
 	{
-		hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: cannot attach IO streams - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
+		hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: cannot attach source input stream - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
+		goto oops;
+	}
+
+	if (hcl_attachudiostdwithbcstr(hcl, "", xtn->udo_path) <= -1) /* TODO: add udi path */
+	{
+		hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: cannot attach user data streams - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
 		goto oops;
 	}
 
@@ -691,10 +721,7 @@ int main (int argc, char* argv[])
 }
 #endif
 
-	cflags = 0;
-	if (hcl_isstdreadertty(hcl)) cflags = HCL_COMPILE_CLEAR_CODE | HCL_COMPILE_CLEAR_FNBLK;
-
-	if (feed_loop(hcl, xtn, cflags, verbose) <= -1) goto oops;
+	if (feed_loop(hcl, xtn, verbose) <= -1) goto oops;
 
 	set_signal_to_default (SIGINT);
 	hcl_close (hcl);

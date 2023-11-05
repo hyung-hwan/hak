@@ -2413,7 +2413,7 @@ static int feed_from_includee (hcl_t* hcl)
 
 int hcl_beginfeed (hcl_t* hcl, hcl_on_cnode_t on_cnode)
 {
-	HCL_ASSERT (hcl, hcl->c != HCL_NULL); /* call hcl_attachio() or hcl_attachiostd() first */
+	HCL_ASSERT (hcl, hcl->c != HCL_NULL); /* call hcl_attachscio() or hcl_attachsciostd() first */
 
 	init_feed (hcl);
 	if (on_cnode) hcl->c->feed.on_cnode = on_cnode;
@@ -2732,7 +2732,7 @@ static void fini_compiler_cb (hcl_t* hcl)
 		clear_sr_names (hcl);
 		if (hcl->c->tok.name.ptr) hcl_freemem (hcl, hcl->c->tok.name.ptr);
 
-		hcl_detachio (hcl);
+		hcl_detachscio (hcl);
 
 		hcl_freemem (hcl, hcl->c);
 		hcl->c = HCL_NULL;
@@ -2786,19 +2786,18 @@ static int init_compiler (hcl_t* hcl)
 	return 0;
 }
 
-int hcl_attachio (hcl_t* hcl, hcl_io_impl_t sci_rdr, hcl_io_impl_t udi_rdr, hcl_io_impl_t udo_wrtr)
+int hcl_attachscio (hcl_t* hcl, hcl_io_impl_t sci_rdr)
 {
 	int n;
 	int inited_compiler = 0;
 	hcl_io_sciarg_t new_sciarg;
-	hcl_io_udiarg_t new_udiarg;
-	hcl_io_udoarg_t new_udoarg;
 
 	if (!hcl->c)
 	{
 		if (init_compiler(hcl) <= -1) return -1;
 		inited_compiler = 1;
 	}
+
 
 	if (sci_rdr)
 	{
@@ -2811,34 +2810,7 @@ int hcl_attachio (hcl_t* hcl, hcl_io_impl_t sci_rdr, hcl_io_impl_t udi_rdr, hcl_
 		/* open the top-level source input stream */
 		n = sci_rdr(hcl, HCL_IO_OPEN, &new_sciarg);
 		if (n <= -1) goto oops;
-	}
 
-	if (udi_rdr)
-	{
-		HCL_MEMSET (&new_udiarg, 0, HCL_SIZEOF(new_udiarg));
-		n = udi_rdr(hcl, HCL_IO_OPEN, &new_udiarg);
-		if (n <= -1)
-		{
-			sci_rdr (hcl, HCL_IO_CLOSE, &new_sciarg);
-			goto oops;
-		}
-	}
-
-	if (udo_wrtr)
-	{
-		/* open the new output stream */
-		HCL_MEMSET (&new_udoarg, 0, HCL_SIZEOF(new_udoarg));
-		n = udo_wrtr(hcl, HCL_IO_OPEN, &new_udoarg);
-		if (n <= -1)
-		{
-			if (udi_rdr) udi_rdr (hcl, HCL_IO_CLOSE, &new_udiarg);
-			if (sci_rdr) sci_rdr (hcl, HCL_IO_CLOSE, &new_sciarg);
-			goto oops;
-		}
-	}
-
-	if (sci_rdr)
-	{
 		if (hcl->c->sci_rdr)
 		{
 			/* close the old source input stream */
@@ -2846,32 +2818,7 @@ int hcl_attachio (hcl_t* hcl, hcl_io_impl_t sci_rdr, hcl_io_impl_t udi_rdr, hcl_
 		}
 		hcl->c->sci_rdr = sci_rdr;
 		hcl->c->sci_arg = new_sciarg;
-	}
 
-	if (udi_rdr)
-	{
-		if (hcl->io.udi_rdr)
-		{
-			/* close the old input stream */
-			hcl->io.udi_rdr (hcl, HCL_IO_CLOSE, &hcl->io.udi_arg);
-		}
-		hcl->io.udi_rdr = udi_rdr;
-		hcl->io.udi_arg = new_udiarg;
-	}
-
-	if (udo_wrtr)
-	{
-		if (hcl->io.udo_wrtr)
-		{
-			/* close the old output stream */
-			hcl->io.udo_wrtr (hcl, HCL_IO_CLOSE, &hcl->io.udo_arg);
-		}
-		hcl->io.udo_wrtr = udo_wrtr;
-		hcl->io.udo_arg = new_udoarg;
-	}
-
-	if (sci_rdr)
-	{
 		/* clear unneeded source stream names */
 		/*clear_sr_names (hcl); <---- TODO: tricky to clean up here */
 
@@ -2888,12 +2835,7 @@ oops:
 	return -1;
 }
 
-void hcl_flushio (hcl_t* hcl)
-{
-	if (hcl->io.udo_wrtr) hcl->io.udo_wrtr (hcl, HCL_IO_FLUSH, &hcl->io.udo_arg);
-}
-
-void hcl_detachio (hcl_t* hcl)
+void hcl_detachscio (hcl_t* hcl)
 {
 	/* an error occurred and control has reached here
 	 * probably, some included files might not have been
@@ -2919,9 +2861,68 @@ void hcl_detachio (hcl_t* hcl)
 			hcl->c->sci_rdr (hcl, HCL_IO_CLOSE, hcl->c->curinp);
 			hcl->c->sci_rdr = HCL_NULL; /* ready for another attachment */
 		}
+	}
+}
 
+int hcl_attachudio (hcl_t* hcl, hcl_io_impl_t udi_rdr, hcl_io_impl_t udo_wrtr)
+{
+	int n;
+	hcl_io_udiarg_t new_udiarg;
+	hcl_io_udoarg_t new_udoarg;
+
+	if (udi_rdr)
+	{
+		HCL_MEMSET (&new_udiarg, 0, HCL_SIZEOF(new_udiarg));
+		n = udi_rdr(hcl, HCL_IO_OPEN, &new_udiarg);
+		if (n <= -1)
+		{
+			goto oops;
+		}
 	}
 
+	if (udo_wrtr)
+	{
+		/* open the new output stream */
+		HCL_MEMSET (&new_udoarg, 0, HCL_SIZEOF(new_udoarg));
+		n = udo_wrtr(hcl, HCL_IO_OPEN, &new_udoarg);
+		if (n <= -1)
+		{
+			if (udi_rdr) udi_rdr (hcl, HCL_IO_CLOSE, &new_udiarg);
+			goto oops;
+		}
+	}
+
+	if (udi_rdr)
+	{
+		if (hcl->io.udi_rdr)
+		{
+			/* close the old input stream */
+			hcl->io.udi_rdr (hcl, HCL_IO_CLOSE, &hcl->io.udi_arg);
+		}
+		hcl->io.udi_rdr = udi_rdr;
+		hcl->io.udi_arg = new_udiarg;
+	}
+
+	if (udo_wrtr)
+	{
+		if (hcl->io.udo_wrtr)
+		{
+			/* close the old output stream */
+			hcl->io.udo_wrtr (hcl, HCL_IO_CLOSE, &hcl->io.udo_arg);
+		}
+		hcl->io.udo_wrtr = udo_wrtr;
+		hcl->io.udo_arg = new_udoarg;
+	}
+
+	return 0;
+
+oops:
+	return -1;
+}
+
+
+void hcl_detachudio (hcl_t* hcl)
+{
 	if (hcl->io.udi_rdr)
 	{
 		hcl->io.udi_rdr (hcl, HCL_IO_CLOSE, &hcl->io.udi_arg);
@@ -2933,6 +2934,11 @@ void hcl_detachio (hcl_t* hcl)
 		hcl->io.udo_wrtr (hcl, HCL_IO_CLOSE, &hcl->io.udo_arg);
 		hcl->io.udo_wrtr = HCL_NULL; /* ready for another attachment */
 	}
+}
+
+void hcl_flushudio (hcl_t* hcl)
+{
+	if (hcl->io.udo_wrtr) hcl->io.udo_wrtr (hcl, HCL_IO_FLUSH, &hcl->io.udo_arg);
 }
 
 void hcl_setbasesrloc (hcl_t* hcl, hcl_oow_t line, hcl_oow_t colm)

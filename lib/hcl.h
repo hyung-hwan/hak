@@ -2240,36 +2240,54 @@ HCL_EXPORT hcl_ooch_t* hcl_readbasesrraw (
 	hcl_oow_t* xlen
 );
 
-HCL_EXPORT int hcl_attachio (
-	hcl_t*          hcl,
-	hcl_io_impl_t   sci_rdr, /* source code input handler */
-	hcl_io_impl_t   udi_rdr, /* user data input handler */
-	hcl_io_impl_t   udo_wrtr /* user data output handler */
+
+HCL_EXPORT int hcl_attachscio (
+	hcl_t*        hcl,
+	hcl_io_impl_t sci_rdr
 );
 
-HCL_EXPORT int hcl_attachiostdwithbcstr (
+HCL_EXPORT void hcl_detachscio (
+	hcl_t*        hcl
+);
+
+HCL_EXPORT int hcl_attachudio (
+	hcl_t*        hcl,
+	hcl_io_impl_t udi_rdr,
+	hcl_io_impl_t udo_wrtr
+);
+
+HCL_EXPORT void hcl_detachudio (
+	hcl_t*        hcl
+);
+
+
+HCL_EXPORT int hcl_attachsciostdwithucstr (
 	hcl_t*           hcl,
-	const hcl_bch_t* read_file,
-	const hcl_bch_t* scan_file,
-	const hcl_bch_t* print_file
+	const hcl_uch_t* sci_file
 );
 
-HCL_EXPORT int hcl_attachiostdwithucstr (
+HCL_EXPORT int hcl_attachsciostdwithbcstr (
 	hcl_t*           hcl,
-	const hcl_uch_t* read_file,
-	const hcl_uch_t* scan_file,
-	const hcl_uch_t* print_file
+	const hcl_bch_t* sci_file
 );
 
-HCL_EXPORT int hcl_isstdreadertty (
-	hcl_t*       hcl
+HCL_EXPORT int hcl_attachudiostdwithucstr (
+	hcl_t*           hcl,
+	const hcl_uch_t* udi_file,
+	const hcl_uch_t* udo_file
+);
+
+HCL_EXPORT int hcl_attachudiostdwithbcstr (
+	hcl_t*           hcl,
+	const hcl_bch_t* udi_file,
+	const hcl_bch_t* udo_file
 );
 
 HCL_EXPORT void hcl_detachio (
 	hcl_t*       hcl
 );
 
-HCL_EXPORT void hcl_flushio (
+HCL_EXPORT void hcl_flushudio (
 	hcl_t*       hcl
 );
 

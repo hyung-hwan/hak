@@ -288,11 +288,9 @@ struct xtn_t
 	 * set these two field and reset them at the end.
 	 * since hcl_attachio() callls the open handler, these fields
 	 * are valid only inside the open handelr */
-	const char* read_path; /* main source file */
-	const char* scan_path; /* runtime input file */
-	const char* print_path; /* runtime output file */
-
-        int reader_istty;
+	const char* sci_path; /* main source file */
+	const char* udi_path; /* runtime input file */
+	const char* udo_path; /* runtime output file */
 
 	int vm_running;
 	int rcv_tick;
@@ -3241,42 +3239,38 @@ static HCL_INLINE int open_sci_stream (hcl_t* hcl, hcl_io_sciarg_t* arg)
 	#endif
 
 		bb->fp = fopen(bb->fn, FOPEN_R_FLAGS);
+		if (!bb->fp)
+		{
+			hcl_seterrbfmt (hcl, HCL_EIOERR, "unable to open %hs", bb->fn);
+			goto oops;
+		}
 	}
 	else
 	{
-		/* main stream */
+		/* main stream  */
 		hcl_oow_t pathlen;
 
-		pathlen = xtn->read_path? hcl_count_bcstr(xtn->read_path): 0;
+		pathlen = xtn->sci_path? hcl_count_bcstr(xtn->sci_path): 0;
 
 		bb = (bb_t*)hcl_callocmem(hcl, HCL_SIZEOF(*bb) + (HCL_SIZEOF(hcl_bch_t) * (pathlen + 1)));
 		if (!bb) goto oops;
 
 		bb->fn = (hcl_bch_t*)(bb + 1);
-		if (pathlen > 0 && xtn->read_path)
+		if (pathlen > 0 && xtn->sci_path)
 		{
-			hcl_copy_bcstr (bb->fn, pathlen + 1, xtn->read_path);
-			bb->fp = fopen(bb->fn, FOPEN_R_FLAGS);
+			hcl_copy_bcstr (bb->fn, pathlen + 1, xtn->sci_path);
+			/*bb->fp = fopen(bb->fn, FOPEN_R_FLAGS);*/
 		}
 		else
 		{
 			bb->fn[0] = '\0';
-			bb->fp = stdin;
+			/*bb->fp = stdin;*/
 		}
 	}
 
-	if (!bb->fp)
-	{
-		hcl_seterrbfmt (hcl, HCL_EIOERR, "unable to open %hs", bb->fn);
-		goto oops;
-	}
 
 	if (!arg->includer) /* if main stream */
 	{
-	#if defined(HAVE_ISATTY)
-		xtn->reader_istty = isatty(fileno(bb->fp));
-	#endif
-
 	/* HACK */
 		HCL_ASSERT (hcl, arg->name == HCL_NULL);
 		arg->name = hcl_dupbtooocstr(hcl, bb->fn, HCL_NULL);
@@ -3304,17 +3298,18 @@ static HCL_INLINE int close_sci_stream (hcl_t* hcl, hcl_io_sciarg_t* arg)
 	bb_t* bb;
 
 	bb = (bb_t*)arg->handle;
-	HCL_ASSERT (hcl, bb != HCL_NULL && bb->fp != HCL_NULL);
+	HCL_ASSERT (hcl, bb != HCL_NULL /*&& bb->fp != HCL_NULL*/);
 
 /* HACK */
 	if (!arg->includer && arg->name)
 	{
+		/* main stream closing */
 		hcl_freemem (hcl, arg->name);
 		arg->name = HCL_NULL;
 	}
 /* END HACK */
 
-	if (bb->fp != stdin) fclose (bb->fp);
+	if (bb->fp /*&& bb->fp != stdin*/) fclose (bb->fp);
 	hcl_freemem (hcl, bb);
 
 	arg->handle = HCL_NULL;
@@ -3403,15 +3398,15 @@ static HCL_INLINE int open_in_stream (hcl_t* hcl, hcl_io_udiarg_t* arg)
 
 	hcl_oow_t pathlen;
 
-	pathlen = xtn->read_path? hcl_count_bcstr(xtn->read_path): 0;
+	pathlen = xtn->sci_path? hcl_count_bcstr(xtn->sci_path): 0;
 
 	bb = (bb_t*)hcl_callocmem(hcl, HCL_SIZEOF(*bb) + (HCL_SIZEOF(hcl_bch_t) * (pathlen + 1)));
 	if (!bb) goto oops;
 
 	bb->fn = (hcl_bch_t*)(bb + 1);
-	if (pathlen > 0 && xtn->read_path)
+	if (pathlen > 0 && xtn->sci_path)
 	{
-		hcl_copy_bcstr (bb->fn, pathlen + 1, xtn->read_path);
+		hcl_copy_bcstr (bb->fn, pathlen + 1, xtn->sci_path);
 		bb->fp = fopen(bb->fn, FOPEN_R_FLAGS);
 	}
 	else
@@ -3503,7 +3498,7 @@ static HCL_INLINE int read_in_stream (hcl_t* hcl, hcl_io_udiarg_t* arg)
 	return 0;
 }
 
-static int scan_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg)
+static int udi_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg)
 {
 	switch (cmd)
 	{
@@ -3538,11 +3533,11 @@ static HCL_INLINE int open_out_stream (hcl_t* hcl, hcl_io_udoarg_t* arg)
 #define FOPEN_W_FLAGS "w"
 #endif
 
-	fp = (xtn->print_path && xtn->print_path[0] != '\0'? fopen(xtn->print_path, FOPEN_W_FLAGS): stdout);
+	fp = (xtn->udo_path && xtn->udo_path[0] != '\0'? fopen(xtn->udo_path, FOPEN_W_FLAGS): stdout);
 	if (!fp)
 	{
-		if (xtn->print_path)
-			hcl_seterrbfmt (hcl, HCL_EIOERR, "unable to open %hs", xtn->print_path);
+		if (xtn->udo_path)
+			hcl_seterrbfmt (hcl, HCL_EIOERR, "unable to open %hs", xtn->udo_path);
 		else
 			hcl_seterrnum (hcl, HCL_EIOERR);
 		return -1;
@@ -3632,7 +3627,7 @@ static HCL_INLINE int flush_out_stream (hcl_t* hcl, hcl_io_udoarg_t* arg)
 	return 0;
 }
 
-static int print_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg)
+static int udo_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg)
 {
 	switch (cmd)
 	{
@@ -3659,73 +3654,96 @@ static int print_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg)
 
 /* --------------------------------------------------------------------- */
 
-int hcl_attachiostdwithbcstr (hcl_t* hcl, const hcl_bch_t* read_file, const hcl_bch_t* scan_file, const hcl_bch_t* print_file)
+int hcl_attachsciostdwithbcstr (hcl_t* hcl, const hcl_bch_t* sci_file)
 {
 	xtn_t* xtn = GET_XTN(hcl);
 	int n;
 
-	HCL_ASSERT (hcl, xtn->read_path == HCL_NULL);
-	HCL_ASSERT (hcl, xtn->scan_path == HCL_NULL);
-	HCL_ASSERT (hcl, xtn->print_path == HCL_NULL);
+	HCL_ASSERT (hcl, xtn->sci_path == HCL_NULL);
+	
+	xtn->sci_path = sci_file;
 
-	xtn->read_path = read_file;
-	xtn->scan_path = scan_file;
-	xtn->print_path = print_file;
+	n = hcl_attachscio(hcl, sci_handler);
 
-	n = hcl_attachio(hcl, sci_handler, scan_handler, print_handler);
-
-	xtn->read_path = HCL_NULL;
-	xtn->scan_path = HCL_NULL;
-	xtn->print_path = HCL_NULL;
+	xtn->sci_path = HCL_NULL;
 
 	return n;
 }
 
-int hcl_attachiostdwithucstr (hcl_t* hcl, const hcl_uch_t* read_file, const hcl_uch_t* scan_file, const hcl_uch_t* print_file)
+int hcl_attachsciostdwithucstr (hcl_t* hcl, const hcl_uch_t* sci_file)
 {
 	xtn_t* xtn = GET_XTN(hcl);
 	int n;
 
-	HCL_ASSERT (hcl, xtn->read_path == HCL_NULL);
-	HCL_ASSERT (hcl, xtn->scan_path == HCL_NULL);
-	HCL_ASSERT (hcl, xtn->print_path == HCL_NULL);
+	HCL_ASSERT (hcl, xtn->sci_path == HCL_NULL);
 
-	xtn->read_path = hcl_duputobcstr(hcl, read_file, HCL_NULL);
-	if (HCL_UNLIKELY(!xtn->read_path)) return -1;
+	xtn->sci_path = hcl_duputobcstr(hcl, sci_file, HCL_NULL);
+	if (HCL_UNLIKELY(!xtn->sci_path)) return -1;
+	
+	n = hcl_attachscio(hcl, sci_handler);
 
-	xtn->scan_path = hcl_duputobcstr(hcl, scan_file, HCL_NULL);
-	if (HCL_UNLIKELY(!xtn->scan_path))
-	{
-		hcl_freemem (hcl, (void*)xtn->read_path);
-		xtn->read_path = HCL_NULL;
-		return -1;
-	}
-
-	xtn->print_path = hcl_duputobcstr(hcl, print_file, HCL_NULL);
-	if (HCL_UNLIKELY(!xtn->print_path))
-	{
-		hcl_freemem (hcl, (void*)xtn->scan_path);
-		hcl_freemem (hcl, (void*)xtn->read_path);
-		xtn->scan_path = HCL_NULL;
-		xtn->read_path = HCL_NULL;
-		return -1;
-	}
-
-	n = hcl_attachio(hcl, sci_handler, scan_handler, print_handler);
-
-	hcl_freemem (hcl, (void*)xtn->read_path);
-	hcl_freemem (hcl, (void*)xtn->scan_path);
-	hcl_freemem (hcl, (void*)xtn->print_path);
-
-	xtn->read_path = HCL_NULL;
-	xtn->scan_path = HCL_NULL;
-	xtn->print_path = HCL_NULL;
+	hcl_freemem (hcl, (void*)xtn->sci_path);	
+	xtn->sci_path = HCL_NULL;
 
 	return n;
 }
 
-int hcl_isstdreadertty (hcl_t* hcl)
+/* --------------------------------------------------------------------- */
+
+int hcl_attachudiostdwithbcstr (hcl_t* hcl, const hcl_bch_t* udi_file, const hcl_bch_t* udo_file)
 {
 	xtn_t* xtn = GET_XTN(hcl);
-	return xtn->reader_istty;
+	int n;
+
+	HCL_ASSERT (hcl, xtn->udi_path == HCL_NULL);
+	HCL_ASSERT (hcl, xtn->udo_path == HCL_NULL);
+
+
+	xtn->udi_path = udi_file;
+	xtn->udo_path = udo_file;
+
+	n = hcl_attachudio(hcl, udi_handler, udo_handler);
+
+
+	xtn->udi_path = HCL_NULL;
+	xtn->udo_path = HCL_NULL;
+
+	return n;
 }
+
+int hcl_attachudiostdwithucstr (hcl_t* hcl, const hcl_uch_t* udi_file, const hcl_uch_t* udo_file)
+{
+	xtn_t* xtn = GET_XTN(hcl);
+	int n;
+
+	HCL_ASSERT (hcl, xtn->udi_path == HCL_NULL);
+	HCL_ASSERT (hcl, xtn->udo_path == HCL_NULL);
+
+
+	xtn->udi_path = hcl_duputobcstr(hcl, udi_file, HCL_NULL);
+	if (HCL_UNLIKELY(!xtn->udi_path))
+	{
+		hcl_freemem (hcl, (void*)xtn->sci_path);
+		return -1;
+	}
+
+	xtn->udo_path = hcl_duputobcstr(hcl, udo_file, HCL_NULL);
+	if (HCL_UNLIKELY(!xtn->udo_path))
+	{
+		hcl_freemem (hcl, (void*)xtn->udi_path);
+		xtn->udi_path = HCL_NULL;
+		return -1;
+	}
+
+	n = hcl_attachudio(hcl, udi_handler, udo_handler);
+
+	hcl_freemem (hcl, (void*)xtn->udi_path);
+	hcl_freemem (hcl, (void*)xtn->udo_path);
+
+	xtn->udi_path = HCL_NULL;
+	xtn->udo_path = HCL_NULL;
+
+	return n;
+}
+
+
