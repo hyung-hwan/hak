@@ -20,7 +20,7 @@ import (
 */
 
 type Param struct {
-	log_file string
+	log_file   string
 	input_file string
 }
 
@@ -29,9 +29,9 @@ func handle_arguments(param *Param) error {
 	var i int
 
 	for i = 1; i < nargs; i++ {
-		if strings.HasPrefix(os.Args[i], "--log=")	{
+		if strings.HasPrefix(os.Args[i], "--log=") {
 			param.log_file = os.Args[i][6:]
-		} else if (os.Args[i] == "--log") {
+		} else if os.Args[i] == "--log" {
 			i++
 			param.log_file = os.Args[i]
 		} else if strings.HasPrefix(os.Args[i], "--") || strings.HasPrefix(os.Args[i], "-") {
@@ -59,7 +59,7 @@ func main() {
 	var sfh hcl.UdiFileHandler
 	var pfh hcl.UdoFileHandler
 
-	err = handle_arguments(&param);
+	err = handle_arguments(&param)
 	if err != nil {
 		fmt.Printf("Error: %s\n", err.Error())
 		os.Exit(1)
@@ -72,8 +72,8 @@ func main() {
 	}
 
 	if param.log_file != "" {
-		x.SetLogMask (^hcl.BitMask(0))
-		x.SetLogTarget ("/dev/stderr")
+		x.SetLogMask(^hcl.BitMask(0))
+		x.SetLogTarget("/dev/stderr")
 	}
 
 	err = x.Ignite(1000000)
@@ -87,7 +87,7 @@ func main() {
 		goto oops
 	}
 
-	err = x.AttachCCIO(&rfh)
+	err = x.AttachCCIO(&rfh, param.input_file)
 	if err != nil {
 		fmt.Printf("Error: %s\n", err.Error())
 		goto oops
@@ -99,7 +99,7 @@ func main() {
 		goto oops
 	}
 
-	err = x.BeginFeed();
+	err = x.BeginFeed()
 	if err != nil {
 		fmt.Printf("Error: %s\n", err.Error())
 		goto oops
@@ -122,7 +122,7 @@ func main() {
 	}
 
 	x.Decode()
-	x.SetLogMask (0)
+	x.SetLogMask(0)
 
 	err = x.Execute()
 	if err != nil {

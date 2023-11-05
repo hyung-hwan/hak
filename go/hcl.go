@@ -3,7 +3,7 @@ package hcl
 /*
 #include <hcl.h>
 #include <hcl-utl.h>
-#include <stdlib.h> // for C.freem
+#include <stdlib.h> // for C.free
 
 extern int hcl_go_cci_handler (hcl_t hcl, hcl_io_cmd_t cmd, void* arg);
 extern int hcl_go_udi_handler (hcl_t hcl, hcl_io_cmd_t cmd, void* arg);
@@ -30,19 +30,19 @@ import (
 	"unsafe"
 )
 
-type IOReadImpl interface {
+type CciImpl interface {
 	Open(g *HCL, name string, includer_name string) (int, error)
 	Close(fd int)
 	Read(fd int, buf []rune) (int, error)
 }
 
-type IOScanImpl interface {
+type UdiImpl interface {
 	Open(g *HCL) error
 	Close()
 	Read(buf []rune) (int, error)
 }
 
-type IOPrintImpl interface {
+type UdoImpl interface {
 	Open(g *HCL) error
 	Close()
 	Write(data []rune) error
@@ -50,16 +50,15 @@ type IOPrintImpl interface {
 	Flush() error
 }
 
-type IOImplSet struct {
-	r IOReadImpl
-	s IOScanImpl
-	p IOPrintImpl
-}
-
 type HCL struct {
 	c       *C.hcl_t
 	inst_no int
-	io IOImplSet
+	io      struct {
+		cci      CciImpl
+		cci_main string
+		udi      UdiImpl
+		udo      UdoImpl
+	}
 }
 
 type Ext struct {
@@ -110,53 +109,53 @@ func (hcl *HCL) Close() {
 	deregister_instance(hcl)
 }
 
-func (hcl *HCL) GetLogMask () BitMask {
+func (hcl *HCL) GetLogMask() BitMask {
 	var x C.int
 	var log_mask BitMask = 0
 
 	x = C.hcl_getoption(hcl.c, C.HCL_LOG_MASK, unsafe.Pointer(&log_mask))
 	if x <= -1 {
 		// this must not happen
-		panic (fmt.Errorf("unable to get log mask - %s", hcl.get_errmsg()))
+		panic(fmt.Errorf("unable to get log mask - %s", hcl.get_errmsg()))
 	}
 
 	return log_mask
 }
 
-func (hcl *HCL) SetLogMask (log_mask BitMask) {
+func (hcl *HCL) SetLogMask(log_mask BitMask) {
 	var x C.int
 
-	x = C.hcl_setoption(hcl.c, C.HCL_LOG_MASK, unsafe.Pointer(&log_mask));
+	x = C.hcl_setoption(hcl.c, C.HCL_LOG_MASK, unsafe.Pointer(&log_mask))
 	if x <= -1 {
 		// this must not happen
-		panic (fmt.Errorf("unable to set log mask - %s", hcl.get_errmsg()))
+		panic(fmt.Errorf("unable to set log mask - %s", hcl.get_errmsg()))
 	}
 }
 
-func (hcl *HCL) GetLogTarget () string {
+func (hcl *HCL) GetLogTarget() string {
 	var x C.int
 	var tgt *C.char
 
-	x = C.hcl_getoption(hcl.c, C.HCL_LOG_TARGET_BCSTR, unsafe.Pointer(&tgt));
+	x = C.hcl_getoption(hcl.c, C.HCL_LOG_TARGET_BCSTR, unsafe.Pointer(&tgt))
 	if x <= -1 {
 		// this must not happen
-		panic (fmt.Errorf("unable to set log target - %s", hcl.get_errmsg()))
+		panic(fmt.Errorf("unable to set log target - %s", hcl.get_errmsg()))
 	}
 
 	return C.GoString(tgt)
 }
 
-func (hcl *HCL) SetLogTarget (target string) {
+func (hcl *HCL) SetLogTarget(target string) {
 	var x C.int
 	var tgt *C.char
 
 	tgt = C.CString(target)
 	defer C.free(unsafe.Pointer(tgt))
 
-	x = C.hcl_setoption(hcl.c, C.HCL_LOG_TARGET_BCSTR, unsafe.Pointer(tgt));
+	x = C.hcl_setoption(hcl.c, C.HCL_LOG_TARGET_BCSTR, unsafe.Pointer(tgt))
 	if x <= -1 {
 		// thist must not happen
-		panic (fmt.Errorf("unable to set log target - %s", hcl.get_errmsg()))
+		panic(fmt.Errorf("unable to set log target - %s", hcl.get_errmsg()))
 	}
 }
 
@@ -181,41 +180,49 @@ func (hcl *HCL) AddBuiltinPrims() error {
 	return nil
 }
 
-func (hcl *HCL) AttachCCIO(r IOReadImpl) error {
+// the name of the main cci stream is required because:
+// - the main stream is not handled by this IO handler
+// - the feeder must read the main stream and pass data.
+// - the inclusion of another file from the main stream requires the path information of the main strea.
+func (hcl *HCL) AttachCCIO(cci CciImpl, main_cci_name string) error {
 	var x C.int
-	var or IOReadImpl
+	var old_cci CciImpl
+	var old_cci_name string
 
-	or = hcl.io.r
+	old_cci = hcl.io.cci
+	old_cci_name = hcl.io.cci_main
 
-	hcl.io.r = r
+	hcl.io.cci = cci
+	hcl.io.cci_main = main_cci_name
 
 	x = C.hcl_attachccio(hcl.c, C.hcl_io_impl_t(C.hcl_cci_Handler_for_go))
 	if x <= -1 {
 		// restore the io handler set due to attachment failure
-		hcl.io.r = or
+		hcl.io.cci_main = old_cci_name
+		hcl.io.cci = old_cci
 		return fmt.Errorf("unable to attach source input stream handler - %s", hcl.get_errmsg())
 	}
 	return nil
 }
 
-func (hcl *HCL) AttachUDIO(s IOScanImpl, p IOPrintImpl) error {
+func (hcl *HCL) AttachUDIO(udi UdiImpl, udo UdoImpl) error {
 	var x C.int
-	var os IOScanImpl
-	var op IOPrintImpl
+	var os UdiImpl
+	var op UdoImpl
 
-	os = hcl.io.s
-	op = hcl.io.p
+	os = hcl.io.udi
+	op = hcl.io.udo
 
-	hcl.io.s = s
-	hcl.io.p = p
+	hcl.io.udi = udi
+	hcl.io.udo = udo
 
 	x = C.hcl_attachudio(hcl.c,
 		C.hcl_io_impl_t(C.hcl_udi_handler_for_go),
 		C.hcl_io_impl_t(C.hcl_udo_handler_for_go))
 	if x <= -1 {
 		//restore the io handlers set due to attachment failure
-		hcl.io.s = os
-		hcl.io.p = op
+		hcl.io.udi = os
+		hcl.io.udo = op
 		return fmt.Errorf("unable to attach user data stream handlers - %s", hcl.get_errmsg())
 	}
 	return nil
@@ -281,7 +288,7 @@ func (hcl *HCL) FeedFromReader(rdr io.Reader) error {
 			return fmt.Errorf("unable to read bytes - %s", err.Error())
 		}
 
-		x = C.hcl_feedbchars(hcl.c, (*C.hcl_bch_t)(unsafe.Pointer(&buf[0])), C.hcl_oow_t(n));
+		x = C.hcl_feedbchars(hcl.c, (*C.hcl_bch_t)(unsafe.Pointer(&buf[0])), C.hcl_oow_t(n))
 		if x <= -1 {
 			return fmt.Errorf("unable to feed bytes - %s", hcl.get_errmsg())
 		}
@@ -290,11 +297,11 @@ func (hcl *HCL) FeedFromReader(rdr io.Reader) error {
 	return nil
 }
 
-func (hcl *HCL) FeedFromFile (file string) error {
+func (hcl *HCL) FeedFromFile(file string) error {
 	var f *os.File
 	var err error
 
-	f, err = os.Open(file);
+	f, err = os.Open(file)
 	if err != nil {
 		return fmt.Errorf("unable to open %s - %s", file, err.Error())
 	}
@@ -327,11 +334,11 @@ func (hcl *HCL) Decode() error {
 	return nil
 }
 
-func (hcl *HCL) get_errmsg () string {
+func (hcl *HCL) get_errmsg() string {
 	return C.GoString(C.hcl_geterrbmsg(hcl.c))
 }
 
-func (hcl* HCL) set_errmsg(num C.hcl_errnum_t, msg string) {
+func (hcl *HCL) set_errmsg(num C.hcl_errnum_t, msg string) {
 	var ptr *C.char
 	ptr = C.CString(msg)
 	defer C.free(unsafe.Pointer(ptr))
@@ -357,13 +364,13 @@ func uchars_to_rune_slice(str *C.hcl_uch_t, len uintptr) []rune {
 	return res
 }
 
-func string_to_uchars (str string) []C.hcl_uch_t {
+func string_to_uchars(str string) []C.hcl_uch_t {
 	var r []rune
 	var c []C.hcl_uch_t
 	var i int
 
 	// TODO: proper encoding
-	r = []rune(str);
+	r = []rune(str)
 	c = make([]C.hcl_uch_t, len(r), len(r))
 	for i = 0; i < len(r); i++ {
 		c[i] = C.hcl_uch_t(r[i])
@@ -372,7 +379,7 @@ func string_to_uchars (str string) []C.hcl_uch_t {
 	return c
 }
 
-func rune_slice_to_uchars (r []rune) []C.hcl_uch_t {
+func rune_slice_to_uchars(r []rune) []C.hcl_uch_t {
 	var c []C.hcl_uch_t
 	var i int
 

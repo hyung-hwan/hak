@@ -10,6 +10,7 @@ import (
 	"bufio"
 	"io"
 	"os"
+	"path"
 	"sync"
 	"unsafe"
 )
@@ -103,15 +104,15 @@ func hcl_go_cci_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.in
 		}
 
 		if ioarg.includer == nil || ioarg.includer.name == nil {
-			includer_name = ""
+			includer_name = g.io.cci_main
 		} else {
 			var k []rune = ucstr_to_rune_slice(ioarg.includer.name)
 			includer_name = string(k)
 		}
 
-		fd, err = g.io.r.Open(g, name, includer_name)
+		fd, err = g.io.cci.Open(g, name, includer_name)
 		if err != nil {
-			g.set_errmsg (C.HCL_EIOERR, err.Error())
+			g.set_errmsg(C.HCL_EIOERR, err.Error())
 			return -1
 		}
 
@@ -120,7 +121,7 @@ func hcl_go_cci_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.in
 
 	case C.HCL_IO_CLOSE:
 		var ioarg *C.hcl_io_cciarg_t = (*C.hcl_io_cciarg_t)(arg)
-		g.io.r.Close(int(uintptr(ioarg.handle)))
+		g.io.cci.Close(int(uintptr(ioarg.handle)))
 		return 0
 
 	case C.HCL_IO_READ:
@@ -133,9 +134,9 @@ func hcl_go_cci_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.in
 		ioarg = (*C.hcl_io_cciarg_t)(arg)
 
 		buf = make([]rune, 1024) // TODO:  different size...
-		n, err = g.io.r.Read(int(uintptr(ioarg.handle)), buf)
+		n, err = g.io.cci.Read(int(uintptr(ioarg.handle)), buf)
 		if err != nil {
-			g.set_errmsg (C.HCL_EIOERR, err.Error())
+			g.set_errmsg(C.HCL_EIOERR, err.Error())
 			return -1
 		}
 
@@ -161,9 +162,9 @@ func hcl_go_udi_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.in
 
 	switch cmd {
 	case C.HCL_IO_OPEN:
-		err = g.io.s.Open(g)
+		err = g.io.udi.Open(g)
 		if err != nil {
-			g.set_errmsg (C.HCL_EIOERR, err.Error())
+			g.set_errmsg(C.HCL_EIOERR, err.Error())
 			return -1
 		}
 
@@ -172,7 +173,7 @@ func hcl_go_udi_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.in
 		return 0
 
 	case C.HCL_IO_CLOSE:
-		g.io.s.Close()
+		g.io.udi.Close()
 		return 0
 
 	case C.HCL_IO_READ:
@@ -185,9 +186,9 @@ func hcl_go_udi_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.in
 		ioarg = (*C.hcl_io_udiarg_t)(arg)
 
 		buf = make([]rune, 1024) // TODO:  different size...
-		n, err = g.io.s.Read(buf)
+		n, err = g.io.udi.Read(buf)
 		if err != nil {
-			g.set_errmsg (C.HCL_EIOERR, err.Error())
+			g.set_errmsg(C.HCL_EIOERR, err.Error())
 			return -1
 		}
 		ioarg.xlen = C.ulong(n)
@@ -209,9 +210,9 @@ func hcl_go_udo_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.in
 
 	switch cmd {
 	case C.HCL_IO_OPEN:
-		err = g.io.p.Open(g)
+		err = g.io.udo.Open(g)
 		if err != nil {
-			g.set_errmsg (C.HCL_EIOERR, err.Error())
+			g.set_errmsg(C.HCL_EIOERR, err.Error())
 			return -1
 		}
 
@@ -220,7 +221,7 @@ func hcl_go_udo_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.in
 		return 0
 
 	case C.HCL_IO_CLOSE:
-		g.io.p.Close()
+		g.io.udo.Close()
 		return 0
 
 	case C.HCL_IO_WRITE:
@@ -231,9 +232,9 @@ func hcl_go_udo_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.in
 		)
 		ioarg = (*C.hcl_io_udoarg_t)(arg)
 		data = uchars_to_rune_slice((*C.hcl_uch_t)(ioarg.ptr), uintptr(ioarg.len))
-		err = g.io.p.Write(data)
+		err = g.io.udo.Write(data)
 		if err != nil {
-			g.set_errmsg (C.HCL_EIOERR, err.Error())
+			g.set_errmsg(C.HCL_EIOERR, err.Error())
 			return -1
 		}
 		ioarg.xlen = C.hcl_oow_t(len(data))
@@ -247,18 +248,18 @@ func hcl_go_udo_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.in
 		)
 		ioarg = (*C.hcl_io_udoarg_t)(arg)
 		data = unsafe.Slice((*byte)(ioarg.ptr), ioarg.len)
-		err = g.io.p.WriteBytes(data)
+		err = g.io.udo.WriteBytes(data)
 		if err != nil {
-			g.set_errmsg (C.HCL_EIOERR, err.Error())
+			g.set_errmsg(C.HCL_EIOERR, err.Error())
 			return -1
 		}
 		ioarg.xlen = C.hcl_oow_t(len(data))
 		return 0
 
 	case C.HCL_IO_FLUSH:
-		var err error = g.io.p.Flush()
+		var err error = g.io.udo.Flush()
 		if err != nil {
-			g.set_errmsg (C.HCL_EIOERR, err.Error())
+			g.set_errmsg(C.HCL_EIOERR, err.Error())
 			return -1
 		}
 		return 0
@@ -284,7 +285,14 @@ func (p *CciFileHandler) Open(g *HCL, name string, includer_name string) (int, e
 	if name == "" {
 		f = os.Stdin
 	} else {
-		f, err = os.Open(name)
+		var dir string
+
+		dir = path.Dir(includer_name)
+		if dir != "/" && dir != "" {
+			dir = dir + "/"
+		}
+
+		f, err = os.Open(dir + name)
 		if err != nil {
 			return -1, err
 		}
@@ -377,7 +385,7 @@ func (p *UdiFileHandler) Read(buf []rune) (int, error) {
 	)
 
 	// flush all pending print out before reading
-	p.g.io.p.Flush()
+	p.g.io.udo.Flush()
 
 	for i = 0; i < len(buf); i++ {
 		c, _, err = p.r.ReadRune()
