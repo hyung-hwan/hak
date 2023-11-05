@@ -5,18 +5,18 @@ package hcl
 #include <hcl-utl.h>
 #include <stdlib.h> // for C.freem
 
-extern int hcl_go_read_handler (hcl_t hcl, hcl_io_cmd_t cmd, void* arg);
-extern int hcl_go_scan_handler (hcl_t hcl, hcl_io_cmd_t cmd, void* arg);
-extern int hcl_go_print_handler (hcl_t hcl, hcl_io_cmd_t cmd, void* arg);
+extern int hcl_go_cci_handler (hcl_t hcl, hcl_io_cmd_t cmd, void* arg);
+extern int hcl_go_udi_handler (hcl_t hcl, hcl_io_cmd_t cmd, void* arg);
+extern int hcl_go_udo_handler (hcl_t hcl, hcl_io_cmd_t cmd, void* arg);
 
-int hcl_read_handler_for_go (hcl_t hcl, hcl_io_cmd_t cmd, void* arg) {
-    return hcl_go_read_handler(hcl, cmd, arg);
+int hcl_cci_Handler_for_go (hcl_t hcl, hcl_io_cmd_t cmd, void* arg) {
+    return hcl_go_cci_handler(hcl, cmd, arg);
 }
-int hcl_scan_handler_for_go (hcl_t hcl, hcl_io_cmd_t cmd, void* arg) {
-    return hcl_go_scan_handler(hcl, cmd, arg);
+int hcl_udi_handler_for_go (hcl_t hcl, hcl_io_cmd_t cmd, void* arg) {
+    return hcl_go_udi_handler(hcl, cmd, arg);
 }
-int hcl_print_handler_for_go (hcl_t hcl, hcl_io_cmd_t cmd, void* arg) {
-    return hcl_go_print_handler(hcl, cmd, arg);
+int hcl_udo_handler_for_go (hcl_t hcl, hcl_io_cmd_t cmd, void* arg) {
+    return hcl_go_udo_handler(hcl, cmd, arg);
 }
 */
 import "C"
@@ -181,7 +181,7 @@ func (hcl *HCL) AddBuiltinPrims() error {
 	return nil
 }
 
-func (hcl *HCL) AttachSCIO(r IOReadImpl) error {
+func (hcl *HCL) AttachCCIO(r IOReadImpl) error {
 	var x C.int
 	var or IOReadImpl
 
@@ -189,7 +189,7 @@ func (hcl *HCL) AttachSCIO(r IOReadImpl) error {
 
 	hcl.io.r = r
 
-	x = C.hcl_attachscio(hcl.c, C.hcl_io_impl_t(C.hcl_read_handler_for_go))
+	x = C.hcl_attachccio(hcl.c, C.hcl_io_impl_t(C.hcl_cci_Handler_for_go))
 	if x <= -1 {
 		// restore the io handler set due to attachment failure
 		hcl.io.r = or
@@ -210,8 +210,8 @@ func (hcl *HCL) AttachUDIO(s IOScanImpl, p IOPrintImpl) error {
 	hcl.io.p = p
 
 	x = C.hcl_attachudio(hcl.c,
-		C.hcl_io_impl_t(C.hcl_scan_handler_for_go),
-		C.hcl_io_impl_t(C.hcl_print_handler_for_go))
+		C.hcl_io_impl_t(C.hcl_udi_handler_for_go),
+		C.hcl_io_impl_t(C.hcl_udo_handler_for_go))
 	if x <= -1 {
 		//restore the io handlers set due to attachment failure
 		hcl.io.s = os

@@ -644,13 +644,13 @@ struct hcl_compiler_t
 	hcl_cb_t* cbp;
 
 	/* input handler */
-	hcl_io_impl_t sci_rdr;
+	hcl_io_impl_t cci_rdr;
 
 	/* static input data buffer */
-	hcl_io_sciarg_t  sci_arg;
+	hcl_io_cciarg_t  cci_arg;
 
 	/* pointer to the current input data. initially, it points to &inarg */
-	hcl_io_sciarg_t* curinp;
+	hcl_io_cciarg_t* curinp;
 
 	/* information about the last meaningful character read.
 	 * this is a copy of curinp->lxc if no ungetting is performed.

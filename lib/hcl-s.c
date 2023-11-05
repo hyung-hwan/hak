@@ -316,7 +316,7 @@ static const hcl_bch_t* get_base_name (const hcl_bch_t* path)
 }
 
 
-static HCL_INLINE int open_read_stream (hcl_t* hcl, hcl_io_sciarg_t* arg)
+static HCL_INLINE int open_read_stream (hcl_t* hcl, hcl_io_cciarg_t* arg)
 {
 	worker_hcl_xtn_t* xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);
 	bb_t* bb = HCL_NULL;
@@ -412,7 +412,7 @@ oops:
 	return -1;
 }
 
-static HCL_INLINE int close_read_stream (hcl_t* hcl, hcl_io_sciarg_t* arg)
+static HCL_INLINE int close_read_stream (hcl_t* hcl, hcl_io_cciarg_t* arg)
 {
 	worker_hcl_xtn_t* xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);
 	bb_t* bb;
@@ -427,7 +427,7 @@ static HCL_INLINE int close_read_stream (hcl_t* hcl, hcl_io_sciarg_t* arg)
 	return 0;
 }
 
-static HCL_INLINE int read_input (hcl_t* hcl, hcl_io_sciarg_t* arg)
+static HCL_INLINE int read_input (hcl_t* hcl, hcl_io_cciarg_t* arg)
 {
 	worker_hcl_xtn_t* xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);
 	bb_t* bb;
@@ -545,13 +545,13 @@ static int read_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg)
 	switch (cmd)
 	{
 		case HCL_IO_OPEN:
-			return open_read_stream(hcl, (hcl_io_sciarg_t*)arg);
+			return open_read_stream(hcl, (hcl_io_cciarg_t*)arg);
 
 		case HCL_IO_CLOSE:
-			return close_read_stream(hcl, (hcl_io_sciarg_t*)arg);
+			return close_read_stream(hcl, (hcl_io_cciarg_t*)arg);
 
 		case HCL_IO_READ:
-			return read_input(hcl, (hcl_io_sciarg_t*)arg);
+			return read_input(hcl, (hcl_io_cciarg_t*)arg);
 
 		default:
 			hcl_seterrnum (hcl, HCL_EINTERN);
@@ -718,7 +718,7 @@ hcl_server_proto_t* hcl_server_proto_open (hcl_oow_t xtnsize, hcl_server_worker_
 	if (hcl_ignite(proto->hcl, worker->server->cfg.actor_heap_size) <= -1) goto oops;
 	if (hcl_addbuiltinprims(proto->hcl) <= -1) goto oops;
 
-	if (hcl_attachscio(proto->hcl, read_handler) <= -1) goto oops;
+	if (hcl_attachccio(proto->hcl, read_handler) <= -1) goto oops;
 	if (hcl_attachudio(proto->hcl, HCL_NULL, print_handler) <= -1) goto oops;
 	return proto;
 

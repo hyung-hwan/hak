@@ -76,8 +76,8 @@ func (io *IOHandleTable) slot_to_io_handle(slot int) IOHandle {
 
 var io_tab IOHandleTable = IOHandleTable{}
 
-//export hcl_go_read_handler
-func hcl_go_read_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.int {
+//export hcl_go_cci_handler
+func hcl_go_cci_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.int {
 	var (
 		g   *HCL
 		err error
@@ -88,13 +88,13 @@ func hcl_go_read_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.i
 	switch cmd {
 	case C.HCL_IO_OPEN:
 		var (
-			ioarg         *C.hcl_io_sciarg_t
+			ioarg         *C.hcl_io_cciarg_t
 			name          string
 			includer_name string
 			fd            int
 		)
 
-		ioarg = (*C.hcl_io_sciarg_t)(arg)
+		ioarg = (*C.hcl_io_cciarg_t)(arg)
 		if ioarg.name == nil { // main stream when it's not feed based.
 			name = ""
 		} else {
@@ -119,18 +119,18 @@ func hcl_go_read_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.i
 		return 0
 
 	case C.HCL_IO_CLOSE:
-		var ioarg *C.hcl_io_sciarg_t = (*C.hcl_io_sciarg_t)(arg)
+		var ioarg *C.hcl_io_cciarg_t = (*C.hcl_io_cciarg_t)(arg)
 		g.io.r.Close(int(uintptr(ioarg.handle)))
 		return 0
 
 	case C.HCL_IO_READ:
 		var (
-			ioarg *C.hcl_io_sciarg_t
+			ioarg *C.hcl_io_cciarg_t
 			n     int
 			i     int
 			buf   []rune
 		)
-		ioarg = (*C.hcl_io_sciarg_t)(arg)
+		ioarg = (*C.hcl_io_cciarg_t)(arg)
 
 		buf = make([]rune, 1024) // TODO:  different size...
 		n, err = g.io.r.Read(int(uintptr(ioarg.handle)), buf)
@@ -150,8 +150,8 @@ func hcl_go_read_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.i
 	return -1
 }
 
-//export hcl_go_scan_handler
-func hcl_go_scan_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.int {
+//export hcl_go_udi_handler
+func hcl_go_udi_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.int {
 	var (
 		g   *HCL
 		err error
@@ -198,8 +198,8 @@ func hcl_go_scan_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.i
 	return -1
 }
 
-//export hcl_go_print_handler
-func hcl_go_print_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.int {
+//export hcl_go_udo_handler
+func hcl_go_udo_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.int {
 	var (
 		g   *HCL
 		err error
@@ -269,11 +269,11 @@ func hcl_go_print_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.
 }
 
 // ------------------------------------------------------
-type ReadFileHandler struct {
+type CciFileHandler struct {
 	g *HCL
 }
 
-func (p *ReadFileHandler) Open(g *HCL, name string, includer_name string) (int, error) {
+func (p *CciFileHandler) Open(g *HCL, name string, includer_name string) (int, error) {
 	var (
 		f   *os.File
 		r   *bufio.Reader
@@ -297,7 +297,7 @@ func (p *ReadFileHandler) Open(g *HCL, name string, includer_name string) (int, 
 	return fd, nil
 }
 
-func (p *ReadFileHandler) Close(fd int) {
+func (p *CciFileHandler) Close(fd int) {
 	var hnd IOHandle = io_tab.slot_to_io_handle(fd)
 	if hnd.file != nil {
 		if hnd.file != os.Stdout && hnd.file != os.Stderr {
@@ -308,7 +308,7 @@ func (p *ReadFileHandler) Close(fd int) {
 	}
 }
 
-func (p *ReadFileHandler) Read(fd int, buf []rune) (int, error) {
+func (p *CciFileHandler) Read(fd int, buf []rune) (int, error) {
 	var (
 		hnd IOHandle
 		i   int
@@ -334,13 +334,13 @@ func (p *ReadFileHandler) Read(fd int, buf []rune) (int, error) {
 }
 
 // ------------------------------------------------------
-type ScanFileHandler struct {
+type UdiFileHandler struct {
 	g *HCL
 	f *os.File
 	r *bufio.Reader
 }
 
-func (p *ScanFileHandler) Open(g *HCL) error {
+func (p *UdiFileHandler) Open(g *HCL) error {
 	var (
 		f *os.File
 	//	err error
@@ -359,7 +359,7 @@ func (p *ScanFileHandler) Open(g *HCL) error {
 	return nil
 }
 
-func (p *ScanFileHandler) Close() {
+func (p *UdiFileHandler) Close() {
 	if p.f != nil {
 		if p.f != os.Stdout && p.f != os.Stderr {
 			p.f.Close()
@@ -369,7 +369,7 @@ func (p *ScanFileHandler) Close() {
 	}
 }
 
-func (p *ScanFileHandler) Read(buf []rune) (int, error) {
+func (p *UdiFileHandler) Read(buf []rune) (int, error) {
 	var (
 		i   int
 		c   rune
@@ -395,12 +395,12 @@ func (p *ScanFileHandler) Read(buf []rune) (int, error) {
 
 // ------------------------------------------------------
 
-type PrintFileHandler struct {
+type UdoFileHandler struct {
 	f *os.File
 	w *bufio.Writer
 }
 
-func (p *PrintFileHandler) Open(g *HCL) error {
+func (p *UdoFileHandler) Open(g *HCL) error {
 	var (
 		f *os.File
 	//	err error
@@ -420,7 +420,7 @@ func (p *PrintFileHandler) Open(g *HCL) error {
 	return nil
 }
 
-func (p *PrintFileHandler) Close() {
+func (p *UdoFileHandler) Close() {
 
 	//fmt.Fprintf(os.Stderr, "XXXXXXXXXX close porint\n")
 	if p.f != nil {
@@ -432,7 +432,7 @@ func (p *PrintFileHandler) Close() {
 	}
 }
 
-func (p *PrintFileHandler) Write(data []rune) error {
+func (p *UdoFileHandler) Write(data []rune) error {
 	var err error
 
 	//fmt.Fprintf(os.Stderr, "XXXXXXXXXX write porint\n")
@@ -441,7 +441,7 @@ func (p *PrintFileHandler) Write(data []rune) error {
 	return err
 }
 
-func (p *PrintFileHandler) WriteBytes(data []byte) error {
+func (p *UdoFileHandler) WriteBytes(data []byte) error {
 	var err error
 
 	//fmt.Fprintf(os.Stderr, "XXXXXXXXXX write porint\n")
@@ -450,7 +450,7 @@ func (p *PrintFileHandler) WriteBytes(data []byte) error {
 	return err
 }
 
-func (p *PrintFileHandler) Flush() error {
+func (p *UdoFileHandler) Flush() error {
 	//fmt.Fprintf(os.Stderr, "XXXXXXXXXX flush porint\n")
 	return p.w.Flush()
 }

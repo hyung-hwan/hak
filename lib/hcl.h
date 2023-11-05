@@ -1218,8 +1218,8 @@ struct hcl_lxc_t
 };
 typedef struct hcl_lxc_t hcl_lxc_t;
 
-typedef struct hcl_io_sciarg_t hcl_io_sciarg_t;
-struct hcl_io_sciarg_t
+typedef struct hcl_io_cciarg_t hcl_io_cciarg_t;
+struct hcl_io_cciarg_t
 {
 	/**
 	 * [IN] I/O object name.
@@ -1250,7 +1250,7 @@ struct hcl_io_sciarg_t
 	 * [IN] points to the data of the includer. It is #HCL_NULL for the
 	 * main stream.
 	 */
-	hcl_io_sciarg_t* includer;
+	hcl_io_cciarg_t* includer;
 
 	/*-----------------------------------------------------------------*/
 	/*----------- from here down, internal use only -------------------*/
@@ -1328,7 +1328,7 @@ struct hcl_io_udoarg_t
 typedef int (*hcl_io_impl_t) (
 	hcl_t*        hcl,
 	hcl_io_cmd_t  cmd,
-	void*         arg /* one of hcl_io_sciarg_t*, hcl_io_udiarg_t*, hcl_io_udoarg_t* */
+	void*         arg /* one of hcl_io_cciarg_t*, hcl_io_udiarg_t*, hcl_io_udoarg_t* */
 );
 
 /* =========================================================================
@@ -2241,12 +2241,12 @@ HCL_EXPORT hcl_ooch_t* hcl_readbasesrraw (
 );
 
 
-HCL_EXPORT int hcl_attachscio (
+HCL_EXPORT int hcl_attachccio (
 	hcl_t*        hcl,
-	hcl_io_impl_t sci_rdr
+	hcl_io_impl_t cci_rdr
 );
 
-HCL_EXPORT void hcl_detachscio (
+HCL_EXPORT void hcl_detachccio (
 	hcl_t*        hcl
 );
 
@@ -2261,14 +2261,14 @@ HCL_EXPORT void hcl_detachudio (
 );
 
 
-HCL_EXPORT int hcl_attachsciostdwithucstr (
+HCL_EXPORT int hcl_attachcciostdwithucstr (
 	hcl_t*           hcl,
-	const hcl_uch_t* sci_file
+	const hcl_uch_t* cci_file
 );
 
-HCL_EXPORT int hcl_attachsciostdwithbcstr (
+HCL_EXPORT int hcl_attachcciostdwithbcstr (
 	hcl_t*           hcl,
-	const hcl_bch_t* sci_file
+	const hcl_bch_t* cci_file
 );
 
 HCL_EXPORT int hcl_attachudiostdwithucstr (

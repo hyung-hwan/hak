@@ -93,7 +93,7 @@ struct bb_t
 typedef struct xtn_t xtn_t;
 struct xtn_t
 {
-	const char* sci_path; /* main source file */
+	const char* cci_path; /* main source file */
 	const char* udo_path;
 
 	int vm_running;
@@ -360,7 +360,7 @@ static void print_synerr (hcl_t* hcl)
 	}
 	else
 	{
-		hcl_logbfmt (hcl, HCL_LOG_STDERR, "%s", xtn->sci_path);
+		hcl_logbfmt (hcl, HCL_LOG_STDERR, "%s", xtn->cci_path);
 	}
 
 	hcl_logbfmt (hcl, HCL_LOG_STDERR, "[%zu,%zu] %js",
@@ -459,10 +459,10 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 	hcl_oow_t xlen;
 	int is_tty;
 
-	fp = fopen(xtn->sci_path, FOPEN_R_FLAGS);
+	fp = fopen(xtn->cci_path, FOPEN_R_FLAGS);
 	if (!fp)
 	{
-		hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: failed to open - %hs - %hs\n", xtn->sci_path, strerror(errno));
+		hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: failed to open - %hs - %hs\n", xtn->cci_path, strerror(errno));
 		goto oops;
 	}
 
@@ -485,7 +485,7 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 		{
 			if (ferror(fp))
 			{
-				hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: failed to read - %hs - %hs\n", xtn->sci_path, strerror(errno));
+				hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: failed to read - %hs - %hs\n", xtn->cci_path, strerror(errno));
 				goto oops;
 			}
 			break;
@@ -677,10 +677,10 @@ int main (int argc, char* argv[])
 		goto oops;
 	}
 
-	xtn->sci_path = argv[opt.ind++]; /* input source code file */
+	xtn->cci_path = argv[opt.ind++]; /* input source code file */
 	if (opt.ind < argc) xtn->udo_path = argv[opt.ind++];
 
-	if (hcl_attachsciostdwithbcstr(hcl, xtn->sci_path) <= -1)
+	if (hcl_attachcciostdwithbcstr(hcl, xtn->cci_path) <= -1)
 	{
 		hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: cannot attach source input stream - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
 		goto oops;

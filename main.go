@@ -55,9 +55,9 @@ func main() {
 	var err error = nil
 	var param Param
 
-	var rfh hcl.ReadFileHandler
-	var sfh hcl.ScanFileHandler
-	var pfh hcl.PrintFileHandler
+	var rfh hcl.CciFileHandler
+	var sfh hcl.UdiFileHandler
+	var pfh hcl.UdoFileHandler
 
 	err = handle_arguments(&param);
 	if err != nil {
@@ -87,7 +87,7 @@ func main() {
 		goto oops
 	}
 
-	err = x.AttachSCIO(&rfh)
+	err = x.AttachCCIO(&rfh)
 	if err != nil {
 		fmt.Printf("Error: %s\n", err.Error())
 		goto oops
