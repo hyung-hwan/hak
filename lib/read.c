@@ -669,6 +669,16 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, int* flagv, int* oldflagv
 	return hcl_makecnodeelist(hcl, &loc, concode);
 }
 
+static HCL_INLINE int is_at_block_beginning (hcl_t* hcl)
+{
+	hcl_rstl_t* rstl;
+
+	HCL_ASSERT (hcl, hcl->c->r.st != HCL_NULL);
+	rstl = hcl->c->r.st;
+
+	return (LIST_FLAG_GET_CONCODE(rstl->flagv) == HCL_CONCODE_BLOCK && rstl->count <= 0);
+}
+
 static HCL_INLINE int can_dot_list (hcl_t* hcl)
 {
 	hcl_rstl_t* rstl;
@@ -1037,6 +1047,11 @@ static int feed_process_token (hcl_t* hcl)
 			 *       disallow it inside a list literal or an array literal? */
 			frd->expect_include_file = 1;
 			goto ok;
+
+		case HCL_TOK_PRAGMA:
+			/* TODO: implement this */
+			hcl_setsynerr (hcl, HCL_SYNERR_ILTOK, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			goto oops;
 
 		case HCL_TOK_VBAR:
 			if (frd->expect_vlist_item)

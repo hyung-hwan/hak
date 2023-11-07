@@ -455,8 +455,6 @@ static int on_fed_cnode_in_interactive_mode (hcl_t* hcl, hcl_cnode_t* obj)
 static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 {
 	FILE* fp = HCL_NULL;
-	hcl_bch_t buf[1024];
-	hcl_oow_t xlen;
 	int is_tty;
 
 	fp = fopen(xtn->cci_path, FOPEN_R_FLAGS);
@@ -479,6 +477,10 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 	/* [NOTE] it isn't a very nice idea to get this internal data and use it with read_input() */
 	while (1)
 	{
+	#if 0
+		hcl_bch_t buf[1024];
+		hcl_oow_t xlen;
+
 		xlen = fread(buf, HCL_SIZEOF(buf[0]), HCL_COUNTOF(buf), fp);
 		if (xlen > 0 && hcl_feedbchars(hcl, buf, xlen) <= -1) goto feed_error;
 		if (xlen < HCL_COUNTOF(buf))
@@ -490,6 +492,22 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 			}
 			break;
 		}
+	#else
+		hcl_bch_t bch;
+		int ch = fgetc(fp);
+		if (ch == EOF)
+		{
+			if (ferror(fp))
+			{
+				hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: failed to read - %hs - %hs\n", xtn->cci_path, strerror(errno));
+				goto oops;
+			}
+			break;
+		}
+
+		bch = ch;
+		if (hcl_feedbchars(hcl, &bch, 1) <= -1) goto feed_error;
+	#endif
 	}
 
 	if (hcl_endfeed(hcl) <= -1)
