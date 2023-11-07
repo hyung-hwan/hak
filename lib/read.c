@@ -1152,9 +1152,13 @@ static int feed_process_token (hcl_t* hcl)
 
 			goto ok;
 
+		case HCL_TOK_SEMICOLON:
+			/* TODO: */
+			goto ok;
+
 		case HCL_TOK_RPAREN: /* xlist (), qlist #() */
-		case HCL_TOK_RBRACK: /* bytearray #[], array[] */
-		case HCL_TOK_RBRACE: /* dictionary #{} */
+		case HCL_TOK_RBRACK: /* bytearray #[], array [] */
+		case HCL_TOK_RBRACE: /* dictionary #{}, block {} */
 		{
 			static struct
 			{
@@ -1164,6 +1168,7 @@ static int feed_process_token (hcl_t* hcl)
 			{
 				{ HCL_TOK_RPAREN, HCL_SYNERR_RPAREN }, /* XLIST     ( )  */
 				{ HCL_TOK_RPAREN, HCL_SYNERR_RPAREN }, /* MLIST     (: ) */
+				{ HCL_TOK_RBRACE, HCL_SYNERR_RBRACE }, /* BLOCK     { } */
 				{ HCL_TOK_RBRACK, HCL_SYNERR_RBRACK }, /* ARRAY     [ ] */
 				{ HCL_TOK_RBRACK, HCL_SYNERR_RBRACK }, /* BYTEARRAY #[ ] */
 				{ HCL_TOK_RBRACE, HCL_SYNERR_RBRACE }, /* DIC       #{ } */

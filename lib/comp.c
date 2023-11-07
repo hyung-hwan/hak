@@ -4111,6 +4111,12 @@ redo:
 					if (compile_cons_mlist_expression(hcl, oprnd, 0) <= -1) return -1;
 					break;
 
+				case HCL_CONCODE_BLOCK:
+					/* TODO: not implemented yet */
+					hcl_setsynerrbfmt (hcl, HCL_SYNERR_INTERN, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "internal error - block not implemented");
+					return -1;
+					break;
+
 				case HCL_CONCODE_ARRAY:
 					if (compile_cons_array_expression(hcl, oprnd) <= -1) return -1;
 					break;
