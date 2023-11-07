@@ -428,12 +428,12 @@ static int get_directive_token_type (hcl_t* hcl, hcl_tok_type_t* tok_type)
 {
 	if (does_token_name_match(hcl, VOCA_INCLUDE))
 	{
-		*tok_type = HCL_IOTOK_INCLUDE;
+		*tok_type = HCL_TOK_INCLUDE;
 		return 0;
 	}
 	else if (does_token_name_match(hcl, VOCA_PRAGMA))
 	{
-		*tok_type = HCL_IOTOK_PRAGMA;
+		*tok_type = HCL_TOK_PRAGMA;
 		return 0;
 	}
 
@@ -523,11 +523,11 @@ static hcl_tok_type_t classify_ident_token (hcl_t* hcl, const hcl_oocs_t* v)
 		hcl_tok_type_t type;
 	} tab[] =
 	{
-		{ 4, { 'n','u','l','l' },     HCL_IOTOK_NIL },
-		{ 4, { 't','r','u','e' },     HCL_IOTOK_TRUE },
-		{ 5, { 'f','a','l','s','e' }, HCL_IOTOK_FALSE },
-		{ 4, { 's','e','l','f' },     HCL_IOTOK_SELF },
-		{ 5, { 's','u','p','e','r' }, HCL_IOTOK_SUPER }
+		{ 4, { 'n','u','l','l' },     HCL_TOK_NIL },
+		{ 4, { 't','r','u','e' },     HCL_TOK_TRUE },
+		{ 5, { 'f','a','l','s','e' }, HCL_TOK_FALSE },
+		{ 4, { 's','e','l','f' },     HCL_TOK_SELF },
+		{ 5, { 's','u','p','e','r' }, HCL_TOK_SUPER }
 	};
 
 	for (i = 0; i < HCL_COUNTOF(tab); i++)
@@ -535,7 +535,7 @@ static hcl_tok_type_t classify_ident_token (hcl_t* hcl, const hcl_oocs_t* v)
 		if (hcl_comp_oochars(v->ptr, v->len, tab[i].name, tab[i].len) == 0) return tab[i].type;
 	}
 
-	return HCL_IOTOK_IDENT;
+	return HCL_TOK_IDENT;
 }
 
 static int is_sr_name_in_use (hcl_t* hcl, const hcl_ooch_t* sr_name)
@@ -999,7 +999,7 @@ static int feed_process_token (hcl_t* hcl)
 		/* the #include directive is an exception to the general expression rule.
 		 * use this exceptional code block to divert the major token processing */
 
-		if (TOKEN_TYPE(hcl) != HCL_IOTOK_STRLIT)
+		if (TOKEN_TYPE(hcl) != HCL_TOK_STRLIT)
 		{
 			hcl_setsynerr (hcl, HCL_SYNERR_STRING, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto oops;
@@ -1015,7 +1015,7 @@ static int feed_process_token (hcl_t* hcl)
 		goto ok;
 	}
 
-	if (frd->expect_vlist_item && TOKEN_TYPE(hcl) != HCL_IOTOK_IDENT && TOKEN_TYPE(hcl) != HCL_IOTOK_VBAR)
+	if (frd->expect_vlist_item && TOKEN_TYPE(hcl) != HCL_TOK_IDENT && TOKEN_TYPE(hcl) != HCL_TOK_VBAR)
 	{
 		/* vlist also has special requirement that it can only contain variable names. */
 		hcl_setsynerr (hcl, HCL_SYNERR_VARNAME, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
@@ -1028,17 +1028,17 @@ static int feed_process_token (hcl_t* hcl)
 			hcl_setsynerr (hcl, HCL_SYNERR_ILTOK, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto oops;
 
-		case HCL_IOTOK_EOF:
+		case HCL_TOK_EOF:
 			hcl_setsynerr (hcl, HCL_SYNERR_EOF, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto oops;
 
-		case HCL_IOTOK_INCLUDE:
+		case HCL_TOK_INCLUDE:
 			/* TODO: should i limit where #include can be specified?
 			 *       disallow it inside a list literal or an array literal? */
 			frd->expect_include_file = 1;
 			goto ok;
 
-		case HCL_IOTOK_VBAR:
+		case HCL_TOK_VBAR:
 			if (frd->expect_vlist_item)
 			{
 				/* closer */
@@ -1072,32 +1072,32 @@ static int feed_process_token (hcl_t* hcl)
 				goto start_list;
 			}
 
-		case HCL_IOTOK_LBRACK: /* [ */
+		case HCL_TOK_LBRACK: /* [ */
 			frd->flagv = DATA_LIST;
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_ARRAY);
 			goto start_list;
 
-		case HCL_IOTOK_BAPAREN: /* #[ */
+		case HCL_TOK_BAPAREN: /* #[ */
 			frd->flagv = DATA_LIST;
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_BYTEARRAY);
 			goto start_list;
 
-		case HCL_IOTOK_DLPAREN: /* #{ */
+		case HCL_TOK_DLPAREN: /* #{ */
 			frd->flagv = DATA_LIST;
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_DIC);
 			goto start_list;
 
-		case HCL_IOTOK_QLPAREN: /* #( */
+		case HCL_TOK_QLPAREN: /* #( */
 			frd->flagv = DATA_LIST;
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_QLIST);
 			goto start_list;
 
-		case HCL_IOTOK_LPARCOLON: /* (: */
+		case HCL_TOK_LPARCOLON: /* (: */
 			frd->flagv = 0;
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_MLIST);
 			goto start_list;
 
-		case HCL_IOTOK_LPAREN: /* ( */
+		case HCL_TOK_LPAREN: /* ( */
 			frd->flagv = 0;
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_XLIST);
 		start_list:
@@ -1116,7 +1116,7 @@ static int feed_process_token (hcl_t* hcl)
 			/* read the next token */
 			goto ok;
 
-		case HCL_IOTOK_DOT:
+		case HCL_TOK_DOT:
 			if (frd->level <= 0 || !can_dot_list(hcl))
 			{
 				/* cannot have a period:
@@ -1129,7 +1129,7 @@ static int feed_process_token (hcl_t* hcl)
 
 			goto ok;
 
-		case HCL_IOTOK_COLON:
+		case HCL_TOK_COLON:
 			if (frd->level <= 0 || !can_colon_list(hcl))
 			{
 				hcl_setsynerr (hcl, HCL_SYNERR_COLONBANNED, TOKEN_LOC(hcl), HCL_NULL);
@@ -1138,7 +1138,7 @@ static int feed_process_token (hcl_t* hcl)
 
 			goto ok;
 
-		case HCL_IOTOK_COMMA:
+		case HCL_TOK_COMMA:
 			if (frd->level <= 0 || !can_comma_list(hcl))
 			{
 				hcl_setsynerr (hcl, HCL_SYNERR_COMMABANNED, TOKEN_LOC(hcl), HCL_NULL);
@@ -1147,9 +1147,9 @@ static int feed_process_token (hcl_t* hcl)
 
 			goto ok;
 
-		case HCL_IOTOK_RPAREN: /* xlist (), qlist #() */
-		case HCL_IOTOK_RBRACK: /* bytearray #[], array[] */
-		case HCL_IOTOK_RBRACE: /* dictionary #{} */
+		case HCL_TOK_RPAREN: /* xlist (), qlist #() */
+		case HCL_TOK_RBRACK: /* bytearray #[], array[] */
+		case HCL_TOK_RBRACE: /* dictionary #{} */
 		{
 			static struct
 			{
@@ -1157,12 +1157,12 @@ static int feed_process_token (hcl_t* hcl)
 				hcl_synerrnum_t synerr;
 			} req[] =
 			{
-				{ HCL_IOTOK_RPAREN, HCL_SYNERR_RPAREN }, /* XLIST     ( )  */
-				{ HCL_IOTOK_RPAREN, HCL_SYNERR_RPAREN }, /* MLIST     (: ) */
-				{ HCL_IOTOK_RBRACK, HCL_SYNERR_RBRACK }, /* ARRAY     [ ] */
-				{ HCL_IOTOK_RBRACK, HCL_SYNERR_RBRACK }, /* BYTEARRAY #[ ] */
-				{ HCL_IOTOK_RBRACE, HCL_SYNERR_RBRACE }, /* DIC       #{ } */
-				{ HCL_IOTOK_RPAREN, HCL_SYNERR_RPAREN }  /* QLIST     #( )  */
+				{ HCL_TOK_RPAREN, HCL_SYNERR_RPAREN }, /* XLIST     ( )  */
+				{ HCL_TOK_RPAREN, HCL_SYNERR_RPAREN }, /* MLIST     (: ) */
+				{ HCL_TOK_RBRACK, HCL_SYNERR_RBRACK }, /* ARRAY     [ ] */
+				{ HCL_TOK_RBRACK, HCL_SYNERR_RBRACK }, /* BYTEARRAY #[ ] */
+				{ HCL_TOK_RBRACE, HCL_SYNERR_RBRACE }, /* DIC       #{ } */
+				{ HCL_TOK_RPAREN, HCL_SYNERR_RPAREN }  /* QLIST     #( )  */
 			};
 
 			int oldflagv;
@@ -1211,39 +1211,39 @@ static int feed_process_token (hcl_t* hcl)
 			break;
 		}
 
-		case HCL_IOTOK_NIL:
+		case HCL_TOK_NIL:
 			frd->obj = hcl_makecnodenil(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			break;
 
-		case HCL_IOTOK_TRUE:
+		case HCL_TOK_TRUE:
 			frd->obj = hcl_makecnodetrue(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			break;
 
-		case HCL_IOTOK_FALSE:
+		case HCL_TOK_FALSE:
 			frd->obj = hcl_makecnodefalse(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			break;
 
-		case HCL_IOTOK_SELF:
+		case HCL_TOK_SELF:
 			frd->obj = hcl_makecnodeself(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			break;
 
-		case HCL_IOTOK_SUPER:
+		case HCL_TOK_SUPER:
 			frd->obj = hcl_makecnodesuper(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			break;
 
-		case HCL_IOTOK_ELLIPSIS:
+		case HCL_TOK_ELLIPSIS:
 			frd->obj = hcl_makecnodeellipsis(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			break;
 
-		case HCL_IOTOK_TRPCOLONS:
+		case HCL_TOK_TRPCOLONS:
 			frd->obj = hcl_makecnodetrpcolons(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			break;
 
-		case HCL_IOTOK_DCSTAR:
+		case HCL_TOK_DCSTAR:
 			frd->obj = hcl_makecnodedcstar(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			break;
 
-		case HCL_IOTOK_SMPTRLIT:
+		case HCL_TOK_SMPTRLIT:
 		{
 			hcl_oow_t i;
 			hcl_oow_t v = 0;
@@ -1265,7 +1265,7 @@ static int feed_process_token (hcl_t* hcl)
 			break;
 		}
 
-		case HCL_IOTOK_ERRLIT:
+		case HCL_TOK_ERRLIT:
 		{
 			hcl_oow_t i;
 			hcl_ooi_t v = 0;
@@ -1287,37 +1287,37 @@ static int feed_process_token (hcl_t* hcl)
 			break;
 		}
 
-		case HCL_IOTOK_CHARLIT:
+		case HCL_TOK_CHARLIT:
 			frd->obj = hcl_makecnodecharlit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl), TOKEN_NAME_CHAR(hcl, 0));
 			break;
 
-		case HCL_IOTOK_NUMLIT:
+		case HCL_TOK_NUMLIT:
 			frd->obj = hcl_makecnodenumlit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			break;
 
-		case HCL_IOTOK_RADNUMLIT:
+		case HCL_TOK_RADNUMLIT:
 			frd->obj = hcl_makecnoderadnumlit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			break;
 
-		case HCL_IOTOK_FPDECLIT:
+		case HCL_TOK_FPDECLIT:
 			frd->obj = hcl_makecnodefpdeclit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			break;
 
 		/*
-		case HCL_IOTOK_REAL:
-			frd->obj = hcl_makerealnum(hcl, HCL_IOTOK_RVAL(hcl));
+		case HCL_TOK_REAL:
+			frd->obj = hcl_makerealnum(hcl, HCL_TOK_RVAL(hcl));
 			break;
 		*/
 
-		case HCL_IOTOK_STRLIT:
+		case HCL_TOK_STRLIT:
 			frd->obj = hcl_makecnodestrlit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			break;
 
-		case HCL_IOTOK_IDENT:
+		case HCL_TOK_IDENT:
 			frd->obj = hcl_makecnodesymbol(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			break;
 
-		case HCL_IOTOK_IDENT_DOTTED:
+		case HCL_TOK_IDENT_DOTTED:
 			frd->obj = hcl_makecnodedsymbol(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			break;
 	}
@@ -1416,27 +1416,27 @@ static delim_token_t delim_token_tab[] =
 	 *  however, # is included in is_delimchar().
 	 */
 
-	{ "(",        1, HCL_IOTOK_LPAREN },
-	{ "(:",       2, HCL_IOTOK_LPARCOLON },
-	{ ")",        1, HCL_IOTOK_RPAREN },
+	{ "(",        1, HCL_TOK_LPAREN },
+	{ "(:",       2, HCL_TOK_LPARCOLON },
+	{ ")",        1, HCL_TOK_RPAREN },
 
-	{ "[",        1, HCL_IOTOK_LBRACK },
-	{ "]",        1, HCL_IOTOK_RBRACK },
+	{ "[",        1, HCL_TOK_LBRACK },
+	{ "]",        1, HCL_TOK_RBRACK },
 
-	{ "{",        1, HCL_IOTOK_LBRACE },
-	{ "}",        1, HCL_IOTOK_RBRACE },
+	{ "{",        1, HCL_TOK_LBRACE },
+	{ "}",        1, HCL_TOK_RBRACE },
 
-	{ "|",        1, HCL_IOTOK_VBAR },
-	{ ",",        1, HCL_IOTOK_COMMA },
+	{ "|",        1, HCL_TOK_VBAR },
+	{ ",",        1, HCL_TOK_COMMA },
 
-	{ ".",        1, HCL_IOTOK_DOT },
-	{ "..",       2, HCL_IOTOK_DBLDOTS },
-	{ "...",      3, HCL_IOTOK_ELLIPSIS },
+	{ ".",        1, HCL_TOK_DOT },
+	{ "..",       2, HCL_TOK_DBLDOTS },
+	{ "...",      3, HCL_TOK_ELLIPSIS },
 
-	{ ":",        1, HCL_IOTOK_COLON },
-	{ "::",       2, HCL_IOTOK_DBLCOLONS },
-	{ "::*",      3, HCL_IOTOK_DCSTAR },
-	{ ":::",      3, HCL_IOTOK_TRPCOLONS  }
+	{ ":",        1, HCL_TOK_COLON },
+	{ "::",       2, HCL_TOK_DBLCOLONS },
+	{ "::*",      3, HCL_TOK_DCSTAR },
+	{ ":::",      3, HCL_TOK_TRPCOLONS  }
 };
 
 static int find_delim_token_char (hcl_t* hcl, const hcl_ooci_t c, int row_start, int row_end, int col, hcl_flx_dt_t* dt)
@@ -1564,7 +1564,7 @@ static HCL_INLINE void init_flx_st (hcl_flx_st_t* st, hcl_ooch_t sign_c)
 static void reset_flx_token (hcl_t* hcl)
 {
 	/* clear the token name, reset its location */
-	SET_TOKEN_TYPE (hcl, HCL_IOTOK_EOF); /* is it correct? */
+	SET_TOKEN_TYPE (hcl, HCL_TOK_EOF); /* is it correct? */
 	CLEAR_TOKEN_NAME (hcl);
 	SET_TOKEN_LOC (hcl, &hcl->c->feed.lx.loc);
 }
@@ -1598,7 +1598,7 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 		case HCL_OOCI_EOF:
 			/* only EOF of the top-level stream is supposed to be fed in.
 			 * the internal logic discard EOFs of included streams */
-			FEED_WRAP_UP_WITH_CHARS (hcl, vocas[VOCA_EOF].str, vocas[VOCA_EOF].len, HCL_IOTOK_EOF);
+			FEED_WRAP_UP_WITH_CHARS (hcl, vocas[VOCA_EOF].str, vocas[VOCA_EOF].len, HCL_TOK_EOF);
 			goto consumed;
 
 		case ';':
@@ -1611,12 +1611,12 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 			goto consumed;
 
 		case '\"':
-			init_flx_qt (FLX_QT(hcl), HCL_IOTOK_STRLIT, HCL_SYNERR_STRLIT, c, '\\', 0, HCL_TYPE_MAX(hcl_oow_t));
+			init_flx_qt (FLX_QT(hcl), HCL_TOK_STRLIT, HCL_SYNERR_STRLIT, c, '\\', 0, HCL_TYPE_MAX(hcl_oow_t));
 			FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard the quote itself. move on the the QUOTED_TOKEN state */
 			goto consumed;
 
 		case '\'':
-			init_flx_qt (FLX_QT(hcl), HCL_IOTOK_CHARLIT, HCL_SYNERR_CHARLIT, c, '\\', 1, 1);
+			init_flx_qt (FLX_QT(hcl), HCL_TOK_CHARLIT, HCL_SYNERR_CHARLIT, c, '\\', 1, 1);
 			FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard the quote itself. move on the the QUOTED_TOKEN state */
 			goto consumed;
 
@@ -1722,23 +1722,23 @@ static int flx_hmarked_token (hcl_t* hcl, hcl_ooci_t c)
 		/* --------------------------- */
 
 		case 'x':
-			init_flx_hn (FLX_HN(hcl), HCL_IOTOK_RADNUMLIT, HCL_SYNERR_NUMLIT, 16);
+			init_flx_hn (FLX_HN(hcl), HCL_TOK_RADNUMLIT, HCL_SYNERR_NUMLIT, 16);
 			goto radixed_number;
 
 		case 'o':
-			init_flx_hn (FLX_HN(hcl), HCL_IOTOK_RADNUMLIT, HCL_SYNERR_NUMLIT, 8);
+			init_flx_hn (FLX_HN(hcl), HCL_TOK_RADNUMLIT, HCL_SYNERR_NUMLIT, 8);
 			goto radixed_number;
 
 		case 'b':
-			init_flx_hn (FLX_HN(hcl), HCL_IOTOK_RADNUMLIT, HCL_SYNERR_NUMLIT, 2);
+			init_flx_hn (FLX_HN(hcl), HCL_TOK_RADNUMLIT, HCL_SYNERR_NUMLIT, 2);
 			goto radixed_number;
 
 		case 'e':
-			init_flx_hn (FLX_HN(hcl), HCL_IOTOK_ERRLIT, HCL_SYNERR_ERRLIT, 10);
+			init_flx_hn (FLX_HN(hcl), HCL_TOK_ERRLIT, HCL_SYNERR_ERRLIT, 10);
 			goto radixed_number;
 
 		case 'p':
-			init_flx_hn (FLX_HN(hcl), HCL_IOTOK_SMPTRLIT, HCL_SYNERR_SMPTRLIT, 16);
+			init_flx_hn (FLX_HN(hcl), HCL_TOK_SMPTRLIT, HCL_SYNERR_SMPTRLIT, 16);
 		radixed_number:
 			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_HMARKED_NUMBER);
 			goto consumed;
@@ -1750,15 +1750,15 @@ static int flx_hmarked_token (hcl_t* hcl, hcl_ooci_t c)
 
 		/* --------------------------- */
 		case '[':
-			FEED_WRAP_UP_WITH_CHAR (hcl, c, HCL_IOTOK_BAPAREN);
+			FEED_WRAP_UP_WITH_CHAR (hcl, c, HCL_TOK_BAPAREN);
 			goto consumed;
 
 		case '(':
-			FEED_WRAP_UP_WITH_CHAR (hcl, c, HCL_IOTOK_QLPAREN);
+			FEED_WRAP_UP_WITH_CHAR (hcl, c, HCL_TOK_QLPAREN);
 			goto consumed;
 
 		case '{':
-			FEED_WRAP_UP_WITH_CHAR (hcl, c, HCL_IOTOK_DLPAREN);
+			FEED_WRAP_UP_WITH_CHAR (hcl, c, HCL_TOK_DLPAREN);
 			goto  consumed;
 
 		/* --------------------------- */
@@ -1857,7 +1857,7 @@ static int flx_hmarked_char (hcl_t* hcl, hcl_ooci_t c)
 		/* reset the token name to the converted character */
 		CLEAR_TOKEN_NAME (hcl);
 		ADD_TOKEN_CHAR (hcl, c);
-		FEED_WRAP_UP (hcl, HCL_IOTOK_CHARLIT);
+		FEED_WRAP_UP (hcl, HCL_TOK_CHARLIT);
 		goto not_consumed;
 	}
 	else
@@ -1993,7 +1993,7 @@ static int flx_plain_ident (hcl_t* hcl, hcl_ooci_t c) /* identifier */
 		seg.ptr = &TOKEN_NAME_CHAR(hcl, start);
 		seg.len = pi->seg_len;
 		tok_type = classify_ident_token(hcl, &seg);
-		if (tok_type != HCL_IOTOK_IDENT)
+		if (tok_type != HCL_TOK_IDENT)
 		{
 			pi->non_ident_seg_count++;
 			pi->last_non_ident_type = tok_type;
@@ -2025,7 +2025,7 @@ static int flx_plain_ident (hcl_t* hcl, hcl_ooci_t c) /* identifier */
 			}
 		}
 
-		FEED_WRAP_UP (hcl, (pi->seg_count == 1? HCL_IOTOK_IDENT: HCL_IOTOK_IDENT_DOTTED));
+		FEED_WRAP_UP (hcl, (pi->seg_count == 1? HCL_TOK_IDENT: HCL_TOK_IDENT_DOTTED));
 		goto not_consumed;
 	}
 	else
@@ -2073,7 +2073,7 @@ static int flx_plain_number (hcl_t* hcl, hcl_ooci_t c) /* number */
 			return -1;
 		}
 
-		FEED_WRAP_UP (hcl, (pn->fpdec? HCL_IOTOK_FPDECLIT: HCL_IOTOK_NUMLIT));
+		FEED_WRAP_UP (hcl, (pn->fpdec? HCL_TOK_FPDECLIT: HCL_TOK_NUMLIT));
 		goto not_consumed;
 	}
 
@@ -2167,7 +2167,7 @@ static int flx_quoted_token (hcl_t* hcl, hcl_ooci_t c) /* string, character */
 	if (qt->escaped == 0 && c == qt->end_char)
 	{
 		/* terminating quote */
-		FEED_WRAP_UP (hcl, qt->tok_type); /* HCL_IOTOK_STRLIT or HCL_IOTOK_CHARLIT */
+		FEED_WRAP_UP (hcl, qt->tok_type); /* HCL_TOK_STRLIT or HCL_TOK_CHARLIT */
 		if (TOKEN_NAME_LEN(hcl) < qt->min_len)
 		{
 			hcl_setsynerr (hcl, qt->synerr_code, TOKEN_LOC(hcl), HCL_NULL);
@@ -2267,7 +2267,7 @@ static int flx_signed_token (hcl_t* hcl, hcl_ooci_t c)
 
 		if (c == 'b' || c == 'o' || c == 'x')
 		{
-			init_flx_hn (FLX_HN(hcl), HCL_IOTOK_RADNUMLIT, HCL_SYNERR_NUMLIT, (c == 'b'? 2: (c == 'o'? 8: 16)));
+			init_flx_hn (FLX_HN(hcl), HCL_TOK_RADNUMLIT, HCL_SYNERR_NUMLIT, (c == 'b'? 2: (c == 'o'? 8: 16)));
 			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_HMARKED_NUMBER);
 			goto consumed;
 		}
@@ -2276,7 +2276,7 @@ static int flx_signed_token (hcl_t* hcl, hcl_ooci_t c)
 			/* at this point, the token name buffer holds +# or -# */
 			HCL_ASSERT (hcl, TOKEN_NAME_LEN(hcl) == 2);
 			TOKEN_NAME_LEN(hcl)--; /* remove the ending # from the name buffer */
-			FEED_WRAP_UP (hcl, HCL_IOTOK_IDENT);
+			FEED_WRAP_UP (hcl, HCL_TOK_IDENT);
 
 			/* reset the token information as if it enters HMARKED_TOKEN from START */
 			reset_flx_token (hcl);
@@ -2941,6 +2941,9 @@ void hcl_flushudio (hcl_t* hcl)
 	if (hcl->io.udo_wrtr) hcl->io.udo_wrtr (hcl, HCL_IO_FLUSH, &hcl->io.udo_arg);
 }
 
+
+
+/* TODO: discard the fwollowing three functions - hcl_setbasesrloc, hcl_readbasesrchar, hcl_readbasesrraw */
 void hcl_setbasesrloc (hcl_t* hcl, hcl_oow_t line, hcl_oow_t colm)
 {
 	hcl->c->cci_arg.line = line;

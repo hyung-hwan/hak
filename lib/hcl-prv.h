@@ -159,45 +159,45 @@
 /* ========================================================================= */
 enum hcl_tok_type_t
 {
-	HCL_IOTOK_EOF,
-	HCL_IOTOK_CHARLIT,
-	HCL_IOTOK_STRLIT,
-	HCL_IOTOK_NUMLIT,
-	HCL_IOTOK_RADNUMLIT,
-	HCL_IOTOK_FPDECLIT,
-	HCL_IOTOK_SMPTRLIT,
-	HCL_IOTOK_ERRLIT,
-	HCL_IOTOK_NIL,
-	HCL_IOTOK_TRUE,
-	HCL_IOTOK_FALSE,
-	HCL_IOTOK_SELF,
-	HCL_IOTOK_SUPER,
+	HCL_TOK_EOF,
+	HCL_TOK_CHARLIT,
+	HCL_TOK_STRLIT,
+	HCL_TOK_NUMLIT,
+	HCL_TOK_RADNUMLIT,
+	HCL_TOK_FPDECLIT,
+	HCL_TOK_SMPTRLIT,
+	HCL_TOK_ERRLIT,
+	HCL_TOK_NIL,
+	HCL_TOK_TRUE,
+	HCL_TOK_FALSE,
+	HCL_TOK_SELF,
+	HCL_TOK_SUPER,
 
-	HCL_IOTOK_IDENT,
-	HCL_IOTOK_IDENT_DOTTED,
-	HCL_IOTOK_DOT,       /* . */
-	HCL_IOTOK_DBLDOTS,   /* .. */
-	HCL_IOTOK_ELLIPSIS,  /* ... */
-	HCL_IOTOK_COLON,     /* : */
-	HCL_IOTOK_DBLCOLONS, /* :: */
-	HCL_IOTOK_TRPCOLONS, /* ::: */
-	HCL_IOTOK_DCSTAR,    /* ::* */
-	HCL_IOTOK_COMMA,     /* , */
-	HCL_IOTOK_LPAREN,    /* ( */
-	HCL_IOTOK_RPAREN,    /* ) */
-	HCL_IOTOK_LPARCOLON, /* (: */
-	HCL_IOTOK_BAPAREN,   /* #[ - byte array parenthesis */
-	HCL_IOTOK_QLPAREN,   /* #( - quoted-list parenthesis */
-	HCL_IOTOK_DLPAREN,   /* #{ - dictionary parenthese */
-	HCL_IOTOK_LBRACK,    /* [ - array */
-	HCL_IOTOK_RBRACK,    /* ] */
-	HCL_IOTOK_LBRACE,    /* { - block */
-	HCL_IOTOK_RBRACE,    /* } */
-	HCL_IOTOK_VBAR,      /* | */
-	HCL_IOTOK_EOL,       /* end of line */
+	HCL_TOK_IDENT,
+	HCL_TOK_IDENT_DOTTED,
+	HCL_TOK_DOT,       /* . */
+	HCL_TOK_DBLDOTS,   /* .. */
+	HCL_TOK_ELLIPSIS,  /* ... */
+	HCL_TOK_COLON,     /* : */
+	HCL_TOK_DBLCOLONS, /* :: */
+	HCL_TOK_TRPCOLONS, /* ::: */
+	HCL_TOK_DCSTAR,    /* ::* */
+	HCL_TOK_COMMA,     /* , */
+	HCL_TOK_LPAREN,    /* ( */
+	HCL_TOK_RPAREN,    /* ) */
+	HCL_TOK_LPARCOLON, /* (: */
+	HCL_TOK_BAPAREN,   /* #[ - byte array parenthesis */
+	HCL_TOK_QLPAREN,   /* #( - quoted-list parenthesis */
+	HCL_TOK_DLPAREN,   /* #{ - dictionary parenthese */
+	HCL_TOK_LBRACK,    /* [ - array */
+	HCL_TOK_RBRACK,    /* ] */
+	HCL_TOK_LBRACE,    /* { - block */
+	HCL_TOK_RBRACE,    /* } */
+	HCL_TOK_VBAR,      /* | */
+	HCL_TOK_EOL,       /* end of line */
 
-	HCL_IOTOK_INCLUDE,
-	HCL_IOTOK_PRAGMA
+	HCL_TOK_INCLUDE,
+	HCL_TOK_PRAGMA
 };
 typedef enum hcl_tok_type_t hcl_tok_type_t;
 
