@@ -236,7 +236,7 @@ static int is_in_class_init_scope (hcl_t* hcl)
 
 static int is_in_class_method_scope (hcl_t* hcl)
 {
-	hcl_oow_t i, j;
+	hcl_oow_t i;
 
 	for (i = hcl->c->fnblk.depth + 1; i > 0; )
 	{
@@ -256,7 +256,7 @@ static int is_in_class_method_scope (hcl_t* hcl)
 
 static int find_variable_backward (hcl_t* hcl, const hcl_cnode_t* token, hcl_var_info_t* vi)
 {
-	hcl_oow_t i, j;
+	hcl_oow_t i;
 	const hcl_oocs_t* name;
 
 	HCL_ASSERT (hcl, hcl->c->fnblk.depth >= 0);

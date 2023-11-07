@@ -818,7 +818,6 @@ static hcl_pfrc_t pf_va_count (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 
 static hcl_pfrc_t pf_va_get (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
-	hcl_oop_t ret;
 	hcl_oop_context_t ctx;
 	hcl_ooi_t attr_mask, va, fixed_nargs, nrvars, nlvars, nvaargs;
 	hcl_oow_t index;

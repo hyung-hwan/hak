@@ -166,41 +166,45 @@ static char* synerrstr[] =
 /* --------------------------------------------------------------------------
  * ERROR NUMBER TO STRING CONVERSION
  * -------------------------------------------------------------------------- */
+
+static hcl_bch_t e_unknown_b[] = {'u','n','k','n','o','w','n',' ','e','r','r','o','r','\0'};
+static hcl_uch_t e_unknown_u[] = {'u','n','k','n','o','w','n',' ','e','r','r','o','r','\0'};
+#if defined(HCL_OOCH_IS_BCH)
+#	define e_unknown e_unknown_b
+#else
+#	define e_unknown e_unknown_u
+#endif
+
 const hcl_ooch_t* hcl_errnum_to_errstr (hcl_errnum_t errnum)
 {
-	static hcl_ooch_t e_unknown[] = {'u','n','k','n','o','w','n',' ','e','r','r','o','r','\0'};
 	return (errnum >= 0 && errnum < HCL_COUNTOF(errstr))? errstr[errnum]: e_unknown;
 }
 
 const hcl_bch_t* hcl_errnum_to_errbcstr (hcl_errnum_t errnum, hcl_bch_t* buf, hcl_oow_t len)
 {
-	static hcl_bch_t e_unknown[] = {'u','n','k','n','o','w','n',' ','e','r','r','o','r','\0'};
-
 	/* it's ok to copy without conversion because the messages above are simple acsii text */
 #if defined(HCL_OOCH_IS_BCH)
-	hcl_copy_bcstr(buf, len, (errnum >= 0 && errnum < HCL_COUNTOF(errstr))? errstr[errnum]: e_unknown);
+	hcl_copy_bcstr(buf, len, (errnum >= 0 && errnum < HCL_COUNTOF(errstr))? errstr[errnum]: e_unknown_b);
 #else
-	hcl_copy_ucstr_to_bcstr(buf, len, (errnum >= 0 && errnum < HCL_COUNTOF(errstr))? errstr[errnum]: e_unknown);
+	hcl_copy_ucstr_to_bcstr(buf, len, (errnum >= 0 && errnum < HCL_COUNTOF(errstr))? errstr[errnum]: e_unknown_u);
 #endif
 	return buf;
 }
 
 const hcl_uch_t* hcl_errnum_to_errucstr (hcl_errnum_t errnum, hcl_uch_t* buf, hcl_oow_t len)
 {
-	static hcl_uch_t e_unknown[] = {'u','n','k','n','o','w','n',' ','e','r','r','o','r','\0'};
 	/* it's ok to copy without conversion because the messages above are simple acsii text */
 #if defined(HCL_OOCH_IS_BCH)
-	hcl_copy_bcstr_to_ucstr(buf, len, (errnum >= 0 && errnum < HCL_COUNTOF(errstr))? errstr[errnum]: e_unknown);
+	hcl_copy_bcstr_to_ucstr(buf, len, (errnum >= 0 && errnum < HCL_COUNTOF(errstr))? errstr[errnum]: e_unknown_b);
 #else
-	hcl_copy_ucstr(buf, len, (errnum >= 0 && errnum < HCL_COUNTOF(errstr))? errstr[errnum]: e_unknown);
+	hcl_copy_ucstr(buf, len, (errnum >= 0 && errnum < HCL_COUNTOF(errstr))? errstr[errnum]: e_unknown_u);
 #endif
 	return buf;
 }
 
 static const hcl_bch_t* synerr_to_errstr (hcl_synerrnum_t errnum)
 {
-	static hcl_bch_t e_unknown[] = "unknown error";
-	return (errnum >= 0 && errnum < HCL_COUNTOF(synerrstr))? synerrstr[errnum]: e_unknown;
+	return (errnum >= 0 && errnum < HCL_COUNTOF(synerrstr))? synerrstr[errnum]: e_unknown_b;
 }
 
 /* --------------------------------------------------------------------------

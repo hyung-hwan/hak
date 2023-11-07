@@ -2883,7 +2883,7 @@ static int open_pipes (hcl_t* hcl, int p[2])
 	ioctl (p[0], FIONBIO, (char*)&flags, HCL_SIZEOF(flags));
 	ioctl (p[1], FIONBIO, (char*)&flags, HCL_SIZEOF(flags));
 #elif defined(HAVE_PIPE2) && defined(O_CLOEXEC) && defined(O_NONBLOCK)
-		/* do nothing */
+	/* do nothing */
 #else
 	#if defined(FD_CLOEXEC)
 	flags = fcntl(p[0], F_GETFD);
