@@ -219,6 +219,7 @@ int hcl_fmt_object_ (hcl_fmtout_t* fmtout, hcl_oop_t obj)
 		/* navtive   json */
 		{ "(",       "(" },  /*HCL_CONCODE_XLIST */
 		{ "(:",      "(" },  /*HCL_CONCODE_MLIST */
+		{ "{",       "{" },  /*HCL_CONCODE_BLOCK */
 		{ "[",       "[" },  /*HCL_CONCODE_ARRAY */
 		{ "#[",      "[" },  /*HCL_CONCODE_BYTEARRAY */ 
 		{ "#{",      "{" },  /*HCL_CONCODE_DIC */
@@ -229,6 +230,7 @@ int hcl_fmt_object_ (hcl_fmtout_t* fmtout, hcl_oop_t obj)
 	{
 		{ ")",       ")" },   /*HCL_CONCODE_XLIST */
 		{ ")",       ")" },   /*HCL_CONCODE_MLIST */
+		{ "}",       "}" },   /*HCL_CONCODE_BLOCK */
 		{ "]",       "]" },   /*HCL_CONCODE_ARRAY */
 		{ "]",       "]" },   /*HCL_CONCODE_BYTEARRAY */
 		{ "}",       "}" },   /*HCL_CONCODE_DIC */

@@ -1917,9 +1917,10 @@ enum hcl_concode_t
 	/* these can be set in the SYNCODE flags for a cons cell */
 	HCL_CONCODE_XLIST = 0,  /* ( ) - executable list */
 	HCL_CONCODE_MLIST,      /* (: ) - message send list */
+	HCL_CONCODE_BLOCK,      /* { } */
 	HCL_CONCODE_ARRAY,      /* [ ] */
 	HCL_CONCODE_BYTEARRAY,  /* #[ ] */
-	HCL_CONCODE_DIC,        /* { } */
+	HCL_CONCODE_DIC,        /* #{ } */
 	HCL_CONCODE_QLIST,      /* #( ) - data list */
 	HCL_CONCODE_VLIST       /* | | - symbol list */
 };

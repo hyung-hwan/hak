@@ -324,7 +324,7 @@ static HCL_INLINE int is_alnumchar (hcl_ooci_t c)
 static HCL_INLINE int is_delimchar (hcl_ooci_t c)
 {
 	return c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' ||
-	       c == ';' || c == '|' || c == ',' || c == '.' || c == ':' ||
+	       c == ';' || c == '|' || c == ',' || c == '.' || c == ':' || c == ';' ||
 	       /* the first characters of tokens in delim_token_tab up to this point */
 	       c == '#'  || c == '\"' || c == '\'' || is_spacechar(c) || c == HCL_UCI_EOF;
 }
@@ -1082,6 +1082,11 @@ static int feed_process_token (hcl_t* hcl)
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_BYTEARRAY);
 			goto start_list;
 
+		case HCL_TOK_LBRACE: /* { */
+			frd->flagv = DATA_LIST;
+			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_BLOCK);
+			goto start_list;
+
 		case HCL_TOK_DLPAREN: /* #{ */
 			frd->flagv = DATA_LIST;
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_DIC);
@@ -1412,7 +1417,7 @@ static delim_token_t delim_token_tab[] =
 	 *    The length must not differ by greater than 1 between 2 items in the same group.
 	 *
 	 * [NOTE 3]
-	 *  don't list #( and #[ here because of overlapping use of # for various purposes.
+	 *  don't list #(, #[, #{ here because of overlapping use of # for various purposes.
 	 *  however, # is included in is_delimchar().
 	 */
 
@@ -1436,7 +1441,9 @@ static delim_token_t delim_token_tab[] =
 	{ ":",        1, HCL_TOK_COLON },
 	{ "::",       2, HCL_TOK_DBLCOLONS },
 	{ "::*",      3, HCL_TOK_DCSTAR },
-	{ ":::",      3, HCL_TOK_TRPCOLONS  }
+	{ ":::",      3, HCL_TOK_TRPCOLONS  },
+
+	{ ";",        1, HCL_TOK_SEMICOLON }
 };
 
 static int find_delim_token_char (hcl_t* hcl, const hcl_ooci_t c, int row_start, int row_end, int col, hcl_flx_dt_t* dt)
