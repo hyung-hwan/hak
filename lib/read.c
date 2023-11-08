@@ -82,13 +82,14 @@ typedef enum voca_id_t voca_id_t;
 
 enum list_flag_t
 {
-	QUOTED     = (1 << 0),
-	DOTTED     = (1 << 1),
-	COMMAED    = (1 << 2),
-	COLONED    = (1 << 3),
-	CLOSED     = (1 << 4),
-	JSON       = (1 << 5),
-	DATA_LIST  = (1 << 6)
+	QUOTED      = (1 << 0),
+	DOTTED      = (1 << 1),
+	COMMAED     = (1 << 2),
+	COLONED     = (1 << 3),
+	CLOSED      = (1 << 4),
+	JSON        = (1 << 5),
+	DATA_LIST   = (1 << 6),
+	AUTO_FORGED = (1 << 7)  /* automatically added. only applicable to XLIST */
 };
 
 #define LIST_FLAG_GET_CONCODE(x) (((x) >> 8) & 0xFF)
@@ -673,10 +674,10 @@ static HCL_INLINE int is_at_block_beginning (hcl_t* hcl)
 {
 	hcl_rstl_t* rstl;
 
-	HCL_ASSERT (hcl, hcl->c->r.st != HCL_NULL);
+	//HCL_ASSERT (hcl, hcl->c->r.st != HCL_NULL);
 	rstl = hcl->c->r.st;
 
-	return (LIST_FLAG_GET_CONCODE(rstl->flagv) == HCL_CONCODE_BLOCK && rstl->count <= 0);
+	return !rstl || LIST_FLAG_GET_CONCODE(rstl->flagv) == HCL_CONCODE_BLOCK && rstl->count <= 0;
 }
 
 static HCL_INLINE int can_dot_list (hcl_t* hcl)
@@ -1098,7 +1099,7 @@ static int feed_process_token (hcl_t* hcl)
 			goto start_list;
 
 		case HCL_TOK_LBRACE: /* { */
-			frd->flagv = DATA_LIST;
+			frd->flagv = 0;
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_BLOCK);
 			goto start_list;
 
@@ -1168,8 +1169,36 @@ static int feed_process_token (hcl_t* hcl)
 			goto ok;
 
 		case HCL_TOK_SEMICOLON:
-			/* TODO: */
-			goto ok;
+		{
+			int oldflagv;
+			int concode;
+
+			if (frd->level <= 0)
+			{
+				/* redundant semicolons */
+				hcl_setsynerr (hcl, HCL_SYNERR_UNBALPBB, TOKEN_LOC(hcl), HCL_NULL);
+				goto oops;
+			}
+
+			if (!(frd->flagv & AUTO_FORGED))
+			{
+				/* TODO: change error info */
+				hcl_setsynerr (hcl, HCL_SYNERR_UNBALPBB, TOKEN_LOC(hcl), HCL_NULL);
+				goto oops;
+			}
+
+			concode = LIST_FLAG_GET_CONCODE(frd->flagv);
+			if (concode != HCL_CONCODE_XLIST)
+			{
+				/* TODO: change error info */
+				hcl_setsynerr (hcl, HCL_SYNERR_UNBALPBB, TOKEN_LOC(hcl), HCL_NULL);
+				goto oops;
+			}
+
+			frd->obj = leave_list(hcl, &frd->flagv, &oldflagv);
+			frd->level--;
+			break;
+		}
 
 		case HCL_TOK_RPAREN: /* xlist (), qlist #() */
 		case HCL_TOK_RBRACK: /* bytearray #[], array [] */
@@ -1181,13 +1210,13 @@ static int feed_process_token (hcl_t* hcl)
 				hcl_synerrnum_t synerr;
 			} req[] =
 			{
-				{ HCL_TOK_RPAREN, HCL_SYNERR_RPAREN }, /* XLIST     ( )  */
-				{ HCL_TOK_RPAREN, HCL_SYNERR_RPAREN }, /* MLIST     (: ) */
-				{ HCL_TOK_RBRACE, HCL_SYNERR_RBRACE }, /* BLOCK     { } */
-				{ HCL_TOK_RBRACK, HCL_SYNERR_RBRACK }, /* ARRAY     [ ] */
-				{ HCL_TOK_RBRACK, HCL_SYNERR_RBRACK }, /* BYTEARRAY #[ ] */
-				{ HCL_TOK_RBRACE, HCL_SYNERR_RBRACE }, /* DIC       #{ } */
-				{ HCL_TOK_RPAREN, HCL_SYNERR_RPAREN }  /* QLIST     #( )  */
+				/*[HCL_CONCODE_XLIST]     =*/ { HCL_TOK_RPAREN, HCL_SYNERR_RPAREN }, /* XLIST     ( )  */
+				/*[HCL_CONCODE_MLIST]     =*/ { HCL_TOK_RPAREN, HCL_SYNERR_RPAREN }, /* MLIST     (: ) */
+				/*[HCL_CONCODE_BLOCK]     =*/ { HCL_TOK_RBRACE, HCL_SYNERR_RBRACE }, /* BLOCK     { } */
+				/*[HCL_CONCODE_ARRAY]     =*/ { HCL_TOK_RBRACK, HCL_SYNERR_RBRACK }, /* ARRAY     [ ] */
+				/*[HCL_CONCODE_BYTEARRAY] =*/ { HCL_TOK_RBRACK, HCL_SYNERR_RBRACK }, /* BYTEARRAY #[ ] */
+				/*[HCL_CONCODE_DIC]       =*/ { HCL_TOK_RBRACE, HCL_SYNERR_RBRACE }, /* DIC       #{ } */
+				/*[HCL_CONCODE_QLIST]     =*/ { HCL_TOK_RPAREN, HCL_SYNERR_RPAREN }  /* QLIST     #( )  */
 			};
 
 			int oldflagv;
@@ -1200,6 +1229,14 @@ static int feed_process_token (hcl_t* hcl)
 			}
 
 			concode = LIST_FLAG_GET_CONCODE(frd->flagv);
+
+			if (concode == HCL_CONCODE_XLIST && (frd->flagv & AUTO_FORGED))
+			{
+				/* the auto-created xlist can't be terminated with the regular closing symbol
+				 * it must end with the semicolon */
+				hcl_setsynerr (hcl, HCL_SYNERR_UNBALPBB, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+				goto oops;
+			}
 
 			if (req[concode].closer != TOKEN_TYPE(hcl))
 			{
@@ -1238,35 +1275,35 @@ static int feed_process_token (hcl_t* hcl)
 
 		case HCL_TOK_NIL:
 			frd->obj = hcl_makecnodenil(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-			break;
+			goto auto_xlist;
 
 		case HCL_TOK_TRUE:
 			frd->obj = hcl_makecnodetrue(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-			break;
+			goto auto_xlist;
 
 		case HCL_TOK_FALSE:
 			frd->obj = hcl_makecnodefalse(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-			break;
+			goto auto_xlist;
 
 		case HCL_TOK_SELF:
 			frd->obj = hcl_makecnodeself(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-			break;
+			goto auto_xlist;
 
 		case HCL_TOK_SUPER:
 			frd->obj = hcl_makecnodesuper(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-			break;
+			goto auto_xlist;
 
 		case HCL_TOK_ELLIPSIS:
 			frd->obj = hcl_makecnodeellipsis(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-			break;
+			goto auto_xlist;
 
 		case HCL_TOK_TRPCOLONS:
 			frd->obj = hcl_makecnodetrpcolons(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-			break;
+			goto auto_xlist;
 
 		case HCL_TOK_DCSTAR:
 			frd->obj = hcl_makecnodedcstar(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-			break;
+			goto auto_xlist;
 
 		case HCL_TOK_SMPTRLIT:
 		{
@@ -1287,7 +1324,7 @@ static int feed_process_token (hcl_t* hcl)
 			}
 
 			frd->obj = hcl_makecnodesmptrlit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl), v);
-			break;
+			goto auto_xlist;
 		}
 
 		case HCL_TOK_ERRLIT:
@@ -1309,24 +1346,24 @@ static int feed_process_token (hcl_t* hcl)
 			}
 
 			frd->obj = hcl_makecnodeerrlit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl), v);
-			break;
+			goto auto_xlist;
 		}
 
 		case HCL_TOK_CHARLIT:
 			frd->obj = hcl_makecnodecharlit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl), TOKEN_NAME_CHAR(hcl, 0));
-			break;
+			goto auto_xlist;
 
 		case HCL_TOK_NUMLIT:
 			frd->obj = hcl_makecnodenumlit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-			break;
+			goto auto_xlist;
 
 		case HCL_TOK_RADNUMLIT:
 			frd->obj = hcl_makecnoderadnumlit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-			break;
+			goto auto_xlist;
 
 		case HCL_TOK_FPDECLIT:
 			frd->obj = hcl_makecnodefpdeclit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-			break;
+			goto auto_xlist;
 
 		/*
 		case HCL_TOK_REAL:
@@ -1336,14 +1373,36 @@ static int feed_process_token (hcl_t* hcl)
 
 		case HCL_TOK_STRLIT:
 			frd->obj = hcl_makecnodestrlit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-			break;
+			goto auto_xlist;
 
 		case HCL_TOK_IDENT:
 			frd->obj = hcl_makecnodesymbol(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-			break;
+			goto auto_xlist;
 
 		case HCL_TOK_IDENT_DOTTED:
 			frd->obj = hcl_makecnodedsymbol(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			goto auto_xlist;
+
+		auto_xlist:
+			if (is_at_block_beginning(hcl))  /* TODO: make this optional */
+			{
+				hcl_oop_t obj = frd->obj;
+
+				frd->flagv = AUTO_FORGED;
+				LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_XLIST);
+
+				/* this portion is te same as the code below the start_list label above */
+				if (frd->level >= HCL_TYPE_MAX(int)) /* the nesting level too deep */
+				{
+					hcl_setsynerr (hcl, HCL_SYNERR_NESTING, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+					goto oops;
+				}
+				if (enter_list(hcl, TOKEN_LOC(hcl), frd->flagv) <= -1) goto oops;
+				frd->level++;
+
+				frd = &hcl->c->feed.rd;
+				frd->obj = obj;
+			}
 			break;
 	}
 
