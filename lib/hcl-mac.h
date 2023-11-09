@@ -26,7 +26,7 @@
 /* This file is for class Mac OS */
 
 /* Mac OS on PPC and m68k uses the big endian mode */
-#define HCL_ENDIAN_BIG 
+#define HCL_ENDIAN_BIG
 
 #if defined(__MWERKS__)
 #	define HCL_SIZEOF_CHAR        1

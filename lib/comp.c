@@ -36,7 +36,7 @@ enum
 	VAR_CLASS_IM, /* class variable in instance method scope */
 };
 
-enum 
+enum
 {
 	VAR_ACCESS_PUSH,
 	VAR_ACCESS_POP,
@@ -56,11 +56,11 @@ enum
 
 /* --------------------------------------------
 
-                                                     
-(defun plus(x y) 
+
+(defun plus(x y)
 	(printf "plus %d %d\n" x y)
 	(defun minus(x y)
-		(printf "minus %d %d\n" x y)              
+		(printf "minus %d %d\n" x y)
 		(- x y)
 	)
 	(+ x y)
@@ -74,7 +74,7 @@ enum
     <---- minus is now available
 
 (minus 10 1)
- 
+
 literals -->
 //
 // characeter 'A'
@@ -126,7 +126,7 @@ static int copy_string_to (hcl_t* hcl, const hcl_oocs_t* src, hcl_oocs_t* dst, h
 static int __find_word_in_string (const hcl_oocs_t* haystack, const hcl_oocs_t* name, int last, hcl_oow_t* xindex)
 {
 	/* this function is inefficient. but considering the typical number
-	 * of arguments and temporary variables, the inefficiency can be 
+	 * of arguments and temporary variables, the inefficiency can be
 	 * ignored in my opinion. the overhead to maintain the reverse lookup
 	 * table from a name to an index should be greater than this simple
 	 * inefficient lookup */
@@ -148,7 +148,7 @@ static int __find_word_in_string (const hcl_oocs_t* haystack, const hcl_oocs_t* 
 			if (t >= e || name->ptr[i] != *t) goto unmatched;
 			t++;
 		}
-		if (t >= e || *t == ' ') 
+		if (t >= e || *t == ' ')
 		{
 			if (last)
 			{
@@ -176,7 +176,7 @@ static int __find_word_in_string (const hcl_oocs_t* haystack, const hcl_oocs_t* 
 		index++;
 	}
 
-	if (found != HCL_TYPE_MAX(hcl_oow_t)) 
+	if (found != HCL_TYPE_MAX(hcl_oow_t))
 	{
 		if (xindex) *xindex = found;
 		return 0; /* found */
@@ -264,7 +264,7 @@ static int find_variable_backward (hcl_t* hcl, const hcl_cnode_t* token, hcl_var
 
 	name = HCL_CNODE_GET_TOK(token);
 
-	/* depth begins at -1. so it is the actual index. let the looping begin at depth + 1 
+	/* depth begins at -1. so it is the actual index. let the looping begin at depth + 1
 	 * to avoid an extra exit check without it */
 	for (i = hcl->c->fnblk.depth + 1; i > 0; )
 	{
@@ -276,7 +276,7 @@ static int find_variable_backward (hcl_t* hcl, const hcl_cnode_t* token, hcl_var
 
 		if (fbi->clsblk_top >= 0)
 		{
-			/* this function block has a class defined. 
+			/* this function block has a class defined.
 			 * that is, it is in a class defintion.
 			 * variable lookup must be limited to the class scope */
 			hcl_clsblk_info_t* clsbi;
@@ -346,7 +346,7 @@ HCL_INFO6 (hcl, "FOUND CLASS VAR [%.*js]...[%.*js]................ ===> ctx_offs
 	#if 0
 			}
 
-			if (i == hcl->c->fnblk.depth) 
+			if (i == hcl->c->fnblk.depth)
 			{
 				/* this condition indicates that the current function level contains a class defintion
 				 * and this variable is looked up inside the class defintion */
@@ -356,7 +356,7 @@ HCL_INFO2 (hcl, "CLASS NAMED VAR [%.*js]\n", name->len, name->ptr);
 				vi->index_in_ctx = 0;
 			}
 	#endif
-			
+
 			break; /* stop searching beyond class definition */
 		}
 
@@ -386,9 +386,9 @@ HCL_INFO2 (hcl, "CLASS NAMED VAR [%.*js]\n", name->len, name->ptr);
 			if (vi->ctx_offset > 0)
 			{
 				/* the current function block accesses temporaries in an outer function block */
-				hcl->c->fnblk.info[hcl->c->fnblk.depth].access_outer = 1; 
+				hcl->c->fnblk.info[hcl->c->fnblk.depth].access_outer = 1;
 				/* temporaries in an outer function block is accessed by the current function block */
-				hcl->c->fnblk.info[i - 1].accessed_by_inner = 1; 
+				hcl->c->fnblk.info[i - 1].accessed_by_inner = 1;
 			}
 
 			return 1;
@@ -506,7 +506,7 @@ static int emit_byte_instruction (hcl_t* hcl, hcl_oob_t bc, const hcl_loc_t* src
 	return 0;
 }
 
-/* 
+/*
 COMMENTED OUT TEMPORARILY
 int hcl_emitbyteinstruction (hcl_t* hcl, hcl_oob_t bc)
 {
@@ -621,7 +621,7 @@ write_short:
 	return 0;
 
 write_long:
-	if (param_1 > MAX_CODE_PARAM) 
+	if (param_1 > MAX_CODE_PARAM)
 	{
 		hcl_seterrbfmt (hcl, HCL_ERANGE, "parameter too large to single-parameter instruction %u", (unsigned int)cmd);
 		return -1;
@@ -637,7 +637,7 @@ write_long:
 	return 0;
 
 write_long2:
-	if (param_1 > MAX_CODE_PARAM2) 
+	if (param_1 > MAX_CODE_PARAM2)
 	{
 		hcl_seterrbfmt (hcl, HCL_ERANGE, "parameter too large to single-parameter instruction %u", (unsigned int)cmd);
 		return -1;
@@ -677,16 +677,16 @@ static int emit_double_param_instruction (hcl_t* hcl, int cmd, hcl_oow_t param_1
 			else
 			{
 				/* convert the code to a long version */
-				bc = cmd | 0x80; 
+				bc = cmd | 0x80;
 				goto write_long;
 			}
 
-		/* MAKE_FUNCTION is a quad-parameter instruction. 
+		/* MAKE_FUNCTION is a quad-parameter instruction.
 		 * The caller must emit two more parameters after the call to this function.
 		 * however the instruction format is the same up to the second
-		 * parameters between MAKE_FUNCTION and MAKE_BLOCK.
+		 * parameters between MAKE_FUNCTION and MAKE_LAMBDA.
 		 */
-		case HCL_CODE_MAKE_BLOCK:
+		case HCL_CODE_MAKE_LAMBDA:
 		case HCL_CODE_MAKE_FUNCTION:
 		case HCL_CODE_CALL_R:
 		case HCL_CODE_SEND_R:
@@ -793,7 +793,7 @@ static HCL_INLINE void patch_long_jump (hcl_t* hcl, hcl_ooi_t jip, hcl_ooi_t jum
 	{
 		/* switch to JUMP2 instruction to allow a bigger jump offset.
 		 * up to twice MAX_CODE_JUMP only */
-		
+
 		HCL_ASSERT (hcl, jump_offset <= MAX_CODE_JUMP * 2);
 
 		HCL_ASSERT (hcl, hcl->code.bc.ptr[jip] == HCL_CODE_JUMP_FORWARD_X ||
@@ -805,7 +805,7 @@ static HCL_INLINE void patch_long_jump (hcl_t* hcl, hcl_ooi_t jip, hcl_ooi_t jum
 		                 hcl->code.bc.ptr[jip] == HCL_CODE_TRY_ENTER);
 
 		/* JUMP2 instructions are chosen to be greater than its JUMP counterpart by 1 */
-		patch_instruction (hcl, jip, hcl->code.bc.ptr[jip] + 1); 
+		patch_instruction (hcl, jip, hcl->code.bc.ptr[jip] + 1);
 		jump_offset -= MAX_CODE_JUMP;
 	}
 
@@ -894,7 +894,7 @@ static int push_cblk (hcl_t* hcl, const hcl_loc_t* errloc, hcl_cblk_type_t type)
 
 	if (hcl->c->cblk.depth == HCL_TYPE_MAX(hcl_ooi_t))
 	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_BLKDEPTH, errloc, HCL_NULL, "control block depth too deep"); 
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_BLKDEPTH, errloc, HCL_NULL, "control block depth too deep");
 		return -1;
 	}
 
@@ -903,11 +903,11 @@ static int push_cblk (hcl_t* hcl, const hcl_loc_t* errloc, hcl_cblk_type_t type)
 	{
 		hcl_cblk_info_t* tmp;
 		hcl_oow_t newcapa;
-		
+
 		newcapa = HCL_ALIGN(new_depth + 1, BLK_INFO_BUFFER_ALIGN);
 		tmp = (hcl_cblk_info_t*)hcl_reallocmem(hcl, hcl->c->cblk.info, newcapa * HCL_SIZEOF(*tmp));
 		if (HCL_UNLIKELY(!tmp)) return -1;
-		
+
 		hcl->c->cblk.info_capa = newcapa;
 		hcl->c->cblk.info = tmp;
 	}
@@ -921,9 +921,9 @@ static int push_cblk (hcl_t* hcl, const hcl_loc_t* errloc, hcl_cblk_type_t type)
 static void pop_cblk (hcl_t* hcl)
 {
 	HCL_ASSERT (hcl, hcl->c->cblk.depth >= 0); /* depth is of a signed type */
-	
+
 	/* a control block stays inside a function block.
-	 * the control block stack must not be popped past the starting base 
+	 * the control block stack must not be popped past the starting base
 	 * of the owning function block */
 	HCL_ASSERT (hcl, hcl->c->cblk.depth - 1 >= hcl->c->fnblk.info[hcl->c->fnblk.depth].cblk_base);
 	hcl->c->cblk.depth--;
@@ -939,7 +939,7 @@ static int push_clsblk (hcl_t* hcl, const hcl_loc_t* errloc, hcl_oow_t nivars, h
 
 	if (hcl->c->clsblk.depth == HCL_TYPE_MAX(hcl_ooi_t))
 	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_BLKDEPTH, errloc, HCL_NULL, "class block depth too deep"); 
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_BLKDEPTH, errloc, HCL_NULL, "class block depth too deep");
 		return -1;
 	}
 
@@ -980,7 +980,7 @@ static int push_clsblk (hcl_t* hcl, const hcl_loc_t* errloc, hcl_oow_t nivars, h
 	}
 
 	/* remember the function block depth before the class block is entered */
-	ci->fnblk_base = hcl->c->fnblk.depth; 
+	ci->fnblk_base = hcl->c->fnblk.depth;
 
 	/* attach the class block to the current function block */
 	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
@@ -1002,7 +1002,7 @@ static void pop_clsblk (hcl_t* hcl)
 	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
 	HCL_ASSERT (hcl, fbi->clsblk_base >= 0 && fbi->clsblk_top >= 0 && fbi->clsblk_top >= fbi->clsblk_base);
 	HCL_ASSERT (hcl, fbi->clsblk_top == hcl->c->clsblk.depth);
-	if (fbi->clsblk_top == fbi->clsblk_base) 
+	if (fbi->clsblk_top == fbi->clsblk_base)
 	{
 		/* the first class block inside a function block */
 		fbi->clsblk_base = -1;
@@ -1028,7 +1028,7 @@ static void pop_clsblk (hcl_t* hcl)
 }
 
 
-static int push_fnblk (hcl_t* hcl, const hcl_loc_t* errloc, 
+static int push_fnblk (hcl_t* hcl, const hcl_loc_t* errloc,
 	hcl_oow_t tmpr_va, hcl_oow_t tmpr_nargs, hcl_oow_t tmpr_nrvars, hcl_oow_t tmpr_nlvars,
 	hcl_oow_t tmpr_count, hcl_oow_t tmpr_len, hcl_oow_t make_inst_pos, hcl_oow_t lfbase, int fun_type)
 {
@@ -1038,7 +1038,7 @@ static int push_fnblk (hcl_t* hcl, const hcl_loc_t* errloc,
 	HCL_ASSERT (hcl, hcl->c->fnblk.depth >= -1);
 	if (hcl->c->fnblk.depth == HCL_TYPE_MAX(hcl_ooi_t))
 	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_BLKDEPTH, errloc, HCL_NULL, "function block depth too deep"); 
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_BLKDEPTH, errloc, HCL_NULL, "function block depth too deep");
 		return -1;
 	}
 
@@ -1069,7 +1069,7 @@ static int push_fnblk (hcl_t* hcl, const hcl_loc_t* errloc,
 	fbi->tmpr_nlvars = tmpr_nlvars;
 
 	/* remember the control block depth before the function block is entered */
-	fbi->cblk_base = hcl->c->cblk.depth; 
+	fbi->cblk_base = hcl->c->cblk.depth;
 
 	/* no class block when the funtion block is entered */
 	fbi->clsblk_base = -1;
@@ -1111,7 +1111,7 @@ static void pop_fnblk (hcl_t* hcl)
 	/* keep hcl->code.lit.len without restoration */
 
 	hcl->c->fnblk.depth--;
-	
+
 	if (hcl->c->fnblk.depth >= 0)
 	{
 		/* restore the string length and the word count to the values captured
@@ -1129,16 +1129,16 @@ static void pop_fnblk (hcl_t* hcl)
 	{
 		hcl_oow_t attr_mask;
 
-		/* patch the temporaries mask parameter for the MAKE_BLOCK or MAKE_FUNCTION instruction */
-		HCL_ASSERT (hcl, hcl->code.bc.ptr[fbi->make_inst_pos] == HCL_CODE_MAKE_BLOCK || 
-		                 hcl->code.bc.ptr[fbi->make_inst_pos] == HCL_CODE_MAKE_FUNCTION); 
+		/* patch the temporaries mask parameter for the MAKE_LAMBDA or MAKE_FUNCTION instruction */
+		HCL_ASSERT (hcl, hcl->code.bc.ptr[fbi->make_inst_pos] == HCL_CODE_MAKE_LAMBDA ||
+		                 hcl->code.bc.ptr[fbi->make_inst_pos] == HCL_CODE_MAKE_FUNCTION);
 
-		/* the total number of temporaries in this function block must be the sum of 
+		/* the total number of temporaries in this function block must be the sum of
 		 * the number of arguments, return variables and local variables */
 		HCL_ASSERT (hcl, fbi->tmprcnt - hcl->c->tv.wcount == fbi->tmpr_nargs + fbi->tmpr_nrvars + fbi->tmpr_nlvars);
 
 		/* the temporaries mask is a bit-mask that encodes the counts of different temporary variables.
-		 * and it's split to two intruction parameters when used with MAKE_BLOCK and MAKE_FUNCTION */
+		 * and it's split to two intruction parameters when used with MAKE_LAMBDA and MAKE_FUNCTION */
 		attr_mask = ENCODE_BLK_MASK((fbi->fun_type == FUN_CIM), fbi->tmpr_va, fbi->tmpr_nargs, fbi->tmpr_nrvars, fbi->tmpr_nlvars);
 		patch_double_long_params_with_oow (hcl, fbi->make_inst_pos + 1, attr_mask);
 	}
@@ -1150,7 +1150,7 @@ static HCL_INLINE int _insert_cframe (hcl_t* hcl, hcl_ooi_t index, int opcode, h
 	hcl_cframe_t* tmp;
 
 	HCL_ASSERT (hcl, index >= 0);
-	
+
 	hcl->c->cfs.top++;
 	HCL_ASSERT (hcl, hcl->c->cfs.top >= 0);
 	HCL_ASSERT (hcl, index <= hcl->c->cfs.top);
@@ -1161,7 +1161,7 @@ static HCL_INLINE int _insert_cframe (hcl_t* hcl, hcl_ooi_t index, int opcode, h
 
 		newcapa = HCL_ALIGN (hcl->c->cfs.top + 256, 256); /* TODO: adjust this capacity */
 		tmp = (hcl_cframe_t*)hcl_reallocmem (hcl, hcl->c->cfs.ptr, newcapa * HCL_SIZEOF(*tmp));
-		if (HCL_UNLIKELY(!tmp)) 
+		if (HCL_UNLIKELY(!tmp))
 		{
 			hcl->c->cfs.top--;
 			return -1;
@@ -1310,7 +1310,7 @@ static int collect_vardcl (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t** nextobj, 
 		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_PLAIN(var));
 	#endif
 
-		if (add_temporary_variable(hcl, HCL_CNODE_GET_TOK(var), tv_dup_check_start) <= -1) 
+		if (add_temporary_variable(hcl, HCL_CNODE_GET_TOK(var), tv_dup_check_start) <= -1)
 		{
 			if (hcl->errnum == HCL_EEXIST)
 			{
@@ -1323,7 +1323,7 @@ static int collect_vardcl (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t** nextobj, 
 		dcl = HCL_CNODE_CONS_CDR(dcl);
 		if (!dcl) break;
 
-		if (!HCL_CNODE_IS_CONS(dcl)) 
+		if (!HCL_CNODE_IS_CONS(dcl))
 		{
 			hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(dcl), HCL_CNODE_GET_TOK(dcl), "redundant cdr in %hs variable list", desc);
 			return -1;
@@ -1381,7 +1381,7 @@ static int check_if_plain_cnode (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t* prev
 
 /* ========================================================================= */
 
-enum 
+enum
 {
 	COP_COMPILE_OBJECT,
 	COP_COMPILE_OBJECT_R,
@@ -1402,7 +1402,7 @@ enum
 	COP_COMPILE_ELIF,
 	COP_COMPILE_ELSE,
 	COP_COMPILE_CATCH,
-	
+
 	COP_COMPILE_AND_P1,
 	COP_COMPILE_AND_P2,
 
@@ -1452,7 +1452,7 @@ enum
 	COP_POST_WHILE_COND,
 
 	COP_POST_TRY,
-	COP_POST_CATCH, 
+	COP_POST_CATCH,
 
 	COP_POST_LAMBDA,
 };
@@ -1496,7 +1496,7 @@ static HCL_INLINE int compile_and_p1 (hcl_t* hcl)
 	hcl_cnode_t* obj, * expr;
 	hcl_cframe_t* cf;
 	hcl_ooi_t jump_inst_pos;
-	
+
 	cf = GET_TOP_CFRAME(hcl);
 	HCL_ASSERT (hcl, cf->opcode == COP_COMPILE_AND_P1);
 	HCL_ASSERT (hcl, cf->operand != HCL_NULL);
@@ -1514,13 +1514,13 @@ static HCL_INLINE int compile_and_p1 (hcl_t* hcl)
 
 	/* this conditional jump make evaluation short-circuited. the actual jump point is to be patched in compile_and_p2() */
 	if (emit_single_param_instruction(hcl, HCL_CODE_JUMP_FORWARD_IF_FALSE, MAX_CODE_JUMP, HCL_CNODE_GET_LOC(obj)) <= -1) return -1;
-	if (emit_byte_instruction(hcl, HCL_CODE_POP_STACKTOP, HCL_CNODE_GET_LOC(obj)) <= -1) return -1; 
+	if (emit_byte_instruction(hcl, HCL_CODE_POP_STACKTOP, HCL_CNODE_GET_LOC(obj)) <= -1) return -1;
 
 	expr = HCL_CNODE_CONS_CAR(obj);
 	obj = HCL_CNODE_CONS_CDR(obj);
 
 	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, expr); /* 1 - compile the current part */
-	
+
 	PUSH_SUBCFRAME (hcl, COP_COMPILE_AND_P2, expr); /* 3 - patch the conditional jump instruction */
 	cf = GET_SUBCFRAME(hcl);
 	cf->u.post_and.jump_inst_pos = jump_inst_pos;
@@ -1542,7 +1542,7 @@ static HCL_INLINE int compile_and_p2 (hcl_t* hcl)
 	HCL_ASSERT (hcl, hcl->code.bc.len < HCL_SMOOI_MAX);
 	jip = cf->u.post_and.jump_inst_pos;
 
-	/* patch the jump insruction emitted after each expression inside the 'and' expression 
+	/* patch the jump insruction emitted after each expression inside the 'and' expression
 	 * the jump make evaluation short-circuited. */
 	jump_offset = hcl->code.bc.len - jip - (HCL_CODE_LONG_PARAM_SIZE + 1);
 	patch_long_jump (hcl, jip, jump_offset);
@@ -1590,7 +1590,7 @@ static HCL_INLINE int compile_or_p1 (hcl_t* hcl)
 	hcl_cnode_t* obj, * expr;
 	hcl_cframe_t* cf;
 	hcl_ooi_t jump_inst_pos;
-	
+
 	cf = GET_TOP_CFRAME(hcl);
 	HCL_ASSERT (hcl, cf->opcode == COP_COMPILE_OR_P1);
 	HCL_ASSERT (hcl, cf->operand != HCL_NULL);
@@ -1609,7 +1609,7 @@ static HCL_INLINE int compile_or_p1 (hcl_t* hcl)
 
 	/* this conditional jump makes evaluation short-circuited. the actual jump point is to be patched in compile_or_p2() */
 	if (emit_single_param_instruction(hcl, HCL_CODE_JUMP_FORWARD_IF_TRUE, MAX_CODE_JUMP, HCL_CNODE_GET_LOC(obj)) <= -1) return -1;
-	if (emit_byte_instruction(hcl, HCL_CODE_POP_STACKTOP, HCL_CNODE_GET_LOC(obj)) <= -1) return -1; 
+	if (emit_byte_instruction(hcl, HCL_CODE_POP_STACKTOP, HCL_CNODE_GET_LOC(obj)) <= -1) return -1;
 
 	expr = HCL_CNODE_CONS_CAR(obj);
 	obj = HCL_CNODE_CONS_CDR(obj);
@@ -1796,7 +1796,7 @@ inside_loop:
 		}
 	}
 
-	/* this part must no be reached. if a loop control block is found, 
+	/* this part must no be reached. if a loop control block is found,
 	 * there must exist a COP_POST_UNTIL_BODY or COP_POST_WHILE_BODY frame */
 	hcl_setsynerrbfmt (hcl, HCL_SYNERR_INTERN, HCL_CNODE_GET_LOC(src), HCL_NULL, "internal error in compiling %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 	return -1;
@@ -1895,7 +1895,7 @@ inside_loop:
 		}
 	}
 
-	/* this part must no be reached. if a loop control block is found, 
+	/* this part must no be reached. if a loop control block is found,
 	 * there must exist a COP_POST_UNTIL_BODY or COP_POST_WHILE_BODY frame */
 	hcl_setsynerrbfmt (hcl, HCL_SYNERR_INTERN, HCL_CNODE_GET_LOC(src), HCL_NULL, "internal error in compiling %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 	return -1;
@@ -1911,11 +1911,11 @@ static int compile_do (hcl_t* hcl, hcl_cnode_t* src)
 	hcl_cframe_t* cf;
 
 
-	/* (do 
+	/* (do
 	 *   (+ 10 20)
 	 *   (* 2 30)
 	 *  ...
-	 * ) 
+	 * )
 	 * you can use this to combine multiple expressions to a single expression
 	 */
 
@@ -1928,7 +1928,7 @@ static int compile_do (hcl_t* hcl, hcl_cnode_t* src)
 	if (!obj)
 	{
 		/* no value */
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGCOUNT, HCL_CNODE_GET_LOC(src), HCL_NULL, "no expression specified in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd)); 
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGCOUNT, HCL_CNODE_GET_LOC(src), HCL_NULL, "no expression specified in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 		return -1;
 	}
 	else if (!HCL_CNODE_IS_CONS(obj))
@@ -1943,7 +1943,7 @@ static int compile_do (hcl_t* hcl, hcl_cnode_t* src)
 
 	if (nlvars > MAX_CODE_NBLKLVARS)
 	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARFLOOD, HCL_CNODE_GET_LOC(tmp), HCL_NULL, "too many(%zu) variables in %.*js", nlvars, HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd)); 
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARFLOOD, HCL_CNODE_GET_LOC(tmp), HCL_NULL, "too many(%zu) variables in %.*js", nlvars, HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 		return -1;
 	}
 
@@ -1981,7 +1981,7 @@ static int compile_if (hcl_t* hcl, hcl_cnode_t* src)
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
 	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_IF));
 
-	/* (if (< 20 30) 
+	/* (if (< 20 30)
 	 *   (perform this)
 	 *   (perform that)
 	 * elif (< 20 30)
@@ -2016,7 +2016,7 @@ static int compile_if (hcl_t* hcl, hcl_cnode_t* src)
 	cf->u.post_if.start_loc = *HCL_CNODE_GET_LOC(src);
 /* TODO: OPTIMIZATION:
  *       pass information on the conditional if it's an absoluate true or absolute false to
- *       eliminate some code .. i can't eliminate code because there can be else or elif... 
+ *       eliminate some code .. i can't eliminate code because there can be else or elif...
  *       if absoluate true, don't need else or other elif part
  *       if absoluate false, else or other elif part is needed.
  */
@@ -2063,7 +2063,7 @@ static HCL_INLINE int patch_nearest_post_if_body (hcl_t* hcl, hcl_cnode_t* cmd)
 
 	/* beginning of the elif/else block code */
 	/* to drop the result of the conditional when the conditional is false */
-	if (emit_byte_instruction (hcl, HCL_CODE_POP_STACKTOP, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1; 
+	if (emit_byte_instruction (hcl, HCL_CODE_POP_STACKTOP, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
 
 	/* this is the actual beginning */
 	HCL_ASSERT (hcl, hcl->code.bc.len < HCL_SMOOI_MAX);
@@ -2167,9 +2167,9 @@ static HCL_INLINE int compile_else (hcl_t* hcl)
 			(return obj)
 		)
 	)
- 
+
 	(defclass B ::: A ; A is a parent class
-		| p q | 
+		| p q |
 		....
 	)
 
@@ -2220,7 +2220,7 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src)
 		/* if the tricolons symbol is followed by a variable declaration list,
 		 * there is no superclass */
 		dcl = HCL_CNODE_CONS_CAR(obj);
-		if (HCL_CNODE_IS_CONS_CONCODED(dcl, HCL_CONCODE_VLIST)) 
+		if (HCL_CNODE_IS_CONS_CONCODED(dcl, HCL_CONCODE_VLIST))
 		{
 			obj = tmp; /* rewind to the cons cell of the triple colons */
 			goto no_superclass;
@@ -2275,7 +2275,7 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 	ivar_len = cvar_len = 0;
 	nivars = ncvars = 0;
 
-	/* use the temporary variable collection buffer for convenience when scanning 
+	/* use the temporary variable collection buffer for convenience when scanning
 	 * instance variables and class variables */
 	while (obj && HCL_CNODE_IS_CONS(obj))
 	{
@@ -2293,7 +2293,7 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
  )
 */
 		tmp = HCL_CNODE_CONS_CAR(obj);
-		if (HCL_CNODE_IS_TRPCOLONS(tmp)) 
+		if (HCL_CNODE_IS_TRPCOLONS(tmp))
 		{
 			/* class variables */
 			hcl_oow_t checkpoint;
@@ -2306,7 +2306,7 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 			}
 
 			tmp = HCL_CNODE_CONS_CAR(obj);
-			if (!HCL_CNODE_IS_CONS_CONCODED(tmp, HCL_CONCODE_VLIST)) 
+			if (!HCL_CNODE_IS_CONS_CONCODED(tmp, HCL_CONCODE_VLIST))
 			{
 				hcl_setsynerrbfmt (hcl, HCL_SYNERR_EOX, HCL_CNODE_GET_LOC(tmp), HCL_NULL, "no declaration after triple colons");
 				return -1;
@@ -2334,11 +2334,11 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 
 			if (cvar_len > 0)
 			{
-				/* place the instance variables before the class variables 
+				/* place the instance variables before the class variables
 				 * if class variables "a b" has been collected before instance variables "cc dd ee"
 				 * the rotation below manipulates the buffer to contain "cc dd ee a b".
-				 */ 
-				hcl_rotate_oochars (&hcl->c->tv.s.ptr[cvar_start], hcl->c->tv.s.len - cvar_start, -1, cvar_len); 
+				 */
+				hcl_rotate_oochars (&hcl->c->tv.s.ptr[cvar_start], hcl->c->tv.s.len - cvar_start, -1, cvar_len);
 				cvar_start += hcl->c->tv.s.len - checkpoint;
 			}
 		}
@@ -2357,7 +2357,7 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 
 		/* set starting point past the added space (+1 to index, -1 to length) */
 		adj = (hcl->c->tv.s.ptr[ivar_start] == ' ');
-		tmp = hcl_makestring(hcl, &hcl->c->tv.s.ptr[ivar_start + adj], ivar_len - adj, 0); 
+		tmp = hcl_makestring(hcl, &hcl->c->tv.s.ptr[ivar_start + adj], ivar_len - adj, 0);
 		if (HCL_UNLIKELY(!tmp)) goto oops;
 		if (emit_push_literal(hcl, tmp, &cf->u._class.start_loc) <= -1) goto oops;
 	}
@@ -2370,7 +2370,7 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 		if (ncvars > HCL_SMOOI_MAX)
 		{
 			/* TOOD: change the error location ?? */
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARFLOOD, HCL_CNODE_GET_LOC(cf->operand), HCL_NULL, "too many(%zu) class variables", ncvars); 
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARFLOOD, HCL_CNODE_GET_LOC(cf->operand), HCL_NULL, "too many(%zu) class variables", ncvars);
 			goto oops;
 		}
 
@@ -2394,7 +2394,7 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 	if (emit_long_param(hcl, nivars) <= -1) goto oops;
 	if (emit_long_param(hcl, ncvars) <= -1) goto oops;
 
-	/* remember the first byte code position to be emitted for the body of 
+	/* remember the first byte code position to be emitted for the body of
 	 * this class. this posistion is used for empty class body check at the
 	 * end of the class before 'class_exit' is generated */
 	hcl->c->clsblk.info[hcl->c->clsblk.depth].class_start_inst_pos = hcl->code.bc.len;
@@ -2438,7 +2438,7 @@ static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 		if (emit_byte_instruction(hcl, HCL_CODE_POP_STACKTOP, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
 	}
 
-	pop_cblk (hcl); 
+	pop_cblk (hcl);
 	pop_clsblk (hcl);  /* end of the class block */
 
 	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_PEXIT, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
@@ -2460,7 +2460,7 @@ static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 
 		x = find_variable_backward(hcl, class_name, &vi);
 		if (x <= -1) return -1;
-		
+
 		if (x == 0)
 		{
 			SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, class_name);
@@ -2469,7 +2469,7 @@ static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 		}
 		else
 		{
-			SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, class_name); 
+			SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, class_name);
 			cf = GET_TOP_CFRAME(hcl);
 			cf->u.set.vi = vi;
 		}
@@ -2502,7 +2502,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
 
-	saved_tv_wcount = hcl->c->tv.wcount; 
+	saved_tv_wcount = hcl->c->tv.wcount;
 	cmd = HCL_CNODE_CONS_CAR(src);
 	obj = HCL_CNODE_CONS_CDR(src);
 
@@ -2615,7 +2615,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 					return -1;
 				}
 
-				if (add_temporary_variable(hcl, HCL_CNODE_GET_TOK(arg), tv_dup_start) <= -1) 
+				if (add_temporary_variable(hcl, HCL_CNODE_GET_TOK(arg), tv_dup_start) <= -1)
 				{
 					if (hcl->errnum == HCL_EEXIST)
 					{
@@ -2639,7 +2639,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 			}
 			else
 			{
-				if (HCL_CNODE_IS_TRPCOLONS(arg)) 
+				if (HCL_CNODE_IS_TRPCOLONS(arg))
 				{
 					in_ret_args = 1;
 				}
@@ -2660,7 +2660,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 						return -1;
 					}
 
-					if (add_temporary_variable(hcl, HCL_CNODE_GET_TOK(arg), tv_dup_start) <= -1) 
+					if (add_temporary_variable(hcl, HCL_CNODE_GET_TOK(arg), tv_dup_start) <= -1)
 					{
 						if (hcl->errnum == HCL_EEXIST)
 						{
@@ -2675,7 +2675,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 			dcl = HCL_CNODE_CONS_CDR(dcl);
 			if (!dcl) break;
 
-			if (!HCL_CNODE_IS_CONS(dcl)) 
+			if (!HCL_CNODE_IS_CONS(dcl))
 			{
 				hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(dcl), HCL_CNODE_GET_TOK(dcl), "redundant cdr in argument list in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 				return -1;
@@ -2690,25 +2690,55 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 		 * block arguments, evaluation which is done by message passing
 		 * limits the number of arguments that can be passed. so the
 		 * check is implemented */
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGFLOOD, HCL_CNODE_GET_LOC(args), HCL_NULL, "too many(%zu) arguments in %.*js", nargs, HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd)); 
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGFLOOD, HCL_CNODE_GET_LOC(args), HCL_NULL, "too many(%zu) arguments in %.*js", nargs, HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 		return -1;
 	}
 
 	if (nrvars > MAX_CODE_NBLKLVARS)
 	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARFLOOD, HCL_CNODE_GET_LOC(args), HCL_NULL, "too many(%zu) return variables in %.*js", nrvars, HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd)); 
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARFLOOD, HCL_CNODE_GET_LOC(args), HCL_NULL, "too many(%zu) return variables in %.*js", nrvars, HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 		return -1;
 	}
 	HCL_ASSERT (hcl, nargs + nrvars == hcl->c->tv.wcount - saved_tv_wcount);
 
 	obj = HCL_CNODE_CONS_CDR(obj);
-	tv_dup_start = hcl->c->tv.s.len;
-	if (collect_vardcls(hcl, obj, &obj, tv_dup_start, &nlvars, "local") <= -1) return -1;
-	
-	if (nlvars > MAX_CODE_NBLKLVARS)
+
+	if (hcl->c->flags & HCL_COMPILE_ENABLE_BLOCK)
 	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARFLOOD, HCL_CNODE_GET_LOC(args), HCL_NULL, "too many(%zu) variables in %.*js", nlvars, HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd)); 
-		return -1;
+		hcl_cnode_t* bdy;
+
+		if (!obj || !HCL_CNODE_IS_CONS(obj))
+		{
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BLOCK, HCL_CNODE_GET_LOC(args), HCL_NULL, "block expression expected as body in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+			return -1;
+		}
+
+		bdy = HCL_CNODE_CONS_CAR(obj);
+		if (!bdy || !HCL_CNODE_IS_CONS_CONCODED(bdy, HCL_CONCODE_BLOCK))
+		{
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BLOCK, HCL_CNODE_GET_LOC(obj), HCL_NULL, "block expression expected as body in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+			return -1;
+		}
+
+		if (HCL_CNODE_CONS_CDR(bdy))
+		{
+			/* TODO: change error code */
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(obj), HCL_NULL, "redundant code prohibited after body in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+			return -1;
+		}
+
+		nlvars = 0; /* no known local variables until the actual block is processed */
+	}
+	else
+	{
+		tv_dup_start = hcl->c->tv.s.len;
+		if (collect_vardcls(hcl, obj, &obj, tv_dup_start, &nlvars, "local") <= -1) return -1;
+
+		if (nlvars > MAX_CODE_NBLKLVARS)
+		{
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARFLOOD, HCL_CNODE_GET_LOC(args), HCL_NULL, "too many(%zu) variables in %.*js", nlvars, HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+			return -1;
+		}
 	}
 
 	HCL_ASSERT (hcl, nargs + nrvars + nlvars == hcl->c->tv.wcount - saved_tv_wcount);
@@ -2726,13 +2756,13 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 	}
 	else
 	{
-		/* MAKE_BLOCK attr_mask_1 attr_mask_2 - will patch attr_mask in pop_fnblk() */
-		if (emit_double_param_instruction(hcl, HCL_CODE_MAKE_BLOCK, 0, 0, HCL_CNODE_GET_LOC(cmd)) <= -1) return -1;
+		/* MAKE_LAMBDA attr_mask_1 attr_mask_2 - will patch attr_mask in pop_fnblk() */
+		if (emit_double_param_instruction(hcl, HCL_CODE_MAKE_LAMBDA, 0, 0, HCL_CNODE_GET_LOC(cmd)) <= -1) return -1;
 	}
 
 	HCL_ASSERT (hcl, hcl->code.bc.len < HCL_SMOOI_MAX);  /* guaranteed in emit_byte_instruction() */
 	jump_inst_pos = hcl->code.bc.len;
-	/* specifying MAX_CODE_JUMP causes emit_single_param_instruction() to 
+	/* specifying MAX_CODE_JUMP causes emit_single_param_instruction() to
 	 * produce the long jump instruction (HCL_CODE_JUMP_FORWARD_X) */
 	if (emit_single_param_instruction(hcl, HCL_CODE_JUMP_FORWARD_0, MAX_CODE_JUMP, HCL_CNODE_GET_LOC(cmd)) <= -1) return -1;
 
@@ -2763,7 +2793,7 @@ static int compile_return (hcl_t* hcl, hcl_cnode_t* src, int ret_from_home)
 	hcl_ooi_t i;
 
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
-	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_RETURN) || 
+	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_RETURN) ||
 	                 HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_RETURN_FROM_HOME));
 
 	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
@@ -2907,7 +2937,7 @@ static int compile_set (hcl_t* hcl, hcl_cnode_t* src)
 
 	x = find_variable_backward(hcl, var, &vi);
 	if (x <= -1) return -1;
-	
+
 	if (x == 0)
 	{
 		PUSH_SUBCFRAME (hcl, COP_EMIT_SET, var); /* set doesn't evaluate the variable name */
@@ -2917,7 +2947,7 @@ static int compile_set (hcl_t* hcl, hcl_cnode_t* src)
 	else
 	{
 		/* the check in compile_lambda() must ensure this condition */
-		PUSH_SUBCFRAME (hcl, COP_EMIT_SET, cmd); 
+		PUSH_SUBCFRAME (hcl, COP_EMIT_SET, cmd);
 		cf = GET_SUBCFRAME(hcl);
 		cf->u.set.vi = vi;
 	}
@@ -3001,12 +3031,12 @@ static int compile_set_r (hcl_t* hcl, hcl_cnode_t* src)
 	for (i = 0, obj = var_start; i < nvars; i++, obj = HCL_CNODE_CONS_CDR(obj))
 	{
 		int x;
-		
+
 		var = HCL_CNODE_CONS_CAR(obj);
 
 		x = find_variable_backward(hcl, var, &vi);
 		if (x <= -1) return -1;
-		
+
 		if (x == 0)
 		{
 			PUSH_SUBCFRAME (hcl, COP_EMIT_SET, var); /* set_r doesn't evaluate the variable name */
@@ -3015,23 +3045,23 @@ static int compile_set_r (hcl_t* hcl, hcl_cnode_t* src)
 		}
 		else
 		{
-			PUSH_SUBCFRAME (hcl, COP_EMIT_SET, cmd); 
+			PUSH_SUBCFRAME (hcl, COP_EMIT_SET, cmd);
 			cf = GET_SUBCFRAME(hcl);
 			cf->u.set.vi = vi;
 		}
 
-		/* 
-		 * (defun f(x y ::: aa bb cc) ....) 
+		/*
+		 * (defun f(x y ::: aa bb cc) ....)
 		 * (set_r a b c (f 1 2))
 		 *
-		 *    the call to f 
+		 *    the call to f
 		 *       call 2 3  ; 2 arguments, 3 return variables (CALL_R)
 		 *                 ; 3 to be emitted from cf->u.obj_r.nrets
 		 *                 ; this gets remembered in req_nrvars of the created context.
-		 *   
+		 *
 		 *    the return from f must push 3 values.
 		 *        push_return_r  ; as remembered in the ctx->req_nrvars
-		 * 
+		 *
 		 *    emit store_into_xxx instruction for the first return variable assignment.
 		 *    emit pop_into_xxx instructions for the rest.
 		 *        pop_into c
@@ -3071,7 +3101,7 @@ static int compile_try (hcl_t* hcl, hcl_cnode_t* src)
 	if (!obj)
 	{
 		/* no value */
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGCOUNT, HCL_CNODE_GET_LOC(src), HCL_NULL, "no expression specified in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd)); 
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGCOUNT, HCL_CNODE_GET_LOC(src), HCL_NULL, "no expression specified in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 		return -1;
 	}
 	else if (!HCL_CNODE_IS_CONS(obj))
@@ -3119,12 +3149,12 @@ static HCL_INLINE int patch_nearest_post_try (hcl_t* hcl, hcl_ooi_t* catch_skip_
 
 	if (emit_byte_instruction(hcl, HCL_CODE_TRY_EXIT, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
 
-	*catch_skip_jip = hcl->code.bc.len; 
+	*catch_skip_jip = hcl->code.bc.len;
 	if (emit_single_param_instruction(hcl, HCL_CODE_JUMP_FORWARD_0,  MAX_CODE_JUMP, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
 
 	/* HCL_CODE_LONG_PARAM_SIZE + 1 => size of the long JUMP_FORWARD instruction */
 	block_code_size = hcl->code.bc.len - jip - (HCL_CODE_LONG_PARAM_SIZE + 1);
-	
+
 	if (block_code_size > MAX_CODE_JUMP * 2)
 	{
 		hcl_setsynerrbfmt (hcl, HCL_SYNERR_BLKFLOOD, HCL_CNODE_GET_LOC(cf->operand), HCL_NULL, "code too big - size %zu", block_code_size);
@@ -3189,13 +3219,13 @@ static HCL_INLINE int compile_catch (hcl_t* hcl)
 		fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth - 1]; /* parent block */
 		par_tmprcnt = fbi->tmprcnt;
 	}
-	else 
+	else
 	{
 		par_tmprcnt = 0;
 	}
 
 	/* fill the variable information structure as if it's found by find_variable_backward().
-	 * we know it's the last variable as add_temporary_variable() is called below. 
+	 * we know it's the last variable as add_temporary_variable() is called below.
 	 * there is no need to call find_variable_backward() */
 	vi.type = VAR_INDEXED;
 	vi.ctx_offset = 0;
@@ -3214,7 +3244,7 @@ static HCL_INLINE int compile_catch (hcl_t* hcl)
 	obj = HCL_CNODE_CONS_CDR(obj);
 
 	/* jump_inst_pos hold the instruction pointer that skips the catch block at the end of the try block */
-	patch_nearest_post_try (hcl, &jump_inst_pos); 
+	patch_nearest_post_try (hcl, &jump_inst_pos);
 
 	/* produce an instruction to store the exception value to an exception variable pushed by the 'throw' instruction */
 	if (emit_variable_access(hcl, VAR_ACCESS_POP, &vi, HCL_CNODE_GET_LOC(src)) <= -1) return -1;
@@ -3311,7 +3341,7 @@ static int compile_throw (hcl_t* hcl, hcl_cnode_t* src)
 		return -1;
 	}
 
-	/* throw can be located anywhere, however, 
+	/* throw can be located anywhere, however,
 	 * if there is no outer try-catch, it ends up with a fatal runtime error */
 	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, val);
 
@@ -3324,7 +3354,7 @@ static int compile_throw (hcl_t* hcl, hcl_cnode_t* src)
 
 static int compile_while (hcl_t* hcl, hcl_cnode_t* src, int next_cop)
 {
-	/* (while (xxxx) ... ) 
+	/* (while (xxxx) ... )
 	 * (until (xxxx) ... ) */
 	hcl_cnode_t* cmd, * obj, * cond;
 	hcl_oow_t cond_pos;
@@ -3379,9 +3409,9 @@ static int compile_cons_array_expression (hcl_t* hcl, hcl_cnode_t* obj)
 	hcl_cframe_t* cf;
 
 	nargs = hcl_countcnodecons(hcl, obj);
-	if (nargs > MAX_CODE_PARAM) 
+	if (nargs > MAX_CODE_PARAM)
 	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGFLOOD, HCL_CNODE_GET_LOC(obj), HCL_NULL, "too many(%zd) elements in array", nargs); 
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGFLOOD, HCL_CNODE_GET_LOC(obj), HCL_NULL, "too many(%zd) elements in array", nargs);
 		return -1;
 	}
 
@@ -3404,9 +3434,9 @@ static int compile_cons_bytearray_expression (hcl_t* hcl, hcl_cnode_t* obj)
 	hcl_cframe_t* cf;
 
 	nargs = hcl_countcnodecons(hcl, obj);
-	if (nargs > MAX_CODE_PARAM) 
+	if (nargs > MAX_CODE_PARAM)
 	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGFLOOD, HCL_CNODE_GET_LOC(obj), HCL_NULL, "too many(%zd) elements in byte-array", nargs); 
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGFLOOD, HCL_CNODE_GET_LOC(obj), HCL_NULL, "too many(%zd) elements in byte-array", nargs);
 		return -1;
 	}
 
@@ -3429,9 +3459,9 @@ static int compile_cons_dic_expression (hcl_t* hcl, hcl_cnode_t* obj)
 	hcl_cframe_t* cf;
 
 	nargs = hcl_countcnodecons(hcl, obj);
-	if (nargs > MAX_CODE_PARAM) 
+	if (nargs > MAX_CODE_PARAM)
 	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGFLOOD, HCL_CNODE_GET_LOC(obj), HCL_NULL, "too many(%zd) elements in dictionary", nargs); 
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGFLOOD, HCL_CNODE_GET_LOC(obj), HCL_NULL, "too many(%zd) elements in dictionary", nargs);
 		return -1;
 	}
 
@@ -3447,7 +3477,7 @@ static int compile_cons_dic_expression (hcl_t* hcl, hcl_cnode_t* obj)
 
 static int compile_cons_qlist_expression (hcl_t* hcl, hcl_cnode_t* obj)
 {
-	/* #( 1 2  3 ) 
+	/* #( 1 2  3 )
 	 * #(1 (+ 2 3) 5) --> #(1 5 5)
 	 * */
 	SWITCH_TOP_CFRAME (hcl, COP_EMIT_MAKE_CONS, obj);
@@ -3465,7 +3495,7 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 	 *   function-name can be:
 	 *     a symbol.
 	 *     another function call.
-	 * if the name is another function call, i can't know if the 
+	 * if the name is another function call, i can't know if the
 	 * function name will be valid at the compile time.
 	 */
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS_CONCODED(obj, HCL_CONCODE_XLIST));
@@ -3537,7 +3567,7 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 				break;
 
 			case HCL_SYNCODE_SET:
-				/* (set x 10) 
+				/* (set x 10)
 				 * (set x (lambda (x y) (+ x y)) */
 				if (compile_set(hcl, obj) <= -1) return -1;
 				break;
@@ -3579,11 +3609,11 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 				return -1;
 		}
 	}
-	else if (HCL_CNODE_IS_SYMBOL(car)  || HCL_CNODE_IS_DSYMBOL(car) || 
+	else if (HCL_CNODE_IS_SYMBOL(car)  || HCL_CNODE_IS_DSYMBOL(car) ||
 	         HCL_CNODE_IS_CONS_CONCODED(car, HCL_CONCODE_XLIST) ||
 	         HCL_CNODE_IS_CONS_CONCODED(car, HCL_CONCODE_MLIST))
 	{
-		/* normal function call 
+		/* normal function call
 		 *  (<operator> <operand1> ...) */
 		hcl_ooi_t nargs;
 		hcl_ooi_t oldtop;
@@ -3594,9 +3624,9 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 		 *       many operations can be performed without taking GC into account */
 
 		/* store the position of COP_EMIT_CALL to be produced with
-		 * SWITCH_TOP_CFRAME() in oldtop for argument count patching 
+		 * SWITCH_TOP_CFRAME() in oldtop for argument count patching
 		 * further down */
-		oldtop = GET_TOP_CFRAME_INDEX(hcl); 
+		oldtop = GET_TOP_CFRAME_INDEX(hcl);
 		HCL_ASSERT (hcl, oldtop >= 0);
 
 		SWITCH_TOP_CFRAME (hcl, COP_EMIT_CALL, car); /* <4> */
@@ -3607,7 +3637,7 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 		/* compile <operand1> ... etc */
 		cdr = HCL_CNODE_CONS_CDR(obj);
 
-		if (!cdr) 
+		if (!cdr)
 		{
 			nargs = 0;
 		}
@@ -3621,9 +3651,9 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 			}
 
 			nargs = hcl_countcnodecons(hcl, cdr);
-			if (nargs > MAX_CODE_PARAM) 
+			if (nargs > MAX_CODE_PARAM)
 			{
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGFLOOD, HCL_CNODE_GET_LOC(cdr), HCL_NULL, "too many(%zd) parameters in function call", nargs); 
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGFLOOD, HCL_CNODE_GET_LOC(cdr), HCL_NULL, "too many(%zd) parameters in function call", nargs);
 				return -1;
 			}
 		}
@@ -3632,7 +3662,7 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 		{
 			hcl_oop_cons_t sdc;
 
-			/* only symbols are added to the system dictionary. 
+			/* only symbols are added to the system dictionary.
 			 * perform this lookup only if car is a symbol */
 			sdc = hcl_lookupsysdicforsymbol_noseterr(hcl, HCL_CNODE_GET_TOK(car));
 			if (sdc)
@@ -3643,8 +3673,8 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 				{
 					if (nargs < sdv->slot[1] || nargs > sdv->slot[2])
 					{
-						hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGCOUNT, HCL_CNODE_GET_LOC(car), HCL_NULL, 
-							"parameters count(%zd) mismatch in function call - %.*js - expecting %zu-%zu parameters", nargs, HCL_CNODE_GET_TOKLEN(car), HCL_CNODE_GET_TOKPTR(car), sdv->slot[1], sdv->slot[2]); 
+						hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGCOUNT, HCL_CNODE_GET_LOC(car), HCL_NULL,
+							"parameters count(%zd) mismatch in function call - %.*js - expecting %zu-%zu parameters", nargs, HCL_CNODE_GET_TOKLEN(car), HCL_CNODE_GET_TOKPTR(car), sdv->slot[1], sdv->slot[2]);
 						return -1;
 					}
 				}
@@ -3682,7 +3712,7 @@ static int compile_cons_mlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 	hcl_cframe_t* cf;
 	int syncode; /* syntax code of the first element */
 
-	/* message sending 
+	/* message sending
 	 *  (:<receiver> <operator> <operand1> ...)
 	 */
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS_CONCODED(obj, HCL_CONCODE_MLIST));
@@ -3696,9 +3726,9 @@ static int compile_cons_mlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 	}
 
 	/* store the position of COP_EMIT_CALL to be produced with
-	 * SWITCH_TOP_CFRAME() in oldtop for argument count patching 
+	 * SWITCH_TOP_CFRAME() in oldtop for argument count patching
 	 * further down */
-	oldtop = GET_TOP_CFRAME_INDEX(hcl); 
+	oldtop = GET_TOP_CFRAME_INDEX(hcl);
 	HCL_ASSERT (hcl, oldtop >= 0);
 
 	/* compile <receiver> */
@@ -3731,7 +3761,7 @@ static int compile_cons_mlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 
 	/* compile <operand1> ... etc */
 	cdr = HCL_CNODE_CONS_CDR(cdr);
-	if (!cdr) 
+	if (!cdr)
 	{
 		nargs = 0;
 	}
@@ -3745,9 +3775,9 @@ static int compile_cons_mlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 		}
 
 		nargs = hcl_countcnodecons(hcl, cdr);
-		if (nargs > MAX_CODE_PARAM) 
+		if (nargs > MAX_CODE_PARAM)
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGFLOOD, HCL_CNODE_GET_LOC(cdr), HCL_NULL, "too many(%zd) parameters in function call", nargs); 
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGFLOOD, HCL_CNODE_GET_LOC(cdr), HCL_NULL, "too many(%zd) parameters in function call", nargs);
 			return -1;
 		}
 	}
@@ -3757,7 +3787,7 @@ static int compile_cons_mlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 	{
 		hcl_oop_cons_t sdc;
 
-		/* only symbols are added to the system dictionary. 
+		/* only symbols are added to the system dictionary.
 		 * perform this lookup only if car is a symbol */
 		sdc = hcl_lookupsysdicforsymbol_noseterr(hcl, HCL_CNODE_GET_TOK(car));
 		if (sdc)
@@ -3768,8 +3798,8 @@ static int compile_cons_mlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 			{
 				if (nargs < sdv->slot[1] || nargs > sdv->slot[2])
 				{
-					hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGCOUNT, HCL_CNODE_GET_LOC(car), HCL_NULL, 
-						"parameters count(%zd) mismatch in function call - %.*js - expecting %zu-%zu parameters", nargs, HCL_CNODE_GET_TOKLEN(car), HCL_CNODE_GET_TOKPTR(car), sdv->slot[1], sdv->slot[2]); 
+					hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGCOUNT, HCL_CNODE_GET_LOC(car), HCL_NULL,
+						"parameters count(%zd) mismatch in function call - %.*js - expecting %zu-%zu parameters", nargs, HCL_CNODE_GET_TOKLEN(car), HCL_CNODE_GET_TOKPTR(car), sdv->slot[1], sdv->slot[2]);
 					return -1;
 				}
 			}
@@ -3791,6 +3821,10 @@ static int compile_cons_mlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 	return 0;
 }
 
+static int compile_cons_block_expression (hcl_t* hcl, hcl_cnode_t* obj, int nrets)
+{
+}
+
 static HCL_INLINE int compile_symbol (hcl_t* hcl, hcl_cnode_t* obj)
 {
 	hcl_var_info_t vi;
@@ -3807,7 +3841,7 @@ static HCL_INLINE int compile_symbol (hcl_t* hcl, hcl_cnode_t* obj)
 	/* check if a symbol is a local variable */
 	x = find_variable_backward(hcl, obj, &vi);
 	if (x <= -1) return -1;
-	
+
 	if (x == 0)
 	{
 		hcl_oop_t sym, cons;
@@ -3819,7 +3853,7 @@ static HCL_INLINE int compile_symbol (hcl_t* hcl, hcl_cnode_t* obj)
 		if (HCL_UNLIKELY(!sym)) return -1;
 
 		cons = (hcl_oop_t)hcl_getatsysdic(hcl, sym);
-		if (!cons) 
+		if (!cons)
 		{
 			cons = (hcl_oop_t)hcl_putatsysdic(hcl, sym, hcl->_undef);
 			if (HCL_UNLIKELY(!cons)) return -1;
@@ -4112,9 +4146,12 @@ redo:
 					break;
 
 				case HCL_CONCODE_BLOCK:
-					/* TODO: not implemented yet */
-					hcl_setsynerrbfmt (hcl, HCL_SYNERR_INTERN, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "internal error - block not implemented");
-					return -1;
+					if (!(hcl->c->flags & HCL_COMPILE_ENABLE_BLOCK))
+					{
+						hcl_setsynerrbfmt (hcl, HCL_SYNERR_BLOCKBANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "block expression disallowed");
+						return -1;
+					}
+					if (compile_cons_block_expression(hcl, oprnd, 0) <= -1) return -1;
 					break;
 
 				case HCL_CONCODE_ARRAY:
@@ -4156,6 +4193,11 @@ redo:
 
 				case HCL_CONCODE_MLIST:
 					hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "empty message send list");
+					return -1;
+
+				case HCL_CONCODE_BLOCK:
+					/* TODO: may have to allow it..  */
+					hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "empty block list");
 					return -1;
 
 				case HCL_CONCODE_ARRAY:
@@ -4204,7 +4246,7 @@ redo:
 			return -1;
 	}
 
-	/* the control reaches here in case a compile_xxxx() functionse.g. compile_cons_xlist_expression) is called. 
+	/* the control reaches here in case a compile_xxxx() functionse.g. compile_cons_xlist_expression) is called.
 	 * such a function removes the top cframe. so POP_CFRAME() needs not be called here */
 	return 0;
 
@@ -4234,7 +4276,7 @@ static int compile_object_r (hcl_t* hcl)
 	{
 		return compile_cons_mlist_expression(hcl, oprnd, cf->u.obj_r.nrets);
 	}
-	
+
 	hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "non-function call/non-message send disallowed");
 	return -1;
 }
@@ -4246,7 +4288,7 @@ static int compile_object_list (hcl_t* hcl)
 	int cop;
 
 	cf = GET_TOP_CFRAME(hcl);
-	HCL_ASSERT (hcl, cf->opcode == COP_COMPILE_ARGUMENT_LIST || 
+	HCL_ASSERT (hcl, cf->opcode == COP_COMPILE_ARGUMENT_LIST ||
 	                 cf->opcode == COP_COMPILE_OBJECT_LIST ||
 	                 cf->opcode == COP_COMPILE_OBJECT_LIST_TAIL ||
 	                 cf->opcode == COP_COMPILE_IF_OBJECT_LIST ||
@@ -4326,14 +4368,14 @@ static int compile_object_list (hcl_t* hcl)
 
 		if (cdr)
 		{
-			/* there is a next statement to compile 
+			/* there is a next statement to compile
 			 *
-			 * (+ 1 2 3) - argument list. 1, 2, 3 pushed must remain in 
+			 * (+ 1 2 3) - argument list. 1, 2, 3 pushed must remain in
 			 *             the stack until the function '+' is called.
 			 *
-			 * (lambda (x y) (+ x 10) (+ y 20)) 
+			 * (lambda (x y) (+ x 10) (+ y 20))
 			 *    - the result of (+ x 10) should be popped before (+ y 20)
-			 *      is executed 
+			 *      is executed
 			 *
 			 * for the latter, inject POP_STACKTOP after each object evaluation
 			 * except the last.
@@ -4349,7 +4391,7 @@ static int compile_object_list (hcl_t* hcl)
 		    cop == COP_COMPILE_IF_OBJECT_LIST_TAIL ||
 		    cop == COP_COMPILE_TRY_OBJECT_LIST_TAIL)
 		{
-			/* emit POP_STACKTOP before evaluating the second objects 
+			/* emit POP_STACKTOP before evaluating the second objects
 			 * and onwards. this goes above COP_COMPILE_OBJECT.*/
 
 			/* TODO: if the previous operators is known to divert execution flow, it may skip this.
@@ -4488,7 +4530,7 @@ static int compile_dic_list (hcl_t* hcl)
 			hcl_setsynerrbfmt (hcl, HCL_SYNERR_UNBALKV, HCL_CNODE_GET_LOC(car), HCL_NULL, "no value for key %.*js", HCL_CNODE_GET_TOKLEN(car), HCL_CNODE_GET_TOKPTR(car));
 			return -1;
 		}
-		
+
 		cadr = HCL_CNODE_CONS_CAR(cdr);
 		cddr = HCL_CNODE_CONS_CDR(cdr);
 
@@ -4573,7 +4615,7 @@ static HCL_INLINE int post_if_cond (hcl_t* hcl)
 	if (emit_single_param_instruction(hcl, HCL_CODE_JUMP_FORWARD_IF_FALSE, MAX_CODE_JUMP, &cf->u.post_if.start_loc) <= -1) return -1;
 
 	/* to drop the result of the conditional when it is true */
-	if (emit_byte_instruction(hcl, HCL_CODE_POP_STACKTOP, &cf->u.post_if.start_loc) <= -1) return -1; 
+	if (emit_byte_instruction(hcl, HCL_CODE_POP_STACKTOP, &cf->u.post_if.start_loc) <= -1) return -1;
 
 	HCL_ASSERT (hcl, hcl->code.bc.len < HCL_SMOOI_MAX);
 	body_pos = hcl->code.bc.len;
@@ -4639,11 +4681,11 @@ static HCL_INLINE int post_while_cond (hcl_t* hcl)
 	HCL_ASSERT (hcl, cf->opcode == COP_POST_UNTIL_COND || cf->opcode == COP_POST_WHILE_COND);
 	HCL_ASSERT (hcl, cf->operand != HCL_NULL);
 
-	/* the caller must pass the cons cell branching to the conditinal and the body 
+	/* the caller must pass the cons cell branching to the conditinal and the body
 	 * if the body cell is given, things gets complicated because the body part can be HCL_NULL.
 	 * for instance, the body part is empty in (while (< i 1)  ) */
 	cond = HCL_CNODE_CONS_CAR(cf->operand);
-	body = HCL_CNODE_CONS_CDR(cf->operand); 
+	body = HCL_CNODE_CONS_CDR(cf->operand);
 
 	cond_pos = cf->u.post_while.cond_pos;
 	start_loc = cf->u.post_while.start_loc;
@@ -4679,7 +4721,7 @@ static HCL_INLINE int post_while_cond (hcl_t* hcl)
 		SWITCH_TOP_CFRAME (hcl, next_cop, cond); /* 2 */
 		cf = GET_TOP_CFRAME(hcl);
 	}
-	cf->u.post_while.cond_pos = cond_pos; 
+	cf->u.post_while.cond_pos = cond_pos;
 	cf->u.post_while.body_pos = body_pos;
 	cf->u.post_while.jump_inst_pos = jump_inst_pos;
 	cf->u.post_while.start_loc = start_loc;
@@ -4953,7 +4995,7 @@ static HCL_INLINE int emit_lambda (hcl_t* hcl)
 	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
 	jip = cf->u.lambda.jump_inst_pos;
 
-	if (hcl->option.trait & HCL_TRAIT_INTERACTIVE) 
+	if (hcl->option.trait & HCL_TRAIT_INTERACTIVE)
 		lfsize = hcl->code.lit.len - hcl->c->fnblk.info[hcl->c->fnblk.depth].lfbase;
 
 	/* HCL_CODE_LONG_PARAM_SIZE + 1 => size of the long JUMP_FORWARD instruction */
@@ -4991,7 +5033,7 @@ static HCL_INLINE int emit_lambda (hcl_t* hcl)
 	}
 	patch_long_jump (hcl, jip, block_code_size);
 
-	if (hcl->option.trait & HCL_TRAIT_INTERACTIVE) 
+	if (hcl->option.trait & HCL_TRAIT_INTERACTIVE)
 		patch_long_param (hcl, cf->u.lambda.lfsize_pos, lfsize);
 
 	POP_CFRAME (hcl);
@@ -5072,7 +5114,7 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 			}
 			else
 			{
-				SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, defun_name); 
+				SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, defun_name);
 				cf = GET_TOP_CFRAME(hcl);
 				cf->u.set.vi = vi;
 			}
@@ -5138,7 +5180,7 @@ static HCL_INLINE int emit_set (hcl_t* hcl)
 		if (HCL_UNLIKELY(!sym)) return -1;
 
 		cons = (hcl_oop_t)hcl_getatsysdic(hcl, sym);
-		if (!cons) 
+		if (!cons)
 		{
 			cons = (hcl_oop_t)hcl_putatsysdic(hcl, sym, hcl->_nil);
 			if (HCL_UNLIKELY(!cons)) return -1;
@@ -5231,11 +5273,13 @@ static HCL_INLINE int emit_throw (hcl_t* hcl)
 
 /* ========================================================================= */
 
-int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags) 
+int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 {
 	hcl_oow_t saved_bc_len, saved_lit_len;
 	hcl_bitmask_t log_default_type_mask;
 	hcl_fnblk_info_t top_fnblk_saved;
+
+	hcl->c->flags = flags;
 
 	HCL_ASSERT (hcl, GET_TOP_CFRAME_INDEX(hcl) < 0);
 	if (flags & HCL_COMPILE_CLEAR_CODE)
@@ -5250,15 +5294,15 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 	log_default_type_mask = hcl->log.default_type_mask;
 	hcl->log.default_type_mask |= HCL_LOG_COMPILER;
 
-	/* 
+	/*
 	 * In the non-INTERACTIVE mode, the literal frame base doesn't matter.
-	 * Only the initial function object contains the literal frame. 
+	 * Only the initial function object contains the literal frame.
 	 * No other function objects are created. All lambda defintions are
 	 * translated to base context objects instead.
-	 * 
+	 *
 	 * In the INTERACTIVE mode, the literal frame base plays a key role.
 	 * hcl_compile() is called for the top-level expression and the literal
-	 * frame base can be 0. The means it is ok for a top-level code to 
+	 * frame base can be 0. The means it is ok for a top-level code to
 	 * reference part of the literal frame reserved for a lambda function.
 	 *
 	 *  (set b 1)
@@ -5266,7 +5310,7 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 	 *  (set a 2)
 	 *  (set-a 4)
 	 *  (printf "%d\n" a)
-	 * 
+	 *
 	 * the global literal frame looks like this:
 	 *  @0         (b)
 	 *  @1         (a)
@@ -5275,10 +5319,10 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 	 *  @4         "%d\n"
 	 *
 	 * @1 to @2 will be copied to a function object when defun is executed.
-	 * The literal frame of the created function object for set-a looks 
+	 * The literal frame of the created function object for set-a looks
 	 * like this
 	 *  @0         (a)
-	 *  @1         (set-a) 
+	 *  @1         (set-a)
 	 */
 
 /* TODO: in case i implement all global variables as block arguments at the top level...what should i do? */
@@ -5291,8 +5335,8 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 		HCL_ASSERT (hcl, hcl->c->tv.wcount == 0);
 
 		/* keep a virtual function block for the top-level compilation.
-		 * pass HCL_TYPE_MAX(hcl_oow_t) as make_inst_pos because there is 
-		 * no actual MAKE_BLOCK/MAKE_FUNCTION instruction which otherwise
+		 * pass HCL_TYPE_MAX(hcl_oow_t) as make_inst_pos because there is
+		 * no actual MAKE_LAMBDA/MAKE_FUNCTION instruction which otherwise
 		 * would be patched in pop_fnblk(). */
 		if (push_fnblk(hcl, HCL_NULL, 0, 0, 0, hcl->c->tv.wcount, hcl->c->tv.wcount, hcl->c->tv.s.len, HCL_TYPE_MAX(hcl_oow_t), 0, FUN_PLAIN) <= -1) return -1; /* must not goto oops */
 	}

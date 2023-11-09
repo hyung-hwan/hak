@@ -164,8 +164,11 @@ enum hcl_synerrnum_t
 	HCL_SYNERR_CALLABLE,      /* invalid callable */
 	HCL_SYNERR_UNBALKV,       /* unbalanced key/value pair */
 	HCL_SYNERR_UNBALPBB,      /* unbalanced parenthesis/brace/bracket */
+	HCL_SYNERR_SEMICOLON,     /* unexpected semicolon */
 	HCL_SYNERR_EMPTYXLIST,    /* empty x-list */
-	HCL_SYNERR_EMPTYMLIST     /* empty m-list */
+	HCL_SYNERR_EMPTYMLIST,    /* empty m-list */
+	HCL_SYNERR_BLOCK,         /* block expression expected */
+	HCL_SYNERR_BLOCKBANNED    /* block expression disallowed */
 };
 typedef enum hcl_synerrnum_t hcl_synerrnum_t;
 
@@ -575,8 +578,8 @@ typedef struct hcl_function_t hcl_function_t;
 typedef struct hcl_function_t* hcl_oop_function_t;
 
 #define HCL_BLOCK_NAMED_INSTVARS 3
-typedef struct hcl_block_t hcl_block_t;
-typedef struct hcl_block_t* hcl_oop_block_t;
+typedef struct hcl_lambda_t hcl_lambda_t;
+typedef struct hcl_lambda_t* hcl_oop_lambda_t;
 
 #define HCL_CONTEXT_NAMED_INSTVARS 9
 typedef struct hcl_context_t hcl_context_t;
@@ -600,10 +603,10 @@ struct hcl_function_t
 };
 
 /* hcl_function_t copies the byte codes and literal frames into itself
- * hlc_block_t contains minimal information(ip) for referening byte codes
+ * hlc_lambda_t contains minimal information(ip) for referening byte codes
  * and literal frames available in home->origin.
  */
-struct hcl_block_t
+struct hcl_lambda_t
 {
 	HCL_OBJ_HEADER;
 
@@ -692,10 +695,10 @@ struct hcl_process_t
 	hcl_oop_t         id; /* SmallInteger */
 	hcl_oop_t         state; /* SmallInteger */
 
-	hcl_oop_t         sp;    /* stack pointer. SmallInteger */
+	hcl_oop_t         sp;   /* stack pointer. SmallInteger */
 	hcl_oop_t         st;   /* stack top */
 
-	hcl_oop_t         exsp;  /* exception stack pointer. SmallInteger */
+	hcl_oop_t         exsp; /* exception stack pointer. SmallInteger */
 	hcl_oop_t         exst; /* exception stack top */
 
 	hcl_oop_t         clsp; /* class stack pointer */
@@ -1491,7 +1494,10 @@ enum hcl_compile_flag_t
 	HCL_COMPILE_CLEAR_CODE  = (1 << 0),
 
 	/* clear the top-level function block at the end of hcl_compile() */
-	HCL_COMPILE_CLEAR_FNBLK = (1 << 1)
+	HCL_COMPILE_CLEAR_FNBLK = (1 << 1),
+
+	/* enable the block {} mode */
+	HCL_COMPILE_ENABLE_BLOCK = (1 << 2)
 };
 typedef enum hcl_compile_flag_t hcl_compile_flag_t;
 #endif
@@ -1868,7 +1874,7 @@ enum hcl_brand_t
 	HCL_BRAND_PRIM,
 
 	HCL_BRAND_FUNCTION,
-	HCL_BRAND_BLOCK,
+	HCL_BRAND_LAMBDA,
 	HCL_BRAND_CONTEXT,
 	HCL_BRAND_PROCESS,
 	HCL_BRAND_PROCESS_SCHEDULER,
@@ -1934,7 +1940,7 @@ typedef enum hcl_concode_t hcl_concode_t;
 #define HCL_IS_SYMBOL_ARRAY(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_SYMBOL_ARRAY)
 #define HCL_IS_CONTEXT(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_CONTEXT)
 #define HCL_IS_FUNCTION(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_FUNCTION)
-#define HCL_IS_BLOCK(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_BLOCK)
+#define HCL_IS_LAMBDA(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_LAMBDA)
 #define HCL_IS_CLASS(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_CLASS)
 #define HCL_IS_INSTANCE(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_INSTANCE)
 #define HCL_IS_PROCESS(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_PROCESS)

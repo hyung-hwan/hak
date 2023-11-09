@@ -122,7 +122,7 @@ void* hcl_callocheapmem (hcl_t* hcl, hcl_heap_t* heap, hcl_oow_t size)
 	void* ptr;
 
 	ptr = HCL_MMGR_ALLOC(&heap->xmmgr, size);
-	if (HCL_UNLIKELY(!ptr)) 
+	if (HCL_UNLIKELY(!ptr))
 	{
 		HCL_DEBUG2 (hcl, "Cannot callocate %zd bytes from heap - ptr %p\n", size, heap);
 		hcl_seterrnum (hcl, HCL_EOOMEM);

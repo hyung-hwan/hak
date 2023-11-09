@@ -160,7 +160,9 @@ static char* synerrstr[] =
 	"unbalanced key/value pair",
 	"unbalanced parenthesis/brace/bracket",
 	"empty x-list",
-	"empty m-list"
+	"empty m-list",
+	"block expression expected"
+	"block expression disallowed"
 };
 
 /* --------------------------------------------------------------------------

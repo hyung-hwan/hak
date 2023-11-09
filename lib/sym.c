@@ -42,13 +42,13 @@ static hcl_oop_oop_t expand_bucket (hcl_t* hcl, hcl_oop_oop_t oldbuc)
 	else if (oldsz < 400000) newsz = oldsz + (oldsz / 16);
 	else if (oldsz < 800000) newsz = oldsz + (oldsz / 32);
 	else if (oldsz < 1600000) newsz = oldsz + (oldsz / 64);
-	else 
+	else
 	{
 		hcl_oow_t inc, inc_max;
 
 		inc = oldsz / 128;
 		inc_max = HCL_OBJ_SIZE_MAX - oldsz;
-		if (inc > inc_max) 
+		if (inc > inc_max)
 		{
 			if (inc_max > 0) inc = inc_max;
 			else
@@ -89,7 +89,7 @@ static hcl_oop_t find_or_make_symbol (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow
 	hcl_oop_char_t symbol;
 
 	HCL_ASSERT (hcl, len > 0);
-	if (len <= 0) 
+	if (len <= 0)
 	{
 		/* i don't allow an empty symbol name */
 		hcl_seterrnum (hcl, HCL_EINVAL);
@@ -100,7 +100,7 @@ static hcl_oop_t find_or_make_symbol (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow
 	index = hcl_hash_oochars(ptr, len) % HCL_OBJ_GET_SIZE(hcl->symtab->bucket);
 
 	/* find a matching symbol in the open-addressed symbol table */
-	while (hcl->symtab->bucket->slot[index] != hcl->_nil) 
+	while (hcl->symtab->bucket->slot[index] != hcl->_nil)
 	{
 		symbol = (hcl_oop_char_t)hcl->symtab->bucket->slot[index];
 		HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl, symbol));
@@ -114,7 +114,7 @@ static hcl_oop_t find_or_make_symbol (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow
 		index = (index + 1) % HCL_OBJ_GET_SIZE(hcl->symtab->bucket);
 	}
 
-	if (!create) 
+	if (!create)
 	{
 		hcl_seterrnum (hcl, HCL_ENOENT);
 		return HCL_NULL;
@@ -125,7 +125,7 @@ static hcl_oop_t find_or_make_symbol (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow
 	tally = HCL_OOP_TO_SMOOI(hcl->symtab->tally);
 	if (tally >= HCL_SMOOI_MAX)
 	{
-		/* this built-in table is not allowed to hold more than 
+		/* this built-in table is not allowed to hold more than
 		 * HCL_SMOOI_MAX items for efficiency sake */
 		hcl_seterrnum (hcl, HCL_EDFULL);
 		return HCL_NULL;
@@ -133,7 +133,7 @@ static hcl_oop_t find_or_make_symbol (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow
 
 	/* no conversion to hcl_oow_t is necessary for tally + 1.
 	 * the maximum value of tally is checked to be HCL_SMOOI_MAX - 1.
-	 * tally + 1 can produce at most HCL_SMOOI_MAX. above all, 
+	 * tally + 1 can produce at most HCL_SMOOI_MAX. above all,
 	 * HCL_SMOOI_MAX is way smaller than HCL_TYPE_MAX(hcl_ooi_t). */
 	if (tally + 1 >= HCL_OBJ_GET_SIZE(hcl->symtab->bucket))
 	{
@@ -155,7 +155,7 @@ static hcl_oop_t find_or_make_symbol (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow
 		/* recalculate the index for the expanded bucket */
 		index = hcl_hash_oochars(ptr, len) % HCL_OBJ_GET_SIZE(hcl->symtab->bucket);
 
-		while (hcl->symtab->bucket->slot[index] != hcl->_nil) 
+		while (hcl->symtab->bucket->slot[index] != hcl->_nil)
 			index = (index + 1) % HCL_OBJ_GET_SIZE(hcl->symtab->bucket);
 	}
 

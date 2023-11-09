@@ -673,10 +673,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, int* flagv, int* oldflagv
 static HCL_INLINE int is_at_block_beginning (hcl_t* hcl)
 {
 	hcl_rstl_t* rstl;
-
-	//HCL_ASSERT (hcl, hcl->c->r.st != HCL_NULL);
 	rstl = hcl->c->r.st;
-
 	return !rstl || LIST_FLAG_GET_CONCODE(rstl->flagv) == HCL_CONCODE_BLOCK && rstl->count <= 0;
 }
 
@@ -876,12 +873,10 @@ static int on_fed_cnode (hcl_t* hcl, hcl_cnode_t* obj)
 static void init_feed (hcl_t* hcl)
 {
 	HCL_MEMSET (&hcl->c->feed, 0, HCL_SIZEOF(hcl->c->feed));
-
 	hcl->c->feed.lx.state = HCL_FLX_START;
 	hcl->c->feed.lx.loc.line = 1;
 	hcl->c->feed.lx.loc.colm = 1;
 	hcl->c->feed.lx.loc.file = HCL_NULL;
-
 	hcl->c->feed.on_cnode = on_fed_cnode;
 }
 
@@ -1101,6 +1096,7 @@ static int feed_process_token (hcl_t* hcl)
 		case HCL_TOK_LBRACE: /* { */
 			frd->flagv = 0;
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_BLOCK);
+hcl_logbfmt (hcl, HCL_LOG_FATAL, "XXXX [%d,%d]\n", TOKEN_LOC(hcl)->line, TOKEN_LOC(hcl)->colm);
 			goto start_list;
 
 		case HCL_TOK_DLPAREN: /* #{ */
@@ -1176,14 +1172,15 @@ static int feed_process_token (hcl_t* hcl)
 			if (frd->level <= 0)
 			{
 				/* redundant semicolons */
-				hcl_setsynerr (hcl, HCL_SYNERR_UNBALPBB, TOKEN_LOC(hcl), HCL_NULL);
+				/* TOD: change  error info or code */
+				hcl_setsynerr (hcl, HCL_SYNERR_SEMICOLON, TOKEN_LOC(hcl), HCL_NULL);
 				goto oops;
 			}
 
 			if (!(frd->flagv & AUTO_FORGED))
 			{
-				/* TODO: change error info */
-				hcl_setsynerr (hcl, HCL_SYNERR_UNBALPBB, TOKEN_LOC(hcl), HCL_NULL);
+				/* TODO: change error info or code */
+				hcl_setsynerr (hcl, HCL_SYNERR_SEMICOLON, TOKEN_LOC(hcl), HCL_NULL);
 				goto oops;
 			}
 
@@ -1194,6 +1191,7 @@ static int feed_process_token (hcl_t* hcl)
 				hcl_setsynerr (hcl, HCL_SYNERR_UNBALPBB, TOKEN_LOC(hcl), HCL_NULL);
 				goto oops;
 			}
+hcl_logbfmt(hcl, HCL_LOG_FATAL, "forged xlist...exiting..OK\n");
 
 			frd->obj = leave_list(hcl, &frd->flagv, &oldflagv);
 			frd->level--;
@@ -1388,6 +1386,7 @@ static int feed_process_token (hcl_t* hcl)
 			{
 				hcl_oop_t obj = frd->obj;
 
+hcl_logbfmt(hcl, HCL_LOG_FATAL, "QQQQQQQQQQQQ forged xlist...\n");
 				frd->flagv = AUTO_FORGED;
 				LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_XLIST);
 

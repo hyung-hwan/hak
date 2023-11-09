@@ -78,7 +78,7 @@ int hcl_tmr_init (hcl_tmr_t* tmr, hcl_t* hcl, hcl_oow_t capa)
 void hcl_tmr_fini (hcl_tmr_t* tmr)
 {
 	hcl_tmr_clear (tmr);
-	if (tmr->event) 
+	if (tmr->event)
 	{
 		hcl_freemem (tmr->hcl, tmr->event);
 		tmr->event = HCL_NULL;
@@ -111,7 +111,7 @@ static hcl_tmr_index_t sift_up (hcl_tmr_t* tmr, hcl_tmr_index_t index, int notif
 		hcl_tmr_event_t item;
 		hcl_oow_t old_index;
 
-		item = tmr->event[index]; 
+		item = tmr->event[index];
 		old_index = index;
 
 		do
@@ -173,7 +173,7 @@ static hcl_tmr_index_t sift_down (hcl_tmr_t* tmr, hcl_tmr_index_t index, int not
 			index = younger;
 		}
 		while (index < base);
-		
+
 		tmr->event[index] = item;
 		if (notify && index != old_index)
 			tmr->event[index].updater (tmr, old_index, index, &tmr->event[index]);

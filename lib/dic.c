@@ -48,13 +48,13 @@ static hcl_oop_oop_t expand_bucket (hcl_t* hcl, hcl_oop_oop_t oldbuc)
 	else if (oldsz < 400000) newsz = oldsz + (oldsz / 16);
 	else if (oldsz < 800000) newsz = oldsz + (oldsz / 32);
 	else if (oldsz < 1600000) newsz = oldsz + (oldsz / 64);
-	else 
+	else
 	{
 		hcl_oow_t inc, inc_max;
 
 		inc = oldsz / 128;
 		inc_max = HCL_OBJ_SIZE_MAX - oldsz;
-		if (inc > inc_max) 
+		if (inc > inc_max)
 		{
 			if (inc_max > 0) inc = inc_max;
 			else
@@ -67,7 +67,7 @@ static hcl_oop_oop_t expand_bucket (hcl_t* hcl, hcl_oop_oop_t oldbuc)
 	}
 
 	hcl_pushvolat (hcl, (hcl_oop_t*)&oldbuc);
-	newbuc = (hcl_oop_oop_t)hcl_makearray (hcl, newsz, 0); 
+	newbuc = (hcl_oop_oop_t)hcl_makearray (hcl, newsz, 0);
 	hcl_popvolat (hcl);
 	if (!newbuc) return HCL_NULL;
 
@@ -120,7 +120,7 @@ static hcl_oop_cons_t find_or_upsert (hcl_t* hcl, hcl_oop_dic_t dic, hcl_oop_t k
 #endif
 
 	/* find */
-	while (dic->bucket->slot[index] != hcl->_nil) 
+	while (dic->bucket->slot[index] != hcl->_nil)
 	{
 	#if defined(SYMBOL_ONLY_KEY)
 		ass = (hcl_oop_cons_t)dic->bucket->slot[index];
@@ -128,7 +128,7 @@ static hcl_oop_cons_t find_or_upsert (hcl_t* hcl, hcl_oop_dic_t dic, hcl_oop_t k
 		HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl,ass->car));
 
 		if (HCL_OBJ_GET_SIZE(key) == HCL_OBJ_GET_SIZE(ass->car) &&
-		    hcl_equal_oochars(HCL_OBJ_GET_CHAR_SLOT(key), HCL_OBJ_GET_CHAR_SLOT(ass->car), HCL_OBJ_GET_SIZE(key))) 
+		    hcl_equal_oochars(HCL_OBJ_GET_CHAR_SLOT(key), HCL_OBJ_GET_CHAR_SLOT(ass->car), HCL_OBJ_GET_SIZE(key)))
 		{
 			/* the value of HCL_NULL indicates no insertion or update. */
 			if (value) ass->cdr = value; /* update */
@@ -166,7 +166,7 @@ static hcl_oop_cons_t find_or_upsert (hcl_t* hcl, hcl_oop_dic_t dic, hcl_oop_t k
 	tally = HCL_OOP_TO_SMOOI(dic->tally);
 	if (tally >= HCL_SMOOI_MAX)
 	{
-		/* this built-in dictionary is not allowed to hold more than 
+		/* this built-in dictionary is not allowed to hold more than
 		 * HCL_SMOOI_MAX items for efficiency sake */
 		hcl_seterrnum (hcl, HCL_EDFULL);
 		return HCL_NULL;
@@ -178,7 +178,7 @@ static hcl_oop_cons_t find_or_upsert (hcl_t* hcl, hcl_oop_dic_t dic, hcl_oop_t k
 
 	/* no conversion to hcl_oow_t is necessary for tally + 1.
 	 * the maximum value of tally is checked to be HCL_SMOOI_MAX - 1.
-	 * tally + 1 can produce at most HCL_SMOOI_MAX. above all, 
+	 * tally + 1 can produce at most HCL_SMOOI_MAX. above all,
 	 * HCL_SMOOI_MAX is way smaller than HCL_TYPE_MAX(hcl_ooi_t). */
 	if (tally + 1 >= HCL_OBJ_GET_SIZE(dic->bucket))
 	{
@@ -205,11 +205,11 @@ static hcl_oop_cons_t find_or_upsert (hcl_t* hcl, hcl_oop_dic_t dic, hcl_oop_t k
 		index %= HCL_OBJ_GET_SIZE(dic->bucket);
 	#endif
 
-		while (dic->bucket->slot[index] != hcl->_nil) 
+		while (dic->bucket->slot[index] != hcl->_nil)
 			index = (index + 1) % HCL_OBJ_GET_SIZE(dic->bucket);
 	}
 
-	/* create a new assocation of a key and a value since 
+	/* create a new assocation of a key and a value since
 	 * the key isn't found in the root dictionary */
 	ass = (hcl_oop_cons_t)hcl_makecons(hcl, (hcl_oop_t)key, value);
 	if (!ass) goto oops;
@@ -241,13 +241,13 @@ static hcl_oop_cons_t lookupdic_noseterr (hcl_t* hcl, hcl_oop_dic_t dic, const h
 
 	index = hcl_hash_oochars(name->ptr, name->len) % HCL_OBJ_GET_SIZE(dic->bucket);
 
-	while ((hcl_oop_t)(ass = (hcl_oop_cons_t)HCL_OBJ_GET_OOP_VAL(dic->bucket, index)) != hcl->_nil) 
+	while ((hcl_oop_t)(ass = (hcl_oop_cons_t)HCL_OBJ_GET_OOP_VAL(dic->bucket, index)) != hcl->_nil)
 	{
 		HCL_ASSERT (hcl, HCL_IS_CONS(hcl,ass));
 		if (HCL_IS_SYMBOL(hcl, ass->car))
 		{
 			if (name->len == HCL_OBJ_GET_SIZE(ass->car) &&
-			    hcl_equal_oochars(name->ptr, HCL_OBJ_GET_CHAR_SLOT(ass->car), name->len)) 
+			    hcl_equal_oochars(name->ptr, HCL_OBJ_GET_CHAR_SLOT(ass->car), name->len))
 			{
 				return ass;
 			}
@@ -259,8 +259,8 @@ static hcl_oop_cons_t lookupdic_noseterr (hcl_t* hcl, hcl_oop_dic_t dic, const h
 
 	/* when value is HCL_NULL, perform no insertion */
 
-	/* hcl_seterrXXX() is not called here. the dictionary lookup is very frequent 
-	 * and so is lookup failure. for instance, hcl_findmethod() calls this over 
+	/* hcl_seterrXXX() is not called here. the dictionary lookup is very frequent
+	 * and so is lookup failure. for instance, hcl_findmethod() calls this over
 	 * a class chain. there might be a failure at each class level. it's waste to
 	 * set the error information whenever the failure occurs.
 	 * the caller of this function must set the error information upon failure */
@@ -360,7 +360,7 @@ int hcl_zapatdic (hcl_t* hcl, hcl_oop_dic_t dic, hcl_oop_t key)
 #endif
 
 	/* find */
-	while (dic->bucket->slot[index] != hcl->_nil) 
+	while (dic->bucket->slot[index] != hcl->_nil)
 	{
 	#if defined(SYMBOL_ONLY_KEY)
 		ass = (hcl_oop_cons_t)dic->bucket->slot[index];
@@ -368,7 +368,7 @@ int hcl_zapatdic (hcl_t* hcl, hcl_oop_dic_t dic, hcl_oop_t key)
 		HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl,ass->car));
 
 		if (HCL_OBJ_GET_SIZE(key) == HCL_OBJ_GET_SIZE(ass->car) &&
-		    hcl_equal_oochars(HCL_OBJ_GET_CHAR_SLOT(key), HCL_OBJ_GET_CHAR_SLOT(ass->car), HCL_OBJ_GET_SIZE(key))) 
+		    hcl_equal_oochars(HCL_OBJ_GET_CHAR_SLOT(key), HCL_OBJ_GET_CHAR_SLOT(ass->car), HCL_OBJ_GET_SIZE(key)))
 		{
 			/* the value of HCL_NULL indicates no insertion or update. */
 			goto found;

@@ -31,7 +31,7 @@
 #include <sys/resource.h> /* getrusage */
 #endif
 
-static struct 
+static struct
 {
 	hcl_oow_t  len;
 	hcl_ooch_t ptr[20];
@@ -97,7 +97,7 @@ static void compact_symbol_table (hcl_t* hcl, hcl_oop_t _nil)
 		}
 
 		HCL_ASSERT (hcl, hcl->symtab->bucket->slot[index] != _nil);
-	
+
 		for (i = 0, x = index, y = index; i < bucket_size; i++)
 		{
 			y = (y + 1) % bucket_size;
@@ -105,7 +105,7 @@ static void compact_symbol_table (hcl_t* hcl, hcl_oop_t _nil)
 			/* done if the slot at the current hash index is _nil */
 			if (hcl->symtab->bucket->slot[y] == _nil) break;
 
-			/* get the natural hash index for the data in the slot 
+			/* get the natural hash index for the data in the slot
 			 * at the current hash index */
 			symbol = (hcl_oop_char_t)hcl->symtab->bucket->slot[y];
 
@@ -139,7 +139,7 @@ hcl_oow_t hcl_getobjpayloadbytes (hcl_t* hcl, hcl_oop_t oop)
 	{
 		hcl_oow_t nbytes;
 
-		/* only an OOP object can have the trailer. 
+		/* only an OOP object can have the trailer.
 		 *
 		 * | _flags    |
 		 * | _size     |  <-- if it's 3
@@ -149,7 +149,7 @@ hcl_oow_t hcl_getobjpayloadbytes (hcl_t* hcl, hcl_oop_t oop)
 		 * |   X       |
 		 * |   Y       | <-- it may exist if EXTRA is set in _flags.
 		 * |   Z       | <-- if TRAILER is set, it is the number of bytes in the trailer
-		 * |  |  |  |  | 
+		 * |  |  |  |  |
 		 */
 		HCL_ASSERT (hcl, HCL_OBJ_GET_FLAGS_TYPE(oop) == HCL_OBJ_TYPE_OOP);
 		HCL_ASSERT (hcl, HCL_OBJ_GET_FLAGS_UNIT(oop) == HCL_SIZEOF(hcl_oow_t));
@@ -194,8 +194,8 @@ static HCL_INLINE void gc_ms_mark (hcl_t* hcl, hcl_oop_t oop)
 		 * determine that it is an instance of process? */
 		if (HCL_UNLIKELY(HCL_OBJ_GET_FLAGS_PROC(oop)))
 		{
-			/* the stack in a process object doesn't need to be 
-			 * scanned in full. the slots above the stack pointer 
+			/* the stack in a process object doesn't need to be
+			 * scanned in full. the slots above the stack pointer
 			 * are garbages. */
 			size = HCL_PROCESS_NAMED_INSTVARS + HCL_OOP_TO_SMOOI(((hcl_oop_process_t)oop)->sp) + 1;
 			HCL_ASSERT (hcl, size <= HCL_OBJ_GET_SIZE(oop));
@@ -246,9 +246,9 @@ static HCL_INLINE void gc_ms_scan_stack (hcl_t* hcl)
 			if (HCL_OBJ_GET_FLAGS_BRAND(oop) == HCL_BRAND_PROCESS)
 			{
 				hcl_oop_process_t proc;
-				
-				/* the stack in a process object doesn't need to be 
-				 * scanned in full. the slots above the stack pointer 
+
+				/* the stack in a process object doesn't need to be
+				 * scanned in full. the slots above the stack pointer
 				 * are garbages. */
 				proc = (hcl_oop_process_t)oop;
 
@@ -292,7 +292,7 @@ static HCL_INLINE void gc_ms_mark_roots (hcl_t* hcl)
 	hcl_oow_t gcfin_count;
 #endif
 	hcl_cb_t* cb;
- 
+
 #if defined(HCL_PROFILE_VM)
 	struct rusage ru;
 	hcl_ntime_t rut;
@@ -327,7 +327,7 @@ static HCL_INLINE void gc_ms_mark_roots (hcl_t* hcl)
 
 	for (i = 0; i < hcl->code.lit.len; i++)
 	{
-		/* the literal array ia a NGC object. but the literal objects 
+		/* the literal array ia a NGC object. but the literal objects
 		 * pointed by the elements of this array must be gabage-collected. */
 		gc_ms_mark (hcl, ((hcl_oop_oop_t)hcl->code.lit.arr)->slot[i]);
 	}
@@ -552,7 +552,7 @@ hcl_oop_t hcl_moveoop (hcl_t* hcl, hcl_oop_t oop)
 #if 0
 void hcl_gc (hcl_t* hcl)
 {
-	/* 
+	/*
 	 * move a referenced object to the new heap.
 	 * inspect the fields of the moved object in the new heap.
 	 * move objects pointed to by the fields to the new heap.
@@ -575,11 +575,11 @@ void hcl_gc (hcl_t* hcl)
 		hcl->active_context->ip = HCL_SMOOI_TO_OOP(hcl->ip);
 	}
 
-	HCL_LOG4 (hcl, HCL_LOG_GC | HCL_LOG_INFO, 
+	HCL_LOG4 (hcl, HCL_LOG_GC | HCL_LOG_INFO,
 		"Starting GC curheap base %p ptr %p newheap base %p ptr %p\n",
-		hcl->curheap->base, hcl->curheap->ptr, hcl->newheap->base, hcl->newheap->ptr); 
+		hcl->curheap->base, hcl->curheap->ptr, hcl->newheap->base, hcl->newheap->ptr);
 
-	/* TODO: allocate common objects like _nil and the root dictionary 
+	/* TODO: allocate common objects like _nil and the root dictionary
 	 *       in the permanant heap.  minimize moving around */
 	old_nil = hcl->_nil;
 
@@ -603,7 +603,7 @@ void hcl_gc (hcl_t* hcl)
 
 	for (i = 0; i < hcl->code.lit.len; i++)
 	{
-		/* the literal array ia a NGC object. but the literal objects 
+		/* the literal array ia a NGC object. but the literal objects
 		 * pointed by the elements of this array must be gabage-collected. */
 		((hcl_oop_oop_t)hcl->code.lit.arr)->slot[i] =
 			hcl_moveoop(hcl, ((hcl_oop_oop_t)hcl->code.lit.arr)->slot[i]);
@@ -665,7 +665,7 @@ void hcl_gc (hcl_t* hcl)
 
 	/* traverse the symbol table for unreferenced symbols.
 	 * if the symbol has not moved to the new heap, the symbol
-	 * is not referenced by any other objects than the symbol 
+	 * is not referenced by any other objects than the symbol
 	 * table itself */
 	compact_symbol_table (hcl, old_nil);
 
@@ -673,7 +673,7 @@ void hcl_gc (hcl_t* hcl)
 	hcl->symtab = (hcl_oop_dic_t)hcl_moveoop(hcl, (hcl_oop_t)hcl->symtab);
 
 	/* scan the new heap again from the end position of
-	 * the previous scan to move referenced objects by 
+	 * the previous scan to move referenced objects by
 	 * the symbol table. */
 	ptr = scan_new_heap (hcl, ptr);
 
@@ -696,7 +696,7 @@ void hcl_gc (hcl_t* hcl)
 		buc = (hcl_oop_oop_t) hcl->symtab->bucket;
 		for (index = 0; index < HCL_OBJ_GET_SIZE(buc); index++)
 		{
-			if ((hcl_oop_t)buc->slot[index] != hcl->_nil) 
+			if ((hcl_oop_t)buc->slot[index] != hcl->_nil)
 			{
 				HCL_LOG1 (hcl, HCL_LOG_GC | HCL_LOG_DEBUG, "\t%O\n", buc->slot[index]);
 			}
@@ -708,9 +708,9 @@ void hcl_gc (hcl_t* hcl)
 	if (hcl->active_function) hcl->active_code = HCL_FUNCTION_GET_CODE_BYTE(hcl->active_function);  /* update hcl->active_code */
 
 /* TODO: include some gc statstics like number of live objects, gc performance, etc */
-	HCL_LOG4 (hcl, HCL_LOG_GC | HCL_LOG_INFO, 
+	HCL_LOG4 (hcl, HCL_LOG_GC | HCL_LOG_INFO,
 		"Finished GC curheap base %p ptr %p newheap base %p ptr %p\n",
-		hcl->curheap->base, hcl->curheap->ptr, hcl->newheap->base, hcl->newheap->ptr); 
+		hcl->curheap->base, hcl->curheap->ptr, hcl->newheap->base, hcl->newheap->ptr);
 }
 #endif
 
@@ -774,13 +774,13 @@ int hcl_ignite (hcl_t* hcl, hcl_oow_t heapsize)
 		if (HCL_UNLIKELY(!hcl->_undef)) return -1;
 	}
 
-	if (!hcl->_nil) 
+	if (!hcl->_nil)
 	{
 		hcl->_nil = hcl_makenil(hcl);
 		if (HCL_UNLIKELY(!hcl->_nil)) return -1;
 	}
 
-	if (!hcl->_true) 
+	if (!hcl->_true)
 	{
 		hcl->_true = hcl_maketrue(hcl);
 		if (HCL_UNLIKELY(!hcl->_true)) return -1;
@@ -792,7 +792,7 @@ int hcl_ignite (hcl_t* hcl, hcl_oow_t heapsize)
 	}
 
 
-	if (!hcl->symtab) 
+	if (!hcl->symtab)
 	{
 		hcl->symtab = (hcl_oop_dic_t)hcl_makedic(hcl, hcl->option.dfl_symtab_size);
 		if (HCL_UNLIKELY(!hcl->symtab)) return -1;
@@ -859,7 +859,7 @@ int hcl_ignite (hcl_t* hcl, hcl_oow_t heapsize)
 	if (!hcl->code.dbgi)
 	{
 		hcl->code.dbgi = (hcl_dbgi_t*)hcl_allocmem(hcl, HCL_SIZEOF(*hcl->code.dbgi) * HCL_BC_BUFFER_INIT);
-		if (HCL_UNLIKELY(!hcl->code.dbgi)) 
+		if (HCL_UNLIKELY(!hcl->code.dbgi))
 		{
 			/* bc.ptr and dbgi go together. so free bc.ptr if dbgi allocation fails */
 			hcl_freemem (hcl, hcl->code.bc.ptr);
@@ -888,7 +888,7 @@ int hcl_getsyncodebyoocs_noseterr (hcl_t* hcl, const hcl_oocs_t* name)
 	hcl_oow_t i;
 	for (i = 0; i < HCL_COUNTOF(syminfo); i++)
 	{
-		if (hcl_comp_oochars(syminfo[i].ptr, syminfo[i].len, name->ptr, name->len) == 0) 
+		if (hcl_comp_oochars(syminfo[i].ptr, syminfo[i].len, name->ptr, name->len) == 0)
 			return syminfo[i].syncode;
 	}
 	return 0; /* 0 indicates no syntax code found */
@@ -899,7 +899,7 @@ int hcl_getsyncode_noseterr (hcl_t* hcl, const hcl_ooch_t* ptr, const hcl_oow_t 
 	hcl_oow_t i;
 	for (i = 0; i < HCL_COUNTOF(syminfo); i++)
 	{
-		if (hcl_comp_oochars(syminfo[i].ptr, syminfo[i].len, ptr, len) == 0) 
+		if (hcl_comp_oochars(syminfo[i].ptr, syminfo[i].len, ptr, len) == 0)
 			return syminfo[i].syncode;
 	}
 	return 0; /* 0 indicates no syntax code found */

@@ -29,7 +29,7 @@
 
 #include <hcl.h>
 
-/** 
+/**
  * The hcl_json_t type defines a simple json parser.
  */
 typedef struct hcl_json_t hcl_json_t;

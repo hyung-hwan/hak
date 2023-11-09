@@ -119,9 +119,9 @@ struct hcl_client_t
 				int in_data_part;
 				int negated;
 				hcl_oow_t max; /* chunk length */
-				hcl_oow_t tally; 
+				hcl_oow_t tally;
 				hcl_oow_t total;
-				hcl_oow_t clcount; 
+				hcl_oow_t clcount;
 			} chunked_data;
 		} u;
 	} rep;
@@ -199,7 +199,7 @@ static int add_to_reply_token (hcl_client_t* client, hcl_ooch_t ch)
 static HCL_INLINE int is_token (hcl_client_t* client, const hcl_bch_t* str)
 {
 	return hcl_comp_oochars_bcstr(client->rep.tok.ptr, client->rep.tok.len, str) == 0;
-} 
+}
 
 static HCL_INLINE int is_token_integer (hcl_client_t* client, hcl_oow_t* value)
 {
@@ -216,7 +216,7 @@ static HCL_INLINE int is_token_integer (hcl_client_t* client, hcl_oow_t* value)
 
 	*value = v;
 	return 1;
-} 
+}
 
 static HCL_INLINE hcl_ooch_t unescape (hcl_ooch_t c)
 {
@@ -256,7 +256,7 @@ static int handle_char (hcl_client_t* client, hcl_ooci_t c, hcl_oow_t nbytes)
 				if (add_to_reply_token(client, c) <= -1) goto oops;
 				break;
 			}
-			else if (is_spacechar(c)) 
+			else if (is_spacechar(c))
 			{
 				/* skip whitespaces at the beginning of the start line before the reply name */
 				break;
@@ -322,7 +322,7 @@ static int handle_char (hcl_client_t* client, hcl_ooci_t c, hcl_oow_t nbytes)
 				client->rep.u.reply_value_quoted.escaped = 0;
 				break;
 			}
-			else 
+			else
 			{
 				/* the first value character has been encountered */
 				client->state = HCL_CLIENT_STATE_IN_REPLY_VALUE_UNQUOTED;
@@ -355,7 +355,7 @@ static int handle_char (hcl_client_t* client, hcl_ooci_t c, hcl_oow_t nbytes)
 				hcl_client_seterrbfmt (client, HCL_EFINIS, "sudden end of reply line without closing quote");
 				goto oops;
 			}
-			else 
+			else
 			{
 				if (client->rep.u.reply_value_quoted.escaped)
 				{
@@ -386,7 +386,7 @@ static int handle_char (hcl_client_t* client, hcl_ooci_t c, hcl_oow_t nbytes)
 			else if (c == '\n')
 			{
 			reply_value_end:
-				/* short-form format. the data pointer is passed to the start_reply 
+				/* short-form format. the data pointer is passed to the start_reply
 				 * callback. no end_reply callback is invoked. the data is assumed
 				 * to be in UTF-8 encoding. this is different from the data in the
 				 * long-format reply which is treated as octet stream */
@@ -458,7 +458,7 @@ static int handle_char (hcl_client_t* client, hcl_ooci_t c, hcl_oow_t nbytes)
 				if (client->rep.tok.len > client->rep.last_attr_key.capa)
 				{
 					hcl_ooch_t* tmp;
-					
+
 					tmp = (hcl_ooch_t*)hcl_client_reallocmem(client, client->rep.last_attr_key.ptr, client->rep.tok.capa * HCL_SIZEOF(*tmp));
 					if (!tmp) goto oops;
 
@@ -497,7 +497,7 @@ static int handle_char (hcl_client_t* client, hcl_ooci_t c, hcl_oow_t nbytes)
 				client->rep.u.attr_value_quoted.escaped = 0;
 				break;
 			}
-			else 
+			else
 			{
 				/* the first value character has been encountered */
 				client->state = HCL_CLIENT_STATE_IN_ATTR_VALUE_UNQUOTED;
@@ -530,7 +530,7 @@ static int handle_char (hcl_client_t* client, hcl_ooci_t c, hcl_oow_t nbytes)
 				hcl_client_seterrbfmt (client, HCL_EFINIS, "sudden end of attribute value without closing quote");
 				goto oops;
 			}
-			else 
+			else
 			{
 				if (client->rep.u.attr_value_quoted.escaped)
 				{
@@ -589,7 +589,7 @@ static int handle_char (hcl_client_t* client, hcl_ooci_t c, hcl_oow_t nbytes)
 							client->state = HCL_CLIENT_STATE_IN_LENGTH_BOUNDED_DATA;
 							/* [NOTE] the max length for the length-bounded transfer scheme is limited
 							 *        by the system word size as of this implementation */
-							client->rep.u.length_bounded_data.max = length; 
+							client->rep.u.length_bounded_data.max = length;
 							client->rep.u.length_bounded_data.tally = 0;
 						}
 						else
@@ -630,8 +630,8 @@ static int handle_char (hcl_client_t* client, hcl_ooci_t c, hcl_oow_t nbytes)
 	}
 
 	return 0;
-	
-oops: 
+
+oops:
 	return -1;
 }
 
@@ -707,7 +707,7 @@ static int feed_reply_data (hcl_client_t* client, const hcl_bch_t* data, hcl_oow
 					{
 						client->rep.u.chunked_data.negated = 1;
 					}
-					else if (bc == ':') 
+					else if (bc == ':')
 					{
 						if (client->rep.u.chunked_data.clcount == 0)
 						{
@@ -733,7 +733,7 @@ static int feed_reply_data (hcl_client_t* client, const hcl_bch_t* data, hcl_oow
 						}
 						break;
 					}
-					else if (is_digitchar(bc)) 
+					else if (is_digitchar(bc))
 					{
 						client->rep.u.chunked_data.max = client->rep.u.chunked_data.max * 10 + (bc - '0');
 						client->rep.u.chunked_data.clcount++;
@@ -803,14 +803,14 @@ hcl_client_t* hcl_client_open (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, hcl_client_p
 	client_hcl_xtn_t* xtn;
 
 	client = (hcl_client_t*)HCL_MMGR_ALLOC(mmgr, HCL_SIZEOF(*client) + xtnsize);
-	if (!client) 
+	if (!client)
 	{
 		if (errnum) *errnum = HCL_ESYSMEM;
 		return HCL_NULL;
 	}
 
 	hcl = hcl_openstdwithmmgr(mmgr, HCL_SIZEOF(*xtn), errnum);
-	if (!hcl) 
+	if (!hcl)
 	{
 		HCL_MMGR_FREE (mmgr, client);
 		return HCL_NULL;
@@ -832,7 +832,7 @@ hcl_client_t* hcl_client_open (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, hcl_client_p
 	client->cfg.logmask = ~(hcl_bitmask_t)0;
 
 	/* the dummy hcl is used for this client to perform primitive operations
-	 * such as getting system time or logging. so the heap size doesn't 
+	 * such as getting system time or logging. so the heap size doesn't
 	 * need to be changed from the tiny value set above. */
 	hcl_setoption (client->dummy_hcl, HCL_LOG_MASK, &client->cfg.logmask);
 	hcl_setcmgr (client->dummy_hcl, client->_cmgr);
@@ -858,11 +858,11 @@ int hcl_client_setoption (hcl_client_t* client, hcl_client_option_t id, const vo
 
 		case HCL_CLIENT_LOG_MASK:
 			client->cfg.logmask = *(const hcl_bitmask_t*)value;
-			if (client->dummy_hcl) 
+			if (client->dummy_hcl)
 			{
 				/* setting this affects the dummy hcl immediately.
-				 * existing hcl instances inside worker threads won't get 
-				 * affected. new hcl instances to be created later 
+				 * existing hcl instances inside worker threads won't get
+				 * affected. new hcl instances to be created later
 				 * is supposed to use the new value */
 				hcl_setoption (client->dummy_hcl, HCL_LOG_MASK, value);
 			}

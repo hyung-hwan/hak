@@ -35,7 +35,7 @@ typedef hcl_oow_t hcl_tmr_index_t;
 
 typedef void (*hcl_tmr_handler_t) (
 	hcl_tmr_t*         tmr,
-	const hcl_ntime_t* now, 
+	const hcl_ntime_t* now,
 	hcl_tmr_event_t*   evt
 );
 
@@ -72,7 +72,7 @@ extern "C" {
 #endif
 
 HCL_EXPORT hcl_tmr_t* hcl_tmr_open (
-	hcl_t*     mmgr, 
+	hcl_t*     mmgr,
 	hcl_oow_t  xtnsize,
 	hcl_oow_t  capa
 );
@@ -82,7 +82,7 @@ HCL_EXPORT void hcl_tmr_close (
 );
 
 HCL_EXPORT int hcl_tmr_init (
-	hcl_tmr_t*  tmr, 
+	hcl_tmr_t*  tmr,
 	hcl_t*      mmgr,
 	hcl_oow_t   capa
 );

@@ -52,15 +52,15 @@
  *   hcl_xma_t* xma;
  *   void* ptr1, * ptr2;
  *
- *   // create a new memory allocator obtaining a 100K byte zone 
+ *   // create a new memory allocator obtaining a 100K byte zone
  *   // with the default memory allocator
- *   xma = hcl_xma_open(HCL_NULL, 0, 100000L); 
+ *   xma = hcl_xma_open(HCL_NULL, 0, 100000L);
  *
  *   ptr1 = hcl_xma_alloc(xma, 5000); // allocate a 5K block from the zone
  *   ptr2 = hcl_xma_alloc(xma, 1000); // allocate a 1K block from the zone
  *   ptr1 = hcl_xma_realloc(xma, ptr1, 6000); // resize the 5K block to 6K.
  *
- *   hcl_xma_dump (xma, dumper, HCL_NULL); // dump memory blocks 
+ *   hcl_xma_dump (xma, dumper, HCL_NULL); // dump memory blocks
  *
  *   // the following two lines are not actually needed as the allocator
  *   // is closed after them.
@@ -102,7 +102,7 @@ struct hcl_xma_t
 	int          internal;
 
 	/** pointer array to free memory blocks */
-	hcl_xma_fblk_t* xfree[HCL_XMA_FIXED + HCL_XMA_SIZE_BITS + 1]; 
+	hcl_xma_fblk_t* xfree[HCL_XMA_FIXED + HCL_XMA_SIZE_BITS + 1];
 
 	/** pre-computed value for fast xfree index calculation */
 	hcl_oow_t     bdec;
@@ -150,7 +150,7 @@ HCL_EXPORT hcl_xma_t* hcl_xma_open (
 
 /**
  * The hcl_xma_close() function destroys a memory allocator. It also frees
- * the memory zone obtained, which invalidates the memory blocks within 
+ * the memory zone obtained, which invalidates the memory blocks within
  * the zone. Call this function to destroy a memory allocator created with
  * hcl_xma_open().
  */
@@ -186,7 +186,7 @@ HCL_EXPORT int hcl_xma_init (
 );
 
 /**
- * The hcl_xma_fini() function finalizes a memory allocator. Call this 
+ * The hcl_xma_fini() function finalizes a memory allocator. Call this
  * function to finalize a memory allocator initialized with hcl_xma_init().
  */
 HCL_EXPORT void hcl_xma_fini (

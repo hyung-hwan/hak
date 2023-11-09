@@ -18,14 +18,14 @@ static int str_to_ipv4 (const ooch_t* str, hcl_oow_t len, struct in_addr* inaddr
 
 		c = *str++;
 
-		if (c >= '0' && c <= '9') 
+		if (c >= '0' && c <= '9')
 		{
 			if (digits > 0 && acc == 0) return -1;
 			acc = acc * 10 + (c - '0');
 			if (acc > 255) return -1;
 			digits++;
 		}
-		else if (c == '.') 
+		else if (c == '.')
 		{
 			if (dots >= 3 || digits == 0) return -1;
 			addr = (addr << 8) | acc;
@@ -90,10 +90,10 @@ static int str_to_ipv6 (const ooch_t* src, hcl_oow_t len, struct in6_addr* inadd
 			continue;
 		}
 
-		if (ch == ':') 
+		if (ch == ':')
 		{
 			curtok = src;
-			if (!saw_xdigit) 
+			if (!saw_xdigit)
 			{
 				if (colonp) return -1;
 				colonp = tp;
@@ -113,23 +113,23 @@ static int str_to_ipv6 (const ooch_t* src, hcl_oow_t len, struct in6_addr* inadd
 		}
 
 		if (ch == '.' && ((tp + HCL_SIZEOF(struct in_addr)) <= endp) &&
-		    str_to_ipv4(curtok, src_end - curtok, (struct in_addr*)tp) == 0) 
+		    str_to_ipv4(curtok, src_end - curtok, (struct in_addr*)tp) == 0)
 		{
 			tp += HCL_SIZEOF(struct in_addr*);
 			saw_xdigit = 0;
-			break; 
+			break;
 		}
 
 		return -1;
 	}
 
-	if (saw_xdigit) 
+	if (saw_xdigit)
 	{
 		if (tp + HCL_SIZEOF(hcl_uint16_t) > endp) return -1;
 		*tp++ = (hcl_uint8_t)(val >> 8) & 0xff;
 		*tp++ = (hcl_uint8_t)val & 0xff;
 	}
-	if (colonp != HCL_NULL) 
+	if (colonp != HCL_NULL)
 	{
 		/*
 		 * Since some memmove()'s erroneously fail to handle
@@ -137,8 +137,8 @@ static int str_to_ipv6 (const ooch_t* src, hcl_oow_t len, struct in6_addr* inadd
 		 */
 		hcl_oow_t n = tp - colonp;
 		hcl_oow_t i;
- 
-		for (i = 1; i <= n; i++) 
+
+		for (i = 1; i <= n; i++)
 		{
 			endp[-i] = colonp[n - i];
 			colonp[n - i] = 0;
@@ -163,7 +163,7 @@ int str_to_sockaddr (hcl_t* hcl, const ooch_t* str, hcl_oow_t len, hcl_sckaddr_t
 	p = str;
 	end = str + len;
 
-	if (p >= end) 
+	if (p >= end)
 	{
 		if (hcl) hcl_seterrbfmt (hcl, HCL_EINVAL, "blank address");
 		return -1;
@@ -195,7 +195,7 @@ int str_to_sockaddr (hcl_t* hcl, const ooch_t* str, hcl_oow_t len, hcl_sckaddr_t
 				return -1;
 			}
 
-			if (*p >= '0' && *p <= '9') 
+			if (*p >= '0' && *p <= '9')
 			{
 				/* numeric scope id */
 				y = 0;
@@ -244,9 +244,9 @@ TODO:
 		if (str_to_ipv4(tmp.ptr, tmp.len, &nwad->in4.sin_addr) <= -1)
 		{
 		#if (HCL_SIZEOF_STRUCT_SOCKADDR_IN6 > 0)
-			/* check if it is an IPv6 address not enclosed in []. 
+			/* check if it is an IPv6 address not enclosed in [].
 			 * the port number can't be specified in this format. */
-			if (p >= end || *p != ':') 
+			if (p >= end || *p != ':')
 			{
 				/* without :, it can't be an ipv6 address */
 				goto unrecog;
@@ -271,7 +271,7 @@ TODO:
 					return -1;
 				}
 
-				if (*p >= '0' && *p <= '9') 
+				if (*p >= '0' && *p <= '9')
 				{
 					/* numeric scope id */
 					y = 0;
@@ -310,7 +310,7 @@ TODO
 			return nwad->in6.sin6_family;
 		#else
 			goto unrecog;
-		#endif	
+		#endif
 		}
 
 		nwad->in4.sin_family = AF_INET;
@@ -318,7 +318,7 @@ TODO
 	}
 #endif
 
-	if (p < end && *p == ':') 
+	if (p < end && *p == ':')
 	{
 		/* port number */
 		hcl_uint32_t port = 0;
@@ -333,8 +333,8 @@ TODO
 		}
 
 		tmp.len = p - tmp.ptr;
-		if (tmp.len <= 0 || tmp.len >= 6 || 
-		    port > HCL_TYPE_MAX(hcl_uint16_t)) 
+		if (tmp.len <= 0 || tmp.len >= 6 ||
+		    port > HCL_TYPE_MAX(hcl_uint16_t))
 		{
 			if (hcl) hcl_seterrbfmt (hcl, HCL_EINVAL, "port number blank or too large");
 			return -1;
@@ -356,7 +356,7 @@ TODO
 unrecog:
 	if (hcl) hcl_seterrbfmt (hcl, HCL_EINVAL, "unrecognized address");
 	return -1;
-	
+
 no_rbrack:
 	if (hcl) hcl_seterrbfmt (hcl, HCL_EINVAL, "missing right bracket");
 	return -1;

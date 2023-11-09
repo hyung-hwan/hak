@@ -46,7 +46,7 @@ static hcl_ooi_t equalize_scale (hcl_t* hcl, hcl_oop_t* x, hcl_oop_t* y)
 		hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not numeric - %O", xv);
 		return -1;
 	}
-	
+
 	ys = 0;
 	yv = *y;
 	if (HCL_IS_FPDEC(hcl, yv))
@@ -131,7 +131,7 @@ hcl_oop_t hcl_addnums (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 		hcl_pushvolat (hcl, &y);
 
 		scale = equalize_scale(hcl, &x, &y);
-		if (scale <= -1) 
+		if (scale <= -1)
 		{
 			hcl_popvolats (hcl, 2);
 			return HCL_NULL;
@@ -160,7 +160,7 @@ hcl_oop_t hcl_subnums (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 		hcl_pushvolat (hcl, &y);
 
 		scale = equalize_scale(hcl, &x, &y);
-		if (scale <= -1) 
+		if (scale <= -1)
 		{
 			hcl_popvolats (hcl, 2);
 			return HCL_NULL;
@@ -191,7 +191,7 @@ static hcl_oop_t mul_nums (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y, int mult)
 		hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not numeric - %O", xv);
 		return HCL_NULL;
 	}
-	
+
 	ys = 0;
 	yv = y;
 	if (HCL_IS_FPDEC(hcl, y))
@@ -208,7 +208,7 @@ static hcl_oop_t mul_nums (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y, int mult)
 	nv = hcl_mulints(hcl, xv, yv);
 	if (!nv) return HCL_NULL;
 
-	cs = xs + ys; 
+	cs = xs + ys;
 	if (cs <= 0) return nv; /* the result must be an integer */
 
 	ns = (mult || xs > ys)? xs: ys;
@@ -273,7 +273,7 @@ hcl_oop_t hcl_divnums (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 	for (i = 0; i < ys; i++)
 	{
 		nv = hcl_mulints(hcl, nv, HCL_SMOOI_TO_OOP(10));
-		if (!nv) 
+		if (!nv)
 		{
 			hcl_popvolat (hcl);
 			return HCL_NULL;
@@ -303,7 +303,7 @@ static hcl_oop_t comp_nums (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y, hcl_oop_t (*co
 		hcl_pushvolat (hcl, &y);
 
 		scale = equalize_scale(hcl, &x, &y);
-		if (scale <= -1) 
+		if (scale <= -1)
 		{
 			hcl_popvolats (hcl, 2);
 			return HCL_NULL;
@@ -387,10 +387,10 @@ hcl_oop_t hcl_absnum (hcl_t* hcl, hcl_oop_t x)
 
 		scale = HCL_OOP_TO_SMOOI(((hcl_oop_fpdec_t)x)->scale);
 		v = ((hcl_oop_fpdec_t)x)->value;
-		
+
 		v = hcl_absint(hcl, v);
 		if (!v) return HCL_NULL;
-		
+
 		return hcl_makefpdec(hcl, v, scale);
 	}
 }

@@ -29,9 +29,9 @@
 #include <assert.h> /* TODO: replace assert() with HCL_ASSERT() or something */
 
 
-/* 
+/*
  * in the following run, movaps tries to write to the address 0x7fffea722f78.
- * since the instruction deals with 16-byte aligned data only, it triggered 
+ * since the instruction deals with 16-byte aligned data only, it triggered
  * the general protection error.
  *
 $ gdb ~/xxx/bin/xxx
@@ -79,16 +79,16 @@ struct hcl_xma_mblk_t
 
 	/* the block size is shifted by 1 bit and the maximum value is
 	 * offset by 1 bit because of the 'free' bit-field.
-	 * i could keep 'size' without shifting with bit manipulation 
-	 * because the actual size is aligned and the last bit will 
+	 * i could keep 'size' without shifting with bit manipulation
+	 * because the actual size is aligned and the last bit will
 	 * never be 1. i don't think there is a practical use case where
-	 * you need to allocate a huge chunk covering the entire 
+	 * you need to allocate a huge chunk covering the entire
 	 * address space of your machine. */
 	hcl_oow_t free: 1;
 	hcl_oow_t size: HCL_XMA_SIZE_BITS; /**< block size */
 };
 
-struct hcl_xma_fblk_t 
+struct hcl_xma_fblk_t
 {
 	hcl_oow_t prev_size;
 	hcl_oow_t free: 1;
@@ -105,7 +105,7 @@ static void DBG_VERIFY (hcl_xma_t* xma, const char* desc)
 {
 	hcl_xma_mblk_t* tmp, * next;
 	hcl_oow_t cnt;
-	hcl_oow_t fsum, asum; 
+	hcl_oow_t fsum, asum;
 #if defined(HCL_XMA_ENABLE_STAT)
 	hcl_oow_t isum;
 #endif
@@ -139,7 +139,7 @@ static void DBG_VERIFY (hcl_xma_t* xma, const char* desc)
 #define DBG_VERIFY(xma, desc)
 #endif
 
-static HCL_INLINE hcl_oow_t szlog2 (hcl_oow_t n) 
+static HCL_INLINE hcl_oow_t szlog2 (hcl_oow_t n)
 {
 	/*
 	 * 2**x = n;
@@ -169,7 +169,7 @@ static HCL_INLINE hcl_oow_t szlog2 (hcl_oow_t n)
 #if HCL_SIZEOF_OOW_T >= 8
 	if ((n & (~(hcl_oow_t)0 << (BITS-32))) == 0) { x -= 32; n <<= 32; }
 #endif
-#if HCL_SIZEOF_OOW_T >= 4 
+#if HCL_SIZEOF_OOW_T >= 4
 	if ((n & (~(hcl_oow_t)0 << (BITS-16))) == 0) { x -= 16; n <<= 16; }
 #endif
 #if HCL_SIZEOF_OOW_T >= 2
@@ -185,7 +185,7 @@ static HCL_INLINE hcl_oow_t szlog2 (hcl_oow_t n)
 #undef BITS
 }
 
-static HCL_INLINE hcl_oow_t getxfi (hcl_xma_t* xma, hcl_oow_t size) 
+static HCL_INLINE hcl_oow_t getxfi (hcl_xma_t* xma, hcl_oow_t size)
 {
 	hcl_oow_t xfi = ((size) / ALIGN) - 1;
 	if (xfi >= FIXED) xfi = szlog2(size) - (xma)->bdec + FIXED;
@@ -236,7 +236,7 @@ int hcl_xma_init (hcl_xma_t* xma, hcl_mmgr_t* mmgr, void* zoneptr, hcl_oow_t zon
 
 		internal = 1; /* internally created. must be freed upon hcl_xma_fini() */
 	}
-	else if (zonesize < FBLKMINSIZE) 
+	else if (zonesize < FBLKMINSIZE)
 	{
 		/* the zone size is too small for an externally allocated zone. */
 /* TODO: difference error code from memory allocation failure.. this is not really memory shortage */
@@ -261,7 +261,7 @@ int hcl_xma_init (hcl_xma_t* xma, hcl_mmgr_t* mmgr, void* zoneptr, hcl_oow_t zon
 	/* get the free block index */
 	xfi = getxfi(xma, first->size);
 	/* locate it into an apporopriate slot */
-	xma->xfree[xfi] = first; 
+	xma->xfree[xfi] = first;
 	/* let it be the head, which is natural with only a block */
 	xma->start = (hcl_uint8_t*)first;
 	xma->end = xma->start + zonesize;
@@ -275,7 +275,7 @@ int hcl_xma_init (hcl_xma_t* xma, hcl_mmgr_t* mmgr, void* zoneptr, hcl_oow_t zon
 	xma->stat.nfree = 1;
 	xma->stat.nused = 0;
 #endif
-	
+
 	return 0;
 }
 
@@ -290,15 +290,15 @@ void hcl_xma_fini (hcl_xma_t* xma)
 
 static HCL_INLINE void attach_to_freelist (hcl_xma_t* xma, hcl_xma_fblk_t* b)
 {
-	/* 
-	 * attach a block to a free list 
+	/*
+	 * attach a block to a free list
 	 */
 
 	/* get the free list index for the block size */
-	hcl_oow_t xfi = getxfi(xma, b->size); 
+	hcl_oow_t xfi = getxfi(xma, b->size);
 
 	/* let it be the head of the free list doubly-linked */
-	b->free_prev = HCL_NULL; 
+	b->free_prev = HCL_NULL;
 	b->free_next = xma->xfree[xfi];
 	if (xma->xfree[xfi]) xma->xfree[xfi]->free_prev = b;
 	xma->xfree[xfi] = b;
@@ -315,11 +315,11 @@ static HCL_INLINE void detach_from_freelist (hcl_xma_t* xma, hcl_xma_fblk_t* b)
 
 	if (p)
 	{
-		/* the previous item exists. let its 'next' pointer point to 
+		/* the previous item exists. let its 'next' pointer point to
 		 * the block's next item. */
 		p->free_next = n;
 	}
-	else 
+	else
 	{
 		/* the previous item does not exist. the block is the first
  		 * item in the free list. */
@@ -330,7 +330,7 @@ static HCL_INLINE void detach_from_freelist (hcl_xma_t* xma, hcl_xma_fblk_t* b)
 		xma->xfree[xfi] = n;
 	}
 
-	/* let the 'prev' pointer of the block's next item point to the 
+	/* let the 'prev' pointer of the block's next item point to the
 	 * block's previous item */
 	if (n) n->free_prev = p;
 }
@@ -352,8 +352,8 @@ static hcl_xma_fblk_t* alloc_from_freelist (hcl_xma_t* xma, hcl_oow_t xfi, hcl_o
 			{
 				hcl_xma_mblk_t* y, * z;
 
-				/* the remaining part is large enough to hold 
-				 * another block. let's split it 
+				/* the remaining part is large enough to hold
+				 * another block. let's split it
 				 */
 
 				/* shrink the size of the 'cand' block */
@@ -484,7 +484,7 @@ static void* _realloc_merge (hcl_xma_t* xma, void* b, hcl_oow_t size)
 	hcl_xma_mblk_t* blk = (hcl_xma_mblk_t*)USR_TO_SYS(b);
 
 	DBG_VERIFY (xma, "realloc merge start");
-	/* rounds up 'size' to be multiples of ALIGN */ 
+	/* rounds up 'size' to be multiples of ALIGN */
 	if (size < MINALLOCSIZE) size = MINALLOCSIZE;
 	size = HCL_ALIGN_POW2(size, ALIGN);
 
@@ -511,8 +511,8 @@ static void* _realloc_merge (hcl_xma_t* xma, void* b, hcl_oow_t size)
 		rem = (MBLKHDRSIZE + n->size) - req;
 		if (rem >= FBLKMINSIZE)
 		{
-			/* 
-			 * the remaining part of the next block is large enough 
+			/*
+			 * the remaining part of the next block is large enough
 			 * to hold a block. break the next block.
 			 */
 
@@ -555,7 +555,7 @@ static void* _realloc_merge (hcl_xma_t* xma, void* b, hcl_oow_t size)
 	{
 		/* shrink the block */
 		hcl_oow_t rem = blk->size - size;
-		if (rem >= FBLKMINSIZE) 
+		if (rem >= FBLKMINSIZE)
 		{
 			hcl_xma_mblk_t* n;
 
@@ -628,7 +628,7 @@ void* hcl_xma_realloc (hcl_xma_t* xma, void* b, hcl_oow_t size)
 {
 	void* n;
 
-	if (b == HCL_NULL) 
+	if (b == HCL_NULL)
 	{
 		/* 'realloc' with NULL is the same as 'alloc' */
 		n = hcl_xma_alloc(xma, size);
@@ -676,20 +676,20 @@ void hcl_xma_free (hcl_xma_t* xma, void* b)
 		/*
 		 * Merge the block with surrounding blocks
 		 *
-		 *                    blk 
+		 *                    blk
 		 *                     |
 		 *                     v
 		 * +------------+------------+------------+------------+
 		 * |     X      |            |     Y      |     Z      |
 		 * +------------+------------+------------+------------+
-		 *         
-		 *  
+		 *
+		 *
 		 * +--------------------------------------+------------+
 		 * |     X                                |     Z      |
 		 * +--------------------------------------+------------+
 		 *
 		 */
-		
+
 		hcl_xma_mblk_t* z = next_mblk(y);
 		hcl_oow_t ns = MBLKHDRSIZE + org_blk_size + MBLKHDRSIZE;
 		hcl_oow_t bs = ns + y->size;
@@ -719,8 +719,8 @@ void hcl_xma_free (hcl_xma_t* xma, void* b)
 		 * +------------+------------+------------+
 		 * |            |     Y      |     Z      |
 		 * +------------+------------+------------+
-		 * 
-		 * 
+		 *
+		 *
 		 *
 		 *   blk
 		 *    |
@@ -728,8 +728,8 @@ void hcl_xma_free (hcl_xma_t* xma, void* b)
 		 * +-------------------------+------------+
 		 * |                         |     Z      |
 		 * +-------------------------+------------+
-		 * 
-		 * 
+		 *
+		 *
 		 */
 		hcl_xma_mblk_t* z = next_mblk(y);
 
@@ -754,7 +754,7 @@ void hcl_xma_free (hcl_xma_t* xma, void* b)
 	else if ((hcl_uint8_t*)x >= xma->start && x->free)
 	{
 		/*
-		 * Merge the block with the previous block 
+		 * Merge the block with the previous block
 		 *
 		 *                 blk
 		 *                 |
@@ -797,7 +797,7 @@ void hcl_xma_free (hcl_xma_t* xma, void* b)
 void hcl_xma_dump (hcl_xma_t* xma, hcl_xma_dumper_t dumper, void* ctx)
 {
 	hcl_xma_mblk_t* tmp;
-	hcl_oow_t fsum, asum; 
+	hcl_oow_t fsum, asum;
 #if defined(HCL_XMA_ENABLE_STAT)
 	hcl_oow_t isum;
 #endif

@@ -32,7 +32,7 @@ static hcl_cnode_t* make_cnode (hcl_t* hcl, hcl_cnode_type_t type, const hcl_loc
 	hcl_oocs_t empty;
 	hcl_ooch_t dummy;
 
-	if (!tok) 
+	if (!tok)
 	{
 		empty.ptr = &dummy;
 		empty.len = 0;
@@ -193,9 +193,7 @@ redo:
 
 			HCL_ASSERT (hcl, tmp1 != HCL_NULL);
 			hcl_freemem (hcl, c);
-
 			hcl_freecnode (hcl, tmp1); /* TODO: remove recursion? */
-
 			if (tmp2)
 			{
 				c = tmp2;
@@ -210,9 +208,7 @@ redo:
 			hcl_cnode_t* tmp;
 
 			tmp = c->u.shell.obj;
-
 			hcl_freemem (hcl, c);
-
 			if (tmp)
 			{
 				c = tmp;

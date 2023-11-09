@@ -88,7 +88,7 @@ enum
 	WORD_PRIM,
 
 	WORD_FUNCTION,
-	WORD_BLOCK,
+	WORD_LAMBDA,
 	WORD_CONTEXT,
 	WORD_PROCESS,
 	WORD_PROCESS_SCHEDULER,
@@ -98,7 +98,7 @@ enum
 	WORD_INSTANCE
 };
 
-static struct 
+static struct
 {
 	hcl_oow_t  len;
 	hcl_ooch_t ptr[20];
@@ -113,7 +113,7 @@ static struct
 	{  7,  { '#','<','P','R','I','M','>' } },
 
 	{  11, { '#','<','F','U','N','C','T','I','O','N','>' } },
-	{  11, { '#','<','B','L','O','C','K','>' } },
+	{  9,  { '#','<','L','A','M','B','D','A','>' } },
 	{  10, { '#','<','C','O','N','T','E','X','T','>' } },
 	{  10, { '#','<','P','R','O','C','E','S','S','>' } },
 	{  20, { '#','<','P','R','O','C','E','S','S','-','S','C','H','E','D','U','L','E','R','>' } },
@@ -132,9 +132,9 @@ static HCL_INLINE int print_single_char (hcl_fmtout_t* fmtout, hcl_ooch_t ch)
 		if (hcl_bfmt_out(fmtout, "\\%jc", chu) <= -1) return -1;
 	}
 #if defined(HCL_OOCH_IS_UCH)
-	else if (chu < ' ') 
+	else if (chu < ' ')
 #else
-	else if (chu < ' ' || chu >= 0x80) 
+	else if (chu < ' ' || chu >= 0x80)
 #endif
 	{
 		hcl_oochu_t escaped;
@@ -177,7 +177,7 @@ static HCL_INLINE int print_single_char (hcl_fmtout_t* fmtout, hcl_ooch_t ch)
 			{
 				if (hcl_bfmt_out(fmtout, "\\U%08X", chu) <= -1) return -1;
 			}
-			else 
+			else
 		#endif
 			{
 		#if (HCL_SIZEOF_OOCH_T >= 2)
@@ -221,7 +221,7 @@ int hcl_fmt_object_ (hcl_fmtout_t* fmtout, hcl_oop_t obj)
 		{ "(:",      "(" },  /*HCL_CONCODE_MLIST */
 		{ "{",       "{" },  /*HCL_CONCODE_BLOCK */
 		{ "[",       "[" },  /*HCL_CONCODE_ARRAY */
-		{ "#[",      "[" },  /*HCL_CONCODE_BYTEARRAY */ 
+		{ "#[",      "[" },  /*HCL_CONCODE_BYTEARRAY */
 		{ "#{",      "{" },  /*HCL_CONCODE_DIC */
 		{ "#(",      "[" }   /*HCL_CONCODE_QLIST */
 	};
@@ -237,7 +237,7 @@ int hcl_fmt_object_ (hcl_fmtout_t* fmtout, hcl_oop_t obj)
 		{ ")",       "]" },   /*HCL_CONCODE_QLIST */
 	};
 
-	static const hcl_bch_t* breakers[][2] = 
+	static const hcl_bch_t* breakers[][2] =
 	{
 		{ " ",       "," }, /* item breaker */
 		{ " ",       ":" }  /* key value breaker */
@@ -246,7 +246,7 @@ int hcl_fmt_object_ (hcl_fmtout_t* fmtout, hcl_oop_t obj)
 	json = !!(fmtout->mask & HCL_LOG_PREFER_JSON);
 
 next:
-	switch ((brand = HCL_BRANDOF(hcl, obj))) 
+	switch ((brand = HCL_BRANDOF(hcl, obj)))
 	{
 		case HCL_BRAND_SMOOI:
 			if (hcl_bfmt_out(fmtout, "%zd", HCL_OOP_TO_SMOOI(obj)) <= -1) return -1;
@@ -293,10 +293,10 @@ next:
 			/* -1 to drive hcl_inttostr() to not create a new string object.
 			 * not using the object memory. the result stays in the temporary
 			 * buffer */
-			tmp = hcl_inttostr(hcl, obj, 10 | HCL_INTTOSTR_NONEWOBJ); 
+			tmp = hcl_inttostr(hcl, obj, 10 | HCL_INTTOSTR_NONEWOBJ);
 			if (!tmp) return -1;
 
-			HCL_ASSERT (hcl, (hcl_oop_t)tmp == hcl->_nil); 
+			HCL_ASSERT (hcl, (hcl_oop_t)tmp == hcl->_nil);
 			if (hcl_bfmt_out(fmtout, "%.*js", hcl->inttostr.xbuf.len, hcl->inttostr.xbuf.ptr) <= -1) return -1;
 			break;
 		}
@@ -319,7 +319,7 @@ next:
 					if (hcl_bfmt_out(fmtout, "0.%0*d", scale, 0) <= -1) return -1;
 				}
 			}
-			else 
+			else
 			{
 				hcl_oop_t tmp;
 				hcl_oow_t len, adj;
@@ -334,13 +334,13 @@ next:
 				{
 					if (scale == len)
 					{
-						if (hcl_bfmt_out(fmtout, "%.*js0.%.*js", 
+						if (hcl_bfmt_out(fmtout, "%.*js0.%.*js",
 							adj, hcl->inttostr.xbuf.ptr,
 							len, &hcl->inttostr.xbuf.ptr[adj]) <= -1) return -1;
 					}
 					else
 					{
-						if (hcl_bfmt_out(fmtout, "%.*js0.%0*d%.*js", 
+						if (hcl_bfmt_out(fmtout, "%.*js0.%0*d%.*js",
 							adj, hcl->inttostr.xbuf.ptr,
 							scale - len, 0,
 							len, &hcl->inttostr.xbuf.ptr[adj]) <= -1) return -1;
@@ -362,8 +362,8 @@ next:
 			qse_char_t buf[256];
 			hcl->prm.sprintf (
 				hcl->prm.ctx,
-				buf, HCL_COUNTOF(buf), 
-				HCL_T("%Lf"), 
+				buf, HCL_COUNTOF(buf),
+				HCL_T("%Lf"),
 			#ifdef __MINGW32__
 				(double)HCL_RVAL(obj)
 			#else
@@ -392,7 +392,7 @@ next:
 			for (i = 0; i < HCL_OBJ_GET_SIZE(obj); i++)
 			{
 				ch = ((hcl_oop_char_t)obj)->slot[i];
-				if (ch < ' ' || ch == '\"' || ch == '\\') 
+				if (ch < ' ' || ch == '\"' || ch == '\\')
 				{
 					escape = 1;
 					break;
@@ -431,7 +431,7 @@ next:
 			{
 				int x;
 
-				/* Push what to print next on to the stack 
+				/* Push what to print next on to the stack
 				 * the variable p is */
 				ps.type = PRINT_STACK_CONS;
 				ps.obj = HCL_CONS_CDR(cur);
@@ -440,30 +440,30 @@ next:
 				if (x <= -1) return -1;
 
 				obj = HCL_CONS_CAR(cur);
-				/* Jump to the 'next' label so that the object 
-				 * pointed to by 'obj' is printed. Once it 
+				/* Jump to the 'next' label so that the object
+				 * pointed to by 'obj' is printed. Once it
 				 * ends, a jump back to the 'resume' label
 				 * is made at the at of this function. */
-				goto next; 
+				goto next;
 
 			resume_cons:
 				HCL_ASSERT (hcl, ps.type == PRINT_STACK_CONS);
 				cur = ps.obj; /* Get back the CDR pushed */
 				concode = ps.idx; /* restore the concode */
-				if (HCL_IS_NIL(hcl,cur)) 
+				if (HCL_IS_NIL(hcl,cur))
 				{
 					/* The CDR part points to a NIL object, which
 					 * indicates the end of a list. break the loop */
 					break;
 				}
-				if (!HCL_OOP_IS_POINTER(cur) || HCL_OBJ_GET_FLAGS_BRAND(cur) != HCL_BRAND_CONS) 
+				if (!HCL_OOP_IS_POINTER(cur) || HCL_OBJ_GET_FLAGS_BRAND(cur) != HCL_BRAND_CONS)
 				{
 					/* The CDR part does not point to a pair. */
 					if (hcl_bfmt_out(fmtout, " . ") <= -1) return -1;
 
-					/* Push NIL so that the HCL_IS_NIL(hcl,p) test in 
+					/* Push NIL so that the HCL_IS_NIL(hcl,p) test in
 					 * the 'if' statement above breaks the loop
-					 * after the jump is maded back to the 'resume' 
+					 * after the jump is maded back to the 'resume'
 					 * label. */
 					ps.type = PRINT_STACK_CONS;
 					ps.obj = hcl->_nil;
@@ -490,7 +490,7 @@ next:
 
 			if (hcl_bfmt_out(fmtout, opening_parens[HCL_CONCODE_ARRAY][json]) <= -1) return -1;
 
-			if (HCL_OBJ_GET_SIZE(obj) <= 0) 
+			if (HCL_OBJ_GET_SIZE(obj) <= 0)
 			{
 				if (hcl_bfmt_out(fmtout, closing_parens[HCL_CONCODE_ARRAY][json]) <= -1) return -1;
 				break;
@@ -504,7 +504,7 @@ next:
 
 				/* Push what to print next on to the stack */
 				ps.idx = arridx + 1;
-				if (ps.idx >= HCL_OBJ_GET_SIZE(obj)) 
+				if (ps.idx >= HCL_OBJ_GET_SIZE(obj))
 				{
 					ps.type = PRINT_STACK_ARRAY_END;
 				}
@@ -513,26 +513,26 @@ next:
 					HCL_ASSERT (hcl, ps.type == PRINT_STACK_ARRAY);
 					ps.obj = obj;
 				}
-				
+
 				x = push (hcl, &ps);
 				if (x <= -1) return -1;
 
 				obj = ((hcl_oop_oop_t)obj)->slot[arridx];
-				if (arridx > 0) 
+				if (arridx > 0)
 				{
 					if (hcl_bfmt_out(fmtout, breakers[0][json]) <= -1) return -1;
 				}
-				/* Jump to the 'next' label so that the object 
-				 * pointed to by 'obj' is printed. Once it 
+				/* Jump to the 'next' label so that the object
+				 * pointed to by 'obj' is printed. Once it
 				 * ends, a jump back to the 'resume' label
 				 * is made at the end of this function. */
-				goto next; 
+				goto next;
 
 			resume_array:
 				HCL_ASSERT (hcl, ps.type == PRINT_STACK_ARRAY);
 				arridx = ps.idx;
 				obj = ps.obj;
-			} 
+			}
 			while (1);
 			break;
 		}
@@ -562,7 +562,7 @@ next:
 
 			dic = (hcl_oop_dic_t)obj;
 			HCL_ASSERT (hcl, HCL_OOP_IS_SMOOI(dic->tally));
-			if (HCL_OOP_TO_SMOOI(dic->tally) <= 0) 
+			if (HCL_OOP_TO_SMOOI(dic->tally) <= 0)
 			{
 				if (hcl_bfmt_out(fmtout, closing_parens[HCL_CONCODE_DIC][json]) <= -1) return -1;
 				break;
@@ -611,7 +611,7 @@ next:
 				{
 					/* Push what to print next on to the stack */
 					ps.idx = bucidx + 1;
-					if (ps.idx >= bucsize) 
+					if (ps.idx >= bucsize)
 					{
 						ps.type = PRINT_STACK_DIC_END;
 					}
@@ -629,16 +629,16 @@ next:
 					obj = HCL_CONS_CDR(obj);
 				}
 
-				if (buctally > 0) 
+				if (buctally > 0)
 				{
 					if (hcl_bfmt_out(fmtout, breakers[buctally & 1][json]) <= -1) return -1;
 				}
-				
-				/* Jump to the 'next' label so that the object 
-				 * pointed to by 'obj' is printed. Once it 
+
+				/* Jump to the 'next' label so that the object
+				 * pointed to by 'obj' is printed. Once it
 				 * ends, a jump back to the 'resume' label
 				 * is made at the end of this function. */
-				goto next; 
+				goto next;
 
 			resume_dic:
 				HCL_ASSERT (hcl, ps.type == PRINT_STACK_DIC);
@@ -647,7 +647,7 @@ next:
 				obj = ps.obj;
 				dic = (hcl_oop_dic_t)ps.obj2;
 				bucsize = HCL_OBJ_GET_SIZE(dic->bucket);
-			} 
+			}
 			while (1);
 
 			break;
@@ -677,8 +677,8 @@ next:
 			word_index = WORD_FUNCTION;
 			goto print_word;
 
-		case HCL_BRAND_BLOCK:
-			word_index = WORD_BLOCK;
+		case HCL_BRAND_LAMBDA:
+			word_index = WORD_LAMBDA;
 			goto print_word;
 
 		case HCL_BRAND_CONTEXT:
@@ -761,7 +761,7 @@ int hcl_outfmtobj (hcl_t* hcl, hcl_bitmask_t mask, hcl_oop_t obj, hcl_outbfmt_t 
 	int n;
 
 	/* the printer stack must be empty. buggy if not. */
-	HCL_ASSERT (hcl, hcl->p.s.size == 0); 
+	HCL_ASSERT (hcl, hcl->p.s.size == 0);
 
 	hcl->p.e = obj; /* remember the head of the object to print */
 	n = hcl_proutbfmt(hcl, mask, obj);
@@ -772,7 +772,7 @@ int hcl_outfmtobj (hcl_t* hcl, hcl_bitmask_t mask, hcl_oop_t obj, hcl_outbfmt_t 
 	if (n <= -1) hcl->p.s.size = 0;
 
 	/* the printer stack must get empty when done. buggy if not */
-	HCL_ASSERT (hcl, hcl->p.s.size == 0); 
+	HCL_ASSERT (hcl, hcl->p.s.size == 0);
 
 	return n;
 }

@@ -97,6 +97,7 @@ struct xtn_t
 	const char* udo_path;
 
 	int vm_running;
+	int extra_cflags;
 	/*hcl_oop_t sym_errstr;*/
 };
 
@@ -447,9 +448,16 @@ static hcl_oop_t execute_in_batch_mode (hcl_t* hcl, int verbose)
 
 static int on_fed_cnode_in_interactive_mode (hcl_t* hcl, hcl_cnode_t* obj)
 {
-	if (hcl_compile(hcl, obj, HCL_COMPILE_CLEAR_CODE | HCL_COMPILE_CLEAR_FNBLK) <= -1) return -1;
+	xtn_t* xtn = (xtn_t*)hcl_getxtn(hcl);
+	if (hcl_compile(hcl, obj, HCL_COMPILE_CLEAR_CODE | HCL_COMPILE_CLEAR_FNBLK | xtn->extra_cflags) <= -1) return -1;
 	execute_in_interactive_mode (hcl);
 	return 0;
+}
+
+static int on_fed_cnode_in_batch_mode (hcl_t* hcl, hcl_cnode_t* obj)
+{
+	xtn_t* xtn = (xtn_t*)hcl_getxtn(hcl);
+        return hcl_compile(hcl, obj, xtn->extra_cflags);
 }
 
 static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
@@ -468,7 +476,8 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 
 	/* override the default cnode handler. the default one simply
 	 * compiles the expression node without execution */
-	if (hcl_beginfeed(hcl, is_tty? on_fed_cnode_in_interactive_mode: HCL_NULL) <= -1)
+	/*if (hcl_beginfeed(hcl, is_tty? on_fed_cnode_in_interactive_mode: HCL_NULL) <= -1)*/
+	if (hcl_beginfeed(hcl, is_tty? on_fed_cnode_in_interactive_mode: on_fed_cnode_in_batch_mode) <= -1)
 	{
 		hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: cannot begin feed - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
 		goto oops;
@@ -477,37 +486,41 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 	/* [NOTE] it isn't a very nice idea to get this internal data and use it with read_input() */
 	while (1)
 	{
-	#if 0
-		hcl_bch_t buf[1024];
-		hcl_oow_t xlen;
 
-		xlen = fread(buf, HCL_SIZEOF(buf[0]), HCL_COUNTOF(buf), fp);
-		if (xlen > 0 && hcl_feedbchars(hcl, buf, xlen) <= -1) goto feed_error;
-		if (xlen < HCL_COUNTOF(buf))
+		if (is_tty)
 		{
-			if (ferror(fp))
+			hcl_bch_t bch;
+			int ch = fgetc(fp);
+			if (ch == EOF)
 			{
-				hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: failed to read - %hs - %hs\n", xtn->cci_path, strerror(errno));
-				goto oops;
+				if (ferror(fp))
+				{
+					hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: failed to read - %hs - %hs\n", xtn->cci_path, strerror(errno));
+					goto oops;
+				}
+				break;
 			}
-			break;
-		}
-	#else
-		hcl_bch_t bch;
-		int ch = fgetc(fp);
-		if (ch == EOF)
-		{
-			if (ferror(fp))
-			{
-				hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: failed to read - %hs - %hs\n", xtn->cci_path, strerror(errno));
-				goto oops;
-			}
-			break;
-		}
 
-		bch = ch;
-		if (hcl_feedbchars(hcl, &bch, 1) <= -1) goto feed_error;
-	#endif
+			bch = ch;
+			if (hcl_feedbchars(hcl, &bch, 1) <= -1) goto feed_error;
+		}
+		else
+		{
+			hcl_bch_t buf[1024];
+			hcl_oow_t xlen;
+
+			xlen = fread(buf, HCL_SIZEOF(buf[0]), HCL_COUNTOF(buf), fp);
+			if (xlen > 0 && hcl_feedbchars(hcl, buf, xlen) <= -1) goto feed_error;
+			if (xlen < HCL_COUNTOF(buf))
+			{
+				if (ferror(fp))
+				{
+					hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: failed to read - %hs - %hs\n", xtn->cci_path, strerror(errno));
+					goto oops;
+				}
+				break;
+			}
+		}
 	}
 
 	if (hcl_endfeed(hcl) <= -1)
@@ -549,7 +562,7 @@ int main (int argc, char* argv[])
 	};
 	static hcl_bopt_t opt =
 	{
-		"l:v",
+		"l:xv",
 		lopt
 	};
 
@@ -557,7 +570,7 @@ int main (int argc, char* argv[])
 	hcl_oow_t heapsize = DEFAULT_HEAPSIZE;
 	int verbose = 0;
 	int show_info = 0;
-	/*int experimental = 0;*/
+	int experimental = 0;
 
 #if defined(HCL_BUILD_DEBUG)
 	const char* dbgopt = HCL_NULL;
@@ -581,9 +594,9 @@ int main (int argc, char* argv[])
 				logopt = opt.arg;
 				break;
 
-			/*case 'x':
+			case 'x':
 				experimental = 1;
-				break;*/
+				break;
 
 			case 'v':
 				verbose = 1;
@@ -695,6 +708,7 @@ int main (int argc, char* argv[])
 		goto oops;
 	}
 
+	if (experimental) xtn->extra_cflags |= HCL_COMPILE_ENABLE_BLOCK;
 	xtn->cci_path = argv[opt.ind++]; /* input source code file */
 	if (opt.ind < argc) xtn->udo_path = argv[opt.ind++];
 

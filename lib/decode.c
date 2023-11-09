@@ -376,7 +376,7 @@ int hcl_decode (hcl_t* hcl, hcl_oow_t start, hcl_oow_t end)
 			case HCL_CODE_CLASS_ENTER:
 			{
 				hcl_oow_t b3;
-				
+
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				FETCH_PARAM_CODE_TO (hcl, b2);
 				FETCH_PARAM_CODE_TO (hcl, b3);
@@ -545,8 +545,8 @@ int hcl_decode (hcl_t* hcl, hcl_oow_t start, hcl_oow_t end)
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				LOG_INST_1 (hcl, "pop_into_cvar_i %zu", b1);
 				break;
-				
-			/* -------------------------------------------------------- */				
+
+			/* -------------------------------------------------------- */
 
 			case HCL_CODE_PUSH_CVAR_M_X:
 				FETCH_PARAM_CODE_TO (hcl, b1);
@@ -690,7 +690,7 @@ int hcl_decode (hcl_t* hcl, hcl_oow_t start, hcl_oow_t end)
 			case HCL_CODE_MAKE_FUNCTION:
 			{
 				hcl_oow_t b3, b4;
-				/* b1 - block mask 
+				/* b1 - block mask
 				 * b2 - block mask
 				 * b3 - base literal frame start
 				 * b4 - base literal frame end */
@@ -700,7 +700,7 @@ int hcl_decode (hcl_t* hcl, hcl_oow_t start, hcl_oow_t end)
 				FETCH_PARAM_CODE_TO (hcl, b4);
 
 				b1 = (b1 << (8 * HCL_CODE_LONG_PARAM_SIZE)) | b2;
-				LOG_INST_7 (hcl, "make_function %zu %zu %zu %zu %zu %zu %zu", 
+				LOG_INST_7 (hcl, "make_function %zu %zu %zu %zu %zu %zu %zu",
 					GET_BLK_MASK_INSTA(b1),
 					GET_BLK_MASK_VA(b1),
 					GET_BLK_MASK_NARGS(b1),
@@ -712,14 +712,14 @@ int hcl_decode (hcl_t* hcl, hcl_oow_t start, hcl_oow_t end)
 				break;
 			}
 
-			case HCL_CODE_MAKE_BLOCK:
+			case HCL_CODE_MAKE_LAMBDA:
 				/* b1 - block mask
 				 * b2 - block mask */
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				FETCH_PARAM_CODE_TO (hcl, b2);
 				b1 = (b1 << (8 * HCL_CODE_LONG_PARAM_SIZE)) | b2;
 
-				LOG_INST_5 (hcl, "make_block %zu %zu %zu %zu %zu", 
+				LOG_INST_5 (hcl, "make_lambda %zu %zu %zu %zu %zu",
 					GET_BLK_MASK_INSTA(b1),
 					GET_BLK_MASK_VA(b1),
 					GET_BLK_MASK_NARGS(b1),

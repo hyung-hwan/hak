@@ -52,15 +52,15 @@ struct hcl_json_state_node_t
 
 		struct
 		{
-			/* 0: ready to get key (at the beginning or got comma), 
+			/* 0: ready to get key (at the beginning or got comma),
 			 * 1: got key, 2: got colon, 3: got value */
-			int state; 
+			int state;
 		} id; /* in dictionary */
 		struct
 		{
 			int escaped;
 			int digit_count;
-			/* acc is always of unicode type to handle \u and \U. 
+			/* acc is always of unicode type to handle \u and \U.
 			 * in the bch mode, it will get converted to a utf8 stream. */
 			hcl_uch_t acc;
 		} sv;
@@ -70,7 +70,7 @@ struct hcl_json_state_node_t
 			int digit_count;
 			/* for a character, no way to support the unicode character
 			 * in the bch mode */
-			hcl_ooch_t acc; 
+			hcl_ooch_t acc;
 		} cv;
 		struct
 		{
@@ -180,7 +180,7 @@ static int add_char_to_token (hcl_json_t* json, hcl_ooch_t ch)
 static int add_chars_to_token (hcl_json_t* json, const hcl_ooch_t* ptr, hcl_oow_t len)
 {
 	hcl_oow_t i;
-	
+
 	if (json->tok_capa - json->tok.len > len)
 	{
 		hcl_ooch_t* tmp;
@@ -194,7 +194,7 @@ static int add_chars_to_token (hcl_json_t* json, const hcl_ooch_t* ptr, hcl_oow_
 		json->tok.ptr = tmp;
 	}
 
-	for (i = 0; i < len; i++)  
+	for (i = 0; i < len; i++)
 		json->tok.ptr[json->tok.len++] = ptr[i];
 	json->tok.ptr[json->tok.len] = '\0';
 	return 0;
@@ -226,7 +226,7 @@ static int push_state (hcl_json_t* json, hcl_json_state_t state)
 
 	ss->state = state;
 	ss->next = json->state_stack;
-	
+
 	json->state_stack = ss;
 	return 0;
 }
@@ -261,7 +261,7 @@ static void pop_all_states (hcl_json_t* json)
 
 static int invoke_data_inst (hcl_json_t* json, hcl_json_inst_t inst)
 {
-	if (json->state_stack->state == HCL_JSON_STATE_IN_DIC && json->state_stack->u.id.state == 1) 
+	if (json->state_stack->state == HCL_JSON_STATE_IN_DIC && json->state_stack->u.id.state == 1)
 	{
 		if (inst != HCL_JSON_INST_STRING)
 		{
@@ -342,7 +342,7 @@ static int handle_string_value_char (hcl_json_t* json, hcl_ooci_t c)
 	}
 	else if (json->state_stack->u.sv.escaped == 1)
 	{
-		if (c >= '0' && c <= '8') 
+		if (c >= '0' && c <= '8')
 		{
 			json->state_stack->u.sv.escaped = 3;
 			json->state_stack->u.sv.digit_count = 0;
@@ -438,7 +438,7 @@ static int handle_character_value_char (hcl_json_t* json, hcl_ooci_t c)
 	}
 	else if (json->state_stack->u.cv.escaped == 1)
 	{
-		if (c >= '0' && c <= '8') 
+		if (c >= '0' && c <= '8')
 		{
 			json->state_stack->u.cv.escaped = 3;
 			json->state_stack->u.cv.digit_count = 0;
@@ -475,7 +475,7 @@ static int handle_character_value_char (hcl_json_t* json, hcl_ooci_t c)
 	else if (c == '\'')
 	{
 		pop_state (json);
-		
+
 		if (json->tok.len < 1)
 		{
 			hcl_json_seterrbfmt (json, HCL_EINVAL, "no character in a character literal");
@@ -488,7 +488,7 @@ static int handle_character_value_char (hcl_json_t* json, hcl_ooci_t c)
 		if (add_char_to_token(json, c) <= -1) return -1;
 	}
 
-	if (json->tok.len > 1) 
+	if (json->tok.len > 1)
 	{
 		hcl_json_seterrbfmt (json, HCL_EINVAL, "too many characters in a character literal - %.*js", json->tok.len, json->tok.ptr);
 		return -1;
@@ -567,7 +567,7 @@ static int handle_start_char (hcl_json_t* json, hcl_ooci_t c)
 		if (json->prim.instcb(json, HCL_JSON_INST_START_DIC, HCL_NULL) <= -1) return -1;
 		return 1;
 	}
-	else if (is_spacechar(c)) 
+	else if (is_spacechar(c))
 	{
 		/* do nothing */
 		return 1;
@@ -796,7 +796,7 @@ start_over:
 		case HCL_JSON_STATE_IN_STRING_VALUE:
 			x = handle_string_value_char(json, c);
 			break;
-			
+
 		case HCL_JSON_STATE_IN_CHARACTER_VALUE:
 			x = handle_character_value_char(json, c);
 			break;
@@ -846,7 +846,7 @@ static int feed_json_data (hcl_json_t* json, const hcl_bch_t* data, hcl_oow_t le
 		else if (n > bcslen)
 		{
 			/* incomplete sequence */
-			*xlen = ptr - data; 
+			*xlen = ptr - data;
 			return 0; /* feed more for incomplete sequence */
 		}
 
@@ -879,14 +879,14 @@ hcl_json_t* hcl_json_open (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, hcl_json_prim_t*
 	json_hcl_xtn_t* xtn;
 
 	json = (hcl_json_t*)HCL_MMGR_ALLOC(mmgr, HCL_SIZEOF(*json) + xtnsize);
-	if (!json) 
+	if (!json)
 	{
 		if (errnum) *errnum = HCL_ESYSMEM;
 		return HCL_NULL;
 	}
 
 	hcl = hcl_openstdwithmmgr(mmgr, HCL_SIZEOF(*xtn), errnum);
-	if (!hcl) 
+	if (!hcl)
 	{
 		HCL_MMGR_FREE (mmgr, json);
 		return HCL_NULL;
@@ -906,7 +906,7 @@ hcl_json_t* hcl_json_open (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, hcl_json_prim_t*
 	json->cfg.logmask = ~(hcl_bitmask_t)0;
 
 	/* the dummy hcl is used for this json to perform primitive operations
-	 * such as getting system time or logging. so the heap size doesn't 
+	 * such as getting system time or logging. so the heap size doesn't
 	 * need to be changed from the tiny value set above. */
 	hcl_setoption (json->dummy_hcl, HCL_LOG_MASK, &json->cfg.logmask);
 	hcl_setcmgr (json->dummy_hcl, json->cmgr);
@@ -937,11 +937,11 @@ int hcl_json_setoption (hcl_json_t* json, hcl_json_option_t id, const void* valu
 
 		case HCL_JSON_LOG_MASK:
 			json->cfg.logmask = *(const hcl_bitmask_t*)value;
-			if (json->dummy_hcl) 
+			if (json->dummy_hcl)
 			{
 				/* setting this affects the dummy hcl immediately.
-				 * existing hcl instances inside worker threads won't get 
-				 * affected. new hcl instances to be created later 
+				 * existing hcl instances inside worker threads won't get
+				 * affected. new hcl instances to be created later
 				 * is supposed to use the new value */
 				hcl_setoption (json->dummy_hcl, HCL_LOG_MASK, value);
 			}

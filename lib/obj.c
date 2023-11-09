@@ -474,7 +474,7 @@ hcl_oop_t hcl_instantiate (hcl_t* hcl, hcl_oop_class_t _class, const void* vptr,
 			oop = HCL_NULL;
 			break;
 	}
-		
+
 	if (HCL_LIKELY(oop))
 	{
 	#if 0

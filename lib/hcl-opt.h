@@ -30,8 +30,8 @@
 #include "hcl-cmn.h"
 
 /** \file
- * This file defines functions and data structures to process 
- * command-line arguments. 
+ * This file defines functions and data structures to process
+ * command-line arguments.
  */
 
 typedef struct hcl_uopt_t hcl_uopt_t;
@@ -54,7 +54,7 @@ struct hcl_uopt_t
 	hcl_uch_t*       arg; /* argument associated with an option */
 
 	/* output */
-	const hcl_uch_t* lngopt; 
+	const hcl_uch_t* lngopt;
 
 	/* input + output */
 	int              ind; /* index into parent argv vector */
@@ -83,7 +83,7 @@ struct hcl_bopt_t
 	hcl_bch_t*       arg; /* argument associated with an option */
 
 	/* output */
-	const hcl_bch_t* lngopt; 
+	const hcl_bch_t* lngopt;
 
 	/* input + output */
 	int              ind; /* index into parent argv vector */
@@ -98,27 +98,27 @@ extern "C" {
 
 /**
  * The hcl_getopt() function processes the \a argc command-line arguments
- * pointed to by \a argv as configured in \a opt. It can process two 
- * different option styles: a single character starting with '-', and a 
- * long name starting with '--'. 
+ * pointed to by \a argv as configured in \a opt. It can process two
+ * different option styles: a single character starting with '-', and a
+ * long name starting with '--'.
  *
  * A character in \a opt.str is treated as a single character option. Should
  * it require a parameter, specify ':' after it.
  *
- * Two special returning option characters indicate special error conditions. 
+ * Two special returning option characters indicate special error conditions.
  * - \b ? indicates a bad option stored in the \a opt->opt field.
  * - \b : indicates a bad parameter for an option stored in the \a opt->opt field.
  *
  * @return an option character on success, HCL_CHAR_EOF on no more options.
  */
 HCL_EXPORT hcl_uci_t hcl_getuopt (
-	int                argc, /* argument count */ 
+	int                argc, /* argument count */
 	hcl_uch_t* const*  argv, /* argument array */
 	hcl_uopt_t*        opt   /* option configuration */
 );
 
 HCL_EXPORT hcl_bci_t hcl_getbopt (
-	int                argc, /* argument count */ 
+	int                argc, /* argument count */
 	hcl_bch_t* const*  argv, /* argument array */
 	hcl_bopt_t*        opt   /* option configuration */
 );

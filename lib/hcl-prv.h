@@ -641,6 +641,9 @@ struct hcl_frd_t
 
 struct hcl_compiler_t
 {
+	/* flags passed in via hcl_compile() */
+	int flags;
+
 	/* callback pointer registerd upon compiler creation */
 	hcl_cb_t* cbp;
 
@@ -758,13 +761,13 @@ struct hcl_compiler_t
 
 
 
-/* hcl_context_t, hcl_block_t, hcl_function_t stores the local variable information
+/* hcl_context_t, hcl_lambda_t, hcl_function_t stores the local variable information
  *
  * Use up to 29 bits in a 32-bit hcl_ooi_t. Exclude the tag bit and the sign bit.
  * | SIGN | INSTA | VA | NARGS | NRVARS | NLVARS | TAG |
  *     1            1     8       8        11        2    <= 32
  * -----------------------------------------------------------
- * Parameters to the MAKE_BLOCK or MAKE_FUNCTION instructions
+ * Parameters to the MAKE_LAMBDA or MAKE_FUNCTION instructions
  *  | INSTA | VA | NARGS | NRVARS | NLVARS
  *    1       1      4      4        6         <= 16 (HCL_CODE_LONG_PARAM_SIZE 1, two params)
  *    1       1      8      8        11        <= 32 (HCL_CODE_LONG_PARAM_SIZE 2, two params, use 29 bits to avoid collection when converted to a smooi)
@@ -1158,7 +1161,7 @@ enum hcl_bcode_t
 	HCL_CODE_RETURN_FROM_BLOCK        = 0xFC, /* 252, return the stack top from a block */
 
 	HCL_CODE_MAKE_FUNCTION            = 0xFD, /* 253 */
-	HCL_CODE_MAKE_BLOCK               = 0xFE, /* 254 */
+	HCL_CODE_MAKE_LAMBDA               = 0xFE, /* 254 */
 	HCL_CODE_NOOP                     = 0xFF  /* 255 */
 };
 

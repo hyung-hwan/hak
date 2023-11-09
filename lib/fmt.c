@@ -2886,9 +2886,9 @@ static int fmt_put_bchars_to_uch_buf (hcl_fmtout_t* fmtout, const hcl_bch_t* ptr
 	ucslen = b->capa - b->len;
 	n = hcl_conv_bchars_to_uchars_with_cmgr(ptr, &bcslen, &b->ptr[b->len], &ucslen, b->hcl->_cmgr, 1);
 	b->len += ucslen;
-	if (n <= -1) 
+	if (n <= -1)
 	{
-		if (n == -2) 
+		if (n == -2)
 		{
 			return 0; /* buffer full. stop */
 		}

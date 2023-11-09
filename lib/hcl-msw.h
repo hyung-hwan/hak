@@ -25,23 +25,23 @@
  */
 
 /*
-Macro Meaning 
-_WIN64 A 64-bit platform. 
-_WIN32 A 32-bit platform.  This value is also defined by the 64-bit 
-       compiler for backward compatibility. 
-_WIN16 A 16-bit platform 
+Macro Meaning
+_WIN64 A 64-bit platform.
+_WIN32 A 32-bit platform.  This value is also defined by the 64-bit
+       compiler for backward compatibility.
+_WIN16 A 16-bit platform
 
 The following macros are specific to the architecture.
 
-Macro Meaning 
-_M_IA64 Intel Itanium Processor Family 
-_M_IX86 x86 platform 
-_M_X64 x64 platform 
+Macro Meaning
+_M_IA64 Intel Itanium Processor Family
+_M_IX86 x86 platform
+_M_X64 x64 platform
 */
 
-/* windows for most of non-x86 platforms dropped. 
+/* windows for most of non-x86 platforms dropped.
  * make it selective to support old non-x86 windows platforms. */
-#define HCL_ENDIAN_LITTLE 
+#define HCL_ENDIAN_LITTLE
 
 #if defined(__WATCOMC__)
 #	define HCL_SIZEOF_CHAR        1

@@ -71,7 +71,7 @@ static void log_char_object (hcl_t* hcl, hcl_bitmask_t mask, hcl_oop_char_t msg)
 start_over:
 	while (rem > 0)
 	{
-		if (*ptr == '\0') 
+		if (*ptr == '\0')
 		{
 			n = hcl_logbfmt (hcl, mask, "%jc", *ptr);
 			HCL_ASSERT (hcl, n == 1);
@@ -82,9 +82,9 @@ start_over:
 
 		n = hcl_logbfmt (hcl, mask, "%.*js", rem, ptr);
 		if (n <= -1) break;
-		if (n == 0) 
+		if (n == 0)
 		{
-			/* to skip the unprinted character. 
+			/* to skip the unprinted character.
 			 * actually, this check is not needed because of '\0' skipping
 			 * at the beginning  of the loop */
 			n = hcl_logbfmt (hcl, mask, "%jc", *ptr);
@@ -103,7 +103,7 @@ static hcl_pfrc_t pf_log (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 	hcl_ooi_t k;
 
 	/*level = HCL_STACK_GET(hcl, hcl->sp - nargs + 1);
-	if (!HCL_OOP_IS_SMOOI(level)) mask = HCL_LOG_APP | HCL_LOG_INFO; 
+	if (!HCL_OOP_IS_SMOOI(level)) mask = HCL_LOG_APP | HCL_LOG_INFO;
 	else mask = HCL_LOG_APP | HCL_OOP_TO_SMOOI(level);*/
 	mask = HCL_LOG_APP | HCL_LOG_FATAL; /* TODO: accept logging level .. */
 
@@ -111,7 +111,7 @@ static hcl_pfrc_t pf_log (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 	{
 		msg = HCL_STACK_GETARG (hcl, nargs, k);
 
-		if (msg == hcl->_nil || msg == hcl->_true || msg == hcl->_false) 
+		if (msg == hcl->_nil || msg == hcl->_true || msg == hcl->_false)
 		{
 			goto dump_object;
 		}
@@ -442,7 +442,7 @@ static hcl_pfrc_t pf_and (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 		{
 			/* do nothing */
 		}
-		else if (arg == hcl->_false) 
+		else if (arg == hcl->_false)
 		{
 			rv = hcl->_false;
 			break;
@@ -472,7 +472,7 @@ static hcl_pfrc_t pf_or (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 			rv = hcl->_true;
 			break;
 		}
-		else if (arg == hcl->_false) 
+		else if (arg == hcl->_false)
 		{
 			/* do nothing */
 		}
@@ -660,7 +660,7 @@ static hcl_pfrc_t pf_number_sqrt (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 static hcl_pfrc_t pf_number_abs (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
 	hcl_oop_t ret;
-	ret = hcl_absnum(hcl, HCL_STACK_GETARG(hcl, nargs, 0)); 
+	ret = hcl_absnum(hcl, HCL_STACK_GETARG(hcl, nargs, 0));
 	if (!ret) return HCL_PF_FAILURE;
 
 	HCL_STACK_SETRET (hcl, nargs, ret);
@@ -786,7 +786,7 @@ static hcl_pfrc_t pf_va_count (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 	hcl_oop_context_t ctx;
 	hcl_ooi_t attr_mask, va, fixed_nargs, nrvars, nlvars, nvaargs;
 
-	if (nargs >= 1) 
+	if (nargs >= 1)
 	{
 		ctx = (hcl_oop_context_t)HCL_STACK_GETARG(hcl, nargs, 0);
 		if (!HCL_IS_CONTEXT(hcl, ctx))
@@ -806,7 +806,7 @@ static hcl_pfrc_t pf_va_count (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 	fixed_nargs = GET_BLK_MASK_NARGS(attr_mask);
 	nrvars = GET_BLK_MASK_NRVARS(attr_mask);
 	nlvars = GET_BLK_MASK_NLVARS(attr_mask);
-	
+
 	/*if (!va) TODO: need this check?
 	{
 	}*/
@@ -822,7 +822,7 @@ static hcl_pfrc_t pf_va_get (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 	hcl_ooi_t attr_mask, va, fixed_nargs, nrvars, nlvars, nvaargs;
 	hcl_oow_t index;
 
-	if (nargs >= 2) 
+	if (nargs >= 2)
 	{
 		ctx = (hcl_oop_context_t)HCL_STACK_GETARG(hcl, nargs, 1);
 		if (!HCL_IS_CONTEXT(hcl, ctx))
@@ -842,7 +842,7 @@ static hcl_pfrc_t pf_va_get (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 	nrvars = GET_BLK_MASK_NRVARS(attr_mask);
 	nlvars = GET_BLK_MASK_NLVARS(attr_mask);
 
-	if (hcl_inttooow(hcl, HCL_STACK_GETARG(hcl, nargs, 0), &index) == 0) 
+	if (hcl_inttooow(hcl, HCL_STACK_GETARG(hcl, nargs, 0), &index) == 0)
 	{
 		return HCL_PF_FAILURE;
 	}
@@ -895,7 +895,7 @@ static pf_t builtin_prims[] =
 
 	{ 0, 0,                       pf_gc,              2,  { 'g','c' } },
 
-	{ 1, 1,                       pf_not,             3,  { 'n','o','t' } }, 
+	{ 1, 1,                       pf_not,             3,  { 'n','o','t' } },
 	/* this is a long-circuit logical and the short-curcuit 'and' is treated as a special form */
 	{ 2, HCL_TYPE_MAX(hcl_oow_t), pf_and,             4,  { '_','a','n','d' } },
 	/* this is a long-cirtuit logical or. the short-circuit 'or' is treated as a special form */
@@ -943,7 +943,7 @@ static pf_t builtin_prims[] =
 	{ 2, 2,                       pf_integer_bxor,    7,  { 'b','i','t','-','x','o','r' } },
 	{ 1, 1,                       pf_integer_bnot,    7,  { 'b','i','t','-','n','o','t' } },
 	{ 2, 2,                       pf_integer_bshift,  9,  { 'b','i','t','-','s','h','i','f','t'  } },
-	
+
 	{ 1, HCL_TYPE_MAX(hcl_oow_t), pf_integer_quo,     3,  { 'd','i','v' } },
 	{ 2, HCL_TYPE_MAX(hcl_oow_t), pf_integer_rem,     3,  { 'r','e','m' } },
 	{ 1, HCL_TYPE_MAX(hcl_oow_t), pf_integer_mquo,    4,  { 'm','d','i','v' } },
@@ -998,9 +998,9 @@ int hcl_addbuiltinprims (hcl_t* hcl)
 		hcl_popvolat (hcl);
 		if (HCL_UNLIKELY(!cons)) return -1;
 
-		/* turn on the kernel bit in the symbol associated with a primitive 
+		/* turn on the kernel bit in the symbol associated with a primitive
 		 * function. 'set' prevents this symbol from being used as a variable
-		 * name */ 
+		 * name */
 		HCL_OBJ_SET_FLAGS_KERNEL (name, 2);
 	}
 
