@@ -1,4 +1,4 @@
-; test class instantiation methods
+## test class instantiation methods
 
 (defclass A
 	| a b c |

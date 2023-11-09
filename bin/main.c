@@ -457,7 +457,7 @@ static int on_fed_cnode_in_interactive_mode (hcl_t* hcl, hcl_cnode_t* obj)
 static int on_fed_cnode_in_batch_mode (hcl_t* hcl, hcl_cnode_t* obj)
 {
 	xtn_t* xtn = (xtn_t*)hcl_getxtn(hcl);
-        return hcl_compile(hcl, obj, xtn->extra_cflags);
+	return hcl_compile(hcl, obj, xtn->extra_cflags);
 }
 
 static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)

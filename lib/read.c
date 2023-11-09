@@ -1096,7 +1096,6 @@ static int feed_process_token (hcl_t* hcl)
 		case HCL_TOK_LBRACE: /* { */
 			frd->flagv = 0;
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_BLOCK);
-hcl_logbfmt (hcl, HCL_LOG_FATAL, "XXXX [%d,%d]\n", TOKEN_LOC(hcl)->line, TOKEN_LOC(hcl)->colm);
 			goto start_list;
 
 		case HCL_TOK_DLPAREN: /* #{ */
@@ -2682,10 +2681,11 @@ int hcl_feedbchars (hcl_t* hcl, const hcl_bch_t* data, hcl_oow_t len)
 
 		if (n <= -1)
 		{
+			if (n == -2 && outlen > 0) goto ok;
+
 			if (n == -2 || n == -3)
 			{
 				hcl_oow_t rsdlen;
-
 				HCL_ASSERT (hcl, len > inlen);
 				rsdlen = len - inlen;
 				HCL_ASSERT (hcl, rsdlen <= HCL_COUNTOF(hcl->c->feed.rsd.buf));
@@ -2698,6 +2698,7 @@ int hcl_feedbchars (hcl_t* hcl, const hcl_bch_t* data, hcl_oow_t len)
 			return -1;
 		}
 
+	ok:
 		inpos += inlen;
 		len -= inlen;
 	}

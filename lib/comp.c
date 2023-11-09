@@ -1903,27 +1903,14 @@ inside_loop:
 
 /* ========================================================================= */
 
-static int compile_do (hcl_t* hcl, hcl_cnode_t* src)
+static int compile_do_list (hcl_t* hcl, hcl_cnode_t* src, hcl_cnode_t* obj)
 {
-	hcl_cnode_t* cmd, * obj, * tmp;
+	hcl_cnode_t* cmd, * tmp;
 	hcl_oow_t nlvars, tvslen;
 	hcl_fnblk_info_t* fbi;
 	hcl_cframe_t* cf;
 
-
-	/* (do
-	 *   (+ 10 20)
-	 *   (* 2 30)
-	 *  ...
-	 * )
-	 * you can use this to combine multiple expressions to a single expression
-	 */
-
-	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
-	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_DO));
-
-	cmd = HCL_CNODE_CONS_CAR(src); /* do itself */
-	obj = HCL_CNODE_CONS_CDR(src); /* expression list after it */
+	//obj = HCL_CNODE_CONS_CDR(src); /* expression list after it */
 
 	if (!obj)
 	{
@@ -1960,6 +1947,69 @@ static int compile_do (hcl_t* hcl, hcl_cnode_t* src)
 	cf->u.post_do.lvar_end = fbi->tmprlen;
 
 	return 0;
+}
+
+static int compile_do (hcl_t* hcl, hcl_cnode_t* src)
+{
+	hcl_cnode_t* cmd, * obj, * tmp;
+	hcl_oow_t nlvars, tvslen;
+	hcl_fnblk_info_t* fbi;
+	hcl_cframe_t* cf;
+
+
+	/* (do
+	 *   (+ 10 20)
+	 *   (* 2 30)
+	 *  ...
+	 * )
+	 * you can use this to combine multiple expressions to a single expression
+	 */
+
+	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
+	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_DO));
+
+	cmd = HCL_CNODE_CONS_CAR(src); /* do itself */
+	obj = HCL_CNODE_CONS_CDR(src); /* expression list after it */
+
+#if 0
+	if (!obj)
+	{
+		/* no value */
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGCOUNT, HCL_CNODE_GET_LOC(src), HCL_NULL, "no expression specified in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		return -1;
+	}
+	else if (!HCL_CNODE_IS_CONS(obj))
+	{
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(obj), HCL_CNODE_GET_TOK(obj), "redundant cdr in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		return -1;
+	}
+
+	tmp = obj;
+	tvslen = hcl->c->tv.s.len;
+	if (collect_vardcls(hcl, obj, &obj, tvslen, &nlvars, "do") <= -1) return -1;
+
+	if (nlvars > MAX_CODE_NBLKLVARS)
+	{
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARFLOOD, HCL_CNODE_GET_LOC(tmp), HCL_NULL, "too many(%zu) variables in %.*js", nlvars, HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		return -1;
+	}
+
+	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
+	fbi->tmprlen = hcl->c->tv.s.len;
+	fbi->tmprcnt = hcl->c->tv.wcount;
+	fbi->tmpr_nlvars = fbi->tmpr_nlvars + nlvars;
+
+	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_LIST, obj);  /* 1 */
+
+	PUSH_SUBCFRAME (hcl, COP_COMPILE_DO_P1, src); /* 2 */
+	cf = GET_SUBCFRAME(hcl);
+	cf->u.post_do.lvar_start = tvslen;
+	cf->u.post_do.lvar_end = fbi->tmprlen;
+
+	return 0;
+#else
+	return compile_do_list(hcl, src, obj);
+#endif
 }
 
 static int compile_do_p1 (hcl_t* hcl)
@@ -2701,36 +2751,42 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 	}
 	HCL_ASSERT (hcl, nargs + nrvars == hcl->c->tv.wcount - saved_tv_wcount);
 
-	obj = HCL_CNODE_CONS_CDR(obj);
-
 	if (hcl->c->flags & HCL_COMPILE_ENABLE_BLOCK)
 	{
-		hcl_cnode_t* bdy;
+		hcl_cnode_t* blk, * bdy, * trl;
 
-		if (!obj || !HCL_CNODE_IS_CONS(obj))
+		blk = HCL_CNODE_CONS_CDR(obj);
+		if (!blk || !HCL_CNODE_IS_CONS(blk))
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BLOCK, HCL_CNODE_GET_LOC(args), HCL_NULL, "block expression expected as body in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+			hcl_setsynerrbfmt (
+				hcl, HCL_SYNERR_BLOCK, (blk? HCL_CNODE_GET_LOC(blk): HCL_CNODE_GET_LOC(obj)), HCL_NULL,
+				"block expression expected as body in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 			return -1;
 		}
 
-		bdy = HCL_CNODE_CONS_CAR(obj);
-		if (!bdy || !HCL_CNODE_IS_CONS_CONCODED(bdy, HCL_CONCODE_BLOCK))
+		bdy = HCL_CNODE_CONS_CAR(blk); /* {} must be the last item */
+		trl = HCL_CNODE_CONS_CDR(blk); /* something after {} */
+
+		if (!bdy || (!HCL_CNODE_IS_CONS_CONCODED(bdy, HCL_CONCODE_BLOCK) && !HCL_CNODE_IS_ELIST_CONCODED(bdy, HCL_CONCODE_BLOCK)))
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BLOCK, HCL_CNODE_GET_LOC(obj), HCL_NULL, "block expression expected as body in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+			hcl_setsynerrbfmt (
+				hcl, HCL_SYNERR_BLOCK, (bdy? HCL_CNODE_GET_LOC(bdy): HCL_CNODE_GET_LOC(obj)), HCL_NULL,
+				"block expression expected as body in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 			return -1;
 		}
 
-		if (HCL_CNODE_CONS_CDR(bdy))
+		if (trl)
 		{
-			/* TODO: change error code */
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(obj), HCL_NULL, "redundant code prohibited after body in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(trl), HCL_NULL, "redundant code prohibited after body in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 			return -1;
 		}
 
+		obj = HCL_CNODE_IS_ELIST(bdy)? HCL_NULL: bdy;
 		nlvars = 0; /* no known local variables until the actual block is processed */
 	}
 	else
 	{
+		obj = HCL_CNODE_CONS_CDR(obj);
 		tv_dup_start = hcl->c->tv.s.len;
 		if (collect_vardcls(hcl, obj, &obj, tv_dup_start, &nlvars, "local") <= -1) return -1;
 
@@ -3821,8 +3877,9 @@ static int compile_cons_mlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 	return 0;
 }
 
-static int compile_cons_block_expression (hcl_t* hcl, hcl_cnode_t* obj, int nrets)
+static int compile_cons_block_expression (hcl_t* hcl, hcl_cnode_t* obj)
 {
+	return compile_do_list(hcl, obj, obj);
 }
 
 static HCL_INLINE int compile_symbol (hcl_t* hcl, hcl_cnode_t* obj)
@@ -4151,7 +4208,7 @@ redo:
 						hcl_setsynerrbfmt (hcl, HCL_SYNERR_BLOCKBANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "block expression disallowed");
 						return -1;
 					}
-					if (compile_cons_block_expression(hcl, oprnd, 0) <= -1) return -1;
+					if (compile_cons_block_expression(hcl, oprnd) <= -1) return -1;
 					break;
 
 				case HCL_CONCODE_ARRAY:
