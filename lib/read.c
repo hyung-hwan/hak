@@ -79,21 +79,23 @@ enum voca_id_t
 };
 typedef enum voca_id_t voca_id_t;
 
-
 enum list_flag_t
 {
-	QUOTED      = (1 << 0),
-	DOTTED      = (1 << 1),
-	COMMAED     = (1 << 2),
-	COLONED     = (1 << 3),
-	CLOSED      = (1 << 4),
-	JSON        = (1 << 5),
-	DATA_LIST   = (1 << 6),
-	AUTO_FORGED = (1 << 7)  /* automatically added. only applicable to XLIST */
+	QUOTED       = (1 << 0),
+	DOTTED       = (1 << 1),
+	COMMAED      = (1 << 2),
+	COLONED      = (1 << 3),
+	CLOSED       = (1 << 4),
+	JSON         = (1 << 5),
+	DATA_LIST    = (1 << 6),
+	AUTO_FORGED  = (1 << 7),  /* automatically added list. only applicable to XLIST */
+	AT_BEGINNING = (1 << 8)
+	/* TOTOAL 12 items are allowed for LIST_FLAG_GET_CONCODE and LIST_FLAG_SET_CONCODE().
+	 * they reserve lower 12 bits as flag bits.*/
 };
 
-#define LIST_FLAG_GET_CONCODE(x) (((x) >> 8) & 0xFF)
-#define LIST_FLAG_SET_CONCODE(x,type) ((x) = ((x) & ~0xFF00) | ((type) << 8))
+#define LIST_FLAG_GET_CONCODE(x) (((x) >> 12) & 0x0FFF)
+#define LIST_FLAG_SET_CONCODE(x,type) ((x) = ((x) & ~0xFF000) | ((type) << 12))
 
 static int init_compiler (hcl_t* hcl);
 
@@ -670,13 +672,6 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, int* flagv, int* oldflagv
 	return hcl_makecnodeelist(hcl, &loc, concode);
 }
 
-static HCL_INLINE int is_at_block_beginning (hcl_t* hcl)
-{
-	hcl_rstl_t* rstl;
-	rstl = hcl->c->r.st;
-	return !rstl || LIST_FLAG_GET_CONCODE(rstl->flagv) == HCL_CONCODE_BLOCK && rstl->count <= 0;
-}
-
 static HCL_INLINE int can_dot_list (hcl_t* hcl)
 {
 	hcl_rstl_t* rstl;
@@ -992,6 +987,13 @@ static void feed_clean_up_reader_stack (hcl_t* hcl)
 	}
 }
 
+static HCL_INLINE int is_at_block_beginning (hcl_t* hcl)
+{
+	hcl_rstl_t* rstl;
+	rstl = hcl->c->r.st;
+	return !rstl || (LIST_FLAG_GET_CONCODE(rstl->flagv) == HCL_CONCODE_BLOCK && (hcl->c->feed.rd.flagv & AT_BEGINNING));
+}
+
 static int feed_process_token (hcl_t* hcl)
 {
 	hcl_frd_t* frd = &hcl->c->feed.rd;
@@ -1057,6 +1059,7 @@ static int feed_process_token (hcl_t* hcl)
 				frd->expect_vlist_item = 0;
 				frd->obj = leave_list(hcl, &frd->flagv, &oldflagv);
 				frd->level--;
+				frd->flagv |= AT_BEGINNING;
 				break;
 			}
 			else
@@ -1128,6 +1131,7 @@ static int feed_process_token (hcl_t* hcl)
 			 * a list literal or an array literal */
 			if (enter_list(hcl, TOKEN_LOC(hcl), frd->flagv) <= -1) goto oops;
 			frd->level++;
+			frd->flagv |= AT_BEGINNING; /* indicate that the reader is now at the beginning of a list */
 
 			/* read the next token */
 			goto ok;
@@ -1167,33 +1171,26 @@ static int feed_process_token (hcl_t* hcl)
 		{
 			int oldflagv;
 			int concode;
+			hcl_rstl_t* rstl;
 
-			if (frd->level <= 0)
+			/* the parent list must be inspected instead of the current feed/read status pointed to by frd. */
+			rstl = hcl->c->r.st;
+			if (!rstl || !(rstl->flagv & AUTO_FORGED))
 			{
-				/* redundant semicolons */
-				/* TOD: change  error info or code */
-				hcl_setsynerr (hcl, HCL_SYNERR_SEMICOLON, TOKEN_LOC(hcl), HCL_NULL);
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_SEMICOLON, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "unexpected semicolon");
 				goto oops;
 			}
 
-			if (!(frd->flagv & AUTO_FORGED))
+			concode = LIST_FLAG_GET_CONCODE(rstl->flagv);
+			if (concode != HCL_CONCODE_XLIST)  /* TODO: handle MLIST as weel if the other part is implemented */
 			{
-				/* TODO: change error info or code */
-				hcl_setsynerr (hcl, HCL_SYNERR_SEMICOLON, TOKEN_LOC(hcl), HCL_NULL);
-				goto oops;
-			}
-
-			concode = LIST_FLAG_GET_CONCODE(frd->flagv);
-			if (concode != HCL_CONCODE_XLIST)
-			{
-				/* TODO: change error info */
 				hcl_setsynerr (hcl, HCL_SYNERR_UNBALPBB, TOKEN_LOC(hcl), HCL_NULL);
 				goto oops;
 			}
-hcl_logbfmt(hcl, HCL_LOG_FATAL, "forged xlist...exiting..OK\n");
 
 			frd->obj = leave_list(hcl, &frd->flagv, &oldflagv);
 			frd->level--;
+			frd->flagv |= AT_BEGINNING; /* the current one is over. move on the beginning for the next expression */
 			break;
 		}
 
@@ -1226,7 +1223,6 @@ hcl_logbfmt(hcl, HCL_LOG_FATAL, "forged xlist...exiting..OK\n");
 			}
 
 			concode = LIST_FLAG_GET_CONCODE(frd->flagv);
-
 			if (concode == HCL_CONCODE_XLIST && (frd->flagv & AUTO_FORGED))
 			{
 				/* the auto-created xlist can't be terminated with the regular closing symbol
@@ -1267,6 +1263,7 @@ hcl_logbfmt(hcl, HCL_LOG_FATAL, "forged xlist...exiting..OK\n");
 #endif
 			frd->obj = leave_list(hcl, &frd->flagv, &oldflagv);
 			frd->level--;
+			frd->flagv |= AT_BEGINNING;
 			break;
 		}
 
@@ -1381,25 +1378,24 @@ hcl_logbfmt(hcl, HCL_LOG_FATAL, "forged xlist...exiting..OK\n");
 			goto auto_xlist;
 
 		auto_xlist:
-			if (is_at_block_beginning(hcl))  /* TODO: make this optional */
+			if (is_at_block_beginning(hcl))
 			{
-				hcl_oop_t obj = frd->obj;
+				int forged_flagv;
 
-hcl_logbfmt(hcl, HCL_LOG_FATAL, "QQQQQQQQQQQQ forged xlist...\n");
-				frd->flagv = AUTO_FORGED;
-				LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_XLIST);
+				forged_flagv = AUTO_FORGED;
+				LIST_FLAG_SET_CONCODE (forged_flagv, HCL_CONCODE_XLIST); /* TODO: how can i have MLIST? */
 
-				/* this portion is te same as the code below the start_list label above */
+				/* this portion is similar to the code below the start_list label */
 				if (frd->level >= HCL_TYPE_MAX(int)) /* the nesting level too deep */
 				{
 					hcl_setsynerr (hcl, HCL_SYNERR_NESTING, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 					goto oops;
 				}
-				if (enter_list(hcl, TOKEN_LOC(hcl), frd->flagv) <= -1) goto oops;
-				frd->level++;
 
-				frd = &hcl->c->feed.rd;
-				frd->obj = obj;
+				/* since the actual list opener doesn't exist, the location of the first element wil be the location of the list */
+				if (enter_list(hcl, TOKEN_LOC(hcl), forged_flagv) <= -1) goto oops;
+				frd->level++; /* level after the forged list has been added */
+				frd->flagv &= ~AT_BEGINNING;  /* already got the first item. so not at the beginning */
 			}
 			break;
 	}
