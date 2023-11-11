@@ -1,5 +1,5 @@
 ((lambda ()
-	; test return variables
+	## test return variables
 
 	| v1 v2 v3 i a b c d |
 
@@ -18,7 +18,7 @@
 	(if (/= v3 1099) (printf "ERROR: v3 must be 1099\n"))
 	(printf "OK v1=%d v2=%d v3=%d\n" v1 v2 v3)
 
-	(set-r v1 v2 (ff 1 2)) ; using 2 return variables only. not assigning to v3
+	(set-r v1 v2 (ff 1 2)) ## using 2 return variables only. not assigning to v3
 	(if (/= v1 1003) (printf "ERROR: v1 must be 1003\n"))
 	(if (/= v2 2006) (printf "ERROR: v2 must be 2006\n"))
 	(if (/= v3 1099) (printf "ERROR: v3 must be 1099\n"))
@@ -27,7 +27,7 @@
 
 
 
-	; test return variables in message sends
+	## test return variables in message sends
 	(defclass B
 		::: | X1 X2 |
 
