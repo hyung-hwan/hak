@@ -90,6 +90,7 @@ enum list_flag_t
 	DATA_LIST    = (1 << 6),
 	AUTO_FORGED  = (1 << 7),  /* automatically added list. only applicable to XLIST */
 	AT_BEGINNING = (1 << 8)
+
 	/* TOTOAL 12 items are allowed for LIST_FLAG_GET_CONCODE and LIST_FLAG_SET_CONCODE().
 	 * they reserve lower 12 bits as flag bits.*/
 };
@@ -1395,7 +1396,10 @@ static int feed_process_token (hcl_t* hcl)
 				/* since the actual list opener doesn't exist, the location of the first element wil be the location of the list */
 				if (enter_list(hcl, TOKEN_LOC(hcl), forged_flagv) <= -1) goto oops;
 				frd->level++; /* level after the forged list has been added */
-				frd->flagv &= ~AT_BEGINNING;  /* already got the first item. so not at the beginning */
+				/* a new list has been created automatically. unlike normal list creation by an explicit symbol
+				 * such as a left parenthesis, a left brace, etc, the first element opens up this new list.
+				 * so the AT_BEGINNING bit is turned off here */
+				frd->flagv &= ~AT_BEGINNING;
 			}
 			break;
 	}
