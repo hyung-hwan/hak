@@ -1232,14 +1232,14 @@ static HCL_INLINE void pop_cframe (hcl_t* hcl)
 		hcl_cframe_t* _cf = GET_TOP_CFRAME(hcl); \
 		_cf->opcode = _opcode; \
 		_cf->operand = _operand; \
-	} while (0);
+	} while(0)
 
 #define SWITCH_CFRAME(hcl,_index,_opcode,_operand) \
 	do { \
 		hcl_cframe_t* _cf = GET_CFRAME(hcl,_index); \
 		_cf->opcode = _opcode; \
 		_cf->operand = _operand; \
-	} while (0);
+	} while(0)
 
 static int push_subcframe (hcl_t* hcl, int opcode, hcl_cnode_t* operand)
 {
@@ -1903,41 +1903,58 @@ inside_loop:
 
 /* ========================================================================= */
 
-static int compile_do_list (hcl_t* hcl, hcl_cnode_t* src, hcl_cnode_t* obj)
+static int compile_expression_block (hcl_t* hcl, hcl_cnode_t* src, const hcl_bch_t* ctxname, int is_block)
 {
-	hcl_cnode_t* cmd, * tmp;
+	hcl_cnode_t* cmd, * obj, * tmp;
 	hcl_oow_t nlvars, tvslen;
 	hcl_fnblk_info_t* fbi;
 	hcl_cframe_t* cf;
 
-	//obj = HCL_CNODE_CONS_CDR(src); /* expression list after it */
-
-	if (!obj)
+	if (is_block)
 	{
-		/* no value */
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGCOUNT, HCL_CNODE_GET_LOC(src), HCL_NULL, "no expression specified in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
-		return -1;
+		HCL_ASSERT (hcl, HCL_CNODE_IS_CONS_CONCODED(src, HCL_CONCODE_BLOCK) || HCL_CNODE_IS_ELIST_CONCODED(src, HCL_CONCODE_BLOCK));
+		cmd = src; /* it's the cons cell itself  */
+		/* `obj` must point to the cons cell pointing to the braced expression list */
+		obj = HCL_CNODE_IS_ELIST(src)? HCL_NULL: src;
+		/* no check for redundant cdr because {} cannot be dotted */
 	}
-	else if (!HCL_CNODE_IS_CONS(obj))
+	else
 	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(obj), HCL_CNODE_GET_TOK(obj), "redundant cdr in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
-		return -1;
+		cmd = HCL_CNODE_CONS_CAR(src); /* `do` itself */
+		/* `obj` must point to the expression list after `do` */
+		obj = HCL_CNODE_CONS_CDR(src); /* expression list after it */
+		if (obj && !HCL_CNODE_IS_CONS(obj))
+		{
+			hcl_setsynerrbfmt (
+				hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(obj), HCL_CNODE_GET_TOK(obj),
+				"redundant cdr in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+			return -1;
+		}
 	}
 
-	tmp = obj;
 	tvslen = hcl->c->tv.s.len;
-	if (collect_vardcls(hcl, obj, &obj, tvslen, &nlvars, "do") <= -1) return -1;
-
-	if (nlvars > MAX_CODE_NBLKLVARS)
+	nlvars = 0;
+	if (obj)
 	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARFLOOD, HCL_CNODE_GET_LOC(tmp), HCL_NULL, "too many(%zu) variables in %.*js", nlvars, HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
-		return -1;
+		hcl_cnode_t* tmp = obj;
+		if (collect_vardcls(hcl, obj, &obj, tvslen, &nlvars, ctxname) <= -1) return -1;
+		if (nlvars > MAX_CODE_NBLKLVARS)
+		{
+			hcl_setsynerrbfmt (
+				hcl, HCL_SYNERR_VARFLOOD, HCL_CNODE_GET_LOC(tmp), HCL_NULL,
+				"too many(%zu) variables in %.*js", nlvars, HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+			return -1;
+		}
 	}
 
 	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
 	fbi->tmprlen = hcl->c->tv.s.len;
 	fbi->tmprcnt = hcl->c->tv.wcount;
 	fbi->tmpr_nlvars = fbi->tmpr_nlvars + nlvars;
+
+	/* for an expression like `(do   )` or `(do | a b |  ) , `obj` will point to HCL_NULL.
+	 * let `obj` point to the internal cnode to convert the expression like `(do #nil)` or `(do |a b| #nil)`. */
+	if (!obj) obj = &hcl->c->fake_cnode.cons_to_nil;
 
 	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_LIST, obj);  /* 1 */
 
@@ -2008,7 +2025,7 @@ static int compile_do (hcl_t* hcl, hcl_cnode_t* src)
 
 	return 0;
 #else
-	return compile_do_list(hcl, src, obj);
+	return compile_expression_block(hcl, src, "do", 0);
 #endif
 }
 
@@ -2764,7 +2781,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 			return -1;
 		}
 
-		bdy = HCL_CNODE_CONS_CAR(blk); /* {} must be the last item */
+		bdy = HCL_CNODE_CONS_CAR(blk); /* {} must be the last item. bdy is the expression inside */
 		trl = HCL_CNODE_CONS_CDR(blk); /* something after {} */
 
 		if (!bdy || (!HCL_CNODE_IS_CONS_CONCODED(bdy, HCL_CONCODE_BLOCK) && !HCL_CNODE_IS_ELIST_CONCODED(bdy, HCL_CONCODE_BLOCK)))
@@ -2781,7 +2798,13 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 			return -1;
 		}
 
-		obj = HCL_CNODE_IS_ELIST(bdy)? HCL_NULL: bdy;
+hcl_logbfmt(hcl, HCL_LOG_FATAL, "bdy[%d.%d] blk[%d.%d] obj[%d.%d]\n",
+	HCL_CNODE_GET_LOC(bdy)->line, HCL_CNODE_GET_LOC(bdy)->colm,
+	HCL_CNODE_GET_LOC(blk)->line, HCL_CNODE_GET_LOC(blk)->colm,
+	HCL_CNODE_GET_LOC(obj)->line, HCL_CNODE_GET_LOC(obj)->colm);
+
+		//obj = HCL_CNODE_IS_ELIST(bdy)? HCL_NULL: blk /* bdy */;
+		obj = blk;
 		nlvars = 0; /* no known local variables until the actual block is processed */
 	}
 	else
@@ -3879,7 +3902,7 @@ static int compile_cons_mlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 
 static int compile_cons_block_expression (hcl_t* hcl, hcl_cnode_t* obj)
 {
-	return compile_do_list(hcl, obj, obj);
+	return compile_expression_block(hcl, obj, "block", 1);
 }
 
 static HCL_INLINE int compile_symbol (hcl_t* hcl, hcl_cnode_t* obj)
@@ -4253,9 +4276,13 @@ redo:
 					return -1;
 
 				case HCL_CONCODE_BLOCK:
-					/* TODO: may have to allow it..  */
-					hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "empty block list");
-					return -1;
+					if (!(hcl->c->flags & HCL_COMPILE_ENABLE_BLOCK))
+					{
+						hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "empty block expression");
+						return -1;
+					}
+					if (compile_cons_block_expression(hcl, oprnd) <= -1) return -1;
+					break;
 
 				case HCL_CONCODE_ARRAY:
 					if (emit_single_param_instruction(hcl, HCL_CODE_MAKE_ARRAY, 0, HCL_CNODE_GET_LOC(oprnd)) <= -1) return -1;
@@ -4438,8 +4465,8 @@ static int compile_object_list (hcl_t* hcl)
 			 * except the last.
 			 */
 			int nextcop;
-			nextcop = (cop == COP_COMPILE_OBJECT_LIST)?    COP_COMPILE_OBJECT_LIST_TAIL:
-			          (cop == COP_COMPILE_IF_OBJECT_LIST)? COP_COMPILE_IF_OBJECT_LIST_TAIL:
+			nextcop = (cop == COP_COMPILE_OBJECT_LIST)?     COP_COMPILE_OBJECT_LIST_TAIL:
+			          (cop == COP_COMPILE_IF_OBJECT_LIST)?  COP_COMPILE_IF_OBJECT_LIST_TAIL:
 			          (cop == COP_COMPILE_TRY_OBJECT_LIST)? COP_COMPILE_TRY_OBJECT_LIST_TAIL: cop;
 			PUSH_SUBCFRAME (hcl, nextcop, cdr);
 		}

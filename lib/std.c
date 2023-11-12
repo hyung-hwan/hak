@@ -24,6 +24,10 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#if !defined(_GNU_SOURCE)
+#	define _GNU_SOURCE
+#endif
+
 #include "hcl-prv.h"
 #include <hcl-utl.h>
 
@@ -128,10 +132,6 @@
 #	include <TextUtils.h>
 
 #else
-
-#	if !defined(_GNU_SOURCE)
-#		define _GNU_SOURCE
-#	endif
 
 #	include <sys/types.h>
 #	include <unistd.h>

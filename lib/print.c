@@ -784,3 +784,55 @@ int hcl_print (hcl_t* hcl, hcl_oop_t obj)
 	/*return hcl_outfmtobj(hcl, HCL_LOG_APP | HCL_LOG_FATAL, obj);*/
 	return hcl_prbfmt(hcl, "%O", obj);
 }
+
+void hcl_dumpcnode (hcl_t* hcl, hcl_cnode_t* cnode, int newline)
+{
+	int t;
+
+	/* TODO: this is incomplete function. make it complete */
+	if (cnode)
+	{
+		t = HCL_CNODE_GET_TYPE(cnode);
+		switch (t)
+		{
+			case HCL_CNODE_CHARLIT:
+			case HCL_CNODE_SYMBOL:
+			case HCL_CNODE_DSYMBOL:
+			case HCL_CNODE_STRLIT:
+			case HCL_CNODE_NUMLIT:
+			case HCL_CNODE_RADNUMLIT:
+			case HCL_CNODE_FPDECLIT:
+			case HCL_CNODE_SMPTRLIT:
+			case HCL_CNODE_ERRLIT:
+			case HCL_CNODE_NIL:
+			case HCL_CNODE_TRUE:
+			case HCL_CNODE_FALSE:
+			case HCL_CNODE_SELF:
+			case HCL_CNODE_SUPER:
+			case HCL_CNODE_ELLIPSIS:
+			case HCL_CNODE_TRPCOLONS:
+			case HCL_CNODE_DCSTAR:
+				hcl_logbfmt (hcl, HCL_LOG_FATAL, " %.*js ", HCL_CNODE_GET_TOKLEN(cnode), HCL_CNODE_GET_TOKPTR(cnode));
+				break;
+
+			case HCL_CNODE_CONS:
+				hcl_logbfmt (hcl, HCL_LOG_FATAL, " (");
+				hcl_dumpcnode (hcl, HCL_CNODE_CONS_CAR(cnode), 0);
+				hcl_dumpcnode (hcl, HCL_CNODE_CONS_CDR(cnode),0);
+				hcl_logbfmt (hcl, HCL_LOG_FATAL, ") ");
+				break;
+
+			case HCL_CNODE_ELIST:
+				hcl_logbfmt (hcl, HCL_LOG_FATAL, " () ", HCL_CNODE_GET_TOKLEN(cnode), HCL_CNODE_GET_TOKPTR(cnode));
+				break;
+
+			case HCL_CNODE_SHELL:
+				hcl_logbfmt (hcl, HCL_LOG_FATAL, " () ", HCL_CNODE_GET_TOKLEN(cnode), HCL_CNODE_GET_TOKPTR(cnode));
+				break;
+		}
+	}
+
+	if  (newline) hcl_logbfmt (hcl, HCL_LOG_FATAL, "\n");
+}
+
+

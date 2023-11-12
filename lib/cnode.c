@@ -94,7 +94,7 @@ hcl_cnode_t* hcl_makecnodedcstar (hcl_t* hcl, const hcl_loc_t* loc, const  hcl_o
 
 hcl_cnode_t* hcl_makecnodecharlit (hcl_t* hcl, const hcl_loc_t* loc, const  hcl_oocs_t* tok, const hcl_ooch_t v)
 {
-	hcl_cnode_t* c =  make_cnode(hcl, HCL_CNODE_CHARLIT, loc, tok);
+	hcl_cnode_t* c = make_cnode(hcl, HCL_CNODE_CHARLIT, loc, tok);
 	if (HCL_UNLIKELY(!c)) return HCL_NULL;
 	c->u.charlit.v = v;
 	return c;
@@ -102,7 +102,7 @@ hcl_cnode_t* hcl_makecnodecharlit (hcl_t* hcl, const hcl_loc_t* loc, const  hcl_
 
 hcl_cnode_t* hcl_makecnodesymbol (hcl_t* hcl, const hcl_loc_t* loc, const  hcl_oocs_t* tok)
 {
-	hcl_cnode_t* c =  make_cnode(hcl, HCL_CNODE_SYMBOL, loc, tok);
+	hcl_cnode_t* c = make_cnode(hcl, HCL_CNODE_SYMBOL, loc, tok);
 	if (HCL_UNLIKELY(!c)) return HCL_NULL;
 	c->u.symbol.syncode = hcl_getsyncodebyoocs_noseterr(hcl, tok);
 	return c;
@@ -135,7 +135,7 @@ hcl_cnode_t* hcl_makecnodefpdeclit (hcl_t* hcl, const hcl_loc_t* loc, const hcl_
 
 hcl_cnode_t* hcl_makecnodesmptrlit (hcl_t* hcl, const hcl_loc_t* loc, const hcl_oocs_t* tok, hcl_oow_t v)
 {
-	hcl_cnode_t* c =  make_cnode(hcl, HCL_CNODE_SMPTRLIT, loc, tok);
+	hcl_cnode_t* c = make_cnode(hcl, HCL_CNODE_SMPTRLIT, loc, tok);
 	if (HCL_UNLIKELY(!c)) return HCL_NULL;
 	c->u.smptrlit.v = v;
 	return c;
@@ -143,15 +143,15 @@ hcl_cnode_t* hcl_makecnodesmptrlit (hcl_t* hcl, const hcl_loc_t* loc, const hcl_
 
 hcl_cnode_t* hcl_makecnodeerrlit (hcl_t* hcl, const hcl_loc_t* loc, const hcl_oocs_t* tok, hcl_ooi_t v)
 {
-	hcl_cnode_t* c =  make_cnode(hcl, HCL_CNODE_ERRLIT, loc, tok);
+	hcl_cnode_t* c = make_cnode(hcl, HCL_CNODE_ERRLIT, loc, tok);
 	if (HCL_UNLIKELY(!c)) return HCL_NULL;
 	c->u.errlit.v = v;
 	return c;
 }
 
-hcl_cnode_t* hcl_makecnodecons (hcl_t* hcl, const hcl_loc_t* loc, hcl_cnode_t* car, hcl_cnode_t* cdr)
+hcl_cnode_t* hcl_makecnodecons (hcl_t* hcl, const hcl_loc_t* loc, const hcl_oocs_t* tok, hcl_cnode_t* car, hcl_cnode_t* cdr)
 {
-	hcl_cnode_t* c =  make_cnode(hcl, HCL_CNODE_CONS, loc, HCL_NULL);
+	hcl_cnode_t* c = make_cnode(hcl, HCL_CNODE_CONS, loc, tok);
 	if (HCL_UNLIKELY(!c)) return HCL_NULL;
 	c->u.cons.car = car;
 	c->u.cons.cdr = cdr;
@@ -160,7 +160,7 @@ hcl_cnode_t* hcl_makecnodecons (hcl_t* hcl, const hcl_loc_t* loc, hcl_cnode_t* c
 
 hcl_cnode_t* hcl_makecnodeelist (hcl_t* hcl, const hcl_loc_t* loc, hcl_concode_t type)
 {
-	hcl_cnode_t* c =  make_cnode(hcl, HCL_CNODE_ELIST, loc, HCL_NULL);
+	hcl_cnode_t* c = make_cnode(hcl, HCL_CNODE_ELIST, loc, HCL_NULL);
 	if (HCL_UNLIKELY(!c)) return HCL_NULL;
 	c->u.elist.concode = type;
 	return c;
@@ -168,7 +168,7 @@ hcl_cnode_t* hcl_makecnodeelist (hcl_t* hcl, const hcl_loc_t* loc, hcl_concode_t
 
 hcl_cnode_t* hcl_makecnodeshell (hcl_t* hcl, const hcl_loc_t* loc, hcl_cnode_t* obj)
 {
-	hcl_cnode_t* c =  make_cnode(hcl, HCL_CNODE_SHELL, loc, HCL_NULL);
+	hcl_cnode_t* c = make_cnode(hcl, HCL_CNODE_SHELL, loc, HCL_NULL);
 	if (HCL_UNLIKELY(!c)) return HCL_NULL;
 	c->u.shell.obj = obj;
 	return c;

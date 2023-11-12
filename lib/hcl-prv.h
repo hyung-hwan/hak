@@ -637,6 +637,7 @@ struct hcl_frd_t
 	int expect_vlist_item;
 	int do_include_file;
 	hcl_cnode_t* obj;
+	hcl_loc_t list_loc;
 };
 
 struct hcl_compiler_t
@@ -756,6 +757,13 @@ struct hcl_compiler_t
 		hcl_clsblk_info_t* info;
 		hcl_oow_t info_capa;
 	} clsblk; /* class block */
+
+
+	struct
+	{
+		hcl_cnode_t cons_to_nil;
+		hcl_cnode_t nil;
+	} fake_cnode;
 };
 #endif
 
@@ -1715,11 +1723,12 @@ hcl_cnode_t* hcl_makecnoderadnumlit (hcl_t* hcl, const hcl_loc_t* loc, const  hc
 hcl_cnode_t* hcl_makecnodefpdeclit (hcl_t* hcl, const hcl_loc_t* loc, const  hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodesmptrlit (hcl_t* hcl, const hcl_loc_t* loc, const  hcl_oocs_t* tok, hcl_oow_t v);
 hcl_cnode_t* hcl_makecnodeerrlit (hcl_t* hcl, const hcl_loc_t* loc, const  hcl_oocs_t* tok, hcl_ooi_t v);
-hcl_cnode_t* hcl_makecnodecons (hcl_t* hcl, const hcl_loc_t* loc, hcl_cnode_t* car, hcl_cnode_t* cdr);
+hcl_cnode_t* hcl_makecnodecons (hcl_t* hcl, const hcl_loc_t* loc, const hcl_oocs_t* tok, hcl_cnode_t* car, hcl_cnode_t* cdr);
 hcl_cnode_t* hcl_makecnodeelist (hcl_t* hcl, const hcl_loc_t* loc, hcl_concode_t type);
 hcl_cnode_t* hcl_makecnodeshell (hcl_t* hcl, const hcl_loc_t* loc, hcl_cnode_t* obj);
 void hcl_freesinglecnode (hcl_t* hcl, hcl_cnode_t* c);
 hcl_oow_t hcl_countcnodecons (hcl_t* hcl, hcl_cnode_t* cons);
+void hcl_dumpcnode (hcl_t* hcl,  hcl_cnode_t* c, int newline);
 
 
 /* ========================================================================= */

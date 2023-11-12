@@ -44,6 +44,7 @@ static struct voca_t
 {
 	{  8, { '#','i','n','c','l','u','d','e'                               } },
 	{  7, { '#','p','r','a','g','m','a'                                   } },
+
 	{ 11, { '#','\\','b','a','c','k','s','p','a','c','e'                  } },
 	{ 10, { '#','\\','l','i','n','e','f','e','e','d'                      } },
 	{  9, { '#','\\','n','e','w','l','i','n','e'                          } },
@@ -54,6 +55,22 @@ static struct voca_t
 	{  7, { '#','\\','s','p','a','c','e'                                  } },
 	{  5, { '#','\\','t','a','b'                                          } },
 	{  6, { '#','\\','v','t','a','b'                                      } },
+
+	{  4, { 'n','u','l','l'                                               } },
+	{  4, { 't','r','u','e'                                               } },
+	{  5, { 'f','a','l','s','e'                                           } },
+	{  4, { 's','e','l','f'                                               } },
+	{  5, { 's','u','p','e','r'                                           } },
+
+	{  3, { '(',' ',')'                                                   } },
+	{  4, { '(',':',' ',')'                                               } },
+	{  3, { '{',' ','}'                                                   } },
+	{  3, { '[',' ',']'                                                   } },
+	{  4, { '#','[',' ',']'                                               } },
+	{  4, { '#','{',' ','}'                                               } },
+	{  4, { '#','(',' ',')'                                               } },
+	{  3, { '|',' ','|'                                                   } },
+
 	{  5, { '<','E','O','L','>'                                           } },
 	{  5, { '<','E','O','F','>'                                           } }
 };
@@ -63,16 +80,31 @@ enum voca_id_t
 	VOCA_INCLUDE,
 	VOCA_PRAGMA,
 
-	VOCA_BACKSPACE,
-	VOCA_LINEFEED,
-	VOCA_NEWLINE,
-	VOCA_NUL,
-	VOCA_PAGE,
-	VOCA_RETURN,
-	VOCA_RUBOUT,
-	VOCA_SPACE,
-	VOCA_TAB,
-	VOCA_VTAB,
+	VOCA_CHAR_BACKSPACE,
+	VOCA_CHAR_LINEFEED,
+	VOCA_CHAR_NEWLINE,
+	VOCA_CHAR_NUL,
+	VOCA_CHAR_PAGE,
+	VOCA_CHAR_RETURN,
+	VOCA_CHAR_RUBOUT,
+	VOCA_CHAR_SPACE,
+	VOCA_CHAR_TAB,
+	VOCA_CHAR_VTAB,
+
+	VOCA_KW_NULL,
+	VOCA_KW_TRUE,
+	VOCA_KW_FALSE,
+	VOCA_KW_SELF,
+	VOCA_KW_SUPER,
+
+	VOCA_XLIST,
+	VOCA_MLIST,
+	VOCA_BLOCK,
+	VOCA_ARRAY,
+	VOCA_BYTEARRAY,
+	VOCA_DIC,
+	VOCA_QLIST,
+	VOCA_VLIST,
 
 	VOCA_EOL,
 	VOCA_EOF
@@ -97,6 +129,25 @@ enum list_flag_t
 
 #define LIST_FLAG_GET_CONCODE(x) (((x) >> 12) & 0x0FFF)
 #define LIST_FLAG_SET_CONCODE(x,type) ((x) = ((x) & ~0xFF000) | ((type) << 12))
+
+static struct
+{
+	int             closer;
+	hcl_synerrnum_t synerr;
+	int             voca_id;
+} cons_info[] =
+{
+	/*[HCL_CONCODE_XLIST]     =*/ { HCL_TOK_RPAREN, HCL_SYNERR_RPAREN, VOCA_XLIST }, /* XLIST     ( )  */
+	/*[HCL_CONCODE_MLIST]     =*/ { HCL_TOK_RPAREN, HCL_SYNERR_RPAREN, VOCA_MLIST }, /* MLIST     (: ) */
+	/*[HCL_CONCODE_BLOCK]     =*/ { HCL_TOK_RBRACE, HCL_SYNERR_RBRACE, VOCA_BLOCK }, /* BLOCK     { } */
+	/*[HCL_CONCODE_ARRAY]     =*/ { HCL_TOK_RBRACK, HCL_SYNERR_RBRACK, VOCA_ARRAY }, /* ARRAY     [ ] */
+	/*[HCL_CONCODE_BYTEARRAY] =*/ { HCL_TOK_RBRACK, HCL_SYNERR_RBRACK, VOCA_BYTEARRAY }, /* BYTEARRAY #[ ] */
+	/*[HCL_CONCODE_DIC]       =*/ { HCL_TOK_RBRACE, HCL_SYNERR_RBRACE, VOCA_DIC }, /* DIC       #{ } */
+	/*[HCL_CONCODE_QLIST]     =*/ { HCL_TOK_RPAREN, HCL_SYNERR_RPAREN, VOCA_QLIST }, /* QLIST     #( )  */
+
+	/* VLIST's closer and synerr are not used. there is dedicated logic in feed_process_token(). only voca_id is used */
+	/*[HCL_CONCODE_VLIST]     =*/ { HCL_TOK_VBAR,   HCL_SYNERR_VBAR,   VOCA_VLIST }  /* VLIST     | |  */
+};
 
 static int init_compiler (hcl_t* hcl);
 
@@ -520,23 +571,23 @@ static int get_char (hcl_t* hcl)
 static hcl_tok_type_t classify_ident_token (hcl_t* hcl, const hcl_oocs_t* v)
 {
 	hcl_oow_t i;
-	struct
+	static struct
 	{
-		hcl_oow_t len;
-		hcl_ooch_t name[10];
+		int voca_id;
 		hcl_tok_type_t type;
 	} tab[] =
 	{
-		{ 4, { 'n','u','l','l' },     HCL_TOK_NIL },
-		{ 4, { 't','r','u','e' },     HCL_TOK_TRUE },
-		{ 5, { 'f','a','l','s','e' }, HCL_TOK_FALSE },
-		{ 4, { 's','e','l','f' },     HCL_TOK_SELF },
-		{ 5, { 's','u','p','e','r' }, HCL_TOK_SUPER }
+		{ VOCA_KW_NULL,  HCL_TOK_NIL    },
+		{ VOCA_KW_TRUE,  HCL_TOK_TRUE   },
+		{ VOCA_KW_FALSE, HCL_TOK_FALSE  },
+		{ VOCA_KW_SELF,  HCL_TOK_SELF   },
+		{ VOCA_KW_SUPER, HCL_TOK_SUPER  }
 	};
 
 	for (i = 0; i < HCL_COUNTOF(tab); i++)
 	{
-		if (hcl_comp_oochars(v->ptr, v->len, tab[i].name, tab[i].len) == 0) return tab[i].type;
+		int vid = tab[i].voca_id;
+		if (hcl_comp_oochars(v->ptr, v->len, vocas[vid].str, vocas[vid].len) == 0) return tab[i].type;
 	}
 
 	return HCL_TOK_IDENT;
@@ -617,7 +668,7 @@ static HCL_INLINE int enter_list (hcl_t* hcl, const hcl_loc_t* loc, int flagv)
 	return 0;
 }
 
-static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, int* flagv, int* oldflagv)
+static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int* flagv, int* oldflagv)
 {
 	hcl_rstl_t* rstl;
 	hcl_cnode_t* head;
@@ -643,6 +694,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, int* flagv, int* oldflagv
 		return HCL_NULL;
 	}
 
+	*list_loc = loc;
 	*oldflagv = fv;
 	if (!hcl->c->r.st)
 	{
@@ -657,9 +709,9 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, int* flagv, int* oldflagv
 		*flagv = hcl->c->r.st->flagv;
 	}
 
-	/* NOTE: empty xlist will get translated to #nil.
+	/* NOTE: empty xlist will get translated to `null`.
 	 *       this is useful when used in the lambda expression to express an empty argument. also in defun.
-	 *      (lambda () ...) is equivalent to  (lambda #nil ...)
+	 *      (lambda () ...) is equivalent to  (lambda null ...)
 	 *      (defun x() ...) */
 
 	if (head)
@@ -744,7 +796,7 @@ static HCL_INLINE void clear_comma_colon_flag (hcl_t* hcl)
 	rstl->flagv &= ~(COMMAED | COLONED);
 }
 
-static int chain_to_list (hcl_t* hcl, hcl_cnode_t* obj)
+static int chain_to_list (hcl_t* hcl, hcl_cnode_t* obj, hcl_loc_t* loc)
 {
 	hcl_rstl_t* rstl;
 	int flagv;
@@ -806,6 +858,8 @@ static int chain_to_list (hcl_t* hcl, hcl_cnode_t* obj)
 	else
 	{
 		hcl_cnode_t* cons, * tail;
+		hcl_oocs_t fake_tok, * fake_tok_ptr = HCL_NULL;
+		int concode;
 
 		if ((flagv & JSON) && rstl->count > 0 && !(flagv & (COMMAED | COLONED)))
 		{
@@ -815,7 +869,20 @@ static int chain_to_list (hcl_t* hcl, hcl_cnode_t* obj)
 			return -1;
 		}
 
-		cons = hcl_makecnodecons(hcl, HCL_CNODE_GET_LOC(obj), obj, HCL_NULL);
+		/* `loc` may be passed in if the added `obj` is a cons cell for another list */
+		HCL_ASSERT (hcl, (loc && (HCL_CNODE_IS_CONS(obj) || HCL_CNODE_IS_ELIST(obj))) || (!loc && !HCL_CNODE_IS_CONS(obj)));
+		concode = HCL_CNODE_IS_CONS(obj)? HCL_CNODE_CONS_CONCODE(obj):
+		          HCL_CNODE_IS_ELIST(obj)? HCL_CNODE_ELIST_CONCODE(obj): -1;
+
+		if (concode >= 0)
+		{
+			int vid = cons_info[concode].voca_id;
+			fake_tok.ptr = vocas[vid].str;
+			fake_tok.len = vocas[vid].len;
+			fake_tok_ptr = &fake_tok;
+		}
+
+		cons = hcl_makecnodecons(hcl, (loc? loc: HCL_CNODE_GET_LOC(obj)), fake_tok_ptr, obj, HCL_NULL);
 		if (HCL_UNLIKELY(!cons)) return -1;
 
 		if (rstl->count <= 0)
@@ -831,8 +898,7 @@ static int chain_to_list (hcl_t* hcl, hcl_cnode_t* obj)
 		}
 		else
 		{
-			/* the new cons cell is not the first element.
-			 * append it to the list */
+			/* the new cons cell is not the first element. append it to the list */
 			tail = rstl->tail;
 			HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(tail));
 			tail->u.cons.cdr = cons;
@@ -998,6 +1064,8 @@ static HCL_INLINE int is_at_block_beginning (hcl_t* hcl)
 static int feed_process_token (hcl_t* hcl)
 {
 	hcl_frd_t* frd = &hcl->c->feed.rd;
+	hcl_loc_t* list_loc = HCL_NULL;
+	/* TODO: frd->obj and frd->list_loc can become local variables in this function.. */
 
 	/* this function composes an s-expression non-recursively
 	 * by manipulating its own stack. */
@@ -1058,9 +1126,10 @@ static int feed_process_token (hcl_t* hcl)
 				/* closer */
 				int oldflagv;
 				frd->expect_vlist_item = 0;
-				frd->obj = leave_list(hcl, &frd->flagv, &oldflagv);
+				frd->obj = leave_list(hcl, &frd->list_loc, &frd->flagv, &oldflagv);
 				frd->level--;
 				frd->flagv |= AT_BEGINNING;
+				list_loc = &frd->list_loc;
 				break;
 			}
 			else
@@ -1132,7 +1201,7 @@ static int feed_process_token (hcl_t* hcl)
 			 * a list literal or an array literal */
 			if (enter_list(hcl, TOKEN_LOC(hcl), frd->flagv) <= -1) goto oops;
 			frd->level++;
-			frd->flagv |= AT_BEGINNING; /* indicate that the reader is now at the beginning of a list */
+			frd->flagv |= AT_BEGINNING; /* the reader is now at the beginning of a list */
 
 			/* read the next token */
 			goto ok;
@@ -1189,9 +1258,10 @@ static int feed_process_token (hcl_t* hcl)
 				goto oops;
 			}
 
-			frd->obj = leave_list(hcl, &frd->flagv, &oldflagv);
+			frd->obj = leave_list(hcl, &frd->list_loc, &frd->flagv, &oldflagv);
 			frd->level--;
 			frd->flagv |= AT_BEGINNING; /* the current one is over. move on the beginning for the next expression */
+			list_loc = &frd->list_loc;
 			break;
 		}
 
@@ -1199,21 +1269,6 @@ static int feed_process_token (hcl_t* hcl)
 		case HCL_TOK_RBRACK: /* bytearray #[], array [] */
 		case HCL_TOK_RBRACE: /* dictionary #{}, block {} */
 		{
-			static struct
-			{
-				int             closer;
-				hcl_synerrnum_t synerr;
-			} req[] =
-			{
-				/*[HCL_CONCODE_XLIST]     =*/ { HCL_TOK_RPAREN, HCL_SYNERR_RPAREN }, /* XLIST     ( )  */
-				/*[HCL_CONCODE_MLIST]     =*/ { HCL_TOK_RPAREN, HCL_SYNERR_RPAREN }, /* MLIST     (: ) */
-				/*[HCL_CONCODE_BLOCK]     =*/ { HCL_TOK_RBRACE, HCL_SYNERR_RBRACE }, /* BLOCK     { } */
-				/*[HCL_CONCODE_ARRAY]     =*/ { HCL_TOK_RBRACK, HCL_SYNERR_RBRACK }, /* ARRAY     [ ] */
-				/*[HCL_CONCODE_BYTEARRAY] =*/ { HCL_TOK_RBRACK, HCL_SYNERR_RBRACK }, /* BYTEARRAY #[ ] */
-				/*[HCL_CONCODE_DIC]       =*/ { HCL_TOK_RBRACE, HCL_SYNERR_RBRACE }, /* DIC       #{ } */
-				/*[HCL_CONCODE_QLIST]     =*/ { HCL_TOK_RPAREN, HCL_SYNERR_RPAREN }  /* QLIST     #( )  */
-			};
-
 			int oldflagv;
 			int concode;
 
@@ -1232,9 +1287,9 @@ static int feed_process_token (hcl_t* hcl)
 				goto oops;
 			}
 
-			if (req[concode].closer != TOKEN_TYPE(hcl))
+			if (cons_info[concode].closer != TOKEN_TYPE(hcl))
 			{
-				hcl_setsynerr (hcl, req[concode].synerr, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+				hcl_setsynerr (hcl, cons_info[concode].synerr, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 				goto oops;
 			}
 
@@ -1262,9 +1317,10 @@ static int feed_process_token (hcl_t* hcl)
 				goto oops;
 			}
 #endif
-			frd->obj = leave_list(hcl, &frd->flagv, &oldflagv);
+			frd->obj = leave_list(hcl, &frd->list_loc, &frd->flagv, &oldflagv);
 			frd->level--;
 			frd->flagv |= AT_BEGINNING;
+			list_loc = &frd->list_loc;
 			break;
 		}
 
@@ -1445,7 +1501,7 @@ static int feed_process_token (hcl_t* hcl)
 	{
 		/* if not, append the element read into the current list.
 		 * if we are not at the top frd->level, we must be in a list */
-		if (chain_to_list(hcl, frd->obj) <= -1) goto oops;
+		if (chain_to_list(hcl, frd->obj, list_loc) <= -1) goto oops;
 
 		/* because it has been chained to the list, it belongs to the current stack top.
 		 * mark that obj is not stand-alone by nullifying it. without this, if a jump
@@ -1915,16 +1971,16 @@ static int flx_hmarked_char (hcl_t* hcl, hcl_ooci_t c)
 				goto hexcharlit;
 			}
 		#endif
-			else if (does_token_name_match(hcl, VOCA_BACKSPACE)) c = '\b';
-			else if (does_token_name_match(hcl, VOCA_LINEFEED))  c = '\n';
-			else if (does_token_name_match(hcl, VOCA_NEWLINE))   c = '\n'; 	/* TODO: convert it to host newline convention. how to handle if it's composed of 2 letters like \r\n? */
-			else if (does_token_name_match(hcl, VOCA_NUL))       c = '\0';  /* null character. not the object null */
-			else if (does_token_name_match(hcl, VOCA_PAGE))      c = '\f';
-			else if (does_token_name_match(hcl, VOCA_RETURN))    c = '\r';
-			else if (does_token_name_match(hcl, VOCA_RUBOUT))    c = '\x7F'; /* DEL */
-			else if (does_token_name_match(hcl, VOCA_SPACE))     c = ' ';
-			else if (does_token_name_match(hcl, VOCA_TAB))       c = '\t';
-			else if (does_token_name_match(hcl, VOCA_VTAB))      c = '\v';
+			else if (does_token_name_match(hcl, VOCA_CHAR_BACKSPACE)) c = '\b';
+			else if (does_token_name_match(hcl, VOCA_CHAR_LINEFEED))  c = '\n';
+			else if (does_token_name_match(hcl, VOCA_CHAR_NEWLINE))   c = '\n'; 	/* TODO: convert it to host newline convention. how to handle if it's composed of 2 letters like \r\n? */
+			else if (does_token_name_match(hcl, VOCA_CHAR_NUL))       c = '\0';  /* null character. not the object null */
+			else if (does_token_name_match(hcl, VOCA_CHAR_PAGE))      c = '\f';
+			else if (does_token_name_match(hcl, VOCA_CHAR_RETURN))    c = '\r';
+			else if (does_token_name_match(hcl, VOCA_CHAR_RUBOUT))    c = '\x7F'; /* DEL */
+			else if (does_token_name_match(hcl, VOCA_CHAR_SPACE))     c = ' ';
+			else if (does_token_name_match(hcl, VOCA_CHAR_TAB))       c = '\t';
+			else if (does_token_name_match(hcl, VOCA_CHAR_VTAB))      c = '\v';
 			else
 			{
 				hcl_setsynerrbfmt (hcl, HCL_SYNERR_CHARLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
@@ -2869,6 +2925,15 @@ static int init_compiler (hcl_t* hcl)
 	init_feed (hcl);
 	hcl->c->cbp = cbp;
 
+
+	/* initialize the internal cons to represent a cell pointing to `null` in the `car` part */
+	hcl->c->fake_cnode.nil.cn_type = HCL_CNODE_NIL;
+	hcl->c->fake_cnode.nil.cn_tok.ptr = vocas[VOCA_KW_NULL].str;
+	hcl->c->fake_cnode.nil.cn_tok.len = vocas[VOCA_KW_NULL].len;
+
+	hcl->c->fake_cnode.cons_to_nil.cn_type = HCL_CNODE_CONS;
+	hcl->c->fake_cnode.cons_to_nil.u.cons.car = &hcl->c->fake_cnode.nil;
+	hcl->c->fake_cnode.cons_to_nil.u.cons.cdr = HCL_NULL;
 	return 0;
 }
 
