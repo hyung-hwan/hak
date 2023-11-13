@@ -6,11 +6,12 @@ defun aaa(a b) {
 
 set k (aaa 10 20);
 
-(if (= k 30)
-	(printf "OK\n")
-else
-	(printf "ERROR\n")
-)
+if (= k 30) {
+	printf "OK\n";
+}
+else {
+	printf "ERROR\n";
+};
 
 
 
