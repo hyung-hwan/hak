@@ -401,6 +401,26 @@ HCL_INFO2 (hcl, "CLASS NAMED VAR [%.*js]\n", name->len, name->ptr);
 
 /* ========================================================================= */
 
+static int is_cons_pointing_to_block_in_car (hcl_t* hcl, hcl_cnode_t* c, hcl_cnode_t** blk)
+{
+	hcl_cnode_t* car;
+
+	if (!c || !HCL_CNODE_IS_CONS(c)) goto no_block; /* not cons */
+
+	car = HCL_CNODE_CONS_CAR(c);
+	if (!car || (!HCL_CNODE_IS_CONS_CONCODED(car, HCL_CONCODE_BLOCK) && !HCL_CNODE_IS_ELIST_CONCODED(car, HCL_CONCODE_BLOCK)))
+	{
+	no_block:
+		*blk = HCL_NULL;
+		return 0;
+	}
+
+	*blk = car;
+	return 1;
+}
+
+/* ========================================================================= */
+
 static int add_literal (hcl_t* hcl, hcl_oop_t obj, hcl_oow_t* index)
 {
 	hcl_oow_t capa, i, lfbase = 0;
@@ -2205,10 +2225,24 @@ static HCL_INLINE int compile_else (hcl_t* hcl)
 		hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(obj), HCL_CNODE_GET_TOK(obj), "redundant cdr in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 		return -1;
 	}
-	else
+
+
+	if (hcl->c->flags & HCL_COMPILE_ENABLE_BLOCK)
 	{
-		SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_LIST, obj);
+		hcl_cnode_t* blk;
+
+		if (!is_cons_pointing_to_block_in_car(hcl, obj, &blk))
+		{
+			hcl_setsynerrbfmt (
+				hcl, HCL_SYNERR_BLOCK, (blk? HCL_CNODE_GET_LOC(blk): &cf->u.post_if.start_loc), HCL_NULL,
+				"block expression expected as body after else");
+			return -1;
+		}
+
+		/* TODO: check if it's the only expression... */
 	}
+
+	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_LIST, obj);
 
 	return patch_nearest_post_if_body(hcl, cmd);
 }
@@ -4278,7 +4312,8 @@ redo:
 				case HCL_CONCODE_BLOCK:
 					if (!(hcl->c->flags & HCL_COMPILE_ENABLE_BLOCK))
 					{
-						hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "empty block expression");
+						/* this is treated the same as HCL_CNODE_CONS with CONCODE BLOCK */
+						hcl_setsynerrbfmt (hcl, HCL_SYNERR_BLOCKBANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "block expression disallowed");
 						return -1;
 					}
 					if (compile_cons_block_expression(hcl, oprnd) <= -1) return -1;
@@ -4479,7 +4514,7 @@ static int compile_object_list (hcl_t* hcl)
 			 * and onwards. this goes above COP_COMPILE_OBJECT.*/
 
 			/* TODO: if the previous operators is known to divert execution flow, it may skip this.
-			 *       for instance, some 'RETURN" or 'JUMP' operators */
+			 *       for instance, some 'RETURN' or 'JUMP' operators */
 			PUSH_CFRAME (hcl, COP_EMIT_POP_STACKTOP, oprnd);
 		}
 	}
@@ -4703,6 +4738,21 @@ static HCL_INLINE int post_if_cond (hcl_t* hcl)
 
 	HCL_ASSERT (hcl, hcl->code.bc.len < HCL_SMOOI_MAX);
 	body_pos = hcl->code.bc.len;
+
+	if (hcl->c->flags & HCL_COMPILE_ENABLE_BLOCK)
+	{
+		hcl_cnode_t* blk;
+
+		if (!is_cons_pointing_to_block_in_car(hcl, cf->operand, &blk))
+		{
+			hcl_setsynerrbfmt (
+				hcl, HCL_SYNERR_BLOCK, (blk? HCL_CNODE_GET_LOC(blk): &cf->u.post_if.start_loc), HCL_NULL,
+				"block expression expected as body after condition");
+			return -1;
+		}
+
+		/* TODO: check if it's the only expression... */
+	}
 
 	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_IF_OBJECT_LIST, cf->operand); /* 1 */
 	PUSH_SUBCFRAME (hcl, COP_POST_IF_BODY, cf->operand); /* 2 */
