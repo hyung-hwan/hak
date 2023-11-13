@@ -378,6 +378,7 @@ struct hcl_cframe_t
 			hcl_ooi_t body_pos;
 			hcl_ooi_t jump_inst_pos;
 			hcl_loc_t start_loc;
+			hcl_cnode_t* cmd_cnode;
 		} post_if;
 
 		struct

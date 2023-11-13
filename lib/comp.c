@@ -401,9 +401,9 @@ HCL_INFO2 (hcl, "CLASS NAMED VAR [%.*js]\n", name->len, name->ptr);
 
 /* ========================================================================= */
 
-static int is_cons_pointing_to_block_in_car (hcl_t* hcl, hcl_cnode_t* c, hcl_cnode_t** blk)
+static int check_block_expression_as_body (hcl_t* hcl, hcl_cnode_t* c, const hcl_cnode_t* ctx, int for_if)
 {
-	hcl_cnode_t* car;
+	hcl_cnode_t* car = HCL_NULL, * cdr;
 
 	if (!c || !HCL_CNODE_IS_CONS(c)) goto no_block; /* not cons */
 
@@ -411,12 +411,36 @@ static int is_cons_pointing_to_block_in_car (hcl_t* hcl, hcl_cnode_t* c, hcl_cno
 	if (!car || (!HCL_CNODE_IS_CONS_CONCODED(car, HCL_CONCODE_BLOCK) && !HCL_CNODE_IS_ELIST_CONCODED(car, HCL_CONCODE_BLOCK)))
 	{
 	no_block:
-		*blk = HCL_NULL;
-		return 0;
+		hcl_setsynerrbfmt (
+			hcl, HCL_SYNERR_BLOCK, (car? HCL_CNODE_GET_LOC(car): HCL_CNODE_GET_LOC(c)), HCL_NULL,
+			"block expression expected as body for %.*js", HCL_CNODE_GET_TOKLEN(ctx), HCL_CNODE_GET_TOKPTR(ctx)
+		);
+		return -1;
 	}
 
-	*blk = car;
-	return 1;
+	cdr = HCL_CNODE_CONS_CDR(c);
+	if (cdr)
+	{
+		if (for_if && HCL_CNODE_IS_CONS(cdr))
+		{
+			hcl_cnode_t* nxt;
+			nxt = HCL_CNODE_CONS_CAR(cdr);
+			if (HCL_CNODE_IS_SYMBOL(nxt))
+			{
+				int syncode = HCL_CNODE_SYMBOL_SYNCODE(nxt);
+				if (syncode == HCL_SYNCODE_ELIF || syncode == HCL_SYNCODE_ELSE) goto ok;
+			}
+		}
+
+		hcl_setsynerrbfmt (
+			hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(cdr), HCL_NULL,
+			"redundant code prohibited after body for %.*js", HCL_CNODE_GET_TOKLEN(ctx), HCL_CNODE_GET_TOKPTR(ctx)
+		);
+		return -1;
+	}
+
+ok:
+	return 0;
 }
 
 /* ========================================================================= */
@@ -2077,7 +2101,7 @@ static int compile_if (hcl_t* hcl, hcl_cnode_t* src)
 	 *   (perform this finally)
 	 * )
 	 */
-	cmd = HCL_CNODE_CONS_CAR(src);
+	cmd = HCL_CNODE_CONS_CAR(src); /* if itself */
 	obj = HCL_CNODE_CONS_CDR(src);
 
 	if (!obj)
@@ -2101,6 +2125,7 @@ static int compile_if (hcl_t* hcl, hcl_cnode_t* src)
 	cf->u.post_if.body_pos = -1; /* unknown yet */
 	cf->u.post_if.jump_inst_pos = -1; /* not needed */
 	cf->u.post_if.start_loc = *HCL_CNODE_GET_LOC(src);
+	cf->u.post_if.cmd_cnode = cmd;
 /* TODO: OPTIMIZATION:
  *       pass information on the conditional if it's an absoluate true or absolute false to
  *       eliminate some code .. i can't eliminate code because there can be else or elif...
@@ -2177,7 +2202,7 @@ static HCL_INLINE int compile_elif (hcl_t* hcl)
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
 	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_ELIF));
 
-	cmd = HCL_CNODE_CONS_CAR(src);
+	cmd = HCL_CNODE_CONS_CAR(src); /* elif itself */
 	obj = HCL_CNODE_CONS_CDR(src);
 
 	if (!obj)
@@ -2201,6 +2226,7 @@ static HCL_INLINE int compile_elif (hcl_t* hcl)
 	cf->u.post_if.body_pos = -1; /* unknown yet */
 	cf->u.post_if.jump_inst_pos = -1; /* not needed */
 	cf->u.post_if.start_loc = *HCL_CNODE_GET_LOC(src);
+	cf->u.post_if.cmd_cnode = cmd;
 
 	return patch_nearest_post_if_body(hcl, cmd);
 }
@@ -2217,7 +2243,7 @@ static HCL_INLINE int compile_else (hcl_t* hcl)
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
 	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_ELSE));
 
-	cmd = HCL_CNODE_CONS_CAR(src);
+	cmd = HCL_CNODE_CONS_CAR(src); /* else itself */
 	obj = HCL_CNODE_CONS_CDR(src);
 
 	if (obj && !HCL_CNODE_IS_CONS(obj))
@@ -2226,20 +2252,9 @@ static HCL_INLINE int compile_else (hcl_t* hcl)
 		return -1;
 	}
 
-
 	if (hcl->c->flags & HCL_COMPILE_ENABLE_BLOCK)
 	{
-		hcl_cnode_t* blk;
-
-		if (!is_cons_pointing_to_block_in_car(hcl, obj, &blk))
-		{
-			hcl_setsynerrbfmt (
-				hcl, HCL_SYNERR_BLOCK, (blk? HCL_CNODE_GET_LOC(blk): &cf->u.post_if.start_loc), HCL_NULL,
-				"block expression expected as body after else");
-			return -1;
-		}
-
-		/* TODO: check if it's the only expression... */
+		if (check_block_expression_as_body(hcl, obj, cmd, 0) <= -1) return -1;
 	}
 
 	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_LIST, obj);
@@ -2832,12 +2847,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 			return -1;
 		}
 
-hcl_logbfmt(hcl, HCL_LOG_FATAL, "bdy[%d.%d] blk[%d.%d] obj[%d.%d]\n",
-	HCL_CNODE_GET_LOC(bdy)->line, HCL_CNODE_GET_LOC(bdy)->colm,
-	HCL_CNODE_GET_LOC(blk)->line, HCL_CNODE_GET_LOC(blk)->colm,
-	HCL_CNODE_GET_LOC(obj)->line, HCL_CNODE_GET_LOC(obj)->colm);
 
-		//obj = HCL_CNODE_IS_ELIST(bdy)? HCL_NULL: blk /* bdy */;
 		obj = blk;
 		nlvars = 0; /* no known local variables until the actual block is processed */
 	}
@@ -3469,7 +3479,7 @@ static int compile_while (hcl_t* hcl, hcl_cnode_t* src, int next_cop)
 {
 	/* (while (xxxx) ... )
 	 * (until (xxxx) ... ) */
-	hcl_cnode_t* cmd, * obj, * cond;
+	hcl_cnode_t* cmd, * obj, * cond, * body;
 	hcl_oow_t cond_pos;
 	hcl_cframe_t* cf;
 
@@ -3478,7 +3488,7 @@ static int compile_while (hcl_t* hcl, hcl_cnode_t* src, int next_cop)
 	                 HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_WHILE));
 	HCL_ASSERT (hcl, next_cop == COP_POST_UNTIL_COND || next_cop == COP_POST_WHILE_COND);
 
-	cmd = HCL_CNODE_CONS_CAR(src);
+	cmd = HCL_CNODE_CONS_CAR(src); /* while or until itself */
 	obj = HCL_CNODE_CONS_CDR(src);
 
 	if (!obj)
@@ -3499,6 +3509,12 @@ static int compile_while (hcl_t* hcl, hcl_cnode_t* src, int next_cop)
 	cond_pos = hcl->code.bc.len; /* position where the bytecode for the conditional is emitted */
 
 	cond = HCL_CNODE_CONS_CAR(obj);
+	body = HCL_CNODE_CONS_CDR(obj);
+
+	if (hcl->c->flags & HCL_COMPILE_ENABLE_BLOCK)
+	{
+		if (check_block_expression_as_body(hcl, body, cmd, 0) <= -1) return -1;
+	}
 
 	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, cond); /* 1 */
 
@@ -4741,17 +4757,7 @@ static HCL_INLINE int post_if_cond (hcl_t* hcl)
 
 	if (hcl->c->flags & HCL_COMPILE_ENABLE_BLOCK)
 	{
-		hcl_cnode_t* blk;
-
-		if (!is_cons_pointing_to_block_in_car(hcl, cf->operand, &blk))
-		{
-			hcl_setsynerrbfmt (
-				hcl, HCL_SYNERR_BLOCK, (blk? HCL_CNODE_GET_LOC(blk): &cf->u.post_if.start_loc), HCL_NULL,
-				"block expression expected as body after condition");
-			return -1;
-		}
-
-		/* TODO: check if it's the only expression... */
+		if (check_block_expression_as_body(hcl, cf->operand, cf->u.post_if.cmd_cnode, 1) <= -1) return -1;
 	}
 
 	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_IF_OBJECT_LIST, cf->operand); /* 1 */
@@ -4760,6 +4766,7 @@ static HCL_INLINE int post_if_cond (hcl_t* hcl)
 	cf2->u.post_if.body_pos = body_pos;
 	cf2->u.post_if.jump_inst_pos = jump_inst_pos;
 	cf2->u.post_if.start_loc = cf->u.post_if.start_loc;
+	cf2->u.post_if.cmd_cnode = cf->u.post_if.cmd_cnode;
 	return 0;
 }
 
@@ -4808,6 +4815,7 @@ static HCL_INLINE int post_while_cond (hcl_t* hcl)
 	hcl_ooi_t jump_inst_pos;
 	hcl_ooi_t cond_pos, body_pos;
 	hcl_loc_t start_loc;
+	hcl_cnode_t* cmd_cnode;
 	int jump_inst, next_cop;
 	hcl_cnode_t* cond, * body;
 
@@ -4816,7 +4824,7 @@ static HCL_INLINE int post_while_cond (hcl_t* hcl)
 	HCL_ASSERT (hcl, cf->operand != HCL_NULL);
 
 	/* the caller must pass the cons cell branching to the conditinal and the body
-	 * if the body cell is given, things gets complicated because the body part can be HCL_NULL.
+	 * if the body cell is given, things get complicated because the body part can be HCL_NULL.
 	 * for instance, the body part is empty in (while (< i 1)  ) */
 	cond = HCL_CNODE_CONS_CAR(cf->operand);
 	body = HCL_CNODE_CONS_CDR(cf->operand);
