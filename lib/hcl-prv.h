@@ -454,6 +454,7 @@ struct hcl_cframe_t
 		{
 			hcl_ooi_t nsuperclasses;
 			hcl_loc_t start_loc;
+			hcl_cnode_t* cmd_cnode;
 		} _class;
 	} u;
 };

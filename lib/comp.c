@@ -2350,12 +2350,14 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src)
 		cf = GET_SUBCFRAME(hcl);
 		cf->u._class.nsuperclasses = 0; /* unsed for CLASS_P2 */
 		cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
+		cf->u._class.cmd_cnode = cmd;
 
 		obj = HCL_CNODE_CONS_CDR(obj);
 		PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_P1, obj); /* 2 - variables declaraions and actual body */
 		cf = GET_SUBCFRAME(hcl);
 		cf->u._class.nsuperclasses = 1; /* this one needs to change if we support multiple superclasses... */
 		cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
+		cf->u._class.cmd_cnode = cmd;
 	}
 	else
 	{
@@ -2364,11 +2366,13 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src)
 		cf = GET_TOP_CFRAME(hcl);
 		cf->u._class.nsuperclasses = 0; /* this one needs to change if we support multiple superclasses... */
 		cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
+		cf->u._class.cmd_cnode = cmd;
 
 		PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_P2, class_name); /* 2 */
 		cf = GET_SUBCFRAME(hcl);
 		cf->u._class.nsuperclasses = 0; /* unsed for CLASS_P2 */
 		cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
+		cf->u._class.cmd_cnode = cmd;
 	}
 
 	return 0;
@@ -2399,13 +2403,13 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 		hcl_oow_t dclcount;
 /*
  (defclass X ::: T
-    ::: | a b c | ; class variables
+    ::: | a b c | ## class variables
  )
  (defclass X
-    ::: T | a b c | ; instance varaiables.
+    ::: T | a b c | ## instance varaiables.
  )
  (defclass X
-    ::: | a b c | ; class variables
+    ::: | a b c | ## class variables
  )
 */
 		tmp = HCL_CNODE_CONS_CAR(obj);
@@ -2494,6 +2498,11 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 		tmp = hcl_makestring(hcl, &hcl->c->tv.s.ptr[cvar_start + adj], cvar_len - adj, 0);
 		if (HCL_UNLIKELY(!tmp)) goto oops;
 		if (emit_push_literal(hcl, tmp, &cf->u._class.start_loc) <= -1) goto oops;
+	}
+
+	if (hcl->c->flags & HCL_COMPILE_ENABLE_BLOCK)
+	{
+		if (check_block_expression_as_body(hcl, obj, cf->u._class.cmd_cnode, 0) <= -1) return -1;
 	}
 
 	if (push_clsblk(hcl, &cf->u._class.start_loc, nivars, ncvars, &hcl->c->tv.s.ptr[ivar_start], ivar_len, &hcl->c->tv.s.ptr[cvar_start], cvar_len) <= -1) goto oops;
