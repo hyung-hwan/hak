@@ -1581,10 +1581,11 @@ struct hcl_t
 	hcl_oop_t _do;     /* symbol */
 	hcl_oop_t _elif;   /* symbol */
 	hcl_oop_t _else;   /* symbol */
+	hcl_oop_t _fun;    /* symbol */
 	hcl_oop_t _if;     /* symbol */
 	hcl_oop_t _lambda; /* symbol */
 	hcl_oop_t _or;     /* symbol */
-	hcl_oop_t _plus;     /* symbol */
+	hcl_oop_t _plus;   /* symbol */
 	hcl_oop_t _return; /* symbol */
 	hcl_oop_t _return_from_home; /* symbol */
 	hcl_oop_t _set;    /* symbol */

@@ -39,18 +39,19 @@ static struct
 	hcl_oow_t  offset;
 } syminfo[] =
 {
-	{  3, { 'a','n','d' },                      HCL_SYNCODE_AND,       HCL_OFFSETOF(hcl_t,_and)  },
+	{  3, { 'a','n','d' },                      HCL_SYNCODE_AND,       HCL_OFFSETOF(hcl_t,_and)    },
 	{  5, { 'b','r','e','a','k' },              HCL_SYNCODE_BREAK,     HCL_OFFSETOF(hcl_t,_break)  },
 	{  5, { 'c','a','t','c','h' },              HCL_SYNCODE_CATCH,     HCL_OFFSETOF(hcl_t,_catch)  },
-	{  8, { 'c','o','n','t','i','n','u','e' },  HCL_SYNCODE_CONTINUE,  HCL_OFFSETOF(hcl_t,_continue)  },
-	{  8, { 'd','e','f','c','l','a','s','s' },  HCL_SYNCODE_DEFCLASS,  HCL_OFFSETOF(hcl_t,_defclass)  },
+	{  8, { 'c','o','n','t','i','n','u','e' },  HCL_SYNCODE_CONTINUE,  HCL_OFFSETOF(hcl_t,_continue) },
+	{  8, { 'd','e','f','c','l','a','s','s' },  HCL_SYNCODE_DEFCLASS,  HCL_OFFSETOF(hcl_t,_defclass) },
 	{  5, { 'd','e','f','u','n' },              HCL_SYNCODE_DEFUN,     HCL_OFFSETOF(hcl_t,_defun)  },
-	{  2, { 'd','o' },                          HCL_SYNCODE_DO,        HCL_OFFSETOF(hcl_t,_do)  },
+	{  2, { 'd','o' },                          HCL_SYNCODE_DO,        HCL_OFFSETOF(hcl_t,_do)     },
 	{  4, { 'e','l','i','f' },                  HCL_SYNCODE_ELIF,      HCL_OFFSETOF(hcl_t,_elif)   },
 	{  4, { 'e','l','s','e' },                  HCL_SYNCODE_ELSE,      HCL_OFFSETOF(hcl_t,_else)   },
+	{  3, { 'f','u','n' },                      HCL_SYNCODE_LAMBDA,    HCL_OFFSETOF(hcl_t,_fun)    }, /* same syncode as lambda */
 	{  2, { 'i','f' },                          HCL_SYNCODE_IF,        HCL_OFFSETOF(hcl_t,_if)     },
 	{  6, { 'l','a','m','b','d','a' },          HCL_SYNCODE_LAMBDA,    HCL_OFFSETOF(hcl_t,_lambda) },
-	{  2, { 'o','r' },                          HCL_SYNCODE_OR,        HCL_OFFSETOF(hcl_t,_or)  },
+	{  2, { 'o','r' },                          HCL_SYNCODE_OR,        HCL_OFFSETOF(hcl_t,_or)     },
 	{  4, { 'p','l','u','s' },                  HCL_SYNCODE_PLUS,      HCL_OFFSETOF(hcl_t,_plus)   },
 	{  6, { 'r','e','t','u','r','n'},           HCL_SYNCODE_RETURN,    HCL_OFFSETOF(hcl_t,_return) },
 	{ 16, { 'r','e','t','u','r','n','-','f','r','o','m','-','h','o','m','e'},
