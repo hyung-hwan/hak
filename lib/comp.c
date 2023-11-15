@@ -405,10 +405,17 @@ static int check_block_expression_as_body (hcl_t* hcl, hcl_cnode_t* c, const hcl
 {
 	hcl_cnode_t* car = HCL_NULL, * cdr;
 
+	/* variable declaration is disallowed.
+	 * a block expression is allowed if not followed by another expression.
+	 * unlike the function name, other types of expressions are allowed if not followed by another expression.
+	 */
 	if (!c || !HCL_CNODE_IS_CONS(c)) goto no_block; /* not cons */
 
 	car = HCL_CNODE_CONS_CAR(c);
-	if (!car || (!HCL_CNODE_IS_CONS_CONCODED(car, HCL_CONCODE_BLOCK) && !HCL_CNODE_IS_ELIST_CONCODED(car, HCL_CONCODE_BLOCK)))
+	if (!car || (HCL_CNODE_IS_CONS_CONCODED(car, HCL_CONCODE_VLIST) ||
+	             HCL_CNODE_IS_ELIST_CONCODED(car, HCL_CONCODE_VLIST)))
+	             /*(!HCL_CNODE_IS_CONS_CONCODED(car, HCL_CONCODE_BLOCK) &&
+		          !HCL_CNODE_IS_ELIST_CONCODED(car, HCL_CONCODE_BLOCK)))*/
 	{
 	no_block:
 		hcl_setsynerrbfmt (
@@ -421,8 +428,10 @@ static int check_block_expression_as_body (hcl_t* hcl, hcl_cnode_t* c, const hcl
 	cdr = HCL_CNODE_CONS_CDR(c);
 	if (cdr)
 	{
+		/* there is redundant expression after the block expression */
 		if (for_if && HCL_CNODE_IS_CONS(cdr))
 		{
+			/* after the body for `if` or `elif`, there can come `elif` or `else` */
 			hcl_cnode_t* nxt;
 			nxt = HCL_CNODE_CONS_CAR(cdr);
 			if (HCL_CNODE_IS_SYMBOL(nxt))
@@ -2828,6 +2837,14 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 
 	if (hcl->c->flags & HCL_COMPILE_ENABLE_BLOCK)
 	{
+		/*
+		 * defun aa(a b) { ...	};
+		 * (defun aa(a b) { ... })
+		 *
+		 * the block expression must be the first and the only expression at the body position.
+		 * the variable declaration can't be placed before the block expression.
+		 * it is supported inside the block expression itself.
+		 */
 		hcl_cnode_t* blk;
 		blk = HCL_CNODE_CONS_CDR(obj);
 		if (check_block_expression_as_body(hcl, blk, cmd, 0) <= -1) return -1;
