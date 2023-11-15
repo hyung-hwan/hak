@@ -2828,35 +2828,9 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 
 	if (hcl->c->flags & HCL_COMPILE_ENABLE_BLOCK)
 	{
-		hcl_cnode_t* blk, * bdy, * trl;
-
+		hcl_cnode_t* blk;
 		blk = HCL_CNODE_CONS_CDR(obj);
-		if (!blk || !HCL_CNODE_IS_CONS(blk))
-		{
-			hcl_setsynerrbfmt (
-				hcl, HCL_SYNERR_BLOCK, (blk? HCL_CNODE_GET_LOC(blk): HCL_CNODE_GET_LOC(obj)), HCL_NULL,
-				"block expression expected as body in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
-			return -1;
-		}
-
-		bdy = HCL_CNODE_CONS_CAR(blk); /* {} must be the last item. bdy is the expression inside */
-		trl = HCL_CNODE_CONS_CDR(blk); /* something after {} */
-
-		if (!bdy || (!HCL_CNODE_IS_CONS_CONCODED(bdy, HCL_CONCODE_BLOCK) && !HCL_CNODE_IS_ELIST_CONCODED(bdy, HCL_CONCODE_BLOCK)))
-		{
-			hcl_setsynerrbfmt (
-				hcl, HCL_SYNERR_BLOCK, (bdy? HCL_CNODE_GET_LOC(bdy): HCL_CNODE_GET_LOC(obj)), HCL_NULL,
-				"block expression expected as body in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
-			return -1;
-		}
-
-		if (trl)
-		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(trl), HCL_NULL, "redundant code prohibited after body in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
-			return -1;
-		}
-
-
+		if (check_block_expression_as_body(hcl, blk, cmd, 0) <= -1) return -1;
 		obj = blk;
 		nlvars = 0; /* no known local variables until the actual block is processed */
 	}

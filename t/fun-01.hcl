@@ -6,8 +6,8 @@ defun aaa(a b) {
 
 set k (aaa 10 20);
 
-if (= k 30) { printf "OK\n"; }
-else { printf "ERROR\n"; };
+if (= k 30) { printf "OK - %d\n" k; }
+else { printf "ERROR - %d\n" k; };
 
 ## --------------------------------------
 
@@ -19,5 +19,28 @@ defun mkfun(t) {
 
 set f (mkfun 20);
 set k (f 50);
-if (= k 50) { printf "OK\n"; }
-else { printf "ERROR\n"; };
+if (= k 70) { printf "OK - %d\n" k; }
+else { printf "ERROR - %d\n" k; };
+
+
+## --------------------------------------
+
+defclass A
+	| a b c |
+{
+	defun ::* newInstance(x y z) {
+		(set a x)
+		(set b y)
+		(set c z)
+		(return self)
+	};
+
+	defun get-a() { return a; };
+	##defun get-b() b;
+	##defun get-c() c;
+};
+
+set k (:A newInstance 11 22 33);
+set v (:k get-a);
+if (= v 11) { printf "OK - %d\n" v; }
+else { printf "ERROR - %d\n" v; };
