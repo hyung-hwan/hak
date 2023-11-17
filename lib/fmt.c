@@ -1244,7 +1244,7 @@ static int fmt_outv (hcl_fmtout_t* fmtout, va_list ap)
 			sign = 0;
 			if (lm_flag & LF_J)
 			{
-			#if 0 && defined(__GNUC__) && \
+			#if 1 && !defined(__clang__) && defined(__GNUC__) && \
 			    (HCL_SIZEOF_UINTMAX_T > HCL_SIZEOF_OOW_T) && \
 			    (HCL_SIZEOF_UINTMAX_T != HCL_SIZEOF_LONG_LONG) && \
 			    (HCL_SIZEOF_UINTMAX_T != HCL_SIZEOF_LONG)
@@ -1288,7 +1288,7 @@ static int fmt_outv (hcl_fmtout_t* fmtout, va_list ap)
 		handle_sign:
 			if (lm_flag & LF_J)
 			{
-			#if 0 && defined(__GNUC__) && \
+			#if 1 && !defined(__clang__) && defined(__GNUC__) && \
 			    (HCL_SIZEOF_INTMAX_T > HCL_SIZEOF_OOI_T) && \
 			    (HCL_SIZEOF_UINTMAX_T != HCL_SIZEOF_LONG_LONG) && \
 			    (HCL_SIZEOF_UINTMAX_T != HCL_SIZEOF_LONG)
