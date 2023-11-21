@@ -33,7 +33,7 @@ enum
 	VAR_INST, /* instance variable */
 	VAR_CLASS_I, /* class variable in class initialization scope */
 	VAR_CLASS_CM, /* class variable in class method scope */
-	VAR_CLASS_IM, /* class variable in instance method scope */
+	VAR_CLASS_IM /* class variable in instance method scope */
 };
 
 enum
@@ -381,7 +381,7 @@ HCL_INFO2 (hcl, "CLASS NAMED VAR [%.*js]\n", name->len, name->ptr);
 			vi->type = VAR_INDEXED;
 			vi->ctx_offset = hcl->c->fnblk.depth - i; /* context offset */
 			vi->index_in_ctx = index;
-//HCL_INFO4 (hcl, "FOUND ...[%.*js]................ ===> ctx_offset %d index %d\n", name->len, name->ptr, (int)(vi->ctx_offset), (int)vi->index_in_ctx);
+/*HCL_INFO4 (hcl, "FOUND ...[%.*js]................ ===> ctx_offset %d index %d\n", name->len, name->ptr, (int)(vi->ctx_offset), (int)vi->index_in_ctx);*/
 
 			if (vi->ctx_offset > 0)
 			{
@@ -395,7 +395,7 @@ HCL_INFO2 (hcl, "CLASS NAMED VAR [%.*js]\n", name->len, name->ptr);
 		}
 	}
 
-//HCL_INFO2 (hcl, "NOT FOUND => %.*js\n", name->len, name->ptr);
+/*HCL_INFO2 (hcl, "NOT FOUND => %.*js\n", name->len, name->ptr); */
 	return 0; /* not found */
 }
 
@@ -1507,7 +1507,7 @@ enum
 	COP_POST_TRY,
 	COP_POST_CATCH,
 
-	COP_POST_LAMBDA,
+	COP_POST_LAMBDA
 };
 
 /* ========================================================================= */

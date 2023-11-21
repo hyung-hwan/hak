@@ -250,7 +250,7 @@ const hcl_uch_t* hcl_geterrumsg (hcl_t* hcl)
 	const hcl_ooch_t* msg;
 	hcl_oow_t wcslen, mbslen;
 
-	msg = (hcl->errmsg.len <= 0)? hcl_errnum_to_errstrerrstr(hcl->errnum): hcl->errmsg.buf;
+	msg = (hcl->errmsg.len <= 0)? hcl_errnum_to_errstr(hcl->errnum): hcl->errmsg.buf;
 
 	wcslen = HCL_COUNTOF(hcl->errmsg.xerrmsg);
 	hcl_conv_bcstr_to_ucstr_with_cmgr (msg, &mbslen, hcl->errmsg.xerrmsg, &wcslen, hcl_getcmgr(hcl), 1);

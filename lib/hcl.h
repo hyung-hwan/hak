@@ -93,7 +93,7 @@ enum hcl_errnum_t
 	HCL_EEXCEPT,    /**< runtime error - exception not handled */
 	HCL_ESTKOVRFLW, /**< runtime error - stack overflow */
 	HCL_ESTKUNDFLW, /**< runtime error - stack overflow */
-	HCL_EUNDEFVAR,  /**< runtime error - undefined variable access */
+	HCL_EUNDEFVAR  /**< runtime error - undefined variable access */
 };
 typedef enum hcl_errnum_t hcl_errnum_t;
 

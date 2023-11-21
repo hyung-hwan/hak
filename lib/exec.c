@@ -2412,7 +2412,7 @@ static int is_regular_executable_file_by_me(const char *path)
 {
 	struct stat st;
 	if (stat(path, &st) == -1) return 0;
-	return S_ISREG(st.st_mode) && access(path, X_OK) == 0; //? use eaccess instead??
+	return S_ISREG(st.st_mode) && access(path, X_OK) == 0; /* use eaccess instead?? */
 }
 
 static char* find_exec (hcl_t* hcl, const char *name)
@@ -3847,7 +3847,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
  				}
 				else sc = hcl->_nil;
 
-				t = hcl_makeclass(hcl, sc, b2, b3, ivars_str, cvars_str); // TOOD: pass variable information...
+				t = hcl_makeclass(hcl, sc, b2, b3, ivars_str, cvars_str); /* TOOD: pass variable information... */
 				if (HCL_UNLIKELY(!t)) goto oops_with_errmsg_supplement;
 
 				/* push the class created to the class stack. but don't push to the normal operation stack */
