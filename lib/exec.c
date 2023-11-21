@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
     Copyright (c) 2016-2018 Chung, Hyung-Hwan. All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -263,7 +261,7 @@ static HCL_INLINE int vm_startup (hcl_t* hcl)
 	}
 
 #if defined(ENABLE_GCFIN)
-	hcl->sem_gcfin = (moo_oop_semaphore_t)hcl->_nil;
+	hcl->sem_gcfin = (hcl_oop_semaphore_t)hcl->_nil;
 	hcl->sem_gcfin_sigreq = 0;
 #endif
 
@@ -330,7 +328,7 @@ static void vm_cleanup (hcl_t* hcl)
 	}
 
 #if defined(ENABLE_GCFIN)
-	hcl->sem_gcfin = (moo_oop_semaphore_t)hcl->_nil;
+	hcl->sem_gcfin = (hcl_oop_semaphore_t)hcl->_nil;
 	hcl->sem_gcfin_sigreq = 0;
 
 	/* deregister all pending finalizable objects pending just in case these

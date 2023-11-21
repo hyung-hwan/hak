@@ -24,47 +24,60 @@
 
 #include "hcl-prv.h"
 
-void hcl_dumpsymtab (hcl_t* hcl)
+/* TODO: handle different endians - UTF16BE or UTF16LE */
+
+enum
 {
-	hcl_oow_t i;
-	hcl_oop_char_t symbol;
+	HIGH_SURROGATE_START = 0xD800,
+	HIGH_SURROGATE_END   = 0xDBFF,
+	LOW_SURROGATE_START  = 0xDC00,
+	LOW_SURROGATE_END    = 0xDFFF
+};
 
-	HCL_DEBUG0 (hcl, "--------------------------------------------\n");
-	HCL_DEBUG1 (hcl, "HCL Symbol Table %zu\n", HCL_OBJ_GET_SIZE(hcl->symtab->bucket));
-	HCL_DEBUG0 (hcl, "--------------------------------------------\n");
+hcl_oow_t hcl_uc_to_utf16 (hcl_uch_t uc, hcl_bch_t* utf16, hcl_oow_t size)
+{
+	hcl_uint16_t* u16 = (hcl_uint16_t*)utf16;
 
-	for (i = 0; i < HCL_OBJ_GET_SIZE(hcl->symtab->bucket); i++)
+	if (uc <= 0xFFFF) 
 	{
-		symbol = (hcl_oop_char_t)hcl->symtab->bucket->slot[i];
- 		if ((hcl_oop_t)symbol != hcl->_nil)
-		{
-			HCL_DEBUG2 (hcl, " %07zu %O\n", i, symbol);
-		}
+		u16[0] = (hcl_uint16_t)uc;
+		return 2;
 	}
+#if (HCL_SIZEOF_UCH_T > 2)
+	else if (uc <= 0x10FFFF) 
+	{
+		u16[0] = HIGH_SURROGATE_START | (((uc >> 16) & 0x1F) - 1) | (uc >> 10);
+		u16[1] = LOW_SURROGATE_START | (uc & 0x3FF);
+		return 4;
+	}
+#endif
 
-	HCL_DEBUG0 (hcl, "--------------------------------------------\n");
+	return 0; /* illegal character */
 }
 
-void hcl_dumpdic (hcl_t* hcl, hcl_oop_dic_t dic, const hcl_bch_t* title)
+hcl_oow_t hcl_utf16_to_uc (const hcl_bch_t* utf16, hcl_oow_t size, hcl_uch_t* uc)
 {
-	hcl_oow_t i;
-	hcl_oop_cons_t ass;
+	const hcl_uint16_t* u16 = (const hcl_uint16_t*)utf16;
 
-	HCL_DEBUG0 (hcl, "--------------------------------------------\n");
-	HCL_DEBUG2 (hcl, "%s %zu\n", title, HCL_OBJ_GET_SIZE(dic->bucket));
-	HCL_DEBUG0 (hcl, "--------------------------------------------\n");
+	if (size < 2) return 0; /* incomplete sequence */
 
-	for (i = 0; i < HCL_OBJ_GET_SIZE(dic->bucket); i++)
+	if (u16[0] < HIGH_SURROGATE_START || u16[0] > LOW_SURROGATE_END) 
 	{
-		ass = (hcl_oop_cons_t)dic->bucket->slot[i];
-		if ((hcl_oop_t)ass != hcl->_nil)
+		/* BMP - U+0000 - U+D7FF, U+E000 - U+FFFF */
+		*uc = u16[0];
+		return 2;
+	}
+#if (HCL_SIZEOF_UCH_T > 2)
+	else if (u16[0] >= HIGH_SURROGATE_START && u16[0] <= HIGH_SURROGATE_END) /* high-surrogate */
+	{
+		if (size < 4) return 0; /* incomplete */
+		if (u16[1] >= LOW_SURROGATE_START && u16[1] <= LOW_SURROGATE_END) /* low-surrogate */
 		{
-			HCL_DEBUG2 (hcl, " %07zu %O\n", i, ass->car);
+			*uc = (((u16[0] & 0x3FF) << 10) | (u16[1] & 0x3FF)) + 0x10000;
+			return 4;
 		}
 	}
-	HCL_DEBUG0 (hcl, "--------------------------------------------\n");
+#endif
+
+	return 0;
 }
-
-
-
-

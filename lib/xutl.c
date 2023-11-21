@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
     Copyright (c) 2016-2018 Chung, Hyung-Hwan. All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -23,6 +21,7 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 #include <hcl-xutl.h>
 #include "hcl-prv.h"
 

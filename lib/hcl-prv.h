@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
     Copyright (c) 2016-2018 Chung, Hyung-Hwan. All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -28,6 +26,7 @@
 #define _HCL_PRV_H_
 
 #include <hcl.h>
+#include <hcl-chr.h>
 #include <hcl-fmt.h>
 #include <hcl-utl.h>
 

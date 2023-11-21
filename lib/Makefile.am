@@ -48,6 +48,7 @@ pkglibdir = $(libdir)
 
 pkginclude_HEADERS = \
 	hcl.h \
+	hcl-chr.h \
 	hcl-cmn.h \
 	hcl-fmt.h \
 	hcl-opt.h \
@@ -64,6 +65,7 @@ libhcl_la_SOURCES = \
 	hcl-utl.h \
 	hcl-prv.h \
 	bigint.c \
+	chr.c \
 	cnode.c \
 	comp.c \
 	debug.c \
@@ -76,6 +78,7 @@ libhcl_la_SOURCES = \
 	gc.c \
 	hcl.c \
 	heap.c \
+	mb8.c \
 	number.c \
 	obj.c \
 	opt-impl.h \
@@ -86,6 +89,9 @@ libhcl_la_SOURCES = \
 	read.c \
 	std.c \
 	sym.c \
+	uch-case.h \
+	uch-prop.h \
+	utf16.c \
 	utf8.c \
 	utl.c \
 	xma.c 

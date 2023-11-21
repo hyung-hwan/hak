@@ -24,47 +24,16 @@
 
 #include "hcl-prv.h"
 
-void hcl_dumpsymtab (hcl_t* hcl)
+hcl_oow_t hcl_uc_to_mb8 (hcl_uch_t wc, hcl_bch_t* mb8, hcl_oow_t size)
 {
-	hcl_oow_t i;
-	hcl_oop_char_t symbol;
-
-	HCL_DEBUG0 (hcl, "--------------------------------------------\n");
-	HCL_DEBUG1 (hcl, "HCL Symbol Table %zu\n", HCL_OBJ_GET_SIZE(hcl->symtab->bucket));
-	HCL_DEBUG0 (hcl, "--------------------------------------------\n");
-
-	for (i = 0; i < HCL_OBJ_GET_SIZE(hcl->symtab->bucket); i++)
-	{
-		symbol = (hcl_oop_char_t)hcl->symtab->bucket->slot[i];
- 		if ((hcl_oop_t)symbol != hcl->_nil)
-		{
-			HCL_DEBUG2 (hcl, " %07zu %O\n", i, symbol);
-		}
-	}
-
-	HCL_DEBUG0 (hcl, "--------------------------------------------\n");
+	if (size <= 0) return size + 1; /* buffer too small */
+	if (wc > HCL_TYPE_MAX(hcl_uint8_t)) return 0; /* illegal character */
+	if (mb8) *(hcl_uint8_t*)mb8 = wc;
+	return 1;
 }
 
-void hcl_dumpdic (hcl_t* hcl, hcl_oop_dic_t dic, const hcl_bch_t* title)
+hcl_oow_t hcl_mb8_to_uc (const hcl_bch_t* mb8, hcl_oow_t size, hcl_uch_t* wc)
 {
-	hcl_oow_t i;
-	hcl_oop_cons_t ass;
-
-	HCL_DEBUG0 (hcl, "--------------------------------------------\n");
-	HCL_DEBUG2 (hcl, "%s %zu\n", title, HCL_OBJ_GET_SIZE(dic->bucket));
-	HCL_DEBUG0 (hcl, "--------------------------------------------\n");
-
-	for (i = 0; i < HCL_OBJ_GET_SIZE(dic->bucket); i++)
-	{
-		ass = (hcl_oop_cons_t)dic->bucket->slot[i];
-		if ((hcl_oop_t)ass != hcl->_nil)
-		{
-			HCL_DEBUG2 (hcl, " %07zu %O\n", i, ass->car);
-		}
-	}
-	HCL_DEBUG0 (hcl, "--------------------------------------------\n");
+	*wc = *(const hcl_uint8_t*)mb8;
+	return 1;
 }
-
-
-
-

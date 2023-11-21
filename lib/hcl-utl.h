@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
     Copyright (c) 2016-2018 Chung, Hyung-Hwan. All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -287,6 +285,17 @@
 #define HCL_HASH_UCSTR(hv, ptr) HCL_HASH_VPTR(hv, ptr, const hcl_uch_t)
 #define HCL_HASH_MORE_UCSTR(hv, ptr) HCL_HASH_MORE_VPTR(hv, ptr, const hcl_uch_t)
 
+/* =========================================================================
+ * CMGR
+ * ========================================================================= */
+enum hcl_cmgr_id_t
+{
+	HCL_CMGR_UTF8,
+	HCL_CMGR_UTF16,
+	HCL_CMGR_MB8
+};
+typedef enum hcl_cmgr_id_t hcl_cmgr_id_t;
+
 
 /* =========================================================================
  * PATH-RELATED MACROS
@@ -516,13 +525,13 @@ HCL_EXPORT hcl_oow_t hcl_copy_bcstr_unlimited (
 
 HCL_EXPORT void hcl_fill_uchars (
 	hcl_uch_t*       dst,
-	const hcl_uch_t  ch,
+	hcl_uch_t        ch,
 	hcl_oow_t        len
 );
 
 HCL_EXPORT void hcl_fill_bchars (
 	hcl_bch_t*       dst,
-	const hcl_bch_t  ch,
+	hcl_bch_t        ch,
 	hcl_oow_t        len
 );
 
@@ -690,9 +699,34 @@ HCL_EXPORT int hcl_conv_uchars_to_bchars_with_cmgr (
 #	define hcl_conv_oochars_to_uchars_with_cmgr(oocs,oocslen,ucs,ucslen,cmgr) hcl_conv_bchars_to_uchars_with_cmgr(oocs,oocslen,ucs,ucslen,cmgr,0)
 #endif
 
+/* ------------------------------------------------------------------------- */
+
 HCL_EXPORT hcl_cmgr_t* hcl_get_utf8_cmgr (
 	void
 );
+
+HCL_EXPORT hcl_cmgr_t* hcl_get_cmgr_by_id (
+	hcl_cmgr_id_t id
+);
+
+HCL_EXPORT hcl_cmgr_t* hcl_get_cmgr_by_bcstr (
+	const hcl_bch_t* name
+);
+
+HCL_EXPORT hcl_cmgr_t* hcl_get_cmgr_by_ucstr (
+	const hcl_uch_t* name
+);
+
+#if defined(HCL_OOCH_IS_UCH)
+#	define hcl_get_cmgr_by_name(name) hcl_get_cmgr_by_ucstr(name)
+#else
+#	define hcl_get_cmgr_by_name(name) hcl_get_cmgr_by_bcstr(name)
+#endif
+
+#define hcl_get_utf8_cmgr() hcl_get_cmgr_by_id(HCL_CMGR_UTF8)
+#define hcl_get_utf16_cmgr() hcl_get_cmgr_by_id(HCL_CMGR_UTF16)
+#define hcl_get_mb8_cmgr() hcl_get_cmgr_by_id(HCL_CMGR_MB8)
+
 
 /**
  * The hcl_conv_uchars_to_utf8() function converts a unicode character string \a ucs

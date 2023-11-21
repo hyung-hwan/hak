@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
     Copyright (c) 2016-2018 Chung, Hyung-Hwan. All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -259,7 +257,7 @@
 #endif
 
 #if defined(USE_THREAD)
-#	define MUTEX_INIT(x) pthread_mutex_init((x), MOO_NULL)
+#	define MUTEX_INIT(x) pthread_mutex_init((x), HCL_NULL)
 #	define MUTEX_DESTROY(x) pthread_mutex_destroy(x)
 #	define MUTEX_LOCK(x) pthread_mutex_lock(x)
 #	define MUTEX_UNLOCK(x) pthread_mutex_unlock(x)
@@ -2885,13 +2883,13 @@ static int open_pipes (hcl_t* hcl, int p[2])
 #elif defined(HAVE_PIPE2) && defined(O_CLOEXEC) && defined(O_NONBLOCK)
 	/* do nothing */
 #else
-	#if defined(FD_CLOEXEC)
+	#if defined(FD_CLOEXEC) && defined(F_GETFD) && defined(F_SETFD)
 	flags = fcntl(p[0], F_GETFD);
 	if (flags >= 0) fcntl (p[0], F_SETFD, flags | FD_CLOEXEC);
 	flags = fcntl(p[1], F_GETFD);
 	if (flags >= 0) fcntl (p[1], F_SETFD, flags | FD_CLOEXEC);
 	#endif
-	#if defined(O_NONBLOCK)
+	#if defined(O_NONBLOCK) && defined(F_GETFL) && defined(F_SETFL)
 	flags = fcntl(p[0], F_GETFL);
 	if (flags >= 0) fcntl (p[0], F_SETFL, flags | O_NONBLOCK);
 	flags = fcntl(p[1], F_GETFL);
@@ -3146,7 +3144,7 @@ hcl_t* hcl_openstdwithmmgr (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, hcl_errnum_t* e
 	hcl = hcl_open(mmgr, HCL_SIZEOF(xtn_t) + xtnsize, &vmprim, errnum);
 	if (HCL_UNLIKELY(!hcl)) return HCL_NULL;
 
-	/* adjust the object size by the sizeof xtn_t so that moo_getxtn() returns the right pointer. */
+	/* adjust the object size by the sizeof xtn_t so that hcl_getxtn() returns the right pointer. */
 	hcl->_instsize += HCL_SIZEOF(xtn_t);
 
 	reset_log_to_default (GET_XTN(hcl));
@@ -3613,7 +3611,7 @@ static HCL_INLINE int write_bytes_udo_stream (hcl_t* hcl, hcl_io_udoarg_t* arg)
 	/*xtn_t* xtn = GET_XTN(hcl);*/
 	const hcl_uint8_t* ptr;
 
-	ptr = (const hcl_uint8_t*)arg->ptr; // take the buffer as a byte series
+	ptr = (const hcl_uint8_t*)arg->ptr; /* take the buffer as a byte series */
 
 	if (fwrite(ptr, HCL_SIZEOF(*ptr), arg->len, (FILE*)arg->handle) < arg->len)
 	{
