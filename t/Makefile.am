@@ -6,17 +6,23 @@ check_SCRIPTS = \
 	insta-02.hcl \
 	ret-01.hcl \
 	retvar-01.hcl \
-	va-01.hcl \
-	var-01.hcl 
+	va-01.hcl
+
+check_ERRORS = \
+	var-01.err \
+	var-02.err
 
 ##noinst_SCRIPTS = $(check_SCRIPTS)
-EXTRA_DIST = $(check_SCRIPTS)
+EXTRA_DIST = $(check_SCRIPTS) $(check_ERRORS)
 
 check_PROGRAMS =
 
+TESTS = $(check_PROGRAMS) $(check_SCRIPTS) $(check_ERRORS)
 
-TESTS = $(check_PROGRAMS) $(check_SCRIPTS)
+TEST_EXTENSIONS = .hcl .err
 
-TEST_EXTENSIONS = .hcl
 HCL_LOG_COMPILER = sh $(abs_srcdir)/run.sh ../bin/hcl -x
 AM_HCL_LOG_FLAGS =
+
+ERR_LOG_COMPILER = sh $(abs_srcdir)/err.sh ../bin/hcl -x
+AM_ERR_LOG_FLAGS =

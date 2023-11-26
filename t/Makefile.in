@@ -88,7 +88,7 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 check_PROGRAMS =
-TESTS = $(am__EXEEXT_1) $(check_SCRIPTS)
+TESTS = $(am__EXEEXT_1) $(check_SCRIPTS) $(check_ERRORS)
 subdir = t
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_check_sign.m4 \
@@ -312,7 +312,7 @@ am__EXEEXT_1 =
 TEST_SUITE_LOG = test-suite.log
 am__test_logs1 = $(TESTS:=.log)
 am__test_logs2 = $(am__test_logs1:@EXEEXT@.log=.log)
-TEST_LOGS = $(am__test_logs2:.hcl.log=.log)
+am__test_logs3 = $(am__test_logs2:.hcl.log=.log)
 HCL_LOG_DRIVER = $(SHELL) $(top_srcdir)/ac/test-driver
 HCL_LOG_COMPILE = $(HCL_LOG_COMPILER) $(AM_HCL_LOG_FLAGS) \
 	$(HCL_LOG_FLAGS)
@@ -326,6 +326,10 @@ am__set_b = \
     *) \
       b='$*';; \
   esac
+TEST_LOGS = $(am__test_logs3:.err.log=.log)
+ERR_LOG_DRIVER = $(SHELL) $(top_srcdir)/ac/test-driver
+ERR_LOG_COMPILE = $(ERR_LOG_COMPILER) $(AM_ERR_LOG_FLAGS) \
+	$(ERR_LOG_FLAGS)
 am__DIST_COMMON = $(srcdir)/Makefile.in $(top_srcdir)/ac/test-driver
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
@@ -473,17 +477,22 @@ check_SCRIPTS = \
 	insta-02.hcl \
 	ret-01.hcl \
 	retvar-01.hcl \
-	va-01.hcl \
-	var-01.hcl 
+	va-01.hcl
 
-EXTRA_DIST = $(check_SCRIPTS)
-TEST_EXTENSIONS = .hcl
+check_ERRORS = \
+	var-01.err \
+	var-02.err
+
+EXTRA_DIST = $(check_SCRIPTS) $(check_ERRORS)
+TEST_EXTENSIONS = .hcl .err
 HCL_LOG_COMPILER = sh $(abs_srcdir)/run.sh ../bin/hcl -x
 AM_HCL_LOG_FLAGS = 
+ERR_LOG_COMPILER = sh $(abs_srcdir)/err.sh ../bin/hcl -x
+AM_ERR_LOG_FLAGS = 
 all: all-am
 
 .SUFFIXES:
-.SUFFIXES: .hcl .hcl$(EXEEXT) .log .trs
+.SUFFIXES: .err .err$(EXEEXT) .hcl .hcl$(EXEEXT) .log .trs
 $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
@@ -689,6 +698,20 @@ recheck: all $(check_PROGRAMS) $(check_SCRIPTS)
 @am__EXEEXT_TRUE@	$(am__check_pre) $(HCL_LOG_DRIVER) --test-name "$$f" \
 @am__EXEEXT_TRUE@	--log-file $$b.log --trs-file $$b.trs \
 @am__EXEEXT_TRUE@	$(am__common_driver_flags) $(AM_HCL_LOG_DRIVER_FLAGS) $(HCL_LOG_DRIVER_FLAGS) -- $(HCL_LOG_COMPILE) \
+@am__EXEEXT_TRUE@	"$$tst" $(AM_TESTS_FD_REDIRECT)
+.err.log:
+	@p='$<'; \
+	$(am__set_b); \
+	$(am__check_pre) $(ERR_LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_ERR_LOG_DRIVER_FLAGS) $(ERR_LOG_DRIVER_FLAGS) -- $(ERR_LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+@am__EXEEXT_TRUE@.err$(EXEEXT).log:
+@am__EXEEXT_TRUE@	@p='$<'; \
+@am__EXEEXT_TRUE@	$(am__set_b); \
+@am__EXEEXT_TRUE@	$(am__check_pre) $(ERR_LOG_DRIVER) --test-name "$$f" \
+@am__EXEEXT_TRUE@	--log-file $$b.log --trs-file $$b.trs \
+@am__EXEEXT_TRUE@	$(am__common_driver_flags) $(AM_ERR_LOG_DRIVER_FLAGS) $(ERR_LOG_DRIVER_FLAGS) -- $(ERR_LOG_COMPILE) \
 @am__EXEEXT_TRUE@	"$$tst" $(AM_TESTS_FD_REDIRECT)
 distdir: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) distdir-am

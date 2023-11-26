@@ -423,7 +423,7 @@ static hcl_oop_t execute_in_batch_mode (hcl_t* hcl, int verbose)
 	hcl_oop_t retv;
 
 	hcl_decode (hcl, 0, hcl_getbclen(hcl));
-	HCL_LOG2 (hcl, HCL_LOG_MNEMONIC, "BYTECODES bclen = > %zu lflen => %zu\n", hcl_getbclen(hcl), hcl_getlflen(hcl));
+	HCL_LOG3 (hcl, HCL_LOG_MNEMONIC, "BYTECODES bclen=%zu lflen=%zu ngtmprs=%zu\n", hcl_getbclen(hcl), hcl_getlflen(hcl), hcl_getngtmprs(hcl));
 	g_hcl = hcl;
 	/*setup_tick ();*/
 

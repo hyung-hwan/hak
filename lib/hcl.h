@@ -2369,12 +2369,14 @@ HCL_EXPORT int hcl_decode (
 );
 
 #if defined(HCL_HAVE_INLINE)
-	static HCL_INLINE hcl_oow_t hcl_getbclen (hcl_t* hcl) { return hcl->code.bc.len; }
-	static HCL_INLINE hcl_oow_t hcl_getlflen (hcl_t* hcl) { return hcl->code.lit.len; }
-	static HCL_INLINE hcl_ooi_t hcl_getip (hcl_t* hcl) { return hcl->ip; }
+static HCL_INLINE hcl_oow_t hcl_getbclen (hcl_t* hcl) { return hcl->code.bc.len; }
+static HCL_INLINE hcl_oow_t hcl_getlflen (hcl_t* hcl) { return hcl->code.lit.len; }
+static HCL_INLINE hcl_oow_t hcl_getngtmprs (hcl_t* hcl) { return hcl->code.ngtmprs; }
+static HCL_INLINE hcl_ooi_t hcl_getip (hcl_t* hcl) { return hcl->ip; }
 #else
 #	define hcl_getbclen(hcl) ((hcl)->code.bc.len)
 #	define hcl_getlflen(hcl) ((hcl)->code.lit.len)
+#	define hcl_getngtmprs(hcl) ((hcl)->code.ngtmprs)
 #	define hcl_getip(hcl) ((hcl)->ip)
 #endif
 

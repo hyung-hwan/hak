@@ -1,0 +1,14 @@
+defclass Object {
+	{
+		## this must not be allowed at this level. if it's allowed,
+		## it should be at the top-level which is above the class level. this is confusing.
+		| j | ## ERROR: syntax error
+		set j 20;
+		printf ">>> %d\n" j;
+	}
+
+	defun ::* init() {
+		printf "Object init...\n";
+		return self;
+	};
+};

@@ -859,6 +859,14 @@ typedef struct hcl_t hcl_t;
 #	define HCL_UNUSED
 #endif
 
+#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 202311L)
+#	define HCL_NORETURN noreturn
+#elif defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
+#	define HCL_NORETURN _Noreturn
+#else
+#	define HCL_NORETURN
+#endif
+
 /**
  * The HCL_TYPE_IS_SIGNED() macro determines if a type is signed.
  * \code
@@ -1077,7 +1085,9 @@ typedef struct hcl_t hcl_t;
 #define HCL_STATIC_JOIN_INNER(x, y) x ## y
 #define HCL_STATIC_JOIN(x, y) HCL_STATIC_JOIN_INNER(x, y)
 
-#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
+#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 202311L)
+#	define HCL_STATIC_ASSERT(expr)  static_assert (expr, "invalid assertion")
+#elif defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
 #	define HCL_STATIC_ASSERT(expr)  _Static_assert (expr, "invalid assertion")
 #elif defined(__cplusplus) && (__cplusplus >= 201103L)
 #	define HCL_STATIC_ASSERT(expr) static_assert (expr, "invalid assertion")
