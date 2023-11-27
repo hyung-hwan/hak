@@ -1962,14 +1962,17 @@ inside_loop:
 
 /* ========================================================================= */
 
-static int compile_expression_block (hcl_t* hcl, hcl_cnode_t* src, const hcl_bch_t* ctxname, int is_block)
+#define CEB_IS_BLOCK (1 << 0)
+#define CEB_AUTO_FORGED (1 << 1)
+
+static int compile_expression_block (hcl_t* hcl, hcl_cnode_t* src, const hcl_bch_t* ctxname, int flags)
 {
 	hcl_cnode_t* cmd, * obj, * tmp;
 	hcl_oow_t nlvars, tvslen;
 	hcl_fnblk_info_t* fbi;
 	hcl_cframe_t* cf;
 
-	if (is_block)
+	if (flags & CEB_IS_BLOCK)
 	{
 		HCL_ASSERT (hcl, HCL_CNODE_IS_CONS_CONCODED(src, HCL_CONCODE_BLOCK) || HCL_CNODE_IS_ELIST_CONCODED(src, HCL_CONCODE_BLOCK));
 		cmd = src; /* it's the cons cell itself  */
@@ -1991,12 +1994,28 @@ static int compile_expression_block (hcl_t* hcl, hcl_cnode_t* src, const hcl_bch
 		}
 	}
 
-	if (is_in_class_init_scope(hcl) && is_followed_by_vlist(hcl, obj))
+	if (is_followed_by_vlist(hcl, obj))
 	{
-		hcl_setsynerrbfmt (
-			hcl, HCL_SYNERR_VARDCLBANNED, HCL_CNODE_GET_LOC(obj), HCL_NULL,
-			"variable declaration disallowed in class init scope");
-		return -1;
+		if (is_in_class_init_scope(hcl))
+		{
+			hcl_setsynerrbfmt (
+				hcl, HCL_SYNERR_VARDCLBANNED, HCL_CNODE_GET_LOC(obj), HCL_NULL,
+				"variable declaration disallowed in class init scope");
+			return -1;
+		}
+
+		if (!(flags & CEB_IS_BLOCK) && (flags & CEB_AUTO_FORGED))
+		{
+			/* `do` not explicitly enclosed in ().
+			 * e.g. do | x | { set x 20; };
+			 *         ^
+			 *         +-- this is not allowed
+			 */
+			hcl_setsynerrbfmt (
+				hcl, HCL_SYNERR_VARDCLBANNED, HCL_CNODE_GET_LOC(obj), HCL_NULL,
+				"variable declaration disallowed in %hs context", ctxname);
+			return -1;
+		}
 	}
 
 	tvslen = hcl->c->tv.s.len;
@@ -2033,12 +2052,13 @@ static int compile_expression_block (hcl_t* hcl, hcl_cnode_t* src, const hcl_bch
 	return 0;
 }
 
-static int compile_do (hcl_t* hcl, hcl_cnode_t* src)
+static int compile_do (hcl_t* hcl, hcl_cnode_t* xlist)
 {
 	hcl_cnode_t* cmd, * obj, * tmp;
 	hcl_oow_t nlvars, tvslen;
 	hcl_fnblk_info_t* fbi;
 	hcl_cframe_t* cf;
+	int flags = 0;
 
 	/* (do
 	 *   (+ 10 20)
@@ -2048,13 +2068,14 @@ static int compile_do (hcl_t* hcl, hcl_cnode_t* src)
 	 * you can use this to combine multiple expressions to a single expression
 	 */
 
-	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
-	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_DO));
+	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(xlist));
+	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(xlist), HCL_SYNCODE_DO));
 
-	cmd = HCL_CNODE_CONS_CAR(src); /* do itself */
-	obj = HCL_CNODE_CONS_CDR(src); /* expression list after it */
+	cmd = HCL_CNODE_CONS_CAR(xlist); /* do itself */
+	obj = HCL_CNODE_CONS_CDR(xlist); /* expression list after it */
 
-	return compile_expression_block(hcl, src, "do", 0);
+	if (HCL_CNODE_GET_FLAGS(xlist) & HCL_CNODE_AUTO_FORGED) flags |= CEB_AUTO_FORGED;
+	return compile_expression_block(hcl, xlist, "do", flags);
 }
 
 static int compile_do_p1 (hcl_t* hcl)
@@ -3927,7 +3948,7 @@ static int compile_cons_mlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 
 static int compile_cons_block_expression (hcl_t* hcl, hcl_cnode_t* obj)
 {
-	return compile_expression_block(hcl, obj, "block", 1);
+	return compile_expression_block(hcl, obj, "block", CEB_IS_BLOCK);
 }
 
 static HCL_INLINE int compile_symbol (hcl_t* hcl, hcl_cnode_t* obj)

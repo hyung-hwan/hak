@@ -243,7 +243,14 @@ enum hcl_cnode_type_t
 };
 typedef enum hcl_cnode_type_t hcl_cnode_type_t;
 
+enum hcl_cnode_flag_t
+{
+	HCL_CNODE_AUTO_FORGED = (1 << 0)
+};
+typedef enum hcl_cnode_flagt hcl_cnode_flag_t;
+
 #define HCL_CNODE_GET_TYPE(x) ((x)->cn_type)
+#define HCL_CNODE_GET_FLAGS(x) ((x)->cn_flags)
 #define HCL_CNODE_GET_LOC(x) (&(x)->cn_loc)
 #define HCL_CNODE_GET_TOK(x) (&(x)->cn_tok)
 #define HCL_CNODE_GET_TOKPTR(x) ((x)->cn_tok.ptr)
@@ -274,6 +281,7 @@ typedef enum hcl_cnode_type_t hcl_cnode_type_t;
 struct hcl_cnode_t
 {
 	hcl_cnode_type_t cn_type;
+	int cn_flags;
 	hcl_loc_t cn_loc;
 	hcl_oocs_t cn_tok;
 
@@ -283,12 +291,10 @@ struct hcl_cnode_t
 		{
 			hcl_ooch_t v;
 		} charlit;
-
 		struct
 		{
 			hcl_syncode_t syncode; /* special if non-zero */
 		} symbol;
-
 		struct
 		{
 			hcl_oow_t v;
@@ -1707,26 +1713,26 @@ int hcl_emitbyteinstruction (
 /* ========================================================================= */
 /* cnode.c                                                                   */
 /* ========================================================================= */
-hcl_cnode_t* hcl_makecnodenil (hcl_t* hcl, const hcl_loc_t* loc, const hcl_oocs_t* tok);
-hcl_cnode_t* hcl_makecnodetrue (hcl_t* hcl, const hcl_loc_t* loc, const  hcl_oocs_t* tok);
-hcl_cnode_t* hcl_makecnodefalse (hcl_t* hcl, const hcl_loc_t* loc, const  hcl_oocs_t* tok);
-hcl_cnode_t* hcl_makecnodeself (hcl_t* hcl, const hcl_loc_t* loc, const  hcl_oocs_t* tok);
-hcl_cnode_t* hcl_makecnodesuper (hcl_t* hcl, const hcl_loc_t* loc, const  hcl_oocs_t* tok);
-hcl_cnode_t* hcl_makecnodeellipsis (hcl_t* hcl, const hcl_loc_t* loc, const  hcl_oocs_t* tok);
-hcl_cnode_t* hcl_makecnodetrpcolons (hcl_t* hcl, const hcl_loc_t* loc, const  hcl_oocs_t* tok);
-hcl_cnode_t* hcl_makecnodedcstar (hcl_t* hcl, const hcl_loc_t* loc, const  hcl_oocs_t* tok);
-hcl_cnode_t* hcl_makecnodecharlit (hcl_t* hcl, const hcl_loc_t* loc, const  hcl_oocs_t* tok, const hcl_ooch_t v);
-hcl_cnode_t* hcl_makecnodesymbol (hcl_t* hcl, const hcl_loc_t* loc, const  hcl_oocs_t* tok);
-hcl_cnode_t* hcl_makecnodedsymbol (hcl_t* hcl, const hcl_loc_t* loc, const  hcl_oocs_t* tok);
-hcl_cnode_t* hcl_makecnodestrlit (hcl_t* hcl, const hcl_loc_t* loc, const  hcl_oocs_t* tok);
-hcl_cnode_t* hcl_makecnodenumlit (hcl_t* hcl, const hcl_loc_t* loc, const  hcl_oocs_t* tok);
-hcl_cnode_t* hcl_makecnoderadnumlit (hcl_t* hcl, const hcl_loc_t* loc, const  hcl_oocs_t* tok);
-hcl_cnode_t* hcl_makecnodefpdeclit (hcl_t* hcl, const hcl_loc_t* loc, const  hcl_oocs_t* tok);
-hcl_cnode_t* hcl_makecnodesmptrlit (hcl_t* hcl, const hcl_loc_t* loc, const  hcl_oocs_t* tok, hcl_oow_t v);
-hcl_cnode_t* hcl_makecnodeerrlit (hcl_t* hcl, const hcl_loc_t* loc, const  hcl_oocs_t* tok, hcl_ooi_t v);
-hcl_cnode_t* hcl_makecnodecons (hcl_t* hcl, const hcl_loc_t* loc, const hcl_oocs_t* tok, hcl_cnode_t* car, hcl_cnode_t* cdr);
-hcl_cnode_t* hcl_makecnodeelist (hcl_t* hcl, const hcl_loc_t* loc, hcl_concode_t type);
-hcl_cnode_t* hcl_makecnodeshell (hcl_t* hcl, const hcl_loc_t* loc, hcl_cnode_t* obj);
+hcl_cnode_t* hcl_makecnodenil (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
+hcl_cnode_t* hcl_makecnodetrue (hcl_t* hcl, int flags, const hcl_loc_t* loc, const  hcl_oocs_t* tok);
+hcl_cnode_t* hcl_makecnodefalse (hcl_t* hcl, int flags, const hcl_loc_t* loc, const  hcl_oocs_t* tok);
+hcl_cnode_t* hcl_makecnodeself (hcl_t* hcl, int flags, const hcl_loc_t* loc, const  hcl_oocs_t* tok);
+hcl_cnode_t* hcl_makecnodesuper (hcl_t* hcl, int flags, const hcl_loc_t* loc, const  hcl_oocs_t* tok);
+hcl_cnode_t* hcl_makecnodeellipsis (hcl_t* hcl, int flags, const hcl_loc_t* loc, const  hcl_oocs_t* tok);
+hcl_cnode_t* hcl_makecnodetrpcolons (hcl_t* hcl, int flags, const hcl_loc_t* loc, const  hcl_oocs_t* tok);
+hcl_cnode_t* hcl_makecnodedcstar (hcl_t* hcl, int flags, const hcl_loc_t* loc, const  hcl_oocs_t* tok);
+hcl_cnode_t* hcl_makecnodecharlit (hcl_t* hcl, int flags, const hcl_loc_t* loc, const  hcl_oocs_t* tok, const hcl_ooch_t v);
+hcl_cnode_t* hcl_makecnodesymbol (hcl_t* hcl, int flags, const hcl_loc_t* loc, const  hcl_oocs_t* tok);
+hcl_cnode_t* hcl_makecnodedsymbol (hcl_t* hcl, int flags, const hcl_loc_t* loc, const  hcl_oocs_t* tok);
+hcl_cnode_t* hcl_makecnodestrlit (hcl_t* hcl, int flags, const hcl_loc_t* loc, const  hcl_oocs_t* tok);
+hcl_cnode_t* hcl_makecnodenumlit (hcl_t* hcl, int flags, const hcl_loc_t* loc, const  hcl_oocs_t* tok);
+hcl_cnode_t* hcl_makecnoderadnumlit (hcl_t* hcl, int flags, const hcl_loc_t* loc, const  hcl_oocs_t* tok);
+hcl_cnode_t* hcl_makecnodefpdeclit (hcl_t* hcl, int flags, const hcl_loc_t* loc, const  hcl_oocs_t* tok);
+hcl_cnode_t* hcl_makecnodesmptrlit (hcl_t* hcl, int flags, const hcl_loc_t* loc, const  hcl_oocs_t* tok, hcl_oow_t v);
+hcl_cnode_t* hcl_makecnodeerrlit (hcl_t* hcl, int flags, const hcl_loc_t* loc, const  hcl_oocs_t* tok, hcl_ooi_t v);
+hcl_cnode_t* hcl_makecnodecons (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok, hcl_cnode_t* car, hcl_cnode_t* cdr);
+hcl_cnode_t* hcl_makecnodeelist (hcl_t* hcl, int flags, const hcl_loc_t* loc, hcl_concode_t type);
+hcl_cnode_t* hcl_makecnodeshell (hcl_t* hcl, int flags, const hcl_loc_t* loc, hcl_cnode_t* obj);
 void hcl_freesinglecnode (hcl_t* hcl, hcl_cnode_t* c);
 hcl_oow_t hcl_countcnodecons (hcl_t* hcl, hcl_cnode_t* cons);
 void hcl_dumpcnode (hcl_t* hcl,  hcl_cnode_t* c, int newline);

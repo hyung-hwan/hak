@@ -1,0 +1,3 @@
+## if `do` is not enclosed in `( )`, variable declaration is prohibited
+(do | k | (set k 10))
+do | k | {set k 10;}; ##ERROR: syntax error - variable declaration disallowed

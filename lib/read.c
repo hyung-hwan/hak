@@ -657,7 +657,7 @@ static const hcl_ooch_t* add_sr_name (hcl_t* hcl, const hcl_oocs_t* name)
 static HCL_INLINE int enter_list (hcl_t* hcl, const hcl_loc_t* loc, int flagv)
 {
 	hcl_rstl_t* rstl;
-	rstl = hcl_callocmem(hcl, HCL_SIZEOF(*rstl));
+	rstl = (hcl_rstl_t*)hcl_callocmem(hcl, HCL_SIZEOF(*rstl));
 	if (HCL_UNLIKELY(!rstl)) return -1;
 	rstl->loc = *loc;
 	rstl->flagv = flagv;
@@ -716,11 +716,12 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 	{
 		HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(head));
 		HCL_CNODE_CONS_CONCODE(head) = concode;
+		if (fv & AUTO_FORGED) HCL_CNODE_GET_FLAGS(head) |= HCL_CNODE_AUTO_FORGED;
 		return head;
 	}
 
 	/* the list is empty */
-	return hcl_makecnodeelist(hcl, &loc, concode);
+	return hcl_makecnodeelist(hcl, ((fv & AUTO_FORGED)? HCL_CNODE_AUTO_FORGED: 0), &loc, concode);
 }
 
 static HCL_INLINE int can_dot_list (hcl_t* hcl)
@@ -836,7 +837,7 @@ static int chain_to_list (hcl_t* hcl, hcl_cnode_t* obj, hcl_loc_t* loc)
 			 * use a shell node to wrap the actual object list node head
 			 * for the compiler.
 			 */
-			shell = hcl_makecnodeshell(hcl, HCL_CNODE_GET_LOC(obj), obj);
+			shell = hcl_makecnodeshell(hcl, 0, HCL_CNODE_GET_LOC(obj), obj);
 			if (HCL_UNLIKELY(!shell)) return -1;
 
 			tail->u.cons.cdr = shell;
@@ -880,7 +881,7 @@ static int chain_to_list (hcl_t* hcl, hcl_cnode_t* obj, hcl_loc_t* loc)
 			fake_tok_ptr = &fake_tok;
 		}
 
-		cons = hcl_makecnodecons(hcl, (loc? loc: HCL_CNODE_GET_LOC(obj)), fake_tok_ptr, obj, HCL_NULL);
+		cons = hcl_makecnodecons(hcl, 0, (loc? loc: HCL_CNODE_GET_LOC(obj)), fake_tok_ptr, obj, HCL_NULL);
 		if (HCL_UNLIKELY(!cons)) return -1;
 
 		if (rstl->count <= 0)
@@ -1323,35 +1324,35 @@ static int feed_process_token (hcl_t* hcl)
 		}
 
 		case HCL_TOK_NIL:
-			frd->obj = hcl_makecnodenil(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			frd->obj = hcl_makecnodenil(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto auto_xlist;
 
 		case HCL_TOK_TRUE:
-			frd->obj = hcl_makecnodetrue(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			frd->obj = hcl_makecnodetrue(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto auto_xlist;
 
 		case HCL_TOK_FALSE:
-			frd->obj = hcl_makecnodefalse(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			frd->obj = hcl_makecnodefalse(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto auto_xlist;
 
 		case HCL_TOK_SELF:
-			frd->obj = hcl_makecnodeself(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			frd->obj = hcl_makecnodeself(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto auto_xlist;
 
 		case HCL_TOK_SUPER:
-			frd->obj = hcl_makecnodesuper(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			frd->obj = hcl_makecnodesuper(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto auto_xlist;
 
 		case HCL_TOK_ELLIPSIS:
-			frd->obj = hcl_makecnodeellipsis(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			frd->obj = hcl_makecnodeellipsis(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto auto_xlist;
 
 		case HCL_TOK_TRPCOLONS:
-			frd->obj = hcl_makecnodetrpcolons(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			frd->obj = hcl_makecnodetrpcolons(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto auto_xlist;
 
 		case HCL_TOK_DCSTAR:
-			frd->obj = hcl_makecnodedcstar(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			frd->obj = hcl_makecnodedcstar(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto auto_xlist;
 
 		case HCL_TOK_SMPTRLIT:
@@ -1372,7 +1373,7 @@ static int feed_process_token (hcl_t* hcl)
 				goto oops;
 			}
 
-			frd->obj = hcl_makecnodesmptrlit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl), v);
+			frd->obj = hcl_makecnodesmptrlit(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl), v);
 			goto auto_xlist;
 		}
 
@@ -1394,24 +1395,24 @@ static int feed_process_token (hcl_t* hcl)
 				}
 			}
 
-			frd->obj = hcl_makecnodeerrlit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl), v);
+			frd->obj = hcl_makecnodeerrlit(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl), v);
 			goto auto_xlist;
 		}
 
 		case HCL_TOK_CHARLIT:
-			frd->obj = hcl_makecnodecharlit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl), TOKEN_NAME_CHAR(hcl, 0));
+			frd->obj = hcl_makecnodecharlit(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl), TOKEN_NAME_CHAR(hcl, 0));
 			goto auto_xlist;
 
 		case HCL_TOK_NUMLIT:
-			frd->obj = hcl_makecnodenumlit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			frd->obj = hcl_makecnodenumlit(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto auto_xlist;
 
 		case HCL_TOK_RADNUMLIT:
-			frd->obj = hcl_makecnoderadnumlit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			frd->obj = hcl_makecnoderadnumlit(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto auto_xlist;
 
 		case HCL_TOK_FPDECLIT:
-			frd->obj = hcl_makecnodefpdeclit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			frd->obj = hcl_makecnodefpdeclit(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto auto_xlist;
 
 		/*
@@ -1421,15 +1422,15 @@ static int feed_process_token (hcl_t* hcl)
 		*/
 
 		case HCL_TOK_STRLIT:
-			frd->obj = hcl_makecnodestrlit(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			frd->obj = hcl_makecnodestrlit(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto auto_xlist;
 
 		case HCL_TOK_IDENT:
-			frd->obj = hcl_makecnodesymbol(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			frd->obj = hcl_makecnodesymbol(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto auto_xlist;
 
 		case HCL_TOK_IDENT_DOTTED:
-			frd->obj = hcl_makecnodedsymbol(hcl, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			frd->obj = hcl_makecnodedsymbol(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto auto_xlist;
 
 		auto_xlist:
