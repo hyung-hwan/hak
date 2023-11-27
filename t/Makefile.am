@@ -9,8 +9,10 @@ check_SCRIPTS = \
 	va-01.hcl
 
 check_ERRORS = \
+	feed-01.err \
 	var-01.err \
-	var-02.err
+	var-02.err \
+	var-03.err
 
 ##noinst_SCRIPTS = $(check_SCRIPTS)
 EXTRA_DIST = $(check_SCRIPTS) $(check_ERRORS)

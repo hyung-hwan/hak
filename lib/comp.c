@@ -413,7 +413,7 @@ static int check_block_expression_as_body (hcl_t* hcl, hcl_cnode_t* c, const hcl
 	if (!car || (HCL_CNODE_IS_CONS_CONCODED(car, HCL_CONCODE_VLIST) ||
 	             HCL_CNODE_IS_ELIST_CONCODED(car, HCL_CONCODE_VLIST)))
 	             /*(!HCL_CNODE_IS_CONS_CONCODED(car, HCL_CONCODE_BLOCK) &&
-		          !HCL_CNODE_IS_ELIST_CONCODED(car, HCL_CONCODE_BLOCK)))*/
+	              !HCL_CNODE_IS_ELIST_CONCODED(car, HCL_CONCODE_BLOCK)))*/
 	{
 	no_block:
 		hcl_setsynerrbfmt (
@@ -499,7 +499,6 @@ static int add_literal (hcl_t* hcl, hcl_oop_t obj, hcl_oow_t* index)
 	/*if (HCL_IS_OOP_POINTER(obj)) HCL_OBJ_SET_FLAGS_RDONLY(obj, 1); */
 	return 0;
 }
-
 
 /* ========================================================================= */
 
@@ -1332,7 +1331,6 @@ static HCL_INLINE hcl_cframe_t* find_cframe_from_top (hcl_t* hcl, int opcode)
 static int collect_vardcl (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t** nextobj, hcl_oow_t tv_dup_check_start, hcl_oow_t* nvardcls, const hcl_bch_t* desc)
 {
 	/* process a single variable declaration list */
-
 	hcl_oow_t ndcls = 0;
 	hcl_oow_t old_wcount = hcl->c->tv.wcount;
 	hcl_cnode_t* dcl;
@@ -1392,7 +1390,6 @@ static int collect_vardcl (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t** nextobj, 
 static int collect_vardcls (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t** nextobj, hcl_oow_t tv_dup_check_start, hcl_oow_t* nvardcls, const hcl_bch_t* desc)
 {
 	/* process zero or more variable declaration lists in a row */
-
 	hcl_oow_t ndcls = 0;
 	hcl_oow_t old_wcount = hcl->c->tv.wcount;
 
@@ -1411,6 +1408,17 @@ static int collect_vardcls (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t** nextobj,
 	HCL_ASSERT (hcl, ndcls == hcl->c->tv.wcount - old_wcount);
 	*nvardcls = ndcls;
 	*nextobj = obj;
+	return 0;
+}
+
+static int is_followed_by_vlist (hcl_t* hcl, hcl_cnode_t* obj)
+{
+	if (obj && HCL_CNODE_IS_CONS(obj))
+	{
+		hcl_cnode_t* dcl;
+		dcl = HCL_CNODE_CONS_CAR(obj);
+		return HCL_CNODE_IS_CONS_CONCODED(dcl, HCL_CONCODE_VLIST);
+	}
 	return 0;
 }
 
@@ -1983,6 +1991,14 @@ static int compile_expression_block (hcl_t* hcl, hcl_cnode_t* src, const hcl_bch
 		}
 	}
 
+	if (is_in_class_init_scope(hcl) && is_followed_by_vlist(hcl, obj))
+	{
+		hcl_setsynerrbfmt (
+			hcl, HCL_SYNERR_VARDCLBANNED, HCL_CNODE_GET_LOC(obj), HCL_NULL,
+			"variable declaration disallowed in class init scope");
+		return -1;
+	}
+
 	tvslen = hcl->c->tv.s.len;
 	nlvars = 0;
 	if (obj)
@@ -2024,7 +2040,6 @@ static int compile_do (hcl_t* hcl, hcl_cnode_t* src)
 	hcl_fnblk_info_t* fbi;
 	hcl_cframe_t* cf;
 
-
 	/* (do
 	 *   (+ 10 20)
 	 *   (* 2 30)
@@ -2039,45 +2054,7 @@ static int compile_do (hcl_t* hcl, hcl_cnode_t* src)
 	cmd = HCL_CNODE_CONS_CAR(src); /* do itself */
 	obj = HCL_CNODE_CONS_CDR(src); /* expression list after it */
 
-#if 0
-	if (!obj)
-	{
-		/* no value */
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGCOUNT, HCL_CNODE_GET_LOC(src), HCL_NULL, "no expression specified in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
-		return -1;
-	}
-	else if (!HCL_CNODE_IS_CONS(obj))
-	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(obj), HCL_CNODE_GET_TOK(obj), "redundant cdr in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
-		return -1;
-	}
-
-	tmp = obj;
-	tvslen = hcl->c->tv.s.len;
-	if (collect_vardcls(hcl, obj, &obj, tvslen, &nlvars, "do") <= -1) return -1;
-
-	if (nlvars > MAX_CODE_NBLKLVARS)
-	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARFLOOD, HCL_CNODE_GET_LOC(tmp), HCL_NULL, "too many(%zu) variables in %.*js", nlvars, HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
-		return -1;
-	}
-
-	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
-	fbi->tmprlen = hcl->c->tv.s.len;
-	fbi->tmprcnt = hcl->c->tv.wcount;
-	fbi->tmpr_nlvars = fbi->tmpr_nlvars + nlvars;
-
-	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_LIST, obj);  /* 1 */
-
-	PUSH_SUBCFRAME (hcl, COP_COMPILE_DO_P1, src); /* 2 */
-	cf = GET_SUBCFRAME(hcl);
-	cf->u.post_do.lvar_start = tvslen;
-	cf->u.post_do.lvar_end = fbi->tmprlen;
-
-	return 0;
-#else
 	return compile_expression_block(hcl, src, "do", 0);
-#endif
 }
 
 static int compile_do_p1 (hcl_t* hcl)

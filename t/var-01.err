@@ -1,14 +1,25 @@
-defclass Object {
+defclass A | a | {
+	defun ::* init1() {
+		| b |
+		set b (+ 1 2);
+		set a b;
+		printf "init to %d\n" a;
+		return self;
+	};
+
 	{
 		## this must not be allowed at this level. if it's allowed,
 		## it should be at the top-level which is above the class level. this is confusing.
-		| j | ## ERROR: syntax error
+		| j | ##ERROR: syntax error - variable declaration disallowed in class init scope
 		set j 20;
 		printf ">>> %d\n" j;
 	}
 
-	defun ::* init() {
-		printf "Object init...\n";
+	defun ::* init2() {
+		| b |
+		set b (+ 10 20);
+		set a b;
+		printf "init to %d\n" a;
 		return self;
 	};
 };
