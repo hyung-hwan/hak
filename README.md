@@ -25,6 +25,13 @@ A HCL program is composed of expressions.
 - until
 - while
 
+### do
+
+```
+do;
+do 10;
+do { | k | set k 20; printf "k=%d\n" k };
+```
 
 ## Literals
 - integer

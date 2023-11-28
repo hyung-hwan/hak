@@ -10,6 +10,7 @@ check_SCRIPTS = \
 
 check_ERRORS = \
 	do-01.err \
+	do-02.err \
 	feed-01.err \
 	var-01.err \
 	var-02.err \

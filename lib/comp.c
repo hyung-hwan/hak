@@ -24,6 +24,10 @@
 
 #include "hcl-prv.h"
 
+/* limit the `do` expression to have not more than 1 expression and
+ * no variable declaration if not enclosed in parentheses */
+#define LANG_LIMIT_DO
+
 enum
 {
 	VAR_NAMED,
@@ -1707,7 +1711,6 @@ static HCL_INLINE int compile_or_p2 (hcl_t* hcl)
 
 /* ========================================================================= */
 
-
 /* EXPERIMENT WITH BINOP */
 static int compile_plus (hcl_t* hcl, hcl_cnode_t* src)
 {
@@ -2004,6 +2007,7 @@ static int compile_expression_block (hcl_t* hcl, hcl_cnode_t* src, const hcl_bch
 			return -1;
 		}
 
+#if defined(LANG_LIMIT_DO) /* this limitation doesn't seem really useful? or make it #pragma based? */
 		if (!(flags & CEB_IS_BLOCK) && (flags & CEB_AUTO_FORGED))
 		{
 			/* `do` not explicitly enclosed in ().
@@ -2016,6 +2020,7 @@ static int compile_expression_block (hcl_t* hcl, hcl_cnode_t* src, const hcl_bch
 				"variable declaration disallowed in %hs context", ctxname);
 			return -1;
 		}
+#endif
 	}
 
 	tvslen = hcl->c->tv.s.len;
@@ -2032,6 +2037,19 @@ static int compile_expression_block (hcl_t* hcl, hcl_cnode_t* src, const hcl_bch
 			return -1;
 		}
 	}
+
+#if defined(LANG_LIMIT_DO)
+	if (!(flags & CEB_IS_BLOCK) && (flags & CEB_AUTO_FORGED))
+	{
+		if (obj && HCL_CNODE_IS_CONS(obj) && hcl_countcnodecons(hcl, obj) != 1)
+		{
+			hcl_setsynerrbfmt (
+				hcl, HCL_SYNERR_VARDCLBANNED, HCL_CNODE_GET_LOC(obj), HCL_NULL,
+				"more than one expression after %hs", ctxname);
+			return -1;
+		}
+	}
+#endif
 
 	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
 	fbi->tmprlen = hcl->c->tv.s.len;
