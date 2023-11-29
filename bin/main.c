@@ -636,7 +636,7 @@ int main (int argc, char* argv[])
 		}
 	}
 
-	if (opt.ind >= argc) goto print_usage;
+	if ((opt.ind + 1) != argc) goto print_usage;
 #endif
 
 	hcl = hcl_openstd(HCL_SIZEOF(xtn_t), HCL_NULL);
@@ -653,7 +653,7 @@ int main (int argc, char* argv[])
 		hcl_setoption (hcl, HCL_SYMTAB_SIZE, &tab_size);
 		tab_size = 5000;
 		hcl_setoption (hcl, HCL_SYSDIC_SIZE, &tab_size);
-		tab_size = 600;
+		tab_size = 600; /* TODO: choose a better stack size or make this user specifiable */
 		hcl_setoption (hcl, HCL_PROCSTK_SIZE, &tab_size);
 	}
 

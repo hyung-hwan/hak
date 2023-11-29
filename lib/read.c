@@ -1064,6 +1064,7 @@ static int feed_process_token (hcl_t* hcl)
 {
 	hcl_frd_t* frd = &hcl->c->feed.rd;
 	hcl_loc_t* list_loc = HCL_NULL;
+	int rbrace_again = 0;
 	/* TODO: frd->obj and frd->list_loc can become local variables in this function.. */
 
 	/* this function composes an s-expression non-recursively
@@ -1242,6 +1243,7 @@ static int feed_process_token (hcl_t* hcl)
 			int concode;
 			hcl_rstl_t* rstl;
 
+		semicolon:
 			/* the parent list must be inspected instead of the current feed/read status pointed to by frd. */
 			rstl = hcl->c->r.st;
 			if (!rstl || !(rstl->flagv & AUTO_FORGED))
@@ -1283,11 +1285,19 @@ static int feed_process_token (hcl_t* hcl)
 				rstl = hcl->c->r.st; /* check the parent, not the current */
 				if (rstl && (rstl->flagv & AUTO_FORGED))
 				{
+				#if 0
 					/* the auto-forged list has not been terminated. it must be terminated closed first */
 					hcl_setsynerrbfmt (hcl, HCL_SYNERR_SEMICOLON, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "semicolon expected");
 					goto oops;
+				#else
+					/* if the expression inside {} is an auto-forged xlist expression and there is no semiclon provided,
+					 * treat it as if the semiclon is placed before }. e.g. { printf "hello\n" } */
+					rbrace_again = 1;
+					goto semicolon;
+				#endif
 				}
 			}
+		rbrace_ok:
 
 			concode = LIST_FLAG_GET_CONCODE(frd->flagv);
 			if (concode == HCL_CONCODE_XLIST && (frd->flagv & AUTO_FORGED))
@@ -1523,6 +1533,12 @@ static int feed_process_token (hcl_t* hcl)
 	}
 
 ok:
+	if (rbrace_again)
+	{
+		rbrace_again = 0;
+		list_loc = HCL_NULL;
+		goto rbrace_ok;
+	}
 	return 0;
 
 oops:
