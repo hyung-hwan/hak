@@ -1,0 +1,6 @@
+## the left brace opens a list explicitly and doesn't auto-forge a container list.
+## so the semicolon after it is a redundant one. `do {};` would work because the semicolon
+## terminates the auto-forged list of `do` and `{}`.
+{
+	printf "hello, world\n";
+}; ##ERROR: syntax error - unexpected semicolon

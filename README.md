@@ -17,6 +17,7 @@ A HCL program is composed of expressions.
 - do
 - elif
 - else
+- fun
 - if
 - lambda
 - or
@@ -30,7 +31,7 @@ A HCL program is composed of expressions.
 ```
 do;
 do 10;
-do { | k | set k 20; printf "k=%d\n" k };
+do { | k | set k 20; printf "k=%d\n" k; };
 ```
 
 ## Literals

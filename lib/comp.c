@@ -1822,7 +1822,9 @@ static int compile_break (hcl_t* hcl, hcl_cnode_t* src)
 		}
 	}
 
-	hcl_setsynerrbfmt (hcl, HCL_SYNERR_BREAK, HCL_CNODE_GET_LOC(src), HCL_NULL, "%.*js outside loop", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+	hcl_setsynerrbfmt (
+		hcl, HCL_SYNERR_BREAK, HCL_CNODE_GET_LOC(src), HCL_NULL,
+		"%.*js outside loop", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 	return -1;
 
 inside_loop:
@@ -1860,7 +1862,9 @@ inside_loop:
 
 	/* this part must no be reached. if a loop control block is found,
 	 * there must exist a COP_POST_UNTIL_BODY or COP_POST_WHILE_BODY frame */
-	hcl_setsynerrbfmt (hcl, HCL_SYNERR_INTERN, HCL_CNODE_GET_LOC(src), HCL_NULL, "internal error in compiling %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+	hcl_setsynerrbfmt (
+		hcl, HCL_SYNERR_INTERN, HCL_CNODE_GET_LOC(src), HCL_NULL,
+		"internal error in compiling %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 	return -1;
 }
 

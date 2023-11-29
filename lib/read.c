@@ -1251,7 +1251,7 @@ static int feed_process_token (hcl_t* hcl)
 			}
 
 			concode = LIST_FLAG_GET_CONCODE(rstl->flagv);
-			if (concode != HCL_CONCODE_XLIST)  /* TODO: handle MLIST as weel if the other part is implemented */
+			if (concode != HCL_CONCODE_XLIST)  /* TODO: handle MLIST as well if the other part is implemented */
 			{
 				hcl_setsynerr (hcl, HCL_SYNERR_UNBALPBB, TOKEN_LOC(hcl), HCL_NULL);
 				goto oops;
@@ -1270,11 +1270,23 @@ static int feed_process_token (hcl_t* hcl)
 		{
 			int oldflagv;
 			int concode;
+			hcl_rstl_t* rstl;
 
 			if (frd->level <= 0)
 			{
 				hcl_setsynerr (hcl, HCL_SYNERR_UNBALPBB, TOKEN_LOC(hcl), HCL_NULL);
 				goto oops;
+			}
+
+			if (TOKEN_TYPE(hcl) == HCL_TOK_RBRACE)
+			{
+				rstl = hcl->c->r.st; /* check the parent, not the current */
+				if (rstl && (rstl->flagv & AUTO_FORGED))
+				{
+					/* the auto-forged list has not been terminated. it must be terminated closed first */
+					hcl_setsynerrbfmt (hcl, HCL_SYNERR_SEMICOLON, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "semicolon expected");
+					goto oops;
+				}
 			}
 
 			concode = LIST_FLAG_GET_CONCODE(frd->flagv);
