@@ -377,9 +377,9 @@ static HCL_INLINE int is_alnumchar (hcl_ooci_t c)
 static HCL_INLINE int is_delimchar (hcl_ooci_t c)
 {
 	return c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' ||
-	       c == ';' || c == '|' || c == ',' || c == '.' || c == ':' || c == ';' ||
+	       c == '|' || c == ',' || c == '.' || c == ':' || c == ';' ||
 	       /* the first characters of tokens in delim_token_tab up to this point */
-	       c == '#'  || c == '\"' || c == '\'' || is_spacechar(c) || c == HCL_UCI_EOF;
+	       c == '#' || c == '\"' || c == '\'' || is_spacechar(c) || c == HCL_UCI_EOF;
 }
 
 static int copy_string_to (hcl_t* hcl, const hcl_oocs_t* src, hcl_oocs_t* dst, hcl_oow_t* dst_capa, int append, hcl_ooch_t add_delim)
@@ -2162,8 +2162,16 @@ static int flx_plain_ident (hcl_t* hcl, hcl_ooci_t c) /* identifier */
 		tok_type = classify_ident_token(hcl, &seg);
 		if (tok_type != HCL_TOK_IDENT)
 		{
-			pi->non_ident_seg_count++;
-			pi->last_non_ident_type = tok_type;
+			if (pi->seg_count == 0 && (tok_type == HCL_TOK_SELF || tok_type == HCL_TOK_SUPER))
+			{
+				/* allowed if it begins with self. or super. */
+				/* nothing to do */
+			}
+			else
+			{
+				pi->non_ident_seg_count++;
+				pi->last_non_ident_type = tok_type;
+			}
 		}
 
 		pi->seg_len = 0; /* the length of the segment to be worked on */
@@ -2192,7 +2200,10 @@ static int flx_plain_ident (hcl_t* hcl, hcl_ooci_t c) /* identifier */
 			}
 		}
 
-		FEED_WRAP_UP (hcl, (pi->seg_count == 1? HCL_TOK_IDENT: HCL_TOK_IDENT_DOTTED));
+		/* if single-segmented, perform classification(call classify_ident_token()) again
+		 * bcause self and super as the first segment have not been marked as a non-identifier above */
+		tok_type = (pi->seg_count == 1? classify_ident_token(hcl, TOKEN_NAME(hcl)): HCL_TOK_IDENT_DOTTED);
+		FEED_WRAP_UP (hcl, tok_type);
 		goto not_consumed;
 	}
 	else

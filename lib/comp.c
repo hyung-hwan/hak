@@ -256,17 +256,14 @@ static int is_in_class_method_scope (hcl_t* hcl)
 	return 0; /* in plain function scope */
 }
 
-static int find_variable_backward (hcl_t* hcl, const hcl_cnode_t* token, hcl_var_info_t* vi)
+static int find_variable_backward_with_word (hcl_t* hcl, const hcl_oocs_t* name, const hcl_loc_t* loc, int class_level_only, hcl_var_info_t* vi)
 {
 	hcl_oow_t i;
-	const hcl_oocs_t* name;
 
 	HCL_ASSERT (hcl, hcl->c->fnblk.depth >= 0);
 	HCL_ASSERT (hcl, hcl->c->fnblk.info[hcl->c->fnblk.depth].tmprlen == hcl->c->tv.s.len);
 
-	name = HCL_CNODE_GET_TOK(token);
-
-	/* depth begins at -1. so it is the actual index. let the looping begin at depth + 1
+	/* depth begins at -1. so it is the actual index. let looping begin at depth + 1
 	 * to avoid an extra exit check without it */
 	for (i = hcl->c->fnblk.depth + 1; i > 0; )
 	{
@@ -302,7 +299,7 @@ static int find_variable_backward (hcl_t* hcl, const hcl_cnode_t* token, hcl_var
 						{
 							/* instance variables are accessible only in an instance method defintion scope.
 							 * it is in class initialization scope */
-							hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(token), name, "prohibited access to an instance variable");
+							hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, loc, name, "prohibited access to an instance variable");
 							return -1;
 						}
 
@@ -312,7 +309,7 @@ static int find_variable_backward (hcl_t* hcl, const hcl_cnode_t* token, hcl_var
 							if (hcl->c->fnblk.info[--fi].fun_type == FUN_CM)
 							{
 								/* the function where this variable is defined is a class method or an plain function block within a class method*/
-								hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(token), name, "prohibited access to an instance variable in a class method context");
+								hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, loc, name, "prohibited access to an instance variable in a class method context");
 								return -1;
 							}
 
@@ -362,6 +359,8 @@ HCL_INFO2 (hcl, "CLASS NAMED VAR [%.*js]\n", name->len, name->ptr);
 			break; /* stop searching beyond class definition */
 		}
 
+		if (class_level_only) continue; /* skip local variable declarations */
+
 		if (HCL_LIKELY(i > 0))
 		{
 			parent_tmprlen = hcl->c->fnblk.info[i - 1].tmprlen;
@@ -399,6 +398,11 @@ HCL_INFO2 (hcl, "CLASS NAMED VAR [%.*js]\n", name->len, name->ptr);
 
 /*HCL_INFO2 (hcl, "NOT FOUND => %.*js\n", name->len, name->ptr); */
 	return 0; /* not found */
+}
+
+static int find_variable_backward_with_token (hcl_t* hcl, const hcl_cnode_t* token, hcl_var_info_t* vi)
+{
+	return find_variable_backward_with_word(hcl, HCL_CNODE_GET_TOK(token), HCL_CNODE_GET_LOC(token), 0, vi);
 }
 
 /* ========================================================================= */
@@ -2610,7 +2614,7 @@ static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 		hcl_var_info_t vi;
 		int x;
 
-		x = find_variable_backward(hcl, class_name, &vi);
+		x = find_variable_backward_with_token(hcl, class_name, &vi);
 		if (x <= -1) return -1;
 
 		if (x == 0)
@@ -3076,7 +3080,7 @@ static int compile_set (hcl_t* hcl, hcl_cnode_t* src)
 
 	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, val);
 
-	x = find_variable_backward(hcl, var, &vi);
+	x = find_variable_backward_with_token(hcl, var, &vi);
 	if (x <= -1) return -1;
 
 	if (x == 0)
@@ -3175,7 +3179,7 @@ static int compile_set_r (hcl_t* hcl, hcl_cnode_t* src)
 
 		var = HCL_CNODE_CONS_CAR(obj);
 
-		x = find_variable_backward(hcl, var, &vi);
+		x = find_variable_backward_with_token(hcl, var, &vi);
 		if (x <= -1) return -1;
 
 		if (x == 0)
@@ -3365,9 +3369,9 @@ static HCL_INLINE int compile_catch (hcl_t* hcl)
 		par_tmprcnt = 0;
 	}
 
-	/* fill the variable information structure as if it's found by find_variable_backward().
+	/* fill the variable information structure as if it's found by find_variable_backward_with_token().
 	 * we know it's the last variable as add_temporary_variable() is called below.
-	 * there is no need to call find_variable_backward() */
+	 * there is no need to call find_variable_backward_with_token() */
 	vi.type = VAR_INDEXED;
 	vi.ctx_offset = 0;
 	vi.index_in_ctx = hcl->c->tv.wcount - par_tmprcnt;
@@ -3987,7 +3991,7 @@ static HCL_INLINE int compile_symbol (hcl_t* hcl, hcl_cnode_t* obj)
 	}
 
 	/* check if a symbol is a local variable */
-	x = find_variable_backward(hcl, obj, &vi);
+	x = find_variable_backward_with_token(hcl, obj, &vi);
 	if (x <= -1) return -1;
 
 	if (x == 0)
@@ -4022,32 +4026,54 @@ static HCL_INLINE int compile_symbol (hcl_t* hcl, hcl_cnode_t* obj)
 
 static HCL_INLINE int compile_dsymbol (hcl_t* hcl, hcl_cnode_t* obj)
 {
-	hcl_oop_t sym, cons;
+	hcl_oop_t cons;
 	hcl_oow_t index;
 
 /* TODO: need a total revamp on the dotted symbols.
  *       must differentiate module access and dictioary member access...
  *       must implementate dictionary member access syntax... */
 
-#if 0
-the dot notation collides with car/cdr separator???
+	/* the dot notation collides with car/cdr separator? no. dotted symbols don't contains space.
+	 * the car cdr separator must be a single character */
 	{ /* HACK FOR NOW */
 		const hcl_ooch_t* sep;
+		hcl_oocs_t name;
+		int x = 0;
+		hcl_var_info_t vi;
 
-		sep = hcl_find_oochar(HCL_CNODE_GET_TOKPTR(obj), HCL_CNODE_GET_TOKLEN(obj), '.');
+		name = *HCL_CNODE_GET_TOK(obj);
+
+		sep = hcl_find_oochar(name.ptr, name.len, '.');
 		HCL_ASSERT (hcl, sep != HCL_NULL);
-		if (hcl_comp_oochars_bcstr(HCL_CNODE_GET_TOKPTR(obj), sep - HCL_CNODE_GET_TOKPTR(obj), "self") == 0)
+		if (hcl_comp_oochars_bcstr(name.ptr, sep - name.ptr, "self") == 0)
 		{
 			/* instance variable?  or instance method? */
 HCL_DEBUG1 (hcl, ">>>> instance variable or method %js\n", sep + 1);
+			name.ptr = sep + 1;
+			name.len -= 5;
+			x = find_variable_backward_with_word(hcl, &name, HCL_CNODE_GET_LOC(obj), 1, &vi);
 		}
-		/* TODO: super? */
-	}
-#endif
+		else if (hcl_comp_oochars_bcstr(name.ptr, sep - name.ptr, "super") == 0)
+		{
+			name.ptr = sep + 1;
+			name.len -= 6;
+			x = find_variable_backward_with_word(hcl, &name, HCL_CNODE_GET_LOC(obj), 1, &vi); /* TODO: arrange to skip the current class */
+		}
 
-	sym = hcl_makesymbol(hcl, HCL_CNODE_GET_TOKPTR(obj), HCL_CNODE_GET_TOKLEN(obj));
-	if (HCL_UNLIKELY(!sym)) return -1;
-	cons = (hcl_oop_t)hcl_getatsysdic(hcl, sym);
+		if (x <= -1) return -1; /* error */
+		if (x >= 1)
+		{
+			/* found */
+			HCL_ASSERT (hcl, vi.type != VAR_NAMED);
+			return emit_variable_access(hcl, VAR_ACCESS_PUSH, &vi, HCL_CNODE_GET_LOC(obj));
+		}
+
+/* TODO: check if it's the method name??? NOT POSSIBLE??? */
+
+		/* if not found or not beginning with self/super, carry on with remaining resolution methods */
+	}
+
+	cons = (hcl_oop_t)hcl_lookupsysdicforsymbol_noseterr(hcl, HCL_CNODE_GET_TOK(obj));
 	if (!cons)
 	{
 		/* query the module for information if it is the first time
@@ -4055,7 +4081,7 @@ HCL_DEBUG1 (hcl, ">>>> instance variable or method %js\n", sep + 1);
 
 		hcl_pfbase_t* pfbase;
 		hcl_mod_t* mod;
-		hcl_oop_t val;
+		hcl_oop_t sym, val;
 		unsigned int kernel_bits;
 
 		pfbase = hcl_querymod(hcl, HCL_CNODE_GET_TOKPTR(obj), HCL_CNODE_GET_TOKLEN(obj), &mod);
@@ -4064,6 +4090,9 @@ HCL_DEBUG1 (hcl, ">>>> instance variable or method %js\n", sep + 1);
 			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(obj), HCL_CNODE_GET_TOK(obj), "unknown dotted symbol");
 			return -1;
 		}
+
+		sym = hcl_makesymbol(hcl, HCL_CNODE_GET_TOKPTR(obj), HCL_CNODE_GET_TOKLEN(obj));
+		if (HCL_UNLIKELY(!sym)) return -1;
 
 		hcl_pushvolat (hcl, &sym);
 		switch (pfbase->type)
@@ -5228,7 +5257,7 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 		if (is_in_class_init_scope(hcl))
 		{
 			/* method definition */
-			x = find_variable_backward(hcl, defun_name, &vi);
+			x = find_variable_backward_with_token(hcl, defun_name, &vi);
 			if (x <= -1) return -1;
 			if (x == 0)
 			{
@@ -5264,7 +5293,7 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 		}
 		else
 		{
-			x = find_variable_backward(hcl, defun_name, &vi);
+			x = find_variable_backward_with_token(hcl, defun_name, &vi);
 			if (x <= -1) return -1;
 			if (x == 0)
 			{
