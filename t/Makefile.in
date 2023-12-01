@@ -480,6 +480,7 @@ check_SCRIPTS = \
 	va-01.hcl
 
 check_ERRORS = \
+	class-01.err \
 	do-01.err \
 	do-02.err \
 	feed-01.err \

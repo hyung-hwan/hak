@@ -146,6 +146,8 @@ static char* synerrstr[] =
 	"too many variables defined",
 	"variable declaration disallowed",
 	"duplicate variable name",
+	"unknown variable name",
+
 	"disallowed variable name",
 	"disallowed argument name",
 	"disallowed",

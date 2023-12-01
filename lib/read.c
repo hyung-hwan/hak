@@ -1452,7 +1452,11 @@ static int feed_process_token (hcl_t* hcl)
 			goto auto_xlist;
 
 		case HCL_TOK_IDENT_DOTTED:
-			frd->obj = hcl_makecnodedsymbol(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			frd->obj = hcl_makecnodedsymbol(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl), 0);
+			goto auto_xlist;
+
+		case HCL_TOK_IDENT_DOTTED_CLA:
+			frd->obj = hcl_makecnodedsymbol(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl), 1);
 			goto auto_xlist;
 
 		auto_xlist:
@@ -2165,7 +2169,7 @@ static int flx_plain_ident (hcl_t* hcl, hcl_ooci_t c) /* identifier */
 			if (pi->seg_count == 0 && (tok_type == HCL_TOK_SELF || tok_type == HCL_TOK_SUPER))
 			{
 				/* allowed if it begins with self. or super. */
-				/* nothing to do */
+				pi->is_cla = 1; /* mark that it's prefixed with self or super */
 			}
 			else
 			{
@@ -2202,7 +2206,8 @@ static int flx_plain_ident (hcl_t* hcl, hcl_ooci_t c) /* identifier */
 
 		/* if single-segmented, perform classification(call classify_ident_token()) again
 		 * bcause self and super as the first segment have not been marked as a non-identifier above */
-		tok_type = (pi->seg_count == 1? classify_ident_token(hcl, TOKEN_NAME(hcl)): HCL_TOK_IDENT_DOTTED);
+		tok_type = (pi->seg_count == 1? classify_ident_token(hcl, TOKEN_NAME(hcl)):
+		            (pi->is_cla? HCL_TOK_IDENT_DOTTED_CLA: HCL_TOK_IDENT_DOTTED));
 		FEED_WRAP_UP (hcl, tok_type);
 		goto not_consumed;
 	}

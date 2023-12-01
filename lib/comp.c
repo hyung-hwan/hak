@@ -400,9 +400,24 @@ HCL_INFO2 (hcl, "CLASS NAMED VAR [%.*js]\n", name->len, name->ptr);
 	return 0; /* not found */
 }
 
-static int find_variable_backward_with_token (hcl_t* hcl, const hcl_cnode_t* token, hcl_var_info_t* vi)
+static int find_variable_backward_with_token (hcl_t* hcl, const hcl_cnode_t* cnode, hcl_var_info_t* vi)
 {
-	return find_variable_backward_with_word(hcl, HCL_CNODE_GET_TOK(token), HCL_CNODE_GET_LOC(token), 0, vi);
+	if (HCL_CNODE_IS_DSYMBOL_CLA(cnode))
+	{
+		/* prefixed with self or super. remove the first segment */
+		hcl_oocs_t newtok;
+		newtok = *HCL_CNODE_GET_TOK(cnode);
+		while (*newtok.ptr != '.')
+		{
+			newtok.ptr++;
+			newtok.len--;
+		}
+		newtok.ptr++;
+		newtok.len--;
+		return find_variable_backward_with_word(hcl, &newtok, HCL_CNODE_GET_LOC(cnode), 1, vi);
+	}
+
+	return find_variable_backward_with_word(hcl, HCL_CNODE_GET_TOK(cnode), HCL_CNODE_GET_LOC(cnode), HCL_CNODE_IS_DSYMBOL_CLA(cnode), vi);
 }
 
 /* ========================================================================= */
@@ -987,7 +1002,7 @@ static void pop_cblk (hcl_t* hcl)
 	hcl->c->cblk.depth--;
 }
 
-static int push_clsblk (hcl_t* hcl, const hcl_loc_t* errloc, hcl_oow_t nivars, hcl_oow_t ncvars, const hcl_ooch_t*  ivars_str, hcl_oow_t ivars_strlen, const hcl_ooch_t* cvars_str, hcl_oow_t cvars_strlen)
+static int push_clsblk (hcl_t* hcl, const hcl_loc_t* errloc, hcl_oow_t nivars, hcl_oow_t ncvars, const hcl_ooch_t* ivars_str, hcl_oow_t ivars_strlen, const hcl_ooch_t* cvars_str, hcl_oow_t cvars_strlen)
 {
 	hcl_oow_t new_depth;
 	hcl_clsblk_info_t* ci;
@@ -1353,7 +1368,7 @@ static int collect_vardcl (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t** nextobj, 
 	#if 0
 		if (!HCL_CNODE_IS_SYMBOL(var))
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAME, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "local variable not a symbol");
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAME, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "local variable not symbol");
 			return -1;
 		}
 
@@ -2343,9 +2358,19 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src)
 		/* defclass followed by a class name */
 		if (HCL_CNODE_SYMBOL_SYNCODE(class_name)) /*|| HCL_OBJ_GET_FLAGS_KERNEL(class_name) >= 1) */
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(class_name), HCL_CNODE_GET_TOK(class_name), "special symbol not to be used as a class name");
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(class_name), HCL_CNODE_GET_TOK(class_name), "special symbol not to be used as class name");
 			return -1;
 		}
+		obj = HCL_CNODE_CONS_CDR(obj);
+	}
+	else if (HCL_CNODE_IS_DSYMBOL(class_name))
+	{
+		if (!HCL_CNODE_IS_DSYMBOL_CLA(class_name))
+		{
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(class_name), HCL_CNODE_GET_TOK(class_name), "dottted symbol not to be used as class name");
+			return -1;
+		}
+
 		obj = HCL_CNODE_CONS_CDR(obj);
 	}
 
@@ -2636,7 +2661,6 @@ static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 	}
 	else
 	{
-		//POP_CFRAME (hcl);
 		SWITCH_TOP_CFRAME (hcl, COP_COMPILE_CLASS_P3, cf->operand);
 #endif
 	}
@@ -2702,7 +2726,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 
 		if (!HCL_CNODE_IS_SYMBOL(defun_name))
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(defun_name), HCL_CNODE_GET_TOK(defun_name), "name not a symbol in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(defun_name), HCL_CNODE_GET_TOK(defun_name), "name not symbol in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 			return -1;
 		}
 
@@ -2761,7 +2785,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 			{
 				if (!HCL_CNODE_IS_SYMBOL(arg))
 				{
-					hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(arg), HCL_CNODE_GET_TOK(arg), "return variable not a symbol in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+					hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(arg), HCL_CNODE_GET_TOK(arg), "return variable not symbol in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 					return -1;
 				}
 
@@ -2805,7 +2829,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 				}
 				else if (!HCL_CNODE_IS_SYMBOL(arg))
 				{
-					hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAME, HCL_CNODE_GET_LOC(arg), HCL_CNODE_GET_TOK(arg), "argument not a symbol in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+					hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAME, HCL_CNODE_GET_LOC(arg), HCL_CNODE_GET_TOK(arg), "argument not symbol in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 					return -1;
 				}
 				else
@@ -3045,13 +3069,13 @@ static int compile_set (hcl_t* hcl, hcl_cnode_t* src)
 	}
 
 	var = HCL_CNODE_CONS_CAR(obj);
-	if (!HCL_CNODE_IS_SYMBOL(var))
+	if (!HCL_CNODE_IS_SYMBOL(var) && !HCL_CNODE_IS_DSYMBOL_CLA(var))
 	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "variable name not a symbol in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "variable name not symbol in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 		return -1;
 	}
 
-	if (HCL_CNODE_SYMBOL_SYNCODE(var)/* || HCL_OBJ_GET_FLAGS_KERNEL(var) >= 2*/)
+	if (HCL_CNODE_IS_SYMBOL(var) && HCL_CNODE_SYMBOL_SYNCODE(var)/* || HCL_OBJ_GET_FLAGS_KERNEL(var) >= 2*/)
 	{
 		hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "special symbol not to be used as a variable name in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 		return -1;
@@ -3085,6 +3109,13 @@ static int compile_set (hcl_t* hcl, hcl_cnode_t* src)
 
 	if (x == 0)
 	{
+		if (HCL_CNODE_IS_DSYMBOL_CLA(var))
+		{
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAMEUNKNOWN, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "unknown class-level variable name", HCL_CNODE_GET_TOKLEN(var), HCL_CNODE_GET_TOKPTR(var));
+			return -1;
+
+		}
+
 		PUSH_SUBCFRAME (hcl, COP_EMIT_SET, var); /* set doesn't evaluate the variable name */
 		cf = GET_SUBCFRAME(hcl);
 		cf->u.set.vi.type = VAR_NAMED;
@@ -3133,7 +3164,7 @@ static int compile_set_r (hcl_t* hcl, hcl_cnode_t* src)
 		if (!HCL_CNODE_IS_SYMBOL(var))
 		{
 			if (nvars > 0) break;
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "variable name not a symbol in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "variable name not symbol in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 			return -1;
 		}
 
@@ -3184,6 +3215,12 @@ static int compile_set_r (hcl_t* hcl, hcl_cnode_t* src)
 
 		if (x == 0)
 		{
+			if (HCL_CNODE_IS_DSYMBOL_CLA(var))
+			{
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAMEUNKNOWN, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "unknown class-level variable name", HCL_CNODE_GET_TOKLEN(var), HCL_CNODE_GET_TOKPTR(var));
+				return -1;
+			}
+
 			PUSH_SUBCFRAME (hcl, COP_EMIT_SET, var); /* set_r doesn't evaluate the variable name */
 			cf = GET_SUBCFRAME(hcl);
 			cf->u.set.vi.type = VAR_NAMED;
@@ -4057,7 +4094,7 @@ HCL_DEBUG1 (hcl, ">>>> instance variable or method %js\n", sep + 1);
 		{
 			name.ptr = sep + 1;
 			name.len -= 6;
-			x = find_variable_backward_with_word(hcl, &name, HCL_CNODE_GET_LOC(obj), 1, &vi); /* TODO: arrange to skip the current class */
+			x = find_variable_backward_with_word(hcl, &name, HCL_CNODE_GET_LOC(obj), 2, &vi); /* TODO: arrange to skip the current class */
 		}
 
 		if (x <= -1) return -1; /* error */
@@ -5261,6 +5298,8 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 			if (x <= -1) return -1;
 			if (x == 0)
 			{
+/* TODO: handle if defun_name is DSYMOL_CLA ... */
+
 				/* arrange to save to the method slot */
 				switch (cf->u.lambda.fun_type)
 				{

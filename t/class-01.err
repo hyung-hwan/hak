@@ -1,0 +1,23 @@
+defclass B | x y | {
+
+};
+
+defclass X ::: B | a b | {
+	defun ::* new(t) {
+		| a |
+		set self.a t;
+		set a 100;
+		set self.b (* t 2);
+
+		set self.c (fun(b) {  ##ERROR: syntax error - unknown class-level variable name
+			printf "xxxx [%d]\n" b;
+		});
+		return self;
+	};
+
+	defun print() {
+		self.c (+ self.a self.b);
+		printf "a=%d b=%d\n" self.a self.b;
+	}
+};
+	
