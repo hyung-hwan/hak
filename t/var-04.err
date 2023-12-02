@@ -1,0 +1,2 @@
+defun self.x() { ##ERROR: syntax error - function name not symbol
+};

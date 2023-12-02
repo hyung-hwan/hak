@@ -1374,7 +1374,7 @@ static int collect_vardcl (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t** nextobj, 
 
 		if (HCL_CNODE_IS_SYMBOL(var) && HCL_CNODE_SYMBOL_SYNCODE(var) /* || HCL_OBJ_GET_FLAGS_KERNEL(var) >= 2 */)
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDARGNAME, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "special symbol not to be declared as a local variable");
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDARGNAME, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "special symbol not to be declared as local variable");
 			return -1;
 		}
 	#else
@@ -2337,7 +2337,7 @@ static HCL_INLINE int compile_else (hcl_t* hcl)
 
 */
 
-static int compile_class (hcl_t* hcl, hcl_cnode_t* src)
+static int compile_class (hcl_t* hcl, hcl_cnode_t* src, int defclass)
 {
 	hcl_cnode_t* cmd, * obj;
 	hcl_cnode_t* class_name;
@@ -2688,6 +2688,8 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 
 	if (defun)
 	{
+		/* defun must be followed by an explicit function name */
+
 		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_DEFUN));
 
 		if (!obj)
@@ -2726,13 +2728,13 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 
 		if (!HCL_CNODE_IS_SYMBOL(defun_name))
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(defun_name), HCL_CNODE_GET_TOK(defun_name), "name not symbol in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(defun_name), HCL_CNODE_GET_TOK(defun_name), "function name not symbol in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 			return -1;
 		}
 
 		if (HCL_CNODE_SYMBOL_SYNCODE(defun_name)) /*|| HCL_OBJ_GET_FLAGS_KERNEL(defun_name) >= 1) */
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(defun_name), HCL_CNODE_GET_TOK(defun_name), "special symbol not to be used as a function name");
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(defun_name), HCL_CNODE_GET_TOK(defun_name), "special symbol not to be used as function name");
 			return -1;
 		}
 
@@ -2791,7 +2793,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 
 				if (HCL_CNODE_IS_SYMBOL(arg) && HCL_CNODE_SYMBOL_SYNCODE(arg) /* || HCL_OBJ_GET_FLAGS_KERNEL(arg) >= 2 */)
 				{
-					hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(arg), HCL_CNODE_GET_TOK(arg), "special symbol not to be declared as a return variable in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+					hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(arg), HCL_CNODE_GET_TOK(arg), "special symbol not to be declared as return variable in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 					return -1;
 				}
 
@@ -2836,7 +2838,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 				{
 					if (HCL_CNODE_IS_SYMBOL(arg) && HCL_CNODE_SYMBOL_SYNCODE(arg) /* || HCL_OBJ_GET_FLAGS_KERNEL(arg) >= 2 */)
 					{
-						hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDARGNAME, HCL_CNODE_GET_LOC(arg), HCL_CNODE_GET_TOK(arg), "special symbol not to be declared as an argument in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+						hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDARGNAME, HCL_CNODE_GET_LOC(arg), HCL_CNODE_GET_TOK(arg), "special symbol not to be declared as argument in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 						return -1;
 					}
 
@@ -3077,7 +3079,7 @@ static int compile_set (hcl_t* hcl, hcl_cnode_t* src)
 
 	if (HCL_CNODE_IS_SYMBOL(var) && HCL_CNODE_SYMBOL_SYNCODE(var)/* || HCL_OBJ_GET_FLAGS_KERNEL(var) >= 2*/)
 	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "special symbol not to be used as a variable name in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "special symbol not to be used as variable name in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 		return -1;
 	}
 
@@ -3170,7 +3172,7 @@ static int compile_set_r (hcl_t* hcl, hcl_cnode_t* src)
 
 		if (HCL_CNODE_SYMBOL_SYNCODE(var)/* || HCL_OBJ_GET_FLAGS_KERNEL(var) >= 2*/)
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "special symbol not to be used as a variable name in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "special symbol not to be used as variable name in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 			return -1;
 		}
 
@@ -3712,13 +3714,17 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 				hcl_setsynerrbfmt (hcl, HCL_SYNERR_ELIF, HCL_CNODE_GET_LOC(car), HCL_CNODE_GET_TOK(car), "catch without try");
 				return -1;
 
+			case HCL_SYNCODE_CLASS:
+				if (compile_class(hcl, obj, 0) <= -1) return -1;
+				break;
+
 			case HCL_SYNCODE_CONTINUE:
 				/* (continue)*/
 				if (compile_continue(hcl, obj) <= -1) return -1;
 				break;
 
 			case HCL_SYNCODE_DEFCLASS:
-				if (compile_class(hcl, obj) <= -1) return -1;
+				if (compile_class(hcl, obj, 1) <= -1) return -1;
 				break;
 
 			case HCL_SYNCODE_DEFUN:
@@ -3742,7 +3748,7 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 				break;
 
 			case HCL_SYNCODE_LAMBDA:
-				/* (lambda (x y) (+ x y)) */
+				/* (fun (x y) (+ x y)) */
 				if (compile_lambda(hcl, obj, 0) <= -1) return -1;
 				break;
 
@@ -4023,7 +4029,7 @@ static HCL_INLINE int compile_symbol (hcl_t* hcl, hcl_cnode_t* obj)
 
 	if (HCL_CNODE_SYMBOL_SYNCODE(obj))
 	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(obj), HCL_CNODE_GET_TOK(obj), "special symbol not to be used as a variable name");
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(obj), HCL_CNODE_GET_TOK(obj), "special symbol not to be used as variable name");
 		return -1;
 	}
 
@@ -5291,6 +5297,8 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 		hcl_var_info_t vi;
 		int x;
 
+		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_PLAIN(defun_name));
+
 		if (is_in_class_init_scope(hcl))
 		{
 			/* method definition */
@@ -5298,8 +5306,6 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 			if (x <= -1) return -1;
 			if (x == 0)
 			{
-/* TODO: handle if defun_name is DSYMOL_CLA ... */
-
 				/* arrange to save to the method slot */
 				switch (cf->u.lambda.fun_type)
 				{
@@ -5325,13 +5331,14 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 			}
 			else
 			{
-/* TODO: proper error code */
 				hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAMEDUP, HCL_CNODE_GET_LOC(defun_name), HCL_CNODE_GET_TOK(defun_name), "duplicate method name");
 				return -1;
 			}
 		}
 		else
 		{
+			/* the function name must be global or module-wide.(no module implemented yet. so only global) */
+		#if 0
 			x = find_variable_backward_with_token(hcl, defun_name, &vi);
 			if (x <= -1) return -1;
 			if (x == 0)
@@ -5347,6 +5354,13 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 				cf->u.set.vi = vi;
 			}
 			cf->u.set.mode = VAR_ACCESS_STORE;
+		#else
+			/* An explicitly named function is always global */
+			SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, defun_name);
+			cf = GET_TOP_CFRAME(hcl);
+			cf->u.set.vi.type = VAR_NAMED;
+			cf->u.set.mode = VAR_ACCESS_STORE;
+		#endif
 		}
 	}
 	else

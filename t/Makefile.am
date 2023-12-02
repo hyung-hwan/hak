@@ -15,7 +15,8 @@ check_ERRORS = \
 	feed-01.err \
 	var-01.err \
 	var-02.err \
-	var-03.err
+	var-03.err \
+	var-04.err
 
 ##noinst_SCRIPTS = $(check_SCRIPTS)
 EXTRA_DIST = $(check_SCRIPTS) $(check_ERRORS)
