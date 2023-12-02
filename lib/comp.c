@@ -2346,32 +2346,41 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src, int defclass)
 	cmd = HCL_CNODE_CONS_CAR(src);
 	obj = HCL_CNODE_CONS_CDR(src);
 
-	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_DEFCLASS));
-
-	class_name = HCL_NULL;
-
-	if (check_if_plain_cnode(hcl, obj, src, cmd, HCL_SYNERR_VARNAME, "class name") <= -1) return -1;
-	class_name = HCL_CNODE_CONS_CAR(obj);
-	if (HCL_CNODE_IS_SYMBOL(class_name))
+	if (defclass)
 	{
-/* TODO: make the classname optional? */
-		/* defclass followed by a class name */
+		/* defun must be followed by an explicit function name */
+		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_DEFCLASS));
+
+		if (!obj)
+		{
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMELIST, HCL_CNODE_GET_LOC(src), HCL_NULL, "no name in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+			return -1;
+		}
+		else if (!HCL_CNODE_IS_CONS(obj))
+		{
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(obj), HCL_CNODE_GET_TOK(obj), "redundant cdr in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+			return -1;
+		}
+
+		class_name = HCL_CNODE_CONS_CAR(obj);
+		if (!HCL_CNODE_IS_SYMBOL(class_name))
+		{
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(class_name), HCL_CNODE_GET_TOK(class_name), "class name not symbol in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+			return -1;
+		}
+
 		if (HCL_CNODE_SYMBOL_SYNCODE(class_name)) /*|| HCL_OBJ_GET_FLAGS_KERNEL(class_name) >= 1) */
 		{
 			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(class_name), HCL_CNODE_GET_TOK(class_name), "special symbol not to be used as class name");
 			return -1;
 		}
-		obj = HCL_CNODE_CONS_CDR(obj);
-	}
-	else if (HCL_CNODE_IS_DSYMBOL(class_name))
-	{
-		if (!HCL_CNODE_IS_DSYMBOL_CLA(class_name))
-		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(class_name), HCL_CNODE_GET_TOK(class_name), "dottted symbol not to be used as class name");
-			return -1;
-		}
 
 		obj = HCL_CNODE_CONS_CDR(obj);
+	}
+	else
+	{
+		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_CLASS));
+		class_name = HCL_NULL;
 	}
 
 	if (obj)
@@ -2608,34 +2617,37 @@ static HCL_INLINE int compile_class_p3 (hcl_t* hcl)
 static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 {
 	hcl_cframe_t* cf;
+	hcl_cnode_t* class_name;
+	hcl_loc_t class_loc;
 
 	cf = GET_TOP_CFRAME(hcl);
 	HCL_ASSERT (hcl, cf->opcode == COP_COMPILE_CLASS_P2);
-	HCL_ASSERT (hcl, cf->operand != HCL_NULL);
+	/*HCL_ASSERT (hcl, cf->operand != HCL_NULL);*/
+
+	class_name = cf->operand;
+	class_loc = class_name? *HCL_CNODE_GET_LOC(class_name): cf->u._class.start_loc;
 
 	if (hcl->code.bc.len > hcl->c->clsblk.info[hcl->c->clsblk.depth].class_start_inst_pos)
 	{
 		/* no instructions generated after the class_enter instruction */
-		if (emit_byte_instruction(hcl, HCL_CODE_POP_STACKTOP, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+		if (emit_byte_instruction(hcl, HCL_CODE_POP_STACKTOP, &class_loc) <= -1) return -1;
 	}
 
 	pop_cblk (hcl);
 	pop_clsblk (hcl);  /* end of the class block */
 
-	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_PEXIT, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_PEXIT, &class_loc) <= -1) return -1;
 
-#if 0
-	if (cf->operand)
-#endif
+	if (class_name) /* defclass requires a name. but class doesn't */
 	{
-		/* (defclass X()  ; this x refers to a variable in the outer scope.
+	#if 0
+		/* (defclass X()  ; this X refers to a variable in the outer scope.
 		 *     ::: | t1 t2 x |
 		 *     (set x 10)  ; this x refers to the class variable.
 		 * )
 		 *
 		 * the block has been exited(blk.depth--) before finding 'x' in the outer scope.
 		 */
-		hcl_cnode_t* class_name = cf->operand;
 		hcl_var_info_t vi;
 		int x;
 
@@ -2655,14 +2667,23 @@ static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 			cf->u.set.vi = vi;
 		}
 		cf->u.set.mode = VAR_ACCESS_STORE;
+	#else
+		SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, class_name);
+		cf = GET_TOP_CFRAME(hcl);
+		cf->u.set.vi.type = VAR_NAMED;
+		cf->u.set.mode = VAR_ACCESS_STORE;
+	#endif
 
 #if 0
 		PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_P3, cf->operand);
+#endif
 	}
 	else
 	{
+#if 0
 		SWITCH_TOP_CFRAME (hcl, COP_COMPILE_CLASS_P3, cf->operand);
 #endif
+		POP_CFRAME (hcl);
 	}
 
 	return 0;
