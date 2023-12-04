@@ -1248,8 +1248,12 @@ static int feed_process_token (hcl_t* hcl)
 			rstl = hcl->c->r.st;
 			if (!rstl || !(rstl->flagv & AUTO_FORGED))
 			{
+			#if 0
 				hcl_setsynerrbfmt (hcl, HCL_SYNERR_SEMICOLON, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "unexpected semicolon");
 				goto oops;
+			#else
+				goto ok;
+			#endif
 			}
 
 			concode = LIST_FLAG_GET_CONCODE(rstl->flagv);

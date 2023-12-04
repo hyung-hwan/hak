@@ -74,18 +74,15 @@ enum
 
 (plus 10 20)
     <---- minus is now available
-
 (minus 10 1)
-
 literals -->
 //
 // characeter 'A'
 // "string"
-// B"byte string"
+// B"byte string" <-- not yet implemented
 // array ---> #[   ] or [ ] ? constant or not?  dynamic???
-// hash table - dictionary  ---> #{   } or { } <--- ambuguity with blocks...
+// hash table - dictionary  ---> #{   }
 // the rest must be manipulated with code...
-
 ------------------------------ */
 
 static int copy_string_to (hcl_t* hcl, const hcl_oocs_t* src, hcl_oocs_t* dst, hcl_oow_t* dstcapa, int append, hcl_ooch_t delim_char)
@@ -229,9 +226,26 @@ static void kill_temporary_variable_at_offset (hcl_t* hcl, hcl_oow_t offset)
 	hcl->c->tv.s.ptr[offset] = '('; /* HACK!! put a special character which can't form a variable name */
 }
 
+static int is_in_top_scope (hcl_t* hcl)
+{
+	hcl_fnblk_info_t* fbi;
+/*printf (">>> ---- fnblk.depth ....%d\n", (int)hcl->c->fnblk.depth);*/
+	if (hcl->c->fnblk.depth > 0) return 0;
+	HCL_ASSERT (hcl, hcl->c->fnblk.depth >= 0);
+	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
+/*printf ("fbi->clsblk_top....%d\n", (int)fbi->clsblk_top);*/
+	return fbi->clsblk_top < 0;
+}
+
+static int is_in_top_fun_scope (hcl_t* hcl)
+{
+	return hcl->c->fnblk.depth == 0;
+}
+
 static int is_in_class_init_scope (hcl_t* hcl)
 {
 	hcl_fnblk_info_t* fbi;
+	HCL_ASSERT (hcl, hcl->c->fnblk.depth >= 0);
 	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
 	return fbi->clsblk_top >= 0;
 }
@@ -240,6 +254,7 @@ static int is_in_class_method_scope (hcl_t* hcl)
 {
 	hcl_oow_t i;
 
+	HCL_ASSERT (hcl, hcl->c->fnblk.depth >= 0);
 	for (i = hcl->c->fnblk.depth + 1; i > 0; )
 	{
 		hcl_fnblk_info_t* fbi;
@@ -2376,6 +2391,16 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src, int defclass)
 		}
 
 		obj = HCL_CNODE_CONS_CDR(obj);
+/*
+if (is_in_top_scope(hcl))
+{
+HCL_DEBUG2(hcl, "AT TOP SCOPE - %.*js\n", HCL_CNODE_GET_TOKLEN(class_name), HCL_CNODE_GET_TOKPTR(class_name));
+}
+else
+{
+HCL_DEBUG2(hcl, "NOT NOT NOT NOT NOT AT TOP SCOPE - %.*js\n", HCL_CNODE_GET_TOKLEN(class_name), HCL_CNODE_GET_TOKPTR(class_name));
+}
+*/
 	}
 	else
 	{
@@ -5240,11 +5265,13 @@ static HCL_INLINE int emit_lambda (hcl_t* hcl)
 	hcl_oow_t block_code_size, lfsize;
 	hcl_ooi_t jip;
 	hcl_fnblk_info_t* fbi;
+	hcl_loc_t* oploc;
 
 	cf = GET_TOP_CFRAME(hcl);
 	HCL_ASSERT (hcl, cf->opcode == COP_EMIT_LAMBDA);
 	HCL_ASSERT (hcl, cf->operand != HCL_NULL);
 
+	oploc = HCL_CNODE_GET_LOC(cf->operand);
 	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
 	jip = cf->u.lambda.jump_inst_pos;
 
@@ -5259,29 +5286,61 @@ static HCL_INLINE int emit_lambda (hcl_t* hcl)
 		/* this function block defines one or more return variables */
 		if (block_code_size > 0)
 		{
-			if (emit_byte_instruction(hcl, HCL_CODE_POP_STACKTOP, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+			if (emit_byte_instruction(hcl, HCL_CODE_POP_STACKTOP, oploc) <= -1) return -1;
 			block_code_size++;
 		}
-		if (emit_byte_instruction(hcl, HCL_CODE_PUSH_RETURN_R, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+		if (emit_byte_instruction(hcl, HCL_CODE_PUSH_RETURN_R, oploc) <= -1) return -1;
 		block_code_size++;
 	}
 	else
 	{
-		if (block_code_size == 0)
+		/* single return value */
+		if (cf->u.lambda.fun_type == FUN_PLAIN)
 		{
-			/* no body in lambda - (lambda (a b c)) */
+			if (block_code_size == 0)
+			{
+				/* no body in lambda - (lambda (a b c)) */
 	/* TODO: is this correct??? */
-			if (emit_byte_instruction(hcl, HCL_CODE_PUSH_NIL, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+				if (emit_byte_instruction(hcl, HCL_CODE_PUSH_NIL, oploc) <= -1) return -1;
+				block_code_size++;
+			}
+		}
+		else
+		{
+			/* class methods */
+			if (block_code_size == 1)
+			{
+				/* simple optimization not to skip emitting POP_STACKTOP */
+				HCL_ASSERT (hcl, hcl->code.bc.len > 0);
+				if (hcl->code.bc.ptr[hcl->code.bc.len - 1] == HCL_CODE_PUSH_NIL)
+				{
+					hcl->code.bc.len--;
+					block_code_size--;
+				}
+				else if (hcl->code.bc.ptr[hcl->code.bc.len - 1] == HCL_CODE_PUSH_RECEIVER)
+				{
+					goto emit_return_from_block;
+				}
+			}
+
+			if (block_code_size > 0)
+			{
+				if (emit_byte_instruction(hcl, HCL_CODE_POP_STACKTOP, oploc) <= -1) return -1;
+				block_code_size++;
+			}
+
+			if (emit_byte_instruction(hcl, HCL_CODE_PUSH_RECEIVER, oploc) <= -1) return -1;
 			block_code_size++;
 		}
 
-		if (emit_byte_instruction(hcl, HCL_CODE_RETURN_FROM_BLOCK, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+	emit_return_from_block:
+		if (emit_byte_instruction(hcl, HCL_CODE_RETURN_FROM_BLOCK, oploc) <= -1) return -1;
 		block_code_size++;
 	}
 
 	if (block_code_size > MAX_CODE_JUMP * 2)
 	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_BLKFLOOD, HCL_CNODE_GET_LOC(cf->operand), HCL_NULL, "code too big - size %zu", block_code_size);
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_BLKFLOOD, oploc, HCL_NULL, "code too big - size %zu", block_code_size);
 		return -1;
 	}
 	patch_long_jump (hcl, jip, block_code_size);
