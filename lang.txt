@@ -1,8 +1,24 @@
+## TODO:
+	can we allow commans in xlist to make it more like conventional programming langauges?
+	make literal frame in the compiler not use  object momory. ask VM to take the byte codes and create literal frame using object memory
+		-> hcl->code.lit.arr must be composed of plain data. not using object memory
+		-> it must ask VM(locally via a function call, remotely via some communication) to create objects in the object memory
+	static class -> collect class info(variables information) in the compiler
+	dyna-class -> compiler doesn't know about classes in advance
+	for static cleases, super.var-name can be allowed.
+	for dyna-clases, the super prefix is now allowed for varibles. it's allowed for method calls only.
+	double-check symbol and dsymbol resolution in set, set-r, defun, defclass to decide how to make it more logical and reasonable
+	change syntax for MLIST ->  currently (: receiver method arguments...) -> can change this to (receiver:method arguments...) or use . or -> instead?
+	implement module -> ::, ., or what notation?
+	implement namespace -> ::, ., or what notation?
+	review the . notation used for C-module loading... may have to change it
+
+
 ## dictionary list (DIC)
-	{ 1 2 3 4 }
-	{ 1: 2, 3: 4}
-	{} -> empty dictionary
-	{ 1 } -> error, no value.  dictionary requires even number of items.
+	#{ 1 2 3 4 }
+	#{ 1: 2, 3: 4}
+	#{} -> empty dictionary
+	#{ 1 } -> error, no value.  dictionary requires even number of items.
 
 ## array list
 	[ 1 2 3 4]
