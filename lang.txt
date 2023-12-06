@@ -1,5 +1,5 @@
 ## TODO:
-	can we allow commans in xlist to make it more like conventional programming langauges?
+	can we allow commas between arguments in xlist/mlist to make it more like conventional programming langauges?
 	make literal frame in the compiler not use  object momory. ask VM to take the byte codes and create literal frame using object memory
 		-> hcl->code.lit.arr must be composed of plain data. not using object memory
 		-> it must ask VM(locally via a function call, remotely via some communication) to create objects in the object memory

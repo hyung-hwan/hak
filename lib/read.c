@@ -29,11 +29,6 @@
 #define SALIT_BUFFER_ALIGN 128
 #define ARLIT_BUFFER_ALIGN 128
 
-#define CHAR_TO_NUM(c,base) \
-	((c >= '0' && c <= '9')? ((c - '0' < base)? (c - '0'): base): \
-	 (c >= 'A' && c <= 'Z')? ((c - 'A' + 10 < base)? (c - 'A' + 10): base): \
-	 (c >= 'a' && c <= 'z')? ((c - 'a' + 10 < base)? (c - 'a' + 10): base): base)
-
 static struct voca_t
 {
 	hcl_oow_t len;
@@ -148,183 +143,6 @@ static struct
 };
 
 static int init_compiler (hcl_t* hcl);
-
-static int string_to_ooi (hcl_t* hcl, hcl_oocs_t* str, int radixed, hcl_ooi_t* num)
-{
-	/* it is not a generic conversion function.
-	 * it assumes a certain pre-sanity check on the string
-	 * done by the lexical analyzer */
-
-	int v, negsign, base;
-	const hcl_ooch_t* ptr, * end;
-	hcl_oow_t value, old_value;
-
-	negsign = 0;
-	ptr = str->ptr,
-	end = str->ptr + str->len;
-
-	HCL_ASSERT (hcl, ptr < end);
-
-	if (*ptr == '+' || *ptr == '-')
-	{
-		negsign = *ptr - '+';
-		ptr++;
-	}
-
-	if (radixed)
-	{
-		HCL_ASSERT (hcl, ptr < end);
-
-		if (*ptr != '#')
-		{
-			hcl_seterrbfmt (hcl, HCL_EINVAL, "radixed number not starting with # - %*.js", str->len, str->ptr);
-			return -1;
-		}
-		ptr++; /* skip '#' */
-
-		if (*ptr == 'x') base = 16;
-		else if (*ptr == 'o') base = 8;
-		else if (*ptr == 'b') base = 2;
-		else
-		{
-			hcl_seterrbfmt (hcl, HCL_EINVAL, "invalid radix specifier - %c", *ptr);
-			return -1;
-		}
-		ptr++;
-	}
-	else base = 10;
-
-	HCL_ASSERT (hcl, ptr < end);
-
-	value = old_value = 0;
-	while (ptr < end && (v = CHAR_TO_NUM(*ptr, base)) < base)
-	{
-		value = value * base + v;
-		if (value < old_value)
-		{
-			/* overflow must have occurred */
-			hcl_seterrbfmt (hcl, HCL_ERANGE, "number too big - %.*js", str->len, str->ptr);
-			return -1;
-		}
-		old_value = value;
-		ptr++;
-	}
-
-	if (ptr < end)
-	{
-		/* trailing garbage? */
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "trailing garbage after numeric literal - %.*js", str->len, str->ptr);
-		return -1;
-	}
-
-	if (value > HCL_TYPE_MAX(hcl_ooi_t) + (negsign? 1: 0)) /* assume 2's complement */
-	{
-		hcl_seterrbfmt (hcl, HCL_ERANGE, "number too big - %.*js", str->len, str->ptr);
-		return -1;
-	}
-
-	*num = value;
-	if (negsign) *num *= -1;
-
-	return 0;
-}
-
-static hcl_oop_t string_to_num (hcl_t* hcl, hcl_oocs_t* str, int radixed)
-{
-	int negsign, base;
-	const hcl_ooch_t* ptr, * end;
-
-	negsign = 0;
-	ptr = str->ptr,
-	end = str->ptr + str->len;
-
-	HCL_ASSERT (hcl, ptr < end);
-
-	if (*ptr == '+' || *ptr == '-')
-	{
-		negsign = *ptr - '+';
-		ptr++;
-	}
-
-#if 0
-	if (radixed)
-	{
-		HCL_ASSERT (hcl, ptr < end);
-
-		base = 0;
-		do
-		{
-			base = base * 10 + CHAR_TO_NUM(*ptr, 10);
-			ptr++;
-		}
-		while (*ptr != 'r');
-
-		ptr++;
-	}
-	else base = 10;
-#else
-	if (radixed)
-	{
-		HCL_ASSERT (hcl, ptr < end);
-
-		if (*ptr != '#')
-		{
-			hcl_seterrbfmt(hcl, HCL_EINVAL, "radixed number not starting with # - %.*js", str->len, str->ptr);
-			return HCL_NULL;
-		}
-		ptr++; /* skip '#' */
-
-		if (*ptr == 'x') base = 16;
-		else if (*ptr == 'o') base = 8;
-		else if (*ptr == 'b') base = 2;
-		else
-		{
-			hcl_seterrbfmt (hcl, HCL_EINVAL, "invalid radix specifier - %c", *ptr);
-			return HCL_NULL;
-		}
-		ptr++;
-	}
-	else base = 10;
-#endif
-
-/* TODO: handle floating point numbers ... etc */
-	if (negsign) base = -base;
-	return hcl_strtoint(hcl, ptr, end - ptr, base);
-}
-
-static hcl_oop_t string_to_fpdec (hcl_t* hcl, hcl_oocs_t* str, const hcl_loc_t* loc)
-{
-	hcl_oow_t pos;
-	hcl_oow_t scale = 0;
-	hcl_oop_t v;
-
-	pos = str->len;
-	while (pos > 0)
-	{
-		pos--;
-		if (str->ptr[pos] == '.')
-		{
-			scale = str->len - pos - 1;
-			if (scale > HCL_SMOOI_MAX)
-			{
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMRANGE, loc, str, "too many digits after decimal point");
-				return HCL_NULL;
-			}
-
-			HCL_ASSERT (hcl, scale > 0);
-			/*if (scale > 0)*/ HCL_MEMMOVE (&str->ptr[pos], &str->ptr[pos + 1], scale * HCL_SIZEOF(str->ptr[0])); /* remove the decimal point */
-			break;
-		}
-	}
-
-	/* if no decimal point is included or no digit after the point , you must not call this function */
-	HCL_ASSERT (hcl, scale > 0);
-
-	v = hcl_strtoint(hcl, str->ptr, str->len - 1, 10);
-	if (!v) return HCL_NULL;
-
-	return hcl_makefpdec(hcl, v, scale);
-}
 
 static HCL_INLINE int is_spacechar (hcl_ooci_t c)
 {
@@ -1390,7 +1208,7 @@ static int feed_process_token (hcl_t* hcl)
 			for (i = 2; i < TOKEN_NAME_LEN(hcl); i++)
 			{
 				HCL_ASSERT (hcl, is_xdigitchar(TOKEN_NAME_CHAR(hcl, i)));
-				v = v * 16 + CHAR_TO_NUM(TOKEN_NAME_CHAR(hcl, i), 16);
+				v = v * 16 + HCL_CHAR_TO_NUM(TOKEN_NAME_CHAR(hcl, i), 16);
 			}
 
 			if (!HCL_IN_SMPTR_RANGE(v))
@@ -1412,7 +1230,7 @@ static int feed_process_token (hcl_t* hcl)
 			for (i = 2; i < TOKEN_NAME_LEN(hcl); i++)
 			{
 				HCL_ASSERT (hcl, is_digitchar(TOKEN_NAME_CHAR(hcl, i)));
-				v = v * 10 + CHAR_TO_NUM(TOKEN_NAME_CHAR(hcl, i), 10);
+				v = v * 10 + HCL_CHAR_TO_NUM(TOKEN_NAME_CHAR(hcl, i), 10);
 
 				if (v > HCL_ERROR_MAX)
 				{
@@ -1443,7 +1261,7 @@ static int feed_process_token (hcl_t* hcl)
 
 		/*
 		case HCL_TOK_REAL:
-			frd->obj = hcl_makerealnum(hcl, HCL_TOK_RVAL(hcl));
+			frd->obj = hcl_makecnoderealnum(hcl, HCL_TOK_RVAL(hcl));
 			break;
 		*/
 
@@ -1989,7 +1807,7 @@ static int flx_hmarked_char (hcl_t* hcl, hcl_ooci_t c)
 							"invalid hexadecimal character character literal %.*js", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
 						return -1;
 					}
-					c = c * 16 + CHAR_TO_NUM(TOKEN_NAME_CHAR(hcl, i), 16); /* don't care if it is for 'p' */
+					c = c * 16 + HCL_CHAR_TO_NUM(TOKEN_NAME_CHAR(hcl, i), 16); /* don't care if it is for 'p' */
 				}
 			}
 		#if (HCL_SIZEOF_OOCH_T >= 2)
@@ -2094,7 +1912,7 @@ static int flx_hmarked_number (hcl_t* hcl, hcl_ooci_t c)
 {
 	hcl_flx_hn_t* rn = FLX_HN(hcl);
 
-	if (CHAR_TO_NUM(c, rn->radix) >= rn->radix)
+	if (HCL_CHAR_TO_NUM(c, rn->radix) >= rn->radix)
 	{
 		if (is_delimchar(c))
 		{

@@ -2008,7 +2008,7 @@ inside_loop:
 
 static int compile_expression_block (hcl_t* hcl, hcl_cnode_t* src, const hcl_bch_t* ctxname, int flags)
 {
-	hcl_cnode_t* cmd, * obj, * tmp;
+	hcl_cnode_t* cmd, * obj;
 	hcl_oow_t nlvars, tvslen;
 	hcl_fnblk_info_t* fbi;
 	hcl_cframe_t* cf;
@@ -4227,6 +4227,86 @@ HCL_DEBUG1 (hcl, ">>>> instance variable or method %js\n", sep + 1);
 	return 0;
 }
 
+HCL_UNUSED static int string_to_ooi (hcl_t* hcl, hcl_oocs_t* str, int radixed, hcl_ooi_t* num)
+{
+	/* it is not a generic conversion function.
+	 * it assumes a certain pre-sanity check on the string
+	 * done by the lexical analyzer */
+
+	int v, negsign, base;
+	const hcl_ooch_t* ptr, * end;
+	hcl_oow_t value, old_value;
+
+	negsign = 0;
+	ptr = str->ptr,
+	end = str->ptr + str->len;
+
+	HCL_ASSERT (hcl, ptr < end);
+
+	if (*ptr == '+' || *ptr == '-')
+	{
+		negsign = *ptr - '+';
+		ptr++;
+	}
+
+	if (radixed)
+	{
+		HCL_ASSERT (hcl, ptr < end);
+
+		if (*ptr != '#')
+		{
+			hcl_seterrbfmt (hcl, HCL_EINVAL, "radixed number not starting with # - %*.js", str->len, str->ptr);
+			return -1;
+		}
+		ptr++; /* skip '#' */
+
+		if (*ptr == 'x') base = 16;
+		else if (*ptr == 'o') base = 8;
+		else if (*ptr == 'b') base = 2;
+		else
+		{
+			hcl_seterrbfmt (hcl, HCL_EINVAL, "invalid radix specifier - %c", *ptr);
+			return -1;
+		}
+		ptr++;
+	}
+	else base = 10;
+
+	HCL_ASSERT (hcl, ptr < end);
+
+	value = old_value = 0;
+	while (ptr < end && (v = HCL_CHAR_TO_NUM(*ptr, base)) < base)
+	{
+		value = value * base + v;
+		if (value < old_value)
+		{
+			/* overflow must have occurred */
+			hcl_seterrbfmt (hcl, HCL_ERANGE, "number too big - %.*js", str->len, str->ptr);
+			return -1;
+		}
+		old_value = value;
+		ptr++;
+	}
+
+	if (ptr < end)
+	{
+		/* trailing garbage? */
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "trailing garbage after numeric literal - %.*js", str->len, str->ptr);
+		return -1;
+	}
+
+	if (value > HCL_TYPE_MAX(hcl_ooi_t) + (negsign? 1: 0)) /* assume 2's complement */
+	{
+		hcl_seterrbfmt (hcl, HCL_ERANGE, "number too big - %.*js", str->len, str->ptr);
+		return -1;
+	}
+
+	*num = value;
+	if (negsign) *num *= -1;
+
+	return 0;
+}
+
 static hcl_oop_t string_to_num (hcl_t* hcl, hcl_oocs_t* str, const hcl_loc_t* loc, int radixed)
 {
 	int negsign, base;
@@ -4253,7 +4333,7 @@ static hcl_oop_t string_to_num (hcl_t* hcl, hcl_oocs_t* str, const hcl_loc_t* lo
 		base = 0;
 		do
 		{
-			base = base * 10 + CHAR_TO_NUM(*ptr, 10);
+			base = base * 10 + HCL_CHAR_TO_NUM(*ptr, 10);
 			ptr++;
 		}
 		while (*ptr != 'r');
@@ -4951,7 +5031,6 @@ static HCL_INLINE int post_while_cond (hcl_t* hcl)
 	hcl_ooi_t jump_inst_pos;
 	hcl_ooi_t cond_pos, body_pos;
 	hcl_loc_t start_loc;
-	hcl_cnode_t* cmd_cnode;
 	int jump_inst, next_cop;
 	hcl_cnode_t* cond, * body;
 

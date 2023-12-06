@@ -196,7 +196,7 @@ void hcl_fini (hcl_t* hcl)
 	{
 		/* flush pending log messages just in case. */
 		HCL_ASSERT (hcl, hcl->log.ptr != HCL_NULL);
-		vmprim_log_write (hcl, hcl->log.last_mask, hcl->log.ptr, hcl->log.len);
+		HCL_VMPRIM_LOG_WRITE (hcl, hcl->log.last_mask, hcl->log.ptr, hcl->log.len);
 	}
 
 	for (cb = hcl->cblist; cb; cb = cb->next)
@@ -211,7 +211,7 @@ void hcl_fini (hcl_t* hcl)
 		 * this point because one of the callbacks could arrange to stop
 		 * logging */
 		HCL_ASSERT (hcl, hcl->log.ptr != HCL_NULL);
-		vmprim_log_write (hcl, hcl->log.last_mask, hcl->log.ptr, hcl->log.len);
+		HCL_VMPRIM_LOG_WRITE (hcl, hcl->log.last_mask, hcl->log.ptr, hcl->log.len);
 	}
 
 	/* deregister all callbacks */

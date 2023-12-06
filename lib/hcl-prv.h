@@ -1198,12 +1198,18 @@ typedef hcl_ooi_t (*hcl_outbfmt_t) (
 
 /* i don't want an error raised inside the callback to override
  * the existing error number and message. */
-#define vmprim_log_write(hcl,mask,ptr,len) do { \
+#define HCL_VMPRIM_LOG_WRITE(hcl,mask,ptr,len) do { \
 		int shuterr = (hcl)->shuterr; \
 		(hcl)->shuterr = 1; \
 		(hcl)->vmprim.log_write (hcl, mask, ptr, len); \
 		(hcl)->shuterr = shuterr; \
 	} while(0)
+
+
+#define HCL_CHAR_TO_NUM(c,base) \
+        ((c >= '0' && c <= '9')? ((c - '0' < base)? (c - '0'): base): \
+         (c >= 'A' && c <= 'Z')? ((c - 'A' + 10 < base)? (c - 'A' + 10): base): \
+         (c >= 'a' && c <= 'z')? ((c - 'a' + 10 < base)? (c - 'a' + 10): base): base)
 
 #if defined(__cplusplus)
 extern "C" {

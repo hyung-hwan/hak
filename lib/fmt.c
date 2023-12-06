@@ -1550,7 +1550,7 @@ static int log_oocs (hcl_fmtout_t* fmtout, const hcl_ooch_t* ptr, hcl_oow_t len)
 			hcl->log.ptr[hcl->log.len++] = '\n';
 		}
 
-		vmprim_log_write (hcl, hcl->log.last_mask, hcl->log.ptr, hcl->log.len);
+		HCL_VMPRIM_LOG_WRITE (hcl, hcl->log.last_mask, hcl->log.ptr, hcl->log.len);
 		hcl->log.len = 0;
 	}
 
@@ -1594,7 +1594,7 @@ redo:
 					/* no line ending - append a line terminator */
 					hcl->log.ptr[hcl->log.len++] = '\n';
 				}
-				vmprim_log_write (hcl, hcl->log.last_mask, hcl->log.ptr, hcl->log.len);
+				HCL_VMPRIM_LOG_WRITE (hcl, hcl->log.last_mask, hcl->log.ptr, hcl->log.len);
 				hcl->log.len = 0;
 			}
 
@@ -1710,7 +1710,7 @@ hcl_ooi_t hcl_logbfmtv (hcl_t* hcl, hcl_bitmask_t mask, const hcl_bch_t* fmt, va
 
 	if (hcl->log.len > 0 && hcl->log.ptr[hcl->log.len - 1] == '\n')
 	{
-		vmprim_log_write (hcl, hcl->log.last_mask, hcl->log.ptr, hcl->log.len);
+		HCL_VMPRIM_LOG_WRITE (hcl, hcl->log.last_mask, hcl->log.ptr, hcl->log.len);
 		hcl->log.len = 0;
 	}
 
@@ -1765,7 +1765,7 @@ hcl_ooi_t hcl_logufmtv (hcl_t* hcl, hcl_bitmask_t mask, const hcl_uch_t* fmt, va
 
 	if (hcl->log.len > 0 && hcl->log.ptr[hcl->log.len - 1] == '\n')
 	{
-		vmprim_log_write (hcl, hcl->log.last_mask, hcl->log.ptr, hcl->log.len);
+		HCL_VMPRIM_LOG_WRITE (hcl, hcl->log.last_mask, hcl->log.ptr, hcl->log.len);
 		hcl->log.len = 0;
 	}
 	return (x <= -1)? -1: fo.count;
