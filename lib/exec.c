@@ -4586,8 +4586,8 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				HCL_ASSERT (hcl, b1 >= 0);
 
 				/* the MAKE_FUNCTION instruction is followed by the long JUMP_FORWARD_X instruction.
-				* i can decode the instruction and get the size of instructions
-				* of the block context */
+				 * i can decode the instruction and get the size of instructions
+				 * of the block context */
 				HCL_ASSERT (hcl, hcl->active_code[hcl->ip] == HCL_CODE_JUMP_FORWARD_X);
 				joff = hcl->active_code[hcl->ip + 1];
 			#if (HCL_CODE_LONG_PARAM_SIZE == 2)

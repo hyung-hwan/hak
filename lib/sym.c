@@ -158,7 +158,7 @@ static hcl_oop_t find_or_make_symbol (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow
 	}
 
 	/* create a new symbol since it isn't found in the symbol table */
-	symbol = (hcl_oop_char_t)hcl_alloccharobj (hcl, HCL_BRAND_SYMBOL, ptr, len);
+	symbol = (hcl_oop_char_t)hcl_alloccharobj(hcl, HCL_BRAND_SYMBOL, ptr, len);
 	if (symbol)
 	{
 		HCL_ASSERT (hcl, tally < HCL_SMOOI_MAX);
@@ -171,10 +171,10 @@ static hcl_oop_t find_or_make_symbol (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow
 
 hcl_oop_t hcl_makesymbol (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_t len)
 {
-	return find_or_make_symbol (hcl, ptr, len, 1);
+	return find_or_make_symbol(hcl, ptr, len, 1);
 }
 
 hcl_oop_t hcl_findsymbol (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_t len)
 {
-	return find_or_make_symbol (hcl, ptr, len, 0);
+	return find_or_make_symbol(hcl, ptr, len, 0);
 }

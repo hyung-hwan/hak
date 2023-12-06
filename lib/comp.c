@@ -525,7 +525,7 @@ static int add_literal (hcl_t* hcl, hcl_oop_t obj, hcl_oow_t* index)
 
 		newcapa = HCL_ALIGN(capa + 1, HCL_LIT_BUFFER_ALIGN);
 		tmp = hcl_remakengcarray(hcl, (hcl_oop_t)hcl->code.lit.arr, newcapa);
-		if (!tmp) return -1;
+		if (HCL_UNLIKELY(!tmp)) return -1;
 
 		hcl->code.lit.arr = (hcl_oop_oop_t)tmp;
 	}

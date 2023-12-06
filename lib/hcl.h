@@ -1503,6 +1503,29 @@ typedef enum hcl_compile_flag_t hcl_compile_flag_t;
 
 #define HCL_ERRMSG_CAPA (2048)
 
+struct hcl_code_t
+{
+	struct
+	{
+		hcl_oob_t* ptr; /* byte code array */
+		hcl_oow_t len;
+		hcl_oow_t capa;
+	} bc;
+
+	struct
+	{
+		hcl_oop_oop_t arr; /* literal array - not part of object memory */
+		hcl_oow_t len;
+	} lit;
+
+	/* the cumulative number of temporaries collected at the global(top-level) level */
+	hcl_oow_t ngtmprs;
+
+	/* array that holds the location of the byte code emitted */
+	hcl_dbgi_t* dbgi;
+};
+typedef struct hcl_code_t hcl_code_t;
+
 struct hcl_t
 {
 	hcl_oow_t    _instsize;
@@ -1691,27 +1714,8 @@ struct hcl_t
 		} xbuf; /* buffer to support sprintf */
 	} sprintf;
 
-	struct
-	{
-		struct
-		{
-			hcl_oob_t* ptr; /* byte code array */
-			hcl_oow_t len;
-			hcl_oow_t capa;
-		} bc;
 
-		struct
-		{
-			hcl_oop_oop_t arr; /* literal array - not part of object memory */
-			hcl_oow_t len;
-		} lit;
-
-		/* the cumulative number of temporaries collected at the global(top-level) level */
-		hcl_oow_t ngtmprs;
-
-		/* array that holds the location of the byte code emitted */
-		hcl_dbgi_t* dbgi;
-	} code;
+	hcl_code_t code;
 
 	/* == PRINTER to udo stream == */
 	struct
