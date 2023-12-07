@@ -34,9 +34,12 @@
 #include <string.h>
 
 #if defined(_WIN32)
+#	include <winsock2.h>
+#	include <ws2tcpip.h>
 #	include <windows.h>
 #	include <tchar.h>
 #	include <time.h>
+#	include <fcntl.h>
 #	include <io.h>
 #	include <errno.h>
 
@@ -537,12 +540,10 @@ static void flush_log (hcl_t* hcl, int fd)
 	}
 }
 
-
 static void log_write (hcl_t* hcl, hcl_bitmask_t mask, const hcl_ooch_t* msg, hcl_oow_t len)
 {
 	hcl_bch_t buf[256];
-	hcl_oow_t ucslen, bcslen, msgidx;
-	int n;
+	hcl_oow_t msgidx;
 
 	xtn_t* xtn = GET_XTN(hcl);
 	int logfd;
@@ -626,6 +627,9 @@ static void log_write (hcl_t* hcl, hcl_bitmask_t mask, const hcl_ooch_t* msg, hc
 	msgidx = 0;
 	while (len > 0)
 	{
+		hcl_oow_t ucslen, bcslen;
+		int n;
+
 		ucslen = len;
 		bcslen = HCL_COUNTOF(buf);
 
@@ -838,7 +842,7 @@ static hcl_errnum_t _syserrstrb (hcl_t* hcl, int syserr_type, int syserr_code, h
 {
 	switch (syserr_type)
 	{
-		case 2:
+		case 2: /* specially for os2 */
 		#if defined(__OS2__)
 			#if defined(TCPV40HDRS)
 			if (buf)
@@ -887,10 +891,12 @@ static hcl_errnum_t _syserrstrb (hcl_t* hcl, int syserr_type, int syserr_code, h
 		#endif
 
 		case 0:
-		#if defined(HAVE_STRERROR_R)
+		#if defined(_WIN32) && defined(__STDC_WANT_SECURE_LIB__)
+			if (buf) strerror_s (buf, len, syserr_code);
+		#elif defined(HAVE_STRERROR_R)
 			if (buf) strerror_r (syserr_code, buf, len);
 		#else
-			/* this is not thread safe */
+			/* this may be thread unsafe */
 			if (buf) hcl_copy_bcstr (buf, len, strerror(syserr_code));
 		#endif
 			return errno_to_errnum(syserr_code);
@@ -899,7 +905,6 @@ static hcl_errnum_t _syserrstrb (hcl_t* hcl, int syserr_type, int syserr_code, h
 	if (buf) hcl_copy_bcstr (buf, len, "system error");
 	return HCL_ESYSERR;
 }
-
 
 /* --------------------------------------------------------------------------
  * ASSERTION SUPPORT
@@ -2755,8 +2760,8 @@ static void cb_opt_set (hcl_t* hcl, hcl_option_t id, const void* value)
 	    id != HCL_LOG_TARGET_BCS && id != HCL_LOG_TARGET_UCS) return; /* return success. not interested */
 
 #if defined(_WIN32)
-	#if defined(HCL_OOCH_IS_UCH)
-	fd = _open(hcl->option.log_target_u, _O_CREAT | _O_WRONLY | _O_APPEND | _O_BINARY , 0644);
+	#if defined(HCL_OOCH_IS_UCH) && (HCL_SIZEOF_UCH_T == HCL_SIZEOF_WCHAR_T)
+	fd = _wopen(hcl->option.log_target_u, _O_CREAT | _O_WRONLY | _O_APPEND | _O_BINARY , 0644);
 	#else
 	fd = _open(hcl->option.log_target_b, _O_CREAT | _O_WRONLY | _O_APPEND | _O_BINARY , 0644);
 	#endif
@@ -2765,7 +2770,7 @@ static void cb_opt_set (hcl_t* hcl, hcl_option_t id, const void* value)
 #endif
 	if (fd == -1)
 	{
-		/* TODO: any warning that log file not changed? */
+		/* TODO: any warning that log file not opened??? */
 	}
 	else
 	{
@@ -2873,9 +2878,11 @@ static int open_pipes (hcl_t* hcl, int p[2])
 #endif
 
 #if defined(_WIN32)
+	/* Any equivalent in _WIN32?
 	flags = 1;
 	ioctl (p[0], FIONBIO, &flags);
 	ioctl (p[1], FIONBIO, &flags);
+	*/
 #elif defined(__OS2__)
 	flags = 1; /* don't block */
 	ioctl (p[0], FIONBIO, (char*)&flags, HCL_SIZEOF(flags));
@@ -3196,16 +3203,16 @@ static const hcl_bch_t* get_base_name (const hcl_bch_t* path)
 	return (last == HCL_NULL)? path: (last + 1);
 }
 
-static HCL_INLINE int open_cci_stream (hcl_t* hcl, hcl_io_cciarg_t* arg)
-{
-	xtn_t* xtn = GET_XTN(hcl);
-	bb_t* bb = HCL_NULL;
-
 #if defined(__DOS__) || defined(_WIN32) || defined(__OS2__)
 #define FOPEN_R_FLAGS "rb"
 #else
 #define FOPEN_R_FLAGS "r"
 #endif
+
+static HCL_INLINE int open_cci_stream (hcl_t* hcl, hcl_io_cciarg_t* arg)
+{
+	xtn_t* xtn = GET_XTN(hcl);
+	bb_t* bb = HCL_NULL;
 
 /* TOOD: support predefined include directory as well */
 	if (arg->includer)
@@ -3725,7 +3732,6 @@ int hcl_attachudiostdwithucstr (hcl_t* hcl, const hcl_uch_t* udi_file, const hcl
 
 	HCL_ASSERT (hcl, xtn->udi_path == HCL_NULL);
 	HCL_ASSERT (hcl, xtn->udo_path == HCL_NULL);
-
 
 	xtn->udi_path = hcl_duputobcstr(hcl, udi_file, HCL_NULL);
 	if (HCL_UNLIKELY(!xtn->udi_path))

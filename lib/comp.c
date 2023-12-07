@@ -2110,10 +2110,7 @@ static int compile_expression_block (hcl_t* hcl, hcl_cnode_t* src, const hcl_bch
 
 static int compile_do (hcl_t* hcl, hcl_cnode_t* xlist)
 {
-	hcl_cnode_t* cmd, * obj, * tmp;
-	hcl_oow_t nlvars, tvslen;
-	hcl_fnblk_info_t* fbi;
-	hcl_cframe_t* cf;
+	hcl_cnode_t* cmd, * obj;
 	int flags = 0;
 
 	/* (do

@@ -2637,6 +2637,7 @@ int hcl_feeduchars (hcl_t* hcl, const hcl_uch_t* data, hcl_oow_t len)
 #else
 	hcl_bch_t outbuf[HCL_BCSIZE_MAX * 128];
 	hcl_oow_t inlen, outlen, inpos;
+	int n;
 
 	inpos = 0;
 	while (len > 0)
@@ -2647,7 +2648,7 @@ int hcl_feeduchars (hcl_t* hcl, const hcl_uch_t* data, hcl_oow_t len)
 		if (outlen > 0 && hcl_feed(hcl, outbuf, outlen) <= -1) return -1;
 		inpos += inlen;
 		len -= inlen;
-		if (n <= -1) return -1
+		if (n <= -1) return -1;
 	}
 	return 0;
 #endif

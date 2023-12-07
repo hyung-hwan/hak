@@ -1614,7 +1614,7 @@ struct hcl_t
 	hcl_oop_t _set;    /* symbol */
 	hcl_oop_t _set_r;  /* symbol */
 	hcl_oop_t _throw;  /* symbol */
-	hcl_oop_t _try;    /* symbol */
+	hcl_oop_t _try_;   /* symbol */  /* _try is special in MSVC. */
 	hcl_oop_t _until;  /* symbol */
 	hcl_oop_t _while;  /* symbol */
 

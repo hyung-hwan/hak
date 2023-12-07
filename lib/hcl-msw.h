@@ -40,6 +40,7 @@ _M_X64 x64 platform
 /* windows for most of non-x86 platforms dropped.
  * make it selective to support old non-x86 windows platforms. */
 #define HCL_ENDIAN_LITTLE
+#define HCL_ENABLE_WIDE_CHAR
 
 #if defined(__WATCOMC__)
 #	define HCL_SIZEOF_CHAR        1

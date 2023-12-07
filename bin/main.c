@@ -24,6 +24,10 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#if defined(_WIN32)
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include <hcl.h>
 #include <hcl-utl.h>
 #include <hcl-opt.h>
@@ -343,7 +347,13 @@ static void set_signal_to_default (int sig)
 
 static void print_info (void)
 {
+#if defined(HCL_CONFIGURE_CMD) && defined(HCL_CONFIGURE_ARGS)
 	printf ("Configured with: %s %s\n", HCL_CONFIGURE_CMD, HCL_CONFIGURE_ARGS);
+#elif defined(_WIN32)
+	printf("Built for windows\n");
+#else
+	/* TODO: improve this part */
+#endif
 }
 
 static void print_synerr (hcl_t* hcl)
@@ -361,7 +371,7 @@ static void print_synerr (hcl_t* hcl)
 	}
 	else
 	{
-		hcl_logbfmt (hcl, HCL_LOG_STDERR, "%s", xtn->cci_path);
+		hcl_logbfmt (hcl, HCL_LOG_STDERR, "%hs", xtn->cci_path);
 	}
 
 	hcl_logbfmt (hcl, HCL_LOG_STDERR, "[%zu,%zu] %js",
@@ -465,14 +475,27 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 	FILE* fp = HCL_NULL;
 	int is_tty;
 
+#if defined(_WIN32) && defined(__STDC_WANT_SECURE_LIB__)
+	errno_t	err = fopen_s(&fp, xtn->cci_path, FOPEN_R_FLAGS);
+	if (err != 0)
+	{
+		hcl_logbfmt(hcl, HCL_LOG_STDERR, "ERROR: failed to open - %hs - %hs\n", xtn->cci_path, strerror(err));
+		goto oops;
+	}
+#else
 	fp = fopen(xtn->cci_path, FOPEN_R_FLAGS);
 	if (!fp)
 	{
 		hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: failed to open - %hs - %hs\n", xtn->cci_path, strerror(errno));
 		goto oops;
 	}
+#endif
 
+#if defined(_WIN32)
+	is_tty = _isatty(_fileno(fp));
+#else
 	is_tty = isatty(fileno(fp));
+#endif
 
 	/* override the default cnode handler. the default one simply
 	 * compiles the expression node without execution */
@@ -486,7 +509,6 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 	/* [NOTE] it isn't a very nice idea to get this internal data and use it with read_input() */
 	while (1)
 	{
-
 		if (is_tty)
 		{
 			hcl_bch_t bch;
