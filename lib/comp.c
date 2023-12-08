@@ -4131,17 +4131,17 @@ static HCL_INLINE int compile_dsymbol (hcl_t* hcl, hcl_cnode_t* obj)
 
 		sep = hcl_find_oochar(name.ptr, name.len, '.');
 		HCL_ASSERT (hcl, sep != HCL_NULL);
-		if (hcl_comp_oochars_bcstr(name.ptr, sep - name.ptr, "self") == 0)
+		if (hcl_comp_oochars_bcstr(name.ptr, (sep - (const hcl_ooch_t*)name.ptr), "self") == 0)
 		{
 			/* instance variable?  or instance method? */
 HCL_DEBUG1 (hcl, ">>>> instance variable or method %js\n", sep + 1);
-			name.ptr = sep + 1;
+			name.ptr = (hcl_ooch_t*)(sep + 1);
 			name.len -= 5;
 			x = find_variable_backward_with_word(hcl, &name, HCL_CNODE_GET_LOC(obj), 1, &vi);
 		}
-		else if (hcl_comp_oochars_bcstr(name.ptr, sep - name.ptr, "super") == 0)
+		else if (hcl_comp_oochars_bcstr(name.ptr, sep - (const hcl_ooch_t*)name.ptr, "super") == 0)
 		{
-			name.ptr = sep + 1;
+			name.ptr = (hcl_ooch_t*)(sep + 1);
 			name.len -= 6;
 			x = find_variable_backward_with_word(hcl, &name, HCL_CNODE_GET_LOC(obj), 2, &vi); /* TODO: arrange to skip the current class */
 		}
