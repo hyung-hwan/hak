@@ -44,9 +44,10 @@
 #	define INCL_DOSPROCESS
 #	define INCL_DOSERRORS
 #	include <os2.h>
-#elif defined(__MSDOS__)
+#elif defined(__DOS__)
 #	include <dos.h>
 #	include <time.h>
+#	include <signal.h>
 #elif defined(macintosh)
 #	include <Timer.h>
 #else

@@ -57,6 +57,7 @@
 #elif defined(__DOS__)
 #	include <dos.h>
 #	include <time.h>
+#	include <signal.h>
 #elif defined(macintosh)
 #	include <Timer.h>
 #else
@@ -140,7 +141,7 @@ static void gc_hcl (hcl_t* hcl)
 
 static int handle_logopt (hcl_t* hcl, const hcl_bch_t* logstr)
 {
-	hcl_bch_t* cm, * flt;
+	const hcl_bch_t* cm, * flt;
 	hcl_bitmask_t logmask;
 	hcl_oow_t tlen, i;
 	hcl_bcs_t fname;
@@ -272,7 +273,7 @@ static int handle_dbgopt (hcl_t* hcl, const hcl_bch_t* str)
 
 /* ========================================================================= */
 
-#if defined(_WIN32) || defined(__MSDOS__) || defined(__OS2__) || defined(macintosh)
+#if defined(_WIN32) || defined(__DOS__) || defined(__OS2__) || defined(macintosh)
 typedef void(*signal_handler_t)(int);
 #elif defined(macintosh)
 typedef void(*signal_handler_t)(int); /* TODO: */
@@ -283,7 +284,7 @@ typedef void(*signal_handler_t)(int);
 #endif
 
 
-#if defined(_WIN32) || defined(__MSDOS__) || defined(__OS2__)
+#if defined(_WIN32) || defined(__DOS__) || defined(__OS2__)
 static void handle_sigint (int sig)
 {
 	if (g_hcl) hcl_abort (g_hcl);
@@ -304,7 +305,7 @@ static void handle_sigint (int sig)
 
 static void set_signal (int sig, signal_handler_t handler)
 {
-#if defined(_WIN32) || defined(__MSDOS__) || defined(__OS2__)
+#if defined(_WIN32) || defined(__DOS__) || defined(__OS2__)
 	signal (sig, handler);
 #elif defined(macintosh)
 	/* TODO: implement this */
@@ -327,7 +328,7 @@ static void set_signal (int sig, signal_handler_t handler)
 
 static void set_signal_to_default (int sig)
 {
-#if defined(_WIN32) || defined(__MSDOS__) || defined(__OS2__)
+#if defined(_WIN32) || defined(__DOS__) || defined(__OS2__)
 	signal (sig, SIG_DFL);
 #elif defined(macintosh)
 	/* TODO: implement this */
