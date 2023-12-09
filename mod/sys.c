@@ -35,6 +35,11 @@
 #	include <time.h>
 #endif
 
+#if defined(__DOS__)
+#	include <dos.h>
+#	include <time.h>
+#endif
+
 static hcl_pfrc_t pf_sys_time (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
 	hcl_ntime_t now;
@@ -67,6 +72,28 @@ static hcl_pfrc_t pf_sys_stime (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 		tv.tv_usec = 0;
 		settimeofday (&tv, HCL_NULL);
 	}
+#elif defined(__DOS__)
+	{
+		struct tm* tm;
+		time_t t = ti;
+		struct dosdate_t dd;
+		struct dostime_t dt;
+
+		tm = localtime(&t);
+
+		dd.day = tm->tm_mday;
+		dd.month = tm->tm_mon;
+		dd.year = tm->tm_year + 1900;
+		dd.dayofweek = tm->tm_wday;
+
+		dt.hour = tm->tm_hour;
+		dt.minute = tm->tm_min;
+		dt.second = tm->tm_sec;
+		dt.hsecond = 0;
+
+		_dos_setdate(&dd);
+		_dos_settime(&dt);
+	}
 #else
 	{
 		time_t tv;
@@ -93,15 +120,27 @@ static hcl_pfrc_t pf_sys_srandom (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 		return HCL_PF_FAILURE;
 	}
 
+#if defined(__DOS__)
+	srand (seedw);
+#else
 	srandom (seedw);
+#endif
+
 	HCL_STACK_SETRET (hcl, nargs, hcl->_nil);
 	return HCL_PF_SUCCESS;
 }
 
 static hcl_pfrc_t pf_sys_random (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
-	long int r = random();
-	hcl_ooi_t rv = (hcl_ooi_t)(r % HCL_SMOOI_MAX);
+	long int r;
+	hcl_ooi_t rv;
+
+#if defined(__DOS__)
+	r = rand();
+#else
+	r = random();
+#endif
+	rv = (hcl_ooi_t)(r % HCL_SMOOI_MAX);
 	HCL_STACK_SETRET (hcl, nargs, HCL_SMOOI_TO_OOP(rv));
 	return HCL_PF_SUCCESS;
 }
