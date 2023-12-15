@@ -1199,6 +1199,7 @@ enum hcl_io_cmd_t
 	HCL_IO_OPEN,
 	HCL_IO_CLOSE,
 	HCL_IO_READ,
+	HCL_IO_READ_BYTES,
 	HCL_IO_WRITE,
 	HCL_IO_WRITE_BYTES,
 	HCL_IO_FLUSH
@@ -1284,10 +1285,14 @@ struct hcl_io_udiarg_t
 	/**
 	 * [OUT] place data here for #HCL_IO_READ
 	 */
-	hcl_ooch_t buf[2048]; /* TODO: resize this if necessary */
+	union {
+		hcl_ooch_t  c[2048]; /* TODO: resize this if necessary */
+		hcl_uint8_t b[2048 * HCL_SIZEOF(hcl_ooch_t)]; /* TODO: resize this if necessary */
+	} buf;
 
 	/**
-	 * [OUT] place the number of characters read here for #HCL_IO_READ
+	 * [OUT] place the number of characters read here for
+	 * #HCL_IO_READ or #HCL_IO_READ_BYTES
 	 */
 	hcl_oow_t xlen;
 };
@@ -1318,7 +1323,7 @@ struct hcl_io_udoarg_t
 
 	/**
 	 * [OUT] place the number of characters/bytes written here for
-	 *       HCL_IO_WRITE or HCL_IO_WRITE_BYTES
+	 *       #HCL_IO_WRITE or #HCL_IO_WRITE_BYTES
 	 */
 	hcl_oow_t xlen;
 };

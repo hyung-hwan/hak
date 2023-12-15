@@ -213,6 +213,20 @@
 #endif
 
 
+#if defined(HCL_HAVE_SIZEOF_UINT16_T) && (HCL_SIZEOF_OF_UINT16_T == HCL_SIZEOF_OOW_T)
+#	define HCL_CONST_NTOHOOW(x) HCL_CONST_NTOH16(x)
+#	define HCL_CONST_HTONOOW(x) HCL_CONST_HTON16(x)
+#elif defined(HCL_HAVE_SIZEOF_UINT32_T) && (HCL_SIZEOF_OF_UINT32_T == HCL_SIZEOF_OOW_T)
+#	define HCL_CONST_NTOHOOW(x) HCL_CONST_NTOH32(x)
+#	define HCL_CONST_HTONOOW(x) HCL_CONST_HTON32(x)
+#elif defined(HCL_HAVE_SIZEOF_UINT64_T) && (HCL_SIZEOF_OF_UINT64_T == HCL_SIZEOF_OOW_T)
+#	define HCL_CONST_NTOHOOW(x) HCL_CONST_NTOH64(x)
+#	define HCL_CONST_HTONOOW(x) HCL_CONST_HTON64(x)
+#elif defined(HCL_HAVE_SIZEOF_UINT128_T) && (HCL_SIZEOF_OF_UINT128_T == HCL_SIZEOF_OOW_T)
+#	define HCL_CONST_NTOHOOW(x) HCL_CONST_NTOH128(x)
+#	define HCL_CONST_HTONOOW(x) HCL_CONST_HTON128(x)
+#endif
+
 /* =========================================================================
  * HASH
  * ========================================================================= */
@@ -1052,7 +1066,6 @@ static HCL_INLINE hcl_uint128_t hcl_bswap128 (hcl_uint128_t x)
 #	endif
 
 #	if defined(HCL_HAVE_UINT128_T)
-
 #	define hcl_hton128(x) hcl_bswap128(x)
 #	define hcl_ntoh128(x) hcl_bswap128(x)
 #	define hcl_htobe128(x) hcl_bswap128(x)
@@ -1101,6 +1114,20 @@ static HCL_INLINE hcl_uint128_t hcl_bswap128 (hcl_uint128_t x)
 
 #else
 #	error UNKNOWN ENDIAN
+#endif
+
+#if defined(HCL_HAVE_SIZEOF_UINT16_T) && (HCL_SIZEOF_OF_UINT16_T == HCL_SIZEOF_OOW_T)
+#	define hcl_ntohoow(x) hcl_ntoh16(x)
+#	define hcl_htonoow(x) hcl_hton16(x)
+#elif defined(HCL_HAVE_SIZEOF_UINT32_T) && (HCL_SIZEOF_OF_UINT32_T == HCL_SIZEOF_OOW_T)
+#	define hcl_ntohoow(x) hcl_ntoh32(x)
+#	define hcl_htonoow(x) hcl_hton32(x)
+#elif defined(HCL_HAVE_SIZEOF_UINT64_T) && (HCL_SIZEOF_OF_UINT64_T == HCL_SIZEOF_OOW_T)
+#	define hcl_ntohoow(x) hcl_ntoh64(x)
+#	define hcl_htonoow(x) hcl_hton64(x)
+#elif defined(HCL_HAVE_SIZEOF_UINT128_T) && (HCL_SIZEOF_OF_UINT128_T == HCL_SIZEOF_OOW_T)
+#	define hcl_ntohoow(x) hcl_ntoh128(x)
+#	define hcl_htonoow(x) hcl_hton128(x)
 #endif
 
 /* =========================================================================

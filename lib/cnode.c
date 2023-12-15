@@ -226,7 +226,6 @@ redo:
 	}
 }
 
-
 hcl_oow_t hcl_countcnodecons (hcl_t* hcl, hcl_cnode_t* cons)
 {
 	/* this function ignores the last cdr */

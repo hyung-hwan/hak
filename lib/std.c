@@ -3398,6 +3398,9 @@ static int cci_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg)
 			/* no effect on an input stream */
 			return 0;
 
+		case HCL_IO_READ_BYTES: /* byte input prohibited */
+		case HCL_IO_WRITE: /*  character output prohibit */
+		case HCL_IO_WRITE_BYTES: /* byte output prohibit */
 		default:
 			hcl_seterrnum (hcl, HCL_EINTERN);
 			return -1;
@@ -3490,8 +3493,8 @@ static HCL_INLINE int read_udi_stream (hcl_t* hcl, hcl_io_udiarg_t* arg)
 
 #if defined(HCL_OOCH_IS_UCH)
 	bcslen = bb->len;
-	ucslen = HCL_COUNTOF(arg->buf);
-	x = hcl_convbtooochars(hcl, bb->buf, &bcslen, arg->buf, &ucslen);
+	ucslen = HCL_COUNTOF(arg->buf.c);
+	x = hcl_convbtooochars(hcl, bb->buf, &bcslen, arg->buf.c, &ucslen);
 	if (x <= -1 && ucslen <= 0) return -1;
 	/* if ucslen is greater than 0, i assume that some characters have been
 	 * converted properly. as the loop above reads an entire line if not too
@@ -3499,10 +3502,48 @@ static HCL_INLINE int read_udi_stream (hcl_t* hcl, hcl_io_udiarg_t* arg)
 	 * successful conversion of at least 1 ooch character. so no explicit
 	 * check for the incomplete sequence error is required */
 #else
-	bcslen = (bb->len < HCL_COUNTOF(arg->buf))? bb->len: HCL_COUNTOF(arg->buf);
+	bcslen = (bb->len < HCL_COUNTOF(arg->buf.c))? bb->len: HCL_COUNTOF(arg->buf.c);
 	ucslen = bcslen;
-	hcl_copy_bchars (arg->buf, bb->buf, bcslen);
+	hcl_copy_bchars (arg->buf.c, bb->buf, bcslen);
 #endif
+
+	remlen = bb->len - bcslen;
+	if (remlen > 0) HCL_MEMMOVE (bb->buf, &bb->buf[bcslen], remlen);
+	bb->len = remlen;
+
+	arg->xlen = ucslen;
+	return 0;
+}
+
+static HCL_INLINE int read_udi_stream_bytes (hcl_t* hcl, hcl_io_udiarg_t* arg)
+{
+	/*xtn_t* xtn = GET_XTN(hcl);*/
+	bb_t* bb;
+	hcl_oow_t bcslen, ucslen, remlen;
+	int x;
+
+	bb = (bb_t*)arg->handle;
+	HCL_ASSERT (hcl, bb != HCL_NULL && bb->fp != HCL_NULL);
+	do
+	{
+		x = fgetc(bb->fp);
+		if (x == EOF)
+		{
+			if (ferror((FILE*)bb->fp))
+			{
+				hcl_seterrnum (hcl, HCL_EIOERR);
+				return -1;
+			}
+			break;
+		}
+
+		bb->buf[bb->len++] = x;
+	}
+	while (bb->len < HCL_COUNTOF(bb->buf) && x != '\r' && x != '\n');
+
+	bcslen = (bb->len < HCL_COUNTOF(arg->buf.b))? bb->len: HCL_COUNTOF(arg->buf.b);
+	ucslen = bcslen;
+	hcl_copy_bchars (arg->buf.b, bb->buf, bcslen);
 
 	remlen = bb->len - bcslen;
 	if (remlen > 0) HCL_MEMMOVE (bb->buf, &bb->buf[bcslen], remlen);
@@ -3524,6 +3565,9 @@ static int udi_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg)
 
 		case HCL_IO_READ:
 			return read_udi_stream(hcl, (hcl_io_udiarg_t*)arg);
+
+		case HCL_IO_READ_BYTES:
+			return read_udi_stream_bytes(hcl, (hcl_io_udiarg_t*)arg);
 
 		case HCL_IO_FLUSH:
 			/* no effect on an input stream */
@@ -3613,7 +3657,7 @@ static HCL_INLINE int write_udo_stream (hcl_t* hcl, hcl_io_udoarg_t* arg)
 	return 0;
 }
 
-static HCL_INLINE int write_bytes_udo_stream (hcl_t* hcl, hcl_io_udoarg_t* arg)
+static HCL_INLINE int write_udo_stream_bytes (hcl_t* hcl, hcl_io_udoarg_t* arg)
 {
 	/*xtn_t* xtn = GET_XTN(hcl);*/
 	const hcl_uint8_t* ptr;
@@ -3655,7 +3699,7 @@ static int udo_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg)
 			return write_udo_stream(hcl, (hcl_io_udoarg_t*)arg);
 
 		case HCL_IO_WRITE_BYTES:
-			return write_bytes_udo_stream(hcl, (hcl_io_udoarg_t*)arg);
+			return write_udo_stream_bytes(hcl, (hcl_io_udoarg_t*)arg);
 
 		case HCL_IO_FLUSH:
 			return flush_udo_stream(hcl, (hcl_io_udoarg_t*)arg);

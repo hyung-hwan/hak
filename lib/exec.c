@@ -2177,7 +2177,7 @@ static hcl_oop_lambda_t find_cmethod_noseterr (hcl_t* hcl, hcl_oop_class_t class
 				val = HCL_CONS_CDR(ass);
 				if (HCL_IS_CONS(hcl, val) && !HCL_IS_NIL(hcl, HCL_CONS_CAR(val)))
 				{
-					/* TODO: futher check if it's a method block? */
+					/* TODO: further check if it's a method block? */
 					*owner = class_;
 					/* ivaroff isn't useful for a clas smethod but is useful for class instatiation method
 					 * (INSTA bit on in the mask field) */
@@ -2227,7 +2227,7 @@ static hcl_oop_lambda_t find_imethod_noseterr (hcl_t* hcl, hcl_oop_class_t class
 				val = HCL_CONS_CDR(ass);
 				if (HCL_IS_CONS(hcl, val) && !HCL_IS_NIL(hcl, HCL_CONS_CDR(val)))
 				{
-					/* TODO: futher check if it's a method block? */
+					/* TODO: further check if it's a method block? */
 					*owner = class_;
 					*ivaroff = HCL_OOP_TO_SMOOI(class_->nivars_super);
 					return (hcl_oop_lambda_t)HCL_CONS_CDR(val); /* car - class method, cdr - instance method */
