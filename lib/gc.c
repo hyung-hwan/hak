@@ -745,7 +745,7 @@ hcl_oop_t hcl_shallowcopy (hcl_t* hcl, hcl_oop_t oop)
 		total_bytes = HCL_SIZEOF(hcl_obj_t) + hcl_getobjpayloadbytes(hcl, oop);
 
 		hcl_pushvolat (hcl, &oop);
-		z = (hcl_oop_t)hcl_allocbytes (hcl, total_bytes);
+		z = (hcl_oop_t)hcl_allocbytes(hcl, total_bytes);
 		hcl_popvolat(hcl);
 
 		HCL_MEMCPY (z, oop, total_bytes);

@@ -79,7 +79,7 @@
 #	define HCL_SIZEOF_MBSTATE_T   HCL_SIZEOF_LONG
 #	define HCL_MBLEN_MAX          8
 
-#elif defined(__TURBOC__)
+#elif defined(__TURBOC__) || defined(_MSC_VER)
 /* TODO: be more version specific wchar_t may be available in newer BCC */
 #	define HCL_SIZEOF_CHAR        1
 #	define HCL_SIZEOF_SHORT       2

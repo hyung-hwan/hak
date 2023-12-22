@@ -108,10 +108,14 @@
 #	include <fcntl.h>
 #	include <conio.h> /* inp, outp */
 
+#	define DOS_EXIT 0x4C
 #	if defined(_INTELC32_)
-#		define DOS_EXIT 0x4C
 #		include <i32.h>
 #		include <stk.h>
+#	elif defined(_MSC_VER)
+#		include <malloc.h>
+#		define malloc(x) halloc(x, 1)
+#		define free(x) hfree(x)
 #	else
 #		include <dosfunc.h>
 #	endif
@@ -413,26 +417,26 @@ struct xtn_t
  * BASIC MEMORY MANAGER
  * ----------------------------------------------------------------- */
 
-static void* sys_alloc (hcl_mmgr_t* mmgr, hcl_oow_t size)
+static void* sys_allocmem (hcl_mmgr_t* mmgr, hcl_oow_t size)
 {
 	return malloc(size);
 }
 
-static void* sys_realloc (hcl_mmgr_t* mmgr, void* ptr, hcl_oow_t size)
+static void* sys_reallocmem (hcl_mmgr_t* mmgr, void* ptr, hcl_oow_t size)
 {
 	return realloc(ptr, size);
 }
 
-static void sys_free (hcl_mmgr_t* mmgr, void* ptr)
+static void sys_freemem (hcl_mmgr_t* mmgr, void* ptr)
 {
 	free (ptr);
 }
 
 static hcl_mmgr_t sys_mmgr =
 {
-	sys_alloc,
-	sys_realloc,
-	sys_free,
+	sys_allocmem,
+	sys_reallocmem,
+	sys_freemem,
 	HCL_NULL
 };
 
@@ -923,38 +927,6 @@ static void _assertfail (hcl_t* hcl, const hcl_bch_t* expr, const hcl_bch_t* fil
  * SYSTEM DEPENDENT HEADERS
  * -------------------------------------------------------------------------- */
 
-#if defined(_WIN32)
-#	include <windows.h>
-#	include <errno.h>
-#elif defined(__OS2__)
-
-#	define INCL_DOSERRORS
-#	include <os2.h>
-#elif defined(__DOS__)
-#	include <dos.h>
-#	if defined(_INTELC32_)
-#		define DOS_EXIT 0x4C
-#	else
-#		include <dosfunc.h>
-#	endif
-#	include <errno.h>
-#elif defined(vms) || defined(__vms)
-#	define __NEW_STARLET 1
-#	include <starlet.h> /* (SYS$...) */
-#	include <ssdef.h> /* (SS$...) */
-#	include <lib$routines.h> /* (lib$...) */
-#elif defined(macintosh)
-#	include <MacErrors.h>
-#	include <Process.h>
-#	include <Dialogs.h>
-#	include <TextUtils.h>
-#else
-#	include <sys/types.h>
-#	include <unistd.h>
-#	include <signal.h>
-#	include <errno.h>
-#endif
-
 #if defined(HCL_ENABLE_LIBUNWIND)
 #include <libunwind.h>
 static void backtrace_stack_frames (hcl_t* hcl)
@@ -1219,9 +1191,9 @@ void vm_gettime (hcl_t* hcl, hcl_ntime_t* now)
 	bigmsec -= HCL_SEC_TO_MSEC(bigsec);
 	HCL_INIT_NTIME (now, bigsec, HCL_MSEC_TO_NSEC(bigmsec));
 	#else
-    hcl_uint32_t bigsec, bigmsec;
+	hcl_uint32_t bigsec, bigmsec;
 
-    DosQuerySysInfo (QSV_MS_COUNT, QSV_MS_COUNT, &msec, HCL_SIZEOF(msec));
+	DosQuerySysInfo (QSV_MS_COUNT, QSV_MS_COUNT, &msec, HCL_SIZEOF(msec));
 	bigsec = HCL_MSEC_TO_SEC(msec);
 	bigmsec = msec - HCL_SEC_TO_MSEC(bigsec);
 	if (msec < xtn->tc_last)
@@ -1245,11 +1217,11 @@ void vm_gettime (hcl_t* hcl, hcl_ntime_t* now)
 	HCL_INIT_NTIME (now, bigsec, HCL_MSEC_TO_NSEC(bigmsec));
     #endif
 
-#elif defined(__DOS__) && (defined(_INTELC32_) || defined(__WATCOMC__))
+#elif defined(__DOS__)
 	clock_t c;
 
 /* TODO: handle overflow?? */
-	c = clock ();
+	c = clock();
 	now->sec = c / CLOCKS_PER_SEC;
 	#if (CLOCKS_PER_SEC == 100)
 		now->nsec = HCL_MSEC_TO_NSEC((c % CLOCKS_PER_SEC) * 10);
@@ -2277,6 +2249,8 @@ static void vm_muxwait (hcl_t* hcl, const hcl_ntime_t* dur, hcl_vmprim_muxwait_c
 #	elif defined(__WATCOMC__)
 	void _halt_cpu (void);
 #	pragma aux _halt_cpu = "hlt"
+#	elif defined(_MSC_VER)
+	static void _halt_cpu (void) { _asm { hlt } }
 #	endif
 #endif
 
@@ -2307,7 +2281,7 @@ static int vm_sleep (hcl_t* hcl, const hcl_ntime_t* dur)
 
 	/* TODO: ... */
 
-#elif defined(__DOS__) && (defined(_INTELC32_) || defined(__WATCOMC__))
+#elif defined(__DOS__)
 
 	clock_t c;
 
@@ -2862,6 +2836,9 @@ static int open_pipes (hcl_t* hcl, int p[2])
 		hcl_seterrbfmtwithsyserr (hcl, 2, sock_errno(), "unable to create pipes");
 		return -1;
 	}
+#elif defined(__DOS__)
+	hcl_seterrbfmt (hcl, HCL_ENOIMPL, "unable to create pipes - not supported");
+	return -1;
 #elif defined(HAVE_PIPE2) && defined(O_CLOEXEC) && defined(O_NONBLOCK)
 	if (pipe2(p, O_CLOEXEC | O_NONBLOCK) == -1)
 	{

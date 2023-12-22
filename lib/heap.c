@@ -93,9 +93,9 @@ hcl_heap_t* hcl_makeheap (hcl_t* hcl, hcl_oow_t size)
 			return HCL_NULL;
 		}
 
-		heap->xmmgr.alloc = xma_alloc;
-		heap->xmmgr.realloc = xma_realloc;
-		heap->xmmgr.free = xma_free;
+		heap->xmmgr.allocmem = xma_alloc;
+		heap->xmmgr.reallocmem = xma_realloc;
+		heap->xmmgr.freemem = xma_free;
 		heap->xmmgr.ctx = heap->xma;
 	}
 

@@ -35,7 +35,10 @@
 #	include <hcl-msw.h>
 #elif defined(__OS2__)
 #	include <hcl-os2.h>
-#elif defined(__DOS__)
+#elif defined(__DOS__) || defined(__MSDOS__)
+#	if defined(__MSDOS__) && !defined(__DOS__)
+#	define __DOS__ __MSDOS__
+#	endif
 #	include <hcl-dos.h>
 #elif defined(macintosh)
 #	include <hcl-mac.h> /* classic mac os */
@@ -756,28 +759,28 @@ typedef void  (*hcl_mmgr_free_t)    (hcl_mmgr_t* mmgr, void* ptr);
  */
 struct hcl_mmgr_t
 {
-	hcl_mmgr_alloc_t   alloc;   /**< allocation function */
-	hcl_mmgr_realloc_t realloc; /**< resizing function */
-	hcl_mmgr_free_t    free;    /**< disposal function */
-	void*               ctx;     /**< user-defined data pointer */
+	hcl_mmgr_alloc_t   allocmem;   /**< allocation function */
+	hcl_mmgr_realloc_t reallocmem; /**< resizing function */
+	hcl_mmgr_free_t    freemem;    /**< disposal function */
+	void*              ctx;     /**< user-defined data pointer */
 };
 
 /**
  * The HCL_MMGR_ALLOC() macro allocates a memory block of the \a size bytes
  * using the \a mmgr memory manager.
  */
-#define HCL_MMGR_ALLOC(mmgr,size) ((mmgr)->alloc(mmgr,size))
+#define HCL_MMGR_ALLOC(mmgr,size) ((mmgr)->allocmem(mmgr,size))
 
 /**
  * The HCL_MMGR_REALLOC() macro resizes a memory block pointed to by \a ptr
  * to the \a size bytes using the \a mmgr memory manager.
  */
-#define HCL_MMGR_REALLOC(mmgr,ptr,size) ((mmgr)->realloc(mmgr,ptr,size))
+#define HCL_MMGR_REALLOC(mmgr,ptr,size) ((mmgr)->reallocmem(mmgr,ptr,size))
 
 /**
  * The HCL_MMGR_FREE() macro deallocates the memory block pointed to by \a ptr.
  */
-#define HCL_MMGR_FREE(mmgr,ptr) ((mmgr)->free(mmgr,ptr))
+#define HCL_MMGR_FREE(mmgr,ptr) ((mmgr)->freemem(mmgr,ptr))
 
 
 /* =========================================================================
