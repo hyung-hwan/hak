@@ -116,7 +116,7 @@
 #		include <malloc.h>
 #		define malloc(x) halloc(x, 1)
 #		define free(x) hfree(x)
-#	else
+#	elif defined(__WATCOMC__)
 #		include <dosfunc.h>
 #	endif
 

@@ -33,6 +33,7 @@
 #include <time.h>
 #include <errno.h>
 #include <limits.h>
+#include <io.h>
 
 #if defined(__BORLANDC__)
 #	include <malloc.h>

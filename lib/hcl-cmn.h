@@ -473,6 +473,33 @@ typedef struct hcl_bcs_t hcl_bcs_t;
 typedef unsigned int hcl_bitmask_t;
 
 /* =========================================================================
+ * BIGINT TYPES AND MACROS
+ * ========================================================================= */
+#if defined(HCL_ENABLE_FULL_LIW) && (HCL_SIZEOF_UINTMAX_T > HCL_SIZEOF_OOW_T)
+#	define HCL_USE_OOW_FOR_LIW
+#endif
+
+#if defined(HCL_USE_OOW_FOR_LIW)
+	typedef hcl_oow_t          hcl_liw_t; /* large integer word */
+	typedef hcl_ooi_t          hcl_lii_t;
+	typedef hcl_uintmax_t      hcl_lidw_t; /* large integer double word */
+	typedef hcl_intmax_t       hcl_lidi_t;
+#	define HCL_SIZEOF_LIW_T    HCL_SIZEOF_OOW_T
+#	define HCL_SIZEOF_LIDW_T   HCL_SIZEOF_UINTMAX_T
+#	define HCL_LIW_BITS        HCL_OOW_BITS
+#	define HCL_LIDW_BITS       (HCL_SIZEOF_UINTMAX_T * HCL_BITS_PER_BYTE)
+#else
+	typedef hcl_oohw_t         hcl_liw_t;
+	typedef hcl_oohi_t         hcl_lii_t;
+	typedef hcl_oow_t          hcl_lidw_t;
+	typedef hcl_ooi_t          hcl_lidi_t;
+#	define HCL_SIZEOF_LIW_T    HCL_SIZEOF_OOHW_T
+#	define HCL_SIZEOF_LIDW_T   HCL_SIZEOF_OOW_T
+#	define HCL_LIW_BITS        HCL_OOHW_BITS
+#	define HCL_LIDW_BITS       HCL_OOW_BITS
+#endif
+
+/* =========================================================================
  * BASIC OOP ENCODING
  * ========================================================================= */
 

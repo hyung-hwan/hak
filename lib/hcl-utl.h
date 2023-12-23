@@ -213,18 +213,80 @@
 #endif
 
 
-#if defined(HCL_HAVE_SIZEOF_UINT16_T) && (HCL_SIZEOF_OF_UINT16_T == HCL_SIZEOF_OOW_T)
+#if defined(HCL_HAVE_UINT16_T) && (HCL_SIZEOF_UINT16_T == HCL_SIZEOF_OOW_T)
 #	define HCL_CONST_NTOHOOW(x) HCL_CONST_NTOH16(x)
 #	define HCL_CONST_HTONOOW(x) HCL_CONST_HTON16(x)
-#elif defined(HCL_HAVE_SIZEOF_UINT32_T) && (HCL_SIZEOF_OF_UINT32_T == HCL_SIZEOF_OOW_T)
+#	define HCL_CONST_HTOBEOOW(x) HCL_CONST_HTOBE16(x)
+#	define HCL_CONST_HTOLEOOW(x) HCL_CONST_HTOLE16(x)
+#	define HCL_CONST_BEOOWTOH(x) HCL_CONST_BE16TOH(x)
+#	define HCL_CONST_LEOOWTOH(x) HCL_CONST_LE16TOH(x)
+#elif defined(HCL_HAVE_UINT32_T) && (HCL_SIZEOF_UINT32_T == HCL_SIZEOF_OOW_T)
 #	define HCL_CONST_NTOHOOW(x) HCL_CONST_NTOH32(x)
 #	define HCL_CONST_HTONOOW(x) HCL_CONST_HTON32(x)
-#elif defined(HCL_HAVE_SIZEOF_UINT64_T) && (HCL_SIZEOF_OF_UINT64_T == HCL_SIZEOF_OOW_T)
+#	define HCL_CONST_HTOBEOOW(x) HCL_CONST_HTOBE32(x)
+#	define HCL_CONST_HTOLEOOW(x) HCL_CONST_HTOLE32(x)
+#	define HCL_CONST_BEOOWTOH(x) HCL_CONST_BE32TOH(x)
+#	define HCL_CONST_LEOOWTOH(x) HCL_CONST_LE32TOH(x)
+#elif defined(HCL_HAVE_UINT64_T) && (HCL_SIZEOF_UINT64_T == HCL_SIZEOF_OOW_T)
 #	define HCL_CONST_NTOHOOW(x) HCL_CONST_NTOH64(x)
 #	define HCL_CONST_HTONOOW(x) HCL_CONST_HTON64(x)
-#elif defined(HCL_HAVE_SIZEOF_UINT128_T) && (HCL_SIZEOF_OF_UINT128_T == HCL_SIZEOF_OOW_T)
+#	define HCL_CONST_HTOBEOOW(x) HCL_CONST_HTOBE64(x)
+#	define HCL_CONST_HTOLEOOW(x) HCL_CONST_HTOLE64(x)
+#	define HCL_CONST_BEOOWTOH(x) HCL_CONST_BE64TOH(x)
+#	define HCL_CONST_LEOOWTOH(x) HCL_CONST_LE64TOH(x)
+#elif defined(HCL_HAVE_UINT128_T) && (HCL_SIZEOF_UINT128_T == HCL_SIZEOF_OOW_T)
 #	define HCL_CONST_NTOHOOW(x) HCL_CONST_NTOH128(x)
 #	define HCL_CONST_HTONOOW(x) HCL_CONST_HTON128(x)
+#	define HCL_CONST_HTOBEOOW(x) HCL_CONST_HTOBE128(x)
+#	define HCL_CONST_HTOLEOOW(x) HCL_CONST_HTOLE128(x)
+#	define HCL_CONST_BEOOWTOH(x) HCL_CONST_BE128TOH(x)
+#	define HCL_CONST_LEOOWTOH(x) HCL_CONST_LE128TOH(x)
+#endif
+
+#if defined(HCL_HAVE_UINT16_T) && (HCL_SIZEOF_UINT16_T == HCL_SIZEOF_OOHW_T)
+#	define HCL_CONST_NTOHOOHW(x) HCL_CONST_NTOH16(x)
+#	define HCL_CONST_HTONOOHW(x) HCL_CONST_HTON16(x)
+#	define HCL_CONST_HTOBEOOHW(x) HCL_CONST_HTOBE16(x)
+#	define HCL_CONST_HTOLEOOHW(x) HCL_CONST_HTOLE16(x)
+#	define HCL_CONST_BEOOHWTOH(x) HCL_CONST_BE16TOH(x)
+#	define HCL_CONST_LEOOHWTOH(x) HCL_CONST_LE16TOH(x)
+#elif defined(HCL_HAVE_UINT32_T) && (HCL_SIZEOF_UINT32_T == HCL_SIZEOF_OOHW_T)
+#	define HCL_CONST_NTOHOOHW(x) HCL_CONST_NTOH32(x)
+#	define HCL_CONST_HTONOOHW(x) HCL_CONST_HTON32(x)
+#	define HCL_CONST_HTOBEOOHW(x) HCL_CONST_HTOBE32(x)
+#	define HCL_CONST_HTOLEOOHW(x) HCL_CONST_HTOLE32(x)
+#	define HCL_CONST_BEOOHWTOH(x) HCL_CONST_BE32TOH(x)
+#	define HCL_CONST_LEOOHWTOH(x) HCL_CONST_LE32TOH(x)
+#elif defined(HCL_HAVE_UINT64_T) && (HCL_SIZEOF_UINT64_T == HCL_SIZEOF_OOHW_T)
+#	define HCL_CONST_NTOHOOHW(x) HCL_CONST_NTOH64(x)
+#	define HCL_CONST_HTONOOHW(x) HCL_CONST_HTON64(x)
+#	define HCL_CONST_HTOBEOOHW(x) HCL_CONST_HTOBE64(x)
+#	define HCL_CONST_HTOLEOOHW(x) HCL_CONST_HTOLE64(x)
+#	define HCL_CONST_BEOOHWTOH(x) HCL_CONST_BE64TOH(x)
+#	define HCL_CONST_LEOOHWTOH(x) HCL_CONST_LE64TOH(x)
+#elif defined(HCL_HAVE_UINT128_T) && (HCL_SIZEOF_UINT128_T == HCL_SIZEOF_OOHW_T)
+#	define HCL_CONST_NTOHOOHW(x) HCL_CONST_NTOH128(x)
+#	define HCL_CONST_HTONOOHW(x) HCL_CONST_HTON128(x)
+#	define HCL_CONST_HTOBEOOHW(x) HCL_CONST_HTOBE128(x)
+#	define HCL_CONST_HTOLEOOHW(x) HCL_CONST_HTOLE128(x)
+#	define HCL_CONST_BEOOHWTOH(x) HCL_CONST_BE128TOH(x)
+#	define HCL_CONST_LEOOHWTOH(x) HCL_CONST_LE128TOH(x)
+#endif
+
+#if defined(HCL_USE_OOW_FOR_LIW)
+#	define HCL_CONST_NTOHLIW(x)  HCL_CONST_NTOHOOW(x)
+#	define HCL_CONST_HTONLIW(x)  HCL_CONST_HTONOOW(x)
+#	define HCL_CONST_HTOBELIW(x) HCL_CONST_HTOBEOOW(x)
+#	define HCL_CONST_HTOLELIW(x) HCL_CONST_HTOLEOOW(x)
+#	define HCL_CONST_BELIWTOH(x) HCL_CONST_BEOOWTOH(x)
+#	define HCL_CONST_LELIWTOH(x) HCL_CONST_LEOOWTOH(x)
+#else
+#	define HCL_CONST_NTOHLIW(x)  HCL_CONST_NTOHOOHW(x)
+#	define HCL_CONST_HTONLIW(x)  HCL_CONST_HTONOOHW(x)
+#	define HCL_CONST_HTOBELIW(x) HCL_CONST_HTOBEOOHW(x)
+#	define HCL_CONST_HTOLELIW(x) HCL_CONST_HTOLEOOHW(x)
+#	define HCL_CONST_BELIWTOH(x) HCL_CONST_BEOOHWTOH(x)
+#	define HCL_CONST_LELIWTOH(x) HCL_CONST_LEOOHWTOH(x)
 #endif
 
 /* =========================================================================
@@ -336,40 +398,47 @@ HCL_EXPORT hcl_oow_t hcl_hash_bytes_ (
 );
 
 #if defined(HCL_HAVE_INLINE)
-	static HCL_INLINE hcl_oow_t hcl_hash_bytes (const hcl_oob_t* ptr, hcl_oow_t len)
-	{
-		hcl_oow_t hv;
-		HCL_HASH_BYTES (hv, ptr, len);
-		/* constrain the hash value to be representable in a small integer
-		 * for convenience sake */
-		return hv % ((hcl_oow_t)HCL_SMOOI_MAX + 1);
-	}
+static HCL_INLINE hcl_oow_t hcl_hash_bytes (const hcl_oob_t* ptr, hcl_oow_t len)
+{
+	hcl_oow_t hv;
+	HCL_HASH_BYTES (hv, ptr, len);
+	/* constrain the hash value to be representable in a small integer
+		* for convenience sake */
+	return hv % ((hcl_oow_t)HCL_SMOOI_MAX + 1);
+}
 
-	static HCL_INLINE hcl_oow_t hcl_hash_bchars (const hcl_bch_t* ptr, hcl_oow_t len)
-	{
-		return hcl_hash_bytes((const hcl_oob_t*)ptr, len * HCL_SIZEOF(hcl_bch_t));
-	}
+static HCL_INLINE hcl_oow_t hcl_hash_bchars (const hcl_bch_t* ptr, hcl_oow_t len)
+{
+	return hcl_hash_bytes((const hcl_oob_t*)ptr, len * HCL_SIZEOF(hcl_bch_t));
+}
 
-	static HCL_INLINE hcl_oow_t hcl_hash_uchars (const hcl_uch_t* ptr, hcl_oow_t len)
-	{
-		return hcl_hash_bytes((const hcl_oob_t*)ptr, len * HCL_SIZEOF(hcl_uch_t));
-	}
+static HCL_INLINE hcl_oow_t hcl_hash_uchars (const hcl_uch_t* ptr, hcl_oow_t len)
+{
+	return hcl_hash_bytes((const hcl_oob_t*)ptr, len * HCL_SIZEOF(hcl_uch_t));
+}
 
-	static HCL_INLINE hcl_oow_t hcl_hash_words (const hcl_oow_t* ptr, hcl_oow_t len)
-	{
-		return hcl_hash_bytes((const hcl_oob_t*)ptr, len * HCL_SIZEOF(hcl_oow_t));
-	}
+static HCL_INLINE hcl_oow_t hcl_hash_words (const hcl_oow_t* ptr, hcl_oow_t len)
+{
+	return hcl_hash_bytes((const hcl_oob_t*)ptr, len * HCL_SIZEOF(hcl_oow_t));
+}
 
-	static HCL_INLINE hcl_oow_t hcl_hash_halfwords (const hcl_oohw_t* ptr, hcl_oow_t len)
-	{
-		return hcl_hash_bytes((const hcl_oob_t*)ptr, len * HCL_SIZEOF(hcl_oohw_t));
-	}
+static HCL_INLINE hcl_oow_t hcl_hash_halfwords (const hcl_oohw_t* ptr, hcl_oow_t len)
+{
+	return hcl_hash_bytes((const hcl_oob_t*)ptr, len * HCL_SIZEOF(hcl_oohw_t));
+}
+
+static HCL_INLINE hcl_oow_t hcl_hash_liwords(const hcl_liw_t* ptr, hcl_oow_t len)
+{
+	return hcl_hash_bytes((const hcl_oob_t*)ptr, len * HCL_SIZEOF(hcl_liw_t));
+}
+
 #else
 #	define hcl_hash_bytes(ptr,len)     hcl_hash_bytes_(ptr, len)
 #	define hcl_hash_bchars(ptr,len)    hcl_hash_bytes((const hcl_oob_t*)ptr, len * HCL_SIZEOF(hcl_bch_t))
 #	define hcl_hash_uchars(ptr,len)    hcl_hash_bytes((const hcl_oob_t*)ptr, len * HCL_SIZEOF(hcl_uch_t))
 #	define hcl_hash_words(ptr,len)     hcl_hash_bytes((const hcl_oob_t*)ptr, len * HCL_SIZEOF(hcl_oow_t))
 #	define hcl_hash_halfwords(ptr,len) hcl_hash_bytes((const hcl_oob_t*)ptr, len * HCL_SIZEOF(hcl_oohw_t))
+#	define hcl_hash_liwords(ptr,len)   hcl_hash_bytes((const hcl_oob_t*)ptr, len * HCL_SIZEOF(hcl_liw_t))
 #endif
 
 #if defined(HCL_OOCH_IS_UCH)
@@ -1116,18 +1185,81 @@ static HCL_INLINE hcl_uint128_t hcl_bswap128 (hcl_uint128_t x)
 #	error UNKNOWN ENDIAN
 #endif
 
-#if defined(HCL_HAVE_SIZEOF_UINT16_T) && (HCL_SIZEOF_OF_UINT16_T == HCL_SIZEOF_OOW_T)
+#if defined(HCL_HAVE_UINT16_T) && (HCL_SIZEOF_UINT16_T == HCL_SIZEOF_OOW_T)
 #	define hcl_ntohoow(x) hcl_ntoh16(x)
 #	define hcl_htonoow(x) hcl_hton16(x)
-#elif defined(HCL_HAVE_SIZEOF_UINT32_T) && (HCL_SIZEOF_OF_UINT32_T == HCL_SIZEOF_OOW_T)
+#	define hcl_htobeoow(x) hcl_htobe116(x)
+#	define hcl_beoowtoh(x) hcl_be16toh(x)
+#	define hcl_htoleoow(x) hcl_htole16(x)
+#	define hcl_leoowtoh(x) hcl_le16toh(x)
+#elif defined(HCL_HAVE_UINT32_T) && (HCL_SIZEOF_UINT32_T == HCL_SIZEOF_OOW_T)
 #	define hcl_ntohoow(x) hcl_ntoh32(x)
 #	define hcl_htonoow(x) hcl_hton32(x)
-#elif defined(HCL_HAVE_SIZEOF_UINT64_T) && (HCL_SIZEOF_OF_UINT64_T == HCL_SIZEOF_OOW_T)
+#	define hcl_htobeoow(x) hcl_htobe32(x)
+#	define hcl_beoowtoh(x) hcl_be32toh(x)
+#	define hcl_htoleoow(x) hcl_htole32(x)
+#	define hcl_leoowtoh(x) hcl_le32toh(x)
+#elif defined(HCL_HAVE_UINT64_T) && (HCL_SIZEOF_UINT64_T == HCL_SIZEOF_OOW_T)
 #	define hcl_ntohoow(x) hcl_ntoh64(x)
 #	define hcl_htonoow(x) hcl_hton64(x)
-#elif defined(HCL_HAVE_SIZEOF_UINT128_T) && (HCL_SIZEOF_OF_UINT128_T == HCL_SIZEOF_OOW_T)
+#	define hcl_htobeoow(x) hcl_htobe64(x)
+#	define hcl_beoowtoh(x) hcl_be64toh(x)
+#	define hcl_htoleoow(x) hcl_htole64(x)
+#	define hcl_leoowtoh(x) hcl_le64toh(x)
+#elif defined(HCL_HAVE_UINT128_T) && (HCL_SIZEOF_UINT128_T == HCL_SIZEOF_OOW_T)
 #	define hcl_ntohoow(x) hcl_ntoh128(x)
 #	define hcl_htonoow(x) hcl_hton128(x)
+#	define hcl_htobeoow(x) hcl_htobe128(x)
+#	define hcl_beoowtoh(x) hcl_be128toh(x)
+#	define hcl_htoleoow(x) hcl_htole128(x)
+#	define hcl_leoowtoh(x) hcl_le128toh(x)
+#endif
+
+
+#if defined(HCL_HAVE_UINT16_T) && (HCL_SIZEOF_UINT16_T == HCL_SIZEOF_OOHW_T)
+#	define hcl_ntohoohw(x) hcl_ntoh16(x)
+#	define hcl_htonoohw(x) hcl_hton16(x)
+#	define hcl_htobeoohw(x) hcl_htobe116(x)
+#	define hcl_beoohwtoh(x) hcl_be16toh(x)
+#	define hcl_htoleoohw(x) hcl_htole16(x)
+#	define hcl_leoohwtoh(x) hcl_le16toh(x)
+#elif defined(HCL_HAVE_UINT32_T) && (HCL_SIZEOF_UINT32_T == HCL_SIZEOF_OOHW_T)
+#	define hcl_ntohoohw(x) hcl_ntoh32(x)
+#	define hcl_htonoohw(x) hcl_hton32(x)
+#	define hcl_htobeoohw(x) hcl_htobe32(x)
+#	define hcl_beoohwtoh(x) hcl_be32toh(x)
+#	define hcl_htoleoohw(x) hcl_htole32(x)
+#	define hcl_leoohwtoh(x) hcl_le32toh(x)
+#elif defined(HCL_HAVE_UINT64_T) && (HCL_SIZEOF_UINT64_T == HCL_SIZEOF_OOHW_T)
+#	define hcl_ntohoohw(x) hcl_ntoh64(x)
+#	define hcl_htonoohw(x) hcl_hton64(x)
+#	define hcl_htobeoohw(x) hcl_htobe64(x)
+#	define hcl_beoohwtoh(x) hcl_be64toh(x)
+#	define hcl_htoleoohw(x) hcl_htole64(x)
+#	define hcl_leoohwtoh(x) hcl_le64toh(x)
+#elif defined(HCL_HAVE_UINT128_T) && (HCL_SIZEOF_UINT128_T == HCL_SIZEOF_OOHW_T)
+#	define hcl_ntohoohw(x) hcl_ntoh128(x)
+#	define hcl_htonoohw(x) hcl_hton128(x)
+#	define hcl_htobeoohw(x) hcl_htobe128(x)
+#	define hcl_beoohwtoh(x) hcl_be128toh(x)
+#	define hcl_htoleoohw(x) hcl_htole128(x)
+#	define hcl_leoohwtoh(x) hcl_le128toh(x)
+#endif
+
+#if defined(HCL_USE_OOW_FOR_LIW)
+#	define hcl_ntohliw(x)  hcl_ntohoow(x)
+#	define hcl_htonliw(x)  hcl_htonoow(x)
+#	define hcl_htobeliw(x) hcl_htobeoow(x)
+#	define hcl_beliwtoh(x) hcl_beoowtoh(x)
+#	define hcl_htoleliw(x) hcl_htoleoow(x)
+#	define hcl_leliwtoh(x) hcl_leoowtoh(x)
+#else
+#	define hcl_ntohliw(x)  hcl_ntohoohw(x)
+#	define hcl_htonliw(x)  hcl_htonoohw(x)
+#	define hcl_htobeliw(x) hcl_htobeoohw(x)
+#	define hcl_beliwtoh(x) hcl_beoohwtoh(x)
+#	define hcl_htoleliw(x) hcl_htoleoohw(x)
+#	define hcl_leliwtoh(x) hcl_leoohwtoh(x)
 #endif
 
 /* =========================================================================
