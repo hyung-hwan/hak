@@ -2357,6 +2357,28 @@ HCL_EXPORT int hcl_compile (
 );
 #endif
 
+int hcl_addliteral (
+	hcl_t*        hcl,
+	hcl_code_t*   code,
+	hcl_oop_t     obj,
+	hcl_oow_t     lfbase,
+	hcl_oow_t*    index
+);
+
+int hcl_brewcode (
+	hcl_t*      hcl,
+	hcl_code_t* code
+);
+
+/**
+ * The hcl_purgecode() function cleans up the data held in memory
+ * pointed to by \a code.
+ */
+HCL_EXPORT int hcl_purgecode (
+	hcl_t*       hcl,
+	hcl_code_t*  code
+);
+
 /**
  * The hcl_decode() function decodes instructions from the position
  * \a start to the position \a end - 1, and prints the decoded instructions

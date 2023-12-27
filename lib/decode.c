@@ -58,6 +58,7 @@ int hcl_decode (hcl_t* hcl, const hcl_code_t* code, hcl_oow_t start, hcl_oow_t e
 	/* the instruction at the offset 'end' is not decoded.
 	 * decoding offset range is from start to end - 1. */
 
+	if (!code) code = &hcl->code;
 
 	HCL_ASSERT (hcl, start >= 0 && end >= 0);
 	HCL_ASSERT (hcl, code->bc.len < HCL_SMOOI_MAX); /* asserted by the compiler */

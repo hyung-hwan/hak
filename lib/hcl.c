@@ -257,25 +257,7 @@ void hcl_fini (hcl_t* hcl)
 		hcl->proc_map_free_last = -1;
 	}
 
-	if (hcl->code.dbgi)
-	{
-		hcl_freemem (hcl, hcl->code.dbgi);
-		hcl->code.dbgi = HCL_NULL;
-	}
-
-	if (hcl->code.bc.ptr)
-	{
-		hcl_freemem (hcl, hcl->code.bc.ptr);
-		hcl->code.bc.ptr = HCL_NULL;
-		hcl->code.bc.len = 0;
-	}
-
-	if (hcl->code.lit.arr)
-	{
-		hcl_freengcobj (hcl, (hcl_oop_t)hcl->code.lit.arr);
-		hcl->code.lit.arr = HCL_NULL;
-		hcl->code.lit.len = 0;
-	}
+	hcl_purgecode (hcl, &hcl->code);
 
 	if (hcl->p.s.ptr)
 	{

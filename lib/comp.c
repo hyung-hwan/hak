@@ -490,52 +490,11 @@ ok:
 
 /* ========================================================================= */
 
-static int add_literal (hcl_t* hcl, hcl_oop_t obj, hcl_oow_t* index)
+static HCL_INLINE int add_literal (hcl_t* hcl, hcl_oop_t obj, hcl_oow_t* index)
 {
-	hcl_oow_t capa, i, lfbase = 0;
-	hcl_oop_t tmp;
-
+	hcl_oow_t lfbase;
 	lfbase = (hcl->option.trait & HCL_TRAIT_INTERACTIVE)? hcl->c->fnblk.info[hcl->c->fnblk.depth].lfbase: 0;
-
-	/* TODO: speed up the following duplicate check loop */
-	for (i = lfbase; i < hcl->code.lit.len; i++)
-	{
-		tmp = ((hcl_oop_oop_t)hcl->code.lit.arr)->slot[i];
-
-		if (tmp == obj)
-		{
-			/* this removes redundancy of symbols, characters, and integers. */
-			if (index) *index = i - lfbase;
-			return 0;
-		}
-		else if (HCL_IS_STRING(hcl, obj) && HCL_IS_STRING(hcl, tmp) && hcl_equalobjs(hcl, obj, tmp))
-		{
-			/* a string object requires equality check. however, the string created to the literal frame
-			 * must be made immutable. non-immutable string literals are source of various problems */
-			if (index) *index = i - lfbase;
-			return 0;
-		}
-	}
-
-	capa = HCL_OBJ_GET_SIZE(hcl->code.lit.arr);
-	if (hcl->code.lit.len >= capa)
-	{
-		hcl_oop_t tmp;
-		hcl_oow_t newcapa;
-
-		newcapa = HCL_ALIGN(capa + 1, HCL_LIT_BUFFER_ALIGN);
-		tmp = hcl_remakengcarray(hcl, (hcl_oop_t)hcl->code.lit.arr, newcapa);
-		if (HCL_UNLIKELY(!tmp)) return -1;
-
-		hcl->code.lit.arr = (hcl_oop_oop_t)tmp;
-	}
-
-	if (index) *index = hcl->code.lit.len - lfbase;
-
-	((hcl_oop_oop_t)hcl->code.lit.arr)->slot[hcl->code.lit.len++] = obj;
-	/* TODO: RDONLY? */
-	/*if (HCL_IS_OOP_POINTER(obj)) HCL_OBJ_SET_FLAGS_RDONLY(obj, 1); */
-	return 0;
+	return hcl_addliteral(hcl, &hcl->code, obj, lfbase, index);
 }
 
 /* ========================================================================= */

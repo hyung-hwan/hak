@@ -847,37 +847,8 @@ int hcl_ignite (hcl_t* hcl, hcl_oow_t heapsize)
 		hcl->sp = HCL_OOP_TO_SMOOI(hcl->processor->active->sp);
 	}
 
-	/* TODO: move code.bc.ptr creation to hcl_init? */
-	if (!hcl->code.bc.ptr)
-	{
-		hcl->code.bc.ptr = (hcl_oob_t*)hcl_allocmem(hcl, HCL_SIZEOF(*hcl->code.bc.ptr) * HCL_BC_BUFFER_INIT); /* TODO: set a proper intial size */
-		if (HCL_UNLIKELY(!hcl->code.bc.ptr)) return -1;
-		HCL_ASSERT (hcl, hcl->code.bc.len == 0);
-		hcl->code.bc.capa = HCL_BC_BUFFER_INIT;
-	}
-
-	if (!hcl->code.dbgi)
-	{
-		hcl->code.dbgi = (hcl_dbgi_t*)hcl_allocmem(hcl, HCL_SIZEOF(*hcl->code.dbgi) * HCL_BC_BUFFER_INIT);
-		if (HCL_UNLIKELY(!hcl->code.dbgi))
-		{
-			/* bc.ptr and dbgi go together. so free bc.ptr if dbgi allocation fails */
-			hcl_freemem (hcl, hcl->code.bc.ptr);
-			hcl->code.bc.ptr = HCL_NULL;
-			hcl->code.bc.capa = 0;
-			return -1;
-		}
-
-		HCL_MEMSET (hcl->code.dbgi, 0, HCL_SIZEOF(*hcl->code.dbgi) * HCL_BC_BUFFER_INIT);
-	}
-
-	/* TODO: move code.lit.arr creation to hcl_init() after swithching to hcl_allocmem? */
-	if (!hcl->code.lit.arr)
-	{
-		hcl->code.lit.arr = (hcl_oop_oop_t)hcl_makengcarray(hcl, HCL_LIT_BUFFER_INIT); /* TOOD: set a proper initial size */
-		if (HCL_UNLIKELY(!hcl->code.lit.arr)) return -1;
-		HCL_ASSERT (hcl, hcl->code.lit.len == 0);
-	}
+	/* TODO: move this initialization to hcl_init? */
+	if (hcl_brewcode(hcl, &hcl->code) <= -1) return -1;
 
 	hcl->p.e = hcl->_nil;
 	return 0;

@@ -260,8 +260,7 @@ int hcl_unmarshalcode (hcl_t* hcl, hcl_code_t* code, hcl_xchg_reader_t rdr, void
 	 *  to avoid this issue.
 	 */
 
-	//TODO: code->lit.len = 0; or lfbase??/
-
+	if (hcl_brewcode(hcl, code) <= -1) goto oops;
 
 	n = rdr(hcl, &h, HCL_SIZEOF(h), ctx);
 	if (n <= -1)
@@ -376,10 +375,10 @@ int hcl_unmarshalcode (hcl_t* hcl, hcl_code_t* code, hcl_xchg_reader_t rdr, void
 						goto oops;
 					}
 
-		HCL_DEBUG4(hcl, "333 nchars %d nbytes %d bcslen %d ucslen %d\n", (int)nchars, (int)nbytes, (int)bcslen, (int)ucslen);
 					HCL_ASSERT(hcl, ucspos < nchars);
 					bcsres = bcslen;
 					ucslen = nchars - ucspos;
+		HCL_DEBUG4(hcl, "333 nchars %d nbytes %d bcslen %d ucslen %d\n", (int)nchars, (int)nbytes, (int)bcslen, (int)ucslen);
 					if (hcl_convbtouchars(hcl, bcsbuf, &bcslen, HCL_OBJ_GET_CHAR_PTR(ns, ucspos), &ucslen) <= -1 && bcslen <= 0)
 					{
 		HCL_DEBUG0(hcl, "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE\n");
@@ -406,8 +405,7 @@ HCL_DEBUG1(hcl, "RESTORED=>[[%js]]\n", HCL_OBJ_GET_CHAR_SLOT(ns));
 					ns = nc;
 				}
 
-				/* TODO: set ns to the internal literal frame... */
-/* TODO: ... add_literal(hcl, code, ns, &) */
+				if (hcl_addliteral(hcl, code, ns, 0, HCL_NULL) <= -1) goto oops;
 				break;
 			}
 
@@ -446,6 +444,7 @@ HCL_DEBUG1(hcl, "RESTORED=>[[%js]]\n", HCL_OBJ_GET_CHAR_SLOT(ns));
 				}
 
 HCL_DEBUG1(hcl, "RESTORED BIGINT... [%O]\n", ns);
+				if (hcl_addliteral(hcl, code, ns, 0, HCL_NULL) <= -1) goto oops;
 				break;
 			}
 
@@ -513,6 +512,7 @@ HCL_DEBUG1(hcl, "RESTORED v... [%O]\n", v);
 					if (HCL_UNLIKELY(!ns)) goto oops;
 				}
 HCL_DEBUG1(hcl, "RESTORED FPDEC... [%O]\n", ns);
+				if (hcl_addliteral(hcl, code, ns, 0, HCL_NULL) <= -1) goto oops;
 				break;
 			}
 
@@ -526,4 +526,113 @@ HCL_DEBUG1(hcl, "RESTORED FPDEC... [%O]\n", ns);
 
 oops:
 	return -1;
+}
+
+int hcl_brewcode (hcl_t* hcl, hcl_code_t* code)
+{
+	if (!code->bc.ptr)
+	{
+		code->bc.ptr = (hcl_oob_t*)hcl_allocmem(hcl, HCL_SIZEOF(*code->bc.ptr) * HCL_BC_BUFFER_INIT); /* TODO: set a proper intial size */
+		if (HCL_UNLIKELY(!code->bc.ptr)) return -1;
+		HCL_ASSERT (hcl, code->bc.len == 0);
+		code->bc.capa = HCL_BC_BUFFER_INIT;
+	}
+
+	if (!code->dbgi)
+	{
+		code->dbgi = (hcl_dbgi_t*)hcl_allocmem(hcl, HCL_SIZEOF(*code->dbgi) * HCL_BC_BUFFER_INIT);
+		if (HCL_UNLIKELY(!code->dbgi))
+		{
+			/* bc.ptr and dbgi go together. so free bc.ptr if dbgi allocation fails */
+			hcl_freemem (hcl, code->bc.ptr);
+			code->bc.ptr = HCL_NULL;
+			code->bc.len = 0;
+			code->bc.capa = 0;
+			return -1;
+		}
+
+		HCL_MEMSET (code->dbgi, 0, HCL_SIZEOF(*code->dbgi) * HCL_BC_BUFFER_INIT);
+	}
+
+	/* TODO: move code.lit.arr creation to hcl_init() after swithching to hcl_allocmem? */
+        if (!code->lit.arr)
+        {
+                code->lit.arr = (hcl_oop_oop_t)hcl_makengcarray(hcl, HCL_LIT_BUFFER_INIT); /* TOOD: set a proper initial size */
+                if (HCL_UNLIKELY(!code->lit.arr)) return -1;
+                HCL_ASSERT (hcl, code->lit.len == 0);
+        }
+
+	return 0;
+}
+
+int hcl_purgecode (hcl_t* hcl, hcl_code_t* code)
+{
+	if (code->dbgi)
+        {
+		hcl_freemem (hcl, code->dbgi);
+		code->dbgi = HCL_NULL;
+        }
+
+	if (code->bc.ptr)
+	{
+		hcl_freemem (hcl, code->bc.ptr);
+		code->bc.ptr = HCL_NULL;
+		code->bc.len = 0;
+		code->bc.capa = 0;
+	}
+
+	if (code->lit.arr)
+	{
+		hcl_freengcobj (hcl, (hcl_oop_t)code->lit.arr);
+		code->lit.arr = HCL_NULL;
+		code->lit.len = 0;
+	}
+
+	HCL_MEMSET (&code, 0, HCL_SIZEOF(code));
+}
+
+int hcl_addliteral (hcl_t* hcl, hcl_code_t* code, hcl_oop_t obj, hcl_oow_t lfbase, hcl_oow_t* index)
+{
+	hcl_oow_t capa, i;
+	hcl_oop_t tmp;
+
+	/* TODO: speed up the following duplicate check loop */
+	for (i = lfbase; i < code->lit.len; i++)
+	{
+		tmp = ((hcl_oop_oop_t)code->lit.arr)->slot[i];
+
+		if (tmp == obj)
+		{
+			/* this removes redundancy of symbols, characters, and integers. */
+			if (index) *index = i - lfbase;
+			return 0;
+		}
+		else if (HCL_IS_STRING(hcl, obj) && HCL_IS_STRING(hcl, tmp) && hcl_equalobjs(hcl, obj, tmp))
+		{
+			/* a string object requires equality check. however, the string created to the literal frame
+			 * must be made immutable. non-immutable string literals are source of various problems */
+			if (index) *index = i - lfbase;
+			return 0;
+		}
+	}
+
+	capa = HCL_OBJ_GET_SIZE(code->lit.arr);
+	if (code->lit.len >= capa)
+	{
+		hcl_oop_t tmp;
+		hcl_oow_t newcapa;
+
+		newcapa = HCL_ALIGN(capa + 1, HCL_LIT_BUFFER_ALIGN);
+		tmp = hcl_remakengcarray(hcl, (hcl_oop_t)code->lit.arr, newcapa);
+		if (HCL_UNLIKELY(!tmp)) return -1;
+
+		code->lit.arr = (hcl_oop_oop_t)tmp;
+	}
+
+	if (index) *index = code->lit.len - lfbase;
+
+	((hcl_oop_oop_t)code->lit.arr)->slot[code->lit.len++] = obj;
+	/* TODO: RDONLY? */
+	/*if (HCL_IS_OOP_POINTER(obj)) HCL_OBJ_SET_FLAGS_RDONLY(obj, 1); */
+	return 0;
 }

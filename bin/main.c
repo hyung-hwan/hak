@@ -474,10 +474,17 @@ static hcl_oop_t execute_in_batch_mode(hcl_t* hcl, int verbose)
 /* TESTING */
 #if 0
 {
+	hcl_code_t xcode;
+
+	memset (&xcode, 0, HCL_SIZEOF(xcode));
+
 	xxxlen = 0;
 	hcl_marshalcode(hcl, &hcl->code, clit_writer, HCL_NULL);
 	xxxpos = 0;
-	hcl_unmarshalcode(hcl, &hcl->code, clit_reader, HCL_NULL);
+	hcl_unmarshalcode(hcl, &xcode, clit_reader, HCL_NULL);
+
+	hcl_decode(hcl, &xcode, 0, xcode.bc.len);
+	hcl_purgecode (hcl, &xcode);
 }
 #endif
 /* END TESTING */
