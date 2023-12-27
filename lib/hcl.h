@@ -1953,6 +1953,21 @@ typedef int (*hcl_dic_walker_t) (
 	void*           ctx
 );
 
+
+typedef int (*hcl_xchg_reader_t) (
+	hcl_t*      hcl,
+	void*       buf,
+	hcl_oow_t   len,
+	void*       ctx
+);
+
+typedef int (*hcl_xchg_writer_t) (
+	hcl_t*      hcl,
+	const void* ptr,
+	hcl_oow_t   len,
+	void*       ctx
+);
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -2348,17 +2363,22 @@ HCL_EXPORT int hcl_compile (
  * in the textual form.
  */
 HCL_EXPORT int hcl_decode (
-	hcl_t*       hcl,
-	hcl_oow_t    start,
-	hcl_oow_t    end
+	hcl_t*             hcl,
+	const hcl_code_t*  code,
+	hcl_oow_t          start,
+	hcl_oow_t          end
 );
 
 #if defined(HCL_HAVE_INLINE)
+static HCL_INLINE hcl_code_t* hcl_getcode (hcl_t* hcl) { return &hcl->code; }
+static HCL_INLINE hcl_oob_t* hcl_getbcptr (hcl_t* hcl) { return hcl->code.bc.ptr; }
 static HCL_INLINE hcl_oow_t hcl_getbclen (hcl_t* hcl) { return hcl->code.bc.len; }
 static HCL_INLINE hcl_oow_t hcl_getlflen (hcl_t* hcl) { return hcl->code.lit.len; }
 static HCL_INLINE hcl_oow_t hcl_getngtmprs (hcl_t* hcl) { return hcl->code.ngtmprs; }
 static HCL_INLINE hcl_ooi_t hcl_getip (hcl_t* hcl) { return hcl->ip; }
 #else
+#	define hcl_getcode(hcl) (&(hcl)->code)
+#	define hcl_getbcptr(hcl) ((hcl)->code.bc.ptr)
 #	define hcl_getbclen(hcl) ((hcl)->code.bc.len)
 #	define hcl_getlflen(hcl) ((hcl)->code.lit.len)
 #	define hcl_getngtmprs(hcl) ((hcl)->code.ngtmprs)
@@ -2760,6 +2780,24 @@ HCL_EXPORT hcl_oop_t hcl_getlastconscdr (
 HCL_EXPORT hcl_oop_t hcl_reversecons (
 	hcl_t*           hcl,
 	hcl_oop_t        cons
+);
+
+
+/* =========================================================================
+ * CODE MARSHALING/UNMARSHALING
+ * ========================================================================= */
+HCL_EXPORT int hcl_marshalcode (
+	hcl_t*            hcl,
+	const hcl_code_t* code,
+	hcl_xchg_writer_t wrtr,
+	void*             ctx
+);
+
+int hcl_unmarshalcode (
+	hcl_t*            hcl,
+	hcl_code_t*       code,
+	hcl_xchg_reader_t rdr,
+	void*             ctx
 );
 
 /* =========================================================================

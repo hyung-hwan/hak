@@ -13,6 +13,13 @@
 	implement namespace -> ::, ., or what notation?
 	review the . notation used for C-module loading... may have to change it
 
+	dynamic byte array is supported but we need yet to support byte-string(byte-array) constant
+		b"..." or B"..." for an byte string constant notation
+		u"..." or U"..." for an explicit unicode string constant notation?
+
+	make basic branded types to an object if possible.
+	for example (: #[10 20] at 1)
+
 
 ## dictionary list (DIC)
 	#{ 1 2 3 4 }

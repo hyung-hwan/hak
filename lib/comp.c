@@ -505,14 +505,14 @@ static int add_literal (hcl_t* hcl, hcl_oop_t obj, hcl_oow_t* index)
 		if (tmp == obj)
 		{
 			/* this removes redundancy of symbols, characters, and integers. */
-			*index = i - lfbase;
+			if (index) *index = i - lfbase;
 			return 0;
 		}
 		else if (HCL_IS_STRING(hcl, obj) && HCL_IS_STRING(hcl, tmp) && hcl_equalobjs(hcl, obj, tmp))
 		{
 			/* a string object requires equality check. however, the string created to the literal frame
 			 * must be made immutable. non-immutable string literals are source of various problems */
-			*index = i - lfbase;
+			if (index) *index = i - lfbase;
 			return 0;
 		}
 	}
@@ -530,7 +530,7 @@ static int add_literal (hcl_t* hcl, hcl_oop_t obj, hcl_oow_t* index)
 		hcl->code.lit.arr = (hcl_oop_oop_t)tmp;
 	}
 
-	*index = hcl->code.lit.len - lfbase;
+	if (index) *index = hcl->code.lit.len - lfbase;
 
 	((hcl_oop_oop_t)hcl->code.lit.arr)->slot[hcl->code.lit.len++] = obj;
 	/* TODO: RDONLY? */

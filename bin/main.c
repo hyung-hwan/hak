@@ -393,7 +393,7 @@ static hcl_oop_t execute_in_interactive_mode (hcl_t* hcl)
 {
 	hcl_oop_t retv;
 
-	hcl_decode (hcl, 0, hcl_getbclen(hcl));
+	hcl_decode (hcl, hcl_getcode(hcl), 0, hcl_getbclen(hcl));
 	HCL_LOG0 (hcl, HCL_LOG_MNEMONIC, "------------------------------------------\n");
 	g_hcl = hcl;
 	/*setup_tick ();*/
@@ -428,14 +428,59 @@ static hcl_oop_t execute_in_interactive_mode (hcl_t* hcl)
 	return retv;
 }
 
+/* for testing... */
+static hcl_uint8_t xxxbuf[900000];
+static hcl_oow_t xxxlen = 0;
+static hcl_oow_t xxxpos = 0;
+
+static int clit_writer(hcl_t* hcl, const void* ptr, hcl_oow_t len, void* ctx)
+{
+	const hcl_uint8_t* p = (const hcl_uint8_t*)ptr;
+	const hcl_uint8_t* e = p + len;
+	while (p < e) xxxbuf[xxxlen++] = *p++;
+	return 0;
+}
+
+static int clit_reader(hcl_t* hcl, void* ptr, hcl_oow_t len, void* ctx)
+{
+	hcl_uint8_t* p = (hcl_uint8_t*)ptr;
+	hcl_uint8_t* e = p + len;
+
+	while (p < e)
+	{
+		if (xxxpos >= xxxlen)
+		{
+			hcl_seterrbfmt (hcl, HCL_ENOENT, "no more data");
+			return -1;
+		}
+
+		*p++ = xxxbuf[xxxpos++];
+	}
+
+	return 0;
+}
+/* for testing... */
+
 static hcl_oop_t execute_in_batch_mode(hcl_t* hcl, int verbose)
 {
 	hcl_oop_t retv;
 
-	hcl_decode(hcl, 0, hcl_getbclen(hcl));
+	hcl_decode(hcl, hcl_getcode(hcl), 0, hcl_getbclen(hcl));
 	HCL_LOG3(hcl, HCL_LOG_MNEMONIC, "BYTECODES bclen=%zu lflen=%zu ngtmprs=%zu\n", hcl_getbclen(hcl), hcl_getlflen(hcl), hcl_getngtmprs(hcl));
 	g_hcl = hcl;
 	/*setup_tick ();*/
+
+
+/* TESTING */
+#if 0
+{
+	xxxlen = 0;
+	hcl_marshalcode(hcl, &hcl->code, clit_writer, HCL_NULL);
+	xxxpos = 0;
+	hcl_unmarshalcode(hcl, &hcl->code, clit_reader, HCL_NULL);
+}
+#endif
+/* END TESTING */
 
 	retv = hcl_execute(hcl);
 	hcl_flushudio (hcl);
