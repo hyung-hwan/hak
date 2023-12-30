@@ -2357,7 +2357,7 @@ HCL_EXPORT int hcl_compile (
 );
 #endif
 
-int hcl_addliteral (
+int hcl_addliteraltocode (
 	hcl_t*        hcl,
 	hcl_code_t*   code,
 	hcl_oop_t     obj,
@@ -2374,7 +2374,7 @@ int hcl_brewcode (
  * The hcl_purgecode() function cleans up the data held in memory
  * pointed to by \a code.
  */
-HCL_EXPORT int hcl_purgecode (
+HCL_EXPORT void hcl_purgecode (
 	hcl_t*       hcl,
 	hcl_code_t*  code
 );

@@ -470,6 +470,23 @@ typedef struct hcl_bcs_t hcl_bcs_t;
 #	define HCL_SIZEOF_OOCH_T HCL_SIZEOF_BCH_T
 #endif
 
+typedef struct hcl_ptl_t hcl_ptl_t;
+struct hcl_ptl_t
+{
+	void*     ptr;
+	hcl_oow_t len;
+};
+
+typedef struct hcl_ptlc_t hcl_ptlc_t;
+struct hcl_ptlc_t
+{
+	void*     ptr;
+	hcl_oow_t len;
+	hcl_oow_t capa;
+};
+
+typedef unsigned int hcl_bitmask_t;
+
 typedef unsigned int hcl_bitmask_t;
 
 /* =========================================================================

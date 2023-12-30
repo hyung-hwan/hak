@@ -57,6 +57,7 @@ enum hcl_xchg_type_t
 };
 typedef enum hcl_xchg_type_t hcl_xchg_type_t;
 
+/* -------------------------------------------------------------------- */
 
 int hcl_marshalcode (hcl_t* hcl, const hcl_code_t* code, hcl_xchg_writer_t wrtr, void* ctx)
 {
@@ -240,6 +241,8 @@ oops:
 	return -1;
 }
 
+/* -------------------------------------------------------------------- */
+
 static void set_rdr_ioerr (hcl_t* hcl, const hcl_bch_t* msg)
 {
 	const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
@@ -405,7 +408,7 @@ HCL_DEBUG1(hcl, "RESTORED=>[[%js]]\n", HCL_OBJ_GET_CHAR_SLOT(ns));
 					ns = nc;
 				}
 
-				if (hcl_addliteral(hcl, code, ns, 0, HCL_NULL) <= -1) goto oops;
+				if (hcl_addliteraltocode(hcl, code, ns, 0, HCL_NULL) <= -1) goto oops;
 				break;
 			}
 
@@ -444,7 +447,7 @@ HCL_DEBUG1(hcl, "RESTORED=>[[%js]]\n", HCL_OBJ_GET_CHAR_SLOT(ns));
 				}
 
 HCL_DEBUG1(hcl, "RESTORED BIGINT... [%O]\n", ns);
-				if (hcl_addliteral(hcl, code, ns, 0, HCL_NULL) <= -1) goto oops;
+				if (hcl_addliteraltocode(hcl, code, ns, 0, HCL_NULL) <= -1) goto oops;
 				break;
 			}
 
@@ -512,7 +515,7 @@ HCL_DEBUG1(hcl, "RESTORED v... [%O]\n", v);
 					if (HCL_UNLIKELY(!ns)) goto oops;
 				}
 HCL_DEBUG1(hcl, "RESTORED FPDEC... [%O]\n", ns);
-				if (hcl_addliteral(hcl, code, ns, 0, HCL_NULL) <= -1) goto oops;
+				if (hcl_addliteraltocode(hcl, code, ns, 0, HCL_NULL) <= -1) goto oops;
 				break;
 			}
 
@@ -527,6 +530,72 @@ HCL_DEBUG1(hcl, "RESTORED FPDEC... [%O]\n", ns);
 oops:
 	return -1;
 }
+/* -------------------------------------------------------------------- */
+
+static int mem_code_writer (hcl_t* hcl, const void* ptr, hcl_oow_t len, void* ctx)
+{
+	hcl_ptlc_t* dst = (hcl_ptlc_t*)ctx;
+	const hcl_uint8_t* p = (const hcl_uint8_t*)ptr;
+	const hcl_uint8_t* e = p + len;
+
+	if (dst->capa - dst->len < len)
+	{
+		hcl_oow_t newcapa;
+		hcl_uint8_t* newptr;
+
+		newcapa = dst->len + len;
+		newcapa = HCL_ALIGN_POW2(newcapa, 64);
+		newptr = hcl_reallocmem(hcl, dst->ptr, newcapa);
+		if (HCL_UNLIKELY(!newptr)) return -1;
+
+		dst->ptr = newptr;
+		dst->capa = newcapa;
+	}
+
+	while (p < e) ((hcl_uint8_t*)dst->ptr)[dst->len++] = *p++;
+	return 0;
+}
+
+int hcl_marshalcodetomem (hcl_t* hcl, const hcl_code_t* code, hcl_ptlc_t* dst)
+{
+	return hcl_marshalcode(hcl, code, mem_code_writer, dst);
+}
+
+/* -------------------------------------------------------------------- */
+
+struct cmr_t
+{
+	const hcl_ptl_t* src;
+	hcl_oow_t pos;
+};
+
+static int mem_code_reader(hcl_t* hcl, void* ptr, hcl_oow_t len, void* ctx)
+{
+	struct cmr_t* cmr = (struct cmr_t*)ctx;
+	hcl_uint8_t* p = (hcl_uint8_t*)ptr;
+	hcl_uint8_t* e = p + len;
+
+	HCL_ASSERT (hcl, cmr->pos <= cmr->src->len);
+
+	if (cmr->src->len - cmr->pos < len)
+	{
+		hcl_seterrbfmt (hcl, HCL_ENOENT, "no more data");
+		return -1;
+	}
+
+	while (p < e) *p++ = ((const hcl_uint8_t*)cmr->src->ptr)[cmr->pos++];
+	return 0;
+}
+
+int hcl_unmarshalcodefrommem (hcl_t* hcl, hcl_code_t* code, const hcl_ptl_t* src)
+{
+	struct cmr_t cmr;
+	cmr.src = src;
+	cmr.pos = 0;
+	return hcl_unmarshalcode(hcl, code, mem_code_reader, &cmr);
+}
+
+/* -------------------------------------------------------------------- */
 
 int hcl_brewcode (hcl_t* hcl, hcl_code_t* code)
 {
@@ -565,7 +634,7 @@ int hcl_brewcode (hcl_t* hcl, hcl_code_t* code)
 	return 0;
 }
 
-int hcl_purgecode (hcl_t* hcl, hcl_code_t* code)
+void hcl_purgecode (hcl_t* hcl, hcl_code_t* code)
 {
 	if (code->dbgi)
         {
@@ -591,7 +660,9 @@ int hcl_purgecode (hcl_t* hcl, hcl_code_t* code)
 	HCL_MEMSET (&code, 0, HCL_SIZEOF(code));
 }
 
-int hcl_addliteral (hcl_t* hcl, hcl_code_t* code, hcl_oop_t obj, hcl_oow_t lfbase, hcl_oow_t* index)
+/* -------------------------------------------------------------------- */
+
+int hcl_addliteraltocode (hcl_t* hcl, hcl_code_t* code, hcl_oop_t obj, hcl_oow_t lfbase, hcl_oow_t* index)
 {
 	hcl_oow_t capa, i;
 	hcl_oop_t tmp;

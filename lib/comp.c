@@ -494,7 +494,7 @@ static HCL_INLINE int add_literal (hcl_t* hcl, hcl_oop_t obj, hcl_oow_t* index)
 {
 	hcl_oow_t lfbase;
 	lfbase = (hcl->option.trait & HCL_TRAIT_INTERACTIVE)? hcl->c->fnblk.info[hcl->c->fnblk.depth].lfbase: 0;
-	return hcl_addliteral(hcl, &hcl->code, obj, lfbase, index);
+	return hcl_addliteraltocode(hcl, &hcl->code, obj, lfbase, index);
 }
 
 /* ========================================================================= */
