@@ -565,8 +565,10 @@ static HCL_INLINE int can_comma_list (hcl_t* hcl)
 	rstl = hcl->c->r.st;
 
 	if (rstl->count <= 0) return 0;
+
 	if (rstl->count == 1) rstl->flagv |= JSON;
 	else if (!(rstl->flagv & JSON)) return 0;
+
 	if (rstl->flagv & (COMMAED | COLONED)) return 0;
 
 	if (LIST_FLAG_GET_CONCODE(rstl->flagv) == HCL_CONCODE_DIC)
@@ -586,21 +588,35 @@ static HCL_INLINE int can_comma_list (hcl_t* hcl)
 static HCL_INLINE int can_colon_list (hcl_t* hcl)
 {
 	hcl_rstl_t* rstl;
+	hcl_concode_t cc;
 
 	HCL_ASSERT (hcl, hcl->c->r.st != HCL_NULL);
 	rstl = hcl->c->r.st;
 
 	/* mark the state that a colon has appeared in the list */
-	if (rstl->count <= 0) return 0;
-	if (rstl->count == 1) rstl->flagv |= JSON;
-	else if (!(rstl->flagv & JSON)) return 0;
+	if (rstl->count <= 0) return 0; /* not allowed at the list beginning  */
 
+	if (rstl->count == 1) rstl->flagv |= JSON; /* mark that the first key is colon-delimited */
+	else if (!(rstl->flagv & JSON)) return 0; /* the first key is not colon-delimited. so not allowed to colon-delimit other keys  */
+
+	/* multiple single-colons  - e.g. #{ "abc": : 20 } */
 	if (rstl->flagv & (COMMAED | COLONED)) return 0;
 
-	if (LIST_FLAG_GET_CONCODE(rstl->flagv) != HCL_CONCODE_DIC) return 0;
+	cc = LIST_FLAG_GET_CONCODE(rstl->flagv);
 
-	if (!(rstl->count & 1)) return 0;
+	if (cc == HCL_CONCODE_XLIST)
+	{
+		if (rstl->count > 1) return 0;
+		/* ugly dual use of a colon sign. switch to MLIST if the first element
+		 * is delimited by a colon. e.g. (obj:new 10 20 30)  */
+		LIST_FLAG_SET_CONCODE(rstl->flagv, HCL_CONCODE_MLIST);
+		rstl->flagv &= ~JSON;
+	}
+	else if (cc != HCL_CONCODE_DIC) return 0; /* no allowed if not in a dictionary */
 
+	if (!(rstl->count & 1)) return 0; /* not allwed after the value in a dictionary */
+
+	/* mark that it's coloned. this is to be cleared when clear_comma_colon_flag() is called */
 	rstl->flagv |= COLONED;
 	return 1;
 }
@@ -1075,7 +1091,7 @@ static int feed_process_token (hcl_t* hcl)
 			}
 
 			concode = LIST_FLAG_GET_CONCODE(rstl->flagv);
-			if (concode != HCL_CONCODE_XLIST)  /* TODO: handle MLIST as well if the other part is implemented */
+			if (concode != HCL_CONCODE_XLIST && concode != HCL_CONCODE_MLIST) 
 			{
 				hcl_setsynerr (hcl, HCL_SYNERR_UNBALPBB, TOKEN_LOC(hcl), HCL_NULL);
 				goto oops;
@@ -1422,12 +1438,12 @@ static delim_token_t delim_token_tab[] =
 
 	{ ".",        1, HCL_TOK_DOT },
 	{ "..",       2, HCL_TOK_DBLDOTS },
-	{ "...",      3, HCL_TOK_ELLIPSIS },
+	{ "...",      3, HCL_TOK_ELLIPSIS }, /* for variable arguments */
 
-	{ ":",        1, HCL_TOK_COLON },
+	{ ":",        1, HCL_TOK_COLON }, /* key-value separator in dictionary */
 	{ "::",       2, HCL_TOK_DBLCOLONS },
-	{ "::*",      3, HCL_TOK_DCSTAR },
-	{ ":::",      3, HCL_TOK_TRPCOLONS  },
+	{ "::*",      3, HCL_TOK_DCSTAR },   /* class instantiation method */
+	{ ":::",      3, HCL_TOK_TRPCOLONS  }, /* superclass, class variables, class methods */
 
 	{ ";",        1, HCL_TOK_SEMICOLON }
 };

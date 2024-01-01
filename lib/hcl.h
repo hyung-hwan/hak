@@ -2357,7 +2357,7 @@ HCL_EXPORT int hcl_compile (
 );
 #endif
 
-int hcl_addliteraltocode (
+HCL_EXPORT int hcl_addliteraltocode (
 	hcl_t*        hcl,
 	hcl_code_t*   code,
 	hcl_oop_t     obj,
@@ -2365,7 +2365,11 @@ int hcl_addliteraltocode (
 	hcl_oow_t*    index
 );
 
-int hcl_brewcode (
+/**
+ * The hcl_brewcode() initializes the structure pointed to by \a code.partially or entirely.
+ * The part already initialized is not destroyed and/or reinitialized.
+ */
+HCL_EXPORT int hcl_brewcode (
 	hcl_t*      hcl,
 	hcl_code_t* code
 );
@@ -2468,24 +2472,24 @@ HCL_EXPORT void hcl_popvolats (
  * SYSTEM MEMORY MANAGEMENT FUCNTIONS VIA MMGR
  * ========================================================================= */
 HCL_EXPORT void* hcl_allocmem (
-	hcl_t*     hcl,
+	hcl_t*    hcl,
 	hcl_oow_t size
 );
 
 HCL_EXPORT void* hcl_callocmem (
-	hcl_t*     hcl,
+	hcl_t*    hcl,
 	hcl_oow_t size
 );
 
 HCL_EXPORT void* hcl_reallocmem (
-	hcl_t*     hcl,
-	void*       ptr,
+	hcl_t*    hcl,
+	void*     ptr,
 	hcl_oow_t size
 );
 
 HCL_EXPORT void hcl_freemem (
 	hcl_t* hcl,
-	void*   ptr
+	void*  ptr
 );
 
 
@@ -2815,11 +2819,23 @@ HCL_EXPORT int hcl_marshalcode (
 	void*             ctx
 );
 
-int hcl_unmarshalcode (
+HCL_EXPORT int hcl_unmarshalcode (
 	hcl_t*            hcl,
 	hcl_code_t*       code,
 	hcl_xchg_reader_t rdr,
 	void*             ctx
+);
+
+HCL_EXPORT int hcl_marshalcodetomem (
+	hcl_t*            hcl,
+	const hcl_code_t* code,
+	hcl_ptlc_t*        dst
+);
+
+HCL_EXPORT int hcl_unmarshalcodefrommem (
+	hcl_t*            hcl,
+	hcl_code_t*       code,
+	const hcl_ptl_t*  src
 );
 
 /* =========================================================================

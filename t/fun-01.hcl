@@ -40,7 +40,7 @@ defclass A
 	##defun get-c() c;
 };
 
-set k (:A newInstance 11 22 33);
-set v (:k get-a);
+set k (A:newInstance 11 22 33);
+set v (k:get-a);
 if (= v 11) { printf "OK - %d\n" v; }
 else { printf "ERROR - %d\n" v; };

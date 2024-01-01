@@ -428,39 +428,6 @@ static hcl_oop_t execute_in_interactive_mode (hcl_t* hcl)
 	return retv;
 }
 
-/* for testing... */
-static hcl_uint8_t xxxbuf[900000];
-static hcl_oow_t xxxlen = 0;
-static hcl_oow_t xxxpos = 0;
-
-static int clit_writer(hcl_t* hcl, const void* ptr, hcl_oow_t len, void* ctx)
-{
-	const hcl_uint8_t* p = (const hcl_uint8_t*)ptr;
-	const hcl_uint8_t* e = p + len;
-	while (p < e) xxxbuf[xxxlen++] = *p++;
-	return 0;
-}
-
-static int clit_reader(hcl_t* hcl, void* ptr, hcl_oow_t len, void* ctx)
-{
-	hcl_uint8_t* p = (hcl_uint8_t*)ptr;
-	hcl_uint8_t* e = p + len;
-
-	while (p < e)
-	{
-		if (xxxpos >= xxxlen)
-		{
-			hcl_seterrbfmt (hcl, HCL_ENOENT, "no more data");
-			return -1;
-		}
-
-		*p++ = xxxbuf[xxxpos++];
-	}
-
-	return 0;
-}
-/* for testing... */
-
 static hcl_oop_t execute_in_batch_mode(hcl_t* hcl, int verbose)
 {
 	hcl_oop_t retv;
@@ -475,13 +442,14 @@ static hcl_oop_t execute_in_batch_mode(hcl_t* hcl, int verbose)
 #if 0
 {
 	hcl_code_t xcode;
+	hcl_ptlc_t mem;
 
 	memset (&xcode, 0, HCL_SIZEOF(xcode));
+	memset (&mem, 0, HCL_SIZEOF(mem));
 
-	xxxlen = 0;
-	hcl_marshalcode(hcl, &hcl->code, clit_writer, HCL_NULL);
-	xxxpos = 0;
-	hcl_unmarshalcode(hcl, &xcode, clit_reader, HCL_NULL);
+	hcl_marshalcodetomem(hcl, &hcl->code, &mem);
+	hcl_unmarshalcodefrommem(hcl, &xcode, (const hcl_ptl_t*)&mem);
+	hcl_freemem (hcl, mem.ptr);
 
 	hcl_decode(hcl, &xcode, 0, xcode.bc.len);
 	hcl_purgecode (hcl, &xcode);

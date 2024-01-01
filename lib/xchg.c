@@ -45,6 +45,7 @@ enum hcl_xchg_type_t
 	HCL_XCHG_STRING_B,
 	HCL_XCHG_SYMBOL_U, /* contained in a cons cell */
 	HCL_XCHG_SYMBOL_B, /* contained in a cons cell */
+	HCL_XCHG_SMOOI,
 	HCL_XCHG_PBIGINT,
 	HCL_XCHG_NBIGINT,
 	HCL_XCHG_FPDEC_1, /* smooi + smooi */
@@ -87,6 +88,15 @@ int hcl_marshalcode (hcl_t* hcl, const hcl_code_t* code, hcl_xchg_writer_t wrtr,
 	for (i = lfbase; i < code->lit.len; i++)
 	{
 		tmp = ((hcl_oop_oop_t)code->lit.arr)->slot[i];
+		if (HCL_OOP_IS_SMOOI(tmp))
+		{
+			b = HCL_XCHG_SMOOI;
+			if (wrtr(hcl, &b, HCL_SIZEOF(b), ctx) <= -1) goto oops;
+			w = hcl_htoleoow((hcl_oow_t)HCL_OOP_TO_SMOOI(tmp));
+			if (wrtr(hcl, &w, HCL_SIZEOF(w), ctx) <= -1) goto oops;
+			continue;
+		}
+
 		brand = HCL_OBJ_GET_FLAGS_BRAND(tmp);
 		tsize = HCL_OBJ_GET_SIZE(tmp);
 
@@ -193,7 +203,6 @@ int hcl_marshalcode (hcl_t* hcl, const hcl_code_t* code, hcl_xchg_writer_t wrtr,
 				ucslen = tsize;
 				if (hcl_convutobchars(hcl, ucsptr, &ucslen, HCL_NULL, &bcslen) <= -1) goto oops;
 
-	HCL_DEBUG2(hcl, "WRITIGN nbytes %d nchars %d\n", (int)tsize, (int)bcslen);
 				/* write the number of characters in the little endian */
 				w = hcl_htoleoow(tsize);
 				if (wrtr(hcl, &w, HCL_SIZEOF(w), ctx) <= -1) goto oops;
@@ -296,7 +305,6 @@ int hcl_unmarshalcode (hcl_t* hcl, hcl_code_t* code, hcl_xchg_reader_t rdr, void
 		}
 
 		if (b == HCL_XCHG_END) break;
-	HCL_DEBUG1(hcl, "bbbbbbbbbbb=>%d\n", b);
 
 		switch (b)
 		{
@@ -359,18 +367,15 @@ int hcl_unmarshalcode (hcl_t* hcl, hcl_code_t* code, hcl_xchg_reader_t rdr, void
 					goto oops;
 				}
 				nbytes = hcl_leoowtoh(w);
-		HCL_DEBUG2(hcl, "nchars %d nbytes %d\n", (int)nchars, (int)nbytes);
 
 				ns = hcl_makestring(hcl, HCL_NULL, nchars, 0); 
 				if (HCL_UNLIKELY(!ns)) goto oops;
 
-		HCL_DEBUG2(hcl, "222 nchars %d nbytes %d\n", (int)nchars, (int)nbytes);
 				ucspos = 0;
 				bcsres = 0;
 				while (nbytes > 0)
 				{
 					bcslen = nbytes <= HCL_SIZEOF(bcsbuf)? nbytes : HCL_SIZEOF(bcsbuf);
-		HCL_DEBUG4(hcl, "333 nchars %d nbytes %d bcsres %d bcslen - bcsres %d\n", (int)nchars, (int)nbytes, (int)bcsres, (int)bcslen - bcsres);
 					n = rdr(hcl, &bcsbuf[bcsres], bcslen - bcsres, ctx);
 					if (n <= -1)
 					{
@@ -381,10 +386,8 @@ int hcl_unmarshalcode (hcl_t* hcl, hcl_code_t* code, hcl_xchg_reader_t rdr, void
 					HCL_ASSERT(hcl, ucspos < nchars);
 					bcsres = bcslen;
 					ucslen = nchars - ucspos;
-		HCL_DEBUG4(hcl, "333 nchars %d nbytes %d bcslen %d ucslen %d\n", (int)nchars, (int)nbytes, (int)bcslen, (int)ucslen);
 					if (hcl_convbtouchars(hcl, bcsbuf, &bcslen, HCL_OBJ_GET_CHAR_PTR(ns, ucspos), &ucslen) <= -1 && bcslen <= 0)
 					{
-		HCL_DEBUG0(hcl, "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE\n");
 						goto oops;
 					}
 
@@ -392,12 +395,10 @@ int hcl_unmarshalcode (hcl_t* hcl, hcl_code_t* code, hcl_xchg_reader_t rdr, void
 					nbytes -= bcslen;
 					bcsres -= bcslen;
 					if (bcsres > 0) HCL_MEMMOVE(bcsbuf, &bcsbuf[bcslen], bcsres);
-		HCL_DEBUG3(hcl, "444 nchars %d nbytes %d bcslen %d\n", (int)nchars, (int)nbytes, (int)bcslen);
 				}
 
 				HCL_ASSERT(hcl, ucspos == nchars);
 
-HCL_DEBUG1(hcl, "RESTORED=>[[%js]]\n", HCL_OBJ_GET_CHAR_SLOT(ns));
 				if (b == HCL_XCHG_SYMBOL_U)
 				{
 					/* form a cons cell */
@@ -417,6 +418,15 @@ HCL_DEBUG1(hcl, "RESTORED=>[[%js]]\n", HCL_OBJ_GET_CHAR_SLOT(ns));
 				/* TODO */
 				break;
 
+			case HCL_XCHG_SMOOI:
+			{
+				hcl_oop_t ns;
+				if (rdr(hcl, &w, HCL_SIZEOF(w), ctx) <= -1) goto oops;
+				w = hcl_leoowtoh(w);
+				ns = HCL_SMOOI_TO_OOP((hcl_ooi_t)w);
+				if (hcl_addliteraltocode(hcl, code, ns, 0, HCL_NULL) <= -1) goto oops;
+				break;
+			}
 
 			case HCL_XCHG_PBIGINT:
 			case HCL_XCHG_NBIGINT:
@@ -446,7 +456,6 @@ HCL_DEBUG1(hcl, "RESTORED=>[[%js]]\n", HCL_OBJ_GET_CHAR_SLOT(ns));
 					HCL_OBJ_SET_LIWORD_VAL(ns, j, liw);
 				}
 
-HCL_DEBUG1(hcl, "RESTORED BIGINT... [%O]\n", ns);
 				if (hcl_addliteraltocode(hcl, code, ns, 0, HCL_NULL) <= -1) goto oops;
 				break;
 			}
@@ -467,7 +476,6 @@ HCL_DEBUG1(hcl, "RESTORED BIGINT... [%O]\n", ns);
 				}
 				scale = (hcl_ooi_t)hcl_leoowtoh(w);
 
-HCL_DEBUG1(hcl, "RESTORED scale... [%O]\n", HCL_SMOOI_TO_OOP(scale));
 				if (b == HCL_XCHG_FPDEC_1)
 				{
 					hcl_ooi_t value;
@@ -497,7 +505,6 @@ HCL_DEBUG1(hcl, "RESTORED scale... [%O]\n", HCL_SMOOI_TO_OOP(scale));
 
 					if (nbytes % HCL_SIZEOF(hcl_liw_t)) goto oops; /* not the right number of bytes */
 					nwords = nbytes / HCL_SIZEOF(hcl_liw_t);
-HCL_DEBUG1(hcl, "FPDEC NWORD %d\n", (int)nwords);
 
 					v = hcl_makebigint(hcl, ((b == HCL_XCHG_FPDEC_2) ? HCL_BRAND_PBIGINT : HCL_BRAND_NBIGINT), HCL_NULL, nwords);
 					if (HCL_UNLIKELY(!v)) goto oops;
@@ -508,13 +515,11 @@ HCL_DEBUG1(hcl, "FPDEC NWORD %d\n", (int)nwords);
 						liw = hcl_leliwtoh(liw);
 						HCL_OBJ_SET_LIWORD_VAL(v, j, liw);
 					}
-HCL_DEBUG1(hcl, "RESTORED v... [%O]\n", v);
 					hcl_pushvolat (hcl, &v);
 					ns = hcl_makefpdec(hcl, v, scale);
 					hcl_popvolat (hcl);
 					if (HCL_UNLIKELY(!ns)) goto oops;
 				}
-HCL_DEBUG1(hcl, "RESTORED FPDEC... [%O]\n", ns);
 				if (hcl_addliteraltocode(hcl, code, ns, 0, HCL_NULL) <= -1) goto oops;
 				break;
 			}
