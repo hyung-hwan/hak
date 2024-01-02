@@ -1,28 +1,28 @@
-(defun fn-y (t1 t2 va-ctx)
+defun fn-y (t1 t2 va-ctx) {
         | i |
-        (set i 0)
-        (while (< i (va-count va-ctx))
+        set i 0;
+        while (< i (va-count va-ctx)) {
                 (printf "fn-y=>Y-VA[%d]=>[%d]\n" i (va-get i va-ctx))
                 (set i (+ i 1))
-        )
-)
+        };
+};
 
-(defun x(a b ... ::: x y z)
+defun x(a b ... ::: x y z) {
         |i|
 
         (set x (va-count))
         (set y (* a b))
         (set z (+ a b))
 
-        (set i 0)
-        (while (< i (va-count))
+        set i 0;
+        while (< i (va-count)) {
                 (printf "VA[%d]=>[%d]\n" i (va-get i))
                 (set i (+ i 1))
-        )
-        (fn-y "hello" "world" (va-context))
+        };
+        fn-y "hello" "world" (va-context);
 
         (return)
-)
+};
 
 (set t (x 10 20 30))
 (if (/= t 1) (printf "ERROR: t is not 1\n")

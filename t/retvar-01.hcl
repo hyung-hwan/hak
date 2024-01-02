@@ -1,16 +1,17 @@
-((lambda ()
+
+((fun() {
 	## test return variables
 
 	| v1 v2 v3 i a b c d |
 
-	(set i 100)
+	set i 100;
 
-	(defun ff(a b ::: x y z)
-		(set x (+ a b i))
-		(set y (+ x x))
-		(set z (+ 999 i))
-		(set i (* i 10))
-	)
+	defun ff(a b ::: x y z) {
+		set x (+ a b i);
+		set y (+ x x);
+		set z (+ 999 i);
+		set i (* i 10);
+	};
 
 	(set-r v1 v2 v3 (ff 10 20))
 	(if (/= v1 130) (printf "ERROR: v1 must be 130\n"))
@@ -28,22 +29,21 @@
 
 
 	## test return variables in message sends
-	(defclass B
-		::: | X1 X2 |
+	defclass B ::: | X1 X2 | {
 
-		(set X1 999)
-		(set X2 888)
+		set X1 999;
+		set X2 888;
 
-		(defun ::: get ( ::: x y) 
+		defun ::: get ( ::: x y)  {
 			(set x X1) 
 			(set y X2)
-		)
+		};
 
-		(defun ::: get2 (inc ::: x y) 
+		defun ::: get2 (inc ::: x y)  {
 			(set x (+ X1 inc)) 
 			(set y (+ X2 inc))
-		)
-	)
+		};
+	};
 
 	(set-r a b (:B get))
 	(set-r c d (:B get2 -100))
@@ -53,5 +53,5 @@
 	(if (/= c 899) (printf "ERROR: c must be 899\n"))
 	(if (/= d 788) (printf "ERROR: d must be 788\n"))
 
-	(printf "OK a=%d b=%d c=%d d=%d\n" a b c d)
-))
+	printf "OK a=%d b=%d c=%d d=%d\n" a b c d;
+}));
