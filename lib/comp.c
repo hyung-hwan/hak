@@ -2336,31 +2336,38 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src, int defclass)
 		class_name = HCL_CNODE_CONS_CAR(obj);
 		if (!HCL_CNODE_IS_SYMBOL(class_name))
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(class_name), HCL_CNODE_GET_TOK(class_name), "class name not symbol in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+			hcl_setsynerrbfmt (
+				hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(class_name), HCL_CNODE_GET_TOK(class_name),
+				"class name not symbol in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 			return -1;
 		}
 
 		if (HCL_CNODE_SYMBOL_SYNCODE(class_name)) /*|| HCL_OBJ_GET_FLAGS_KERNEL(class_name) >= 1) */
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(class_name), HCL_CNODE_GET_TOK(class_name), "special symbol not to be used as class name");
+			hcl_setsynerrbfmt (
+				hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(class_name), HCL_CNODE_GET_TOK(class_name),
+				"special symbol not to be used as class name");
 			return -1;
 		}
 
 		obj = HCL_CNODE_CONS_CDR(obj);
-/*
-if (is_in_top_scope(hcl))
-{
-HCL_DEBUG2(hcl, "AT TOP SCOPE - %.*js\n", HCL_CNODE_GET_TOKLEN(class_name), HCL_CNODE_GET_TOKPTR(class_name));
-}
-else
-{
-HCL_DEBUG2(hcl, "NOT NOT NOT NOT NOT AT TOP SCOPE - %.*js\n", HCL_CNODE_GET_TOKLEN(class_name), HCL_CNODE_GET_TOKPTR(class_name));
-}
-*/
 	}
 	else
 	{
 		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_CLASS));
+
+		if (obj && HCL_CNODE_IS_CONS(obj))
+		{
+			class_name = HCL_CNODE_CONS_CAR(obj);
+			if (HCL_CNODE_IS_SYMBOL(class_name))
+			{
+				hcl_setsynerrbfmt (
+					hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(class_name), HCL_CNODE_GET_TOK(class_name),
+					"class name not allowed in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+				return -1;
+			}
+		}
+
 		class_name = HCL_NULL;
 	}
 

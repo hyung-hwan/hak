@@ -20,6 +20,11 @@
 	make basic branded types to an object if possible.
 	for example (#[10 20]:at 1)
 
+	default return value for some class methods.
+		::: method -> return what??
+		::* method -> return the new instance
+		normal method -> return the last evaluated value?
+
 
 ## dictionary list (DIC)
 	#{ 1 2 3 4 }
