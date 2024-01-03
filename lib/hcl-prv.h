@@ -186,7 +186,12 @@ enum hcl_tok_type_t
 	HCL_TOK_COMMA,     /* , */
 	HCL_TOK_LPAREN,    /* ( */
 	HCL_TOK_RPAREN,    /* ) */
+
+#if 0 /* use the (obj:message ... ) syntax instad. no more mlist by (: */
 	HCL_TOK_LPARCOLON, /* (: */
+#define HCL_TOK_LPARCOLON HCL_TOK_LPARCOLON
+#endif
+
 	HCL_TOK_BAPAREN,   /* #[ - byte array parenthesis */
 	HCL_TOK_QLPAREN,   /* #( - quoted-list parenthesis */
 	HCL_TOK_DLPAREN,   /* #{ - dictionary parenthese */

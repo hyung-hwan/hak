@@ -505,7 +505,16 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 
 	if (fv & (COMMAED | COLONED))
 	{
-		hcl_setsynerr (hcl, ((fv & COMMAED)? HCL_SYNERR_COMMANOVALUE: HCL_SYNERR_COLONNOVALUE), TOKEN_LOC(hcl), HCL_NULL);
+		if (concode == HCL_CONCODE_MLIST)
+		{
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_CALLABLE, TOKEN_LOC(hcl), HCL_NULL, "missing message after colon");
+		}
+		else
+		{
+			hcl_synerrnum_t sen;
+			sen = (fv & COMMAED)? HCL_SYNERR_COMMANOVALUE: HCL_SYNERR_COLONNOVALUE;
+			hcl_setsynerr (hcl, sen, TOKEN_LOC(hcl), HCL_NULL);
+		}
 		if (head) hcl_freecnode (hcl, head);
 		return HCL_NULL;
 	}
@@ -1015,10 +1024,12 @@ static int feed_process_token (hcl_t* hcl)
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_QLIST);
 			goto start_list;
 
+		#if defined(HCL_TOK_LPARCOLON)
 		case HCL_TOK_LPARCOLON: /* (: */
 			frd->flagv = 0;
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_MLIST);
 			goto start_list;
+		#endif
 
 		case HCL_TOK_LPAREN: /* ( */
 			frd->flagv = 0;
@@ -1424,7 +1435,9 @@ static delim_token_t delim_token_tab[] =
 	 */
 
 	{ "(",        1, HCL_TOK_LPAREN },
+#if defined(HCL_TOK_LPARCOLON)
 	{ "(:",       2, HCL_TOK_LPARCOLON },
+#endif
 	{ ")",        1, HCL_TOK_RPAREN },
 
 	{ "[",        1, HCL_TOK_LBRACK },

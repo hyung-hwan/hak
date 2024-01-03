@@ -45,8 +45,8 @@
 		};
 	};
 
-	(set-r a b (:B get))
-	(set-r c d (:B get2 -100))
+	(set-r a b (B:get))
+	(set-r c d (B:get2 -100))
 
 	(if (/= a 999) (printf "ERROR: a must be 999\n"))
 	(if (/= b 888) (printf "ERROR: b must be 888\n"))
