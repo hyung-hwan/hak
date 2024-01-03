@@ -8,7 +8,7 @@ steps:
   commands:
     - mkdir bld-gcc13 && cd bld-gcc13
     - ../configure
-    - make && make check
+    - make && { make check || { cat t/test-suite.log; exit 1; } }
   depends_on:
     - clone
 
@@ -17,6 +17,6 @@ steps:
   commands:
     - mkdir bld-clang15 && cd bld-clang15
     - ../configure CC=clang
-    - make && make check
+    - make && { make check || { cat t/test-suite.log; exit 1; } }
   depends_on:
     - clone
