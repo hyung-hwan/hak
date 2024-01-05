@@ -9,6 +9,11 @@
 	for dyna-clases, the super prefix is now allowed for varibles. it's allowed for method calls only.
 	double-check symbol and dsymbol resolution in set, set-r, defun, defclass to decide how to make it more logical and reasonable
 
+
+	assignment syntax
+		(k := 20) -> (set k 20)
+		k := 20  -> (set  k 20)
+
 	implement module -> ::, ., or what notation?
 	implement namespace -> ::, ., or what notation?
 	review the . notation used for C-module loading... may have to change it

@@ -194,6 +194,11 @@ enum hcl_option_t
 	HCL_SYMTAB_SIZE,  /* default system table size */
 	HCL_SYSDIC_SIZE,  /* default system dictionary size */
 	HCL_PROCSTK_SIZE, /* default process stack size */
+
+        HCL_MOD_LIBDIRS,
+        HCL_MOD_PREFIX,
+        HCL_MOD_POSTFIX,
+
 	HCL_MOD_INCTX
 };
 typedef enum hcl_option_t hcl_option_t;
@@ -1541,6 +1546,8 @@ struct hcl_t
 		hcl_oow_t dfl_sysdic_size;
 		hcl_oow_t dfl_procstk_size;
 		void* mod_inctx;
+
+		hcl_oocs_t mod[3];
 
 	#if defined(HCL_BUILD_DEBUG)
 		/* set automatically when trait is set */

@@ -1454,6 +1454,7 @@ static delim_token_t delim_token_tab[] =
 	{ "...",      3, HCL_TOK_ELLIPSIS }, /* for variable arguments */
 
 	{ ":",        1, HCL_TOK_COLON }, /* key-value separator in dictionary */
+	{ ":=",       2, HCL_TOK_COLONEQ },
 	{ "::",       2, HCL_TOK_DBLCOLONS },
 	{ "::*",      3, HCL_TOK_DCSTAR },   /* class instantiation method */
 	{ ":::",      3, HCL_TOK_TRPCOLONS  }, /* superclass, class variables, class methods */

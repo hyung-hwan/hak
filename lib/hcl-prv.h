@@ -182,6 +182,7 @@ enum hcl_tok_type_t
 	HCL_TOK_DBLCOLONS, /* :: */
 	HCL_TOK_TRPCOLONS, /* ::: */
 	HCL_TOK_DCSTAR,    /* ::* */
+	HCL_TOK_COLONEQ,   /* := */
 	HCL_TOK_SEMICOLON, /* ; */
 	HCL_TOK_COMMA,     /* , */
 	HCL_TOK_LPAREN,    /* ( */

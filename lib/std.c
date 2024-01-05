@@ -2457,22 +2457,181 @@ static void dl_cleanup (hcl_t* hcl)
 #endif
 }
 
+static void* dlopen_pfmod (hcl_t* hcl, const hcl_ooch_t* name, const hcl_ooch_t* dirptr, const hcl_oow_t dirlen, hcl_bch_t* bufptr, hcl_oow_t bufcapa)
+{
+	void* handle;
+	hcl_oow_t len, i, xlen, dlen;
+	hcl_oow_t ucslen, bcslen;
+
+	/* opening a primitive function module - mostly libhcl-xxxx.
+	 * if PFMODPREFIX is absolute, never use PFMODDIR */
+	if (HCL_IS_PATH_ABSOLUTE(HCL_DEFAULT_PFMODPREFIX))
+	{
+		dlen = 0;
+		len = hcl_copy_bcstr(&bufptr[dlen], bufcapa - dlen, HCL_DEFAULT_PFMODPREFIX);
+	}
+	else if (dirptr)
+	{
+		xlen = dirlen;
+		dlen = bufcapa;
+		if (hcl_convootobchars(hcl, dirptr, &xlen, bufptr, &dlen) <= -1) return HCL_NULL;
+
+		if (dlen > 0 && bufptr[dlen - 1] != HCL_DFL_PATH_SEP)
+		{
+		#if defined(__DOS__) || defined(_WIN32) || defined(__OS2__)
+			if (hcl_find_bchar(bufptr, dlen, HCL_ALT_PATH_SEP) &&
+			    !hcl_find_bchar(bufptr, dlen, HCL_DFL_PATH_SEP))
+				bufptr[dlen++] = HCL_ALT_PATH_SEP;
+			else
+				bufptr[dlen++] = HCL_DFL_PATH_SEP;
+		#endif
+			bufptr[dlen++] = HCL_DFL_PATH_SEP;
+		}
+		len = hcl_copy_bcstr(&bufptr[dlen], bufcapa - dlen, HCL_DEFAULT_PFMODPREFIX);
+		len += dlen;
+	}
+	else
+	{
+		dlen = hcl_copy_bcstr(bufptr, bufcapa, HCL_DEFAULT_PFMODDIR);
+		len = hcl_copy_bcstr(&bufptr[dlen], bufcapa - dlen, HCL_DEFAULT_PFMODPREFIX);
+		len += dlen;
+	}
+
+	bcslen = bufcapa - len;
+#if defined(HCL_OOCH_IS_UCH)
+	hcl_convootobcstr(hcl, name, &ucslen, &bufptr[len], &bcslen);
+#else
+	bcslen = hcl_copy_bcstr(&bufptr[len], bcslen, name);
+#endif
+
+	/* length including the directory, the prefix and the name. but excluding the postfix */
+	xlen  = len + bcslen;
+
+	for (i = len; i < xlen; i++)
+	{
+		/* convert a period(.) to a dash(-) */
+		if (bufptr[i] == '.') bufptr[i] = '-';
+	}
+
+retry:
+	hcl_copy_bcstr (&bufptr[xlen], bufcapa - xlen, HCL_DEFAULT_PFMODPOSTFIX);
+
+	/* both prefix and postfix attached. for instance, libhcl-xxx */
+	HCL_DEBUG3 (hcl, "Opening(ext) PFMOD %hs[%js] - %hs\n", &bufptr[dlen], name, bufptr);
+	handle = sys_dl_openext(bufptr);
+	if (!handle)
+	{
+		HCL_DEBUG3 (hcl, "Unable to open(ext) PFMOD %hs[%js] - %hs\n", &bufptr[dlen], name, sys_dl_error());
+
+		if (dlen > 0)
+		{
+			handle = sys_dl_openext(&bufptr[0]);
+			if (handle) goto pfmod_open_ok;
+			HCL_DEBUG3 (hcl, "Unable to open(ext) PFMOD %hs[%js] - %hs\n", &bufptr[0], name, sys_dl_error());
+		}
+
+		/* try without prefix and postfix */
+		bufptr[xlen] = '\0';
+		handle = sys_dl_openext(&bufptr[len]);
+		if (!handle)
+		{
+			hcl_bch_t* dash;
+			const hcl_bch_t* dl_errstr;
+			dl_errstr = sys_dl_error();
+			HCL_DEBUG3 (hcl, "Unable to open(ext) PFMOD %hs[%js] - %hs\n", &bufptr[len], name, dl_errstr);
+			hcl_seterrbfmt (hcl, HCL_ESYSERR, "unable to open(ext) PFMOD %js - %hs", name, dl_errstr);
+
+			dash = hcl_rfind_bchar(bufptr, hcl_count_bcstr(bufptr), '-');
+			if (dash)
+			{
+				/* remove a segment at the back.
+				 * [NOTE] a dash contained in the original name before
+				 *        period-to-dash transformation may cause extraneous/wrong
+				 *        loading reattempts. */
+				xlen = dash - bufptr;
+				goto retry;
+			}
+		}
+		else
+		{
+			HCL_DEBUG3 (hcl, "Opened(ext) PFMOD %hs[%js] handle %p\n", &bufptr[len], name, handle);
+		}
+	}
+	else
+	{
+	pfmod_open_ok:
+		HCL_DEBUG3 (hcl, "Opened(ext) PFMOD %hs[%js] handle %p\n", &bufptr[dlen], name, handle);
+	}
+
+	return handle;
+}
+
+static void* dlopen_raw (hcl_t* hcl, const hcl_ooch_t* name, hcl_bch_t* bufptr, hcl_oow_t bufcapa)
+{
+	void* handle;
+	hcl_oow_t ucslen, bcslen;
+
+#if defined(HCL_OOCH_IS_UCH)
+	bcslen = bufcapa;
+	hcl_convootobcstr(hcl, name, &ucslen, bufptr, &bcslen);
+#else
+	bcslen = hcl_copy_bcstr(bufptr, bufcapa, name);
+#endif
+
+	if (hcl_find_bchar(bufptr, bcslen, '.'))
+	{
+		handle = sys_dl_open(bufptr);
+		if (!handle)
+		{
+			const hcl_bch_t* dl_errstr;
+			dl_errstr = sys_dl_error();
+			HCL_DEBUG2 (hcl, "Unable to open DL %hs - %hs\n", bufptr, dl_errstr);
+			hcl_seterrbfmt (hcl, HCL_ESYSERR, "unable to open DL %js - %hs", name, dl_errstr);
+		}
+		else HCL_DEBUG2 (hcl, "Opened DL %hs handle %p\n", bufptr, handle);
+	}
+	else
+	{
+		handle = sys_dl_openext(bufptr);
+		if (!handle)
+		{
+			const hcl_bch_t* dl_errstr;
+			dl_errstr = sys_dl_error();
+			HCL_DEBUG2 (hcl, "Unable to open(ext) DL %hs - %hs\n", bufptr, dl_errstr);
+			hcl_seterrbfmt (hcl, HCL_ESYSERR, "unable to open(ext) DL %js - %hs", name, dl_errstr);
+		}
+		else HCL_DEBUG2 (hcl, "Opened(ext) DL %hs handle %p\n", bufptr, handle);
+	}
+
+	return handle;
+}
+
 static void* dl_open (hcl_t* hcl, const hcl_ooch_t* name, int flags)
 {
 #if defined(USE_LTDL) || defined(USE_DLFCN) || defined(USE_MACH_O_DYLD)
 	hcl_bch_t stabuf[128], * bufptr;
 	hcl_oow_t ucslen, bcslen, bufcapa;
-	void* handle;
+	void* handle = HCL_NULL;
 
 	#if defined(HCL_OOCH_IS_UCH)
 	if (hcl_convootobcstr(hcl, name, &ucslen, HCL_NULL, &bufcapa) <= -1) return HCL_NULL;
-	/* +1 for terminating null. but it's not needed because HCL_COUNTOF(HCL_DEFAULT_PFMODPREFIX)
-	 * and HCL_COUNTOF(HCL_DEFAULT_PFMODPOSTIFX) include the terminating nulls. Never mind about
-	 * the extra 2 characters. */
+
+	if (hcl->option.mod[0].len > 0)
+	{
+		/* multiple directories separated by a colon can be specified for HCL_MOD_LIBDIRS
+		 * however, use the total length to secure space just for simplicity */
+		ucslen = hcl->option.mod[0].len;
+		if (hcl_convootobchars(hcl, hcl->option.mod[0].ptr, &ucslen, HCL_NULL, &bcslen) <= -1) return HCL_NULL;
+		bufcapa += bcslen;
+	}
 	#else
 	bufcapa = hcl_count_bcstr(name);
+	bufcapa += (hcl->option.mod[0].len > 0)? hcl->option.mod[0].len: HCL_COUNTOF(HCL_DEFAULT_PFMODDIR);
 	#endif
-	bufcapa += HCL_COUNTOF(HCL_DEFAULT_PFMODDIR) + HCL_COUNTOF(HCL_DEFAULT_PFMODPREFIX) + HCL_COUNTOF(HCL_DEFAULT_PFMODPOSTFIX) + 1;
+
+	/* HCL_COUNTOF(HCL_DEFAULT_PFMODPREFIX) and HCL_COUNTOF(HCL_DEFAULT_PFMODPOSTIFX)
+	 * include the terminating nulls. Never mind about the extra 2 characters. */
+	bufcapa += HCL_COUNTOF(HCL_DEFAULT_PFMODPREFIX) + HCL_COUNTOF(HCL_DEFAULT_PFMODPOSTFIX) + 1;
 
 	if (bufcapa <= HCL_COUNTOF(stabuf)) bufptr = stabuf;
 	else
@@ -2483,114 +2642,38 @@ static void* dl_open (hcl_t* hcl, const hcl_ooch_t* name, int flags)
 
 	if (flags & HCL_VMPRIM_DLOPEN_PFMOD)
 	{
-		hcl_oow_t len, i, xlen, dlen;
-
-		/* opening a primitive function module - mostly libhcl-xxxx.
-		 * if PFMODPREFIX is absolute, never use PFMODDIR */
-		dlen = HCL_IS_PATH_ABSOLUTE(HCL_DEFAULT_PFMODPREFIX)?
-			0: hcl_copy_bcstr(bufptr, bufcapa, HCL_DEFAULT_PFMODDIR);
-		len = hcl_copy_bcstr(bufptr, bufcapa, HCL_DEFAULT_PFMODPREFIX);
-		len += dlen;
-
-		bcslen = bufcapa - len;
-	#if defined(HCL_OOCH_IS_UCH)
-		hcl_convootobcstr(hcl, name, &ucslen, &bufptr[len], &bcslen);
-	#else
-		bcslen = hcl_copy_bcstr(&bufptr[len], bcslen, name);
-	#endif
-
-		/* length including the directory, the prefix and the name. but excluding the postfix */
-		xlen  = len + bcslen;
-
-		for (i = len; i < xlen; i++)
+		if (hcl->option.mod[0].len > 0)
 		{
-			/* convert a period(.) to a dash(-) */
-			if (bufptr[i] == '.') bufptr[i] = '-';
-		}
+			const hcl_ooch_t* ptr, * end, * seg;
 
-	retry:
-		hcl_copy_bcstr (&bufptr[xlen], bufcapa - xlen, HCL_DEFAULT_PFMODPOSTFIX);
+			ptr = hcl->option.mod[0].ptr;
+			end = hcl->option.mod[0].ptr + hcl->option.mod[0].len;
+			seg = ptr;
 
-		/* both prefix and postfix attached. for instance, libhcl-xxx */
-		handle = sys_dl_openext(bufptr);
-		if (!handle)
-		{
-			HCL_DEBUG3 (hcl, "Unable to open(ext) PFMOD %hs[%js] - %hs\n", &bufptr[dlen], name, sys_dl_error());
-
-			if (dlen > 0)
+			while (ptr <= end)
 			{
-				handle = sys_dl_openext(&bufptr[0]);
-				if (handle) goto pfmod_open_ok;
-				HCL_DEBUG3 (hcl, "Unable to open(ext) PFMOD %hs[%js] - %hs\n", &bufptr[0], name, sys_dl_error());
-			}
-
-			/* try without prefix and postfix */
-			bufptr[xlen] = '\0';
-			handle = sys_dl_openext(&bufptr[len]);
-			if (!handle)
-			{
-				hcl_bch_t* dash;
-				const hcl_bch_t* dl_errstr;
-				dl_errstr = sys_dl_error();
-				HCL_DEBUG3 (hcl, "Unable to open(ext) PFMOD %hs[%js] - %hs\n", &bufptr[len], name, dl_errstr);
-				hcl_seterrbfmt (hcl, HCL_ESYSERR, "unable to open(ext) PFMOD %js - %hs", name, dl_errstr);
-
-				dash = hcl_rfind_bchar(bufptr, hcl_count_bcstr(bufptr), '-');
-				if (dash)
+				if (ptr == end || *ptr == ':')
 				{
-					/* remove a segment at the back.
-					 * [NOTE] a dash contained in the original name before
-					 *        period-to-dash transformation may cause extraneous/wrong
-					 *        loading reattempts. */
-					xlen = dash - bufptr;
-					goto retry;
+					if (ptr - seg > 0)
+					{
+						handle = dlopen_pfmod(hcl, name, seg, ptr - seg, bufptr, bufcapa);
+						if (handle) break;
+					}
+
+					if (ptr == end) break;
+					seg = ptr + 1;
 				}
+				ptr++;
 			}
-			else
-			{
-				HCL_DEBUG3 (hcl, "Opened(ext) PFMOD %hs[%js] handle %p\n", &bufptr[len], name, handle);
-			}
+
 		}
-		else
-		{
-		pfmod_open_ok:
-			HCL_DEBUG3 (hcl, "Opened(ext) PFMOD %hs[%js] handle %p\n", &bufptr[dlen], name, handle);
-		}
+
+		if (!handle) handle = dlopen_pfmod(hcl, name, HCL_NULL, 0, bufptr, bufcapa);
 	}
 	else
 	{
 		/* opening a raw shared object without a prefix and/or a postfix */
-	#if defined(HCL_OOCH_IS_UCH)
-		bcslen = bufcapa;
-		hcl_convootobcstr(hcl, name, &ucslen, bufptr, &bcslen);
-	#else
-		bcslen = hcl_copy_bcstr(bufptr, bufcapa, name);
-	#endif
-
-		if (hcl_find_bchar(bufptr, bcslen, '.'))
-		{
-			handle = sys_dl_open(bufptr);
-			if (!handle)
-			{
-				const hcl_bch_t* dl_errstr;
-				dl_errstr = sys_dl_error();
-				HCL_DEBUG2 (hcl, "Unable to open DL %hs - %hs\n", bufptr, dl_errstr);
-				hcl_seterrbfmt (hcl, HCL_ESYSERR, "unable to open DL %js - %hs", name, dl_errstr);
-			}
-			else HCL_DEBUG2 (hcl, "Opened DL %hs handle %p\n", bufptr, handle);
-		}
-		else
-		{
-			handle = sys_dl_openext(bufptr);
-			if (!handle)
-			{
-				const hcl_bch_t* dl_errstr;
-				dl_errstr = sys_dl_error();
-				HCL_DEBUG2 (hcl, "Unable to open(ext) DL %hs - %hs\n", bufptr, dl_errstr);
-				hcl_seterrbfmt (hcl, HCL_ESYSERR, "unable to open(ext) DL %js - %hs", name, dl_errstr);
-			}
-			else HCL_DEBUG2 (hcl, "Opened(ext) DL %hs handle %p\n", bufptr, handle);
-		}
+		handle = dlopen_raw(hcl, name, bufptr, bufcapa);
 	}
 
 	if (bufptr != stabuf) hcl_freemem (hcl, bufptr);

@@ -597,8 +597,9 @@ int main (int argc, char* argv[])
 		{ ":debug",       '\0' },
 #endif
 		{ ":heapsize",    '\0' },
-		{ ":log",         'l' },
+		{ ":log",         'l'  },
 		{ ":info",        '\0' },
+		{ ":modlibdirs",  '\0' },
 
 		{ HCL_NULL,       '\0' }
 	};
@@ -613,6 +614,7 @@ int main (int argc, char* argv[])
 	int verbose = 0;
 	int show_info = 0;
 	int experimental = 0;
+	const char* modlibdirs = HCL_NULL;
 
 #if defined(HCL_BUILD_DEBUG)
 	const char* dbgopt = HCL_NULL;
@@ -662,6 +664,11 @@ int main (int argc, char* argv[])
 					show_info = 1;
 					break;
 				}
+				else if (hcl_comp_bcstr(opt.lngopt, "modlibdirs") == 0)
+				{
+					modlibdirs = opt.arg;
+					break;
+				}
 
 				goto print_usage;
 
@@ -709,6 +716,33 @@ int main (int argc, char* argv[])
 		/* disable GC logs */
 		/*trait = ~HCL_LOG_GC;
 		hcl_setoption (hcl, HCL_LOG_MASK, &trait);*/
+	}
+
+	if (modlibdirs)
+	{
+	#if defined(HCL_OOCH_IS_UCH)
+		hcl_ooch_t* tmp;
+		tmp = hcl_dupbtoucstr(hcl, modlibdirs, HCL_NULL);
+		if (HCL_UNLIKELY(!tmp))
+		{
+			hcl_logbfmt (hcl, HCL_LOG_STDERR,"ERROR: cannot duplicate modlibdirs - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
+			goto oops;
+		}
+
+		if (hcl_setoption(hcl, HCL_MOD_LIBDIRS, tmp) <= -1)
+		{
+			hcl_logbfmt (hcl, HCL_LOG_STDERR,"ERROR: cannot set modlibdirs - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
+			hcl_freemem (hcl, tmp);
+			goto oops;
+		}
+		hcl_freemem (hcl, tmp);
+	#else
+		if (hcl_setoption(hcl, HCL_MOD_LIBDIRS, modlibdirs) <= -1)
+		{
+			hcl_logbfmt (hcl, HCL_LOG_STDERR,"ERROR: cannot set modlibdirs - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
+			goto oops;
+		}
+	#endif
 	}
 
 	xtn = (xtn_t*)hcl_getxtn(hcl);

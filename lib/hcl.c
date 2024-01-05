@@ -188,6 +188,7 @@ static hcl_rbt_walk_t unload_module (hcl_rbt_t* rbt, hcl_rbt_pair_t* pair, void*
 void hcl_fini (hcl_t* hcl)
 {
 	hcl_cb_t* cb;
+	hcl_oow_t i;
 
 	hcl_rbt_walk (&hcl->modtab, unload_module, hcl);
 	hcl_rbt_fini (&hcl->modtab);
@@ -216,7 +217,6 @@ void hcl_fini (hcl_t* hcl)
 
 	/* deregister all callbacks */
 	while (hcl->cblist) hcl_deregcb (hcl, hcl->cblist);
-
 
 	/* detach the user data io handlers just in case */
 	hcl_detachudio (hcl);
@@ -311,6 +311,11 @@ void hcl_fini (hcl_t* hcl)
 		hcl->option.log_target_b = HCL_NULL;
 	}
 
+	for (i = 0; i < HCL_COUNTOF(hcl->option.mod); i++)
+	{
+		if (hcl->option.mod[i].ptr) hcl_freemem (hcl, hcl->option.mod[i].ptr);
+	}
+
 	if (hcl->inttostr.xbuf.ptr)
 	{
 		hcl_freemem (hcl, hcl->inttostr.xbuf.ptr);
@@ -361,6 +366,22 @@ void hcl_reset (hcl_t* hcl)
 
 	/* clean up object memory */
 	hcl_gc (hcl, 1);
+}
+
+static int dup_str_opt (hcl_t* hcl, const void* value, hcl_oocs_t* tmp)
+{
+	if (value)
+	{
+		tmp->ptr = hcl_dupoocstr(hcl, value, &tmp->len);
+		if (HCL_UNLIKELY(!tmp->ptr)) return -1;
+	}
+	else
+	{
+		tmp->ptr = HCL_NULL;
+		tmp->len = 0;
+	}
+
+	return 0;
 }
 
 int hcl_setoption (hcl_t* hcl, hcl_option_t id, const void* value)
@@ -500,10 +521,25 @@ int hcl_setoption (hcl_t* hcl, hcl_option_t id, const void* value)
 			break;
 		}
 
+		case HCL_MOD_LIBDIRS:
+		case HCL_MOD_PREFIX:
+		case HCL_MOD_POSTFIX:
+		{
+			hcl_oocs_t tmp;
+			int idx;
+
+			if (dup_str_opt(hcl, value, &tmp) <= -1) return -1;
+
+			idx = id - HCL_MOD_LIBDIRS;
+			if (hcl->option.mod[idx].ptr) hcl_freemem (hcl, hcl->option.mod[idx].ptr);
+
+			hcl->option.mod[idx] = tmp;
+			return 0;
+		}
+
 		case HCL_MOD_INCTX:
 			hcl->option.mod_inctx = *(void**)value;
 			break;
-
 
 		default:
 			goto einval;
@@ -565,6 +601,12 @@ int hcl_getoption (hcl_t* hcl, hcl_option_t id, void* value)
 
 		case HCL_PROCSTK_SIZE:
 			*(hcl_oow_t*)value = hcl->option.dfl_procstk_size;
+			return 0;
+
+		case HCL_MOD_LIBDIRS:
+		case HCL_MOD_PREFIX:
+		case HCL_MOD_POSTFIX:
+			*(const hcl_ooch_t**)value = hcl->option.mod[id - HCL_MOD_LIBDIRS].ptr;
 			return 0;
 
 		case HCL_MOD_INCTX:

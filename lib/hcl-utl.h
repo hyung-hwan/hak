@@ -377,12 +377,15 @@ typedef enum hcl_cmgr_id_t hcl_cmgr_id_t;
  * PATH-RELATED MACROS
  * ========================================================================= */
 #if defined(_WIN32) || defined(__OS2__) || defined(__DOS__)
-#	define HCL_IS_PATH_SEP(c) ((c) == '/' || (c) == '\\')
 #	define HCL_DFL_PATH_SEP ('\\')
+#	define HCL_ALT_PATH_SEP ('/')
+#	define HCL_IS_PATH_SEP(c) ((c) == HCL_DFL_PATH_SEP || (c) == HCL_ALT_PATH_SEP)
 #else
-#	define HCL_IS_PATH_SEP(c) ((c) == '/')
 #	define HCL_DFL_PATH_SEP ('/')
+#	define HCL_ALT_PATH_SEP ('/')
+#	define HCL_IS_PATH_SEP(c) ((c) == HCL_DFL_PATH_SEP)
 #endif
+
 
 /* TODO: handle path with a drive letter or in the UNC notation */
 #define HCL_IS_PATH_ABSOLUTE(x) HCL_IS_PATH_SEP(x[0])
