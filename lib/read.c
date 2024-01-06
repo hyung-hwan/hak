@@ -55,10 +55,11 @@ static struct voca_t
 	{  4, { 's','e','l','f'                                               } },
 	{  5, { 's','u','p','e','r'                                           } },
 
-	{  3, { '(',' ',')'                                                   } },
-	{  4, { '(',':',' ',')'                                               } },
-	{  3, { '{',' ','}'                                                   } },
-	{  3, { '[',' ',']'                                                   } },
+	{  3, { '(',' ',')'      /* XLIST */                                  } },
+	{  4, { '(',':',' ',')'  /* MLIST */                                  } },
+	{  3, { '(',':','=',')'                                               } },
+	{  3, { '{',' ','}'      /* BLOCK */                                  } },
+	{  3, { '[',' ',']'      /* ARRAY */                                  } },
 	{  4, { '#','[',' ',']'                                               } },
 	{  4, { '#','{',' ','}'                                               } },
 	{  4, { '#','(',' ',')'                                               } },
@@ -203,6 +204,7 @@ static HCL_INLINE int is_delimchar (hcl_ooci_t c)
 	       c == '#' || c == '\"' || c == '\'' || is_spacechar(c) || c == HCL_UCI_EOF;
 }
 
+/* TODO: remove this use the one in comp.c */
 static int copy_string_to (hcl_t* hcl, const hcl_oocs_t* src, hcl_oocs_t* dst, hcl_oow_t* dst_capa, int append, hcl_ooch_t add_delim)
 {
 	hcl_oow_t len, pos;
@@ -227,7 +229,12 @@ static int copy_string_to (hcl_t* hcl, const hcl_oocs_t* src, hcl_oocs_t* dst, h
 		capa = HCL_ALIGN(len, BUFFER_ALIGN);
 
 		tmp = (hcl_ooch_t*)hcl_reallocmem(hcl, dst->ptr, HCL_SIZEOF(*tmp) * capa);
-		if (HCL_UNLIKELY(!tmp)) return -1;
+		if (HCL_UNLIKELY(!tmp))
+		{
+			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+			hcl_seterrbfmt (hcl, hcl_geterrnum(hcl), "failed to grow token buffer - %js", orgmsg);
+			return -1;
+		}
 
 		dst->ptr = tmp;
 		*dst_capa = capa;
@@ -459,8 +466,13 @@ static const hcl_ooch_t* add_sr_name (hcl_t* hcl, const hcl_oocs_t* name)
 		link = link->link;
 	}
 
-	link = (hcl_link_t*)hcl_callocmem (hcl, HCL_SIZEOF(*link) + HCL_SIZEOF(hcl_ooch_t) * (name->len + 1));
-	if (HCL_UNLIKELY(!link)) return HCL_NULL;
+	link = (hcl_link_t*)hcl_callocmem(hcl, HCL_SIZEOF(*link) + HCL_SIZEOF(hcl_ooch_t) * (name->len + 1));
+	if (HCL_UNLIKELY(!link))
+	{
+		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+		hcl_seterrbfmt (hcl, hcl_geterrnum(hcl), "failed to source name [%.*js] - %js", name->len, name->ptr, orgmsg);
+		return HCL_NULL;
+	}
 
 	nptr = (hcl_ooch_t*)(link + 1);
 
@@ -479,7 +491,12 @@ static HCL_INLINE int enter_list (hcl_t* hcl, const hcl_loc_t* loc, int flagv)
 {
 	hcl_rstl_t* rstl;
 	rstl = (hcl_rstl_t*)hcl_callocmem(hcl, HCL_SIZEOF(*rstl));
-	if (HCL_UNLIKELY(!rstl)) return -1;
+	if (HCL_UNLIKELY(!rstl))
+	{
+		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+		hcl_seterrbfmt (hcl, hcl_geterrnum(hcl), "failed to allocate reader stack node - %js", orgmsg);
+		return -1;
+	}
 	rstl->loc = *loc;
 	rstl->flagv = flagv;
 	rstl->prev = hcl->c->r.st; /* push */
@@ -826,7 +843,12 @@ static int feed_begin_include (hcl_t* hcl)
 	if (HCL_UNLIKELY(!io_name)) return -1;
 
 	arg = (hcl_io_cciarg_t*)hcl_callocmem(hcl, HCL_SIZEOF(*arg));
-	if (HCL_UNLIKELY(!arg)) goto oops;
+	if (HCL_UNLIKELY(!arg))
+	{
+		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+		hcl_seterrbfmt (hcl, hcl_geterrnum(hcl), "failed to allocate source input structure - %js", orgmsg);
+		goto oops;
+	}
 
 	arg->name = io_name;
 	arg->line = 1;
@@ -2848,6 +2870,8 @@ static int init_compiler (hcl_t* hcl)
 	hcl->c = (hcl_compiler_t*)hcl_callocmem(hcl, HCL_SIZEOF(*hcl->c));
 	if (HCL_UNLIKELY(!hcl->c))
 	{
+		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+		hcl_seterrbfmt (hcl, hcl_geterrnum(hcl), "failed to allocate compiler - %js", orgmsg);
 		hcl_deregcb (hcl, cbp);
 		return -1;
 	}

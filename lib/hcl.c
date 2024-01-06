@@ -766,7 +766,7 @@ hcl_mod_data_t* hcl_openmod (hcl_t* hcl, const hcl_ooch_t* name, hcl_oow_t namel
 
 	if (load)
 	{
-		/* found the module in the staic module table */
+		/* found the module in the static module table */
 
 		HCL_MEMSET (&md, 0, HCL_SIZEOF(md));
 		md.mod.inctx = hcl->option.mod_inctx;
@@ -776,9 +776,9 @@ hcl_mod_data_t* hcl_openmod (hcl_t* hcl, const hcl_ooch_t* name, hcl_oow_t namel
 		/* i copy-insert 'md' into the table before calling 'load'.
 		 * to pass the same address to load(), query(), etc */
 		pair = hcl_rbt_insert(&hcl->modtab, (hcl_ooch_t*)name, namelen, &md, HCL_SIZEOF(md));
-		if (pair == HCL_NULL)
+		if (HCL_UNLIKELY(!pair))
 		{
-			hcl_seterrnum (hcl, HCL_ESYSMEM);
+			hcl_seterrbfmt (hcl, HCL_ESYSMEM, "insufficient system memory in storing static module handle");
 			return HCL_NULL;
 		}
 
