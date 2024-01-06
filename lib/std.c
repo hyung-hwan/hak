@@ -2478,7 +2478,7 @@ static void* dlopen_pfmod (hcl_t* hcl, const hcl_ooch_t* name, const hcl_ooch_t*
 
 		if (dlen > 0 && bufptr[dlen - 1] != HCL_DFL_PATH_SEP)
 		{
-		#if defined(__DOS__) || defined(_WIN32) || defined(__OS2__)
+		#if defined(HCL_HAVE_ALT_PATH_SEP)
 			if (hcl_find_bchar(bufptr, dlen, HCL_ALT_PATH_SEP) &&
 			    !hcl_find_bchar(bufptr, dlen, HCL_DFL_PATH_SEP))
 				bufptr[dlen++] = HCL_ALT_PATH_SEP;

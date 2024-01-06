@@ -130,6 +130,7 @@ enum hcl_synerrnum_t
 	HCL_SYNERR_DOTBANNED,     /* . disallowed */
 	HCL_SYNERR_COMMABANNED,   /* , disallowed */
 	HCL_SYNERR_COLONBANNED,   /* : disallowed */
+	HCL_SYNERR_COLONEQBANNED, /* := disallowed */
 	HCL_SYNERR_COMMANOVALUE,  /* no value after , */
 	HCL_SYNERR_COLONNOVALUE,  /* no value after : */
 	HCL_SYNERR_NOSEP,         /* no separator between array/dictionary elements */
@@ -164,8 +165,6 @@ enum hcl_synerrnum_t
 	HCL_SYNERR_UNBALKV,       /* unbalanced key/value pair */
 	HCL_SYNERR_UNBALPBB,      /* unbalanced parenthesis/brace/bracket */
 	HCL_SYNERR_SEMICOLON,     /* unexpected semicolon */
-	HCL_SYNERR_EMPTYXLIST,    /* empty x-list */
-	HCL_SYNERR_EMPTYMLIST,    /* empty m-list */
 	HCL_SYNERR_BLOCK,         /* block expression expected */
 	HCL_SYNERR_BLOCKBANNED    /* block expression disallowed */
 };
@@ -1913,7 +1912,8 @@ enum hcl_concode_t
 {
 	/* these can be set in the SYNCODE flags for a cons cell */
 	HCL_CONCODE_XLIST = 0,  /* ( ) - executable list */
-	HCL_CONCODE_MLIST,      /* (: ) - message send list */
+	HCL_CONCODE_MLIST,      /* (obj:message) - message send list */
+	HCL_CONCODE_ALIST,      /* (a := 20) assignment list */
 	HCL_CONCODE_BLOCK,      /* { } */
 	HCL_CONCODE_ARRAY,      /* [ ] */
 	HCL_CONCODE_BYTEARRAY,  /* #[ ] */

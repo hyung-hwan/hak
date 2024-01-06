@@ -216,7 +216,8 @@ int hcl_fmt_object_ (hcl_fmtout_t* fmtout, hcl_oop_t obj)
 	{
 		/* navtive   json */
 		{ "(",       "(" },  /*HCL_CONCODE_XLIST */
-		{ "(:",      "(" },  /*HCL_CONCODE_MLIST */
+		{ "(",       "(" },  /*HCL_CONCODE_MLIST */
+		{ "(",       "(" },  /*HCL_CONCODE_ALIST */
 		{ "{",       "{" },  /*HCL_CONCODE_BLOCK */
 		{ "[",       "[" },  /*HCL_CONCODE_ARRAY */
 		{ "#[",      "[" },  /*HCL_CONCODE_BYTEARRAY */
@@ -228,6 +229,7 @@ int hcl_fmt_object_ (hcl_fmtout_t* fmtout, hcl_oop_t obj)
 	{
 		{ ")",       ")" },   /*HCL_CONCODE_XLIST */
 		{ ")",       ")" },   /*HCL_CONCODE_MLIST */
+		{ ")",       ")" },   /*HCL_CONCODE_ALIST */
 		{ "}",       "}" },   /*HCL_CONCODE_BLOCK */
 		{ "]",       "]" },   /*HCL_CONCODE_ARRAY */
 		{ "]",       "]" },   /*HCL_CONCODE_BYTEARRAY */
@@ -425,6 +427,8 @@ next:
 			if (hcl_bfmt_out(fmtout, opening_parens[concode][0]) <= -1) return -1;
 			cur = obj;
 
+			/* TODO: for MLIST, print : after the first element.
+			 *       for ALIST, print := after the first element */
 			do
 			{
 				int x;
@@ -434,7 +438,7 @@ next:
 				ps.type = PRINT_STACK_CONS;
 				ps.obj = HCL_CONS_CDR(cur);
 				ps.idx = concode; /* this is not an index but use this field to restore concode */
-				x = push (hcl, &ps);
+				x = push(hcl, &ps);
 				if (x <= -1) return -1;
 
 				obj = HCL_CONS_CAR(cur);

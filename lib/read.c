@@ -92,6 +92,7 @@ enum voca_id_t
 
 	VOCA_XLIST,
 	VOCA_MLIST,
+	VOCA_ALIST,
 	VOCA_BLOCK,
 	VOCA_ARRAY,
 	VOCA_BYTEARRAY,
@@ -110,11 +111,12 @@ enum list_flag_t
 	DOTTED       = (1 << 1),
 	COMMAED      = (1 << 2),
 	COLONED      = (1 << 3),
-	CLOSED       = (1 << 4),
-	JSON         = (1 << 5),
-	DATA_LIST    = (1 << 6),
-	AUTO_FORGED  = (1 << 7),  /* automatically added list. only applicable to XLIST */
-	AT_BEGINNING = (1 << 8)
+	COLONEQED    = (1 << 4),
+	CLOSED       = (1 << 5),
+	JSON         = (1 << 6),
+	DATA_LIST    = (1 << 7),
+	AUTO_FORGED  = (1 << 8),  /* automatically added list. only applicable to XLIST */
+	AT_BEGINNING = (1 << 9)
 
 	/* TOTOAL 12 items are allowed for LIST_FLAG_GET_CONCODE and LIST_FLAG_SET_CONCODE().
 	 * they reserve lower 12 bits as flag bits.*/
@@ -131,7 +133,8 @@ static struct
 } cons_info[] =
 {
 	/*[HCL_CONCODE_XLIST]     =*/ { HCL_TOK_RPAREN, HCL_SYNERR_RPAREN, VOCA_XLIST }, /* XLIST     ( )  */
-	/*[HCL_CONCODE_MLIST]     =*/ { HCL_TOK_RPAREN, HCL_SYNERR_RPAREN, VOCA_MLIST }, /* MLIST     (: ) */
+	/*[HCL_CONCODE_MLIST]     =*/ { HCL_TOK_RPAREN, HCL_SYNERR_RPAREN, VOCA_MLIST }, /* MLIST     (obj:message) */
+	/*[HCL_CONCODE_ALIST]     =*/ { HCL_TOK_RPAREN, HCL_SYNERR_RPAREN, VOCA_ALIST }, /* ALIST     (var:=value) */
 	/*[HCL_CONCODE_BLOCK]     =*/ { HCL_TOK_RBRACE, HCL_SYNERR_RBRACE, VOCA_BLOCK }, /* BLOCK     { } */
 	/*[HCL_CONCODE_ARRAY]     =*/ { HCL_TOK_RBRACK, HCL_SYNERR_RBRACK, VOCA_ARRAY }, /* ARRAY     [ ] */
 	/*[HCL_CONCODE_BYTEARRAY] =*/ { HCL_TOK_RBRACK, HCL_SYNERR_RBRACK, VOCA_BYTEARRAY }, /* BYTEARRAY #[ ] */
@@ -503,11 +506,15 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 	hcl->c->r.st = rstl->prev; /* pop off  */
 	hcl_freemem (hcl, rstl); /* dispose of the stack node */
 
-	if (fv & (COMMAED | COLONED))
+	if (fv & (COMMAED | COLONED | COLONEQED))
 	{
 		if (concode == HCL_CONCODE_MLIST)
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_CALLABLE, TOKEN_LOC(hcl), HCL_NULL, "missing message after colon");
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_CALLABLE, TOKEN_LOC(hcl), HCL_NULL, "missing message after :");
+		}
+		else if (concode == HCL_CONCODE_ALIST)
+		{
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_CALLABLE, TOKEN_LOC(hcl), HCL_NULL, "missing value after :=");
 		}
 		else
 		{
@@ -602,9 +609,9 @@ static HCL_INLINE int can_colon_list (hcl_t* hcl)
 	HCL_ASSERT (hcl, hcl->c->r.st != HCL_NULL);
 	rstl = hcl->c->r.st;
 
-	/* mark the state that a colon has appeared in the list */
 	if (rstl->count <= 0) return 0; /* not allowed at the list beginning  */
 
+	/* mark the state that a colon has appeared in the list */
 	if (rstl->count == 1) rstl->flagv |= JSON; /* mark that the first key is colon-delimited */
 	else if (!(rstl->flagv & JSON)) return 0; /* the first key is not colon-delimited. so not allowed to colon-delimit other keys  */
 
@@ -630,12 +637,36 @@ static HCL_INLINE int can_colon_list (hcl_t* hcl)
 	return 1;
 }
 
+static HCL_INLINE int can_coloneq_list (hcl_t* hcl)
+{
+	hcl_rstl_t* rstl;
+	hcl_concode_t cc;
+
+	HCL_ASSERT (hcl, hcl->c->r.st != HCL_NULL);
+	rstl = hcl->c->r.st;
+
+	if (rstl->count <= 0 || rstl->count > 1) return 0; /* allowed after the first item only */
+
+	/* repeated delimiters - e.g (a := := ...)   (a : := ... )  */
+	if (rstl->flagv & (COMMAED | COLONED | COLONEQED)) return 0;
+
+	cc = LIST_FLAG_GET_CONCODE(rstl->flagv);
+
+	/* assignment only in XLIST */
+	if (cc != HCL_CONCODE_XLIST) return 0;
+
+	/* TODO: some transformation is required... */
+
+	rstl->flagv |= COLONEQED;
+	return 1;
+}
+
 static HCL_INLINE void clear_comma_colon_flag (hcl_t* hcl)
 {
 	hcl_rstl_t* rstl;
 	HCL_ASSERT (hcl, hcl->c->r.st != HCL_NULL);
 	rstl = hcl->c->r.st;
-	rstl->flagv &= ~(COMMAED | COLONED);
+	rstl->flagv &= ~(COMMAED | COLONED | COLONEQED);
 }
 
 static int chain_to_list (hcl_t* hcl, hcl_cnode_t* obj, hcl_loc_t* loc)
@@ -1073,6 +1104,15 @@ static int feed_process_token (hcl_t* hcl)
 
 			goto ok;
 
+		case HCL_TOK_COLONEQ:
+			if (frd->level <= 0 || !can_coloneq_list(hcl))
+			{
+				hcl_setsynerr (hcl, HCL_SYNERR_COLONEQBANNED, TOKEN_LOC(hcl), HCL_NULL);
+				goto oops;
+			}
+
+			goto ok;
+
 		case HCL_TOK_COMMA:
 			if (frd->level <= 0 || !can_comma_list(hcl))
 			{
@@ -1102,7 +1142,7 @@ static int feed_process_token (hcl_t* hcl)
 			}
 
 			concode = LIST_FLAG_GET_CONCODE(rstl->flagv);
-			if (concode != HCL_CONCODE_XLIST && concode != HCL_CONCODE_MLIST) 
+			if (concode != HCL_CONCODE_XLIST && concode != HCL_CONCODE_MLIST && concode != HCL_CONCODE_ALIST)
 			{
 				hcl_setsynerr (hcl, HCL_SYNERR_UNBALPBB, TOKEN_LOC(hcl), HCL_NULL);
 				goto oops;
@@ -1313,8 +1353,11 @@ static int feed_process_token (hcl_t* hcl)
 			{
 				int forged_flagv;
 
+				/* both MLIST and ALIST begin as XLIST and get converted to MLIST 
+				 * or ALIST after more tokens are processed. so handling of MLIST
+				 * or ALIST is needed at this phase */
 				forged_flagv = AUTO_FORGED;
-				LIST_FLAG_SET_CONCODE (forged_flagv, HCL_CONCODE_XLIST); /* TODO: how can i have MLIST? */
+				LIST_FLAG_SET_CONCODE (forged_flagv, HCL_CONCODE_XLIST);
 
 				/* this portion is similar to the code below the start_list label */
 				if (frd->level >= HCL_TYPE_MAX(int)) /* the nesting level too deep */
@@ -1323,12 +1366,14 @@ static int feed_process_token (hcl_t* hcl)
 					goto oops;
 				}
 
-				/* since the actual list opener doesn't exist, the location of the first element wil be the location of the list */
+				/* since the actual list opener doesn't exist, the location of the
+				 * first element wil be the location of the list */
 				if (enter_list(hcl, TOKEN_LOC(hcl), forged_flagv) <= -1) goto oops;
 				frd->level++; /* level after the forged list has been added */
-				/* a new list has been created automatically. unlike normal list creation by an explicit symbol
-				 * such as a left parenthesis, a left brace, etc, the first element opens up this new list.
-				 * so the AT_BEGINNING bit is turned off here */
+				/* a new list has been created automatically. unlike normal list creation
+				 * by an explicit symbol such as a left parenthesis, a left brace, etc,
+				 * the first element opens up this new list. so the AT_BEGINNING bit is
+				 * turned off here */
 				frd->flagv &= ~AT_BEGINNING;
 			}
 			break;
@@ -1454,7 +1499,7 @@ static delim_token_t delim_token_tab[] =
 	{ "...",      3, HCL_TOK_ELLIPSIS }, /* for variable arguments */
 
 	{ ":",        1, HCL_TOK_COLON }, /* key-value separator in dictionary */
-	{ ":=",       2, HCL_TOK_COLONEQ },
+	{ ":=",       2, HCL_TOK_COLONEQ }, /* assignment */
 	{ "::",       2, HCL_TOK_DBLCOLONS },
 	{ "::*",      3, HCL_TOK_DCSTAR },   /* class instantiation method */
 	{ ":::",      3, HCL_TOK_TRPCOLONS  }, /* superclass, class variables, class methods */

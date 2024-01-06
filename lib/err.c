@@ -126,6 +126,7 @@ static char* synerrstr[] =
 	". disallowed",
 	", disallowed",
 	": disallowed",
+	":= disallowed",
 	"no value after ,",
 	"no value after :",
 	"no separator between array/dictionary elements",
@@ -160,8 +161,6 @@ static char* synerrstr[] =
 	"unbalanced key/value pair",
 	"unbalanced parenthesis/brace/bracket",
 	"unexpected semicolon",
-	"empty x-list",
-	"empty m-list",
 	"block expression expected"
 	"block expression disallowed"
 };

@@ -3814,7 +3814,8 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 	}
 	else if (HCL_CNODE_IS_SYMBOL(car)  || HCL_CNODE_IS_DSYMBOL(car) ||
 	         HCL_CNODE_IS_CONS_CONCODED(car, HCL_CONCODE_XLIST) ||
-	         HCL_CNODE_IS_CONS_CONCODED(car, HCL_CONCODE_MLIST))
+	         HCL_CNODE_IS_CONS_CONCODED(car, HCL_CONCODE_MLIST) /*TODO||
+	         HCL_CNODE_IS_CONS_CONCODED(car, HCL_CONCODE_ALIST)*/)
 	{
 		/* normal function call
 		 *  (<operator> <operand1> ...) */
@@ -4453,6 +4454,10 @@ redo:
 				case HCL_CONCODE_MLIST:
 					if (compile_cons_mlist_expression(hcl, oprnd, 0) <= -1) return -1;
 					break;
+			/* TODO:
+				case HCL_CONCODE_ALIST:
+					break;
+				*/
 
 				case HCL_CONCODE_BLOCK:
 					if (!(hcl->c->flags & HCL_COMPILE_ENABLE_BLOCK))
@@ -4503,6 +4508,12 @@ redo:
 				case HCL_CONCODE_MLIST:
 					hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "empty message send list");
 					return -1;
+
+				/* TODO:
+				case HCL_CONCODE_ALIST:
+					hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "empty assignment list");
+					return -1;
+				*/
 
 				case HCL_CONCODE_BLOCK:
 					if (!(hcl->c->flags & HCL_COMPILE_ENABLE_BLOCK))
@@ -4590,6 +4601,11 @@ static int compile_object_r (hcl_t* hcl)
 	{
 		return compile_cons_mlist_expression(hcl, oprnd, cf->u.obj_r.nrets);
 	}
+/* TODO:
+	else if (HCL_CNODE_IS_CONS_CONCODED(oprnd, HCL_CONCODE_ALIST))
+	{
+	}
+*/
 
 	hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "non-function call/non-message send disallowed");
 	return -1;

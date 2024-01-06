@@ -380,10 +380,12 @@ typedef enum hcl_cmgr_id_t hcl_cmgr_id_t;
 #	define HCL_DFL_PATH_SEP ('\\')
 #	define HCL_ALT_PATH_SEP ('/')
 #	define HCL_IS_PATH_SEP(c) ((c) == HCL_DFL_PATH_SEP || (c) == HCL_ALT_PATH_SEP)
+#	define HCL_HAVE_ALT_PATH_SEP 1
 #else
 #	define HCL_DFL_PATH_SEP ('/')
 #	define HCL_ALT_PATH_SEP ('/')
 #	define HCL_IS_PATH_SEP(c) ((c) == HCL_DFL_PATH_SEP)
+#	undef HCL_HAVE_ALT_PATH_SEP
 #endif
 
 
