@@ -535,9 +535,9 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 		}
 		else
 		{
-			hcl_synerrnum_t sen;
-			sen = (fv & COMMAED)? HCL_SYNERR_COMMANOVALUE: HCL_SYNERR_COLONNOVALUE;
-			hcl_setsynerr (hcl, sen, TOKEN_LOC(hcl), HCL_NULL);
+			hcl_synerrnum_t err;
+			err = (fv & COMMAED)? HCL_SYNERR_COMMANOVALUE: HCL_SYNERR_COLONNOVALUE;
+			hcl_setsynerr (hcl, err, TOKEN_LOC(hcl), HCL_NULL);
 		}
 		if (head) hcl_freecnode (hcl, head);
 		return HCL_NULL;
@@ -558,15 +558,50 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 		*flagv = hcl->c->r.st->flagv;
 	}
 
-	/* NOTE: empty xlist will get translated to `null`.
-	 *       this is useful when used in the lambda expression to express an empty argument. also in defun.
-	 *      (lambda () ...) is equivalent to  (lambda null ...)
-	 *      (defun x() ...) */
-
 	if (head)
 	{
 		HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(head));
+
+		int x = 0;
+		/* HACK */
+		if (concode == HCL_CONCODE_ALIST)
+		{
+			hcl_cnode_t* sym, * newhead;
+			hcl_oocs_t fake_tok, * fake_tok_ptr = HCL_NULL;
+
+
+		/* TODO: this part is experimenttal... */
+
+			static hcl_ooch_t set[4] =  { 's', 'e', 't', '\0' };
+			fake_tok.ptr = set;
+			fake_tok.len = 3;
+			fake_tok_ptr = &fake_tok;
+
+			/* THIS LOCATION IS ALSO WRONG */
+			sym = hcl_makecnodesymbol(hcl, 0, TOKEN_LOC(hcl), fake_tok_ptr);
+			if (HCL_UNLIKELY(!sym))
+			{
+				/* TDOO: better error message */
+				if (head) hcl_freecnode (hcl, head);
+				return HCL_NULL;
+			}
+
+
+			newhead = hcl_makecnodecons(hcl, 0, &loc, fake_tok_ptr, sym, head);
+			if (HCL_UNLIKELY(!newhead))
+			{
+				hcl_freecnode (hcl, sym);
+				if (head) hcl_freecnode (hcl, head);
+				return HCL_NULL;
+			}
+			head = newhead;
+			concode = HCL_CONCODE_XLIST;
+			x = 1;
+		}
+		/* END HACK */
+
 		HCL_CNODE_CONS_CONCODE(head) = concode;
+if (x) hcl_dumpcnode(hcl, head, 1);
 		if (fv & AUTO_FORGED) HCL_CNODE_GET_FLAGS(head) |= HCL_CNODE_AUTO_FORGED;
 		return head;
 	}
@@ -673,6 +708,8 @@ static HCL_INLINE int can_coloneq_list (hcl_t* hcl)
 	if (cc != HCL_CONCODE_XLIST) return 0;
 
 	/* TODO: some transformation is required... */
+
+	LIST_FLAG_SET_CONCODE(rstl->flagv, HCL_CONCODE_ALIST);
 
 	rstl->flagv |= COLONEQED;
 	return 1;
