@@ -55,6 +55,8 @@ static struct voca_t
 	{  4, { 's','e','l','f'                                               } },
 	{  5, { 's','u','p','e','r'                                           } },
 
+	{  3, { 's','e','t'                                                   } },
+
 	{  3, { '(',' ',')'      /* XLIST */                                  } },
 	{  4, { '(',':',' ',')'  /* MLIST */                                  } },
 	{  3, { '(',':','=',')'                                               } },
@@ -90,6 +92,8 @@ enum voca_id_t
 	VOCA_KW_FALSE,
 	VOCA_KW_SELF,
 	VOCA_KW_SUPER,
+
+	VOCA_SYM_SET,
 
 	VOCA_XLIST,
 	VOCA_MLIST,
@@ -562,52 +566,57 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 	{
 		HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(head));
 
-		int x = 0;
 		/* HACK */
 		if (concode == HCL_CONCODE_ALIST)
 		{
+			/* tranform (var := val) to (set var val) */
 			hcl_cnode_t* sym, * newhead;
 			hcl_oocs_t fake_tok, * fake_tok_ptr = HCL_NULL;
 
-
-		/* TODO: this part is experimenttal... */
-
-			static hcl_ooch_t set[4] =  { 's', 'e', 't', '\0' };
-			fake_tok.ptr = set;
-			fake_tok.len = 3;
+			fake_tok.ptr = vocas[VOCA_SYM_SET].str;
+			fake_tok.len = vocas[VOCA_SYM_SET].len;
 			fake_tok_ptr = &fake_tok;
 
-			/* THIS LOCATION IS ALSO WRONG */
-			sym = hcl_makecnodesymbol(hcl, 0, TOKEN_LOC(hcl), fake_tok_ptr);
+	/* TODO: check the number of argumetns in advance??? */
+			sym = hcl_makecnodesymbol(hcl, 0, &loc, fake_tok_ptr);
 			if (HCL_UNLIKELY(!sym))
 			{
-				/* TDOO: better error message */
+				const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+				hcl_seterrbfmt (hcl, hcl_geterrnum(hcl), "failed to create symbol cnode for := - %js", orgmsg);
 				if (head) hcl_freecnode (hcl, head);
 				return HCL_NULL;
 			}
-
 
 			newhead = hcl_makecnodecons(hcl, 0, &loc, fake_tok_ptr, sym, head);
 			if (HCL_UNLIKELY(!newhead))
 			{
+				const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+				hcl_seterrbfmt (hcl, hcl_geterrnum(hcl), "failed to create cons cnode for := - %js", orgmsg);
 				hcl_freecnode (hcl, sym);
 				if (head) hcl_freecnode (hcl, head);
 				return HCL_NULL;
 			}
+
 			head = newhead;
-			concode = HCL_CONCODE_XLIST;
-			x = 1;
+			concode = HCL_CONCODE_XLIST; /* switch back to XLIST */
 		}
 		/* END HACK */
 
 		HCL_CNODE_CONS_CONCODE(head) = concode;
-if (x) hcl_dumpcnode(hcl, head, 1);
 		if (fv & AUTO_FORGED) HCL_CNODE_GET_FLAGS(head) |= HCL_CNODE_AUTO_FORGED;
-		return head;
+	}
+	else
+	{
+		/* the list is empty */
+		head = hcl_makecnodeelist(hcl, ((fv & AUTO_FORGED)? HCL_CNODE_AUTO_FORGED: 0), &loc, concode);
+		if (HCL_UNLIKELY(!head))
+		{
+			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+			hcl_seterrbfmt (hcl, hcl_geterrnum(hcl), "failed to create empty list - %js", orgmsg);
+		}
 	}
 
-	/* the list is empty */
-	return hcl_makecnodeelist(hcl, ((fv & AUTO_FORGED)? HCL_CNODE_AUTO_FORGED: 0), &loc, concode);
+	return head;
 }
 
 static HCL_INLINE int can_dot_list (hcl_t* hcl)
