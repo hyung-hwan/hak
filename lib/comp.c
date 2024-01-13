@@ -3843,8 +3843,8 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 	}
 	else if (HCL_CNODE_IS_SYMBOL(car)  || HCL_CNODE_IS_DSYMBOL(car) ||
 	         HCL_CNODE_IS_CONS_CONCODED(car, HCL_CONCODE_XLIST) ||
-	         HCL_CNODE_IS_CONS_CONCODED(car, HCL_CONCODE_MLIST) /*TODO||
-	         HCL_CNODE_IS_CONS_CONCODED(car, HCL_CONCODE_ALIST)*/)
+	         HCL_CNODE_IS_CONS_CONCODED(car, HCL_CONCODE_MLIST) /* ||
+	         HCL_CNODE_IS_CONS_CONCODED(car, HCL_CONCODE_ALIST)*/) /* NOTE: ALIST is only used in read.c and the reader transforms it to the set expression */
 	{
 		/* normal function call
 		 *  (<operator> <operand1> ...) */
@@ -4130,7 +4130,6 @@ static HCL_INLINE int compile_dsymbol (hcl_t* hcl, hcl_cnode_t* obj)
 		if (hcl_comp_oochars_bcstr(name.ptr, (sep - (const hcl_ooch_t*)name.ptr), "self") == 0)
 		{
 			/* instance variable?  or instance method? */
-HCL_DEBUG1 (hcl, ">>>> instance variable or method %js\n", sep + 1);
 			name.ptr = (hcl_ooch_t*)(sep + 1);
 			name.len -= 5;
 			x = find_variable_backward_with_word(hcl, &name, HCL_CNODE_GET_LOC(obj), 1, &vi);
@@ -4483,7 +4482,7 @@ redo:
 				case HCL_CONCODE_MLIST:
 					if (compile_cons_mlist_expression(hcl, oprnd, 0) <= -1) return -1;
 					break;
-			/* TODO:
+				/* TODO:
 				case HCL_CONCODE_ALIST:
 					break;
 				*/

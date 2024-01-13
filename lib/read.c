@@ -56,10 +56,11 @@ static struct voca_t
 	{  5, { 's','u','p','e','r'                                           } },
 
 	{  3, { 's','e','t'                                                   } },
+	{  5, { 's','e','t','-','r'                                           } },
 
 	{  3, { '(',' ',')'      /* XLIST */                                  } },
 	{  4, { '(',':',' ',')'  /* MLIST */                                  } },
-	{  3, { '(',':','=',')'                                               } },
+	{  3, { '(',':','=',')'  /* ALIST */                                  } },
 	{  3, { '{',' ','}'      /* BLOCK */                                  } },
 	{  3, { '[',' ',']'      /* ARRAY */                                  } },
 	{  4, { '#','[',' ',']'                                               } },
@@ -94,10 +95,11 @@ enum voca_id_t
 	VOCA_KW_SUPER,
 
 	VOCA_SYM_SET,
+	VOCA_SYM_SET_R,
 
 	VOCA_XLIST,
 	VOCA_MLIST,
-	VOCA_ALIST,
+	VOCA_ALIST, /* assignment list */
 	VOCA_BLOCK,
 	VOCA_ARRAY,
 	VOCA_BYTEARRAY,
@@ -570,12 +572,43 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 		if (concode == HCL_CONCODE_ALIST)
 		{
 			/* tranform (var := val) to (set var val) */
-			hcl_cnode_t* sym, * newhead;
+			hcl_cnode_t* sym, * newhead, * rval;
 			hcl_oocs_t fake_tok, * fake_tok_ptr = HCL_NULL;
 
-			fake_tok.ptr = vocas[VOCA_SYM_SET].str;
-			fake_tok.len = vocas[VOCA_SYM_SET].len;
-			fake_tok_ptr = &fake_tok;
+			rval = HCL_CNODE_CONS_CAR(head);
+			if (rval && HCL_CNODE_IS_CONS(rval) && HCL_CNODE_CONS_CONCODE(rval) == HCL_CONCODE_ARRAY)
+			{
+				hcl_cnode_t* tmp, * lval;
+
+				fake_tok.ptr = vocas[VOCA_SYM_SET_R].str;
+				fake_tok.len = vocas[VOCA_SYM_SET_R].len;
+				fake_tok_ptr = &fake_tok;
+
+				/* move the array item up to the main list */
+		/* TODO: check ELIST separately??? */
+				lval = HCL_CNODE_CONS_CDR(lval);
+				HCL_CNODE_CONS_CAR(head) = HCL_CNODE_CONS_CAR(rval);
+	hcl_dumpcnode(hcl, tmp, 1);
+	hcl_dumpcnode(hcl, rval, 1);
+				for (tmp = rval; tmp && HCL_CNODE_IS_CONS(tmp); tmp = HCL_CNODE_CONS_CDR(tmp))
+				{
+					if (!HCL_CNODE_CONS_CDR(tmp))
+					{
+				//		HCL_CNODE_CONS_CDR(tmp) = lval;
+						break;
+					}
+				}
+	hcl_dumpcnode(hcl, rval, 1);
+
+				hcl_freesinglecnode (hcl, rval);
+	hcl_dumpcnode(hcl, head, 1);
+			}
+			else
+			{
+				fake_tok.ptr = vocas[VOCA_SYM_SET].str;
+				fake_tok.len = vocas[VOCA_SYM_SET].len;
+				fake_tok_ptr = &fake_tok;
+			}
 
 	/* TODO: check the number of argumetns in advance??? */
 			sym = hcl_makecnodesymbol(hcl, 0, &loc, fake_tok_ptr);
@@ -586,6 +619,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 				if (head) hcl_freecnode (hcl, head);
 				return HCL_NULL;
 			}
+
 
 			newhead = hcl_makecnodecons(hcl, 0, &loc, fake_tok_ptr, sym, head);
 			if (HCL_UNLIKELY(!newhead))
@@ -637,6 +671,7 @@ static HCL_INLINE int can_dot_list (hcl_t* hcl)
 static HCL_INLINE int can_comma_list (hcl_t* hcl)
 {
 	hcl_rstl_t* rstl;
+	hcl_concode_t cc;
 
 	HCL_ASSERT (hcl, hcl->c->r.st != HCL_NULL);
 	rstl = hcl->c->r.st;
@@ -646,14 +681,18 @@ static HCL_INLINE int can_comma_list (hcl_t* hcl)
 	if (rstl->count == 1) rstl->flagv |= JSON;
 	else if (!(rstl->flagv & JSON)) return 0;
 
-	if (rstl->flagv & (COMMAED | COLONED)) return 0;
+	if (rstl->flagv & (COMMAED | COLONED | COLONEQED)) return 0;
 
-	if (LIST_FLAG_GET_CONCODE(rstl->flagv) == HCL_CONCODE_DIC)
+	cc = LIST_FLAG_GET_CONCODE(rstl->flagv);
+	if (cc == HCL_CONCODE_XLIST)
+	{
+		LIST_FLAG_SET_CONCODE(rstl->flagv, HCL_CONCODE_ALIST);
+	}
+	else if (cc == HCL_CONCODE_DIC)
 	{
 		if (rstl->count & 1) return 0;
 	}
-	else if (LIST_FLAG_GET_CONCODE(rstl->flagv) != HCL_CONCODE_ARRAY &&
-	         LIST_FLAG_GET_CONCODE(rstl->flagv) != HCL_CONCODE_BYTEARRAY)
+	else if (cc != HCL_CONCODE_ARRAY && cc != HCL_CONCODE_BYTEARRAY)
 	{
 		return 0;
 	}
@@ -677,10 +716,9 @@ static HCL_INLINE int can_colon_list (hcl_t* hcl)
 	else if (!(rstl->flagv & JSON)) return 0; /* the first key is not colon-delimited. so not allowed to colon-delimit other keys  */
 
 	/* multiple single-colons  - e.g. #{ "abc": : 20 } */
-	if (rstl->flagv & (COMMAED | COLONED)) return 0;
+	if (rstl->flagv & (COMMAED | COLONED | COLONEQED)) return 0;
 
 	cc = LIST_FLAG_GET_CONCODE(rstl->flagv);
-
 	if (cc == HCL_CONCODE_XLIST)
 	{
 		if (rstl->count > 1) return 0;
@@ -716,10 +754,7 @@ static HCL_INLINE int can_coloneq_list (hcl_t* hcl)
 	/* assignment only in XLIST */
 	if (cc != HCL_CONCODE_XLIST) return 0;
 
-	/* TODO: some transformation is required... */
-
 	LIST_FLAG_SET_CONCODE(rstl->flagv, HCL_CONCODE_ALIST);
-
 	rstl->flagv |= COLONEQED;
 	return 1;
 }
@@ -1205,6 +1240,7 @@ static int feed_process_token (hcl_t* hcl)
 				hcl_setsynerrbfmt (hcl, HCL_SYNERR_SEMICOLON, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "unexpected semicolon");
 				goto oops;
 			#else
+				/* allow redundant semicolons without not balanced with preceding expression */
 				goto ok;
 			#endif
 			}
