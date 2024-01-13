@@ -572,36 +572,40 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 		if (concode == HCL_CONCODE_ALIST)
 		{
 			/* tranform (var := val) to (set var val) */
-			hcl_cnode_t* sym, * newhead, * rval;
+			hcl_cnode_t* sym, * newhead, * lval;
 			hcl_oocs_t fake_tok, * fake_tok_ptr = HCL_NULL;
 
-			rval = HCL_CNODE_CONS_CAR(head);
-			if (rval && HCL_CNODE_IS_CONS(rval) && HCL_CNODE_CONS_CONCODE(rval) == HCL_CONCODE_ARRAY)
+			lval = HCL_CNODE_CONS_CAR(head);
+			if (lval && HCL_CNODE_IS_ELIST(lval))
 			{
-				hcl_cnode_t* tmp, * lval;
+				/* invalid lvalue */
+				hcl_setsynerr (hcl, HCL_SYNERR_LVALUE, HCL_CNODE_GET_LOC(lval), HCL_CNODE_GET_TOK(lval));
+				if (head) hcl_freecnode (hcl, head);
+				return HCL_NULL;
+			}
+			else if (lval && HCL_CNODE_IS_CONS(lval) && HCL_CNODE_CONS_CONCODE(lval) == HCL_CONCODE_ARRAY)
+			{
+				hcl_cnode_t* tmp, * rval;
 
 				fake_tok.ptr = vocas[VOCA_SYM_SET_R].str;
 				fake_tok.len = vocas[VOCA_SYM_SET_R].len;
 				fake_tok_ptr = &fake_tok;
 
-				/* move the array item up to the main list */
-		/* TODO: check ELIST separately??? */
-				lval = HCL_CNODE_CONS_CDR(lval);
-				HCL_CNODE_CONS_CAR(head) = HCL_CNODE_CONS_CAR(rval);
-	hcl_dumpcnode(hcl, tmp, 1);
-	hcl_dumpcnode(hcl, rval, 1);
-				for (tmp = rval; tmp && HCL_CNODE_IS_CONS(tmp); tmp = HCL_CNODE_CONS_CDR(tmp))
+				/* move the array item up to the main list and join the original lval to the end of it */
+				rval = HCL_CNODE_CONS_CDR(head);
+
+				hcl_freesinglecnode (hcl, head);
+				head = lval;
+
+/* TODO: check in advance if array items are all symbols... */
+				for (tmp = lval; tmp && HCL_CNODE_IS_CONS(tmp); tmp = HCL_CNODE_CONS_CDR(tmp))
 				{
 					if (!HCL_CNODE_CONS_CDR(tmp))
 					{
-				//		HCL_CNODE_CONS_CDR(tmp) = lval;
+						HCL_CNODE_CONS_CDR(tmp) = rval;
 						break;
 					}
 				}
-	hcl_dumpcnode(hcl, rval, 1);
-
-				hcl_freesinglecnode (hcl, rval);
-	hcl_dumpcnode(hcl, head, 1);
 			}
 			else
 			{
@@ -621,6 +625,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 			}
 
 
+			/* create a new head joined with set or set-r */
 			newhead = hcl_makecnodecons(hcl, 0, &loc, fake_tok_ptr, sym, head);
 			if (HCL_UNLIKELY(!newhead))
 			{

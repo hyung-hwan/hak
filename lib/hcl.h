@@ -166,7 +166,8 @@ enum hcl_synerrnum_t
 	HCL_SYNERR_UNBALPBB,      /* unbalanced parenthesis/brace/bracket */
 	HCL_SYNERR_SEMICOLON,     /* unexpected semicolon */
 	HCL_SYNERR_BLOCK,         /* block expression expected */
-	HCL_SYNERR_BLOCKBANNED    /* block expression disallowed */
+	HCL_SYNERR_BLOCKBANNED,   /* block expression disallowed */
+	HCL_SYNERR_LVALUE         /* invalid lvalue */
 };
 typedef enum hcl_synerrnum_t hcl_synerrnum_t;
 
