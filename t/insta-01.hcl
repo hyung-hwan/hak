@@ -35,19 +35,17 @@ else { printf "OK %d\n" a; };
 
 set b (B:newInstance 2 3 4);
 set a (b:get-a);
-(if (/= a 4) (printf "ERROR: a must be 4\n")
- else (printf "OK %d\n" a))
+if (/= a 4) {printf "ERROR: a must be 4\n" }
+else { printf "OK %d\n" a };
 
 set a (b:get-b);
-(if (/= a 6) (printf "ERROR: a must be 6\n")
- else (printf "OK %d\n" a))
+if (/= a 6) { printf "ERROR: a must be 6\n" }
+else { printf "OK %d\n" a };
 
 set a (b:get-c);
-(if (/= a 8) (printf "ERROR: a must be 8\n")
- else (printf "OK %d\n" a))
+if (/= a 8) { printf "ERROR: a must be 8\n" }
+else {printf "OK %d\n" a };
 
 set a (b:sum);
-(if (/= a 27) (printf "ERROR: a must be 27\n")
- else (printf "OK %d\n" a))
-
-
+if (/= a 27) { printf "ERROR: a must be 27\n" }
+else { printf "OK %d\n" a };

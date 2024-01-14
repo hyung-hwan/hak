@@ -16,7 +16,7 @@ defun test-non-local-ret-1(k) {
 
 set a (test-non-local-ret-1 20);
 if (/= a 28) { printf "ERROR: a must be 28\n" }
-else { (printf "OK %d\n" a) };
+else { printf "OK %d\n" a };
 
 set a (test-non-local-ret-1 21);
 if (/= a 41) { printf "ERROR: a must be 41\n" }

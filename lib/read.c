@@ -1042,7 +1042,7 @@ static HCL_INLINE int is_at_block_beginning (hcl_t* hcl)
 	return !rstl || (LIST_FLAG_GET_CONCODE(rstl->flagv) == HCL_CONCODE_BLOCK && (hcl->c->feed.rd.flagv & AT_BEGINNING));
 }
 
-static int forge_auto_xlist_if_at_block_beginning (hcl_t* hcl, hcl_frd_t* frd)
+static int auto_forge_xlist_if_at_block_beginning (hcl_t* hcl, hcl_frd_t* frd)
 {
 	if (is_at_block_beginning(hcl))
 	{
@@ -1174,14 +1174,14 @@ static int feed_process_token (hcl_t* hcl)
 			/* [] is a data list. so let's treat it like other literal
 			 * expressions(e.g. 1, "abc"). when it's placed at the block beginning,
 			 * create the outer XLIST. */
-			if (forge_auto_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;
+			if (auto_forge_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;
 
 			frd->flagv = DATA_LIST;
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_ARRAY);
 			goto start_list;
 
 		case HCL_TOK_BAPAREN: /* #[ */
-			if (forge_auto_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;
+			if (auto_forge_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;
 
 			frd->flagv = DATA_LIST;
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_BYTEARRAY);
@@ -1194,13 +1194,13 @@ static int feed_process_token (hcl_t* hcl)
 			goto start_list;
 
 		case HCL_TOK_DLPAREN: /* #{ */
-			if (forge_auto_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;
+			if (auto_forge_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;
 			frd->flagv = DATA_LIST;
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_DIC);
 			goto start_list;
 
 		case HCL_TOK_QLPAREN: /* #( */
-			if (forge_auto_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;
+			if (auto_forge_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;
 			frd->flagv = DATA_LIST;
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_QLIST);
 			goto start_list;
@@ -1529,7 +1529,7 @@ static int feed_process_token (hcl_t* hcl)
 				frd->flagv &= ~AT_BEGINNING;
 			}
 			#else
-			if (forge_auto_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;
+			if (auto_forge_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;
 			#endif
 			break;
 	}
