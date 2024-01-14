@@ -582,7 +582,8 @@ oops:
 	return -1;
 }
 
-#define DEFAULT_HEAPSIZE 512000ul
+//#define DEFAULT_HEAPSIZE (512000ul)
+#define DEFAULT_HEAPSIZE (0ul) /* don't use the pre-allocated heap */
 
 int main (int argc, char* argv[])
 {

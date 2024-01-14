@@ -6,9 +6,11 @@ check_SCRIPTS = \
 	insta-02.hcl \
 	ret-01.hcl \
 	retvar-01.hcl \
-	va-01.hcl
+	va-01.hcl \
+	var-02.hcl
 
 check_ERRORS = \
+	call-01.err \
 	class-01.err \
 	do-01.err \
 	do-02.err \

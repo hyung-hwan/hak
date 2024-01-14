@@ -1042,6 +1042,38 @@ static HCL_INLINE int is_at_block_beginning (hcl_t* hcl)
 	return !rstl || (LIST_FLAG_GET_CONCODE(rstl->flagv) == HCL_CONCODE_BLOCK && (hcl->c->feed.rd.flagv & AT_BEGINNING));
 }
 
+static int forge_auto_xlist_if_at_block_beginning (hcl_t* hcl, hcl_frd_t* frd)
+{
+	if (is_at_block_beginning(hcl))
+	{
+		int forged_flagv;
+
+		/* both MLIST and ALIST begin as XLIST and get converted to MLIST 
+		 * or ALIST after more tokens are processed. so handling of MLIST
+		 * or ALIST is needed at this phase */
+		forged_flagv = AUTO_FORGED;
+		LIST_FLAG_SET_CONCODE (forged_flagv, HCL_CONCODE_XLIST);
+
+		/* this portion is similar to the code below the start_list label */
+		if (frd->level >= HCL_TYPE_MAX(int)) /* the nesting level too deep */
+		{
+			hcl_setsynerr (hcl, HCL_SYNERR_NESTING, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			return -1;
+		}
+
+		/* since the actual list opener doesn't exist, the location of the
+		 * first element wil be the location of the list */
+		if (enter_list(hcl, TOKEN_LOC(hcl), forged_flagv) <= -1) return -1;
+		frd->level++; /* level after the forged list has been added */
+		/* a new list has been created automatically. unlike normal list creation
+		 * by an explicit symbol such as a left parenthesis, a left brace, etc,
+		 * the first element opens up this new list. so the AT_BEGINNING bit is
+		 * turned off here */
+		frd->flagv &= ~AT_BEGINNING;
+	}
+
+	return 0;
+}
 static int feed_process_token (hcl_t* hcl)
 {
 	hcl_frd_t* frd = &hcl->c->feed.rd;
@@ -1139,26 +1171,36 @@ static int feed_process_token (hcl_t* hcl)
 			}
 
 		case HCL_TOK_LBRACK: /* [ */
+			/* [] is a data list. so let's treat it like other literal
+			 * expressions(e.g. 1, "abc"). when it's placed at the block beginning,
+			 * create the outer XLIST. */
+			if (forge_auto_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;
+
 			frd->flagv = DATA_LIST;
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_ARRAY);
 			goto start_list;
 
 		case HCL_TOK_BAPAREN: /* #[ */
+			if (forge_auto_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;
+
 			frd->flagv = DATA_LIST;
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_BYTEARRAY);
 			goto start_list;
 
 		case HCL_TOK_LBRACE: /* { */
+			/* this is a block opener itself. auto xlist forge at the block beginning */
 			frd->flagv = 0;
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_BLOCK);
 			goto start_list;
 
 		case HCL_TOK_DLPAREN: /* #{ */
+			if (forge_auto_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;
 			frd->flagv = DATA_LIST;
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_DIC);
 			goto start_list;
 
 		case HCL_TOK_QLPAREN: /* #( */
+			if (forge_auto_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;
 			frd->flagv = DATA_LIST;
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_QLIST);
 			goto start_list;
@@ -1458,6 +1500,7 @@ static int feed_process_token (hcl_t* hcl)
 			goto auto_xlist;
 
 		auto_xlist:
+			#if 0
 			if (is_at_block_beginning(hcl))
 			{
 				int forged_flagv;
@@ -1485,6 +1528,9 @@ static int feed_process_token (hcl_t* hcl)
 				 * turned off here */
 				frd->flagv &= ~AT_BEGINNING;
 			}
+			#else
+			if (forge_auto_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;
+			#endif
 			break;
 	}
 
