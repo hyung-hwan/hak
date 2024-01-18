@@ -1833,6 +1833,14 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 			FEED_WRAP_UP_WITH_CHARS (hcl, vocas[VOCA_EOF].str, vocas[VOCA_EOF].len, HCL_TOK_EOF);
 			goto consumed;
 
+		case '\\':
+			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_BACKSLASHED);
+			goto consumed;
+
+		case '\n': /* specify all linebreak chars */
+			FEED_WRAP_UP_WITH_CHAR (hcl, c, HCL_TOK_SEMICOLON);
+			goto consumed;
+
 		/* this part is never hit because the semicolon sign is part of delim_tok_tab{}
 		   TODO: remove this part once the language spec is finalized to not require this
 		case ';':
@@ -1878,6 +1886,18 @@ consumed:
 
 not_consumed:
 	return 0;
+}
+
+static int flx_backslashed (hcl_t* hcl, hcl_ooci_t c)
+{
+	if (is_linebreak(c))
+	{
+		FEED_CONTINUE (hcl, HCL_FLX_START);
+		return 1; /* consumed */
+	}
+
+	hcl_setsynerrbfmt (hcl, HCL_SYNERR_BACKSLASH, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "stray backslash");
+	return -1;
 }
 
 static int flx_comment (hcl_t* hcl, hcl_ooci_t c)
@@ -2574,6 +2594,7 @@ static int feed_char (hcl_t* hcl, hcl_ooci_t c)
 	switch (FLX_STATE(hcl))
 	{
 		case HCL_FLX_START:            return flx_start(hcl, c);
+		case HCL_FLX_BACKSLASHED:      return flx_backslashed(hcl, c);
 		case HCL_FLX_COMMENT:          return flx_comment(hcl, c);
 		case HCL_FLX_DELIM_TOKEN:      return flx_delim_token(hcl, c);
 		case HCL_FLX_HMARKED_TOKEN:    return flx_hmarked_token(hcl, c);

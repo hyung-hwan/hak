@@ -635,6 +635,7 @@ struct hcl_flx_st_t
 enum hcl_flx_state_t
 {
 	HCL_FLX_START,
+	HCL_FLX_BACKSLASHED,
 	HCL_FLX_COMMENT,
 	HCL_FLX_DELIM_TOKEN,
 	HCL_FLX_HMARKED_TOKEN,  /* hash-marked token */
