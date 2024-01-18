@@ -460,7 +460,7 @@ static int check_block_expression_as_body (hcl_t* hcl, hcl_cnode_t* c, const hcl
 	{
 	no_block:
 		hcl_setsynerrbfmt (
-			hcl, HCL_SYNERR_BLOCK, (car? HCL_CNODE_GET_LOC(car): HCL_CNODE_GET_LOC(c)), HCL_NULL,
+			hcl, HCL_SYNERR_BLOCK, (car? HCL_CNODE_GET_LOC(car): c? HCL_CNODE_GET_LOC(c): HCL_CNODE_GET_LOC(ctx)), HCL_NULL,
 			"block expression expected as body for %.*js", HCL_CNODE_GET_TOKLEN(ctx), HCL_CNODE_GET_TOKPTR(ctx)
 		);
 		return -1;
@@ -2298,7 +2298,7 @@ static HCL_INLINE int compile_else (hcl_t* hcl)
 		return -1;
 	}
 
-	if (hcl->c->flags & HCL_COMPILE_ENABLE_BLOCK)
+	if (hcl->option.trait & HCL_TRAIT_LANG_ENABLE_BLOCK)
 	{
 		if (check_block_expression_as_body(hcl, obj, cmd, 0) <= -1) return -1;
 	}
@@ -2582,7 +2582,7 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 		if (emit_push_literal(hcl, tmp, &cf->u._class.start_loc) <= -1) goto oops;
 	}
 
-	if (hcl->c->flags & HCL_COMPILE_ENABLE_BLOCK)
+	if (hcl->option.trait & HCL_TRAIT_LANG_ENABLE_BLOCK)
 	{
 		if (check_block_expression_as_body(hcl, obj, cf->u._class.cmd_cnode, 0) <= -1) return -1;
 	}
@@ -2921,7 +2921,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 	}
 	HCL_ASSERT (hcl, nargs + nrvars == hcl->c->tv.wcount - saved_tv_wcount);
 
-	if (hcl->c->flags & HCL_COMPILE_ENABLE_BLOCK)
+	if (hcl->option.trait & HCL_TRAIT_LANG_ENABLE_BLOCK)
 	{
 		/*
 		 * defun aa(a b) { ...	};
@@ -3610,7 +3610,7 @@ static int compile_while (hcl_t* hcl, hcl_cnode_t* src, int next_cop)
 	cond = HCL_CNODE_CONS_CAR(obj);
 	body = HCL_CNODE_CONS_CDR(obj);
 
-	if (hcl->c->flags & HCL_COMPILE_ENABLE_BLOCK)
+	if (hcl->option.trait & HCL_TRAIT_LANG_ENABLE_BLOCK)
 	{
 		if (check_block_expression_as_body(hcl, body, cmd, 0) <= -1) return -1;
 	}
@@ -4488,7 +4488,7 @@ redo:
 				*/
 
 				case HCL_CONCODE_BLOCK:
-					if (!(hcl->c->flags & HCL_COMPILE_ENABLE_BLOCK))
+					if (!(hcl->option.trait & HCL_TRAIT_LANG_ENABLE_BLOCK))
 					{
 						hcl_setsynerrbfmt (hcl, HCL_SYNERR_BLOCKBANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "block expression disallowed");
 						return -1;
@@ -4544,7 +4544,7 @@ redo:
 				*/
 
 				case HCL_CONCODE_BLOCK:
-					if (!(hcl->c->flags & HCL_COMPILE_ENABLE_BLOCK))
+					if (!(hcl->option.trait & HCL_TRAIT_LANG_ENABLE_BLOCK))
 					{
 						/* this is treated the same as HCL_CNODE_CONS with CONCODE BLOCK */
 						hcl_setsynerrbfmt (hcl, HCL_SYNERR_BLOCKBANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "block expression disallowed");
@@ -4978,7 +4978,7 @@ static HCL_INLINE int post_if_cond (hcl_t* hcl)
 	HCL_ASSERT (hcl, hcl->code.bc.len < HCL_SMOOI_MAX);
 	body_pos = hcl->code.bc.len;
 
-	if (hcl->c->flags & HCL_COMPILE_ENABLE_BLOCK)
+	if (hcl->option.trait & HCL_TRAIT_LANG_ENABLE_BLOCK)
 	{
 		if (check_block_expression_as_body(hcl, cf->operand, cf->u.post_if.cmd_cnode, 1) <= -1) return -1;
 	}

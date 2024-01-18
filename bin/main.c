@@ -102,7 +102,7 @@ struct xtn_t
 	const char* udo_path;
 
 	int vm_running;
-	int extra_cflags;
+	int lang_flags;
 	/*hcl_oop_t sym_errstr;*/
 };
 
@@ -479,7 +479,7 @@ static hcl_oop_t execute_in_batch_mode(hcl_t* hcl, int verbose)
 static int on_fed_cnode_in_interactive_mode (hcl_t* hcl, hcl_cnode_t* obj)
 {
 	xtn_t* xtn = (xtn_t*)hcl_getxtn(hcl);
-	if (hcl_compile(hcl, obj, HCL_COMPILE_CLEAR_CODE | HCL_COMPILE_CLEAR_FNBLK | xtn->extra_cflags) <= -1) return -1;
+	if (hcl_compile(hcl, obj, HCL_COMPILE_CLEAR_CODE | HCL_COMPILE_CLEAR_FNBLK) <= -1) return -1;
 	execute_in_interactive_mode (hcl);
 	return 0;
 }
@@ -487,7 +487,7 @@ static int on_fed_cnode_in_interactive_mode (hcl_t* hcl, hcl_cnode_t* obj)
 static int on_fed_cnode_in_batch_mode (hcl_t* hcl, hcl_cnode_t* obj)
 {
 	xtn_t* xtn = (xtn_t*)hcl_getxtn(hcl);
-	return hcl_compile(hcl, obj, xtn->extra_cflags);
+	return hcl_compile(hcl, obj, 0);
 }
 
 static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
@@ -606,7 +606,7 @@ int main (int argc, char* argv[])
 	};
 	static hcl_bopt_t opt =
 	{
-		"l:xv",
+		"l:bnv",
 		lopt
 	};
 
@@ -614,7 +614,8 @@ int main (int argc, char* argv[])
 	hcl_oow_t heapsize = DEFAULT_HEAPSIZE;
 	int verbose = 0;
 	int show_info = 0;
-	int experimental = 0;
+	int enable_block = 0;
+	int nl_terminator = 0;
 	const char* modlibdirs = HCL_NULL;
 
 #if defined(HCL_BUILD_DEBUG)
@@ -631,7 +632,7 @@ int main (int argc, char* argv[])
 		return -1;
 	}
 
-	while ((c = hcl_getbopt (argc, argv, &opt)) != HCL_BCI_EOF)
+	while ((c = hcl_getbopt(argc, argv, &opt)) != HCL_BCI_EOF)
 	{
 		switch (c)
 		{
@@ -639,8 +640,12 @@ int main (int argc, char* argv[])
 				logopt = opt.arg;
 				break;
 
-			case 'x':
-				experimental = 1;
+			case 'b':
+				enable_block = 1;
+				break;
+
+			case 'n':
+				nl_terminator = 1;
 				break;
 
 			case 'v':
@@ -696,6 +701,7 @@ int main (int argc, char* argv[])
 		goto oops;
 	}
 
+	xtn = (xtn_t*)hcl_getxtn(hcl);
 
 	{
 		hcl_oow_t tab_size;
@@ -710,8 +716,12 @@ int main (int argc, char* argv[])
 	{
 		hcl_bitmask_t trait = 0;
 
+		if (enable_block) xtn->lang_flags |= HCL_TRAIT_LANG_ENABLE_BLOCK;
+		if (nl_terminator) xtn->lang_flags |= HCL_TRAIT_LANG_NL_TERMINATOR;
+
 		/*trait |= HCL_TRAIT_NOGC;*/
 		trait |= HCL_TRAIT_AWAIT_PROCS;
+		trait |= xtn->lang_flags;
 		hcl_setoption (hcl, HCL_TRAIT, &trait);
 
 		/* disable GC logs */
@@ -746,7 +756,6 @@ int main (int argc, char* argv[])
 	#endif
 	}
 
-	xtn = (xtn_t*)hcl_getxtn(hcl);
 
 	memset (&hclcb, 0, HCL_SIZEOF(hclcb));
 	hclcb.gc = gc_hcl;
@@ -785,7 +794,6 @@ int main (int argc, char* argv[])
 		goto oops;
 	}
 
-	if (experimental) xtn->extra_cflags |= HCL_COMPILE_ENABLE_BLOCK;
 	xtn->cci_path = argv[opt.ind++]; /* input source code file */
 	if (opt.ind < argc) xtn->udo_path = argv[opt.ind++];
 

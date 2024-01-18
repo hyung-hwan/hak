@@ -1796,6 +1796,15 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 {
 	HCL_ASSERT (hcl, FLX_STATE(hcl) == HCL_FLX_START);
 
+	if ((hcl->option.trait & HCL_TRAIT_LANG_NL_TERMINATOR) && is_linebreak(c))
+	{
+/* TODO: check some other context to make this a semicolon.
+  e.g if in ||, don't convert... */
+		FEED_WRAP_UP_WITH_CHAR (hcl, c, HCL_TOK_SEMICOLON);
+		reset_flx_token (hcl);
+		goto consumed;
+	}
+
 	if (is_spacechar(c)) goto consumed; /* skip spaces */
 
 	reset_flx_token (hcl);
@@ -1824,9 +1833,12 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 			FEED_WRAP_UP_WITH_CHARS (hcl, vocas[VOCA_EOF].str, vocas[VOCA_EOF].len, HCL_TOK_EOF);
 			goto consumed;
 
+		/* this part is never hit because the semicolon sign is part of delim_tok_tab{}
+		   TODO: remove this part once the language spec is finalized to not require this
 		case ';':
 			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_COMMENT);
 			goto consumed;
+		*/
 
 		case '#':
 			/* no state date to initialize. just change the state */

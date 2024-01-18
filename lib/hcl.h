@@ -195,9 +195,9 @@ enum hcl_option_t
 	HCL_SYSDIC_SIZE,  /* default system dictionary size */
 	HCL_PROCSTK_SIZE, /* default process stack size */
 
-        HCL_MOD_LIBDIRS,
-        HCL_MOD_PREFIX,
-        HCL_MOD_POSTFIX,
+	HCL_MOD_LIBDIRS,
+	HCL_MOD_PREFIX,
+	HCL_MOD_POSTFIX,
 
 	HCL_MOD_INCTX
 };
@@ -229,7 +229,13 @@ enum hcl_trait_t
 	HCL_TRAIT_NOGC = (1u << 8),
 
 	/* wait for running process when exiting from the main method */
-	HCL_TRAIT_AWAIT_PROCS = (1u << 9)
+	HCL_TRAIT_AWAIT_PROCS = (1u << 9),
+
+	/* treat a line break character like a semicolon */ /* TODO: make this pragma controllable */ 
+	HCL_TRAIT_LANG_NL_TERMINATOR = (1u << 14),
+
+	/* enable block expression as mandatory argument to some expresions */
+	HCL_TRAIT_LANG_ENABLE_BLOCK = (1u << 15),
 };
 typedef enum hcl_trait_t hcl_trait_t;
 
@@ -1479,7 +1485,7 @@ enum hcl_compile_flag_t
 	HCL_COMPILE_CLEAR_FNBLK = (1 << 1),
 
 	/* enable the block {} mode */
-	HCL_COMPILE_ENABLE_BLOCK = (1 << 2)
+	HCL_COMPILE_ENABLE_BLOCK = (1 << 2) /*TODO: make this #pragma controllable */
 };
 typedef enum hcl_compile_flag_t hcl_compile_flag_t;
 #endif

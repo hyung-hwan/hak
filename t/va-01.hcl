@@ -25,17 +25,30 @@ defun x(a b ... ::: x y z) {
 };
 
 set t (x 10 20 30);
-if (/= t 1) { printf "ERROR: t is not 1\n" }
-else { printf "OK: %d\n" t };
+if (/= t 1) {
+	printf "ERROR: t is not 1\n"
+} else {
+	printf "OK: %d\n" t
+};
 
 set t (set-r a b c (x 10 20 30 40 50));
-if (/= t 3) { printf "ERROR: t is not 3\n" }
-else { printf "OK: %d\n" t };
-if (/= a 3) { printf "ERROR: a is not 3\n" }
-else { printf "OK: %d\n" a };
-if (/= b 200) { printf "ERROR: b is not 200\n" }
-else { printf "OK: %d\n" b };
-if (/= c 30) { printf "ERROR: c is not 30\n" }
-else { printf "OK: %d\n" c };
-
-
+if (/= t 3) {
+	printf "ERROR: t is not 3\n"
+} else {
+	printf "OK: %d\n" t
+};
+if (/= a 3) {
+	printf "ERROR: a is not 3\n"
+} else {
+	printf "OK: %d\n" a
+};
+if (/= b 200) {
+	printf "ERROR: b is not 200\n"
+} else {
+	printf "OK: %d\n" b
+};
+if (/= c 30) {
+	printf "ERROR: c is not 30\n"
+} else {
+	printf "OK: %d\n" c
+};
