@@ -1109,6 +1109,8 @@ static int feed_process_token (hcl_t* hcl)
 
 	if (frd->expect_vlist_item && TOKEN_TYPE(hcl) != HCL_TOK_IDENT && TOKEN_TYPE(hcl) != HCL_TOK_VBAR)
 	{
+		if (TOKEN_TYPE(hcl) == HCL_TOK_EOL) goto ok; /* ignore EOL inside vlist */
+
 		/* vlist also has special requirement that it can only contain variable names. */
 		hcl_setsynerr (hcl, HCL_SYNERR_VARNAME, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 		goto oops;
