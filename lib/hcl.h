@@ -232,8 +232,8 @@ enum hcl_trait_t
 	/* wait for running process when exiting from the main method */
 	HCL_TRAIT_AWAIT_PROCS = (1u << 9),
 
-	/* treat a line break character like a semicolon */ /* TODO: make this pragma controllable */ 
-	HCL_TRAIT_LANG_NL_TERMINATOR = (1u << 14),
+	/* return EOL as a token */ /* TODO: make this pragma controllable */
+	HCL_TRAIT_LANG_ENABLE_EOL = (1u << 14),
 
 	/* enable block expression as mandatory argument to some expresions */
 	HCL_TRAIT_LANG_ENABLE_BLOCK = (1u << 15),

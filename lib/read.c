@@ -175,7 +175,7 @@ static HCL_INLINE int is_spacechar (hcl_ooci_t c)
 static HCL_INLINE int is_linebreak (hcl_ooci_t c)
 {
 	/* TODO: different line end conventions? */
-	return c == '\n';
+	return c == '\n'; /* make sure this is one of the space chars in is_spacechar() */
 }
 
 static HCL_INLINE int is_alphachar (hcl_ooci_t c)
@@ -207,7 +207,7 @@ static HCL_INLINE int is_delimchar (hcl_ooci_t c)
 	return c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' ||
 	       c == '|' || c == ',' || c == '.' || c == ':' || c == ';' ||
 	       /* the first characters of tokens in delim_token_tab up to this point */
-	       c == '#' || c == '\"' || c == '\'' || is_spacechar(c) || c == HCL_UCI_EOF;
+	       c == '#' || c == '\"' || c == '\'' || c == '\\' || is_spacechar(c) || c == HCL_UCI_EOF;
 }
 
 /* TODO: remove this use the one in comp.c */
@@ -1074,6 +1074,7 @@ static int auto_forge_xlist_if_at_block_beginning (hcl_t* hcl, hcl_frd_t* frd)
 
 	return 0;
 }
+
 static int feed_process_token (hcl_t* hcl)
 {
 	hcl_frd_t* frd = &hcl->c->feed.rd;
@@ -1272,6 +1273,7 @@ static int feed_process_token (hcl_t* hcl)
 
 			goto ok;
 
+		case HCL_TOK_EOL: /* EOL returned only under a certain condition */
 		case HCL_TOK_SEMICOLON:
 		{
 			int oldflagv;
@@ -1500,37 +1502,7 @@ static int feed_process_token (hcl_t* hcl)
 			goto auto_xlist;
 
 		auto_xlist:
-			#if 0
-			if (is_at_block_beginning(hcl))
-			{
-				int forged_flagv;
-
-				/* both MLIST and ALIST begin as XLIST and get converted to MLIST 
-				 * or ALIST after more tokens are processed. so handling of MLIST
-				 * or ALIST is needed at this phase */
-				forged_flagv = AUTO_FORGED;
-				LIST_FLAG_SET_CONCODE (forged_flagv, HCL_CONCODE_XLIST);
-
-				/* this portion is similar to the code below the start_list label */
-				if (frd->level >= HCL_TYPE_MAX(int)) /* the nesting level too deep */
-				{
-					hcl_setsynerr (hcl, HCL_SYNERR_NESTING, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-					goto oops;
-				}
-
-				/* since the actual list opener doesn't exist, the location of the
-				 * first element wil be the location of the list */
-				if (enter_list(hcl, TOKEN_LOC(hcl), forged_flagv) <= -1) goto oops;
-				frd->level++; /* level after the forged list has been added */
-				/* a new list has been created automatically. unlike normal list creation
-				 * by an explicit symbol such as a left parenthesis, a left brace, etc,
-				 * the first element opens up this new list. so the AT_BEGINNING bit is
-				 * turned off here */
-				frd->flagv &= ~AT_BEGINNING;
-			}
-			#else
 			if (auto_forge_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;
-			#endif
 			break;
 	}
 
@@ -1796,16 +1768,16 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 {
 	HCL_ASSERT (hcl, FLX_STATE(hcl) == HCL_FLX_START);
 
-	if ((hcl->option.trait & HCL_TRAIT_LANG_NL_TERMINATOR) && is_linebreak(c))
+	if (is_spacechar(c))
 	{
-/* TODO: check some other context to make this a semicolon.
-  e.g if in ||, don't convert... */
-		FEED_WRAP_UP_WITH_CHAR (hcl, c, HCL_TOK_SEMICOLON);
-		reset_flx_token (hcl);
-		goto consumed;
-	}
+		if ((hcl->option.trait & HCL_TRAIT_LANG_ENABLE_EOL) && is_linebreak(c))
+		{
+			reset_flx_token (hcl);
+			FEED_WRAP_UP_WITH_CHAR (hcl, c, HCL_TOK_EOL);
+		}
 
-	if (is_spacechar(c)) goto consumed; /* skip spaces */
+		goto consumed; /* skip spaces */
+	}
 
 	reset_flx_token (hcl);
 
@@ -1835,10 +1807,6 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 
 		case '\\':
 			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_BACKSLASHED);
-			goto consumed;
-
-		case '\n': /* specify all linebreak chars */
-			FEED_WRAP_UP_WITH_CHAR (hcl, c, HCL_TOK_SEMICOLON);
 			goto consumed;
 
 		/* this part is never hit because the semicolon sign is part of delim_tok_tab{}
@@ -1876,6 +1844,7 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 			goto not_consumed;
 
 		default:
+		/* TODO: limit the identifier characters and cause syntax error for other characters.. */
 			init_flx_pi (FLX_PI(hcl));
 			FEED_CONTINUE (hcl, HCL_FLX_PLAIN_IDENT);
 			goto not_consumed;

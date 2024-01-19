@@ -717,7 +717,7 @@ int main (int argc, char* argv[])
 		hcl_bitmask_t trait = 0;
 
 		if (enable_block) xtn->lang_flags |= HCL_TRAIT_LANG_ENABLE_BLOCK;
-		if (nl_terminator) xtn->lang_flags |= HCL_TRAIT_LANG_NL_TERMINATOR;
+		if (nl_terminator) xtn->lang_flags |= HCL_TRAIT_LANG_ENABLE_EOL;;
 
 		/*trait |= HCL_TRAIT_NOGC;*/
 		trait |= HCL_TRAIT_AWAIT_PROCS;
