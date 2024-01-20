@@ -1,0 +1,8 @@
+## while EOL is ignored in explicitly parenthesized XLIST, a semicolon must not be.
+(printf
+	"hello, world\n"
+)
+
+(printf; ##ERROR: synax error - unexpected semicolon
+	"hello, world\n"
+)
