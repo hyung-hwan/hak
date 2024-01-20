@@ -3,6 +3,6 @@
 	"hello, world\n"
 )
 
-(printf; ##ERROR: synax error - unexpected semicolon
+(printf; ##ERROR: syntax error - unexpected semicolon
 	"hello, world\n"
 )

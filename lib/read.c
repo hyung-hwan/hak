@@ -1283,25 +1283,32 @@ static int feed_process_token (hcl_t* hcl)
 			hcl_rstl_t* rstl;
 
 		semicolon:
-			/* the parent list must be inspected instead of the current feed/read status pointed to by frd. */
+			/* the parent list(rstl) must be inspected instead of the current
+			 * feed/read status pointed to by frd. */
 			rstl = hcl->c->r.st;
-			if (!rstl || !(rstl->flagv & AUTO_FORGED))
-			{
-			#if 0
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_SEMICOLON, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "unexpected semicolon");
-				goto oops;
-			#else
-				/* allow redundant semicolons without not balanced with preceding expression */
-				goto ok;
-			#endif
-			}
+			if (!rstl) goto ok; /* redundant eol/semicolon */
 
 			concode = LIST_FLAG_GET_CONCODE(rstl->flagv);
+			if (!(rstl->flagv & AUTO_FORGED))
+			{
+				if (TOKEN_TYPE(hcl) == HCL_TOK_EOL) goto ok;
+				if (concode == HCL_CONCODE_BLOCK) goto ok;
+
+				hcl_setsynerr (hcl, HCL_SYNERR_SEMICOLON, TOKEN_LOC(hcl), HCL_NULL);
+				goto oops;
+			}
+
+			/* if auto-forged */
+#if 0
+/* TODO: remove this part if the assertion is confirmed true in the #else part... */
 			if (concode != HCL_CONCODE_XLIST && concode != HCL_CONCODE_MLIST && concode != HCL_CONCODE_ALIST)
 			{
 				hcl_setsynerr (hcl, HCL_SYNERR_UNBALPBB, TOKEN_LOC(hcl), HCL_NULL);
 				goto oops;
 			}
+#else
+			HCL_ASSERT (hcl, concode == HCL_CONCODE_XLIST || concode == HCL_CONCODE_MLIST || concode == HCL_CONCODE_ALIST);
+#endif
 
 			frd->obj = leave_list(hcl, &frd->list_loc, &frd->flagv, &oldflagv);
 			frd->level--;

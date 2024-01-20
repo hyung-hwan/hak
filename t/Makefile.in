@@ -487,6 +487,8 @@ check_ERRORS = \
 	do-02.err \
 	feed-01.err \
 	feed-02.err \
+	feed-03.err \
+	feed-04.err \
 	mlist-01.err \
 	var-01.err \
 	var-02.err \
