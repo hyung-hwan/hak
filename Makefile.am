@@ -45,14 +45,12 @@ hclgo_LINK = cp -pf hclgo.bin hclgo$(EXEEXT) || echo "FAILED TO LINK"
 hclgo.bin: lib/libhcl.la $(hclgo_OBJECTS)
 	cp -pf $(srcdir)/go.mod $(builddir)/go.mod >/dev/null 2>&1 || true
 	chmod u+w $(builddir)/go.mod ## with `make distcheck`, the echo's redirection to the file fails without this permission change
-	sed -r -i -e "/^[[:space:]]*replace[[:space:]]+cfg[[:space:]]*=>/d" $(builddir)/go.mod
-	echo -e "\nreplace cfg => $(abs_builddir)/go/cfg" >> $(builddir)/go.mod
 	[ -f $(srcdir)/go.sum ] && cp -pf $(srcdir)/go.sum $(builddir)/go.sum >/dev/null 2>&1 || true
 	## ---------------------------------------------------------------
 	CC=$(CC) \
 	CGO_CFLAGS="-I$(abs_srcdir)/lib -I$(abs_builddir)/lib $(CFLAGS)" \
 	CGO_LDFLAGS="-L$(abs_builddir)/lib -L$(abs_builddir)/lib/.libs -lhcl -ldl -lquadmath"  \
-	go build -C $(srcdir) -x -o $(abs_builddir)/hclgo.bin -modfile $(abs_builddir)/go.mod
+	go build -C $(srcdir) -ldflags "-X 'main.BINDIR=$(bindir)' -X 'main.SBINDIR=$(sbindir)' -X 'main.LIBDIR=$(libdir)' -X 'main.SYSCONFDIR=$(sysconfdir)'" -x -o $(abs_builddir)/hclgo.bin -modfile $(abs_builddir)/go.mod
 	## ---------------------------------------------------------------
 	go clean -C $(srcdir) -x -modfile $(abs_builddir)/go.mod
 	rm -rf $(builddir)/go.mod $(builddir)/go.sum

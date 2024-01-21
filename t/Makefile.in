@@ -478,7 +478,7 @@ check_SCRIPTS = \
 	ret-01.hcl \
 	retvar-01.hcl \
 	va-01.hcl \
-	var-01.hcl
+	var-02.hcl
 
 check_ERRORS = \
 	call-01.err \

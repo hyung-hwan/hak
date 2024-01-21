@@ -690,8 +690,6 @@ AC_CONFIG_FILES([
 	lib/Makefile 
 	mod/Makefile 
 	bin/Makefile
-	go/cfg/go.mod
-	go/cfg/cfg.go
 	t/Makefile
 ])
 AC_OUTPUT

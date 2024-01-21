@@ -106,7 +106,7 @@ am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
  configure.lineno config.status.lineno
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/lib/hcl-cfg.h
-CONFIG_CLEAN_FILES = go/cfg/go.mod go/cfg/cfg.go
+CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
@@ -173,10 +173,9 @@ am__define_uniq_tagged_files = \
 am__DIST_COMMON = $(srcdir)/Makefile.in $(top_srcdir)/ac/ar-lib \
 	$(top_srcdir)/ac/compile $(top_srcdir)/ac/config.guess \
 	$(top_srcdir)/ac/config.sub $(top_srcdir)/ac/install-sh \
-	$(top_srcdir)/ac/ltmain.sh $(top_srcdir)/ac/missing \
-	$(top_srcdir)/go/cfg/cfg.go.in $(top_srcdir)/go/cfg/go.mod.in \
-	README.md ac/ar-lib ac/compile ac/config.guess ac/config.sub \
-	ac/depcomp ac/install-sh ac/ltmain.sh ac/missing
+	$(top_srcdir)/ac/ltmain.sh $(top_srcdir)/ac/missing README.md \
+	ac/ar-lib ac/compile ac/config.guess ac/config.sub ac/depcomp \
+	ac/install-sh ac/ltmain.sh ac/missing
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 distdir = $(PACKAGE)-$(VERSION)
 top_distdir = $(distdir)
@@ -410,10 +409,6 @@ $(top_srcdir)/configure:  $(am__configure_deps)
 $(ACLOCAL_M4):  $(am__aclocal_m4_deps)
 	$(am__cd) $(srcdir) && $(ACLOCAL) $(ACLOCAL_AMFLAGS)
 $(am__aclocal_m4_deps):
-go/cfg/go.mod: $(top_builddir)/config.status $(top_srcdir)/go/cfg/go.mod.in
-	cd $(top_builddir) && $(SHELL) ./config.status $@
-go/cfg/cfg.go: $(top_builddir)/config.status $(top_srcdir)/go/cfg/cfg.go.in
-	cd $(top_builddir) && $(SHELL) ./config.status $@
 install-binPROGRAMS: $(bin_PROGRAMS)
 	@$(NORMAL_INSTALL)
 	@list='$(bin_PROGRAMS)'; test -n "$(bindir)" || list=; \
@@ -940,13 +935,11 @@ clean-local:
 @ENABLE_HCLGO_TRUE@hclgo.bin: lib/libhcl.la $(hclgo_OBJECTS)
 @ENABLE_HCLGO_TRUE@	cp -pf $(srcdir)/go.mod $(builddir)/go.mod >/dev/null 2>&1 || true
 @ENABLE_HCLGO_TRUE@	chmod u+w $(builddir)/go.mod ## with `make distcheck`, the echo's redirection to the file fails without this permission change
-@ENABLE_HCLGO_TRUE@	sed -r -i -e "/^[[:space:]]*replace[[:space:]]+cfg[[:space:]]*=>/d" $(builddir)/go.mod
-@ENABLE_HCLGO_TRUE@	echo -e "\nreplace cfg => $(abs_builddir)/go/cfg" >> $(builddir)/go.mod
 @ENABLE_HCLGO_TRUE@	[ -f $(srcdir)/go.sum ] && cp -pf $(srcdir)/go.sum $(builddir)/go.sum >/dev/null 2>&1 || true
 @ENABLE_HCLGO_TRUE@	CC=$(CC) \
 @ENABLE_HCLGO_TRUE@	CGO_CFLAGS="-I$(abs_srcdir)/lib -I$(abs_builddir)/lib $(CFLAGS)" \
 @ENABLE_HCLGO_TRUE@	CGO_LDFLAGS="-L$(abs_builddir)/lib -L$(abs_builddir)/lib/.libs -lhcl -ldl -lquadmath"  \
-@ENABLE_HCLGO_TRUE@	go build -C $(srcdir) -x -o $(abs_builddir)/hclgo.bin -modfile $(abs_builddir)/go.mod
+@ENABLE_HCLGO_TRUE@	go build -C $(srcdir) -ldflags "-X 'main.BINDIR=$(bindir)' -X 'main.SBINDIR=$(sbindir)' -X 'main.LIBDIR=$(libdir)' -X 'main.SYSCONFDIR=$(sysconfdir)'" -x -o $(abs_builddir)/hclgo.bin -modfile $(abs_builddir)/go.mod
 @ENABLE_HCLGO_TRUE@	go clean -C $(srcdir) -x -modfile $(abs_builddir)/go.mod
 @ENABLE_HCLGO_TRUE@	rm -rf $(builddir)/go.mod $(builddir)/go.sum
 

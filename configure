@@ -18740,7 +18740,7 @@ printf "%s\n" "#define HCL_CONFIGURE_ARGS \"$ac_configure_args\"" >>confdefs.h
 printf "%s\n" "#define HCL_CONFIGURE_CMD \"$hcl_configure_cmd\"" >>confdefs.h
 
 
-ac_config_files="$ac_config_files Makefile lib/Makefile mod/Makefile bin/Makefile go/cfg/go.mod go/cfg/cfg.go t/Makefile"
+ac_config_files="$ac_config_files Makefile lib/Makefile mod/Makefile bin/Makefile t/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -19792,8 +19792,6 @@ do
     "lib/Makefile") CONFIG_FILES="$CONFIG_FILES lib/Makefile" ;;
     "mod/Makefile") CONFIG_FILES="$CONFIG_FILES mod/Makefile" ;;
     "bin/Makefile") CONFIG_FILES="$CONFIG_FILES bin/Makefile" ;;
-    "go/cfg/go.mod") CONFIG_FILES="$CONFIG_FILES go/cfg/go.mod" ;;
-    "go/cfg/cfg.go") CONFIG_FILES="$CONFIG_FILES go/cfg/cfg.go" ;;
     "t/Makefile") CONFIG_FILES="$CONFIG_FILES t/Makefile" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;

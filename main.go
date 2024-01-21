@@ -1,7 +1,6 @@
 package main
 
 import (
-	_ "cfg"
 	"fmt"
 	"os"
 	"strings"
@@ -18,6 +17,12 @@ import (
 (printf ">>>>>>>>> [%d]\n" (+ 20 455))
 `))
 */
+
+/* to be set in build time */
+var BINDIR = "."
+var SBINDIR = "."
+var LIBDIR = "."
+var SYSCONFDIR = "."
 
 type Param struct {
 	log_file   string
