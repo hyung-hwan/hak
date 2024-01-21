@@ -67,6 +67,9 @@ type Ext struct {
 
 type BitMask C.hcl_bitmask_t
 
+const TRAIT_LANG_ENABLE_BLOCK BitMask = C.HCL_TRAIT_LANG_ENABLE_BLOCK
+const TRAIT_LANG_ENABLE_EOL BitMask = C.HCL_TRAIT_LANG_ENABLE_EOL
+
 var inst_table InstanceTable
 
 func deregister_instance(g *HCL) {
@@ -107,6 +110,29 @@ func New() (*HCL, error) {
 func (hcl *HCL) Close() {
 	C.hcl_close(hcl.c)
 	deregister_instance(hcl)
+}
+
+func (hcl *HCL) GetTrait() BitMask {
+	var x C.int
+	var log_mask BitMask = 0
+
+	x = C.hcl_getoption(hcl.c, C.HCL_TRAIT, unsafe.Pointer(&log_mask))
+	if x <= -1 {
+		// this must not happen
+		panic(fmt.Errorf("unable to get log mask - %s", hcl.get_errmsg()))
+	}
+
+	return log_mask
+}
+
+func (hcl *HCL) SetTrait(log_mask BitMask) {
+	var x C.int
+
+	x = C.hcl_setoption(hcl.c, C.HCL_TRAIT, unsafe.Pointer(&log_mask))
+	if x <= -1 {
+		// this must not happen
+		panic(fmt.Errorf("unable to set log mask - %s", hcl.get_errmsg()))
+	}
 }
 
 func (hcl *HCL) GetLogMask() BitMask {
@@ -326,7 +352,7 @@ func (hcl *HCL) Execute() error {
 func (hcl *HCL) Decode() error {
 	var x C.int
 
-	x = C.hcl_decode(hcl.c, 0, C.hcl_getbclen(hcl.c))
+	x = C.hcl_decode(hcl.c, C.hcl_getcode(hcl.c), 0, C.hcl_getbclen(hcl.c))
 	if x <= -1 {
 		return fmt.Errorf("unable to decode byte codes - %s", hcl.get_errmsg())
 	}

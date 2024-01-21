@@ -81,6 +81,8 @@ func main() {
 		x.SetLogTarget("/dev/stderr")
 	}
 
+	x.SetTrait (x.GetTrait() | hcl.TRAIT_LANG_ENABLE_EOL | hcl.TRAIT_LANG_ENABLE_BLOCK)
+
 	err = x.Ignite(1000000)
 	if err != nil {
 		fmt.Printf("Error: failed to ignite - %s\n", err.Error())
