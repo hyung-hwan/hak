@@ -534,10 +534,10 @@ static int write_log (hcl_t* hcl, int fd, const hcl_bch_t* ptr, hcl_oow_t len)
 	return 0;
 }
 
-static void flush_log (hcl_t* hcl, int fd)
+static void flush_log (hcl_t* hcl, int fd, int force)
 {
 	xtn_t* xtn = GET_XTN(hcl);
-	if (xtn->log.out.len > 0)
+	if (xtn->log.out.len > 0 || force)
 	{
 		write_all (fd, xtn->log.out.buf, xtn->log.out.len);
 		xtn->log.out.len = 0;
@@ -551,6 +551,7 @@ static void log_write (hcl_t* hcl, hcl_bitmask_t mask, const hcl_ooch_t* msg, hc
 
 	xtn_t* xtn = GET_XTN(hcl);
 	int logfd;
+	int force_flush = 0;
 
 	if (mask & HCL_LOG_STDERR) logfd = 2;
 	else if (mask & HCL_LOG_STDOUT) logfd = 1;
@@ -627,6 +628,12 @@ static void log_write (hcl_t* hcl, hcl_bitmask_t mask, const hcl_ooch_t* msg, hc
 		else if (mask & HCL_LOG_WARN) write_log (hcl, logfd, "\x1B[1;33m", 7);
 	}
 
+	if (!msg)
+	{
+		force_flush = 1;
+		goto flush_log_msg;
+	}
+
 #if defined(HCL_OOCH_IS_UCH)
 	msgidx = 0;
 	while (len > 0)
@@ -673,7 +680,8 @@ static void log_write (hcl_t* hcl, hcl_bitmask_t mask, const hcl_ooch_t* msg, hc
 		if (mask & (HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN)) write_log (hcl, logfd, "\x1B[0m", 4);
 	}
 
-	flush_log (hcl, logfd);
+flush_log_msg:
+	flush_log (hcl, logfd, force_flush);
 }
 
 /* -----------------------------------------------------------------

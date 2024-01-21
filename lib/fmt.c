@@ -1696,6 +1696,18 @@ hcl_ooi_t hcl_logbfmtv (hcl_t* hcl, hcl_bitmask_t mask, const hcl_bch_t* fmt, va
 		mask |= HCL_LOG_UNTYPED;
 	}
 
+	if (!fmt)
+	{
+		/* perform flushing only if fmt is NULL */
+		if (hcl->log.len > 0)
+		{
+			HCL_VMPRIM_LOG_WRITE (hcl, hcl->log.last_mask, hcl->log.ptr, hcl->log.len);
+			hcl->log.len = 0;
+		}
+		HCL_VMPRIM_LOG_WRITE (hcl, hcl->log.last_mask, HCL_NULL, 0); /* forced flushing */
+		return 0;
+	}
+
 	HCL_MEMSET (&fo, 0, HCL_SIZEOF(fo));
 	fo.fmt_type = HCL_FMTOUT_FMT_TYPE_BCH;
 	fo.fmt_str = fmt;
@@ -1751,6 +1763,19 @@ hcl_ooi_t hcl_logufmtv (hcl_t* hcl, hcl_bitmask_t mask, const hcl_uch_t* fmt, va
 		mask |= HCL_LOG_UNTYPED;
 	}
 
+
+	if (!fmt)
+	{
+		/* perform flushing only if fmt is NULL */
+		if (hcl->log.len > 0)
+		{
+			HCL_VMPRIM_LOG_WRITE (hcl, hcl->log.last_mask, hcl->log.ptr, hcl->log.len);
+			hcl->log.len = 0;
+		}
+		HCL_VMPRIM_LOG_WRITE (hcl, hcl->log.last_mask, HCL_NULL, 0); /* forced flushing */
+		return 0;
+	}
+
 	HCL_MEMSET (&fo, 0, HCL_SIZEOF(fo));
 	fo.fmt_type = HCL_FMTOUT_FMT_TYPE_UCH;
 	fo.fmt_str = fmt;
@@ -1768,6 +1793,7 @@ hcl_ooi_t hcl_logufmtv (hcl_t* hcl, hcl_bitmask_t mask, const hcl_uch_t* fmt, va
 		HCL_VMPRIM_LOG_WRITE (hcl, hcl->log.last_mask, hcl->log.ptr, hcl->log.len);
 		hcl->log.len = 0;
 	}
+
 	return (x <= -1)? -1: fo.count;
 }
 

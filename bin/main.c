@@ -102,7 +102,6 @@ struct xtn_t
 	const char* udo_path;
 
 	int vm_running;
-	int lang_flags;
 	/*hcl_oop_t sym_errstr;*/
 };
 
@@ -388,6 +387,12 @@ static void print_synerr (hcl_t* hcl)
 	hcl_logbfmt (hcl, HCL_LOG_STDERR, "\n");
 }
 
+static void show_prompt (hcl_t* hcl, int level)
+{
+/* TODO: different prompt per level */
+	hcl_logbfmt (hcl, HCL_LOG_STDOUT, "HCL> ");
+	hcl_logbfmt (hcl, HCL_LOG_STDOUT, HCL_NULL); /* flushing */
+}
 
 static hcl_oop_t execute_in_interactive_mode (hcl_t* hcl)
 {
@@ -481,6 +486,8 @@ static int on_fed_cnode_in_interactive_mode (hcl_t* hcl, hcl_cnode_t* obj)
 	xtn_t* xtn = (xtn_t*)hcl_getxtn(hcl);
 	if (hcl_compile(hcl, obj, HCL_COMPILE_CLEAR_CODE | HCL_COMPILE_CLEAR_FNBLK) <= -1) return -1;
 	execute_in_interactive_mode (hcl);
+
+	show_prompt (hcl, 0);
 	return 0;
 }
 
@@ -526,7 +533,8 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 		goto oops;
 	}
 
-	/* [NOTE] it isn't a very nice idea to get this internal data and use it with read_input() */
+	if (is_tty) show_prompt (hcl, 0);
+
 	while (1)
 	{
 		if (is_tty)
@@ -582,7 +590,7 @@ oops:
 	return -1;
 }
 
-//#define DEFAULT_HEAPSIZE (512000ul)
+/* #define DEFAULT_HEAPSIZE (512000ul) */
 #define DEFAULT_HEAPSIZE (0ul) /* don't use the pre-allocated heap */
 
 int main (int argc, char* argv[])
@@ -599,7 +607,7 @@ int main (int argc, char* argv[])
 #endif
 		{ ":heapsize",    '\0' },
 		{ ":log",         'l'  },
-		{ ":info",        '\0' },
+		{ "info",         '\0' },
 		{ ":modlibdirs",  '\0' },
 
 		{ HCL_NULL,       '\0' }
@@ -691,7 +699,7 @@ int main (int argc, char* argv[])
 		}
 	}
 
-	if ((opt.ind + 1) != argc) goto print_usage;
+	if ((opt.ind + 1) != argc && !show_info) goto print_usage;
 #endif
 
 	hcl = hcl_openstd(HCL_SIZEOF(xtn_t), HCL_NULL);
@@ -716,17 +724,11 @@ int main (int argc, char* argv[])
 	{
 		hcl_bitmask_t trait = 0;
 
-		if (enable_block) xtn->lang_flags |= HCL_TRAIT_LANG_ENABLE_BLOCK;
-		if (nl_terminator) xtn->lang_flags |= HCL_TRAIT_LANG_ENABLE_EOL;;
-
 		/*trait |= HCL_TRAIT_NOGC;*/
 		trait |= HCL_TRAIT_AWAIT_PROCS;
-		trait |= xtn->lang_flags;
+		if (enable_block) trait |= HCL_TRAIT_LANG_ENABLE_BLOCK;
+		if (nl_terminator) trait |= HCL_TRAIT_LANG_ENABLE_EOL;;
 		hcl_setoption (hcl, HCL_TRAIT, &trait);
-
-		/* disable GC logs */
-		/*trait = ~HCL_LOG_GC;
-		hcl_setoption (hcl, HCL_LOG_MASK, &trait);*/
 	}
 
 	if (modlibdirs)
@@ -755,7 +757,6 @@ int main (int argc, char* argv[])
 		}
 	#endif
 	}
-
 
 	memset (&hclcb, 0, HCL_SIZEOF(hclcb));
 	hclcb.gc = gc_hcl;
@@ -808,19 +809,6 @@ int main (int argc, char* argv[])
 		hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: cannot attach user data streams - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
 		goto oops;
 	}
-
-	/*
-	{
-		hcl_ooch_t errstr[] =  { 'E', 'R', 'R', 'S', 'T', 'R' };
-		xtn->sym_errstr = hcl_makesymbol(hcl, errstr, 6);
-		if (!xtn->sym_errstr)
-		{
-			hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: cannot create the ERRSTR symbol - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
-			goto oops;
-		}
-		HCL_OBJ_SET_FLAGS_KERNEL (xtn->sym_errstr, 1);
-	}
-	*/
 
 	/* -- from this point onward, any failure leads to jumping to the oops label
 	 * -- instead of returning -1 immediately. --*/
