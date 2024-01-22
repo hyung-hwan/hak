@@ -1,6 +1,7 @@
 AUTOMAKE_OPTIONS = nostdinc
 
 check_SCRIPTS = \
+	feed-01.hcl \
 	fun-01.hcl \
 	insta-01.hcl \
 	insta-02.hcl \
@@ -10,19 +11,19 @@ check_SCRIPTS = \
 	var-02.hcl
 
 check_ERRORS = \
-	call-01.err \
-	class-01.err \
-	do-01.err \
-	do-02.err \
-	feed-01.err \
-	feed-02.err \
-	feed-03.err \
-	feed-04.err \
-	mlist-01.err \
-	var-01.err \
-	var-02.err \
-	var-03.err \
-	var-04.err
+	call-5001.err \
+	class-5001.err \
+	do-5001.err \
+	do-5002.err \
+	feed-5001.err \
+	feed-5002.err \
+	feed-5003.err \
+	feed-5004.err \
+	mlist-5001.err \
+	var-5001.err \
+	var-5002.err \
+	var-5003.err \
+	var-5004.err
 
 ##noinst_SCRIPTS = $(check_SCRIPTS)
 EXTRA_DIST = $(check_SCRIPTS) $(check_ERRORS)

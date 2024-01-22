@@ -409,7 +409,8 @@ HCL_INFO2 (hcl, "CLASS NAMED VAR [%.*js]\n", name->len, name->ptr);
 				/* the current function block accesses temporaries in an outer function block */
 				hcl->c->fnblk.info[hcl->c->fnblk.depth].access_outer = 1;
 				/* temporaries in an outer function block is accessed by the current function block */
-				hcl->c->fnblk.info[i - 1].accessed_by_inner = 1;
+
+				if (i > 0) hcl->c->fnblk.info[i - 1].accessed_by_inner = 1;
 			}
 
 			return 1;

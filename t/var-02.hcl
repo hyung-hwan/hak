@@ -14,11 +14,11 @@ if (eqv? j 20) {
 	q := (x 30);
 };
 
-if (/= a 900) { print "ERROR: a is not 900\n" }
+if (/= a 900) { print "ERROR: a is not 900\n" } \
 else { printf "OK: %d\n" a };
 
-if (/= b 60) { print "ERROR: b is not 60\n" }
+if (/= b 60) { print "ERROR: b is not 60\n" } \
 else { printf "OK: %d\n" b };
 
-if (/= c 840) { print "ERROR: c is not 840\n" }
+if (/= c 840) { print "ERROR: c is not 840\n" } \
 else { printf "OK: %d\n" c };

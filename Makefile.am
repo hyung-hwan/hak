@@ -53,7 +53,6 @@ hclgo.bin: lib/libhcl.la $(hclgo_OBJECTS)
 	go build -C $(srcdir) -ldflags "-X 'main.BINDIR=$(bindir)' -X 'main.SBINDIR=$(sbindir)' -X 'main.LIBDIR=$(libdir)' -X 'main.SYSCONFDIR=$(sysconfdir)'" -x -o $(abs_builddir)/hclgo.bin -modfile $(abs_builddir)/go.mod
 	## ---------------------------------------------------------------
 	go clean -C $(srcdir) -x -modfile $(abs_builddir)/go.mod
-	rm -rf $(builddir)/go.mod $(builddir)/go.sum
 
 ## the go to o recipe is fake to deceive make
 .go.o:
@@ -61,6 +60,7 @@ hclgo.bin: lib/libhcl.la $(hclgo_OBJECTS)
 
 .mod.o:
 	echo $< > $@
+
 
 endif
 

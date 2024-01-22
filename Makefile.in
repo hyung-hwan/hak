@@ -941,7 +941,6 @@ clean-local:
 @ENABLE_HCLGO_TRUE@	CGO_LDFLAGS="-L$(abs_builddir)/lib -L$(abs_builddir)/lib/.libs -lhcl -ldl -lquadmath"  \
 @ENABLE_HCLGO_TRUE@	go build -C $(srcdir) -ldflags "-X 'main.BINDIR=$(bindir)' -X 'main.SBINDIR=$(sbindir)' -X 'main.LIBDIR=$(libdir)' -X 'main.SYSCONFDIR=$(sysconfdir)'" -x -o $(abs_builddir)/hclgo.bin -modfile $(abs_builddir)/go.mod
 @ENABLE_HCLGO_TRUE@	go clean -C $(srcdir) -x -modfile $(abs_builddir)/go.mod
-@ENABLE_HCLGO_TRUE@	rm -rf $(builddir)/go.mod $(builddir)/go.sum
 
 @ENABLE_HCLGO_TRUE@.go.o:
 @ENABLE_HCLGO_TRUE@	echo $< > $@
