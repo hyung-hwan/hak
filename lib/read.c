@@ -1739,7 +1739,7 @@ static HCL_INLINE void init_flx_hn (hcl_flx_hn_t* hn, hcl_tok_type_t tok_type, h
 	hn->radix = radix;
 }
 
-static HCL_INLINE void init_flx_qt (hcl_flx_qt_t* qt, hcl_tok_type_t tok_type, hcl_synerrnum_t synerr_code, hcl_ooch_t end_char, hcl_ooch_t esc_char, hcl_oow_t min_len, hcl_oow_t max_len)
+static HCL_INLINE void init_flx_qt (hcl_flx_qt_t* qt, hcl_tok_type_t tok_type, hcl_synerrnum_t synerr_code, hcl_ooch_t end_char, hcl_ooch_t esc_char, hcl_oow_t min_len, hcl_oow_t max_len, int is_byte)
 {
 	HCL_MEMSET (qt, 0, HCL_SIZEOF(*qt));
 	qt->tok_type = tok_type;
@@ -1748,6 +1748,7 @@ static HCL_INLINE void init_flx_qt (hcl_flx_qt_t* qt, hcl_tok_type_t tok_type, h
 	qt->esc_char = esc_char;
 	qt->min_len = min_len;
 	qt->max_len = max_len;
+	qt->is_byte = is_byte;
 }
 
 static HCL_INLINE void init_flx_pi (hcl_flx_pi_t* pi)
@@ -1838,12 +1839,12 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 			goto consumed;
 
 		case '\"':
-			init_flx_qt (FLX_QT(hcl), HCL_TOK_STRLIT, HCL_SYNERR_STRLIT, c, '\\', 0, HCL_TYPE_MAX(hcl_oow_t));
+			init_flx_qt (FLX_QT(hcl), HCL_TOK_STRLIT, HCL_SYNERR_STRLIT, c, '\\', 0, HCL_TYPE_MAX(hcl_oow_t), 0);
 			FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard the quote itself. move on the the QUOTED_TOKEN state */
 			goto consumed;
 
 		case '\'':
-			init_flx_qt (FLX_QT(hcl), HCL_TOK_CHARLIT, HCL_SYNERR_CHARLIT, c, '\\', 1, 1);
+			init_flx_qt (FLX_QT(hcl), HCL_TOK_CHARLIT, HCL_SYNERR_CHARLIT, c, '\\', 1, 1, 0);
 			FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard the quote itself. move on the the QUOTED_TOKEN state */
 			goto consumed;
 
@@ -2348,11 +2349,7 @@ static int flx_quoted_token (hcl_t* hcl, hcl_ooci_t c) /* string, character */
 {
 	hcl_flx_qt_t* qt = FLX_QT(hcl);
 
-	if (c == HCL_OOCI_EOF)
-	{
-		hcl_setsynerr (hcl, qt->synerr_code, TOKEN_LOC(hcl) /*FLX_LOC(hcl) instead?*/, HCL_NULL);
-		return -1;
-	}
+	if (c == HCL_OOCI_EOF) goto invalid_token;
 
 	if (qt->escaped == 3)
 	{
@@ -2427,12 +2424,9 @@ static int flx_quoted_token (hcl_t* hcl, hcl_ooci_t c) /* string, character */
 	if (qt->escaped == 0 && c == qt->end_char)
 	{
 		/* terminating quote */
+/* TODO: byte string literal or byte literal by checking qt->is_byte... */
 		FEED_WRAP_UP (hcl, qt->tok_type); /* HCL_TOK_STRLIT or HCL_TOK_CHARLIT */
-		if (TOKEN_NAME_LEN(hcl) < qt->min_len)
-		{
-			hcl_setsynerr (hcl, qt->synerr_code, TOKEN_LOC(hcl), HCL_NULL);
-			return -1;
-		}
+		if (TOKEN_NAME_LEN(hcl) < qt->min_len) goto invalid_token;
 		goto consumed;
 	}
 
@@ -2470,6 +2464,7 @@ static int flx_quoted_token (hcl_t* hcl, hcl_ooci_t c) /* string, character */
 	#if (HCL_SIZEOF_OOCH_T >= 2)
 		else if (c == 'u')
 		{
+			if (qt->is_byte) goto invalid_token;
 			qt->escaped = 4;
 			qt->digit_count = 0;
 			qt->c_acc = 0;
@@ -2479,6 +2474,7 @@ static int flx_quoted_token (hcl_t* hcl, hcl_ooci_t c) /* string, character */
 	#if (HCL_SIZEOF_OOCH_T >= 4)
 		else if (c == 'U')
 		{
+			if (qt->is_byte) goto invalid_token;
 			qt->escaped = 8;
 			qt->digit_count = 0;
 			qt->c_acc = 0;
@@ -2501,12 +2497,13 @@ static int flx_quoted_token (hcl_t* hcl, hcl_ooci_t c) /* string, character */
 	ADD_TOKEN_CHAR (hcl, c);
 
 consumed:
-	if (TOKEN_NAME_LEN(hcl) > qt->max_len)
-	{
-		hcl_setsynerr (hcl, qt->synerr_code, TOKEN_LOC(hcl), HCL_NULL);
-		return -1;
-	}
+	if (TOKEN_NAME_LEN(hcl) > qt->max_len) goto invalid_token;
 	return 1;
+
+invalid_token:
+/* TODO: more accurate syntax error code instead of just synerr_code.... */
+	hcl_setsynerr (hcl, qt->synerr_code, TOKEN_LOC(hcl) /*FLX_LOC(hcl) instead?*/, HCL_NULL);
+	return -1;
 }
 
 static int flx_signed_token (hcl_t* hcl, hcl_ooci_t c)
@@ -2585,17 +2582,17 @@ static int flx_bu (hcl_t* hcl, hcl_ooci_t c)
 
 	if (c == '\"')
 	{
-/* TODO: determine type based on the start_c */
+		int is_byte = (bu->start_c == 'b' || bu->start_c == 'B');
 		reset_flx_token (hcl);
-		init_flx_qt (FLX_QT(hcl), HCL_TOK_STRLIT, HCL_SYNERR_STRLIT, c, '\\', 0, HCL_TYPE_MAX(hcl_oow_t));
+		init_flx_qt (FLX_QT(hcl), HCL_TOK_STRLIT, HCL_SYNERR_STRLIT, c, '\\', 0, HCL_TYPE_MAX(hcl_oow_t), is_byte);
 		FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard prefix, quote and move on */
 		goto consumed;
 	}
 	else if (c == '\'')
 	{
-/* TODO: determine type based on the start_c */
+		int is_byte = (bu->start_c == 'b' || bu->start_c == 'B');
 		reset_flx_token (hcl);
-		init_flx_qt (FLX_QT(hcl), HCL_TOK_CHARLIT, HCL_SYNERR_CHARLIT, c, '\\', 1, 1);
+		init_flx_qt (FLX_QT(hcl), HCL_TOK_CHARLIT, HCL_SYNERR_CHARLIT, c, '\\', 1, 1, is_byte);
 		FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* dicard prefix, quote, and move on */
 		goto consumed;
 	}

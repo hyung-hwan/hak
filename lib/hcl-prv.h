@@ -612,10 +612,11 @@ struct hcl_flx_qt_t
 	hcl_ooch_t esc_char;
 	hcl_oow_t min_len;
 	hcl_oow_t max_len;
-	int regex;
+	unsigned int is_byte: 1;
+	unsigned int regex: 1;
 
 	/* state data */
-	int escaped;
+	unsigned int escaped: 4; /* must be large enough to hold 1, 2, 4, 8 */
 	int digit_count;
 	hcl_ooci_t c_acc;
 };
