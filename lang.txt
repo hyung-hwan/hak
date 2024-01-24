@@ -23,6 +23,9 @@
 		b"..." or B"..." for an byte string constant notation
 		u"..." or U"..." for an explicit unicode string constant notation?
 
+		#b[ ] byte array??
+		#[ ] normal array?
+
 	make basic branded types to an object if possible.
 	for example (#[10 20]:at 1)
 

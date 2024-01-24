@@ -632,6 +632,12 @@ struct hcl_flx_st_t
 };
 
 
+typedef struct hcl_flx_bu_t hcl_flx_bu_t;
+struct hcl_flx_bu_t
+{
+	hcl_ooch_t start_c;
+};
+
 enum hcl_flx_state_t
 {
 	HCL_FLX_START,
@@ -645,7 +651,8 @@ enum hcl_flx_state_t
 	HCL_FLX_PLAIN_IDENT,    /* plain identifier */
 	HCL_FLX_PLAIN_NUMBER,   /* plain number */
 	HCL_FLX_QUOTED_TOKEN,   /* string, character */
-	HCL_FLX_SIGNED_TOKEN    /* prefixed with + or - */
+	HCL_FLX_SIGNED_TOKEN,   /* prefixed with + or - */
+	HCL_FLX_BU              /* beginning with B or U */
 };
 typedef enum hcl_flx_state_t hcl_flx_state_t;
 
@@ -735,6 +742,7 @@ struct hcl_compiler_t
 				hcl_flx_pn_t pn; /* plain number */
 				hcl_flx_qt_t qt; /* quoted token */
 				hcl_flx_st_t st; /* signed token */
+				hcl_flx_st_t bu; /* b or u prefix */
 			} u;
 		} lx;
 

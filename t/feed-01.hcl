@@ -1,4 +1,4 @@
-## this file is to test the reader/feeder againsst weirdly formatted input text.
+## this file is to test the reader/feeder against weirdly formatted input text.
 
 {  ## START
 
@@ -7,7 +7,7 @@
 defun xxx (x y z
 	::: r ) {
 
-	| k 
+	| k
 	b
 	s |
 
@@ -25,9 +25,9 @@ defun xxx (x y z
 [
 j
 ] \
-	:= (xxx 
-	10 
-	20 
+	:= (xxx
+	10
+	20
 	30)
 
 if (eqv? j 12960000) \

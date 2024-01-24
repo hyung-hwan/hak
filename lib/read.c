@@ -1719,6 +1719,7 @@ static int feed_continue_with_char (hcl_t* hcl, hcl_ooci_t c, hcl_flx_state_t st
 #define FLX_PN(hcl) (&((hcl)->c->feed.lx.u.pn))
 #define FLX_QT(hcl) (&((hcl)->c->feed.lx.u.qt))
 #define FLX_ST(hcl) (&((hcl)->c->feed.lx.u.st))
+#define FLX_BU(hcl) (&((hcl)->c->feed.lx.u.bu))
 
 static HCL_INLINE void init_flx_hc (hcl_flx_hc_t* hc)
 {
@@ -1763,6 +1764,12 @@ static HCL_INLINE void init_flx_st (hcl_flx_st_t* st, hcl_ooch_t sign_c)
 {
 	HCL_MEMSET (st, 0, HCL_SIZEOF(*st));
 	st->sign_c = sign_c;
+}
+
+static HCL_INLINE void init_flx_bu (hcl_flx_bu_t* bu, hcl_ooch_t start_c)
+{
+	HCL_MEMSET (bu, 0, HCL_SIZEOF(*bu));
+	bu->start_c = start_c;
 }
 
 static void reset_flx_token (hcl_t* hcl)
@@ -1851,6 +1858,14 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 			init_flx_pn (FLX_PN(hcl));
 			FEED_CONTINUE (hcl, HCL_FLX_PLAIN_NUMBER);
 			goto not_consumed;
+
+		case 'B':
+		case 'b':
+		case 'U':
+		case 'u':
+			init_flx_bu(FLX_BU(hcl), c);
+			FEED_CONTINUE_WITH_CHAR(hcl, c, HCL_FLX_BU);
+			goto consumed;
 
 		default:
 		/* TODO: limit the identifier characters and cause syntax error for other characters.. */
@@ -2564,6 +2579,47 @@ not_consumed:
 	return 0;
 }
 
+static int flx_bu (hcl_t* hcl, hcl_ooci_t c)
+{
+	hcl_flx_bu_t* bu = FLX_BU(hcl);
+
+	if (c == '\"')
+	{
+/* TODO: determine type based on the start_c */
+		reset_flx_token (hcl);
+		init_flx_qt (FLX_QT(hcl), HCL_TOK_STRLIT, HCL_SYNERR_STRLIT, c, '\\', 0, HCL_TYPE_MAX(hcl_oow_t));
+		FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard prefix, quote and move on */
+		goto consumed;
+	}
+	else if (c == '\'')
+	{
+/* TODO: determine type based on the start_c */
+		reset_flx_token (hcl);
+		init_flx_qt (FLX_QT(hcl), HCL_TOK_CHARLIT, HCL_SYNERR_CHARLIT, c, '\\', 1, 1);
+		FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* dicard prefix, quote, and move on */
+		goto consumed;
+	}
+	else
+	{
+		/* not followed by a quote. switch to the plain identifier */
+		init_flx_pi (FLX_PI(hcl));
+
+		/* the prefix is already in the token buffer. just adjust state data */
+		FLX_PI(hcl)->char_count++;
+		FLX_PI(hcl)->seg_len++;
+
+		/* refeed c */
+		FEED_CONTINUE (hcl, HCL_FLX_PLAIN_IDENT);
+		goto not_consumed;
+	}
+
+consumed:
+	return 1;
+
+not_consumed:
+	return 0;
+}
+
 /* ------------------------------------------------------------------------ */
 
 static int feed_char (hcl_t* hcl, hcl_ooci_t c)
@@ -2583,6 +2639,7 @@ static int feed_char (hcl_t* hcl, hcl_ooci_t c)
 		case HCL_FLX_PLAIN_NUMBER:     return flx_plain_number(hcl, c);
 		case HCL_FLX_QUOTED_TOKEN:     return flx_quoted_token(hcl, c);
 		case HCL_FLX_SIGNED_TOKEN:     return flx_signed_token(hcl, c);
+		case HCL_FLX_BU:               return flx_bu(hcl, c);
 
 		default:
 			/* unknown state */
