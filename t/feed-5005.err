@@ -1,0 +1,4 @@
+## a code point greater than 255 is illegal in the character literal prefix fixed with b.
+
+printf "[%c] [#x%x] [%d]\n" '★' '★' #x2605;
+printf "[%c]\n" b'★';  ##ERROR: syntax error - wrong character literal

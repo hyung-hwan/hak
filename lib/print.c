@@ -798,9 +798,11 @@ void hcl_dumpcnode (hcl_t* hcl, hcl_cnode_t* cnode, int newline)
 		switch (t)
 		{
 			case HCL_CNODE_CHARLIT:
+			case HCL_CNODE_BCHRLIT:
 			case HCL_CNODE_SYMBOL:
 			case HCL_CNODE_DSYMBOL:
 			case HCL_CNODE_STRLIT:
+			case HCL_CNODE_BSTRLIT:
 			case HCL_CNODE_NUMLIT:
 			case HCL_CNODE_RADNUMLIT:
 			case HCL_CNODE_FPDECLIT:

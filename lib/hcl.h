@@ -2676,6 +2676,20 @@ HCL_EXPORT hcl_oop_t hcl_makebytearray (
 	hcl_oow_t        len
 );
 
+HCL_EXPORT hcl_oop_t hcl_makebytestringwithbytes (
+	hcl_t*           hcl,
+	const hcl_oob_t* ptr,
+	hcl_oow_t        len,
+	int              ngc
+);
+
+HCL_EXPORT hcl_oop_t hcl_makebytestring (
+	hcl_t*            hcl,
+	const hcl_ooch_t* ptr,
+	hcl_oow_t         len,
+	int               ngc
+);
+
 HCL_EXPORT hcl_oop_t hcl_makestring (
 	hcl_t*            hcl,
 	const hcl_ooch_t* ptr,

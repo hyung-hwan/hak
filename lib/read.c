@@ -614,7 +614,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 				fake_tok_ptr = &fake_tok;
 			}
 
-	/* TODO: check the number of argumetns in advance??? */
+	/* TODO: check the number of arguments in advance??? */
 			sym = hcl_makecnodesymbol(hcl, 0, &loc, fake_tok_ptr);
 			if (HCL_UNLIKELY(!sym))
 			{
@@ -1476,6 +1476,10 @@ static int feed_process_token (hcl_t* hcl)
 			frd->obj = hcl_makecnodecharlit(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl), TOKEN_NAME_CHAR(hcl, 0));
 			goto auto_xlist;
 
+		case HCL_TOK_BCHRLIT:
+			frd->obj = hcl_makecnodebchrlit(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl), (hcl_oob_t)TOKEN_NAME_CHAR(hcl, 0));
+			goto auto_xlist;
+
 		case HCL_TOK_NUMLIT:
 			frd->obj = hcl_makecnodenumlit(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto auto_xlist;
@@ -1496,6 +1500,10 @@ static int feed_process_token (hcl_t* hcl)
 
 		case HCL_TOK_STRLIT:
 			frd->obj = hcl_makecnodestrlit(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			goto auto_xlist;
+
+		case HCL_TOK_BSTRLIT:
+			frd->obj = hcl_makecnodebstrlit(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto auto_xlist;
 
 		case HCL_TOK_IDENT:
@@ -2348,8 +2356,15 @@ not_consumed:
 static int flx_quoted_token (hcl_t* hcl, hcl_ooci_t c) /* string, character */
 {
 	hcl_flx_qt_t* qt = FLX_QT(hcl);
+	hcl_loc_t synerr_loc = *TOKEN_LOC(hcl);
 
 	if (c == HCL_OOCI_EOF) goto invalid_token;
+
+	if (qt->is_byte && c > 0xFF)
+	{
+		synerr_loc = *FLX_LOC(hcl);
+		goto invalid_token;
+	}
 
 	if (qt->escaped == 3)
 	{
@@ -2424,8 +2439,12 @@ static int flx_quoted_token (hcl_t* hcl, hcl_ooci_t c) /* string, character */
 	if (qt->escaped == 0 && c == qt->end_char)
 	{
 		/* terminating quote */
-/* TODO: byte string literal or byte literal by checking qt->is_byte... */
-		FEED_WRAP_UP (hcl, qt->tok_type); /* HCL_TOK_STRLIT or HCL_TOK_CHARLIT */
+
+		/* qt->tok_type + qt->is_byte assumes that the token types for
+		 * byte-string and byte-character literals are 1 greater than
+		 * string and charcter literals.  * see the definition of
+		 * hcl_tok_type_t in hcl-prv.h */
+		FEED_WRAP_UP (hcl, qt->tok_type + qt->is_byte); /* HCL_TOK_STRLIT or HCL_TOK_CHARLIT */
 		if (TOKEN_NAME_LEN(hcl) < qt->min_len) goto invalid_token;
 		goto consumed;
 	}
@@ -2462,9 +2481,15 @@ static int flx_quoted_token (hcl_t* hcl, hcl_ooci_t c) /* string, character */
 			goto consumed;
 		}
 	#if (HCL_SIZEOF_OOCH_T >= 2)
-		else if (c == 'u')
+		else if (c == 'u' && !qt->is_byte)
 		{
-			if (qt->is_byte) goto invalid_token;
+			#if 0
+			if (qt->is_byte)
+			{
+				synerr_loc = *FLX_LOC(hcl);
+				goto invalid_token;
+			}
+			#endif
 			qt->escaped = 4;
 			qt->digit_count = 0;
 			qt->c_acc = 0;
@@ -2472,9 +2497,15 @@ static int flx_quoted_token (hcl_t* hcl, hcl_ooci_t c) /* string, character */
 		}
 	#endif
 	#if (HCL_SIZEOF_OOCH_T >= 4)
-		else if (c == 'U')
+		else if (c == 'U' && !qt->is_byte)
 		{
-			if (qt->is_byte) goto invalid_token;
+			#if 0
+			if (qt->is_byte)
+			{
+				synerr_loc = *FLX_LOC(hcl);
+				goto invalid_token;
+			}
+			#endif
 			qt->escaped = 8;
 			qt->digit_count = 0;
 			qt->c_acc = 0;
@@ -2501,8 +2532,7 @@ consumed:
 	return 1;
 
 invalid_token:
-/* TODO: more accurate syntax error code instead of just synerr_code.... */
-	hcl_setsynerr (hcl, qt->synerr_code, TOKEN_LOC(hcl) /*FLX_LOC(hcl) instead?*/, HCL_NULL);
+	hcl_setsynerr (hcl, qt->synerr_code, &synerr_loc, HCL_NULL);
 	return -1;
 }
 

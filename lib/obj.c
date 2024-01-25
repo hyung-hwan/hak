@@ -323,6 +323,34 @@ hcl_oop_t hcl_makebytearray (hcl_t* hcl, const hcl_oob_t* ptr, hcl_oow_t size)
 	return hcl_allocbyteobj(hcl, HCL_BRAND_BYTE_ARRAY, ptr, size);
 }
 
+hcl_oop_t hcl_makebytestringwithbytes (hcl_t* hcl, const hcl_oob_t* ptr, hcl_oow_t len, int ngc)
+{
+	return alloc_numeric_array(hcl, HCL_BRAND_BYTE_ARRAY, ptr, len, HCL_OBJ_TYPE_BYTE, HCL_SIZEOF(hcl_oob_t), 1, ngc);
+}
+
+hcl_oop_t hcl_makebytestring (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_t len, int ngc)
+{
+	/* a byte string is a byte array with an extra null at the back.
+	 * the input to this function, however, is the pointer to hcl_ooch_t data
+	 * because this function is mainly used to convert a token to a byte string.
+	 * the token in the compiler is stored as a hcl_ooch_t string. */
+
+	hcl_oop_byte_t b;
+	hcl_oow_t i;
+	hcl_oob_t v;
+
+	b = alloc_numeric_array(hcl, HCL_BRAND_BYTE_ARRAY, HCL_NULL, len, HCL_OBJ_TYPE_BYTE, HCL_SIZEOF(hcl_oob_t), 1, ngc);
+	if (HCL_UNLIKELY(!b)) return HCL_NULL;
+
+	for (i = 0; i < len; i++)
+	{
+		v = ptr[i] & 0xFF;
+		HCL_OBJ_SET_BYTE_VAL(b, i, v);
+	}
+
+	return (hcl_oop_t)b;
+}
+
 hcl_oop_t hcl_makestring (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_t len, int ngc)
 {
 	/*return hcl_alloccharobj(hcl, HCL_BRAND_STRING, ptr, len);*/

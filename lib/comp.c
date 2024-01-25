@@ -4436,8 +4436,17 @@ redo:
 			lit = HCL_CHAR_TO_OOP(oprnd->u.charlit.v);
 			goto literal;
 
+		case HCL_CNODE_BCHRLIT: /* byte character still converts to charcter */
+			lit = HCL_CHAR_TO_OOP((hcl_ooch_t)oprnd->u.bchrlit.v);
+			goto literal;
+
 		case HCL_CNODE_STRLIT:
 			lit = hcl_makestring(hcl, HCL_CNODE_GET_TOKPTR(oprnd), HCL_CNODE_GET_TOKLEN(oprnd), 0);
+			if (HCL_UNLIKELY(!lit)) return -1;
+			goto literal;
+
+		case HCL_CNODE_BSTRLIT:
+			lit = hcl_makebytestring(hcl, HCL_CNODE_GET_TOKPTR(oprnd), HCL_CNODE_GET_TOKLEN(oprnd), 0);
 			if (HCL_UNLIKELY(!lit)) return -1;
 			goto literal;
 
