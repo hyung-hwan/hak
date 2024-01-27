@@ -581,6 +581,14 @@ struct hcl_flx_hi_t
 	hcl_oow_t char_count;
 };
 
+typedef struct hcl_flx_hb_t hcl_flx_hb_t; /* intermediate state for #b */
+struct hcl_flx_hb_t
+{
+	/* state data */
+	hcl_oow_t not_unused; /* for now */
+};
+
+
 typedef struct hcl_flx_hn_t hcl_flx_hn_t; /* hash-marked number - radixed number */
 struct hcl_flx_hn_t
 {
@@ -658,6 +666,7 @@ enum hcl_flx_state_t
 	HCL_FLX_COMMENT,
 	HCL_FLX_DELIM_TOKEN,
 	HCL_FLX_HMARKED_TOKEN,  /* hash-marked token */
+	HCL_FLX_HMARKED_B,      /* #b - intermediate state before #b[ or #b-radixed binary number */
 	HCL_FLX_HMARKED_CHAR,   /* hash-marked character that begins with #\ */
 	HCL_FLX_HMARKED_IDENT,  /* hash-marked identifier like #include, etc */
 	HCL_FLX_HMARKED_NUMBER, /* hash-marked number - radixed number like #xABCD */
@@ -750,6 +759,7 @@ struct hcl_compiler_t
 				hcl_flx_dt_t dt; /* delimiter token */
 				hcl_flx_hc_t hc; /* hash-marked character */
 				hcl_flx_hi_t hi; /* hash-marked identifier */
+				hcl_flx_hb_t hb; /* #b ... */
 				hcl_flx_hn_t hn; /* hash-marked number - radixed number */
 				hcl_flx_pi_t pi; /* plain identifier */
 				hcl_flx_pn_t pn; /* plain number */

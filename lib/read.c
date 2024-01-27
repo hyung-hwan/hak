@@ -1722,6 +1722,7 @@ static int feed_continue_with_char (hcl_t* hcl, hcl_ooci_t c, hcl_flx_state_t st
 #define FLX_DT(hcl) (&((hcl)->c->feed.lx.u.dt))
 #define FLX_HC(hcl) (&((hcl)->c->feed.lx.u.hc))
 #define FLX_HI(hcl) (&((hcl)->c->feed.lx.u.hi))
+#define FLX_HB(hcl) (&((hcl)->c->feed.lx.u.hb))
 #define FLX_HN(hcl) (&((hcl)->c->feed.lx.u.hn))
 #define FLX_PI(hcl) (&((hcl)->c->feed.lx.u.pi))
 #define FLX_PN(hcl) (&((hcl)->c->feed.lx.u.pn))
@@ -1737,6 +1738,11 @@ static HCL_INLINE void init_flx_hc (hcl_flx_hc_t* hc)
 static HCL_INLINE void init_flx_hi (hcl_flx_hi_t* hi)
 {
 	HCL_MEMSET (hi, 0, HCL_SIZEOF(*hi));
+}
+
+static HCL_INLINE void init_flx_hb (hcl_flx_hb_t* hb)
+{
+	HCL_MEMSET (hb, 0, HCL_SIZEOF(*hb));
 }
 
 static HCL_INLINE void init_flx_hn (hcl_flx_hn_t* hn, hcl_tok_type_t tok_type, hcl_synerrnum_t synerr_code, int radix)
@@ -1987,8 +1993,15 @@ static int flx_hmarked_token (hcl_t* hcl, hcl_ooci_t c)
 			goto radixed_number;
 
 		case 'b':
+		#if 0
 			init_flx_hn (FLX_HN(hcl), HCL_TOK_RADNUMLIT, HCL_SYNERR_NUMLIT, 2);
 			goto radixed_number;
+		#else
+			/* if #b is followed by [, it is a starter for a byte array */
+			init_flx_hb (FLX_HB(hcl));
+			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_HMARKED_B);
+			break;
+		#endif
 
 		case 'e':
 			init_flx_hn (FLX_HN(hcl), HCL_TOK_ERRLIT, HCL_SYNERR_ERRLIT, 10);
@@ -2174,11 +2187,13 @@ not_consumed:
 
 static int flx_hmarked_b (hcl_t* hcl, hcl_ooci_t c)
 {
-#if 0
-	hcl_flx_hb_t* hb = FLX_HB(hcl);
+	/*hcl_flx_hb_t* hb = FLX_HB(hcl);*/
 
 	if (c == '[')
 	{
+		/* #b[ - byte array starter */
+		FEED_WRAP_UP_WITH_CHAR (hcl, c, HCL_TOK_BAPAREN);
+		goto consumed;
 	}
 	else
 	{
@@ -2186,7 +2201,6 @@ static int flx_hmarked_b (hcl_t* hcl, hcl_ooci_t c)
 		FEED_CONTINUE (hcl, HCL_FLX_HMARKED_NUMBER);
 		goto not_consumed;
 	}
-#endif
 
 consumed:
 	return 1;
@@ -2682,6 +2696,7 @@ static int feed_char (hcl_t* hcl, hcl_ooci_t c)
 		case HCL_FLX_COMMENT:          return flx_comment(hcl, c);
 		case HCL_FLX_DELIM_TOKEN:      return flx_delim_token(hcl, c);
 		case HCL_FLX_HMARKED_TOKEN:    return flx_hmarked_token(hcl, c);
+		case HCL_FLX_HMARKED_B:        return flx_hmarked_b(hcl, c);
 		case HCL_FLX_HMARKED_CHAR:     return flx_hmarked_char(hcl, c);
 		case HCL_FLX_HMARKED_IDENT:    return flx_hmarked_ident(hcl, c);
 		case HCL_FLX_HMARKED_NUMBER:   return flx_hmarked_number(hcl, c);
