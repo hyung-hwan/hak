@@ -26,6 +26,12 @@
 		#b[ ] byte array??
 		#[ ] normal array?
 
+	allow b'X' or 'X' in byte array in #b[] notation?
+
+	signal handling
+
+	full oop
+
 	make basic branded types to an object if possible.
 	for example (#[10 20]:at 1)
 

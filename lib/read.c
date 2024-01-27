@@ -2172,6 +2172,29 @@ not_consumed:
 	return 0;
 }
 
+static int flx_hmarked_b (hcl_t* hcl, hcl_ooci_t c)
+{
+#if 0
+	hcl_flx_hb_t* hb = FLX_HB(hcl);
+
+	if (c == '[')
+	{
+	}
+	else
+	{
+		init_flx_hn (FLX_HN(hcl), HCL_TOK_RADNUMLIT, HCL_SYNERR_NUMLIT, 2);
+		FEED_CONTINUE (hcl, HCL_FLX_HMARKED_NUMBER);
+		goto not_consumed;
+	}
+#endif
+
+consumed:
+	return 1;
+
+not_consumed:
+	return 0;
+}
+
 static int flx_hmarked_number (hcl_t* hcl, hcl_ooci_t c)
 {
 	hcl_flx_hn_t* rn = FLX_HN(hcl);
