@@ -62,8 +62,8 @@ static struct voca_t
 	{  4, { '(',':',' ',')'  /* MLIST */                                  } },
 	{  3, { '(',':','=',')'  /* ALIST */                                  } },
 	{  3, { '{',' ','}'      /* BLOCK */                                  } },
-	{  3, { '[',' ',']'      /* ARRAY */                                  } },
-	{  4, { '#','[',' ',']'                                               } },
+	{  4, { '#','[',' ',']'  /* ARRAY */                                  } },
+	{  5, { '#','b','[',' ',']' /* BYTE ARRAY */                          } },
 	{  4, { '#','{',' ','}'                                               } },
 	{  4, { '#','(',' ',')'                                               } },
 	{  3, { '|',' ','|'                                                   } },
@@ -1174,6 +1174,7 @@ static int feed_process_token (hcl_t* hcl)
 			}
 
 		case HCL_TOK_LBRACK: /* [ */
+		case HCL_TOK_APAREN: /* #[ */
 			/* [] is a data list. so let's treat it like other literal
 			 * expressions(e.g. 1, "abc"). when it's placed at the block beginning,
 			 * create the outer XLIST. */
@@ -1183,7 +1184,7 @@ static int feed_process_token (hcl_t* hcl)
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_ARRAY);
 			goto start_list;
 
-		case HCL_TOK_BAPAREN: /* #[ */
+		case HCL_TOK_BAPAREN: /* #b[ */
 			if (auto_forge_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;
 
 			frd->flagv = DATA_LIST;
@@ -2019,15 +2020,15 @@ static int flx_hmarked_token (hcl_t* hcl, hcl_ooci_t c)
 			goto consumed;
 
 		/* --------------------------- */
-		case '[':
-			FEED_WRAP_UP_WITH_CHAR (hcl, c, HCL_TOK_BAPAREN);
+		case '[': /* #[ */
+			FEED_WRAP_UP_WITH_CHAR (hcl, c, HCL_TOK_APAREN);
 			goto consumed;
 
-		case '(':
+		case '(': /* #( */
 			FEED_WRAP_UP_WITH_CHAR (hcl, c, HCL_TOK_QLPAREN);
 			goto consumed;
 
-		case '{':
+		case '{': /* #{ */
 			FEED_WRAP_UP_WITH_CHAR (hcl, c, HCL_TOK_DLPAREN);
 			goto  consumed;
 

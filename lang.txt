@@ -12,7 +12,7 @@
 
 	assignment syntax
 		(k := 20) -> (set k 20)
-		k := 20  -> (set  k 20)
+		k := 20  -> (set k 20)
 		[a, b] := (multi-retvar-fun 10 20) -> (set-r a b (multi-retvar-fun 10 20))
 
 	implement module -> ::, ., or what notation?
@@ -22,9 +22,21 @@
 	dynamic byte array is supported but we need yet to support byte-string(byte-array) constant
 		b"..." or B"..." for an byte string constant notation
 		u"..." or U"..." for an explicit unicode string constant notation?
+		-> change u to c???
 
-		#b[ ] byte array??
 		#[ ] normal array?
+		#b[ ] byte array??
+		#c[ ] charcter array??
+		#w[ ] word array??
+		#hw[ ] half-word array??
+		#u8[ ]
+		#u16[ ]
+		#u32[ ]
+		#u64[ ]
+		#i8[ ]
+		#i16[ ]
+		#i32[ ]
+		#i64[ ]
 
 	allow b'X' or 'X' in byte array in #b[] notation?
 

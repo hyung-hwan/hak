@@ -199,10 +199,16 @@ enum hcl_tok_type_t
 #define HCL_TOK_LPARCOLON HCL_TOK_LPARCOLON
 #endif
 
-	HCL_TOK_BAPAREN,   /* #[ - byte array parenthesis */
+	HCL_TOK_APAREN,    /* #[ - array parenthesis */
+	HCL_TOK_BAPAREN,   /* #b[ - byte array parenthesis */
+#if 0
+	HCL_TOK_CAPAREN,   /* #c[ - character array parenthesis */
+	HCL_TOK_WAPAREN,   /* #w[ - word array parenthesis */
+	HCL_TOK_WAPAREN,   /* #hw[ - half-word array parenthesis */
+#endif
 	HCL_TOK_QLPAREN,   /* #( - quoted-list parenthesis */
 	HCL_TOK_DLPAREN,   /* #{ - dictionary parenthese */
-	HCL_TOK_LBRACK,    /* [ - array */
+	HCL_TOK_LBRACK,    /* [ - group */
 	HCL_TOK_RBRACK,    /* ] */
 	HCL_TOK_LBRACE,    /* { - block */
 	HCL_TOK_RBRACE,    /* } */
@@ -765,7 +771,7 @@ struct hcl_compiler_t
 				hcl_flx_pn_t pn; /* plain number */
 				hcl_flx_qt_t qt; /* quoted token */
 				hcl_flx_st_t st; /* signed token */
-				hcl_flx_st_t bu; /* b or u prefix */
+				hcl_flx_bu_t bu; /* b or u prefix */
 			} u;
 		} lx;
 
