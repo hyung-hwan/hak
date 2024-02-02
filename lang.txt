@@ -47,6 +47,8 @@
 	make basic branded types to an object if possible.
 	for example (#[10 20]:at 1)
 
+	isn't : for method call  confliting with key value spearator in a dictionary?
+
 	default return value for some class methods.
 		::: method -> return what??
 		::* method -> return the new instance

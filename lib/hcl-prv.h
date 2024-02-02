@@ -201,10 +201,10 @@ enum hcl_tok_type_t
 
 	HCL_TOK_APAREN,    /* #[ - array parenthesis */
 	HCL_TOK_BAPAREN,   /* #b[ - byte array parenthesis */
-#if 0
 	HCL_TOK_CAPAREN,   /* #c[ - character array parenthesis */
+#if 0
 	HCL_TOK_WAPAREN,   /* #w[ - word array parenthesis */
-	HCL_TOK_WAPAREN,   /* #hw[ - half-word array parenthesis */
+	HCL_TOK_HWAPAREN,   /* #hw[ - half-word array parenthesis */
 #endif
 	HCL_TOK_QLPAREN,   /* #( - quoted-list parenthesis */
 	HCL_TOK_DLPAREN,   /* #{ - dictionary parenthese */
@@ -454,6 +454,7 @@ struct hcl_cframe_t
 		/* COP_COMPILE_BYTEARRAY_LIST, COP_POP_INTO_BYTEARRAY, COP_EMIT_MAKE_BYTEARRAY */
 		struct
 		{
+			int elem_type;
 			hcl_ooi_t index;
 		} bytearray_list;
 
@@ -591,9 +592,8 @@ typedef struct hcl_flx_hb_t hcl_flx_hb_t; /* intermediate state for #b */
 struct hcl_flx_hb_t
 {
 	/* state data */
-	hcl_oow_t not_unused; /* for now */
+	hcl_ooch_t start_c;
 };
-
 
 typedef struct hcl_flx_hn_t hcl_flx_hn_t; /* hash-marked number - radixed number */
 struct hcl_flx_hn_t
@@ -659,8 +659,8 @@ struct hcl_flx_st_t
 };
 
 
-typedef struct hcl_flx_bu_t hcl_flx_bu_t;
-struct hcl_flx_bu_t
+typedef struct hcl_flx_bcp_t hcl_flx_bcp_t;
+struct hcl_flx_bcp_t
 {
 	hcl_ooch_t start_c;
 };
@@ -680,7 +680,7 @@ enum hcl_flx_state_t
 	HCL_FLX_PLAIN_NUMBER,   /* plain number */
 	HCL_FLX_QUOTED_TOKEN,   /* string, character */
 	HCL_FLX_SIGNED_TOKEN,   /* prefixed with + or - */
-	HCL_FLX_BU              /* beginning with B or U */
+	HCL_FLX_BC_PREFIX       /* b or C prefix before " or ' */
 };
 typedef enum hcl_flx_state_t hcl_flx_state_t;
 
@@ -771,7 +771,7 @@ struct hcl_compiler_t
 				hcl_flx_pn_t pn; /* plain number */
 				hcl_flx_qt_t qt; /* quoted token */
 				hcl_flx_st_t st; /* signed token */
-				hcl_flx_bu_t bu; /* b or u prefix */
+				hcl_flx_bcp_t bcp; /* b or c prefix */
 			} u;
 		} lx;
 

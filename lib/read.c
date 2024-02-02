@@ -64,6 +64,7 @@ static struct voca_t
 	{  3, { '{',' ','}'      /* BLOCK */                                  } },
 	{  4, { '#','[',' ',']'  /* ARRAY */                                  } },
 	{  5, { '#','b','[',' ',']' /* BYTE ARRAY */                          } },
+	{  5, { '#','c','[',' ',']' /* CHAR ARRAY */                          } },
 	{  4, { '#','{',' ','}'                                               } },
 	{  4, { '#','(',' ',')'                                               } },
 	{  3, { '|',' ','|'                                                   } },
@@ -103,6 +104,7 @@ enum voca_id_t
 	VOCA_BLOCK,
 	VOCA_ARRAY,
 	VOCA_BYTEARRAY,
+	VOCA_CHARARRAY,
 	VOCA_DIC,
 	VOCA_QLIST,
 	VOCA_VLIST,
@@ -143,8 +145,9 @@ static struct
 	/*[HCL_CONCODE_MLIST]     =*/ { HCL_TOK_RPAREN, HCL_SYNERR_RPAREN, VOCA_MLIST }, /* MLIST     (obj:message) */
 	/*[HCL_CONCODE_ALIST]     =*/ { HCL_TOK_RPAREN, HCL_SYNERR_RPAREN, VOCA_ALIST }, /* ALIST     (var:=value) */
 	/*[HCL_CONCODE_BLOCK]     =*/ { HCL_TOK_RBRACE, HCL_SYNERR_RBRACE, VOCA_BLOCK }, /* BLOCK     { } */
-	/*[HCL_CONCODE_ARRAY]     =*/ { HCL_TOK_RBRACK, HCL_SYNERR_RBRACK, VOCA_ARRAY }, /* ARRAY     [ ] */
-	/*[HCL_CONCODE_BYTEARRAY] =*/ { HCL_TOK_RBRACK, HCL_SYNERR_RBRACK, VOCA_BYTEARRAY }, /* BYTEARRAY #[ ] */
+	/*[HCL_CONCODE_ARRAY]     =*/ { HCL_TOK_RBRACK, HCL_SYNERR_RBRACK, VOCA_ARRAY }, /* ARRAY     #[ ] */
+	/*[HCL_CONCODE_BYTEARRAY] =*/ { HCL_TOK_RBRACK, HCL_SYNERR_RBRACK, VOCA_BYTEARRAY }, /* BYTEARRAY #b[ ] */
+	/*[HCL_CONCODE_CHARARRAY] =*/ { HCL_TOK_RBRACK, HCL_SYNERR_RBRACK, VOCA_CHARARRAY }, /* CHARARRAY #c[ ] */
 	/*[HCL_CONCODE_DIC]       =*/ { HCL_TOK_RBRACE, HCL_SYNERR_RBRACE, VOCA_DIC }, /* DIC       #{ } */
 	/*[HCL_CONCODE_QLIST]     =*/ { HCL_TOK_RPAREN, HCL_SYNERR_RPAREN, VOCA_QLIST }, /* QLIST     #( )  */
 
@@ -1179,16 +1182,20 @@ static int feed_process_token (hcl_t* hcl)
 			 * expressions(e.g. 1, "abc"). when it's placed at the block beginning,
 			 * create the outer XLIST. */
 			if (auto_forge_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;
-
 			frd->flagv = DATA_LIST;
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_ARRAY);
 			goto start_list;
 
 		case HCL_TOK_BAPAREN: /* #b[ */
 			if (auto_forge_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;
-
 			frd->flagv = DATA_LIST;
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_BYTEARRAY);
+			goto start_list;
+
+		case HCL_TOK_CAPAREN: /* #c[ */
+			if (auto_forge_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;
+			frd->flagv = DATA_LIST;
+			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_CHARARRAY);
 			goto start_list;
 
 		case HCL_TOK_LBRACE: /* { */
@@ -1729,7 +1736,7 @@ static int feed_continue_with_char (hcl_t* hcl, hcl_ooci_t c, hcl_flx_state_t st
 #define FLX_PN(hcl) (&((hcl)->c->feed.lx.u.pn))
 #define FLX_QT(hcl) (&((hcl)->c->feed.lx.u.qt))
 #define FLX_ST(hcl) (&((hcl)->c->feed.lx.u.st))
-#define FLX_BU(hcl) (&((hcl)->c->feed.lx.u.bu))
+#define FLX_BCP(hcl) (&((hcl)->c->feed.lx.u.bcp))
 
 static HCL_INLINE void init_flx_hc (hcl_flx_hc_t* hc)
 {
@@ -1741,9 +1748,10 @@ static HCL_INLINE void init_flx_hi (hcl_flx_hi_t* hi)
 	HCL_MEMSET (hi, 0, HCL_SIZEOF(*hi));
 }
 
-static HCL_INLINE void init_flx_hb (hcl_flx_hb_t* hb)
+static HCL_INLINE void init_flx_hb (hcl_flx_hb_t* hb, hcl_ooch_t start_c)
 {
 	HCL_MEMSET (hb, 0, HCL_SIZEOF(*hb));
+	hb->start_c = start_c;
 }
 
 static HCL_INLINE void init_flx_hn (hcl_flx_hn_t* hn, hcl_tok_type_t tok_type, hcl_synerrnum_t synerr_code, int radix)
@@ -1782,10 +1790,10 @@ static HCL_INLINE void init_flx_st (hcl_flx_st_t* st, hcl_ooch_t sign_c)
 	st->sign_c = sign_c;
 }
 
-static HCL_INLINE void init_flx_bu (hcl_flx_bu_t* bu, hcl_ooch_t start_c)
+static HCL_INLINE void init_flx_bcp (hcl_flx_bcp_t* bcp, hcl_ooch_t start_c)
 {
-	HCL_MEMSET (bu, 0, HCL_SIZEOF(*bu));
-	bu->start_c = start_c;
+	HCL_MEMSET (bcp, 0, HCL_SIZEOF(*bcp));
+	bcp->start_c = start_c;
 }
 
 static void reset_flx_token (hcl_t* hcl)
@@ -1877,10 +1885,10 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 
 		case 'B':
 		case 'b':
-		case 'U':
-		case 'u':
-			init_flx_bu(FLX_BU(hcl), c);
-			FEED_CONTINUE_WITH_CHAR(hcl, c, HCL_FLX_BU);
+		case 'C':
+		case 'c':
+			init_flx_bcp(FLX_BCP(hcl), c);
+			FEED_CONTINUE_WITH_CHAR(hcl, c, HCL_FLX_BC_PREFIX);
 			goto consumed;
 
 		default:
@@ -1994,15 +2002,17 @@ static int flx_hmarked_token (hcl_t* hcl, hcl_ooci_t c)
 			goto radixed_number;
 
 		case 'b':
+		case 'c':
 		#if 0
 			init_flx_hn (FLX_HN(hcl), HCL_TOK_RADNUMLIT, HCL_SYNERR_NUMLIT, 2);
 			goto radixed_number;
 		#else
 			/* if #b is followed by [, it is a starter for a byte array */
-			init_flx_hb (FLX_HB(hcl));
+			init_flx_hb (FLX_HB(hcl), c);
 			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_HMARKED_B);
 			break;
 		#endif
+
 
 		case 'e':
 			init_flx_hn (FLX_HN(hcl), HCL_TOK_ERRLIT, HCL_SYNERR_ERRLIT, 10);
@@ -2188,12 +2198,15 @@ not_consumed:
 
 static int flx_hmarked_b (hcl_t* hcl, hcl_ooci_t c)
 {
-	/*hcl_flx_hb_t* hb = FLX_HB(hcl);*/
+	hcl_flx_hb_t* hb = FLX_HB(hcl);
 
 	if (c == '[')
 	{
 		/* #b[ - byte array starter */
-		FEED_WRAP_UP_WITH_CHAR (hcl, c, HCL_TOK_BAPAREN);
+		/* TODO: more types.. #w[ .. #u32[ ... etc */
+		hcl_tok_type_t tt;
+		tt = (hb->start_c == 'b' || hb->start_c == 'B')? HCL_TOK_BAPAREN: HCL_TOK_CAPAREN;
+		FEED_WRAP_UP_WITH_CHAR (hcl, c, tt);
 		goto consumed;
 	}
 	else
@@ -2465,7 +2478,7 @@ static int flx_quoted_token (hcl_t* hcl, hcl_ooci_t c) /* string, character */
 		{
 			hcl_ooch_t rc;
 			rc = (qt->escaped == 2)? 'x':
-				 (qt->escaped == 4)? 'u': 'U';
+			     (qt->escaped == 4)? 'u': 'U';
 			if (qt->digit_count == 0)
 				ADD_TOKEN_CHAR (hcl, rc);
 			else ADD_TOKEN_CHAR (hcl, qt->c_acc);
@@ -2644,21 +2657,21 @@ not_consumed:
 	return 0;
 }
 
-static int flx_bu (hcl_t* hcl, hcl_ooci_t c)
+static int flx_bc_prefix (hcl_t* hcl, hcl_ooci_t c)
 {
-	hcl_flx_bu_t* bu = FLX_BU(hcl);
+	hcl_flx_bcp_t* bcp = FLX_BCP(hcl);
 
-	if (c == '\"')
+	if (c == '\"') /* b" B" c" C" */
 	{
-		int is_byte = (bu->start_c == 'b' || bu->start_c == 'B');
+		int is_byte = (bcp->start_c == 'b' || bcp->start_c == 'B');
 		reset_flx_token (hcl);
 		init_flx_qt (FLX_QT(hcl), HCL_TOK_STRLIT, HCL_SYNERR_STRLIT, c, '\\', 0, HCL_TYPE_MAX(hcl_oow_t), is_byte);
 		FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard prefix, quote and move on */
 		goto consumed;
 	}
-	else if (c == '\'')
+	else if (c == '\'') /* b' B' c' C' */
 	{
-		int is_byte = (bu->start_c == 'b' || bu->start_c == 'B');
+		int is_byte = (bcp->start_c == 'b' || bcp->start_c == 'B');
 		reset_flx_token (hcl);
 		init_flx_qt (FLX_QT(hcl), HCL_TOK_CHARLIT, HCL_SYNERR_CHARLIT, c, '\\', 1, 1, is_byte);
 		FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* dicard prefix, quote, and move on */
@@ -2705,7 +2718,7 @@ static int feed_char (hcl_t* hcl, hcl_ooci_t c)
 		case HCL_FLX_PLAIN_NUMBER:     return flx_plain_number(hcl, c);
 		case HCL_FLX_QUOTED_TOKEN:     return flx_quoted_token(hcl, c);
 		case HCL_FLX_SIGNED_TOKEN:     return flx_signed_token(hcl, c);
-		case HCL_FLX_BU:               return flx_bu(hcl, c);
+		case HCL_FLX_BC_PREFIX:        return flx_bc_prefix(hcl, c);
 
 		default:
 			/* unknown state */
@@ -2782,7 +2795,9 @@ static int feed_from_includee (hcl_t* hcl)
 
 int hcl_beginfeed (hcl_t* hcl, hcl_on_cnode_t on_cnode)
 {
-	HCL_ASSERT (hcl, hcl->c != HCL_NULL); /* call hcl_attachccio() or hcl_attachcciostd() first */
+	/* if the fed data contains @include, you must call hcl_attachccio() first */
+
+	if (!hcl->c && init_compiler(hcl) <= -1) return -1;
 
 	init_feed (hcl);
 	if (on_cnode) hcl->c->feed.on_cnode = on_cnode;

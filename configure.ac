@@ -690,6 +690,7 @@ AC_CONFIG_FILES([
 	lib/Makefile 
 	mod/Makefile 
 	bin/Makefile
+	pas/Makefile
 	t/Makefile
 ])
 AC_OUTPUT

@@ -99,6 +99,7 @@ typedef struct xtn_t xtn_t;
 struct xtn_t
 {
 	const char* cci_path; /* main source file */
+	/*const char* udi_path; */ /* not implemented as of snow */
 	const char* udo_path;
 
 	int vm_running;
@@ -503,7 +504,7 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 	int is_tty;
 
 #if defined(_WIN32) && defined(__STDC_WANT_SECURE_LIB__)
-	errno_t	err = fopen_s(&fp, xtn->cci_path, FOPEN_R_FLAGS);
+	errno_t err = fopen_s(&fp, xtn->cci_path, FOPEN_R_FLAGS);
 	if (err != 0)
 	{
 		hcl_logbfmt(hcl, HCL_LOG_STDERR, "ERROR: failed to open - %hs - %hs\n", xtn->cci_path, strerror(err));

@@ -1923,8 +1923,9 @@ enum hcl_concode_t
 	HCL_CONCODE_MLIST,      /* (obj:message) - message send list */
 	HCL_CONCODE_ALIST,      /* (a := 20) assignment list */
 	HCL_CONCODE_BLOCK,      /* { } */
-	HCL_CONCODE_ARRAY,      /* [ ] */
-	HCL_CONCODE_BYTEARRAY,  /* #[ ] */
+	HCL_CONCODE_ARRAY,      /* #[ ] */
+	HCL_CONCODE_BYTEARRAY,  /* #b[ ] */
+	HCL_CONCODE_CHARARRAY,  /* #c[ ] */
 	HCL_CONCODE_DIC,        /* #{ } */
 	HCL_CONCODE_QLIST,      /* #( ) - data list */
 	HCL_CONCODE_VLIST       /* | | - symbol list */

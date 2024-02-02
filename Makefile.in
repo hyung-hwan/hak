@@ -362,7 +362,7 @@ AUTOMAKE_OPTION = foreign
 ACLOCAL_AMFLAGS = -I m4
 EXTRA_DIST = t t/test-bi.hcl
 SUBDIRS = $(am__append_1) $(am__append_2)
-DIST_SUBDIRS = $(SUBDIRS)
+DIST_SUBDIRS = $(SUBDIRS) pas
 @ENABLE_HCLGO_TRUE@hclgo_SOURCES = \
 @ENABLE_HCLGO_TRUE@	go/hcl.go \
 @ENABLE_HCLGO_TRUE@	go/cb.go \

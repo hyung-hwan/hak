@@ -3483,15 +3483,15 @@ static HCL_INLINE int open_udi_stream (hcl_t* hcl, hcl_io_udiarg_t* arg)
 
 	hcl_oow_t pathlen;
 
-	pathlen = xtn->cci_path? hcl_count_bcstr(xtn->cci_path): 0;
+	pathlen = xtn->udi_path? hcl_count_bcstr(xtn->udi_path): 0;
 
 	bb = (bb_t*)hcl_callocmem(hcl, HCL_SIZEOF(*bb) + (HCL_SIZEOF(hcl_bch_t) * (pathlen + 1)));
 	if (!bb) goto oops;
 
 	bb->fn = (hcl_bch_t*)(bb + 1);
-	if (pathlen > 0 && xtn->cci_path)
+	if (pathlen > 0 && xtn->udi_path)
 	{
-		hcl_copy_bcstr (bb->fn, pathlen + 1, xtn->cci_path);
+		hcl_copy_bcstr (bb->fn, pathlen + 1, xtn->udi_path);
 		bb->fp = fopen(bb->fn, FOPEN_R_FLAGS);
 	}
 	else
@@ -3824,12 +3824,10 @@ int hcl_attachudiostdwithbcstr (hcl_t* hcl, const hcl_bch_t* udi_file, const hcl
 	HCL_ASSERT (hcl, xtn->udi_path == HCL_NULL);
 	HCL_ASSERT (hcl, xtn->udo_path == HCL_NULL);
 
-
 	xtn->udi_path = udi_file;
 	xtn->udo_path = udo_file;
 
 	n = hcl_attachudio(hcl, udi_handler, udo_handler);
-
 
 	xtn->udi_path = HCL_NULL;
 	xtn->udo_path = HCL_NULL;

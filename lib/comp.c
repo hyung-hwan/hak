@@ -3633,7 +3633,7 @@ static int compile_while (hcl_t* hcl, hcl_cnode_t* src, int next_cop)
 
 static int compile_cons_array_expression (hcl_t* hcl, hcl_cnode_t* obj)
 {
-	/* [ ] */
+	/* #[ ] */
 	hcl_ooi_t nargs;
 	hcl_cframe_t* cf;
 
@@ -3656,9 +3656,10 @@ static int compile_cons_array_expression (hcl_t* hcl, hcl_cnode_t* obj)
 	return 0;
 }
 
-static int compile_cons_bytearray_expression (hcl_t* hcl, hcl_cnode_t* obj)
+static int compile_cons_bytearray_expression (hcl_t* hcl, hcl_cnode_t* obj, int concode)
 {
-	/* #[ ] - e.g. #[1, 2, 3] or #[ 1 2 3 ] */
+	/* compile the singular-type array such as byte array or char array */
+	/* #b[ ] - e.g. #b[1, 2, 3] or #b[ 1 2 3 ] */
 	hcl_ooi_t nargs;
 	hcl_cframe_t* cf;
 
@@ -3671,11 +3672,13 @@ static int compile_cons_bytearray_expression (hcl_t* hcl, hcl_cnode_t* obj)
 
 	SWITCH_TOP_CFRAME (hcl, COP_EMIT_MAKE_BYTEARRAY, obj);
 	cf = GET_TOP_CFRAME(hcl);
+	cf->u.bytearray_list.elem_type = concode;
 	cf->u.bytearray_list.index = nargs;
 
 	/* redundant cdr check is performed inside compile_object_list() */
 	PUSH_SUBCFRAME (hcl, COP_COMPILE_BYTEARRAY_LIST, obj);
 	cf = GET_SUBCFRAME(hcl);
+	cf->u.bytearray_list.elem_type = concode;
 	cf->u.bytearray_list.index = 0;
 
 	return 0;
@@ -4511,7 +4514,8 @@ redo:
 					break;
 
 				case HCL_CONCODE_BYTEARRAY:
-					if (compile_cons_bytearray_expression(hcl, oprnd) <= -1) return -1;
+				case HCL_CONCODE_CHARARRAY:
+					if (compile_cons_bytearray_expression(hcl, oprnd, HCL_CNODE_CONS_CONCODE(oprnd)) <= -1) return -1;
 					break;
 
 				case HCL_CONCODE_DIC:
@@ -4836,6 +4840,7 @@ static int compile_bytearray_list (hcl_t* hcl)
 	{
 		hcl_cnode_t* car, * cdr;
 		hcl_ooi_t oldidx;
+		int elem_type;
 
 		if (!HCL_CNODE_IS_CONS(oprnd))
 		{
@@ -4847,17 +4852,23 @@ static int compile_bytearray_list (hcl_t* hcl)
 		cdr = HCL_CNODE_CONS_CDR(oprnd);
 
 		oldidx = cf->u.bytearray_list.index;
+		elem_type = cf->u.bytearray_list.index;
+
+/* TODO: compile type check if the data element is literal... 
+	 runtime check if the data is a variable or something... */
 
 		SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, car);
 		if (cdr)
 		{
 			PUSH_SUBCFRAME (hcl, COP_COMPILE_BYTEARRAY_LIST, cdr);
 			cf = GET_SUBCFRAME(hcl);
+			cf->u.bytearray_list.elem_type = elem_type;
 			cf->u.bytearray_list.index = oldidx + 1;
 		}
 
 		PUSH_SUBCFRAME (hcl, COP_EMIT_POP_INTO_BYTEARRAY, car);
 		cf = GET_SUBCFRAME(hcl);
+		cf->u.bytearray_list.elem_type = elem_type;
 		cf->u.bytearray_list.index = oldidx;
 	}
 
