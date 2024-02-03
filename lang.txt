@@ -51,7 +51,7 @@
 
 	default return value for some class methods.
 		::: method -> return what??
-		::* method -> return the new instance
+		:* method -> return the new instance
 		normal method -> return the last evaluated value?
 
 
@@ -148,7 +148,7 @@ send the message dump to the object pointed to by x with arguments 1, 2, 3.
 
 	(defclass P
 		| x y |
-		(defun ::* new ()
+		(defun :* new ()
 			(set x 1)	
 			(set y 1)	
 			(return self)
@@ -158,7 +158,7 @@ send the message dump to the object pointed to by x with arguments 1, 2, 3.
 	)
 	(defclass X ::: P
 		| x y |
-		(defun ::* new (a b)
+		(defun :* new (a b)
 			(super:new)
 			x = a
 			y = b

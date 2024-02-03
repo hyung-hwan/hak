@@ -68,7 +68,7 @@
 (defclass T
 	| j |
 
-	(defun ::* new()
+	(defun :* new()
 		(set j 99)
 		(return self)
 	)

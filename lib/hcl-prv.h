@@ -187,8 +187,9 @@ enum hcl_tok_type_t
 	HCL_TOK_COLON,     /* : */
 	HCL_TOK_DBLCOLONS, /* :: */
 	HCL_TOK_TRPCOLONS, /* ::: */
-	HCL_TOK_DCSTAR,    /* ::* */
 	HCL_TOK_COLONEQ,   /* := */
+	HCL_TOK_COLONPLUS, /* :+ */
+	HCL_TOK_COLONSTAR, /* :* */
 	HCL_TOK_SEMICOLON, /* ; */
 	HCL_TOK_COMMA,     /* , */
 	HCL_TOK_LPAREN,    /* ( */
@@ -256,7 +257,8 @@ enum hcl_cnode_type_t
 	HCL_CNODE_SUPER,
 	HCL_CNODE_ELLIPSIS,
 	HCL_CNODE_TRPCOLONS,
-	HCL_CNODE_DCSTAR,
+	HCL_CNODE_COLONPLUS, /* :+ */
+	HCL_CNODE_COLONSTAR, /* :* */
 
 	HCL_CNODE_CONS,
 	HCL_CNODE_ELIST, /* empty list */
@@ -279,7 +281,8 @@ typedef enum hcl_cnode_flagt hcl_cnode_flag_t;
 
 #define HCL_CNODE_IS_ELLIPSIS(x) ((x)->cn_type == HCL_CNODE_ELLIPSIS)
 #define HCL_CNODE_IS_TRPCOLONS(x) ((x)->cn_type == HCL_CNODE_TRPCOLONS)
-#define HCL_CNODE_IS_DCSTAR(x) ((x)->cn_type == HCL_CNODE_DCSTAR)
+#define HCL_CNODE_IS_COLONPLUS(x) ((x)->cn_type == HCL_CNODE_COLONPLUS)
+#define HCL_CNODE_IS_COLONSTAR(x) ((x)->cn_type == HCL_CNODE_COLONSTAR)
 
 #define HCL_CNODE_IS_SYMBOL(x) ((x)->cn_type == HCL_CNODE_SYMBOL)
 #define HCL_CNODE_IS_SYMBOL_PLAIN(x) ((x)->cn_type == HCL_CNODE_SYMBOL && (x)->u.symbol.syncode == 0)
@@ -1777,7 +1780,8 @@ hcl_cnode_t* hcl_makecnodeself (hcl_t* hcl, int flags, const hcl_loc_t* loc, con
 hcl_cnode_t* hcl_makecnodesuper (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodeellipsis (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodetrpcolons (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
-hcl_cnode_t* hcl_makecnodedcstar (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
+hcl_cnode_t* hcl_makecnodecolonplus (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
+hcl_cnode_t* hcl_makecnodecolonstar (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodecharlit (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok, hcl_ooch_t v);
 hcl_cnode_t* hcl_makecnodebchrlit (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok, hcl_oob_t v);
 hcl_cnode_t* hcl_makecnodesymbol (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);

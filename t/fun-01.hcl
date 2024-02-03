@@ -32,7 +32,7 @@ if (= k 70) {
 ## --------------------------------------
 
 defclass A | a b c | {
-	defun ::* newInstance(x y z) {
+	defun :* newInstance(x y z) {
 		(set a x)
 		(set b y)
 		(set c z)

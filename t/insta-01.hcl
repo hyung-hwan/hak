@@ -2,7 +2,7 @@
 
 defclass A | a b c |  {
 
-	defun ::* newInstance(x y z) {
+	defun:*newInstance(x y z) {
 		set a x;
 		set b y;
 		set c z;
@@ -16,7 +16,7 @@ defclass A | a b c |  {
 
 defclass B ::: A | d e f | {
 
-	defun ::* newInstance(x y z) {
+	defun:*newInstance(x y z) {
 		super:newInstance (* x 2) (* y 2) (* z 2);
 		set d x;
 		set e y;

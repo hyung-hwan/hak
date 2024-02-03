@@ -1432,8 +1432,12 @@ static int feed_process_token (hcl_t* hcl)
 			frd->obj = hcl_makecnodetrpcolons(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto auto_xlist;
 
-		case HCL_TOK_DCSTAR:
-			frd->obj = hcl_makecnodedcstar(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+		case HCL_TOK_COLONPLUS:
+			frd->obj = hcl_makecnodecolonplus(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			goto auto_xlist;
+
+		case HCL_TOK_COLONSTAR:
+			frd->obj = hcl_makecnodecolonstar(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto auto_xlist;
 
 		case HCL_TOK_SMPTRLIT:
@@ -1652,8 +1656,9 @@ static delim_token_t delim_token_tab[] =
 
 	{ ":",        1, HCL_TOK_COLON }, /* key-value separator in dictionary */
 	{ ":=",       2, HCL_TOK_COLONEQ }, /* assignment */
+	{ ":+",       2, HCL_TOK_COLONPLUS },
+	{ ":*",       2, HCL_TOK_COLONSTAR }, /* class instantiation method */
 	{ "::",       2, HCL_TOK_DBLCOLONS },
-	{ "::*",      3, HCL_TOK_DCSTAR },   /* class instantiation method */
 	{ ":::",      3, HCL_TOK_TRPCOLONS  }, /* superclass, class variables, class methods */
 
 	{ ";",        1, HCL_TOK_SEMICOLON }

@@ -1,6 +1,6 @@
 set t (
 	class | x | {
-		defun ::* make() { set x 1234; return self; };
+		defun :* make() { set x 1234; return self; };
 		defun get-x() { return x };
 	}
 );

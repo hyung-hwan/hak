@@ -1,5 +1,5 @@
 defclass A | a | {
-	defun ::* init1() {
+	defun :* init1() {
 		| b |
 		set b (+ 1 2);
 		set a b;
@@ -15,7 +15,7 @@ defclass A | a | {
 		printf ">>> %d\n" j;
 	}
 
-	defun ::* init2() {
+	defun :* init2() {
 		| b |
 		set b (+ 10 20);
 		set a b;

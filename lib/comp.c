@@ -2745,10 +2745,11 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 		defun_name = HCL_CNODE_CONS_CAR(obj);
 		if (is_in_class_init_scope(hcl))
 		{
-			if ((HCL_CNODE_IS_TRPCOLONS(defun_name) || HCL_CNODE_IS_DCSTAR(defun_name)))
+			if ((HCL_CNODE_IS_TRPCOLONS(defun_name) || HCL_CNODE_IS_COLONSTAR(defun_name)))
 			{
 				/* class method - (defun ::: xxxx () ...) inside class definition */
-				/* class instantiation method - (defun ::* xxxx () ...) inside class definition */
+				/* class method - (defun:+ xxxx() ...) inside class definition */
+				/* class instantiation method - (defun:* xxxx() ...) inside class definition */
 				obj = HCL_CNODE_CONS_CDR(obj);
 				if (!obj)
 				{
