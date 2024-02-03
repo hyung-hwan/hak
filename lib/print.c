@@ -817,8 +817,9 @@ void hcl_dumpcnode (hcl_t* hcl, hcl_cnode_t* cnode, int newline)
 			case HCL_CNODE_SUPER:
 			case HCL_CNODE_ELLIPSIS:
 			case HCL_CNODE_TRPCOLONS:
+			case HCL_CNODE_COLONGT:
+			case HCL_CNODE_COLONLT:
 			case HCL_CNODE_COLONSTAR:
-			case HCL_CNODE_COLONPLUS:
 				hcl_logbfmt (hcl, HCL_LOG_FATAL, " %.*js ", HCL_CNODE_GET_TOKLEN(cnode), HCL_CNODE_GET_TOKPTR(cnode));
 				break;
 
