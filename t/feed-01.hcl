@@ -5,7 +5,7 @@
 | J |
 
 defun xxx (x y z
-	::: r ) {
+	:: r ) {
 
 	| k
 	b

@@ -7,7 +7,7 @@ defun fn-y (t1 t2 va-ctx) {
         };
 };
 
-defun x(a b ... ::: x y z) {
+defun x(a b ... :: x y z) {
         |i|
 
         set x (va-count);

@@ -2406,7 +2406,7 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src, int defclass)
 		hcl_cnode_t* tmp, * dcl;
 
 		tmp = HCL_CNODE_CONS_CAR(obj);
-		if (!HCL_CNODE_IS_TRPCOLONS(tmp)) goto no_superclass;
+		if (!HCL_CNODE_IS_DBLCOLONS(tmp)) goto no_superclass;
 
 		tmp = obj;
 		obj = HCL_CNODE_CONS_CDR(obj);
@@ -2485,18 +2485,18 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 		hcl_cnode_t* tmp;
 		hcl_oow_t dclcount;
 /*
- (defclass X ::: T
-    ::: | a b c | ## class variables
+ (defclass X :: T
+    :: | a b c | ## class variables
  )
  (defclass X
-    ::: T | a b c | ## instance varaiables.
+    :: T | a b c | ## instance varaiables.
  )
  (defclass X
-    ::: | a b c | ## class variables
+    :: | a b c | ## class variables
  )
 */
 		tmp = HCL_CNODE_CONS_CAR(obj);
-		if (HCL_CNODE_IS_TRPCOLONS(tmp))
+		if (HCL_CNODE_IS_DBLCOLONS(tmp))
 		{
 			/* class variables */
 			hcl_oow_t checkpoint;
@@ -2745,11 +2745,10 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 		defun_name = HCL_CNODE_CONS_CAR(obj);
 		if (is_in_class_init_scope(hcl))
 		{
-			if ((HCL_CNODE_IS_TRPCOLONS(defun_name) || HCL_CNODE_IS_COLONSTAR(defun_name)))
+			if ((HCL_CNODE_IS_DBLCOLONS(defun_name) || HCL_CNODE_IS_COLONSTAR(defun_name)))
 			{
-				/* class method - (defun ::: xxxx () ...) inside class definition */
-				/* class method - (defun:+ xxxx() ...) inside class definition */
-				/* class instantiation method - (defun:* xxxx() ...) inside class definition */
+				/* class method - (defun ::xxxx () ...) inside class definition */
+				/* class instantiation method - (defun :*xxxx() ...) inside class definition */
 				obj = HCL_CNODE_CONS_CDR(obj);
 				if (!obj)
 				{
@@ -2757,7 +2756,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 					return -1;
 				}
 
-				fun_type = HCL_CNODE_IS_TRPCOLONS(defun_name)? FUN_CM: FUN_CIM;
+				fun_type = HCL_CNODE_IS_DBLCOLONS(defun_name)? FUN_CM: FUN_CIM;
 				defun_name = HCL_CNODE_CONS_CAR(obj); /* advance to the actual name */
 			}
 			else
@@ -2849,7 +2848,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 			}
 			else if (va)
 			{
-				if (HCL_CNODE_IS_TRPCOLONS(arg))
+				if (HCL_CNODE_IS_DBLCOLONS(arg))
 				{
 					in_ret_args = 1;
 				}
@@ -2861,7 +2860,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 			}
 			else
 			{
-				if (HCL_CNODE_IS_TRPCOLONS(arg))
+				if (HCL_CNODE_IS_DBLCOLONS(arg))
 				{
 					in_ret_args = 1;
 				}
@@ -4609,8 +4608,15 @@ redo:
 			hcl_setsynerrbfmt (hcl, HCL_SYNERR_TRPCOLONSBANNED, HCL_CNODE_GET_LOC(oprnd), HCL_CNODE_GET_TOK(oprnd), "triple colons disallowed in this context", HCL_CNODE_GET_TYPE(oprnd));
 			return -1;
 
+		case HCL_CNODE_DBLCOLONS:
+		case HCL_CNODE_COLONLT:
+		case HCL_CNODE_COLONGT:
+		case HCL_CNODE_COLONSTAR:
 		default:
+			/*
 			hcl_setsynerrbfmt (hcl, HCL_SYNERR_INTERN, HCL_CNODE_GET_LOC(oprnd), HCL_CNODE_GET_TOK(oprnd), "internal error - unexpected object type %d", HCL_CNODE_GET_TYPE(oprnd));
+			*/
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_CNODE_GET_TOK(oprnd), "prohibited in this context", HCL_CNODE_GET_TYPE(oprnd));
 			return -1;
 	}
 
@@ -4699,7 +4705,7 @@ static int compile_object_list (hcl_t* hcl)
 
 				car = HCL_CNODE_CONS_CAR(oprnd);
 /* this optimization is buggy for now... need to perfect the break condition here */
-				if (HCL_CNODE_IS_CONS(car) || (HCL_CNODE_IS_SYMBOL(car) && HCL_CNODE_SYMBOL_SYNCODE(car)) || HCL_CNODE_IS_ELLIPSIS(car) || HCL_CNODE_IS_TRPCOLONS(car)) break;
+				if (HCL_CNODE_IS_CONS(car) || (HCL_CNODE_IS_SYMBOL(car) && HCL_CNODE_SYMBOL_SYNCODE(car)) || HCL_CNODE_IS_ELLIPSIS(car) || HCL_CNODE_IS_DBLCOLONS(car)) break;
 				oprnd = cdr;
 			}
 

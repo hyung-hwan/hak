@@ -21,6 +21,7 @@ check_ERRORS = \
 	feed-5004.err \
 	feed-5005.err \
 	feed-5006.err \
+	feed-5007.err \
 	mlist-5001.err \
 	var-5001.err \
 	var-5002.err \

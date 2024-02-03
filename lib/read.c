@@ -210,7 +210,7 @@ static HCL_INLINE int is_delimchar (hcl_ooci_t c)
 	return c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' ||
 	       c == '|' || c == ',' || c == '.' || c == ':' || c == ';' ||
 	       /* the first characters of tokens in delim_token_tab up to this point */
-	       c == '#' || c == '\"' || c == '\'' || c == '\\' || is_spacechar(c) || c == HCL_UCI_EOF;
+	       c == '#' || c == '\"' || c == '\'' || c == '\\' || is_spacechar(c) || c == HCL_OOCI_EOF;
 }
 
 /* TODO: remove this use the one in comp.c */
@@ -1430,6 +1430,10 @@ static int feed_process_token (hcl_t* hcl)
 
 		case HCL_TOK_TRPCOLONS:
 			frd->obj = hcl_makecnodetrpcolons(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			goto auto_xlist;
+
+		case HCL_TOK_DBLCOLONS:
+			frd->obj = hcl_makecnodedblcolons(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto auto_xlist;
 
 		case HCL_TOK_COLONGT:

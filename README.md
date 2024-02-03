@@ -49,7 +49,7 @@ do { | k | set k 20; printf "k=%d\n" k; };
 - function calls `( )`
 - message sends `(: )`
 - variable declaration `| |`
-- class variable delcarations `::: | |`
+- class variable delcarations `:: | |`
 
 ## Builtin functions
 
@@ -98,11 +98,11 @@ do { | k | set k 20; printf "k=%d\n" k; };
 
 ```
 (defclass T
-        ::: | A B C | ; class variables
+        :: | A B C | ; class variables
 
         (printf "initializing....\n")
 
-        (defun ::: dump()
+        (defun :: dump()
                 (printf "%d %d %d\n" A B C)
         )
 
@@ -139,7 +139,7 @@ do { | k | set k 20; printf "k=%d\n" k; };
         )
 )
 
-(defun x(a b ... ::: x y z)
+(defun x(a b ... :: x y z)
         |i|
 
 ;       (printf "VA_COUNT(x) = %d\n" (va-count))

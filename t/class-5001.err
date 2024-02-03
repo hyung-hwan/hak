@@ -2,7 +2,7 @@ defclass B | x y | {
 
 };
 
-defclass X ::: B | a b | {
+defclass X :: B | a b | {
 	defun :* new(t) {
 		| a |
 		set self.a t;

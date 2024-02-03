@@ -258,6 +258,7 @@ enum hcl_cnode_type_t
 	HCL_CNODE_SUPER,
 	HCL_CNODE_ELLIPSIS,
 	HCL_CNODE_TRPCOLONS,
+	HCL_CNODE_DBLCOLONS, /* :: */
 	HCL_CNODE_COLONGT, /* :> */
 	HCL_CNODE_COLONLT, /* :< */
 	HCL_CNODE_COLONSTAR, /* :* */
@@ -283,6 +284,7 @@ typedef enum hcl_cnode_flagt hcl_cnode_flag_t;
 
 #define HCL_CNODE_IS_ELLIPSIS(x) ((x)->cn_type == HCL_CNODE_ELLIPSIS)
 #define HCL_CNODE_IS_TRPCOLONS(x) ((x)->cn_type == HCL_CNODE_TRPCOLONS)
+#define HCL_CNODE_IS_DBLCOLONS(x) ((x)->cn_type == HCL_CNODE_DBLCOLONS)
 #define HCL_CNODE_IS_COLONGT(x) ((x)->cn_type == HCL_CNODE_COLONGT)
 #define HCL_CNODE_IS_COLONLT(x) ((x)->cn_type == HCL_CNODE_COLONLT)
 #define HCL_CNODE_IS_COLONSTAR(x) ((x)->cn_type == HCL_CNODE_COLONSTAR)
@@ -1783,6 +1785,7 @@ hcl_cnode_t* hcl_makecnodeself (hcl_t* hcl, int flags, const hcl_loc_t* loc, con
 hcl_cnode_t* hcl_makecnodesuper (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodeellipsis (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodetrpcolons (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
+hcl_cnode_t* hcl_makecnodedblcolons (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodecolongt (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodecolonlt (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodecolonstar (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);

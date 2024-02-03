@@ -1,4 +1,4 @@
-(defun x (a b ::: r)
+(defun x (a b :: r)
 	
 	| x y |
 

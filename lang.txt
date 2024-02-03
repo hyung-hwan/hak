@@ -50,7 +50,7 @@
 	isn't : for method call  confliting with key value spearator in a dictionary?
 
 	default return value for some class methods.
-		::: method -> return what??
+		:: method -> return what??
 		:* method -> return the new instance
 		normal method -> return the last evaluated value?
 
@@ -93,7 +93,7 @@
 	(defclass X 
 
 		| x y |                 ; instance variables 
-		::: | bob jim |             ; class variables
+		:: | bob jim |             ; class variables
 
 		; instance variables and class variables must not collide with those of parent classes.
 		; they must not collide with method names of parent classes
@@ -115,7 +115,7 @@
 			(printf "Y=>%d [%s]\n" a bob) 
 		)
 
-		(defun ::: KK (a b)
+		(defun :: KK (a b)
 			(printf "K=>%s\n" bob) ; a class method can access class variables but not instance variables
 			(return (+ a b))
 		)
@@ -156,7 +156,7 @@ send the message dump to the object pointed to by x with arguments 1, 2, 3.
 		(defun get-x() x)
 		(defun get-y() y)
 	)
-	(defclass X ::: P
+	(defclass X :: P
 		| x y |
 		(defun :* new (a b)
 			(super:new)
@@ -275,7 +275,7 @@ x.show (40, 50);
 variadic arguments -> supported
 
 multiple return variables -> supported
-        (defun ff(a b ::: x y z)
+        (defun ff(a b :: x y z)
                 (set x (+ a b))
                 (set y (+ x x))
                 (set z (+ 999 x))
@@ -285,7 +285,7 @@ multiple return variables -> supported
 
 variadic multiple return variables -> not supported as of now
 	
-        (defun ff(a b ::: x y z ...) <--- can i support something like this???
+        (defun ff(a b :: x y z ...) <--- can i support something like this???
                 (set x (+ a b))
                 (set y (+ x x))
                 (set z (+ 999 x))

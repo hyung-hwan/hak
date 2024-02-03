@@ -6,7 +6,7 @@
 
 	set i 100;
 
-	defun ff(a b ::: x y z) {
+	defun ff(a b :: x y z) {
 		set x (+ a b i);
 		set y (+ x x);
 		set z (+ 999 i);
@@ -29,17 +29,17 @@
 
 
 	## test return variables in message sends
-	defclass B ::: | X1 X2 | {
+	defclass B :: | X1 X2 | {
 
 		set X1 999;
 		set X2 888;
 
-		defun ::: get ( ::: x y)  {
+		defun :: get ( :: x y)  {
 			set x X1;
 			set y X2;
 		};
 
-		defun ::: get2 (inc ::: x y)  {
+		defun :: get2 (inc :: x y)  {
 			set x (+ X1 inc);
 			set y (+ X2 inc);
 		};
