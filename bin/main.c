@@ -362,7 +362,7 @@ static void print_synerr (hcl_t* hcl)
 	hcl_synerr_t synerr;
 	xtn_t* xtn;
 
-	xtn = (xtn_t*)hcl_getxtn (hcl);
+	xtn = (xtn_t*)hcl_getxtn(hcl);
 	hcl_getsynerr (hcl, &synerr);
 
 	hcl_logbfmt (hcl,HCL_LOG_STDERR, "ERROR: ");

@@ -241,7 +241,7 @@ static int copy_string_to (hcl_t* hcl, const hcl_oocs_t* src, hcl_oocs_t* dst, h
 		if (HCL_UNLIKELY(!tmp))
 		{
 			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-			hcl_seterrbfmt (hcl, hcl_geterrnum(hcl), "failed to grow token buffer - %js", orgmsg);
+			hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "failed to grow token buffer - %js", orgmsg);
 			return -1;
 		}
 
@@ -479,7 +479,7 @@ static const hcl_ooch_t* add_sr_name (hcl_t* hcl, const hcl_oocs_t* name)
 	if (HCL_UNLIKELY(!link))
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, hcl_geterrnum(hcl), "failed to source name [%.*js] - %js", name->len, name->ptr, orgmsg);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "failed to source name [%.*js] - %js", name->len, name->ptr, orgmsg);
 		return HCL_NULL;
 	}
 
@@ -503,7 +503,7 @@ static HCL_INLINE int enter_list (hcl_t* hcl, const hcl_loc_t* loc, int flagv)
 	if (HCL_UNLIKELY(!rstl))
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, hcl_geterrnum(hcl), "failed to allocate reader stack node - %js", orgmsg);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "failed to allocate reader stack node - %js", orgmsg);
 		return -1;
 	}
 	rstl->loc = *loc;
@@ -622,7 +622,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 			if (HCL_UNLIKELY(!sym))
 			{
 				const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-				hcl_seterrbfmt (hcl, hcl_geterrnum(hcl), "failed to create symbol cnode for := - %js", orgmsg);
+				hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "failed to create symbol cnode for := - %js", orgmsg);
 				if (head) hcl_freecnode (hcl, head);
 				return HCL_NULL;
 			}
@@ -633,7 +633,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 			if (HCL_UNLIKELY(!newhead))
 			{
 				const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-				hcl_seterrbfmt (hcl, hcl_geterrnum(hcl), "failed to create cons cnode for := - %js", orgmsg);
+				hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "failed to create cons cnode for := - %js", orgmsg);
 				hcl_freecnode (hcl, sym);
 				if (head) hcl_freecnode (hcl, head);
 				return HCL_NULL;
@@ -654,7 +654,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 		if (HCL_UNLIKELY(!head))
 		{
 			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-			hcl_seterrbfmt (hcl, hcl_geterrnum(hcl), "failed to create empty list - %js", orgmsg);
+			hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "failed to create empty list - %js", orgmsg);
 		}
 	}
 
@@ -935,7 +935,7 @@ static int feed_begin_include (hcl_t* hcl)
 	if (HCL_UNLIKELY(!arg))
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, hcl_geterrnum(hcl), "failed to allocate source input structure - %js", orgmsg);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "failed to allocate source input structure - %js", orgmsg);
 		goto oops;
 	}
 
@@ -2865,7 +2865,7 @@ int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
 			x = feed_char(hcl, HCL_OOCI_EOF);
 			if (x <= -1)
 			{
-				if (hcl->c->feed.rd.level <= 0 && hcl_geterrnum(hcl) == HCL_ESYNERR && hcl_getsynerrnum(hcl) == HCL_SYNERR_EOF)
+				if (hcl->c->feed.rd.level <= 0 && HCL_ERRNUM(hcl) == HCL_ESYNERR && hcl_getsynerrnum(hcl) == HCL_SYNERR_EOF)
 				{
 					/* convert this EOF error to success as the caller knows EOF in the feed mode.
 					 * the caller can safely stop feeding after gettting success from hcl_feed(hcl, HCL_NULL, 0);
@@ -3153,7 +3153,7 @@ static int init_compiler (hcl_t* hcl)
 	if (HCL_UNLIKELY(!hcl->c))
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, hcl_geterrnum(hcl), "failed to allocate compiler - %js", orgmsg);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "failed to allocate compiler - %js", orgmsg);
 		hcl_deregcb (hcl, cbp);
 		return -1;
 	}

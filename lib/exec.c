@@ -2367,7 +2367,7 @@ static void supplement_errmsg (hcl_t* hcl, hcl_ooi_t ip)
 	{
 		hcl_dbgi_t* dbgi;
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_errnum_t orgnum = hcl_geterrnum(hcl);
+		hcl_errnum_t orgnum = HCL_ERRNUM(hcl);
 
 		HCL_ASSERT (hcl, HCL_IS_BYTEARRAY(hcl, hcl->active_function->dbgi));
 		dbgi = (hcl_dbgi_t*)HCL_OBJ_GET_BYTE_SLOT(hcl->active_function->dbgi);

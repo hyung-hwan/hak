@@ -2037,14 +2037,18 @@ static HCL_INLINE void* hcl_getxtn (hcl_t* hcl) { return (void*)((hcl_uint8_t*)h
 static HCL_INLINE hcl_mmgr_t* hcl_getmmgr (hcl_t* hcl) { return hcl->_mmgr; }
 static HCL_INLINE hcl_cmgr_t* hcl_getcmgr (hcl_t* hcl) { return hcl->_cmgr; }
 static HCL_INLINE void hcl_setcmgr (hcl_t* hcl, hcl_cmgr_t* cmgr) { hcl->_cmgr = cmgr; }
-static HCL_INLINE hcl_errnum_t hcl_geterrnum (hcl_t* hcl) { return hcl->errnum; }
 #else
 #	define hcl_getxtn(hcl) ((void*)((hcl_uint8_t*)hcl + ((hcl_t*)hcl)->_instsize))
 #	define hcl_getmmgr(hcl) (((hcl_t*)(hcl))->_mmgr)
 #	define hcl_getcmgr(hcl) (((hcl_t*)(hcl))->_cmgr)
 #	define hcl_setcmgr(hcl,cmgr) (((hcl_t*)(hcl))->_cmgr = (cmgr))
-#	define hcl_geterrnum(hcl) (((hcl_t*)(hcl))->errnum)
 #endif
+
+#define HCL_ERRNUM(hcl) (((hcl_t*)(hcl))->errnum)
+
+HCL_EXPORT hcl_errnum_t hcl_geterrnum (
+	hcl_t* hcl
+);
 
 HCL_EXPORT void hcl_seterrnum (
 	hcl_t*       hcl,
@@ -2135,6 +2139,10 @@ HCL_EXPORT const hcl_bch_t* hcl_geterrbmsg (
 
 HCL_EXPORT const hcl_ooch_t* hcl_backuperrmsg (
 	hcl_t* hcl
+);
+
+HCL_EXPORT int hcl_errnum_is_synerr (
+	hcl_errnum_t errnum
 );
 
 HCL_EXPORT const hcl_ooch_t* hcl_errnum_to_errstr (
@@ -2443,7 +2451,7 @@ HCL_EXPORT hcl_synerrnum_t hcl_getsynerrnum (
 HCL_EXPORT void hcl_setsynerrbfmt (
 	hcl_t*              hcl,
 	hcl_synerrnum_t     num,
-	const hcl_loc_t*  loc,
+	const hcl_loc_t*    loc,
 	const hcl_oocs_t*   tgt,
 	const hcl_bch_t*    msgfmt,
 	...
@@ -2452,17 +2460,17 @@ HCL_EXPORT void hcl_setsynerrbfmt (
 HCL_EXPORT void hcl_setsynerrufmt (
 	hcl_t*              hcl,
 	hcl_synerrnum_t     num,
-	const hcl_loc_t*  loc,
+	const hcl_loc_t*    loc,
 	const hcl_oocs_t*   tgt,
 	const hcl_uch_t*    msgfmt,
 	...
 );
 
 #if defined(HCL_HAVE_INLINE)
-	static HCL_INLINE void hcl_setsynerr (hcl_t* hcl, hcl_synerrnum_t num, const hcl_loc_t* loc, const hcl_oocs_t* tgt)
-	{
-		hcl_setsynerrbfmt (hcl, num, loc, tgt, HCL_NULL);
-	}
+static HCL_INLINE void hcl_setsynerr (hcl_t* hcl, hcl_synerrnum_t num, const hcl_loc_t* loc, const hcl_oocs_t* tgt)
+{
+	hcl_setsynerrbfmt (hcl, num, loc, tgt, HCL_NULL);
+}
 #else
 #	define hcl_setsynerr(hcl,num,loc,tgt) hcl_setsynerrbfmt(hcl,num,loc,tgt,HCL_NULL)
 #endif

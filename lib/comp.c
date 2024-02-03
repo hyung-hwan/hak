@@ -112,7 +112,7 @@ static int copy_string_to (hcl_t* hcl, const hcl_oocs_t* src, hcl_oocs_t* dst, h
 		if (HCL_UNLIKELY(!tmp))
 		{
 			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-			hcl_seterrbfmt (hcl, hcl_geterrnum(hcl), "failed to grow string buffer - %js", orgmsg);
+			hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "failed to grow string buffer - %js", orgmsg);
 			return -1;
 		}
 
@@ -535,7 +535,7 @@ static int emit_byte_instruction (hcl_t* hcl, hcl_oob_t bc, const hcl_loc_t* src
 		if (HCL_UNLIKELY(!tmp))
 		{
 			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-			hcl_seterrbfmt (hcl, hcl_geterrnum(hcl), "failed to grow byte code buffer - %js", orgmsg);
+			hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "failed to grow byte code buffer - %js", orgmsg);
 			return -1;
 		}
 
@@ -543,7 +543,7 @@ static int emit_byte_instruction (hcl_t* hcl, hcl_oob_t bc, const hcl_loc_t* src
 		if (HCL_UNLIKELY(!tmp2))
 		{
 			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-			hcl_seterrbfmt (hcl, hcl_geterrnum(hcl), "failed to grow debug info buffer - %js", orgmsg);
+			hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "failed to grow debug info buffer - %js", orgmsg);
 			hcl_freemem (hcl, tmp);
 			return -1;
 		}
@@ -969,7 +969,7 @@ static int push_cblk (hcl_t* hcl, const hcl_loc_t* errloc, hcl_cblk_type_t type)
 		if (HCL_UNLIKELY(!tmp))
 		{
 			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-			hcl_seterrbfmt (hcl, hcl_geterrnum(hcl), "failed to resize control block info buffer - %js", orgmsg);
+			hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "failed to resize control block info buffer - %js", orgmsg);
 			return -1;
 		}
 
@@ -1019,7 +1019,7 @@ static int push_clsblk (hcl_t* hcl, const hcl_loc_t* errloc, hcl_oow_t nivars, h
 		if (HCL_UNLIKELY(!tmp))
 		{
 			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-			hcl_seterrbfmt (hcl, hcl_geterrnum(hcl), "failed to resize class block info buffer - %js", orgmsg);
+			hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "failed to resize class block info buffer - %js", orgmsg);
 			return -1;
 		}
 
@@ -1123,7 +1123,7 @@ static int push_fnblk (hcl_t* hcl, const hcl_loc_t* errloc,
 		if (HCL_UNLIKELY(!tmp))
 		{
 			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-			hcl_seterrbfmt (hcl, hcl_geterrnum(hcl), "failed to resize function block info buffer - %js", orgmsg);
+			hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "failed to resize function block info buffer - %js", orgmsg);
 			return -1;
 		}
 
@@ -1239,7 +1239,7 @@ static HCL_INLINE int _insert_cframe (hcl_t* hcl, hcl_ooi_t index, int opcode, h
 		if (HCL_UNLIKELY(!tmp))
 		{
 			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-			hcl_seterrbfmt (hcl, hcl_geterrnum(hcl), "failed to grow compiler frame stack- %js", orgmsg);
+			hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "failed to grow compiler frame stack- %js", orgmsg);
 			hcl->c->cfs.top--;
 			return -1;
 		}

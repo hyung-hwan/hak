@@ -1367,7 +1367,7 @@ static void reformat_synerr (hcl_t* hcl)
 
 static void send_proto_hcl_error (hcl_server_proto_t* proto)
 {
-	if (hcl_geterrnum(proto->hcl) == HCL_ESYNERR) reformat_synerr (proto->hcl);
+	if (HCL_ERRNUM(proto->hcl) == HCL_ESYNERR) reformat_synerr (proto->hcl);
 	send_error_message (proto, hcl_geterrmsg(proto->hcl));
 }
 

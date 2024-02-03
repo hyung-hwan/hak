@@ -179,6 +179,12 @@ static hcl_uch_t e_unknown_u[] = {'u','n','k','n','o','w','n',' ','e','r','r','o
 #	define e_unknown e_unknown_u
 #endif
 
+
+int hcl_errnum_is_synerr (hcl_errnum_t errnum)
+{
+	return errnum == HCL_ESYNERR;
+}
+
 const hcl_ooch_t* hcl_errnum_to_errstr (hcl_errnum_t errnum)
 {
 	return (errnum >= 0 && errnum < HCL_COUNTOF(errstr))? errstr[errnum]: e_unknown;
@@ -266,6 +272,11 @@ const hcl_ooch_t* hcl_backuperrmsg (hcl_t* hcl)
 {
 	hcl_copy_oocstr (hcl->errmsg.tmpbuf.ooch, HCL_COUNTOF(hcl->errmsg.tmpbuf.ooch), hcl_geterrmsg(hcl));
 	return hcl->errmsg.tmpbuf.ooch;
+}
+
+hcl_errnum_t hcl_geterrnum (hcl_t* hcl)
+{
+	return HCL_ERRNUM(hcl);
 }
 
 void hcl_seterrnum (hcl_t* hcl, hcl_errnum_t errnum)

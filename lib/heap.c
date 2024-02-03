@@ -63,7 +63,7 @@ hcl_heap_t* hcl_makeheap (hcl_t* hcl, hcl_oow_t size)
 	if (HCL_UNLIKELY(!heap))
 	{
 		const hcl_ooch_t* oldmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, hcl_geterrnum(hcl), "unable to allocate a heap - %js", oldmsg);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to allocate a heap - %js", oldmsg);
 		return HCL_NULL;
 	}
 

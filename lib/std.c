@@ -3231,7 +3231,7 @@ hcl_t* hcl_openstdwithmmgr (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, hcl_errnum_t* e
 	cb.vm_cleanup = cb_vm_cleanup;
 	if (hcl_regcb(hcl, &cb) == HCL_NULL)
 	{
-		if (errnum) *errnum = hcl_geterrnum(hcl);
+		if (errnum) *errnum = HCL_ERRNUM(hcl);
 		hcl_close (hcl);
 		return HCL_NULL;
 	}

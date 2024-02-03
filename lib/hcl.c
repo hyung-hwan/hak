@@ -830,7 +830,7 @@ hcl_mod_data_t* hcl_openmod (hcl_t* hcl, const hcl_ooch_t* name, hcl_oow_t namel
 	load = (hcl_mod_load_t)hcl->vmprim.dl_getsym(hcl, md.handle, buf);
 	if (!load)
 	{
-		hcl_seterrbfmt (hcl, hcl_geterrnum(hcl), "unable to get module symbol [%js] in [%.*js]", buf, namelen, name);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to get module symbol [%js] in [%.*js]", buf, namelen, name);
 		HCL_DEBUG3 (hcl, "Cannot get a module symbol [%js] in [%.*js]\n", buf, namelen, name);
 		hcl->vmprim.dl_close (hcl, md.handle);
 		return HCL_NULL;
@@ -851,7 +851,7 @@ hcl_mod_data_t* hcl_openmod (hcl_t* hcl, const hcl_ooch_t* name, hcl_oow_t namel
 	if (load(hcl, &mdp->mod) <= -1)
 	{
 		const hcl_ooch_t* oldmsg = hcl_backuperrmsg (hcl);
-		hcl_seterrbfmt (hcl, hcl_geterrnum(hcl), "module initializer [%js] returned failure in [%.*js] - %js", buf, namelen, name, oldmsg);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "module initializer [%js] returned failure in [%.*js] - %js", buf, namelen, name, oldmsg);
 		HCL_DEBUG3 (hcl, "Module function [%js] returned failure in [%.*js]\n", buf, namelen, name);
 		hcl_rbt_delete (&hcl->modtab, name, namelen);
 		hcl->vmprim.dl_close (hcl, mdp->handle);
