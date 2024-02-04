@@ -178,6 +178,7 @@ enum hcl_tok_type_t
 	HCL_TOK_SELF,
 	HCL_TOK_SUPER,
 
+	HCL_TOK_BINOP,
 	HCL_TOK_IDENT,
 	HCL_TOK_IDENT_DOTTED,
 	HCL_TOK_IDENT_DOTTED_CLA,
@@ -628,6 +629,12 @@ struct hcl_flx_pi_t
 	int is_cla; /* class-level accrssor. prefixed with self/super */
 };
 
+typedef struct hcl_flx_binop_t hcl_flx_binop_t;
+struct hcl_flx_binop_t
+{
+	hcl_oow_t _not_used;
+};
+
 typedef struct hcl_flx_pn_t hcl_flx_pn_t;
 struct hcl_flx_pn_t
 {
@@ -685,6 +692,7 @@ enum hcl_flx_state_t
 	HCL_FLX_HMARKED_IDENT,  /* hash-marked identifier like #include, etc */
 	HCL_FLX_HMARKED_NUMBER, /* hash-marked number - radixed number like #xABCD */
 	HCL_FLX_PLAIN_IDENT,    /* plain identifier */
+	HCL_FLX_BINOP,          /* binary operator */
 	HCL_FLX_PLAIN_NUMBER,   /* plain number */
 	HCL_FLX_QUOTED_TOKEN,   /* string, character */
 	HCL_FLX_SIGNED_TOKEN,   /* prefixed with + or - */
@@ -776,6 +784,7 @@ struct hcl_compiler_t
 				hcl_flx_hb_t hb; /* #b ... */
 				hcl_flx_hn_t hn; /* hash-marked number - radixed number */
 				hcl_flx_pi_t pi; /* plain identifier */
+				hcl_flx_binop_t binop; /* binary operator */
 				hcl_flx_pn_t pn; /* plain number */
 				hcl_flx_qt_t qt; /* quoted token */
 				hcl_flx_st_t st; /* signed token */

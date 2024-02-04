@@ -181,12 +181,6 @@ static HCL_INLINE int is_linebreak (hcl_ooci_t c)
 	return c == '\n'; /* make sure this is one of the space chars in is_spacechar() */
 }
 
-static HCL_INLINE int is_alphachar (hcl_ooci_t c)
-{
-/* TODO: support full unicode */
-	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
-}
-
 static HCL_INLINE int is_digitchar (hcl_ooci_t c)
 {
 /* TODO: support full unicode */
@@ -199,11 +193,20 @@ static HCL_INLINE int is_xdigitchar (hcl_ooci_t c)
 	return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f');
 }
 
+#if 0
+static HCL_INLINE int is_alphachar (hcl_ooci_t c)
+{
+/* TODO: support full unicode */
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+}
+
+
 static HCL_INLINE int is_alnumchar (hcl_ooci_t c)
 {
 /* TODO: support full unicode */
 	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
 }
+#endif
 
 static HCL_INLINE int is_delimchar (hcl_ooci_t c)
 {
@@ -211,6 +214,12 @@ static HCL_INLINE int is_delimchar (hcl_ooci_t c)
 	       c == '|' || c == ',' || c == '.' || c == ':' || c == ';' ||
 	       /* the first characters of tokens in delim_token_tab up to this point */
 	       c == '#' || c == '\"' || c == '\'' || c == '\\' || is_spacechar(c) || c == HCL_OOCI_EOF;
+}
+
+static HCL_INLINE int is_binopchar (hcl_ooci_t c)
+{
+	return c == '&' || c == '*' || c == '+' || c == '-' || c == '/' || c == '%' ||
+	       c == '<' || c == '>' || c == '=' || c == '@' || c == '|' || c == '~';
 }
 
 /* TODO: remove this use the one in comp.c */
@@ -1526,6 +1535,7 @@ static int feed_process_token (hcl_t* hcl)
 			frd->obj = hcl_makecnodebstrlit(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto auto_xlist;
 
+		case HCL_TOK_BINOP: /* TODO: handle this specially as a binary operator */
 		case HCL_TOK_IDENT:
 			frd->obj = hcl_makecnodesymbol(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto auto_xlist;
@@ -1747,6 +1757,7 @@ static int feed_continue_with_char (hcl_t* hcl, hcl_ooci_t c, hcl_flx_state_t st
 #define FLX_HB(hcl) (&((hcl)->c->feed.lx.u.hb))
 #define FLX_HN(hcl) (&((hcl)->c->feed.lx.u.hn))
 #define FLX_PI(hcl) (&((hcl)->c->feed.lx.u.pi))
+#define FLX_BINOP(hcl) (&((hcl)->c->feed.lx.u.binop))
 #define FLX_PN(hcl) (&((hcl)->c->feed.lx.u.pn))
 #define FLX_QT(hcl) (&((hcl)->c->feed.lx.u.qt))
 #define FLX_ST(hcl) (&((hcl)->c->feed.lx.u.st))
@@ -1791,6 +1802,11 @@ static HCL_INLINE void init_flx_qt (hcl_flx_qt_t* qt, hcl_tok_type_t tok_type, h
 static HCL_INLINE void init_flx_pi (hcl_flx_pi_t* pi)
 {
 	HCL_MEMSET (pi, 0, HCL_SIZEOF(*pi));
+}
+
+static HCL_INLINE void init_flx_binop (hcl_flx_binop_t* binop)
+{
+	HCL_MEMSET (binop, 0, HCL_SIZEOF(*binop));
 }
 
 static HCL_INLINE void init_flx_pn (hcl_flx_pn_t* pn)
@@ -1906,9 +1922,16 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 			goto consumed;
 
 		default:
-		/* TODO: limit the identifier characters and cause syntax error for other characters.. */
-			init_flx_pi (FLX_PI(hcl));
-			FEED_CONTINUE (hcl, HCL_FLX_PLAIN_IDENT);
+			if (is_binopchar(c))
+			{
+				init_flx_binop (FLX_BINOP(hcl));
+				FEED_CONTINUE (hcl, HCL_FLX_BINOP);
+			}
+			else
+			{
+				init_flx_pi (FLX_PI(hcl));
+				FEED_CONTINUE (hcl, HCL_FLX_PLAIN_IDENT);
+			}
 			goto not_consumed;
 	}
 
@@ -2377,6 +2400,28 @@ not_consumed:
 	return 0;
 }
 
+static int flx_binop (hcl_t* hcl, hcl_ooci_t c) /* identifier */
+{
+	hcl_flx_binop_t* binop = FLX_BINOP(hcl);
+
+	if (is_binopchar(c))
+	{
+		ADD_TOKEN_CHAR (hcl, c);
+		goto consumed;
+	}
+	else
+	{
+		FEED_WRAP_UP (hcl, HCL_TOK_BINOP);
+		goto not_consumed;
+	}
+
+consumed:
+	return 1;
+
+not_consumed:
+	return 0;
+}
+
 static int flx_plain_number (hcl_t* hcl, hcl_ooci_t c) /* number */
 {
 	hcl_flx_pn_t* pn = FLX_PN(hcl);
@@ -2729,6 +2774,7 @@ static int feed_char (hcl_t* hcl, hcl_ooci_t c)
 		case HCL_FLX_HMARKED_IDENT:    return flx_hmarked_ident(hcl, c);
 		case HCL_FLX_HMARKED_NUMBER:   return flx_hmarked_number(hcl, c);
 		case HCL_FLX_PLAIN_IDENT:      return flx_plain_ident(hcl, c);
+		case HCL_FLX_BINOP:            return flx_binop(hcl, c);
 		case HCL_FLX_PLAIN_NUMBER:     return flx_plain_number(hcl, c);
 		case HCL_FLX_QUOTED_TOKEN:     return flx_quoted_token(hcl, c);
 		case HCL_FLX_SIGNED_TOKEN:     return flx_signed_token(hcl, c);
