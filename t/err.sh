@@ -3,22 +3,73 @@
 for i in $@; do :; done
 script="$i"
 
-expected_errinfo=$(grep -n -o -E "##ERROR: .+" "$script" 2>/dev/null)
-[ -z "$expected_errinfo" ] && {
-	echo "INVALID TESTER - $script contains no ERROR information"
-	exit 1
+run_partfile() {
+	l_cmd="";
+	l_nargs=$#
+
+	while [ $# -gt 3 ]
+	do
+		l_cmd="$l_cmd $1"
+		shift
+	done
+
+	l_script="$1"
+	shift ## skip the original script.
+	l_partno="$1"
+	shift ## partno
+
+	l_partfile="$1"
+	l_cmd="$l_cmd $l_partfile"
+
+	l_expected_errinfo=$(grep -n -o -E "##ERROR: .+" "$l_partfile" 2>/dev/null)
+	[ -z "$l_expected_errinfo" ] && {
+		echo "ERROR: INVALID TESTER - $l_script($l_partno) contains no ERROR information"
+		return 1
+	}
+
+	l_expected_errline=$(echo $l_expected_errinfo | cut -d: -f1)
+	l_xlen=$(echo $l_expected_errline | wc -c)
+	l_xlen=$(expr $l_xlen + 10)
+	l_expected_errmsg=$(echo $l_expected_errinfo | cut -c${l_xlen}-)
+	l_output=`$l_cmd 2>&1`
+	## the regular expression is not escaped properly. the error information must not
+	## include specifial regex characters to avoid problems.
+	echo "$l_output" | grep -E "ERROR:.+${l_partfile}\[${l_expected_errline},[[:digit:]]+\] ${l_expected_errmsg}" >/dev/null 2>&1 || {
+		echo "ERROR: error not raised - $l_script($l_partno) - $l_output"
+		return 1
+	}
+
+	echo "OK"
+	return 0
 }
 
-expected_errline=$(echo $expected_errinfo | cut -d: -f1)
-xlen=$(echo $expected_errline | wc -c)
-xlen=$(expr $xlen + 10)
-expected_errmsg=$(echo $expected_errinfo | cut -c${xlen}-)
 
-output=$($@ 2>&1) 
-## the regular expression is not escaped properly. the error information must not
-## include specifial regex characters to avoid problems.
-echo "$output" | grep -E "ERROR:.+${script}\[${expected_errline},[[:digit:]]+\] ${expected_errmsg}" || {
-	echo "$script - $output"
-	exit 1
+ever_failed=0
+partfile=`mktemp`
+partno=0
+partlines=0
+> "$partfile"
+
+## TODO: don't use  while read line..
+while IFS= read -r line
+do
+	if [ "$line" = "---" ]
+	then
+		[ $partlines -gt 0 ] && {
+			run_partfile "$@" "$partno" "$partfile" || ever_failed=1
+		}
+		partno=`expr $partno + 1`
+		partlines=0
+		> "$partfile"
+	else
+		echo "$line" >> "$partfile"
+		partlines=`expr $partlines + 1`
+	fi
+done < "$script"
+
+[ $partlines -gt 0 ] && {
+	run_partfile "$@" "$partno" "$partfile" || ever_failed=1
 }
-exit 0
+
+rm -f "$partfile"
+exit $ever_failed

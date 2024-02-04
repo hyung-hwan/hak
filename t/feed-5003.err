@@ -1,9 +1,0 @@
-## semicolon inside #{} must raise a syntax error
-
-a := #{
-	"k1":
-	"hello k1\n",
-	"k2":
-	"hello k2\n";   ##ERROR: syntax error - unexpected semicolon
-};
-

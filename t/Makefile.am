@@ -16,14 +16,6 @@ check_ERRORS = \
 	do-5001.err \
 	do-5002.err \
 	feed-5001.err \
-	feed-5002.err \
-	feed-5003.err \
-	feed-5004.err \
-	feed-5005.err \
-	feed-5006.err \
-	feed-5007.err \
-	feed-5008.err \
-	feed-5009.err \
 	mlist-5001.err \
 	var-5001.err \
 	var-5002.err \

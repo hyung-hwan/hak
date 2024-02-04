@@ -1,3 +1,0 @@
-defun :* fun1() { ##ERROR: syntax error - function name not symbol in defun
-	return 10;
-};

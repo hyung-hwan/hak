@@ -1,6 +1,0 @@
-## #b can be followed by [ or binary digits.
-
-printf "%O\n" #b[ 10 20 30 ];
-printf "%010b\n" #b0101;
-printf "%O\n" #bxy; ##ERROR: syntax error - neither valid radixed number nor valid directive #bxy
-
