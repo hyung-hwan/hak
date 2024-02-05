@@ -35,7 +35,7 @@ run_partfile() {
 	## the regular expression is not escaped properly. the error information must not
 	## include specifial regex characters to avoid problems.
 	echo "$l_output" | grep -E "ERROR:.+${l_partfile}\[${l_expected_errline},[[:digit:]]+\] ${l_expected_errmsg}" >/dev/null 2>&1 || {
-		echo "ERROR: error not raised - $l_script($l_partno) - $l_output"
+		echo "ERROR: error not raised at line $l_expected_errline - $l_script($l_partno) - $l_output"
 		return 1
 	}
 
@@ -50,7 +50,8 @@ partno=0
 partlines=0
 > "$partfile"
 
-## TODO: don't use  while read line..
+## dash behaves differently for read -r.
+## while \n is read in literally by bash or other shells, dash converts it to a new-line
 while IFS= read -r line
 do
 	if [ "$line" = "---" ]
@@ -73,3 +74,4 @@ done < "$script"
 
 rm -f "$partfile"
 exit $ever_failed
+
