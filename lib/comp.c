@@ -4430,6 +4430,8 @@ redo:
 
 		case HCL_CNODE_SELF:
 		case HCL_CNODE_SUPER:
+			/* if super is not sent a message, super represents the receiver
+			 * just like self does */
 			if (emit_byte_instruction(hcl, HCL_CODE_PUSH_RECEIVER, HCL_CNODE_GET_LOC(oprnd)) <= -1) return -1;
 			goto done;
 
