@@ -1743,7 +1743,6 @@ static int compile_plus (hcl_t* hcl, hcl_cnode_t* src)
 	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_PLUS));
 
 	obj = HCL_CNODE_CONS_CDR(src);
-
 	if (!obj)
 	{
 		/* no value */
@@ -4497,10 +4496,7 @@ redo:
 				case HCL_CONCODE_MLIST:
 					if (compile_cons_mlist_expression(hcl, oprnd, 0) <= -1) return -1;
 					break;
-				/* TODO:
-				case HCL_CONCODE_ALIST:
-					break;
-				*/
+
 
 				case HCL_CONCODE_BLOCK:
 					if (!(hcl->option.trait & HCL_TRAIT_LANG_ENABLE_BLOCK))
@@ -4532,6 +4528,9 @@ redo:
 					hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARDCLBANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "variable declaration disallowed");
 					return -1;
 
+				/* ALIST is transformed to XLIST with or set or set-r by the reader.
+				 * so it must not appear here */
+				case HCL_CONCODE_ALIST:
 				default:
 					hcl_setsynerrbfmt (hcl, HCL_SYNERR_INTERN, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "internal error - unknown cons type %d", HCL_CNODE_CONS_CONCODE(oprnd));
 					return -1;
@@ -4552,12 +4551,6 @@ redo:
 				case HCL_CONCODE_MLIST:
 					hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "empty message send list");
 					return -1;
-
-				/* TODO:
-				case HCL_CONCODE_ALIST:
-					hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "empty assignment list");
-					return -1;
-				*/
 
 				case HCL_CONCODE_BLOCK:
 					if (!(hcl->option.trait & HCL_TRAIT_LANG_ENABLE_BLOCK))
@@ -4589,6 +4582,9 @@ redo:
 					hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "empty variable declaration");
 					return -1;
 
+				/* ALIST is transformed to XLIST with or set or set-r by the reader.
+				 * so it must not appear here */
+				case HCL_CONCODE_ALIST:
 				default:
 					hcl_setsynerrbfmt (hcl, HCL_SYNERR_INTERN, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "internal error - unknown list type %d", HCL_CNODE_CONS_CONCODE(oprnd));
 					return -1;
@@ -4652,11 +4648,14 @@ static int compile_object_r (hcl_t* hcl)
 	{
 		return compile_cons_mlist_expression(hcl, oprnd, cf->u.obj_r.nrets);
 	}
-/* TODO:
+
+	/*
 	else if (HCL_CNODE_IS_CONS_CONCODED(oprnd, HCL_CONCODE_ALIST))
 	{
+		ALIST is transformed to XLIST with or set or set-r by the reader.
+		so it must not appear here..
 	}
-*/
+	*/
 
 	hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "non-function call/non-message send disallowed");
 	return -1;

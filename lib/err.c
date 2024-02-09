@@ -129,6 +129,7 @@ static char* synerrstr[] =
 	":= disallowed",
 	"no value after ,",
 	"no value after :",
+	"missing value",
 	"no separator between array/dictionary elements",
 	"#include error",
 

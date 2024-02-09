@@ -133,6 +133,7 @@ enum hcl_synerrnum_t
 	HCL_SYNERR_COLONEQBANNED, /* := disallowed */
 	HCL_SYNERR_COMMANOVALUE,  /* no value after , */
 	HCL_SYNERR_COLONNOVALUE,  /* no value after : */
+	HCL_SYNERR_NOVALUE,       /* missing value */
 	HCL_SYNERR_NOSEP,         /* no separator between array/dictionary elements */
 	HCL_SYNERR_INCLUDE,       /* #include error */
 
@@ -1922,6 +1923,7 @@ enum hcl_concode_t
 	HCL_CONCODE_XLIST = 0,  /* ( ) - executable list */
 	HCL_CONCODE_MLIST,      /* (obj:message) - message send list */
 	HCL_CONCODE_ALIST,      /* (a := 20) assignment list */
+	HCL_CONCODE_BLIST,      /* (10 + 20) expression with binary operator */
 	HCL_CONCODE_BLOCK,      /* { } */
 	HCL_CONCODE_ARRAY,      /* #[ ] */
 	HCL_CONCODE_BYTEARRAY,  /* #b[ ] */

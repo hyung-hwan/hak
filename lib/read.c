@@ -60,7 +60,8 @@ static struct voca_t
 
 	{  3, { '(',' ',')'      /* XLIST */                                  } },
 	{  4, { '(',':',' ',')'  /* MLIST */                                  } },
-	{  3, { '(',':','=',')'  /* ALIST */                                  } },
+	{  4, { '(',':','=',')'  /* ALIST */                                  } },
+	{  4, { '(','B','O',')'  /* ALIST */                                  } },
 	{  3, { '{',' ','}'      /* BLOCK */                                  } },
 	{  4, { '#','[',' ',']'  /* ARRAY */                                  } },
 	{  5, { '#','b','[',' ',']' /* BYTE ARRAY */                          } },
@@ -101,6 +102,7 @@ enum voca_id_t
 	VOCA_XLIST,
 	VOCA_MLIST,
 	VOCA_ALIST, /* assignment list */
+	VOCA_BLIST, /* just fake entry */
 	VOCA_BLOCK,
 	VOCA_ARRAY,
 	VOCA_BYTEARRAY,
@@ -121,18 +123,19 @@ enum list_flag_t
 	COMMAED      = (1 << 2),
 	COLONED      = (1 << 3),
 	COLONEQED    = (1 << 4),
-	CLOSED       = (1 << 5),
-	JSON         = (1 << 6),
-	DATA_LIST    = (1 << 7),
-	AUTO_FORGED  = (1 << 8),  /* automatically added list. only applicable to XLIST */
-	AT_BEGINNING = (1 << 9)
+	BINOPED      = (1 << 5),
+	CLOSED       = (1 << 6),
+	JSON         = (1 << 7),
+	DATA_LIST    = (1 << 8),
+	AUTO_FORGED  = (1 << 9),  /* automatically added list. only applicable to XLIST */
+	AT_BEGINNING = (1 << 10)
 
-	/* TOTOAL 12 items are allowed for LIST_FLAG_GET_CONCODE and LIST_FLAG_SET_CONCODE().
-	 * they reserve lower 12 bits as flag bits.*/
+	/* TOTOAL 16 items are allowed for LIST_FLAG_GET_CONCODE() and LIST_FLAG_SET_CONCODE().
+	 * they reserve lower 16 bits as flag bits.*/
 };
 
-#define LIST_FLAG_GET_CONCODE(x) (((x) >> 12) & 0x0FFF)
-#define LIST_FLAG_SET_CONCODE(x,type) ((x) = ((x) & ~0xFF000) | ((type) << 12))
+#define LIST_FLAG_GET_CONCODE(x) (((x) >> 16) & 0xFFFF)
+#define LIST_FLAG_SET_CONCODE(x,type) ((x) = ((x) & ~0xFF0000) | ((type) << 16))
 
 static struct
 {
@@ -144,6 +147,7 @@ static struct
 	/*[HCL_CONCODE_XLIST]     =*/ { HCL_TOK_RPAREN, HCL_SYNERR_RPAREN, VOCA_XLIST }, /* XLIST     ( )  */
 	/*[HCL_CONCODE_MLIST]     =*/ { HCL_TOK_RPAREN, HCL_SYNERR_RPAREN, VOCA_MLIST }, /* MLIST     (obj:message) */
 	/*[HCL_CONCODE_ALIST]     =*/ { HCL_TOK_RPAREN, HCL_SYNERR_RPAREN, VOCA_ALIST }, /* ALIST     (var:=value) */
+	/*[HCL_CONCODE_BLIST]     =*/ { HCL_TOK_RPAREN, HCL_SYNERR_RPAREN, VOCA_BLIST }, /* BLIST     (x + y) */
 	/*[HCL_CONCODE_BLOCK]     =*/ { HCL_TOK_RBRACE, HCL_SYNERR_RBRACE, VOCA_BLOCK }, /* BLOCK     { } */
 	/*[HCL_CONCODE_ARRAY]     =*/ { HCL_TOK_RBRACK, HCL_SYNERR_RBRACK, VOCA_ARRAY }, /* ARRAY     #[ ] */
 	/*[HCL_CONCODE_BYTEARRAY] =*/ { HCL_TOK_RBRACK, HCL_SYNERR_RBRACK, VOCA_BYTEARRAY }, /* BYTEARRAY #b[ ] */
@@ -541,15 +545,20 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 	hcl->c->r.st = rstl->prev; /* pop off  */
 	hcl_freemem (hcl, rstl); /* dispose of the stack node */
 
-	if (fv & (COMMAED | COLONED | COLONEQED))
+	if (fv & (COMMAED | COLONED | COLONEQED | BINOPED))
 	{
+		/* no item after , : := or various binary operators */
 		if (concode == HCL_CONCODE_MLIST)
 		{
 			hcl_setsynerrbfmt (hcl, HCL_SYNERR_CALLABLE, TOKEN_LOC(hcl), HCL_NULL, "missing message after :");
 		}
 		else if (concode == HCL_CONCODE_ALIST)
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_CALLABLE, TOKEN_LOC(hcl), HCL_NULL, "missing value after :=");
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_NOVALUE, TOKEN_LOC(hcl), HCL_NULL, "missing value after :=");
+		}
+		else if (concode == HCL_CONCODE_BLIST)
+		{
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_NOVALUE, TOKEN_LOC(hcl), HCL_NULL, "missing value after binary operator");
 		}
 		else
 		{
@@ -761,10 +770,10 @@ static HCL_INLINE int can_coloneq_list (hcl_t* hcl)
 	HCL_ASSERT (hcl, hcl->c->r.st != HCL_NULL);
 	rstl = hcl->c->r.st;
 
-	if (rstl->count <= 0 || rstl->count > 1) return 0; /* allowed after the first item only */
+	if (rstl->count <= 0 || rstl->count >= 2) return 0; /* allowed after the first item only */
 
 	/* repeated delimiters - e.g (a := := ...)   (a : := ... )  */
-	if (rstl->flagv & (COMMAED | COLONED | COLONEQED)) return 0;
+	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED)) return 0;
 
 	cc = LIST_FLAG_GET_CONCODE(rstl->flagv);
 
@@ -776,12 +785,42 @@ static HCL_INLINE int can_coloneq_list (hcl_t* hcl)
 	return 1;
 }
 
+static HCL_INLINE int can_binop_list (hcl_t* hcl)
+{
+	hcl_rstl_t* rstl;
+	hcl_concode_t cc;
+
+	HCL_ASSERT (hcl, hcl->c->r.st != HCL_NULL);
+	rstl = hcl->c->r.st;
+
+	if (rstl->count <= 0)
+	{
+		/* allowed but it must be treated like a normal identifier */
+		return 1;
+	}
+
+	if (rstl->count >= 2) return 0; /* allowed after the first item only */
+
+	/* repeated delimiters - e.g (a ++ ++ ...)   (a : := ... )  */
+	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED)) return 0;
+
+	cc = LIST_FLAG_GET_CONCODE(rstl->flagv);
+
+	/* assignment only in XLIST */
+	if (cc != HCL_CONCODE_XLIST) return 0;
+
+	LIST_FLAG_SET_CONCODE(rstl->flagv, HCL_CONCODE_BLIST);
+	rstl->flagv |= BINOPED;
+/* TODO: must remember the actual binop operator token */
+	return 2;
+}
+
 static HCL_INLINE void clear_comma_colon_flag (hcl_t* hcl)
 {
 	hcl_rstl_t* rstl;
 	HCL_ASSERT (hcl, hcl->c->r.st != HCL_NULL);
 	rstl = hcl->c->r.st;
-	rstl->flagv &= ~(COMMAED | COLONED | COLONEQED);
+	rstl->flagv &= ~(COMMAED | COLONED | COLONEQED | BINOPED);
 }
 
 static int chain_to_list (hcl_t* hcl, hcl_cnode_t* obj, hcl_loc_t* loc)
@@ -1262,7 +1301,6 @@ static int feed_process_token (hcl_t* hcl)
 				hcl_setsynerr (hcl, HCL_SYNERR_DOTBANNED, TOKEN_LOC(hcl), HCL_NULL);
 				goto oops;
 			}
-
 			goto ok;
 
 		case HCL_TOK_COLON:
@@ -1271,7 +1309,6 @@ static int feed_process_token (hcl_t* hcl)
 				hcl_setsynerr (hcl, HCL_SYNERR_COLONBANNED, TOKEN_LOC(hcl), HCL_NULL);
 				goto oops;
 			}
-
 			goto ok;
 
 		case HCL_TOK_COLONEQ:
@@ -1280,8 +1317,28 @@ static int feed_process_token (hcl_t* hcl)
 				hcl_setsynerr (hcl, HCL_SYNERR_COLONEQBANNED, TOKEN_LOC(hcl), HCL_NULL);
 				goto oops;
 			}
-
 			goto ok;
+
+		case HCL_TOK_BINOP:
+		{
+			int can = 0;
+			if (frd->level <= 0 || !(can = can_binop_list(hcl)))
+			{
+				hcl_setsynerr (hcl, HCL_SYNERR_BANNED, TOKEN_LOC(hcl), HCL_NULL);
+				goto oops;
+			}
+			if (can == 1) goto ident; /* if binop is the first in the list */
+
+			HCL_ASSERT (hcl, can == 2);
+
+		#if 0
+/* TODO: ... */
+			frd->obj = hcl_makecnodebinop(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			goto ok;
+		#else
+			goto ident;
+		#endif
+		}
 
 		case HCL_TOK_COMMA:
 			if (frd->level <= 0 || !can_comma_list(hcl))
@@ -1289,7 +1346,6 @@ static int feed_process_token (hcl_t* hcl)
 				hcl_setsynerr (hcl, HCL_SYNERR_COMMABANNED, TOKEN_LOC(hcl), HCL_NULL);
 				goto oops;
 			}
-
 			goto ok;
 
 		case HCL_TOK_EOL: /* EOL returned only under a certain condition */
@@ -1535,8 +1591,8 @@ static int feed_process_token (hcl_t* hcl)
 			frd->obj = hcl_makecnodebstrlit(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto auto_xlist;
 
-		case HCL_TOK_BINOP: /* TODO: handle this specially as a binary operator */
 		case HCL_TOK_IDENT:
+		ident:
 			frd->obj = hcl_makecnodesymbol(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto auto_xlist;
 
@@ -1549,11 +1605,12 @@ static int feed_process_token (hcl_t* hcl)
 			goto auto_xlist;
 
 		auto_xlist:
+			if (!frd->obj) goto oops; /* TODO: ugly... resturcture this check and the check 5 lines down  */
 			if (auto_forge_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;
 			break;
 	}
 
-	if (!frd->obj) goto oops;
+	if (!frd->obj) goto oops; /* TODO: this doesn't have to be check if jump has been made to auto_xlist... so restructure the flow */
 
 #if 0
 	/* check if the element is read for a quoted list */
@@ -2696,6 +2753,7 @@ static int flx_signed_token (hcl_t* hcl, hcl_ooci_t c)
 	}
 	else
 	{
+	#if 0
 		init_flx_pi (FLX_PI(hcl));
 
 		/* the sign is already in the token name buffer.
@@ -2707,6 +2765,13 @@ static int flx_signed_token (hcl_t* hcl, hcl_ooci_t c)
 		/* let refeeding of 'c' happen at the next iteration */
 		FEED_CONTINUE (hcl, HCL_FLX_PLAIN_IDENT);
 		goto not_consumed;
+	#else
+		/* switch to binop mode */
+		init_flx_binop (FLX_BINOP(hcl));
+		HCL_ASSERT (hcl, TOKEN_NAME_LEN(hcl) == 1);
+		FEED_CONTINUE (hcl, HCL_FLX_BINOP);
+		goto not_consumed;
+	#endif
 	}
 
 consumed:
