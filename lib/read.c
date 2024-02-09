@@ -61,7 +61,7 @@ static struct voca_t
 	{  3, { '(',' ',')'      /* XLIST */                                  } },
 	{  4, { '(',':',' ',')'  /* MLIST */                                  } },
 	{  4, { '(',':','=',')'  /* ALIST */                                  } },
-	{  4, { '(','B','O',')'  /* ALIST */                                  } },
+	{  4, { '(','B','O',')'  /* BLIST */                                  } },
 	{  3, { '{',' ','}'      /* BLOCK */                                  } },
 	{  4, { '#','[',' ',']'  /* ARRAY */                                  } },
 	{  5, { '#','b','[',' ',']' /* BYTE ARRAY */                          } },
@@ -530,6 +530,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 {
 	hcl_rstl_t* rstl;
 	hcl_cnode_t* head;
+	hcl_oow_t count;
 	hcl_loc_t loc;
 	int fv, concode;
 
@@ -538,6 +539,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 	rstl = hcl->c->r.st; /* get the stack top */
 
 	head = rstl->head;
+	count = rstl->count;
 	fv = rstl->flagv;
 	loc = rstl->loc;
 	concode = LIST_FLAG_GET_CONCODE(fv);
@@ -554,7 +556,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 		}
 		else if (concode == HCL_CONCODE_ALIST)
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_NOVALUE, TOKEN_LOC(hcl), HCL_NULL, "missing value after :=");
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_RVALUE, TOKEN_LOC(hcl), HCL_NULL, "missing rvalue after :=");
 		}
 		else if (concode == HCL_CONCODE_BLIST)
 		{
@@ -635,7 +637,20 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 				fake_tok_ptr = &fake_tok;
 			}
 
-	/* TODO: check the number of arguments in advance??? */
+
+			HCL_ASSERT (hcl, count >= 2); /* the missing rvalue check has been done above */
+			if (count != 2)
+			{
+				hcl_cnode_t* rval;
+				rval = HCL_CNODE_CONS_CDR(head);
+				rval = HCL_CNODE_CONS_CDR(rval);
+				rval = HCL_CNODE_CONS_CAR(rval);
+
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_RVALUE, HCL_CNODE_GET_LOC(rval), HCL_CNODE_GET_TOK(rval), "too many rvalues after :=");
+				if (head) hcl_freecnode (hcl, head);
+				return HCL_NULL;
+			}
+
 			sym = hcl_makecnodesymbol(hcl, 0, &loc, fake_tok_ptr);
 			if (HCL_UNLIKELY(!sym))
 			{
@@ -1374,13 +1389,13 @@ static int feed_process_token (hcl_t* hcl)
 			/* if auto-forged */
 #if 0
 /* TODO: remove this part if the assertion is confirmed true in the #else part... */
-			if (concode != HCL_CONCODE_XLIST && concode != HCL_CONCODE_MLIST && concode != HCL_CONCODE_ALIST)
+			if (concode != HCL_CONCODE_XLIST && concode != HCL_CONCODE_MLIST && concode != HCL_CONCODE_ALIST && concode != HCL_CONCODE_BLIST)
 			{
 				hcl_setsynerr (hcl, HCL_SYNERR_UNBALPBB, TOKEN_LOC(hcl), HCL_NULL);
 				goto oops;
 			}
 #else
-			HCL_ASSERT (hcl, concode == HCL_CONCODE_XLIST || concode == HCL_CONCODE_MLIST || concode == HCL_CONCODE_ALIST);
+			HCL_ASSERT (hcl, concode == HCL_CONCODE_XLIST || concode == HCL_CONCODE_MLIST || concode == HCL_CONCODE_ALIST || concode == HCL_CONCODE_BLIST);
 #endif
 
 			frd->obj = leave_list(hcl, &frd->list_loc, &frd->flagv, &oldflagv);

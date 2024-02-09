@@ -165,7 +165,8 @@ static char* synerrstr[] =
 	"stray backslash",
 	"block expression expected",
 	"block expression disallowed",
-	"invalid lvalue"
+	"invalid lvalue",
+	"invalid rvalue"
 };
 
 /* --------------------------------------------------------------------------

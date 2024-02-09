@@ -169,7 +169,8 @@ enum hcl_synerrnum_t
 	HCL_SYNERR_BACKSLASH,     /* stray backslash */
 	HCL_SYNERR_BLOCK,         /* block expression expected */
 	HCL_SYNERR_BLOCKBANNED,   /* block expression disallowed */
-	HCL_SYNERR_LVALUE         /* invalid lvalue */
+	HCL_SYNERR_LVALUE,        /* invalid lvalue */
+	HCL_SYNERR_RVALUE         /* invalid rvalue */
 };
 typedef enum hcl_synerrnum_t hcl_synerrnum_t;
 
