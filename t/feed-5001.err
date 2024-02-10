@@ -1,3 +1,22 @@
+##
+
+x := (+ 10 20) "aaaa"; ##ERROR: syntax error - too many rvalues
+
+---
+
+##
+
+x := (10 +); ##ERROR: syntax error - no operand after binary operator
+
+---
+
+##
+
+x := (10 + 20 * 4); ##ERROR: syntax error - prohibited binary operator
+
+---
+
+
 ## you can't have another colon before the method..
 (obj: :method) ##ERROR: syntax error - : disallowed
 

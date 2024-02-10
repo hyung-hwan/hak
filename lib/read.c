@@ -120,10 +120,12 @@ enum list_flag_t
 {
 	QUOTED       = (1 << 0),
 	DOTTED       = (1 << 1),
+
 	COMMAED      = (1 << 2),
 	COLONED      = (1 << 3),
 	COLONEQED    = (1 << 4),
 	BINOPED      = (1 << 5),
+
 	CLOSED       = (1 << 6),
 	JSON         = (1 << 7),
 	DATA_LIST    = (1 << 8),
@@ -594,7 +596,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 		/* HACK */
 		if (concode == HCL_CONCODE_ALIST)
 		{
-			/* tranform (var := val) to (set var val) */
+			/* tranform (var := val) to (set var val) - note ALIST doesn't contain the := symbol */
 			hcl_cnode_t* sym, * newhead, * lval;
 			hcl_oocs_t fake_tok, * fake_tok_ptr = HCL_NULL;
 
@@ -637,7 +639,6 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 				fake_tok_ptr = &fake_tok;
 			}
 
-
 			HCL_ASSERT (hcl, count >= 2); /* the missing rvalue check has been done above */
 			if (count != 2)
 			{
@@ -660,7 +661,6 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 				return HCL_NULL;
 			}
 
-
 			/* create a new head joined with set or set-r */
 			newhead = hcl_makecnodecons(hcl, 0, &loc, fake_tok_ptr, sym, head);
 			if (HCL_UNLIKELY(!newhead))
@@ -674,6 +674,36 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 
 			head = newhead;
 			concode = HCL_CONCODE_XLIST; /* switch back to XLIST */
+		}
+		else if (concode == HCL_CONCODE_BLIST)
+		{
+			/* x binop y -> binop x y - BLIST contains BINOP in it */
+			hcl_cnode_t* x, * binop;
+
+			x = HCL_CNODE_CONS_CAR(head);
+			if (x && HCL_CNODE_IS_ELIST(x))
+			{
+				hcl_setsynerr (hcl, HCL_SYNERR_LVALUE, HCL_CNODE_GET_LOC(x), HCL_CNODE_GET_TOK(x));
+				if (head) hcl_freecnode (hcl, head);
+				return HCL_NULL;
+			}
+
+			/* swap x and binop */
+			binop = HCL_CNODE_CONS_CDR(head);
+			if (!binop || !HCL_CNODE_IS_CONS(binop) || !HCL_CNODE_CONS_CDR(binop) || !HCL_CNODE_IS_CONS(HCL_CNODE_CONS_CDR(binop)))
+			{
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_NOVALUE, HCL_CNODE_GET_LOC(x), HCL_CNODE_GET_TOK(x), "no operand after binary operator");
+				if (head) hcl_freecnode (hcl, head);
+				return HCL_NULL;
+			}
+
+/* TODO: support multiple operators and operands .. like 1 + 2 - 3.. -> currently can_binop_list() disallows more operators */
+			HCL_ASSERT (hcl, count == 3);
+
+			HCL_CNODE_CONS_CDR(head) = HCL_CNODE_CONS_CDR(binop);
+			HCL_CNODE_CONS_CDR(binop) = head;
+			head = binop;
+			concode = HCL_CONCODE_XLIST;
 		}
 		/* END HACK */
 
@@ -1339,7 +1369,7 @@ static int feed_process_token (hcl_t* hcl)
 			int can = 0;
 			if (frd->level <= 0 || !(can = can_binop_list(hcl)))
 			{
-				hcl_setsynerr (hcl, HCL_SYNERR_BANNED, TOKEN_LOC(hcl), HCL_NULL);
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "prohibited binary operator");
 				goto oops;
 			}
 			if (can == 1) goto ident; /* if binop is the first in the list */

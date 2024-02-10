@@ -34,24 +34,24 @@ defclass B :: A | d e f | {
 };
 
 a := ((B:newInstance 1 2 3):sum);
-if (/= a 18) { printf "ERROR: a must be 18\n"; } \
+if (a /= 18) { printf "ERROR: a must be 18\n"; } \
 else { printf "OK %d\n" a; };
 
 b := (B:newInstance 2 3 4);
 a := (b:get-a);
-if (/= a 4) {printf "ERROR: a must be 4\n" } \
+if (a /= 4) {printf "ERROR: a must be 4\n" } \
 else { printf "OK %d\n" a };
 
 a := (b:get-b);
-if (/= a 6) { printf "ERROR: a must be 6\n" } \
+if (a /= 6) { printf "ERROR: a must be 6\n" } \
 else { printf "OK %d\n" a };
 
 a := (b:get-c);
-if (/= a 8) { printf "ERROR: a must be 8\n" } \
+if (a /= 8) { printf "ERROR: a must be 8\n" } \
 else {printf "OK %d\n" a };
 
 a := (b:sum);
-if (/= a 27) { printf "ERROR: a must be 27\n" } \
+if (a /= 27) { printf "ERROR: a must be 27\n" } \
 else { printf "OK %d\n" a };
 
 ## super is equivalent to self unless a message is sent to it.
