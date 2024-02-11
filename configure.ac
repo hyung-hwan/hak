@@ -674,6 +674,7 @@ AM_CONDITIONAL(ENABLE_HCLGO, test "x${enable_hclgo_is}" = "xyes")
 dnl ====  subsititution of some key items ====
 AC_SUBST(HCL_PROJECT_AUTHOR, "${PACKAGE_BUGREPORT}")
 AC_SUBST(HCL_PROJECT_URL, "${PACKAGE_URL}")
+AC_SUBST(HCL_CONFIGURE_SYS_LIB_SEARCH_PATH_SPEC, ["$sys_lib_search_path_spec"])
 
 dnl === configure arguments
 if test `expr " [$]0" : " '.*"` = 0; then
