@@ -9,6 +9,24 @@ unit HCL;
 interface
 
 type
+	BitMask = longword; (* this must match hcl_bitmask_t in hcl.h *)
+
+(*const
+	TRAIT_LANG_ENABLE_EOF = (BitMask(1) shl 14);
+	TRAIT_LANG_ENABLE_BLOCK = (BitMask(1) shl 15);*)
+
+type
+	TraitBit = (
+		LANG_ENABLE_EOF = (BitMask(1) shl 14),
+		LANG_ENABLE_BLOCK = (BitMask(1) shl 15)
+	);
+
+	Option = (
+		TRAIT,
+		LOG_MASK,
+		LOG_MAXCAPA
+	);
+
 	Interp = class
 	protected
 		handle: pointer;
@@ -50,13 +68,17 @@ function hcl_errnum_is_synerr(errnum: integer): boolean; cdecl; external;
 
 function hcl_openstd(xtnsize: sizeint; errnum: pointer): pointer; cdecl; external;
 procedure hcl_close(handle: pointer); cdecl; external;
+
+function hcl_setoption(handle: pointer; option: Option; value: pointer): integer; cdecl; external;
+function hcl_getoption(handle: pointer; option: Option; value: pointer): integer; cdecl; external;
+
 function hcl_geterrnum(handle: pointer): integer; cdecl; external;
 function hcl_geterrbmsg(handle: pointer): pansichar; cdecl; external;
 function hcl_ignite(handle: pointer; heapsize: sizeint): integer; cdecl; external;
 function hcl_addbuiltinprims(handle: pointer): integer; cdecl; external;
 function hcl_beginfeed(handle: pointer; on_cnode: pointer): integer; cdecl; external;
 function hcl_feedbchars(handle: pointer; data: pansichar; len: sizeint): integer; cdecl; external;
-function hcl_feeduchars(handle: pointer; data: pwidechar; len: sizeint): integer; cdecl; external; (* this is wrong in deed *)
+function hcl_feeduchars(handle: pointer; data: pwidechar; len: sizeint): integer; cdecl; external; (* this is wrong in deed - hcl_uchar_t may not been widechar ..*)
 function hcl_endfeed(handle: pointer): integer; cdecl; external;
 
 function hcl_attachcciostdwithbcstr(handle: pointer; cci: pansichar): integer; cdecl; external;
@@ -80,10 +102,19 @@ var
 	h: pointer;
 	errnum: integer;
 	errmsg: array[0..255] of AnsiChar;
+	tb: BitMask;
 begin
+
 	h := hcl_openstd(0, @errnum);
 	if h = nil then begin
-		hcl_errnum_to_errbcstr (errnum, @errmsg, length(errmsg));
+		hcl_errnum_to_errbcstr(errnum, @errmsg, length(errmsg));
+		raise Exception.Create(errmsg);
+	end;
+
+	tb := BitMask(TraitBit.LANG_ENABLE_EOF) or BitMask(TraitBit.LANG_ENABLE_BLOCK);
+	if hcl_setoption(h, Option.TRAIT, @tb) <= -1 then begin
+		hcl_errnum_to_errbcstr(errnum, @errmsg, length(errmsg));
+		hcl_close(h);
 		raise Exception.Create(errmsg);
 	end;
 	self.handle := h;

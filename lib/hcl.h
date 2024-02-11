@@ -221,24 +221,24 @@ typedef enum hcl_option_dflval_t hcl_option_dflval_t;
 enum hcl_trait_t
 {
 #if defined(HCL_BUILD_DEBUG)
-	HCL_TRAIT_DEBUG_GC     = (1u << 0),
-	HCL_TRAIT_DEBUG_BIGINT = (1u << 1),
+	HCL_TRAIT_DEBUG_GC     = (((hcl_bitmask_t)1) << 0),
+	HCL_TRAIT_DEBUG_BIGINT = (((hcl_bitmask_t)1) << 1),
 #endif
 
-	HCL_TRAIT_INTERACTIVE = (1u << 7),
+	HCL_TRAIT_INTERACTIVE = (((hcl_bitmask_t)1) << 7),
 
 	/* perform no garbage collection when the heap is full.
 	 * you still can use hcl_gc() explicitly. */
-	HCL_TRAIT_NOGC = (1u << 8),
+	HCL_TRAIT_NOGC = (((hcl_bitmask_t)1) << 8),
 
 	/* wait for running process when exiting from the main method */
-	HCL_TRAIT_AWAIT_PROCS = (1u << 9),
+	HCL_TRAIT_AWAIT_PROCS = (((hcl_bitmask_t)1) << 9),
 
 	/* return EOL as a token */ /* TODO: make this pragma controllable */
-	HCL_TRAIT_LANG_ENABLE_EOL = (1u << 14),
+	HCL_TRAIT_LANG_ENABLE_EOL = (((hcl_bitmask_t)1) << 14),
 
 	/* enable block expression as mandatory argument to some expresions */
-	HCL_TRAIT_LANG_ENABLE_BLOCK = (1u << 15),
+	HCL_TRAIT_LANG_ENABLE_BLOCK = (((hcl_bitmask_t)1) << 15),
 };
 typedef enum hcl_trait_t hcl_trait_t;
 
@@ -2331,14 +2331,14 @@ HCL_EXPORT int hcl_print (
 
 HCL_EXPORT hcl_ooi_t hcl_proutbfmt (
 	hcl_t*           hcl,
-	hcl_bitmask_t  mask,
+	hcl_bitmask_t    mask,
 	const hcl_bch_t* fmt,
 	...
 );
 
 HCL_EXPORT hcl_ooi_t hcl_proutufmt (
 	hcl_t*           hcl,
-	hcl_bitmask_t  mask,
+	hcl_bitmask_t    mask,
 	const hcl_uch_t* fmt,
 	...
 );

@@ -487,8 +487,6 @@ struct hcl_ptlc_t
 
 typedef unsigned int hcl_bitmask_t;
 
-typedef unsigned int hcl_bitmask_t;
-
 /* =========================================================================
  * BIGINT TYPES AND MACROS
  * ========================================================================= */
