@@ -662,7 +662,9 @@ ac_subst_vars='am__EXEEXT_FALSE
 am__EXEEXT_TRUE
 LTLIBOBJS
 LIBOBJS
-HCL_CONFIGURE_SYS_LIB_SEARCH_PATH_SPEC
+HCL_LIB_QUADMATH_REQUIRED_FALSE
+HCL_LIB_QUADMATH_REQUIRED_TRUE
+HCL_SYS_LIB_SEARCH_PATH_SPEC
 HCL_PROJECT_URL
 HCL_PROJECT_AUTHOR
 ENABLE_HCLGO_FALSE
@@ -17881,6 +17883,7 @@ rm -f core conftest.err conftest.$ac_objext conftest.beam \
     conftest$ac_exeext conftest.$ac_ext
 fi
 
+hcl_lib_quadmath_required=""
 if test ${ac_cv_sizeof___float128} -gt 0
 then
 	ac_fn_c_check_func "$LINENO" "quadmath_snprintf" "ac_cv_func_quadmath_snprintf"
@@ -17946,6 +17949,7 @@ then :
 
 				QUADMATH_LIBS="-lquadmath"
 				LIBM="$LIBM -lquadmath"
+				hcl_lib_quadmath_required="yes"
 				printf "%s\n" "#define HAVE_QUADMATH_SNPRINTF 1" >>confdefs.h
 
 
@@ -17954,10 +17958,8 @@ fi
 
 			if test "$ac_cv_lib_quadmath_quadmath_snprintf" = "no"
 			then
-
-				ac_cv_sizeof___float128=0
+												ac_cv_sizeof___float128=0
 			fi
-
 		else
 			QUADMATH_LIBS="$LIBM"
 		fi
@@ -18727,7 +18729,15 @@ HCL_PROJECT_AUTHOR="${PACKAGE_BUGREPORT}"
 
 HCL_PROJECT_URL="${PACKAGE_URL}"
 
-HCL_CONFIGURE_SYS_LIB_SEARCH_PATH_SPEC="$sys_lib_search_path_spec"
+HCL_SYS_LIB_SEARCH_PATH_SPEC="${sys_lib_search_path_spec}"
+
+ if test "x${hcl_lib_quadmath_required}" = "xyes"; then
+  HCL_LIB_QUADMATH_REQUIRED_TRUE=
+  HCL_LIB_QUADMATH_REQUIRED_FALSE='#'
+else
+  HCL_LIB_QUADMATH_REQUIRED_TRUE='#'
+  HCL_LIB_QUADMATH_REQUIRED_FALSE=
+fi
 
 
 if test `expr " $0" : " '.*"` = 0; then
@@ -18913,6 +18923,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_HCLGO_TRUE}" && test -z "${ENABLE_HCLGO_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_HCLGO\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${HCL_LIB_QUADMATH_REQUIRED_TRUE}" && test -z "${HCL_LIB_QUADMATH_REQUIRED_FALSE}"; then
+  as_fn_error $? "conditional \"HCL_LIB_QUADMATH_REQUIRED\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 

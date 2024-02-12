@@ -270,6 +270,7 @@ static int copy_string_to (hcl_t* hcl, const hcl_oocs_t* src, hcl_oocs_t* dst, h
 	return 0;
 }
 
+/* TODO: remove GET_CHAR(), GET_CHAR_TO(), get_char(), _get_char() */
 #define GET_CHAR(hcl) \
 	do { if (get_char(hcl) <= -1) return -1; } while (0)
 
@@ -2913,6 +2914,41 @@ static void feed_update_lx_loc (hcl_t* hcl, hcl_ooci_t ch)
 	}
 }
 
+#if 0
+TODO: support the byte cci stream
+
+static int read_cci_stream (hcl_t* hcl)
+{
+	int x;
+	hcl_io_cciarg_t* arg;
+
+	arg = hcl->c->curinp;
+
+	/*x = hcl->c->cci_rdr(hcl, HCL_IO_READ, hcl->c->curinp);*/
+	x = hcl->c->cci_rdr(hcl, arg->read_cmd, hcl->c->curinp);
+	if (x <= -1) return -1;
+
+#if defined(HCL_OOCH_IS_UCH)
+	if (arg->read_cmd == HCL_IO_READ_BYTES)
+	{
+		hcl_oow_t bcslen, ucslen;
+		bcslen = arg->bytes.len;
+		ucslen = HCL_COUNTOF(arg->buf);
+		x = hcl_convbtooochars(hcl, arg->bytes.buf, &bcslen, arg->buf, &ucslen);
+		if (x <= -1 && ucslen <= 0) return -1;
+
+		remlen = bb->len - bcslen;
+		if (remlen > 0) HCL_MEMMOVE (bb->buf, &bb->buf[bcslen], remlen);
+		bb->len = remlen;
+
+		arg->xlen = ucslen;
+	}
+#endif
+
+	return 0;
+}
+#endif
+
 static int feed_from_includee (hcl_t* hcl)
 {
 	int x;
@@ -2923,10 +2959,8 @@ static int feed_from_includee (hcl_t* hcl)
 	{
 		if (hcl->c->curinp->b.pos >= hcl->c->curinp->b.len)
 		{
-			if (hcl->c->cci_rdr(hcl, HCL_IO_READ, hcl->c->curinp) <= -1)
-			{
-				return -1;
-			}
+			x = hcl->c->cci_rdr(hcl, HCL_IO_READ, hcl->c->curinp);
+			if (x <= -1) return -1;
 
 			if (hcl->c->curinp->xlen <= 0)
 			{
@@ -3511,7 +3545,7 @@ void hcl_flushudio (hcl_t* hcl)
 
 
 
-/* TODO: discard the fwollowing three functions - hcl_setbasesrloc, hcl_readbasesrchar, hcl_readbasesrraw */
+/* TODO: discard the fwollowing three functions - hcl_setbasesrloc, hcl_readbasesrchar */
 void hcl_setbasesrloc (hcl_t* hcl, hcl_oow_t line, hcl_oow_t colm)
 {
 	hcl->c->cci_arg.line = line;
@@ -3526,17 +3560,4 @@ hcl_lxc_t* hcl_readbasesrchar (hcl_t* hcl)
 	int n = _get_char(hcl, &hcl->c->cci_arg);
 	if (n <= -1) return HCL_NULL;
 	return &hcl->c->cci_arg.lxc;
-}
-
-hcl_ooch_t* hcl_readbasesrraw (hcl_t* hcl, hcl_oow_t* xlen)
-{
-	/* this function provides the raw input interface to the attached source
-	 * input handler. it doesn't increment line/column number, nor does it
-	 * care about ungot characters. it must be used with extra care */
-
-	HCL_ASSERT (hcl, hcl->c != HCL_NULL); /* call hio_attachio() or hio_attachiostd() with proper arguments first */
-
-	if (hcl->c->cci_rdr(hcl, HCL_IO_READ, &hcl->c->cci_arg) <= -1) return HCL_NULL;
-	*xlen = hcl->c->cci_arg.xlen;
-	return hcl->c->cci_arg.buf;
 }

@@ -415,6 +415,7 @@ fi
 dnl Quadmath functions may not be in the default c library.
 dnl Find a library containing them. Disable the float128 type
 dnl if they are not available.
+hcl_lib_quadmath_required=""
 if test ${ac_cv_sizeof___float128} -gt 0
 then
 	AC_CHECK_FUNCS([quadmath_snprintf])
@@ -433,6 +434,7 @@ then
 			AC_CHECK_LIB([quadmath], [quadmath_snprintf], [
 				QUADMATH_LIBS="-lquadmath"
 				LIBM="$LIBM -lquadmath"
+				hcl_lib_quadmath_required="yes"
 				AC_DEFINE(HAVE_QUADMATH_SNPRINTF, 1)
 			])
 
@@ -440,10 +442,8 @@ then
 			then
 				dnl quadmath_snprintf not avalable in the 
 				dnl quadmath lib.
-
 				ac_cv_sizeof___float128=0
 			fi
-
 		else
 			QUADMATH_LIBS="$LIBM"
 		fi
@@ -674,7 +674,8 @@ AM_CONDITIONAL(ENABLE_HCLGO, test "x${enable_hclgo_is}" = "xyes")
 dnl ====  subsititution of some key items ====
 AC_SUBST(HCL_PROJECT_AUTHOR, "${PACKAGE_BUGREPORT}")
 AC_SUBST(HCL_PROJECT_URL, "${PACKAGE_URL}")
-AC_SUBST(HCL_CONFIGURE_SYS_LIB_SEARCH_PATH_SPEC, ["$sys_lib_search_path_spec"])
+AC_SUBST(HCL_SYS_LIB_SEARCH_PATH_SPEC, ["${sys_lib_search_path_spec}"])
+AM_CONDITIONAL(HCL_LIB_QUADMATH_REQUIRED, test "x${hcl_lib_quadmath_required}" = "xyes")
 
 dnl === configure arguments
 if test `expr " [$]0" : " '.*"` = 0; then

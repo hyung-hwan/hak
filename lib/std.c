@@ -3467,8 +3467,8 @@ static int cci_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg)
 			return 0;
 
 		case HCL_IO_READ_BYTES: /* byte input prohibited */
-		case HCL_IO_WRITE: /*  character output prohibit */
-		case HCL_IO_WRITE_BYTES: /* byte output prohibit */
+		case HCL_IO_WRITE: /*  character output prohibited */
+		case HCL_IO_WRITE_BYTES: /* byte output prohibited */
 		default:
 			hcl_seterrnum (hcl, HCL_EINTERN);
 			return -1;

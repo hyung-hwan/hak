@@ -89,6 +89,7 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 bin_PROGRAMS = hcl$(EXEEXT)
+@HCL_LIB_QUADMATH_REQUIRED_TRUE@am__append_1 = -dHCL_LIB_QUADMATH_REQUIRED
 subdir = pas
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_check_sign.m4 \
@@ -201,9 +202,9 @@ EXEEXT = @EXEEXT@
 FGREP = @FGREP@
 FILECMD = @FILECMD@
 GREP = @GREP@
-HCL_CONFIGURE_SYS_LIB_SEARCH_PATH_SPEC = @HCL_CONFIGURE_SYS_LIB_SEARCH_PATH_SPEC@
 HCL_PROJECT_AUTHOR = @HCL_PROJECT_AUTHOR@
 HCL_PROJECT_URL = @HCL_PROJECT_URL@
+HCL_SYS_LIB_SEARCH_PATH_SPEC = @HCL_SYS_LIB_SEARCH_PATH_SPEC@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -312,6 +313,7 @@ AUTOMAKE_OPTIONS = nostdinc
 hcl_SOURCES = hcl.pas main.pas 
 hcl_CPPFLAGS = 
 hcl_DEPENDENCIES = hcl.bin
+PASFLAGS = -Mobjfpc -FcUTF8 -g $(am__append_1)
 hcl_LINK = cp -pf hcl.bin $(builddir)/hcl$(EXEEXT) || echo 
 all: all-am
 
@@ -623,11 +625,11 @@ uninstall-am: uninstall-binPROGRAMS
 
 hcl.bin: $(hcl_SOURCES) ../lib/libhcl.la $(hcl_OBJECTS)
 	FL='-Fl../lib:../lib/.libs'; \
-	for i in @HCL_CONFIGURE_SYS_LIB_SEARCH_PATH_SPEC@; do \
+	for i in @HCL_SYS_LIB_SEARCH_PATH_SPEC@; do \
 		FL="$${FL}:$${i}"; \
 	done; \
-	echo fpc -o$(builddir)/$@ -g -Mobjfpc -FcUTF8 "$${FL}" $(srcdir)/main.pas; \
-	fpc -o$(builddir)/$@ -g -Mobjfpc -FcUTF8 "$${FL}" $(srcdir)/main.pas
+	echo fpc -o$(builddir)/$@ $(PASFLAGS) "$${FL}" $(srcdir)/main.pas; \
+	fpc -o$(builddir)/$@ $(PASFLAGS) $(PASFLAGS) "$${FL}" $(srcdir)/main.pas
 
 clean-local:
 	rm -f *.ppu *.res hcl.bin

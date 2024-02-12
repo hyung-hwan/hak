@@ -2266,14 +2266,6 @@ HCL_EXPORT hcl_lxc_t* hcl_readbasesrchar (
 	hcl_t* hcl
 );
 
-/* TODO: don't expose hcl_readbasesrraw()
- *       find a better way not to use them */
-HCL_EXPORT hcl_ooch_t* hcl_readbasesrraw (
-	hcl_t*     hcl,
-	hcl_oow_t* xlen
-);
-
-
 HCL_EXPORT int hcl_attachccio (
 	hcl_t*        hcl,
 	hcl_io_impl_t cci_rdr
