@@ -2915,23 +2915,29 @@ static void feed_update_lx_loc (hcl_t* hcl, hcl_ooci_t ch)
 }
 
 #if 0
-TODO: support the byte cci stream
+/*TODO: support the byte cci stream*/
 
 static int read_cci_stream (hcl_t* hcl)
 {
 	int x;
 	hcl_io_cciarg_t* arg;
+	static hcl_io_cmd_t read_cmd[] =
+	{
+		HCL_IO_READ,
+		HCL_IO_READ_BYTES
+	};
 
 	arg = hcl->c->curinp;
 
 	/*x = hcl->c->cci_rdr(hcl, HCL_IO_READ, hcl->c->curinp);*/
-	x = hcl->c->cci_rdr(hcl, arg->read_cmd, hcl->c->curinp);
+	x = hcl->c->cci_rdr(hcl, read_cmd[!!arg->is_bytes], hcl->c->curinp);
 	if (x <= -1) return -1;
 
 #if defined(HCL_OOCH_IS_UCH)
-	if (arg->read_cmd == HCL_IO_READ_BYTES)
+	if (arg->is_bytes)
 	{
-		hcl_oow_t bcslen, ucslen;
+		hcl_oow_t bcslen, ucslen, remlen;
+
 		bcslen = arg->bytes.len;
 		ucslen = HCL_COUNTOF(arg->buf);
 		x = hcl_convbtooochars(hcl, arg->bytes.buf, &bcslen, arg->buf, &ucslen);

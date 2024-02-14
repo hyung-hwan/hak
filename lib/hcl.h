@@ -1229,7 +1229,12 @@ struct hcl_io_cciarg_t
 	/**
 	 * [OUT] place data here for #HCL_IO_READ
 	 */
-	hcl_ooch_t buf[2048]; /* TODO: resize this if necessary */
+	hcl_ooch_t buf[2047]; /* TODO: resize this if necessary */
+	hcl_ooch_t is_bytes;
+#if defined(HCL_OOCH_IS_UCH)
+	hcl_bch_t b_int[10];
+	hcl_bch_t bbuf[2037];
+#endif
 
 	/**
 	 * [OUT] place the number of characters read here for #HCL_IO_READ

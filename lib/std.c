@@ -3502,7 +3502,7 @@ static HCL_INLINE int open_udi_stream (hcl_t* hcl, hcl_io_udiarg_t* arg)
 
 	if (!bb->fp)
 	{
-		hcl_seterrbfmt (hcl, HCL_EIOERR, "unable to open %hs", bb->fn);
+		hcl_seterrbfmtwithsyserr (hcl, 0, errno, "unable to open udi stream '%hs'", xtn->udi_path);
 		goto oops;
 	}
 
@@ -3549,7 +3549,7 @@ static HCL_INLINE int read_udi_stream (hcl_t* hcl, hcl_io_udiarg_t* arg)
 		{
 			if (ferror((FILE*)bb->fp))
 			{
-				hcl_seterrnum (hcl, HCL_EIOERR);
+				hcl_seterrbfmtwithsyserr (hcl, 0, errno, "unable to read udi stream");
 				return -1;
 			}
 			break;
@@ -3599,7 +3599,7 @@ static HCL_INLINE int read_udi_stream_bytes (hcl_t* hcl, hcl_io_udiarg_t* arg)
 		{
 			if (ferror((FILE*)bb->fp))
 			{
-				hcl_seterrnum (hcl, HCL_EIOERR);
+				hcl_seterrbfmtwithsyserr (hcl, 0, errno, "unable to read udi stream");
 				return -1;
 			}
 			break;
@@ -3663,9 +3663,9 @@ static HCL_INLINE int open_udo_stream (hcl_t* hcl, hcl_io_udoarg_t* arg)
 	if (!fp)
 	{
 		if (xtn->udo_path)
-			hcl_seterrbfmt (hcl, HCL_EIOERR, "unable to open %hs", xtn->udo_path);
+			hcl_seterrbfmtwithsyserr (hcl, 0, errno, "unable to open udp stream '%hs'", xtn->udo_path);
 		else
-			hcl_seterrnum (hcl, HCL_EIOERR);
+			hcl_seterrbfmtwithsyserr (hcl, 0, errno, "unable to open udo stream", xtn->udo_path);
 		return -1;
 	}
 
@@ -3713,7 +3713,7 @@ static HCL_INLINE int write_udo_stream (hcl_t* hcl, hcl_io_udoarg_t* arg)
 
 		if (fwrite(bcsbuf, HCL_SIZEOF(bcsbuf[0]), bcslen, (FILE*)arg->handle) < bcslen)
 		{
-			hcl_seterrnum (hcl, HCL_EIOERR);
+			hcl_seterrbfmtwithsyserr (hcl, 0, errno, "unable to write udo stream");
 			return -1;
 		}
 
@@ -3734,7 +3734,7 @@ static HCL_INLINE int write_udo_stream_bytes (hcl_t* hcl, hcl_io_udoarg_t* arg)
 
 	if (fwrite(ptr, HCL_SIZEOF(*ptr), arg->len, (FILE*)arg->handle) < arg->len)
 	{
-		hcl_seterrnum (hcl, HCL_EIOERR);
+		hcl_seterrbfmtwithsyserr (hcl, 0, errno, "unable to write udo stream");
 		return -1;
 	}
 
