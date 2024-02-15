@@ -637,7 +637,10 @@ int main (int argc, char* argv[])
 	if (argc < 2)
 	{
 	print_usage:
-		fprintf (stderr, "Usage: %s filename ...\n", argv[0]);
+		fprintf (stderr, "Usage: %s [options] script-filename [output-filename]\n", argv[0]);
+		fprintf (stderr, "Options are:\n");
+		fprintf (stderr, " -b  enable block construct with {}\n");
+		fprintf (stderr, " -n  enable line-break as expression terminator\n");
 		return -1;
 	}
 
@@ -700,7 +703,7 @@ int main (int argc, char* argv[])
 		}
 	}
 
-	if ((opt.ind + 1) != argc && !show_info) goto print_usage;
+	if ((opt.ind + 1) != argc && (opt.ind + 2) != argc && !show_info) goto print_usage;
 #endif
 
 	hcl = hcl_openstd(HCL_SIZEOF(xtn_t), HCL_NULL);
