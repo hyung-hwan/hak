@@ -904,23 +904,23 @@ static hcl_errnum_t _syserrstrb (hcl_t* hcl, int syserr_type, int syserr_code, h
 
 		case 0:
 		#if defined(_WIN32) && defined(__STDC_WANT_SECURE_LIB__)
-			if (buf) strerror_s (buf, len, syserr_code);
+			if (buf && len > 0) strerror_s (buf, len, syserr_code);
 		#elif defined(HAVE_STRERROR_R)
-			if (buf)
+			if (buf && len > 0)
 			{
 				/* to work around mess between XSI and GNU strerror_r */
 				hcl_oow_t x;
-				if (len > 0) buf[0] = '\0';
+				buf[0] = '\0';
 				/* cast to hcl_oow_t to cater for prototype difference.
 				 * one returning int, the other returning a pointer.
 				 * x > 1024 in case the XSI version before glibc 2.13 returns
 				 * a positive error code upon failure */
 				x = (hcl_oow_t)strerror_r(syserr_code, buf, len);
-				if (len > 0 && buf[0] == '\0' && x != 0 && x > 1024 && x != (hcl_oow_t)-1) hcl_copy_bcstr (buf, len, x);
+				if (buf[0] == '\0' && x != 0 && x > 1024 && x != (hcl_oow_t)-1) hcl_copy_bcstr (buf, len, x);
 			}
 		#else
 			/* this may be thread unsafe */
-			if (buf) hcl_copy_bcstr (buf, len, strerror(syserr_code));
+			if (buf && len > 0) hcl_copy_bcstr (buf, len, strerror(syserr_code));
 		#endif
 			return errno_to_errnum(syserr_code);
 	}
