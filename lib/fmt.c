@@ -1639,7 +1639,7 @@ static int log_ucs (hcl_fmtout_t* fmtout, const hcl_uch_t* ptr, hcl_oow_t len)
 	{
 		len = rem;
 		bcslen = HCL_COUNTOF(bcs);
-		hcl_conv_uchars_to_bchars_with_cmgr(ptr, &len, bcs, &bcslen, hcl_getcmgr(hcl));
+		hcl_conv_uchars_to_bchars_with_cmgr(ptr, &len, bcs, &bcslen, HCL_CMGR(hcl));
 		log_bcs(fmtout, bcs, bcslen);
 		rem -= len;
 		ptr += len;
@@ -1663,7 +1663,7 @@ static int log_bcs (hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hcl_oow_t len)
 	{
 		len = rem;
 		ucslen = HCL_COUNTOF(ucs);
-		hcl_conv_bchars_to_uchars_with_cmgr(ptr, &len, ucs, &ucslen, hcl_getcmgr(hcl), 1);
+		hcl_conv_bchars_to_uchars_with_cmgr(ptr, &len, ucs, &ucslen, HCL_CMGR(hcl), 1);
 		log_ucs(fmtout, ucs, ucslen);
 		rem -= len;
 		ptr += len;
@@ -1826,7 +1826,7 @@ static int print_bcs (hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hcl_oow_t len)
 	{
 		bcslen = len;
 		ucslen = HCL_COUNTOF(ucsbuf);
-		hcl_conv_bchars_to_uchars_with_cmgr(ptr, &bcslen, ucsbuf, &ucslen, hcl_getcmgr(hcl), 1);
+		hcl_conv_bchars_to_uchars_with_cmgr(ptr, &bcslen, ucsbuf, &ucslen, HCL_CMGR(hcl), 1);
 
 		ucsptr = ucsbuf;
 		while (ucslen > 0)
@@ -1923,7 +1923,7 @@ static int print_ucs (hcl_fmtout_t* fmtout, const hcl_uch_t* ptr, hcl_oow_t len)
 	{
 		ucslen = len;
 		bcslen = HCL_COUNTOF(bcsbuf);
-		hcl_conv_uchars_to_bchars_with_cmgr(ptr, &ucslen, bcsbuf, &bcslen, hcl_getcmgr(hcl));
+		hcl_conv_uchars_to_bchars_with_cmgr(ptr, &ucslen, bcsbuf, &bcslen, HCL_CMGR(hcl));
 
 		bcsptr = bcsbuf;
 		while (bcslen > 0)
@@ -2026,7 +2026,7 @@ static int sprint_bcs (hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hcl_oow_t len
 
 #if defined(HCL_OOCH_IS_UCH)
 	blen = len;
-	hcl_conv_bchars_to_uchars_with_cmgr (ptr, &blen, HCL_NULL, &oolen, hcl_getcmgr(hcl), 1);
+	hcl_conv_bchars_to_uchars_with_cmgr (ptr, &blen, HCL_NULL, &oolen, HCL_CMGR(hcl), 1);
 #else
 	oolen = len;
 #endif
@@ -2047,7 +2047,7 @@ static int sprint_bcs (hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hcl_oow_t len
 	}
 
 #if defined(HCL_OOCH_IS_UCH)
-	hcl_conv_bchars_to_uchars_with_cmgr (ptr, &len, &hcl->sprintf.xbuf.ptr[hcl->sprintf.xbuf.len], &oolen, hcl_getcmgr(hcl), 1);
+	hcl_conv_bchars_to_uchars_with_cmgr (ptr, &len, &hcl->sprintf.xbuf.ptr[hcl->sprintf.xbuf.len], &oolen, HCL_CMGR(hcl), 1);
 #else
 	HCL_MEMCPY (&hcl->sprintf.xbuf.ptr[hcl->sprintf.xbuf.len], ptr, len * HCL_SIZEOF(*ptr));
 #endif
@@ -2067,7 +2067,7 @@ static int sprint_ucs (hcl_fmtout_t* fmtout, const hcl_uch_t* ptr, hcl_oow_t len
 	oolen = len;
 #else
 	ulen = len;
-	hcl_conv_uchars_to_bchars_with_cmgr (ptr, &ulen, HCL_NULL, &oolen, hcl_getcmgr(hcl));
+	hcl_conv_uchars_to_bchars_with_cmgr (ptr, &ulen, HCL_NULL, &oolen, HCL_CMGR(hcl));
 #endif
 
 	if (oolen > unused)
@@ -2088,7 +2088,7 @@ static int sprint_ucs (hcl_fmtout_t* fmtout, const hcl_uch_t* ptr, hcl_oow_t len
 #if defined(HCL_OOCH_IS_UCH)
 	HCL_MEMCPY (&hcl->sprintf.xbuf.ptr[hcl->sprintf.xbuf.len], ptr, len * HCL_SIZEOF(*ptr));
 #else
-	hcl_conv_uchars_to_bchars_with_cmgr (ptr, &len, &hcl->sprintf.xbuf.ptr[hcl->sprintf.xbuf.len], &oolen, hcl_getcmgr(hcl));
+	hcl_conv_uchars_to_bchars_with_cmgr (ptr, &len, &hcl->sprintf.xbuf.ptr[hcl->sprintf.xbuf.len], &oolen, HCL_CMGR(hcl));
 #endif
 	hcl->sprintf.xbuf.len += oolen;
 

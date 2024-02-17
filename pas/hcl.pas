@@ -44,6 +44,7 @@ type
 	CciArg = record (* this record must follow the public part of hcl_io_cciarg_t in hcl.h *)
 		name: pwidechar;
 		handle: pointer;
+		is_bytes: integer;
 		buf: array[0..2047] of widechar;
 		xlen: System.SizeUint;
 		includer: CciArgPtr;

@@ -916,7 +916,8 @@ static hcl_errnum_t _syserrstrb (hcl_t* hcl, int syserr_type, int syserr_code, h
 				 * x > 1024 in case the XSI version before glibc 2.13 returns
 				 * a positive error code upon failure */
 				x = (hcl_oow_t)strerror_r(syserr_code, buf, len);
-				if (buf[0] == '\0' && x != 0 && x > 1024 && x != (hcl_oow_t)-1) hcl_copy_bcstr (buf, len, x);
+				if (x != (hcl_oow_t)buf && buf[0] == '\0' && x != 0 && x > 1024 && x != (hcl_oow_t)-1)
+					hcl_copy_bcstr (buf, len, (void*)x);
 			}
 		#else
 			/* this may be thread unsafe */
@@ -3388,7 +3389,7 @@ static HCL_INLINE int close_cci_stream (hcl_t* hcl, hcl_io_cciarg_t* arg)
 	if (!arg->includer && arg->name)
 	{
 		/* main stream closing */
-		hcl_freemem (hcl, arg->name);
+		hcl_freemem (hcl, (hcl_ooch_t*)arg->name);
 		arg->name = HCL_NULL;
 	}
 /* END HACK */
@@ -3437,8 +3438,8 @@ static HCL_INLINE int read_cci_stream (hcl_t* hcl, hcl_io_cciarg_t* arg)
 
 #if defined(HCL_OOCH_IS_UCH)
 	bcslen = bb->len;
-	ucslen = HCL_COUNTOF(arg->buf);
-	x = hcl_convbtooochars(hcl, bb->buf, &bcslen, arg->buf, &ucslen);
+	ucslen = HCL_COUNTOF(arg->buf.c);
+	x = hcl_convbtooochars(hcl, bb->buf, &bcslen, arg->buf.c, &ucslen);
 	if (x <= -1 && ucslen <= 0) return -1;
 	/* if ucslen is greater than 0, i assume that some characters have been
 	 * converted properly. as the loop above reads an entire line if not too
@@ -3446,9 +3447,9 @@ static HCL_INLINE int read_cci_stream (hcl_t* hcl, hcl_io_cciarg_t* arg)
 	 * successful conversion of at least 1 ooch character. so no explicit
 	 * check for the incomplete sequence error is required */
 #else
-	bcslen = (bb->len < HCL_COUNTOF(arg->buf))? bb->len: HCL_COUNTOF(arg->buf);
+	bcslen = (bb->len < HCL_COUNTOF(arg->buf.c))? bb->len: HCL_COUNTOF(arg->buf.c);
 	ucslen = bcslen;
-	hcl_copy_bchars (arg->buf, bb->buf, bcslen);
+	hcl_copy_bchars (arg->buf.c, bb->buf, bcslen);
 #endif
 
 	remlen = bb->len - bcslen;

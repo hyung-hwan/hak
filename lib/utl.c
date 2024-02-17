@@ -994,7 +994,7 @@ int hcl_convbtouchars (hcl_t* hcl, const hcl_bch_t* bcs, hcl_oow_t* bcslen, hcl_
 	/* length bound */
 	int n;
 
-	n = hcl_conv_bchars_to_uchars_with_cmgr(bcs, bcslen, ucs, ucslen, hcl_getcmgr(hcl), 0);
+	n = hcl_conv_bchars_to_uchars_with_cmgr(bcs, bcslen, ucs, ucslen, HCL_CMGR(hcl), 0);
 
 	if (n <= -1)
 	{
@@ -1010,7 +1010,7 @@ int hcl_convutobchars (hcl_t* hcl, const hcl_uch_t* ucs, hcl_oow_t* ucslen, hcl_
 	/* length bound */
 	int n;
 
-	n = hcl_conv_uchars_to_bchars_with_cmgr(ucs, ucslen, bcs, bcslen, hcl_getcmgr(hcl));
+	n = hcl_conv_uchars_to_bchars_with_cmgr(ucs, ucslen, bcs, bcslen, HCL_CMGR(hcl));
 
 	if (n <= -1)
 	{
@@ -1025,7 +1025,7 @@ int hcl_convbtoucstr (hcl_t* hcl, const hcl_bch_t* bcs, hcl_oow_t* bcslen, hcl_u
 	/* null-terminated. */
 	int n;
 
-	n = hcl_conv_bcstr_to_ucstr_with_cmgr(bcs, bcslen, ucs, ucslen, hcl_getcmgr(hcl), 0);
+	n = hcl_conv_bcstr_to_ucstr_with_cmgr(bcs, bcslen, ucs, ucslen, HCL_CMGR(hcl), 0);
 
 	if (n <= -1)
 	{
@@ -1040,7 +1040,7 @@ int hcl_convutobcstr (hcl_t* hcl, const hcl_uch_t* ucs, hcl_oow_t* ucslen, hcl_b
 	/* null-terminated */
 	int n;
 
-	n = hcl_conv_ucstr_to_bcstr_with_cmgr(ucs, ucslen, bcs, bcslen, hcl_getcmgr(hcl));
+	n = hcl_conv_ucstr_to_bcstr_with_cmgr(ucs, ucslen, bcs, bcslen, HCL_CMGR(hcl));
 
 	if (n <= -1)
 	{

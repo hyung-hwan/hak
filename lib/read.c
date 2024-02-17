@@ -393,7 +393,7 @@ static int _get_char (hcl_t* hcl, hcl_io_cciarg_t* inp)
 		}
 	}
 
-	lc = inp->buf[inp->b.pos++];
+	lc = inp->buf.c[inp->b.pos++];
 
 	inp->lxc.c = lc;
 	inp->lxc.l.line = inp->line;
@@ -2655,7 +2655,7 @@ static int flx_quoted_token (hcl_t* hcl, hcl_ooci_t c) /* string, character */
 
 		/* qt->tok_type + qt->is_byte assumes that the token types for
 		 * byte-string and byte-character literals are 1 greater than
-		 * string and charcter literals.  * see the definition of
+		 * string and character literals.  * see the definition of
 		 * hcl_tok_type_t in hcl-prv.h */
 		FEED_WRAP_UP (hcl, qt->tok_type + qt->is_byte); /* HCL_TOK_STRLIT or HCL_TOK_CHARLIT */
 		if (TOKEN_NAME_LEN(hcl) < qt->min_len) goto invalid_token;
@@ -2914,78 +2914,89 @@ static void feed_update_lx_loc (hcl_t* hcl, hcl_ooci_t ch)
 	}
 }
 
-#if 0
-/*TODO: support the byte cci stream*/
-
-static int read_cci_stream (hcl_t* hcl)
-{
-	int x;
-	hcl_io_cciarg_t* arg;
-	static hcl_io_cmd_t read_cmd[] =
-	{
-		HCL_IO_READ,
-		HCL_IO_READ_BYTES
-	};
-
-	arg = hcl->c->curinp;
-
-	/*x = hcl->c->cci_rdr(hcl, HCL_IO_READ, hcl->c->curinp);*/
-	x = hcl->c->cci_rdr(hcl, read_cmd[!!arg->is_bytes], hcl->c->curinp);
-	if (x <= -1) return -1;
-
-#if defined(HCL_OOCH_IS_UCH)
-	if (arg->is_bytes)
-	{
-		hcl_oow_t bcslen, ucslen, remlen;
-
-		bcslen = arg->bytes.len;
-		ucslen = HCL_COUNTOF(arg->buf);
-		x = hcl_convbtooochars(hcl, arg->bytes.buf, &bcslen, arg->buf, &ucslen);
-		if (x <= -1 && ucslen <= 0) return -1;
-
-		remlen = bb->len - bcslen;
-		if (remlen > 0) HCL_MEMMOVE (bb->buf, &bb->buf[bcslen], remlen);
-		bb->len = remlen;
-
-		arg->xlen = ucslen;
-	}
-#endif
-
-	return 0;
-}
-#endif
-
 static int feed_from_includee (hcl_t* hcl)
 {
 	int x;
+	hcl_ooch_t c;
+	hcl_io_cciarg_t* curinp;
 
 	HCL_ASSERT (hcl, hcl->c->curinp != HCL_NULL && hcl->c->curinp != &hcl->c->cci_arg);
 
+	curinp = hcl->c->curinp;
 	do
 	{
-		if (hcl->c->curinp->b.pos >= hcl->c->curinp->b.len)
-		{
-			x = hcl->c->cci_rdr(hcl, HCL_IO_READ, hcl->c->curinp);
-			if (x <= -1) return -1;
+		hcl_oow_t taken;
 
-			if (hcl->c->curinp->xlen <= 0)
+	#if defined(HCL_OOCH_IS_UCH)
+		if (curinp->is_bytes)
+		{
+			hcl_cmgr_t* cmgr;
+			hcl_oow_t avail, n;
+
+			cmgr = HCL_CMGR(hcl);
+			if (curinp->b.pos >= curinp->b.len)
 			{
-				/* got EOF from an included stream */
-				feed_end_include (hcl);
-				continue;
+				x = hcl->c->cci_rdr(hcl, HCL_IO_READ_BYTES, curinp);
+				if (x <= -1) return -1;
+
+				if (curinp->xlen <= 0)
+				{
+					/* got EOF from an included stream */
+/* TODO: if there is residue bytes from the current stream. error... */
+					feed_end_include (hcl);
+					curinp = hcl->c->curinp;
+					continue;
+				}
+
+				curinp->b.pos = 0;
 			}
 
-			hcl->c->curinp->b.pos = 0;
-			hcl->c->curinp->b.len = hcl->c->curinp->xlen;
+			avail = curinp->b.len - curinp->b.pos;
+			n = cmgr->bctouc(curinp->buf.b[curinp->b.pos], avail, &c);
+			if (n == 0) /* invalid sequence */
+			{
+			}
+			if (n > avail)
+			{
+				/* incomplete sequence */
+				HCL_ASSERT (hcl, avail < HCL_MBLEN_MAX);
+				/* TODO: move to the internal buffer and start over */
+			}
+			taken = n;
 		}
+		else
+		{
+	#endif
+			if (curinp->b.pos >= curinp->b.len)
+			{
+				x = hcl->c->cci_rdr(hcl, HCL_IO_READ, curinp);
+				if (x <= -1) return -1;
 
-		x = feed_char(hcl, hcl->c->curinp->buf[hcl->c->curinp->b.pos]);
+				if (curinp->xlen <= 0)
+				{
+					/* got EOF from an included stream */
+					feed_end_include (hcl);
+					curinp = hcl->c->curinp;
+					continue;
+				}
+
+				curinp->b.pos = 0;
+				curinp->b.len = curinp->xlen;
+			}
+
+			c = curinp->buf.c[curinp->b.pos];
+			taken = 1;
+	#if defined(HCL_OOCH_IS_UCH)
+		}
+	#endif
+
+		x = feed_char(hcl, c);
 		if (x <= -1) return -1;
 		if (x >= 1)
 		{
 			/* consumed */
-			feed_update_lx_loc (hcl, hcl->c->curinp->buf[hcl->c->curinp->b.pos]);
-			hcl->c->curinp->b.pos += x;
+			feed_update_lx_loc (hcl, c);
+			curinp->b.pos += taken;
 		}
 
 		if (hcl->c->feed.rd.do_include_file)
@@ -2996,9 +3007,10 @@ static int feed_from_includee (hcl_t* hcl)
 			 * value of feed_char() is used to advance the hcl->c->curinp->b.pos pointer. */
 			hcl->c->feed.rd.do_include_file = 0; /* clear this regardless of inclusion result */
 			if (feed_begin_include(hcl) <= -1) return -1;
+			curinp = hcl->c->curinp;
 		}
 	}
-	while (hcl->c->curinp != &hcl->c->cci_arg);
+	while (curinp != &hcl->c->cci_arg);
 
 	return 0;
 }
@@ -3118,7 +3130,7 @@ int hcl_feedbchars (hcl_t* hcl, const hcl_bch_t* data, hcl_oow_t len)
 
 	inpos = 0;
 
-	if (hcl->c->feed.rsd.len > 0)
+	if (hcl->c->feed.rsd.len > 0) /* residue length greater than 0 */
 	{
 		hcl_oow_t rsdlen;
 
@@ -3131,7 +3143,7 @@ int hcl_feedbchars (hcl_t* hcl, const hcl_bch_t* data, hcl_oow_t len)
 
 		inlen = hcl->c->feed.rsd.len;
 		outlen = 1; /* ensure that it can only convert 1 character */
-		n = hcl_conv_bchars_to_uchars_with_cmgr(hcl->c->feed.rsd.buf, &inlen, outbuf, &outlen, hcl_getcmgr(hcl), 0);
+		n = hcl_conv_bchars_to_uchars_with_cmgr(hcl->c->feed.rsd.buf, &inlen, outbuf, &outlen, HCL_CMGR(hcl), 0);
 
 		if (outlen > 0)
 		{
@@ -3184,9 +3196,9 @@ int hcl_feedbchars (hcl_t* hcl, const hcl_bch_t* data, hcl_oow_t len)
 		inlen = len;
 		outlen = HCL_COUNTOF(outbuf);
 
-		/* hcl_convbtouchars() does not differentiate between illegal charcter and incomplete sequence.
+		/* hcl_convbtouchars() does not differentiate between illegal character and incomplete sequence.
 		 * use a lower-level function that hcl_convbtouchars() uses */
-		n = hcl_conv_bchars_to_uchars_with_cmgr(&data[inpos], &inlen, outbuf, &outlen, hcl_getcmgr(hcl), 0);
+		n = hcl_conv_bchars_to_uchars_with_cmgr(&data[inpos], &inlen, outbuf, &outlen, HCL_CMGR(hcl), 0);
 		if (outlen > 0 && hcl_feed(hcl, outbuf, outlen) <= -1) return -1;
 
 		if (n <= -1)

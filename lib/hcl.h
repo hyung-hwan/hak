@@ -1227,14 +1227,14 @@ struct hcl_io_cciarg_t
 	void* handle;
 
 	/**
-	 * [OUT] place data here for #HCL_IO_READ
+	 * [OUT] place data here for #HCL_IO_READ or #HCL_IO_READ_BYTES
 	 */
-	hcl_ooch_t buf[2047]; /* TODO: resize this if necessary */
-	hcl_ooch_t is_bytes;
-#if defined(HCL_OOCH_IS_UCH)
-	hcl_bch_t b_int[10];
-	hcl_bch_t bbuf[2037];
-#endif
+	int is_bytes; /* set this to non-zero if the handler fills the buffer with bytes */
+	struct
+	{
+		hcl_ooch_t c[2048]; /* TODO: resize this if necessary */
+		hcl_uint8_t b[2048 * HCL_SIZEOF(hcl_ooch_t)]; /* TODO: resize this if necessary */
+	} buf;
 
 	/**
 	 * [OUT] place the number of characters read here for #HCL_IO_READ
@@ -2046,12 +2046,14 @@ static HCL_INLINE hcl_mmgr_t* hcl_getmmgr (hcl_t* hcl) { return hcl->_mmgr; }
 static HCL_INLINE hcl_cmgr_t* hcl_getcmgr (hcl_t* hcl) { return hcl->_cmgr; }
 static HCL_INLINE void hcl_setcmgr (hcl_t* hcl, hcl_cmgr_t* cmgr) { hcl->_cmgr = cmgr; }
 #else
-#	define hcl_getxtn(hcl) ((void*)((hcl_uint8_t*)hcl + ((hcl_t*)hcl)->_instsize))
-#	define hcl_getmmgr(hcl) (((hcl_t*)(hcl))->_mmgr)
-#	define hcl_getcmgr(hcl) (((hcl_t*)(hcl))->_cmgr)
-#	define hcl_setcmgr(hcl,cmgr) (((hcl_t*)(hcl))->_cmgr = (cmgr))
+#define hcl_getxtn(hcl) ((void*)((hcl_uint8_t*)hcl + ((hcl_t*)hcl)->_instsize))
+#define hcl_getmmgr(hcl) (((hcl_t*)(hcl))->_mmgr)
+#define hcl_getcmgr(hcl) (((hcl_t*)(hcl))->_cmgr)
+#define hcl_setcmgr(hcl,cmgr) (((hcl_t*)(hcl))->_cmgr = (cmgr))
 #endif
 
+#define HCL_MMGR(hcl) (((hcl_t*)(hcl))->_mmgr)
+#define HCL_CMGR(hcl) (((hcl_t*)(hcl))->_cmgr)
 #define HCL_ERRNUM(hcl) (((hcl_t*)(hcl))->errnum)
 
 HCL_EXPORT hcl_errnum_t hcl_geterrnum (

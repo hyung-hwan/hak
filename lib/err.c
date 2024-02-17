@@ -247,7 +247,7 @@ const hcl_bch_t* hcl_geterrbmsg (hcl_t* hcl)
 	msg = (hcl->errmsg.len <= 0)? hcl_errnum_to_errstr(hcl->errnum): hcl->errmsg.buf;
 
 	mbslen = HCL_COUNTOF(hcl->errmsg.xerrmsg);
-	hcl_conv_ucstr_to_bcstr_with_cmgr (msg, &wcslen, hcl->errmsg.xerrmsg, &mbslen, hcl_getcmgr(hcl));
+	hcl_conv_ucstr_to_bcstr_with_cmgr (msg, &wcslen, hcl->errmsg.xerrmsg, &mbslen, HCL_CMGR(hcl));
 
 	return hcl->errmsg.xerrmsg;
 #endif
@@ -262,7 +262,7 @@ const hcl_uch_t* hcl_geterrumsg (hcl_t* hcl)
 	msg = (hcl->errmsg.len <= 0)? hcl_errnum_to_errstr(hcl->errnum): hcl->errmsg.buf;
 
 	wcslen = HCL_COUNTOF(hcl->errmsg.xerrmsg);
-	hcl_conv_bcstr_to_ucstr_with_cmgr (msg, &mbslen, hcl->errmsg.xerrmsg, &wcslen, hcl_getcmgr(hcl), 1);
+	hcl_conv_bcstr_to_ucstr_with_cmgr (msg, &mbslen, hcl->errmsg.xerrmsg, &wcslen, HCL_CMGR(hcl), 1);
 
 	return hcl->errmsg.xerrmsg;
 #else
@@ -309,7 +309,7 @@ static int err_bcs (hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hcl_oow_t len)
 
 #if defined(HCL_OOCH_IS_UCH)
 	if (max <= 0) return 1;
-	hcl_conv_bchars_to_uchars_with_cmgr (ptr, &len, &hcl->errmsg.buf[hcl->errmsg.len], &max, hcl_getcmgr(hcl), 1);
+	hcl_conv_bchars_to_uchars_with_cmgr (ptr, &len, &hcl->errmsg.buf[hcl->errmsg.len], &max, HCL_CMGR(hcl), 1);
 	hcl->errmsg.len += max;
 #else
 	if (len > max) len = max;
@@ -337,7 +337,7 @@ static int err_ucs (hcl_fmtout_t* fmtout, const hcl_uch_t* ptr, hcl_oow_t len)
 	hcl->errmsg.len += len;
 #else
 	if (max <= 0) return 1;
-	hcl_conv_uchars_to_bchars_with_cmgr (ptr, &len, &hcl->errmsg.buf[hcl->errmsg.len], &max, hcl_getcmgr(hcl));
+	hcl_conv_uchars_to_bchars_with_cmgr (ptr, &len, &hcl->errmsg.buf[hcl->errmsg.len], &max, HCL_CMGR(hcl));
 	hcl->errmsg.len += max;
 #endif
 	hcl->errmsg.buf[hcl->errmsg.len] = '\0';
