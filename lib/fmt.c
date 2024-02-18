@@ -1867,7 +1867,7 @@ static int print_bcs (hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hcl_oow_t len)
 
 	if (HCL_UNLIKELY(!hcl->io.udo_wrtr))
 	{
-		hcl_seterrmsg (hcl, HCL_EINVAL, "no user-defined output handler");
+		hcl_seterrbmsg (hcl, HCL_EINVAL, "no user-defined output handler");
 		return -1;
 	}
 
@@ -1895,7 +1895,7 @@ static int print_ucs (hcl_fmtout_t* fmtout, const hcl_uch_t* ptr, hcl_oow_t len)
 
 	if (HCL_UNLIKELY(!hcl->io.udo_wrtr))
 	{
-		hcl_seterrmsg (hcl, HCL_EINVAL, "no user-defined output handler");
+		hcl_seterrbmsg (hcl, HCL_EINVAL, "no user-defined output handler");
 		return -1;
 	}
 

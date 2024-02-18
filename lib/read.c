@@ -2968,12 +2968,16 @@ static int feed_from_includee (hcl_t* hcl)
 
 				curinp->b.pos = 0;
 				curinp->b.len = curinp->xlen;
+//printf ("curinp->xlen = %d\n", (int)curinp->xlen);
 			}
 			avail = curinp->b.len - curinp->b.pos; /* available in the read buffer */
 			saved_rsd_len = curinp->rsd.len;
 
-			if (curinp->rsd.len > 0)
+//printf ("saved_rsd_len = %d avail=%d\n", (int)saved_rsd_len, (int)avail);
+			if (saved_rsd_len > 0)
 			{
+				/* there is data in the residue buffer. use the residue buffer to
+				 * locate a proper multi-byte sequence */
 				hcl_oow_t cpl; /* number of bytes to copy to the residue buffer */
 				HCL_ASSERT (hcl, curinp->b.pos == 0);
 				cpl = HCL_COUNTOF(curinp->rsd.buf) - curinp->rsd.len;
@@ -2985,7 +2989,9 @@ static int feed_from_includee (hcl_t* hcl)
 					curinp->b.pos += cpl; /* advance this because the bytes moved to the residue buffer */
 				}
 				inplen = curinp->rsd.len;
-				n = cmgr->bctouc(curinp->rsd.buf, inplen, &c);
+				n = cmgr->bctouc(&curinp->rsd.buf[0], inplen, &c);
+//printf ("residue -> inplen = %d cpl = %d avail=%d\n", (int)inplen, (int)cpl, (int)avail);
+				if (n > 0 && n <= inplen) curinp->b.pos -= curinp->rsd.len - saved_rsd_len;
 			}
 			else
 			{
@@ -2998,19 +3004,20 @@ static int feed_from_includee (hcl_t* hcl)
 				hcl_seterrbfmt (hcl, HCL_EECERR, "invalid byte sequence in %js", curinp->name);
 				return -1;
 			}
-			if (n > inplen)
+			if (n > inplen) /* incomplete sequence */
 			{
-				/* incomplete sequence */
-				HCL_ASSERT (hcl, avail < HCL_COUNTOF(curinp->rsd.buf));
-
-				/* TODO: wrong */
-				HCL_MEMCPY (curinp->rsd.buf, &curinp->buf.b[curinp->b.pos], avail);
-				curinp->rsd.len = avail;
-				curinp->b.pos = curinp->b.len;
+				hcl_oow_t cpl;
+				HCL_ASSERT (hcl, curinp->rsd.len < HCL_COUNTOF(curinp->rsd.buf));
+				cpl = HCL_COUNTOF(curinp->rsd.buf) - curinp->rsd.len;
+				if (cpl > avail) cpl = avail;
+				HCL_MEMCPY(&curinp->rsd.buf[curinp->rsd.len], &curinp->buf.b[curinp->b.pos], cpl);
+				curinp->rsd.len += cpl;
+				curinp->b.pos += cpl;
 				goto start_over;
 			}
 
 			/* how much taken from the read buffer as input */
+			HCL_ASSERT (hcl, n >= saved_rsd_len);
 			taken = n - saved_rsd_len;
 		}
 		else
@@ -3044,6 +3051,7 @@ static int feed_from_includee (hcl_t* hcl)
 		}
 	#endif
 
+//hcl_logbfmt(hcl, HCL_LOG_STDERR, "[%jc]\n", c);
 		x = feed_char(hcl, c);
 		if (x <= -1) return -1;
 		if (x >= 1)

@@ -1208,6 +1208,12 @@ struct hcl_lxc_t
 };
 typedef struct hcl_lxc_t hcl_lxc_t;
 
+
+/*#define HCL_CCI_BUF_LEN (1)*/
+#if !defined(HCL_CCI_BUF_LEN)
+#define HCL_CCI_BUF_LEN (2048)
+#endif
+
 typedef struct hcl_io_cciarg_t hcl_io_cciarg_t;
 struct hcl_io_cciarg_t
 {
@@ -1232,8 +1238,8 @@ struct hcl_io_cciarg_t
 	int is_bytes; /* set this to non-zero if the handler fills the buffer with bytes */
 	union
 	{
-		hcl_ooch_t c[2048]; /* TODO: resize this if necessary */
-		hcl_uint8_t b[2048 * HCL_SIZEOF(hcl_ooch_t)]; /* TODO: resize this if necessary */
+		hcl_ooch_t c[HCL_CCI_BUF_LEN];
+		hcl_uint8_t b[HCL_CCI_BUF_LEN * HCL_SIZEOF(hcl_ooch_t)];
 	} buf;
 
 	/**

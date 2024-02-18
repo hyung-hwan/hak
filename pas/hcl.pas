@@ -47,7 +47,7 @@ type
 		name: pwidechar;
 		handle: pointer;
 		is_bytes: integer;
-		buf: array[0..2047] of widechar;
+		buf: array[0..(2048 - 1)] of widechar;
 		xlen: System.SizeUint;
 		includer: CciArgPtr;
 	end;
