@@ -1023,13 +1023,18 @@ static int feed_begin_include (hcl_t* hcl)
 	const hcl_ooch_t* io_name;
 
 	io_name = add_sr_name(hcl, TOKEN_NAME(hcl));
-	if (HCL_UNLIKELY(!io_name)) return -1;
+	if (HCL_UNLIKELY(!io_name))
+	{
+		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to include %.*js for name registration failure - %js", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl), orgmsg);
+		return -1;
+	}
 
 	arg = (hcl_io_cciarg_t*)hcl_callocmem(hcl, HCL_SIZEOF(*arg));
 	if (HCL_UNLIKELY(!arg))
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "failed to allocate source input structure - %js", orgmsg);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to include %.*js for memory allocation failure - %js", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl), orgmsg);
 		goto oops;
 	}
 
@@ -1037,6 +1042,7 @@ static int feed_begin_include (hcl_t* hcl)
 	arg->line = 1;
 	arg->colm = 1;
 	/*arg->nl = '\0';*/
+	/*arg->is_bytes = 0;*/
 	arg->includer = hcl->c->curinp;
 
 	if (hcl->c->cci_rdr(hcl, HCL_IO_OPEN, arg) <= -1)
@@ -1145,7 +1151,7 @@ static int auto_forge_xlist_if_at_block_beginning (hcl_t* hcl, hcl_frd_t* frd)
 	{
 		int forged_flagv;
 
-		/* both MLIST and ALIST begin as XLIST and get converted to MLIST 
+		/* both MLIST and ALIST begin as XLIST and get converted to MLIST
 		 * or ALIST after more tokens are processed. so handling of MLIST
 		 * or ALIST is needed at this phase */
 		forged_flagv = AUTO_FORGED;
@@ -2931,38 +2937,81 @@ static int feed_from_includee (hcl_t* hcl)
 		if (curinp->is_bytes)
 		{
 			hcl_cmgr_t* cmgr;
-			hcl_oow_t avail, n;
+			hcl_oow_t avail, inplen, n;
+			hcl_oow_t saved_rsd_len;
 
 			cmgr = HCL_CMGR(hcl);
+
+		start_over:
 			if (curinp->b.pos >= curinp->b.len)
 			{
 				x = hcl->c->cci_rdr(hcl, HCL_IO_READ_BYTES, curinp);
-				if (x <= -1) return -1;
+				if (x <= -1)
+				{
+					const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+					hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to read bytes from %js - %js", curinp->name, orgmsg);
+					return -1;
+				}
 
 				if (curinp->xlen <= 0)
 				{
 					/* got EOF from an included stream */
-/* TODO: if there is residue bytes from the current stream. error... */
+					if (curinp->rsd.len > 0)
+					{
+						hcl_seterrbfmt (hcl, HCL_EECERR, "incomplete byte sequence in %js", curinp->name);
+						return -1;
+					}
 					feed_end_include (hcl);
 					curinp = hcl->c->curinp;
 					continue;
 				}
 
 				curinp->b.pos = 0;
+				curinp->b.len = curinp->xlen;
 			}
+			avail = curinp->b.len - curinp->b.pos; /* available in the read buffer */
+			saved_rsd_len = curinp->rsd.len;
 
-			avail = curinp->b.len - curinp->b.pos;
-			n = cmgr->bctouc(curinp->buf.b[curinp->b.pos], avail, &c);
+			if (curinp->rsd.len > 0)
+			{
+				hcl_oow_t cpl; /* number of bytes to copy to the residue buffer */
+				HCL_ASSERT (hcl, curinp->b.pos == 0);
+				cpl = HCL_COUNTOF(curinp->rsd.buf) - curinp->rsd.len;
+				if (cpl > 0)
+				{
+					if (cpl > avail) cpl = avail;
+					HCL_MEMCPY(&curinp->rsd.buf[curinp->rsd.len], curinp->buf.b, cpl);
+					curinp->rsd.len += cpl;
+					curinp->b.pos += cpl; /* advance this because the bytes moved to the residue buffer */
+				}
+				inplen = curinp->rsd.len;
+				n = cmgr->bctouc(curinp->rsd.buf, inplen, &c);
+			}
+			else
+			{
+				inplen = avail;
+				n = cmgr->bctouc(&curinp->buf.b[curinp->b.pos], inplen, &c);
+			}
 			if (n == 0) /* invalid sequence */
 			{
+				/* TODO: more accurate locatin of the invalid byte sequence */
+				hcl_seterrbfmt (hcl, HCL_EECERR, "invalid byte sequence in %js", curinp->name);
+				return -1;
 			}
-			if (n > avail)
+			if (n > inplen)
 			{
 				/* incomplete sequence */
-				HCL_ASSERT (hcl, avail < HCL_MBLEN_MAX);
-				/* TODO: move to the internal buffer and start over */
+				HCL_ASSERT (hcl, avail < HCL_COUNTOF(curinp->rsd.buf));
+
+				/* TODO: wrong */
+				HCL_MEMCPY (curinp->rsd.buf, &curinp->buf.b[curinp->b.pos], avail);
+				curinp->rsd.len = avail;
+				curinp->b.pos = curinp->b.len;
+				goto start_over;
 			}
-			taken = n;
+
+			/* how much taken from the read buffer as input */
+			taken = n - saved_rsd_len;
 		}
 		else
 		{
@@ -2970,8 +3019,13 @@ static int feed_from_includee (hcl_t* hcl)
 			if (curinp->b.pos >= curinp->b.len)
 			{
 				x = hcl->c->cci_rdr(hcl, HCL_IO_READ, curinp);
-				if (x <= -1) return -1;
-
+				if (x <= -1)
+				{
+					/* TODO: more accurate locatin of failure */
+					const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+					hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to read %js - %js", curinp->name, orgmsg);
+					return -1;
+				}
 				if (curinp->xlen <= 0)
 				{
 					/* got EOF from an included stream */
@@ -2997,6 +3051,9 @@ static int feed_from_includee (hcl_t* hcl)
 			/* consumed */
 			feed_update_lx_loc (hcl, c);
 			curinp->b.pos += taken;
+	#if defined(HCL_OOCH_IS_UCH)
+			curinp->rsd.len = 0; /* needed for byte reading only */
+	#endif
 		}
 
 		if (hcl->c->feed.rd.do_include_file)

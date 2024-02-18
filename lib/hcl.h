@@ -1230,7 +1230,7 @@ struct hcl_io_cciarg_t
 	 * [OUT] place data here for #HCL_IO_READ or #HCL_IO_READ_BYTES
 	 */
 	int is_bytes; /* set this to non-zero if the handler fills the buffer with bytes */
-	struct
+	union
 	{
 		hcl_ooch_t c[2048]; /* TODO: resize this if necessary */
 		hcl_uint8_t b[2048 * HCL_SIZEOF(hcl_ooch_t)]; /* TODO: resize this if necessary */
@@ -1253,7 +1253,13 @@ struct hcl_io_cciarg_t
 	{
 		hcl_oow_t pos;
 		hcl_oow_t len;
-	} b;
+	} b; /* buffer(buf.c or buf.b) usage status */
+
+	struct
+	{
+		hcl_uint8_t buf[HCL_MBLEN_MAX];
+		hcl_oow_t len;
+	} rsd; /* residue bytes for HCL_IO_READ_BYTES */
 
 	hcl_oow_t line;
 	hcl_oow_t colm;

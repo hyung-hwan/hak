@@ -3,9 +3,10 @@ unit HCL;
 {$mode objfpc}{$H+}
 {$linklib hcl}
 {$linklib c}
+{$linklib dl}
+{$linklib gcc}
 
 {$if defined(HCL_LIB_QUADMATH_REQUIRED)}
-{$linklib gcc}
 {$linklib quadmath}
 {$endif}
 
@@ -40,6 +41,7 @@ type
 		IO_FLUSH
 	);
 
+{$packrecords c}
 	CciArgPtr = ^CciArg;
 	CciArg = record (* this record must follow the public part of hcl_io_cciarg_t in hcl.h *)
 		name: pwidechar;
@@ -49,6 +51,7 @@ type
 		xlen: System.SizeUint;
 		includer: CciArgPtr;
 	end;
+{$packrecords normal}
 
 	Interp = class
 	protected
@@ -217,16 +220,19 @@ var
 begin
 	(* check if the main stream is requested.
 	 * it doesn't have to be handled because the main stream must be handled via feeding *)
+
 	if arg^.includer = nil then exit(0);
 
 	case cmd of
 		IO_OPEN: begin
+		(* TODO: remember the parent path and load from the parent directory if necessary*)
 			f := SysUtils.FileOpen(arg^.name, SysUtils.fmOpenRead);
 			if f <= -1 then begin
 			// TODO: set error info....
 				exit(-1);
 			end;
 			arg^.handle := pointer(f);
+			arg^.is_bytes := 1;
 		end;
 
 		IO_CLOSE: begin
@@ -254,7 +260,6 @@ begin
 			;
 
 		(* the following operations are prohibited on the code input stream:
-		IO_READ:
 		IO_WRITE:
 		IO_WRITE_BYTES:
 		*)
