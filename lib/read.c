@@ -24,6 +24,8 @@
 
 #include "hcl-prv.h"
 
+/*#define HCL_LANG_ENABLE_WIDE_DELIM*/
+
 #define BUFFER_ALIGN 128
 #define BALIT_BUFFER_ALIGN 128
 #define SALIT_BUFFER_ALIGN 128
@@ -220,7 +222,7 @@ static HCL_INLINE int is_delimchar (hcl_ooci_t c)
 	       c == '|' || c == ',' || c == '.' || c == ':' || c == ';' ||
 	       /* the first characters of tokens in delim_token_tab up to this point */
 
-#if defined(HCL_OOCH_IS_UCH)
+#if defined(HCL_OOCH_IS_UCH) && defined(HCL_LANG_ENABLE_WIDE_DELIM)
 	       c == L'“' || c == L'”' ||
 #endif
 	       c == '#' || c == '\"' || c == '\'' || c == '\\' || is_spacechar(c) || c == HCL_OOCI_EOF;
@@ -2009,7 +2011,7 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 			FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard the quote itself. move on the the QUOTED_TOKEN state */
 			goto consumed;
 
-#if defined(HCL_OOCH_IS_UCH)
+#if defined(HCL_OOCH_IS_UCH) && defined(HCL_LANG_ENABLE_WIDE_DELIM)
 		case L'“':
 			init_flx_qt (FLX_QT(hcl), HCL_TOK_STRLIT, HCL_SYNERR_STRLIT, L'”', '\\', 0, HCL_TYPE_MAX(hcl_oow_t), 0);
 			FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard the quote itself. move on the the QUOTED_TOKEN state */
