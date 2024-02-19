@@ -41,13 +41,17 @@ type
 		IO_FLUSH
 	);
 
+{$ifndef HCL_CCI_BUF_LEN}
+{$define HCL_CCI_BUF_LEN := 2048}
+{$endif}
+
 {$packrecords c}
 	CciArgPtr = ^CciArg;
 	CciArg = record (* this record must follow the public part of hcl_io_cciarg_t in hcl.h *)
 		name: pwidechar;
 		handle: pointer;
 		is_bytes: integer;
-		buf: array[0..(2048 - 1)] of widechar;
+		buf: array[0..(HCL_CCI_BUF_LEN - 1)] of widechar;
 		xlen: System.SizeUint;
 		includer: CciArgPtr;
 	end;
@@ -108,7 +112,10 @@ function hcl_getoption(handle: pointer; option: Option; value: pointer): integer
 
 procedure hcl_seterrnum (handle: pointer; errnum: integer); cdecl; external;
 function hcl_geterrnum(handle: pointer): integer; cdecl; external;
+
+procedure hcl_seterrbmsg (handle: pointer; errnum: integer; errmsg: pansichar); cdecl; external;
 function hcl_geterrbmsg(handle: pointer): pansichar; cdecl; external;
+
 function hcl_ignite(handle: pointer; heapsize: System.SizeUint): integer; cdecl; external;
 function hcl_addbuiltinprims(handle: pointer): integer; cdecl; external;
 function hcl_beginfeed(handle: pointer; on_cnode: pointer): integer; cdecl; external;
@@ -126,6 +133,7 @@ function hcl_execute(handle: pointer): pointer; cdecl; external;
 procedure hcl_abort(handle: pointer) cdecl; external;
 
 procedure hcl_getsynerr(handle: pointer; synerr: SynerrPtr) cdecl; external;
+function hcl_syserrstrb(handle: pointer; syserr_type: integer; syserr_code: integer; buf: pansichar; len: System.SizeUint): integer; cdecl; external;
 function hcl_count_ucstr(ptr: pwidechar): System.SizeUint; cdecl; external;
 (*----- end external hcl function -----*)
 
@@ -212,11 +220,11 @@ begin
 	end;
 end;
 
-{$if 1}
 function cci_handler(handle: pointer; cmd: IoCmd; arg: CciArgPtr): integer; cdecl;
 var
 	f: System.THandle;
 	len: System.LongInt;
+	err: System.Integer;
 begin
 	(* check if the main stream is requested.
 	 * it doesn't have to be handled because the main stream must be handled via feeding *)
@@ -226,9 +234,10 @@ begin
 	case cmd of
 		IO_OPEN: begin
 		(* TODO: remember the parent path and load from the parent directory if necessary*)
-			f := SysUtils.FileOpen(arg^.name, SysUtils.fmOpenRead);
-			if f <= -1 then begin
-			// TODO: set error info....
+			f := SysUtils.FileOpen(System.UTF8Encode(arg^.name), SysUtils.fmOpenRead);
+			if f = System.THandle(-1) then begin
+				err := SysUtils.GetLastOSError();
+				hcl_seterrbmsg(handle, hcl_syserrstrb(handle, 0, err, nil, 0), pansichar(SysUtils.SysErrorMessage(err)));
 				exit(-1);
 			end;
 			arg^.handle := pointer(f);
@@ -248,8 +257,9 @@ begin
 		IO_READ_BYTES: begin
 			f := System.THandle(arg^.handle);
 			len := SysUtils.FileRead(f, arg^.buf, System.SizeOf(arg^.buf));
+			//len := SysUtils.FileRead(f, arg^.buf, 1);
 			if len <= -1 then begin
-			// TODO: set error info
+				hcl_seterrbmsg(handle, hcl_syserrstrb(handle, 0, err, nil, 0), pansichar(SysUtils.SysErrorMessage(err)));
 				exit(-1);
 			end;
 			arg^.xlen := len;
@@ -271,65 +281,6 @@ begin
 
 	exit(0);
 end;
-{$else}
-function cci_handler(handle: pointer; cmd: IoCmd; arg: CciArgPtr): integer; cdecl;
-var
-	f: Classes.TFileStream;
-	len: System.LongInt;
-begin
-	(* check if the main stream is requested.
-	 * it doesn't have to be handled because the main stream must be handled via feeding *)
-	if arg^.includer = nil then exit(0);
-
-	try
-		case cmd of
-			IO_OPEN: begin
-				f := Classes.TFileStream.Create(arg^.name, SysUtils.fmOpenRead);
-				arg^.handle := pointer(f);
-			end;
-
-			IO_CLOSE: begin
-				f := Classes.TFileStream(arg^.handle);
-				f.Destroy();
-			end;
-
-			IO_READ: begin
-				f := Classes.TFileStream(arg^.handle);
-				f.ReadBuffer(arg^.buf, System.SizeOf(arg^.buf));
-				if len <= -1 then begin
-				// TODO: set error info
-					exit(-1);
-				end;
-				arg^.xlen := len;
-			end;
-
-			IO_FLUSH:
-				(* no effect on an input stream *)
-				;
-
-			(* the following operations are prohibited on the code input stream:
-			IO_READ_BYTES:
-			IO_WRITE:
-			IO_WRITE_BYTES:
-			*)
-			else begin
-				hcl_seterrnum(handle, 999); (* TODO: change error code *)
-				exit(-1);
-			end;
-		end;
-
-	except
-		on e: Exception do
-			writeln ('exception:', e.Message);
-		else
-			writeln ('unknonw exception');
-
-		exit(-1);
-	end;
-
-	exit(0);
-end;
-{$endif}
 
 procedure Interp.CompileFile(filename: pansichar);
 var

@@ -219,6 +219,10 @@ static HCL_INLINE int is_delimchar (hcl_ooci_t c)
 	return c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' ||
 	       c == '|' || c == ',' || c == '.' || c == ':' || c == ';' ||
 	       /* the first characters of tokens in delim_token_tab up to this point */
+
+#if defined(HCL_OOCH_IS_UCH)
+	       c == L'“' || c == L'”' ||
+#endif
 	       c == '#' || c == '\"' || c == '\'' || c == '\\' || is_spacechar(c) || c == HCL_OOCI_EOF;
 }
 
@@ -1047,8 +1051,8 @@ static int feed_begin_include (hcl_t* hcl)
 
 	if (hcl->c->cci_rdr(hcl, HCL_IO_OPEN, arg) <= -1)
 	{
-		const hcl_ooch_t* org_errmsg = hcl_backuperrmsg(hcl);
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_INCLUDE, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "unable to include %js - %js", io_name, org_errmsg);
+		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_INCLUDE, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "unable to include %js - %js", io_name, orgmsg);
 		goto oops;
 	}
 
@@ -2005,6 +2009,13 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 			FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard the quote itself. move on the the QUOTED_TOKEN state */
 			goto consumed;
 
+#if defined(HCL_OOCH_IS_UCH)
+		case L'“':
+			init_flx_qt (FLX_QT(hcl), HCL_TOK_STRLIT, HCL_SYNERR_STRLIT, L'”', '\\', 0, HCL_TYPE_MAX(hcl_oow_t), 0);
+			FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard the quote itself. move on the the QUOTED_TOKEN state */
+			goto consumed;
+#endif
+
 		case '\'':
 			init_flx_qt (FLX_QT(hcl), HCL_TOK_CHARLIT, HCL_SYNERR_CHARLIT, c, '\\', 1, 1, 0);
 			FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard the quote itself. move on the the QUOTED_TOKEN state */
@@ -2920,6 +2931,23 @@ static void feed_update_lx_loc (hcl_t* hcl, hcl_ooci_t ch)
 	}
 }
 
+static hcl_oow_t move_cci_residue_bytes (hcl_io_cciarg_t* curinp)
+{
+	hcl_oow_t cpl;
+
+	cpl = HCL_COUNTOF(curinp->rsd.buf) - curinp->rsd.len;
+	if (cpl > 0)
+	{
+		hcl_oow_t avail;
+		avail = curinp->b.len - curinp->b.pos; /* available in the read buffer */
+		if (cpl > avail) cpl = avail;
+		HCL_MEMCPY(&curinp->rsd.buf[curinp->rsd.len], &curinp->buf.b[curinp->b.pos], cpl);
+		curinp->rsd.len += cpl;
+		curinp->b.pos += cpl; /* advance the position because the bytes moved to the residue buffer */
+	}
+	return curinp->rsd.len;
+}
+
 static int feed_from_includee (hcl_t* hcl)
 {
 	int x;
@@ -2937,8 +2965,8 @@ static int feed_from_includee (hcl_t* hcl)
 		if (curinp->is_bytes)
 		{
 			hcl_cmgr_t* cmgr;
-			hcl_oow_t avail, inplen, n;
-			hcl_oow_t saved_rsd_len;
+			const hcl_uint8_t* inpptr;
+			hcl_oow_t inplen, n;
 
 			cmgr = HCL_CMGR(hcl);
 
@@ -2968,57 +2996,48 @@ static int feed_from_includee (hcl_t* hcl)
 
 				curinp->b.pos = 0;
 				curinp->b.len = curinp->xlen;
-//printf ("curinp->xlen = %d\n", (int)curinp->xlen);
 			}
-			avail = curinp->b.len - curinp->b.pos; /* available in the read buffer */
-			saved_rsd_len = curinp->rsd.len;
 
-//printf ("saved_rsd_len = %d avail=%d\n", (int)saved_rsd_len, (int)avail);
-			if (saved_rsd_len > 0)
+			if (curinp->rsd.len > 0)
 			{
 				/* there is data in the residue buffer. use the residue buffer to
 				 * locate a proper multi-byte sequence */
-				hcl_oow_t cpl; /* number of bytes to copy to the residue buffer */
 				HCL_ASSERT (hcl, curinp->b.pos == 0);
-				cpl = HCL_COUNTOF(curinp->rsd.buf) - curinp->rsd.len;
-				if (cpl > 0)
-				{
-					if (cpl > avail) cpl = avail;
-					HCL_MEMCPY(&curinp->rsd.buf[curinp->rsd.len], curinp->buf.b, cpl);
-					curinp->rsd.len += cpl;
-					curinp->b.pos += cpl; /* advance this because the bytes moved to the residue buffer */
-				}
-				inplen = curinp->rsd.len;
-				n = cmgr->bctouc(&curinp->rsd.buf[0], inplen, &c);
-//printf ("residue -> inplen = %d cpl = %d avail=%d\n", (int)inplen, (int)cpl, (int)avail);
-				if (n > 0 && n <= inplen) curinp->b.pos -= curinp->rsd.len - saved_rsd_len;
+				inplen = move_cci_residue_bytes(curinp);
+				inpptr = &curinp->rsd.buf[0];
 			}
 			else
 			{
-				inplen = avail;
-				n = cmgr->bctouc(&curinp->buf.b[curinp->b.pos], inplen, &c);
+				inplen = curinp->b.len - curinp->b.pos;
+				inpptr = &curinp->buf.b[curinp->b.pos];
 			}
+
+			n = cmgr->bctouc((const hcl_bch_t*)inpptr, inplen, &c);
 			if (n == 0) /* invalid sequence */
 			{
-				/* TODO: more accurate locatin of the invalid byte sequence */
+				/* TODO: more accurate location of the invalid byte sequence */
 				hcl_seterrbfmt (hcl, HCL_EECERR, "invalid byte sequence in %js", curinp->name);
 				return -1;
 			}
 			if (n > inplen) /* incomplete sequence */
 			{
-				hcl_oow_t cpl;
 				HCL_ASSERT (hcl, curinp->rsd.len < HCL_COUNTOF(curinp->rsd.buf));
-				cpl = HCL_COUNTOF(curinp->rsd.buf) - curinp->rsd.len;
-				if (cpl > avail) cpl = avail;
-				HCL_MEMCPY(&curinp->rsd.buf[curinp->rsd.len], &curinp->buf.b[curinp->b.pos], cpl);
-				curinp->rsd.len += cpl;
-				curinp->b.pos += cpl;
+				move_cci_residue_bytes (curinp);
 				goto start_over;
 			}
 
-			/* how much taken from the read buffer as input */
-			HCL_ASSERT (hcl, n >= saved_rsd_len);
-			taken = n - saved_rsd_len;
+			if (curinp->rsd.len > 0)
+			{
+				/* move_cci_residue_bytes() advanced curinp->b.pos without checking
+				 * the needed number of bytes to form a character. it must backoff by
+				 * the number of excessive bytes moved to the residue buffer */
+				curinp->b.pos -= curinp->rsd.len - n;
+				taken = 0;  /* treat it as if no bytes are taken in this case */
+			}
+			else
+			{
+				taken = n;
+			}
 		}
 		else
 		{
@@ -3028,7 +3047,7 @@ static int feed_from_includee (hcl_t* hcl)
 				x = hcl->c->cci_rdr(hcl, HCL_IO_READ, curinp);
 				if (x <= -1)
 				{
-					/* TODO: more accurate locatin of failure */
+					/* TODO: more accurate location of failure */
 					const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
 					hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to read %js - %js", curinp->name, orgmsg);
 					return -1;
@@ -3051,7 +3070,6 @@ static int feed_from_includee (hcl_t* hcl)
 		}
 	#endif
 
-//hcl_logbfmt(hcl, HCL_LOG_STDERR, "[%jc]\n", c);
 		x = feed_char(hcl, c);
 		if (x <= -1) return -1;
 		if (x >= 1)
@@ -3060,7 +3078,7 @@ static int feed_from_includee (hcl_t* hcl)
 			feed_update_lx_loc (hcl, c);
 			curinp->b.pos += taken;
 	#if defined(HCL_OOCH_IS_UCH)
-			curinp->rsd.len = 0; /* needed for byte reading only */
+			curinp->rsd.len = 0; /* clear up the residue byte buffer. needed for byte reading only */
 	#endif
 		}
 

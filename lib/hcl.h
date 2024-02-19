@@ -1208,8 +1208,6 @@ struct hcl_lxc_t
 };
 typedef struct hcl_lxc_t hcl_lxc_t;
 
-
-/*#define HCL_CCI_BUF_LEN (1)*/
 #if !defined(HCL_CCI_BUF_LEN)
 #define HCL_CCI_BUF_LEN (2048)
 #endif

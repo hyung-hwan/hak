@@ -313,7 +313,7 @@ AUTOMAKE_OPTIONS = nostdinc
 hcl_SOURCES = hcl.pas main.pas 
 hcl_CPPFLAGS = 
 hcl_DEPENDENCIES = hcl.bin
-PASFLAGS = -Mobjfpc -FcUTF8 -g $(am__append_1)
+PASFLAGS = -Mobjfpc -FcUTF8 -Sm -g $(am__append_1)
 hcl_LINK = cp -pf hcl.bin $(builddir)/hcl$(EXEEXT) || echo 
 all: all-am
 

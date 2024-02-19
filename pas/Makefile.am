@@ -5,7 +5,7 @@ hcl_SOURCES = hcl.pas main.pas
 hcl_CPPFLAGS = 
 hcl_DEPENDENCIES = hcl.bin
 
-PASFLAGS = -Mobjfpc -FcUTF8 -g
+PASFLAGS = -Mobjfpc -FcUTF8 -Sm -g
 if HCL_LIB_QUADMATH_REQUIRED
 PASFLAGS += -dHCL_LIB_QUADMATH_REQUIRED
 endif

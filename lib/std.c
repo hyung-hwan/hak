@@ -850,7 +850,7 @@ static hcl_errnum_t macerr_to_errnum (int errcode)
 }
 #endif
 
-static hcl_errnum_t _syserrstrb (hcl_t* hcl, int syserr_type, int syserr_code, hcl_bch_t* buf, hcl_oow_t len)
+hcl_errnum_t hcl_syserrstrb (hcl_t* hcl, int syserr_type, int syserr_code, hcl_bch_t* buf, hcl_oow_t len)
 {
 	switch (syserr_type)
 	{
@@ -3214,7 +3214,7 @@ hcl_t* hcl_openstdwithmmgr (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, hcl_errnum_t* e
 	vmprim.alloc_heap = alloc_heap;
 	vmprim.free_heap = free_heap;
 	vmprim.log_write = log_write;
-	vmprim.syserrstrb = _syserrstrb;
+	vmprim.syserrstrb = hcl_syserrstrb;
 	vmprim.assertfail = _assertfail;
 	vmprim.dl_startup = dl_startup;
 	vmprim.dl_cleanup = dl_cleanup;
