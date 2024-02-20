@@ -2054,6 +2054,7 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 			}
 			else
 			{
+				/* TODO: limit identifier character - is_identchar(), is_identleadchar() */
 				init_flx_pi (FLX_PI(hcl));
 				FEED_CONTINUE (hcl, HCL_FLX_PLAIN_IDENT);
 			}
@@ -2506,7 +2507,7 @@ static int flx_plain_ident (hcl_t* hcl, hcl_ooci_t c) /* identifier */
 		/* if single-segmented, perform classification(call classify_ident_token()) again
 		 * bcause self and super as the first segment have not been marked as a non-identifier above */
 		tok_type = (pi->seg_count == 1? classify_ident_token(hcl, TOKEN_NAME(hcl)):
-		            (pi->is_cla? HCL_TOK_IDENT_DOTTED_CLA: HCL_TOK_IDENT_DOTTED));
+		                                (pi->is_cla? HCL_TOK_IDENT_DOTTED_CLA: HCL_TOK_IDENT_DOTTED));
 		FEED_WRAP_UP (hcl, tok_type);
 		goto not_consumed;
 	}

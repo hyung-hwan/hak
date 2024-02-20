@@ -388,6 +388,13 @@ static void print_synerr (hcl_t* hcl)
 	hcl_logbfmt (hcl, HCL_LOG_STDERR, "\n");
 }
 
+
+static void print_error (hcl_t* hcl, const hcl_bch_t* msghdr)
+{
+	if (HCL_ERRNUM(hcl) == HCL_ESYNERR) print_synerr (hcl);
+	else hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: %hs - [%d] %js\n", msghdr, hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
+}
+
 static void show_prompt (hcl_t* hcl, int level)
 {
 /* TODO: different prompt per level */
@@ -485,8 +492,15 @@ static hcl_oop_t execute_in_batch_mode(hcl_t* hcl, int verbose)
 static int on_fed_cnode_in_interactive_mode (hcl_t* hcl, hcl_cnode_t* obj)
 {
 	xtn_t* xtn = (xtn_t*)hcl_getxtn(hcl);
-	if (hcl_compile(hcl, obj, HCL_COMPILE_CLEAR_CODE | HCL_COMPILE_CLEAR_FNBLK) <= -1) return -1;
-	execute_in_interactive_mode (hcl);
+	int flags = HCL_COMPILE_CLEAR_CODE | HCL_COMPILE_CLEAR_FNBLK;
+
+	/* in the interactive, the compile error must not break the input loop.
+	 * this function returns 0 to go on despite a compile-time error */
+
+	if (hcl_compile(hcl, obj, flags) <= -1)
+		print_error(hcl, "failed to compile");
+	else
+		execute_in_interactive_mode (hcl);
 
 	show_prompt (hcl, 0);
 	return 0;
@@ -553,7 +567,11 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 			}
 
 			bch = ch;
-			if (hcl_feedbchars(hcl, &bch, 1) <= -1) goto feed_error;
+			if (hcl_feedbchars(hcl, &bch, 1) <= -1)
+			{
+				print_error (hcl, "failed to feed");
+				show_prompt (hcl, 0);
+			}
 		}
 		else
 		{
@@ -577,8 +595,7 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 	if (hcl_endfeed(hcl) <= -1)
 	{
 	feed_error:
-		if (hcl->errnum == HCL_ESYNERR) print_synerr (hcl);
-		else hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: cannot feed - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
+		print_error (hcl, "failed to feed");
 		goto oops; /* TODO: proceed or just exit? */
 	}
 	fclose (fp);
