@@ -45,7 +45,7 @@ type
 {$define HCL_CCI_BUF_LEN := 2048}
 {$endif}
 
-{$packrecords c}
+//{$packrecords c}
 	CciArgPtr = ^CciArg;
 	CciArg = record (* this record must follow the public part of hcl_io_cciarg_t in hcl.h *)
 		name: pwidechar;
@@ -55,7 +55,7 @@ type
 		xlen: System.SizeUint;
 		includer: CciArgPtr;
 	end;
-{$packrecords normal}
+//{$packrecords normal}
 
 	Interp = class
 	protected
@@ -68,10 +68,10 @@ type
 		procedure Ignite(heapsize: System.SizeUint);
 		procedure AddBuiltinPrims();
 		procedure CompileFile(filename: pansichar);
-		procedure Compile(text: pansichar);
-		procedure Compile(text: pansichar; len: System.SizeUint);
-		procedure Compile(text: pwidechar);
-		procedure Compile(text: pwidechar; len: System.SizeUint);
+		procedure CompileText(text: pansichar);
+		procedure CompileText(text: pansichar; len: System.SizeUint);
+		procedure CompileText(text: pwidechar);
+		procedure CompileText(text: pwidechar; len: System.SizeUint);
 		procedure Execute();
 
 	protected
@@ -255,7 +255,7 @@ begin
 	case cmd of
 		IO_OPEN: begin
 			self := handle_to_self(handle);
-			if arg^.includer <> nil then
+			if (arg^.includer <> nil) and (SysUtils.CompareStr(self.basedir, '') <> 0) then
 				name := SysUtils.ConcatPaths([self.basedir, UTF8Encode(arg^.name)])
 			else
 				name := System.UTF8Encode(arg^.name);
@@ -275,15 +275,10 @@ begin
 			SysUtils.FileClose(f);
 		end;
 
-		IO_READ: begin
-			hcl_seterrnum(handle, 999); (* TODO: change error code to ENOIMPL *)
-			exit(-1);
-		end;
 
 		IO_READ_BYTES: begin
 			f := System.THandle(arg^.handle);
-			len := SysUtils.FileRead(f, arg^.buf, System.SizeOf(arg^.buf));
-			//len := SysUtils.FileRead(f, arg^.buf, 1);
+			len := SysUtils.FileRead(f, arg^.buf, System.SizeOf(arg^.buf)); (* use SizeOf a widechar buffer as it needs to fill it with bytes *)
 			if len <= -1 then begin
 				hcl_seterrbmsg(handle, hcl_syserrstrb(handle, 0, err, nil, 0), pansichar(SysUtils.SysErrorMessage(err)));
 				exit(-1);
@@ -296,6 +291,7 @@ begin
 			;
 
 		(* the following operations are prohibited on the code input stream:
+		IO_READ:
 		IO_WRITE:
 		IO_WRITE_BYTES:
 		*)
@@ -321,7 +317,7 @@ label
 	oops;
 begin
 	f := SysUtils.FileOpen(filename, SysUtils.fmOpenRead);
-	if f <= -1 then begin
+	if f = System.THandle(-1) then begin
 		errmsg := 'failed to open file - ' + filename;
 		goto oops;
 	end;
@@ -374,12 +370,12 @@ oops:
 	raise Exception.Create(errmsg);
 end;
 
-procedure Interp.Compile(text: pansichar);
+procedure Interp.CompileText(text: pansichar);
 begin
-	self.Compile(text, SysUtils.Strlen(text));
+	self.CompileText(text, SysUtils.Strlen(text));
 end;
 
-procedure Interp.Compile(text: pansichar; len: System.SizeUint);
+procedure Interp.CompileText(text: pansichar; len: System.SizeUint);
 var
 	errnum: integer;
 	errmsg: string;
@@ -413,12 +409,12 @@ begin
 	hcl_detachccio(self.handle);
 end;
 
-procedure Interp.Compile(text: pwidechar);
+procedure Interp.CompileText(text: pwidechar);
 begin
-	self.Compile(text, SysUtils.Strlen(text));
+	self.CompileText(text, SysUtils.Strlen(text));
 end;
 
-procedure Interp.Compile(text: pwidechar; len: System.SizeUint);
+procedure Interp.CompileText(text: pwidechar; len: System.SizeUint);
 var
 	errnum: integer;
 	errmsg: string;
