@@ -60,6 +60,7 @@ type
 	Interp = class
 	protected
 		handle: pointer;
+		basedir: string;
 
 	public
 		constructor Create(x: integer);
@@ -76,6 +77,12 @@ type
 	protected
 		function FetchErrorMsg(): string;
 	end;
+
+	InterpExt = record
+		self: Interp;
+	end;
+
+	InterpExtPtr = ^InterpExt;
 
 	IO = class
 	public
@@ -106,6 +113,7 @@ function hcl_errnum_is_synerr(errnum: integer): boolean; cdecl; external;
 
 function hcl_openstd(xtnsize: System.SizeUint; errnum: pointer): pointer; cdecl; external;
 procedure hcl_close(handle: pointer); cdecl; external;
+function hcl_getxtn(handle: pointer): InterpExtPtr; cdecl; external;
 
 function hcl_setoption(handle: pointer; option: Option; value: pointer): integer; cdecl; external;
 function hcl_getoption(handle: pointer; option: Option; value: pointer): integer; cdecl; external;
@@ -147,13 +155,14 @@ var
 	errnum: integer;
 	errmsg: array[0..255] of AnsiChar;
 	tb: BitMask;
+	ext: InterpExtPtr;
 begin
-
-	h := hcl_openstd(0, @errnum);
+	h := hcl_openstd(System.SizeOf(Interp), @errnum);
 	if h = nil then begin
 		hcl_errnum_to_errbcstr(errnum, @errmsg, length(errmsg));
 		raise Exception.Create(errmsg);
 	end;
+
 
 	tb := BitMask(TraitBit.LANG_ENABLE_EOF) or BitMask(TraitBit.LANG_ENABLE_BLOCK);
 	if hcl_setoption(h, Option.TRAIT, @tb) <= -1 then begin
@@ -161,7 +170,11 @@ begin
 		hcl_close(h);
 		raise Exception.Create(errmsg);
 	end;
+
 	self.handle := h;
+
+	ext := hcl_getxtn(h);
+	ext^.self := self;
 end;
 
 destructor Interp.Destroy;
@@ -206,18 +219,24 @@ procedure Interp.Ignite(heapsize: System.SizeUint);
 begin
 	if hcl_ignite(self.handle, heapsize) <= -1 then
 	begin
-		(* TODO: proper error message *)
 		raise Exception.Create('failed to ignite - ' + self.FetchErrorMsg())
 	end;
 end;
 
 procedure Interp.AddBuiltinPrims();
 begin
-	(* TODO: proper error message *)
 	if hcl_addbuiltinprims(self.handle) <= -1 then
 	begin
 		raise Exception.Create('failed to add builtin primitives - ' + self.FetchErrorMsg())
 	end;
+end;
+
+function handle_to_self(handle: pointer): Interp;
+var
+	ext: InterpExtPtr;
+begin
+	ext := hcl_getxtn(handle);
+	exit(ext^.self);
 end;
 
 function cci_handler(handle: pointer; cmd: IoCmd; arg: CciArgPtr): integer; cdecl;
@@ -225,16 +244,23 @@ var
 	f: System.THandle;
 	len: System.LongInt;
 	err: System.Integer;
+	name: System.RawByteString;
+	self: Interp;
 begin
 	(* check if the main stream is requested.
 	 * it doesn't have to be handled because the main stream must be handled via feeding *)
 
-	if arg^.includer = nil then exit(0);
+	if arg^.includer = nil then exit(0); (* main stream - ignore it *)
 
 	case cmd of
 		IO_OPEN: begin
-		(* TODO: remember the parent path and load from the parent directory if necessary*)
-			f := SysUtils.FileOpen(System.UTF8Encode(arg^.name), SysUtils.fmOpenRead);
+			self := handle_to_self(handle);
+			if arg^.includer <> nil then
+				name := SysUtils.ConcatPaths([self.basedir, UTF8Encode(arg^.name)])
+			else
+				name := System.UTF8Encode(arg^.name);
+
+			f := SysUtils.FileOpen(name, SysUtils.fmOpenRead);
 			if f = System.THandle(-1) then begin
 				err := SysUtils.GetLastOSError();
 				hcl_seterrbmsg(handle, hcl_syserrstrb(handle, 0, err, nil, 0), pansichar(SysUtils.SysErrorMessage(err)));
@@ -306,6 +332,7 @@ begin
 	end;
 	attached := true;
 
+	self.basedir := SysUtils.ExtractFilePath(filename);
 	if hcl_beginfeed(self.handle, nil) <= -1 then begin
 		errmsg := 'failed to begin feeding - ' + self.FetchErrorMsg();
 		goto oops;
@@ -335,12 +362,14 @@ begin
 	feed_ongoing := false;
 
 	hcl_detachccio(self.handle);
+	self.basedir := '';
 	SysUtils.FileClose(f);
 	exit();
 
 oops:
 	if feed_ongoing then hcl_endfeed(self.handle);
 	if attached then hcl_detachccio(self.handle);
+	self.basedir := '';
 	if f >= -1 then SysUtils.FileClose(f);
 	raise Exception.Create(errmsg);
 end;

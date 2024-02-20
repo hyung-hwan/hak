@@ -80,12 +80,12 @@ hcl_heap_t* hcl_makeheap (hcl_t* hcl, hcl_oow_t size)
 	{
 		/* use the existing memory allocator */
 		HCL_ASSERT (hcl, alloc_size == 0);
-		heap->xmmgr = *hcl_getmmgr(hcl);
+		heap->xmmgr = *HCL_MMGR(hcl);
 	}
 	else
 	{
 		/* create a new memory allocator over the allocated heap */
-		heap->xma = hcl_xma_open(hcl_getmmgr(hcl), 0, heap->base, heap->size);
+		heap->xma = hcl_xma_open(HCL_MMGR(hcl), 0, heap->base, heap->size);
 		if (HCL_UNLIKELY(!heap->xma))
 		{
 			hcl->vmprim.free_heap (hcl, heap);

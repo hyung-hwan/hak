@@ -2050,21 +2050,23 @@ HCL_EXPORT void hcl_reset (
 	hcl_t*   hcl
 );
 
-#if defined(HCL_HAVE_INLINE)
-static HCL_INLINE void* hcl_getxtn (hcl_t* hcl) { return (void*)((hcl_uint8_t*)hcl + hcl->_instsize); }
-static HCL_INLINE hcl_mmgr_t* hcl_getmmgr (hcl_t* hcl) { return hcl->_mmgr; }
-static HCL_INLINE hcl_cmgr_t* hcl_getcmgr (hcl_t* hcl) { return hcl->_cmgr; }
-static HCL_INLINE void hcl_setcmgr (hcl_t* hcl, hcl_cmgr_t* cmgr) { hcl->_cmgr = cmgr; }
-#else
-#define hcl_getxtn(hcl) ((void*)((hcl_uint8_t*)hcl + ((hcl_t*)hcl)->_instsize))
-#define hcl_getmmgr(hcl) (((hcl_t*)(hcl))->_mmgr)
-#define hcl_getcmgr(hcl) (((hcl_t*)(hcl))->_cmgr)
-#define hcl_setcmgr(hcl,cmgr) (((hcl_t*)(hcl))->_cmgr = (cmgr))
-#endif
-
+#define HCL_XTN(hcl) ((void*)((hcl_uint8_t*)hcl + ((hcl_t*)hcl)->_instsize))
 #define HCL_MMGR(hcl) (((hcl_t*)(hcl))->_mmgr)
 #define HCL_CMGR(hcl) (((hcl_t*)(hcl))->_cmgr)
 #define HCL_ERRNUM(hcl) (((hcl_t*)(hcl))->errnum)
+
+void* hcl_getxtn (
+	hcl_t* hcl
+);
+
+HCL_EXPORT hcl_cmgr_t* hcl_getcmgr (
+	hcl_t* hcl
+);
+
+HCL_EXPORT void hcl_setcmgr (
+	hcl_t*      hcl,
+	hcl_cmgr_t* cmgr
+);
 
 HCL_EXPORT hcl_errnum_t hcl_geterrnum (
 	hcl_t* hcl

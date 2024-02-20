@@ -1713,7 +1713,7 @@ hcl_ooi_t hcl_logbfmtv (hcl_t* hcl, hcl_bitmask_t mask, const hcl_bch_t* fmt, va
 	fo.fmt_str = fmt;
 	fo.ctx = hcl;
 	fo.mask = mask;
-	fo.mmgr = hcl_getmmgr(hcl);
+	fo.mmgr = HCL_MMGR(hcl);
 	fo.putbchars = log_bcs;
 	fo.putuchars = log_ucs;
 	fo.putobj = hcl_fmt_object_;
@@ -1781,7 +1781,7 @@ hcl_ooi_t hcl_logufmtv (hcl_t* hcl, hcl_bitmask_t mask, const hcl_uch_t* fmt, va
 	fo.fmt_str = fmt;
 	fo.ctx = hcl;
 	fo.mask = mask;
-	fo.mmgr = hcl_getmmgr(hcl);
+	fo.mmgr = HCL_MMGR(hcl);
 	fo.putbchars = log_bcs;
 	fo.putuchars = log_ucs;
 	fo.putobj = hcl_fmt_object_;
@@ -1958,7 +1958,7 @@ hcl_ooi_t hcl_prbfmtv (hcl_t* hcl, const hcl_bch_t* fmt, va_list ap)
 	fo.fmt_str = fmt;
 	fo.ctx = hcl;
 	fo.mask = 0;
-	fo.mmgr = hcl_getmmgr(hcl);
+	fo.mmgr = HCL_MMGR(hcl);
 	fo.putbchars = print_bcs;
 	fo.putuchars = print_ucs;
 	fo.putobj = hcl_fmt_object_;
@@ -1991,7 +1991,7 @@ hcl_ooi_t hcl_prufmtv (hcl_t* hcl, const hcl_uch_t* fmt, va_list ap)
 	fo.fmt_str = fmt;
 	fo.ctx = hcl;
 	fo.mask = 0;
-	fo.mmgr = hcl_getmmgr(hcl);
+	fo.mmgr = HCL_MMGR(hcl);
 	fo.putbchars = print_bcs;
 	fo.putuchars = print_ucs;
 	fo.putobj = hcl_fmt_object_;
@@ -2859,7 +2859,7 @@ int hcl_prfmtcallstack (hcl_t* hcl, hcl_ooi_t nargs)
 	HCL_MEMSET (&fo, 0, HCL_SIZEOF(fo));
 
 	fo.mask = 0;
-	fo.mmgr = hcl_getmmgr(hcl);
+	fo.mmgr = HCL_MMGR(hcl);
 	fo.ctx = hcl;
 	fo.putbchars = print_bcs;
 	fo.putuchars = print_ucs;
@@ -2888,7 +2888,7 @@ int hcl_logfmtcallstack (hcl_t* hcl, hcl_ooi_t nargs)
 		fo.mask |= (hcl->log.default_type_mask & HCL_LOG_ALL_TYPES);
 	}
 
-	fo.mmgr = hcl_getmmgr(hcl);
+	fo.mmgr = HCL_MMGR(hcl);
 	fo.ctx = hcl;
 	fo.putbchars = log_bcs;
 	fo.putuchars = log_ucs;

@@ -65,7 +65,7 @@ HCL_INLINE hcl_rbt_pair_t* hcl_rbt_allocpair (
 	if (kcop == HCL_RBT_COPIER_INLINE) as += HCL_ALIGN_POW2(KTOB(rbt,klen), HCL_SIZEOF_VOID_P);
 	if (vcop == HCL_RBT_COPIER_INLINE) as += VTOB(rbt,vlen);
 
-	pair = (hcl_rbt_pair_t*)HCL_MMGR_ALLOC(hcl_getmmgr(rbt->hcl), as);
+	pair = (hcl_rbt_pair_t*)HCL_MMGR_ALLOC(HCL_MMGR(rbt->hcl), as);
 	if (pair == HCL_NULL) return HCL_NULL;
 
 	pair->color = HCL_RBT_RED;

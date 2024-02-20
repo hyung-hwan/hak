@@ -24,7 +24,7 @@
 
 #include "hcl-prv.h"
 
-/*#define HCL_LANG_ENABLE_WIDE_DELIM*/
+#define HCL_LANG_ENABLE_WIDE_DELIM
 
 #define BUFFER_ALIGN 128
 #define BALIT_BUFFER_ALIGN 128
@@ -208,7 +208,6 @@ static HCL_INLINE int is_alphachar (hcl_ooci_t c)
 	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
 }
 
-
 static HCL_INLINE int is_alnumchar (hcl_ooci_t c)
 {
 /* TODO: support full unicode */
@@ -221,9 +220,9 @@ static HCL_INLINE int is_delimchar (hcl_ooci_t c)
 	return c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' ||
 	       c == '|' || c == ',' || c == '.' || c == ':' || c == ';' ||
 	       /* the first characters of tokens in delim_token_tab up to this point */
-
 #if defined(HCL_OOCH_IS_UCH) && defined(HCL_LANG_ENABLE_WIDE_DELIM)
-	       c == L'“' || c == L'”' ||
+	       c == L'\u201C' || c == L'\u201D' ||  /* “ ” */
+	       c == L'\u2018' || c == L'\u2019' ||  /* ‘ ’ */
 #endif
 	       c == '#' || c == '\"' || c == '\'' || c == '\\' || is_spacechar(c) || c == HCL_OOCI_EOF;
 }
@@ -2011,17 +2010,21 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 			FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard the quote itself. move on the the QUOTED_TOKEN state */
 			goto consumed;
 
-#if defined(HCL_OOCH_IS_UCH) && defined(HCL_LANG_ENABLE_WIDE_DELIM)
-		case L'“':
-			init_flx_qt (FLX_QT(hcl), HCL_TOK_STRLIT, HCL_SYNERR_STRLIT, L'”', '\\', 0, HCL_TYPE_MAX(hcl_oow_t), 0);
-			FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard the quote itself. move on the the QUOTED_TOKEN state */
-			goto consumed;
-#endif
-
 		case '\'':
 			init_flx_qt (FLX_QT(hcl), HCL_TOK_CHARLIT, HCL_SYNERR_CHARLIT, c, '\\', 1, 1, 0);
 			FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard the quote itself. move on the the QUOTED_TOKEN state */
 			goto consumed;
+
+#if defined(HCL_OOCH_IS_UCH) && defined(HCL_LANG_ENABLE_WIDE_DELIM)
+		case L'\u201C': /* “ ” */
+			init_flx_qt (FLX_QT(hcl), HCL_TOK_STRLIT, HCL_SYNERR_STRLIT, L'\u201D', '\\', 0, HCL_TYPE_MAX(hcl_oow_t), 0);
+			FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard the quote itself. move on the the QUOTED_TOKEN state */
+			goto consumed;
+		case L'\u2018': /* ‘ ’ */
+			init_flx_qt (FLX_QT(hcl), HCL_TOK_CHARLIT, HCL_SYNERR_CHARLIT, L'\u2019', '\\', 1, 1, 0);
+			FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard the quote itself. move on the the QUOTED_TOKEN state */
+			goto consumed;
+#endif
 
 		case '+':
 		case '-':

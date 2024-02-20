@@ -410,7 +410,7 @@ struct xtn_t
 	} ev;
 };
 
-#define GET_XTN(hcl) ((xtn_t*)((hcl_uint8_t*)hcl_getxtn(hcl) - HCL_SIZEOF(xtn_t)))
+#define GET_XTN(hcl) ((xtn_t*)((hcl_uint8_t*)HCL_XTN(hcl) - HCL_SIZEOF(xtn_t)))
 
 
 /* -----------------------------------------------------------------

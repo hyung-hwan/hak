@@ -51,7 +51,26 @@ hcl_t* hcl_open (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, const hcl_vmprim_t* vmprim
 void hcl_close (hcl_t* hcl)
 {
 	hcl_fini (hcl);
-	HCL_MMGR_FREE (hcl_getmmgr(hcl), hcl);
+	HCL_MMGR_FREE (HCL_MMGR(hcl), hcl);
+}
+
+void* hcl_getxtn (hcl_t* hcl)
+{
+	return (void*)((hcl_uint8_t*)hcl + hcl->_instsize);
+}
+
+hcl_mmgr_t* hcl_getmmgr (hcl_t* hcl)
+{
+	return hcl->_mmgr;
+}
+
+hcl_cmgr_t* hcl_getcmgr (hcl_t* hcl)
+{
+	return hcl->_cmgr;
+}
+void hcl_setcmgr (hcl_t* hcl, hcl_cmgr_t* cmgr)
+{
+	hcl->_cmgr = cmgr;
 }
 
 static void fill_bigint_tables (hcl_t* hcl)
@@ -665,7 +684,7 @@ void* hcl_allocmem (hcl_t* hcl, hcl_oow_t size)
 {
 	void* ptr;
 
-	ptr = HCL_MMGR_ALLOC (hcl_getmmgr(hcl), size);
+	ptr = HCL_MMGR_ALLOC(HCL_MMGR(hcl), size);
 	if (!ptr) hcl_seterrnum (hcl, HCL_ESYSMEM);
 	return ptr;
 }
@@ -674,7 +693,7 @@ void* hcl_callocmem (hcl_t* hcl, hcl_oow_t size)
 {
 	void* ptr;
 
-	ptr = HCL_MMGR_ALLOC (hcl_getmmgr(hcl), size);
+	ptr = HCL_MMGR_ALLOC(HCL_MMGR(hcl), size);
 	if (!ptr) hcl_seterrnum (hcl, HCL_ESYSMEM);
 	else HCL_MEMSET (ptr, 0, size);
 	return ptr;
@@ -682,14 +701,14 @@ void* hcl_callocmem (hcl_t* hcl, hcl_oow_t size)
 
 void* hcl_reallocmem (hcl_t* hcl, void* ptr, hcl_oow_t size)
 {
-	ptr = HCL_MMGR_REALLOC (hcl_getmmgr(hcl), ptr, size);
+	ptr = HCL_MMGR_REALLOC(HCL_MMGR(hcl), ptr, size);
 	if (!ptr) hcl_seterrnum (hcl, HCL_ESYSMEM);
 	return ptr;
 }
 
 void hcl_freemem (hcl_t* hcl, void* ptr)
 {
-	HCL_MMGR_FREE (hcl_getmmgr(hcl), ptr);
+	HCL_MMGR_FREE (HCL_MMGR(hcl), ptr);
 }
 
 
