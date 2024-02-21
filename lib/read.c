@@ -167,7 +167,7 @@ static int init_compiler (hcl_t* hcl);
 
 static HCL_INLINE int is_spacechar (hcl_ooci_t c)
 {
-	/* TODO: handle other space unicode characters */
+#if 0
 	switch (c)
 	{
 		case ' ':
@@ -181,6 +181,9 @@ static HCL_INLINE int is_spacechar (hcl_ooci_t c)
 		default:
 			return 0;
 	}
+#else
+	return c != HCL_OOCI_EOF && hcl_is_ooch_space(c);
+#endif
 }
 
 static HCL_INLINE int is_linebreak (hcl_ooci_t c)
@@ -3507,7 +3510,6 @@ int hcl_attachccio (hcl_t* hcl, hcl_io_impl_t cci_rdr)
 		inited_compiler = 1;
 	}
 
-
 	if (cci_rdr)
 	{
 		/* The name field and the includer field are HCL_NULL
@@ -3649,8 +3651,6 @@ void hcl_flushudio (hcl_t* hcl)
 {
 	if (hcl->io.udo_wrtr) hcl->io.udo_wrtr (hcl, HCL_IO_FLUSH, &hcl->io.udo_arg);
 }
-
-
 
 /* TODO: discard the fwollowing three functions - hcl_setbasesrloc, hcl_readbasesrchar */
 void hcl_setbasesrloc (hcl_t* hcl, hcl_oow_t line, hcl_oow_t colm)

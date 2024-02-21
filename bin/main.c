@@ -29,6 +29,7 @@
 #endif
 
 #include <hcl.h>
+#include <hcl-chr.h>
 #include <hcl-utl.h>
 #include <hcl-opt.h>
 
@@ -103,6 +104,15 @@ struct xtn_t
 	const char* udo_path;
 
 	int vm_running;
+
+	struct
+	{
+		hcl_bch_t buf[1024];
+		hcl_oow_t len;
+		hcl_oow_t pos;
+		int eof;
+		int ongoing;
+	} feed;
 	/*hcl_oop_t sym_errstr;*/
 };
 
@@ -492,24 +502,80 @@ static hcl_oop_t execute_in_batch_mode(hcl_t* hcl, int verbose)
 static int on_fed_cnode_in_interactive_mode (hcl_t* hcl, hcl_cnode_t* obj)
 {
 	xtn_t* xtn = (xtn_t*)hcl_getxtn(hcl);
-	int flags = HCL_COMPILE_CLEAR_CODE | HCL_COMPILE_CLEAR_FNBLK;
+	int flags = 0;
 
 	/* in the interactive, the compile error must not break the input loop.
-	 * this function returns 0 to go on despite a compile-time error */
+	 * this function returns 0 to go on despite a compile-time error.
+	 *
+	 * if a single line or continued lines contain multiple expressions,
+	 * execution is delayed until the last expression is compiled. */
+
+	if (!xtn->feed.ongoing)
+	{
+		flags = HCL_COMPILE_CLEAR_CODE | HCL_COMPILE_CLEAR_FNBLK;
+		xtn->feed.ongoing = 1;
+	}
 
 	if (hcl_compile(hcl, obj, flags) <= -1)
+	{
 		print_error(hcl, "failed to compile");
+		xtn->feed.pos = xtn->feed.len; /* arrange to discard the rest of the line */
+		show_prompt (hcl, 0);
+	}
 	else
-		execute_in_interactive_mode (hcl);
+	{
+		hcl_oow_t i;
+		for (i = xtn->feed.pos; i < xtn->feed.len; i++)
+		{
+			if (!hcl_is_bch_space(xtn->feed.buf[i])) break;
+		}
 
-	show_prompt (hcl, 0);
+		if (i >= xtn->feed.len || xtn->feed.pos >= xtn->feed.len)
+		{
+			/* nothing more to feed */
+			execute_in_interactive_mode (hcl);
+			xtn->feed.ongoing = 0;
+			show_prompt (hcl, 0);
+		}
+	}
+
 	return 0;
 }
 
 static int on_fed_cnode_in_batch_mode (hcl_t* hcl, hcl_cnode_t* obj)
 {
-	xtn_t* xtn = (xtn_t*)hcl_getxtn(hcl);
+	/*xtn_t* xtn = (xtn_t*)hcl_getxtn(hcl);*/
 	return hcl_compile(hcl, obj, 0);
+}
+
+static int get_line (hcl_t* hcl, xtn_t* xtn, FILE* fp)
+{
+	if (xtn->feed.eof) return 0;
+
+	xtn->feed.pos = 0;
+	xtn->feed.len = 0;
+
+	while (1)
+	{
+		int ch = fgetc(fp);
+		if (ch == EOF)
+		{
+			if (ferror(fp))
+			{
+				hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: failed to read - %hs - %hs\n", xtn->cci_path, strerror(errno));
+				return -1;
+			}
+
+			xtn->feed.eof = 1;
+			break;
+		}
+
+		/* TOTO: buffer check... */
+		xtn->feed.buf[xtn->feed.len++] = (hcl_bch_t)(unsigned int)ch;
+		if (ch == '\n') break;
+	}
+
+	return 1;
 }
 
 static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
@@ -548,32 +614,34 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 		goto oops;
 	}
 
-	if (is_tty) show_prompt (hcl, 0);
-
-	while (1)
+	if (is_tty)
 	{
-		if (is_tty)
-		{
-			hcl_bch_t bch;
-			int ch = fgetc(fp);
-			if (ch == EOF)
-			{
-				if (ferror(fp))
-				{
-					hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: failed to read - %hs - %hs\n", xtn->cci_path, strerror(errno));
-					goto oops;
-				}
-				break;
-			}
+		show_prompt (hcl, 0);
 
-			bch = ch;
-			if (hcl_feedbchars(hcl, &bch, 1) <= -1)
+		while (1)
+		{
+			int n;
+
+			/* read a while line regardless of the actual expression */
+			n = get_line(hcl, xtn, fp);
+			if (n <= -1) goto oops;
+			if (n == 0) break;
+
+			/* feed the line */
+			while (xtn->feed.pos < xtn->feed.len)
 			{
-				print_error (hcl, "failed to feed");
-				show_prompt (hcl, 0);
+				hcl_bch_t c = xtn->feed.buf[xtn->feed.pos++];
+				if (hcl_feedbchars(hcl, &c, 1) <= -1)
+				{
+					print_error (hcl, "failed to feed");
+					show_prompt (hcl, 0);
+				}
 			}
 		}
-		else
+	}
+	else
+	{
+		while (1)
 		{
 			hcl_bch_t buf[1024];
 			hcl_oow_t xlen;

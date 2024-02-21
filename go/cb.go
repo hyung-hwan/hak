@@ -3,6 +3,7 @@ package hcl
 /*
 #include <hcl.h>
 #include <hcl-utl.h>
+#include <string.h> // for memcpy
 */
 import "C"
 
@@ -130,6 +131,7 @@ func hcl_go_cci_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.in
 			n     int
 			i     int
 			buf   []rune
+			dummy C.hcl_uch_t
 		)
 		ioarg = (*C.hcl_io_cciarg_t)(arg)
 
@@ -140,9 +142,24 @@ func hcl_go_cci_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.in
 			return -1
 		}
 
-		for i = 0; i < n; i++ { // TODO: use a proper conversion when the rune size is different from hio_uch_t
-			ioarg.buf[i] = C.hcl_uch_t(buf[i])
+		ioarg.is_bytes = 0
+		if unsafe.Sizeof(buf[0]) == unsafe.Sizeof(dummy) {
+			C.memcpy (
+				unsafe.Pointer(&ioarg.buf[0]),
+				unsafe.Pointer(&buf[0]),
+				C.size_t(unsafe.Sizeof(buf[0]) * uintptr(n)))
+		} else {
+			var dst uintptr
+			// work around cgo's union issue. not able to access individual union
+			// member fields. cgo treats union as byte aggregates.
+			dst = uintptr(unsafe.Pointer(&ioarg.buf[0]))
+			for i = 0; i < n; i++ {
+				//ioarg.buf.c[i] = C.hcl_uch_t(buf[i])
+				*(*C.hcl_uch_t)(unsafe.Pointer(dst)) = C.hcl_uch_t(buf[i]);
+				dst += unsafe.Sizeof(dummy)
+			}
 		}
+
 		ioarg.xlen = C.hcl_oow_t(n)
 		return 0
 	}
