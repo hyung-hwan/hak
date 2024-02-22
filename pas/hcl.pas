@@ -60,7 +60,7 @@ type
 	Interp = class
 	protected
 		handle: pointer;
-		basedir: string;
+		basefile: string;
 
 	public
 		constructor Create(x: integer);
@@ -148,6 +148,14 @@ function hcl_count_ucstr(ptr: pwidechar): System.SizeUint; cdecl; external;
 implementation
 
 uses SysUtils, Math, Classes;
+
+type
+	NamedHandle = record
+		handle: THandle;
+		name: System.RawByteString;
+	end;
+
+	NamedHandlePtr = ^NamedHandle;
 
 constructor Interp.Create (x: integer);
 var
@@ -241,44 +249,65 @@ end;
 
 function cci_handler(handle: pointer; cmd: IoCmd; arg: CciArgPtr): integer; cdecl;
 var
-	f: System.THandle;
+	nf: NamedHandlePtr;
 	len: System.LongInt;
 	err: System.Integer;
 	name: System.RawByteString;
+	basedir: System.RawByteString;
 	self: Interp;
 begin
-	(* check if the main stream is requested.
-	 * it doesn't have to be handled because the main stream must be handled via feeding *)
-
-	if arg^.includer = nil then exit(0); (* main stream - ignore it *)
-
 	case cmd of
 		IO_OPEN: begin
 			self := handle_to_self(handle);
-			if (arg^.includer <> nil) and (SysUtils.CompareStr(self.basedir, '') <> 0) then
-				name := SysUtils.ConcatPaths([self.basedir, UTF8Encode(arg^.name)])
-			else
-				name := System.UTF8Encode(arg^.name);
 
-			f := SysUtils.FileOpen(name, SysUtils.fmOpenRead);
-			if f = System.THandle(-1) then begin
+			if arg^.includer = nil then begin
+				(* main stream *)
+				name := self.basefile;
+			end
+			else begin
+				(* included file *)
+				nf := NamedHandlePtr(arg^.includer^.handle);
+				basedir := SysUtils.ExtractFilePath(nf^.name);
+				name := UTF8Encode(arg^.name);
+				if SysUtils.CompareStr(basedir, '') <> 0 then
+					name := SysUtils.ConcatPaths([basedir, name]);
+			end;
+
+			System.New(nf);
+			if nf = nil then begin
 				err := SysUtils.GetLastOSError();
 				hcl_seterrbmsg(handle, hcl_syserrstrb(handle, 0, err, nil, 0), pansichar(SysUtils.SysErrorMessage(err)));
 				exit(-1);
 			end;
-			arg^.handle := pointer(f);
+
+			if arg^.includer <> nil then begin
+				(* included file *)
+				nf^.handle := SysUtils.FileOpen(name, SysUtils.fmOpenRead);
+				if nf^.handle = System.THandle(-1) then begin
+					err := SysUtils.GetLastOSError();
+					hcl_seterrbmsg(handle, hcl_syserrstrb(handle, 0, err, nil, 0), pansichar(SysUtils.SysErrorMessage(err)));
+					System.Dispose(nf);
+					exit(-1);
+				end;
+			end
+			else begin
+				nf^.handle := THandle(-1);
+			end;
+
+			nf^.name := name;
+			arg^.handle := pointer(nf);
 			arg^.is_bytes := 1;
 		end;
 
 		IO_CLOSE: begin
-			f := System.THandle(arg^.handle);
-			SysUtils.FileClose(f);
+			nf := NamedHandlePtr(arg^.handle);
+			if nf^.handle <> System.THandle(-1) then SysUtils.FileClose(nf^.handle);
+			System.Dispose(nf);
 		end;
 
-
 		IO_READ_BYTES: begin
-			f := System.THandle(arg^.handle);
-			len := SysUtils.FileRead(f, arg^.buf, System.SizeOf(arg^.buf)); (* use SizeOf a widechar buffer as it needs to fill it with bytes *)
+			nf := NamedHandlePtr(arg^.handle);
+			len := SysUtils.FileRead(nf^.handle, arg^.buf, System.SizeOf(arg^.buf)); (* use SizeOf a widechar buffer as it needs to fill it with bytes *)
 			if len <= -1 then begin
 				hcl_seterrbmsg(handle, hcl_syserrstrb(handle, 0, err, nil, 0), pansichar(SysUtils.SysErrorMessage(err)));
 				exit(-1);
@@ -322,13 +351,13 @@ begin
 		goto oops;
 	end;
 
+	self.basefile := filename;
 	if hcl_attachccio(self.handle, @cci_handler) <= -1 then begin
 		errmsg := 'failed to attach ccio handler - ' + self.FetchErrorMsg();
 		goto oops;
 	end;
 	attached := true;
 
-	self.basedir := SysUtils.ExtractFilePath(filename);
 	if hcl_beginfeed(self.handle, nil) <= -1 then begin
 		errmsg := 'failed to begin feeding - ' + self.FetchErrorMsg();
 		goto oops;
@@ -358,14 +387,14 @@ begin
 	feed_ongoing := false;
 
 	hcl_detachccio(self.handle);
-	self.basedir := '';
+	self.basefile := '';
 	SysUtils.FileClose(f);
 	exit();
 
 oops:
 	if feed_ongoing then hcl_endfeed(self.handle);
 	if attached then hcl_detachccio(self.handle);
-	self.basedir := '';
+	self.basefile := '';
 	if f >= -1 then SysUtils.FileClose(f);
 	raise Exception.Create(errmsg);
 end;

@@ -49,7 +49,7 @@ hclgo.bin: lib/libhcl.la $(hclgo_OBJECTS)
 	## ---------------------------------------------------------------
 	CC=$(CC) \
 	CGO_CFLAGS="-I$(abs_srcdir)/lib -I$(abs_builddir)/lib $(CFLAGS)" \
-	CGO_LDFLAGS="-L$(abs_builddir)/lib -L$(abs_builddir)/lib/.libs -lhcl -ldl -lquadmath"  \
+	CGO_LDFLAGS="-L$(abs_builddir)/lib -L$(abs_builddir)/lib/.libs -lhcl -ldl $(LIBM)"  \
 	go build -C $(srcdir) -ldflags "-X 'main.BINDIR=$(bindir)' -X 'main.SBINDIR=$(sbindir)' -X 'main.LIBDIR=$(libdir)' -X 'main.SYSCONFDIR=$(sysconfdir)'" -x -o $(abs_builddir)/hclgo.bin -modfile $(abs_builddir)/go.mod
 	## ---------------------------------------------------------------
 	go clean -C $(srcdir) -x -modfile $(abs_builddir)/go.mod

@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
-
-	hcl "code.miflux.com/hyung-hwan/hcl/go"
+	"code.miflux.com/hyung-hwan/hcl/go"
 )
 
 /*
