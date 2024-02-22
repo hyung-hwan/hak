@@ -347,7 +347,7 @@ label
 begin
 	f := SysUtils.FileOpen(filename, SysUtils.fmOpenRead);
 	if f = System.THandle(-1) then begin
-		errmsg := 'failed to open file - ' + filename;
+		errmsg := 'failed to open ' + filename + ' - ' +  SysUtils.SysErrorMessage(SysUtils.GetLastOSError());
 		goto oops;
 	end;
 
@@ -367,7 +367,7 @@ begin
 	while true do begin
 		len := SysUtils.FileRead(f, buf, System.SizeOf(buf));
 		if len <= -1 then begin
-			errmsg := 'failed to read file - ' + filename;
+			errmsg := 'failed to read ' + filename + ' - ' +  SysUtils.SysErrorMessage(SysUtils.GetLastOSError());
 			goto oops;
 		end;
 		if len = 0 then break;
@@ -395,7 +395,7 @@ oops:
 	if feed_ongoing then hcl_endfeed(self.handle);
 	if attached then hcl_detachccio(self.handle);
 	self.basefile := '';
-	if f >= -1 then SysUtils.FileClose(f);
+	if f <> System.THandle(-1) then SysUtils.FileClose(f);
 	raise Exception.Create(errmsg);
 end;
 

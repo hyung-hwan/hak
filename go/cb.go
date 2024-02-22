@@ -144,10 +144,10 @@ func hcl_go_cci_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.in
 
 		ioarg.is_bytes = 0
 		if unsafe.Sizeof(buf[0]) == unsafe.Sizeof(dummy) {
-			C.memcpy (
+			C.memcpy(
 				unsafe.Pointer(&ioarg.buf[0]),
 				unsafe.Pointer(&buf[0]),
-				C.size_t(unsafe.Sizeof(buf[0]) * uintptr(n)))
+				C.size_t(unsafe.Sizeof(buf[0])*uintptr(n)))
 		} else {
 			var dst uintptr
 			// work around cgo's union issue. not able to access individual union
@@ -155,7 +155,7 @@ func hcl_go_cci_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.in
 			dst = uintptr(unsafe.Pointer(&ioarg.buf[0]))
 			for i = 0; i < n; i++ {
 				//ioarg.buf.c[i] = C.hcl_uch_t(buf[i])
-				*(*C.hcl_uch_t)(unsafe.Pointer(dst)) = C.hcl_uch_t(buf[i]);
+				*(*C.hcl_uch_t)(unsafe.Pointer(dst)) = C.hcl_uch_t(buf[i])
 				dst += unsafe.Sizeof(dummy)
 			}
 		}
