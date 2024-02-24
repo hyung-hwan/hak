@@ -4,7 +4,6 @@ package hcl
 #include <hcl.h>
 #include <hcl-utl.h>
 #include <string.h> // for memcpy
-#include <stdlib.h> // for malloc, free
 */
 import "C"
 
@@ -17,6 +16,8 @@ import (
 	"sync"
 	"unsafe"
 )
+
+//import "fmt"
 
 type IOHandle struct {
 	file *os.File
@@ -107,12 +108,9 @@ func hcl_go_cci_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.in
 		} else {
 			// actual included stream
 			var includer_name string
-			var k []rune = ucstr_to_rune_slice(ioarg.name)
 
-			name = string(k)
+			name = string(ucstr_to_rune_slice(ioarg.name))
 
-			//var k []rune = ucstr_to_rune_slice(ioarg.includer.name)
-			//var k []rune = ucstr_to_rune_slice(ioarg.includer.handle.remembered_path)
 			tptr = ioarg.includer.handle
 			tlen = *(*C.size_t)(unsafe.Pointer(uintptr(tptr) + unsafe.Sizeof(fd)))
 
@@ -121,9 +119,9 @@ func hcl_go_cci_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.in
 		}
 
 		tlen = C.size_t(len(name)) // number of bytes in the string
-		tptr = C.malloc(C.size_t(unsafe.Sizeof(fd)) + C.size_t(unsafe.Sizeof(tlen)) + tlen)
+		tptr = C.hcl_allocmem(c, C.size_t(unsafe.Sizeof(fd)) + C.size_t(unsafe.Sizeof(tlen)) + tlen)
 		if tptr == nil {
-			g.set_errmsg(C.HCL_ESYSMEM, "memory allocation failure for cci name")
+			g.set_errmsg(C.HCL_ESYSMEM, "cci name allocation failure")
 			return -1
 		}
 
@@ -133,11 +131,12 @@ func hcl_go_cci_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.in
 			fd, err = g.io.cci.Open(g, name)
 			if err != nil {
 				g.set_errmsg(C.HCL_EIOERR, err.Error())
-				C.free(tptr)
+				C.hcl_freemem(c, tptr)
 				return -1
 			}
 		}
 
+		// | fd | length | name bytes of the length |
 		C.memcpy(tptr, unsafe.Pointer(&fd), C.size_t(unsafe.Sizeof(fd)))
 		C.memcpy(unsafe.Pointer(uintptr(tptr)+unsafe.Sizeof(fd)), unsafe.Pointer(&tlen), C.size_t(unsafe.Sizeof(tlen)))
 		C.memcpy(unsafe.Pointer(uintptr(tptr)+unsafe.Sizeof(fd)+unsafe.Sizeof(tlen)), unsafe.Pointer(C.CString(name)), tlen)
@@ -152,11 +151,12 @@ func hcl_go_cci_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.in
 		)
 
 		ioarg = (*C.hcl_io_cciarg_t)(arg)
-		fd = *(*int)(ioarg.handle) // the descriptor is at the beginning of the buffer.
+		fd = *(*int)(ioarg.handle) // the descriptor at the beginning
 		if fd >= 0 {
 			g.io.cci.Close(fd)
 		}
-		C.free(ioarg.handle)
+		C.hcl_freemem(c, ioarg.handle)
+		ioarg.handle = nil
 		return 0
 
 	case C.HCL_IO_READ:
@@ -170,8 +170,7 @@ func hcl_go_cci_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.in
 		)
 		ioarg = (*C.hcl_io_cciarg_t)(arg)
 
-		// the descriptor is at the beginning of the buffer.
-		fd = *(*int)(ioarg.handle)
+		fd = *(*int)(ioarg.handle) // the descriptor at the beginning
 
 		buf = make([]rune, 1024) // TODO:  different size...
 		n, err = g.io.cci.Read(fd, buf)
