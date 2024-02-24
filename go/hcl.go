@@ -5,17 +5,17 @@ package hcl
 #include <hcl-utl.h>
 #include <stdlib.h> // for C.free
 
-extern int hcl_go_cci_handler (hcl_t hcl, hcl_io_cmd_t cmd, void* arg);
-extern int hcl_go_udi_handler (hcl_t hcl, hcl_io_cmd_t cmd, void* arg);
-extern int hcl_go_udo_handler (hcl_t hcl, hcl_io_cmd_t cmd, void* arg);
+extern int hcl_go_cci_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg);
+extern int hcl_go_udi_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg);
+extern int hcl_go_udo_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg);
 
-int hcl_cci_Handler_for_go (hcl_t hcl, hcl_io_cmd_t cmd, void* arg) {
+int hcl_cci_handler_for_go (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg) {
     return hcl_go_cci_handler(hcl, cmd, arg);
 }
-int hcl_udi_handler_for_go (hcl_t hcl, hcl_io_cmd_t cmd, void* arg) {
+int hcl_udi_handler_for_go (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg) {
     return hcl_go_udi_handler(hcl, cmd, arg);
 }
-int hcl_udo_handler_for_go (hcl_t hcl, hcl_io_cmd_t cmd, void* arg) {
+int hcl_udo_handler_for_go (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg) {
     return hcl_go_udo_handler(hcl, cmd, arg);
 }
 */
@@ -31,7 +31,7 @@ import (
 )
 
 type CciImpl interface {
-	Open(g *HCL, name string, includer_name string) (int, error)
+	Open(g *HCL, name string) (int, error)
 	Close(fd int)
 	Read(fd int, buf []rune) (int, error)
 }
@@ -221,7 +221,7 @@ func (hcl *HCL) AttachCCIO(cci CciImpl, main_cci_name string) error {
 	hcl.io.cci = cci
 	hcl.io.cci_main = main_cci_name
 
-	x = C.hcl_attachccio(hcl.c, C.hcl_io_impl_t(C.hcl_cci_Handler_for_go))
+	x = C.hcl_attachccio(hcl.c, C.hcl_io_impl_t(C.hcl_cci_handler_for_go))
 	if x <= -1 {
 		// restore the io handler set due to attachment failure
 		hcl.io.cci_main = old_cci_name

@@ -10,7 +10,6 @@ import "C"
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"os"
 	"path"
@@ -95,53 +94,48 @@ func hcl_go_cci_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.in
 		var (
 			ioarg         *C.hcl_io_cciarg_t
 			name          string
-			includer_name string
 			fd            int
 			tptr          unsafe.Pointer
 			tlen          C.size_t
 		)
 
 		ioarg = (*C.hcl_io_cciarg_t)(arg)
-		if ioarg.name == nil { // main stream when it's not feed based.
-			name = ""
-		} else {
-			var k []rune = ucstr_to_rune_slice(ioarg.name)
-			name = string(k)
-		}
 
 		if ioarg.includer == nil /* || ioarg.includer.name == nil */ {
-			includer_name = g.io.cci_main
-			name = ""
+			// main stream
+			name = g.io.cci_main
 		} else {
+			// actual included stream
+			var includer_name string
+			var k []rune = ucstr_to_rune_slice(ioarg.name)
+
+			name = string(k)
+
 			//var k []rune = ucstr_to_rune_slice(ioarg.includer.name)
 			//var k []rune = ucstr_to_rune_slice(ioarg.includer.handle.remembered_path)
 			tptr = ioarg.includer.handle
 			tlen = *(*C.size_t)(unsafe.Pointer(uintptr(tptr) + unsafe.Sizeof(fd)))
 
 			includer_name = C.GoStringN((*C.char)(unsafe.Pointer(uintptr(tptr)+unsafe.Sizeof(fd)+unsafe.Sizeof(tlen))), C.int(tlen))
-
-			fmt.Printf("xname.... [%s] ccimain [%s] [%s]\n", name, g.io.cci_main, includer_name)
 			name = filepath.Join(path.Dir(includer_name), name)
-			fmt.Printf("name.... [%s]\n", name)
 		}
 
-		// len(name) is the number of bytes in the string
-		tlen = C.size_t(len(name))
+		tlen = C.size_t(len(name)) // number of bytes in the string
 		tptr = C.malloc(C.size_t(unsafe.Sizeof(fd)) + C.size_t(unsafe.Sizeof(tlen)) + tlen)
 		if tptr == nil {
 			g.set_errmsg(C.HCL_ESYSMEM, "memory allocation failure for cci name")
 			return -1
 		}
 
-		if name != "" {
-			fd, err = g.io.cci.Open(g, name, "")
+		if ioarg.includer == nil {
+			fd = -1
+		} else {
+			fd, err = g.io.cci.Open(g, name)
 			if err != nil {
 				g.set_errmsg(C.HCL_EIOERR, err.Error())
 				C.free(tptr)
 				return -1
 			}
-		} else {
-			fd = -1
 		}
 
 		C.memcpy(tptr, unsafe.Pointer(&fd), C.size_t(unsafe.Sizeof(fd)))
@@ -335,7 +329,7 @@ type CciFileHandler struct {
 	g *HCL
 }
 
-func (p *CciFileHandler) Open(g *HCL, name string, includer_name string) (int, error) {
+func (p *CciFileHandler) Open(g *HCL, name string) (int, error) {
 	var (
 		f   *os.File
 		r   *bufio.Reader
@@ -346,14 +340,7 @@ func (p *CciFileHandler) Open(g *HCL, name string, includer_name string) (int, e
 	if name == "" {
 		f = os.Stdin
 	} else {
-		var dir string
-
-		dir = path.Dir(includer_name)
-		if dir != "/" && dir != "" {
-			dir = dir + "/"
-		}
-
-		f, err = os.Open(dir + name)
+		f, err = os.Open(name)
 		if err != nil {
 			return -1, err
 		}
