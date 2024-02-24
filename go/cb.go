@@ -13,6 +13,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"sync"
 	"unsafe"
 )
@@ -137,9 +138,16 @@ func hcl_go_cci_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.in
 		}
 
 		// | fd | length | name bytes of the length |
-		C.memcpy(tptr, unsafe.Pointer(&fd), C.size_t(unsafe.Sizeof(fd)))
-		C.memcpy(unsafe.Pointer(uintptr(tptr)+unsafe.Sizeof(fd)), unsafe.Pointer(&tlen), C.size_t(unsafe.Sizeof(tlen)))
-		C.memcpy(unsafe.Pointer(uintptr(tptr)+unsafe.Sizeof(fd)+unsafe.Sizeof(tlen)), unsafe.Pointer(C.CString(name)), tlen)
+		*(*int)(tptr) = fd;
+		*(*C.size_t)(unsafe.Pointer(uintptr(tptr)+unsafe.Sizeof(fd))) = tlen;
+
+		// C.CString() allocates a memory block. Use a SliceHeader to avoid extra memory allocation
+		// for the string conversion. Create a fake slice header that can be used with copy() instead.
+		var dsthdr reflect.SliceHeader
+		dsthdr.Data = uintptr(tptr)+unsafe.Sizeof(fd)+unsafe.Sizeof(tlen)
+		dsthdr.Len = int(tlen)
+		dsthdr.Cap = int(tlen)
+		copy(*(*[]byte)(unsafe.Pointer(&dsthdr)), name);
 
 		ioarg.handle = tptr
 		return 0

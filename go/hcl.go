@@ -175,12 +175,12 @@ func (hcl *HCL) SetLogTarget(target string) {
 	var x C.int
 	var tgt *C.char
 
-	tgt = C.CString(target)
+	tgt = C.CString(target) // TODO: need error check?
 	defer C.free(unsafe.Pointer(tgt))
 
 	x = C.hcl_setoption(hcl.c, C.HCL_LOG_TARGET_BCSTR, unsafe.Pointer(tgt))
 	if x <= -1 {
-		// thist must not happen
+		// this must not happen
 		panic(fmt.Errorf("unable to set log target - %s", hcl.get_errmsg()))
 	}
 }
