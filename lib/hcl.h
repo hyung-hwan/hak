@@ -2404,7 +2404,7 @@ HCL_EXPORT int hcl_addliteraltocode (
 );
 
 /**
- * The hcl_brewcode() initializes the structure pointed to by \a code.partially or entirely.
+ * The hcl_brewcode() initializes the structure pointed to by \a code partially or entirely.
  * The part already initialized is not destroyed and/or reinitialized.
  */
 HCL_EXPORT int hcl_brewcode (
@@ -2413,7 +2413,7 @@ HCL_EXPORT int hcl_brewcode (
 );
 
 /**
- * The hcl_purgecode() function cleans up the data held in memory
+ * The hcl_purgecode() function cleans up the data held in code space memory
  * pointed to by \a code.
  */
 HCL_EXPORT void hcl_purgecode (

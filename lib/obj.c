@@ -24,7 +24,6 @@
 
 #include "hcl-prv.h"
 
-
 #if defined(HCL_PROFILE_VM)
 #include <sys/time.h>
 #include <sys/resource.h> /* getrusage */
@@ -339,13 +338,19 @@ hcl_oop_t hcl_makebytestring (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_t len, 
 	hcl_oow_t i;
 	hcl_oob_t v;
 
-	b = alloc_numeric_array(hcl, HCL_BRAND_BYTE_ARRAY, HCL_NULL, len, HCL_OBJ_TYPE_BYTE, HCL_SIZEOF(hcl_oob_t), 1, ngc);
-	if (HCL_UNLIKELY(!b)) return HCL_NULL;
-
-	for (i = 0; i < len; i++)
+	b = (hcl_oop_byte_t)alloc_numeric_array(hcl, HCL_BRAND_BYTE_ARRAY, HCL_NULL, len, HCL_OBJ_TYPE_BYTE, HCL_SIZEOF(hcl_oob_t), 1, ngc);
+	if (HCL_UNLIKELY(!b))
 	{
-		v = ptr[i] & 0xFF;
-		HCL_OBJ_SET_BYTE_VAL(b, i, v);
+		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make bytestring - %js", orgmsg);
+	}
+	else
+	{
+		for (i = 0; i < len; i++)
+		{
+			v = ptr[i] & 0xFF;
+			HCL_OBJ_SET_BYTE_VAL(b, i, v);
+		}
 	}
 
 	return (hcl_oop_t)b;
@@ -353,8 +358,15 @@ hcl_oop_t hcl_makebytestring (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_t len, 
 
 hcl_oop_t hcl_makestring (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_t len, int ngc)
 {
-	/*return hcl_alloccharobj(hcl, HCL_BRAND_STRING, ptr, len);*/
-	return alloc_numeric_array(hcl, HCL_BRAND_STRING, ptr, len, HCL_OBJ_TYPE_CHAR, HCL_SIZEOF(hcl_ooch_t), 1, ngc);
+	hcl_oop_char_t c;
+	/*c = hcl_alloccharobj(hcl, HCL_BRAND_STRING, ptr, len);*/
+	c = (hcl_oop_char_t)alloc_numeric_array(hcl, HCL_BRAND_STRING, ptr, len, HCL_OBJ_TYPE_CHAR, HCL_SIZEOF(hcl_ooch_t), 1, ngc);
+	if (HCL_UNLIKELY(!c))
+	{
+		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make string - %js", orgmsg);
+	}
+	return (hcl_oop_t)c;
 }
 
 hcl_oop_t hcl_makefpdec (hcl_t* hcl, hcl_oop_t value, hcl_ooi_t scale)
@@ -375,7 +387,12 @@ hcl_oop_t hcl_makefpdec (hcl_t* hcl, hcl_oop_t value, hcl_ooi_t scale)
 	f = (hcl_oop_fpdec_t)hcl_allocoopobj(hcl, HCL_BRAND_FPDEC, HCL_FPDEC_NAMED_INSTVARS);
 	hcl_popvolat (hcl);
 
-	if (HCL_UNLIKELY(!f)) return HCL_NULL;
+	if (HCL_UNLIKELY(!f))
+	{
+		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make fpdec - %js", orgmsg);
+		return HCL_NULL;
+	}
 
 	f->value = value;
 	f->scale = HCL_SMOOI_TO_OOP(scale);
@@ -392,7 +409,12 @@ hcl_oop_t hcl_makeclass (hcl_t* hcl, hcl_oop_t superclass, hcl_ooi_t nivars, hcl
 	hcl_pushvolat (hcl, &cvars_str);
 	c = (hcl_oop_class_t)hcl_allocoopobj(hcl, HCL_BRAND_CLASS, HCL_CLASS_NAMED_INSTVARS + ncvars);
 	hcl_popvolats (hcl, 3);
-	if (HCL_UNLIKELY(!c)) return HCL_NULL;
+	if (HCL_UNLIKELY(!c))
+	{
+		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make class - %js", orgmsg);
+		return HCL_NULL;
+	}
 
 	c->superclass = superclass;
 	c->nivars = HCL_SMOOI_TO_OOP(nivars);

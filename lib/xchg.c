@@ -604,6 +604,8 @@ int hcl_unmarshalcodefrommem (hcl_t* hcl, hcl_code_t* code, const hcl_ptl_t* src
 
 int hcl_brewcode (hcl_t* hcl, hcl_code_t* code)
 {
+	/* create space to hold byte code and debug information */
+
 	if (!code->bc.ptr)
 	{
 		code->bc.ptr = (hcl_oob_t*)hcl_allocmem(hcl, HCL_SIZEOF(*code->bc.ptr) * HCL_BC_BUFFER_INIT); /* TODO: set a proper intial size */

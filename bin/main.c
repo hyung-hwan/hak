@@ -512,6 +512,8 @@ static int on_fed_cnode_in_interactive_mode (hcl_t* hcl, hcl_cnode_t* obj)
 
 	if (!xtn->feed.ongoing)
 	{
+		/* the first expression in the current user input line.
+		 * arrange to clear byte-codes before compiling the expression. */
 		flags = HCL_COMPILE_CLEAR_CODE | HCL_COMPILE_CLEAR_FNBLK;
 		xtn->feed.ongoing = 1;
 	}
@@ -525,8 +527,13 @@ static int on_fed_cnode_in_interactive_mode (hcl_t* hcl, hcl_cnode_t* obj)
 	else
 	{
 		hcl_oow_t i;
+
 		for (i = xtn->feed.pos; i < xtn->feed.len; i++)
 		{
+			/* this loop is kind of weird. it is to check the current feed buffer is left with
+			 * spaces only and to execute the compiled bytecodes so far if the check is true.
+			 * the check is performed because a single line of the user input can have multiple
+			 * expressions joined with a semicolon or contains trailing spaces. */
 			if (!hcl_is_bch_space(xtn->feed.buf[i])) break;
 		}
 
