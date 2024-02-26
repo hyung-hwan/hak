@@ -1632,6 +1632,11 @@ struct hcl_t
 	hcl_oop_process_scheduler_t processor; /* instance of ProcessScheduler */
 	hcl_oop_process_t nil_process; /* instance of Process */
 
+	hcl_oop_class_t class_object; /* class 'Object' */
+	hcl_oop_class_t class_class; /* class 'Class' */
+	hcl_oop_class_t class_symbol; /* class 'Symbol' */
+	hcl_oop_class_t class_string; /* class 'String' */
+
 	/* ============================================================================= */
 
 	/* pending asynchronous semaphores */

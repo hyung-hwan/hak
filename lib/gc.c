@@ -757,6 +757,44 @@ hcl_oop_t hcl_shallowcopy (hcl_t* hcl, hcl_oop_t oop)
 
 /* ========================================================================= */
 
+static struct
+{
+	const char* name;
+	hcl_oow_t offset;
+} ctab[] = {
+	{ "Object",  HCL_OFFSETOF(hcl_t, class_object) },
+	{ "Class",   HCL_OFFSETOF(hcl_t, class_class) },
+	{ "Symbol",  HCL_OFFSETOF(hcl_t, class_symbol) },
+	{ "String",  HCL_OFFSETOF(hcl_t, class_string) },
+};
+
+static int make_classes (hcl_t* hcl)
+{
+	hcl_oop_class_t c;
+	hcl_oow_t i;
+
+#if 0
+	/* create class objects */
+	for (i = 0; i < HCL_COUNTOF(ctab); i++)
+	{
+		if (*ctab[i].ref) continue;
+
+		c = (hcl_oop_class_t)hcl_makeclass(hcl, hcl->_nil, nivars, ncvars, "ivars_str", "cvars_str");
+		if (HCL_UNLIKELY(!c)) return -1;
+
+		*(hcl_oop_class_t*)((hcl_uint8_t*)hcl + ctab[i].offset) = c;
+	}
+
+	/* update the superclass field */
+	for (i = 0; i < HCL_COUNTOF(ctab); i++)
+	{
+		c = *(hcl_oop_class_t*)((hcl_uint8_t*)hcl + ctab[i].offset);
+		//c->superclass =
+	}
+#endif
+
+	return 0;
+}
 
 int hcl_ignite (hcl_t* hcl, hcl_oow_t heapsize)
 {
@@ -846,6 +884,8 @@ int hcl_ignite (hcl_t* hcl, hcl_oow_t heapsize)
 		/* commit the sp field of the initial active context to hcl->sp */
 		hcl->sp = HCL_OOP_TO_SMOOI(hcl->processor->active->sp);
 	}
+
+	if (make_classes(hcl) <= -1) return -1;
 
 	/* TODO: move this initialization to hcl_init? */
 	if (hcl_brewcode(hcl, &hcl->code) <= -1) return -1;
