@@ -37,30 +37,30 @@ static struct
 	hcl_oow_t  offset;
 } syminfo[] =
 {
-	{  3, { 'a','n','d' },                      HCL_SYNCODE_AND,       HCL_OFFSETOF(hcl_t,_and)    },
-	{  5, { 'b','r','e','a','k' },              HCL_SYNCODE_BREAK,     HCL_OFFSETOF(hcl_t,_break)  },
-	{  5, { 'c','a','t','c','h' },              HCL_SYNCODE_CATCH,     HCL_OFFSETOF(hcl_t,_catch)  },
-	{  5, { 'c','l','a','s','s' },              HCL_SYNCODE_CLASS,     HCL_OFFSETOF(hcl_t,_class)  },
-	{  8, { 'c','o','n','t','i','n','u','e' },  HCL_SYNCODE_CONTINUE,  HCL_OFFSETOF(hcl_t,_continue) },
-	{  8, { 'd','e','f','c','l','a','s','s' },  HCL_SYNCODE_DEFCLASS,  HCL_OFFSETOF(hcl_t,_defclass) },
-	{  5, { 'd','e','f','u','n' },              HCL_SYNCODE_DEFUN,     HCL_OFFSETOF(hcl_t,_defun)  },
-	{  2, { 'd','o' },                          HCL_SYNCODE_DO,        HCL_OFFSETOF(hcl_t,_do)     },
-	{  4, { 'e','l','i','f' },                  HCL_SYNCODE_ELIF,      HCL_OFFSETOF(hcl_t,_elif)   },
-	{  4, { 'e','l','s','e' },                  HCL_SYNCODE_ELSE,      HCL_OFFSETOF(hcl_t,_else)   },
-	{  3, { 'f','u','n' },                      HCL_SYNCODE_LAMBDA,    HCL_OFFSETOF(hcl_t,_fun)    }, /* same syncode as lambda */
-	{  2, { 'i','f' },                          HCL_SYNCODE_IF,        HCL_OFFSETOF(hcl_t,_if)     },
-	{  6, { 'l','a','m','b','d','a' },          HCL_SYNCODE_LAMBDA,    HCL_OFFSETOF(hcl_t,_lambda) },
-	{  2, { 'o','r' },                          HCL_SYNCODE_OR,        HCL_OFFSETOF(hcl_t,_or)     },
-	{  4, { 'p','l','u','s' },                  HCL_SYNCODE_PLUS,      HCL_OFFSETOF(hcl_t,_plus)   },
-	{  6, { 'r','e','t','u','r','n'},           HCL_SYNCODE_RETURN,    HCL_OFFSETOF(hcl_t,_return) },
+	{  3, { 'a','n','d' },                      HCL_SYNCODE_AND,       HCL_OFFSETOF(hcl_t,s_and)    },
+	{  5, { 'b','r','e','a','k' },              HCL_SYNCODE_BREAK,     HCL_OFFSETOF(hcl_t,s_break)  },
+	{  5, { 'c','a','t','c','h' },              HCL_SYNCODE_CATCH,     HCL_OFFSETOF(hcl_t,s_catch)  },
+	{  5, { 'c','l','a','s','s' },              HCL_SYNCODE_CLASS,     HCL_OFFSETOF(hcl_t,s_class)  },
+	{  8, { 'c','o','n','t','i','n','u','e' },  HCL_SYNCODE_CONTINUE,  HCL_OFFSETOF(hcl_t,s_continue) },
+	{  8, { 'd','e','f','c','l','a','s','s' },  HCL_SYNCODE_DEFCLASS,  HCL_OFFSETOF(hcl_t,s_defclass) },
+	{  5, { 'd','e','f','u','n' },              HCL_SYNCODE_DEFUN,     HCL_OFFSETOF(hcl_t,s_defun)  },
+	{  2, { 'd','o' },                          HCL_SYNCODE_DO,        HCL_OFFSETOF(hcl_t,s_do)     },
+	{  4, { 'e','l','i','f' },                  HCL_SYNCODE_ELIF,      HCL_OFFSETOF(hcl_t,s_elif)   },
+	{  4, { 'e','l','s','e' },                  HCL_SYNCODE_ELSE,      HCL_OFFSETOF(hcl_t,s_else)   },
+	{  3, { 'f','u','n' },                      HCL_SYNCODE_LAMBDA,    HCL_OFFSETOF(hcl_t,s_fun)    }, /* same syncode as lambda */
+	{  2, { 'i','f' },                          HCL_SYNCODE_IF,        HCL_OFFSETOF(hcl_t,s_if)     },
+	{  6, { 'l','a','m','b','d','a' },          HCL_SYNCODE_LAMBDA,    HCL_OFFSETOF(hcl_t,s_lambda) },
+	{  2, { 'o','r' },                          HCL_SYNCODE_OR,        HCL_OFFSETOF(hcl_t,s_or)     },
+	{  4, { 'p','l','u','s' },                  HCL_SYNCODE_PLUS,      HCL_OFFSETOF(hcl_t,s_plus)   },
+	{  6, { 'r','e','t','u','r','n'},           HCL_SYNCODE_RETURN,    HCL_OFFSETOF(hcl_t,s_return) },
 	{ 16, { 'r','e','t','u','r','n','-','f','r','o','m','-','h','o','m','e'},
-	                                            HCL_SYNCODE_RETURN_FROM_HOME,  HCL_OFFSETOF(hcl_t,_return_from_home) },
-	{  3, { 's','e','t' },                      HCL_SYNCODE_SET,       HCL_OFFSETOF(hcl_t,_set)    },
-	{  5, { 's','e','t','-','r' },              HCL_SYNCODE_SET_R,     HCL_OFFSETOF(hcl_t,_set_r)  },
-	{  5, { 't','h','r','o','w' },              HCL_SYNCODE_THROW,     HCL_OFFSETOF(hcl_t,_throw)  },
-	{  3, { 't','r','y' },                      HCL_SYNCODE_TRY,       HCL_OFFSETOF(hcl_t,_try_)   },
-	{  5, { 'u','n','t','i','l' },              HCL_SYNCODE_UNTIL,     HCL_OFFSETOF(hcl_t,_until)  },
-	{  5, { 'w','h','i','l','e' },              HCL_SYNCODE_WHILE,     HCL_OFFSETOF(hcl_t,_while)  }
+	                                            HCL_SYNCODE_RETURN_FROM_HOME,  HCL_OFFSETOF(hcl_t,s_return_from_home) },
+	{  3, { 's','e','t' },                      HCL_SYNCODE_SET,       HCL_OFFSETOF(hcl_t,s_set)    },
+	{  5, { 's','e','t','-','r' },              HCL_SYNCODE_SET_R,     HCL_OFFSETOF(hcl_t,s_set_r)  },
+	{  5, { 't','h','r','o','w' },              HCL_SYNCODE_THROW,     HCL_OFFSETOF(hcl_t,s_throw)  },
+	{  3, { 't','r','y' },                      HCL_SYNCODE_TRY,       HCL_OFFSETOF(hcl_t,s_try)   },
+	{  5, { 'u','n','t','i','l' },              HCL_SYNCODE_UNTIL,     HCL_OFFSETOF(hcl_t,s_until)  },
+	{  5, { 'w','h','i','l','e' },              HCL_SYNCODE_WHILE,     HCL_OFFSETOF(hcl_t,s_while)  }
 };
 
 /* ========================================================================= */
@@ -318,6 +318,11 @@ static HCL_INLINE void gc_ms_mark_roots (hcl_t* hcl)
 	for (i = 0; i < HCL_COUNTOF(syminfo); i++)
 	{
 		gc_ms_mark (hcl, *(hcl_oop_t*)((hcl_uint8_t*)hcl + syminfo[i].offset));
+	}
+
+	for (i = 0; i < HCL_COUNTOF(kernel_classes); i++)
+	{
+		gc_ms_mark (hcl, *(hcl_oop_t*)((hcl_uint8_t*)hcl + kernel_classes[i].offset));
 	}
 
 	gc_ms_mark (hcl, (hcl_oop_t)hcl->sysdic);
@@ -597,6 +602,14 @@ void hcl_gc (hcl_t* hcl)
 		*(hcl_oop_t*)((hcl_uint8_t*)hcl + syminfo[i].offset) = tmp;
 	}
 
+	for (i = 0; i < HCL_COUNTOF(kernel_classes); i++)
+	{
+		hcl_oop_t tmp;
+		tmp = *(hcl_oop_t*)((hcl_uint8_t*)hcl + kernel_classes[i].offset);
+		tmp = hcl_moveoop(hcl, tmp);
+		*(hcl_oop_t*)((hcl_uint8_t*)hcl + kernel_classes[i].offset) = tmp;
+	}
+
 	hcl->sysdic = (hcl_oop_dic_t)hcl_moveoop(hcl, (hcl_oop_t)hcl->sysdic);
 	hcl->processor = (hcl_oop_process_scheduler_t)hcl_moveoop(hcl, (hcl_oop_t)hcl->processor);
 	hcl->nil_process = (hcl_oop_process_t)hcl_moveoop(hcl, (hcl_oop_t)hcl->nil_process);
@@ -766,57 +779,57 @@ static struct
 	hcl_oow_t ncvars;
 } kctab[] = {
 	{ "Apex",
-	  HCL_OFFSETOF(hcl_t, class_apex),
+	  HCL_OFFSETOF(hcl_t, c_apex),
 	  HCL_TYPE_MAX(hcl_oow_t),
 	  0, 0 },
 
 	{ "Object",
-	  HCL_OFFSETOF(hcl_t, class_object),
-	  HCL_OFFSETOF(hcl_t, class_apex),
+	  HCL_OFFSETOF(hcl_t, c_object),
+	  HCL_OFFSETOF(hcl_t, c_apex),
 	  0, 0 },
 
 	{ "UndefinedObject",
-	  HCL_OFFSETOF(hcl_t, class_undefobj),
-	  HCL_OFFSETOF(hcl_t, class_apex),
+	  HCL_OFFSETOF(hcl_t, c_undefobj),
+	  HCL_OFFSETOF(hcl_t, c_apex),
 	  0, 0 },
 
 	{ "Class",
-	  HCL_OFFSETOF(hcl_t, class_class),
-	  HCL_OFFSETOF(hcl_t, class_object),
+	  HCL_OFFSETOF(hcl_t, c_class),
+	  HCL_OFFSETOF(hcl_t, c_object),
 	  HCL_CLASS_NAMED_INSTVARS, 0 },
 
 	{ "String",
-	  HCL_OFFSETOF(hcl_t, class_string),
-	  HCL_OFFSETOF(hcl_t, class_object),
+	  HCL_OFFSETOF(hcl_t, c_string),
+	  HCL_OFFSETOF(hcl_t, c_object),
 	  0, 0 },
 
 	{ "Symbol",
-	  HCL_OFFSETOF(hcl_t, class_symbol),
-	  HCL_OFFSETOF(hcl_t, class_string),
+	  HCL_OFFSETOF(hcl_t, c_symbol),
+	  HCL_OFFSETOF(hcl_t, c_string),
 	  0, 0 },
 
 	{ "Boolean",
-	  HCL_OFFSETOF(hcl_t, class_boolean),
-	  HCL_OFFSETOF(hcl_t, class_object),
+	  HCL_OFFSETOF(hcl_t, c_boolean),
+	  HCL_OFFSETOF(hcl_t, c_object),
 	  0, 0 },
 
 	{ "True",
-	  HCL_OFFSETOF(hcl_t, class_true),
-	  HCL_OFFSETOF(hcl_t, class_boolean),
+	  HCL_OFFSETOF(hcl_t, c_true),
+	  HCL_OFFSETOF(hcl_t, c_boolean),
 	  0, 0 },
 
 	{ "False",
-	  HCL_OFFSETOF(hcl_t, class_false),
-	  HCL_OFFSETOF(hcl_t, class_boolean),
+	  HCL_OFFSETOF(hcl_t, c_false),
+	  HCL_OFFSETOF(hcl_t, c_boolean),
 	  0, 0 },
 
 	{ "System",
-	  HCL_OFFSETOF(hcl_t, class_system),
-	  HCL_OFFSETOF(hcl_t, class_object),
+	  HCL_OFFSETOF(hcl_t, c_system),
+	  HCL_OFFSETOF(hcl_t, c_object),
 	  0, 0 },
 };
 
-#if 0
+
 /*
  *    Apex......................
  *    ^ ^ ^                    :   .......
@@ -895,7 +908,7 @@ static kernel_class_info_t kernel_classes[] =
 	  0,
 	  0,
 	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, _apex) },
+	  HCL_OFFSETOF(hcl_t, c_apex) },
 
 	{ "UndefinedObject",
 	  0,
@@ -903,7 +916,7 @@ static kernel_class_info_t kernel_classes[] =
 	  0,
 	  0,
 	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, _undefined_object) },
+	  HCL_OFFSETOF(hcl_t, c_undefobj) },
 
 #define KCI_CLASS 2 /* index to the Class entry in this table */
 	{ "Class",
@@ -912,8 +925,9 @@ static kernel_class_info_t kernel_classes[] =
 	  HCL_CLASS_NAMED_INSTVARS,
 	  HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
 	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, _class) },
+	  HCL_OFFSETOF(hcl_t, c_class) },
 
+#if 0
 	{ "Interface",
 	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
 	  0,
@@ -921,6 +935,7 @@ static kernel_class_info_t kernel_classes[] =
 	  HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
 	  HCL_OBJ_TYPE_OOP,
 	  HCL_OFFSETOF(hcl_t, _interface) },
+#endif
 
 	{ "Object",
 	  0,
@@ -928,7 +943,7 @@ static kernel_class_info_t kernel_classes[] =
 	  0,
 	  0,
 	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, _object) },
+	  HCL_OFFSETOF(hcl_t, c_object) },
 
 	{ "String",
 	  0,
@@ -936,7 +951,7 @@ static kernel_class_info_t kernel_classes[] =
 	  0,
 	  HCL_CLASS_SPEC_FLAG_INDEXED,
 	  HCL_OBJ_TYPE_CHAR,
-	  HCL_OFFSETOF(hcl_t, _string) },
+	  HCL_OFFSETOF(hcl_t, c_string) },
 
 	{ "Symbol",
 	  HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
@@ -944,7 +959,7 @@ static kernel_class_info_t kernel_classes[] =
 	  0,
 	  HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_IMMUTABLE,
 	  HCL_OBJ_TYPE_CHAR,
-	  HCL_OFFSETOF(hcl_t, _symbol) },
+	  HCL_OFFSETOF(hcl_t, c_symbol) },
 
 	{ "Array",
 	  0,
@@ -952,7 +967,7 @@ static kernel_class_info_t kernel_classes[] =
 	  0,
 	  HCL_CLASS_SPEC_FLAG_INDEXED,
 	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, _array) },
+	  HCL_OFFSETOF(hcl_t, c_array) },
 
 	{ "ByteArray",
 	  0,
@@ -960,7 +975,7 @@ static kernel_class_info_t kernel_classes[] =
 	  0,
 	  HCL_CLASS_SPEC_FLAG_INDEXED,
 	  HCL_OBJ_TYPE_BYTE,
-	  HCL_OFFSETOF(hcl_t, _byte_array) },
+	  HCL_OFFSETOF(hcl_t, c_byte_array) },
 
 	{ "SymbolTable",
 	  0,
@@ -968,7 +983,7 @@ static kernel_class_info_t kernel_classes[] =
 	  HCL_DIC_NAMED_INSTVARS,
 	  0,
 	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, _symbol_table) },
+	  HCL_OFFSETOF(hcl_t, c_symbol_table) },
 
 	{ "Dictionary",
 	  0,
@@ -976,7 +991,7 @@ static kernel_class_info_t kernel_classes[] =
 	  HCL_DIC_NAMED_INSTVARS,
 	  0,
 	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, _dictionary) },
+	  HCL_OFFSETOF(hcl_t, c_dictionary) },
 
 	{ "Association",
 	  0,
@@ -984,15 +999,16 @@ static kernel_class_info_t kernel_classes[] =
 	  HCL_ASSOCIATION_NAMED_INSTVARS,
 	  0,
 	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, _association) },
+	  HCL_OFFSETOF(hcl_t, c_association) },
 
+#if 0
 	{ "Namespace",
 	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
 	  0,
 	  HCL_NSDIC_NAMED_INSTVARS,
 	  0,
 	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, _namespace) },
+	  HCL_OFFSETOF(hcl_t, c_namespace) },
 
 	{ "PoolDictionary",
 	  0,
@@ -1000,7 +1016,8 @@ static kernel_class_info_t kernel_classes[] =
 	  HCL_DIC_NAMED_INSTVARS,
 	  0,
 	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, _pool_dictionary) },
+	  HCL_OFFSETOF(hcl_t, c_pool_dictionary) },
+#endif
 
 	{ "MethodDictionary",
 	  0,
@@ -1008,7 +1025,7 @@ static kernel_class_info_t kernel_classes[] =
 	  HCL_DIC_NAMED_INSTVARS,
 	  0,
 	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, _method_dictionary) },
+	  HCL_OFFSETOF(hcl_t, c_method_dictionary) },
 
 	{ "CompiledMethod",
 	  0,
@@ -1016,7 +1033,7 @@ static kernel_class_info_t kernel_classes[] =
 	  HCL_METHOD_NAMED_INSTVARS,
 	  HCL_CLASS_SPEC_FLAG_INDEXED,
 	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, _method) },
+	  HCL_OFFSETOF(hcl_t, c_method) },
 
 	{ "MethodSignature",
 	  0,
@@ -1024,7 +1041,7 @@ static kernel_class_info_t kernel_classes[] =
 	  HCL_METHSIG_NAMED_INSTVARS,
 	  HCL_CLASS_SPEC_FLAG_INDEXED,
 	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, _methsig) },
+	  HCL_OFFSETOF(hcl_t, c_methsig) },
 
 	{ "CompiledBlock",
 	  0,
@@ -1032,7 +1049,7 @@ static kernel_class_info_t kernel_classes[] =
 	  HCL_BLOCK_NAMED_INSTVARS,
 	  0,
 	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, _block) },
+	  HCL_OFFSETOF(hcl_t, c_block) },
 
 	{ "MethodContext",
 	  HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
@@ -1040,7 +1057,7 @@ static kernel_class_info_t kernel_classes[] =
 	  HCL_CONTEXT_NAMED_INSTVARS,
 	  HCL_CLASS_SPEC_FLAG_INDEXED,
 	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, _method_context) },
+	  HCL_OFFSETOF(hcl_t, c_method_context) },
 
 	{ "BlockContext"
 	  HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
@@ -1048,7 +1065,7 @@ static kernel_class_info_t kernel_classes[] =
 	  HCL_CONTEXT_NAMED_INSTVARS,
 	  HCL_CLASS_SPEC_FLAG_INDEXED,
 	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, _block_context) },
+	  HCL_OFFSETOF(hcl_t, c_block_context) },
 
 	{ "Process",
 	  HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
@@ -1056,7 +1073,7 @@ static kernel_class_info_t kernel_classes[] =
 	  HCL_PROCESS_NAMED_INSTVARS,
 	  HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
 	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, _process) },
+	  HCL_OFFSETOF(hcl_t, c_process) },
 
 	{ "Semaphore",
 	  0,
@@ -1064,7 +1081,7 @@ static kernel_class_info_t kernel_classes[] =
 	  HCL_SEMAPHORE_NAMED_INSTVARS,
 	  HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
 	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, _semaphore) },
+	  HCL_OFFSETOF(hcl_t, c_semaphore) },
 
 	{ "SemaphoreGroup",
 	  0,
@@ -1072,15 +1089,15 @@ static kernel_class_info_t kernel_classes[] =
 	  HCL_SEMAPHORE_GROUP_NAMED_INSTVARS,
 	  HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
 	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, _semaphore_group) },
+	  HCL_OFFSETOF(hcl_t, c_semaphore_group) },
 
-	{ "ProcessScheduler".
+	{ "ProcessScheduler",
 	  HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
 	  0,
 	  HCL_PROCESS_SCHEDULER_NAMED_INSTVARS,
 	  HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
 	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, _process_scheduler) },
+	  HCL_OFFSETOF(hcl_t, c_process_scheduler) },
 
 	{ "Error",
 	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
@@ -1088,7 +1105,7 @@ static kernel_class_info_t kernel_classes[] =
 	  0,
 	  0,
 	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, _error_class) },
+	  HCL_OFFSETOF(hcl_t, c_error) },
 
 	{ "True",
 	  HCL_CLASS_SELFSPEC_FLAG_LIMITED | HCL_CLASS_SELFSPEC_FLAG_FINAL,
@@ -1096,7 +1113,7 @@ static kernel_class_info_t kernel_classes[] =
 	  0,
 	  0,
 	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, _true_class) },
+	  HCL_OFFSETOF(hcl_t, c_true) },
 
 	{ "False",
 	  HCL_CLASS_SELFSPEC_FLAG_LIMITED | HCL_CLASS_SELFSPEC_FLAG_FINAL,
@@ -1104,7 +1121,7 @@ static kernel_class_info_t kernel_classes[] =
 	  0,
 	  0,
 	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, _false_class) },
+	  HCL_OFFSETOF(hcl_t, c_false) },
 
 	/* TOOD: what is a proper spec for Character and SmallInteger?
 	 *       If the fixed part is  0, its instance must be an object of 0 payload fields.
@@ -1115,7 +1132,7 @@ static kernel_class_info_t kernel_classes[] =
 	  0,
 	  0,
 	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, _character) },
+	  HCL_OFFSETOF(hcl_t, c_character) },
 
 	{ "SmallInteger",
 	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
@@ -1123,7 +1140,7 @@ static kernel_class_info_t kernel_classes[] =
 	  0,
 	  0,
 	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, _small_integer) },
+	  HCL_OFFSETOF(hcl_t, c_small_integer) },
 
 	{ "LargePositiveInteger",
 	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
@@ -1131,7 +1148,7 @@ static kernel_class_info_t kernel_classes[] =
 	  0,
 	  HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_IMMUTABLE,
 	  HCL_OBJ_TYPE_LIWORD,
-	  HCL_OFFSETOF(hcl_t, _large_positive_integer) },
+	  HCL_OFFSETOF(hcl_t, c_large_positive_integer) },
 
 	{ "LargeNegativeInteger",
 	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
@@ -1139,7 +1156,7 @@ static kernel_class_info_t kernel_classes[] =
 	  0,
 	  HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_IMMUTABLE,
 	  HCL_OBJ_TYPE_LIWORD,
-	  HCL_OFFSETOF(hcl_t, _large_negative_integer) },
+	  HCL_OFFSETOF(hcl_t, c_large_negative_integer) },
 
 	{ "FixedPointDecimal",
 	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
@@ -1147,7 +1164,7 @@ static kernel_class_info_t kernel_classes[] =
 	  HCL_FPDEC_NAMED_INSTVARS,
 	  HCL_CLASS_SPEC_FLAG_IMMUTABLE,
 	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, _fixed_point_decimal) },
+	  HCL_OFFSETOF(hcl_t, c_fixed_point_decimal) },
 
 	{ "SmallPointer",
 	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
@@ -1155,7 +1172,7 @@ static kernel_class_info_t kernel_classes[] =
 	  0,
 	  0,
 	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, _small_pointer) },
+	  HCL_OFFSETOF(hcl_t, c_small_pointer) },
 
 	{ "LargePointer",
 	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
@@ -1163,7 +1180,7 @@ static kernel_class_info_t kernel_classes[] =
 	  1,  /* #word(1) */
 	  HCL_CLASS_SPEC_FLAG_IMMUTABLE | HCL_CLASS_SPEC_FLAG_INDEXED,
 	  HCL_OBJ_TYPE_WORD,
-	  HCL_OFFSETOF(hcl_t, _large_pointer) },
+	  HCL_OFFSETOF(hcl_t, c_large_pointer) },
 
 	{ "System",
 	  0,
@@ -1171,9 +1188,11 @@ static kernel_class_info_t kernel_classes[] =
 	  0,
 	  0,
 	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, _system) }
+	  HCL_OFFSETOF(hcl_t, c_system) }
 };
 
+
+#if 0
 
 static hcl_oow_t move_finalizable_objects (hcl_t* hcl);
 

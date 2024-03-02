@@ -1603,45 +1603,85 @@ struct hcl_t
 	hcl_oop_t _true;
 	hcl_oop_t _false;
 
-	hcl_oop_t _and;    /* symbol */
-	hcl_oop_t _break;  /* symbol */
-	hcl_oop_t _catch;  /* symbol */
-	hcl_oop_t _class;  /* symbol */
-	hcl_oop_t _continue; /* symbol */
-	hcl_oop_t _defclass; /* symbol */
-	hcl_oop_t _defun;  /* symbol */
-	hcl_oop_t _do;     /* symbol */
-	hcl_oop_t _elif;   /* symbol */
-	hcl_oop_t _else;   /* symbol */
-	hcl_oop_t _fun;    /* symbol */
-	hcl_oop_t _if;     /* symbol */
-	hcl_oop_t _lambda; /* symbol */
-	hcl_oop_t _or;     /* symbol */
-	hcl_oop_t _plus;   /* symbol */
-	hcl_oop_t _return; /* symbol */
-	hcl_oop_t _return_from_home; /* symbol */
-	hcl_oop_t _set;    /* symbol */
-	hcl_oop_t _set_r;  /* symbol */
-	hcl_oop_t _throw;  /* symbol */
-	hcl_oop_t _try_;   /* symbol */  /* _try is special in MSVC. */
-	hcl_oop_t _until;  /* symbol */
-	hcl_oop_t _while;  /* symbol */
+	hcl_oop_t s_and;    /* symbol */
+	hcl_oop_t s_break;  /* symbol */
+	hcl_oop_t s_catch;  /* symbol */
+	hcl_oop_t s_class;  /* symbol */
+	hcl_oop_t s_continue; /* symbol */
+	hcl_oop_t s_defclass; /* symbol */
+	hcl_oop_t s_defun;  /* symbol */
+	hcl_oop_t s_do;     /* symbol */
+	hcl_oop_t s_elif;   /* symbol */
+	hcl_oop_t s_else;   /* symbol */
+	hcl_oop_t s_fun;    /* symbol */
+	hcl_oop_t s_if;     /* symbol */
+	hcl_oop_t s_lambda; /* symbol */
+	hcl_oop_t s_or;     /* symbol */
+	hcl_oop_t s_plus;   /* symbol */
+	hcl_oop_t s_return; /* symbol */
+	hcl_oop_t s_return_from_home; /* symbol */
+	hcl_oop_t s_set;    /* symbol */
+	hcl_oop_t s_set_r;  /* symbol */
+	hcl_oop_t s_throw;  /* symbol */
+	hcl_oop_t s_try;   /* symbol */  /* _try is special in MSVC. */
+	hcl_oop_t s_until;  /* symbol */
+	hcl_oop_t s_while;  /* symbol */
 
 	hcl_oop_dic_t symtab; /* system-wide symbol table. */
 	hcl_oop_dic_t sysdic; /* system dictionary. */
 	hcl_oop_process_scheduler_t processor; /* instance of ProcessScheduler */
 	hcl_oop_process_t nil_process; /* instance of Process */
 
-	hcl_oop_class_t class_apex; /* class 'Apex' */
-	hcl_oop_class_t class_object; /* class 'Object' */
-	hcl_oop_class_t class_undefobj; /* class 'UndefinedObject' */
-	hcl_oop_class_t class_class; /* class 'Class' */
-	hcl_oop_class_t class_symbol; /* class 'Symbol' */
-	hcl_oop_class_t class_string; /* class 'String' */
-	hcl_oop_class_t class_boolean; /* class 'String' */
-	hcl_oop_class_t class_true; /* class 'True' */
-	hcl_oop_class_t class_false; /* class 'False' */
-	hcl_oop_class_t class_system; /* class 'System' */
+	/* =============================================================
+	 * KERNEL CLASSES 
+	 *  Be sure to Keep these kernel class pointers registered in the 
+	 *  kernel_classes table in gc.c
+	 * ============================================================= */
+	hcl_oop_class_t c_apex; /* Apex */
+	hcl_oop_class_t c_undefobj; /* UndefinedObject */
+	hcl_oop_class_t c_class; /* Class */
+#if 0
+	hcl_oop_class_t c_interface; /* Interface */
+#endif
+	hcl_oop_class_t c_object; /* Object */
+
+	hcl_oop_class_t c_string; /* String */
+	hcl_oop_class_t c_symbol; /* Symbol */
+	hcl_oop_class_t c_array; /* Array */
+	hcl_oop_class_t c_byte_array; /* ByteArray */
+	hcl_oop_class_t c_symbol_table; /* SymbolTable */
+	hcl_oop_class_t c_dictionary;
+	hcl_oop_class_t c_association; /* Association */
+
+#if 0
+	hcl_oop_class_t c_namespace; /* Namespace */
+	hcl_oop_class_t c_pool_dictionary; /* PoolDictionary */
+#endif
+	hcl_oop_class_t c_method_dictionary; /* MethodDictionary */
+	hcl_oop_class_t c_method; /* CompiledMethod */
+	hcl_oop_class_t c_methsig; /* MethodSignature */
+	hcl_oop_class_t c_block; /* CompiledBlock */
+
+	hcl_oop_class_t c_method_context; /* MethodContext */
+	hcl_oop_class_t c_block_context; /* BlockContext */
+	hcl_oop_class_t c_process; /* Process */
+	hcl_oop_class_t c_semaphore; /* Semaphore */
+	hcl_oop_class_t c_semaphore_group; /* SemaphoreGroup */
+	hcl_oop_class_t c_process_scheduler; /* ProcessScheduler */
+
+	hcl_oop_class_t c_error; /* Error */
+	hcl_oop_class_t c_true; /* True */
+	hcl_oop_class_t c_false; /* False */
+	hcl_oop_class_t c_character; /* Character */
+	hcl_oop_class_t c_small_integer; /* SmallInteger */
+
+	hcl_oop_class_t c_large_positive_integer; /* LargePositiveInteger */
+	hcl_oop_class_t c_large_negative_integer; /* LargeNegativeInteger */
+	hcl_oop_class_t c_fixed_point_decimal; /* FixedPointDecimal */
+
+	hcl_oop_class_t c_small_pointer;
+	hcl_oop_class_t c_large_pointer;
+	hcl_oop_class_t c_system;
 
 	/* ============================================================================= */
 
