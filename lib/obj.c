@@ -431,6 +431,9 @@ hcl_oop_t hcl_makeclass (hcl_t* hcl, hcl_oop_t superclass, hcl_ooi_t nivars, hcl
 		c->nivars_super = HCL_SMOOI_TO_OOP(0);
 	}
 
+	/* TODO: remember ivars_str and vars_str? */
+	/* duplicate ivars_str and cvars_str and set it to c->ivarnames and c->cvarnames???? */
+
 	return (hcl_oop_t)c;
 }
 

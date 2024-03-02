@@ -760,36 +760,686 @@ hcl_oop_t hcl_shallowcopy (hcl_t* hcl, hcl_oop_t oop)
 static struct
 {
 	const char* name;
-	hcl_oow_t offset;
-} ctab[] = {
-	{ "Object",  HCL_OFFSETOF(hcl_t, class_object) },
-	{ "Class",   HCL_OFFSETOF(hcl_t, class_class) },
-	{ "Symbol",  HCL_OFFSETOF(hcl_t, class_symbol) },
-	{ "String",  HCL_OFFSETOF(hcl_t, class_string) },
+	hcl_oow_t c_offset; /* class offset */
+	hcl_oow_t sc_offset; /* superclass offset */
+	hcl_oow_t nivars;
+	hcl_oow_t ncvars;
+} kctab[] = {
+	{ "Apex",
+	  HCL_OFFSETOF(hcl_t, class_apex),
+	  HCL_TYPE_MAX(hcl_oow_t),
+	  0, 0 },
+
+	{ "Object",
+	  HCL_OFFSETOF(hcl_t, class_object),
+	  HCL_OFFSETOF(hcl_t, class_apex),
+	  0, 0 },
+
+	{ "UndefinedObject",
+	  HCL_OFFSETOF(hcl_t, class_undefobj),
+	  HCL_OFFSETOF(hcl_t, class_apex),
+	  0, 0 },
+
+	{ "Class",
+	  HCL_OFFSETOF(hcl_t, class_class),
+	  HCL_OFFSETOF(hcl_t, class_object),
+	  HCL_CLASS_NAMED_INSTVARS, 0 },
+
+	{ "String",
+	  HCL_OFFSETOF(hcl_t, class_string),
+	  HCL_OFFSETOF(hcl_t, class_object),
+	  0, 0 },
+
+	{ "Symbol",
+	  HCL_OFFSETOF(hcl_t, class_symbol),
+	  HCL_OFFSETOF(hcl_t, class_string),
+	  0, 0 },
+
+	{ "Boolean",
+	  HCL_OFFSETOF(hcl_t, class_boolean),
+	  HCL_OFFSETOF(hcl_t, class_object),
+	  0, 0 },
+
+	{ "True",
+	  HCL_OFFSETOF(hcl_t, class_true),
+	  HCL_OFFSETOF(hcl_t, class_boolean),
+	  0, 0 },
+
+	{ "False",
+	  HCL_OFFSETOF(hcl_t, class_false),
+	  HCL_OFFSETOF(hcl_t, class_boolean),
+	  0, 0 },
+
+	{ "System",
+	  HCL_OFFSETOF(hcl_t, class_system),
+	  HCL_OFFSETOF(hcl_t, class_object),
+	  0, 0 },
 };
 
-static int make_classes (hcl_t* hcl)
+#if 0
+/*
+ *    Apex......................
+ *    ^ ^ ^                    :   .......
+ *    | | |                    v   v     :
+ *    | | +------------------- Class .....
+ *    | |                       ^  ^
+ *    | +-------- NilObject ......:  :
+ *    |                 ^........ nil  :
+ *   Object ...........................:
+ *    ^
+ *    |
+ *
+ * The class hierarchy is roughly as follows:
+ *
+ *   Apex
+ *      Class
+ *      NilObject
+ *      Object
+ *         Collection
+ *            IndexedCollection
+ *               FixedSizedCollection
+ *                  Array
+ *                  ByteArray
+ *                     String
+ *                        Symbol
+ *            Set
+ *               Dictionary
+ *                  SystemDictionary
+ *               SymbolSet
+ *         Magnitude
+ *            Association
+ *            Character
+ *            Number
+ *               Integer
+ *                  SmallInteger
+ *                  LargeInteger
+ *                     LargePositiveInteger
+ *                     LargeNegativeInteger
+ *
+ * Apex has no instance variables.
+ *
+ */
+
+struct kernel_class_info_t
+{
+	const hcl_bch_t* name;
+	int class_flags;
+	int class_num_classvars;
+
+	int class_spec_named_instvars;
+	int class_spec_flags;
+	int class_spec_indexed_type;
+
+	hcl_oow_t  offset;
+};
+typedef struct kernel_class_info_t kernel_class_info_t;
+
+static kernel_class_info_t kernel_classes[] =
+{
+	/* --------------------------------------------------------------
+	 * Apex            - proto-object with 1 class variable.
+	 * UndefinedObject - class for the nil object.
+	 * Object          - top of all ordinary objects.
+	 * String
+	 * Symbol
+	 * Array
+	 * ByteArray
+	 * SymbolSet
+	 * Character
+	 * SmallIntger
+	 * -------------------------------------------------------------- */
+
+	{ "Apex",
+	  0,
+	  0,
+	  0,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, _apex) },
+
+	{ "UndefinedObject",
+	  0,
+	  0,
+	  0,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, _undefined_object) },
+
+#define KCI_CLASS 2 /* index to the Class entry in this table */
+	{ "Class",
+	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  HCL_CLASS_NAMED_INSTVARS,
+	  HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, _class) },
+
+	{ "Interface",
+	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  HCL_INTERFACE_NAMED_INSTVARS,
+	  HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, _interface) },
+
+	{ "Object",
+	  0,
+	  0,
+	  0,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, _object) },
+
+	{ "String",
+	  0,
+	  0,
+	  0,
+	  HCL_CLASS_SPEC_FLAG_INDEXED,
+	  HCL_OBJ_TYPE_CHAR,
+	  HCL_OFFSETOF(hcl_t, _string) },
+
+	{ "Symbol",
+	  HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  0,
+	  HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_IMMUTABLE,
+	  HCL_OBJ_TYPE_CHAR,
+	  HCL_OFFSETOF(hcl_t, _symbol) },
+
+	{ "Array",
+	  0,
+	  0,
+	  0,
+	  HCL_CLASS_SPEC_FLAG_INDEXED,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, _array) },
+
+	{ "ByteArray",
+	  0,
+	  0,
+	  0,
+	  HCL_CLASS_SPEC_FLAG_INDEXED,
+	  HCL_OBJ_TYPE_BYTE,
+	  HCL_OFFSETOF(hcl_t, _byte_array) },
+
+	{ "SymbolTable",
+	  0,
+	  0,
+	  HCL_DIC_NAMED_INSTVARS,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, _symbol_table) },
+
+	{ "Dictionary",
+	  0,
+	  0,
+	  HCL_DIC_NAMED_INSTVARS,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, _dictionary) },
+
+	{ "Association",
+	  0,
+	  0,
+	  HCL_ASSOCIATION_NAMED_INSTVARS,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, _association) },
+
+	{ "Namespace",
+	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  HCL_NSDIC_NAMED_INSTVARS,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, _namespace) },
+
+	{ "PoolDictionary",
+	  0,
+	  0,
+	  HCL_DIC_NAMED_INSTVARS,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, _pool_dictionary) },
+
+	{ "MethodDictionary",
+	  0,
+	  0,
+	  HCL_DIC_NAMED_INSTVARS,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, _method_dictionary) },
+
+	{ "CompiledMethod",
+	  0,
+	  0,
+	  HCL_METHOD_NAMED_INSTVARS,
+	  HCL_CLASS_SPEC_FLAG_INDEXED,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, _method) },
+
+	{ "MethodSignature",
+	  0,
+	  0,
+	  HCL_METHSIG_NAMED_INSTVARS,
+	  HCL_CLASS_SPEC_FLAG_INDEXED,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, _methsig) },
+
+	{ "CompiledBlock",
+	  0,
+	  0,
+	  HCL_BLOCK_NAMED_INSTVARS,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, _block) },
+
+	{ "MethodContext",
+	  HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  HCL_CONTEXT_NAMED_INSTVARS,
+	  HCL_CLASS_SPEC_FLAG_INDEXED,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, _method_context) },
+
+	{ "BlockContext"
+	  HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  HCL_CONTEXT_NAMED_INSTVARS,
+	  HCL_CLASS_SPEC_FLAG_INDEXED,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, _block_context) },
+
+	{ "Process",
+	  HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  HCL_PROCESS_NAMED_INSTVARS,
+	  HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, _process) },
+
+	{ "Semaphore",
+	  0,
+	  0,
+	  HCL_SEMAPHORE_NAMED_INSTVARS,
+	  HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, _semaphore) },
+
+	{ "SemaphoreGroup",
+	  0,
+	  0,
+	  HCL_SEMAPHORE_GROUP_NAMED_INSTVARS,
+	  HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, _semaphore_group) },
+
+	{ "ProcessScheduler".
+	  HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  HCL_PROCESS_SCHEDULER_NAMED_INSTVARS,
+	  HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, _process_scheduler) },
+
+	{ "Error",
+	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  0,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, _error_class) },
+
+	{ "True",
+	  HCL_CLASS_SELFSPEC_FLAG_LIMITED | HCL_CLASS_SELFSPEC_FLAG_FINAL,
+	  0,
+	  0,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, _true_class) },
+
+	{ "False",
+	  HCL_CLASS_SELFSPEC_FLAG_LIMITED | HCL_CLASS_SELFSPEC_FLAG_FINAL,
+	  0,
+	  0,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, _false_class) },
+
+	/* TOOD: what is a proper spec for Character and SmallInteger?
+	 *       If the fixed part is  0, its instance must be an object of 0 payload fields.
+	 *       Does this make sense? */
+	{ "Character",
+	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  0,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, _character) },
+
+	{ "SmallInteger",
+	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  0,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, _small_integer) },
+
+	{ "LargePositiveInteger",
+	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  0,
+	  HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_IMMUTABLE,
+	  HCL_OBJ_TYPE_LIWORD,
+	  HCL_OFFSETOF(hcl_t, _large_positive_integer) },
+
+	{ "LargeNegativeInteger",
+	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  0,
+	  HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_IMMUTABLE,
+	  HCL_OBJ_TYPE_LIWORD,
+	  HCL_OFFSETOF(hcl_t, _large_negative_integer) },
+
+	{ "FixedPointDecimal",
+	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  HCL_FPDEC_NAMED_INSTVARS,
+	  HCL_CLASS_SPEC_FLAG_IMMUTABLE,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, _fixed_point_decimal) },
+
+	{ "SmallPointer",
+	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  0,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, _small_pointer) },
+
+	{ "LargePointer",
+	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  1,  /* #word(1) */
+	  HCL_CLASS_SPEC_FLAG_IMMUTABLE | HCL_CLASS_SPEC_FLAG_INDEXED,
+	  HCL_OBJ_TYPE_WORD,
+	  HCL_OFFSETOF(hcl_t, _large_pointer) },
+
+	{ "System",
+	  0,
+	  5, /* asyncsg, gcfin_sem, gcfin_should_exit, ossig_pid, shr */
+	  0,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, _system) }
+};
+
+
+static hcl_oow_t move_finalizable_objects (hcl_t* hcl);
+
+/* -----------------------------------------------------------------------
+ * BOOTSTRAPPER
+ * ----------------------------------------------------------------------- */
+
+static hcl_oop_class_t alloc_kernel_class (hcl_t* hcl, int class_flags, hcl_oow_t num_classvars, hcl_oow_t spec)
+{
+	hcl_oop_class_t c;
+	hcl_ooi_t cspec;
+
+	c = (hcl_oop_class_t)hcl_allocoopobj(hcl, HCL_CLASS_NAMED_INSTVARS + num_classvars);
+	if (!c) return HCL_NULL;
+
+	HCL_OBJ_SET_FLAGS_KERNEL (c, HCL_OBJ_FLAGS_KERNEL_IMMATURE);
+
+	cspec = kernel_classes[KCI_CLASS].class_spec_flags;
+	if (HCL_CLASS_SPEC_IS_IMMUTABLE(cspec)) HCL_OBJ_SET_FLAGS_RDONLY (c, 1); /* just for completeness of code. will never be true as it's not defined in the kernel class info table */
+	if (HCL_CLASS_SPEC_IS_UNCOPYABLE(cspec)) HCL_OBJ_SET_FLAGS_UNCOPYABLE (c, 1); /* class itself is uncopyable */
+
+	HCL_OBJ_SET_CLASS (c, (hcl_oop_t)hcl->_class);
+	c->spec = HCL_SHCLI_TO_OOP(spec);
+	c->selfspec = HCL_SHCLI_TO_OOP(HCL_CLASS_SELFSPEC_MAKE(num_classvars, 0, class_flags));
+
+	return c;
+}
+
+static int ignite_1 (hcl_t* hcl)
+{
+	hcl_oow_t i;
+
+	/*
+	 * Create fundamental class objects with some fields mis-initialized yet.
+	 * Such fields include 'superclass', 'subclasses', 'name', etc.
+	 */
+	HCL_ASSERT (hcl, hcl->_nil != HCL_NULL);
+	HCL_ASSERT (hcl, HCL_OBJ_GET_CLASS(hcl->_nil) == HCL_NULL);
+
+	HCL_ASSERT (hcl, hcl->_class == HCL_NULL);
+	/* --------------------------------------------------------------
+	 * Class
+	 * The instance of Class can have indexed instance variables
+	 * which are actually class variables.
+	 * -------------------------------------------------------------- */
+	hcl->_class = alloc_kernel_class(
+		hcl, kernel_classes[KCI_CLASS].class_flags,
+		kernel_classes[KCI_CLASS].class_num_classvars,
+		HCL_CLASS_SPEC_MAKE(kernel_classes[KCI_CLASS].class_spec_named_instvars,
+		                    kernel_classes[KCI_CLASS].class_spec_flags,
+		                    kernel_classes[KCI_CLASS].class_spec_indexed_type));
+	if (!hcl->_class) return -1;
+
+	HCL_ASSERT (hcl, HCL_OBJ_GET_CLASS(hcl->_class) == HCL_NULL);
+	HCL_OBJ_SET_CLASS (hcl->_class, (hcl_oop_t)hcl->_class);
+
+	for (i = 0; i < HCL_COUNTOF(kernel_classes); i++)
+	{
+		hcl_oop_class_t tmp;
+
+		if (i == KCI_CLASS) continue; /* skip Class as it's created above */
+
+		tmp = alloc_kernel_class(
+			hcl, kernel_classes[i].class_flags,
+			kernel_classes[i].class_num_classvars,
+			HCL_CLASS_SPEC_MAKE(kernel_classes[i].class_spec_named_instvars,
+			                    kernel_classes[i].class_spec_flags,
+			                    kernel_classes[i].class_spec_indexed_type));
+		if (!tmp) return -1;
+		*(hcl_oop_class_t*)((hcl_uint8_t*)hcl + kernel_classes[i].offset) = tmp;
+	}
+
+	HCL_OBJ_SET_CLASS (hcl->_nil, (hcl_oop_t)hcl->_undefined_object);
+
+	/* an instance of a method class stores byte codes in the trailer space.
+	 * unlike other classes with trailer size set, the size of the trailer
+	 * space is not really determined by the traailer size set in the class.
+	 * the compiler determines the actual size of the trailer space depending
+	 * on the byte codes generated. i should set the following fields to avoid
+	 * confusion at the GC phase. */
+	hcl->_method->trsize = HCL_SHCLI_TO_OOP(0);
+	hcl->_method->trgc = HCL_SMPTR_TO_OOP(0);
+
+	return 0;
+}
+
+static int ignite_2 (hcl_t* hcl)
+{
+	hcl_oop_t tmp;
+	int old_igniting = hcl->igniting;
+
+	/* Create 'true' and 'false objects */
+	hcl->_true = hcl_instantiate(hcl, hcl->_true_class, HCL_NULL, 0);
+	hcl->_false = hcl_instantiate(hcl, hcl->_false_class, HCL_NULL, 0);
+	if (HCL_UNLIKELY(!hcl->_true) || HCL_UNLIKELY(!hcl->_false)) return -1;
+
+	/* Prevent the object instations in the permspace.
+	 *
+	 * 1. The symbol table is big and it may resize after ignition.
+	 *    the resizing operation will migrate the obejct out of the
+	 *    permspace. The space taken by the symbol table and the
+	 *    system dictionary is wasted. I'd rather allocate these
+	 *    in the normal space.
+	 *
+	 * 2. For compact_symbol_table() to work properly, hcl_gc() must not
+	 *    scan the symbol table before it executes compact_symbol_table().
+	 *    since hcl_gc() scans the entire perspace, it naturally gets to
+	 *    hcl->symtab, which causes problems in compact_symbol_table().
+	 *    I may reserve a special space for only the symbol table
+	 *    to overcome this issue.
+	 *
+	 * For now, let's just allocate the symbol table and the system dictionary
+	 * in the normal space */
+	hcl->igniting = 0;
+
+	/* Create the symbol table */
+	tmp = hcl_instantiate(hcl, hcl->_symbol_table, HCL_NULL, 0);
+	if (HCL_UNLIKELY(!tmp)) return -1;
+	hcl->symtab = (hcl_oop_dic_t)tmp;
+
+	hcl->symtab->tally = HCL_SHCLI_TO_OOP(0);
+	/* It's important to assign the result of hcl_instantiate() to a temporary
+	 * variable first and then assign it to hcl->symtab->bucket.
+	 * The pointer 'hcl->symtab; can change in hcl_instantiate() and the
+	 * target address of assignment may get set before hcl_instantiate()
+	 * is called. */
+	tmp = hcl_instantiate(hcl, hcl->_array, HCL_NULL, hcl->option.dfl_symtab_size);
+	if (!tmp) return -1;
+	hcl->symtab->bucket = (hcl_oop_oop_t)tmp;
+
+	/* Create the system dictionary */
+	tmp = (hcl_oop_t)hcl_makensdic(hcl, hcl->_namespace, hcl->option.dfl_sysdic_size);
+	if (!tmp) return -1;
+	hcl->sysdic = (hcl_oop_nsdic_t)tmp;
+
+	hcl->igniting = old_igniting; /* back to the permspace */
+
+	/* Create a nil process used to simplify nil check in GC.
+	 * only accessible by VM. not exported via the global dictionary. */
+	tmp = (hcl_oop_t)hcl_instantiate(hcl, hcl->_process, HCL_NULL, 0);
+	if (!tmp) return -1;
+	hcl->nil_process = (hcl_oop_process_t)tmp;
+	hcl->nil_process->sp = HCL_SHCLI_TO_OOP(-1);
+	hcl->nil_process->id = HCL_SHCLI_TO_OOP(-1);
+	hcl->nil_process->perr = HCL_ERROR_TO_OOP(HCL_ENOERR);
+	hcl->nil_process->perrmsg = hcl->_nil;
+
+	/* Create a process scheduler */
+	tmp = (hcl_oop_t)hcl_instantiate(hcl, hcl->_process_scheduler, HCL_NULL, 0);
+	if (!tmp) return -1;
+	hcl->processor = (hcl_oop_process_scheduler_t)tmp;
+	hcl->processor->active = hcl->nil_process;
+	hcl->processor->total_count = HCL_SHCLI_TO_OOP(0);
+	hcl->processor->runnable.count = HCL_SHCLI_TO_OOP(0);
+	hcl->processor->suspended.count = HCL_SHCLI_TO_OOP(0);
+
+	return 0;
+}
+
+static int ignite_3 (hcl_t* hcl)
+{
+	/* Register kernel classes manually created so far to the system dictionary */
+	static hcl_ooch_t str_processor[] = { 'P', 'r', 'o', 'c', 'e', 's', 's', 'o', 'r' };
+	static hcl_ooch_t str_dicnew[] = { 'n', 'e', 'w', ':' };
+	static hcl_ooch_t str_dicputassoc[] = { '_','_','p', 'u', 't', '_', 'a', 's', 's', 'o', 'c', ':' };
+	static hcl_ooch_t str_does_not_understand[] = { 'd', 'o', 'e', 's', 'N', 'o', 't', 'U', 'n', 'd', 'e', 'r', 's', 't', 'a', 'n', 'd', ':' };
+	static hcl_ooch_t str_primitive_failed[] = {  'p', 'r', 'i', 'm', 'i', 't', 'i', 'v', 'e', 'F', 'a', 'i', 'l', 'e', 'd' };
+	static hcl_ooch_t str_unwindto_return[] = { 'u', 'n', 'w', 'i', 'n', 'd', 'T', 'o', ':', 'r', 'e', 't', 'u', 'r', 'n', ':' };
+
+	hcl_oow_t i;
+	hcl_oop_t sym;
+	hcl_oop_class_t cls;
+
+	for (i = 0; i < HCL_COUNTOF(kernel_classes); i++)
+	{
+		sym = hcl_makesymbol(hcl, kernel_classes[i].name, kernel_classes[i].len);
+		if (!sym) return -1;
+
+		cls = *(hcl_oop_class_t*)((hcl_uint8_t*)hcl + kernel_classes[i].offset);
+		HCL_STORE_OOP (hcl, (hcl_oop_t*)&cls->name, sym);
+		HCL_STORE_OOP (hcl, (hcl_oop_t*)&cls->nsup, (hcl_oop_t)hcl->sysdic);
+
+		if (!hcl_putatsysdic(hcl, sym, (hcl_oop_t)cls)) return -1;
+	}
+
+	/* Attach the system dictionary to the nsdic field of the System class */
+	HCL_STORE_OOP (hcl, (hcl_oop_t*)&hcl->_system->nsdic, (hcl_oop_t)hcl->sysdic);
+	/* Set the name field of the system dictionary */
+	HCL_STORE_OOP (hcl, (hcl_oop_t*)&hcl->sysdic->name, (hcl_oop_t)hcl->_system->name);
+	/* Set the owning class field of the system dictionary, it's circular here */
+	HCL_STORE_OOP (hcl, (hcl_oop_t*)&hcl->sysdic->nsup, (hcl_oop_t)hcl->_system);
+
+	/* Make the process scheduler avaialble as the global name 'Processor' */
+	sym = hcl_makesymbol(hcl, str_processor, HCL_COUNTOF(str_processor));
+	if (!sym) return -1;
+	if (!hcl_putatsysdic(hcl, sym, (hcl_oop_t)hcl->processor)) return -1;
+
+	sym = hcl_makesymbol(hcl, str_dicnew, HCL_COUNTOF(str_dicnew));
+	if (!sym) return -1;
+	hcl->dicnewsym = (hcl_oop_char_t)sym;
+
+	sym = hcl_makesymbol(hcl, str_dicputassoc, HCL_COUNTOF(str_dicputassoc));
+	if (!sym) return -1;
+	hcl->dicputassocsym = (hcl_oop_char_t)sym;
+
+	sym = hcl_makesymbol(hcl, str_does_not_understand, HCL_COUNTOF(str_does_not_understand));
+	if (!sym) return -1;
+	hcl->does_not_understand_sym = (hcl_oop_char_t)sym;
+
+	sym = hcl_makesymbol(hcl, str_primitive_failed, HCL_COUNTOF(str_primitive_failed));
+	if (!sym) return -1;
+	hcl->primitive_failed_sym = (hcl_oop_char_t)sym;
+
+	sym = hcl_makesymbol(hcl, str_unwindto_return, HCL_COUNTOF(str_unwindto_return));
+	if (!sym) return -1;
+	hcl->unwindto_return_sym = (hcl_oop_char_t)sym;
+
+	return 0;
+}
+
+struct hcl_class_t
+{
+        HCL_OBJ_HEADER;
+
+        hcl_oop_t mdic; /* method dictionary. nil or a dictionary object */
+
+        hcl_oop_t superclass;
+        hcl_oop_t nivars; /* smooi. */
+        hcl_oop_t ncvars; /* smooi. */
+        hcl_oop_t nivars_super; /* smooi */
+
+        hcl_oop_char_t ivarnames;
+        hcl_oop_char_t cvarnames;
+
+        /* indexed part afterwards - not included in HCL_CLASS_NAMED_INSTVARS */
+        hcl_oop_t      cvar[1];   /* class variables. */
+};
+#endif
+
+static int make_kernel_classes (hcl_t* hcl)
 {
 	hcl_oop_class_t c;
 	hcl_oow_t i;
 
+	/* make_kernel_classes() creates a chain of classes for initial bootstrapping.
+	 * when the objects are loaded from an image file, this function is skipped */
+
 #if 0
 	/* create class objects */
-	for (i = 0; i < HCL_COUNTOF(ctab); i++)
+	for (i = 0; i < HCL_COUNTOF(kctab); i++)
 	{
-		if (*ctab[i].ref) continue;
+		if (kctab[i].c_offset >= HCL_SIZEOF(*hcl)) continue;
 
 		c = (hcl_oop_class_t)hcl_makeclass(hcl, hcl->_nil, nivars, ncvars, "ivars_str", "cvars_str");
 		if (HCL_UNLIKELY(!c)) return -1;
 
-		*(hcl_oop_class_t*)((hcl_uint8_t*)hcl + ctab[i].offset) = c;
+		*(hcl_oop_class_t*)((hcl_uint8_t*)hcl + kctab[i].c_offset) = c;
 	}
 
 	/* update the superclass field */
-	for (i = 0; i < HCL_COUNTOF(ctab); i++)
+	for (i = 0; i < HCL_COUNTOF(kctab); i++)
 	{
-		c = *(hcl_oop_class_t*)((hcl_uint8_t*)hcl + ctab[i].offset);
-		//c->superclass =
+		if (kctab[i].sc_offset >= HCL_SIZEOF(*hcl)) continue;
+
+		c = *(hcl_oop_class_t*)((hcl_uint8_t*)hcl + kctab[i].c_offset);
+		c->superclass = *(hcl_oop_t*)((hcl_uint8_t*)hcl + kctab[i].sc_offset);
 	}
 #endif
 
@@ -885,7 +1535,7 @@ int hcl_ignite (hcl_t* hcl, hcl_oow_t heapsize)
 		hcl->sp = HCL_OOP_TO_SMOOI(hcl->processor->active->sp);
 	}
 
-	if (make_classes(hcl) <= -1) return -1;
+	if (make_kernel_classes(hcl) <= -1) return -1;
 
 	/* TODO: move this initialization to hcl_init? */
 	if (hcl_brewcode(hcl, &hcl->code) <= -1) return -1;
