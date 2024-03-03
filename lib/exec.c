@@ -3887,7 +3887,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 			case HCL_CODE_CLASS_IMSTORE:
 			{
 				hcl_oop_t class_;
-				hcl_oop_t mdic, cons, blk;
+				hcl_oop_t mdic, cons, blk, car, cdr, name;
 
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				LOG_INST_2 (hcl, "class_%hsmstore %zu", (bcode == HCL_CODE_CLASS_CMSTORE? "c": (bcode == HCL_CODE_CLASS_CIMSTORE? "ci": "i")), b1);
@@ -3912,11 +3912,17 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 
 				blk = HCL_STACK_GETTOP(hcl);
 				hcl_pushvolat (hcl, (hcl_oop_t*)&mdic);
-				cons = hcl_makecons(hcl, (bcode == HCL_CODE_CLASS_IMSTORE? hcl->_nil: blk), (bcode == HCL_CODE_CLASS_CMSTORE? hcl->_nil: blk));
+				/* let car point to the instance method,
+				 * let cdr point to the class method */
+				car = (bcode == HCL_CODE_CLASS_IMSTORE? hcl->_nil: blk);
+				cdr = (bcode == HCL_CODE_CLASS_CMSTORE? hcl->_nil: blk);
+				cons = hcl_makecons(hcl, car, cdr);
 				hcl_popvolat (hcl);
 				if (HCL_UNLIKELY(!cons)) goto oops_with_errmsg_supplement;
 
-				if (!hcl_putatdic(hcl, (hcl_oop_dic_t)mdic, hcl->active_function->literal_frame[b1], cons)) goto oops_with_errmsg_supplement;
+				/* put the code at method dictionary */
+				name = hcl->active_function->literal_frame[b1]; /* method name */
+				if (!hcl_putatdic(hcl, (hcl_oop_dic_t)mdic, name, cons)) goto oops_with_errmsg_supplement;
 				break;
 			}
 			/* -------------------------------------------------------- */

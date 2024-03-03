@@ -66,6 +66,435 @@ static struct
 /* ========================================================================= */
 
 
+
+static struct
+{
+	const char* name;
+	hcl_oow_t c_offset; /* class offset */
+	hcl_oow_t sc_offset; /* superclass offset */
+	hcl_oow_t nivars;
+	hcl_oow_t ncvars;
+} kctab[] = {
+	{ "Apex",
+	  HCL_OFFSETOF(hcl_t, c_apex),
+	  HCL_TYPE_MAX(hcl_oow_t),
+	  0, 0 },
+
+	{ "Object",
+	  HCL_OFFSETOF(hcl_t, c_object),
+	  HCL_OFFSETOF(hcl_t, c_apex),
+	  0, 0 },
+
+	{ "UndefinedObject",
+	  HCL_OFFSETOF(hcl_t, c_undefobj),
+	  HCL_OFFSETOF(hcl_t, c_apex),
+	  0, 0 },
+
+	{ "Class",
+	  HCL_OFFSETOF(hcl_t, c_class),
+	  HCL_OFFSETOF(hcl_t, c_object),
+	  HCL_CLASS_NAMED_INSTVARS, 0 },
+
+	{ "String",
+	  HCL_OFFSETOF(hcl_t, c_string),
+	  HCL_OFFSETOF(hcl_t, c_object),
+	  0, 0 },
+
+	{ "Symbol",
+	  HCL_OFFSETOF(hcl_t, c_symbol),
+	  HCL_OFFSETOF(hcl_t, c_string),
+	  0, 0 },
+
+#if 0
+	{ "Boolean",
+	  HCL_OFFSETOF(hcl_t, c_boolean),
+	  HCL_OFFSETOF(hcl_t, c_object),
+	  0, 0 },
+
+	{ "True",
+	  HCL_OFFSETOF(hcl_t, c_true),
+	  HCL_OFFSETOF(hcl_t, c_boolean),
+	  0, 0 },
+
+	{ "False",
+	  HCL_OFFSETOF(hcl_t, c_false),
+	  HCL_OFFSETOF(hcl_t, c_boolean),
+	  0, 0 },
+#endif
+
+	{ "System",
+	  HCL_OFFSETOF(hcl_t, c_system),
+	  HCL_OFFSETOF(hcl_t, c_object),
+	  0, 0 },
+};
+
+/* ========================================================================= */
+
+/*
+ *    Apex......................
+ *    ^ ^ ^                    :   .......
+ *    | | |                    v   v     :
+ *    | | +------------------- Class .....
+ *    | |                       ^  ^
+ *    | +-------- NilObject ......:  :
+ *    |                 ^........ nil  :
+ *   Object ...........................:
+ *    ^
+ *    |
+ *
+ * The class hierarchy is roughly as follows:
+ *
+ *   Apex
+ *      Class
+ *      NilObject
+ *      Object
+ *         Collection
+ *            IndexedCollection
+ *               FixedSizedCollection
+ *                  Array
+ *                  ByteArray
+ *                     String
+ *                        Symbol
+ *            Set
+ *               Dictionary
+ *                  SystemDictionary
+ *               SymbolSet
+ *         Magnitude
+ *            Association
+ *            Character
+ *            Number
+ *               Integer
+ *                  SmallInteger
+ *                  LargeInteger
+ *                     LargePositiveInteger
+ *                     LargeNegativeInteger
+ *
+ * Apex has no instance variables.
+ *
+ */
+
+struct kernel_class_info_t
+{
+	const hcl_bch_t* name;
+	int class_flags;
+	int class_num_classvars;
+
+	int class_spec_named_instvars;
+	int class_spec_flags;
+	int class_spec_indexed_type;
+
+	hcl_oow_t  offset;
+};
+typedef struct kernel_class_info_t kernel_class_info_t;
+
+static kernel_class_info_t kernel_classes[] =
+{
+	/* --------------------------------------------------------------
+	 * Apex            - proto-object with 1 class variable.
+	 * UndefinedObject - class for the nil object.
+	 * Object          - top of all ordinary objects.
+	 * String
+	 * Symbol
+	 * Array
+	 * ByteArray
+	 * SymbolSet
+	 * Character
+	 * SmallIntger
+	 * -------------------------------------------------------------- */
+
+	{ "Apex",
+	  0,
+	  0,
+	  0,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, c_apex) },
+
+	{ "UndefinedObject",
+	  0,
+	  0,
+	  0,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, c_undefobj) },
+
+#define KCI_CLASS 2 /* index to the Class entry in this table */
+	{ "Class",
+	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  HCL_CLASS_NAMED_INSTVARS,
+	  HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, c_class) },
+
+#if 0
+	{ "Interface",
+	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  HCL_INTERFACE_NAMED_INSTVARS,
+	  HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, _interface) },
+#endif
+
+	{ "Object",
+	  0,
+	  0,
+	  0,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, c_object) },
+
+	{ "String",
+	  0,
+	  0,
+	  0,
+	  HCL_CLASS_SPEC_FLAG_INDEXED,
+	  HCL_OBJ_TYPE_CHAR,
+	  HCL_OFFSETOF(hcl_t, c_string) },
+
+	{ "Symbol",
+	  HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  0,
+	  HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_IMMUTABLE,
+	  HCL_OBJ_TYPE_CHAR,
+	  HCL_OFFSETOF(hcl_t, c_symbol) },
+
+	{ "Array",
+	  0,
+	  0,
+	  0,
+	  HCL_CLASS_SPEC_FLAG_INDEXED,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, c_array) },
+
+	{ "ByteArray",
+	  0,
+	  0,
+	  0,
+	  HCL_CLASS_SPEC_FLAG_INDEXED,
+	  HCL_OBJ_TYPE_BYTE,
+	  HCL_OFFSETOF(hcl_t, c_byte_array) },
+
+	{ "SymbolTable",
+	  0,
+	  0,
+	  HCL_DIC_NAMED_INSTVARS,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, c_symtab) },
+
+	{ "Dictionary",
+	  0,
+	  0,
+	  HCL_DIC_NAMED_INSTVARS,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, c_dictionary) },
+
+	{ "Cons",
+	  0,
+	  0,
+	  HCL_CONS_NAMED_INSTVARS,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, c_cons) },
+
+#if 0
+	{ "Namespace",
+	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  HCL_NSDIC_NAMED_INSTVARS,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, c_namespace) },
+
+	{ "PoolDictionary",
+	  0,
+	  0,
+	  HCL_DIC_NAMED_INSTVARS,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, c_pool_dictionary) },
+#endif
+
+	{ "MethodDictionary",
+	  0,
+	  0,
+	  HCL_DIC_NAMED_INSTVARS,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, c_method_dictionary) },
+
+#if 0
+	{ "CompiledMethod",
+	  0,
+	  0,
+	  HCL_METHOD_NAMED_INSTVARS,
+	  HCL_CLASS_SPEC_FLAG_INDEXED,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, c_method) },
+
+	{ "MethodSignature",
+	  0,
+	  0,
+	  HCL_METHSIG_NAMED_INSTVARS,
+	  HCL_CLASS_SPEC_FLAG_INDEXED,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, c_methsig) },
+#endif
+
+	{ "CompiledBlock",
+	  0,
+	  0,
+	  HCL_BLOCK_NAMED_INSTVARS,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, c_block) },
+
+	{ "MethodContext",
+	  HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  HCL_CONTEXT_NAMED_INSTVARS,
+	  HCL_CLASS_SPEC_FLAG_INDEXED,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, c_method_context) },
+
+	{ "BlockContext",
+	  HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  HCL_CONTEXT_NAMED_INSTVARS,
+	  HCL_CLASS_SPEC_FLAG_INDEXED,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, c_block_context) },
+
+	{ "Process",
+	  HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  HCL_PROCESS_NAMED_INSTVARS,
+	  HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, c_process) },
+
+	{ "Semaphore",
+	  0,
+	  0,
+	  HCL_SEMAPHORE_NAMED_INSTVARS,
+	  HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, c_semaphore) },
+
+	{ "SemaphoreGroup",
+	  0,
+	  0,
+	  HCL_SEMAPHORE_GROUP_NAMED_INSTVARS,
+	  HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, c_semaphore_group) },
+
+	{ "ProcessScheduler",
+	  HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  HCL_PROCESS_SCHEDULER_NAMED_INSTVARS,
+	  HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, c_process_scheduler) },
+
+	{ "Error",
+	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  0,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, c_error) },
+
+	{ "True",
+	  HCL_CLASS_SELFSPEC_FLAG_LIMITED | HCL_CLASS_SELFSPEC_FLAG_FINAL,
+	  0,
+	  0,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, c_true) },
+
+	{ "False",
+	  HCL_CLASS_SELFSPEC_FLAG_LIMITED | HCL_CLASS_SELFSPEC_FLAG_FINAL,
+	  0,
+	  0,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, c_false) },
+
+	/* TOOD: what is a proper spec for Character and SmallInteger?
+	 *       If the fixed part is  0, its instance must be an object of 0 payload fields.
+	 *       Does this make sense? */
+	{ "Character",
+	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  0,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, c_character) },
+
+	{ "SmallInteger",
+	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  0,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, c_small_integer) },
+
+	{ "LargePositiveInteger",
+	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  0,
+	  HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_IMMUTABLE,
+	  HCL_OBJ_TYPE_LIWORD,
+	  HCL_OFFSETOF(hcl_t, c_large_positive_integer) },
+
+	{ "LargeNegativeInteger",
+	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  0,
+	  HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_IMMUTABLE,
+	  HCL_OBJ_TYPE_LIWORD,
+	  HCL_OFFSETOF(hcl_t, c_large_negative_integer) },
+
+	{ "FixedPointDecimal",
+	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  HCL_FPDEC_NAMED_INSTVARS,
+	  HCL_CLASS_SPEC_FLAG_IMMUTABLE,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, c_fixed_point_decimal) },
+
+	{ "SmallPointer",
+	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  0,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, c_small_pointer) },
+
+	{ "LargePointer",
+	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+	  0,
+	  1,  /* #word(1) */
+	  HCL_CLASS_SPEC_FLAG_IMMUTABLE | HCL_CLASS_SPEC_FLAG_INDEXED,
+	  HCL_OBJ_TYPE_WORD,
+	  HCL_OFFSETOF(hcl_t, c_large_pointer) },
+
+	{ "System",
+	  0,
+	  5, /* asyncsg, gcfin_sem, gcfin_should_exit, ossig_pid, shr */
+	  0,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, c_system) }
+};
+
+/* ========================================================================= */
+
 static void compact_symbol_table (hcl_t* hcl, hcl_oop_t _nil)
 {
 	hcl_oop_char_t symbol;
@@ -769,428 +1198,6 @@ hcl_oop_t hcl_shallowcopy (hcl_t* hcl, hcl_oop_t oop)
 }
 
 /* ========================================================================= */
-
-static struct
-{
-	const char* name;
-	hcl_oow_t c_offset; /* class offset */
-	hcl_oow_t sc_offset; /* superclass offset */
-	hcl_oow_t nivars;
-	hcl_oow_t ncvars;
-} kctab[] = {
-	{ "Apex",
-	  HCL_OFFSETOF(hcl_t, c_apex),
-	  HCL_TYPE_MAX(hcl_oow_t),
-	  0, 0 },
-
-	{ "Object",
-	  HCL_OFFSETOF(hcl_t, c_object),
-	  HCL_OFFSETOF(hcl_t, c_apex),
-	  0, 0 },
-
-	{ "UndefinedObject",
-	  HCL_OFFSETOF(hcl_t, c_undefobj),
-	  HCL_OFFSETOF(hcl_t, c_apex),
-	  0, 0 },
-
-	{ "Class",
-	  HCL_OFFSETOF(hcl_t, c_class),
-	  HCL_OFFSETOF(hcl_t, c_object),
-	  HCL_CLASS_NAMED_INSTVARS, 0 },
-
-	{ "String",
-	  HCL_OFFSETOF(hcl_t, c_string),
-	  HCL_OFFSETOF(hcl_t, c_object),
-	  0, 0 },
-
-	{ "Symbol",
-	  HCL_OFFSETOF(hcl_t, c_symbol),
-	  HCL_OFFSETOF(hcl_t, c_string),
-	  0, 0 },
-
-	{ "Boolean",
-	  HCL_OFFSETOF(hcl_t, c_boolean),
-	  HCL_OFFSETOF(hcl_t, c_object),
-	  0, 0 },
-
-	{ "True",
-	  HCL_OFFSETOF(hcl_t, c_true),
-	  HCL_OFFSETOF(hcl_t, c_boolean),
-	  0, 0 },
-
-	{ "False",
-	  HCL_OFFSETOF(hcl_t, c_false),
-	  HCL_OFFSETOF(hcl_t, c_boolean),
-	  0, 0 },
-
-	{ "System",
-	  HCL_OFFSETOF(hcl_t, c_system),
-	  HCL_OFFSETOF(hcl_t, c_object),
-	  0, 0 },
-};
-
-
-/*
- *    Apex......................
- *    ^ ^ ^                    :   .......
- *    | | |                    v   v     :
- *    | | +------------------- Class .....
- *    | |                       ^  ^
- *    | +-------- NilObject ......:  :
- *    |                 ^........ nil  :
- *   Object ...........................:
- *    ^
- *    |
- *
- * The class hierarchy is roughly as follows:
- *
- *   Apex
- *      Class
- *      NilObject
- *      Object
- *         Collection
- *            IndexedCollection
- *               FixedSizedCollection
- *                  Array
- *                  ByteArray
- *                     String
- *                        Symbol
- *            Set
- *               Dictionary
- *                  SystemDictionary
- *               SymbolSet
- *         Magnitude
- *            Association
- *            Character
- *            Number
- *               Integer
- *                  SmallInteger
- *                  LargeInteger
- *                     LargePositiveInteger
- *                     LargeNegativeInteger
- *
- * Apex has no instance variables.
- *
- */
-
-struct kernel_class_info_t
-{
-	const hcl_bch_t* name;
-	int class_flags;
-	int class_num_classvars;
-
-	int class_spec_named_instvars;
-	int class_spec_flags;
-	int class_spec_indexed_type;
-
-	hcl_oow_t  offset;
-};
-typedef struct kernel_class_info_t kernel_class_info_t;
-
-static kernel_class_info_t kernel_classes[] =
-{
-	/* --------------------------------------------------------------
-	 * Apex            - proto-object with 1 class variable.
-	 * UndefinedObject - class for the nil object.
-	 * Object          - top of all ordinary objects.
-	 * String
-	 * Symbol
-	 * Array
-	 * ByteArray
-	 * SymbolSet
-	 * Character
-	 * SmallIntger
-	 * -------------------------------------------------------------- */
-
-	{ "Apex",
-	  0,
-	  0,
-	  0,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_apex) },
-
-	{ "UndefinedObject",
-	  0,
-	  0,
-	  0,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_undefobj) },
-
-#define KCI_CLASS 2 /* index to the Class entry in this table */
-	{ "Class",
-	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-	  0,
-	  HCL_CLASS_NAMED_INSTVARS,
-	  HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_class) },
-
-#if 0
-	{ "Interface",
-	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-	  0,
-	  HCL_INTERFACE_NAMED_INSTVARS,
-	  HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, _interface) },
-#endif
-
-	{ "Object",
-	  0,
-	  0,
-	  0,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_object) },
-
-	{ "String",
-	  0,
-	  0,
-	  0,
-	  HCL_CLASS_SPEC_FLAG_INDEXED,
-	  HCL_OBJ_TYPE_CHAR,
-	  HCL_OFFSETOF(hcl_t, c_string) },
-
-	{ "Symbol",
-	  HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-	  0,
-	  0,
-	  HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_IMMUTABLE,
-	  HCL_OBJ_TYPE_CHAR,
-	  HCL_OFFSETOF(hcl_t, c_symbol) },
-
-	{ "Array",
-	  0,
-	  0,
-	  0,
-	  HCL_CLASS_SPEC_FLAG_INDEXED,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_array) },
-
-	{ "ByteArray",
-	  0,
-	  0,
-	  0,
-	  HCL_CLASS_SPEC_FLAG_INDEXED,
-	  HCL_OBJ_TYPE_BYTE,
-	  HCL_OFFSETOF(hcl_t, c_byte_array) },
-
-	{ "SymbolTable",
-	  0,
-	  0,
-	  HCL_DIC_NAMED_INSTVARS,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_symbol_table) },
-
-	{ "Dictionary",
-	  0,
-	  0,
-	  HCL_DIC_NAMED_INSTVARS,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_dictionary) },
-
-	{ "Association",
-	  0,
-	  0,
-	  HCL_ASSOCIATION_NAMED_INSTVARS,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_association) },
-
-#if 0
-	{ "Namespace",
-	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-	  0,
-	  HCL_NSDIC_NAMED_INSTVARS,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_namespace) },
-
-	{ "PoolDictionary",
-	  0,
-	  0,
-	  HCL_DIC_NAMED_INSTVARS,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_pool_dictionary) },
-#endif
-
-	{ "MethodDictionary",
-	  0,
-	  0,
-	  HCL_DIC_NAMED_INSTVARS,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_method_dictionary) },
-
-	{ "CompiledMethod",
-	  0,
-	  0,
-	  HCL_METHOD_NAMED_INSTVARS,
-	  HCL_CLASS_SPEC_FLAG_INDEXED,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_method) },
-
-	{ "MethodSignature",
-	  0,
-	  0,
-	  HCL_METHSIG_NAMED_INSTVARS,
-	  HCL_CLASS_SPEC_FLAG_INDEXED,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_methsig) },
-
-	{ "CompiledBlock",
-	  0,
-	  0,
-	  HCL_BLOCK_NAMED_INSTVARS,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_block) },
-
-	{ "MethodContext",
-	  HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-	  0,
-	  HCL_CONTEXT_NAMED_INSTVARS,
-	  HCL_CLASS_SPEC_FLAG_INDEXED,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_method_context) },
-
-	{ "BlockContext"
-	  HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-	  0,
-	  HCL_CONTEXT_NAMED_INSTVARS,
-	  HCL_CLASS_SPEC_FLAG_INDEXED,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_block_context) },
-
-	{ "Process",
-	  HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-	  0,
-	  HCL_PROCESS_NAMED_INSTVARS,
-	  HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_process) },
-
-	{ "Semaphore",
-	  0,
-	  0,
-	  HCL_SEMAPHORE_NAMED_INSTVARS,
-	  HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_semaphore) },
-
-	{ "SemaphoreGroup",
-	  0,
-	  0,
-	  HCL_SEMAPHORE_GROUP_NAMED_INSTVARS,
-	  HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_semaphore_group) },
-
-	{ "ProcessScheduler",
-	  HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-	  0,
-	  HCL_PROCESS_SCHEDULER_NAMED_INSTVARS,
-	  HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_process_scheduler) },
-
-	{ "Error",
-	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-	  0,
-	  0,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_error) },
-
-	{ "True",
-	  HCL_CLASS_SELFSPEC_FLAG_LIMITED | HCL_CLASS_SELFSPEC_FLAG_FINAL,
-	  0,
-	  0,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_true) },
-
-	{ "False",
-	  HCL_CLASS_SELFSPEC_FLAG_LIMITED | HCL_CLASS_SELFSPEC_FLAG_FINAL,
-	  0,
-	  0,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_false) },
-
-	/* TOOD: what is a proper spec for Character and SmallInteger?
-	 *       If the fixed part is  0, its instance must be an object of 0 payload fields.
-	 *       Does this make sense? */
-	{ "Character",
-	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-	  0,
-	  0,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_character) },
-
-	{ "SmallInteger",
-	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-	  0,
-	  0,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_small_integer) },
-
-	{ "LargePositiveInteger",
-	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-	  0,
-	  0,
-	  HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_IMMUTABLE,
-	  HCL_OBJ_TYPE_LIWORD,
-	  HCL_OFFSETOF(hcl_t, c_large_positive_integer) },
-
-	{ "LargeNegativeInteger",
-	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-	  0,
-	  0,
-	  HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_IMMUTABLE,
-	  HCL_OBJ_TYPE_LIWORD,
-	  HCL_OFFSETOF(hcl_t, c_large_negative_integer) },
-
-	{ "FixedPointDecimal",
-	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-	  0,
-	  HCL_FPDEC_NAMED_INSTVARS,
-	  HCL_CLASS_SPEC_FLAG_IMMUTABLE,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_fixed_point_decimal) },
-
-	{ "SmallPointer",
-	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-	  0,
-	  0,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_small_pointer) },
-
-	{ "LargePointer",
-	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-	  0,
-	  1,  /* #word(1) */
-	  HCL_CLASS_SPEC_FLAG_IMMUTABLE | HCL_CLASS_SPEC_FLAG_INDEXED,
-	  HCL_OBJ_TYPE_WORD,
-	  HCL_OFFSETOF(hcl_t, c_large_pointer) },
-
-	{ "System",
-	  0,
-	  5, /* asyncsg, gcfin_sem, gcfin_should_exit, ossig_pid, shr */
-	  0,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_system) }
-};
-
 
 #if 0
 

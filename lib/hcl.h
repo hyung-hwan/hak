@@ -1649,17 +1649,19 @@ struct hcl_t
 	hcl_oop_class_t c_symbol; /* Symbol */
 	hcl_oop_class_t c_array; /* Array */
 	hcl_oop_class_t c_byte_array; /* ByteArray */
-	hcl_oop_class_t c_symbol_table; /* SymbolTable */
+	hcl_oop_class_t c_symtab; /* SymbolTable */
 	hcl_oop_class_t c_dictionary;
-	hcl_oop_class_t c_association; /* Association */
+	hcl_oop_class_t c_cons; /* Cons */
 
 #if 0
 	hcl_oop_class_t c_namespace; /* Namespace */
 	hcl_oop_class_t c_pool_dictionary; /* PoolDictionary */
 #endif
 	hcl_oop_class_t c_method_dictionary; /* MethodDictionary */
+#if 0
 	hcl_oop_class_t c_method; /* CompiledMethod */
 	hcl_oop_class_t c_methsig; /* MethodSignature */
+#endif
 	hcl_oop_class_t c_block; /* CompiledBlock */
 
 	hcl_oop_class_t c_method_context; /* MethodContext */

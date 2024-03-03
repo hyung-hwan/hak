@@ -150,6 +150,128 @@
 #	define HCL_OBJ_SIZE_BITS_MAX (HCL_OBJ_SIZE_MAX * HCL_BITS_PER_BYTE)
 #endif
 
+/* ========================================================================= */
+/* CLASS SPEC ENCODING                                                       */
+/* ========================================================================= */
+/*
+ * The spec field of a class object encodes the number of the fixed part
+ * and the type of the indexed part. The fixed part is the number of
+ * named instance variables. If the spec of a class is indexed, the object
+ * of the class can be instantiated with the size of the indexed part.
+ *
+ * For example, on a platform where sizeof(hcl_oow_t) is 4,
+ * the layout of the spec field of a class as an OOP value looks like this:
+ *
+ *  31                          12 11  10 9 8 7 6 5 4 3 2   1 0
+ * |number of named instance variables|indexed-type|flags |oop-tag|
+ *
+ * the number of named instance variables is stored in high 21 bits.
+ * the indexed type takes up bit 5 to bit 10 (assuming HCL_OBJ_TYPE_BITS is 6.
+ * HCL_OBJ_TYPE_XXX enumerators are used to represent actual values).
+ * and the indexability is stored in the flag bits which span from bit 2 to 4.
+ *
+ * The maximum number of named(fixed) instance variables for a class is:
+ *     2 ^ ((BITS-IN-OOW - HCL_OOP_TAG_BITS_LO) - HCL_OBJ_TYPE_BITS - 1 - 2) - 1
+ *
+ * HCL_OOP_TAG_BITS_LO are decremented from the number of bits in OOW because
+ * the spec field is always encoded as a small integer.
+ *
+ * The number of named instance variables can be greater than 0 if the
+ * class spec is not indexed or if it's a pointer indexed class
+ * (indexed_type == HCL_OBJ_TYPE_OOP)
+ *
+ * indexed_type is one of the #hcl_obj_type_t enumerators.
+ */
+
+#define HCL_CLASS_SPEC_FLAG_BITS (3)
+
+/*
+ * The HCL_CLASS_SPEC_MAKE() macro creates a class spec value.
+ *  _class->spec = HCL_SMOOI_TO_OOP(HCL_CLASS_SPEC_MAKE(0, 1, HCL_OBJ_TYPE_CHAR));
+ */
+#define HCL_CLASS_SPEC_MAKE(named_instvar,flags,indexed_type) ( \
+	(((hcl_oow_t)(named_instvar)) << (HCL_OBJ_FLAGS_TYPE_BITS + HCL_CLASS_SPEC_FLAG_BITS)) |  \
+	(((hcl_oow_t)(indexed_type)) << (HCL_CLASS_SPEC_FLAG_BITS)) | (((hcl_oow_t)flags) & HCL_LBMASK(hcl_oow_t,HCL_CLASS_SPEC_FLAG_BITS)))
+
+/* what is the number of named instance variables?
+ *  HCL_CLASS_SPEC_NAMED_INSTVARS(HCL_OOP_TO_SMOOI(_class->spec))
+ * ensure to update Class<<specNumInstVars if you change this macro. */
+#define HCL_CLASS_SPEC_NAMED_INSTVARS(spec) \
+	(((hcl_oow_t)(spec)) >> (HCL_OBJ_FLAGS_TYPE_BITS + HCL_CLASS_SPEC_FLAG_BITS))
+
+/* is it a user-indexable class?
+ * all objects can be indexed with basicAt:.
+ * this indicates if an object can be instantiated with a dynamic size
+ * (new: size) and and can be indexed with at:.
+ */
+#define HCL_CLASS_SPEC_FLAGS(spec) (((hcl_oow_t)(spec)) & HCL_LBMASK(hcl_oow_t,HCL_CLASS_SPEC_FLAG_BITS))
+
+/* if so, what is the indexing type? character? pointer? etc? */
+#define HCL_CLASS_SPEC_INDEXED_TYPE(spec) \
+	((((hcl_oow_t)(spec)) >> HCL_CLASS_SPEC_FLAG_BITS) & HCL_LBMASK(hcl_oow_t, HCL_OBJ_FLAGS_TYPE_BITS))
+
+#define HCL_CLASS_SPEC_FLAG_INDEXED    (1 << 0)
+#define HCL_CLASS_SPEC_FLAG_IMMUTABLE  (1 << 1)
+#define HCL_CLASS_SPEC_FLAG_UNCOPYABLE (1 << 2)
+
+#define HCL_CLASS_SPEC_IS_INDEXED(spec) (HCL_CLASS_SPEC_FLAGS(spec) & HCL_CLASS_SPEC_FLAG_INDEXED)
+#define HCL_CLASS_SPEC_IS_IMMUTABLE(spec) (HCL_CLASS_SPEC_FLAGS(spec) & HCL_CLASS_SPEC_FLAG_IMMUTABLE)
+#define HCL_CLASS_SPEC_IS_UNCOPYABLE(spec) (HCL_CLASS_SPEC_FLAGS(spec) & HCL_CLASS_SPEC_FLAG_UNCOPYABLE)
+
+/* What is the maximum number of named instance variables?
+ * This limit is set this way because the number must be encoded into
+ * the spec field of the class with limited number of bits assigned to
+ * the number of named instance variables.
+ */
+#define HCL_MAX_NAMED_INSTVARS \
+	HCL_BITS_MAX(hcl_oow_t, HCL_SMOOI_ABS_BITS - (HCL_OBJ_FLAGS_TYPE_BITS + HCL_CLASS_SPEC_FLAG_BITS))
+
+/* Given the number of named instance variables, what is the maximum number
+ * of indexed instance variables? The number of indexed instance variables
+ * is not stored in the spec field of the class. It only affects the actual
+ * size of an object(obj->_size) selectively combined with the number of
+ * named instance variables. So it's the maximum value of obj->_size minus
+ * the number of named instance variables.
+ */
+#define HCL_MAX_INDEXED_INSTVARS(named_instvar) (HCL_OBJ_SIZE_MAX - named_instvar)
+
+/*
+ * self-specification of a class
+ *   | classinstvars     | classvars         | flags |
+ *
+ * When converted to a small integer
+ *   | sign-bit | classinstvars | classvars | flags | tag |
+ */
+#define HCL_CLASS_SELFSPEC_FLAG_BITS (3)
+#define HCL_CLASS_SELFSPEC_CLASSINSTVAR_BITS ((HCL_SMOOI_ABS_BITS - HCL_CLASS_SELFSPEC_FLAG_BITS) / 2)
+#define HCL_CLASS_SELFSPEC_CLASSVAR_BITS (HCL_SMOOI_ABS_BITS - (HCL_CLASS_SELFSPEC_CLASSINSTVAR_BITS + HCL_CLASS_SELFSPEC_FLAG_BITS))
+
+#define HCL_CLASS_SELFSPEC_MAKE(class_var,classinst_var,flag) \
+	((((hcl_oow_t)class_var)     << (HCL_CLASS_SELFSPEC_CLASSINSTVAR_BITS + HCL_CLASS_SELFSPEC_FLAG_BITS)) | \
+	 (((hcl_oow_t)classinst_var) << (HCL_CLASS_SELFSPEC_FLAG_BITS)) | \
+	 (((hcl_oow_t)flag)          << (0)))
+
+#define HCL_CLASS_SELFSPEC_CLASSVARS(spec) \
+	(((hcl_oow_t)spec) >> (HCL_CLASS_SELFSPEC_CLASSINSTVAR_BITS + HCL_CLASS_SELFSPEC_FLAG_BITS))
+
+#define HCL_CLASS_SELFSPEC_CLASSINSTVARS(spec) \
+	((((hcl_oow_t)spec) >> HCL_CLASS_SELFSPEC_FLAG_BITS) & HCL_LBMASK(hcl_oow_t, HCL_CLASS_SELFSPEC_CLASSINSTVAR_BITS))
+
+#define HCL_CLASS_SELFSPEC_FLAGS(spec) \
+	(((hcl_oow_t)spec) & HCL_LBMASK(hcl_oow_t, HCL_CLASS_SELFSPEC_FLAG_BITS))
+
+#define HCL_CLASS_SELFSPEC_FLAG_FINAL   (1 << 0)
+#define HCL_CLASS_SELFSPEC_FLAG_LIMITED (1 << 1)
+
+
+#define HCL_MAX_CLASSVARS      HCL_BITS_MAX(hcl_oow_t, HCL_CLASS_SELFSPEC_CLASSVAR_BITS)
+#define HCL_MAX_CLASSINSTVARS  HCL_BITS_MAX(hcl_oow_t, HCL_CLASS_SELFSPEC_CLASSINSTVAR_BITS)
+
+/* ========================================================================= */
+/* END OF CLASS SPEC ENCODING                                                */
+/* ========================================================================= */
+
+
 
 #if defined(HCL_INCLUDE_COMPILER)
 
