@@ -65,71 +65,6 @@ static struct
 
 /* ========================================================================= */
 
-
-
-static struct
-{
-	const char* name;
-	hcl_oow_t c_offset; /* class offset */
-	hcl_oow_t sc_offset; /* superclass offset */
-	hcl_oow_t nivars;
-	hcl_oow_t ncvars;
-} kctab[] = {
-	{ "Apex",
-	  HCL_OFFSETOF(hcl_t, c_apex),
-	  HCL_TYPE_MAX(hcl_oow_t),
-	  0, 0 },
-
-	{ "Object",
-	  HCL_OFFSETOF(hcl_t, c_object),
-	  HCL_OFFSETOF(hcl_t, c_apex),
-	  0, 0 },
-
-	{ "UndefinedObject",
-	  HCL_OFFSETOF(hcl_t, c_undefobj),
-	  HCL_OFFSETOF(hcl_t, c_apex),
-	  0, 0 },
-
-	{ "Class",
-	  HCL_OFFSETOF(hcl_t, c_class),
-	  HCL_OFFSETOF(hcl_t, c_object),
-	  HCL_CLASS_NAMED_INSTVARS, 0 },
-
-	{ "String",
-	  HCL_OFFSETOF(hcl_t, c_string),
-	  HCL_OFFSETOF(hcl_t, c_object),
-	  0, 0 },
-
-	{ "Symbol",
-	  HCL_OFFSETOF(hcl_t, c_symbol),
-	  HCL_OFFSETOF(hcl_t, c_string),
-	  0, 0 },
-
-#if 0
-	{ "Boolean",
-	  HCL_OFFSETOF(hcl_t, c_boolean),
-	  HCL_OFFSETOF(hcl_t, c_object),
-	  0, 0 },
-
-	{ "True",
-	  HCL_OFFSETOF(hcl_t, c_true),
-	  HCL_OFFSETOF(hcl_t, c_boolean),
-	  0, 0 },
-
-	{ "False",
-	  HCL_OFFSETOF(hcl_t, c_false),
-	  HCL_OFFSETOF(hcl_t, c_boolean),
-	  0, 0 },
-#endif
-
-	{ "System",
-	  HCL_OFFSETOF(hcl_t, c_system),
-	  HCL_OFFSETOF(hcl_t, c_object),
-	  0, 0 },
-};
-
-/* ========================================================================= */
-
 /*
  *    Apex......................
  *    ^ ^ ^                    :   .......
@@ -1199,10 +1134,6 @@ hcl_oop_t hcl_shallowcopy (hcl_t* hcl, hcl_oop_t oop)
 
 /* ========================================================================= */
 
-#if 0
-
-static hcl_oow_t move_finalizable_objects (hcl_t* hcl);
-
 /* -----------------------------------------------------------------------
  * BOOTSTRAPPER
  * ----------------------------------------------------------------------- */
@@ -1210,20 +1141,24 @@ static hcl_oow_t move_finalizable_objects (hcl_t* hcl);
 static hcl_oop_class_t alloc_kernel_class (hcl_t* hcl, int class_flags, hcl_oow_t num_classvars, hcl_oow_t spec)
 {
 	hcl_oop_class_t c;
+#if 0
 	hcl_ooi_t cspec;
+#endif
 
-	c = (hcl_oop_class_t)hcl_allocoopobj(hcl, HCL_CLASS_NAMED_INSTVARS + num_classvars);
+	c = (hcl_oop_class_t)hcl_allocoopobj(hcl, HCL_BRAND_CLASS, HCL_CLASS_NAMED_INSTVARS + num_classvars);
 	if (!c) return HCL_NULL;
 
 	HCL_OBJ_SET_FLAGS_KERNEL (c, HCL_OBJ_FLAGS_KERNEL_IMMATURE);
 
+#if 0 /* TODO extend the flags and uncomment this part */
 	cspec = kernel_classes[KCI_CLASS].class_spec_flags;
 	if (HCL_CLASS_SPEC_IS_IMMUTABLE(cspec)) HCL_OBJ_SET_FLAGS_RDONLY (c, 1); /* just for completeness of code. will never be true as it's not defined in the kernel class info table */
 	if (HCL_CLASS_SPEC_IS_UNCOPYABLE(cspec)) HCL_OBJ_SET_FLAGS_UNCOPYABLE (c, 1); /* class itself is uncopyable */
+#endif
 
-	HCL_OBJ_SET_CLASS (c, (hcl_oop_t)hcl->_class);
-	c->spec = HCL_SHCLI_TO_OOP(spec);
-	c->selfspec = HCL_SHCLI_TO_OOP(HCL_CLASS_SELFSPEC_MAKE(num_classvars, 0, class_flags));
+	HCL_OBJ_SET_CLASS (c, (hcl_oop_t)hcl->c_class);
+	c->spec = HCL_SMOOI_TO_OOP(spec);
+	c->selfspec = HCL_SMOOI_TO_OOP(HCL_CLASS_SELFSPEC_MAKE(num_classvars, 0, class_flags));
 
 	return c;
 }
@@ -1239,22 +1174,22 @@ static int ignite_1 (hcl_t* hcl)
 	HCL_ASSERT (hcl, hcl->_nil != HCL_NULL);
 	HCL_ASSERT (hcl, HCL_OBJ_GET_CLASS(hcl->_nil) == HCL_NULL);
 
-	HCL_ASSERT (hcl, hcl->_class == HCL_NULL);
+	HCL_ASSERT (hcl, hcl->c_class == HCL_NULL);
 	/* --------------------------------------------------------------
 	 * Class
 	 * The instance of Class can have indexed instance variables
 	 * which are actually class variables.
 	 * -------------------------------------------------------------- */
-	hcl->_class = alloc_kernel_class(
+	hcl->c_class = alloc_kernel_class(
 		hcl, kernel_classes[KCI_CLASS].class_flags,
 		kernel_classes[KCI_CLASS].class_num_classvars,
 		HCL_CLASS_SPEC_MAKE(kernel_classes[KCI_CLASS].class_spec_named_instvars,
 		                    kernel_classes[KCI_CLASS].class_spec_flags,
 		                    kernel_classes[KCI_CLASS].class_spec_indexed_type));
-	if (!hcl->_class) return -1;
+	if (!hcl->c_class) return -1;
 
-	HCL_ASSERT (hcl, HCL_OBJ_GET_CLASS(hcl->_class) == HCL_NULL);
-	HCL_OBJ_SET_CLASS (hcl->_class, (hcl_oop_t)hcl->_class);
+	HCL_ASSERT (hcl, HCL_OBJ_GET_CLASS(hcl->c_class) == HCL_NULL);
+	HCL_OBJ_SET_CLASS (hcl->c_class, (hcl_oop_t)hcl->c_class);
 
 	for (i = 0; i < HCL_COUNTOF(kernel_classes); i++)
 	{
@@ -1272,16 +1207,18 @@ static int ignite_1 (hcl_t* hcl)
 		*(hcl_oop_class_t*)((hcl_uint8_t*)hcl + kernel_classes[i].offset) = tmp;
 	}
 
-	HCL_OBJ_SET_CLASS (hcl->_nil, (hcl_oop_t)hcl->_undefined_object);
+	HCL_OBJ_SET_CLASS (hcl->_nil, (hcl_oop_t)hcl->c_undefobj);
 
+#if 0
 	/* an instance of a method class stores byte codes in the trailer space.
 	 * unlike other classes with trailer size set, the size of the trailer
 	 * space is not really determined by the traailer size set in the class.
 	 * the compiler determines the actual size of the trailer space depending
 	 * on the byte codes generated. i should set the following fields to avoid
 	 * confusion at the GC phase. */
-	hcl->_method->trsize = HCL_SHCLI_TO_OOP(0);
-	hcl->_method->trgc = HCL_SMPTR_TO_OOP(0);
+	hcl->c_method->trsize = HCL_SMOOI_TO_OOP(0);
+	hcl->c_method->trgc = HCL_SMPTR_TO_OOP(0);
+#endif
 
 	return 0;
 }
@@ -1289,13 +1226,16 @@ static int ignite_1 (hcl_t* hcl)
 static int ignite_2 (hcl_t* hcl)
 {
 	hcl_oop_t tmp;
+#if 0
 	int old_igniting = hcl->igniting;
+#endif
 
 	/* Create 'true' and 'false objects */
-	hcl->_true = hcl_instantiate(hcl, hcl->_true_class, HCL_NULL, 0);
-	hcl->_false = hcl_instantiate(hcl, hcl->_false_class, HCL_NULL, 0);
-	if (HCL_UNLIKELY(!hcl->_true) || HCL_UNLIKELY(!hcl->_false)) return -1;
+	hcl->_true = hcl_instantiate(hcl, hcl->c_true, HCL_NULL, 0);
+	hcl->_false = hcl_instantiate(hcl, hcl->c_false, HCL_NULL, 0);
+	if (HCL_UNLIKELY(!hcl->c_true) || HCL_UNLIKELY(!hcl->c_false)) return -1;
 
+#if 0
 	/* Prevent the object instations in the permspace.
 	 *
 	 * 1. The symbol table is big and it may resize after ignition.
@@ -1314,51 +1254,57 @@ static int ignite_2 (hcl_t* hcl)
 	 * For now, let's just allocate the symbol table and the system dictionary
 	 * in the normal space */
 	hcl->igniting = 0;
+#endif
 
 	/* Create the symbol table */
-	tmp = hcl_instantiate(hcl, hcl->_symbol_table, HCL_NULL, 0);
+	tmp = hcl_instantiate(hcl, hcl->c_symtab, HCL_NULL, 0);
 	if (HCL_UNLIKELY(!tmp)) return -1;
 	hcl->symtab = (hcl_oop_dic_t)tmp;
 
-	hcl->symtab->tally = HCL_SHCLI_TO_OOP(0);
+	hcl->symtab->tally = HCL_SMOOI_TO_OOP(0);
 	/* It's important to assign the result of hcl_instantiate() to a temporary
 	 * variable first and then assign it to hcl->symtab->bucket.
 	 * The pointer 'hcl->symtab; can change in hcl_instantiate() and the
 	 * target address of assignment may get set before hcl_instantiate()
 	 * is called. */
-	tmp = hcl_instantiate(hcl, hcl->_array, HCL_NULL, hcl->option.dfl_symtab_size);
-	if (!tmp) return -1;
+	tmp = hcl_instantiate(hcl, hcl->c_array, HCL_NULL, hcl->option.dfl_symtab_size);
+	if (HCL_UNLIKELY(!tmp)) return -1;
 	hcl->symtab->bucket = (hcl_oop_oop_t)tmp;
 
+#if 0
 	/* Create the system dictionary */
 	tmp = (hcl_oop_t)hcl_makensdic(hcl, hcl->_namespace, hcl->option.dfl_sysdic_size);
 	if (!tmp) return -1;
 	hcl->sysdic = (hcl_oop_nsdic_t)tmp;
 
 	hcl->igniting = old_igniting; /* back to the permspace */
+#endif
 
 	/* Create a nil process used to simplify nil check in GC.
 	 * only accessible by VM. not exported via the global dictionary. */
-	tmp = (hcl_oop_t)hcl_instantiate(hcl, hcl->_process, HCL_NULL, 0);
-	if (!tmp) return -1;
+	tmp = (hcl_oop_t)hcl_instantiate(hcl, hcl->c_process, HCL_NULL, 0);
+	if (HCL_UNLIKELY(!tmp)) return -1;
 	hcl->nil_process = (hcl_oop_process_t)tmp;
-	hcl->nil_process->sp = HCL_SHCLI_TO_OOP(-1);
-	hcl->nil_process->id = HCL_SHCLI_TO_OOP(-1);
+	hcl->nil_process->sp = HCL_SMOOI_TO_OOP(-1);
+	hcl->nil_process->id = HCL_SMOOI_TO_OOP(-1);
+#if 0
 	hcl->nil_process->perr = HCL_ERROR_TO_OOP(HCL_ENOERR);
 	hcl->nil_process->perrmsg = hcl->_nil;
+#endif
 
 	/* Create a process scheduler */
-	tmp = (hcl_oop_t)hcl_instantiate(hcl, hcl->_process_scheduler, HCL_NULL, 0);
-	if (!tmp) return -1;
+	tmp = (hcl_oop_t)hcl_instantiate(hcl, hcl->c_process_scheduler, HCL_NULL, 0);
+	if (HCL_UNLIKELY(!tmp)) return -1;
 	hcl->processor = (hcl_oop_process_scheduler_t)tmp;
 	hcl->processor->active = hcl->nil_process;
-	hcl->processor->total_count = HCL_SHCLI_TO_OOP(0);
-	hcl->processor->runnable.count = HCL_SHCLI_TO_OOP(0);
-	hcl->processor->suspended.count = HCL_SHCLI_TO_OOP(0);
+	hcl->processor->total_count = HCL_SMOOI_TO_OOP(0);
+	hcl->processor->runnable.count = HCL_SMOOI_TO_OOP(0);
+	hcl->processor->suspended.count = HCL_SMOOI_TO_OOP(0);
 
 	return 0;
 }
 
+#if 0
 static int ignite_3 (hcl_t* hcl)
 {
 	/* Register kernel classes manually created so far to the system dictionary */
@@ -1420,23 +1366,6 @@ static int ignite_3 (hcl_t* hcl)
 	return 0;
 }
 
-struct hcl_class_t
-{
-        HCL_OBJ_HEADER;
-
-        hcl_oop_t mdic; /* method dictionary. nil or a dictionary object */
-
-        hcl_oop_t superclass;
-        hcl_oop_t nivars; /* smooi. */
-        hcl_oop_t ncvars; /* smooi. */
-        hcl_oop_t nivars_super; /* smooi */
-
-        hcl_oop_char_t ivarnames;
-        hcl_oop_char_t cvarnames;
-
-        /* indexed part afterwards - not included in HCL_CLASS_NAMED_INSTVARS */
-        hcl_oop_t      cvar[1];   /* class variables. */
-};
 #endif
 
 static int make_kernel_classes (hcl_t* hcl)
@@ -1447,29 +1376,29 @@ static int make_kernel_classes (hcl_t* hcl)
 	/* make_kernel_classes() creates a chain of classes for initial bootstrapping.
 	 * when the objects are loaded from an image file, this function is skipped */
 
+
 #if 0
-	/* create class objects */
-	for (i = 0; i < HCL_COUNTOF(kctab); i++)
-	{
-		if (kctab[i].c_offset >= HCL_SIZEOF(*hcl)) continue;
+     hcl->igniting = 1;
+     hcl->_nil = moo_allocbytes(hcl, MOO_SIZEOF(hcl_obj_t));
+     if (HCL_UNLIKELY(!hcl->_nil)) goto oops;
 
-		c = (hcl_oop_class_t)hcl_makeclass(hcl, hcl->_nil, nivars, ncvars, "ivars_str", "cvars_str");
-		if (HCL_UNLIKELY(!c)) return -1;
 
-		*(hcl_oop_class_t*)((hcl_uint8_t*)hcl + kctab[i].c_offset) = c;
-	}
-
-	/* update the superclass field */
-	for (i = 0; i < HCL_COUNTOF(kctab); i++)
-	{
-		if (kctab[i].sc_offset >= HCL_SIZEOF(*hcl)) continue;
-
-		c = *(hcl_oop_class_t*)((hcl_uint8_t*)hcl + kctab[i].c_offset);
-		c->superclass = *(hcl_oop_t*)((hcl_uint8_t*)hcl + kctab[i].sc_offset);
-	}
+     hcl->_nil->_flags = HCL_OBJ_MAKE_FLAGS(HCL_OBJ_TYPE_OOP, HCL_SIZEOF(moo_oop_t), 0, 1, hcl->igniting, 0, 0, 0, 0, 0);
+     hcl->_nil->_size = 0;
 #endif
 
+     if (ignite_1(hcl) <= -1 || ignite_2(hcl) <= -1 /*|| ignite_3(hcl)*/) goto oops;
+
+#if 0
+     moo->igniting = 0;
+#endif
 	return 0;
+
+oops:
+#if 0
+     moo->igniting = 0;
+#endif
+	return -1;
 }
 
 int hcl_ignite (hcl_t* hcl, hcl_oow_t heapsize)

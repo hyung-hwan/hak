@@ -369,6 +369,16 @@ typedef enum hcl_obj_type_t hcl_obj_type_t;
 #define HCL_OBJ_FLAGS_SYNCODE_BITS  5
 #define HCL_OBJ_FLAGS_BRAND_BITS    6
 
+/*
+#define HCL_OBJ_FLAGS_PERM_BITS       1
+#define HCL_OBJ_FLAGS_MOVED_BITS      2
+#define HCL_OBJ_FLAGS_PROC_BITS       2
+#define HCL_OBJ_FLAGS_RDONLY_BITS     1
+#define HCL_OBJ_FLAGS_GCFIN_BITS      4
+#define HCL_OBJ_FLAGS_TRAILER_BITS    1
+#define HCL_OBJ_FLAGS_HASH_BITS       2
+#define HCL_OBJ_FLAGS_UNCOPYABLE_BITS 1
+*/
 
 #define HCL_OBJ_FLAGS_TYPE_SHIFT    (HCL_OBJ_FLAGS_UNIT_BITS    + HCL_OBJ_FLAGS_UNIT_SHIFT)
 #define HCL_OBJ_FLAGS_UNIT_SHIFT    (HCL_OBJ_FLAGS_EXTRA_BITS   + HCL_OBJ_FLAGS_EXTRA_SHIFT)
@@ -429,6 +439,10 @@ typedef enum hcl_obj_type_t hcl_obj_type_t;
 	(((hcl_oow_t)(r)) << HCL_OBJ_FLAGS_TRAILER_SHIFT) | \
 	(((hcl_oow_t)(b)) << HCL_OBJ_FLAGS_BRAND_SHIFT) \
 )
+
+#define HCL_OBJ_FLAGS_KERNEL_USER     0  /* not a kernel object */
+#define HCL_OBJ_FLAGS_KERNEL_IMMATURE 1  /* incomplete kernel object. defined in gc.c for bootstrapping. but no complete class definition has been read */
+#define HCL_OBJ_FLAGS_KERNEL_MATURE   2  /* kernel  object with its full class defintion read in */
 
 #define HCL_OBJ_HEADER \
 	hcl_oow_t _flags; \
@@ -836,7 +850,7 @@ struct hcl_process_scheduler_t
 };
 
 
-#define HCL_CLASS_NAMED_INSTVARS 7
+#define HCL_CLASS_NAMED_INSTVARS 9
 typedef struct hcl_class_t hcl_class_t;
 typedef struct hcl_class_t* hcl_oop_class_t;
 struct hcl_class_t
@@ -845,10 +859,13 @@ struct hcl_class_t
 
 	hcl_oop_t mdic; /* method dictionary. nil or a dictionary object */
 
+	hcl_oop_t spec;     /* SmallInteger. instance specification */
+	hcl_oop_t selfspec; /* SmallInteger. specification of the class object itself */
+
 	hcl_oop_t superclass;
-	hcl_oop_t nivars; /* smooi. */
-	hcl_oop_t ncvars; /* smooi. */
-	hcl_oop_t nivars_super; /* smooi */
+	hcl_oop_t nivars; /* SmallInteger. */
+	hcl_oop_t ncvars; /* SmallInteger. */
+	hcl_oop_t nivars_super; /* SmallInteger */
 
 	hcl_oop_char_t ivarnames;
 	hcl_oop_char_t cvarnames;
@@ -1982,7 +1999,6 @@ enum hcl_syncode_t
 	HCL_SYNCODE_TRY,
 	HCL_SYNCODE_UNTIL,
 	HCL_SYNCODE_WHILE
-
 };
 typedef enum hcl_syncode_t hcl_syncode_t;
 

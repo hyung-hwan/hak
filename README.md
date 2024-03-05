@@ -98,7 +98,7 @@ do { | k | set k 20; printf "k=%d\n" k; };
 
 ```
 (defclass T
-        :: | A B C | ; class variables
+        :: | A B C | ## class variables
 
         (printf "initializing....\n")
 
@@ -142,7 +142,7 @@ do { | k | set k 20; printf "k=%d\n" k; };
 (defun x(a b ... :: x y z)
         |i|
 
-;       (printf "VA_COUNT(x) = %d\n" (va-count))
+##       (printf "VA_COUNT(x) = %d\n" (va-count))
         (set x "xxx")
         (set y "yyy")
         (set z "zzz")
