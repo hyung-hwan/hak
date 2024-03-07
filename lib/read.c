@@ -51,7 +51,7 @@ static struct voca_t
 	{  5, { '#','\\','t','a','b'                                          } },
 	{  6, { '#','\\','v','t','a','b'                                      } },
 
-	{  4, { 'n','u','l','l'                                               } },
+	{  3, { 'n','i','l'                                                   } },
 	{  4, { 't','r','u','e'                                               } },
 	{  5, { 'f','a','l','s','e'                                           } },
 	{  4, { 's','e','l','f'                                               } },
@@ -92,7 +92,7 @@ enum voca_id_t
 	VOCA_CHAR_TAB,
 	VOCA_CHAR_VTAB,
 
-	VOCA_KW_NULL,
+	VOCA_KW_NIL,
 	VOCA_KW_TRUE,
 	VOCA_KW_FALSE,
 	VOCA_KW_SELF,
@@ -436,7 +436,7 @@ static hcl_tok_type_t classify_ident_token (hcl_t* hcl, const hcl_oocs_t* v)
 		hcl_tok_type_t type;
 	} tab[] =
 	{
-		{ VOCA_KW_NULL,  HCL_TOK_NIL    },
+		{ VOCA_KW_NIL,   HCL_TOK_NIL    },
 		{ VOCA_KW_TRUE,  HCL_TOK_TRUE   },
 		{ VOCA_KW_FALSE, HCL_TOK_FALSE  },
 		{ VOCA_KW_SELF,  HCL_TOK_SELF   },
@@ -3489,8 +3489,8 @@ static int init_compiler (hcl_t* hcl)
 
 	/* initialize the internal cons to represent a cell pointing to `null` in the `car` part */
 	hcl->c->fake_cnode.nil.cn_type = HCL_CNODE_NIL;
-	hcl->c->fake_cnode.nil.cn_tok.ptr = vocas[VOCA_KW_NULL].str;
-	hcl->c->fake_cnode.nil.cn_tok.len = vocas[VOCA_KW_NULL].len;
+	hcl->c->fake_cnode.nil.cn_tok.ptr = vocas[VOCA_KW_NIL].str;
+	hcl->c->fake_cnode.nil.cn_tok.len = vocas[VOCA_KW_NIL].len;
 
 	hcl->c->fake_cnode.cons_to_nil.cn_type = HCL_CNODE_CONS;
 	hcl->c->fake_cnode.cons_to_nil.u.cons.car = &hcl->c->fake_cnode.nil;

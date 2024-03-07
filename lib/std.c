@@ -306,7 +306,7 @@ struct xtn_t
 	struct
 	{
 		int fd;
-		int fd_flag; /* bitwise OR'ed fo logfd_flag_t bits */
+		int fd_flags; /* bitwise OR'ed fo logfd_flag_t bits */
 
 		struct
 		{
@@ -447,7 +447,9 @@ static hcl_mmgr_t sys_mmgr =
 enum logfd_flag_t
 {
 	LOGFD_TTY = (1 << 0),
-	LOGFD_OPENED_HERE = (1 << 1)
+	LOGFD_OPENED_HERE = (1 << 1),
+	LOGFD_STDERR_TTY = (1 << 2),
+	LOGFD_STDOUT_TTY = (1 << 3)
 };
 
 static int write_all (int fd, const hcl_bch_t* ptr, hcl_oow_t len)
@@ -551,14 +553,24 @@ static void log_write (hcl_t* hcl, hcl_bitmask_t mask, const hcl_ooch_t* msg, hc
 
 	xtn_t* xtn = GET_XTN(hcl);
 	int logfd;
+	int is_tty;
 	int force_flush = 0;
 
-	if (mask & HCL_LOG_STDERR) logfd = 2;
-	else if (mask & HCL_LOG_STDOUT) logfd = 1;
+	if (mask & HCL_LOG_STDERR)
+	{
+		logfd = STDERR_FILENO;
+		is_tty = !!(xtn->log.fd_flags & LOGFD_STDERR_TTY);
+	}
+	else if (mask & HCL_LOG_STDOUT)
+	{
+		logfd = STDOUT_FILENO;
+		is_tty = !!(xtn->log.fd_flags & LOGFD_STDOUT_TTY);
+	}
 	else
 	{
 		logfd = xtn->log.fd;
 		if (logfd <= -1) return;
+		is_tty = !!(xtn->log.fd_flags & LOGFD_TTY);
 	}
 
 /* TODO: beautify the log message.
@@ -621,7 +633,7 @@ static void log_write (hcl_t* hcl, hcl_bitmask_t mask, const hcl_ooch_t* msg, hc
 		write_log (hcl, logfd, ts, tslen);
 	}
 
-	if (logfd == xtn->log.fd && (xtn->log.fd_flag & LOGFD_TTY))
+	if (is_tty)
 	{
 		if (mask & HCL_LOG_FATAL) write_log (hcl, logfd, "\x1B[1;31m", 7);
 		else if (mask & HCL_LOG_ERROR) write_log (hcl, logfd, "\x1B[1;32m", 7);
@@ -675,7 +687,7 @@ static void log_write (hcl_t* hcl, hcl_bitmask_t mask, const hcl_ooch_t* msg, hc
 	write_log (hcl, logfd, msg, len);
 #endif
 
-	if (logfd == xtn->log.fd && (xtn->log.fd_flag & LOGFD_TTY))
+	if (is_tty)
 	{
 		if (mask & (HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN)) write_log (hcl, logfd, "\x1B[0m", 4);
 	}
@@ -958,7 +970,7 @@ static void backtrace_stack_frames (hcl_t* hcl)
 	unw_getcontext(&context);
 	unw_init_local(&cursor, &context);
 
-	hcl_logbfmt (hcl, HCL_LOG_UNTYPED | HCL_LOG_DEBUG, "[BACKTRACE]\n");
+	hcl_logbfmt (hcl, HCL_LOG_STDERR | HCL_LOG_UNTYPED | HCL_LOG_DEBUG, "[BACKTRACE]\n");
 	for (n = 0; unw_step(&cursor) > 0; n++)
 	{
 		unw_word_t ip, sp, off;
@@ -972,7 +984,7 @@ static void backtrace_stack_frames (hcl_t* hcl)
 			hcl_copy_bcstr (symbol, HCL_COUNTOF(symbol), "<unknown>");
 		}
 
-		hcl_logbfmt (hcl, HCL_LOG_UNTYPED | HCL_LOG_DEBUG,
+		hcl_logbfmt (hcl, HCL_LOG_STDERR | HCL_LOG_UNTYPED | HCL_LOG_DEBUG,
 			"#%02d ip=0x%*p sp=0x%*p %hs+0x%zu\n",
 			n, HCL_SIZEOF(void*) * 2, (void*)ip, HCL_SIZEOF(void*) * 2, (void*)sp, symbol, (hcl_oow_t)off);
 	}
@@ -990,11 +1002,11 @@ static void backtrace_stack_frames (hcl_t* hcl)
 	if (btsyms)
 	{
 		hcl_oow_t i;
-		hcl_logbfmt (hcl, HCL_LOG_UNTYPED | HCL_LOG_DEBUG, "[BACKTRACE]\n");
+		hcl_logbfmt (hcl, HCL_LOG_STDERR | HCL_LOG_UNTYPED | HCL_LOG_DEBUG, "[BACKTRACE]\n");
 
 		for (i = 0; i < btsize; i++)
 		{
-			hcl_logbfmt (hcl, HCL_LOG_UNTYPED | HCL_LOG_DEBUG, "  %hs\n", btsyms[i]);
+			hcl_logbfmt (hcl, HCL_LOG_STDERR | HCL_LOG_UNTYPED | HCL_LOG_DEBUG, "  %hs\n", btsyms[i]);
 		}
 		free (btsyms);
 	}
@@ -1008,7 +1020,7 @@ static void backtrace_stack_frames (hcl_t* hcl)
 
 static void _assertfail (hcl_t* hcl, const hcl_bch_t* expr, const hcl_bch_t* file, hcl_oow_t line)
 {
-	hcl_logbfmt (hcl, HCL_LOG_UNTYPED | HCL_LOG_FATAL, "ASSERTION FAILURE: %hs at %hs:%zu\n", expr, file, line);
+	hcl_logbfmt (hcl, HCL_LOG_STDERR | HCL_LOG_UNTYPED | HCL_LOG_FATAL, "ASSERTION FAILURE: %hs at %hs:%zu\n", expr, file, line);
 	backtrace_stack_frames (hcl);
 
 #if defined(_WIN32)
@@ -2810,21 +2822,23 @@ static void* dl_getsym (hcl_t* hcl, void* handle, const hcl_ooch_t* name)
 static HCL_INLINE void reset_log_to_default (xtn_t* xtn)
 {
 #if defined(ENABLE_LOG_INITIALLY)
-	xtn->log.fd = 2;
-	xtn->log.fd_flag = 0;
+	xtn->log.fd = STDERR_FILENO;
+	xtn->log.fd_flags = 0;
 	#if defined(HAVE_ISATTY)
-	if (isatty(xtn->log.fd)) xtn->log.fd_flag |= LOGFD_TTY;
+	if (isatty(xtn->log.fd)) xtn->log.fd_flags |= LOGFD_TTY;
 	#endif
 #else
 	xtn->log.fd = -1;
-	xtn->log.fd_flag = 0;
+	xtn->log.fd_flags = 0;
 #endif
+	if (isatty(STDERR_FILENO)) xtn->log.fd_flags |= LOGFD_STDERR_TTY;
+	if (isatty(STDOUT_FILENO)) xtn->log.fd_flags |= LOGFD_STDOUT_TTY;
 }
 
 static void cb_fini (hcl_t* hcl)
 {
 	xtn_t* xtn = GET_XTN(hcl);
-	if ((xtn->log.fd_flag & LOGFD_OPENED_HERE) && xtn->log.fd >= 0) close (xtn->log.fd);
+	if ((xtn->log.fd_flags & LOGFD_OPENED_HERE) && xtn->log.fd >= 0) close (xtn->log.fd);
 	reset_log_to_default (xtn);
 }
 
@@ -2851,12 +2865,18 @@ static void cb_opt_set (hcl_t* hcl, hcl_option_t id, const void* value)
 	}
 	else
 	{
-		if ((xtn->log.fd_flag & LOGFD_OPENED_HERE) && xtn->log.fd >= 0) close (xtn->log.fd);
+		if ((xtn->log.fd_flags & LOGFD_OPENED_HERE) && xtn->log.fd >= 0) close (xtn->log.fd);
 
 		xtn->log.fd = fd;
-		xtn->log.fd_flag = LOGFD_OPENED_HERE;
+		xtn->log.fd_flags &= ~LOGFD_TTY;
+		xtn->log.fd_flags |= LOGFD_OPENED_HERE;
 	#if defined(HAVE_ISATTY)
-		if (isatty(xtn->log.fd)) xtn->log.fd_flag |= LOGFD_TTY;
+		if (isatty(xtn->log.fd))
+		{
+			xtn->log.fd_flags |= LOGFD_TTY;
+			if (fd == STDERR_FILENO) xtn->log.fd_flags |= LOGFD_STDERR_TTY;
+			else if (fd == STDOUT_FILENO) xtn->log.fd_flags |= LOGFD_STDOUT_TTY;
+		}
 	#endif
 	}
 }

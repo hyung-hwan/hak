@@ -302,7 +302,7 @@ enum hcl_obj_type_t
 
 /* NOTE: you can have HCL_OBJ_SHORT, HCL_OBJ_INT
  * HCL_OBJ_LONG, HCL_OBJ_FLOAT, HCL_OBJ_DOUBLE, etc
- * type type field being 6 bits long, you can have up to 64 different types.
+ * type field being 6 bits long, you can have up to 64 different types.
 
 	HCL_OBJ_TYPE_SHORT,
 	HCL_OBJ_TYPE_INT,
@@ -674,17 +674,24 @@ struct hcl_context_t
 	hcl_oop_t          slot[1]; /* arguments, return variables, local variables, other arguments, etc */
 };
 
-#define HCL_PROCESS_NAMED_INSTVARS 15
+#define HCL_PROCESS_NAMED_INSTVARS (15)
 typedef struct hcl_process_t hcl_process_t;
 typedef struct hcl_process_t* hcl_oop_process_t;
 
-#define HCL_SEMAPHORE_NAMED_INSTVARS 11
+#define HCL_SEMAPHORE_NAMED_INSTVARS (11)
 typedef struct hcl_semaphore_t hcl_semaphore_t;
 typedef struct hcl_semaphore_t* hcl_oop_semaphore_t;
 
-#define HCL_SEMAPHORE_GROUP_NAMED_INSTVARS 8
+#define HCL_SEMAPHORE_GROUP_NAMED_INSTVARS (8)
 typedef struct hcl_semaphore_group_t hcl_semaphore_group_t;
 typedef struct hcl_semaphore_group_t* hcl_oop_semaphore_group_t;
+
+
+#define HCL_PROCESS_STATE_RUNNING (3)
+#define HCL_PROCESS_STATE_WAITING (2)
+#define HCL_PROCESS_STATE_RUNNABLE (1)
+#define HCL_PROCESS_STATE_SUSPENDED (0)
+#define HCL_PROCESS_STATE_TERMINATED (-1)
 
 struct hcl_process_t
 {
@@ -850,7 +857,7 @@ struct hcl_process_scheduler_t
 };
 
 
-#define HCL_CLASS_NAMED_INSTVARS 9
+#define HCL_CLASS_NAMED_INSTVARS 10
 typedef struct hcl_class_t hcl_class_t;
 typedef struct hcl_class_t* hcl_oop_class_t;
 struct hcl_class_t
@@ -866,6 +873,7 @@ struct hcl_class_t
 	hcl_oop_t nivars; /* SmallInteger. */
 	hcl_oop_t ncvars; /* SmallInteger. */
 	hcl_oop_t nivars_super; /* SmallInteger */
+	hcl_oop_t ibrand; /* SmallInteger */
 
 	hcl_oop_char_t ivarnames;
 	hcl_oop_char_t cvarnames;
@@ -925,6 +933,14 @@ struct hcl_class_t
  */
 #define HCL_BRANDOF(hcl,oop) \
 	(HCL_OOP_GET_TAG(oop)? ((hcl)->tagged_brands[HCL_OOP_GET_TAG(oop)]): HCL_OBJ_GET_FLAGS_BRAND(oop))
+
+/**
+ * The HCL_CLASSOF() macro return the class of an object including a numeric
+ * object encoded into a pointer.
+ */
+#define HCL_CLASSOF(hcl,oop) \
+	(HCL_OOP_GET_TAG(oop)? ((hcl_oop_t)(*(hcl)->tagged_classes[HCL_OOP_GET_TAG(oop)])): HCL_OBJ_GET_CLASS(oop))
+
 
 /**
  * The HCL_BYTESOF() macro returns the size of the payload of
@@ -1739,6 +1755,8 @@ struct hcl_t
 	 * because the 2 high extended bits are used only if the low tag bits
 	 * are 3 */
 	int tagged_brands[16];
+	hcl_oop_class_t* tagged_classes[16];
+
 
 	hcl_oop_t* volat_stack[256]; /* stack for temporaries */
 	hcl_oow_t volat_count;
@@ -1934,7 +1952,7 @@ struct hcl_t
  * ========================================================================= */
 enum hcl_brand_t
 {
-	HCL_BRAND_SMOOI = 1, /* never used as a small integer is encoded in an object pointer */
+	HCL_BRAND_SMOOI = 1, /* never used because a small integer is encoded in an object pointer */
 	HCL_BRAND_SMPTR,
 	HCL_BRAND_ERROR,
 	HCL_BRAND_CHARACTER,
@@ -2034,6 +2052,7 @@ typedef enum hcl_concode_t hcl_concode_t;
 #define HCL_IS_CONS(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_CONS)
 #define HCL_IS_CONS_CONCODED(hcl,v,concode) (HCL_IS_CONS(hcl,v) && HCL_OBJ_GET_FLAGS_SYNCODE(v) == (concode))
 #define HCL_IS_ARRAY(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_ARRAY)
+/*#define HCL_IS_ARRAY(hcl,v) (HCL_CLASSOF(hcl,v) == hcl->c_array) TODO: change to check the class instead?? remove brands?? */
 #define HCL_IS_BYTEARRAY(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_BYTE_ARRAY)
 #define HCL_IS_DIC(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_DIC)
 #define HCL_IS_PRIM(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_PRIM)

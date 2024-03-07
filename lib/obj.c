@@ -256,12 +256,34 @@ hcl_oop_t hcl_allocwordobj (hcl_t* hcl, int brand, const hcl_oow_t* ptr, hcl_oow
 
 hcl_oop_t hcl_makeundef (hcl_t* hcl)
 {
-	return hcl_allocoopobj(hcl, HCL_BRAND_UNDEF, 0);
+	hcl_oop_t o;
+	o = hcl_allocoopobj(hcl, HCL_BRAND_UNDEF, 0);
+	if (HCL_LIKELY(o))
+	{
+		HCL_OBJ_SET_FLAGS_KERNEL(o, 1);
+	}
+	else
+	{
+		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make undef - %js", orgmsg);
+	}
+	return o;
 }
 
 hcl_oop_t hcl_makenil (hcl_t* hcl)
 {
-	return hcl_allocoopobj(hcl, HCL_BRAND_NIL, 0);
+	hcl_oop_t o;
+	o = hcl_allocoopobj(hcl, HCL_BRAND_NIL, 0);
+	if (HCL_LIKELY(o))
+	{
+		HCL_OBJ_SET_FLAGS_KERNEL(o, 1);
+	}
+	else
+	{
+		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make nil - %js", orgmsg);
+	}
+	return o;
 }
 
 hcl_oop_t hcl_maketrue (hcl_t* hcl)
@@ -407,7 +429,11 @@ hcl_oop_t hcl_makeclass (hcl_t* hcl, hcl_oop_t superclass, hcl_ooi_t nivars, hcl
 	hcl_pushvolat (hcl, &superclass);
 	hcl_pushvolat (hcl, &ivars_str);
 	hcl_pushvolat (hcl, &cvars_str);
+#if 0
 	c = (hcl_oop_class_t)hcl_allocoopobj(hcl, HCL_BRAND_CLASS, HCL_CLASS_NAMED_INSTVARS + ncvars);
+#else
+	c = (hcl_oop_class_t)hcl_instantiate(hcl, hcl->c_class, HCL_NULL, ncvars);
+#endif
 	hcl_popvolats (hcl, 3);
 	if (HCL_UNLIKELY(!c))
 	{
@@ -415,12 +441,14 @@ hcl_oop_t hcl_makeclass (hcl_t* hcl, hcl_oop_t superclass, hcl_ooi_t nivars, hcl
 		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make class - %js", orgmsg);
 		return HCL_NULL;
 	}
+	HCL_OBJ_SET_CLASS (c, (hcl_oop_t)hcl->c_class);
 
-	c->spec = HCL_SMOOI_TO_OOP(0); /* TODO: fix this */
-	c->selfspec = HCL_SMOOI_TO_OOP(0); /* TODO: fix  this */
+	c->spec = HCL_SMOOI_TO_OOP(0); /* TODO: fix this - encode nivars and nivars_super to spec??? */
+	c->selfspec = HCL_SMOOI_TO_OOP(0); /* TODO: fix  this - encode ncvars to selfspec??? */
 	c->superclass = superclass;
 	c->nivars = HCL_SMOOI_TO_OOP(nivars);
 	c->ncvars = HCL_SMOOI_TO_OOP(ncvars);
+	c->ibrand = HCL_SMOOI_TO_OOP(HCL_BRAND_INSTANCE); /* TODO: really need ibrand??? */
 
 	if ((hcl_oop_t)superclass != hcl->_nil)
 	{
@@ -439,6 +467,7 @@ hcl_oop_t hcl_makeclass (hcl_t* hcl, hcl_oop_t superclass, hcl_ooi_t nivars, hcl
 	return (hcl_oop_t)c;
 }
 
+#if 0
 static HCL_INLINE int decode_spec (hcl_t* hcl, hcl_oop_class_t _class, hcl_obj_type_t* type, hcl_oow_t* outlen)
 {
 	/* TODO: */
@@ -447,6 +476,62 @@ static HCL_INLINE int decode_spec (hcl_t* hcl, hcl_oop_class_t _class, hcl_obj_t
 	*outlen = HCL_OOP_TO_SMOOI(_class->nivars_super) + HCL_OOP_TO_SMOOI(_class->nivars);
 	return 0;
 }
+#else
+
+static HCL_INLINE int decode_spec (hcl_t* hcl, hcl_oop_class_t _class, hcl_oow_t num_flexi_fields, hcl_obj_type_t* type, hcl_oow_t* outlen)
+{
+	hcl_oow_t spec;
+	hcl_oow_t num_fixed_fields;
+	hcl_obj_type_t indexed_type;
+
+	HCL_ASSERT (hcl, HCL_OOP_IS_POINTER(_class));
+	HCL_ASSERT (hcl, HCL_CLASSOF(hcl, _class) == (hcl_oop_t)hcl->c_class);
+
+	HCL_ASSERT (hcl, HCL_OOP_IS_SMOOI(_class->spec));
+	spec = HCL_OOP_TO_SMOOI(_class->spec);
+
+	num_fixed_fields = HCL_CLASS_SPEC_NAMED_INSTVARS(spec);
+	HCL_ASSERT (hcl, num_fixed_fields <= HCL_MAX_NAMED_INSTVARS);
+
+	if (HCL_CLASS_SPEC_IS_INDEXED(spec))
+	{
+		indexed_type = HCL_CLASS_SPEC_INDEXED_TYPE(spec);
+
+		/* the number of the fixed fields for a non-pointer object are supported.
+		 * the fixed fields of a pointer object holds named instance variables
+		 * and a non-pointer object is facilitated with the fixed fields of the size
+		 * specified in the class description like #byte(5), #word(10).
+		 *
+		 * when it comes to spec decoding, there is no difference between a pointer
+		 * object and a non-pointer object */
+
+		if (num_flexi_fields > HCL_MAX_INDEXED_INSTVARS(num_fixed_fields))
+		{
+			hcl_seterrbfmt (hcl, HCL_EINVAL, "number of flexi-fields(%zu) too big for a class %O", num_flexi_fields, _class);
+			return -1;
+		}
+	}
+	else
+	{
+		/* named instance variables only. treat it as if it is an
+		 * indexable class with no variable data */
+		indexed_type = HCL_OBJ_TYPE_OOP;
+
+		if (num_flexi_fields > 0)
+		{
+			hcl_seterrbfmt (hcl, HCL_EPERM, "flexi-fields(%zu) disallowed for a class %O", num_flexi_fields, _class);
+			return -1;
+		}
+	}
+
+	HCL_ASSERT (hcl, num_fixed_fields + num_flexi_fields <= HCL_OBJ_SIZE_MAX);
+	*type = indexed_type;
+
+	/* TODO: THIS PART IS WRONG.. nivars_super and nivars should be encoded to the spec.... */
+	*outlen = num_fixed_fields + num_flexi_fields + HCL_OOP_TO_SMOOI(_class->nivars_super) + HCL_OOP_TO_SMOOI(_class->nivars);
+	return 0;
+}
+#endif
 
 hcl_oop_t hcl_instantiate (hcl_t* hcl, hcl_oop_class_t _class, const void* vptr, hcl_oow_t vlen)
 {
@@ -457,7 +542,7 @@ hcl_oop_t hcl_instantiate (hcl_t* hcl, hcl_oop_class_t _class, const void* vptr,
 
 	HCL_ASSERT (hcl, hcl->_nil != HCL_NULL);
 
-	if (decode_spec(hcl, _class, &type, &alloclen) <= -1) return HCL_NULL;
+	if (decode_spec(hcl, _class, vlen, &type, &alloclen) <= -1) return HCL_NULL;
 
 	hcl_pushvolat (hcl, (hcl_oop_t*)&_class); tmp_count++;
 
@@ -522,6 +607,7 @@ hcl_oop_t hcl_instantiate (hcl_t* hcl, hcl_oop_class_t _class, const void* vptr,
 			oop = hcl_allocwordobj(hcl, HCL_BRAND_INSTANCE, vptr, alloclen);
 			break;
 
+		/* TODO: more types... HCL_OBJ_TYPE_INT... HCL_OBJ_TYPE_FLOAT, HCL_OBJ_TYPE_UINT16, etc*/
 		default:
 			hcl_seterrnum (hcl, HCL_EINTERN);
 			oop = HCL_NULL;
@@ -539,6 +625,7 @@ hcl_oop_t hcl_instantiate (hcl_t* hcl, hcl_oop_class_t _class, const void* vptr,
 		if (HCL_CLASS_SPEC_IS_IMMUTABLE(spec)) HCL_OBJ_SET_FLAGS_RDONLY (oop, 1);
 		if (HCL_CLASS_SPEC_IS_UNCOPYABLE(spec)) HCL_OBJ_SET_FLAGS_UNCOPYABLE (oop, 1);
 	#endif
+		HCL_OBJ_SET_FLAGS_BRAND(oop, HCL_OOP_TO_SMOOI(_class->ibrand));
 	}
 	hcl_popvolats (hcl, tmp_count);
 	return oop;

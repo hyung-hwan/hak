@@ -84,7 +84,7 @@ static hcl_oop_t find_or_make_symbol (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow
 {
 	hcl_ooi_t tally;
 	hcl_oow_t index;
-	hcl_oop_char_t symbol;
+	hcl_oop_char_t sym;
 
 	HCL_ASSERT (hcl, len > 0);
 	if (len <= 0)
@@ -100,13 +100,13 @@ static hcl_oop_t find_or_make_symbol (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow
 	/* find a matching symbol in the open-addressed symbol table */
 	while (hcl->symtab->bucket->slot[index] != hcl->_nil)
 	{
-		symbol = (hcl_oop_char_t)hcl->symtab->bucket->slot[index];
-		HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl, symbol));
+		sym = (hcl_oop_char_t)hcl->symtab->bucket->slot[index];
+		HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl, sym));
 
-		if (len == HCL_OBJ_GET_SIZE(symbol) &&
-		    hcl_equal_oochars (ptr, symbol->slot, len))
+		if (len == HCL_OBJ_GET_SIZE(sym) &&
+		    hcl_equal_oochars (ptr, sym->slot, len))
 		{
-			return (hcl_oop_t)symbol;
+			return (hcl_oop_t)sym;
 		}
 
 		index = (index + 1) % HCL_OBJ_GET_SIZE(hcl->symtab->bucket);
@@ -158,15 +158,20 @@ static hcl_oop_t find_or_make_symbol (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow
 	}
 
 	/* create a new symbol since it isn't found in the symbol table */
-	symbol = (hcl_oop_char_t)hcl_alloccharobj(hcl, HCL_BRAND_SYMBOL, ptr, len);
-	if (symbol)
+	/*sym = (hcl_oop_char_t)hcl_alloccharobj(hcl, HCL_BRAND_SYMBOL, ptr, len);*/
+     sym = (hcl_oop_char_t)hcl_instantiate(hcl, hcl->c_symbol, ptr, len);
+	if (HCL_LIKELY(sym))
 	{
 		HCL_ASSERT (hcl, tally < HCL_SMOOI_MAX);
 		hcl->symtab->tally = HCL_SMOOI_TO_OOP(tally + 1);
-		hcl->symtab->bucket->slot[index] = (hcl_oop_t)symbol;
+		hcl->symtab->bucket->slot[index] = (hcl_oop_t)sym;
 	}
-
-	return (hcl_oop_t)symbol;
+	else
+	{
+		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make symbol - %.*js - %js", len, ptr, orgmsg);
+	}
+	return (hcl_oop_t)sym;
 }
 
 hcl_oop_t hcl_makesymbol (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_t len)
