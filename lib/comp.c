@@ -4497,7 +4497,6 @@ redo:
 					if (compile_cons_mlist_expression(hcl, oprnd, 0) <= -1) return -1;
 					break;
 
-
 				case HCL_CONCODE_BLOCK:
 					if (!(hcl->option.trait & HCL_TRAIT_LANG_ENABLE_BLOCK))
 					{

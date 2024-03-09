@@ -49,6 +49,9 @@ if (eqv? J 1296) {
 }
 
 
-
+k := 5
+if { q := 10; k < q } {  ## a block expression is a normal expression. so t can be used as a conditional expression for if
+	printf "OK: k is less than q\n"
+} else (printf "BAD: k is not less than q\n")
 
 }  ## END

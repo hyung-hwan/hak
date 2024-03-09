@@ -20,7 +20,7 @@ defun mkfun(t) {
 	});
 }
 
-defun mkfund(t) {
+defun mkfun2(t) {
 	return {fun(c) {
 		return (fun(d) {
 			return (+ d c t)
@@ -55,7 +55,7 @@ if (k = 60) {
 	printf "ERROR - %d\n" k
 };
 
-k := (((mkfund 10) 40) 30)
+k := (((mkfun2 10) 40) 30)
 if (k = 80) {
 	printf "OK - %d\n" k
 } else {
