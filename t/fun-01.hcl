@@ -23,8 +23,7 @@ defun mkfun(t) {
 defun mkfund(t) {
 	return {fun(c) {
 		return (fun(d) {
-			##return (d + c t) ## this causes assertion failure.
-			return (d + c t)
+			return (+ d c t)
 		})
 	}}
 }
@@ -47,10 +46,8 @@ if (k = 50) {
 };
 
 k := {
-	## the return value of this expression is ignored
-	(mkfun 20) 30  ## having comment here cause an issue...
-	## the return value of this expression is the return value of the block expression
-	(mkfun 20) 40
+	(mkfun 20) 30 ## the return value of this expression is ignored
+	(mkfun 20) 40 ## the return value of this expression is the return value of the block expression
 }
 if (k = 60) {
 	printf "OK - %d\n" k

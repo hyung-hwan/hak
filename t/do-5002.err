@@ -1,8 +1,0 @@
-## if `do` is not enclosed in `( )`, it supports only the limited number of expressions.
-
-do ; ## this is ok
-
-do 1; ## this is ok
-
-do { set k 10; printf "k=%d\n" k; } ##ERROR: syntax error - more than one expression after do
-   { set k 20; printf "k=%d\n" k; }; 

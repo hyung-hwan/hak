@@ -86,3 +86,7 @@ defun :: fun1() { ##ERROR: syntax error - function name not symbol in defun
 defun :* fun1() { ##ERROR: syntax error - function name not symbol in defun
 	return 10;
 };
+
+---
+
+(10 + 20 30) ##ERROR: syntax error - too many operands

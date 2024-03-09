@@ -541,7 +541,7 @@ static HCL_INLINE int enter_list (hcl_t* hcl, const hcl_loc_t* loc, int flagv)
 static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int* flagv, int* oldflagv)
 {
 	hcl_rstl_t* rstl;
-	hcl_cnode_t* head;
+	hcl_cnode_t* head, * tail;
 	hcl_oow_t count;
 	hcl_loc_t loc;
 	int fv, concode;
@@ -551,6 +551,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 	rstl = hcl->c->r.st; /* get the stack top */
 
 	head = rstl->head;
+	tail = rstl->tail;
 	count = rstl->count;
 	fv = rstl->flagv;
 	loc = rstl->loc;
@@ -707,8 +708,21 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 				return HCL_NULL;
 			}
 
-/* TODO: support multiple operators and operands .. like 1 + 2 - 3.. -> currently can_binop_list() disallows more operators */
-			HCL_ASSERT (hcl, count == 3);
+/* TODO: support multiple operators and operands .. like 1 + 2 - 3
+currently can_binop_list() disallows more operators.
+but the check isn't complemete if more operands are added without an operator e.g. (1 + 2 3)
+*/
+			/*HCL_ASSERT (hcl, count == 3);*/
+			if (count != 3)
+			{
+				/* Currently, the implementation supports two operands and a single binop in an expression.
+				* If the implementation is enhanced to support more than one binop and more operands,
+				* this check must be removed. */
+				/* TODO: support more than two operands */
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGFLOOD, HCL_CNODE_GET_LOC(tail), HCL_CNODE_GET_TOK(tail), "too many operands");
+				if (head) hcl_freecnode (hcl, head);
+				return HCL_NULL;
+			}
 
 			HCL_CNODE_CONS_CDR(head) = HCL_CNODE_CONS_CDR(binop);
 			HCL_CNODE_CONS_CDR(binop) = head;
@@ -1542,9 +1556,12 @@ static int feed_process_token (hcl_t* hcl)
 			}
 #endif
 			frd->obj = leave_list(hcl, &frd->list_loc, &frd->flagv, &oldflagv);
-			frd->level--;
-			frd->flagv |= AT_BEGINNING;
-			list_loc = &frd->list_loc;
+			if (HCL_LIKELY(frd->obj))
+			{
+				frd->level--;
+				frd->flagv |= AT_BEGINNING;
+				list_loc = &frd->list_loc;
+			}
 			break;
 		}
 
@@ -2104,7 +2121,16 @@ static int flx_backslashed (hcl_t* hcl, hcl_ooci_t c)
 
 static int flx_comment (hcl_t* hcl, hcl_ooci_t c)
 {
-	if (is_linebreak(c)) FEED_CONTINUE (hcl, HCL_FLX_START);
+	if (is_linebreak(c))
+	{
+		FEED_CONTINUE (hcl, HCL_FLX_START);
+		/* don't consume the line break together with the comment text
+		 * if a comment text is located at the back of the line in the
+		 * LANG_ENABLE_EOL mode.
+		 * TODO: Consider removing this check because not consuming it
+		 *       in another mode doesn't cause a problem. */
+		if ((hcl->option.trait & HCL_TRAIT_LANG_ENABLE_EOL)) return 0; /* not consumed */
+	}
 	return 1; /* consumed */
 }
 
