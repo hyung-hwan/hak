@@ -18,7 +18,16 @@ defun mkfun(t) {
 	return (fun(c) {
 		return (+ t c);
 	});
-};
+}
+
+defun mkfund(t) {
+	return {fun(c) {
+		return (fun(d) {
+			##return (d + c t) ## this causes assertion failure.
+			return (d + c t)
+		})
+	}}
+}
 
 f := (mkfun 20);
 set k (f 50);
@@ -38,7 +47,9 @@ if (k = 50) {
 };
 
 k := {
-	(mkfun 20) 30
+	## the return value of this expression is ignored
+	(mkfun 20) 30  ## having comment here cause an issue...
+	## the return value of this expression is the return value of the block expression
 	(mkfun 20) 40
 }
 if (k = 60) {
@@ -47,6 +58,12 @@ if (k = 60) {
 	printf "ERROR - %d\n" k
 };
 
+k := (((mkfund 10) 40) 30)
+if (k = 80) {
+	printf "OK - %d\n" k
+} else {
+	printf "ERROR - %d\n" k
+};
 ## --------------------------------------
 
 defclass A | a b c | {

@@ -1335,13 +1335,12 @@ static int feed_process_token (hcl_t* hcl)
 		case HCL_TOK_LPAREN: /* ( */
 #if defined(HCL_LANG_AUTO_FORGE_XLIST_ALWAYS)
 			/* with this feature on, you must not enclose an expression with ()
-			 * at the top-level or a the block level. If you do, it is interpreted as
-			 * double exuection, meaning the return value of the expression is
-			 * called again.
-			 *
-			 * (+ 10 20) as a leading expression is like ((+ 10 20)).
+			 * at the beginning of the top-level or at the beginning of a the block level.
+			 * If you do enclose an expression with an outer () there, it is interpreted as
+			 * double calls, meaning the return value of the expression is called again.
+			 * for example, '(+ 10 20)' as a leading expression is like '((+ 10 20))'.
 			 * -------------------------------------------------------------
-			 * However, it can be a bit confusing:
+			 * It is useful but a bit confusing:
 			 *   defun x(a) { return (fun(b) { return (+ a b) }) }
 			 *   printf "%d\n" ((x 10) 20)   ## excplicit outer () is required here
 			 *   (x 10) 30  ## explicit outer () must not be used here
