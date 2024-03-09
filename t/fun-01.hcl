@@ -20,23 +20,41 @@ defun mkfun(t) {
 	});
 };
 
-set f (mkfun 20);
+f := (mkfun 20);
 set k (f 50);
-if (= k 70) {
+if (k = 70) {
 	printf "OK - %d\n" k;
 } else {
 	printf "ERROR - %d\n" k;
 };
 
+k := {
+	(mkfun 20) 30
+}
+if (k = 50) {
+	printf "OK - %d\n" k
+} else {
+	printf "ERROR - %d\n" k
+};
+
+k := {
+	(mkfun 20) 30
+	(mkfun 20) 40
+}
+if (k = 60) {
+	printf "OK - %d\n" k
+} else {
+	printf "ERROR - %d\n" k
+};
 
 ## --------------------------------------
 
 defclass A | a b c | {
 	defun :* newInstance(x y z) {
-		(set a x)
-		(set b y)
-		(set c z)
-		(return self)
+		set a x
+		set b y
+		set c z
+		return self
 	};
 
 	defun get-a() { return a; };

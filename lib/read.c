@@ -25,6 +25,7 @@
 #include "hcl-prv.h"
 
 #define HCL_LANG_ENABLE_WIDE_DELIM
+#define HCL_LANG_AUTO_FORGE_XLIST_ALWAYS
 
 #define BUFFER_ALIGN 128
 #define BALIT_BUFFER_ALIGN 128
@@ -1307,7 +1308,7 @@ static int feed_process_token (hcl_t* hcl)
 			goto start_list;
 
 		case HCL_TOK_LBRACE: /* { */
-			/* this is a block opener itself. auto xlist forge at the block beginning */
+			/* this is a block opener itself. auto xlist forge at the block beginning only */
 			frd->flagv = 0;
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_BLOCK);
 			goto start_list;
@@ -1332,6 +1333,25 @@ static int feed_process_token (hcl_t* hcl)
 		#endif
 
 		case HCL_TOK_LPAREN: /* ( */
+#if defined(HCL_LANG_AUTO_FORGE_XLIST_ALWAYS)
+			/* with this feature on, you must not enclose an expression with ()
+			 * at the top-level or a the block level. If you do, it is interpreted as
+			 * double exuection, meaning the return value of the expression is
+			 * called again.
+			 *
+			 * (+ 10 20) as a leading expression is like ((+ 10 20)).
+			 * -------------------------------------------------------------
+			 * However, it can be a bit confusing:
+			 *   defun x(a) { return (fun(b) { return (+ a b) }) }
+			 *   printf "%d\n" ((x 10) 20)   ## excplicit outer () is required here
+			 *   (x 10) 30  ## explicit outer () must not be used here
+			 *   j := ((x 10) 40) ## explicit outer () is required here
+			 *   k := {
+			 *     (x 10) 50  ## explicit outer () must not be used here
+			 *   }
+			 */
+			if (auto_forge_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;
+#endif
 			frd->flagv = 0;
 			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_XLIST);
 		start_list:
