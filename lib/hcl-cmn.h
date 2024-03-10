@@ -953,6 +953,12 @@ typedef struct hcl_t hcl_t;
 #define HCL_IS_UNALIGNED_POW2(x,y) ((x) & ((y) - 1))
 #define HCL_IS_ALIGNED_POW2(x,y) (!HCL_IS_UNALIGNED_POW2(x,y))
 
+#if defined(__cplusplus) || (defined(__STDC_VERSION__) && (__STDC_VERSION__>=199901L))
+#define HCL_AID(x) [x]=
+#else
+#define HCL_AID(x)
+#endif
+
 /* =========================================================================
  * COMPILER FEATURE TEST MACROS
  * =========================================================================*/

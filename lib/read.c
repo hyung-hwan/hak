@@ -71,6 +71,7 @@ static struct voca_t
 	{  5, { '#','c','[',' ',']' /* CHAR ARRAY */                          } },
 	{  4, { '#','{',' ','}'                                               } },
 	{  4, { '#','(',' ',')'                                               } },
+	{  3, { '[',' ',']' /* TUPLE */                                       } },
 	{  3, { '|',' ','|'                                                   } },
 
 	{  5, { '<','E','O','L','>'                                           } },
@@ -112,6 +113,7 @@ enum voca_id_t
 	VOCA_CHARARRAY,
 	VOCA_DIC,
 	VOCA_QLIST,
+	VOCA_TUPLE,
 	VOCA_VLIST,
 
 	VOCA_EOL,
@@ -149,19 +151,20 @@ static struct
 	int             voca_id;
 } cons_info[] =
 {
-	/*[HCL_CONCODE_XLIST]     =*/ { HCL_TOK_RPAREN, HCL_SYNERR_RPAREN, VOCA_XLIST }, /* XLIST     ( )  */
-	/*[HCL_CONCODE_MLIST]     =*/ { HCL_TOK_RPAREN, HCL_SYNERR_RPAREN, VOCA_MLIST }, /* MLIST     (obj:message) */
-	/*[HCL_CONCODE_ALIST]     =*/ { HCL_TOK_RPAREN, HCL_SYNERR_RPAREN, VOCA_ALIST }, /* ALIST     (var:=value) */
-	/*[HCL_CONCODE_BLIST]     =*/ { HCL_TOK_RPAREN, HCL_SYNERR_RPAREN, VOCA_BLIST }, /* BLIST     (x + y) */
-	/*[HCL_CONCODE_BLOCK]     =*/ { HCL_TOK_RBRACE, HCL_SYNERR_RBRACE, VOCA_BLOCK }, /* BLOCK     { } */
-	/*[HCL_CONCODE_ARRAY]     =*/ { HCL_TOK_RBRACK, HCL_SYNERR_RBRACK, VOCA_ARRAY }, /* ARRAY     #[ ] */
-	/*[HCL_CONCODE_BYTEARRAY] =*/ { HCL_TOK_RBRACK, HCL_SYNERR_RBRACK, VOCA_BYTEARRAY }, /* BYTEARRAY #b[ ] */
-	/*[HCL_CONCODE_CHARARRAY] =*/ { HCL_TOK_RBRACK, HCL_SYNERR_RBRACK, VOCA_CHARARRAY }, /* CHARARRAY #c[ ] */
-	/*[HCL_CONCODE_DIC]       =*/ { HCL_TOK_RBRACE, HCL_SYNERR_RBRACE, VOCA_DIC }, /* DIC       #{ } */
-	/*[HCL_CONCODE_QLIST]     =*/ { HCL_TOK_RPAREN, HCL_SYNERR_RPAREN, VOCA_QLIST }, /* QLIST     #( )  */
+	HCL_AID(HCL_CONCODE_XLIST)     { HCL_TOK_RPAREN, HCL_SYNERR_RPAREN, VOCA_XLIST }, /* XLIST     ( )  */
+	HCL_AID(HCL_CONCODE_MLIST)     { HCL_TOK_RPAREN, HCL_SYNERR_RPAREN, VOCA_MLIST }, /* MLIST     (obj:message) */
+	HCL_AID(HCL_CONCODE_ALIST)     { HCL_TOK_RPAREN, HCL_SYNERR_RPAREN, VOCA_ALIST }, /* ALIST     (var:=value) */
+	HCL_AID(HCL_CONCODE_BLIST)     { HCL_TOK_RPAREN, HCL_SYNERR_RPAREN, VOCA_BLIST }, /* BLIST     (x + y) */
+	HCL_AID(HCL_CONCODE_BLOCK)     { HCL_TOK_RBRACE, HCL_SYNERR_RBRACE, VOCA_BLOCK }, /* BLOCK     { } */
+	HCL_AID(HCL_CONCODE_ARRAY)     { HCL_TOK_RBRACK, HCL_SYNERR_RBRACK, VOCA_ARRAY }, /* ARRAY     #[ ] */
+	HCL_AID(HCL_CONCODE_BYTEARRAY) { HCL_TOK_RBRACK, HCL_SYNERR_RBRACK, VOCA_BYTEARRAY }, /* BYTEARRAY #b[ ] */
+	HCL_AID(HCL_CONCODE_CHARARRAY) { HCL_TOK_RBRACK, HCL_SYNERR_RBRACK, VOCA_CHARARRAY }, /* CHARARRAY #c[ ] */
+	HCL_AID(HCL_CONCODE_DIC)       { HCL_TOK_RBRACE, HCL_SYNERR_RBRACE, VOCA_DIC }, /* DIC       #{ } */
+	HCL_AID(HCL_CONCODE_QLIST)     { HCL_TOK_RPAREN, HCL_SYNERR_RPAREN, VOCA_QLIST }, /* QLIST     #( )  */
+	HCL_AID(HCL_CONCODE_TUPLE)     { HCL_TOK_RBRACK, HCL_SYNERR_RBRACK, VOCA_TUPLE }, /* TUPLE [] */
 
 	/* VLIST's closer and synerr are not used. there is dedicated logic in feed_process_token(). only voca_id is used */
-	/*[HCL_CONCODE_VLIST]     =*/ { HCL_TOK_VBAR,   HCL_SYNERR_VBAR,   VOCA_VLIST }  /* VLIST     | |  */
+	HCL_AID(HCL_CONCODE_VLIST)     { HCL_TOK_VBAR,   HCL_SYNERR_VBAR,   VOCA_VLIST }  /* VLIST     | |  */
 };
 
 static int init_compiler (hcl_t* hcl);
@@ -581,8 +584,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 			err = (fv & COMMAED)? HCL_SYNERR_COMMANOVALUE: HCL_SYNERR_COLONNOVALUE;
 			hcl_setsynerr (hcl, err, TOKEN_LOC(hcl), HCL_NULL);
 		}
-		if (head) hcl_freecnode (hcl, head);
-		return HCL_NULL;
+		goto oops;
 	}
 
 	*list_loc = loc;
@@ -605,7 +607,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 		HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(head));
 
 		/* HACK */
-		if (concode == HCL_CONCODE_ALIST)
+		if (concode == HCL_CONCODE_ALIST) /* assignment list */
 		{
 			/* tranform (var := val) to (set var val)
 			 * - note ALIST doesn't contain the := symbol */
@@ -616,12 +618,10 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 			if (lval && HCL_CNODE_IS_ELIST(lval))
 			{
 				/* invalid lvalue */
-			invalid_lvalue:
 				hcl_setsynerr (hcl, HCL_SYNERR_LVALUE, HCL_CNODE_GET_LOC(lval), HCL_CNODE_GET_TOK(lval));
-				if (head) hcl_freecnode (hcl, head);
-				return HCL_NULL;
+				goto oops;
 			}
-			else if (lval && HCL_CNODE_IS_CONS(lval) && HCL_CNODE_CONS_CONCODE(lval) == HCL_CONCODE_ARRAY)
+			else if (lval && HCL_CNODE_IS_CONS(lval) && HCL_CNODE_CONS_CONCODE(lval) == HCL_CONCODE_TUPLE)
 			{
 				/*
 				 * defun f(a :: b c) { b := (a + 10); c := (a + 20) }
@@ -638,7 +638,11 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 					/* check in avance if the array members are all plain symbols */
 					hcl_cnode_t* lcar;
 					lcar = HCL_CNODE_CONS_CAR(tmp);
-					if (!HCL_CNODE_IS_SYMBOL_PLAIN(lcar)) goto invalid_lvalue;
+					if (!HCL_CNODE_IS_SYMBOL_PLAIN(lcar))
+					{
+						hcl_setsynerrbfmt (hcl, HCL_SYNERR_LVALUE, HCL_CNODE_GET_LOC(lval), HCL_CNODE_GET_TOK(lval), "invalid lvalue - not symbol in tuple");
+						goto oops;
+					}
 				}
 				/* move the array item up to the main list and join the original lval to the end of it
 				 * For [x, y] := (f 9), x and y must be in the same level as set-r after translation.
@@ -657,7 +661,11 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 			}
 			else
 			{
-				if (!HCL_CNODE_IS_SYMBOL_PLAIN(lval)) goto invalid_lvalue;
+				if (!HCL_CNODE_IS_SYMBOL_PLAIN(lval))
+				{
+					hcl_setsynerrbfmt (hcl, HCL_SYNERR_LVALUE, HCL_CNODE_GET_LOC(lval), HCL_CNODE_GET_TOK(lval), "invalid lvalue - not symbol");
+					goto oops;
+				}
 				fake_tok.ptr = vocas[VOCA_SYM_SET].str;
 				fake_tok.len = vocas[VOCA_SYM_SET].len;
 				fake_tok_ptr = &fake_tok;
@@ -672,8 +680,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 				rval = HCL_CNODE_CONS_CAR(rval);
 
 				hcl_setsynerrbfmt (hcl, HCL_SYNERR_RVALUE, HCL_CNODE_GET_LOC(rval), HCL_CNODE_GET_TOK(rval), "too many rvalues after :=");
-				if (head) hcl_freecnode (hcl, head);
-				return HCL_NULL;
+				goto oops;
 			}
 
 			sym = hcl_makecnodesymbol(hcl, 0, &loc, fake_tok_ptr);
@@ -681,8 +688,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 			{
 				const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
 				hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "failed to create symbol cnode for := - %js", orgmsg);
-				if (head) hcl_freecnode (hcl, head);
-				return HCL_NULL;
+				goto oops;
 			}
 
 			/* create a new head joined with set or set-r */
@@ -692,8 +698,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 				const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
 				hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "failed to create cons cnode for := - %js", orgmsg);
 				hcl_freecnode (hcl, sym);
-				if (head) hcl_freecnode (hcl, head);
-				return HCL_NULL;
+				goto oops;
 			}
 
 			head = newhead;
@@ -708,8 +713,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 			if (x && HCL_CNODE_IS_ELIST(x))
 			{
 				hcl_setsynerr (hcl, HCL_SYNERR_LVALUE, HCL_CNODE_GET_LOC(x), HCL_CNODE_GET_TOK(x));
-				if (head) hcl_freecnode (hcl, head);
-				return HCL_NULL;
+				goto oops;
 			}
 
 			/* swap x and binop */
@@ -717,8 +721,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 			if (!binop || !HCL_CNODE_IS_CONS(binop) || !HCL_CNODE_CONS_CDR(binop) || !HCL_CNODE_IS_CONS(HCL_CNODE_CONS_CDR(binop)))
 			{
 				hcl_setsynerrbfmt (hcl, HCL_SYNERR_NOVALUE, HCL_CNODE_GET_LOC(x), HCL_CNODE_GET_TOK(x), "no operand after binary operator");
-				if (head) hcl_freecnode (hcl, head);
-				return HCL_NULL;
+				goto oops;
 			}
 
 /* TODO: support multiple operators and operands .. like 1 + 2 - 3
@@ -733,8 +736,7 @@ but the check isn't complemete if more operands are added without an operator e.
 				* this check must be removed. */
 				/* TODO: support more than two operands */
 				hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGFLOOD, HCL_CNODE_GET_LOC(tail), HCL_CNODE_GET_TOK(tail), "too many operands");
-				if (head) hcl_freecnode (hcl, head);
-				return HCL_NULL;
+				goto oops;
 			}
 
 			HCL_CNODE_CONS_CDR(head) = HCL_CNODE_CONS_CDR(binop);
@@ -759,6 +761,10 @@ but the check isn't complemete if more operands are added without an operator e.
 	}
 
 	return head;
+
+oops:
+	if (head) hcl_freecnode (hcl, head);
+	return HCL_NULL;
 }
 
 static HCL_INLINE int can_dot_list (hcl_t* hcl)
@@ -802,7 +808,7 @@ static HCL_INLINE int can_comma_list (hcl_t* hcl)
 	{
 		if (rstl->count & 1) return 0;
 	}
-	else if (cc != HCL_CONCODE_ARRAY && cc != HCL_CONCODE_BYTEARRAY)
+	else if (cc != HCL_CONCODE_ARRAY && cc != HCL_CONCODE_BYTEARRAY && cc != HCL_CONCODE_TUPLE)
 	{
 		return 0;
 	}
@@ -1323,8 +1329,13 @@ static int feed_process_token (hcl_t* hcl)
 			}
 
 		case HCL_TOK_LBRACK: /* [ */
+			if (auto_forge_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;
+			frd->flagv = DATA_LIST;
+			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_TUPLE);
+			goto start_list;
+
 		case HCL_TOK_APAREN: /* #[ */
-			/* [] is a data list. so let's treat it like other literal
+			/* #[] is a data list. so let's treat it like other literal
 			 * expressions(e.g. 1, "abc"). when it's placed at the block beginning,
 			 * create the outer XLIST. */
 			if (auto_forge_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;

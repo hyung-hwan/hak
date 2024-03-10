@@ -27,7 +27,6 @@
 
 #define PRINT_STACK_ALIGN 128
 
-
 enum
 {
 	PRINT_STACK_CONS,
@@ -214,29 +213,33 @@ int hcl_fmt_object_ (hcl_fmtout_t* fmtout, hcl_oop_t obj)
 
 	static const hcl_bch_t *opening_parens[][2] =
 	{
-		/* navtive   json */
-		{ "(",       "(" },  /*HCL_CONCODE_XLIST */
-		{ "(",       "(" },  /*HCL_CONCODE_MLIST */
-		{ "(",       "(" },  /*HCL_CONCODE_ALIST */
-		{ "{",       "{" },  /*HCL_CONCODE_BLOCK */
-		{ "#[",      "[" },  /*HCL_CONCODE_ARRAY */
-		{ "#b[",     "[" },  /*HCL_CONCODE_BYTEARRAY */
-		{ "#c[",     "[" },  /*HCL_CONCODE_CHARARRAY */
-		{ "#{",      "{" },  /*HCL_CONCODE_DIC */
-		{ "#(",      "[" }   /*HCL_CONCODE_QLIST */
+		                            /* navtive   json */
+		HCL_AID(HCL_CONCODE_XLIST)     { "(",     "(" },
+		HCL_AID(HCL_CONCODE_MLIST)     { "(",     "(" },
+		HCL_AID(HCL_CONCODE_ALIST)     { "(",     "(" },
+		HCL_AID(HCL_CONCODE_BLIST)     { "(",     "(" },
+		HCL_AID(HCL_CONCODE_BLOCK)     { "{",     "{" },
+		HCL_AID(HCL_CONCODE_ARRAY)     { "#[",    "[" },
+		HCL_AID(HCL_CONCODE_BYTEARRAY) { "#b[",   "[" },
+		HCL_AID(HCL_CONCODE_CHARARRAY) { "#c[",   "[" },
+		HCL_AID(HCL_CONCODE_DIC)       { "#{",    "{" },
+		HCL_AID(HCL_CONCODE_QLIST)     { "#(",    "[" },
+		HCL_AID(HCL_CONCODE_TUPLE)     { "[",     "[" }
 	};
 
 	static const hcl_bch_t *closing_parens[][2] =
 	{
-		{ ")",       ")" },   /*HCL_CONCODE_XLIST */
-		{ ")",       ")" },   /*HCL_CONCODE_MLIST */
-		{ ")",       ")" },   /*HCL_CONCODE_ALIST */
-		{ "}",       "}" },   /*HCL_CONCODE_BLOCK */
-		{ "]",       "]" },   /*HCL_CONCODE_ARRAY */
-		{ "]",       "]" },   /*HCL_CONCODE_BYTEARRAY */
-		{ "]",       "]" },   /*HCL_CONCODE_CHARARRAY */
-		{ "}",       "}" },   /*HCL_CONCODE_DIC */
-		{ ")",       "]" },   /*HCL_CONCODE_QLIST */
+		HCL_AID(HCL_CONCODE_XLIST)     { ")",     ")" },
+		HCL_AID(HCL_CONCODE_MLIST)     { ")",     ")" },
+		HCL_AID(HCL_CONCODE_ALIST)     { ")",     ")" },
+		HCL_AID(HCL_CONCODE_BLIST)     { ")",     ")" },
+		HCL_AID(HCL_CONCODE_BLOCK)     { "}",     "}" },
+		HCL_AID(HCL_CONCODE_ARRAY)     { "]",     "]" },
+		HCL_AID(HCL_CONCODE_BYTEARRAY) { "]",     "]" },
+		HCL_AID(HCL_CONCODE_CHARARRAY) { "]",     "]" },
+		HCL_AID(HCL_CONCODE_DIC)       { "}",     "}" },
+		HCL_AID(HCL_CONCODE_QLIST)     { ")",     "]" },
+		HCL_AID(HCL_CONCODE_TUPLE)     { "]",     "]" }
 	};
 
 	static const hcl_bch_t* breakers[][2] =

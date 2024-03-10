@@ -78,6 +78,23 @@ if (y = 29) {
 }
 
 ## --------------------------------------
+k := (defun qq(t) (t + 20))
+x := (k 8)
+y := (qq 9)
+
+if (x = 28) {
+	printf "OK - %d\n" x
+} else {
+	printf "ERROR - %d\n" x
+}
+
+if (x = 29) {
+	printf "OK - %d\n" x
+} else {
+	printf "ERROR - %d\n" x
+}
+
+## --------------------------------------
 
 defclass A | a b c | {
 	defun :* newInstance(x y z) {

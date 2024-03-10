@@ -4527,6 +4527,12 @@ redo:
 					hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARDCLBANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "variable declaration disallowed");
 					return -1;
 
+
+				case HCL_CONCODE_TUPLE:
+					/* [a, b] is only allowed as a lvalue for now */
+					hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "tuple disallowed");
+					return -1;
+
 				/* ALIST is transformed to XLIST with or set or set-r by the reader.
 				 * so it must not appear here */
 				case HCL_CONCODE_ALIST:
