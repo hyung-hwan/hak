@@ -1967,7 +1967,6 @@ enum hcl_brand_t
 	HCL_BRAND_CONS,
 	HCL_BRAND_ARRAY,
 	HCL_BRAND_BYTE_ARRAY,
-	HCL_BRAND_SYMBOL_ARRAY, /* special. internal use only */
 	HCL_BRAND_SYMBOL,
 	HCL_BRAND_STRING,
 	HCL_BRAND_DIC,
@@ -2042,7 +2041,6 @@ typedef enum hcl_concode_t hcl_concode_t;
 #define HCL_IS_TRUE(hcl,v) (v == (hcl)->_true)
 #define HCL_IS_FALSE(hcl,v) (v == (hcl)->_false)
 #define HCL_IS_SYMBOL(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_SYMBOL)
-#define HCL_IS_SYMBOL_ARRAY(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_SYMBOL_ARRAY)
 #define HCL_IS_CONTEXT(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_CONTEXT)
 #define HCL_IS_FUNCTION(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_FUNCTION)
 #define HCL_IS_LAMBDA(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_LAMBDA)

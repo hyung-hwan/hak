@@ -657,22 +657,6 @@ next:
 			break;
 		}
 
-		case HCL_BRAND_SYMBOL_ARRAY:
-		{
-			hcl_oow_t i;
-
-			if (hcl_bfmt_out(fmtout, "|") <= -1) return -1;
-
-			for (i = 0; i < HCL_OBJ_GET_SIZE(obj); i++)
-			{
-				hcl_oop_t s;
-				s = ((hcl_oop_oop_t)obj)->slot[i];
-				if (hcl_bfmt_out(fmtout, " %.*js", HCL_OBJ_GET_SIZE(s), HCL_OBJ_GET_CHAR_SLOT(s)) <= -1) return -1;
-			}
-			if (hcl_bfmt_out(fmtout, " |") <= -1) return -1;
-			break;
-		}
-
 		case HCL_BRAND_PRIM:
 			word_index = WORD_PRIM;
 			goto print_word;

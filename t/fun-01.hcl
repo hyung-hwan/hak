@@ -63,6 +63,22 @@ if (k = 80) {
 };
 ## --------------------------------------
 
+## multiple return values
+defun f(a :: b c) { b := (a + 10); c := (a + 20) }
+[x, y] := (f 9)
+if (x = 19) {
+	printf "OK - %d\n" x
+} else {
+	printf "ERROR - %d\n" x
+}
+if (y = 29) {
+	printf "OK - %d\n" y
+} else {
+	printf "ERROR - %d\n" y
+}
+
+## --------------------------------------
+
 defclass A | a b c | {
 	defun :* newInstance(x y z) {
 		set a x

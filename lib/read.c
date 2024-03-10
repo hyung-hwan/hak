@@ -607,7 +607,8 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 		/* HACK */
 		if (concode == HCL_CONCODE_ALIST)
 		{
-			/* tranform (var := val) to (set var val) - note ALIST doesn't contain the := symbol */
+			/* tranform (var := val) to (set var val)
+			 * - note ALIST doesn't contain the := symbol */
 			hcl_cnode_t* sym, * newhead, * lval;
 			hcl_oocs_t fake_tok, * fake_tok_ptr = HCL_NULL;
 
@@ -615,25 +616,36 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 			if (lval && HCL_CNODE_IS_ELIST(lval))
 			{
 				/* invalid lvalue */
+			invalid_lvalue:
 				hcl_setsynerr (hcl, HCL_SYNERR_LVALUE, HCL_CNODE_GET_LOC(lval), HCL_CNODE_GET_TOK(lval));
 				if (head) hcl_freecnode (hcl, head);
 				return HCL_NULL;
 			}
 			else if (lval && HCL_CNODE_IS_CONS(lval) && HCL_CNODE_CONS_CONCODE(lval) == HCL_CONCODE_ARRAY)
 			{
+				/*
+				 * defun f(a :: b c) { b := (a + 10); c := (a + 20) }
+				 * [x, y] := (f 9) ## this kind of expression - translate to set-r x y (f 9)
+				 */
 				hcl_cnode_t* tmp, * rval;
 
 				fake_tok.ptr = vocas[VOCA_SYM_SET_R].str;
 				fake_tok.len = vocas[VOCA_SYM_SET_R].len;
 				fake_tok_ptr = &fake_tok;
 
-				/* move the array item up to the main list and join the original lval to the end of it */
+				for (tmp = lval; tmp && HCL_CNODE_IS_CONS(tmp); tmp = HCL_CNODE_CONS_CDR(tmp))
+				{
+					/* check in avance if the array members are all plain symbols */
+					hcl_cnode_t* lcar;
+					lcar = HCL_CNODE_CONS_CAR(tmp);
+					if (!HCL_CNODE_IS_SYMBOL_PLAIN(lcar)) goto invalid_lvalue;
+				}
+				/* move the array item up to the main list and join the original lval to the end of it
+				 * For [x, y] := (f 9), x and y must be in the same level as set-r after translation.
+				 * so make it 'x y (f 9)' first and place set-r in front of it later. */
 				rval = HCL_CNODE_CONS_CDR(head);
-
 				hcl_freesinglecnode (hcl, head);
 				head = lval;
-
-/* TODO: check in advance if array items are all symbols... */
 				for (tmp = lval; tmp && HCL_CNODE_IS_CONS(tmp); tmp = HCL_CNODE_CONS_CDR(tmp))
 				{
 					if (!HCL_CNODE_CONS_CDR(tmp))
@@ -645,6 +657,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 			}
 			else
 			{
+				if (!HCL_CNODE_IS_SYMBOL_PLAIN(lval)) goto invalid_lvalue;
 				fake_tok.ptr = vocas[VOCA_SYM_SET].str;
 				fake_tok.len = vocas[VOCA_SYM_SET].len;
 				fake_tok_ptr = &fake_tok;
@@ -776,11 +789,13 @@ static HCL_INLINE int can_comma_list (hcl_t* hcl)
 	if (rstl->count == 1) rstl->flagv |= JSON;
 	else if (!(rstl->flagv & JSON)) return 0;
 
-	if (rstl->flagv & (COMMAED | COLONED | COLONEQED)) return 0;
+	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED)) return 0;
 
 	cc = LIST_FLAG_GET_CONCODE(rstl->flagv);
 	if (cc == HCL_CONCODE_XLIST)
 	{
+		/* defun f(a :: b c) { b := (a + 10); c := (a + 20) }
+		 * (x, y) := (f 9) */
 		LIST_FLAG_SET_CONCODE(rstl->flagv, HCL_CONCODE_ALIST);
 	}
 	else if (cc == HCL_CONCODE_DIC)
@@ -808,14 +823,22 @@ static HCL_INLINE int can_colon_list (hcl_t* hcl)
 
 	/* mark the state that a colon has appeared in the list */
 	if (rstl->count == 1) rstl->flagv |= JSON; /* mark that the first key is colon-delimited */
-	else if (!(rstl->flagv & JSON)) return 0; /* the first key is not colon-delimited. so not allowed to colon-delimit other keys  */
+	else if (!(rstl->flagv & JSON))
+	{
+		/* TODO: handling for out-of-class method definition.
+		 *       e.g. defun String:length() { ... } */
+
+		return 0; /* the first key is not colon-delimited. so not allowed to colon-delimit other keys  */
+	}
 
 	/* multiple single-colons  - e.g. #{ "abc": : 20 } */
-	if (rstl->flagv & (COMMAED | COLONED | COLONEQED)) return 0;
+	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED)) return 0;
 
 	cc = LIST_FLAG_GET_CONCODE(rstl->flagv);
 	if (cc == HCL_CONCODE_XLIST)
 	{
+		/* method defintion with defun  - e.g. defun String:length()
+		 * ugly that this reader must know about the meaning of defun */
 		if (rstl->count > 1) return 0;
 		/* ugly dual use of a colon sign. switch to MLIST if the first element
 		 * is delimited by a colon. e.g. (obj:new 10 20 30)  */
