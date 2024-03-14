@@ -831,8 +831,12 @@ static HCL_INLINE int can_colon_list (hcl_t* hcl)
 	if (rstl->count == 1) rstl->flagv |= JSON; /* mark that the first key is colon-delimited */
 	else if (!(rstl->flagv & JSON))
 	{
-		/* TODO: handling for out-of-class method definition.
-		 *       e.g. defun String:length() { ... } */
+		/* handling of a coloe sign in out-of-class method definition.
+		 * e.g. defun String:length() { return (str.length self). } */
+		if (HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(rstl->head), HCL_SYNCODE_DEFUN))
+		{
+			if (rstl->count == 2) return 1;
+		}
 
 		return 0; /* the first key is not colon-delimited. so not allowed to colon-delimit other keys  */
 	}

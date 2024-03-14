@@ -2715,6 +2715,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 	hcl_ooi_t jump_inst_pos, lfbase_pos, lfsize_pos;
 	hcl_oow_t saved_tv_wcount, tv_dup_start;
 	hcl_cnode_t* defun_name;
+	hcl_cnode_t* class_name;
 	hcl_cframe_t* cf;
 	int fun_type = FUN_PLAIN;
 
@@ -2786,11 +2787,13 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 
 	if (!obj)
 	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMELIST, HCL_CNODE_GET_LOC(src), HCL_NULL, "no argument list in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+	no_arg_list:
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMELIST, HCL_CNODE_GET_LOC(src), HCL_NULL, "argument list missing in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 		return -1;
 	}
 	else if (!HCL_CNODE_IS_CONS(obj))
 	{
+	redundant_cdr:
 		hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(obj), HCL_CNODE_GET_TOK(obj), "redundant cdr in argument list in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 		return -1;
 	}
@@ -2801,13 +2804,40 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 	nrvars = 0;
 	args = HCL_CNODE_CONS_CAR(obj);
 	HCL_ASSERT (hcl, args != HCL_NULL);
+
+	class_name = HCL_NULL;
+	if (defun_name && HCL_CNODE_IS_SYMBOL_PLAIN(args))
+	{
+		/* for defun String:length() { ...  } , class_name is String, defun_name is length. */
+/* TODO: this must be treated as an error  - defun String length() { ... }
+	for this, the reader must be able to tell between String:length and String:length...
+	or it must inject a special symbol  between String and length  or must use a different list type... */
+/* TODO: this must not be allowed at the in-class definition level.... */
+
+		class_name = defun_name;
+		defun_name = args;
+		obj = HCL_CNODE_CONS_CDR(obj);
+		if (!obj) goto no_arg_list;
+		else if (!HCL_CNODE_IS_CONS(obj)) goto redundant_cdr;
+		args = HCL_CNODE_CONS_CAR(obj);
+
+		if (is_in_class_init_scope(hcl))
+		{
+			/* you must not speicfy the class name when defining a method in the class initialization scope.
+			 * however, it's allowed to do so in another method (class method scope) for the class or in a
+			 * normal function outside class defintion. */
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(class_name), HCL_CNODE_GET_TOK(class_name), "class name prohibited in this scope");
+			return -1;
+		}
+	}
+
 	if (HCL_CNODE_IS_ELIST_CONCODED(args, HCL_CONCODE_XLIST))
 	{
 		/* empty list - no argument - (lambda () (+ 10 20)) */
 	}
 	else if (!HCL_CNODE_IS_CONS_CONCODED(args, HCL_CONCODE_XLIST))
 	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMELIST, HCL_CNODE_GET_LOC(args), HCL_CNODE_GET_TOK(args), "not an argument list in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMELIST, HCL_CNODE_GET_LOC(args), HCL_CNODE_GET_TOK(args), "no argument list in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 		return -1;
 	}
 	else
@@ -4867,7 +4897,7 @@ static int compile_bytearray_list (hcl_t* hcl)
 		oldidx = cf->u.bytearray_list.index;
 		elem_type = cf->u.bytearray_list.index;
 
-/* TODO: compile type check if the data element is literal... 
+/* TODO: compile type check if the data element is literal...
 	 runtime check if the data is a variable or something... */
 
 		SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, car);
