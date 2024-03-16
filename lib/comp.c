@@ -2725,6 +2725,8 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 	cmd = HCL_CNODE_CONS_CAR(src);
 	obj = HCL_CNODE_CONS_CDR(src);
 
+	class_name = HCL_NULL;
+
 	if (defun)
 	{
 		/* defun must be followed by an explicit function name */
@@ -2761,7 +2763,44 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 			}
 			else
 			{
+				if (HCL_CNODE_IS_SYMBOL_PLAIN(defun_name))
+				{
+					/* probably this form - defun XXX:yyy () ...
+					 * the class name must not be specified in the class initialization scope */
+					hcl_cnode_t* tmp;
+					tmp = HCL_CNODE_CONS_CDR(obj);
+					if (tmp && HCL_CNODE_IS_CONS(tmp))
+					{
+						tmp = HCL_CNODE_CONS_CAR(tmp);
+						if (HCL_CNODE_IS_SYMBOL_PLAIN(tmp))
+						{
+							hcl_setsynerrbfmt (
+								hcl, HCL_SYNERR_VARNAME,
+								HCL_CNODE_GET_LOC(defun_name), HCL_CNODE_GET_TOK(defun_name),
+								"function name not valid in %.*js",
+								HCL_CNODE_GET_TOKLEN(tmp), HCL_CNODE_GET_TOKPTR(tmp));
+							return -1;
+						}
+					}
+				}
+
 				fun_type = FUN_IM;
+			}
+		}
+		else if (HCL_CNODE_IS_SYMBOL_PLAIN(defun_name))
+		{
+			hcl_cnode_t* tmp;
+			tmp = HCL_CNODE_CONS_CDR(obj);
+			if (tmp && HCL_CNODE_IS_CONS(tmp) && HCL_CNODE_IS_SYMBOL_PLAIN(HCL_CNODE_CONS_CAR(tmp)))
+			{
+		/* for defun String:length() { ...  } , class_name is String, defun_name is length. */
+/* TODO: this must be treated as an error  - defun String length() { ... }
+	for this, the reader must be able to tell between String:length and String:length...
+	or it must inject a special symbol  between String and length  or must use a different list type... */
+/* TODO: this must not be allowed at the in-class definition level.... */
+				class_name = defun_name;
+				defun_name = HCL_CNODE_CONS_CAR(tmp);
+				obj = HCL_CNODE_CONS_CDR(tmp);
 			}
 		}
 
@@ -2804,32 +2843,6 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 	nrvars = 0;
 	args = HCL_CNODE_CONS_CAR(obj);
 	HCL_ASSERT (hcl, args != HCL_NULL);
-
-	class_name = HCL_NULL;
-	if (defun_name && HCL_CNODE_IS_SYMBOL_PLAIN(args))
-	{
-		/* for defun String:length() { ...  } , class_name is String, defun_name is length. */
-/* TODO: this must be treated as an error  - defun String length() { ... }
-	for this, the reader must be able to tell between String:length and String:length...
-	or it must inject a special symbol  between String and length  or must use a different list type... */
-/* TODO: this must not be allowed at the in-class definition level.... */
-
-		class_name = defun_name;
-		defun_name = args;
-		obj = HCL_CNODE_CONS_CDR(obj);
-		if (!obj) goto no_arg_list;
-		else if (!HCL_CNODE_IS_CONS(obj)) goto redundant_cdr;
-		args = HCL_CNODE_CONS_CAR(obj);
-
-		if (is_in_class_init_scope(hcl))
-		{
-			/* you must not speicfy the class name when defining a method in the class initialization scope.
-			 * however, it's allowed to do so in another method (class method scope) for the class or in a
-			 * normal function outside class defintion. */
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(class_name), HCL_CNODE_GET_TOK(class_name), "class name prohibited in this scope");
-			return -1;
-		}
-	}
 
 	if (HCL_CNODE_IS_ELIST_CONCODED(args, HCL_CONCODE_XLIST))
 	{

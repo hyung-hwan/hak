@@ -32,7 +32,7 @@ defclass X {
                 return "hello"
         }
 
-        defun String:length()  { ##ERROR: syntax error - class name prohibited
+        defun String:length()  { ##ERROR: syntax error - function name not valid
                 return (str.length self)
         }
 }
