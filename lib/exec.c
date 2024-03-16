@@ -3797,6 +3797,31 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				break;
 			/* -------------------------------------------------------- */
 
+			case HCL_CODE_CLASS_LOAD_X2:
+				FETCH_PARAM_CODE_TO (hcl, b1);
+				FETCH_PARAM_CODE_TO (hcl, b2);
+				b1 = (b1 << (8 * HCL_CODE_LONG_PARAM_SIZE)) | b2;
+				goto class_load;
+
+			case HCL_CODE_CLASS_LOAD_X:
+			{
+				hcl_oop_t t;
+				FETCH_PARAM_CODE_TO (hcl, b1);
+			class_load:
+				/* push the class indiciated by the literal at the given literal frame index
+				 * to the class stack */
+				LOG_INST_1 (hcl, "class_load @%zu", b1);
+				/* this literal must be a symbol. find a class with the symbol and push it */
+				t = hcl->active_function->literal_frame[b1];
+				if (!t || !HCL_IS_SYMBOL(hcl, t))
+				{
+					/* TODO: critical vm error.. */
+				}
+				/* TODO: find class with this name */
+				HCL_CLSTACK_PUSH (hcl, t);
+				break;
+			}
+
 			case HCL_CODE_CLASS_ENTER:
 			{
 				/* push superclass

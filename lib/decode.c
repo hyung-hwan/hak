@@ -373,6 +373,18 @@ int hcl_decode (hcl_t* hcl, const hcl_code_t* code, hcl_oow_t start, hcl_oow_t e
 				LOG_INST_0 (hcl, "throw");
 				break;
 			/* -------------------------------------------------------- */
+			case HCL_CODE_CLASS_LOAD_X2:
+				FETCH_PARAM_CODE_TO (hcl, b1);
+				FETCH_PARAM_CODE_TO (hcl, b2);
+				b1 = (b1 << (8 * HCL_CODE_LONG_PARAM_SIZE)) | b2;
+				goto class_load;
+
+			case HCL_CODE_CLASS_LOAD_X:
+				FETCH_PARAM_CODE_TO (hcl, b1);
+			class_load:
+				LOG_INST_1 (hcl, "class_load @%zu", b1);
+				break;
+
 			case HCL_CODE_CLASS_ENTER:
 			{
 				hcl_oow_t b3;
