@@ -3805,20 +3805,23 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 
 			case HCL_CODE_CLASS_LOAD_X:
 			{
-				hcl_oop_t t;
+				hcl_oop_cons_t t;
 				FETCH_PARAM_CODE_TO (hcl, b1);
 			class_load:
 				/* push the class indiciated by the literal at the given literal frame index
 				 * to the class stack */
 				LOG_INST_1 (hcl, "class_load @%zu", b1);
 				/* this literal must be a symbol. find a class with the symbol and push it */
-				t = hcl->active_function->literal_frame[b1];
-				if (!t || !HCL_IS_SYMBOL(hcl, t))
+				t = (hcl_oop_cons_t)hcl->active_function->literal_frame[b1];
+				HCL_ASSERT (hcl, HCL_IS_CONS(hcl, t));
+				if (!HCL_IS_CLASS(hcl, t->cdr))
 				{
-					/* TODO: critical vm error.. */
+					hcl_seterrbfmt(hcl, HCL_EUNDEFVAR, "%.js is not class", HCL_OBJ_GET_SIZE(t->car), HCL_OBJ_GET_CHAR_SLOT(t->car));
+					if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
+					goto oops_with_errmsg_supplement;
 				}
-				/* TODO: find class with this name */
-				HCL_CLSTACK_PUSH (hcl, t);
+	
+				HCL_CLSTACK_PUSH (hcl, t->cdr);
 				break;
 			}
 
@@ -4070,7 +4073,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 			}
 
 			/* -------------------------------------------------------- */
-			case HCL_CODE_SEND_R:
+			case HCL_CODE_SEND_R: /* send message with return variables */
 			case HCL_CODE_SEND_TO_SUPER_R:
 
 				FETCH_PARAM_CODE_TO (hcl, b1); /* nargs */
