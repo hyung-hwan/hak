@@ -602,6 +602,7 @@ struct hcl_cframe_t
 			hcl_oow_t jump_inst_pos;
 			hcl_ooi_t lfbase_pos;
 			hcl_ooi_t lfsize_pos;
+			hcl_cnode_t* class_name; /* class name for out-of-class method definition */
 		} lambda;
 
 		/* COP_EMIT_RETURN */

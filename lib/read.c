@@ -831,9 +831,14 @@ static HCL_INLINE int can_colon_list (hcl_t* hcl)
 	if (rstl->count == 1) rstl->flagv |= JSON; /* mark that the first key is colon-delimited */
 	else if (!(rstl->flagv & JSON))
 	{
-		/* handling of a coloe sign in out-of-class method definition.
-		 * e.g. defun String:length() { return (str.length self). } */
-		if (HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(rstl->head), HCL_SYNCODE_DEFUN))
+		/* handling of a coloe sign in out-of-class instance method definition.
+		 * e.g. defun String:length() { return (str.length self). }
+		 * TODO: inject a symbol ':' to differenticate form '::' or ':*' methods.
+		 *       these class methods and class instantiation methods are supposed to be
+		 *       implemented elsewhere because ':' has dual use while '::' or ':*' are
+		 *       independent tokens  */
+		if (HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(rstl->head), HCL_SYNCODE_DEFUN) ||
+		    HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(rstl->head), HCL_SYNCODE_LAMBDA))
 		{
 			if (rstl->count == 2) return 1;
 		}

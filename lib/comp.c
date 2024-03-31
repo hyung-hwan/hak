@@ -655,6 +655,7 @@ static int emit_single_param_instruction (hcl_t* hcl, int cmd, hcl_oow_t param_1
 		case HCL_CODE_STORE_INTO_CVAR_M_X:
 		case HCL_CODE_POP_INTO_CVAR_M_X:
 
+		case HCL_CODE_CLASS_LOAD_X:
 		case HCL_CODE_CLASS_CMSTORE:
 		case HCL_CODE_CLASS_CIMSTORE:
 		case HCL_CODE_CLASS_IMSTORE:
@@ -2815,14 +2816,16 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 			tmp = HCL_CNODE_CONS_CDR(obj);
 			if (tmp && HCL_CNODE_IS_CONS(tmp) && HCL_CNODE_IS_SYMBOL_PLAIN(HCL_CNODE_CONS_CAR(tmp)))
 			{
-		/* for defun String:length() { ...  } , class_name is String, defun_name is length. */
+				/* out-of-class method definition
+				 * for defun String:length() { ...  }, class_name is String, defun_name is length. */
 /* TODO: this must be treated as an error  - defun String length() { ... }
-	for this, the reader must be able to tell between String:length and String:length...
+	for this, the reader must be able to tell between String:length and String length...
 	or it must inject a special symbol  between String and length  or must use a different list type... */
 /* TODO: this must not be allowed at the in-class definition level.... */
+/* TODO: can we use fun_type to indicate different types of out-of-class methods? */
 				class_name = defun_name;
 				defun_name = HCL_CNODE_CONS_CAR(tmp);
-				obj = HCL_CNODE_CONS_CDR(tmp);
+				obj = tmp;
 			}
 		}
 
@@ -3044,6 +3047,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 	PUSH_SUBCFRAME (hcl, COP_POST_LAMBDA, defun_name); /* 3*/
 	cf = GET_SUBCFRAME(hcl);
 	cf->u.lambda.fun_type = fun_type;
+	cf->u.lambda.class_name = class_name;
 
 	PUSH_SUBCFRAME (hcl, COP_EMIT_LAMBDA, src); /* 2 */
 	cf = GET_SUBCFRAME(hcl);
@@ -5559,6 +5563,7 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 		 * the block has been exited(blk.depth--) before finding 'x' in the outer scope.
 		 */
 		hcl_cnode_t* defun_name = cf->operand;
+		hcl_cnode_t* class_name = cf->u.lambda.class_name;
 		hcl_var_info_t vi;
 		int x;
 
@@ -5567,6 +5572,15 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 		if (is_in_class_init_scope(hcl))
 		{
 			/* method definition */
+
+			if (class_name)
+			{
+				/* something wrong - this must not happen because the reader must prevent this
+				 * but if it happens, it is a syntax error */
+				hcl_setsynerrbfmt(hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(class_name), HCL_CNODE_GET_TOK(class_name), "class name prohibited");
+				return -1;
+			}
+
 			x = find_variable_backward_with_token(hcl, defun_name, &vi);
 			if (x <= -1) return -1;
 			if (x == 0)
@@ -5620,11 +5634,42 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 			}
 			cf->u.set.mode = VAR_ACCESS_STORE;
 		#else
-			/* An explicitly named function is always global */
-			SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, defun_name);
-			cf = GET_TOP_CFRAME(hcl);
-			cf->u.set.vi.type = VAR_NAMED;
-			cf->u.set.mode = VAR_ACCESS_STORE;
+			if (class_name)
+			{
+				/* out-of-class definition */
+/* TODO:  - other types of out-of-class definition */
+			#if 0
+				SWITCH_TOP_CFRAME (hcl, COP_EMIT_CLASS_LOAD, class_name); /* 1 */
+				PUSH_SUBCFRAME (hcl, COP_EMIT_CLASS_EXIT, defun_name); /* 3 */
+				PUSH_SUBCFRAME (hcl, COP_EMIT_CLASS_IMSTORE, defun_name); /* 2 */
+
+			#else
+				hcl_oow_t index;
+				hcl_oop_t lit;
+
+/* TODO: CLASS_LOAD_X must be emited before the defun method code instruction is  emitted ? */
+				lit = hcl_makesymbol(hcl, HCL_CNODE_GET_TOKPTR(class_name), HCL_CNODE_GET_TOKLEN(class_name));
+				if (HCL_UNLIKELY(!lit)) return -1;
+				if (add_literal(hcl, lit, &index) <= -1) return -1;
+				if (emit_single_param_instruction(hcl, HCL_CODE_CLASS_LOAD_X, index, HCL_CNODE_GET_LOC(class_name)) <= -1) return -1;
+
+				lit = hcl_makesymbol(hcl, HCL_CNODE_GET_TOKPTR(defun_name), HCL_CNODE_GET_TOKLEN(defun_name));
+				if (HCL_UNLIKELY(!lit)) return -1;
+				if (add_literal(hcl, lit, &index) <= -1) return -1;
+				if (emit_single_param_instruction(hcl, HCL_CODE_CLASS_IMSTORE, index, HCL_CNODE_GET_LOC(defun_name)) <= -1) return -1;
+
+				if (emit_byte_instruction(hcl, HCL_CODE_CLASS_EXIT, HCL_CNODE_GET_LOC(class_name)) <= -1) return -1;
+				POP_CFRAME (hcl);
+			#endif
+			}
+			else
+			{
+				/* An explicitly named function is always global */
+				SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, defun_name);
+				cf = GET_TOP_CFRAME(hcl);
+				cf->u.set.vi.type = VAR_NAMED;
+				cf->u.set.mode = VAR_ACCESS_STORE;
+			}
 		#endif
 		}
 	}
