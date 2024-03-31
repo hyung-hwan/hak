@@ -2351,6 +2351,7 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src, int defclass)
 		/* defun must be followed by an explicit function name */
 		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_DEFCLASS));
 
+	class_as_defclass:
 		if (!obj)
 		{
 			hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMELIST, HCL_CNODE_GET_LOC(src), HCL_NULL, "no name in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
@@ -2390,10 +2391,16 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src, int defclass)
 			class_name = HCL_CNODE_CONS_CAR(obj);
 			if (HCL_CNODE_IS_SYMBOL(class_name))
 			{
+			#if 0
 				hcl_setsynerrbfmt (
 					hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(class_name), HCL_CNODE_GET_TOK(class_name),
 					"class name not allowed in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 				return -1;
+			#else
+				/* to handle 'class' in place of 'defclass' */
+				defclass = 1;
+				goto class_as_defclass;
+			#endif
 			}
 		}
 
@@ -2727,12 +2734,27 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 
 	class_name = HCL_NULL;
 
+	if (!defun && (obj && HCL_CNODE_IS_CONS(obj)))
+	{
+		/* some inaccurate prior check if 'fun' is followed by an argument list
+		 * without a function name. stop-gap measure to support 'fun' in place of 'defun' */
+		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_LAMBDA));
+		args = HCL_CNODE_CONS_CAR(obj);
+		if (!HCL_CNODE_IS_ELIST_CONCODED(args, HCL_CONCODE_XLIST) &&
+		    !HCL_CNODE_IS_CONS_CONCODED(args, HCL_CONCODE_XLIST))
+		{
+			/* not followed by an argument list */
+			defun = 1;
+			goto fun_as_defun;
+		}
+	}
+
 	if (defun)
 	{
 		/* defun must be followed by an explicit function name */
-
 		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_DEFUN));
 
+	fun_as_defun:
 		if (!obj)
 		{
 			hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMELIST, HCL_CNODE_GET_LOC(src), HCL_NULL, "no name in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
