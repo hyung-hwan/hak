@@ -25,15 +25,29 @@ defclass X :: B | a b | {
 ---
 
 defclass X {
-        defun :* xxx() {
-                return X;
-        }
-        defun :* qqq() {
-                return "hello"
-        }
+	defun :* xxx() {
+		return X;
+	}
+	defun :* qqq() {
+		return "hello"
+	}
 
-        defun String:length()  { ##ERROR: syntax error - function name not valid
-                return (str.length self)
-        }
+	defun String:length()  { ##ERROR: syntax error - function name not valid
+		return (str.length self)
+	}
 }
 
+---
+defclass X {
+	defun :* xxx() {
+		return X;
+	}
+	defun :* qqq() {
+		return "hello"
+	}
+}
+
+## this will trigger a runtime error as J isn't a class name
+defun J:ccc()  { ##ERROR: exception not handled
+	return 999
+}

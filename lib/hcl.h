@@ -1513,7 +1513,6 @@ struct hcl_synerr_t
 	} tgt;
 };
 
-
 typedef struct hcl_dbgi_t hcl_dbgi_t;
 struct hcl_dbgi_t
 {
@@ -1590,6 +1589,7 @@ struct hcl_t
 		hcl_oow_t len;
 
 	} errmsg;
+	hcl_loc_t errloc;
 	int shuterr;
 
 	struct
@@ -2164,6 +2164,11 @@ HCL_EXPORT void hcl_seterrnum (
 	hcl_errnum_t errnum
 );
 
+HCL_EXPORT void hcl_geterrloc (
+	hcl_t*     hcl,
+	hcl_loc_t* loc
+);
+
 HCL_EXPORT void hcl_seterrbmsg (
 	hcl_t*           hcl,
 	hcl_errnum_t     errnum,
@@ -2212,6 +2217,22 @@ HCL_EXPORT void hcl_seterrufmt (
 	...
 );
 
+HCL_EXPORT void hcl_seterrbfmtloc (
+	hcl_t*           hcl,
+	hcl_errnum_t     errnum,
+	const hcl_loc_t* loc,
+	const hcl_bch_t* fmt,
+	...
+);
+
+HCL_EXPORT void hcl_seterrufmtloc (
+	hcl_t*           hcl,
+	hcl_errnum_t     errnum,
+	const hcl_loc_t* loc,
+	const hcl_uch_t* fmt,
+	...
+);
+
 HCL_EXPORT void hcl_seterrbfmtv (
 	hcl_t*           hcl,
 	hcl_errnum_t     errnum,
@@ -2225,6 +2246,7 @@ HCL_EXPORT void hcl_seterrufmtv (
 	const hcl_uch_t* fmt,
 	va_list          ap
 );
+
 
 HCL_EXPORT const hcl_ooch_t* hcl_geterrstr (
 	hcl_t* hcl
@@ -2535,7 +2557,6 @@ static HCL_INLINE hcl_ooi_t hcl_getip (hcl_t* hcl) { return hcl->ip; }
 #	define hcl_getngtmprs(hcl) ((hcl)->code.ngtmprs)
 #	define hcl_getip(hcl) ((hcl)->ip)
 #endif
-
 
 /* =========================================================================
  * SYNTAX ERROR HANDLING

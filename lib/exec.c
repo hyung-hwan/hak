@@ -2310,9 +2310,15 @@ static HCL_INLINE int do_throw (hcl_t* hcl, hcl_oop_t val, hcl_ooi_t ip)
 		if (hcl->active_function->dbgi != hcl->_nil)
 		{
 			hcl_dbgi_t* dbgi;
+			hcl_loc_t loc;
+
 			dbgi = (hcl_dbgi_t*)HCL_OBJ_GET_BYTE_SLOT(hcl->active_function->dbgi);
 			HCL_LOG3 (hcl, HCL_LOG_IC | HCL_LOG_WARN, "Warning - exception not handled %js:%zu- %O", (dbgi[ip].fname? dbgi[ip].fname: oocstr_dash), dbgi[ip].sline, val);
-			hcl_seterrbfmt (hcl, HCL_EEXCEPT, "exception not handled in %js:%zu - %O", (dbgi[ip].fname? dbgi[ip].fname: oocstr_dash), dbgi[ip].sline, val);
+			HCL_MEMSET (&loc, 0, HCL_SIZEOF(loc));
+			loc.file = dbgi[ip].fname;
+			loc.line = dbgi[ip].sline;
+			hcl_seterrbfmtloc (hcl, HCL_EEXCEPT, &loc, "exception not handled - %O", val);
+			/* column number is not available */
 		}
 		else
 		{
@@ -2360,14 +2366,17 @@ static void supplement_errmsg (hcl_t* hcl, hcl_ooi_t ip)
 	if (hcl->active_function->dbgi != hcl->_nil)
 	{
 		hcl_dbgi_t* dbgi;
+		hcl_loc_t orgloc = hcl->errloc;
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
 		hcl_errnum_t orgnum = HCL_ERRNUM(hcl);
 
 		HCL_ASSERT (hcl, HCL_IS_BYTEARRAY(hcl, hcl->active_function->dbgi));
 		dbgi = (hcl_dbgi_t*)HCL_OBJ_GET_BYTE_SLOT(hcl->active_function->dbgi);
 
-		hcl_seterrbfmt (hcl, orgnum, "%js (%js:%zu)", orgmsg,
+		hcl_seterrbfmtloc (hcl, orgnum, &orgloc, "%js (%js:%zu)", orgmsg,
 			(dbgi[ip].fname? dbgi[ip].fname: oocstr_dash), dbgi[ip].sline);
+
+		/* no column info available */
 	}
 }
 

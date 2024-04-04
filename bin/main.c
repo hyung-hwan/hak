@@ -378,13 +378,9 @@ static void print_synerr (hcl_t* hcl)
 
 	hcl_logbfmt (hcl,HCL_LOG_STDERR, "ERROR: ");
 	if (synerr.loc.file)
-	{
 		hcl_logbfmt (hcl, HCL_LOG_STDERR, "%js", synerr.loc.file);
-	}
 	else
-	{
 		hcl_logbfmt (hcl, HCL_LOG_STDERR, "%hs", xtn->cci_path);
-	}
 
 	hcl_logbfmt (hcl, HCL_LOG_STDERR, "[%zu,%zu] %js",
 		synerr.loc.line, synerr.loc.colm,
@@ -392,18 +388,35 @@ static void print_synerr (hcl_t* hcl)
 	);
 
 	if (synerr.tgt.len > 0)
-	{
 		hcl_logbfmt (hcl, HCL_LOG_STDERR, " - %.*js", synerr.tgt.len, synerr.tgt.val);
-	}
 
 	hcl_logbfmt (hcl, HCL_LOG_STDERR, "\n");
 }
 
+static void print_other_error (hcl_t* hcl)
+{
+	xtn_t* xtn;
+	hcl_loc_t loc;
+
+	xtn = (xtn_t*)hcl_getxtn(hcl);
+	hcl_geterrloc(hcl, &loc);
+
+	hcl_logbfmt (hcl,HCL_LOG_STDERR, "ERROR: ");
+	if (loc.file)
+		hcl_logbfmt (hcl, HCL_LOG_STDERR, "%js", loc.file);
+	else
+		hcl_logbfmt (hcl, HCL_LOG_STDERR, "%hs", xtn->cci_path);
+
+	hcl_logbfmt (hcl, HCL_LOG_STDERR, "[%zu,%zu] %js", loc.line, loc.colm, hcl_geterrmsg(hcl));
+
+	hcl_logbfmt (hcl, HCL_LOG_STDERR, "\n");
+}
 
 static void print_error (hcl_t* hcl, const hcl_bch_t* msghdr)
 {
 	if (HCL_ERRNUM(hcl) == HCL_ESYNERR) print_synerr (hcl);
-	else hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: %hs - [%d] %js\n", msghdr, hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
+	else print_other_error (hcl);
+	/*else hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: %hs - [%d] %js\n", msghdr, hcl_geterrnum(hcl), hcl_geterrmsg(hcl));*/
 }
 
 static void show_prompt (hcl_t* hcl, int level)
@@ -429,7 +442,7 @@ static hcl_oop_t execute_in_interactive_mode (hcl_t* hcl)
 
 	if (!retv)
 	{
-		hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: cannot execute - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
+		print_error (hcl, "cannot execute");
 	}
 	else
 	{
@@ -486,7 +499,7 @@ static hcl_oop_t execute_in_batch_mode(hcl_t* hcl, int verbose)
 
 	if (!retv)
 	{
-		hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: cannot execute - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
+		print_error (hcl, "cannot execute");
 	}
 	else if (verbose)
 	{

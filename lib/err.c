@@ -286,13 +286,18 @@ void hcl_seterrnum (hcl_t* hcl, hcl_errnum_t errnum)
 	if (hcl->shuterr) return;
 	hcl->errnum = errnum;
 	hcl->errmsg.len = 0;
+	HCL_MEMSET (&hcl->errloc, 0, HCL_SIZEOF(hcl->errloc));
+}
+
+void hcl_geterrloc (hcl_t* hcl, hcl_loc_t* loc)
+{
+	if (loc) *loc = hcl->errloc;
 }
 
 void hcl_seterrbmsg (hcl_t* hcl, hcl_errnum_t errnum, const hcl_bch_t* errmsg)
 {
 	hcl_seterrbfmt(hcl, errnum, "%hs", errmsg);
 }
-
 
 void hcl_seterrumsg (hcl_t* hcl, hcl_errnum_t errnum, const hcl_uch_t* errmsg)
 {
@@ -363,6 +368,7 @@ void hcl_seterrbfmt (hcl_t* hcl, hcl_errnum_t errnum, const hcl_bch_t* fmt, ...)
 	va_end (ap);
 
 	hcl->errnum = errnum;
+	HCL_MEMSET (&hcl->errloc, 0, HCL_SIZEOF(hcl->errloc));
 }
 
 void hcl_seterrufmt (hcl_t* hcl, hcl_errnum_t errnum, const hcl_uch_t* fmt, ...)
@@ -384,6 +390,7 @@ void hcl_seterrufmt (hcl_t* hcl, hcl_errnum_t errnum, const hcl_uch_t* fmt, ...)
 	va_end (ap);
 
 	hcl->errnum = errnum;
+	HCL_MEMSET (&hcl->errloc, 0, HCL_SIZEOF(hcl->errloc));
 }
 
 
@@ -403,6 +410,7 @@ void hcl_seterrbfmtv (hcl_t* hcl, hcl_errnum_t errnum, const hcl_bch_t* fmt, va_
 
 	hcl_bfmt_outv (&fo, fmt, ap);
 	hcl->errnum = errnum;
+	HCL_MEMSET (&hcl->errloc, 0, HCL_SIZEOF(hcl->errloc));
 }
 
 void hcl_seterrufmtv (hcl_t* hcl, hcl_errnum_t errnum, const hcl_uch_t* fmt, va_list ap)
@@ -421,9 +429,26 @@ void hcl_seterrufmtv (hcl_t* hcl, hcl_errnum_t errnum, const hcl_uch_t* fmt, va_
 
 	hcl_ufmt_outv (&fo, fmt, ap);
 	hcl->errnum = errnum;
+	HCL_MEMSET (&hcl->errloc, 0, HCL_SIZEOF(hcl->errloc));
 }
 
+void hcl_seterrbfmtloc (hcl_t* hcl, hcl_errnum_t errnum, const hcl_loc_t* loc, const hcl_bch_t* fmt, ...)
+{
+	va_list ap;
+	va_start (ap, fmt);
+	hcl_seterrbfmtv (hcl, errnum, fmt, ap);
+	va_end (ap);
+	hcl->errloc = *loc;
+}
 
+void hcl_seterrufmtloc (hcl_t* hcl, hcl_errnum_t errnum, const hcl_loc_t* loc, const hcl_uch_t* fmt, ...)
+{
+	va_list ap;
+	va_start (ap, fmt);
+	hcl_seterrufmtv (hcl, errnum, fmt, ap);
+	va_end (ap);
+	hcl->errloc = *loc;
+}
 
 void hcl_seterrwithsyserr (hcl_t* hcl, int syserr_type, int syserr_code)
 {
