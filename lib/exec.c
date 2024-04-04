@@ -3811,12 +3811,18 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				/* push the class indiciated by the literal at the given literal frame index
 				 * to the class stack */
 				LOG_INST_1 (hcl, "class_load @%zu", b1);
-				/* this literal must be a symbol. find a class with the symbol and push it */
+
 				t = (hcl_oop_cons_t)hcl->active_function->literal_frame[b1];
-				HCL_ASSERT (hcl, HCL_IS_CONS(hcl, t));
+				if (!HCL_IS_CONS(hcl,t))
+				{
+					/* this is an uncatchable internal error that must not happen - is the bytecode compromised?  */
+					hcl_seterrbfmt(hcl, HCL_EINTERN, "internal error - invalid operand to CLASS_LOAD");
+					goto oops_with_errmsg_supplement;
+				}
+
 				if (!HCL_IS_CLASS(hcl, t->cdr))
 				{
-					hcl_seterrbfmt(hcl, HCL_EUNDEFVAR, "%.js is not class", HCL_OBJ_GET_SIZE(t->car), HCL_OBJ_GET_CHAR_SLOT(t->car));
+					hcl_seterrbfmt(hcl, HCL_EUNDEFVAR, "%.*js is not class", HCL_OBJ_GET_SIZE(t->car), HCL_OBJ_GET_CHAR_SLOT(t->car));
 					if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
 					goto oops_with_errmsg_supplement;
 				}
@@ -3857,7 +3863,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 
 				if (b1 > 0)
 				{
-					HCL_STACK_POP_TO (hcl, sc); /* TODO: support more than 1 later when the compiler supports more */
+					HCL_STACK_POP_TO (hcl, sc); /* TODO: support more than 1 superclass later when the compiler supports more */
 					if (!HCL_IS_CLASS(hcl, sc))
 					{
 						hcl_seterrbfmt (hcl, HCL_ECALL, "invalid superclass %O", sc);
@@ -3887,7 +3893,7 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				break;
 			}
 
-			case HCL_CODE_CLASS_PEXIT:
+			case HCL_CODE_CLASS_PEXIT: /* pop + exit */
 			{
 				hcl_oop_t c;
 

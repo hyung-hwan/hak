@@ -903,7 +903,7 @@ void hcl_gc (hcl_t* hcl, int full)
 
 	if (!full && hcl->gci.lazy_sweep)
 	{
-		/* set the lazy sweeping point to the head of the allocated blocks.
+		/* set the lazy sweeping pointer to the head of the allocated blocks.
 		 * hawk_allocbytes() updates hcl->gci.ls.prev if it is called while
 		 * hcl->gci.ls.curr stays at hcl->gci.b */
 		hcl->gci.ls.prev = HCL_NULL;
@@ -1042,8 +1042,8 @@ void hcl_gc (hcl_t* hcl)
 	}
 
 	/* scan the new heap to move referenced objects */
-	ptr = (hcl_uint8_t*) HCL_ALIGN ((hcl_uintptr_t)hcl->newheap->base, HCL_SIZEOF(hcl_oop_t));
-	ptr = scan_new_heap (hcl, ptr);
+	ptr = (hcl_uint8_t*)HCL_ALIGN((hcl_uintptr_t)hcl->newheap->base, HCL_SIZEOF(hcl_oop_t));
+	ptr = scan_new_heap(hcl, ptr);
 
 	/* traverse the symbol table for unreferenced symbols.
 	 * if the symbol has not moved to the new heap, the symbol
@@ -1381,16 +1381,17 @@ oops:
 	return -1;
 }
 
-#if 0
 static int ignite_3 (hcl_t* hcl)
 {
 	/* Register kernel classes manually created so far to the system dictionary */
+#if 0
 	static hcl_ooch_t str_processor[] = { 'P', 'r', 'o', 'c', 'e', 's', 's', 'o', 'r' };
 	static hcl_ooch_t str_dicnew[] = { 'n', 'e', 'w', ':' };
 	static hcl_ooch_t str_dicputassoc[] = { '_','_','p', 'u', 't', '_', 'a', 's', 's', 'o', 'c', ':' };
 	static hcl_ooch_t str_does_not_understand[] = { 'd', 'o', 'e', 's', 'N', 'o', 't', 'U', 'n', 'd', 'e', 'r', 's', 't', 'a', 'n', 'd', ':' };
 	static hcl_ooch_t str_primitive_failed[] = {  'p', 'r', 'i', 'm', 'i', 't', 'i', 'v', 'e', 'F', 'a', 'i', 'l', 'e', 'd' };
 	static hcl_ooch_t str_unwindto_return[] = { 'u', 'n', 'w', 'i', 'n', 'd', 'T', 'o', ':', 'r', 'e', 't', 'u', 'r', 'n', ':' };
+#endif
 
 	hcl_oow_t i;
 	hcl_oop_t sym;
@@ -1398,16 +1399,19 @@ static int ignite_3 (hcl_t* hcl)
 
 	for (i = 0; i < HCL_COUNTOF(kernel_classes); i++)
 	{
-		sym = hcl_makesymbol(hcl, kernel_classes[i].name, kernel_classes[i].len);
-		if (!sym) return -1;
+		sym = hcl_makesymbol(hcl, kernel_classes[i].name, hcl_count_oocstr(kernel_classes[i].name));
+		if (HCL_UNLIKELY(!sym)) return -1;
 
 		cls = *(hcl_oop_class_t*)((hcl_uint8_t*)hcl + kernel_classes[i].offset);
+#if 0
 		HCL_STORE_OOP (hcl, (hcl_oop_t*)&cls->name, sym);
 		HCL_STORE_OOP (hcl, (hcl_oop_t*)&cls->nsup, (hcl_oop_t)hcl->sysdic);
+#endif
 
 		if (!hcl_putatsysdic(hcl, sym, (hcl_oop_t)cls)) return -1;
 	}
 
+#if 0
 	/* Attach the system dictionary to the nsdic field of the System class */
 	HCL_STORE_OOP (hcl, (hcl_oop_t*)&hcl->_system->nsdic, (hcl_oop_t)hcl->sysdic);
 	/* Set the name field of the system dictionary */
@@ -1439,11 +1443,11 @@ static int ignite_3 (hcl_t* hcl)
 	sym = hcl_makesymbol(hcl, str_unwindto_return, HCL_COUNTOF(str_unwindto_return));
 	if (!sym) return -1;
 	hcl->unwindto_return_sym = (hcl_oop_char_t)sym;
+#endif
 
 	return 0;
 }
 
-#endif
 
 static int make_kernel_objs (hcl_t* hcl)
 {
@@ -1476,9 +1480,9 @@ static int make_kernel_objs (hcl_t* hcl)
 
 	if (ignite_2(hcl) <= -1) goto oops;
 
-#if 0
 	if (ignite_3(hcl) <= -1) goto oops;
 
+#if 0
 	hcl->igniting = 0;
 #endif
 	return 0;

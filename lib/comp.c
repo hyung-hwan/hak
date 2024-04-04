@@ -2314,7 +2314,7 @@ static HCL_INLINE int compile_else (hcl_t* hcl)
 /*
 	(defclass A
 		| x y | ; instance variables
-		::: | x y z | ; class variables <--- how to initialize the class variables???
+		:: | x y z | ; class variables <--- how to initialize the class variables???
 
 		; everything inside defclass after the variable declarations are normal expressions.
 		; however, the resolution of some variables will fall under the enclosing class.
@@ -2331,7 +2331,7 @@ static HCL_INLINE int compile_else (hcl_t* hcl)
 		)
 	)
 
-	(defclass B ::: A ; A is a parent class
+	(defclass B :: A ; A is a parent class
 		| p q |
 		....
 	)
@@ -2661,7 +2661,7 @@ static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 	pop_cblk (hcl);
 	pop_clsblk (hcl);  /* end of the class block */
 
-	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_PEXIT, &class_loc) <= -1) return -1;
+	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_PEXIT, &class_loc) <= -1) return -1; /* pop + exit */
 
 	if (class_name) /* defclass requires a name. but class doesn't */
 	{
@@ -4498,8 +4498,8 @@ redo:
 
 		case HCL_CNODE_SELF:
 		case HCL_CNODE_SUPER:
-			/* if super is not sent a message, super represents the receiver
-			 * just like self does */
+			/* if super is not sent a message, super represents the receiver just like self does */
+/* TODO: SELF and SUPER must be limited to methods or is it ok if it just pushes the fake receiver in a normal function call?? */
 			if (emit_byte_instruction(hcl, HCL_CODE_PUSH_RECEIVER, HCL_CNODE_GET_LOC(oprnd)) <= -1) return -1;
 			goto done;
 
@@ -5645,12 +5645,34 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 
 			#else
 				hcl_oow_t index;
-				hcl_oop_t lit;
+				hcl_oop_t lit, cons;
 
 /* TODO: CLASS_LOAD_X must be emited before the defun method code instruction is  emitted ? */
+				/* treat this like a global variable for now */
 				lit = hcl_makesymbol(hcl, HCL_CNODE_GET_TOKPTR(class_name), HCL_CNODE_GET_TOKLEN(class_name));
 				if (HCL_UNLIKELY(!lit)) return -1;
-				if (add_literal(hcl, lit, &index) <= -1) return -1;
+				cons = (hcl_oop_t)hcl_getatsysdic(hcl, lit);
+				if (!cons)
+				{
+					cons = (hcl_oop_t)hcl_putatsysdic(hcl, lit, hcl->_undef);
+					if (HCL_UNLIKELY(!cons)) return -1;
+				}
+/*
+2024-04-01 23:39:21 +0900 0000000041 make_lambda 0 0 0 0 0
+2024-04-01 23:39:21 +0900 0000000046 jump_forward 6
+2024-04-01 23:39:21 +0900 0000000055 store_into_object @4
+2024-04-01 23:39:21 +0900 0000000058 return_from_block
+
+
+2024-04-01 23:40:11 +0900 0000000041 make_lambda 0 0 0 0 0
+2024-04-01 23:40:11 +0900 0000000046 jump_forward 6
+2024-04-01 23:40:11 +0900 0000000055 class_load @2
+2024-04-01 23:40:11 +0900 0000000058 class_imstore 4
+2024-04-01 23:40:11 +0900 0000000061 class_exit
+2024-04-01 23:40:11 +0900 0000000062 return_from_block
+*/
+
+				if (add_literal(hcl, cons, &index) <= -1) return -1;
 				if (emit_single_param_instruction(hcl, HCL_CODE_CLASS_LOAD_X, index, HCL_CNODE_GET_LOC(class_name)) <= -1) return -1;
 
 				lit = hcl_makesymbol(hcl, HCL_CNODE_GET_TOKPTR(defun_name), HCL_CNODE_GET_TOKLEN(defun_name));

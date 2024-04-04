@@ -1550,8 +1550,8 @@ static int feed_process_token (hcl_t* hcl)
 					hcl_setsynerrbfmt (hcl, HCL_SYNERR_SEMICOLON, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "semicolon expected");
 					goto oops;
 				#else
-					/* if the expression inside {} is an auto-forged xlist expression and there is no semiclon provided,
-					 * treat it as if the semiclon is placed before }. e.g. { printf "hello\n" } */
+					/* if the expression inside {} is an auto-forged xlist expression and there is no semicolon provided,
+					 * treat it as if the semicolon is placed before }. e.g. { printf "hello\n" } */
 					rbrace_again = 1;
 					goto semicolon;
 				#endif
