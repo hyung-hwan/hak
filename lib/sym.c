@@ -104,7 +104,7 @@ static hcl_oop_t find_or_make_symbol (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow
 		HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl, sym));
 
 		if (len == HCL_OBJ_GET_SIZE(sym) &&
-		    hcl_equal_oochars (ptr, sym->slot, len))
+		    hcl_equal_oochars(ptr, sym->slot, len))
 		{
 			return (hcl_oop_t)sym;
 		}
@@ -159,7 +159,7 @@ static hcl_oop_t find_or_make_symbol (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow
 
 	/* create a new symbol since it isn't found in the symbol table */
 	/*sym = (hcl_oop_char_t)hcl_alloccharobj(hcl, HCL_BRAND_SYMBOL, ptr, len);*/
-     sym = (hcl_oop_char_t)hcl_instantiate(hcl, hcl->c_symbol, ptr, len);
+	sym = (hcl_oop_char_t)hcl_instantiate(hcl, hcl->c_symbol, ptr, len);
 	if (HCL_LIKELY(sym))
 	{
 		HCL_ASSERT (hcl, tally < HCL_SMOOI_MAX);
@@ -182,4 +182,21 @@ hcl_oop_t hcl_makesymbol (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_t len)
 hcl_oop_t hcl_findsymbol (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_t len)
 {
 	return find_or_make_symbol(hcl, ptr, len, 0);
+}
+
+hcl_oop_t hcl_makesymbolwithbcstr (hcl_t* hcl, const hcl_ooch_t* ptr)
+{
+#if defined(HCL_OOCH_IS_UCH)
+	hcl_uch_t* ucsptr;
+	hcl_oow_t ucslen;
+	hcl_oop_t v;
+/* TODO: no duplication? */
+	ucsptr = hcl_dupbtoucstr(hcl, ptr, &ucslen);
+	if (HCL_UNLIKELY(!ucsptr)) return HCL_NULL;
+	v = hcl_makesymbol(hcl, ucsptr, ucslen);
+	hcl_freemem (hcl, ucsptr);
+	return v;
+#else
+	return hcl_makesymbol(hcl, ptr, hcl_count_bcstr(ptr));
+#endif
 }

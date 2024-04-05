@@ -2772,22 +2772,13 @@ HCL_EXPORT hcl_oow_t hcl_fmttobcstr (
 /* =========================================================================
  * OBJECT MANAGEMENT
  * ========================================================================= */
-HCL_EXPORT hcl_oop_t hcl_makeundef (
+HCL_EXPORT hcl_oop_t hcl_hatchundef (
 	hcl_t*     hcl
 );
 
-HCL_EXPORT hcl_oop_t hcl_makenil (
+HCL_EXPORT hcl_oop_t hcl_hatchnil (
 	hcl_t*     hcl
 );
-
-HCL_EXPORT hcl_oop_t hcl_maketrue (
-	hcl_t*     hcl
-);
-
-HCL_EXPORT hcl_oop_t hcl_makefalse (
-	hcl_t*     hcl
-);
-
 
 HCL_EXPORT hcl_oop_t hcl_makecons (
 	hcl_t*     hcl,

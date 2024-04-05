@@ -1265,7 +1265,7 @@ static int ignite_2 (hcl_t* hcl)
 	}
 
 #if 0
-	/* Prevent the object instations in the permspace.
+	/* Prevent the object instantions in the permspace.
 	 *
 	 * 1. The symbol table is big and it may resize after ignition.
 	 *    the resizing operation will migrate the obejct out of the
@@ -1399,7 +1399,7 @@ static int ignite_3 (hcl_t* hcl)
 
 	for (i = 0; i < HCL_COUNTOF(kernel_classes); i++)
 	{
-		sym = hcl_makesymbol(hcl, kernel_classes[i].name, hcl_count_oocstr(kernel_classes[i].name));
+		sym = hcl_makesymbolwithbcstr(hcl, kernel_classes[i].name);
 		if (HCL_UNLIKELY(!sym)) return -1;
 
 		cls = *(hcl_oop_class_t*)((hcl_uint8_t*)hcl + kernel_classes[i].offset);
@@ -1462,13 +1462,13 @@ static int make_kernel_objs (hcl_t* hcl)
 #endif
 	if (HCL_LIKELY(!hcl->_undef))
 	{ /* TODO: create it as nogc */
-		hcl->_undef = hcl_makeundef(hcl);
+		hcl->_undef = hcl_hatchundef(hcl);
 		if (HCL_UNLIKELY(!hcl->_undef)) goto oops;
 	}
 
 	if (HCL_LIKELY(!hcl->_nil))
 	{ /* TODO: create it as nogc? */
-		hcl->_nil = hcl_makenil(hcl);
+		hcl->_nil = hcl_hatchnil(hcl);
 		if (HCL_UNLIKELY(!hcl->_nil)) goto oops;
 	}
 
@@ -1481,6 +1481,8 @@ static int make_kernel_objs (hcl_t* hcl)
 	if (ignite_2(hcl) <= -1) goto oops;
 
 	if (ignite_3(hcl) <= -1) goto oops;
+
+/* TODO: scan the heap. and fix the class of objects using brand if the class is NULL */
 
 #if 0
 	hcl->igniting = 0;
@@ -1506,16 +1508,8 @@ int hcl_ignite (hcl_t* hcl, hcl_oow_t heapsize)
 
 	if (make_kernel_objs(hcl) <= -1) return -1;
 
-	if (!hcl->_true)
-	{
-		hcl->_true = hcl_maketrue(hcl);
-		if (HCL_UNLIKELY(!hcl->_true)) goto oops;
-	}
-	if (!hcl->_false)
-	{
-		hcl->_false = hcl_makefalse(hcl);
-		if (HCL_UNLIKELY(!hcl->_false)) goto oops;
-	}
+	HCL_ASSERT (hcl, hcl->_true != HCL_NULL);
+	HCL_ASSERT (hcl, hcl->_false != HCL_NULL);
 
 	if (!hcl->symtab)
 	{

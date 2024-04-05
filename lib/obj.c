@@ -254,8 +254,11 @@ hcl_oop_t hcl_allocwordobj (hcl_t* hcl, int brand, const hcl_oow_t* ptr, hcl_oow
  * COMMON OBJECTS
  * ------------------------------------------------------------------------ */
 
-hcl_oop_t hcl_makeundef (hcl_t* hcl)
+hcl_oop_t hcl_hatchundef (hcl_t* hcl)
 {
+	/* create the undef object for bootstrapping.
+	 * this function doesn't set the class field */
+
 	hcl_oop_t o;
 	o = hcl_allocoopobj(hcl, HCL_BRAND_UNDEF, 0);
 	if (HCL_LIKELY(o))
@@ -270,8 +273,11 @@ hcl_oop_t hcl_makeundef (hcl_t* hcl)
 	return o;
 }
 
-hcl_oop_t hcl_makenil (hcl_t* hcl)
+hcl_oop_t hcl_hatchnil (hcl_t* hcl)
 {
+	/* create the nil object for bootstrapping.
+	 * this function doesn't set the class field */
+
 	hcl_oop_t o;
 	o = hcl_allocoopobj(hcl, HCL_BRAND_NIL, 0);
 	if (HCL_LIKELY(o))
@@ -284,16 +290,6 @@ hcl_oop_t hcl_makenil (hcl_t* hcl)
 		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make nil - %js", orgmsg);
 	}
 	return o;
-}
-
-hcl_oop_t hcl_maketrue (hcl_t* hcl)
-{
-	return hcl_allocoopobj(hcl, HCL_BRAND_TRUE, 0);
-}
-
-hcl_oop_t hcl_makefalse (hcl_t* hcl)
-{
-	return hcl_allocoopobj(hcl, HCL_BRAND_FALSE, 0);
 }
 
 hcl_oop_t hcl_makebigint (hcl_t* hcl, int brand, const hcl_liw_t* ptr, hcl_oow_t len)
@@ -327,6 +323,7 @@ hcl_oop_t hcl_makecons (hcl_t* hcl, hcl_oop_t car, hcl_oop_t cdr)
 	{
 		cons->car = car;
 		cons->cdr = cdr;
+		HCL_OBJ_SET_CLASS (cons, (hcl_oop_t)hcl->c_cons);
 	}
 
 	hcl_popvolats (hcl, 2);
@@ -336,12 +333,18 @@ hcl_oop_t hcl_makecons (hcl_t* hcl, hcl_oop_t car, hcl_oop_t cdr)
 
 hcl_oop_t hcl_makearray (hcl_t* hcl, hcl_oow_t size, int ngc)
 {
-	return hcl_allocoopobj(hcl, HCL_BRAND_ARRAY, size);
+	hcl_oop_t v;
+	v = hcl_allocoopobj(hcl, HCL_BRAND_ARRAY, size);
+	if (HCL_LIKELY(v)) HCL_OBJ_SET_CLASS (v, (hcl_oop_t)hcl->c_array);
+	return v;
 }
 
 hcl_oop_t hcl_makebytearray (hcl_t* hcl, const hcl_oob_t* ptr, hcl_oow_t size)
 {
-	return hcl_allocbyteobj(hcl, HCL_BRAND_BYTE_ARRAY, ptr, size);
+	hcl_oop_t v;
+	v = hcl_allocbyteobj(hcl, HCL_BRAND_BYTE_ARRAY, ptr, size);
+	if (HCL_LIKELY(v)) HCL_OBJ_SET_CLASS (v, (hcl_oop_t)hcl->c_byte_array);
+	return v;
 }
 
 hcl_oop_t hcl_makebytestringwithbytes (hcl_t* hcl, const hcl_oob_t* ptr, hcl_oow_t len, int ngc)
@@ -373,6 +376,8 @@ hcl_oop_t hcl_makebytestring (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_t len, 
 			v = ptr[i] & 0xFF;
 			HCL_OBJ_SET_BYTE_VAL(b, i, v);
 		}
+
+		HCL_OBJ_SET_CLASS (b, (hcl_oop_t)hcl->c_byte_array);
 	}
 
 	return (hcl_oop_t)b;
@@ -387,6 +392,10 @@ hcl_oop_t hcl_makestring (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_t len, int 
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
 		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make string - %js", orgmsg);
+	}
+	else
+	{
+		HCL_OBJ_SET_CLASS (c, (hcl_oop_t)hcl->c_string);
 	}
 	return (hcl_oop_t)c;
 }
@@ -413,11 +422,13 @@ hcl_oop_t hcl_makefpdec (hcl_t* hcl, hcl_oop_t value, hcl_ooi_t scale)
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
 		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make fpdec - %js", orgmsg);
-		return HCL_NULL;
 	}
-
-	f->value = value;
-	f->scale = HCL_SMOOI_TO_OOP(scale);
+	else
+	{
+		f->value = value;
+		f->scale = HCL_SMOOI_TO_OOP(scale);
+		HCL_OBJ_SET_CLASS (f, (hcl_oop_t)hcl->c_fixed_point_decimal);
+	}
 
 	return (hcl_oop_t)f;
 }

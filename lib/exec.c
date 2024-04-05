@@ -2272,7 +2272,7 @@ static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t msg, in
 	}
 	else
 	{
-		HCL_ASSERT (hcl, HCL_IS_INSTANCE(hcl, rcv));
+		/*HCL_ASSERT (hcl, HCL_IS_INSTANCE(hcl, rcv));*/
 		HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, rcv->_class));
 		class_ = (hcl_oop_class_t)rcv->_class;
 		mth_blk = find_imethod_noseterr(hcl, class_, msg, to_super, &ivaroff, &owner);
@@ -4127,8 +4127,9 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 					hcl_seterrbfmt (hcl, HCL_ECALL, "unable to send %O to %O - invalid message", op, rcv); /* TODO: change to HCL_ESEND?? */
 					goto cannot_send;
 				}
-				else if (HCL_IS_CLASS(hcl, rcv) || HCL_IS_INSTANCE(hcl, rcv))
+				else if (HCL_IS_CLASS(hcl, rcv) || HCL_IS_INSTANCE(hcl, rcv) || HCL_IS_CLASS(hcl, rcv->_class)) /* TOIDO: revisit this condition */
 				{
+				send_message:
 					if (send_message(hcl, rcv, op, ((bcode >> 2) & 1) /* to_super */, b1 /* nargs */, b2 /* nrvars */) <= -1)
 					{
 						const hcl_ooch_t* msg = hcl_backuperrmsg(hcl);
@@ -4139,7 +4140,12 @@ if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
 				/* TODO: support non-symbol op? */
 				else
 				{
+				#if 0
 					hcl_seterrbfmt (hcl, HCL_ECALL, "unable to send %O to %O - invalid receiver", op, rcv); /* TODO: change to HCL_ESEND?? */
+				#else
+					goto send_message;
+				#endif
+
 				cannot_send:
 					if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
 					goto oops_with_errmsg_supplement;
