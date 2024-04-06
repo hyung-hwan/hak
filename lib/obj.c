@@ -506,7 +506,7 @@ static HCL_INLINE int decode_spec (hcl_t* hcl, hcl_oop_class_t _class, hcl_oow_t
 
 	if (HCL_CLASS_SPEC_IS_INDEXED(spec))
 	{
-		indexed_type = HCL_CLASS_SPEC_INDEXED_TYPE(spec);
+		indexed_type = (hcl_obj_type_t)HCL_CLASS_SPEC_INDEXED_TYPE(spec);
 
 		/* the number of the fixed fields for a non-pointer object are supported.
 		 * the fixed fields of a pointer object holds named instance variables
@@ -603,19 +603,19 @@ hcl_oop_t hcl_instantiate (hcl_t* hcl, hcl_oop_class_t _class, const void* vptr,
 			break;
 
 		case HCL_OBJ_TYPE_CHAR:
-			oop = hcl_alloccharobj(hcl, HCL_BRAND_INSTANCE, vptr, alloclen);
+			oop = hcl_alloccharobj(hcl, HCL_BRAND_INSTANCE, (const hcl_ooch_t*)vptr, alloclen);
 			break;
 
 		case HCL_OBJ_TYPE_BYTE:
-			oop = hcl_allocbyteobj(hcl, HCL_BRAND_INSTANCE, vptr, alloclen);
+			oop = hcl_allocbyteobj(hcl, HCL_BRAND_INSTANCE, (const hcl_oob_t*)vptr, alloclen);
 			break;
 
 		case HCL_OBJ_TYPE_HALFWORD:
-			oop = hcl_allochalfwordobj(hcl, HCL_BRAND_INSTANCE, vptr, alloclen);
+			oop = hcl_allochalfwordobj(hcl, HCL_BRAND_INSTANCE, (const hcl_oohw_t*)vptr, alloclen);
 			break;
 
 		case HCL_OBJ_TYPE_WORD:
-			oop = hcl_allocwordobj(hcl, HCL_BRAND_INSTANCE, vptr, alloclen);
+			oop = hcl_allocwordobj(hcl, HCL_BRAND_INSTANCE, (const hcl_oow_t*)vptr, alloclen);
 			break;
 
 		/* TODO: more types... HCL_OBJ_TYPE_INT... HCL_OBJ_TYPE_FLOAT, HCL_OBJ_TYPE_UINT16, etc*/

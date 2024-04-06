@@ -195,11 +195,11 @@ static int handle_logopt (hcl_t* hcl, const hcl_bch_t* logstr)
 		{ "debug-",     0, HCL_LOG_DEBUG },
 
 		/* exclude a specific level */
-		{ "-fatal",     1, ~HCL_LOG_FATAL },
-		{ "-error",     1, ~HCL_LOG_ERROR },
-		{ "-warn",      1, ~HCL_LOG_WARN },
-		{ "-info",      1, ~HCL_LOG_INFO },
-		{ "-debug",     1, ~HCL_LOG_DEBUG },
+		{ "-fatal",     1, ~(hcl_bitmask_t)HCL_LOG_FATAL },
+		{ "-error",     1, ~(hcl_bitmask_t)HCL_LOG_ERROR },
+		{ "-warn",      1, ~(hcl_bitmask_t)HCL_LOG_WARN },
+		{ "-info",      1, ~(hcl_bitmask_t)HCL_LOG_INFO },
+		{ "-debug",     1, ~(hcl_bitmask_t)HCL_LOG_DEBUG },
 	};
 
 	cm = hcl_find_bchar_in_bcstr(logstr, ',');

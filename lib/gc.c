@@ -33,7 +33,7 @@ static struct
 {
 	hcl_oow_t  len;
 	hcl_ooch_t ptr[20];
-	int syncode;
+	hcl_syncode_t syncode;
 	hcl_oow_t  offset;
 } syminfo[] =
 {
@@ -1294,7 +1294,7 @@ static int ignite_2 (hcl_t* hcl)
 		hcl->symtab->tally = HCL_SMOOI_TO_OOP(0);
 	}
 
-	if (HCL_LIKELY(hcl->symtab->bucket == hcl->_nil))
+	if (HCL_LIKELY((hcl_oop_t)hcl->symtab->bucket == hcl->_nil))
 	{
 		/* It's important to assign the result of hcl_instantiate() to a temporary
 		* variable first and then assign it to hcl->symtab->bucket.
@@ -1321,7 +1321,7 @@ static int ignite_2 (hcl_t* hcl)
 		hcl->sysdic->tally = HCL_SMOOI_TO_OOP(0);
 	}
 
-	if (HCL_LIKELY(hcl->sysdic->bucket == hcl->_nil))
+	if (HCL_LIKELY((hcl_oop_t)hcl->sysdic->bucket == hcl->_nil))
 	{
 		/* It's important to assign the result of hcl_instantiate() to a temporary
 		* variable first and then assign it to hcl->symtab->bucket.
@@ -1576,7 +1576,7 @@ oops:
 	return -1;
 }
 
-int hcl_getsyncodebyoocs_noseterr (hcl_t* hcl, const hcl_oocs_t* name)
+hcl_syncode_t hcl_getsyncodebyoocs_noseterr (hcl_t* hcl, const hcl_oocs_t* name)
 {
 	hcl_oow_t i;
 	for (i = 0; i < HCL_COUNTOF(syminfo); i++)
@@ -1584,10 +1584,10 @@ int hcl_getsyncodebyoocs_noseterr (hcl_t* hcl, const hcl_oocs_t* name)
 		if (hcl_comp_oochars(syminfo[i].ptr, syminfo[i].len, name->ptr, name->len) == 0)
 			return syminfo[i].syncode;
 	}
-	return 0; /* 0 indicates no syntax code found */
+	return HCL_SYNCODE_NONE; /* indicates no syntax code found */
 }
 
-int hcl_getsyncode_noseterr (hcl_t* hcl, const hcl_ooch_t* ptr, const hcl_oow_t len)
+hcl_syncode_t hcl_getsyncode_noseterr (hcl_t* hcl, const hcl_ooch_t* ptr, const hcl_oow_t len)
 {
 	hcl_oow_t i;
 	for (i = 0; i < HCL_COUNTOF(syminfo); i++)
@@ -1595,7 +1595,7 @@ int hcl_getsyncode_noseterr (hcl_t* hcl, const hcl_ooch_t* ptr, const hcl_oow_t 
 		if (hcl_comp_oochars(syminfo[i].ptr, syminfo[i].len, ptr, len) == 0)
 			return syminfo[i].syncode;
 	}
-	return 0; /* 0 indicates no syntax code found */
+	return HCL_SYNCODE_NONE; /* indicates no syntax code found */
 }
 
 const hcl_ooch_t* hcl_getsyncodename_noseterr (hcl_t* hcl, hcl_syncode_t syncode)

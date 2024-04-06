@@ -1992,7 +1992,9 @@ typedef enum hcl_brand_t hcl_brand_t;
 
 enum hcl_syncode_t
 {
-	/* SYNCODE 0 means it's not a syncode object. so it begins with 1 */
+	HCL_SYNCODE_NONE = 0,
+
+	/* SYNCODE 0 means it's not a syncode object. so the actual code begins with 1 */
 	/* these enumerators can be set in the SYNCODE flags for a symbol */
 	HCL_SYNCODE_AND = 1,
 	HCL_SYNCODE_BREAK,

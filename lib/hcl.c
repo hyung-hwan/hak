@@ -157,7 +157,7 @@ int hcl_init (hcl_t* hcl, hcl_mmgr_t* mmgr, const hcl_vmprim_t* vmprim)
 	if (HCL_UNLIKELY(!hcl->log.ptr)) goto oops;
 
 	hcl->gci.stack.capa = HCL_ALIGN_POW2(1, 1024); /* TODO: is this a good initial size? */
-	hcl->gci.stack.ptr = hcl_allocmem(hcl, (hcl->gci.stack.capa + 1) * HCL_SIZEOF(*hcl->gci.stack.ptr));
+	hcl->gci.stack.ptr = (hcl_oop_t*)hcl_allocmem(hcl, (hcl->gci.stack.capa + 1) * HCL_SIZEOF(*hcl->gci.stack.ptr));
 	if (HCL_UNLIKELY(!hcl->gci.stack.ptr)) goto oops;
 
 	n = hcl_rbt_init(&hcl->modtab, hcl, HCL_SIZEOF(hcl_ooch_t), 1);
@@ -397,7 +397,7 @@ void hcl_reset (hcl_t* hcl)
 	hcl_gc (hcl, 1);
 }
 
-static int dup_str_opt (hcl_t* hcl, const void* value, hcl_oocs_t* tmp)
+static int dup_str_opt (hcl_t* hcl, const hcl_ooch_t* value, hcl_oocs_t* tmp)
 {
 	if (value)
 	{
@@ -440,10 +440,10 @@ int hcl_setoption (hcl_t* hcl, hcl_option_t id, const void* value)
 			hcl_bch_t* v1;
 			hcl_uch_t* v2;
 
-			v1 = hcl_dupbcstr(hcl, value, HCL_NULL);
+			v1 = hcl_dupbcstr(hcl, (const hcl_bch_t*)value, HCL_NULL);
 			if (HCL_UNLIKELY(!v1)) return -1;
 
-			v2 = hcl_dupbtoucstr(hcl, value, HCL_NULL);
+			v2 = hcl_dupbtoucstr(hcl, (const hcl_bch_t*)value, HCL_NULL);
 			if (HCL_UNLIKELY(!v2))
 			{
 				hcl_freemem (hcl, v1);
@@ -460,10 +460,10 @@ int hcl_setoption (hcl_t* hcl, hcl_option_t id, const void* value)
 			hcl_uch_t* v1;
 			hcl_bch_t* v2;
 
-			v1 = hcl_dupucstr(hcl, value, HCL_NULL);
+			v1 = hcl_dupucstr(hcl, (const hcl_uch_t*)value, HCL_NULL);
 			if (HCL_UNLIKELY(!v1)) return -1;
 
-			v2 = hcl_duputobcstr(hcl, value, HCL_NULL);
+			v2 = hcl_duputobcstr(hcl, (const hcl_uch_t*)value, HCL_NULL);
 			if (HCL_UNLIKELY(!v2))
 			{
 				hcl_freemem (hcl, v1);
@@ -557,7 +557,7 @@ int hcl_setoption (hcl_t* hcl, hcl_option_t id, const void* value)
 			hcl_oocs_t tmp;
 			int idx;
 
-			if (dup_str_opt(hcl, value, &tmp) <= -1) return -1;
+			if (dup_str_opt(hcl, (const hcl_ooch_t*)value, &tmp) <= -1) return -1;
 
 			idx = id - HCL_MOD_LIBDIRS;
 			if (hcl->option.mod[idx].ptr) hcl_freemem (hcl, hcl->option.mod[idx].ptr);

@@ -396,7 +396,7 @@ enum hcl_cnode_flag_t
 {
 	HCL_CNODE_AUTO_FORGED = (1 << 0)
 };
-typedef enum hcl_cnode_flagt hcl_cnode_flag_t;
+typedef enum hcl_cnode_flag_t hcl_cnode_flag_t;
 
 #define HCL_CNODE_GET_TYPE(x) ((x)->cn_type)
 #define HCL_CNODE_GET_FLAGS(x) ((x)->cn_flags)
@@ -1554,12 +1554,12 @@ void hcl_gc_ms_sweep_lazy (
 	hcl_oow_t allocsize
 );
 
-int hcl_getsyncodebyoocs_noseterr (
+hcl_syncode_t hcl_getsyncodebyoocs_noseterr (
 	hcl_t*            hcl,
 	const hcl_oocs_t* name
 );
 
-int hcl_getsyncode_noseterr (
+hcl_syncode_t hcl_getsyncode_noseterr (
 	hcl_t*            hcl,
 	const hcl_ooch_t* ptr,
 	const hcl_oow_t   len

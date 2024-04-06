@@ -26,17 +26,17 @@
 
 static void* xma_alloc (hcl_mmgr_t* mmgr, hcl_oow_t size)
 {
-	return hcl_xma_alloc(mmgr->ctx, size);
+	return hcl_xma_alloc((hcl_xma_t*)mmgr->ctx, size);
 }
 
 static void* xma_realloc (hcl_mmgr_t* mmgr, void* ptr, hcl_oow_t size)
 {
-	return hcl_xma_realloc(mmgr->ctx, ptr, size);
+	return hcl_xma_realloc((hcl_xma_t*)mmgr->ctx, ptr, size);
 }
 
 static void xma_free (hcl_mmgr_t* mmgr, void* ptr)
 {
-	hcl_xma_free (mmgr->ctx, ptr);
+	hcl_xma_free ((hcl_xma_t*)mmgr->ctx, ptr);
 }
 
 hcl_heap_t* hcl_makeheap (hcl_t* hcl, hcl_oow_t size)

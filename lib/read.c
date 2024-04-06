@@ -547,7 +547,8 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 	hcl_cnode_t* head, * tail;
 	hcl_oow_t count;
 	hcl_loc_t loc;
-	int fv, concode;
+	int fv;
+	hcl_concode_t concode;
 
 	/* the stack must not be empty - cannot leave a list without entering it */
 	HCL_ASSERT (hcl, hcl->c->r.st != HCL_NULL);
@@ -558,7 +559,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 	count = rstl->count;
 	fv = rstl->flagv;
 	loc = rstl->loc;
-	concode = LIST_FLAG_GET_CONCODE(fv);
+	concode = (hcl_concode_t)LIST_FLAG_GET_CONCODE(fv);
 
 	hcl->c->r.st = rstl->prev; /* pop off  */
 	hcl_freemem (hcl, rstl); /* dispose of the stack node */
@@ -797,7 +798,7 @@ static HCL_INLINE int can_comma_list (hcl_t* hcl)
 
 	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED)) return 0;
 
-	cc = LIST_FLAG_GET_CONCODE(rstl->flagv);
+	cc = (hcl_concode_t)LIST_FLAG_GET_CONCODE(rstl->flagv);
 	if (cc == HCL_CONCODE_XLIST)
 	{
 		/* defun f(a :: b c) { b := (a + 10); c := (a + 20) }
@@ -849,7 +850,7 @@ static HCL_INLINE int can_colon_list (hcl_t* hcl)
 	/* multiple single-colons  - e.g. #{ "abc": : 20 } */
 	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED)) return 0;
 
-	cc = LIST_FLAG_GET_CONCODE(rstl->flagv);
+	cc = (hcl_concode_t)LIST_FLAG_GET_CONCODE(rstl->flagv);
 	if (cc == HCL_CONCODE_XLIST)
 	{
 		/* method defintion with defun  - e.g. defun String:length()
@@ -882,7 +883,7 @@ static HCL_INLINE int can_coloneq_list (hcl_t* hcl)
 	/* repeated delimiters - e.g (a := := ...)   (a : := ... )  */
 	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED)) return 0;
 
-	cc = LIST_FLAG_GET_CONCODE(rstl->flagv);
+	cc = (hcl_concode_t)LIST_FLAG_GET_CONCODE(rstl->flagv);
 
 	/* assignment only in XLIST */
 	if (cc != HCL_CONCODE_XLIST) return 0;
@@ -911,7 +912,7 @@ static HCL_INLINE int can_binop_list (hcl_t* hcl)
 	/* repeated delimiters - e.g (a ++ ++ ...)   (a : := ... )  */
 	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED)) return 0;
 
-	cc = LIST_FLAG_GET_CONCODE(rstl->flagv);
+	cc = (hcl_concode_t)LIST_FLAG_GET_CONCODE(rstl->flagv);
 
 	/* assignment only in XLIST */
 	if (cc != HCL_CONCODE_XLIST) return 0;
@@ -2771,7 +2772,7 @@ static int flx_quoted_token (hcl_t* hcl, hcl_ooci_t c) /* string, character */
 		 * byte-string and byte-character literals are 1 greater than
 		 * string and character literals.  * see the definition of
 		 * hcl_tok_type_t in hcl-prv.h */
-		FEED_WRAP_UP (hcl, qt->tok_type + qt->is_byte); /* HCL_TOK_STRLIT or HCL_TOK_CHARLIT */
+		FEED_WRAP_UP (hcl, (hcl_tok_type_t)(qt->tok_type + qt->is_byte)); /* HCL_TOK_STRLIT or HCL_TOK_CHARLIT */
 		if (TOKEN_NAME_LEN(hcl) < qt->min_len) goto invalid_token;
 		goto consumed;
 	}

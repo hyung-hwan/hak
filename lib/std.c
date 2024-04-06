@@ -929,7 +929,7 @@ hcl_errnum_t hcl_syserrstrb (hcl_t* hcl, int syserr_type, int syserr_code, hcl_b
 				 * a positive error code upon failure */
 				x = (hcl_oow_t)strerror_r(syserr_code, buf, len);
 				if (x != (hcl_oow_t)buf && buf[0] == '\0' && x != 0 && x > 1024 && x != (hcl_oow_t)-1)
-					hcl_copy_bcstr (buf, len, (void*)x);
+					hcl_copy_bcstr (buf, len, (const hcl_bch_t*)x);
 			}
 		#else
 			/* this may be thread unsafe */
@@ -3643,7 +3643,7 @@ static HCL_INLINE int read_udi_stream_bytes (hcl_t* hcl, hcl_io_udiarg_t* arg)
 
 	bcslen = (bb->len < HCL_COUNTOF(arg->buf.b))? bb->len: HCL_COUNTOF(arg->buf.b);
 	ucslen = bcslen;
-	hcl_copy_bchars (arg->buf.b, bb->buf, bcslen);
+	hcl_copy_bchars ((hcl_bch_t*)arg->buf.b, bb->buf, bcslen);
 
 	remlen = bb->len - bcslen;
 	if (remlen > 0) HCL_MEMMOVE (bb->buf, &bb->buf[bcslen], remlen);

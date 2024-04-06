@@ -459,8 +459,8 @@ static HCL_INLINE int prepare_to_alloc_pid (hcl_t* hcl)
 		new_capa = HCL_SMOOI_MAX;
 	}
 
-	tmp = (hcl_oop_t*)hcl_reallocmem (hcl, hcl->proc_map, HCL_SIZEOF(hcl_oop_t) * new_capa);
-	if (!tmp) return -1;
+	tmp = (hcl_oop_t*)hcl_reallocmem(hcl, hcl->proc_map, HCL_SIZEOF(hcl_oop_t) * new_capa);
+	if (HCL_UNLIKELY(!tmp)) return -1;
 
 	hcl->proc_map_free_first = hcl->proc_map_capa;
 	for (i = hcl->proc_map_capa, j = hcl->proc_map_capa + 1; j < new_capa; i++, j++)
@@ -1162,7 +1162,7 @@ static int async_signal_semaphore (hcl_t* hcl, hcl_oop_semaphore_t sem)
 		hcl_oop_semaphore_t* tmp;
 
 		new_capa = hcl->sem_list_capa + SEM_LIST_INC; /* TODO: overflow check.. */
-		tmp = (hcl_oop_semaphore_t*)hcl_reallocmem (hcl, hcl->sem_list, HCL_SIZEOF(hcl_oop_semaphore_t) * new_capa);
+		tmp = (hcl_oop_semaphore_t*)hcl_reallocmem(hcl, hcl->sem_list, HCL_SIZEOF(hcl_oop_semaphore_t) * new_capa);
 		if (HCL_UNLIKELY(!tmp)) return -1;
 
 		hcl->sem_list = tmp;
@@ -1579,8 +1579,8 @@ static int add_sem_to_sem_io_tuple (hcl_t* hcl, hcl_oop_semaphore_t sem, hcl_ooi
 /* TODO: specify the maximum io_handle supported and check it here instead of just relying on memory allocation success/failure? */
 		new_capa = HCL_ALIGN_POW2(io_handle + 1, SEM_IO_MAP_ALIGN);
 
-		tmp = hcl_reallocmem (hcl, hcl->sem_io_map, HCL_SIZEOF(*tmp) * new_capa);
-		if (!tmp)
+		tmp = (hcl_ooi_t*)hcl_reallocmem(hcl, hcl->sem_io_map, HCL_SIZEOF(*tmp) * new_capa);
+		if (HCL_UNLIKELY(!tmp))
 		{
 			const hcl_ooch_t* oldmsg = hcl_backuperrmsg(hcl);
 			hcl_seterrbfmt (hcl, hcl->errnum, "handle %zd out of supported range - %js", oldmsg);
@@ -1611,8 +1611,8 @@ static int add_sem_to_sem_io_tuple (hcl_t* hcl, hcl_oop_semaphore_t sem, hcl_ooi
 			/* no overflow check when calculating the new capacity
 			 * owing to SEM_IO_TUPLE_MAX check above */
 			new_capa = hcl->sem_io_tuple_capa + SEM_IO_TUPLE_INC;
-			tmp = hcl_reallocmem (hcl, hcl->sem_io_tuple, HCL_SIZEOF(hcl_sem_tuple_t) * new_capa);
-			if (!tmp) return -1;
+			tmp = (hcl_sem_tuple_t*)hcl_reallocmem(hcl, hcl->sem_io_tuple, HCL_SIZEOF(hcl_sem_tuple_t) * new_capa);
+			if (HCL_UNLIKELY(!tmp)) return -1;
 
 			hcl->sem_io_tuple = tmp;
 			hcl->sem_io_tuple_capa = new_capa;
@@ -2523,7 +2523,7 @@ static HCL_INLINE int exec_syscmd (hcl_t* hcl, hcl_ooi_t nargs)
 
 		/* TODO: close file descriptors??? */
 		argv = (hcl_bch_t**)hcl_allocmem(hcl, (nargs + 2) * HCL_SIZEOF(*argv));
-		if (argv)
+		if (HCL_LIKELY(argv))
 		{
 			argv[0] = cmd;
 HCL_DEBUG1 (hcl, "NARG %d\n", (int)nargs);

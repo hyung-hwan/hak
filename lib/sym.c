@@ -204,7 +204,7 @@ hcl_oop_t hcl_makesymbolwithbcstr (hcl_t* hcl, const hcl_bch_t* ptr)
 hcl_oop_t hcl_makesymbolwithucstr (hcl_t* hcl, const hcl_uch_t* ptr)
 {
 #if defined(HCL_OOCH_IS_UCH)
-	return hcl_makesymbol(hcl, ptr, hcl_count_bcstr(ptr));
+	return hcl_makesymbol(hcl, ptr, hcl_count_ucstr(ptr));
 #else
 	hcl_uch_t* bcsptr;
 	hcl_oow_t bcslen;

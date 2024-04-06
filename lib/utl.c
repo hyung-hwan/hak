@@ -558,7 +558,7 @@ hcl_oow_t hcl_byte_to_bcstr (hcl_uint8_t byte, hcl_bch_t* buf, hcl_oow_t size, i
 
 /* ----------------------------------------------------------------------- */
 
-HCL_INLINE int hcl_conv_bchars_to_uchars_with_cmgr (const hcl_bch_t* bcs, hcl_oow_t* bcslen, hcl_uch_t* ucs, hcl_oow_t* ucslen, hcl_cmgr_t* cmgr, int all)
+int hcl_conv_bchars_to_uchars_with_cmgr (const hcl_bch_t* bcs, hcl_oow_t* bcslen, hcl_uch_t* ucs, hcl_oow_t* ucslen, hcl_cmgr_t* cmgr, int all)
 {
 	const hcl_bch_t* p;
 	int ret = 0;
@@ -677,7 +677,7 @@ HCL_INLINE int hcl_conv_bchars_to_uchars_with_cmgr (const hcl_bch_t* bcs, hcl_oo
 	return ret;
 }
 
-HCL_INLINE int hcl_conv_bcstr_to_ucstr_with_cmgr (const hcl_bch_t* bcs, hcl_oow_t* bcslen, hcl_uch_t* ucs, hcl_oow_t* ucslen, hcl_cmgr_t* cmgr, int all)
+int hcl_conv_bcstr_to_ucstr_with_cmgr (const hcl_bch_t* bcs, hcl_oow_t* bcslen, hcl_uch_t* ucs, hcl_oow_t* ucslen, hcl_cmgr_t* cmgr, int all)
 {
 	const hcl_bch_t* bp;
 	hcl_oow_t mlen, wlen;
@@ -698,7 +698,7 @@ HCL_INLINE int hcl_conv_bcstr_to_ucstr_with_cmgr (const hcl_bch_t* bcs, hcl_oow_
 	return n;
 }
 
-HCL_INLINE int hcl_conv_uchars_to_bchars_with_cmgr (const hcl_uch_t* ucs, hcl_oow_t* ucslen, hcl_bch_t* bcs, hcl_oow_t* bcslen, hcl_cmgr_t* cmgr)
+int hcl_conv_uchars_to_bchars_with_cmgr (const hcl_uch_t* ucs, hcl_oow_t* ucslen, hcl_bch_t* bcs, hcl_oow_t* bcslen, hcl_cmgr_t* cmgr)
 {
 	const hcl_uch_t* p = ucs;
 	const hcl_uch_t* end = ucs + *ucslen;
@@ -765,7 +765,7 @@ HCL_INLINE int hcl_conv_uchars_to_bchars_with_cmgr (const hcl_uch_t* ucs, hcl_oo
 	return ret;
 }
 
-HCL_INLINE int hcl_conv_ucstr_to_bcstr_with_cmgr (const hcl_uch_t* ucs, hcl_oow_t* ucslen, hcl_bch_t* bcs, hcl_oow_t* bcslen, hcl_cmgr_t* cmgr)
+int hcl_conv_ucstr_to_bcstr_with_cmgr (const hcl_uch_t* ucs, hcl_oow_t* ucslen, hcl_bch_t* bcs, hcl_oow_t* bcslen, hcl_cmgr_t* cmgr)
 {
 	const hcl_uch_t* p = ucs;
 	int ret = 0;
@@ -1052,7 +1052,7 @@ int hcl_convutobcstr (hcl_t* hcl, const hcl_uch_t* ucs, hcl_oow_t* ucslen, hcl_b
 
 /* ----------------------------------------------------------------------- */
 
-HCL_INLINE hcl_uch_t* hcl_dupbtoucharswithheadroom (hcl_t* hcl, hcl_oow_t headroom_bytes, const hcl_bch_t* bcs, hcl_oow_t bcslen, hcl_oow_t* ucslen)
+hcl_uch_t* hcl_dupbtoucharswithheadroom (hcl_t* hcl, hcl_oow_t headroom_bytes, const hcl_bch_t* bcs, hcl_oow_t bcslen, hcl_oow_t* ucslen)
 {
 	hcl_oow_t inlen, outlen;
 	hcl_uch_t* ptr;
@@ -1085,7 +1085,7 @@ hcl_uch_t* hcl_dupbtouchars (hcl_t* hcl, const hcl_bch_t* bcs, hcl_oow_t bcslen,
 	return hcl_dupbtoucharswithheadroom (hcl, 0, bcs, bcslen, ucslen);
 }
 
-HCL_INLINE hcl_bch_t* hcl_duputobcharswithheadroom (hcl_t* hcl, hcl_oow_t headroom_bytes, const hcl_uch_t* ucs, hcl_oow_t ucslen, hcl_oow_t* bcslen)
+hcl_bch_t* hcl_duputobcharswithheadroom (hcl_t* hcl, hcl_oow_t headroom_bytes, const hcl_uch_t* ucs, hcl_oow_t ucslen, hcl_oow_t* bcslen)
 {
 	hcl_oow_t inlen, outlen;
 	hcl_bch_t* ptr;
@@ -1117,7 +1117,7 @@ hcl_bch_t* hcl_duputobchars (hcl_t* hcl, const hcl_uch_t* ucs, hcl_oow_t ucslen,
 
 /* ----------------------------------------------------------------------- */
 
-HCL_INLINE hcl_uch_t* hcl_dupbtoucstrwithheadroom (hcl_t* hcl, hcl_oow_t headroom_bytes, const hcl_bch_t* bcs, hcl_oow_t* ucslen)
+hcl_uch_t* hcl_dupbtoucstrwithheadroom (hcl_t* hcl, hcl_oow_t headroom_bytes, const hcl_bch_t* bcs, hcl_oow_t* ucslen)
 {
 	hcl_oow_t inlen, outlen;
 	hcl_uch_t* ptr;
@@ -1142,7 +1142,7 @@ hcl_uch_t* hcl_dupbtoucstr (hcl_t* hcl, const hcl_bch_t* bcs, hcl_oow_t* ucslen)
 	return hcl_dupbtoucstrwithheadroom (hcl, 0, bcs, ucslen);
 }
 
-HCL_INLINE hcl_bch_t* hcl_duputobcstrwithheadroom (hcl_t* hcl, hcl_oow_t headroom_bytes, const hcl_uch_t* ucs, hcl_oow_t* bcslen)
+hcl_bch_t* hcl_duputobcstrwithheadroom (hcl_t* hcl, hcl_oow_t headroom_bytes, const hcl_uch_t* ucs, hcl_oow_t* bcslen)
 {
 	hcl_oow_t inlen, outlen;
 	hcl_bch_t* ptr;

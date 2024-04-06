@@ -1581,8 +1581,8 @@ redo:
 		}
 
 		/* +1 to handle line ending injection more easily */
-		tmp = hcl_reallocmem(hcl, hcl->log.ptr, (newcapa + 1) * HCL_SIZEOF(*tmp));
-		if (!tmp)
+		tmp = (hcl_ooch_t*)hcl_reallocmem(hcl, hcl->log.ptr, (newcapa + 1) * HCL_SIZEOF(*tmp));
+		if (HCL_UNLIKELY(!tmp))
 		{
 		make_do:
 			if (hcl->log.len > 0)

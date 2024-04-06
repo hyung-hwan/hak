@@ -330,8 +330,8 @@ int hcl_unmarshalcode (hcl_t* hcl, hcl_code_t* code, hcl_xchg_reader_t rdr, void
 					newcapa = nbytes;
 					if (HCL_UNLIKELY(newcapa <= 0)) newcapa++;
 					newcapa = HCL_ALIGN(newcapa, HCL_BC_BUFFER_ALIGN);
-					newptr = hcl_reallocmem(hcl, code->bc.ptr, newcapa);
-					if (!newptr) goto oops;
+					newptr = (hcl_oob_t*)hcl_reallocmem(hcl, code->bc.ptr, newcapa);
+					if (HCL_UNLIKELY(!newptr)) goto oops;
 
 					code->bc.ptr = newptr;
 					code->bc.capa = newcapa;
@@ -550,7 +550,7 @@ static int mem_code_writer (hcl_t* hcl, const void* ptr, hcl_oow_t len, void* ct
 
 		newcapa = dst->len + len;
 		newcapa = HCL_ALIGN_POW2(newcapa, 64);
-		newptr = hcl_reallocmem(hcl, dst->ptr, newcapa);
+		newptr = (hcl_uint8_t*)hcl_reallocmem(hcl, dst->ptr, newcapa);
 		if (HCL_UNLIKELY(!newptr)) return -1;
 
 		dst->ptr = newptr;
