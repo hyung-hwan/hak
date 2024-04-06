@@ -184,7 +184,7 @@ hcl_oop_t hcl_findsymbol (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_t len)
 	return find_or_make_symbol(hcl, ptr, len, 0);
 }
 
-hcl_oop_t hcl_makesymbolwithbcstr (hcl_t* hcl, const hcl_ooch_t* ptr)
+hcl_oop_t hcl_makesymbolwithbcstr (hcl_t* hcl, const hcl_bch_t* ptr)
 {
 #if defined(HCL_OOCH_IS_UCH)
 	hcl_uch_t* ucsptr;
@@ -198,5 +198,22 @@ hcl_oop_t hcl_makesymbolwithbcstr (hcl_t* hcl, const hcl_ooch_t* ptr)
 	return v;
 #else
 	return hcl_makesymbol(hcl, ptr, hcl_count_bcstr(ptr));
+#endif
+}
+
+hcl_oop_t hcl_makesymbolwithucstr (hcl_t* hcl, const hcl_uch_t* ptr)
+{
+#if defined(HCL_OOCH_IS_UCH)
+	return hcl_makesymbol(hcl, ptr, hcl_count_bcstr(ptr));
+#else
+	hcl_uch_t* bcsptr;
+	hcl_oow_t bcslen;
+	hcl_oop_t v;
+/* TODO: no duplication? */
+	bcsptr = hcl_duputobcstr(hcl, ptr, &bcslen);
+	if (HCL_UNLIKELY(!bcsptr)) return HCL_NULL;
+	v = hcl_makesymbol(hcl, bcsptr, bcslen);
+	hcl_freemem (hcl, bcsptr);
+	return v;
 #endif
 }

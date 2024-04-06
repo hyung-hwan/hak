@@ -1516,6 +1516,16 @@ hcl_oop_t hcl_makesymbol (
 	hcl_oow_t          len
 );
 
+hcl_oop_t hcl_makesymbolwithbcstr (
+	hcl_t*             hcl,
+	const hcl_bch_t*   ptr
+);
+
+hcl_oop_t hcl_makesymbolwithucstr (
+	hcl_t*             hcl,
+	const hcl_uch_t*   ptr
+);
+
 hcl_oop_t hcl_findsymbol (
 	hcl_t*             hcl,
 	const hcl_ooch_t*  ptr,
