@@ -305,9 +305,13 @@ hcl_oop_t hcl_makebigint (hcl_t* hcl, int brand, const hcl_liw_t* ptr, hcl_oow_t
 #else
 #	error UNSUPPORTED LIW BIT SIZE
 #endif
-	if (HCL_UNLIKELY(!oop)) return HCL_NULL;
-
-	HCL_OBJ_SET_FLAGS_BRAND (oop, brand);
+	if (HCL_UNLIKELY(oop))
+	{
+		hcl_oop_class_t _class = (brand == HCL_BRAND_PBIGINT)?
+			hcl->c_large_positive_integer: hcl->c_large_negative_integer;
+		HCL_OBJ_SET_FLAGS_BRAND (oop, brand);
+		HCL_OBJ_SET_CLASS (oop, (hcl_oop_t)_class);
+	}
 	return oop;
 }
 
