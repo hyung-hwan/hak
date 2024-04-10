@@ -9,3 +9,7 @@ try {
 } catch (e a) { ##ERROR: syntax error - not proper exception variable
 	printf "EXCEPTION - %s\n" e
 }
+
+---
+
+try { throw "1111"; } catch (e) ##ERROR: syntax error - no exception handler

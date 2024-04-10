@@ -300,7 +300,7 @@ static hcl_pfrc_t pf_nqk (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 
 /* ------------------------------------------------------------------------- */
 
-static hcl_pfrc_t pf_is_null (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+static hcl_pfrc_t pf_is_nil (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
 	hcl_oop_t rv;
 	rv = (HCL_STACK_GETARG(hcl, nargs, 0) == hcl->_nil)? hcl->_true: hcl->_false;
@@ -924,7 +924,7 @@ static pf_t builtin_prims[] =
 	{ 2, 2,                       pf_nql,             4,  { 'n','q','l','?' } },
 	{ 2, 2,                       pf_nqk,             4,  { 'n','q','k','?' } },
 
-	{ 1, 1,                       pf_is_null,         5,  { 'n','u','l','l','?' } },
+	{ 1, 1,                       pf_is_nil,          4,  { 'n','i','l','?' } },
 	{ 1, 1,                       pf_is_boolean,      8,  { 'b','o','o','l','e','a','n','?' } },
 	{ 1, 1,                       pf_is_character,   10,  { 'c','h','a','r','a','c','t','e','r','?' } },
 	{ 1, 1,                       pf_is_error,        6,  { 'e','r','r','o','r','?' } },

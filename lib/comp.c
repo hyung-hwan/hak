@@ -3533,6 +3533,13 @@ static HCL_INLINE int compile_catch (hcl_t* hcl)
 	HCL_ASSERT (hcl, fbi->tmpr_nargs + fbi->tmpr_nrvars + fbi->tmpr_nlvars == fbi->tmprcnt - par_tmprcnt);
 
 	obj = HCL_CNODE_CONS_CDR(obj);
+	if (!obj)
+	{
+		/* the error message is no exception handler. but what is expected is an expression.
+		 * e.g. a number, nil, a block expression, etc */
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_NOVALUE, HCL_CNODE_GET_LOC(exarg), HCL_NULL, "no exception handler after %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		return -1;
+	}
 
 	/* jump_inst_pos hold the instruction pointer that skips the catch block at the end of the try block */
 	patch_nearest_post_try (hcl, &jump_inst_pos);
