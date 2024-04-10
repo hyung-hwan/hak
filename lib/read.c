@@ -2211,11 +2211,11 @@ not_consumed:
 static int flx_hmarked_token (hcl_t* hcl, hcl_ooci_t c)
 {
 	/*
-	 * #xXXXX hexadecimal
-	 * #oOOOO octal
-	 * #bBBBB binary
-	 * #eDDD   error
-	 * #pHHH   smptr
+	 * #xXXXX   hexadecimal
+	 * #oOOOO   octal
+	 * #bBBBB   binary
+	 * #eDDD    error
+	 * #pHHH    smptr
 	 * #\C      character
 	 * #\xHHHH  unicode character
 	 * #\UHHHH  unicode character

@@ -27,6 +27,83 @@
 
 #include "_str.h"
 
+static hcl_pfrc_t pf_str_at (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+{
+	hcl_oop_t str, pos;
+	hcl_ooch_t cv;
+	hcl_ooi_t size;
+	hcl_ooi_t idx;
+
+	str = HCL_STACK_GETARG(hcl, nargs, 0);
+	pos = HCL_STACK_GETARG(hcl, nargs, 1);
+
+	if (!HCL_IS_STRING(hcl, str))
+	{
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not string - %O", str);
+		return HCL_PF_FAILURE;
+	}
+
+	if (!HCL_OOP_IS_SMOOI(pos))
+	{
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not smooi - %O", pos);
+		return HCL_PF_FAILURE;
+	}
+
+	idx = HCL_OOP_TO_SMOOI(pos);
+	size = HCL_OBJ_GET_SIZE(str);
+	if (idx <= -1 || idx >= size)
+	{
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter out of range - %O", pos);
+		return HCL_PF_FAILURE;
+	}
+	cv = HCL_OBJ_GET_CHAR_VAL(str, idx);
+	HCL_STACK_SETRET (hcl, nargs, HCL_CHAR_TO_OOP(cv));
+	return HCL_PF_SUCCESS;
+}
+
+static hcl_pfrc_t pf_str_at_put (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+{
+	hcl_oop_t str, pos, val;
+	hcl_ooch_t cv;
+	hcl_ooi_t size;
+	hcl_ooi_t idx;
+
+	str = HCL_STACK_GETARG(hcl, nargs, 0);
+	pos = HCL_STACK_GETARG(hcl, nargs, 1);
+	val = HCL_STACK_GETARG(hcl, nargs, 2);
+
+	if (!HCL_IS_STRING(hcl, str))
+	{
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not string - %O", str);
+		return HCL_PF_FAILURE;
+	}
+
+	if (!HCL_OOP_IS_SMOOI(pos))
+	{
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not integer - %O", pos);
+		return HCL_PF_FAILURE;
+	}
+
+	if (!HCL_OOP_IS_CHAR(val))
+	{
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not character - %O", pos);
+		return HCL_PF_FAILURE;
+	}
+
+	idx = HCL_OOP_TO_SMOOI(pos);
+	size = HCL_OBJ_GET_SIZE(str);
+	if (idx <= -1 || idx >= size)
+	{
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter out of range - %O", pos);
+		return HCL_PF_FAILURE;
+	}
+
+	cv = HCL_OOP_TO_CHAR(val);
+	HCL_OBJ_SET_CHAR_VAL(str, idx, cv);
+	HCL_STACK_SETRET (hcl, nargs, val);
+	return HCL_PF_SUCCESS;
+}
+
 static hcl_pfrc_t pf_str_length (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
 	hcl_oop_t str;
@@ -34,9 +111,9 @@ static hcl_pfrc_t pf_str_length (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 
 	str = HCL_STACK_GETARG(hcl, nargs, 0);
 
-	if (!HCL_IS_STRING(hcl,str))
+	if (!HCL_IS_STRING(hcl, str))
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not a string - %O", str);
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not string - %O", str);
 		return HCL_PF_FAILURE;
 	}
 
@@ -48,6 +125,8 @@ static hcl_pfrc_t pf_str_length (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 static hcl_pfinfo_t pfinfos[] =
 {
 	/*{ { 'V','A','R','\0' },                  { HCL_PFBASE_VAR,  HCL_NULL,           0,  0 } },*/
+	{ { 'a','t','\0' },                      { HCL_PFBASE_FUNC,  pf_str_at,         2,  2 } },
+	{ { 'a','t','P','u','t','\0' },          { HCL_PFBASE_FUNC,  pf_str_at_put,     3,  3 } },
 	{ { 'l','e','n','g','t','h','\0' },      { HCL_PFBASE_FUNC,  pf_str_length,     1,  1 } }
 };
 

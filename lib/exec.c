@@ -2239,7 +2239,7 @@ static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t msg, in
 {
 	hcl_oop_lambda_t mth_blk;
 	hcl_oop_context_t newctx;
-	hcl_oop_class_t class_, owner;
+	hcl_oop_class_t _class, owner;
 	hcl_ooi_t ivaroff;
 	int x;
 
@@ -2251,8 +2251,8 @@ static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t msg, in
 /* ============================= */
 	if (HCL_IS_CLASS(hcl, rcv))
 	{
-		class_ = (hcl_oop_class_t)rcv;
-		mth_blk = find_cmethod_noseterr(hcl, class_, msg, to_super, &ivaroff, &owner);
+		_class = (hcl_oop_class_t)rcv;
+		mth_blk = find_cmethod_noseterr(hcl, _class, msg, to_super, &ivaroff, &owner);
 
 		if (!mth_blk) goto msg_not_found;
 
@@ -2263,7 +2263,7 @@ static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t msg, in
 			hcl_pushvolat (hcl, (hcl_oop_t*)&mth_blk);
 			hcl_pushvolat (hcl, &msg);
 			hcl_pushvolat (hcl, &rcv);
-			newrcv = hcl_instantiate(hcl, (hcl_oop_class_t)class_, HCL_NULL, 0);
+			newrcv = hcl_instantiate(hcl, (hcl_oop_class_t)_class, HCL_NULL, 0);
 			hcl_popvolats (hcl, 3);
 			if (HCL_UNLIKELY(!newrcv)) return -1;
 
@@ -2273,13 +2273,14 @@ static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t msg, in
 	else
 	{
 		/*HCL_ASSERT (hcl, HCL_IS_INSTANCE(hcl, rcv));*/
-		HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, rcv->_class));
-		class_ = (hcl_oop_class_t)rcv->_class;
-		mth_blk = find_imethod_noseterr(hcl, class_, msg, to_super, &ivaroff, &owner);
+		_class = (hcl_oop_class_t)HCL_CLASSOF(hcl, rcv);
+		HCL_ASSERT (hcl, _class != HCL_NULL);
+		HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, _class));
+		mth_blk = find_imethod_noseterr(hcl, _class, msg, to_super, &ivaroff, &owner);
 		if (!mth_blk)
 		{
 		msg_not_found:
-			hcl_seterrbfmt (hcl, HCL_ENOENT, "'%.*js' not found in %O", HCL_OBJ_GET_SIZE(msg), HCL_OBJ_GET_CHAR_SLOT(msg), class_);
+			hcl_seterrbfmt (hcl, HCL_ENOENT, "'%.*js' not found in %O", HCL_OBJ_GET_SIZE(msg), HCL_OBJ_GET_CHAR_SLOT(msg), _class);
 			return -1;
 		}
 	}
@@ -3737,10 +3738,8 @@ static int execute (hcl_t* hcl)
 						case HCL_BRAND_PRIM:
 							if (call_primitive(hcl, b1) <= -1)
 							{
-/*
-TODO: translate a certain primitive failure to a catchable exception. this seems to work . i need to capture the throw value instead of hcl->_nil .
-if (do_throw(hcl, hcl->_nil, fetched_instruction_pointer) <= -1)
-*/
+							/* TODO: do i have tell a catchable exception from a fatal error? */
+								if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
 								goto call_failed;
 							}
 							break;
