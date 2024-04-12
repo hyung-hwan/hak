@@ -28,6 +28,10 @@
  * no variable declaration if not enclosed in parentheses */
 #define LANG_LIMIT_DO
 
+#define FOR_NONE (0)
+#define FOR_IF   (1)
+#define FOR_TRY  (2)
+
 enum
 {
 	VAR_NAMED,
@@ -443,7 +447,7 @@ static int find_variable_backward_with_token (hcl_t* hcl, const hcl_cnode_t* cno
 
 /* ========================================================================= */
 
-static int check_block_expression_as_body (hcl_t* hcl, hcl_cnode_t* c, const hcl_cnode_t* ctx, int for_if)
+static int check_block_expression_as_body (hcl_t* hcl, hcl_cnode_t* c, const hcl_cnode_t* ctx, int for_what)
 {
 	hcl_cnode_t* car = HCL_NULL, * cdr;
 
@@ -462,30 +466,50 @@ static int check_block_expression_as_body (hcl_t* hcl, hcl_cnode_t* c, const hcl
 	no_block:
 		hcl_setsynerrbfmt (
 			hcl, HCL_SYNERR_BLOCK, (car? HCL_CNODE_GET_LOC(car): c? HCL_CNODE_GET_LOC(c): HCL_CNODE_GET_LOC(ctx)), HCL_NULL,
-			"block expression expected as body for %.*js", HCL_CNODE_GET_TOKLEN(ctx), HCL_CNODE_GET_TOKPTR(ctx)
+			"block expression expected as '%.*js' body", HCL_CNODE_GET_TOKLEN(ctx), HCL_CNODE_GET_TOKPTR(ctx)
 		);
 		return -1;
+	}
+
+	/* there are special words that can't start a new expression */
+	if (HCL_CNODE_IS_SYMBOL_SYNCODED(car, HCL_SYNCODE_ELIF) ||
+	    HCL_CNODE_IS_SYMBOL_SYNCODED(car, HCL_SYNCODE_ELSE) ||
+	    HCL_CNODE_IS_SYMBOL_SYNCODED(car, HCL_SYNCODE_CATCH))
+	{
+		goto no_block;
 	}
 
 	cdr = HCL_CNODE_CONS_CDR(c);
 	if (cdr)
 	{
 		/* there is redundant expression after the block expression */
-		if (for_if && HCL_CNODE_IS_CONS(cdr))
+		if (HCL_CNODE_IS_CONS(cdr))
 		{
-			/* after the body for `if` or `elif`, there can come `elif` or `else` */
 			hcl_cnode_t* nxt;
 			nxt = HCL_CNODE_CONS_CAR(cdr);
-			if (HCL_CNODE_IS_SYMBOL(nxt))
+
+			if (for_what == FOR_IF)
 			{
-				int syncode = HCL_CNODE_SYMBOL_SYNCODE(nxt);
-				if (syncode == HCL_SYNCODE_ELIF || syncode == HCL_SYNCODE_ELSE) goto ok;
+				/* after the body for `if` or `elif`, there can come `elif` or `else` */
+				if (HCL_CNODE_IS_SYMBOL(nxt))
+				{
+					int syncode = HCL_CNODE_SYMBOL_SYNCODE(nxt);
+					if (syncode == HCL_SYNCODE_ELIF || syncode == HCL_SYNCODE_ELSE) goto ok;
+				}
+			}
+			else if (for_what == FOR_TRY)
+			{
+				if (HCL_CNODE_IS_SYMBOL(nxt))
+				{
+					int syncode = HCL_CNODE_SYMBOL_SYNCODE(nxt);
+					if (syncode == HCL_SYNCODE_CATCH) goto ok;
+				}
 			}
 		}
 
 		hcl_setsynerrbfmt (
 			hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(cdr), HCL_NULL,
-			"redundant code prohibited after body for %.*js", HCL_CNODE_GET_TOKLEN(ctx), HCL_CNODE_GET_TOKPTR(ctx)
+			"redundant expression prohibited after '%.*js' body", HCL_CNODE_GET_TOKLEN(ctx), HCL_CNODE_GET_TOKPTR(ctx)
 		);
 		return -1;
 	}
@@ -2154,7 +2178,7 @@ static int compile_if (hcl_t* hcl, hcl_cnode_t* src)
 	if (!obj)
 	{
 		/* no value */
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGCOUNT, HCL_CNODE_GET_LOC(src), HCL_NULL, "no condition specified in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGCOUNT, HCL_CNODE_GET_LOC(src), HCL_NULL, "no conditional expression after %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 		return -1;
 	}
 	else if (!HCL_CNODE_IS_CONS(obj))
@@ -2255,7 +2279,7 @@ static HCL_INLINE int compile_elif (hcl_t* hcl)
 	if (!obj)
 	{
 		/* no value */
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGCOUNT, HCL_CNODE_GET_LOC(src), HCL_NULL, "no condition in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGCOUNT, HCL_CNODE_GET_LOC(src), HCL_NULL, "no conditional expression after %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 		return -1;
 	}
 	else if (!HCL_CNODE_IS_CONS(obj))
@@ -2301,7 +2325,7 @@ static HCL_INLINE int compile_else (hcl_t* hcl)
 
 	if (hcl->option.trait & HCL_TRAIT_LANG_ENABLE_BLOCK)
 	{
-		if (check_block_expression_as_body(hcl, obj, cmd, 0) <= -1) return -1;
+		if (check_block_expression_as_body(hcl, obj, cmd, FOR_NONE) <= -1) return -1;
 	}
 
 	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_LIST, obj);
@@ -2592,7 +2616,7 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 
 	if (hcl->option.trait & HCL_TRAIT_LANG_ENABLE_BLOCK)
 	{
-		if (check_block_expression_as_body(hcl, obj, cf->u._class.cmd_cnode, 0) <= -1) return -1;
+		if (check_block_expression_as_body(hcl, obj, cf->u._class.cmd_cnode, FOR_NONE) <= -1) return -1;
 	}
 
 	if (push_clsblk(hcl, &cf->u._class.start_loc, nivars, ncvars, &hcl->c->tv.s.ptr[ivar_start], ivar_len, &hcl->c->tv.s.ptr[cvar_start], cvar_len) <= -1) goto oops;
@@ -3001,7 +3025,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 		 */
 		hcl_cnode_t* blk;
 		blk = HCL_CNODE_CONS_CDR(obj);
-		if (check_block_expression_as_body(hcl, blk, cmd, 0) <= -1) return -1;
+		if (check_block_expression_as_body(hcl, blk, cmd, FOR_NONE) <= -1) return -1;
 		obj = blk;
 		nlvars = 0; /* no known local variables until the actual block is processed */
 	}
@@ -3386,7 +3410,7 @@ static int compile_try (hcl_t* hcl, hcl_cnode_t* src)
 	 *   (perform yyy)
 	 * )
 	 */
-	cmd = HCL_CNODE_CONS_CDR(src);
+	cmd = HCL_CNODE_CONS_CAR(src);
 	obj = HCL_CNODE_CONS_CDR(src);
 
 	if (!obj)
@@ -3407,6 +3431,11 @@ static int compile_try (hcl_t* hcl, hcl_cnode_t* src)
 
 	jump_inst_pos = hcl->code.bc.len;
 	if (emit_single_param_instruction(hcl, HCL_CODE_TRY_ENTER, MAX_CODE_JUMP, HCL_CNODE_GET_LOC(cmd)) <= -1) return -1;
+
+	if (hcl->option.trait & HCL_TRAIT_LANG_ENABLE_BLOCK)
+	{
+		if (check_block_expression_as_body(hcl, obj, cmd, FOR_TRY) <= -1) return -1;
+	}
 
 	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_TRY_OBJECT_LIST, obj);  /* 1*/
 	PUSH_SUBCFRAME (hcl, COP_POST_TRY, cmd); /* 2 */
@@ -3479,7 +3508,7 @@ static HCL_INLINE int compile_catch (hcl_t* hcl)
 	if (!obj)
 	{
 /* TODO: change error code */
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(src), HCL_NULL, "no exception variable in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(src), HCL_NULL, "no exception variable for '%.*js'", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 		return -1;
 	}
 	else if (!HCL_CNODE_IS_CONS(obj))
@@ -3533,12 +3562,9 @@ static HCL_INLINE int compile_catch (hcl_t* hcl)
 	HCL_ASSERT (hcl, fbi->tmpr_nargs + fbi->tmpr_nrvars + fbi->tmpr_nlvars == fbi->tmprcnt - par_tmprcnt);
 
 	obj = HCL_CNODE_CONS_CDR(obj);
-	if (!obj)
+	if (hcl->option.trait & HCL_TRAIT_LANG_ENABLE_BLOCK)
 	{
-		/* the error message is no exception handler. but what is expected is an expression.
-		 * e.g. a number, nil, a block expression, etc */
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_NOVALUE, HCL_CNODE_GET_LOC(exarg), HCL_NULL, "no exception handler after %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
-		return -1;
+		if (check_block_expression_as_body(hcl, obj, cmd, FOR_NONE) <= -1) return -1;
 	}
 
 	/* jump_inst_pos hold the instruction pointer that skips the catch block at the end of the try block */
@@ -3688,7 +3714,7 @@ static int compile_while (hcl_t* hcl, hcl_cnode_t* src, int next_cop)
 
 	if (hcl->option.trait & HCL_TRAIT_LANG_ENABLE_BLOCK)
 	{
-		if (check_block_expression_as_body(hcl, body, cmd, 0) <= -1) return -1;
+		if (check_block_expression_as_body(hcl, body, cmd, FOR_NONE) <= -1) return -1;
 	}
 
 	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, cond); /* 1 */
@@ -5090,7 +5116,7 @@ static HCL_INLINE int post_if_cond (hcl_t* hcl)
 
 	if (hcl->option.trait & HCL_TRAIT_LANG_ENABLE_BLOCK)
 	{
-		if (check_block_expression_as_body(hcl, cf->operand, cf->u.post_if.cmd_cnode, 1) <= -1) return -1;
+		if (check_block_expression_as_body(hcl, cf->operand, cf->u.post_if.cmd_cnode, FOR_IF) <= -1) return -1;
 	}
 
 	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_IF_OBJECT_LIST, cf->operand); /* 1 */

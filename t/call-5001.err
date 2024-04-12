@@ -4,6 +4,53 @@
 
 ---
 
+if  ##ERROR: syntax error - no conditional expression after if
+
+---
+
+if (< 2 3) elif  ##ERROR: syntax error - block expression expected as 'if' body
+
+---
+
+if (< 2 3) {} elif true else  ##ERROR: syntax error - block expression expected as 'elif' body
+
+---
+
+if else ##ERROR: syntax error - special symbol not to be used as variable name
+
+---
+
+if elif else ##ERROR: syntax error - special symbol not to be used as variable name
+
+---
+
+if (< 20 30) ##ERROR: syntax error - block expression expected as 'if' body
+
+---
+
+if (< 20 30) {
+	printf "ok\n"
+} { ##ERROR: syntax error - redundant expression prohibited after 'if' body
+	printf "ok2\n"
+}
+
+---
+
+if (< 20 30) else { ##ERROR: syntax error - block expression expected as 'if' body
+	printf "ok\n"
+}
+
+
+---
+
+catch (e) {} ##ERROR: syntax error - catch without try
+
+---
+
+try {} catch ##ERROR: syntax error - no exception variable for 'catch'
+
+---
+
 try {
 	throw "excetion message"
 } catch (e a) { ##ERROR: syntax error - not proper exception variable
@@ -12,4 +59,10 @@ try {
 
 ---
 
-try { throw "1111"; } catch (e) ##ERROR: syntax error - no exception handler
+try { throw "1111"; } catch (e) ##ERROR: syntax error - block expression expected as 'catch' body
+
+---
+
+try { throw "1111"; } catch (e) {
+	printf "EXCEPTION - %s\n" e
+} 20 ##ERROR: syntax error - redundant expression prohibited after

@@ -577,7 +577,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 		}
 		else if (concode == HCL_CONCODE_BLIST)
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_NOVALUE, TOKEN_LOC(hcl), HCL_NULL, "missing value after binary operator");
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_NOVALUE, TOKEN_LOC(hcl), HCL_NULL, "missing expression after binary operator");
 		}
 		else
 		{
@@ -1558,8 +1558,8 @@ static int feed_process_token (hcl_t* hcl)
 				#endif
 				}
 			}
-		rbrace_ok:
 
+		rbrace_ok:
 			concode = LIST_FLAG_GET_CONCODE(frd->flagv);
 			if (concode == HCL_CONCODE_XLIST && (frd->flagv & AUTO_FORGED))
 			{
@@ -1574,7 +1574,6 @@ static int feed_process_token (hcl_t* hcl)
 				hcl_setsynerr (hcl, cons_info[concode].synerr, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 				goto oops;
 			}
-
 #if 0
 			if ((flagv & QUOTED) || frd->level <= 0)
 			{
@@ -2988,6 +2987,7 @@ not_consumed:
 static int feed_char (hcl_t* hcl, hcl_ooci_t c)
 {
 /*hcl_logbfmt (hcl, HCL_LOG_STDERR, "FEED->[%jc] %d STATE->%d\n", c, c, FLX_STATE(hcl));*/
+
 	switch (FLX_STATE(hcl))
 	{
 		case HCL_FLX_START:            return flx_start(hcl, c);
@@ -3268,7 +3268,8 @@ int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
 			x = feed_char(hcl, HCL_OOCI_EOF);
 			if (x <= -1)
 			{
-				if (hcl->c->feed.rd.level <= 0 && HCL_ERRNUM(hcl) == HCL_ESYNERR && hcl_getsynerrnum(hcl) == HCL_SYNERR_EOF)
+				int exp_level = !(hcl->option.trait & HCL_TRAIT_LANG_ENABLE_EOL); /* 0 if EOL is on, 1 if EOL is off */
+				if (hcl->c->feed.rd.level <= exp_level && HCL_ERRNUM(hcl) == HCL_ESYNERR && hcl_getsynerrnum(hcl) == HCL_SYNERR_EOF)
 				{
 					/* convert this EOF error to success as the caller knows EOF in the feed mode.
 					 * the caller can safely stop feeding after gettting success from hcl_feed(hcl, HCL_NULL, 0);
