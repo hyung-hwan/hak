@@ -66,3 +66,21 @@ try { throw "1111"; } catch (e) ##ERROR: syntax error - block expression expecte
 try { throw "1111"; } catch (e) {
 	printf "EXCEPTION - %s\n" e
 } 20 ##ERROR: syntax error - redundant expression prohibited after
+
+---
+
+{
+	| a |
+
+	a := 30
+	fun a:get_999() { ##ERROR: exception not handled - "not class"
+		return  999;
+	}
+}
+
+
+---
+
+fun a:get_999() { ##ERROR: exception not handled - "a accessed without initialization"
+	return  999;
+}

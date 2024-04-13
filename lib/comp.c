@@ -679,7 +679,6 @@ static int emit_single_param_instruction (hcl_t* hcl, int cmd, hcl_oow_t param_1
 		case HCL_CODE_STORE_INTO_CVAR_M_X:
 		case HCL_CODE_POP_INTO_CVAR_M_X:
 
-		case HCL_CODE_CLASS_LOAD_X:
 		case HCL_CODE_CLASS_CMSTORE:
 		case HCL_CODE_CLASS_CIMSTORE:
 		case HCL_CODE_CLASS_IMSTORE:
@@ -5674,40 +5673,13 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 				hcl_oow_t index;
 				hcl_oop_t lit, cons;
 
-/* TODO: CLASS_LOAD_X must be emited before the defun method code instruction is  emitted ? */
-				/* treat this like a global variable for now */
-				lit = hcl_makesymbol(hcl, HCL_CNODE_GET_TOKPTR(class_name), HCL_CNODE_GET_TOKLEN(class_name));
-				if (HCL_UNLIKELY(!lit)) return -1;
-				cons = (hcl_oop_t)hcl_getatsysdic(hcl, lit);
-				if (!cons)
-				{
-					cons = (hcl_oop_t)hcl_putatsysdic(hcl, lit, hcl->_undef);
-					if (HCL_UNLIKELY(!cons)) return -1;
-				}
-/*
-2024-04-01 23:39:21 +0900 0000000041 make_lambda 0 0 0 0 0
-2024-04-01 23:39:21 +0900 0000000046 jump_forward 6
-2024-04-01 23:39:21 +0900 0000000055 store_into_object @4
-2024-04-01 23:39:21 +0900 0000000058 return_from_block
+				/* treat the class name part as a normal variable.
+				 * it can be a global variable like 'String' or a local variable declared */
+				if (compile_symbol(hcl, class_name) <= -1) return -1;
 
+				if (emit_byte_instruction(hcl, HCL_CODE_CLASS_LOAD, HCL_CNODE_GET_LOC(class_name)) <= -1) return -1;
 
-2024-04-01 23:40:11 +0900 0000000041 make_lambda 0 0 0 0 0
-2024-04-01 23:40:11 +0900 0000000046 jump_forward 6
-2024-04-01 23:40:11 +0900 0000000055 class_load @2
-2024-04-01 23:40:11 +0900 0000000058 class_imstore 4
-2024-04-01 23:40:11 +0900 0000000061 class_exit
-2024-04-01 23:40:11 +0900 0000000062 return_from_block
-*/
-
-				if (add_literal(hcl, cons, &index) <= -1) return -1;
-				if (emit_single_param_instruction(hcl, HCL_CODE_PUSH_OBJECT_0, index, HCL_CNODE_GET_LOC(class_name)) <= -1) return -1;
-
-				/*  TODO: for class_name part is a local variable or something...
-				if emit_variable_access(hcl, VAR_ACCESS_PUSH, &vi, HCL_CNODE_GET_LOC(obj)) <= -1) return -1;
-				 */
-
-				if (emit_single_param_instruction(hcl, HCL_CODE_CLASS_LOAD_X, index, HCL_CNODE_GET_LOC(class_name)) <= -1) return -1;
-
+				/* the function name is always named */
 				lit = hcl_makesymbol(hcl, HCL_CNODE_GET_TOKPTR(defun_name), HCL_CNODE_GET_TOKLEN(defun_name));
 				if (HCL_UNLIKELY(!lit)) return -1;
 				if (add_literal(hcl, lit, &index) <= -1) return -1;

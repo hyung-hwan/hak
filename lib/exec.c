@@ -3542,7 +3542,7 @@ static int execute (hcl_t* hcl)
 					LOG_INST_1 (hcl, "push_object @%zu", b1);
 					if (HCL_IS_UNDEF(hcl, ass->cdr))
 					{
-						hcl_seterrbfmt (hcl, HCL_EUNDEFVAR, "%.*js accessed without initization", HCL_OBJ_GET_SIZE(ass->car), HCL_OBJ_GET_CHAR_SLOT(ass->car));
+						hcl_seterrbfmt (hcl, HCL_EUNDEFVAR, "%.*js accessed without initialization", HCL_OBJ_GET_SIZE(ass->car), HCL_OBJ_GET_CHAR_SLOT(ass->car));
 						if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
 						goto oops_with_errmsg_supplement;
 					}
@@ -3805,49 +3805,22 @@ static int execute (hcl_t* hcl)
 				break;
 			/* -------------------------------------------------------- */
 
-			case HCL_CODE_CLASS_LOAD_X2:
-				FETCH_PARAM_CODE_TO (hcl, b1);
-				FETCH_PARAM_CODE_TO (hcl, b2);
-				b1 = (b1 << (8 * HCL_CODE_LONG_PARAM_SIZE)) | b2;
-				goto class_load;
-
-			case HCL_CODE_CLASS_LOAD_X:
+			case HCL_CODE_CLASS_LOAD:
 			{
-				hcl_oop_cons_t t;
-				FETCH_PARAM_CODE_TO (hcl, b1);
-			class_load:
-				/* push the class indiciated by the literal at the given literal frame index
-				 * to the class stack */
-				LOG_INST_1 (hcl, "class_load @%zu", b1);
+				hcl_oop_t t;
 
-#if 0
-				t = (hcl_oop_cons_t)hcl->active_function->literal_frame[b1];
-				if (!HCL_IS_CONS(hcl,t))
-				{
-					/* this is an uncatchable internal error that must not happen - is the bytecode compromised?  */
-					hcl_seterrbfmt(hcl, HCL_EINTERN, "internal error - invalid operand to CLASS_LOAD");
-					goto oops_with_errmsg_supplement;
-				}
+				/* push the class off the stack top on the class stack */
+				LOG_INST_0 (hcl, "class_load");
 
-				if (!HCL_IS_CLASS(hcl, t->cdr))
+				HCL_STACK_POP_TO (hcl, t);
+				if (!HCL_IS_CLASS(hcl, t))
 				{
-					hcl_seterrbfmt(hcl, HCL_EUNDEFVAR, "%.*js is not class", HCL_OBJ_GET_SIZE(t->car), HCL_OBJ_GET_CHAR_SLOT(t->car));
-					if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
-					goto oops_with_errmsg_supplement;
-				}
-				HCL_CLSTACK_PUSH (hcl, t->cdr);
-#else
-				hcl_oop_t c;
-				HCL_STACK_POP_TO (hcl, c);
-				if (!HCL_IS_CLASS(hcl, c))
-				{
-					//hcl_seterrbfmt(hcl, HCL_EUNDEFVAR, "%.*js is not class", HCL_OBJ_GET_SIZE(t->car), HCL_OBJ_GET_CHAR_SLOT(t->car));
+					/*hcl_seterrbfmt(hcl, HCL_EUNDEFVAR, "%.*js is not class", HCL_OBJ_GET_SIZE(t->car), HCL_OBJ_GET_CHAR_SLOT(t->car));*/
 					hcl_seterrbfmt(hcl, HCL_EUNDEFVAR, "not class"); /* TODO: change error code */
 					if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
 					goto oops_with_errmsg_supplement;
 				}
-				HCL_CLSTACK_PUSH (hcl, c);
-#endif
+				HCL_CLSTACK_PUSH (hcl, t);
 				break;
 			}
 

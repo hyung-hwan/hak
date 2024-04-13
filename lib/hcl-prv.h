@@ -1325,10 +1325,9 @@ enum hcl_bcode_t
 	HCL_CODE_THROW                    = 0xDB, /* 219 */
 
 	HCL_CODE_POP_INTO_CTXTEMPVAR_X    = 0xDC, /* 220 ## */
-	HCL_CODE_CLASS_LOAD_X             = 0xDD, /* 221 ## */
-	HCL_CODE_CLASS_LOAD_X2            = 0xDE, /* 222 ## */
+	HCL_CODE_CLASS_LOAD               = 0xDD, /* 221 ## */
 
-	/* UNUSED - 0xDF - 0xDF */
+	/* UNUSED - 0xDE - 0xDF */
 
 	HCL_CODE_PUSH_CTXTEMPVAR_X        = 0xE0, /* 224 ## */
 	HCL_CODE_CLASS_ENTER              = 0xE1, /* 225 ## */
