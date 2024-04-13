@@ -1451,8 +1451,6 @@ static int ignite_3 (hcl_t* hcl)
 
 static int make_kernel_objs (hcl_t* hcl)
 {
-	hcl_oow_t i;
-
 	/* make_kernel_objs() creates a chain of classes as well as some key objects
 	 * for initial bootstrapping. when the objects are loaded from an image file,
 	 * this function is skipped */
