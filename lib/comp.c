@@ -5670,13 +5670,7 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 			if (class_name)
 			{
 				/* out-of-class definition */
-/* TODO:  - other types of out-of-class definition */
-			#if 0
-				SWITCH_TOP_CFRAME (hcl, COP_EMIT_CLASS_LOAD, class_name); /* 1 */
-				PUSH_SUBCFRAME (hcl, COP_EMIT_CLASS_EXIT, defun_name); /* 3 */
-				PUSH_SUBCFRAME (hcl, COP_EMIT_CLASS_IMSTORE, defun_name); /* 2 */
-
-			#else
+/* TODO:  - other types of out-of-class definition - CIM_STORE, CM_STORE...  use different marker? */
 				hcl_oow_t index;
 				hcl_oop_t lit, cons;
 
@@ -5706,16 +5700,22 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 */
 
 				if (add_literal(hcl, cons, &index) <= -1) return -1;
+				if (emit_single_param_instruction(hcl, HCL_CODE_PUSH_OBJECT_0, index, HCL_CNODE_GET_LOC(class_name)) <= -1) return -1;
+
+				/*  TODO: for class_name part is a local variable or something...
+				if emit_variable_access(hcl, VAR_ACCESS_PUSH, &vi, HCL_CNODE_GET_LOC(obj)) <= -1) return -1;
+				 */
+
 				if (emit_single_param_instruction(hcl, HCL_CODE_CLASS_LOAD_X, index, HCL_CNODE_GET_LOC(class_name)) <= -1) return -1;
 
 				lit = hcl_makesymbol(hcl, HCL_CNODE_GET_TOKPTR(defun_name), HCL_CNODE_GET_TOKLEN(defun_name));
 				if (HCL_UNLIKELY(!lit)) return -1;
 				if (add_literal(hcl, lit, &index) <= -1) return -1;
 				if (emit_single_param_instruction(hcl, HCL_CODE_CLASS_IMSTORE, index, HCL_CNODE_GET_LOC(defun_name)) <= -1) return -1;
+/* TDOO: CLASS_CMSTORE..., CLASS_CIMSTORE.. */
 
 				if (emit_byte_instruction(hcl, HCL_CODE_CLASS_EXIT, HCL_CNODE_GET_LOC(class_name)) <= -1) return -1;
 				POP_CFRAME (hcl);
-			#endif
 			}
 			else
 			{

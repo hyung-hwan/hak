@@ -3820,6 +3820,7 @@ static int execute (hcl_t* hcl)
 				 * to the class stack */
 				LOG_INST_1 (hcl, "class_load @%zu", b1);
 
+#if 0
 				t = (hcl_oop_cons_t)hcl->active_function->literal_frame[b1];
 				if (!HCL_IS_CONS(hcl,t))
 				{
@@ -3834,8 +3835,19 @@ static int execute (hcl_t* hcl)
 					if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
 					goto oops_with_errmsg_supplement;
 				}
-	
 				HCL_CLSTACK_PUSH (hcl, t->cdr);
+#else
+				hcl_oop_t c;
+				HCL_STACK_POP_TO (hcl, c);
+				if (!HCL_IS_CLASS(hcl, c))
+				{
+					//hcl_seterrbfmt(hcl, HCL_EUNDEFVAR, "%.*js is not class", HCL_OBJ_GET_SIZE(t->car), HCL_OBJ_GET_CHAR_SLOT(t->car));
+					hcl_seterrbfmt(hcl, HCL_EUNDEFVAR, "not class"); /* TODO: change error code */
+					if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
+					goto oops_with_errmsg_supplement;
+				}
+				HCL_CLSTACK_PUSH (hcl, c);
+#endif
 				break;
 			}
 
