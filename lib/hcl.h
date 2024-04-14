@@ -1666,8 +1666,8 @@ struct hcl_t
 	hcl_oop_process_t nil_process; /* instance of Process */
 
 	/* =============================================================
-	 * KERNEL CLASSES 
-	 *  Be sure to Keep these kernel class pointers registered in the 
+	 * KERNEL CLASSES
+	 *  Be sure to Keep these kernel class pointers registered in the
 	 *  kernel_classes table in gc.c
 	 * ============================================================= */
 	hcl_oop_class_t c_apex; /* Apex */

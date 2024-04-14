@@ -22,11 +22,10 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "hcl-s.h"
+#include "hcl-x.h"
 #include "hcl-prv.h"
 #include "hcl-tmr.h"
 #include "hcl-xutl.h"
-#include "hcl-ex.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -105,96 +104,46 @@ typedef struct server_hcl_xtn_t server_hcl_xtn_t;
 
 /* ---------------------------------- */
 
-enum hcl_server_proto_token_type_t
+enum hcl_server_proto_rcv_state_t
 {
-	HCL_SERVER_PROTO_TOKEN_EOF,
-	HCL_SERVER_PROTO_TOKEN_NL,
-
-	HCL_SERVER_PROTO_TOKEN_BEGIN,
-	HCL_SERVER_PROTO_TOKEN_END,
-	HCL_SERVER_PROTO_TOKEN_SCRIPT,
-	HCL_SERVER_PROTO_TOKEN_EXIT,
-
-	/*HCL_SERVER_PROTO_TOKEN_AUTH,*/
-	HCL_SERVER_PROTO_TOKEN_KILL_WORKER,
-	HCL_SERVER_PROTO_TOKEN_SHOW_WORKERS,
-
-	HCL_SERVER_PROTO_TOKEN_IDENT,
-	HCL_SERVER_PROTO_TOKEN_NUMBER
+	HCL_SERVER_PROTO_RCV_HEADER,
+	HCL_SERVER_PROTO_RCV_PAYLOAD
 };
-typedef enum hcl_server_proto_token_type_t hcl_server_proto_token_type_t;
-
-typedef struct hcl_server_proto_token_t hcl_server_proto_token_t;
-struct hcl_server_proto_token_t
-{
-	hcl_server_proto_token_type_t type;
-	hcl_ooch_t* ptr;
-	hcl_oow_t len;
-	hcl_oow_t capa;
-	hcl_loc_t loc;
-};
-
-enum hcl_server_proto_req_state_t
-{
-	HCL_SERVER_PROTO_REQ_IN_TOP_LEVEL,
-	HCL_SERVER_PROTO_REQ_IN_BLOCK_LEVEL
-};
-
-enum hcl_server_proto_reply_type_t
-{
-	HCL_SERVER_PROTO_REPLY_SIMPLE = 0,
-	HCL_SERVER_PROTO_REPLY_CHUNKED
-};
-typedef enum hcl_server_proto_reply_type_t hcl_server_proto_reply_type_t;
-
-
-enum hcl_server_proto_q_state_t
-{
-	HCL_SERVER_PROTO_Q_HEADER,
-	HCL_SERVER_PROTO_Q_PAYLOAD
-};
-typedef enum hcl_server_proto_q_state_t hcl_server_proto_q_state_t;
+typedef enum hcl_server_proto_rcv_state_t hcl_server_proto_rcv_state_t;
 
 struct hcl_server_proto_t
 {
 	hcl_server_worker_t* worker;
 
 	hcl_t* hcl;
-	hcl_lxc_t* lxc;
-	hcl_oow_t unread_count;
-	hcl_lxc_t unread_lxc;
-	hcl_server_proto_token_t tok;
 	hcl_tmr_index_t exec_runtime_event_index;
 
 	struct
 	{
-		int state;
-	} req;
-
-	struct
-	{
-		hcl_server_proto_reply_type_t type;
-		hcl_oow_t nchunks;
-		hcl_bch_t buf[HCL_SERVER_PROTO_REPLY_BUF_SIZE];
-		hcl_oow_t len;
-	} reply;
-
-
-	struct
-	{
-		hcl_server_proto_q_state_t state;
-		hcl_oow_t reqlen;
+		hcl_server_proto_rcv_state_t state;
+		hcl_oow_t len_needed;
+		unsigned int eof: 1;
+		unsigned int polled: 1;
 
 		hcl_oow_t len;
 		hcl_uint8_t buf[4096];
-	} q;
+
+		hcl_xpkt_hdr_t hdr;
+	} rcv;
 
 /*
 	struct
 	{
-
-	} p;
+		hcl_oow_t nchunks;
+		hcl_bch_t buf[HCL_SERVER_PROTO_REPLY_BUF_SIZE];
+		hcl_oow_t len;
+	} reply;
 */
+
+	struct
+	{
+		int ongoing;
+	} feed;
 };
 
 enum hcl_server_worker_state_t
@@ -311,7 +260,7 @@ struct hcl_server_t
 		hcl_server_worker_t* head;
 		hcl_server_worker_t* tail;
 		hcl_oow_t count;
-	} worker_list[2];
+	} worker_list[2]; /* DEAD and ALIVE oly. ZOMBIEs are not chained here */
 
 	struct
 	{
@@ -543,8 +492,8 @@ start_over:
 
 #if defined(HCL_OOCH_IS_UCH)
 	bcslen = bb->len;
-	ucslen = HCL_COUNTOF(arg->buf);
-	y = hcl_convbtooochars(hcl, bb->buf, &bcslen, arg->buf, &ucslen);
+	ucslen = HCL_COUNTOF(arg->buf.c);
+	y = hcl_convbtooochars(hcl, bb->buf, &bcslen, arg->buf.c, &ucslen);
 	if (y <= -1 && ucslen <= 0)
 	{
 		if (y == -3 && x != 0) goto start_over; /* incomplete sequence and not EOF yet */
@@ -553,9 +502,9 @@ start_over:
 	/* if ucslen is greater than 0, i see that some characters have been
 	 * converted properly */
 #else
-	bcslen = (bb->len < HCL_COUNTOF(arg->buf))? bb->len: HCL_COUNTOF(arg->buf);
+	bcslen = (bb->len < HCL_COUNTOF(arg->buf.b))? bb->len: HCL_COUNTOF(arg->buf.b);
 	ucslen = bcslen;
-	hcl_copy_bchars (arg->buf, bb->buf, bcslen);
+	hcl_copy_bchars (arg->buf.b, bb->buf, bcslen);
 #endif
 
 	remlen = bb->len - bcslen;
@@ -597,15 +546,19 @@ static int scan_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg)
 			return 0;
 
 		case HCL_IO_READ:
+#if 0
 		{
 			worker_hcl_xtn_t* xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);
 			hcl_io_udiarg_t* inarg = (hcl_io_udiarg_t*)arg;
 
 // what if it writes a request to require more input??
-			if (hcl_server_proto_handle_request(xtn->proto) <= -1)
+			if (hcl_server_proto_handle_incoming(xtn->proto) <= -1)
 			{
 			}
 		}
+#else
+			/* TODO: read from the input buffer or pipe*/
+#endif
 
 		default:
 			hcl_seterrnum (hcl, HCL_EINTERN);
@@ -628,6 +581,8 @@ static int print_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg)
 			worker_hcl_xtn_t* xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);
 			hcl_io_udoarg_t* outarg = (hcl_io_udoarg_t*)arg;
 
+printf ("IO WRITE SOMETHING...........\n");
+#if 0
 			if (hcl_server_proto_feed_reply(xtn->proto, outarg->ptr, outarg->len, 0) <= -1)
 			{
 				/* TODO: change error code and message. propagage the errormessage from proto */
@@ -638,6 +593,7 @@ static int print_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg)
 				hcl_abort (hcl);
 				return -1;
 			}
+#endif
 			outarg->xlen = outarg->len;
 			return 0;
 		}
@@ -646,6 +602,8 @@ static int print_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg)
 			worker_hcl_xtn_t* xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);
 			hcl_io_udoarg_t* outarg = (hcl_io_udoarg_t*)arg;
 
+printf ("IO WRITE SOMETHING BYTES...........\n");
+#if 0
 			if (hcl_server_proto_feed_reply_bytes(xtn->proto, outarg->ptr, outarg->len) <= -1)
 			{
 				/* TODO: change error code and message. propagage the errormessage from proto */
@@ -656,6 +614,7 @@ static int print_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg)
 				hcl_abort (hcl);
 				return -1;
 			}
+#endif
 			outarg->xlen = outarg->len;
 			return 0;
 		}
@@ -668,7 +627,7 @@ static int print_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg)
 
 /* ========================================================================= */
 
-static void log_write (hcl_t* hcl, hcl_bitmask_t mask, const hcl_ooch_t* msg, hcl_oow_t len)
+static void server_log_write (hcl_t* hcl, hcl_bitmask_t mask, const hcl_ooch_t* msg, hcl_oow_t len)
 {
 	worker_hcl_xtn_t* xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);
 	hcl_server_t* server;
@@ -679,7 +638,7 @@ static void log_write (hcl_t* hcl, hcl_bitmask_t mask, const hcl_ooch_t* msg, hc
 	pthread_mutex_unlock (&server->log_mutex);
 }
 
-static void log_write_for_dummy (hcl_t* hcl, hcl_bitmask_t mask, const hcl_ooch_t* msg, hcl_oow_t len)
+static void server_log_write_for_dummy (hcl_t* hcl, hcl_bitmask_t mask, const hcl_ooch_t* msg, hcl_oow_t len)
 {
 	server_hcl_xtn_t* xtn = (server_hcl_xtn_t*)hcl_getxtn(hcl);
 	hcl_server_t* server;
@@ -727,6 +686,71 @@ static void fini_hcl (hcl_t* hcl)
 #define SERVER_LOGMASK_INFO (HCL_LOG_INFO | HCL_LOG_APP)
 #define SERVER_LOGMASK_ERROR (HCL_LOG_ERROR | HCL_LOG_APP)
 
+static int on_fed_cnode (hcl_t* hcl, hcl_cnode_t* obj)
+{
+	worker_hcl_xtn_t* xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);
+	hcl_server_proto_t* proto = xtn->proto;
+	int flags = 0;
+
+printf ("on_fed_cnode......\n");
+	/* the compile error must not break the input loop.
+	 * this function returns 0 to go on despite a compile-time error.
+	 *
+	 * if a single line or continued lines contain multiple expressions,
+	 * execution is delayed until the last expression is compiled. */
+
+	if (!proto->feed.ongoing)
+	{
+		/* the first expression in the current user input line.
+		 * arrange to clear byte-codes before compiling the expression. */
+		flags = HCL_COMPILE_CLEAR_CODE | HCL_COMPILE_CLEAR_FNBLK;
+		proto->feed.ongoing = 1;
+	}
+
+printf ("hcl_copingll......\n");
+	if (hcl_compile(hcl, obj, flags) <= -1)
+	{
+#if 0
+		print_error(hcl, "failed to compile");
+		xtn->feed.pos = xtn->feed.len; /* arrange to discard the rest of the line */
+		show_prompt (hcl, 0);
+#endif
+	}
+	else
+	{
+#if 0
+		hcl_oow_t i;
+
+		for (i = xtn->feed.pos; i < xtn->feed.len; i++)
+		{
+			/* this loop is kind of weird. it is to check the current feed buffer is left with
+			 * spaces only and to execute the compiled bytecodes so far if the check is true.
+			 * the check is performed because a single line of the user input can have multiple
+			 * expressions joined with a semicolon or contains trailing spaces. */
+			if (!hcl_is_bch_space(xtn->feed.buf[i])) break;
+		}
+
+		if (i >= xtn->feed.len || xtn->feed.pos >= xtn->feed.len)
+		{
+#endif
+			hcl_oop_t retv;
+
+			/* nothing more to feed */
+
+printf ("hcl_executing.....\n");
+			retv = hcl_execute(hcl);
+			hcl_flushudio (hcl);
+
+			proto->feed.ongoing = 0;
+			/*show_prompt (hcl, 0);*/
+#if 0
+		}
+#endif
+	}
+
+	return 0;
+}
+
 hcl_server_proto_t* hcl_server_proto_open (hcl_oow_t xtnsize, hcl_server_worker_t* worker)
 {
 	hcl_server_proto_t* proto;
@@ -735,17 +759,21 @@ hcl_server_proto_t* hcl_server_proto_open (hcl_oow_t xtnsize, hcl_server_worker_
 	hcl_bitmask_t trait;
 
 	proto = (hcl_server_proto_t*)hcl_server_allocmem(worker->server, HCL_SIZEOF(*proto));
-	if (!proto) return HCL_NULL;
+	if (HCL_UNLIKELY(!proto)) return HCL_NULL;
 
 	HCL_MEMSET (proto, 0, HCL_SIZEOF(*proto));
 	proto->worker = worker;
 	proto->exec_runtime_event_index = HCL_TMR_INVALID_INDEX;
+	proto->rcv.state = HCL_SERVER_PROTO_RCV_HEADER;
+	proto->rcv.len_needed = HCL_SIZEOF(proto->rcv.hdr);
+	proto->rcv.eof = 0;
+	proto->rcv.polled = 0;
 
 	proto->hcl = hcl_openstdwithmmgr(hcl_server_getmmgr(proto->worker->server), HCL_SIZEOF(*xtn), HCL_NULL);
-	if (!proto->hcl) goto oops;
+	if (HCL_UNLIKELY(!proto->hcl)) goto oops;
 
 	/* replace the vmprim.log_write function */
-	proto->hcl->vmprim.log_write = log_write;
+	proto->hcl->vmprim.log_write = server_log_write;
 
 	xtn = (worker_hcl_xtn_t*)hcl_getxtn(proto->hcl);
 	xtn->proto = proto;
@@ -774,6 +802,8 @@ hcl_server_proto_t* hcl_server_proto_open (hcl_oow_t xtnsize, hcl_server_worker_
 
 	if (hcl_attachccio(proto->hcl, read_handler) <= -1) goto oops;
 	if (hcl_attachudio(proto->hcl, scan_handler, print_handler) <= -1) goto oops;
+
+	if (hcl_beginfeed(proto->hcl, on_fed_cnode) <= -1) goto oops;
 	return proto;
 
 oops:
@@ -787,80 +817,10 @@ oops:
 
 void hcl_server_proto_close (hcl_server_proto_t* proto)
 {
-	if (proto->tok.ptr) hcl_server_freemem (proto->worker->server, proto->tok.ptr);
+	hcl_endfeed(proto->hcl);
 	hcl_close (proto->hcl);
 	hcl_server_freemem (proto->worker->server, proto);
 }
-
-static int write_reply_chunk (hcl_server_proto_t* proto)
-{
-	struct msghdr msg;
-	struct iovec iov[3];
-	hcl_bch_t cl[16]; /* ensure that this is large enough for the chunk length string */
-	int index = 0, count = 0;
-
-	if (proto->reply.type == HCL_SERVER_PROTO_REPLY_CHUNKED)
-	{
-		if (proto->reply.nchunks <= 0)
-		{
-			/* this is the first chunk */
-			iov[count].iov_base = (void*)".OK\n.DATA chunked\n";
-			iov[count++].iov_len = 18;
-		}
-
-		iov[count].iov_base = cl,
-		iov[count++].iov_len = snprintf(cl, HCL_SIZEOF(cl), "%zu:", proto->reply.len);
-	}
-	iov[count].iov_base = proto->reply.buf;
-	iov[count++].iov_len = proto->reply.len;
-
-	while (1)
-	{
-		ssize_t nwritten;
-
-		HCL_MEMSET (&msg, 0, HCL_SIZEOF(msg));
-		msg.msg_iov = (struct iovec*)&iov[index];
-		msg.msg_iovlen = count - index;
-		nwritten = sendmsg(proto->worker->sck, &msg, 0);
-		/*nwritten = writev(proto->worker->sck, (const struct iovec*)&iov[index], count - index);*/
-		if (nwritten <= -1)
-		{
-			/* error occurred inside the worker thread shouldn't affect the error information
-			 * in the server object. so here, i just log a message */
-			HCL_LOG2 (proto->hcl, SERVER_LOGMASK_ERROR, "Unable to sendmsg on %d - %hs\n", proto->worker->sck, strerror(errno));
-			return -1;
-		}
-
-		while (index < count && (size_t)nwritten >= iov[index].iov_len)
-			nwritten -= iov[index++].iov_len;
-
-		if (index == count) break;
-
-		iov[index].iov_base = (void*)((hcl_uint8_t*)iov[index].iov_base + nwritten);
-		iov[index].iov_len -= nwritten;
-	}
-
-	if (proto->reply.len <= 0)
-	{
-		/* this should be the last chunk */
-		proto->reply.nchunks = 0;
-	}
-	else
-	{
-		proto->reply.nchunks++;
-		proto->reply.len = 0;
-	}
-
-	return 0;
-}
-
-void hcl_server_proto_start_reply (hcl_server_proto_t* proto)
-{
-	proto->reply.type = HCL_SERVER_PROTO_REPLY_CHUNKED;
-	proto->reply.nchunks = 0;
-	proto->reply.len = 0;
-}
-
 
 static int write_stdout (hcl_server_proto_t* proto, const hcl_bch_t* ptr, hcl_oow_t len)
 {
@@ -868,10 +828,10 @@ static int write_stdout (hcl_server_proto_t* proto, const hcl_bch_t* ptr, hcl_oo
 	struct iovec iov[3];
 	hcl_bch_t cl[16]; /* ensure that this is large enough for the chunk length string */
 	int index = 0, count = 0;
-	hcl_expkt_hdr_t hdr;
+	hcl_xpkt_hdr_t hdr;
 
 
-	hdr.type = HCL_EXPKT_STDOUT;
+	hdr.type = HCL_XPKT_STDOUT;
 	hdr.id = 1; // TODO:
 	hdr.len = hcl_hton16(len);
 
@@ -906,312 +866,6 @@ static int write_stdout (hcl_server_proto_t* proto, const hcl_bch_t* ptr, hcl_oo
 		iov[index].iov_len -= nwritten;
 	}
 
-	return 0;
-}
-
-
-int hcl_server_proto_feed_reply (hcl_server_proto_t* proto, const hcl_ooch_t* ptr, hcl_oow_t len, int escape)
-{
-#if defined(HCL_OOCH_IS_UCH)
-	hcl_oow_t bcslen, ucslen, donelen;
-	int x;
-
-	donelen = 0;
-	while (donelen < len)
-	{
-		bcslen = HCL_COUNTOF(proto->reply.buf) - proto->reply.len;
-		if (bcslen < HCL_BCSIZE_MAX)
-		{
-			//if (write_reply_chunk(proto) <=-1) return -1;
-			if (write_stdout(proto, proto->reply.buf, proto->reply.len) <= -1) return -1;
-			bcslen = HCL_COUNTOF(proto->reply.buf) - proto->reply.len;
-		}
-		ucslen = len - donelen;
-
-		x = hcl_convootobchars(proto->hcl, &ptr[donelen], &ucslen, &proto->reply.buf[proto->reply.len], &bcslen);
-		if (x <= -1 && ucslen <= 0) return -1;
-
-		donelen += ucslen;
-		proto->reply.len += bcslen;
-	}
-
-	return 0;
-#else
-	return hcl_server_proto_feed_reply_bytes(proto, ptr, len);
-#endif
-}
-
-int hcl_server_proto_feed_reply_bytes (hcl_server_proto_t* proto, const hcl_bch_t* ptr, hcl_oow_t len)
-{
-	hcl_oow_t chlen; /* chunk len */
-
-	// output the buffered converted data
-	if (proto->reply.len > 0 && write_stdout(proto, proto->reply.buf, proto->reply.len) <= -1) return -1;
-	HCL_ASSERT (proto->hcl, proto->reply.len == 0);
-
-	while (len > 0)
-	{
-		chlen = len > HCL_TYPE_MAX(hcl_uint16_t)? HCL_TYPE_MAX(hcl_uint16_t): len;
-		if (write_stdout(proto, ptr, chlen) <= -1) return -1;
-		len -= chlen;
-		ptr += chlen;
-	}
-
-	return 0;
-}
-
-
-int hcl_server_proto_end_reply (hcl_server_proto_t* proto, const hcl_ooch_t* failmsg)
-{
-	HCL_ASSERT (proto->hcl, proto->reply.type == HCL_SERVER_PROTO_REPLY_CHUNKED);
-
-	if (failmsg)
-	{
-		if (proto->reply.nchunks <= 0 && proto->reply.len <= 0)
-		{
-			static hcl_ooch_t err1[] = { '.','E','R','R','O','R',' ','\"' };
-			static hcl_ooch_t err2[] = { '\"','\n' };
-			proto->reply.type = HCL_SERVER_PROTO_REPLY_SIMPLE; /* switch to the simple mode forcibly */
-
-		simple_error:
-			if (hcl_server_proto_feed_reply(proto, err1, 8, 0) <= -1 ||
-			    hcl_server_proto_feed_reply(proto, failmsg, hcl_count_oocstr(failmsg), 1) <= -1 ||
-			    hcl_server_proto_feed_reply(proto, err2, 2, 0) <= -1) return -1;
-
-			if (write_reply_chunk(proto) <= -1) return -1;
-		}
-		else
-		{
-			/* some chunks have beed emitted. but at the end, an error has occurred.
-			 * send -1: as the last chunk. the receiver must rub out the reply
-			 * buffer received so far and expect the following .ERROR response */
-			static hcl_ooch_t err0[] = { '-','1',':' };
-			if (proto->reply.len > 0 && write_reply_chunk(proto) <= -1) return -1;
-
-			proto->reply.type = HCL_SERVER_PROTO_REPLY_SIMPLE; /* switch to the simple mode forcibly */
-			proto->reply.nchunks = 0;
-			proto->reply.len = 0;
-
-			if (hcl_server_proto_feed_reply(proto, err0, 3, 0) <= -1) return -1;
-			goto simple_error;
-		}
-	}
-	else
-	{
-		if (proto->reply.nchunks <= 0 && proto->reply.len <= 0)
-		{
-			/* in the chunked mode. but no output has been made so far */
-			static hcl_ooch_t ok[] = { '.','O','K',' ','\"','\"','\n' };
-			proto->reply.type = HCL_SERVER_PROTO_REPLY_SIMPLE; /* switch to the simple mode forcibly */
-			if (hcl_server_proto_feed_reply(proto, ok, 7, 0) <= -1) return -1;
-			if (write_reply_chunk(proto) <= -1) return -1;
-		}
-		else
-		{
-			if (proto->reply.len > 0 && write_reply_chunk(proto) <= -1) return -1;
-			if (write_reply_chunk(proto) <= -1) return -1; /* write 0: */
-		}
-	}
-
-	return 0;
-}
-
-static HCL_INLINE int is_spacechar (hcl_ooci_t c)
-{
-	/* TODO: handle other space unicode characters */
-	switch (c)
-	{
-		case ' ':
-		case '\f': /* formfeed */
-		case '\r': /* carriage return */
-		case '\t': /* horizon tab */
-		case '\v': /* vertical tab */
-			return 1;
-
-		default:
-			return 0;
-	}
-}
-
-static HCL_INLINE int is_alphachar (hcl_ooci_t c)
-{
-/* TODO: support full unicode */
-	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
-}
-
-static HCL_INLINE int is_digitchar (hcl_ooci_t c)
-{
-/* TODO: support full unicode */
-	return (c >= '0' && c <= '9');
-}
-
-static HCL_INLINE int read_char (hcl_server_proto_t* proto)
-{
-	if (proto->unread_count > 0)
-	{
-		proto->lxc = &proto->unread_lxc;
-		proto->unread_count--;
-		return 0;
-	}
-
-	proto->lxc = hcl_readbasesrchar(proto->hcl);
-	if (!proto->lxc) return -1;
-	return 0;
-}
-
-static HCL_INLINE int unread_last_char (hcl_server_proto_t* proto)
-{
-	if (proto->unread_count >= 1)
-	{
-		/* only 1 character can be unread */
-		hcl_seterrbfmt (proto->hcl, HCL_EFLOOD, "too many unread characters");
-		return -1;
-	}
-
-	if (proto->lxc != &proto->unread_lxc) proto->unread_lxc = *proto->lxc;
-	proto->unread_count++;
-	return 0;
-}
-
-#define GET_CHAR_TO(proto,ch) \
-	do { \
-		if (read_char(proto) <= -1) return -1; \
-		ch = (proto)->lxc->c; \
-	} while(0)
-
-#define GET_CHAR_TO_WITH_GOTO(proto,ch,oops) \
-	do { \
-		if (read_char(proto) <= -1) goto oops; \
-		ch = (proto)->lxc->c; \
-	} while(0)
-
-#define UNGET_LAST_CHAR(proto) \
-	do { \
-		if (unread_last_char(proto) <= -1) return -1; \
-	} while (0)
-
-#define SET_TOKEN_TYPE(proto,tv) ((proto)->tok.type = (tv))
-#define ADD_TOKEN_CHAR(proto,ch) \
-	do { if (add_token_char(proto, ch) <= -1) return -1; } while (0)
-
-
-static HCL_INLINE int add_token_char (hcl_server_proto_t* proto, hcl_ooch_t c)
-{
-	if (proto->tok.len >= proto->tok.capa)
-	{
-		hcl_ooch_t* tmp;
-		hcl_oow_t capa;
-
-		capa = HCL_ALIGN_POW2(proto->tok.len + 1, HCL_SERVER_TOKEN_NAME_ALIGN);
-		tmp = (hcl_ooch_t*)hcl_server_reallocmem(proto->worker->server, proto->tok.ptr, capa * HCL_SIZEOF(*tmp));
-		if (!tmp)
-		{
-			hcl_seterrbfmt (proto->hcl, HCL_ESYSMEM, "Out of memory in allocating token buffer");
-			return -1;
-		}
-
-		proto->tok.ptr = tmp;
-		proto->tok.capa = capa;
-	}
-
-	proto->tok.ptr[proto->tok.len++] = c;
-	return 0;
-}
-
-static void classify_current_ident_token (hcl_server_proto_t* proto)
-{
-	static struct cmd_t
-	{
-		hcl_server_proto_token_type_t type;
-		hcl_ooch_t name[32];
-	} tab[] =
-	{
-		{ HCL_SERVER_PROTO_TOKEN_BEGIN,          { '.','B','E','G','I','N','\0' } },
-		{ HCL_SERVER_PROTO_TOKEN_END,            { '.','E','N','D','\0' } },
-		{ HCL_SERVER_PROTO_TOKEN_SCRIPT,         { '.','S','C','R','I','P','T','\0' } },
-		{ HCL_SERVER_PROTO_TOKEN_EXIT,           { '.','E','X','I','T','\0' } },
-
-		{ HCL_SERVER_PROTO_TOKEN_KILL_WORKER,    { '.','K','I','L','L','-','W','O','R','K','E','R','\0' } },
-		{ HCL_SERVER_PROTO_TOKEN_SHOW_WORKERS,   { '.','S','H','O','W','-','W','O','R','K','E','R','S','\0' } },
-		/* TODO: add more */
-	};
-	hcl_oow_t i;
-
-	for (i = 0; i < HCL_COUNTOF(tab); i++)
-	{
-		if (hcl_comp_oochars_oocstr(proto->tok.ptr, proto->tok.len, tab[i].name) == 0)
-		{
-			SET_TOKEN_TYPE (proto, tab[i].type);
-			break;
-		}
-	}
-}
-
-static int get_token (hcl_server_proto_t* proto)
-{
-	hcl_ooci_t c;
-
-	GET_CHAR_TO (proto, c);
-
-	/* skip spaces */
-	while (is_spacechar(c)) GET_CHAR_TO (proto, c);
-
-	SET_TOKEN_TYPE (proto, HCL_SERVER_PROTO_TOKEN_EOF); /* is it correct? */
-	proto->tok.len = 0;
-	proto->tok.loc = proto->lxc->l; /* set token location */
-
-	switch (c)
-	{
-		case HCL_OOCI_EOF:
-			SET_TOKEN_TYPE (proto, HCL_SERVER_PROTO_TOKEN_EOF);
-			break;
-
-		case '\n':
-			SET_TOKEN_TYPE (proto, HCL_SERVER_PROTO_TOKEN_NL);
-			break;
-
-		case '.':
-			SET_TOKEN_TYPE (proto, HCL_SERVER_PROTO_TOKEN_IDENT);
-
-			ADD_TOKEN_CHAR(proto, c);
-			GET_CHAR_TO(proto, c);
-			if (!is_alphachar(c))
-			{
-				hcl_seterrbfmt (proto->hcl, HCL_EINVAL, "Alphabetic character expected after a period");
-				return -1;
-			}
-
-			do
-			{
-				ADD_TOKEN_CHAR(proto, c);
-				GET_CHAR_TO(proto, c);
-			}
-			while (is_alphachar(c) || c == '-');
-
-			UNGET_LAST_CHAR (proto);
-
-			classify_current_ident_token (proto);
-			break;
-
-		default:
-			if (is_digitchar(c))
-			{
-				SET_TOKEN_TYPE (proto, HCL_SERVER_PROTO_TOKEN_NUMBER);
-
-				do
-				{
-					ADD_TOKEN_CHAR(proto, c);
-					GET_CHAR_TO(proto, c);
-				}
-				while (is_digitchar(c));
-
-				UNGET_LAST_CHAR (proto);
-				break;
-			}
-
-			hcl_seterrbfmt (proto->hcl, HCL_EINVAL, "Unrecognized character - [%jc]", c);
-			return -1;
-	}
 	return 0;
 }
 
@@ -1303,7 +957,9 @@ static int execute_script (hcl_server_proto_t* proto, const hcl_bch_t* trigger)
 
 	server = proto->worker->server;
 
+#if 0
 	hcl_server_proto_start_reply (proto);
+#endif
 	if (server->cfg.actor_max_runtime.sec <= 0 && server->cfg.actor_max_runtime.sec <= 0)
 	{
 		obj = hcl_execute(proto->hcl);
@@ -1325,11 +981,13 @@ static int execute_script (hcl_server_proto_t* proto, const hcl_bch_t* trigger)
 		}
 	}
 
+#if 0
 	if (hcl_server_proto_end_reply(proto, failmsg) <= -1)
 	{
 		HCL_LOG1 (proto->hcl, SERVER_LOGMASK_ERROR, "Cannot finalize reply for %hs\n", trigger);
 		return -1;
 	}
+#endif
 
 	return 0;
 }
@@ -1337,11 +995,13 @@ static int execute_script (hcl_server_proto_t* proto, const hcl_bch_t* trigger)
 
 static void send_error_message (hcl_server_proto_t* proto, const hcl_ooch_t* errmsg)
 {
+#if 0
 	hcl_server_proto_start_reply (proto);
 	if (hcl_server_proto_end_reply(proto, errmsg) <= -1)
 	{
 		HCL_LOG1 (proto->hcl, SERVER_LOGMASK_ERROR, "Unable to send error message - %s\n", errmsg);
 	}
+#endif
 }
 
 static void reformat_synerr (hcl_t* hcl)
@@ -1426,142 +1086,167 @@ static int kill_server_worker (hcl_server_proto_t* proto, hcl_oow_t wid)
 	return xret;
 }
 
-static int recv_req_raw (hcl_server_proto_t* proto)
+static int receive_raw_request (hcl_server_proto_t* proto)
 {
 	hcl_server_worker_t* worker = proto->worker;
 	hcl_server_t* server = worker->server;
 	hcl_t* hcl = proto->hcl;
+	struct pollfd pfd;
+	int tmout, actual_tmout;
 	ssize_t x;
+	int n;
 
-start_over:
-	while (1)
+	HCL_ASSERT (hcl, proto->rcv.len < proto->rcv.len_needed);
+
+	if (HCL_UNLIKELY(proto->rcv.eof))
 	{
-		int n;
-		struct pollfd pfd;
-		int tmout, actual_tmout;
+		hcl_seterrbfmt (hcl, HCL_EGENERIC, "connection closed");
+		return -1;
+	}
 
-		if (HCL_UNLIKELY(server->stopreq))
-		{
-			hcl_seterrbfmt (hcl, HCL_EGENERIC, "stop requested");
-			return -1;
-		}
-
+	if (HCL_LIKELY(!proto->rcv.polled))
+	{
 		tmout = HCL_SECNSEC_TO_MSEC(server->cfg.worker_idle_timeout.sec, server->cfg.worker_idle_timeout.nsec);
 		actual_tmout = (tmout <= 0)? 10000: tmout;
 
 		pfd.fd = worker->sck;
 		pfd.events = POLLIN | POLLERR;
+		pfd.revents = 0;
 		n = poll(&pfd, 1, actual_tmout);
 		if (n <= -1)
 		{
-			if (errno == EINTR) goto start_over;
+			if (errno == EINTR) return 0;
 			hcl_seterrwithsyserr (hcl, 0, errno);
 			return -1;
 		}
-		else if (n >= 1) break;
-
-		/* timed out - no activity on the pfd */
-		if (tmout > 0)
+		else if (n == 0)
 		{
-			hcl_seterrbfmt (hcl, HCL_EGENERIC, "no activity on the worker socket %d", worker->sck);
+			/* timed out - no activity on the pfd */
+			if (tmout > 0)
+			{
+				/* timeout explicity set. no activity for that duration. considered idle */
+				hcl_seterrbfmt (hcl, HCL_EGENERIC, "no activity on the worker socket %d", worker->sck);
+				return -1;
+			}
+
+			return 0; /* didn't read yet */
+		}
+
+		if (pfd.revents & POLLERR)
+		{
+			hcl_seterrbfmt (hcl, HCL_EGENERIC, "error condition detected on workder socket %d", worker->sck);
 			return -1;
 		}
+
+		proto->rcv.polled = 1;
+
 	}
 
-	x = recv(worker->sck, &proto->q.buf[proto->q.len], HCL_COUNTOF(proto->q.buf) - proto->q.len, 0);
+	x = recv(worker->sck, &proto->rcv.buf[proto->rcv.len], HCL_COUNTOF(proto->rcv.buf) - proto->rcv.len, 0);
 	if (x <= -1)
 	{
-		if (errno == EINTR) goto start_over;
+		if (errno == EINTR) return 0; /* didn't read read */
+
+		proto->rcv.polled = 0;
 		hcl_seterrwithsyserr (hcl, 0, errno);
 		return -1;
 	}
 
-	proto->q.len += x;
+	proto->rcv.polled = 0;
+	if (x == 0) proto->rcv.eof = 1;
 
-#if 0
-#if defined(HCL_OOCH_IS_UCH)
-	bcslen = proto->q.len;
-	ucslen = HCL_COUNTOF(arg->buf);
-	y = hcl_convbtooochars(hcl, proto->q.buf, &bcslen, arg->buf, &ucslen);
-	if (y <= -1 && ucslen <= 0)
-	{
-		if (y == -3 && x != 0) goto start_over; /* incomplete sequence and not EOF yet */
-		return -1;
-	}
-	/* if ucslen is greater than 0, i see that some characters have been
-	 * converted properly */
-#else
-	bcslen = (proto->q.len < HCL_COUNTOF(arg->buf))? proto->q.len: HCL_COUNTOF(arg->buf);
-	ucslen = bcslen;
-	hcl_copy_bchars (arg->buf, proto->q.buf, bcslen);
-#endif
-
-	remlen = proto->q.len - bcslen;
-	if (remlen > 0) HCL_MEMMOVE (bb->buf, &bb->buf[bcslen], remlen);
-	proto->q.len = remlen;
-
-	arg->xlen = ucslen; /* this is the final converted length ... */
-#endif
-	return 0;
+	proto->rcv.len += x;
+	return 1; /* read some data */
 }
 
 
-int hcl_server_proto_handle_request (hcl_server_proto_t* proto)
+int hcl_server_proto_handle_incoming (hcl_server_proto_t* proto)
 {
 	hcl_server_worker_t* worker = proto->worker;
-	hcl_expkt_hdr_t* hdr;
+	hcl_t* hcl = proto->hcl;
+	hcl_xpkt_hdr_t* hdr;
 
-start_over:
-	if (proto->q.len < proto->q.reqlen && recv_req_raw(proto) <= -1) return -1;
-
-	switch (proto->q.state)
+	if (proto->rcv.len < proto->rcv.len_needed)
 	{
-		case HCL_SERVER_PROTO_Q_HEADER:
-			if (proto->q.len >= HCL_SIZEOF(hcl_expkt_hdr_t))
+		int n;
+		n = receive_raw_request(proto);
+		if (n <= -1) goto fail_with_errmsg; // TODO: backup error message...and create a new message
+		else if (n == 0) return 0; /* not enough data has been read */
+	}
+
+	switch (proto->rcv.state)
+	{
+		case HCL_SERVER_PROTO_RCV_HEADER:
+			if (proto->rcv.len < HCL_SIZEOF(proto->rcv.hdr)) return 0; /* need more data */
+
+			HCL_MEMCPY (&proto->rcv.hdr, proto->rcv.buf, HCL_SIZEOF(proto->rcv.hdr));
+			//proto->rcv.hdr.len = hcl_ntoh16(proto->rcv.hdr.len); /* keep this in the host byte order */
+
+printf ("req.hdr = %d %d %d\n", proto->rcv.hdr.type, proto->rcv.hdr.id, proto->rcv.hdr.len);
+			/* consume the header */
+			HCL_MEMMOVE (proto->rcv.buf, &proto->rcv.buf[HCL_SIZEOF(proto->rcv.hdr)], proto->rcv.len - HCL_SIZEOF(proto->rcv.hdr));
+			proto->rcv.len -= HCL_SIZEOF(proto->rcv.hdr);
+
+			if (proto->rcv.hdr.len > 0)
 			{
-				hcl_expkt_hdr_t* hdr = (hcl_expkt_hdr_t*)proto->q.buf;
-				if (hcl_ntoh16(hdr->len) > 0)
-				{
-					HCL_MEMMOVE (proto->q.buf, &proto->q.buf[HCL_SIZEOF(hcl_expkt_hdr_t)], proto->q.len - HCL_SIZEOF(hcl_expkt_hdr_t));
-
-					proto->q.state = HCL_SERVER_PROTO_Q_PAYLOAD;
-					proto->q.len -= HCL_SIZEOF(hcl_expkt_hdr_t);
-					proto->q.reqlen = hcl_ntoh16(hdr->len);
-
-					goto start_over;
-				}
+				/* switch to the payload mode */
+				proto->rcv.state = HCL_SERVER_PROTO_RCV_PAYLOAD;
+				proto->rcv.len_needed = proto->rcv.hdr.len;
+				return 0; /* need data for payload */
 			}
+
+			/* payload length is zero in the header. */
+			HCL_ASSERT (hcl, proto->rcv.len_needed == HCL_SIZEOF(proto->rcv.hdr));
 			break;
 
-		case HCL_SERVER_PROTO_Q_PAYLOAD:
-#if 0
-			if (proto->q.type == HCL_EXPKT_CODEIN)
+		case HCL_SERVER_PROTO_RCV_PAYLOAD:
+			if (proto->rcv.len < proto->rcv.hdr.len) return 0; /* need more payload data */
+
+			if (proto->rcv.hdr.type == HCL_XPKT_CODEIN)
 			{
-				hcl_feed (proto->hcl, proto->q.buf, proto->q.len);
-				//proto->q.len -= xxxx;
+printf ("FEEDING [%.*s]\n", proto->rcv.hdr.len, proto->rcv.buf);
+				if (hcl_feedbchars(hcl, (const hcl_bch_t*)proto->rcv.buf, proto->rcv.hdr.len) <= -1)
+				{
+					/* TODO: backup error message...and create a new message */
+					goto fail_with_errmsg;
+				}
 			}
-			else if (proto->q.type == HCL_EXPKT_STDIN)
+			else if (proto->rcv.hdr.type == HCL_XPKT_STDIN)
 			{
-				// store ... push stdin pipe...
+				/* store ... push stdin pipe... */
+				/*if (hcl_feedstdin() <= -1) */
+			}
+			else if (proto->rcv.hdr.type == HCL_XPKT_LIST_WORKERS)
+			{
+			}
+			else if (proto->rcv.hdr.type == HCL_XPKT_KILL_WORKER)
+			{
 			}
 			else
 			{
 				/* error ... unknown request type */
 			}
-#endif
+
+/* TODO: minimize the use of HCL_MEMOVE... use the buffer */
+			/* switch to the header mode */
+			HCL_MEMMOVE (proto->rcv.buf, &proto->rcv.buf[proto->rcv.hdr.len], proto->rcv.len - proto->rcv.hdr.len);
+			proto->rcv.len -= proto->rcv.hdr.len;
+			proto->rcv.state = HCL_SERVER_PROTO_RCV_HEADER;
+			proto->rcv.len_needed = HCL_SIZEOF(proto->rcv.hdr);
+
 			break;
 
 		default:
-			hcl_seterrbfmt (proto->hcl, HCL_EINTERN, "invalid request state %d", (int)proto->q.state);
+			hcl_seterrbfmt (hcl, HCL_EINTERN, "invalid request state %d", (int)proto->rcv.state);
 			goto fail_with_errmsg;
 	}
 
-	return 1;
+	return 1; /* processed 1 packet */
 
 fail_with_errmsg:
 // TODO: proper error handling
 	//send_proto_hcl_error (proto);
-	//HCL_LOG1 (proto->hcl, SERVER_LOGMASK_ERROR, "Unable to compile .SCRIPT contents - %js\n", hcl_geterrmsg(proto->hcl));
+	//HCL_LOG1 (hcl, SERVER_LOGMASK_ERROR, "Unable to compile .SCRIPT contents - %js\n", hcl_geterrmsg(proto->hcl));
 	return -1;
 
 }
@@ -1588,7 +1273,7 @@ hcl_server_t* hcl_server_open (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, hcl_server_p
 	if (!hcl) goto oops;
 
 	/* replace the vmprim.log_write function */
-	hcl->vmprim.log_write = log_write_for_dummy;
+	hcl->vmprim.log_write = server_log_write_for_dummy;
 
 	tmr = hcl_tmr_open(hcl, 0, 1024); /* TOOD: make the timer's default size configurable */
 	if (!tmr)
@@ -1913,7 +1598,8 @@ static void* worker_main (void* ctx)
 	while (!server->stopreq)
 	{
 		worker->opstate = HCL_SERVER_WORKER_OPSTATE_WAIT;
-		if (hcl_server_proto_handle_request(worker->proto) <= 0)
+
+		if (hcl_server_proto_handle_incoming(worker->proto) <= -1)
 		{
 			worker->opstate = HCL_SERVER_WORKER_OPSTATE_ERROR;
 			break;
@@ -2544,4 +2230,289 @@ void* hcl_server_reallocmem (hcl_server_t* server, void* ptr, hcl_oow_t size)
 void hcl_server_freemem (hcl_server_t* server, void* ptr)
 {
 	HCL_MMGR_FREE (server->_mmgr, ptr);
+}
+
+
+/* ------------------------------------------------------------------------ */
+
+#if 0
+hcl_client_proto_t* hcl_client_proto_open (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, hcl_errnum_t* errnum)
+{
+}
+
+void hcl_client_proto_close (hcl_client_proto_t* proto)
+{
+}
+
+int hcl_client_proto_send_code (hcl_client_proto_t* client)
+{
+}
+
+int hcl_client_proto_handle_response (hcl_client_proto_t* proto)
+{
+}
+
+#endif
+
+
+
+
+
+
+
+/* ------------------------------------------------------------------------ */
+struct client_hcl_xtn_t
+{
+	hcl_client_t* client;
+};
+typedef struct client_hcl_xtn_t client_hcl_xtn_t;
+
+struct hcl_client_t
+{
+	hcl_oow_t   _instsize;
+	hcl_mmgr_t* _mmgr;
+	hcl_cmgr_t* _cmgr;
+
+	hcl_client_prim_t prim;
+	hcl_t* dummy_hcl;
+
+	hcl_errnum_t errnum;
+	struct
+	{
+		hcl_ooch_t buf[HCL_ERRMSG_CAPA];
+		hcl_oow_t len;
+	} errmsg;
+
+	struct
+	{
+		hcl_bitmask_t trait;
+		hcl_bitmask_t logmask;
+	} cfg;
+};
+
+
+/* ========================================================================= */
+
+static void client_log_write_for_dummy (hcl_t* hcl, hcl_bitmask_t mask, const hcl_ooch_t* msg, hcl_oow_t len)
+{
+	client_hcl_xtn_t* xtn = (client_hcl_xtn_t*)hcl_getxtn(hcl);
+	hcl_client_t* client;
+
+	client = xtn->client;
+	client->prim.log_write (client, mask, msg, len);
+}
+
+hcl_client_t* hcl_client_open (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, hcl_client_prim_t* prim, hcl_errnum_t* errnum)
+{
+	hcl_client_t* client;
+	hcl_t* hcl;
+	client_hcl_xtn_t* xtn;
+
+	client = (hcl_client_t*)HCL_MMGR_ALLOC(mmgr, HCL_SIZEOF(*client) + xtnsize);
+	if (!client)
+	{
+		if (errnum) *errnum = HCL_ESYSMEM;
+		return HCL_NULL;
+	}
+
+	hcl = hcl_openstdwithmmgr(mmgr, HCL_SIZEOF(*xtn), errnum);
+	if (!hcl)
+	{
+		HCL_MMGR_FREE (mmgr, client);
+		return HCL_NULL;
+	}
+
+	/* replace the vmprim.log_write function */
+	hcl->vmprim.log_write = client_log_write_for_dummy;
+
+	xtn = (client_hcl_xtn_t*)hcl_getxtn(hcl);
+	xtn->client = client;
+
+	HCL_MEMSET (client, 0, HCL_SIZEOF(*client) + xtnsize);
+	client->_instsize = HCL_SIZEOF(*client);
+	client->_mmgr = mmgr;
+	client->_cmgr = hcl_get_utf8_cmgr();
+	client->prim = *prim;
+	client->dummy_hcl = hcl;
+
+	client->cfg.logmask = ~(hcl_bitmask_t)0;
+
+	/* the dummy hcl is used for this client to perform primitive operations
+	 * such as getting system time or logging. so the heap size doesn't
+	 * need to be changed from the tiny value set above. */
+	hcl_setoption (client->dummy_hcl, HCL_LOG_MASK, &client->cfg.logmask);
+	hcl_setcmgr (client->dummy_hcl, client->_cmgr);
+
+	return client;
+}
+
+void hcl_client_close (hcl_client_t* client)
+{
+	hcl_close (client->dummy_hcl);
+	HCL_MMGR_FREE (client->_mmgr, client);
+}
+
+int hcl_client_setoption (hcl_client_t* client, hcl_client_option_t id, const void* value)
+{
+	switch (id)
+	{
+		case HCL_CLIENT_TRAIT:
+			client->cfg.trait = *(const hcl_bitmask_t*)value;
+			return 0;
+
+		case HCL_CLIENT_LOG_MASK:
+			client->cfg.logmask = *(const hcl_bitmask_t*)value;
+			if (client->dummy_hcl)
+			{
+				/* setting this affects the dummy hcl immediately.
+				 * existing hcl instances inside worker threads won't get
+				 * affected. new hcl instances to be created later
+				 * is supposed to use the new value */
+				hcl_setoption (client->dummy_hcl, HCL_LOG_MASK, value);
+			}
+			return 0;
+	}
+
+	hcl_client_seterrnum (client, HCL_EINVAL);
+	return -1;
+}
+
+int hcl_client_getoption (hcl_client_t* client, hcl_client_option_t id, void* value)
+{
+	switch (id)
+	{
+		case HCL_CLIENT_TRAIT:
+			*(hcl_bitmask_t*)value = client->cfg.trait;
+			return 0;
+
+		case HCL_CLIENT_LOG_MASK:
+			*(hcl_bitmask_t*)value = client->cfg.logmask;
+			return 0;
+	};
+
+	hcl_client_seterrnum (client, HCL_EINVAL);
+	return -1;
+}
+
+
+void* hcl_client_getxtn (hcl_client_t* client)
+{
+	return (void*)((hcl_uint8_t*)client + client->_instsize);
+}
+
+hcl_mmgr_t* hcl_client_getmmgr (hcl_client_t* client)
+{
+	return client->_mmgr;
+}
+
+hcl_cmgr_t* hcl_client_getcmgr (hcl_client_t* client)
+{
+	return client->_cmgr;
+}
+
+void hcl_client_setcmgr (hcl_client_t* client, hcl_cmgr_t* cmgr)
+{
+	client->_cmgr = cmgr;
+}
+
+hcl_errnum_t hcl_client_geterrnum (hcl_client_t* client)
+{
+	return client->errnum;
+}
+
+const hcl_ooch_t* hcl_client_geterrstr (hcl_client_t* client)
+{
+	return hcl_errnum_to_errstr(client->errnum);
+}
+
+const hcl_ooch_t* hcl_client_geterrmsg (hcl_client_t* client)
+{
+	if (client->errmsg.len <= 0) return hcl_errnum_to_errstr(client->errnum);
+	return client->errmsg.buf;
+}
+
+void hcl_client_seterrnum (hcl_client_t* client, hcl_errnum_t errnum)
+{
+	/*if (client->shuterr) return; */
+	client->errnum = errnum;
+	client->errmsg.len = 0;
+}
+
+void hcl_client_seterrbfmt (hcl_client_t* client, hcl_errnum_t errnum, const hcl_bch_t* fmt, ...)
+{
+	va_list ap;
+
+	va_start (ap, fmt);
+	hcl_seterrbfmtv (client->dummy_hcl, errnum, fmt, ap);
+	va_end (ap);
+
+	HCL_ASSERT (client->dummy_hcl, HCL_COUNTOF(client->errmsg.buf) == HCL_COUNTOF(client->dummy_hcl->errmsg.buf));
+	client->errnum = errnum;
+	hcl_copy_oochars (client->errmsg.buf, client->dummy_hcl->errmsg.buf, HCL_COUNTOF(client->errmsg.buf));
+	client->errmsg.len = client->dummy_hcl->errmsg.len;
+}
+
+void hcl_client_seterrufmt (hcl_client_t* client, hcl_errnum_t errnum, const hcl_uch_t* fmt, ...)
+{
+	va_list ap;
+
+	va_start (ap, fmt);
+	hcl_seterrufmtv (client->dummy_hcl, errnum, fmt, ap);
+	va_end (ap);
+
+	HCL_ASSERT (client->dummy_hcl, HCL_COUNTOF(client->errmsg.buf) == HCL_COUNTOF(client->dummy_hcl->errmsg.buf));
+	client->errnum = errnum;
+	hcl_copy_oochars (client->errmsg.buf, client->dummy_hcl->errmsg.buf, HCL_COUNTOF(client->errmsg.buf));
+	client->errmsg.len = client->dummy_hcl->errmsg.len;
+}
+
+/* ========================================================================= */
+
+void hcl_client_logbfmt (hcl_client_t* client, hcl_bitmask_t mask, const hcl_bch_t* fmt, ...)
+{
+	va_list ap;
+	va_start (ap, fmt);
+	hcl_logbfmtv (client->dummy_hcl, mask, fmt, ap);
+	va_end (ap);
+}
+
+void hcl_client_logufmt (hcl_client_t* client, hcl_bitmask_t mask, const hcl_uch_t* fmt, ...)
+{
+	va_list ap;
+	va_start (ap, fmt);
+	hcl_logufmtv (client->dummy_hcl, mask, fmt, ap);
+	va_end (ap);
+}
+
+/* ========================================================================= */
+
+void* hcl_client_allocmem (hcl_client_t* client, hcl_oow_t size)
+{
+	void* ptr;
+
+	ptr = HCL_MMGR_ALLOC(client->_mmgr, size);
+	if (!ptr) hcl_client_seterrnum (client, HCL_ESYSMEM);
+	return ptr;
+}
+
+void* hcl_client_callocmem (hcl_client_t* client, hcl_oow_t size)
+{
+	void* ptr;
+
+	ptr = HCL_MMGR_ALLOC(client->_mmgr, size);
+	if (!ptr) hcl_client_seterrnum (client, HCL_ESYSMEM);
+	else HCL_MEMSET (ptr, 0, size);
+	return ptr;
+}
+
+void* hcl_client_reallocmem (hcl_client_t* client, void* ptr, hcl_oow_t size)
+{
+	ptr = HCL_MMGR_REALLOC(client->_mmgr, ptr, size);
+	if (!ptr) hcl_client_seterrnum (client, HCL_ESYSMEM);
+	return ptr;
+}
+
+void hcl_client_freemem (hcl_client_t* client, void* ptr)
+{
+	HCL_MMGR_FREE (client->_mmgr, ptr);
 }

@@ -24,7 +24,7 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "hcl-s.h"
+#include "hcl-x.h"
 #include "hcl-opt.h"
 #include "hcl-utl.h"
 #include "hcl-xutl.h"
@@ -59,7 +59,7 @@ struct server_xtn_t
 	int logfd;
 	hcl_bitmask_t logmask;
 	int logfd_istty;
-	
+
 	struct
 	{
 		hcl_bch_t buf[4096];
@@ -169,7 +169,7 @@ static int write_log (hcl_server_t* server, int fd, const hcl_bch_t* ptr, hcl_oo
 				xtn->logbuf.len += len;
 				ptr += len;
 				len -= len;
-				
+
 			}
 		}
 	}
@@ -235,12 +235,12 @@ static void log_write (hcl_server_t* server, hcl_oow_t wid, hcl_bitmask_t mask, 
 	#if defined(HAVE_STRFTIME_SMALL_Z)
 		tslen = strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S %z ", tmp);
 	#else
-		tslen = strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S %Z ", tmp); 
+		tslen = strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S %Z ", tmp);
 	#endif
-		if (tslen == 0) 
+		if (tslen == 0)
 		{
 			strcpy (ts, "0000-00-00 00:00:00 +0000");
-			tslen = 25; 
+			tslen = 25;
 		}
 
 		write_log (server, logfd, ts, tslen);
@@ -270,9 +270,9 @@ static void log_write (hcl_server_t* server, hcl_oow_t wid, hcl_bitmask_t mask, 
 		n = hcl_conv_oochars_to_bchars_with_cmgr(&msg[msgidx], &ucslen, buf, &bcslen, hcl_get_utf8_cmgr());
 		if (n == 0 || n == -2)
 		{
-			/* n = 0: 
-			 *   converted all successfully 
-			 * n == -2: 
+			/* n = 0:
+			 *   converted all successfully
+			 * n == -2:
 			 *    buffer not sufficient. not all got converted yet.
 			 *    write what have been converted this round. */
 
@@ -338,7 +338,7 @@ static void set_signal (int sig, signal_handler_t handler)
 
 static void set_signal_to_ignore (int sig)
 {
-	struct sigaction sa; 
+	struct sigaction sa;
 
 	memset (&sa, 0, sizeof(sa));
 	sa.sa_handler = SIG_IGN;
@@ -350,7 +350,7 @@ static void set_signal_to_ignore (int sig)
 
 static void set_signal_to_default (int sig)
 {
-	struct sigaction sa; 
+	struct sigaction sa;
 
 	memset (&sa, 0, sizeof(sa));
 	sa.sa_handler = SIG_DFL;
@@ -372,12 +372,12 @@ static int handle_logopt (hcl_server_t* server, const hcl_bch_t* str)
 	xtn = (server_xtn_t*)hcl_server_getxtn(server);
 
 	cm = hcl_find_bchar_in_bcstr(xstr, ',');
-	if (cm) 
+	if (cm)
 	{
-		/* i duplicate this string for open() below as open() doesn't 
+		/* i duplicate this string for open() below as open() doesn't
 		 * accept a length-bounded string */
 		xstr = strdup(str);
-		if (!xstr) 
+		if (!xstr)
 		{
 			fprintf (stderr, "ERROR: out of memory in duplicating %s\n", str);
 			return -1;
@@ -497,7 +497,7 @@ static int handle_incpath (hcl_server_t* server, const char* str)
 
 #define MIN_WORKER_STACK_SIZE 512000ul
 #define MIN_ACTOR_HEAP_SIZE 512000ul
- 
+
 int main (int argc, char* argv[])
 {
 	hcl_bci_t c;

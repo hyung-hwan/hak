@@ -38,13 +38,13 @@ hcl_oow_t hcl_uc_to_utf16 (hcl_uch_t uc, hcl_bch_t* utf16, hcl_oow_t size)
 {
 	hcl_uint16_t* u16 = (hcl_uint16_t*)utf16;
 
-	if (uc <= 0xFFFF) 
+	if (uc <= 0xFFFF)
 	{
 		u16[0] = (hcl_uint16_t)uc;
 		return 2;
 	}
 #if (HCL_SIZEOF_UCH_T > 2)
-	else if (uc <= 0x10FFFF) 
+	else if (uc <= 0x10FFFF)
 	{
 		u16[0] = HIGH_SURROGATE_START | (((uc >> 16) & 0x1F) - 1) | (uc >> 10);
 		u16[1] = LOW_SURROGATE_START | (uc & 0x3FF);
@@ -61,7 +61,7 @@ hcl_oow_t hcl_utf16_to_uc (const hcl_bch_t* utf16, hcl_oow_t size, hcl_uch_t* uc
 
 	if (size < 2) return 0; /* incomplete sequence */
 
-	if (u16[0] < HIGH_SURROGATE_START || u16[0] > LOW_SURROGATE_END) 
+	if (u16[0] < HIGH_SURROGATE_START || u16[0] > LOW_SURROGATE_END)
 	{
 		/* BMP - U+0000 - U+D7FF, U+E000 - U+FFFF */
 		*uc = u16[0];

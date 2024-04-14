@@ -25,6 +25,7 @@
  */
 
 #include "hcl-c.h"
+#include "hcl-x.h"
 #include "hcl-opt.h"
 #include "hcl-utl.h"
 #include "hcl-xutl.h"
@@ -53,6 +54,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <poll.h>
 
 /* ========================================================================= */
 
@@ -62,7 +64,7 @@ struct client_xtn_t
 	int logfd;
 	hcl_bitmask_t logmask;
 	int logfd_istty;
-	
+
 	struct
 	{
 		hcl_bch_t buf[4096];
@@ -138,7 +140,6 @@ static int write_log (hcl_client_t* client, int fd, const hcl_bch_t* ptr, hcl_oo
 {
 	client_xtn_t* xtn;
 
-
 	xtn = hcl_client_getxtn(client);
 
 	while (len > 0)
@@ -178,7 +179,7 @@ static int write_log (hcl_client_t* client, int fd, const hcl_bch_t* ptr, hcl_oo
 				xtn->logbuf.len += len;
 				ptr += len;
 				len -= len;
-				
+
 			}
 		}
 	}
@@ -243,16 +244,16 @@ static void log_write (hcl_client_t* client, hcl_bitmask_t mask, const hcl_ooch_
 	#else
 		tmp = localtime(&now);
 	#endif
-		
+
 	#if defined(HAVE_STRFTIME_SMALL_Z)
 		tslen = strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S %z ", tmp);
 	#else
-		tslen = strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S %Z ", tmp); 
+		tslen = strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S %Z ", tmp);
 	#endif
-		if (tslen == 0) 
+		if (tslen == 0)
 		{
 			strcpy (ts, "0000-00-00 00:00:00 +0000");
-			tslen = 25; 
+			tslen = 25;
 		}
 
 		write_log (client, logfd, ts, tslen);
@@ -275,9 +276,9 @@ static void log_write (hcl_client_t* client, hcl_bitmask_t mask, const hcl_ooch_
 		n = hcl_conv_oochars_to_bchars_with_cmgr(&msg[msgidx], &ucslen, buf, &bcslen, hcl_get_utf8_cmgr());
 		if (n == 0 || n == -2)
 		{
-			/* n = 0: 
-			 *   converted all successfully 
-			 * n == -2: 
+			/* n = 0:
+			 *   converted all successfully
+			 * n == -2:
 			 *    buffer not sufficient. not all got converted yet.
 			 *    write what have been converted this round. */
 
@@ -343,7 +344,7 @@ static void set_signal (int sig, signal_handler_t handler)
 
 static void set_signal_to_ignore (int sig)
 {
-	struct sigaction sa; 
+	struct sigaction sa;
 
 	memset (&sa, 0, sizeof(sa));
 	sa.sa_handler = SIG_IGN;
@@ -355,7 +356,7 @@ static void set_signal_to_ignore (int sig)
 
 static void set_signal_to_default (int sig)
 {
-	struct sigaction sa; 
+	struct sigaction sa;
 
 	memset (&sa, 0, sizeof(sa));
 	sa.sa_handler = SIG_DFL;
@@ -377,12 +378,12 @@ static int handle_logopt (hcl_client_t* client, const hcl_bch_t* str)
 	xtn = (client_xtn_t*)hcl_client_getxtn(client);
 
 	cm = hcl_find_bchar_in_bcstr(xstr, ',');
-	if (cm) 
+	if (cm)
 	{
-		/* i duplicate this string for open() below as open() doesn't 
+		/* i duplicate this string for open() below as open() doesn't
 		 * accept a length-bounded string */
 		xstr = strdup(str);
-		if (!xstr) 
+		if (!xstr)
 		{
 			fprintf (stderr, "ERROR: out of memory in duplicating %s\n", str);
 			return -1;
@@ -453,119 +454,6 @@ static int handle_logopt (hcl_client_t* client, const hcl_bch_t* str)
 	return 0;
 }
 
-static int start_reply (hcl_client_t* client, hcl_client_reply_type_t type, const hcl_ooch_t* dptr, hcl_oow_t dlen)
-{
-	client_xtn_t* client_xtn;
-	client_xtn = hcl_client_getxtn(client);
-
-	if (client_xtn->reply_count > 0)
-	{
-		hcl_client_seterrbfmt (client, HCL_EFLOOD, "\n<<WARNING>> redundant reply received\n");
-		return -1;
-	}
-
-	if (dptr)
-	{
-		/* short-form response - no end_reply will be called */
-		if (type == HCL_CLIENT_REPLY_TYPE_ERROR)
-		{
-		#if defined(HCL_OOCH_IS_UCH)
-			hcl_bch_t bcs[256];
-			hcl_oow_t bcslen;
-
-			/* NOTE: the error may get truncated without looping */
-			bcslen = HCL_COUNTOF(bcs); 
-			hcl_conv_uchars_to_bchars_with_cmgr (dptr, &dlen, bcs, &bcslen, hcl_client_getcmgr(client));
-			printf ("\nERROR - [%.*s]\n", (int)bcslen, bcs);
-		#else
-			printf ("\nERROR - [%.*s]\n", (int)dlen, dptr);
-		#endif
-		}
-		else
-		{
-		#if defined(HCL_OOCH_IS_UCH)
-			hcl_oow_t drem = dlen;
-			while (drem > 0)
-			{
-				hcl_bch_t bcs[256];
-				hcl_oow_t ucslen, bcslen;
-
-				ucslen = drem;
-				bcslen = HCL_COUNTOF(bcs);
-				hcl_conv_uchars_to_bchars_with_cmgr(dptr, &ucslen, bcs, &bcslen, hcl_client_getcmgr(client));
-				client_xtn->data_length += bcslen;
-				if (write_all(0, bcs, bcslen) <= -1)
-				{
-					hcl_client_seterrbfmt (client, HCL_EIOERR, "unable to write data");
-					return -1;
-				}
-
-				drem -= ucslen;
-				dptr += ucslen;
-			}
-		#else
-			client_xtn->data_length += dlen;
-			if (write_all(0, dptr, dlen) <= -1)
-			{
-				hcl_client_seterrbfmt (client, HCL_EIOERR, "unable to write data");
-				return -1;
-			}
-		#endif
-		}
-		printf ("\nTOTAL DATA %lu bytes\n", (unsigned long int)client_xtn->data_length);
-
-		/*fflush (stdout);*/
-		client_xtn->reply_count++;
-
-	}
-	else
-	{
-		/* long-form response */
-	}
-	return 0;
-}
-
-static int end_reply (hcl_client_t* client, hcl_client_end_reply_state_t state)
-{
-	client_xtn_t* client_xtn;
-	client_xtn = hcl_client_getxtn(client);
-
-	if (state == HCL_CLIENT_END_REPLY_STATE_REVOKED)
-	{
-		/* nothing to do here */
-		printf ("\n<<WARNING>> REPLY(%lu bytes) received so far has been revoked\n", (unsigned long int)client_xtn->data_length);
-		client_xtn->data_length = 0;
-	}
-	else
-	{
-		client_xtn->reply_count++;
-		/*fflush (stdout);*/
-		printf ("\nTOTAL DATA %lu bytes\n", (unsigned long int)client_xtn->data_length);
-	}
-	return 0;
-}
-
-static int feed_attr (hcl_client_t* client, const hcl_oocs_t* key, const hcl_oocs_t* val)
-{
-	return 0;
-}
-
-static int feed_data (hcl_client_t* client, const void* ptr, hcl_oow_t len)
-{
-	client_xtn_t* client_xtn;
-
-	client_xtn = hcl_client_getxtn(client);
-	client_xtn->data_length += len;
-
-	if (write_all(0, ptr, len) <= -1)
-	{
-		hcl_client_seterrbfmt (client, HCL_EIOERR, "unable to write data");
-		return -1;
-	}
-
-	return 0;
-}
-
 /* ========================================================================= */
 
 static int send_iov (int sck, struct iovec* iov, int count)
@@ -582,7 +470,7 @@ static int send_iov (int sck, struct iovec* iov, int count)
 		msg.msg_iovlen = count - index;
 		nwritten = sendmsg(sck, &msg, 0);
 		/*nwritten = writev(proto->worker->sck, (const struct iovec*)&iov[index], count - index);*/
-		if (nwritten <= -1) 
+		if (nwritten <= -1)
 		{
 			/* error occurred inside the worker thread shouldn't affect the error information
 			 * in the server object. so here, i just log a message */
@@ -602,48 +490,104 @@ static int send_iov (int sck, struct iovec* iov, int count)
 	return 0;
 }
 
-static int send_script_line (int sck, const char* line, size_t len)
+/* ========================================================================= */
+
+enum hcl_xproto_rcv_state_t
 {
-	struct iovec iov[3];
-	int count;
+	HCL_XPROTO_RCV_HEADER,
+	HCL_XPROTO_RCV_PAYLOAD,
+};
+typedef enum hcl_xproto_rcv_state_t hcl_xproto_rcv_state_t;
 
-	count = 0;
-	iov[count].iov_base = ".SCRIPT ";
-	iov[count++].iov_len = 8;
-	iov[count].iov_base = (char*)line;
-	iov[count++].iov_len = len;
-	iov[count].iov_base = "\n";
-	iov[count++].iov_len = 1;
 
-	return send_iov(sck, iov, count);
-}
-
-static int send_begin_line (int sck)
+struct hcl_xproto_t
 {
-	struct iovec iov[2];
-	int count;
+	hcl_t* hcl;
 
-	count = 0;
-	iov[count].iov_base = ".BEGIN";
-	iov[count++].iov_len = 6;
-	iov[count].iov_base = "\n";
-	iov[count++].iov_len = 1;
+	struct
+	{
+                hcl_xproto_rcv_state_t state;
+		hcl_oow_t len_needed;
+		unsigned int eof: 1;
+		unsigned int polled: 1;
 
-	return send_iov(sck, iov, count);
-}
+		hcl_oow_t len;
+		hcl_uint8_t buf[4096];
 
-static int send_end_line (int sck)
+		hcl_xpkt_hdr_t hdr;
+	} rcv;
+};
+typedef struct hcl_xproto_t hcl_xproto_t;
+
+static int receive_raw_bytes (hcl_xproto_t* proto, int sck, hcl_ntime_t* idle_tmout)
 {
-	struct iovec iov[2];
-	int count;
+	hcl_t* hcl = proto->hcl;
+	struct pollfd pfd;
+	int tmout, actual_tmout;
+	ssize_t x;
+	int n;
 
-	count = 0;
-	iov[count].iov_base = ".END";
-	iov[count++].iov_len = 4;
-	iov[count].iov_base = "\n";
-	iov[count++].iov_len = 1;
+	HCL_ASSERT (hcl, proto->rcv.len < proto->rcv.len_needed);
 
-	return send_iov(sck, iov, count);
+	if (HCL_UNLIKELY(proto->rcv.eof))
+	{
+		hcl_seterrbfmt (hcl, HCL_EGENERIC, "connection closed");
+		return -1;
+	}
+
+	if (HCL_LIKELY(!proto->rcv.polled))
+	{
+		tmout = idle_tmout? HCL_SECNSEC_TO_MSEC(idle_tmout->sec, idle_tmout->nsec): -1;
+		actual_tmout = (tmout <= 0)? 10000: tmout;
+
+		pfd.fd = sck;
+		pfd.events = POLLIN | POLLERR;
+		pfd.revents = 0;
+		n = poll(&pfd, 1, actual_tmout);
+		if (n <= -1)
+		{
+			if (errno == EINTR) return 0;
+			hcl_seterrwithsyserr (hcl, 0, errno);
+			return -1;
+		}
+		else if (n == 0)
+		{
+			/* timed out - no activity on the pfd */
+			if (tmout > 0)
+			{
+				/* timeout explicity set. no activity for that duration. considered idle */
+				hcl_seterrbfmt (hcl, HCL_EGENERIC, "no activity on the socket %d", sck);
+				return -1;
+			}
+
+			return 0; /* didn't read yet */
+		}
+
+		if (pfd.revents & POLLERR)
+		{
+			hcl_seterrbfmt (hcl, HCL_EGENERIC, "error condition detected on socket %d", sck);
+			return -1;
+		}
+
+		proto->rcv.polled = 1;
+
+	}
+
+	x = recv(sck, &proto->rcv.buf[proto->rcv.len], HCL_COUNTOF(proto->rcv.buf) - proto->rcv.len, 0);
+	if (x <= -1)
+	{
+		if (errno == EINTR) return 0; /* didn't read read */
+
+		proto->rcv.polled = 0;
+		hcl_seterrwithsyserr (hcl, 0, errno);
+		return -1;
+	}
+
+	proto->rcv.polled = 0;
+	if (x == 0) proto->rcv.eof = 1;
+
+	proto->rcv.len += x;
+	return 1; /* read some data */
 }
 
 static int handle_request (hcl_client_t* client, const char* ipaddr, const char* script, int reuse_addr, int shut_wr_after_req)
@@ -658,20 +602,23 @@ static int handle_request (hcl_client_t* client, const char* ipaddr, const char*
 	hcl_bch_t buf[256];
 	ssize_t n;
 	const char* scptr;
+	const char* sccur;
+
+	hcl_xproto_t proto;
 
 	client_xtn_t* client_xtn;
 
 	client_xtn = hcl_client_getxtn(client);
 
 	sckfam = hcl_bchars_to_sckaddr(ipaddr, strlen(ipaddr), &sckaddr, &scklen);
-	if (sckfam <= -1) 
+	if (sckfam <= -1)
 	{
 		fprintf (stderr, "cannot convert ip address - %s\n", ipaddr);
 		goto oops;
 	}
 
 	sck = socket (sckfam, SOCK_STREAM, 0);
-	if (sck <= -1) 
+	if (sck <= -1)
 	{
 		fprintf (stderr, "cannot create a socket for %s - %s\n", ipaddr, strerror(errno));
 		goto oops;
@@ -705,67 +652,77 @@ static int handle_request (hcl_client_t* client, const char* ipaddr, const char*
 		goto oops;
 	}
 
-	if (send_begin_line(sck) <= -1) goto oops;
 
-	scptr = script;
+
+	/* TODO: create hcl_xproto_open... */
+	memset (&proto, 0, HCL_SIZEOF(proto));
+	proto.hcl = hcl_openstdwithmmgr(hcl_client_getmmgr(client), 0, HCL_NULL); // TODO:
+	proto.rcv.state = HCL_XPROTO_RCV_HEADER;
+	proto.rcv.len_needed = HCL_SIZEOF(proto.rcv.hdr);
+	proto.rcv.eof = 0;
+	proto.rcv.polled = 0;
+
+	scptr = sccur = script;
 	while (1)
 	{
-		const char* nl;
-		nl = strchr(scptr, '\n');
-		if (send_script_line(sck, scptr, (nl? (nl - scptr): strlen(scptr))) <= -1) goto oops;
-		if (!nl) break;
-		scptr = nl + 1;
+		struct pollfd pfd;
+
+		pfd.fd = sck;
+		pfd.events = POLLIN | POLLERR;
+		if (*sccur != '\0') pfd.events |= POLLOUT;
+		pfd.revents = 0;
+
+		n = poll(&pfd, 1, 1000);
+		if (n <= -1)
+		{
+			fprintf (stderr, "poll error on %d - %s\n", sck, strerror(n));
+			goto oops;
+		}
+
+		if (n == 0)
+		{
+			/* TODO: proper timeout handling */
+			continue;
+		}
+
+		if (pfd.revents & POLLERR)
+		{
+			fprintf (stderr, "error condition detected on %d\n", sck);
+			goto oops;
+		}
+
+		if (pfd.revents & POLLOUT)
+		{
+			hcl_xpkt_hdr_t hdr;
+			struct iovec iov[2];
+
+			while (*sccur != '\0' && sccur - scptr < 255) sccur++;
+
+			hdr.type = HCL_XPKT_CODEIN;
+			hdr.id = 1; /* TODO: */
+			hdr.len = sccur - scptr;
+
+			iov[0].iov_base = &hdr;
+			iov[0].iov_len = HCL_SIZEOF(hdr);
+			iov[1].iov_base = scptr;
+			iov[1].iov_len = sccur - scptr;
+
+			send_iov (sck, iov, 2); /* TODO: error check */
+
+			scptr = sccur;
+
+			if (*sccur == '\0' && shut_wr_after_req) shutdown (sck, SHUT_WR);
+		}
+
+		if (pfd.revents & POLLIN)
+		{
+printf ("receiving...\n");
+			if (receive_raw_bytes(&proto, sck, HCL_NULL) <= -1) break;
+		}
 	}
-
-	if (send_end_line(sck) <= -1) goto oops;
-
-	if (shut_wr_after_req) shutdown (sck, SHUT_WR);
 
 	client_xtn->data_length = 0;
 	client_xtn->reply_count = 0;
-
-/* TODO: implement timeout? */
-	avail = 0;
-	while (client_xtn->reply_count == 0)
-	{
-		n = recv(sck, &buf[avail], HCL_SIZEOF(buf) - avail, 0);
-		if (n <= -1) 
-		{
-			fprintf (stderr, "Unable to read from %d - %s\n", sck, strerror(n));
-			goto oops;
-		}
-		if (n == 0) 
-		{
-			if (hcl_client_getstate(client) != HCL_CLIENT_STATE_START)
-			{
-				fprintf (stderr, "Sudden end of reply\n");
-				goto oops;
-			}
-			break;
-		}
-
-		avail += n;;
-		x = hcl_client_feed(client, buf, avail, &used);
-		if (x <= -1) 
-		{
-		#if defined(HCL_OOCH_IS_UCH)
-			hcl_errnum_t errnum = hcl_client_geterrnum(client);
-			const hcl_ooch_t* errmsg = hcl_client_geterrmsg(client);
-			hcl_bch_t errbuf[2048];
-			hcl_oow_t ucslen, bcslen;
-
-			bcslen = HCL_COUNTOF(errbuf);
-			hcl_conv_ucstr_to_bcstr_with_cmgr (errmsg, &ucslen, errbuf, &bcslen, hcl_client_getcmgr(client));
-			fprintf (stderr, "Client error [%d] - %s\n", (int)errnum, errbuf);
-		#else
-			fprintf (stderr, "Client error [%d] - %s\n", (int)hcl_client_geterrnum(client), hcl_client_geterrmsg(client));
-		#endif
-			goto oops;
-		}
-
-		avail -= used;
-		if (avail > 0) memmove (&buf[0], &buf[used], avail);
-	}
 
 /* TODO: we can check if the buffer has all been consumed. if not, there is trailing garbage.. */
 
@@ -861,10 +818,6 @@ int main (int argc, char* argv[])
 
 	memset (&client_prim, 0, HCL_SIZEOF(client_prim));
 	client_prim.log_write = log_write;
-	client_prim.start_reply = start_reply;
-	client_prim.feed_attr = feed_attr;
-	client_prim.feed_data = feed_data;
-	client_prim.end_reply = end_reply;
 
 	client = hcl_client_open(&sys_mmgr, HCL_SIZEOF(client_xtn_t), &client_prim, HCL_NULL);
 	if (!client)

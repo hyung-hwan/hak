@@ -21,6 +21,7 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#if 0
 
 #ifndef _HCL_C_H_
 #define _HCL_C_H_
@@ -263,5 +264,8 @@ HCL_EXPORT void hcl_client_freemem (
 #if defined(__cplusplus)
 }
 #endif
+
+#endif
+
 
 #endif

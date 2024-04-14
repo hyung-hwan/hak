@@ -15,7 +15,7 @@ struct json_xtn_t
 	int logfd;
 	hcl_bitmask_t logmask;
 	int logfd_istty;
-	
+
 	struct
 	{
 		hcl_bch_t buf[4096];
@@ -127,7 +127,7 @@ static int write_log (hcl_json_t* json, int fd, const hcl_bch_t* ptr, hcl_oow_t 
 				xtn->logbuf.len += len;
 				ptr += len;
 				len -= len;
-				
+
 			}
 		}
 	}
@@ -150,7 +150,7 @@ static void log_write (hcl_json_t* json, hcl_bitmask_t mask, const hcl_ooch_t* m
 	json_xtn_t* xtn = (json_xtn_t*)hcl_json_getxtn(json);
 	hcl_bch_t buf[256];
 	hcl_oow_t ucslen, bcslen;
-	
+
 	hcl_oow_t msgidx;
 	int n, logfd;
 
@@ -193,12 +193,12 @@ static void log_write (hcl_json_t* json, hcl_bitmask_t mask, const hcl_ooch_t* m
 	#if defined(HAVE_STRFTIME_SMALL_Z)
 		tslen = strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S %z ", tmp);
 	#else
-		tslen = strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S %Z ", tmp); 
+		tslen = strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S %Z ", tmp);
 	#endif
-		if (tslen == 0) 
+		if (tslen == 0)
 		{
 			strcpy (ts, "0000-00-00 00:00:00 +0000");
-			tslen = 25; 
+			tslen = 25;
 		}
 
 		write_log (json, logfd, ts, tslen);
@@ -221,9 +221,9 @@ static void log_write (hcl_json_t* json, hcl_bitmask_t mask, const hcl_ooch_t* m
 		n = hcl_conv_oochars_to_bchars_with_cmgr(&msg[msgidx], &ucslen, buf, &bcslen, hcl_get_utf8_cmgr());
 		if (n == 0 || n == -2)
 		{
-			/* n = 0: 
-			 *   converted all successfully 
-			 * n == -2: 
+			/* n = 0:
+			 *   converted all successfully
+			 * n == -2:
 			 *    buffer not sufficient. not all got converted yet.
 			 *    write what have been converted this round. */
 
@@ -324,7 +324,7 @@ int main (int argc, char* argv[])
 	/*p = "{ \"result\": \"SUCCESS\", \"message\": \"1 clients\", \"sessions\": [] }";*/
 
 	if (hcl_json_feed(json, p, strlen(p), &xlen) <= -1)
-	{	
+	{
 		hcl_json_logbfmt (json, HCL_LOG_FATAL | HCL_LOG_APP, "ERROR: unable to process - %js\n", hcl_json_geterrmsg(json));
 	}
 	else if (json_xtn->depth != 0)

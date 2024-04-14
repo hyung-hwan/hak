@@ -21,6 +21,7 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#if 0
 
 #include "hcl-c.h"
 #include "hcl-prv.h"
@@ -1044,3 +1045,5 @@ int hcl_client_feed (hcl_client_t* client, const void* ptr, hcl_oow_t len, hcl_o
 	*xlen = total;
 	return 0;
 }
+
+#endif

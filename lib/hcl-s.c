@@ -21,6 +21,7 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#if 0
 
 #include "hcl-s.h"
 #include "hcl-prv.h"
@@ -515,8 +516,8 @@ start_over:
 
 #if defined(HCL_OOCH_IS_UCH)
 	bcslen = bb->len;
-	ucslen = HCL_COUNTOF(arg->buf);
-	y = hcl_convbtooochars(hcl, bb->buf, &bcslen, arg->buf, &ucslen);
+	ucslen = HCL_COUNTOF(arg->buf.c);
+	y = hcl_convbtooochars(hcl, bb->buf, &bcslen, arg->buf.c, &ucslen);
 	if (y <= -1 && ucslen <= 0)
 	{
 		if (y == -3 && x != 0) goto start_over; /* incomplete sequence and not EOF yet */
@@ -525,9 +526,9 @@ start_over:
 	/* if ucslen is greater than 0, i see that some characters have been
 	 * converted properly */
 #else
-	bcslen = (bb->len < HCL_COUNTOF(arg->buf))? bb->len: HCL_COUNTOF(arg->buf);
+	bcslen = (bb->len < HCL_COUNTOF(arg->buf.b))? bb->len: HCL_COUNTOF(arg->buf.b);
 	ucslen = bcslen;
-	hcl_copy_bchars (arg->buf, bb->buf, bcslen);
+	hcl_copy_bchars (arg->buf.b, bb->buf, bcslen);
 #endif
 
 	remlen = bb->len - bcslen;
@@ -2555,3 +2556,5 @@ void hcl_server_freemem (hcl_server_t* server, void* ptr)
 {
 	HCL_MMGR_FREE (server->_mmgr, ptr);
 }
+
+#endif

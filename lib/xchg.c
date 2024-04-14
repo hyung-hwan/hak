@@ -69,7 +69,7 @@ int hcl_marshalcode (hcl_t* hcl, const hcl_code_t* code, hcl_xchg_writer_t wrtr,
 	hcl_uint8_t b;
 	hcl_oow_t w;
 	hcl_xchg_hdr_t h;
-	
+
 	lfbase = (hcl->option.trait & HCL_TRAIT_INTERACTIVE)? hcl->c->fnblk.info[hcl->c->fnblk.depth].lfbase: 0;
 
 	/* start with a header */
@@ -368,7 +368,7 @@ int hcl_unmarshalcode (hcl_t* hcl, hcl_code_t* code, hcl_xchg_reader_t rdr, void
 				}
 				nbytes = hcl_leoowtoh(w);
 
-				ns = hcl_makestring(hcl, HCL_NULL, nchars, 0); 
+				ns = hcl_makestring(hcl, HCL_NULL, nchars, 0);
 				if (HCL_UNLIKELY(!ns)) goto oops;
 
 				ucspos = 0;

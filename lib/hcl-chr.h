@@ -150,7 +150,7 @@ HCL_EXPORT int hcl_is_bch_type (hcl_bch_t c, hcl_bch_prop_t type);
 #	if __has_builtin(__builtin_tolower)
 #		define hcl_to_bch_lower __builtin_tolower
 #	endif
-#elif (__GNUC__ >= 4) 
+#elif (__GNUC__ >= 4)
 #	define hcl_is_bch_upper __builtin_isupper
 #	define hcl_is_bch_lower __builtin_islower
 #	define hcl_is_bch_alpha __builtin_isalpha
