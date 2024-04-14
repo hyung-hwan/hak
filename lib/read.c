@@ -2984,7 +2984,7 @@ not_consumed:
 
 /* ------------------------------------------------------------------------ */
 
-static int feed_char (hcl_t* hcl, hcl_ooci_t c)
+static int _feed_char (hcl_t* hcl, hcl_ooci_t c)
 {
 /*hcl_logbfmt (hcl, HCL_LOG_STDERR, "FEED->[%jc] %d STATE->%d\n", c, c, FLX_STATE(hcl));*/
 
@@ -3014,6 +3014,19 @@ static int feed_char (hcl_t* hcl, hcl_ooci_t c)
 	HCL_ASSERT (hcl, !"internal error - this must never happen");
 	hcl_seterrbfmt (hcl, HCL_EINTERN, "internal error - unknown flx state - %d", FLX_STATE(hcl));
 	return -1;
+}
+
+static int feed_char (hcl_t* hcl, hcl_ooci_t c)
+{
+	int n;
+	n = _feed_char(hcl, c);
+	if (n <= -1)
+	{
+		/* arrange to read from the start phase next time
+		 * in case feeding continues after an error */
+		FEED_CONTINUE (hcl, HCL_FLX_START);
+	}
+	return n;
 }
 
 static void feed_update_lx_loc (hcl_t* hcl, hcl_ooci_t ch)
