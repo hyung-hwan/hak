@@ -4,6 +4,17 @@
 
 ---
 
+## you must enclose the binary expression with parentheses
+## i := (i + 20)
+
+i:=0;
+while(i < 20) {
+	printf "hello world 안녕하신가\n"
+	i := i + 20 ##ERROR: syntax error - prohibited binary operator - +
+}
+
+---
+
 if  ##ERROR: syntax error - no conditional expression after if
 
 ---

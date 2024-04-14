@@ -837,7 +837,7 @@ int main (int argc, char* argv[])
 		/*trait |= HCL_TRAIT_NOGC;*/
 		trait |= HCL_TRAIT_AWAIT_PROCS;
 		if (enable_block) trait |= HCL_TRAIT_LANG_ENABLE_BLOCK;
-		if (nl_terminator) trait |= HCL_TRAIT_LANG_ENABLE_EOL;;
+		if (nl_terminator) trait |= HCL_TRAIT_LANG_ENABLE_EOL;
 		hcl_setoption (hcl, HCL_TRAIT, &trait);
 	}
 

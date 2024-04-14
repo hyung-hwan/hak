@@ -544,7 +544,7 @@ int main (int argc, char* argv[])
 		return -1;
 	}
 
-	while ((c = hcl_getbopt (argc, argv, &opt)) != HCL_BCI_EOF)
+	while ((c = hcl_getbopt(argc, argv, &opt)) != HCL_BCI_EOF)
 	{
 		switch (c)
 		{

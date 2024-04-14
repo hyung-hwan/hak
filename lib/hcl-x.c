@@ -131,14 +131,10 @@ struct hcl_server_proto_t
 		hcl_xpkt_hdr_t hdr;
 	} rcv;
 
-/*
 	struct
 	{
-		hcl_oow_t nchunks;
-		hcl_bch_t buf[HCL_SERVER_PROTO_REPLY_BUF_SIZE];
-		hcl_oow_t len;
-	} reply;
-*/
+
+	} snd;
 
 	struct
 	{
@@ -276,6 +272,15 @@ struct hcl_server_t
 	pthread_mutex_t tmr_mutex;
 	pthread_mutex_t log_mutex;
 };
+
+/* ========================================================================= */
+static int send_stdout_bytes (hcl_server_proto_t* proto, const hcl_bch_t* data, hcl_oow_t len);
+
+#if defined(HCL_OOCH_IS_UCH)
+static int send_stdout_chars (hcl_server_proto_t* proto, const hcl_ooch_t* data, hcl_oow_t len);
+#else
+#define send_stdout_chars(proto,data,len) send_stdout_bytes(proto,data,len)
+#endif
 
 /* ========================================================================= */
 
@@ -571,9 +576,11 @@ static int print_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg)
 	switch (cmd)
 	{
 		case HCL_IO_OPEN:
+printf ("IO OPEN SOMETHING...........\n");
 			return 0;
 
 		case HCL_IO_CLOSE:
+printf ("IO CLOSE SOMETHING...........\n");
 			return 0;
 
 		case HCL_IO_WRITE:
@@ -582,8 +589,7 @@ static int print_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg)
 			hcl_io_udoarg_t* outarg = (hcl_io_udoarg_t*)arg;
 
 printf ("IO WRITE SOMETHING...........\n");
-#if 0
-			if (hcl_server_proto_feed_reply(xtn->proto, outarg->ptr, outarg->len, 0) <= -1)
+			if (send_stdout_chars(xtn->proto, outarg->ptr, outarg->len) <= -1)
 			{
 				/* TODO: change error code and message. propagage the errormessage from proto */
 				hcl_seterrbfmt (hcl, HCL_EIOERR, "failed to write message via proto");
@@ -593,7 +599,7 @@ printf ("IO WRITE SOMETHING...........\n");
 				hcl_abort (hcl);
 				return -1;
 			}
-#endif
+
 			outarg->xlen = outarg->len;
 			return 0;
 		}
@@ -604,7 +610,7 @@ printf ("IO WRITE SOMETHING...........\n");
 
 printf ("IO WRITE SOMETHING BYTES...........\n");
 #if 0
-			if (hcl_server_proto_feed_reply_bytes(xtn->proto, outarg->ptr, outarg->len) <= -1)
+			if (send_stdout_bytes(xtn->proto, outarg->ptr, outarg->len) <= -1)
 			{
 				/* TODO: change error code and message. propagage the errormessage from proto */
 				hcl_seterrbfmt (hcl, HCL_EIOERR, "failed to write message via proto");
@@ -705,46 +711,17 @@ printf ("on_fed_cnode......\n");
 		 * arrange to clear byte-codes before compiling the expression. */
 		flags = HCL_COMPILE_CLEAR_CODE | HCL_COMPILE_CLEAR_FNBLK;
 		proto->feed.ongoing = 1;
+printf ("CLEARING...\n");
 	}
 
-printf ("hcl_copingll......\n");
+printf ("COMPILING hcl_copingll......\n");
 	if (hcl_compile(hcl, obj, flags) <= -1)
 	{
+hcl_logbfmt (hcl, HCL_LOG_STDERR, "COMPILER ERROR - %js\n", hcl_geterrmsg(hcl));
 #if 0
 		print_error(hcl, "failed to compile");
 		xtn->feed.pos = xtn->feed.len; /* arrange to discard the rest of the line */
 		show_prompt (hcl, 0);
-#endif
-	}
-	else
-	{
-#if 0
-		hcl_oow_t i;
-
-		for (i = xtn->feed.pos; i < xtn->feed.len; i++)
-		{
-			/* this loop is kind of weird. it is to check the current feed buffer is left with
-			 * spaces only and to execute the compiled bytecodes so far if the check is true.
-			 * the check is performed because a single line of the user input can have multiple
-			 * expressions joined with a semicolon or contains trailing spaces. */
-			if (!hcl_is_bch_space(xtn->feed.buf[i])) break;
-		}
-
-		if (i >= xtn->feed.len || xtn->feed.pos >= xtn->feed.len)
-		{
-#endif
-			hcl_oop_t retv;
-
-			/* nothing more to feed */
-
-printf ("hcl_executing.....\n");
-			retv = hcl_execute(hcl);
-			hcl_flushudio (hcl);
-
-			proto->feed.ongoing = 0;
-			/*show_prompt (hcl, 0);*/
-#if 0
-		}
 #endif
 	}
 
@@ -787,6 +764,8 @@ hcl_server_proto_t* hcl_server_proto_open (hcl_oow_t xtnsize, hcl_server_worker_
 	if (proto->worker->server->cfg.trait & HCL_SERVER_TRAIT_DEBUG_GC) trait |= HCL_TRAIT_DEBUG_GC;
 	if (proto->worker->server->cfg.trait & HCL_SERVER_TRAIT_DEBUG_BIGINT) trait |= HCL_TRAIT_DEBUG_BIGINT;
 #endif
+	trait |= HCL_TRAIT_LANG_ENABLE_BLOCK;
+	trait |= HCL_TRAIT_LANG_ENABLE_EOL;
 	hcl_setoption (proto->hcl, HCL_TRAIT, &trait);
 
 	HCL_MEMSET (&hclcb, 0, HCL_SIZEOF(hclcb));
@@ -837,7 +816,7 @@ static int write_stdout (hcl_server_proto_t* proto, const hcl_bch_t* ptr, hcl_oo
 
 	iov[0].iov_base = &hdr;
 	iov[0].iov_len = HCL_SIZEOF(hdr);
-	iov[1].iov_base = ptr;
+	iov[1].iov_base = (hcl_bch_t*)ptr;
 	iov[1].iov_len = len;
 
 	while (1)
@@ -1160,19 +1139,11 @@ static int receive_raw_request (hcl_server_proto_t* proto)
 }
 
 
-int hcl_server_proto_handle_incoming (hcl_server_proto_t* proto)
+static int handle_received_data (hcl_server_proto_t* proto)
 {
 	hcl_server_worker_t* worker = proto->worker;
 	hcl_t* hcl = proto->hcl;
 	hcl_xpkt_hdr_t* hdr;
-
-	if (proto->rcv.len < proto->rcv.len_needed)
-	{
-		int n;
-		n = receive_raw_request(proto);
-		if (n <= -1) goto fail_with_errmsg; // TODO: backup error message...and create a new message
-		else if (n == 0) return 0; /* not enough data has been read */
-	}
 
 	switch (proto->rcv.state)
 	{
@@ -1182,22 +1153,14 @@ int hcl_server_proto_handle_incoming (hcl_server_proto_t* proto)
 			HCL_MEMCPY (&proto->rcv.hdr, proto->rcv.buf, HCL_SIZEOF(proto->rcv.hdr));
 			//proto->rcv.hdr.len = hcl_ntoh16(proto->rcv.hdr.len); /* keep this in the host byte order */
 
-printf ("req.hdr = %d %d %d\n", proto->rcv.hdr.type, proto->rcv.hdr.id, proto->rcv.hdr.len);
 			/* consume the header */
 			HCL_MEMMOVE (proto->rcv.buf, &proto->rcv.buf[HCL_SIZEOF(proto->rcv.hdr)], proto->rcv.len - HCL_SIZEOF(proto->rcv.hdr));
 			proto->rcv.len -= HCL_SIZEOF(proto->rcv.hdr);
 
-			if (proto->rcv.hdr.len > 0)
-			{
-				/* switch to the payload mode */
-				proto->rcv.state = HCL_SERVER_PROTO_RCV_PAYLOAD;
-				proto->rcv.len_needed = proto->rcv.hdr.len;
-				return 0; /* need data for payload */
-			}
-
-			/* payload length is zero in the header. */
-			HCL_ASSERT (hcl, proto->rcv.len_needed == HCL_SIZEOF(proto->rcv.hdr));
-			break;
+			/* switch to the payload mode */
+			proto->rcv.state = HCL_SERVER_PROTO_RCV_PAYLOAD;
+			proto->rcv.len_needed = proto->rcv.hdr.len;
+			return 0;
 
 		case HCL_SERVER_PROTO_RCV_PAYLOAD:
 			if (proto->rcv.len < proto->rcv.hdr.len) return 0; /* need more payload data */
@@ -1206,6 +1169,22 @@ printf ("req.hdr = %d %d %d\n", proto->rcv.hdr.type, proto->rcv.hdr.id, proto->r
 			{
 printf ("FEEDING [%.*s]\n", proto->rcv.hdr.len, proto->rcv.buf);
 				if (hcl_feedbchars(hcl, (const hcl_bch_t*)proto->rcv.buf, proto->rcv.hdr.len) <= -1)
+				{
+					/* TODO: backup error message...and create a new message */
+					goto fail_with_errmsg;
+				}
+			}
+			else if (proto->rcv.hdr.type == HCL_XPKT_EXECUTE)
+			{
+				hcl_oop_t retv;
+printf ("EXECUTING hcl_executing......\n");
+				proto->feed.ongoing = 0;
+
+				hcl_decode (hcl, hcl_getcode(hcl), 0, hcl_getbclen(hcl));
+
+				retv = hcl_execute(hcl);
+				hcl_flushudio (hcl);
+				if (!retv)
 				{
 					/* TODO: backup error message...and create a new message */
 					goto fail_with_errmsg;
@@ -1229,8 +1208,11 @@ printf ("FEEDING [%.*s]\n", proto->rcv.hdr.len, proto->rcv.buf);
 
 /* TODO: minimize the use of HCL_MEMOVE... use the buffer */
 			/* switch to the header mode */
-			HCL_MEMMOVE (proto->rcv.buf, &proto->rcv.buf[proto->rcv.hdr.len], proto->rcv.len - proto->rcv.hdr.len);
-			proto->rcv.len -= proto->rcv.hdr.len;
+			if (proto->rcv.hdr.len > 0)
+			{
+				HCL_MEMMOVE (proto->rcv.buf, &proto->rcv.buf[proto->rcv.hdr.len], proto->rcv.len - proto->rcv.hdr.len);
+				proto->rcv.len -= proto->rcv.hdr.len;
+			}
 			proto->rcv.state = HCL_SERVER_PROTO_RCV_HEADER;
 			proto->rcv.len_needed = HCL_SIZEOF(proto->rcv.hdr);
 
@@ -1250,6 +1232,102 @@ fail_with_errmsg:
 	return -1;
 
 }
+
+static int send_iov (int sck, struct iovec* iov, int count)
+{
+	int index = 0;
+
+	while (1)
+	{
+		ssize_t nwritten;
+		struct msghdr msg;
+
+		memset (&msg, 0, HCL_SIZEOF(msg));
+		msg.msg_iov = (struct iovec*)&iov[index];
+		msg.msg_iovlen = count - index;
+		nwritten = sendmsg(sck, &msg, 0);
+		/*nwritten = writev(proto->worker->sck, (const struct iovec*)&iov[index], count - index);*/
+		if (nwritten <= -1)
+		{
+			/* error occurred inside the worker thread shouldn't affect the error information
+			 * in the server object. so here, i just log a message */
+			fprintf (stderr, "Unable to sendmsg on %d - %s\n", sck, strerror(errno));
+			return -1;
+		}
+
+		while (index < count && (size_t)nwritten >= iov[index].iov_len)
+			nwritten -= iov[index++].iov_len;
+
+		if (index == count) break;
+
+		iov[index].iov_base = (void*)((hcl_uint8_t*)iov[index].iov_base + nwritten);
+		iov[index].iov_len -= nwritten;
+	}
+
+	return 0;
+}
+
+static int send_stdout_bytes (hcl_server_proto_t* proto, const hcl_bch_t* data, hcl_oow_t len)
+{
+	hcl_xpkt_hdr_t hdr;
+	struct iovec iov[2];
+	const hcl_bch_t* ptr, * cur, * end;
+
+	ptr = cur = data;
+	end = data + len;
+
+	while (ptr < end)
+	{
+		while (cur != end && cur - ptr < 255) cur++;
+
+		hdr.type = HCL_XPKT_STDOUT;
+		hdr.id = 1; /* TODO: */
+		hdr.len = cur - ptr;
+
+		iov[0].iov_base = &hdr;
+		iov[0].iov_len = HCL_SIZEOF(hdr);
+		iov[1].iov_base = ptr;
+		iov[1].iov_len = cur - ptr;
+
+		if (send_iov(proto->worker->sck, iov, 2) <= -1)
+		{
+			/* TODO: error message */
+			return -1;
+		}
+
+		ptr = cur;
+	}
+
+	return 0;
+}
+
+#if defined(HCL_OOCH_IS_UCH)
+static int send_stdout_chars (hcl_server_proto_t* proto, const hcl_ooch_t* data, hcl_oow_t len)
+{
+	const hcl_ooch_t* ptr, * end;
+	hcl_bch_t tmp[256];
+	hcl_oow_t tln, pln;
+	int n;
+
+	ptr = data;
+	end = data + len;
+
+	while (ptr < end)
+	{
+		pln = end - ptr;
+		tln = HCL_COUNTOF(tmp);
+		n = hcl_convutobchars(proto->hcl, ptr, &pln, tmp, &tln);
+		if (n <= -1 && n != -2) return -1;
+
+		if (send_stdout_bytes(proto, tmp, tln) <= -1) return -1;
+		ptr += pln;
+	}
+
+	return 0;
+
+}
+#endif
+
 
 /* ========================================================================= */
 
@@ -1574,6 +1652,97 @@ static void zap_worker_in_server (hcl_server_t* server, hcl_server_worker_t* wor
 	worker->next_worker = HCL_NULL;
 }
 
+static int worker_step (hcl_server_worker_t* worker)
+{
+	hcl_server_proto_t* proto = worker->proto;
+	hcl_server_t* server = worker->server;
+	hcl_t* hcl = proto->hcl;
+	struct pollfd pfd;
+	int tmout, actual_tmout;
+	ssize_t x;
+	int n;
+
+	//HCL_ASSERT (hcl, proto->rcv.len < proto->rcv.len_needed);
+
+	if (HCL_UNLIKELY(proto->rcv.eof))
+	{
+// TODO: may not be an error if writable needs to be checked...
+		hcl_seterrbfmt (hcl, HCL_EGENERIC, "connection closed");
+		return -1;
+	}
+
+	tmout = HCL_SECNSEC_TO_MSEC(server->cfg.worker_idle_timeout.sec, server->cfg.worker_idle_timeout.nsec);
+	actual_tmout = (tmout <= 0)? 10000: tmout;
+
+	pfd.fd = worker->sck;
+	pfd.events = 0;
+	if (proto->rcv.len < proto->rcv.len_needed) pfd.events |= POLLIN;
+	//if (proto->snd.len > 0) pfd.events |= POLLOUT;
+
+	if (pfd.events)
+	{
+		n = poll(&pfd, 1, actual_tmout);
+		if (n <= -1)
+		{
+			if (errno == EINTR) return 0;
+			hcl_seterrwithsyserr (hcl, 0, errno);
+			return -1;
+		}
+		else if (n == 0)
+		{
+			/* timed out - no activity on the pfd */
+			if (tmout > 0)
+			{
+				/* timeout explicity set. no activity for that duration. considered idle */
+				hcl_seterrbfmt (hcl, HCL_EGENERIC, "no activity on the worker socket %d", worker->sck);
+				return -1;
+			}
+
+			return 0; /* didn't read yet */
+		}
+
+		if (pfd.revents & POLLERR)
+		{
+			hcl_seterrbfmt (hcl, HCL_EGENERIC, "error condition detected on workder socket %d", worker->sck);
+			return -1;
+		}
+
+		if (pfd.revents & POLLOUT)
+		{
+		}
+
+		if (pfd.revents & POLLIN)
+		{
+			x = recv(worker->sck, &proto->rcv.buf[proto->rcv.len], HCL_COUNTOF(proto->rcv.buf) - proto->rcv.len, 0);
+			if (x <= -1)
+			{
+				if (errno == EINTR) return 0; /* didn't read read */
+
+				proto->rcv.polled = 0;
+				hcl_seterrwithsyserr (hcl, 0, errno);
+				return -1;
+			}
+
+			if (x == 0) proto->rcv.eof = 1;
+			proto->rcv.len += x;
+
+		}
+	}
+
+
+	/* the receiver buffer has enough data */
+	while (proto->rcv.len >= proto->rcv.len_needed)
+	{
+		if (handle_received_data(proto) <= -1)
+		{
+			/* TODO: proper error message */
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 static void* worker_main (void* ctx)
 {
 	hcl_server_worker_t* worker = (hcl_server_worker_t*)ctx;
@@ -1595,11 +1764,12 @@ static void* worker_main (void* ctx)
 	add_worker_to_server (server, HCL_SERVER_WORKER_STATE_ALIVE, worker);
 	pthread_mutex_unlock (&server->worker_mutex);
 
+	/* the worker loop */
 	while (!server->stopreq)
 	{
 		worker->opstate = HCL_SERVER_WORKER_OPSTATE_WAIT;
 
-		if (hcl_server_proto_handle_incoming(worker->proto) <= -1)
+		if (worker_step(worker) <= -1)
 		{
 			worker->opstate = HCL_SERVER_WORKER_OPSTATE_ERROR;
 			break;

@@ -24,7 +24,6 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "hcl-c.h"
 #include "hcl-x.h"
 #include "hcl-opt.h"
 #include "hcl-utl.h"
@@ -527,8 +526,6 @@ static int receive_raw_bytes (hcl_xproto_t* proto, int sck, hcl_ntime_t* idle_tm
 	ssize_t x;
 	int n;
 
-	HCL_ASSERT (hcl, proto->rcv.len < proto->rcv.len_needed);
-
 	if (HCL_UNLIKELY(proto->rcv.eof))
 	{
 		hcl_seterrbfmt (hcl, HCL_EGENERIC, "connection closed");
@@ -711,6 +708,16 @@ static int handle_request (hcl_client_t* client, const char* ipaddr, const char*
 
 			scptr = sccur;
 
+			if (!sccur == '\0')
+			{
+				hdr.type = HCL_XPKT_EXECUTE;
+				hdr.id = 1; /* TODO: */
+				hdr.len = sccur - scptr;
+
+				iov[0].iov_base = &hdr;
+				iov[0].iov_len = HCL_SIZEOF(hdr);
+				send_iov (sck, iov, 1);
+			}
 			if (*sccur == '\0' && shut_wr_after_req) shutdown (sck, SHUT_WR);
 		}
 

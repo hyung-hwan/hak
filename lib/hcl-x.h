@@ -31,6 +31,8 @@
 enum hcl_xpkt_type_t
 {
 	HCL_XPKT_CODEIN,
+	HCL_XPKT_EXECUTE,
+
 	HCL_XPKT_CODEOUT, /* return value is passed over this? */
 	HCL_XPKT_STDIN,
 	HCL_XPKT_STDOUT,
@@ -94,7 +96,6 @@ struct hcl_server_prim_t
 	hcl_server_log_write_t log_write;
 };
 typedef struct hcl_server_prim_t hcl_server_prim_t;
-
 
 
 /* ---------------------------------------------------------------------- */
@@ -254,23 +255,6 @@ HCL_EXPORT void hcl_server_freemem (
 	void*         ptr
 );
 
-
-HCL_EXPORT int hcl_server_proto_feed_reply (
-	hcl_server_proto_t* proto,
-	const hcl_ooch_t*   ptr,
-	hcl_oow_t           len,
-	int                 escape
-);
-
-HCL_EXPORT int hcl_server_proto_feed_reply_bytes (
-	hcl_server_proto_t* proto,
-	const hcl_bch_t*    ptr,
-	hcl_oow_t           len
-);
-
-HCL_EXPORT int hcl_server_proto_handle_incoming (
-	hcl_server_proto_t* proto
-);
 
 /* ---------------------------------------------------------------------- */
 

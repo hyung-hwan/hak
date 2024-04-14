@@ -686,7 +686,7 @@ int hcl_conv_bcstr_to_ucstr_with_cmgr (const hcl_bch_t* bcs, hcl_oow_t* bcslen, 
 	for (bp = bcs; *bp != '\0'; bp++) /* nothing */ ;
 
 	mlen = bp - bcs; wlen = *ucslen;
-	n = hcl_conv_bchars_to_uchars_with_cmgr (bcs, &mlen, ucs, &wlen, cmgr, all);
+	n = hcl_conv_bchars_to_uchars_with_cmgr(bcs, &mlen, ucs, &wlen, cmgr, all);
 	if (ucs)
 	{
 		/* null-terminate the target buffer if it has room for it. */
