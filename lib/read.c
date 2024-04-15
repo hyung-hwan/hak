@@ -167,7 +167,12 @@ static struct
 	HCL_AID(HCL_CONCODE_VLIST)     { HCL_TOK_VBAR,   HCL_SYNERR_VBAR,   VOCA_VLIST }  /* VLIST     | |  */
 };
 
+/* ----------------------------------------------------------------- */
+
 static int init_compiler (hcl_t* hcl);
+static void feed_continue (hcl_t* hcl, hcl_flx_state_t state);
+
+/* ----------------------------------------------------------------- */
 
 static HCL_INLINE int is_spacechar (hcl_ooci_t c)
 {
@@ -1250,7 +1255,7 @@ static int feed_process_token (hcl_t* hcl)
 	/* this function composes an s-expression non-recursively
 	 * by manipulating its own stack. */
 
-/*hcl_logbfmt (hcl, HCL_LOG_STDERR, "TOKEN => [%.*js] type=%d LOC=%d.%d\n", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl), TOKEN_TYPE(hcl), TOKEN_LOC(hcl)->line, TOKEN_LOC(hcl)->colm);*/
+/*hcl_logbfmt (hcl, HCL_LOG_STDERR, "TOKEN [%d] EOL[%d]=> [%.*js] type=%d LOC=%d.%d\n", TOKEN_TYPE(hcl), HCL_TOK_EOL, TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl), TOKEN_TYPE(hcl), TOKEN_LOC(hcl)->line, TOKEN_LOC(hcl)->colm);*/
 	if (frd->expect_include_file)
 	{
 		/* the #include directive is an exception to the general expression rule.
@@ -1776,7 +1781,7 @@ static int feed_process_token (hcl_t* hcl)
 		int n;
 
 		/* upon exit, we must be at the top level */
-		HCL_ASSERT (hcl, frd->level == 0);
+		HCL_ASSERT (hcl, frd->flagv & AT_BEGINNING);
 
 		HCL_ASSERT (hcl, hcl->c->r.st == HCL_NULL);
 		HCL_ASSERT (hcl, frd->obj != HCL_NULL);
@@ -1815,9 +1820,11 @@ oops:
 		hcl_freecnode (hcl, frd->obj);
 		frd->obj = HCL_NULL;
 	}
+	HCL_MEMSET (frd, 0, HCL_SIZEOF(*frd));
 
 	/* clean up the reader stack for a list */
 	feed_clean_up_reader_stack (hcl);
+	feed_continue (hcl, HCL_FLX_START);
 	return -1;
 }
 
@@ -1921,10 +1928,9 @@ static int feed_wrap_up_with_str (hcl_t* hcl, const hcl_ooch_t* str, hcl_oow_t l
 	return feed_wrap_up(hcl, type);
 }
 
-static int feed_continue (hcl_t* hcl, hcl_flx_state_t state)
+static void feed_continue (hcl_t* hcl, hcl_flx_state_t state)
 {
 	hcl->c->feed.lx.state = state;
-	return 0;
 }
 
 static int feed_continue_with_char (hcl_t* hcl, hcl_ooci_t c, hcl_flx_state_t state)
@@ -1937,7 +1943,7 @@ static int feed_continue_with_char (hcl_t* hcl, hcl_ooci_t c, hcl_flx_state_t st
 #define FEED_WRAP_UP(hcl, type) do { if (feed_wrap_up(hcl, type) <= -1) return -1; } while(0)
 #define FEED_WRAP_UP_WITH_CHAR(hcl, c, type) do { if (feed_wrap_up_with_char(hcl, c, type) <= -1) return -1; } while(0)
 #define FEED_WRAP_UP_WITH_CHARS(hcl, str, len, type) do { if (feed_wrap_up_with_str(hcl, str, len, type) <= -1) return -1; } while(0)
-#define FEED_CONTINUE(hcl, state) do { if (feed_continue(hcl, state) <= -1) return -1; } while(0)
+#define FEED_CONTINUE(hcl, state) (feed_continue(hcl, state))
 #define FEED_CONTINUE_WITH_CHAR(hcl, c, state) do { if (feed_continue_with_char(hcl, c, state) <= -1) return -1; } while(0)
 
 /* ------------------------------------------------------------------------ */
@@ -3311,6 +3317,7 @@ oops:
 	 *  leave_list()   error in flx_hmarked_ident() before a full cnode is processed
 	 */
 	feed_clean_up_reader_stack (hcl);
+	feed_continue (hcl, HCL_FLX_START);
 	return -1;
 }
 

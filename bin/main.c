@@ -642,6 +642,7 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 		while (1)
 		{
 			int n;
+			hcl_oow_t pos;
 
 			/* read a while line regardless of the actual expression */
 			n = get_line(hcl, xtn, fp);
@@ -649,6 +650,7 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 			if (n == 0) break;
 
 			/* feed the line */
+		#if 0
 			while (xtn->feed.pos < xtn->feed.len)
 			{
 				hcl_bch_t c = xtn->feed.buf[xtn->feed.pos++];
@@ -658,6 +660,16 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 					show_prompt (hcl, 0);
 				}
 			}
+		#else
+			pos = xtn->feed.pos;
+			/* do this before calling hcl_feedbchars() so that the callback sees the updated value */
+			xtn->feed.pos = xtn->feed.len;
+			if (hcl_feedbchars(hcl, &xtn->feed.buf[pos], xtn->feed.len - pos) <= -1)
+			{
+				print_error (hcl, "failed to feed");
+				show_prompt (hcl, 0);
+			}
+		#endif
 		}
 	}
 	else
