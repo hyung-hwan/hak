@@ -538,6 +538,7 @@ static int on_fed_cnode_in_interactive_mode (hcl_t* hcl, hcl_cnode_t* obj)
 		xtn->feed.pos = xtn->feed.len; /* arrange to discard the rest of the line */
 		show_prompt (hcl, 0);
 	}
+#if 0
 	else
 	{
 		hcl_oow_t i;
@@ -559,6 +560,7 @@ static int on_fed_cnode_in_interactive_mode (hcl_t* hcl, hcl_cnode_t* obj)
 			show_prompt (hcl, 0);
 		}
 	}
+#endif
 
 	return 0;
 }
@@ -643,6 +645,7 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 		{
 			int n;
 			hcl_oow_t pos;
+			hcl_oow_t len;
 
 			/* read a while line regardless of the actual expression */
 			n = get_line(hcl, xtn, fp);
@@ -664,10 +667,41 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 			pos = xtn->feed.pos;
 			/* do this before calling hcl_feedbchars() so that the callback sees the updated value */
 			xtn->feed.pos = xtn->feed.len;
-			if (hcl_feedbchars(hcl, &xtn->feed.buf[pos], xtn->feed.len - pos) <= -1)
+			len = xtn->feed.len - pos;
+			if (hcl_feedbchars(hcl, &xtn->feed.buf[pos], len) <= -1)
 			{
 				print_error (hcl, "failed to feed");
 				show_prompt (hcl, 0);
+			}
+			else
+			{
+				/* a := (1 + 2 ##askldfjasldkfjasd
+				   ); b := (2 + 3
+// TODO: how to know if 'b := (2 + 3' is still not completely compiled?.
+
+
+just new lines..
+or lines with comments only...
++ 1 2 <-- prohibited binary operator + <--- don't look right...
+				 */
+
+				if (xtn->feed.ongoing && hcl_getbclen(hcl) > 0 && !hcl_feedpending(hcl))
+				{
+					execute_in_interactive_mode (hcl);
+					xtn->feed.ongoing = 0;
+					if (len > 0) show_prompt (hcl, 0);
+				}
+				else if (len > 0)
+				{
+					if (!xtn->feed.ongoing && !hcl_feedpending(hcl))
+						show_prompt (hcl, 0);
+				}
+				else
+				{
+					/* eof reached */
+					hcl_logbfmt (hcl, HCL_LOG_STDOUT, "\n");
+					if (hcl_feedpending(hcl)) print_error (hcl, "sudden end of input");
+				}
 			}
 		#endif
 		}
