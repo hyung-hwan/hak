@@ -1473,8 +1473,16 @@ static int feed_process_token (hcl_t* hcl)
 		case HCL_TOK_BINOP:
 		{
 			int can = 0;
-			if (frd->level <= 0 || !(can = can_binop_list(hcl)))
+			if (frd->level <= 0)
 			{
+				HCL_ASSERT (hcl, hcl->c->r.st == HCL_NULL);
+				/*if (hcl->c->r.st) goto banned_binop;*/
+				/* very first even before entering a list including an auto-forged list */
+				can = 1;
+			}
+			else if (!(can = can_binop_list(hcl)))
+			{
+			banned_binop:
 				hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "prohibited binary operator");
 				goto oops;
 			}
