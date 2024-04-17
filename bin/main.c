@@ -111,7 +111,7 @@ struct xtn_t
 		hcl_oow_t len;
 		hcl_oow_t pos;
 		int eof;
-		int ongoing;
+		hcl_oow_t ncompexprs; /* number of compiled expressions */
 	} feed;
 	/*hcl_oop_t sym_errstr;*/
 };
@@ -524,43 +524,22 @@ static int on_fed_cnode_in_interactive_mode (hcl_t* hcl, hcl_cnode_t* obj)
 	 * if a single line or continued lines contain multiple expressions,
 	 * execution is delayed until the last expression is compiled. */
 
-	if (!xtn->feed.ongoing)
+	if (xtn->feed.ncompexprs <= 0)
 	{
 		/* the first expression in the current user input line.
 		 * arrange to clear byte-codes before compiling the expression. */
 		flags = HCL_COMPILE_CLEAR_CODE | HCL_COMPILE_CLEAR_FNBLK;
-		xtn->feed.ongoing = 1;
 	}
 
 	if (hcl_compile(hcl, obj, flags) <= -1)
 	{
 		print_error(hcl, "failed to compile");
 		xtn->feed.pos = xtn->feed.len; /* arrange to discard the rest of the line */
-		show_prompt (hcl, 0);
 	}
-#if 0
 	else
 	{
-		hcl_oow_t i;
-
-		for (i = xtn->feed.pos; i < xtn->feed.len; i++)
-		{
-			/* this loop is kind of weird. it is to check the current feed buffer is left with
-			 * spaces only and to execute the compiled bytecodes so far if the check is true.
-			 * the check is performed because a single line of the user input can have multiple
-			 * expressions joined with a semicolon or contains trailing spaces. */
-			if (!hcl_is_bch_space(xtn->feed.buf[i])) break;
-		}
-
-		if (i >= xtn->feed.len || xtn->feed.pos >= xtn->feed.len)
-		{
-			/* nothing more to feed */
-			execute_in_interactive_mode (hcl);
-			xtn->feed.ongoing = 0;
-			show_prompt (hcl, 0);
-		}
+		xtn->feed.ncompexprs++;
 	}
-#endif
 
 	return 0;
 }
@@ -590,12 +569,13 @@ static int get_line (hcl_t* hcl, xtn_t* xtn, FILE* fp)
 			}
 
 			xtn->feed.eof = 1;
+			if (xtn->feed.len <= 0) return 0;
+
 			break;
 		}
 
-		/* TOTO: buffer check... */
 		xtn->feed.buf[xtn->feed.len++] = (hcl_bch_t)(unsigned int)ch;
-		if (ch == '\n') break;
+		if (ch == '\n' || xtn->feed.len >= HCL_COUNTOF(xtn->feed.buf)) break;
 	}
 
 	return 1;
@@ -647,23 +627,12 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 			hcl_oow_t pos;
 			hcl_oow_t len;
 
-			/* read a while line regardless of the actual expression */
+			/* read a line regardless of the actual expression */
 			n = get_line(hcl, xtn, fp);
 			if (n <= -1) goto oops;
 			if (n == 0) break;
 
 			/* feed the line */
-		#if 0
-			while (xtn->feed.pos < xtn->feed.len)
-			{
-				hcl_bch_t c = xtn->feed.buf[xtn->feed.pos++];
-				if (hcl_feedbchars(hcl, &c, 1) <= -1)
-				{
-					print_error (hcl, "failed to feed");
-					show_prompt (hcl, 0);
-				}
-			}
-		#else
 			pos = xtn->feed.pos;
 			/* do this before calling hcl_feedbchars() so that the callback sees the updated value */
 			xtn->feed.pos = xtn->feed.len;
@@ -671,39 +640,21 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 			if (hcl_feedbchars(hcl, &xtn->feed.buf[pos], len) <= -1)
 			{
 				print_error (hcl, "failed to feed");
-				show_prompt (hcl, 0);
+				if (len > 0) show_prompt (hcl, 0);
 			}
 			else
 			{
-				/* a := (1 + 2 ##askldfjasldkfjasd
-				   ); b := (2 + 3
-// TODO: how to know if 'b := (2 + 3' is still not completely compiled?.
-
-
-just new lines..
-or lines with comments only...
-+ 1 2 <-- prohibited binary operator + <--- don't look right...
-				 */
-
-				if (xtn->feed.ongoing && hcl_getbclen(hcl) > 0 && !hcl_feedpending(hcl))
+				/* TODO: check if this works when HCL_TRAIT_LANG_ENABLE_EOL is not set */
+				if (!hcl_feedpending(hcl))
 				{
-					execute_in_interactive_mode (hcl);
-					xtn->feed.ongoing = 0;
-					if (len > 0) show_prompt (hcl, 0);
-				}
-				else if (len > 0)
-				{
-					if (!xtn->feed.ongoing && !hcl_feedpending(hcl))
-						show_prompt (hcl, 0);
-				}
-				else
-				{
-					/* eof reached */
-					hcl_logbfmt (hcl, HCL_LOG_STDOUT, "\n");
-					if (hcl_feedpending(hcl)) print_error (hcl, "sudden end of input");
+					if (xtn->feed.ncompexprs > 0 && hcl_getbclen(hcl) > 0)
+					{
+						execute_in_interactive_mode (hcl);
+						xtn->feed.ncompexprs = 0;
+					}
+					show_prompt (hcl, 0);
 				}
 			}
-		#endif
 		}
 	}
 	else
@@ -727,6 +678,7 @@ or lines with comments only...
 		}
 	}
 
+	hcl_logbfmt (hcl, HCL_LOG_STDOUT, "\n");
 	if (hcl_endfeed(hcl) <= -1)
 	{
 	feed_error:

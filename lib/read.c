@@ -1250,6 +1250,7 @@ static int feed_process_token (hcl_t* hcl)
 	hcl_frd_t* frd = &hcl->c->feed.rd;
 	hcl_loc_t* list_loc = HCL_NULL;
 	int rbrace_again = 0;
+	int oops_ret = -1;
 	/* TODO: frd->obj and frd->list_loc can become local variables in this function.. */
 
 	/* this function composes an s-expression non-recursively
@@ -1293,7 +1294,15 @@ static int feed_process_token (hcl_t* hcl)
 			goto oops;
 
 		case HCL_TOK_EOF:
-			hcl_setsynerr (hcl, HCL_SYNERR_EOF, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			if (hcl_feedpending(hcl))
+			{
+				hcl_setsynerr (hcl, HCL_SYNERR_EOF, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			}
+			else
+			{
+				/* ugly hacking to return success intead while performing clean-up */
+				oops_ret = 0;
+			}
 			goto oops;
 
 		case HCL_TOK_INCLUDE:
@@ -1754,7 +1763,7 @@ static int feed_process_token (hcl_t* hcl)
 			break;
 	}
 
-	if (!frd->obj) goto oops; /* TODO: this doesn't have to be check if jump has been made to auto_xlist... so restructure the flow */
+	if (!frd->obj) goto oops; /* TODO: this doesn't have to be checked if jump has been made to auto_xlist... so restructure the flow */
 
 #if 0
 	/* check if the element is read for a quoted list */
@@ -1812,6 +1821,7 @@ ok:
 		list_loc = HCL_NULL;
 		goto rbrace_ok;
 	}
+
 	return 0;
 
 oops:
@@ -1825,7 +1835,7 @@ oops:
 	/* clean up the reader stack for a list */
 	feed_clean_up_reader_stack (hcl);
 	feed_continue (hcl, HCL_FLX_START);
-	return -1;
+	return oops_ret;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -1880,8 +1890,8 @@ static delim_token_t delim_token_tab[] =
 	{ ":>",       2, HCL_TOK_COLONGT },
 	{ ":<",       2, HCL_TOK_COLONLT },
 	{ ":*",       2, HCL_TOK_COLONSTAR }, /* class instantiation method */
-	{ "::",       2, HCL_TOK_DBLCOLONS },
-	{ ":::",      3, HCL_TOK_TRPCOLONS  }, /* superclass, class variables, class methods */
+	{ "::",       2, HCL_TOK_DBLCOLONS }, /* superclass, class variables, class methods */
+	{ ":::",      3, HCL_TOK_TRPCOLONS  },
 
 	{ ";",        1, HCL_TOK_SEMICOLON }
 };
@@ -3223,7 +3233,7 @@ int hcl_endfeed (hcl_t* hcl)
 
 int hcl_feedpending (hcl_t* hcl)
 {
-	return hcl->c->r.st != HCL_NULL;
+	return !(hcl->c->r.st == HCL_NULL && FLX_STATE(hcl) == HCL_FLX_START);
 }
 
 int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
@@ -3277,21 +3287,7 @@ int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
 		for (i = 0; i < 1;) /* weird loop in case feed_char() returns 0 */
 		{
 			x = feed_char(hcl, HCL_OOCI_EOF);
-			if (x <= -1)
-			{
-				int exp_level = !(hcl->option.trait & HCL_TRAIT_LANG_ENABLE_EOL); /* 0 if EOL is on, 1 if EOL is off */
-				if (hcl->c->feed.rd.level <= exp_level && HCL_ERRNUM(hcl) == HCL_ESYNERR && hcl_getsynerrnum(hcl) == HCL_SYNERR_EOF)
-				{
-					/* convert this EOF error to success as the caller knows EOF in the feed mode.
-					 * the caller can safely stop feeding after gettting success from hcl_feed(hcl, HCL_NULL, 0);
-					 * in the feed mode, this function doesn't set HCL_EFINIS. */
-					x = 1;
-				}
-				else
-				{
-					goto oops;
-				}
-			}
+			if (x <= -1) goto oops;
 			i += x;
 		}
 	}
