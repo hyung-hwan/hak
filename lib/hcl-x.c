@@ -609,7 +609,6 @@ printf ("IO WRITE SOMETHING...........\n");
 			hcl_io_udoarg_t* outarg = (hcl_io_udoarg_t*)arg;
 
 printf ("IO WRITE SOMETHING BYTES...........\n");
-#if 0
 			if (send_stdout_bytes(xtn->proto, outarg->ptr, outarg->len) <= -1)
 			{
 				/* TODO: change error code and message. propagage the errormessage from proto */
@@ -620,7 +619,6 @@ printf ("IO WRITE SOMETHING BYTES...........\n");
 				hcl_abort (hcl);
 				return -1;
 			}
-#endif
 			outarg->xlen = outarg->len;
 			return 0;
 		}
@@ -799,53 +797,6 @@ void hcl_server_proto_close (hcl_server_proto_t* proto)
 	hcl_endfeed(proto->hcl);
 	hcl_close (proto->hcl);
 	hcl_server_freemem (proto->worker->server, proto);
-}
-
-static int write_stdout (hcl_server_proto_t* proto, const hcl_bch_t* ptr, hcl_oow_t len)
-{
-	struct msghdr msg;
-	struct iovec iov[3];
-	hcl_bch_t cl[16]; /* ensure that this is large enough for the chunk length string */
-	int index = 0, count = 0;
-	hcl_xpkt_hdr_t hdr;
-
-
-	hdr.type = HCL_XPKT_STDOUT;
-	hdr.id = 1; // TODO:
-	hdr.len = hcl_hton16(len);
-
-	iov[0].iov_base = &hdr;
-	iov[0].iov_len = HCL_SIZEOF(hdr);
-	iov[1].iov_base = (hcl_bch_t*)ptr;
-	iov[1].iov_len = len;
-
-	while (1)
-	{
-		ssize_t nwritten;
-
-		HCL_MEMSET (&msg, 0, HCL_SIZEOF(msg));
-		msg.msg_iov = (struct iovec*)&iov[index];
-		msg.msg_iovlen = count - index;
-		nwritten = sendmsg(proto->worker->sck, &msg, 0);
-		/*nwritten = writev(proto->worker->sck, (const struct iovec*)&iov[index], count - index);*/
-		if (nwritten <= -1)
-		{
-			/* error occurred inside the worker thread shouldn't affect the error information
-			 * in the server object. so here, i just log a message */
-			HCL_LOG2 (proto->hcl, SERVER_LOGMASK_ERROR, "Unable to sendmsg on %d - %hs\n", proto->worker->sck, strerror(errno));
-			return -1;
-		}
-
-		while (index < count && (size_t)nwritten >= iov[index].iov_len)
-			nwritten -= iov[index++].iov_len;
-
-		if (index == count) break;
-
-		iov[index].iov_base = (void*)((hcl_uint8_t*)iov[index].iov_base + nwritten);
-		iov[index].iov_len -= nwritten;
-	}
-
-	return 0;
 }
 
 static void exec_runtime_handler (hcl_tmr_t* tmr, const hcl_ntime_t* now, hcl_tmr_event_t* evt)
@@ -1151,7 +1102,7 @@ static int handle_received_data (hcl_server_proto_t* proto)
 			if (proto->rcv.len < HCL_SIZEOF(proto->rcv.hdr)) return 0; /* need more data */
 
 			HCL_MEMCPY (&proto->rcv.hdr, proto->rcv.buf, HCL_SIZEOF(proto->rcv.hdr));
-			//proto->rcv.hdr.len = hcl_ntoh16(proto->rcv.hdr.len); /* keep this in the host byte order */
+			/*proto->rcv.hdr.len = hcl_ntoh16(proto->rcv.hdr.len);*/ /* keep this in the host byte order */
 
 			/* consume the header */
 			HCL_MEMMOVE (proto->rcv.buf, &proto->rcv.buf[HCL_SIZEOF(proto->rcv.hdr)], proto->rcv.len - HCL_SIZEOF(proto->rcv.hdr));
@@ -1276,6 +1227,7 @@ static int send_stdout_bytes (hcl_server_proto_t* proto, const hcl_bch_t* data, 
 	ptr = cur = data;
 	end = data + len;
 
+printf ("SENDING BYTES [%.*s]\n", (int)len, data);
 	while (ptr < end)
 	{
 		while (cur != end && cur - ptr < 255) cur++;
@@ -1729,9 +1681,8 @@ static int worker_step (hcl_server_worker_t* worker)
 		}
 	}
 
-
 	/* the receiver buffer has enough data */
-	while (proto->rcv.len >= proto->rcv.len_needed)
+	while (/*proto->rcv.len > 0 && */proto->rcv.len >= proto->rcv.len_needed)
 	{
 		if (handle_received_data(proto) <= -1)
 		{
