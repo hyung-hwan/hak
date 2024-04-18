@@ -397,6 +397,13 @@ void hcl_reset (hcl_t* hcl)
 	hcl_gc (hcl, 1);
 }
 
+void hcl_clearcode (hcl_t* hcl)
+{
+	/* clear the code buffer and the literal frame only */
+	hcl->code.bc.len = 0;
+	hcl->code.lit.len = 0;
+}
+
 static int dup_str_opt (hcl_t* hcl, const hcl_ooch_t* value, hcl_oocs_t* tmp)
 {
 	if (value)

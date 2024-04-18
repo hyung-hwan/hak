@@ -24,3 +24,30 @@ else {  printf "OK:  value is %d\n" v };
 v := (dic.get j 4512);
 if (nqv? v 1234) { printf "ERROR: v is not 1234\n" } \
 else { printf "OK:  value is %d\n" v };
+
+## --------------------------------------------------------------
+
+class X | a b c d | {
+        fun :*new() {
+                return self;
+        }
+
+        fun x() {
+		a := 20 ; self.b:=(a + 10); c := (b + 20)
+		printf "%d %d %d\n" self.a self.b self.c
+		return (+ self.a self.b self.c)
+        }
+	fun y() {
+		self.d := (fun(k) {
+			return (k + 1)
+		})
+		return self.d
+	}
+
+}; a := (X:new); v := (a:x)
+if (nqv? v 100) { printf "ERROR: v is not 100\n" } \
+else { printf "OK:  value is %d\n" v }
+
+v := ((a:y) 20);
+if (nqv? v 21) { printf "ERROR: v is not 21\n" } \
+else { printf "OK:  value is %d\n" v }

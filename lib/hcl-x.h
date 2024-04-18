@@ -38,7 +38,9 @@ enum hcl_xpkt_type_t
 	HCL_XPKT_STDOUT,
 
 	HCL_XPKT_LIST_WORKERS,
-	HCL_XPKT_KILL_WORKER
+	HCL_XPKT_KILL_WORKER,
+
+	HCL_XPKT_DISCONNECT
 };
 typedef enum hcl_xpkt_type_t hcl_xpkt_type_t;
 

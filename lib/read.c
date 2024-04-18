@@ -667,7 +667,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 			}
 			else
 			{
-				if (!HCL_CNODE_IS_SYMBOL_PLAIN(lval))
+				if (!HCL_CNODE_IS_SYMBOL_PLAIN(lval) && !HCL_CNODE_IS_DSYMBOL_CLA(lval))
 				{
 					hcl_setsynerrbfmt (hcl, HCL_SYNERR_LVALUE, HCL_CNODE_GET_LOC(lval), HCL_CNODE_GET_TOK(lval), "invalid lvalue - not symbol");
 					goto oops;

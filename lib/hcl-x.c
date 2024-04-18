@@ -123,7 +123,6 @@ struct hcl_server_proto_t
 		hcl_server_proto_rcv_state_t state;
 		hcl_oow_t len_needed;
 		unsigned int eof: 1;
-		unsigned int polled: 1;
 
 		hcl_oow_t len;
 		hcl_uint8_t buf[4096];
@@ -135,11 +134,6 @@ struct hcl_server_proto_t
 	{
 
 	} snd;
-
-	struct
-	{
-		int ongoing;
-	} feed;
 };
 
 enum hcl_server_worker_state_t
@@ -692,8 +686,8 @@ static void fini_hcl (hcl_t* hcl)
 
 static int on_fed_cnode (hcl_t* hcl, hcl_cnode_t* obj)
 {
-	worker_hcl_xtn_t* xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);
-	hcl_server_proto_t* proto = xtn->proto;
+	/*worker_hcl_xtn_t* xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);*/
+	/*hcl_server_proto_t* proto = xtn->proto;*/
 	int flags = 0;
 
 printf ("on_fed_cnode......\n");
@@ -702,15 +696,6 @@ printf ("on_fed_cnode......\n");
 	 *
 	 * if a single line or continued lines contain multiple expressions,
 	 * execution is delayed until the last expression is compiled. */
-
-	if (!proto->feed.ongoing)
-	{
-		/* the first expression in the current user input line.
-		 * arrange to clear byte-codes before compiling the expression. */
-		flags = HCL_COMPILE_CLEAR_CODE | HCL_COMPILE_CLEAR_FNBLK;
-		proto->feed.ongoing = 1;
-printf ("CLEARING...\n");
-	}
 
 printf ("COMPILING hcl_copingll......\n");
 	if (hcl_compile(hcl, obj, flags) <= -1)
@@ -742,7 +727,6 @@ hcl_server_proto_t* hcl_server_proto_open (hcl_oow_t xtnsize, hcl_server_worker_
 	proto->rcv.state = HCL_SERVER_PROTO_RCV_HEADER;
 	proto->rcv.len_needed = HCL_SIZEOF(proto->rcv.hdr);
 	proto->rcv.eof = 0;
-	proto->rcv.polled = 0;
 
 	proto->hcl = hcl_openstdwithmmgr(hcl_server_getmmgr(proto->worker->server), HCL_SIZEOF(*xtn), HCL_NULL);
 	if (HCL_UNLIKELY(!proto->hcl)) goto oops;
@@ -1016,77 +1000,64 @@ static int kill_server_worker (hcl_server_proto_t* proto, hcl_oow_t wid)
 	return xret;
 }
 
-static int receive_raw_request (hcl_server_proto_t* proto)
+static int handle_packet (hcl_server_proto_t* proto, hcl_xpkt_type_t type, void* data, hcl_oow_t len)
 {
-	hcl_server_worker_t* worker = proto->worker;
-	hcl_server_t* server = worker->server;
 	hcl_t* hcl = proto->hcl;
-	struct pollfd pfd;
-	int tmout, actual_tmout;
-	ssize_t x;
-	int n;
 
-	HCL_ASSERT (hcl, proto->rcv.len < proto->rcv.len_needed);
-
-	if (HCL_UNLIKELY(proto->rcv.eof))
+	switch (type)
 	{
-		hcl_seterrbfmt (hcl, HCL_EGENERIC, "connection closed");
-		return -1;
-	}
-
-	if (HCL_LIKELY(!proto->rcv.polled))
-	{
-		tmout = HCL_SECNSEC_TO_MSEC(server->cfg.worker_idle_timeout.sec, server->cfg.worker_idle_timeout.nsec);
-		actual_tmout = (tmout <= 0)? 10000: tmout;
-
-		pfd.fd = worker->sck;
-		pfd.events = POLLIN | POLLERR;
-		pfd.revents = 0;
-		n = poll(&pfd, 1, actual_tmout);
-		if (n <= -1)
-		{
-			if (errno == EINTR) return 0;
-			hcl_seterrwithsyserr (hcl, 0, errno);
-			return -1;
-		}
-		else if (n == 0)
-		{
-			/* timed out - no activity on the pfd */
-			if (tmout > 0)
+		case HCL_XPKT_CODEIN:
+printf ("FEEDING [%.*s]\n", (int)len, data);
+			if (hcl_feedbchars(hcl, data, len) <= -1)
 			{
-				/* timeout explicity set. no activity for that duration. considered idle */
-				hcl_seterrbfmt (hcl, HCL_EGENERIC, "no activity on the worker socket %d", worker->sck);
-				return -1;
+				/* TODO: backup error message...and create a new message */
+				goto oops;
+			}
+			break;
+
+		case HCL_XPKT_EXECUTE:
+		{
+			hcl_oop_t retv;
+printf ("EXECUTING hcl_executing......\n");
+
+			hcl_decode (hcl, hcl_getcode(hcl), 0, hcl_getbclen(hcl));
+
+			retv = hcl_execute(hcl);
+			hcl_flushudio (hcl);
+			hcl_clearcode (hcl);
+			if (!retv)
+			{
+				/* TODO: backup error message...and create a new message */
+				goto oops;
 			}
 
-			return 0; /* didn't read yet */
+			break;
 		}
 
-		if (pfd.revents & POLLERR)
-		{
-			hcl_seterrbfmt (hcl, HCL_EGENERIC, "error condition detected on workder socket %d", worker->sck);
-			return -1;
-		}
+		case HCL_XPKT_STDIN:
+			/* store ... push stdin pipe... */
+			/*if (hcl_feedstdin() <= -1) */
+			break;
 
-		proto->rcv.polled = 1;
+		case HCL_XPKT_LIST_WORKERS:
+			break;
 
+		case HCL_XPKT_KILL_WORKER:
+			break;
+		case HCL_XPKT_DISCONNECT:
+			return 0; /* disconnect received */
+
+		default:
+			/* unknown packet type */
+			/* TODO: proper error message */
+			goto oops;
 	}
 
-	x = recv(worker->sck, &proto->rcv.buf[proto->rcv.len], HCL_COUNTOF(proto->rcv.buf) - proto->rcv.len, 0);
-	if (x <= -1)
-	{
-		if (errno == EINTR) return 0; /* didn't read read */
+	return 1;
 
-		proto->rcv.polled = 0;
-		hcl_seterrwithsyserr (hcl, 0, errno);
-		return -1;
-	}
 
-	proto->rcv.polled = 0;
-	if (x == 0) proto->rcv.eof = 1;
-
-	proto->rcv.len += x;
-	return 1; /* read some data */
+oops:
+	return -1;
 }
 
 
@@ -1094,12 +1065,12 @@ static int handle_received_data (hcl_server_proto_t* proto)
 {
 	hcl_server_worker_t* worker = proto->worker;
 	hcl_t* hcl = proto->hcl;
-	hcl_xpkt_hdr_t* hdr;
+	int n;
 
 	switch (proto->rcv.state)
 	{
 		case HCL_SERVER_PROTO_RCV_HEADER:
-			if (proto->rcv.len < HCL_SIZEOF(proto->rcv.hdr)) return 0; /* need more data */
+			if (proto->rcv.len < HCL_SIZEOF(proto->rcv.hdr)) goto carry_on; /* need more data */
 
 			HCL_MEMCPY (&proto->rcv.hdr, proto->rcv.buf, HCL_SIZEOF(proto->rcv.hdr));
 			/*proto->rcv.hdr.len = hcl_ntoh16(proto->rcv.hdr.len);*/ /* keep this in the host byte order */
@@ -1109,53 +1080,25 @@ static int handle_received_data (hcl_server_proto_t* proto)
 			proto->rcv.len -= HCL_SIZEOF(proto->rcv.hdr);
 
 			/* switch to the payload mode */
-			proto->rcv.state = HCL_SERVER_PROTO_RCV_PAYLOAD;
-			proto->rcv.len_needed = proto->rcv.hdr.len;
-			return 0;
-
-		case HCL_SERVER_PROTO_RCV_PAYLOAD:
-			if (proto->rcv.len < proto->rcv.hdr.len) return 0; /* need more payload data */
-
-			if (proto->rcv.hdr.type == HCL_XPKT_CODEIN)
+			if (proto->rcv.hdr.len > 0)
 			{
-printf ("FEEDING [%.*s]\n", proto->rcv.hdr.len, proto->rcv.buf);
-				if (hcl_feedbchars(hcl, (const hcl_bch_t*)proto->rcv.buf, proto->rcv.hdr.len) <= -1)
-				{
-					/* TODO: backup error message...and create a new message */
-					goto fail_with_errmsg;
-				}
-			}
-			else if (proto->rcv.hdr.type == HCL_XPKT_EXECUTE)
-			{
-				hcl_oop_t retv;
-printf ("EXECUTING hcl_executing......\n");
-				proto->feed.ongoing = 0;
-
-				hcl_decode (hcl, hcl_getcode(hcl), 0, hcl_getbclen(hcl));
-
-				retv = hcl_execute(hcl);
-				hcl_flushudio (hcl);
-				if (!retv)
-				{
-					/* TODO: backup error message...and create a new message */
-					goto fail_with_errmsg;
-				}
-			}
-			else if (proto->rcv.hdr.type == HCL_XPKT_STDIN)
-			{
-				/* store ... push stdin pipe... */
-				/*if (hcl_feedstdin() <= -1) */
-			}
-			else if (proto->rcv.hdr.type == HCL_XPKT_LIST_WORKERS)
-			{
-			}
-			else if (proto->rcv.hdr.type == HCL_XPKT_KILL_WORKER)
-			{
+				proto->rcv.state = HCL_SERVER_PROTO_RCV_PAYLOAD;
+				proto->rcv.len_needed = proto->rcv.hdr.len;
 			}
 			else
 			{
-				/* error ... unknown request type */
+				/* take shortcut */
+				n = handle_packet(proto, proto->rcv.hdr.type, proto->rcv.buf, proto->rcv.hdr.len);
+				if (n <= -1) goto fail_with_errmsg;
+				if (n == 0) return 0;
 			}
+
+			break;
+
+		case HCL_SERVER_PROTO_RCV_PAYLOAD:
+			if (proto->rcv.len < proto->rcv.hdr.len) goto carry_on; /* need more payload data */
+
+			n = handle_packet(proto, proto->rcv.hdr.type, proto->rcv.buf, proto->rcv.hdr.len);
 
 /* TODO: minimize the use of HCL_MEMOVE... use the buffer */
 			/* switch to the header mode */
@@ -1167,6 +1110,9 @@ printf ("EXECUTING hcl_executing......\n");
 			proto->rcv.state = HCL_SERVER_PROTO_RCV_HEADER;
 			proto->rcv.len_needed = HCL_SIZEOF(proto->rcv.hdr);
 
+			if (n <= -1) goto fail_with_errmsg;
+			if (n == 0) return 0;
+
 			break;
 
 		default:
@@ -1174,7 +1120,8 @@ printf ("EXECUTING hcl_executing......\n");
 			goto fail_with_errmsg;
 	}
 
-	return 1; /* processed 1 packet */
+carry_on:
+	return 1;
 
 fail_with_errmsg:
 // TODO: proper error handling
@@ -1650,7 +1597,7 @@ static int worker_step (hcl_server_worker_t* worker)
 				return -1;
 			}
 
-			return 0; /* didn't read yet */
+			goto carry_on;
 		}
 
 		if (pfd.revents & POLLERR)
@@ -1668,9 +1615,8 @@ static int worker_step (hcl_server_worker_t* worker)
 			x = recv(worker->sck, &proto->rcv.buf[proto->rcv.len], HCL_COUNTOF(proto->rcv.buf) - proto->rcv.len, 0);
 			if (x <= -1)
 			{
-				if (errno == EINTR) return 0; /* didn't read read */
+				if (errno == EINTR) goto carry_on; /* didn't read read */
 
-				proto->rcv.polled = 0;
 				hcl_seterrwithsyserr (hcl, 0, errno);
 				return -1;
 			}
@@ -1684,14 +1630,20 @@ static int worker_step (hcl_server_worker_t* worker)
 	/* the receiver buffer has enough data */
 	while (/*proto->rcv.len > 0 && */proto->rcv.len >= proto->rcv.len_needed)
 	{
-		if (handle_received_data(proto) <= -1)
+		if ((n = handle_received_data(proto)) <= -1)
 		{
 			/* TODO: proper error message */
 			return -1;
 		}
+		if (n == 0)
+		{
+			/* TODO: chceck if there is remaining data in the buffer...?? */
+			return 0; /* tell the caller to break the step loop */
+		}
 	}
 
-	return 0;
+carry_on:
+	return 1; /* carry on */
 }
 
 static void* worker_main (void* ctx)
@@ -1718,11 +1670,12 @@ static void* worker_main (void* ctx)
 	/* the worker loop */
 	while (!server->stopreq)
 	{
+		int n;
 		worker->opstate = HCL_SERVER_WORKER_OPSTATE_WAIT;
 
-		if (worker_step(worker) <= -1)
+		if ((n = worker_step(worker)) <= 0)
 		{
-			worker->opstate = HCL_SERVER_WORKER_OPSTATE_ERROR;
+			worker->opstate = (n <= -1)? HCL_SERVER_WORKER_OPSTATE_ERROR: HCL_SERVER_WORKER_OPSTATE_IDLE;
 			break;
 		}
 	}

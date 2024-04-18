@@ -27,6 +27,7 @@
 /* limit the `do` expression to have not more than 1 expression and
  * no variable declaration if not enclosed in parentheses */
 #define LANG_LIMIT_DO
+#define CLEAR_FNBLK_ALWAYS
 
 #define FOR_NONE (0)
 #define FOR_IF   (1)
@@ -1197,12 +1198,11 @@ static void pop_fnblk (hcl_t* hcl)
 	hcl_fnblk_info_t* fbi;
 
 	HCL_ASSERT (hcl, hcl->c->fnblk.depth >= 0);
-	/* if pop_cblk() has been called properly, the following assertion must be true
-	 * and the assignment on the next line isn't necessary */
 
 	clear_fnblk_inners (hcl);
-
 	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
+	/* if pop_cblk() has been called properly, the following assertion must be true
+	 * and the assignment on the next line isn't necessary */
 	HCL_ASSERT (hcl, hcl->c->cblk.depth == fbi->cblk_base);
 	HCL_ASSERT (hcl, fbi->clsblk_base <= -1 && fbi->clsblk_top <= -1);
 
@@ -5856,16 +5856,24 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 {
 	hcl_oow_t saved_bc_len, saved_lit_len;
 	hcl_bitmask_t log_default_type_mask;
+#if !defined(CLEAR_FNBLK_ALWAYS)
 	hcl_fnblk_info_t top_fnblk_saved;
+	int fnblk_pushed_here = 0;
+#endif
 
 	hcl->c->flags = flags;
 
+	HCL_ASSERT (hcl, hcl->c->fnblk.depth <= 0); /* 0 or 1 fnblk must exist at this phase */
 	HCL_ASSERT (hcl, GET_TOP_CFRAME_INDEX(hcl) < 0);
-	if (flags & HCL_COMPILE_CLEAR_CODE)
+#if !defined(CLEAR_FNBLK_ALWAYS)
+	if (flags & HCL_COMPILE_CLEAR_FNBLK)
 	{
-		hcl->code.bc.len = 0;
-		hcl->code.lit.len = 0;
+		while (hcl->c->fnblk.depth >= 0) pop_fnblk (hcl);
+		HCL_ASSERT (hcl, hcl->c->fnblk.depth == -1);
+		/* it will be recreated below */
 	}
+#endif
+	if (flags & HCL_COMPILE_CLEAR_CODE) hcl_clearcode (hcl);
 
 	saved_bc_len = hcl->code.bc.len;
 	saved_lit_len = hcl->code.lit.len;
@@ -5907,8 +5915,10 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 /* TODO: in case i implement all global variables as block arguments at the top level...what should i do? */
 	HCL_ASSERT (hcl, hcl->c->cblk.depth == -1);
 
+#if !defined(CLEAR_FNBLK_ALWAYS)
 	if (hcl->c->fnblk.depth <= -1)
 	{
+#endif
 		HCL_ASSERT (hcl, hcl->c->fnblk.depth == -1);
 		HCL_ASSERT (hcl, hcl->c->tv.s.len == 0);
 		HCL_ASSERT (hcl, hcl->c->tv.wcount == 0);
@@ -5917,9 +5927,25 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 		 * pass HCL_TYPE_MAX(hcl_oow_t) as make_inst_pos because there is
 		 * no actual MAKE_LAMBDA/MAKE_FUNCTION instruction which otherwise
 		 * would be patched in pop_fnblk(). */
-		if (push_fnblk(hcl, HCL_NULL, 0, 0, 0, hcl->c->tv.wcount, hcl->c->tv.wcount, hcl->c->tv.s.len, HCL_TYPE_MAX(hcl_oow_t), 0, FUN_PLAIN) <= -1) return -1; /* must not goto oops */
+
+		if (push_fnblk(
+			hcl, HCL_NULL,
+			0, /* tmpr_va */
+			0, /* tmpr_nargs */
+			0, /* tmpr_nrvars */
+			hcl->c->tv.wcount, /* tmpr_nlvars */
+			hcl->c->tv.wcount, /* tmpr_count */
+			hcl->c->tv.s.len, /* tmpr_len */
+			HCL_TYPE_MAX(hcl_oow_t), /* make_inst_pos */
+			0, /* lfbase */
+			FUN_PLAIN /* fun_type */
+		) <= -1) return -1; /* must not goto oops */
+
+#if !defined(CLEAR_FNBLK_ALWAYS)
+		fnblk_pushed_here = 1;
 	}
 	top_fnblk_saved = hcl->c->fnblk.info[0];
+#endif
 	HCL_ASSERT (hcl, hcl->c->fnblk.depth == 0); /* ensure the virtual function block is added */
 
 	PUSH_CFRAME (hcl, COP_COMPILE_OBJECT, obj);
@@ -6153,11 +6179,15 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 
 	HCL_ASSERT (hcl, hcl->c->fnblk.depth == 0); /* ensure the virtual function block be the only one left */
 	hcl->code.ngtmprs = hcl->c->fnblk.info[0].tmprcnt; /* populate the number of global temporary variables */
-	if (flags & HCL_COMPILE_CLEAR_FNBLK)
-	{
-		pop_fnblk (hcl);
-		HCL_ASSERT (hcl, hcl->c->fnblk.depth == -1);
-	}
+
+	/* TODO: delete all !defined(CLEAR_FNBLK_ALWAYS) code
+	 *       keep only defined(CLEAR_FNBLK_ALWAYS) code.
+	 *       not clearing the top fnblk for the reuse doesn't look very beneficial */
+#if defined(CLEAR_FNBLK_ALWAYS)
+	pop_fnblk (hcl);
+	HCL_ASSERT (hcl, hcl->c->tv.s.len == 0);
+	HCL_ASSERT (hcl, hcl->c->tv.wcount == 0);
+#endif
 
 	hcl->log.default_type_mask = log_default_type_mask;
 	return 0;
@@ -6171,23 +6201,30 @@ oops:
 	hcl->code.bc.len = saved_bc_len;
 	hcl->code.lit.len = saved_lit_len;
 
-	hcl->c->tv.s.len = 0;
-	hcl->c->tv.wcount = 0;
-
 	while (hcl->c->fnblk.depth > 0) pop_fnblk (hcl);
+	HCL_ASSERT (hcl, hcl->c->fnblk.depth == 0);
 
-	if (flags & HCL_COMPILE_CLEAR_FNBLK)
+#if !defined(CLEAR_FNBLK_ALWAYS)
+	if (fnblk_pushed_here)
 	{
+#endif
 		pop_fnblk (hcl);
 		HCL_ASSERT (hcl, hcl->c->fnblk.depth == -1);
+		HCL_ASSERT (hcl, hcl->c->tv.s.len == 0);
+		HCL_ASSERT (hcl, hcl->c->tv.wcount == 0);
+#if !defined(CLEAR_FNBLK_ALWAYS)
 	}
 	else
 	{
-		/* restore the top level function block as it's first captured in this functio */
+		hcl->c->tv.s.len = 0;
+		hcl->c->tv.wcount = 0;
+
+		/* restore the top level function block as it's first captured in this function */
 		clear_fnblk_inners (hcl);
 		HCL_ASSERT (hcl, hcl->c->fnblk.depth == 0);
 		hcl->c->fnblk.info[0] = top_fnblk_saved;
 	}
+#endif
 
 	return -1;
 }

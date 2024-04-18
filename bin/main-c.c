@@ -551,7 +551,7 @@ static int receive_raw_bytes (hcl_xproto_t* proto, int sck, hcl_ntime_t* idle_tm
 		{
 			/* timeout explicity set. no activity for that duration. considered idle */
 			hcl_seterrbfmt (hcl, HCL_EGENERIC, "no activity on the socket %d", sck);
-		return -1;
+			return -1;
 		}
 
 		return 0; /* didn't read yet */
@@ -559,7 +559,7 @@ static int receive_raw_bytes (hcl_xproto_t* proto, int sck, hcl_ntime_t* idle_tm
 
 	if (pfd.revents & POLLERR)
 	{
-	hcl_seterrbfmt (hcl, HCL_EGENERIC, "error condition detected on socket %d", sck);
+		hcl_seterrbfmt (hcl, HCL_EGENERIC, "error condition detected on socket %d", sck);
 		return -1;
 	}
 
@@ -754,7 +754,20 @@ static int handle_request (hcl_client_t* client, const char* ipaddr, const char*
 				iov[0].iov_len = HCL_SIZEOF(hdr);
 				send_iov (sck, iov, 1);
 
-				if (shut_wr_after_req) shutdown (sck, SHUT_WR);
+				if (shut_wr_after_req)
+				{
+					shutdown (sck, SHUT_WR);
+				}
+				else
+				{
+					hdr.type = HCL_XPKT_DISCONNECT;
+					hdr.id = 1; /* TODO: */
+					hdr.len = 0;
+
+					iov[0].iov_base = &hdr;
+					iov[0].iov_len = HCL_SIZEOF(hdr);
+					send_iov (sck, iov, 1);
+				}
 			}
 		}
 
