@@ -1089,7 +1089,9 @@ static int feed_begin_include (hcl_t* hcl)
 	hcl_io_cciarg_t* arg;
 	const hcl_ooch_t* io_name;
 
+/*hcl_logbfmt(hcl, HCL_LOG_STDERR, "adding... %js\n", TOKEN_NAME_PTR(hcl));*/
 	io_name = add_sr_name(hcl, TOKEN_NAME(hcl));
+/*hcl_logbfmt(hcl, HCL_LOG_STDERR, "added... %js\n", io_name);*/
 	if (HCL_UNLIKELY(!io_name))
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);

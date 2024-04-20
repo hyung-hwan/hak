@@ -27,7 +27,6 @@
 /* limit the `do` expression to have not more than 1 expression and
  * no variable declaration if not enclosed in parentheses */
 #define LANG_LIMIT_DO
-#define CLEAR_FNBLK_ALWAYS
 
 #define FOR_NONE (0)
 #define FOR_IF   (1)
@@ -5856,23 +5855,46 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 {
 	hcl_oow_t saved_bc_len, saved_lit_len;
 	hcl_bitmask_t log_default_type_mask;
-#if !defined(CLEAR_FNBLK_ALWAYS)
 	hcl_fnblk_info_t top_fnblk_saved;
-	int fnblk_pushed_here = 0;
-#endif
+	int top_fnblk_pushed_here = 0;
 
 	hcl->c->flags = flags;
 
 	HCL_ASSERT (hcl, hcl->c->fnblk.depth <= 0); /* 0 or 1 fnblk must exist at this phase */
 	HCL_ASSERT (hcl, GET_TOP_CFRAME_INDEX(hcl) < 0);
-#if !defined(CLEAR_FNBLK_ALWAYS)
+
 	if (flags & HCL_COMPILE_CLEAR_FNBLK)
 	{
+		/* if the program is executed in the interactive mode,
+		 * each compiled expression is executed immediately.
+		 * that is, hcl_compile() is followed by hcl_execute()
+		 * immediately.
+		 *
+		 *   (1) a := 20
+		 *   (2) { | b c | b := 20; c := 30 }
+		 *   (3) printf "%d\n" a
+		 *
+		 * in the interactive mode,
+		 *  (1) is compiled and executed
+		 *  (2) is compiled and executed
+		 *  (3) is compiled and executed
+		 *
+		 * in the non-interactive mode,
+		 *  (1) is compiled, (2) is compiled, (3) is compiled
+		 *  (1), (2), (3) are executed
+		 * fnblk holds information about temporaries seen so far.
+		 * (2) has defined two temporary variables. this count
+		 * must get carried until (3) has been compiled in the
+		 * non-interactive mode. the accumulated count is used
+		 * in creating an initial context for execution.
+		 *
+		 * in the interactive mode, the information doesn't have
+		 * to get carried over.
+		 */
 		while (hcl->c->fnblk.depth >= 0) pop_fnblk (hcl);
 		HCL_ASSERT (hcl, hcl->c->fnblk.depth == -1);
 		/* it will be recreated below */
 	}
-#endif
 	if (flags & HCL_COMPILE_CLEAR_CODE) hcl_clearcode (hcl);
 
 	saved_bc_len = hcl->code.bc.len;
@@ -5915,10 +5937,8 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 /* TODO: in case i implement all global variables as block arguments at the top level...what should i do? */
 	HCL_ASSERT (hcl, hcl->c->cblk.depth == -1);
 
-#if !defined(CLEAR_FNBLK_ALWAYS)
 	if (hcl->c->fnblk.depth <= -1)
 	{
-#endif
 		HCL_ASSERT (hcl, hcl->c->fnblk.depth == -1);
 		HCL_ASSERT (hcl, hcl->c->tv.s.len == 0);
 		HCL_ASSERT (hcl, hcl->c->tv.wcount == 0);
@@ -5941,11 +5961,9 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 			FUN_PLAIN /* fun_type */
 		) <= -1) return -1; /* must not goto oops */
 
-#if !defined(CLEAR_FNBLK_ALWAYS)
-		fnblk_pushed_here = 1;
+		top_fnblk_pushed_here = 1;
 	}
 	top_fnblk_saved = hcl->c->fnblk.info[0];
-#endif
 	HCL_ASSERT (hcl, hcl->c->fnblk.depth == 0); /* ensure the virtual function block is added */
 
 	PUSH_CFRAME (hcl, COP_COMPILE_OBJECT, obj);
@@ -6204,27 +6222,31 @@ oops:
 	while (hcl->c->fnblk.depth > 0) pop_fnblk (hcl);
 	HCL_ASSERT (hcl, hcl->c->fnblk.depth == 0);
 
-#if !defined(CLEAR_FNBLK_ALWAYS)
-	if (fnblk_pushed_here)
+	if (top_fnblk_pushed_here)
 	{
-#endif
 		pop_fnblk (hcl);
 		HCL_ASSERT (hcl, hcl->c->fnblk.depth == -1);
 		HCL_ASSERT (hcl, hcl->c->tv.s.len == 0);
 		HCL_ASSERT (hcl, hcl->c->tv.wcount == 0);
-#if !defined(CLEAR_FNBLK_ALWAYS)
 	}
 	else
 	{
-		hcl->c->tv.s.len = 0;
-		hcl->c->tv.wcount = 0;
+		/*
+		{ |a b c| } ## tv.s.len 6, tv.wcount 3
+		{ |k a| (set x y z) }
+		*
+		* at this point when (set a b c) triggers a syntax error
+		* tv.s.len is 10 and tv.wcount is 5.
+		* it must be restored to 6 and 3 each.
+		*/
 
 		/* restore the top level function block as it's first captured in this function */
 		clear_fnblk_inners (hcl);
 		HCL_ASSERT (hcl, hcl->c->fnblk.depth == 0);
 		hcl->c->fnblk.info[0] = top_fnblk_saved;
+		hcl->c->tv.s.len = top_fnblk_saved.tmprlen;
+		hcl->c->tv.wcount = top_fnblk_saved.tmprcnt;
 	}
-#endif
 
 	return -1;
 }

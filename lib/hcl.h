@@ -2840,11 +2840,6 @@ HCL_EXPORT hcl_oop_t hcl_makedic (
 	hcl_oow_t         inisize /* initial bucket size */
 );
 
-HCL_EXPORT hcl_oop_t hcl_makecontext (
-	hcl_t*            hcl,
-	hcl_ooi_t         ntmprs
-);
-
 HCL_EXPORT hcl_oop_t hcl_makeclass (
 	hcl_t*            hcl,
 	hcl_oop_t         superclass,
