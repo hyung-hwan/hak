@@ -30,7 +30,9 @@
 
 enum hcl_xpkt_type_t
 {
-	HCL_XPKT_CODEIN,    /* [C]->[S] */
+	/* the actual type field is 4 bits long. up to 16 types are possible */
+
+	HCL_XPKT_CODE,      /* [C]->[S] input code */
 	HCL_XPKT_EXECUTE,   /* [C]->[S] command to execute the code input */
 
 	HCL_XPKT_ERROR,     /* [S]->[C] error indicator */
@@ -40,6 +42,7 @@ enum hcl_xpkt_type_t
 	HCL_XPKT_STDOUT,    /* [S]->[C] output to stdout */
 	HCL_XPKT_STDERR,    /* [S]->[C] output to stderr or output data related to error */
 
+	/*TODO: define HCL_XPKT_CONTROL and make LIST_WORKS AND KILL_WORKER sub-commands of CONTORL */
 	HCL_XPKT_LIST_WORKERS, /* [C]->[S] */
 	HCL_XPKT_KILL_WORKER,  /* [C]->[S] */
 
@@ -47,6 +50,7 @@ enum hcl_xpkt_type_t
 };
 typedef enum hcl_xpkt_type_t hcl_xpkt_type_t;
 
+#include "hcl-pac1.h"
 struct hcl_xpkt_hdr_t
 {
 	hcl_uint8_t id;
@@ -55,6 +59,12 @@ struct hcl_xpkt_hdr_t
 	hcl_uint8_t len;
 };
 typedef struct hcl_xpkt_hdr_t hcl_xpkt_hdr_t;
+#include "hcl-upac.h"
+
+#define HCL_XPKT_HDR_LEN (HCL_SIZEOF(hcl_xpkt_hdr_t))
+
+/* the actual length field is 12 bits long. so the maximum payload length allowed per packet is 2^12 */
+#define HCL_XPKT_MAX_PLD_LEN (4096)
 
 /* ---------------------------------------------------------------------- */
 

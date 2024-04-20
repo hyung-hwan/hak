@@ -493,8 +493,8 @@ static int send_iov (int sck, struct iovec* iov, int count)
 
 enum hcl_xproto_rcv_state_t
 {
-	HCL_XPROTO_RCV_HEADER,
-	HCL_XPROTO_RCV_PAYLOAD,
+	HCL_XPROTO_RCV_HDR,
+	HCL_XPROTO_RCV_PLD,
 };
 typedef enum hcl_xproto_rcv_state_t hcl_xproto_rcv_state_t;
 
@@ -584,7 +584,7 @@ static int handle_received_data (hcl_xproto_t* proto)
 //printf ("HANDLE RECIVED rcv.len %d rcv.len_needed %d [%.*s]\n", (int)proto->rcv.len, (int)proto->rcv.len_needed, (int)proto->rcv.len, proto->rcv.buf);
 	switch (proto->rcv.state)
 	{
-		case HCL_XPROTO_RCV_HEADER:
+		case HCL_XPROTO_RCV_HDR:
 			if (proto->rcv.len < HCL_SIZEOF(proto->rcv.hdr)) return 0; /* need more data */
 
 			memcpy (&proto->rcv.hdr, proto->rcv.buf, HCL_SIZEOF(proto->rcv.hdr));
@@ -595,11 +595,11 @@ static int handle_received_data (hcl_xproto_t* proto)
 			proto->rcv.len -= HCL_SIZEOF(proto->rcv.hdr);
 
 			/* switch to the payload mode */
-			proto->rcv.state = HCL_XPROTO_RCV_PAYLOAD;
+			proto->rcv.state = HCL_XPROTO_RCV_PLD;
 			proto->rcv.len_needed = proto->rcv.hdr.len;
 			return 0;
 
-		case HCL_XPROTO_RCV_PAYLOAD:
+		case HCL_XPROTO_RCV_PLD:
 			if (proto->rcv.len < proto->rcv.hdr.len) return 0; /* need more payload data */
 
 			if (proto->rcv.hdr.type == HCL_XPKT_STDOUT)
@@ -613,7 +613,7 @@ static int handle_received_data (hcl_xproto_t* proto)
 				memmove (proto->rcv.buf, &proto->rcv.buf[proto->rcv.hdr.len], proto->rcv.len - proto->rcv.hdr.len);
 				proto->rcv.len -= proto->rcv.hdr.len;
 			}
-			proto->rcv.state = HCL_XPROTO_RCV_HEADER;
+			proto->rcv.state = HCL_XPROTO_RCV_HDR;
 			proto->rcv.len_needed = HCL_SIZEOF(proto->rcv.hdr);
 			break;
 	}
@@ -689,7 +689,7 @@ static int handle_request (hcl_client_t* client, const char* ipaddr, const char*
 	/* TODO: create hcl_xproto_open... */
 	memset (proto, 0, HCL_SIZEOF(*proto));
 	proto->hcl = hcl_openstdwithmmgr(hcl_client_getmmgr(client), 0, HCL_NULL); // TODO:
-	proto->rcv.state = HCL_XPROTO_RCV_HEADER;
+	proto->rcv.state = HCL_XPROTO_RCV_HDR;
 	proto->rcv.len_needed = HCL_SIZEOF(proto->rcv.hdr);
 	proto->rcv.eof = 0;
 // TODO: destroy xproto and data upon termination.
@@ -728,17 +728,20 @@ static int handle_request (hcl_client_t* client, const char* ipaddr, const char*
 		{
 			hcl_xpkt_hdr_t hdr;
 			struct iovec iov[2];
+			hcl_uint16_t seglen;
 
-			while (*sccur != '\0' && sccur - scptr < 255) sccur++;
+			while (*sccur != '\0' && sccur - scptr < HCL_XPKT_MAX_PLD_LEN) sccur++;
 
-			hdr.type = HCL_XPKT_CODEIN;
+			seglen = sccur - scptr;
+
 			hdr.id = 1; /* TODO: */
-			hdr.len = sccur - scptr;
+			hdr.type = HCL_XPKT_CODE | (((seglen >> 8) & 0x0F) << 4);
+			hdr.len = seglen & 0xFF;
 
 			iov[0].iov_base = &hdr;
 			iov[0].iov_len = HCL_SIZEOF(hdr);
 			iov[1].iov_base = scptr;
-			iov[1].iov_len = sccur - scptr;
+			iov[1].iov_len = seglen;
 
 			send_iov (sck, iov, 2); /* TODO: error check */
 
@@ -746,8 +749,8 @@ static int handle_request (hcl_client_t* client, const char* ipaddr, const char*
 
 			if (*sccur == '\0')
 			{
-				hdr.type = HCL_XPKT_EXECUTE;
 				hdr.id = 1; /* TODO: */
+				hdr.type = HCL_XPKT_EXECUTE;
 				hdr.len = 0;
 
 				iov[0].iov_base = &hdr;

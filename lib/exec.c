@@ -3974,7 +3974,6 @@ static int execute (hcl_t* hcl)
 				FETCH_BYTE_CODE_TO (hcl, b2);
 
 			handle_ctxtempvar:
-
 				ctx = hcl->active_context;
 				HCL_ASSERT (hcl, (hcl_oop_t)ctx != hcl->_nil);
 				for (i = 0; i < b1; i++)

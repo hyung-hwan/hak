@@ -106,8 +106,8 @@ typedef struct server_hcl_xtn_t server_hcl_xtn_t;
 
 enum hcl_xproto_rcv_state_t
 {
-	HCL_XPROTO_RCV_HEADER,
-	HCL_XPROTO_RCV_PAYLOAD
+	HCL_XPROTO_RCV_HDR,
+	HCL_XPROTO_RCV_PLD
 };
 typedef enum hcl_xproto_rcv_state_t hcl_xproto_rcv_state_t;
 
@@ -123,9 +123,15 @@ struct hcl_xproto_t
 		unsigned int eof: 1;
 
 		hcl_oow_t len;
-		hcl_uint8_t buf[4096];
+		hcl_uint8_t buf[HCL_XPKT_MAX_PLD_LEN];
 
-		hcl_xpkt_hdr_t hdr;
+		/* normalize header of hcl_xpkt_hdr_t with combined bits into separate placeholders */
+		struct
+		{
+			hcl_uint8_t id;
+			hcl_uint8_t type;
+			hcl_uint16_t len; /* this is wider than the len field of hcl_xpkt_hdr_t */
+		} hdr;
 	} rcv;
 
 	struct
@@ -711,80 +717,6 @@ hcl_logbfmt (hcl, HCL_LOG_STDERR, "COMPILER ERROR - %js\n", hcl_geterrmsg(hcl));
 	return 0;
 }
 
-#if 0
-hcl_xproto_t* hcl_xproto_open (hcl_oow_t xtnsize, hcl_server_worker_t* worker)
-{
-	hcl_xproto_t* proto;
-	hcl_cb_t hclcb;
-	worker_hcl_xtn_t* xtn;
-	hcl_bitmask_t trait;
-
-	proto = (hcl_xproto_t*)hcl_server_allocmem(worker->server, HCL_SIZEOF(*proto));
-	if (HCL_UNLIKELY(!proto)) return HCL_NULL;
-
-	HCL_MEMSET (proto, 0, HCL_SIZEOF(*proto));
-	proto->worker = worker;
-	proto->exec_runtime_event_index = HCL_TMR_INVALID_INDEX;
-	proto->rcv.state = HCL_XPROTO_RCV_HEADER;
-	proto->rcv.len_needed = HCL_SIZEOF(proto->rcv.hdr);
-	proto->rcv.eof = 0;
-
-	proto->hcl = hcl_openstdwithmmgr(hcl_server_getmmgr(proto->worker->server), HCL_SIZEOF(*xtn), HCL_NULL);
-	if (HCL_UNLIKELY(!proto->hcl)) goto oops;
-
-	/* replace the vmprim.log_write function */
-	proto->hcl->vmprim.log_write = server_log_write;
-
-	xtn = (worker_hcl_xtn_t*)hcl_getxtn(proto->hcl);
-	xtn->proto = proto;
-
-	hcl_setoption (proto->hcl, HCL_MOD_INCTX, &proto->worker->server->cfg.module_inctx);
-	hcl_setoption (proto->hcl, HCL_LOG_MASK, &proto->worker->server->cfg.logmask);
-	hcl_setcmgr (proto->hcl, hcl_server_getcmgr(proto->worker->server));
-
-	hcl_getoption (proto->hcl, HCL_TRAIT, &trait);
-#if defined(HCL_BUILD_DEBUG)
-	if (proto->worker->server->cfg.trait & HCL_SERVER_TRAIT_DEBUG_GC) trait |= HCL_TRAIT_DEBUG_GC;
-	if (proto->worker->server->cfg.trait & HCL_SERVER_TRAIT_DEBUG_BIGINT) trait |= HCL_TRAIT_DEBUG_BIGINT;
-#endif
-	trait |= HCL_TRAIT_LANG_ENABLE_BLOCK;
-	trait |= HCL_TRAIT_LANG_ENABLE_EOL;
-	hcl_setoption (proto->hcl, HCL_TRAIT, &trait);
-
-	HCL_MEMSET (&hclcb, 0, HCL_SIZEOF(hclcb));
-	/*hclcb.fini = fini_hcl;
-	hclcb.gc = gc_hcl;*/
-	hclcb.vm_startup =  vm_startup;
-	hclcb.vm_cleanup = vm_cleanup;
-	hclcb.vm_checkbc = vm_checkbc;
-	hcl_regcb (proto->hcl, &hclcb);
-
-	if (hcl_ignite(proto->hcl, worker->server->cfg.actor_heap_size) <= -1) goto oops;
-	if (hcl_addbuiltinprims(proto->hcl) <= -1) goto oops;
-
-	if (hcl_attachccio(proto->hcl, read_handler) <= -1) goto oops;
-	if (hcl_attachudio(proto->hcl, scan_handler, print_handler) <= -1) goto oops;
-
-	if (hcl_beginfeed(proto->hcl, on_fed_cnode) <= -1) goto oops;
-	return proto;
-
-oops:
-	if (proto)
-	{
-		if (proto->hcl) hcl_close (proto->hcl);
-		hcl_server_freemem (proto->worker->server, proto);
-	}
-	return HCL_NULL;
-}
-
-void hcl_xproto_close (hcl_xproto_t* proto)
-{
-	hcl_endfeed(proto->hcl);
-	hcl_close (proto->hcl);
-	hcl_server_freemem (proto->worker->server, proto);
-}
-#endif
-
 static void exec_runtime_handler (hcl_tmr_t* tmr, const hcl_ntime_t* now, hcl_tmr_event_t* evt)
 {
 	/* [NOTE] this handler is executed in the main server thread
@@ -1020,9 +952,10 @@ static int handle_packet (hcl_xproto_t* proto, hcl_xpkt_type_t type, void* data,
 {
 	hcl_t* hcl = proto->worker->hcl;
 
+printf ("HANDLE PACKET TYPE => %d\n", type);
 	switch (type)
 	{
-		case HCL_XPKT_CODEIN:
+		case HCL_XPKT_CODE:
 printf ("FEEDING [%.*s]\n", (int)len, data);
 			if (hcl_feedbchars(hcl, data, len) <= -1)
 			{
@@ -1116,6 +1049,7 @@ static int send_stdout_bytes (hcl_xproto_t* proto, const hcl_bch_t* data, hcl_oo
 	hcl_xpkt_hdr_t hdr;
 	struct iovec iov[2];
 	const hcl_bch_t* ptr, * cur, * end;
+	hcl_uint16_t seglen;
 
 	ptr = cur = data;
 	end = data + len;
@@ -1123,16 +1057,18 @@ static int send_stdout_bytes (hcl_xproto_t* proto, const hcl_bch_t* data, hcl_oo
 printf ("SENDING BYTES [%.*s]\n", (int)len, data);
 	while (ptr < end)
 	{
-		while (cur != end && cur - ptr < 255) cur++;
+		while (cur != end && cur - ptr < HCL_XPKT_MAX_PLD_LEN) cur++;
 
-		hdr.type = HCL_XPKT_STDOUT;
+		seglen = cur - ptr;
+
 		hdr.id = 1; /* TODO: */
-		hdr.len = cur - ptr;
+		hdr.type = HCL_XPKT_STDOUT | (((seglen >> 8) & 0x0F) << 4);
+		hdr.len = seglen & 0xFF;
 
 		iov[0].iov_base = &hdr;
 		iov[0].iov_len = HCL_SIZEOF(hdr);
 		iov[1].iov_base = ptr;
-		iov[1].iov_len = cur - ptr;
+		iov[1].iov_len = seglen;
 
 		if (send_iov(proto->worker->sck, iov, 2) <= -1)
 		{
@@ -1186,8 +1122,8 @@ hcl_xproto_t* hcl_xproto_open (hcl_oow_t xtnsize, hcl_server_worker_t* worker)
 	HCL_MEMSET (proto, 0, HCL_SIZEOF(*proto));
 	proto->worker = worker;
 	proto->exec_runtime_event_index = HCL_TMR_INVALID_INDEX;
-	proto->rcv.state = HCL_XPROTO_RCV_HEADER;
-	proto->rcv.len_needed = HCL_SIZEOF(proto->rcv.hdr);
+	proto->rcv.state = HCL_XPROTO_RCV_HDR;
+	proto->rcv.len_needed = HCL_XPKT_HDR_LEN;
 	proto->rcv.eof = 0;
 
 	return proto;
@@ -1206,29 +1142,27 @@ int hcl_xproto_ready (hcl_xproto_t* proto)
 
 static int hcl_xproto_process (hcl_xproto_t* proto)
 {
-/*
-	hcl_xproto_t* proto = worker->proto;
-	hcl_server_
-	hcl_t* hcl = worker->hcl;
-*/
 	int n;
+	hcl_xpkt_hdr_t* hdr;
 
 	switch (proto->rcv.state)
 	{
-		case HCL_XPROTO_RCV_HEADER:
-			if (proto->rcv.len < HCL_SIZEOF(proto->rcv.hdr)) goto carry_on; /* need more data */
+		case HCL_XPROTO_RCV_HDR:
+			if (proto->rcv.len < HCL_XPKT_HDR_LEN) goto carry_on; /* need more data */
 
-			HCL_MEMCPY (&proto->rcv.hdr, proto->rcv.buf, HCL_SIZEOF(proto->rcv.hdr));
-			/*proto->rcv.hdr.len = hcl_ntoh16(proto->rcv.hdr.len);*/ /* keep this in the host byte order */
+			hdr = (hcl_xpkt_hdr_t*)proto->rcv.buf;
+			proto->rcv.hdr.id = hdr->id;
+			proto->rcv.hdr.type = hdr->type & 0x0F;
+			proto->rcv.hdr.len = (hcl_uint16_t)hdr->len  | ((hcl_uint16_t)(hdr->type >> 4) << 8);
 
 			/* consume the header */
-			HCL_MEMMOVE (proto->rcv.buf, &proto->rcv.buf[HCL_SIZEOF(proto->rcv.hdr)], proto->rcv.len - HCL_SIZEOF(proto->rcv.hdr));
-			proto->rcv.len -= HCL_SIZEOF(proto->rcv.hdr);
+			HCL_MEMMOVE (proto->rcv.buf, &proto->rcv.buf[HCL_XPKT_HDR_LEN], proto->rcv.len - HCL_XPKT_HDR_LEN);
+			proto->rcv.len -= HCL_XPKT_HDR_LEN;
 
 			/* switch to the payload mode */
 			if (proto->rcv.hdr.len > 0)
 			{
-				proto->rcv.state = HCL_XPROTO_RCV_PAYLOAD;
+				proto->rcv.state = HCL_XPROTO_RCV_PLD;
 				proto->rcv.len_needed = proto->rcv.hdr.len;
 			}
 			else
@@ -1242,7 +1176,7 @@ static int hcl_xproto_process (hcl_xproto_t* proto)
 
 			break;
 
-		case HCL_XPROTO_RCV_PAYLOAD:
+		case HCL_XPROTO_RCV_PLD:
 			if (proto->rcv.len < proto->rcv.hdr.len) goto carry_on; /* need more payload data */
 
 /* TODO: convert handle_packet as call back */
@@ -1255,8 +1189,8 @@ static int hcl_xproto_process (hcl_xproto_t* proto)
 				HCL_MEMMOVE (proto->rcv.buf, &proto->rcv.buf[proto->rcv.hdr.len], proto->rcv.len - proto->rcv.hdr.len);
 				proto->rcv.len -= proto->rcv.hdr.len;
 			}
-			proto->rcv.state = HCL_XPROTO_RCV_HEADER;
-			proto->rcv.len_needed = HCL_SIZEOF(proto->rcv.hdr);
+			proto->rcv.state = HCL_XPROTO_RCV_HDR;
+			proto->rcv.len_needed = HCL_XPKT_HDR_LEN;
 
 			if (n <= -1) goto fail_with_errmsg;
 			if (n == 0) return 0;
