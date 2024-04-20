@@ -30,24 +30,28 @@
 
 enum hcl_xpkt_type_t
 {
-	HCL_XPKT_CODEIN,
-	HCL_XPKT_EXECUTE,
+	HCL_XPKT_CODEIN,    /* [C]->[S] */
+	HCL_XPKT_EXECUTE,   /* [C]->[S] command to execute the code input */
 
-	HCL_XPKT_CODEOUT, /* return value is passed over this? */
-	HCL_XPKT_STDIN,
-	HCL_XPKT_STDOUT,
+	HCL_XPKT_ERROR,     /* [S]->[C] error indicator */
+	HCL_XPKT_RETVAL,    /* [S]->[C] return value */
 
-	HCL_XPKT_LIST_WORKERS,
-	HCL_XPKT_KILL_WORKER,
+	HCL_XPKT_STDIN,     /* [C]->[S] */
+	HCL_XPKT_STDOUT,    /* [S]->[C] output to stdout */
+	HCL_XPKT_STDERR,    /* [S]->[C] output to stderr or output data related to error */
 
-	HCL_XPKT_DISCONNECT
+	HCL_XPKT_LIST_WORKERS, /* [C]->[S] */
+	HCL_XPKT_KILL_WORKER,  /* [C]->[S] */
+
+	HCL_XPKT_DISCONNECT    /* [C]->[S], [S]->[C] */
 };
 typedef enum hcl_xpkt_type_t hcl_xpkt_type_t;
 
 struct hcl_xpkt_hdr_t
 {
-	hcl_uint8_t type;
 	hcl_uint8_t id;
+	hcl_uint8_t type; /* lower 4 bits represent the actual type.
+	                     the upper 4 bits are part of the length extending the length to 12 bits */
 	hcl_uint8_t len;
 };
 typedef struct hcl_xpkt_hdr_t hcl_xpkt_hdr_t;
