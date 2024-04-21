@@ -77,6 +77,27 @@
 #endif
 
 /* =========================================================================
+ * PREPROCESSOR CAPABILITY CHECK
+ * ========================================================================= */
+#if !defined(__has_attribute)
+	#define __has_attribute(x) 0
+#endif
+
+#if !defined(__has_builtin) && defined(_INTELC32_)
+	/* intel c code builder 1.0 ended up with an error without this override */
+	#define __has_builtin(x) 0
+#endif
+
+/*
+#if !defined(__has_feature)
+	#define __has_feature(x) 0
+#endif
+#if !defined(__is_identifier)
+	#define __is_identifier(x) 0
+#endif
+*/
+
+/* =========================================================================
  * PRIMITIVE TYPE DEFINTIONS
  * ========================================================================= */
 
@@ -980,24 +1001,6 @@ typedef struct hcl_t hcl_t;
 /* =========================================================================
  * COMPILER FEATURE TEST MACROS
  * =========================================================================*/
-#if !defined(__has_attribute)
-	#define __has_attribute(x) 0
-#endif
-
-#if !defined(__has_builtin) && defined(_INTELC32_)
-	/* intel c code builder 1.0 ended up with an error without this override */
-	#define __has_builtin(x) 0
-#endif
-
-/*
-#if !defined(__has_feature)
-	#define __has_feature(x) 0
-#endif
-#if !defined(__is_identifier)
-	#define __is_identifier(x) 0
-#endif
-*/
-
 #if defined(__has_builtin)
 	#if __has_builtin(__builtin_ctz)
 		#define HCL_HAVE_BUILTIN_CTZ
