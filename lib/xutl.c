@@ -37,7 +37,15 @@
 #	include <sys/socket.h>
 #	include <netinet/in.h>
 #else
+#	if defined(HAVE_SYS_IOCTL_H)
+#		include <sys/ioctl.h>
+#	endif
+#	if defined(HAVE_NET_IF_H)
+#		include <net/if.h>
+#	endif
 #	include <netinet/in.h>
+#	include <unistd.h>
+#	include <errno.h>
 #endif
 
 union sockaddr_t
@@ -52,29 +60,37 @@ union sockaddr_t
 };
 typedef union sockaddr_t sockaddr_t;
 
+#undef ooch_mode
 #undef ooch_t
 #undef oocs_t
 #undef str_to_ipv4
 #undef str_to_ipv6
 #undef str_to_sockaddr
+#undef str_to_ifindex
 
+#define ooch_mode (1)
 #define ooch_t hcl_bch_t
 #define oocs_t hcl_bcs_t
 #define str_to_ipv4 bchars_to_ipv4
 #define str_to_ipv6 bchars_to_ipv6
+#define str_to_ifindex bchars_to_ifindex
 #define str_to_sockaddr hcl_bcharstosckaddr
 #include "xutl-sa.h"
 
+#undef ooch_mode
 #undef ooch_t
 #undef oocs_t
 #undef str_to_ipv4
 #undef str_to_ipv6
+#undef str_to_ifindex
 #undef str_to_sockaddr
 
+#define ooch_mode (2)
 #define ooch_t hcl_uch_t
 #define oocs_t hcl_ucs_t
 #define str_to_ipv4 uchars_to_ipv4
 #define str_to_ipv6 uchars_to_ipv6
+#define str_to_ifindex uchars_to_ifindex
 #define str_to_sockaddr hcl_ucharstosckaddr
 #include "xutl-sa.h"
 

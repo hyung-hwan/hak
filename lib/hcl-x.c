@@ -89,6 +89,12 @@ struct bb_t
 };
 typedef struct bb_t bb_t;
 
+struct proto_xtn_t
+{
+	hcl_server_worker_t* worker;
+};
+typedef struct proto_xtn_t proto_xtn_t;
+
 struct worker_hcl_xtn_t
 {
 	hcl_server_worker_t* worker;
@@ -113,7 +119,8 @@ typedef enum hcl_xproto_rcv_state_t hcl_xproto_rcv_state_t;
 
 struct hcl_xproto_t
 {
-	hcl_server_worker_t* worker;
+	hcl_oow_t   _instsize;
+	hcl_mmgr_t* _mmgr;
 
 	hcl_tmr_index_t exec_runtime_event_index;
 	struct
@@ -724,12 +731,14 @@ static void exec_runtime_handler (hcl_tmr_t* tmr, const hcl_ntime_t* now, hcl_tm
 
 	hcl_xproto_t* proto;
 	hcl_server_worker_t* worker;
+	proto_xtn_t* prtxtn;
 
 	proto = (hcl_xproto_t*)evt->ctx;
-	worker = proto->worker;
+	prtxtn = (proto_xtn_t*)hcl_xproto_getxtn(proto);
+	worker = prtxtn->worker;
 
 /* TODO: can we use worker->hcl for logging before abort?? */
-	HCL_LOG1 (worker->server->dummy_hcl, SERVER_LOGMASK_INFO, "Aborting script execution for max_actor_runtime exceeded [%zu]\n", proto->worker->wid);
+	HCL_LOG1 (worker->server->dummy_hcl, SERVER_LOGMASK_INFO, "Aborting script execution for max_actor_runtime exceeded [%zu]\n", worker->wid);
 	hcl_abort (worker->hcl);
 }
 
@@ -740,9 +749,11 @@ static void exec_runtime_updater (hcl_tmr_t* tmr, hcl_tmr_index_t old_index, hcl
 
 	hcl_xproto_t* proto;
 	hcl_server_worker_t* worker;
+	proto_xtn_t* prtxtn;
 
 	proto = (hcl_xproto_t*)evt->ctx;
-	worker = proto->worker;
+	prtxtn = (proto_xtn_t*)hcl_xproto_getxtn(proto);
+	worker = prtxtn->worker;
 	HCL_ASSERT (worker->hcl, proto->exec_runtime_event_index == old_index);
 
 	/* the event is being removed by hcl_tmr_fire() or by hcl_tmr_delete()
@@ -756,10 +767,12 @@ static int insert_exec_timer (hcl_xproto_t* proto, const hcl_ntime_t* tmout)
 
 	hcl_tmr_event_t event;
 	hcl_tmr_index_t index;
+	proto_xtn_t* prtxtn;
 	hcl_server_worker_t* worker;
 	hcl_server_t* server;
 
-	worker = proto->worker;
+	prtxtn = (proto_xtn_t*)hcl_xproto_getxtn(proto);
+	worker = prtxtn->worker;
 	server = worker->server;
 
 	HCL_ASSERT (worker->hcl, proto->exec_runtime_event_index == HCL_TMR_INVALID_INDEX);
@@ -789,10 +802,12 @@ static void delete_exec_timer (hcl_xproto_t* proto)
 	/* [NOTE] this is executed in the worker thread. if the event has been fired
 	 *        in the server thread, proto->exec_runtime_event_index should be
 	 *        HCL_TMR_INVALID_INDEX as set by exec_runtime_handler */
+	proto_xtn_t* prtxtn;
 	hcl_server_worker_t* worker;
 	hcl_server_t* server;
 
-	worker = proto->worker;
+	prtxtn = (proto_xtn_t*)hcl_xproto_getxtn(proto);
+	worker = prtxtn->worker;
 	server = worker->server;
 
 	pthread_mutex_lock (&server->tmr_mutex);
@@ -812,10 +827,12 @@ static int execute_script (hcl_xproto_t* proto, const hcl_bch_t* trigger)
 {
 	hcl_oop_t obj;
 	const hcl_ooch_t* failmsg = HCL_NULL;
+	proto_xtn_t* prtxtn;
 	hcl_server_worker_t* worker;
 	hcl_server_t* server;
 
-	worker = proto->worker;
+	prtxtn = (proto_xtn_t*)hcl_xproto_getxtn(proto);
+	worker = prtxtn->worker;
 	server = worker->server;
 
 #if 0
@@ -888,32 +905,46 @@ static void reformat_synerr (hcl_t* hcl)
 
 static void send_proto_hcl_error (hcl_xproto_t* proto)
 {
-	hcl_server_worker_t* worker = proto->worker;
+	proto_xtn_t* prtxtn;
+	hcl_server_worker_t* worker;
+
+	prtxtn = (proto_xtn_t*)hcl_xproto_getxtn(proto);
+	worker = prtxtn->worker;
+
 	if (HCL_ERRNUM(worker->hcl) == HCL_ESYNERR) reformat_synerr (worker->hcl);
 	send_error_message (proto, hcl_geterrmsg(worker->hcl));
 }
 
 static void show_server_workers (hcl_xproto_t* proto)
 {
+	proto_xtn_t* prtxtn;
+	hcl_server_worker_t* worker, * w;
 	hcl_server_t* server;
-	hcl_server_worker_t* w;
 
-	server = proto->worker->server;
+	prtxtn = (proto_xtn_t*)hcl_xproto_getxtn(proto);
+	worker = prtxtn->worker;
+	server = worker->server;
+
 	pthread_mutex_lock (&server->worker_mutex);
 	for (w = server->worker_list[HCL_SERVER_WORKER_STATE_ALIVE].head; w; w = w->next_worker)
 	{
 		/* TODO: implement this better... */
-		hcl_prbfmt (proto->worker->hcl, "%zu %d %d\n", w->wid, w->sck, 1000);
+		hcl_prbfmt (worker->hcl, "%zu %d %d\n", w->wid, w->sck, 1000);
 	}
 	pthread_mutex_unlock (&server->worker_mutex);
 }
 
 static int kill_server_worker (hcl_xproto_t* proto, hcl_oow_t wid)
 {
+	proto_xtn_t* prtxtn;
+	hcl_server_worker_t* worker;
 	hcl_server_t* server;
 	int xret = 0;
 
-	server = proto->worker->server;
+	prtxtn = (proto_xtn_t*)hcl_xproto_getxtn(proto);
+	worker = prtxtn->worker;
+	server = worker->server;
+
 	pthread_mutex_lock (&server->worker_mutex);
 	if (wid >= server->wid_map.capa)
 	{
@@ -950,7 +981,13 @@ static int kill_server_worker (hcl_xproto_t* proto, hcl_oow_t wid)
 
 static int handle_packet (hcl_xproto_t* proto, hcl_xpkt_type_t type, void* data, hcl_oow_t len)
 {
-	hcl_t* hcl = proto->worker->hcl;
+	proto_xtn_t* prtxtn;
+	hcl_server_worker_t* worker;
+	hcl_t* hcl;
+
+	prtxtn = (proto_xtn_t*)hcl_xproto_getxtn(proto);
+	worker = prtxtn->worker;
+	hcl = worker->hcl;
 
 printf ("HANDLE PACKET TYPE => %d\n", type);
 	switch (type)
@@ -1023,7 +1060,6 @@ static int send_iov (int sck, struct iovec* iov, int count)
 		msg.msg_iov = (struct iovec*)&iov[index];
 		msg.msg_iovlen = count - index;
 		nwritten = sendmsg(sck, &msg, 0);
-		/*nwritten = writev(proto->worker->sck, (const struct iovec*)&iov[index], count - index);*/
 		if (nwritten <= -1)
 		{
 			/* error occurred inside the worker thread shouldn't affect the error information
@@ -1046,10 +1082,15 @@ static int send_iov (int sck, struct iovec* iov, int count)
 
 static int send_stdout_bytes (hcl_xproto_t* proto, const hcl_bch_t* data, hcl_oow_t len)
 {
+	proto_xtn_t* prtxtn;
+	hcl_server_worker_t* worker;
 	hcl_xpkt_hdr_t hdr;
 	struct iovec iov[2];
 	const hcl_bch_t* ptr, * cur, * end;
 	hcl_uint16_t seglen;
+
+	prtxtn = (proto_xtn_t*)hcl_xproto_getxtn(proto);
+	worker = prtxtn->worker;
 
 	ptr = cur = data;
 	end = data + len;
@@ -1070,7 +1111,7 @@ printf ("SENDING BYTES [%.*s]\n", (int)len, data);
 		iov[1].iov_base = ptr;
 		iov[1].iov_len = seglen;
 
-		if (send_iov(proto->worker->sck, iov, 2) <= -1)
+		if (send_iov(worker->sck, iov, 2) <= -1)
 		{
 			/* TODO: error message */
 			return -1;
@@ -1085,11 +1126,15 @@ printf ("SENDING BYTES [%.*s]\n", (int)len, data);
 #if defined(HCL_OOCH_IS_UCH)
 static int send_stdout_chars (hcl_xproto_t* proto, const hcl_ooch_t* data, hcl_oow_t len)
 {
-	hcl_server_worker_t* worker = proto->worker;
+	proto_xtn_t* prtxtn;
+	hcl_server_worker_t* worker;
 	const hcl_ooch_t* ptr, * end;
 	hcl_bch_t tmp[256];
 	hcl_oow_t tln, pln;
 	int n;
+
+	prtxtn = (proto_xtn_t*)hcl_xproto_getxtn(proto);
+	worker = prtxtn->worker;
 
 	ptr = data;
 	end = data + len;
@@ -1112,15 +1157,16 @@ static int send_stdout_chars (hcl_xproto_t* proto, const hcl_ooch_t* data, hcl_o
 
 /* ========================================================================= */
 
-hcl_xproto_t* hcl_xproto_open (hcl_oow_t xtnsize, hcl_server_worker_t* worker)
+hcl_xproto_t* hcl_xproto_open (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize)
 {
 	hcl_xproto_t* proto;
 
-	proto = (hcl_xproto_t*)hcl_server_allocmem(worker->server, HCL_SIZEOF(*proto));
+	proto = (hcl_xproto_t*)HCL_MMGR_ALLOC(mmgr, HCL_SIZEOF(*proto) + xtnsize);
 	if (HCL_UNLIKELY(!proto)) return HCL_NULL;
 
 	HCL_MEMSET (proto, 0, HCL_SIZEOF(*proto));
-	proto->worker = worker;
+	proto->_instsize = HCL_SIZEOF(*proto);
+	proto->_mmgr = mmgr;
 	proto->exec_runtime_event_index = HCL_TMR_INVALID_INDEX;
 	proto->rcv.state = HCL_XPROTO_RCV_HDR;
 	proto->rcv.len_needed = HCL_XPKT_HDR_LEN;
@@ -1131,7 +1177,32 @@ hcl_xproto_t* hcl_xproto_open (hcl_oow_t xtnsize, hcl_server_worker_t* worker)
 
 void hcl_xproto_close (hcl_xproto_t* proto)
 {
-	hcl_server_freemem (proto->worker->server, proto);
+	HCL_MMGR_FREE (proto->_mmgr, proto);
+}
+
+void* hcl_xproto_getxtn (hcl_xproto_t* proto)
+{
+	return (proto + 1);
+}
+
+int hcl_xprpto_feed (hcl_xproto_t* proto, const void* data, hcl_oow_t len)
+{
+}
+
+hcl_uint8_t* hcl_xproto_getbuf (hcl_xproto_t* proto, hcl_oow_t* capa)
+{
+	*capa = HCL_COUNTOF(proto->rcv.buf) - proto->rcv.len;
+	return &proto->rcv.buf[proto->rcv.len];
+}
+
+void hcl_xproto_seteof (hcl_xproto_t* proto, int v)
+{
+	proto->rcv.eof = v;
+}
+
+void hcl_xproto_advbuf (hcl_xproto_t* proto, hcl_oow_t inc)
+{
+	proto->rcv.len += inc;
 }
 
 int hcl_xproto_ready (hcl_xproto_t* proto)
@@ -1140,7 +1211,7 @@ int hcl_xproto_ready (hcl_xproto_t* proto)
 	return proto->rcv.len >= proto->rcv.len_needed;
 }
 
-static int hcl_xproto_process (hcl_xproto_t* proto)
+int hcl_xproto_process (hcl_xproto_t* proto)
 {
 	int n;
 	hcl_xpkt_hdr_t* hdr;
@@ -1601,7 +1672,11 @@ static int worker_step (hcl_server_worker_t* worker)
 
 		if (pfd.revents & POLLIN)
 		{
-			x = recv(worker->sck, &proto->rcv.buf[proto->rcv.len], HCL_COUNTOF(proto->rcv.buf) - proto->rcv.len, 0);
+			hcl_oow_t bcap;
+			hcl_uint8_t* bptr;
+
+			bptr = hcl_xproto_getbuf(proto, &bcap);;
+			x = recv(worker->sck, bptr, bcap, 0);
 			if (x <= -1)
 			{
 				if (errno == EINTR) goto carry_on; /* didn't read read */
@@ -1610,9 +1685,8 @@ static int worker_step (hcl_server_worker_t* worker)
 				return -1;
 			}
 
-			if (x == 0) proto->rcv.eof = 1;
-			proto->rcv.len += x;
-
+			if (x == 0) hcl_xproto_seteof(proto, 1);
+			hcl_xproto_advbuf (proto, x);
 		}
 	}
 
@@ -1704,9 +1778,13 @@ static void fini_worker_hcl (hcl_server_worker_t* worker)
 static int init_worker_proto (hcl_server_worker_t* worker)
 {
 	hcl_xproto_t* proto;
+	proto_xtn_t* xtn;
 
-	proto = hcl_xproto_open(0, worker);
+	proto = hcl_xproto_open(hcl_server_getmmgr(worker->server), HCL_SIZEOF(*xtn));
 	if (HCL_UNLIKELY(!proto)) return -1;
+
+	xtn = hcl_xproto_getxtn(proto);
+	xtn->worker = worker;
 
 	worker->proto = proto;
 	return 0;

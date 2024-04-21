@@ -684,8 +684,6 @@ static int handle_request (hcl_client_t* client, const char* ipaddr, const char*
 		goto oops;
 	}
 
-
-
 	/* TODO: create hcl_xproto_open... */
 	memset (proto, 0, HCL_SIZEOF(*proto));
 	proto->hcl = hcl_openstdwithmmgr(hcl_client_getmmgr(client), 0, HCL_NULL); // TODO:

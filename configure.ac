@@ -112,6 +112,7 @@ AC_CHECK_HEADERS([time.h sys/time.h utime.h spawn.h execinfo.h ucontext.h])
 AC_CHECK_HEADERS([dlfcn.h ltdl.h sys/mman.h sys/uio.h])
 AC_CHECK_HEADERS([sys/devpoll.h sys/epoll.h poll.h])
 AC_CHECK_HEADERS([libunwind.h quadmath.h])
+AC_CHECK_HEADERS([sys/ioctl.h net/if.h])
 
 dnl check data types
 dnl AC_CHECK_TYPE([wchar_t], 
@@ -216,6 +217,13 @@ AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <string.h>
 		AC_DEFINE([HAVE_STRFTIME_SMALL_Z], [1], [strftime supports %z])
 	
 ])
+
+AC_CHECK_MEMBERS([struct ifreq.ifr_ifindex, struct ifreq.ifr_mtu], [], [],
+	[#include <sys/types.h>
+	 #include <sys/socket.h>
+	 #ifdef HAVE_NET_IF_H
+	 #include <net/if.h>
+	 #endif])
 
 dnl check the size of primitive data types
 AC_CHECK_SIZEOF(char,,[[]])

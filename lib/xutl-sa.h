@@ -176,6 +176,59 @@ static int str_to_ipv6 (const ooch_t* src, hcl_oow_t len, struct in6_addr* inadd
 }
 #endif
 
+static int str_to_ifindex (hcl_t* hcl, const ooch_t* ptr, hcl_oow_t len, unsigned int* ifindex)
+{
+#if defined(SIOCGIFINDEX)
+	int h, x;
+	struct ifreq ifr;
+
+	/* use AF_INET6 because str_to_ifindex is called for ipv6 only in this file */
+	h = socket(AF_INET6, SOCK_DGRAM, 0);
+	if (h <= -1)
+	{
+		hcl_seterrbfmtwithsyserr (hcl, 0, errno, "unable to open socket for if_nametoindex conversion");
+		return -1;
+	}
+
+	HCL_MEMSET (&ifr, 0, HCL_SIZEOF(ifr));
+
+#if (ooch_mode == 2)
+	hcl_oow_t ucslen, bcslen;
+	ucslen = len;
+	bcslen = HCL_COUNTOF(ifr.ifr_name) - 1;
+	if (hcl_convutobchars(hcl, ptr, &ucslen, ifr.ifr_name, &bcslen) <= -1)
+	{
+		close (h);
+		return -1;
+	}
+	ifr.ifr_name[bcslen] = '\0';
+#else
+	if (hcl_copy_bchars_to_bcstr(ifr.ifr_name, HCL_COUNTOF(ifr.ifr_name), ptr, len) < len)
+	{
+		close (h);
+		return -1;
+	}
+#endif
+
+	x = ioctl(h, SIOCGIFINDEX, &ifr);
+	close (h);
+
+	if (x >= 0)
+	{
+	#if defined(HAVE_STRUCT_IFREQ_IFR_IFINDEX)
+		*ifindex = ifr.ifr_ifindex;
+	#else
+		*ifindex = ifr.ifr_index;
+	#endif
+	}
+
+	return x;
+#else
+/* TODO: use if_nametoindex()? */
+	hcl_seterrbfmt (hcl, HCL_ENOIMPL, "ifname to ifindex conversion not implemented");
+	return -1;
+#endif
+}
 
 int str_to_sockaddr (hcl_t* hcl, const ooch_t* str, hcl_oow_t len, hcl_sckaddr_t* sckaddr, hcl_scklen_t* scklen)
 {
@@ -235,19 +288,16 @@ int str_to_sockaddr (hcl_t* hcl, const ooch_t* str, hcl_oow_t len, hcl_sckaddr_t
 					p++;
 				}
 				while (p < end && *p >= '0' && *p <= '9');
-				//nwad->in6.sin6_scope_id = y;
+				nwad->in6.sin6_scope_id = y;
 			}
 			else
 			{
-#if 0
-TODO:
 				/* interface name as a scope id? */
 				const ooch_t* stmp = p;
 				unsigned int index;
 				do p++; while (p < end && *p != ']');
-				if (hcl_nwifwcsntoindex(stmp, p - stmp, &index) <= -1) return -1;
-				tmpad.u.in6.scope = index;
-#endif
+				if (str_to_ifindex(hcl, stmp, p - stmp, &index) <= -1) return -1;
+				nwad->in6.sin6_scope_id = index;
 			}
 
 			if (p >= end || *p != ']') goto no_rbrack;
@@ -311,19 +361,16 @@ TODO:
 						p++;
 					}
 					while (p < end && *p >= '0' && *p <= '9');
-					//nwad->in6.sin6_scope_id = y;
+					nwad->in6.sin6_scope_id = y;
 				}
 				else
 				{
-#if 0
-TODO
 					/* interface name as a scope id? */
 					const ooch_t* stmp = p;
 					unsigned int index;
 					do p++; while (p < end);
-					if (hcl_nwifwcsntoindex(stmp, p - stmp, &index) <= -1) return -1;
+					if (str_to_ifindex(hcl, stmp, p - stmp, &index) <= -1) return -1;
 					nwad->in6.sin6_scope_id = index;
-#endif
 				}
 			}
 

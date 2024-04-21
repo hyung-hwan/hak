@@ -400,12 +400,39 @@ HCL_EXPORT void hcl_client_freemem (
 /* ---------------------------------------------------------------------- */
 
 HCL_EXPORT hcl_xproto_t* hcl_xproto_open (
-	hcl_oow_t           xtnsize,
-	hcl_server_worker_t* worker
+	hcl_mmgr_t*    mmgr,
+	hcl_oow_t      xtnsize
 );
 
 HCL_EXPORT void hcl_xproto_close (
-	hcl_xproto_t*        proto
+	hcl_xproto_t*  proto
+);
+
+HCL_EXPORT void* hcl_xproto_getxtn (
+	hcl_xproto_t*  proto
+);
+
+hcl_uint8_t* hcl_xproto_getbuf (
+	hcl_xproto_t*  proto,
+	hcl_oow_t*     capa
+);
+
+void hcl_xproto_seteof (
+	hcl_xproto_t*  proto,
+	int            v
+);
+
+void hcl_xproto_advbuf (
+	hcl_xproto_t*  proto,
+	hcl_oow_t      inc
+);
+
+int hcl_xproto_ready (
+	hcl_xproto_t*  proto
+);
+
+int hcl_xproto_process (
+	hcl_xproto_t*  proto
 );
 
 #if defined(__cplusplus)

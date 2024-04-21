@@ -3697,7 +3697,7 @@ static HCL_INLINE int open_udo_stream (hcl_t* hcl, hcl_io_udoarg_t* arg)
 		if (xtn->udo_path)
 			hcl_seterrbfmtwithsyserr (hcl, 0, errno, "unable to open udo stream '%hs'", xtn->udo_path);
 		else
-			hcl_seterrbfmtwithsyserr (hcl, 0, errno, "unable to open udo stream", xtn->udo_path);
+			hcl_seterrbfmtwithsyserr (hcl, 0, errno, "unable to open udo stream");
 		return -1;
 	}
 
