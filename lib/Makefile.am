@@ -106,14 +106,15 @@ endif
 
 if ENABLE_HCLX
 pkglib_LTLIBRARIES += libhclx.la
-pkginclude_HEADERS += hcl-c.h hcl-s.h hcl-x.h hcl-tmr.h hcl-xutl.h hcl-json.h
+pkginclude_HEADERS += hcl-x.h hcl-tmr.h hcl-xutl.h hcl-json.h
 libhclx_la_SOURCES = \
 	tmr.c hcl-tmr.h \
 	xutl.c xutl-sa.h hcl-xutl.h \
 	json.c hcl-json.h \
-	hcl-s.c hcl-s.h \
-	hcl-x.c hcl-x.h \
-	hcl-c.c hcl-c.h
+	hcl-x.h \
+	x-client.c \
+	x-proto.c \
+	x-server.c
 libhclx_la_CPPFLAGS = $(CPPFLAGS_LIB_COMMON) $(CPPFLAGS_PFMOD)
 libhclx_la_LDFLAGS = $(LDFLAGS_LIB_COMMON)
 libhclx_la_LIBADD = libhcl.la $(LIBADD_LIB_COMMON)

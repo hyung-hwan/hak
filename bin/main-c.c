@@ -69,9 +69,6 @@ struct client_xtn_t
 		hcl_bch_t buf[4096];
 		hcl_oow_t len;
 	} logbuf;
-
-	int reply_count;
-	hcl_oow_t data_length;
 };
 
 /* ========================================================================= */
@@ -491,133 +488,19 @@ static int send_iov (int sck, struct iovec* iov, int count)
 
 /* ========================================================================= */
 
-enum hcl_xproto_rcv_state_t
+struct proto_xtn_t
 {
-	HCL_XPROTO_RCV_HDR,
-	HCL_XPROTO_RCV_PLD,
+	int x;
 };
-typedef enum hcl_xproto_rcv_state_t hcl_xproto_rcv_state_t;
+typedef struct proto_xtn_t proto_xtn_t;
 
-
-struct hcl_xproto_t
+static int handle_packet (hcl_xproto_t* proto, hcl_xpkt_type_t type, const void* data, hcl_oow_t len)
 {
-	hcl_t* hcl;
-
-	struct
+	if (type == HCL_XPKT_STDOUT)
 	{
-                hcl_xproto_rcv_state_t state;
-		hcl_oow_t len_needed;
-		unsigned int eof: 1;
-
-		hcl_oow_t len;
-		hcl_uint8_t buf[4096];
-
-		hcl_xpkt_hdr_t hdr;
-	} rcv;
-};
-typedef struct hcl_xproto_t hcl_xproto_t;
-
-static int receive_raw_bytes (hcl_xproto_t* proto, int sck, hcl_ntime_t* idle_tmout)
-{
-	hcl_t* hcl = proto->hcl;
-	struct pollfd pfd;
-	int tmout, actual_tmout;
-	ssize_t x;
-	int n;
-
-	if (HCL_UNLIKELY(proto->rcv.eof))
-	{
-		hcl_seterrbfmt (hcl, HCL_EGENERIC, "connection closed");
-		return -1;
+		/*if (len > 0) fwrite (data, 1, len, stdout); */
+		if (len > 0) fprintf (stdout, "%.*s", (int)len, data);
 	}
-
-	tmout = idle_tmout? HCL_SECNSEC_TO_MSEC(idle_tmout->sec, idle_tmout->nsec): -1;
-	actual_tmout = (tmout <= 0)? 10000: tmout;
-
-	pfd.fd = sck;
-	pfd.events = POLLIN | POLLERR;
-	pfd.revents = 0;
-	n = poll(&pfd, 1, actual_tmout);
-	if (n <= -1)
-	{
-		if (errno == EINTR) return 0;
-		hcl_seterrwithsyserr (hcl, 0, errno);
-		return -1;
-	}
-	else if (n == 0)
-	{
-		/* timed out - no activity on the pfd */
-		if (tmout > 0)
-		{
-			/* timeout explicity set. no activity for that duration. considered idle */
-			hcl_seterrbfmt (hcl, HCL_EGENERIC, "no activity on the socket %d", sck);
-			return -1;
-		}
-
-		return 0; /* didn't read yet */
-	}
-
-	if (pfd.revents & POLLERR)
-	{
-		hcl_seterrbfmt (hcl, HCL_EGENERIC, "error condition detected on socket %d", sck);
-		return -1;
-	}
-
-	x = recv(sck, &proto->rcv.buf[proto->rcv.len], HCL_COUNTOF(proto->rcv.buf) - proto->rcv.len, 0);
-	if (x <= -1)
-	{
-		if (errno == EINTR) return 0; /* didn't read read */
-
-		hcl_seterrwithsyserr (hcl, 0, errno);
-		return -1;
-	}
-
-	if (x == 0) proto->rcv.eof = 1;
-
-	proto->rcv.len += x;
-//printf ("RECEIVED  %d rcv.len %d rcv.len_needed %d [%.*s]\n", (int)x, (int)proto->rcv.len, (int)proto->rcv.len_needed, (int)proto->rcv.len, proto->rcv.buf);
-	return 1; /* read some data */
-}
-
-static int handle_received_data (hcl_xproto_t* proto)
-{
-//printf ("HANDLE RECIVED rcv.len %d rcv.len_needed %d [%.*s]\n", (int)proto->rcv.len, (int)proto->rcv.len_needed, (int)proto->rcv.len, proto->rcv.buf);
-	switch (proto->rcv.state)
-	{
-		case HCL_XPROTO_RCV_HDR:
-			if (proto->rcv.len < HCL_SIZEOF(proto->rcv.hdr)) return 0; /* need more data */
-
-			memcpy (&proto->rcv.hdr, proto->rcv.buf, HCL_SIZEOF(proto->rcv.hdr));
-			//proto->rcv.hdr.len = hcl_ntoh16(proto->rcv.hdr.len); /* keep this in the host byte order */
-
-			/* consume the header */
-			memmove (proto->rcv.buf, &proto->rcv.buf[HCL_SIZEOF(proto->rcv.hdr)], proto->rcv.len - HCL_SIZEOF(proto->rcv.hdr));
-			proto->rcv.len -= HCL_SIZEOF(proto->rcv.hdr);
-
-			/* switch to the payload mode */
-			proto->rcv.state = HCL_XPROTO_RCV_PLD;
-			proto->rcv.len_needed = proto->rcv.hdr.len;
-			return 0;
-
-		case HCL_XPROTO_RCV_PLD:
-			if (proto->rcv.len < proto->rcv.hdr.len) return 0; /* need more payload data */
-
-			if (proto->rcv.hdr.type == HCL_XPKT_STDOUT)
-			{
-				if (proto->rcv.hdr.len > 0)
-					fprintf (stdout, "%.*s", (int)proto->rcv.hdr.len, proto->rcv.buf);
-			}
-
-			if (proto->rcv.hdr.len > 0)
-			{
-				memmove (proto->rcv.buf, &proto->rcv.buf[proto->rcv.hdr.len], proto->rcv.len - proto->rcv.hdr.len);
-				proto->rcv.len -= proto->rcv.hdr.len;
-			}
-			proto->rcv.state = HCL_XPROTO_RCV_HDR;
-			proto->rcv.len_needed = HCL_SIZEOF(proto->rcv.hdr);
-			break;
-	}
-
 	return 1;
 }
 
@@ -634,11 +517,11 @@ static int handle_request (hcl_client_t* client, const char* ipaddr, const char*
 	ssize_t n;
 	const char* scptr;
 	const char* sccur;
-
-	hcl_xproto_t proto_buf;
-	hcl_xproto_t* proto = &proto_buf;
+	hcl_xproto_t* proto = HCL_NULL;
 
 	client_xtn_t* client_xtn;
+	proto_xtn_t* proto_xtn;
+	hcl_xproto_cb_t proto_cb;
 
 	client_xtn = hcl_client_getxtn(client);
 
@@ -684,14 +567,17 @@ static int handle_request (hcl_client_t* client, const char* ipaddr, const char*
 		goto oops;
 	}
 
-	/* TODO: create hcl_xproto_open... */
-	memset (proto, 0, HCL_SIZEOF(*proto));
-	proto->hcl = hcl_openstdwithmmgr(hcl_client_getmmgr(client), 0, HCL_NULL); // TODO:
-	proto->rcv.state = HCL_XPROTO_RCV_HDR;
-	proto->rcv.len_needed = HCL_SIZEOF(proto->rcv.hdr);
-	proto->rcv.eof = 0;
-// TODO: destroy xproto and data upon termination.
+	memset (&proto, 0, HCL_SIZEOF(proto_cb));
+	proto_cb.on_packet = handle_packet;
 
+	proto = hcl_xproto_open(hcl_client_getmmgr(client), &proto_cb, HCL_SIZEOF(*proto_xtn));
+	if (HCL_UNLIKELY(!proto))
+	{
+		fprintf (stderr, "cannot open protocol to %s\n", ipaddr);
+		goto oops;
+	}
+	proto_xtn = hcl_xproto_getxtn(proto);
+	//proto_xtn->client = client;
 
 	scptr = sccur = script;
 	while (1)
@@ -774,27 +660,44 @@ static int handle_request (hcl_client_t* client, const char* ipaddr, const char*
 
 		if (pfd.revents & POLLIN)
 		{
-//printf ("receiving...\n");
-			if (receive_raw_bytes(proto, sck, HCL_NULL) <= -1) break;
+			hcl_oow_t bcap;
+			hcl_uint8_t* bptr;
+
+			bptr = hcl_xproto_getbuf(proto, &bcap);;
+			x = recv(sck, bptr, bcap, 0);
+			if (x <= -1)
+			{
+				if (errno == EINTR) goto carry_on; /* didn't read read */
+				/*hcl_seterrwithsyserr (hcl, 0, errno); */
+				/* TODO: error info set... */
+				return -1;
+			}
+			if (x == 0) hcl_xproto_seteof(proto, 1);
+			hcl_xproto_advbuf (proto, x);
 		}
 
-		while (/*proto->rcv.len > 0 &&*/ proto->rcv.len >= proto->rcv.len_needed)
+
+	carry_on:
+		while (hcl_xproto_ready(proto))
 		{
-			if (handle_received_data(proto) <= -1)
+			if ((n = hcl_xproto_process(proto)) <= -1)
 			{
-				goto oops;
+				/* TODO: proper error message */
+				return -1;
+			}
+			if (n == 0)
+			{
+				/* TODO: chceck if there is remaining data in the buffer...?? */
+				printf ("NO MORE DATA. EXITING...\n");
+				goto done;
 			}
 		}
-	}
 
-	client_xtn->data_length = 0;
-	client_xtn->reply_count = 0;
+		if (hcl_xproto_geteof(proto)) break;
+	}
+done:
 
 /* TODO: we can check if the buffer has all been consumed. if not, there is trailing garbage.. */
-
-	/*shutdown (sck, (shut_wr_after_req? SHUT_RD: SHUT_RDWR));*/
-	if (!shut_wr_after_req) shutdown (sck, SHUT_RDWR);
-
 	/*{
 		struct linger linger;
 		linger.l_onoff = 1;
@@ -802,10 +705,12 @@ static int handle_request (hcl_client_t* client, const char* ipaddr, const char*
 		setsockopt (sck, SOL_SOCKET, SO_LINGER, (char *) &linger, sizeof(linger));
 	}*/
 
+	hcl_xproto_close (proto);
 	close (sck);
 	return 0;
 
 oops:
+	if (proto) hcl_xproto_close (proto);
 	if (sck >= 0) close (sck);
 	return -1;
 }

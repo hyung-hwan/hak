@@ -70,6 +70,19 @@ typedef struct hcl_xpkt_hdr_t hcl_xpkt_hdr_t;
 
 typedef struct hcl_xproto_t hcl_xproto_t;
 
+typedef int (*hcl_xproto_cb_on_packet) (
+	hcl_xproto_t*   proto,
+	hcl_xpkt_type_t type,
+	const void*     data,
+	hcl_oow_t       len
+);
+
+struct hcl_xproto_cb_t
+{
+	hcl_xproto_cb_on_packet on_packet;
+};
+typedef struct hcl_xproto_cb_t hcl_xproto_cb_t;
+
 /* ---------------------------------------------------------------------- */
 
 typedef struct hcl_server_proto_t hcl_server_proto_t;
@@ -400,8 +413,9 @@ HCL_EXPORT void hcl_client_freemem (
 /* ---------------------------------------------------------------------- */
 
 HCL_EXPORT hcl_xproto_t* hcl_xproto_open (
-	hcl_mmgr_t*    mmgr,
-	hcl_oow_t      xtnsize
+	hcl_mmgr_t*      mmgr,
+	hcl_xproto_cb_t* cb,
+	hcl_oow_t        xtnsize
 );
 
 HCL_EXPORT void hcl_xproto_close (
@@ -415,6 +429,10 @@ HCL_EXPORT void* hcl_xproto_getxtn (
 hcl_uint8_t* hcl_xproto_getbuf (
 	hcl_xproto_t*  proto,
 	hcl_oow_t*     capa
+);
+
+int hcl_xproto_geteof (
+	hcl_xproto_t*  proto
 );
 
 void hcl_xproto_seteof (

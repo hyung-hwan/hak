@@ -110,17 +110,17 @@ HCL_EXPORT int hcl_bcharstosckaddr (
 );
 
 #if defined(HCL_HAVE_INLINE)
-	static HCL_INLINE int hcl_uchars_to_sckaddr (const hcl_uch_t* str, hcl_oow_t len, hcl_sckaddr_t* sckaddr, hcl_scklen_t* scklen)
-	{
-		return hcl_ucharstosckaddr(HCL_NULL, str, len, sckaddr, scklen);
-	}
-	static HCL_INLINE int hcl_bchars_to_sckaddr (const hcl_bch_t* str, hcl_oow_t len, hcl_sckaddr_t* sckaddr, hcl_scklen_t* scklen)
-	{
-		return hcl_bcharstosckaddr(HCL_NULL, str, len, sckaddr, scklen);
-	}
+static HCL_INLINE int hcl_uchars_to_sckaddr (const hcl_uch_t* str, hcl_oow_t len, hcl_sckaddr_t* sckaddr, hcl_scklen_t* scklen)
+{
+	return hcl_ucharstosckaddr(HCL_NULL, str, len, sckaddr, scklen);
+}
+static HCL_INLINE int hcl_bchars_to_sckaddr (const hcl_bch_t* str, hcl_oow_t len, hcl_sckaddr_t* sckaddr, hcl_scklen_t* scklen)
+{
+	return hcl_bcharstosckaddr(HCL_NULL, str, len, sckaddr, scklen);
+}
 #else
-	#define hcl_uchars_to_sckaddr(str,len,sckaddr,scklen) hcl_ucharstosckaddr(HCL_NULL,str,len,sckaddr,scklen)
-	#define hcl_bchars_to_sckaddr(str,len,sckaddr,scklen) hcl_bcharstosckaddr(HCL_NULL,str,len,sckaddr,scklen)
+#define hcl_uchars_to_sckaddr(str,len,sckaddr,scklen) hcl_ucharstosckaddr(HCL_NULL,str,len,sckaddr,scklen)
+#define hcl_bchars_to_sckaddr(str,len,sckaddr,scklen) hcl_bcharstosckaddr(HCL_NULL,str,len,sckaddr,scklen)
 #endif
 
 #if defined(HCL_OOCH_IS_UCH)
