@@ -994,39 +994,6 @@ oops:
 	return -1;
 }
 
-static int send_iov (int sck, struct iovec* iov, int count)
-{
-	int index = 0;
-
-	while (1)
-	{
-		ssize_t nwritten;
-		struct msghdr msg;
-
-		memset (&msg, 0, HCL_SIZEOF(msg));
-		msg.msg_iov = (struct iovec*)&iov[index];
-		msg.msg_iovlen = count - index;
-		nwritten = sendmsg(sck, &msg, 0);
-		if (nwritten <= -1)
-		{
-			/* error occurred inside the worker thread shouldn't affect the error information
-			 * in the server object. so here, i just log a message */
-			fprintf (stderr, "Unable to sendmsg on %d - %s\n", sck, strerror(errno));
-			return -1;
-		}
-
-		while (index < count && (size_t)nwritten >= iov[index].iov_len)
-			nwritten -= iov[index++].iov_len;
-
-		if (index == count) break;
-
-		iov[index].iov_base = (void*)((hcl_uint8_t*)iov[index].iov_base + nwritten);
-		iov[index].iov_len -= nwritten;
-	}
-
-	return 0;
-}
-
 static int send_stdout_bytes (hcl_xproto_t* proto, const hcl_bch_t* data, hcl_oow_t len)
 {
 	hcl_server_worker_t* worker;
@@ -1056,9 +1023,10 @@ printf ("SENDING BYTES [%.*s]\n", (int)len, data);
 		iov[1].iov_base = ptr;
 		iov[1].iov_len = seglen;
 
-		if (send_iov(worker->sck, iov, 2) <= -1)
+		if (hcl_sys_send_iov(worker->sck, iov, 2) <= -1)
 		{
 			/* TODO: error message */
+			fprintf (stderr, "Unable to sendmsg on %d - %s\n", worker->sck, strerror(errno));
 			return -1;
 		}
 
@@ -2282,4 +2250,33 @@ void* hcl_server_reallocmem (hcl_server_t* server, void* ptr, hcl_oow_t size)
 void hcl_server_freemem (hcl_server_t* server, void* ptr)
 {
 	HCL_MMGR_FREE (server->_mmgr, ptr);
+}
+
+/* ========================================================================= */
+
+int hcl_sys_send_iov (int sck, hcl_iovec_t* iov, int count)
+{
+	int index = 0;
+
+	while (1)
+	{
+		ssize_t nwritten;
+		struct msghdr msg;
+
+		memset (&msg, 0, HCL_SIZEOF(msg));
+		msg.msg_iov = (struct iovec*)&iov[index];
+		msg.msg_iovlen = count - index;
+		nwritten = sendmsg(sck, &msg, 0);
+		if (nwritten <= -1) return -1;
+
+		while (index < count && (size_t)nwritten >= iov[index].iov_len)
+			nwritten -= iov[index++].iov_len;
+
+		if (index == count) break;
+
+		iov[index].iov_base = (void*)((hcl_uint8_t*)iov[index].iov_base + nwritten);
+		iov[index].iov_len -= nwritten;
+	}
+
+	return 0;
 }

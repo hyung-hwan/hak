@@ -25,8 +25,8 @@
 #ifndef _HCL_X_T_
 #define _HCL_X_T_
 
-/*#include <hcl-cmn.h>*/
 #include <hcl.h>
+#include <sys/uio.h>
 
 enum hcl_xpkt_type_t
 {
@@ -82,6 +82,11 @@ struct hcl_xproto_cb_t
 	hcl_xproto_cb_on_packet on_packet;
 };
 typedef struct hcl_xproto_cb_t hcl_xproto_cb_t;
+
+/* ---------------------------------------------------------------------- */
+
+/* forward declaration to skip including <sys/uio.h> just for struct iovec */
+typedef struct iovec hcl_iovec_t;
 
 /* ---------------------------------------------------------------------- */
 
@@ -426,31 +431,39 @@ HCL_EXPORT void* hcl_xproto_getxtn (
 	hcl_xproto_t*  proto
 );
 
-hcl_uint8_t* hcl_xproto_getbuf (
+HCL_EXPORT hcl_uint8_t* hcl_xproto_getbuf (
 	hcl_xproto_t*  proto,
 	hcl_oow_t*     capa
 );
 
-int hcl_xproto_geteof (
+HCL_EXPORT int hcl_xproto_geteof (
 	hcl_xproto_t*  proto
 );
 
-void hcl_xproto_seteof (
+HCL_EXPORT void hcl_xproto_seteof (
 	hcl_xproto_t*  proto,
 	int            v
 );
 
-void hcl_xproto_advbuf (
+HCL_EXPORT void hcl_xproto_advbuf (
 	hcl_xproto_t*  proto,
 	hcl_oow_t      inc
 );
 
-int hcl_xproto_ready (
+HCL_EXPORT int hcl_xproto_ready (
 	hcl_xproto_t*  proto
 );
 
-int hcl_xproto_process (
+HCL_EXPORT int hcl_xproto_process (
 	hcl_xproto_t*  proto
+);
+
+/* ---------------------------------------------------------------------- */
+
+HCL_EXPORT int hcl_sys_send_iov (
+	int          sck,
+	hcl_iovec_t* iov, /* note this is not read-only and can change */
+	int          count
 );
 
 #if defined(__cplusplus)

@@ -452,42 +452,6 @@ static int handle_logopt (hcl_client_t* client, const hcl_bch_t* str)
 
 /* ========================================================================= */
 
-static int send_iov (int sck, struct iovec* iov, int count)
-{
-	int index = 0;
-
-	while (1)
-	{
-		ssize_t nwritten;
-		struct msghdr msg;
-
-		memset (&msg, 0, HCL_SIZEOF(msg));
-		msg.msg_iov = (struct iovec*)&iov[index];
-		msg.msg_iovlen = count - index;
-		nwritten = sendmsg(sck, &msg, 0);
-		/*nwritten = writev(proto->worker->sck, (const struct iovec*)&iov[index], count - index);*/
-		if (nwritten <= -1)
-		{
-			/* error occurred inside the worker thread shouldn't affect the error information
-			 * in the server object. so here, i just log a message */
-			fprintf (stderr, "Unable to sendmsg on %d - %s\n", sck, strerror(errno));
-			return -1;
-		}
-
-		while (index < count && (size_t)nwritten >= iov[index].iov_len)
-			nwritten -= iov[index++].iov_len;
-
-		if (index == count) break;
-
-		iov[index].iov_base = (void*)((hcl_uint8_t*)iov[index].iov_base + nwritten);
-		iov[index].iov_len -= nwritten;
-	}
-
-	return 0;
-}
-
-/* ========================================================================= */
-
 struct proto_xtn_t
 {
 	int x;
@@ -627,7 +591,7 @@ static int handle_request (hcl_client_t* client, const char* ipaddr, const char*
 			iov[1].iov_base = scptr;
 			iov[1].iov_len = seglen;
 
-			send_iov (sck, iov, 2); /* TODO: error check */
+			hcl_sys_send_iov (sck, iov, 2); /* TODO: error check */
 
 			scptr = sccur;
 
@@ -639,7 +603,7 @@ static int handle_request (hcl_client_t* client, const char* ipaddr, const char*
 
 				iov[0].iov_base = &hdr;
 				iov[0].iov_len = HCL_SIZEOF(hdr);
-				send_iov (sck, iov, 1);
+				hcl_sys_send_iov (sck, iov, 1);
 
 				if (shut_wr_after_req)
 				{
@@ -653,7 +617,7 @@ static int handle_request (hcl_client_t* client, const char* ipaddr, const char*
 
 					iov[0].iov_base = &hdr;
 					iov[0].iov_len = HCL_SIZEOF(hdr);
-					send_iov (sck, iov, 1);
+					hcl_sys_send_iov (sck, iov, 1);
 				}
 			}
 		}
