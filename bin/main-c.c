@@ -779,7 +779,16 @@ int main (int argc, char* argv[])
 	set_signal (SIGINT, handle_sigint);
 	set_signal_to_ignore (SIGPIPE);
 
+#if 0
+	n = hcl_client_connect(client, argv[opt.ind], reuse_addr);
+	if (n <= -1)
+	{
+		fprintf (stderr, "ERROR: %s\n", hcl_client_geterrbmsg(client));
+		goto oops;
+	}
+#else
 	n = handle_request(client, argv[opt.ind], argv[opt.ind + 1], reuse_addr, shut_wr_after_req);
+#endif
 
 	set_signal_to_default (SIGINT);
 	set_signal_to_default (SIGPIPE);

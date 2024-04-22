@@ -306,15 +306,10 @@ HCL_EXPORT void hcl_client_close (
 	hcl_client_t* client
 );
 
-HCL_EXPORT void hcl_client_reset (
-	hcl_client_t* client
-);
-
-HCL_EXPORT int hcl_client_feed (
+HCL_EXPORT int hcl_client_connnect (
 	hcl_client_t* client,
-	const void*   ptr,
-	hcl_oow_t     len,
-	hcl_oow_t*    xlen
+	const char*   ptr,
+	int           reuse_addr
 );
 
 HCL_EXPORT int hcl_client_setoption (
@@ -359,6 +354,15 @@ HCL_EXPORT const hcl_ooch_t* hcl_client_geterrstr (
 HCL_EXPORT const hcl_ooch_t* hcl_client_geterrmsg (
 	hcl_client_t* client
 );
+
+HCL_EXPORT const hcl_bch_t* hcl_client_geterrbmsg (
+	hcl_client_t* client
+);
+
+HCL_EXPORT const hcl_uch_t* hcl_client_geterrumsg (
+	hcl_client_t* client
+);
+
 
 HCL_EXPORT void hcl_client_seterrnum (
 	hcl_client_t* client,
@@ -414,6 +418,7 @@ HCL_EXPORT void hcl_client_freemem (
 	hcl_client_t* client,
 	void*         ptr
 );
+
 
 /* ---------------------------------------------------------------------- */
 
