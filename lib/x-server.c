@@ -244,12 +244,12 @@ struct hcl_server_t
 };
 
 /* ========================================================================= */
-static int send_stdout_bytes (hcl_xproto_t* proto, const hcl_bch_t* data, hcl_oow_t len);
+static int send_stdout_bytes (hcl_xproto_t* proto, int xpkt_code, const hcl_bch_t* data, hcl_oow_t len);
 
 #if defined(HCL_OOCH_IS_UCH)
-static int send_stdout_chars (hcl_xproto_t* proto, const hcl_ooch_t* data, hcl_oow_t len);
+static int send_stdout_chars (hcl_xproto_t* proto, int xpkt_code, const hcl_ooch_t* data, hcl_oow_t len);
 #else
-#define send_stdout_chars(proto,data,len) send_stdout_bytes(proto,data,len)
+#define send_stdout_chars(proto,xpkt_code,data,len) send_stdout_bytes(proto,xpkt_code,data,len)
 #endif
 
 /* ========================================================================= */
@@ -558,7 +558,7 @@ printf ("IO CLOSE SOMETHING...........\n");
 			hcl_io_udoarg_t* outarg = (hcl_io_udoarg_t*)arg;
 
 printf ("IO WRITE SOMETHING...........\n");
-			if (send_stdout_chars(xtn->worker->proto, outarg->ptr, outarg->len) <= -1)
+			if (send_stdout_chars(xtn->worker->proto, HCL_XPKT_STDOUT, outarg->ptr, outarg->len) <= -1)
 			{
 				/* TODO: change error code and message. propagage the errormessage from proto */
 				hcl_seterrbfmt (hcl, HCL_EIOERR, "failed to write message via proto");
@@ -578,7 +578,7 @@ printf ("IO WRITE SOMETHING...........\n");
 			hcl_io_udoarg_t* outarg = (hcl_io_udoarg_t*)arg;
 
 printf ("IO WRITE SOMETHING BYTES...........\n");
-			if (send_stdout_bytes(xtn->worker->proto, outarg->ptr, outarg->len) <= -1)
+			if (send_stdout_bytes(xtn->worker->proto, HCL_XPKT_STDOUT, outarg->ptr, outarg->len) <= -1)
 			{
 				/* TODO: change error code and message. propagage the errormessage from proto */
 				hcl_seterrbfmt (hcl, HCL_EIOERR, "failed to write message via proto");
@@ -671,26 +671,26 @@ static hcl_server_worker_t* proto_to_worker (hcl_xproto_t* proto)
 
 static int on_fed_cnode (hcl_t* hcl, hcl_cnode_t* obj)
 {
-	/*worker_hcl_xtn_t* xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);*/
-	/*hcl_xproto_t* proto = xtn->proto;*/
+	worker_hcl_xtn_t* hcl_xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);
+	hcl_server_worker_t* worker;
+	hcl_xproto_t* proto;
 	int flags = 0;
 
-printf ("on_fed_cnode......\n");
+	hcl_xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);
+	worker = hcl_xtn->worker;
+	proto = worker->proto;
+
 	/* the compile error must not break the input loop.
 	 * this function returns 0 to go on despite a compile-time error.
 	 *
 	 * if a single line or continued lines contain multiple expressions,
 	 * execution is delayed until the last expression is compiled. */
 
-printf ("COMPILING hcl_copingll......\n");
 	if (hcl_compile(hcl, obj, flags) <= -1)
 	{
-hcl_logbfmt (hcl, HCL_LOG_STDERR, "COMPILER ERROR - %js\n", hcl_geterrmsg(hcl));
-#if 0
-		print_error(hcl, "failed to compile");
-		xtn->feed.pos = xtn->feed.len; /* arrange to discard the rest of the line */
-		show_prompt (hcl, 0);
-#endif
+		const hcl_bch_t* errmsg = hcl_geterrbmsg(hcl);
+		send_stdout_bytes(proto, HCL_XPKT_ERROR, errmsg, hcl_count_bcstr(errmsg));
+/* TODO: ignore the whole line??? */
 	}
 
 	return 0;
@@ -928,7 +928,7 @@ static int kill_server_worker (hcl_xproto_t* proto, hcl_oow_t wid)
 	return xret;
 }
 
-static int handle_packet (hcl_xproto_t* proto, hcl_xpkt_type_t type, const void* data, hcl_oow_t len)
+static int server_on_packet (hcl_xproto_t* proto, hcl_xpkt_type_t type, const void* data, hcl_oow_t len)
 {
 	hcl_server_worker_t* worker;
 	hcl_t* hcl;
@@ -994,7 +994,7 @@ oops:
 	return -1;
 }
 
-static int send_stdout_bytes (hcl_xproto_t* proto, const hcl_bch_t* data, hcl_oow_t len)
+static int send_stdout_bytes (hcl_xproto_t* proto, int xpkt_code, const hcl_bch_t* data, hcl_oow_t len)
 {
 	hcl_server_worker_t* worker;
 	hcl_xpkt_hdr_t hdr;
@@ -1003,6 +1003,7 @@ static int send_stdout_bytes (hcl_xproto_t* proto, const hcl_bch_t* data, hcl_oo
 	hcl_uint16_t seglen;
 
 	worker = proto_to_worker(proto);
+	HCL_ASSERT (worker->hcl, xpkt_code == HCL_XPKT_STDOUT || xpkt_code == HCL_XPKT_STDERR || xpkt_code == HCL_XPKT_ERROR);
 
 	ptr = cur = data;
 	end = data + len;
@@ -1015,7 +1016,7 @@ printf ("SENDING BYTES [%.*s]\n", (int)len, data);
 		seglen = cur - ptr;
 
 		hdr.id = 1; /* TODO: */
-		hdr.type = HCL_XPKT_STDOUT | (((seglen >> 8) & 0x0F) << 4);
+		hdr.type = xpkt_code | (((seglen >> 8) & 0x0F) << 4);
 		hdr.len = seglen & 0xFF;
 
 		iov[0].iov_base = &hdr;
@@ -1037,7 +1038,7 @@ printf ("SENDING BYTES [%.*s]\n", (int)len, data);
 }
 
 #if defined(HCL_OOCH_IS_UCH)
-static int send_stdout_chars (hcl_xproto_t* proto, const hcl_ooch_t* data, hcl_oow_t len)
+static int send_stdout_chars (hcl_xproto_t* proto, int xpkt_code, const hcl_ooch_t* data, hcl_oow_t len)
 {
 	hcl_server_worker_t* worker;
 	const hcl_ooch_t* ptr, * end;
@@ -1057,7 +1058,7 @@ static int send_stdout_chars (hcl_xproto_t* proto, const hcl_ooch_t* data, hcl_o
 		n = hcl_convutobchars(worker->hcl, ptr, &pln, tmp, &tln);
 		if (n <= -1 && n != -2) return -1;
 
-		if (send_stdout_bytes(proto, tmp, tln) <= -1) return -1;
+		if (send_stdout_bytes(proto, xpkt_code, tmp, tln) <= -1) return -1;
 		ptr += pln;
 	}
 
@@ -1560,7 +1561,7 @@ static int init_worker_proto (hcl_server_worker_t* worker)
 	hcl_xproto_cb_t cb;
 
 	HCL_MEMSET (&cb, 0, HCL_SIZEOF(cb));
-	cb.on_packet = handle_packet;
+	cb.on_packet = server_on_packet;
 
 	proto = hcl_xproto_open(hcl_server_getmmgr(worker->server), &cb, HCL_SIZEOF(*xtn));
 	if (HCL_UNLIKELY(!proto)) return -1;

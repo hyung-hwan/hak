@@ -63,8 +63,8 @@ typedef struct hcl_xpkt_hdr_t hcl_xpkt_hdr_t;
 
 #define HCL_XPKT_HDR_LEN (HCL_SIZEOF(hcl_xpkt_hdr_t))
 
-/* the actual length field is 12 bits long. so the maximum payload length allowed per packet is 2^12 */
-#define HCL_XPKT_MAX_PLD_LEN (4096)
+/* the actual length field is 12 bits long. so the maximum payload length allowed per packet is 2^12 - 1 */
+#define HCL_XPKT_MAX_PLD_LEN (4095)
 
 /* ---------------------------------------------------------------------- */
 
@@ -162,11 +162,20 @@ typedef void (*hcl_client_log_write_t) (
 	hcl_oow_t         len
 );
 
+typedef int (*hcl_client_on_packet_t) (
+	hcl_xproto_t*   proto,
+	hcl_xpkt_type_t type,
+	const void*     data,
+	hcl_oow_t       len
+);
+
 struct hcl_client_prim_t
 {
 	hcl_client_log_write_t     log_write;
+	hcl_client_on_packet_t     on_packet;
 };
 typedef struct hcl_client_prim_t hcl_client_prim_t;
+
 
 /* ---------------------------------------------------------------------- */
 
@@ -306,10 +315,12 @@ HCL_EXPORT void hcl_client_close (
 	hcl_client_t* client
 );
 
-HCL_EXPORT int hcl_client_connnect (
+HCL_EXPORT int hcl_client_start (
 	hcl_client_t* client,
-	const char*   ptr,
-	int           reuse_addr
+	const char*   ipaddr,
+	const char*   script,
+	int           reuse_addr,
+	int           shut_wr_after_req
 );
 
 HCL_EXPORT int hcl_client_setoption (

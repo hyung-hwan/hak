@@ -452,232 +452,26 @@ static int handle_logopt (hcl_client_t* client, const hcl_bch_t* str)
 
 /* ========================================================================= */
 
-struct proto_xtn_t
-{
-	int x;
-};
-typedef struct proto_xtn_t proto_xtn_t;
-
-static int handle_packet (hcl_xproto_t* proto, hcl_xpkt_type_t type, const void* data, hcl_oow_t len)
+static int client_on_packet (hcl_xproto_t* proto, hcl_xpkt_type_t type, const void* data, hcl_oow_t len)
 {
 	if (type == HCL_XPKT_STDOUT)
 	{
 		/*if (len > 0) fwrite (data, 1, len, stdout); */
 		if (len > 0) fprintf (stdout, "%.*s", (int)len, data);
 	}
+	else if (type == HCL_XPKT_STDERR)
+	{
+		if (len > 0) fprintf (stderr, "%.*s", (int)len, data);
+	}
+	else if (type == HCL_XPKT_ERROR)
+	{
+		/* error notification */
+		if (len > 0) fprintf (stderr, "ERROR: %.*s\n", (int)len, data);
+	}
 	return 1;
 }
 
-static int handle_request (hcl_client_t* client, const char* ipaddr, const char* script, int reuse_addr, int shut_wr_after_req)
-{
-	hcl_sckaddr_t sckaddr;
-	hcl_scklen_t scklen;
-	int sckfam;
-	int sck = -1;
-
-	hcl_oow_t used, avail;
-	int x;
-	hcl_bch_t buf[256];
-	ssize_t n;
-	const char* scptr;
-	const char* sccur;
-	hcl_xproto_t* proto = HCL_NULL;
-
-	client_xtn_t* client_xtn;
-	proto_xtn_t* proto_xtn;
-	hcl_xproto_cb_t proto_cb;
-
-	client_xtn = hcl_client_getxtn(client);
-
-	sckfam = hcl_bchars_to_sckaddr(ipaddr, strlen(ipaddr), &sckaddr, &scklen);
-	if (sckfam <= -1)
-	{
-		fprintf (stderr, "cannot convert ip address - %s\n", ipaddr);
-		goto oops;
-	}
-
-	sck = socket(sckfam, SOCK_STREAM, 0);
-	if (sck <= -1)
-	{
-		fprintf (stderr, "cannot create a socket for %s - %s\n", ipaddr, strerror(errno));
-		goto oops;
-	}
-
-	if (reuse_addr)
-	{
-		if (sckfam == AF_INET)
-		{
-			struct sockaddr_in anyaddr;
-			int opt = 1;
-			setsockopt(sck, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt));
-			memset (&anyaddr, 0, HCL_SIZEOF(anyaddr));
-			anyaddr.sin_family = sckfam;
-			bind(sck, (struct sockaddr *)&anyaddr, scklen);
-		}
-		else if (sckfam == AF_INET6)
-		{
-			struct sockaddr_in6 anyaddr;
-			int opt = 1;
-			setsockopt(sck, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt));
-			memset (&anyaddr, 0, HCL_SIZEOF(anyaddr));
-			anyaddr.sin6_family = sckfam;
-			bind(sck, (struct sockaddr *)&anyaddr, scklen);
-		}
-	}
-
-	if (connect(sck, (struct sockaddr*)&sckaddr, scklen) <= -1)
-	{
-		fprintf (stderr, "cannot connect to %s - %s\n", ipaddr, strerror(errno));
-		goto oops;
-	}
-
-	memset (&proto, 0, HCL_SIZEOF(proto_cb));
-	proto_cb.on_packet = handle_packet;
-
-	proto = hcl_xproto_open(hcl_client_getmmgr(client), &proto_cb, HCL_SIZEOF(*proto_xtn));
-	if (HCL_UNLIKELY(!proto))
-	{
-		fprintf (stderr, "cannot open protocol to %s\n", ipaddr);
-		goto oops;
-	}
-	proto_xtn = hcl_xproto_getxtn(proto);
-	//proto_xtn->client = client;
-
-	scptr = sccur = script;
-	while (1)
-	{
-		struct pollfd pfd;
-
-		pfd.fd = sck;
-		pfd.events = POLLIN;
-		if (*sccur != '\0') pfd.events |= POLLOUT;
-		pfd.revents = 0;
-
-		n = poll(&pfd, 1, 1000);
-		if (n <= -1)
-		{
-			fprintf (stderr, "poll error on %d - %s\n", sck, strerror(n));
-			goto oops;
-		}
-
-		if (n == 0)
-		{
-			/* TODO: proper timeout handling */
-			continue;
-		}
-
-		if (pfd.revents & POLLERR)
-		{
-			fprintf (stderr, "error condition detected on %d\n", sck);
-			goto oops;
-		}
-
-		if (pfd.revents & POLLOUT)
-		{
-			hcl_xpkt_hdr_t hdr;
-			struct iovec iov[2];
-			hcl_uint16_t seglen;
-
-			while (*sccur != '\0' && sccur - scptr < HCL_XPKT_MAX_PLD_LEN) sccur++;
-
-			seglen = sccur - scptr;
-
-			hdr.id = 1; /* TODO: */
-			hdr.type = HCL_XPKT_CODE | (((seglen >> 8) & 0x0F) << 4);
-			hdr.len = seglen & 0xFF;
-
-			iov[0].iov_base = &hdr;
-			iov[0].iov_len = HCL_SIZEOF(hdr);
-			iov[1].iov_base = scptr;
-			iov[1].iov_len = seglen;
-
-			hcl_sys_send_iov (sck, iov, 2); /* TODO: error check */
-
-			scptr = sccur;
-
-			if (*sccur == '\0')
-			{
-				hdr.id = 1; /* TODO: */
-				hdr.type = HCL_XPKT_EXECUTE;
-				hdr.len = 0;
-
-				iov[0].iov_base = &hdr;
-				iov[0].iov_len = HCL_SIZEOF(hdr);
-				hcl_sys_send_iov (sck, iov, 1);
-
-				if (shut_wr_after_req)
-				{
-					shutdown (sck, SHUT_WR);
-				}
-				else
-				{
-					hdr.type = HCL_XPKT_DISCONNECT;
-					hdr.id = 1; /* TODO: */
-					hdr.len = 0;
-
-					iov[0].iov_base = &hdr;
-					iov[0].iov_len = HCL_SIZEOF(hdr);
-					hcl_sys_send_iov (sck, iov, 1);
-				}
-			}
-		}
-
-		if (pfd.revents & POLLIN)
-		{
-			hcl_oow_t bcap;
-			hcl_uint8_t* bptr;
-
-			bptr = hcl_xproto_getbuf(proto, &bcap);;
-			x = recv(sck, bptr, bcap, 0);
-			if (x <= -1)
-			{
-				if (errno == EINTR) goto carry_on; /* didn't read read */
-				/*hcl_seterrwithsyserr (hcl, 0, errno); */
-				/* TODO: error info set... */
-				return -1;
-			}
-			if (x == 0) hcl_xproto_seteof(proto, 1);
-			hcl_xproto_advbuf (proto, x);
-		}
-
-
-	carry_on:
-		while (hcl_xproto_ready(proto))
-		{
-			if ((n = hcl_xproto_process(proto)) <= -1)
-			{
-				/* TODO: proper error message */
-				return -1;
-			}
-			if (n == 0)
-			{
-				/* TODO: chceck if there is remaining data in the buffer...?? */
-				printf ("NO MORE DATA. EXITING...\n");
-				goto done;
-			}
-		}
-
-		if (hcl_xproto_geteof(proto)) break;
-	}
-done:
-
-/* TODO: we can check if the buffer has all been consumed. if not, there is trailing garbage.. */
-	/*{
-		struct linger linger;
-		linger.l_onoff = 1;
-		linger.l_linger = 0;
-		setsockopt (sck, SOL_SOCKET, SO_LINGER, (char *) &linger, sizeof(linger));
-	}*/
-
-	hcl_xproto_close (proto);
-	close (sck);
-	return 0;
-
-oops:
-	if (proto) hcl_xproto_close (proto);
-	if (sck >= 0) close (sck);
-	return -1;
-}
+/* ========================================================================= */
 
 int main (int argc, char* argv[])
 {
@@ -753,6 +547,7 @@ int main (int argc, char* argv[])
 
 	memset (&client_prim, 0, HCL_SIZEOF(client_prim));
 	client_prim.log_write = log_write;
+	client_prim.on_packet = client_on_packet;
 
 	client = hcl_client_open(&sys_mmgr, HCL_SIZEOF(client_xtn_t), &client_prim, HCL_NULL);
 	if (!client)
@@ -779,16 +574,12 @@ int main (int argc, char* argv[])
 	set_signal (SIGINT, handle_sigint);
 	set_signal_to_ignore (SIGPIPE);
 
-#if 0
-	n = hcl_client_connect(client, argv[opt.ind], reuse_addr);
+	n = hcl_client_start(client, argv[opt.ind], argv[opt.ind + 1], reuse_addr, shut_wr_after_req);
 	if (n <= -1)
 	{
 		fprintf (stderr, "ERROR: %s\n", hcl_client_geterrbmsg(client));
 		goto oops;
 	}
-#else
-	n = handle_request(client, argv[opt.ind], argv[opt.ind + 1], reuse_addr, shut_wr_after_req);
-#endif
 
 	set_signal_to_default (SIGINT);
 	set_signal_to_default (SIGPIPE);
