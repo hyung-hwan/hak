@@ -254,18 +254,6 @@ static int send_stdout_chars (hcl_xproto_t* proto, int xpkt_code, const hcl_ooch
 
 /* ========================================================================= */
 
-static const hcl_bch_t* get_base_name (const hcl_bch_t* path)
-{
-	const hcl_bch_t* p, * last = HCL_NULL;
-
-	for (p = path; *p != '\0'; p++)
-	{
-		if (HCL_IS_PATH_SEP(*p)) last = p;
-	}
-
-	return (last == HCL_NULL)? path: (last + 1);
-}
-
 static HCL_INLINE int open_read_stream (hcl_t* hcl, hcl_io_cciarg_t* arg)
 {
 	worker_hcl_xtn_t* xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);
@@ -299,7 +287,7 @@ static HCL_INLINE int open_read_stream (hcl_t* hcl, hcl_io_cciarg_t* arg)
 		}
 		else
 		{
-			fb = get_base_name(fn);
+			fb = hcl_get_base_name_from_bcstr_path(fn);
 			parlen = fb - fn;
 		}
 

@@ -898,6 +898,12 @@ typedef struct hcl_t hcl_t;
 #	undef HCL_HAVE_INLINE
 #endif
 
+#if __has_attribute(__sentinel__) || (defined(__GNUC__) && (__GNUC__ >= 4))
+#	define HCL_SENTINEL(v) __attribute__((__sentinel__(x)))
+#else
+#	define HCL_SENTINEL(v)
+#endif
+
 #if defined(__GNUC__) && (__GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ > 4))
 #	define HCL_UNUSED __attribute__((__unused__))
 #else
@@ -962,21 +968,23 @@ typedef struct hcl_t hcl_t;
 /* =========================================================================
  * COMPILER FEATURE TEST MACROS
  * =========================================================================*/
+#if !defined(__has_attribute)
+	#define __has_attribute(x) 0
+#endif
+
 #if !defined(__has_builtin) && defined(_INTELC32_)
 	/* intel c code builder 1.0 ended up with an error without this override */
 	#define __has_builtin(x) 0
 #endif
 
 /*
+#if !defined(__has_feature)
+	#define __has_feature(x) 0
+#endif
 #if !defined(__is_identifier)
 	#define __is_identifier(x) 0
 #endif
-
-#if !defined(__has_attribute)
-	#define __has_attribute(x) 0
-#endif
 */
-
 
 #if defined(__has_builtin)
 	#if __has_builtin(__builtin_ctz)

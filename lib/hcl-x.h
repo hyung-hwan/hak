@@ -323,6 +323,10 @@ HCL_EXPORT int hcl_client_start (
 	int           shut_wr_after_req
 );
 
+HCL_EXPORT void hcl_client_stop (
+	hcl_client_t* client
+);
+
 HCL_EXPORT int hcl_client_setoption (
 	hcl_client_t*       client,
 	hcl_client_option_t id,

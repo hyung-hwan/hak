@@ -944,6 +944,24 @@ HCL_EXPORT void hcl_sub_ntime (
 );
 
 /* =========================================================================
+ * PATH NAME 
+ * ========================================================================= */
+
+const hcl_bch_t* hcl_get_base_name_from_bcstr_path (
+	const hcl_bch_t* path
+);
+
+const hcl_uch_t* hcl_get_base_name_from_ucstr_path (
+	const hcl_uch_t* path
+);
+
+#if defined(HCL_OOCH_IS_UCH)
+#define hcl_get_base_name_from_path(x) hcl_get_base_name_from_ucstr_path(x)
+#else
+#define hcl_get_base_name_from_path(x) hcl_get_base_name_from_bcstr_path(x)
+#endif
+
+/* =========================================================================
  * BIT SWAP
  * ========================================================================= */
 #if defined(HCL_HAVE_INLINE)

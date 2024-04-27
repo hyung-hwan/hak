@@ -636,3 +636,8 @@ oops:
 	return -1;
 }
 
+void hcl_client_stop (hcl_client_t* client)
+{
+	/* TODO: */
+	/* TODO: break the cleint loop */
+}

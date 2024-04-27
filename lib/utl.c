@@ -1330,3 +1330,28 @@ void hcl_sub_ntime (hcl_ntime_t* z, const hcl_ntime_t* x, const hcl_ntime_t* y)
 	z->nsec = ns;
 }
 
+/* ----------------------------------------------------------------------- */
+
+const hcl_bch_t* hcl_get_base_name_from_bcstr_path (const hcl_bch_t* path)
+{
+	const hcl_bch_t* p, * last = HCL_NULL;
+
+	for (p = path; *p != '\0'; p++)
+	{
+		if (HCL_IS_PATH_SEP(*p)) last = p;
+	}
+
+	return (last == HCL_NULL)? path: (last + 1);
+}
+
+const hcl_uch_t* hcl_get_base_name_from_ucstr_path (const hcl_uch_t* path)
+{
+	const hcl_uch_t* p, * last = HCL_NULL;
+
+	for (p = path; *p != '\0'; p++)
+	{
+		if (HCL_IS_PATH_SEP(*p)) last = p;
+	}
+
+	return (last == HCL_NULL)? path: (last + 1);
+}

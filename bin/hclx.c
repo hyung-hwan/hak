@@ -34,6 +34,8 @@
 #include <string.h>
 #include <errno.h>
 #include <locale.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 #if defined(HAVE_TIME_H)
 #	include <time.h>
@@ -48,8 +50,6 @@
 #	include <sys/uio.h>
 #endif
 
-#include <unistd.h>
-#include <fcntl.h>
 
 /* ========================================================================= */
 
@@ -66,6 +66,9 @@ struct server_xtn_t
 		hcl_oow_t len;
 	} logbuf;
 };
+
+
+typedef server_xtn_t client_xtn_t;
 
 /* ========================================================================= */
 
@@ -128,10 +131,8 @@ static int write_all (int fd, const hcl_bch_t* ptr, hcl_oow_t len)
 }
 
 
-static int write_log (hcl_server_t* server, int fd, const hcl_bch_t* ptr, hcl_oow_t len)
+static int write_log (server_xtn_t* xtn, int fd, const hcl_bch_t* ptr, hcl_oow_t len)
 {
-	server_xtn_t* xtn = (server_xtn_t*)hcl_server_getxtn(server);
-
 	while (len > 0)
 	{
 		if (xtn->logbuf.len > 0)
@@ -177,10 +178,8 @@ static int write_log (hcl_server_t* server, int fd, const hcl_bch_t* ptr, hcl_oo
 	return 0;
 }
 
-static void flush_log (hcl_server_t* server, int fd)
+static void flush_log (server_xtn_t* xtn, int fd)
 {
-	server_xtn_t* xtn = (server_xtn_t*)hcl_server_getxtn(server);
-
 	if (xtn->logbuf.len > 0)
 	{
 		write_all (fd, xtn->logbuf.buf, xtn->logbuf.len);
@@ -188,9 +187,8 @@ static void flush_log (hcl_server_t* server, int fd)
 	}
 }
 
-static void log_write (hcl_server_t* server, hcl_oow_t wid, hcl_bitmask_t mask, const hcl_ooch_t* msg, hcl_oow_t len)
+static void log_write (server_xtn_t* xtn, hcl_oow_t wid, hcl_bitmask_t mask, const hcl_ooch_t* msg, hcl_oow_t len)
 {
-	server_xtn_t* xtn = (server_xtn_t*)hcl_server_getxtn(server);
 	hcl_bch_t buf[256];
 	hcl_oow_t ucslen, bcslen;
 	hcl_oow_t msgidx;
@@ -243,21 +241,21 @@ static void log_write (hcl_server_t* server, hcl_oow_t wid, hcl_bitmask_t mask, 
 			tslen = 25;
 		}
 
-		write_log (server, logfd, ts, tslen);
+		write_log (xtn, logfd, ts, tslen);
 
 		if (wid != HCL_SERVER_WID_INVALID)
 		{
 			/* TODO: check if the underlying snprintf support %zd */
 			tslen = snprintf (ts, sizeof(ts), "[%zu] ", wid);
-			write_log (server, logfd, ts, tslen);
+			write_log (xtn, logfd, ts, tslen);
 		}
 	}
 
 	if (logfd == xtn->logfd && xtn->logfd_istty)
 	{
-		if (mask & HCL_LOG_FATAL) write_log (server, logfd, "\x1B[1;31m", 7);
-		else if (mask & HCL_LOG_ERROR) write_log (server, logfd, "\x1B[1;32m", 7);
-		else if (mask & HCL_LOG_WARN) write_log (server, logfd, "\x1B[1;33m", 7);
+		if (mask & HCL_LOG_FATAL) write_log (xtn, logfd, "\x1B[1;31m", 7);
+		else if (mask & HCL_LOG_ERROR) write_log (xtn, logfd, "\x1B[1;32m", 7);
+		else if (mask & HCL_LOG_WARN) write_log (xtn, logfd, "\x1B[1;33m", 7);
 	}
 
 #if defined(HCL_OOCH_IS_UCH)
@@ -280,7 +278,7 @@ static void log_write (hcl_server_t* server, hcl_oow_t wid, hcl_bitmask_t mask, 
 			/*assert (ucslen > 0);*/
 
 			/* attempt to write all converted characters */
-			if (write_log(server, logfd, buf, bcslen) <= -1) break;
+			if (write_log(xtn, logfd, buf, bcslen) <= -1) break;
 
 			if (n == 0) break;
 			else
@@ -293,26 +291,39 @@ static void log_write (hcl_server_t* server, hcl_oow_t wid, hcl_bitmask_t mask, 
 		{
 			/* conversion error */
 			if (bcslen <= 0) break;
-			if (write_log(server, logfd, buf, bcslen) <= -1) break;
+			if (write_log(xtn, logfd, buf, bcslen) <= -1) break;
 			msgidx += ucslen;
 			len -= ucslen;
 		}
 	}
 #else
-	write_log (server, logfd, msg, len);
+	write_log (xtn, logfd, msg, len);
 #endif
 
 	if (logfd == xtn->logfd && xtn->logfd_istty)
 	{
-		if (mask & (HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN)) write_log (server, logfd, "\x1B[0m", 4);
+		if (mask & (HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN)) write_log (xtn, logfd, "\x1B[0m", 4);
 	}
 
-	flush_log (server, logfd);
+	flush_log (xtn, logfd);
+}
+
+/* ========================================================================= */
+
+static void server_log_write (hcl_server_t* server, hcl_oow_t wid, hcl_bitmask_t mask, const hcl_ooch_t* msg, hcl_oow_t len)
+{
+	log_write ((server_xtn_t*)hcl_server_getxtn(server), wid, mask, msg, len);
+}
+
+static void client_log_write (hcl_client_t* client, hcl_bitmask_t mask, const hcl_ooch_t* msg, hcl_oow_t len)
+{
+	log_write ((client_xtn_t*)hcl_client_getxtn(client), HCL_SERVER_WID_INVALID, mask, msg, len);
 }
 
 /* ========================================================================= */
 
 static hcl_server_t* g_server = HCL_NULL;
+static hcl_client_t* g_client = HCL_NULL;
 
 /* ========================================================================= */
 
@@ -321,6 +332,7 @@ typedef void (*signal_handler_t) (int, siginfo_t*, void*);
 static void handle_sigint (int sig, siginfo_t* siginfo, void* ctx)
 {
 	if (g_server) hcl_server_stop (g_server);
+	if (g_client) hcl_client_stop (g_client);
 }
 
 static void set_signal (int sig, signal_handler_t handler)
@@ -498,7 +510,7 @@ static int handle_incpath (hcl_server_t* server, const char* str)
 #define MIN_WORKER_STACK_SIZE 512000ul
 #define MIN_ACTOR_HEAP_SIZE 512000ul
 
-int server_main (const char* outer, int argc, char* argv[])
+static int server_main (const char* outer, int argc, char* argv[])
 {
 	hcl_bci_t c;
 	static hcl_bopt_lng_t lopt[] =
@@ -540,7 +552,7 @@ int server_main (const char* outer, int argc, char* argv[])
 	if (argc < 2)
 	{
 	print_usage:
-		fprintf (stderr, "Usage: %s bind-address:port\n", argv[0]);
+		fprintf (stderr, "Usage: %s %s bind-address:port\n", outer, argv[0]);
 		return -1;
 	}
 
@@ -604,7 +616,7 @@ int server_main (const char* outer, int argc, char* argv[])
 	if (opt.ind >= argc) goto print_usage;
 
 	memset (&server_prim, 0, HCL_SIZEOF(server_prim));
-	server_prim.log_write = log_write;
+	server_prim.log_write = server_log_write;
 
 	server = hcl_server_open(&sys_mmgr, HCL_SIZEOF(server_xtn_t), &server_prim, HCL_NULL);
 	if (!server)
@@ -676,24 +688,176 @@ oops:
 }
 
 /* -------------------------------------------------------------- */
+static int client_on_packet (hcl_xproto_t* proto, hcl_xpkt_type_t type, const void* data, hcl_oow_t len)
+{
+	if (type == HCL_XPKT_STDOUT)
+	{
+		if (len > 0) fprintf (stdout, "%.*s", (int)len, data);
+	}
+	else if (type == HCL_XPKT_STDERR)
+	{
+		if (len > 0) fprintf (stderr, "%.*s", (int)len, data);
+	}
+	else if (type == HCL_XPKT_ERROR)
+	{
+		/* error notification */
+		if (len > 0) fprintf (stderr, "ERROR: %.*s\n", (int)len, data);
+	}
+	return 1;
+}
+
+static int client_main (const char* outer, int argc, char* argv[])
+{
+	hcl_bci_t c;
+	static hcl_bopt_lng_t lopt[] =
+	{
+		{ ":log",                  'l'  },
+		{ "reuseaddr",             '\0' },
+		{ "shutwr",                '\0' },
+		{ HCL_NULL,                '\0' }
+	};
+	static hcl_bopt_t opt =
+	{
+		"l:",
+		lopt
+	};
+
+	hcl_client_t* client;
+	client_xtn_t* xtn;
+	hcl_client_prim_t client_prim;
+	int n;
+	const char* logopt = HCL_NULL;
+	int reuse_addr = 0;
+	int shut_wr_after_req = 0;
+
+	setlocale (LC_ALL, "");
+
+	if (argc < 2)
+	{
+	print_usage:
+		fprintf (stderr, "Usage: %s %s [options] bind-address:port script-to-run\n", outer, argv[0]);
+		fprintf (stderr, "Options are:\n");
+		fprintf (stderr, " -l/--log log-options\n");
+		fprintf (stderr, " --reuseaddr\n");
+		fprintf (stderr, " --shutwr\n");
+		return -1;
+	}
+
+	while ((c = hcl_getbopt(argc, argv, &opt)) != HCL_BCI_EOF)
+	{
+		switch (c)
+		{
+			case 'l':
+				logopt = opt.arg;
+				break;
+
+			case '\0':
+				if (hcl_comp_bcstr(opt.lngopt, "reuseaddr") == 0)
+				{
+					reuse_addr = 1;
+				}
+				else if (hcl_comp_bcstr(opt.lngopt, "shutwr") == 0)
+				{
+					shut_wr_after_req = 1;
+				}
+				else
+				{
+					goto print_usage;
+				}
+				break;
+
+			case ':':
+				if (opt.lngopt)
+					fprintf (stderr, "bad argument for '%s'\n", opt.lngopt);
+				else
+					fprintf (stderr, "bad argument for '%c'\n", opt.opt);
+
+				return -1;
+
+			default:
+				goto print_usage;
+		}
+	}
+
+	/* needs 2 fixed arguments */
+	if (opt.ind + 1 >= argc) goto print_usage;
+
+	memset (&client_prim, 0, HCL_SIZEOF(client_prim));
+	client_prim.log_write = client_log_write;
+	client_prim.on_packet = client_on_packet;
+
+	client = hcl_client_open(&sys_mmgr, HCL_SIZEOF(client_xtn_t), &client_prim, HCL_NULL);
+	if (!client)
+	{
+		fprintf (stderr, "cannot open client\n");
+		return -1;
+	}
+
+	xtn = (client_xtn_t*)hcl_client_getxtn(client);
+	xtn->logfd = -1;
+	xtn->logfd_istty = 0;
+
+	if (logopt)
+	{
+		if (handle_logopt(client, logopt) <= -1) goto oops;
+	}
+	else
+	{
+		/* default logging mask when no logging option is set */
+		xtn->logmask = HCL_LOG_ALL_TYPES | HCL_LOG_ERROR | HCL_LOG_FATAL;
+	}
+
+	g_client = client;
+	set_signal (SIGINT, handle_sigint);
+	set_signal_to_ignore (SIGPIPE);
+
+	n = hcl_client_start(client, argv[opt.ind], argv[opt.ind + 1], reuse_addr, shut_wr_after_req);
+	if (n <= -1)
+	{
+		fprintf (stderr, "ERROR: %s\n", hcl_client_geterrbmsg(client));
+		goto oops;
+	}
+
+	set_signal_to_default (SIGINT);
+	set_signal_to_default (SIGPIPE);
+	g_client = NULL;
+
+	if (xtn->logfd >= 0)
+	{
+		close (xtn->logfd);
+		xtn->logfd = -1;
+		xtn->logfd_istty = 0;
+	}
+
+	hcl_client_close (client);
+	return n;
+
+oops:
+	if (client) hcl_client_close (client);
+	return -1;
+}
+/* -------------------------------------------------------------- */
 
 static void print_main_usage (const char* argv0)
 {
-	fprintf (stderr, "USAGE: %s server|client\n");
+	fprintf (stderr, "Usage: %s server|client\n", argv0);
 }
 
 int main (int argc, char* argv[])
 {
 	int n;
+	const char* argv0;
+
+	argv0 = hcl_get_base_name_from_bcstr_path(argv[0]);
 
 	if (argc < 2)
 	{
-		print_main_usage (argv[0]);
+		print_main_usage (argv0);
 		n = -1;	
 	}
 	else if (strcmp(argv[1], "server") == 0)
 	{
-		n = server_main(argv[0], argc -1, &argv[1]);
+		n = server_main(argv0, argc -1, &argv[1]);
 	}
 	else if (strcmp(argv[1], "client") == 0)
 	{

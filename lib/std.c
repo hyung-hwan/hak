@@ -3291,18 +3291,6 @@ struct bb_t
 	hcl_bch_t* fn;
 };
 
-static const hcl_bch_t* get_base_name (const hcl_bch_t* path)
-{
-	const hcl_bch_t* p, * last = HCL_NULL;
-
-	for (p = path; *p != '\0'; p++)
-	{
-		if (HCL_IS_PATH_SEP(*p)) last = p;
-	}
-
-	return (last == HCL_NULL)? path: (last + 1);
-}
-
 #if defined(__DOS__) || defined(_WIN32) || defined(__OS2__)
 #define FOPEN_R_FLAGS "rb"
 #else
@@ -3329,7 +3317,7 @@ static HCL_INLINE int open_cci_stream (hcl_t* hcl, hcl_io_cciarg_t* arg)
 
 		fn = ((bb_t*)arg->includer->handle)->fn;
 
-		fb = get_base_name(fn);
+		fb = hcl_get_base_name_from_bcstr_path(fn);
 		parlen = fb - fn;
 
 		bb = (bb_t*)hcl_callocmem(hcl, HCL_SIZEOF(*bb) + (HCL_SIZEOF(hcl_bch_t) * (parlen + bcslen + 1)));
