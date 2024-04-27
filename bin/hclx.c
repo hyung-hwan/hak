@@ -25,6 +25,7 @@
  */
 
 #include "hcl-x.h"
+#include "hcl-json.h"
 #include "hcl-opt.h"
 #include "hcl-utl.h"
 #include "hcl-xutl.h"
@@ -65,10 +66,15 @@ struct server_xtn_t
 		hcl_bch_t buf[4096];
 		hcl_oow_t len;
 	} logbuf;
+
+
+	/* used by the json submodule */
+	int json_depth;
 };
 
 
 typedef server_xtn_t client_xtn_t;
+typedef server_xtn_t json_xtn_t;
 
 /* ========================================================================= */
 
@@ -320,6 +326,11 @@ static void client_log_write (hcl_client_t* client, hcl_bitmask_t mask, const hc
 	log_write ((client_xtn_t*)hcl_client_getxtn(client), HCL_SERVER_WID_INVALID, mask, msg, len);
 }
 
+static void json_log_write (hcl_json_t* json, hcl_bitmask_t mask, const hcl_ooch_t* msg, hcl_oow_t len)
+{
+	log_write ((json_xtn_t*)hcl_json_getxtn(json), HCL_SERVER_WID_INVALID, mask, msg, len);
+}
+
 /* ========================================================================= */
 
 static hcl_server_t* g_server = HCL_NULL;
@@ -374,14 +385,11 @@ static void set_signal_to_default (int sig)
 
 /* ========================================================================= */
 
-static int handle_logopt (hcl_server_t* server, const hcl_bch_t* str)
+static int handle_logopt (server_xtn_t* xtn, const hcl_bch_t* str)
 {
 	hcl_bch_t* xstr = (hcl_bch_t*)str;
 	hcl_bch_t* cm, * flt;
 	hcl_bitmask_t logmask;
-	server_xtn_t* xtn;
-
-	xtn = (server_xtn_t*)hcl_server_getxtn(server);
 
 	cm = hcl_find_bchar_in_bcstr(xstr, ',');
 	if (cm)
@@ -458,6 +466,16 @@ static int handle_logopt (hcl_server_t* server, const hcl_bch_t* str)
 
 	if (str != xstr) free (xstr);
 	return 0;
+}
+
+static int server_handle_logopt (hcl_server_t* server, const hcl_bch_t* str)
+{
+	return handle_logopt((server_xtn_t*)hcl_server_getxtn(server), str);
+}
+
+static int client_handle_logopt (hcl_client_t* client, const hcl_bch_t* str)
+{
+	return handle_logopt((client_xtn_t*)hcl_client_getxtn(client), str);
 }
 
 #if defined(HCL_BUILD_DEBUG)
@@ -631,7 +649,7 @@ static int server_main (const char* outer, int argc, char* argv[])
 
 	if (logopt)
 	{
-		if (handle_logopt(server, logopt) <= -1) goto oops;
+		if (handle_logopt(xtn, logopt) <= -1) goto oops;
 	}
 	else
 	{
@@ -799,7 +817,7 @@ static int client_main (const char* outer, int argc, char* argv[])
 
 	if (logopt)
 	{
-		if (handle_logopt(client, logopt) <= -1) goto oops;
+		if (handle_logopt(xtn, logopt) <= -1) goto oops;
 	}
 	else
 	{
@@ -836,11 +854,88 @@ oops:
 	if (client) hcl_client_close (client);
 	return -1;
 }
+
+/* -------------------------------------------------------------- */
+
+static int json_inst_cb (hcl_json_t* json, hcl_json_inst_t it, const hcl_oocs_t* str)
+{
+	json_xtn_t* json_xtn = (json_xtn_t*)hcl_json_getxtn(json);
+
+	switch (it)
+	{
+		case HCL_JSON_INST_START_ARRAY:
+			json_xtn->json_depth++;
+			hcl_json_logbfmt (json, HCL_LOG_INFO | HCL_LOG_APP,  "[\n");
+			break;
+		case HCL_JSON_INST_END_ARRAY:
+			json_xtn->json_depth--;
+			hcl_json_logbfmt (json, HCL_LOG_INFO | HCL_LOG_APP,  "]\n");
+			break;
+		case HCL_JSON_INST_START_DIC:
+			json_xtn->json_depth++;
+			hcl_json_logbfmt (json, HCL_LOG_INFO | HCL_LOG_APP,  "{\n");
+			break;
+		case HCL_JSON_INST_END_DIC:
+			json_xtn->json_depth--;
+			hcl_json_logbfmt (json, HCL_LOG_INFO | HCL_LOG_APP,  "}\n");
+			break;
+
+		case HCL_JSON_INST_KEY:
+			hcl_json_logbfmt (json, HCL_LOG_INFO | HCL_LOG_APP,  "%.*js: ", str->len, str->ptr);
+			break;
+
+		case HCL_JSON_INST_CHARACTER:
+		case HCL_JSON_INST_STRING:
+		case HCL_JSON_INST_NUMBER:
+		case HCL_JSON_INST_TRUE:
+		case HCL_JSON_INST_FALSE:
+		case HCL_JSON_INST_NIL:
+			hcl_json_logbfmt (json, HCL_LOG_INFO | HCL_LOG_APP,  "%.*js\n", str->len, str->ptr);
+			break;
+	}
+
+	return 0;
+}
+int json_main (const char* outer, int argc, char* argv[])
+{
+	hcl_json_t* json;
+	hcl_json_prim_t json_prim;
+	json_xtn_t* json_xtn;
+	hcl_oow_t xlen;
+	const char* p;
+
+/* TODO: enhance this to accept parameters from  command line */
+
+	memset (&json_prim, 0, HCL_SIZEOF(json_prim));
+	json_prim.log_write = json_log_write;
+	json_prim.instcb = json_inst_cb;
+
+	json = hcl_json_open (&sys_mmgr, HCL_SIZEOF(json_xtn_t), &json_prim, NULL);
+
+	json_xtn = (json_xtn_t*)hcl_json_getxtn(json);
+	json_xtn->logmask = HCL_LOG_ALL_LEVELS | HCL_LOG_ALL_TYPES;
+
+	p = "[ \"ab\\xab\\uC88B\\uC544\\uC6A9c\", \"kaden\", \"iron\", true, { \"null\": \"a\\1bc\", \"123\": \"AA20AA\", \"10\": -0.123, \"way\": '\\uC88A' } ]";
+	/*p = "{ \"result\": \"SUCCESS\", \"message\": \"1 clients\", \"sessions\": [] }";*/
+
+	if (hcl_json_feed(json, p, strlen(p), &xlen) <= -1)
+	{
+		hcl_json_logbfmt (json, HCL_LOG_FATAL | HCL_LOG_APP, "ERROR: unable to process - %js\n", hcl_json_geterrmsg(json));
+	}
+	else if (json_xtn->json_depth != 0)
+	{
+		hcl_json_logbfmt (json, HCL_LOG_FATAL | HCL_LOG_APP, "ERROR: incomplete input\n");
+	}
+
+	hcl_json_close (json);
+	return 0;
+}
+
 /* -------------------------------------------------------------- */
 
 static void print_main_usage (const char* argv0)
 {
-	fprintf (stderr, "Usage: %s server|client\n", argv0);
+	fprintf (stderr, "Usage: %s server|client|json\n", argv0);
 }
 
 int main (int argc, char* argv[])
@@ -862,6 +957,10 @@ int main (int argc, char* argv[])
 	else if (strcmp(argv[1], "client") == 0)
 	{
 		n = client_main(argv[0], argc -1, &argv[1]);
+	}
+	else if (strcmp(argv[1], "json") == 0)
+	{
+		n = json_main(argv[0], argc -1, &argv[1]);
 	}
 	else
 	{

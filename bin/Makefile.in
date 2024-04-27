@@ -95,7 +95,7 @@ host_triplet = @host@
 @ENABLE_LIBLTDL_TRUE@am__append_1 = $(LTDL_LIBS)
 @ENABLE_LIBLTDL_FALSE@am__append_2 = $(DL_LIBS)
 bin_PROGRAMS = hcl$(EXEEXT) $(am__EXEEXT_1)
-@ENABLE_HCLX_TRUE@am__append_3 = hclx hclj
+@ENABLE_HCLX_TRUE@am__append_3 = hclx
 subdir = bin
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_check_sign.m4 \
@@ -110,7 +110,7 @@ mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/lib/hcl-cfg.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
-@ENABLE_HCLX_TRUE@am__EXEEXT_1 = hclx$(EXEEXT) hclj$(EXEEXT)
+@ENABLE_HCLX_TRUE@am__EXEEXT_1 = hclx$(EXEEXT)
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am_hcl_OBJECTS = hcl-hcl.$(OBJEXT)
@@ -127,14 +127,6 @@ am__v_lt_1 =
 hcl_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(hcl_LDFLAGS) $(LDFLAGS) -o $@
-am__hclj_SOURCES_DIST = hclj.c
-@ENABLE_HCLX_TRUE@am_hclj_OBJECTS = hclj-hclj.$(OBJEXT)
-hclj_OBJECTS = $(am_hclj_OBJECTS)
-@ENABLE_HCLX_TRUE@hclj_DEPENDENCIES = ../lib/libhclx.la \
-@ENABLE_HCLX_TRUE@	$(am__DEPENDENCIES_4)
-hclj_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
-	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
-	$(hclj_LDFLAGS) $(LDFLAGS) -o $@
 am__hclx_SOURCES_DIST = hclx.c
 @ENABLE_HCLX_TRUE@am_hclx_OBJECTS = hclx-hclx.$(OBJEXT)
 hclx_OBJECTS = $(am_hclx_OBJECTS)
@@ -158,8 +150,7 @@ am__v_at_1 =
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/ac/depcomp
 am__maybe_remake_depfiles = depfiles
-am__depfiles_remade = ./$(DEPDIR)/hcl-hcl.Po ./$(DEPDIR)/hclj-hclj.Po \
-	./$(DEPDIR)/hclx-hclx.Po
+am__depfiles_remade = ./$(DEPDIR)/hcl-hcl.Po ./$(DEPDIR)/hclx-hclx.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -179,9 +170,8 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(hcl_SOURCES) $(hclj_SOURCES) $(hclx_SOURCES)
-DIST_SOURCES = $(hcl_SOURCES) $(am__hclj_SOURCES_DIST) \
-	$(am__hclx_SOURCES_DIST)
+SOURCES = $(hcl_SOURCES) $(hclx_SOURCES)
+DIST_SOURCES = $(hcl_SOURCES) $(am__hclx_SOURCES_DIST)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -366,10 +356,6 @@ hcl_LDADD = ../lib/libhcl.la $(LIBADD_COMMON)
 @ENABLE_HCLX_TRUE@hclx_CPPFLAGS = $(CPPFLAGS_COMMON)
 @ENABLE_HCLX_TRUE@hclx_LDFLAGS = $(LDFLAGS_COMMON)
 @ENABLE_HCLX_TRUE@hclx_LDADD = ../lib/libhclx.la $(LIBADD_COMMON)
-@ENABLE_HCLX_TRUE@hclj_SOURCES = hclj.c
-@ENABLE_HCLX_TRUE@hclj_CPPFLAGS = $(CPPFLAGS_COMMON)
-@ENABLE_HCLX_TRUE@hclj_LDFLAGS = $(LDFLAGS_COMMON)
-@ENABLE_HCLX_TRUE@hclj_LDADD = ../lib/libhclx.la $(LIBADD_COMMON)
 all: all-am
 
 .SUFFIXES:
@@ -457,10 +443,6 @@ hcl$(EXEEXT): $(hcl_OBJECTS) $(hcl_DEPENDENCIES) $(EXTRA_hcl_DEPENDENCIES)
 	@rm -f hcl$(EXEEXT)
 	$(AM_V_CCLD)$(hcl_LINK) $(hcl_OBJECTS) $(hcl_LDADD) $(LIBS)
 
-hclj$(EXEEXT): $(hclj_OBJECTS) $(hclj_DEPENDENCIES) $(EXTRA_hclj_DEPENDENCIES) 
-	@rm -f hclj$(EXEEXT)
-	$(AM_V_CCLD)$(hclj_LINK) $(hclj_OBJECTS) $(hclj_LDADD) $(LIBS)
-
 hclx$(EXEEXT): $(hclx_OBJECTS) $(hclx_DEPENDENCIES) $(EXTRA_hclx_DEPENDENCIES) 
 	@rm -f hclx$(EXEEXT)
 	$(AM_V_CCLD)$(hclx_LINK) $(hclx_OBJECTS) $(hclx_LDADD) $(LIBS)
@@ -472,7 +454,6 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hcl-hcl.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hclj-hclj.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hclx-hclx.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
@@ -518,20 +499,6 @@ hcl-hcl.obj: hcl.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='hcl.c' object='hcl-hcl.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hcl_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o hcl-hcl.obj `if test -f 'hcl.c'; then $(CYGPATH_W) 'hcl.c'; else $(CYGPATH_W) '$(srcdir)/hcl.c'; fi`
-
-hclj-hclj.o: hclj.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hclj_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT hclj-hclj.o -MD -MP -MF $(DEPDIR)/hclj-hclj.Tpo -c -o hclj-hclj.o `test -f 'hclj.c' || echo '$(srcdir)/'`hclj.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/hclj-hclj.Tpo $(DEPDIR)/hclj-hclj.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='hclj.c' object='hclj-hclj.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hclj_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o hclj-hclj.o `test -f 'hclj.c' || echo '$(srcdir)/'`hclj.c
-
-hclj-hclj.obj: hclj.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hclj_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT hclj-hclj.obj -MD -MP -MF $(DEPDIR)/hclj-hclj.Tpo -c -o hclj-hclj.obj `if test -f 'hclj.c'; then $(CYGPATH_W) 'hclj.c'; else $(CYGPATH_W) '$(srcdir)/hclj.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/hclj-hclj.Tpo $(DEPDIR)/hclj-hclj.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='hclj.c' object='hclj-hclj.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hclj_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o hclj-hclj.obj `if test -f 'hclj.c'; then $(CYGPATH_W) 'hclj.c'; else $(CYGPATH_W) '$(srcdir)/hclj.c'; fi`
 
 hclx-hclx.o: hclx.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hclx_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT hclx-hclx.o -MD -MP -MF $(DEPDIR)/hclx-hclx.Tpo -c -o hclx-hclx.o `test -f 'hclx.c' || echo '$(srcdir)/'`hclx.c
@@ -680,7 +647,6 @@ clean-am: clean-binPROGRAMS clean-generic clean-libtool mostlyclean-am
 
 distclean: distclean-am
 		-rm -f ./$(DEPDIR)/hcl-hcl.Po
-	-rm -f ./$(DEPDIR)/hclj-hclj.Po
 	-rm -f ./$(DEPDIR)/hclx-hclx.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
@@ -728,7 +694,6 @@ installcheck-am:
 
 maintainer-clean: maintainer-clean-am
 		-rm -f ./$(DEPDIR)/hcl-hcl.Po
-	-rm -f ./$(DEPDIR)/hclj-hclj.Po
 	-rm -f ./$(DEPDIR)/hclx-hclx.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic

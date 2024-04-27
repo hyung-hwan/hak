@@ -37,9 +37,4 @@ hclx_CPPFLAGS = $(CPPFLAGS_COMMON)
 hclx_LDFLAGS = $(LDFLAGS_COMMON)
 hclx_LDADD = ../lib/libhclx.la $(LIBADD_COMMON)
 
-bin_PROGRAMS += hclj
-hclj_SOURCES = hclj.c
-hclj_CPPFLAGS = $(CPPFLAGS_COMMON)
-hclj_LDFLAGS = $(LDFLAGS_COMMON)
-hclj_LDADD = ../lib/libhclx.la $(LIBADD_COMMON)
 endif
