@@ -498,7 +498,7 @@ static int handle_incpath (hcl_server_t* server, const char* str)
 #define MIN_WORKER_STACK_SIZE 512000ul
 #define MIN_ACTOR_HEAP_SIZE 512000ul
 
-int main (int argc, char* argv[])
+int server_main (const char* outer, int argc, char* argv[])
 {
 	hcl_bci_t c;
 	static hcl_bopt_lng_t lopt[] =
@@ -673,4 +673,37 @@ int main (int argc, char* argv[])
 oops:
 	if (server) hcl_server_close (server);
 	return -1;
+}
+
+/* -------------------------------------------------------------- */
+
+static void print_main_usage (const char* argv0)
+{
+	fprintf (stderr, "USAGE: %s server|client\n");
+}
+
+int main (int argc, char* argv[])
+{
+	int n;
+
+	if (argc < 2)
+	{
+		print_main_usage (argv[0]);
+		n = -1;	
+	}
+	else if (strcmp(argv[1], "server") == 0)
+	{
+		n = server_main(argv[0], argc -1, &argv[1]);
+	}
+	else if (strcmp(argv[1], "client") == 0)
+	{
+		n = client_main(argv[0], argc -1, &argv[1]);
+	}
+	else
+	{
+		print_main_usage (argv[0]);
+		n = -1;
+	}
+
+	return n;
 }
