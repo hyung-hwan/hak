@@ -720,8 +720,16 @@ struct hcl_ntime_t
  * The HCL_ALIGNOF() macro returns the alignment size of a structure.
  * Note that this macro may not work reliably depending on the type given.
  */
+#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 202311L) /* C23 */
+#define HCL_ALIGNOF(type) alignof(type)
+#elif defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L) /* C11 */
+#define HCL_ALIGNOF(type) _Alignof(type)
+#elif defined(__cplusplus) && (__cplusplus >= 201103L) /* C++11 */
+#define HCL_ALIGNOF(type) alignof(type)
+#else
 #define HCL_ALIGNOF(type) HCL_OFFSETOF(struct { hcl_uint8_t d1; type d2; }, d2)
         /*(sizeof(struct { hcl_uint8_t d1; type d2; }) - sizeof(type))*/
+#endif
 
 #if defined(__cplusplus)
 #	if (__cplusplus >= 201103L) /* C++11 */
@@ -960,9 +968,13 @@ typedef struct hcl_t hcl_t;
 #define HCL_IS_ALIGNED_POW2(x,y) (!HCL_IS_UNALIGNED_POW2(x,y))
 
 #if defined(__cplusplus) || (defined(__STDC_VERSION__) && (__STDC_VERSION__>=199901L))
+/* array index */
 #define HCL_AID(x) [x]=
+/* struct field name */
+#define HCL_SFN(x) .x=
 #else
 #define HCL_AID(x)
+#define HCL_SFN(x)
 #endif
 
 /* =========================================================================
