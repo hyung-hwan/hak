@@ -486,6 +486,14 @@ HCL_EXPORT int hcl_sys_send_iov (
 	int          count
 );
 
+HCL_EXPORT int hcl_sys_open_pipes (
+	int          pfd[2]
+);
+
+HCL_EXPORT void hcl_sys_close_pipes (
+	int          pfd[2]
+);
+
 #if defined(__cplusplus)
 }
 #endif

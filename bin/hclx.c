@@ -896,6 +896,7 @@ static int json_inst_cb (hcl_json_t* json, hcl_json_inst_t it, const hcl_oocs_t*
 
 	return 0;
 }
+
 int json_main (const char* outer, int argc, char* argv[])
 {
 	hcl_json_t* json;

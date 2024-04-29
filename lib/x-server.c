@@ -1086,37 +1086,11 @@ hcl_server_t* hcl_server_open (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, hcl_server_p
 		goto oops;
 	}
 
-	if (pipe(pfd) <= -1)
+	if (hcl_sys_open_pipes(pfd) <= -1)
 	{
 		if (errnum) *errnum = hcl->vmprim.syserrstrb(hcl, 0, errno, HCL_NULL, 0);
 		goto oops;
 	}
-
-#if defined(O_NONBLOCK) || defined(O_CLOEXEC)
-	fcv = fcntl(pfd[0], F_GETFD, 0);
-	if (fcv >= 0)
-	{
-	#if defined(O_NONBLOCK)
-		fcv |= O_NONBLOCK;
-	#endif
-	#if defined(O_CLOEXEC)
-		fcv |= O_CLOEXEC;
-	#endif
-		fcntl(pfd[0], F_SETFD, fcv);
-	}
-
-	fcv = fcntl(pfd[1], F_GETFD, 0);
-	if (fcv >= 0)
-	{
-	#if defined(O_NONBLOCK)
-		fcv |= O_NONBLOCK;
-	#endif
-	#if defined(O_CLOEXEC)
-		fcv |= O_CLOEXEC;
-	#endif
-		fcntl(pfd[1], F_SETFD, fcv);
-	}
-#endif
 
 	xtn = (server_hcl_xtn_t*)hcl_getxtn(hcl);
 	xtn->server = server;
@@ -1167,7 +1141,6 @@ oops:
 	if (tmr) hcl_tmr_close (tmr);
 	if (hcl) hcl_close (hcl);
 	if (server) HCL_MMGR_FREE (mmgr, server);
-
 	return HCL_NULL;
 }
 
@@ -1189,8 +1162,7 @@ void hcl_server_close (hcl_server_t* server)
 	pthread_mutex_destroy (&server->tmr_mutex);
 	pthread_mutex_destroy (&server->worker_mutex);
 
-	close (server->mux_pipe[0]);
-	close (server->mux_pipe[1]);
+	hcl_sys_close_pipes (server->mux_pipe);
 
 	hcl_tmr_close (server->tmr);
 	hcl_close (server->dummy_hcl);
@@ -2268,4 +2240,53 @@ int hcl_sys_send_iov (int sck, hcl_iovec_t* iov, int count)
 	}
 
 	return 0;
+}
+
+int hcl_sys_open_pipes (int pfd[2])
+{
+	int fcv;
+
+	if (pipe(pfd) <= -1) return -1;
+
+#if defined(O_NONBLOCK) || defined(O_CLOEXEC)
+	fcv = fcntl(pfd[0], F_GETFD, 0);
+	if (fcv >= 0)
+	{
+	#if defined(O_NONBLOCK)
+		fcv |= O_NONBLOCK;
+	#endif
+	#if defined(O_CLOEXEC)
+		fcv |= O_CLOEXEC;
+	#endif
+		fcntl(pfd[0], F_SETFD, fcv);
+	}
+
+	fcv = fcntl(pfd[1], F_GETFD, 0);
+	if (fcv >= 0)
+	{
+	#if defined(O_NONBLOCK)
+		fcv |= O_NONBLOCK;
+	#endif
+	#if defined(O_CLOEXEC)
+		fcv |= O_CLOEXEC;
+	#endif
+		fcntl(pfd[1], F_SETFD, fcv);
+	}
+#endif
+
+	return 0;
+}
+
+void hcl_sys_close_pipes (int pfd[2])
+{
+	if (pfd[0] >= 0)
+	{
+		close (pfd[0]);
+		pfd[0] = -1;
+	}
+	if (pfd[1] >= 0)
+	{
+		close (pfd[1]);
+		pfd[1] = -1;
+	}
 }
