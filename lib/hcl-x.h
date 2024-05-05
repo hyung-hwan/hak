@@ -487,11 +487,22 @@ HCL_EXPORT int hcl_sys_send_iov (
 );
 
 HCL_EXPORT int hcl_sys_open_pipes (
-	int          pfd[2]
+	int          pfd[2],
+	int          nonblock
 );
 
 HCL_EXPORT void hcl_sys_close_pipes (
 	int          pfd[2]
+);
+
+HCL_EXPORT int hcl_sys_set_nonblock (
+	int          fd,
+	int          v
+);
+
+HCL_EXPORT int hcl_sys_set_cloexec (
+	int          fd,
+	int          v
 );
 
 #if defined(__cplusplus)

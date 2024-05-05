@@ -1086,7 +1086,7 @@ hcl_server_t* hcl_server_open (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, hcl_server_p
 		goto oops;
 	}
 
-	if (hcl_sys_open_pipes(pfd) <= -1)
+	if (hcl_sys_open_pipes(pfd, 1) <= -1)
 	{
 		if (errnum) *errnum = hcl->vmprim.syserrstrb(hcl, 0, errno, HCL_NULL, 0);
 		goto oops;
@@ -1782,21 +1782,8 @@ static int setup_listeners (hcl_server_t* server, const hcl_bch_t* addrs)
 
 		optval = 1;
 		setsockopt (srv_fd, SOL_SOCKET, SO_REUSEADDR, &optval, HCL_SIZEOF(int));
-
-	#if defined(O_NONBLOCK) || defined(O_CLOEXEC)
-		fcv = fcntl(srv_fd, F_GETFD, 0);
-		if (fcv >= 0)
-		{
-		#if defined(O_NONBLOCK)
-			fcv |= O_NONBLOCK;
-		#endif
-		#if defined(O_CLOEXEC)
-			fcv |= O_CLOEXEC;
-		#endif
-
-			fcntl(srv_fd, F_SETFL, fcv);
-		}
-	#endif
+		hcl_sys_set_nonblock (srv_fd, 1);
+		hcl_sys_set_cloexec (srv_fd, 1);
 
 		if (bind(srv_fd, (struct sockaddr*)&srv_addr, srv_len) == -1)
 		{
@@ -1936,19 +1923,8 @@ int hcl_server_start (hcl_server_t* server, const hcl_bch_t* addrs)
 					break;
 				}
 
-			#if defined(O_NONBLOCK) || defined(O_CLOEXEC)
-				fcv = fcntl(cli_fd, F_GETFD, 0);
-				if (fcv >= 0)
-				{
-				#if defined(O_NONBLOCK)
-					fcv &= ~O_NONBLOCK; // force the accepted socket to be blocking
-				#endif
-				#if defined(O_CLOEXEC)
-					fcv |= O_CLOEXEC;
-				#endif
-					fcntl(cli_fd, F_SETFD, fcv);
-				}
-			#endif
+				hcl_sys_set_nonblock (cli_fd, 0); /* force the accepted socket to be blocking */
+				hcl_sys_set_cloexec (cli_fd, 1);
 
 				if (server->cfg.worker_max_count > 0)
 				{
@@ -2242,37 +2218,16 @@ int hcl_sys_send_iov (int sck, hcl_iovec_t* iov, int count)
 	return 0;
 }
 
-int hcl_sys_open_pipes (int pfd[2])
+int hcl_sys_open_pipes (int pfd[2], int nonblock)
 {
-	int fcv;
+	/* TODO: mimic open_pipes() in std.c */
 
 	if (pipe(pfd) <= -1) return -1;
 
-#if defined(O_NONBLOCK) || defined(O_CLOEXEC)
-	fcv = fcntl(pfd[0], F_GETFD, 0);
-	if (fcv >= 0)
-	{
-	#if defined(O_NONBLOCK)
-		fcv |= O_NONBLOCK;
-	#endif
-	#if defined(O_CLOEXEC)
-		fcv |= O_CLOEXEC;
-	#endif
-		fcntl(pfd[0], F_SETFD, fcv);
-	}
-
-	fcv = fcntl(pfd[1], F_GETFD, 0);
-	if (fcv >= 0)
-	{
-	#if defined(O_NONBLOCK)
-		fcv |= O_NONBLOCK;
-	#endif
-	#if defined(O_CLOEXEC)
-		fcv |= O_CLOEXEC;
-	#endif
-		fcntl(pfd[1], F_SETFD, fcv);
-	}
-#endif
+	hcl_sys_set_nonblock(pfd[0], nonblock);
+	hcl_sys_set_nonblock(pfd[1], nonblock);
+	hcl_sys_set_cloexec(pfd[0], 1);
+	hcl_sys_set_cloexec(pfd[1], 1);
 
 	return 0;
 }
@@ -2289,4 +2244,42 @@ void hcl_sys_close_pipes (int pfd[2])
 		close (pfd[1]);
 		pfd[1] = -1;
 	}
+}
+
+int hcl_sys_set_nonblock (int fd, int v)
+{
+#if defined(F_GETFL) && defined(F_SETFL) && defined(O_NONBLOCK)
+	int flags;
+
+	if ((flags = fcntl(fd, F_GETFL, 0)) <= -1) return -1;
+
+	if (v) flags |= O_NONBLOCK;
+	else flags &= ~O_NONBLOCK;
+
+	if (fcntl(fd, F_SETFL, flags) <= -1) return -1;
+
+	return 0;
+#else
+	errno = ENOSYS;
+	return -1;
+#endif
+}
+
+int hcl_sys_set_cloexec (int fd, int v)
+{
+#if defined(F_GETFL) && defined(F_SETFL) && defined(FD_CLOEXEC)
+	int flags;
+
+	if ((flags = fcntl(fd, F_GETFD, 0)) <= -1) return -1;
+
+	if (v) flags |= FD_CLOEXEC;
+	else flags &= ~FD_CLOEXEC;
+
+	if (fcntl(fd, F_SETFD, flags) <= -1) return -1;
+
+	return 0;
+#else
+	errno = ENOSYS;
+	return -1;
+#endif
 }

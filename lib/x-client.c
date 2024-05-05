@@ -159,7 +159,7 @@ hcl_client_t* hcl_client_open (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, hcl_client_p
 		return HCL_NULL;
 	}
 
-	if (hcl_sys_open_pipes(pfd) <= -1)
+	if (hcl_sys_open_pipes(pfd, 1) <= -1)
 	{
 		if (errnum) *errnum = hcl->vmprim.syserrstrb(hcl, 0, errno, HCL_NULL, 0);
 		goto oops;
@@ -440,6 +440,8 @@ static int client_connect (hcl_client_t* client, const char* ipaddr, int reuse_a
 		goto oops;
 	}
 
+	hcl_sys_set_cloexec(sck, 1);
+
 	if (reuse_addr)
 	{
 		if (sckfam == AF_INET)
@@ -481,6 +483,7 @@ static int client_connect (hcl_client_t* client, const char* ipaddr, int reuse_a
 		goto oops;
 	}
 
+	hcl_sys_set_nonblock(sck, 1); /* make it nonblocking after connection has been established */
 
 	memset (&proto, 0, HCL_SIZEOF(proto_cb));
 	proto_cb.on_packet = client->prim.on_packet;
@@ -639,9 +642,11 @@ static int on_control_event (hcl_client_t* client, struct pollfd* pfd)
 }
 
 
+
 static int on_server_event (hcl_client_t* client, struct pollfd* pfd, int shut_wr_after_req)
 {
 
+#if 0
 	if (pfd->revents & POLLERR)
 	{
 		hcl_client_seterrbfmt (client, HCL_ESYSERR, "error condition detected on %d", client->sck);
@@ -737,6 +742,7 @@ carry_on:
 	}
 
 	if (hcl_xproto_geteof(client->proto)) break;
+#endif
 }
 
 static int on_script_event (hcl_client_t* client, struct pollfd* pfd)
@@ -744,7 +750,7 @@ static int on_script_event (hcl_client_t* client, struct pollfd* pfd)
 	ssize_t n;
 	hcl_uint8_t buf[128];
 
-	n = read(pfd.fd, buf, HCL_SIZEOF(buf));
+	n = read(pfd->fd, buf, HCL_SIZEOF(buf));
 	if (n <= -1)
 	{
 	}
@@ -759,15 +765,20 @@ static int on_script_event (hcl_client_t* client, struct pollfd* pfd)
 int hcl_client_start (hcl_client_t* client, const char* ipaddr, const char* script, int reuse_addr, int shut_wr_after_req)
 {
 	const char* scptr, * sccur;
-	int script_fd = STDIN_FILENO;
+	int cin = STDIN_FILENO;
+	int cout = STDOUT_FILENO;
+	int cerr = STDERR_FILENO;
 
-	if (client_connect(client, ipaddr, reuse_addr) <= -1) return -1;
+	/*  TODO: cin, cout, cerr could be actual files or something other than the console.
+	          the actual loop won't begin until all these file descriptors are ready */
+
+	if (client_connect(client, ipaddr, reuse_addr) <= -1) return -1; /* TODO: support time out or abort while connecting... */
 
 	scptr = sccur = script;
 	while (1)
 	{
 		ssize_t n, i;
-		struct pollfd pfd[3];
+		struct pollfd pfd[5];
 
 		n = 0;
 
@@ -780,9 +791,9 @@ int hcl_client_start (hcl_client_t* client, const char* ipaddr, const char* scri
 		if (*sccur != '\0') pfd[n].events |= POLLOUT;
 		pfd[n++].revents = 0;
 
-		if (script_fd >= 0)
+		if (cin >= 0)
 		{
-			pfd[n].fd = script_fd;
+			pfd[n].fd = cin;
 			pfd[n].events = POLLIN;
 			pfd[n++].revents = 0;
 		}
@@ -812,7 +823,7 @@ int hcl_client_start (hcl_client_t* client, const char* ipaddr, const char* scri
 				/* event from the server */
 				on_server_event (client, &pfd[i], shut_wr_after_req);
 			}
-			else if (pfd[i].fd == script_fd)
+			else if (pfd[i].fd == cin)
 			{
 				on_script_event (client, &pfd[i]);
 			}
