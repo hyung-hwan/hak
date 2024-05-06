@@ -22,10 +22,11 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "hcl-x.h"
+#include <hcl-x.h>
 #include "hcl-prv.h"
-#include "hcl-tmr.h"
-#include "hcl-xutl.h"
+#include <hcl-tmr.h>
+#include <hcl-xutl.h>
+#include <hcl-sys.h>
 
 #include <stdio.h>
 #include <string.h>

@@ -505,6 +505,10 @@ HCL_EXPORT int hcl_sys_set_cloexec (
 	int          v
 );
 
+HCL_EXPORT int hcl_sys_is_errno_wb (
+	int          no
+);
+
 #if defined(__cplusplus)
 }
 #endif

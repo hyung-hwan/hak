@@ -22,10 +22,11 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "hcl-x.h"
+#include <hcl-x.h>
 #include "hcl-prv.h"
-#include "hcl-tmr.h"
-#include "hcl-xutl.h"
+#include <hcl-tmr.h>
+#include <hcl-xutl.h>
+#include <hcl-sys.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -68,6 +69,7 @@
 #	endif
 #	if defined(HAVE_SYS_EPOLL_H)
 #		include <sys/epoll.h>
+#		define USE_EPOLL
 #	endif
 
 #	include <unistd.h>
@@ -215,8 +217,10 @@ struct hcl_server_t
 
 	struct
 	{
+	#if defined(USE_EPOLL)
 		int ep_fd;
 		struct epoll_event ev_buf[128];
+	#endif
 		hcl_server_listener_t* head;
 		hcl_oow_t count;
 	} listener;
@@ -1700,9 +1704,11 @@ static void set_err_with_syserr (hcl_server_t* server, int syserr_type, int syse
 static void free_all_listeners (hcl_server_t* server)
 {
 	hcl_server_listener_t* lp;
+#if defined(USE_EPOLL)
 	struct epoll_event dummy_ev;
 
 	epoll_ctl (server->listener.ep_fd, EPOLL_CTL_DEL, server->mux_pipe[0], &dummy_ev);
+#endif
 
 	while (server->listener.head)
 	{
@@ -1710,20 +1716,25 @@ static void free_all_listeners (hcl_server_t* server)
 		server->listener.head = lp->next_listener;
 		server->listener.count--;
 
+#if defined(USE_EPOLL)
 		epoll_ctl (server->listener.ep_fd, EPOLL_CTL_DEL, lp->sck, &dummy_ev);
+#endif
 		close (lp->sck);
 		hcl_server_freemem (server, lp);
 	}
 
+#if defined(USE_EPOLL)
 	HCL_ASSERT (server->dummy_hcl, server->listener.ep_fd >= 0);
 	close (server->listener.ep_fd);
 	server->listener.ep_fd = -1;
+#endif
 }
 
 static int setup_listeners (hcl_server_t* server, const hcl_bch_t* addrs)
 {
 	const hcl_bch_t* addr_ptr, * comma;
 	int ep_fd, fcv;
+#if defined(USE_EPOLL)
 	struct epoll_event ev;
 
 	ep_fd = epoll_create(1024);
@@ -1734,10 +1745,7 @@ static int setup_listeners (hcl_server_t* server, const hcl_bch_t* addrs)
 		return -1;
 	}
 
-#if defined(O_CLOEXEC)
-	fcv = fcntl(ep_fd, F_GETFD, 0);
-	if (fcv >= 0) fcntl(ep_fd, F_SETFD, fcv | O_CLOEXEC);
-#endif
+	hcl_sys_set_cloexec(ep_fd, 1);
 
 	HCL_MEMSET (&ev, 0, HCL_SIZEOF(ev));
 	ev.events = EPOLLIN | EPOLLHUP | EPOLLERR;
@@ -1751,6 +1759,7 @@ static int setup_listeners (hcl_server_t* server, const hcl_bch_t* addrs)
 	}
 
 	server->listener.ep_fd = ep_fd;
+#endif
 	addr_ptr = addrs;
 	while (1)
 	{
@@ -1801,6 +1810,8 @@ static int setup_listeners (hcl_server_t* server, const hcl_bch_t* addrs)
 			goto next_segment;
 		}
 
+
+#if defined(USE_EPOLL)
 		HCL_MEMSET (&ev, 0, HCL_SIZEOF(ev));
 		ev.events = EPOLLIN | EPOLLHUP | EPOLLERR;
 		ev.data.fd = srv_fd;
@@ -1811,6 +1822,7 @@ static int setup_listeners (hcl_server_t* server, const hcl_bch_t* addrs)
 			close (srv_fd);
 			goto next_segment;
 		}
+#endif
 
 		listener = (hcl_server_listener_t*)hcl_server_allocmem(server, HCL_SIZEOF(*listener));
 		if (!listener)
@@ -1869,7 +1881,11 @@ int hcl_server_start (hcl_server_t* server, const hcl_bch_t* addrs)
 		pthread_mutex_unlock (&server->tmr_mutex);
 		if (n <= -1) HCL_INIT_NTIME (&tmout, 10, 0);
 
+#if defined(USE_EPOLL)
 		n = epoll_wait(server->listener.ep_fd, server->listener.ev_buf, HCL_COUNTOF(server->listener.ev_buf), HCL_SECNSEC_TO_MSEC(tmout.sec, tmout.nsec));
+#else
+		n = poll(); /* TODO: */
+#endif
 
 		purge_all_workers (server, HCL_SERVER_WORKER_STATE_DEAD);
 		if (n <= -1)
@@ -1888,12 +1904,19 @@ int hcl_server_start (hcl_server_t* server, const hcl_bch_t* addrs)
 
 		while (n > 0)
 		{
+#if defined(USE_EPOLL)
 			struct epoll_event* evp;
+#endif
 
 			--n;
 
+#if defined(USE_EPOLL)
 			evp = &server->listener.ev_buf[n];
 			if (!evp->events /*& (POLLIN | POLLHUP | POLLERR) */) continue;
+#else
+
+			/* TODO: */
+#endif
 
 			if (evp->data.fd == server->mux_pipe[0])
 			{
@@ -1910,14 +1933,7 @@ int hcl_server_start (hcl_server_t* server, const hcl_bch_t* addrs)
 				{
 					if (server->stopreq) break; /* normal termination requested */
 					if (errno == EINTR) continue; /* interrupted but no termination requested */
-				#if defined(EWOULDBLOCK) && defined(EAGAIN) && (EWOULDBLOCK != EAGAIN)
-					if (errno == EWOULDBLOCK || errno == EAGAIN) continue;
-				#elif defined(EWOULDBLOCK)
-					if (errno == EWOULDBLOCK) continue;
-				#elif defined(EAGAIN)
-					if (errno == EAGAIN) continue;
-				#endif
-
+					if (hcl_sys_is_errnor_wb(errno)) continue;
 					set_err_with_syserr (server, 0, errno, "unable to accept worker on server socket %d", evp->data.fd);
 					xret = -1;
 					break;
@@ -2187,99 +2203,4 @@ void* hcl_server_reallocmem (hcl_server_t* server, void* ptr, hcl_oow_t size)
 void hcl_server_freemem (hcl_server_t* server, void* ptr)
 {
 	HCL_MMGR_FREE (server->_mmgr, ptr);
-}
-
-/* ========================================================================= */
-
-int hcl_sys_send_iov (int sck, hcl_iovec_t* iov, int count)
-{
-	int index = 0;
-
-	while (1)
-	{
-		ssize_t nwritten;
-		struct msghdr msg;
-
-		memset (&msg, 0, HCL_SIZEOF(msg));
-		msg.msg_iov = (struct iovec*)&iov[index];
-		msg.msg_iovlen = count - index;
-		nwritten = sendmsg(sck, &msg, 0);
-		if (nwritten <= -1) return -1;
-
-		while (index < count && (size_t)nwritten >= iov[index].iov_len)
-			nwritten -= iov[index++].iov_len;
-
-		if (index == count) break;
-
-		iov[index].iov_base = (void*)((hcl_uint8_t*)iov[index].iov_base + nwritten);
-		iov[index].iov_len -= nwritten;
-	}
-
-	return 0;
-}
-
-int hcl_sys_open_pipes (int pfd[2], int nonblock)
-{
-	/* TODO: mimic open_pipes() in std.c */
-
-	if (pipe(pfd) <= -1) return -1;
-
-	hcl_sys_set_nonblock(pfd[0], nonblock);
-	hcl_sys_set_nonblock(pfd[1], nonblock);
-	hcl_sys_set_cloexec(pfd[0], 1);
-	hcl_sys_set_cloexec(pfd[1], 1);
-
-	return 0;
-}
-
-void hcl_sys_close_pipes (int pfd[2])
-{
-	if (pfd[0] >= 0)
-	{
-		close (pfd[0]);
-		pfd[0] = -1;
-	}
-	if (pfd[1] >= 0)
-	{
-		close (pfd[1]);
-		pfd[1] = -1;
-	}
-}
-
-int hcl_sys_set_nonblock (int fd, int v)
-{
-#if defined(F_GETFL) && defined(F_SETFL) && defined(O_NONBLOCK)
-	int flags;
-
-	if ((flags = fcntl(fd, F_GETFL, 0)) <= -1) return -1;
-
-	if (v) flags |= O_NONBLOCK;
-	else flags &= ~O_NONBLOCK;
-
-	if (fcntl(fd, F_SETFL, flags) <= -1) return -1;
-
-	return 0;
-#else
-	errno = ENOSYS;
-	return -1;
-#endif
-}
-
-int hcl_sys_set_cloexec (int fd, int v)
-{
-#if defined(F_GETFL) && defined(F_SETFL) && defined(FD_CLOEXEC)
-	int flags;
-
-	if ((flags = fcntl(fd, F_GETFD, 0)) <= -1) return -1;
-
-	if (v) flags |= FD_CLOEXEC;
-	else flags &= ~FD_CLOEXEC;
-
-	if (fcntl(fd, F_SETFD, flags) <= -1) return -1;
-
-	return 0;
-#else
-	errno = ENOSYS;
-	return -1;
-#endif
 }
