@@ -75,6 +75,16 @@ struct client_hcl_xtn_t
 };
 typedef struct client_hcl_xtn_t client_hcl_xtn_t;
 
+enum state_flag_t
+{
+	STATE_LOCAL_IN_CLOSED  = (1 << 0),
+	STATE_LOCAL_OUT_CLOSED  = (1 << 1),
+	STATE_REMOTE_IN_CLOSED = (1 << 2),
+
+	HCL_CLIENT_ALL_CLOSED = (STATE_LOCAL_IN_CLOSED | STATE_LOCAL_OUT_CLOSED | STATE_REMOTE_IN_CLOSED)
+};
+typedef enum state_flag_t state_flag_t;
+
 struct hcl_client_t
 {
 	hcl_oow_t   _instsize;
@@ -104,6 +114,7 @@ struct hcl_client_t
 	} cfg;
 
 	int mux_pipe[2]; /* pipe to break the blocking multiplexer in the main server loop */
+	int state;
 
 	struct
 	{
@@ -125,6 +136,7 @@ struct hcl_client_t
 			hcl_oow_t len;
 		} pw2r; /* pending write to the remote side */
 	} local;
+
 
 	struct
 	{
@@ -561,30 +573,34 @@ static int client_add_to_local_pw2r (hcl_client_t* client, const hcl_uint8_t* pt
 	return 0;
 }
 
-static int client_send_to_remote (hcl_client_t* client, int code, const hcl_uint8_t* ptr, hcl_oow_t len)
+static int client_send_to_remote (hcl_client_t* client, hcl_xpkt_type_t pktype, const hcl_uint8_t* ptr, hcl_oow_t len)
 {
 	hcl_xpkt_hdr_t hdr;
 	struct iovec iov[2];
 	hcl_uint16_t seglen;
 	int n, i;
 
-	while (len > 0)
+	do
 	{
 		seglen = (len > HCL_XPKT_MAX_PLD_LEN)? HCL_XPKT_MAX_PLD_LEN: len;
 
 		hdr.id = 1; /* TODO: */
-		hdr.type = HCL_XPKT_CODE | (((seglen >> 8) & 0x0F) << 4);
+		hdr.type = pktype | (((seglen >> 8) & 0x0F) << 4);
 		hdr.len = seglen & 0xFF;
 
-		iov[0].iov_base = &hdr;
-		iov[0].iov_len = HCL_SIZEOF(hdr);
-		iov[1].iov_base = ptr;
-		iov[1].iov_len = seglen;
+		i = 0;
+		iov[i].iov_base = &hdr;
+		iov[i++].iov_len = HCL_SIZEOF(hdr);
+		if (seglen > 0)
+		{
+			iov[i].iov_base = ptr;
+			iov[i++].iov_len = seglen;
+		}
 
-		n = hcl_sys_send_iov(client->remote.sck, iov, 2);
+		n = hcl_sys_send_iov(client->remote.sck, iov, i);
 		if (n <= -1) return -1;
 
-		if (n < 2 || iov[n - 1].iov_len > 0)
+		if (n < i || iov[n - 1].iov_len > 0)
 		{
 			/* the write isn't completed. */
 			for (i = n; i < 2 ; i++)
@@ -602,6 +618,7 @@ static int client_send_to_remote (hcl_client_t* client, int code, const hcl_uint
 		ptr += seglen;
 		len -= seglen;
 	}
+	while (len > 0);
 
 	return 0;
 }
@@ -684,7 +701,11 @@ carry_on:
 		}
 	}
 
-	if (hcl_xproto_geteof(client->remote.proto)) goto reqstop;
+	if (hcl_xproto_geteof(client->remote.proto))
+	{
+		client->state |= STATE_REMOTE_IN_CLOSED;
+		goto reqstop;
+	}
 	return;
 
 reqstop:
@@ -710,6 +731,7 @@ hcl_client_logbfmt(client, HCL_LOG_STDERR, "local in read error - %hs\n", strerr
 hcl_client_logbfmt(client, HCL_LOG_STDERR, "local in eof\n");
 /* TODO ARRANGE TO FINISH.. AFTER EXUCTION OF REMAINING STUFF... */
 		//client->stopreq = 1;
+		client->state |= STATE_LOCAL_IN_CLOSED;
 		n = client_send_to_remote(client, HCL_XPKT_EXECUTE, HCL_NULL, 0);
 		if (n <= -1)
 		{
@@ -750,6 +772,12 @@ hcl_client_logbfmt(client, HCL_LOG_STDERR, "staritg client loop... ...\n");
 	{
 		int nfds, i;
 		struct pollfd pfd[10];
+
+		if ((client->state & HCL_CLIENT_ALL_CLOSED) == HCL_CLIENT_ALL_CLOSED)
+		{
+			/* no explicit stop request. but all file descriptors reached EOF */
+			break;
+		}
 
 		HCL_MEMSET (pfd, 0, HCL_SIZEOF(pfd));
 		nfds = 0;
