@@ -318,8 +318,6 @@ HCL_EXPORT void hcl_client_close (
 HCL_EXPORT int hcl_client_start (
 	hcl_client_t* client,
 	const char*   ipaddr,
-	const char*   script,
-	int           reuse_addr,
 	int           shut_wr_after_req
 );
 
@@ -479,6 +477,12 @@ HCL_EXPORT int hcl_xproto_process (
 );
 
 /* ---------------------------------------------------------------------- */
+
+HCL_EXPORT int hcl_sys_send (
+	int         sck,
+	const void* data,
+	hcl_oow_t*  size  /* [IN] number of bytes to write, [OUT] number of bytes written */
+);
 
 HCL_EXPORT int hcl_sys_send_iov (
 	int          sck,

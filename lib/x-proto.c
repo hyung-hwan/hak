@@ -156,13 +156,12 @@ int hcl_xproto_process (hcl_xproto_t* proto)
 		case HCL_XPROTO_RCV_PLD:
 			if (proto->rcv.len < proto->rcv.hdr.len) goto carry_on; /* need more payload data */
 
-/* TODO: convert handle_packet as call back */
 			n = proto->_cb.on_packet(proto, proto->rcv.hdr.type, proto->rcv.buf, proto->rcv.hdr.len);
 
-/* TODO: minimize the use of HCL_MEMOVE... use the buffer */
 			/* switch to the header mode */
 			if (proto->rcv.hdr.len > 0)
 			{
+/* TODO: minimize the use of HCL_MEMOVE... use the buffer */
 				HCL_MEMMOVE (proto->rcv.buf, &proto->rcv.buf[proto->rcv.hdr.len], proto->rcv.len - proto->rcv.hdr.len);
 				proto->rcv.len -= proto->rcv.hdr.len;
 			}

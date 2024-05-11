@@ -24,7 +24,8 @@
  */
 
 #include <hcl-sys.h>
-#
+#include "hcl-prv.h"
+
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -51,27 +52,40 @@
 #	if defined(HAVE_SYS_TIME_H)
 #		include <sys/time.h>
 #	endif
-#	if defined(HAVE_SIGNAL_H)
-#		include <signal.h>
-#	endif
-#	if defined(HAVE_SYS_MMAN_H)
-#		include <sys/mman.h>
-#	endif
 #	if defined(HAVE_SYS_UIO_H)
 #		include <sys/uio.h>
-#	endif
-#	if defined(HAVE_SYS_EPOLL_H)
-#		include <sys/epoll.h>
-#		define USE_EPOLL
 #	endif
 
 #	include <unistd.h>
 #	include <fcntl.h>
 #	include <sys/types.h>
 #	include <sys/socket.h>
-#	include <netinet/in.h>
-#	include <poll.h>
 #endif
+
+int hcl_sys_send (int sck, const void* data, hcl_oow_t* size)
+{
+	ssize_t n, seglen;
+	hcl_oow_t rem;
+
+	rem = *size;
+	while (rem > 0)
+	{
+		seglen = (rem > HCL_TYPE_MAX(ssize_t))? HCL_TYPE_MAX(ssize_t): rem;
+		n = send(sck, data, seglen, 0);
+		if (n <= -1)
+		{
+			if (hcl_sys_is_errno_wb(errno)) break;
+			*size -= rem; /* update the size to the bytes sent so far upon failure*/
+			return -1;
+		}
+
+		/* i'm always paranoid about 0 returned by send. is it ever possible? */
+		rem -= n;
+	}
+
+	*size -= rem; /* update the size to the bytes sent */
+	return 0;
+}
 
 int hcl_sys_send_iov (int sck, hcl_iovec_t* iov, int count)
 {
@@ -82,14 +96,26 @@ int hcl_sys_send_iov (int sck, hcl_iovec_t* iov, int count)
 		ssize_t nwritten;
 		struct msghdr msg;
 
-		memset (&msg, 0, HCL_SIZEOF(msg));
+		HCL_MEMSET (&msg, 0, HCL_SIZEOF(msg));
 		msg.msg_iov = (struct iovec*)&iov[index];
 		msg.msg_iovlen = count - index;
 		nwritten = sendmsg(sck, &msg, 0);
-		if (nwritten <= -1) return -1;
+		if (nwritten <= -1)
+		{
+			if (hcl_sys_is_errno_wb(errno))
+			{
+				/* the incompelete write. the caller shall check the return code
+				 * and iov_len at the last written iov slot. */
+				break;
+			}
+			return -1;
+		}
 
 		while (index < count && (size_t)nwritten >= iov[index].iov_len)
+		{
+			iov[index].iov_len = 0; /* this slot has been fully written */
 			nwritten -= iov[index++].iov_len;
+		}
 
 		if (index == count) break;
 
@@ -97,8 +123,9 @@ int hcl_sys_send_iov (int sck, hcl_iovec_t* iov, int count)
 		iov[index].iov_len -= nwritten;
 	}
 
-	return 0;
+	return index;
 }
+
 
 int hcl_sys_open_pipes (int pfd[2], int nonblock)
 {

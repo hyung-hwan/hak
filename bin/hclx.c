@@ -730,7 +730,6 @@ static int client_main (const char* outer, int argc, char* argv[])
 	static hcl_bopt_lng_t lopt[] =
 	{
 		{ ":log",                  'l'  },
-		{ "reuseaddr",             '\0' },
 		{ "shutwr",                '\0' },
 		{ HCL_NULL,                '\0' }
 	};
@@ -745,7 +744,6 @@ static int client_main (const char* outer, int argc, char* argv[])
 	hcl_client_prim_t client_prim;
 	int n;
 	const char* logopt = HCL_NULL;
-	int reuse_addr = 0;
 	int shut_wr_after_req = 0;
 
 	setlocale (LC_ALL, "");
@@ -756,7 +754,6 @@ static int client_main (const char* outer, int argc, char* argv[])
 		fprintf (stderr, "Usage: %s %s [options] bind-address:port script-to-run\n", outer, argv[0]);
 		fprintf (stderr, "Options are:\n");
 		fprintf (stderr, " -l/--log log-options\n");
-		fprintf (stderr, " --reuseaddr\n");
 		fprintf (stderr, " --shutwr\n");
 		return -1;
 	}
@@ -770,11 +767,7 @@ static int client_main (const char* outer, int argc, char* argv[])
 				break;
 
 			case '\0':
-				if (hcl_comp_bcstr(opt.lngopt, "reuseaddr") == 0)
-				{
-					reuse_addr = 1;
-				}
-				else if (hcl_comp_bcstr(opt.lngopt, "shutwr") == 0)
+				if (hcl_comp_bcstr(opt.lngopt, "shutwr") == 0)
 				{
 					shut_wr_after_req = 1;
 				}
@@ -829,7 +822,7 @@ static int client_main (const char* outer, int argc, char* argv[])
 	set_signal (SIGINT, handle_sigint);
 	set_signal_to_ignore (SIGPIPE);
 
-	n = hcl_client_start(client, argv[opt.ind], argv[opt.ind + 1], reuse_addr, shut_wr_after_req);
+	n = hcl_client_start(client, argv[opt.ind], /*argv[opt.ind + 1],*/ shut_wr_after_req);
 	if (n <= -1)
 	{
 		fprintf (stderr, "ERROR: %s\n", hcl_client_geterrbmsg(client));

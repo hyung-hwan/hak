@@ -296,7 +296,7 @@ static HCL_INLINE int open_read_stream (hcl_t* hcl, hcl_io_cciarg_t* arg)
 		}
 
 		bb = (bb_t*)hcl_callocmem(hcl, HCL_SIZEOF(*bb) + (HCL_SIZEOF(hcl_bch_t) * (parlen + bcslen + 2)));
-		if (!bb) goto oops;
+		if (HCL_UNLIKELY(!bb)) goto oops;
 
 		bb->fn = (hcl_bch_t*)(bb + 1);
 		if (fn[0] == '\0' && server->cfg.script_include_path[0] != '\0')
@@ -331,7 +331,7 @@ static HCL_INLINE int open_read_stream (hcl_t* hcl, hcl_io_cciarg_t* arg)
 		/* main stream */
 		hcl_oow_t pathlen = 0;
 		bb = (bb_t*)hcl_callocmem(hcl, HCL_SIZEOF(*bb) + (HCL_SIZEOF(hcl_bch_t) * (pathlen + 1)));
-		if (!bb) goto oops;
+		if (HCL_UNLIKELY(!bb)) goto oops;
 
 		/* copy ane empty string as a main stream's name */
 		bb->fn = (hcl_bch_t*)(bb + 1);
@@ -1019,7 +1019,7 @@ printf ("SENDING BYTES [%.*s]\n", (int)len, data);
 		if (hcl_sys_send_iov(worker->sck, iov, 2) <= -1)
 		{
 			/* TODO: error message */
-			fprintf (stderr, "Unable to sendmsg on %d - %s\n", worker->sck, strerror(errno));
+fprintf (stderr, "Unable to sendmsg on %d - %s\n", worker->sck, strerror(errno));
 			return -1;
 		}
 
@@ -1933,7 +1933,7 @@ int hcl_server_start (hcl_server_t* server, const hcl_bch_t* addrs)
 				{
 					if (server->stopreq) break; /* normal termination requested */
 					if (errno == EINTR) continue; /* interrupted but no termination requested */
-					if (hcl_sys_is_errnor_wb(errno)) continue;
+					if (hcl_sys_is_errno_wb(errno)) continue;
 					set_err_with_syserr (server, 0, errno, "unable to accept worker on server socket %d", evp->data.fd);
 					xret = -1;
 					break;
