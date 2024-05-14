@@ -23,10 +23,8 @@
  */
 
 #include <hcl-x.h>
-#include "hcl-prv.h"
 #include <hcl-tmr.h>
-#include <hcl-xutl.h>
-#include <hcl-sys.h>
+#include "hcl-prv.h"
 
 #include <stdio.h>
 #include <string.h>

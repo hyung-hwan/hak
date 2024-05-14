@@ -23,7 +23,7 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <hcl-sys.h>
+#include <hcl-x.h>
 #include "hcl-prv.h"
 
 #include <stdio.h>

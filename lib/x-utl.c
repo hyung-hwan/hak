@@ -22,7 +22,7 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <hcl-xutl.h>
+#include <hcl-x.h>
 #include "hcl-prv.h"
 
 #if defined(_WIN32)
@@ -75,7 +75,7 @@ typedef union sockaddr_t sockaddr_t;
 #define str_to_ipv6 bchars_to_ipv6
 #define str_to_ifindex bchars_to_ifindex
 #define str_to_sockaddr hcl_bcharstosckaddr
-#include "xutl-sa.h"
+#include "x-utl-sa.h"
 
 #undef ooch_mode
 #undef ooch_t
@@ -92,7 +92,7 @@ typedef union sockaddr_t sockaddr_t;
 #define str_to_ipv6 uchars_to_ipv6
 #define str_to_ifindex uchars_to_ifindex
 #define str_to_sockaddr hcl_ucharstosckaddr
-#include "xutl-sa.h"
+#include "x-utl-sa.h"
 
 int hcl_get_sckaddr_info (const hcl_sckaddr_t* sckaddr, hcl_scklen_t* scklen)
 {

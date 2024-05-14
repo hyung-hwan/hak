@@ -24,11 +24,10 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "hcl-x.h"
-#include "hcl-json.h"
-#include "hcl-opt.h"
-#include "hcl-utl.h"
-#include "hcl-xutl.h"
+#include <hcl-x.h>
+#include <hcl-json.h>
+#include <hcl-opt.h>
+#include <hcl-utl.h>
 
 #include <stdio.h>
 #include <stdlib.h>

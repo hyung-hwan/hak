@@ -56,7 +56,6 @@ pkginclude_HEADERS = \
 	hcl-rbt.h \
 	hcl-upac.h \
 	hcl-utl.h \
-	hcl-sys.h \
 	hcl-xma.h
 
 pkglib_LTLIBRARIES = libhcl.la
@@ -107,20 +106,20 @@ endif
 
 if ENABLE_HCLX
 pkglib_LTLIBRARIES += libhclx.la
-pkginclude_HEADERS += hcl-x.h hcl-tmr.h hcl-xutl.h hcl-json.h
+pkginclude_HEADERS += hcl-x.h hcl-tmr.h hcl-json.h
 libhclx_la_SOURCES = \
 	hcl-json.h \
-	hcl-sys.h \
 	hcl-tmr.h \
 	hcl-x.h \
 	hcl-xtul.h \
 	json.c \
-	sys.c \
 	tmr.c \
 	x-client.c \
 	x-proto.c \
 	x-server.c \
-	xutl.c xutl-sa.h
+	x-sys.c \
+	x-utl.c \
+	x-utl-sa.h
 libhclx_la_CPPFLAGS = $(CPPFLAGS_LIB_COMMON) $(CPPFLAGS_PFMOD)
 libhclx_la_LDFLAGS = $(LDFLAGS_LIB_COMMON)
 libhclx_la_LIBADD = libhcl.la $(LIBADD_LIB_COMMON)
