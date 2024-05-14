@@ -1891,7 +1891,8 @@ hcl_pfbase_t* hcl_querymod (
 /* ========================================================================= */
 /* fmt.c                                                                     */
 /* ========================================================================= */
-int hcl_fmt_object_ (
+int hcl_fmt_object (
+	hcl_t*        hcl,
 	hcl_fmtout_t* fmtout,
 	hcl_oop_t     oop
 );

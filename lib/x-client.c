@@ -446,6 +446,15 @@ struct proto_xtn_t
 };
 typedef struct proto_xtn_t proto_xtn_t;
 
+static int proto_on_packet (hcl_xproto_t* proto, hcl_xpkt_type_t type, const void* data, hcl_oow_t len)
+{
+	proto_xtn_t* proto_xtn;
+	hcl_client_t* client;
+	proto_xtn = hcl_xproto_getxtn(proto);
+	client = proto_xtn->client;
+	return client->prim.on_packet(client, type, data, len);
+}
+
 static int client_connect_to_server (hcl_client_t* client, const char* ipaddr)
 {
 	hcl_sckaddr_t sckaddr;
@@ -516,7 +525,7 @@ static int client_connect_to_server (hcl_client_t* client, const char* ipaddr)
 	hcl_sys_set_nonblock(sck, 1); /* make it nonblocking after connection has been established */
 
 	HCL_MEMSET (&proto, 0, HCL_SIZEOF(proto_cb));
-	proto_cb.on_packet = client->prim.on_packet;
+	proto_cb.on_packet = proto_on_packet;
 
 	proto = hcl_xproto_open(hcl_client_getmmgr(client), &proto_cb, HCL_SIZEOF(*proto_xtn));
 	if (HCL_UNLIKELY(!proto))
@@ -635,7 +644,7 @@ hcl_client_logbfmt(client, HCL_LOG_STDERR, "ON CONTROL EVENT \n");
 
 static void on_remote_event (hcl_client_t* client, struct pollfd* pfd, int shut_wr_after_req)
 {
-hcl_client_logbfmt(client, HCL_LOG_STDERR, "ON REMOTE EVENT \n");
+//hcl_client_logbfmt(client, HCL_LOG_STDERR, "ON REMOTE EVENT \n");
 
 	if (pfd->revents & POLLOUT)
 	{
@@ -718,7 +727,7 @@ static void on_local_in_event (hcl_client_t* client, struct pollfd* pfd)
 	ssize_t n;
 	hcl_uint8_t buf[128];
 
-hcl_client_logbfmt(client, HCL_LOG_STDERR, "local in on %d\n", pfd->fd);
+//hcl_client_logbfmt(client, HCL_LOG_STDERR, "local in on %d\n", pfd->fd);
 	n = read(pfd->fd, buf, HCL_SIZEOF(buf));
 	if (n <= -1)
 	{
@@ -825,7 +834,7 @@ hcl_client_logbfmt(client, HCL_LOG_STDERR, "staritg client loop... ...\n");
 		{
 			if (!pfd[i].revents) continue;
 
-//hcl_client_logbfmt(client, HCL_LOG_STDERR, "EVENT ON %d    mux[%d], remote[%d], local[%d]\n", pfd[i].fd, client->mux_pipe[0], client->remote.sck, client->local.in);
+//hcl_client_logbfmt(client, HCL_LOG_STDERR, "EVENT ON %d mux[%d], remote[%d], local[%d]\n", pfd[i].fd, client->mux_pipe[0], client->remote.sck, client->local.in);
 			if (pfd[i].fd == client->mux_pipe[0])
 			{
 				on_control_event (client, &pfd[i]);

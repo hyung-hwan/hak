@@ -145,18 +145,21 @@ enum hcl_fmt_intmax_flag_t
 typedef struct hcl_fmtout_t hcl_fmtout_t;
 
 typedef int (*hcl_fmtout_putbchars_t) (
+	hcl_t*            hcl,
 	hcl_fmtout_t*     fmtout,
 	const hcl_bch_t*  ptr,
 	hcl_oow_t         len
 );
 
 typedef int (*hcl_fmtout_putuchars_t) (
+	hcl_t*            hcl,
 	hcl_fmtout_t*     fmtout,
 	const hcl_uch_t*  ptr,
 	hcl_oow_t         len
 );
 
 typedef int (*hcl_fmtout_putobj_t) (
+	hcl_t*            hcl,
 	hcl_fmtout_t*     fmtout,
 	hcl_oop_t         obj
 );
@@ -168,7 +171,6 @@ enum hcl_fmtout_fmt_type_t
 };
 typedef enum hcl_fmtout_fmt_type_t hcl_fmtout_fmt_type_t;
 
-
 struct hcl_fmtout_t
 {
 	hcl_oow_t              count; /* out */
@@ -179,7 +181,6 @@ struct hcl_fmtout_t
 	hcl_fmtout_putobj_t    putobj; /* in - %O is not handled if it's not set. */
 	hcl_bitmask_t          mask;   /* in */
 	void*                  ctx;    /* in */
-
 
 	/* internally set as input */
 	hcl_fmtout_fmt_type_t  fmt_type;
@@ -356,12 +357,14 @@ HCL_EXPORT int hcl_fmt_uintmax_to_ucstr (
  * FORMATTED OUTPUT
  * ========================================================================= */
 HCL_EXPORT int hcl_bfmt_outv (
+	hcl_t*           hcl,
 	hcl_fmtout_t*    fmtout,
 	const hcl_bch_t* fmt,
 	va_list          ap
 );
 
 HCL_EXPORT int hcl_ufmt_outv (
+	hcl_t*           hcl,
 	hcl_fmtout_t*    fmtout,
 	const hcl_uch_t* fmt,
 	va_list          ap
@@ -369,12 +372,14 @@ HCL_EXPORT int hcl_ufmt_outv (
 
 
 HCL_EXPORT int hcl_bfmt_out (
+	hcl_t*           hcl,
 	hcl_fmtout_t*    fmtout,
 	const hcl_bch_t* fmt,
 	...
 );
 
 HCL_EXPORT int hcl_ufmt_out (
+	hcl_t*           hcl,
 	hcl_fmtout_t*    fmtout,
 	const hcl_uch_t* fmt,
 	...

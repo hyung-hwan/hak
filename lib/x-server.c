@@ -248,12 +248,12 @@ struct hcl_server_t
 };
 
 /* ========================================================================= */
-static int send_stdout_bytes (hcl_xproto_t* proto, int xpkt_code, const hcl_bch_t* data, hcl_oow_t len);
+static int send_bytes (hcl_xproto_t* proto, hcl_xpkt_type_t xpkt_code, const hcl_bch_t* data, hcl_oow_t len);
 
 #if defined(HCL_OOCH_IS_UCH)
-static int send_stdout_chars (hcl_xproto_t* proto, int xpkt_code, const hcl_ooch_t* data, hcl_oow_t len);
+static int send_chars (hcl_xproto_t* proto, hcl_xpkt_type_t xpkt_code, const hcl_ooch_t* data, hcl_oow_t len);
 #else
-#define send_stdout_chars(proto,xpkt_code,data,len) send_stdout_bytes(proto,xpkt_code,data,len)
+#define send_chars(proto,xpkt_code,data,len) send_bytes(proto,xpkt_code,data,len)
 #endif
 
 /* ========================================================================= */
@@ -550,7 +550,7 @@ printf ("IO CLOSE SOMETHING...........\n");
 			hcl_io_udoarg_t* outarg = (hcl_io_udoarg_t*)arg;
 
 printf ("IO WRITE SOMETHING...........\n");
-			if (send_stdout_chars(xtn->worker->proto, HCL_XPKT_STDOUT, outarg->ptr, outarg->len) <= -1)
+			if (send_chars(xtn->worker->proto, HCL_XPKT_STDOUT, outarg->ptr, outarg->len) <= -1)
 			{
 				/* TODO: change error code and message. propagage the errormessage from proto */
 				hcl_seterrbfmt (hcl, HCL_EIOERR, "failed to write message via proto");
@@ -570,7 +570,7 @@ printf ("IO WRITE SOMETHING...........\n");
 			hcl_io_udoarg_t* outarg = (hcl_io_udoarg_t*)arg;
 
 printf ("IO WRITE SOMETHING BYTES...........\n");
-			if (send_stdout_bytes(xtn->worker->proto, HCL_XPKT_STDOUT, outarg->ptr, outarg->len) <= -1)
+			if (send_bytes(xtn->worker->proto, HCL_XPKT_STDOUT, outarg->ptr, outarg->len) <= -1)
 			{
 				/* TODO: change error code and message. propagage the errormessage from proto */
 				hcl_seterrbfmt (hcl, HCL_EIOERR, "failed to write message via proto");
@@ -583,6 +583,10 @@ printf ("IO WRITE SOMETHING BYTES...........\n");
 			outarg->xlen = outarg->len;
 			return 0;
 		}
+
+		case HCL_IO_FLUSH:
+/* TODO: flush data... */
+			return 0;
 
 		default:
 			hcl_seterrnum (hcl, HCL_EINTERN);
@@ -681,7 +685,7 @@ static int on_fed_cnode (hcl_t* hcl, hcl_cnode_t* obj)
 	if (hcl_compile(hcl, obj, flags) <= -1)
 	{
 		const hcl_bch_t* errmsg = hcl_geterrbmsg(hcl);
-		send_stdout_bytes(proto, HCL_XPKT_ERROR, errmsg, hcl_count_bcstr(errmsg));
+		send_bytes(proto, HCL_XPKT_ERROR, errmsg, hcl_count_bcstr(errmsg));
 /* TODO: ignore the whole line??? */
 	}
 
@@ -946,15 +950,51 @@ printf ("FEEDING [%.*s]\n", (int)len, data);
 printf ("EXECUTING hcl_executing......\n");
 
 			hcl_decode (hcl, hcl_getcode(hcl), 0, hcl_getbclen(hcl));
+			if (hcl_feedpending(hcl))
+			{
+				/* TODO: change the message */
+				if (send_bytes(proto, HCL_XPKT_ERROR, "feed more",  9) <=-1)
+				{
+					/* TODO: error handling */
+				}
+				break;
+			}
 
 			retv = hcl_execute(hcl);
-			hcl_flushudio (hcl);
-			hcl_clearcode (hcl);
-			if (!retv)
+			if (HCL_UNLIKELY(!retv))
 			{
+				hcl_bch_t errmsg[512];
+				hcl_oow_t errlen;
+
 				/* TODO: backup error message...and create a new message */
+				/* save error message before other calls override erro info */
+				errlen = hcl_copyerrbmsg(hcl, errmsg, HCL_COUNTOF(errmsg));
+
+				hcl_flushudio (hcl);
+				hcl_clearcode (hcl);
+
+				if (send_bytes(proto, HCL_XPKT_ERROR, errmsg, errlen) <= -1)
+				{
+					/* TODO: error handling */
+				}
+
 				goto oops;
 			}
+			else
+			{
+				hcl_bch_t rvbuf[512]; /* TODO make this dynamic in side? */
+				hcl_oow_t rvlen;
+
+				hcl_flushudio (hcl);
+				hcl_clearcode (hcl);
+
+				/* TODO or make hcl_fmtXXXX  that accepts the output function */
+				rvlen = hcl_fmttobcstr(hcl, rvbuf, HCL_COUNTOF(rvbuf), "[%O]", retv);
+				if (send_bytes(proto, HCL_XPKT_RETVAL, rvbuf, rvlen) <= -1)
+				{
+				}
+			}
+
 
 			break;
 		}
@@ -986,7 +1026,7 @@ oops:
 	return -1;
 }
 
-static int send_stdout_bytes (hcl_xproto_t* proto, int xpkt_code, const hcl_bch_t* data, hcl_oow_t len)
+static int send_bytes (hcl_xproto_t* proto, hcl_xpkt_type_t xpkt_type, const hcl_bch_t* data, hcl_oow_t len)
 {
 	hcl_server_worker_t* worker;
 	hcl_xpkt_hdr_t hdr;
@@ -995,28 +1035,33 @@ static int send_stdout_bytes (hcl_xproto_t* proto, int xpkt_code, const hcl_bch_
 	hcl_uint16_t seglen;
 
 	worker = proto_to_worker(proto);
-	HCL_ASSERT (worker->hcl, xpkt_code == HCL_XPKT_STDOUT || xpkt_code == HCL_XPKT_STDERR || xpkt_code == HCL_XPKT_ERROR);
 
 	ptr = cur = data;
 	end = data + len;
 
 printf ("SENDING BYTES [%.*s]\n", (int)len, data);
-	while (ptr < end)
+	do
 	{
+		int nv;
+
 		while (cur != end && cur - ptr < HCL_XPKT_MAX_PLD_LEN) cur++;
 
 		seglen = cur - ptr;
 
 		hdr.id = 1; /* TODO: */
-		hdr.type = xpkt_code | (((seglen >> 8) & 0x0F) << 4);
+		hdr.type = xpkt_type | (((seglen >> 8) & 0x0F) << 4);
 		hdr.len = seglen & 0xFF;
 
-		iov[0].iov_base = &hdr;
-		iov[0].iov_len = HCL_SIZEOF(hdr);
-		iov[1].iov_base = ptr;
-		iov[1].iov_len = seglen;
+		nv = 0;
+		iov[nv].iov_base = &hdr;
+		iov[nv++].iov_len = HCL_SIZEOF(hdr);
+		if (seglen > 0)
+		{
+			iov[nv].iov_base = ptr;
+			iov[nv++].iov_len = seglen;
+		}
 
-		if (hcl_sys_send_iov(worker->sck, iov, 2) <= -1)
+		if (hcl_sys_send_iov(worker->sck, iov, nv) <= -1)
 		{
 			/* TODO: error message */
 fprintf (stderr, "Unable to sendmsg on %d - %s\n", worker->sck, strerror(errno));
@@ -1025,12 +1070,13 @@ fprintf (stderr, "Unable to sendmsg on %d - %s\n", worker->sck, strerror(errno))
 
 		ptr = cur;
 	}
+	while (ptr < end);
 
 	return 0;
 }
 
 #if defined(HCL_OOCH_IS_UCH)
-static int send_stdout_chars (hcl_xproto_t* proto, int xpkt_code, const hcl_ooch_t* data, hcl_oow_t len)
+static int send_chars (hcl_xproto_t* proto, hcl_xpkt_type_t xpkt_type, const hcl_ooch_t* data, hcl_oow_t len)
 {
 	hcl_server_worker_t* worker;
 	const hcl_ooch_t* ptr, * end;
@@ -1050,7 +1096,7 @@ static int send_stdout_chars (hcl_xproto_t* proto, int xpkt_code, const hcl_ooch
 		n = hcl_convutobchars(worker->hcl, ptr, &pln, tmp, &tln);
 		if (n <= -1 && n != -2) return -1;
 
-		if (send_stdout_bytes(proto, xpkt_code, tmp, tln) <= -1) return -1;
+		if (send_bytes(proto, xpkt_type, tmp, tln) <= -1) return -1;
 		ptr += pln;
 	}
 
@@ -1791,7 +1837,7 @@ static int setup_listeners (hcl_server_t* server, const hcl_bch_t* addrs)
 
 		optval = 1;
 		setsockopt (srv_fd, SOL_SOCKET, SO_REUSEADDR, &optval, HCL_SIZEOF(int));
-		hcl_sys_set_nonblock (srv_fd, 1);
+		hcl_sys_set_nonblock (srv_fd, 1); /* the listening socket is non-blocking unlike accepted sockets */
 		hcl_sys_set_cloexec (srv_fd, 1);
 
 		if (bind(srv_fd, (struct sockaddr*)&srv_addr, srv_len) == -1)

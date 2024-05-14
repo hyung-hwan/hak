@@ -2255,19 +2255,33 @@ HCL_EXPORT const hcl_ooch_t* hcl_geterrstr (
 );
 
 HCL_EXPORT const hcl_uch_t* hcl_geterrumsg (
-	hcl_t* hio
+	hcl_t* hcl
 );
 
 HCL_EXPORT const hcl_bch_t* hcl_geterrbmsg (
-	hcl_t* hio
+	hcl_t* hcl
+);
+
+HCL_EXPORT hcl_oow_t hcl_copyerrbmsg (
+	hcl_t*     hcl,
+	hcl_bch_t* buf,
+	hcl_oow_t  len
+);
+
+HCL_EXPORT hcl_oow_t hcl_copyerrumsg (
+	hcl_t*     hcl,
+	hcl_uch_t* buf,
+	hcl_oow_t  len
 );
 
 #if defined(HCL_OOCH_IS_UCH)
-#	define hcl_geterrmsg hcl_geterrumsg
-#	define hcl_seterrmsg hcl_seterrumsg
+#	define hcl_geterrmsg  hcl_geterrumsg
+#	define hcl_seterrmsg  hcl_seterrumsg
+#	define hcl_copyerrmsg hcl_copyerrumsg
 #else
-#	define hcl_geterrmsg hcl_geterrbmsg
-#	define hcl_seterrmsg hcl_seterrbmsg
+#	define hcl_geterrmsg  hcl_geterrbmsg
+#	define hcl_seterrmsg  hcl_seterrbmsg
+#	define hcl_copyerrmsg hcl_copyerrbmsg
 #endif
 
 HCL_EXPORT const hcl_ooch_t* hcl_backuperrmsg (

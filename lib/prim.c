@@ -800,7 +800,7 @@ static hcl_pfrc_t pf_va_context (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 static hcl_pfrc_t pf_va_count (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
 	hcl_oop_context_t ctx;
-	hcl_ooi_t attr_mask, va, fixed_nargs, nrvars, nlvars, nvaargs;
+	hcl_ooi_t attr_mask, /*va,*/ fixed_nargs, nrvars, nlvars, nvaargs;
 
 	if (nargs >= 1)
 	{
@@ -818,7 +818,7 @@ static hcl_pfrc_t pf_va_count (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 
 	attr_mask = HCL_OOP_TO_SMOOI(ctx->attr_mask);
 
-	va = GET_BLK_MASK_VA(attr_mask);
+	/*va = GET_BLK_MASK_VA(attr_mask);*/
 	fixed_nargs = GET_BLK_MASK_NARGS(attr_mask);
 	nrvars = GET_BLK_MASK_NRVARS(attr_mask);
 	nlvars = GET_BLK_MASK_NLVARS(attr_mask);
@@ -835,7 +835,7 @@ static hcl_pfrc_t pf_va_count (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 static hcl_pfrc_t pf_va_get (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
 	hcl_oop_context_t ctx;
-	hcl_ooi_t attr_mask, va, fixed_nargs, nrvars, nlvars, nvaargs;
+	hcl_ooi_t attr_mask, /*va,*/ fixed_nargs, nrvars, nlvars, nvaargs;
 	hcl_oow_t index;
 
 	if (nargs >= 2)
@@ -853,7 +853,7 @@ static hcl_pfrc_t pf_va_get (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 	}
 	attr_mask = HCL_OOP_TO_SMOOI(ctx->attr_mask);
 
-	va = GET_BLK_MASK_VA(attr_mask);
+	/*va = GET_BLK_MASK_VA(attr_mask);*/
 	fixed_nargs = GET_BLK_MASK_NARGS(attr_mask);
 	nrvars = GET_BLK_MASK_NRVARS(attr_mask);
 	nlvars = GET_BLK_MASK_NLVARS(attr_mask);

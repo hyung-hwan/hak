@@ -163,7 +163,7 @@ typedef void (*hcl_client_log_write_t) (
 );
 
 typedef int (*hcl_client_on_packet_t) (
-	hcl_xproto_t*   proto,
+	hcl_client_t*   client,
 	hcl_xpkt_type_t type,
 	const void*     data,
 	hcl_oow_t       len

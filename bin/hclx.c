@@ -706,7 +706,7 @@ oops:
 }
 
 /* -------------------------------------------------------------- */
-static int client_on_packet (hcl_xproto_t* proto, hcl_xpkt_type_t type, const void* data, hcl_oow_t len)
+static int client_on_packet (hcl_client_t* client, hcl_xpkt_type_t type, const void* data, hcl_oow_t len)
 {
 	if (type == HCL_XPKT_STDOUT)
 	{
@@ -720,6 +720,11 @@ static int client_on_packet (hcl_xproto_t* proto, hcl_xpkt_type_t type, const vo
 	{
 		/* error notification */
 		if (len > 0) fprintf (stderr, "ERROR: %.*s\n", (int)len, data);
+	}
+	else if (type == HCL_XPKT_RETVAL)
+	{
+		if (len > 0) fprintf (stderr, "RETURN VALUE: %.*s\n", (int)len, data);
+		hcl_client_stop (client);
 	}
 	return 1;
 }

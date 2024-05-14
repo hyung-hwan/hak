@@ -270,6 +270,16 @@ const hcl_uch_t* hcl_geterrumsg (hcl_t* hcl)
 #endif
 }
 
+hcl_oow_t hcl_copyerrbmsg (hcl_t* hcl, hcl_bch_t* buf, hcl_oow_t len)
+{
+	return hcl_copy_bcstr(buf, len, hcl_geterrbmsg(hcl));
+}
+
+hcl_oow_t hcl_copyerrumsg (hcl_t* hcl, hcl_uch_t* buf, hcl_oow_t len)
+{
+	return hcl_copy_ucstr(buf, len, hcl_geterrumsg(hcl));
+}
+
 const hcl_ooch_t* hcl_backuperrmsg (hcl_t* hcl)
 {
 	hcl_copy_oocstr (hcl->errmsg.tmpbuf.ooch, HCL_COUNTOF(hcl->errmsg.tmpbuf.ooch), hcl_geterrmsg(hcl));
@@ -305,9 +315,8 @@ void hcl_seterrumsg (hcl_t* hcl, hcl_errnum_t errnum, const hcl_uch_t* errmsg)
 }
 
 
-static int err_bcs (hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hcl_oow_t len)
+static int err_bcs (hcl_t* hcl, hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hcl_oow_t len)
 {
-	hcl_t* hcl = (hcl_t*)fmtout->ctx;
 	hcl_oow_t max;
 
 	max = HCL_COUNTOF(hcl->errmsg.buf) - hcl->errmsg.len - 1;
@@ -328,9 +337,8 @@ static int err_bcs (hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hcl_oow_t len)
 	return 1; /* success */
 }
 
-static int err_ucs (hcl_fmtout_t* fmtout, const hcl_uch_t* ptr, hcl_oow_t len)
+static int err_ucs (hcl_t* hcl, hcl_fmtout_t* fmtout, const hcl_uch_t* ptr, hcl_oow_t len)
 {
-	hcl_t* hcl = (hcl_t*)fmtout->ctx;
 	hcl_oow_t max;
 
 	max = HCL_COUNTOF(hcl->errmsg.buf) - hcl->errmsg.len - 1;
@@ -360,11 +368,10 @@ void hcl_seterrbfmt (hcl_t* hcl, hcl_errnum_t errnum, const hcl_bch_t* fmt, ...)
 	HCL_MEMSET (&fo, 0, HCL_SIZEOF(fo));
 	fo.putbchars = err_bcs;
 	fo.putuchars = err_ucs;
-	fo.putobj = hcl_fmt_object_;
-	fo.ctx = hcl;
+	fo.putobj = hcl_fmt_object;
 
 	va_start (ap, fmt);
-	hcl_bfmt_outv (&fo, fmt, ap);
+	hcl_bfmt_outv (hcl, &fo, fmt, ap);
 	va_end (ap);
 
 	hcl->errnum = errnum;
@@ -382,11 +389,10 @@ void hcl_seterrufmt (hcl_t* hcl, hcl_errnum_t errnum, const hcl_uch_t* fmt, ...)
 	HCL_MEMSET (&fo, 0, HCL_SIZEOF(fo));
 	fo.putbchars = err_bcs;
 	fo.putuchars = err_ucs;
-	fo.putobj = hcl_fmt_object_;
-	fo.ctx = hcl;
+	fo.putobj = hcl_fmt_object;
 
 	va_start (ap, fmt);
-	hcl_ufmt_outv (&fo, fmt, ap);
+	hcl_ufmt_outv (hcl, &fo, fmt, ap);
 	va_end (ap);
 
 	hcl->errnum = errnum;
@@ -405,10 +411,9 @@ void hcl_seterrbfmtv (hcl_t* hcl, hcl_errnum_t errnum, const hcl_bch_t* fmt, va_
 	HCL_MEMSET (&fo, 0, HCL_SIZEOF(fo));
 	fo.putbchars = err_bcs;
 	fo.putuchars = err_ucs;
-	fo.putobj = hcl_fmt_object_;
-	fo.ctx = hcl;
+	fo.putobj = hcl_fmt_object;
 
-	hcl_bfmt_outv (&fo, fmt, ap);
+	hcl_bfmt_outv (hcl, &fo, fmt, ap);
 	hcl->errnum = errnum;
 	HCL_MEMSET (&hcl->errloc, 0, HCL_SIZEOF(hcl->errloc));
 }
@@ -424,10 +429,9 @@ void hcl_seterrufmtv (hcl_t* hcl, hcl_errnum_t errnum, const hcl_uch_t* fmt, va_
 	HCL_MEMSET (&fo, 0, HCL_SIZEOF(fo));
 	fo.putbchars = err_bcs;
 	fo.putuchars = err_ucs;
-	fo.putobj = hcl_fmt_object_;
-	fo.ctx = hcl;
+	fo.putobj = hcl_fmt_object;
 
-	hcl_ufmt_outv (&fo, fmt, ap);
+	hcl_ufmt_outv (hcl, &fo, fmt, ap);
 	hcl->errnum = errnum;
 	HCL_MEMSET (&hcl->errloc, 0, HCL_SIZEOF(hcl->errloc));
 }

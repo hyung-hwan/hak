@@ -339,47 +339,47 @@ static hcl_bch_t* sprintn_upper (hcl_bch_t* nbuf, hcl_uintmax_t num, int base, h
 
 /* ------------------------------------------------------------------------- */
 
-#define PUT_BCH(fmtout,c,n) do { \
+#define PUT_BCH(hcl,fmtout,c,n) do { \
 	if (n > 0) { \
 		hcl_oow_t _yy; \
 		hcl_bch_t _cc = c; \
 		for (_yy = 0; _yy < n; _yy++) \
 		{ \
 			int _xx; \
-			if ((_xx = fmtout->putbchars(fmtout, &_cc, 1)) <= -1) goto oops; \
+			if ((_xx = fmtout->putbchars(hcl, fmtout, &_cc, 1)) <= -1) goto oops; \
 			if (_xx == 0) goto done; \
 			fmtout->count++; \
 		} \
 	} \
 } while (0)
 
-#define PUT_BCS(fmtout,ptr,len) do { \
+#define PUT_BCS(hcl,fmtout,ptr,len) do { \
 	if (len > 0) { \
 		int _xx; \
-		if ((_xx = fmtout->putbchars(fmtout, ptr, len)) <= -1) goto oops; \
+		if ((_xx = fmtout->putbchars(hcl, fmtout, ptr, len)) <= -1) goto oops; \
 		if (_xx == 0) goto done; \
 		fmtout->count += len; \
 	} \
 } while (0)
 
-#define PUT_UCH(fmtout,c,n) do { \
+#define PUT_UCH(hcl,fmtout,c,n) do { \
 	if (n > 0) { \
 		hcl_oow_t _yy; \
 		hcl_uch_t _cc = c; \
 		for (_yy = 0; _yy < n; _yy++) \
 		{ \
 			int _xx; \
-			if ((_xx = fmtout->putuchars(fmtout, &_cc, 1)) <= -1) goto oops; \
+			if ((_xx = fmtout->putuchars(hcl, fmtout, &_cc, 1)) <= -1) goto oops; \
 			if (_xx == 0) goto done; \
 			fmtout->count++; \
 		} \
 	} \
 } while (0)
 
-#define PUT_UCS(fmtout,ptr,len) do { \
+#define PUT_UCS(hcl,fmtout,ptr,len) do { \
 	if (len > 0) { \
 		int _xx; \
-		if ((_xx = fmtout->putuchars(fmtout, ptr, len)) <= -1) goto oops; \
+		if ((_xx = fmtout->putuchars(hcl, fmtout, ptr, len)) <= -1) goto oops; \
 		if (_xx == 0) goto done; \
 		fmtout->count += len; \
 	} \
@@ -387,25 +387,25 @@ static hcl_bch_t* sprintn_upper (hcl_bch_t* nbuf, hcl_uintmax_t num, int base, h
 
 
 #if defined(HCL_OOCH_IS_BCH)
-#	define PUT_OOCH(fmtout,c,n) PUT_BCH(fmtout,c,n)
-#	define PUT_OOCS(fmtout,ptr,len) PUT_BCS(fmtout,ptr,len)
+#	define PUT_OOCH(hcl,fmtout,c,n) PUT_BCH(hcl,fmtout,c,n)
+#	define PUT_OOCS(hcl,fmtout,ptr,len) PUT_BCS(hcl,fmtout,ptr,len)
 #else
-#	define PUT_OOCH(fmtout,c,n) PUT_UCH(fmtout,c,n)
-#	define PUT_OOCS(fmtout,ptr,len) PUT_UCS(fmtout,ptr,len)
+#	define PUT_OOCH(hcl,fmtout,c,n) PUT_UCH(hcl,fmtout,c,n)
+#	define PUT_OOCS(hcl,fmtout,ptr,len) PUT_UCS(hcl,fmtout,ptr,len)
 #endif
 
 #define BYTE_PRINTABLE(x) ((x >= 'a' && x <= 'z') || (x >= 'A' &&  x <= 'Z') || (x >= '0' && x <= '9') || (x == ' '))
 
 
-#define PUT_BYTE_IN_HEX(fmtout,byte,extra_flags) do { \
+#define PUT_BYTE_IN_HEX(hcl,fmtout,byte,extra_flags) do { \
 	hcl_bch_t __xbuf[3]; \
 	hcl_byte_to_bcstr ((byte), __xbuf, HCL_COUNTOF(__xbuf), (16 | (extra_flags)), '0'); \
-	PUT_BCH(fmtout, __xbuf[0], 1); \
-	PUT_BCH(fmtout, __xbuf[1], 1); \
+	PUT_BCH(hcl, fmtout, __xbuf[0], 1); \
+	PUT_BCH(hcl, fmtout, __xbuf[1], 1); \
 } while (0)
 
 /* ------------------------------------------------------------------------- */
-static int fmt_outv (hcl_fmtout_t* fmtout, va_list ap)
+static int fmt_outv (hcl_t* hcl, hcl_fmtout_t* fmtout, va_list ap)
 {
 	const hcl_uint8_t* fmtptr, * percent;
 	int fmtchsz;
@@ -486,11 +486,11 @@ static int fmt_outv (hcl_fmtout_t* fmtout, va_list ap)
 			{
 				if (bch == '\0')
 				{
-					PUT_BCS (fmtout, start, end - start - 1);
+					PUT_BCS (hcl, fmtout, start, end - start - 1);
 					goto done;
 				}
 			}
-			PUT_BCS (fmtout, start, end - start - 1);
+			PUT_BCS (hcl, fmtout, start, end - start - 1);
 			fmtptr = (const hcl_uint8_t*)end;
 			percent = (const hcl_uint8_t*)(end - 1);
 		}
@@ -504,11 +504,11 @@ static int fmt_outv (hcl_fmtout_t* fmtout, va_list ap)
 			{
 				if (uch == '\0')
 				{
-					PUT_UCS (fmtout, start, end - start - 1);
+					PUT_UCS (hcl, fmtout, start, end - start - 1);
 					goto done;
 				}
 			}
-			PUT_UCS (fmtout, start, end - start - 1);
+			PUT_UCS (hcl, fmtout, start, end - start - 1);
 			fmtptr = (const hcl_uint8_t*)end;
 			percent = (const hcl_uint8_t*)(end - 1);
 		}
@@ -781,9 +781,9 @@ static int fmt_outv (hcl_fmtout_t* fmtout, va_list ap)
 		print_lowercase_c:
 			/* precision 0 doesn't kill the letter */
 			width--;
-			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_BCH (fmtout, padc, width);
-			PUT_BCH (fmtout, bch, 1);
-			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_BCH (fmtout, padc, width);
+			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_BCH (hcl, fmtout, padc, width);
+			PUT_BCH (hcl, fmtout, bch, 1);
+			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_BCH (hcl, fmtout, padc, width);
 			break;
 		}
 
@@ -800,9 +800,9 @@ static int fmt_outv (hcl_fmtout_t* fmtout, va_list ap)
 
 			/* precision 0 doesn't kill the letter */
 			width--;
-			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_UCH (fmtout, padc, width);
-			PUT_UCH (fmtout, uch, 1);
-			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_UCH (fmtout, padc, width);
+			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_UCH (hcl, fmtout, padc, width);
+			PUT_UCH (hcl, fmtout, uch, 1);
+			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_UCH (hcl, fmtout, padc, width);
 			break;
 		}
 
@@ -832,9 +832,9 @@ static int fmt_outv (hcl_fmtout_t* fmtout, va_list ap)
 
 			width -= n;
 
-			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_BCH (fmtout, padc, width);
-			PUT_BCS (fmtout, bsp, n);
-			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_BCH (fmtout, padc, width);
+			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_BCH (hcl, fmtout, padc, width);
+			PUT_BCS (hcl, fmtout, bsp, n);
+			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_BCH (hcl, fmtout, padc, width);
 			break;
 		}
 
@@ -864,9 +864,9 @@ static int fmt_outv (hcl_fmtout_t* fmtout, va_list ap)
 
 			width -= n;
 
-			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_UCH (fmtout, padc, width);
-			PUT_UCS (fmtout, usp, n);
-			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_UCH (fmtout, padc, width);
+			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_UCH (hcl, fmtout, padc, width);
+			PUT_UCS (hcl, fmtout, usp, n);
+			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_UCH (hcl, fmtout, padc, width);
 
 			break;
 		}
@@ -926,25 +926,25 @@ static int fmt_outv (hcl_fmtout_t* fmtout, va_list ap)
 				width -= (n * k_hex_width);
 			}
 
-			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (fmtout, padc, width);
+			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (hcl, fmtout, padc, width);
 
 			while (n--)
 			{
 				if ((lm_flag & LF_H) && BYTE_PRINTABLE(*bsp))
 				{
-					PUT_BCH (fmtout, *bsp, 1);
+					PUT_BCH (hcl, fmtout, *bsp, 1);
 				}
 				else
 				{
 					hcl_bch_t xbuf[3];
 					hcl_byte_to_bcstr (*bsp, xbuf, HCL_COUNTOF(xbuf), (16 | (uch == 'k'? HCL_BYTE_TO_BCSTR_LOWERCASE: 0)), '0');
-					if (lm_flag & (LF_H | LF_L)) PUT_BCS (fmtout, "\\x", 2);
-					PUT_BCS (fmtout, xbuf, 2);
+					if (lm_flag & (LF_H | LF_L)) PUT_BCS (hcl, fmtout, "\\x", 2);
+					PUT_BCS (hcl, fmtout, xbuf, 2);
 				}
 				bsp++;
 			}
 
-			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (fmtout, padc, width);
+			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (hcl, fmtout, padc, width);
 			break;
 		}
 
@@ -985,53 +985,53 @@ static int fmt_outv (hcl_fmtout_t* fmtout, va_list ap)
 				}
 			}
 
-			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (fmtout, padc, width);
+			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (hcl, fmtout, padc, width);
 
 			while (n--)
 			{
 				if ((lm_flag & LF_H) && BYTE_PRINTABLE(*usp))
 				{
-					PUT_OOCH(fmtout, *usp, 1);
+					PUT_OOCH (hcl, fmtout, *usp, 1);
 				}
 				else if (!(lm_flag & LF_L) && *usp <= 0xFFFF)
 				{
 					hcl_uint16_t u16 = *usp;
 					int extra_flags = ((uch) == 'w'? HCL_BYTE_TO_BCSTR_LOWERCASE: 0);
-					PUT_BCS(fmtout, "\\u", 2);
-					PUT_BYTE_IN_HEX(fmtout, (u16 >> 8) & 0xFF, extra_flags);
-					PUT_BYTE_IN_HEX(fmtout, u16 & 0xFF, extra_flags);
+					PUT_BCS (hcl, fmtout, "\\u", 2);
+					PUT_BYTE_IN_HEX (hcl, fmtout, (u16 >> 8) & 0xFF, extra_flags);
+					PUT_BYTE_IN_HEX (hcl, fmtout, u16 & 0xFF, extra_flags);
 				}
 				else
 				{
 					hcl_uint32_t u32 = *usp;
 					int extra_flags = ((uch) == 'w'? HCL_BYTE_TO_BCSTR_LOWERCASE: 0);
-					PUT_BCS(fmtout, "\\u", 2);
-					PUT_BYTE_IN_HEX(fmtout, (u32 >> 24) & 0xFF, extra_flags);
-					PUT_BYTE_IN_HEX(fmtout, (u32 >> 16) & 0xFF, extra_flags);
-					PUT_BYTE_IN_HEX(fmtout, (u32 >> 8) & 0xFF, extra_flags);
-					PUT_BYTE_IN_HEX(fmtout, u32 & 0xFF, extra_flags);
+					PUT_BCS (hcl, fmtout, "\\u", 2);
+					PUT_BYTE_IN_HEX (hcl, fmtout, (u32 >> 24) & 0xFF, extra_flags);
+					PUT_BYTE_IN_HEX (hcl, fmtout, (u32 >> 16) & 0xFF, extra_flags);
+					PUT_BYTE_IN_HEX (hcl, fmtout, (u32 >> 8) & 0xFF, extra_flags);
+					PUT_BYTE_IN_HEX (hcl, fmtout, u32 & 0xFF, extra_flags);
 				}
 				usp++;
 			}
 
-			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (fmtout, padc, width);
+			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (hcl, fmtout, padc, width);
 			break;
 		}
 
 		case 'O': /* object - ignore precision, width, adjustment */
 		{
-			if (!fmtout->putobj) goto invalid_format;
-			if (fmtout->putobj(fmtout, va_arg(ap, hcl_oop_t)) <= -1) goto oops;
+			if (HCL_UNLIKELY(!fmtout->putobj)) goto invalid_format;
+			if (fmtout->putobj(hcl, fmtout, va_arg(ap, hcl_oop_t)) <= -1) goto oops;
 			break;
 		}
 
 		case 'J':
 		{
 			hcl_bitmask_t tmp;
-			if (!fmtout->putobj) goto invalid_format;
+			if (HCL_UNLIKELY(!fmtout->putobj)) goto invalid_format;
 			tmp = fmtout->mask;
 			fmtout->mask |= HCL_LOG_PREFER_JSON;
-			if (fmtout->putobj(fmtout, va_arg(ap, hcl_oop_t)) <= -1) goto oops;
+			if (fmtout->putobj(hcl, fmtout, va_arg(ap, hcl_oop_t)) <= -1) goto oops;
 			fmtout->mask = tmp;
 			break;
 		}
@@ -1233,7 +1233,7 @@ static int fmt_outv (hcl_fmtout_t* fmtout, va_list ap)
 
 			bsp = fb.out.ptr;
 			n = 0; while (bsp[n] != '\0') n++;
-			PUT_BCS (fmtout, bsp, n);
+			PUT_BCS (hcl, fmtout, bsp, n);
 			break;
 		}
 #endif
@@ -1353,49 +1353,49 @@ static int fmt_outv (hcl_fmtout_t* fmtout, va_list ap)
 
 			if (!(flagc & FLAGC_LEFTADJ) && !(flagc & FLAGC_ZEROPAD) && width > 0 && (width -= tmp) > 0)
 			{
-				PUT_OOCH (fmtout, padc, width);
+				PUT_OOCH (hcl, fmtout, padc, width);
 				width = 0;
 			}
 
-			if (neg) PUT_OOCH (fmtout, '-', 1);
-			else if (flagc & FLAGC_SIGN) PUT_OOCH (fmtout, '+', 1);
-			else if (flagc & FLAGC_SPACE) PUT_OOCH (fmtout, ' ', 1);
+			if (neg) PUT_OOCH (hcl, fmtout, '-', 1);
+			else if (flagc & FLAGC_SIGN) PUT_OOCH (hcl, fmtout, '+', 1);
+			else if (flagc & FLAGC_SPACE) PUT_OOCH (hcl, fmtout, ' ', 1);
 
 			if ((flagc & FLAGC_SHARP) && num != 0)
 			{
 				if (base == 2)
 				{
-					PUT_OOCH (fmtout, '#', 1);
-					PUT_OOCH (fmtout, 'b', 1);
+					PUT_OOCH (hcl, fmtout, '#', 1);
+					PUT_OOCH (hcl, fmtout, 'b', 1);
 				}
 				if (base == 8)
 				{
-					PUT_OOCH (fmtout, '#', 1);
-					PUT_OOCH (fmtout, 'o', 1);
+					PUT_OOCH (hcl, fmtout, '#', 1);
+					PUT_OOCH (hcl, fmtout, 'o', 1);
 				}
 				else if (base == 16)
 				{
-					PUT_OOCH (fmtout, '#', 1);
-					PUT_OOCH (fmtout, 'x', 1);
+					PUT_OOCH (hcl, fmtout, '#', 1);
+					PUT_OOCH (hcl, fmtout, 'x', 1);
 				}
 			}
 
 			if ((flagc & FLAGC_DOT) && precision > numlen)
 			{
 				/* extra zeros for precision specified */
-				PUT_OOCH (fmtout, '0', precision - numlen);
+				PUT_OOCH (hcl, fmtout, '0', precision - numlen);
 			}
 
 			if (!(flagc & FLAGC_LEFTADJ) && width > 0 && (width -= tmp) > 0)
 			{
-				PUT_OOCH (fmtout, padc, width);
+				PUT_OOCH (hcl, fmtout, padc, width);
 			}
 
-			while (*nbufp) PUT_OOCH (fmtout, *nbufp--, 1); /* output actual digits */
+			while (*nbufp) PUT_OOCH (hcl, fmtout, *nbufp--, 1); /* output actual digits */
 
 			if ((flagc & FLAGC_LEFTADJ) && width > 0 && (width -= tmp) > 0)
 			{
-				PUT_OOCH (fmtout, padc, width);
+				PUT_OOCH (hcl, fmtout, padc, width);
 			}
 			break;
 
@@ -1403,10 +1403,10 @@ static int fmt_outv (hcl_fmtout_t* fmtout, va_list ap)
 			switch (fmtout->fmt_type)
 			{
 				case HCL_FMTOUT_FMT_TYPE_BCH:
-					PUT_BCS (fmtout, (const hcl_bch_t*)percent, (fmtptr - percent) / fmtchsz);
+					PUT_BCS (hcl, fmtout, (const hcl_bch_t*)percent, (fmtptr - percent) / fmtchsz);
 					break;
 				case HCL_FMTOUT_FMT_TYPE_UCH:
-					PUT_UCS (fmtout, (const hcl_uch_t*)percent, (fmtptr - percent) / fmtchsz);
+					PUT_UCS (hcl, fmtout, (const hcl_uch_t*)percent, (fmtptr - percent) / fmtchsz);
 					break;
 			}
 			break;
@@ -1415,10 +1415,10 @@ static int fmt_outv (hcl_fmtout_t* fmtout, va_list ap)
 			switch (fmtout->fmt_type)
 			{
 				case HCL_FMTOUT_FMT_TYPE_BCH:
-					PUT_BCS (fmtout, (const hcl_bch_t*)percent, (fmtptr - percent) / fmtchsz);
+					PUT_BCS (hcl, fmtout, (const hcl_bch_t*)percent, (fmtptr - percent) / fmtchsz);
 					break;
 				case HCL_FMTOUT_FMT_TYPE_UCH:
-					PUT_UCS (fmtout, (const hcl_uch_t*)percent, (fmtptr - percent) / fmtchsz);
+					PUT_UCS (hcl, fmtout, (const hcl_uch_t*)percent, (fmtptr - percent) / fmtchsz);
 					break;
 			}
 			/*
@@ -1447,7 +1447,7 @@ oops:
 	return -1;
 }
 
-int hcl_bfmt_outv (hcl_fmtout_t* fmtout, const hcl_bch_t* fmt, va_list ap)
+int hcl_bfmt_outv (hcl_t* hcl, hcl_fmtout_t* fmtout, const hcl_bch_t* fmt, va_list ap)
 {
 	int n;
 	const void* fmt_str;
@@ -1459,14 +1459,14 @@ int hcl_bfmt_outv (hcl_fmtout_t* fmtout, const hcl_bch_t* fmt, va_list ap)
 	fmtout->fmt_type = HCL_FMTOUT_FMT_TYPE_BCH;
 	fmtout->fmt_str = fmt;
 
-	n = fmt_outv(fmtout, ap);
+	n = fmt_outv(hcl, fmtout, ap);
 
 	fmtout->fmt_str = fmt_str;
 	fmtout->fmt_type = fmt_type;
 	return n;
 }
 
-int hcl_ufmt_outv (hcl_fmtout_t* fmtout, const hcl_uch_t* fmt, va_list ap)
+int hcl_ufmt_outv (hcl_t* hcl, hcl_fmtout_t* fmtout, const hcl_uch_t* fmt, va_list ap)
 {
 	int n;
 	const void* fmt_str;
@@ -1478,14 +1478,14 @@ int hcl_ufmt_outv (hcl_fmtout_t* fmtout, const hcl_uch_t* fmt, va_list ap)
 	fmtout->fmt_type = HCL_FMTOUT_FMT_TYPE_UCH;
 	fmtout->fmt_str = fmt;
 
-	n = fmt_outv(fmtout, ap);
+	n = fmt_outv(hcl, fmtout, ap);
 
 	fmtout->fmt_str = fmt_str;
 	fmtout->fmt_type = fmt_type;
 	return n;
 }
 
-int hcl_bfmt_out (hcl_fmtout_t* fmtout, const hcl_bch_t* fmt, ...)
+int hcl_bfmt_out (hcl_t* hcl, hcl_fmtout_t* fmtout, const hcl_bch_t* fmt, ...)
 {
 	va_list ap;
 	int n;
@@ -1499,7 +1499,7 @@ int hcl_bfmt_out (hcl_fmtout_t* fmtout, const hcl_bch_t* fmt, ...)
 	fmtout->fmt_str = fmt;
 
 	va_start (ap, fmt);
-	n = fmt_outv(fmtout, ap);
+	n = fmt_outv(hcl, fmtout, ap);
 	va_end (ap);
 
 	fmtout->fmt_str = fmt_str;
@@ -1507,7 +1507,7 @@ int hcl_bfmt_out (hcl_fmtout_t* fmtout, const hcl_bch_t* fmt, ...)
 	return n;
 }
 
-int hcl_ufmt_out (hcl_fmtout_t* fmtout, const hcl_uch_t* fmt, ...)
+int hcl_ufmt_out (hcl_t* hcl, hcl_fmtout_t* fmtout, const hcl_uch_t* fmt, ...)
 {
 	va_list ap;
 	int n;
@@ -1521,7 +1521,7 @@ int hcl_ufmt_out (hcl_fmtout_t* fmtout, const hcl_uch_t* fmt, ...)
 	fmtout->fmt_str = fmt;
 
 	va_start (ap, fmt);
-	n = fmt_outv(fmtout, ap);
+	n = fmt_outv(hcl, fmtout, ap);
 	va_end (ap);
 
 	fmtout->fmt_str = fmt_str;
@@ -1533,9 +1533,8 @@ int hcl_ufmt_out (hcl_fmtout_t* fmtout, const hcl_uch_t* fmt, ...)
  * FORMATTED LOG OUTPUT
  * -------------------------------------------------------------------------- */
 
-static int log_oocs (hcl_fmtout_t* fmtout, const hcl_ooch_t* ptr, hcl_oow_t len)
+static int log_oocs (hcl_t* hcl, hcl_fmtout_t* fmtout, const hcl_ooch_t* ptr, hcl_oow_t len)
 {
-	hcl_t* hcl = (hcl_t*)fmtout->ctx;
 	hcl_oow_t rem;
 
 	if (len <= 0) return 1;
@@ -1628,9 +1627,8 @@ redo:
 #if defined(HCL_OOCH_IS_BCH)
 #define log_bcs log_oocs
 
-static int log_ucs (hcl_fmtout_t* fmtout, const hcl_uch_t* ptr, hcl_oow_t len)
+static int log_ucs (hcl_t* hcl, hcl_fmtout_t* fmtout, const hcl_uch_t* ptr, hcl_oow_t len)
 {
-	hcl_t* hcl = (hcl_t*)fmtout->ctx;
 	hcl_bch_t bcs[128];
 	hcl_oow_t bcslen, rem;
 
@@ -1639,8 +1637,8 @@ static int log_ucs (hcl_fmtout_t* fmtout, const hcl_uch_t* ptr, hcl_oow_t len)
 	{
 		len = rem;
 		bcslen = HCL_COUNTOF(bcs);
-		hcl_conv_uchars_to_bchars_with_cmgr(ptr, &len, bcs, &bcslen, HCL_CMGR(hcl));
-		log_bcs(fmtout, bcs, bcslen);
+		hcl_conv_uchars_to_bchars_with_cmgr (ptr, &len, bcs, &bcslen, HCL_CMGR(hcl));
+		log_bcs (hcl, fmtout, bcs, bcslen);
 		rem -= len;
 		ptr += len;
 	}
@@ -1652,9 +1650,8 @@ static int log_ucs (hcl_fmtout_t* fmtout, const hcl_uch_t* ptr, hcl_oow_t len)
 
 #define log_ucs log_oocs
 
-static int log_bcs (hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hcl_oow_t len)
+static int log_bcs (hcl_t* hcl, hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hcl_oow_t len)
 {
-	hcl_t* hcl = (hcl_t*)fmtout->ctx;
 	hcl_uch_t ucs[64];
 	hcl_oow_t ucslen, rem;
 
@@ -1663,8 +1660,8 @@ static int log_bcs (hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hcl_oow_t len)
 	{
 		len = rem;
 		ucslen = HCL_COUNTOF(ucs);
-		hcl_conv_bchars_to_uchars_with_cmgr(ptr, &len, ucs, &ucslen, HCL_CMGR(hcl), 1);
-		log_ucs(fmtout, ucs, ucslen);
+		hcl_conv_bchars_to_uchars_with_cmgr (ptr, &len, ucs, &ucslen, HCL_CMGR(hcl), 1);
+		log_ucs (hcl, fmtout, ucs, ucslen);
 		rem -= len;
 		ptr += len;
 	}
@@ -1711,14 +1708,13 @@ hcl_ooi_t hcl_logbfmtv (hcl_t* hcl, hcl_bitmask_t mask, const hcl_bch_t* fmt, va
 	HCL_MEMSET (&fo, 0, HCL_SIZEOF(fo));
 	fo.fmt_type = HCL_FMTOUT_FMT_TYPE_BCH;
 	fo.fmt_str = fmt;
-	fo.ctx = hcl;
 	fo.mask = mask;
 	fo.mmgr = HCL_MMGR(hcl);
 	fo.putbchars = log_bcs;
 	fo.putuchars = log_ucs;
-	fo.putobj = hcl_fmt_object_;
+	fo.putobj = hcl_fmt_object;
 
-	x = fmt_outv(&fo, ap);
+	x = fmt_outv(hcl, &fo, ap);
 
 	if (hcl->log.len > 0 && hcl->log.ptr[hcl->log.len - 1] == '\n')
 	{
@@ -1779,14 +1775,13 @@ hcl_ooi_t hcl_logufmtv (hcl_t* hcl, hcl_bitmask_t mask, const hcl_uch_t* fmt, va
 	HCL_MEMSET (&fo, 0, HCL_SIZEOF(fo));
 	fo.fmt_type = HCL_FMTOUT_FMT_TYPE_UCH;
 	fo.fmt_str = fmt;
-	fo.ctx = hcl;
 	fo.mask = mask;
 	fo.mmgr = HCL_MMGR(hcl);
 	fo.putbchars = log_bcs;
 	fo.putuchars = log_ucs;
-	fo.putobj = hcl_fmt_object_;
+	fo.putobj = hcl_fmt_object;
 
-	x = fmt_outv(&fo, ap);
+	x = fmt_outv(hcl, &fo, ap);
 
 	if (hcl->log.len > 0 && hcl->log.ptr[hcl->log.len - 1] == '\n')
 	{
@@ -1813,10 +1808,8 @@ hcl_ooi_t hcl_logufmt (hcl_t* hcl, hcl_bitmask_t mask, const hcl_uch_t* fmt, ...
  * PRINT SUPPORT
  * -------------------------------------------------------------------------- */
 
-static int print_bcs (hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hcl_oow_t len)
+static int print_bcs (hcl_t* hcl, hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hcl_oow_t len)
 {
-	hcl_t* hcl = (hcl_t*)fmtout->ctx;
-
 #if 0
 #if defined(HCL_OOCH_IS_UCH)
 	hcl_oow_t ucslen, bcslen;
@@ -1889,10 +1882,8 @@ static int print_bcs (hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hcl_oow_t len)
 	return 1; /* success */
 }
 
-static int print_ucs (hcl_fmtout_t* fmtout, const hcl_uch_t* ptr, hcl_oow_t len)
+static int print_ucs (hcl_t* hcl, hcl_fmtout_t* fmtout, const hcl_uch_t* ptr, hcl_oow_t len)
 {
-	hcl_t* hcl = (hcl_t*)fmtout->ctx;
-
 	if (HCL_UNLIKELY(!hcl->io.udo_wrtr))
 	{
 		hcl_seterrbmsg (hcl, HCL_EINVAL, "no user-defined output handler");
@@ -1956,14 +1947,13 @@ hcl_ooi_t hcl_prbfmtv (hcl_t* hcl, const hcl_bch_t* fmt, va_list ap)
 	HCL_MEMSET (&fo, 0, HCL_SIZEOF(fo));
 	fo.fmt_type = HCL_FMTOUT_FMT_TYPE_BCH;
 	fo.fmt_str = fmt;
-	fo.ctx = hcl;
 	fo.mask = 0;
 	fo.mmgr = HCL_MMGR(hcl);
 	fo.putbchars = print_bcs;
 	fo.putuchars = print_ucs;
-	fo.putobj = hcl_fmt_object_;
+	fo.putobj = hcl_fmt_object;
 
-	x = fmt_outv(&fo, ap);
+	x = fmt_outv(hcl, &fo, ap);
 
 	return (x <= -1)? -1: fo.count;
 }
@@ -1989,14 +1979,13 @@ hcl_ooi_t hcl_prufmtv (hcl_t* hcl, const hcl_uch_t* fmt, va_list ap)
 	HCL_MEMSET (&fo, 0, HCL_SIZEOF(fo));
 	fo.fmt_type = HCL_FMTOUT_FMT_TYPE_UCH;
 	fo.fmt_str = fmt;
-	fo.ctx = hcl;
 	fo.mask = 0;
 	fo.mmgr = HCL_MMGR(hcl);
 	fo.putbchars = print_bcs;
 	fo.putuchars = print_ucs;
-	fo.putobj = hcl_fmt_object_;
+	fo.putobj = hcl_fmt_object;
 
-	x = fmt_outv(&fo, ap);
+	x = fmt_outv(hcl, &fo, ap);
 
 	return (x <= -1)? -1: fo.count;
 }
@@ -2017,9 +2006,8 @@ hcl_ooi_t hcl_prufmt (hcl_t* hcl, const hcl_uch_t* fmt, ...)
  * SUPPORT FOR FORMATTED OUTPUT TO BE USED BY BUILTIN PRIMITIVE FUNCTIONS
  * -------------------------------------------------------------------------- */
 
-static int sprint_bcs (hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hcl_oow_t len)
+static int sprint_bcs (hcl_t* hcl, hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hcl_oow_t len)
 {
-	hcl_t* hcl = (hcl_t*)fmtout->ctx;
 	hcl_oow_t unused, oolen, blen;
 
 	unused = hcl->sprintf.xbuf.capa - hcl->sprintf.xbuf.len;
@@ -2056,9 +2044,8 @@ static int sprint_bcs (hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hcl_oow_t len
 	return 1; /* success */
 }
 
-static int sprint_ucs (hcl_fmtout_t* fmtout, const hcl_uch_t* ptr, hcl_oow_t len)
+static int sprint_ucs (hcl_t* hcl, hcl_fmtout_t* fmtout, const hcl_uch_t* ptr, hcl_oow_t len)
 {
-	hcl_t* hcl = (hcl_t*)fmtout->ctx;
 	hcl_oow_t unused, oolen, ulen;
 
 	unused = hcl->sprintf.xbuf.capa - hcl->sprintf.xbuf.len;
@@ -2106,10 +2093,8 @@ static int sprint_ucs (hcl_fmtout_t* fmtout, const hcl_uch_t* ptr, hcl_oow_t len
 	else { ch = *(fmt); (fmt)++; }\
 } while(0)
 
-static HCL_INLINE int format_stack_args (hcl_fmtout_t* fmtout, hcl_ooi_t nargs, int rcv_is_fmtstr)
+static HCL_INLINE int format_stack_args (hcl_t* hcl, hcl_fmtout_t* fmtout, hcl_ooi_t nargs, int rcv_is_fmtstr)
 {
-	hcl_t* hcl = (hcl_t*)fmtout->ctx;
-
 	const hcl_ooch_t* fmtptr, * fmtend;
 	const hcl_ooch_t* checkpoint, * percent;
 
@@ -2146,11 +2131,11 @@ static HCL_INLINE int format_stack_args (hcl_fmtout_t* fmtout, hcl_ooi_t nargs, 
 		hcl_ooi_t i;
 		/* if the first argument is not a valid formatting string,
 		 * print all arguments as objects */
-		if (fmtout->putobj(fmtout, arg) <= -1) goto oops;
+		if (fmtout->putobj(hcl, fmtout, arg) <= -1) goto oops;
 		for (i = arg_state.idx; i < nargs; i++)
 		{
 			arg = HCL_STACK_GETARG(hcl, nargs, i);
-			if (fmtout->putobj(fmtout, arg) <= -1) goto oops;
+			if (fmtout->putobj(hcl, fmtout, arg) <= -1) goto oops;
 		}
 		return 0;
 	}
@@ -2173,11 +2158,11 @@ static HCL_INLINE int format_stack_args (hcl_fmtout_t* fmtout, hcl_ooi_t nargs, 
 			{
 				/* fmt is not advanced when it is length-bounded.
 				 * so not fmt - checkpoint - 1 */
-				PUT_OOCS (fmtout, checkpoint, fmtptr - checkpoint);
+				PUT_OOCS (hcl, fmtout, checkpoint, fmtptr - checkpoint);
 				goto done;
 			}
 		}
-		PUT_OOCS (fmtout, checkpoint, fmtptr - checkpoint - 1);
+		PUT_OOCS (hcl, fmtout, checkpoint, fmtptr - checkpoint - 1);
 
 		percent = fmtptr - 1;
 
@@ -2407,48 +2392,48 @@ static HCL_INLINE int format_stack_args (hcl_fmtout_t* fmtout, hcl_ooi_t nargs, 
 			if (!(flagc & FLAGC_LEFTADJ) && !(flagc & FLAGC_ZEROPAD) && width > extra)
 			{
 				width -= extra;
-				PUT_OOCH (fmtout, padc, width);
+				PUT_OOCH (hcl, fmtout, padc, width);
 				width = 0;
 			}
-			if (neg) PUT_OOCH (fmtout, '-', 1);
-			else if (flagc & FLAGC_SIGN) PUT_OOCH (fmtout, '+', 1);
-			else if (flagc & FLAGC_SPACE) PUT_OOCH (fmtout, ' ', 1);
+			if (neg) PUT_OOCH (hcl, fmtout, '-', 1);
+			else if (flagc & FLAGC_SIGN) PUT_OOCH (hcl, fmtout, '+', 1);
+			else if (flagc & FLAGC_SPACE) PUT_OOCH (hcl, fmtout, ' ', 1);
 
 			if (!(flagc & FLAGC_LEFTADJ) && width > extra)
 			{
 				width -= extra;
-				PUT_OOCH (fmtout, padc, width);
+				PUT_OOCH (hcl, fmtout, padc, width);
 			}
 
 			if (nslen < scale + 1)
 			{
-				PUT_OOCH (fmtout, '0', 1);
+				PUT_OOCH (hcl, fmtout, '0', 1);
 				if (precision > 0)
 				{
-					PUT_OOCH (fmtout, '.', 1);
-					PUT_OOCH (fmtout, '0', scale - nslen);
-					PUT_OOCS (fmtout, nsptr, nslen);
+					PUT_OOCH (hcl, fmtout, '.', 1);
+					PUT_OOCH (hcl, fmtout, '0', scale - nslen);
+					PUT_OOCS (hcl, fmtout, nsptr, nslen);
 				}
 			}
 			else
 			{
-				if (nslen > 0) PUT_OOCS (fmtout, nsptr, nslen - scale);
+				if (nslen > 0) PUT_OOCS (hcl, fmtout, nsptr, nslen - scale);
 				if (precision > 0)
 				{
-					PUT_OOCH (fmtout, '.', 1);
-					if (nslen > 0) PUT_OOCS (fmtout, &nsptr[nslen - scale], scale);
+					PUT_OOCH (hcl, fmtout, '.', 1);
+					if (nslen > 0) PUT_OOCS (hcl, fmtout, &nsptr[nslen - scale], scale);
 				}
 			}
 			if (precision > scale)
 			{
 				/* trailing zeros in the fractional part */
-				PUT_OOCH (fmtout, '0', precision - scale);
+				PUT_OOCH (hcl, fmtout, '0', precision - scale);
 			}
 
 			if ((flagc & FLAGC_LEFTADJ) && width > extra)
 			{
 				width -= extra;
-				PUT_OOCH (fmtout, padc, width);
+				PUT_OOCH (hcl, fmtout, padc, width);
 			}
 			break;
 		}
@@ -2466,9 +2451,9 @@ static HCL_INLINE int format_stack_args (hcl_fmtout_t* fmtout, hcl_ooi_t nargs, 
 
 			/* precision 0 doesn't kill the letter */
 			width--;
-			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (fmtout, padc, width);
-			PUT_OOCH (fmtout, ooch, 1);
-			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (fmtout, padc, width);
+			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (hcl, fmtout, padc, width);
+			PUT_OOCH (hcl, fmtout, ooch, 1);
+			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (hcl, fmtout, padc, width);
 			break;
 
 		case 's':
@@ -2496,9 +2481,9 @@ static HCL_INLINE int format_stack_args (hcl_fmtout_t* fmtout, hcl_ooi_t nargs, 
 					}
 					width -= oosl;
 
-					if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (fmtout, padc, width);
-					PUT_OOCS (fmtout, oosp, oosl);
-					if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (fmtout, padc, width);
+					if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (hcl, fmtout, padc, width);
+					PUT_OOCS (hcl, fmtout, oosp, oosl);
+					if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (hcl, fmtout, padc, width);
 					break;
 				}
 
@@ -2517,9 +2502,9 @@ static HCL_INLINE int format_stack_args (hcl_fmtout_t* fmtout, hcl_ooi_t nargs, 
 					}
 					width -= bsl;
 
-					if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (fmtout, padc, width);
-					PUT_BCS (fmtout, (const hcl_bch_t*)bsp, bsl);
-					if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (fmtout, padc, width);
+					if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (hcl, fmtout, padc, width);
+					PUT_BCS (hcl, fmtout, (const hcl_bch_t*)bsp, bsl);
+					if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (hcl, fmtout, padc, width);
 					break;
 				}
 
@@ -2575,13 +2560,13 @@ static HCL_INLINE int format_stack_args (hcl_fmtout_t* fmtout, hcl_ooi_t nargs, 
 						width -= (n * k_hex_width);
 					}
 
-					if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (fmtout, padc, width);
+					if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (hcl, fmtout, padc, width);
 
 					while (n--)
 					{
 						if ((lm_flag & LF_H) && BYTE_PRINTABLE(*bsp))
 						{
-							PUT_BCH (fmtout, *bsp, 1);
+							PUT_BCH (hcl, fmtout, *bsp, 1);
 						}
 						else
 						{
@@ -2593,13 +2578,13 @@ static HCL_INLINE int format_stack_args (hcl_fmtout_t* fmtout, hcl_ooi_t nargs, 
 							if (ch == 'k' || ch == 'w') flagged_radix |= HCL_BYTE_TO_BCSTR_LOWERCASE;
 						#endif
 							hcl_byte_to_bcstr (*bsp, xbuf, HCL_COUNTOF(xbuf), flagged_radix, '0');
-							if (lm_flag & (LF_H | LF_L)) PUT_BCS (fmtout, "\\x", 2);
-							PUT_BCS (fmtout, xbuf, 2);
+							if (lm_flag & (LF_H | LF_L)) PUT_BCS (hcl, fmtout, "\\x", 2);
+							PUT_BCS (hcl, fmtout, xbuf, 2);
 						}
 						bsp++;
 					}
 
-					if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (fmtout, padc, width);
+					if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (hcl, fmtout, padc, width);
 					break;
 
 				default:
@@ -2643,43 +2628,43 @@ static HCL_INLINE int format_stack_args (hcl_fmtout_t* fmtout, hcl_ooi_t nargs, 
 				width -= uwid;
 			}
 
-			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (fmtout, padc, width);
+			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (hcl, fmtout, padc, width);
 
 			while (n--)
 			{
 				if ((lm_flag & LF_H) && BYTE_PRINTABLE(*usp))
 				{
-					PUT_OOCH(fmtout, *usp, 1);
+					PUT_OOCH (hcl, fmtout, *usp, 1);
 				}
 				else if (!(lm_flag & LF_L) && *usp <= 0xFFFF)
 				{
 					hcl_uint16_t u16 = *usp;
 					int extra_flags = ((ch) == 'w'? HCL_BYTE_TO_BCSTR_LOWERCASE: 0);
-					PUT_BCS(fmtout, "\\u", 2);
-					PUT_BYTE_IN_HEX(fmtout, (u16 >> 8) & 0xFF, extra_flags);
-					PUT_BYTE_IN_HEX(fmtout, u16 & 0xFF, extra_flags);
+					PUT_BCS (hcl, fmtout, "\\u", 2);
+					PUT_BYTE_IN_HEX (hcl, fmtout, (u16 >> 8) & 0xFF, extra_flags);
+					PUT_BYTE_IN_HEX (hcl, fmtout, u16 & 0xFF, extra_flags);
 				}
 				else
 				{
 					hcl_uint32_t u32 = *usp;
 					int extra_flags = ((ch) == 'w'? HCL_BYTE_TO_BCSTR_LOWERCASE: 0);
-					PUT_BCS(fmtout, "\\u", 2);
-					PUT_BYTE_IN_HEX(fmtout, (u32 >> 24) & 0xFF, extra_flags);
-					PUT_BYTE_IN_HEX(fmtout, (u32 >> 16) & 0xFF, extra_flags);
-					PUT_BYTE_IN_HEX(fmtout, (u32 >> 8) & 0xFF, extra_flags);
-					PUT_BYTE_IN_HEX(fmtout, u32 & 0xFF, extra_flags);
+					PUT_BCS (hcl, fmtout, "\\u", 2);
+					PUT_BYTE_IN_HEX (hcl, fmtout, (u32 >> 24) & 0xFF, extra_flags);
+					PUT_BYTE_IN_HEX (hcl, fmtout, (u32 >> 16) & 0xFF, extra_flags);
+					PUT_BYTE_IN_HEX (hcl, fmtout, (u32 >> 8) & 0xFF, extra_flags);
+					PUT_BYTE_IN_HEX (hcl, fmtout, u32 & 0xFF, extra_flags);
 				}
 				usp++;
 			}
 
-			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (fmtout, padc, width);
+			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (hcl, fmtout, padc, width);
 			break;
 		}
 	#endif
 
 		case 'O': /* object - ignore precision, width, adjustment */
 			GET_NEXT_ARG_TO (hcl, nargs, &arg_state, arg);
-			if (fmtout->putobj(fmtout, arg) <= -1) goto oops;
+			if (fmtout->putobj(hcl, fmtout, arg) <= -1) goto oops;
 			break;
 
 		case 'J':
@@ -2688,7 +2673,7 @@ static HCL_INLINE int format_stack_args (hcl_fmtout_t* fmtout, hcl_ooi_t nargs, 
 			GET_NEXT_ARG_TO (hcl, nargs, &arg_state, arg);
 			tmp = fmtout->mask;
 			fmtout->mask |= HCL_LOG_PREFER_JSON;
-			if (fmtout->putobj(fmtout, arg) <= -1) goto oops;
+			if (fmtout->putobj(hcl, fmtout, arg) <= -1) goto oops;
 			fmtout->mask = tmp;
 			break;
 		}
@@ -2763,59 +2748,59 @@ static HCL_INLINE int format_stack_args (hcl_fmtout_t* fmtout, hcl_ooi_t nargs, 
 
 			if (!(flagc & FLAGC_LEFTADJ) && !(flagc & FLAGC_ZEROPAD) && width > 0 && (width -= extra) > 0)
 			{
-				PUT_OOCH (fmtout, padc, width);
+				PUT_OOCH (hcl, fmtout, padc, width);
 				width = 0;
 			}
 
-			if (neg) PUT_OOCH (fmtout, '-', 1);
-			else if (flagc & FLAGC_SIGN) PUT_OOCH (fmtout, '+', 1);
-			else if (flagc & FLAGC_SPACE) PUT_OOCH (fmtout, ' ', 1);
+			if (neg) PUT_OOCH (hcl, fmtout, '-', 1);
+			else if (flagc & FLAGC_SIGN) PUT_OOCH (hcl, fmtout, '+', 1);
+			else if (flagc & FLAGC_SPACE) PUT_OOCH (hcl, fmtout, ' ', 1);
 
 			if ((flagc & FLAGC_SHARP) && arg != HCL_SMOOI_TO_OOP(0))
 			{
 				if (radix == 2)
 				{
-					PUT_OOCH (fmtout, '#', 1);
-					PUT_OOCH (fmtout, 'b', 1);
+					PUT_OOCH (hcl, fmtout, '#', 1);
+					PUT_OOCH (hcl, fmtout, 'b', 1);
 				}
 				if (radix == 8)
 				{
-					PUT_OOCH (fmtout, '#', 1);
-					PUT_OOCH (fmtout, 'o', 1);
+					PUT_OOCH (hcl, fmtout, '#', 1);
+					PUT_OOCH (hcl, fmtout, 'o', 1);
 				}
 				else if (radix == 16)
 				{
-					PUT_OOCH (fmtout, '#', 1);
-					PUT_OOCH (fmtout, 'x', 1);
+					PUT_OOCH (hcl, fmtout, '#', 1);
+					PUT_OOCH (hcl, fmtout, 'x', 1);
 				}
 			}
 
 			if ((flagc & FLAGC_DOT) && precision > nslen)
 			{
 				/* extra zeros for precision specified */
-				PUT_OOCH (fmtout, '0', precision - nslen);
+				PUT_OOCH (hcl, fmtout, '0', precision - nslen);
 			}
 
 			if (!(flagc & FLAGC_LEFTADJ) && width > 0 && (width -= extra) > 0)
 			{
-				PUT_OOCH (fmtout, padc, width);
+				PUT_OOCH (hcl, fmtout, padc, width);
 			}
 
-			PUT_OOCS (fmtout, nsptr, nslen);
+			PUT_OOCS (hcl, fmtout, nsptr, nslen);
 
 			if ((flagc & FLAGC_LEFTADJ) && width > 0 && (width -= extra) > 0)
 			{
-				PUT_OOCH (fmtout, padc, width);
+				PUT_OOCH (hcl, fmtout, padc, width);
 			}
 			break;
 		}
 
 		invalid_format:
-			PUT_OOCS (fmtout, percent, fmtptr - percent);
+			PUT_OOCS (hcl, fmtout, percent, fmtptr - percent);
 			break;
 
 		default:
-			PUT_OOCS (fmtout, percent, fmtptr - percent);
+			PUT_OOCS (hcl, fmtout, percent, fmtptr - percent);
 			/*
 			 * Since we ignore an formatting argument it is no
 			 * longer safe to obey the remaining formatting
@@ -2840,15 +2825,14 @@ int hcl_strfmtcallstack (hcl_t* hcl, hcl_ooi_t nargs)
 	hcl_fmtout_t fo;
 
 	HCL_MEMSET (&fo, 0, HCL_SIZEOF(fo));
-	fo.ctx = hcl;
 	fo.putbchars = sprint_bcs;
 	fo.putuchars = sprint_ucs;
-	fo.putobj = hcl_fmt_object_;
+	fo.putobj = hcl_fmt_object;
 	/* format_stack_args doesn't use fmt_str and fmt_type.
 	 * it takes the format string from the stack. */
 
 	hcl->sprintf.xbuf.len = 0;
-	return format_stack_args(&fo, nargs, 0);
+	return format_stack_args(hcl, &fo, nargs, 0);
 }
 
 int hcl_prfmtcallstack (hcl_t* hcl, hcl_ooi_t nargs)
@@ -2857,16 +2841,14 @@ int hcl_prfmtcallstack (hcl_t* hcl, hcl_ooi_t nargs)
 	hcl_fmtout_t fo;
 
 	HCL_MEMSET (&fo, 0, HCL_SIZEOF(fo));
-
 	fo.mask = 0;
 	fo.mmgr = HCL_MMGR(hcl);
-	fo.ctx = hcl;
 	fo.putbchars = print_bcs;
 	fo.putuchars = print_ucs;
-	fo.putobj = hcl_fmt_object_;
+	fo.putobj = hcl_fmt_object;
 	/* format_stack_args doesn't use fmt_str and fmt_type.
 	 * it takes the format string from the stack. */
-	return format_stack_args(&fo, nargs, 0);
+	return format_stack_args(hcl, &fo, nargs, 0);
 }
 
 int hcl_logfmtcallstack (hcl_t* hcl, hcl_ooi_t nargs)
@@ -2889,14 +2871,13 @@ int hcl_logfmtcallstack (hcl_t* hcl, hcl_ooi_t nargs)
 	}
 
 	fo.mmgr = HCL_MMGR(hcl);
-	fo.ctx = hcl;
 	fo.putbchars = log_bcs;
 	fo.putuchars = log_ucs;
-	fo.putobj = hcl_fmt_object_;
+	fo.putobj = hcl_fmt_object;
 	/* format_stack_args doesn't use fmt_str and fmt_type.
 	 * it takes the format string from the stack. */
 
-	return format_stack_args(&fo, nargs, 0);
+	return format_stack_args(hcl, &fo, nargs, 0);
 }
 
 /* --------------------------------------------------------------------------
@@ -2912,7 +2893,7 @@ struct fmt_uch_buf_t
 };
 typedef struct fmt_uch_buf_t fmt_uch_buf_t;
 
-static int fmt_put_bchars_to_uch_buf (hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hcl_oow_t len)
+static int fmt_put_bchars_to_uch_buf (hcl_t* hcl, hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hcl_oow_t len)
 {
 	fmt_uch_buf_t* b = (fmt_uch_buf_t*)fmtout->ctx;
 	hcl_oow_t bcslen, ucslen;
@@ -2938,7 +2919,7 @@ static int fmt_put_bchars_to_uch_buf (hcl_fmtout_t* fmtout, const hcl_bch_t* ptr
 	return 1; /* success. carry on */
 }
 
-static int fmt_put_uchars_to_uch_buf (hcl_fmtout_t* fmtout, const hcl_uch_t* ptr, hcl_oow_t len)
+static int fmt_put_uchars_to_uch_buf (hcl_t* hcl, hcl_fmtout_t* fmtout, const hcl_uch_t* ptr, hcl_oow_t len)
 {
 	fmt_uch_buf_t* b = (fmt_uch_buf_t*)fmtout->ctx;
 	hcl_oow_t n;
@@ -2966,6 +2947,7 @@ hcl_oow_t hcl_vfmttoucstr (hcl_t* hcl, hcl_uch_t* buf, hcl_oow_t bufsz, const hc
 	fo.mmgr = hcl->_mmgr;
 	fo.putbchars = fmt_put_bchars_to_uch_buf;
 	fo.putuchars = fmt_put_uchars_to_uch_buf;
+	fo.putobj = hcl_fmt_object;
 	fo.ctx = &fb;
 
 	HCL_MEMSET (&fb, 0, HCL_SIZEOF(fb));
@@ -2973,7 +2955,7 @@ hcl_oow_t hcl_vfmttoucstr (hcl_t* hcl, hcl_uch_t* buf, hcl_oow_t bufsz, const hc
 	fb.ptr = buf;
 	fb.capa = bufsz - 1;
 
-	if (hcl_ufmt_outv(&fo, fmt, ap) <= -1) return -1;
+	if (hcl_ufmt_outv(hcl, &fo, fmt, ap) <= -1) return -1;
 
 	buf[fb.len] = '\0';
 	return fb.len;
@@ -3002,8 +2984,7 @@ struct fmt_bch_buf_t
 };
 typedef struct fmt_bch_buf_t fmt_bch_buf_t;
 
-
-static int fmt_put_bchars_to_bch_buf (hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hcl_oow_t len)
+static int fmt_put_bchars_to_bch_buf (hcl_t* hcl, hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hcl_oow_t len)
 {
 	fmt_bch_buf_t* b = (fmt_bch_buf_t*)fmtout->ctx;
 	hcl_oow_t n;
@@ -3020,8 +3001,7 @@ static int fmt_put_bchars_to_bch_buf (hcl_fmtout_t* fmtout, const hcl_bch_t* ptr
 	return 1; /* success */
 }
 
-
-static int fmt_put_uchars_to_bch_buf (hcl_fmtout_t* fmtout, const hcl_uch_t* ptr, hcl_oow_t len)
+static int fmt_put_uchars_to_bch_buf (hcl_t* hcl, hcl_fmtout_t* fmtout, const hcl_uch_t* ptr, hcl_oow_t len)
 {
 	fmt_bch_buf_t* b = (fmt_bch_buf_t*)fmtout->ctx;
 	hcl_oow_t bcslen, ucslen;
@@ -3058,6 +3038,7 @@ hcl_oow_t hcl_vfmttobcstr (hcl_t* hcl, hcl_bch_t* buf, hcl_oow_t bufsz, const hc
 	fo.mmgr = hcl->_mmgr;
 	fo.putbchars = fmt_put_bchars_to_bch_buf;
 	fo.putuchars = fmt_put_uchars_to_bch_buf;
+	fo.putobj = hcl_fmt_object;
 	fo.ctx = &fb;
 
 	HCL_MEMSET (&fb, 0, HCL_SIZEOF(fb));
@@ -3065,7 +3046,7 @@ hcl_oow_t hcl_vfmttobcstr (hcl_t* hcl, hcl_bch_t* buf, hcl_oow_t bufsz, const hc
 	fb.ptr = buf;
 	fb.capa = bufsz - 1;
 
-	if (hcl_bfmt_outv(&fo, fmt, ap) <= -1) return -1;
+	if (hcl_bfmt_outv(hcl, &fo, fmt, ap) <= -1) return -1;
 
 	buf[fb.len] = '\0';
 	return fb.len;
