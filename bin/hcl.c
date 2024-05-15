@@ -656,6 +656,8 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 				}
 			}
 		}
+
+		hcl_logbfmt (hcl, HCL_LOG_STDOUT, "\n");
 	}
 	else
 	{
@@ -678,7 +680,6 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 		}
 	}
 
-	hcl_logbfmt (hcl, HCL_LOG_STDOUT, "\n");
 	if (hcl_endfeed(hcl) <= -1)
 	{
 	feed_error:

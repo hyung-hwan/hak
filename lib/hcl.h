@@ -1695,6 +1695,8 @@ struct hcl_t
 	hcl_oop_class_t c_method; /* CompiledMethod */
 	hcl_oop_class_t c_methsig; /* MethodSignature */
 #endif
+	hcl_oop_class_t c_function; /* Function */
+	hcl_oop_class_t c_primitive; /* Primitive */
 	hcl_oop_class_t c_block; /* CompiledBlock */
 
 	hcl_oop_class_t c_method_context; /* MethodContext */

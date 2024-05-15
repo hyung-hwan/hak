@@ -635,10 +635,83 @@ hcl_oop_t hcl_instantiate (hcl_t* hcl, hcl_oop_class_t _class, const void* vptr,
 		hcl_ooi_t spec;
 	#endif
 		HCL_OBJ_SET_CLASS (oop, (hcl_oop_t)_class);
-	#if 0
+	#if 0 /* TODO: revive this part */
 		spec = HCL_OOP_TO_SMOOI(_class->spec);
 		if (HCL_CLASS_SPEC_IS_IMMUTABLE(spec)) HCL_OBJ_SET_FLAGS_RDONLY (oop, 1);
 		if (HCL_CLASS_SPEC_IS_UNCOPYABLE(spec)) HCL_OBJ_SET_FLAGS_UNCOPYABLE (oop, 1);
+	#endif
+		HCL_OBJ_SET_FLAGS_BRAND(oop, HCL_OOP_TO_SMOOI(_class->ibrand));
+	}
+	hcl_popvolats (hcl, tmp_count);
+	return oop;
+}
+
+hcl_oop_t hcl_instantiatewithtrailer (hcl_t* hcl, hcl_oop_class_t _class, hcl_oow_t vlen, const hcl_oob_t* trptr, hcl_oow_t trlen)
+{
+	hcl_oop_t oop;
+	hcl_obj_type_t type;
+	hcl_oow_t alloclen;
+	hcl_oow_t tmp_count = 0;
+
+	HCL_ASSERT (hcl, hcl->_nil != HCL_NULL);
+
+	if (decode_spec(hcl, _class, vlen, &type, &alloclen) <= -1) return HCL_NULL;
+
+	hcl_pushvolat (hcl, (hcl_oop_t*)&_class); tmp_count++;
+
+	switch (type)
+	{
+		case HCL_OBJ_TYPE_OOP:
+			oop = hcl_allocoopobjwithtrailer(hcl, HCL_BRAND_INSTANCE, alloclen, trptr, trlen);
+			if (HCL_LIKELY(oop))
+			{
+				/* initialize named instance variables with default values */
+			#if 0 /* TODO: revive this part */
+				if (_class->initv[0] != hcl->_nil)
+				{
+					hcl_oow_t i = HCL_OBJ_GET_SIZE(_class->initv[0]);
+
+					/* [NOTE] i don't deep-copy initial values.
+					 *   if you change the contents of compound values like arrays,
+					 *   it affects subsequent instantiation of the class.
+					 *   it's important that the compiler should mark compound initial
+					 *   values read-only. */
+					while (i > 0)
+					{
+						--i;
+						HCL_STORE_OOP (hcl, HCL_OBJ_GET_OOP_PTR(oop, i), HCL_OBJ_GET_OOP_VAL(_class->initv[0], i));
+					}
+				}
+			#endif
+			}
+
+			break;
+
+		default:
+		#if 0
+			HCL_DEBUG3 (hcl, "Not allowed to instantiate a non-pointer object of the %.*js class with trailer %zu\n",
+				HCL_OBJ_GET_SIZE(_class->name),
+				HCL_OBJ_GET_CHAR_SLOT(_class->name),
+				trlen);
+		#endif
+
+			hcl_seterrnum (hcl, HCL_EPERM);
+			oop = HCL_NULL;
+			break;
+	}
+
+	if (oop)
+	{
+	#if 0
+		hcl_ooi_t spec;
+	#endif
+		HCL_OBJ_SET_CLASS (oop, (hcl_oop_t)_class);
+	#if 0 /* TODO: revive this part */
+		spec = HCL_OOP_TO_SMOOI(_class->spec);
+		if (HCL_CLASS_SPEC_IS_IMMUTABLE(spec)) HCL_OBJ_SET_FLAGS_RDONLY (oop, 1);
+		/* the object with trailer is to to uncopyable in hcl_allocoopobjwithtrailer() so no need to check/set it again here
+		if (HCL_CLASS_SPEC_IS_UNCOPYABLE(spec)) HCL_OBJ_SET_FLAGS_UNCOPYABLE (oop, 1);
+		*/
 	#endif
 		HCL_OBJ_SET_FLAGS_BRAND(oop, HCL_OOP_TO_SMOOI(_class->ibrand));
 	}

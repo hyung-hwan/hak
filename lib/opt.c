@@ -22,8 +22,8 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "hcl-opt.h"
-#include "hcl-utl.h"
+#include <hcl-opt.h>
+#include <hcl-utl.h>
 
 #define BADCH   '?'
 #define BADARG  ':'

@@ -42,6 +42,8 @@ enum hcl_xpkt_type_t
 	HCL_XPKT_STDOUT,    /* [S]->[C] output to stdout */
 	HCL_XPKT_STDERR,    /* [S]->[C] output to stderr or output data related to error */
 
+	HCL_XPKT_INFORM,    /* [S]->[C], [C]->[S] */
+
 	/*TODO: define HCL_XPKT_CONTROL and make LIST_WORKS AND KILL_WORKER sub-commands of CONTORL */
 	HCL_XPKT_LIST_WORKERS, /* [C]->[S] */
 	HCL_XPKT_KILL_WORKER,  /* [C]->[S] */

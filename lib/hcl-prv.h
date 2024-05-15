@@ -1506,6 +1506,14 @@ hcl_oop_t hcl_instantiate (
 	hcl_oow_t       vlen
 );
 
+hcl_oop_t hcl_instantiatewithtrailer (
+	hcl_t*           hcl,
+	hcl_oop_class_t  _class,
+	hcl_oow_t        vlen,
+	const hcl_oob_t* trptr,
+	hcl_oow_t        trlen
+);
+
 /* ========================================================================= */
 /* sym.c                                                                     */
 /* ========================================================================= */
@@ -1908,6 +1916,11 @@ int hcl_logfmtcallstack (
 );
 
 int hcl_strfmtcallstack (
+	hcl_t*    hcl,
+	hcl_ooi_t nargs
+);
+
+int hcl_scfmtcallstack (
 	hcl_t*    hcl,
 	hcl_ooi_t nargs
 );

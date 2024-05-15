@@ -3222,7 +3222,8 @@ static int feed_from_includee (hcl_t* hcl)
 
 int hcl_beginfeed (hcl_t* hcl, hcl_on_cnode_t on_cnode)
 {
-	/* if the fed data contains @include, you must call hcl_attachccio() first */
+	/* if the fed data contains #include, you must call hcl_attachccio() first.
+	 * file includsion requires the ccio handler to be implemented. */
 
 	if (!hcl->c && init_compiler(hcl) <= -1) return -1;
 

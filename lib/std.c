@@ -3317,8 +3317,16 @@ static HCL_INLINE int open_cci_stream (hcl_t* hcl, hcl_io_cciarg_t* arg)
 
 		fn = ((bb_t*)arg->includer->handle)->fn;
 
-		fb = hcl_get_base_name_from_bcstr_path(fn);
-		parlen = fb - fn;
+		if (arg->name[0] == '/')  /* TODO: change the code to check if it's an absolute path */
+		{
+			fb = "";
+			parlen = 0;
+		}
+		else
+		{
+			fb = hcl_get_base_name_from_bcstr_path(fn);
+			parlen = fb - fn;
+		}
 
 		bb = (bb_t*)hcl_callocmem(hcl, HCL_SIZEOF(*bb) + (HCL_SIZEOF(hcl_bch_t) * (parlen + bcslen + 1)));
 		if (!bb) goto oops;

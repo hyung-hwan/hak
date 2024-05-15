@@ -187,6 +187,21 @@ struct hcl_fmtout_t
 	const void*            fmt_str;
 };
 
+/* =========================================================================
+ * FORMATTED INPUT
+ * ========================================================================= */
+
+typedef struct hcl_fmtin_t hcl_fmtin_t;
+
+struct hcl_fmtin_t
+{
+#if 0
+	hcl_fmtin_getbchars_t getbchars; /* in */
+	hcl_fmtin_getuchars_t getuchars; /* in */
+#endif
+	void*                 ctx; /* in */
+};
+
 #if defined(__cplusplus)
 extern "C" {
 #endif

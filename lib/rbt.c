@@ -22,7 +22,7 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "hcl-rbt.h"
+#include <hcl-rbt.h>
 #include "hcl-prv.h"
 
 #define copier_t        hcl_rbt_copier_t

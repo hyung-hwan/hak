@@ -22,7 +22,7 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "hcl-json.h"
+#include <hcl-json.h>
 #include "hcl-prv.h"
 
 #include <string.h>

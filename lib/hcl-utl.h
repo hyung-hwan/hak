@@ -25,7 +25,7 @@
 #ifndef _HCL_UTL_H_
 #define _HCL_UTL_H_
 
-#include "hcl-cmn.h"
+#include <hcl-cmn.h>
 #include <stdarg.h>
 
 /* =========================================================================

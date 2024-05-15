@@ -284,6 +284,26 @@ static kernel_class_info_t kernel_classes[] =
 	  HCL_OFFSETOF(hcl_t, c_methsig) },
 #endif
 
+	/* special function created with MAKE_FUNCTION in interactive mode
+	 * for execution of code fed and compiled.  */
+	{ "Function", HCL_BRAND_FUNCTION,
+	  0,
+	  0,
+	  HCL_FUNCTION_NAMED_INSTVARS,
+	  HCL_CLASS_SPEC_FLAG_INDEXED,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, c_function) },
+
+#if 0
+	{ "Primitive", HCL_BRAND_PRIM,
+	  0,
+	  0,
+	  HCL_PRIM_NAMED_INSTVARS,
+	  0,
+	  HCL_OBJ_TYPE_OOP,
+	  HCL_OFFSETOF(hcl_t, c_prim) },
+#endif
+
 	{ "CompiledBlock", 0,
 	  0,
 	  0,
@@ -300,7 +320,7 @@ static kernel_class_info_t kernel_classes[] =
 	  HCL_OBJ_TYPE_OOP,
 	  HCL_OFFSETOF(hcl_t, c_method_context) },
 
-	{ "BlockContext", 0,
+	{ "BlockContext", HCL_BRAND_CONTEXT,
 	  HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
 	  0,
 	  HCL_CONTEXT_NAMED_INSTVARS,

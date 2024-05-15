@@ -42,7 +42,7 @@ hcl_oop_t hcl_makeprim (hcl_t* hcl, hcl_pfimpl_t primimpl, hcl_oow_t minargs, hc
 	hcl_oop_prim_t obj; /* in principle, hcl_oop_word_t with HCL_PRIM_NUM_WORDS elements */
 
 	obj = (hcl_oop_prim_t)hcl_allocwordobj(hcl, HCL_BRAND_PRIM, HCL_NULL, HCL_PRIM_NUM_WORDS);
-	if (obj)
+	if (HCL_LIKELY(obj))
 	{
 		obj->impl = (hcl_oow_t)primimpl;
 		obj->min_nargs = minargs;
@@ -213,7 +213,36 @@ static hcl_pfrc_t pf_sprintf (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 	return HCL_PF_SUCCESS;
 }
 
+/* ------------------------------------------------------------------------- */
 
+static hcl_pfrc_t pf_getbyte (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+{
+	return HCL_PF_SUCCESS;
+}
+
+static hcl_pfrc_t pf_getch (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+{
+	/*getchar(;)
+	HCL_STACK_SETRET (hcl, nars, v);*/
+	return HCL_PF_SUCCESS;
+}
+
+static hcl_pfrc_t pf_scanf (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+{
+	if (hcl_scfmtcallstack(hcl, nargs) <= -1)
+	{
+		HCL_STACK_SETRETTOERRNUM (hcl, nargs);
+	}
+	else
+	{
+/* TODO: better return code? */
+		HCL_STACK_SETRET (hcl, nargs, hcl->_nil);
+	}
+
+	return HCL_PF_SUCCESS;
+}
+
+/* ------------------------------------------------------------------------- */
 
 static hcl_pfrc_t pf_gc (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
@@ -403,7 +432,7 @@ static hcl_pfrc_t pf_is_lambda (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
 	hcl_oop_t rv, x;
 	x = HCL_STACK_GETARG(hcl, nargs, 0);
-	rv = (HCL_IS_CONTEXT(hcl, x))? hcl->_true: hcl->_false;
+	rv = (HCL_IS_LAMBDA(hcl, x))? hcl->_true: hcl->_false;
 	HCL_STACK_SETRET (hcl, nargs, rv);
 	return HCL_PF_SUCCESS;
 }
@@ -904,9 +933,11 @@ static hcl_pfrc_t pf_object_new (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 
 static pf_t builtin_prims[] =
 {
+	{ 0, 0,                       pf_getch,           5,  { 'g','e','t','c','h' } },
 	{ 0, HCL_TYPE_MAX(hcl_oow_t), pf_log,             3,  { 'l','o','g' } },
 	{ 1, HCL_TYPE_MAX(hcl_oow_t), pf_logf,            4,  { 'l','o','g','f' } },
 	{ 1, HCL_TYPE_MAX(hcl_oow_t), pf_printf,          6,  { 'p','r','i','n','t','f' } },
+	{ 1, HCL_TYPE_MAX(hcl_oow_t), pf_scanf,           5,  { 's','c','a','n','f' } },
 	{ 1, HCL_TYPE_MAX(hcl_oow_t), pf_sprintf,         7,  { 's','p','r','i','n','t','f' } },
 
 	{ 0, 0,                       pf_gc,              2,  { 'g','c' } },

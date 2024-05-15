@@ -25,7 +25,7 @@
 #ifndef _HCL_RBT_H_
 #define _HCL_RBT_H_
 
-#include "hcl-cmn.h"
+#include <hcl-cmn.h>
 
 /** \file
  * This file provides a red-black tree encapsulated in the #hcl_rbt_t type that

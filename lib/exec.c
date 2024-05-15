@@ -372,7 +372,8 @@ static void vm_checkbc (hcl_t* hcl, hcl_oob_t bcode)
 static HCL_INLINE hcl_oop_context_t make_context (hcl_t* hcl, hcl_ooi_t ntmprs)
 {
 	HCL_ASSERT (hcl, ntmprs >= 0);
-	return (hcl_oop_context_t)hcl_allocoopobj(hcl, HCL_BRAND_CONTEXT, HCL_CONTEXT_NAMED_INSTVARS + (hcl_oow_t)ntmprs);
+	//return (hcl_oop_context_t)hcl_allocoopobj(hcl, HCL_BRAND_CONTEXT, HCL_CONTEXT_NAMED_INSTVARS + (hcl_oow_t)ntmprs);
+	return (hcl_oop_context_t)hcl_instantiatewithtrailer(hcl, hcl->c_block_context, ntmprs, HCL_NULL, 0);
 }
 
 static HCL_INLINE hcl_oop_function_t make_function (hcl_t* hcl, hcl_oow_t lfsize, const hcl_oob_t* bptr, hcl_oow_t blen, hcl_dbgi_t* dbgi)
@@ -381,7 +382,8 @@ static HCL_INLINE hcl_oop_function_t make_function (hcl_t* hcl, hcl_oow_t lfsize
 
 	/* the literal frame is placed in the variable part.
 	 * the byte code is placed in the trailer space */
-	func = (hcl_oop_function_t)hcl_allocoopobjwithtrailer(hcl, HCL_BRAND_FUNCTION, HCL_FUNCTION_NAMED_INSTVARS + lfsize, bptr, blen);
+	/*func = (hcl_oop_function_t)hcl_allocoopobjwithtrailer(hcl, HCL_BRAND_FUNCTION, HCL_FUNCTION_NAMED_INSTVARS + lfsize, bptr, blen);*/
+	func = (hcl_oop_function_t)hcl_instantiatewithtrailer(hcl, hcl->c_function, lfsize, bptr, blen);
 	if (HCL_UNLIKELY(!func)) return HCL_NULL;
 
 	if (dbgi)
@@ -390,7 +392,7 @@ static HCL_INLINE hcl_oop_function_t make_function (hcl_t* hcl, hcl_oow_t lfsize
 		hcl_pushvolat (hcl, (hcl_oop_t*)&func);
 		tmp = hcl_makebytearray(hcl, (hcl_oob_t*)dbgi, HCL_SIZEOF(*dbgi) * blen);
 		hcl_popvolat (hcl);
-		if (tmp) func->dbgi = tmp;
+		if (HCL_LIKELY(tmp)) func->dbgi = tmp;
 	}
 
 	return func;

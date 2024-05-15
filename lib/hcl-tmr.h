@@ -25,7 +25,7 @@
 #ifndef _HCL_TMR_H_
 #define _HCL_TMR_H_
 
-#include "hcl-cmn.h"
+#include <hcl-cmn.h>
 
 typedef struct hcl_tmr_t hcl_tmr_t;
 typedef struct hcl_tmr_event_t hcl_tmr_event_t;

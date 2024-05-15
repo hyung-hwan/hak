@@ -26,8 +26,8 @@
 /* this file is supposed to be included by opt.c multiple times */
 
 
-#include "hcl-opt.h"
-#include "hcl-utl.h"
+#include <hcl-opt.h>
+#include <hcl-utl.h>
 
 /*
  * hcl_getopt is based on BSD getopt.

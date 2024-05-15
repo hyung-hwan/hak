@@ -25,7 +25,7 @@
 #ifndef _HCL_OPT_H_
 #define _HCL_OPT_H_
 
-#include "hcl-cmn.h"
+#include <hcl-cmn.h>
 
 /** \file
  * This file defines functions and data structures to process

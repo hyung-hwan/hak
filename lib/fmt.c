@@ -1810,52 +1810,6 @@ hcl_ooi_t hcl_logufmt (hcl_t* hcl, hcl_bitmask_t mask, const hcl_uch_t* fmt, ...
 
 static int print_bcs (hcl_t* hcl, hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hcl_oow_t len)
 {
-#if 0
-#if defined(HCL_OOCH_IS_UCH)
-	hcl_oow_t ucslen, bcslen;
-	hcl_ooch_t ucsbuf[64], * ucsptr;
-
-	while (len > 0)
-	{
-		bcslen = len;
-		ucslen = HCL_COUNTOF(ucsbuf);
-		hcl_conv_bchars_to_uchars_with_cmgr(ptr, &bcslen, ucsbuf, &ucslen, HCL_CMGR(hcl), 1);
-
-		ucsptr = ucsbuf;
-		while (ucslen > 0)
-		{
-			hcl->io.udo_arg.ptr = ucsptr;
-			hcl->io.udo_arg.len = ucslen;
-
-			if (hcl->io.udo_wrtr(hcl, HCL_IO_WRITE, &hcl->io.udo_arg) <= -1) return -1;
-			if (hcl->io.udo_arg.xlen <= 0) return 0; /* end of stream. but not failure */
-
-			HCL_ASSERT (hcl, hcl->io.udo_arg.xlen <= len);
-			ucsptr += hcl->io.udo_arg.xlen;
-			ucslen -= hcl->io.udo_arg.xlen;
-		}
-
-		ptr += bcslen;
-		len -= bcslen;
-	}
-#else
-	hcl_bch_t* optr;
-
-	optr = (hcl_bch_t*)ptr;
-	while (len > 0)
-	{
-		hcl->io.udo_arg.ptr = optr;
-		hcl->io.udo_arg.len = len;
-
-		if (hcl->io.udo_wrtr(hcl, HCL_IO_WRITE, &hcl->io.udo_arg) <= -1) return -1;
-		if (hcl->io.udo_arg.xlen <= 0) return 0; /* end of stream. but not failure */
-
-		HCL_ASSERT (hcl, hcl->io.udo_arg.xlen <= len);
-		optr += hcl->io.udo_arg.xlen;
-		len -= hcl->io.udo_arg.xlen;
-	}
-#endif
-#else
 	hcl_bch_t* optr;
 
 	if (HCL_UNLIKELY(!hcl->io.udo_wrtr))
@@ -1877,7 +1831,6 @@ static int print_bcs (hcl_t* hcl, hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hc
 		optr += hcl->io.udo_arg.xlen;
 		len -= hcl->io.udo_arg.xlen;
 	}
-#endif
 
 	return 1; /* success */
 }
@@ -2878,6 +2831,53 @@ int hcl_logfmtcallstack (hcl_t* hcl, hcl_ooi_t nargs)
 	 * it takes the format string from the stack. */
 
 	return format_stack_args(hcl, &fo, nargs, 0);
+}
+
+/* --------------------------------------------------------------------------
+ * FORMATTED INPUT
+ * -------------------------------------------------------------------------- */
+
+
+static int read_bcs (hcl_t* hcl, hcl_fmtin_t* fmtout, hcl_bch_t* buf, hcl_oow_t len)
+{
+	if (HCL_UNLIKELY(!hcl->io.udo_wrtr))
+	{
+		hcl_seterrbmsg (hcl, HCL_EINVAL, "no user-defined output handler");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int read_ucs (hcl_t* hcl, hcl_fmtin_t* fmtin, hcl_uch_t* buf, hcl_oow_t len)
+{
+	if (HCL_UNLIKELY(!hcl->io.udo_wrtr))
+	{
+		hcl_seterrbmsg (hcl, HCL_EINVAL, "no user-defined output handler");
+		return -1;
+	}
+
+	return 0;
+}
+
+static HCL_INLINE int fmtin_stack_args (hcl_t* hcl, hcl_fmtin_t* fmtin, hcl_ooi_t nargs, int rcv_is_fmtstr)
+{
+	/* TODO: */
+	return 0;
+}
+
+int hcl_scfmtcallstack (hcl_t* hcl, hcl_ooi_t nargs)
+{
+	hcl_fmtin_t fi;
+
+	HCL_MEMSET (&fi, 0, HCL_SIZEOF(fi));
+	/*
+	 * TODO:
+	fi.getbchars =
+	fi.getuchars =
+	*/
+
+	return fmtin_stack_args(hcl, &fi, nargs, 0);
 }
 
 /* --------------------------------------------------------------------------
