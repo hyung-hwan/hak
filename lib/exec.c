@@ -372,7 +372,7 @@ static void vm_checkbc (hcl_t* hcl, hcl_oob_t bcode)
 static HCL_INLINE hcl_oop_context_t make_context (hcl_t* hcl, hcl_ooi_t ntmprs)
 {
 	HCL_ASSERT (hcl, ntmprs >= 0);
-	//return (hcl_oop_context_t)hcl_allocoopobj(hcl, HCL_BRAND_CONTEXT, HCL_CONTEXT_NAMED_INSTVARS + (hcl_oow_t)ntmprs);
+	/*return (hcl_oop_context_t)hcl_allocoopobj(hcl, HCL_BRAND_CONTEXT, HCL_CONTEXT_NAMED_INSTVARS + (hcl_oow_t)ntmprs);*/
 	return (hcl_oop_context_t)hcl_instantiatewithtrailer(hcl, hcl->c_block_context, ntmprs, HCL_NULL, 0);
 }
 

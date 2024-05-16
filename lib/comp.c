@@ -1242,6 +1242,12 @@ static void pop_fnblk (hcl_t* hcl)
 	}
 }
 
+void hcl_clearfnblks (hcl_t* hcl)
+{
+	while (hcl->c->fnblk.depth >= 0) pop_fnblk (hcl);
+	HCL_ASSERT (hcl, hcl->c->fnblk.depth == -1);
+}
+
 /* ========================================================================= */
 static HCL_INLINE int _insert_cframe (hcl_t* hcl, hcl_ooi_t index, int opcode, hcl_cnode_t* operand)
 {
@@ -5891,8 +5897,7 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 		 * in the interactive mode, the information doesn't have
 		 * to get carried over.
 		 */
-		while (hcl->c->fnblk.depth >= 0) pop_fnblk (hcl);
-		HCL_ASSERT (hcl, hcl->c->fnblk.depth == -1);
+		hcl_clearfnblks (hcl);
 		/* it will be recreated below */
 	}
 	if (flags & HCL_COMPILE_CLEAR_CODE) hcl_clearcode (hcl);

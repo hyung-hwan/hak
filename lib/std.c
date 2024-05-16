@@ -3442,7 +3442,7 @@ static HCL_INLINE int read_cci_stream (hcl_t* hcl, hcl_io_cciarg_t* arg)
 		{
 			if (ferror((FILE*)bb->fp))
 			{
-				hcl_seterrnum (hcl, HCL_EIOERR);
+				hcl_seterrbfmt (hcl, HCL_EIOERR, "I/O error - %hs", strerror(errno));
 				return -1;
 			}
 			break;

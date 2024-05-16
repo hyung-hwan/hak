@@ -533,14 +533,13 @@ static int on_fed_cnode_in_interactive_mode (hcl_t* hcl, hcl_cnode_t* obj)
 
 	if (hcl_compile(hcl, obj, flags) <= -1)
 	{
-		print_error(hcl, "failed to compile");
+		/*print_error(hcl, "failed to compile"); */
 		xtn->feed.pos = xtn->feed.len; /* arrange to discard the rest of the line */
-	}
-	else
-	{
-		xtn->feed.ncompexprs++;
+		return -1; /* this causes the feed function to fail and
+		              the error hander for to print the error message */
 	}
 
+	xtn->feed.ncompexprs++;
 	return 0;
 }
 
@@ -641,6 +640,11 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 			{
 				print_error (hcl, "failed to feed");
 				if (len > 0) show_prompt (hcl, 0);
+
+				/* clear the compiled code but not executed yet */
+				hcl_clearcode(hcl);
+				hcl_clearfnblks(hcl);
+				xtn->feed.ncompexprs = 0;
 			}
 			else
 			{

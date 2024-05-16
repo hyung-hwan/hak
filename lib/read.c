@@ -1144,7 +1144,10 @@ static int feed_begin_include (hcl_t* hcl)
 	return 0;
 
 oops:
-	if (arg) hcl_freemem (hcl, arg);
+	if (arg)
+	{
+		hcl_freemem (hcl, arg);
+	}
 	return -1;
 }
 
@@ -3100,7 +3103,7 @@ static int feed_from_includee (hcl_t* hcl)
 				{
 					const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
 					hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to read bytes from %js - %js", curinp->name, orgmsg);
-					return -1;
+					goto oops;
 				}
 
 				if (curinp->xlen <= 0)
@@ -3109,7 +3112,7 @@ static int feed_from_includee (hcl_t* hcl)
 					if (curinp->rsd.len > 0)
 					{
 						hcl_seterrbfmt (hcl, HCL_EECERR, "incomplete byte sequence in %js", curinp->name);
-						return -1;
+						goto oops;
 					}
 					feed_end_include (hcl);
 					curinp = hcl->c->curinp;
@@ -3139,7 +3142,7 @@ static int feed_from_includee (hcl_t* hcl)
 			{
 				/* TODO: more accurate location of the invalid byte sequence */
 				hcl_seterrbfmt (hcl, HCL_EECERR, "invalid byte sequence in %js", curinp->name);
-				return -1;
+				goto oops;
 			}
 			if (n > inplen) /* incomplete sequence */
 			{
@@ -3172,7 +3175,7 @@ static int feed_from_includee (hcl_t* hcl)
 					/* TODO: more accurate location of failure */
 					const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
 					hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to read %js - %js", curinp->name, orgmsg);
-					return -1;
+					goto oops;
 				}
 				if (curinp->xlen <= 0)
 				{
@@ -3193,7 +3196,7 @@ static int feed_from_includee (hcl_t* hcl)
 	#endif
 
 		x = feed_char(hcl, c);
-		if (x <= -1) return -1;
+		if (x <= -1) goto oops;
 		if (x >= 1)
 		{
 			/* consumed */
@@ -3211,13 +3214,17 @@ static int feed_from_includee (hcl_t* hcl)
 			 * to include the file. the file inclusion is attempted here after the return
 			 * value of feed_char() is used to advance the hcl->c->curinp->b.pos pointer. */
 			hcl->c->feed.rd.do_include_file = 0; /* clear this regardless of inclusion result */
-			if (feed_begin_include(hcl) <= -1) return -1;
+			if (feed_begin_include(hcl) <= -1) goto oops;
 			curinp = hcl->c->curinp;
 		}
 	}
 	while (curinp != &hcl->c->cci_arg);
 
 	return 0;
+
+oops:
+	while (feed_end_include(hcl) >= 1) /* loop */; /* roll back the entire inclusion chain */
+	return -1;
 }
 
 int hcl_beginfeed (hcl_t* hcl, hcl_on_cnode_t on_cnode)

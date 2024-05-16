@@ -2568,6 +2568,10 @@ HCL_EXPORT void hcl_clearcode (
 	hcl_t* hcl
 );
 
+HCL_EXPORT void hcl_clearfnblks (
+	hcl_t* hcl
+);
+
 #if defined(HCL_HAVE_INLINE)
 static HCL_INLINE hcl_code_t* hcl_getcode (hcl_t* hcl) { return &hcl->code; }
 static HCL_INLINE hcl_oob_t* hcl_getbcptr (hcl_t* hcl) { return hcl->code.bc.ptr; }
