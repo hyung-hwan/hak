@@ -641,10 +641,8 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 				print_error (hcl, "failed to feed");
 				if (len > 0) show_prompt (hcl, 0);
 
-				/* clear the compiled code but not executed yet */
-				hcl_clearcode(hcl);
-				hcl_clearfnblks(hcl);
-				xtn->feed.ncompexprs = 0;
+				hcl_clearcode(hcl); /* clear the compiled code but not executed yet in advance */
+				xtn->feed.ncompexprs = 0; /* next time, hcl_compile() is supposed to clear code and fnblks */
 			}
 			else
 			{

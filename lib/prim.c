@@ -215,15 +215,77 @@ static hcl_pfrc_t pf_sprintf (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 
 /* ------------------------------------------------------------------------- */
 
+
+static int get_udi_char (hcl_t* hcl, hcl_ooch_t* ch)
+{
+	if (hcl->io.udi_arg.pos >= hcl->io.udi_arg.xlen)
+	{
+		hcl->io.udi_arg.pos = 0;
+		hcl->io.udi_arg.xlen = 0;
+		if (hcl->io.udi_rdr(hcl, HCL_IO_READ, &hcl->io.udi_arg) <= -1) return -1;
+		if (hcl->io.udi_arg.xlen <= 0) return 0; /* EOF */
+		hcl->io.udi_arg.is_byte = 0;
+	}
+
+
+	if (hcl->io.udi_arg.is_byte)
+	{
+		/* TODO: set error */
+		return -1;
+	}
+
+	*ch = hcl->io.udi_arg.buf.c[hcl->io.udi_arg.pos++];
+	return 1;
+}
+
+static int get_udi_byte (hcl_t* hcl, hcl_uint8_t* bt)
+{
+	if (hcl->io.udi_arg.pos >= hcl->io.udi_arg.xlen)
+	{
+		hcl->io.udi_arg.pos = 0;
+		hcl->io.udi_arg.xlen = 0;
+		if (hcl->io.udi_rdr(hcl, HCL_IO_READ_BYTES, &hcl->io.udi_arg) <= -1) return -1;
+		if (hcl->io.udi_arg.xlen <= 0) return 0; /* EOF */
+		hcl->io.udi_arg.is_byte = 1;
+	}
+
+	if (!hcl->io.udi_arg.is_byte)
+	{
+		/* TODO: set error */
+		return -1;
+	}
+
+	*bt = hcl->io.udi_arg.buf.b[hcl->io.udi_arg.pos++];
+	return 1;
+}
+
 static hcl_pfrc_t pf_getbyte (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
+	hcl_oop_t v;
+	hcl_uint8_t bt;
+	int n;
+
+	n = get_udi_byte(hcl, &bt);
+	if (n <= -1) return HCL_PF_FAILURE;
+
+	/* return nil on EOF, or the actual character read */
+	v = (n == 0)? hcl->_nil: HCL_SMOOI_TO_OOP(bt);
+	HCL_STACK_SETRET (hcl, nargs, v);
 	return HCL_PF_SUCCESS;
 }
 
 static hcl_pfrc_t pf_getch (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
-	/*getchar(;)
-	HCL_STACK_SETRET (hcl, nars, v);*/
+	hcl_oop_t v;
+	hcl_ooch_t ch;
+	int n;
+
+	n = get_udi_char(hcl, &ch);
+	if (n <= -1) return HCL_PF_FAILURE;
+
+	/* return nil on EOF, or the actual character read */
+	v = (n == 0)? hcl->_nil: HCL_CHAR_TO_OOP(ch);
+	HCL_STACK_SETRET (hcl, nargs, v);
 	return HCL_PF_SUCCESS;
 }
 

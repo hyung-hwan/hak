@@ -1318,7 +1318,7 @@ struct hcl_io_udiarg_t
 	void* handle;
 
 	/**
-	 * [OUT] place data here for #HCL_IO_READ
+	 * [OUT] place data in c for #HCL_IO_READ and in d for #HCL_IO_READ_BYTES
 	 */
 	union {
 		hcl_ooch_t  c[2048]; /* TODO: resize this if necessary */
@@ -1330,6 +1330,12 @@ struct hcl_io_udiarg_t
 	 * #HCL_IO_READ or #HCL_IO_READ_BYTES
 	 */
 	hcl_oow_t xlen;
+
+	/**
+	 * Internal use only. Don't touch these.
+	 */
+	hcl_oow_t pos;
+	int is_byte;
 };
 
 typedef struct hcl_io_udoarg_t hcl_io_udoarg_t;
@@ -2565,10 +2571,6 @@ HCL_EXPORT int hcl_decode (
 );
 
 HCL_EXPORT void hcl_clearcode (
-	hcl_t* hcl
-);
-
-HCL_EXPORT void hcl_clearfnblks (
 	hcl_t* hcl
 );
 
