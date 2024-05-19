@@ -1264,9 +1264,15 @@ struct hcl_io_cciarg_t
 	void* handle;
 
 	/**
+	 * [OUT] set this to non-zero in HCL_IO_OPEN if the handler fills the buffer with bytes.
+	 *       the caller issues HCL_IO_READ_BYTES if it's set to non-zero, expecting bytes.
+	 *       otherwise it issues HCL_IO_READ expecting characters.
+	 */
+	int is_bytes;
+
+	/**
 	 * [OUT] place data here for #HCL_IO_READ or #HCL_IO_READ_BYTES
 	 */
-	int is_bytes; /* set this to non-zero if the handler fills the buffer with bytes */
 	union
 	{
 		hcl_ooch_t c[HCL_CCI_BUF_LEN];
@@ -1318,6 +1324,11 @@ struct hcl_io_udiarg_t
 	void* handle;
 
 	/**
+	 * [OUT] indicates if HCL_IO_READ_BYTES is implemented
+	 */
+	int is_bytes;
+
+	/**
 	 * [OUT] place data in c for #HCL_IO_READ and in d for #HCL_IO_READ_BYTES
 	 */
 	union {
@@ -1335,7 +1346,6 @@ struct hcl_io_udiarg_t
 	 * Internal use only. Don't touch these.
 	 */
 	hcl_oow_t pos;
-	int is_byte;
 };
 
 typedef struct hcl_io_udoarg_t hcl_io_udoarg_t;

@@ -224,14 +224,7 @@ static int get_udi_char (hcl_t* hcl, hcl_ooch_t* ch)
 		hcl->io.udi_arg.xlen = 0;
 		if (hcl->io.udi_rdr(hcl, HCL_IO_READ, &hcl->io.udi_arg) <= -1) return -1;
 		if (hcl->io.udi_arg.xlen <= 0) return 0; /* EOF */
-		hcl->io.udi_arg.is_byte = 0;
-	}
-
-
-	if (hcl->io.udi_arg.is_byte)
-	{
-		/* TODO: set error */
-		return -1;
+		hcl->io.udi_arg.is_bytes = 0;
 	}
 
 	*ch = hcl->io.udi_arg.buf.c[hcl->io.udi_arg.pos++];
@@ -240,19 +233,21 @@ static int get_udi_char (hcl_t* hcl, hcl_ooch_t* ch)
 
 static int get_udi_byte (hcl_t* hcl, hcl_uint8_t* bt)
 {
+#if defined(HCL_OOCH_IS_UCH)
+	if (!hcl->io.udi_arg.is_bytes)
+	{
+		hcl_seterrbfmt (hcl, HCL_EPERM, "prohibited byte-oriented input");
+		return -1;
+	}
+#endif
+
 	if (hcl->io.udi_arg.pos >= hcl->io.udi_arg.xlen)
 	{
 		hcl->io.udi_arg.pos = 0;
 		hcl->io.udi_arg.xlen = 0;
 		if (hcl->io.udi_rdr(hcl, HCL_IO_READ_BYTES, &hcl->io.udi_arg) <= -1) return -1;
 		if (hcl->io.udi_arg.xlen <= 0) return 0; /* EOF */
-		hcl->io.udi_arg.is_byte = 1;
-	}
-
-	if (!hcl->io.udi_arg.is_byte)
-	{
-		/* TODO: set error */
-		return -1;
+		hcl->io.udi_arg.is_bytes = 1;
 	}
 
 	*bt = hcl->io.udi_arg.buf.b[hcl->io.udi_arg.pos++];
