@@ -1268,7 +1268,7 @@ struct hcl_io_cciarg_t
 	 *       the caller issues HCL_IO_READ_BYTES if it's set to non-zero, expecting bytes.
 	 *       otherwise it issues HCL_IO_READ expecting characters.
 	 */
-	int is_bytes;
+	int byte_oriented;
 
 	/**
 	 * [OUT] place data here for #HCL_IO_READ or #HCL_IO_READ_BYTES
@@ -1326,7 +1326,7 @@ struct hcl_io_udiarg_t
 	/**
 	 * [OUT] indicates if HCL_IO_READ_BYTES is implemented
 	 */
-	int is_bytes;
+	int byte_oriented;
 
 	/**
 	 * [OUT] place data in c for #HCL_IO_READ and in d for #HCL_IO_READ_BYTES
@@ -1342,10 +1342,20 @@ struct hcl_io_udiarg_t
 	 */
 	hcl_oow_t xlen;
 
-	/**
-	 * Internal use only. Don't touch these.
-	 */
-	hcl_oow_t pos;
+
+	/*-----------------------------------------------------------------*/
+	/*----------- from here down, internal use only -------------------*/
+	struct
+	{
+		hcl_oow_t pos;
+		hcl_oow_t len;
+	} b; /* buffer(buf.c or buf.b) usage status */
+
+	struct
+	{
+		hcl_uint8_t buf[HCL_MBLEN_MAX];
+		hcl_oow_t len;
+	} rsd; /* residue bytes for HCL_IO_READ_BYTES */
 };
 
 typedef struct hcl_io_udoarg_t hcl_io_udoarg_t;

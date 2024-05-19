@@ -187,7 +187,7 @@ func hcl_go_cci_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.in
 			return -1
 		}
 
-		ioarg.is_bytes = 0
+		ioarg.byte_oriented = 0
 		if unsafe.Sizeof(buf[0]) == unsafe.Sizeof(dummy) {
 			C.memcpy(
 				unsafe.Pointer(&ioarg.buf[0]),

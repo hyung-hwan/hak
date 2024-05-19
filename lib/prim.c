@@ -215,42 +215,182 @@ static hcl_pfrc_t pf_sprintf (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 
 /* ------------------------------------------------------------------------- */
 
+static hcl_oow_t move_udi_residue_bytes (hcl_io_udiarg_t* curinp)
+{
+	hcl_oow_t cpl;
+
+	cpl = HCL_COUNTOF(curinp->rsd.buf) - curinp->rsd.len;
+	if (cpl > 0)
+	{
+		hcl_oow_t avail;
+		avail = curinp->b.len - curinp->b.pos; /* available in the read buffer */
+		if (cpl > avail) cpl = avail;
+		HCL_MEMCPY(&curinp->rsd.buf[curinp->rsd.len], &curinp->buf.b[curinp->b.pos], cpl);
+		curinp->rsd.len += cpl;
+		curinp->b.pos += cpl; /* advance the position because the bytes moved to the residue buffer */
+	}
+	return curinp->rsd.len;
+}
 
 static int get_udi_char (hcl_t* hcl, hcl_ooch_t* ch)
 {
-	if (hcl->io.udi_arg.pos >= hcl->io.udi_arg.xlen)
-	{
-		hcl->io.udi_arg.pos = 0;
-		hcl->io.udi_arg.xlen = 0;
-		if (hcl->io.udi_rdr(hcl, HCL_IO_READ, &hcl->io.udi_arg) <= -1) return -1;
-		if (hcl->io.udi_arg.xlen <= 0) return 0; /* EOF */
-		hcl->io.udi_arg.is_bytes = 0;
-	}
+	hcl_io_udiarg_t* curinp;
+	hcl_ooch_t c;
+	hcl_oow_t taken;
+	int x;
 
-	*ch = hcl->io.udi_arg.buf.c[hcl->io.udi_arg.pos++];
+	curinp = &hcl->io.udi_arg;
+
+	#if defined(HCL_OOCH_IS_UCH)
+	if (curinp->byte_oriented)
+	{
+		hcl_cmgr_t* cmgr;
+		const hcl_uint8_t* inpptr;
+		hcl_oow_t inplen, n;
+
+		cmgr = HCL_CMGR(hcl);
+
+	start_over:
+		if (curinp->b.pos >= curinp->b.len)
+		{
+			x = hcl->io.udi_rdr(hcl, HCL_IO_READ_BYTES, curinp);
+			if (x <= -1)
+			{
+				const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+				hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to read bytes from input stream - %js", orgmsg);
+				return -1;
+			}
+
+			if (curinp->xlen <= 0)
+			{
+				/* got EOF from an included stream */
+				if (curinp->rsd.len > 0)
+				{
+					hcl_seterrbfmt (hcl, HCL_EECERR, "incomplete byte sequence in input stream");
+					return -1;
+				}
+				return 0;
+			}
+
+			curinp->b.pos = 0;
+			curinp->b.len = curinp->xlen;
+		}
+
+		if (curinp->rsd.len > 0)
+		{
+			/* there is data in the residue buffer. use the residue buffer to
+			 * locate a proper multi-byte sequence */
+			HCL_ASSERT (hcl, curinp->b.pos == 0);
+			inplen = move_udi_residue_bytes(curinp);
+			inpptr = &curinp->rsd.buf[0];
+		}
+		else
+		{
+			inplen = curinp->b.len - curinp->b.pos;
+			inpptr = &curinp->buf.b[curinp->b.pos];
+		}
+
+		n = cmgr->bctouc((const hcl_bch_t*)inpptr, inplen, &c);
+		if (n == 0) /* invalid sequence */
+		{
+			/* TODO: more accurate location of the invalid byte sequence */
+			hcl_seterrbfmt (hcl, HCL_EECERR, "invalid byte sequence in input stream");
+			return -1;
+		}
+		if (n > inplen) /* incomplete sequence */
+		{
+			HCL_ASSERT (hcl, curinp->rsd.len < HCL_COUNTOF(curinp->rsd.buf));
+			move_udi_residue_bytes (curinp);
+			goto start_over;
+		}
+
+		if (curinp->rsd.len > 0)
+		{
+			/* move_cci_residue_bytes() advanced curinp->b.pos without checking
+			 * the needed number of bytes to form a character. it must backoff by
+			 * the number of excessive bytes moved to the residue buffer */
+			curinp->b.pos -= curinp->rsd.len - n;
+			taken = 0;  /* treat it as if no bytes are taken in this case */
+		}
+		else
+		{
+			taken = n;
+		}
+	}
+	else
+	{
+#endif
+		if (curinp->b.pos >= curinp->b.len)
+		{
+			x = hcl->io.udi_rdr(hcl, HCL_IO_READ, curinp);
+			if (x <= -1)
+			{
+				/* TODO: more accurate location of failure */
+				const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+				hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to read input stream - %js", orgmsg);
+				return -1;
+			}
+			if (curinp->xlen <= 0)
+			{
+				/* got EOF from an included stream */
+				return 0;
+			}
+
+			curinp->b.pos = 0;
+			curinp->b.len = curinp->xlen;
+		}
+
+		c = curinp->buf.c[curinp->b.pos];
+		taken = 1;
+#if defined(HCL_OOCH_IS_UCH)
+	}
+#endif
+
+
+	curinp->b.pos += taken;
+#if defined(HCL_OOCH_IS_UCH)
+	curinp->rsd.len = 0; /* clear up the residue byte buffer. needed for byte reading only */
+#endif
+
+	*ch = c;
 	return 1;
 }
 
 static int get_udi_byte (hcl_t* hcl, hcl_uint8_t* bt)
 {
+	hcl_io_udiarg_t* curinp;
+	int x;
+
 #if defined(HCL_OOCH_IS_UCH)
-	if (!hcl->io.udi_arg.is_bytes)
+	if (!hcl->io.udi_arg.byte_oriented)
 	{
-		hcl_seterrbfmt (hcl, HCL_EPERM, "prohibited byte-oriented input");
+/* TODO: convert characters to bytes? but do we know the original encoding? */
+		hcl_seterrbfmt (hcl, HCL_EPERM, "byte-oriented input prohibited on character-oriented stream");
 		return -1;
 	}
 #endif
 
-	if (hcl->io.udi_arg.pos >= hcl->io.udi_arg.xlen)
+	curinp = &hcl->io.udi_arg;
+	if (curinp->b.pos >= curinp->b.len)
 	{
-		hcl->io.udi_arg.pos = 0;
-		hcl->io.udi_arg.xlen = 0;
-		if (hcl->io.udi_rdr(hcl, HCL_IO_READ_BYTES, &hcl->io.udi_arg) <= -1) return -1;
-		if (hcl->io.udi_arg.xlen <= 0) return 0; /* EOF */
-		hcl->io.udi_arg.is_bytes = 1;
+		x = hcl->io.udi_rdr(hcl, HCL_IO_READ_BYTES, curinp);
+		if (x <= -1)
+		{
+			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+			hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to read input stream - %js", orgmsg);
+			return -1;
+		}
+		if (curinp->xlen <= 0)
+		{
+			/* got EOF from an included stream */
+			return 0;
+		}
+
+		curinp->b.pos = 0;
+		curinp->b.len = curinp->xlen;
 	}
 
-	*bt = hcl->io.udi_arg.buf.b[hcl->io.udi_arg.pos++];
+	*bt = curinp->buf.b[curinp->b.pos++];
 	return 1;
 }
 
@@ -990,6 +1130,9 @@ static hcl_pfrc_t pf_object_new (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 
 static pf_t builtin_prims[] =
 {
+	/* TODO: move these primitives to modules... */
+
+	{ 0, 0,                       pf_getbyte,         7,  { 'g','e','t','b','y','t','e' } },
 	{ 0, 0,                       pf_getch,           5,  { 'g','e','t','c','h' } },
 	{ 0, HCL_TYPE_MAX(hcl_oow_t), pf_log,             3,  { 'l','o','g' } },
 	{ 1, HCL_TYPE_MAX(hcl_oow_t), pf_logf,            4,  { 'l','o','g','f' } },

@@ -1109,7 +1109,7 @@ static int feed_begin_include (hcl_t* hcl)
 	arg->line = 1;
 	arg->colm = 1;
 	/*arg->nl = '\0';*/
-	/*arg->is_bytes = 0;*/
+	/*arg->byte_oriented = 0;*/
 	arg->includer = hcl->c->curinp;
 
 	if (hcl->c->cci_rdr(hcl, HCL_IO_OPEN, arg) <= -1)
@@ -3087,7 +3087,7 @@ static int feed_from_includee (hcl_t* hcl)
 		hcl_oow_t taken;
 
 	#if defined(HCL_OOCH_IS_UCH)
-		if (curinp->is_bytes)
+		if (curinp->byte_oriented)
 		{
 			hcl_cmgr_t* cmgr;
 			const hcl_uint8_t* inpptr;

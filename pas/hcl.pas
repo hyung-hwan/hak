@@ -50,7 +50,7 @@ type
 	CciArg = record (* this record must follow the public part of hcl_io_cciarg_t in hcl.h *)
 		name: pwidechar;
 		handle: pointer;
-		is_bytes: integer;
+		byte_oriented: integer;
 		buf: array[0..(HCL_CCI_BUF_LEN - 1)] of widechar;
 		xlen: System.SizeUint;
 		includer: CciArgPtr;
@@ -296,7 +296,7 @@ begin
 
 			nf^.name := name;
 			arg^.handle := pointer(nf);
-			arg^.is_bytes := 1;
+			arg^.byte_oriented := 1;
 		end;
 
 		IO_CLOSE: begin

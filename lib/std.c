@@ -3534,6 +3534,7 @@ static HCL_INLINE int open_udi_stream (hcl_t* hcl, hcl_io_udiarg_t* arg)
 		goto oops;
 	}
 
+	arg->byte_oriented = 1;
 	arg->handle = bb;
 	return 0;
 
@@ -3567,31 +3568,46 @@ static HCL_INLINE int read_udi_stream (hcl_t* hcl, hcl_io_udiarg_t* arg)
 	bb_t* bb;
 	hcl_oow_t bcslen, ucslen, remlen;
 	int x;
+#if defined(HCL_OOCH_IS_UCH)
+	int fetched = 0;
+#endif
 
 	bb = (bb_t*)arg->handle;
 	HCL_ASSERT (hcl, bb != HCL_NULL && bb->fp != HCL_NULL);
-	do
-	{
-		x = fgetc(bb->fp);
-		if (x == EOF)
-		{
-			if (ferror((FILE*)bb->fp))
-			{
-				hcl_seterrbfmtwithsyserr (hcl, 0, errno, "unable to read udi stream");
-				return -1;
-			}
-			break;
-		}
 
-		bb->buf[bb->len++] = x;
+	if (bb->len > 0)
+	{
+#if defined(HCL_OOCH_IS_UCH)
+	real_fetch:
+		fetched = 1;
+#endif
+		do
+		{
+			x = fgetc(bb->fp);
+			if (x == EOF)
+			{
+				if (ferror((FILE*)bb->fp))
+				{
+					hcl_seterrbfmtwithsyserr (hcl, 0, errno, "unable to read udi stream");
+					return -1;
+				}
+				break;
+			}
+
+			bb->buf[bb->len++] = x;
+		}
+		while (bb->len < HCL_COUNTOF(bb->buf) && x != '\r' && x != '\n');
 	}
-	while (bb->len < HCL_COUNTOF(bb->buf) && x != '\r' && x != '\n');
 
 #if defined(HCL_OOCH_IS_UCH)
 	bcslen = bb->len;
 	ucslen = HCL_COUNTOF(arg->buf.c);
 	x = hcl_convbtooochars(hcl, bb->buf, &bcslen, arg->buf.c, &ucslen);
-	if (x <= -1 && ucslen <= 0) return -1;
+	if (x <= -1 && ucslen <= 0)
+	{
+		if (x == -3 && !fetched) goto real_fetch;
+		return -1;
+	}
 	/* if ucslen is greater than 0, i assume that some characters have been
 	 * converted properly. as the loop above reads an entire line if not too
 	 * large, the incomplete sequence error (x == -3) must happen after
@@ -3620,22 +3636,26 @@ static HCL_INLINE int read_udi_stream_bytes (hcl_t* hcl, hcl_io_udiarg_t* arg)
 
 	bb = (bb_t*)arg->handle;
 	HCL_ASSERT (hcl, bb != HCL_NULL && bb->fp != HCL_NULL);
-	do
-	{
-		x = fgetc(bb->fp);
-		if (x == EOF)
-		{
-			if (ferror((FILE*)bb->fp))
-			{
-				hcl_seterrbfmtwithsyserr (hcl, 0, errno, "unable to read udi stream");
-				return -1;
-			}
-			break;
-		}
 
-		bb->buf[bb->len++] = x;
+	if (bb->len <= 0)
+	{
+		do
+		{
+			x = fgetc(bb->fp);
+			if (x == EOF)
+			{
+				if (ferror((FILE*)bb->fp))
+					{
+					hcl_seterrbfmtwithsyserr (hcl, 0, errno, "unable to read udi stream");
+					return -1;
+				}
+				break;
+			}
+
+			bb->buf[bb->len++] = x;
+		}
+		while (bb->len < HCL_COUNTOF(bb->buf) && x != '\r' && x != '\n');
 	}
-	while (bb->len < HCL_COUNTOF(bb->buf) && x != '\r' && x != '\n');
 
 	bcslen = (bb->len < HCL_COUNTOF(arg->buf.b))? bb->len: HCL_COUNTOF(arg->buf.b);
 	ucslen = bcslen;
