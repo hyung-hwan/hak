@@ -241,7 +241,7 @@ static int get_udi_char (hcl_t* hcl, hcl_ooch_t* ch)
 
 	curinp = &hcl->io.udi_arg;
 
-	#if defined(HCL_OOCH_IS_UCH)
+#if defined(HCL_OOCH_IS_UCH)
 	if (curinp->byte_oriented)
 	{
 		hcl_cmgr_t* cmgr;
@@ -269,6 +269,7 @@ static int get_udi_char (hcl_t* hcl, hcl_ooch_t* ch)
 					hcl_seterrbfmt (hcl, HCL_EECERR, "incomplete byte sequence in input stream");
 					return -1;
 				}
+				curinp->eof_reached = 1;
 				return 0;
 			}
 
@@ -293,7 +294,6 @@ static int get_udi_char (hcl_t* hcl, hcl_ooch_t* ch)
 		n = cmgr->bctouc((const hcl_bch_t*)inpptr, inplen, &c);
 		if (n == 0) /* invalid sequence */
 		{
-			/* TODO: more accurate location of the invalid byte sequence */
 			hcl_seterrbfmt (hcl, HCL_EECERR, "invalid byte sequence in input stream");
 			return -1;
 		}
@@ -325,7 +325,6 @@ static int get_udi_char (hcl_t* hcl, hcl_ooch_t* ch)
 			x = hcl->io.udi_rdr(hcl, HCL_IO_READ, curinp);
 			if (x <= -1)
 			{
-				/* TODO: more accurate location of failure */
 				const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
 				hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to read input stream - %js", orgmsg);
 				return -1;
@@ -333,6 +332,7 @@ static int get_udi_char (hcl_t* hcl, hcl_ooch_t* ch)
 			if (curinp->xlen <= 0)
 			{
 				/* got EOF from an included stream */
+				curinp->eof_reached++;
 				return 0;
 			}
 
@@ -345,7 +345,6 @@ static int get_udi_char (hcl_t* hcl, hcl_ooch_t* ch)
 #if defined(HCL_OOCH_IS_UCH)
 	}
 #endif
-
 
 	curinp->b.pos += taken;
 #if defined(HCL_OOCH_IS_UCH)
@@ -383,6 +382,7 @@ static int get_udi_byte (hcl_t* hcl, hcl_uint8_t* bt)
 		if (curinp->xlen <= 0)
 		{
 			/* got EOF from an included stream */
+			curinp->eof_reached++;
 			return 0;
 		}
 
@@ -420,6 +420,80 @@ static hcl_pfrc_t pf_getch (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 
 	/* return nil on EOF, or the actual character read */
 	v = (n == 0)? hcl->_nil: HCL_CHAR_TO_OOP(ch);
+	HCL_STACK_SETRET (hcl, nargs, v);
+	return HCL_PF_SUCCESS;
+}
+
+static hcl_pfrc_t pf_gets (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+{
+	hcl_io_udiarg_t* curinp;
+	hcl_oop_t v;
+
+	curinp = &hcl->io.udi_arg;
+	if (curinp->eof_reached)
+	{
+		v = hcl->_nil;
+	}
+	else
+	{
+		int n;
+		hcl_ooch_t ch;
+		hcl_ooch_t buf[10];
+		hcl_ooch_t* ptr;
+		hcl_oow_t len, capa;
+
+		ptr = buf;
+		len = 0;
+		capa = HCL_COUNTOF(buf);
+		while (1)
+		{
+			n = get_udi_char(hcl, &ch);
+			if (n <= -1) return HCL_PF_FAILURE;
+			if (n == 0) break;
+
+			if (len >= capa)
+			{
+				hcl_ooch_t* tmp;
+				hcl_oow_t newcapa;
+
+				newcapa = capa + HCL_COUNTOF(buf);
+				if (ptr == buf)
+				{
+					tmp = hcl_allocmem(hcl, HCL_SIZEOF(*ptr) * newcapa);
+					if (HCL_UNLIKELY(!tmp)) return HCL_PF_FAILURE;
+					HCL_MEMCPY (tmp, buf, HCL_SIZEOF(buf));
+				}
+				else
+				{
+					tmp = hcl_reallocmem(hcl, ptr, HCL_SIZEOF(*ptr) * newcapa);
+					if (HCL_UNLIKELY(!tmp))
+					{
+						hcl_freemem(hcl, ptr);
+						return HCL_PF_FAILURE;
+					}
+				}
+
+				ptr = tmp;
+				capa = newcapa;
+			}
+			ptr[len++] = ch;
+			if (ch == '\n') break; /* TODO: don't hardcode EOL */
+		}
+
+		if (len <= 0)
+		{
+			HCL_ASSERT (hcl, ptr == buf);
+			v = hcl->_nil;
+		}
+		else
+		{
+			v = hcl_makestring(hcl, ptr, len, 0);
+			if (ptr != buf) hcl_freemem(hcl, ptr);
+			if (HCL_UNLIKELY(!v)) return HCL_PF_FAILURE;
+		}
+
+	}
+
 	HCL_STACK_SETRET (hcl, nargs, v);
 	return HCL_PF_SUCCESS;
 }
@@ -1134,6 +1208,7 @@ static pf_t builtin_prims[] =
 
 	{ 0, 0,                       pf_getbyte,         7,  { 'g','e','t','b','y','t','e' } },
 	{ 0, 0,                       pf_getch,           5,  { 'g','e','t','c','h' } },
+	{ 0, 0,                       pf_gets,            4,  { 'g','e','t','s' } },
 	{ 0, HCL_TYPE_MAX(hcl_oow_t), pf_log,             3,  { 'l','o','g' } },
 	{ 1, HCL_TYPE_MAX(hcl_oow_t), pf_logf,            4,  { 'l','o','g','f' } },
 	{ 1, HCL_TYPE_MAX(hcl_oow_t), pf_printf,          6,  { 'p','r','i','n','t','f' } },

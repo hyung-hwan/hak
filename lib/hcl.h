@@ -1356,6 +1356,8 @@ struct hcl_io_udiarg_t
 		hcl_uint8_t buf[HCL_MBLEN_MAX];
 		hcl_oow_t len;
 	} rsd; /* residue bytes for HCL_IO_READ_BYTES */
+
+	int eof_reached;
 };
 
 typedef struct hcl_io_udoarg_t hcl_io_udoarg_t;
