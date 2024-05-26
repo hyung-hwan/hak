@@ -317,6 +317,7 @@ hcl_oop_t hcl_makebigint (hcl_t* hcl, int brand, const hcl_liw_t* ptr, hcl_oow_t
 
 hcl_oop_t hcl_makecons (hcl_t* hcl, hcl_oop_t car, hcl_oop_t cdr)
 {
+/* TODO: use hcl_instantiate() */
 	hcl_oop_cons_t cons;
 
 	hcl_pushvolat (hcl, &car);
@@ -337,6 +338,7 @@ hcl_oop_t hcl_makecons (hcl_t* hcl, hcl_oop_t car, hcl_oop_t cdr)
 
 hcl_oop_t hcl_makearray (hcl_t* hcl, hcl_oow_t size, int ngc)
 {
+/* TODO: use hcl_instantiate() */
 	hcl_oop_t v;
 	v = hcl_allocoopobj(hcl, HCL_BRAND_ARRAY, size);
 	if (HCL_LIKELY(v)) HCL_OBJ_SET_CLASS (v, (hcl_oop_t)hcl->c_array);
@@ -345,6 +347,7 @@ hcl_oop_t hcl_makearray (hcl_t* hcl, hcl_oow_t size, int ngc)
 
 hcl_oop_t hcl_makebytearray (hcl_t* hcl, const hcl_oob_t* ptr, hcl_oow_t size)
 {
+/* TODO: use hcl_instantiate() */
 	hcl_oop_t v;
 	v = hcl_allocbyteobj(hcl, HCL_BRAND_BYTE_ARRAY, ptr, size);
 	if (HCL_LIKELY(v)) HCL_OBJ_SET_CLASS (v, (hcl_oop_t)hcl->c_byte_array);
@@ -353,7 +356,28 @@ hcl_oop_t hcl_makebytearray (hcl_t* hcl, const hcl_oob_t* ptr, hcl_oow_t size)
 
 hcl_oop_t hcl_makebytestringwithbytes (hcl_t* hcl, const hcl_oob_t* ptr, hcl_oow_t len, int ngc)
 {
-	return alloc_numeric_array(hcl, HCL_BRAND_BYTE_ARRAY, ptr, len, HCL_OBJ_TYPE_BYTE, HCL_SIZEOF(hcl_oob_t), 1, ngc);
+	hcl_oop_byte_t b;
+	hcl_oow_t i;
+	hcl_oob_t v;
+
+	b = (hcl_oop_byte_t)alloc_numeric_array(hcl, HCL_BRAND_BYTE_ARRAY, ptr, len, HCL_OBJ_TYPE_BYTE, HCL_SIZEOF(hcl_oob_t), 1, ngc);
+	if (HCL_UNLIKELY(!b))
+	{
+		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make bytestring - %js", orgmsg);
+	}
+	else
+	{
+		for (i = 0; i < len; i++)
+		{
+			v = ptr[i];
+			HCL_OBJ_SET_BYTE_VAL(b, i, v);
+		}
+
+		HCL_OBJ_SET_CLASS (b, (hcl_oop_t)hcl->c_byte_array);
+	}
+
+	return (hcl_oop_t)b;
 }
 
 hcl_oop_t hcl_makebytestring (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_t len, int ngc)

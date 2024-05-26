@@ -1,6 +1,6 @@
 ## test class instantiation methods
 
-defclass A | a b c |  {
+class A | a b c |  {
 
 	defun :*newInstance(x y z) {
 		set a x;
@@ -14,7 +14,7 @@ defclass A | a b c |  {
 	defun get-c() { return self.c; };
 };
 
-defclass B :: A | d e f | {
+class B :: A | d e f | {
 
 	defun :*newInstance(x y z) {
 		super:newInstance (* x 2) (* y 2) (* z 2);

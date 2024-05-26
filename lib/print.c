@@ -804,6 +804,7 @@ void hcl_dumpcnode (hcl_t* hcl, hcl_cnode_t* cnode, int newline)
 			case HCL_CNODE_ELLIPSIS:
 			case HCL_CNODE_TRPCOLONS:
 			case HCL_CNODE_DBLCOLONS:
+			case HCL_CNODE_COLON:
 			case HCL_CNODE_COLONGT:
 			case HCL_CNODE_COLONLT:
 			case HCL_CNODE_COLONSTAR:

@@ -91,6 +91,11 @@ hcl_cnode_t* hcl_makecnodedblcolons (hcl_t* hcl, int flags, const hcl_loc_t* loc
 	return make_cnode(hcl, HCL_CNODE_DBLCOLONS, flags, loc, tok);
 }
 
+hcl_cnode_t* hcl_makecnodecolon (hcl_t* hcl, int flags, const hcl_loc_t* loc, const  hcl_oocs_t* tok)
+{
+	return make_cnode(hcl, HCL_CNODE_COLON, flags, loc, tok);
+}
+
 hcl_cnode_t* hcl_makecnodecolongt (hcl_t* hcl, int flags, const hcl_loc_t* loc, const  hcl_oocs_t* tok)
 {
 	return make_cnode(hcl, HCL_CNODE_COLONGT, flags, loc, tok);

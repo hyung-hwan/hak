@@ -382,6 +382,7 @@ enum hcl_cnode_type_t
 	HCL_CNODE_ELLIPSIS,
 	HCL_CNODE_TRPCOLONS,
 	HCL_CNODE_DBLCOLONS, /* :: */
+	HCL_CNODE_COLON, /* : */
 	HCL_CNODE_COLONGT, /* :> */
 	HCL_CNODE_COLONLT, /* :< */
 	HCL_CNODE_COLONSTAR, /* :* */
@@ -408,6 +409,7 @@ typedef enum hcl_cnode_flag_t hcl_cnode_flag_t;
 #define HCL_CNODE_IS_ELLIPSIS(x) ((x)->cn_type == HCL_CNODE_ELLIPSIS)
 #define HCL_CNODE_IS_TRPCOLONS(x) ((x)->cn_type == HCL_CNODE_TRPCOLONS)
 #define HCL_CNODE_IS_DBLCOLONS(x) ((x)->cn_type == HCL_CNODE_DBLCOLONS)
+#define HCL_CNODE_IS_COLON(x) ((x)->cn_type == HCL_CNODE_COLON)
 #define HCL_CNODE_IS_COLONGT(x) ((x)->cn_type == HCL_CNODE_COLONGT)
 #define HCL_CNODE_IS_COLONLT(x) ((x)->cn_type == HCL_CNODE_COLONLT)
 #define HCL_CNODE_IS_COLONSTAR(x) ((x)->cn_type == HCL_CNODE_COLONSTAR)
@@ -978,7 +980,7 @@ struct hcl_compiler_t
  *    1       1      4      4        6         <= 16 (HCL_CODE_LONG_PARAM_SIZE 1, two params)
  *    1       1      8      8        11        <= 32 (HCL_CODE_LONG_PARAM_SIZE 2, two params, use 29 bits to avoid collection when converted to a smooi)
  *
- *
+ * INSTA indicates the class instantiation method.
  * NARGS and NRVARS are also used for the CALL and CALL2 instructions.
  * CALL encodes NARGS in one parameter.
  * CALLR encodes NARGS in one parameter and NRVARS in another parameter.
@@ -1944,6 +1946,7 @@ hcl_cnode_t* hcl_makecnodesuper (hcl_t* hcl, int flags, const hcl_loc_t* loc, co
 hcl_cnode_t* hcl_makecnodeellipsis (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodetrpcolons (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodedblcolons (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
+hcl_cnode_t* hcl_makecnodecolon (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodecolongt (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodecolonlt (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodecolonstar (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);

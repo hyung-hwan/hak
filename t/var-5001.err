@@ -23,3 +23,8 @@ defclass A | a | {
 		return self;
 	};
 };
+
+---
+
+defun String length() { ##ERROR: syntax error - no argument list
+}

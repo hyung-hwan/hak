@@ -344,8 +344,10 @@ static int find_variable_backward_with_word (hcl_t* hcl, const hcl_oocs_t* name,
 						vi->type = VAR_INST;
 						vi->ctx_offset = 0;
 						vi->index_in_ctx = index;
+/*
 HCL_INFO6 (hcl, "FOUND INST VAR [%.*js]...[%.*js]................ ===> ctx_offset %d index %d\n",
 	haystack.len, haystack.ptr, name->len, name->ptr, (int)(vi->ctx_offset), (int)vi->index_in_ctx);
+*/
 						return 1;
 					}
 				}
@@ -1236,7 +1238,8 @@ static void pop_fnblk (hcl_t* hcl)
 		HCL_ASSERT (hcl, fbi->tmprcnt - hcl->c->tv.wcount == fbi->tmpr_nargs + fbi->tmpr_nrvars + fbi->tmpr_nlvars);
 
 		/* the temporaries mask is a bit-mask that encodes the counts of different temporary variables.
-		 * and it's split to two intruction parameters when used with MAKE_LAMBDA and MAKE_FUNCTION */
+		 * and it's split to two intruction parameters when used with MAKE_LAMBDA and MAKE_FUNCTION.
+		 * the INSTA bit is on if fbi->fun_type == FUN_CIM */
 		attr_mask = ENCODE_BLK_MASK((fbi->fun_type == FUN_CIM), fbi->tmpr_va, fbi->tmpr_nargs, fbi->tmpr_nrvars, fbi->tmpr_nlvars);
 		patch_double_long_params_with_oow (hcl, fbi->make_inst_pos + 1, attr_mask);
 	}
@@ -2334,7 +2337,7 @@ static HCL_INLINE int compile_else (hcl_t* hcl)
 /* ========================================================================= */
 
 /*
-	(defclass A
+	(class A
 		| x y | ; instance variables
 		:: | x y z | ; class variables <--- how to initialize the class variables???
 
@@ -2353,7 +2356,7 @@ static HCL_INLINE int compile_else (hcl_t* hcl)
 		)
 	)
 
-	(defclass B :: A ; A is a parent class
+	(class B :: A ; A is a parent class
 		| p q |
 		....
 	)
@@ -2402,6 +2405,8 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src, int defclass)
 				"special symbol not to be used as class name");
 			return -1;
 		}
+
+/* TODO: check if a class name is one of the kernel classes. arrange to emit CLASS_LOAD instead of CLASS_ENTER */
 
 		obj = HCL_CNODE_CONS_CDR(obj);
 	}
@@ -2817,7 +2822,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 					if (tmp && HCL_CNODE_IS_CONS(tmp))
 					{
 						tmp = HCL_CNODE_CONS_CAR(tmp);
-						if (HCL_CNODE_IS_SYMBOL_PLAIN(tmp))
+						if (HCL_CNODE_IS_COLON(tmp) /*(HCL_CNODE_IS_SYMBOL_PLAIN(tmp)*/)
 						{
 							hcl_setsynerrbfmt (
 								hcl, HCL_SYNERR_VARNAME,
@@ -2834,20 +2839,33 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 		}
 		else if (HCL_CNODE_IS_SYMBOL_PLAIN(defun_name))
 		{
-			hcl_cnode_t* tmp;
+			hcl_cnode_t* tmp, marker;
 			tmp = HCL_CNODE_CONS_CDR(obj);
-			if (tmp && HCL_CNODE_IS_CONS(tmp) && HCL_CNODE_IS_SYMBOL_PLAIN(HCL_CNODE_CONS_CAR(tmp)))
+			if (tmp && HCL_CNODE_IS_CONS(tmp))
 			{
-				/* out-of-class method definition
-				 * for defun String:length() { ...  }, class_name is String, defun_name is length. */
-/* TODO: this must be treated as an error  - defun String length() { ... }
-	for this, the reader must be able to tell between String:length and String length...
-	or it must inject a special symbol  between String and length  or must use a different list type... */
+				hcl_cnode_t* marker;
+				marker = HCL_CNODE_CONS_CAR(tmp);
+				if (HCL_CNODE_IS_COLON(marker) || HCL_CNODE_IS_DBLCOLONS(marker) || HCL_CNODE_IS_COLONSTAR(marker))
+				{
+					tmp = HCL_CNODE_CONS_CDR(tmp);
+					if (tmp && HCL_CNODE_IS_CONS(tmp))
+					{
+						hcl_cnode_t* cand;
+						cand = HCL_CNODE_CONS_CAR(tmp);
+						if (HCL_CNODE_IS_SYMBOL_PLAIN(cand))
+						{
+					/* out-of-class method definition
+					 * for defun String:length() { ...  }, class_name is String, defun_name is length. */
 /* TODO: this must not be allowed at the in-class definition level.... */
-/* TODO: can we use fun_type to indicate different types of out-of-class methods? */
-				class_name = defun_name;
-				defun_name = HCL_CNODE_CONS_CAR(tmp);
-				obj = tmp;
+/* TODO: can we use fun_type to indicate different types of out-of-class methods? use marker.... */
+							fun_type = HCL_CNODE_IS_DBLCOLONS(marker)? FUN_CM:
+							           HCL_CNODE_IS_COLONSTAR(marker)? FUN_CIM: FUN_IM;
+							class_name = defun_name;
+							defun_name = HCL_CNODE_CONS_CAR(tmp);
+							obj = tmp;
+						}
+					}
+				}
 			}
 		}
 
@@ -3049,9 +3067,9 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 		/* MAKE_FUNCTION attr_mask_1 attr_mask_2 lfbase lfsize */
 		if (emit_double_param_instruction(hcl, HCL_CODE_MAKE_FUNCTION, 0, 0, HCL_CNODE_GET_LOC(cmd)) <= -1) return -1;
 		lfbase_pos = hcl->code.bc.len;
-		if (emit_long_param(hcl, hcl->code.lit.len - hcl->c->fnblk.info[hcl->c->fnblk.depth - 1].lfbase) <= -1) return -1; /* literal frame base */
+		if (emit_long_param(hcl, hcl->code.lit.len - hcl->c->fnblk.info[hcl->c->fnblk.depth - 1].lfbase) <= -1) return -1; /* lfbase(literal frame base) */
 		lfsize_pos = hcl->code.bc.len; /* literal frame size */
-		if (emit_long_param(hcl, 0) <= -1) return -1;
+		if (emit_long_param(hcl, 0) <= -1) return -1; /* place holder for lfsize */
 	}
 	else
 	{
@@ -4712,6 +4730,7 @@ redo:
 			return -1;
 
 		case HCL_CNODE_DBLCOLONS:
+		case HCL_CNODE_COLON:
 		case HCL_CNODE_COLONLT:
 		case HCL_CNODE_COLONGT:
 		case HCL_CNODE_COLONSTAR:
@@ -5527,7 +5546,7 @@ static HCL_INLINE int emit_lambda (hcl_t* hcl)
 		}
 		else
 		{
-			/* class methods */
+			/* in-class methods */
 			if (block_code_size == 1)
 			{
 				/* simple optimization not to skip emitting POP_STACKTOP */
@@ -5635,7 +5654,7 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 						/* in the class initialization scope, the type must not be other than the listed above */
 						HCL_DEBUG1 (hcl, "Internal error - invalid method type %d\n", cf->u.lambda.fun_type);
 						hcl_seterrbfmt (hcl, HCL_EINTERN, "internal error - invalid method type %d", cf->u.lambda.fun_type);
-						break;
+						return -1;
 				}
 				cf = GET_TOP_CFRAME(hcl);
 			}
@@ -5671,6 +5690,7 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 /* TODO:  - other types of out-of-class definition - CIM_STORE, CM_STORE...  use different marker? */
 				hcl_oow_t index;
 				hcl_oop_t lit, cons;
+				int inst;
 
 				/* treat the class name part as a normal variable.
 				 * it can be a global variable like 'String' or a local variable declared */
@@ -5682,9 +5702,29 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 				lit = hcl_makesymbol(hcl, HCL_CNODE_GET_TOKPTR(defun_name), HCL_CNODE_GET_TOKLEN(defun_name));
 				if (HCL_UNLIKELY(!lit)) return -1;
 				if (add_literal(hcl, lit, &index) <= -1) return -1;
-				if (emit_single_param_instruction(hcl, HCL_CODE_CLASS_IMSTORE, index, HCL_CNODE_GET_LOC(defun_name)) <= -1) return -1;
-/* TDOO: CLASS_CMSTORE..., CLASS_CIMSTORE.. */
 
+				switch (cf->u.lambda.fun_type)
+				{
+					case FUN_CM: /* class method */
+						inst =  HCL_CODE_CLASS_CMSTORE;
+						break;
+
+					case FUN_CIM: /* class instantiation method */
+						inst =  HCL_CODE_CLASS_CIMSTORE;
+						break;
+
+					case FUN_IM: /* instance method */
+						inst =  HCL_CODE_CLASS_IMSTORE;
+						break;
+
+					default:
+						/* in the class initialization scope, the type must not be other than the listed above */
+						HCL_DEBUG1 (hcl, "Internal error - invalid function type %d\n", cf->u.lambda.fun_type);
+						hcl_seterrbfmt (hcl, HCL_EINTERN, "internal error - invalid function type %d", cf->u.lambda.fun_type);
+						return -1;
+				}
+
+				if (emit_single_param_instruction(hcl, inst, index, HCL_CNODE_GET_LOC(defun_name)) <= -1) return -1;
 				if (emit_byte_instruction(hcl, HCL_CODE_CLASS_EXIT, HCL_CNODE_GET_LOC(class_name)) <= -1) return -1;
 				POP_CFRAME (hcl);
 			}

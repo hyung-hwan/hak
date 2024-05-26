@@ -12,8 +12,8 @@ A HCL program is composed of expressions.
 ## Special Form Expression
 - and
 - break
-- defclass
-- defun
+- class
+- fun
 - do
 - elif
 - else
@@ -81,7 +81,7 @@ do { | k | set k 20; printf "k=%d\n" k; };
 ## Defining a function
 
 ```
-(defun function-name (arguments)
+(fun function-name (arguments)
 	| local variables |
 	function body
 )
@@ -97,12 +97,12 @@ do { | k | set k 20; printf "k=%d\n" k; };
 ## Class
 
 ```
-(defclass T
+(class T
         :: | A B C | ## class variables
 
         (printf "initializing....\n")
 
-        (defun :: dump()
+        (fun :: dump()
                 (printf "%d %d %d\n" A B C)
         )
 
@@ -120,7 +120,7 @@ do { | k | set k 20; printf "k=%d\n" k; };
 
 ```
 (set prim-plus +)
-(defun + (a b ...)
+(fun + (a b ...)
 	(prim-plus a b 9999)
 )
 
@@ -130,7 +130,7 @@ do { | k | set k 20; printf "k=%d\n" k; };
 ## Variadic arguments
 
 ```
-(defun fn-y (t1 t2 va-ctx)
+(fun fn-y (t1 t2 va-ctx)
         | i |
         (set i 0)
         (while (< i (va-count va-ctx))
@@ -139,7 +139,7 @@ do { | k | set k 20; printf "k=%d\n" k; };
         )
 )
 
-(defun x(a b ... :: x y z)
+(fun x(a b ... :: x y z)
         |i|
 
 ##       (printf "VA_COUNT(x) = %d\n" (va-count))

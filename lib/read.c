@@ -837,16 +837,16 @@ static HCL_INLINE int can_colon_list (hcl_t* hcl)
 	if (rstl->count == 1) rstl->flagv |= JSON; /* mark that the first key is colon-delimited */
 	else if (!(rstl->flagv & JSON))
 	{
-		/* handling of a coloe sign in out-of-class instance method definition.
+		/* handling of a colon sign in out-of-class instance method definition.
 		 * e.g. defun String:length() { return (str.length self). }
-		 * TODO: inject a symbol ':' to differenticate form '::' or ':*' methods.
+		 * TODO: inject a symbol ':' to differentiate form '::' or ':*' methods.
 		 *       these class methods and class instantiation methods are supposed to be
 		 *       implemented elsewhere because ':' has dual use while '::' or ':*' are
 		 *       independent tokens  */
 		if (HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(rstl->head), HCL_SYNCODE_DEFUN) ||
 		    HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(rstl->head), HCL_SYNCODE_LAMBDA))
 		{
-			if (rstl->count == 2) return 1;
+			if (rstl->count == 2) return 2;
 		}
 
 		return 0; /* the first key is not colon-delimited. so not allowed to colon-delimit other keys  */
@@ -1458,12 +1458,23 @@ static int feed_process_token (hcl_t* hcl)
 			goto ok;
 
 		case HCL_TOK_COLON:
-			if (frd->level <= 0 || !can_colon_list(hcl))
+		{
+			int n;
+			if (frd->level <= 0 || !(n = can_colon_list(hcl)))
 			{
 				hcl_setsynerr (hcl, HCL_SYNERR_COLONBANNED, TOKEN_LOC(hcl), HCL_NULL);
 				goto oops;
 			}
+			if (n == 2)
+			{
+				/* this is colon between the class name and the function name for
+				 * out-of-class method defintion */
+				frd->obj = hcl_makecnodecolon(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+				goto auto_xlist;
+			}
+
 			goto ok;
+		}
 
 		case HCL_TOK_COLONEQ:
 			if (frd->level <= 0 || !can_coloneq_list(hcl))
@@ -1896,7 +1907,7 @@ static delim_token_t delim_token_tab[] =
 	{ "..",       2, HCL_TOK_DBLDOTS },
 	{ "...",      3, HCL_TOK_ELLIPSIS }, /* for variable arguments */
 
-	{ ":",        1, HCL_TOK_COLON }, /* key-value separator in dictionary */
+	{ ":",        1, HCL_TOK_COLON }, /* key-value separator in dictionary or for method call or definition */
 	{ ":=",       2, HCL_TOK_COLONEQ }, /* assignment */
 	{ ":>",       2, HCL_TOK_COLONGT },
 	{ ":<",       2, HCL_TOK_COLONLT },

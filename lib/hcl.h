@@ -1905,7 +1905,7 @@ struct hcl_t
 /* TODO: stack bound check when pushing */
 #define HCL_STACK_PUSH(hcl,v) \
 	do { \
-		if ((hcl)->sp >= HCL_OOP_TO_SMOOI((hcl)->processor->active->st)) \
+		if (HCL_UNLIKELY((hcl)->sp >= HCL_OOP_TO_SMOOI((hcl)->processor->active->st))) \
 		{ \
 			hcl_seterrbfmt (hcl, HCL_EOOMEM, "process stack overflow"); \
 			(hcl)->abort_req = -1; \

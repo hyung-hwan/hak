@@ -3833,7 +3833,7 @@ static int execute (hcl_t* hcl)
 				   push cvars
 				   class_enter nsuperclasses nivars ncvars
 				 */
-				hcl_oop_t t, sc, ivars_str, cvars_str;
+				hcl_oop_t t, superclass, ivars_str, cvars_str;
 				hcl_oow_t b3;
 
 				FETCH_PARAM_CODE_TO (hcl, b1); /* nsuperclasses */
@@ -3858,17 +3858,17 @@ static int execute (hcl_t* hcl)
 
 				if (b1 > 0)
 				{
-					HCL_STACK_POP_TO (hcl, sc); /* TODO: support more than 1 superclass later when the compiler supports more */
-					if (!HCL_IS_CLASS(hcl, sc))
+					HCL_STACK_POP_TO (hcl, superclass); /* TODO: support more than 1 superclass later when the compiler supports more */
+					if (!HCL_IS_CLASS(hcl, superclass))
 					{
-						hcl_seterrbfmt (hcl, HCL_ECALL, "invalid superclass %O", sc);
+						hcl_seterrbfmt (hcl, HCL_ECALL, "invalid superclass %O", superclass);
 						if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
 						goto oops_with_errmsg_supplement;
 					}
  				}
-				else sc = hcl->_nil;
+				else superclass = hcl->_nil;
 
-				t = hcl_makeclass(hcl, sc, b2, b3, ivars_str, cvars_str); /* TOOD: pass variable information... */
+				t = hcl_makeclass(hcl, superclass, b2, b3, ivars_str, cvars_str); /* TOOD: pass variable information... */
 				if (HCL_UNLIKELY(!t)) goto oops_with_errmsg_supplement;
 
 				/* push the class created to the class stack. but don't push to the normal operation stack */

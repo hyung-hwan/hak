@@ -1137,6 +1137,8 @@ static hcl_pfrc_t pf_va_get (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 	hcl_oop_context_t ctx;
 	hcl_ooi_t attr_mask, /*va,*/ fixed_nargs, nrvars, nlvars, nvaargs;
 	hcl_oow_t index;
+	hcl_oop_t idx;
+	int n;
 
 	if (nargs >= 2)
 	{
@@ -1158,8 +1160,11 @@ static hcl_pfrc_t pf_va_get (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 	nrvars = GET_BLK_MASK_NRVARS(attr_mask);
 	nlvars = GET_BLK_MASK_NLVARS(attr_mask);
 
-	if (hcl_inttooow(hcl, HCL_STACK_GETARG(hcl, nargs, 0), &index) == 0)
+	idx = HCL_STACK_GETARG(hcl, nargs, 0);
+	n = hcl_inttooow(hcl, idx, &index);
+	if (n <= 0)
 	{
+		if (n <= -1) hcl_seterrbfmt (hcl, HCL_EINVAL, "invalid index - %O", idx);
 		return HCL_PF_FAILURE;
 	}
 
@@ -1182,18 +1187,33 @@ static hcl_pfrc_t pf_va_get (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 
 static hcl_pfrc_t pf_object_new (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
-/* TODO: accept the object size if the class is variable-sized. */
 	hcl_oop_t obj;
-	hcl_oop_t class_;
+	hcl_oop_t _class;
+	hcl_oow_t size = 0;
 
-	class_ = HCL_STACK_GETARG(hcl, nargs, 0);
-	if (!HCL_IS_CLASS(hcl, class_))
+	_class = HCL_STACK_GETARG(hcl, nargs, 0);
+	if (!HCL_IS_CLASS(hcl, _class))
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "not a class - %O", class_);
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "not a class - %O", _class);
 		return HCL_PF_FAILURE;
 	}
 
-	obj = hcl_instantiate(hcl, (hcl_oop_class_t)class_, HCL_NULL, 0);
+	if (nargs >= 1)
+	{
+		int n;
+		hcl_oop_t sz;
+
+		sz = HCL_STACK_GETARG(hcl, nargs, 1);
+		n = hcl_inttooow(hcl, sz, &size);
+		if (n == 0) return HCL_PF_FAILURE;
+		if (n <= -1)
+		{
+			hcl_seterrbfmt (hcl, HCL_EINVAL, "invalid size - %O", sz);
+			return HCL_PF_FAILURE;
+		}
+	}
+
+	obj = hcl_instantiate(hcl, (hcl_oop_class_t)_class, HCL_NULL, size);
 	if (HCL_UNLIKELY(!obj)) return HCL_PF_FAILURE;
 
 	HCL_STACK_SETRET (hcl, nargs, obj);
@@ -1278,7 +1298,7 @@ static pf_t builtin_prims[] =
 	{ 0, 1,                       pf_va_count,        8,  { 'v','a','-','c','o','u','n','t' } },
 	{ 1, 2,                       pf_va_get,          6,  { 'v','a','-','g','e','t' } },
 
-	{ 1, 1,                       pf_object_new,                           10, { 'o','b','j','e','c','t','-','n','e','w' } },
+	{ 1, 2,                       pf_object_new,                           10, { 'o','b','j','e','c','t','-','n','e','w' } },
 
 	{ 0, 0,                       hcl_pf_process_current,                  15, { 'c','u','r','r','e','n','t','-','p','r','o','c','e','s','s'} },
 	{ 1, HCL_TYPE_MAX(hcl_oow_t), hcl_pf_process_fork,                      4, { 'f','o','r','k'} },

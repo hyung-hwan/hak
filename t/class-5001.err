@@ -1,9 +1,9 @@
-defclass B | x y | {
+class B | x y | {
 
 };
 
-defclass X :: B | a b | {
-	defun :* new(t) {
+class X :: B | a b | {
+	fun :* new(t) {
 		| a |
 		set self.a t;
 		set a 100;
@@ -15,7 +15,7 @@ defclass X :: B | a b | {
 		return self;
 	};
 
-	defun print() {
+	fun print() {
 		self.c (+ self.a self.b);
 		printf "a=%d b=%d\n" self.a self.b;
 	}
@@ -24,30 +24,41 @@ defclass X :: B | a b | {
 
 ---
 
-defclass X {
-	defun :* xxx() {
+class X {
+	fun :* xxx() {
 		return X;
 	}
-	defun :* qqq() {
+	fun :* qqq() {
 		return "hello"
 	}
 
-	defun String:length()  { ##ERROR: syntax error - function name not valid
+	fun String:length()  { ##ERROR: syntax error - function name not valid
 		return (str.length self)
 	}
 }
 
 ---
-defclass X {
-	defun :* xxx() {
+class X {
+	fun :* xxx() {
 		return X;
 	}
-	defun :* qqq() {
+	fun :* qqq() {
 		return "hello"
 	}
 }
 
 ## this will trigger a runtime error as J isn't a class name
-defun J:ccc()  { ##ERROR: exception not handled
+fun J:ccc()  { ##ERROR: exception not handled
 	return 999
 }
+
+---
+## this must not be very useful as Array is an index item
+## and the clase instantiation method can't specify the size
+## you can't place an item in the arrya at all.
+
+fun Array:*boom() {
+      arr.put self 0 10 ##ERROR: exception not handled
+      printf "%O" self
+}
+Array:boom
