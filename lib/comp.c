@@ -51,6 +51,11 @@ enum
 
 enum
 {
+	/* these enumerators are stored in the lower 8 bits of
+	 * the fun_type field of hcl_fnblk_info_t.
+	 * the 9th bit of the field indicate a method is defined
+	 * out of a class */
+
 	FUN_PLAIN, /* plain function */
 	FUN_IM,    /* instance method */
 	FUN_CM,    /* class method */
@@ -323,22 +328,22 @@ static int find_variable_backward_with_word (hcl_t* hcl, const hcl_oocs_t* name,
 						{
 							/* instance variables are accessible only in an instance method defintion scope.
 							 * it is in class initialization scope */
-							hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, loc, name, "prohibited access to an instance variable");
+							hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, loc, name, "prohibited access to instance variable");
 							return -1;
 						}
 
 						for (fi = hcl->c->fnblk.depth + 1; fi > i; ) /* TOOD: review this loop for correctness */
 						{
 							/* 'i' is the function level that holds the class defintion block. the check must not go past it */
-							if (hcl->c->fnblk.info[--fi].fun_type == FUN_CM)
+							if ((hcl->c->fnblk.info[--fi].fun_type & 0xFF) == FUN_CM)
 							{
 								/* the function where this variable is defined is a class method or an plain function block within a class method*/
-								hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, loc, name, "prohibited access to an instance variable in a class method context");
+								hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, loc, name, "prohibited access to instance variable in class method context");
 								return -1;
 							}
 
 							/* instance methods and instantiation methods can access instance variables */
-							if (hcl->c->fnblk.info[fi].fun_type != FUN_PLAIN) break;
+							if ((hcl->c->fnblk.info[fi].fun_type & 0xFF) != FUN_PLAIN) break;
 						}
 
 						vi->type = VAR_INST;
@@ -363,8 +368,10 @@ HCL_INFO6 (hcl, "FOUND INST VAR [%.*js]...[%.*js]................ ===> ctx_offse
 						vi->type = (i >= hcl->c->fnblk.depth? VAR_CLASS_I: VAR_CLASS_IM);
 						vi->ctx_offset = 0;
 						vi->index_in_ctx = index;
+/*
 HCL_INFO6 (hcl, "FOUND CLASS VAR [%.*js]...[%.*js]................ ===> ctx_offset %d index %d\n",
 	haystack.len, haystack.ptr, name->len, name->ptr, (int)(vi->ctx_offset), (int)vi->index_in_ctx);
+*/
 						return 1;
 					}
 				}
@@ -1126,7 +1133,7 @@ static void pop_clsblk (hcl_t* hcl)
 
 static int push_fnblk (hcl_t* hcl, const hcl_loc_t* errloc,
 	hcl_oow_t tmpr_va, hcl_oow_t tmpr_nargs, hcl_oow_t tmpr_nrvars, hcl_oow_t tmpr_nlvars,
-	hcl_oow_t tmpr_count, hcl_oow_t tmpr_len, hcl_oow_t make_inst_pos, hcl_oow_t lfbase, int fun_type)
+	hcl_oow_t tmpr_count, hcl_oow_t tmpr_len, hcl_oow_t make_inst_pos, hcl_oow_t lfbase, unsigned int fun_type)
 {
 	hcl_oow_t new_depth;
 	hcl_fnblk_info_t* fbi;
@@ -1240,7 +1247,7 @@ static void pop_fnblk (hcl_t* hcl)
 		/* the temporaries mask is a bit-mask that encodes the counts of different temporary variables.
 		 * and it's split to two intruction parameters when used with MAKE_LAMBDA and MAKE_FUNCTION.
 		 * the INSTA bit is on if fbi->fun_type == FUN_CIM */
-		attr_mask = ENCODE_BLK_MASK((fbi->fun_type == FUN_CIM), fbi->tmpr_va, fbi->tmpr_nargs, fbi->tmpr_nrvars, fbi->tmpr_nlvars);
+		attr_mask = ENCODE_BLK_MASK(((fbi->fun_type & 0xFF) == FUN_CIM), fbi->tmpr_va, fbi->tmpr_nargs, fbi->tmpr_nrvars, fbi->tmpr_nlvars);
 		patch_double_long_params_with_oow (hcl, fbi->make_inst_pos + 1, attr_mask);
 	}
 }
@@ -2752,7 +2759,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 	hcl_cnode_t* defun_name;
 	hcl_cnode_t* class_name;
 	hcl_cframe_t* cf;
-	int fun_type = FUN_PLAIN;
+	unsigned int fun_type = FUN_PLAIN;
 
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
 
@@ -2822,7 +2829,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 					if (tmp && HCL_CNODE_IS_CONS(tmp))
 					{
 						tmp = HCL_CNODE_CONS_CAR(tmp);
-						if (HCL_CNODE_IS_COLON(tmp) /*(HCL_CNODE_IS_SYMBOL_PLAIN(tmp)*/)
+						if (HCL_CNODE_IS_COLON(tmp) || HCL_CNODE_IS_DBLCOLONS(tmp) || HCL_CNODE_IS_COLONSTAR(tmp)/*(HCL_CNODE_IS_SYMBOL_PLAIN(tmp)*/)
 						{
 							hcl_setsynerrbfmt (
 								hcl, HCL_SYNERR_VARNAME,
@@ -2847,6 +2854,8 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 				marker = HCL_CNODE_CONS_CAR(tmp);
 				if (HCL_CNODE_IS_COLON(marker) || HCL_CNODE_IS_DBLCOLONS(marker) || HCL_CNODE_IS_COLONSTAR(marker))
 				{
+					/* fun A:aaa A::aaa A:*aaa */
+
 					tmp = HCL_CNODE_CONS_CDR(tmp);
 					if (tmp && HCL_CNODE_IS_CONS(tmp))
 					{
@@ -2854,12 +2863,23 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 						cand = HCL_CNODE_CONS_CAR(tmp);
 						if (HCL_CNODE_IS_SYMBOL_PLAIN(cand))
 						{
-					/* out-of-class method definition
-					 * for defun String:length() { ...  }, class_name is String, defun_name is length. */
-/* TODO: this must not be allowed at the in-class definition level.... */
-/* TODO: can we use fun_type to indicate different types of out-of-class methods? use marker.... */
+							/* out-of-class method definition
+							 * for defun String:length() { ...  },
+							 * class_name is String, defun_name is length. */
 							fun_type = HCL_CNODE_IS_DBLCOLONS(marker)? FUN_CM:
 							           HCL_CNODE_IS_COLONSTAR(marker)? FUN_CIM: FUN_IM;
+
+							/* indicates that this method is defined using the AAA:bbb syntax.
+							 * the form of method defintion can still be inside a class if this
+							 * form is place inside another normal method.
+							 *  class X {
+							 *    fun x()  {
+							 *      fun J:q() { .... } ## this defintion
+							 *    }
+							 *  }
+							 * */
+							fun_type |= 0x100;
+
 							class_name = defun_name;
 							defun_name = HCL_CNODE_CONS_CAR(tmp);
 							obj = tmp;
@@ -4243,20 +4263,45 @@ static HCL_INLINE int compile_dsymbol (hcl_t* hcl, hcl_cnode_t* obj)
 		hcl_oocs_t name;
 		int x = 0;
 		hcl_var_info_t vi;
+		hcl_fnblk_info_t* fbi;
 
 		name = *HCL_CNODE_GET_TOK(obj);
+		fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
 
 		sep = hcl_find_oochar(name.ptr, name.len, '.');
 		HCL_ASSERT (hcl, sep != HCL_NULL);
 		if (hcl_comp_oochars_bcstr(name.ptr, (sep - (const hcl_ooch_t*)name.ptr), "self") == 0)
 		{
 			/* instance variable?  or instance method? */
+			if (fbi->fun_type >> 8)
+			{
+				/* if defined using A::xxx syntax, it's not possible to know the instance position of an instance variable.
+				 * class X | a b | {
+				 *   fun a() {
+				 *      fun J::t() {
+				 *        ## J has nothing to to with X in priciple even if J may point to X when a() is executed.
+				 *        ## it's not meaningful to look up the variable `a` in the context of class X.
+				 *        ## it must be prohibited to access instance variables using the self or super prefix
+				 *        ## in this context
+				 *        return self.a
+				 *      }
+				 *   }
+				 * }
+				 */
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(obj), HCL_CNODE_GET_TOK(obj), "not allowed to prefix with self in out-of-class method context");
+				return -1;
+			}
 			name.ptr = (hcl_ooch_t*)(sep + 1);
 			name.len -= 5;
 			x = find_variable_backward_with_word(hcl, &name, HCL_CNODE_GET_LOC(obj), 1, &vi);
 		}
 		else if (hcl_comp_oochars_bcstr(name.ptr, sep - (const hcl_ooch_t*)name.ptr, "super") == 0)
 		{
+			if (fbi->fun_type >> 8) /* if defined using A::xxx syntax */
+			{
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(obj), HCL_CNODE_GET_TOK(obj), "not allowed to prefix with super in out-of-class method context");
+				return -1;
+			}
 			name.ptr = (hcl_ooch_t*)(sep + 1);
 			name.len -= 6;
 			x = find_variable_backward_with_word(hcl, &name, HCL_CNODE_GET_LOC(obj), 2, &vi); /* TODO: arrange to skip the current class */
@@ -5534,7 +5579,7 @@ static HCL_INLINE int emit_lambda (hcl_t* hcl)
 	else
 	{
 		/* single return value */
-		if (cf->u.lambda.fun_type == FUN_PLAIN)
+		if ((cf->u.lambda.fun_type & 0xFF) == FUN_PLAIN)
 		{
 			if (block_code_size == 0)
 			{
@@ -5636,7 +5681,7 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 			if (x == 0)
 			{
 				/* arrange to save to the method slot */
-				switch (cf->u.lambda.fun_type)
+				switch (cf->u.lambda.fun_type & 0xFF)
 				{
 					case FUN_CM: /* class method */
 						SWITCH_TOP_CFRAME (hcl, COP_EMIT_CLASS_CMSTORE, defun_name);
@@ -5652,8 +5697,8 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 
 					default:
 						/* in the class initialization scope, the type must not be other than the listed above */
-						HCL_DEBUG1 (hcl, "Internal error - invalid method type %d\n", cf->u.lambda.fun_type);
-						hcl_seterrbfmt (hcl, HCL_EINTERN, "internal error - invalid method type %d", cf->u.lambda.fun_type);
+						HCL_DEBUG1 (hcl, "Internal error - invalid method type %d\n", cf->u.lambda.fun_type & 0xFF);
+						hcl_seterrbfmt (hcl, HCL_EINTERN, "internal error - invalid method type %d", cf->u.lambda.fun_type & 0xFF);
 						return -1;
 				}
 				cf = GET_TOP_CFRAME(hcl);
@@ -5703,7 +5748,7 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 				if (HCL_UNLIKELY(!lit)) return -1;
 				if (add_literal(hcl, lit, &index) <= -1) return -1;
 
-				switch (cf->u.lambda.fun_type)
+				switch (cf->u.lambda.fun_type & 0xFF)
 				{
 					case FUN_CM: /* class method */
 						inst =  HCL_CODE_CLASS_CMSTORE;
@@ -5719,8 +5764,8 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 
 					default:
 						/* in the class initialization scope, the type must not be other than the listed above */
-						HCL_DEBUG1 (hcl, "Internal error - invalid function type %d\n", cf->u.lambda.fun_type);
-						hcl_seterrbfmt (hcl, HCL_EINTERN, "internal error - invalid function type %d", cf->u.lambda.fun_type);
+						HCL_DEBUG1 (hcl, "Internal error - invalid function type %d\n", cf->u.lambda.fun_type & 0xFF);
+						hcl_seterrbfmt (hcl, HCL_EINTERN, "internal error - invalid function type %d", cf->u.lambda.fun_type & 0xFF);
 						return -1;
 				}
 

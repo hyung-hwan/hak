@@ -47,18 +47,61 @@ class X {
 	}
 }
 
-## this will trigger a runtime error as J isn't a class name
-fun J:ccc()  { ##ERROR: exception not handled
+## this triggers a runtime error as J isn't a class name
+fun J:ccc()  { ##ERROR: exception not handled - "J accessed without initialization"
 	return 999
 }
 
 ---
+
+X := 20
+
+## this also raises a runtime error as X isn't a class name
+fun X:xxx() { ##ERROR: exception not handled - "not class"
+	return self
+}
+
+---
+
 ## this must not be very useful as Array is an index item
 ## and the clase instantiation method can't specify the size
 ## you can't place an item in the arrya at all.
 
 fun Array:*boom() {
-      arr.put self 0 10 ##ERROR: exception not handled
-      printf "%O" self
+	arr.put self 0 10 ##ERROR: exception not handled - "array index 0 out of bounds for array of size 0"
+	printf "%O" self
 }
 Array:boom
+
+---
+
+class X | a  b c | {
+	fun :* new () {
+		self.a := 20
+		return self
+	}
+
+	fun getA() { return self.a }
+}
+
+## the instance variables are not accessible in out-of-class method
+## defintionas there isn't a good way to know the class structure
+## as X isn't known in advance and can point to anything
+fun X:get_a() {
+	return self.a ##ERROR: syntax error - not allowed to prefix with self
+}
+
+printf "%d\n" ((X:new):get_a)
+
+---
+
+class F | a b c | {
+}
+
+class X | a b c | {
+	fun oh() {
+		fun F:get_a() {
+			return super.a ##ERROR: syntax error - not allowed to prefix with super
+		}
+	}
+}

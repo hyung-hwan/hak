@@ -600,7 +600,7 @@ struct hcl_cframe_t
 		/* COP_POST_LAMBDA, COP_EMIT_LAMBDA */
 		struct
 		{
-			int fun_type;
+			unsigned int fun_type;
 			hcl_oow_t jump_inst_pos;
 			hcl_ooi_t lfbase_pos;
 			hcl_ooi_t lfsize_pos;
@@ -648,7 +648,7 @@ typedef struct hcl_cblk_info_t hcl_cblk_info_t;
 /* function block information for the compiler */
 struct hcl_fnblk_info_t
 {
-	int fun_type;
+	unsigned int fun_type;
 
 	hcl_oow_t tmprlen; /* accumulated length of the temporaries string including outer blocks */
 	hcl_oow_t tmprcnt; /* accumulated number of temporaries including outer blocks */
