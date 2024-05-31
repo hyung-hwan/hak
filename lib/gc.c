@@ -304,7 +304,7 @@ static kernel_class_info_t kernel_classes[] =
 	  HCL_OFFSETOF(hcl_t, c_prim) },
 #endif
 
-	{ "CompiledBlock", 0,
+	{ "CompiledBlock", HCL_BRAND_BLOCK,
 	  0,
 	  0,
 	  HCL_BLOCK_NAMED_INSTVARS,

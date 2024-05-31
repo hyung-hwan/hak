@@ -777,9 +777,9 @@ static int emit_double_param_instruction (hcl_t* hcl, int cmd, hcl_oow_t param_1
 		/* MAKE_FUNCTION is a quad-parameter instruction.
 		 * The caller must emit two more parameters after the call to this function.
 		 * however the instruction format is the same up to the second
-		 * parameters between MAKE_FUNCTION and MAKE_LAMBDA.
+		 * parameters between MAKE_FUNCTION and MAKE_BLOCK.
 		 */
-		case HCL_CODE_MAKE_LAMBDA:
+		case HCL_CODE_MAKE_BLOCK:
 		case HCL_CODE_MAKE_FUNCTION:
 		case HCL_CODE_CALL_R:
 		case HCL_CODE_SEND_R:
@@ -1236,8 +1236,8 @@ static void pop_fnblk (hcl_t* hcl)
 	{
 		hcl_oow_t attr_mask;
 
-		/* patch the temporaries mask parameter for the MAKE_LAMBDA or MAKE_FUNCTION instruction */
-		HCL_ASSERT (hcl, hcl->code.bc.ptr[fbi->make_inst_pos] == HCL_CODE_MAKE_LAMBDA ||
+		/* patch the temporaries mask parameter for the MAKE_BLOCK or MAKE_FUNCTION instruction */
+		HCL_ASSERT (hcl, hcl->code.bc.ptr[fbi->make_inst_pos] == HCL_CODE_MAKE_BLOCK ||
 		                 hcl->code.bc.ptr[fbi->make_inst_pos] == HCL_CODE_MAKE_FUNCTION);
 
 		/* the total number of temporaries in this function block must be the sum of
@@ -1245,7 +1245,7 @@ static void pop_fnblk (hcl_t* hcl)
 		HCL_ASSERT (hcl, fbi->tmprcnt - hcl->c->tv.wcount == fbi->tmpr_nargs + fbi->tmpr_nrvars + fbi->tmpr_nlvars);
 
 		/* the temporaries mask is a bit-mask that encodes the counts of different temporary variables.
-		 * and it's split to two intruction parameters when used with MAKE_LAMBDA and MAKE_FUNCTION.
+		 * and it's split to two intruction parameters when used with MAKE_BLOCK and MAKE_FUNCTION.
 		 * the INSTA bit is on if fbi->fun_type == FUN_CIM */
 		attr_mask = ENCODE_BLK_MASK(((fbi->fun_type & 0xFF) == FUN_CIM), fbi->tmpr_va, fbi->tmpr_nargs, fbi->tmpr_nrvars, fbi->tmpr_nlvars);
 		patch_double_long_params_with_oow (hcl, fbi->make_inst_pos + 1, attr_mask);
@@ -3093,8 +3093,8 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 	}
 	else
 	{
-		/* MAKE_LAMBDA attr_mask_1 attr_mask_2 - will patch attr_mask in pop_fnblk() */
-		if (emit_double_param_instruction(hcl, HCL_CODE_MAKE_LAMBDA, 0, 0, HCL_CNODE_GET_LOC(cmd)) <= -1) return -1;
+		/* MAKE_BLOCK attr_mask_1 attr_mask_2 - will patch attr_mask in pop_fnblk() */
+		if (emit_double_param_instruction(hcl, HCL_CODE_MAKE_BLOCK, 0, 0, HCL_CNODE_GET_LOC(cmd)) <= -1) return -1;
 	}
 
 	HCL_ASSERT (hcl, hcl->code.bc.len < HCL_SMOOI_MAX);  /* guaranteed in emit_byte_instruction() */
@@ -6030,7 +6030,7 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 
 		/* keep a virtual function block for the top-level compilation.
 		 * pass HCL_TYPE_MAX(hcl_oow_t) as make_inst_pos because there is
-		 * no actual MAKE_LAMBDA/MAKE_FUNCTION instruction which otherwise
+		 * no actual MAKE_BLOCK/MAKE_FUNCTION instruction which otherwise
 		 * would be patched in pop_fnblk(). */
 
 		if (push_fnblk(

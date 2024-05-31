@@ -699,11 +699,11 @@ static hcl_pfrc_t pf_is_dictionary (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 	return HCL_PF_SUCCESS;
 }
 
-static hcl_pfrc_t pf_is_lambda (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+static hcl_pfrc_t pf_is_block (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
 	hcl_oop_t rv, x;
 	x = HCL_STACK_GETARG(hcl, nargs, 0);
-	rv = (HCL_IS_LAMBDA(hcl, x))? hcl->_true: hcl->_false;
+	rv = (HCL_IS_BLOCK(hcl, x))? hcl->_true: hcl->_false;
 	HCL_STACK_SETRET (hcl, nargs, rv);
 	return HCL_PF_SUCCESS;
 }
@@ -1261,8 +1261,8 @@ static pf_t builtin_prims[] =
 	{ 1, 1,                       pf_is_array,        6,  { 'a','r','r','a','y','?' } },
 	{ 1, 1,                       pf_is_bytearray,   10,  { 'b','y','t','e','a','r','r','a','y','?' } },
 	{ 1, 1,                       pf_is_dictionary,  11,  { 'd','i','c','t','i','o','n','a','r','y','?' } },
-	{ 1, 1,                       pf_is_lambda,       7,  { 'l','a','m','b','d','a','?' } },
-	{ 1, 1,                       pf_is_lambda,       4,  { 'f','u','n','?' } },
+	{ 1, 1,                       pf_is_block,        7,  { 'l','a','m','b','d','a','?' } },
+	{ 1, 1,                       pf_is_block,        4,  { 'f','u','n','?' } },
 	{ 1, 1,                       pf_is_class,        6,  { 'c','l','a','s','s','?' } },
 	{ 1, 1,                       pf_is_object,       7,  { 'o','b','j','e','c','t','?' } },
 

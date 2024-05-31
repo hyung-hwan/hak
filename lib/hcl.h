@@ -578,10 +578,10 @@ typedef struct hcl_function_t hcl_function_t;
 typedef struct hcl_function_t* hcl_oop_function_t;
 
 #define HCL_BLOCK_NAMED_INSTVARS 3
-typedef struct hcl_lambda_t hcl_lambda_t;
-typedef struct hcl_lambda_t* hcl_oop_lambda_t;
+typedef struct hcl_block_t hcl_block_t;
+typedef struct hcl_block_t* hcl_oop_lambda_t;
 
-#define HCL_CONTEXT_NAMED_INSTVARS 9
+#define HCL_CONTEXT_NAMED_INSTVARS 10
 typedef struct hcl_context_t hcl_context_t;
 typedef struct hcl_context_t* hcl_oop_context_t;
 
@@ -603,10 +603,10 @@ struct hcl_function_t
 };
 
 /* hcl_function_t copies the byte codes and literal frames into itself
- * hlc_lambda_t contains minimal information(ip) for referening byte codes
- * and literal frames available in home->origin.
+ * hcl_block_t contains minimal information(ip) for referening byte codes
+ * and literal frames available in home->origin. it represents the compiled block.
  */
-struct hcl_lambda_t
+struct hcl_block_t
 {
 	HCL_OBJ_HEADER;
 
@@ -646,12 +646,15 @@ struct hcl_context_t
 	 * points to a function object */
 	hcl_oop_t          receiver;
 
-	/* it is set to itself for a method context.
-	 * for a block context, it points to the active context at the
+	/* for a block context, it points to the active context at the
 	 * moment the block context was created. that is, it points to
 	 * a method context where the base block has been defined.
 	 * an activated block context copies this field from the base block context. */
 	hcl_oop_context_t  home; /* context or nil */
+
+	/* it is set to itself for a method context, nil for other contexts.
+	 * TODO: this field may not be needed.. mthhome access has been commented out.. so remove this field */
+	hcl_oop_context_t mthhome;
 
 	/* instance variable access instructions hold the index to a variable within
 	 * the the containing class. If the class inherits from a superclass and the
@@ -2005,7 +2008,7 @@ enum hcl_brand_t
 	HCL_BRAND_PRIM,
 
 	HCL_BRAND_FUNCTION,
-	HCL_BRAND_LAMBDA,
+	HCL_BRAND_BLOCK,
 	HCL_BRAND_CONTEXT,
 	HCL_BRAND_PROCESS,
 	HCL_BRAND_PROCESS_SCHEDULER,
@@ -2076,7 +2079,7 @@ typedef enum hcl_concode_t hcl_concode_t;
 #define HCL_IS_SYMBOL(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_SYMBOL)
 #define HCL_IS_CONTEXT(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_CONTEXT)
 #define HCL_IS_FUNCTION(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_FUNCTION)
-#define HCL_IS_LAMBDA(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_LAMBDA)
+#define HCL_IS_BLOCK(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_BLOCK)
 #define HCL_IS_CLASS(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_CLASS)
 #define HCL_IS_INSTANCE(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_INSTANCE)
 #define HCL_IS_PROCESS(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_PROCESS)

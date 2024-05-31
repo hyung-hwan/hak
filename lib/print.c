@@ -85,7 +85,7 @@ enum
 	WORD_PRIM,
 
 	WORD_FUNCTION,
-	WORD_LAMBDA,
+	WORD_BLOCK,
 	WORD_CONTEXT,
 	WORD_PROCESS,
 	WORD_PROCESS_SCHEDULER,
@@ -110,7 +110,7 @@ static struct
 	{  7,  { '#','<','P','R','I','M','>' } },
 
 	{  11, { '#','<','F','U','N','C','T','I','O','N','>' } },
-	{  9,  { '#','<','L','A','M','B','D','A','>' } },
+	{  8,  { '#','<','B','L','O','C','K','>' } },
 	{  10, { '#','<','C','O','N','T','E','X','T','>' } },
 	{  10, { '#','<','P','R','O','C','E','S','S','>' } },
 	{  20, { '#','<','P','R','O','C','E','S','S','-','S','C','H','E','D','U','L','E','R','>' } },
@@ -667,8 +667,8 @@ next:
 			word_index = WORD_FUNCTION;
 			goto print_word;
 
-		case HCL_BRAND_LAMBDA:
-			word_index = WORD_LAMBDA;
+		case HCL_BRAND_BLOCK:
+			word_index = WORD_BLOCK;
 			goto print_word;
 
 		case HCL_BRAND_CONTEXT:

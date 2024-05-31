@@ -421,10 +421,11 @@ static HCL_INLINE void fill_function_data (hcl_t* hcl, hcl_oop_function_t func, 
 	func->attr_mask = HCL_SMOOI_TO_OOP(attr_mask);
 }
 
-static HCL_INLINE hcl_oop_lambda_t make_lambda (hcl_t* hcl)
+static HCL_INLINE hcl_oop_lambda_t make_block (hcl_t* hcl)
 {
 	/* create a base block used for creation of a block context */
-	return (hcl_oop_lambda_t)hcl_allocoopobj(hcl, HCL_BRAND_LAMBDA, HCL_BLOCK_NAMED_INSTVARS);
+	/*return (hcl_oop_lambda_t)hcl_allocoopobj(hcl, HCL_BRAND_BLOCK, HCL_BLOCK_NAMED_INSTVARS);*/
+	return (hcl_oop_function_t)hcl_instantiate(hcl, hcl->c_block, HCL_NULL, 0);
 }
 
 static HCL_INLINE void fill_block_data (hcl_t* hcl, hcl_oop_lambda_t blk, hcl_ooi_t attr_mask, hcl_ooi_t ip, hcl_oop_context_t homectx)
@@ -1902,7 +1903,7 @@ static int prepare_new_context (hcl_t* hcl, hcl_oop_lambda_t op_blk, hcl_ooi_t n
 	hcl_ooi_t fixed_nargs, actual_nargs, excess_nargs;
 
 	/* the receiver must be a block context */
-	HCL_ASSERT (hcl, HCL_IS_LAMBDA(hcl, op_blk));
+	HCL_ASSERT (hcl, HCL_IS_BLOCK(hcl, op_blk));
 
 	attr_mask = HCL_OOP_TO_SMOOI(op_blk->attr_mask);
 
@@ -1950,13 +1951,16 @@ static int prepare_new_context (hcl_t* hcl, hcl_oop_lambda_t op_blk, hcl_ooi_t n
 
 	if (is_msgsend)
 	{
-		blkctx->home = blkctx; /* itself */
+		/*blkctx->home = blkctx;*/ /* itself */
+		blkctx->home = op_blk->home;
+		blkctx->mthhome = blkctx;
 		blkctx->receiver = HCL_STACK_GETRCV(hcl, nargs);
 		blkctx->ivaroff = HCL_SMOOI_TO_OOP(msg_ivaroff);
 	}
 	else
 	{
 		blkctx->home = op_blk->home;
+		blkctx->mthhome = hcl->_nil;
 		blkctx->receiver = op_blk->home->receiver;
 		blkctx->ivaroff = HCL_SMOOI_TO_OOP(0); /* not useful if it's not message send */
 	}
@@ -1990,7 +1994,7 @@ static HCL_INLINE int __activate_block (hcl_t* hcl, hcl_oop_lambda_t op_blk, hcl
 {
 	int x;
 
-	HCL_ASSERT (hcl, HCL_IS_LAMBDA(hcl, op_blk));
+	HCL_ASSERT (hcl, HCL_IS_BLOCK(hcl, op_blk));
 
 	x = prepare_new_context(
 		hcl,
@@ -2017,7 +2021,7 @@ static HCL_INLINE int activate_block (hcl_t* hcl, hcl_ooi_t nargs, hcl_ooi_t nrv
 	int x;
 
 	op_blk = (hcl_oop_lambda_t)HCL_STACK_GETOP(hcl, nargs);
-	HCL_ASSERT (hcl, HCL_IS_LAMBDA(hcl, op_blk));
+	HCL_ASSERT (hcl, HCL_IS_BLOCK(hcl, op_blk));
 
 	x = __activate_block(hcl, op_blk, nargs, nrvars, 0, 0, &newctx);
 	if (HCL_UNLIKELY(x <= -1)) return -1;
@@ -2175,7 +2179,7 @@ static hcl_oop_lambda_t find_cmethod_noseterr (hcl_t* hcl, hcl_oop_class_t class
 				{
 					/* TODO: further check if it's a method block? */
 					*owner = class_;
-					/* ivaroff isn't useful for a clas smethod but is useful for class instatiation method
+					/* ivaroff isn't useful for a class method but is useful for class instatiation method
 					 * (INSTA bit on in the mask field) */
 					*ivaroff = HCL_OOP_TO_SMOOI(class_->nivars_super);
 					return (hcl_oop_lambda_t)HCL_CONS_CAR(val); /* car - class method, cdr - instance method */
@@ -3344,9 +3348,9 @@ static int execute (hcl_t* hcl)
 			case HCL_CODE_PUSH_IVAR_7:
 				b1 = bcode & 0x7; /* low 3 bits */
 			push_ivar:
-				LOG_INST_2 (hcl, "push_ivar %zu ## [%zd]", b1, HCL_OOP_TO_SMOOI(hcl->active_context->home->ivaroff));
+				LOG_INST_2 (hcl, "push_ivar %zu ## [%zd]", b1, HCL_OOP_TO_SMOOI(hcl->active_context/*->mthhome*/->ivaroff));
 				HCL_ASSERT (hcl, HCL_OBJ_GET_FLAGS_TYPE(hcl->active_context->receiver) == HCL_OBJ_TYPE_OOP);
-				b1 += HCL_OOP_TO_SMOOI(hcl->active_context->home->ivaroff);
+				b1 += HCL_OOP_TO_SMOOI(hcl->active_context/*->mthhome*/->ivaroff);
 				HCL_STACK_PUSH (hcl, ((hcl_oop_oop_t)hcl->active_context->receiver)->slot[b1]);
 				break;
 
@@ -3365,9 +3369,9 @@ static int execute (hcl_t* hcl)
 			case HCL_CODE_STORE_INTO_IVAR_7:
 				b1 = bcode & 0x7; /* low 3 bits */
 			store_instvar:
-				LOG_INST_2 (hcl, "store_into_ivar %zu ## [%zd]", b1, HCL_OOP_TO_SMOOI(hcl->active_context->home->ivaroff));
+				LOG_INST_2 (hcl, "store_into_ivar %zu ## [%zd]", b1, HCL_OOP_TO_SMOOI(hcl->active_context/*->mthhome*/->ivaroff));
 				HCL_ASSERT (hcl, HCL_OBJ_GET_FLAGS_TYPE(hcl->active_context->receiver) == HCL_OBJ_TYPE_OOP);
-				b1 += HCL_OOP_TO_SMOOI(hcl->active_context->home->ivaroff);
+				b1 += HCL_OOP_TO_SMOOI(hcl->active_context/*->mthhome*/->ivaroff);
 				((hcl_oop_oop_t)hcl->active_context->receiver)->slot[b1] = HCL_STACK_GETTOP(hcl);
 				break;
 
@@ -3692,7 +3696,7 @@ static int execute (hcl_t* hcl)
 				LOG_INST_2 (hcl, "call %zu %zu", b1, b2);
 
 				rcv = HCL_STACK_GETOP(hcl, b1);
-				if (HCL_IS_LAMBDA(hcl, rcv))
+				if (HCL_IS_BLOCK(hcl, rcv))
 				{
 					if (activate_block(hcl, b1, b2) <= -1) goto call2_failed;
 					break;
@@ -3733,7 +3737,7 @@ static int execute (hcl_t* hcl)
 							if (activate_function(hcl, b1) <= -1) goto call_failed;
 							break;
 
-						case HCL_BRAND_LAMBDA:
+						case HCL_BRAND_BLOCK:
 							if (activate_block(hcl, b1, 0) <= -1) goto call_failed;
 							break;
 
@@ -3913,7 +3917,7 @@ static int execute (hcl_t* hcl)
 				hcl_oop_t mdic, cons, blk, car, cdr, name;
 
 				FETCH_PARAM_CODE_TO (hcl, b1);
-				LOG_INST_2 (hcl, "class_%hsmstore %zu", (bcode == HCL_CODE_CLASS_CMSTORE? "c": (bcode == HCL_CODE_CLASS_CIMSTORE? "ci": "i")), b1);
+				LOG_INST_2 (hcl, "class_%hsmstore @%zu", (bcode == HCL_CODE_CLASS_CMSTORE? "c": (bcode == HCL_CODE_CLASS_CIMSTORE? "ci": "i")), b1);
 
 				/* store the stack top in the member dictionary of the currect class with the key indicated by 'b1' */
 
@@ -4198,8 +4202,8 @@ static int execute (hcl_t* hcl)
 				hcl_oop_t t;
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				LOG_INST_1 (hcl, "push_cvar_m %zu", b1);
-				HCL_ASSERT (hcl, (hcl_oop_t)hcl->active_context->home != hcl->_nil);
-				t = hcl->active_context->home->owner;
+				HCL_ASSERT (hcl, (hcl_oop_t)hcl->active_context/*->mthhome*/ != hcl->_nil);
+				t = hcl->active_context/*->mthhome*/->owner;
 				if (HCL_UNLIKELY(!HCL_IS_CLASS(hcl, t)))
 				{
 					/* this is an internal error or the bytecodes are compromised */
@@ -4215,8 +4219,8 @@ static int execute (hcl_t* hcl)
 				hcl_oop_t t;
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				LOG_INST_1 (hcl, "store_into_cvar_m %zu", b1);
-				HCL_ASSERT (hcl, (hcl_oop_t)hcl->active_context->home != hcl->_nil);
-				t = hcl->active_context->home->owner;
+				HCL_ASSERT (hcl, (hcl_oop_t)hcl->active_context/*->mthhome*/ != hcl->_nil);
+				t = hcl->active_context/*->mthhome*/->owner;
 				if (HCL_UNLIKELY(!HCL_IS_CLASS(hcl, t)))
 				{
 					/* this is an internal error or the bytecodes are compromised */
@@ -4232,8 +4236,8 @@ static int execute (hcl_t* hcl)
 				hcl_oop_t t;
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				LOG_INST_1 (hcl, "pop_into_cvar_m %zu", b1);
-				HCL_ASSERT (hcl, (hcl_oop_t)hcl->active_context->home != hcl->_nil);
-				t = hcl->active_context->home->owner;
+				HCL_ASSERT (hcl, (hcl_oop_t)hcl->active_context/*->mthhome*/ != hcl->_nil);
+				t = hcl->active_context/*->mthhome*/->owner;
 				if (HCL_UNLIKELY(!HCL_IS_CLASS(hcl, t)))
 				{
 					/* this is an internal error or the bytecodes are compromised */
@@ -4643,7 +4647,7 @@ static int execute (hcl_t* hcl)
 				break;
 			}
 
-			case HCL_CODE_MAKE_LAMBDA:
+			case HCL_CODE_MAKE_BLOCK:
 			{
 				hcl_oop_lambda_t blkobj;
 
@@ -4652,7 +4656,7 @@ static int execute (hcl_t* hcl)
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				FETCH_PARAM_CODE_TO (hcl, b2);
 				b1 = (b1 << (8 * HCL_CODE_LONG_PARAM_SIZE)) | b2;
-				LOG_INST_5 (hcl, "make_lambda %zu %zu %zu %zu %zu",
+				LOG_INST_5 (hcl, "make_block %zu %zu %zu %zu %zu",
 					GET_BLK_MASK_INSTA(b1),
 					GET_BLK_MASK_VA(b1),
 					GET_BLK_MASK_NARGS(b1),
@@ -4661,7 +4665,7 @@ static int execute (hcl_t* hcl)
 
 				HCL_ASSERT (hcl, b1 >= 0);
 
-				blkobj = make_lambda(hcl);
+				blkobj = make_block(hcl);
 				if (HCL_UNLIKELY(!blkobj)) goto oops;
 
 				/* the long forward jump instruction has the format of
@@ -4828,7 +4832,7 @@ hcl_pfrc_t hcl_pf_process_fork (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 	int x;
 
 	blk = (hcl_oop_lambda_t)HCL_STACK_GETARG(hcl, nargs, 0);
-	if (!HCL_IS_LAMBDA(hcl, blk))
+	if (!HCL_IS_BLOCK(hcl, blk))
 	{
 		hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not block - %O", blk);
 		return HCL_PF_FAILURE;

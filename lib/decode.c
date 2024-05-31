@@ -716,14 +716,14 @@ int hcl_decode (hcl_t* hcl, const hcl_code_t* code, hcl_oow_t start, hcl_oow_t e
 				break;
 			}
 
-			case HCL_CODE_MAKE_LAMBDA:
+			case HCL_CODE_MAKE_BLOCK:
 				/* b1 - block mask
 				 * b2 - block mask */
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				FETCH_PARAM_CODE_TO (hcl, b2);
 				b1 = (b1 << (8 * HCL_CODE_LONG_PARAM_SIZE)) | b2;
 
-				LOG_INST_5 (hcl, "make_lambda %zu %zu %zu %zu %zu",
+				LOG_INST_5 (hcl, "make_block %zu %zu %zu %zu %zu",
 					GET_BLK_MASK_INSTA(b1),
 					GET_BLK_MASK_VA(b1),
 					GET_BLK_MASK_NARGS(b1),

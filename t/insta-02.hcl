@@ -51,3 +51,44 @@ else { printf "OK:  value is %d\n" v }
 v := ((a:y) 20);
 if (nqv? v 21) { printf "ERROR: v is not 21\n" } \
 else { printf "OK:  value is %d\n" v }
+
+## --------------------------------------------------------------
+
+class F | j t | {
+}
+
+class X | a  b c | {
+	fun :* new () {
+		self.a := 20
+		return self
+	}
+
+	fun getA() { return self.a }
+
+	fun make(t a b) {
+		| v |
+		v := 50
+		if (t > 5) {
+			fun X:get_j() { return (((1 + t) + a) + b) }
+		} else {
+			fun X:get_j() { return ((2 * (t + a)) + b) }
+		}
+		return self
+	}
+}
+
+fun X:get_a() {
+	return (self:getA)
+}
+
+v := ((X:new):get_a)
+if (nqv? v 20) { printf "ERROR: v is not 20 - %d\n" v } \
+else { printf "OK:  value is %d\n" v }
+
+v := (((X:new):make 5 6 7):get_j)
+if (nqv? v 29) { printf "ERROR: v is not 29 - %d\n" v } \
+else { printf "OK:  value is %d\n" v }
+
+v := (((X:new):make 6 6 7):get_j)
+if (nqv? v 20) { printf "ERROR: v is not 20 - %d\n" v } \
+else { printf "OK:  value is %d\n" v }
