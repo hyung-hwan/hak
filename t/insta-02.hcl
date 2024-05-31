@@ -69,9 +69,9 @@ class X | a  b c | {
 		| v |
 		v := 50
 		if (t > 5) {
-			fun X:get_j() { return (((1 + t) + a) + b) }
+			fun X:get_j() { return (((1 + t) + a) + (b + v)) }
 		} else {
-			fun X:get_j() { return ((2 * (t + a)) + b) }
+			fun X:get_j() { return ((2 * (t + a)) + (b + v)) }
 		}
 		return self
 	}
@@ -86,9 +86,79 @@ if (nqv? v 20) { printf "ERROR: v is not 20 - %d\n" v } \
 else { printf "OK:  value is %d\n" v }
 
 v := (((X:new):make 5 6 7):get_j)
-if (nqv? v 29) { printf "ERROR: v is not 29 - %d\n" v } \
+if (nqv? v 79) { printf "ERROR: v is not 79 - %d\n" v } \
 else { printf "OK:  value is %d\n" v }
 
 v := (((X:new):make 6 6 7):get_j)
-if (nqv? v 20) { printf "ERROR: v is not 20 - %d\n" v } \
+if (nqv? v 70) { printf "ERROR: v is not 70 - %d\n" v } \
 else { printf "OK:  value is %d\n" v }
+
+## --------------------------------------------------------------
+
+class F | j t | {
+}
+
+class X | a b c | {
+	fun :* new () {
+		| j |
+		self.a := 20
+		j := (self.a  * 2)
+		fun F::get_x() { return (j * j) }
+		return self
+	}
+}
+
+X:new
+v := (F:get_x)
+if (nqv? v 1600) { printf "ERROR: v is not 1600 - %d\n" v } \
+else { printf "OK: value is %d\n" v }
+
+## --------------------------------------------------------------
+class X {
+	fun :* new (a b) {
+		fun X:sum() { return (fun(j) { return (j + (a + b)) }) }
+		return self;
+	}
+}
+
+v := (((X:new 10 2):sum) 23)
+if (nqv? v 35) { printf "ERROR: v is not 35 - %d\n" v } \
+else { printf "OK: value is %d\n" v }
+
+## --------------------------------------------------------------
+class X {
+	fun :: t() {
+		| X |
+		class X { ## this X isn't the local variable X
+			fun :: t() {
+				X := (class {
+					fun :: t() {
+						| X |
+						X := (class { ## this X is the local variable X
+							fun :: t() { return 60 }
+						})
+						return 40
+					}
+				})
+				return 20;
+			}
+		}
+		return 30
+	}
+}
+
+v := (X:t)
+if (nqv? v 30) { printf "ERROR: v is not 30 - %d\n" v } \
+else { printf "OK: value is %d\n" v }
+
+v := (X:t)
+if (nqv? v 20) { printf "ERROR: v is not 20 - %d\n" v } \
+else { printf "OK: value is %d\n" v }
+
+v := (X:t)
+if (nqv? v 40) { printf "ERROR: v is not 40 - %d\n" v } \
+else { printf "OK: value is %d\n" v }
+
+v := (X:t)
+if (nqv? v 40) { printf "ERROR: v is not 40 - %d\n" v } \
+else { printf "OK: value is %d\n" v }
