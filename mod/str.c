@@ -145,7 +145,7 @@ static hcl_pfrc_t pf_str_slice (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 	}
 	if (!HCL_OOP_IS_SMOOI(a2))
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "length not string - %O", a2);
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "length not numeric - %O", a2);
 		return HCL_PF_FAILURE;
 	}
 

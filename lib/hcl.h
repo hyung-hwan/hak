@@ -2837,6 +2837,13 @@ HCL_EXPORT hcl_oop_t hcl_hatchnil (
 	hcl_t*     hcl
 );
 
+HCL_EXPORT hcl_oop_t hcl_instantiate (
+	hcl_t*          hcl,
+	hcl_oop_class_t _class,
+	const void*     vptr,
+	hcl_oow_t       vlen
+);
+
 HCL_EXPORT hcl_oop_t hcl_makecons (
 	hcl_t*     hcl,
 	hcl_oop_t  car,

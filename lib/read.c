@@ -1564,7 +1564,7 @@ static int feed_process_token (hcl_t* hcl)
 		}
 
 		case HCL_TOK_RPAREN: /* xlist (), qlist #() */
-		case HCL_TOK_RBRACK: /* bytearray #[], array [] */
+		case HCL_TOK_RBRACK: /* bytearray #b[], array #[] */
 		case HCL_TOK_RBRACE: /* dictionary #{}, block {} */
 		{
 			int oldflagv;
