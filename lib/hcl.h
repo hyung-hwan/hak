@@ -444,6 +444,8 @@ typedef enum hcl_obj_type_t hcl_obj_type_t;
 #define HCL_OBJ_FLAGS_KERNEL_IMMATURE 1  /* incomplete kernel object. defined in gc.c for bootstrapping. but no complete class definition has been read */
 #define HCL_OBJ_FLAGS_KERNEL_MATURE   2  /* kernel  object with its full class defintion read in */
 
+#define HCL_STORE_OOP(hcl,var,val) (*(var) = val)
+
 #define HCL_OBJ_HEADER \
 	hcl_oow_t _flags; \
 	hcl_oow_t _size; \
@@ -860,13 +862,14 @@ struct hcl_process_scheduler_t
 };
 
 
-#define HCL_CLASS_NAMED_INSTVARS 10
+#define HCL_CLASS_NAMED_INSTVARS 11
 typedef struct hcl_class_t hcl_class_t;
 typedef struct hcl_class_t* hcl_oop_class_t;
 struct hcl_class_t
 {
 	HCL_OBJ_HEADER;
 
+	hcl_oop_t name; /* class name. nil for unnamed class */
 	hcl_oop_t mdic; /* method dictionary. nil or a dictionary object */
 
 	hcl_oop_t spec;     /* SmallInteger. instance specification */

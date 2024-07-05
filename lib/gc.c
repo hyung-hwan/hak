@@ -1423,8 +1423,8 @@ static int ignite_3 (hcl_t* hcl)
 		if (HCL_UNLIKELY(!sym)) return -1;
 
 		cls = *(hcl_oop_class_t*)((hcl_uint8_t*)hcl + kernel_classes[i].offset);
-#if 0
 		HCL_STORE_OOP (hcl, (hcl_oop_t*)&cls->name, sym);
+#if 0
 		HCL_STORE_OOP (hcl, (hcl_oop_t*)&cls->nsup, (hcl_oop_t)hcl->sysdic);
 #endif
 
