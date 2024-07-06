@@ -16,13 +16,11 @@ type
 	BitMask = longword; (* this must match hcl_bitmask_t in hcl.h *)
 
 (*const
-	TRAIT_LANG_ENABLE_EOF = (BitMask(1) shl 14);
-	TRAIT_LANG_ENABLE_BLOCK = (BitMask(1) shl 15);*)
+	TRAIT_LANG_ENABLE_EOL = (BitMask(1) shl 14); *)
 
 type
 	TraitBit = ( (* this enum must follow hcl_trait_t in hcl.h *)
-		LANG_ENABLE_EOF = (BitMask(1) shl 14),
-		LANG_ENABLE_BLOCK = (BitMask(1) shl 15)
+		LANG_ENABLE_EOL = (BitMask(1) shl 14)
 	);
 
 	Option = ( (* this enum must follow hcl_option_t in hcl.h *)
@@ -171,8 +169,9 @@ begin
 		raise Exception.Create(errmsg);
 	end;
 
+	if hcl_getoption(h, Option.TRAIT, @tb) <= -1 then tb := 0;
 
-	tb := BitMask(TraitBit.LANG_ENABLE_EOF) or BitMask(TraitBit.LANG_ENABLE_BLOCK);
+	tb := tb or BitMask(TraitBit.LANG_ENABLE_EOL);
 	if hcl_setoption(h, Option.TRAIT, @tb) <= -1 then begin
 		hcl_errnum_to_errbcstr(errnum, @errmsg, length(errmsg));
 		hcl_close(h);

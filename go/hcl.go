@@ -67,7 +67,6 @@ type Ext struct {
 
 type BitMask C.hcl_bitmask_t
 
-const TRAIT_LANG_ENABLE_BLOCK BitMask = C.HCL_TRAIT_LANG_ENABLE_BLOCK
 const TRAIT_LANG_ENABLE_EOL BitMask = C.HCL_TRAIT_LANG_ENABLE_EOL
 
 var inst_table InstanceTable

@@ -1522,7 +1522,6 @@ static int init_worker_hcl (hcl_server_worker_t* worker)
 	if (server->cfg.trait & HCL_SERVER_TRAIT_DEBUG_GC) trait |= HCL_TRAIT_DEBUG_GC;
 	if (server->cfg.trait & HCL_SERVER_TRAIT_DEBUG_BIGINT) trait |= HCL_TRAIT_DEBUG_BIGINT;
 #endif
-	trait |= HCL_TRAIT_LANG_ENABLE_BLOCK;
 	trait |= HCL_TRAIT_LANG_ENABLE_EOL;
 	hcl_setoption (hcl, HCL_TRAIT, &trait);
 

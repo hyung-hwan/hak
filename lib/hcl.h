@@ -236,9 +236,6 @@ enum hcl_trait_t
 
 	/* return EOL as a token */ /* TODO: make this pragma controllable */
 	HCL_TRAIT_LANG_ENABLE_EOL = (((hcl_bitmask_t)1) << 14),
-
-	/* enable block expression as mandatory argument to some expresions */
-	HCL_TRAIT_LANG_ENABLE_BLOCK = (((hcl_bitmask_t)1) << 15),
 };
 typedef enum hcl_trait_t hcl_trait_t;
 
@@ -1566,10 +1563,7 @@ enum hcl_compile_flag_t
 	HCL_COMPILE_CLEAR_CODE  = (1 << 0),
 
 	/* clear the top-level function block at the end of hcl_compile() */
-	HCL_COMPILE_CLEAR_FNBLK = (1 << 1),
-
-	/* enable the block {} mode */
-	HCL_COMPILE_ENABLE_BLOCK = (1 << 2) /*TODO: make this #pragma controllable */
+	HCL_COMPILE_CLEAR_FNBLK = (1 << 1)
 };
 typedef enum hcl_compile_flag_t hcl_compile_flag_t;
 #endif

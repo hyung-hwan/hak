@@ -80,7 +80,7 @@ func main() {
 		x.SetLogTarget("/dev/stderr")
 	}
 
-	x.SetTrait(x.GetTrait() | hcl.TRAIT_LANG_ENABLE_EOL | hcl.TRAIT_LANG_ENABLE_BLOCK)
+	x.SetTrait(x.GetTrait() | hcl.TRAIT_LANG_ENABLE_EOL)
 
 	err = x.Ignite(1000000)
 	if err != nil {

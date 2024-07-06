@@ -722,7 +722,7 @@ int main (int argc, char* argv[])
 	};
 	static hcl_bopt_t opt =
 	{
-		"l:bnv",
+		"l:nv",
 		lopt
 	};
 
@@ -730,7 +730,6 @@ int main (int argc, char* argv[])
 	hcl_oow_t heapsize = DEFAULT_HEAPSIZE;
 	int verbose = 0;
 	int show_info = 0;
-	int enable_block = 0;
 	int nl_terminator = 0;
 	const char* modlibdirs = HCL_NULL;
 
@@ -746,7 +745,6 @@ int main (int argc, char* argv[])
 	print_usage:
 		fprintf (stderr, "Usage: %s [options] script-filename [output-filename]\n", argv[0]);
 		fprintf (stderr, "Options are:\n");
-		fprintf (stderr, " -b  enable block construct with {}\n");
 		fprintf (stderr, " -n  enable line-break as expression terminator\n");
 		return -1;
 	}
@@ -757,10 +755,6 @@ int main (int argc, char* argv[])
 		{
 			case 'l':
 				logopt = opt.arg;
-				break;
-
-			case 'b':
-				enable_block = 1;
 				break;
 
 			case 'n':
@@ -838,10 +832,8 @@ int main (int argc, char* argv[])
 		/*trait |= HCL_TRAIT_NOGC;*/
 		trait |= HCL_TRAIT_AWAIT_PROCS;
 	#if 0
-		if (enable_block) trait |= HCL_TRAIT_LANG_ENABLE_BLOCK;
 		if (nl_terminator) trait |= HCL_TRAIT_LANG_ENABLE_EOL;
 	#else
-		trait |= HCL_TRAIT_LANG_ENABLE_BLOCK;
 		trait |= HCL_TRAIT_LANG_ENABLE_EOL;
 	#endif
 		hcl_setoption (hcl, HCL_TRAIT, &trait);
