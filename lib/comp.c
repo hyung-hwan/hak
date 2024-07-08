@@ -1394,7 +1394,18 @@ static HCL_INLINE hcl_cframe_t* find_cframe_from_top (hcl_t* hcl, int opcode)
 
 /* ========================================================================= */
 
-static int collect_vardcl_for_class (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t** nextobj, hcl_oow_t tv_dup_check_start, hcl_oow_t* nivardcls, hcl_oow_t* ncvardcls)
+struct class_vardcl_t
+{
+	hcl_oow_t nivars;
+	hcl_oow_t ncvars;
+	hcl_oow_t ivar_start;
+	hcl_oow_t ivar_len;
+	hcl_oow_t cvar_start;
+	hcl_oow_t cvar_len;
+};
+typedef struct class_vardcl_t class_vardcl_t;
+
+static int collect_vardcl_for_class (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t** nextobj, hcl_oow_t tv_dup_check_start, class_vardcl_t* vardcl)
 {
 	hcl_oow_t nivars = 0;
 	hcl_oow_t ncvars = 0;
@@ -1484,8 +1495,12 @@ static int collect_vardcl_for_class (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t**
 
 	HCL_ASSERT (hcl, nivars + ncvars == hcl->c->tv.wcount - old_wcount);
 	*nextobj = HCL_CNODE_CONS_CDR(obj);
-	*nivardcls = nivars;
-	*ncvardcls = ncvars;
+	vardcl->ivar_start = ivar_start;
+	vardcl->ivar_len = ivar_len;
+	vardcl->cvar_start = cvar_start;
+	vardcl->cvar_len = cvar_len;
+	vardcl->nivars = nivars;
+	vardcl->ncvars = ncvars;
 
 	return 0;
 }
@@ -2611,6 +2626,7 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 	ivar_len = cvar_len = 0;
 	nivars = ncvars = 0;
 
+
 	/* use the temporary variable collection buffer for convenience when scanning
 	 * instance variables and class variables */
 	while (obj && HCL_CNODE_IS_CONS(obj))
@@ -2631,10 +2647,15 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 		tmp = HCL_CNODE_CONS_CAR(obj);
 		if (HCL_CNODE_IS_CONS_CONCODED(tmp, HCL_CONCODE_XLIST))
 		{
-			hcl_oow_t nivardcls, ncvardcls;
-			if (collect_vardcl_for_class(hcl, obj, &obj, tv_dup_check_start, &nivardcls, &ncvardcls) <= -1) return -1;
-			nivars += nivardcls;
-			nivars += ncvardcls;
+			class_vardcl_t vardcl;
+			if (collect_vardcl_for_class(hcl, obj, &obj, tv_dup_check_start, &vardcl) <= -1) return -1;
+			nivars = vardcl.nivars;
+			ncvars = vardcl.ncvars;
+			ivar_start = vardcl.ivar_start;
+			ivar_len = vardcl.ivar_len;
+			cvar_start = vardcl.cvar_start;
+			cvar_len = vardcl.cvar_len;
+			break;
 		}
 		else if (/*HCL_CNODE_IS_COLON(tmp)|| */ HCL_CNODE_IS_DBLCOLONS(tmp))
 		{
