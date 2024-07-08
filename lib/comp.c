@@ -1394,19 +1394,26 @@ static HCL_INLINE hcl_cframe_t* find_cframe_from_top (hcl_t* hcl, int opcode)
 
 /* ========================================================================= */
 
-static int collect_vardcl_for_class (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t** nextobj, hcl_oow_t tv_dup_check_start, hcl_oow_t* nvardcls, const hcl_bch_t* desc)
+static int collect_vardcl_for_class (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t** nextobj, hcl_oow_t tv_dup_check_start, hcl_oow_t* nivardcls, hcl_oow_t* ncvardcls)
 {
-	hcl_oow_t ndcls = 0;
+	hcl_oow_t nivars = 0;
+	hcl_oow_t ncvars = 0;
 	hcl_oow_t old_wcount = hcl->c->tv.wcount;
 	hcl_cnode_t* dcl;
-	hcl_cnode_t* var;
 	int coloned = 0;
+	hcl_oow_t cvar_start = 0, ivar_start = 0;
+	hcl_oow_t cvar_len = 0, ivar_len = 0;
+	static const hcl_bch_t* desc[] = { "instance", "class" };
 
 	dcl = HCL_CNODE_CONS_CAR(obj);
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS_CONCODED(dcl, HCL_CONCODE_XLIST));
 
 	do
 	{
+		hcl_cnode_t* var;
+		int n;
+		hcl_oow_t checkpoint;
+
 		var = HCL_CNODE_CONS_CAR(dcl);
 
 		if (HCL_CNODE_IS_COLON(var))
@@ -1423,16 +1430,43 @@ static int collect_vardcl_for_class (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t**
 			return -1;
 		}
 
-
-		if (add_temporary_variable(hcl, HCL_CNODE_GET_TOK(var), tv_dup_check_start) <= -1)
+		checkpoint = hcl->c->tv.s.len;
+		n = add_temporary_variable(hcl, HCL_CNODE_GET_TOK(var), tv_dup_check_start);
+		if (n <= -1)
 		{
 			if (hcl->errnum == HCL_EEXIST)
 			{
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMEDUP, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "duplicate %hs variable", desc);
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAMEDUP, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "duplicate %hs variable", desc[coloned]);
 			}
 			return -1;
 		}
-		ndcls++;
+
+		if (coloned)
+		{
+			/* class variable */
+			/*if (cvar_len <= 0) cvar_start = prev_tv_len;
+			cvar_len = hcl->c->tv.s.len - cvar_start; */
+			if (cvar_len <= 0) cvar_start = checkpoint;
+			cvar_len += hcl->c->tv.s.len - checkpoint;
+			ncvars++;
+		}
+		else
+		{
+			/* instance variable */
+			if (ivar_len <= 0) ivar_start = (cvar_len <= 0)? checkpoint: cvar_start;
+			ivar_len += hcl->c->tv.s.len - checkpoint;
+			if (cvar_len > 0)
+			{
+				/* place the instance variables before the class variables
+				 * if class variables "a b" has been collected before instance variables "cc dd ee"
+				 * the rotation below manipulates the buffer to contain "cc dd ee a b".
+				 */
+				hcl_rotate_oochars (&hcl->c->tv.s.ptr[cvar_start], hcl->c->tv.s.len - cvar_start, -1, cvar_len);
+				cvar_start += hcl->c->tv.s.len - checkpoint;
+			}
+
+			nivars++;
+		}
 
 	next:
 		dcl = HCL_CNODE_CONS_CDR(dcl);
@@ -1440,15 +1474,18 @@ static int collect_vardcl_for_class (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t**
 
 		if (!HCL_CNODE_IS_CONS(dcl))
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(dcl), HCL_CNODE_GET_TOK(dcl), "redundant cdr in %hs variable list", desc);
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(dcl), HCL_CNODE_GET_TOK(dcl), "redundant cdr in %hs variable declaration", desc[coloned]);
 			return -1;
 		}
 	}
 	while (1);
 
-	HCL_ASSERT (hcl, ndcls == hcl->c->tv.wcount - old_wcount);
+	if (coloned) goto synerr_varname; /* no variable name after colon */
+
+	HCL_ASSERT (hcl, nivars + ncvars == hcl->c->tv.wcount - old_wcount);
 	*nextobj = HCL_CNODE_CONS_CDR(obj);
-	*nvardcls = ndcls;
+	*nivardcls = nivars;
+	*ncvardcls = ncvars;
 
 	return 0;
 }
@@ -1488,7 +1525,7 @@ static int collect_vardcl (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t** nextobj, 
 		{
 			if (hcl->errnum == HCL_EEXIST)
 			{
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMEDUP, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "duplicate %hs variable", desc);
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAMEDUP, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "duplicate %hs variable", desc);
 			}
 			return -1;
 		}
@@ -2594,26 +2631,10 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 		tmp = HCL_CNODE_CONS_CAR(obj);
 		if (HCL_CNODE_IS_CONS_CONCODED(tmp, HCL_CONCODE_XLIST))
 		{
-			/* instance variables */
-			hcl_oow_t checkpoint;
-
-			checkpoint = hcl->c->tv.s.len;
-
-			if (collect_vardcl_for_class(hcl, obj, &obj, tv_dup_check_start, &dclcount, "instance") <= -1) return -1;
-			nivars += dclcount;
-
-			if (ivar_len <= 0) ivar_start = (cvar_len <= 0)? checkpoint: cvar_start;
-			ivar_len += hcl->c->tv.s.len - checkpoint;
-
-			if (cvar_len > 0)
-			{
-				/* place the instance variables before the class variables
-				 * if class variables "a b" has been collected before instance variables "cc dd ee"
-				 * the rotation below manipulates the buffer to contain "cc dd ee a b".
-				 */
-				hcl_rotate_oochars (&hcl->c->tv.s.ptr[cvar_start], hcl->c->tv.s.len - cvar_start, -1, cvar_len);
-				cvar_start += hcl->c->tv.s.len - checkpoint;
-			}
+			hcl_oow_t nivardcls, ncvardcls;
+			if (collect_vardcl_for_class(hcl, obj, &obj, tv_dup_check_start, &nivardcls, &ncvardcls) <= -1) return -1;
+			nivars += nivardcls;
+			nivars += ncvardcls;
 		}
 		else if (/*HCL_CNODE_IS_COLON(tmp)|| */ HCL_CNODE_IS_DBLCOLONS(tmp))
 		{
