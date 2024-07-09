@@ -1405,19 +1405,19 @@ struct class_vardcl_t
 };
 typedef struct class_vardcl_t class_vardcl_t;
 
-static int collect_vardcl_for_class (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t** nextobj, hcl_oow_t tv_dup_check_start, class_vardcl_t* vardcl)
+static int collect_vardcl_for_class (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t** nextobj, class_vardcl_t* vardcl)
 {
-	hcl_oow_t nivars = 0;
-	hcl_oow_t ncvars = 0;
-	hcl_oow_t old_wcount = hcl->c->tv.wcount;
-	hcl_cnode_t* dcl;
-	int coloned = 0;
-	hcl_oow_t cvar_start = 0, ivar_start = 0;
-	hcl_oow_t cvar_len = 0, ivar_len = 0;
+	hcl_oow_t tv_wcount_saved, tv_slen_saved;
+	hcl_cnode_t* dcl, * dcl_saved;
+	int enclosed = 0;
 	static const hcl_bch_t* desc[] = { "instance", "class" };
 
+	HCL_MEMSET (vardcl, 0, HCL_SIZEOF(*vardcl));
+	tv_wcount_saved = hcl->c->tv.wcount;
+	tv_slen_saved = hcl->c->tv.s.len;
+
 	dcl = HCL_CNODE_CONS_CAR(obj);
-	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS_CONCODED(dcl, HCL_CONCODE_XLIST));
+	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS_CONCODED(dcl, HCL_CONCODE_TUPLE));
 
 	do
 	{
@@ -1427,10 +1427,18 @@ static int collect_vardcl_for_class (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t**
 
 		var = HCL_CNODE_CONS_CAR(dcl);
 
-		if (HCL_CNODE_IS_COLON(var))
+		if (HCL_CNODE_IS_CONS_CONCODED(var, HCL_CONCODE_TUPLE)) /* [ ... ] */
 		{
-			if (coloned) goto synerr_varname;
-			coloned = 1;
+			if (enclosed) goto synerr_varname;
+			enclosed = 1;
+			dcl_saved = dcl;
+			dcl = var;
+			continue; /* start over */
+		}
+		else if (HCL_CNODE_IS_ELIST_CONCODED(var, HCL_CONCODE_TUPLE))
+		{
+			/* no variables inside [] */
+			if (enclosed) goto synerr_varname; /* [] inside [] */
 			goto next;
 		}
 
@@ -1442,65 +1450,65 @@ static int collect_vardcl_for_class (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t**
 		}
 
 		checkpoint = hcl->c->tv.s.len;
-		n = add_temporary_variable(hcl, HCL_CNODE_GET_TOK(var), tv_dup_check_start);
+		n = add_temporary_variable(hcl, HCL_CNODE_GET_TOK(var), tv_slen_saved);
 		if (n <= -1)
 		{
 			if (hcl->errnum == HCL_EEXIST)
 			{
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAMEDUP, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "duplicate %hs variable", desc[coloned]);
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAMEDUP, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "duplicate %hs variable", desc[enclosed]);
 			}
 			return -1;
 		}
 
-		if (coloned)
+		if (enclosed)
 		{
 			/* class variable */
 			/*if (cvar_len <= 0) cvar_start = prev_tv_len;
 			cvar_len = hcl->c->tv.s.len - cvar_start; */
-			if (cvar_len <= 0) cvar_start = checkpoint;
-			cvar_len += hcl->c->tv.s.len - checkpoint;
-			ncvars++;
+			if (vardcl->cvar_len <= 0) vardcl->cvar_start = checkpoint;
+			vardcl->cvar_len += hcl->c->tv.s.len - checkpoint;
+			vardcl->ncvars++;
 		}
 		else
 		{
 			/* instance variable */
-			if (ivar_len <= 0) ivar_start = (cvar_len <= 0)? checkpoint: cvar_start;
-			ivar_len += hcl->c->tv.s.len - checkpoint;
-			if (cvar_len > 0)
+			if (vardcl->ivar_len <= 0) vardcl->ivar_start = (vardcl->cvar_len <= 0)? checkpoint: vardcl->cvar_start;
+			vardcl->ivar_len += hcl->c->tv.s.len - checkpoint;
+			if (vardcl->cvar_len > 0)
 			{
 				/* place the instance variables before the class variables
 				 * if class variables "a b" has been collected before instance variables "cc dd ee"
 				 * the rotation below manipulates the buffer to contain "cc dd ee a b".
 				 */
-				hcl_rotate_oochars (&hcl->c->tv.s.ptr[cvar_start], hcl->c->tv.s.len - cvar_start, -1, cvar_len);
-				cvar_start += hcl->c->tv.s.len - checkpoint;
+				hcl_rotate_oochars (&hcl->c->tv.s.ptr[vardcl->cvar_start], hcl->c->tv.s.len - vardcl->cvar_start, -1, vardcl->cvar_len);
+				vardcl->cvar_start += hcl->c->tv.s.len - checkpoint;
 			}
-
-			nivars++;
+			vardcl->nivars++;
 		}
 
 	next:
 		dcl = HCL_CNODE_CONS_CDR(dcl);
-		if (!dcl) break;
+		if (!dcl)
+		{
+			if (enclosed)
+			{
+				enclosed = 0;
+				dcl = dcl_saved;
+				goto next;
+			}
+			break;
+		}
 
 		if (!HCL_CNODE_IS_CONS(dcl))
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(dcl), HCL_CNODE_GET_TOK(dcl), "redundant cdr in %hs variable declaration", desc[coloned]);
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(dcl), HCL_CNODE_GET_TOK(dcl), "redundant cdr in %hs variable declaration", desc[enclosed]);
 			return -1;
 		}
 	}
 	while (1);
 
-	if (coloned) goto synerr_varname; /* no variable name after colon */
-
-	HCL_ASSERT (hcl, nivars + ncvars == hcl->c->tv.wcount - old_wcount);
+	HCL_ASSERT (hcl, vardcl->nivars + vardcl->ncvars == hcl->c->tv.wcount - tv_wcount_saved);
 	*nextobj = HCL_CNODE_CONS_CDR(obj);
-	vardcl->ivar_start = ivar_start;
-	vardcl->ivar_len = ivar_len;
-	vardcl->cvar_start = cvar_start;
-	vardcl->cvar_len = cvar_len;
-	vardcl->nivars = nivars;
-	vardcl->ncvars = ncvars;
 
 	return 0;
 }
@@ -2611,155 +2619,86 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src, int defclass)
 
 static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 {
-	/* collect information about declared variables */
+	/* collect information about declared class-level variables */
 	hcl_cframe_t* cf;
 	hcl_cnode_t* obj;
-	hcl_oow_t nivars, ncvars, saved_tv_wcount, tv_dup_check_start;
-	hcl_oow_t ivar_start, ivar_len, cvar_start, cvar_len;
+	hcl_oow_t saved_tv_wcount, saved_tv_slen;
+	class_vardcl_t vardcl;
 
 	cf = GET_TOP_CFRAME(hcl);
 	obj = cf->operand;
 
 	saved_tv_wcount = hcl->c->tv.wcount;
-	tv_dup_check_start = hcl->c->tv.s.len;
-	ivar_start = cvar_start = tv_dup_check_start;
-	ivar_len = cvar_len = 0;
-	nivars = ncvars = 0;
+	saved_tv_slen = hcl->c->tv.s.len;
 
+	HCL_MEMSET (&vardcl, 0, HCL_SIZEOF(vardcl));
 
-	/* use the temporary variable collection buffer for convenience when scanning
-	 * instance variables and class variables */
-	while (obj && HCL_CNODE_IS_CONS(obj))
+	if (obj && HCL_CNODE_IS_CONS(obj))
 	{
+		/* class-level variables - instance variables and class variable
+		 *  - class X [ a b c [d e] x ] { ... }
+		 *  - a b c are instance variables.
+		 *  - d e, enclsoed in another [], are class variables.
+		 * */
 		hcl_cnode_t* tmp;
-		hcl_oow_t dclcount;
-/*
- (defclass X :: T
-    :: | a b c | ## class variables
- )
- (defclass X
-    :: T | a b c | ## instance varaiables.
- )
- (defclass X
-    :: | a b c | ## class variables
- )
-*/
 		tmp = HCL_CNODE_CONS_CAR(obj);
-		if (HCL_CNODE_IS_CONS_CONCODED(tmp, HCL_CONCODE_XLIST))
+		if (HCL_CNODE_IS_CONS_CONCODED(tmp, HCL_CONCODE_TUPLE))
 		{
-			class_vardcl_t vardcl;
-			if (collect_vardcl_for_class(hcl, obj, &obj, tv_dup_check_start, &vardcl) <= -1) return -1;
-			nivars = vardcl.nivars;
-			ncvars = vardcl.ncvars;
-			ivar_start = vardcl.ivar_start;
-			ivar_len = vardcl.ivar_len;
-			cvar_start = vardcl.cvar_start;
-			cvar_len = vardcl.cvar_len;
-			break;
-		}
-		else if (/*HCL_CNODE_IS_COLON(tmp)|| */ HCL_CNODE_IS_DBLCOLONS(tmp))
-		{
-			/* class variables */
-			hcl_oow_t checkpoint;
-
-			obj = HCL_CNODE_CONS_CDR(obj);
-			if (!obj || !HCL_CNODE_IS_CONS(obj))
-			{
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_EOX, HCL_CNODE_GET_LOC(tmp), HCL_NULL, "no expression or declaration after colon");
-				return -1;
-			}
-
-			tmp = HCL_CNODE_CONS_CAR(obj);
-			if (!HCL_CNODE_IS_CONS_CONCODED(tmp, HCL_CONCODE_VLIST))
-			{
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_EOX, HCL_CNODE_GET_LOC(tmp), HCL_NULL, "no declaration after colon");
-				return -1;
-			}
-
-			checkpoint = hcl->c->tv.s.len;
-			if (collect_vardcl(hcl, obj, &obj, tv_dup_check_start, &dclcount, "class") <= -1) return -1;
-			ncvars += dclcount;
-
-			if (cvar_len <= 0) cvar_start = checkpoint;
-			cvar_len += hcl->c->tv.s.len - checkpoint;
-		}
-		else
-		{
-			/* instance variables */
-			hcl_oow_t checkpoint;
-
-			if (!HCL_CNODE_IS_CONS_CONCODED(tmp, HCL_CONCODE_VLIST)) break;
-			checkpoint = hcl->c->tv.s.len;
-
-			if (collect_vardcl(hcl, obj, &obj, tv_dup_check_start, &dclcount, "instance") <= -1) return -1;
-			nivars += dclcount;
-
-			if (ivar_len <= 0) ivar_start = (cvar_len <= 0)? checkpoint: cvar_start;
-			ivar_len += hcl->c->tv.s.len - checkpoint;
-
-			if (cvar_len > 0)
-			{
-				/* place the instance variables before the class variables
-				 * if class variables "a b" has been collected before instance variables "cc dd ee"
-				 * the rotation below manipulates the buffer to contain "cc dd ee a b".
-				 */
-				hcl_rotate_oochars (&hcl->c->tv.s.ptr[cvar_start], hcl->c->tv.s.len - cvar_start, -1, cvar_len);
-				cvar_start += hcl->c->tv.s.len - checkpoint;
-			}
+			if (collect_vardcl_for_class(hcl, obj, &obj, &vardcl) <= -1) return -1;
 		}
 	}
 
-	if (nivars > 0)
+	if (vardcl.nivars > 0)
 	{
 		hcl_oop_t tmp;
 		int adj;
 
-		if (nivars > HCL_SMOOI_MAX)
+		if (vardcl.nivars > HCL_SMOOI_MAX)
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARFLOOD, HCL_CNODE_GET_LOC(cf->operand), HCL_NULL, "too many(%zu) instance variables", nivars);
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARFLOOD, HCL_CNODE_GET_LOC(cf->operand), HCL_NULL, "too many(%zu) instance variables", vardcl.nivars);
 			goto oops;
 		}
 
 		/* set starting point past the added space (+1 to index, -1 to length) */
-		adj = (hcl->c->tv.s.ptr[ivar_start] == ' ');
-		tmp = hcl_makestring(hcl, &hcl->c->tv.s.ptr[ivar_start + adj], ivar_len - adj, 0);
+		adj = (hcl->c->tv.s.ptr[vardcl.ivar_start] == ' ');
+		tmp = hcl_makestring(hcl, &hcl->c->tv.s.ptr[vardcl.ivar_start + adj], vardcl.ivar_len - adj, 0);
 		if (HCL_UNLIKELY(!tmp)) goto oops;
 		if (emit_push_literal(hcl, tmp, &cf->u._class.start_loc) <= -1) goto oops;
 	}
 
-	if (ncvars > 0)
+	if (vardcl.ncvars > 0)
 	{
 		hcl_oop_t tmp;
 		int adj;
 
-		if (ncvars > HCL_SMOOI_MAX)
+		if (vardcl.ncvars > HCL_SMOOI_MAX)
 		{
 			/* TOOD: change the error location ?? */
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARFLOOD, HCL_CNODE_GET_LOC(cf->operand), HCL_NULL, "too many(%zu) class variables", ncvars);
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARFLOOD, HCL_CNODE_GET_LOC(cf->operand), HCL_NULL, "too many(%zu) class variables", vardcl.ncvars);
 			goto oops;
 		}
 
-		adj = (hcl->c->tv.s.ptr[cvar_start] == ' ');
-		tmp = hcl_makestring(hcl, &hcl->c->tv.s.ptr[cvar_start + adj], cvar_len - adj, 0);
+		adj = (hcl->c->tv.s.ptr[vardcl.cvar_start] == ' ');
+		tmp = hcl_makestring(hcl, &hcl->c->tv.s.ptr[vardcl.cvar_start + adj], vardcl.cvar_len - adj, 0);
 		if (HCL_UNLIKELY(!tmp)) goto oops;
 		if (emit_push_literal(hcl, tmp, &cf->u._class.start_loc) <= -1) goto oops;
 	}
 
 	if (check_block_expression_as_body(hcl, obj, cf->u._class.cmd_cnode, FOR_CLASS) <= -1) return -1;
 
-	if (push_clsblk(hcl, &cf->u._class.start_loc, nivars, ncvars, &hcl->c->tv.s.ptr[ivar_start], ivar_len, &hcl->c->tv.s.ptr[cvar_start], cvar_len) <= -1) goto oops;
+	if (push_clsblk(hcl, &cf->u._class.start_loc, vardcl.nivars, vardcl.ncvars, &hcl->c->tv.s.ptr[vardcl.ivar_start], vardcl.ivar_len, &hcl->c->tv.s.ptr[vardcl.cvar_start], vardcl.cvar_len) <= -1) goto oops;
 	if (push_cblk(hcl, &cf->u._class.start_loc, HCL_CBLK_TYPE_CLASS) <= -1) goto oops; /* the class block shall be treated as a control block, too */
 
 	/* discard the instance variables and class variables in the temporary variable collection buffer
 	 * because they have been pushed to the class block structure */
-	hcl->c->tv.s.len = tv_dup_check_start;
+	hcl->c->tv.s.len = saved_tv_slen;
 	hcl->c->tv.wcount = saved_tv_wcount;
 
 	/* class_enter nsuperclasses, nivars, ncvars  */
 	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_ENTER, &cf->u._class.start_loc) <= -1) goto oops;
 	if (emit_long_param(hcl, cf->u._class.nsuperclasses) <= -1) goto oops;
-	if (emit_long_param(hcl, nivars) <= -1) goto oops;
-	if (emit_long_param(hcl, ncvars) <= -1) goto oops;
+	if (emit_long_param(hcl, vardcl.nivars) <= -1) goto oops;
+	if (emit_long_param(hcl, vardcl.ncvars) <= -1) goto oops;
 
 	/* remember the first byte code position to be emitted for the body of
 	 * this class. this posistion is used for empty class body check at the
@@ -2770,7 +2709,7 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 	return 0;
 
 oops:
-	hcl->c->tv.s.len = tv_dup_check_start;
+	hcl->c->tv.s.len = saved_tv_slen;
 	hcl->c->tv.wcount = saved_tv_wcount;
 	return -1;
 }

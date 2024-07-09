@@ -1,8 +1,8 @@
-class B | x y | {
+class B [ x y ] {
 
 };
 
-class X :: B | a b | {
+class X :: B [ a b ] {
 	fun :* new(t) {
 		| a |
 		set self.a t;
@@ -75,7 +75,7 @@ Array:boom
 
 ---
 
-class X | a  b c | {
+class X [ a  b c ] {
 	fun :* new () {
 		self.a := 20
 		return self
@@ -95,10 +95,10 @@ printf "%d\n" ((X:new):get_a)
 
 ---
 
-class F | a b c | {
+class F [ a b c ] {
 }
 
-class X | a b c | {
+class X [ a b c ] {
 	fun oh() {
 		fun F:get_a() {
 			return super.a ##ERROR: syntax error - not allowed to prefix with super

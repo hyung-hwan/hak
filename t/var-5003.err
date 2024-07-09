@@ -1,3 +1,3 @@
-defclass A | a | {
+defclass A [ a ] {
 	| j | ##ERROR: syntax error - variable declaration disallowed in class init scope
 };

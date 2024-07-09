@@ -96,7 +96,7 @@ if (x = 29) {
 
 ## --------------------------------------
 
-defclass A | a b c | {
+defclass A [ a b c ] {
 	defun :* newInstance(x y z) {
 		set a x
 		set b y

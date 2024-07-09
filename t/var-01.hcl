@@ -56,7 +56,7 @@ defun x () {
 x
 
 
-class T | j | {
+class T [ j ] {
 
 	defun :* new() {
 		set j 99

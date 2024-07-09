@@ -1,5 +1,5 @@
 set t (
-	class | x | {
+	class [ x ] {
 		defun :* make() { x := 1234; return self; };
 		defun get-x() { return x };
 	}
@@ -27,7 +27,7 @@ else { printf "OK:  value is %d\n" v };
 
 ## --------------------------------------------------------------
 
-class X | a b c d | {
+class X [ a b c d ] {
         fun :*new() {
                 return self;
         }
@@ -54,10 +54,10 @@ else { printf "OK:  value is %d\n" v }
 
 ## --------------------------------------------------------------
 
-class F | j t | {
+class F [ j t ] {
 }
 
-class X | a  b c | {
+class X [ a  b c ] {
 	fun :* new () {
 		self.a := 20
 		return self
@@ -95,10 +95,10 @@ else { printf "OK:  value is %d\n" v }
 
 ## --------------------------------------------------------------
 
-class F | j t | {
+class F [ j t ] {
 }
 
-class X | a b c | {
+class X [ a b c ] {
 	fun :* new () {
 		| j |
 		self.a := 20

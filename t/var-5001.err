@@ -1,4 +1,4 @@
-defclass A | a | {
+defclass A [ a ] {
 	defun :* init1() {
 		| b |
 		set b (+ 1 2);
@@ -28,3 +28,26 @@ defclass A | a | {
 
 defun String length() { ##ERROR: syntax error - no argument list
 }
+
+---
+
+class A [ 10 ] { ##ERROR: syntax error - not variable name - 10
+}
+
+---
+
+class A [ a := 20 ] { ##ERROR: syntax error - := disallowed
+}
+
+---
+class A [ [ [a] ] ] { ##ERROR: syntax error - not variable name
+}
+
+---
+class A [ a + ] { ##ERROR: syntax error - prohibited binary operator - +
+}
+
+## TODO: This check is supposed to fail. + must be treated as a binop symbol
+##---
+##class A [ + ] { ##ERROR: syntax error - prohibited binary operator - +
+##}
