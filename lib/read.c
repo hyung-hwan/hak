@@ -940,10 +940,12 @@ static int chain_to_list (hcl_t* hcl, hcl_cnode_t* obj, hcl_loc_t* loc)
 {
 	hcl_rstl_t* rstl;
 	int flagv;
+	int list_concode;
 
 	HCL_ASSERT (hcl, hcl->c->r.st != HCL_NULL);
 	rstl = hcl->c->r.st;
 	flagv = rstl->flagv;
+	list_concode = (hcl_concode_t)LIST_FLAG_GET_CONCODE(flagv);
 
 	if (flagv & CLOSED)
 	{
@@ -972,15 +974,13 @@ static int chain_to_list (hcl_t* hcl, hcl_cnode_t* obj, hcl_loc_t* loc)
 		if (HCL_CNODE_IS_CONS(obj) && HCL_CNODE_CONS_CONCODE(obj) != HCL_CONCODE_QLIST)
 		{
 			hcl_cnode_t* shell;
-
 			/* if the last element is another non-data list
-			 * for example, #( 1 2 . [ 3 4 5  ])
+			 * for example, #( 1 2 . #[ 3 4 5  ])
 			 * use a shell node to wrap the actual object list node head
 			 * for the compiler.
 			 */
 			shell = hcl_makecnodeshell(hcl, 0, HCL_CNODE_GET_LOC(obj), obj);
 			if (HCL_UNLIKELY(!shell)) return -1;
-
 			tail->u.cons.cdr = shell;
 		}
 		else
@@ -1020,6 +1020,14 @@ static int chain_to_list (hcl_t* hcl, hcl_cnode_t* obj, hcl_loc_t* loc)
 			fake_tok.ptr = vocas[vid].str;
 			fake_tok.len = vocas[vid].len;
 			fake_tok_ptr = &fake_tok;
+		}
+
+		if (list_concode == HCL_CONCODE_TUPLE && !HCL_CNODE_IS_SYMBOL_PLAIN(obj) && concode != HCL_CONCODE_TUPLE)
+		{
+			/* a tuple must contain some simple symbol names or nested tuples only  */
+/* TODO: filter out binop symbols */
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(obj), HCL_CNODE_GET_TOK(obj), "invalid name - not symbol in tuple");
+			return -1;
 		}
 
 		cons = hcl_makecnodecons(hcl, 0, (loc? loc: HCL_CNODE_GET_LOC(obj)), fake_tok_ptr, obj, HCL_NULL);

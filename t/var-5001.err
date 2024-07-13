@@ -31,7 +31,7 @@ defun String length() { ##ERROR: syntax error - no argument list
 
 ---
 
-class A [ 10 ] { ##ERROR: syntax error - not variable name - 10
+class A [ 10 ] { ##ERROR: syntax error - invalid name - not symbol in tuple - 10
 }
 
 ---
@@ -47,7 +47,6 @@ class A [ [ [a] ] ] { ##ERROR: syntax error - not variable name
 class A [ a + ] { ##ERROR: syntax error - prohibited binary operator - +
 }
 
-## TODO: This check is supposed to fail. + must be treated as a binop symbol
-##---
-##class A [ + ] { ##   ERROR: syntax error - prohibited binary operator - +
-##}
+---
+class A [ + ] { ##ERROR: syntax error - prohibited binary operator - +
+}

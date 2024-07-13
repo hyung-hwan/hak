@@ -52,7 +52,7 @@ a := #{
 	(printf "hello\n")
 );;
 
-k := [10 ; 20 ]; ##ERROR: syntax error - unexpected semicolon
+k := #[10 ; 20 ]; ##ERROR: syntax error - unexpected semicolon
 
 }
 
