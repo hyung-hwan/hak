@@ -49,5 +49,5 @@ class A [ a + ] { ##ERROR: syntax error - prohibited binary operator - +
 
 ## TODO: This check is supposed to fail. + must be treated as a binop symbol
 ##---
-##class A [ + ] { ##ERROR: syntax error - prohibited binary operator - +
+##class A [ + ] { ##   ERROR: syntax error - prohibited binary operator - +
 ##}
