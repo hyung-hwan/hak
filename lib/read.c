@@ -239,7 +239,7 @@ static HCL_INLINE int is_delimchar (hcl_ooci_t c)
 	       c == '#' || c == '\"' || c == '\'' || c == '\\' || is_spacechar(c) || c == HCL_OOCI_EOF;
 }
 
-static HCL_INLINE int is_binopchar (hcl_ooci_t c)
+int hcl_is_binop_char (hcl_ooci_t c)
 {
 	return c == '&' || c == '*' || c == '+' || c == '-' || c == '/' || c == '%' ||
 	       c == '<' || c == '>' || c == '=' || c == '@' || c == '|' || c == '~';
@@ -1022,10 +1022,10 @@ static int chain_to_list (hcl_t* hcl, hcl_cnode_t* obj, hcl_loc_t* loc)
 			fake_tok_ptr = &fake_tok;
 		}
 
-		if (list_concode == HCL_CONCODE_TUPLE && !HCL_CNODE_IS_SYMBOL_PLAIN(obj) && concode != HCL_CONCODE_TUPLE)
+		if (list_concode == HCL_CONCODE_TUPLE && concode != HCL_CONCODE_TUPLE &&
+		    (!HCL_CNODE_IS_SYMBOL_PLAIN(obj) || HCL_CNODE_IS_SYMBOL_PLAIN_BINOP(obj)))
 		{
 			/* a tuple must contain some simple symbol names or nested tuples only  */
-/* TODO: filter out binop symbols */
 			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(obj), HCL_CNODE_GET_TOK(obj), "invalid name - not symbol in tuple");
 			return -1;
 		}
@@ -2175,7 +2175,7 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 			goto consumed;
 
 		default:
-			if (is_binopchar(c))
+			if (hcl_is_binop_char(c))
 			{
 				init_flx_binop (FLX_BINOP(hcl));
 				FEED_CONTINUE (hcl, HCL_FLX_BINOP);
@@ -2667,7 +2667,7 @@ static int flx_binop (hcl_t* hcl, hcl_ooci_t c) /* identifier */
 {
 	hcl_flx_binop_t* binop = FLX_BINOP(hcl);
 
-	if (is_binopchar(c))
+	if (hcl_is_binop_char(c))
 	{
 		ADD_TOKEN_CHAR (hcl, c);
 		goto consumed;

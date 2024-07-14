@@ -1429,7 +1429,12 @@ static int collect_vardcl_for_class (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t**
 
 		if (HCL_CNODE_IS_CONS_CONCODED(var, HCL_CONCODE_TUPLE)) /* [ ... ] */
 		{
-			if (enclosed) goto synerr_varname;
+			if (enclosed)
+			{
+			synerr_varname:
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "not variable name");
+				return -1;
+			}
 			enclosed = 1;
 			dcl_saved = dcl;
 			dcl = var;
@@ -1442,12 +1447,9 @@ static int collect_vardcl_for_class (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t**
 			goto next;
 		}
 
-		if (!HCL_CNODE_IS_SYMBOL_PLAIN(var))
-		{
-		synerr_varname:
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "not variable name");
-			return -1;
-		}
+		/* this check isn't needed as the reader guarantees this condition.
+		if (!HCL_CNODE_IS_SYMBOL_PLAIN(var) || HCL_CNODE_IS_SYMBOL_PLAIN_BINOP(var)) goto synerr_varname;*/
+		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_PLAIN(var) && !HCL_CNODE_IS_SYMBOL_PLAIN_BINOP(var));
 
 		checkpoint = hcl->c->tv.s.len;
 		n = add_temporary_variable(hcl, HCL_CNODE_GET_TOK(var), tv_slen_saved);
