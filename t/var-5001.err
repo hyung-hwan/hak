@@ -44,7 +44,7 @@ class A [ [ [a] ] ] { ##ERROR: syntax error - not variable name
 }
 
 ---
-class A [ a + ] { ##ERROR: syntax error - prohibited binary operator - +
+class A [ a + ] { ##ERROR: syntax error - invalid name - not symbol in tuple - +
 }
 
 ---

@@ -905,10 +905,13 @@ static HCL_INLINE int can_binop_list (hcl_t* hcl)
 
 	HCL_ASSERT (hcl, hcl->c->r.st != HCL_NULL);
 	rstl = hcl->c->r.st;
+	cc = (hcl_concode_t)LIST_FLAG_GET_CONCODE(rstl->flagv);
 
-	if (rstl->count <= 0)
+	if (rstl->count <= 0 || cc == HCL_CONCODE_TUPLE)
 	{
-		/* allowed but it must be treated like a normal identifier */
+		/* allowed but it must be treated like a normal identifier.
+		 * in case of the tuple, chain_to_list() rejects binop symbols.
+		 * so let this routine to allow it as a normal indentifier. */
 		return 1;
 	}
 
@@ -916,8 +919,6 @@ static HCL_INLINE int can_binop_list (hcl_t* hcl)
 
 	/* repeated delimiters - e.g (a ++ ++ ...)   (a : := ... )  */
 	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED)) return 0;
-
-	cc = (hcl_concode_t)LIST_FLAG_GET_CONCODE(rstl->flagv);
 
 	/* assignment only in XLIST */
 	if (cc != HCL_CONCODE_XLIST) return 0;
