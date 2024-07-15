@@ -1631,6 +1631,7 @@ enum
 {
 	COP_COMPILE_OBJECT,
 	COP_COMPILE_OBJECT_R,
+	COP_COMPILE_SYMBOL_LITERAL,
 
 	COP_COMPILE_ARGUMENT_LIST,
 	COP_COMPILE_OBJECT_LIST,
@@ -2548,7 +2549,7 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src, int defclass)
 		if (obj && HCL_CNODE_IS_CONS(obj))
 		{
 			class_name = HCL_CNODE_CONS_CAR(obj);
-			if (HCL_CNODE_IS_SYMBOL(class_name))
+			if (HCL_CNODE_IS_SYMBOL_PLAIN(class_name))
 			{
 				/* to handle 'class' in place of 'defclass' */
 				defclass = 1;
@@ -2561,40 +2562,35 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src, int defclass)
 
 	if (obj)
 	{
-		hcl_cnode_t* tmp, * dcl;
+		hcl_cnode_t* marker, * tmp, * dcl;
 
-		tmp = HCL_CNODE_CONS_CAR(obj);
-		if (/*!HCL_CNODE_IS_COLON(tmp)*/!HCL_CNODE_IS_DBLCOLONS(tmp)) goto no_superclass;
+		marker = HCL_CNODE_CONS_CAR(obj);
+		if (/*!HCL_CNODE_IS_COLON(marker)*/!HCL_CNODE_IS_DBLCOLONS(marker)) goto no_superclass;
 
 		tmp = obj;
 		obj = HCL_CNODE_CONS_CDR(obj);
 		if (!obj || !HCL_CNODE_IS_CONS(obj))
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_EOX, HCL_CNODE_GET_LOC(tmp), HCL_NULL, "no expression or declaration after triple colons");
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_EOX, HCL_CNODE_GET_LOC(tmp), HCL_NULL, "no expression or declaration after double colons");
 			return -1;
-		}
-
-		/* if the tricolons symbol is followed by a variable declaration list,
-		 * there is no superclass */
-		dcl = HCL_CNODE_CONS_CAR(obj);
-		if (HCL_CNODE_IS_CONS_CONCODED(dcl, HCL_CONCODE_VLIST))
-		{
-			obj = tmp; /* rewind to the cons cell of the triple colons */
-			goto no_superclass;
 		}
 
 		/* superclass part */
 		tmp = HCL_CNODE_CONS_CAR(obj);
+		if (!HCL_CNODE_IS_SYMBOL_PLAIN(tmp)) {
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(tmp), HCL_NULL, "no valid superclass name found after %.*js", HCL_CNODE_GET_TOKLEN(marker), HCL_CNODE_GET_TOKPTR(marker));
+			return -1;
+		}
 		SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, tmp); /* 1 - superclass expression */
 
-		PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_P2, class_name); /* 3 - class name */
+		PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_P2, class_name); /* 4 - class name */
 		cf = GET_SUBCFRAME(hcl);
 		cf->u._class.nsuperclasses = 0; /* unsed for CLASS_P2 */
 		cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
 		cf->u._class.cmd_cnode = cmd;
 
 		obj = HCL_CNODE_CONS_CDR(obj);
-		PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_P1, obj); /* 2 - variables declaraions and actual body */
+		PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_P1, obj); /* 3 - variables declaraions and actual body */
 		cf = GET_SUBCFRAME(hcl);
 		cf->u._class.nsuperclasses = 1; /* this one needs to change if we support multiple superclasses... */
 		cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
@@ -2609,12 +2605,17 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src, int defclass)
 		cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
 		cf->u._class.cmd_cnode = cmd;
 
-		PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_P2, class_name); /* 2 */
+		PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_P2, class_name); /* 3 */
 		cf = GET_SUBCFRAME(hcl);
 		cf->u._class.nsuperclasses = 0; /* unsed for CLASS_P2 */
 		cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
 		cf->u._class.cmd_cnode = cmd;
 	}
+
+	if (class_name)
+		PUSH_SUBCFRAME (hcl, COP_COMPILE_SYMBOL_LITERAL, class_name); /* 2 - class name */
+	else
+		PUSH_SUBCFRAME (hcl, COP_COMPILE_OBJECT, hcl->_nil); /* 2 - push nil for class name */
 
 	return 0;
 }
@@ -2792,15 +2793,15 @@ static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 		cf->u.set.mode = VAR_ACCESS_STORE;
 	#endif
 
-#if 0
+	#if 0
 		PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_P3, cf->operand);
-#endif
+	#endif
 	}
 	else
 	{
-#if 0
+	#if 0
 		SWITCH_TOP_CFRAME (hcl, COP_COMPILE_CLASS_P3, cf->operand);
-#endif
+	#endif
 		POP_CFRAME (hcl);
 	}
 
@@ -4600,6 +4601,29 @@ static hcl_oop_t string_to_fpdec (hcl_t* hcl, hcl_oocs_t* str, const hcl_loc_t* 
 	return hcl_makefpdec(hcl, v, scale);
 }
 
+static int compile_symbol_literal (hcl_t* hcl)
+{
+	hcl_cframe_t* cf;
+	hcl_cnode_t* oprnd;
+	hcl_oop_t lit;
+
+	cf = GET_TOP_CFRAME(hcl);
+	HCL_ASSERT (hcl, cf->opcode == COP_COMPILE_SYMBOL_LITERAL);
+	HCL_ASSERT (hcl, cf->operand != HCL_NULL);
+
+	oprnd = cf->operand;
+	HCL_ASSERT (hcl, HCL_CNODE_GET_TYPE(oprnd) == HCL_CNODE_SYMBOL);
+
+	/* treat a symbol as a string */
+	/* TODO: do i need to create a symbol literal like smalltalk? */
+	lit = hcl_makestring(hcl, HCL_CNODE_GET_TOKPTR(oprnd), HCL_CNODE_GET_TOKLEN(oprnd), 0);
+	if (HCL_UNLIKELY(!lit)) return -1;
+
+	if (emit_push_literal(hcl, lit, HCL_CNODE_GET_LOC(oprnd)) <= -1) return -1;
+	POP_CFRAME (hcl);
+	return 0;
+}
+
 static int compile_object (hcl_t* hcl)
 {
 	hcl_cframe_t* cf;
@@ -6090,6 +6114,10 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 
 			case COP_COMPILE_OBJECT_R:
 				if (compile_object_r(hcl) <= -1) goto oops;
+				break;
+
+			case COP_COMPILE_SYMBOL_LITERAL:
+				if (compile_symbol_literal(hcl) <= -1) goto oops;
 				break;
 
 			case COP_COMPILE_ARGUMENT_LIST:

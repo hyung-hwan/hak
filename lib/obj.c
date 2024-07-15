@@ -461,10 +461,11 @@ hcl_oop_t hcl_makefpdec (hcl_t* hcl, hcl_oop_t value, hcl_ooi_t scale)
 	return (hcl_oop_t)f;
 }
 
-hcl_oop_t hcl_makeclass (hcl_t* hcl, hcl_oop_t superclass, hcl_ooi_t nivars, hcl_ooi_t ncvars, hcl_oop_t ivars_str, hcl_oop_t cvars_str)
+hcl_oop_t hcl_makeclass (hcl_t* hcl, hcl_oop_t class_name, hcl_oop_t superclass, hcl_ooi_t nivars, hcl_ooi_t ncvars, hcl_oop_t ivars_str, hcl_oop_t cvars_str)
 {
 	hcl_oop_class_t c;
 
+	hcl_pushvolat (hcl, &class_name);
 	hcl_pushvolat (hcl, &superclass);
 	hcl_pushvolat (hcl, &ivars_str);
 	hcl_pushvolat (hcl, &cvars_str);
@@ -473,7 +474,7 @@ hcl_oop_t hcl_makeclass (hcl_t* hcl, hcl_oop_t superclass, hcl_ooi_t nivars, hcl
 #else
 	c = (hcl_oop_class_t)hcl_instantiate(hcl, hcl->c_class, HCL_NULL, ncvars);
 #endif
-	hcl_popvolats (hcl, 3);
+	hcl_popvolats (hcl, 4);
 	if (HCL_UNLIKELY(!c))
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
@@ -484,6 +485,7 @@ hcl_oop_t hcl_makeclass (hcl_t* hcl, hcl_oop_t superclass, hcl_ooi_t nivars, hcl
 
 	c->spec = HCL_SMOOI_TO_OOP(0); /* TODO: fix this - encode nivars and nivars_super to spec??? */
 	c->selfspec = HCL_SMOOI_TO_OOP(0); /* TODO: fix  this - encode ncvars to selfspec??? */
+	c->name = class_name;
 	c->superclass = superclass;
 	c->nivars = HCL_SMOOI_TO_OOP(nivars);
 	c->ncvars = HCL_SMOOI_TO_OOP(ncvars);

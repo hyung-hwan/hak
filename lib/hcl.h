@@ -2893,6 +2893,7 @@ HCL_EXPORT hcl_oop_t hcl_makedic (
 
 HCL_EXPORT hcl_oop_t hcl_makeclass (
 	hcl_t*            hcl,
+	hcl_oop_t         name,
 	hcl_oop_t         superclass,
 	hcl_ooi_t         nivars,
 	hcl_ooi_t         ncvars,

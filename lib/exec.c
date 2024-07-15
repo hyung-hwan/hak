@@ -3833,11 +3833,12 @@ static int execute (hcl_t* hcl)
 			case HCL_CODE_CLASS_ENTER:
 			{
 				/* push superclass
-				   push ivars
-				   push cvars
+				   push class_name
+				   push ivars_string
+				   push cvars_string
 				   class_enter nsuperclasses nivars ncvars
 				 */
-				hcl_oop_t t, superclass, ivars_str, cvars_str;
+				hcl_oop_t t, superclass, ivars_str, cvars_str, class_name;
 				hcl_oow_t b3;
 
 				FETCH_PARAM_CODE_TO (hcl, b1); /* nsuperclasses */
@@ -3860,6 +3861,9 @@ static int execute (hcl_t* hcl)
 				}
 				else ivars_str = hcl->_nil;
 
+				HCL_STACK_POP_TO(hcl, class_name);
+				HCL_ASSERT (hcl, HCL_IS_NIL(hcl, class_name) || HCL_IS_STRING(hcl, class_name));
+
 				if (b1 > 0)
 				{
 					HCL_STACK_POP_TO (hcl, superclass); /* TODO: support more than 1 superclass later when the compiler supports more */
@@ -3872,7 +3876,7 @@ static int execute (hcl_t* hcl)
  				}
 				else superclass = hcl->_nil;
 
-				t = hcl_makeclass(hcl, superclass, b2, b3, ivars_str, cvars_str); /* TOOD: pass variable information... */
+				t = hcl_makeclass(hcl, class_name, superclass, b2, b3, ivars_str, cvars_str); /* TOOD: pass variable information... */
 				if (HCL_UNLIKELY(!t)) goto oops_with_errmsg_supplement;
 
 				/* push the class created to the class stack. but don't push to the normal operation stack */
