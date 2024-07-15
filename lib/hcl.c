@@ -737,6 +737,7 @@ void hcl_freemem (hcl_t* hcl, void* ptr)
 #if defined(HCL_ENABLE_STATIC_MODULE)
 
 #include "../mod/_arr.h"
+#include "../mod/_core.h"
 #include "../mod/_dic.h"
 #include "../mod/_str.h"
 #include "../mod/_sys.h"
@@ -749,6 +750,7 @@ static struct
 static_modtab[] =
 {
 	{ "arr",      hcl_mod_arr },
+	{ "core",     hcl_mod_core },
 	{ "dic",      hcl_mod_dic },
 	{ "str",      hcl_mod_str },
 	{ "sys",      hcl_mod_sys }

@@ -25,6 +25,10 @@ fun Collection:slice(index count) {
 }
 
 
+fun Class:name() {
+	return (core.class_name self)
+}
+
 
 class String: Array (a b c) {
 }

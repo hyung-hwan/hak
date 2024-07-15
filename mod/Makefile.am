@@ -21,6 +21,7 @@ LIBADD_COMMON =
 noinst_LTLIBRARIES =
 
 noinst_LTLIBRARIES += libhcl-arr.la
+noinst_LTLIBRARIES += libhcl-core.la
 noinst_LTLIBRARIES += libhcl-dic.la
 noinst_LTLIBRARIES += libhcl-str.la
 noinst_LTLIBRARIES += libhcl-sys.la
@@ -37,6 +38,7 @@ pkgmodexecdir = $(libdir)
 pkgmodexec_LTLIBRARIES =
 
 pkgmodexec_LTLIBRARIES += libhcl-arr.la 
+pkgmodexec_LTLIBRARIES += libhcl-core.la
 pkgmodexec_LTLIBRARIES += libhcl-dic.la 
 pkgmodexec_LTLIBRARIES += libhcl-str.la 
 pkgmodexec_LTLIBRARIES += libhcl-sys.la 
@@ -47,22 +49,28 @@ libhcl_arr_la_SOURCES = arr.c _arr.h
 libhcl_arr_la_CPPFLAGS = $(CPPFLAGS_COMMON)
 libhcl_arr_la_CFLAGS = $(CFLAGS_COMMON)
 libhcl_arr_la_LDFLAGS = $(LDFLAGS_COMMON)
-libhcl_arr_la_LIBADD = $(LIBADD_COMMON) 
+libhcl_arr_la_LIBADD = $(LIBADD_COMMON)
+
+libhcl_core_la_SOURCES = core.c _core.h
+libhcl_core_la_CPPFLAGS = $(CPPFLAGS_COMMON)
+libhcl_core_la_CFLAGS = $(CFLAGS_COMMON)
+libhcl_core_la_LDFLAGS = $(LDFLAGS_COMMON)
+libhcl_core_la_LIBADD = $(LIBADD_COMMON)
 
 libhcl_dic_la_SOURCES = dic.c _dic.h
 libhcl_dic_la_CPPFLAGS = $(CPPFLAGS_COMMON)
 libhcl_dic_la_CFLAGS = $(CFLAGS_COMMON)
 libhcl_dic_la_LDFLAGS = $(LDFLAGS_COMMON)
-libhcl_dic_la_LIBADD = $(LIBADD_COMMON) 
+libhcl_dic_la_LIBADD = $(LIBADD_COMMON)
 
 libhcl_str_la_SOURCES = str.c _str.h
 libhcl_str_la_CPPFLAGS = $(CPPFLAGS_COMMON)
 libhcl_str_la_CFLAGS = $(CFLAGS_COMMON)
 libhcl_str_la_LDFLAGS = $(LDFLAGS_COMMON)
-libhcl_str_la_LIBADD = $(LIBADD_COMMON) 
+libhcl_str_la_LIBADD = $(LIBADD_COMMON)
 
 libhcl_sys_la_SOURCES = sys.c _sys.h
 libhcl_sys_la_CPPFLAGS = $(CPPFLAGS_COMMON)
 libhcl_sys_la_CFLAGS = $(CFLAGS_COMMON)
 libhcl_sys_la_LDFLAGS = $(LDFLAGS_COMMON)
-libhcl_sys_la_LIBADD = $(LIBADD_COMMON) 
+libhcl_sys_la_LIBADD = $(LIBADD_COMMON)
