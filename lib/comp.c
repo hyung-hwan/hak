@@ -95,7 +95,7 @@ literals -->
 // the rest must be manipulated with code...
 ------------------------------ */
 
-static int copy_string_to (hcl_t* hcl, const hcl_oocs_t* src, hcl_oocs_t* dst, hcl_oow_t* dstcapa, int append, hcl_ooch_t delim_char)
+int hcl_copy_string_to (hcl_t* hcl, const hcl_oocs_t* src, hcl_oocs_t* dst, hcl_oow_t* dstcapa, int append, hcl_ooch_t delim_char)
 {
 	hcl_oow_t len, pos;
 
@@ -211,7 +211,7 @@ static int add_temporary_variable (hcl_t* hcl, const hcl_oocs_t* name, hcl_oow_t
 		hcl_seterrnum (hcl, HCL_EEXIST);
 		return -1;
 	}
-	x = copy_string_to(hcl, name, &hcl->c->tv.s, &hcl->c->tv.capa, 1, ' ');
+	x = hcl_copy_string_to(hcl, name, &hcl->c->tv.s, &hcl->c->tv.capa, 1, ' ');
 	if (HCL_LIKELY(x >= 0)) hcl->c->tv.wcount++;
 	return x;
 }

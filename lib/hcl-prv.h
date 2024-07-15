@@ -1929,6 +1929,15 @@ int hcl_emitbyteinstruction (
 	hcl_oob_t  bc
 );
 
+int hcl_copy_string_to (
+	hcl_t*            hcl,
+	const hcl_oocs_t* src,
+	hcl_oocs_t*       dst,
+	hcl_oow_t*        dstcapa,
+	int               append,
+	hcl_ooch_t        delim_char
+);
+
 /* ========================================================================= */
 /* cnode.c                                                                   */
 /* ========================================================================= */

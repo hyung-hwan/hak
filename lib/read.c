@@ -245,48 +245,6 @@ int hcl_is_binop_char (hcl_ooci_t c)
 	       c == '<' || c == '>' || c == '=' || c == '@' || c == '|' || c == '~';
 }
 
-/* TODO: remove this use the one in comp.c */
-static int copy_string_to (hcl_t* hcl, const hcl_oocs_t* src, hcl_oocs_t* dst, hcl_oow_t* dst_capa, int append, hcl_ooch_t add_delim)
-{
-	hcl_oow_t len, pos;
-
-	if (append)
-	{
-		pos = dst->len;
-		len = dst->len + src->len;
-		if (add_delim != '\0') len++;
-	}
-	else
-	{
-		pos = 0;
-		len = src->len;
-	}
-
-	if (len > *dst_capa)
-	{
-		hcl_ooch_t* tmp;
-		hcl_oow_t capa;
-
-		capa = HCL_ALIGN(len, BUFFER_ALIGN);
-
-		tmp = (hcl_ooch_t*)hcl_reallocmem(hcl, dst->ptr, HCL_SIZEOF(*tmp) * capa);
-		if (HCL_UNLIKELY(!tmp))
-		{
-			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-			hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "failed to grow token buffer - %js", orgmsg);
-			return -1;
-		}
-
-		dst->ptr = tmp;
-		*dst_capa = capa;
-	}
-
-	if (append && add_delim) dst->ptr[pos++] = add_delim;
-	hcl_copy_oochars (&dst->ptr[pos], src->ptr, src->len);
-	dst->len = len;
-	return 0;
-}
-
 /* TODO: remove GET_CHAR(), GET_CHAR_TO(), get_char(), _get_char() */
 #define GET_CHAR(hcl) \
 	do { if (get_char(hcl) <= -1) return -1; } while (0)
@@ -322,7 +280,7 @@ static HCL_INLINE int add_token_str (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_
 	hcl_oocs_t tmp;
 	tmp.ptr = (hcl_ooch_t*)ptr;
 	tmp.len = len;
-	return copy_string_to(hcl, &tmp, TOKEN_NAME(hcl), &TOKEN_NAME_CAPA(hcl), 1, '\0');
+	return hcl_copy_string_to(hcl, &tmp, TOKEN_NAME(hcl), &TOKEN_NAME_CAPA(hcl), 1, '\0');
 }
 
 static HCL_INLINE int does_token_name_match (hcl_t* hcl, voca_id_t id)
@@ -337,7 +295,7 @@ static HCL_INLINE int add_token_char (hcl_t* hcl, hcl_ooch_t c)
 
 	tmp.ptr = &c;
 	tmp.len = 1;
-	return copy_string_to(hcl, &tmp, TOKEN_NAME(hcl), &TOKEN_NAME_CAPA(hcl), 1, '\0');
+	return hcl_copy_string_to(hcl, &tmp, TOKEN_NAME(hcl), &TOKEN_NAME_CAPA(hcl), 1, '\0');
 }
 
 static HCL_INLINE void unget_char (hcl_t* hcl, const hcl_lxc_t* c)
