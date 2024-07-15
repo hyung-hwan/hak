@@ -2577,7 +2577,8 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src, int defclass)
 
 		/* superclass part */
 		tmp = HCL_CNODE_CONS_CAR(obj);
-		if (!HCL_CNODE_IS_SYMBOL_PLAIN(tmp)) {
+		if (!HCL_CNODE_IS_SYMBOL_PLAIN(tmp))
+		{
 			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(tmp), HCL_NULL, "no valid superclass name found after %.*js", HCL_CNODE_GET_TOKLEN(marker), HCL_CNODE_GET_TOKPTR(marker));
 			return -1;
 		}
@@ -2595,27 +2596,27 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src, int defclass)
 		cf->u._class.nsuperclasses = 1; /* this one needs to change if we support multiple superclasses... */
 		cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
 		cf->u._class.cmd_cnode = cmd;
+
+		PUSH_SUBCFRAME (hcl, COP_COMPILE_SYMBOL_LITERAL, class_name); /* 2 - class name */
 	}
 	else
 	{
 	no_superclass:
-		SWITCH_TOP_CFRAME(hcl, COP_COMPILE_CLASS_P1, obj); /* 1 */
-		cf = GET_TOP_CFRAME(hcl);
-		cf->u._class.nsuperclasses = 0; /* this one needs to change if we support multiple superclasses... */
-		cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
-		cf->u._class.cmd_cnode = cmd;
+		SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, &hcl->c->fake_cnode.nil); /* 1 - push nil for class name */
 
 		PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_P2, class_name); /* 3 */
 		cf = GET_SUBCFRAME(hcl);
 		cf->u._class.nsuperclasses = 0; /* unsed for CLASS_P2 */
 		cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
 		cf->u._class.cmd_cnode = cmd;
+
+		PUSH_SUBCFRAME(hcl, COP_COMPILE_CLASS_P1, obj); /* 2 */
+		cf = GET_TOP_CFRAME(hcl);
+		cf->u._class.nsuperclasses = 0; /* this one needs to change if we support multiple superclasses... */
+		cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
+		cf->u._class.cmd_cnode = cmd;
 	}
 
-	if (class_name)
-		PUSH_SUBCFRAME (hcl, COP_COMPILE_SYMBOL_LITERAL, class_name); /* 2 - class name */
-	else
-		PUSH_SUBCFRAME (hcl, COP_COMPILE_OBJECT, hcl->_nil); /* 2 - push nil for class name */
 
 	return 0;
 }
