@@ -141,8 +141,9 @@ enum hcl_synerrnum_t
 	HCL_SYNERR_TRPCOLONSBANNED, /* ::: disallowed */
 	HCL_SYNERR_LOOPFLOOD,     /* loop body too big */
 	HCL_SYNERR_IFFLOOD,       /* if body too big */
-	HCL_SYNERR_BLKFLOOD,      /* lambda block too big */
-	HCL_SYNERR_BLKDEPTH,      /* lambda block too deep */
+	HCL_SYNERR_BLKFLOOD,      /* block too big */
+	HCL_SYNERR_BLKDEPTH,      /* block too deep */
+	HCL_SYNERR_NAME,          /* name expected */
 	HCL_SYNERR_ARGNAMELIST,   /* argument name list expected */
 	HCL_SYNERR_ARGNAME,       /* argument name expected */
 	HCL_SYNERR_ARGNAMEDUP,    /* duplicate argument name  */

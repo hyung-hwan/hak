@@ -2497,9 +2497,10 @@ static HCL_INLINE int compile_else (hcl_t* hcl)
 
 static int compile_class (hcl_t* hcl, hcl_cnode_t* src, int defclass)
 {
-	hcl_cnode_t* cmd, * obj;
-	hcl_cnode_t* class_name;
 	hcl_cframe_t* cf;
+	hcl_cnode_t* cmd, * obj, * tmp;
+	hcl_cnode_t* class_name, * superclass;
+	int nsuperclasses;
 
 	cmd = HCL_CNODE_CONS_CAR(src);
 	obj = HCL_CNODE_CONS_CDR(src);
@@ -2512,7 +2513,7 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src, int defclass)
 	class_as_defclass:
 		if (!obj)
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMELIST, HCL_CNODE_GET_LOC(src), HCL_NULL, "no name in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_NAME, HCL_CNODE_GET_LOC(src), HCL_NULL, "no class name in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 			return -1;
 		}
 		else if (!HCL_CNODE_IS_CONS(obj))
@@ -2538,8 +2539,6 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src, int defclass)
 			return -1;
 		}
 
-/* TODO: check if a class name is one of the kernel classes. arrange to emit CLASS_LOAD instead of CLASS_ENTER */
-
 		obj = HCL_CNODE_CONS_CDR(obj);
 	}
 	else
@@ -2560,64 +2559,64 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src, int defclass)
 		class_name = HCL_NULL;
 	}
 
-	if (obj)
+	if (!obj)
 	{
-		hcl_cnode_t* marker, * tmp, * dcl;
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_BLOCK, HCL_CNODE_GET_LOC(src), HCL_NULL, "no class body", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		return -1;
+	}
 
-		marker = HCL_CNODE_CONS_CAR(obj);
-		if (/*!HCL_CNODE_IS_COLON(marker)*/!HCL_CNODE_IS_DBLCOLONS(marker)) goto no_superclass;
+	tmp = HCL_CNODE_CONS_CAR(obj);
+	if (/*HCL_CNODE_IS_COLON(tmp) || */HCL_CNODE_IS_DBLCOLONS(tmp))
+	{
+		hcl_cnode_t* marker;
 
-		tmp = obj;
+		marker = tmp;
 		obj = HCL_CNODE_CONS_CDR(obj);
 		if (!obj || !HCL_CNODE_IS_CONS(obj))
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_EOX, HCL_CNODE_GET_LOC(tmp), HCL_NULL, "no expression or declaration after double colons");
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_EOX, HCL_CNODE_GET_LOC(marker), HCL_NULL,
+				"no expression or declaration after %.*js", HCL_CNODE_GET_TOKLEN(marker), HCL_CNODE_GET_TOKPTR(marker));
 			return -1;
 		}
 
 		/* superclass part */
-		tmp = HCL_CNODE_CONS_CAR(obj);
-		if (!HCL_CNODE_IS_SYMBOL_PLAIN(tmp))
+		superclass = HCL_CNODE_CONS_CAR(obj);
+		if (!HCL_CNODE_IS_SYMBOL_PLAIN(superclass))
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(tmp), HCL_NULL, "no valid superclass name found after %.*js", HCL_CNODE_GET_TOKLEN(marker), HCL_CNODE_GET_TOKPTR(marker));
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_NAME, HCL_CNODE_GET_LOC(marker), HCL_NULL,
+				"no valid superclass name found after %.*js", HCL_CNODE_GET_TOKLEN(marker), HCL_CNODE_GET_TOKPTR(marker));
 			return -1;
 		}
-		SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, tmp); /* 1 - superclass expression */
 
-		PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_P2, class_name); /* 4 - class name */
-		cf = GET_SUBCFRAME(hcl);
-		cf->u._class.nsuperclasses = 0; /* unsed for CLASS_P2 */
-		cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
-		cf->u._class.cmd_cnode = cmd;
+	//SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, tmp); /* 1 - superclass expression */
+		nsuperclasses = 1;
 
 		obj = HCL_CNODE_CONS_CDR(obj);
-		PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_P1, obj); /* 3 - variables declaraions and actual body */
-		cf = GET_SUBCFRAME(hcl);
-		cf->u._class.nsuperclasses = 1; /* this one needs to change if we support multiple superclasses... */
-		cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
-		cf->u._class.cmd_cnode = cmd;
-
-		PUSH_SUBCFRAME (hcl, COP_COMPILE_SYMBOL_LITERAL, class_name); /* 2 - class name */
 	}
 	else
 	{
-	no_superclass:
-		SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, &hcl->c->fake_cnode.nil); /* 1 - push nil for class name */
-
-		PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_P2, class_name); /* 3 */
-		cf = GET_SUBCFRAME(hcl);
-		cf->u._class.nsuperclasses = 0; /* unsed for CLASS_P2 */
-		cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
-		cf->u._class.cmd_cnode = cmd;
-
-		PUSH_SUBCFRAME(hcl, COP_COMPILE_CLASS_P1, obj); /* 2 */
-		cf = GET_TOP_CFRAME(hcl);
-		cf->u._class.nsuperclasses = 0; /* this one needs to change if we support multiple superclasses... */
-		cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
-		cf->u._class.cmd_cnode = cmd;
+		nsuperclasses = 0;
+		superclass = HCL_NULL;
 	}
 
+	if (class_name)
+		SWITCH_TOP_CFRAME (hcl, COP_COMPILE_SYMBOL_LITERAL, class_name); /* 1 - push nil for class name */
+	else
+		SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, &hcl->c->fake_cnode.nil); /* 1 - push nil for class name */
 
+	PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_P2, class_name); /* 3 - use class name for assignment */
+	cf = GET_SUBCFRAME(hcl);
+	cf->u._class.nsuperclasses = 0; /* unsed for CLASS_P2 */
+	cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
+	cf->u._class.cmd_cnode = cmd;
+
+	PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_P1, obj); /* 2 - variables declaraions and actual body */
+	cf = GET_SUBCFRAME(hcl);
+	cf->u._class.nsuperclasses = nsuperclasses; /* this needs to change if we support multiple superclasses... */
+	cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
+	cf->u._class.cmd_cnode = cmd;
+
+	if (superclass) PUSH_CFRAME (hcl, COP_COMPILE_OBJECT, superclass); /* 0 - superclass expression */
 	return 0;
 }
 
@@ -4617,7 +4616,7 @@ static int compile_symbol_literal (hcl_t* hcl)
 
 	/* treat a symbol as a string */
 	/* TODO: do i need to create a symbol literal like smalltalk? */
-	lit = hcl_makestring(hcl, HCL_CNODE_GET_TOKPTR(oprnd), HCL_CNODE_GET_TOKLEN(oprnd), 0);
+	lit = hcl_makesymbol(hcl, HCL_CNODE_GET_TOKPTR(oprnd), HCL_CNODE_GET_TOKLEN(oprnd));
 	if (HCL_UNLIKELY(!lit)) return -1;
 
 	if (emit_push_literal(hcl, lit, HCL_CNODE_GET_LOC(oprnd)) <= -1) return -1;

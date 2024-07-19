@@ -33,10 +33,15 @@ static hcl_pfrc_t pf_core_get_class_name (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t 
 
 	obj = (hcl_oop_oop_t)HCL_STACK_GETARG(hcl, nargs, 0);
 
-	if (!HCL_IS_CLASS(hcl,obj))
+	if (!HCL_IS_CLASS(hcl, obj))
 	{
+	#if 0
 		hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not a class - %O", obj);
 		return HCL_PF_FAILURE;
+	#else
+		obj = (hcl_oop_oop_t)HCL_CLASSOF(hcl, obj);
+		HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, obj));
+	#endif
 	}
 
 	HCL_STACK_SETRET (hcl, nargs, ((hcl_oop_class_t)obj)->name);

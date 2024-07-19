@@ -692,14 +692,31 @@ next:
 			goto print_word;
 
 		case HCL_BRAND_CLASS:
-			/* TODO: print the class name */
-			word_index = WORD_CLASS;
-			goto print_word;
+		{
+			hcl_oop_class_t _class = (hcl_oop_class_t)obj;
+			if (HCL_IS_NIL(hcl, _class->name))
+			{
+				word_index = WORD_CLASS;
+				goto print_word;
+			}
+			HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl, _class->name));
+			if (hcl_bfmt_out(hcl, fmtout, "%.*js", HCL_OBJ_GET_SIZE(_class->name), HCL_OBJ_GET_CHAR_SLOT(_class->name)) <= -1) return -1;
+			break;
+		}
 
 		case HCL_BRAND_INSTANCE:
-			/* TODO: print the class name also */
-			word_index = WORD_INSTANCE;
-			goto print_word;
+		{
+			hcl_oop_class_t _class = (hcl_oop_class_t)HCL_CLASSOF(hcl, obj);
+			HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, _class));
+			if (HCL_IS_NIL(hcl, _class->name))
+			{
+				word_index = WORD_INSTANCE;
+				goto print_word;
+			}
+			HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl, _class->name));
+			if (hcl_bfmt_out(hcl, fmtout, "#INSTANCE OF %.*js", HCL_OBJ_GET_SIZE(_class->name), HCL_OBJ_GET_CHAR_SLOT(_class->name)) <= -1) return -1;
+			break;
+		}
 
 		default:
 			HCL_DEBUG3 (hcl, "Internal error - unknown object type %d at %s:%d\n", (int)brand, __FILE__, __LINE__);

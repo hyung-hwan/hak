@@ -95,7 +95,7 @@ static hcl_oop_oop_t expand_bucket (hcl_t* hcl, hcl_oop_oop_t oldbuc)
 	return newbuc;
 }
 
-static hcl_oop_cons_t find_or_upsert (hcl_t* hcl, hcl_oop_dic_t dic, hcl_oop_t key, hcl_oop_t value)
+static hcl_oop_cons_t find_or_upsert (hcl_t* hcl, hcl_oop_dic_t dic, hcl_oop_t key, hcl_oop_t value, int is_method)
 {
 	hcl_ooi_t tally;
 	hcl_oow_t index;
@@ -120,33 +120,42 @@ static hcl_oop_cons_t find_or_upsert (hcl_t* hcl, hcl_oop_dic_t dic, hcl_oop_t k
 	/* find */
 	while (dic->bucket->slot[index] != hcl->_nil)
 	{
-	#if defined(SYMBOL_ONLY_KEY)
+#if defined(SYMBOL_ONLY_KEY)
+		/* nothing */
+#else
+		int n;
+#endif
+
 		ass = (hcl_oop_cons_t)dic->bucket->slot[index];
 		HCL_ASSERT (hcl, HCL_IS_CONS(hcl,ass));
-		HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl,ass->car));
 
+#if defined(SYMBOL_ONLY_KEY)
+		HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl,ass->car));
 		if (HCL_OBJ_GET_SIZE(key) == HCL_OBJ_GET_SIZE(ass->car) &&
 		    hcl_equal_oochars(HCL_OBJ_GET_CHAR_SLOT(key), HCL_OBJ_GET_CHAR_SLOT(ass->car), HCL_OBJ_GET_SIZE(key)))
-		{
-			/* the value of HCL_NULL indicates no insertion or update. */
-			if (value) ass->cdr = value; /* update */
-			return ass;
-		}
-	#else
-		int n;
-
-		ass = (hcl_oop_cons_t)dic->bucket->slot[index];
-		HCL_ASSERT (hcl, HCL_IS_CONS(hcl,ass));
-
+#else
 		n = hcl_equalobjs(hcl, key, ass->car);
 		if (n <= -1) return HCL_NULL;
 		if (n >= 1)
+#endif
 		{
 			/* the value of HCL_NULL indicates no insertion or update. */
-			if (value) ass->cdr = value; /* update */
+			if (value)
+			{
+				if (is_method)
+				{
+					HCL_ASSERT (hcl, HCL_IS_CONS(hcl, ass->cdr));
+					HCL_ASSERT (hcl, HCL_IS_BLOCK(hcl, value));
+					if (is_method & 1) ((hcl_oop_cons_t)(ass->cdr))->car = value; /* class method */
+					if (is_method & 2) ((hcl_oop_cons_t)(ass->cdr))->cdr = value; /* instance method */
+					/* the class instantiation method goes to both cells.
+					 * you can't define a class method or an instance method with the name of
+					 * a class instantiation method */
+				}
+				else ass->cdr = value; /* normal update */
+			}
 			return ass;
 		}
-	#endif
 
 		index = (index + 1) % HCL_OBJ_GET_SIZE(dic->bucket);
 	}
@@ -195,22 +204,33 @@ static hcl_oop_cons_t find_or_upsert (hcl_t* hcl, hcl_oop_dic_t dic, hcl_oop_t k
 
 		dic->bucket = bucket;
 
-	#if defined(SYMBOL_ONLY_KEY)
+#if defined(SYMBOL_ONLY_KEY)
 		/* recalculate the index for the expanded bucket */
 		index = hcl_hash_oochars(HCL_OBJ_GET_CHAR_SLOT(key), HCL_OBJ_GET_SIZE(key)) % HCL_OBJ_GET_SIZE(dic->bucket);
-	#else
+#else
 		hcl_hashobj(hcl, key, &index); /* this must succeed as i know 'key' is hashable */
 		index %= HCL_OBJ_GET_SIZE(dic->bucket);
-	#endif
-
+#endif
 		while (dic->bucket->slot[index] != hcl->_nil)
 			index = (index + 1) % HCL_OBJ_GET_SIZE(dic->bucket);
+	}
+
+	if (is_method)
+	{
+		/* create a new association that holds a class method at the first cell and an instance method at the second cell */
+		hcl_oop_t newval;
+		HCL_ASSERT (hcl, HCL_IS_BLOCK(hcl, value));
+		hcl_pushvolat (hcl, &key);
+		newval = hcl_makecons(hcl, (is_method & 1? value: hcl->_nil), (is_method & 2? value: hcl->_nil));
+		hcl_popvolat (hcl);
+		if (HCL_UNLIKELY(!newval)) goto oops;
+		value = newval;
 	}
 
 	/* create a new assocation of a key and a value since
 	 * the key isn't found in the root dictionary */
 	ass = (hcl_oop_cons_t)hcl_makecons(hcl, (hcl_oop_t)key, value);
-	if (!ass) goto oops;
+	if (HCL_UNLIKELY(!ass)) goto oops;
 
 	/* the current tally must be less than the maximum value. otherwise,
 	 * it overflows after increment below */
@@ -288,7 +308,7 @@ hcl_oop_cons_t hcl_putatsysdic (hcl_t* hcl, hcl_oop_t key, hcl_oop_t value)
 #if defined(SYMBOL_ONLY_KEY)
 	HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl,key));
 #endif
-	return find_or_upsert(hcl, hcl->sysdic, key, value);
+	return find_or_upsert(hcl, hcl->sysdic, key, value, 0);
 }
 
 hcl_oop_cons_t hcl_getatsysdic (hcl_t* hcl, hcl_oop_t key)
@@ -296,7 +316,7 @@ hcl_oop_cons_t hcl_getatsysdic (hcl_t* hcl, hcl_oop_t key)
 #if defined(SYMBOL_ONLY_KEY)
 	HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl,key));
 #endif
-	return find_or_upsert(hcl, hcl->sysdic, key, HCL_NULL);
+	return find_or_upsert(hcl, hcl->sysdic, key, HCL_NULL, 0);
 }
 
 hcl_oop_cons_t hcl_lookupsysdicforsymbol_noseterr (hcl_t* hcl, const hcl_oocs_t* name)
@@ -322,7 +342,15 @@ hcl_oop_cons_t hcl_putatdic (hcl_t* hcl, hcl_oop_dic_t dic, hcl_oop_t key, hcl_o
 #if defined(SYMBOL_ONLY_KEY)
 	HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl,key));
 #endif
-	return find_or_upsert(hcl, dic, key, value);
+	return find_or_upsert(hcl, dic, key, value, 0);
+}
+
+hcl_oop_cons_t hcl_putatdic_method (hcl_t* hcl, hcl_oop_dic_t dic, hcl_oop_t key, hcl_oop_t value, int mtype)
+{
+#if defined(SYMBOL_ONLY_KEY)
+	HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl,key));
+#endif
+	return find_or_upsert(hcl, dic, key, value, mtype);
 }
 
 hcl_oop_cons_t hcl_getatdic (hcl_t* hcl, hcl_oop_dic_t dic, hcl_oop_t key)
@@ -330,7 +358,7 @@ hcl_oop_cons_t hcl_getatdic (hcl_t* hcl, hcl_oop_dic_t dic, hcl_oop_t key)
 #if defined(SYMBOL_ONLY_KEY)
 	HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl,key));
 #endif
-	return find_or_upsert(hcl, dic, key, HCL_NULL);
+	return find_or_upsert(hcl, dic, key, HCL_NULL, 0);
 }
 
 int hcl_zapatdic (hcl_t* hcl, hcl_oop_dic_t dic, hcl_oop_t key)

@@ -1339,8 +1339,8 @@ enum hcl_bcode_t
 
 	HCL_CODE_PUSH_OBJVAR_X            = 0xE4, /* 228 ## */
 	HCL_CODE_CLASS_CMSTORE            = 0xE5, /* 229 */
-	HCL_CODE_CLASS_CIMSTORE           = 0xE6, /* 230 */
-	HCL_CODE_CLASS_IMSTORE            = 0xE7, /* 231 */
+	HCL_CODE_CLASS_IMSTORE            = 0xE6, /* 230 */
+	HCL_CODE_CLASS_CIMSTORE           = 0xE7, /* 231 */
 
 	HCL_CODE_STORE_INTO_OBJVAR_X      = 0xE8, /* 232 ## */
 	HCL_CODE_MAKE_ARRAY               = 0xE9, /* 233 ## */
@@ -1533,6 +1533,18 @@ hcl_oop_t hcl_findsymbol (
 	hcl_t*             hcl,
 	const hcl_ooch_t*  ptr,
 	hcl_oow_t          len
+);
+
+
+/* ========================================================================= */
+/* dic.c                                                                    */
+/* ========================================================================= */
+hcl_oop_cons_t hcl_putatdic_method (
+	hcl_t*        hcl,
+	hcl_oop_dic_t dic,
+	hcl_oop_t     key,
+	hcl_oop_t     value,
+	int           mtype /* 1 for class method, 2 for instance method */
 );
 
 

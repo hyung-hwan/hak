@@ -2163,7 +2163,6 @@ static hcl_oop_lambda_t find_cmethod_noseterr (hcl_t* hcl, hcl_oop_class_t class
 	{
 		hcl_oop_t dic;
 
-
 		dic = class_->mdic;
 		HCL_ASSERT (hcl, HCL_IS_NIL(hcl, dic) || HCL_IS_DIC(hcl, dic));
 
@@ -3862,7 +3861,7 @@ static int execute (hcl_t* hcl)
 				else ivars_str = hcl->_nil;
 
 				HCL_STACK_POP_TO(hcl, class_name);
-				HCL_ASSERT (hcl, HCL_IS_NIL(hcl, class_name) || HCL_IS_STRING(hcl, class_name));
+				HCL_ASSERT (hcl, HCL_IS_NIL(hcl, class_name) || HCL_IS_SYMBOL(hcl, class_name));
 
 				if (b1 > 0)
 				{
@@ -3875,6 +3874,17 @@ static int execute (hcl_t* hcl)
 					}
  				}
 				else superclass = hcl->_nil;
+
+//////////////
+hcl_logbfmt(hcl, HCL_LOG_STDERR, "class_name in class_enter 111>>>[%O]<<<\n", class_name);
+				if (HCL_IS_SYMBOL(hcl, class_name))
+				{
+hcl_logbfmt(hcl, HCL_LOG_STDERR, "class_name in class_enter >>>[%O]<<<\n", class_name);
+					/* TODO: check if the class exists.
+					 *       check if the class is a incomlete kernel class.
+					 *       if so,  .... */
+				}
+//////////////
 
 				t = hcl_makeclass(hcl, class_name, superclass, b2, b3, ivars_str, cvars_str); /* TOOD: pass variable information... */
 				if (HCL_UNLIKELY(!t)) goto oops_with_errmsg_supplement;
@@ -3914,46 +3924,41 @@ static int execute (hcl_t* hcl)
 			}
 
 			case HCL_CODE_CLASS_CMSTORE:
-			case HCL_CODE_CLASS_CIMSTORE:
 			case HCL_CODE_CLASS_IMSTORE:
+			case HCL_CODE_CLASS_CIMSTORE:
 			{
-				hcl_oop_t class_;
+				hcl_oop_t _class;
 				hcl_oop_t mdic, cons, blk, car, cdr, name;
+				int mtype;
+				static hcl_bch_t* pfx[] = { "c", "i", "ci" };
 
+				mtype = (bcode - HCL_CODE_CLASS_CMSTORE) + 1;
 				FETCH_PARAM_CODE_TO (hcl, b1);
-				LOG_INST_2 (hcl, "class_%hsmstore @%zu", (bcode == HCL_CODE_CLASS_CMSTORE? "c": (bcode == HCL_CODE_CLASS_CIMSTORE? "ci": "i")), b1);
+				LOG_INST_2 (hcl, "class_%hsmstore @%zu", pfx[mtype], b1);
 
 				/* store the stack top in the member dictionary of the currect class with the key indicated by 'b1' */
 
 				HCL_ASSERT (hcl, !HCL_CLSTACK_IS_EMPTY(hcl));
 
-				HCL_CLSTACK_FETCH_TOP_TO (hcl, class_);
-				HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, class_));
+				HCL_CLSTACK_FETCH_TOP_TO (hcl, _class);
+				HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, _class));
 
-				mdic = ((hcl_oop_class_t)class_)->mdic; /* instance-side dictionary */
+				mdic = ((hcl_oop_class_t)_class)->mdic; /* instance-side dictionary */
 				HCL_ASSERT (hcl, HCL_IS_NIL(hcl, mdic) || HCL_IS_DIC(hcl, mdic));
 				if (HCL_IS_NIL(hcl, mdic))
 				{
-					hcl_pushvolat (hcl, (hcl_oop_t*)&class_);
+					hcl_pushvolat (hcl, (hcl_oop_t*)&_class);
 					mdic = hcl_makedic(hcl, 16); /* TODO: configurable initial size? */
 					hcl_popvolat (hcl);
 					if (HCL_UNLIKELY(!mdic)) goto oops_with_errmsg_supplement;
-					((hcl_oop_class_t)class_)->mdic = mdic;
+					((hcl_oop_class_t)_class)->mdic = mdic;
 				}
 
 				blk = HCL_STACK_GETTOP(hcl);
-				hcl_pushvolat (hcl, (hcl_oop_t*)&mdic);
-				/* let car point to the instance method,
-				 * let cdr point to the class method */
-				car = (bcode == HCL_CODE_CLASS_IMSTORE? hcl->_nil: blk);
-				cdr = (bcode == HCL_CODE_CLASS_CMSTORE? hcl->_nil: blk);
-				cons = hcl_makecons(hcl, car, cdr);
-				hcl_popvolat (hcl);
-				if (HCL_UNLIKELY(!cons)) goto oops_with_errmsg_supplement;
-
-				/* put the code at method dictionary */
 				name = hcl->active_function->literal_frame[b1]; /* method name */
-				if (!hcl_putatdic(hcl, (hcl_oop_dic_t)mdic, name, cons)) goto oops_with_errmsg_supplement;
+				/* put the code at method dictionary
+				   pass 1 for class method, 2 for instance method, 3 for class instantiation method */
+				if (!hcl_putatdic_method(hcl, (hcl_oop_dic_t)mdic, name, blk, mtype)) goto oops_with_errmsg_supplement;
 				break;
 			}
 			/* -------------------------------------------------------- */
