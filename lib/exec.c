@@ -2141,56 +2141,6 @@ static HCL_INLINE int call_primitive (hcl_t* hcl, hcl_ooi_t nargs)
 
 /* ------------------------------------------------------------------------- */
 
-static hcl_oop_lambda_t find_cmethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oop_t op_name, int to_super, hcl_ooi_t* ivaroff, hcl_oop_class_t* owner)
-{
-	hcl_oocs_t name;
-
-/* TODO: implement method cache */
-	HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, class_));
-	/*HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl, op_name));*/
-	HCL_ASSERT (hcl, HCL_OBJ_IS_CHAR_POINTER(op_name));
-
-	name.ptr = HCL_OBJ_GET_CHAR_SLOT(op_name);
-	name.len = HCL_OBJ_GET_SIZE(op_name);
-
-	if (to_super)
-	{
-		class_ = (hcl_oop_class_t)class_->superclass;
-		if (!HCL_IS_CLASS(hcl, class_)) return HCL_NULL;
-	}
-
-	do
-	{
-		hcl_oop_t dic;
-
-		dic = class_->mdic;
-		HCL_ASSERT (hcl, HCL_IS_NIL(hcl, dic) || HCL_IS_DIC(hcl, dic));
-
-		if (HCL_LIKELY(!HCL_IS_NIL(hcl, dic)))
-		{
-			hcl_oop_cons_t ass;
-			ass = (hcl_oop_cons_t)hcl_lookupdicforsymbol_noseterr(hcl, (hcl_oop_dic_t)dic, &name);
-			if (HCL_LIKELY(ass))
-			{
-				hcl_oop_t val;
-				val = HCL_CONS_CDR(ass);
-				if (HCL_IS_CONS(hcl, val) && !HCL_IS_NIL(hcl, HCL_CONS_CAR(val)))
-				{
-					/* TODO: further check if it's a method block? */
-					*owner = class_;
-					/* ivaroff isn't useful for a class method but is useful for class instatiation method
-					 * (INSTA bit on in the mask field) */
-					*ivaroff = HCL_OOP_TO_SMOOI(class_->nivars_super);
-					return (hcl_oop_lambda_t)HCL_CONS_CAR(val); /* car - class method, cdr - instance method */
-				}
-			}
-		}
-		class_ = (hcl_oop_class_t)class_->superclass;
-	}
-	while (HCL_IS_CLASS(hcl, class_));
-
-	return HCL_NULL;
-}
 
 static hcl_oop_lambda_t find_imethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oop_t op_name, int to_super, hcl_ooi_t* ivaroff, hcl_oop_class_t* owner)
 {
@@ -2238,6 +2188,60 @@ static hcl_oop_lambda_t find_imethod_noseterr (hcl_t* hcl, hcl_oop_class_t class
 	while (HCL_IS_CLASS(hcl, class_));
 
 	return HCL_NULL;
+}
+
+static hcl_oop_lambda_t find_cmethod_noseterr (hcl_t* hcl, hcl_oop_class_t _class, hcl_oop_t op_name, int to_super, hcl_ooi_t* ivaroff, hcl_oop_class_t* owner)
+{
+	hcl_oocs_t name;
+	hcl_oop_class_t xclass;
+
+/* TODO: implement method cache */
+	HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, _class));
+	/*HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl, op_name));*/
+	HCL_ASSERT (hcl, HCL_OBJ_IS_CHAR_POINTER(op_name));
+
+	name.ptr = HCL_OBJ_GET_CHAR_SLOT(op_name);
+	name.len = HCL_OBJ_GET_SIZE(op_name);
+
+	xclass = _class;
+	if (to_super)
+	{
+		xclass = (hcl_oop_class_t)xclass->superclass;
+		if (!HCL_IS_CLASS(hcl, xclass)) return HCL_NULL;
+	}
+
+	do
+	{
+		hcl_oop_t dic;
+
+		dic = xclass->mdic;
+		HCL_ASSERT (hcl, HCL_IS_NIL(hcl, dic) || HCL_IS_DIC(hcl, dic));
+
+		if (HCL_LIKELY(!HCL_IS_NIL(hcl, dic)))
+		{
+			hcl_oop_cons_t ass;
+			ass = (hcl_oop_cons_t)hcl_lookupdicforsymbol_noseterr(hcl, (hcl_oop_dic_t)dic, &name);
+			if (HCL_LIKELY(ass))
+			{
+				hcl_oop_t val;
+				val = HCL_CONS_CDR(ass);
+				if (HCL_IS_CONS(hcl, val) && !HCL_IS_NIL(hcl, HCL_CONS_CAR(val)))
+				{
+					/* TODO: further check if it's a method block? */
+					*owner = xclass;
+					/* ivaroff isn't useful for a class method but is useful for class instatiation method
+					 * (INSTA bit on in the mask field) */
+					*ivaroff = HCL_OOP_TO_SMOOI(xclass->nivars_super);
+					return (hcl_oop_lambda_t)HCL_CONS_CAR(val); /* car - class method, cdr - instance method */
+				}
+			}
+		}
+		xclass = (hcl_oop_class_t)xclass->superclass;
+	}
+	while (HCL_IS_CLASS(hcl, xclass));
+
+	/* find the instance method of the Class class as a class is an instance of the Class class. */
+	return find_imethod_noseterr(hcl, HCL_CLASSOF(hcl, _class), op_name, 0, ivaroff, owner);
 }
 
 static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t msg, int to_super, hcl_ooi_t nargs, hcl_ooi_t nrvars)
@@ -3876,10 +3880,10 @@ static int execute (hcl_t* hcl)
 				else superclass = hcl->_nil;
 
 //////////////
-hcl_logbfmt(hcl, HCL_LOG_STDERR, "class_name in class_enter 111>>>[%O]<<<\n", class_name);
+//hcl_logbfmt(hcl, HCL_LOG_STDERR, "class_name in class_enter 111>>>[%O]<<<\n", class_name);
 				if (HCL_IS_SYMBOL(hcl, class_name))
 				{
-hcl_logbfmt(hcl, HCL_LOG_STDERR, "class_name in class_enter >>>[%O]<<<\n", class_name);
+//hcl_logbfmt(hcl, HCL_LOG_STDERR, "class_name in class_enter >>>[%O]<<<\n", class_name);
 					/* TODO: check if the class exists.
 					 *       check if the class is a incomlete kernel class.
 					 *       if so,  .... */
