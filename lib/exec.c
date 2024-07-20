@@ -4782,7 +4782,7 @@ hcl_oop_t hcl_execute (hcl_t* hcl)
 	#endif
 	}
 
-	/* create a virtual function object that hold the bytes codes generated plus the literal frame */
+	/* create a virtual function object that holds the byte code generated plus the literal frame */
 	funcobj = make_function(hcl, hcl->code.lit.len, hcl->code.bc.ptr, hcl->code.bc.len, hcl->code.dbgi);
 	if (HCL_UNLIKELY(!funcobj)) return HCL_NULL;
 

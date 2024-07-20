@@ -6035,12 +6035,12 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 	hcl->log.default_type_mask |= HCL_LOG_COMPILER;
 
 	/*
-	 * In the non-INTERACTIVE mode, the literal frame base doesn't matter.
+	 * In the non-INTERACTIVE mode, the literal frame base(lfbase) doesn't matter.
 	 * Only the initial function object contains the literal frame.
 	 * No other function objects are created. All 'defun/fun' defintions are
 	 * translated to block context objects instead.
 	 *
-	 * In the INTERACTIVE mode, the literal frame base plays a key role.
+	 * In the INTERACTIVE mode, the literal frame base(lfbase) plays a key role.
 	 * hcl_compile() is called for the top-level expression and the literal
 	 * frame base can be 0. The means it is ok for a top-level code to
 	 * reference part of the literal frame reserved for a function.
