@@ -579,7 +579,7 @@ typedef struct hcl_function_t* hcl_oop_function_t;
 
 #define HCL_BLOCK_NAMED_INSTVARS 3
 typedef struct hcl_block_t hcl_block_t;
-typedef struct hcl_block_t* hcl_oop_lambda_t;
+typedef struct hcl_block_t* hcl_oop_block_t;
 
 #define HCL_CONTEXT_NAMED_INSTVARS 10
 typedef struct hcl_context_t hcl_context_t;

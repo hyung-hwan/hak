@@ -421,14 +421,14 @@ static HCL_INLINE void fill_function_data (hcl_t* hcl, hcl_oop_function_t func, 
 	func->attr_mask = HCL_SMOOI_TO_OOP(attr_mask);
 }
 
-static HCL_INLINE hcl_oop_lambda_t make_block (hcl_t* hcl)
+static HCL_INLINE hcl_oop_block_t make_block (hcl_t* hcl)
 {
 	/* create a base block used for creation of a block context */
-	/*return (hcl_oop_lambda_t)hcl_allocoopobj(hcl, HCL_BRAND_BLOCK, HCL_BLOCK_NAMED_INSTVARS);*/
+	/*return (hcl_oop_block_t)hcl_allocoopobj(hcl, HCL_BRAND_BLOCK, HCL_BLOCK_NAMED_INSTVARS);*/
 	return (hcl_oop_function_t)hcl_instantiate(hcl, hcl->c_block, HCL_NULL, 0);
 }
 
-static HCL_INLINE void fill_block_data (hcl_t* hcl, hcl_oop_lambda_t blk, hcl_ooi_t attr_mask, hcl_ooi_t ip, hcl_oop_context_t homectx)
+static HCL_INLINE void fill_block_data (hcl_t* hcl, hcl_oop_block_t blk, hcl_ooi_t attr_mask, hcl_ooi_t ip, hcl_oop_context_t homectx)
 {
 	HCL_ASSERT (hcl, attr_mask >= 0 && attr_mask <= HCL_SMOOI_MAX);
 	HCL_ASSERT (hcl, ip >= 0 && ip <= HCL_SMOOI_MAX);
@@ -1892,7 +1892,7 @@ void hcl_releaseiohandle (hcl_t* hcl, hcl_ooi_t io_handle)
 
 /* ------------------------------------------------------------------------- */
 
-static int prepare_new_context (hcl_t* hcl, hcl_oop_lambda_t op_blk, hcl_ooi_t nargs, int nargs_offset, hcl_ooi_t req_nrvars, int copy_args, int is_msgsend, hcl_ooi_t msg_ivaroff, hcl_oop_context_t* pnewctx)
+static int prepare_new_context (hcl_t* hcl, hcl_oop_block_t op_blk, hcl_ooi_t nargs, int nargs_offset, hcl_ooi_t req_nrvars, int copy_args, int is_msgsend, hcl_ooi_t msg_ivaroff, hcl_oop_context_t* pnewctx)
 {
 	/* prepare a new block context for activation.
 	 * the passed block context becomes the base for a new block context. */
@@ -1990,7 +1990,7 @@ static int prepare_new_context (hcl_t* hcl, hcl_oop_lambda_t op_blk, hcl_ooi_t n
 	return 0;
 }
 
-static HCL_INLINE int __activate_block (hcl_t* hcl, hcl_oop_lambda_t op_blk, hcl_ooi_t nargs, hcl_ooi_t nrvars, int is_msgsend, hcl_ooi_t msg_ivaroff, hcl_oop_context_t* pnewctx)
+static HCL_INLINE int __activate_block (hcl_t* hcl, hcl_oop_block_t op_blk, hcl_ooi_t nargs, hcl_ooi_t nrvars, int is_msgsend, hcl_ooi_t msg_ivaroff, hcl_oop_context_t* pnewctx)
 {
 	int x;
 
@@ -2016,11 +2016,11 @@ static HCL_INLINE int __activate_block (hcl_t* hcl, hcl_oop_lambda_t op_blk, hcl
 
 static HCL_INLINE int activate_block (hcl_t* hcl, hcl_ooi_t nargs, hcl_ooi_t nrvars)
 {
-	hcl_oop_lambda_t op_blk;
+	hcl_oop_block_t op_blk;
 	hcl_oop_context_t newctx;
 	int x;
 
-	op_blk = (hcl_oop_lambda_t)HCL_STACK_GETOP(hcl, nargs);
+	op_blk = (hcl_oop_block_t)HCL_STACK_GETOP(hcl, nargs);
 	HCL_ASSERT (hcl, HCL_IS_BLOCK(hcl, op_blk));
 
 	x = __activate_block(hcl, op_blk, nargs, nrvars, 0, 0, &newctx);
@@ -2141,7 +2141,7 @@ static HCL_INLINE int call_primitive (hcl_t* hcl, hcl_ooi_t nargs)
 
 /* ------------------------------------------------------------------------- */
 
-static hcl_oop_lambda_t find_imethod_in_class_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oocs_t* name, hcl_ooi_t* ivaroff, hcl_oop_class_t* owner)
+static hcl_oop_block_t find_imethod_in_class_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oocs_t* name, hcl_ooi_t* ivaroff, hcl_oop_class_t* owner)
 {
 	hcl_oop_t dic;
 
@@ -2162,7 +2162,7 @@ static hcl_oop_lambda_t find_imethod_in_class_noseterr (hcl_t* hcl, hcl_oop_clas
 				/* TODO: further check if it's a method block? */
 				*owner = class_;
 				*ivaroff = HCL_OOP_TO_SMOOI(class_->nivars_super);
-				return (hcl_oop_lambda_t)HCL_CONS_CDR(val); /* car - class method, cdr - instance method */
+				return (hcl_oop_block_t)HCL_CONS_CDR(val); /* car - class method, cdr - instance method */
 			}
 		}
 	}
@@ -2170,7 +2170,7 @@ static hcl_oop_lambda_t find_imethod_in_class_noseterr (hcl_t* hcl, hcl_oop_clas
 	return HCL_NULL;
 }
 
-static hcl_oop_lambda_t find_imethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oop_t op_name, int to_super, hcl_ooi_t* ivaroff, hcl_oop_class_t* owner)
+static hcl_oop_block_t find_imethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oop_t op_name, int to_super, hcl_ooi_t* ivaroff, hcl_oop_class_t* owner)
 {
 	hcl_oocs_t name;
 
@@ -2189,7 +2189,7 @@ static hcl_oop_lambda_t find_imethod_noseterr (hcl_t* hcl, hcl_oop_class_t class
 
 	do
 	{
-		hcl_oop_lambda_t mth;
+		hcl_oop_block_t mth;
 		mth = find_imethod_in_class_noseterr(hcl, class_, &name, ivaroff, owner);
 		if (mth) return mth;
 		class_ = (hcl_oop_class_t)class_->superclass;
@@ -2199,7 +2199,7 @@ static hcl_oop_lambda_t find_imethod_noseterr (hcl_t* hcl, hcl_oop_class_t class
 	return HCL_NULL;
 }
 
-static hcl_oop_lambda_t find_cmethod_noseterr (hcl_t* hcl, hcl_oop_class_t _class, hcl_oop_t op_name, int to_super, hcl_ooi_t* ivaroff, hcl_oop_class_t* owner)
+static hcl_oop_block_t find_cmethod_noseterr (hcl_t* hcl, hcl_oop_class_t _class, hcl_oop_t op_name, int to_super, hcl_ooi_t* ivaroff, hcl_oop_class_t* owner)
 {
 	hcl_oocs_t name;
 	hcl_oop_class_t xclass;
@@ -2242,7 +2242,7 @@ static hcl_oop_lambda_t find_cmethod_noseterr (hcl_t* hcl, hcl_oop_class_t _clas
 					/* ivaroff isn't useful for a class method but is useful for class instatiation method
 					 * (INSTA bit on in the mask field) */
 					*ivaroff = HCL_OOP_TO_SMOOI(xclass->nivars_super);
-					return (hcl_oop_lambda_t)HCL_CONS_CAR(val); /* car - class method, cdr - instance method */
+					return (hcl_oop_block_t)HCL_CONS_CAR(val); /* car - class method, cdr - instance method */
 				}
 			}
 		}
@@ -2268,7 +2268,7 @@ static hcl_oop_lambda_t find_cmethod_noseterr (hcl_t* hcl, hcl_oop_class_t _clas
 
 static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t msg, int to_super, hcl_ooi_t nargs, hcl_ooi_t nrvars)
 {
-	hcl_oop_lambda_t mth_blk;
+	hcl_oop_block_t mth_blk;
 	hcl_oop_context_t newctx;
 	hcl_oop_class_t _class, owner;
 	hcl_ooi_t ivaroff;
@@ -4685,7 +4685,7 @@ static int execute (hcl_t* hcl)
 
 			case HCL_CODE_MAKE_BLOCK:
 			{
-				hcl_oop_lambda_t blkobj;
+				hcl_oop_block_t blkobj;
 
 				/* b1 - block temporaries mask
 				 * b2 - block temporaries mask */
@@ -4862,12 +4862,12 @@ hcl_pfrc_t hcl_pf_process_current (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 
 hcl_pfrc_t hcl_pf_process_fork (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
-	hcl_oop_lambda_t blk;
+	hcl_oop_block_t blk;
 	hcl_oop_context_t newctx;
 	hcl_oop_process_t newprc;
 	int x;
 
-	blk = (hcl_oop_lambda_t)HCL_STACK_GETARG(hcl, nargs, 0);
+	blk = (hcl_oop_block_t)HCL_STACK_GETARG(hcl, nargs, 0);
 	if (!HCL_IS_BLOCK(hcl, blk))
 	{
 		hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not block - %O", blk);

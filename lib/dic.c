@@ -144,10 +144,12 @@ static hcl_oop_cons_t find_or_upsert (hcl_t* hcl, hcl_oop_dic_t dic, hcl_oop_t k
 			{
 				if (is_method)
 				{
-					HCL_ASSERT (hcl, HCL_IS_CONS(hcl, ass->cdr));
+					hcl_oop_cons_t pair;
+					pair = (hcl_oop_cons_t)ass->cdr; /* once found, this must be a pair of method pointers  */
+					HCL_ASSERT (hcl, HCL_IS_CONS(hcl, pair));
 					HCL_ASSERT (hcl, HCL_IS_BLOCK(hcl, value));
-					if (is_method & 1) ((hcl_oop_cons_t)(ass->cdr))->car = value; /* class method */
-					if (is_method & 2) ((hcl_oop_cons_t)(ass->cdr))->cdr = value; /* instance method */
+					if (is_method & 1) pair->car = value; /* class method */
+					if (is_method & 2) pair->cdr = value; /* instance method */
 					/* the class instantiation method goes to both cells.
 					 * you can't define a class method or an instance method with the name of
 					 * a class instantiation method */
@@ -217,14 +219,14 @@ static hcl_oop_cons_t find_or_upsert (hcl_t* hcl, hcl_oop_dic_t dic, hcl_oop_t k
 
 	if (is_method)
 	{
-		/* create a new association that holds a class method at the first cell and an instance method at the second cell */
-		hcl_oop_t newval;
+		/* create a new pair that holds a class method at the first cell and an instance method at the second cell */
+		hcl_oop_t pair;
 		HCL_ASSERT (hcl, HCL_IS_BLOCK(hcl, value));
 		hcl_pushvolat (hcl, &key);
-		newval = hcl_makecons(hcl, (is_method & 1? value: hcl->_nil), (is_method & 2? value: hcl->_nil));
+		pair = hcl_makecons(hcl, (is_method & 1? value: hcl->_nil), (is_method & 2? value: hcl->_nil));
 		hcl_popvolat (hcl);
-		if (HCL_UNLIKELY(!newval)) goto oops;
-		value = newval;
+		if (HCL_UNLIKELY(!pair)) goto oops;
+		value = pair;
 	}
 
 	/* create a new assocation of a key and a value since
