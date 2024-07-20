@@ -598,7 +598,7 @@ struct hcl_cframe_t
 			hcl_ooi_t index;
 		} dic_list;
 
-		/* COP_POST_LAMBDA, COP_EMIT_LAMBDA */
+		/* COP_POST_FUN, COP_EMIT_FUN */
 		struct
 		{
 			unsigned int fun_type;
@@ -606,7 +606,7 @@ struct hcl_cframe_t
 			hcl_ooi_t lfbase_pos;
 			hcl_ooi_t lfsize_pos;
 			hcl_cnode_t* class_name; /* class name for out-of-class method definition */
-		} lambda;
+		} fun;
 
 		/* COP_EMIT_RETURN */
 		struct

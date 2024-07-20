@@ -3296,14 +3296,14 @@ static int execute (hcl_t* hcl)
 				 * but the check is far from perfect. there are many ways to return from an
 				 * active context and enter a dead context thereafter.
 					(defun t(f)
-						(set q (lambda()
+						(set q (fun()
 							(printf "hello word\n")
 							(return-from-home 200)
 						))
 						(f)
 					)
 					(defun x()
-						(t (lambda() (return-from-home 100)))
+						(t (fun() (return-from-home 100)))
 						(printf ">>>>>>>>>>>>>>>>>>>>>>>>\n");
 					)
 					(x) ; x is exited by (return-from-home 100) triggered by (f)

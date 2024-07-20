@@ -1677,7 +1677,6 @@ struct hcl_t
 	hcl_oop_t s_else;   /* symbol */
 	hcl_oop_t s_fun;    /* symbol */
 	hcl_oop_t s_if;     /* symbol */
-	hcl_oop_t s_lambda; /* symbol */
 	hcl_oop_t s_or;     /* symbol */
 	hcl_oop_t s_plus;   /* symbol */
 	hcl_oop_t s_return; /* symbol */
@@ -2038,7 +2037,7 @@ enum hcl_syncode_t
 	HCL_SYNCODE_ELIF,
 	HCL_SYNCODE_ELSE,
 	HCL_SYNCODE_IF,
-	HCL_SYNCODE_LAMBDA,
+	HCL_SYNCODE_FUN,
 	HCL_SYNCODE_OR,
 	HCL_SYNCODE_PLUS,
 	HCL_SYNCODE_RETURN,

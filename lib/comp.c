@@ -1680,7 +1680,7 @@ enum
 	COP_EMIT_POP_INTO_CONS_END,
 	COP_EMIT_POP_INTO_CONS_CDR,
 
-	COP_EMIT_LAMBDA,
+	COP_EMIT_FUN,
 	COP_EMIT_PLUS,
 	COP_EMIT_POP_STACKTOP,
 	COP_EMIT_RETURN,
@@ -1701,7 +1701,7 @@ enum
 	COP_POST_TRY,
 	COP_POST_CATCH,
 
-	COP_POST_LAMBDA
+	COP_POST_FUN
 };
 
 /* ========================================================================= */
@@ -2016,7 +2016,7 @@ inside_loop:
 		const hcl_cframe_t* tcf;
 		tcf = &hcl->c->cfs.ptr[i];
 
-		if (tcf->opcode == COP_EMIT_LAMBDA) break; /* seems to cross lambda boundary */
+		if (tcf->opcode == COP_EMIT_FUN) break; /* seems to cross function boundary */
 
 		if (tcf->opcode == COP_POST_UNTIL_BODY || tcf->opcode == COP_POST_WHILE_BODY)
 		{
@@ -2128,7 +2128,7 @@ inside_loop:
 		const hcl_cframe_t* tcf;
 		tcf = &hcl->c->cfs.ptr[i];
 
-		if (tcf->opcode == COP_EMIT_LAMBDA) break; /* seems to cross lambda boundary */
+		if (tcf->opcode == COP_EMIT_FUN) break; /* seems to cross function boundary */
 
 		if (tcf->opcode == COP_POST_UNTIL_BODY || tcf->opcode == COP_POST_WHILE_BODY)
 		{
@@ -2810,7 +2810,7 @@ static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 
 /* ========================================================================= */
 
-static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
+static int compile_fun (hcl_t* hcl, hcl_cnode_t* src, int defun)
 {
 	hcl_cnode_t* cmd, * obj, * args;
 	hcl_oow_t va, nargs, nrvars, nlvars;
@@ -2833,7 +2833,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 	{
 		/* some inaccurate prior check if 'fun' is followed by an argument list
 		 * without a function name. stop-gap measure to support 'fun' in place of 'defun' */
-		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_LAMBDA));
+		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_FUN));
 		args = HCL_CNODE_CONS_CAR(obj);
 		if (!HCL_CNODE_IS_ELIST_CONCODED(args, HCL_CONCODE_XLIST) &&
 		    !HCL_CNODE_IS_CONS_CONCODED(args, HCL_CONCODE_XLIST))
@@ -2965,7 +2965,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 	}
 	else
 	{
-		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_LAMBDA));
+		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_FUN));
 		defun_name = HCL_NULL;
 	}
 
@@ -2991,7 +2991,7 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 
 	if (HCL_CNODE_IS_ELIST_CONCODED(args, HCL_CONCODE_XLIST))
 	{
-		/* empty list - no argument - (lambda () (+ 10 20)) */
+		/* empty list - no argument - (fun () (+ 10 20)) */
 	}
 	else if (!HCL_CNODE_IS_CONS_CONCODED(args, HCL_CONCODE_XLIST))
 	{
@@ -3150,20 +3150,20 @@ static int compile_lambda (hcl_t* hcl, hcl_cnode_t* src, int defun)
 	if (emit_single_param_instruction(hcl, HCL_CODE_JUMP_FORWARD_0, MAX_CODE_JUMP, HCL_CNODE_GET_LOC(cmd)) <= -1) return -1;
 
 	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_LIST, obj); /* 1 */
-	PUSH_SUBCFRAME (hcl, COP_POST_LAMBDA, defun_name); /* 3*/
+	PUSH_SUBCFRAME (hcl, COP_POST_FUN, defun_name); /* 3*/
 	cf = GET_SUBCFRAME(hcl);
-	cf->u.lambda.fun_type = fun_type;
-	cf->u.lambda.class_name = class_name;
+	cf->u.fun.fun_type = fun_type;
+	cf->u.fun.class_name = class_name;
 
-	PUSH_SUBCFRAME (hcl, COP_EMIT_LAMBDA, src); /* 2 */
+	PUSH_SUBCFRAME (hcl, COP_EMIT_FUN, src); /* 2 */
 	cf = GET_SUBCFRAME(hcl);
-	cf->u.lambda.fun_type = fun_type;
-	cf->u.lambda.jump_inst_pos = jump_inst_pos;
+	cf->u.fun.fun_type = fun_type;
+	cf->u.fun.jump_inst_pos = jump_inst_pos;
 
 	if (hcl->option.trait & HCL_TRAIT_INTERACTIVE)
 	{
-		cf->u.lambda.lfbase_pos = lfbase_pos;
-		cf->u.lambda.lfsize_pos = lfsize_pos;
+		cf->u.fun.lfbase_pos = lfbase_pos;
+		cf->u.fun.lfsize_pos = lfsize_pos;
 	}
 
 	return 0;
@@ -3337,7 +3337,7 @@ static int compile_set (hcl_t* hcl, hcl_cnode_t* src)
 	}
 	else
 	{
-		/* the check in compile_lambda() must ensure this condition */
+		/* the check in compile_fun() must ensure this condition */
 		PUSH_SUBCFRAME (hcl, COP_EMIT_SET, cmd);
 		cf = GET_SUBCFRAME(hcl);
 		cf->u.set.vi = vi;
@@ -3944,7 +3944,7 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 				break;
 
 			case HCL_SYNCODE_DEFUN:
-				if (compile_lambda(hcl, obj, 1) <= -1) return -1;
+				if (compile_fun(hcl, obj, 1) <= -1) return -1;
 				break;
 
 			case HCL_SYNCODE_DO:
@@ -3963,9 +3963,9 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 				if (compile_if(hcl, obj) <= -1) return -1;
 				break;
 
-			case HCL_SYNCODE_LAMBDA:
+			case HCL_SYNCODE_FUN:
 				/* (fun (x y) (+ x y)) */
-				if (compile_lambda(hcl, obj, 0) <= -1) return -1;
+				if (compile_fun(hcl, obj, 0) <= -1) return -1;
 				break;
 
 			case HCL_SYNCODE_OR:
@@ -3978,7 +3978,7 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 
 			case HCL_SYNCODE_SET:
 				/* (set x 10)
-				 * (set x (lambda (x y) (+ x y)) */
+				 * (set x (fun (x y) (+ x y)) */
 				if (compile_set(hcl, obj) <= -1) return -1;
 				break;
 
@@ -4971,7 +4971,7 @@ static int compile_object_list (hcl_t* hcl)
 			 * (+ 1 2 3) - argument list. 1, 2, 3 pushed must remain in
 			 *             the stack until the function '+' is called.
 			 *
-			 * (lambda (x y) (+ x 10) (+ y 20))
+			 * (fun (x y) (+ x 10) (+ y 20))
 			 *    - the result of (+ x 10) should be popped before (+ y 20)
 			 *      is executed
 			 *
@@ -5589,7 +5589,7 @@ static HCL_INLINE int emit_pop_into_cons (hcl_t* hcl, int cmd)
 
 /* ========================================================================= */
 
-static HCL_INLINE int emit_lambda (hcl_t* hcl)
+static HCL_INLINE int emit_fun (hcl_t* hcl)
 {
 	hcl_cframe_t* cf;
 	hcl_oow_t block_code_size, lfsize;
@@ -5598,12 +5598,12 @@ static HCL_INLINE int emit_lambda (hcl_t* hcl)
 	hcl_loc_t* oploc;
 
 	cf = GET_TOP_CFRAME(hcl);
-	HCL_ASSERT (hcl, cf->opcode == COP_EMIT_LAMBDA);
+	HCL_ASSERT (hcl, cf->opcode == COP_EMIT_FUN);
 	HCL_ASSERT (hcl, cf->operand != HCL_NULL);
 
 	oploc = HCL_CNODE_GET_LOC(cf->operand);
 	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
-	jip = cf->u.lambda.jump_inst_pos;
+	jip = cf->u.fun.jump_inst_pos;
 
 	if (hcl->option.trait & HCL_TRAIT_INTERACTIVE)
 		lfsize = hcl->code.lit.len - hcl->c->fnblk.info[hcl->c->fnblk.depth].lfbase;
@@ -5625,11 +5625,11 @@ static HCL_INLINE int emit_lambda (hcl_t* hcl)
 	else
 	{
 		/* single return value */
-		if ((cf->u.lambda.fun_type & 0xFF) == FUN_PLAIN)
+		if ((cf->u.fun.fun_type & 0xFF) == FUN_PLAIN)
 		{
 			if (block_code_size == 0)
 			{
-				/* no body in lambda - (lambda (a b c)) */
+				/* no body in fun - (fun (a b c)) */
 	/* TODO: is this correct??? */
 				if (emit_byte_instruction(hcl, HCL_CODE_PUSH_NIL, oploc) <= -1) return -1;
 				block_code_size++;
@@ -5676,18 +5676,18 @@ static HCL_INLINE int emit_lambda (hcl_t* hcl)
 	patch_long_jump (hcl, jip, block_code_size);
 
 	if (hcl->option.trait & HCL_TRAIT_INTERACTIVE)
-		patch_long_param (hcl, cf->u.lambda.lfsize_pos, lfsize);
+		patch_long_param (hcl, cf->u.fun.lfsize_pos, lfsize);
 
 	POP_CFRAME (hcl);
 	return 0;
 }
 
-static HCL_INLINE int post_lambda (hcl_t* hcl)
+static HCL_INLINE int post_fun (hcl_t* hcl)
 {
 	hcl_cframe_t* cf;
 
 	cf = GET_TOP_CFRAME(hcl);
-	HCL_ASSERT (hcl, cf->opcode == COP_POST_LAMBDA);
+	HCL_ASSERT (hcl, cf->opcode == COP_POST_FUN);
 
 	/*hcl->c->fnblk.depth--;
 	hcl->c->tv.s.len = hcl->c->fnblk.info[hcl->c->fnblk.depth].tmprlen;
@@ -5704,7 +5704,7 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 		 * the block has been exited(blk.depth--) before finding 'x' in the outer scope.
 		 */
 		hcl_cnode_t* defun_name = cf->operand;
-		hcl_cnode_t* class_name = cf->u.lambda.class_name;
+		hcl_cnode_t* class_name = cf->u.fun.class_name;
 		hcl_var_info_t vi;
 		int x;
 
@@ -5727,7 +5727,7 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 			if (x == 0)
 			{
 				/* arrange to save to the method slot */
-				switch (cf->u.lambda.fun_type & 0xFF)
+				switch (cf->u.fun.fun_type & 0xFF)
 				{
 					case FUN_CM: /* class method */
 						SWITCH_TOP_CFRAME (hcl, COP_EMIT_CLASS_CMSTORE, defun_name);
@@ -5743,8 +5743,8 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 
 					default:
 						/* in the class initialization scope, the type must not be other than the listed above */
-						HCL_DEBUG1 (hcl, "Internal error - invalid method type %d\n", cf->u.lambda.fun_type & 0xFF);
-						hcl_seterrbfmt (hcl, HCL_EINTERN, "internal error - invalid method type %d", cf->u.lambda.fun_type & 0xFF);
+						HCL_DEBUG1 (hcl, "Internal error - invalid method type %d\n", cf->u.fun.fun_type & 0xFF);
+						hcl_seterrbfmt (hcl, HCL_EINTERN, "internal error - invalid method type %d", cf->u.fun.fun_type & 0xFF);
 						return -1;
 				}
 				cf = GET_TOP_CFRAME(hcl);
@@ -5794,7 +5794,7 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 				if (HCL_UNLIKELY(!lit)) return -1;
 				if (add_literal(hcl, lit, &index) <= -1) return -1;
 
-				switch (cf->u.lambda.fun_type & 0xFF)
+				switch (cf->u.fun.fun_type & 0xFF)
 				{
 					case FUN_CM: /* class method */
 						inst =  HCL_CODE_CLASS_CMSTORE;
@@ -5810,8 +5810,8 @@ static HCL_INLINE int post_lambda (hcl_t* hcl)
 
 					default:
 						/* in the class initialization scope, the type must not be other than the listed above */
-						HCL_DEBUG1 (hcl, "Internal error - invalid function type %d\n", cf->u.lambda.fun_type & 0xFF);
-						hcl_seterrbfmt (hcl, HCL_EINTERN, "internal error - invalid function type %d", cf->u.lambda.fun_type & 0xFF);
+						HCL_DEBUG1 (hcl, "Internal error - invalid function type %d\n", cf->u.fun.fun_type & 0xFF);
+						hcl_seterrbfmt (hcl, HCL_EINTERN, "internal error - invalid function type %d", cf->u.fun.fun_type & 0xFF);
 						return -1;
 				}
 
@@ -6037,13 +6037,13 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 	/*
 	 * In the non-INTERACTIVE mode, the literal frame base doesn't matter.
 	 * Only the initial function object contains the literal frame.
-	 * No other function objects are created. All lambda defintions are
-	 * translated to base context objects instead.
+	 * No other function objects are created. All 'defun/fun' defintions are
+	 * translated to block context objects instead.
 	 *
 	 * In the INTERACTIVE mode, the literal frame base plays a key role.
 	 * hcl_compile() is called for the top-level expression and the literal
 	 * frame base can be 0. The means it is ok for a top-level code to
-	 * reference part of the literal frame reserved for a lambda function.
+	 * reference part of the literal frame reserved for a function.
 	 *
 	 *  (set b 1)
 	 *  (defun set-a(x) (set a x))
@@ -6250,8 +6250,8 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 				if (emit_pop_into_cons(hcl, HCL_CODE_POP_INTO_CONS_CDR) <= -1) goto oops;
 				break;
 
-			case COP_EMIT_LAMBDA:
-				if (emit_lambda(hcl) <= -1) goto oops;
+			case COP_EMIT_FUN:
+				if (emit_fun(hcl) <= -1) goto oops;
 				break;
 
 			case COP_EMIT_PLUS:
@@ -6311,8 +6311,8 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 				if (post_catch(hcl) <= -1) goto oops;
 				break;
 
-			case COP_POST_LAMBDA:
-				if (post_lambda(hcl) <= -1) goto oops;
+			case COP_POST_FUN:
+				if (post_fun(hcl) <= -1) goto oops;
 				break;
 
 			default:

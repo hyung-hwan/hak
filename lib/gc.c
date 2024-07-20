@@ -47,9 +47,8 @@ static struct
 	{  2, { 'd','o' },                          HCL_SYNCODE_DO,        HCL_OFFSETOF(hcl_t,s_do)     },
 	{  4, { 'e','l','i','f' },                  HCL_SYNCODE_ELIF,      HCL_OFFSETOF(hcl_t,s_elif)   },
 	{  4, { 'e','l','s','e' },                  HCL_SYNCODE_ELSE,      HCL_OFFSETOF(hcl_t,s_else)   },
-	{  3, { 'f','u','n' },                      HCL_SYNCODE_LAMBDA,    HCL_OFFSETOF(hcl_t,s_fun)    }, /* same syncode as lambda */
+	{  3, { 'f','u','n' },                      HCL_SYNCODE_FUN,    HCL_OFFSETOF(hcl_t,s_fun)    },
 	{  2, { 'i','f' },                          HCL_SYNCODE_IF,        HCL_OFFSETOF(hcl_t,s_if)     },
-	{  6, { 'l','a','m','b','d','a' },          HCL_SYNCODE_LAMBDA,    HCL_OFFSETOF(hcl_t,s_lambda) },
 	{  2, { 'o','r' },                          HCL_SYNCODE_OR,        HCL_OFFSETOF(hcl_t,s_or)     },
 	{  4, { 'p','l','u','s' },                  HCL_SYNCODE_PLUS,      HCL_OFFSETOF(hcl_t,s_plus)   },
 	{  6, { 'r','e','t','u','r','n'},           HCL_SYNCODE_RETURN,    HCL_OFFSETOF(hcl_t,s_return) },
