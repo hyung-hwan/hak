@@ -2141,6 +2141,34 @@ static HCL_INLINE int call_primitive (hcl_t* hcl, hcl_ooi_t nargs)
 
 /* ------------------------------------------------------------------------- */
 
+static hcl_oop_lambda_t find_imethod_in_class_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oocs_t* name, hcl_ooi_t* ivaroff, hcl_oop_class_t* owner)
+{
+	hcl_oop_t dic;
+
+	dic = class_->mdic;
+	HCL_ASSERT (hcl, HCL_IS_NIL(hcl, dic) || HCL_IS_DIC(hcl, dic));
+
+	if (HCL_LIKELY(!HCL_IS_NIL(hcl, dic)))
+	{
+		hcl_oop_cons_t ass;
+		ass = (hcl_oop_cons_t)hcl_lookupdicforsymbol_noseterr(hcl, (hcl_oop_dic_t)dic, name);
+		if (HCL_LIKELY(ass))
+		{
+			hcl_oop_t val;
+			val = HCL_CONS_CDR(ass);
+			HCL_ASSERT (hcl, HCL_IS_CONS(hcl, val));
+			if (!HCL_IS_NIL(hcl, HCL_CONS_CDR(val)))
+			{
+				/* TODO: further check if it's a method block? */
+				*owner = class_;
+				*ivaroff = HCL_OOP_TO_SMOOI(class_->nivars_super);
+				return (hcl_oop_lambda_t)HCL_CONS_CDR(val); /* car - class method, cdr - instance method */
+			}
+		}
+	}
+
+	return HCL_NULL;
+}
 
 static hcl_oop_lambda_t find_imethod_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oop_t op_name, int to_super, hcl_ooi_t* ivaroff, hcl_oop_class_t* owner)
 {
@@ -2161,28 +2189,9 @@ static hcl_oop_lambda_t find_imethod_noseterr (hcl_t* hcl, hcl_oop_class_t class
 
 	do
 	{
-		hcl_oop_t dic;
-
-		dic = class_->mdic;
-		HCL_ASSERT (hcl, HCL_IS_NIL(hcl, dic) || HCL_IS_DIC(hcl, dic));
-
-		if (HCL_LIKELY(!HCL_IS_NIL(hcl, dic)))
-		{
-			hcl_oop_cons_t ass;
-			ass = (hcl_oop_cons_t)hcl_lookupdicforsymbol_noseterr(hcl, (hcl_oop_dic_t)dic, &name);
-			if (HCL_LIKELY(ass))
-			{
-				hcl_oop_t val;
-				val = HCL_CONS_CDR(ass);
-				if (HCL_IS_CONS(hcl, val) && !HCL_IS_NIL(hcl, HCL_CONS_CDR(val)))
-				{
-					/* TODO: further check if it's a method block? */
-					*owner = class_;
-					*ivaroff = HCL_OOP_TO_SMOOI(class_->nivars_super);
-					return (hcl_oop_lambda_t)HCL_CONS_CDR(val); /* car - class method, cdr - instance method */
-				}
-			}
-		}
+		hcl_oop_lambda_t mth;
+		mth = find_imethod_in_class_noseterr(hcl, class_, &name, ivaroff, owner);
+		if (mth) return mth;
 		class_ = (hcl_oop_class_t)class_->superclass;
 	}
 	while (HCL_IS_CLASS(hcl, class_));
@@ -2225,7 +2234,8 @@ static hcl_oop_lambda_t find_cmethod_noseterr (hcl_t* hcl, hcl_oop_class_t _clas
 			{
 				hcl_oop_t val;
 				val = HCL_CONS_CDR(ass);
-				if (HCL_IS_CONS(hcl, val) && !HCL_IS_NIL(hcl, HCL_CONS_CAR(val)))
+				HCL_ASSERT (hcl, HCL_IS_CONS(hcl, val));
+				if (!HCL_IS_NIL(hcl, HCL_CONS_CAR(val)))
 				{
 					/* TODO: further check if it's a method block? */
 					*owner = xclass;
@@ -2240,8 +2250,20 @@ static hcl_oop_lambda_t find_cmethod_noseterr (hcl_t* hcl, hcl_oop_class_t _clas
 	}
 	while (HCL_IS_CLASS(hcl, xclass));
 
+	/* If the following two lines are uncommented, the class method of Class must be explicitly defined
+	 *   fun Class:name() {...}
+	 *   class X { }
+	 * If name is defined as an instance method of Class, other classes can call 'name' as a class method.
+	 *    X:name
+	 * but Class itself can't call it as Class:name. This is possible only if 'fun Class::name()' is also
+	 * defined.
+	xclass = HCL_CLASSOF(hcl, _class);
+	if (xclass == _class) return HCL_NULL;
+	*/
+
 	/* find the instance method of the Class class as a class is an instance of the Class class. */
-	return find_imethod_noseterr(hcl, HCL_CLASSOF(hcl, _class), op_name, 0, ivaroff, owner);
+	/* TODO: may need to traverse up if Class is a subclass in some other Clss-related abstraction... */
+	return find_imethod_in_class_noseterr(hcl, HCL_CLASSOF(hcl, _class), &name, ivaroff, owner);
 }
 
 static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t msg, int to_super, hcl_ooi_t nargs, hcl_ooi_t nrvars)
@@ -3937,6 +3959,7 @@ static int execute (hcl_t* hcl)
 				static hcl_bch_t* pfx[] = { "c", "i", "ci" };
 
 				mtype = (bcode - HCL_CODE_CLASS_CMSTORE) + 1;
+				HCL_ASSERT (hcl, mtype >= 1 && mtype <= 3);
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				LOG_INST_2 (hcl, "class_%hsmstore @%zu", pfx[mtype], b1);
 

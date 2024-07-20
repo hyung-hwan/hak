@@ -24,11 +24,9 @@ fun Collection:slice(index count) {
 	return (arr.slice self index count)
 }
 
-
 fun Class:name() {
 	return (core.class_name self)
 }
-
 
 class String: Array (a b c) {
 }
