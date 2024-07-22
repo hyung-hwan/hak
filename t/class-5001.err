@@ -1,3 +1,45 @@
+class ##ERROR: syntax error - no class body
+
+---
+
+class B ##ERROR: syntax error - no class body
+
+---
+
+class B ( ##ERROR: syntax error - block expression expected as 'class' body
+)
+
+---
+
+class B + ##ERROR: syntax error - prohibited binary operator - +
+
+---
+
+J := 11
+class B {
+	if (J = 10) {
+		defun :*newA() {
+			return self
+		}
+	} else {
+		defun :*newB() {
+			return self
+		}
+	}
+}
+
+t2 := (B:newB)
+t1 := (B:newA) ##ERROR: exception not handled - "unable to send newA to B - 'newA' not found in B"
+
+---
+
+class B [ x ] {
+	if (x > 0) { ##ERROR: syntax error - prohibited access to instance variable - x
+	}
+}
+
+---
+
 class B [ x y ] {
 
 };
