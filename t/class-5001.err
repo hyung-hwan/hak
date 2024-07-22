@@ -147,3 +147,41 @@ class X [ a b c ] {
 		}
 	}
 }
+
+---
+
+class F {
+}
+
+class F { ##ERROR: exception not handled - "prohibited redefintion of F
+}
+
+---
+
+class F {
+}
+
+F := 30 ##ERROR: exception not handled - "prohibited redefintion of F
+
+---
+
+
+class F {
+}
+
+F := (class { ##ERROR: exception not handled - "prohibited redefintion of F"
+})
+
+---
+
+F := (class {
+})
+
+F := (class F { ##ERROR: exception not handle - "prohibited redefintion of F"
+})
+
+##  TDOO: do we need to allow the above?
+
+##F := 30
+##class F { ##ERROR: exception not handled - "prohibited redefintion of F"
+##}

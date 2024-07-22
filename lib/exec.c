@@ -3559,10 +3559,12 @@ static int execute (hcl_t* hcl)
 					/* store or pop */
 					if (HCL_IS_CLASS(hcl, ass->cdr) && ((hcl_oop_class_t)ass->cdr)->name == ass->car)
 					{
+						/* the existing value must be a class. disallow re-definition */
 						hcl_seterrbfmt (hcl, HCL_EPERM, "prohibited redefintion of %.*js", HCL_OBJ_GET_SIZE(ass->car), HCL_OBJ_GET_CHAR_SLOT(ass->car));
 						if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
 						goto oops_with_errmsg_supplement;
 					}
+
 					ass->cdr = HCL_STACK_GETTOP(hcl);
 
 					if ((bcode >> 2) & 1)
