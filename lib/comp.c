@@ -2588,9 +2588,7 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src, int defclass)
 			return -1;
 		}
 
-	//SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, tmp); /* 1 - superclass expression */
 		nsuperclasses = 1;
-
 		obj = HCL_CNODE_CONS_CDR(obj);
 	}
 	else
@@ -2599,24 +2597,45 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src, int defclass)
 		superclass = HCL_NULL;
 	}
 
-	if (class_name)
-		SWITCH_TOP_CFRAME (hcl, COP_COMPILE_SYMBOL_LITERAL, class_name); /* 1 - push the class name for a named class */
-	else
-		SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, &hcl->c->fake_cnode.nil); /* 1 - push nil for class name  for anonymous class */
 
-	PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_P2, class_name); /* 3 - use class name for assignment */
-	cf = GET_SUBCFRAME(hcl);
+	if (class_name)
+	{
+		//SWITCH_TOP_CFRAME (hcl, COP_COMPILE_SYMBOL_LITERAL, class_name); /* 1 - push the class name for a named class */
+		hcl_oow_t index;
+		hcl_oop_t cons, sym;
+
+		sym = hcl_makesymbol(hcl, HCL_CNODE_GET_TOKPTR(class_name), HCL_CNODE_GET_TOKLEN(class_name));
+		if (HCL_UNLIKELY(!sym)) return -1;
+
+		cons = (hcl_oop_t)hcl_getatsysdic(hcl, sym);
+		if (!cons)
+		{
+			cons = (hcl_oop_t)hcl_putatsysdic(hcl, sym, hcl->_nil);
+			if (HCL_UNLIKELY(!cons)) return -1;
+		}
+
+		if (add_literal(hcl, cons, &index) <= -1) return -1;
+		if (emit_single_param_instruction(hcl, HCL_CODE_PUSH_LITERAL_0, index, HCL_CNODE_GET_LOC(class_name)) <= -1) return -1;
+	}
+	else
+	{
+		if (emit_byte_instruction(hcl, HCL_CODE_PUSH_NIL,HCL_CNODE_GET_LOC(cmd)) <= -1) return -1; /* push nil for class name of an anonymous class */
+	}
+	POP_CFRAME (hcl);
+
+	PUSH_CFRAME (hcl, COP_COMPILE_CLASS_P2, class_name); /* 3 - use class name for assignment */
+	cf = GET_TOP_CFRAME(hcl);
 	cf->u._class.nsuperclasses = 0; /* unsed for CLASS_P2 */
 	cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
 	cf->u._class.cmd_cnode = cmd;
 
-	PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_P1, obj); /* 2 - variables declaraions and actual body */
-	cf = GET_SUBCFRAME(hcl);
+	PUSH_CFRAME (hcl, COP_COMPILE_CLASS_P1, obj); /* 2 - variables declaraions and actual body */
+	cf = GET_TOP_CFRAME(hcl);
 	cf->u._class.nsuperclasses = nsuperclasses; /* this needs to change if we support multiple superclasses... */
 	cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
 	cf->u._class.cmd_cnode = cmd;
 
-	if (superclass) PUSH_CFRAME (hcl, COP_COMPILE_OBJECT, superclass); /* 0 - superclass expression */
+	if (superclass) PUSH_CFRAME (hcl, COP_COMPILE_OBJECT, superclass); /* 1 - superclass expression */
 	return 0;
 }
 

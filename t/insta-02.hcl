@@ -54,10 +54,7 @@ else { printf "OK:  value is %d\n" v }
 
 ## --------------------------------------------------------------
 
-class F [ j t ] {
-}
-
-class X [ a  b c ] {
+class X1 [ a  b c ] {
 	fun :* new () {
 		self.a := 20
 		return self
@@ -69,27 +66,27 @@ class X [ a  b c ] {
 		| v |
 		v := 50
 		if (t > 5) {
-			fun X:get_j() { return (((1 + t) + a) + (b + v)) }
+			fun X1:get_j() { return (((1 + t) + a) + (b + v)) }
 		} else {
-			fun X:get_j() { return ((2 * (t + a)) + (b + v)) }
+			fun X1:get_j() { return ((2 * (t + a)) + (b + v)) }
 		}
 		return self
 	}
 }
 
-fun X:get_a() {
+fun X1:get_a() {
 	return (self:getA)
 }
 
-v := ((X:new):get_a)
+v := ((X1:new):get_a)
 if (nqv? v 20) { printf "ERROR: v is not 20 - %d\n" v } \
 else { printf "OK:  value is %d\n" v }
 
-v := (((X:new):make 5 6 7):get_j)
+v := (((X1:new):make 5 6 7):get_j)
 if (nqv? v 79) { printf "ERROR: v is not 79 - %d\n" v } \
 else { printf "OK:  value is %d\n" v }
 
-v := (((X:new):make 6 6 7):get_j)
+v := (((X1:new):make 6 6 7):get_j)
 if (nqv? v 70) { printf "ERROR: v is not 70 - %d\n" v } \
 else { printf "OK:  value is %d\n" v }
 
@@ -98,7 +95,7 @@ else { printf "OK:  value is %d\n" v }
 class F [ j t ] {
 }
 
-class X [ a b c ] {
+class X2 [ a b c ] {
 	fun :* new () {
 		| j |
 		self.a := 20
@@ -108,33 +105,33 @@ class X [ a b c ] {
 	}
 }
 
-X:new
+X2:new
 v := (F:get_x)
 if (nqv? v 1600) { printf "ERROR: v is not 1600 - %d\n" v } \
 else { printf "OK: value is %d\n" v }
 
 ## --------------------------------------------------------------
-class X {
+class X3 {
 	fun :* new (a b) {
-		fun X:sum() { return (fun(j) { return (j + (a + b)) }) }
+		fun X3:sum() { return (fun(j) { return (j + (a + b)) }) }
 		return self;
 	}
 }
 
-v := (((X:new 10 2):sum) 23)
+v := (((X3:new 10 2):sum) 23)
 if (nqv? v 35) { printf "ERROR: v is not 35 - %d\n" v } \
 else { printf "OK: value is %d\n" v }
 
 ## --------------------------------------------------------------
-class X {
+class X4 {
 	fun :: t() {
-		| X |
-		class X { ## this X isn't the local variable X
+		| X4 |
+		class X4 { ## this X4 isn't the local variable X4
 			fun :: t() {
-				X := (class {
+				X4 := (class {
 					fun :: t() {
-						| X |
-						X := (class { ## this X is the local variable X
+						| X4 |
+						X4 := (class { ## this X4 is the local variable X4
 							fun :: t() { return 60 }
 						})
 						return 40
@@ -147,18 +144,18 @@ class X {
 	}
 }
 
-v := (X:t)
+v := (X4:t)
 if (nqv? v 30) { printf "ERROR: v is not 30 - %d\n" v } \
 else { printf "OK: value is %d\n" v }
 
-v := (X:t)
+v := (X4:t)
 if (nqv? v 20) { printf "ERROR: v is not 20 - %d\n" v } \
 else { printf "OK: value is %d\n" v }
 
-v := (X:t)
+v := (X4:t)
 if (nqv? v 40) { printf "ERROR: v is not 40 - %d\n" v } \
 else { printf "OK: value is %d\n" v }
 
-v := (X:t)
+v := (X4:t)
 if (nqv? v 40) { printf "ERROR: v is not 40 - %d\n" v } \
 else { printf "OK: value is %d\n" v }

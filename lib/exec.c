@@ -3550,10 +3550,19 @@ static int execute (hcl_t* hcl)
 				/*ass = hcl->code.lit.arr->slot[b1];*/
 				ass = (hcl_oop_cons_t)hcl->active_function->literal_frame[b1];
 				HCL_ASSERT (hcl, HCL_IS_CONS(hcl, ass));
+				/* this association is an entry in the system dictionary.
+				 * it doesn't need to look up the dictionary for each access
+				 * as the pointer to the association is in the literal frame */
 
 				if ((bcode >> 3) & 1)
 				{
 					/* store or pop */
+					if (HCL_IS_CLASS(hcl, ass->cdr) && ((hcl_oop_class_t)ass->cdr)->name == ass->car)
+					{
+						hcl_seterrbfmt (hcl, HCL_EPERM, "prohibited redefintion of %.*js", HCL_OBJ_GET_SIZE(ass->car), HCL_OBJ_GET_CHAR_SLOT(ass->car));
+						if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
+						goto oops_with_errmsg_supplement;
+					}
 					ass->cdr = HCL_STACK_GETTOP(hcl);
 
 					if ((bcode >> 2) & 1)
@@ -3857,13 +3866,13 @@ static int execute (hcl_t* hcl)
 
 			case HCL_CODE_CLASS_ENTER:
 			{
-				/* push superclass
-				   push class_name
+				/* push an association with class_name as a key or push nil
+				   push superclass (only if nsuperclassses > 0)
 				   push ivars_string
 				   push cvars_string
 				   class_enter nsuperclasses nivars ncvars
 				 */
-				hcl_oop_t t, superclass, ivars_str, cvars_str, class_name;
+				hcl_oop_t t, superclass, ivars_str, cvars_str, class_name, class_name_ass;
 				hcl_oow_t b3;
 
 				FETCH_PARAM_CODE_TO (hcl, b1); /* nsuperclasses */
@@ -3886,9 +3895,6 @@ static int execute (hcl_t* hcl)
 				}
 				else ivars_str = hcl->_nil;
 
-				HCL_STACK_POP_TO(hcl, class_name);
-				HCL_ASSERT (hcl, HCL_IS_NIL(hcl, class_name) || HCL_IS_SYMBOL(hcl, class_name));
-
 				if (b1 > 0)
 				{
 					HCL_STACK_POP_TO (hcl, superclass); /* TODO: support more than 1 superclass later when the compiler supports more */
@@ -3901,14 +3907,25 @@ static int execute (hcl_t* hcl)
  				}
 				else superclass = hcl->_nil;
 
+				HCL_STACK_POP_TO(hcl, class_name_ass);
+				/*HCL_ASSERT (hcl, HCL_IS_NIL(hcl, class_name) || HCL_IS_SYMBOL(hcl, class_name));*/
+				HCL_ASSERT (hcl, HCL_IS_NIL(hcl, class_name_ass) || HCL_IS_CONS(hcl, class_name_ass));
+
 //////////////
 //hcl_logbfmt(hcl, HCL_LOG_STDERR, "class_name in class_enter 111>>>[%O]<<<\n", class_name);
-				if (HCL_IS_SYMBOL(hcl, class_name))
+				if (HCL_IS_CONS(hcl, class_name_ass))
 				{
 //hcl_logbfmt(hcl, HCL_LOG_STDERR, "class_name in class_enter >>>[%O]<<<\n", class_name);
 					/* TODO: check if the class exists.
 					 *       check if the class is a incomlete kernel class.
 					 *       if so,  .... */
+					class_name = ((hcl_oop_cons_t)(class_name_ass))->car;
+					HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl, class_name));
+				}
+				else
+				{
+					/* anonymous class */
+					class_name = hcl->_nil;
 				}
 //////////////
 
@@ -4089,7 +4106,6 @@ static int execute (hcl_t* hcl)
 				if ((bcode >> 3) & 1)
 				{
 					/* store or pop */
-
 					t->slot[b1] = HCL_STACK_GETTOP(hcl);
 
 					if ((bcode >> 2) & 1)
