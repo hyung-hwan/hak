@@ -2600,9 +2600,9 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src, int defclass)
 	}
 
 	if (class_name)
-		SWITCH_TOP_CFRAME (hcl, COP_COMPILE_SYMBOL_LITERAL, class_name); /* 1 - push nil for class name */
+		SWITCH_TOP_CFRAME (hcl, COP_COMPILE_SYMBOL_LITERAL, class_name); /* 1 - push the class name for a named class */
 	else
-		SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, &hcl->c->fake_cnode.nil); /* 1 - push nil for class name */
+		SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, &hcl->c->fake_cnode.nil); /* 1 - push nil for class name  for anonymous class */
 
 	PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_P2, class_name); /* 3 - use class name for assignment */
 	cf = GET_SUBCFRAME(hcl);
@@ -2757,51 +2757,16 @@ static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 
 	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_PEXIT, &class_loc) <= -1) return -1; /* pop + exit */
 
-	if (class_name) /* defclass requires a name. but class doesn't */
+	if (class_name)
 	{
-	#if 0
-		/* (defclass X()  ; this X refers to a variable in the outer scope.
-		 *     ::: | t1 t2 x |
-		 *     (set x 10)  ; this x refers to the class variable.
-		 * )
-		 *
-		 * the block has been exited(blk.depth--) before finding 'x' in the outer scope.
-		 */
-		hcl_var_info_t vi;
-		int x;
-
-		x = find_variable_backward_with_token(hcl, class_name, &vi);
-		if (x <= -1) return -1;
-
-		if (x == 0)
-		{
-			SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, class_name);
-			cf = GET_TOP_CFRAME(hcl);
-			cf->u.set.vi.type = VAR_NAMED;
-		}
-		else
-		{
-			SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, class_name);
-			cf = GET_TOP_CFRAME(hcl);
-			cf->u.set.vi = vi;
-		}
-		cf->u.set.mode = VAR_ACCESS_STORE;
-	#else
+		/* a class name is treated like a global variable */
 		SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, class_name);
 		cf = GET_TOP_CFRAME(hcl);
 		cf->u.set.vi.type = VAR_NAMED;
 		cf->u.set.mode = VAR_ACCESS_STORE;
-	#endif
-
-	#if 0
-		PUSH_SUBCFRAME (hcl, COP_COMPILE_CLASS_P3, cf->operand);
-	#endif
 	}
 	else
 	{
-	#if 0
-		SWITCH_TOP_CFRAME (hcl, COP_COMPILE_CLASS_P3, cf->operand);
-	#endif
 		POP_CFRAME (hcl);
 	}
 
