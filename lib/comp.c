@@ -2878,7 +2878,7 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src, int defun)
 							hcl_setsynerrbfmt (
 								hcl, HCL_SYNERR_VARNAME,
 								HCL_CNODE_GET_LOC(defun_name), HCL_CNODE_GET_TOK(defun_name),
-								"function name not valid in %.*js",
+								"function name not valid followed by %.*js",
 								HCL_CNODE_GET_TOKLEN(tmp), HCL_CNODE_GET_TOKPTR(tmp));
 							return -1;
 						}

@@ -125,13 +125,13 @@ else { printf "OK: value is %d\n" v }
 ## --------------------------------------------------------------
 class X4 {
 	fun :: t() {
-		| X4 |
-		class X4 { ## this X4 isn't the local variable X4
+		| X5 |
+		class X5 { ## this X5 isn't the local variable X4
 			fun :: t() {
-				X4 := (class {
+				X6 := (class {
 					fun :: t() {
-						| X4 |
-						X4 := (class { ## this X4 is the local variable X4
+						| X7 |
+						X7 := (class { ## this X4 is the local variable X4
 							fun :: t() { return 60 }
 						})
 						return 40
@@ -148,14 +148,14 @@ v := (X4:t)
 if (nqv? v 30) { printf "ERROR: v is not 30 - %d\n" v } \
 else { printf "OK: value is %d\n" v }
 
-v := (X4:t)
+v := (X5:t)
 if (nqv? v 20) { printf "ERROR: v is not 20 - %d\n" v } \
 else { printf "OK: value is %d\n" v }
 
-v := (X4:t)
+v := (X6:t)
 if (nqv? v 40) { printf "ERROR: v is not 40 - %d\n" v } \
 else { printf "OK: value is %d\n" v }
 
-v := (X4:t)
+v := (X6:t)
 if (nqv? v 40) { printf "ERROR: v is not 40 - %d\n" v } \
 else { printf "OK: value is %d\n" v }
