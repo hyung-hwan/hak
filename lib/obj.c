@@ -464,6 +464,8 @@ hcl_oop_t hcl_makefpdec (hcl_t* hcl, hcl_oop_t value, hcl_ooi_t scale)
 hcl_oop_t hcl_makeclass (hcl_t* hcl, hcl_oop_t class_name, hcl_oop_t superclass, hcl_ooi_t nivars, hcl_ooi_t ncvars, hcl_oop_t ivars_str, hcl_oop_t cvars_str)
 {
 	hcl_oop_class_t c;
+	hcl_oow_t spec, selfspec;
+	hcl_ooi_t nivars_super;
 
 	hcl_pushvolat (hcl, &class_name);
 	hcl_pushvolat (hcl, &superclass);
@@ -483,41 +485,25 @@ hcl_oop_t hcl_makeclass (hcl_t* hcl, hcl_oop_t class_name, hcl_oop_t superclass,
 	}
 	HCL_OBJ_SET_CLASS (c, (hcl_oop_t)hcl->c_class);
 
-	c->spec = HCL_SMOOI_TO_OOP(0); /* TODO: fix this - encode nivars and nivars_super to spec??? */
-	c->selfspec = HCL_SMOOI_TO_OOP(0); /* TODO: fix  this - encode ncvars to selfspec??? */
+	/* TODO: other flags... indexable? byte? word?*/
+	spec = HCL_CLASS_SPEC_MAKE(nivars, 0, 0); /* TODO: how to include nivars_super ? */
+	selfspec = HCL_CLASS_SELFSPEC_MAKE(ncvars, 0, 0);
+	nivars_super = HCL_IS_NIL(hcl, superclass)? 0: HCL_OOP_TO_SMOOI(((hcl_oop_class_t)superclass)->nivars_super) + HCL_OOP_TO_SMOOI(((hcl_oop_class_t)superclass)->nivars);
+
+	c->spec = HCL_SMOOI_TO_OOP(spec);
+	c->selfspec = HCL_SMOOI_TO_OOP(selfspec);
 	c->name = class_name;
 	c->superclass = superclass;
 	c->nivars = HCL_SMOOI_TO_OOP(nivars);
 	c->ncvars = HCL_SMOOI_TO_OOP(ncvars);
+	c->nivars_super = HCL_SMOOI_TO_OOP(nivars_super);
 	c->ibrand = HCL_SMOOI_TO_OOP(HCL_BRAND_INSTANCE); /* TODO: really need ibrand??? */
-
-	if ((hcl_oop_t)superclass != hcl->_nil)
-	{
-		hcl_ooi_t nivars_super;
-		nivars_super = HCL_OOP_TO_SMOOI(((hcl_oop_class_t)superclass)->nivars_super) + HCL_OOP_TO_SMOOI(((hcl_oop_class_t)superclass)->nivars);
-		c->nivars_super =  HCL_SMOOI_TO_OOP(nivars_super);
-	}
-	else
-	{
-		c->nivars_super = HCL_SMOOI_TO_OOP(0);
-	}
 
 	/* TODO: remember ivars_str and vars_str? */
 	/* duplicate ivars_str and cvars_str and set it to c->ivarnames and c->cvarnames???? */
 
 	return (hcl_oop_t)c;
 }
-
-#if 0
-static HCL_INLINE int decode_spec (hcl_t* hcl, hcl_oop_class_t _class, hcl_obj_type_t* type, hcl_oow_t* outlen)
-{
-	/* TODO: */
-
-	*type = HCL_OBJ_TYPE_OOP;
-	*outlen = HCL_OOP_TO_SMOOI(_class->nivars_super) + HCL_OOP_TO_SMOOI(_class->nivars);
-	return 0;
-}
-#else
 
 static HCL_INLINE int decode_spec (hcl_t* hcl, hcl_oop_class_t _class, hcl_oow_t num_flexi_fields, hcl_obj_type_t* type, hcl_oow_t* outlen)
 {
@@ -569,10 +555,9 @@ static HCL_INLINE int decode_spec (hcl_t* hcl, hcl_oop_class_t _class, hcl_oow_t
 	*type = indexed_type;
 
 	/* TODO: THIS PART IS WRONG.. nivars_super and nivars should be encoded to the spec.... */
-	*outlen = num_fixed_fields + num_flexi_fields + HCL_OOP_TO_SMOOI(_class->nivars_super) + HCL_OOP_TO_SMOOI(_class->nivars);
+	*outlen = num_fixed_fields + num_flexi_fields + HCL_OOP_TO_SMOOI(_class->nivars_super) /*+ HCL_OOP_TO_SMOOI(_class->nivars)*/;
 	return 0;
 }
-#endif
 
 hcl_oop_t hcl_instantiate (hcl_t* hcl, hcl_oop_class_t _class, const void* vptr, hcl_oow_t vlen)
 {

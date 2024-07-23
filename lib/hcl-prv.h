@@ -223,8 +223,8 @@
  * the spec field of the class with limited number of bits assigned to
  * the number of named instance variables.
  */
-#define HCL_MAX_NAMED_INSTVARS \
-	HCL_BITS_MAX(hcl_oow_t, HCL_SMOOI_ABS_BITS - (HCL_OBJ_FLAGS_TYPE_BITS + HCL_CLASS_SPEC_FLAG_BITS))
+#define HCL_CLASS_SPEC_INSTVAR_BITS (HCL_SMOOI_ABS_BITS - (HCL_OBJ_FLAGS_TYPE_BITS + HCL_CLASS_SPEC_FLAG_BITS))
+#define HCL_MAX_NAMED_INSTVARS HCL_BITS_MAX(hcl_oow_t, HCL_CLASS_SPEC_INSTVAR_BITS)
 
 /* Given the number of named instance variables, what is the maximum number
  * of indexed instance variables? The number of indexed instance variables

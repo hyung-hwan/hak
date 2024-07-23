@@ -1,19 +1,22 @@
-class Object {
+class Apex {
 }
 
-class Collection : Object {
+class Object :: Apex {
 }
 
-class IndexedCollection: Collection {
+class Collection :: Object {
 }
 
-class FixedSizedCollection: Collection {
+class IndexedCollection :: Collection {
 }
 
-class Array: FixedSizedCollection {
+class FixedSizedCollection :: Collection {
 }
 
-class String: Array {
+class Array :: FixedSizedCollection {
+}
+
+class String :: Array {
 }
 
 fun Collection:length() {
@@ -28,22 +31,22 @@ fun Class:name() {
 	return (core.class_name self)
 }
 
-class String: Array (a b c) {
-}
+##class String:: Array [a b c] {
+##}
 
-class String: Array (
-	monaco
-	duncan
-	falcon
-	:deuce
-	:canival
-	:pebble
-	:godzilla
-) {
-	fun Collection:slice(index count) {
-		return (arr.slice self index count)
-	}
-}
+##class String:: Array [
+##	monaco
+##	duncan
+##	falcon
+##	deuce
+##	canival
+##	pebble
+##	godzilla
+##] {
+##	fun Collection:slice(index count) {
+##		return (arr.slice self index count)
+##	}
+##}
 
 
 printf "string length %d\n" ("aaaa":length)

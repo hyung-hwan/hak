@@ -27,7 +27,7 @@ else { printf "OK:  value is %d\n" v };
 
 ## --------------------------------------------------------------
 
-class X [ a b c d ] {
+class X0 [ a b c d ] {
         fun :*new() {
                 return self;
         }
@@ -44,7 +44,7 @@ class X [ a b c d ] {
 		return self.d
 	}
 
-}; a := (X:new); v := (a:x)
+}; a := (X0:new); v := (a:x)
 if (nqv? v 100) { printf "ERROR: v is not 100\n" } \
 else { printf "OK:  value is %d\n" v }
 

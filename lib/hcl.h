@@ -585,8 +585,6 @@ typedef struct hcl_block_t* hcl_oop_block_t;
 typedef struct hcl_context_t hcl_context_t;
 typedef struct hcl_context_t* hcl_oop_context_t;
 
-#define HCL_CALL_FLAG_VA (1 << 0)
-
 struct hcl_function_t
 {
 	HCL_OBJ_HEADER;
@@ -1785,7 +1783,7 @@ struct hcl_t
 	 * because the 2 high extended bits are used only if the low tag bits
 	 * are 3 */
 	int tagged_brands[16];
-	hcl_oop_class_t* tagged_classes[16];
+	hcl_oop_class_t* tagged_classes[16]; /* this is a pointer to hcl_oop_class_t which is also a pointer */
 
 
 	hcl_oop_t* volat_stack[256]; /* stack for temporaries */

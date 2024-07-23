@@ -1183,7 +1183,11 @@ static hcl_oop_class_t alloc_kernel_class (hcl_t* hcl, int class_flags, hcl_oow_
 	HCL_OBJ_SET_CLASS (c, (hcl_oop_t)hcl->c_class);
 	c->spec = HCL_SMOOI_TO_OOP(spec);
 	c->selfspec = HCL_SMOOI_TO_OOP(HCL_CLASS_SELFSPEC_MAKE(num_classvars, 0, class_flags));
-	c->nivars = HCL_SMOOI_TO_OOP(0); /* TODO: encode it into spec? */
+
+/* TODO: remove the following two duplicate fields with the spec fields */
+	c->nivars = HCL_SMOOI_TO_OOP(HCL_CLASS_SPEC_NAMED_INSTVARS(spec));
+	//c->nivars = HCL_SMOOI_TO_OOP(0);
+	c->ncvars = HCL_SMOOI_TO_OOP(num_classvars);
 	c->nivars_super = HCL_SMOOI_TO_OOP(0); /* TODO: encode it into spec? */
 	c->ibrand = HCL_SMOOI_TO_OOP(ibrand);
 
@@ -1210,7 +1214,8 @@ static int ignite_1 (hcl_t* hcl)
 	if (HCL_LIKELY(!hcl->c_class))
 	{
 		hcl->c_class = alloc_kernel_class(
-			hcl, kernel_classes[KCI_CLASS].class_flags,
+			hcl,
+			kernel_classes[KCI_CLASS].class_flags,
 			kernel_classes[KCI_CLASS].class_num_classvars,
 			HCL_CLASS_SPEC_MAKE(kernel_classes[KCI_CLASS].class_spec_named_instvars,
 			                    kernel_classes[KCI_CLASS].class_spec_flags,
@@ -1234,7 +1239,8 @@ static int ignite_1 (hcl_t* hcl)
 		if (i == KCI_CLASS) continue; /* skip Class as it's created above */
 
 		tmp = alloc_kernel_class(
-			hcl, kernel_classes[i].class_flags,
+			hcl,
+			kernel_classes[i].class_flags,
 			kernel_classes[i].class_num_classvars,
 			HCL_CLASS_SPEC_MAKE(kernel_classes[i].class_spec_named_instvars,
 			                    kernel_classes[i].class_spec_flags,

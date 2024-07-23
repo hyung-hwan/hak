@@ -425,7 +425,7 @@ static HCL_INLINE hcl_oop_block_t make_block (hcl_t* hcl)
 {
 	/* create a base block used for creation of a block context */
 	/*return (hcl_oop_block_t)hcl_allocoopobj(hcl, HCL_BRAND_BLOCK, HCL_BLOCK_NAMED_INSTVARS);*/
-	return (hcl_oop_function_t)hcl_instantiate(hcl, hcl->c_block, HCL_NULL, 0);
+	return (hcl_oop_block_t)hcl_instantiate(hcl, hcl->c_block, HCL_NULL, 0);
 }
 
 static HCL_INLINE void fill_block_data (hcl_t* hcl, hcl_oop_block_t blk, hcl_ooi_t attr_mask, hcl_ooi_t ip, hcl_oop_context_t homectx)
@@ -2141,11 +2141,11 @@ static HCL_INLINE int call_primitive (hcl_t* hcl, hcl_ooi_t nargs)
 
 /* ------------------------------------------------------------------------- */
 
-static hcl_oop_block_t find_imethod_in_class_noseterr (hcl_t* hcl, hcl_oop_class_t class_, hcl_oocs_t* name, hcl_ooi_t* ivaroff, hcl_oop_class_t* owner)
+static hcl_oop_block_t find_imethod_in_class_noseterr (hcl_t* hcl, hcl_oop_class_t _class, hcl_oocs_t* name, hcl_ooi_t* ivaroff, hcl_oop_class_t* owner)
 {
 	hcl_oop_t dic;
 
-	dic = class_->mdic;
+	dic = _class->mdic;
 	HCL_ASSERT (hcl, HCL_IS_NIL(hcl, dic) || HCL_IS_DIC(hcl, dic));
 
 	if (HCL_LIKELY(!HCL_IS_NIL(hcl, dic)))
@@ -2160,8 +2160,8 @@ static hcl_oop_block_t find_imethod_in_class_noseterr (hcl_t* hcl, hcl_oop_class
 			if (!HCL_IS_NIL(hcl, HCL_CONS_CDR(val)))
 			{
 				/* TODO: further check if it's a method block? */
-				*owner = class_;
-				*ivaroff = HCL_OOP_TO_SMOOI(class_->nivars_super);
+				*owner = _class;
+				*ivaroff = HCL_OOP_TO_SMOOI(_class->nivars_super);
 				return (hcl_oop_block_t)HCL_CONS_CDR(val); /* car - class method, cdr - instance method */
 			}
 		}
@@ -2263,7 +2263,7 @@ static hcl_oop_block_t find_cmethod_noseterr (hcl_t* hcl, hcl_oop_class_t _class
 
 	/* find the instance method of the Class class as a class is an instance of the Class class. */
 	/* TODO: may need to traverse up if Class is a subclass in some other Clss-related abstraction... */
-	return find_imethod_in_class_noseterr(hcl, HCL_CLASSOF(hcl, _class), &name, ivaroff, owner);
+	return find_imethod_in_class_noseterr(hcl, (hcl_oop_class_t)HCL_CLASSOF(hcl, _class), &name, ivaroff, owner);
 }
 
 static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t msg, int to_super, hcl_ooi_t nargs, hcl_ooi_t nrvars)
@@ -3556,17 +3556,21 @@ static int execute (hcl_t* hcl)
 
 				if ((bcode >> 3) & 1)
 				{
+					hcl_oop_t v;
+
 					/* store or pop */
-					if (HCL_IS_CLASS(hcl, ass->cdr) && ((hcl_oop_class_t)ass->cdr)->name == ass->car)
+					v = HCL_STACK_GETTOP(hcl);
+					if (HCL_IS_CLASS(hcl, ass->cdr) && ((hcl_oop_class_t)ass->cdr)->name == ass->car && v != ass->cdr)
 					{
-						/* the existing value must be a class. disallow re-definition */
+						/* the existing value is a class.
+						 * the class name is the same as the key value of the pair.
+						 * disallow re-definition if the new value is not itself. */
 						hcl_seterrbfmt (hcl, HCL_EPERM, "prohibited redefintion of %.*js", HCL_OBJ_GET_SIZE(ass->car), HCL_OBJ_GET_CHAR_SLOT(ass->car));
 						if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
 						goto oops_with_errmsg_supplement;
 					}
 
-					ass->cdr = HCL_STACK_GETTOP(hcl);
-
+					ass->cdr = v; /* update the value */
 					if ((bcode >> 2) & 1)
 					{
 						/* pop */
@@ -3874,7 +3878,9 @@ static int execute (hcl_t* hcl)
 				   push cvars_string
 				   class_enter nsuperclasses nivars ncvars
 				 */
-				hcl_oop_t t, superclass, ivars_str, cvars_str, class_name, class_name_ass;
+				hcl_oop_t superclass, ivars_str, cvars_str, class_name;
+				hcl_oop_t v;
+				hcl_oop_class_t class_obj;
 				hcl_oow_t b3;
 
 				FETCH_PARAM_CODE_TO (hcl, b1); /* nsuperclasses */
@@ -3909,33 +3915,60 @@ static int execute (hcl_t* hcl)
  				}
 				else superclass = hcl->_nil;
 
-				HCL_STACK_POP_TO(hcl, class_name_ass);
-				/*HCL_ASSERT (hcl, HCL_IS_NIL(hcl, class_name) || HCL_IS_SYMBOL(hcl, class_name));*/
-				HCL_ASSERT (hcl, HCL_IS_NIL(hcl, class_name_ass) || HCL_IS_CONS(hcl, class_name_ass));
+				HCL_STACK_POP_TO(hcl, v);
 
 //////////////
-//hcl_logbfmt(hcl, HCL_LOG_STDERR, "class_name in class_enter 111>>>[%O]<<<\n", class_name);
-				if (HCL_IS_CONS(hcl, class_name_ass))
+				if (HCL_IS_CONS(hcl, v))
 				{
-//hcl_logbfmt(hcl, HCL_LOG_STDERR, "class_name in class_enter >>>[%O]<<<\n", class_name);
-					/* TODO: check if the class exists.
-					 *       check if the class is a incomlete kernel class.
-					 *       if so,  .... */
-					class_name = ((hcl_oop_cons_t)(class_name_ass))->car;
+					/* named class. the compiler generates code to push a pair holding
+					 * a name and a class object for a name class. */
+					class_name = ((hcl_oop_cons_t)v)->car;
 					HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl, class_name));
+
+					class_obj = (hcl_oop_class_t)((hcl_oop_cons_t)v)->cdr;
+					if (HCL_IS_CLASS(hcl, class_obj))
+					{
+						/* the existing value must be a class. disallow re-definition */
+
+						/* 0(non-kernel object), 1(incomplete kernel object), 2(complete kernel object) */
+						if (HCL_OBJ_GET_FLAGS_KERNEL(class_obj) == 1)
+						{
+hcl_logbfmt (hcl, HCL_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncvars=%d<<<\n", class_obj, class_obj->superclass, superclass, b2, b3, (int)HCL_OOP_TO_SMOOI(class_obj->nivars), (int)HCL_OOP_TO_SMOOI(class_obj->ncvars));
+							/* check if the new definition is compatible with kernel definition */
+							if (class_obj->superclass != superclass || HCL_OOP_TO_SMOOI(class_obj->nivars) != b2 || HCL_OOP_TO_SMOOI(class_obj->ncvars) != b3)
+							{
+								hcl_seterrbfmt (hcl, HCL_EPERM, "incompatible redefintion of %.*js", HCL_OBJ_GET_SIZE(class_name), HCL_OBJ_GET_CHAR_SLOT(class_name));
+								if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
+								goto oops_with_errmsg_supplement;
+							}
+						}
+						else
+						{
+							hcl_seterrbfmt (hcl, HCL_EPERM, "prohibited redefintion of %.*js", HCL_OBJ_GET_SIZE(class_name), HCL_OBJ_GET_CHAR_SLOT(class_name));
+							if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
+							goto oops_with_errmsg_supplement;
+						}
+					}
+					else
+					{
+						HCL_ASSERT (hcl, HCL_IS_NIL(hcl, (hcl_oop_t)class_obj));
+						goto make_class;
+					}
 				}
 				else
 				{
 					/* anonymous class */
+					HCL_ASSERT (hcl, HCL_IS_NIL(hcl, v));
 					class_name = hcl->_nil;
+
+				make_class:
+					class_obj = (hcl_oop_class_t)hcl_makeclass(hcl, class_name, superclass, b2, b3, ivars_str, cvars_str);
+					if (HCL_UNLIKELY(!class_obj)) goto oops_with_errmsg_supplement;
 				}
 //////////////
 
-				t = hcl_makeclass(hcl, class_name, superclass, b2, b3, ivars_str, cvars_str); /* TOOD: pass variable information... */
-				if (HCL_UNLIKELY(!t)) goto oops_with_errmsg_supplement;
-
 				/* push the class created to the class stack. but don't push to the normal operation stack */
-				HCL_CLSTACK_PUSH (hcl, t);
+				HCL_CLSTACK_PUSH (hcl, (hcl_oop_t)class_obj);
 				break;
 			}
 
