@@ -858,7 +858,7 @@ struct hcl_process_scheduler_t
 };
 
 
-#define HCL_CLASS_NAMED_INSTVARS 11
+#define HCL_CLASS_NAMED_INSTVARS 9
 typedef struct hcl_class_t hcl_class_t;
 typedef struct hcl_class_t* hcl_oop_class_t;
 struct hcl_class_t
@@ -872,8 +872,6 @@ struct hcl_class_t
 	hcl_oop_t selfspec; /* SmallInteger. specification of the class object itself */
 
 	hcl_oop_t superclass;
-	hcl_oop_t nivars; /* SmallInteger. */
-	hcl_oop_t ncvars; /* SmallInteger. */
 	hcl_oop_t nivars_super; /* SmallInteger */
 	hcl_oop_t ibrand; /* SmallInteger */
 

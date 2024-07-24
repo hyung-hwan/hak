@@ -3933,9 +3933,13 @@ static int execute (hcl_t* hcl)
 						/* 0(non-kernel object), 1(incomplete kernel object), 2(complete kernel object) */
 						if (HCL_OBJ_GET_FLAGS_KERNEL(class_obj) == 1)
 						{
-hcl_logbfmt (hcl, HCL_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncvars=%d<<<\n", class_obj, class_obj->superclass, superclass, b2, b3, (int)HCL_OOP_TO_SMOOI(class_obj->nivars), (int)HCL_OOP_TO_SMOOI(class_obj->ncvars));
 							/* check if the new definition is compatible with kernel definition */
-							if (class_obj->superclass != superclass || HCL_OOP_TO_SMOOI(class_obj->nivars) != b2 || HCL_OOP_TO_SMOOI(class_obj->ncvars) != b3)
+							hcl_ooi_t spec, selfspec;
+
+							spec = HCL_OOP_TO_SMOOI(class_obj->spec);
+							selfspec = HCL_OOP_TO_SMOOI(class_obj->selfspec);
+hcl_logbfmt (hcl, HCL_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncvars=%d<<<\n", class_obj, class_obj->superclass, superclass, b2, b3, (int)HCL_CLASS_SPEC_NAMED_INSTVARS(spec), (int)HCL_CLASS_SELFSPEC_CLASSVARS(spec));
+							if (class_obj->superclass != superclass || HCL_CLASS_SPEC_NAMED_INSTVARS(spec) != b2 || HCL_CLASS_SELFSPEC_CLASSVARS(selfspec) != b3)
 							{
 								hcl_seterrbfmt (hcl, HCL_EPERM, "incompatible redefintion of %.*js", HCL_OBJ_GET_SIZE(class_name), HCL_OBJ_GET_CHAR_SLOT(class_name));
 								if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;

@@ -1185,9 +1185,8 @@ static hcl_oop_class_t alloc_kernel_class (hcl_t* hcl, int class_flags, hcl_oow_
 	c->selfspec = HCL_SMOOI_TO_OOP(HCL_CLASS_SELFSPEC_MAKE(num_classvars, 0, class_flags));
 
 /* TODO: remove the following two duplicate fields with the spec fields */
-	c->nivars = HCL_SMOOI_TO_OOP(HCL_CLASS_SPEC_NAMED_INSTVARS(spec));
-	//c->nivars = HCL_SMOOI_TO_OOP(0);
-	c->ncvars = HCL_SMOOI_TO_OOP(num_classvars);
+	//c->nivars = HCL_SMOOI_TO_OOP(HCL_CLASS_SPEC_NAMED_INSTVARS(spec));
+	//c->ncvars = HCL_SMOOI_TO_OOP(num_classvars);
 	c->nivars_super = HCL_SMOOI_TO_OOP(0); /* TODO: encode it into spec? */
 	c->ibrand = HCL_SMOOI_TO_OOP(ibrand);
 

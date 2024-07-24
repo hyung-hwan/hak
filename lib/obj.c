@@ -488,14 +488,22 @@ hcl_oop_t hcl_makeclass (hcl_t* hcl, hcl_oop_t class_name, hcl_oop_t superclass,
 	/* TODO: other flags... indexable? byte? word?*/
 	spec = HCL_CLASS_SPEC_MAKE(nivars, 0, 0); /* TODO: how to include nivars_super ? */
 	selfspec = HCL_CLASS_SELFSPEC_MAKE(ncvars, 0, 0);
-	nivars_super = HCL_IS_NIL(hcl, superclass)? 0: HCL_OOP_TO_SMOOI(((hcl_oop_class_t)superclass)->nivars_super) + HCL_OOP_TO_SMOOI(((hcl_oop_class_t)superclass)->nivars);
+
+	if (!HCL_IS_NIL(hcl, superclass))
+	{
+		hcl_ooi_t superspec;
+		superspec = HCL_OOP_TO_SMOOI(((hcl_oop_class_t)superclass)->spec);
+		nivars_super = HCL_OOP_TO_SMOOI(((hcl_oop_class_t)superclass)->nivars_super) + HCL_CLASS_SPEC_NAMED_INSTVARS(superspec);
+	}
+	else
+	{
+		nivars_super = 0;
+	}
 
 	c->spec = HCL_SMOOI_TO_OOP(spec);
 	c->selfspec = HCL_SMOOI_TO_OOP(selfspec);
 	c->name = class_name;
 	c->superclass = superclass;
-	c->nivars = HCL_SMOOI_TO_OOP(nivars);
-	c->ncvars = HCL_SMOOI_TO_OOP(ncvars);
 	c->nivars_super = HCL_SMOOI_TO_OOP(nivars_super);
 	c->ibrand = HCL_SMOOI_TO_OOP(HCL_BRAND_INSTANCE); /* TODO: really need ibrand??? */
 
