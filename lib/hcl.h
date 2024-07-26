@@ -1695,13 +1695,17 @@ struct hcl_t
 	 *  kernel_classes table in gc.c
 	 * ============================================================= */
 	hcl_oop_class_t c_apex; /* Apex */
-	hcl_oop_class_t c_undefobj; /* UndefinedObject */
 	hcl_oop_class_t c_class; /* Class */
+	hcl_oop_class_t c_undefobj; /* UndefinedObject */
+	hcl_oop_class_t c_nilobj; /* NilObject */
 #if 0
 	hcl_oop_class_t c_interface; /* Interface */
 #endif
 	hcl_oop_class_t c_object; /* Object */
 
+	hcl_oop_class_t c_collection; /* Collection */
+	hcl_oop_class_t c_indexed_collection; /* IndexedCollection */
+	hcl_oop_class_t c_fixed_sized_collection; /* FixedSizedCollection */
 	hcl_oop_class_t c_string; /* String */
 	hcl_oop_class_t c_symbol; /* Symbol */
 	hcl_oop_class_t c_array; /* Array */
@@ -1733,7 +1737,9 @@ struct hcl_t
 	hcl_oop_class_t c_error; /* Error */
 	hcl_oop_class_t c_true; /* True */
 	hcl_oop_class_t c_false; /* False */
+	hcl_oop_class_t c_magnitude; /* Magnitude */
 	hcl_oop_class_t c_character; /* Character */
+	hcl_oop_class_t c_number; /* Number */
 	hcl_oop_class_t c_small_integer; /* SmallInteger */
 
 	hcl_oop_class_t c_large_positive_integer; /* LargePositiveInteger */

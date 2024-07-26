@@ -87,8 +87,8 @@ static struct
  *               FixedSizedCollection
  *                  Array
  *                  ByteArray
- *                     String
- *                        Symbol
+ *                  String
+ *                    Symbol
  *            Set
  *               Dictionary
  *                  SystemDictionary
@@ -110,57 +110,124 @@ static struct
 struct kernel_class_info_t
 {
 	const hcl_bch_t* name;
+	int superclass_kci;
 	int class_brand;
-	int class_flags;
-	int class_num_classvars;
+	int class_flags; /* class flags for selfspec */
+	int class_ncvars; /* number of class variables */
 
-	int class_spec_named_instvars;
+	int class_spec_nivars; /* number of named instance variables */
 	int class_spec_flags;
 	int class_spec_indexed_type;
 
-	hcl_oow_t  offset;
+	hcl_oow_t  offset; /* offset to the field in hcl_t that stored the class pointer */
 };
 typedef struct kernel_class_info_t kernel_class_info_t;
 
-static kernel_class_info_t kernel_classes[] =
+enum {
+	KCI_APEX = 0,
+	KCI_CLASS,
+	KCI_UNDEFINED_OBJECT,
+	KCI_NIL_OBJECT,
+	KCI_OBJECT,
+	KCI_COLLECTION,
+	KCI_INDEXED_COLLECTION,
+	KCI_FIXED_SIZED_COLLECTION,
+	KCI_STRING,
+	KCI_SYMBOL,
+	KCI_ARRAY,
+	KCI_BYTE_ARRAY,
+	KCI_SYMBOL_TABLE,
+	KCI_DICTIONARY,
+	KCI_CONS,
+	KCI_METHOD_DICTIONARY,
+	KCI_FUNCTION,
+	KCI_COMPILED_BLOCK,
+	KCI_METHOD_CONTEXT,
+	KCI_BLOCK_CONTEXT,
+	KCI_PROCESS,
+	KCI_SEMAPHORE,
+	KCI_SEMAPHORE_GROUP,
+	KCI_PROCESS_SCHEDULER,
+	KCI_ERROR,
+	KCI_TRUE,
+	KCI_FALSE,
+	KCI_MAGNITUDE,
+	KCI_CHARACTER,
+	KCI_NUMBER,
+	KCI_SMALL_INTEGER,
+	KCI_LARGE_POSITIVE_INTEGER,
+	KCI_LARGE_NEGATIVE_INTEGER,
+	KCI_FIXED_POINT_DECIMAL,
+	KCI_SMALL_POINTER,
+	KCI_LARGE_POINTER,
+	KCI_SYSTEM,
+
+	__KCI_MAX__
+};
+#define KCI(x) HCL_AID(x)
+
+static kernel_class_info_t kernel_classes[__KCI_MAX__] =
 {
 	/* --------------------------------------------------------------
-	 * Apex            - proto-object with 1 class variable.
-	 * UndefinedObject - class for the nil object.
-	 * Object          - top of all ordinary objects.
-	 * String
-	 * Symbol
-	 * Array
-	 * ByteArray
-	 * SymbolSet
-	 * Character
-	 * SmallIntger
+	 * Apex              - proto-object with 1 class variable.
+	 *   Class
+	 *   UndefinedObject - class for the undefined state
+     *   NilObject       - class for nil
+	 *   Object          - top of all ordinary objects.
+	 *     String
+	 *       Symbol
+	 *     Array
+	 *     ByteArray
+	 *     Character
+	 *     SmallIntger
 	 * -------------------------------------------------------------- */
+	KCI(KCI_APEX) {
+		"Apex",
+		-1, /* no superclass */
+		0, /* brand */
+		0, /* selfspec flags */
+		0, /* ncvars */
+		0, /* nivars */
+		0, /* spec flags */
+		HCL_OBJ_TYPE_OOP, /* indexed type */
+		HCL_OFFSETOF(hcl_t, c_apex)
+	},
 
-	{ "Apex", 0,
-	  0,
-	  0,
-	  0,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_apex) },
+	KCI(KCI_CLASS) {
+		"Class",
+		KCI_APEX,
+		HCL_BRAND_CLASS,
+		HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+		0, /* ncvars */
+		HCL_CLASS_NAMED_INSTVARS, /* nivars */
+		HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
+		HCL_OBJ_TYPE_OOP,
+		HCL_OFFSETOF(hcl_t, c_class)
+	},
 
-	{ "UndefinedObject", HCL_BRAND_UNDEF,
-	  0,
-	  0,
-	  0,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_undefobj) },
+	KCI(KCI_UNDEFINED_OBJECT) {
+		"UndefinedObject",
+		KCI_APEX,
+		HCL_BRAND_UNDEF,
+		0,
+		0,
+		0,
+		0,
+		HCL_OBJ_TYPE_OOP,
+		HCL_OFFSETOF(hcl_t, c_undefobj)
+	},
 
-#define KCI_CLASS 2 /* index to the Class entry in this table */
-	{ "Class", HCL_BRAND_CLASS,
-	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-	  0,
-	  HCL_CLASS_NAMED_INSTVARS,
-	  HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_class) },
+	KCI(KCI_NIL_OBJECT) {
+		"NilObject",
+		KCI_APEX,
+		HCL_BRAND_NIL,
+		0,
+		0,
+		0,
+		0,
+		HCL_OBJ_TYPE_OOP,
+		HCL_OFFSETOF(hcl_t, c_nilobj)
+	},
 
 #if 0
 	{ "Interface",
@@ -172,72 +239,140 @@ static kernel_class_info_t kernel_classes[] =
 	  HCL_OFFSETOF(hcl_t, _interface) },
 #endif
 
-	{ "Object", 0,
-	  0,
-	  0,
-	  0,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_object) },
+	KCI(KCI_OBJECT) {
+		"Object",
+		KCI_APEX,
+		0, /* brand */
+		0, /* selfspec flags */
+		0, /* ncvars */
+		0, /* nivars */
+		0, /* spec flags */
+		HCL_OBJ_TYPE_OOP,
+		HCL_OFFSETOF(hcl_t, c_object)
+	},
 
-	{ "String", HCL_BRAND_STRING,
-	  0,
-	  0,
-	  0,
-	  HCL_CLASS_SPEC_FLAG_INDEXED,
-	  HCL_OBJ_TYPE_CHAR,
-	  HCL_OFFSETOF(hcl_t, c_string) },
+	KCI(KCI_COLLECTION) {
+		"Collection",
+		KCI_OBJECT,
+		0, /* brand */
+		0,
+		0,
+		0,
+		0,
+		HCL_OBJ_TYPE_OOP,
+		HCL_OFFSETOF(hcl_t, c_collection)
+	},
 
-	{ "Symbol", HCL_BRAND_SYMBOL,
-	  HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-	  0,
-	  0,
-	  HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_IMMUTABLE,
-	  HCL_OBJ_TYPE_CHAR,
-	  HCL_OFFSETOF(hcl_t, c_symbol) },
+	KCI(KCI_INDEXED_COLLECTION) {
+		"IndexedCollection",
+		KCI_COLLECTION,
+		0, /* brand */
+		0,
+		0,
+		0,
+		0,
+		HCL_OBJ_TYPE_OOP,
+		HCL_OFFSETOF(hcl_t, c_indexed_collection)
+	},
 
-	{ "Array", HCL_BRAND_ARRAY,
-	  0,
-	  0,
-	  0,
-	  HCL_CLASS_SPEC_FLAG_INDEXED,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_array) },
+	KCI(KCI_FIXED_SIZED_COLLECTION) {
+		"FixedSizedCollection",
+		KCI_INDEXED_COLLECTION,
+		0, /* brand */
+		0,
+		0,
+		0,
+		0,
+		HCL_OBJ_TYPE_OOP,
+		HCL_OFFSETOF(hcl_t, c_fixed_sized_collection)
+	},
 
-	{ "ByteArray", HCL_BRAND_BYTE_ARRAY,
-	  0,
-	  0,
-	  0,
-	  HCL_CLASS_SPEC_FLAG_INDEXED,
-	  HCL_OBJ_TYPE_BYTE,
-	  HCL_OFFSETOF(hcl_t, c_byte_array) },
+	KCI(KCI_STRING) {
+		"String",
+		KCI_FIXED_SIZED_COLLECTION,
+		HCL_BRAND_STRING,
+		0,
+		0,
+		0,
+		HCL_CLASS_SPEC_FLAG_INDEXED,
+		HCL_OBJ_TYPE_CHAR,
+		HCL_OFFSETOF(hcl_t, c_string)
+	},
+
+	KCI(KCI_SYMBOL) {
+		"Symbol",
+		KCI_STRING,
+		HCL_BRAND_SYMBOL,
+		HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+		0,
+		0,
+		HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_IMMUTABLE,
+		HCL_OBJ_TYPE_CHAR,
+		HCL_OFFSETOF(hcl_t, c_symbol)
+	},
+
+	KCI(KCI_ARRAY) {
+		"Array",
+		KCI_FIXED_SIZED_COLLECTION,
+		HCL_BRAND_ARRAY,
+		0,
+		0,
+		0,
+		HCL_CLASS_SPEC_FLAG_INDEXED,
+		HCL_OBJ_TYPE_OOP,
+		HCL_OFFSETOF(hcl_t, c_array)
+	},
+
+	KCI(KCI_BYTE_ARRAY) {
+		"ByteArray",
+		KCI_FIXED_SIZED_COLLECTION,
+		HCL_BRAND_BYTE_ARRAY,
+		0,
+		0,
+		0,
+		HCL_CLASS_SPEC_FLAG_INDEXED,
+		HCL_OBJ_TYPE_BYTE,
+		HCL_OFFSETOF(hcl_t, c_byte_array)
+	},
 
 	/* A special incarnation of a dictionary that allows only a symbol as a value.
 	 * The value in bucket is a symbol while the value in a normal dictionary is a
 	 * pair(cons) that contains a key and a value. */
-	{ "SymbolTable", HCL_BRAND_DIC, /* TODO: make this a special child class of Dictionary?? */
-	  0,
-	  0,
-	  HCL_DIC_NAMED_INSTVARS,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_symtab) },
+	KCI(KCI_SYMBOL_TABLE) {
+		"SymbolTable",
+		KCI_COLLECTION,
+		HCL_BRAND_DIC, /* TODO: make this a special child class of Dictionary?? */
+		0,
+		0,
+		HCL_DIC_NAMED_INSTVARS,
+		0,
+		HCL_OBJ_TYPE_OOP,
+		HCL_OFFSETOF(hcl_t, c_symtab)
+	},
 
-	{ "Dictionary", HCL_BRAND_DIC,
-	  0,
-	  0,
-	  HCL_DIC_NAMED_INSTVARS,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_dictionary) },
+	KCI(KCI_DICTIONARY) {
+		"Dictionary",
+		KCI_COLLECTION,
+		HCL_BRAND_DIC,
+		0,
+		0,
+		HCL_DIC_NAMED_INSTVARS,
+		0,
+		HCL_OBJ_TYPE_OOP,
+		HCL_OFFSETOF(hcl_t, c_dictionary)
+	},
 
-	{ "Cons", HCL_BRAND_CONS,
-	  0,
-	  0,
-	  HCL_CONS_NAMED_INSTVARS,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_cons) },
+	KCI(KCI_CONS) {
+		"Cons",
+		KCI_OBJECT,
+		HCL_BRAND_CONS,
+		0,
+		0,
+		HCL_CONS_NAMED_INSTVARS,
+		0,
+		HCL_OBJ_TYPE_OOP,
+		HCL_OFFSETOF(hcl_t, c_cons)
+	},
 
 #if 0
 	{ "Namespace",
@@ -257,13 +392,17 @@ static kernel_class_info_t kernel_classes[] =
 	  HCL_OFFSETOF(hcl_t, c_pool_dictionary) },
 #endif
 
-	{ "MethodDictionary", 0,
-	  0,
-	  0,
-	  HCL_DIC_NAMED_INSTVARS,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_method_dictionary) },
+	KCI(KCI_METHOD_DICTIONARY) {
+		"MethodDictionary",
+		KCI_DICTIONARY,
+		0,
+		0,
+		0,
+		HCL_DIC_NAMED_INSTVARS,
+		0,
+		HCL_OBJ_TYPE_OOP,
+		HCL_OFFSETOF(hcl_t, c_method_dictionary)
+	},
 
 #if 0
 	{ "CompiledMethod",
@@ -285,13 +424,17 @@ static kernel_class_info_t kernel_classes[] =
 
 	/* special function created with MAKE_FUNCTION in interactive mode
 	 * for execution of code fed and compiled.  */
-	{ "Function", HCL_BRAND_FUNCTION,
-	  0,
-	  0,
-	  HCL_FUNCTION_NAMED_INSTVARS,
-	  HCL_CLASS_SPEC_FLAG_INDEXED,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_function) },
+	KCI(KCI_FUNCTION) {
+		"Function",
+		KCI_OBJECT,
+		HCL_BRAND_FUNCTION,
+		0,
+		0,
+		HCL_FUNCTION_NAMED_INSTVARS,
+		HCL_CLASS_SPEC_FLAG_INDEXED,
+		HCL_OBJ_TYPE_OOP,
+		HCL_OFFSETOF(hcl_t, c_function)
+	},
 
 #if 0
 	{ "Primitive", HCL_BRAND_PRIM,
@@ -303,152 +446,248 @@ static kernel_class_info_t kernel_classes[] =
 	  HCL_OFFSETOF(hcl_t, c_prim) },
 #endif
 
-	{ "CompiledBlock", HCL_BRAND_BLOCK,
-	  0,
-	  0,
-	  HCL_BLOCK_NAMED_INSTVARS,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_block) },
+	KCI(KCI_COMPILED_BLOCK) {
+		"CompiledBlock",
+		KCI_OBJECT,
+		HCL_BRAND_BLOCK,
+		0,
+		0,
+		HCL_BLOCK_NAMED_INSTVARS,
+		0,
+		HCL_OBJ_TYPE_OOP,
+		HCL_OFFSETOF(hcl_t, c_block)
+	},
 
-	{ "MethodContext", 0,
-	  HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-	  0,
-	  HCL_CONTEXT_NAMED_INSTVARS,
-	  HCL_CLASS_SPEC_FLAG_INDEXED,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_method_context) },
+	KCI(KCI_METHOD_CONTEXT) {
+		"MethodContext",
+		KCI_OBJECT,
+		0,
+		HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+		0,
+		HCL_CONTEXT_NAMED_INSTVARS,
+		HCL_CLASS_SPEC_FLAG_INDEXED,
+		HCL_OBJ_TYPE_OOP,
+		HCL_OFFSETOF(hcl_t, c_method_context)
+	},
 
-	{ "BlockContext", HCL_BRAND_CONTEXT,
-	  HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-	  0,
-	  HCL_CONTEXT_NAMED_INSTVARS,
-	  HCL_CLASS_SPEC_FLAG_INDEXED,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_block_context) },
+	KCI(KCI_BLOCK_CONTEXT) {
+		"BlockContext",
+		KCI_OBJECT,
+		HCL_BRAND_CONTEXT,
+		HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+		0,
+		HCL_CONTEXT_NAMED_INSTVARS,
+		HCL_CLASS_SPEC_FLAG_INDEXED,
+		HCL_OBJ_TYPE_OOP,
+		HCL_OFFSETOF(hcl_t, c_block_context)
+	},
 
-	{ "Process", HCL_BRAND_PROCESS,
-	  HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-	  0,
-	  HCL_PROCESS_NAMED_INSTVARS,
-	  HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_process) },
+	KCI(KCI_PROCESS) {
+		"Process",
+		KCI_OBJECT,
+		HCL_BRAND_PROCESS,
+		HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+		0,
+		HCL_PROCESS_NAMED_INSTVARS,
+		HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
+		HCL_OBJ_TYPE_OOP,
+		HCL_OFFSETOF(hcl_t, c_process)
+	},
 
-	{ "Semaphore", HCL_BRAND_SEMAPHORE,
-	  0,
-	  0,
-	  HCL_SEMAPHORE_NAMED_INSTVARS,
-	  HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_semaphore) },
+	KCI(KCI_SEMAPHORE) {
+		"Semaphore",
+		KCI_OBJECT,
+		HCL_BRAND_SEMAPHORE,
+		0,
+		0,
+		HCL_SEMAPHORE_NAMED_INSTVARS,
+		HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
+		HCL_OBJ_TYPE_OOP,
+		HCL_OFFSETOF(hcl_t, c_semaphore)
+	},
 
-	{ "SemaphoreGroup", HCL_BRAND_SEMAPHORE_GROUP,
-	  0,
-	  0,
-	  HCL_SEMAPHORE_GROUP_NAMED_INSTVARS,
-	  HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_semaphore_group) },
+	KCI(KCI_SEMAPHORE_GROUP) {
+		"SemaphoreGroup",
+		KCI_OBJECT,
+		HCL_BRAND_SEMAPHORE_GROUP,
+		0,
+		0,
+		HCL_SEMAPHORE_GROUP_NAMED_INSTVARS,
+		HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
+		HCL_OBJ_TYPE_OOP,
+		HCL_OFFSETOF(hcl_t, c_semaphore_group)
+	},
 
-	{ "ProcessScheduler", HCL_BRAND_PROCESS_SCHEDULER,
-	  HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-	  0,
-	  HCL_PROCESS_SCHEDULER_NAMED_INSTVARS,
-	  HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_process_scheduler) },
+	KCI(KCI_PROCESS_SCHEDULER) {
+		"ProcessScheduler",
+		KCI_OBJECT,
+		HCL_BRAND_PROCESS_SCHEDULER,
+		HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+		0,
+		HCL_PROCESS_SCHEDULER_NAMED_INSTVARS,
+		HCL_CLASS_SPEC_FLAG_UNCOPYABLE,
+		HCL_OBJ_TYPE_OOP,
+		HCL_OFFSETOF(hcl_t, c_process_scheduler)
+	},
 
-	{ "Error", 0,
-	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-	  0,
-	  0,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_error) },
+	KCI(KCI_ERROR) {
+		"Error",
+		KCI_OBJECT,
+		0,
+		HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+		0,
+		0,
+		0,
+		HCL_OBJ_TYPE_OOP,
+		HCL_OFFSETOF(hcl_t, c_error)
+	},
 
-	{ "True", HCL_BRAND_TRUE,
-	  HCL_CLASS_SELFSPEC_FLAG_LIMITED | HCL_CLASS_SELFSPEC_FLAG_FINAL,
-	  0,
-	  0,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_true) },
+	KCI(KCI_TRUE) {
+		"True",
+		KCI_OBJECT,
+		HCL_BRAND_TRUE,
+		HCL_CLASS_SELFSPEC_FLAG_LIMITED | HCL_CLASS_SELFSPEC_FLAG_FINAL,
+		0,
+		0,
+		0,
+		HCL_OBJ_TYPE_OOP,
+		HCL_OFFSETOF(hcl_t, c_true)
+	},
 
-	{ "False", HCL_BRAND_FALSE,
-	  HCL_CLASS_SELFSPEC_FLAG_LIMITED | HCL_CLASS_SELFSPEC_FLAG_FINAL,
-	  0,
-	  0,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_false) },
+	KCI(KCI_FALSE) {
+		"False",
+		KCI_OBJECT,
+		HCL_BRAND_FALSE,
+		HCL_CLASS_SELFSPEC_FLAG_LIMITED | HCL_CLASS_SELFSPEC_FLAG_FINAL,
+		0,
+		0,
+		0,
+		HCL_OBJ_TYPE_OOP,
+		HCL_OFFSETOF(hcl_t, c_false)
+	},
+
+	KCI(KCI_MAGNITUDE) {
+		"Magnitude",
+		KCI_OBJECT,
+		0, /* brand */
+		0,
+		0,
+		0,
+		0,
+		HCL_OBJ_TYPE_OOP,
+		HCL_OFFSETOF(hcl_t, c_magnitude)
+	},
 
 	/* TOOD: what is a proper spec for Character and SmallInteger?
 	 *       If the fixed part is  0, its instance must be an object of 0 payload fields.
 	 *       Does this make sense? */
-	{ "Character", HCL_BRAND_CHARACTER,
-	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-	  0,
-	  0,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_character) },
+	KCI(KCI_CHARACTER) {
+		"Character",
+		KCI_MAGNITUDE,
+		HCL_BRAND_CHARACTER,
+		HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+		0,
+		0,
+		0,
+		HCL_OBJ_TYPE_OOP,
+		HCL_OFFSETOF(hcl_t, c_character)
+	},
 
-	{ "SmallInteger", HCL_BRAND_SMOOI,
-	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-	  0,
-	  0,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_small_integer) },
+	KCI(KCI_NUMBER) {
+		"Number",
+		KCI_MAGNITUDE,
+		0, /* brand */
+		0,
+		0,
+		0,
+		0,
+		HCL_OBJ_TYPE_OOP,
+		HCL_OFFSETOF(hcl_t, c_number)
+	},
 
-	{ "LargePositiveInteger", 0,
-	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-	  0,
-	  0,
-	  HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_IMMUTABLE,
-	  HCL_OBJ_TYPE_LIWORD,
-	  HCL_OFFSETOF(hcl_t, c_large_positive_integer) },
+	KCI(KCI_SMALL_INTEGER) {
+		"SmallInteger",
+		KCI_NUMBER,
+		HCL_BRAND_SMOOI,
+		HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+		0,
+		0,
+		0,
+		HCL_OBJ_TYPE_OOP,
+		HCL_OFFSETOF(hcl_t, c_small_integer)
+	},
 
-	{ "LargeNegativeInteger", 0,
-	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-	  0,
-	  0,
-	  HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_IMMUTABLE,
-	  HCL_OBJ_TYPE_LIWORD,
-	  HCL_OFFSETOF(hcl_t, c_large_negative_integer) },
+	KCI(KCI_LARGE_POSITIVE_INTEGER) {
+		"LargePositiveInteger",
+		KCI_NUMBER,
+		0,
+		HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+		0,
+		0,
+		HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_IMMUTABLE,
+		HCL_OBJ_TYPE_LIWORD,
+		HCL_OFFSETOF(hcl_t, c_large_positive_integer)
+	},
 
-	{ "FixedPointDecimal", HCL_BRAND_FPDEC,
-	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-	  0,
-	  HCL_FPDEC_NAMED_INSTVARS,
-	  HCL_CLASS_SPEC_FLAG_IMMUTABLE,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_fixed_point_decimal) },
+	KCI(KCI_LARGE_NEGATIVE_INTEGER) {
+		"LargeNegativeInteger",
+		KCI_NUMBER,
+		0,
+		HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+		0,
+		0,
+		HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_IMMUTABLE,
+		HCL_OBJ_TYPE_LIWORD,
+		HCL_OFFSETOF(hcl_t, c_large_negative_integer)
+	},
 
-	{ "SmallPointer", HCL_BRAND_SMPTR,
-	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-	  0,
-	  0,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_small_pointer) },
+	KCI(KCI_FIXED_POINT_DECIMAL) {
+		"FixedPointDecimal",
+		KCI_NUMBER,
+		HCL_BRAND_FPDEC,
+		HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+		0,
+		HCL_FPDEC_NAMED_INSTVARS,
+		HCL_CLASS_SPEC_FLAG_IMMUTABLE,
+		HCL_OBJ_TYPE_OOP,
+		HCL_OFFSETOF(hcl_t, c_fixed_point_decimal)
+	},
 
-	{ "LargePointer", 0,
-	  HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-	  0,
-	  1,  /* #word(1) */
-	  HCL_CLASS_SPEC_FLAG_IMMUTABLE | HCL_CLASS_SPEC_FLAG_INDEXED,
-	  HCL_OBJ_TYPE_WORD,
-	  HCL_OFFSETOF(hcl_t, c_large_pointer) },
+	KCI(KCI_SMALL_POINTER) {
+		"SmallPointer",
+		KCI_MAGNITUDE,
+		HCL_BRAND_SMPTR,
+		HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+		0,
+		0,
+		0,
+		HCL_OBJ_TYPE_OOP,
+		HCL_OFFSETOF(hcl_t, c_small_pointer)
+	},
 
-	{ "System", 0,
-	  0,
-	  5, /* asyncsg, gcfin_sem, gcfin_should_exit, ossig_pid, shr */
-	  0,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_system) }
+	KCI(KCI_LARGE_POINTER) {
+		"LargePointer",
+		KCI_MAGNITUDE,
+		0,
+		HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+		0,
+		1,  /* #word(1) */
+		HCL_CLASS_SPEC_FLAG_IMMUTABLE | HCL_CLASS_SPEC_FLAG_INDEXED,
+		HCL_OBJ_TYPE_WORD,
+		HCL_OFFSETOF(hcl_t, c_large_pointer)
+	},
+
+	KCI(KCI_SYSTEM) {
+		"System",
+		KCI_OBJECT,
+		0,
+		0,
+		5, /* asyncsg, gcfin_sem, gcfin_should_exit, ossig_pid, shr */
+		0,
+		0,
+		HCL_OBJ_TYPE_OOP,
+		HCL_OFFSETOF(hcl_t, c_system)
+	}
 };
 
 /* ========================================================================= */
@@ -1183,10 +1422,6 @@ static hcl_oop_class_t alloc_kernel_class (hcl_t* hcl, int class_flags, hcl_oow_
 	HCL_OBJ_SET_CLASS (c, (hcl_oop_t)hcl->c_class);
 	c->spec = HCL_SMOOI_TO_OOP(spec);
 	c->selfspec = HCL_SMOOI_TO_OOP(HCL_CLASS_SELFSPEC_MAKE(num_classvars, 0, class_flags));
-
-/* TODO: remove the following two duplicate fields with the spec fields */
-	//c->nivars = HCL_SMOOI_TO_OOP(HCL_CLASS_SPEC_NAMED_INSTVARS(spec));
-	//c->ncvars = HCL_SMOOI_TO_OOP(num_classvars);
 	c->nivars_super = HCL_SMOOI_TO_OOP(0); /* TODO: encode it into spec? */
 	c->ibrand = HCL_SMOOI_TO_OOP(ibrand);
 
@@ -1215,8 +1450,8 @@ static int ignite_1 (hcl_t* hcl)
 		hcl->c_class = alloc_kernel_class(
 			hcl,
 			kernel_classes[KCI_CLASS].class_flags,
-			kernel_classes[KCI_CLASS].class_num_classvars,
-			HCL_CLASS_SPEC_MAKE(kernel_classes[KCI_CLASS].class_spec_named_instvars,
+			kernel_classes[KCI_CLASS].class_ncvars,
+			HCL_CLASS_SPEC_MAKE(kernel_classes[KCI_CLASS].class_spec_nivars,
 			                    kernel_classes[KCI_CLASS].class_spec_flags,
 			                    kernel_classes[KCI_CLASS].class_spec_indexed_type),
 			kernel_classes[KCI_CLASS].class_brand);
@@ -1240,8 +1475,8 @@ static int ignite_1 (hcl_t* hcl)
 		tmp = alloc_kernel_class(
 			hcl,
 			kernel_classes[i].class_flags,
-			kernel_classes[i].class_num_classvars,
-			HCL_CLASS_SPEC_MAKE(kernel_classes[i].class_spec_named_instvars,
+			kernel_classes[i].class_ncvars,
+			HCL_CLASS_SPEC_MAKE(kernel_classes[i].class_spec_nivars,
 			                    kernel_classes[i].class_spec_flags,
 			                    kernel_classes[i].class_spec_indexed_type),
 			kernel_classes[i].class_brand);
