@@ -1401,7 +1401,7 @@ hcl_oop_t hcl_shallowcopy (hcl_t* hcl, hcl_oop_t oop)
  * BOOTSTRAPPER
  * ----------------------------------------------------------------------- */
 
-static hcl_oop_class_t alloc_kernel_class (hcl_t* hcl, int class_flags, hcl_oow_t num_classvars, hcl_oow_t spec, int ibrand)
+static hcl_oop_class_t alloc_kernel_class (hcl_t* hcl, int class_flags, hcl_oow_t num_classvars, hcl_oow_t spec, hcl_ooi_t nivars_super, int ibrand)
 {
 	hcl_oop_class_t c;
 #if 0
@@ -1409,7 +1409,7 @@ static hcl_oop_class_t alloc_kernel_class (hcl_t* hcl, int class_flags, hcl_oow_
 #endif
 
 	c = (hcl_oop_class_t)hcl_allocoopobj(hcl, HCL_BRAND_CLASS, HCL_CLASS_NAMED_INSTVARS + num_classvars);
-	if (!c) return HCL_NULL;
+	if (HCL_UNLIKELY(!c)) return HCL_NULL;
 
 	HCL_OBJ_SET_FLAGS_KERNEL (c, HCL_OBJ_FLAGS_KERNEL_IMMATURE);
 
@@ -1422,7 +1422,7 @@ static hcl_oop_class_t alloc_kernel_class (hcl_t* hcl, int class_flags, hcl_oow_
 	HCL_OBJ_SET_CLASS (c, (hcl_oop_t)hcl->c_class);
 	c->spec = HCL_SMOOI_TO_OOP(spec);
 	c->selfspec = HCL_SMOOI_TO_OOP(HCL_CLASS_SELFSPEC_MAKE(num_classvars, 0, class_flags));
-	c->nivars_super = HCL_SMOOI_TO_OOP(0); /* TODO: encode it into spec? */
+	c->nivars_super = HCL_SMOOI_TO_OOP(nivars_super); /* TODO: encode it into spec? */
 	c->ibrand = HCL_SMOOI_TO_OOP(ibrand);
 
 	return c;
@@ -1447,6 +1447,7 @@ static int ignite_1 (hcl_t* hcl)
 	 * -------------------------------------------------------------- */
 	if (HCL_LIKELY(!hcl->c_class))
 	{
+		HCL_ASSERT (hcl, kernel_classes[KCI_CLASS].superclass_kci >= 0);
 		hcl->c_class = alloc_kernel_class(
 			hcl,
 			kernel_classes[KCI_CLASS].class_flags,
@@ -1454,6 +1455,7 @@ static int ignite_1 (hcl_t* hcl)
 			HCL_CLASS_SPEC_MAKE(kernel_classes[KCI_CLASS].class_spec_nivars,
 			                    kernel_classes[KCI_CLASS].class_spec_flags,
 			                    kernel_classes[KCI_CLASS].class_spec_indexed_type),
+			kernel_classes[kernel_classes[KCI_CLASS].superclass_kci].class_spec_nivars,
 			kernel_classes[KCI_CLASS].class_brand);
 		if (HCL_UNLIKELY(!hcl->c_class))
 		{
@@ -1469,9 +1471,13 @@ static int ignite_1 (hcl_t* hcl)
 	for (i = 0; i < HCL_COUNTOF(kernel_classes); i++)
 	{
 		hcl_oop_class_t tmp;
+		hcl_ooi_t nivars_super;
+		int superclass_kci;
 
 		if (i == KCI_CLASS) continue; /* skip Class as it's created above */
 
+		superclass_kci = kernel_classes[i].superclass_kci;
+		nivars_super = superclass_kci <= -1? 0: kernel_classes[superclass_kci].class_spec_nivars;
 		tmp = alloc_kernel_class(
 			hcl,
 			kernel_classes[i].class_flags,
@@ -1479,6 +1485,7 @@ static int ignite_1 (hcl_t* hcl)
 			HCL_CLASS_SPEC_MAKE(kernel_classes[i].class_spec_nivars,
 			                    kernel_classes[i].class_spec_flags,
 			                    kernel_classes[i].class_spec_indexed_type),
+			nivars_super,
 			kernel_classes[i].class_brand);
 		if (HCL_UNLIKELY(!tmp))
 		{
@@ -1654,20 +1661,20 @@ static int ignite_3 (hcl_t* hcl)
 
 	hcl_oow_t i;
 	hcl_oop_t sym;
-	hcl_oop_class_t cls;
+	hcl_oop_class_t _class;
 
 	for (i = 0; i < HCL_COUNTOF(kernel_classes); i++)
 	{
 		sym = hcl_makesymbolwithbcstr(hcl, kernel_classes[i].name);
 		if (HCL_UNLIKELY(!sym)) return -1;
 
-		cls = *(hcl_oop_class_t*)((hcl_uint8_t*)hcl + kernel_classes[i].offset);
-		HCL_STORE_OOP (hcl, (hcl_oop_t*)&cls->name, sym);
+		_class = *(hcl_oop_class_t*)((hcl_uint8_t*)hcl + kernel_classes[i].offset);
+		HCL_STORE_OOP (hcl, (hcl_oop_t*)&_class->name, sym);
 #if 0
-		HCL_STORE_OOP (hcl, (hcl_oop_t*)&cls->nsup, (hcl_oop_t)hcl->sysdic);
+		HCL_STORE_OOP (hcl, (hcl_oop_t*)&_class->nsup, (hcl_oop_t)hcl->sysdic);
 #endif
 
-		if (!hcl_putatsysdic(hcl, sym, (hcl_oop_t)cls)) return -1;
+		if (!hcl_putatsysdic(hcl, sym, (hcl_oop_t)_class)) return -1;
 	}
 
 #if 0
