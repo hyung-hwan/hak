@@ -10,21 +10,25 @@ class Collection :: Object {
 class IndexedCollection :: Collection {
 }
 
-class FixedSizedCollection :: Collection {
+class FixedSizedCollection :: IndexedCollection {
 }
 
 class Array :: FixedSizedCollection {
 }
 
-class String :: Array {
+class String :: FixedSizedCollection {
 }
 
 fun Collection:length() {
-	return (arr.length self)
+	return (core.length self)
 }
 
 fun Collection:slice(index count) {
-	return (arr.slice self index count)
+	return (core.slice self index count)
+}
+
+fun Collection:at(index) {
+	return (core.get self index)
 }
 
 fun Class:name() {
@@ -50,3 +54,5 @@ fun Class:name() {
 
 
 printf "string length %d\n" ("aaaa":length)
+printf "substring [%s]\n" ("abcdefghijklmn":slice 5 6)
+printf "substring [%c]\n" ("abcdefghijklmn":at 14)

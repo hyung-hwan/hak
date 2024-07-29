@@ -1468,6 +1468,7 @@ static int ignite_1 (hcl_t* hcl)
 		HCL_OBJ_SET_CLASS (hcl->c_class, (hcl_oop_t)hcl->c_class);
 	}
 
+	/* create class objects except Class */
 	for (i = 0; i < HCL_COUNTOF(kernel_classes); i++)
 	{
 		hcl_oop_class_t tmp;
@@ -1494,6 +1495,20 @@ static int ignite_1 (hcl_t* hcl)
 			return -1;
 		}
 		*(hcl_oop_class_t*)((hcl_uint8_t*)hcl + kernel_classes[i].offset) = tmp;
+	}
+
+	/* update the superclass field */
+	for (i = 0; i < HCL_COUNTOF(kernel_classes); i++)
+	{
+		int skci;
+		skci = kernel_classes[i].superclass_kci;
+		if (skci >= 0)
+		{
+			hcl_oop_class_t* x, * y;
+			x = (hcl_oop_class_t*)((hcl_uint8_t*)hcl + kernel_classes[i].offset);
+			y = (hcl_oop_class_t*)((hcl_uint8_t*)hcl + kernel_classes[skci].offset);
+			(*x)->superclass = (hcl_oop_t)*y;
+		}
 	}
 
 #if 0
