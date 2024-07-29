@@ -2235,7 +2235,8 @@ static int flx_hmarked_token (hcl_t* hcl, hcl_ooci_t c)
 	 * #\tab
 	 * #\vtab
 	 * #include
-	 * #[ ]     byte array
+	 * #[ ]     array
+	 * #b[ ]    byte array
 	 * #( )     qlist
 	 * #{ }     dictionary
 	 */

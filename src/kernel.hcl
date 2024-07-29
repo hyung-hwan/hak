@@ -31,6 +31,10 @@ fun Collection:at(index) {
 	return (core.get self index)
 }
 
+fun Collection:atPut(index value) {
+	return (core.put self index value)
+}
+
 fun Class:name() {
 	return (core.class_name self)
 }
@@ -53,6 +57,32 @@ fun Class:name() {
 ##}
 
 
+k := "abcdefghijklmn"
 printf "string length %d\n" ("aaaa":length)
-printf "substring [%s]\n" ("abcdefghijklmn":slice 5 6)
-printf "substring [%c]\n" ("abcdefghijklmn":at 14)
+printf "substring [%s]\n" (k:slice 5 6)
+
+try {
+	printf "substring [%c]\n" (k:at 13)
+	k:atPut 14 'A'
+	printf "[%s]\n" k
+} catch (e) {
+	printf "EXCEPTION %O\n" e
+}
+
+k := #[1 2 3 4 5 6 7 8 9 10 11 12 13 14 15]
+
+try {
+	k:atPut 2 'A'
+	printf "%O\n" k
+} catch (e) {
+	printf "EXCEPTION %O\n" e
+}
+
+k := #b[1 2 3 4 5 6 7 8 9 10 11 12 13 14 15]
+try {
+	k:atPut 2 -10
+	printf "%O\n" k
+} catch (e) {
+	printf "EXCEPTION %O\n" e
+}
+

@@ -212,11 +212,10 @@ static hcl_pfrc_t pf_core_get (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 	return HCL_PF_SUCCESS;
 }
 
-#if 0
 static hcl_pfrc_t pf_core_put (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
-	hcl_oop_t obj;
-	hcl_oop_t pos, val;
+	hcl_oop_t obj, val;
+	hcl_oop_t pos;
 	hcl_oow_t index;
 
 	obj = HCL_STACK_GETARG(hcl, nargs, 0);
@@ -230,23 +229,74 @@ static hcl_pfrc_t pf_core_put (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 		return HCL_PF_FAILURE;
 	}
 
-	if (!HCL_IS_ARRAY(hcl,obj))
-	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not an array - %O", obj);
-		return HCL_PF_FAILURE;
-	}
 	if (!HCL_OOP_IS_SMOOI(pos))
 	{
 		hcl_seterrbfmt (hcl, HCL_EINVAL, "position not numeric - %O", pos);
 		return HCL_PF_FAILURE;
 	}
 	index = HCL_OOP_TO_SMOOI(pos);
+	if (index < 0 || index >= HCL_OBJ_GET_SIZE(obj))
+	{
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "position(%O) out of range - 0 and %zu", pos, (hcl_oow_t)HCL_OBJ_GET_SIZE(obj) - 1);
+		return HCL_PF_FAILURE;
+	}
 
-	obj->slot[index] = val;
+	switch (HCL_OBJ_GET_FLAGS_TYPE(obj))
+	{
+		case HCL_OBJ_TYPE_OOP:
+			HCL_OBJ_SET_OOP_VAL(obj, index, val);
+			break;
+
+		case HCL_OBJ_TYPE_CHAR:
+		{
+			hcl_ooch_t c;
+			if (!HCL_OOP_IS_CHAR(val))
+			{
+				hcl_seterrbfmt (hcl, HCL_EINVAL, "value not character - %O", val);
+				return HCL_PF_FAILURE;
+			}
+			c = HCL_OOP_TO_CHAR(val);
+			HCL_OBJ_SET_CHAR_VAL(obj, index, c);
+			break;
+		}
+
+		case HCL_OBJ_TYPE_BYTE:
+		{
+			hcl_ooi_t b;
+			if (!HCL_OOP_IS_SMOOI(val))
+			{
+				hcl_seterrbfmt (hcl, HCL_EINVAL, "value not byte - %O", val);
+				return HCL_PF_FAILURE;
+			}
+			b = HCL_OOP_TO_SMOOI(val);
+			HCL_OBJ_SET_BYTE_VAL(obj, index, b);
+			break;
+		}
+
+		case HCL_OBJ_TYPE_HALFWORD:
+		{
+			hcl_oow_t w;
+			if (hcl_inttooow(hcl, val, &w) <= -1) return HCL_PF_FAILURE;
+			HCL_OBJ_SET_HALFWORD_VAL(obj, index, w);
+			break;
+		}
+
+		case HCL_OBJ_TYPE_WORD:
+		{
+			hcl_oow_t w;
+			if (hcl_inttooow(hcl, val, &w) <= -1) return HCL_PF_FAILURE;
+			HCL_OBJ_SET_WORD_VAL(obj, index, w);
+			break;
+		}
+
+		default:
+			goto unindexable;
+			break;
+	}
+
 	HCL_STACK_SETRET (hcl, nargs, val);
 	return HCL_PF_SUCCESS;
 }
-#endif
 
 static hcl_pfinfo_t pfinfos[] =
 {
@@ -255,8 +305,8 @@ static hcl_pfinfo_t pfinfos[] =
 	{ { 'l','e','n','g','t','h','\0' },  { HCL_PFBASE_FUNC, pf_core_size,    1,  1 } },
 /*
 	{ { 'n','e','w','\0' },              { HCL_PFBASE_FUNC, pf_core_new,     1,  1 } },
-	{ { 'p','u','t','\0' },              { HCL_PFBASE_FUNC, pf_core_put,     3,  3 } },
 */
+	{ { 'p','u','t','\0' },              { HCL_PFBASE_FUNC, pf_core_put,     3,  3 } },
 	{ { 's','i','z','e','\0' },          { HCL_PFBASE_FUNC, pf_core_size,    1,  1 } },
 	{ { 's','l','i','c','e','\0' },      { HCL_PFBASE_FUNC, pf_core_slice,   3,  3 } }
 };
