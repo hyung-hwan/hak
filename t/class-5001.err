@@ -110,8 +110,9 @@ fun X:xxx() { ##ERROR: exception not handled - "not class"
 ## you can't place an item in the arrya at all.
 
 fun Array:*boom() {
-	arr.put self 0 10 ##ERROR: exception not handled - "array index 0 out of bounds for array of size 0"
+	core.put self 0 10 ##ERROR: exception not handled - "position(0) out of range - negative or greater than or equal to 0"
 	printf "%O" self
+	return self
 }
 Array:boom
 

@@ -98,7 +98,6 @@ libhcl_la_LDFLAGS = $(LDFLAGS_LIB_COMMON)
 libhcl_la_LIBADD = $(LIBADD_LIB_COMMON)
 
 if ENABLE_STATIC_MODULE
-libhcl_la_LIBADD += ../mod/libhcl-arr.la
 libhcl_la_LIBADD += ../mod/libhcl-core.la
 libhcl_la_LIBADD += ../mod/libhcl-dic.la
 libhcl_la_LIBADD += ../mod/libhcl-str.la

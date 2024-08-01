@@ -92,8 +92,7 @@ host_triplet = @host@
 @ENABLE_LIBUNWIND_TRUE@am__append_3 = $(UNWIND_LIBS)
 @MACOSX_TRUE@@WIN32_FALSE@am__append_4 = -DHCL_DEFAULT_PFMODPOSTFIX=\".dylib\"
 @MACOSX_FALSE@@WIN32_FALSE@am__append_5 = -DHCL_DEFAULT_PFMODPOSTFIX=\".so\"
-@ENABLE_STATIC_MODULE_TRUE@am__append_6 = ../mod/libhcl-arr.la \
-@ENABLE_STATIC_MODULE_TRUE@	../mod/libhcl-core.la \
+@ENABLE_STATIC_MODULE_TRUE@am__append_6 = ../mod/libhcl-core.la \
 @ENABLE_STATIC_MODULE_TRUE@	../mod/libhcl-dic.la \
 @ENABLE_STATIC_MODULE_TRUE@	../mod/libhcl-str.la \
 @ENABLE_STATIC_MODULE_TRUE@	../mod/libhcl-sys.la

@@ -48,6 +48,23 @@ static hcl_pfrc_t pf_core_get_class_name (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t 
 	return HCL_PF_SUCCESS;
 }
 
+#if 0
+static hcl_pfrc_t pf_arr_new (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+{
+	hcl_oop_t sz, arr;
+	hcl_oow_t size;
+
+	sz = (hcl_oop_t)HCL_STACK_GETARG(hcl, nargs, 0);
+	if (hcl_inttooow(hcl, sz, &size) == 0) return HCL_PF_FAILURE;
+
+	arr = hcl_makearray(hcl, size, 0);
+	if (HCL_UNLIKELY(!arr)) return HCL_PF_FAILURE;
+
+	HCL_STACK_SETRET (hcl, nargs, arr);
+	return HCL_PF_SUCCESS;
+}
+#endif
+
 static hcl_pfrc_t pf_core_size (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
 	hcl_oop_oop_t src;
@@ -147,7 +164,7 @@ static hcl_pfrc_t pf_core_get (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
 	hcl_oop_t obj, val;
 	hcl_oop_t pos;
-	hcl_oow_t index;
+	hcl_ooi_t index;
 
 	obj = HCL_STACK_GETARG(hcl, nargs, 0);
 	pos = HCL_STACK_GETARG(hcl, nargs, 1);
@@ -167,7 +184,7 @@ static hcl_pfrc_t pf_core_get (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 	index = HCL_OOP_TO_SMOOI(pos);
 	if (index < 0 || index >= HCL_OBJ_GET_SIZE(obj))
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "position(%O) out of range - 0 and %zu", pos, (hcl_oow_t)HCL_OBJ_GET_SIZE(obj) - 1);
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hcl_ooi_t)HCL_OBJ_GET_SIZE(obj));
 		return HCL_PF_FAILURE;
 	}
 
@@ -216,7 +233,7 @@ static hcl_pfrc_t pf_core_put (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
 	hcl_oop_t obj, val;
 	hcl_oop_t pos;
-	hcl_oow_t index;
+	hcl_ooi_t index;
 
 	obj = HCL_STACK_GETARG(hcl, nargs, 0);
 	pos = HCL_STACK_GETARG(hcl, nargs, 1);
@@ -237,7 +254,7 @@ static hcl_pfrc_t pf_core_put (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 	index = HCL_OOP_TO_SMOOI(pos);
 	if (index < 0 || index >= HCL_OBJ_GET_SIZE(obj))
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "position(%O) out of range - 0 and %zu", pos, (hcl_oow_t)HCL_OBJ_GET_SIZE(obj) - 1);
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hcl_ooi_t)HCL_OBJ_GET_SIZE(obj));
 		return HCL_PF_FAILURE;
 	}
 
@@ -317,7 +334,6 @@ static hcl_pfbase_t* query (hcl_t* hcl, hcl_mod_t* mod, const hcl_ooch_t* name, 
 {
 	return hcl_findpfbase(hcl, pfinfos, HCL_COUNTOF(pfinfos), name, namelen);
 }
-
 
 static void unload (hcl_t* hcl, hcl_mod_t* mod)
 {
