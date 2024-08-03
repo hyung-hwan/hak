@@ -1,4 +1,7 @@
 class Apex {
+	fun basicNew(size) {
+		return (core.basic_new self size)
+	}
 }
 
 class Object :: Apex {
@@ -14,6 +17,9 @@ class FixedSizedCollection :: IndexedCollection {
 }
 
 class Array :: FixedSizedCollection {
+	fun :: new(size) {
+		return (core.basic_new self size)
+	}	
 }
 
 class String :: FixedSizedCollection {
