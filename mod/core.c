@@ -350,7 +350,7 @@ static hcl_pfrc_t pf_core_put (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 
 static hcl_pfinfo_t pfinfos[] =
 {
-	{ { 'b','a','s','i','c,','_','n','e','w','\0' },     { HCL_PFBASE_FUNC, pf_core_basic_new, 2,  2 } },
+	{ { 'b','a','s','i','c','_','n','e','w','\0' },     { HCL_PFBASE_FUNC, pf_core_basic_new, 2,  2 } },
 	{ { 'c','l','a','s','s','_','n','a','m','e','\0' },  { HCL_PFBASE_FUNC, pf_core_get_class_name, 1,  1 } },
 	{ { 'g','e','t','\0' },              { HCL_PFBASE_FUNC, pf_core_get,       2,  2 } },
 	{ { 'l','e','n','g','t','h','\0' },  { HCL_PFBASE_FUNC, pf_core_size,      1,  1 } },

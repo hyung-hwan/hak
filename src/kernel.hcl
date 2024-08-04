@@ -1,5 +1,5 @@
 class Apex {
-	fun basicNew(size) {
+	fun :: basicNew(size) {
 		return (core.basic_new self size)
 	}
 }
@@ -92,3 +92,7 @@ try {
 	printf "EXCEPTION %O\n" e
 }
 
+
+k := (Array:new 10)
+k:atPut 3 "hello"
+printf "%O\n" k
