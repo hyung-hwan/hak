@@ -2239,6 +2239,7 @@ static int flx_hmarked_token (hcl_t* hcl, hcl_ooci_t c)
 	 * #b[ ]    byte array
 	 * #( )     qlist
 	 * #{ }     dictionary
+	 * #"..."   symbol literal
 	 */
 
 	switch (c)
@@ -2300,7 +2301,13 @@ static int flx_hmarked_token (hcl_t* hcl, hcl_ooci_t c)
 
 		case '{': /* #{ */
 			FEED_WRAP_UP_WITH_CHAR (hcl, c, HCL_TOK_DLPAREN);
-			goto  consumed;
+			goto consumed;
+
+#if 0
+		case '"': /* #" */
+			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_TOK_HMARKED_SYMBOL); /* symbol lieral */
+			goto consumed;
+#endif
 
 		/* --------------------------- */
 		default:

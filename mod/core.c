@@ -26,6 +26,7 @@
 
 
 #include "_core.h"
+#include "../lib/hcl-prv.h"
 
 static hcl_pfrc_t pf_core_basic_new (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
@@ -53,7 +54,7 @@ static hcl_pfrc_t pf_core_basic_new (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs
 		return HCL_PF_FAILURE;
 	}
 
-	inst = hcl_instantiate(hcl, obj, HCL_NULL, nsize);
+	inst = hcl_instantiate(hcl, (hcl_oop_class_t)obj, HCL_NULL, nsize);
 	if (HCL_UNLIKELY(!inst)) return HCL_PF_FAILURE;
 
 	HCL_STACK_SETRET (hcl, nargs, inst);
@@ -69,7 +70,7 @@ static hcl_pfrc_t pf_core_get_class_name (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t 
 	if (!HCL_IS_CLASS(hcl, obj))
 	{
 	#if 0
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not a class - %O", obj);
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "receiver not class - %O", obj);
 		return HCL_PF_FAILURE;
 	#else
 		obj = (hcl_oop_t)HCL_CLASSOF(hcl, obj);
@@ -81,22 +82,48 @@ static hcl_pfrc_t pf_core_get_class_name (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t 
 	return HCL_PF_SUCCESS;
 }
 
-#if 0
-static hcl_pfrc_t pf_arr_new (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+static hcl_pfrc_t pf_core_cresp_to (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
-	hcl_oop_t sz, arr;
-	hcl_oow_t size;
+	hcl_oop_t obj;
+	hcl_oop_t msg;
+	int x;
 
-	sz = (hcl_oop_t)HCL_STACK_GETARG(hcl, nargs, 0);
-	if (hcl_inttooow(hcl, sz, &size) == 0) return HCL_PF_FAILURE;
+	obj = HCL_STACK_GETARG(hcl, nargs, 0);
+	msg = HCL_STACK_GETARG(hcl, nargs, 1);
+	if (!HCL_IS_CLASS(hcl, obj))
+	{
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "receiver not class - %O", msg);
+		return HCL_PF_FAILURE;
+	}
+	if (!HCL_OBJ_IS_CHAR_POINTER(msg))
+	{
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "invalid message - %O", msg);
+		return HCL_PF_FAILURE;
+	}
 
-	arr = hcl_makearray(hcl, size, 0);
-	if (HCL_UNLIKELY(!arr)) return HCL_PF_FAILURE;
-
-	HCL_STACK_SETRET (hcl, nargs, arr);
+	x = hcl_class_responds_to(hcl, obj, msg);
+	HCL_STACK_SETRET (hcl, nargs, (x? hcl->_true: hcl->_false));
 	return HCL_PF_SUCCESS;
 }
-#endif
+
+static hcl_pfrc_t pf_core_iresp_to (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+{
+	hcl_oop_t obj;
+	hcl_oop_t msg;
+	int x;
+
+	obj = HCL_STACK_GETARG(hcl, nargs, 0);
+	msg = HCL_STACK_GETARG(hcl, nargs, 1);
+	if (!HCL_OBJ_IS_CHAR_POINTER(msg))
+	{
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "invalid message - %O", msg);
+		return HCL_PF_FAILURE;
+	}
+
+	x = hcl_inst_responds_to(hcl, obj, msg);
+	HCL_STACK_SETRET (hcl, nargs, (x? hcl->_true: hcl->_false));
+	return HCL_PF_SUCCESS;
+}
 
 static hcl_pfrc_t pf_core_size (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
@@ -350,13 +377,15 @@ static hcl_pfrc_t pf_core_put (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 
 static hcl_pfinfo_t pfinfos[] =
 {
-	{ { 'b','a','s','i','c','_','n','e','w','\0' },     { HCL_PFBASE_FUNC, pf_core_basic_new, 2,  2 } },
-	{ { 'c','l','a','s','s','_','n','a','m','e','\0' },  { HCL_PFBASE_FUNC, pf_core_get_class_name, 1,  1 } },
-	{ { 'g','e','t','\0' },              { HCL_PFBASE_FUNC, pf_core_get,       2,  2 } },
-	{ { 'l','e','n','g','t','h','\0' },  { HCL_PFBASE_FUNC, pf_core_size,      1,  1 } },
-	{ { 'p','u','t','\0' },              { HCL_PFBASE_FUNC, pf_core_put,       3,  3 } },
-	{ { 's','i','z','e','\0' },          { HCL_PFBASE_FUNC, pf_core_size,      1,  1 } },
-	{ { 's','l','i','c','e','\0' },      { HCL_PFBASE_FUNC, pf_core_slice,     3,  3 } }
+	{ { 'b','a','s','i','c','_','n','e','w','\0' },          { HCL_PFBASE_FUNC, pf_core_basic_new,       2,  2 } },
+	{ { 'c','l','a','s','s','_','n','a','m','e','\0' },      { HCL_PFBASE_FUNC, pf_core_get_class_name,  1,  1 } },
+	{ { 'c','r','e','s','p','_','t','o', '\0' },             { HCL_PFBASE_FUNC, pf_core_cresp_to,        2,  2 } },
+	{ { 'g','e','t','\0' },                                  { HCL_PFBASE_FUNC, pf_core_get,             2,  2 } },
+	{ { 'i','r','e','s','p','_','t','o', '\0' },             { HCL_PFBASE_FUNC, pf_core_iresp_to,        2,  2 } },
+	{ { 'l','e','n','g','t','h','\0' },                      { HCL_PFBASE_FUNC, pf_core_size,            1,  1 } },
+	{ { 'p','u','t','\0' },                                  { HCL_PFBASE_FUNC, pf_core_put,             3,  3 } },
+	{ { 's','i','z','e','\0' },                              { HCL_PFBASE_FUNC, pf_core_size,            1,  1 } },
+	{ { 's','l','i','c','e','\0' },                          { HCL_PFBASE_FUNC, pf_core_slice,           3,  3 } }
 };
 
 /* ------------------------------------------------------------------------ */

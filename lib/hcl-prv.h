@@ -1992,6 +1992,9 @@ int hcl_is_binop_char (hcl_ooci_t c);
 /* ========================================================================= */
 /* exec.c                                                                    */
 /* ========================================================================= */
+int hcl_class_responds_to (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t msg);
+int hcl_inst_responds_to (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t msg);
+
 hcl_pfrc_t hcl_pf_process_current (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs);
 hcl_pfrc_t hcl_pf_process_fork (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs);
 hcl_pfrc_t hcl_pf_process_resume (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs);

@@ -2266,6 +2266,32 @@ static hcl_oop_block_t find_cmethod_noseterr (hcl_t* hcl, hcl_oop_class_t _class
 	return find_imethod_in_class_noseterr(hcl, (hcl_oop_class_t)HCL_CLASSOF(hcl, _class), &name, ivaroff, owner);
 }
 
+int hcl_class_responds_to (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t msg)
+{
+	hcl_oop_block_t mth_blk;
+	hcl_oop_class_t owner;
+	hcl_ooi_t ivaroff;
+
+	HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, rcv));
+	mth_blk = find_cmethod_noseterr(hcl, (hcl_oop_class_t)rcv, msg, 0, &ivaroff, &owner);
+
+	return mth_blk != HCL_NULL;
+}
+
+int hcl_inst_responds_to (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t msg)
+{
+	hcl_oop_block_t mth_blk;
+	hcl_oop_class_t _class, owner;
+	hcl_ooi_t ivaroff;
+
+	_class = (hcl_oop_class_t)HCL_CLASSOF(hcl, rcv);
+	HCL_ASSERT (hcl, _class != HCL_NULL);
+	HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, _class));
+	mth_blk = find_imethod_noseterr(hcl, _class, msg, 0, &ivaroff, &owner);
+
+	return mth_blk != HCL_NULL;
+}
+
 static HCL_INLINE int send_message (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t msg, int to_super, hcl_ooi_t nargs, hcl_ooi_t nrvars)
 {
 	hcl_oop_block_t mth_blk;
