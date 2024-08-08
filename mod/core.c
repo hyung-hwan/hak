@@ -377,15 +377,15 @@ static hcl_pfrc_t pf_core_put (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 
 static hcl_pfinfo_t pfinfos[] =
 {
-	{ { 'b','a','s','i','c','_','n','e','w','\0' },          { HCL_PFBASE_FUNC, pf_core_basic_new,       2,  2 } },
-	{ { 'c','l','a','s','s','_','n','a','m','e','\0' },      { HCL_PFBASE_FUNC, pf_core_get_class_name,  1,  1 } },
-	{ { 'c','r','e','s','p','_','t','o', '\0' },             { HCL_PFBASE_FUNC, pf_core_cresp_to,        2,  2 } },
-	{ { 'g','e','t','\0' },                                  { HCL_PFBASE_FUNC, pf_core_get,             2,  2 } },
-	{ { 'i','r','e','s','p','_','t','o', '\0' },             { HCL_PFBASE_FUNC, pf_core_iresp_to,        2,  2 } },
-	{ { 'l','e','n','g','t','h','\0' },                      { HCL_PFBASE_FUNC, pf_core_size,            1,  1 } },
-	{ { 'p','u','t','\0' },                                  { HCL_PFBASE_FUNC, pf_core_put,             3,  3 } },
-	{ { 's','i','z','e','\0' },                              { HCL_PFBASE_FUNC, pf_core_size,            1,  1 } },
-	{ { 's','l','i','c','e','\0' },                          { HCL_PFBASE_FUNC, pf_core_slice,           3,  3 } }
+	{ "basic_new",          { HCL_PFBASE_FUNC, pf_core_basic_new,       2,  2 } },
+	{ "class_name",         { HCL_PFBASE_FUNC, pf_core_get_class_name,  1,  1 } },
+     { "cresp_to",           { HCL_PFBASE_FUNC, pf_core_cresp_to,        2,  2 } },
+	{ "get",                { HCL_PFBASE_FUNC, pf_core_get,             2,  2 } },
+	{ "iresp_to",           { HCL_PFBASE_FUNC, pf_core_iresp_to,        2,  2 } },
+	{ "length",             { HCL_PFBASE_FUNC, pf_core_size,            1,  1 } },
+	{ "put",                { HCL_PFBASE_FUNC, pf_core_put,             3,  3 } },
+	{ "size",               { HCL_PFBASE_FUNC, pf_core_size,            1,  1 } },
+	{ "slice",              { HCL_PFBASE_FUNC, pf_core_slice,           3,  3 } }
 };
 
 /* ------------------------------------------------------------------------ */

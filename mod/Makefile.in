@@ -155,15 +155,6 @@ libhcl_dic_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 @ENABLE_STATIC_MODULE_FALSE@am_libhcl_dic_la_rpath = -rpath \
 @ENABLE_STATIC_MODULE_FALSE@	$(pkgmodexecdir)
 @ENABLE_STATIC_MODULE_TRUE@am_libhcl_dic_la_rpath =
-libhcl_str_la_DEPENDENCIES = $(am__DEPENDENCIES_1)
-am_libhcl_str_la_OBJECTS = libhcl_str_la-str.lo
-libhcl_str_la_OBJECTS = $(am_libhcl_str_la_OBJECTS)
-libhcl_str_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
-	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(libhcl_str_la_CFLAGS) \
-	$(CFLAGS) $(libhcl_str_la_LDFLAGS) $(LDFLAGS) -o $@
-@ENABLE_STATIC_MODULE_FALSE@am_libhcl_str_la_rpath = -rpath \
-@ENABLE_STATIC_MODULE_FALSE@	$(pkgmodexecdir)
-@ENABLE_STATIC_MODULE_TRUE@am_libhcl_str_la_rpath =
 libhcl_sys_la_DEPENDENCIES = $(am__DEPENDENCIES_1)
 am_libhcl_sys_la_OBJECTS = libhcl_sys_la-sys.lo
 libhcl_sys_la_OBJECTS = $(am_libhcl_sys_la_OBJECTS)
@@ -190,7 +181,6 @@ depcomp = $(SHELL) $(top_srcdir)/ac/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ./$(DEPDIR)/libhcl_core_la-core.Plo \
 	./$(DEPDIR)/libhcl_dic_la-dic.Plo \
-	./$(DEPDIR)/libhcl_str_la-str.Plo \
 	./$(DEPDIR)/libhcl_sys_la-sys.Plo
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
@@ -212,9 +202,9 @@ am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
 SOURCES = $(libhcl_core_la_SOURCES) $(libhcl_dic_la_SOURCES) \
-	$(libhcl_str_la_SOURCES) $(libhcl_sys_la_SOURCES)
+	$(libhcl_sys_la_SOURCES)
 DIST_SOURCES = $(libhcl_core_la_SOURCES) $(libhcl_dic_la_SOURCES) \
-	$(libhcl_str_la_SOURCES) $(libhcl_sys_la_SOURCES)
+	$(libhcl_sys_la_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -400,12 +390,10 @@ CFLAGS_COMMON =
 @ENABLE_STATIC_MODULE_FALSE@LIBADD_COMMON = -lhcl
 @ENABLE_STATIC_MODULE_TRUE@LIBADD_COMMON = 
 @ENABLE_STATIC_MODULE_TRUE@noinst_LTLIBRARIES = libhcl-core.la \
-@ENABLE_STATIC_MODULE_TRUE@	libhcl-dic.la libhcl-str.la \
-@ENABLE_STATIC_MODULE_TRUE@	libhcl-sys.la
+@ENABLE_STATIC_MODULE_TRUE@	libhcl-dic.la libhcl-sys.la
 @ENABLE_STATIC_MODULE_FALSE@pkgmodexecdir = $(libdir)
 @ENABLE_STATIC_MODULE_FALSE@pkgmodexec_LTLIBRARIES = libhcl-core.la \
-@ENABLE_STATIC_MODULE_FALSE@	libhcl-dic.la libhcl-str.la \
-@ENABLE_STATIC_MODULE_FALSE@	libhcl-sys.la
+@ENABLE_STATIC_MODULE_FALSE@	libhcl-dic.la libhcl-sys.la
 libhcl_core_la_SOURCES = core.c _core.h
 libhcl_core_la_CPPFLAGS = $(CPPFLAGS_COMMON)
 libhcl_core_la_CFLAGS = $(CFLAGS_COMMON)
@@ -416,11 +404,6 @@ libhcl_dic_la_CPPFLAGS = $(CPPFLAGS_COMMON)
 libhcl_dic_la_CFLAGS = $(CFLAGS_COMMON)
 libhcl_dic_la_LDFLAGS = $(LDFLAGS_COMMON)
 libhcl_dic_la_LIBADD = $(LIBADD_COMMON)
-libhcl_str_la_SOURCES = str.c _str.h
-libhcl_str_la_CPPFLAGS = $(CPPFLAGS_COMMON)
-libhcl_str_la_CFLAGS = $(CFLAGS_COMMON)
-libhcl_str_la_LDFLAGS = $(LDFLAGS_COMMON)
-libhcl_str_la_LIBADD = $(LIBADD_COMMON)
 libhcl_sys_la_SOURCES = sys.c _sys.h
 libhcl_sys_la_CPPFLAGS = $(CPPFLAGS_COMMON)
 libhcl_sys_la_CFLAGS = $(CFLAGS_COMMON)
@@ -512,9 +495,6 @@ libhcl-core.la: $(libhcl_core_la_OBJECTS) $(libhcl_core_la_DEPENDENCIES) $(EXTRA
 libhcl-dic.la: $(libhcl_dic_la_OBJECTS) $(libhcl_dic_la_DEPENDENCIES) $(EXTRA_libhcl_dic_la_DEPENDENCIES) 
 	$(AM_V_CCLD)$(libhcl_dic_la_LINK) $(am_libhcl_dic_la_rpath) $(libhcl_dic_la_OBJECTS) $(libhcl_dic_la_LIBADD) $(LIBS)
 
-libhcl-str.la: $(libhcl_str_la_OBJECTS) $(libhcl_str_la_DEPENDENCIES) $(EXTRA_libhcl_str_la_DEPENDENCIES) 
-	$(AM_V_CCLD)$(libhcl_str_la_LINK) $(am_libhcl_str_la_rpath) $(libhcl_str_la_OBJECTS) $(libhcl_str_la_LIBADD) $(LIBS)
-
 libhcl-sys.la: $(libhcl_sys_la_OBJECTS) $(libhcl_sys_la_DEPENDENCIES) $(EXTRA_libhcl_sys_la_DEPENDENCIES) 
 	$(AM_V_CCLD)$(libhcl_sys_la_LINK) $(am_libhcl_sys_la_rpath) $(libhcl_sys_la_OBJECTS) $(libhcl_sys_la_LIBADD) $(LIBS)
 
@@ -526,7 +506,6 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhcl_core_la-core.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhcl_dic_la-dic.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhcl_str_la-str.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhcl_sys_la-sys.Plo@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
@@ -572,13 +551,6 @@ libhcl_dic_la-dic.lo: dic.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='dic.c' object='libhcl_dic_la-dic.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhcl_dic_la_CPPFLAGS) $(CPPFLAGS) $(libhcl_dic_la_CFLAGS) $(CFLAGS) -c -o libhcl_dic_la-dic.lo `test -f 'dic.c' || echo '$(srcdir)/'`dic.c
-
-libhcl_str_la-str.lo: str.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhcl_str_la_CPPFLAGS) $(CPPFLAGS) $(libhcl_str_la_CFLAGS) $(CFLAGS) -MT libhcl_str_la-str.lo -MD -MP -MF $(DEPDIR)/libhcl_str_la-str.Tpo -c -o libhcl_str_la-str.lo `test -f 'str.c' || echo '$(srcdir)/'`str.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libhcl_str_la-str.Tpo $(DEPDIR)/libhcl_str_la-str.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='str.c' object='libhcl_str_la-str.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhcl_str_la_CPPFLAGS) $(CPPFLAGS) $(libhcl_str_la_CFLAGS) $(CFLAGS) -c -o libhcl_str_la-str.lo `test -f 'str.c' || echo '$(srcdir)/'`str.c
 
 libhcl_sys_la-sys.lo: sys.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhcl_sys_la_CPPFLAGS) $(CPPFLAGS) $(libhcl_sys_la_CFLAGS) $(CFLAGS) -MT libhcl_sys_la-sys.lo -MD -MP -MF $(DEPDIR)/libhcl_sys_la-sys.Tpo -c -o libhcl_sys_la-sys.lo `test -f 'sys.c' || echo '$(srcdir)/'`sys.c
@@ -722,7 +694,6 @@ clean-am: clean-generic clean-libtool clean-noinstLTLIBRARIES \
 distclean: distclean-am
 		-rm -f ./$(DEPDIR)/libhcl_core_la-core.Plo
 	-rm -f ./$(DEPDIR)/libhcl_dic_la-dic.Plo
-	-rm -f ./$(DEPDIR)/libhcl_str_la-str.Plo
 	-rm -f ./$(DEPDIR)/libhcl_sys_la-sys.Plo
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
@@ -771,7 +742,6 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 		-rm -f ./$(DEPDIR)/libhcl_core_la-core.Plo
 	-rm -f ./$(DEPDIR)/libhcl_dic_la-dic.Plo
-	-rm -f ./$(DEPDIR)/libhcl_str_la-str.Plo
 	-rm -f ./$(DEPDIR)/libhcl_sys_la-sys.Plo
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic

@@ -738,7 +738,6 @@ void hcl_freemem (hcl_t* hcl, void* ptr)
 
 #include "../mod/_core.h"
 #include "../mod/_dic.h"
-#include "../mod/_str.h"
 #include "../mod/_sys.h"
 
 static struct
@@ -750,7 +749,6 @@ static_modtab[] =
 {
 	{ "core",     hcl_mod_core },
 	{ "dic",      hcl_mod_dic },
-	{ "str",      hcl_mod_str },
 	{ "sys",      hcl_mod_sys }
 };
 #endif
@@ -985,7 +983,6 @@ hcl_pfbase_t* hcl_querymod (hcl_t* hcl, const hcl_ooch_t* pfid, hcl_oow_t pfidle
 	return pfbase;
 }
 
-
 hcl_pfbase_t* hcl_findpfbase (hcl_t* hcl, hcl_pfinfo_t* pfinfo, hcl_oow_t pfcount, const hcl_ooch_t* name, hcl_oow_t namelen)
 {
 	int n;
@@ -1000,7 +997,7 @@ hcl_pfbase_t* hcl_findpfbase (hcl_t* hcl, hcl_pfinfo_t* pfinfo, hcl_oow_t pfcoun
 		/*mid = (left + right) / 2;*/
 		mid = left + ((right - left) / 2);
 
-		n = hcl_comp_oochars_oocstr (name, namelen, pfinfo[mid].mthname);
+		n = hcl_comp_oochars_bcstr(name, namelen, pfinfo[mid].mthname);
 		if (n < 0) right = mid - 1; /* this substraction can make right negative. so i can't use hcl_oow_t for the variable */
 		else if (n > 0) left = mid + 1;
 		else return &pfinfo[mid].base;
@@ -1012,7 +1009,7 @@ hcl_pfbase_t* hcl_findpfbase (hcl_t* hcl, hcl_pfinfo_t* pfinfo, hcl_oow_t pfcoun
 	for (base = 0, lim = pfcount; lim > 0; lim >>= 1)
 	{
 		mid = base + (lim >> 1);
-		n = hcl_comp_oochars_oocstr (name, namelen, pfinfo[mid].mthname);
+		n = hcl_comp_oochars_bcstr(name, namelen, pfinfo[mid].mthname);
 		if (n == 0) return &pfinfo[mid].base;
 		if (n > 0) { base = mid + 1; lim--; }
 	}

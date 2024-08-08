@@ -22,7 +22,6 @@ noinst_LTLIBRARIES =
 
 noinst_LTLIBRARIES += libhcl-core.la
 noinst_LTLIBRARIES += libhcl-dic.la
-noinst_LTLIBRARIES += libhcl-str.la
 noinst_LTLIBRARIES += libhcl-sys.la
 
 else
@@ -38,7 +37,6 @@ pkgmodexec_LTLIBRARIES =
 
 pkgmodexec_LTLIBRARIES += libhcl-core.la
 pkgmodexec_LTLIBRARIES += libhcl-dic.la 
-pkgmodexec_LTLIBRARIES += libhcl-str.la 
 pkgmodexec_LTLIBRARIES += libhcl-sys.la 
 
 endif
@@ -54,12 +52,6 @@ libhcl_dic_la_CPPFLAGS = $(CPPFLAGS_COMMON)
 libhcl_dic_la_CFLAGS = $(CFLAGS_COMMON)
 libhcl_dic_la_LDFLAGS = $(LDFLAGS_COMMON)
 libhcl_dic_la_LIBADD = $(LIBADD_COMMON)
-
-libhcl_str_la_SOURCES = str.c _str.h
-libhcl_str_la_CPPFLAGS = $(CPPFLAGS_COMMON)
-libhcl_str_la_CFLAGS = $(CFLAGS_COMMON)
-libhcl_str_la_LDFLAGS = $(LDFLAGS_COMMON)
-libhcl_str_la_LIBADD = $(LIBADD_COMMON)
 
 libhcl_sys_la_SOURCES = sys.c _sys.h
 libhcl_sys_la_CPPFLAGS = $(CPPFLAGS_COMMON)

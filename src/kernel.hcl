@@ -146,4 +146,4 @@ printf "[%O]\n" (" ":respondsTo "length")
 ##printf "[%O]\n" (String:classVariableNames)
 ##printf "[%O]\n" (String:instanceVariableNames)
 
-printf "%O\n" #"abcdefg"
+##printf "%O\n" #"abcdefg"

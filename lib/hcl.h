@@ -1466,7 +1466,7 @@ struct hcl_pfbase_t
 typedef struct hcl_pfinfo_t hcl_pfinfo_t;
 struct hcl_pfinfo_t
 {
-	hcl_ooch_t        mthname[32];
+	const hcl_bch_t*  mthname;
 	hcl_pfbase_t      base;
 };
 /* =========================================================================
