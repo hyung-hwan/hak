@@ -4,11 +4,11 @@ class Apex {
 	}
 
 	fun ::respondsTo(mth) {
-		return (core.cresp_to self mth)
+		return (core.class_responds_to self mth)
 	}
 
 	fun respondsTo(mth) {
-		return (core.iresp_to self mth)
+		return (core.inst_responds_to self mth)
 	}
 
 	fun basicAt(pos) {

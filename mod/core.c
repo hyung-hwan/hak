@@ -82,7 +82,7 @@ static hcl_pfrc_t pf_core_get_class_name (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t 
 	return HCL_PF_SUCCESS;
 }
 
-static hcl_pfrc_t pf_core_cresp_to (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+static hcl_pfrc_t pf_core_class_responds_to (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
 	hcl_oop_t obj;
 	hcl_oop_t msg;
@@ -106,7 +106,7 @@ static hcl_pfrc_t pf_core_cresp_to (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 	return HCL_PF_SUCCESS;
 }
 
-static hcl_pfrc_t pf_core_iresp_to (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+static hcl_pfrc_t pf_core_inst_responds_to (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
 	hcl_oop_t obj;
 	hcl_oop_t msg;
@@ -377,15 +377,15 @@ static hcl_pfrc_t pf_core_put (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 
 static hcl_pfinfo_t pfinfos[] =
 {
-	{ "basic_new",          { HCL_PFBASE_FUNC, pf_core_basic_new,       2,  2 } },
-	{ "class_name",         { HCL_PFBASE_FUNC, pf_core_get_class_name,  1,  1 } },
-     { "cresp_to",           { HCL_PFBASE_FUNC, pf_core_cresp_to,        2,  2 } },
-	{ "get",                { HCL_PFBASE_FUNC, pf_core_get,             2,  2 } },
-	{ "iresp_to",           { HCL_PFBASE_FUNC, pf_core_iresp_to,        2,  2 } },
-	{ "length",             { HCL_PFBASE_FUNC, pf_core_size,            1,  1 } },
-	{ "put",                { HCL_PFBASE_FUNC, pf_core_put,             3,  3 } },
-	{ "size",               { HCL_PFBASE_FUNC, pf_core_size,            1,  1 } },
-	{ "slice",              { HCL_PFBASE_FUNC, pf_core_slice,           3,  3 } }
+	{ "basic_new",          { HCL_PFBASE_FUNC, pf_core_basic_new,         2,  2 } },
+	{ "class_name",         { HCL_PFBASE_FUNC, pf_core_get_class_name,    1,  1 } },
+	{ "class_responds_to",  { HCL_PFBASE_FUNC, pf_core_class_responds_to, 2,  2 } },
+	{ "get",                { HCL_PFBASE_FUNC, pf_core_get,               2,  2 } },
+	{ "inst_responds_to",   { HCL_PFBASE_FUNC, pf_core_inst_responds_to,  2,  2 } },
+	{ "length",             { HCL_PFBASE_FUNC, pf_core_size,              1,  1 } },
+	{ "put",                { HCL_PFBASE_FUNC, pf_core_put,               3,  3 } },
+	{ "size",               { HCL_PFBASE_FUNC, pf_core_size,              1,  1 } },
+	{ "slice",              { HCL_PFBASE_FUNC, pf_core_slice,             3,  3 } }
 };
 
 /* ------------------------------------------------------------------------ */
