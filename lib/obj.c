@@ -513,7 +513,15 @@ hcl_oop_t hcl_makeclass (hcl_t* hcl, hcl_oop_t class_name, hcl_oop_t superclass,
 	return (hcl_oop_t)c;
 }
 
-static HCL_INLINE int decode_spec (hcl_t* hcl, hcl_oop_class_t _class, hcl_oow_t num_flexi_fields, hcl_obj_type_t* type, hcl_oow_t* outlen)
+struct decoded_spec_t
+{
+	hcl_obj_type_t type;
+	hcl_oow_t alloclen;
+	int flexi;
+};
+typedef struct decoded_spec_t decoded_spec_t;
+
+static HCL_INLINE int decode_spec (hcl_t* hcl, hcl_oop_class_t _class, hcl_oow_t num_flexi_fields, decoded_spec_t* dspec)
 {
 	hcl_oow_t spec;
 	hcl_oow_t num_fixed_fields;
@@ -560,32 +568,30 @@ static HCL_INLINE int decode_spec (hcl_t* hcl, hcl_oop_class_t _class, hcl_oow_t
 	}
 
 	HCL_ASSERT (hcl, num_fixed_fields + num_flexi_fields <= HCL_OBJ_SIZE_MAX);
-	*type = indexed_type;
-
-	/* TODO: THIS PART IS WRONG.. nivars_super and nivars should be encoded to the spec.... */
-	*outlen = num_fixed_fields + num_flexi_fields + HCL_OOP_TO_SMOOI(_class->nivars_super) /*+ HCL_OOP_TO_SMOOI(_class->nivars)*/;
+	dspec->flexi = !!HCL_CLASS_SPEC_IS_INDEXED(spec);
+	dspec->type = indexed_type;
+	dspec->alloclen = num_fixed_fields + num_flexi_fields + HCL_OOP_TO_SMOOI(_class->nivars_super);
 	return 0;
 }
 
 hcl_oop_t hcl_instantiate (hcl_t* hcl, hcl_oop_class_t _class, const void* vptr, hcl_oow_t vlen)
 {
 	hcl_oop_t oop;
-	hcl_obj_type_t type;
-	hcl_oow_t alloclen;
+	decoded_spec_t dspec;
 	hcl_oow_t tmp_count = 0;
 
 	HCL_ASSERT (hcl, hcl->_nil != HCL_NULL);
 
-	if (decode_spec(hcl, _class, vlen, &type, &alloclen) <= -1) return HCL_NULL;
+	if (decode_spec(hcl, _class, vlen, &dspec) <= -1) return HCL_NULL;
 
 	hcl_pushvolat (hcl, (hcl_oop_t*)&_class); tmp_count++;
 
-	switch (type)
+	switch (dspec.type)
 	{
 		case HCL_OBJ_TYPE_OOP:
 			/* both the fixed part(named instance variables) and
 			 * the variable part(indexed instance variables) are allowed. */
-			oop = hcl_allocoopobj(hcl, HCL_BRAND_INSTANCE, alloclen);
+			oop = hcl_allocoopobj(hcl, HCL_BRAND_INSTANCE, dspec.alloclen);
 			if (HCL_LIKELY(oop))
 			{
 		#if 0
@@ -626,19 +632,19 @@ hcl_oop_t hcl_instantiate (hcl_t* hcl, hcl_oop_class_t _class, const void* vptr,
 			break;
 
 		case HCL_OBJ_TYPE_CHAR:
-			oop = hcl_alloccharobj(hcl, HCL_BRAND_INSTANCE, (const hcl_ooch_t*)vptr, alloclen);
+			oop = hcl_alloccharobj(hcl, HCL_BRAND_INSTANCE, (const hcl_ooch_t*)vptr, dspec.alloclen);
 			break;
 
 		case HCL_OBJ_TYPE_BYTE:
-			oop = hcl_allocbyteobj(hcl, HCL_BRAND_INSTANCE, (const hcl_oob_t*)vptr, alloclen);
+			oop = hcl_allocbyteobj(hcl, HCL_BRAND_INSTANCE, (const hcl_oob_t*)vptr, dspec.alloclen);
 			break;
 
 		case HCL_OBJ_TYPE_HALFWORD:
-			oop = hcl_allochalfwordobj(hcl, HCL_BRAND_INSTANCE, (const hcl_oohw_t*)vptr, alloclen);
+			oop = hcl_allochalfwordobj(hcl, HCL_BRAND_INSTANCE, (const hcl_oohw_t*)vptr, dspec.alloclen);
 			break;
 
 		case HCL_OBJ_TYPE_WORD:
-			oop = hcl_allocwordobj(hcl, HCL_BRAND_INSTANCE, (const hcl_oow_t*)vptr, alloclen);
+			oop = hcl_allocwordobj(hcl, HCL_BRAND_INSTANCE, (const hcl_oow_t*)vptr, dspec.alloclen);
 			break;
 
 		/* TODO: more types... HCL_OBJ_TYPE_INT... HCL_OBJ_TYPE_FLOAT, HCL_OBJ_TYPE_UINT16, etc*/
@@ -660,6 +666,7 @@ hcl_oop_t hcl_instantiate (hcl_t* hcl, hcl_oop_class_t _class, const void* vptr,
 		if (HCL_CLASS_SPEC_IS_UNCOPYABLE(spec)) HCL_OBJ_SET_FLAGS_UNCOPYABLE (oop, 1);
 	#endif
 		HCL_OBJ_SET_FLAGS_BRAND(oop, HCL_OOP_TO_SMOOI(_class->ibrand));
+		HCL_OBJ_SET_FLAGS_FLEXI(oop, dspec.flexi);
 	}
 	hcl_popvolats (hcl, tmp_count);
 	return oop;
@@ -668,20 +675,19 @@ hcl_oop_t hcl_instantiate (hcl_t* hcl, hcl_oop_class_t _class, const void* vptr,
 hcl_oop_t hcl_instantiatewithtrailer (hcl_t* hcl, hcl_oop_class_t _class, hcl_oow_t vlen, const hcl_oob_t* trptr, hcl_oow_t trlen)
 {
 	hcl_oop_t oop;
-	hcl_obj_type_t type;
-	hcl_oow_t alloclen;
+	decoded_spec_t dspec;
 	hcl_oow_t tmp_count = 0;
 
 	HCL_ASSERT (hcl, hcl->_nil != HCL_NULL);
 
-	if (decode_spec(hcl, _class, vlen, &type, &alloclen) <= -1) return HCL_NULL;
+	if (decode_spec(hcl, _class, vlen, &dspec) <= -1) return HCL_NULL;
 
 	hcl_pushvolat (hcl, (hcl_oop_t*)&_class); tmp_count++;
 
-	switch (type)
+	switch (dspec.type)
 	{
 		case HCL_OBJ_TYPE_OOP:
-			oop = hcl_allocoopobjwithtrailer(hcl, HCL_BRAND_INSTANCE, alloclen, trptr, trlen);
+			oop = hcl_allocoopobjwithtrailer(hcl, HCL_BRAND_INSTANCE, dspec.alloclen, trptr, trlen);
 			if (HCL_LIKELY(oop))
 			{
 				/* initialize named instance variables with default values */
@@ -719,7 +725,7 @@ hcl_oop_t hcl_instantiatewithtrailer (hcl_t* hcl, hcl_oop_class_t _class, hcl_oo
 			break;
 	}
 
-	if (oop)
+	if (HCL_LIKELY(oop))
 	{
 	#if 0
 		hcl_ooi_t spec;
@@ -733,6 +739,7 @@ hcl_oop_t hcl_instantiatewithtrailer (hcl_t* hcl, hcl_oop_class_t _class, hcl_oo
 		*/
 	#endif
 		HCL_OBJ_SET_FLAGS_BRAND(oop, HCL_OOP_TO_SMOOI(_class->ibrand));
+		HCL_OBJ_SET_FLAGS_FLEXI(oop, dspec.flexi);
 	}
 	hcl_popvolats (hcl, tmp_count);
 	return oop;

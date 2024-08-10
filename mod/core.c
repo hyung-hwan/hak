@@ -61,7 +61,182 @@ static hcl_pfrc_t pf_core_basic_new (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs
 	return HCL_PF_SUCCESS;
 }
 
-static hcl_pfrc_t pf_core_get_class_name (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+static hcl_pfrc_t pf_core_basic_at (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+{
+	hcl_oop_t obj, val;
+	hcl_oop_t pos;
+	hcl_ooi_t index;
+
+	obj = HCL_STACK_GETARG(hcl, nargs, 0);
+	pos = HCL_STACK_GETARG(hcl, nargs, 1);
+
+	if (!HCL_OOP_IS_POINTER(obj) || !HCL_OBJ_GET_FLAGS_FLEXI(obj))
+	{
+	unindexable:
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "receiver not indexable - %O", obj);
+		return HCL_PF_FAILURE;
+	}
+
+	if (!HCL_OOP_IS_SMOOI(pos))
+	{
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "position not numeric - %O", pos);
+		return HCL_PF_FAILURE;
+	}
+	index = HCL_OOP_TO_SMOOI(pos);
+	if (index < 0 || index >= HCL_OBJ_GET_SIZE(obj))
+	{
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hcl_ooi_t)HCL_OBJ_GET_SIZE(obj));
+		return HCL_PF_FAILURE;
+	}
+
+	switch (HCL_OBJ_GET_FLAGS_TYPE(obj))
+	{
+		case HCL_OBJ_TYPE_OOP:
+			val = HCL_OBJ_GET_OOP_VAL(obj, index);
+			break;
+
+		case HCL_OBJ_TYPE_CHAR:
+		{
+			hcl_ooch_t c;
+			c = HCL_OBJ_GET_CHAR_VAL(obj, index);
+			val = HCL_CHAR_TO_OOP(c);
+			break;
+		}
+
+		case HCL_OBJ_TYPE_BYTE:
+		{
+			hcl_ooi_t b;
+			b = HCL_OBJ_GET_BYTE_VAL(obj, index);
+			val = HCL_SMOOI_TO_OOP(b);
+			break;
+		}
+
+		case HCL_OBJ_TYPE_HALFWORD:
+			val = hcl_oowtoint(hcl, HCL_OBJ_GET_HALFWORD_VAL(obj, index));
+			if (HCL_UNLIKELY(!val)) return HCL_PF_FAILURE;
+			break;
+
+		case HCL_OBJ_TYPE_WORD:
+			val = hcl_oowtoint(hcl, HCL_OBJ_GET_WORD_VAL(obj, index));
+			if (HCL_UNLIKELY(!val)) return HCL_PF_FAILURE;
+			break;
+
+		default:
+			goto unindexable;
+			break;
+	}
+
+	HCL_STACK_SETRET (hcl, nargs, val);
+	return HCL_PF_SUCCESS;
+}
+
+static hcl_pfrc_t pf_core_basic_at_put (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+{
+	hcl_oop_t obj, val;
+	hcl_oop_t pos;
+	hcl_ooi_t index;
+
+	obj = HCL_STACK_GETARG(hcl, nargs, 0);
+	pos = HCL_STACK_GETARG(hcl, nargs, 1);
+	val = HCL_STACK_GETARG(hcl, nargs, 2);
+
+	if (!HCL_OOP_IS_POINTER(obj) || !HCL_OBJ_GET_FLAGS_FLEXI(obj))
+	{
+	unindexable:
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "receiver not indexable - %O", obj);
+		return HCL_PF_FAILURE;
+	}
+
+	if (!HCL_OOP_IS_SMOOI(pos))
+	{
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "position not numeric - %O", pos);
+		return HCL_PF_FAILURE;
+	}
+	index = HCL_OOP_TO_SMOOI(pos);
+	if (index < 0 || index >= HCL_OBJ_GET_SIZE(obj))
+	{
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hcl_ooi_t)HCL_OBJ_GET_SIZE(obj));
+		return HCL_PF_FAILURE;
+	}
+
+	switch (HCL_OBJ_GET_FLAGS_TYPE(obj))
+	{
+		case HCL_OBJ_TYPE_OOP:
+			HCL_OBJ_SET_OOP_VAL(obj, index, val);
+			break;
+
+		case HCL_OBJ_TYPE_CHAR:
+		{
+			hcl_ooch_t c;
+			if (!HCL_OOP_IS_CHAR(val))
+			{
+				hcl_seterrbfmt (hcl, HCL_EINVAL, "value not character - %O", val);
+				return HCL_PF_FAILURE;
+			}
+			c = HCL_OOP_TO_CHAR(val);
+			HCL_OBJ_SET_CHAR_VAL(obj, index, c);
+			break;
+		}
+
+		case HCL_OBJ_TYPE_BYTE:
+		{
+			hcl_ooi_t b;
+			if (!HCL_OOP_IS_SMOOI(val))
+			{
+				hcl_seterrbfmt (hcl, HCL_EINVAL, "value not byte - %O", val);
+				return HCL_PF_FAILURE;
+			}
+			b = HCL_OOP_TO_SMOOI(val);
+			HCL_OBJ_SET_BYTE_VAL(obj, index, b);
+			break;
+		}
+
+		case HCL_OBJ_TYPE_HALFWORD:
+		{
+			hcl_oow_t w;
+			if (hcl_inttooow(hcl, val, &w) <= -1) return HCL_PF_FAILURE;
+			HCL_OBJ_SET_HALFWORD_VAL(obj, index, w);
+			break;
+		}
+
+		case HCL_OBJ_TYPE_WORD:
+		{
+			hcl_oow_t w;
+			if (hcl_inttooow(hcl, val, &w) <= -1) return HCL_PF_FAILURE;
+			HCL_OBJ_SET_WORD_VAL(obj, index, w);
+			break;
+		}
+
+		default:
+			goto unindexable;
+			break;
+	}
+
+	HCL_STACK_SETRET (hcl, nargs, val);
+	return HCL_PF_SUCCESS;
+}
+
+static hcl_pfrc_t pf_core_basic_size (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+{
+	hcl_oop_oop_t src;
+	hcl_oop_t size;
+
+	src = (hcl_oop_oop_t)HCL_STACK_GETARG(hcl, nargs, 0);
+
+	if (!HCL_OOP_IS_POINTER(src))
+	{
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "source not sizable - %O", src);
+		return HCL_PF_FAILURE;
+	}
+
+	size = hcl_oowtoint(hcl, HCL_OBJ_GET_SIZE(src));
+	if (!size) return HCL_PF_FAILURE;
+
+	HCL_STACK_SETRET (hcl, nargs, size);
+	return HCL_PF_SUCCESS;
+}
+
+static hcl_pfrc_t pf_core_class_name (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
 	hcl_oop_t obj;
 
@@ -122,26 +297,6 @@ static hcl_pfrc_t pf_core_inst_responds_to (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_
 
 	x = hcl_inst_responds_to(hcl, obj, msg);
 	HCL_STACK_SETRET (hcl, nargs, (x? hcl->_true: hcl->_false));
-	return HCL_PF_SUCCESS;
-}
-
-static hcl_pfrc_t pf_core_size (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
-{
-	hcl_oop_oop_t src;
-	hcl_oop_t size;
-
-	src = (hcl_oop_oop_t)HCL_STACK_GETARG(hcl, nargs, 0);
-
-	if (!HCL_OOP_IS_POINTER(src))
-	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "source not sizable - %O", src);
-		return HCL_PF_FAILURE;
-	}
-
-	size = hcl_oowtoint(hcl, HCL_OBJ_GET_SIZE(src));
-	if (!size) return HCL_PF_FAILURE;
-
-	HCL_STACK_SETRET (hcl, nargs, size);
 	return HCL_PF_SUCCESS;
 }
 
@@ -220,172 +375,17 @@ static hcl_pfrc_t pf_core_slice (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 	return HCL_PF_SUCCESS;
 }
 
-static hcl_pfrc_t pf_core_get (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
-{
-	hcl_oop_t obj, val;
-	hcl_oop_t pos;
-	hcl_ooi_t index;
-
-	obj = HCL_STACK_GETARG(hcl, nargs, 0);
-	pos = HCL_STACK_GETARG(hcl, nargs, 1);
-
-	if (!HCL_OOP_IS_POINTER(obj))
-	{
-	unindexable:
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "object not indexable - %O", obj);
-		return HCL_PF_FAILURE;
-	}
-
-	if (!HCL_OOP_IS_SMOOI(pos))
-	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "position not numeric - %O", pos);
-		return HCL_PF_FAILURE;
-	}
-	index = HCL_OOP_TO_SMOOI(pos);
-	if (index < 0 || index >= HCL_OBJ_GET_SIZE(obj))
-	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hcl_ooi_t)HCL_OBJ_GET_SIZE(obj));
-		return HCL_PF_FAILURE;
-	}
-
-	switch (HCL_OBJ_GET_FLAGS_TYPE(obj))
-	{
-		case HCL_OBJ_TYPE_OOP:
-			val = HCL_OBJ_GET_OOP_VAL(obj, index);
-			break;
-
-		case HCL_OBJ_TYPE_CHAR:
-		{
-			hcl_ooch_t c;
-			c = HCL_OBJ_GET_CHAR_VAL(obj, index);
-			val = HCL_CHAR_TO_OOP(c);
-			break;
-		}
-
-		case HCL_OBJ_TYPE_BYTE:
-		{
-			hcl_ooi_t b;
-			b = HCL_OBJ_GET_BYTE_VAL(obj, index);
-			val = HCL_SMOOI_TO_OOP(b);
-			break;
-		}
-
-		case HCL_OBJ_TYPE_HALFWORD:
-			val = hcl_oowtoint(hcl, HCL_OBJ_GET_HALFWORD_VAL(obj, index));
-			if (HCL_UNLIKELY(!val)) return HCL_PF_FAILURE;
-			break;
-
-		case HCL_OBJ_TYPE_WORD:
-			val = hcl_oowtoint(hcl, HCL_OBJ_GET_WORD_VAL(obj, index));
-			if (HCL_UNLIKELY(!val)) return HCL_PF_FAILURE;
-			break;
-
-		default:
-			goto unindexable;
-			break;
-	}
-
-	HCL_STACK_SETRET (hcl, nargs, val);
-	return HCL_PF_SUCCESS;
-}
-
-static hcl_pfrc_t pf_core_put (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
-{
-	hcl_oop_t obj, val;
-	hcl_oop_t pos;
-	hcl_ooi_t index;
-
-	obj = HCL_STACK_GETARG(hcl, nargs, 0);
-	pos = HCL_STACK_GETARG(hcl, nargs, 1);
-	val = HCL_STACK_GETARG(hcl, nargs, 2);
-
-	if (!HCL_OOP_IS_POINTER(obj))
-	{
-	unindexable:
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "object not indexable - %O", obj);
-		return HCL_PF_FAILURE;
-	}
-
-	if (!HCL_OOP_IS_SMOOI(pos))
-	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "position not numeric - %O", pos);
-		return HCL_PF_FAILURE;
-	}
-	index = HCL_OOP_TO_SMOOI(pos);
-	if (index < 0 || index >= HCL_OBJ_GET_SIZE(obj))
-	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hcl_ooi_t)HCL_OBJ_GET_SIZE(obj));
-		return HCL_PF_FAILURE;
-	}
-
-	switch (HCL_OBJ_GET_FLAGS_TYPE(obj))
-	{
-		case HCL_OBJ_TYPE_OOP:
-			HCL_OBJ_SET_OOP_VAL(obj, index, val);
-			break;
-
-		case HCL_OBJ_TYPE_CHAR:
-		{
-			hcl_ooch_t c;
-			if (!HCL_OOP_IS_CHAR(val))
-			{
-				hcl_seterrbfmt (hcl, HCL_EINVAL, "value not character - %O", val);
-				return HCL_PF_FAILURE;
-			}
-			c = HCL_OOP_TO_CHAR(val);
-			HCL_OBJ_SET_CHAR_VAL(obj, index, c);
-			break;
-		}
-
-		case HCL_OBJ_TYPE_BYTE:
-		{
-			hcl_ooi_t b;
-			if (!HCL_OOP_IS_SMOOI(val))
-			{
-				hcl_seterrbfmt (hcl, HCL_EINVAL, "value not byte - %O", val);
-				return HCL_PF_FAILURE;
-			}
-			b = HCL_OOP_TO_SMOOI(val);
-			HCL_OBJ_SET_BYTE_VAL(obj, index, b);
-			break;
-		}
-
-		case HCL_OBJ_TYPE_HALFWORD:
-		{
-			hcl_oow_t w;
-			if (hcl_inttooow(hcl, val, &w) <= -1) return HCL_PF_FAILURE;
-			HCL_OBJ_SET_HALFWORD_VAL(obj, index, w);
-			break;
-		}
-
-		case HCL_OBJ_TYPE_WORD:
-		{
-			hcl_oow_t w;
-			if (hcl_inttooow(hcl, val, &w) <= -1) return HCL_PF_FAILURE;
-			HCL_OBJ_SET_WORD_VAL(obj, index, w);
-			break;
-		}
-
-		default:
-			goto unindexable;
-			break;
-	}
-
-	HCL_STACK_SETRET (hcl, nargs, val);
-	return HCL_PF_SUCCESS;
-}
 
 static hcl_pfinfo_t pfinfos[] =
 {
-	{ "basic_new",          { HCL_PFBASE_FUNC, pf_core_basic_new,         2,  2 } },
-	{ "class_name",         { HCL_PFBASE_FUNC, pf_core_get_class_name,    1,  1 } },
-	{ "class_responds_to",  { HCL_PFBASE_FUNC, pf_core_class_responds_to, 2,  2 } },
-	{ "get",                { HCL_PFBASE_FUNC, pf_core_get,               2,  2 } },
-	{ "inst_responds_to",   { HCL_PFBASE_FUNC, pf_core_inst_responds_to,  2,  2 } },
-	{ "length",             { HCL_PFBASE_FUNC, pf_core_size,              1,  1 } },
-	{ "put",                { HCL_PFBASE_FUNC, pf_core_put,               3,  3 } },
-	{ "size",               { HCL_PFBASE_FUNC, pf_core_size,              1,  1 } },
-	{ "slice",              { HCL_PFBASE_FUNC, pf_core_slice,             3,  3 } }
+	{ "basicAt",            { HCL_PFBASE_FUNC, pf_core_basic_at,              2,  2 } },
+	{ "basicAtPut",         { HCL_PFBASE_FUNC, pf_core_basic_at_put,          3,  3 } },
+	{ "basicNew",           { HCL_PFBASE_FUNC, pf_core_basic_new,             2,  2 } },
+	{ "basicSize",          { HCL_PFBASE_FUNC, pf_core_basic_size,            1,  1 } },
+	{ "className",          { HCL_PFBASE_FUNC, pf_core_class_name,            1,  1 } },
+	{ "classRespondsTo",    { HCL_PFBASE_FUNC, pf_core_class_responds_to,     2,  2 } },
+	{ "instRespondsTo",     { HCL_PFBASE_FUNC, pf_core_inst_responds_to,      2,  2 } },
+	{ "slice",              { HCL_PFBASE_FUNC, pf_core_slice,                 3,  3 } }
 };
 
 /* ------------------------------------------------------------------------ */

@@ -456,6 +456,7 @@ found:
 
 hcl_oop_t hcl_makedic (hcl_t* hcl, hcl_oow_t inisize)
 {
+/* TODO: use hcl_instantiate() */
 	hcl_oop_dic_t obj;
 
 	obj = (hcl_oop_dic_t)hcl_allocoopobj(hcl, HCL_BRAND_DIC, 2);

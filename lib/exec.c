@@ -4453,7 +4453,8 @@ hcl_logbfmt (hcl, HCL_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d nc
 				LOG_INST_1 (hcl, "make_array %zu", b1);
 
 				/* create an empty array */
-				t = hcl_makearray(hcl, b1, 0);
+				/*t = hcl_makearray(hcl, b1, 0);*/
+				t = hcl_instantiate(hcl, hcl->c_array, HCL_NULL, b1);
 				if (HCL_UNLIKELY(!t)) goto oops_with_errmsg_supplement;
 
 				HCL_STACK_PUSH (hcl, t); /* push the array created */
@@ -4487,7 +4488,8 @@ hcl_logbfmt (hcl, HCL_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d nc
 				LOG_INST_1 (hcl, "make_bytearray %zu", b1);
 
 				/* create an empty array */
-				t = hcl_makebytearray(hcl, HCL_NULL, b1);
+				/*t = hcl_makebytearray(hcl, HCL_NULL, b1);*/
+				t = hcl_instantiate(hcl, hcl->c_byte_array, HCL_NULL, b1);
 				if (HCL_UNLIKELY(!t)) goto oops_with_errmsg_supplement;
 
 				HCL_STACK_PUSH (hcl, t); /* push the byte array created */

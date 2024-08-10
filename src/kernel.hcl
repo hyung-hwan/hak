@@ -1,22 +1,26 @@
 class Apex {
 	fun ::basicNew(size) {
-		return (core.basic_new self size)
+		return (core.basicNew self size)
 	}
 
 	fun ::respondsTo(mth) {
-		return (core.class_responds_to self mth)
+		return (core.classRespondsTo self mth)
 	}
 
 	fun respondsTo(mth) {
-		return (core.inst_responds_to self mth)
+		return (core.instRespondsTo self mth)
 	}
 
 	fun basicAt(pos) {
-		return (core.get self index)
+		return (core.basicAt self pos)
 	}
 
-	fun basicAtPut(index value) {
-		return (core.put self index value)
+	fun basicAtPut(pos value) {
+		return (core.basicAtPut self pos value)
+	}
+
+	fun basicSize() {
+		return (core.basicSize self)
 	}
 }
 
@@ -35,7 +39,7 @@ class Class :: Apex [
 	_cvarnames
 ] {
 	fun name() {
-		##return (core.class_name self)
+		##return (core.className self)
 		return _class
 	}
 
@@ -52,7 +56,7 @@ class Class :: Apex [
 
 class Collection :: Object {
 	fun length() {
-		return (core.length self)
+		return (core.basicSize self)
 	}
 }
 
@@ -62,23 +66,23 @@ class IndexedCollection :: Collection {
 	}
 
 	fun at(index) {
-		return (core.get self index)
+		return (core.basicAt self index)
 	}
 
 	fun atPut(index value) {
-		return (core.put self index value)
+		return (core.basicAtPut self index value)
 	}
 }
 
 class FixedSizedCollection :: IndexedCollection {
 	fun ::new(size) {
 		| obj iv |
-		obj := (core.basic_new self size)
+		obj := (core.basicNew self size)
 		if (self:respondsTo "initValue") { ## TODO: change "initValue" to a symbol once supported
 			i := 0
 			iv := (self:initValue)
 			while (i < size) {
-				core.put obj i iv
+				core.basicAtPut obj i iv
 				i := (i + 1)
 			}
 		}
@@ -147,3 +151,23 @@ printf "[%O]\n" (" ":respondsTo "length")
 ##printf "[%O]\n" (String:instanceVariableNames)
 
 ##printf "%O\n" #"abcdefg"
+
+
+printf "----------------------------------------\n"
+
+k := #[1 2 3]
+printf "%O\n" (k:basicAt 2)
+
+class X :: Object [ a b c ] {
+	fun :* new() {
+		self.a := 10
+		self.b := 20
+		self.c := 30
+	}
+}
+##k := (X:basicNew 0)
+k := (X:new)
+printf "%O\n" (k:basicAt 2)
+
+
+
