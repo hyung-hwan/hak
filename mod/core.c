@@ -73,17 +73,18 @@ static hcl_pfrc_t pf_core_basic_at (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 	if (!HCL_OOP_IS_POINTER(obj) || !HCL_OBJ_GET_FLAGS_FLEXI(obj))
 	{
 	unindexable:
+		/* the receiver is a special numeric object or a non-indexable object */
 		hcl_seterrbfmt (hcl, HCL_EINVAL, "receiver not indexable - %O", obj);
 		return HCL_PF_FAILURE;
 	}
 
-	if (!HCL_OOP_IS_SMOOI(pos))
+	if (hcl_inttooow_noseterr(hcl, pos, &index) <= 0)
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "position not numeric - %O", pos);
+		/* negative integer or not integer */
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "position not valid- %O", pos);
 		return HCL_PF_FAILURE;
 	}
-	index = HCL_OOP_TO_SMOOI(pos);
-	if (index < 0 || index >= HCL_OBJ_GET_SIZE(obj))
+	if (index >= HCL_OBJ_GET_SIZE(obj))
 	{
 		hcl_seterrbfmt (hcl, HCL_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hcl_ooi_t)HCL_OBJ_GET_SIZE(obj));
 		return HCL_PF_FAILURE;
@@ -147,13 +148,13 @@ static hcl_pfrc_t pf_core_basic_at_put (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t na
 		return HCL_PF_FAILURE;
 	}
 
-	if (!HCL_OOP_IS_SMOOI(pos))
+	if (hcl_inttooow_noseterr(hcl, pos, &index) <= 0)
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "position not numeric - %O", pos);
+		/* negative integer or not integer */
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "position not valid- %O", pos);
 		return HCL_PF_FAILURE;
 	}
-	index = HCL_OOP_TO_SMOOI(pos);
-	if (index < 0 || index >= HCL_OBJ_GET_SIZE(obj))
+	if (index >= HCL_OBJ_GET_SIZE(obj))
 	{
 		hcl_seterrbfmt (hcl, HCL_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hcl_ooi_t)HCL_OBJ_GET_SIZE(obj));
 		return HCL_PF_FAILURE;

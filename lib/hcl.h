@@ -2961,10 +2961,22 @@ HCL_EXPORT hcl_oop_t hcl_ooitoint (
 	hcl_ooi_t i
 );
 
+HCL_EXPORT int hcl_inttooow_noseterr (
+	hcl_t*     hcl,
+	hcl_oop_t  x,
+	hcl_oow_t* w
+);
+
 HCL_EXPORT int hcl_inttooow (
 	hcl_t*     hcl,
 	hcl_oop_t  x,
 	hcl_oow_t* w
+);
+
+HCL_EXPORT int hcl_inttoooi_noseterr (
+	hcl_t*     hcl,
+	hcl_oop_t  x,
+	hcl_ooi_t* i
 );
 
 HCL_EXPORT int hcl_inttoooi (

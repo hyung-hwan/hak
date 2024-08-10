@@ -221,7 +221,7 @@ static int is_normalized_integer (hcl_t* hcl, hcl_oop_t oop)
 	return 0;
 }
 
-static HCL_INLINE int bigint_to_oow (hcl_t* hcl, hcl_oop_t num, hcl_oow_t* w)
+static HCL_INLINE int bigint_to_oow_noseterr (hcl_t* hcl, hcl_oop_t num, hcl_oow_t* w)
 {
 	HCL_ASSERT (hcl, HCL_IS_BIGINT(hcl,num));
 
@@ -242,7 +242,7 @@ static HCL_INLINE int bigint_to_oow (hcl_t* hcl, hcl_oop_t num, hcl_oow_t* w)
 	HCL_ASSERT (hcl, HCL_OBJ_GET_SIZE(num) >= 2);
 	if (HCL_OBJ_GET_SIZE(num) == 2)
 	{
-		*w = MAKE_WORD (((hcl_oop_halfword_t)num)->slot[0], ((hcl_oop_halfword_t)num)->slot[1]);
+		*w = MAKE_WORD(((hcl_oop_halfword_t)num)->slot[0], ((hcl_oop_halfword_t)num)->slot[1]);
 		return HCL_IS_NBIGINT(hcl,num)? -1: 1;
 	}
 #else
@@ -253,7 +253,7 @@ static HCL_INLINE int bigint_to_oow (hcl_t* hcl, hcl_oop_t num, hcl_oow_t* w)
 	return 0; /* not convertable */
 }
 
-static HCL_INLINE int integer_to_oow (hcl_t* hcl, hcl_oop_t x, hcl_oow_t* w)
+static HCL_INLINE int integer_to_oow_noseterr (hcl_t* hcl, hcl_oop_t x, hcl_oow_t* w)
 {
 	/* return value
 	 *   1 - a positive number including 0 that can fit into hcl_oow_t
@@ -279,10 +279,10 @@ static HCL_INLINE int integer_to_oow (hcl_t* hcl, hcl_oop_t x, hcl_oow_t* w)
 	}
 
 	HCL_ASSERT (hcl, hcl_isbigint(hcl, x));
-	return bigint_to_oow(hcl, x, w);
+	return bigint_to_oow_noseterr(hcl, x, w);
 }
 
-int hcl_inttooow (hcl_t* hcl, hcl_oop_t x, hcl_oow_t* w)
+int hcl_inttooow_noseterr (hcl_t* hcl, hcl_oop_t x, hcl_oow_t* w)
 {
 	if (HCL_OOP_IS_SMOOI(x))
 	{
@@ -301,14 +301,44 @@ int hcl_inttooow (hcl_t* hcl, hcl_oop_t x, hcl_oow_t* w)
 		}
 	}
 
-	if (hcl_isbigint(hcl, x)) return bigint_to_oow(hcl, x, w);
+	/* 0 -> too big, too small, or not an integer */
+	return hcl_isbigint(hcl, x)? bigint_to_oow_noseterr(hcl, x, w): 0;
+}
+
+int hcl_inttooow (hcl_t* hcl, hcl_oop_t x, hcl_oow_t* w)
+{
+	if (HCL_OOP_IS_SMOOI(x))
+	{
+		hcl_ooi_t v;
+
+		v = HCL_OOP_TO_SMOOI(x);
+		if (v < 0)
+		{
+			*w = -v;
+			hcl_seterrnum (hcl, HCL_ERANGE);
+			return -1; /* negative number negated - kind of an error */
+		}
+		else
+		{
+			*w = v;
+			return 1; /* zero or positive number */
+		}
+	}
+
+	if (hcl_isbigint(hcl, x))
+	{
+		int n;
+		if ((n = bigint_to_oow_noseterr(hcl, x, w)) <= 0) hcl_seterrnum (hcl, HCL_ERANGE);
+		return n;
+	}
 
 	hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not integer - %O", x);
 	return 0; /* not convertable - too big, too small, or not integer */
 }
 
-int hcl_inttoooi (hcl_t* hcl, hcl_oop_t x, hcl_ooi_t* i)
+int hcl_inttoooi_noseterr (hcl_t* hcl, hcl_oop_t x, hcl_ooi_t* i)
 {
+#if 0
 	hcl_oow_t w;
 	int n;
 
@@ -334,9 +364,82 @@ int hcl_inttoooi (hcl_t* hcl, hcl_oop_t x, hcl_ooi_t* i)
 	}
 
 	return n;
+#else
+	if (HCL_OOP_IS_SMOOI(x))
+	{
+		*i = HCL_OOP_TO_SMOOI(x);
+		return (*i < 0)? -1: 1;
+	}
+
+	if (hcl_isbigint(hcl, x))
+	{
+		hcl_oow_t w;
+		int n;
+
+		n = bigint_to_oow_noseterr(hcl, x, &w);
+		if (n < 0)
+		{
+			HCL_STATIC_ASSERT (HCL_TYPE_MAX(hcl_ooi_t) + HCL_TYPE_MIN(hcl_ooi_t) == -1); /* assume 2's complement */
+			if (w > (hcl_oow_t)HCL_TYPE_MAX(hcl_ooi_t) + 1) return 0; /* too small */
+			*i = -w; /* negate back */
+		}
+		else if (n > 0)
+		{
+			if (w > HCL_TYPE_MAX(hcl_ooi_t)) return 0; /* too big */
+			*i = w;
+		}
+
+		return n;
+	}
+
+	return 0;  /* not integer */
+#endif
 }
 
+int hcl_inttoooi (hcl_t* hcl, hcl_oop_t x, hcl_ooi_t* i)
+{
+	if (HCL_OOP_IS_SMOOI(x))
+	{
+		*i = HCL_OOP_TO_SMOOI(x);
+		return (*i < 0)? -1: 1;
+	}
 
+	if (hcl_isbigint(hcl, x))
+	{
+		hcl_oow_t w;
+		int n;
+
+		n = bigint_to_oow_noseterr(hcl, x, &w);
+		if (n < 0)
+		{
+			HCL_STATIC_ASSERT (HCL_TYPE_MAX(hcl_ooi_t) + HCL_TYPE_MIN(hcl_ooi_t) == -1); /* assume 2's complement */
+			if (w > (hcl_oow_t)HCL_TYPE_MAX(hcl_ooi_t) + 1)
+			{
+				hcl_seterrnum (hcl, HCL_ERANGE);
+				return 0; /* too small */
+			}
+			*i = -w; /* negate back */
+		}
+		else if (n > 0)
+		{
+			if (w > HCL_TYPE_MAX(hcl_ooi_t))
+			{
+				hcl_seterrnum (hcl, HCL_ERANGE);
+				return 0; /* too big */
+			}
+			*i = w;
+		}
+		else
+		{
+			hcl_seterrnum (hcl, HCL_ERANGE);
+		}
+
+		return n;
+	}
+
+	hcl_seterrbfmt (hcl, HCL_EINVAL, "not an integer - %O", x);
+	return 0;  /* not integer */
+}
 
 #if (HCL_SIZEOF_UINTMAX_T == HCL_SIZEOF_OOW_T)
 
@@ -2941,7 +3044,7 @@ hcl_oop_t hcl_bitatint (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 
 		if (HCL_IS_NBIGINT(hcl, y)) return HCL_SMOOI_TO_OOP(0);
 
-		sign = bigint_to_oow (hcl, y, &w);
+		sign = bigint_to_oow_noseterr(hcl, y, &w);
 		HCL_ASSERT (hcl, sign >= 0);
 		if (sign >= 1)
 		{
@@ -2955,11 +3058,11 @@ hcl_oop_t hcl_bitatint (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 			HCL_ASSERT (hcl, sign == 0);
 
 			hcl_pushvolat (hcl, &x);
-			quo = hcl_divints (hcl, y, HCL_SMOOI_TO_OOP(HCL_LIW_BITS), 0, &rem);
+			quo = hcl_divints(hcl, y, HCL_SMOOI_TO_OOP(HCL_LIW_BITS), 0, &rem);
 			hcl_popvolat (hcl);
 			if (!quo) return HCL_NULL;
 
-			sign = integer_to_oow (hcl, quo, &wp);
+			sign = integer_to_oow_noseterr(hcl, quo, &wp);
 			HCL_ASSERT (hcl, sign >= 0);
 			if (sign == 0)
 			{
@@ -3845,7 +3948,7 @@ static HCL_INLINE hcl_oop_t rshift_negative_bigint_and_normalize (hcl_t* hcl, hc
 		hcl_popvolat (hcl);
 		if (!y) return HCL_NULL;
 
-		sign = integer_to_oow (hcl, y, &shift);
+		sign = integer_to_oow_noseterr(hcl, y, &shift);
 		if (sign == 0) shift = HCL_SMOOI_MAX;
 		else
 		{
@@ -3929,11 +4032,11 @@ static HCL_INLINE hcl_oop_t rshift_positive_bigint_and_normalize (hcl_t* hcl, hc
 
 		/* y is a negative number. use hcl_addints() until it becomes 0 */
 		hcl_pushvolat (hcl, &z);
-		y = hcl_addints (hcl, y, HCL_SMOOI_TO_OOP(shift));
+		y = hcl_addints(hcl, y, HCL_SMOOI_TO_OOP(shift));
 		hcl_popvolat (hcl);
 		if (!y) return HCL_NULL;
 
-		sign = integer_to_oow (hcl, y, &shift);
+		sign = integer_to_oow_noseterr(hcl, y, &shift);
 		if (sign == 0) shift = HCL_SMOOI_MAX;
 		else
 		{
@@ -3977,22 +4080,22 @@ static HCL_INLINE hcl_oop_t lshift_bigint_and_normalize (hcl_t* hcl, hcl_oop_t x
 		lshift_unsigned_array (((hcl_oop_liword_t)z)->slot, HCL_OBJ_GET_SIZE(z), shift);
 
 		hcl_pushvolat (hcl, &y);
-		x = normalize_bigint (hcl, z);
+		x = normalize_bigint(hcl, z);
 		hcl_popvolat (hcl);
 		if (!x) return HCL_NULL;
 
 		hcl_pushvolat (hcl, &x);
-		y = hcl_subints (hcl, y, HCL_SMOOI_TO_OOP(shift));
+		y = hcl_subints(hcl, y, HCL_SMOOI_TO_OOP(shift));
 		hcl_popvolat (hcl);
 		if (!y) return HCL_NULL;
 
-		sign = integer_to_oow (hcl, y, &shift);
+		sign = integer_to_oow_noseterr(hcl, y, &shift);
 		if (sign == 0) shift = HCL_SMOOI_MAX;
 		else
 		{
 			if (shift == 0)
 			{
-				HCL_ASSERT (hcl, is_normalized_integer (hcl, x));
+				HCL_ASSERT (hcl, is_normalized_integer(hcl, x));
 				return x;
 			}
 			HCL_ASSERT (hcl, sign >= 1);
@@ -4147,7 +4250,7 @@ hcl_oop_t hcl_bitshiftint (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 			negx = HCL_IS_NBIGINT(hcl, x);
 			negy = HCL_IS_NBIGINT(hcl, y);
 
-			sign = bigint_to_oow (hcl, y, &shift);
+			sign = bigint_to_oow_noseterr(hcl, y, &shift);
 			if (sign == 0)
 			{
 				/* y is too big or too small */
@@ -4776,7 +4879,7 @@ hcl_oop_t hcl_inttostr (hcl_t* hcl, hcl_oop_t num, int flagged_radix)
 	HCL_ASSERT (hcl, radix >= 2 && radix <= 36);
 
 	if (!hcl_isint(hcl,num)) goto oops_einval;
-	v = integer_to_oow(hcl, num, &w);
+	v = integer_to_oow_noseterr(hcl, num, &w);
 
 	if (v)
 	{

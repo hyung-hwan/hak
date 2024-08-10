@@ -100,7 +100,6 @@ libhcl_la_LIBADD = $(LIBADD_LIB_COMMON)
 if ENABLE_STATIC_MODULE
 libhcl_la_LIBADD += ../mod/libhcl-core.la
 libhcl_la_LIBADD += ../mod/libhcl-dic.la
-libhcl_la_LIBADD += ../mod/libhcl-str.la
 libhcl_la_LIBADD += ../mod/libhcl-sys.la
 endif
 

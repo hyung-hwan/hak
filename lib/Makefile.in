@@ -94,7 +94,6 @@ host_triplet = @host@
 @MACOSX_FALSE@@WIN32_FALSE@am__append_5 = -DHCL_DEFAULT_PFMODPOSTFIX=\".so\"
 @ENABLE_STATIC_MODULE_TRUE@am__append_6 = ../mod/libhcl-core.la \
 @ENABLE_STATIC_MODULE_TRUE@	../mod/libhcl-dic.la \
-@ENABLE_STATIC_MODULE_TRUE@	../mod/libhcl-str.la \
 @ENABLE_STATIC_MODULE_TRUE@	../mod/libhcl-sys.la
 @ENABLE_HCLX_TRUE@am__append_7 = libhclx.la
 @ENABLE_HCLX_TRUE@am__append_8 = hcl-x.h hcl-tmr.h hcl-json.h
