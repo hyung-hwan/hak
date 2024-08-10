@@ -65,7 +65,9 @@ static hcl_pfrc_t pf_core_basic_at (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
 	hcl_oop_t obj, val;
 	hcl_oop_t pos;
-	hcl_ooi_t index;
+	hcl_oow_t index;
+	hcl_oop_class_t _class;
+	hcl_oow_t fixed, flexi;
 
 	obj = HCL_STACK_GETARG(hcl, nargs, 0);
 	pos = HCL_STACK_GETARG(hcl, nargs, 1);
@@ -81,14 +83,19 @@ static hcl_pfrc_t pf_core_basic_at (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 	if (hcl_inttooow_noseterr(hcl, pos, &index) <= 0)
 	{
 		/* negative integer or not integer */
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "position not valid- %O", pos);
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "position not valid - %O", pos);
 		return HCL_PF_FAILURE;
 	}
-	if (index >= HCL_OBJ_GET_SIZE(obj))
+
+	_class = (hcl_oop_class_t)HCL_CLASSOF(hcl, obj);
+	fixed = HCL_CLASS_SPEC_NAMED_INSTVARS(_class->spec);
+	flexi = HCL_OBJ_GET_SIZE(obj) - fixed;
+	if (index >= flexi)
 	{
 		hcl_seterrbfmt (hcl, HCL_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hcl_ooi_t)HCL_OBJ_GET_SIZE(obj));
 		return HCL_PF_FAILURE;
 	}
+	index += fixed;
 
 	switch (HCL_OBJ_GET_FLAGS_TYPE(obj))
 	{
@@ -135,7 +142,9 @@ static hcl_pfrc_t pf_core_basic_at_put (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t na
 {
 	hcl_oop_t obj, val;
 	hcl_oop_t pos;
-	hcl_ooi_t index;
+	hcl_oow_t index;
+	hcl_oop_class_t _class;
+	hcl_oow_t fixed, flexi;
 
 	obj = HCL_STACK_GETARG(hcl, nargs, 0);
 	pos = HCL_STACK_GETARG(hcl, nargs, 1);
@@ -151,9 +160,19 @@ static hcl_pfrc_t pf_core_basic_at_put (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t na
 	if (hcl_inttooow_noseterr(hcl, pos, &index) <= 0)
 	{
 		/* negative integer or not integer */
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "position not valid- %O", pos);
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "position not valid - %O", pos);
 		return HCL_PF_FAILURE;
 	}
+
+	_class = (hcl_oop_class_t)HCL_CLASSOF(hcl, obj);
+	fixed = HCL_CLASS_SPEC_NAMED_INSTVARS(_class->spec);
+	flexi = HCL_OBJ_GET_SIZE(obj) - fixed;
+	if (index >= flexi)
+	{
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hcl_ooi_t)HCL_OBJ_GET_SIZE(obj));
+		return HCL_PF_FAILURE;
+	}
+	index += fixed;
 	if (index >= HCL_OBJ_GET_SIZE(obj))
 	{
 		hcl_seterrbfmt (hcl, HCL_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hcl_ooi_t)HCL_OBJ_GET_SIZE(obj));

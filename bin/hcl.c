@@ -730,7 +730,6 @@ int main (int argc, char* argv[])
 	hcl_oow_t heapsize = DEFAULT_HEAPSIZE;
 	int verbose = 0;
 	int show_info = 0;
-	int nl_terminator = 0;
 	const char* modlibdirs = HCL_NULL;
 
 #if defined(HCL_BUILD_DEBUG)
@@ -745,7 +744,7 @@ int main (int argc, char* argv[])
 	print_usage:
 		fprintf (stderr, "Usage: %s [options] script-filename [output-filename]\n", argv[0]);
 		fprintf (stderr, "Options are:\n");
-		fprintf (stderr, " -n  enable line-break as expression terminator\n");
+		fprintf (stderr, " -v  show verbose messages\n");
 		return -1;
 	}
 
@@ -755,10 +754,6 @@ int main (int argc, char* argv[])
 		{
 			case 'l':
 				logopt = opt.arg;
-				break;
-
-			case 'n':
-				nl_terminator = 1;
 				break;
 
 			case 'v':
@@ -831,11 +826,7 @@ int main (int argc, char* argv[])
 
 		/*trait |= HCL_TRAIT_NOGC;*/
 		trait |= HCL_TRAIT_AWAIT_PROCS;
-	#if 0
-		if (nl_terminator) trait |= HCL_TRAIT_LANG_ENABLE_EOL;
-	#else
 		trait |= HCL_TRAIT_LANG_ENABLE_EOL;
-	#endif
 		hcl_setoption (hcl, HCL_TRAIT, &trait);
 	}
 
