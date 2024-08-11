@@ -497,9 +497,9 @@ check_ERRORS = \
 
 EXTRA_DIST = $(check_SCRIPTS) $(check_ERRORS)
 TEST_EXTENSIONS = .hcl .err
-HCL_LOG_COMPILER = $(SHELL) $(abs_srcdir)/run.sh ../bin/hcl --modlibdirs="@abs_top_builddir@/mod:@abs_top_builddir@/mod/.libs" --heapsize=0 -n
+HCL_LOG_COMPILER = $(SHELL) $(abs_srcdir)/run.sh ../bin/hcl --modlibdirs="@abs_top_builddir@/mod:@abs_top_builddir@/mod/.libs" --heapsize=0
 AM_HCL_LOG_FLAGS = 
-ERR_LOG_COMPILER = $(SHELL) $(abs_srcdir)/err.sh ../bin/hcl --modlibdirs="@abs_top_builddir@/mod:@abs_top_builddir@/mod/.libs" --heapsize=0 -n
+ERR_LOG_COMPILER = $(SHELL) $(abs_srcdir)/err.sh ../bin/hcl --modlibdirs="@abs_top_builddir@/mod:@abs_top_builddir@/mod/.libs" --heapsize=0
 AM_ERR_LOG_FLAGS = 
 all: all-am
 

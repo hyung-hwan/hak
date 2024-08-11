@@ -32,7 +32,6 @@
 #	error UNSUPPORTED LIW BIT SIZE
 #endif
 
-
 #define IS_SIGN_DIFF(x,y) (((x) ^ (y)) < 0)
 
 /*#define IS_POW2(ui) (((ui) > 0) && (((ui) & (~(ui)+ 1)) == (ui)))*/
@@ -215,7 +214,7 @@ static int is_normalized_integer (hcl_t* hcl, hcl_oop_t oop)
 		hcl_oow_t sz;
 		sz = HCL_OBJ_GET_SIZE(oop);
 		HCL_ASSERT (hcl, sz >= 1);
-		return ((hcl_oop_liword_t)oop)->slot[sz - 1] != 0;
+		return HCL_OBJ_GET_LIWORD_VAL(oop, sz - 1) != 0;
 	}
 
 	return 0;
@@ -229,7 +228,7 @@ static HCL_INLINE int bigint_to_oow_noseterr (hcl_t* hcl, hcl_oop_t num, hcl_oow
 	HCL_ASSERT (hcl, HCL_OBJ_GET_SIZE(num) >= 1);
 	if (HCL_OBJ_GET_SIZE(num) == 1)
 	{
-		*w = ((hcl_oop_word_t)num)->slot[0];
+		*w = HCL_OBJ_GET_WORD_VAL(num, 0);
 		return HCL_IS_NBIGINT(hcl,num)? -1: 1;
 	}
 
@@ -242,14 +241,13 @@ static HCL_INLINE int bigint_to_oow_noseterr (hcl_t* hcl, hcl_oop_t num, hcl_oow
 	HCL_ASSERT (hcl, HCL_OBJ_GET_SIZE(num) >= 2);
 	if (HCL_OBJ_GET_SIZE(num) == 2)
 	{
-		*w = MAKE_WORD(((hcl_oop_halfword_t)num)->slot[0], ((hcl_oop_halfword_t)num)->slot[1]);
+		*w = MAKE_WORD(HCL_OBJ_GET_HALFWORD_VAL(num, 0), HCL_OBJ_GET_HALFWORD_VAL(num, 1));
 		return HCL_IS_NBIGINT(hcl,num)? -1: 1;
 	}
 #else
 #	error UNSUPPORTED LIW BIT SIZE
 #endif
 
-	hcl_seterrnum (hcl, HCL_ERANGE);
 	return 0; /* not convertable */
 }
 
@@ -332,39 +330,12 @@ int hcl_inttooow (hcl_t* hcl, hcl_oop_t x, hcl_oow_t* w)
 		return n;
 	}
 
-	hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not integer - %O", x);
+	hcl_seterrbfmt (hcl, HCL_EINVAL, "not integer - %O", x);
 	return 0; /* not convertable - too big, too small, or not integer */
 }
 
 int hcl_inttoooi_noseterr (hcl_t* hcl, hcl_oop_t x, hcl_ooi_t* i)
 {
-#if 0
-	hcl_oow_t w;
-	int n;
-
-	n = hcl_inttooow(hcl, x, &w);
-	if (n < 0)
-	{
-		HCL_ASSERT (hcl, HCL_TYPE_MAX(hcl_ooi_t) + HCL_TYPE_MIN(hcl_ooi_t) == -1); /* assume 2's complement */
-		if (w > (hcl_oow_t)HCL_TYPE_MAX(hcl_ooi_t) + 1)
-		{
-			hcl_seterrnum (hcl, HCL_ERANGE); /* not convertable. number too small */
-			return 0;
-		}
-		*i = -w;
-	}
-	else if (n > 0)
-	{
-		if (w > HCL_TYPE_MAX(hcl_ooi_t))
-		{
-			hcl_seterrnum (hcl, HCL_ERANGE); /* not convertable. number too big */
-			return 0;
-		}
-		*i = w;
-	}
-
-	return n;
-#else
 	if (HCL_OOP_IS_SMOOI(x))
 	{
 		*i = HCL_OOP_TO_SMOOI(x);
@@ -393,7 +364,6 @@ int hcl_inttoooi_noseterr (hcl_t* hcl, hcl_oop_t x, hcl_ooi_t* i)
 	}
 
 	return 0;  /* not integer */
-#endif
 }
 
 int hcl_inttoooi (hcl_t* hcl, hcl_oop_t x, hcl_ooi_t* i)
@@ -2403,7 +2373,7 @@ hcl_oop_t hcl_addints (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 	return normalize_bigint (hcl, z);
 
 oops_einval:
-	hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not integer - %O, %O", x, y);
+	hcl_seterrbfmt (hcl, HCL_EINVAL, "not integer - %O, %O", x, y);
 	return HCL_NULL;
 }
 
@@ -2494,7 +2464,7 @@ hcl_oop_t hcl_subints (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 	return normalize_bigint (hcl, z);
 
 oops_einval:
-	hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not integer - %O, %O", x, y);
+	hcl_seterrbfmt (hcl, HCL_EINVAL, "not integer - %O, %O", x, y);
 	return HCL_NULL;
 }
 
@@ -2599,7 +2569,7 @@ hcl_oop_t hcl_mulints (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 	return normalize_bigint (hcl, z);
 
 oops_einval:
-	hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not integer - %O, %O", x, y);
+	hcl_seterrbfmt (hcl, HCL_EINVAL, "not integer - %O, %O", x, y);
 	return HCL_NULL;
 }
 
@@ -2917,7 +2887,7 @@ hcl_oop_t hcl_divints (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y, int modulo, hcl_oop
 	return z;
 
 oops_einval:
-	hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not integer - %O, %O", x, y);
+	hcl_seterrbfmt (hcl, HCL_EINVAL, "not integer - %O, %O", x, y);
 	return HCL_NULL;
 }
 
@@ -2937,7 +2907,7 @@ hcl_oop_t hcl_negateint (hcl_t* hcl, hcl_oop_t x)
 	}
 
 oops_einval:
-	hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not integer - %O", x);
+	hcl_seterrbfmt (hcl, HCL_EINVAL, "not integer - %O", x);
 	return HCL_NULL;
 }
 
@@ -3102,7 +3072,7 @@ hcl_oop_t hcl_bitatint (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 	}
 
 oops_einval:
-	hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not integer - %O, %O", x, y);
+	hcl_seterrbfmt (hcl, HCL_EINVAL, "not integer - %O, %O", x, y);
 	return HCL_NULL;
 }
 
@@ -3315,7 +3285,7 @@ hcl_oop_t hcl_bitandints (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 	}
 
 oops_einval:
-	hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not integer - %O, %O", x, y);
+	hcl_seterrbfmt (hcl, HCL_EINVAL, "not integer - %O, %O", x, y);
 	return HCL_NULL;
 }
 
@@ -3533,7 +3503,7 @@ hcl_oop_t hcl_bitorints (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 	}
 
 oops_einval:
-	hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not integer - %O, %O", x, y);
+	hcl_seterrbfmt (hcl, HCL_EINVAL, "not integer - %O, %O", x, y);
 	return HCL_NULL;
 }
 
@@ -3750,7 +3720,7 @@ hcl_oop_t hcl_bitxorints (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 	}
 
 oops_einval:
-	hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not integer - %O, %O", x, y);
+	hcl_seterrbfmt (hcl, HCL_EINVAL, "not integer - %O, %O", x, y);
 	return HCL_NULL;
 }
 
@@ -3852,7 +3822,7 @@ hcl_oop_t hcl_bitinvint (hcl_t* hcl, hcl_oop_t x)
 	}
 
 oops_einval:
-	hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not integer - %O", x);
+	hcl_seterrbfmt (hcl, HCL_EINVAL, "not integer - %O", x);
 	return HCL_NULL;
 }
 
@@ -4325,7 +4295,7 @@ hcl_oop_t hcl_bitshiftint (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 	}
 
 oops_einval:
-	hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not integer - %O, %O", x, y);
+	hcl_seterrbfmt (hcl, HCL_EINVAL, "not integer - %O, %O", x, y);
 	return HCL_NULL;
 }
 
@@ -4597,7 +4567,7 @@ hcl_oop_t hcl_eqints (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 	}
 
 oops_einval:
-	hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not integer - %O, %O", x, y);
+	hcl_seterrbfmt (hcl, HCL_EINVAL, "not integer - %O, %O", x, y);
 	return HCL_NULL;
 }
 
@@ -4618,7 +4588,7 @@ hcl_oop_t hcl_neints (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 	}
 
 oops_einval:
-	hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not integer - %O, %O", x, y);
+	hcl_seterrbfmt (hcl, HCL_EINVAL, "not integer - %O, %O", x, y);
 	return HCL_NULL;
 }
 
@@ -4645,7 +4615,7 @@ hcl_oop_t hcl_gtints (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 	}
 
 oops_einval:
-	hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not integer - %O, %O", x, y);
+	hcl_seterrbfmt (hcl, HCL_EINVAL, "not integer - %O, %O", x, y);
 	return HCL_NULL;
 }
 
@@ -4672,7 +4642,7 @@ hcl_oop_t hcl_geints (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 	}
 
 oops_einval:
-	hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not integer - %O, %O", x, y);
+	hcl_seterrbfmt (hcl, HCL_EINVAL, "not integer - %O, %O", x, y);
 	return HCL_NULL;
 }
 
@@ -4699,7 +4669,7 @@ hcl_oop_t hcl_ltints (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 	}
 
 oops_einval:
-	hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not integer - %O, %O", x, y);
+	hcl_seterrbfmt (hcl, HCL_EINVAL, "not integer - %O, %O", x, y);
 	return HCL_NULL;
 }
 
@@ -4726,7 +4696,7 @@ hcl_oop_t hcl_leints (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 	}
 
 oops_einval:
-	hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not integer - %O, %O", x, y);
+	hcl_seterrbfmt (hcl, HCL_EINVAL, "not integer - %O, %O", x, y);
 	return HCL_NULL;
 }
 
@@ -4738,7 +4708,7 @@ hcl_oop_t hcl_sqrtint (hcl_t* hcl, hcl_oop_t x)
 
 	if (!hcl_isint(hcl, x))
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not integer - %O", x);
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "not integer - %O", x);
 		return HCL_NULL;
 	}
 
@@ -4833,7 +4803,7 @@ hcl_oop_t hcl_absint (hcl_t* hcl, hcl_oop_t x)
 	}
 	else
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not integer - %O", x);
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "not integer - %O", x);
 		return HCL_NULL;
 	}
 

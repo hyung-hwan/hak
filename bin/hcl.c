@@ -722,7 +722,7 @@ int main (int argc, char* argv[])
 	};
 	static hcl_bopt_t opt =
 	{
-		"l:nv",
+		"l:v",
 		lopt
 	};
 
