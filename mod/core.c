@@ -61,6 +61,52 @@ static hcl_pfrc_t pf_core_basic_new (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs
 	return HCL_PF_SUCCESS;
 }
 
+static hcl_oop_t unchecked_basic_at (hcl_t* hcl, hcl_oop_t obj, hcl_oow_t index)
+{
+	hcl_oop_t val;
+
+	switch (HCL_OBJ_GET_FLAGS_TYPE(obj))
+	{
+		case HCL_OBJ_TYPE_OOP:
+			val = HCL_OBJ_GET_OOP_VAL(obj, index);
+			break;
+
+		case HCL_OBJ_TYPE_CHAR:
+		{
+			hcl_ooch_t c;
+			c = HCL_OBJ_GET_CHAR_VAL(obj, index);
+			val = HCL_CHAR_TO_OOP(c);
+			break;
+		}
+
+		case HCL_OBJ_TYPE_BYTE:
+		{
+			hcl_ooi_t b;
+			b = HCL_OBJ_GET_BYTE_VAL(obj, index);
+			val = HCL_SMOOI_TO_OOP(b);
+			break;
+		}
+
+		case HCL_OBJ_TYPE_HALFWORD:
+			val = hcl_oowtoint(hcl, HCL_OBJ_GET_HALFWORD_VAL(obj, index));
+			if (HCL_UNLIKELY(!val)) return HCL_NULL;
+			break;
+
+		case HCL_OBJ_TYPE_WORD:
+			val = hcl_oowtoint(hcl, HCL_OBJ_GET_WORD_VAL(obj, index));
+			if (HCL_UNLIKELY(!val)) return HCL_NULL;
+			break;
+
+		default:
+			hcl_seterrbfmt (hcl, HCL_EINVAL, "receiver not indexable - %O", obj);
+			val = HCL_NULL;
+			break;
+	}
+
+	return val;
+}
+
+
 static hcl_pfrc_t pf_core_basic_at (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
 	hcl_oop_t obj, val;
@@ -97,42 +143,8 @@ static hcl_pfrc_t pf_core_basic_at (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 	}
 	index += fixed;
 
-	switch (HCL_OBJ_GET_FLAGS_TYPE(obj))
-	{
-		case HCL_OBJ_TYPE_OOP:
-			val = HCL_OBJ_GET_OOP_VAL(obj, index);
-			break;
-
-		case HCL_OBJ_TYPE_CHAR:
-		{
-			hcl_ooch_t c;
-			c = HCL_OBJ_GET_CHAR_VAL(obj, index);
-			val = HCL_CHAR_TO_OOP(c);
-			break;
-		}
-
-		case HCL_OBJ_TYPE_BYTE:
-		{
-			hcl_ooi_t b;
-			b = HCL_OBJ_GET_BYTE_VAL(obj, index);
-			val = HCL_SMOOI_TO_OOP(b);
-			break;
-		}
-
-		case HCL_OBJ_TYPE_HALFWORD:
-			val = hcl_oowtoint(hcl, HCL_OBJ_GET_HALFWORD_VAL(obj, index));
-			if (HCL_UNLIKELY(!val)) return HCL_PF_FAILURE;
-			break;
-
-		case HCL_OBJ_TYPE_WORD:
-			val = hcl_oowtoint(hcl, HCL_OBJ_GET_WORD_VAL(obj, index));
-			if (HCL_UNLIKELY(!val)) return HCL_PF_FAILURE;
-			break;
-
-		default:
-			goto unindexable;
-			break;
-	}
+	val = unchecked_basic_at(hcl, obj, index);
+	if (HCL_UNLIKELY(!val)) return HCL_PF_FAILURE;
 
 	HCL_STACK_SETRET (hcl, nargs, val);
 	return HCL_PF_SUCCESS;
