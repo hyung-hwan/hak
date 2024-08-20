@@ -294,11 +294,16 @@ enum hcl_tok_type_t
 	HCL_TOK_FPDECLIT,
 	HCL_TOK_SMPTRLIT,
 	HCL_TOK_ERRLIT,
+
 	HCL_TOK_NIL,
 	HCL_TOK_TRUE,
 	HCL_TOK_FALSE,
 	HCL_TOK_SELF,
 	HCL_TOK_SUPER,
+
+	HCL_TOK_IF,
+	HCL_TOK_ELIF,
+	HCL_TOK_ELSE,
 
 	HCL_TOK_BINOP,
 	HCL_TOK_IDENT,
@@ -374,11 +379,16 @@ enum hcl_cnode_type_t
 	HCL_CNODE_FPDECLIT,
 	HCL_CNODE_SMPTRLIT,
 	HCL_CNODE_ERRLIT,
+
 	HCL_CNODE_NIL,
 	HCL_CNODE_TRUE,
 	HCL_CNODE_FALSE,
 	HCL_CNODE_SELF,
 	HCL_CNODE_SUPER,
+	HCL_CNODE_IF,
+	HCL_CNODE_ELIF,
+	HCL_CNODE_ELSE,
+
 	HCL_CNODE_ELLIPSIS,
 	HCL_CNODE_TRPCOLONS,
 	HCL_CNODE_DBLCOLONS, /* :: */
@@ -405,6 +415,8 @@ typedef enum hcl_cnode_flag_t hcl_cnode_flag_t;
 #define HCL_CNODE_GET_TOK(x) (&(x)->cn_tok)
 #define HCL_CNODE_GET_TOKPTR(x) ((x)->cn_tok.ptr)
 #define HCL_CNODE_GET_TOKLEN(x) ((x)->cn_tok.len)
+
+#define HCL_CNODE_IS_TYPED(x, _type) ((x)->cn_type == _type)
 
 #define HCL_CNODE_IS_ELLIPSIS(x) ((x)->cn_type == HCL_CNODE_ELLIPSIS)
 #define HCL_CNODE_IS_TRPCOLONS(x) ((x)->cn_type == HCL_CNODE_TRPCOLONS)
@@ -1953,6 +1965,7 @@ int hcl_copy_string_to (
 /* ========================================================================= */
 /* cnode.c                                                                   */
 /* ========================================================================= */
+hcl_cnode_t* hcl_makecnode (hcl_t* hcl, hcl_cnode_type_t type, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodenil (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodetrue (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodefalse (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);

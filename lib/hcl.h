@@ -161,6 +161,7 @@ enum hcl_synerrnum_t
 
 	HCL_SYNERR_ELIF,          /* elif without if */
 	HCL_SYNERR_ELSE,          /* else without if */
+	HCL_SYNERR_CATCH,         /* catch outside try */
 	HCL_SYNERR_BREAK,         /* break outside loop */
 
 	HCL_SYNERR_CALLABLE,      /* invalid callable */

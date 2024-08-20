@@ -157,6 +157,7 @@ static char* synerrstr[] =
 
 	"elif without if",
 	"else without if",
+	"catch without try",
 	"break outside loop",
 
 	"invalid callable",

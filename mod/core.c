@@ -61,9 +61,56 @@ static hcl_pfrc_t pf_core_basic_new (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs
 	return HCL_PF_SUCCESS;
 }
 
-static hcl_oop_t unchecked_basic_at (hcl_t* hcl, hcl_oop_t obj, hcl_oow_t index)
+static hcl_pfrc_t __basic_at (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs, int span_fixed)
 {
-	hcl_oop_t val;
+	hcl_oop_t obj, val;
+	hcl_oop_t pos;
+	hcl_oow_t index;
+	hcl_oop_class_t _class;
+
+	obj = HCL_STACK_GETARG(hcl, nargs, 0);
+	pos = HCL_STACK_GETARG(hcl, nargs, 1);
+
+	if (!HCL_OOP_IS_POINTER(obj) || !HCL_OBJ_GET_FLAGS_FLEXI(obj))
+	{
+	unindexable:
+		/* the receiver is a special numeric object or a non-indexable object */
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "receiver not indexable - %O", obj);
+		return HCL_PF_FAILURE;
+	}
+
+	if (hcl_inttooow_noseterr(hcl, pos, &index) <= 0)
+	{
+		/* negative integer or not integer */
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "position not valid - %O", pos);
+		return HCL_PF_FAILURE;
+	}
+
+	_class = (hcl_oop_class_t)HCL_CLASSOF(hcl, obj);
+
+	if (span_fixed)
+	{
+		hcl_oow_t size;
+		size = HCL_OBJ_GET_SIZE(obj);
+		if (index >= size)
+		{
+			hcl_seterrbfmt (hcl, HCL_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hcl_ooi_t)size);
+			return HCL_PF_FAILURE;
+		}
+	}
+	else
+	{
+		hcl_oow_t fixed, flexi;
+
+		fixed = HCL_CLASS_SPEC_NAMED_INSTVARS(_class->spec);
+		flexi = HCL_OBJ_GET_SIZE(obj) - fixed;
+		if (index >= flexi)
+		{
+			hcl_seterrbfmt (hcl, HCL_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hcl_ooi_t)flexi);
+			return HCL_PF_FAILURE;
+		}
+		index += fixed;
+	}
 
 	switch (HCL_OBJ_GET_FLAGS_TYPE(obj))
 	{
@@ -89,74 +136,39 @@ static hcl_oop_t unchecked_basic_at (hcl_t* hcl, hcl_oop_t obj, hcl_oow_t index)
 
 		case HCL_OBJ_TYPE_HALFWORD:
 			val = hcl_oowtoint(hcl, HCL_OBJ_GET_HALFWORD_VAL(obj, index));
-			if (HCL_UNLIKELY(!val)) return HCL_NULL;
+			if (HCL_UNLIKELY(!val)) return HCL_PF_FAILURE;
 			break;
 
 		case HCL_OBJ_TYPE_WORD:
 			val = hcl_oowtoint(hcl, HCL_OBJ_GET_WORD_VAL(obj, index));
-			if (HCL_UNLIKELY(!val)) return HCL_NULL;
+			if (HCL_UNLIKELY(!val)) return HCL_PF_FAILURE;
 			break;
 
 		default:
-			hcl_seterrbfmt (hcl, HCL_EINVAL, "receiver not indexable - %O", obj);
-			val = HCL_NULL;
-			break;
+			goto unindexable;
 	}
 
-	return val;
-}
-
-
-static hcl_pfrc_t pf_core_basic_at (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
-{
-	hcl_oop_t obj, val;
-	hcl_oop_t pos;
-	hcl_oow_t index;
-	hcl_oop_class_t _class;
-	hcl_oow_t fixed, flexi;
-
-	obj = HCL_STACK_GETARG(hcl, nargs, 0);
-	pos = HCL_STACK_GETARG(hcl, nargs, 1);
-
-	if (!HCL_OOP_IS_POINTER(obj) || !HCL_OBJ_GET_FLAGS_FLEXI(obj))
-	{
-	unindexable:
-		/* the receiver is a special numeric object or a non-indexable object */
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "receiver not indexable - %O", obj);
-		return HCL_PF_FAILURE;
-	}
-
-	if (hcl_inttooow_noseterr(hcl, pos, &index) <= 0)
-	{
-		/* negative integer or not integer */
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "position not valid - %O", pos);
-		return HCL_PF_FAILURE;
-	}
-
-	_class = (hcl_oop_class_t)HCL_CLASSOF(hcl, obj);
-	fixed = HCL_CLASS_SPEC_NAMED_INSTVARS(_class->spec);
-	flexi = HCL_OBJ_GET_SIZE(obj) - fixed;
-	if (index >= flexi)
-	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hcl_ooi_t)HCL_OBJ_GET_SIZE(obj));
-		return HCL_PF_FAILURE;
-	}
-	index += fixed;
-
-	val = unchecked_basic_at(hcl, obj, index);
-	if (HCL_UNLIKELY(!val)) return HCL_PF_FAILURE;
 
 	HCL_STACK_SETRET (hcl, nargs, val);
 	return HCL_PF_SUCCESS;
 }
 
-static hcl_pfrc_t pf_core_basic_at_put (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+static hcl_pfrc_t pf_core_basic_at (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+{
+	return __basic_at(hcl, mod, nargs, 0);
+}
+
+static hcl_pfrc_t pf_core_prim_at (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+{
+	return __basic_at(hcl, mod, nargs, 1);
+}
+
+static hcl_pfrc_t __basic_at_put (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs, int span_fixed)
 {
 	hcl_oop_t obj, val;
 	hcl_oop_t pos;
 	hcl_oow_t index;
 	hcl_oop_class_t _class;
-	hcl_oow_t fixed, flexi;
 
 	obj = HCL_STACK_GETARG(hcl, nargs, 0);
 	pos = HCL_STACK_GETARG(hcl, nargs, 1);
@@ -177,18 +189,28 @@ static hcl_pfrc_t pf_core_basic_at_put (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t na
 	}
 
 	_class = (hcl_oop_class_t)HCL_CLASSOF(hcl, obj);
-	fixed = HCL_CLASS_SPEC_NAMED_INSTVARS(_class->spec);
-	flexi = HCL_OBJ_GET_SIZE(obj) - fixed;
-	if (index >= flexi)
+	if (span_fixed)
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hcl_ooi_t)HCL_OBJ_GET_SIZE(obj));
-		return HCL_PF_FAILURE;
+		hcl_oow_t size;
+		size = HCL_OBJ_GET_SIZE(obj);
+		if (index >= size)
+		{
+			hcl_seterrbfmt (hcl, HCL_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hcl_ooi_t)size);
+			return HCL_PF_FAILURE;
+		}
 	}
-	index += fixed;
-	if (index >= HCL_OBJ_GET_SIZE(obj))
+	else
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hcl_ooi_t)HCL_OBJ_GET_SIZE(obj));
-		return HCL_PF_FAILURE;
+		hcl_oow_t fixed, flexi;
+
+		fixed = HCL_CLASS_SPEC_NAMED_INSTVARS(_class->spec);
+		flexi = HCL_OBJ_GET_SIZE(obj) - fixed;
+		if (index >= flexi)
+		{
+			hcl_seterrbfmt (hcl, HCL_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hcl_ooi_t)HCL_OBJ_GET_SIZE(obj));
+			return HCL_PF_FAILURE;
+		}
+		index += fixed;
 	}
 
 	switch (HCL_OBJ_GET_FLAGS_TYPE(obj))
@@ -241,11 +263,21 @@ static hcl_pfrc_t pf_core_basic_at_put (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t na
 
 		default:
 			goto unindexable;
-			break;
 	}
+
 
 	HCL_STACK_SETRET (hcl, nargs, val);
 	return HCL_PF_SUCCESS;
+}
+
+static hcl_pfrc_t pf_core_basic_at_put (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+{
+	return __basic_at_put(hcl, mod, nargs, 0);
+}
+
+static hcl_pfrc_t pf_core_prim_at_put (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+{
+	return __basic_at_put(hcl, mod, nargs, 1);
 }
 
 static hcl_pfrc_t pf_core_basic_size (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
@@ -417,6 +449,8 @@ static hcl_pfinfo_t pfinfos[] =
 	{ "className",          { HCL_PFBASE_FUNC, pf_core_class_name,            1,  1 } },
 	{ "classRespondsTo",    { HCL_PFBASE_FUNC, pf_core_class_responds_to,     2,  2 } },
 	{ "instRespondsTo",     { HCL_PFBASE_FUNC, pf_core_inst_responds_to,      2,  2 } },
+	{ "primAt",             { HCL_PFBASE_FUNC, pf_core_prim_at,               2,  2 } },
+	{ "primAtPut",          { HCL_PFBASE_FUNC, pf_core_prim_at_put,           3,  3 } },
 	{ "slice",              { HCL_PFBASE_FUNC, pf_core_slice,                 3,  3 } }
 };
 

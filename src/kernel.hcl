@@ -11,6 +11,14 @@ class Apex {
 		return (core.instRespondsTo self mth)
 	}
 
+	fun primAt(pos) {
+		return (core.primAt self pos)
+	}
+
+	fun primtAtPut(pos value) {
+		return (core.primAtPut self pos value)
+	}
+
 	fun basicAt(pos) {
 		return (core.basicAt self pos)
 	}
@@ -158,15 +166,15 @@ printf "----------------------------------------\n"
 k := #[1 2 3]
 printf "%O\n" (k:basicAt 2)
 
-class X :: Object [ a b c ] {
+class Z :: Object [ a b c ] {
 	fun :* new() {
 		self.a := 10
 		self.b := 20
 		self.c := 30
 	}
 }
-##k := (X:basicNew 0)
-k := (X:new)
+##k := (Z:basicNew 0)
+k := (Z:new)
 printf "%O\n" (k:basicAt 2)
 
 

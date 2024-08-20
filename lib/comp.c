@@ -487,6 +487,12 @@ static int check_block_expression_as_body (hcl_t* hcl, hcl_cnode_t* c, const hcl
 	}
 
 	/* there are special words that can't start a new expression */
+	if (HCL_CNODE_IS_TYPED(car, HCL_CNODE_ELIF) ||
+	    HCL_CNODE_IS_TYPED(car, HCL_CNODE_ELSE))
+	{
+		goto no_block;
+	}
+
 	if (HCL_CNODE_IS_SYMBOL_SYNCODED(car, HCL_SYNCODE_ELIF) ||
 	    HCL_CNODE_IS_SYMBOL_SYNCODED(car, HCL_SYNCODE_ELSE) ||
 	    HCL_CNODE_IS_SYMBOL_SYNCODED(car, HCL_SYNCODE_CATCH))
@@ -506,6 +512,8 @@ static int check_block_expression_as_body (hcl_t* hcl, hcl_cnode_t* c, const hcl
 			if (for_what == FOR_IF)
 			{
 				/* after the body for `if` or `elif`, there can come `elif` or `else` */
+				if (HCL_CNODE_IS_TYPED(nxt, HCL_CNODE_ELIF) ||
+				    HCL_CNODE_IS_TYPED(nxt, HCL_CNODE_ELSE)) goto ok;
 				if (HCL_CNODE_IS_SYMBOL(nxt))
 				{
 					int syncode = HCL_CNODE_SYMBOL_SYNCODE(nxt);
@@ -2297,7 +2305,7 @@ static int compile_if (hcl_t* hcl, hcl_cnode_t* src)
 	hcl_cframe_t* cf;
 
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
-	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_IF));
+	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_IF) || HCL_CNODE_IS_TYPED(HCL_CNODE_CONS_CAR(src), HCL_CNODE_IF));
 
 	/* (if (< 20 30)
 	 *   (perform this)
@@ -2407,7 +2415,7 @@ static HCL_INLINE int compile_elif (hcl_t* hcl)
 
 	src = cf->operand;
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
-	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_ELIF));
+	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_ELIF) || HCL_CNODE_IS_TYPED(HCL_CNODE_CONS_CAR(src), HCL_CNODE_ELIF));
 
 	cmd = HCL_CNODE_CONS_CAR(src); /* elif itself */
 	obj = HCL_CNODE_CONS_CDR(src);
@@ -2448,7 +2456,7 @@ static HCL_INLINE int compile_else (hcl_t* hcl)
 
 	src = cf->operand;
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
-	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_ELSE));
+	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_ELSE) || HCL_CNODE_IS_TYPED(HCL_CNODE_CONS_CAR(src), HCL_CNODE_ELSE));
 
 	cmd = HCL_CNODE_CONS_CAR(src); /* else itself */
 	obj = HCL_CNODE_CONS_CDR(src);
@@ -3891,7 +3899,21 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS_CONCODED(obj, HCL_CONCODE_XLIST));
 
 	car = HCL_CNODE_CONS_CAR(obj);
-	if (HCL_CNODE_IS_SYMBOL(car) && (syncode = HCL_CNODE_SYMBOL_SYNCODE(car)))
+	if (HCL_CNODE_IS_TYPED(car, HCL_CNODE_IF))
+	{
+		if (compile_if(hcl, obj) <= -1) return -1;
+	}
+	else if (HCL_CNODE_IS_TYPED(car, HCL_CNODE_ELIF))
+	{
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ELSE, HCL_CNODE_GET_LOC(car), HCL_CNODE_GET_TOK(car), "else without if");
+		return -1;
+	}
+	else if (HCL_CNODE_IS_TYPED(car, HCL_CNODE_ELSE))
+	{
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ELIF, HCL_CNODE_GET_LOC(car), HCL_CNODE_GET_TOK(car), "elif without if");
+		return -1;
+	}
+	else if (HCL_CNODE_IS_SYMBOL(car) && (syncode = HCL_CNODE_SYMBOL_SYNCODE(car)))
 	{
 		if (nrets > 0)
 		{
@@ -3911,7 +3933,7 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 				break;
 
 			case HCL_SYNCODE_CATCH:
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_ELIF, HCL_CNODE_GET_LOC(car), HCL_CNODE_GET_TOK(car), "catch without try");
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_CATCH, HCL_CNODE_GET_LOC(car), HCL_CNODE_GET_TOK(car), "catch without try");
 				return -1;
 
 			case HCL_SYNCODE_CLASS:
@@ -4926,7 +4948,17 @@ static int compile_object_list (hcl_t* hcl)
 
 		if (cop == COP_COMPILE_IF_OBJECT_LIST || cop == COP_COMPILE_IF_OBJECT_LIST_TAIL)
 		{
-			if (HCL_CNODE_IS_SYMBOL_SYNCODED(car, HCL_SYNCODE_ELIF))
+			if (HCL_CNODE_IS_TYPED(car, HCL_CNODE_ELIF))
+			{
+				SWITCH_TOP_CFRAME (hcl, COP_COMPILE_ELIF, oprnd);
+				goto done;
+			}
+			else if (HCL_CNODE_IS_TYPED(car, HCL_CNODE_ELSE))
+			{
+				SWITCH_TOP_CFRAME (hcl, COP_COMPILE_ELSE, oprnd);
+				goto done;
+			}
+			else if (HCL_CNODE_IS_SYMBOL_SYNCODED(car, HCL_SYNCODE_ELIF))
 			{
 				SWITCH_TOP_CFRAME (hcl, COP_COMPILE_ELIF, oprnd);
 				goto done;

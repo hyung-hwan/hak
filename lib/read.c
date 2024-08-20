@@ -58,6 +58,10 @@ static struct voca_t
 	{  4, { 's','e','l','f'                                               } },
 	{  5, { 's','u','p','e','r'                                           } },
 
+	{  2, { 'i','f'                                                       } },
+	{  4, { 'e','l','i','f'                                               } },
+	{  4, { 'e','l','s','e'                                               } },
+
 	{  3, { 's','e','t'                                                   } },
 	{  5, { 's','e','t','-','r'                                           } },
 
@@ -99,6 +103,10 @@ enum voca_id_t
 	VOCA_KW_FALSE,
 	VOCA_KW_SELF,
 	VOCA_KW_SUPER,
+
+	VOCA_KW_IF,
+	VOCA_KW_ELIF,
+	VOCA_KW_ELSE,
 
 	VOCA_SYM_SET,
 	VOCA_SYM_SET_R,
@@ -407,7 +415,11 @@ static hcl_tok_type_t classify_ident_token (hcl_t* hcl, const hcl_oocs_t* v)
 		{ VOCA_KW_TRUE,  HCL_TOK_TRUE   },
 		{ VOCA_KW_FALSE, HCL_TOK_FALSE  },
 		{ VOCA_KW_SELF,  HCL_TOK_SELF   },
-		{ VOCA_KW_SUPER, HCL_TOK_SUPER  }
+		{ VOCA_KW_SUPER, HCL_TOK_SUPER  },
+
+		{ VOCA_KW_IF,    HCL_TOK_IF     },
+		{ VOCA_KW_ELIF,  HCL_TOK_ELIF   },
+		{ VOCA_KW_ELSE,  HCL_TOK_ELSE   }
 	};
 
 	for (i = 0; i < HCL_COUNTOF(tab); i++)
@@ -1215,6 +1227,23 @@ static int auto_forge_xlist_if_at_block_beginning (hcl_t* hcl, hcl_frd_t* frd)
 	return 0;
 }
 
+static hcl_cnode_type_t kw_to_cnode_type (int tok_type)
+{
+	static hcl_cnode_type_t mapping[] = {
+		HCL_CNODE_NIL,
+		HCL_CNODE_TRUE,
+		HCL_CNODE_FALSE,
+		HCL_CNODE_SELF,
+		HCL_CNODE_SUPER,
+
+		HCL_CNODE_IF,
+		HCL_CNODE_ELIF,
+		HCL_CNODE_ELSE,
+	};
+
+	return mapping[tok_type - HCL_TOK_NIL];
+}
+
 static int feed_process_token (hcl_t* hcl)
 {
 	hcl_frd_t* frd = &hcl->c->feed.rd;
@@ -1612,24 +1641,16 @@ static int feed_process_token (hcl_t* hcl)
 		}
 
 		case HCL_TOK_NIL:
-			frd->obj = hcl_makecnodenil(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-			goto auto_xlist;
-
 		case HCL_TOK_TRUE:
-			frd->obj = hcl_makecnodetrue(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-			goto auto_xlist;
-
 		case HCL_TOK_FALSE:
-			frd->obj = hcl_makecnodefalse(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-			goto auto_xlist;
-
 		case HCL_TOK_SELF:
-			frd->obj = hcl_makecnodeself(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+		case HCL_TOK_SUPER:
+		case HCL_TOK_IF:
+		case HCL_TOK_ELIF:
+		case HCL_TOK_ELSE:
+			frd->obj = hcl_makecnode(hcl, kw_to_cnode_type(TOKEN_TYPE(hcl)), 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto auto_xlist;
 
-		case HCL_TOK_SUPER:
-			frd->obj = hcl_makecnodesuper(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-			goto auto_xlist;
 
 		case HCL_TOK_ELLIPSIS:
 			frd->obj = hcl_makecnodeellipsis(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
