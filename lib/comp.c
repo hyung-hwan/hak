@@ -488,7 +488,8 @@ static int check_block_expression_as_body (hcl_t* hcl, hcl_cnode_t* c, const hcl
 
 	/* there are special words that can't start a new expression */
 	if (HCL_CNODE_IS_TYPED(car, HCL_CNODE_ELIF) ||
-	    HCL_CNODE_IS_TYPED(car, HCL_CNODE_ELSE))
+	    HCL_CNODE_IS_TYPED(car, HCL_CNODE_ELSE) ||
+	    HCL_CNODE_IS_TYPED(car, HCL_CNODE_CATCH))
 	{
 		goto no_block;
 	}
@@ -522,6 +523,7 @@ static int check_block_expression_as_body (hcl_t* hcl, hcl_cnode_t* c, const hcl
 			}
 			else if (for_what == FOR_TRY)
 			{
+				if (HCL_CNODE_IS_TYPED(nxt, HCL_CNODE_CATCH)) goto ok;
 				if (HCL_CNODE_IS_SYMBOL(nxt))
 				{
 					int syncode = HCL_CNODE_SYMBOL_SYNCODE(nxt);
@@ -3473,7 +3475,7 @@ static int compile_try (hcl_t* hcl, hcl_cnode_t* src)
 
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
 
-	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_TRY));
+	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_TRY) || HCL_CNODE_IS_TYPED(HCL_CNODE_CONS_CAR(src), HCL_CNODE_TRY));
 
 	/* (try
 	 *   (perform this)
@@ -3571,7 +3573,7 @@ static HCL_INLINE int compile_catch (hcl_t* hcl)
 
 	src = cf->operand;
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
-	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_CATCH));
+	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_CATCH) || HCL_CNODE_IS_TYPED(HCL_CNODE_CONS_CAR(src), HCL_CNODE_CATCH));
 
 	cmd = HCL_CNODE_CONS_CAR(src);
 	obj = HCL_CNODE_CONS_CDR(src);
@@ -3704,7 +3706,7 @@ static int compile_throw (hcl_t* hcl, hcl_cnode_t* src)
 	/*hcl_cframe_t* cf;*/
 
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
-	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_THROW));
+	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_THROW) || HCL_CNODE_IS_TYPED(HCL_CNODE_CONS_CAR(src), HCL_CNODE_THROW));
 
 	obj = HCL_CNODE_CONS_CDR(src);
 
@@ -3911,6 +3913,19 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 	else if (HCL_CNODE_IS_TYPED(car, HCL_CNODE_ELSE))
 	{
 		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ELIF, HCL_CNODE_GET_LOC(car), HCL_CNODE_GET_TOK(car), "elif without if");
+		return -1;
+	}
+	else if (HCL_CNODE_IS_TYPED(car, HCL_CNODE_THROW))
+	{
+		if (compile_throw(hcl, obj) <= -1) return -1;
+	}
+	else if (HCL_CNODE_IS_TYPED(car, HCL_CNODE_TRY))
+	{
+		if (compile_try(hcl, obj) <= -1) return -1;
+	}
+	else if (HCL_CNODE_IS_TYPED(car, HCL_CNODE_CATCH))
+	{
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_CATCH, HCL_CNODE_GET_LOC(car), HCL_CNODE_GET_TOK(car), "catch without try");
 		return -1;
 	}
 	else if (HCL_CNODE_IS_SYMBOL(car) && (syncode = HCL_CNODE_SYMBOL_SYNCODE(car)))
@@ -4971,7 +4986,7 @@ static int compile_object_list (hcl_t* hcl)
 		}
 		else if (cop == COP_COMPILE_TRY_OBJECT_LIST || cop == COP_COMPILE_TRY_OBJECT_LIST_TAIL)
 		{
-			if (HCL_CNODE_IS_SYMBOL_SYNCODED(car, HCL_SYNCODE_CATCH))
+			if (HCL_CNODE_IS_SYMBOL_SYNCODED(car, HCL_SYNCODE_CATCH) || HCL_CNODE_IS_TYPED(car, HCL_CNODE_CATCH))
 			{
 				SWITCH_TOP_CFRAME (hcl, COP_COMPILE_CATCH, oprnd);
 				goto done;

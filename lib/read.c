@@ -61,6 +61,9 @@ static struct voca_t
 	{  2, { 'i','f'                                                       } },
 	{  4, { 'e','l','i','f'                                               } },
 	{  4, { 'e','l','s','e'                                               } },
+	{  5, { 't','h','r','o','w'                                           } },
+	{  3, { 't','r','y'                                                   } },
+	{  5, { 'c','a','t','c','h'                                           } },
 
 	{  3, { 's','e','t'                                                   } },
 	{  5, { 's','e','t','-','r'                                           } },
@@ -107,6 +110,9 @@ enum voca_id_t
 	VOCA_KW_IF,
 	VOCA_KW_ELIF,
 	VOCA_KW_ELSE,
+	VOCA_KW_THROW,
+	VOCA_KW_TRY,
+	VOCA_KW_CATCH,
 
 	VOCA_SYM_SET,
 	VOCA_SYM_SET_R,
@@ -419,7 +425,10 @@ static hcl_tok_type_t classify_ident_token (hcl_t* hcl, const hcl_oocs_t* v)
 
 		{ VOCA_KW_IF,    HCL_TOK_IF     },
 		{ VOCA_KW_ELIF,  HCL_TOK_ELIF   },
-		{ VOCA_KW_ELSE,  HCL_TOK_ELSE   }
+		{ VOCA_KW_ELSE,  HCL_TOK_ELSE   },
+		{ VOCA_KW_THROW, HCL_TOK_THROW  },
+		{ VOCA_KW_TRY,   HCL_TOK_TRY    },
+		{ VOCA_KW_CATCH, HCL_TOK_CATCH  }
 	};
 
 	for (i = 0; i < HCL_COUNTOF(tab); i++)
@@ -1239,6 +1248,9 @@ static hcl_cnode_type_t kw_to_cnode_type (int tok_type)
 		HCL_CNODE_IF,
 		HCL_CNODE_ELIF,
 		HCL_CNODE_ELSE,
+		HCL_CNODE_THROW,
+		HCL_CNODE_TRY,
+		HCL_CNODE_CATCH,
 	};
 
 	return mapping[tok_type - HCL_TOK_NIL];
@@ -1648,6 +1660,9 @@ static int feed_process_token (hcl_t* hcl)
 		case HCL_TOK_IF:
 		case HCL_TOK_ELIF:
 		case HCL_TOK_ELSE:
+		case HCL_TOK_THROW:
+		case HCL_TOK_TRY:
+		case HCL_TOK_CATCH:
 			frd->obj = hcl_makecnode(hcl, kw_to_cnode_type(TOKEN_TYPE(hcl)), 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto auto_xlist;
 
