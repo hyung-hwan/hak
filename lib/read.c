@@ -58,12 +58,18 @@ static struct voca_t
 	{  4, { 's','e','l','f'                                               } },
 	{  5, { 's','u','p','e','r'                                           } },
 
+	{  5, { 'c','l','a','s','s'                                           } },
+	{  3, { 'f','u','n'                                                   } },
 	{  2, { 'i','f'                                                       } },
 	{  4, { 'e','l','i','f'                                               } },
 	{  4, { 'e','l','s','e'                                               } },
 	{  5, { 't','h','r','o','w'                                           } },
 	{  3, { 't','r','y'                                                   } },
 	{  5, { 'c','a','t','c','h'                                           } },
+	{  5, { 'b','r','e','a','k'                                           } },
+	{  8, { 'c','o','n','t','i','n','u','e'                               } },
+	{  5, { 'u','n','t','i','l'                                           } },
+	{  5, { 'w','h','i','l','e'                                           } },
 
 	{  3, { 's','e','t'                                                   } },
 	{  5, { 's','e','t','-','r'                                           } },
@@ -107,12 +113,18 @@ enum voca_id_t
 	VOCA_KW_SELF,
 	VOCA_KW_SUPER,
 
+	VOCA_KW_CLASS,
+	VOCA_KW_FUN,
 	VOCA_KW_IF,
 	VOCA_KW_ELIF,
 	VOCA_KW_ELSE,
 	VOCA_KW_THROW,
 	VOCA_KW_TRY,
 	VOCA_KW_CATCH,
+	VOCA_KW_BREAK,
+	VOCA_KW_CONTINUE,
+	VOCA_KW_UNTIL,
+	VOCA_KW_WHILE,
 
 	VOCA_SYM_SET,
 	VOCA_SYM_SET_R,
@@ -417,18 +429,24 @@ static hcl_tok_type_t classify_ident_token (hcl_t* hcl, const hcl_oocs_t* v)
 		hcl_tok_type_t type;
 	} tab[] =
 	{
-		{ VOCA_KW_NIL,   HCL_TOK_NIL    },
-		{ VOCA_KW_TRUE,  HCL_TOK_TRUE   },
-		{ VOCA_KW_FALSE, HCL_TOK_FALSE  },
-		{ VOCA_KW_SELF,  HCL_TOK_SELF   },
-		{ VOCA_KW_SUPER, HCL_TOK_SUPER  },
+		{ VOCA_KW_NIL,      HCL_TOK_NIL      },
+		{ VOCA_KW_TRUE,     HCL_TOK_TRUE     },
+		{ VOCA_KW_FALSE,    HCL_TOK_FALSE    },
+		{ VOCA_KW_SELF,     HCL_TOK_SELF     },
+		{ VOCA_KW_SUPER,    HCL_TOK_SUPER    },
 
-		{ VOCA_KW_IF,    HCL_TOK_IF     },
-		{ VOCA_KW_ELIF,  HCL_TOK_ELIF   },
-		{ VOCA_KW_ELSE,  HCL_TOK_ELSE   },
-		{ VOCA_KW_THROW, HCL_TOK_THROW  },
-		{ VOCA_KW_TRY,   HCL_TOK_TRY    },
-		{ VOCA_KW_CATCH, HCL_TOK_CATCH  }
+		{ VOCA_KW_CLASS,    HCL_TOK_CLASS    },
+		{ VOCA_KW_FUN,      HCL_TOK_FUN      },
+		{ VOCA_KW_IF,       HCL_TOK_IF       },
+		{ VOCA_KW_ELIF,     HCL_TOK_ELIF     },
+		{ VOCA_KW_ELSE,     HCL_TOK_ELSE     },
+		{ VOCA_KW_THROW,    HCL_TOK_THROW    },
+		{ VOCA_KW_TRY,      HCL_TOK_TRY      },
+		{ VOCA_KW_CATCH,    HCL_TOK_CATCH    },
+		{ VOCA_KW_BREAK,    HCL_TOK_BREAK    },
+		{ VOCA_KW_CONTINUE, HCL_TOK_CONTINUE },
+		{ VOCA_KW_UNTIL,    HCL_TOK_UNTIL    },
+		{ VOCA_KW_WHILE,    HCL_TOK_WHILE    }
 	};
 
 	for (i = 0; i < HCL_COUNTOF(tab); i++)
@@ -823,7 +841,8 @@ static HCL_INLINE int can_colon_list (hcl_t* hcl)
 		 *       implemented elsewhere because ':' has dual use while '::' or ':*' are
 		 *       independent tokens  */
 		if (HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(rstl->head), HCL_SYNCODE_DEFUN) ||
-		    HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(rstl->head), HCL_SYNCODE_FUN))
+		    HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(rstl->head), HCL_SYNCODE_FUN) ||
+		    HCL_CNODE_IS_TYPED(HCL_CNODE_CONS_CAR(rstl->head), HCL_CNODE_FUN))
 		{
 			if (rstl->count == 2) return 2;
 		}
@@ -1245,12 +1264,18 @@ static hcl_cnode_type_t kw_to_cnode_type (int tok_type)
 		HCL_CNODE_SELF,
 		HCL_CNODE_SUPER,
 
+		HCL_CNODE_CLASS,
+		HCL_CNODE_FUN,
 		HCL_CNODE_IF,
 		HCL_CNODE_ELIF,
 		HCL_CNODE_ELSE,
 		HCL_CNODE_THROW,
 		HCL_CNODE_TRY,
 		HCL_CNODE_CATCH,
+		HCL_CNODE_BREAK,
+		HCL_CNODE_CONTINUE,
+		HCL_CNODE_UNTIL,
+		HCL_CNODE_WHILE
 	};
 
 	return mapping[tok_type - HCL_TOK_NIL];
@@ -1657,12 +1682,19 @@ static int feed_process_token (hcl_t* hcl)
 		case HCL_TOK_FALSE:
 		case HCL_TOK_SELF:
 		case HCL_TOK_SUPER:
+
+		case HCL_TOK_CLASS:
+		case HCL_TOK_FUN:
 		case HCL_TOK_IF:
 		case HCL_TOK_ELIF:
 		case HCL_TOK_ELSE:
 		case HCL_TOK_THROW:
 		case HCL_TOK_TRY:
 		case HCL_TOK_CATCH:
+		case HCL_TOK_BREAK:
+		case HCL_TOK_CONTINUE:
+		case HCL_TOK_UNTIL:
+		case HCL_TOK_WHILE:
 			frd->obj = hcl_makecnode(hcl, kw_to_cnode_type(TOKEN_TYPE(hcl)), 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto auto_xlist;
 

@@ -1979,7 +1979,7 @@ static int compile_break (hcl_t* hcl, hcl_cnode_t* src)
 	hcl_ooi_t i;
 
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
-	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_BREAK));
+	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_BREAK) || HCL_CNODE_IS_TYPED(HCL_CNODE_CONS_CAR(src), HCL_CNODE_BREAK));
 
 	cmd = HCL_CNODE_CONS_CAR(src);
 	obj = HCL_CNODE_CONS_CDR(src);
@@ -2094,7 +2094,7 @@ static int compile_continue (hcl_t* hcl, hcl_cnode_t* src)
 	hcl_ooi_t i;
 
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
-	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_CONTINUE));
+	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_CONTINUE) || HCL_CNODE_IS_TYPED(HCL_CNODE_CONS_CAR(src), HCL_CNODE_CONTINUE));
 
 	cmd = HCL_CNODE_CONS_CAR(src);
 	obj = HCL_CNODE_CONS_CDR(src);
@@ -2553,7 +2553,7 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src, int defclass)
 	}
 	else
 	{
-		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_CLASS));
+		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_CLASS) || HCL_CNODE_IS_TYPED(cmd, HCL_CNODE_CLASS));
 
 		if (obj && HCL_CNODE_IS_CONS(obj))
 		{
@@ -2827,7 +2827,7 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src, int defun)
 	{
 		/* some inaccurate prior check if 'fun' is followed by an argument list
 		 * without a function name. stop-gap measure to support 'fun' in place of 'defun' */
-		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_FUN));
+		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_FUN) || HCL_CNODE_IS_TYPED(cmd, HCL_CNODE_FUN));
 		args = HCL_CNODE_CONS_CAR(obj);
 		if (!HCL_CNODE_IS_ELIST_CONCODED(args, HCL_CONCODE_XLIST) &&
 		    !HCL_CNODE_IS_CONS_CONCODED(args, HCL_CONCODE_XLIST))
@@ -2959,7 +2959,7 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src, int defun)
 	}
 	else
 	{
-		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_FUN));
+		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_FUN) || HCL_CNODE_IS_TYPED(cmd, HCL_CNODE_FUN));
 		defun_name = HCL_NULL;
 	}
 
@@ -3756,7 +3756,9 @@ static int compile_while (hcl_t* hcl, hcl_cnode_t* src, int next_cop)
 
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
 	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_UNTIL) ||
-	                 HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_WHILE));
+	                 HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_WHILE) ||
+	                 HCL_CNODE_IS_TYPED(HCL_CNODE_CONS_CAR(src), HCL_CNODE_UNTIL) ||
+	                 HCL_CNODE_IS_TYPED(HCL_CNODE_CONS_CAR(src), HCL_CNODE_WHILE));
 	HCL_ASSERT (hcl, next_cop == COP_POST_UNTIL_COND || next_cop == COP_POST_WHILE_COND);
 
 	cmd = HCL_CNODE_CONS_CAR(src); /* while or until itself */
@@ -3901,34 +3903,58 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS_CONCODED(obj, HCL_CONCODE_XLIST));
 
 	car = HCL_CNODE_CONS_CAR(obj);
-	if (HCL_CNODE_IS_TYPED(car, HCL_CNODE_IF))
+	switch (HCL_CNODE_GET_TYPE(car))
 	{
-		if (compile_if(hcl, obj) <= -1) return -1;
+		case HCL_CNODE_CLASS:
+			if (compile_class(hcl, obj, 0) <= -1) return -1;
+			goto done;
+
+		case HCL_CNODE_FUN:
+			if (compile_fun(hcl, obj, 0) <= -1) return -1;
+			goto done;
+
+		case HCL_CNODE_IF:
+			if (compile_if(hcl, obj) <= -1) return -1;
+			goto done;
+
+		case HCL_CNODE_ELIF:
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_ELSE, HCL_CNODE_GET_LOC(car), HCL_CNODE_GET_TOK(car), "else without if");
+			return -1;
+
+		case HCL_CNODE_ELSE:
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_ELIF, HCL_CNODE_GET_LOC(car), HCL_CNODE_GET_TOK(car), "elif without if");
+			return -1;
+
+		case HCL_CNODE_THROW:
+			if (compile_throw(hcl, obj) <= -1) return -1;
+			goto done;
+
+		case HCL_CNODE_TRY:
+			if (compile_try(hcl, obj) <= -1) return -1;
+			goto done;
+
+		case HCL_CNODE_CATCH:
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_CATCH, HCL_CNODE_GET_LOC(car), HCL_CNODE_GET_TOK(car), "catch without try");
+			return -1;
+
+		case HCL_CNODE_BREAK:
+			if (compile_break(hcl, obj) <= -1) return -1;
+			goto done;
+
+		case HCL_CNODE_CONTINUE:
+			if (compile_continue(hcl, obj) <= -1) return -1;
+			goto done;
+
+		case HCL_CNODE_UNTIL:
+			if (compile_while(hcl, obj, COP_POST_UNTIL_COND) <= -1) return -1;
+			goto done;
+
+		case HCL_CNODE_WHILE:
+			if (compile_while(hcl, obj, COP_POST_WHILE_COND) <= -1) return -1;
+			goto done;
 	}
-	else if (HCL_CNODE_IS_TYPED(car, HCL_CNODE_ELIF))
-	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ELSE, HCL_CNODE_GET_LOC(car), HCL_CNODE_GET_TOK(car), "else without if");
-		return -1;
-	}
-	else if (HCL_CNODE_IS_TYPED(car, HCL_CNODE_ELSE))
-	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ELIF, HCL_CNODE_GET_LOC(car), HCL_CNODE_GET_TOK(car), "elif without if");
-		return -1;
-	}
-	else if (HCL_CNODE_IS_TYPED(car, HCL_CNODE_THROW))
-	{
-		if (compile_throw(hcl, obj) <= -1) return -1;
-	}
-	else if (HCL_CNODE_IS_TYPED(car, HCL_CNODE_TRY))
-	{
-		if (compile_try(hcl, obj) <= -1) return -1;
-	}
-	else if (HCL_CNODE_IS_TYPED(car, HCL_CNODE_CATCH))
-	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_CATCH, HCL_CNODE_GET_LOC(car), HCL_CNODE_GET_TOK(car), "catch without try");
-		return -1;
-	}
-	else if (HCL_CNODE_IS_SYMBOL(car) && (syncode = HCL_CNODE_SYMBOL_SYNCODE(car)))
+
+	if (HCL_CNODE_IS_SYMBOL(car) && (syncode = HCL_CNODE_SYMBOL_SYNCODE(car)))
 	{
 		if (nrets > 0)
 		{
@@ -4133,6 +4159,7 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 		return -1;
 	}
 
+done:
 	return 0;
 }
 
