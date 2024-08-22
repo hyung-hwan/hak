@@ -303,6 +303,7 @@ enum hcl_tok_type_t
 
 	HCL_TOK_CLASS,
 	HCL_TOK_FUN,
+	HCL_TOK_DO,
 	HCL_TOK_IF,
 	HCL_TOK_ELIF,
 	HCL_TOK_ELSE,
@@ -399,6 +400,7 @@ enum hcl_cnode_type_t
 
 	HCL_CNODE_CLASS,
 	HCL_CNODE_FUN,
+	HCL_CNODE_DO,
 	HCL_CNODE_IF,
 	HCL_CNODE_ELIF,
 	HCL_CNODE_ELSE,

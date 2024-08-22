@@ -2281,7 +2281,7 @@ static int compile_do (hcl_t* hcl, hcl_cnode_t* xlist)
 	 */
 
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(xlist));
-	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(xlist), HCL_SYNCODE_DO));
+	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(xlist), HCL_SYNCODE_DO) || HCL_CNODE_IS_TYPED(HCL_CNODE_CONS_CAR(xlist), HCL_CNODE_DO));
 
 	cmd = HCL_CNODE_CONS_CAR(xlist); /* do itself */
 	obj = HCL_CNODE_CONS_CDR(xlist); /* expression list after it */
@@ -3913,6 +3913,10 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 
 		case HCL_CNODE_FUN:
 			if (compile_fun(hcl, obj, 0) <= -1) return -1;
+			goto done;
+
+		case HCL_CNODE_DO:
+			if (compile_do(hcl, obj) <= -1) return -1;
 			goto done;
 
 		case HCL_CNODE_IF:

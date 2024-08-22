@@ -60,6 +60,7 @@ static struct voca_t
 
 	{  5, { 'c','l','a','s','s'                                           } },
 	{  3, { 'f','u','n'                                                   } },
+	{  2, { 'd','o'                                                       } },
 	{  2, { 'i','f'                                                       } },
 	{  4, { 'e','l','i','f'                                               } },
 	{  4, { 'e','l','s','e'                                               } },
@@ -117,6 +118,7 @@ enum voca_id_t
 
 	VOCA_KW_CLASS,
 	VOCA_KW_FUN,
+	VOCA_KW_DO,
 	VOCA_KW_IF,
 	VOCA_KW_ELIF,
 	VOCA_KW_ELSE,
@@ -441,6 +443,7 @@ static hcl_tok_type_t classify_ident_token (hcl_t* hcl, const hcl_oocs_t* v)
 
 		{ VOCA_KW_CLASS,    HCL_TOK_CLASS    },
 		{ VOCA_KW_FUN,      HCL_TOK_FUN      },
+		{ VOCA_KW_DO,       HCL_TOK_DO       },
 		{ VOCA_KW_IF,       HCL_TOK_IF       },
 		{ VOCA_KW_ELIF,     HCL_TOK_ELIF     },
 		{ VOCA_KW_ELSE,     HCL_TOK_ELSE     },
@@ -1272,6 +1275,7 @@ static hcl_cnode_type_t kw_to_cnode_type (int tok_type)
 
 		HCL_CNODE_CLASS,
 		HCL_CNODE_FUN,
+		HCL_CNODE_DO,
 		HCL_CNODE_IF,
 		HCL_CNODE_ELIF,
 		HCL_CNODE_ELSE,
@@ -1693,6 +1697,7 @@ static int feed_process_token (hcl_t* hcl)
 
 		case HCL_TOK_CLASS:
 		case HCL_TOK_FUN:
+		case HCL_TOK_DO:
 		case HCL_TOK_IF:
 		case HCL_TOK_ELIF:
 		case HCL_TOK_ELSE:
