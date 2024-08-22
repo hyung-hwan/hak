@@ -3172,7 +3172,9 @@ static int compile_return (hcl_t* hcl, hcl_cnode_t* src, int ret_from_home)
 
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
 	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_RETURN) ||
-	                 HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_RETURN_FROM_HOME));
+	                 HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(src), HCL_SYNCODE_REVERT) ||
+	                 HCL_CNODE_IS_TYPED(HCL_CNODE_CONS_CAR(src), HCL_CNODE_RETURN) ||
+	                 HCL_CNODE_IS_TYPED(HCL_CNODE_CONS_CAR(src), HCL_CNODE_REVERT));
 
 	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
 	obj = HCL_CNODE_CONS_CDR(src);
@@ -3952,6 +3954,16 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 		case HCL_CNODE_WHILE:
 			if (compile_while(hcl, obj, COP_POST_WHILE_COND) <= -1) return -1;
 			goto done;
+
+		case HCL_CNODE_RETURN:
+			/* (return 10)
+			 * (return (+ 10 20)) */
+			if (compile_return(hcl, obj, 0) <= -1) return -1;
+			goto done;
+
+		case HCL_CNODE_REVERT:
+			if (compile_return(hcl, obj, 1) <= -1) return -1;
+			goto done;
 	}
 
 	if (HCL_CNODE_IS_SYMBOL(car) && (syncode = HCL_CNODE_SYMBOL_SYNCODE(car)))
@@ -4023,6 +4035,16 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 				if (compile_plus(hcl, obj) <= -1) return -1;
 				break;
 
+			case HCL_SYNCODE_RETURN:
+				/* (return 10)
+				 * (return (+ 10 20)) */
+				if (compile_return(hcl, obj, 0) <= -1) return -1;
+				break;
+
+			case HCL_SYNCODE_REVERT:
+				if (compile_return(hcl, obj, 1) <= -1) return -1;
+				break;
+
 			case HCL_SYNCODE_SET:
 				/* (set x 10)
 				 * (set x (fun (x y) (+ x y)) */
@@ -4032,16 +4054,6 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 			case HCL_SYNCODE_SET_R:
 				/* (set-r a b (func 10 20)) */
 				if (compile_set_r(hcl, obj) <= -1) return -1;
-				break;
-
-			case HCL_SYNCODE_RETURN:
-				/* (return 10)
-				 * (return (+ 10 20)) */
-				if (compile_return(hcl, obj, 0) <= -1) return -1;
-				break;
-
-			case HCL_SYNCODE_RETURN_FROM_HOME:
-				if (compile_return(hcl, obj, 1) <= -1) return -1;
 				break;
 
 			case HCL_SYNCODE_THROW:

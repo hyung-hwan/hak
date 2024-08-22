@@ -1681,7 +1681,7 @@ struct hcl_t
 	hcl_oop_t s_or;     /* symbol */
 	hcl_oop_t s_plus;   /* symbol */
 	hcl_oop_t s_return; /* symbol */
-	hcl_oop_t s_return_from_home; /* symbol */
+	hcl_oop_t s_revert; /* symbol */
 	hcl_oop_t s_set;    /* symbol */
 	hcl_oop_t s_set_r;  /* symbol */
 	hcl_oop_t s_throw;  /* symbol */
@@ -2047,8 +2047,8 @@ enum hcl_syncode_t
 	HCL_SYNCODE_FUN,
 	HCL_SYNCODE_OR,
 	HCL_SYNCODE_PLUS,
-	HCL_SYNCODE_RETURN,
-	HCL_SYNCODE_RETURN_FROM_HOME,
+	HCL_SYNCODE_RETURN, /* local return. return from the current context. */
+	HCL_SYNCODE_REVERT, /* non-local return. return from home context */
 	HCL_SYNCODE_SET,
 	HCL_SYNCODE_SET_R,
 	HCL_SYNCODE_THROW,

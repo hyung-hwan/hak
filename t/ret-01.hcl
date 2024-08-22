@@ -8,7 +8,7 @@ defun repeat(n f) {
 defun test-non-local-ret-1(k) {
 	repeat 10 (fun() {
 		set k (+ k 2);
-		if (= k 28) { return-from-home k };
+		if (= k 28) { revert k };
 	});
 
 	return k;

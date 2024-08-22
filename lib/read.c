@@ -70,6 +70,8 @@ static struct voca_t
 	{  8, { 'c','o','n','t','i','n','u','e'                               } },
 	{  5, { 'u','n','t','i','l'                                           } },
 	{  5, { 'w','h','i','l','e'                                           } },
+	{  6, { 'r','e','t','u','r','n'                                       } },
+	{  6, { 'r','e','v','e','r','t'                                       } },
 
 	{  3, { 's','e','t'                                                   } },
 	{  5, { 's','e','t','-','r'                                           } },
@@ -125,6 +127,8 @@ enum voca_id_t
 	VOCA_KW_CONTINUE,
 	VOCA_KW_UNTIL,
 	VOCA_KW_WHILE,
+	VOCA_KW_RETURN,
+	VOCA_KW_REVERT,
 
 	VOCA_SYM_SET,
 	VOCA_SYM_SET_R,
@@ -446,7 +450,9 @@ static hcl_tok_type_t classify_ident_token (hcl_t* hcl, const hcl_oocs_t* v)
 		{ VOCA_KW_BREAK,    HCL_TOK_BREAK    },
 		{ VOCA_KW_CONTINUE, HCL_TOK_CONTINUE },
 		{ VOCA_KW_UNTIL,    HCL_TOK_UNTIL    },
-		{ VOCA_KW_WHILE,    HCL_TOK_WHILE    }
+		{ VOCA_KW_WHILE,    HCL_TOK_WHILE    },
+		{ VOCA_KW_RETURN,   HCL_TOK_RETURN   },
+		{ VOCA_KW_REVERT,   HCL_TOK_REVERT   }
 	};
 
 	for (i = 0; i < HCL_COUNTOF(tab); i++)
@@ -1275,7 +1281,9 @@ static hcl_cnode_type_t kw_to_cnode_type (int tok_type)
 		HCL_CNODE_BREAK,
 		HCL_CNODE_CONTINUE,
 		HCL_CNODE_UNTIL,
-		HCL_CNODE_WHILE
+		HCL_CNODE_WHILE,
+		HCL_CNODE_RETURN,
+		HCL_CNODE_REVERT
 	};
 
 	return mapping[tok_type - HCL_TOK_NIL];
@@ -1695,6 +1703,8 @@ static int feed_process_token (hcl_t* hcl)
 		case HCL_TOK_CONTINUE:
 		case HCL_TOK_UNTIL:
 		case HCL_TOK_WHILE:
+		case HCL_TOK_RETURN:
+		case HCL_TOK_REVERT:
 			frd->obj = hcl_makecnode(hcl, kw_to_cnode_type(TOKEN_TYPE(hcl)), 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto auto_xlist;
 
