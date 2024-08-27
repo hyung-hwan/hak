@@ -1457,9 +1457,7 @@ static int collect_vardcl_for_class (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t**
 			goto next;
 		}
 
-		/* this check isn't needed as the reader guarantees this condition.
-		if (!HCL_CNODE_IS_SYMBOL_PLAIN(var) || HCL_CNODE_IS_SYMBOL_PLAIN_BINOP(var)) goto synerr_varname;*/
-		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_PLAIN(var) && !HCL_CNODE_IS_SYMBOL_PLAIN_BINOP(var));
+		if (!HCL_CNODE_IS_SYMBOL_PLAIN(var) || HCL_CNODE_IS_SYMBOL_PLAIN_BINOP(var)) goto synerr_varname;
 
 		checkpoint = hcl->c->tv.s.len;
 		n = add_temporary_variable(hcl, HCL_CNODE_GET_TOK(var), tv_slen_saved);
@@ -2269,7 +2267,9 @@ static int compile_expression_block (hcl_t* hcl, hcl_cnode_t* src, const hcl_bch
 
 static int compile_do (hcl_t* hcl, hcl_cnode_t* xlist)
 {
+#if 0
 	hcl_cnode_t* cmd, * obj;
+#endif
 	int flags = 0;
 
 	/* (do
@@ -2283,8 +2283,10 @@ static int compile_do (hcl_t* hcl, hcl_cnode_t* xlist)
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(xlist));
 	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(xlist), HCL_SYNCODE_DO) || HCL_CNODE_IS_TYPED(HCL_CNODE_CONS_CAR(xlist), HCL_CNODE_DO));
 
+#if 0
 	cmd = HCL_CNODE_CONS_CAR(xlist); /* do itself */
 	obj = HCL_CNODE_CONS_CDR(xlist); /* expression list after it */
+#endif
 
 	if (HCL_CNODE_GET_FLAGS(xlist) & HCL_CNODE_AUTO_FORGED) flags |= CEB_AUTO_FORGED;
 	return compile_expression_block(hcl, xlist, "do", flags);
@@ -3889,6 +3891,134 @@ static int compile_cons_qlist_expression (hcl_t* hcl, hcl_cnode_t* obj)
 	return 0;
 }
 
+static int compile_cons_alist_expression (hcl_t* hcl, hcl_cnode_t* cmd)
+{
+	/* assignment expression */
+	/* (a := 20)
+	 * ([a,b] := (xxx 20))
+	 */
+
+	hcl_cframe_t* cf;
+	hcl_cnode_t* obj, * var, * val;
+	hcl_var_info_t vi;
+	int x;
+
+	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS_CONCODED(cmd, HCL_CONCODE_ALIST));
+
+	var = HCL_CNODE_CONS_CAR(cmd);
+	obj = HCL_CNODE_CONS_CDR(cmd);
+
+	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_PLAIN(var) || HCL_CNODE_IS_DSYMBOL_CLA(var) || HCL_CNODE_IS_CONS_CONCODED(var, HCL_CONCODE_TUPLE));
+	HCL_ASSERT (hcl, obj && HCL_CNODE_IS_CONS(obj)); /* reader guaranteed */
+
+	val = HCL_CNODE_CONS_CAR(obj);
+	HCL_ASSERT (hcl, HCL_CNODE_CONS_CDR(obj) ==  HCL_NULL); /* reader guaranteed */
+
+	if (HCL_CNODE_IS_CONS_CONCODED(var, HCL_CONCODE_TUPLE))
+	{
+		/* multi-variable assignment
+		 * fun xxx(x :: p q) { p := x + 1; q := x + 2 }
+		 * ([a,b] := (xxx 20)) */
+		hcl_oow_t nvars, i;
+
+		nvars = hcl_countcnodecons(hcl, var);
+
+		SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_R, val); /* special for set_r */
+		cf = GET_TOP_CFRAME(hcl);
+		cf->u.obj_r.nrets = nvars; /* number of return variables to get assigned */
+
+		for (i = 0, obj = var; i < nvars; i++, obj = HCL_CNODE_CONS_CDR(obj))
+		{
+			int x;
+
+			var = HCL_CNODE_CONS_CAR(obj);
+
+			HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_PLAIN(var) || HCL_CNODE_IS_DSYMBOL_CLA(var)); /* reader guaranteed */
+
+			x = find_variable_backward_with_token(hcl, var, &vi);
+			if (x <= -1) return -1;
+
+			if (x == 0)
+			{
+				if (HCL_CNODE_IS_DSYMBOL_CLA(var))
+				{
+					hcl_setsynerrbfmt (hcl,
+						HCL_SYNERR_VARNAMEUNKNOWN, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var),
+						"unknown class-level variable name", HCL_CNODE_GET_TOKLEN(var), HCL_CNODE_GET_TOKPTR(var));
+					return -1;
+				}
+
+				PUSH_SUBCFRAME (hcl, COP_EMIT_SET, var); /* set_r doesn't evaluate the variable name */
+				cf = GET_SUBCFRAME(hcl);
+				cf->u.set.vi.type = VAR_NAMED;
+			}
+			else
+			{
+				PUSH_SUBCFRAME (hcl, COP_EMIT_SET, cmd);
+				cf = GET_SUBCFRAME(hcl);
+				cf->u.set.vi = vi;
+			}
+
+			/*
+			 * (defun f(x y ::: aa bb cc) ....)
+			 * ([a b c] := (f 1 2))
+			 *
+			 *    the call to f
+			 *       call 2 3  ; 2 arguments, 3 return variables (CALL_R)
+			 *                 ; 3 to be emitted from cf->u.obj_r.nrets
+			 *                 ; this gets remembered in req_nrvars of the created context.
+			 *
+			 *    the return from f must push 3 values.
+			 *        push_return_r  ; as remembered in the ctx->req_nrvars
+			 *
+			 *    emit store_into_xxx instruction for the first return variable assignment.
+			 *    emit pop_into_xxx instructions for the rest.
+			 *        pop_into c
+			 *        pop_into b
+			 *        store_into a
+			 */
+			cf->u.set.mode = (i <= 0)? VAR_ACCESS_STORE: VAR_ACCESS_POP; /* STORE_INTO or POP_INTO  */
+		}
+	}
+	else
+	{
+		/* single-variable assignment
+		 * (a := 20) */
+
+		SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, val);
+
+		x = find_variable_backward_with_token(hcl, var, &vi);
+		if (x <= -1) return -1;
+
+		if (x == 0)
+		{
+			/* not found */
+			if (HCL_CNODE_IS_DSYMBOL_CLA(var))
+			{
+				hcl_setsynerrbfmt (hcl,
+					HCL_SYNERR_VARNAMEUNKNOWN, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var),
+					"unknown class-level variable name", HCL_CNODE_GET_TOKLEN(var), HCL_CNODE_GET_TOKPTR(var));
+				return -1;
+
+			}
+
+			PUSH_SUBCFRAME (hcl, COP_EMIT_SET, var); /* set doesn't evaluate the variable name */
+			cf = GET_SUBCFRAME(hcl);
+			cf->u.set.vi.type = VAR_NAMED;
+		}
+		else
+		{
+			/* the check in compile_fun() must ensure this condition */
+			PUSH_SUBCFRAME (hcl, COP_EMIT_SET, cmd);
+			cf = GET_SUBCFRAME(hcl);
+			cf->u.set.vi = vi;
+		}
+		cf->u.set.mode = VAR_ACCESS_STORE;
+	}
+
+	return 0;
+}
+
 static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nrets)
 {
 	hcl_cnode_t* car;
@@ -4377,7 +4507,7 @@ static HCL_INLINE int compile_dsymbol (hcl_t* hcl, hcl_cnode_t* obj)
 			if (fbi->fun_type >> 8)
 			{
 				/* if defined using A::xxx syntax, it's not possible to know the instance position of an instance variable.
-				 * class X | a b | {
+				 * class X [ a b ] {
 				 *   fun a() {
 				 *      fun J::t() {
 				 *        ## J has nothing to to with X in priciple even if J may point to X when a() is executed.
@@ -4776,6 +4906,10 @@ redo:
 		{
 			switch (HCL_CNODE_CONS_CONCODE(oprnd))
 			{
+				case HCL_CONCODE_ALIST:
+					if (compile_cons_alist_expression(hcl, oprnd) <= -1) return -1;
+					break;
+
 				case HCL_CONCODE_XLIST:
 					if (compile_cons_xlist_expression(hcl, oprnd, 0) <= -1) return -1;
 					break;
@@ -4809,15 +4943,11 @@ redo:
 					hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARDCLBANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "variable declaration disallowed");
 					return -1;
 
-
 				case HCL_CONCODE_TUPLE:
-					/* [a, b] is only allowed as a lvalue for now */
+					/* [a, b] is only allowed as a lvalue or in class member varialble declaration for now */
 					hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "tuple disallowed");
 					return -1;
 
-				/* ALIST is transformed to XLIST with or set or set-r by the reader.
-				 * so it must not appear here */
-				case HCL_CONCODE_ALIST:
 				default:
 					hcl_setsynerrbfmt (hcl, HCL_SYNERR_INTERN, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "internal error - unknown cons type %d", HCL_CNODE_CONS_CONCODE(oprnd));
 					return -1;
@@ -4831,6 +4961,10 @@ redo:
 			/* empty list */
 			switch (HCL_CNODE_ELIST_CONCODE(oprnd))
 			{
+				case HCL_CONCODE_ALIST:
+					hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "empty assignment list");
+					return -1;
+
 				case HCL_CONCODE_XLIST:
 					hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "empty executable list");
 					return -1;
@@ -4863,9 +4997,10 @@ redo:
 					hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "empty variable declaration");
 					return -1;
 
-				/* ALIST is transformed to XLIST with or set or set-r by the reader.
-				 * so it must not appear here */
-				case HCL_CONCODE_ALIST:
+				case HCL_CONCODE_TUPLE:
+					hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "empty tuple");
+					return -1;
+
 				default:
 					hcl_setsynerrbfmt (hcl, HCL_SYNERR_INTERN, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "internal error - unknown list type %d", HCL_CNODE_CONS_CONCODE(oprnd));
 					return -1;
@@ -5854,7 +5989,7 @@ static HCL_INLINE int post_fun (hcl_t* hcl)
 				/* out-of-class definition */
 /* TODO:  - other types of out-of-class definition - CIM_STORE, CM_STORE...  use different marker? */
 				hcl_oow_t index;
-				hcl_oop_t lit, cons;
+				hcl_oop_t lit;
 				int inst;
 
 				/* treat the class name part as a normal variable.

@@ -31,7 +31,7 @@ defun String length() { ##ERROR: syntax error - no argument list
 
 ---
 
-class A [ 10 ] { ##ERROR: syntax error - invalid name - not symbol in tuple - 10
+class A [ 10 ] { ##ERROR: syntax error - not variable name - 10
 }
 
 ---
@@ -44,9 +44,26 @@ class A [ [ [a] ] ] { ##ERROR: syntax error - not variable name
 }
 
 ---
-class A [ a + ] { ##ERROR: syntax error - invalid name - not symbol in tuple - +
+class A [ a + ] { ##ERROR: syntax error - not variable name - +
 }
 
 ---
-class A [ + ] { ##ERROR: syntax error - invalid name - not symbol in tuple - +
+class A [ + ] { ##ERROR: syntax error - not variable name - +
 }
+
+---
+
+fun xxx(x :: p q) { p := (x + 1); q := (x + 2) }
+[a,[b]] := (xxx 20) ##ERROR: syntax error - invalid lvalue - not symbol in tuple
+printf "%d %d\n" a b
+
+---
+20 := 90 ##ERROR: syntax error - invalid lvalue - not symbol - 20
+
+---
+
+[a b] := 10 ##ERROR: syntax error - non-function call/non-message send disallowed
+
+---
+
+[] := 10 ##ERROR: syntax error - invalid lvalue

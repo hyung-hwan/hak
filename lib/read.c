@@ -621,10 +621,13 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 		/* HACK */
 		if (concode == HCL_CONCODE_ALIST) /* assignment list */
 		{
-			/* tranform (var := val) to (set var val)
+			/* sanitize/tranform (var := val) to (set var val)
 			 * - note ALIST doesn't contain the := symbol */
-			hcl_cnode_t* sym, * newhead, * lval;
+			hcl_cnode_t* lval;
+		#if defined(TRANSFORM_ALIST)
+			hcl_cnode_t* sym, * newhead;
 			hcl_oocs_t fake_tok, * fake_tok_ptr = HCL_NULL;
+		#endif
 
 			lval = HCL_CNODE_CONS_CAR(head);
 			if (lval && HCL_CNODE_IS_ELIST(lval))
@@ -633,7 +636,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 				hcl_setsynerr (hcl, HCL_SYNERR_LVALUE, HCL_CNODE_GET_LOC(lval), HCL_CNODE_GET_TOK(lval));
 				goto oops;
 			}
-			else if (lval && HCL_CNODE_IS_CONS(lval) && HCL_CNODE_CONS_CONCODE(lval) == HCL_CONCODE_TUPLE)
+			else if (lval && HCL_CNODE_IS_CONS_CONCODED(lval, HCL_CONCODE_TUPLE))
 			{
 				/*
 				 * defun f(a :: b c) { b := (a + 10); c := (a + 20) }
@@ -641,21 +644,25 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 				 */
 				hcl_cnode_t* tmp, * rval;
 
+		#if defined(TRANSFORM_ALIST)
 				fake_tok.ptr = vocas[VOCA_SYM_SET_R].str;
 				fake_tok.len = vocas[VOCA_SYM_SET_R].len;
 				fake_tok_ptr = &fake_tok;
+		#endif
 
 				for (tmp = lval; tmp && HCL_CNODE_IS_CONS(tmp); tmp = HCL_CNODE_CONS_CDR(tmp))
 				{
-					/* check in avance if the array members are all plain symbols */
+					/* check in advance if the array members are all plain symbols */
 					hcl_cnode_t* lcar;
 					lcar = HCL_CNODE_CONS_CAR(tmp);
-					if (!HCL_CNODE_IS_SYMBOL_PLAIN(lcar))
+					if (!HCL_CNODE_IS_SYMBOL_PLAIN(lcar) && !HCL_CNODE_IS_DSYMBOL_CLA(lcar))
 					{
 						hcl_setsynerrbfmt (hcl, HCL_SYNERR_LVALUE, HCL_CNODE_GET_LOC(lval), HCL_CNODE_GET_TOK(lval), "invalid lvalue - not symbol in tuple");
 						goto oops;
 					}
 				}
+
+		#if defined(TRANSFORM_ALIST)
 				/* move the array item up to the main list and join the original lval to the end of it
 				 * For [x, y] := (f 9), x and y must be in the same level as set-r after translation.
 				 * so make it 'x y (f 9)' first and place set-r in front of it later. */
@@ -670,6 +677,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 						break;
 					}
 				}
+		#endif
 			}
 			else
 			{
@@ -678,9 +686,11 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 					hcl_setsynerrbfmt (hcl, HCL_SYNERR_LVALUE, HCL_CNODE_GET_LOC(lval), HCL_CNODE_GET_TOK(lval), "invalid lvalue - not symbol");
 					goto oops;
 				}
+		#if defined(TRANSFORM_ALIST)
 				fake_tok.ptr = vocas[VOCA_SYM_SET].str;
 				fake_tok.len = vocas[VOCA_SYM_SET].len;
 				fake_tok_ptr = &fake_tok;
+		#endif
 			}
 
 			HCL_ASSERT (hcl, count >= 2); /* the missing rvalue check has been done above */
@@ -695,6 +705,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 				goto oops;
 			}
 
+		#if defined(TRANSFORM_ALIST)
 			sym = hcl_makecnodesymbol(hcl, 0, &loc, fake_tok_ptr);
 			if (HCL_UNLIKELY(!sym))
 			{
@@ -715,6 +726,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 
 			head = newhead;
 			concode = HCL_CONCODE_XLIST; /* switch back to XLIST */
+		#endif
 		}
 		else if (concode == HCL_CONCODE_BLIST)
 		{
@@ -812,8 +824,9 @@ static HCL_INLINE int can_comma_list (hcl_t* hcl)
 	cc = (hcl_concode_t)LIST_FLAG_GET_CONCODE(rstl->flagv);
 	if (cc == HCL_CONCODE_XLIST)
 	{
-		/* defun f(a :: b c) { b := (a + 10); c := (a + 20) }
-		 * (x, y) := (f 9) */
+		/* fun f(a :: b c) { b := (a + 10); c := (a + 20) }
+		 * [x y] := (f 9)
+		 * [x,y] := (f 9) */
 		LIST_FLAG_SET_CONCODE(rstl->flagv, HCL_CONCODE_ALIST);
 	}
 	else if (cc == HCL_CONCODE_DIC)
@@ -1030,6 +1043,8 @@ static int chain_to_list (hcl_t* hcl, hcl_cnode_t* obj, hcl_loc_t* loc)
 			fake_tok_ptr = &fake_tok;
 		}
 
+#if 0
+/* TODO: remove this part ... */
 		if (list_concode == HCL_CONCODE_TUPLE && concode != HCL_CONCODE_TUPLE &&
 		    (!HCL_CNODE_IS_SYMBOL_PLAIN(obj) || HCL_CNODE_IS_SYMBOL_PLAIN_BINOP(obj)))
 		{
@@ -1037,6 +1052,7 @@ static int chain_to_list (hcl_t* hcl, hcl_cnode_t* obj, hcl_loc_t* loc)
 			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(obj), HCL_CNODE_GET_TOK(obj), "invalid name - not symbol in tuple");
 			return -1;
 		}
+#endif
 
 		cons = hcl_makecnodecons(hcl, 0, (loc? loc: HCL_CNODE_GET_LOC(obj)), fake_tok_ptr, obj, HCL_NULL);
 		if (HCL_UNLIKELY(!cons)) return -1;
@@ -2715,7 +2731,9 @@ not_consumed:
 
 static int flx_binop (hcl_t* hcl, hcl_ooci_t c) /* identifier */
 {
+#if 0
 	hcl_flx_binop_t* binop = FLX_BINOP(hcl);
+#endif
 
 	if (hcl_is_binop_char(c))
 	{
