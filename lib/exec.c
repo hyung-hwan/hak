@@ -1960,7 +1960,7 @@ static int prepare_new_context (hcl_t* hcl, hcl_oop_block_t op_blk, hcl_ooi_t na
 	else
 	{
 		blkctx->home = op_blk->home;
-		blkctx->mthhome = hcl->_nil;
+		blkctx->mthhome = (hcl_oop_context_t)hcl->_nil;
 		blkctx->receiver = op_blk->home->receiver;
 		blkctx->ivaroff = HCL_SMOOI_TO_OOP(0); /* not useful if it's not message send */
 	}
@@ -4047,7 +4047,7 @@ hcl_logbfmt (hcl, HCL_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d nc
 				mtype = (bcode - HCL_CODE_CLASS_CMSTORE) + 1;
 				HCL_ASSERT (hcl, mtype >= 1 && mtype <= 3);
 				FETCH_PARAM_CODE_TO (hcl, b1);
-				LOG_INST_2 (hcl, "class_%hsmstore @%zu", pfx[mtype], b1);
+				LOG_INST_2 (hcl, "class_%hsmstore @%zu", pfx[mtype - 1], b1);
 
 				/* store the stack top in the member dictionary of the currect class with the key indicated by 'b1' */
 
