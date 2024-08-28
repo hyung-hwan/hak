@@ -371,9 +371,17 @@ static void vm_checkbc (hcl_t* hcl, hcl_oob_t bcode)
 
 static HCL_INLINE hcl_oop_context_t make_context (hcl_t* hcl, hcl_ooi_t ntmprs)
 {
+	hcl_oop_context_t ctx;
 	HCL_ASSERT (hcl, ntmprs >= 0);
 	/*return (hcl_oop_context_t)hcl_allocoopobj(hcl, HCL_BRAND_CONTEXT, HCL_CONTEXT_NAMED_INSTVARS + (hcl_oow_t)ntmprs);*/
-	return (hcl_oop_context_t)hcl_instantiatewithtrailer(hcl, hcl->c_block_context, ntmprs, HCL_NULL, 0);
+	ctx =(hcl_oop_context_t)hcl_instantiatewithtrailer(hcl, hcl->c_block_context, ntmprs, HCL_NULL, 0);
+
+	/* TODO: a good way to initialize smooi field to 0 in hcl_insstantiate()?
+	 *      for this, there must be a way to specify the type of the member variables...
+	 *      it's error-prone to initialize the numeric value to nil where 0 is necessary */
+
+	if (HCL_LIKELY(ctx)) ctx->ivaroff = HCL_SMOOI_TO_OOP(0); 
+	return ctx;
 }
 
 static HCL_INLINE hcl_oop_function_t make_function (hcl_t* hcl, hcl_oow_t lfsize, const hcl_oob_t* bptr, hcl_oow_t blen, hcl_dbgi_t* dbgi)
@@ -395,6 +403,7 @@ static HCL_INLINE hcl_oop_function_t make_function (hcl_t* hcl, hcl_oow_t lfsize
 		if (HCL_LIKELY(tmp)) func->dbgi = tmp;
 	}
 
+	func->attr_mask = HCL_SMOOI_TO_OOP(0);
 	return func;
 }
 
@@ -1962,7 +1971,9 @@ static int prepare_new_context (hcl_t* hcl, hcl_oop_block_t op_blk, hcl_ooi_t na
 		blkctx->home = op_blk->home;
 		blkctx->mthhome = (hcl_oop_context_t)hcl->_nil;
 		blkctx->receiver = op_blk->home->receiver;
+	#if 0 /* filled by make_context() already */
 		blkctx->ivaroff = HCL_SMOOI_TO_OOP(0); /* not useful if it's not message send */
+	#endif
 	}
 #endif
 
