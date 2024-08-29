@@ -26,8 +26,6 @@
 	printf "OK v1=%d v2=%d v3=%d\n" v1 v2 v3;
 
 
-
-
 	## test return variables in message sends
 	defclass B [ [X1 X2] ] {
 
@@ -54,4 +52,22 @@
 	if (/= d 788) { printf "ERROR: d must be 788\n" };
 
 	printf "OK a=%d b=%d c=%d d=%d\n" a b c d;
+
+	class X [ x, y ] {
+		fun ::f(a :: b c) { b := (a + 10); c := (a + 20) }
+
+		fun :*new(z) {
+			## multi-variable assignment with return variables to member variables
+			[self.x, self.y] := (X:f z)
+			return self;
+		}
+
+		fun getX() { return self.x }
+		fun getY() { return self.y }
+	}
+
+	z := (X:new 9)
+	if ((x := (z:getX)) /= 19) { printf "ERROR: z:getX msut return 19\n" }
+	if ((y := (z:getY)) /= 29) { printf "ERROR: z:getX msut return 29\n" }
+	printf "OK z:getX=%d z:getY=%d\n" x y
 });
