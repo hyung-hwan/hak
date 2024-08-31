@@ -939,10 +939,11 @@ static HCL_INLINE int can_binop_list (hcl_t* hcl)
 	/* repeated delimiters - e.g (a ++ ++ ...)   (a : := ... )  */
 	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED)) return 0;
 
-#if 0
-TODO: multi binop support
 	if (cc == HCL_CONCODE_BLIST)
 	{
+		hcl_cnode_t* wrap;
+		hcl_oocs_t fake_tok, * fake_tok_ptr = HCL_NULL;
+
 		/* revised to BLIST in earlier call.
 		 * three elements before this binop.
 		 * xxx (1 + 2 + 3)
@@ -956,18 +957,30 @@ TODO: multi binop support
 
 		/* ugly to manipulate the current list */
 		HCL_ASSERT (hcl, rstl->count == 3);
-		hcl_makecnodecons(hcl, 0, loc,
 
+		fake_tok.ptr = vocas[VOCA_BLIST].str;
+		fake_tok.len = vocas[VOCA_BLIST].len;
+		fake_tok_ptr = &fake_tok;
+
+hcl_logbfmt(hcl, HCL_LOG_STDERR, "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXxx\n");
+if (rstl->head) hcl_dumpcnode(hcl,  rstl->head, 1);
+else hcl_logbfmt(hcl, HCL_LOG_STDERR, "rstl->head is null\n");
+if (rstl->tail) hcl_dumpcnode(hcl,  rstl->tail, 1);
+else hcl_logbfmt(hcl, HCL_LOG_STDERR, "rstl->tail is null\n");
+
+		HCL_ASSERT (hcl, HCL_CNODE_IS_TYPED(rstl->head, HCL_CNODE_CONS));
+		wrap = hcl_makecnodecons(hcl, 0, HCL_CNODE_GET_LOC(rstl->head), fake_tok_ptr, rstl->head, rstl->head->u.cons.cdr);
+		if (HCL_UNLIKELY(!wrap)) return  -1;
+
+		rstl->head = wrap;
+		rstl->tail = wrap;
 		rstl->count = 1; /* force adjust it to 1 */
 	}
 	else
 	{
-#endif
 		if (rstl->count >= 2) return 0; /* allowed after the first item only */
 		if (cc != HCL_CONCODE_XLIST) return 0;
-#if 0
 	}
-#endif
 
 	LIST_FLAG_SET_CONCODE(rstl->flagv, HCL_CONCODE_BLIST);
 	rstl->flagv |= BINOPED;
@@ -1587,6 +1600,7 @@ static int feed_process_token (hcl_t* hcl)
 				hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "prohibited binary operator");
 				goto oops;
 			}
+			else if (can <= -1) goto oops;
 			if (can == 1) goto ident; /* if binop is the first in the list */
 
 			HCL_ASSERT (hcl, can == 2);
