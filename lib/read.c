@@ -618,7 +618,6 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 	{
 		HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(head));
 
-		/* HACK */
 		if (concode == HCL_CONCODE_ALIST) /* assignment list */
 		{
 			/* sanitize/tranform (var := val) to (set var val)
@@ -763,12 +762,14 @@ but the check isn't complemete if more operands are added without an operator e.
 				goto oops;
 			}
 
+#define TRANSFORM_BLIST
+		#if defined(TRANSFORM_BLIST)
 			HCL_CNODE_CONS_CDR(head) = HCL_CNODE_CONS_CDR(binop);
 			HCL_CNODE_CONS_CDR(binop) = head;
 			head = binop;
 			concode = HCL_CONCODE_XLIST;
+		#endif
 		}
-		/* END HACK */
 
 		HCL_CNODE_CONS_CONCODE(head) = concode;
 		if (fv & AUTO_FORGED) HCL_CNODE_GET_FLAGS(head) |= HCL_CNODE_AUTO_FORGED;
@@ -890,7 +891,7 @@ static HCL_INLINE int can_colon_list (hcl_t* hcl)
 
 	if (!(rstl->count & 1)) return 0; /* not allwed after the value in a dictionary */
 
-	/* mark that it's coloned. this is to be cleared when clear_comma_colon_flag() is called */
+	/* mark that it's coloned. this is to be cleared when clear_comma_colon_binop_flag() is called */
 	rstl->flagv |= COLONED;
 	return 1;
 }
@@ -935,13 +936,38 @@ static HCL_INLINE int can_binop_list (hcl_t* hcl)
 		return 1;
 	}
 
-	if (rstl->count >= 2) return 0; /* allowed after the first item only */
-
 	/* repeated delimiters - e.g (a ++ ++ ...)   (a : := ... )  */
 	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED)) return 0;
 
-	/* assignment only in XLIST */
-	if (cc != HCL_CONCODE_XLIST) return 0;
+#if 0
+TODO: multi binop support
+	if (cc == HCL_CONCODE_BLIST)
+	{
+		/* revised to BLIST in earlier call.
+		 * three elements before this binop.
+		 * xxx (1 + 2 + 3)
+		 *            ^
+		 *            here
+		 * in the list are '1', '+', '2', tallying to 3.
+		 */
+
+		/* unable to support operator precedence as the meaning
+		 * of binary operators are not pre-defined in this language */
+
+		/* ugly to manipulate the current list */
+		HCL_ASSERT (hcl, rstl->count == 3);
+		hcl_makecnodecons(hcl, 0, loc,
+
+		rstl->count = 1; /* force adjust it to 1 */
+	}
+	else
+	{
+#endif
+		if (rstl->count >= 2) return 0; /* allowed after the first item only */
+		if (cc != HCL_CONCODE_XLIST) return 0;
+#if 0
+	}
+#endif
 
 	LIST_FLAG_SET_CONCODE(rstl->flagv, HCL_CONCODE_BLIST);
 	rstl->flagv |= BINOPED;
@@ -949,7 +975,7 @@ static HCL_INLINE int can_binop_list (hcl_t* hcl)
 	return 2;
 }
 
-static HCL_INLINE void clear_comma_colon_flag (hcl_t* hcl)
+static HCL_INLINE void clear_comma_colon_binop_flag (hcl_t* hcl)
 {
 	hcl_rstl_t* rstl;
 	HCL_ASSERT (hcl, hcl->c->r.st != HCL_NULL);
@@ -1557,7 +1583,7 @@ static int feed_process_token (hcl_t* hcl)
 			}
 			else if (!(can = can_binop_list(hcl)))
 			{
-			banned_binop:
+			/*banned_binop:*/
 				hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "prohibited binary operator");
 				goto oops;
 			}
@@ -1899,7 +1925,7 @@ static int feed_process_token (hcl_t* hcl)
 		 * is made to oops, the momory block pointed to by obj may get freed twice. */
 		frd->obj = HCL_NULL;
 
-		clear_comma_colon_flag (hcl);
+		clear_comma_colon_binop_flag (hcl);
 	}
 
 ok:
