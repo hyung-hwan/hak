@@ -4214,8 +4214,8 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 	}
 	else if (HCL_CNODE_IS_SYMBOL(car)  || HCL_CNODE_IS_DSYMBOL(car) ||
 	         HCL_CNODE_IS_CONS_CONCODED(car, HCL_CONCODE_XLIST) ||
-	         HCL_CNODE_IS_CONS_CONCODED(car, HCL_CONCODE_MLIST) /* ||
-	         HCL_CNODE_IS_CONS_CONCODED(car, HCL_CONCODE_ALIST)*/) /* NOTE: ALIST is only used in read.c and the reader transforms it to the set expression */
+	         HCL_CNODE_IS_CONS_CONCODED(car, HCL_CONCODE_MLIST) ||
+	         HCL_CNODE_IS_CONS_CONCODED(car, HCL_CONCODE_ALIST))
 	{
 		/* normal function call
 		 *  (<operator> <operand1> ...) */

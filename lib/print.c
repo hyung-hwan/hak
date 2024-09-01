@@ -829,11 +829,24 @@ void hcl_dumpcnode (hcl_t* hcl, hcl_cnode_t* cnode, int newline)
 				break;
 
 			case HCL_CNODE_CONS:
+			{
+				hcl_concode_t cc;
+
 				hcl_logbfmt (hcl, HCL_LOG_FATAL, " (");
 				hcl_dumpcnode (hcl, HCL_CNODE_CONS_CAR(cnode), 0);
+
+				cc = HCL_CNODE_CONS_CONCODE(cnode);
+				switch (cc)
+				{
+					case HCL_CONCODE_ALIST:
+						hcl_logbfmt (hcl, HCL_LOG_FATAL, " := ");
+						break;
+				}
+
 				hcl_dumpcnode (hcl, HCL_CNODE_CONS_CDR(cnode),0);
 				hcl_logbfmt (hcl, HCL_LOG_FATAL, ") ");
 				break;
+			}
 
 			case HCL_CNODE_ELIST:
 				hcl_logbfmt (hcl, HCL_LOG_FATAL, " () ", HCL_CNODE_GET_TOKLEN(cnode), HCL_CNODE_GET_TOKPTR(cnode));
