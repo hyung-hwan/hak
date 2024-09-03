@@ -841,6 +841,10 @@ void hcl_dumpcnode (hcl_t* hcl, hcl_cnode_t* cnode, int newline)
 					case HCL_CONCODE_ALIST:
 						hcl_logbfmt (hcl, HCL_LOG_FATAL, " := ");
 						break;
+					case HCL_CONCODE_BLIST:
+					case HCL_CONCODE_MLIST:
+						hcl_logbfmt (hcl, HCL_LOG_FATAL, ":");
+						break;
 				}
 
 				hcl_dumpcnode (hcl, HCL_CNODE_CONS_CDR(cnode),0);

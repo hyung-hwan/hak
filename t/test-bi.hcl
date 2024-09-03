@@ -27,7 +27,7 @@
 	(set remainder (rem dividend divisor))
 	(set derived_dividend (+ (* quotient divisor) remainder))
 
-	(if (/= dividend derived_dividend)
+	(if (~= dividend derived_dividend)
 		(printf ">> dividend %O\n>> divisor %O\n>> quotient %O\n>> remainder %O\n>> derived_dividend %O\n"
 			dividend divisor quotient remainder derived_dividend)
 		(break)

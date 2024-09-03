@@ -4054,11 +4054,11 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 			goto done;
 
 		case HCL_CNODE_ELIF:
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_ELSE, HCL_CNODE_GET_LOC(car), HCL_CNODE_GET_TOK(car), "else without if");
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_ELSE, HCL_CNODE_GET_LOC(car), HCL_CNODE_GET_TOK(car), "elif without if");
 			return -1;
 
 		case HCL_CNODE_ELSE:
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_ELIF, HCL_CNODE_GET_LOC(car), HCL_CNODE_GET_TOK(car), "elif without if");
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_ELIF, HCL_CNODE_GET_LOC(car), HCL_CNODE_GET_TOK(car), "else without if");
 			return -1;
 
 		case HCL_CNODE_THROW:
@@ -4215,6 +4215,7 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 	else if (HCL_CNODE_IS_SYMBOL(car)  || HCL_CNODE_IS_DSYMBOL(car) ||
 	         HCL_CNODE_IS_CONS_CONCODED(car, HCL_CONCODE_XLIST) ||
 	         HCL_CNODE_IS_CONS_CONCODED(car, HCL_CONCODE_MLIST) ||
+	         HCL_CNODE_IS_CONS_CONCODED(car, HCL_CONCODE_BLIST) ||
 	         HCL_CNODE_IS_CONS_CONCODED(car, HCL_CONCODE_ALIST))
 	{
 		/* normal function call
@@ -4319,8 +4320,11 @@ static int compile_cons_mlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 
 	/* message sending
 	 *  (:<receiver> <operator> <operand1> ...)
+	 *  (<receiver>:<operator> <operand1> ...)
+	 *  (<receiver> <binop> <operand>
 	 */
-	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS_CONCODED(obj, HCL_CONCODE_MLIST));
+	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS_CONCODED(obj, HCL_CONCODE_BLIST) ||
+	                 HCL_CNODE_IS_CONS_CONCODED(obj, HCL_CONCODE_MLIST));
 
 	car = HCL_CNODE_CONS_CAR(obj);
 	if (HCL_CNODE_IS_SYMBOL(car) && (syncode = HCL_CNODE_SYMBOL_SYNCODE(car)))
@@ -4914,7 +4918,8 @@ redo:
 					if (compile_cons_xlist_expression(hcl, oprnd, 0) <= -1) return -1;
 					break;
 
-				case HCL_CONCODE_MLIST:
+				case HCL_CONCODE_BLIST: /* message send with binop */
+				case HCL_CONCODE_MLIST: /* message send expression */
 					if (compile_cons_mlist_expression(hcl, oprnd, 0) <= -1) return -1;
 					break;
 
@@ -4967,6 +4972,11 @@ redo:
 
 				case HCL_CONCODE_XLIST:
 					hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "empty executable list");
+					return -1;
+
+				case HCL_CONCODE_BLIST:
+					/* this must not happend as the reader prevents it */
+					hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "empty binop list");
 					return -1;
 
 				case HCL_CONCODE_MLIST:
@@ -5056,23 +5066,32 @@ static int compile_object_r (hcl_t* hcl)
 	HCL_ASSERT (hcl, cf->opcode == COP_COMPILE_OBJECT_R);
 	HCL_ASSERT (hcl, cf->operand != HCL_NULL);
 
-	oprnd = cf->operand;
-	if (HCL_CNODE_IS_CONS_CONCODED(oprnd, HCL_CONCODE_XLIST))
+        oprnd = cf->operand;
+	if (HCL_CNODE_IS_CONS(oprnd))
 	{
-		return compile_cons_xlist_expression(hcl, oprnd, cf->u.obj_r.nrets);
-	}
-	else if (HCL_CNODE_IS_CONS_CONCODED(oprnd, HCL_CONCODE_MLIST))
-	{
-		return compile_cons_mlist_expression(hcl, oprnd, cf->u.obj_r.nrets);
-	}
+		hcl_concode_t cc;
 
-	/*
-	else if (HCL_CNODE_IS_CONS_CONCODED(oprnd, HCL_CONCODE_ALIST))
-	{
-		ALIST is transformed to XLIST with or set or set-r by the reader.
-		so it must not appear here..
+		cc = HCL_CNODE_CONS_CONCODE(oprnd);
+
+		switch (cc)
+		{
+			case HCL_CONCODE_XLIST:
+				return compile_cons_xlist_expression(hcl, oprnd, cf->u.obj_r.nrets);
+
+			case HCL_CONCODE_BLIST:
+			case HCL_CONCODE_MLIST:
+				return compile_cons_mlist_expression(hcl, oprnd, cf->u.obj_r.nrets);
+
+#if 0
+			case HCL_CONCODE_ALIST:
+				/* TODO: can support it? */
+				k := ([a, b, c] := (+ 10 20 30))
+				break;
+#endif
+			default:
+				break;
+		}
 	}
-	*/
 
 	hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL, "non-function call/non-message send disallowed");
 	return -1;

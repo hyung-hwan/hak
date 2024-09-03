@@ -1280,7 +1280,8 @@ static pf_t builtin_prims[] =
 	{ 2, 2,                       pf_number_lt,       1,  { '<' } },
 	{ 2, 2,                       pf_number_le,       2,  { '<','=' } },
 	{ 2, 2,                       pf_number_eq,       1,  { '=' } },
-	{ 2, 2,                       pf_number_ne,       2,  { '/','=' } },
+	{ 2, 2,                       pf_number_eq,       2,  { '=', '=' } },
+	{ 2, 2,                       pf_number_ne,       2,  { '~','=' } },
 
 	/* bitwise operations are supported for integers only */
 	{ 2, 2,                       pf_integer_band,    7,  { 'b','i','t','-','a','n','d' } },

@@ -1,3 +1,15 @@
+fun Number: + (oprnd) { return (+ self oprnd) }
+fun Number: - (oprnd) { return (- self oprnd) }
+fun Number: * (oprnd) { return (* self oprnd) }
+fun Number: / (oprnd) { return (/ self oprnd) }
+fun Number: > (oprnd) { return (> self oprnd) }
+fun Number: < (oprnd) { return (< self oprnd) }
+fun Number: >= (oprnd) { return (>= self oprnd) }
+fun Number: <= (oprnd) { return (<= self oprnd) }
+fun Number: == (oprnd) { return (== self oprnd) }
+fun Number: ~= (oprnd) { return (~= self oprnd) }
+
+## --------------------------------------------------------------
 set t (
 	class [ x ] {
 		defun :* make() { x := 1234; return self; };
@@ -158,4 +170,8 @@ else { printf "OK: value is %d\n" v }
 
 v := (X6:t)
 if (nqv? v 40) { printf "ERROR: v is not 40 - %d\n" v } \
+else { printf "OK: value is %d\n" v }
+
+v := { X5:t; (X6:t) + 10 }
+if (nqv? v 50) { printf "ERROR: v is not 50 - %d\n" v } \
 else { printf "OK: value is %d\n" v }

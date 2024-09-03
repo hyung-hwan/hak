@@ -203,6 +203,7 @@ static struct
 
 static int init_compiler (hcl_t* hcl);
 static void feed_continue (hcl_t* hcl, hcl_flx_state_t state);
+static int is_at_block_beginning (hcl_t* hcl);
 
 /* ----------------------------------------------------------------- */
 
@@ -762,8 +763,16 @@ but the check isn't complemete if more operands are added without an operator e.
 				goto oops;
 			}
 
-#define TRANSFORM_BLIST
 		#if defined(TRANSFORM_BLIST)
+			/* this part is to transform (x binop y) to (binop x y).
+			 * if transformation is done, it is a normal executable expression
+			 * where the binary operator is a primitive function.
+			 *
+			 * alternatively, the compiler treat this as a message send expression
+			 * if the reader skips this transformation.
+			 *
+			 * We keep this part commented out to have this trated as a message
+			 * send expression. */
 			HCL_CNODE_CONS_CDR(head) = HCL_CNODE_CONS_CDR(binop);
 			HCL_CNODE_CONS_CDR(binop) = head;
 			head = binop;
@@ -928,12 +937,31 @@ static HCL_INLINE int can_binop_list (hcl_t* hcl)
 	rstl = hcl->c->r.st;
 	cc = (hcl_concode_t)LIST_FLAG_GET_CONCODE(rstl->flagv);
 
-	if (rstl->count <= 0 || cc == HCL_CONCODE_TUPLE)
+	if (rstl->count <= 0 || cc == HCL_CONCODE_TUPLE || is_at_block_beginning(hcl))
 	{
 		/* allowed but it must be treated like a normal identifier.
 		 * in case of the tuple, chain_to_list() rejects binop symbols.
-		 * so let this routine to allow it as a normal indentifier. */
+		 * so let this routine to allow it as a normal indentifier.
+		 *
+		 * when the expression is inside a block enclosed in {},
+		 * rstl->count is the number of preceding expression.
+		 * call is_at_block_begigging() separately to check if it is
+		 * at the beging of the sub-expression. For example,
+		 *  { a := 10; b := 20; + a b }
+		 * when this function is called for '+' above, rstl->count is 2.
+		 */
 		return 1;
+	}
+
+	if (rstl->count >= 1 && cc == HCL_CONCODE_XLIST)
+	{
+		/* special case:
+		 *   fun xxx::+() { }
+		 *   fun + () {}
+		 */
+
+		/* TODO: this whole block is hacky. we may do proper parsing instead of checking the first element is 'fun' */
+		if (HCL_CNODE_IS_TYPED(HCL_CNODE_CONS_CAR(rstl->head), HCL_CNODE_FUN)) return 1;
 	}
 
 	/* repeated delimiters - e.g (a ++ ++ ...)   (a : := ... )  */
@@ -962,15 +990,12 @@ static HCL_INLINE int can_binop_list (hcl_t* hcl)
 		fake_tok.len = vocas[VOCA_BLIST].len;
 		fake_tok_ptr = &fake_tok;
 
-hcl_logbfmt(hcl, HCL_LOG_STDERR, "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXxx\n");
-if (rstl->head) hcl_dumpcnode(hcl,  rstl->head, 1);
-else hcl_logbfmt(hcl, HCL_LOG_STDERR, "rstl->head is null\n");
-if (rstl->tail) hcl_dumpcnode(hcl,  rstl->tail, 1);
-else hcl_logbfmt(hcl, HCL_LOG_STDERR, "rstl->tail is null\n");
-
+		/* dirty hack to create a wrapper cell containing the first three items.
+		 * TODO: do i have to do this on the caller side of can_binop_list()? */
 		HCL_ASSERT (hcl, HCL_CNODE_IS_TYPED(rstl->head, HCL_CNODE_CONS));
-		wrap = hcl_makecnodecons(hcl, 0, HCL_CNODE_GET_LOC(rstl->head), fake_tok_ptr, rstl->head, rstl->head->u.cons.cdr);
+		wrap = hcl_makecnodecons(hcl, 0, HCL_CNODE_GET_LOC(rstl->head), fake_tok_ptr, rstl->head, HCL_NULL);
 		if (HCL_UNLIKELY(!wrap)) return  -1;
+		HCL_CNODE_CONS_CONCODE(rstl->head) = HCL_CONCODE_BLIST;
 
 		rstl->head = wrap;
 		rstl->tail = wrap;
@@ -1279,7 +1304,7 @@ static void feed_clean_up_reader_stack (hcl_t* hcl)
 	}
 }
 
-static HCL_INLINE int is_at_block_beginning (hcl_t* hcl)
+static int is_at_block_beginning (hcl_t* hcl)
 {
 	hcl_rstl_t* rstl;
 	rstl = hcl->c->r.st;

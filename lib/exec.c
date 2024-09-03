@@ -2382,7 +2382,7 @@ static HCL_INLINE int do_throw (hcl_t* hcl, hcl_oop_t val, hcl_ooi_t ip)
 			hcl_loc_t loc;
 
 			dbgi = (hcl_dbgi_t*)HCL_OBJ_GET_BYTE_SLOT(hcl->active_function->dbgi);
-			HCL_LOG3 (hcl, HCL_LOG_IC | HCL_LOG_WARN, "Warning - exception not handled %js:%zu- %O", (dbgi[ip].fname? dbgi[ip].fname: oocstr_dash), dbgi[ip].sline, val);
+			HCL_LOG3 (hcl, HCL_LOG_IC | HCL_LOG_WARN, "Warning - exception not handled %js:%zu - %O", (dbgi[ip].fname? dbgi[ip].fname: oocstr_dash), dbgi[ip].sline, val);
 			HCL_MEMSET (&loc, 0, HCL_SIZEOF(loc));
 			loc.file = dbgi[ip].fname;
 			loc.line = dbgi[ip].sline;

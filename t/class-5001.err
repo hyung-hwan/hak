@@ -17,7 +17,7 @@ class B + ##ERROR: syntax error - prohibited binary operator - +
 
 J := 11
 class B {
-	if (J = 10) {
+	if (== J 10) {
 		defun :*newA() {
 			return self
 		}

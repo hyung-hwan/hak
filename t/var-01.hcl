@@ -18,15 +18,15 @@ defun x (a b :: r) {
 	}
 
 
-	if (/= x a) (printf "ERROR: x is not equal to a\n")
-	if (/= y b) (printf "ERROR: y is not equal to b\n")
+	if (~= x a) (printf "ERROR: x is not equal to a\n")
+	if (~= y b) (printf "ERROR: y is not equal to b\n")
 }
 
 t := (x 10 20)
-if (/= t -2000) (printf "ERROR: t is not equal to -2000\n") \
+if (~= t -2000) (printf "ERROR: t is not equal to -2000\n") \
 else (printf "OK: %d\n" t)
 set t (x 30 20)
-if (/= t 500) (printf "ERROR: t is not equal to 500\n") \
+if (~= t 500) (printf "ERROR: t is not equal to 500\n") \
 else (printf "OK: %d\n" t)
 
 
@@ -38,18 +38,18 @@ defun x () {
 	try {
 		| x |
 		set x 88
-		if (/= x 88) (printf "ERROR: x is not 88\n") \
+		if (~= x 88) (printf "ERROR: x is not 88\n") \
 	  	else (printf "OK: %d\n" x)
 		throw 1000
 	} catch (x) {
-		if (/= x 1000) (printf "ERROR: x is not 1000\n") \
+		if (~= x 1000) (printf "ERROR: x is not 1000\n") \
 	 	else (printf "OK: %d\n" x)
 		set y x
 	}
 
-	if (/= x 99) (printf "ERROR: x is not 99\n") \
+	if (~= x 99) (printf "ERROR: x is not 99\n") \
 	else (printf "OK: %d\n" x)
-	if (/= y 1000) (print "ERROR: y is not 1000\n") \
+	if (~= y 1000) (print "ERROR: y is not 1000\n") \
 	else (printf "OK: %d\n" y)
 } 
 
@@ -78,7 +78,7 @@ class T [ j ] {
 set t (T:new)
 t:x
 set t (Q)
-if (/= t 99) (print "ERROR: t is not 99\n") \
+if (~= t 99) (print "ERROR: t is not 99\n") \
 else (printf "OK: %d\n" t)
 
 if (nqv? R false) (print "ERROR: R is not false\n") \
