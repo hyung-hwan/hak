@@ -38,8 +38,8 @@ static struct voca_t
 	hcl_ooch_t str[11];
 } vocas[] =
 {
-	{  8, { '#','i','n','c','l','u','d','e'                               } },
-	{  7, { '#','p','r','a','g','m','a'                                   } },
+	{  8, { '$','i','n','c','l','u','d','e'                               } },
+	{  7, { '$','p','r','a','g','m','a'                                   } },
 
 	{ 11, { '#','\\','b','a','c','k','s','p','a','c','e'                  } },
 	{ 10, { '#','\\','l','i','n','e','f','e','e','d'                      } },
@@ -85,10 +85,10 @@ static struct voca_t
 	{  4, { '#','[',' ',']'  /* ARRAY */                                  } },
 	{  5, { '#','b','[',' ',']' /* BYTE ARRAY */                          } },
 	{  5, { '#','c','[',' ',']' /* CHAR ARRAY */                          } },
-	{  4, { '#','{',' ','}'                                               } },
-	{  4, { '#','(',' ',')'                                               } },
+	{  4, { '#','{',' ','}' /* DICTIONARY */                              } },
+	{  4, { '#','(',' ',')' /* QLIST */                                   } },
 	{  3, { '[',' ',']' /* TUPLE */                                       } },
-	{  3, { '|',' ','|'                                                   } },
+	{  3, { '|',' ','|' /* VLIST */                                       } },
 
 	{  5, { '<','E','O','L','>'                                           } },
 	{  5, { '<','E','O','F','>'                                           } }
@@ -1107,17 +1107,6 @@ static int chain_to_list (hcl_t* hcl, hcl_cnode_t* obj, hcl_loc_t* loc)
 			fake_tok_ptr = &fake_tok;
 		}
 
-#if 0
-/* TODO: remove this part ... */
-		if (list_concode == HCL_CONCODE_TUPLE && concode != HCL_CONCODE_TUPLE &&
-		    (!HCL_CNODE_IS_SYMBOL_PLAIN(obj) || HCL_CNODE_IS_SYMBOL_PLAIN_BINOP(obj)))
-		{
-			/* a tuple must contain some simple symbol names or nested tuples only  */
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(obj), HCL_CNODE_GET_TOK(obj), "invalid name - not symbol in tuple");
-			return -1;
-		}
-#endif
-
 		cons = hcl_makecnodecons(hcl, 0, (loc? loc: HCL_CNODE_GET_LOC(obj)), fake_tok_ptr, obj, HCL_NULL);
 		if (HCL_UNLIKELY(!cons)) return -1;
 
@@ -1871,6 +1860,18 @@ static int feed_process_token (hcl_t* hcl)
 			frd->obj = hcl_makecnodebchrlit(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl), (hcl_oob_t)TOKEN_NAME_CHAR(hcl, 0));
 			goto auto_xlist;
 
+		case HCL_TOK_STRLIT:
+			frd->obj = hcl_makecnodestrlit(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			goto auto_xlist;
+
+		case HCL_TOK_BSTRLIT:
+			frd->obj = hcl_makecnodebstrlit(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			goto auto_xlist;
+
+		case HCL_TOK_SYMLIT:
+			frd->obj = hcl_makecnodesymlit(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			goto auto_xlist;
+
 		case HCL_TOK_NUMLIT:
 			frd->obj = hcl_makecnodenumlit(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto auto_xlist;
@@ -1888,14 +1889,6 @@ static int feed_process_token (hcl_t* hcl)
 			frd->obj = hcl_makecnoderealnum(hcl, HCL_TOK_RVAL(hcl));
 			break;
 		*/
-
-		case HCL_TOK_STRLIT:
-			frd->obj = hcl_makecnodestrlit(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-			goto auto_xlist;
-
-		case HCL_TOK_BSTRLIT:
-			frd->obj = hcl_makecnodebstrlit(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-			goto auto_xlist;
 
 		case HCL_TOK_IDENT:
 		ident:
@@ -2117,6 +2110,7 @@ static int feed_continue_with_char (hcl_t* hcl, hcl_ooci_t c, hcl_flx_state_t st
 
 /* short-cuts to lexer state data */
 #define FLX_DT(hcl) (&((hcl)->c->feed.lx.u.dt))
+#define FLX_DI(hcl) (&((hcl)->c->feed.lx.u.di))
 #define FLX_HC(hcl) (&((hcl)->c->feed.lx.u.hc))
 #define FLX_HI(hcl) (&((hcl)->c->feed.lx.u.hi))
 #define FLX_HB(hcl) (&((hcl)->c->feed.lx.u.hb))
@@ -2127,6 +2121,11 @@ static int feed_continue_with_char (hcl_t* hcl, hcl_ooci_t c, hcl_flx_state_t st
 #define FLX_QT(hcl) (&((hcl)->c->feed.lx.u.qt))
 #define FLX_ST(hcl) (&((hcl)->c->feed.lx.u.st))
 #define FLX_BCP(hcl) (&((hcl)->c->feed.lx.u.bcp))
+
+static HCL_INLINE void init_flx_di (hcl_flx_di_t* di)
+{
+	HCL_MEMSET (di, 0, HCL_SIZEOF(*di));
+}
 
 static HCL_INLINE void init_flx_hc (hcl_flx_hc_t* hc)
 {
@@ -2250,6 +2249,11 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_COMMENT);
 			goto consumed;
 		*/
+
+		case '$':
+			init_flx_di (FLX_DI(hcl));
+			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_DOLLARED_IDENT);
+			goto consumed;
 
 		case '#':
 			/* no state date to initialize. just change the state */
@@ -2376,6 +2380,50 @@ not_consumed:
 	return 0;
 }
 
+static int flx_dollared_ident (hcl_t* hcl, hcl_ooci_t c)
+{
+	hcl_flx_di_t* di = FLX_DI(hcl);
+
+	/* di->char_count doesn't include the first '$' */
+
+	if (is_delimchar(c))
+	{
+		hcl_tok_type_t tok_type;
+
+		if (di->char_count == 0)
+		{
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_ILTOK, FLX_LOC(hcl), HCL_NULL,
+				"no valid character after dollar sign");
+			return -1;
+		}
+
+		if (get_directive_token_type(hcl, &tok_type) <= -1)
+		{
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_ILTOK, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
+				"invalid dollar-signed literal %.*js", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
+			return -1;
+		}
+		else
+		{
+			FEED_WRAP_UP (hcl, tok_type);
+			goto not_consumed;
+		}
+	}
+	else
+	{
+	ident_char:
+		ADD_TOKEN_CHAR (hcl, c);
+		di->char_count++;
+		goto consumed;
+	}
+
+consumed:
+	return 1;
+
+not_consumed:
+	return 0;
+}
+
 static int flx_hmarked_token (hcl_t* hcl, hcl_ooci_t c)
 {
 	/*
@@ -2467,11 +2515,11 @@ static int flx_hmarked_token (hcl_t* hcl, hcl_ooci_t c)
 			FEED_WRAP_UP_WITH_CHAR (hcl, c, HCL_TOK_DLPAREN);
 			goto consumed;
 
-#if 0
 		case '"': /* #" */
-			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_TOK_HMARKED_SYMBOL); /* symbol lieral */
+			reset_flx_token (hcl);
+			init_flx_qt (FLX_QT(hcl), HCL_TOK_SYMLIT, HCL_SYNERR_SYMLIT, c, '\\', 0, HCL_TYPE_MAX(hcl_oow_t), 0);
+			FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard prefix, quote and move on */
 			goto consumed;
-#endif
 
 		/* --------------------------- */
 		default:
@@ -2948,8 +2996,9 @@ static int flx_quoted_token (hcl_t* hcl, hcl_ooci_t c) /* string, character */
 
 		/* qt->tok_type + qt->is_byte assumes that the token types for
 		 * byte-string and byte-character literals are 1 greater than
-		 * string and character literals.  * see the definition of
-		 * hcl_tok_type_t in hcl-prv.h */
+		 * string and character literals. see the definition of
+		 * hcl_tok_type_t in hcl-prv.h.
+		 * qt->is_byte is always 0 for HCL_TOK_SYMLIT. */
 		FEED_WRAP_UP (hcl, (hcl_tok_type_t)(qt->tok_type + qt->is_byte)); /* HCL_TOK_STRLIT or HCL_TOK_CHARLIT */
 		if (TOKEN_NAME_LEN(hcl) < qt->min_len) goto invalid_token;
 		goto consumed;
@@ -3173,6 +3222,7 @@ static int feed_char (hcl_t* hcl, hcl_ooci_t c)
 		case HCL_FLX_BACKSLASHED:      return flx_backslashed(hcl, c);
 		case HCL_FLX_COMMENT:          return flx_comment(hcl, c);
 		case HCL_FLX_DELIM_TOKEN:      return flx_delim_token(hcl, c);
+		case HCL_FLX_DOLLARED_IDENT:   return flx_dollared_ident(hcl, c);
 		case HCL_FLX_HMARKED_TOKEN:    return flx_hmarked_token(hcl, c);
 		case HCL_FLX_HMARKED_B:        return flx_hmarked_b(hcl, c);
 		case HCL_FLX_HMARKED_CHAR:     return flx_hmarked_char(hcl, c);

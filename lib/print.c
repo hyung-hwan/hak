@@ -384,7 +384,8 @@ next:
 			/* Any needs for special action if SYNT(obj) is true?
 			 * I simply treat the syntax symbol as a normal symbol
 			 * for printing currently. */
-			if (hcl_bfmt_out(hcl, fmtout, "%.*js", HCL_OBJ_GET_SIZE(obj), HCL_OBJ_GET_CHAR_SLOT(obj)) <= -1) return -1;
+			/* TODO: escaping if needed */
+			if (hcl_bfmt_out(hcl, fmtout, "#\"%.*js\"", HCL_OBJ_GET_SIZE(obj), HCL_OBJ_GET_CHAR_SLOT(obj)) <= -1) return -1;
 			break;
 
 		case HCL_BRAND_STRING:
@@ -808,16 +809,35 @@ void hcl_dumpcnode (hcl_t* hcl, hcl_cnode_t* cnode, int newline)
 			case HCL_CNODE_DSYMBOL:
 			case HCL_CNODE_STRLIT:
 			case HCL_CNODE_BSTRLIT:
+			case HCL_CNODE_SYMLIT:
 			case HCL_CNODE_NUMLIT:
 			case HCL_CNODE_RADNUMLIT:
 			case HCL_CNODE_FPDECLIT:
 			case HCL_CNODE_SMPTRLIT:
 			case HCL_CNODE_ERRLIT:
+
 			case HCL_CNODE_NIL:
 			case HCL_CNODE_TRUE:
 			case HCL_CNODE_FALSE:
 			case HCL_CNODE_SELF:
 			case HCL_CNODE_SUPER:
+
+			case HCL_CNODE_CLASS:
+			case HCL_CNODE_FUN:
+			case HCL_CNODE_DO:
+			case HCL_CNODE_IF:
+			case HCL_CNODE_ELIF:
+			case HCL_CNODE_ELSE:
+			case HCL_CNODE_THROW:
+			case HCL_CNODE_TRY:
+			case HCL_CNODE_CATCH:
+			case HCL_CNODE_BREAK:
+			case HCL_CNODE_CONTINUE:
+			case HCL_CNODE_UNTIL:
+			case HCL_CNODE_WHILE:
+			case HCL_CNODE_RETURN:
+			case HCL_CNODE_REVERT:
+
 			case HCL_CNODE_ELLIPSIS:
 			case HCL_CNODE_TRPCOLONS:
 			case HCL_CNODE_DBLCOLONS:

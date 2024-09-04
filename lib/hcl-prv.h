@@ -282,12 +282,13 @@ enum hcl_tok_type_t
 {
 	HCL_TOK_EOF,
 
-	/* the following 4 items must be in this order for code
-	 * in flx_quote_token() in read.c */
+	/* the following 5 items must be in this order for code
+	 * in flx_quoted_token() in read.c */
 	HCL_TOK_CHARLIT,
 	HCL_TOK_BCHRLIT,
 	HCL_TOK_STRLIT,
 	HCL_TOK_BSTRLIT,
+	HCL_TOK_SYMLIT,
 
 	HCL_TOK_NUMLIT,
 	HCL_TOK_RADNUMLIT,
@@ -386,6 +387,7 @@ enum hcl_cnode_type_t
 	HCL_CNODE_DSYMBOL, /* dotted symbol */
 	HCL_CNODE_STRLIT,
 	HCL_CNODE_BSTRLIT,
+	HCL_CNODE_SYMLIT,
 	HCL_CNODE_NUMLIT,
 	HCL_CNODE_RADNUMLIT,
 	HCL_CNODE_FPDECLIT,
@@ -745,6 +747,12 @@ struct hcl_flx_dt_t
 	int col_next;
 };
 
+typedef struct hcl_flx_di_t hcl_flx_di_t; /* dollared-signed identifier */
+struct hcl_flx_di_t
+{
+	/* state data */
+	hcl_oow_t char_count;
+};
 
 typedef struct hcl_flx_hc_t hcl_flx_hc_t; /* hash-marked character like #\, #\newline */
 struct hcl_flx_hc_t
@@ -849,6 +857,7 @@ enum hcl_flx_state_t
 	HCL_FLX_BACKSLASHED,
 	HCL_FLX_COMMENT,
 	HCL_FLX_DELIM_TOKEN,
+	HCL_FLX_DOLLARED_IDENT,
 	HCL_FLX_HMARKED_TOKEN,  /* hash-marked token */
 	HCL_FLX_HMARKED_B,      /* #b - intermediate state before #b[ or #b-radixed binary number */
 	HCL_FLX_HMARKED_CHAR,   /* hash-marked character that begins with #\ */
@@ -942,6 +951,7 @@ struct hcl_compiler_t
 			union
 			{
 				hcl_flx_dt_t dt; /* delimiter token */
+				hcl_flx_di_t di; /* dollar-signed identifier */
 				hcl_flx_hc_t hc; /* hash-marked character */
 				hcl_flx_hi_t hi; /* hash-marked identifier */
 				hcl_flx_hb_t hb; /* #b ... */
@@ -2009,6 +2019,7 @@ hcl_cnode_t* hcl_makecnodesymbol (hcl_t* hcl, int flags, const hcl_loc_t* loc, c
 hcl_cnode_t* hcl_makecnodedsymbol (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok, int is_cla);
 hcl_cnode_t* hcl_makecnodestrlit (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodebstrlit (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
+hcl_cnode_t* hcl_makecnodesymlit (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodenumlit (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnoderadnumlit (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodefpdeclit (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);

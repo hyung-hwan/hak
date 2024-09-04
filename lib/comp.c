@@ -4875,6 +4875,11 @@ redo:
 			if (HCL_UNLIKELY(!lit)) return -1;
 			goto literal;
 
+		case HCL_CNODE_SYMLIT:
+			lit = hcl_makesymbol(hcl, HCL_CNODE_GET_TOKPTR(oprnd), HCL_CNODE_GET_TOKLEN(oprnd));
+			if (HCL_UNLIKELY(!lit)) return -1;
+			goto literal;
+
 		case HCL_CNODE_NUMLIT:
 			lit = string_to_num(hcl, HCL_CNODE_GET_TOK(oprnd), HCL_CNODE_GET_LOC(oprnd), 0);
 			if (HCL_UNLIKELY(!lit)) return -1;

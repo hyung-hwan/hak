@@ -101,6 +101,7 @@ static char* synerrstr[] =
 	"comment not closed",
 	"wrong character literal",
 	"wrong string literal",
+	"wrong symbol literal",
 	"invalid hashed literal",
 	"invalid numeric literal",
 	"out of integer range",
