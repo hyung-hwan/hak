@@ -360,7 +360,7 @@ hcl_oop_t hcl_makebytestringwithbytes (hcl_t* hcl, const hcl_oob_t* ptr, hcl_oow
 	hcl_oow_t i;
 	hcl_oob_t v;
 
-	b = (hcl_oop_byte_t)alloc_numeric_array(hcl, HCL_BRAND_BYTE_ARRAY, ptr, len, HCL_OBJ_TYPE_BYTE, HCL_SIZEOF(hcl_oob_t), 1, ngc);
+	b = (hcl_oop_byte_t)alloc_numeric_array(hcl, HCL_BRAND_BYTE_STRING, ptr, len, HCL_OBJ_TYPE_BYTE, HCL_SIZEOF(hcl_oob_t), 1, ngc);
 	if (HCL_UNLIKELY(!b))
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
@@ -374,7 +374,7 @@ hcl_oop_t hcl_makebytestringwithbytes (hcl_t* hcl, const hcl_oob_t* ptr, hcl_oow
 			HCL_OBJ_SET_BYTE_VAL(b, i, v);
 		}
 
-		HCL_OBJ_SET_CLASS (b, (hcl_oop_t)hcl->c_byte_array);
+		HCL_OBJ_SET_CLASS (b, (hcl_oop_t)hcl->c_byte_string);
 	}
 
 	return (hcl_oop_t)b;
@@ -391,7 +391,7 @@ hcl_oop_t hcl_makebytestring (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_t len, 
 	hcl_oow_t i;
 	hcl_oob_t v;
 
-	b = (hcl_oop_byte_t)alloc_numeric_array(hcl, HCL_BRAND_BYTE_ARRAY, HCL_NULL, len, HCL_OBJ_TYPE_BYTE, HCL_SIZEOF(hcl_oob_t), 1, ngc);
+	b = (hcl_oop_byte_t)alloc_numeric_array(hcl, HCL_BRAND_BYTE_STRING, HCL_NULL, len, HCL_OBJ_TYPE_BYTE, HCL_SIZEOF(hcl_oob_t), 1, ngc);
 	if (HCL_UNLIKELY(!b))
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
@@ -405,7 +405,7 @@ hcl_oop_t hcl_makebytestring (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_t len, 
 			HCL_OBJ_SET_BYTE_VAL(b, i, v);
 		}
 
-		HCL_OBJ_SET_CLASS (b, (hcl_oop_t)hcl->c_byte_array);
+		HCL_OBJ_SET_CLASS (b, (hcl_oop_t)hcl->c_byte_string);
 	}
 
 	return (hcl_oop_t)b;

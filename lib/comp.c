@@ -4903,7 +4903,7 @@ redo:
 			lit = HCL_ERROR_TO_OOP(oprnd->u.errlit.v);
 			goto literal;
 
-		case HCL_CNODE_SYMBOL:
+		case HCL_CNODE_SYMBOL: /* symbol. but not a literal. usually a variable */
 			if (compile_symbol(hcl, oprnd) <= -1) return -1;
 			goto done;
 

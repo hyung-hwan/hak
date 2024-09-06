@@ -202,6 +202,69 @@ static HCL_INLINE int print_single_char (hcl_t* hcl, hcl_fmtout_t* fmtout, hcl_o
 	return 0;
 }
 
+static HCL_INLINE int print_single_byte_char (hcl_t* hcl, hcl_fmtout_t* fmtout, hcl_bch_t ch)
+{
+	hcl_bchu_t chu = (hcl_bchu_t)ch;
+	if (chu == '\\' || chu == '\"')
+	{
+		if (hcl_bfmt_out(hcl, fmtout, "\\%hc", chu) <= -1) return -1;
+	}
+#if defined(HCL_OOCH_IS_UCH)
+	else if (chu < ' ')
+#else
+	else if (chu < ' ' || chu >= 0x80)
+#endif
+	{
+		hcl_bchu_t escaped;
+
+		switch (chu)
+		{
+			case '\0':
+				escaped = '0';
+				break;
+			case '\n':
+				escaped = 'n';
+				break;
+			case '\r':
+				escaped = 'r';
+				break;
+			case '\t':
+				escaped = 't';
+				break;
+			case '\f':
+				escaped = 'f';
+				break;
+			case '\b':
+				escaped = 'b';
+				break;
+			case '\v':
+				escaped = 'v';
+				break;
+			case '\a':
+				escaped = 'a';
+				break;
+			default:
+				escaped = chu;
+				break;
+		}
+
+		if (escaped == chu)
+		{
+			if (hcl_bfmt_out(hcl, fmtout, "\\x%02X", chu) <= -1) return -1;
+		}
+		else
+		{
+			if (hcl_bfmt_out(hcl, fmtout, "\\%hc", escaped) <= -1) return -1;
+		}
+	}
+	else
+	{
+		if (hcl_bfmt_out(hcl, fmtout, "%hc", ch) <= -1) return -1;
+	}
+
+	return 0;
+}
+
 int hcl_fmt_object (hcl_t* hcl, hcl_fmtout_t* fmtout, hcl_oop_t obj)
 {
 	hcl_oop_t cur;
@@ -385,7 +448,8 @@ next:
 			 * I simply treat the syntax symbol as a normal symbol
 			 * for printing currently. */
 			/* TODO: escaping if needed */
-			if (hcl_bfmt_out(hcl, fmtout, "#\"%.*js\"", HCL_OBJ_GET_SIZE(obj), HCL_OBJ_GET_CHAR_SLOT(obj)) <= -1) return -1;
+			/*if (hcl_bfmt_out(hcl, fmtout, "#\"%.*js\"", HCL_OBJ_GET_SIZE(obj), HCL_OBJ_GET_CHAR_SLOT(obj)) <= -1) return -1;*/
+			if (hcl_bfmt_out(hcl, fmtout, "%.*js", HCL_OBJ_GET_SIZE(obj), HCL_OBJ_GET_CHAR_SLOT(obj)) <= -1) return -1;
 			break;
 
 		case HCL_BRAND_STRING:
@@ -420,6 +484,40 @@ next:
 			}
 			break;
 		}
+
+		case HCL_BRAND_BYTE_STRING:
+		{
+			hcl_bch_t ch;
+			hcl_oow_t i;
+			int escape = 0;
+
+			for (i = 0; i < HCL_OBJ_GET_SIZE(obj); i++)
+			{
+				ch = ((hcl_oop_byte_t)obj)->slot[i];
+				if (ch < ' ' || ch == '\"' || ch == '\\')
+				{
+					escape = 1;
+					break;
+				}
+			}
+
+			if (escape)
+			{
+				if (hcl_bfmt_out(hcl, fmtout, "b\"") <= -1) return -1;
+				for (i = 0; i < HCL_OBJ_GET_SIZE(obj); i++)
+				{
+					ch = ((hcl_oop_byte_t)obj)->slot[i];
+					if (print_single_byte_char(hcl, fmtout, ch) <= -1) return -1;
+				}
+				if (hcl_bfmt_out(hcl, fmtout, "\"") <= -1) return -1;
+			}
+			else
+			{
+				if (hcl_bfmt_out(hcl, fmtout, "b\"%.*hs\"", HCL_OBJ_GET_SIZE(obj), HCL_OBJ_GET_BYTE_SLOT(obj)) <= -1) return -1;
+			}
+			break;
+		}
+
 
 		case HCL_BRAND_CONS:
 		{

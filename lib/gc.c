@@ -298,6 +298,18 @@ static kernel_class_info_t kernel_classes[__KCI_MAX__] =
 		HCL_OFFSETOF(hcl_t, c_string)
 	},
 
+	KCI(KCI_STRING) {
+		"ByteString",
+		KCI_FIXED_SIZED_COLLECTION,
+		HCL_BRAND_BYTE_STRING,
+		0,
+		0,
+		0,
+		HCL_CLASS_SPEC_FLAG_INDEXED,
+		HCL_OBJ_TYPE_BYTE,
+		HCL_OFFSETOF(hcl_t, c_byte_string)
+	},
+
 	KCI(KCI_SYMBOL) {
 		"Symbol",
 		KCI_STRING,

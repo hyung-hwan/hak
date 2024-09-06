@@ -1713,6 +1713,7 @@ struct hcl_t
 	hcl_oop_class_t c_indexed_collection; /* IndexedCollection */
 	hcl_oop_class_t c_fixed_sized_collection; /* FixedSizedCollection */
 	hcl_oop_class_t c_string; /* String */
+	hcl_oop_class_t c_byte_string; /* String */
 	hcl_oop_class_t c_symbol; /* Symbol */
 	hcl_oop_class_t c_array; /* Array */
 	hcl_oop_class_t c_byte_array; /* ByteArray */
@@ -2007,6 +2008,7 @@ enum hcl_brand_t
 	HCL_BRAND_BYTE_ARRAY,
 	HCL_BRAND_SYMBOL,
 	HCL_BRAND_STRING,
+	HCL_BRAND_BYTE_STRING,
 	HCL_BRAND_DIC,
 	HCL_BRAND_FPDEC, /* fixed-point decimal */
 
