@@ -42,14 +42,22 @@ hclgo_DEPENDENCIES = hclgo.bin
 ## let the linker to move hclgo.bin to the actual target
 hclgo_LINK = cp -pf hclgo.bin hclgo$(EXEEXT) || echo "FAILED TO LINK"
 
+if ENABLE_STATIC
+CGO_CFLAGS_EXTRA="-static"
+CGO_LDFLAGS_EXTRA="-static"
+else
+CGO_CFLAGS_EXTRA=""
+CGO_LDFLAGS_EXTRA=""
+endif
+
 hclgo.bin: lib/libhcl.la $(hclgo_OBJECTS)
 	cp -pf $(srcdir)/go.mod $(builddir)/go.mod >/dev/null 2>&1 || true
 	chmod u+w $(builddir)/go.mod ## with `make distcheck`, the echo's redirection to the file fails without this permission change
 	[ -f $(srcdir)/go.sum ] && cp -pf $(srcdir)/go.sum $(builddir)/go.sum >/dev/null 2>&1 || true
 	## ---------------------------------------------------------------
 	CC=$(CC) \
-	CGO_CFLAGS="-I$(abs_srcdir)/lib -I$(abs_builddir)/lib $(CFLAGS)" \
-	CGO_LDFLAGS="-L$(abs_builddir)/lib -L$(abs_builddir)/lib/.libs -lhcl -ldl $(LIBM)"  \
+	CGO_CFLAGS="-I$(abs_srcdir)/lib -I$(abs_builddir)/lib $(CFLAGS) $(CGO_CFLAGS_EXTRA)" \
+	CGO_LDFLAGS="-L$(abs_builddir)/lib -L$(abs_builddir)/lib/.libs -lhcl -ldl $(LIBM) $(CGO_LDFLAGS_EXTRA)"  \
 	go build -C $(srcdir) -ldflags "-X 'main.BINDIR=$(bindir)' -X 'main.SBINDIR=$(sbindir)' -X 'main.LIBDIR=$(libdir)' -X 'main.SYSCONFDIR=$(sysconfdir)'" -x -o $(abs_builddir)/hclgo.bin -modfile $(abs_builddir)/go.mod
 	## ---------------------------------------------------------------
 	go clean -C $(srcdir) -x -modfile $(abs_builddir)/go.mod

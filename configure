@@ -675,6 +675,10 @@ ENABLE_LIBUNWIND_FALSE
 ENABLE_LIBUNWIND_TRUE
 ENABLE_LIBLTDL_FALSE
 ENABLE_LIBLTDL_TRUE
+ENABLE_SHARED_FALSE
+ENABLE_SHARED_TRUE
+ENABLE_STATIC_FALSE
+ENABLE_STATIC_TRUE
 ENABLE_STATIC_MODULE_FALSE
 ENABLE_STATIC_MODULE_TRUE
 ENABLE_DYNAMIC_MODULE_FALSE
@@ -18717,6 +18721,24 @@ else
 fi
 
 
+
+ if test "x${enable_static_is}" = "xyes"; then
+  ENABLE_STATIC_TRUE=
+  ENABLE_STATIC_FALSE='#'
+else
+  ENABLE_STATIC_TRUE='#'
+  ENABLE_STATIC_FALSE=
+fi
+
+ if test "x${enable_shared_is}" = "xyes"; then
+  ENABLE_SHARED_TRUE=
+  ENABLE_SHARED_FALSE='#'
+else
+  ENABLE_SHARED_TRUE='#'
+  ENABLE_SHARED_FALSE=
+fi
+
+
 # Check whether --enable-libltdl was given.
 if test ${enable_libltdl+y}
 then :
@@ -19008,6 +19030,14 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_STATIC_MODULE_TRUE}" && test -z "${ENABLE_STATIC_MODULE_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_STATIC_MODULE\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ENABLE_STATIC_TRUE}" && test -z "${ENABLE_STATIC_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_STATIC\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ENABLE_SHARED_TRUE}" && test -z "${ENABLE_SHARED_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_SHARED\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_LIBLTDL_TRUE}" && test -z "${ENABLE_LIBLTDL_FALSE}"; then

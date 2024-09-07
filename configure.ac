@@ -617,6 +617,11 @@ then
 fi
 AM_CONDITIONAL(ENABLE_STATIC_MODULE, test "x${enable_static_module_is}" = "xyes")
 
+
+dnl =====  conditionals - ENABLE_STATIC and ENABLE_SHARED =====
+AM_CONDITIONAL(ENABLE_STATIC, test "x${enable_static_is}" = "xyes")
+AM_CONDITIONAL(ENABLE_SHARED, test "x${enable_shared_is}" = "xyes")
+
 dnl ===== enable-libltdl =====
 AC_ARG_ENABLE([libltdl],
 	[AS_HELP_STRING([--enable-libltdl],[use libltdl(default. no)])],

@@ -81,8 +81,10 @@ func handle_arguments(param *Param) error {
 		return fmt.Errorf("command line error - %s", err.Error())
 	}
 
-	if fs.NArg() != 1 {
-		return fmt.Errorf("no input file or too many input files specified")
+	if fs.NArg() < 1 {
+		return fmt.Errorf("no input file specified")
+	} else if fs.NArg() > 1 {
+		return fmt.Errorf("too many input files specified")
 	}
 
 	param.input_file = fs.Arg(0);
