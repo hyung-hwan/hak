@@ -132,6 +132,7 @@ enum {
 	KCI_INDEXED_COLLECTION,
 	KCI_FIXED_SIZED_COLLECTION,
 	KCI_STRING,
+	KCI_BYTE_STRING,
 	KCI_SYMBOL,
 	KCI_ARRAY,
 	KCI_BYTE_ARRAY,
@@ -298,7 +299,7 @@ static kernel_class_info_t kernel_classes[__KCI_MAX__] =
 		HCL_OFFSETOF(hcl_t, c_string)
 	},
 
-	KCI(KCI_STRING) {
+	KCI(KCI_BYTE_STRING) {
 		"ByteString",
 		KCI_FIXED_SIZED_COLLECTION,
 		HCL_BRAND_BYTE_STRING,
