@@ -1,9 +1,10 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
-	"strings"
+	//"strings"
 	"code.miflux.com/hyung-hwan/hcl/go"
 )
 
@@ -26,9 +27,17 @@ var SYSCONFDIR = "."
 type Param struct {
 	log_file   string
 	input_file string
+	heapsize   uint
+	modlibdirs string
+	fs_usage   func()
+}
+
+func empty_usage() {
+
 }
 
 func handle_arguments(param *Param) error {
+	/*
 	var nargs int = len(os.Args)
 	var i int
 
@@ -51,6 +60,36 @@ func handle_arguments(param *Param) error {
 
 	param.input_file = os.Args[i]
 	return nil
+	*/
+	var fs *flag.FlagSet
+	var heapsize *uint
+	var modlibdirs *string
+	var log *string
+	var err error
+
+	fs = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+
+	heapsize = fs.Uint("heapsize", 0, "specify heap size")
+	modlibdirs = fs.String("modlibdirs", "", "specify module library directories")
+	log = fs.String("log", "", "specify log file")
+
+	param.fs_usage = fs.Usage
+	fs.Usage = empty_usage // i don't want fs.Parse() print the usage
+	err = fs.Parse(os.Args[1:])
+	fs.Usage = param.fs_usage // restore it
+	if err != nil {
+		return fmt.Errorf("command line error - %s", err.Error())
+	}
+
+	if fs.NArg() != 1 {
+		return fmt.Errorf("no input file or too many input files specified")
+	}
+
+	param.input_file = fs.Arg(0);
+	param.log_file = *log // TODO: parse the option part  (e.g. --log /dev/stderr,debug+)
+	param.heapsize = *heapsize // TODO: set this to hcl
+	param.modlibdirs = *modlibdirs // TODO: set this to hcl
+	return nil;
 }
 
 func main() {
@@ -66,6 +105,7 @@ func main() {
 	err = handle_arguments(&param)
 	if err != nil {
 		fmt.Printf("Error: %s\n", err.Error())
+		param.fs_usage()
 		os.Exit(1)
 	}
 

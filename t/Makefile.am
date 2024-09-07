@@ -32,8 +32,10 @@ TESTS = $(check_PROGRAMS) $(check_SCRIPTS) $(check_ERRORS)
 
 TEST_EXTENSIONS = .hcl .err
 
-HCL_LOG_COMPILER = $(SHELL) $(abs_srcdir)/run.sh ../bin/hcl --modlibdirs="@abs_top_builddir@/mod:@abs_top_builddir@/mod/.libs" --heapsize=0
+HCLBIN = ../bin/hcl
+
+HCL_LOG_COMPILER = $(SHELL) $(abs_srcdir)/run.sh $(HCLBIN) --modlibdirs="@abs_top_builddir@/mod:@abs_top_builddir@/mod/.libs" --heapsize=0
 AM_HCL_LOG_FLAGS =
 
-ERR_LOG_COMPILER = $(SHELL) $(abs_srcdir)/err.sh ../bin/hcl --modlibdirs="@abs_top_builddir@/mod:@abs_top_builddir@/mod/.libs" --heapsize=0
+ERR_LOG_COMPILER = $(SHELL) $(abs_srcdir)/err.sh $(HCLBIN) --modlibdirs="@abs_top_builddir@/mod:@abs_top_builddir@/mod/.libs" --heapsize=0
 AM_ERR_LOG_FLAGS =
