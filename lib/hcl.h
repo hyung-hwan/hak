@@ -366,7 +366,7 @@ typedef enum hcl_obj_type_t hcl_obj_type_t;
 #define HCL_OBJ_FLAGS_MOVED_BITS     (2) /* 16 */
 #define HCL_OBJ_FLAGS_NGC_BITS       (1) /* 17 */
 #define HCL_OBJ_FLAGS_TRAILER_BITS   (1) /* 18 */
-#define HCL_OBJ_FLAGS_SYNCODE_BITS   (5) /* 23 */
+#define HCL_OBJ_FLAGS_SYNCODE_BITS   (5) /* 23 - syncode for symbol, concode for cons */
 #define HCL_OBJ_FLAGS_BRAND_BITS     (6) /* 29 */
 #define HCL_OBJ_FLAGS_FLEXI_BITS     (1) /* 30 */
 #define HCL_OBJ_FLAGS_RDONLY_BITS    (1) /* 31 */
@@ -2086,19 +2086,30 @@ typedef enum hcl_concode_t hcl_concode_t;
 #define HCL_IS_NIL(hcl,v) (v == (hcl)->_nil)
 #define HCL_IS_TRUE(hcl,v) (v == (hcl)->_true)
 #define HCL_IS_FALSE(hcl,v) (v == (hcl)->_false)
-#define HCL_IS_SYMBOL(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_SYMBOL)
+
+/*#define HCL_IS_SYMBOL(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_SYMBOL)*/
+#define HCL_IS_SYMBOL(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)hcl->c_symbol)
+
 #define HCL_IS_CONTEXT(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_CONTEXT)
 #define HCL_IS_FUNCTION(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_FUNCTION)
 #define HCL_IS_BLOCK(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_BLOCK)
 #define HCL_IS_CLASS(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_CLASS)
 #define HCL_IS_INSTANCE(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_INSTANCE)
 #define HCL_IS_PROCESS(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_PROCESS)
-#define HCL_IS_CONS(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_CONS)
+
+/*#define HCL_IS_CONS(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_CONS)*/
+#define HCL_IS_CONS(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)hcl->c_cons)
 #define HCL_IS_CONS_CONCODED(hcl,v,concode) (HCL_IS_CONS(hcl,v) && HCL_OBJ_GET_FLAGS_SYNCODE(v) == (concode))
-#define HCL_IS_ARRAY(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_ARRAY)
-/*#define HCL_IS_ARRAY(hcl,v) (HCL_CLASSOF(hcl,v) == hcl->c_array) TODO: change to check the class instead?? remove brands?? */
-#define HCL_IS_BYTEARRAY(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_BYTE_ARRAY)
-#define HCL_IS_DIC(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_DIC)
+
+/*#define HCL_IS_ARRAY(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_ARRAY)*/
+#define HCL_IS_ARRAY(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)hcl->c_array)
+
+/*#define HCL_IS_BYTEARRAY(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_BYTE_ARRAY)*/
+#define HCL_IS_BYTEARRAY(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)hcl->c_byte_array)
+
+/*#define HCL_IS_DIC(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_DIC)*/
+#define HCL_IS_DIC(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)hcl->c_dictionary)
+
 #define HCL_IS_PRIM(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_PRIM)
 #define HCL_IS_PBIGINT(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_PBIGINT)
 #define HCL_IS_NBIGINT(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_NBIGINT)

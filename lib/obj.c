@@ -259,18 +259,18 @@ hcl_oop_t hcl_hatchundef (hcl_t* hcl)
 	/* create the undef object for bootstrapping.
 	 * this function doesn't set the class field */
 
-	hcl_oop_t o;
-	o = hcl_allocoopobj(hcl, HCL_BRAND_UNDEF, 0);
-	if (HCL_LIKELY(o))
-	{
-		HCL_OBJ_SET_FLAGS_KERNEL(o, 1);
-	}
-	else
+	hcl_oop_t v;
+	v = hcl_allocoopobj(hcl, HCL_BRAND_UNDEF, 0);
+	if (HCL_UNLIKELY(!v))
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
 		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make undef - %js", orgmsg);
 	}
-	return o;
+	else
+	{
+		HCL_OBJ_SET_FLAGS_KERNEL(v, 1);
+	}
+	return v;
 }
 
 hcl_oop_t hcl_hatchnil (hcl_t* hcl)
@@ -278,18 +278,18 @@ hcl_oop_t hcl_hatchnil (hcl_t* hcl)
 	/* create the nil object for bootstrapping.
 	 * this function doesn't set the class field */
 
-	hcl_oop_t o;
-	o = hcl_allocoopobj(hcl, HCL_BRAND_NIL, 0);
-	if (HCL_LIKELY(o))
-	{
-		HCL_OBJ_SET_FLAGS_KERNEL(o, 1);
-	}
-	else
+	hcl_oop_t v;
+	v = hcl_allocoopobj(hcl, HCL_BRAND_NIL, 0);
+	if (HCL_UNLIKELY(!v))
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
 		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make nil - %js", orgmsg);
 	}
-	return o;
+	else
+	{
+		HCL_OBJ_SET_FLAGS_KERNEL(v, 1);
+	}
+	return v;
 }
 
 hcl_oop_t hcl_makebigint (hcl_t* hcl, int brand, const hcl_liw_t* ptr, hcl_oow_t len)

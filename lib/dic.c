@@ -456,7 +456,7 @@ found:
 
 hcl_oop_t hcl_makedic (hcl_t* hcl, hcl_oow_t inisize)
 {
-/* TODO: use hcl_instantiate() */
+#if 0
 	hcl_oop_dic_t obj;
 
 	obj = (hcl_oop_dic_t)hcl_allocoopobj(hcl, HCL_BRAND_DIC, 2);
@@ -475,6 +475,37 @@ hcl_oop_t hcl_makedic (hcl_t* hcl, hcl_oow_t inisize)
 	}
 
 	return (hcl_oop_t)obj;
+#else
+	hcl_oop_dic_t v;
+
+	v = (hcl_oop_dic_t)hcl_instantiate(hcl, hcl->c_dictionary, HCL_NULL, 0);
+	if (HCL_UNLIKELY(!v))
+	{
+		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make dictionary - %js", orgmsg);
+	}
+	else
+	{
+		hcl_oop_oop_t bucket;
+
+		v->tally = HCL_SMOOI_TO_OOP(0);
+
+		hcl_pushvolat (hcl, (hcl_oop_t*)&v);
+		bucket = (hcl_oop_oop_t)hcl_makearray(hcl, inisize);
+		hcl_popvolat (hcl);
+
+		if (HCL_UNLIKELY(!bucket))
+		{
+			/* TODO: can I remove the instanated object immediately above?
+			 *       it must be ok as the dictionary object is never referenced.
+			 *       some care must be taken not to screw up gc metadata...  */
+			v = HCL_NULL;
+		}
+		else v->bucket = bucket;
+	}
+
+	return (hcl_oop_t)v;
+#endif
 }
 
 int hcl_walkdic (hcl_t* hcl, hcl_oop_dic_t dic, hcl_dic_walker_t walker, void* ctx)

@@ -172,10 +172,10 @@ int hcl_init (hcl_t* hcl, hcl_mmgr_t* mmgr, const hcl_vmprim_t* vmprim)
 	hcl->tagged_brands[HCL_OOP_TAG_CHAR] = HCL_BRAND_CHARACTER;
 	hcl->tagged_brands[HCL_OOP_TAG_ERROR] = HCL_BRAND_ERROR;
 
-     hcl->tagged_classes[HCL_OOP_TAG_SMOOI] = &hcl->c_small_integer;
-     hcl->tagged_classes[HCL_OOP_TAG_SMPTR] = &hcl->c_small_pointer;
-     hcl->tagged_classes[HCL_OOP_TAG_CHAR] = &hcl->c_character;
-     hcl->tagged_classes[HCL_OOP_TAG_ERROR] = &hcl->c_error;
+	hcl->tagged_classes[HCL_OOP_TAG_SMOOI] = &hcl->c_small_integer;
+	hcl->tagged_classes[HCL_OOP_TAG_SMPTR] = &hcl->c_small_pointer;
+	hcl->tagged_classes[HCL_OOP_TAG_CHAR] = &hcl->c_character;
+	hcl->tagged_classes[HCL_OOP_TAG_ERROR] = &hcl->c_error;
 
 	hcl->proc_map_free_first = -1;
 	hcl->proc_map_free_last = -1;
