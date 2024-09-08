@@ -32,7 +32,7 @@ TESTS = $(check_PROGRAMS) $(check_SCRIPTS) $(check_ERRORS)
 
 TEST_EXTENSIONS = .hcl .err
 
-HCLBIN = ../bin/hcl
+HCLBIN = $(top_builddir)/bin/hcl
 
 HCL_LOG_COMPILER = $(SHELL) $(abs_srcdir)/run.sh $(HCLBIN) --modlibdirs="@abs_top_builddir@/mod:@abs_top_builddir@/mod/.libs" --heapsize=0
 AM_HCL_LOG_FLAGS =

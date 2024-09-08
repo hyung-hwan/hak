@@ -2695,7 +2695,7 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 
 		/* set starting point past the added space (+1 to index, -1 to length) */
 		adj = (hcl->c->tv.s.ptr[vardcl.ivar_start] == ' ');
-		tmp = hcl_makestring(hcl, &hcl->c->tv.s.ptr[vardcl.ivar_start + adj], vardcl.ivar_len - adj, 0);
+		tmp = hcl_makestring(hcl, &hcl->c->tv.s.ptr[vardcl.ivar_start + adj], vardcl.ivar_len - adj);
 		if (HCL_UNLIKELY(!tmp)) goto oops;
 		if (emit_push_literal(hcl, tmp, &cf->u._class.start_loc) <= -1) goto oops;
 	}
@@ -2713,7 +2713,7 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 		}
 
 		adj = (hcl->c->tv.s.ptr[vardcl.cvar_start] == ' ');
-		tmp = hcl_makestring(hcl, &hcl->c->tv.s.ptr[vardcl.cvar_start + adj], vardcl.cvar_len - adj, 0);
+		tmp = hcl_makestring(hcl, &hcl->c->tv.s.ptr[vardcl.cvar_start + adj], vardcl.cvar_len - adj);
 		if (HCL_UNLIKELY(!tmp)) goto oops;
 		if (emit_push_literal(hcl, tmp, &cf->u._class.start_loc) <= -1) goto oops;
 	}
@@ -4866,12 +4866,12 @@ redo:
 			goto literal;
 
 		case HCL_CNODE_STRLIT:
-			lit = hcl_makestring(hcl, HCL_CNODE_GET_TOKPTR(oprnd), HCL_CNODE_GET_TOKLEN(oprnd), 0);
+			lit = hcl_makestring(hcl, HCL_CNODE_GET_TOKPTR(oprnd), HCL_CNODE_GET_TOKLEN(oprnd));
 			if (HCL_UNLIKELY(!lit)) return -1;
 			goto literal;
 
 		case HCL_CNODE_BSTRLIT:
-			lit = hcl_makebytestring(hcl, HCL_CNODE_GET_TOKPTR(oprnd), HCL_CNODE_GET_TOKLEN(oprnd), 0);
+			lit = hcl_makebytestring(hcl, HCL_CNODE_GET_TOKPTR(oprnd), HCL_CNODE_GET_TOKLEN(oprnd));
 			if (HCL_UNLIKELY(!lit)) return -1;
 			goto literal;
 

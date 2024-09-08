@@ -36,20 +36,23 @@ do { | k | set k 20; printf "k=%d\n" k; };
 
 ## Literals
 - integer
-- character
+- character `'c'`
 - small pointer
 - error
-- string
-- dictionary `#{ }`
-- array `[ ]`
-- byte array `#[ ]`
-- list `#( )`
+- string `"string"`
+- byte-string `b"string"`
+- symbol `#"symbol"`
 
 ## Basic Expressions
+- dictionary `#{ }`
+- array `#[ ]`
+- byte array `#b[ ]`
+- list `#( )`
 - function calls `( )`
-- message sends `(: )`
+- message sends `(rcv:msg arg1 ...)`
 - variable declaration `| |`
-- class variable delcarations `:: | |`
+- class variable delcarations `:: [ v1 [cv1 cv2 ...] v2 ... ] `
+- assignment `var :=  value`
 
 ## Builtin functions
 

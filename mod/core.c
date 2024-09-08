@@ -181,6 +181,12 @@ static hcl_pfrc_t __basic_at_put (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs, i
 		return HCL_PF_FAILURE;
 	}
 
+	if (HCL_OBJ_GET_FLAGS_RDONLY(obj))
+	{
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "receiver immutable - %O", obj);
+		return HCL_PF_FAILURE;
+	}
+
 	if (hcl_inttooow_noseterr(hcl, pos, &index) <= 0)
 	{
 		/* negative integer or not integer */
@@ -189,9 +195,10 @@ static hcl_pfrc_t __basic_at_put (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs, i
 	}
 
 	_class = (hcl_oop_class_t)HCL_CLASSOF(hcl, obj);
-	if (span_fixed)
+	if (span_fixed) /* include the fixed part in positioning */
 	{
 		hcl_oow_t size;
+
 		size = HCL_OBJ_GET_SIZE(obj);
 		if (index >= size)
 		{

@@ -65,7 +65,7 @@ static hcl_oop_oop_t expand_bucket (hcl_t* hcl, hcl_oop_oop_t oldbuc)
 	}
 
 	hcl_pushvolat (hcl, (hcl_oop_t*)&oldbuc);
-	newbuc = (hcl_oop_oop_t)hcl_makearray (hcl, newsz, 0);
+	newbuc = (hcl_oop_oop_t)hcl_makearray(hcl, newsz);
 	hcl_popvolat (hcl);
 	if (!newbuc) return HCL_NULL;
 
@@ -467,7 +467,7 @@ hcl_oop_t hcl_makedic (hcl_t* hcl, hcl_oow_t inisize)
 		obj->tally = HCL_SMOOI_TO_OOP(0);
 
 		hcl_pushvolat (hcl, (hcl_oop_t*)&obj);
-		bucket = (hcl_oop_oop_t)hcl_makearray(hcl, inisize, 0);
+		bucket = (hcl_oop_oop_t)hcl_makearray(hcl, inisize);
 		hcl_popvolat (hcl);
 
 		if (!bucket) obj = HCL_NULL;

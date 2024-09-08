@@ -4882,7 +4882,7 @@ hcl_oop_t hcl_inttostr (hcl_t* hcl, hcl_oop_t num, int flagged_radix)
 			hcl->inttostr.xbuf.len = xlen;
 			return hcl->_nil;
 		}
-		return hcl_makestring(hcl, xbuf, xlen, 0);
+		return hcl_makestring(hcl, xbuf, xlen);
 	}
 
 	as = HCL_OBJ_GET_SIZE(num);
@@ -4931,7 +4931,7 @@ hcl_oop_t hcl_inttostr (hcl_t* hcl, hcl_oop_t num, int flagged_radix)
 		return hcl->_nil;
 	}
 
-	return hcl_makestring(hcl, xbuf, xlen, 0);
+	return hcl_makestring(hcl, xbuf, xlen);
 
 oops_einval:
 	hcl_seterrnum (hcl, HCL_EINVAL);

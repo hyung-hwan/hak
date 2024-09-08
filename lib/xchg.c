@@ -368,7 +368,7 @@ int hcl_unmarshalcode (hcl_t* hcl, hcl_code_t* code, hcl_xchg_reader_t rdr, void
 				}
 				nbytes = hcl_leoowtoh(w);
 
-				ns = hcl_makestring(hcl, HCL_NULL, nchars, 0);
+				ns = hcl_makestring(hcl, HCL_NULL, nchars);
 				if (HCL_UNLIKELY(!ns)) goto oops;
 
 				ucspos = 0;

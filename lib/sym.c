@@ -59,7 +59,7 @@ static hcl_oop_oop_t expand_bucket (hcl_t* hcl, hcl_oop_oop_t oldbuc)
 	}
 
 	hcl_pushvolat (hcl, (hcl_oop_t*)&oldbuc);
-	newbuc = (hcl_oop_oop_t)hcl_makearray(hcl, newsz, 0);
+	newbuc = (hcl_oop_oop_t)hcl_makearray(hcl, newsz);
 	hcl_popvolat (hcl);
 	if (!newbuc) return HCL_NULL;
 

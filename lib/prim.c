@@ -204,7 +204,7 @@ static hcl_pfrc_t pf_sprintf (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 	else
 	{
 		hcl_oop_t str;
-		str = hcl_makestring(hcl, hcl->sprintf.xbuf.ptr, hcl->sprintf.xbuf.len, 0);
+		str = hcl_makestring(hcl, hcl->sprintf.xbuf.ptr, hcl->sprintf.xbuf.len);
 		if (!str) return HCL_PF_FAILURE;
 
 		HCL_STACK_SETRET (hcl, nargs, str);
@@ -487,7 +487,7 @@ static hcl_pfrc_t pf_gets (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 		}
 		else
 		{
-			v = hcl_makestring(hcl, ptr, len, 0);
+			v = hcl_makestring(hcl, ptr, len);
 			if (ptr != buf) hcl_freemem(hcl, ptr);
 			if (HCL_UNLIKELY(!v)) return HCL_PF_FAILURE;
 		}

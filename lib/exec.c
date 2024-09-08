@@ -2453,7 +2453,7 @@ static int do_throw_with_internal_errmsg (hcl_t* hcl, hcl_ooi_t ip)
 {
 	hcl_oop_t ex;
 /* TODO: consider throwing an exception object instead of a string? */
-	ex = hcl_makestring(hcl, hcl->errmsg.buf, hcl->errmsg.len, 0); /* TODO: include error location in the message? */
+	ex = hcl_makestring(hcl, hcl->errmsg.buf, hcl->errmsg.len); /* TODO: include error location in the message? */
 	if (HCL_UNLIKELY(!ex)) return -1;
 	if (do_throw(hcl, ex, ip) <= -1) return -1;
 	return 0;
@@ -4051,7 +4051,7 @@ hcl_logbfmt (hcl, HCL_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d nc
 			case HCL_CODE_CLASS_CIMSTORE:
 			{
 				hcl_oop_t _class;
-				hcl_oop_t mdic, cons, blk, car, cdr, name;
+				hcl_oop_t mdic, blk, name;
 				int mtype;
 				static hcl_bch_t* pfx[] = { "c", "i", "ci" };
 
@@ -4464,8 +4464,7 @@ hcl_logbfmt (hcl, HCL_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d nc
 				LOG_INST_1 (hcl, "make_array %zu", b1);
 
 				/* create an empty array */
-				/*t = hcl_makearray(hcl, b1, 0);*/
-				t = hcl_instantiate(hcl, hcl->c_array, HCL_NULL, b1);
+				t = hcl_makearray(hcl, b1);
 				if (HCL_UNLIKELY(!t)) goto oops_with_errmsg_supplement;
 
 				HCL_STACK_PUSH (hcl, t); /* push the array created */
@@ -4499,8 +4498,7 @@ hcl_logbfmt (hcl, HCL_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d nc
 				LOG_INST_1 (hcl, "make_bytearray %zu", b1);
 
 				/* create an empty array */
-				/*t = hcl_makebytearray(hcl, HCL_NULL, b1);*/
-				t = hcl_instantiate(hcl, hcl->c_byte_array, HCL_NULL, b1);
+				t = hcl_makebytearray(hcl, HCL_NULL, b1);
 				if (HCL_UNLIKELY(!t)) goto oops_with_errmsg_supplement;
 
 				HCL_STACK_PUSH (hcl, t); /* push the byte array created */

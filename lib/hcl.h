@@ -359,22 +359,22 @@ typedef enum hcl_obj_type_t hcl_obj_type_t;
  * size calculation and the access to the payload fields become more complex.
  * Therefore, i've dropped the idea.
  * ========================================================================= */
-#define HCL_OBJ_FLAGS_TYPE_BITS      (6)
-#define HCL_OBJ_FLAGS_UNIT_BITS      (5)
-#define HCL_OBJ_FLAGS_EXTRA_BITS     (1)
-#define HCL_OBJ_FLAGS_KERNEL_BITS    (2)
-#define HCL_OBJ_FLAGS_MOVED_BITS     (2)
-#define HCL_OBJ_FLAGS_NGC_BITS       (1)
-#define HCL_OBJ_FLAGS_TRAILER_BITS   (1)
-#define HCL_OBJ_FLAGS_SYNCODE_BITS   (5)
-#define HCL_OBJ_FLAGS_BRAND_BITS     (6)
-#define HCL_OBJ_FLAGS_FLEXI_BITS     (1)
+#define HCL_OBJ_FLAGS_TYPE_BITS      (6) /* 6 */
+#define HCL_OBJ_FLAGS_UNIT_BITS      (5) /* 11 */
+#define HCL_OBJ_FLAGS_EXTRA_BITS     (1) /* 12 */
+#define HCL_OBJ_FLAGS_KERNEL_BITS    (2) /* 14 */
+#define HCL_OBJ_FLAGS_MOVED_BITS     (2) /* 16 */
+#define HCL_OBJ_FLAGS_NGC_BITS       (1) /* 17 */
+#define HCL_OBJ_FLAGS_TRAILER_BITS   (1) /* 18 */
+#define HCL_OBJ_FLAGS_SYNCODE_BITS   (5) /* 23 */
+#define HCL_OBJ_FLAGS_BRAND_BITS     (6) /* 29 */
+#define HCL_OBJ_FLAGS_FLEXI_BITS     (1) /* 30 */
+#define HCL_OBJ_FLAGS_RDONLY_BITS    (1) /* 31 */
 
 /*
 #define HCL_OBJ_FLAGS_PERM_BITS       1
 #define HCL_OBJ_FLAGS_MOVED_BITS      2
 #define HCL_OBJ_FLAGS_PROC_BITS       2
-#define HCL_OBJ_FLAGS_RDONLY_BITS     1
 #define HCL_OBJ_FLAGS_GCFIN_BITS      4
 #define HCL_OBJ_FLAGS_TRAILER_BITS    1
 #define HCL_OBJ_FLAGS_HASH_BITS       2
@@ -390,7 +390,8 @@ typedef enum hcl_obj_type_t hcl_obj_type_t;
 #define HCL_OBJ_FLAGS_TRAILER_SHIFT     (HCL_OBJ_FLAGS_SYNCODE_BITS   + HCL_OBJ_FLAGS_SYNCODE_SHIFT)
 #define HCL_OBJ_FLAGS_SYNCODE_SHIFT     (HCL_OBJ_FLAGS_BRAND_BITS     + HCL_OBJ_FLAGS_BRAND_SHIFT)
 #define HCL_OBJ_FLAGS_BRAND_SHIFT       (HCL_OBJ_FLAGS_FLEXI_BITS     + HCL_OBJ_FLAGS_FLEXI_SHIFT)
-#define HCL_OBJ_FLAGS_FLEXI_SHIFT       (0)
+#define HCL_OBJ_FLAGS_FLEXI_SHIFT       (HCL_OBJ_FLAGS_RDONLY_BITS    + HCL_OBJ_FLAGS_RDONLY_SHIFT)
+#define HCL_OBJ_FLAGS_RDONLY_SHIFT      (0)
 
 #define HCL_OBJ_GET_FLAGS_TYPE(oop)        HCL_GETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_TYPE_SHIFT,      HCL_OBJ_FLAGS_TYPE_BITS)
 #define HCL_OBJ_GET_FLAGS_UNIT(oop)        HCL_GETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_UNIT_SHIFT,      HCL_OBJ_FLAGS_UNIT_BITS)
@@ -402,6 +403,7 @@ typedef enum hcl_obj_type_t hcl_obj_type_t;
 #define HCL_OBJ_GET_FLAGS_SYNCODE(oop)     HCL_GETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_SYNCODE_SHIFT,   HCL_OBJ_FLAGS_SYNCODE_BITS)
 #define HCL_OBJ_GET_FLAGS_BRAND(oop)       HCL_GETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_BRAND_SHIFT,     HCL_OBJ_FLAGS_BRAND_BITS)
 #define HCL_OBJ_GET_FLAGS_FLEXI(oop)       HCL_GETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_FLEXI_SHIFT,     HCL_OBJ_FLAGS_FLEXI_BITS)
+#define HCL_OBJ_GET_FLAGS_RDONLY(oop)      HCL_GETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_RDONLY_SHIFT,    HCL_OBJ_FLAGS_RDONLY_BITS)
 
 #define HCL_OBJ_SET_FLAGS_TYPE(oop,v)      HCL_SETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_TYPE_SHIFT,      HCL_OBJ_FLAGS_TYPE_BITS,      v)
 #define HCL_OBJ_SET_FLAGS_UNIT(oop,v)      HCL_SETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_UNIT_SHIFT,      HCL_OBJ_FLAGS_UNIT_BITS,      v)
@@ -413,6 +415,7 @@ typedef enum hcl_obj_type_t hcl_obj_type_t;
 #define HCL_OBJ_SET_FLAGS_SYNCODE(oop,v)   HCL_SETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_SYNCODE_SHIFT,   HCL_OBJ_FLAGS_SYNCODE_BITS,   v)
 #define HCL_OBJ_SET_FLAGS_BRAND(oop,v)     HCL_SETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_BRAND_SHIFT,     HCL_OBJ_FLAGS_BRAND_BITS,     v)
 #define HCL_OBJ_SET_FLAGS_FLEXI(oop,v)     HCL_SETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_FLEXI_SHIFT,     HCL_OBJ_FLAGS_FLEXI_BITS, v)
+#define HCL_OBJ_SET_FLAGS_RDONLY(oop,v)    HCL_SETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_RDONLY_SHIFT,    HCL_OBJ_FLAGS_RDONLY_BITS, v)
 
 #define HCL_OBJ_GET_SIZE(oop) ((oop)->_size)
 #define HCL_OBJ_GET_CLASS(oop) ((oop)->_class)
@@ -2859,8 +2862,7 @@ HCL_EXPORT hcl_oop_t hcl_makecons (
 
 HCL_EXPORT hcl_oop_t hcl_makearray (
 	hcl_t*     hcl,
-	hcl_oow_t  size,
-	int        ngc
+	hcl_oow_t  len
 );
 
 HCL_EXPORT hcl_oop_t hcl_makebytearray (
@@ -2872,22 +2874,19 @@ HCL_EXPORT hcl_oop_t hcl_makebytearray (
 HCL_EXPORT hcl_oop_t hcl_makebytestringwithbytes (
 	hcl_t*           hcl,
 	const hcl_oob_t* ptr,
-	hcl_oow_t        len,
-	int              ngc
+	hcl_oow_t        len
 );
 
 HCL_EXPORT hcl_oop_t hcl_makebytestring (
 	hcl_t*            hcl,
 	const hcl_ooch_t* ptr,
-	hcl_oow_t         len,
-	int               ngc
+	hcl_oow_t         len
 );
 
 HCL_EXPORT hcl_oop_t hcl_makestring (
 	hcl_t*            hcl,
 	const hcl_ooch_t* ptr,
-	hcl_oow_t         len,
-	int               ngc
+	hcl_oow_t         len
 );
 
 HCL_EXPORT hcl_oop_t hcl_makefpdec (

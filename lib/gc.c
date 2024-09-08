@@ -315,7 +315,7 @@ static kernel_class_info_t kernel_classes[__KCI_MAX__] =
 		"Symbol",
 		KCI_STRING,
 		HCL_BRAND_SYMBOL,
-		HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
+		HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED, /* TODO: these flags not implemented yet */
 		0,
 		0,
 		HCL_CLASS_SPEC_FLAG_INDEXED | HCL_CLASS_SPEC_FLAG_IMMUTABLE,
@@ -1416,18 +1416,16 @@ hcl_oop_t hcl_shallowcopy (hcl_t* hcl, hcl_oop_t oop)
 static hcl_oop_class_t alloc_kernel_class (hcl_t* hcl, int class_flags, hcl_oow_t num_classvars, hcl_oow_t spec, hcl_ooi_t nivars_super, int ibrand)
 {
 	hcl_oop_class_t c;
-#if 0
 	hcl_ooi_t cspec;
-#endif
 
 	c = (hcl_oop_class_t)hcl_allocoopobj(hcl, HCL_BRAND_CLASS, HCL_CLASS_NAMED_INSTVARS + num_classvars);
 	if (HCL_UNLIKELY(!c)) return HCL_NULL;
 
 	HCL_OBJ_SET_FLAGS_KERNEL (c, HCL_OBJ_FLAGS_KERNEL_IMMATURE);
 
-#if 0 /* TODO extend the flags and uncomment this part */
 	cspec = kernel_classes[KCI_CLASS].class_spec_flags;
 	if (HCL_CLASS_SPEC_IS_IMMUTABLE(cspec)) HCL_OBJ_SET_FLAGS_RDONLY (c, 1); /* just for completeness of code. will never be true as it's not defined in the kernel class info table */
+#if 0 /* TODO extend the flags and uncomment this part */
 	if (HCL_CLASS_SPEC_IS_UNCOPYABLE(cspec)) HCL_OBJ_SET_FLAGS_UNCOPYABLE (c, 1); /* class itself is uncopyable */
 #endif
 
