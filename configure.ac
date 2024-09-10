@@ -585,8 +585,8 @@ fi
 dnl ===== enable-dynamic-module =====
 AC_ARG_ENABLE([dynamic-module],
 	[AS_HELP_STRING([--enable-dynamic-module],[enable dynamic module capability(default. yes)])],
-	enable_dynamic_modules=$enableval,
-	enable_dynamic_modules=yes
+	enable_dynamic_module=$enableval,
+	enable_dynamic_module=yes
 )
 if test "x${enable_shared}" = "xno"
 then

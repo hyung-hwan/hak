@@ -18665,9 +18665,9 @@ fi
 # Check whether --enable-dynamic-module was given.
 if test ${enable_dynamic_module+y}
 then :
-  enableval=$enable_dynamic_module; enable_dynamic_modules=$enableval
+  enableval=$enable_dynamic_module; enable_dynamic_module=$enableval
 else $as_nop
-  enable_dynamic_modules=yes
+  enable_dynamic_module=yes
 
 fi
 
