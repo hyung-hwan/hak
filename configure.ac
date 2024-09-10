@@ -441,7 +441,7 @@ then
 
 			AC_CHECK_LIB([quadmath], [quadmath_snprintf], [
 				QUADMATH_LIBS="-lquadmath"
-				LIBM="$LIBM -lquadmath"
+				LIBM="-lquadmath $LIBM"
 				hcl_lib_quadmath_required="yes"
 				AC_DEFINE(HAVE_QUADMATH_SNPRINTF, 1)
 			])

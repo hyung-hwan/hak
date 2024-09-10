@@ -642,7 +642,10 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 				 * defun f(a :: b c) { b := (a + 10); c := (a + 20) }
 				 * [x, y] := (f 9) ## this kind of expression - translate to set-r x y (f 9)
 				 */
-				hcl_cnode_t* tmp, * rval;
+				hcl_cnode_t* tmp;
+		#if defined(TRANSFORM_ALIST)
+				hcl_cnode_t* rval;
+		#endif
 
 		#if defined(TRANSFORM_ALIST)
 				fake_tok.ptr = vocas[VOCA_SYM_SET_R].str;

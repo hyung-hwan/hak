@@ -18053,7 +18053,7 @@ if test "x$ac_cv_lib_quadmath_quadmath_snprintf" = xyes
 then :
 
 				QUADMATH_LIBS="-lquadmath"
-				LIBM="$LIBM -lquadmath"
+				LIBM="-lquadmath $LIBM"
 				hcl_lib_quadmath_required="yes"
 				printf "%s\n" "#define HAVE_QUADMATH_SNPRINTF 1" >>confdefs.h
 

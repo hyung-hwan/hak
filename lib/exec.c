@@ -4246,30 +4246,18 @@ hcl_logbfmt (hcl, HCL_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d nc
 				if (!HCL_OBJ_IS_CHAR_POINTER(op)) /*if (!HCL_IS_SYMBOL(hcl, op))*/
 				{
 					hcl_seterrbfmt (hcl, HCL_ECALL, "unable to send %O to %O - invalid message", op, rcv); /* TODO: change to HCL_ESEND?? */
-					goto cannot_send;
+				cannot_send:
+					if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
+					goto oops_with_errmsg_supplement;
 				}
-				else if (HCL_IS_CLASS(hcl, rcv) || HCL_IS_INSTANCE(hcl, rcv) || HCL_IS_CLASS(hcl, rcv->_class)) /* TOIDO: revisit this condition */
+				else
 				{
-				send_message:
 					if (send_message(hcl, rcv, op, ((bcode >> 2) & 1) /* to_super */, b1 /* nargs */, b2 /* nrvars */) <= -1)
 					{
 						const hcl_ooch_t* msg = hcl_backuperrmsg(hcl);
 						hcl_seterrbfmt (hcl, HCL_ECALL, "unable to send %O to %O - %js", op, rcv, msg); /* TODO: change to HCL_ESEND?? */
 						goto cannot_send;
 					}
-				}
-				/* TODO: support non-symbol op? */
-				else
-				{
-				#if 0
-					hcl_seterrbfmt (hcl, HCL_ECALL, "unable to send %O to %O - invalid receiver", op, rcv); /* TODO: change to HCL_ESEND?? */
-				#else
-					goto send_message;
-				#endif
-
-				cannot_send:
-					if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
-					goto oops_with_errmsg_supplement;
 				}
 				break;
 			}
