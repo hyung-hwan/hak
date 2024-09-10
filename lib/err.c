@@ -317,7 +317,6 @@ void hcl_seterrumsg (hcl_t* hcl, hcl_errnum_t errnum, const hcl_uch_t* errmsg)
 	hcl_seterrbfmt(hcl, errnum, "%ls", errmsg);
 }
 
-
 static int err_bcs (hcl_t* hcl, hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hcl_oow_t len)
 {
 	hcl_oow_t max;

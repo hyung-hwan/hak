@@ -18575,12 +18575,12 @@ printf "%s\n" "#define HCL_ENDIAN_UNKNOWN /**/" >>confdefs.h
 # Check whether --enable-debug was given.
 if test ${enable_debug+y}
 then :
-  enableval=$enable_debug; enable_debug_is=$enableval
+  enableval=$enable_debug; enable_debug=$enableval
 else $as_nop
-  enable_debug_is=no
+  enable_debug=no
 fi
 
-if test "$enable_debug_is" = "yes"
+if test "x$enable_debug" = "xyes"
 then
 	CFLAGS="$CFLAGS -g -D_DEBUG -UNDEBUG -U_FORTIFY_SOURCE"
 
@@ -18665,24 +18665,24 @@ fi
 # Check whether --enable-dynamic-module was given.
 if test ${enable_dynamic_module+y}
 then :
-  enableval=$enable_dynamic_module; enable_dynamic_module_is=$enableval
+  enableval=$enable_dynamic_module; enable_dynamic_modules=$enableval
 else $as_nop
-  enable_dynamic_module_is=yes
+  enable_dynamic_modules=yes
 
 fi
 
 if test "x${enable_shared}" = "xno"
 then
-	enable_dynamic_module_is="no"
+	enable_dynamic_module="no"
 fi
 
-if test "x${enable_dynamic_module_is}" = "xyes"
+if test "x${enable_dynamic_module}" = "xyes"
 then
 
 printf "%s\n" "#define HCL_ENABLE_DYNAMIC_MODULE 1" >>confdefs.h
 
 fi
- if test "x${enable_dynamic_module_is}" = "xyes"; then
+ if test "x${enable_dynamic_module}" = "xyes"; then
   ENABLE_DYNAMIC_MODULE_TRUE=
   ENABLE_DYNAMIC_MODULE_FALSE='#'
 else
@@ -18694,25 +18694,25 @@ fi
 # Check whether --enable-static-module was given.
 if test ${enable_static_module+y}
 then :
-  enableval=$enable_static_module; enable_static_module_is=$enableval
+  enableval=$enable_static_module; enable_static_module=$enableval
 else $as_nop
-  enable_static_module_is=no
+  enable_static_module=no
 
 fi
 
 
 if test "x${enable_shared}" = "xno" -a "x${enable_static}" = "xyes"
 then
-	enable_static_module_is="yes"
+	enable_static_module="yes"
 fi
 
-if test "x${enable_static_module_is}" = "xyes"
+if test "x${enable_static_module}" = "xyes"
 then
 
 printf "%s\n" "#define HCL_ENABLE_STATIC_MODULE 1" >>confdefs.h
 
 fi
- if test "x${enable_static_module_is}" = "xyes"; then
+ if test "x${enable_static_module}" = "xyes"; then
   ENABLE_STATIC_MODULE_TRUE=
   ENABLE_STATIC_MODULE_FALSE='#'
 else
@@ -18722,7 +18722,7 @@ fi
 
 
 
- if test "x${enable_static_is}" = "xyes"; then
+ if test "x${enable_static}" = "xyes"; then
   ENABLE_STATIC_TRUE=
   ENABLE_STATIC_FALSE='#'
 else
@@ -18730,7 +18730,7 @@ else
   ENABLE_STATIC_FALSE=
 fi
 
- if test "x${enable_shared_is}" = "xyes"; then
+ if test "x${enable_shared}" = "xyes"; then
   ENABLE_SHARED_TRUE=
   ENABLE_SHARED_FALSE='#'
 else
@@ -18742,13 +18742,13 @@ fi
 # Check whether --enable-libltdl was given.
 if test ${enable_libltdl+y}
 then :
-  enableval=$enable_libltdl; enable_libltdl_is=$enableval
+  enableval=$enable_libltdl; enable_libltdl=$enableval
 else $as_nop
-  enable_libltdl_is=no
+  enable_libltdl=no
 
 fi
 
-if test "x${enable_libltdl_is}" = "xyes"
+if test "x${enable_libltdl}" = "xyes"
 then
 	if test "x${ac_cv_header_ltdl_h}" = "xyes"  -a "${LTDL_LIBS}" != ""
 	then
@@ -18756,10 +18756,10 @@ then
 printf "%s\n" "#define HCL_ENABLE_LIBLTDL /**/" >>confdefs.h
 
 	else
-		enable_libltdl_is="no"
+		enable_libltdl="no"
 	fi
 fi
- if test "x${enable_libltdl_is}" = "xyes"; then
+ if test "x${enable_libltdl}" = "xyes"; then
   ENABLE_LIBLTDL_TRUE=
   ENABLE_LIBLTDL_FALSE='#'
 else
@@ -18771,13 +18771,13 @@ fi
 # Check whether --enable-libunwind was given.
 if test ${enable_libunwind+y}
 then :
-  enableval=$enable_libunwind; enable_libunwind_is=$enableval
+  enableval=$enable_libunwind; enable_libunwind=$enableval
 else $as_nop
-  enable_libunwind_is=no
+  enable_libunwind=no
 
 fi
 
-if test "x${enable_libunwind_is}" = "xyes"
+if test "x${enable_libunwind}" = "xyes"
 then
 	if test "x${ac_cv_header_libunwind_h}" = "xyes"  -a "${UNWIND_LIBS}" != ""
 	then
@@ -18785,10 +18785,10 @@ then
 printf "%s\n" "#define HCL_ENABLE_LIBUNWIND /**/" >>confdefs.h
 
 	else
-		enable_libunwind_is="no"
+		enable_libunwind="no"
 	fi
 fi
- if test "x${enable_libunwind_is}" = "xyes"; then
+ if test "x${enable_libunwind}" = "xyes"; then
   ENABLE_LIBUNWIND_TRUE=
   ENABLE_LIBUNWIND_FALSE='#'
 else
@@ -18800,12 +18800,12 @@ fi
 # Check whether --enable-pthread-flags was given.
 if test ${enable_pthread_flags+y}
 then :
-  enableval=$enable_pthread_flags; enable_pthread_flags_is=$enableval
+  enableval=$enable_pthread_flags; enable_pthread_flags=$enableval
 else $as_nop
-  enable_pthread_flags_is=yes
+  enable_pthread_flags=yes
 fi
 
-if test "$enable_pthread_flags_is" = "yes"
+if test "$enable_pthread_flags" = "yes"
 then
 	CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
 	LIBS="$LIBS $PTHREAD_LIBS"
@@ -18814,13 +18814,13 @@ fi
 # Check whether --enable-hclx was given.
 if test ${enable_hclx+y}
 then :
-  enableval=$enable_hclx; enable_hclx_is=$enableval
+  enableval=$enable_hclx; enable_hclx=$enableval
 else $as_nop
-  enable_hclx_is=no
+  enable_hclx=no
 
 fi
 
- if test "x${enable_hclx_is}" = "xyes"; then
+ if test "x${enable_hclx}" = "xyes"; then
   ENABLE_HCLX_TRUE=
   ENABLE_HCLX_FALSE='#'
 else
@@ -18832,13 +18832,13 @@ fi
 # Check whether --enable-hclgo was given.
 if test ${enable_hclgo+y}
 then :
-  enableval=$enable_hclgo; enable_hclgo_is=$enableval
+  enableval=$enable_hclgo; enable_hclgo=$enableval
 else $as_nop
-  enable_hclgo_is=no
+  enable_hclgo=no
 
 fi
 
- if test "x${enable_hclgo_is}" = "xyes"; then
+ if test "x${enable_hclgo}" = "xyes"; then
   ENABLE_HCLGO_TRUE=
   ENABLE_HCLGO_FALSE='#'
 else

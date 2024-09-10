@@ -65,6 +65,14 @@ type Ext struct {
 	inst_no int
 }
 
+type Err struct {
+	Line uint
+	Colm uint
+	File string
+	Msg string
+	Tgt string
+}
+
 type BitMask C.hcl_bitmask_t
 
 const TRAIT_LANG_ENABLE_EOL BitMask = C.HCL_TRAIT_LANG_ENABLE_EOL
@@ -109,6 +117,34 @@ func New() (*HCL, error) {
 func (hcl *HCL) Close() {
 	C.hcl_close(hcl.c)
 	deregister_instance(hcl)
+}
+
+func (hcl *HCL) make_errinfo() *Err {
+	var loc C.hcl_loc_t
+	var err Err
+	var errnum C.hcl_errnum_t
+
+	err.Msg = hcl.get_errmsg()
+
+	errnum = C.hcl_geterrnum(hcl.c)
+	if errnum == C.HCL_ESYNERR {
+		var synerr C.hcl_synerr_t
+		C.hcl_getsynerr(hcl.c, &synerr)
+		loc = synerr.loc
+
+		err.Tgt = string(uchars_to_rune_slice(&synerr.tgt.val[0], uintptr(synerr.tgt.len)))
+	} else {
+		C.hcl_geterrloc(hcl.c, &loc)
+	}
+
+	err.Line = uint(loc.line)
+	err.Colm = uint(loc.colm)
+	if loc.file != nil {
+		err.File = string(ucstr_to_rune_slice(loc.file))
+	} else {
+		err.File = hcl.io.cci_main
+	}
+	return &err
 }
 
 func (hcl *HCL) GetTrait() BitMask {
@@ -189,7 +225,8 @@ func (hcl *HCL) Ignite(memsize uintptr) error {
 
 	x = C.hcl_ignite(hcl.c, C.hcl_oow_t(memsize))
 	if x <= -1 {
-		return fmt.Errorf("unable to ignite - %s", hcl.get_errmsg())
+		//return fmt.Errorf("unable to ignite - %s", hcl.get_errmsg())
+		return hcl.make_errinfo()
 	}
 
 	return nil
@@ -200,7 +237,8 @@ func (hcl *HCL) AddBuiltinPrims() error {
 
 	x = C.hcl_addbuiltinprims(hcl.c)
 	if x <= -1 {
-		return fmt.Errorf("unable to add built-in primitives - %s", hcl.get_errmsg())
+		//return fmt.Errorf("unable to add built-in primitives - %s", hcl.get_errmsg())
+		return hcl.make_errinfo()
 	}
 	return nil
 }
@@ -225,7 +263,8 @@ func (hcl *HCL) AttachCCIO(cci CciImpl, main_cci_name string) error {
 		// restore the io handler set due to attachment failure
 		hcl.io.cci_main = old_cci_name
 		hcl.io.cci = old_cci
-		return fmt.Errorf("unable to attach source input stream handler - %s", hcl.get_errmsg())
+		//return fmt.Errorf("unable to attach source input stream handler - %s", hcl.get_errmsg())
+		return hcl.make_errinfo()
 	}
 	return nil
 }
@@ -248,7 +287,8 @@ func (hcl *HCL) AttachUDIO(udi UdiImpl, udo UdoImpl) error {
 		//restore the io handlers set due to attachment failure
 		hcl.io.udi = os
 		hcl.io.udo = op
-		return fmt.Errorf("unable to attach user data stream handlers - %s", hcl.get_errmsg())
+		//return fmt.Errorf("unable to attach user data stream handlers - %s", hcl.get_errmsg())
+		return hcl.make_errinfo()
 	}
 	return nil
 }
@@ -258,7 +298,8 @@ func (hcl *HCL) BeginFeed() error {
 
 	x = C.hcl_beginfeed(hcl.c, nil)
 	if x <= -1 {
-		return fmt.Errorf("unable to begin feeding - %s", hcl.get_errmsg())
+		//return fmt.Errorf("unable to begin feeding - %s", hcl.get_errmsg())
+		return hcl.make_errinfo()
 	}
 
 	return nil
@@ -269,7 +310,8 @@ func (hcl *HCL) EndFeed() error {
 
 	x = C.hcl_endfeed(hcl.c)
 	if x <= -1 {
-		return fmt.Errorf("unable to end feeding - %s", hcl.get_errmsg())
+		//return fmt.Errorf("unable to end feeding - %s", hcl.get_errmsg())
+		return hcl.make_errinfo()
 	}
 
 	return nil
@@ -282,7 +324,8 @@ func (hcl *HCL) FeedString(str string) error {
 	q = string_to_uchars(str)
 	x = C.hcl_feed(hcl.c, &q[0], C.hcl_oow_t(len(q)))
 	if x <= -1 {
-		return fmt.Errorf("unable to feed string - %s", hcl.get_errmsg())
+		//return fmt.Errorf("unable to feed string - %s", hcl.get_errmsg())
+		return hcl.make_errinfo()
 	}
 	return nil
 }
@@ -294,7 +337,8 @@ func (hcl *HCL) FeedRunes(str []rune) error {
 	q = rune_slice_to_uchars(str)
 	x = C.hcl_feed(hcl.c, &q[0], C.hcl_oow_t(len(q)))
 	if x <= -1 {
-		return fmt.Errorf("unable to feed runes - %s", hcl.get_errmsg())
+		//return fmt.Errorf("unable to feed runes - %s", hcl.get_errmsg())
+		return hcl.make_errinfo()
 	}
 	return nil
 }
@@ -310,12 +354,14 @@ func (hcl *HCL) FeedFromReader(rdr io.Reader) error {
 		if err == io.EOF {
 			break
 		} else if err != nil {
-			return fmt.Errorf("unable to read bytes - %s", err.Error())
+			//return fmt.Errorf("unable to read bytes - %s", err.Error())
+			return &Err{File: hcl.io.cci_main, Msg: err.Error()}
 		}
 
 		x = C.hcl_feedbchars(hcl.c, (*C.hcl_bch_t)(unsafe.Pointer(&buf[0])), C.hcl_oow_t(n))
 		if x <= -1 {
-			return fmt.Errorf("unable to feed bytes - %s", hcl.get_errmsg())
+			//return fmt.Errorf("unable to feed bytes - %s", hcl.get_errmsg())
+			return hcl.make_errinfo()
 		}
 	}
 
@@ -328,7 +374,8 @@ func (hcl *HCL) FeedFromFile(file string) error {
 
 	f, err = os.Open(file)
 	if err != nil {
-		return fmt.Errorf("unable to open %s - %s", file, err.Error())
+		//return fmt.Errorf("unable to open %s - %s", file, err.Error())
+		return &Err{File: file, Msg: err.Error()}
 	}
 
 	defer f.Close()
@@ -340,7 +387,8 @@ func (hcl *HCL) Execute() error {
 
 	x = C.hcl_execute(hcl.c)
 	if x == nil {
-		return fmt.Errorf("unable to execute - %s", hcl.get_errmsg())
+		//return fmt.Errorf("unable to execute - %s", hcl.get_errmsg())
+		return hcl.make_errinfo()
 	}
 
 	// TODO: wrap C.hcl_oop_t in a go type
@@ -353,7 +401,8 @@ func (hcl *HCL) Decode() error {
 
 	x = C.hcl_decode(hcl.c, C.hcl_getcode(hcl.c), 0, C.hcl_getbclen(hcl.c))
 	if x <= -1 {
-		return fmt.Errorf("unable to decode byte codes - %s", hcl.get_errmsg())
+		//return fmt.Errorf("unable to decode byte codes - %s", hcl.get_errmsg())
+		return hcl.make_errinfo()
 	}
 
 	return nil
@@ -369,6 +418,8 @@ func (hcl *HCL) set_errmsg(num C.hcl_errnum_t, msg string) {
 	defer C.free(unsafe.Pointer(ptr))
 	C.hcl_seterrbmsg(hcl.c, num, ptr)
 }
+
+// -----------------------------------------------------------
 
 func ucstr_to_rune_slice(str *C.hcl_uch_t) []rune {
 	return uchars_to_rune_slice(str, uintptr(C.hcl_count_ucstr(str)))
@@ -423,4 +474,14 @@ func c_to_go(c *C.hcl_t) *HCL {
 	ext = (*Ext)(unsafe.Pointer(C.hcl_getxtn(c)))
 	inst = inst_table.slot_to_instance(ext.inst_no)
 	return inst.g
+}
+
+// -----------------------------------------------------------
+
+func (err* Err) Error() string {
+	if err.Tgt == "" {
+		return fmt.Sprintf("%s[%d,%d] %s", err.File, err.Line, err.Colm, err.Msg)
+	} else {
+	}
+		return fmt.Sprintf("%s[%d,%d] %s - %s", err.File, err.Line, err.Colm, err.Msg, err.Tgt)
 }

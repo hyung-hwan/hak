@@ -533,8 +533,8 @@ AC_C_BIGENDIAN(
 	[AC_DEFINE([HCL_ENDIAN_UNKNOWN],[],[Unknown Endian])])
 
 AC_ARG_ENABLE([debug], [AS_HELP_STRING([--enable-debug],[build the library in the debug mode (default. no)])],
-	enable_debug_is=$enableval,enable_debug_is=no)
-if test "$enable_debug_is" = "yes"
+	enable_debug=$enableval,enable_debug=no)
+if test "x$enable_debug" = "xyes"
 then
 	[CFLAGS="$CFLAGS -g -D_DEBUG -UNDEBUG -U_FORTIFY_SOURCE"]
 	AC_DEFINE([HCL_BUILD_DEBUG],[1],[build release/debug])
@@ -585,83 +585,83 @@ fi
 dnl ===== enable-dynamic-module =====
 AC_ARG_ENABLE([dynamic-module],
 	[AS_HELP_STRING([--enable-dynamic-module],[enable dynamic module capability(default. yes)])],
-	enable_dynamic_module_is=$enableval,
-	enable_dynamic_module_is=yes
+	enable_dynamic_modules=$enableval,
+	enable_dynamic_modules=yes
 )
 if test "x${enable_shared}" = "xno"
 then
-	enable_dynamic_module_is="no"
+	enable_dynamic_module="no"
 fi
 
-if test "x${enable_dynamic_module_is}" = "xyes"
+if test "x${enable_dynamic_module}" = "xyes"
 then
 	AC_DEFINE([HCL_ENABLE_DYNAMIC_MODULE],[1],[enable dynamic module capability])
 fi
-AM_CONDITIONAL(ENABLE_DYNAMIC_MODULE, test "x${enable_dynamic_module_is}" = "xyes")
+AM_CONDITIONAL(ENABLE_DYNAMIC_MODULE, test "x${enable_dynamic_module}" = "xyes")
 
 dnl ===== enable-static-module =====
 AC_ARG_ENABLE([static-module],
 	[AS_HELP_STRING([--enable-static-module],[build modules statically into the main library(default. no)])],
-	enable_static_module_is=$enableval,
-	enable_static_module_is=no
+	enable_static_module=$enableval,
+	enable_static_module=no
 )
 
 if test "x${enable_shared}" = "xno" -a "x${enable_static}" = "xyes"
 then
-	enable_static_module_is="yes"
+	enable_static_module="yes"
 fi
 
-if test "x${enable_static_module_is}" = "xyes"
+if test "x${enable_static_module}" = "xyes"
 then
 	AC_DEFINE([HCL_ENABLE_STATIC_MODULE],[1],[link modules statically into the main library])
 fi
-AM_CONDITIONAL(ENABLE_STATIC_MODULE, test "x${enable_static_module_is}" = "xyes")
+AM_CONDITIONAL(ENABLE_STATIC_MODULE, test "x${enable_static_module}" = "xyes")
 
 
 dnl =====  conditionals - ENABLE_STATIC and ENABLE_SHARED =====
-AM_CONDITIONAL(ENABLE_STATIC, test "x${enable_static_is}" = "xyes")
-AM_CONDITIONAL(ENABLE_SHARED, test "x${enable_shared_is}" = "xyes")
+AM_CONDITIONAL(ENABLE_STATIC, test "x${enable_static}" = "xyes")
+AM_CONDITIONAL(ENABLE_SHARED, test "x${enable_shared}" = "xyes")
 
 dnl ===== enable-libltdl =====
 AC_ARG_ENABLE([libltdl],
 	[AS_HELP_STRING([--enable-libltdl],[use libltdl(default. no)])],
-	enable_libltdl_is=$enableval,
-	enable_libltdl_is=no
+	enable_libltdl=$enableval,
+	enable_libltdl=no
 )
-if test "x${enable_libltdl_is}" = "xyes"
+if test "x${enable_libltdl}" = "xyes"
 then
 	if test "x${ac_cv_header_ltdl_h}" = "xyes"  -a "${LTDL_LIBS}" != ""
 	then
 		AC_DEFINE([HCL_ENABLE_LIBLTDL],[],[use libltdl when loading a dynamic module])
 	else
-		enable_libltdl_is="no"
+		enable_libltdl="no"
 	fi
 fi
-AM_CONDITIONAL(ENABLE_LIBLTDL, test "x${enable_libltdl_is}" = "xyes")
+AM_CONDITIONAL(ENABLE_LIBLTDL, test "x${enable_libltdl}" = "xyes")
 
 dnl ===== enable-libunwind =====
 AC_ARG_ENABLE([libunwind],
 	[AS_HELP_STRING([--enable-libunwind],[use libunwind(default. no)])],
-	enable_libunwind_is=$enableval,
-	enable_libunwind_is=no
+	enable_libunwind=$enableval,
+	enable_libunwind=no
 )
-if test "x${enable_libunwind_is}" = "xyes"
+if test "x${enable_libunwind}" = "xyes"
 then
 	if test "x${ac_cv_header_libunwind_h}" = "xyes"  -a "${UNWIND_LIBS}" != ""
 	then
 		AC_DEFINE([HCL_ENABLE_LIBUNWIND],[],[use libunwind for backtracing stack frames])
 	else
-		enable_libunwind_is="no"
+		enable_libunwind="no"
 	fi
 fi
-AM_CONDITIONAL(ENABLE_LIBUNWIND, test "x${enable_libunwind_is}" = "xyes")
+AM_CONDITIONAL(ENABLE_LIBUNWIND, test "x${enable_libunwind}" = "xyes")
 
 dnl ==== include pthread options to the default flags ====
 dnl keep this as  the last option as it changes the default compile flags.
 dnl otherwise, other tests may get affected if this option is on.
 AC_ARG_ENABLE([pthread-flags], [AS_HELP_STRING([--enable-pthread-flags],[add thread flags to CFLAGS, LIBS(default. yes)])],
-	enable_pthread_flags_is=$enableval,enable_pthread_flags_is=yes)
-if test "$enable_pthread_flags_is" = "yes"
+	enable_pthread_flags=$enableval,enable_pthread_flags=yes)
+if test "$enable_pthread_flags" = "yes"
 then
 	[CFLAGS="$CFLAGS $PTHREAD_CFLAGS"]
 	[LIBS="$LIBS $PTHREAD_LIBS"]
@@ -670,18 +670,18 @@ fi
 dnl ===== enable-hclx =====
 AC_ARG_ENABLE([hclx],
 	[AS_HELP_STRING([--enable-hclx],[build libhclx(default. no)])],
-	enable_hclx_is=$enableval,
-	enable_hclx_is=no
+	enable_hclx=$enableval,
+	enable_hclx=no
 )
-AM_CONDITIONAL(ENABLE_HCLX, test "x${enable_hclx_is}" = "xyes")
+AM_CONDITIONAL(ENABLE_HCLX, test "x${enable_hclx}" = "xyes")
 
 dnl ===== enable-hclgo =====
 AC_ARG_ENABLE([hclgo],
 	[AS_HELP_STRING([--enable-hclgo],[build the go wrapper(default. no)])],
-	enable_hclgo_is=$enableval,
-	enable_hclgo_is=no
+	enable_hclgo=$enableval,
+	enable_hclgo=no
 )
-AM_CONDITIONAL(ENABLE_HCLGO, test "x${enable_hclgo_is}" = "xyes")
+AM_CONDITIONAL(ENABLE_HCLGO, test "x${enable_hclgo}" = "xyes")
 
 
 dnl ====  subsititution of some key items ====

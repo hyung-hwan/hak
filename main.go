@@ -106,14 +106,14 @@ func main() {
 
 	err = handle_arguments(&param)
 	if err != nil {
-		fmt.Printf("Error: %s\n", err.Error())
+		fmt.Printf("ERROR: %s\n", err.Error())
 		param.fs_usage()
 		os.Exit(1)
 	}
 
 	x, err = hcl.New()
 	if err != nil {
-		fmt.Printf("Error: failed to instantiate hcl - %s\n", err.Error())
+		fmt.Printf("ERROR: failed to instantiate hcl - %s\n", err.Error())
 		os.Exit(1)
 	}
 
@@ -126,30 +126,30 @@ func main() {
 
 	err = x.Ignite(1000000)
 	if err != nil {
-		fmt.Printf("Error: failed to ignite - %s\n", err.Error())
+		fmt.Printf("ERROR: failed to ignite - %s\n", err.Error())
 		goto oops
 	}
 	err = x.AddBuiltinPrims()
 	if err != nil {
-		fmt.Printf("Error: failed to add builtin primitives - %s\n", err.Error())
+		fmt.Printf("ERROR: failed to add builtin primitives - %s\n", err.Error())
 		goto oops
 	}
 
 	err = x.AttachCCIO(&rfh, param.input_file)
 	if err != nil {
-		fmt.Printf("Error: %s\n", err.Error())
+		fmt.Printf("ERROR: failed to attach input file handler - %s\n", err.Error())
 		goto oops
 	}
 
 	err = x.AttachUDIO(&sfh, &pfh)
 	if err != nil {
-		fmt.Printf("Error: %s\n", err.Error())
+		fmt.Printf("ERROR: failed to attach the user I/O handler - %s\n", err.Error())
 		goto oops
 	}
 
 	err = x.BeginFeed()
 	if err != nil {
-		fmt.Printf("Error: %s\n", err.Error())
+		fmt.Printf("ERROR: %s\n", err.Error())
 		goto oops
 	}
 
@@ -159,13 +159,13 @@ func main() {
 	//   #include "a.hcl"
 	//   (printf ">>>>>>>>> [%d]\n" (+ 20 455))`)
 	if err != nil {
-		fmt.Printf("Error: %s\n", err.Error())
+		fmt.Printf("ERROR: %s\n", err.Error())
 		goto oops
 	}
 
 	err = x.EndFeed()
 	if err != nil {
-		fmt.Printf("Error: %s\n", err.Error())
+		fmt.Printf("ERROR: %s\n", err.Error())
 		goto oops
 	}
 
@@ -174,7 +174,8 @@ func main() {
 
 	err = x.Execute()
 	if err != nil {
-		fmt.Printf("Error: %s\n", err.Error())
+		//fmt.Printf("ERROR: %s[%d:%d] - %s\n", herr.File, herr.Line, herr.Colm, herr.Msg)
+		fmt.Printf("ERROR: %s\n", err.Error())
 		goto oops
 	}
 
