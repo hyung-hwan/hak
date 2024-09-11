@@ -2135,7 +2135,7 @@ static HCL_INLINE int call_primitive (hcl_t* hcl, hcl_ooi_t nargs)
 
 	rcv = (hcl_oop_prim_t)HCL_STACK_GETOP(hcl, nargs);
 	HCL_ASSERT (hcl, HCL_IS_PRIM(hcl, rcv));
-	HCL_ASSERT (hcl, HCL_OBJ_GET_SIZE(rcv) == HCL_PRIM_NUM_WORDS);
+	HCL_ASSERT (hcl, HCL_OBJ_GET_SIZE(rcv) == HCL_PRIM_NAMED_INSTVARS);
 
 	if (nargs < rcv->min_nargs && nargs > rcv->max_nargs)
 	{
@@ -3432,6 +3432,8 @@ static int execute (hcl_t* hcl)
 				b1 = bcode & 0x7; /* low 3 bits */
 			store_instvar:
 				LOG_INST_2 (hcl, "store_into_ivar %zu ## [%zd]", b1, HCL_OOP_TO_SMOOI(hcl->active_context/*->mthhome*/->ivaroff));
+	/* TODO: support if the receiver is an object with named/flexi pure-numeric fields (e.g. word, byte, etc).
+	 *       the following assertion must be lifted... */
 				HCL_ASSERT (hcl, HCL_OBJ_GET_FLAGS_TYPE(hcl->active_context->receiver) == HCL_OBJ_TYPE_OOP);
 				b1 += HCL_OOP_TO_SMOOI(hcl->active_context/*->mthhome*/->ivaroff);
 				((hcl_oop_oop_t)hcl->active_context->receiver)->slot[b1] = HCL_STACK_GETTOP(hcl);

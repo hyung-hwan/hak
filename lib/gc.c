@@ -141,8 +141,8 @@ enum {
 	KCI_CONS,
 	KCI_METHOD_DICTIONARY,
 	KCI_FUNCTION,
+	KCI_PRIMITIVE,
 	KCI_COMPILED_BLOCK,
-	KCI_METHOD_CONTEXT,
 	KCI_BLOCK_CONTEXT,
 	KCI_PROCESS,
 	KCI_SEMAPHORE,
@@ -448,15 +448,17 @@ static kernel_class_info_t kernel_classes[__KCI_MAX__] =
 		HCL_OFFSETOF(hcl_t, c_function)
 	},
 
-#if 0
-	{ "Primitive", HCL_BRAND_PRIM,
-	  0,
-	  0,
-	  HCL_PRIM_NAMED_INSTVARS,
-	  0,
-	  HCL_OBJ_TYPE_OOP,
-	  HCL_OFFSETOF(hcl_t, c_prim) },
-#endif
+	KCI(KCI_PRIMITIVE) {
+		"Primitive",
+		KCI_OBJECT,
+		HCL_BRAND_PRIM,
+		0,
+		0,
+		HCL_PRIM_NAMED_INSTVARS,
+		0,
+		HCL_OBJ_TYPE_WORD,
+		HCL_OFFSETOF(hcl_t, c_primitive)
+	},
 
 	KCI(KCI_COMPILED_BLOCK) {
 		"CompiledBlock",
@@ -468,18 +470,6 @@ static kernel_class_info_t kernel_classes[__KCI_MAX__] =
 		0,
 		HCL_OBJ_TYPE_OOP,
 		HCL_OFFSETOF(hcl_t, c_block)
-	},
-
-	KCI(KCI_METHOD_CONTEXT) {
-		"MethodContext",
-		KCI_OBJECT,
-		0,
-		HCL_CLASS_SELFSPEC_FLAG_FINAL | HCL_CLASS_SELFSPEC_FLAG_LIMITED,
-		0,
-		HCL_CONTEXT_NAMED_INSTVARS,
-		HCL_CLASS_SPEC_FLAG_INDEXED,
-		HCL_OBJ_TYPE_OOP,
-		HCL_OFFSETOF(hcl_t, c_method_context)
 	},
 
 	KCI(KCI_BLOCK_CONTEXT) {

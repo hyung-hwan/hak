@@ -531,7 +531,7 @@ struct hcl_trailer_t
 #define HCL_OBJ_GET_TRAILER_BYTE(oop) ((hcl_oob_t*)&((hcl_oop_oop_t)oop)->slot[HCL_OBJ_GET_SIZE(oop) + 1])
 #define HCL_OBJ_GET_TRAILER_SIZE(oop) ((hcl_oow_t)((hcl_oop_oop_t)oop)->slot[HCL_OBJ_GET_SIZE(oop)])
 
-#define HCL_PRIM_NUM_WORDS 4
+#define HCL_PRIM_NAMED_INSTVARS 4
 typedef struct hcl_prim_t hcl_prim_t;
 typedef struct hcl_prim_t* hcl_oop_prim_t;
 struct hcl_prim_t
@@ -1737,7 +1737,6 @@ struct hcl_t
 	hcl_oop_class_t c_primitive; /* Primitive */
 	hcl_oop_class_t c_block; /* CompiledBlock */
 
-	hcl_oop_class_t c_method_context; /* MethodContext */
 	hcl_oop_class_t c_block_context; /* BlockContext */
 	hcl_oop_class_t c_process; /* Process */
 	hcl_oop_class_t c_semaphore; /* Semaphore */
@@ -2090,12 +2089,22 @@ typedef enum hcl_concode_t hcl_concode_t;
 /*#define HCL_IS_SYMBOL(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_SYMBOL)*/
 #define HCL_IS_SYMBOL(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)hcl->c_symbol)
 
-#define HCL_IS_CONTEXT(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_CONTEXT)
-#define HCL_IS_FUNCTION(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_FUNCTION)
-#define HCL_IS_BLOCK(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_BLOCK)
-#define HCL_IS_CLASS(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_CLASS)
+/*#define HCL_IS_STRING(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_STRING)*/
+#define HCL_IS_STRING(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)hcl->c_string)
+
+/*#define HCL_IS_CONTEXT(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_CONTEXT)*/
+#define HCL_IS_CONTEXT(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)hcl->c_block_context)
+
+/*#define HCL_IS_FUNCTION(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_FUNCTION)*/
+#define HCL_IS_FUNCTION(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)hcl->c_function)
+
+/*#define HCL_IS_BLOCK(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_BLOCK)*/
+#define HCL_IS_BLOCK(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)hcl->c_block)
+
+/*#define HCL_IS_CLASS(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_CLASS)*/
+#define HCL_IS_CLASS(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)hcl->c_class)
+
 #define HCL_IS_INSTANCE(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_INSTANCE)
-#define HCL_IS_PROCESS(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_PROCESS)
 
 /*#define HCL_IS_CONS(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_CONS)*/
 #define HCL_IS_CONS(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)hcl->c_cons)
@@ -2110,12 +2119,14 @@ typedef enum hcl_concode_t hcl_concode_t;
 /*#define HCL_IS_DIC(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_DIC)*/
 #define HCL_IS_DIC(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)hcl->c_dictionary)
 
-#define HCL_IS_PRIM(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_PRIM)
+/*#define HCL_IS_PRIM(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_PRIM)*/
+#define HCL_IS_PRIM(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)hcl->c_primitive)
+
 #define HCL_IS_PBIGINT(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_PBIGINT)
 #define HCL_IS_NBIGINT(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_NBIGINT)
 #define HCL_IS_BIGINT(hcl,v) (HCL_OOP_IS_POINTER(v) && (HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_PBIGINT || HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_NBIGINT))
-#define HCL_IS_STRING(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_STRING)
 #define HCL_IS_FPDEC(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_FPDEC)
+
 #define HCL_IS_PROCESS(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_PROCESS)
 #define HCL_IS_SEMAPHORE(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_SEMAPHORE)
 #define HCL_IS_SEMAPHORE_GROUP(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_SEMAPHORE_GROUP)

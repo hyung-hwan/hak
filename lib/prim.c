@@ -39,9 +39,10 @@ typedef struct pf_t pf_t;
 
 hcl_oop_t hcl_makeprim (hcl_t* hcl, hcl_pfimpl_t primimpl, hcl_oow_t minargs, hcl_oow_t maxargs, hcl_mod_t* mod)
 {
-	hcl_oop_prim_t obj; /* in principle, hcl_oop_word_t with HCL_PRIM_NUM_WORDS elements */
+#if 0
+	hcl_oop_prim_t obj; /* in principle, hcl_oop_word_t with HCL_PRIM_NAMED_INSTVARS elements */
 
-	obj = (hcl_oop_prim_t)hcl_allocwordobj(hcl, HCL_BRAND_PRIM, HCL_NULL, HCL_PRIM_NUM_WORDS);
+	obj = (hcl_oop_prim_t)hcl_allocwordobj(hcl, HCL_BRAND_PRIM, HCL_NULL, HCL_PRIM_NAMED_INSTVARS);
 	if (HCL_LIKELY(obj))
 	{
 		obj->impl = (hcl_oow_t)primimpl;
@@ -51,6 +52,25 @@ hcl_oop_t hcl_makeprim (hcl_t* hcl, hcl_pfimpl_t primimpl, hcl_oow_t minargs, hc
 	}
 
 	return (hcl_oop_t)obj;
+#else
+	hcl_oop_prim_t v; /* in principle, hcl_oop_word_t with HCL_PRIM_NUM_WORDS elements */
+
+	v = (hcl_oop_prim_t)hcl_instantiate(hcl, hcl->c_primitive, HCL_NULL, 0);
+	if (HCL_UNLIKELY(!v))
+	{
+		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make primitive - %js", orgmsg);
+	}
+	else
+	{
+		v->impl = (hcl_oow_t)primimpl;
+		v->min_nargs = minargs;
+		v->max_nargs = maxargs;
+		v->mod = (hcl_oow_t)mod;
+	}
+
+	return (hcl_oop_t)v;
+#endif
 }
 
 /* ------------------------------------------------------------------------- */
