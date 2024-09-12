@@ -147,7 +147,7 @@ static hcl_oop_cons_t find_or_upsert (hcl_t* hcl, hcl_oop_dic_t dic, hcl_oop_t k
 					hcl_oop_cons_t pair;
 					pair = (hcl_oop_cons_t)ass->cdr; /* once found, this must be a pair of method pointers  */
 					HCL_ASSERT (hcl, HCL_IS_CONS(hcl, pair));
-					HCL_ASSERT (hcl, HCL_IS_BLOCK(hcl, value));
+					HCL_ASSERT (hcl, HCL_IS_COMPILED_BLOCK(hcl, value));
 					if (is_method & 1) pair->car = value; /* class method */
 					if (is_method & 2) pair->cdr = value; /* instance method */
 					/* the class instantiation method goes to both cells.
@@ -221,7 +221,7 @@ static hcl_oop_cons_t find_or_upsert (hcl_t* hcl, hcl_oop_dic_t dic, hcl_oop_t k
 	{
 		/* create a new pair that holds a class method at the first cell and an instance method at the second cell */
 		hcl_oop_t pair;
-		HCL_ASSERT (hcl, HCL_IS_BLOCK(hcl, value));
+		HCL_ASSERT (hcl, HCL_IS_COMPILED_BLOCK(hcl, value));
 		hcl_pushvolat (hcl, &key);
 		pair = hcl_makecons(hcl, (is_method & 1? value: hcl->_nil), (is_method & 2? value: hcl->_nil));
 		hcl_popvolat (hcl);

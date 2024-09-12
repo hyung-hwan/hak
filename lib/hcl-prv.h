@@ -997,7 +997,7 @@ struct hcl_compiler_t
 		hcl_ooi_t depth; /* signed because it starts with -1 */
 		hcl_fnblk_info_t* info;
 		hcl_oow_t  info_capa;
-	} fnblk; /* lambda/function block */
+	} fnblk; /* function block */
 
 	struct
 	{
@@ -1592,14 +1592,6 @@ hcl_oop_cons_t hcl_putatdic_method (
 	hcl_oop_t     key,
 	hcl_oop_t     value,
 	int           mtype /* 1 for class method, 2 for instance method */
-);
-
-
-/* ========================================================================= */
-/* proc.c                                                                    */
-/* ========================================================================= */
-hcl_oop_process_t hcl_makeproc (
-	hcl_t* hcl
 );
 
 /* ========================================================================= */

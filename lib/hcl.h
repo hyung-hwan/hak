@@ -1735,7 +1735,7 @@ struct hcl_t
 #endif
 	hcl_oop_class_t c_function; /* Function */
 	hcl_oop_class_t c_primitive; /* Primitive */
-	hcl_oop_class_t c_block; /* CompiledBlock */
+	hcl_oop_class_t c_compiled_block; /* CompiledBlock */
 
 	hcl_oop_class_t c_block_context; /* BlockContext */
 	hcl_oop_class_t c_process; /* Process */
@@ -2098,8 +2098,8 @@ typedef enum hcl_concode_t hcl_concode_t;
 /*#define HCL_IS_FUNCTION(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_FUNCTION)*/
 #define HCL_IS_FUNCTION(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)hcl->c_function)
 
-/*#define HCL_IS_BLOCK(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_BLOCK)*/
-#define HCL_IS_BLOCK(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)hcl->c_block)
+/*#define HCL_IS_COMPILED_BLOCK(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_BLOCK)*/
+#define HCL_IS_COMPILED_BLOCK(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)hcl->c_compiled_block)
 
 /*#define HCL_IS_CLASS(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_CLASS)*/
 #define HCL_IS_CLASS(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)hcl->c_class)
@@ -2127,9 +2127,15 @@ typedef enum hcl_concode_t hcl_concode_t;
 #define HCL_IS_BIGINT(hcl,v) (HCL_OOP_IS_POINTER(v) && (HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_PBIGINT || HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_NBIGINT))
 #define HCL_IS_FPDEC(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_FPDEC)
 
-#define HCL_IS_PROCESS(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_PROCESS)
-#define HCL_IS_SEMAPHORE(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_SEMAPHORE)
-#define HCL_IS_SEMAPHORE_GROUP(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_SEMAPHORE_GROUP)
+/*#define HCL_IS_PROCESS(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_PROCESS)*/
+#define HCL_IS_PROCESS(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)hcl->c_process)
+
+
+/*#define HCL_IS_SEMAPHORE(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_SEMAPHORE)*/
+#define HCL_IS_SEMAPHORE(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)hcl->c_semaphore)
+
+/*#define HCL_IS_SEMAPHORE_GROUP(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_SEMAPHORE_GROUP)*/
+#define HCL_IS_SEMAPHORE_GROUP(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)hcl->c_semaphore_group)
 
 #define HCL_CONS_CAR(v)  (((hcl_cons_t*)(v))->car)
 #define HCL_CONS_CDR(v)  (((hcl_cons_t*)(v))->cdr)

@@ -469,7 +469,7 @@ static kernel_class_info_t kernel_classes[__KCI_MAX__] =
 		HCL_BLOCK_NAMED_INSTVARS,
 		0,
 		HCL_OBJ_TYPE_OOP,
-		HCL_OFFSETOF(hcl_t, c_block)
+		HCL_OFFSETOF(hcl_t, c_compiled_block)
 	},
 
 	KCI(KCI_BLOCK_CONTEXT) {

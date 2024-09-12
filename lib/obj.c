@@ -173,14 +173,8 @@ hcl_oop_t hcl_allocoopobjwithtrailer (hcl_t* hcl, int brand, hcl_oow_t size, con
 	/* [NOTE] this is not converted to a SMOOI object */
 	hdr->slot[size] = (hcl_oop_t)blen;
 
-	if (bptr)
-	{
-		HCL_MEMCPY (&hdr->slot[size + 1], bptr, blen);
-	}
-	else
-	{
-		HCL_MEMSET (&hdr->slot[size + 1], 0, blen);
-	}
+	if (bptr) HCL_MEMCPY (&hdr->slot[size + 1], bptr, blen);
+	else HCL_MEMSET (&hdr->slot[size + 1], 0, blen);
 
 	return (hcl_oop_t)hdr;
 }
@@ -224,7 +218,7 @@ static HCL_INLINE hcl_oop_t alloc_numeric_array (hcl_t* hcl, int brand, const vo
 	else
 	{
 		/* initialize with zeros when the string pointer is not given */
-		HCL_MEMSET ((hdr + 1), 0, nbytes_aligned);
+		HCL_MEMSET (hdr + 1, 0, nbytes_aligned);
 	}
 
 	return hdr;

@@ -477,6 +477,7 @@ check_SCRIPTS = \
 	fun-01.hcl \
 	insta-01.hcl \
 	insta-02.hcl \
+	proc-01.hcl \
 	ret-01.hcl \
 	retvar-01.hcl \
 	va-01.hcl \

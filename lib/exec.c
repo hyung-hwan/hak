@@ -345,7 +345,6 @@ static HCL_INLINE void vm_gettime (hcl_t* hcl, hcl_ntime_t* now)
 	HCL_SUB_NTIME (now, now, &hcl->exec_start_time);  /* now = now - exec_start_time */
 }
 
-
 static HCL_INLINE int vm_sleep (hcl_t* hcl, const hcl_ntime_t* dur)
 {
 /* TODO: return 1 if it gets into the halting state */
@@ -374,7 +373,7 @@ static HCL_INLINE hcl_oop_context_t make_context (hcl_t* hcl, hcl_ooi_t ntmprs)
 	hcl_oop_context_t ctx;
 	HCL_ASSERT (hcl, ntmprs >= 0);
 	/*return (hcl_oop_context_t)hcl_allocoopobj(hcl, HCL_BRAND_CONTEXT, HCL_CONTEXT_NAMED_INSTVARS + (hcl_oow_t)ntmprs);*/
-	ctx =(hcl_oop_context_t)hcl_instantiatewithtrailer(hcl, hcl->c_block_context, ntmprs, HCL_NULL, 0);
+	ctx = (hcl_oop_context_t)hcl_instantiate(hcl, hcl->c_block_context, HCL_NULL, ntmprs);
 
 	/* TODO: a good way to initialize smooi field to 0 in hcl_insstantiate()?
 	 *      for this, there must be a way to specify the type of the member variables...
@@ -389,7 +388,7 @@ static HCL_INLINE hcl_oop_function_t make_function (hcl_t* hcl, hcl_oow_t lfsize
 	hcl_oop_function_t func;
 
 	/* the literal frame is placed in the variable part.
-	 * the byte code is placed in the trailer space */
+	 * the byte code is placed in the trailer space. */
 	/*func = (hcl_oop_function_t)hcl_allocoopobjwithtrailer(hcl, HCL_BRAND_FUNCTION, HCL_FUNCTION_NAMED_INSTVARS + lfsize, bptr, blen);*/
 	func = (hcl_oop_function_t)hcl_instantiatewithtrailer(hcl, hcl->c_function, lfsize, bptr, blen);
 	if (HCL_UNLIKELY(!func)) return HCL_NULL;
@@ -430,11 +429,11 @@ static HCL_INLINE void fill_function_data (hcl_t* hcl, hcl_oop_function_t func, 
 	func->attr_mask = HCL_SMOOI_TO_OOP(attr_mask);
 }
 
-static HCL_INLINE hcl_oop_block_t make_block (hcl_t* hcl)
+static HCL_INLINE hcl_oop_block_t make_compiled_block (hcl_t* hcl)
 {
 	/* create a base block used for creation of a block context */
 	/*return (hcl_oop_block_t)hcl_allocoopobj(hcl, HCL_BRAND_BLOCK, HCL_BLOCK_NAMED_INSTVARS);*/
-	return (hcl_oop_block_t)hcl_instantiate(hcl, hcl->c_block, HCL_NULL, 0);
+	return (hcl_oop_block_t)hcl_instantiate(hcl, hcl->c_compiled_block, HCL_NULL, 0);
 }
 
 static HCL_INLINE void fill_block_data (hcl_t* hcl, hcl_oop_block_t blk, hcl_ooi_t attr_mask, hcl_ooi_t ip, hcl_oop_context_t homectx)
@@ -559,9 +558,15 @@ static hcl_oop_process_t make_process (hcl_t* hcl, hcl_oop_context_t c)
 	else if (clstksize < 32) clstksize = 32;
 
 	hcl_pushvolat (hcl, (hcl_oop_t*)&c);
-	proc = (hcl_oop_process_t)hcl_allocoopobj(hcl, HCL_BRAND_PROCESS, HCL_PROCESS_NAMED_INSTVARS + stksize + exstksize + clstksize);
+	/*proc = (hcl_oop_process_t)hcl_allocoopobj(hcl, HCL_BRAND_PROCESS, HCL_PROCESS_NAMED_INSTVARS + stksize + exstksize + clstksize);*/
+	proc = (hcl_oop_process_t)hcl_instantiate(hcl, hcl->c_process, HCL_NULL, stksize + exstksize + clstksize);
 	hcl_popvolat (hcl);
-	if (HCL_UNLIKELY(!proc)) return HCL_NULL;
+	if (HCL_UNLIKELY(!proc))
+	{
+		const hcl_ooch_t* oldmsg = hcl_backuperrmsg(hcl);
+		hcl_seterrbfmt (hcl, hcl->errnum, "unable to make process - %js", oldmsg);
+		return HCL_NULL;
+	}
 
 #if 0
 ////////////////////
@@ -678,7 +683,7 @@ static HCL_INLINE hcl_oop_process_t find_next_runnable_process (hcl_t* hcl)
 static HCL_INLINE void switch_to_next_runnable_process (hcl_t* hcl)
 {
 	hcl_oop_process_t nrp;
-	nrp = find_next_runnable_process (hcl);
+	nrp = find_next_runnable_process(hcl);
 	if (nrp != hcl->processor->active) switch_to_process (hcl, nrp, HCL_PROCESS_STATE_RUNNABLE);
 }
 
@@ -1100,8 +1105,7 @@ static void suspend_process (hcl_t* hcl, hcl_oop_process_t proc)
 			/* suspend the active process */
 			hcl_oop_process_t nrp;
 
-			nrp = find_next_runnable_process (hcl);
-
+			nrp = find_next_runnable_process(hcl);
 			if (nrp == proc)
 			{
 				/* no runnable process after suspension */
@@ -1140,12 +1144,12 @@ static void yield_process (hcl_t* hcl, hcl_oop_process_t proc)
 	if (proc->state == HCL_SMOOI_TO_OOP(HCL_PROCESS_STATE_RUNNING))
 	{
 		/* RUNNING --> RUNNABLE */
-
 		hcl_oop_process_t nrp;
 
 		HCL_ASSERT (hcl, proc == hcl->processor->active);
+		HCL_ASSERT (hcl, HCL_IS_PROCESS(hcl, proc));
 
-		nrp = find_next_runnable_process (hcl);
+		nrp = find_next_runnable_process(hcl);
 		/* if there are more than 1 runnable processes, the next
 		 * runnable process must be different from proc */
 		if (nrp != proc)
@@ -1912,7 +1916,7 @@ static int prepare_new_context (hcl_t* hcl, hcl_oop_block_t op_blk, hcl_ooi_t na
 	hcl_ooi_t fixed_nargs, actual_nargs, excess_nargs;
 
 	/* the receiver must be a block context */
-	HCL_ASSERT (hcl, HCL_IS_BLOCK(hcl, op_blk));
+	HCL_ASSERT (hcl, HCL_IS_COMPILED_BLOCK(hcl, op_blk));
 
 	attr_mask = HCL_OOP_TO_SMOOI(op_blk->attr_mask);
 
@@ -2005,7 +2009,7 @@ static HCL_INLINE int __activate_block (hcl_t* hcl, hcl_oop_block_t op_blk, hcl_
 {
 	int x;
 
-	HCL_ASSERT (hcl, HCL_IS_BLOCK(hcl, op_blk));
+	HCL_ASSERT (hcl, HCL_IS_COMPILED_BLOCK(hcl, op_blk));
 
 	x = prepare_new_context(
 		hcl,
@@ -2032,7 +2036,7 @@ static HCL_INLINE int activate_block (hcl_t* hcl, hcl_ooi_t nargs, hcl_ooi_t nrv
 	int x;
 
 	op_blk = (hcl_oop_block_t)HCL_STACK_GETOP(hcl, nargs);
-	HCL_ASSERT (hcl, HCL_IS_BLOCK(hcl, op_blk));
+	HCL_ASSERT (hcl, HCL_IS_COMPILED_BLOCK(hcl, op_blk));
 
 	x = __activate_block(hcl, op_blk, nargs, nrvars, 0, 0, &newctx);
 	if (HCL_UNLIKELY(x <= -1)) return -1;
@@ -3775,7 +3779,7 @@ static int execute (hcl_t* hcl)
 				LOG_INST_2 (hcl, "call %zu %zu", b1, b2);
 
 				rcv = HCL_STACK_GETOP(hcl, b1);
-				if (HCL_IS_BLOCK(hcl, rcv))
+				if (HCL_IS_COMPILED_BLOCK(hcl, rcv))
 				{
 					if (activate_block(hcl, b1, b2) <= -1) goto call2_failed;
 					break;
@@ -4787,7 +4791,7 @@ hcl_logbfmt (hcl, HCL_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d nc
 
 				HCL_ASSERT (hcl, b1 >= 0);
 
-				blkobj = make_block(hcl);
+				blkobj = make_compiled_block(hcl);
 				if (HCL_UNLIKELY(!blkobj)) goto oops;
 
 				/* the long forward jump instruction has the format of
@@ -4954,9 +4958,9 @@ hcl_pfrc_t hcl_pf_process_fork (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 	int x;
 
 	blk = (hcl_oop_block_t)HCL_STACK_GETARG(hcl, nargs, 0);
-	if (!HCL_IS_BLOCK(hcl, blk))
+	if (!HCL_IS_COMPILED_BLOCK(hcl, blk))
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not block - %O", blk);
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not compiled block - %O", blk);
 		return HCL_PF_FAILURE;
 	}
 
@@ -5068,8 +5072,14 @@ hcl_pfrc_t hcl_pf_semaphore_new (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
 	hcl_oop_semaphore_t sem;
 
-	sem = (hcl_oop_semaphore_t)hcl_allocoopobj(hcl, HCL_BRAND_SEMAPHORE, HCL_SEMAPHORE_NAMED_INSTVARS);
-	if (HCL_UNLIKELY(!sem)) return  HCL_PF_FAILURE;
+	/*sem = (hcl_oop_semaphore_t)hcl_allocoopobj(hcl, HCL_BRAND_SEMAPHORE, HCL_SEMAPHORE_NAMED_INSTVARS);*/
+	sem = (hcl_oop_semaphore_t)hcl_instantiate(hcl, hcl->c_semaphore, HCL_NULL, 0);
+	if (HCL_UNLIKELY(!sem))
+	{
+		const hcl_ooch_t* oldmsg = hcl_backuperrmsg(hcl);
+		hcl_seterrbfmt (hcl, hcl->errnum, "unable to make semaphore - %js", oldmsg);
+		return HCL_PF_FAILURE;
+	}
 
 	sem->count = HCL_SMOOI_TO_OOP(0);
 /* TODO: sem->signal_action? */
@@ -5355,8 +5365,14 @@ hcl_pfrc_t hcl_pf_semaphore_group_new (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nar
 {
 	hcl_oop_semaphore_group_t sg;
 
-	sg = (hcl_oop_semaphore_group_t)hcl_allocoopobj(hcl, HCL_BRAND_SEMAPHORE_GROUP, HCL_SEMAPHORE_GROUP_NAMED_INSTVARS);
-	if (HCL_UNLIKELY(!sg)) return  HCL_PF_FAILURE;
+	/*sg = (hcl_oop_semaphore_group_t)hcl_allocoopobj(hcl, HCL_BRAND_SEMAPHORE_GROUP, HCL_SEMAPHORE_GROUP_NAMED_INSTVARS);*/
+	sg = (hcl_oop_semaphore_group_t)hcl_instantiate(hcl, hcl->c_semaphore_group, HCL_NULL, 0);
+	if (HCL_UNLIKELY(!sg))
+	{
+		const hcl_ooch_t* oldmsg = hcl_backuperrmsg(hcl);
+		hcl_seterrbfmt (hcl, hcl->errnum, "unable to make semaphore group - %js", oldmsg);
+		return HCL_PF_FAILURE;
+	}
 
 	sg->sem_io_count = HCL_SMOOI_TO_OOP(0);
 	sg->sem_count = HCL_SMOOI_TO_OOP(0);
