@@ -286,30 +286,6 @@ hcl_oop_t hcl_hatchnil (hcl_t* hcl)
 	return v;
 }
 
-hcl_oop_t hcl_makebigint (hcl_t* hcl, int brand, const hcl_liw_t* ptr, hcl_oow_t len)
-{
-	hcl_oop_t v;
-
-/* TODO: use hcl_instantiate.. */
-	HCL_ASSERT (hcl, brand == HCL_BRAND_PBIGINT || brand == HCL_BRAND_NBIGINT);
-
-#if (HCL_LIW_BITS == HCL_OOW_BITS)
-	v = hcl_allocwordobj(hcl, brand, ptr, len);
-#elif (HCL_LIW_BITS == HCL_OOHW_BITS)
-	v = hcl_allochalfwordobj(hcl, brand, ptr, len);
-#else
-#	error UNSUPPORTED LIW BIT SIZE
-#endif
-	if (HCL_UNLIKELY(v))
-	{
-		hcl_oop_class_t _class = (brand == HCL_BRAND_PBIGINT)?
-			hcl->c_large_positive_integer: hcl->c_large_negative_integer;
-		HCL_OBJ_SET_FLAGS_BRAND (v, brand);
-		HCL_OBJ_SET_CLASS (v, (hcl_oop_t)_class);
-	}
-	return v;
-}
-
 hcl_oop_t hcl_makecons (hcl_t* hcl, hcl_oop_t car, hcl_oop_t cdr)
 {
 /* TODO: use hcl_instantiate() */
@@ -522,7 +498,8 @@ hcl_oop_t hcl_makefpdec (hcl_t* hcl, hcl_oop_t value, hcl_ooi_t scale)
 	}
 
 	hcl_pushvolat (hcl, &value);
-	f = (hcl_oop_fpdec_t)hcl_allocoopobj(hcl, HCL_BRAND_FPDEC, HCL_FPDEC_NAMED_INSTVARS);
+	/* f = (hcl_oop_fpdec_t)hcl_allocoopobj(hcl, HCL_BRAND_FPDEC, HCL_FPDEC_NAMED_INSTVARS); */
+	f = (hcl_oop_fpdec_t)hcl_instantiate(hcl, hcl->c_fixed_point_decimal, HCL_NULL, 0);
 	hcl_popvolat (hcl);
 
 	if (HCL_UNLIKELY(!f))
@@ -534,7 +511,6 @@ hcl_oop_t hcl_makefpdec (hcl_t* hcl, hcl_oop_t value, hcl_ooi_t scale)
 	{
 		f->value = value;
 		f->scale = HCL_SMOOI_TO_OOP(scale);
-		HCL_OBJ_SET_CLASS (f, (hcl_oop_t)hcl->c_fixed_point_decimal);
 	}
 
 	return (hcl_oop_t)f;

@@ -47,4 +47,3 @@ if (== z1 101) { printf "OK: z1 is %d\n" z1 } \
 else { printf "ERROR: z1 is not 101 - %d\n" z1 }
 if (== z2 100) { printf "OK: z2 is %d\n" z2 } \
 else { printf "ERROR: z1 is not 100 - %d\n" z2 }
-

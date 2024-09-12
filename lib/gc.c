@@ -622,7 +622,7 @@ static kernel_class_info_t kernel_classes[__KCI_MAX__] =
 	KCI(KCI_LARGE_POSITIVE_INTEGER) {
 		"LargePositiveInteger",
 		KCI_NUMBER,
-		0,
+		HCL_BRAND_PBIGINT,
 		HCL_CLASS_SELFSPEC_FLAG_LIMITED,
 		0,
 		0,
@@ -634,7 +634,7 @@ static kernel_class_info_t kernel_classes[__KCI_MAX__] =
 	KCI(KCI_LARGE_NEGATIVE_INTEGER) {
 		"LargeNegativeInteger",
 		KCI_NUMBER,
-		0,
+		HCL_BRAND_NBIGINT,
 		HCL_CLASS_SELFSPEC_FLAG_LIMITED,
 		0,
 		0,
@@ -870,11 +870,11 @@ static HCL_INLINE void gc_ms_scan_stack (hcl_t* hcl)
 
 			/* is it really better to use a flag bit in the header to
 			 * determine that it is an instance of process? */
-			/* if (HCL_UNLIKELY(HCL_OBJ_GET_FLAGS_PROC(oop))) */
-			if (HCL_OBJ_GET_FLAGS_BRAND(oop) == HCL_BRAND_PROCESS) /* TODO: use a class or make this a special bit???*/
+			if (HCL_UNLIKELY(HCL_OBJ_GET_FLAGS_PROC(oop)))
 			{
 				hcl_oop_process_t proc;
 
+				HCL_ASSERT (hcl, HCL_IS_PROCESS(hcl, oop));
 				/* the stack in a process object doesn't need to be
 				 * scanned in full. the slots above the stack pointer
 				 * are garbages. */
@@ -886,13 +886,14 @@ static HCL_INLINE void gc_ms_scan_stack (hcl_t* hcl)
 
 				/* stack */
 				ll = HCL_OOP_TO_SMOOI(proc->sp);
-
 				HCL_ASSERT (hcl, ll < (hcl_ooi_t)(HCL_OBJ_GET_SIZE(oop) - HCL_PROCESS_NAMED_INSTVARS));
 				for (i = 0; i <= ll; i++) gc_ms_mark_object (hcl, proc->slot[i]);
+
 				/* exception stack */
 				ll = HCL_OOP_TO_SMOOI(proc->exsp);
 				HCL_ASSERT (hcl, ll < (hcl_ooi_t)(HCL_OBJ_GET_SIZE(oop) - HCL_PROCESS_NAMED_INSTVARS));
 				for (i = HCL_OOP_TO_SMOOI(proc->st) + 1; i <= ll; i++) gc_ms_mark_object (hcl, proc->slot[i]);
+
 				/* class stack */
 				ll = HCL_OOP_TO_SMOOI(proc->clsp);
 				HCL_ASSERT (hcl, ll < (hcl_ooi_t)(HCL_OBJ_GET_SIZE(oop) - HCL_PROCESS_NAMED_INSTVARS));
@@ -1818,8 +1819,14 @@ int hcl_ignite (hcl_t* hcl, hcl_oow_t heapsize)
 	{
 		/* Create a nil process used to simplify nil check in GC.
 		 * only accessible by VM. not exported via the global dictionary. */
-		hcl->nil_process = (hcl_oop_process_t)hcl_allocoopobj(hcl, HCL_BRAND_PROCESS, HCL_PROCESS_NAMED_INSTVARS);
-		if (HCL_UNLIKELY(!hcl->nil_process)) goto oops;
+		/*hcl->nil_process = (hcl_oop_process_t)hcl_allocoopobj(hcl, HCL_BRAND_PROCESS, HCL_PROCESS_NAMED_INSTVARS);*/
+		hcl->nil_process = (hcl_oop_process_t)hcl_instantiate(hcl, hcl->c_process, HCL_NULL, 0);
+		if (HCL_UNLIKELY(!hcl->nil_process))
+		{
+			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+			hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make nil process - %js", orgmsg);
+			goto oops;
+		}
 
 		/* unusable stack */
 		hcl->nil_process->sp = HCL_SMOOI_TO_OOP(-1);
@@ -1834,8 +1841,15 @@ int hcl_ignite (hcl_t* hcl, hcl_oow_t heapsize)
 
 	if (!hcl->processor)
 	{
-		hcl->processor = (hcl_oop_process_scheduler_t)hcl_allocoopobj(hcl, HCL_BRAND_PROCESS_SCHEDULER, HCL_PROCESS_SCHEDULER_NAMED_INSTVARS);
-		if (HCL_UNLIKELY(!hcl->processor)) goto oops;
+		/*hcl->processor = (hcl_oop_process_scheduler_t)hcl_allocoopobj(hcl, HCL_BRAND_PROCESS_SCHEDULER, HCL_PROCESS_SCHEDULER_NAMED_INSTVARS);*/
+		hcl->processor = (hcl_oop_process_scheduler_t)hcl_instantiate(hcl, hcl->c_process_scheduler, HCL_NULL, 0);
+		if (HCL_UNLIKELY(!hcl->processor))
+		{
+			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+			hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make process scheduler - %js", orgmsg);
+			goto oops;
+		}
+
 		hcl->processor->active = hcl->nil_process;
 		hcl->processor->total_count = HCL_SMOOI_TO_OOP(0);
 		hcl->processor->runnable.count = HCL_SMOOI_TO_OOP(0);

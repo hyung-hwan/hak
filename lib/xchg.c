@@ -446,7 +446,7 @@ int hcl_unmarshalcode (hcl_t* hcl, hcl_code_t* code, hcl_xchg_reader_t rdr, void
 				if (nbytes % HCL_SIZEOF(hcl_liw_t)) goto oops; /* not the right number of bytes */
 				nwords = nbytes / HCL_SIZEOF(hcl_liw_t);
 
-				ns = hcl_makebigint(hcl, ((b == HCL_XCHG_PBIGINT)? HCL_BRAND_PBIGINT: HCL_BRAND_NBIGINT), HCL_NULL, nwords);
+				ns = hcl_instantiate(hcl, ((b == HCL_XCHG_PBIGINT)? hcl->c_large_positive_integer: hcl->c_large_negative_integer), HCL_NULL, nwords);
 				if (HCL_UNLIKELY(!ns)) goto oops;
 
 				for (j = 0; j < nwords; j ++)
@@ -506,7 +506,7 @@ int hcl_unmarshalcode (hcl_t* hcl, hcl_code_t* code, hcl_xchg_reader_t rdr, void
 					if (nbytes % HCL_SIZEOF(hcl_liw_t)) goto oops; /* not the right number of bytes */
 					nwords = nbytes / HCL_SIZEOF(hcl_liw_t);
 
-					v = hcl_makebigint(hcl, ((b == HCL_XCHG_FPDEC_2) ? HCL_BRAND_PBIGINT : HCL_BRAND_NBIGINT), HCL_NULL, nwords);
+					v = hcl_instantiate(hcl, ((b == HCL_XCHG_FPDEC_2) ? hcl->c_large_positive_integer : hcl->c_large_negative_integer), HCL_NULL, nwords);
 					if (HCL_UNLIKELY(!v)) goto oops;
 
 					for (j = 0; j < nwords; j++)

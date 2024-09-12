@@ -568,12 +568,7 @@ static hcl_oop_process_t make_process (hcl_t* hcl, hcl_oop_context_t c)
 		return HCL_NULL;
 	}
 
-#if 0
-////////////////////
-////	HCL_OBJ_SET_FLAGS_PROC (proc, proc_flags); /* a special flag to indicate an object is a process instance */
-////////////////////
-#endif
-
+	HCL_OBJ_SET_FLAGS_PROC (proc, 1); /* a special flag to indicate an object is a process instance */
 	proc->state = HCL_SMOOI_TO_OOP(HCL_PROCESS_STATE_SUSPENDED);
 
 	/* assign a process id to the process */
