@@ -758,7 +758,7 @@ static HCL_INLINE hcl_oop_t expand_bigint (hcl_t* hcl, hcl_oop_t oop, hcl_oow_t 
 	}
 
 	hcl_pushvolat (hcl, &oop);
-	z = hcl_instantiate(hcl, HCL_OBJ_GET_CLASS(oop), HCL_NULL, count + inc);
+	z = hcl_instantiate(hcl, (hcl_oop_class_t)HCL_OBJ_GET_CLASS(oop), HCL_NULL, count + inc);
 	hcl_popvolat (hcl);
 	if (!z)
 	{
@@ -782,7 +782,7 @@ static HCL_INLINE hcl_oop_t _clone_bigint(hcl_t* hcl, hcl_oop_t oop, hcl_oow_t c
 	HCL_ASSERT (hcl, HCL_OOP_IS_POINTER(oop));
 	if (count <= 0) count = HCL_OBJ_GET_SIZE(oop);
 
-	hcl_pushvolat (hcl, &_class);
+	hcl_pushvolat (hcl, (hcl_oop_t*)&_class);
 	hcl_pushvolat (hcl, &oop);
 	z = hcl_instantiate(hcl, _class, HCL_NULL, count);
 	hcl_popvolat (hcl);
@@ -798,7 +798,7 @@ static HCL_INLINE hcl_oop_t _clone_bigint(hcl_t* hcl, hcl_oop_t oop, hcl_oow_t c
 
 static HCL_INLINE hcl_oop_t clone_bigint (hcl_t* hcl, hcl_oop_t oop, hcl_oow_t count)
 {
-	return _clone_bigint(hcl, oop, count, HCL_OBJ_GET_CLASS(oop));
+	return _clone_bigint(hcl, oop, count, (hcl_oop_class_t)HCL_OBJ_GET_CLASS(oop));
 }
 
 static HCL_INLINE hcl_oop_t clone_bigint_negated (hcl_t* hcl, hcl_oop_t oop, hcl_oow_t count)
@@ -2131,7 +2131,7 @@ static hcl_oop_t add_unsigned_integers (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 
 	hcl_pushvolat (hcl, &x);
 	hcl_pushvolat (hcl, &y);
-	z = hcl_instantiate(hcl, HCL_OBJ_GET_CLASS(x), HCL_NULL, zs);
+	z = hcl_instantiate(hcl, (hcl_oop_class_t)HCL_OBJ_GET_CLASS(x), HCL_NULL, zs);
 	hcl_popvolats (hcl, 2);
 	if (!z) return HCL_NULL;
 

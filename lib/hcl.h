@@ -420,22 +420,6 @@ typedef enum hcl_obj_type_t hcl_obj_type_t;
 #define HCL_OBJ_SET_FLAGS_RDONLY(oop,v)    HCL_SETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_RDONLY_SHIFT,    HCL_OBJ_FLAGS_RDONLY_BITS, v)
 #define HCL_OBJ_SET_FLAGS_PROC(oop,v)      HCL_SETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_PROC_SHIFT,      HCL_OBJ_FLAGS_PROC_BITS, v)
 
-#define HCL_OBJ_GET_SIZE(oop) ((oop)->_size)
-#define HCL_OBJ_GET_CLASS(oop) ((oop)->_class)
-
-#define HCL_OBJ_SET_SIZE(oop,v) ((oop)->_size = (v))
-#define HCL_OBJ_SET_CLASS(oop,c) ((oop)->_class = (c))
-
-/* [NOTE] this macro doesn't include the size of the trailer */
-#define HCL_OBJ_BYTESOF(oop) ((HCL_OBJ_GET_SIZE(oop) + HCL_OBJ_GET_FLAGS_EXTRA(oop)) * HCL_OBJ_GET_FLAGS_UNIT(oop))
-
-#define HCL_OBJ_IS_OOP_POINTER(oop)      (HCL_OOP_IS_POINTER(oop) && (HCL_OBJ_GET_FLAGS_TYPE(oop) == HCL_OBJ_TYPE_OOP))
-#define HCL_OBJ_IS_CHAR_POINTER(oop)     (HCL_OOP_IS_POINTER(oop) && (HCL_OBJ_GET_FLAGS_TYPE(oop) == HCL_OBJ_TYPE_CHAR))
-#define HCL_OBJ_IS_BYTE_POINTER(oop)     (HCL_OOP_IS_POINTER(oop) && (HCL_OBJ_GET_FLAGS_TYPE(oop) == HCL_OBJ_TYPE_BYTE))
-#define HCL_OBJ_IS_HALFWORD_POINTER(oop) (HCL_OOP_IS_POINTER(oop) && (HCL_OBJ_GET_FLAGS_TYPE(oop) == HCL_OBJ_TYPE_HALFWORD))
-#define HCL_OBJ_IS_WORD_POINTER(oop)     (HCL_OOP_IS_POINTER(oop) && (HCL_OBJ_GET_FLAGS_TYPE(oop) == HCL_OBJ_TYPE_WORD))
-
-
 /* [NOTE] this macro doesn't check the range of the actual value.
  *        make sure that the value of each bit fields given falls within the
  *        possible range of the defined bits */
@@ -453,6 +437,21 @@ typedef enum hcl_obj_type_t hcl_obj_type_t;
 #define HCL_OBJ_FLAGS_KERNEL_USER     0  /* not a kernel object */
 #define HCL_OBJ_FLAGS_KERNEL_IMMATURE 1  /* incomplete kernel object. defined in gc.c for bootstrapping. but no complete class definition has been read */
 #define HCL_OBJ_FLAGS_KERNEL_MATURE   2  /* kernel  object with its full class defintion read in */
+
+#define HCL_OBJ_GET_SIZE(oop) ((oop)->_size)
+#define HCL_OBJ_GET_CLASS(oop) ((oop)->_class)
+
+#define HCL_OBJ_SET_SIZE(oop,v) ((oop)->_size = (v))
+#define HCL_OBJ_SET_CLASS(oop,c) ((oop)->_class = (c))
+
+/* [NOTE] this macro doesn't include the size of the trailer */
+#define HCL_OBJ_BYTESOF(oop) ((HCL_OBJ_GET_SIZE(oop) + HCL_OBJ_GET_FLAGS_EXTRA(oop)) * HCL_OBJ_GET_FLAGS_UNIT(oop))
+
+#define HCL_OBJ_IS_OOP_POINTER(oop)      (HCL_OOP_IS_POINTER(oop) && (HCL_OBJ_GET_FLAGS_TYPE(oop) == HCL_OBJ_TYPE_OOP))
+#define HCL_OBJ_IS_CHAR_POINTER(oop)     (HCL_OOP_IS_POINTER(oop) && (HCL_OBJ_GET_FLAGS_TYPE(oop) == HCL_OBJ_TYPE_CHAR))
+#define HCL_OBJ_IS_BYTE_POINTER(oop)     (HCL_OOP_IS_POINTER(oop) && (HCL_OBJ_GET_FLAGS_TYPE(oop) == HCL_OBJ_TYPE_BYTE))
+#define HCL_OBJ_IS_HALFWORD_POINTER(oop) (HCL_OOP_IS_POINTER(oop) && (HCL_OBJ_GET_FLAGS_TYPE(oop) == HCL_OBJ_TYPE_HALFWORD))
+#define HCL_OBJ_IS_WORD_POINTER(oop)     (HCL_OOP_IS_POINTER(oop) && (HCL_OBJ_GET_FLAGS_TYPE(oop) == HCL_OBJ_TYPE_WORD))
 
 #define HCL_STORE_OOP(hcl,var,val) (*(var) = val)
 

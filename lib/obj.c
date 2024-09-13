@@ -134,10 +134,10 @@ static HCL_INLINE hcl_oop_t alloc_oop_array (hcl_t* hcl, int brand, hcl_oow_t si
 	}
 	if (!hdr) return HCL_NULL;
 
-	hdr->_flags = HCL_OBJ_MAKE_FLAGS(HCL_OBJ_TYPE_OOP, HCL_SIZEOF(hcl_oop_t), 0, 0, 0, ngc, 0, 0);
+	hdr->_flags = HCL_OBJ_MAKE_FLAGS(HCL_OBJ_TYPE_OOP, HCL_SIZEOF(hcl_oop_t), 0, 0, 0, ngc, 0, brand);
 	HCL_OBJ_SET_SIZE (hdr, size);
-	HCL_OBJ_SET_CLASS (hdr, hcl->_nil);
-	HCL_OBJ_SET_FLAGS_BRAND (hdr, brand);
+	/*HCL_OBJ_SET_CLASS (hdr, hcl->_nil);*/
+	/*HCL_OBJ_SET_FLAGS_BRAND (hdr, brand);*/
 
 	while (size > 0) hdr->slot[--size] = hcl->_nil;
 
@@ -163,10 +163,10 @@ hcl_oop_t hcl_allocoopobjwithtrailer (hcl_t* hcl, int brand, hcl_oow_t size, con
 	hdr = (hcl_oop_oop_t)hcl_allocbytes(hcl, HCL_SIZEOF(hcl_obj_t) + nbytes_aligned);
 	if (HCL_UNLIKELY(!hdr)) return HCL_NULL;
 
-	hdr->_flags = HCL_OBJ_MAKE_FLAGS(HCL_OBJ_TYPE_OOP, HCL_SIZEOF(hcl_oop_t), 0, 0, 0, 0, 1, 0);
+	hdr->_flags = HCL_OBJ_MAKE_FLAGS(HCL_OBJ_TYPE_OOP, HCL_SIZEOF(hcl_oop_t), 0, 0, 0, 0, 1, brand);
 	HCL_OBJ_SET_SIZE (hdr, size);
 	/*HCL_OBJ_SET_CLASS (hdr, hcl->_nil);*/
-	HCL_OBJ_SET_FLAGS_BRAND (hdr, brand);
+	/*HCL_OBJ_SET_FLAGS_BRAND (hdr, brand);*/
 
 	for (i = 0; i < size; i++) hdr->slot[i] = hcl->_nil;
 
@@ -203,11 +203,11 @@ static HCL_INLINE hcl_oop_t alloc_numeric_array (hcl_t* hcl, int brand, const vo
 		hdr = (hcl_oop_t)hcl_allocbytes(hcl, HCL_SIZEOF(hcl_obj_t) + nbytes_aligned);
 	if (HCL_UNLIKELY(!hdr)) return HCL_NULL;
 
-	hdr->_flags = HCL_OBJ_MAKE_FLAGS(type, unit, extra, 0, 0, ngc, 0, 0);
+	hdr->_flags = HCL_OBJ_MAKE_FLAGS(type, unit, extra, 0, 0, ngc, 0, brand);
 	hdr->_size = len;
 	HCL_OBJ_SET_SIZE (hdr, len);
 	/*HCL_OBJ_SET_CLASS (hdr, hcl->_nil);*/
-	HCL_OBJ_SET_FLAGS_BRAND (hdr, brand);
+	/*HCL_OBJ_SET_FLAGS_BRAND (hdr, brand);*/
 
 	if (ptr)
 	{
@@ -526,19 +526,14 @@ hcl_oop_t hcl_makeclass (hcl_t* hcl, hcl_oop_t class_name, hcl_oop_t superclass,
 	hcl_pushvolat (hcl, &superclass);
 	hcl_pushvolat (hcl, &ivars_str);
 	hcl_pushvolat (hcl, &cvars_str);
-#if 0
-	c = (hcl_oop_class_t)hcl_allocoopobj(hcl, HCL_BRAND_CLASS, HCL_CLASS_NAMED_INSTVARS + ncvars);
-#else
 	c = (hcl_oop_class_t)hcl_instantiate(hcl, hcl->c_class, HCL_NULL, ncvars);
-#endif
 	hcl_popvolats (hcl, 4);
 	if (HCL_UNLIKELY(!c))
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make class - %js", orgmsg);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make class %O - %js", class_name, orgmsg);
 		return HCL_NULL;
 	}
-	HCL_OBJ_SET_CLASS (c, (hcl_oop_t)hcl->c_class);
 
 	/* TODO: other flags... indexable? byte? word?*/
 	spec = HCL_CLASS_SPEC_MAKE(nivars, 0, 0); /* TODO: how to include nivars_super ? */
@@ -613,7 +608,13 @@ static HCL_INLINE int decode_spec (hcl_t* hcl, hcl_oop_class_t _class, hcl_oow_t
 	{
 		/* named instance variables only. treat it as if it is an
 		 * indexable class with no variable data */
-		indexed_type = HCL_OBJ_TYPE_OOP;
+
+		/* for an object composed of non-oop fields,
+		 * the field can be accessed using a instance variable name.
+		 * the instructions for instance variable access must cater for this.
+		 * for example, the Primitive class is HCL_OBJ_TYPE_WORD and not variable */
+		/*indexed_type = HCL_OBJ_TYPE_OOP; <- no more fixed to OOP fields only. */
+		indexed_type = (hcl_obj_type_t)HCL_CLASS_SPEC_INDEXED_TYPE(spec);
 
 		if (num_flexi_fields > 0)
 		{
