@@ -3296,6 +3296,71 @@ static void xma_dumper (void* ctx, const char* fmt, ...)
 	va_end (ap);
 }
 
+static hcl_oop_t fetch_numeric_rcv_slot (hcl_t* hcl, hcl_oop_t rcv, hcl_oow_t b1)
+{
+	hcl_oow_t w;
+	hcl_obj_type_t rcv_type;
+
+	rcv_type = HCL_OBJ_GET_FLAGS_TYPE(rcv);
+	switch (HCL_LIKELY(rcv_type))
+	{
+		case HCL_OBJ_TYPE_CHAR:
+			w = ((hcl_oop_char_t)rcv)->slot[b1];
+			return HCL_CHAR_TO_OOP(w);
+
+		case HCL_OBJ_TYPE_BYTE:
+			w = ((hcl_oop_byte_t)rcv)->slot[b1];
+			return HCL_SMOOI_TO_OOP(w);
+
+		case HCL_OBJ_TYPE_HALFWORD:
+			w = ((hcl_oop_halfword_t)rcv)->slot[b1];
+			return HCL_SMOOI_TO_OOP(w);
+
+		case HCL_OBJ_TYPE_WORD:
+			w = ((hcl_oop_word_t)rcv)->slot[b1];
+			return hcl_oowtoint(hcl, w);
+
+		default:
+			hcl_seterrbfmt (hcl, HCL_EINTERN, "internal error - invalid receiver type in fetching numeric slot value - %d", rcv_type);
+			return HCL_NULL;
+	}
+}
+
+static int store_into_numeric_rcv_slot (hcl_t* hcl, hcl_oop_t rcv, hcl_oow_t b1, hcl_oop_t v)
+{
+	hcl_oow_t w;
+	hcl_obj_type_t rcv_type;
+
+	if (HCL_OOP_IS_CHAR(v)) w = HCL_OOP_TO_CHAR(v);
+	else if (hcl_inttooow(hcl, v, &w) <= -1) return -1;
+
+	rcv_type = HCL_OBJ_GET_FLAGS_TYPE(rcv);
+	switch (HCL_LIKELY(rcv_type))
+	{
+		case HCL_OBJ_TYPE_CHAR:
+			((hcl_oop_char_t)rcv)->slot[b1] = w;
+			break;
+
+		case HCL_OBJ_TYPE_BYTE:
+			((hcl_oop_byte_t)rcv)->slot[b1] = w;
+			break;
+
+		case HCL_OBJ_TYPE_HALFWORD:
+			((hcl_oop_halfword_t)rcv)->slot[b1] = w;
+			break;
+
+		case HCL_OBJ_TYPE_WORD:
+			((hcl_oop_word_t)rcv)->slot[b1] = w;
+			break;
+
+		default:
+			hcl_seterrbfmt (hcl, HCL_EINTERN, "internal error - invalid receiver type in storing in numeric slot - %d", rcv_type);
+			return -1;
+	}
+
+	return 0;
+}
+
 static int execute (hcl_t* hcl)
 {
 	hcl_oob_t bcode;
@@ -3407,13 +3472,31 @@ static int execute (hcl_t* hcl)
 			case HCL_CODE_PUSH_IVAR_5:
 			case HCL_CODE_PUSH_IVAR_6:
 			case HCL_CODE_PUSH_IVAR_7:
+			{
+				hcl_oop_t rcv;
+
 				b1 = bcode & 0x7; /* low 3 bits */
 			push_ivar:
 				LOG_INST_2 (hcl, "push_ivar %zu ## [%zd]", b1, HCL_OOP_TO_SMOOI(hcl->active_context/*->mthhome*/->ivaroff));
-				HCL_ASSERT (hcl, HCL_OBJ_GET_FLAGS_TYPE(hcl->active_context->receiver) == HCL_OBJ_TYPE_OOP);
 				b1 += HCL_OOP_TO_SMOOI(hcl->active_context/*->mthhome*/->ivaroff);
-				HCL_STACK_PUSH (hcl, ((hcl_oop_oop_t)hcl->active_context->receiver)->slot[b1]);
+				rcv = hcl->active_context->receiver;
+				/*HCL_ASSERT (hcl, HCL_OBJ_GET_FLAGS_TYPE(rcv) == HCL_OBJ_TYPE_OOP);*/
+				if (HCL_LIKELY(HCL_OBJ_GET_FLAGS_TYPE(rcv) == HCL_OBJ_TYPE_OOP))
+				{
+					HCL_STACK_PUSH (hcl, ((hcl_oop_oop_t)rcv)->slot[b1]);
+				}
+				else
+				{
+					hcl_oop_t v;
+					v = fetch_numeric_rcv_slot(hcl, rcv, b1);
+					if (HCL_UNLIKELY(!v))
+					{
+						if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
+						goto oops_with_errmsg_supplement;
+					}
+				}
 				break;
+			}
 
 			/* ------------------------------------------------- */
 
@@ -3428,15 +3511,30 @@ static int execute (hcl_t* hcl)
 			case HCL_CODE_STORE_INTO_IVAR_5:
 			case HCL_CODE_STORE_INTO_IVAR_6:
 			case HCL_CODE_STORE_INTO_IVAR_7:
+			{
+				hcl_oop_t rcv, top;
+
 				b1 = bcode & 0x7; /* low 3 bits */
 			store_instvar:
 				LOG_INST_2 (hcl, "store_into_ivar %zu ## [%zd]", b1, HCL_OOP_TO_SMOOI(hcl->active_context/*->mthhome*/->ivaroff));
-	/* TODO: support if the receiver is an object with named/flexi pure-numeric fields (e.g. word, byte, etc).
-	 *       the following assertion must be lifted... */
-				HCL_ASSERT (hcl, HCL_OBJ_GET_FLAGS_TYPE(hcl->active_context->receiver) == HCL_OBJ_TYPE_OOP);
 				b1 += HCL_OOP_TO_SMOOI(hcl->active_context/*->mthhome*/->ivaroff);
-				((hcl_oop_oop_t)hcl->active_context->receiver)->slot[b1] = HCL_STACK_GETTOP(hcl);
+				rcv = hcl->active_context->receiver;
+				top = HCL_STACK_GETTOP(hcl);
+				/*HCL_ASSERT (hcl, HCL_OBJ_GET_FLAGS_TYPE(rcv) == HCL_OBJ_TYPE_OOP);*/
+				if (HCL_LIKELY(HCL_OBJ_GET_FLAGS_TYPE(rcv) == HCL_OBJ_TYPE_OOP))
+				{
+					((hcl_oop_oop_t)rcv)->slot[b1] = top;
+				}
+				else
+				{
+					if (HCL_UNLIKELY(store_into_numeric_rcv_slot(hcl, rcv, b1, top) <= -1))
+					{
+						if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
+						goto oops_with_errmsg_supplement;
+					}
+				}
 				break;
+			}
 
 			/* ------------------------------------------------- */
 			case HCL_CODE_POP_INTO_IVAR_X:
@@ -3450,14 +3548,31 @@ static int execute (hcl_t* hcl)
 			case HCL_CODE_POP_INTO_IVAR_5:
 			case HCL_CODE_POP_INTO_IVAR_6:
 			case HCL_CODE_POP_INTO_IVAR_7:
+			{
+				hcl_oop_t rcv, top;
+
 				b1 = bcode & 0x7; /* low 3 bits */
 			pop_into_ivar:
 				LOG_INST_2 (hcl, "pop_into_ivar %zu ## [%zd]", b1, HCL_OOP_TO_SMOOI(hcl->active_context->home->ivaroff));
-				HCL_ASSERT (hcl, HCL_OBJ_GET_FLAGS_TYPE(hcl->active_context->receiver) == HCL_OBJ_TYPE_OOP);
 				b1 += HCL_OOP_TO_SMOOI(hcl->active_context->home->ivaroff);
-				((hcl_oop_oop_t)hcl->active_context->receiver)->slot[b1] = HCL_STACK_GETTOP(hcl);
+				rcv = hcl->active_context->receiver;
+				top = HCL_STACK_GETTOP(hcl);
+				/*HCL_ASSERT (hcl, HCL_OBJ_GET_FLAGS_TYPE(rcv) == HCL_OBJ_TYPE_OOP);*/
+				if (HCL_LIKELY(HCL_OBJ_GET_FLAGS_TYPE(rcv) == HCL_OBJ_TYPE_OOP))
+				{
+					((hcl_oop_oop_t)rcv)->slot[b1] = top;
+				}
+				else
+				{
+					if (HCL_UNLIKELY(store_into_numeric_rcv_slot(hcl, rcv, b1, top) <= -1))
+					{
+						if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
+						goto oops_with_errmsg_supplement;
+					}
+				}
 				HCL_STACK_POP (hcl);
 				break;
+			}
 
 			/* ------------------------------------------------- */
 		#if 0
@@ -3769,6 +3884,7 @@ static int execute (hcl_t* hcl)
 			case HCL_CODE_CALL_R:
 			{
 				hcl_oop_t rcv;
+
 				FETCH_PARAM_CODE_TO (hcl, b1); /* nargs */
 				FETCH_PARAM_CODE_TO (hcl, b2); /* nrvars */
 				LOG_INST_2 (hcl, "call %zu %zu", b1, b2);
@@ -4237,8 +4353,8 @@ hcl_logbfmt (hcl, HCL_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d nc
 				hcl_oop_t rcv, op;
 
 				b1 = bcode & 0x3; /* low 2 bits */
-				b2 = 0;
 			handle_send:
+				b2 = 0;
 				LOG_INST_2 (hcl, "send%hs %zu", (((bcode >> 2) & 1)? "_to_super": ""), b1);
 
 			handle_send_2:
