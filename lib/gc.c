@@ -135,6 +135,7 @@ enum {
 	KCI_BYTE_STRING,
 	KCI_SYMBOL,
 	KCI_ARRAY,
+	KCI_CHARACTER_ARRAY,
 	KCI_BYTE_ARRAY,
 	KCI_SYMBOL_TABLE,
 	KCI_DICTIONARY,
@@ -333,6 +334,18 @@ static kernel_class_info_t kernel_classes[__KCI_MAX__] =
 		HCL_CLASS_SPEC_FLAG_INDEXED,
 		HCL_OBJ_TYPE_OOP,
 		HCL_OFFSETOF(hcl_t, c_array)
+	},
+
+	KCI(KCI_CHARACTER_ARRAY) {
+		"CharacterArray",
+		KCI_FIXED_SIZED_COLLECTION,
+		HCL_BRAND_CHARACTER_ARRAY,
+		0,
+		0,
+		0,
+		HCL_CLASS_SPEC_FLAG_INDEXED,
+		HCL_OBJ_TYPE_CHAR,
+		HCL_OFFSETOF(hcl_t, c_character_array)
 	},
 
 	KCI(KCI_BYTE_ARRAY) {

@@ -345,6 +345,18 @@ hcl_oop_t hcl_makearray (hcl_t* hcl, hcl_oow_t len)
 #endif
 }
 
+hcl_oop_t hcl_makechararray (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_t len)
+{
+	hcl_oop_t v;
+	v = hcl_instantiate(hcl, hcl->c_character_array, ptr, len);
+	if (HCL_UNLIKELY(!v))
+	{
+		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make char-array - %js", orgmsg);
+	}
+	return v;
+}
+
 hcl_oop_t hcl_makebytearray (hcl_t* hcl, const hcl_oob_t* ptr, hcl_oow_t len)
 {
 #if 0

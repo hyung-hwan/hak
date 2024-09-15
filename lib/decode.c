@@ -645,6 +645,16 @@ int hcl_decode (hcl_t* hcl, const hcl_code_t* code, hcl_oow_t start, hcl_oow_t e
 				LOG_INST_1 (hcl, "pop_into_bytearray %zu", b1);
 				break;
 
+			case HCL_CODE_MAKE_CHARARRAY:
+				FETCH_PARAM_CODE_TO (hcl, b1);
+				LOG_INST_1 (hcl, "make_chararray %zu", b1);
+				break;
+
+			case HCL_CODE_POP_INTO_CHARARRAY:
+				FETCH_PARAM_CODE_TO (hcl, b1);
+				LOG_INST_1 (hcl, "pop_into_chararray %zu", b1);
+				break;
+
 			case HCL_CODE_MAKE_DIC:
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				LOG_INST_1 (hcl, "make_dic %zu", b1);

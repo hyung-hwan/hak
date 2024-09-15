@@ -4638,6 +4638,49 @@ hcl_logbfmt (hcl, HCL_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d nc
 				break;
 			}
 
+			case HCL_CODE_MAKE_CHARARRAY:
+			{
+				hcl_oop_t t;
+
+				FETCH_PARAM_CODE_TO (hcl, b1);
+				LOG_INST_1 (hcl, "make_chararray %zu", b1);
+
+				/* create an empty array */
+				t = hcl_makechararray(hcl, HCL_NULL, b1);
+				if (HCL_UNLIKELY(!t)) goto oops_with_errmsg_supplement;
+
+				HCL_STACK_PUSH (hcl, t); /* push the char array created */
+				break;
+			}
+
+			case HCL_CODE_POP_INTO_CHARARRAY:
+			{
+				hcl_oop_t t1, t2;
+				hcl_ooi_t bv;
+
+				FETCH_PARAM_CODE_TO (hcl, b1);
+				LOG_INST_1 (hcl, "pop_into_chararray %zu", b1);
+
+				t1 = HCL_STACK_GETTOP(hcl); /* value to store */
+				if (!HCL_OOP_IS_CHAR(t1) || (bv = HCL_OOP_TO_CHAR(t1)) < 0 || bv > 255)
+				{
+					hcl_seterrbfmt (hcl, HCL_ERANGE, "not a character or out of character range - %O", t1);
+					if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
+					goto oops_with_errmsg_supplement;
+				}
+				HCL_STACK_POP (hcl);
+				t2 = HCL_STACK_GETTOP(hcl); /* char array */
+
+				if (HCL_UNLIKELY(b1 >= HCL_OBJ_GET_SIZE(t2)))
+				{
+					hcl_seterrbfmt (hcl, HCL_ECALL, "character array index %zu out of upper bound %zd ", b1, (hcl_oow_t)HCL_OBJ_GET_SIZE(t2));
+					if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
+					goto oops_with_errmsg_supplement;
+				}
+				((hcl_oop_char_t)t2)->slot[b1] = bv;
+				break;
+			}
+
 			case HCL_CODE_MAKE_DIC:
 			{
 				hcl_oop_t t;

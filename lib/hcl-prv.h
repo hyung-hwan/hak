@@ -624,12 +624,12 @@ struct hcl_cframe_t
 			hcl_ooi_t index;
 		} array_list;
 
-		/* COP_COMPILE_BYTEARRAY_LIST, COP_POP_INTO_BYTEARRAY, COP_EMIT_MAKE_BYTEARRAY */
+		/* COP_COMPILE_PURE_ARRAY_LIST, COP_POP_INTO_PURE_ARRAY, COP_EMIT_MAKE_PURE_ARRAY */
 		struct
 		{
 			int elem_type;
 			hcl_ooi_t index;
-		} bytearray_list;
+		} pure_array_list;
 
 		/* COP_EMIT_MAKE_DIC */
 		struct
@@ -1376,8 +1376,8 @@ enum hcl_bcode_t
 
 	HCL_CODE_POP_INTO_CTXTEMPVAR_X    = 0xDC, /* 220 ## */
 	HCL_CODE_CLASS_LOAD               = 0xDD, /* 221 ## */
-
-	/* UNUSED - 0xDE - 0xDF */
+	HCL_CODE_MAKE_CHARARRAY           = 0xDE, /* 222 ## */
+	HCL_CODE_POP_INTO_CHARARRAY       = 0xDF, /* 223 ## */
 
 	HCL_CODE_PUSH_CTXTEMPVAR_X        = 0xE0, /* 224 ## */
 	HCL_CODE_CLASS_ENTER              = 0xE1, /* 225 ## */

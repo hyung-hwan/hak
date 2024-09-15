@@ -446,6 +446,41 @@ static hcl_pfrc_t pf_core_slice (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 	return HCL_PF_SUCCESS;
 }
 
+static hcl_pfrc_t pf_core_char_to_smooi (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+{
+	hcl_oop_t rcv, out;
+	hcl_ooi_t code;
+
+	rcv = HCL_STACK_GETARG(hcl, nargs, 0);
+	if (!HCL_OOP_IS_CHAR(rcv))
+	{
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "receiver not Character - %O", rcv);
+		return HCL_PF_FAILURE;
+	}
+
+	code = HCL_OOP_TO_CHAR(rcv);
+	out = HCL_SMOOI_TO_OOP(code);
+	HCL_STACK_SETRET (hcl, nargs, out);
+	return HCL_PF_SUCCESS;
+}
+
+static hcl_pfrc_t pf_core_smooi_to_char (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+{
+	hcl_oop_t rcv, out;
+	hcl_ooi_t code;
+
+	rcv = HCL_STACK_GETARG(hcl, nargs, 0);
+	if (!HCL_OOP_IS_SMOOI(rcv))
+	{
+		hcl_seterrbfmt (hcl, HCL_EINVAL, "receiver not SmallInteger - %O", rcv);
+		return HCL_PF_FAILURE;
+	}
+
+	code = HCL_OOP_TO_SMOOI(rcv);
+	out = HCL_CHAR_TO_OOP(code);
+	HCL_STACK_SETRET (hcl, nargs, out);
+	return HCL_PF_SUCCESS;
+}
 
 static hcl_pfinfo_t pfinfos[] =
 {
@@ -453,12 +488,14 @@ static hcl_pfinfo_t pfinfos[] =
 	{ "basicAtPut",         { HCL_PFBASE_FUNC, pf_core_basic_at_put,          3,  3 } },
 	{ "basicNew",           { HCL_PFBASE_FUNC, pf_core_basic_new,             2,  2 } },
 	{ "basicSize",          { HCL_PFBASE_FUNC, pf_core_basic_size,            1,  1 } },
+	{ "charToSmooi",        { HCL_PFBASE_FUNC, pf_core_char_to_smooi,         1,  1 } },
 	{ "className",          { HCL_PFBASE_FUNC, pf_core_class_name,            1,  1 } },
 	{ "classRespondsTo",    { HCL_PFBASE_FUNC, pf_core_class_responds_to,     2,  2 } },
 	{ "instRespondsTo",     { HCL_PFBASE_FUNC, pf_core_inst_responds_to,      2,  2 } },
 	{ "primAt",             { HCL_PFBASE_FUNC, pf_core_prim_at,               2,  2 } },
 	{ "primAtPut",          { HCL_PFBASE_FUNC, pf_core_prim_at_put,           3,  3 } },
-	{ "slice",              { HCL_PFBASE_FUNC, pf_core_slice,                 3,  3 } }
+	{ "slice",              { HCL_PFBASE_FUNC, pf_core_slice,                 3,  3 } },
+	{ "smooiToChar",        { HCL_PFBASE_FUNC, pf_core_smooi_to_char,         1,  1 } },
 };
 
 /* ------------------------------------------------------------------------ */

@@ -1721,6 +1721,7 @@ struct hcl_t
 	hcl_oop_class_t c_byte_string; /* String */
 	hcl_oop_class_t c_symbol; /* Symbol */
 	hcl_oop_class_t c_array; /* Array */
+	hcl_oop_class_t c_character_array; /* CharacterArray */
 	hcl_oop_class_t c_byte_array; /* ByteArray */
 	hcl_oop_class_t c_symtab; /* SymbolTable */
 	hcl_oop_class_t c_dictionary;
@@ -2010,6 +2011,7 @@ enum hcl_brand_t
 	HCL_BRAND_CONS,
 	HCL_BRAND_ARRAY,
 	HCL_BRAND_BYTE_ARRAY,
+	HCL_BRAND_CHARACTER_ARRAY,
 	HCL_BRAND_SYMBOL,
 	HCL_BRAND_STRING,
 	HCL_BRAND_BYTE_STRING,
@@ -2895,6 +2897,12 @@ HCL_EXPORT hcl_oop_t hcl_makecons (
 HCL_EXPORT hcl_oop_t hcl_makearray (
 	hcl_t*     hcl,
 	hcl_oow_t  len
+);
+
+HCL_EXPORT hcl_oop_t hcl_makechararray (
+	hcl_t*            hcl,
+	const hcl_ooch_t* ptr,
+	hcl_oow_t         len
 );
 
 HCL_EXPORT hcl_oop_t hcl_makebytearray (

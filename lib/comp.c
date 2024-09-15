@@ -716,8 +716,10 @@ static int emit_single_param_instruction (hcl_t* hcl, int cmd, hcl_oow_t param_1
 		case HCL_CODE_MAKE_DIC: /* TODO: don't these need write_long2? */
 		case HCL_CODE_MAKE_ARRAY:
 		case HCL_CODE_MAKE_BYTEARRAY:
+		case HCL_CODE_MAKE_CHARARRAY:
 		case HCL_CODE_POP_INTO_ARRAY:
 		case HCL_CODE_POP_INTO_BYTEARRAY:
+		case HCL_CODE_POP_INTO_CHARARRAY:
 			bc = cmd;
 			goto write_long;
 	}
@@ -1650,7 +1652,7 @@ enum
 	COP_COMPILE_TRY_OBJECT_LIST_TAIL,
 
 	COP_COMPILE_ARRAY_LIST,
-	COP_COMPILE_BYTEARRAY_LIST,
+	COP_COMPILE_PURE_ARRAY_LIST,
 	COP_COMPILE_DIC_LIST,
 	COP_COMPILE_QLIST, /* compile data list */
 
@@ -1678,11 +1680,11 @@ enum
 	COP_EMIT_SEND,
 
 	COP_EMIT_MAKE_ARRAY,
-	COP_EMIT_MAKE_BYTEARRAY,
+	COP_EMIT_MAKE_PURE_ARRAY,
 	COP_EMIT_MAKE_DIC,
 	COP_EMIT_MAKE_CONS,
 	COP_EMIT_POP_INTO_ARRAY,
-	COP_EMIT_POP_INTO_BYTEARRAY,
+	COP_EMIT_POP_INTO_PURE_ARRAY,
 	COP_EMIT_POP_INTO_DIC,
 	COP_EMIT_POP_INTO_CONS,
 	COP_EMIT_POP_INTO_CONS_END,
@@ -3844,16 +3846,16 @@ static int compile_cons_bytearray_expression (hcl_t* hcl, hcl_cnode_t* obj, int 
 		return -1;
 	}
 
-	SWITCH_TOP_CFRAME (hcl, COP_EMIT_MAKE_BYTEARRAY, obj);
+	SWITCH_TOP_CFRAME (hcl, COP_EMIT_MAKE_PURE_ARRAY, obj);
 	cf = GET_TOP_CFRAME(hcl);
-	cf->u.bytearray_list.elem_type = concode;
-	cf->u.bytearray_list.index = nargs;
+	cf->u.pure_array_list.elem_type = concode;
+	cf->u.pure_array_list.index = nargs;
 
 	/* redundant cdr check is performed inside compile_object_list() */
-	PUSH_SUBCFRAME (hcl, COP_COMPILE_BYTEARRAY_LIST, obj);
+	PUSH_SUBCFRAME (hcl, COP_COMPILE_PURE_ARRAY_LIST, obj);
 	cf = GET_SUBCFRAME(hcl);
-	cf->u.bytearray_list.elem_type = concode;
-	cf->u.bytearray_list.index = 0;
+	cf->u.pure_array_list.elem_type = concode;
+	cf->u.pure_array_list.index = 0;
 
 	return 0;
 }
@@ -5001,6 +5003,10 @@ redo:
 					if (emit_single_param_instruction(hcl, HCL_CODE_MAKE_BYTEARRAY, 0, HCL_CNODE_GET_LOC(oprnd)) <= -1) return -1;
 					goto done;
 
+				case HCL_CONCODE_CHARARRAY:
+					if (emit_single_param_instruction(hcl, HCL_CODE_MAKE_CHARARRAY, 0, HCL_CNODE_GET_LOC(oprnd)) <= -1) return -1;
+					goto done;
+
 				case HCL_CONCODE_DIC:
 					if (emit_single_param_instruction(hcl, HCL_CODE_MAKE_DIC, 16, HCL_CNODE_GET_LOC(oprnd)) <= -1) return -1;
 					goto done;
@@ -5282,13 +5288,13 @@ static int compile_array_list (hcl_t* hcl)
 	return 0;
 }
 
-static int compile_bytearray_list (hcl_t* hcl)
+static int compile_pure_array_list (hcl_t* hcl)
 {
 	hcl_cframe_t* cf;
 	hcl_cnode_t* oprnd;
 
 	cf = GET_TOP_CFRAME(hcl);
-	HCL_ASSERT (hcl, cf->opcode == COP_COMPILE_BYTEARRAY_LIST);
+	HCL_ASSERT (hcl, cf->opcode == COP_COMPILE_PURE_ARRAY_LIST);
 
 	oprnd = cf->operand;
 
@@ -5311,8 +5317,8 @@ static int compile_bytearray_list (hcl_t* hcl)
 		car = HCL_CNODE_CONS_CAR(oprnd);
 		cdr = HCL_CNODE_CONS_CDR(oprnd);
 
-		oldidx = cf->u.bytearray_list.index;
-		elem_type = cf->u.bytearray_list.index;
+		oldidx = cf->u.pure_array_list.index;
+		elem_type = cf->u.pure_array_list.elem_type;
 
 /* TODO: compile type check if the data element is literal...
 	 runtime check if the data is a variable or something... */
@@ -5320,16 +5326,16 @@ static int compile_bytearray_list (hcl_t* hcl)
 		SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT, car);
 		if (cdr)
 		{
-			PUSH_SUBCFRAME (hcl, COP_COMPILE_BYTEARRAY_LIST, cdr);
+			PUSH_SUBCFRAME (hcl, COP_COMPILE_PURE_ARRAY_LIST, cdr);
 			cf = GET_SUBCFRAME(hcl);
-			cf->u.bytearray_list.elem_type = elem_type;
-			cf->u.bytearray_list.index = oldidx + 1;
+			cf->u.pure_array_list.elem_type = elem_type;
+			cf->u.pure_array_list.index = oldidx + 1;
 		}
 
-		PUSH_SUBCFRAME (hcl, COP_EMIT_POP_INTO_BYTEARRAY, car);
+		PUSH_SUBCFRAME (hcl, COP_EMIT_POP_INTO_PURE_ARRAY, car);
 		cf = GET_SUBCFRAME(hcl);
-		cf->u.bytearray_list.elem_type = elem_type;
-		cf->u.bytearray_list.index = oldidx;
+		cf->u.pure_array_list.elem_type = elem_type;
+		cf->u.pure_array_list.index = oldidx;
 	}
 
 	return 0;
@@ -5714,16 +5720,17 @@ static HCL_INLINE int emit_make_array (hcl_t* hcl)
 	return n;
 }
 
-static HCL_INLINE int emit_make_bytearray (hcl_t* hcl)
+static HCL_INLINE int emit_make_pure_array (hcl_t* hcl)
 {
 	hcl_cframe_t* cf;
-	int n;
+	int n, inst;
 
 	cf = GET_TOP_CFRAME(hcl);
-	HCL_ASSERT (hcl, cf->opcode == COP_EMIT_MAKE_BYTEARRAY);
+	HCL_ASSERT (hcl, cf->opcode == COP_EMIT_MAKE_PURE_ARRAY);
 	HCL_ASSERT (hcl, cf->operand != HCL_NULL);
 
-	n = emit_single_param_instruction(hcl, HCL_CODE_MAKE_BYTEARRAY, cf->u.bytearray_list.index, HCL_CNODE_GET_LOC(cf->operand));
+	inst = (cf->u.pure_array_list.elem_type == HCL_CONCODE_BYTEARRAY)? HCL_CODE_MAKE_BYTEARRAY: HCL_CODE_MAKE_CHARARRAY;
+	n = emit_single_param_instruction(hcl, inst, cf->u.pure_array_list.index, HCL_CNODE_GET_LOC(cf->operand));
 
 	POP_CFRAME (hcl);
 	return n;
@@ -5774,16 +5781,17 @@ static HCL_INLINE int emit_pop_into_array (hcl_t* hcl)
 	return n;
 }
 
-static HCL_INLINE int emit_pop_into_bytearray (hcl_t* hcl)
+static HCL_INLINE int emit_pop_into_pure_array (hcl_t* hcl)
 {
 	hcl_cframe_t* cf;
-	int n;
+	int n, inst;
 
 	cf = GET_TOP_CFRAME(hcl);
-	HCL_ASSERT (hcl, cf->opcode == COP_EMIT_POP_INTO_BYTEARRAY);
+	HCL_ASSERT (hcl, cf->opcode == COP_EMIT_POP_INTO_PURE_ARRAY);
 	HCL_ASSERT (hcl, cf->operand != HCL_NULL);
 
-	n = emit_single_param_instruction(hcl, HCL_CODE_POP_INTO_BYTEARRAY, cf->u.bytearray_list.index, HCL_CNODE_GET_LOC(cf->operand));
+	inst = (cf->u.pure_array_list.elem_type == HCL_CONCODE_BYTEARRAY)? HCL_CODE_POP_INTO_BYTEARRAY: HCL_CODE_POP_INTO_CHARARRAY;
+	n = emit_single_param_instruction(hcl, inst, cf->u.pure_array_list.index, HCL_CNODE_GET_LOC(cf->operand));
 
 	POP_CFRAME (hcl);
 	return n;
@@ -6368,8 +6376,8 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 				if (compile_array_list(hcl) <= -1) goto oops;
 				break;
 
-			case COP_COMPILE_BYTEARRAY_LIST:
-				if (compile_bytearray_list(hcl) <= -1) goto oops;
+			case COP_COMPILE_PURE_ARRAY_LIST:
+				if (compile_pure_array_list(hcl) <= -1) goto oops;
 				break;
 
 			case COP_COMPILE_DIC_LIST:
@@ -6448,8 +6456,8 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 				if (emit_make_array(hcl) <= -1) goto oops;
 				break;
 
-			case COP_EMIT_MAKE_BYTEARRAY:
-				if (emit_make_bytearray(hcl) <= -1) goto oops;
+			case COP_EMIT_MAKE_PURE_ARRAY:
+				if (emit_make_pure_array(hcl) <= -1) goto oops;
 				break;
 
 			case COP_EMIT_MAKE_DIC:
@@ -6464,8 +6472,8 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 				if (emit_pop_into_array(hcl) <= -1) goto oops;
 				break;
 
-			case COP_EMIT_POP_INTO_BYTEARRAY:
-				if (emit_pop_into_bytearray(hcl) <= -1) goto oops;
+			case COP_EMIT_POP_INTO_PURE_ARRAY:
+				if (emit_pop_into_pure_array(hcl) <= -1) goto oops;
 				break;
 
 			case COP_EMIT_POP_INTO_DIC:

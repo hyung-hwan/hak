@@ -846,7 +846,8 @@ static HCL_INLINE int can_comma_list (hcl_t* hcl)
 	{
 		if (rstl->count & 1) return 0;
 	}
-	else if (cc != HCL_CONCODE_ARRAY && cc != HCL_CONCODE_BYTEARRAY && cc != HCL_CONCODE_TUPLE)
+	else if (cc != HCL_CONCODE_ARRAY && cc != HCL_CONCODE_BYTEARRAY &&
+	         cc != HCL_CONCODE_CHARARRAY && cc != HCL_CONCODE_TUPLE)
 	{
 		return 0;
 	}
@@ -2469,16 +2470,18 @@ static int flx_hmarked_token (hcl_t* hcl, hcl_ooci_t c)
 
 		/* --------------------------- */
 
-		case 'x':
+		case 'x': /* hexadecimal number */
 			init_flx_hn (FLX_HN(hcl), HCL_TOK_RADNUMLIT, HCL_SYNERR_NUMLIT, 16);
 			goto radixed_number;
 
-		case 'o':
+		case 'o': /* octal number */
 			init_flx_hn (FLX_HN(hcl), HCL_TOK_RADNUMLIT, HCL_SYNERR_NUMLIT, 8);
 			goto radixed_number;
 
-		case 'b':
-		case 'c':
+		case 'b': /* binary number or byte array */
+		case 'B':
+		case 'c': /* character array */
+		case 'C':
 		#if 0
 			init_flx_hn (FLX_HN(hcl), HCL_TOK_RADNUMLIT, HCL_SYNERR_NUMLIT, 2);
 			goto radixed_number;
@@ -2489,12 +2492,11 @@ static int flx_hmarked_token (hcl_t* hcl, hcl_ooci_t c)
 			break;
 		#endif
 
-
-		case 'e':
+		case 'e': /* #eXXX - error literal */
 			init_flx_hn (FLX_HN(hcl), HCL_TOK_ERRLIT, HCL_SYNERR_ERRLIT, 10);
 			goto radixed_number;
 
-		case 'p':
+		case 'p': /* #pXXX - small pointer */
 			init_flx_hn (FLX_HN(hcl), HCL_TOK_SMPTRLIT, HCL_SYNERR_SMPTRLIT, 16);
 		radixed_number:
 			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_HMARKED_NUMBER);
@@ -2518,7 +2520,7 @@ static int flx_hmarked_token (hcl_t* hcl, hcl_ooci_t c)
 			FEED_WRAP_UP_WITH_CHAR (hcl, c, HCL_TOK_DLPAREN);
 			goto consumed;
 
-		case '"': /* #" */
+		case '"': /* #" - double-quoted symbol */
 			reset_flx_token (hcl);
 			init_flx_qt (FLX_QT(hcl), HCL_TOK_SYMLIT, HCL_SYNERR_SYMLIT, c, '\\', 0, HCL_TYPE_MAX(hcl_oow_t), 0);
 			FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard prefix, quote and move on */
