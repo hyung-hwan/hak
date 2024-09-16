@@ -272,6 +272,7 @@ static HCL_INLINE int is_delimchar (hcl_ooci_t c)
 	       c == '#' || c == '\"' || c == '\'' || c == '\\' || is_spacechar(c) || c == HCL_OOCI_EOF;
 }
 
+
 int hcl_is_binop_char (hcl_ooci_t c)
 {
 	return c == '&' || c == '*' || c == '+' || c == '-' || c == '/' || c == '%' ||
@@ -2458,6 +2459,13 @@ static int flx_hmarked_token (hcl_t* hcl, hcl_ooci_t c)
 	 * #"..."   symbol literal
 	 */
 
+	if (hcl_is_binop_char(c))
+	{
+		reset_flx_token (hcl);
+		FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_HMARKED_BINOP);
+		goto consumed;
+	}
+
 	switch (c)
 	{
 		case '#':
@@ -2698,6 +2706,34 @@ static int flx_hmarked_b (hcl_t* hcl, hcl_ooci_t c)
 		init_flx_hn (FLX_HN(hcl), HCL_TOK_RADNUMLIT, HCL_SYNERR_NUMLIT, 2);
 		FEED_CONTINUE (hcl, HCL_FLX_HMARKED_NUMBER);
 		goto not_consumed;
+	}
+
+consumed:
+	return 1;
+
+not_consumed:
+	return 0;
+}
+
+static int flx_hmarked_binop (hcl_t* hcl, hcl_ooci_t c)
+{
+	if (hcl_is_binop_char(c))
+	{
+		ADD_TOKEN_CHAR(hcl, c);
+		goto consumed;
+	}
+	else if (is_delimchar(c))
+	{
+		FEED_WRAP_UP(hcl, HCL_TOK_SYMLIT);
+		goto not_consumed;
+	}
+	else
+	{
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_SYMLIT,
+			TOKEN_LOC(hcl), HCL_NULL /* no token name as incomplete */,
+			"invalid binary selector character '%jc' after #%.*js",
+			c, TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
+		return -1;
 	}
 
 consumed:
@@ -3230,6 +3266,7 @@ static int feed_char (hcl_t* hcl, hcl_ooci_t c)
 		case HCL_FLX_DOLLARED_IDENT:   return flx_dollared_ident(hcl, c);
 		case HCL_FLX_HMARKED_TOKEN:    return flx_hmarked_token(hcl, c);
 		case HCL_FLX_HMARKED_B:        return flx_hmarked_b(hcl, c);
+		case HCL_FLX_HMARKED_BINOP:    return flx_hmarked_binop(hcl, c);
 		case HCL_FLX_HMARKED_CHAR:     return flx_hmarked_char(hcl, c);
 		case HCL_FLX_HMARKED_IDENT:    return flx_hmarked_ident(hcl, c);
 		case HCL_FLX_HMARKED_NUMBER:   return flx_hmarked_number(hcl, c);

@@ -860,6 +860,7 @@ enum hcl_flx_state_t
 	HCL_FLX_DOLLARED_IDENT,
 	HCL_FLX_HMARKED_TOKEN,  /* hash-marked token */
 	HCL_FLX_HMARKED_B,      /* #b - intermediate state before #b[ or #b-radixed binary number */
+	HCL_FLX_HMARKED_BINOP,  /* #++ - binary operator symbol */
 	HCL_FLX_HMARKED_CHAR,   /* hash-marked character that begins with #\ */
 	HCL_FLX_HMARKED_IDENT,  /* hash-marked identifier like #include, etc */
 	HCL_FLX_HMARKED_NUMBER, /* hash-marked number - radixed number like #xABCD */

@@ -83,3 +83,7 @@ defun :* fun1() { ##ERROR: syntax error - function name not symbol in defun
 ---
 
 (10 + 20 30) ##ERROR: syntax error - too many operands
+
+---
+
+#**a     ##ERROR: syntax error - invalid binary selector character 'a' after #**
