@@ -10,7 +10,7 @@
 i:=0;
 while(i < 20) {
 	printf "hello world 안녕하신가\n"
-	i := i + 20 ##ERROR: syntax error - prohibited binary operator - +
+	i := i + 20 ##ERROR: syntax error - prohibited binary selector '+'
 }
 
 ---

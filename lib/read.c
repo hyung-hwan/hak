@@ -605,7 +605,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 		}
 		else if (concode == HCL_CONCODE_BLIST)
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_NOVALUE, TOKEN_LOC(hcl), HCL_NULL, "missing expression after binary operator");
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_NOVALUE, TOKEN_LOC(hcl), HCL_NULL, "missing expression after binary selector");
 		}
 		else
 		{
@@ -996,10 +996,24 @@ static HCL_INLINE int can_binop_list (hcl_t* hcl)
 		 */
 
 		/* unable to support operator precedence as the meaning
-		 * of binary operators are not pre-defined in this language */
+		 * of binary operators is not pre-defined in this language */
 
-		/* ugly to manipulate the current list */
-		HCL_ASSERT (hcl, rstl->count == 3);
+		/* [NOTE] - something wrong
+		 *   the repeated delimiters check above can't catch BINOP repetition
+		 *   because BINOP itself is added to the list and flagv is cleared
+		 *   with the call to clear_comma_colon_binop_flag().
+		 * [TODO]
+		 *   review this implentation such that the BINOPED flag isn't needed
+		 */
+		/*HCL_ASSERT (hcl, rstl->count == 2 || rstl->count == 3); this condition is wrong, for say, 1 + 2 3 + 4 */
+		HCL_ASSERT (hcl, rstl->count >= 2);
+
+		/* [TODO] this condition is a workaround for the failing repetition check.
+		 *   1 + + */
+		if (rstl->count == 2) return 0;
+
+		/* 1 + 2 3 + 4 */
+		if (rstl->count > 3) return 0;
 
 		fake_tok.ptr = vocas[VOCA_BLIST].str;
 		fake_tok.len = vocas[VOCA_BLIST].len;
@@ -1626,7 +1640,8 @@ static int feed_process_token (hcl_t* hcl)
 			else if (!(can = can_binop_list(hcl)))
 			{
 			/*banned_binop:*/
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "prohibited binary operator");
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, TOKEN_LOC(hcl), HCL_NULL,
+					"prohibited binary selector '%.*js'", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
 				goto oops;
 			}
 			else if (can <= -1) goto oops;
@@ -2526,6 +2541,7 @@ static int flx_hmarked_token (hcl_t* hcl, hcl_ooci_t c)
 
 		/* --------------------------- */
 		case '\\':
+			init_flx_hc (FLX_HC(hcl));
 			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_HMARKED_CHAR);
 			goto consumed;
 
