@@ -135,3 +135,7 @@ abc.? := 20 ##ERROR: syntax error - '?' prohibited as first character of identif
 
 ---
 1 * 2 3 4 ##ERROR: syntax error - redundant operand '4'
+
+---
+
+1 \ 2 ##ERROR: syntax error - stray backslash
