@@ -111,7 +111,6 @@ enum hcl_synerrnum_t
 	HCL_SYNERR_NUMRANGE,      /* number range error */
 	HCL_SYNERR_ERRLIT,        /* wrong error literal */
 	HCL_SYNERR_SMPTRLIT,      /* wrong smptr literal */
-	HCL_SYNERR_MSEGIDENT,     /* wrong multi-segment identifier */
 	HCL_SYNERR_RADIX,         /* invalid radix for a numeric literal */
 
 	HCL_SYNERR_EOF,           /* sudden end of input */
@@ -2580,14 +2579,19 @@ HCL_EXPORT int hcl_feeduchars (
 	hcl_oow_t        len
 );
 
-HCL_EXPORT int hcl_feedpending (
-	hcl_t*           hcl
-);
-
 HCL_EXPORT int hcl_feedbchars (
 	hcl_t*           hcl,
 	const hcl_bch_t* data,
 	hcl_oow_t        len
+);
+
+HCL_EXPORT int hcl_feedpending (
+	hcl_t*           hcl
+);
+
+
+HCL_EXPORT void hcl_resetfeedloc (
+	hcl_t*           hcl
 );
 
 HCL_EXPORT int hcl_endfeed (

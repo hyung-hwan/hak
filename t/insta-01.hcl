@@ -1,5 +1,6 @@
 ## test class instantiation methods
 
+fun UndefinedObject: ~= (oprnd) { return (nqv? self oprnd) } ## for if (a ~= nil) ...
 fun Number: + (oprnd) { return (+ self oprnd) }
 fun Number: - (oprnd) { return (- self oprnd) }
 fun Number: * (oprnd) { return (* self oprnd) }
@@ -44,14 +45,20 @@ class B :: A [ d e f ] {
 	};
 };
 
-a := ((B:newInstance 1 2 3):sum);
+a := ((B:newInstance 1 2 3):sum)
 if (a ~= 18) { printf "ERROR: a must be 18\n"; } \
-else { printf "OK %d\n" a; };
+else { printf "OK %d\n" a; }
 
-b := (B:newInstance 2 3 4);
-a := (b:get-a);
+b := (B:newInstance 2 3 4)
+a := (b:get-a)
 if (a ~= 4) {printf "ERROR: a must be 4\n" } \
-else { printf "OK %d\n" a };
+else { printf "OK %d\n" a }
+
+c := (object-new A)
+a := (c:get-a)
+if (a ~= nil) {printf "ERROR: a must be nil\n" } \
+else { printf "OK %O\n" a }
+
 
 a := (b:get-b);
 if (a ~= 6) { printf "ERROR: a must be 6\n" } \

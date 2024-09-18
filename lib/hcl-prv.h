@@ -455,6 +455,7 @@ typedef enum hcl_cnode_flag_t hcl_cnode_flag_t;
 
 #define HCL_CNODE_IS_SYMBOL(x) ((x)->cn_type == HCL_CNODE_SYMBOL)
 #define HCL_CNODE_IS_SYMBOL_PLAIN(x) ((x)->cn_type == HCL_CNODE_SYMBOL && (x)->u.symbol.syncode == 0)
+#define HCL_CNODE_IS_SYMBOL_PLAIN_IDENT(x) (HCL_CNODE_IS_SYMBOL_PLAIN(x) && !hcl_is_binop_char((x)->cn_tok.ptr[0]))
 #define HCL_CNODE_IS_SYMBOL_PLAIN_BINOP(x) (HCL_CNODE_IS_SYMBOL_PLAIN(x) && hcl_is_binop_char((x)->cn_tok.ptr[0]))
 #define HCL_CNODE_IS_SYMBOL_SYNCODED(x, code) ((x)->cn_type == HCL_CNODE_SYMBOL && (x)->u.symbol.syncode == (code))
 #define HCL_CNODE_SYMBOL_SYNCODE(x) ((x)->u.symbol.syncode)

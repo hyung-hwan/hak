@@ -6,7 +6,12 @@ x := (+ 10 20) "aaaa"; ##ERROR: syntax error - too many rvalues
 
 ##
 
-x := (10 +); ##ERROR: syntax error - no operand after binary operator
+x := (10 +); ##ERROR: syntax error - no operand after binary selector
+
+
+---
+
+10 + ##ERROR: syntax error - no operand after binary selector '+'
 
 ---
 
@@ -82,8 +87,48 @@ defun :* fun1() { ##ERROR: syntax error - function name not symbol in defun
 
 ---
 
-(10 + 20 30) ##ERROR: syntax error - too many operands
+(10 + 20 30) ##ERROR: syntax error - redundant operand '30'
 
 ---
 
 #**a     ##ERROR: syntax error - invalid binary selector character 'a' after #**
+
+---
+
+abc- := 20 ##ERROR: syntax error - '-' prohibited as last character of identifier or identifier segment
+
+---
+
+self.g- := 20 ##ERROR: syntax error - '-' prohibited as last character of identifier or identifier segment
+
+---
+
+self.-g := 20 ##ERROR: syntax error - '-' prohibited as first character of identifier or identifier segment
+
+---
+
+if.abc := 20 ##ERROR: syntax error - wrong multi-segment identifier
+
+---
+
+abc. := 20 ##ERROR: syntax error - blank segment after 'abc.'
+
+---
+
+abc.? := 20 ##ERROR: syntax error - '?' prohibited as first character of identifier or identifier segment after 'abc.'
+
+
+---
+- := 20 ##ERROR: syntax error - bad lvalue - invalid element - -
+
+---
+
++++ := 20 ##ERROR: syntax error - bad lvalue - invalid element - +++
+
+##---
+##1 + + +
+##ASSERTION FAILURE: rstl->count == 3 at ../../../lib/read.c:1001
+#
+#
+#HCL> 1 + 2 3 + 4
+##ASSERTION FAILURE: rstl->count == 3 at ../../../lib/read.c:1002

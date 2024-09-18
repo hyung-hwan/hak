@@ -422,6 +422,7 @@ static void print_error (hcl_t* hcl, const hcl_bch_t* msghdr)
 static void show_prompt (hcl_t* hcl, int level)
 {
 /* TODO: different prompt per level */
+	hcl_resetfeedloc (hcl);
 	hcl_logbfmt (hcl, HCL_LOG_STDOUT, "HCL> ");
 	hcl_logbfmt (hcl, HCL_LOG_STDOUT, HCL_NULL); /* flushing */
 }

@@ -107,7 +107,6 @@ static char* synerrstr[] =
 	"out of integer range",
 	"wrong error literal",
 	"wrong smptr literal",
-	"wrong multi-segment identifer",
 	"invalid radix for a numeric literal",
 
 	"sudden end of input",

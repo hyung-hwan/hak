@@ -1218,7 +1218,7 @@ static hcl_pfrc_t pf_object_new (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 		return HCL_PF_FAILURE;
 	}
 
-	if (nargs >= 1)
+	if (nargs >= 2)
 	{
 		int n;
 		hcl_oop_t sz;

@@ -54,11 +54,12 @@ class A [ + ] { ##ERROR: syntax error - not variable name - +
 ---
 
 fun xxx(x :: p q) { p := (x + 1); q := (x + 2) }
-[a,[b]] := (xxx 20) ##ERROR: syntax error - invalid lvalue - not symbol in tuple
+[a,[b]] := (xxx 20) ##ERROR: syntax error - bad lvalue - invalid element in tuple
 printf "%d %d\n" a b
 
 ---
-20 := 90 ##ERROR: syntax error - invalid lvalue - not symbol - 20
+
+20 := 90 ##ERROR: syntax error - bad lvalue - invalid element - 20
 
 ---
 
@@ -66,4 +67,8 @@ printf "%d %d\n" a b
 
 ---
 
-[] := 10 ##ERROR: syntax error - invalid lvalue
+[] := 10 ##ERROR: syntax error - bad lvalue - blank expression
+
+---
+
++ + 100 ##ERROR: exception not handled - "unable to send + to #<PRIM> - '+' not found in Primitive"

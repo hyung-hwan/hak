@@ -260,7 +260,7 @@ static HCL_INLINE int is_alnumchar (hcl_ooci_t c)
 }
 #endif
 
-static HCL_INLINE int is_delimchar (hcl_ooci_t c)
+static HCL_INLINE int is_delim_char (hcl_ooci_t c)
 {
 	return c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' ||
 	       c == '|' || c == ',' || c == '.' || c == ':' || c == ';' ||
@@ -273,10 +273,25 @@ static HCL_INLINE int is_delimchar (hcl_ooci_t c)
 }
 
 
-int hcl_is_binop_char (hcl_ooci_t c)
+int hcl_is_binop_char (hcl_ooci_t c) /* not static HCL_INLINE for shared use with comp.c via HCL_CNODE_IS_SYMBOL_PLAIN() */
 {
 	return c == '&' || c == '*' || c == '+' || c == '-' || c == '/' || c == '%' ||
 	       c == '<' || c == '>' || c == '=' || c == '@' || c == '|' || c == '~';
+}
+
+
+static HCL_INLINE int is_lead_ident_char (hcl_ooci_t c)
+{
+	return hcl_is_ooch_alpha(c) || c == '_';
+}
+
+static HCL_INLINE int is_ident_char (hcl_ooci_t c)
+{
+	/* [NOTE]
+	 *  '-' is prohibited as the last character of an identifier or an identifier segment.
+	 *  see flx_plain_ident().
+	 */
+	return hcl_is_ooch_alnum(c) || c == '_' || c == '-' || c == '?';
 }
 
 /* TODO: remove GET_CHAR(), GET_CHAR_TO(), get_char(), _get_char() */
@@ -582,7 +597,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 		/* no item after , : := or various binary operators */
 		if (concode == HCL_CONCODE_MLIST)
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_CALLABLE, TOKEN_LOC(hcl), HCL_NULL, "missing message after :");
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_CALLABLE, TOKEN_LOC(hcl), HCL_NULL, "missing message after receiver");
 		}
 		else if (concode == HCL_CONCODE_ALIST)
 		{
@@ -633,8 +648,8 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 			lval = HCL_CNODE_CONS_CAR(head);
 			if (lval && HCL_CNODE_IS_ELIST(lval))
 			{
-				/* invalid lvalue */
-				hcl_setsynerr (hcl, HCL_SYNERR_LVALUE, HCL_CNODE_GET_LOC(lval), HCL_CNODE_GET_TOK(lval));
+				/* invalid lvalue - for example, () := 20 */
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_LVALUE, HCL_CNODE_GET_LOC(lval), HCL_CNODE_GET_TOK(lval), "bad lvalue - blank expression");
 				goto oops;
 			}
 			else if (lval && HCL_CNODE_IS_CONS_CONCODED(lval, HCL_CONCODE_TUPLE))
@@ -659,9 +674,9 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 					/* check in advance if the array members are all plain symbols */
 					hcl_cnode_t* lcar;
 					lcar = HCL_CNODE_CONS_CAR(tmp);
-					if (!HCL_CNODE_IS_SYMBOL_PLAIN(lcar) && !HCL_CNODE_IS_DSYMBOL_CLA(lcar))
+					if (!HCL_CNODE_IS_SYMBOL_PLAIN_IDENT(lcar) && !HCL_CNODE_IS_DSYMBOL_CLA(lcar))
 					{
-						hcl_setsynerrbfmt (hcl, HCL_SYNERR_LVALUE, HCL_CNODE_GET_LOC(lval), HCL_CNODE_GET_TOK(lval), "invalid lvalue - not symbol in tuple");
+						hcl_setsynerrbfmt (hcl, HCL_SYNERR_LVALUE, HCL_CNODE_GET_LOC(lval), HCL_CNODE_GET_TOK(lval), "bad lvalue - invalid element in tuple");
 						goto oops;
 					}
 				}
@@ -685,9 +700,9 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 			}
 			else
 			{
-				if (!HCL_CNODE_IS_SYMBOL_PLAIN(lval) && !HCL_CNODE_IS_DSYMBOL_CLA(lval))
+				if (!HCL_CNODE_IS_SYMBOL_PLAIN_IDENT(lval) && !HCL_CNODE_IS_DSYMBOL_CLA(lval))
 				{
-					hcl_setsynerrbfmt (hcl, HCL_SYNERR_LVALUE, HCL_CNODE_GET_LOC(lval), HCL_CNODE_GET_TOK(lval), "invalid lvalue - not symbol");
+					hcl_setsynerrbfmt (hcl, HCL_SYNERR_LVALUE, HCL_CNODE_GET_LOC(lval), HCL_CNODE_GET_TOK(lval), "bad lvalue - invalid element");
 					goto oops;
 				}
 		#if defined(TRANSFORM_ALIST)
@@ -737,33 +752,28 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 			/* x binop y -> binop x y - BLIST contains BINOP in it */
 			hcl_cnode_t* x, * binop;
 
-			x = HCL_CNODE_CONS_CAR(head);
-			if (x && HCL_CNODE_IS_ELIST(x))
-			{
-				hcl_setsynerr (hcl, HCL_SYNERR_LVALUE, HCL_CNODE_GET_LOC(x), HCL_CNODE_GET_TOK(x));
-				goto oops;
-			}
-
-			/* swap x and binop */
+			/*x = HCL_CNODE_CONS_CAR(head);*/
 			binop = HCL_CNODE_CONS_CDR(head);
-			if (!binop || !HCL_CNODE_IS_CONS(binop) || !HCL_CNODE_CONS_CDR(binop) || !HCL_CNODE_IS_CONS(HCL_CNODE_CONS_CDR(binop)))
+
+			HCL_ASSERT (hcl, binop && HCL_CNODE_IS_CONS(binop));
+			HCL_ASSERT (hcl, count >= 2); /* the code in can_binop_list() ensures this condition */
+
+			if (count < 3)
 			{
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_NOVALUE, HCL_CNODE_GET_LOC(x), HCL_CNODE_GET_TOK(x), "no operand after binary operator");
+				/* for example, 1 + */
+				x = HCL_CNODE_CONS_CAR(binop);
+				/* with the transformation, the implementation supports two operands and a single binop in an expression. */
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_NOVALUE, HCL_CNODE_GET_LOC(x), HCL_NULL,
+					"no operand after binary selector '%.*js'", HCL_CNODE_GET_TOKLEN(x), HCL_CNODE_GET_TOKPTR(x));
 				goto oops;
 			}
-
-/* TODO: support multiple operators and operands .. like 1 + 2 - 3
-currently can_binop_list() disallows more operators.
-but the check isn't complemete if more operands are added without an operator e.g. (1 + 2 3)
-*/
-			/*HCL_ASSERT (hcl, count == 3);*/
-			if (count != 3)
+			else if (count > 3)
 			{
-				/* Currently, the implementation supports two operands and a single binop in an expression.
-				* If the implementation is enhanced to support more than one binop and more operands,
-				* this check must be removed. */
-				/* TODO: support more than two operands */
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGFLOOD, HCL_CNODE_GET_LOC(tail), HCL_CNODE_GET_TOK(tail), "too many operands");
+				/* for example, 1 + 1 1 */
+				x = HCL_CNODE_CONS_CAR(tail);
+				/* with the transformation, the implementation supports two operands and a single binop in an expression. */
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_NOVALUE, HCL_CNODE_GET_LOC(x), HCL_NULL,
+					"redundant operand '%.*js'", HCL_CNODE_GET_TOKLEN(x), HCL_CNODE_GET_TOKPTR(x));
 				goto oops;
 			}
 
@@ -1012,7 +1022,7 @@ static HCL_INLINE int can_binop_list (hcl_t* hcl)
 		if (cc != HCL_CONCODE_XLIST) return 0;
 	}
 
-	LIST_FLAG_SET_CONCODE(rstl->flagv, HCL_CONCODE_BLIST);
+	LIST_FLAG_SET_CONCODE(rstl->flagv, HCL_CONCODE_BLIST); /* switch to BLIST as long as a binary operator is seen */
 	rstl->flagv |= BINOPED;
 /* TODO: must remember the actual binop operator token */
 	return 2;
@@ -2002,7 +2012,7 @@ typedef struct delim_token_t delim_token_t;
 static delim_token_t delim_token_tab[] =
 {
 	/* [NOTE 1]
-	 *  if you add a new token, ensure the first character is listed in is_delimchar()
+	 *  if you add a new token, ensure the first character is listed in is_delim_char()
 	 *
 	 * [NOTE 2]
 	 *  for the implementation limitation in find_delim_token_char(),
@@ -2014,7 +2024,7 @@ static delim_token_t delim_token_tab[] =
 	 *
 	 * [NOTE 3]
 	 *  don't list #(, #[, #{ here because of overlapping use of # for various purposes.
-	 *  however, # is included in is_delimchar().
+	 *  however, # is included in is_delim_char().
 	 */
 
 	{ "(",        1, HCL_TOK_LPAREN },
@@ -2312,11 +2322,15 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 				init_flx_binop (FLX_BINOP(hcl));
 				FEED_CONTINUE (hcl, HCL_FLX_BINOP);
 			}
-			else
+			else if (is_lead_ident_char(c))
 			{
-				/* TODO: limit identifier character - is_identchar(), is_identleadchar() */
 				init_flx_pi (FLX_PI(hcl));
 				FEED_CONTINUE (hcl, HCL_FLX_PLAIN_IDENT);
+			}
+			else
+			{
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_BACKSLASH, TOKEN_LOC(hcl), HCL_NULL, "invalid token character - %c", c);
+				return -1;
 			}
 			goto not_consumed;
 	}
@@ -2391,7 +2405,7 @@ static int flx_dollared_ident (hcl_t* hcl, hcl_ooci_t c)
 
 	/* di->char_count doesn't include the first '$' */
 
-	if (is_delimchar(c))
+	if (is_delim_char(c))
 	{
 		hcl_tok_type_t tok_type;
 
@@ -2553,7 +2567,7 @@ static int flx_hmarked_char (hcl_t* hcl, hcl_ooci_t c)
 {
 	hcl_flx_hc_t* hc = FLX_HC(hcl);
 
-	if (is_delimchar(c))
+	if (is_delim_char(c))
 	{
 		if (hc->char_count == 0)
 		{
@@ -2651,7 +2665,7 @@ static int flx_hmarked_ident (hcl_t* hcl, hcl_ooci_t c)
 {
 	hcl_flx_hi_t* hi = FLX_HI(hcl);
 
-	if (is_delimchar(c))
+	if (is_delim_char(c))
 	{
 		hcl_tok_type_t tok_type;
 
@@ -2722,7 +2736,7 @@ static int flx_hmarked_binop (hcl_t* hcl, hcl_ooci_t c)
 		ADD_TOKEN_CHAR(hcl, c);
 		goto consumed;
 	}
-	else if (is_delimchar(c))
+	else if (is_delim_char(c))
 	{
 		FEED_WRAP_UP(hcl, HCL_TOK_SYMLIT);
 		goto not_consumed;
@@ -2749,7 +2763,7 @@ static int flx_hmarked_number (hcl_t* hcl, hcl_ooci_t c)
 
 	if (HCL_CHAR_TO_NUM(c, rn->radix) >= rn->radix)
 	{
-		if (is_delimchar(c))
+		if (is_delim_char(c))
 		{
 			if (rn->digit_count == 0)
 			{
@@ -2788,7 +2802,7 @@ static int flx_hmarked_number (hcl_t* hcl, hcl_ooci_t c)
 	}
 	else
 	{
-		HCL_ASSERT (hcl, !is_delimchar(c));
+		HCL_ASSERT (hcl, !is_delim_char(c));
 		ADD_TOKEN_CHAR(hcl, c);
 		rn->digit_count++;
 		goto consumed;
@@ -2805,7 +2819,7 @@ static int flx_plain_ident (hcl_t* hcl, hcl_ooci_t c) /* identifier */
 {
 	hcl_flx_pi_t* pi = FLX_PI(hcl);
 
-	if (is_delimchar(c)) /* [NOTE] . is one of the delimiter character */
+	if (is_delim_char(c)) /* [NOTE] . is one of the delimiter character */
 	{
 		hcl_oow_t start;
 		hcl_oocs_t seg;
@@ -2813,13 +2827,21 @@ static int flx_plain_ident (hcl_t* hcl, hcl_ooci_t c) /* identifier */
 
 		if (pi->seg_len == 0)
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_MSEGIDENT, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "blank segment");
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_ILTOK, TOKEN_LOC(hcl), HCL_NULL,
+				"blank segment after '%.*js'", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
 			return -1;
 		}
 
 		start = TOKEN_NAME_LEN(hcl) - pi->seg_len;
 		seg.ptr = &TOKEN_NAME_CHAR(hcl, start);
 		seg.len = pi->seg_len;
+		if (seg.ptr[seg.len - 1] == '-')
+		{
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_ILTOK, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
+				"'%c' prohibited as last character of identifier or identifier segment",
+				seg.ptr[seg.len - 1]);
+			return -1;
+		}
 		tok_type = classify_ident_token(hcl, &seg);
 		if (tok_type != HCL_TOK_IDENT)
 		{
@@ -2830,6 +2852,7 @@ static int flx_plain_ident (hcl_t* hcl, hcl_ooci_t c) /* identifier */
 			}
 			else
 			{
+				/* for example, if.if.abc - flag the error after having consumed all the segments */
 				pi->non_ident_seg_count++;
 				pi->last_non_ident_type = tok_type;
 			}
@@ -2856,7 +2879,7 @@ static int flx_plain_ident (hcl_t* hcl, hcl_ooci_t c) /* identifier */
 			}
 			else
 			{
-				hcl_setsynerr (hcl, HCL_SYNERR_MSEGIDENT, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_ILTOK, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "wrong multi-segment identifier");
 				return -1;
 			}
 		}
@@ -2868,12 +2891,31 @@ static int flx_plain_ident (hcl_t* hcl, hcl_ooci_t c) /* identifier */
 		FEED_WRAP_UP (hcl, tok_type);
 		goto not_consumed;
 	}
-	else
+	else if (is_ident_char(c))
 	{
+		if (pi->seg_len == 0)
+		{
+			if (!is_lead_ident_char(c))
+			{
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_ILTOK, TOKEN_LOC(hcl), HCL_NULL,
+					"'%c' prohibited as first character of identifier or identifier segment after '%.*js'",
+					c, TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
+				return -1;
+			}
+		}
+
 		ADD_TOKEN_CHAR(hcl, c);
 		pi->char_count++;
 		pi->seg_len++;
 		goto consumed;
+	}
+	else
+	{
+		hcl_setsynerrbfmt (
+			hcl, HCL_SYNERR_ILTOK, TOKEN_LOC(hcl), HCL_NULL,
+			"invalid identifier character '%jc' after '%.*js'", c,
+			TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
+		return -1;
 	}
 
 consumed:
@@ -2883,7 +2925,7 @@ not_consumed:
 	return 0;
 }
 
-static int flx_binop (hcl_t* hcl, hcl_ooci_t c) /* identifier */
+static int flx_binop (hcl_t* hcl, hcl_ooci_t c) /* binary operator/selector */
 {
 #if 0
 	hcl_flx_binop_t* binop = FLX_BINOP(hcl);
@@ -3496,6 +3538,13 @@ int hcl_feedpending (hcl_t* hcl)
 	return !(hcl->c->r.st == HCL_NULL && FLX_STATE(hcl) == HCL_FLX_START);
 }
 
+void hcl_resetfeedloc (hcl_t* hcl)
+{
+	hcl->c->feed.lx.loc.line = 1;
+	hcl->c->feed.lx.loc.colm = 1;
+	hcl->c->feed.lx.loc.file = HCL_NULL;
+}
+
 int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
 {
 /* TODO: need to return the number of processed characters?
@@ -3518,7 +3567,11 @@ int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
 		for (i = 0; i < len; )
 		{
 			x = feed_char(hcl, data[i]);
-			if (x <= -1) goto oops; /* TODO: return the number of processed characters via an argument? */
+			if (x <= -1)
+			{
+				feed_update_lx_loc (hcl, data[i]); /* update the location upon an error too */
+				goto oops; /* TODO: return the number of processed characters via an argument? */
+			}
 
 			if (x > 0)
 			{
