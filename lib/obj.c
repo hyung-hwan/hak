@@ -134,10 +134,9 @@ static HCL_INLINE hcl_oop_t alloc_oop_array (hcl_t* hcl, int brand, hcl_oow_t si
 	}
 	if (!hdr) return HCL_NULL;
 
-	hdr->_flags = HCL_OBJ_MAKE_FLAGS(HCL_OBJ_TYPE_OOP, HCL_SIZEOF(hcl_oop_t), 0, 0, 0, ngc, 0, brand);
+	hdr->_flags = HCL_OBJ_MAKE_FLAGS(HCL_OBJ_TYPE_OOP, HCL_SIZEOF(hcl_oop_t), 0, 0, 0, ngc, 0);
 	HCL_OBJ_SET_SIZE (hdr, size);
 	/*HCL_OBJ_SET_CLASS (hdr, hcl->_nil);*/
-	/*HCL_OBJ_SET_FLAGS_BRAND (hdr, brand);*/
 
 	while (size > 0) hdr->slot[--size] = hcl->_nil;
 
@@ -163,10 +162,9 @@ hcl_oop_t hcl_allocoopobjwithtrailer (hcl_t* hcl, int brand, hcl_oow_t size, con
 	hdr = (hcl_oop_oop_t)hcl_allocbytes(hcl, HCL_SIZEOF(hcl_obj_t) + nbytes_aligned);
 	if (HCL_UNLIKELY(!hdr)) return HCL_NULL;
 
-	hdr->_flags = HCL_OBJ_MAKE_FLAGS(HCL_OBJ_TYPE_OOP, HCL_SIZEOF(hcl_oop_t), 0, 0, 0, 0, 1, brand);
+	hdr->_flags = HCL_OBJ_MAKE_FLAGS(HCL_OBJ_TYPE_OOP, HCL_SIZEOF(hcl_oop_t), 0, 0, 0, 0, 1);
 	HCL_OBJ_SET_SIZE (hdr, size);
 	/*HCL_OBJ_SET_CLASS (hdr, hcl->_nil);*/
-	/*HCL_OBJ_SET_FLAGS_BRAND (hdr, brand);*/
 
 	for (i = 0; i < size; i++) hdr->slot[i] = hcl->_nil;
 
@@ -203,11 +201,10 @@ static HCL_INLINE hcl_oop_t alloc_numeric_array (hcl_t* hcl, int brand, const vo
 		hdr = (hcl_oop_t)hcl_allocbytes(hcl, HCL_SIZEOF(hcl_obj_t) + nbytes_aligned);
 	if (HCL_UNLIKELY(!hdr)) return HCL_NULL;
 
-	hdr->_flags = HCL_OBJ_MAKE_FLAGS(type, unit, extra, 0, 0, ngc, 0, brand);
+	hdr->_flags = HCL_OBJ_MAKE_FLAGS(type, unit, extra, 0, 0, ngc, 0);
 	hdr->_size = len;
 	HCL_OBJ_SET_SIZE (hdr, len);
 	/*HCL_OBJ_SET_CLASS (hdr, hcl->_nil);*/
-	/*HCL_OBJ_SET_FLAGS_BRAND (hdr, brand);*/
 
 	if (ptr)
 	{
@@ -731,7 +728,6 @@ hcl_oop_t hcl_instantiate (hcl_t* hcl, hcl_oop_class_t _class, const void* vptr,
 	#if 0 /* TODO: revive this part */
 		if (HCL_CLASS_SPEC_IS_UNCOPYABLE(spec)) HCL_OBJ_SET_FLAGS_UNCOPYABLE (oop, 1);
 	#endif
-		HCL_OBJ_SET_FLAGS_BRAND(oop, HCL_OOP_TO_SMOOI(_class->ibrand));
 		HCL_OBJ_SET_FLAGS_FLEXI(oop, dspec.flexi);
 	}
 	hcl_popvolats (hcl, tmp_count);
@@ -802,7 +798,6 @@ hcl_oop_t hcl_instantiatewithtrailer (hcl_t* hcl, hcl_oop_class_t _class, hcl_oo
 		if (HCL_CLASS_SPEC_IS_UNCOPYABLE(spec)) HCL_OBJ_SET_FLAGS_UNCOPYABLE (oop, 1);
 		*/
 	#endif
-		HCL_OBJ_SET_FLAGS_BRAND(oop, HCL_OOP_TO_SMOOI(_class->ibrand));
 		HCL_OBJ_SET_FLAGS_FLEXI(oop, dspec.flexi);
 	}
 	hcl_popvolats (hcl, tmp_count);
@@ -1048,7 +1043,7 @@ int hcl_equalobjs (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t arg)
 		{
 			HCL_ASSERT (hcl, HCL_OOP_IS_POINTER(rcv));
 
-			if (HCL_OBJ_GET_FLAGS_BRAND(rcv) != HCL_OBJ_GET_FLAGS_BRAND(arg)) return 0; /* different class, not equal */
+			if (HCL_OBJ_GET_CLASS(rcv) != HCL_OBJ_GET_CLASS(arg)) return 0; /* different class, not equal */
 			HCL_ASSERT (hcl, HCL_OBJ_GET_FLAGS_TYPE(rcv) == HCL_OBJ_GET_FLAGS_TYPE(arg));
 
 			if (HCL_OBJ_GET_SIZE(rcv) != HCL_OBJ_GET_SIZE(arg)) return 0; /* different size, not equal */

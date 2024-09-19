@@ -269,6 +269,7 @@ int hcl_fmt_object (hcl_t* hcl, hcl_fmtout_t* fmtout, hcl_oop_t obj)
 {
 	hcl_oop_t cur;
 	print_stack_t ps;
+	hcl_oop_class_t _class;
 	int brand;
 	int word_index;
 	int json;
@@ -313,7 +314,9 @@ int hcl_fmt_object (hcl_t* hcl, hcl_fmtout_t* fmtout, hcl_oop_t obj)
 	json = !!(fmtout->mask & HCL_LOG_PREFER_JSON);
 
 next:
-	switch ((brand = HCL_BRANDOF(hcl, obj)))
+	_class = (hcl_oop_class_t)HCL_CLASSOF(hcl, obj);
+	brand = HCL_OOP_TO_SMOOI(_class->ibrand);
+	switch (brand)
 	{
 		case HCL_BRAND_SMOOI:
 			if (hcl_bfmt_out(hcl, fmtout, "%zd", HCL_OOP_TO_SMOOI(obj)) <= -1) return -1;
@@ -561,7 +564,7 @@ next:
 					 * indicates the end of a list. break the loop */
 					break;
 				}
-				if (!HCL_OOP_IS_POINTER(cur) || HCL_OBJ_GET_FLAGS_BRAND(cur) != HCL_BRAND_CONS)
+				if (!HCL_OOP_IS_POINTER(cur) || HCL_OBJ_GET_CLASS(cur) != (hcl_oop_t)hcl->c_cons)
 				{
 					/* The CDR part does not point to a pair. */
 					if (hcl_bfmt_out(hcl, fmtout, " . ") <= -1) return -1;
@@ -818,9 +821,9 @@ next:
 		}
 
 		default:
-			HCL_DEBUG3 (hcl, "Internal error - unknown object type %d at %s:%d\n", (int)brand, __FILE__, __LINE__);
-			HCL_ASSERT (hcl, "Unknown object type" == HCL_NULL);
-			hcl_seterrbfmt (hcl, HCL_EINTERN, "unknown object type %d", (int)brand);
+			HCL_DEBUG3 (hcl, "Internal error - unknown object brand %d at %s:%d\n", (int)brand, __FILE__, __LINE__);
+			HCL_ASSERT (hcl, "Unknown object brand" == HCL_NULL);
+			hcl_seterrbfmt (hcl, HCL_EINTERN, "unknown object brand %d", (int)brand);
 			return -1;
 
 		print_word:

@@ -938,19 +938,9 @@ static HCL_INLINE int is_less_unsigned (hcl_oop_t x, hcl_oop_t y)
 
 static HCL_INLINE int is_less (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 {
-	if (HCL_OBJ_GET_FLAGS_BRAND(x) != HCL_OBJ_GET_FLAGS_BRAND(y))
-	{
-		return HCL_IS_NBIGINT(hcl, x);
-	}
-
-	if (HCL_IS_PBIGINT(hcl, x))
-	{
-		return is_less_unsigned (x, y);
-	}
-	else
-	{
-		return is_less_unsigned (y, x);
-	}
+	if (HCL_OBJ_GET_CLASS(x) != HCL_OBJ_GET_CLASS(y)) return HCL_IS_NBIGINT(hcl, x);
+	if (HCL_IS_PBIGINT(hcl, x)) return is_less_unsigned(x, y);
+	return is_less_unsigned (y, x);
 }
 
 static HCL_INLINE int is_greater_unsigned_array (const hcl_liw_t* x, hcl_oow_t xs, const hcl_liw_t* y, hcl_oow_t ys)
@@ -976,19 +966,9 @@ static HCL_INLINE int is_greater_unsigned (hcl_oop_t x, hcl_oop_t y)
 
 static HCL_INLINE int is_greater (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 {
-	if (HCL_OBJ_GET_FLAGS_BRAND(x) != HCL_OBJ_GET_FLAGS_BRAND(y))
-	{
-		return HCL_IS_NBIGINT(hcl, y);
-	}
-
-	if (HCL_IS_PBIGINT(hcl, x))
-	{
-		return is_greater_unsigned (x, y);
-	}
-	else
-	{
-		return is_greater_unsigned (y, x);
-	}
+	if (HCL_OBJ_GET_CLASS(x) != HCL_OBJ_GET_CLASS(y)) return HCL_IS_NBIGINT(hcl, y);
+	if (HCL_IS_PBIGINT(hcl, x)) return is_greater_unsigned (x, y);
+	return is_greater_unsigned (y, x);
 }
 
 static HCL_INLINE int is_equal_unsigned_array (const hcl_liw_t* x, hcl_oow_t xs, const hcl_liw_t* y, hcl_oow_t ys)
@@ -1008,7 +988,7 @@ static HCL_INLINE int is_equal (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 	/* check if two large integers are equal to each other */
 	/*return HCL_OBJ_GET_FLAGS_BRAND(x) == HCL_OBJ_GET_FLAGS_BRAND(y) && HCL_OBJ_GET_SIZE(x) == HCL_OBJ_GET_SIZE(y) &&
 	       HCL_MEMCMP(((hcl_oop_liword_t)x)->slot,  ((hcl_oop_liword_t)y)->slot, HCL_OBJ_GET_SIZE(x) * HCL_SIZEOF(hcl_liw_t)) == 0;*/
-	return HCL_OBJ_GET_FLAGS_BRAND(x) == HCL_OBJ_GET_FLAGS_BRAND(y) && HCL_OBJ_GET_SIZE(x) == HCL_OBJ_GET_SIZE(y) && is_equal_unsigned(x, y);
+	return HCL_OBJ_GET_CLASS(x) == HCL_OBJ_GET_CLASS(y) && HCL_OBJ_GET_SIZE(x) == HCL_OBJ_GET_SIZE(y) && is_equal_unsigned(x, y);
 }
 
 static void complement2_unsigned_array (hcl_t* hcl, const hcl_liw_t* x, hcl_oow_t xs, hcl_liw_t* z)
@@ -2336,36 +2316,36 @@ hcl_oop_t hcl_addints (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 			if (!hcl_isbigint(hcl,y)) goto oops_einval;
 		}
 
-		if (HCL_OBJ_GET_FLAGS_BRAND(x) != HCL_OBJ_GET_FLAGS_BRAND(y))
+		if (HCL_OBJ_GET_CLASS(x) != HCL_OBJ_GET_CLASS(y))
 		{
 			if (HCL_IS_NBIGINT(hcl, x))
 			{
 				/* x is negative, y is positive */
 				if (is_less_unsigned (x, y))
 				{
-					z = subtract_unsigned_integers (hcl, y, x);
-					if (!z) return HCL_NULL;
+					z = subtract_unsigned_integers(hcl, y, x);
+					if (HCL_UNLIKELY(!z)) return HCL_NULL;
 				}
 				else
 				{
-					z = subtract_unsigned_integers (hcl, x, y);
-					if (!z) return HCL_NULL;
-					HCL_OBJ_SET_FLAGS_BRAND (z, HCL_BRAND_NBIGINT);
+					z = subtract_unsigned_integers(hcl, x, y);
+					if (HCL_UNLIKELY(!z)) return HCL_NULL;
+					HCL_OBJ_SET_CLASS (z, (hcl_oop_t)hcl->c_large_negative_integer);
 				}
 			}
 			else
 			{
 				/* x is positive, y is negative */
-				if (is_less_unsigned (x, y))
+				if (is_less_unsigned(x, y))
 				{
-					z = subtract_unsigned_integers (hcl, y, x);
-					if (!z) return HCL_NULL;
-					HCL_OBJ_SET_FLAGS_BRAND (z, HCL_BRAND_NBIGINT);
+					z = subtract_unsigned_integers(hcl, y, x);
+					if (HCL_UNLIKELY(!z)) return HCL_NULL;
+					HCL_OBJ_SET_CLASS (z, (hcl_oop_t)hcl->c_large_negative_integer);
 				}
 				else
 				{
-					z = subtract_unsigned_integers (hcl, x, y);
-					if (!z) return HCL_NULL;
+					z = subtract_unsigned_integers(hcl, x, y);
+					if (HCL_UNLIKELY(!z)) return HCL_NULL;
 				}
 			}
 		}
@@ -2374,9 +2354,9 @@ hcl_oop_t hcl_addints (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 			int neg;
 			/* both are positive or negative */
 			neg = HCL_IS_NBIGINT(hcl, x);
-			z = add_unsigned_integers (hcl, x, y);
-			if (!z) return HCL_NULL;
-			if (neg) HCL_OBJ_SET_FLAGS_BRAND (z, HCL_BRAND_NBIGINT);
+			z = add_unsigned_integers(hcl, x, y);
+			if (HCL_UNLIKELY(!z)) return HCL_NULL;
+			if (neg) HCL_OBJ_SET_CLASS (z, (hcl_oop_t)hcl->c_large_negative_integer);
 		}
 	}
 
@@ -2444,29 +2424,29 @@ hcl_oop_t hcl_subints (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 			if (!hcl_isbigint(hcl,y)) goto oops_einval;
 		}
 
-		if (HCL_OBJ_GET_FLAGS_BRAND(x) != HCL_OBJ_GET_FLAGS_BRAND(y))
+		if (HCL_OBJ_GET_CLASS(x) != HCL_OBJ_GET_CLASS(y))
 		{
 			neg = HCL_IS_NBIGINT(hcl, x);
-			z = add_unsigned_integers (hcl, x, y);
+			z = add_unsigned_integers(hcl, x, y);
 			if (!z) return HCL_NULL;
-			if (neg) HCL_OBJ_SET_FLAGS_BRAND (z, HCL_BRAND_NBIGINT);
+			if (neg) HCL_OBJ_SET_CLASS (z, (hcl_oop_t)hcl->c_large_negative_integer);
 		}
 		else
 		{
 			/* both are positive or negative */
-			if (is_less_unsigned (x, y))
+			if (is_less_unsigned(x, y))
 			{
 				neg = HCL_IS_NBIGINT(hcl, x);
-				z = subtract_unsigned_integers (hcl, y, x);
-				if (!z) return HCL_NULL;
-				if (!neg) HCL_OBJ_SET_FLAGS_BRAND (z, HCL_BRAND_NBIGINT);
+				z = subtract_unsigned_integers(hcl, y, x);
+				if (HCL_UNLIKELY(!z)) return HCL_NULL;
+				if (!neg) HCL_OBJ_SET_CLASS (z, (hcl_oop_t)hcl->c_large_negative_integer);
 			}
 			else
 			{
 				neg = HCL_IS_NBIGINT(hcl, x);
-				z = subtract_unsigned_integers (hcl, x, y); /* take x's sign */
-				if (!z) return HCL_NULL;
-				if (neg) HCL_OBJ_SET_FLAGS_BRAND (z, HCL_BRAND_NBIGINT);
+				z = subtract_unsigned_integers(hcl, x, y); /* take x's sign */
+				if (HCL_UNLIKELY(!z)) return HCL_NULL;
+				if (neg) HCL_OBJ_SET_CLASS (z, (hcl_oop_t)hcl->c_large_negative_integer);
 			}
 		}
 	}
@@ -2488,26 +2468,26 @@ hcl_oop_t hcl_mulints (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 		hcl_intmax_t i;
 		i = (hcl_intmax_t)HCL_OOP_TO_SMOOI(x) * (hcl_intmax_t)HCL_OOP_TO_SMOOI(y);
 		if (HCL_IN_SMOOI_RANGE(i)) return HCL_SMOOI_TO_OOP((hcl_ooi_t)i);
-		return make_bigint_with_intmax (hcl, i);
+		return make_bigint_with_intmax(hcl, i);
 	#else
 		hcl_ooi_t i;
 		hcl_ooi_t xv, yv;
 
 		xv = HCL_OOP_TO_SMOOI(x);
 		yv = HCL_OOP_TO_SMOOI(y);
-		if (shcli_mul_overflow (hcl, xv, yv, &i))
+		if (shcli_mul_overflow(hcl, xv, yv, &i))
 		{
 			/* overflowed - convert x and y normal objects and carry on */
 
 			/* no need to call hcl_pushvolat before creating x because
 			 * xv and yv contains actual values needed */
-			x = make_bigint_with_ooi (hcl, xv);
-			if (!x) return HCL_NULL;
+			x = make_bigint_with_ooi(hcl, xv);
+			if (HCL_UNLIKELY(!x)) return HCL_NULL;
 
 			hcl_pushvolat (hcl, &x); /* protect x made above */
-			y = make_bigint_with_ooi (hcl, yv);
+			y = make_bigint_with_ooi(hcl, yv);
 			hcl_popvolat (hcl);
-			if (!y) return HCL_NULL;
+			if (HCL_UNLIKELY(!y)) return HCL_NULL;
 
 			goto full_multiply;
 		}
@@ -2541,7 +2521,7 @@ hcl_oop_t hcl_mulints (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 			hcl_pushvolat (hcl, &y);
 			x = make_bigint_with_ooi (hcl, v);
 			hcl_popvolat (hcl);
-			if (!x) return HCL_NULL;
+			if (HCL_UNLIKELY(!x)) return HCL_NULL;
 		}
 		else if (HCL_OOP_IS_SMOOI(y))
 		{
@@ -2561,7 +2541,7 @@ hcl_oop_t hcl_mulints (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 			hcl_pushvolat (hcl, &x);
 			y = make_bigint_with_ooi (hcl, v);
 			hcl_popvolat (hcl);
-			if (!y) return HCL_NULL;
+			if (HCL_UNLIKELY(!y)) return HCL_NULL;
 		}
 		else
 		{
@@ -2570,13 +2550,13 @@ hcl_oop_t hcl_mulints (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 		}
 
 	full_multiply:
-		neg = (HCL_OBJ_GET_FLAGS_BRAND(x) != HCL_OBJ_GET_FLAGS_BRAND(y));
-		z = multiply_unsigned_integers (hcl, x, y);
-		if (!z) return HCL_NULL;
-		if (neg) HCL_OBJ_SET_FLAGS_BRAND (z, HCL_BRAND_NBIGINT);
+		neg = (HCL_OBJ_GET_CLASS(x) != HCL_OBJ_GET_CLASS(y));
+		z = multiply_unsigned_integers(hcl, x, y);
+		if (HCL_UNLIKELY(!z)) return HCL_NULL;
+		if (neg) HCL_OBJ_SET_CLASS (z, (hcl_oop_t)hcl->c_large_negative_integer);
 	}
 
-	return normalize_bigint (hcl, z);
+	return normalize_bigint(hcl, z);
 
 oops_einval:
 	hcl_seterrbfmt (hcl, HCL_EINVAL, "not integer - %O, %O", x, y);
@@ -2780,23 +2760,21 @@ hcl_oop_t hcl_divints (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y, int modulo, hcl_oop
 					if (x_neg_sign) ri = -ri;
 
 					z = normalize_bigint(hcl, z);
-					if (!z) return HCL_NULL;
+					if (HCL_UNLIKELY(!z)) return HCL_NULL;
 
 					if (x_neg_sign != y_neg_sign)
 					{
-						HCL_OBJ_SET_FLAGS_BRAND (z, HCL_BRAND_NBIGINT);
+						HCL_OBJ_SET_CLASS (z, (hcl_oop_t)hcl->c_large_negative_integer);
 						if (ri && modulo)
 						{
 							z = hcl_subints(hcl, z, HCL_SMOOI_TO_OOP(1));
-							if (!z) return HCL_NULL;
+							if (HCL_UNLIKELY(!z)) return HCL_NULL;
 							if (rem)
 							{
  								hcl_pushvolat (hcl, &z);
 								r = hcl_addints(hcl, HCL_SMOOI_TO_OOP(ri), HCL_SMOOI_TO_OOP(yv));
-
 								hcl_popvolat (hcl);
-								if (!r) return HCL_NULL;
-
+								if (HCL_UNLIKELY(!r)) return HCL_NULL;
 								*rem = r;
 							}
 
@@ -2835,12 +2813,12 @@ hcl_oop_t hcl_divints (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y, int modulo, hcl_oop
 	{
 		/* the class on r must be set before normalize_bigint()
 		 * because it can get changed to a small integer */
-		HCL_OBJ_SET_FLAGS_BRAND (r, HCL_BRAND_NBIGINT);
+		HCL_OBJ_SET_CLASS (r, (hcl_oop_t)hcl->c_large_negative_integer);
 	}
 
 	if (x_neg_sign != y_neg_sign)
 	{
-		HCL_OBJ_SET_FLAGS_BRAND (z, HCL_BRAND_NBIGINT);
+		HCL_OBJ_SET_CLASS (z, (hcl_oop_t)hcl->c_large_negative_integer);
 
 		hcl_pushvolat (hcl, &z);
 		hcl_pushvolat (hcl, &y);
@@ -3226,7 +3204,7 @@ hcl_oop_t hcl_bitandints (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 			}
 			HCL_ASSERT (hcl, carry[0] == 0);
 
-			HCL_OBJ_SET_FLAGS_BRAND (z, HCL_BRAND_NBIGINT);
+			HCL_OBJ_SET_CLASS (z, (hcl_oop_t)hcl->c_large_negative_integer);
 		}
 		else if (negx)
 		{
@@ -3441,7 +3419,7 @@ hcl_oop_t hcl_bitorints (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 			}
 			HCL_ASSERT (hcl, carry[0] == 0);
 
-			HCL_OBJ_SET_FLAGS_BRAND (z, HCL_BRAND_NBIGINT);
+			HCL_OBJ_SET_CLASS (z, (hcl_oop_t)hcl->c_large_negative_integer);
 		}
 		else if (negx)
 		{
@@ -3686,7 +3664,7 @@ hcl_oop_t hcl_bitxorints (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
 			}
 			HCL_ASSERT (hcl, carry == 0);
 
-			HCL_OBJ_SET_FLAGS_BRAND (z, HCL_BRAND_NBIGINT);
+			HCL_OBJ_SET_CLASS (z, (hcl_oop_t)hcl->c_large_negative_integer);
 		}
 		else if (negy)
 		{
@@ -3825,7 +3803,7 @@ hcl_oop_t hcl_bitinvint (hcl_t* hcl, hcl_oop_t x)
 			HCL_ASSERT (hcl, (carry >> HCL_LIW_BITS) == 0);
 		#endif
 
-			HCL_OBJ_SET_FLAGS_BRAND (z, HCL_BRAND_NBIGINT);
+			HCL_OBJ_SET_CLASS (z, (hcl_oop_t)hcl->c_large_negative_integer);
 		}
 
 		return normalize_bigint(hcl, z);

@@ -64,6 +64,7 @@ int hcl_marshalcode (hcl_t* hcl, const hcl_code_t* code, hcl_xchg_writer_t wrtr,
 {
 	hcl_oow_t i, lfbase = 0;
 	hcl_oop_t tmp;
+	hcl_oop_class_t _class;
 	int brand;
 	hcl_oow_t tsize;
 	hcl_uint8_t b;
@@ -97,7 +98,8 @@ int hcl_marshalcode (hcl_t* hcl, const hcl_code_t* code, hcl_xchg_writer_t wrtr,
 			continue;
 		}
 
-		brand = HCL_OBJ_GET_FLAGS_BRAND(tmp);
+		_class = (hcl_oop_class_t)HCL_CLASSOF(hcl, tmp);
+		brand = HCL_OOP_TO_SMOOI(_class->ibrand);
 		tsize = HCL_OBJ_GET_SIZE(tmp);
 
 		switch (brand)
@@ -159,7 +161,6 @@ int hcl_marshalcode (hcl_t* hcl, const hcl_code_t* code, hcl_xchg_writer_t wrtr,
 				else
 				{
 					tmp = f->value;
-					brand = HCL_OBJ_GET_FLAGS_BRAND(tmp);
 					tsize = HCL_OBJ_GET_SIZE(tmp);
 					goto bigint_body;
 				}
@@ -178,10 +179,9 @@ int hcl_marshalcode (hcl_t* hcl, const hcl_code_t* code, hcl_xchg_writer_t wrtr,
 
 				/* get the symbol at CAR and make it as if it is the current object processed.*/
 				tmp = HCL_CONS_CAR(tmp);
-				brand = HCL_OBJ_GET_FLAGS_BRAND(tmp);
 				tsize = HCL_OBJ_GET_SIZE(tmp);
 
-				HCL_ASSERT(hcl, brand == HCL_BRAND_SYMBOL);
+				HCL_ASSERT(hcl, HCL_CLASSOF(hcl, tmp) == (hcl_oop_t)hcl->c_symbol);
 				goto string_body;
 			}
 

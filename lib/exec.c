@@ -3925,7 +3925,9 @@ static int execute (hcl_t* hcl)
 				op = HCL_STACK_GETOP(hcl, b1);
 				if (HCL_OOP_IS_POINTER(op))
 				{
-					switch (HCL_OBJ_GET_FLAGS_BRAND(op))
+					hcl_oop_class_t c;
+					c = (hcl_oop_class_t)HCL_OBJ_GET_CLASS(op);
+					switch (HCL_OOP_TO_SMOOI(c->ibrand))
 					{
 						case HCL_BRAND_FUNCTION:
 							if (activate_function(hcl, b1) <= -1) goto call_failed;

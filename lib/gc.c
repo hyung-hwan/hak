@@ -1393,7 +1393,7 @@ void hcl_popvolats (hcl_t* hcl, hcl_oow_t count)
 
 hcl_oop_t hcl_shallowcopy (hcl_t* hcl, hcl_oop_t oop)
 {
-	if (HCL_OOP_IS_POINTER(oop) && HCL_OBJ_GET_FLAGS_BRAND(oop) != HCL_BRAND_SYMBOL)
+	if (HCL_OOP_IS_POINTER(oop) && HCL_OBJ_GET_CLASS(oop) != hcl->c_symbol)
 	{
 		hcl_oop_t z;
 		hcl_oow_t total_bytes;

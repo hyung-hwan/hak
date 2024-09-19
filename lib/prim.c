@@ -148,10 +148,8 @@ static hcl_pfrc_t pf_log (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 				/* visit only 1-level down into an array-like object */
 				hcl_oop_t inner;
 				hcl_oow_t i;
-				int brand;
 
-				brand = HCL_OBJ_GET_FLAGS_BRAND(msg);
-				if (brand != HCL_BRAND_ARRAY) goto dump_object;
+				if (HCL_OBJ_GET_CLASS(msg) != (hcl_oop_t)hcl->c_array) goto dump_object;
 
 				for (i = 0; i < HCL_OBJ_GET_SIZE(msg); i++)
 				{
@@ -575,7 +573,7 @@ static hcl_pfrc_t pf_eqk (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 	a0 = HCL_STACK_GETARG(hcl, nargs, 0);
 	a1 = HCL_STACK_GETARG(hcl, nargs, 1);
 
-	rv = (HCL_BRANDOF(hcl, a0) == HCL_BRANDOF(hcl, a1)? hcl->_true: hcl->_false);
+	rv = (HCL_CLASSOF(hcl, a0) == HCL_CLASSOF(hcl, a1)? hcl->_true: hcl->_false);
 
 	HCL_STACK_SETRET (hcl, nargs, rv);
 	return HCL_PF_SUCCESS;
@@ -612,7 +610,7 @@ static hcl_pfrc_t pf_nqk (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 	a0 = HCL_STACK_GETARG(hcl, nargs, 0);
 	a1 = HCL_STACK_GETARG(hcl, nargs, 1);
 
-	rv = (HCL_BRANDOF(hcl, a0) != HCL_BRANDOF(hcl, a1)? hcl->_true: hcl->_false);
+	rv = (HCL_CLASSOF(hcl, a0) != HCL_CLASSOF(hcl, a1)? hcl->_true: hcl->_false);
 
 	HCL_STACK_SETRET (hcl, nargs, rv);
 	return HCL_PF_SUCCESS;
@@ -741,7 +739,8 @@ static hcl_pfrc_t pf_is_object (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 {
 	hcl_oop_t rv, x;
 	x = HCL_STACK_GETARG(hcl, nargs, 0);
-	rv = (HCL_IS_INSTANCE(hcl, x))? hcl->_true: hcl->_false;
+	/*rv = (HCL_IS_INSTANCE(hcl, x))? hcl->_true: hcl->_false;*/
+	rv = (!HCL_IS_CLASS(hcl, x))? hcl->_true: hcl->_false; /* true if not a class object itself */
 	HCL_STACK_SETRET (hcl, nargs, rv);
 	return HCL_PF_SUCCESS;
 }

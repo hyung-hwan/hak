@@ -366,10 +366,9 @@ typedef enum hcl_obj_type_t hcl_obj_type_t;
 #define HCL_OBJ_FLAGS_NGC_BITS       (1) /* 17 */
 #define HCL_OBJ_FLAGS_TRAILER_BITS   (1) /* 18 */
 #define HCL_OBJ_FLAGS_SYNCODE_BITS   (5) /* 23 - syncode for symbol, concode for cons */
-#define HCL_OBJ_FLAGS_BRAND_BITS     (6) /* 29 */
-#define HCL_OBJ_FLAGS_FLEXI_BITS     (1) /* 30 */
-#define HCL_OBJ_FLAGS_RDONLY_BITS    (1) /* 31 */
-#define HCL_OBJ_FLAGS_PROC_BITS      (1) /* 32 */
+#define HCL_OBJ_FLAGS_FLEXI_BITS     (1) /* 24 */
+#define HCL_OBJ_FLAGS_RDONLY_BITS    (1) /* 25 */
+#define HCL_OBJ_FLAGS_PROC_BITS      (1) /* 26 */
 
 /*
 #define HCL_OBJ_FLAGS_PERM_BITS       1
@@ -387,8 +386,7 @@ typedef enum hcl_obj_type_t hcl_obj_type_t;
 #define HCL_OBJ_FLAGS_MOVED_SHIFT       (HCL_OBJ_FLAGS_NGC_BITS       + HCL_OBJ_FLAGS_NGC_SHIFT)
 #define HCL_OBJ_FLAGS_NGC_SHIFT         (HCL_OBJ_FLAGS_TRAILER_BITS   + HCL_OBJ_FLAGS_TRAILER_SHIFT)
 #define HCL_OBJ_FLAGS_TRAILER_SHIFT     (HCL_OBJ_FLAGS_SYNCODE_BITS   + HCL_OBJ_FLAGS_SYNCODE_SHIFT)
-#define HCL_OBJ_FLAGS_SYNCODE_SHIFT     (HCL_OBJ_FLAGS_BRAND_BITS     + HCL_OBJ_FLAGS_BRAND_SHIFT)
-#define HCL_OBJ_FLAGS_BRAND_SHIFT       (HCL_OBJ_FLAGS_FLEXI_BITS     + HCL_OBJ_FLAGS_FLEXI_SHIFT)
+#define HCL_OBJ_FLAGS_SYNCODE_SHIFT     (HCL_OBJ_FLAGS_FLEXI_BITS     + HCL_OBJ_FLAGS_FLEXI_SHIFT)
 #define HCL_OBJ_FLAGS_FLEXI_SHIFT       (HCL_OBJ_FLAGS_RDONLY_BITS    + HCL_OBJ_FLAGS_RDONLY_SHIFT)
 #define HCL_OBJ_FLAGS_RDONLY_SHIFT      (HCL_OBJ_FLAGS_PROC_BITS      + HCL_OBJ_FLAGS_PROC_SHIFT)
 #define HCL_OBJ_FLAGS_PROC_SHIFT        (0)
@@ -401,7 +399,6 @@ typedef enum hcl_obj_type_t hcl_obj_type_t;
 #define HCL_OBJ_GET_FLAGS_NGC(oop)         HCL_GETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_NGC_SHIFT,       HCL_OBJ_FLAGS_NGC_BITS)
 #define HCL_OBJ_GET_FLAGS_TRAILER(oop)     HCL_GETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_TRAILER_SHIFT,   HCL_OBJ_FLAGS_TRAILER_BITS)
 #define HCL_OBJ_GET_FLAGS_SYNCODE(oop)     HCL_GETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_SYNCODE_SHIFT,   HCL_OBJ_FLAGS_SYNCODE_BITS)
-#define HCL_OBJ_GET_FLAGS_BRAND(oop)       HCL_GETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_BRAND_SHIFT,     HCL_OBJ_FLAGS_BRAND_BITS)
 #define HCL_OBJ_GET_FLAGS_FLEXI(oop)       HCL_GETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_FLEXI_SHIFT,     HCL_OBJ_FLAGS_FLEXI_BITS)
 #define HCL_OBJ_GET_FLAGS_RDONLY(oop)      HCL_GETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_RDONLY_SHIFT,    HCL_OBJ_FLAGS_RDONLY_BITS)
 #define HCL_OBJ_GET_FLAGS_PROC(oop)        HCL_GETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_PROC_SHIFT,      HCL_OBJ_FLAGS_PROC_BITS)
@@ -414,7 +411,6 @@ typedef enum hcl_obj_type_t hcl_obj_type_t;
 #define HCL_OBJ_SET_FLAGS_NGC(oop,v)       HCL_SETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_NGC_SHIFT,       HCL_OBJ_FLAGS_NGC_BITS,       v)
 #define HCL_OBJ_SET_FLAGS_TRAILER(oop,v)   HCL_SETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_TRAILER_SHIFT,   HCL_OBJ_FLAGS_TRAILER_BITS,   v)
 #define HCL_OBJ_SET_FLAGS_SYNCODE(oop,v)   HCL_SETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_SYNCODE_SHIFT,   HCL_OBJ_FLAGS_SYNCODE_BITS,   v)
-#define HCL_OBJ_SET_FLAGS_BRAND(oop,v)     HCL_SETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_BRAND_SHIFT,     HCL_OBJ_FLAGS_BRAND_BITS,     v)
 #define HCL_OBJ_SET_FLAGS_FLEXI(oop,v)     HCL_SETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_FLEXI_SHIFT,     HCL_OBJ_FLAGS_FLEXI_BITS, v)
 #define HCL_OBJ_SET_FLAGS_RDONLY(oop,v)    HCL_SETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_RDONLY_SHIFT,    HCL_OBJ_FLAGS_RDONLY_BITS, v)
 #define HCL_OBJ_SET_FLAGS_PROC(oop,v)      HCL_SETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_PROC_SHIFT,      HCL_OBJ_FLAGS_PROC_BITS, v)
@@ -422,15 +418,14 @@ typedef enum hcl_obj_type_t hcl_obj_type_t;
 /* [NOTE] this macro doesn't check the range of the actual value.
  *        make sure that the value of each bit fields given falls within the
  *        possible range of the defined bits */
-#define HCL_OBJ_MAKE_FLAGS(t,u,e,k,m,g,r,b) ( \
+#define HCL_OBJ_MAKE_FLAGS(t,u,e,k,m,g,r) ( \
 	(((hcl_oow_t)(t)) << HCL_OBJ_FLAGS_TYPE_SHIFT) | \
 	(((hcl_oow_t)(u)) << HCL_OBJ_FLAGS_UNIT_SHIFT) | \
 	(((hcl_oow_t)(e)) << HCL_OBJ_FLAGS_EXTRA_SHIFT) | \
 	(((hcl_oow_t)(k)) << HCL_OBJ_FLAGS_KERNEL_SHIFT) | \
 	(((hcl_oow_t)(m)) << HCL_OBJ_FLAGS_MOVED_SHIFT) | \
 	(((hcl_oow_t)(g)) << HCL_OBJ_FLAGS_NGC_SHIFT) | \
-	(((hcl_oow_t)(r)) << HCL_OBJ_FLAGS_TRAILER_SHIFT) | \
-	(((hcl_oow_t)(b)) << HCL_OBJ_FLAGS_BRAND_SHIFT) \
+	(((hcl_oow_t)(r)) << HCL_OBJ_FLAGS_TRAILER_SHIFT) \
 )
 
 #define HCL_OBJ_FLAGS_KERNEL_USER     0  /* not a kernel object */
@@ -936,13 +931,6 @@ struct hcl_class_t
 	hcl_oop_t      cvar[1];   /* class instance variables and class variables. */
 };
 #endif
-
-/**
- * The HCL_BRANDOF() macro return the brand of an object including a numeric
- * object encoded into a pointer.
- */
-#define HCL_BRANDOF(hcl,oop) \
-	(HCL_OOP_GET_TAG(oop)? ((hcl)->tagged_brands[HCL_OOP_GET_TAG(oop)]): HCL_OBJ_GET_FLAGS_BRAND(oop))
 
 /**
  * The HCL_CLASSOF() macro return the class of an object including a numeric
@@ -2089,58 +2077,25 @@ typedef enum hcl_concode_t hcl_concode_t;
 #define HCL_IS_TRUE(hcl,v) (v == (hcl)->_true)
 #define HCL_IS_FALSE(hcl,v) (v == (hcl)->_false)
 
-/*#define HCL_IS_SYMBOL(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_SYMBOL)*/
 #define HCL_IS_SYMBOL(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)(hcl)->c_symbol)
-
-/*#define HCL_IS_STRING(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_STRING)*/
 #define HCL_IS_STRING(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)(hcl)->c_string)
-
-/*#define HCL_IS_CONTEXT(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_CONTEXT)*/
 #define HCL_IS_CONTEXT(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)(hcl)->c_block_context)
-
-/*#define HCL_IS_FUNCTION(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_FUNCTION)*/
 #define HCL_IS_FUNCTION(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)(hcl)->c_function)
-
-/*#define HCL_IS_COMPILED_BLOCK(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_BLOCK)*/
 #define HCL_IS_COMPILED_BLOCK(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)(hcl)->c_compiled_block)
-
-/*#define HCL_IS_CLASS(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_CLASS)*/
 #define HCL_IS_CLASS(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)(hcl)->c_class)
-
 #define HCL_IS_INSTANCE(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_INSTANCE)
-
-/*#define HCL_IS_CONS(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_CONS)*/
 #define HCL_IS_CONS(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)(hcl)->c_cons)
 #define HCL_IS_CONS_CONCODED(hcl,v,concode) (HCL_IS_CONS(hcl,v) && HCL_OBJ_GET_FLAGS_SYNCODE(v) == (concode))
-
-/*#define HCL_IS_ARRAY(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_ARRAY)*/
 #define HCL_IS_ARRAY(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)(hcl)->c_array)
-
-/*#define HCL_IS_BYTEARRAY(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_BYTE_ARRAY)*/
 #define HCL_IS_BYTEARRAY(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)(hcl)->c_byte_array)
-
-/*#define HCL_IS_DIC(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_DIC)*/
 #define HCL_IS_DIC(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)(hcl)->c_dictionary)
-
-/*#define HCL_IS_PRIM(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_PRIM)*/
 #define HCL_IS_PRIM(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)(hcl)->c_primitive)
-
-/*#define HCL_IS_PBIGINT(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_PBIGINT)*/
 #define HCL_IS_PBIGINT(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)(hcl)->c_large_positive_integer)
-/*#define HCL_IS_NBIGINT(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_NBIGINT)*/
 #define HCL_IS_NBIGINT(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)(hcl)->c_large_negative_integer)
 #define HCL_IS_BIGINT(hcl,v) (HCL_OOP_IS_POINTER(v) && (HCL_OBJ_GET_CLASS(v) == (hcl_oop_t)(hcl)->c_large_positive_integer || HCL_OBJ_GET_CLASS(v) == (hcl_oop_t)(hcl)->c_large_negative_integer))
-
-/*#define HCL_IS_FPDEC(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_FPDEC)*/
 #define HCL_IS_FPDEC(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)(hcl)->c_fixed_point_decimal)
-
-/*#define HCL_IS_PROCESS(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_PROCESS)*/
 #define HCL_IS_PROCESS(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)(hcl)->c_process)
-
-/*#define HCL_IS_SEMAPHORE(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_SEMAPHORE)*/
 #define HCL_IS_SEMAPHORE(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)(hcl)->c_semaphore)
-
-/*#define HCL_IS_SEMAPHORE_GROUP(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_SEMAPHORE_GROUP)*/
 #define HCL_IS_SEMAPHORE_GROUP(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)(hcl)->c_semaphore_group)
 
 #define HCL_CONS_CAR(v)  (((hcl_cons_t*)(v))->car)
