@@ -1,3 +1,15 @@
+$?a           ##ERROR: syntax error - '?' prohibited as first character after '$'
+
+---
+
+$include     ##ERROR: syntax error - $include target not specified
+
+---
+
+$include 10    ##ERROR: syntax error - $include target expected in place of '10'
+
+---
+
 ##
 
 x := (+ 10 20) "aaaa"; ##ERROR: syntax error - too many rvalues
@@ -67,7 +79,7 @@ printf "[%c]\n" b'★';  ##ERROR: syntax error - wrong character literal
 
 printf "%O\n" #b[ 10 20 30 ];
 printf "%010b\n" #b0101;
-printf "%O\n" #bxy; ##ERROR: syntax error - neither valid radixed number nor valid directive #bxy
+printf "%O\n" #bxy; ##ERROR: syntax error - neither valid radixed number nor valid directive '#bxy'
 
 ---
 

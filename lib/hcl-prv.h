@@ -769,8 +769,8 @@ struct hcl_flx_hi_t
 	hcl_oow_t char_count;
 };
 
-typedef struct hcl_flx_hb_t hcl_flx_hb_t; /* intermediate state for #b */
-struct hcl_flx_hb_t
+typedef struct hcl_flx_hbc_t hcl_flx_hbc_t; /* intermediate state for #b */
+struct hcl_flx_hbc_t
 {
 	/* state data */
 	hcl_ooch_t start_c;
@@ -860,11 +860,11 @@ enum hcl_flx_state_t
 	HCL_FLX_DELIM_TOKEN,
 	HCL_FLX_DOLLARED_IDENT,
 	HCL_FLX_HMARKED_TOKEN,  /* hash-marked token */
-	HCL_FLX_HMARKED_B,      /* #b - intermediate state before #b[ or #b-radixed binary number */
+	HCL_FLX_HMARKED_BC,     /* #b - intermediate state before #b[, #c[, or #b-radixed binary number */
 	HCL_FLX_HMARKED_BINOP,  /* #++ - binary operator symbol */
 	HCL_FLX_HMARKED_CHAR,   /* hash-marked character that begins with #\ */
-	HCL_FLX_HMARKED_IDENT,  /* hash-marked identifier like #include, etc */
 	HCL_FLX_HMARKED_NUMBER, /* hash-marked number - radixed number like #xABCD */
+	HCL_FLX_HMARKED_IDENT,  /* literal symbol */
 	HCL_FLX_PLAIN_IDENT,    /* plain identifier */
 	HCL_FLX_BINOP,          /* binary operator */
 	HCL_FLX_PLAIN_NUMBER,   /* plain number */
@@ -955,8 +955,8 @@ struct hcl_compiler_t
 				hcl_flx_dt_t dt; /* delimiter token */
 				hcl_flx_di_t di; /* dollar-signed identifier */
 				hcl_flx_hc_t hc; /* hash-marked character */
-				hcl_flx_hi_t hi; /* hash-marked identifier */
-				hcl_flx_hb_t hb; /* #b ... */
+				hcl_flx_hi_t hi; /* hash-marked identifier - literal symbol */
+				hcl_flx_hbc_t hbc; /* #b #c ... */
 				hcl_flx_hn_t hn; /* hash-marked number - radixed number */
 				hcl_flx_pi_t pi; /* plain identifier */
 				hcl_flx_binop_t binop; /* binary operator */
