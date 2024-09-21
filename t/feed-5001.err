@@ -10,6 +10,10 @@ $include 10    ##ERROR: syntax error - $include target expected in place of '10'
 
 ---
 
+0x12.34   ##ERROR: syntax error - invalid use of decimal point after radixed number '0x12'
+
+---
+
 ##
 
 x := (+ 10 20) "aaaa"; ##ERROR: syntax error - too many rvalues

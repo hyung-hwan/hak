@@ -812,7 +812,9 @@ struct hcl_flx_pn_t
 {
 	/* state data */
 	int fpdec;
+	int radix;
 	hcl_oow_t digit_count[2];
+	hcl_ooch_t start_digit;
 };
 
 typedef struct hcl_flx_qt_t hcl_flx_qt_t; /* quoted token */

@@ -322,7 +322,6 @@ static HCL_INLINE int is_ident_char (hcl_ooci_t c)
 #define TOKEN_NAME_PTR(hcl) ((hcl)->c->tok.name.ptr)
 #define TOKEN_NAME_CHAR(hcl,index) ((hcl)->c->tok.name.ptr[index])
 #define TOKEN_LOC(hcl) (&(hcl)->c->tok.loc)
-#define LEXER_LOC(hcl) (&(hcl)->c->lxc.l)
 
 static HCL_INLINE int add_token_str (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_t len)
 {
@@ -2213,9 +2212,10 @@ static HCL_INLINE void init_flx_binop (hcl_flx_binop_t* binop)
 	HCL_MEMSET (binop, 0, HCL_SIZEOF(*binop));
 }
 
-static HCL_INLINE void init_flx_pn (hcl_flx_pn_t* pn)
+static HCL_INLINE void init_flx_pn (hcl_flx_pn_t* pn, hcl_ooch_t start_digit)
 {
 	HCL_MEMSET (pn, 0, HCL_SIZEOF(*pn));
+	pn->start_digit = start_digit;
 }
 
 static HCL_INLINE void init_flx_st (hcl_flx_st_t* st, hcl_ooch_t sign_c)
@@ -2329,7 +2329,7 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 
 		case '0': case '1': case '2': case '3': case '4':
 		case '5': case '6': case '7': case '8': case '9':
-			init_flx_pn (FLX_PN(hcl));
+			init_flx_pn (FLX_PN(hcl), c);
 			FEED_CONTINUE (hcl, HCL_FLX_PLAIN_NUMBER);
 			goto not_consumed;
 
@@ -3014,10 +3014,41 @@ static int flx_plain_number (hcl_t* hcl, hcl_ooci_t c) /* number */
 		pn->digit_count[pn->fpdec]++;
 		goto consumed;
 	}
+	else if (c == 'x' || c == 'o' || c == 'b')
+	{
+		/* 0x12ab, 0b1010101, 0o12304567 */
+		if (!pn->fpdec && pn->digit_count[0] == 1 && pn->start_digit == '0')
+		{
+			pn->radix = (c == 'x'? 16: (c == 'o'? 8: 2));
+			ADD_TOKEN_CHAR (hcl, c);
+			pn->digit_count[0] = 0;
+			goto consumed;
+		}
+		else
+		{
+			goto non_digit_char;
+		}
+	}
+#if 0
+	else if (c == 'r')
+	{
+		/* 16r12ab, 2r1010101 */
+		if (!pn->fpdec && !pn->radix)
+		{
+		}
+	}
+#endif
 	else
 	{
 		if (!pn->fpdec && c == '.')
 		{
+			if (pn->radix)
+			{
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, FLX_LOC(hcl), HCL_NULL,
+					"invalid use of decimal point after radixed number '%.*js'",
+					TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
+				return -1;
+			}
 			pn->fpdec = 1;
 			ADD_TOKEN_CHAR (hcl, c);
 			goto consumed;
@@ -3025,16 +3056,19 @@ static int flx_plain_number (hcl_t* hcl, hcl_ooci_t c) /* number */
 
 		if (pn->digit_count[0] == 0)
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "invalid numeric literal with no digit before decimal point");
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
+				"invalid numeric literal with no digit before decimal point");
 			return -1;
 		}
 		else if (pn->fpdec && pn->digit_count[1] == 0)
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "invalid numeric literal with no digit after decimal point");
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
+				"invalid numeric literal with no digit after decimal point");
 			return -1;
 		}
 
-		FEED_WRAP_UP (hcl, (pn->fpdec? HCL_TOK_FPDECLIT: HCL_TOK_NUMLIT));
+	non_digit_char:
+		FEED_WRAP_UP (hcl, (pn->fpdec? HCL_TOK_FPDECLIT: (pn->radix? HCL_TOK_RADNUMLIT: HCL_TOK_NUMLIT)));
 		goto not_consumed;
 	}
 
@@ -3273,7 +3307,11 @@ static int flx_signed_token (hcl_t* hcl, hcl_ooci_t c)
 	HCL_ASSERT (hcl, st->char_count == 0);
 	if (is_digitchar(c))
 	{
-		init_flx_pn (FLX_PN(hcl)); /* the sign is not part of the pn->digit_count[0] so keep it at 0 here */
+		/* the sign is not part of the pn->digit_count[0] but is
+		 * in the current token buffer. pn->digit_count[0] doesn't
+		 * include the sign and calling init_flx_pn() to make it 0
+		 * is good enough. */
+		init_flx_pn (FLX_PN(hcl), c);
 		FEED_CONTINUE (hcl, HCL_FLX_PLAIN_NUMBER);
 		goto not_consumed;
 	}
