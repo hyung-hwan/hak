@@ -1365,17 +1365,17 @@ static int fmt_outv (hcl_t* hcl, hcl_fmtout_t* fmtout, va_list ap)
 			{
 				if (base == 2)
 				{
-					PUT_OOCH (hcl, fmtout, '#', 1);
+					PUT_OOCH (hcl, fmtout, '0', 1);
 					PUT_OOCH (hcl, fmtout, 'b', 1);
 				}
 				if (base == 8)
 				{
-					PUT_OOCH (hcl, fmtout, '#', 1);
+					PUT_OOCH (hcl, fmtout, '0', 1);
 					PUT_OOCH (hcl, fmtout, 'o', 1);
 				}
 				else if (base == 16)
 				{
-					PUT_OOCH (hcl, fmtout, '#', 1);
+					PUT_OOCH (hcl, fmtout, '0', 1);
 					PUT_OOCH (hcl, fmtout, 'x', 1);
 				}
 			}
@@ -2713,17 +2713,17 @@ static HCL_INLINE int format_stack_args (hcl_t* hcl, hcl_fmtout_t* fmtout, hcl_o
 			{
 				if (radix == 2)
 				{
-					PUT_OOCH (hcl, fmtout, '#', 1);
+					PUT_OOCH (hcl, fmtout, '0', 1);
 					PUT_OOCH (hcl, fmtout, 'b', 1);
 				}
 				if (radix == 8)
 				{
-					PUT_OOCH (hcl, fmtout, '#', 1);
+					PUT_OOCH (hcl, fmtout, '0', 1);
 					PUT_OOCH (hcl, fmtout, 'o', 1);
 				}
 				else if (radix == 16)
 				{
-					PUT_OOCH (hcl, fmtout, '#', 1);
+					PUT_OOCH (hcl, fmtout, '0', 1);
 					PUT_OOCH (hcl, fmtout, 'x', 1);
 				}
 			}

@@ -1308,6 +1308,18 @@ static int feed_end_include (hcl_t* hcl)
 	return 1; /* ended the included file successfully */
 }
 
+static void feed_reset_reader_state (hcl_t* hcl)
+{
+	hcl_frd_t* frd = &hcl->c->feed.rd;
+
+	if (frd->obj)
+	{
+		hcl_freecnode (hcl, frd->obj);
+		frd->obj = HCL_NULL;
+	}
+	HCL_MEMSET (frd, 0, HCL_SIZEOF(*frd));
+}
+
 static void feed_clean_up_reader_stack (hcl_t* hcl)
 {
 	/* clean up the reader stack for a list */
@@ -2010,12 +2022,7 @@ ok:
 	return 0;
 
 oops:
-	if (frd->obj)
-	{
-		hcl_freecnode (hcl, frd->obj);
-		frd->obj = HCL_NULL;
-	}
-	HCL_MEMSET (frd, 0, HCL_SIZEOF(*frd));
+	feed_reset_reader_state (hcl);
 
 	/* clean up the reader stack for a list */
 	feed_clean_up_reader_stack (hcl);
@@ -3267,43 +3274,6 @@ static int flx_signed_token (hcl_t* hcl, hcl_ooci_t c)
 {
 	hcl_flx_st_t* st = FLX_ST(hcl);
 
-	if (st->char_count == 0 && c == '#')
-	{
-		ADD_TOKEN_CHAR (hcl, c);
-		st->hmarked = 1;
-		st->char_count++;
-		goto consumed;
-	}
-
-	if (st->hmarked)
-	{
-		HCL_ASSERT (hcl, st->char_count == 1);
-
-		if (c == 'b' || c == 'o' || c == 'x')
-		{
-			init_flx_hn (FLX_HN(hcl), HCL_TOK_RADNUMLIT, HCL_SYNERR_NUMLIT, (c == 'b'? 2: (c == 'o'? 8: 16)));
-			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_HMARKED_NUMBER);
-			goto consumed;
-		}
-		else
-		{
-			/* at this point, the token name buffer holds +# or -# */
-			HCL_ASSERT (hcl, TOKEN_NAME_LEN(hcl) == 2);
-			TOKEN_NAME_LEN(hcl)--; /* remove the ending # from the name buffer */
-			FEED_WRAP_UP (hcl, HCL_TOK_IDENT);
-
-			/* reset the token information as if it enters HMARKED_TOKEN from START */
-			reset_flx_token (hcl);
-
-			/* the current character is on the same line as the hash mark, the column must be greater than 1 */
-			HCL_ASSERT (hcl, FLX_LOC(hcl)->colm > 1);
-			FLX_LOC(hcl)->colm--; /* move back one character location by decrementing the column number */
-			ADD_TOKEN_CHAR (hcl, '#');
-			FEED_CONTINUE (hcl, HCL_FLX_HMARKED_TOKEN);
-			goto not_consumed;
-		}
-	}
-
 	HCL_ASSERT (hcl, st->char_count == 0);
 	if (is_digitchar(c))
 	{
@@ -3330,6 +3300,9 @@ static int flx_signed_token (hcl_t* hcl, hcl_ooci_t c)
 		FEED_CONTINUE (hcl, HCL_FLX_PLAIN_IDENT);
 		goto not_consumed;
 	#else
+		/* the leading sign must be + or - and must be one of the binop chars. */
+		HCL_ASSERT (hcl, is_binop_char(st->sign_c));/* must be + or - and they must be one of the binop chars. */
+
 		/* switch to binop mode */
 		init_flx_binop (FLX_BINOP(hcl));
 		HCL_ASSERT (hcl, TOKEN_NAME_LEN(hcl) == 1);
@@ -3705,6 +3678,8 @@ int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
 	return 0;
 
 oops:
+	feed_reset_reader_state (hcl);
+
 	/* if enter_list() is in feed_process_token(), the stack grows.
 	 * leave_list() pops an element off the stack. the stack can be
 	 * not empty if an error occurs outside feed_process_token() after

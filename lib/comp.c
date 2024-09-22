@@ -4740,22 +4740,22 @@ static hcl_oop_t string_to_num (hcl_t* hcl, hcl_oocs_t* str, const hcl_loc_t* lo
 #else
 	if (radixed)
 	{
-		/* #xFF80, #b1111 */
+		/* 0xFF80, 0b1111 */
 		HCL_ASSERT (hcl, ptr < end);
 
-		if (*ptr != '#')
+		if (/**ptr != '#' &&*/ *ptr != '0')
 		{
 			hcl_setsynerrbfmt(hcl, HCL_SYNERR_RADIX, loc, str, "radixed number not starting with #");
 			return HCL_NULL;
 		}
-		ptr++; /* skip '#' */
+		ptr++; /* skip '0' */
 
 		if (*ptr == 'x') base = 16;
 		else if (*ptr == 'o') base = 8;
 		else if (*ptr == 'b') base = 2;
 		else
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_RADIX, loc, str, "invalid radix specifier %c", *ptr);
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_RADIX, loc, HCL_NULL, "invalid radix specifier %c in %js", *ptr, str);
 			return HCL_NULL;
 		}
 		ptr++;
