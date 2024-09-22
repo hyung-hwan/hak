@@ -14,6 +14,10 @@ $include 10    ##ERROR: syntax error - $include target expected in place of '10'
 
 ---
 
+0b ##ERROR: invalid numeric literal with no digit '0b'
+
+---
+
 ##
 
 x := (+ 10 20) "aaaa"; ##ERROR: syntax error - too many rvalues

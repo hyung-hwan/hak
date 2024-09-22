@@ -234,13 +234,21 @@ static HCL_INLINE int is_linebreak (hcl_ooci_t c)
 	return c == '\n'; /* make sure this is one of the space chars in is_spacechar() */
 }
 
-static HCL_INLINE int is_digitchar (hcl_ooci_t c)
+static HCL_INLINE int is_digit_char (hcl_ooci_t c)
 {
 /* TODO: support full unicode */
 	return (c >= '0' && c <= '9');
 }
 
-static HCL_INLINE int is_xdigitchar (hcl_ooci_t c)
+static HCL_INLINE int is_radixed_digit_char (hcl_ooci_t c, int radix)
+{
+	if (c >= '0' && c <= '9') return (c - '0') < radix;
+	if (c >= 'a' && c <= 'z') return (c - 'a' + 10) < radix;
+	if (c >= 'A' && c <= 'Z') return (c - 'A' + 10) < radix;
+	return 0;
+}
+
+static HCL_INLINE int is_xdigit_char (hcl_ooci_t c)
 {
 /* TODO: support full unicode */
 	return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f');
@@ -1867,7 +1875,7 @@ static int feed_process_token (hcl_t* hcl)
 			HCL_ASSERT (hcl, TOKEN_NAME_LEN(hcl) >= 3);
 			for (i = 2; i < TOKEN_NAME_LEN(hcl); i++)
 			{
-				HCL_ASSERT (hcl, is_xdigitchar(TOKEN_NAME_CHAR(hcl, i)));
+				HCL_ASSERT (hcl, is_xdigit_char(TOKEN_NAME_CHAR(hcl, i)));
 				v = v * 16 + HCL_CHAR_TO_NUM(TOKEN_NAME_CHAR(hcl, i), 16);
 			}
 
@@ -1889,7 +1897,7 @@ static int feed_process_token (hcl_t* hcl)
 			HCL_ASSERT (hcl, TOKEN_NAME_LEN(hcl) >= 3);
 			for (i = 2; i < TOKEN_NAME_LEN(hcl); i++)
 			{
-				HCL_ASSERT (hcl, is_digitchar(TOKEN_NAME_CHAR(hcl, i)));
+				HCL_ASSERT (hcl, is_digit_char(TOKEN_NAME_CHAR(hcl, i)));
 				v = v * 10 + HCL_CHAR_TO_NUM(TOKEN_NAME_CHAR(hcl, i), 10);
 
 				if (v > HCL_ERROR_MAX)
@@ -2223,6 +2231,7 @@ static HCL_INLINE void init_flx_pn (hcl_flx_pn_t* pn, hcl_ooch_t start_digit)
 {
 	HCL_MEMSET (pn, 0, HCL_SIZEOF(*pn));
 	pn->start_digit = start_digit;
+	pn->radix = 10;
 }
 
 static HCL_INLINE void init_flx_st (hcl_flx_st_t* st, hcl_ooch_t sign_c)
@@ -2640,7 +2649,7 @@ static int flx_hmarked_char (hcl_t* hcl, hcl_ooci_t c)
 				c = 0;
 				for (i = 3; i < TOKEN_NAME_LEN(hcl); i++)
 				{
-					if (!is_xdigitchar(TOKEN_NAME_CHAR(hcl, i)))
+					if (!is_xdigit_char(TOKEN_NAME_CHAR(hcl, i)))
 					{
 						hcl_setsynerrbfmt (hcl, HCL_SYNERR_CHARLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
 							"invalid hexadecimal character character literal %.*js", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
@@ -3015,7 +3024,7 @@ static int flx_plain_number (hcl_t* hcl, hcl_ooci_t c) /* number */
 {
 	hcl_flx_pn_t* pn = FLX_PN(hcl);
 
-	if (is_digitchar(c))
+	if (is_radixed_digit_char(c, pn->radix))
 	{
 		ADD_TOKEN_CHAR (hcl, c);
 		pn->digit_count[pn->fpdec]++;
@@ -3049,7 +3058,7 @@ static int flx_plain_number (hcl_t* hcl, hcl_ooci_t c) /* number */
 	{
 		if (!pn->fpdec && c == '.')
 		{
-			if (pn->radix)
+			if (pn->radix != 10)
 			{
 				hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, FLX_LOC(hcl), HCL_NULL,
 					"invalid use of decimal point after radixed number '%.*js'",
@@ -3063,19 +3072,21 @@ static int flx_plain_number (hcl_t* hcl, hcl_ooci_t c) /* number */
 
 		if (pn->digit_count[0] == 0)
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
-				"invalid numeric literal with no digit before decimal point");
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), HCL_NULL,
+				"invalid numeric literal with no digit '%.*js'",
+				TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
 			return -1;
 		}
 		else if (pn->fpdec && pn->digit_count[1] == 0)
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
-				"invalid numeric literal with no digit after decimal point");
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), HCL_NULL,
+				"invalid numeric literal with no digit after decimal point '%.*js'",
+				TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
 			return -1;
 		}
 
 	non_digit_char:
-		FEED_WRAP_UP (hcl, (pn->fpdec? HCL_TOK_FPDECLIT: (pn->radix? HCL_TOK_RADNUMLIT: HCL_TOK_NUMLIT)));
+		FEED_WRAP_UP (hcl, (pn->fpdec? HCL_TOK_FPDECLIT: (pn->radix != 10? HCL_TOK_RADNUMLIT: HCL_TOK_NUMLIT)));
 		goto not_consumed;
 	}
 
@@ -3275,7 +3286,7 @@ static int flx_signed_token (hcl_t* hcl, hcl_ooci_t c)
 	hcl_flx_st_t* st = FLX_ST(hcl);
 
 	HCL_ASSERT (hcl, st->char_count == 0);
-	if (is_digitchar(c))
+	if (is_digit_char(c))
 	{
 		/* the sign is not part of the pn->digit_count[0] but is
 		 * in the current token buffer. pn->digit_count[0] doesn't

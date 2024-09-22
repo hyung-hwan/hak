@@ -103,4 +103,16 @@ while (< i 52) {
 	i := (+ i 1)
 }
 
+
+i := 0xAbCd93481FFAABBCCDDEeFa12837281
+j := 0o125715446440377652567463357357502240671201
+k := 0b1010101111001101100100110100100000011111111110101010101110111100110011011101111011101111101000010010100000110111001010000001
+l := 14272837210234798094990047170340811393
+
+if (== i j) { printf "OK: i is equal to j\n" } \
+else { printf "ERROR: i is not equal to j\n" }
+if (== i k) { printf "OK: i is equal to k\n" } \
+else { printf "ERROR: i is not equal to k\n" }
+if (== i l) { printf "OK: i is equal to l\n" } \
+else { printf "ERROR: i is not equal to l\n" }
 }  ## END
