@@ -2852,7 +2852,7 @@ static void cb_opt_set (hcl_t* hcl, hcl_option_t id, const void* value)
 
 #if defined(_WIN32)
 	#if defined(HCL_OOCH_IS_UCH) && (HCL_SIZEOF_UCH_T == HCL_SIZEOF_WCHAR_T)
-	fd = _wopen(hcl->option.log_target_u, _O_CREAT | _O_WRONLY | _O_APPEND | _O_BINARY , 0644);
+	fd = _wopen((const wchar_t*)hcl->option.log_target_u, _O_CREAT | _O_WRONLY | _O_APPEND | _O_BINARY , 0644);
 	#else
 	fd = _open(hcl->option.log_target_b, _O_CREAT | _O_WRONLY | _O_APPEND | _O_BINARY , 0644);
 	#endif

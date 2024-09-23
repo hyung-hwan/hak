@@ -477,13 +477,13 @@ static hcl_pfrc_t pf_gets (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 				newcapa = capa + HCL_COUNTOF(buf);
 				if (ptr == buf)
 				{
-					tmp = hcl_allocmem(hcl, HCL_SIZEOF(*ptr) * newcapa);
+					tmp = (hcl_ooch_t*)hcl_allocmem(hcl, HCL_SIZEOF(*ptr) * newcapa);
 					if (HCL_UNLIKELY(!tmp)) return HCL_PF_FAILURE;
 					HCL_MEMCPY (tmp, buf, HCL_SIZEOF(buf));
 				}
 				else
 				{
-					tmp = hcl_reallocmem(hcl, ptr, HCL_SIZEOF(*ptr) * newcapa);
+					tmp = (hcl_ooch_t*)hcl_reallocmem(hcl, ptr, HCL_SIZEOF(*ptr) * newcapa);
 					if (HCL_UNLIKELY(!tmp))
 					{
 						hcl_freemem(hcl, ptr);

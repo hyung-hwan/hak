@@ -1180,7 +1180,7 @@ static int fmt_outv (hcl_t* hcl, hcl_fmtout_t* fmtout, va_list ap)
 			{
 				/*HCL_ASSERT (hcl, fb.out.ptr == fb.out.sbuf);*/
 
-				fb.out.ptr = HCL_MMGR_ALLOC(fmtout->mmgr, HCL_SIZEOF(hcl_bch_t) * (newcapa + 1));
+				fb.out.ptr = (hcl_bch_t*)HCL_MMGR_ALLOC(fmtout->mmgr, HCL_SIZEOF(hcl_bch_t) * (newcapa + 1));
 				if (!fb.out.ptr) goto oops;
 				fb.out.capa = newcapa;
 			}

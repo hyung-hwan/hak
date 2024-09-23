@@ -1,6 +1,7 @@
 unit HCL;
 
 {$mode objfpc}{$H+}
+{$macro on}
 {$linklib hcl}
 {$linklib c}
 {$linklib dl}
@@ -267,7 +268,7 @@ begin
 				(* included file *)
 				nf := NamedHandlePtr(arg^.includer^.handle);
 				basedir := SysUtils.ExtractFilePath(nf^.name);
-				name := UTF8Encode(arg^.name);
+				name := System.UTF8Encode(WideString(arg^.name));
 				if SysUtils.CompareStr(basedir, '') <> 0 then
 					name := SysUtils.ConcatPaths([basedir, name]);
 			end;
