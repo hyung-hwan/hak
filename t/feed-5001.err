@@ -111,7 +111,22 @@ printf "%O\n"  35rabcdefghijklzabcd ##ERROR: syntax error - invalid numeric lite
 
 ---
 
-+ 12389127398127389217382197283197321897r11221 1 ##ERROR: syntax error - radix too large '12389127398127389217382197283197321897' before 'r'
++ 12389127398127389217382197283197321897r11221 1 ##ERROR: syntax error - unsupported radix '12389127398127389217382197283197321897' before 'r'
+
+---
+
++ 0000r11221 1 ##ERROR: syntax error - unsupported radix '0000' before 'r'
+---
+
++ 0r11221 1 ##ERROR: syntax error - unsupported radix '0' before 'r'
+
+---
+
++ 1r11221 1 ##ERROR: syntax error - unsupported radix '1' before 'r'
+
+---
+
++ 37r11221 1 ##ERROR: syntax error - unsupported radix '37' before 'r'
 
 ---
 

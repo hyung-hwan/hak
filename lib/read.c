@@ -3124,10 +3124,10 @@ static int flx_plain_number (hcl_t* hcl, hcl_ooci_t c) /* number */
 		if (!pn->fpdec && pn->tok_type == HCL_TOK_NUMLIT && pn->digit_count[0] > 0 && c == 'r')
 		{
 			/* 16rABCD */
-			if (pn->radix_cand_overflown)
+			if (pn->radix_cand_overflown || pn->radix_cand < 2 || pn->radix_cand > 36)
 			{
 				hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), HCL_NULL,
-					"radix too large '%.*js' before '%jc'",
+					"unsupported radix '%.*js' before '%jc'",
 					TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl), c);
 				return -1;
 			}

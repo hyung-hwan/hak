@@ -4305,7 +4305,9 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 	}
 	else
 	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_CALLABLE, HCL_CNODE_GET_LOC(car), HCL_CNODE_GET_TOK(car), "invalid callable in function call");
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_CALLABLE, HCL_CNODE_GET_LOC(car), HCL_NULL,
+			"invalid callable '%.*js' in function call",
+			HCL_CNODE_GET_TOKLEN(car), HCL_CNODE_GET_TOKPTR(car));
 		return -1;
 	}
 
@@ -4679,9 +4681,8 @@ HCL_UNUSED static int string_to_ooi (hcl_t* hcl, hcl_oocs_t* str, int radixed, h
 
 		if (base < 2 || base > 36)
 		{
-		invalid_radix_value:
 			hcl_seterrbfmt (hcl, HCL_EINVAL,
-				"invalid radix value '%d' in radixed number '%.*js'", base, str->len, str->ptr);
+				"unsupported radix '%d' in radixed number '%.*js'", base, str->len, str->ptr);
 			return -1;
 		}
 	}
@@ -4731,7 +4732,10 @@ static hcl_oop_t string_to_num (hcl_t* hcl, hcl_oocs_t* str, const hcl_loc_t* lo
 	end = str->ptr + str->len;
 
 	/* [NOTE]
-	 *   The code here assumes that the reader ensures that
+	 * - this is not a generic conversion functionu
+	 * - it assumes a certain pre-sanity check on the string
+	 *   done by the lexical analyzer.
+	 * - it also assumes that the reader ensures that
 	 *   there is at least 1 valid digit after radix specifier. */
 
 	HCL_ASSERT (hcl, ptr < end);
@@ -4774,13 +4778,14 @@ static hcl_oop_t string_to_num (hcl_t* hcl, hcl_oocs_t* str, const hcl_loc_t* lo
 			ptr++;
 		}
 
+		HCL_ASSERT (hcl, base >= 2 && base <= 36); /* the lexer must guarantee this */
+		/*
 		if (base < 2 || base > 36)
 		{
-		invalid_radix_value:
 			hcl_setsynerrbfmt (hcl, HCL_SYNERR_RADIX, loc, HCL_NULL,
-				"invalid radix value '%d' in radixed number '%.*js'", base, str->len, str->ptr);
+				"unsupported radix '%d' in radixed number '%.*js'", base, str->len, str->ptr);
 			return HCL_NULL;
-		}
+		}*/
 	}
 
 /* TODO: handle floating point numbers ... etc */
