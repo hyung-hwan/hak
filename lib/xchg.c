@@ -679,16 +679,13 @@ int hcl_addliteraltocode (hcl_t* hcl, hcl_code_t* code, hcl_oop_t obj, hcl_oow_t
 	{
 		tmp = ((hcl_oop_oop_t)code->lit.arr)->slot[i];
 
-		if (tmp == obj)
+		if (tmp == obj || hcl_equalobjs(hcl, obj, tmp))
 		{
-			/* this removes redundancy of symbols, characters, and integers. */
-			if (index) *index = i - lfbase;
-			return 0;
-		}
-		else if (HCL_IS_STRING(hcl, obj) && HCL_IS_STRING(hcl, tmp) && hcl_equalobjs(hcl, obj, tmp))
-		{
-			/* a string object requires equality check. however, the string created to the literal frame
-			 * must be made immutable. non-immutable string literals are source of various problems */
+			/* this removes redundancy of symbols, characters, and integers.
+			 * a string object requires equality check. however,
+			 * the string created to the literal frame
+			 * must be made immutable. non-immutable string literals are
+			 * source of various problems */
 			if (index) *index = i - lfbase;
 			return 0;
 		}
