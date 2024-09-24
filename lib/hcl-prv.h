@@ -813,6 +813,9 @@ struct hcl_flx_pn_t
 	/* state data */
 	int fpdec;
 	int radix;
+	int radix_cand_overflown;
+	hcl_oow_t radix_cand;
+	hcl_tok_type_t tok_type;
 	hcl_oow_t digit_count[2];
 	hcl_ooch_t start_digit;
 };

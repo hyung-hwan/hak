@@ -38,7 +38,7 @@
 #define IS_POW2(ui) (((ui) > 0) && ((ui) & ((ui) - 1)) == 0)
 
 /* digit character array */
-static char* _digitc_array[] =
+static const char* _digitc_array[] =
 {
 	"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ",
 	"0123456789abcdefghijklmnopqrstuvwxyz"

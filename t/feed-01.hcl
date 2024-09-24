@@ -108,6 +108,9 @@ i := 0xAbCd93481FFAABBCCDDEeFa12837281
 j := 0o125715446440377652567463357357502240671201
 k := 0b1010101111001101100100110100100000011111111110101010101110111100110011011101111011101111101000010010100000110111001010000001
 l := 14272837210234798094990047170340811393
+m := 16rAbCd93481FFAABBCCDDEeFa12837281
+n := 36rMVV36DNKTQ0Z2Q3L027T3NGH
+o := +35r18Q4OPTU2KRS7FVR09B5MORY3
 
 if (== i j) { printf "OK: i is equal to j\n" } \
 else { printf "ERROR: i is not equal to j\n" }
@@ -115,4 +118,16 @@ if (== i k) { printf "OK: i is equal to k\n" } \
 else { printf "ERROR: i is not equal to k\n" }
 if (== i l) { printf "OK: i is equal to l\n" } \
 else { printf "ERROR: i is not equal to l\n" }
+if (== i m) { printf "OK: i is equal to m\n" } \
+else { printf "ERROR: i is not equal to m\n" }
+if (== i n) { printf "OK: i is equal to n\n" } \
+else { printf "ERROR: i is not equal to n\n" }
+if (== i o) { printf "OK: i is equal to o\n" } \
+else { printf "ERROR: i is not equal to o\n" }
+
+
+i := (- -16r123abcd128738279878172387123aabbea19849d8282882822332332 123)
+k := -1919784483373631008405784517212288102153752573650638404319957951405
+if (== i k) { printf "OK: i is %d\n" i k } \
+else { printf "ERROR: i is not equal to %d\n" k }
 }  ## END

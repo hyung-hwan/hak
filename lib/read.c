@@ -236,7 +236,6 @@ static HCL_INLINE int is_linebreak (hcl_ooci_t c)
 
 static HCL_INLINE int is_digit_char (hcl_ooci_t c)
 {
-/* TODO: support full unicode */
 	return (c >= '0' && c <= '9');
 }
 
@@ -286,7 +285,7 @@ int hcl_is_binop_char (hcl_ooci_t c) /* not static HCL_INLINE for shared use wit
 	return c == '&' || c == '*' || c == '+' || c == '-' || c == '/' || c == '%' ||
 	       c == '<' || c == '>' || c == '=' || c == '@' || c == '|' || c == '~';
 }
-
+#define is_binop_char(c) hcl_is_binop_char(c)
 
 static HCL_INLINE int is_lead_ident_char (hcl_ooci_t c)
 {
@@ -1061,12 +1060,12 @@ static int chain_to_list (hcl_t* hcl, hcl_cnode_t* obj, hcl_loc_t* loc)
 {
 	hcl_rstl_t* rstl;
 	int flagv;
-	int list_concode;
+	/*int list_concode;*/
 
 	HCL_ASSERT (hcl, hcl->c->r.st != HCL_NULL);
 	rstl = hcl->c->r.st;
 	flagv = rstl->flagv;
-	list_concode = (hcl_concode_t)LIST_FLAG_GET_CONCODE(flagv);
+	/*list_concode = (hcl_concode_t)LIST_FLAG_GET_CONCODE(flagv);*/
 
 	if (flagv & CLOSED)
 	{
@@ -2232,6 +2231,9 @@ static HCL_INLINE void init_flx_pn (hcl_flx_pn_t* pn, hcl_ooch_t start_digit)
 	HCL_MEMSET (pn, 0, HCL_SIZEOF(*pn));
 	pn->start_digit = start_digit;
 	pn->radix = 10;
+	pn->radix_cand = 0;
+	pn->radix_cand_overflown = 0;
+	pn->tok_type = HCL_TOK_NUMLIT;
 }
 
 static HCL_INLINE void init_flx_st (hcl_flx_st_t* st, hcl_ooch_t sign_c)
@@ -2349,7 +2351,7 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 			FEED_CONTINUE (hcl, HCL_FLX_PLAIN_NUMBER);
 			goto not_consumed;
 
-		case 'B':
+		case 'B': /* for charcter/string prefixed with B,b,C,c */
 		case 'b':
 		case 'C':
 		case 'c':
@@ -2358,7 +2360,7 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 			goto consumed;
 
 		default:
-			if (hcl_is_binop_char(c))
+			if (is_binop_char(c))
 			{
 				init_flx_binop (FLX_BINOP(hcl));
 				FEED_CONTINUE (hcl, HCL_FLX_BINOP);
@@ -2532,7 +2534,7 @@ static int flx_hmarked_token (hcl_t* hcl, hcl_ooci_t c)
 	 * #"..."   symbol literal
 	 */
 
-	if (hcl_is_binop_char(c))
+	if (is_binop_char(c))
 	{
 		reset_flx_token (hcl);
 		FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_HMARKED_BINOP);
@@ -2551,6 +2553,7 @@ static int flx_hmarked_token (hcl_t* hcl, hcl_ooci_t c)
 
 		/* --------------------------- */
 
+	#if 0
 		case 'x': /* hexadecimal number */
 			init_flx_hn (FLX_HN(hcl), HCL_TOK_RADNUMLIT, HCL_SYNERR_NUMLIT, 16);
 			goto radixed_number;
@@ -2558,6 +2561,7 @@ static int flx_hmarked_token (hcl_t* hcl, hcl_ooci_t c)
 		case 'o': /* octal number */
 			init_flx_hn (FLX_HN(hcl), HCL_TOK_RADNUMLIT, HCL_SYNERR_NUMLIT, 8);
 			goto radixed_number;
+	#endif
 
 		case 'b': /* binary number or byte array */
 		case 'B':
@@ -2568,6 +2572,7 @@ static int flx_hmarked_token (hcl_t* hcl, hcl_ooci_t c)
 			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_HMARKED_BC);
 			break;
 
+	#if 0
 		case 'e': /* #eXXX - error literal */
 			init_flx_hn (FLX_HN(hcl), HCL_TOK_ERRLIT, HCL_SYNERR_ERRLIT, 10);
 			goto radixed_number;
@@ -2577,6 +2582,7 @@ static int flx_hmarked_token (hcl_t* hcl, hcl_ooci_t c)
 		radixed_number:
 			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_HMARKED_NUMBER);
 			goto consumed;
+	#endif
 
 		/* --------------------------- */
 		case '\\':
@@ -2728,6 +2734,7 @@ static int flx_hmarked_bc (hcl_t* hcl, hcl_ooci_t c)
 		FEED_WRAP_UP_WITH_CHAR (hcl, c, tt);
 		goto consumed;
 	}
+#if 0
 	else if (hb->start_c == 'b' || hb->start_c == 'B')
 	{
 		/* TODO: this part needs to be removed once 0x, 0b, 0o and etc are implemented */
@@ -2735,6 +2742,7 @@ static int flx_hmarked_bc (hcl_t* hcl, hcl_ooci_t c)
 		FEED_CONTINUE (hcl, HCL_FLX_HMARKED_NUMBER);
 		goto not_consumed;
 	}
+#endif
 	else
 	{
 		hcl_ooch_t start_c = hb->start_c;
@@ -2752,7 +2760,7 @@ not_consumed:
 
 static int flx_hmarked_binop (hcl_t* hcl, hcl_ooci_t c)
 {
-	if (hcl_is_binop_char(c))
+	if (is_binop_char(c))
 	{
 		ADD_TOKEN_CHAR(hcl, c);
 		goto consumed;
@@ -3002,7 +3010,7 @@ static int flx_binop (hcl_t* hcl, hcl_ooci_t c) /* binary operator/selector */
 	hcl_flx_binop_t* binop = FLX_BINOP(hcl);
 #endif
 
-	if (hcl_is_binop_char(c))
+	if (is_binop_char(c))
 	{
 		ADD_TOKEN_CHAR (hcl, c);
 		goto consumed;
@@ -3028,33 +3036,15 @@ static int flx_plain_number (hcl_t* hcl, hcl_ooci_t c) /* number */
 	{
 		ADD_TOKEN_CHAR (hcl, c);
 		pn->digit_count[pn->fpdec]++;
+		if (pn->tok_type == HCL_TOK_NUMLIT)
+		{
+			hcl_oow_t cand = pn->radix_cand * 10 + (c - '0');
+			if (cand < pn->radix_cand) pn->radix_cand_overflown = 1;
+			pn->radix_cand = cand;
+		}
 		goto consumed;
 	}
-	else if (c == 'x' || c == 'o' || c == 'b')
-	{
-		/* 0x12ab, 0b1010101, 0o12304567 */
-		if (!pn->fpdec && pn->digit_count[0] == 1 && pn->start_digit == '0')
-		{
-			pn->radix = (c == 'x'? 16: (c == 'o'? 8: 2));
-			ADD_TOKEN_CHAR (hcl, c);
-			pn->digit_count[0] = 0;
-			goto consumed;
-		}
-		else
-		{
-			goto non_digit_char;
-		}
-	}
-#if 0
-	else if (c == 'r')
-	{
-		/* 16r12ab, 2r1010101 */
-		if (!pn->fpdec && !pn->radix)
-		{
-		}
-	}
-#endif
-	else
+	else if (is_delim_char(c))
 	{
 		if (!pn->fpdec && c == '.')
 		{
@@ -3066,6 +3056,7 @@ static int flx_plain_number (hcl_t* hcl, hcl_ooci_t c) /* number */
 				return -1;
 			}
 			pn->fpdec = 1;
+			pn->tok_type = HCL_TOK_FPDECLIT;
 			ADD_TOKEN_CHAR (hcl, c);
 			goto consumed;
 		}
@@ -3073,7 +3064,7 @@ static int flx_plain_number (hcl_t* hcl, hcl_ooci_t c) /* number */
 		if (pn->digit_count[0] == 0)
 		{
 			hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), HCL_NULL,
-				"invalid numeric literal with no digit '%.*js'",
+				"invalid numeric literal with no digit after '%.*js'",
 				TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
 			return -1;
 		}
@@ -3085,9 +3076,73 @@ static int flx_plain_number (hcl_t* hcl, hcl_ooci_t c) /* number */
 			return -1;
 		}
 
-	non_digit_char:
-		FEED_WRAP_UP (hcl, (pn->fpdec? HCL_TOK_FPDECLIT: (pn->radix != 10? HCL_TOK_RADNUMLIT: HCL_TOK_NUMLIT)));
+		FEED_WRAP_UP (hcl, pn->tok_type);
 		goto not_consumed;
+	}
+	else
+	{
+		if (!pn->fpdec && pn->digit_count[0] == 1 && pn->start_digit == '0' && pn->tok_type == HCL_TOK_NUMLIT)
+		{
+			/* prefixed with 0 */
+			switch (c)
+			{
+				case 'x':
+					pn->tok_type = HCL_TOK_RADNUMLIT;
+					pn->radix = 16;
+					break;
+
+				case 'o':
+					pn->tok_type = HCL_TOK_RADNUMLIT;
+					pn->radix = 8;
+					break;
+
+				case 'b':
+					pn->tok_type = HCL_TOK_RADNUMLIT;
+					pn->radix = 2;
+					break;
+
+				case 'p':
+					pn->tok_type = HCL_TOK_SMPTRLIT;
+					pn->radix = 16;
+					break;
+
+				case 'e':
+					pn->tok_type = HCL_TOK_ERRLIT;
+					pn->radix = 10;
+					break;
+
+				default:
+					goto other_char;
+			}
+
+			ADD_TOKEN_CHAR (hcl, c);
+			pn->digit_count[0] = 0;
+			goto consumed;
+		}
+
+	other_char:
+		if (!pn->fpdec && pn->tok_type == HCL_TOK_NUMLIT && pn->digit_count[0] > 0 && c == 'r')
+		{
+			/* 16rABCD */
+			if (pn->radix_cand_overflown)
+			{
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), HCL_NULL,
+					"radix too large '%.*js' before '%jc'",
+					TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl), c);
+				return -1;
+			}
+
+			pn->tok_type = HCL_TOK_RADNUMLIT;
+			pn->radix = pn->radix_cand;
+			ADD_TOKEN_CHAR (hcl, c);
+			pn->digit_count[0] = 0;
+			goto consumed;
+		}
+
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), HCL_NULL,
+			"invalid numeric literal character '%jc' after '%.*js'",
+			c, TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
+		return -1;
 	}
 
 consumed:

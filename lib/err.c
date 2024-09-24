@@ -91,7 +91,7 @@ static hcl_ooch_t* errstr[] =
 };
 
 
-static char* synerrstr[] =
+static const char* synerrstr[] =
 {
 	"no error",
 	"internal error",

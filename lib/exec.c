@@ -3301,7 +3301,7 @@ static hcl_oop_t fetch_numeric_rcv_slot (hcl_t* hcl, hcl_oop_t rcv, hcl_oow_t b1
 	hcl_oow_t w;
 	hcl_obj_type_t rcv_type;
 
-	rcv_type = HCL_OBJ_GET_FLAGS_TYPE(rcv);
+	rcv_type = (hcl_obj_type_t)HCL_OBJ_GET_FLAGS_TYPE(rcv);
 	switch (HCL_LIKELY(rcv_type))
 	{
 		case HCL_OBJ_TYPE_CHAR:
@@ -3334,7 +3334,7 @@ static int store_into_numeric_rcv_slot (hcl_t* hcl, hcl_oop_t rcv, hcl_oow_t b1,
 	if (HCL_OOP_IS_CHAR(v)) w = HCL_OOP_TO_CHAR(v);
 	else if (hcl_inttooow(hcl, v, &w) <= -1) return -1;
 
-	rcv_type = HCL_OBJ_GET_FLAGS_TYPE(rcv);
+	rcv_type = (hcl_obj_type_t)HCL_OBJ_GET_FLAGS_TYPE(rcv);
 	switch (HCL_LIKELY(rcv_type))
 	{
 		case HCL_OBJ_TYPE_CHAR:
@@ -4172,7 +4172,7 @@ hcl_logbfmt (hcl, HCL_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d nc
 				hcl_oop_t _class;
 				hcl_oop_t mdic, blk, name;
 				int mtype;
-				static hcl_bch_t* pfx[] = { "c", "i", "ci" };
+				static const hcl_bch_t* pfx[] = { "c", "i", "ci" };
 
 				mtype = (bcode - HCL_CODE_CLASS_CMSTORE) + 1;
 				HCL_ASSERT (hcl, mtype >= 1 && mtype <= 3);

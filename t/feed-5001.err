@@ -14,8 +14,11 @@ $include 10    ##ERROR: syntax error - $include target expected in place of '10'
 
 ---
 
-0b ##ERROR: invalid numeric literal with no digit '0b'
+0b ##ERROR: syntax error - invalid numeric literal with no digit after '0b'
 
+---
+
+16r ##ERROR: syntax error - invalid numeric literal with no digit after '16r'
 ---
 
 ##
@@ -87,7 +90,28 @@ printf "[%c]\n" b'★';  ##ERROR: syntax error - wrong character literal
 
 printf "%O\n" #b[ 10 20 30 ];
 printf "%010b\n" 0b0101;
-printf "%O\n" #bxy; ##ERROR: syntax error - neither valid radixed number nor valid directive '#bxy'
+printf "%O\n" 0bxy; ##ERROR: syntax error - invalid numeric literal character 'x' after '0b'
+
+---
+
+printf "%O\n" 0b12xy ##ERROR: syntax error - invalid numeric literal character '2' after '0b1'
+
+---
+
+printf "%O\n" 0b0b11 ##ERROR: syntax error - invalid numeric literal character 'b' after '0b0'
+
+---
+
+printf "%O\n" 0o0127890 ##ERROR: syntax error - invalid numeric literal character '8' after '0o0127'
+
+---
+
+printf "%O\n"  35rabcdefghijklzabcd ##ERROR: syntax error - invalid numeric literal character 'z' after '35rabcdefghijkl'
+
+
+---
+
++ 12389127398127389217382197283197321897r11221 1 ##ERROR: syntax error - radix too large '12389127398127389217382197283197321897' before 'r'
 
 ---
 

@@ -4625,11 +4625,12 @@ static HCL_INLINE int compile_dsymbol (hcl_t* hcl, hcl_cnode_t* obj)
 
 HCL_UNUSED static int string_to_ooi (hcl_t* hcl, hcl_oocs_t* str, int radixed, hcl_ooi_t* num)
 {
-	/* it is not a generic conversion function.
+	/* [NOTE]
+	 * it is not a generic conversion functionu
 	 * it assumes a certain pre-sanity check on the string
 	 * done by the lexical analyzer */
 
-	int v, negsign, base;
+	int v, negsign, base = 10;
 	const hcl_ooch_t* ptr, * end;
 	hcl_oow_t value, old_value;
 
@@ -4647,26 +4648,43 @@ HCL_UNUSED static int string_to_ooi (hcl_t* hcl, hcl_oocs_t* str, int radixed, h
 
 	if (radixed)
 	{
+		/* 0xFF80, 0b1111 */
 		HCL_ASSERT (hcl, ptr < end);
 
-		if (*ptr != '#')
+		if (*ptr == '0')
 		{
-			hcl_seterrbfmt (hcl, HCL_EINVAL, "radixed number not starting with # - %*.js", str->len, str->ptr);
-			return -1;
-		}
-		ptr++; /* skip '#' */
+			ptr++;
+			HCL_ASSERT (hcl, ptr < end);
 
-		if (*ptr == 'x') base = 16;
-		else if (*ptr == 'o') base = 8;
-		else if (*ptr == 'b') base = 2;
-		else
+			if (*ptr == 'x') base = 16;
+			else if (*ptr == 'o') base = 8;
+			else if (*ptr == 'b') base = 2;
+			else goto radix_r;
+
+			ptr++;
+		}
+
+		if (base == 10)
 		{
-			hcl_seterrbfmt (hcl, HCL_EINVAL, "invalid radix specifier - %c", *ptr);
+		radix_r:
+			base = 0;
+			do
+			{
+				base = base * 10 + HCL_CHAR_TO_NUM(*ptr, 10);
+				ptr++;
+			}
+			while (*ptr != 'r');
+			ptr++;
+		}
+
+		if (base < 2 || base > 36)
+		{
+		invalid_radix_value:
+			hcl_seterrbfmt (hcl, HCL_EINVAL,
+				"invalid radix value '%d' in radixed number '%.*js'", base, str->len, str->ptr);
 			return -1;
 		}
-		ptr++;
 	}
-	else base = 10;
 
 	HCL_ASSERT (hcl, ptr < end);
 
@@ -4705,12 +4723,16 @@ HCL_UNUSED static int string_to_ooi (hcl_t* hcl, hcl_oocs_t* str, int radixed, h
 
 static hcl_oop_t string_to_num (hcl_t* hcl, hcl_oocs_t* str, const hcl_loc_t* loc, int radixed)
 {
-	int negsign, base;
+	int negsign, base = 10;
 	const hcl_ooch_t* ptr, * end;
 
 	negsign = 0;
 	ptr = str->ptr,
 	end = str->ptr + str->len;
+
+	/* [NOTE]
+	 *   The code here assumes that the reader ensures that
+	 *   there is at least 1 valid digit after radix specifier. */
 
 	HCL_ASSERT (hcl, ptr < end);
 
@@ -4720,48 +4742,46 @@ static hcl_oop_t string_to_num (hcl_t* hcl, hcl_oocs_t* str, const hcl_loc_t* lo
 		ptr++;
 	}
 
-#if 0
-	if (radixed)
-	{
-		/* 16r1234, 2r1111 */
-		HCL_ASSERT (hcl, ptr < end);
-
-		base = 0;
-		do
-		{
-			base = base * 10 + HCL_CHAR_TO_NUM(*ptr, 10);
-			ptr++;
-		}
-		while (*ptr != 'r');
-
-		ptr++;
-	}
-	else base = 10;
-#else
 	if (radixed)
 	{
 		/* 0xFF80, 0b1111 */
 		HCL_ASSERT (hcl, ptr < end);
 
-		if (/**ptr != '#' &&*/ *ptr != '0')
+		if (*ptr == '0')
 		{
-			hcl_setsynerrbfmt(hcl, HCL_SYNERR_RADIX, loc, str, "radixed number not starting with #");
-			return HCL_NULL;
-		}
-		ptr++; /* skip '0' */
+			ptr++;
+			HCL_ASSERT (hcl, ptr < end);
 
-		if (*ptr == 'x') base = 16;
-		else if (*ptr == 'o') base = 8;
-		else if (*ptr == 'b') base = 2;
-		else
+			if (*ptr == 'x') base = 16;
+			else if (*ptr == 'o') base = 8;
+			else if (*ptr == 'b') base = 2;
+			else goto radix_r;
+
+			ptr++;
+		}
+
+
+		if (base == 10)
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_RADIX, loc, HCL_NULL, "invalid radix specifier %c in %js", *ptr, str);
+		radix_r:
+			base = 0;
+			do
+			{
+				base = base * 10 + HCL_CHAR_TO_NUM(*ptr, 10);
+				ptr++;
+			}
+			while (*ptr != 'r');
+			ptr++;
+		}
+
+		if (base < 2 || base > 36)
+		{
+		invalid_radix_value:
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_RADIX, loc, HCL_NULL,
+				"invalid radix value '%d' in radixed number '%.*js'", base, str->len, str->ptr);
 			return HCL_NULL;
 		}
-		ptr++;
 	}
-	else base = 10;
-#endif
 
 /* TODO: handle floating point numbers ... etc */
 	if (negsign) base = -base;
