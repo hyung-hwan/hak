@@ -2614,7 +2614,9 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src, int defclass)
 
 	if (class_name)
 	{
-		//SWITCH_TOP_CFRAME (hcl, COP_COMPILE_SYMBOL_LITERAL, class_name); /* 1 - push the class name for a named class */
+	#if 0
+		SWITCH_TOP_CFRAME (hcl, COP_COMPILE_SYMBOL_LITERAL, class_name); /* 1 - push the class name for a named class */
+	#else
 		hcl_oow_t index;
 		hcl_oop_t cons, sym;
 
@@ -2628,8 +2630,12 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src, int defclass)
 			if (HCL_UNLIKELY(!cons)) return -1;
 		}
 
-		if (add_literal(hcl, cons, &index) <= -1) return -1;
-		if (emit_single_param_instruction(hcl, HCL_CODE_PUSH_LITERAL_0, index, HCL_CNODE_GET_LOC(class_name)) <= -1) return -1;
+		/* add an association in the system dictionary to the literal frame.
+		 * this provides performance advantage at the execution time because
+		 * the dictionary doesn't need to be searched for the object.  */
+		if (add_literal(hcl, cons, &index) <= -1 ||
+		    emit_single_param_instruction(hcl, HCL_CODE_PUSH_LITERAL_0, index, HCL_CNODE_GET_LOC(class_name)) <= -1) return -1;
+	#endif
 	}
 	else
 	{

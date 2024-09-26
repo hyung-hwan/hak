@@ -1871,6 +1871,7 @@ static int feed_process_token (hcl_t* hcl)
 			hcl_oow_t i;
 			hcl_oow_t v = 0;
 
+			/* 0pNNNN */
 			HCL_ASSERT (hcl, TOKEN_NAME_LEN(hcl) >= 3);
 			for (i = 2; i < TOKEN_NAME_LEN(hcl); i++)
 			{

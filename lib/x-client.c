@@ -735,7 +735,7 @@ hcl_client_logbfmt(client, HCL_LOG_STDERR, "local in read error - %hs\n", strerr
 	}
 	else if (n == 0)
 	{
-hcl_client_logbfmt(client, HCL_LOG_STDERR, "local in eof\n");
+/*hcl_client_logbfmt(client, HCL_LOG_STDERR, "local in eof\n");*/
 /* TODO ARRANGE TO FINISH.. AFTER EXUCTION OF REMAINING STUFF... */
 		//client->stopreq = 1;
 		client->state |= STATE_LOCAL_IN_CLOSED;
@@ -747,7 +747,7 @@ hcl_client_logbfmt(client, HCL_LOG_STDERR, "local to remote  (execute)- %hs\n", 
 	}
 	else
 	{
-hcl_client_logbfmt(client, HCL_LOG_STDERR, "local read - %ld\n", (long)n);
+/*hcl_client_logbfmt(client, HCL_LOG_STDERR, "local read - %ld\n", (long)n);*/
 		n = client_send_to_remote(client, HCL_XPKT_CODE, buf, n);
 		if (n <= -1)
 		{

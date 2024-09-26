@@ -547,7 +547,7 @@ printf ("IO CLOSE SOMETHING...........\n");
 			worker_hcl_xtn_t* xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);
 			hcl_io_udoarg_t* outarg = (hcl_io_udoarg_t*)arg;
 
-printf ("IO WRITE SOMETHING...........\n");
+/*printf ("IO WRITE SOMETHING...........\n");*/
 			if (send_chars(xtn->worker->proto, HCL_XPKT_STDOUT, outarg->ptr, outarg->len) <= -1)
 			{
 				/* TODO: change error code and message. propagage the errormessage from proto */
@@ -567,7 +567,7 @@ printf ("IO WRITE SOMETHING...........\n");
 			worker_hcl_xtn_t* xtn = (worker_hcl_xtn_t*)hcl_getxtn(hcl);
 			hcl_io_udoarg_t* outarg = (hcl_io_udoarg_t*)arg;
 
-printf ("IO WRITE SOMETHING BYTES...........\n");
+/*printf ("IO WRITE SOMETHING BYTES...........\n");*/
 			if (send_bytes(xtn->worker->proto, HCL_XPKT_STDOUT, outarg->ptr, outarg->len) <= -1)
 			{
 				/* TODO: change error code and message. propagage the errormessage from proto */
@@ -1037,7 +1037,7 @@ static int send_bytes (hcl_xproto_t* proto, hcl_xpkt_type_t xpkt_type, const hcl
 	ptr = cur = data;
 	end = data + len;
 
-printf ("SENDING BYTES [%.*s]\n", (int)len, data);
+/*printf ("SENDING BYTES [%.*s]\n", (int)len, data);*/
 	do
 	{
 		int nv;

@@ -95,3 +95,13 @@ try { throw "1111"; } catch (e) {
 fun a:get_999() { ##ERROR: exception not handled - "a accessed without initialization"
 	return  999;
 }
+
+---
+
+k := (core.basicAt "abcdefg" 1)
+core.basicAtPut "xbcdefghiklmnl" 4 k ##ERROR: exception not handled - "receiver immutable - \"xbcdefghiklmnl\""
+
+---
+
+k := (core.basicAt #abcdefg 1)
+core.basicAtPut #xbcdefghiklmnl 4 k ##ERROR: exception not handled - "receiver immutable - #xbcdefghiklmnl"

@@ -43,6 +43,8 @@ enum hcl_xchg_type_t
 	/* literals */
 	HCL_XCHG_STRING_U,
 	HCL_XCHG_STRING_B,
+	HCL_XCHG_SYMLIT_U, /* literal symbol */
+	HCL_XCHG_SYMLIT_B, /* literal symbol */
 	HCL_XCHG_SYMBOL_U, /* contained in a cons cell */
 	HCL_XCHG_SYMBOL_B, /* contained in a cons cell */
 	HCL_XCHG_SMOOI,
@@ -186,6 +188,7 @@ int hcl_marshalcode (hcl_t* hcl, const hcl_code_t* code, hcl_xchg_writer_t wrtr,
 			}
 
 			case HCL_BRAND_STRING:
+			case HCL_BRAND_SYMBOL:
 			{
 			#if defined(HCL_OOCH_IS_UCH)
 				hcl_uch_t* ucsptr;
@@ -195,7 +198,7 @@ int hcl_marshalcode (hcl_t* hcl, const hcl_code_t* code, hcl_xchg_writer_t wrtr,
 				int n;
 
 				/* write 1-byte brand */
-				b = (hcl_uint8_t)HCL_XCHG_STRING_U;
+				b = (hcl_uint8_t)(brand == HCL_BRAND_STRING? HCL_XCHG_STRING_U: HCL_XCHG_SYMLIT_U);
 				if (wrtr(hcl, &b, HCL_SIZEOF(b), ctx) <= -1) goto oops;
 
 			string_body:
@@ -224,7 +227,6 @@ int hcl_marshalcode (hcl_t* hcl, const hcl_code_t* code, hcl_xchg_writer_t wrtr,
 				}
 			#else
 				/* write 1-byte brand */
-				b = (hcl_uint8_t)HCL_XCHG_BSTRING;
 				if (wrtr(hcl, &b, HCL_SIZEOF(b), ctx) <= -1) goto oops;
 
 			string_body:
@@ -264,6 +266,9 @@ int hcl_unmarshalcode (hcl_t* hcl, hcl_code_t* code, hcl_xchg_reader_t rdr, void
 	hcl_xchg_hdr_t h;
 	hcl_uint8_t b;
 	hcl_oow_t w;
+
+	hcl_uch_t* usym_buf = HCL_NULL;
+	hcl_oow_t usym_buf_capa = 0;
 
 	/* [NOTE]
 	 *  this function may pollute the code data when it fails because it doesn't
@@ -345,9 +350,11 @@ int hcl_unmarshalcode (hcl_t* hcl, hcl_code_t* code, hcl_xchg_reader_t rdr, void
 			}
 
 			case HCL_XCHG_STRING_U:
+			case HCL_XCHG_SYMLIT_U:
 			case HCL_XCHG_SYMBOL_U:
 			{
 				hcl_bch_t bcsbuf[64];
+				hcl_uch_t* ucsptr;
 				hcl_oow_t bcslen, bcsres, ucslen, ucspos;
 				hcl_oow_t nbytes, nchars;
 				hcl_oop_t ns;
@@ -368,8 +375,22 @@ int hcl_unmarshalcode (hcl_t* hcl, hcl_code_t* code, hcl_xchg_reader_t rdr, void
 				}
 				nbytes = hcl_leoowtoh(w);
 
-				ns = hcl_makestring(hcl, HCL_NULL, nchars);
-				if (HCL_UNLIKELY(!ns)) goto oops;
+				if (b == HCL_XCHG_STRING_U)
+				{
+					ns = hcl_makestring(hcl, HCL_NULL, nchars);
+					if (HCL_UNLIKELY(!ns)) goto oops;
+					ucsptr = HCL_OBJ_GET_CHAR_PTR(ns, 0);
+				}
+				else
+				{
+					if (nchars > usym_buf_capa)
+					{
+						usym_buf_capa = nchars * HCL_SIZEOF(usym_buf[0]);
+						usym_buf = (hcl_uch_t*)hcl_allocmem(hcl, usym_buf_capa);
+						if (HCL_UNLIKELY(!usym_buf)) goto oops;
+					}
+					ucsptr = usym_buf;
+				}
 
 				ucspos = 0;
 				bcsres = 0;
@@ -386,7 +407,7 @@ int hcl_unmarshalcode (hcl_t* hcl, hcl_code_t* code, hcl_xchg_reader_t rdr, void
 					HCL_ASSERT(hcl, ucspos < nchars);
 					bcsres = bcslen;
 					ucslen = nchars - ucspos;
-					if (hcl_convbtouchars(hcl, bcsbuf, &bcslen, HCL_OBJ_GET_CHAR_PTR(ns, ucspos), &ucslen) <= -1 && bcslen <= 0)
+					if (hcl_convbtouchars(hcl, bcsbuf, &bcslen, &ucsptr[ucspos], &ucslen) <= -1 && bcslen <= 0)
 					{
 						goto oops;
 					}
@@ -399,14 +420,21 @@ int hcl_unmarshalcode (hcl_t* hcl, hcl_code_t* code, hcl_xchg_reader_t rdr, void
 
 				HCL_ASSERT(hcl, ucspos == nchars);
 
-				if (b == HCL_XCHG_SYMBOL_U)
+				if (b != HCL_XCHG_STRING_U)
 				{
+					ns = hcl_makesymbol(hcl, usym_buf, nchars);
+					if (HCL_UNLIKELY(!ns)) goto oops;
+
+					if (b == HCL_XCHG_SYMBOL_U)
+					{
 					/* form a cons cell */
-					hcl_oop_t nc;
-					hcl_pushvolat(hcl, &ns);
-					nc = hcl_makecons(hcl, ns, hcl->_nil);
-					hcl_popvolat(hcl);
-					ns = nc;
+						hcl_oop_t nc;
+						hcl_pushvolat(hcl, &ns);
+						nc = hcl_makecons(hcl, ns, hcl->_nil);
+						hcl_popvolat(hcl);
+						if (HCL_UNLIKELY(!nc)) goto oops;
+						ns = nc;
+					}
 				}
 
 				if (hcl_addliteraltocode(hcl, code, ns, 0, HCL_NULL) <= -1) goto oops;
@@ -533,6 +561,7 @@ int hcl_unmarshalcode (hcl_t* hcl, hcl_code_t* code, hcl_xchg_reader_t rdr, void
 	return 0;
 
 oops:
+	if (usym_buf) hcl_freemem (hcl, usym_buf);
 	return -1;
 }
 /* -------------------------------------------------------------------- */
@@ -609,7 +638,12 @@ int hcl_brewcode (hcl_t* hcl, hcl_code_t* code)
 	if (!code->bc.ptr)
 	{
 		code->bc.ptr = (hcl_oob_t*)hcl_allocmem(hcl, HCL_SIZEOF(*code->bc.ptr) * HCL_BC_BUFFER_INIT); /* TODO: set a proper intial size */
-		if (HCL_UNLIKELY(!code->bc.ptr)) return -1;
+		if (HCL_UNLIKELY(!code->bc.ptr))
+		{
+			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+			hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to allocate code buffer - %js", orgmsg);
+			return -1;
+		}
 		HCL_ASSERT (hcl, code->bc.len == 0);
 		code->bc.capa = HCL_BC_BUFFER_INIT;
 	}
@@ -619,11 +653,15 @@ int hcl_brewcode (hcl_t* hcl, hcl_code_t* code)
 		code->dbgi = (hcl_dbgi_t*)hcl_allocmem(hcl, HCL_SIZEOF(*code->dbgi) * HCL_BC_BUFFER_INIT);
 		if (HCL_UNLIKELY(!code->dbgi))
 		{
+			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+			hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to allocate debug info buffer - %js", orgmsg);
+
 			/* bc.ptr and dbgi go together. so free bc.ptr if dbgi allocation fails */
 			hcl_freemem (hcl, code->bc.ptr);
 			code->bc.ptr = HCL_NULL;
 			code->bc.len = 0;
 			code->bc.capa = 0;
+
 			return -1;
 		}
 
@@ -634,7 +672,12 @@ int hcl_brewcode (hcl_t* hcl, hcl_code_t* code)
         if (!code->lit.arr)
         {
                 code->lit.arr = (hcl_oop_oop_t)hcl_makengcarray(hcl, HCL_LIT_BUFFER_INIT); /* TOOD: set a proper initial size */
-                if (HCL_UNLIKELY(!code->lit.arr)) return -1;
+                if (HCL_UNLIKELY(!code->lit.arr))
+		{
+			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+			hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to allocate literal frame - %js", orgmsg);
+			return -1;
+		}
                 HCL_ASSERT (hcl, code->lit.len == 0);
         }
 
@@ -699,7 +742,12 @@ int hcl_addliteraltocode (hcl_t* hcl, hcl_code_t* code, hcl_oop_t obj, hcl_oow_t
 
 		newcapa = HCL_ALIGN(capa + 1, HCL_LIT_BUFFER_ALIGN);
 		tmp = hcl_remakengcarray(hcl, (hcl_oop_t)code->lit.arr, newcapa);
-		if (HCL_UNLIKELY(!tmp)) return -1;
+		if (HCL_UNLIKELY(!tmp))
+		{
+			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+			hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to resize literal frame - %js", orgmsg);
+			return -1;
+		}
 
 		code->lit.arr = (hcl_oop_oop_t)tmp;
 	}
@@ -707,7 +755,9 @@ int hcl_addliteraltocode (hcl_t* hcl, hcl_code_t* code, hcl_oop_t obj, hcl_oow_t
 	if (index) *index = code->lit.len - lfbase;
 
 	((hcl_oop_oop_t)code->lit.arr)->slot[code->lit.len++] = obj;
-	/* TODO: RDONLY? */
-	/*if (HCL_IS_OOP_POINTER(obj)) HCL_OBJ_SET_FLAGS_RDONLY(obj, 1); */
+	/* make read-only an object in the literal table.
+	 * some immutable objects(e.g. literal symbol) don't need this part
+	 * but we just execute it regardless */
+	if (HCL_OOP_IS_POINTER(obj)) HCL_OBJ_SET_FLAGS_RDONLY (obj, 1);
 	return 0;
 }
