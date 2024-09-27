@@ -141,7 +141,7 @@ static void vm_checkbc (hcl_t* hcl, hcl_oob_t bcode)
 }
 */
 
-static void gc_hcl (hcl_t* hcl)
+static void on_gc_hcl (hcl_t* hcl)
 {
 	/*xtn_t* xtn = (xtn_t*)hcl_getxtn(hcl);*/
 	/*if (xtn->sym_errstr) xtn->sym_errstr = hcl_moveoop(hcl, xtn->sym_errstr);*/
@@ -859,7 +859,7 @@ int main (int argc, char* argv[])
 	}
 
 	memset (&hclcb, 0, HCL_SIZEOF(hclcb));
-	hclcb.gc = gc_hcl;
+	hclcb.on_gc = on_gc_hcl;
 	hclcb.vm_startup = vm_startup;
 	hclcb.vm_cleanup = vm_cleanup;
 	/*hclcb.vm_checkbc = vm_checkbc;*/

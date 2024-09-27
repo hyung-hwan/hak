@@ -231,7 +231,7 @@ void hcl_fini (hcl_t* hcl)
 
 	for (cb = hcl->cblist; cb; cb = cb->next)
 	{
-		if (cb->fini) cb->fini (hcl);
+		if (cb->on_fini) cb->on_fini (hcl);
 	}
 
 	if (hcl->log.len > 0)
@@ -583,7 +583,7 @@ int hcl_setoption (hcl_t* hcl, hcl_option_t id, const void* value)
 
 	for (cb = hcl->cblist; cb; cb = cb->next)
 	{
-		if (cb->opt_set) cb->opt_set (hcl, id, value);
+		if (cb->on_option) cb->on_option (hcl, id, value);
 	}
 
 	return 0;

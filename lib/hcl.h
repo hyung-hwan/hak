@@ -1173,6 +1173,20 @@ typedef int (*hcl_vmprim_sleep_t) (
 	const hcl_ntime_t* duration
 );
 
+typedef hcl_ooi_t (*hcl_vmprim_getsigfd_t) (
+	hcl_t*             hcl
+);
+
+typedef int (*hcl_vmprim_getsig_t) (
+	hcl_t*             hcl,
+	hcl_uint8_t*       sig
+);
+
+typedef int (*hcl_vmprim_setsig_t) (
+	hcl_t*             hcl,
+	hcl_uint8_t        sig
+);
+
 struct hcl_vmprim_t
 {
 	/* The alloc_heap callback function is called very earlier
@@ -1204,6 +1218,10 @@ struct hcl_vmprim_t
 	hcl_vmprim_muxmod_t    vm_muxmod;
 	hcl_vmprim_muxwait_t   vm_muxwait;
 	hcl_vmprim_sleep_t     vm_sleep; /* required */
+
+	hcl_vmprim_getsigfd_t  vm_getsigfd;
+	hcl_vmprim_getsig_t    vm_getsig;
+	hcl_vmprim_setsig_t    vm_setsig;
 };
 
 typedef struct hcl_vmprim_t hcl_vmprim_t;
@@ -1404,19 +1422,21 @@ typedef int (*hcl_io_impl_t) (
  * ========================================================================= */
 
 
-typedef void (*hcl_cb_opt_set_t) (hcl_t* hcl, hcl_option_t id, const void* val);
-typedef void (*hcl_cb_fini_t) (hcl_t* hcl);
-typedef void (*hcl_cb_gc_t) (hcl_t* hcl);
-typedef int (*hcl_cb_vm_startup_t) (hcl_t* hcl);
+typedef void (*hcl_cb_on_fini_t)    (hcl_t* hcl);
+typedef void (*hcl_cb_on_halting_t) (hcl_t* hcl);
+typedef void (*hcl_cb_on_option_t)  (hcl_t* hcl, hcl_option_t id, const void* val);
+typedef void (*hcl_cb_on_gc_t)      (hcl_t* hcl);
+typedef int  (*hcl_cb_vm_startup_t) (hcl_t* hcl);
 typedef void (*hcl_cb_vm_cleanup_t) (hcl_t* hcl);
 typedef void (*hcl_cb_vm_checkbc_t) (hcl_t* hcl, hcl_oob_t bcode);
 
 typedef struct hcl_cb_t hcl_cb_t;
 struct hcl_cb_t
 {
-	hcl_cb_opt_set_t opt_set;
-	hcl_cb_gc_t gc;
-	hcl_cb_fini_t fini;
+	hcl_cb_on_fini_t    on_fini; /* called from hcl_fini() */
+	hcl_cb_on_halting_t halting;
+	hcl_cb_on_option_t  on_option; /* called from hcl_setoption() */
+	hcl_cb_on_gc_t      on_gc; /* called from hcl_gc() */
 
 	hcl_cb_vm_startup_t vm_startup;
 	hcl_cb_vm_cleanup_t vm_cleanup;

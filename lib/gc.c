@@ -1024,7 +1024,7 @@ static HCL_INLINE void gc_ms_mark_roots (hcl_t* hcl)
 
 	for (cb = hcl->cblist; cb; cb = cb->next)
 	{
-		if (cb->gc) cb->gc (hcl);
+		if (cb->on_gc) cb->on_gc (hcl);
 	}
 
 #if defined(ENABLE_GCFIN)

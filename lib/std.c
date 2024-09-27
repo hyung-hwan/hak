@@ -33,16 +33,29 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if !defined(__DOS__) && !defined(EMSCRIPTEN) && defined(HAVE_PTHREAD) && defined(HAVE_STRERROR_R)
+#	define USE_THREAD
+#endif
+
 #if defined(_WIN32)
+#	if !defined(_WIN32_WINNT)
+#		define _WIN32_WINNT 0x0400
+#	endif
+#	define WIN32_LEAN_AND_MEAN
+
 #	include <winsock2.h>
 #	include <ws2tcpip.h>
+
 #	include <windows.h>
+#	if !(defined(__BORLANDC__) && (__BORLANDC__ <= 0x0520))
+#		include <psapi.h>
+#	endif
 #	include <tchar.h>
 #	include <time.h>
-#	include <fcntl.h>
 #	include <io.h>
+#	include <fcntl.h>
+#	include <signal.h>
 #	include <errno.h>
-
 #	if defined(HCL_HAVE_CFG_H) && defined(HCL_ENABLE_LIBLTDL)
 #		include <ltdl.h>
 #		define USE_LTDL
@@ -50,14 +63,12 @@
 #		define USE_WIN_DLL
 #	endif
 
-
 #	include "poll-msw.h"
 #	define USE_POLL
 #	define XPOLLIN POLLIN
 #	define XPOLLOUT POLLOUT
 #	define XPOLLERR POLLERR
 #	define XPOLLHUP POLLHUP
-
 
 #if !defined(SIZE_T)
 #	define SIZE_T unsigned long int
@@ -108,8 +119,8 @@
 #	include <fcntl.h>
 #	include <conio.h> /* inp, outp */
 
-#	define DOS_EXIT 0x4C
 #	if defined(_INTELC32_)
+#		define DOS_EXIT 0x4C
 #		include <i32.h>
 #		include <stk.h>
 #	elif defined(_MSC_VER)
@@ -412,6 +423,7 @@ struct xtn_t
 
 #define GET_XTN(hcl) ((xtn_t*)((hcl_uint8_t*)HCL_XTN(hcl) - HCL_SIZEOF(xtn_t)))
 
+static hcl_t* g_hcl = HCL_NULL;
 
 /* -----------------------------------------------------------------
  * BASIC MEMORY MANAGER
@@ -439,6 +451,206 @@ static hcl_mmgr_t sys_mmgr =
 	sys_freemem,
 	HCL_NULL
 };
+
+/* -----------------------------------------------------------------
+ * HEAP ALLOCATION
+ * ----------------------------------------------------------------- */
+
+static int get_huge_page_size (hcl_t* hcl, hcl_oow_t* page_size)
+{
+	FILE* fp;
+	char buf[256];
+
+	fp = fopen("/proc/meminfo", "r");
+	if (!fp) return -1;
+
+	while (!feof(fp))
+	{
+		if (fgets(buf, sizeof(buf) - 1, fp) == NULL) goto oops;
+
+		if (strncmp(buf, "Hugepagesize: ", 13) == 0)
+		{
+			unsigned long int tmp;
+			tmp = strtoul(&buf[13], NULL, 10);
+			if (tmp == HCL_TYPE_MAX(unsigned long int) && errno == ERANGE) goto oops;
+
+			*page_size = tmp * 1024; /* KBytes to Bytes */
+			fclose (fp);
+			return 0;
+		}
+	}
+
+oops:
+	fclose (fp);
+	return -1;
+}
+
+static void* alloc_heap (hcl_t* hcl, hcl_oow_t* size)
+{
+#if defined(_WIN32)
+	hcl_oow_t* ptr;
+	hcl_oow_t req_size, align, aligned_size;
+	HINSTANCE k32;
+	SIZE_T (*k32_GetLargePageMinimum) (void);
+	HANDLE token = HCL_NULL;
+	TOKEN_PRIVILEGES new_state, prev_state;
+	TOKEN_PRIVILEGES* prev_state_ptr;
+	DWORD prev_state_reqsize = 0;
+	int token_adjusted = 0;
+
+	align = 2 * 1024 * 1024; /* default 2MB */
+
+	k32 = LoadLibrary(TEXT("kernel32.dll"));
+	if (k32)
+	{
+		k32_GetLargePageMinimum = (SIZE_T(*)(void))GetProcAddress (k32, "GetLargePageMinimum");
+		if (k32_GetLargePageMinimum) align = k32_GetLargePageMinimum();
+		FreeLibrary (k32);
+	}
+	/* the standard page size shouldn't help. so let me comment out this part.
+	else
+	{
+		SYSTEM_INFO si;
+		GetSystemInfo (&si);
+		align = si.dwPageSize;
+	}*/
+
+	req_size = HCL_SIZEOF(hcl_oow_t) + size;
+	aligned_size = HCL_ALIGN(req_size, align);
+
+	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &token)) goto oops;
+	if (!LookupPrivilegeValue(HCL_NULL, TEXT("SeLockMemoryPrivilege"), &new_state.Privileges[0].Luid)) goto oops;
+	new_state.PrivilegeCount = 1;
+	new_state.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+	prev_state_ptr = &prev_state;
+	if (!AdjustTokenPrivileges(token, FALSE, &new_state, HCL_SIZEOF(prev_state), prev_state_ptr, &prev_state_reqsize) || GetLastError() != ERROR_SUCCESS)
+	{
+		if (prev_state_reqsize >= HCL_SIZEOF(prev_state))
+		{
+			/* GetLastError() == ERROR_INSUFFICIENT_BUFFER */
+			prev_state_ptr = (TOKEN_PRIVILEGES*)HeapAlloc(GetProcessHeap(), 0, prev_state_reqsize);
+			if (!prev_state_ptr) goto oops;
+			if (!AdjustTokenPrivileges(token, FALSE, &new_state, prev_state_reqsize, prev_state_ptr, &prev_state_reqsize) || GetLastError() != ERROR_SUCCESS) goto oops;
+		}
+		else goto oops;
+	}
+	token_adjusted = 1;
+
+#if !defined(MEM_LARGE_PAGES)
+#	define MEM_LARGE_PAGES (0x20000000)
+#endif
+	ptr = VirtualAlloc(HCL_NULL, aligned_size, MEM_COMMIT | MEM_RESERVE | MEM_LARGE_PAGES, PAGE_READWRITE);
+	if (!ptr)
+	{
+		SYSTEM_INFO si;
+		GetSystemInfo (&si);
+		align = si.dwPageSize;
+		aligned_size = HCL_ALIGN(req_size, align);
+		ptr = VirtualAlloc(HCL_NULL, aligned_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+		if (!ptr) goto oops;
+	}
+
+	AdjustTokenPrivileges (token, FALSE, prev_state_ptr, 0, HCL_NULL, 0);
+	CloseHandle (token);
+	if (prev_state_ptr && prev_state_ptr != &prev_state) HeapFree (GetProcessHeap(), 0, prev_state_ptr);
+
+	*size = aligned_size;
+	return ptr;
+
+oops:
+	hcl_seterrwithsyserr (hcl, 1, GetLastError());
+	if (token)
+	{
+		if (token_adjusted) AdjustTokenPrivileges (token, FALSE, prev_state_ptr, 0, HCL_NULL, 0);
+		CloseHandle (token);
+	}
+	if (prev_state_ptr && prev_state_ptr != &prev_state) HeapFree (GetProcessHeap(), 0, prev_state_ptr);
+	return HCL_NULL;
+
+#elif defined(HAVE_MMAP) && defined(HAVE_MUNMAP) && defined(MAP_ANONYMOUS)
+	/* It's called via hcl_makeheap() when HCL creates a GC heap.
+	 * The heap is large in size. I can use a different memory allocation
+	 * function instead of an ordinary malloc.
+	 * upon failure, it doesn't require to set error information as hcl_makeheap()
+	 * set the error number to HCL_EOOMEM. */
+
+#if !defined(MAP_HUGETLB) && (defined(__amd64__) || defined(__x86_64__))
+#	define MAP_HUGETLB 0x40000
+#endif
+
+	hcl_oow_t* ptr;
+	int flags;
+	hcl_oow_t req_size, align, aligned_size;
+
+	req_size = HCL_SIZEOF(hcl_oow_t) + *size;
+	flags = MAP_PRIVATE | MAP_ANONYMOUS;
+
+	#if defined(MAP_UNINITIALIZED)
+	flags |= MAP_UNINITIALIZED;
+	#endif
+
+	#if defined(MAP_HUGETLB)
+	if (get_huge_page_size(hcl, &align) <= -1) align = 2 * 1024 * 1024; /* default to 2MB */
+	if (req_size > align / 2)
+	{
+		/* if the requested size is large enough, attempt HUGETLB */
+		flags |= MAP_HUGETLB;
+	}
+	else
+	{
+		align = sysconf(_SC_PAGESIZE);
+	}
+	#else
+	align = sysconf(_SC_PAGESIZE);
+	#endif
+
+	aligned_size = HCL_ALIGN_POW2(req_size, align);
+	ptr = (hcl_oow_t*)mmap(NULL, aligned_size, PROT_READ | PROT_WRITE, flags, -1, 0);
+	#if defined(MAP_HUGETLB)
+	if (ptr == MAP_FAILED && (flags & MAP_HUGETLB))
+	{
+		flags &= ~MAP_HUGETLB;
+		align = sysconf(_SC_PAGESIZE);
+		aligned_size = HCL_ALIGN_POW2(req_size, align);
+		ptr = (hcl_oow_t*)mmap(NULL, aligned_size, PROT_READ | PROT_WRITE, flags, -1, 0);
+		if (ptr == MAP_FAILED)
+		{
+			hcl_seterrwithsyserr (hcl, 0, errno);
+			return HCL_NULL;
+		}
+	}
+	#else
+	if (ptr == MAP_FAILED)
+	{
+		hcl_seterrwithsyserr (hcl, 0, errno);
+		return HCL_NULL;
+	}
+	#endif
+
+	*ptr = aligned_size;
+	*size = aligned_size - HCL_SIZEOF(hcl_oow_t);
+	return (void*)(ptr + 1);
+
+#else
+	return HCL_MMGR_ALLOC(hcl->_mmgr, *size);
+#endif
+}
+
+static void free_heap (hcl_t* hcl, void* ptr)
+{
+#if defined(_WIN32)
+	VirtualFree (ptr, 0, MEM_RELEASE); /* release the entire region */
+
+#elif defined(HAVE_MMAP) && defined(HAVE_MUNMAP)
+	hcl_oow_t* actual_ptr;
+	actual_ptr = (hcl_oow_t*)ptr - 1;
+	munmap (actual_ptr, *actual_ptr);
+#else
+	HCL_MMGR_FREE(hcl->_mmgr, ptr);
+#endif
+}
+
 
 /* -----------------------------------------------------------------
  * LOGGING SUPPORT
@@ -546,6 +758,21 @@ static void flush_log (hcl_t* hcl, int fd, int force)
 	}
 }
 
+static size_t sprintf_timestamp (char* ts, struct tm* tmp)
+{
+	int off_h, off_m;
+
+	off_m = tmp->tm_gmtoff / 60;
+	off_h = off_m / 60;
+	off_m = off_m % 60;
+	if (off_m < 0) off_m = -off_m;
+
+	return (size_t)sprintf(ts,
+		"%04d-%02d-%02d %02d:%02d:%02d %+03.2d%02.2d ",
+		tmp->tm_year + 1900, tmp->tm_mon + 1, tmp->tm_mday,
+		tmp->tm_hour, tmp->tm_min, tmp->tm_sec, off_h, off_m);
+}
+
 static void log_write (hcl_t* hcl, hcl_bitmask_t mask, const hcl_ooch_t* msg, hcl_oow_t len)
 {
 	hcl_bch_t buf[256];
@@ -578,18 +805,38 @@ static void log_write (hcl_t* hcl, hcl_bitmask_t mask, const hcl_ooch_t* msg, hc
 	if (!(mask & (HCL_LOG_STDOUT | HCL_LOG_STDERR)))
 	{
 		time_t now;
-		char ts[32];
+		char ts[64];
 		size_t tslen;
 		struct tm tm, *tmp;
 
 		now = time(HCL_NULL);
 	#if defined(_WIN32)
+		#if 0
 		tmp = localtime(&now);
 		tslen = strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S %z ", tmp);
-		if (tslen == 0)
+		if (tslen == 0) tslen = sprintf_timestamp(ts, tmp);
+		#else
+		/* %z for strftime() in win32 seems to produce a long non-numeric timezone name.
+		 * i don't use strftime() for time formatting. */
+		GetLocalTime (&now);
+		if (GetTimeZoneInformation(&tzi) != TIME_ZONE_ID_INVALID)
 		{
-			tslen = sprintf(ts, "%04d-%02d-%02d %02d:%02d:%02d ", tmp->tm_year + 1900, tmp->tm_mon + 1, tmp->tm_mday, tmp->tm_hour, tmp->tm_min, tmp->tm_sec);
+			LONG min;
+			tzi.Bias = -tzi.Bias; /* utc = localtime + bias(mins). so negate it */
+			min = tzi.Bias % 60;
+			if (min < 0) min = -min;
+			tslen = sprintf(ts, "%04d-%02d-%02d %02d:%02d:%02d %+03.2d%02.2d ",
+				(int)now.wYear, (int)now.wMonth, (int)now.wDay,
+				(int)now.wHour, (int)now.wMinute, (int)now.wSecond,
+				(int)(tzi.Bias / 60), (int)min);
 		}
+		else
+		{
+			tslen = sprintf(ts, "%04d-%02d-%02d %02d:%02d:%02d ",
+				(int)now.wYear, (int)now.wMonth, (int)now.wDay,
+				(int)now.wHour, (int)now.wMinute, (int)now.wSecond);
+		}
+		#endif
 	#elif defined(__OS2__)
 		#if defined(__WATCOMC__)
 		tmp = _localtime(&now, &tm);
@@ -604,15 +851,12 @@ static void log_write (hcl_t* hcl, hcl_bitmask_t mask, const hcl_ooch_t* msg, hc
 		#else
 		tslen = strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S %z ", tmp);
 		#endif
-		if (tslen == 0)
-		{
-			tslen = sprintf(ts, "%04d-%02d-%02d %02d:%02d:%02d ", tmp->tm_year + 1900, tmp->tm_mon + 1, tmp->tm_mday, tmp->tm_hour, tmp->tm_min, tmp->tm_sec);
-		}
+		if (HCL_UNLIKELY(tslen == 0)) tslen = sprintf_timestamp(ts, tmp);
 
 	#elif defined(__DOS__)
 		tmp = localtime(&now);
 		/* since i know that %z/%Z is not available in strftime, i switch to sprintf immediately */
-		tslen = sprintf(ts, "%04d-%02d-%02d %02d:%02d:%02d ", tmp->tm_year + 1900, tmp->tm_mon + 1, tmp->tm_mday, tmp->tm_hour, tmp->tm_min, tmp->tm_sec);
+		tslen = sprintf_timestamp(ts, tmp);
 	#else
 		#if defined(HAVE_LOCALTIME_R)
 		tmp = localtime_r(&now, &tm);
@@ -625,10 +869,25 @@ static void log_write (hcl_t* hcl, hcl_bitmask_t mask, const hcl_ooch_t* msg, hc
 		#else
 		tslen = strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S %Z ", tmp);
 		#endif
-		if (tslen == 0)
+		if (HCL_UNLIKELY(tslen == 0)) tslen = sprintf_timestamp(ts, tmp);
+	#endif
+
+	#if defined(HCL_OOCH_IS_UCH)
+		#if 0 /* time stamp already in ascii. this double convertion is not needed */
+		if (xtn->log_cmgr && hcl_getcmgr(hcl) != xtn->log_cmgr)
 		{
-			tslen = sprintf(ts, "%04d-%02d-%02d %02d:%02d:%02d ", tmp->tm_year + 1900, tmp->tm_mon + 1, tmp->tm_mday, tmp->tm_hour, tmp->tm_min, tmp->tm_sec);
+			hcl_uch_t tsu[64];
+			hcl_oow_t tsulen;
+
+			/* the timestamp is likely to contain simple ascii characters only.
+			 * conversion is not likely to fail regardless of encodings.
+			 * so i don't check errors here */
+			tsulen = HCL_COUNTOF(tsu);
+			hcl_convbtooochars (hcl, ts, &tslen, tsu, &tsulen);
+			tslen = HCL_COUNTOF(ts);
+			hcl_conv_uchars_to_bchars_with_cmgr (tsu, &tsulen, ts, &tslen, xtn->log_cmgr);
 		}
+		#endif
 	#endif
 		write_log (hcl, logfd, ts, tslen);
 	}
@@ -768,6 +1027,12 @@ static hcl_errnum_t winerr_to_errnum (DWORD errcode)
 		case ERROR_ACCESS_DENIED:
 		case ERROR_SHARING_VIOLATION:
 			return HCL_EACCES;
+
+	#if defined(ERROR_IO_PRIVILEGE_FAILED)
+		case ERROR_IO_PRIVILEGE_FAILED:
+	#endif
+		case ERROR_PRIVILEGE_NOT_HELD:
+			return HCL_EPERM;
 
 		case ERROR_FILE_NOT_FOUND:
 		case ERROR_PATH_NOT_FOUND:
@@ -955,10 +1220,6 @@ static void _assertfail (hcl_t* hcl, const hcl_bch_t* expr, const hcl_bch_t* fil
 
 #else /* defined(HCL_BUILD_RELEASE) */
 
-/* --------------------------------------------------------------------------
- * SYSTEM DEPENDENT HEADERS
- * -------------------------------------------------------------------------- */
-
 #if defined(HCL_ENABLE_LIBUNWIND)
 #include <libunwind.h>
 static void backtrace_stack_frames (hcl_t* hcl)
@@ -1052,128 +1313,11 @@ static void _assertfail (hcl_t* hcl, const hcl_bch_t* expr, const hcl_bch_t* fil
 
 #endif /* defined(HCL_BUILD_RELEASE) */
 
-
-/* -----------------------------------------------------------------
- * HEAP ALLOCATION
- * ----------------------------------------------------------------- */
-
-static int get_huge_page_size (hcl_t* hcl, hcl_oow_t* page_size)
-{
-	FILE* fp;
-	char buf[256];
-
-	fp = fopen("/proc/meminfo", "r");
-	if (!fp) return -1;
-
-	while (!feof(fp))
-	{
-		if (fgets(buf, sizeof(buf) - 1, fp) == NULL) goto oops;
-
-		if (strncmp(buf, "Hugepagesize: ", 13) == 0)
-		{
-			unsigned long int tmp;
-			tmp = strtoul(&buf[13], NULL, 10);
-			if (tmp == HCL_TYPE_MAX(unsigned long int) && errno == ERANGE) goto oops;
-
-			*page_size = tmp * 1024; /* KBytes to Bytes */
-			fclose (fp);
-			return 0;
-		}
-	}
-
-oops:
-	fclose (fp);
-	return -1;
-}
-
-static void* alloc_heap (hcl_t* hcl, hcl_oow_t* size)
-{
-#if defined(HAVE_MMAP) && defined(HAVE_MUNMAP) && defined(MAP_ANONYMOUS)
-	/* It's called via hcl_makeheap() when HCL creates a GC heap.
-	 * The heap is large in size. I can use a different memory allocation
-	 * function instead of an ordinary malloc.
-	 * upon failure, it doesn't require to set error information as hcl_makeheap()
-	 * set the error number to HCL_EOOMEM. */
-
-#if !defined(MAP_HUGETLB) && (defined(__amd64__) || defined(__x86_64__))
-#	define MAP_HUGETLB 0x40000
-#endif
-
-	hcl_oow_t* ptr;
-	int flags;
-	hcl_oow_t req_size, align, aligned_size;
-
-	req_size = HCL_SIZEOF(hcl_oow_t) + *size;
-	flags = MAP_PRIVATE | MAP_ANONYMOUS;
-
-	#if defined(MAP_UNINITIALIZED)
-	flags |= MAP_UNINITIALIZED;
-	#endif
-
-	#if defined(MAP_HUGETLB)
-	if (get_huge_page_size(hcl, &align) <= -1) align = 2 * 1024 * 1024; /* default to 2MB */
-	if (req_size > align / 2)
-	{
-		/* if the requested size is large enough, attempt HUGETLB */
-		flags |= MAP_HUGETLB;
-	}
-	else
-	{
-		align = sysconf(_SC_PAGESIZE);
-	}
-	#else
-	align = sysconf(_SC_PAGESIZE);
-	#endif
-
-	aligned_size = HCL_ALIGN_POW2(req_size, align);
-	ptr = (hcl_oow_t*)mmap(NULL, aligned_size, PROT_READ | PROT_WRITE, flags, -1, 0);
-	#if defined(MAP_HUGETLB)
-	if (ptr == MAP_FAILED && (flags & MAP_HUGETLB))
-	{
-		flags &= ~MAP_HUGETLB;
-		align = sysconf(_SC_PAGESIZE);
-		aligned_size = HCL_ALIGN_POW2(req_size, align);
-		ptr = (hcl_oow_t*)mmap(NULL, aligned_size, PROT_READ | PROT_WRITE, flags, -1, 0);
-		if (ptr == MAP_FAILED)
-		{
-			hcl_seterrwithsyserr (hcl, 0, errno);
-			return HCL_NULL;
-		}
-	}
-	#else
-	if (ptr == MAP_FAILED)
-	{
-		hcl_seterrwithsyserr (hcl, 0, errno);
-		return HCL_NULL;
-	}
-	#endif
-
-	*ptr = aligned_size;
-	*size = aligned_size - HCL_SIZEOF(hcl_oow_t);
-
-	return (void*)(ptr + 1);
-
-#else
-	return HCL_MMGR_ALLOC(hcl->_mmgr, *size);
-#endif
-}
-
-static void free_heap (hcl_t* hcl, void* ptr)
-{
-#if defined(HAVE_MMAP) && defined(HAVE_MUNMAP)
-	hcl_oow_t* actual_ptr;
-	actual_ptr = (hcl_oow_t*)ptr - 1;
-	munmap (actual_ptr, *actual_ptr);
-#else
-	HCL_MMGR_FREE(hcl->_mmgr, ptr);
-#endif
-}
-
 /* -----------------------------------------------------------------
  * POSSIBLY MONOTONIC TIME
  * ----------------------------------------------------------------- */
 
-void vm_gettime (hcl_t* hcl, hcl_ntime_t* now)
+static void vm_gettime (hcl_t* hcl, hcl_ntime_t* now)
 {
 #if defined(_WIN32)
 
@@ -1250,10 +1394,14 @@ void vm_gettime (hcl_t* hcl, hcl_ntime_t* now)
     #endif
 
 #elif defined(__DOS__)
-	clock_t c;
+	xtn_t* xtn = GET_XTN(moo);
+	clock_t c, elapsed;
+	hcl_ntime_t et;
 
-/* TODO: handle overflow?? */
 	c = clock();
+	elapsed = (c < xtn->tc_last)? (HCL_TYPE_MAX(clock_t) - xtn->tc_last + c + 1): (c - xtn->tc_last);
+	xtn->tc_last = c;
+
 	now->sec = c / CLOCKS_PER_SEC;
 	#if (CLOCKS_PER_SEC == 100)
 		now->nsec = HCL_MSEC_TO_NSEC((c % CLOCKS_PER_SEC) * 10);
@@ -1266,6 +1414,9 @@ void vm_gettime (hcl_t* hcl, hcl_ntime_t* now)
 	#else
 	#	error UNSUPPORTED CLOCKS_PER_SEC
 	#endif
+
+	HCL_ADD_NTIME (&xtn->tc_last_ret , &xtn->tc_last_ret, &et);
+	*now = xtn->tc_last_ret;
 
 #elif defined(macintosh)
 	UnsignedWide tick;
@@ -2119,7 +2270,6 @@ static void vm_muxwait (hcl_t* hcl, const hcl_ntime_t* dur, hcl_vmprim_muxwait_c
 	int maxfd;
 	#endif
 
-
 	#if defined(USE_DEVPOLL)
 	tmout = dur? HCL_SECNSEC_TO_MSEC(dur->sec, dur->nsec): 0;
 
@@ -2317,7 +2467,7 @@ static int vm_sleep (hcl_t* hcl, const hcl_ntime_t* dur)
 
 	clock_t c;
 
-	c = clock ();
+	c = clock();
 	c += dur->sec * CLOCKS_PER_SEC;
 
 	#if (CLOCKS_PER_SEC == 100)
@@ -2339,21 +2489,568 @@ static int vm_sleep (hcl_t* hcl, const hcl_ntime_t* dur)
 		_halt_cpu();
 	}
 
-#else
-	#if defined(HAVE_NANOSLEEP)
+#elif defined(USE_THREAD)
+	/* the sleep callback is called only if there is no IO semaphore
+	 * waiting. so i can safely call vm_muxwait() without a muxwait callback
+	 * when USE_THREAD is true */
+	vm_muxwait (hcl, dur, HCL_NULL);
+
+#elif defined(HAVE_NANOSLEEP)
+	{
 		struct timespec ts;
 		ts.tv_sec = dur->sec;
 		ts.tv_nsec = dur->nsec;
 		nanosleep (&ts, HCL_NULL);
-	#elif defined(HAVE_USLEEP)
-		usleep (HCL_SECNSEC_TO_USEC(dur->sec, dur->nsec));
-	#else
-	#	error UNSUPPORT SLEEP
-	#endif
+	}
+
+#elif defined(HAVE_USLEEP)
+	usleep (HCL_SECNSEC_TO_USEC(dur->sec, dur->nsec));
+
+#else
+#	error UNSUPPORT SLEEP
 #endif
 
 	return 0;
 }
+
+/* -----------------------------------------------------------------
+ * SIGNAL AND TICK HANDLING
+ * ----------------------------------------------------------------- */
+
+static hcl_ooi_t vm_getsigfd (hcl_t* hcl)
+{
+	xtn_t* xtn = GET_XTN(hcl);
+	return xtn->sigfd.p[0];
+}
+
+static int vm_getsig (hcl_t* hcl, hcl_uint8_t* u8)
+{
+	xtn_t* xtn = GET_XTN(hcl);
+#if defined(_WIN32)
+	/* TODO: can i make the pipe non-block in win32? */
+	DWORD navail;
+	if (PeekNamedPipe(_get_osfhandle(xtn->sigfd.p[0]), HCL_NULL, 0, HCL_NULL, &navail, HCL_NULL) == 0)
+	{
+		hcl_seterrwithsyserr (hcl, 1, GetLastError());
+		return -1;
+	}
+	if (navail <= 0) return 0;
+#endif
+	if (read(xtn->sigfd.p[0], u8, HCL_SIZEOF(*u8)) == -1)
+	{
+		if (errno == EINTR || errno == EWOULDBLOCK || errno == EAGAIN) return 0;
+		hcl_seterrwithsyserr (hcl, 0, errno);
+		return -1;
+	}
+
+	return 1;
+}
+
+static int vm_setsig (hcl_t* hcl, hcl_uint8_t u8)
+{
+	xtn_t* xtn = GET_XTN(hcl);
+	if (write(xtn->sigfd.p[1], &u8, HCL_SIZEOF(u8)) == -1)
+	{
+		if (errno == EINTR || errno == EWOULDBLOCK || errno == EAGAIN) return 0;
+		hcl_seterrwithsyserr (hcl, 0, errno);
+		return -1;
+	}
+	return 1;
+}
+
+
+#if defined(HAVE_SIGACTION)
+
+typedef struct sig_state_t sig_state_t;
+struct sig_state_t
+{
+	hcl_oow_t handler;
+	hcl_oow_t old_handler;
+	sigset_t  old_sa_mask;
+	int       old_sa_flags;
+};
+
+typedef void (*sig_handler_t) (int sig);
+
+static sig_state_t g_sig_state[NSIG];
+
+static void dispatch_siginfo (int sig, siginfo_t* si, void* ctx)
+{
+	if (g_sig_state[sig].handler != (hcl_oow_t)SIG_IGN &&
+	    g_sig_state[sig].handler != (hcl_oow_t)SIG_DFL)
+	{
+		((sig_handler_t)g_sig_state[sig].handler) (sig);
+	}
+
+	if (g_sig_state[sig].old_handler &&
+	    g_sig_state[sig].old_handler != (hcl_oow_t)SIG_IGN &&
+	    g_sig_state[sig].old_handler != (hcl_oow_t)SIG_DFL)
+	{
+		((void(*)(int, siginfo_t*, void*))g_sig_state[sig].old_handler) (sig, si, ctx);
+	}
+}
+
+static void dispatch_signal (int sig)
+{
+	if (g_sig_state[sig].handler != (hcl_oow_t)SIG_IGN &&
+	    g_sig_state[sig].handler != (hcl_oow_t)SIG_DFL)
+	{
+		((sig_handler_t)g_sig_state[sig].handler) (sig);
+	}
+
+	if (g_sig_state[sig].old_handler &&
+	    g_sig_state[sig].old_handler != (hcl_oow_t)SIG_IGN &&
+	    g_sig_state[sig].old_handler != (hcl_oow_t)SIG_DFL)
+	{
+		((sig_handler_t)g_sig_state[sig].old_handler) (sig);
+	}
+}
+
+static int set_signal_handler (int sig, sig_handler_t handler, int extra_flags)
+{
+	if (g_sig_state[sig].handler)
+	{
+		/* already set - allow handler change. ignore extra_flags. */
+		if (g_sig_state[sig].handler == (hcl_oow_t)handler) return -1;
+		g_sig_state[sig].handler = (hcl_oow_t)handler;
+	}
+	else
+	{
+		struct sigaction sa, oldsa;
+
+		if (sigaction(sig, HCL_NULL, &oldsa) == -1) return -1;
+
+		HCL_MEMSET (&sa, 0, HCL_SIZEOF(sa));
+		if (oldsa.sa_flags & SA_SIGINFO)
+		{
+			sa.sa_sigaction = dispatch_siginfo;
+			sa.sa_flags = SA_SIGINFO;
+		}
+		else
+		{
+			sa.sa_handler = dispatch_signal;
+			sa.sa_flags = 0;
+		}
+		sa.sa_flags |= extra_flags;
+		/*sa.sa_flags |= SA_INTERUPT;
+		sa.sa_flags |= SA_RESTART;*/
+		sigfillset (&sa.sa_mask); /* block all signals while the handler is being executed */
+
+		if (sigaction(sig, &sa, HCL_NULL) == -1) return -1;
+
+		g_sig_state[sig].handler = (hcl_oow_t)handler;
+		if (oldsa.sa_flags & SA_SIGINFO)
+			g_sig_state[sig].old_handler = (hcl_oow_t)oldsa.sa_sigaction;
+		else
+			g_sig_state[sig].old_handler = (hcl_oow_t)oldsa.sa_handler;
+
+		g_sig_state[sig].old_sa_mask = oldsa.sa_mask;
+		g_sig_state[sig].old_sa_flags = oldsa.sa_flags;
+	}
+
+	return 0;
+}
+
+static int unset_signal_handler (int sig)
+{
+	struct sigaction sa;
+
+	if (!g_sig_state[sig].handler) return -1; /* not set */
+
+	HCL_MEMSET (&sa, 0, HCL_SIZEOF(sa));
+	sa.sa_mask = g_sig_state[sig].old_sa_mask;
+	sa.sa_flags = g_sig_state[sig].old_sa_flags;
+
+	if (sa.sa_flags & SA_SIGINFO)
+	{
+		sa.sa_sigaction = (void(*)(int,siginfo_t*,void*))g_sig_state[sig].old_handler;
+	}
+	else
+	{
+		sa.sa_handler = (sig_handler_t)g_sig_state[sig].old_handler;
+	}
+
+	if (sigaction(sig, &sa, HCL_NULL) == -1) return -1;
+
+	g_sig_state[sig].handler = 0;
+	/* keep other fields untouched */
+
+	return 0;
+}
+
+static int is_signal_handler_set (int sig)
+{
+	return !!g_sig_state[sig].handler;
+}
+#endif
+
+
+static HCL_INLINE void abort_all_hcls (int signo)
+{
+	/* TODO: make this atomic */
+	if (g_hcl)
+	{
+		hcl_t* hcl = g_hcl;
+		do
+		{
+			xtn_t* xtn = GET_XTN(hcl);
+			hcl_uint8_t u8;
+			/*hcl_abortstd (hcl);*/
+			u8 = signo & 0xFF;
+			write (xtn->sigfd.p[1], &u8, HCL_SIZEOF(u8));
+			hcl = xtn->next;
+		}
+		while (hcl);
+	}
+	/* TODO: make this atomic */
+}
+
+static HCL_INLINE void do_nothing (int unused)
+{
+}
+
+/*#define HCL_TICKER_INTERVAL_USECS 10000*/ /* microseconds. 0.01 seconds */
+#define HCL_TICKER_INTERVAL_USECS 20000 /* microseconds. 0.02 seconds. */
+
+static HCL_INLINE void swproc_all_hcls (int unused)
+{
+	/* TODO: make this atomic */
+	if (g_hcl)
+	{
+		hcl_t* hcl = g_hcl;
+		do
+		{
+			xtn_t* xtn = GET_XTN(hcl);
+			if (xtn->rcv_tick) hcl_switchprocess (hcl);
+			hcl = xtn->next;
+		}
+		while (hcl);
+	}
+	/* TODO: make this atomic */
+}
+
+#if defined(_WIN32)
+
+static HANDLE msw_tick_timer = HCL_NULL; /*INVALID_HANDLE_VALUE;*/
+static int msw_tick_done = 0;
+
+static DWORD WINAPI msw_wait_for_timer_event (LPVOID ctx)
+{
+	/* I don't think i need to use the waiting timer for this.
+	 * a simple loop with sleep inside should also work as i don't do anything
+	 * special except waiting for timer expiry.
+	 *   while (!msw_tick_done)
+	 *   {
+	 *       Sleep (...);
+	 *       swproc_all_hcls();
+	 *   }
+	 * but never mind for now. let's do it the hard way.
+	 */
+
+	msw_tick_timer = CreateWaitableTimer(HCL_NULL, FALSE, HCL_NULL);
+	if (msw_tick_timer)
+	{
+		LARGE_INTEGER li;
+
+		/* lpDueTime in 100 nanoseconds */
+		li.QuadPart = -HCL_USEC_TO_NSEC(HCL_TICKER_INTERVAL_USECS) / 100;
+
+	/*#define MSW_TICKER_MANUAL_RESET */
+	#if defined(MSW_TICKER_MANUAL_RESET)
+		/* if manual resetting is enabled, the reset is done after
+		 * swproc_all_hcls has been called. so the interval is the
+		 * interval specified plus the time taken in swproc_all_hcls. */
+		SetWaitableTimer (msw_tick_timer, &li, 0, HCL_NULL, HCL_NULL, FALSE);
+	#else
+		/* with auto reset, the interval is not affected by time taken
+		 * in swproc_all_hcls() */
+		SetWaitableTimer (msw_tick_timer, &li, HCL_USEC_TO_MSEC(HCL_TICKER_INTERVAL_USECS), HCL_NULL, HCL_NULL, FALSE);
+	#endif
+
+		while (!msw_tick_done)
+		{
+			if (WaitForSingleObject(msw_tick_timer, 100000) == WAIT_OBJECT_0)
+			{
+				swproc_all_hcls (0);
+			#if defined(MSW_TICKER_MANUAL_RESET)
+				SetWaitableTimer (msw_tick_timer, &li, 0, HCL_NULL, HCL_NULL, FALSE);
+			#endif
+			}
+		}
+
+		CancelWaitableTimer (msw_tick_timer);
+
+		CloseHandle (msw_tick_timer);
+		msw_tick_timer = HCL_NULL;
+	}
+
+	msw_tick_done = 0;
+	/*ExitThread (0);*/
+	return 0;
+}
+
+static HCL_INLINE void start_ticker (void)
+{
+	HANDLE thr;
+
+	msw_tick_done = 0;
+
+	thr = CreateThread(HCL_NULL, 0, msw_wait_for_timer_event, HCL_NULL, 0, HCL_NULL);
+	if (thr)
+	{
+		SetThreadPriority (thr, THREAD_PRIORITY_HIGHEST);
+
+		/* MSDN - The thread object remains in the system until the thread has terminated
+		 *        and all handles to it have been closed through a call to CloseHandle.
+		 * it is safe to close the handle here */
+		CloseHandle (thr);
+	}
+}
+
+static HCL_INLINE void stop_ticker (void)
+{
+	if (msw_tick_timer) CancelWaitableTimer (msw_tick_timer);
+	msw_tick_done = 1;
+}
+
+#elif defined(__OS2__)
+
+static HEV os2_tick_sem;
+static HTIMER os2_tick_timer;
+static int os2_tick_done = 0;
+
+static void EXPENTRY os2_wait_for_timer_event (ULONG x)
+{
+	APIRET rc;
+	ULONG count;
+
+	rc = DosCreateEventSem(HCL_NULL, &os2_tick_sem, DC_SEM_SHARED, FALSE);
+	if (rc != NO_ERROR)
+	{
+		goto done;
+	}
+
+	rc = DosStartTimer(HCL_USEC_TO_MSEC(HCL_TICKER_INTERVAL_USECS), (HSEM)os2_tick_sem, &os2_tick_timer);
+	if (rc != NO_ERROR)
+	{
+		DosCloseEventSem (os2_tick_sem);
+		goto done;
+	}
+
+	while (!os2_tick_done)
+	{
+		rc = DosWaitEventSem(os2_tick_sem, 5000L);
+	#if 0
+		swproc_all_hcls (0);
+		DosResetEventSem (os2_tick_sem, &count);
+	#else
+		DosResetEventSem (os2_tick_sem, &count);
+		swproc_all_hcls (0);
+	#endif
+	}
+
+	DosStopTimer (os2_tick_timer);
+	DosCloseEventSem (os2_tick_sem);
+
+done:
+	os2_tick_timer = NULL;
+	os2_tick_sem = NULL;
+	os2_tick_done = 0;
+	DosExit (EXIT_THREAD, 0);
+}
+
+static HCL_INLINE void start_ticker (void)
+{
+	static TID tid;
+	os2_tick_done = 0;
+	DosCreateThread (&tid, os2_wait_for_timer_event, 0, 0, 4096);
+	/* TODO: Error check */
+}
+
+static HCL_INLINE void stop_ticker (void)
+{
+	if (os2_tick_sem) DosPostEventSem (os2_tick_sem);
+	os2_tick_done = 1;
+}
+
+#elif defined(__DOS__) && (defined(_INTELC32_) || defined(__WATCOMC__))
+
+#if defined(_INTELC32_)
+static void (*dos_prev_timer_intr_handler) (void);
+#pragma interrupt(dos_timer_intr_handler)
+static void dos_timer_intr_handler (void)
+#else
+static void (__interrupt *dos_prev_timer_intr_handler) (void);
+static void __interrupt dos_timer_intr_handler (void)
+#endif
+{
+	/*
+	_XSTACK* stk = (_XSTACK *)_get_stk_frame();
+	r = (unsigned short)stk->eax;
+	*/
+
+	/* The timer interrupt (normally) occurs 18.2 times per second. */
+	swproc_all_hcls (0);
+	_chain_intr (dos_prev_timer_intr_handler);
+}
+
+static HCL_INLINE void start_ticker (void)
+{
+	dos_prev_timer_intr_handler = _dos_getvect(0x1C);
+	_dos_setvect (0x1C, dos_timer_intr_handler);
+}
+
+static HCL_INLINE void stop_ticker (void)
+{
+	_dos_setvect (0x1C, dos_prev_timer_intr_handler);
+}
+
+#elif defined(macintosh)
+
+static TMTask mac_tmtask;
+static ProcessSerialNumber mac_psn;
+
+/* milliseconds if positive, microseconds(after negation) if negative */
+#define TMTASK_DELAY HCL_USEC_TO_MSEC(HCL_TICKER_INTERVAL_USECS)
+
+static pascal void timer_intr_handler (TMTask* task)
+{
+	swproc_all_hcls (0);
+	WakeUpProcess (&mac_psn);
+	PrimeTime ((QElem*)&mac_tmtask, TMTASK_DELAY);
+}
+
+static HCL_INLINE void start_ticker (void)
+{
+	GetCurrentProcess (&mac_psn);
+	HCL_MEMSET (&mac_tmtask, 0, HCL_SIZEOF(mac_tmtask));
+	mac_tmtask.tmAddr = NewTimerProc (timer_intr_handler);
+	InsXTime ((QElem*)&mac_tmtask);
+	PrimeTime ((QElem*)&mac_tmtask, TMTASK_DELAY);
+}
+
+static HCL_INLINE void stop_ticker (void)
+{
+	RmvTime ((QElem*)&mac_tmtask);
+	/*DisposeTimerProc (mac_tmtask.tmAddr);*/
+}
+
+#elif defined(HAVE_SETITIMER) && defined(SIGVTALRM) && defined(ITIMER_VIRTUAL)
+
+static HCL_INLINE void start_ticker (void)
+{
+	if (set_signal_handler(SIGVTALRM, swproc_all_hcls, SA_RESTART) >= 0)
+	{
+		struct itimerval itv;
+		itv.it_interval.tv_sec = 0;
+		itv.it_interval.tv_usec = HCL_TICKER_INTERVAL_USECS;
+		itv.it_value.tv_sec = 0;
+		itv.it_value.tv_usec = HCL_TICKER_INTERVAL_USECS;
+		if (setitimer(ITIMER_VIRTUAL, &itv, HCL_NULL) == -1)
+		{
+			/* WSL supports ITIMER_VIRTUAL only as of windows 10.0.18362.413.
+			   the following is a fallback which will get */
+			unset_signal_handler (SIGVTALRM);
+
+		#if defined(SIGALRM) && defined(ITIMER_REAL)
+			if (set_signal_handler(SIGALRM, swproc_all_hcls, SA_RESTART) >= 0)
+			{
+				/* i double the interval as ITIMER_REAL is against the wall clock.
+				 * if the underlying system is under heavy load, some signals
+				 * will get lost */
+				itv.it_interval.tv_sec = 0;
+				itv.it_interval.tv_usec = HCL_TICKER_INTERVAL_USECS * 2;
+				itv.it_value.tv_sec = 0;
+				itv.it_value.tv_usec = HCL_TICKER_INTERVAL_USECS * 2;
+				setitimer(ITIMER_REAL, &itv, HCL_NULL);
+			}
+		#endif
+		}
+	}
+}
+
+static HCL_INLINE void stop_ticker (void)
+{
+	/* ignore the signal fired by the activated timer.
+	 * unsetting the signal may cause the program to terminate(default action) */
+	if (is_signal_handler_set(SIGVTALRM) && set_signal_handler(SIGVTALRM, SIG_IGN, 0) >= 0)
+	{
+		struct itimerval itv;
+		itv.it_interval.tv_sec = 0;
+		itv.it_interval.tv_usec = 0;
+		itv.it_value.tv_sec = 0; /* make setitimer() one-shot only */
+		itv.it_value.tv_usec = 0;
+		setitimer (ITIMER_VIRTUAL, &itv, HCL_NULL);
+	}
+
+	#if defined(SIGALRM) && defined(ITIMER_REAL)
+	if (is_signal_handler_set(SIGALRM) && set_signal_handler(SIGALRM, SIG_IGN, 0) >= 0)
+	{
+		struct itimerval itv;
+		itv.it_interval.tv_sec = 0;
+		itv.it_interval.tv_usec = 0;
+		itv.it_value.tv_sec = 0; /* make setitimer() one-shot only */
+		itv.it_value.tv_usec = 0;
+		setitimer (ITIMER_REAL, &itv, HCL_NULL);
+	}
+	#endif
+}
+
+#else
+
+static pid_t ticker_pid = -1;
+
+static HCL_INLINE void start_ticker (void)
+{
+	if (set_signal_handler(SIGALRM, swproc_all_hcls, SA_RESTART) >= 0)
+	{
+		ticker_pid = fork();
+
+		if (ticker_pid <= -1)
+		{
+			unset_signal_handler (SIGALRM);
+		}
+		else if (ticker_pid == 0)
+		{
+			/* child process - actual ticker */
+			while (1)
+			{
+			#if defined(HAVE_NANOSLEEP)
+				struct timespec ts;
+				ts.tv_sec = 0;
+				ts.tv_nsec = HCL_USEC_TO_NSEC(HCL_TICKER_INTERVAL_USECS) * 2;
+				nanosleep (&ts, HCL_NULL);
+			#elif defined(HAVE_USLEEP)
+				usleep (HCL_TICKER_INTERVAL_USECS * 2);
+
+			#else
+			#	error UNDEFINED SLEEP
+			#endif
+
+				kill (getppid(), SIGALRM);
+			}
+
+			_exit (0);
+		}
+
+		/* parent just carries on. */
+	}
+}
+
+static HCL_INLINE void stop_ticker (void)
+{
+	if (ticker_pid >= 0)
+	{
+		int wstatus;
+		kill (ticker_pid, SIGKILL);
+		while (waitpid(ticker_pid, &wstatus, 0) != ticker_pid);
+		ticker_pid = -1;
+
+		unset_signal_handler (SIGALRM);
+	}
+}
+
+#endif
 
 /* -----------------------------------------------------------------
  * SHARED LIBRARY HANDLING
@@ -2374,7 +3071,7 @@ static int vm_sleep (hcl_t* hcl, const hcl_ntime_t* dur)
 #	define sys_dl_getsym(x,n) dlsym(x,n)
 
 #elif defined(USE_WIN_DLL)
-#	define sys_dl_error() win_dlerror()
+#	define sys_dl_error() msw_dlerror()
 #	define sys_dl_open(x) LoadLibraryExA(x, HCL_NULL, 0)
 #	define sys_dl_openext(x) LoadLibraryExA(x, HCL_NULL, 0)
 #	define sys_dl_close(x) FreeLibrary(x)
@@ -2390,7 +3087,7 @@ static int vm_sleep (hcl_t* hcl, const hcl_ntime_t* dur)
 
 #if defined(USE_WIN_DLL)
 
-static const char* win_dlerror (void)
+static const char* msw_dlerror (void)
 {
 	/* TODO: handle wchar_t, hcl_ooch_t etc? */
 	static char buf[256];
@@ -2770,7 +3467,6 @@ static void* dl_getsym (hcl_t* hcl, void* handle, const hcl_ooch_t* name)
 	for (i = 1; i <= bcslen; i++) if (bufptr[i] == '.') bufptr[i] = '_';
 
 	symname = &bufptr[1]; /* try the name as it is */
-
 	sym = sys_dl_getsym(handle, symname);
 	if (!sym)
 	{
@@ -2835,14 +3531,47 @@ static HCL_INLINE void reset_log_to_default (xtn_t* xtn)
 	if (isatty(STDOUT_FILENO)) xtn->log.fd_flags |= LOGFD_STDOUT_TTY;
 }
 
-static void cb_fini (hcl_t* hcl)
+static HCL_INLINE void chain (hcl_t* hcl)
+{
+        xtn_t* xtn = GET_XTN(hcl);
+
+        /* TODO: make this atomic */
+        xtn->prev = HCL_NULL;
+        xtn->next = g_hcl;
+
+        if (g_hcl) GET_XTN(g_hcl)->prev = hcl;
+        else g_hcl = hcl;
+        /* TODO: make this atomic */
+}
+
+static HCL_INLINE void unchain (hcl_t* hcl)
+{
+        xtn_t* xtn = GET_XTN(hcl);
+
+        /* TODO: make this atomic */
+        if (xtn->prev) GET_XTN(xtn->prev)->next = xtn->next;
+        else g_hcl = xtn->next;
+        if (xtn->next) GET_XTN(xtn->next)->prev = xtn->prev;
+        /* TODO: make this atomic */
+        xtn->prev = HCL_NULL;
+        xtn->prev = HCL_NULL;
+}
+
+static void cb_on_fini (hcl_t* hcl)
 {
 	xtn_t* xtn = GET_XTN(hcl);
 	if ((xtn->log.fd_flags & LOGFD_OPENED_HERE) && xtn->log.fd >= 0) close (xtn->log.fd);
 	reset_log_to_default (xtn);
+	unchain (hcl);
 }
 
-static void cb_opt_set (hcl_t* hcl, hcl_option_t id, const void* value)
+static void cb_halting (hcl_t* hcl)
+{
+	xtn_t* xtn = GET_XTN(hcl);
+	xtn->ev.halting = 1; /* once set, vm_sleep() is supposed to return without waiting */
+}
+
+static void cb_on_option (hcl_t* hcl, hcl_option_t id, const void* value)
 {
 	xtn_t* xtn = GET_XTN(hcl);
 	int fd;
@@ -2936,12 +3665,6 @@ oops:
 static int open_pipes (hcl_t* hcl, int p[2])
 {
 #if defined(_WIN32)
-	u_long flags;
-#else
-	int flags;
-#endif
-
-#if defined(_WIN32)
 	if (_pipe(p, 256, _O_BINARY | _O_NOINHERIT) == -1)
 	{
 		hcl_seterrbfmtwithsyserr (hcl, 0, errno, "unable to create pipes");
@@ -2979,29 +3702,37 @@ static int open_pipes (hcl_t* hcl, int p[2])
 
 #if defined(_WIN32)
 	/* Any equivalent in _WIN32?
-	flags = 1;
-	ioctl (p[0], FIONBIO, &flags);
-	ioctl (p[1], FIONBIO, &flags);
+	{
+		u_long flags;
+		flags = 1;
+		ioctl (p[0], FIONBIO, &flags);
+		ioctl (p[1], FIONBIO, &flags);
+	}
 	*/
 #elif defined(__OS2__)
-	flags = 1; /* don't block */
-	ioctl (p[0], FIONBIO, (char*)&flags, HCL_SIZEOF(flags));
-	ioctl (p[1], FIONBIO, (char*)&flags, HCL_SIZEOF(flags));
+	{
+		int flags = 1; /* don't block */
+		ioctl (p[0], FIONBIO, (char*)&flags, HCL_SIZEOF(flags));
+		ioctl (p[1], FIONBIO, (char*)&flags, HCL_SIZEOF(flags));
+	}
 #elif defined(HAVE_PIPE2) && defined(O_CLOEXEC) && defined(O_NONBLOCK)
 	/* do nothing */
 #else
+	{
+		int flags;
 	#if defined(FD_CLOEXEC) && defined(F_GETFD) && defined(F_SETFD)
-	flags = fcntl(p[0], F_GETFD);
-	if (flags >= 0) fcntl (p[0], F_SETFD, flags | FD_CLOEXEC);
-	flags = fcntl(p[1], F_GETFD);
-	if (flags >= 0) fcntl (p[1], F_SETFD, flags | FD_CLOEXEC);
+		flags = fcntl(p[0], F_GETFD);
+		if (flags >= 0) fcntl (p[0], F_SETFD, flags | FD_CLOEXEC);
+		flags = fcntl(p[1], F_GETFD);
+		if (flags >= 0) fcntl (p[1], F_SETFD, flags | FD_CLOEXEC);
 	#endif
 	#if defined(O_NONBLOCK) && defined(F_GETFL) && defined(F_SETFL)
-	flags = fcntl(p[0], F_GETFL);
-	if (flags >= 0) fcntl (p[0], F_SETFL, flags | O_NONBLOCK);
-	flags = fcntl(p[1], F_GETFL);
-	if (flags >= 0) fcntl (p[1], F_SETFL, flags | O_NONBLOCK);
+		flags = fcntl(p[0], F_GETFL);
+		if (flags >= 0) fcntl (p[0], F_SETFL, flags | O_NONBLOCK);
+		flags = fcntl(p[1], F_GETFL);
+		if (flags >= 0) fcntl (p[1], F_SETFL, flags | O_NONBLOCK);
 	#endif
+	}
 #endif
 
 	return 0;
@@ -3223,6 +3954,92 @@ static void cb_vm_cleanup (hcl_t* hcl)
 /* -----------------------------------------------------------------
  * STANDARD HCL
  * ----------------------------------------------------------------- */
+#if defined(_WIN32)
+static const wchar_t* msw_exception_name (DWORD excode)
+{
+	switch (excode)
+	{
+		case EXCEPTION_ACCESS_VIOLATION:          return L"Access violation exception";
+		case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:     return L"Array bounds exceeded";
+		case EXCEPTION_BREAKPOINT:                return L"Breakpoint";
+		case EXCEPTION_DATATYPE_MISALIGNMENT:     return L"Float datatype misalignment";
+		case EXCEPTION_FLT_DENORMAL_OPERAND:      return L"Float denormal operand";
+		case EXCEPTION_FLT_DIVIDE_BY_ZERO:        return L"Float divide by zero";
+		case EXCEPTION_FLT_INEXACT_RESULT:        return L"Float inexact result";
+		case EXCEPTION_FLT_OVERFLOW:              return L"Float overflow";
+		case EXCEPTION_FLT_STACK_CHECK:           return L"Float stack check";
+		case EXCEPTION_FLT_UNDERFLOW:             return L"Float underflow";
+		case EXCEPTION_ILLEGAL_INSTRUCTION:       return L"Illegal instruction";
+		case EXCEPTION_IN_PAGE_ERROR:             return L"In page error";
+		case EXCEPTION_INT_DIVIDE_BY_ZERO:        return L"Integer divide by zero";
+		case EXCEPTION_INT_OVERFLOW:              return L"Integer overflow";
+		case EXCEPTION_INVALID_DISPOSITION:       return L"Invalid disposition";
+		case EXCEPTION_NONCONTINUABLE_EXCEPTION:  return L"Noncontinuable exception";
+		case EXCEPTION_PRIV_INSTRUCTION:          return L"Priv instruction";
+		case EXCEPTION_SINGLE_STEP:               return L"Single step";
+		case EXCEPTION_STACK_OVERFLOW:            return L"Stack overflow";
+		default:                                  return L"Unknown exception";
+	}
+}
+
+static const wchar_t* msw_exception_opname (const ULONG opcode)
+{
+	switch (opcode)
+	{
+		case 0: return L"Read attempt from inaccessible data";
+		case 1: return L"Write attempt to inaccessible data";
+		case 8: return L"User-mode data execution prevention violation";
+		default: return L"Unknown exception operation";
+	}
+}
+
+static LONG WINAPI msw_exception_filter (struct _EXCEPTION_POINTERS* exinfo)
+{
+	HMODULE mod;
+#if defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0501)
+	MODULEINFO modinfo;
+#endif
+	DWORD excode;
+	static wchar_t exmsg[256];
+	static wchar_t expath[128];
+
+#if defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0501)
+	GetModuleHandleExW (GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, exinfo->ExceptionRecord->ExceptionAddress, &mod);
+	/*GetModuleInformation (GetCurrentProcess(), mod, &modinfo, HCL_SIZEOF(modinfo));*/
+	GetModuleFileNameExW (GetCurrentProcess(), mod, expath, HCL_SIZEOF(expath));
+#else
+	GetModuleFileNameW (HCL_NULL, expath, HCL_SIZEOF(expath));
+#endif
+
+	excode = exinfo->ExceptionRecord->ExceptionCode;
+	if (excode == EXCEPTION_BREAKPOINT) return EXCEPTION_CONTINUE_SEARCH;
+
+	if (excode == EXCEPTION_ACCESS_VIOLATION || excode == EXCEPTION_IN_PAGE_ERROR)
+	{
+		_snwprintf (exmsg, HCL_COUNTOF(exmsg), L"Exception %s(%u) at 0x%p - Invalid operation at 0x%p - %s",
+			msw_exception_name(excode), (unsigned int)excode,
+			exinfo->ExceptionRecord->ExceptionAddress,
+			(PVOID)exinfo->ExceptionRecord->ExceptionInformation[1],
+			msw_exception_opname(exinfo->ExceptionRecord->ExceptionInformation[0])
+		);
+	}
+	else
+	{
+		_snwprintf (exmsg, HCL_COUNTOF(exmsg), L"Exception %s(%u) at 0x%p",
+			msw_exception_name(excode), (unsigned int)excode,
+			exinfo->ExceptionRecord->ExceptionAddress
+		);
+	}
+
+	/* TODO: use a global output callback like vmprim.assertfail().
+	 *       vmprim.assertfail() requires 'hcl'. so i need another global level callback for this */
+	MessageBoxW (NULL, exmsg, expath, MB_OK | MB_ICONERROR);
+
+	/*return EXCEPTION_CONTINUE_SEARCH;*/
+	/*return EXCEPTION_CONTINUE_EXECUTION;*/
+	return EXCEPTION_EXECUTE_HANDLER;
+}
+#endif
 
 hcl_t* hcl_openstdwithmmgr (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, hcl_errnum_t* errnum)
 {
@@ -3247,6 +4064,9 @@ hcl_t* hcl_openstdwithmmgr (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, hcl_errnum_t* e
 	vmprim.vm_muxmod = vm_muxmod;
 	vmprim.vm_muxwait = vm_muxwait;
 	vmprim.vm_sleep = vm_sleep;
+	vmprim.vm_getsigfd = vm_getsigfd;
+	vmprim.vm_getsig = vm_getsig;
+	vmprim.vm_setsig = vm_setsig;
 
 	hcl = hcl_open(mmgr, HCL_SIZEOF(xtn_t) + xtnsize, &vmprim, errnum);
 	if (HCL_UNLIKELY(!hcl)) return HCL_NULL;
@@ -3254,11 +4074,13 @@ hcl_t* hcl_openstdwithmmgr (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, hcl_errnum_t* e
 	/* adjust the object size by the sizeof xtn_t so that hcl_getxtn() returns the right pointer. */
 	hcl->_instsize += HCL_SIZEOF(xtn_t);
 
+	chain (hcl); /* call chian() before hcl_regcb() as fini_hcl() calls unchain() */
 	reset_log_to_default (GET_XTN(hcl));
 
 	HCL_MEMSET (&cb, 0, HCL_SIZEOF(cb));
-	cb.fini = cb_fini;
-	cb.opt_set = cb_opt_set;
+	cb.on_fini   = cb_on_fini;
+	cb.halting   = cb_halting;
+	cb.on_option = cb_on_option;
 	cb.vm_startup = cb_vm_startup;
 	cb.vm_cleanup = cb_vm_cleanup;
 	if (hcl_regcb(hcl, &cb) == HCL_NULL)
@@ -3267,6 +4089,10 @@ hcl_t* hcl_openstdwithmmgr (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, hcl_errnum_t* e
 		hcl_close (hcl);
 		return HCL_NULL;
 	}
+
+#if defined(_WIN32)
+	SetUnhandledExceptionFilter (msw_exception_filter);
+#endif
 
 	return hcl;
 }
@@ -3918,3 +4744,191 @@ int hcl_attachudiostdwithucstr (hcl_t* hcl, const hcl_uch_t* udi_file, const hcl
 }
 
 
+
+
+/* ========================================================================= */
+
+static hcl_uint32_t ticker_started = 0;
+
+void hcl_start_ticker (void)
+{
+	if (++ticker_started == 1)
+	{
+		start_ticker ();
+	}
+}
+
+void hcl_stop_ticker (void)
+{
+	if (ticker_started > 0 && --ticker_started == 0)
+	{
+		stop_ticker ();
+	}
+}
+
+
+/* ========================================================================== */
+
+#if defined(_WIN32)
+static BOOL WINAPI handle_term (DWORD ctrl_type)
+{
+	if (ctrl_type == CTRL_C_EVENT || ctrl_type == CTRL_CLOSE_EVENT)
+	{
+		abort_all_hcls (SIGINT);
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+void hcl_catch_termreq (void)
+{
+	SetConsoleCtrlHandler (handle_term, TRUE);
+}
+
+void hcl_uncatch_termreq (void)
+{
+	SetConsoleCtrlHandler (handle_term, FALSE);
+}
+
+#elif defined(__OS2__)
+
+static EXCEPTIONREGISTRATIONRECORD os2_excrr = { 0 };
+
+static ULONG APIENTRY handle_term (
+	PEXCEPTIONREPORTRECORD p1,
+	PEXCEPTIONREGISTRATIONRECORD p2,
+	PCONTEXTRECORD p3,
+	PVOID pv)
+{
+	if (p1->ExceptionNum == XCPT_SIGNAL)
+	{
+		if (p1->ExceptionInfo[0] == XCPT_SIGNAL_INTR ||
+		    p1->ExceptionInfo[0] == XCPT_SIGNAL_KILLPROC ||
+		    p1->ExceptionInfo[0] == XCPT_SIGNAL_BREAK)
+		{
+			abort_all_hcls (SIGINT);
+			return (DosAcknowledgeSignalException(p1->ExceptionInfo[0]) != NO_ERROR)? 1: XCPT_CONTINUE_EXECUTION;
+		}
+	}
+
+	return XCPT_CONTINUE_SEARCH; /* exception not resolved */
+}
+
+void hcl_catch_termreq (void)
+{
+	os2_excrr.ExceptionHandler = (ERR)handle_term;
+	DosSetExceptionHandler (&os2_excrr); /* TODO: check if NO_ERROR is returned */
+}
+
+void hcl_uncatch_termreq (void)
+{
+	DosUnsetExceptionHandler (&os2_excrr);
+}
+
+#elif defined(__DOS__)
+
+/*#define IRQ_TERM 0x23*/
+/*#define IRQ_TERM 0x1B*/
+#define IRQ_TERM 0x9
+
+#if defined(_INTELC32_)
+static void (*dos_prev_int23_handler) (void);
+#pragma interrupt(dos_int23_handler)
+static void dos_int23_handler (void)
+#else
+static void (__interrupt *dos_prev_int23_handler) (void);
+static void __interrupt dos_int23_handler (void)
+#endif
+{
+#if (IRQ_TERM == 0x23) && defined(_INTELC32_)
+	/* note this code for _INTELC32_ doesn't seem to work properly
+	 * unless the program is waiting on getch() or something similar */
+	/* prevent the DOS interrupt handler from being called */
+	_XSTACK* stk = (_XSTACK*)_get_stk_frame();
+	stk->opts |= _STK_NOINT;
+	abort_all_hcls (SIGINT);
+	/* if i call the previous handler, it's likely to kill the application.
+	 * so i don't chain-call the previous handler. but another call could
+	 * have changed the handler already to something else. then it would be
+	 * better to chain-call it. TODO: find a way to chain-call it safely */
+	/*_chain_intr (dos_prev_int23_handler);*/
+#else
+
+
+	#if 0
+	static int extended = 0;
+	static int keyboard[255] = { 0, };
+	hcl_uint8_t sc, status;
+	/* TODO: determine if the key pressed is ctrl-C or ctrl-break ... */
+
+	sc = inp(0x60);
+	/*status = inp(0x61);*/
+	if (sc == 0xE0)
+	{
+		/* extended key prefix */
+		extended = 1;
+	}
+	else if (sc == 0xE1)
+	{
+		/* pause key */
+	}
+	else
+	{
+		if (sc & 0x80)
+		{
+			/* key release */
+			sc = sc & 0x7F;
+			keyboard[sc] = 0;
+			/*printf ("%key released ... %x\n", sc);*/
+		}
+		else
+		{
+			keyboard[sc] = 1;
+			/*printf ("%key pressed ... %x %c\n", sc, sc);*/
+			abort_all_hcls (SIGINT);
+		}
+
+		extended = 0;
+	}
+
+	/*_chain_intr (dos_prev_int23_handler);*/
+	outp (0x20, 0x20);
+	#else
+	abort_all_hcls (SIGINT);
+	_chain_intr (dos_prev_int23_handler);
+	#endif
+#endif
+}
+
+void hcl_catch_termreq (void)
+{
+	dos_prev_int23_handler = _dos_getvect(IRQ_TERM);
+	_dos_setvect (IRQ_TERM, dos_int23_handler);
+}
+
+void hcl_uncatch_termreq (void)
+{
+	_dos_setvect (IRQ_TERM, dos_prev_int23_handler);
+	dos_prev_int23_handler = HCL_NULL;
+}
+
+#else
+
+void hcl_catch_termreq (void)
+{
+	set_signal_handler(SIGTERM, abort_all_hcls, 0);
+	set_signal_handler(SIGHUP, abort_all_hcls, 0);
+	set_signal_handler(SIGINT, abort_all_hcls, 0);
+	set_signal_handler(SIGPIPE, do_nothing, 0);
+}
+
+void hcl_uncatch_termreq (void)
+{
+	unset_signal_handler(SIGTERM);
+	unset_signal_handler(SIGHUP);
+	unset_signal_handler(SIGINT);
+	unset_signal_handler(SIGPIPE);
+}
+
+#endif

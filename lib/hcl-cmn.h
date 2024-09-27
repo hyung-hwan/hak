@@ -766,7 +766,7 @@ struct hcl_ntime_t
 #define HCL_LBMASK(type,n) (~(~((type)0) << (n)))
 #define HCL_LBMASK_SAFE(type,n) (((n) < HCL_BITSOF(type))? HCL_LBMASK(type,n): ~(type)0)
 
-/* make a bit mask that can mask off hig n bits */
+/* make a bit mask that can mask off high n bits */
 #define HCL_HBMASK(type,n) (~(~((type)0) >> (n)))
 #define HCL_HBMASK_SAFE(type,n) (((n) < HCL_BITSOF(type))? HCL_HBMASK(type,n): ~(type)0)
 

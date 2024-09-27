@@ -4008,8 +4008,8 @@ static int init_compiler (hcl_t* hcl)
 	HCL_ASSERT (hcl, hcl->c == HCL_NULL);
 
 	HCL_MEMSET (&cb, 0, HCL_SIZEOF(cb));
-	cb.gc = gc_compiler_cb;
-	cb.fini = fini_compiler_cb;
+	cb.on_gc = gc_compiler_cb;
+	cb.on_fini = fini_compiler_cb;
 	cbp = hcl_regcb(hcl, &cb);
 	if (HCL_UNLIKELY(!cbp)) return -1;
 
