@@ -169,7 +169,8 @@ static hcl_oop_t find_or_make_symbol (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow
 	else
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make symbol - %.*js - %js", len, ptr, orgmsg);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl),
+			"unable to instantiate %O with %.*js - %js", hcl->c_symbol->name, len, ptr, orgmsg);
 	}
 	return (hcl_oop_t)sym;
 }

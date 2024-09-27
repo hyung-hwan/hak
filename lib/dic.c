@@ -482,7 +482,8 @@ hcl_oop_t hcl_makedic (hcl_t* hcl, hcl_oow_t inisize)
 	if (HCL_UNLIKELY(!v))
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make dictionary - %js", orgmsg);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl),
+			"unable to instantiate %O - %js", hcl->c_dictionary->name, orgmsg);
 	}
 	else
 	{

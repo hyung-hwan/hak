@@ -109,7 +109,7 @@ void* hcl_allocbytes (hcl_t* hcl, hcl_oow_t size)
 
 }
 
-static HCL_INLINE hcl_oop_t alloc_oop_array (hcl_t* hcl, int brand, hcl_oow_t size, int ngc)
+static HCL_INLINE hcl_oop_t alloc_oop_array (hcl_t* hcl, hcl_oow_t size, int ngc)
 {
 	hcl_oop_oop_t hdr;
 	hcl_oow_t nbytes, nbytes_aligned;
@@ -144,12 +144,12 @@ static HCL_INLINE hcl_oop_t alloc_oop_array (hcl_t* hcl, int brand, hcl_oow_t si
 }
 
 
-hcl_oop_t hcl_allocoopobj (hcl_t* hcl, int brand, hcl_oow_t size)
+hcl_oop_t hcl_allocoopobj (hcl_t* hcl, hcl_oow_t size)
 {
-	return alloc_oop_array(hcl, brand, size, 0);
+	return alloc_oop_array(hcl, size, 0);
 }
 
-hcl_oop_t hcl_allocoopobjwithtrailer (hcl_t* hcl, int brand, hcl_oow_t size, const hcl_oob_t* bptr, hcl_oow_t blen)
+hcl_oop_t hcl_allocoopobjwithtrailer (hcl_t* hcl, hcl_oow_t size, const hcl_oob_t* bptr, hcl_oow_t blen)
 {
 	hcl_oop_oop_t hdr;
 	hcl_oow_t nbytes, nbytes_aligned;
@@ -177,7 +177,7 @@ hcl_oop_t hcl_allocoopobjwithtrailer (hcl_t* hcl, int brand, hcl_oow_t size, con
 	return (hcl_oop_t)hdr;
 }
 
-static HCL_INLINE hcl_oop_t alloc_numeric_array (hcl_t* hcl, int brand, const void* ptr, hcl_oow_t len, hcl_obj_type_t type, hcl_oow_t unit, int extra, int ngc)
+static HCL_INLINE hcl_oop_t alloc_numeric_array (hcl_t* hcl, const void* ptr, hcl_oow_t len, hcl_obj_type_t type, hcl_oow_t unit, int extra, int ngc)
 {
 	/* allocate a variable object */
 
@@ -221,24 +221,24 @@ static HCL_INLINE hcl_oop_t alloc_numeric_array (hcl_t* hcl, int brand, const vo
 	return hdr;
 }
 
-hcl_oop_t hcl_alloccharobj (hcl_t* hcl, int brand, const hcl_ooch_t* ptr, hcl_oow_t len)
+hcl_oop_t hcl_alloccharobj (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_t len)
 {
-	return alloc_numeric_array(hcl, brand, ptr, len, HCL_OBJ_TYPE_CHAR, HCL_SIZEOF(hcl_ooch_t), 1, 0);
+	return alloc_numeric_array(hcl, ptr, len, HCL_OBJ_TYPE_CHAR, HCL_SIZEOF(hcl_ooch_t), 1, 0);
 }
 
-hcl_oop_t hcl_allocbyteobj (hcl_t* hcl, int brand, const hcl_oob_t* ptr, hcl_oow_t len)
+hcl_oop_t hcl_allocbyteobj (hcl_t* hcl, const hcl_oob_t* ptr, hcl_oow_t len)
 {
-	return alloc_numeric_array(hcl, brand, ptr, len, HCL_OBJ_TYPE_BYTE, HCL_SIZEOF(hcl_oob_t), 0, 0);
+	return alloc_numeric_array(hcl, ptr, len, HCL_OBJ_TYPE_BYTE, HCL_SIZEOF(hcl_oob_t), 0, 0);
 }
 
-hcl_oop_t hcl_allochalfwordobj (hcl_t* hcl, int brand, const hcl_oohw_t* ptr, hcl_oow_t len)
+hcl_oop_t hcl_allochalfwordobj (hcl_t* hcl, const hcl_oohw_t* ptr, hcl_oow_t len)
 {
-	return alloc_numeric_array(hcl, brand, ptr, len, HCL_OBJ_TYPE_HALFWORD, HCL_SIZEOF(hcl_oohw_t), 0, 0);
+	return alloc_numeric_array(hcl, ptr, len, HCL_OBJ_TYPE_HALFWORD, HCL_SIZEOF(hcl_oohw_t), 0, 0);
 }
 
-hcl_oop_t hcl_allocwordobj (hcl_t* hcl, int brand, const hcl_oow_t* ptr, hcl_oow_t len)
+hcl_oop_t hcl_allocwordobj (hcl_t* hcl, const hcl_oow_t* ptr, hcl_oow_t len)
 {
-	return alloc_numeric_array(hcl, brand, ptr, len, HCL_OBJ_TYPE_WORD, HCL_SIZEOF(hcl_oow_t), 0, 0);
+	return alloc_numeric_array(hcl, ptr, len, HCL_OBJ_TYPE_WORD, HCL_SIZEOF(hcl_oow_t), 0, 0);
 }
 
 /* ------------------------------------------------------------------------ *
@@ -251,7 +251,7 @@ hcl_oop_t hcl_hatchundef (hcl_t* hcl)
 	 * this function doesn't set the class field */
 
 	hcl_oop_t v;
-	v = hcl_allocoopobj(hcl, HCL_BRAND_UNDEF, 0);
+	v = hcl_allocoopobj(hcl, 0);
 	if (HCL_UNLIKELY(!v))
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
@@ -270,7 +270,7 @@ hcl_oop_t hcl_hatchnil (hcl_t* hcl)
 	 * this function doesn't set the class field */
 
 	hcl_oop_t v;
-	v = hcl_allocoopobj(hcl, HCL_BRAND_NIL, 0);
+	v = hcl_allocoopobj(hcl, 0);
 	if (HCL_UNLIKELY(!v))
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
@@ -312,7 +312,7 @@ hcl_oop_t hcl_makecons (hcl_t* hcl, hcl_oop_t car, hcl_oop_t cdr)
 	if (HCL_UNLIKELY(!v))
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make cons - %js", orgmsg);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to instantiate %O - %js", hcl->c_cons->name, orgmsg);
 	}
 	else
 	{
@@ -336,7 +336,8 @@ hcl_oop_t hcl_makearray (hcl_t* hcl, hcl_oow_t len)
 	if (HCL_UNLIKELY(!v))
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make array - %js", orgmsg);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl),
+			"unable to instantiate %O - %js", hcl->c_array->name, orgmsg);
 	}
 	return v;
 #endif
@@ -349,7 +350,8 @@ hcl_oop_t hcl_makechararray (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_t len)
 	if (HCL_UNLIKELY(!v))
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make char-array - %js", orgmsg);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl),
+			"unable to instantiate %O - %js", hcl->c_character_array->name, orgmsg);
 	}
 	return v;
 }
@@ -367,7 +369,8 @@ hcl_oop_t hcl_makebytearray (hcl_t* hcl, const hcl_oob_t* ptr, hcl_oow_t len)
 	if (HCL_UNLIKELY(!v))
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make byte-array - %js", orgmsg);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl),
+			"unable to instantiate %O - %js", hcl->c_byte_array->name, orgmsg);
 	}
 	return v;
 #endif
@@ -375,79 +378,32 @@ hcl_oop_t hcl_makebytearray (hcl_t* hcl, const hcl_oob_t* ptr, hcl_oow_t len)
 
 hcl_oop_t hcl_makebytestringwithbytes (hcl_t* hcl, const hcl_oob_t* ptr, hcl_oow_t len)
 {
-#if 0
-	hcl_oop_byte_t b;
-	hcl_oow_t i;
-	hcl_oob_t v;
-
-	b = (hcl_oop_byte_t)alloc_numeric_array(hcl, HCL_BRAND_BYTE_STRING, ptr, len, HCL_OBJ_TYPE_BYTE, HCL_SIZEOF(hcl_oob_t), 1, ngc);
-	if (HCL_UNLIKELY(!b))
-	{
-		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make bytestring - %js", orgmsg);
-	}
-	else
-	{
-		for (i = 0; i < len; i++)
-		{
-			v = ptr[i];
-			HCL_OBJ_SET_BYTE_VAL(b, i, v);
-		}
-
-		HCL_OBJ_SET_CLASS (b, (hcl_oop_t)hcl->c_byte_string);
-	}
-
-	return (hcl_oop_t)b;
-#else
 	hcl_oop_byte_t v;
 	v = (hcl_oop_byte_t)hcl_instantiate(hcl, hcl->c_byte_string, ptr, len);
 	if (HCL_UNLIKELY(!v))
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make byte-string with bytes - %js", orgmsg);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl),
+			"unable to instantiate %O with bytes - %js", hcl->c_byte_string->name, orgmsg);
 	}
 	return (hcl_oop_t)v;
-#endif
 }
 
 hcl_oop_t hcl_makebytestring (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_t len)
 {
-#if 0
 	/* a byte string is a byte array with an extra null at the back.
 	 * the input to this function, however, is the pointer to hcl_ooch_t data
 	 * because this function is mainly used to convert a token to a byte string.
 	 * the token in the compiler is stored as a hcl_ooch_t string. */
 
-	hcl_oop_byte_t b;
-	hcl_oow_t i;
-	hcl_oob_t v;
-
-	b = (hcl_oop_byte_t)alloc_numeric_array(hcl, HCL_BRAND_BYTE_STRING, HCL_NULL, len, HCL_OBJ_TYPE_BYTE, HCL_SIZEOF(hcl_oob_t), 1, ngc);
-	if (HCL_UNLIKELY(!b))
-	{
-		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make bytestring - %js", orgmsg);
-	}
-	else
-	{
-		for (i = 0; i < len; i++)
-		{
-			v = ptr[i] & 0xFF;
-			HCL_OBJ_SET_BYTE_VAL(b, i, v);
-		}
-
-		HCL_OBJ_SET_CLASS (b, (hcl_oop_t)hcl->c_byte_string);
-	}
-
-	return (hcl_oop_t)b;
-#else
 	hcl_oop_byte_t v;
 
 	v = (hcl_oop_byte_t)hcl_instantiate(hcl, hcl->c_byte_string, HCL_NULL, len);
 	if (HCL_UNLIKELY(!v))
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make bytestring - %js", orgmsg);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl),
+			"unable to instantiate %O - %js", hcl->c_byte_string->name, orgmsg);
 	}
 	else
 	{
@@ -461,35 +417,19 @@ hcl_oop_t hcl_makebytestring (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_t len)
 	}
 
 	return (hcl_oop_t)v;
-#endif
 }
 
 hcl_oop_t hcl_makestring (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_t len)
 {
-#if 0
-	hcl_oop_char_t c;
-	/*c = hcl_alloccharobj(hcl, HCL_BRAND_STRING, ptr, len);*/
-	c = (hcl_oop_char_t)alloc_numeric_array(hcl, HCL_BRAND_STRING, ptr, len, HCL_OBJ_TYPE_CHAR, HCL_SIZEOF(hcl_ooch_t), 1, ngc);
-	if (HCL_UNLIKELY(!c))
-	{
-		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make string - %js", orgmsg);
-	}
-	else
-	{
-		HCL_OBJ_SET_CLASS (c, (hcl_oop_t)hcl->c_string);
-	}
-	return (hcl_oop_t)c;
-#else
 	hcl_oop_t v;
 	v = hcl_instantiate(hcl, hcl->c_string, ptr, len);
 	if (HCL_UNLIKELY(!v))
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make string - %js", orgmsg);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl),
+			"unable to instantiate %O - %js", hcl->c_string->name, orgmsg);
 	}
 	return v;
-#endif
 }
 
 hcl_oop_t hcl_makefpdec (hcl_t* hcl, hcl_oop_t value, hcl_ooi_t scale)
@@ -507,14 +447,15 @@ hcl_oop_t hcl_makefpdec (hcl_t* hcl, hcl_oop_t value, hcl_ooi_t scale)
 	}
 
 	hcl_pushvolat (hcl, &value);
-	/* f = (hcl_oop_fpdec_t)hcl_allocoopobj(hcl, HCL_BRAND_FPDEC, HCL_FPDEC_NAMED_INSTVARS); */
 	f = (hcl_oop_fpdec_t)hcl_instantiate(hcl, hcl->c_fixed_point_decimal, HCL_NULL, 0);
 	hcl_popvolat (hcl);
 
 	if (HCL_UNLIKELY(!f))
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make fpdec - %js", orgmsg);
+		hcl_seterrbfmt (
+			hcl, HCL_ERRNUM(hcl), "unable to instantiate %O - %js",
+			hcl->c_fixed_point_decimal->name, orgmsg);
 	}
 	else
 	{
@@ -528,8 +469,6 @@ hcl_oop_t hcl_makefpdec (hcl_t* hcl, hcl_oop_t value, hcl_ooi_t scale)
 hcl_oop_t hcl_makeclass (hcl_t* hcl, hcl_oop_t class_name, hcl_oop_t superclass, hcl_ooi_t nivars, hcl_ooi_t ncvars, hcl_oop_t ivars_str, hcl_oop_t cvars_str)
 {
 	hcl_oop_class_t c;
-	hcl_oow_t spec, selfspec;
-	hcl_ooi_t nivars_super;
 
 	hcl_pushvolat (hcl, &class_name);
 	hcl_pushvolat (hcl, &superclass);
@@ -540,34 +479,39 @@ hcl_oop_t hcl_makeclass (hcl_t* hcl, hcl_oop_t class_name, hcl_oop_t superclass,
 	if (HCL_UNLIKELY(!c))
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make class %O - %js", class_name, orgmsg);
-		return HCL_NULL;
-	}
-
-	/* TODO: other flags... indexable? byte? word?*/
-	spec = HCL_CLASS_SPEC_MAKE(nivars, 0, 0); /* TODO: how to include nivars_super ? */
-	selfspec = HCL_CLASS_SELFSPEC_MAKE(ncvars, 0, 0);
-
-	if (!HCL_IS_NIL(hcl, superclass))
-	{
-		hcl_ooi_t superspec;
-		superspec = HCL_OOP_TO_SMOOI(((hcl_oop_class_t)superclass)->spec);
-		nivars_super = HCL_OOP_TO_SMOOI(((hcl_oop_class_t)superclass)->nivars_super) + HCL_CLASS_SPEC_NAMED_INSTVARS(superspec);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl),
+			"unable to instantiate class %O - %js", class_name, orgmsg);
 	}
 	else
 	{
-		nivars_super = 0;
+		hcl_oow_t spec, selfspec;
+		hcl_ooi_t nivars_super;
+
+		/* TODO: other flags... indexable? byte? word?*/
+		spec = HCL_CLASS_SPEC_MAKE(nivars, 0, 0); /* TODO: how to include nivars_super ? */
+		selfspec = HCL_CLASS_SELFSPEC_MAKE(ncvars, 0, 0);
+
+		if (!HCL_IS_NIL(hcl, superclass))
+		{
+			hcl_ooi_t superspec;
+			superspec = HCL_OOP_TO_SMOOI(((hcl_oop_class_t)superclass)->spec);
+			nivars_super = HCL_OOP_TO_SMOOI(((hcl_oop_class_t)superclass)->nivars_super) + HCL_CLASS_SPEC_NAMED_INSTVARS(superspec);
+		}
+		else
+		{
+			nivars_super = 0;
+		}
+
+		c->spec = HCL_SMOOI_TO_OOP(spec);
+		c->selfspec = HCL_SMOOI_TO_OOP(selfspec);
+		c->name = class_name;
+		c->superclass = superclass;
+		c->nivars_super = HCL_SMOOI_TO_OOP(nivars_super);
+		c->ibrand = HCL_SMOOI_TO_OOP(HCL_BRAND_INSTANCE); /* TODO: really need ibrand??? */
+
+		/* TODO: remember ivars_str and vars_str? */
+		/* duplicate ivars_str and cvars_str and set it to c->ivarnames and c->cvarnames???? */
 	}
-
-	c->spec = HCL_SMOOI_TO_OOP(spec);
-	c->selfspec = HCL_SMOOI_TO_OOP(selfspec);
-	c->name = class_name;
-	c->superclass = superclass;
-	c->nivars_super = HCL_SMOOI_TO_OOP(nivars_super);
-	c->ibrand = HCL_SMOOI_TO_OOP(HCL_BRAND_INSTANCE); /* TODO: really need ibrand??? */
-
-	/* TODO: remember ivars_str and vars_str? */
-	/* duplicate ivars_str and cvars_str and set it to c->ivarnames and c->cvarnames???? */
 
 	return (hcl_oop_t)c;
 }
@@ -656,7 +600,7 @@ hcl_oop_t hcl_instantiate (hcl_t* hcl, hcl_oop_class_t _class, const void* vptr,
 		case HCL_OBJ_TYPE_OOP:
 			/* both the fixed part(named instance variables) and
 			 * the variable part(indexed instance variables) are allowed. */
-			oop = hcl_allocoopobj(hcl, HCL_BRAND_INSTANCE, dspec.alloclen);
+			oop = hcl_allocoopobj(hcl, dspec.alloclen);
 			if (HCL_LIKELY(oop))
 			{
 		#if 0
@@ -697,19 +641,19 @@ hcl_oop_t hcl_instantiate (hcl_t* hcl, hcl_oop_class_t _class, const void* vptr,
 			break;
 
 		case HCL_OBJ_TYPE_CHAR:
-			oop = hcl_alloccharobj(hcl, HCL_BRAND_INSTANCE, (const hcl_ooch_t*)vptr, dspec.alloclen);
+			oop = hcl_alloccharobj(hcl, (const hcl_ooch_t*)vptr, dspec.alloclen);
 			break;
 
 		case HCL_OBJ_TYPE_BYTE:
-			oop = hcl_allocbyteobj(hcl, HCL_BRAND_INSTANCE, (const hcl_oob_t*)vptr, dspec.alloclen);
+			oop = hcl_allocbyteobj(hcl, (const hcl_oob_t*)vptr, dspec.alloclen);
 			break;
 
 		case HCL_OBJ_TYPE_HALFWORD:
-			oop = hcl_allochalfwordobj(hcl, HCL_BRAND_INSTANCE, (const hcl_oohw_t*)vptr, dspec.alloclen);
+			oop = hcl_allochalfwordobj(hcl, (const hcl_oohw_t*)vptr, dspec.alloclen);
 			break;
 
 		case HCL_OBJ_TYPE_WORD:
-			oop = hcl_allocwordobj(hcl, HCL_BRAND_INSTANCE, (const hcl_oow_t*)vptr, dspec.alloclen);
+			oop = hcl_allocwordobj(hcl, (const hcl_oow_t*)vptr, dspec.alloclen);
 			break;
 
 		/* TODO: more types... HCL_OBJ_TYPE_INT... HCL_OBJ_TYPE_FLOAT, HCL_OBJ_TYPE_UINT16, etc*/
@@ -749,7 +693,7 @@ hcl_oop_t hcl_instantiatewithtrailer (hcl_t* hcl, hcl_oop_class_t _class, hcl_oo
 	switch (dspec.type)
 	{
 		case HCL_OBJ_TYPE_OOP:
-			oop = hcl_allocoopobjwithtrailer(hcl, HCL_BRAND_INSTANCE, dspec.alloclen, trptr, trlen);
+			oop = hcl_allocoopobjwithtrailer(hcl, dspec.alloclen, trptr, trlen);
 			if (HCL_LIKELY(oop))
 			{
 				/* initialize named instance variables with default values */
@@ -815,7 +759,7 @@ void hcl_freengcobj (hcl_t* hcl, hcl_oop_t obj)
 
 hcl_oop_t hcl_makengcbytearray (hcl_t* hcl, const hcl_oob_t* ptr, hcl_oow_t len)
 {
-	return alloc_numeric_array(hcl, HCL_BRAND_BYTE_ARRAY, ptr, len, HCL_OBJ_TYPE_BYTE, HCL_SIZEOF(hcl_oob_t), 0, 1);
+	return alloc_numeric_array(hcl, ptr, len, HCL_OBJ_TYPE_BYTE, HCL_SIZEOF(hcl_oob_t), 0, 1);
 }
 
 hcl_oop_t hcl_remakengcbytearray (hcl_t* hcl, hcl_oop_t obj, hcl_oow_t newsize)
@@ -843,7 +787,7 @@ hcl_oop_t hcl_remakengcbytearray (hcl_t* hcl, hcl_oop_t obj, hcl_oow_t newsize)
 
 hcl_oop_t hcl_makengcarray (hcl_t* hcl, hcl_oow_t len)
 {
-	return alloc_numeric_array(hcl, HCL_BRAND_ARRAY, HCL_NULL, len, HCL_OBJ_TYPE_OOP, HCL_SIZEOF(hcl_oop_t), 0, 1);
+	return alloc_numeric_array(hcl, HCL_NULL, len, HCL_OBJ_TYPE_OOP, HCL_SIZEOF(hcl_oop_t), 0, 1);
 }
 
 hcl_oop_t hcl_remakengcarray (hcl_t* hcl, hcl_oop_t obj, hcl_oow_t newsize)

@@ -1422,7 +1422,7 @@ static hcl_oop_class_t alloc_kernel_class (hcl_t* hcl, int class_flags, hcl_oow_
 	hcl_oop_class_t c;
 	hcl_ooi_t cspec;
 
-	c = (hcl_oop_class_t)hcl_allocoopobj(hcl, HCL_BRAND_CLASS, HCL_CLASS_NAMED_INSTVARS + num_classvars);
+	c = (hcl_oop_class_t)hcl_allocoopobj(hcl, HCL_CLASS_NAMED_INSTVARS + num_classvars);
 	if (HCL_UNLIKELY(!c)) return HCL_NULL;
 
 	HCL_OBJ_SET_FLAGS_KERNEL (c, HCL_OBJ_FLAGS_KERNEL_IMMATURE);
@@ -1837,7 +1837,8 @@ int hcl_ignite (hcl_t* hcl, hcl_oow_t heapsize)
 		if (HCL_UNLIKELY(!hcl->nil_process))
 		{
 			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-			hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make nil process - %js", orgmsg);
+			hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl),
+				"unable to instantiate %O to be nil process - %js", hcl->c_process->name, orgmsg);
 			goto oops;
 		}
 
@@ -1859,7 +1860,8 @@ int hcl_ignite (hcl_t* hcl, hcl_oow_t heapsize)
 		if (HCL_UNLIKELY(!hcl->processor))
 		{
 			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-			hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make process scheduler - %js", orgmsg);
+			hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl),
+				"unable to instantiate %O - %js",hcl->c_process_scheduler->name, orgmsg);
 			goto oops;
 		}
 

@@ -776,19 +776,6 @@ struct hcl_flx_hbc_t
 	hcl_ooch_t start_c;
 };
 
-typedef struct hcl_flx_hn_t hcl_flx_hn_t; /* hash-marked number - radixed number */
-struct hcl_flx_hn_t
-{
-	/* input data */
-	hcl_tok_type_t tok_type;
-	hcl_synerrnum_t synerr_code;
-	int radix;
-
-	/* state data */
-	hcl_oow_t digit_count;
-	hcl_oow_t invalid_digit_count;
-};
-
 typedef struct hcl_flx_pi_t hcl_flx_pi_t;
 struct hcl_flx_pi_t
 {
@@ -868,7 +855,6 @@ enum hcl_flx_state_t
 	HCL_FLX_HMARKED_BC,     /* #b - intermediate state before #b[, #c[, or #b-radixed binary number */
 	HCL_FLX_HMARKED_BINOP,  /* #++ - binary operator symbol */
 	HCL_FLX_HMARKED_CHAR,   /* hash-marked character that begins with #\ */
-	HCL_FLX_HMARKED_NUMBER, /* hash-marked number - radixed number like #xABCD */
 	HCL_FLX_HMARKED_IDENT,  /* literal symbol */
 	HCL_FLX_PLAIN_IDENT,    /* plain identifier */
 	HCL_FLX_BINOP,          /* binary operator */
@@ -962,7 +948,6 @@ struct hcl_compiler_t
 				hcl_flx_hc_t hc; /* hash-marked character */
 				hcl_flx_hi_t hi; /* hash-marked identifier - literal symbol */
 				hcl_flx_hbc_t hbc; /* #b #c ... */
-				hcl_flx_hn_t hn; /* hash-marked number - radixed number */
 				hcl_flx_pi_t pi; /* plain identifier */
 				hcl_flx_binop_t binop; /* binary operator */
 				hcl_flx_pn_t pn; /* plain number */
@@ -1516,13 +1501,11 @@ void* hcl_allocbytes (
  */
 hcl_oop_t hcl_allocoopobj (
 	hcl_t*    hcl,
-	int       brand,
 	hcl_oow_t size
 );
 
 hcl_oop_t hcl_allocoopobjwithtrailer (
 	hcl_t*           hcl,
-	int              brand,
 	hcl_oow_t        size,
 	const hcl_oob_t* tptr,
 	hcl_oow_t        tlen
@@ -1530,28 +1513,24 @@ hcl_oop_t hcl_allocoopobjwithtrailer (
 
 hcl_oop_t hcl_alloccharobj (
 	hcl_t*            hcl,
-	int               brand,
 	const hcl_ooch_t* ptr,
 	hcl_oow_t         len
 );
 
 hcl_oop_t hcl_allocbyteobj (
 	hcl_t*            hcl,
-	int               brand,
 	const hcl_oob_t*  ptr,
 	hcl_oow_t         len
 );
 
 hcl_oop_t hcl_allochalfwordobj (
 	hcl_t*            hcl,
-	int               brand,
 	const hcl_oohw_t* ptr,
 	hcl_oow_t         len
 );
 
 hcl_oop_t hcl_allocwordobj (
 	hcl_t*           hcl,
-	int               brand,
 	const hcl_oow_t* ptr,
 	hcl_oow_t        len
 );

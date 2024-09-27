@@ -379,7 +379,7 @@ static HCL_INLINE hcl_oop_context_t make_context (hcl_t* hcl, hcl_ooi_t ntmprs)
 	 *      for this, there must be a way to specify the type of the member variables...
 	 *      it's error-prone to initialize the numeric value to nil where 0 is necessary */
 
-	if (HCL_LIKELY(ctx)) ctx->ivaroff = HCL_SMOOI_TO_OOP(0); 
+	if (HCL_LIKELY(ctx)) ctx->ivaroff = HCL_SMOOI_TO_OOP(0);
 	return ctx;
 }
 
@@ -558,13 +558,13 @@ static hcl_oop_process_t make_process (hcl_t* hcl, hcl_oop_context_t c)
 	else if (clstksize < 32) clstksize = 32;
 
 	hcl_pushvolat (hcl, (hcl_oop_t*)&c);
-	/*proc = (hcl_oop_process_t)hcl_allocoopobj(hcl, HCL_BRAND_PROCESS, HCL_PROCESS_NAMED_INSTVARS + stksize + exstksize + clstksize);*/
 	proc = (hcl_oop_process_t)hcl_instantiate(hcl, hcl->c_process, HCL_NULL, stksize + exstksize + clstksize);
 	hcl_popvolat (hcl);
 	if (HCL_UNLIKELY(!proc))
 	{
 		const hcl_ooch_t* oldmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, hcl->errnum, "unable to make process - %js", oldmsg);
+		hcl_seterrbfmt (hcl, hcl->errnum,
+			"unable to instantiate %O - %js", hcl->c_process->name, oldmsg);
 		return HCL_NULL;
 	}
 
@@ -5233,7 +5233,8 @@ hcl_pfrc_t hcl_pf_semaphore_new (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 	if (HCL_UNLIKELY(!sem))
 	{
 		const hcl_ooch_t* oldmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, hcl->errnum, "unable to make semaphore - %js", oldmsg);
+		hcl_seterrbfmt (hcl, hcl->errnum,
+			"unable to instantiate %O - %js", hcl->c_semaphore->name, oldmsg);
 		return HCL_PF_FAILURE;
 	}
 
@@ -5526,7 +5527,8 @@ hcl_pfrc_t hcl_pf_semaphore_group_new (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nar
 	if (HCL_UNLIKELY(!sg))
 	{
 		const hcl_ooch_t* oldmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, hcl->errnum, "unable to make semaphore group - %js", oldmsg);
+		hcl_seterrbfmt (hcl, hcl->errnum,
+			"unable to instantiate %O - %js", hcl->c_semaphore_group->name, oldmsg);
 		return HCL_PF_FAILURE;
 	}
 

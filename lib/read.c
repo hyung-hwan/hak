@@ -2197,14 +2197,6 @@ static HCL_INLINE void init_flx_hbc (hcl_flx_hbc_t* hbc, hcl_ooch_t start_c)
 	hbc->start_c = start_c;
 }
 
-static HCL_INLINE void init_flx_hn (hcl_flx_hn_t* hn, hcl_tok_type_t tok_type, hcl_synerrnum_t synerr_code, int radix)
-{
-	HCL_MEMSET (hn, 0, HCL_SIZEOF(*hn));
-	hn->tok_type = tok_type;
-	hn->synerr_code = synerr_code;
-	hn->radix = radix;
-}
-
 static HCL_INLINE void init_flx_qt (hcl_flx_qt_t* qt, hcl_tok_type_t tok_type, hcl_synerrnum_t synerr_code, hcl_ooch_t end_char, hcl_ooch_t esc_char, hcl_oow_t min_len, hcl_oow_t max_len, int is_byte)
 {
 	HCL_MEMSET (qt, 0, HCL_SIZEOF(*qt));
@@ -2573,18 +2565,6 @@ static int flx_hmarked_token (hcl_t* hcl, hcl_ooci_t c)
 			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_HMARKED_BC);
 			break;
 
-	#if 0
-		case 'e': /* #eXXX - error literal */
-			init_flx_hn (FLX_HN(hcl), HCL_TOK_ERRLIT, HCL_SYNERR_ERRLIT, 10);
-			goto radixed_number;
-
-		case 'p': /* #pXXX - small pointer */
-			init_flx_hn (FLX_HN(hcl), HCL_TOK_SMPTRLIT, HCL_SYNERR_SMPTRLIT, 16);
-		radixed_number:
-			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_HMARKED_NUMBER);
-			goto consumed;
-	#endif
-
 		/* --------------------------- */
 		case '\\':
 			init_flx_hc (FLX_HC(hcl));
@@ -2729,21 +2709,13 @@ static int flx_hmarked_bc (hcl_t* hcl, hcl_ooci_t c)
 	if (c == '[')
 	{
 		/* #b[ - byte array starter */
-		/* TODO: more types.. #w[ .. #u32[ ... etc */
+		/* TODO: more types.. #c[  #w[ .. #u32[ ... etc */
+		/*                  char-array word-array 32bit-int-array etc */
 		hcl_tok_type_t tt;
 		tt = (hb->start_c == 'b' || hb->start_c == 'B')? HCL_TOK_BAPAREN: HCL_TOK_CAPAREN;
 		FEED_WRAP_UP_WITH_CHAR (hcl, c, tt);
 		goto consumed;
 	}
-#if 0
-	else if (hb->start_c == 'b' || hb->start_c == 'B')
-	{
-		/* TODO: this part needs to be removed once 0x, 0b, 0o and etc are implemented */
-		init_flx_hn (FLX_HN(hcl), HCL_TOK_RADNUMLIT, HCL_SYNERR_NUMLIT, 2);
-		FEED_CONTINUE (hcl, HCL_FLX_HMARKED_NUMBER);
-		goto not_consumed;
-	}
-#endif
 	else
 	{
 		hcl_ooch_t start_c = hb->start_c;
@@ -2778,64 +2750,6 @@ static int flx_hmarked_binop (hcl_t* hcl, hcl_ooci_t c)
 			"invalid binary selector character '%jc' after #%.*js",
 			c, TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
 		return -1;
-	}
-
-consumed:
-	return 1;
-
-not_consumed:
-	return 0;
-}
-
-static int flx_hmarked_number (hcl_t* hcl, hcl_ooci_t c)
-{
-	hcl_flx_hn_t* rn = FLX_HN(hcl);
-
-	if (HCL_CHAR_TO_NUM(c, rn->radix) >= rn->radix)
-	{
-		if (is_delim_char(c))
-		{
-			if (rn->digit_count == 0)
-			{
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), HCL_NULL,
-					"no valid digit after radix specifier '%.*js'", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
-				return -1;
-			}
-			else if (rn->invalid_digit_count > 0)
-			{
-				/* invalid as a radixed number, but this could be a hash-marked directive */
-				hcl_tok_type_t tok_type;
-
-				if (get_directive_token_type(hcl, &tok_type) <= -1)
-				{
-					hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), HCL_NULL,
-						"neither valid radixed number nor valid directive '%.*js'", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
-					return -1;
-				}
-				else
-				{
-					FEED_WRAP_UP (hcl, tok_type);
-					goto not_consumed;
-				}
-			}
-
-			FEED_WRAP_UP (hcl, rn->tok_type);
-			goto not_consumed;
-		}
-		else
-		{
-			ADD_TOKEN_CHAR(hcl, c);
-			rn->digit_count++;
-			rn->invalid_digit_count++;
-			goto consumed;
-		}
-	}
-	else
-	{
-		HCL_ASSERT (hcl, !is_delim_char(c));
-		ADD_TOKEN_CHAR(hcl, c);
-		rn->digit_count++;
-		goto consumed;
 	}
 
 consumed:
@@ -3446,7 +3360,6 @@ static int feed_char (hcl_t* hcl, hcl_ooci_t c)
 		case HCL_FLX_HMARKED_BC:       return flx_hmarked_bc(hcl, c);
 		case HCL_FLX_HMARKED_BINOP:    return flx_hmarked_binop(hcl, c);
 		case HCL_FLX_HMARKED_CHAR:     return flx_hmarked_char(hcl, c);
-		case HCL_FLX_HMARKED_NUMBER:   return flx_hmarked_number(hcl, c);
 		case HCL_FLX_HMARKED_IDENT:    return flx_hmarked_ident(hcl, c);
 
 		case HCL_FLX_PLAIN_IDENT:      return flx_plain_ident(hcl, c);

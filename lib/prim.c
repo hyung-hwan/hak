@@ -39,27 +39,14 @@ typedef struct pf_t pf_t;
 
 hcl_oop_t hcl_makeprim (hcl_t* hcl, hcl_pfimpl_t primimpl, hcl_oow_t minargs, hcl_oow_t maxargs, hcl_mod_t* mod)
 {
-#if 0
-	hcl_oop_prim_t obj; /* in principle, hcl_oop_word_t with HCL_PRIM_NAMED_INSTVARS elements */
-
-	obj = (hcl_oop_prim_t)hcl_allocwordobj(hcl, HCL_BRAND_PRIM, HCL_NULL, HCL_PRIM_NAMED_INSTVARS);
-	if (HCL_LIKELY(obj))
-	{
-		obj->impl = (hcl_oow_t)primimpl;
-		obj->min_nargs = minargs;
-		obj->max_nargs = maxargs;
-		obj->mod = (hcl_oow_t)mod;
-	}
-
-	return (hcl_oop_t)obj;
-#else
 	hcl_oop_prim_t v; /* in principle, hcl_oop_word_t with HCL_PRIM_NUM_WORDS elements */
 
 	v = (hcl_oop_prim_t)hcl_instantiate(hcl, hcl->c_primitive, HCL_NULL, 0);
 	if (HCL_UNLIKELY(!v))
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make primitive - %js", orgmsg);
+		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl),
+			"unable to instantiate %O - %js", hcl->c_primitive->name, orgmsg);
 	}
 	else
 	{
@@ -70,7 +57,6 @@ hcl_oop_t hcl_makeprim (hcl_t* hcl, hcl_pfimpl_t primimpl, hcl_oow_t minargs, hc
 	}
 
 	return (hcl_oop_t)v;
-#endif
 }
 
 /* ------------------------------------------------------------------------- */
@@ -1350,17 +1336,35 @@ int hcl_addbuiltinprims (hcl_t* hcl)
 	for (i = 0; i < HCL_COUNTOF(builtin_prims); i++)
 	{
 		prim = hcl_makeprim(hcl, builtin_prims[i].impl, builtin_prims[i].minargs, builtin_prims[i].maxargs, HCL_NULL);
-		if (HCL_UNLIKELY(!prim)) return -1;
+		if (HCL_UNLIKELY(!prim))
+		{
+			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+			hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make primitive '%.*js' - %js",
+				builtin_prims[i].namelen, builtin_prims[i].name, orgmsg);
+			return -1;
+		}
 
 		hcl_pushvolat (hcl, &prim);
 		name = hcl_makesymbol(hcl, builtin_prims[i].name, builtin_prims[i].namelen);
 		hcl_popvolat (hcl);
-		if (HCL_UNLIKELY(!name)) return -1;
+		if (HCL_UNLIKELY(!name))
+		{
+			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+			hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make primitive name '%.*js' - %js",
+				builtin_prims[i].namelen, builtin_prims[i].name, orgmsg);
+			return -1;
+		}
 
 		hcl_pushvolat (hcl, &name);
 		cons = hcl_putatsysdic(hcl, name, prim);
 		hcl_popvolat (hcl);
-		if (HCL_UNLIKELY(!cons)) return -1;
+		if (HCL_UNLIKELY(!cons))
+		{
+			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
+			hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to add primitive '%.*js' to system dictionary - %js",
+				builtin_prims[i].namelen, builtin_prims[i].name, orgmsg);
+			return -1;
+		}
 
 		/* turn on the kernel bit in the symbol associated with a primitive
 		 * function. 'set' prevents this symbol from being used as a variable
