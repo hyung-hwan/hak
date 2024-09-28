@@ -14,21 +14,21 @@ fun Number: ~= (oprnd) { return (~= self oprnd) }
 
 class A [ a b c ]  {
 
-	defun :*newInstance(x y z) {
+	fun :*newInstance(x y z) {
 		set a x;
 		set b y;
 		set c z;
 		return self;
 	};
 
-	defun get-a() { return self.a; };
-	defun get-b() { return self.b; };
-	defun get-c() { return self.c; };
+	fun get-a() { return self.a; };
+	fun get-b() { return self.b; };
+	fun get-c() { return self.c; };
 };
 
 class B :: A [ d e f ] {
 
-	defun :*newInstance(x y z) {
+	fun :*newInstance(x y z) {
 		super:newInstance (* x 2) (* y 2) (* z 2);
 		set d x;
 		set e y;
@@ -36,11 +36,11 @@ class B :: A [ d e f ] {
 		return self;
 	};
 
-	defun :: getSuper() { return super; };
-	###defun :: getSuperclass() { return (self:superclass); };
-	defun :: getSelf() { return self; };
+	fun :: getSuper() { return super; };
+	###fun :: getSuperclass() { return (self:superclass); };
+	fun :: getSelf() { return self; };
 
-	defun sum() {
+	fun sum() {
 		return (+ (super:get-a) (super:get-b) (super:get-c) self.d self.e self.f);
 	};
 };

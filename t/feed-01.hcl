@@ -4,7 +4,7 @@
 
 | J |
 
-defun xxx (x y z
+fun xxx (x y z
 	:: r ) {
 
 	| k

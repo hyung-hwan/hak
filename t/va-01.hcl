@@ -1,4 +1,4 @@
-defun fn-y (t1 t2 va-ctx) {
+fun fn-y (t1 t2 va-ctx) {
 	| i |
 	i := 0
 	while (< i (va-count va-ctx)) {
@@ -7,7 +7,7 @@ defun fn-y (t1 t2 va-ctx) {
 	}
 }
 
-defun x(a b ... :: x y z) {
+fun x(a b ... :: x y z) {
 	|i|
 
 	x := (va-count)

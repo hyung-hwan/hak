@@ -69,16 +69,16 @@ enum
 /* --------------------------------------------
 
 
-(defun plus(x y)
+(fun plus(x y)
 	(printf "plus %d %d\n" x y)
-	(defun minus(x y)
+	(fun minus(x y)
 		(printf "minus %d %d\n" x y)
 		(- x y)
 	)
 	(+ x y)
 )
 
-(defun dummy(q)
+(fun dummy(q)
 	(printf "%s\n" q)
 )
 
@@ -2492,7 +2492,7 @@ static HCL_INLINE int compile_else (hcl_t* hcl)
 		(set x 20)
 		(printf "normal statement ....\n");
 
-		(defun new (a b c)
+		(fun new (a b c)
 (printf "%O\n" self) ; self is A
 			(set obj super.new)
 			(obj.init a b c)
@@ -2814,46 +2814,45 @@ static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 
 /* ========================================================================= */
 
-static int compile_fun (hcl_t* hcl, hcl_cnode_t* src, int defun)
+static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 {
 	hcl_cnode_t* cmd, * obj, * args;
 	hcl_oow_t va, nargs, nrvars, nlvars;
 	hcl_ooi_t jump_inst_pos, lfbase_pos, lfsize_pos;
 	hcl_oow_t saved_tv_wcount, tv_dup_start;
-	hcl_cnode_t* defun_name;
+	hcl_cnode_t* fun_name;
 	hcl_cnode_t* class_name;
 	hcl_cframe_t* cf;
 	unsigned int fun_type = FUN_PLAIN;
+	int named = 0;
 
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
 
 	saved_tv_wcount = hcl->c->tv.wcount;
 	cmd = HCL_CNODE_CONS_CAR(src);
 	obj = HCL_CNODE_CONS_CDR(src);
-
 	class_name = HCL_NULL;
 
-	if (!defun && (obj && HCL_CNODE_IS_CONS(obj)))
+	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_FUN) ||
+	                 HCL_CNODE_IS_TYPED(cmd, HCL_CNODE_FUN));
+
+	if (obj && HCL_CNODE_IS_CONS(obj))
 	{
-		/* some inaccurate prior check if 'fun' is followed by an argument list
-		 * without a function name. stop-gap measure to support 'fun' in place of 'defun' */
-		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_FUN) || HCL_CNODE_IS_TYPED(cmd, HCL_CNODE_FUN));
+		/* inaccurate pre-check if 'fun' is followed by an argument list
+		 * without a function name. */
 		args = HCL_CNODE_CONS_CAR(obj);
 		if (!HCL_CNODE_IS_ELIST_CONCODED(args, HCL_CONCODE_XLIST) &&
 		    !HCL_CNODE_IS_CONS_CONCODED(args, HCL_CONCODE_XLIST))
 		{
 			/* not followed by an argument list */
-			defun = 1;
-			goto fun_as_defun;
+			named = 1;
+			goto named_function;
 		}
 	}
 
-	if (defun)
+	if (named)
 	{
-		/* defun must be followed by an explicit function name */
-		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_DEFUN));
-
-	fun_as_defun:
+	named_function:
 		if (!obj)
 		{
 			hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMELIST, HCL_CNODE_GET_LOC(src), HCL_NULL, "no name in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
@@ -2865,13 +2864,13 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src, int defun)
 			return -1;
 		}
 
-		defun_name = HCL_CNODE_CONS_CAR(obj);
+		fun_name = HCL_CNODE_CONS_CAR(obj);
 		if (is_in_class_init_scope(hcl))
 		{
-			if ((HCL_CNODE_IS_DBLCOLONS(defun_name) || HCL_CNODE_IS_COLONSTAR(defun_name)))
+			if ((HCL_CNODE_IS_DBLCOLONS(fun_name) || HCL_CNODE_IS_COLONSTAR(fun_name)))
 			{
-				/* class method - (defun ::xxxx () ...) inside class definition */
-				/* class instantiation method - (defun :*xxxx() ...) inside class definition */
+				/* class method - (fun ::xxxx () ...) inside class definition */
+				/* class instantiation method - (fun :*xxxx() ...) inside class definition */
 				obj = HCL_CNODE_CONS_CDR(obj);
 				if (!obj)
 				{
@@ -2879,14 +2878,14 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src, int defun)
 					return -1;
 				}
 
-				fun_type = HCL_CNODE_IS_DBLCOLONS(defun_name)? FUN_CM: FUN_CIM;
-				defun_name = HCL_CNODE_CONS_CAR(obj); /* advance to the actual name */
+				fun_type = HCL_CNODE_IS_DBLCOLONS(fun_name)? FUN_CM: FUN_CIM;
+				fun_name = HCL_CNODE_CONS_CAR(obj); /* advance to the actual name */
 			}
 			else
 			{
-				if (HCL_CNODE_IS_SYMBOL_PLAIN(defun_name))
+				if (HCL_CNODE_IS_SYMBOL_PLAIN(fun_name))
 				{
-					/* probably this form - defun XXX:yyy () ...
+					/* probably this form - fun XXX:yyy () ...
 					 * the class name must not be specified in the class initialization scope */
 					hcl_cnode_t* tmp;
 					tmp = HCL_CNODE_CONS_CDR(obj);
@@ -2897,7 +2896,7 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src, int defun)
 						{
 							hcl_setsynerrbfmt (
 								hcl, HCL_SYNERR_VARNAME,
-								HCL_CNODE_GET_LOC(defun_name), HCL_CNODE_GET_TOK(defun_name),
+								HCL_CNODE_GET_LOC(fun_name), HCL_CNODE_GET_TOK(fun_name),
 								"function name not valid followed by %.*js",
 								HCL_CNODE_GET_TOKLEN(tmp), HCL_CNODE_GET_TOKPTR(tmp));
 							return -1;
@@ -2908,7 +2907,7 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src, int defun)
 				fun_type = FUN_IM;
 			}
 		}
-		else if (HCL_CNODE_IS_SYMBOL_PLAIN(defun_name))
+		else if (HCL_CNODE_IS_SYMBOL_PLAIN(fun_name))
 		{
 			hcl_cnode_t* tmp, marker;
 			tmp = HCL_CNODE_CONS_CDR(obj);
@@ -2928,8 +2927,8 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src, int defun)
 						if (HCL_CNODE_IS_SYMBOL_PLAIN(cand))
 						{
 							/* out-of-class method definition
-							 * for defun String:length() { ...  },
-							 * class_name is String, defun_name is length. */
+							 * for fun String:length() { ...  },
+							 * class_name is String, fun_name is length. */
 							fun_type = HCL_CNODE_IS_DBLCOLONS(marker)? FUN_CM:
 							           HCL_CNODE_IS_COLONSTAR(marker)? FUN_CIM: FUN_IM;
 
@@ -2944,8 +2943,8 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src, int defun)
 							 * */
 							fun_type |= 0x100;
 
-							class_name = defun_name;
-							defun_name = HCL_CNODE_CONS_CAR(tmp);
+							class_name = fun_name;
+							fun_name = HCL_CNODE_CONS_CAR(tmp);
 							obj = tmp;
 						}
 					}
@@ -2953,15 +2952,22 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src, int defun)
 			}
 		}
 
-		if (!HCL_CNODE_IS_SYMBOL(defun_name))
+		if (!HCL_CNODE_IS_SYMBOL(fun_name))
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(defun_name), HCL_CNODE_GET_TOK(defun_name), "function name not symbol in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME,
+				HCL_CNODE_GET_LOC(fun_name), HCL_NULL,
+				"invalid function name '%.*js' for '%.*js'",
+				HCL_CNODE_GET_TOKLEN(fun_name), HCL_CNODE_GET_TOKPTR(fun_name),
+				HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 			return -1;
 		}
 
-		if (HCL_CNODE_SYMBOL_SYNCODE(defun_name)) /*|| HCL_OBJ_GET_FLAGS_KERNEL(defun_name) >= 1) */
+		if (HCL_CNODE_SYMBOL_SYNCODE(fun_name)) /*|| HCL_OBJ_GET_FLAGS_KERNEL(fun_name) >= 1) */
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(defun_name), HCL_CNODE_GET_TOK(defun_name), "special symbol not to be used as function name");
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME,
+				HCL_CNODE_GET_LOC(fun_name), HCL_NULL,
+				"special symbol '%.*js' not to be used as function name",
+				HCL_CNODE_GET_TOKLEN(fun_name), HCL_CNODE_GET_TOKPTR(fun_name));
 			return -1;
 		}
 
@@ -2969,14 +2975,17 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src, int defun)
 	}
 	else
 	{
-		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_FUN) || HCL_CNODE_IS_TYPED(cmd, HCL_CNODE_FUN));
-		defun_name = HCL_NULL;
+		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_FUN) ||
+		                 HCL_CNODE_IS_TYPED(cmd, HCL_CNODE_FUN));
+		fun_name = HCL_NULL;
 	}
 
 	if (!obj)
 	{
 	no_arg_list:
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMELIST, HCL_CNODE_GET_LOC(src), HCL_NULL, "argument list missing in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMELIST, HCL_CNODE_GET_LOC(src), HCL_NULL,
+			"argument list missing in %.*js",
+			HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 		return -1;
 	}
 	else if (!HCL_CNODE_IS_CONS(obj))
@@ -3115,8 +3124,8 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src, int defun)
 
 
 	/*
-	 * defun aa(a b) { ...	};
-	 * (defun aa(a b) { ... })
+	 * fun aa(a b) { ...	};
+	 * (fun aa(a b) { ... })
 	 *
 	 * the block expression must be the first and the only expression at the body position.
 	 * the variable declaration can't be placed before the block expression.
@@ -3154,7 +3163,7 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src, int defun)
 	if (emit_single_param_instruction(hcl, HCL_CODE_JUMP_FORWARD_0, MAX_CODE_JUMP, HCL_CNODE_GET_LOC(cmd)) <= -1) return -1;
 
 	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_LIST, obj); /* 1 */
-	PUSH_SUBCFRAME (hcl, COP_POST_FUN, defun_name); /* 3*/
+	PUSH_SUBCFRAME (hcl, COP_POST_FUN, fun_name); /* 3*/
 	cf = GET_SUBCFRAME(hcl);
 	cf->u.fun.fun_type = fun_type;
 	cf->u.fun.class_name = class_name;
@@ -3454,7 +3463,7 @@ static int compile_set_r (hcl_t* hcl, hcl_cnode_t* src)
 		}
 
 		/*
-		 * (defun f(x y ::: aa bb cc) ....)
+		 * (fun f(x y ::: aa bb cc) ....)
 		 * (set_r a b c (f 1 2))
 		 *
 		 *    the call to f
@@ -3968,7 +3977,7 @@ static int compile_cons_alist_expression (hcl_t* hcl, hcl_cnode_t* cmd)
 			}
 
 			/*
-			 * (defun f(x y ::: aa bb cc) ....)
+			 * (fun f(x y ::: aa bb cc) ....)
 			 * ([a b c] := (f 1 2))
 			 *
 			 *    the call to f
@@ -4050,7 +4059,7 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 			goto done;
 
 		case HCL_CNODE_FUN:
-			if (compile_fun(hcl, obj, 0) <= -1) return -1;
+			if (compile_fun(hcl, obj) <= -1) return -1;
 			goto done;
 
 		case HCL_CNODE_DO:
@@ -4144,10 +4153,6 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 				if (compile_class(hcl, obj, 1) <= -1) return -1;
 				break;
 
-			case HCL_SYNCODE_DEFUN:
-				if (compile_fun(hcl, obj, 1) <= -1) return -1;
-				break;
-
 			case HCL_SYNCODE_DO:
 				if (compile_do(hcl, obj) <= -1) return -1;
 				break;
@@ -4166,7 +4171,7 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 
 			case HCL_SYNCODE_FUN:
 				/* (fun (x y) (+ x y)) */
-				if (compile_fun(hcl, obj, 0) <= -1) return -1;
+				if (compile_fun(hcl, obj) <= -1) return -1;
 				break;
 
 			case HCL_SYNCODE_OR:
@@ -5969,19 +5974,19 @@ static HCL_INLINE int post_fun (hcl_t* hcl)
 
 	if (cf->operand)
 	{
-		/* (defun x()  ; this x refers to a variable in the outer scope.
+		/* (fun x()  ; this x refers to a variable in the outer scope.
 		 *     | t1 t2 x |
 		 *     (set x 10)  ; this x refers to the local variable.
 		 * )
 		 *
 		 * the block has been exited(blk.depth--) before finding 'x' in the outer scope.
 		 */
-		hcl_cnode_t* defun_name = cf->operand;
+		hcl_cnode_t* fun_name = cf->operand;
 		hcl_cnode_t* class_name = cf->u.fun.class_name;
 		hcl_var_info_t vi;
 		int x;
 
-		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_PLAIN(defun_name));
+		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_PLAIN(fun_name));
 
 		if (is_in_class_init_scope(hcl))
 		{
@@ -5995,7 +6000,7 @@ static HCL_INLINE int post_fun (hcl_t* hcl)
 				return -1;
 			}
 
-			x = find_variable_backward_with_token(hcl, defun_name, &vi);
+			x = find_variable_backward_with_token(hcl, fun_name, &vi);
 			if (x <= -1) return -1;
 			if (x == 0)
 			{
@@ -6003,15 +6008,15 @@ static HCL_INLINE int post_fun (hcl_t* hcl)
 				switch (cf->u.fun.fun_type & 0xFF)
 				{
 					case FUN_CM: /* class method */
-						SWITCH_TOP_CFRAME (hcl, COP_EMIT_CLASS_CMSTORE, defun_name);
+						SWITCH_TOP_CFRAME (hcl, COP_EMIT_CLASS_CMSTORE, fun_name);
 						break;
 
 					case FUN_CIM: /* class instantiation method */
-						SWITCH_TOP_CFRAME (hcl, COP_EMIT_CLASS_CIMSTORE, defun_name);
+						SWITCH_TOP_CFRAME (hcl, COP_EMIT_CLASS_CIMSTORE, fun_name);
 						break;
 
 					case FUN_IM: /* instance method */
-						SWITCH_TOP_CFRAME (hcl, COP_EMIT_CLASS_IMSTORE, defun_name);
+						SWITCH_TOP_CFRAME (hcl, COP_EMIT_CLASS_IMSTORE, fun_name);
 						break;
 
 					default:
@@ -6024,7 +6029,7 @@ static HCL_INLINE int post_fun (hcl_t* hcl)
 			}
 			else
 			{
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAMEDUP, HCL_CNODE_GET_LOC(defun_name), HCL_CNODE_GET_TOK(defun_name), "duplicate method name");
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAMEDUP, HCL_CNODE_GET_LOC(fun_name), HCL_CNODE_GET_TOK(fun_name), "duplicate method name");
 				return -1;
 			}
 		}
@@ -6032,17 +6037,17 @@ static HCL_INLINE int post_fun (hcl_t* hcl)
 		{
 			/* the function name must be global or module-wide.(no module implemented yet. so only global) */
 		#if 0
-			x = find_variable_backward_with_token(hcl, defun_name, &vi);
+			x = find_variable_backward_with_token(hcl, fun_name, &vi);
 			if (x <= -1) return -1;
 			if (x == 0)
 			{
-				SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, defun_name);
+				SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, fun_name);
 				cf = GET_TOP_CFRAME(hcl);
 				cf->u.set.vi.type = VAR_NAMED;
 			}
 			else
 			{
-				SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, defun_name);
+				SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, fun_name);
 				cf = GET_TOP_CFRAME(hcl);
 				cf->u.set.vi = vi;
 			}
@@ -6063,7 +6068,7 @@ static HCL_INLINE int post_fun (hcl_t* hcl)
 				if (emit_byte_instruction(hcl, HCL_CODE_CLASS_LOAD, HCL_CNODE_GET_LOC(class_name)) <= -1) return -1;
 
 				/* the function name is always named */
-				lit = hcl_makesymbol(hcl, HCL_CNODE_GET_TOKPTR(defun_name), HCL_CNODE_GET_TOKLEN(defun_name));
+				lit = hcl_makesymbol(hcl, HCL_CNODE_GET_TOKPTR(fun_name), HCL_CNODE_GET_TOKLEN(fun_name));
 				if (HCL_UNLIKELY(!lit)) return -1;
 				if (add_literal(hcl, lit, &index) <= -1) return -1;
 
@@ -6088,14 +6093,14 @@ static HCL_INLINE int post_fun (hcl_t* hcl)
 						return -1;
 				}
 
-				if (emit_single_param_instruction(hcl, inst, index, HCL_CNODE_GET_LOC(defun_name)) <= -1) return -1;
+				if (emit_single_param_instruction(hcl, inst, index, HCL_CNODE_GET_LOC(fun_name)) <= -1) return -1;
 				if (emit_byte_instruction(hcl, HCL_CODE_CLASS_EXIT, HCL_CNODE_GET_LOC(class_name)) <= -1) return -1;
 				POP_CFRAME (hcl);
 			}
 			else
 			{
 				/* An explicitly named function is always global */
-				SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, defun_name);
+				SWITCH_TOP_CFRAME (hcl, COP_EMIT_SET, fun_name);
 				cf = GET_TOP_CFRAME(hcl);
 				cf->u.set.vi.type = VAR_NAMED;
 				cf->u.set.mode = VAR_ACCESS_STORE;
@@ -6310,7 +6315,7 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 	/*
 	 * In the non-INTERACTIVE mode, the literal frame base(lfbase) doesn't matter.
 	 * Only the initial function object contains the literal frame.
-	 * No other function objects are created. All 'defun/fun' defintions are
+	 * No other function objects are created. All 'fun' defintions are
 	 * translated to block context objects instead.
 	 *
 	 * In the INTERACTIVE mode, the literal frame base(lfbase) plays a key role.
@@ -6319,7 +6324,7 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 	 * reference part of the literal frame reserved for a function.
 	 *
 	 *  (set b 1)
-	 *  (defun set-a(x) (set a x))
+	 *  (fun set-a(x) (set a x))
 	 *  (set a 2)
 	 *  (set-a 4)
 	 *  (printf "%d\n" a)
@@ -6331,7 +6336,7 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 	 *  @3         (printf . #<PRIM>)
 	 *  @4         "%d\n"
 	 *
-	 * @1 to @2 will be copied to a function object when defun is executed.
+	 * @1 to @2 will be copied to a function object when fun is executed.
 	 * The literal frame of the created function object for set-a looks
 	 * like this
 	 *  @0         (a)

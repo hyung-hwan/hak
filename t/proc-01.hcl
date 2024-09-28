@@ -1,7 +1,7 @@
 z1 := 0
 z2 := 0
 
-defun loop1() {
+fun loop1() {
 	| k |
 
 	k := 1
@@ -15,7 +15,7 @@ defun loop1() {
 	sem-signal s1
 }
 
-defun loop2() {
+fun loop2() {
 	| k |
 
 	k := 0

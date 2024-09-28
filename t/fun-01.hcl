@@ -1,4 +1,4 @@
-defun aaa(a b) {
+fun aaa(a b) {
 	| c |
 	set c (+ a b);
 	return c;
@@ -14,13 +14,13 @@ if (== k 30) {
 
 ## --------------------------------------
 
-defun mkfun(t) {
+fun mkfun(t) {
 	return (fun(c) {
 		return (+ t c);
 	});
 }
 
-defun mkfun2(t) {
+fun mkfun2(t) {
 	return {fun(c) {
 		return (fun(d) {
 			return (+ d c t)
@@ -64,7 +64,7 @@ if (== k 80) {
 ## --------------------------------------
 
 ## multiple return values
-defun f(a :: b c) { b := (+ a 10); c := (+ a 20) }
+fun f(a :: b c) { b := (+ a 10); c := (+ a 20) }
 [x, y] := (f 9)
 if (== x 19) {
 	printf "OK - %d\n" x
@@ -78,7 +78,7 @@ if (== y 29) {
 }
 
 ## --------------------------------------
-k := (defun qq(t) (+ t 20))
+k := (fun qq(t) (+ t 20))
 x := (k 8)
 y := (qq 9)
 
@@ -97,16 +97,16 @@ if (== y 29) {
 ## --------------------------------------
 
 defclass A [ a b c ] {
-	defun :* newInstance(x y z) {
+	fun :* newInstance(x y z) {
 		set a x
 		set b y
 		set c z
 		return self
 	};
 
-	defun get-a() { return a; };
-	##defun get-b() b;
-	##defun get-c() c;
+	fun get-a() { return a; };
+	##fun get-b() b;
+	##fun get-c() c;
 };
 
 k := (A:newInstance 11 22 33);

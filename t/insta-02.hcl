@@ -12,8 +12,8 @@ fun Number: ~= (oprnd) { return (~= self oprnd) }
 ## --------------------------------------------------------------
 set t (
 	class [ x ] {
-		defun :* make() { x := 1234; return self; };
-		defun get-x() { return x };
+		fun :* make() { x := 1234; return self; };
+		fun get-x() { return x };
 	}
 );
 

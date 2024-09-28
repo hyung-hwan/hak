@@ -2055,7 +2055,6 @@ enum hcl_syncode_t
 	HCL_SYNCODE_CLASS,
 	HCL_SYNCODE_CONTINUE,
 	HCL_SYNCODE_DEFCLASS,
-	HCL_SYNCODE_DEFUN,
 	HCL_SYNCODE_DO,
 	HCL_SYNCODE_ELIF,
 	HCL_SYNCODE_ELSE,
@@ -3350,6 +3349,26 @@ HCL_EXPORT void hcl_assertfailed (
 	const hcl_bch_t* expr,
 	const hcl_bch_t* file,
 	hcl_oow_t        line
+);
+
+
+/* =========================================================================
+ * HELPERS
+ * ========================================================================= */
+HCL_EXPORT void hcl_start_ticker (
+	void
+);
+
+HCL_EXPORT void hcl_stop_ticker (
+	void
+);
+
+HCL_EXPORT void hcl_catch_termreq (
+	void
+);
+
+HCL_EXPORT void hcl_uncatch_termreq (
+	void
 );
 
 #if defined(__cplusplus)

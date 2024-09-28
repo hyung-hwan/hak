@@ -1,4 +1,4 @@
-defun x (a b :: r) {
+fun x (a b :: r) {
 	
 	| x y |
 
@@ -30,7 +30,7 @@ if (~= t 500) (printf "ERROR: t is not equal to 500\n") \
 else (printf "OK: %d\n" t)
 
 
-defun x () {
+fun x () {
 
 	| x y |
 
@@ -58,17 +58,17 @@ x
 
 class T [ j ] {
 
-	defun :* new() {
+	fun :* new() {
 		set j 99
 		return self
 	}
 
-	defun x() {
+	fun x() {
 		set R {
 			| x |
 			set x 1
 			while (< x j) {
-				defun Q() x
+				fun Q() x
 				set x (+ x 1)
 			}
 		}

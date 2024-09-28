@@ -1,2 +1,2 @@
-defun self.x() { ##ERROR: syntax error - function name not symbol
+fun self.x() { ##ERROR: syntax error - invalid function name 'self.x' for 'fun'
 };

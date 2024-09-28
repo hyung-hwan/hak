@@ -1,4 +1,4 @@
-defun x (a :: x y z) {
+fun x (a :: x y z) {
 	x := (* a a);
 	y := (+ a a);
 	z := (- x y);

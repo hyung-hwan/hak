@@ -1227,6 +1227,48 @@ static hcl_pfrc_t pf_object_new (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 
 /* ------------------------------------------------------------------------- */
 
+static hcl_pfrc_t pf_system_get_sigfd (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+{
+	hcl_ooi_t fd;
+	fd = hcl->vmprim.vm_getsigfd(hcl);
+	HCL_STACK_SETRET (hcl, nargs, HCL_SMOOI_TO_OOP(fd));
+	return HCL_PF_SUCCESS;
+}
+
+static hcl_pfrc_t pf_system_get_sig (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+{
+	hcl_uint8_t sig;
+	int n;
+
+	n = hcl->vmprim.vm_getsig(hcl, &sig);
+	if (n <= -1) return HCL_PF_FAILURE;
+
+	if (n == 0) HCL_STACK_SETRETTOERROR (hcl, nargs, HCL_ENOENT);
+	else HCL_STACK_SETRET (hcl, nargs, HCL_SMOOI_TO_OOP((hcl_ooi_t)sig));
+
+	return HCL_PF_SUCCESS;
+}
+
+static hcl_pfrc_t pf_system_set_sig (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+{
+	hcl_oop_t tmp;
+	hcl_uint8_t sig;
+	int n;
+
+	tmp = HCL_STACK_GETARG(hcl, nargs, 0);
+	HCL_PF_CHECK_ARGS (hcl, nargs, HCL_OOP_IS_SMOOI(tmp));
+
+	sig = (hcl_uint8_t)HCL_OOP_TO_SMOOI(tmp);
+	n = hcl->vmprim.vm_setsig(hcl, sig);
+	if (n <= -1) return HCL_PF_FAILURE;
+
+	HCL_STACK_SETRET (hcl, nargs, HCL_SMOOI_TO_OOP((hcl_ooi_t)sig));
+
+	return HCL_PF_SUCCESS;
+}
+
+/* ------------------------------------------------------------------------- */
+
 static pf_t builtin_prims[] =
 {
 	/* TODO: move these primitives to modules... */
@@ -1239,6 +1281,10 @@ static pf_t builtin_prims[] =
 	{ 1, HCL_TYPE_MAX(hcl_oow_t), pf_printf,          6,  { 'p','r','i','n','t','f' } },
 	{ 1, HCL_TYPE_MAX(hcl_oow_t), pf_scanf,           5,  { 's','c','a','n','f' } },
 	{ 1, HCL_TYPE_MAX(hcl_oow_t), pf_sprintf,         7,  { 's','p','r','i','n','t','f' } },
+
+	{ 0, 0,                       pf_system_get_sigfd,16, { 's','y','s','t','e','m','-','g','e','t','-','s','i','g','f','d' } },
+	{ 0, 0,                       pf_system_get_sig,  14,  { 's','y','s','t','e','m','-','g','e','t','-','s','i','g' } },
+	{ 1, 1,                       pf_system_set_sig,  14,  { 's','y','s','t','e','m','-','s','e','t','-','s','i','g' } },
 
 	{ 0, 0,                       pf_gc,              2,  { 'g','c' } },
 

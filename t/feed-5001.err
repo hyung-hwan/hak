@@ -134,13 +134,13 @@ printf :*; ##ERROR: syntax error - prohibited in this context
 
 ---
 
-defun :: fun1() { ##ERROR: syntax error - function name not symbol in defun
+fun :: fun1() { ##ERROR: syntax error - invalid function name '::' for 'fun'
 	return 10;
 };
 
 ---
 
-defun :* fun1() { ##ERROR: syntax error - function name not symbol in defun
+fun :* fun1() { ##ERROR: syntax error - invalid function name ':*' for 'fun'
 	return 10;
 };
 

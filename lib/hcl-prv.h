@@ -1415,8 +1415,6 @@ enum hcl_bcode_t
 	HCL_CODE_NOOP                     = 0xFF  /* 255 */
 };
 
-
-
 typedef hcl_ooi_t (*hcl_outbfmt_t) (
 	hcl_t*           hcl,
 	hcl_bitmask_t  mask,
@@ -1438,6 +1436,23 @@ typedef hcl_ooi_t (*hcl_outbfmt_t) (
         ((c >= '0' && c <= '9')? ((c - '0' < base)? (c - '0'): base): \
          (c >= 'A' && c <= 'Z')? ((c - 'A' + 10 < base)? (c - 'A' + 10): base): \
          (c >= 'a' && c <= 'z')? ((c - 'a' + 10 < base)? (c - 'a' + 10): base): base)
+
+
+/* receiver check failure leads to hard failure.
+ * RATIONAL: the primitive handler should be used by relevant classes and
+ *           objects only. if the receiver check fails, you must review
+ *           your class library */
+#define HCL_PF_CHECK_RCV(hcl,cond) do { \
+	if (!(cond)) { hcl_seterrnum((hcl), HCL_EMSGRCV); return HCL_PF_HARD_FAILURE; } \
+} while(0)
+
+/* argument check failure causes the wrapping method to return an error.
+ * RATIONAL: Being a typeless language, it's hard to control the kinds of
+ *           arguments.
+ */
+#define HCL_PF_CHECK_ARGS(hcl,nargs,cond) do { \
+	if (!(cond)) { hcl_seterrnum (hcl, HCL_EINVAL); return HCL_PF_FAILURE; } \
+} while(0)
 
 #if defined(__cplusplus)
 extern "C" {

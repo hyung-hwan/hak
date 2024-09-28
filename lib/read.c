@@ -661,7 +661,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 			else if (lval && HCL_CNODE_IS_CONS_CONCODED(lval, HCL_CONCODE_TUPLE))
 			{
 				/*
-				 * defun f(a :: b c) { b := (a + 10); c := (a + 20) }
+				 * fun f(a :: b c) { b := (a + 10); c := (a + 20) }
 				 * [x, y] := (f 9) ## this kind of expression - translate to set-r x y (f 9)
 				 */
 				hcl_cnode_t* tmp;
@@ -888,13 +888,12 @@ static HCL_INLINE int can_colon_list (hcl_t* hcl)
 	else if (!(rstl->flagv & JSON))
 	{
 		/* handling of a colon sign in out-of-class instance method definition.
-		 * e.g. defun String:length() { return (str.length self). }
+		 * e.g. fun String:length() { return (str.length self). }
 		 * TODO: inject a symbol ':' to differentiate form '::' or ':*' methods.
 		 *       these class methods and class instantiation methods are supposed to be
 		 *       implemented elsewhere because ':' has dual use while '::' or ':*' are
 		 *       independent tokens  */
-		if (HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(rstl->head), HCL_SYNCODE_DEFUN) ||
-		    HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(rstl->head), HCL_SYNCODE_FUN) ||
+		if (HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(rstl->head), HCL_SYNCODE_FUN) ||
 		    HCL_CNODE_IS_TYPED(HCL_CNODE_CONS_CAR(rstl->head), HCL_CNODE_FUN))
 		{
 			if (rstl->count == 2) return 2;
@@ -909,8 +908,8 @@ static HCL_INLINE int can_colon_list (hcl_t* hcl)
 	cc = (hcl_concode_t)LIST_FLAG_GET_CONCODE(rstl->flagv);
 	if (cc == HCL_CONCODE_XLIST)
 	{
-		/* method defintion with defun  - e.g. defun String:length()
-		 * ugly that this reader must know about the meaning of defun */
+		/* method defintion with fun  - e.g. fun String:length()
+		 * ugly that this reader must know about the meaning of fun */
 		if (rstl->count > 1) return 0;
 		/* ugly dual use of a colon sign. switch to MLIST if the first element
 		 * is delimited by a colon. e.g. (obj:new 10 20 30)  */
@@ -1587,7 +1586,7 @@ static int feed_process_token (hcl_t* hcl)
 			 * for example, '(+ 10 20)' as a leading expression is like '((+ 10 20))'.
 			 * -------------------------------------------------------------
 			 * It is useful but a bit confusing:
-			 *   defun x(a) { return (fun(b) { return (+ a b) }) }
+			 *   fun x(a) { return (fun(b) { return (+ a b) }) }
 			 *   printf "%d\n" ((x 10) 20)   ## excplicit outer () is required here
 			 *   (x 10) 30  ## explicit outer () must not be used here
 			 *   j := ((x 10) 40) ## explicit outer () is required here

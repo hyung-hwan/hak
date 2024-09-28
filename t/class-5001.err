@@ -18,11 +18,11 @@ class B + ##ERROR: syntax error - prohibited binary selector '+'
 J := 11
 class B {
 	if (== J 10) {
-		defun :*newA() {
+		fun :*newA() {
 			return self
 		}
 	} else {
-		defun :*newB() {
+		fun :*newB() {
 			return self
 		}
 	}

@@ -6,7 +6,7 @@
 
 	set i 100;
 
-	defun ff(a b :: x y z) {
+	fun ff(a b :: x y z) {
 		set x (+ a b i);
 		set y (+ x x);
 		set z (+ 999 i);
@@ -36,12 +36,12 @@
 		set X1 999;
 		set X2 888;
 
-		defun :: get ( :: x y)  {
+		fun :: get ( :: x y)  {
 			set x X1;
 			set y X2;
 		};
 
-		defun :: get2 (inc :: x y)  {
+		fun :: get2 (inc :: x y)  {
 			set x (+ X1 inc);
 			set y (+ X2 inc);
 		};
