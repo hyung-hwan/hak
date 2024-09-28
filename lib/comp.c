@@ -2836,6 +2836,76 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_FUN) ||
 	                 HCL_CNODE_IS_TYPED(cmd, HCL_CNODE_FUN));
 
+#if 0
+	if (obj /*&& HCL_CNODE_IS_CONS(obj)*/)
+	{
+		hcl_cnode_t* tmp, * next;
+
+		HCL_ASERT (hcl, HCL_CNODE_IS_CONS(obj));
+
+		/* fun (arg..)
+		 * fun name (arg..)
+		 * fun(#attr..) name(arg..)
+		 * fun(#attr..) (arg..)
+		 * fun(#attr..) class:name(arg..)
+		 */
+		next = obj;
+		tmp = HCL_CNODE_CONS_CAR(next);
+		if (HCL_CNODE_IS_SYMBOL_PLAIN(tmp))
+		{
+			/* 'fun' followed by name */
+		got_name:
+			/* name must be followed by argument list */
+			fun_name = tmp;
+
+			next = HCL_CNODE_CONS_CDR(next);
+			if (!next) goto no_arg_list;
+
+			tmp = HCL_CNODE_CONS_CAR(next);
+			if (HCL_CNODE_IS_COLON(tmp))
+			{
+				/* fun class:name(arg..)
+				 * fun(#attr..) class:name(arg..) */
+
+				class_name = fun_name;
+				next = HCL_CNODE_CONS_CDR(next);
+				if (!next) goto no_function_name;
+
+				tmp = HCL_CNODE_CONS_CAR(next);
+				if (!HCL_CNODE_IS_SYMBOL_PLAIN(tmp)) error...
+				fun_name = tmp;
+			}
+		}
+		else if (HCL_CNODE_IS_CONS(tmp))
+		{
+			/* 'fun' followed by attribute or argument list */
+			next = HCL_CNODE_CONS_CDR(next);
+			if (!next) goto no_body_or_no_name...
+
+			tmp = HCL_CNODE_CONS_CAR(next);
+			if (HCL_CNODE_IS_SYMBOL_PLAIN(tmp))
+			{
+				/* fun(#attr..) name */
+				goto got_name;
+			}
+			else if (HCL_CNODE_IS_CONS(tmp))
+			{
+				/* fun(#attr..) (arg..)  */
+			}
+		}
+		else
+		{
+			/* ERROR: */
+			/* invalid token after fun */
+		}
+	}
+	else
+	{
+/* error */
+		/* nothing after `fun` */
+	}
+#endif
+
 	if (obj && HCL_CNODE_IS_CONS(obj))
 	{
 		/* inaccurate pre-check if 'fun' is followed by an argument list
