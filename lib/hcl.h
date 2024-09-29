@@ -159,6 +159,7 @@ enum hcl_synerrnum_t
 	HCL_SYNERR_BANNEDARGNAME, /* disallowed argument name */
 	HCL_SYNERR_BANNED,        /* prohibited */
 
+	HCL_SYNERR_FUN,           /* invalid function definition */
 	HCL_SYNERR_ELIF,          /* elif without if */
 	HCL_SYNERR_ELSE,          /* else without if */
 	HCL_SYNERR_CATCH,         /* catch outside try */

@@ -2836,12 +2836,13 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_FUN) ||
 	                 HCL_CNODE_IS_TYPED(cmd, HCL_CNODE_FUN));
 
-#if 0
-	if (obj /*&& HCL_CNODE_IS_CONS(obj)*/)
+	if (obj)
 	{
 		hcl_cnode_t* tmp, * next;
 
-		HCL_ASERT (hcl, HCL_CNODE_IS_CONS(obj));
+		/* the reader ensures that the cdr field of a cons cell points to the next cell.
+		 * and only the field of the last cons cell is NULL. */
+		HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(obj));
 
 		/* fun (arg..)
 		 * fun name (arg..)
@@ -2859,7 +2860,15 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 			fun_name = tmp;
 
 			next = HCL_CNODE_CONS_CDR(next);
-			if (!next) goto no_arg_list;
+			if (!next)
+			{
+				hcl_setsynerrbfmt (
+					hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(cmd), HCL_NULL,
+					"'%.*js' name '%.*js' not followed by ( or :",
+					HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd),
+					HCL_CNODE_GET_TOKLEN(fun_name), HCL_CNODE_GET_TOKPTR(fun_name));
+				return -1;
+			}
 
 			tmp = HCL_CNODE_CONS_CAR(next);
 			if (HCL_CNODE_IS_COLON(tmp))
@@ -2869,10 +2878,26 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 
 				class_name = fun_name;
 				next = HCL_CNODE_CONS_CDR(next);
-				if (!next) goto no_function_name;
+				if (!next)
+				{
+					hcl_setsynerrbfmt (
+						hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(cmd), HCL_NULL,
+						"no '%.*js' name after class name '%.*js' and :",
+						HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd),
+						HCL_CNODE_GET_TOKLEN(class_name), HCL_CNODE_GET_TOKPTR(class_name));
+					return -1;
+				}
 
 				tmp = HCL_CNODE_CONS_CAR(next);
-				if (!HCL_CNODE_IS_SYMBOL_PLAIN(tmp)) error...
+				if (!HCL_CNODE_IS_SYMBOL_PLAIN(tmp))
+				{
+					hcl_setsynerrbfmt (
+						hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(cmd), HCL_NULL,
+						"invalid '%.*js' name '%.*js' after class name and :",
+						HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd),
+						HCL_CNODE_GET_TOKLEN(tmp), HCL_CNODE_GET_TOKPTR(tmp));
+					return -1;
+				}
 				fun_name = tmp;
 			}
 		}
@@ -2880,7 +2905,15 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 		{
 			/* 'fun' followed by attribute or argument list */
 			next = HCL_CNODE_CONS_CDR(next);
-			if (!next) goto no_body_or_no_name...
+			if (!next)
+			{
+				hcl_setsynerrbfmt (
+					hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(cmd), HCL_NULL,
+					"'%.*js' not defined with body",
+					HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd),
+					HCL_CNODE_GET_TOKLEN(tmp), HCL_CNODE_GET_TOKPTR(tmp));
+				return -1;
+			}
 
 			tmp = HCL_CNODE_CONS_CAR(next);
 			if (HCL_CNODE_IS_SYMBOL_PLAIN(tmp))
@@ -2892,19 +2925,27 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 			{
 				/* fun(#attr..) (arg..)  */
 			}
+
+			/* fall down to handle the function body */
 		}
 		else
 		{
-			/* ERROR: */
-			/* invalid token after fun */
+			hcl_setsynerrbfmt (
+				hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(cmd), HCL_NULL,
+				"'%.*js' not followed by name or (, but followed by '%.*js'",
+				HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd),
+				HCL_CNODE_GET_TOKLEN(tmp), HCL_CNODE_GET_TOKPTR(tmp));
+			return -1;
 		}
 	}
 	else
 	{
-/* error */
-		/* nothing after `fun` */
+		hcl_setsynerrbfmt (
+			hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(cmd), HCL_NULL,
+			"'%.*js' not followed by name or (",
+			HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		return -1;
 	}
-#endif
 
 	if (obj && HCL_CNODE_IS_CONS(obj))
 	{

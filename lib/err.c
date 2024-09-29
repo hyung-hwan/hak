@@ -155,6 +155,7 @@ static const char* synerrstr[] =
 	"disallowed argument name",
 	"disallowed",
 
+	"invalid function definition",
 	"elif without if",
 	"else without if",
 	"catch without try",
