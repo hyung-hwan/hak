@@ -146,6 +146,11 @@ fun :* fun1() { ##ERROR: syntax error - invalid function name ':*' for 'fun'
 
 ---
 
+fun(#ci) fun1() { ##ERROR: syntax error - unsupported attribute list for plain function 'fun1'
+}
+
+---
+
 (10 + 20 30) ##ERROR: syntax error - redundant operand '30'
 
 ---

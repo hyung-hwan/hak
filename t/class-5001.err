@@ -18,11 +18,11 @@ class B + ##ERROR: syntax error - prohibited binary selector '+'
 J := 11
 class B {
 	if (== J 10) {
-		fun :*newA() {
+		fun(#ci) newA() {
 			return self
 		}
 	} else {
-		fun :*newB() {
+		fun(#ci) newB() {
 			return self
 		}
 	}
@@ -45,7 +45,7 @@ class B [ x y ] {
 };
 
 class X :: B [ a b ] {
-	fun :* new(t) {
+	fun(#ci) new(t) {
 		| a |
 		set self.a t;
 		set a 100;
@@ -67,24 +67,25 @@ class X :: B [ a b ] {
 ---
 
 class X {
-	fun :* xxx() {
+	fun(#ci) xxx() {
 		return X;
 	}
-	fun :* qqq() {
+
+	fun(#ci) qqq() {
 		return "hello"
 	}
 
-	fun String:length()  { ##ERROR: syntax error - function name not valid
-		return (str.length self)
+	fun String:length()  { ##ERROR: syntax error - class name 'String' before :'length' prohibited in class initialization context
+		return (core.basicSize self)
 	}
 }
 
 ---
 class X {
-	fun :* xxx() {
+	fun(#ci) xxx() {
 		return X;
 	}
-	fun :* qqq() {
+	fun(#ci) qqq() {
 		return "hello"
 	}
 }
@@ -109,7 +110,7 @@ fun X:xxx() { ##ERROR: exception not handled - "not class"
 ## and the clase instantiation method can't specify the size
 ## you can't place an item in the arrya at all.
 
-fun Array:*boom() {
+fun(#ci) Array:boom() {
 	core.basicAtPut self 0 10 ##ERROR: exception not handled - "position(0) out of range - negative or greater than or equal to 0"
 	printf "%O" self
 	return self
@@ -119,7 +120,7 @@ Array:boom
 ---
 
 class X [ a  b c ] {
-	fun :* new () {
+	fun(#ci) new () {
 		self.a := 20
 		return self
 	}
@@ -186,3 +187,10 @@ F := (class F { ##ERROR: exception not handle - "prohibited redefintion of F"
 ##F := 30
 ##class F { ##ERROR: exception not handled - "prohibited redefintion of F"
 ##}
+
+
+---
+class a {
+	fun() { ##ERROR: syntax error - unnamed function defined with 'fun' prohibited in class initialziation context
+	}
+}

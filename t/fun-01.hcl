@@ -97,7 +97,7 @@ if (== y 29) {
 ## --------------------------------------
 
 defclass A [ a b c ] {
-	fun :* newInstance(x y z) {
+	fun(#ci) newInstance(x y z) {
 		set a x
 		set b y
 		set c z
@@ -113,8 +113,15 @@ k := (A:newInstance 11 22 33);
 ##set k (A:newInstance 11 22 33);
 
 set v (k:get-a);
-if (== v 11) {
-	printf "OK - %d\n" v;
-} else {
-	printf "ERROR - %d\n" v;
-};
+if (== v 11) { printf "OK - %d\n" v; } else { printf "ERROR - %d, ot 11\n" v; };
+
+## --------------------------------------
+
+k := (fun (x) { + x 20 }) ## (+ x 20) would be syntax error, must be { + x 20 }
+v := (k 10)
+if (== v 30) { printf "OK - %d\n" v } else { printf "ERROR - %d, not 30\n" v };
+
+## --------------------------------------
+fun k(x) (+ x 30)  ## (+ x 30) is valid function body
+v := (k 10)
+if (== v 40) { printf "OK - %d\n" v } else { printf "ERROR - %d, not 40\n" v };

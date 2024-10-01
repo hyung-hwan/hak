@@ -1,5 +1,5 @@
 defclass A [ a ] {
-	fun :* init1() {
+	fun(#ci) init1() {
 		| b |
 		set b (+ 1 2);
 		set a b;
@@ -15,7 +15,7 @@ defclass A [ a ] {
 		printf ">>> %d\n" j;
 	}
 
-	fun :* init2() {
+	fun(#ci) init2() {
 		| b |
 		set b (+ 10 20);
 		set a b;
@@ -26,7 +26,7 @@ defclass A [ a ] {
 
 ---
 
-fun String length() { ##ERROR: syntax error - no argument list
+fun String length() { ##ERROR: syntax error - 'String' not followed by ( but followed by 'length'
 }
 
 ---

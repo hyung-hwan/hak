@@ -400,6 +400,16 @@ enum hcl_cnode_type_t
 	HCL_CNODE_SELF,
 	HCL_CNODE_SUPER,
 
+	HCL_CNODE_CONS,
+	HCL_CNODE_ELIST, /* empty list */
+	HCL_CNODE_SHELL, /* pseudo-node to hold another actual node */
+
+	/* If HCL_CNODE_SHELL is not the last item before the horizontal line,
+	 * HCL_CNDOE_IS_FOR_DATA(x) must be revised */
+	/* ------------------------------------------------------------------ */
+
+	/* the cnode types from here don't represent actual data.
+	 * these represent syntactical elements of the language only.  */
 	HCL_CNODE_CLASS,
 	HCL_CNODE_FUN,
 	HCL_CNODE_DO,
@@ -423,10 +433,6 @@ enum hcl_cnode_type_t
 	HCL_CNODE_COLONGT, /* :> */
 	HCL_CNODE_COLONLT, /* :< */
 	HCL_CNODE_COLONSTAR, /* :* */
-
-	HCL_CNODE_CONS,
-	HCL_CNODE_ELIST, /* empty list */
-	HCL_CNODE_SHELL  /* pseudo-node to hold another actual node */
 };
 typedef enum hcl_cnode_type_t hcl_cnode_type_t;
 
@@ -444,6 +450,7 @@ typedef enum hcl_cnode_flag_t hcl_cnode_flag_t;
 #define HCL_CNODE_GET_TOKLEN(x) ((x)->cn_tok.len)
 
 #define HCL_CNODE_IS_TYPED(x, _type) ((x)->cn_type == _type)
+#define HCL_CNODE_IS_FOR_DATA(x) ((x)->cn_type <= HCL_CNODE_SHELL)
 
 #define HCL_CNODE_IS_ELLIPSIS(x) ((x)->cn_type == HCL_CNODE_ELLIPSIS)
 #define HCL_CNODE_IS_TRPCOLONS(x) ((x)->cn_type == HCL_CNODE_TRPCOLONS)

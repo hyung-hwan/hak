@@ -896,7 +896,27 @@ static HCL_INLINE int can_colon_list (hcl_t* hcl)
 		if (HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(rstl->head), HCL_SYNCODE_FUN) ||
 		    HCL_CNODE_IS_TYPED(HCL_CNODE_CONS_CAR(rstl->head), HCL_CNODE_FUN))
 		{
-			if (rstl->count == 2) return 2;
+			hcl_cnode_t* tmp, * next;
+			next = HCL_CNODE_CONS_CDR(rstl->head);
+			HCL_ASSERT (hcl, next != HCL_NULL);
+			tmp = HCL_CNODE_CONS_CAR(next); /* second item */
+			if (rstl->count == 2)
+			{
+				/* fun class:name() *... */
+				if (HCL_CNODE_IS_SYMBOL_PLAIN(tmp)) return 2;
+			}
+			else if (rstl->count == 3)
+			{
+				/* fun(#c) class:name() ... */
+				if (HCL_CNODE_IS_CONS_CONCODED(tmp, HCL_CONCODE_XLIST) ||
+				    HCL_CNODE_IS_ELIST_CONCODED(tmp, HCL_CONCODE_XLIST))
+				{
+					next = HCL_CNODE_CONS_CDR(next);
+					HCL_ASSERT (hcl, next != HCL_NULL);
+					tmp = HCL_CNODE_CONS_CAR(next); /* third item */
+					if (HCL_CNODE_IS_SYMBOL_PLAIN(tmp)) return 2;
+				}
+			}
 		}
 
 		return 0; /* the first key is not colon-delimited. so not allowed to colon-delimit other keys  */
@@ -908,11 +928,17 @@ static HCL_INLINE int can_colon_list (hcl_t* hcl)
 	cc = (hcl_concode_t)LIST_FLAG_GET_CONCODE(rstl->flagv);
 	if (cc == HCL_CONCODE_XLIST)
 	{
+		hcl_cnode_t* tmp;
+
 		/* method defintion with fun  - e.g. fun String:length()
 		 * ugly that this reader must know about the meaning of fun */
 		if (rstl->count > 1) return 0;
+
 		/* ugly dual use of a colon sign. switch to MLIST if the first element
 		 * is delimited by a colon. e.g. (obj:new 10 20 30)  */
+		tmp = HCL_CNODE_CONS_CAR(rstl->head);
+		if (!HCL_CNODE_IS_FOR_DATA(tmp)) return 0;
+
 		LIST_FLAG_SET_CONCODE(rstl->flagv, HCL_CONCODE_MLIST);
 		rstl->flagv &= ~JSON;
 	}

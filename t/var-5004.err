@@ -1,2 +1,66 @@
 fun self.x() { ##ERROR: syntax error - invalid function name 'self.x' for 'fun'
 };
+
+---
+
+fun if() { ##ERROR: syntax error - invalid function name 'if' for 'fun'
+};
+
+---
+
+fun a if() { ##ERROR: syntax error - 'a' not followed by ( but followed by 'if'
+};
+
+---
+
+fun a:b if() { ##ERROR: syntax error - 'b' not followed by ( but followed by 'if'
+};
+
+---
+
+fun x (x :: 20) { ##ERROR: syntax error - invalid return variable '20' for 'fun'
+}
+
+---
+fun x (x :: if) { ##ERROR: syntax error - invalid return variable 'if' for 'fun'
+}
+
+---
+
+fun x (x :: self.y) { ##ERROR: syntax error - invalid return variable 'self.y' for 'fun'
+}
+
+---
+
+fun x (x :: z z) { ##ERROR: syntax error - duplicate return variable 'z' for 'fun'
+}
+
+---
+
+fun x (x 20) { ##ERROR: syntax error - invalid argument name '20' for 'fun'
+}
+
+---
+
+fun x (+) { ##ERROR: syntax error - invalid argument name '+' for 'fun'
+}
+
+---
+
+fun x (a while) { ##ERROR: syntax error - invalid argument name 'while' for 'fun'
+}
+
+---
+
+fun x (a b a) { ##ERROR: syntax error - duplicate argument name 'a' for 'fun'
+}
+
+---
+
+fun x (... a) { ##ERROR: syntax error - unexpected token 'a' after '...' for 'fun'
+}
+
+---
+
+fun x (... : a) { ##ERROR: syntax error - : disallowed
+}

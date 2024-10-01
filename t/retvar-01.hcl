@@ -36,12 +36,12 @@
 		set X1 999;
 		set X2 888;
 
-		fun :: get ( :: x y)  {
+		fun(#class) get ( :: x y)  {
 			set x X1;
 			set y X2;
 		};
 
-		fun :: get2 (inc :: x y)  {
+		fun(#class) get2 (inc :: x y)  {
 			set x (+ X1 inc);
 			set y (+ X2 inc);
 		};
@@ -60,9 +60,9 @@
 	else { printf "OK: d=%d\n" d }
 
 	class X [ x, y ] {
-		fun ::f(a :: b c) { b := (+ a 10); c := (+ a 20) }
+		fun(#class) f(a :: b c) { b := (+ a 10); c := (+ a 20) }
 
-		fun :*new(z) {
+		fun(#classinst) new(z) {
 			## multi-variable assignment with return variables to member variables
 			[self.x, self.y] := (X:f z)
 			return self;
@@ -83,7 +83,7 @@
 
 
 ## create a new binary operator message returning two output values
-fun Number: // (x :: quo rem) {
+fun Number:// (x :: quo rem) {
         quo := (/ self x)
         rem := (- self (* quo x))
 }

@@ -58,7 +58,7 @@ x
 
 class T [ j ] {
 
-	fun :* new() {
+	fun(#classinst) new() {
 		set j 99
 		return self
 	}

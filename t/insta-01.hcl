@@ -14,7 +14,7 @@ fun Number: ~= (oprnd) { return (~= self oprnd) }
 
 class A [ a b c ]  {
 
-	fun :*newInstance(x y z) {
+	fun(#ci) newInstance(x y z) {
 		set a x;
 		set b y;
 		set c z;
@@ -28,7 +28,7 @@ class A [ a b c ]  {
 
 class B :: A [ d e f ] {
 
-	fun :*newInstance(x y z) {
+	fun(#ci) newInstance(x y z) {
 		super:newInstance (* x 2) (* y 2) (* z 2);
 		set d x;
 		set e y;
@@ -36,9 +36,9 @@ class B :: A [ d e f ] {
 		return self;
 	};
 
-	fun :: getSuper() { return super; };
-	###fun :: getSuperclass() { return (self:superclass); };
-	fun :: getSelf() { return self; };
+	fun(#c) getSuper() { return super; };
+	###fun(#c) getSuperclass() { return (self:superclass); };
+	fun(#c) getSelf() { return self; };
 
 	fun sum() {
 		return (+ (super:get-a) (super:get-b) (super:get-c) self.d self.e self.f);

@@ -473,7 +473,8 @@ static int check_block_expression_as_body (hcl_t* hcl, hcl_cnode_t* c, const hcl
 	{
 	no_block:
 		hcl_setsynerrbfmt (
-			hcl, HCL_SYNERR_BLOCK, (car? HCL_CNODE_GET_LOC(car): c? HCL_CNODE_GET_LOC(c): HCL_CNODE_GET_LOC(ctx)), HCL_NULL,
+			hcl, HCL_SYNERR_BLOCK,
+			(car? HCL_CNODE_GET_LOC(car): c? HCL_CNODE_GET_LOC(c): HCL_CNODE_GET_LOC(ctx)), HCL_NULL,
 			"block expression expected as '%.*js' body", HCL_CNODE_GET_TOKLEN(ctx), HCL_CNODE_GET_TOKPTR(ctx)
 		);
 		return -1;
@@ -534,7 +535,8 @@ static int check_block_expression_as_body (hcl_t* hcl, hcl_cnode_t* c, const hcl
 
 		hcl_setsynerrbfmt (
 			hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(cdr), HCL_NULL,
-			"redundant expression prohibited after '%.*js' body", HCL_CNODE_GET_TOKLEN(ctx), HCL_CNODE_GET_TOKPTR(ctx)
+			"redundant expression prohibited after '%.*js' body",
+			HCL_CNODE_GET_TOKLEN(ctx), HCL_CNODE_GET_TOKPTR(ctx)
 		);
 		return -1;
 	}
@@ -2639,7 +2641,8 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src, int defclass)
 	}
 	else
 	{
-		if (emit_byte_instruction(hcl, HCL_CODE_PUSH_NIL,HCL_CNODE_GET_LOC(cmd)) <= -1) return -1; /* push nil for class name of an anonymous class */
+		/* push nil for class name of an anonymous class */
+		if (emit_byte_instruction(hcl, HCL_CODE_PUSH_NIL, HCL_CNODE_GET_LOC(cmd)) <= -1) return -1;
 	}
 	POP_CFRAME (hcl);
 
@@ -2814,35 +2817,109 @@ static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 
 /* ========================================================================= */
 
+static int check_fun_attr_list (hcl_t* hcl, hcl_cnode_t* attr_list, unsigned int* fun_type)
+{
+	unsigned int ft;
+
+	ft = 0;
+
+	HCL_ASSERT (hcl, attr_list != HCL_NULL);
+	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS_CONCODED(attr_list, HCL_CONCODE_XLIST) ||
+	                 HCL_CNODE_IS_ELIST_CONCODED(attr_list, HCL_CONCODE_XLIST));
+
+	if (HCL_CNODE_IS_CONS(attr_list))
+	{
+		hcl_cnode_t* c, * a;
+		const hcl_ooch_t* tokptr;
+		hcl_oow_t toklen;
+
+		c = attr_list;
+		while (c)
+		{
+			a = HCL_CNODE_CONS_CAR(c);
+
+			tokptr = HCL_CNODE_GET_TOKPTR(a);
+			toklen = HCL_CNODE_GET_TOKLEN(a);
+
+			if (!HCL_CNODE_IS_TYPED(a, HCL_CNODE_SYMLIT))
+			{
+				hcl_setsynerrbfmt (
+					hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(a), HCL_NULL,
+					"invalid function attribute name '%.*js'", toklen, tokptr);
+				return -1;
+			}
+
+			if (hcl_comp_oochars_bcstr(tokptr, toklen, "class") == 0 ||
+			    hcl_comp_oochars_bcstr(tokptr, toklen, "c") == 0)
+			{
+				if (ft != 0)
+				{
+				conflicting:
+					hcl_setsynerrbfmt (
+						hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(a), HCL_NULL,
+						"conflicting function attribute name '%.*js'", toklen, tokptr);
+					return -1;
+				}
+				ft = FUN_CM;
+			}
+			else if (hcl_comp_oochars_bcstr(tokptr, toklen, "classinst") == 0 ||
+			         hcl_comp_oochars_bcstr(tokptr, toklen, "ci") == 0)
+			{
+				if (ft != 0) goto conflicting;
+				ft = FUN_CIM;
+			}
+			else
+			{
+				hcl_setsynerrbfmt (
+					hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(a), HCL_NULL,
+					"unrecognized function attribute name '%.*js'", toklen, tokptr);
+				return -1;
+			}
+
+			c = HCL_CNODE_CONS_CDR(c);
+		}
+	}
+
+	*fun_type = ft;
+	return 0;
+}
+
 static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 {
-	hcl_cnode_t* cmd, * obj, * args;
+	hcl_cnode_t* cmd, * next;
 	hcl_oow_t va, nargs, nrvars, nlvars;
 	hcl_ooi_t jump_inst_pos, lfbase_pos, lfsize_pos;
 	hcl_oow_t saved_tv_wcount, tv_dup_start;
 	hcl_cnode_t* fun_name;
 	hcl_cnode_t* class_name;
+	hcl_cnode_t* arg_list;
+	hcl_cnode_t* fun_body;
 	hcl_cframe_t* cf;
-	unsigned int fun_type = FUN_PLAIN;
-	int named = 0;
+	unsigned int fun_type;
 
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
 
 	saved_tv_wcount = hcl->c->tv.wcount;
 	cmd = HCL_CNODE_CONS_CAR(src);
-	obj = HCL_CNODE_CONS_CDR(src);
+	next = HCL_CNODE_CONS_CDR(src);
+	fun_name = HCL_NULL;
 	class_name = HCL_NULL;
+	arg_list = HCL_NULL;
+	fun_body = HCL_NULL;
+	fun_type = FUN_PLAIN;
 
 	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_FUN) ||
 	                 HCL_CNODE_IS_TYPED(cmd, HCL_CNODE_FUN));
 
-	if (obj)
+	if (next)
 	{
-		hcl_cnode_t* tmp, * next;
+		hcl_cnode_t* tmp;
+		hcl_cnode_t* attr_list;
 
 		/* the reader ensures that the cdr field of a cons cell points to the next cell.
 		 * and only the field of the last cons cell is NULL. */
-		HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(obj));
+		HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(next));
+		attr_list = HCL_NULL;
 
 		/* fun (arg..)
 		 * fun name (arg..)
@@ -2850,12 +2927,12 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 		 * fun(#attr..) (arg..)
 		 * fun(#attr..) class:name(arg..)
 		 */
-		next = obj;
+
 		tmp = HCL_CNODE_CONS_CAR(next);
 		if (HCL_CNODE_IS_SYMBOL_PLAIN(tmp))
 		{
 			/* 'fun' followed by name */
-		got_name:
+		fun_got_name:
 			/* name must be followed by argument list */
 			fun_name = tmp;
 
@@ -2863,10 +2940,10 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 			if (!next)
 			{
 				hcl_setsynerrbfmt (
-					hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(cmd), HCL_NULL,
-					"'%.*js' name '%.*js' not followed by ( or :",
-					HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd),
-					HCL_CNODE_GET_TOKLEN(fun_name), HCL_CNODE_GET_TOKPTR(fun_name));
+					hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(fun_name), HCL_NULL,
+					"function name '%.*js' not followed by ( or : for '%.*js'",
+					HCL_CNODE_GET_TOKLEN(fun_name), HCL_CNODE_GET_TOKPTR(fun_name),
+					HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 				return -1;
 			}
 
@@ -2881,10 +2958,10 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 				if (!next)
 				{
 					hcl_setsynerrbfmt (
-						hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(cmd), HCL_NULL,
-						"no '%.*js' name after class name '%.*js' and :",
-						HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd),
-						HCL_CNODE_GET_TOKLEN(class_name), HCL_CNODE_GET_TOKPTR(class_name));
+						hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(class_name), HCL_NULL,
+						"no function name after class name '%.*js:' for '%.*js'",
+						HCL_CNODE_GET_TOKLEN(class_name), HCL_CNODE_GET_TOKPTR(class_name),
+						HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 					return -1;
 				}
 
@@ -2892,54 +2969,187 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 				if (!HCL_CNODE_IS_SYMBOL_PLAIN(tmp))
 				{
 					hcl_setsynerrbfmt (
-						hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(cmd), HCL_NULL,
-						"invalid '%.*js' name '%.*js' after class name and :",
-						HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd),
-						HCL_CNODE_GET_TOKLEN(tmp), HCL_CNODE_GET_TOKPTR(tmp));
+						hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(tmp), HCL_NULL,
+						"invalid function name '%.*js' after '%.*js:' for '%.*js'",
+						HCL_CNODE_GET_TOKLEN(tmp), HCL_CNODE_GET_TOKPTR(tmp),
+						HCL_CNODE_GET_TOKLEN(class_name), HCL_CNODE_GET_TOKPTR(class_name),
+						HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 					return -1;
 				}
 				fun_name = tmp;
+				fun_type = FUN_IM;
+				if (attr_list && check_fun_attr_list(hcl, attr_list, &fun_type) <= -1) return -1;
+				fun_type |= 0x100; /* indicate that the function was defined in 'fun class:name()' style */
+
+				next = HCL_CNODE_CONS_CDR(next);
+				if (!next)
+				{
+					hcl_setsynerrbfmt (
+						hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(fun_name), HCL_NULL,
+						"function name '%.*js:%.*js' not followed by ( for '%.*js'",
+						HCL_CNODE_GET_TOKLEN(class_name), HCL_CNODE_GET_TOKPTR(class_name),
+						HCL_CNODE_GET_TOKLEN(fun_name), HCL_CNODE_GET_TOKPTR(fun_name),
+						HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+					return -1;
+				}
+
+				tmp = HCL_CNODE_CONS_CAR(next); /* pointing to argument list */
+
+				if (is_in_class_init_scope(hcl))
+				{
+					hcl_setsynerrbfmt (
+						hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(fun_name), HCL_NULL,
+						"class name '%.*js' before :'%.*js' prohibited in class initialization context",
+						HCL_CNODE_GET_TOKLEN(class_name), HCL_CNODE_GET_TOKPTR(class_name),
+						HCL_CNODE_GET_TOKLEN(fun_name), HCL_CNODE_GET_TOKPTR(fun_name));
+					return -1;
+				}
+			}
+			else
+			{
+				/* no 'class:' part after 'fun' */
+				if (is_in_class_init_scope(hcl))
+				{
+					/* TODO:THIS IS ALSO WRONG.
+					 *  class X {
+					 *    a := (fun x(){}) ## this context is also class_init_scope. so the check above isn't good enough
+					 *  } */
+					fun_type = FUN_IM;
+					if (attr_list && check_fun_attr_list(hcl, attr_list, &fun_type) <= -1) return -1;
+				}
+				else
+				{
+					/* as of now, the plain function doesn't support attribute list.
+					 * this can change in the future. */
+					if (attr_list)
+					{
+						hcl_setsynerrbfmt (
+							hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(attr_list), HCL_NULL,
+							"unsupported attribute list for plain function '%.*js'",
+							HCL_CNODE_GET_TOKLEN(fun_name), HCL_CNODE_GET_TOKPTR(fun_name));
+						return -1;
+					}
+				}
 			}
 		}
-		else if (HCL_CNODE_IS_CONS(tmp))
+
+		if (HCL_CNODE_IS_CONS_CONCODED(tmp, HCL_CONCODE_XLIST) ||
+		    HCL_CNODE_IS_ELIST_CONCODED(tmp, HCL_CONCODE_XLIST))
 		{
 			/* 'fun' followed by attribute or argument list */
-			next = HCL_CNODE_CONS_CDR(next);
-			if (!next)
+			arg_list = tmp;
+			if (fun_name)
 			{
+				/* argument list for sure
+				 *   fun class:name()
+				 *   fun name      ()
+				 *                 ^  */
+				next = HCL_CNODE_CONS_CDR(next); /* point past argument list */
+				if (!next)
+				{
+					hcl_setsynerrbfmt (
+						hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(cmd), HCL_NULL,
+						"no function body after argument list of function '%.*js' for '%.*js'",
+						HCL_CNODE_GET_TOKLEN(fun_name), HCL_CNODE_GET_TOKPTR(fun_name),
+						HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+					return -1;
+				}
+				fun_body = next;
+			}
+			else
+			{
+				/* not clear if it is attribute list or argument list */
+				next = HCL_CNODE_CONS_CDR(next); /* point past attribute/argument list */
+				if (!next)
+				{
+					/* TODO: guess if the current list looks like attribute list or
+					 *       not by inspecting elements and produce better error mesage.
+					 *       another hack is to disallow ELIST as attribute list? */
+					hcl_setsynerrbfmt (
+						hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(cmd), HCL_NULL,
+						"unamed function not followed by function body for '%.*js'",
+						HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+					return -1;
+				}
+
+				tmp = HCL_CNODE_CONS_CAR(next);
+				if (HCL_CNODE_IS_SYMBOL_PLAIN(tmp))
+				{
+					/* it is attribute list for sure. fun(#attr..) name */
+					attr_list = arg_list;
+					arg_list = HCL_NULL;
+					goto fun_got_name;
+				}
+				else if (HCL_CNODE_IS_CONS_CONCODED(tmp, HCL_CONCODE_XLIST) ||
+				         HCL_CNODE_IS_ELIST_CONCODED(tmp, HCL_CONCODE_XLIST))
+				{
+					/* fun(#attr..) (arg..) .. */
+					attr_list = arg_list;
+					arg_list = tmp;
+
+					next = HCL_CNODE_CONS_CDR(next); /* point past argument list */
+					if (!next)
+					{
+						hcl_setsynerrbfmt (
+							hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(cmd), HCL_NULL,
+							"no function body after attribute list and argument list of unamed function for '%.*js'",
+							HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+						return -1;
+					}
+					fun_body = next;
+				}
+				else
+				{
+					/* fun(arg..) .. */
+					fun_body = next;
+				}
+			}
+
+			if (!fun_name && is_in_class_init_scope(hcl))
+			{
+				/* TODO: it must allow as rvalue..
+				 * class X {
+				 *     b := (fun() {}) ## this is allowed  <- TODO: not supported yet
+				 *     fun() {} ## this is prohibited
+				 * }
+				 */
 				hcl_setsynerrbfmt (
 					hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(cmd), HCL_NULL,
-					"'%.*js' not defined with body",
-					HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd),
-					HCL_CNODE_GET_TOKLEN(tmp), HCL_CNODE_GET_TOKPTR(tmp));
+					"unnamed function defined with '%.*js' prohibited in class initialziation context",
+					HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 				return -1;
 			}
-
-			tmp = HCL_CNODE_CONS_CAR(next);
-			if (HCL_CNODE_IS_SYMBOL_PLAIN(tmp))
-			{
-				/* fun(#attr..) name */
-				goto got_name;
-			}
-			else if (HCL_CNODE_IS_CONS(tmp))
-			{
-				/* fun(#attr..) (arg..)  */
-			}
-
-			/* fall down to handle the function body */
 		}
 		else
 		{
-			hcl_setsynerrbfmt (
-				hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(cmd), HCL_NULL,
-				"'%.*js' not followed by name or (, but followed by '%.*js'",
-				HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd),
-				HCL_CNODE_GET_TOKLEN(tmp), HCL_CNODE_GET_TOKPTR(tmp));
+			/* not valid argument list or attribute list
+			 * fun if         ## cmd is 'fun', fun_name is nil
+			 * fun a if       ## cmd is 'fun', fun_name is 'a'
+			 * fun a:b if     ## cmd is 'fun', fun_name is 'b'
+			 * fun self.a     ## cmd is 'fun', fun_name is nil
+			 */
+			if (fun_name)
+			{
+				hcl_setsynerrbfmt (
+					hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(tmp), HCL_NULL,
+					"'%.*js' not followed by ( but followed by '%.*js'",
+					HCL_CNODE_GET_TOKLEN(fun_name), HCL_CNODE_GET_TOKPTR(fun_name),
+					HCL_CNODE_GET_TOKLEN(tmp), HCL_CNODE_GET_TOKPTR(tmp));
+			}
+			else
+			{
+				hcl_setsynerrbfmt (
+					hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(tmp), HCL_NULL,
+					"invalid function name '%.*js' for '%.*js'",
+					HCL_CNODE_GET_TOKLEN(tmp), HCL_CNODE_GET_TOKPTR(tmp),
+					HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+			}
 			return -1;
 		}
 	}
 	else
 	{
+		/* nothing after 'fun' (e.g. fun ) */
 		hcl_setsynerrbfmt (
 			hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(cmd), HCL_NULL,
 			"'%.*js' not followed by name or (",
@@ -2947,180 +3157,17 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 		return -1;
 	}
 
-	if (obj && HCL_CNODE_IS_CONS(obj))
-	{
-		/* inaccurate pre-check if 'fun' is followed by an argument list
-		 * without a function name. */
-		args = HCL_CNODE_CONS_CAR(obj);
-		if (!HCL_CNODE_IS_ELIST_CONCODED(args, HCL_CONCODE_XLIST) &&
-		    !HCL_CNODE_IS_CONS_CONCODED(args, HCL_CONCODE_XLIST))
-		{
-			/* not followed by an argument list */
-			named = 1;
-			goto named_function;
-		}
-	}
-
-	if (named)
-	{
-	named_function:
-		if (!obj)
-		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMELIST, HCL_CNODE_GET_LOC(src), HCL_NULL, "no name in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
-			return -1;
-		}
-		else if (!HCL_CNODE_IS_CONS(obj))
-		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(obj), HCL_CNODE_GET_TOK(obj), "redundant cdr in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
-			return -1;
-		}
-
-		fun_name = HCL_CNODE_CONS_CAR(obj);
-		if (is_in_class_init_scope(hcl))
-		{
-			if ((HCL_CNODE_IS_DBLCOLONS(fun_name) || HCL_CNODE_IS_COLONSTAR(fun_name)))
-			{
-				/* class method - (fun ::xxxx () ...) inside class definition */
-				/* class instantiation method - (fun :*xxxx() ...) inside class definition */
-				obj = HCL_CNODE_CONS_CDR(obj);
-				if (!obj)
-				{
-					hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMELIST, HCL_CNODE_GET_LOC(src), HCL_NULL, "no name in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
-					return -1;
-				}
-
-				fun_type = HCL_CNODE_IS_DBLCOLONS(fun_name)? FUN_CM: FUN_CIM;
-				fun_name = HCL_CNODE_CONS_CAR(obj); /* advance to the actual name */
-			}
-			else
-			{
-				if (HCL_CNODE_IS_SYMBOL_PLAIN(fun_name))
-				{
-					/* probably this form - fun XXX:yyy () ...
-					 * the class name must not be specified in the class initialization scope */
-					hcl_cnode_t* tmp;
-					tmp = HCL_CNODE_CONS_CDR(obj);
-					if (tmp && HCL_CNODE_IS_CONS(tmp))
-					{
-						tmp = HCL_CNODE_CONS_CAR(tmp);
-						if (HCL_CNODE_IS_COLON(tmp) || HCL_CNODE_IS_DBLCOLONS(tmp) || HCL_CNODE_IS_COLONSTAR(tmp)/*(HCL_CNODE_IS_SYMBOL_PLAIN(tmp)*/)
-						{
-							hcl_setsynerrbfmt (
-								hcl, HCL_SYNERR_VARNAME,
-								HCL_CNODE_GET_LOC(fun_name), HCL_CNODE_GET_TOK(fun_name),
-								"function name not valid followed by %.*js",
-								HCL_CNODE_GET_TOKLEN(tmp), HCL_CNODE_GET_TOKPTR(tmp));
-							return -1;
-						}
-					}
-				}
-
-				fun_type = FUN_IM;
-			}
-		}
-		else if (HCL_CNODE_IS_SYMBOL_PLAIN(fun_name))
-		{
-			hcl_cnode_t* tmp, marker;
-			tmp = HCL_CNODE_CONS_CDR(obj);
-			if (tmp && HCL_CNODE_IS_CONS(tmp))
-			{
-				hcl_cnode_t* marker;
-				marker = HCL_CNODE_CONS_CAR(tmp);
-				if (HCL_CNODE_IS_COLON(marker) || HCL_CNODE_IS_DBLCOLONS(marker) || HCL_CNODE_IS_COLONSTAR(marker))
-				{
-					/* fun A:aaa A::aaa A:*aaa */
-
-					tmp = HCL_CNODE_CONS_CDR(tmp);
-					if (tmp && HCL_CNODE_IS_CONS(tmp))
-					{
-						hcl_cnode_t* cand;
-						cand = HCL_CNODE_CONS_CAR(tmp);
-						if (HCL_CNODE_IS_SYMBOL_PLAIN(cand))
-						{
-							/* out-of-class method definition
-							 * for fun String:length() { ...  },
-							 * class_name is String, fun_name is length. */
-							fun_type = HCL_CNODE_IS_DBLCOLONS(marker)? FUN_CM:
-							           HCL_CNODE_IS_COLONSTAR(marker)? FUN_CIM: FUN_IM;
-
-							/* indicates that this method is defined using the AAA:bbb syntax.
-							 * the form of method defintion can still be inside a class if this
-							 * form is place inside another normal method.
-							 *  class X {
-							 *    fun x()  {
-							 *      fun J:q() { .... } ## this defintion
-							 *    }
-							 *  }
-							 * */
-							fun_type |= 0x100;
-
-							class_name = fun_name;
-							fun_name = HCL_CNODE_CONS_CAR(tmp);
-							obj = tmp;
-						}
-					}
-				}
-			}
-		}
-
-		if (!HCL_CNODE_IS_SYMBOL(fun_name))
-		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME,
-				HCL_CNODE_GET_LOC(fun_name), HCL_NULL,
-				"invalid function name '%.*js' for '%.*js'",
-				HCL_CNODE_GET_TOKLEN(fun_name), HCL_CNODE_GET_TOKPTR(fun_name),
-				HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
-			return -1;
-		}
-
-		if (HCL_CNODE_SYMBOL_SYNCODE(fun_name)) /*|| HCL_OBJ_GET_FLAGS_KERNEL(fun_name) >= 1) */
-		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME,
-				HCL_CNODE_GET_LOC(fun_name), HCL_NULL,
-				"special symbol '%.*js' not to be used as function name",
-				HCL_CNODE_GET_TOKLEN(fun_name), HCL_CNODE_GET_TOKPTR(fun_name));
-			return -1;
-		}
-
-		obj = HCL_CNODE_CONS_CDR(obj);
-	}
-	else
-	{
-		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_SYNCODED(cmd, HCL_SYNCODE_FUN) ||
-		                 HCL_CNODE_IS_TYPED(cmd, HCL_CNODE_FUN));
-		fun_name = HCL_NULL;
-	}
-
-	if (!obj)
-	{
-	no_arg_list:
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMELIST, HCL_CNODE_GET_LOC(src), HCL_NULL,
-			"argument list missing in %.*js",
-			HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
-		return -1;
-	}
-	else if (!HCL_CNODE_IS_CONS(obj))
-	{
-	redundant_cdr:
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(obj), HCL_CNODE_GET_TOK(obj), "redundant cdr in argument list in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
-		return -1;
-	}
-
 	/* process the argument list */
 	va = 0;
 	nargs = 0;
 	nrvars = 0;
-	args = HCL_CNODE_CONS_CAR(obj);
-	HCL_ASSERT (hcl, args != HCL_NULL);
 
-	if (HCL_CNODE_IS_ELIST_CONCODED(args, HCL_CONCODE_XLIST))
+	HCL_ASSERT (hcl, HCL_CNODE_IS_ELIST_CONCODED(arg_list, HCL_CONCODE_XLIST) ||
+	                 HCL_CNODE_IS_CONS_CONCODED(arg_list, HCL_CONCODE_XLIST));
+	if (HCL_CNODE_IS_ELIST_CONCODED(arg_list, HCL_CONCODE_XLIST))
 	{
-		/* empty list - no argument - (fun () (+ 10 20)) */
-	}
-	else if (!HCL_CNODE_IS_CONS_CONCODED(args, HCL_CONCODE_XLIST))
-	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMELIST, HCL_CNODE_GET_LOC(args), HCL_CNODE_GET_TOK(args), "no argument list in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
-		return -1;
+		/* empty list - no argument - fun () {+ 10 20} */
+		/* do nothing */
 	}
 	else
 	{
@@ -3128,22 +3175,33 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 		int in_ret_args = 0;
 
 		tv_dup_start = hcl->c->tv.s.len;
-		dcl = args;
+		dcl = arg_list;
 		do
 		{
 			arg = HCL_CNODE_CONS_CAR(dcl);
 
 			if (in_ret_args)
 			{
-				if (!HCL_CNODE_IS_SYMBOL(arg))
+				if (!HCL_CNODE_IS_SYMBOL_PLAIN_IDENT(arg))
 				{
-					hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(arg), HCL_CNODE_GET_TOK(arg), "return variable not symbol in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+					/* in 'fun x (x :: 20) { }', '20' is not a valid return variable name.
+					 * in 'fun x (x :: if) { }', 'if' is not a valid return variable name. */
+					hcl_setsynerrbfmt (
+						hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(arg), HCL_NULL,
+						"invalid return variable '%.*js' for '%.*js'",
+						HCL_CNODE_GET_TOKLEN(arg), HCL_CNODE_GET_TOKPTR(arg),
+						HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 					return -1;
 				}
 
+				/* TODO: delete this error check once SYNCODE stuffs are all deleted */
 				if (HCL_CNODE_IS_SYMBOL(arg) && HCL_CNODE_SYMBOL_SYNCODE(arg) /* || HCL_OBJ_GET_FLAGS_KERNEL(arg) >= 2 */)
 				{
-					hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(arg), HCL_CNODE_GET_TOK(arg), "special symbol not to be declared as return variable in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+					hcl_setsynerrbfmt (
+						hcl, HCL_SYNERR_BANNEDVARNAME, HCL_CNODE_GET_LOC(arg), HCL_NULL,
+						"special symbol '%.*js' used as return variable for '%.*js'",
+						HCL_CNODE_GET_TOKLEN(arg), HCL_CNODE_GET_TOKPTR(arg),
+						HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 					return -1;
 				}
 
@@ -3151,7 +3209,12 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 				{
 					if (hcl->errnum == HCL_EEXIST)
 					{
-						hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAMEDUP, HCL_CNODE_GET_LOC(arg), HCL_CNODE_GET_TOK(arg), "return variable duplicate in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+						/* in 'fun x (y :: z z) {}', the second 'z' is duplicate */
+						hcl_setsynerrbfmt (
+							hcl, HCL_SYNERR_VARNAMEDUP, HCL_CNODE_GET_LOC(arg), HCL_NULL,
+							"duplicate return variable '%.*js' for '%.*js'",
+							HCL_CNODE_GET_TOKLEN(arg), HCL_CNODE_GET_TOKPTR(arg),
+							HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 					}
 					return -1;
 				}
@@ -3165,7 +3228,13 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 				}
 				else
 				{
-					hcl_setsynerrbfmt (hcl, HCL_SYNERR_CNODE, HCL_CNODE_GET_LOC(arg), HCL_CNODE_GET_TOK(arg), "unexpected element in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+					/* in 'fun x (... a) {}', 'a' is an unexpected token.
+					 * only ')' or '::' can follow ... */
+					hcl_setsynerrbfmt (
+						hcl, HCL_SYNERR_CNODE, HCL_CNODE_GET_LOC(arg), HCL_NULL,
+						"unexpected token '%.*js' after '...' for '%.*js'",
+						HCL_CNODE_GET_TOKLEN(arg), HCL_CNODE_GET_TOKPTR(arg),
+						HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 					return -1;
 				}
 			}
@@ -3179,16 +3248,25 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 				{
 					va = 1;
 				}
-				else if (!HCL_CNODE_IS_SYMBOL(arg))
+				else if (!HCL_CNODE_IS_SYMBOL_PLAIN_IDENT(arg))
 				{
-					hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAME, HCL_CNODE_GET_LOC(arg), HCL_CNODE_GET_TOK(arg), "argument not symbol in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+					hcl_setsynerrbfmt (
+						hcl, HCL_SYNERR_ARGNAME, HCL_CNODE_GET_LOC(arg), HCL_NULL,
+						"invalid argument name '%.*js' for '%.*js'",
+						HCL_CNODE_GET_TOKLEN(arg), HCL_CNODE_GET_TOKPTR(arg),
+						HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 					return -1;
 				}
 				else
 				{
+					/* TODO: delete this error check once SYNCODE stuffs are all deleted */
 					if (HCL_CNODE_IS_SYMBOL(arg) && HCL_CNODE_SYMBOL_SYNCODE(arg) /* || HCL_OBJ_GET_FLAGS_KERNEL(arg) >= 2 */)
 					{
-						hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNEDARGNAME, HCL_CNODE_GET_LOC(arg), HCL_CNODE_GET_TOK(arg), "special symbol not to be declared as argument in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+						hcl_setsynerrbfmt (
+							hcl, HCL_SYNERR_BANNEDARGNAME, HCL_CNODE_GET_LOC(arg), HCL_NULL,
+							"special symbol '%.*js' used as argument name for '%.*js'",
+							HCL_CNODE_GET_TOKLEN(arg), HCL_CNODE_GET_TOKPTR(arg),
+							HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 						return -1;
 					}
 
@@ -3196,7 +3274,11 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 					{
 						if (hcl->errnum == HCL_EEXIST)
 						{
-							hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGNAMEDUP, HCL_CNODE_GET_LOC(arg), HCL_CNODE_GET_TOK(arg), "argument duplicate in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+							hcl_setsynerrbfmt (
+								hcl, HCL_SYNERR_ARGNAMEDUP, HCL_CNODE_GET_LOC(arg), HCL_NULL,
+								"duplicate argument name '%.*js' for '%.*js'",
+								HCL_CNODE_GET_TOKLEN(arg), HCL_CNODE_GET_TOKPTR(arg),
+								HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 						}
 						return -1;
 					}
@@ -3209,7 +3291,8 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 
 			if (!HCL_CNODE_IS_CONS(dcl))
 			{
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(dcl), HCL_CNODE_GET_TOK(dcl), "redundant cdr in argument list in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+				hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(dcl), HCL_CNODE_GET_TOK(dcl),
+					"redundant cdr in argument list in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 				return -1;
 			}
 		}
@@ -3222,17 +3305,22 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 		 * block arguments, evaluation which is done by message passing
 		 * limits the number of arguments that can be passed. so the
 		 * check is implemented */
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGFLOOD, HCL_CNODE_GET_LOC(args), HCL_NULL, "too many(%zu) arguments in %.*js", nargs, HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		hcl_setsynerrbfmt (
+			hcl, HCL_SYNERR_ARGFLOOD, HCL_CNODE_GET_LOC(arg_list), HCL_NULL,
+			"too many(%zu) arguments in %.*js", nargs,
+			HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 		return -1;
 	}
 
 	if (nrvars > MAX_CODE_NBLKLVARS)
 	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARFLOOD, HCL_CNODE_GET_LOC(args), HCL_NULL, "too many(%zu) return variables in %.*js", nrvars, HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		hcl_setsynerrbfmt (
+			hcl, HCL_SYNERR_VARFLOOD, HCL_CNODE_GET_LOC(arg_list), HCL_NULL,
+			"too many(%zu) return variables in %.*js", nrvars,
+			HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 		return -1;
 	}
 	HCL_ASSERT (hcl, nargs + nrvars == hcl->c->tv.wcount - saved_tv_wcount);
-
 
 	/*
 	 * fun aa(a b) { ...	};
@@ -3242,10 +3330,9 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 	 * the variable declaration can't be placed before the block expression.
 	 * it is supported inside the block expression itself.
 	 */
-	hcl_cnode_t* blk;
-	blk = HCL_CNODE_CONS_CDR(obj);
-	if (check_block_expression_as_body(hcl, blk, cmd, FOR_NONE) <= -1) return -1;
-	obj = blk;
+	if (check_block_expression_as_body(hcl, fun_body, cmd, FOR_NONE) <= -1) return -1;
+
+	HCL_ASSERT (hcl, fun_body != HCL_NULL);
 	nlvars = 0; /* no known local variables until the actual block is processed */
 
 	HCL_ASSERT (hcl, nargs + nrvars + nlvars == hcl->c->tv.wcount - saved_tv_wcount);
@@ -3273,7 +3360,7 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 	 * produce the long jump instruction (HCL_CODE_JUMP_FORWARD_X) */
 	if (emit_single_param_instruction(hcl, HCL_CODE_JUMP_FORWARD_0, MAX_CODE_JUMP, HCL_CNODE_GET_LOC(cmd)) <= -1) return -1;
 
-	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_LIST, obj); /* 1 */
+	SWITCH_TOP_CFRAME (hcl, COP_COMPILE_OBJECT_LIST, fun_body); /* 1 */
 	PUSH_SUBCFRAME (hcl, COP_POST_FUN, fun_name); /* 3*/
 	cf = GET_SUBCFRAME(hcl);
 	cf->u.fun.fun_type = fun_type;
@@ -4640,7 +4727,7 @@ static HCL_INLINE int compile_dsymbol (hcl_t* hcl, hcl_cnode_t* obj)
 				/* if defined using A::xxx syntax, it's not possible to know the instance position of an instance variable.
 				 * class X [ a b ] {
 				 *   fun a() {
-				 *      fun J::t() {
+				 *      fun J:t() {
 				 *        ## J has nothing to to with X in priciple even if J may point to X when a() is executed.
 				 *        ## it's not meaningful to look up the variable `a` in the context of class X.
 				 *        ## it must be prohibited to access instance variables using the self or super prefix
@@ -4659,7 +4746,7 @@ static HCL_INLINE int compile_dsymbol (hcl_t* hcl, hcl_cnode_t* obj)
 		}
 		else if (hcl_comp_oochars_bcstr(name.ptr, sep - (const hcl_ooch_t*)name.ptr, "super") == 0)
 		{
-			if (fbi->fun_type >> 8) /* if defined using A::xxx syntax */
+			if (fbi->fun_type >> 8) /* if defined using A:xxx syntax */
 			{
 				hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(obj), HCL_CNODE_GET_TOK(obj), "not allowed to prefix with super in out-of-class method context");
 				return -1;
@@ -6107,7 +6194,10 @@ static HCL_INLINE int post_fun (hcl_t* hcl)
 			{
 				/* something wrong - this must not happen because the reader must prevent this
 				 * but if it happens, it is a syntax error */
-				hcl_setsynerrbfmt(hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(class_name), HCL_CNODE_GET_TOK(class_name), "class name prohibited");
+				hcl_setsynerrbfmt (
+					hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(class_name), HCL_NULL,
+					"class name '%.js' prohibited class initialization context",
+					HCL_CNODE_GET_TOKLEN(class_name), HCL_CNODE_GET_TOKPTR(class_name));
 				return -1;
 			}
 

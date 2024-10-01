@@ -12,7 +12,7 @@ fun Number: ~= (oprnd) { return (~= self oprnd) }
 ## --------------------------------------------------------------
 set t (
 	class [ x ] {
-		fun :* make() { x := 1234; return self; };
+		fun(#ci) make() { x := 1234; return self; };
 		fun get-x() { return x };
 	}
 );
@@ -40,7 +40,7 @@ else { printf "OK:  value is %d\n" v };
 ## --------------------------------------------------------------
 
 class X0 [ a b c d ] {
-        fun :*new() {
+        fun(#ci) new() {
                 return self;
         }
 
@@ -67,7 +67,7 @@ else { printf "OK:  value is %d\n" v }
 ## --------------------------------------------------------------
 
 class X1 [ a  b c ] {
-	fun :* new () {
+	fun(#classinst) new () {
 		self.a := 20
 		return self
 	}
@@ -108,11 +108,11 @@ class F [ j t ] {
 }
 
 class X2 [ a b c ] {
-	fun :* new () {
+	fun(#classinst) new () {
 		| j |
 		self.a := 20
 		j := (self.a  * 2)
-		fun F::get_x() { return (j * j) }
+		fun(#class) F:get_x() { return (j * j) }
 		return self
 	}
 }
@@ -124,7 +124,7 @@ else { printf "OK: value is %d\n" v }
 
 ## --------------------------------------------------------------
 class X3 {
-	fun :* new (a b) {
+	fun(#ci) new (a b) {
 		fun X3:sum() { return (fun(j) { return (j + (a + b)) }) }
 		return self;
 	}
@@ -136,15 +136,15 @@ else { printf "OK: value is %d\n" v }
 
 ## --------------------------------------------------------------
 class X4 {
-	fun :: t() {
+	fun(#class) t() {
 		| X5 |
 		class X5 { ## this X5 isn't the local variable X4
-			fun :: t() {
+			fun(#class)  t() {
 				X6 := (class {
-					fun :: t() {
+					fun(#class) t() {
 						| X7 |
 						X7 := (class { ## this X4 is the local variable X4
-							fun :: t() { return 60 }
+							fun(#class) t() { return 60 }
 						})
 						return 40
 					}
