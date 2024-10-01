@@ -27,11 +27,11 @@ if (< 2 3) {} elif true else  ##ERROR: syntax error - block expression expected 
 
 ---
 
-if else ##ERROR: syntax error - prohibited in this context - else
+if else ##ERROR: syntax error - 'else' prohibited in this context
 
 ---
 
-if elif else ##ERROR: syntax error - prohibited in this context - elif
+if elif else ##ERROR: syntax error - 'elif' prohibited in this context
 
 ---
 

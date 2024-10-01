@@ -1887,10 +1887,6 @@ static int feed_process_token (hcl_t* hcl)
 			frd->obj = hcl_makecnodecolonlt(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto auto_xlist;
 
-		case HCL_TOK_COLONSTAR:
-			frd->obj = hcl_makecnodecolonstar(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
-			goto auto_xlist;
-
 		case HCL_TOK_SMPTRLIT:
 		{
 			hcl_oow_t i;
@@ -2114,7 +2110,6 @@ static delim_token_t delim_token_tab[] =
 	{ ":=",       2, HCL_TOK_COLONEQ }, /* assignment */
 	{ ":>",       2, HCL_TOK_COLONGT },
 	{ ":<",       2, HCL_TOK_COLONLT },
-	{ ":*",       2, HCL_TOK_COLONSTAR }, /* class instantiation method */
 	{ "::",       2, HCL_TOK_DBLCOLONS }, /* superclass, class variables, class methods */
 	{ ":::",      3, HCL_TOK_TRPCOLONS  },
 

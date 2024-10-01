@@ -331,7 +331,6 @@ enum hcl_tok_type_t
 	HCL_TOK_COLONEQ,   /* := */
 	HCL_TOK_COLONGT,   /* :+ */
 	HCL_TOK_COLONLT,   /* :+ */
-	HCL_TOK_COLONSTAR, /* :* */
 	HCL_TOK_SEMICOLON, /* ; */
 	HCL_TOK_COMMA,     /* , */
 	HCL_TOK_LPAREN,    /* ( */
@@ -426,13 +425,12 @@ enum hcl_cnode_type_t
 	HCL_CNODE_RETURN,
 	HCL_CNODE_REVERT,
 
-	HCL_CNODE_ELLIPSIS,
-	HCL_CNODE_TRPCOLONS,
+	HCL_CNODE_ELLIPSIS, /* ... */
+	HCL_CNODE_TRPCOLONS, /* ::: */
 	HCL_CNODE_DBLCOLONS, /* :: */
 	HCL_CNODE_COLON, /* : */
 	HCL_CNODE_COLONGT, /* :> */
-	HCL_CNODE_COLONLT, /* :< */
-	HCL_CNODE_COLONSTAR, /* :* */
+	HCL_CNODE_COLONLT /* :< */
 };
 typedef enum hcl_cnode_type_t hcl_cnode_type_t;
 
@@ -458,7 +456,6 @@ typedef enum hcl_cnode_flag_t hcl_cnode_flag_t;
 #define HCL_CNODE_IS_COLON(x) ((x)->cn_type == HCL_CNODE_COLON)
 #define HCL_CNODE_IS_COLONGT(x) ((x)->cn_type == HCL_CNODE_COLONGT)
 #define HCL_CNODE_IS_COLONLT(x) ((x)->cn_type == HCL_CNODE_COLONLT)
-#define HCL_CNODE_IS_COLONSTAR(x) ((x)->cn_type == HCL_CNODE_COLONSTAR)
 
 #define HCL_CNODE_IS_SYMBOL(x) ((x)->cn_type == HCL_CNODE_SYMBOL)
 #define HCL_CNODE_IS_SYMBOL_PLAIN(x) ((x)->cn_type == HCL_CNODE_SYMBOL && (x)->u.symbol.syncode == 0)
@@ -2012,7 +2009,6 @@ hcl_cnode_t* hcl_makecnodedblcolons (hcl_t* hcl, int flags, const hcl_loc_t* loc
 hcl_cnode_t* hcl_makecnodecolon (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodecolongt (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodecolonlt (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
-hcl_cnode_t* hcl_makecnodecolonstar (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);
 hcl_cnode_t* hcl_makecnodecharlit (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok, hcl_ooch_t v);
 hcl_cnode_t* hcl_makecnodebchrlit (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok, hcl_oob_t v);
 hcl_cnode_t* hcl_makecnodesymbol (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok);

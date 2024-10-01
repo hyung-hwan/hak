@@ -130,7 +130,7 @@ printf "%O\n"  35rabcdefghijklzabcd ##ERROR: syntax error - invalid numeric lite
 
 ---
 
-printf :*; ##ERROR: syntax error - prohibited in this context
+printf if; ##ERROR: syntax error - 'if' prohibited in this context
 
 ---
 
@@ -140,7 +140,7 @@ fun :: fun1() { ##ERROR: syntax error - invalid function name '::' for 'fun'
 
 ---
 
-fun :* fun1() { ##ERROR: syntax error - invalid function name ':*' for 'fun'
+fun fun fun1() { ##ERROR: syntax error - invalid function name 'fun' for 'fun'
 	return 10;
 };
 

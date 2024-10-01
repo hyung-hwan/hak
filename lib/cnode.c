@@ -106,11 +106,6 @@ hcl_cnode_t* hcl_makecnodecolonlt (hcl_t* hcl, int flags, const hcl_loc_t* loc, 
 	return hcl_makecnode(hcl, HCL_CNODE_COLONLT, flags, loc, tok);
 }
 
-hcl_cnode_t* hcl_makecnodecolonstar (hcl_t* hcl, int flags, const hcl_loc_t* loc, const  hcl_oocs_t* tok)
-{
-	return hcl_makecnode(hcl, HCL_CNODE_COLONSTAR, flags, loc, tok);
-}
-
 hcl_cnode_t* hcl_makecnodecharlit (hcl_t* hcl, int flags, const hcl_loc_t* loc, const  hcl_oocs_t* tok, hcl_ooch_t v)
 {
 	hcl_cnode_t* c = hcl_makecnode(hcl, HCL_CNODE_CHARLIT, flags, loc, tok);

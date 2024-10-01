@@ -5282,12 +5282,13 @@ redo:
 		case HCL_CNODE_COLON:
 		case HCL_CNODE_COLONLT:
 		case HCL_CNODE_COLONGT:
-		case HCL_CNODE_COLONSTAR:
 		default:
 			/*
 			hcl_setsynerrbfmt (hcl, HCL_SYNERR_INTERN, HCL_CNODE_GET_LOC(oprnd), HCL_CNODE_GET_TOK(oprnd), "internal error - unexpected object type %d", HCL_CNODE_GET_TYPE(oprnd));
 			*/
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_CNODE_GET_TOK(oprnd), "prohibited in this context", HCL_CNODE_GET_TYPE(oprnd));
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(oprnd), HCL_NULL,
+				"'%.*js' prohibited in this context",
+				HCL_CNODE_GET_TOKLEN(oprnd), HCL_CNODE_GET_TOKPTR(oprnd));
 			return -1;
 	}
 
