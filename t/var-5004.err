@@ -64,3 +64,37 @@ fun x (... a) { ##ERROR: syntax error - unexpected token 'a' after '...' for 'fu
 
 fun x (... : a) { ##ERROR: syntax error - : disallowed
 }
+
+---
+
+fun :: fun1() { ##ERROR: syntax error - invalid function name '::' for 'fun'
+     return 10;
+};
+
+---
+
+fun fun fun1() { ##ERROR: syntax error - invalid function name 'fun' for 'fun'
+     return 10;
+};
+
+---
+
+fun(#ci) fun1() { ##ERROR: syntax error - unsupported attribute list for plain function 'fun1'
+}
+
+---
+
+fun() ()  { ##ERROR: syntax error - unsupported attribute list for unamed function for 'fun'
+}
+
+---
+
+fun() X:y() { ##ERROR: syntax error - empty attribute list for 'X:y' for 'fun'
+}
+
+---
+
+class X {
+	fun() y() { ##ERROR: syntax error - empty attribute list for 'y' for 'fun'
+	}
+}

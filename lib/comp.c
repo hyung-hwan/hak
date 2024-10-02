@@ -2817,7 +2817,9 @@ static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 
 /* ========================================================================= */
 
-static int check_fun_attr_list (hcl_t* hcl, hcl_cnode_t* attr_list, unsigned int* fun_type)
+static int check_fun_attr_list (
+	hcl_t* hcl, hcl_cnode_t* attr_list, unsigned int* fun_type,
+	hcl_cnode_t* cmd, hcl_cnode_t* class_name, hcl_cnode_t* fun_name)
 {
 	unsigned int ft;
 
@@ -2827,7 +2829,37 @@ static int check_fun_attr_list (hcl_t* hcl, hcl_cnode_t* attr_list, unsigned int
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS_CONCODED(attr_list, HCL_CONCODE_XLIST) ||
 	                 HCL_CNODE_IS_ELIST_CONCODED(attr_list, HCL_CONCODE_XLIST));
 
-	if (HCL_CNODE_IS_CONS(attr_list))
+	if (HCL_CNODE_IS_ELIST_CONCODED(attr_list, HCL_CONCODE_XLIST))
+	{
+		/* don't allow empty attribute list */
+		if (class_name && fun_name)
+		{
+			hcl_setsynerrbfmt (
+				hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(attr_list), HCL_NULL,
+				"empty attribute list for '%.*js:%.*js' for '%.*js'",
+				HCL_CNODE_GET_TOKLEN(class_name), HCL_CNODE_GET_TOKPTR(class_name),
+				HCL_CNODE_GET_TOKLEN(fun_name), HCL_CNODE_GET_TOKPTR(fun_name),
+				HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		}
+		else if (fun_name)
+		{
+			hcl_setsynerrbfmt (
+				hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(attr_list), HCL_NULL,
+				"empty attribute list for '%.*js' for '%.*js'",
+				HCL_CNODE_GET_TOKLEN(fun_name), HCL_CNODE_GET_TOKPTR(fun_name),
+				HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		}
+		else
+		{
+			hcl_setsynerrbfmt (
+				hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(attr_list), HCL_NULL,
+				"empty attribute list after unamed function for '%.*js'",
+				HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		}
+		return -1;
+	}
+
+	if (HCL_CNODE_IS_CONS_CONCODED(attr_list, HCL_CONCODE_XLIST))
 	{
 		hcl_cnode_t* c, * a;
 		const hcl_ooch_t* tokptr;
@@ -2892,6 +2924,7 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 	hcl_oow_t saved_tv_wcount, tv_dup_start;
 	hcl_cnode_t* fun_name;
 	hcl_cnode_t* class_name;
+	hcl_cnode_t* attr_list;
 	hcl_cnode_t* arg_list;
 	hcl_cnode_t* fun_body;
 	hcl_cframe_t* cf;
@@ -2904,6 +2937,7 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 	next = HCL_CNODE_CONS_CDR(src);
 	fun_name = HCL_NULL;
 	class_name = HCL_NULL;
+	attr_list = HCL_NULL;
 	arg_list = HCL_NULL;
 	fun_body = HCL_NULL;
 	fun_type = FUN_PLAIN;
@@ -2914,12 +2948,10 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 	if (next)
 	{
 		hcl_cnode_t* tmp;
-		hcl_cnode_t* attr_list;
 
 		/* the reader ensures that the cdr field of a cons cell points to the next cell.
 		 * and only the field of the last cons cell is NULL. */
 		HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(next));
-		attr_list = HCL_NULL;
 
 		/* fun (arg..)
 		 * fun name (arg..)
@@ -2977,9 +3009,6 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 					return -1;
 				}
 				fun_name = tmp;
-				fun_type = FUN_IM;
-				if (attr_list && check_fun_attr_list(hcl, attr_list, &fun_type) <= -1) return -1;
-				fun_type |= 0x100; /* indicate that the function was defined in 'fun class:name()' style */
 
 				next = HCL_CNODE_CONS_CDR(next);
 				if (!next)
@@ -3003,32 +3032,6 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 						HCL_CNODE_GET_TOKLEN(class_name), HCL_CNODE_GET_TOKPTR(class_name),
 						HCL_CNODE_GET_TOKLEN(fun_name), HCL_CNODE_GET_TOKPTR(fun_name));
 					return -1;
-				}
-			}
-			else
-			{
-				/* no 'class:' part after 'fun' */
-				if (is_in_class_init_scope(hcl))
-				{
-					/* TODO:THIS IS ALSO WRONG.
-					 *  class X {
-					 *    a := (fun x(){}) ## this context is also class_init_scope. so the check above isn't good enough
-					 *  } */
-					fun_type = FUN_IM;
-					if (attr_list && check_fun_attr_list(hcl, attr_list, &fun_type) <= -1) return -1;
-				}
-				else
-				{
-					/* as of now, the plain function doesn't support attribute list.
-					 * this can change in the future. */
-					if (attr_list)
-					{
-						hcl_setsynerrbfmt (
-							hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(attr_list), HCL_NULL,
-							"unsupported attribute list for plain function '%.*js'",
-							HCL_CNODE_GET_TOKLEN(fun_name), HCL_CNODE_GET_TOKPTR(fun_name));
-						return -1;
-					}
 				}
 			}
 		}
@@ -3155,6 +3158,47 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 			"'%.*js' not followed by name or (",
 			HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 		return -1;
+	}
+
+	if (attr_list)
+	{
+		if (is_in_class_init_scope(hcl) || class_name)
+		{
+/* TODO: */
+			/* TODO: THIS IS ALSO WRONG.
+			 *  class X {
+			 *    a := (fun x(){}) ## this context is also class_init_scope. so the check above isn't good enough
+			 *  } */
+			fun_type = FUN_IM;
+			if (check_fun_attr_list(hcl, attr_list, &fun_type, cmd, class_name, fun_name) <= -1) return -1;
+			if (class_name) fun_type |= 0x100; /* defined in `fun class:xxx` style outside class */
+		}
+		else
+		{
+			if (fun_name)
+			{
+				hcl_setsynerrbfmt (
+					hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(attr_list), HCL_NULL,
+					"unsupported attribute list for plain function '%.*js'",
+					HCL_CNODE_GET_TOKLEN(fun_name), HCL_CNODE_GET_TOKPTR(fun_name));
+			}
+			else
+			{
+				hcl_setsynerrbfmt (
+					hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(attr_list), HCL_NULL,
+					"unsupported attribute list for unamed function for '%.*js'",
+					HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+			}
+			return -1;
+		}
+	}
+	else
+	{
+		if (is_in_class_init_scope(hcl) || class_name)
+		{
+			 fun_type = FUN_IM;
+			if (class_name) fun_type |= 0x100;
+		}
 	}
 
 	/* process the argument list */
