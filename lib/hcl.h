@@ -1680,28 +1680,6 @@ struct hcl_t
 	hcl_oop_t _true;
 	hcl_oop_t _false;
 
-	hcl_oop_t s_and;    /* symbol */
-	hcl_oop_t s_break;  /* symbol */
-	hcl_oop_t s_catch;  /* symbol */
-	hcl_oop_t s_class;  /* symbol */
-	hcl_oop_t s_continue; /* symbol */
-	hcl_oop_t s_defun;  /* symbol */
-	hcl_oop_t s_do;     /* symbol */
-	hcl_oop_t s_elif;   /* symbol */
-	hcl_oop_t s_else;   /* symbol */
-	hcl_oop_t s_fun;    /* symbol */
-	hcl_oop_t s_if;     /* symbol */
-	hcl_oop_t s_or;     /* symbol */
-	hcl_oop_t s_plus;   /* symbol */
-	hcl_oop_t s_return; /* symbol */
-	hcl_oop_t s_revert; /* symbol */
-	hcl_oop_t s_set;    /* symbol */
-	hcl_oop_t s_set_r;  /* symbol */
-	hcl_oop_t s_throw;  /* symbol */
-	hcl_oop_t s_try;   /* symbol */  /* _try is special in MSVC. */
-	hcl_oop_t s_until;  /* symbol */
-	hcl_oop_t s_while;  /* symbol */
-
 	hcl_oop_dic_t symtab; /* system-wide symbol table. */
 	hcl_oop_dic_t sysdic; /* system dictionary. */
 	hcl_oop_process_scheduler_t processor; /* instance of ProcessScheduler */
@@ -2042,35 +2020,6 @@ enum hcl_brand_t
 	 *        represented with HCL_OBJ_FLAGS_BRAND_BITS bits */
 };
 typedef enum hcl_brand_t hcl_brand_t;
-
-enum hcl_syncode_t
-{
-	HCL_SYNCODE_NONE = 0,
-
-	/* SYNCODE 0 means it's not a syncode object. so the actual code begins with 1 */
-	/* these enumerators can be set in the SYNCODE flags for a symbol */
-	HCL_SYNCODE_AND = 1,
-	HCL_SYNCODE_BREAK,
-	HCL_SYNCODE_CATCH,
-	HCL_SYNCODE_CLASS,
-	HCL_SYNCODE_CONTINUE,
-	HCL_SYNCODE_DO,
-	HCL_SYNCODE_ELIF,
-	HCL_SYNCODE_ELSE,
-	HCL_SYNCODE_IF,
-	HCL_SYNCODE_FUN,
-	HCL_SYNCODE_OR,
-	HCL_SYNCODE_PLUS,
-	HCL_SYNCODE_RETURN, /* local return. return from the current context. */
-	HCL_SYNCODE_REVERT, /* non-local return. return from home context */
-	HCL_SYNCODE_SET,
-	HCL_SYNCODE_SET_R,
-	HCL_SYNCODE_THROW,
-	HCL_SYNCODE_TRY,
-	HCL_SYNCODE_UNTIL,
-	HCL_SYNCODE_WHILE
-};
-typedef enum hcl_syncode_t hcl_syncode_t;
 
 enum hcl_concode_t
 {

@@ -124,10 +124,7 @@ hcl_cnode_t* hcl_makecnodebchrlit (hcl_t* hcl, int flags, const hcl_loc_t* loc, 
 
 hcl_cnode_t* hcl_makecnodesymbol (hcl_t* hcl, int flags, const hcl_loc_t* loc, const  hcl_oocs_t* tok)
 {
-	hcl_cnode_t* c = hcl_makecnode(hcl, HCL_CNODE_SYMBOL, flags, loc, tok);
-	if (HCL_UNLIKELY(!c)) return HCL_NULL;
-	c->u.symbol.syncode = hcl_getsyncodebyoocs_noseterr(hcl, tok);
-	return c;
+	return hcl_makecnode(hcl, HCL_CNODE_SYMBOL, flags, loc, tok);
 }
 
 hcl_cnode_t* hcl_makecnodedsymbol (hcl_t* hcl, int flags, const hcl_loc_t* loc, const hcl_oocs_t* tok, int is_cla)

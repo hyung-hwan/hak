@@ -317,6 +317,11 @@ enum hcl_tok_type_t
 	HCL_TOK_WHILE,
 	HCL_TOK_RETURN,
 	HCL_TOK_REVERT,
+	HCL_TOK_AND,
+	HCL_TOK_OR,
+	HCL_TOK_PLUS,
+	HCL_TOK_SET,
+	HCL_TOK_SET_R,
 
 	HCL_TOK_BINOP,
 	HCL_TOK_IDENT,
@@ -423,7 +428,12 @@ enum hcl_cnode_type_t
 	HCL_CNODE_UNTIL,
 	HCL_CNODE_WHILE,
 	HCL_CNODE_RETURN,
-	HCL_CNODE_REVERT, /* language item for HCL_CODE_IS_FOR_LANG */
+	HCL_CNODE_REVERT,
+	HCL_CNODE_AND,
+	HCL_CNODE_OR,
+	HCL_CNODE_PLUS,
+	HCL_CNODE_SET,
+	HCL_CNODE_SET_R,  /* language item for HCL_CODE_IS_FOR_LANG */
 
 	HCL_CNODE_ELLIPSIS, /* ... */
 	HCL_CNODE_TRPCOLONS, /* ::: */
@@ -454,7 +464,7 @@ typedef enum hcl_cnode_flag_t hcl_cnode_flag_t;
 
 /* words to compose the language itself.
  * the words pointing to data items(e.g. super, self, nil, true, false) are excluded */
-#define HCL_CNODE_IS_FOR_LANG(x)((x)->cn_type >= HCL_CNODE_CLASS && (x)->cn_type <= HCL_CNODE_REVERT)
+#define HCL_CNODE_IS_FOR_LANG(x)((x)->cn_type >= HCL_CNODE_CLASS && (x)->cn_type <= HCL_CNODE_SET_R)
 
 #define HCL_CNODE_IS_ELLIPSIS(x) ((x)->cn_type == HCL_CNODE_ELLIPSIS)
 #define HCL_CNODE_IS_TRPCOLONS(x) ((x)->cn_type == HCL_CNODE_TRPCOLONS)
@@ -464,11 +474,9 @@ typedef enum hcl_cnode_flag_t hcl_cnode_flag_t;
 #define HCL_CNODE_IS_COLONLT(x) ((x)->cn_type == HCL_CNODE_COLONLT)
 
 #define HCL_CNODE_IS_SYMBOL(x) ((x)->cn_type == HCL_CNODE_SYMBOL)
-#define HCL_CNODE_IS_SYMBOL_PLAIN(x) ((x)->cn_type == HCL_CNODE_SYMBOL && (x)->u.symbol.syncode == 0)
+#define HCL_CNODE_IS_SYMBOL_PLAIN(x) ((x)->cn_type == HCL_CNODE_SYMBOL)
 #define HCL_CNODE_IS_SYMBOL_PLAIN_IDENT(x) (HCL_CNODE_IS_SYMBOL_PLAIN(x) && !hcl_is_binop_char((x)->cn_tok.ptr[0]))
 #define HCL_CNODE_IS_SYMBOL_PLAIN_BINOP(x) (HCL_CNODE_IS_SYMBOL_PLAIN(x) && hcl_is_binop_char((x)->cn_tok.ptr[0]))
-#define HCL_CNODE_IS_SYMBOL_SYNCODED(x, code) ((x)->cn_type == HCL_CNODE_SYMBOL && (x)->u.symbol.syncode == (code))
-#define HCL_CNODE_SYMBOL_SYNCODE(x) ((x)->u.symbol.syncode)
 
 #define HCL_CNODE_IS_DSYMBOL(x) ((x)->cn_type == HCL_CNODE_DSYMBOL)
 #define HCL_CNODE_IS_DSYMBOL_CLA(x) ((x)->cn_type == HCL_CNODE_DSYMBOL && (x)->u.dsymbol.is_cla)
@@ -501,10 +509,6 @@ struct hcl_cnode_t
 		{
 			hcl_oob_t v;
 		} bchrlit;
-		struct
-		{
-			hcl_syncode_t syncode; /* special if non-zero */
-		} symbol;
 		struct
 		{
 			int is_cla; /* class-level accessor. prefixed with self or super */
@@ -1618,23 +1622,6 @@ void hcl_gc_ms_sweep_lazy (
 	hcl_t*    hcl,
 	hcl_oow_t allocsize
 );
-
-hcl_syncode_t hcl_getsyncodebyoocs_noseterr (
-	hcl_t*            hcl,
-	const hcl_oocs_t* name
-);
-
-hcl_syncode_t hcl_getsyncode_noseterr (
-	hcl_t*            hcl,
-	const hcl_ooch_t* ptr,
-	const hcl_oow_t   len
-);
-
-const hcl_ooch_t* hcl_getsyncodename_noseterr (
-	hcl_t*        hcl,
-	hcl_syncode_t syncode
-);
-
 
 /* ========================================================================= */
 /* utf8.c                                                                    */

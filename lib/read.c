@@ -73,7 +73,9 @@ static struct voca_t
 	{  5, { 'w','h','i','l','e'                                           } },
 	{  6, { 'r','e','t','u','r','n'                                       } },
 	{  6, { 'r','e','v','e','r','t'                                       } },
-
+	{  3, { 'a','n','d'                                                   } },
+	{  2, { 'o','r',                                                      } },
+	{  4, { 'p','l','u','s'                                               } },
 	{  3, { 's','e','t'                                                   } },
 	{  5, { 's','e','t','-','r'                                           } },
 
@@ -131,9 +133,11 @@ enum voca_id_t
 	VOCA_KW_WHILE,
 	VOCA_KW_RETURN,
 	VOCA_KW_REVERT,
-
-	VOCA_SYM_SET,
-	VOCA_SYM_SET_R,
+	VOCA_KW_AND,
+	VOCA_KW_OR,
+	VOCA_KW_PLUS,
+	VOCA_KW_SET,
+	VOCA_KW_SET_R,
 
 	VOCA_XLIST,
 	VOCA_MLIST,
@@ -478,7 +482,12 @@ static hcl_tok_type_t classify_ident_token (hcl_t* hcl, const hcl_oocs_t* v)
 		{ VOCA_KW_UNTIL,    HCL_TOK_UNTIL    },
 		{ VOCA_KW_WHILE,    HCL_TOK_WHILE    },
 		{ VOCA_KW_RETURN,   HCL_TOK_RETURN   },
-		{ VOCA_KW_REVERT,   HCL_TOK_REVERT   }
+		{ VOCA_KW_REVERT,   HCL_TOK_REVERT   },
+		{ VOCA_KW_AND,      HCL_TOK_AND      },
+		{ VOCA_KW_OR,       HCL_TOK_OR       },
+		{ VOCA_KW_PLUS,     HCL_TOK_PLUS     },
+		{ VOCA_KW_SET,      HCL_TOK_SET      },
+		{ VOCA_KW_SET_R,    HCL_TOK_SET_R    }
 	};
 
 	for (i = 0; i < HCL_COUNTOF(tab); i++)
@@ -893,8 +902,7 @@ static HCL_INLINE int can_colon_list (hcl_t* hcl)
 		 *       these class methods and class instantiation methods are supposed to be
 		 *       implemented elsewhere because ':' has dual use while '::' or ':*' are
 		 *       independent tokens  */
-		if (HCL_CNODE_IS_SYMBOL_SYNCODED(HCL_CNODE_CONS_CAR(rstl->head), HCL_SYNCODE_FUN) ||
-		    HCL_CNODE_IS_TYPED(HCL_CNODE_CONS_CAR(rstl->head), HCL_CNODE_FUN))
+		if (HCL_CNODE_IS_TYPED(HCL_CNODE_CONS_CAR(rstl->head), HCL_CNODE_FUN))
 		{
 			hcl_cnode_t* tmp, * next;
 			next = HCL_CNODE_CONS_CDR(rstl->head);
@@ -1428,7 +1436,12 @@ static hcl_cnode_type_t kw_to_cnode_type (int tok_type)
 		HCL_CNODE_UNTIL,
 		HCL_CNODE_WHILE,
 		HCL_CNODE_RETURN,
-		HCL_CNODE_REVERT
+		HCL_CNODE_REVERT,
+		HCL_CNODE_AND,
+		HCL_CNODE_OR,
+		HCL_CNODE_PLUS,
+		HCL_CNODE_SET,
+		HCL_CNODE_SET_R
 	};
 
 	return mapping[tok_type - HCL_TOK_NIL];
@@ -1863,9 +1876,13 @@ static int feed_process_token (hcl_t* hcl)
 		case HCL_TOK_WHILE:
 		case HCL_TOK_RETURN:
 		case HCL_TOK_REVERT:
+		case HCL_TOK_AND:
+		case HCL_TOK_OR:
+		case HCL_TOK_PLUS:
+		case HCL_TOK_SET:
+		case HCL_TOK_SET_R:
 			frd->obj = hcl_makecnode(hcl, kw_to_cnode_type(TOKEN_TYPE(hcl)), 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto auto_xlist;
-
 
 		case HCL_TOK_ELLIPSIS:
 			frd->obj = hcl_makecnodeellipsis(hcl, 0, TOKEN_LOC(hcl), TOKEN_NAME(hcl));

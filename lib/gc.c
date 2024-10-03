@@ -29,36 +29,6 @@
 #include <sys/resource.h> /* getrusage */
 #endif
 
-static struct
-{
-	hcl_oow_t  len;
-	hcl_ooch_t ptr[20];
-	hcl_syncode_t syncode;
-	hcl_oow_t  offset;
-} syminfo[] =
-{
-	{  3, { 'a','n','d' },                      HCL_SYNCODE_AND,       HCL_OFFSETOF(hcl_t,s_and)    },
-	{  5, { 'b','r','e','a','k' },              HCL_SYNCODE_BREAK,     HCL_OFFSETOF(hcl_t,s_break)  },
-	{  5, { 'c','a','t','c','h' },              HCL_SYNCODE_CATCH,     HCL_OFFSETOF(hcl_t,s_catch)  },
-	{  5, { 'c','l','a','s','s' },              HCL_SYNCODE_CLASS,     HCL_OFFSETOF(hcl_t,s_class)  },
-	{  8, { 'c','o','n','t','i','n','u','e' },  HCL_SYNCODE_CONTINUE,  HCL_OFFSETOF(hcl_t,s_continue) },
-	{  2, { 'd','o' },                          HCL_SYNCODE_DO,        HCL_OFFSETOF(hcl_t,s_do)     },
-	{  4, { 'e','l','i','f' },                  HCL_SYNCODE_ELIF,      HCL_OFFSETOF(hcl_t,s_elif)   },
-	{  4, { 'e','l','s','e' },                  HCL_SYNCODE_ELSE,      HCL_OFFSETOF(hcl_t,s_else)   },
-	{  3, { 'f','u','n' },                      HCL_SYNCODE_FUN,       HCL_OFFSETOF(hcl_t,s_fun)    },
-	{  2, { 'i','f' },                          HCL_SYNCODE_IF,        HCL_OFFSETOF(hcl_t,s_if)     },
-	{  2, { 'o','r' },                          HCL_SYNCODE_OR,        HCL_OFFSETOF(hcl_t,s_or)     },
-	{  4, { 'p','l','u','s' },                  HCL_SYNCODE_PLUS,      HCL_OFFSETOF(hcl_t,s_plus)   },
-	{  6, { 'r','e','t','u','r','n'},           HCL_SYNCODE_RETURN,    HCL_OFFSETOF(hcl_t,s_return) },
-	{  6, { 'r','e','v','e','r','t'},           HCL_SYNCODE_REVERT,    HCL_OFFSETOF(hcl_t,s_revert) },
-	{  3, { 's','e','t' },                      HCL_SYNCODE_SET,       HCL_OFFSETOF(hcl_t,s_set)    },
-	{  5, { 's','e','t','-','r' },              HCL_SYNCODE_SET_R,     HCL_OFFSETOF(hcl_t,s_set_r)  },
-	{  5, { 't','h','r','o','w' },              HCL_SYNCODE_THROW,     HCL_OFFSETOF(hcl_t,s_throw)  },
-	{  3, { 't','r','y' },                      HCL_SYNCODE_TRY,       HCL_OFFSETOF(hcl_t,s_try)   },
-	{  5, { 'u','n','t','i','l' },              HCL_SYNCODE_UNTIL,     HCL_OFFSETOF(hcl_t,s_until)  },
-	{  5, { 'w','h','i','l','e' },              HCL_SYNCODE_WHILE,     HCL_OFFSETOF(hcl_t,s_while)  }
-};
-
 /* ========================================================================= */
 
 /*
@@ -956,11 +926,6 @@ static HCL_INLINE void gc_ms_mark_roots (hcl_t* hcl)
 	gc_ms_mark (hcl, hcl->_true);
 	gc_ms_mark (hcl, hcl->_false);
 
-	for (i = 0; i < HCL_COUNTOF(syminfo); i++)
-	{
-		gc_ms_mark (hcl, *(hcl_oop_t*)((hcl_uint8_t*)hcl + syminfo[i].offset));
-	}
-
 	for (i = 0; i < HCL_COUNTOF(kernel_classes); i++)
 	{
 		gc_ms_mark (hcl, *(hcl_oop_t*)((hcl_uint8_t*)hcl + kernel_classes[i].offset));
@@ -1234,14 +1199,6 @@ void hcl_gc (hcl_t* hcl)
 	hcl->_nil = hcl_moveoop(hcl, hcl->_nil);
 	hcl->_true = hcl_moveoop(hcl, hcl->_true);
 	hcl->_false = hcl_moveoop(hcl, hcl->_false);
-
-	for (i = 0; i < HCL_COUNTOF(syminfo); i++)
-	{
-		hcl_oop_t tmp;
-		tmp = *(hcl_oop_t*)((hcl_uint8_t*)hcl + syminfo[i].offset);
-		tmp = hcl_moveoop(hcl, tmp);
-		*(hcl_oop_t*)((hcl_uint8_t*)hcl + syminfo[i].offset) = tmp;
-	}
 
 	for (i = 0; i < HCL_COUNTOF(kernel_classes); i++)
 	{
@@ -1814,18 +1771,6 @@ int hcl_ignite (hcl_t* hcl, hcl_oow_t heapsize)
 		if (HCL_UNLIKELY(!hcl->sysdic)) goto oops;
 	}
 
-	/* symbol table available now. symbols can be created */
-	for (i = 0; i < HCL_COUNTOF(syminfo); i++)
-	{
-		hcl_oop_t tmp;
-
-		tmp = hcl_makesymbol(hcl, syminfo[i].ptr, syminfo[i].len);
-		if (HCL_UNLIKELY(!tmp)) goto oops;
-
-		HCL_OBJ_SET_FLAGS_SYNCODE (tmp, syminfo[i].syncode);
-		*(hcl_oop_t*)((hcl_uint8_t*)hcl + syminfo[i].offset) = tmp;
-	}
-
 	if (!hcl->nil_process)
 	{
 		/* Create a nil process used to simplify nil check in GC.
@@ -1882,34 +1827,3 @@ oops:
 	return -1;
 }
 
-hcl_syncode_t hcl_getsyncodebyoocs_noseterr (hcl_t* hcl, const hcl_oocs_t* name)
-{
-	hcl_oow_t i;
-	for (i = 0; i < HCL_COUNTOF(syminfo); i++)
-	{
-		if (hcl_comp_oochars(syminfo[i].ptr, syminfo[i].len, name->ptr, name->len) == 0)
-			return syminfo[i].syncode;
-	}
-	return HCL_SYNCODE_NONE; /* indicates no syntax code found */
-}
-
-hcl_syncode_t hcl_getsyncode_noseterr (hcl_t* hcl, const hcl_ooch_t* ptr, const hcl_oow_t len)
-{
-	hcl_oow_t i;
-	for (i = 0; i < HCL_COUNTOF(syminfo); i++)
-	{
-		if (hcl_comp_oochars(syminfo[i].ptr, syminfo[i].len, ptr, len) == 0)
-			return syminfo[i].syncode;
-	}
-	return HCL_SYNCODE_NONE; /* indicates no syntax code found */
-}
-
-const hcl_ooch_t* hcl_getsyncodename_noseterr (hcl_t* hcl, hcl_syncode_t syncode)
-{
-	hcl_oow_t i;
-	for (i = 0; i < HCL_COUNTOF(syminfo); i++)
-	{
-		if (syncode == syminfo[i].syncode) return syminfo[i].ptr;
-	}
-	return HCL_NULL;
-}

@@ -64,7 +64,7 @@ try {} catch ##ERROR: syntax error - no exception variable for 'catch'
 
 try {
 	throw "excetion message"
-} catch (e a) { ##ERROR: syntax error - not proper exception variable
+} catch (e a) { ##ERROR: syntax error - improper exception variable for 'catch'
 	printf "EXCEPTION - %s\n" e
 }
 

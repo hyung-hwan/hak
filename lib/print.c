@@ -938,6 +938,11 @@ void hcl_dumpcnode (hcl_t* hcl, hcl_cnode_t* cnode, int newline)
 			case HCL_CNODE_WHILE:
 			case HCL_CNODE_RETURN:
 			case HCL_CNODE_REVERT:
+			case HCL_CNODE_AND:
+			case HCL_CNODE_OR:
+			case HCL_CNODE_PLUS:
+			case HCL_CNODE_SET:
+			case HCL_CNODE_SET_R:
 
 			case HCL_CNODE_ELLIPSIS:
 			case HCL_CNODE_TRPCOLONS:
