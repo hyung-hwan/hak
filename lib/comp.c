@@ -1444,7 +1444,7 @@ static int collect_vardcl_for_class (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t**
 			goto next;
 		}
 
-		if (!HCL_CNODE_IS_SYMBOL_PLAIN(var) || HCL_CNODE_IS_SYMBOL_PLAIN_BINOP(var)) goto synerr_varname;
+		if (!HCL_CNODE_IS_SYMBOL(var) || HCL_CNODE_IS_SYMBOL_BINOP(var)) goto synerr_varname;
 
 		checkpoint = hcl->c->tv.s.len;
 		n = add_temporary_variable(hcl, HCL_CNODE_GET_TOK(var), tv_slen_saved);
@@ -1525,7 +1525,7 @@ static int collect_vardcl (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t** nextobj, 
 	{
 		var = HCL_CNODE_CONS_CAR(dcl);
 	#if 0
-		if (!HCL_CNODE_IS_SYMBOL_PLAIN(var))
+		if (!HCL_CNODE_IS_SYMBOL(var))
 		{
 			hcl_setsynerrbfmt (
 				hcl, HCL_SYNERR_ARGNAME, HCL_CNODE_GET_LOC(var), HCL_NULL,
@@ -1535,7 +1535,7 @@ static int collect_vardcl (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t** nextobj, 
 		}
 	#else
 		/* the above checks are not needed as the reader guarantees the followings */
-		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_PLAIN(var));
+		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL(var));
 	#endif
 
 		if (add_temporary_variable(hcl, HCL_CNODE_GET_TOK(var), tv_dup_check_start) <= -1)
@@ -2514,7 +2514,7 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src)
 		tmp = HCL_CNODE_CONS_CAR(obj);
 		if (HCL_CNODE_IS_FOR_DATA_SIMPLE(tmp) || HCL_CNODE_IS_FOR_LANG(tmp))
 		{
-			if (!HCL_CNODE_IS_SYMBOL_PLAIN_IDENT(tmp))
+			if (!HCL_CNODE_IS_SYMBOL_IDENT(tmp))
 			{
 				hcl_setsynerrbfmt (
 					hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(tmp), HCL_NULL,
@@ -2565,7 +2565,7 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src)
 
 		/* superclass part */
 		superclass = HCL_CNODE_CONS_CAR(obj);
-		if (!HCL_CNODE_IS_SYMBOL_PLAIN(superclass))
+		if (!HCL_CNODE_IS_SYMBOL(superclass))
 		{
 			if (HCL_CNODE_IS_FOR_DATA_SIMPLE(superclass) || HCL_CNODE_IS_FOR_LANG(superclass))
 			{
@@ -2942,7 +2942,7 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 		 */
 
 		tmp = HCL_CNODE_CONS_CAR(next);
-		if (HCL_CNODE_IS_SYMBOL_PLAIN(tmp))
+		if (HCL_CNODE_IS_SYMBOL(tmp))
 		{
 			/* 'fun' followed by name */
 		fun_got_name:
@@ -2979,7 +2979,7 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 				}
 
 				tmp = HCL_CNODE_CONS_CAR(next);
-				if (!HCL_CNODE_IS_SYMBOL_PLAIN(tmp))
+				if (!HCL_CNODE_IS_SYMBOL(tmp))
 				{
 					hcl_setsynerrbfmt (
 						hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(tmp), HCL_NULL,
@@ -3057,7 +3057,7 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 				}
 
 				tmp = HCL_CNODE_CONS_CAR(next);
-				if (HCL_CNODE_IS_SYMBOL_PLAIN(tmp))
+				if (HCL_CNODE_IS_SYMBOL(tmp))
 				{
 					/* it is attribute list for sure. fun(#attr..) name */
 					attr_list = arg_list;
@@ -3207,7 +3207,7 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 
 			if (in_ret_args)
 			{
-				if (!HCL_CNODE_IS_SYMBOL_PLAIN_IDENT(arg))
+				if (!HCL_CNODE_IS_SYMBOL_IDENT(arg))
 				{
 					/* in 'fun x (x :: 20) { }', '20' is not a valid return variable name.
 					 * in 'fun x (x :: if) { }', 'if' is not a valid return variable name. */
@@ -3262,7 +3262,7 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 				{
 					va = 1;
 				}
-				else if (!HCL_CNODE_IS_SYMBOL_PLAIN_IDENT(arg))
+				else if (!HCL_CNODE_IS_SYMBOL_IDENT(arg))
 				{
 					hcl_setsynerrbfmt (
 						hcl, HCL_SYNERR_ARGNAME, HCL_CNODE_GET_LOC(arg), HCL_NULL,
@@ -3584,7 +3584,7 @@ static int compile_set_r (hcl_t* hcl, hcl_cnode_t* src)
 	do
 	{
 		var = HCL_CNODE_CONS_CAR(obj);
-		if (!HCL_CNODE_IS_SYMBOL(var)) /* TODO: should this be HCL_CNODE_IS_SYMBOL_PLAIN(var)?? */
+		if (!HCL_CNODE_IS_SYMBOL(var)) /* TODO: should this be HCL_CNODE_IS_SYMBOL(var)?? */
 		{
 			if (nvars > 0) break;
 			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "variable name not symbol in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
@@ -3809,7 +3809,7 @@ static HCL_INLINE int compile_catch (hcl_t* hcl)
 	}
 
 	exarg = HCL_CNODE_CONS_CAR(exarg);
-	if (!HCL_CNODE_IS_SYMBOL_PLAIN(exarg))
+	if (!HCL_CNODE_IS_SYMBOL(exarg))
 	{
 		hcl_setsynerrbfmt (
 			hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(exarg), HCL_NULL,
@@ -4117,7 +4117,7 @@ static int compile_cons_alist_expression (hcl_t* hcl, hcl_cnode_t* cmd)
 	var = HCL_CNODE_CONS_CAR(cmd);
 	obj = HCL_CNODE_CONS_CDR(cmd);
 
-	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_PLAIN(var) || HCL_CNODE_IS_DSYMBOL_CLA(var) || HCL_CNODE_IS_CONS_CONCODED(var, HCL_CONCODE_TUPLE));
+	HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL(var) || HCL_CNODE_IS_DSYMBOL_CLA(var) || HCL_CNODE_IS_CONS_CONCODED(var, HCL_CONCODE_TUPLE));
 	HCL_ASSERT (hcl, obj && HCL_CNODE_IS_CONS(obj)); /* reader guaranteed */
 
 	val = HCL_CNODE_CONS_CAR(obj);
@@ -4142,7 +4142,7 @@ static int compile_cons_alist_expression (hcl_t* hcl, hcl_cnode_t* cmd)
 
 			var = HCL_CNODE_CONS_CAR(obj);
 
-			HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_PLAIN(var) || HCL_CNODE_IS_DSYMBOL_CLA(var)); /* reader guaranteed */
+			HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL(var) || HCL_CNODE_IS_DSYMBOL_CLA(var)); /* reader guaranteed */
 
 			x = find_variable_backward_with_token(hcl, var, &vi);
 			if (x <= -1) return -1;
@@ -4470,7 +4470,7 @@ static int compile_cons_mlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 		return -1;
 	}
 	car = HCL_CNODE_CONS_CAR(cdr);
-	if (HCL_CNODE_IS_SYMBOL_PLAIN(car))
+	if (HCL_CNODE_IS_SYMBOL(car))
 	{
 		PUSH_CFRAME (hcl, COP_EMIT_PUSH_SYMBOL, car);
 	}
@@ -6067,7 +6067,7 @@ static HCL_INLINE int post_fun (hcl_t* hcl)
 		hcl_var_info_t vi;
 		int x;
 
-		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL_PLAIN(fun_name));
+		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL(fun_name));
 
 		if (is_in_class_init_scope(hcl))
 		{

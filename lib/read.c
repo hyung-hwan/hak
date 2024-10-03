@@ -284,7 +284,7 @@ static HCL_INLINE int is_delim_char (hcl_ooci_t c)
 }
 
 
-int hcl_is_binop_char (hcl_ooci_t c) /* not static HCL_INLINE for shared use with comp.c via HCL_CNODE_IS_SYMBOL_PLAIN() */
+int hcl_is_binop_char (hcl_ooci_t c) /* not static HCL_INLINE for shared use with comp.c via HCL_CNODE_IS_SYMBOL() */
 {
 	return c == '&' || c == '*' || c == '+' || c == '-' || c == '/' || c == '%' ||
 	       c == '<' || c == '>' || c == '=' || c == '@' || c == '|' || c == '~';
@@ -689,7 +689,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 					/* check in advance if the array members are all plain symbols */
 					hcl_cnode_t* lcar;
 					lcar = HCL_CNODE_CONS_CAR(tmp);
-					if (!HCL_CNODE_IS_SYMBOL_PLAIN_IDENT(lcar) && !HCL_CNODE_IS_DSYMBOL_CLA(lcar))
+					if (!HCL_CNODE_IS_SYMBOL_IDENT(lcar) && !HCL_CNODE_IS_DSYMBOL_CLA(lcar))
 					{
 						hcl_setsynerrbfmt (hcl, HCL_SYNERR_LVALUE, HCL_CNODE_GET_LOC(lval), HCL_CNODE_GET_TOK(lval), "bad lvalue - invalid element in tuple");
 						goto oops;
@@ -715,7 +715,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 			}
 			else
 			{
-				if (!HCL_CNODE_IS_SYMBOL_PLAIN_IDENT(lval) && !HCL_CNODE_IS_DSYMBOL_CLA(lval))
+				if (!HCL_CNODE_IS_SYMBOL_IDENT(lval) && !HCL_CNODE_IS_DSYMBOL_CLA(lval))
 				{
 					hcl_setsynerrbfmt (hcl, HCL_SYNERR_LVALUE, HCL_CNODE_GET_LOC(lval), HCL_CNODE_GET_TOK(lval), "bad lvalue - invalid element");
 					goto oops;
@@ -918,7 +918,7 @@ static HCL_INLINE int can_colon_list (hcl_t* hcl)
 			if (rstl->count == 2)
 			{
 				/* fun class:name() *... */
-				if (HCL_CNODE_IS_SYMBOL_PLAIN(tmp)) return 2;
+				if (HCL_CNODE_IS_SYMBOL(tmp)) return 2;
 			}
 			else if (rstl->count == 3)
 			{
@@ -929,7 +929,7 @@ static HCL_INLINE int can_colon_list (hcl_t* hcl)
 					next = HCL_CNODE_CONS_CDR(next);
 					HCL_ASSERT (hcl, next != HCL_NULL);
 					tmp = HCL_CNODE_CONS_CAR(next); /* third item */
-					if (HCL_CNODE_IS_SYMBOL_PLAIN(tmp)) return 2;
+					if (HCL_CNODE_IS_SYMBOL(tmp)) return 2;
 				}
 			}
 		}
