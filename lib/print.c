@@ -25,6 +25,7 @@
 #include "hcl-prv.h"
 
 
+#include <stdio.h>
 #define PRINT_STACK_ALIGN 128
 
 enum
@@ -529,7 +530,7 @@ next:
 			/* this part is to print a linked list of cells. ignore the
 			 * request to output in the json format */
 
-			concode = HCL_OBJ_GET_FLAGS_SYNCODE(obj);
+			concode = HCL_OBJ_GET_FLAGS_CONCODE(obj);
 			if (hcl_bfmt_out(hcl, fmtout, opening_parens[concode][0]) <= -1) return -1;
 			cur = obj;
 

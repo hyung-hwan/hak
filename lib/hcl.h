@@ -366,10 +366,10 @@ typedef enum hcl_obj_type_t hcl_obj_type_t;
 #define HCL_OBJ_FLAGS_MOVED_BITS     (2) /* 16 */
 #define HCL_OBJ_FLAGS_NGC_BITS       (1) /* 17 */
 #define HCL_OBJ_FLAGS_TRAILER_BITS   (1) /* 18 */
-#define HCL_OBJ_FLAGS_SYNCODE_BITS   (5) /* 23 - syncode for symbol, concode for cons */
-#define HCL_OBJ_FLAGS_FLEXI_BITS     (1) /* 24 */
-#define HCL_OBJ_FLAGS_RDONLY_BITS    (1) /* 25 */
-#define HCL_OBJ_FLAGS_PROC_BITS      (1) /* 26 */
+#define HCL_OBJ_FLAGS_CONCODE_BITS   (4) /* 22 - concode for cons */
+#define HCL_OBJ_FLAGS_FLEXI_BITS     (1) /* 23 */
+#define HCL_OBJ_FLAGS_RDONLY_BITS    (1) /* 24 */
+#define HCL_OBJ_FLAGS_PROC_BITS      (1) /* 25 */
 
 /*
 #define HCL_OBJ_FLAGS_PERM_BITS       1
@@ -386,8 +386,8 @@ typedef enum hcl_obj_type_t hcl_obj_type_t;
 #define HCL_OBJ_FLAGS_KERNEL_SHIFT      (HCL_OBJ_FLAGS_MOVED_BITS     + HCL_OBJ_FLAGS_MOVED_SHIFT)
 #define HCL_OBJ_FLAGS_MOVED_SHIFT       (HCL_OBJ_FLAGS_NGC_BITS       + HCL_OBJ_FLAGS_NGC_SHIFT)
 #define HCL_OBJ_FLAGS_NGC_SHIFT         (HCL_OBJ_FLAGS_TRAILER_BITS   + HCL_OBJ_FLAGS_TRAILER_SHIFT)
-#define HCL_OBJ_FLAGS_TRAILER_SHIFT     (HCL_OBJ_FLAGS_SYNCODE_BITS   + HCL_OBJ_FLAGS_SYNCODE_SHIFT)
-#define HCL_OBJ_FLAGS_SYNCODE_SHIFT     (HCL_OBJ_FLAGS_FLEXI_BITS     + HCL_OBJ_FLAGS_FLEXI_SHIFT)
+#define HCL_OBJ_FLAGS_TRAILER_SHIFT     (HCL_OBJ_FLAGS_CONCODE_BITS   + HCL_OBJ_FLAGS_CONCODE_SHIFT)
+#define HCL_OBJ_FLAGS_CONCODE_SHIFT     (HCL_OBJ_FLAGS_FLEXI_BITS     + HCL_OBJ_FLAGS_FLEXI_SHIFT)
 #define HCL_OBJ_FLAGS_FLEXI_SHIFT       (HCL_OBJ_FLAGS_RDONLY_BITS    + HCL_OBJ_FLAGS_RDONLY_SHIFT)
 #define HCL_OBJ_FLAGS_RDONLY_SHIFT      (HCL_OBJ_FLAGS_PROC_BITS      + HCL_OBJ_FLAGS_PROC_SHIFT)
 #define HCL_OBJ_FLAGS_PROC_SHIFT        (0)
@@ -399,7 +399,7 @@ typedef enum hcl_obj_type_t hcl_obj_type_t;
 #define HCL_OBJ_GET_FLAGS_MOVED(oop)       HCL_GETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_MOVED_SHIFT,     HCL_OBJ_FLAGS_MOVED_BITS)
 #define HCL_OBJ_GET_FLAGS_NGC(oop)         HCL_GETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_NGC_SHIFT,       HCL_OBJ_FLAGS_NGC_BITS)
 #define HCL_OBJ_GET_FLAGS_TRAILER(oop)     HCL_GETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_TRAILER_SHIFT,   HCL_OBJ_FLAGS_TRAILER_BITS)
-#define HCL_OBJ_GET_FLAGS_SYNCODE(oop)     HCL_GETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_SYNCODE_SHIFT,   HCL_OBJ_FLAGS_SYNCODE_BITS)
+#define HCL_OBJ_GET_FLAGS_CONCODE(oop)     HCL_GETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_CONCODE_SHIFT,   HCL_OBJ_FLAGS_CONCODE_BITS)
 #define HCL_OBJ_GET_FLAGS_FLEXI(oop)       HCL_GETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_FLEXI_SHIFT,     HCL_OBJ_FLAGS_FLEXI_BITS)
 #define HCL_OBJ_GET_FLAGS_RDONLY(oop)      HCL_GETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_RDONLY_SHIFT,    HCL_OBJ_FLAGS_RDONLY_BITS)
 #define HCL_OBJ_GET_FLAGS_PROC(oop)        HCL_GETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_PROC_SHIFT,      HCL_OBJ_FLAGS_PROC_BITS)
@@ -411,7 +411,7 @@ typedef enum hcl_obj_type_t hcl_obj_type_t;
 #define HCL_OBJ_SET_FLAGS_MOVED(oop,v)     HCL_SETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_MOVED_SHIFT,     HCL_OBJ_FLAGS_MOVED_BITS,     v)
 #define HCL_OBJ_SET_FLAGS_NGC(oop,v)       HCL_SETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_NGC_SHIFT,       HCL_OBJ_FLAGS_NGC_BITS,       v)
 #define HCL_OBJ_SET_FLAGS_TRAILER(oop,v)   HCL_SETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_TRAILER_SHIFT,   HCL_OBJ_FLAGS_TRAILER_BITS,   v)
-#define HCL_OBJ_SET_FLAGS_SYNCODE(oop,v)   HCL_SETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_SYNCODE_SHIFT,   HCL_OBJ_FLAGS_SYNCODE_BITS,   v)
+#define HCL_OBJ_SET_FLAGS_CONCODE(oop,v)   HCL_SETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_CONCODE_SHIFT,   HCL_OBJ_FLAGS_CONCODE_BITS,   v)
 #define HCL_OBJ_SET_FLAGS_FLEXI(oop,v)     HCL_SETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_FLEXI_SHIFT,     HCL_OBJ_FLAGS_FLEXI_BITS, v)
 #define HCL_OBJ_SET_FLAGS_RDONLY(oop,v)    HCL_SETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_RDONLY_SHIFT,    HCL_OBJ_FLAGS_RDONLY_BITS, v)
 #define HCL_OBJ_SET_FLAGS_PROC(oop,v)      HCL_SETBITS(hcl_oow_t, (oop)->_flags, HCL_OBJ_FLAGS_PROC_SHIFT,      HCL_OBJ_FLAGS_PROC_BITS, v)
@@ -2021,9 +2021,12 @@ enum hcl_brand_t
 };
 typedef enum hcl_brand_t hcl_brand_t;
 
+/* TODO: this concode stuff has become mostly useless as the bits are never set as of now */
 enum hcl_concode_t
 {
-	/* these can be set in the SYNCODE flags for a cons cell */
+	/* these can be set in the CONCODE flags for a cons cell */
+	/* if you have more than 16 elements, increase HCL_OBJ_FLAGS_CONCODE_BITS */
+
 	HCL_CONCODE_XLIST = 0,  /* ( ) - executable list */
 	HCL_CONCODE_MLIST,      /* (obj:message) - message send list */
 	HCL_CONCODE_ALIST,      /* (a := 20) assignment list */
@@ -2052,7 +2055,7 @@ typedef enum hcl_concode_t hcl_concode_t;
 #define HCL_IS_CLASS(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)(hcl)->c_class)
 #define HCL_IS_INSTANCE(hcl,v) (HCL_OOP_IS_POINTER(v) && HCL_OBJ_GET_FLAGS_BRAND(v) == HCL_BRAND_INSTANCE)
 #define HCL_IS_CONS(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)(hcl)->c_cons)
-#define HCL_IS_CONS_CONCODED(hcl,v,concode) (HCL_IS_CONS(hcl,v) && HCL_OBJ_GET_FLAGS_SYNCODE(v) == (concode))
+#define HCL_IS_CONS_CONCODED(hcl,v,concode) (HCL_IS_CONS(hcl,v) && HCL_OBJ_GET_FLAGS_CONCODE(v) == (concode))
 #define HCL_IS_ARRAY(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)(hcl)->c_array)
 #define HCL_IS_BYTEARRAY(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)(hcl)->c_byte_array)
 #define HCL_IS_DIC(hcl,v) (HCL_CLASSOF(hcl,v) == (hcl_oop_t)(hcl)->c_dictionary)
