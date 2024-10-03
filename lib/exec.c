@@ -2406,7 +2406,7 @@ static HCL_INLINE int do_throw (hcl_t* hcl, hcl_oop_t val, hcl_ooi_t ip)
 	/* discard unfinished class definitions for the exception thrown.
 	 *
 	 * (try
-	 *    (defclass X
+	 *    (class X
 	 *      (throw "exception")
 	 *  catch (x)
 	 *    (printf "exception %O\n" x)
@@ -3016,7 +3016,7 @@ static HCL_INLINE int do_return_from_block (hcl_t* hcl)
 		 * respectively.
 
 		[CASE 1]
-		(defclass X
+		(class X
 			; ....
 			(return 20) ;  the class defintion isn't over, but return is executed,
 			; ....
@@ -3024,7 +3024,7 @@ static HCL_INLINE int do_return_from_block (hcl_t* hcl)
 
 		[CASE 2]
 		(try
-			(defclass C
+			(class C
 				(return 200)
 				(printf "============================\n"))
 		catch (e)
@@ -3032,7 +3032,7 @@ static HCL_INLINE int do_return_from_block (hcl_t* hcl)
 		)
 
 		[CASE 3]
-		(defclass C
+		(class C
 			(try
 			    (return 99)
 			catch (e)
@@ -3043,7 +3043,7 @@ static HCL_INLINE int do_return_from_block (hcl_t* hcl)
 
 		[CASE 4]
 		(try
-			(defclass C
+			(class C
 				(try
 				    (return 99)
 				catch (e)
@@ -3057,8 +3057,8 @@ static HCL_INLINE int do_return_from_block (hcl_t* hcl)
 
 		[CASE 5]
 		(try
-			(defclass D
-				(defclass C
+			(class D
+				(class C
 					(try
 					    (return 99)
 					catch (e)

@@ -391,13 +391,13 @@ enum hcl_cnode_type_t
 	HCL_CNODE_RADNUMLIT,
 	HCL_CNODE_FPDECLIT,
 	HCL_CNODE_SMPTRLIT,
-	HCL_CNODE_ERRLIT,
+	HCL_CNODE_ERRLIT, /* last item for HCL_CNODE_IS_FOR_DATA_LITERAL */
 
 	HCL_CNODE_NIL,
 	HCL_CNODE_TRUE,
 	HCL_CNODE_FALSE,
 	HCL_CNODE_SELF,
-	HCL_CNODE_SUPER,
+	HCL_CNODE_SUPER, /* last item for HCL_CNODE_IS_FOR_DATA_SIMPLE */
 
 	HCL_CNODE_CONS,
 	HCL_CNODE_ELIST, /* empty list */
@@ -409,7 +409,7 @@ enum hcl_cnode_type_t
 
 	/* the cnode types from here don't represent actual data.
 	 * these represent syntactical elements of the language only.  */
-	HCL_CNODE_CLASS,
+	HCL_CNODE_CLASS, /* first item for  HCL_CNODE_IS_FOR_LANG */
 	HCL_CNODE_FUN,
 	HCL_CNODE_DO,
 	HCL_CNODE_IF,
@@ -423,7 +423,7 @@ enum hcl_cnode_type_t
 	HCL_CNODE_UNTIL,
 	HCL_CNODE_WHILE,
 	HCL_CNODE_RETURN,
-	HCL_CNODE_REVERT,
+	HCL_CNODE_REVERT, /* language item for HCL_CODE_IS_FOR_LANG */
 
 	HCL_CNODE_ELLIPSIS, /* ... */
 	HCL_CNODE_TRPCOLONS, /* ::: */
@@ -449,6 +449,12 @@ typedef enum hcl_cnode_flag_t hcl_cnode_flag_t;
 
 #define HCL_CNODE_IS_TYPED(x, _type) ((x)->cn_type == _type)
 #define HCL_CNODE_IS_FOR_DATA(x) ((x)->cn_type <= HCL_CNODE_SHELL)
+#define HCL_CNODE_IS_FOR_DATA_SIMPLE(x) ((x)->cn_type <= HCL_CNODE_SUPER)
+#define HCL_CNODE_IS_FOR_DATA_LITERAL(x) ((x)->cn_type <= HCL_CNODE_ERRLIT)
+
+/* words to compose the language itself.
+ * the words pointing to data items(e.g. super, self, nil, true, false) are excluded */
+#define HCL_CNODE_IS_FOR_LANG(x)((x)->cn_type >= HCL_CNODE_CLASS && (x)->cn_type <= HCL_CNODE_REVERT)
 
 #define HCL_CNODE_IS_ELLIPSIS(x) ((x)->cn_type == HCL_CNODE_ELLIPSIS)
 #define HCL_CNODE_IS_TRPCOLONS(x) ((x)->cn_type == HCL_CNODE_TRPCOLONS)

@@ -1,4 +1,4 @@
-defclass A [ a ] {
+class A [ a ] {
 	fun(#ci) init1() {
 		| b |
 		set b (+ 1 2);

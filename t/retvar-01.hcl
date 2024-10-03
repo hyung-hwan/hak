@@ -31,7 +31,7 @@
 
 
 	## test return variables in message sends
-	defclass B [ [X1 X2] ] {
+	class B [ [X1 X2] ] {
 
 		set X1 999;
 		set X2 888;

@@ -15,6 +15,43 @@ class B + ##ERROR: syntax error - prohibited binary selector '+'
 
 ---
 
+class A [ a ] {
+	| j | ##ERROR: syntax error - variable declaration disallowed in class init scope
+}
+
+---
+
+class 10 [ a ] { ##ERROR: syntax error - invalid class name '10' for 'class'
+}
+
+---
+
+class class { ##ERROR: syntax error - invalid class name 'class' for 'class'
+}
+
+---
+
+class super.a [ a ] { ##ERROR: syntax error - invalid class name 'super.a' for 'class'
+}
+
+---
+
+class a :: 20 { ##ERROR: syntax error - invalid superclass name '20' after '::' for 'class'
+}
+
+---
+
+class a :: class { ##ERROR: syntax error - invalid superclass name 'class' after '::' for 'class'
+
+}
+
+---
+
+class a :: #(1 2) { ##ERROR: syntax error - no valid superclass name after '::' for 'class'
+}
+
+---
+
 J := 11
 class B {
 	if (== J 10) {

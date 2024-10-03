@@ -96,7 +96,7 @@ if (== y 29) {
 
 ## --------------------------------------
 
-defclass A [ a b c ] {
+class A [ a b c ] {
 	fun(#ci) newInstance(x y z) {
 		set a x
 		set b y

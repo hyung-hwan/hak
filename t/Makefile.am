@@ -21,7 +21,6 @@ check_ERRORS = \
 	mlist-5001.err \
 	var-5001.err \
 	var-5002.err \
-	var-5003.err \
 	var-5004.err
 
 ##noinst_SCRIPTS = $(check_SCRIPTS)
