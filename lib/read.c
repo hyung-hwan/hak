@@ -893,6 +893,13 @@ static HCL_INLINE int can_colon_list (hcl_t* hcl)
 	if (rstl->count <= 0) return 0; /* not allowed at the list beginning  */
 
 	/* mark the state that a colon has appeared in the list */
+	if (HCL_CNODE_IS_TYPED(HCL_CNODE_CONS_CAR(rstl->head), HCL_CNODE_CLASS))
+	{
+		/* class :superclassame ...
+		 * class name:superclassname ... */
+		return 2;
+	}
+
 	if (rstl->count == 1) rstl->flagv |= JSON; /* mark that the first key is colon-delimited */
 	else if (!(rstl->flagv & JSON))
 	{
@@ -945,7 +952,14 @@ static HCL_INLINE int can_colon_list (hcl_t* hcl)
 		/* ugly dual use of a colon sign. switch to MLIST if the first element
 		 * is delimited by a colon. e.g. (obj:new 10 20 30)  */
 		tmp = HCL_CNODE_CONS_CAR(rstl->head);
-		if (!HCL_CNODE_IS_FOR_DATA(tmp)) return 0;
+		if (!HCL_CNODE_IS_FOR_DATA(tmp))
+		{
+			/* check if the first element can refer to or represent an object.
+			 * for example, '#[1 2 3]:at 1' is proper message send.
+			 * while 'class:xxx {}' is not a method call. it is unamed class
+			 * that inherits from xxx */
+			return 0;
+		}
 
 		LIST_FLAG_SET_CONCODE(rstl->flagv, HCL_CONCODE_MLIST);
 		rstl->flagv &= ~JSON;

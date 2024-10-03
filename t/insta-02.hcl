@@ -31,11 +31,12 @@ else { printf "OK: t is %d\n" t };
 j := #{ ((X:make):get-x): 9999, 4512: ((X: make): get-x) };
 v := (dic.get j 1234);
 if (nqv? v 9999) { printf "ERROR: v is not 9999\n" } \
-else {  printf "OK:  value is %d\n" v };
+else {  printf "OK: value is %d\n" v };
 
 v := (dic.get j 4512);
 if (nqv? v 1234) { printf "ERROR: v is not 1234\n" } \
-else { printf "OK:  value is %d\n" v };
+else { printf "OK: value is %d\n" v };
+
 
 ## --------------------------------------------------------------
 
@@ -58,11 +59,11 @@ class X0 [ a b c d ] {
 
 }; a := (X0:new); v := (a:x)
 if (nqv? v 100) { printf "ERROR: v is not 100\n" } \
-else { printf "OK:  value is %d\n" v }
+else { printf "OK: value is %d\n" v }
 
 v := ((a:y) 20);
 if (nqv? v 21) { printf "ERROR: v is not 21\n" } \
-else { printf "OK:  value is %d\n" v }
+else { printf "OK: value is %d\n" v }
 
 ## --------------------------------------------------------------
 
@@ -92,15 +93,15 @@ fun X1:get_a() {
 
 v := ((X1:new):get_a)
 if (nqv? v 20) { printf "ERROR: v is not 20 - %d\n" v } \
-else { printf "OK:  value is %d\n" v }
+else { printf "OK: value is %d\n" v }
 
 v := (((X1:new):make 5 6 7):get_j)
 if (nqv? v 79) { printf "ERROR: v is not 79 - %d\n" v } \
-else { printf "OK:  value is %d\n" v }
+else { printf "OK: value is %d\n" v }
 
 v := (((X1:new):make 6 6 7):get_j)
 if (nqv? v 70) { printf "ERROR: v is not 70 - %d\n" v } \
-else { printf "OK:  value is %d\n" v }
+else { printf "OK: value is %d\n" v }
 
 ## --------------------------------------------------------------
 
@@ -175,3 +176,17 @@ else { printf "OK: value is %d\n" v }
 v := { X5:t; (X6:t) + 10 }
 if (nqv? v 50) { printf "ERROR: v is not 50 - %d\n" v } \
 else { printf "OK: value is %d\n" v }
+
+## --------------------------------------------------------------
+class X10 [ x ] {
+	fun(#ci) make() { x := 1234; return self; };
+	fun get-x() { return x };
+}
+
+X11 := (class:X10 {
+})
+
+v := (X11:make)
+v := (v:get-x)
+if (== v 1234) { printf "OK: v is %d\n" v } \
+else {printf "ERROR: v is %d, not 1234\n" v }

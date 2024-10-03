@@ -26,7 +26,7 @@ class A [ a b c ]  {
 	fun get-c() { return self.c; };
 };
 
-class B :: A [ d e f ] {
+class B: A [ d e f ] {
 
 	fun(#ci) newInstance(x y z) {
 		super:newInstance (* x 2) (* y 2) (* z 2);

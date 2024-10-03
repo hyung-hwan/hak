@@ -2548,7 +2548,7 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src)
 	}
 
 	tmp = HCL_CNODE_CONS_CAR(obj);
-	if (/*HCL_CNODE_IS_COLON(tmp) || */HCL_CNODE_IS_DBLCOLONS(tmp))
+	if (HCL_CNODE_IS_COLON(tmp)) /* check for superclass marker */
 	{
 		hcl_cnode_t* marker;
 

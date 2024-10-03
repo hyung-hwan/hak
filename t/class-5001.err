@@ -36,18 +36,18 @@ class super.a [ a ] { ##ERROR: syntax error - invalid class name 'super.a' for '
 
 ---
 
-class a :: 20 { ##ERROR: syntax error - invalid superclass name '20' after '::' for 'class'
+class a: 20 { ##ERROR: syntax error - invalid superclass name '20' after ':' for 'class'
 }
 
 ---
 
-class a :: class { ##ERROR: syntax error - invalid superclass name 'class' after '::' for 'class'
+class a: class { ##ERROR: syntax error - invalid superclass name 'class' after ':' for 'class'
 
 }
 
 ---
 
-class a :: #(1 2) { ##ERROR: syntax error - no valid superclass name after '::' for 'class'
+class a: #(1 2) { ##ERROR: syntax error - no valid superclass name after ':' for 'class'
 }
 
 ---
@@ -81,7 +81,7 @@ class B [ x y ] {
 
 };
 
-class X :: B [ a b ] {
+class X: B [ a b ] {
 	fun(#ci) new(t) {
 		| a |
 		set self.a t;
@@ -230,4 +230,17 @@ F := (class F { ##ERROR: exception not handle - "prohibited redefintion of F"
 class a {
 	fun() { ##ERROR: syntax error - unnamed function defined with 'fun' prohibited in class initialziation context
 	}
+}
+
+---
+
+class X10 [ x ] {
+     fun(#ci) make() { x := 1234; return self; };
+     fun get-x() { return x };
+}
+
+X11 := (class:X10 {
+})
+
+class X11 { ##ERROR: exception not handled - "prohibited redefintion of X11"
 }
