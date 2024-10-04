@@ -677,6 +677,7 @@ struct hcl_cframe_t
 		struct
 		{
 			hcl_ooi_t nsuperclasses;
+			unsigned int indexed_type;
 			hcl_loc_t start_loc;
 			hcl_cnode_t* cmd_cnode;
 		} _class;

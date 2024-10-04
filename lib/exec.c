@@ -4032,18 +4032,19 @@ static int execute (hcl_t* hcl)
 				   push superclass (only if nsuperclassses > 0)
 				   push ivars_string
 				   push cvars_string
-				   class_enter nsuperclasses nivars ncvars
+				   class_enter indexed_type nsuperclasses nivars ncvars
 				 */
 				hcl_oop_t superclass, ivars_str, cvars_str, class_name;
 				hcl_oop_t v;
 				hcl_oop_class_t class_obj;
-				hcl_oow_t b3;
+				hcl_oow_t b0, b3;
 
+				FETCH_BYTE_CODE_TO (hcl, b0); /* indexed_type */
 				FETCH_PARAM_CODE_TO (hcl, b1); /* nsuperclasses */
 				FETCH_PARAM_CODE_TO (hcl, b2); /* nivars */
 				FETCH_PARAM_CODE_TO (hcl, b3); /* ncvars */
 
-				LOG_INST_3 (hcl, "class_enter %zu %zu %zu", b1, b2, b3);
+				LOG_INST_4 (hcl, "class_enter %zu %zu %zu %zu", b0, b1, b2, b3);
 
 				if (b3 > 0)
 				{
@@ -4073,7 +4074,6 @@ static int execute (hcl_t* hcl)
 
 				HCL_STACK_POP_TO(hcl, v);
 
-//////////////
 				if (HCL_IS_CONS(hcl, v))
 				{
 					/* named class. the compiler generates code to push a pair holding
@@ -4091,15 +4091,22 @@ static int execute (hcl_t* hcl)
 						{
 							/* check if the new definition is compatible with kernel definition */
 							hcl_ooi_t spec, selfspec, nivars_super, nivars_super_real;
+							hcl_obj_type_t indexed_type;
 
 							spec = HCL_OOP_TO_SMOOI(class_obj->spec);
 							selfspec = HCL_OOP_TO_SMOOI(class_obj->selfspec);
 							nivars_super = HCL_OOP_TO_SMOOI(class_obj->nivars_super);
 							nivars_super_real = HCL_IS_NIL(hcl, superclass)? 0: HCL_OOP_TO_SMOOI(((hcl_oop_class_t)superclass)->nivars_super);
+//if (HCL_CLASS_SPEC_IS_INDEXED(spec))
+//indexed_type = (hcl_obj_type_t)HCL_CLASS_SPEC_INDEXED_TYPE(spec);
 #if 0
 hcl_logbfmt (hcl, HCL_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncvars=%d<<<\n", class_obj, class_obj->superclass, superclass, b2, b3, (int)HCL_CLASS_SPEC_NAMED_INSTVARS(spec), (int)HCL_CLASS_SELFSPEC_CLASSVARS(spec));
 #endif
-							if (class_obj->superclass != superclass || HCL_CLASS_SPEC_NAMED_INSTVARS(spec) != b2 || HCL_CLASS_SELFSPEC_CLASSVARS(selfspec) != b3 || nivars_super != nivars_super_real)
+
+							if (class_obj->superclass != superclass ||
+							    HCL_CLASS_SPEC_NAMED_INSTVARS(spec) != b2 ||
+							    HCL_CLASS_SELFSPEC_CLASSVARS(selfspec) != b3 ||
+							    nivars_super != nivars_super_real)
 							{
 								hcl_seterrbfmt (hcl, HCL_EPERM, "incompatible redefintion of %.*js", HCL_OBJ_GET_SIZE(class_name), HCL_OBJ_GET_CHAR_SLOT(class_name));
 								if (do_throw_with_internal_errmsg(hcl, fetched_instruction_pointer) >= 0) break;
@@ -4129,7 +4136,6 @@ hcl_logbfmt (hcl, HCL_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d nc
 					class_obj = (hcl_oop_class_t)hcl_makeclass(hcl, class_name, superclass, b2, b3, ivars_str, cvars_str);
 					if (HCL_UNLIKELY(!class_obj)) goto oops_with_errmsg_supplement;
 				}
-//////////////
 
 				/* push the class created to the class stack. but don't push to the normal operation stack */
 				HCL_CLSTACK_PUSH (hcl, (hcl_oop_t)class_obj);
@@ -5019,7 +5025,7 @@ hcl_oop_t hcl_execute (hcl_t* hcl)
 		HCL_ASSERT (hcl, hcl->code.bc.ptr[hcl->code.bc.len - 1] == HCL_CODE_POP_STACKTOP);
 	#if 1
 		/* append RETURN_FROM_BLOCK
-		if (hcl_emitbyteinstruction(hcl, HCL_CODE_RETURN_FROM_BLOCK) <= -1) return -1;*/
+		 * if (hcl_emitbyteinstruction(hcl, HCL_CODE_RETURN_FROM_BLOCK) <= -1) return -1;*/
 		/* substitute RETURN_FROM_BLOCK for POP_STACKTOP) */
 		hcl->code.bc.ptr[hcl->code.bc.len - 1] = HCL_CODE_RETURN_FROM_BLOCK;
 	#else

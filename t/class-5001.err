@@ -1,8 +1,8 @@
-class ##ERROR: syntax error - no class body
+class ##ERROR: syntax error - incomplete defintion of unnamed class for 'class'
 
 ---
 
-class B ##ERROR: syntax error - no class body
+class B ##ERROR: syntax error - incomplete definition of 'B' for 'class'
 
 ---
 

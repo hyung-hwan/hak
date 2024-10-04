@@ -379,13 +379,13 @@ int hcl_decode (hcl_t* hcl, const hcl_code_t* code, hcl_oow_t start, hcl_oow_t e
 
 			case HCL_CODE_CLASS_ENTER:
 			{
-				hcl_oow_t b3;
+				hcl_oow_t b0, b3;
 
+				FETCH_BYTE_CODE_TO (hcl, b0);
 				FETCH_PARAM_CODE_TO (hcl, b1);
 				FETCH_PARAM_CODE_TO (hcl, b2);
 				FETCH_PARAM_CODE_TO (hcl, b3);
-				LOG_INST_3 (hcl, "class_enter %zu %zu %zu", b1, b2, b3);
-
+				LOG_INST_4 (hcl, "class_enter %zu %zu %zu %zu", b0, b1, b2, b3);
 				break;
 			}
 

@@ -110,7 +110,6 @@ static const char* synerrstr[] =
 	"invalid radix for a numeric literal",
 
 	"sudden end of input",
-	"sudden end of expression",
 	"( expected",
 	") expected",
 	"] expected",
@@ -139,7 +138,6 @@ static const char* synerrstr[] =
 	"if body too big",
 	"block too big",
 	"block too deep",
-	"name expected",
 	"argument name list expected",
 	"argument name expected",
 	"duplicate argument name",
@@ -155,6 +153,7 @@ static const char* synerrstr[] =
 	"disallowed argument name",
 	"disallowed",
 
+	"invalid class definition",
 	"invalid function definition",
 	"elif without if",
 	"else without if",

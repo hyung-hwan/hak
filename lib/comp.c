@@ -2464,6 +2464,132 @@ static HCL_INLINE int compile_else (hcl_t* hcl)
 
 /* ========================================================================= */
 
+static int check_class_attr_list (hcl_t* hcl, hcl_cnode_t* attr_list, unsigned int* indexed_type, hcl_cnode_t* cmd, hcl_cnode_t* class_name)
+{
+	static struct
+	{
+		const hcl_bch_t* name;
+		unsigned int flag;
+	} flag_tab[] = {
+		{ "v",          HCL_CLASS_SPEC_FLAG_INDEXED },
+		{ "var",        HCL_CLASS_SPEC_FLAG_INDEXED },
+		{ "variable",   HCL_CLASS_SPEC_FLAG_INDEXED },
+		{ "immutable",  HCL_CLASS_SPEC_FLAG_IMMUTABLE },
+		{ "uncopyable", HCL_CLASS_SPEC_FLAG_UNCOPYABLE },
+	};
+
+	static struct
+	{
+		const hcl_bch_t* name;
+		hcl_obj_type_t   indexed_type;
+	} type_tab[] = {
+		{ "b",         HCL_OBJ_TYPE_BYTE },
+		{ "byte",      HCL_OBJ_TYPE_BYTE },
+		{ "c",         HCL_OBJ_TYPE_CHAR },
+		{ "char",      HCL_OBJ_TYPE_CHAR },
+		{ "character", HCL_OBJ_TYPE_CHAR },
+		{ "halfword",  HCL_OBJ_TYPE_HALFWORD },
+		{ "hw",        HCL_OBJ_TYPE_HALFWORD },
+		{ "w",         HCL_OBJ_TYPE_WORD },
+		{ "word",      HCL_OBJ_TYPE_WORD }
+		/* TODO: uint32 uint16 .. etc */
+	};
+	hcl_obj_type_t ct;
+
+	ct = HCL_OBJ_TYPE_OOP;
+
+	HCL_ASSERT (hcl, attr_list != HCL_NULL);
+	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS_CONCODED(attr_list, HCL_CONCODE_XLIST) ||
+	                 HCL_CNODE_IS_ELIST_CONCODED(attr_list, HCL_CONCODE_XLIST));
+
+	if (HCL_CNODE_IS_ELIST_CONCODED(attr_list, HCL_CONCODE_XLIST))
+	{
+		/* don't allow empty attribute list */
+		if (class_name)
+		{
+			hcl_setsynerrbfmt (
+				hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(attr_list), HCL_NULL,
+				"empty attribute list on '%.*js' for '%.*js'",
+				HCL_CNODE_GET_TOKLEN(class_name), HCL_CNODE_GET_TOKPTR(class_name),
+				HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		}
+		else
+		{
+			hcl_setsynerrbfmt (
+				hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(attr_list), HCL_NULL,
+				"empty attribute list on unamed class for '%.*js'",
+				HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		}
+		return -1;
+	}
+
+	if (HCL_CNODE_IS_CONS_CONCODED(attr_list, HCL_CONCODE_XLIST))
+	{
+		hcl_cnode_t* c, * a;
+		const hcl_ooch_t* tokptr;
+		hcl_oow_t toklen, i;
+
+		c = attr_list;
+		while (c)
+		{
+			a = HCL_CNODE_CONS_CAR(c);
+
+			tokptr = HCL_CNODE_GET_TOKPTR(a);
+			toklen = HCL_CNODE_GET_TOKLEN(a);
+
+			if (!HCL_CNODE_IS_TYPED(a, HCL_CNODE_SYMLIT))
+			{
+				hcl_setsynerrbfmt (
+					hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(a), HCL_NULL,
+					"invalid class attribute name '%.*js'", toklen, tokptr);
+				return -1;
+			}
+
+			for (i = 0; i < HCL_COUNTOF(flag_tab); i++)
+			{
+				if (hcl_comp_oochars_bcstr(tokptr, toklen, flag_tab[i].name) == 0)
+				{
+					if ((ct >> 8) & flag_tab[i].flag)
+					{
+					conflict:
+						hcl_setsynerrbfmt (
+							hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(a), HCL_NULL,
+							"conflicting or duplicate class attribute name '%.*js'", toklen, tokptr);
+						return -1;
+					}
+					ct |= (flag_tab[i].flag << 8);
+					break;
+				}
+			}
+			if (i >= HCL_COUNTOF(flag_tab))
+			{
+				for (i = 0; i < HCL_COUNTOF(type_tab); i++)
+				{
+					if (hcl_comp_oochars_bcstr(tokptr, toklen, type_tab[i].name) == 0)
+					{
+						if (ct & 0x7F) goto conflict;
+						ct = type_tab[i].indexed_type;
+						break;
+					}
+				}
+
+				if (i >= HCL_COUNTOF(type_tab))
+				{
+					hcl_setsynerrbfmt (
+						hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(a), HCL_NULL,
+						"unrecognized class attribute name '%.*js'", toklen, tokptr);
+					return -1;
+				}
+			}
+
+			c = HCL_CNODE_CONS_CDR(c);
+		}
+	}
+
+	*indexed_type = ct;
+	return 0;
+}
+
 /*
 	(class A
 		[ x y ] ## instance variables
@@ -2495,29 +2621,42 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src)
 {
 	hcl_cframe_t* cf;
 	hcl_cnode_t* cmd, * obj, * tmp;
+	hcl_cnode_t* attr_list;
 	hcl_cnode_t* class_name, * superclass;
 	int nsuperclasses;
+	unsigned int indexed_type;
 
 	cmd = HCL_CNODE_CONS_CAR(src);
 	obj = HCL_CNODE_CONS_CDR(src);
 
+	attr_list = HCL_NULL;
 	class_name = HCL_NULL;
+	indexed_type = HCL_OBJ_TYPE_OOP;
 
 	HCL_ASSERT (hcl, HCL_CNODE_IS_TYPED(cmd, HCL_CNODE_CLASS));
 
-/* TODO: attribute lsit */
-
-	if (obj /*&& HCL_CNODE_IS_CONS(obj)*/)
+	if (obj)
 	{
 		HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(obj));
 
 		tmp = HCL_CNODE_CONS_CAR(obj);
+		if (HCL_CNODE_IS_ELIST_CONCODED(tmp, HCL_CONCODE_XLIST) || HCL_CNODE_IS_CONS_CONCODED(tmp, HCL_CONCODE_XLIST))
+		{
+			attr_list = tmp;
+			obj = HCL_CNODE_CONS_CAR(obj)	;
+		}
+	}
+
+	if (obj)
+	{
+		HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(obj));
+
 		if (HCL_CNODE_IS_FOR_DATA_SIMPLE(tmp) || HCL_CNODE_IS_FOR_LANG(tmp))
 		{
 			if (!HCL_CNODE_IS_SYMBOL_IDENT(tmp))
 			{
 				hcl_setsynerrbfmt (
-					hcl, HCL_SYNERR_VARNAME, HCL_CNODE_GET_LOC(tmp), HCL_NULL,
+					hcl, HCL_SYNERR_CLASS, HCL_CNODE_GET_LOC(tmp), HCL_NULL,
 					"invalid class name '%.*js' for '%.*js'",
 					HCL_CNODE_GET_TOKLEN(tmp), HCL_CNODE_GET_TOKPTR(tmp),
 					HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
@@ -2534,18 +2673,22 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src)
 		if (class_name)
 		{
 			hcl_setsynerrbfmt (
-				hcl, HCL_SYNERR_BLOCK, HCL_CNODE_GET_LOC(src), HCL_NULL,
-				"no class body defined for '%.*js'",
-				HCL_CNODE_GET_TOKLEN(class_name), HCL_CNODE_GET_TOKPTR(class_name));
+				hcl, HCL_SYNERR_CLASS, HCL_CNODE_GET_LOC(src), HCL_NULL,
+				"incomplete definition of '%.*js' for '%.*js'",
+				HCL_CNODE_GET_TOKLEN(class_name), HCL_CNODE_GET_TOKPTR(class_name),
+				HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 		}
 		else
 		{
 			hcl_setsynerrbfmt (
-				hcl, HCL_SYNERR_BLOCK, HCL_CNODE_GET_LOC(src), HCL_NULL,
-				"no class body defined for unnamed class");
+				hcl, HCL_SYNERR_CLASS, HCL_CNODE_GET_LOC(src), HCL_NULL,
+				"incomplete defintion of unnamed class for '%.*js'",
+				HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 		}
 		return -1;
 	}
+
+	if (attr_list && check_class_attr_list(hcl, attr_list, &indexed_type, cmd, class_name) <= -1) return -1;
 
 	tmp = HCL_CNODE_CONS_CAR(obj);
 	if (HCL_CNODE_IS_COLON(tmp)) /* check for superclass marker */
@@ -2557,7 +2700,7 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src)
 		if (!obj || !HCL_CNODE_IS_CONS(obj))
 		{
 			hcl_setsynerrbfmt (
-				hcl, HCL_SYNERR_EOX, HCL_CNODE_GET_LOC(marker), HCL_NULL,
+				hcl, HCL_SYNERR_CLASS, HCL_CNODE_GET_LOC(marker), HCL_NULL,
 				"no expression or declaration after %.*js",
 				HCL_CNODE_GET_TOKLEN(marker), HCL_CNODE_GET_TOKPTR(marker));
 			return -1;
@@ -2570,7 +2713,7 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src)
 			if (HCL_CNODE_IS_FOR_DATA_SIMPLE(superclass) || HCL_CNODE_IS_FOR_LANG(superclass))
 			{
 				hcl_setsynerrbfmt (
-					hcl, HCL_SYNERR_NAME, HCL_CNODE_GET_LOC(marker), HCL_NULL,
+					hcl, HCL_SYNERR_CLASS, HCL_CNODE_GET_LOC(marker), HCL_NULL,
 					"invalid superclass name '%.*js' after '%.*js' for '%.*js'",
 					HCL_CNODE_GET_TOKLEN(superclass), HCL_CNODE_GET_TOKPTR(superclass),
 					HCL_CNODE_GET_TOKLEN(marker), HCL_CNODE_GET_TOKPTR(marker),
@@ -2579,7 +2722,7 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src)
 			else
 			{
 				hcl_setsynerrbfmt (
-					hcl, HCL_SYNERR_NAME, HCL_CNODE_GET_LOC(marker), HCL_NULL,
+					hcl, HCL_SYNERR_CLASS, HCL_CNODE_GET_LOC(marker), HCL_NULL,
 					"no valid superclass name after '%.*js' for '%.*js'",
 					HCL_CNODE_GET_TOKLEN(marker), HCL_CNODE_GET_TOKPTR(marker),
 					HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
@@ -2631,12 +2774,14 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src)
 	PUSH_CFRAME (hcl, COP_COMPILE_CLASS_P2, class_name); /* 3 - use class name for assignment */
 	cf = GET_TOP_CFRAME(hcl);
 	cf->u._class.nsuperclasses = 0; /* unsed for CLASS_P2 */
+	cf->u._class.indexed_type = indexed_type;
 	cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
 	cf->u._class.cmd_cnode = cmd;
 
 	PUSH_CFRAME (hcl, COP_COMPILE_CLASS_P1, obj); /* 2 - variables declaraions and actual body */
 	cf = GET_TOP_CFRAME(hcl);
 	cf->u._class.nsuperclasses = nsuperclasses; /* this needs to change if we support multiple superclasses... */
+	cf->u._class.indexed_type = indexed_type;
 	cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
 	cf->u._class.cmd_cnode = cmd;
 
@@ -2723,6 +2868,7 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 
 	/* class_enter nsuperclasses, nivars, ncvars  */
 	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_ENTER, &cf->u._class.start_loc) <= -1) goto oops;
+	if (emit_byte_instruction(hcl, (hcl_oob_t)cf->u._class.indexed_type, &cf->u._class.start_loc) <= -1) goto oops;
 	if (emit_long_param(hcl, cf->u._class.nsuperclasses) <= -1) goto oops;
 	if (emit_long_param(hcl, vardcl.nivars) <= -1) goto oops;
 	if (emit_long_param(hcl, vardcl.ncvars) <= -1) goto oops;
@@ -2799,13 +2945,11 @@ static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 
 /* ========================================================================= */
 
-static int check_fun_attr_list (
-	hcl_t* hcl, hcl_cnode_t* attr_list, unsigned int* fun_type,
-	hcl_cnode_t* cmd, hcl_cnode_t* class_name, hcl_cnode_t* fun_name)
+static int check_fun_attr_list (hcl_t* hcl, hcl_cnode_t* attr_list, unsigned int* fun_type, hcl_cnode_t* cmd, hcl_cnode_t* class_name, hcl_cnode_t* fun_name)
 {
 	unsigned int ft;
 
-	ft = 0;
+	ft = FUN_IM;
 
 	HCL_ASSERT (hcl, attr_list != HCL_NULL);
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS_CONCODED(attr_list, HCL_CONCODE_XLIST) ||
@@ -2866,7 +3010,7 @@ static int check_fun_attr_list (
 			if (hcl_comp_oochars_bcstr(tokptr, toklen, "class") == 0 ||
 			    hcl_comp_oochars_bcstr(tokptr, toklen, "c") == 0)
 			{
-				if (ft != 0)
+				if (ft != FUN_IM)
 				{
 				conflicting:
 					hcl_setsynerrbfmt (
@@ -2879,7 +3023,7 @@ static int check_fun_attr_list (
 			else if (hcl_comp_oochars_bcstr(tokptr, toklen, "classinst") == 0 ||
 			         hcl_comp_oochars_bcstr(tokptr, toklen, "ci") == 0)
 			{
-				if (ft != 0) goto conflicting;
+				if (ft != FUN_IM) goto conflicting;
 				ft = FUN_CIM;
 			}
 			else
@@ -3150,7 +3294,6 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 			 *  class X {
 			 *    a := (fun x(){}) ## this context is also class_init_scope. so the check above isn't good enough
 			 *  } */
-			fun_type = FUN_IM;
 			if (check_fun_attr_list(hcl, attr_list, &fun_type, cmd, class_name, fun_name) <= -1) return -1;
 			if (class_name) fun_type |= 0x100; /* defined in `fun class:xxx` style outside class */
 		}
@@ -3177,7 +3320,7 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 	{
 		if (is_in_class_init_scope(hcl) || class_name)
 		{
-			 fun_type = FUN_IM;
+			fun_type = FUN_IM;
 			if (class_name) fun_type |= 0x100;
 		}
 	}
@@ -5163,13 +5306,7 @@ redo:
 			goto redo;
 
 		case HCL_CNODE_ELLIPSIS:
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_ELLIPSISBANNED, HCL_CNODE_GET_LOC(oprnd), HCL_CNODE_GET_TOK(oprnd), "ellipsis disallowed in this context", HCL_CNODE_GET_TYPE(oprnd));
-			return -1;
-
 		case HCL_CNODE_TRPCOLONS:
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_TRPCOLONSBANNED, HCL_CNODE_GET_LOC(oprnd), HCL_CNODE_GET_TOK(oprnd), "triple colons disallowed in this context", HCL_CNODE_GET_TYPE(oprnd));
-			return -1;
-
 		case HCL_CNODE_DBLCOLONS:
 		case HCL_CNODE_COLON:
 		case HCL_CNODE_COLONLT:

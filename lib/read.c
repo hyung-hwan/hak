@@ -893,7 +893,8 @@ static HCL_INLINE int can_colon_list (hcl_t* hcl)
 	if (rstl->count <= 0) return 0; /* not allowed at the list beginning  */
 
 	/* mark the state that a colon has appeared in the list */
-	if (HCL_CNODE_IS_TYPED(HCL_CNODE_CONS_CAR(rstl->head), HCL_CNODE_CLASS))
+	/*if (HCL_CNODE_IS_TYPED(HCL_CNODE_CONS_CAR(rstl->head), HCL_CNODE_CLASS))*/
+	if (HCL_CNODE_IS_FOR_LANG(HCL_CNODE_CONS_CAR(rstl->head)))
 	{
 		/* class :superclassame ...
 		 * class name:superclassname ... */
@@ -903,6 +904,9 @@ static HCL_INLINE int can_colon_list (hcl_t* hcl)
 	if (rstl->count == 1) rstl->flagv |= JSON; /* mark that the first key is colon-delimited */
 	else if (!(rstl->flagv & JSON))
 	{
+#if 0
+
+/* this strict check is not needed as it returns 2 above if the first element is a language keyword element */
 		/* handling of a colon sign in out-of-class instance method definition.
 		 * e.g. fun String:length() { return (str.length self). }
 		 * TODO: inject a symbol ':' to differentiate form '::' or ':*' methods.
@@ -933,6 +937,7 @@ static HCL_INLINE int can_colon_list (hcl_t* hcl)
 				}
 			}
 		}
+#endif
 
 		return 0; /* the first key is not colon-delimited. so not allowed to colon-delimit other keys  */
 	}

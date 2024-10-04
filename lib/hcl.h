@@ -114,7 +114,6 @@ enum hcl_synerrnum_t
 	HCL_SYNERR_RADIX,         /* invalid radix for a numeric literal */
 
 	HCL_SYNERR_EOF,           /* sudden end of input */
-	HCL_SYNERR_EOX,           /* sudden end of expression */
 	HCL_SYNERR_LPAREN,        /* ( expected */
 	HCL_SYNERR_RPAREN,        /* ) expected */
 	HCL_SYNERR_RBRACK,        /* ] expected */
@@ -143,7 +142,6 @@ enum hcl_synerrnum_t
 	HCL_SYNERR_IFFLOOD,       /* if body too big */
 	HCL_SYNERR_BLKFLOOD,      /* block too big */
 	HCL_SYNERR_BLKDEPTH,      /* block too deep */
-	HCL_SYNERR_NAME,          /* name expected */
 	HCL_SYNERR_ARGNAMELIST,   /* argument name list expected */
 	HCL_SYNERR_ARGNAME,       /* argument name expected */
 	HCL_SYNERR_ARGNAMEDUP,    /* duplicate argument name  */
@@ -159,6 +157,7 @@ enum hcl_synerrnum_t
 	HCL_SYNERR_BANNEDARGNAME, /* disallowed argument name */
 	HCL_SYNERR_BANNED,        /* prohibited */
 
+	HCL_SYNERR_CLASS,         /* invalid class definition */
 	HCL_SYNERR_FUN,           /* invalid function definition */
 	HCL_SYNERR_ELIF,          /* elif without if */
 	HCL_SYNERR_ELSE,          /* else without if */
