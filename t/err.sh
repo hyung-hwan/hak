@@ -25,7 +25,7 @@ run_partfile() {
 
 	l_expected_errinfo=$(grep -n -o -E "##ERROR: .+" "$l_partfile" 2>/dev/null)
 	[ -z "$l_expected_errinfo" ] && {
-		echo "ERROR: INVALID TESTER - $l_script($l_partno) contains no ERROR information"
+		echo "ERROR: INVALID TESTER - $l_script(part=$l_partno,line=$l_l_partstartlineno) contains no ERROR information"
 		return 1
 	}
 
@@ -82,7 +82,7 @@ do
 done < "$script"
 
 [ $partlines -gt 0 ] && {
-	run_partfile "$@" "$partno" "$artstartlineno" "$partfile" || ever_failed=1
+	run_partfile "$@" "$partno" "$partstartlineno" "$partfile" || ever_failed=1
 }
 
 rm -f "$partfile"

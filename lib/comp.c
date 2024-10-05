@@ -2646,17 +2646,21 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src)
 		HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(obj));
 
 		tmp = HCL_CNODE_CONS_CAR(obj);
-		if (HCL_CNODE_IS_ELIST_CONCODED(tmp, HCL_CONCODE_XLIST) || HCL_CNODE_IS_CONS_CONCODED(tmp, HCL_CONCODE_XLIST))
+		if (HCL_CNODE_IS_ELIST_CONCODED(tmp, HCL_CONCODE_XLIST) ||
+		    HCL_CNODE_IS_CONS_CONCODED(tmp, HCL_CONCODE_XLIST))
 		{
 			attr_list = tmp;
-			obj = HCL_CNODE_CONS_CAR(obj)	;
+			obj = HCL_CNODE_CONS_CDR(obj);
 		}
+		else goto check_class_name; /* for optimzation. it still works without this jump */
 	}
 
 	if (obj)
 	{
 		HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(obj));
 
+		tmp = HCL_CNODE_CONS_CAR(obj);
+	check_class_name:
 		if (HCL_CNODE_IS_FOR_DATA_SIMPLE(tmp) || HCL_CNODE_IS_FOR_LANG(tmp))
 		{
 			if (!HCL_CNODE_IS_SYMBOL_IDENT(tmp))
@@ -3489,7 +3493,9 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 
 	HCL_ASSERT (hcl, nargs + nrvars + nlvars == hcl->c->tv.wcount - saved_tv_wcount);
 
-	if (push_fnblk(hcl, HCL_CNODE_GET_LOC(src), va, nargs, nrvars, nlvars, hcl->c->tv.wcount, hcl->c->tv.s.len, hcl->code.bc.len, hcl->code.lit.len, fun_type) <= -1) return -1;
+	if (push_fnblk(
+		hcl, HCL_CNODE_GET_LOC(src), va, nargs, nrvars, nlvars, hcl->c->tv.wcount,
+		hcl->c->tv.s.len, hcl->code.bc.len, hcl->code.lit.len, fun_type) <= -1) return -1;
 
 	if (hcl->option.trait & HCL_TRAIT_INTERACTIVE)
 	{

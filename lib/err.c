@@ -102,7 +102,6 @@ static const char* synerrstr[] =
 	"wrong character literal",
 	"wrong string literal",
 	"wrong symbol literal",
-	"invalid hashed literal",
 	"invalid numeric literal",
 	"out of integer range",
 	"wrong error literal",

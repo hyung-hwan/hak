@@ -104,4 +104,4 @@ core.basicAtPut "xbcdefghiklmnl" 4 k ##ERROR: exception not handled - "receiver 
 ---
 
 k := (core.basicAt #abcdefg 1)
-core.basicAtPut #xbcdefghiklmnl 4 k ##ERROR: exception not handled - "receiver immutable - #xbcdefghiklmnl"
+core.basicAtPut #xbcdefghiklmnl 4 k ##ERROR: exception not handled - "receiver immutable - xbcdefghiklmnl"

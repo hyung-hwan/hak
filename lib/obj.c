@@ -466,7 +466,7 @@ hcl_oop_t hcl_makefpdec (hcl_t* hcl, hcl_oop_t value, hcl_ooi_t scale)
 	return (hcl_oop_t)f;
 }
 
-hcl_oop_t hcl_makeclass (hcl_t* hcl, hcl_oop_t class_name, hcl_oop_t superclass, hcl_ooi_t nivars, hcl_ooi_t ncvars, hcl_oop_t ivars_str, hcl_oop_t cvars_str)
+hcl_oop_t hcl_makeclass (hcl_t* hcl, hcl_oop_t class_name, hcl_oop_t superclass, hcl_ooi_t spec, hcl_ooi_t selfspec, hcl_oop_t ivars_str, hcl_oop_t cvars_str)
 {
 	hcl_oop_class_t c;
 
@@ -474,7 +474,7 @@ hcl_oop_t hcl_makeclass (hcl_t* hcl, hcl_oop_t class_name, hcl_oop_t superclass,
 	hcl_pushvolat (hcl, &superclass);
 	hcl_pushvolat (hcl, &ivars_str);
 	hcl_pushvolat (hcl, &cvars_str);
-	c = (hcl_oop_class_t)hcl_instantiate(hcl, hcl->c_class, HCL_NULL, ncvars);
+	c = (hcl_oop_class_t)hcl_instantiate(hcl, hcl->c_class, HCL_NULL, HCL_CLASS_SELFSPEC_CLASSVARS(selfspec));
 	hcl_popvolats (hcl, 4);
 	if (HCL_UNLIKELY(!c))
 	{
@@ -484,12 +484,7 @@ hcl_oop_t hcl_makeclass (hcl_t* hcl, hcl_oop_t class_name, hcl_oop_t superclass,
 	}
 	else
 	{
-		hcl_oow_t spec, selfspec;
 		hcl_ooi_t nivars_super;
-
-		/* TODO: other flags... indexable? byte? word?*/
-		spec = HCL_CLASS_SPEC_MAKE(nivars, 0, 0); /* TODO: how to include nivars_super ? */
-		selfspec = HCL_CLASS_SELFSPEC_MAKE(ncvars, 0, 0);
 
 		if (!HCL_IS_NIL(hcl, superclass))
 		{

@@ -216,13 +216,12 @@ F := (class { ##ERROR: exception not handled - "prohibited redefintion of F"
 F := (class {
 })
 
-F := (class F { ##ERROR: exception not handle - "prohibited redefintion of F"
+F := (class F { ##ERROR: exception not handled - "prohibited redefintion of F"
 })
 
-##  TDOO: do we need to allow the above?
-
+##  TDOO: do we need to allow this?
 ##F := 30
-##class F { ##ERROR: exception not handled - "prohibited redefintion of F"
+##class F { ##E R R O R: exception not handled - "prohibited redefintion of F"
 ##}
 
 
@@ -243,4 +242,9 @@ X11 := (class:X10 {
 })
 
 class X11 { ##ERROR: exception not handled - "prohibited redefintion of X11"
+}
+
+---
+
+class String { ##ERROR: exception not handled - "incompatible redefintion of String"
 }

@@ -2649,6 +2649,7 @@ static int flx_hmarked_token (hcl_t* hcl, hcl_ooci_t c)
 		/* --------------------------- */
 		default:
 			init_flx_hi (FLX_HI(hcl));
+			reset_flx_token (hcl); /* to discard the leading '#' */
 			FEED_CONTINUE (hcl, HCL_FLX_HMARKED_IDENT);
 			goto not_consumed;
 	}

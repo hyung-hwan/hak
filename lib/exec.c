@@ -4034,8 +4034,8 @@ static int execute (hcl_t* hcl)
 				   push cvars_string
 				   class_enter indexed_type nsuperclasses nivars ncvars
 				 */
-				hcl_oop_t superclass, ivars_str, cvars_str, class_name;
-				hcl_oop_t v;
+				hcl_oop_t superclass, ivars_str, cvars_str, class_name, v;
+				hcl_ooi_t expected_spec, expected_selfspec;
 				hcl_oop_class_t class_obj;
 				hcl_oow_t b0, b3;
 
@@ -4072,16 +4072,18 @@ static int execute (hcl_t* hcl)
  				}
 				else superclass = hcl->_nil;
 
-				HCL_STACK_POP_TO(hcl, v);
+				expected_spec = HCL_CLASS_SPEC_MAKE(b2, (b0 >> 4), b0 & 0x0F);
+				expected_selfspec = HCL_CLASS_SELFSPEC_MAKE(b3, 0, 0);
 
+				HCL_STACK_POP_TO(hcl, v);
 				if (HCL_IS_CONS(hcl, v))
 				{
-					/* named class. the compiler generates code to push a pair holding
-					 * a name and a class object for a name class. */
-					class_name = ((hcl_oop_cons_t)v)->car;
+					/* named class. the compiler generates code to push a pair
+					 * holding a name and a class object for a name class. */
+					class_name = HCL_CONS_CAR(v);
 					HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl, class_name));
 
-					class_obj = (hcl_oop_class_t)((hcl_oop_cons_t)v)->cdr;
+					class_obj = (hcl_oop_class_t)HCL_CONS_CDR(v);
 					if (HCL_IS_CLASS(hcl, class_obj))
 					{
 						/* the existing value must be a class. disallow re-definition */
@@ -4091,21 +4093,18 @@ static int execute (hcl_t* hcl)
 						{
 							/* check if the new definition is compatible with kernel definition */
 							hcl_ooi_t spec, selfspec, nivars_super, nivars_super_real;
-							hcl_obj_type_t indexed_type;
 
 							spec = HCL_OOP_TO_SMOOI(class_obj->spec);
 							selfspec = HCL_OOP_TO_SMOOI(class_obj->selfspec);
 							nivars_super = HCL_OOP_TO_SMOOI(class_obj->nivars_super);
 							nivars_super_real = HCL_IS_NIL(hcl, superclass)? 0: HCL_OOP_TO_SMOOI(((hcl_oop_class_t)superclass)->nivars_super);
-//if (HCL_CLASS_SPEC_IS_INDEXED(spec))
-//indexed_type = (hcl_obj_type_t)HCL_CLASS_SPEC_INDEXED_TYPE(spec);
 #if 0
 hcl_logbfmt (hcl, HCL_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncvars=%d<<<\n", class_obj, class_obj->superclass, superclass, b2, b3, (int)HCL_CLASS_SPEC_NAMED_INSTVARS(spec), (int)HCL_CLASS_SELFSPEC_CLASSVARS(spec));
 #endif
 
 							if (class_obj->superclass != superclass ||
-							    HCL_CLASS_SPEC_NAMED_INSTVARS(spec) != b2 ||
-							    HCL_CLASS_SELFSPEC_CLASSVARS(selfspec) != b3 ||
+							    expected_spec != spec ||
+							    expected_selfspec != selfspec ||
 							    nivars_super != nivars_super_real)
 							{
 								hcl_seterrbfmt (hcl, HCL_EPERM, "incompatible redefintion of %.*js", HCL_OBJ_GET_SIZE(class_name), HCL_OBJ_GET_CHAR_SLOT(class_name));
@@ -4133,11 +4132,12 @@ hcl_logbfmt (hcl, HCL_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d nc
 					class_name = hcl->_nil;
 
 				make_class:
-					class_obj = (hcl_oop_class_t)hcl_makeclass(hcl, class_name, superclass, b2, b3, ivars_str, cvars_str);
+					class_obj = (hcl_oop_class_t)hcl_makeclass(hcl, class_name, superclass, expected_spec, expected_selfspec, ivars_str, cvars_str);
 					if (HCL_UNLIKELY(!class_obj)) goto oops_with_errmsg_supplement;
 				}
 
-				/* push the class created to the class stack. but don't push to the normal operation stack */
+				/* push the class created to the class stack.
+				 * but don't push to the normal operation stack */
 				HCL_CLSTACK_PUSH (hcl, (hcl_oop_t)class_obj);
 				break;
 			}

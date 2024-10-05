@@ -106,7 +106,6 @@ enum hcl_synerrnum_t
 	HCL_SYNERR_CHARLIT,       /* wrong character literal */
 	HCL_SYNERR_STRLIT,        /* wrong string literal */
 	HCL_SYNERR_SYMLIT,        /* wrong symbol literal */
-	HCL_SYNERR_HASHLIT,       /* wrong hashed literal */
 	HCL_SYNERR_NUMLIT ,       /* invalid numeric literal */
 	HCL_SYNERR_NUMRANGE,      /* number range error */
 	HCL_SYNERR_ERRLIT,        /* wrong error literal */
@@ -2872,8 +2871,8 @@ HCL_EXPORT hcl_oop_t hcl_makeclass (
 	hcl_t*            hcl,
 	hcl_oop_t         name,
 	hcl_oop_t         superclass,
-	hcl_ooi_t         nivars,
-	hcl_ooi_t         ncvars,
+	hcl_ooi_t         spec,
+	hcl_ooi_t         selfspec,
 	hcl_oop_t         ivars_str,
 	hcl_oop_t         cvars_str
 );
