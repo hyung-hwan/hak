@@ -2473,7 +2473,7 @@ static int check_class_attr_list (hcl_t* hcl, hcl_cnode_t* attr_list, unsigned i
 	} flag_tab[] = {
 		{ "v",          HCL_CLASS_SPEC_FLAG_INDEXED },
 		{ "var",        HCL_CLASS_SPEC_FLAG_INDEXED },
-		{ "variable",   HCL_CLASS_SPEC_FLAG_INDEXED },
+		{ "varying",    HCL_CLASS_SPEC_FLAG_INDEXED },
 		{ "immutable",  HCL_CLASS_SPEC_FLAG_IMMUTABLE },
 		{ "uncopyable", HCL_CLASS_SPEC_FLAG_UNCOPYABLE },
 	};
@@ -2545,11 +2545,17 @@ static int check_class_attr_list (hcl_t* hcl, hcl_cnode_t* attr_list, unsigned i
 				return -1;
 			}
 
+			/*
+			 * upper 4 bits: object flags - only 4 bit flags are possible
+			 * lower 4 bits: object type for indexing/variablilty - 16 different combinations are possible
+			 * these are kept as compact as possbile to make use a single byte in encoding this information
+			 * for the bytecode instruction CLASS_ENTER
+			 */
 			for (i = 0; i < HCL_COUNTOF(flag_tab); i++)
 			{
 				if (hcl_comp_oochars_bcstr(tokptr, toklen, flag_tab[i].name) == 0)
 				{
-					if ((ct >> 8) & flag_tab[i].flag)
+					if ((ct >> 4) & flag_tab[i].flag)
 					{
 					conflict:
 						hcl_setsynerrbfmt (
@@ -2557,7 +2563,7 @@ static int check_class_attr_list (hcl_t* hcl, hcl_cnode_t* attr_list, unsigned i
 							"conflicting or duplicate class attribute name '%.*js'", toklen, tokptr);
 						return -1;
 					}
-					ct |= (flag_tab[i].flag << 8);
+					ct |= (flag_tab[i].flag << 4);
 					break;
 				}
 			}
@@ -2567,7 +2573,7 @@ static int check_class_attr_list (hcl_t* hcl, hcl_cnode_t* attr_list, unsigned i
 				{
 					if (hcl_comp_oochars_bcstr(tokptr, toklen, type_tab[i].name) == 0)
 					{
-						if (ct & 0x7F) goto conflict;
+						if (ct & 0x0F) goto conflict;
 						ct = type_tab[i].indexed_type;
 						break;
 					}
