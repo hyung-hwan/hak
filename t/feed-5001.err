@@ -186,3 +186,7 @@ abc.? := 20 ##ERROR: syntax error - '?' prohibited as first character of identif
 ---
 
 1 \ 2 ##ERROR: syntax error - stray backslash
+
+---
+
+throw ##ERROR: syntax error - no value or expression after 'throw'

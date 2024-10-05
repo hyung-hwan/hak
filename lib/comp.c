@@ -3656,7 +3656,11 @@ static int compile_set (hcl_t* hcl, hcl_cnode_t* src)
 	obj = HCL_CNODE_CONS_CDR(obj);
 	if (!obj)
 	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGCOUNT, HCL_CNODE_GET_LOC(src), HCL_NULL, "no value specified in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		hcl_setsynerrbfmt (
+			hcl, HCL_SYNERR_ARGCOUNT, HCL_CNODE_GET_LOC(var), HCL_NULL,
+			"no value after '%.*js' for '%.*js'",
+			HCL_CNODE_GET_TOKLEN(var), HCL_CNODE_GET_TOKPTR(var),
+			HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 		return -1;
 	}
 	else if (!HCL_CNODE_IS_CONS(obj))
@@ -3748,7 +3752,11 @@ static int compile_set_r (hcl_t* hcl, hcl_cnode_t* src)
 
 	if (!obj)
 	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGCOUNT, HCL_CNODE_GET_LOC(src), HCL_NULL, "no value specified in %.*js", HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		hcl_setsynerrbfmt (
+			hcl, HCL_SYNERR_ARGCOUNT, HCL_CNODE_GET_LOC(var), HCL_NULL,
+			"no value after '%.*js' for '%.*js'",
+			HCL_CNODE_GET_TOKLEN(var), HCL_CNODE_GET_TOKPTR(var),
+			HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 		return -1;
 	}
 	else if (!HCL_CNODE_IS_CONS(obj))
@@ -4079,7 +4087,10 @@ static int compile_throw (hcl_t* hcl, hcl_cnode_t* src)
 /* TODO: should i allow (throw)? does it return the last value on the stack? */
 		/* no value */
 		hcl_cnode_t* tmp = HCL_CNODE_CONS_CAR(src);
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_ARGCOUNT, HCL_CNODE_GET_LOC(src), HCL_NULL, "no value specified in %.*js", HCL_CNODE_GET_TOKLEN(tmp), HCL_CNODE_GET_TOKPTR(tmp));
+		hcl_setsynerrbfmt (
+			hcl, HCL_SYNERR_ARGCOUNT, HCL_CNODE_GET_LOC(src), HCL_NULL,
+			"no value or expression after '%.*js'",
+			HCL_CNODE_GET_TOKLEN(tmp), HCL_CNODE_GET_TOKPTR(tmp));
 		return -1;
 	}
 	else if (!HCL_CNODE_IS_CONS(obj))
