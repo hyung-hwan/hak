@@ -7,7 +7,7 @@ run_partfile() {
 	l_cmd="";
 	l_nargs=$#
 
-	while [ $# -gt 3 ]
+	while [ $# -gt 4 ]
 	do
 		l_cmd="$l_cmd $1"
 		shift
@@ -17,6 +17,8 @@ run_partfile() {
 	shift ## skip the original script.
 	l_partno="$1"
 	shift ## partno
+	l_partstartlineno="$1"
+	shift ## partstartlineno
 
 	l_partfile="$1"
 	l_cmd="$l_cmd $l_partfile"
@@ -33,14 +35,16 @@ run_partfile() {
 	l_expected_errmsg=$(echo "$l_expected_errinfo" | cut -c${l_xlen}-)
 	l_output=`$l_cmd 2>&1`
 
+	l_errlineno=$(expr $l_partstartlineno + $l_expected_errline - 1)
+
 	## the checks using grep may not be 100% accurate depending on message patterns.
 	## but it's unlikely such a case really happens
 	echo "$l_output" | grep -q -E "^ERROR:.+${l_partfile}\[${l_expected_errline},[[:digit:]]+\] .+" 2>&1 || {
-		echo "ERROR: error not raised at line $l_expected_errline - $l_script($l_partno) - $l_output"
+		echo "ERROR: error not raised at line $l_expected_errline - $l_script(part=$l_partno,line=$l_errlineno) - $l_output"
 		return 1
 	}
 	echo "$l_output" | grep -q -F " ${l_expected_errmsg}" 2>&1 || {
-		echo "ERROR: error not raised at line $l_expected_errline - $l_script($l_partno) - $l_output"
+		echo "ERROR: error not raised at line $l_expected_errline - $l_script(part=$l_partno,line=$l_errlineno) - $l_output"
 		return 1
 	}
 
@@ -53,19 +57,23 @@ ever_failed=0
 partfile=`mktemp`
 partno=0
 partlines=0
+lineno=0
+partstartlineno=`expr $lineno + 1`
 > "$partfile"
 
 ## dash behaves differently for read -r.
 ## while \n is read in literally by bash or other shells, dash converts it to a new-line
 while IFS= read -r line
 do
+	lineno=`expr $lineno + 1`
 	if [ "$line" = "---" ]
 	then
 		[ $partlines -gt 0 ] && {
-			run_partfile "$@" "$partno" "$partfile" || ever_failed=1
+			run_partfile "$@" "$partno" "$partstartlineno" "$partfile" || ever_failed=1
 		}
 		partno=`expr $partno + 1`
 		partlines=0
+		partstartlineno=`expr $lineno + 1`
 		> "$partfile"
 	else
 		echo "$line" >> "$partfile"
@@ -74,7 +82,7 @@ do
 done < "$script"
 
 [ $partlines -gt 0 ] && {
-	run_partfile "$@" "$partno" "$partfile" || ever_failed=1
+	run_partfile "$@" "$partno" "$artstartlineno" "$partfile" || ever_failed=1
 }
 
 rm -f "$partfile"
