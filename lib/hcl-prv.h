@@ -261,7 +261,7 @@
 	(((hcl_oow_t)spec) & HCL_LBMASK(hcl_oow_t, HCL_CLASS_SELFSPEC_FLAG_BITS))
 
 #define HCL_CLASS_SELFSPEC_FLAG_FINAL   (1 << 0)
-#define HCL_CLASS_SELFSPEC_FLAG_LIMITED (1 << 1)
+#define HCL_CLASS_SELFSPEC_FLAG_LIMITED (1 << 1) /* not allowed to instantiate normally */
 
 
 #define HCL_MAX_CLASSVARS      HCL_BITS_MAX(hcl_oow_t, HCL_CLASS_SELFSPEC_CLASSVAR_BITS)

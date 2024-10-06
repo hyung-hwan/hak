@@ -1,9 +1,9 @@
 class Apex {
-	fun ::basicNew(size) {
+	fun(#class) basicNew(size) {
 		return (core.basicNew self size)
 	}
 
-	fun ::respondsTo(mth) {
+	fun(#class) respondsTo(mth) {
 		return (core.classRespondsTo self mth)
 	}
 
@@ -32,10 +32,10 @@ class Apex {
 	}
 }
 
-class Object :: Apex {
+class Object: Apex {
 }
 
-class Class :: Apex [
+class(#uncopyable #varying #limited) Class: Apex [
 	_name
 	_mdic
 	_spec
@@ -62,13 +62,13 @@ class Class :: Apex [
 	}
 }
 
-class Collection :: Object {
+class Collection: Object {
 	fun length() {
 		return (core.basicSize self)
 	}
 }
 
-class IndexedCollection :: Collection {
+class IndexedCollection: Collection {
 	fun slice(index count) {
 		return (core.slice self index count)
 	}
@@ -82,8 +82,8 @@ class IndexedCollection :: Collection {
 	}
 }
 
-class FixedSizedCollection :: IndexedCollection {
-	fun ::new(size) {
+class FixedSizedCollection: IndexedCollection {
+	fun(#class) new(size) {
 		| obj iv |
 		obj := (core.basicNew self size)
 		if (self:respondsTo "initValue") { ## TODO: change "initValue" to a symbol once supported
@@ -102,11 +102,11 @@ class FixedSizedCollection :: IndexedCollection {
 	##}
 }
 
-class Array :: FixedSizedCollection {
+class Array: FixedSizedCollection {
 }
 
-class String :: FixedSizedCollection {
-	fun ::initValue() {
+class String: FixedSizedCollection {
+	fun(#class) initValue() {
 		##return '\0'
 		return ' '
 	}
@@ -166,8 +166,8 @@ printf "----------------------------------------\n"
 k := #[1 2 3]
 printf "%O\n" (k:basicAt 2)
 
-class Z :: Object [ a b c ] {
-	fun :* new() {
+class Z: Object [ a b c ] {
+	fun(#classinst) new() {
 		self.a := 10
 		self.b := 20
 		self.c := 30

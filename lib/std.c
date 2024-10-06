@@ -2904,15 +2904,18 @@ static HCL_INLINE void stop_ticker (void)
 	os2_tick_done = 1;
 }
 
-#elif defined(__DOS__) && (defined(_INTELC32_) || defined(__WATCOMC__))
+#elif defined(__DOS__) && (defined(_INTELC32_) || defined(__WATCOMC__) || defined(__BORLANDC__))
 
 #if defined(_INTELC32_)
 static void (*dos_prev_timer_intr_handler) (void);
 #pragma interrupt(dos_timer_intr_handler)
 static void dos_timer_intr_handler (void)
-#else
+#elif defined(__WATCOMC__)
 static void (__interrupt *dos_prev_timer_intr_handler) (void);
 static void __interrupt dos_timer_intr_handler (void)
+#else
+static void (interrupt *dos_prev_timer_intr_handler) (void);
+static void interrupt dos_timer_intr_handler (void)
 #endif
 {
 	/*
@@ -3113,11 +3116,18 @@ static HCL_INLINE void stop_ticker (void)
 #	define sys_dl_getsym(x,n) GetProcAddress(x,n)
 
 #elif defined(USE_MACH_O_DYLD)
-#	define sys_dl_error() mach_dlerror()
+#	define sys_dl_error(void) mach_dlerror()
 #	define sys_dl_open(x) mach_dlopen(x)
 #	define sys_dl_openext(x) mach_dlopen(x)
 #	define sys_dl_close(x) mach_dlclose(x)
 #	define sys_dl_getsym(x,n) mach_dlsym(x,n)
+
+#else
+static const char* sys_dl_error(void) { return HCL_NULL; }
+static void* sys_dl_open(const char* x) { return HCL_NULL; }
+static void* sys_dl_openext(const char* x) { return HCL_NULL; }
+static void sys_dl_close(void* x) { return HCL_NULL; }
+static void* sys_dl_getsym(void* x, const char* n) { return HCL_NULL; }
 #endif
 
 #if defined(USE_WIN_DLL)
