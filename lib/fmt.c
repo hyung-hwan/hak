@@ -69,7 +69,7 @@
 #if defined(HCL_ENABLE_FLTFMT)
 
 #include <stdio.h> /* for snrintf(). used for floating-point number formatting */
-#if defined(_MSC_VER) || defined(__BORLANDC__) || (defined(__WATCOMC__) && (__WATCOMC__ < 1200))
+#if defined(_MSC_VER) || (defined(__BORLANDC__) && (__BORLANDC__ > 0x520)) || (defined(__WATCOMC__) && (__WATCOMC__ < 1200))
 #	define snprintf _snprintf
 #	if !defined(HAVE_SNPRINTF)
 #		define HAVE_SNPRINTF
@@ -338,18 +338,15 @@ static hcl_bch_t* sprintn_upper (hcl_bch_t* nbuf, hcl_uintmax_t num, int base, h
 }
 
 /* ------------------------------------------------------------------------- */
-
 #define PUT_BCH(hcl,fmtout,c,n) do { \
-	if (n > 0) { \
-		hcl_oow_t _yy; \
-		hcl_bch_t _cc = c; \
-		for (_yy = 0; _yy < n; _yy++) \
-		{ \
-			int _xx; \
-			if ((_xx = fmtout->putbchars(hcl, fmtout, &_cc, 1)) <= -1) goto oops; \
-			if (_xx == 0) goto done; \
-			fmtout->count++; \
-		} \
+	hcl_oow_t _yy; \
+	hcl_bch_t _cc = c; \
+	for (_yy = 0; _yy < n; _yy++) \
+	{ \
+		int _xx; \
+		if ((_xx = fmtout->putbchars(hcl, fmtout, &_cc, 1)) <= -1) goto oops; \
+		if (_xx == 0) goto done; \
+		fmtout->count++; \
 	} \
 } while (0)
 
@@ -363,16 +360,14 @@ static hcl_bch_t* sprintn_upper (hcl_bch_t* nbuf, hcl_uintmax_t num, int base, h
 } while (0)
 
 #define PUT_UCH(hcl,fmtout,c,n) do { \
-	if (n > 0) { \
-		hcl_oow_t _yy; \
-		hcl_uch_t _cc = c; \
-		for (_yy = 0; _yy < n; _yy++) \
-		{ \
-			int _xx; \
-			if ((_xx = fmtout->putuchars(hcl, fmtout, &_cc, 1)) <= -1) goto oops; \
-			if (_xx == 0) goto done; \
-			fmtout->count++; \
-		} \
+	hcl_oow_t _yy; \
+	hcl_uch_t _cc = c; \
+	for (_yy = 0; _yy < n; _yy++) \
+	{ \
+		int _xx; \
+		if ((_xx = fmtout->putuchars(hcl, fmtout, &_cc, 1)) <= -1) goto oops; \
+		if (_xx == 0) goto done; \
+		fmtout->count++; \
 	} \
 } while (0)
 
@@ -1837,6 +1832,14 @@ static int print_bcs (hcl_t* hcl, hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hc
 
 static int print_ucs (hcl_t* hcl, hcl_fmtout_t* fmtout, const hcl_uch_t* ptr, hcl_oow_t len)
 {
+#if defined(HCL_OOCH_IS_UCH)
+	hcl_uch_t* optr;
+#else
+	hcl_oow_t bcslen, ucslen;
+	hcl_ooch_t bcsbuf[64], * bcsptr;
+
+#endif
+
 	if (HCL_UNLIKELY(!hcl->io.udo_wrtr))
 	{
 		hcl_seterrbmsg (hcl, HCL_EINVAL, "no user-defined output handler");
@@ -1844,8 +1847,6 @@ static int print_ucs (hcl_t* hcl, hcl_fmtout_t* fmtout, const hcl_uch_t* ptr, hc
 	}
 
 #if defined(HCL_OOCH_IS_UCH)
-	hcl_uch_t* optr;
-
 	optr = (hcl_uch_t*)ptr;
 	while (len > 0)
 	{
@@ -1860,9 +1861,6 @@ static int print_ucs (hcl_t* hcl, hcl_fmtout_t* fmtout, const hcl_uch_t* ptr, hc
 		len -= hcl->io.udo_arg.xlen;
 	}
 #else
-	hcl_oow_t bcslen, ucslen;
-	hcl_ooch_t bcsbuf[64], * bcsptr;
-
 	while (len > 0)
 	{
 		ucslen = len;

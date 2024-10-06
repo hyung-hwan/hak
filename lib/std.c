@@ -37,6 +37,11 @@
 #	define USE_THREAD
 #endif
 
+#if defined(__BORLANDC__) && defined(__DOS__)  && defined(_WIN32) && defined(__DPMI32__)
+/* bcc32 with powerpack seems to define _WIN32 in DPMI32 mode */
+#	undef _WIN32
+#endif
+
 #if defined(_WIN32)
 #	if !defined(_WIN32_WINNT)
 #		define _WIN32_WINNT 0x0400
@@ -136,6 +141,14 @@
 #	define XPOLLOUT (1 << 1)
 #	define XPOLLERR (1 << 2)
 #	define XPOLLHUP (1 << 3)
+
+#	if !defined(STDOUT_FILENO)
+#		define STDOUT_FILENO (1)
+#	endif
+
+#	if !defined(STDERR_FILENO)
+#		define STDERR_FILENO (2)
+#	endif
 
 #elif defined(macintosh)
 #	include <Types.h>
@@ -762,13 +775,17 @@ static size_t sprintf_timestamp (char* ts, struct tm* tmp)
 {
 	int off_h, off_m;
 
+#if defined(__DOS__)
+	off_m = _timezone / 60;
+#else
 	off_m = tmp->tm_gmtoff / 60;
+#endif
 	off_h = off_m / 60;
 	off_m = off_m % 60;
 	if (off_m < 0) off_m = -off_m;
 
 	return (size_t)sprintf(ts,
-		"%04d-%02d-%02d %02d:%02d:%02d %+03.2d%02.2d ",
+		"%04d-%02d-%02d %02d:%02d:%02d %+03d%02d ",
 		tmp->tm_year + 1900, tmp->tm_mon + 1, tmp->tm_mday,
 		tmp->tm_hour, tmp->tm_min, tmp->tm_sec, off_h, off_m);
 }
@@ -825,7 +842,7 @@ static void log_write (hcl_t* hcl, hcl_bitmask_t mask, const hcl_ooch_t* msg, hc
 			tzi.Bias = -tzi.Bias; /* utc = localtime + bias(mins). so negate it */
 			min = tzi.Bias % 60;
 			if (min < 0) min = -min;
-			tslen = sprintf(ts, "%04d-%02d-%02d %02d:%02d:%02d %+03.2d%02.2d ",
+			tslen = sprintf(ts, "%04d-%02d-%02d %02d:%02d:%02d %+03d%02d ",
 				(int)now.wYear, (int)now.wMonth, (int)now.wDay,
 				(int)now.wHour, (int)now.wMinute, (int)now.wSecond,
 				(int)(tzi.Bias / 60), (int)min);
@@ -1289,12 +1306,16 @@ static void _assertfail (hcl_t* hcl, const hcl_bch_t* expr, const hcl_bch_t* fil
 #elif defined(__OS2__)
 	DosExit (EXIT_PROCESS, 249);
 #elif defined(__DOS__)
+	#if defined(__BORLANDC__) && defined(__DPMI32__)
+	_exit (249);
+	#else
 	{
 		union REGS regs;
 		regs.h.ah = DOS_EXIT;
 		regs.h.al = 249;
 		intdos (&regs, &regs);
 	}
+	#endif
 #elif defined(vms) || defined(__vms)
 	lib$stop (SS$_ABORT); /* use SS$_OPCCUS instead? */
 	/* this won't be reached since lib$stop() terminates the process */
@@ -1394,7 +1415,7 @@ static void vm_gettime (hcl_t* hcl, hcl_ntime_t* now)
     #endif
 
 #elif defined(__DOS__)
-	xtn_t* xtn = GET_XTN(moo);
+	xtn_t* xtn = GET_XTN(hcl);
 	clock_t c, elapsed;
 	hcl_ntime_t et;
 
@@ -1404,18 +1425,18 @@ static void vm_gettime (hcl_t* hcl, hcl_ntime_t* now)
 
 	now->sec = c / CLOCKS_PER_SEC;
 	#if (CLOCKS_PER_SEC == 100)
-		now->nsec = HCL_MSEC_TO_NSEC((c % CLOCKS_PER_SEC) * 10);
+		now->nsec = HCL_MSEC_TO_NSEC((c % (clock_t)CLOCKS_PER_SEC) * 10);
 	#elif (CLOCKS_PER_SEC == 1000)
-		now->nsec = HCL_MSEC_TO_NSEC(c % CLOCKS_PER_SEC);
+		now->nsec = HCL_MSEC_TO_NSEC(c % (clock_t)CLOCKS_PER_SEC);
 	#elif (CLOCKS_PER_SEC == 1000000L)
-		now->nsec = HCL_USEC_TO_NSEC(c % CLOCKS_PER_SEC);
+		now->nsec = HCL_USEC_TO_NSEC(c % (clock_t)CLOCKS_PER_SEC);
 	#elif (CLOCKS_PER_SEC == 1000000000L)
-		now->nsec = (c % CLOCKS_PER_SEC);
+		now->nsec = (c % (clock_t)CLOCKS_PER_SEC);
 	#else
 	#	error UNSUPPORTED CLOCKS_PER_SEC
 	#endif
 
-	HCL_ADD_NTIME (&xtn->tc_last_ret , &xtn->tc_last_ret, &et);
+	HCL_ADD_NTIME (&xtn->tc_last_ret, &xtn->tc_last_ret, &et);
 	*now = xtn->tc_last_ret;
 
 #elif defined(macintosh)
@@ -2433,6 +2454,8 @@ static void vm_muxwait (hcl_t* hcl, const hcl_ntime_t* dur, hcl_vmprim_muxwait_c
 #	pragma aux _halt_cpu = "hlt"
 #	elif defined(_MSC_VER)
 	static void _halt_cpu (void) { _asm { hlt } }
+#	elif defined(__BORLANDC__)
+	static void _halt_cpu (void) { _asm { hlt } }
 #	endif
 #endif
 
@@ -2538,7 +2561,11 @@ static int vm_getsig (hcl_t* hcl, hcl_uint8_t* u8)
 #endif
 	if (read(xtn->sigfd.p[0], u8, HCL_SIZEOF(*u8)) == -1)
 	{
+	#if defined(EWOULDBLOCK)
 		if (errno == EINTR || errno == EWOULDBLOCK || errno == EAGAIN) return 0;
+	#else
+		if (errno == EINTR || errno == EAGAIN) return 0;
+	#endif
 		hcl_seterrwithsyserr (hcl, 0, errno);
 		return -1;
 	}
@@ -2551,7 +2578,11 @@ static int vm_setsig (hcl_t* hcl, hcl_uint8_t u8)
 	xtn_t* xtn = GET_XTN(hcl);
 	if (write(xtn->sigfd.p[1], &u8, HCL_SIZEOF(u8)) == -1)
 	{
+	#if defined(EWOULDBLOCK)
 		if (errno == EINTR || errno == EWOULDBLOCK || errno == EAGAIN) return 0;
+	#else
+		if (errno == EINTR || errno == EAGAIN) return 0;
+	#endif
 		hcl_seterrwithsyserr (hcl, 0, errno);
 		return -1;
 	}
@@ -3002,6 +3033,7 @@ static pid_t ticker_pid = -1;
 
 static HCL_INLINE void start_ticker (void)
 {
+#if defined(SIGALRM)
 	if (set_signal_handler(SIGALRM, swproc_all_hcls, SA_RESTART) >= 0)
 	{
 		ticker_pid = fork();
@@ -3035,10 +3067,12 @@ static HCL_INLINE void start_ticker (void)
 
 		/* parent just carries on. */
 	}
+#endif
 }
 
 static HCL_INLINE void stop_ticker (void)
 {
+#if defined(SIGALRM)
 	if (ticker_pid >= 0)
 	{
 		int wstatus;
@@ -3048,6 +3082,7 @@ static HCL_INLINE void stop_ticker (void)
 
 		unset_signal_handler (SIGALRM);
 	}
+#endif
 }
 
 #endif
@@ -3527,8 +3562,11 @@ static HCL_INLINE void reset_log_to_default (xtn_t* xtn)
 	xtn->log.fd = -1;
 	xtn->log.fd_flags = 0;
 #endif
+
+#if defined(HAVE_ISATTY)
 	if (isatty(STDERR_FILENO)) xtn->log.fd_flags |= LOGFD_STDERR_TTY;
 	if (isatty(STDOUT_FILENO)) xtn->log.fd_flags |= LOGFD_STDOUT_TTY;
+#endif
 }
 
 static HCL_INLINE void chain (hcl_t* hcl)
@@ -4841,6 +4879,8 @@ static void (__interrupt *dos_prev_int23_handler) (void);
 static void __interrupt dos_int23_handler (void)
 #endif
 {
+	/* dos int23 - ctrl-c handler */
+
 #if (IRQ_TERM == 0x23) && defined(_INTELC32_)
 	/* note this code for _INTELC32_ doesn't seem to work properly
 	 * unless the program is waiting on getch() or something similar */
