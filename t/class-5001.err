@@ -248,3 +248,27 @@ class X11 { ##ERROR: exception not handled - "prohibited redefintion of X11"
 
 class String { ##ERROR: exception not handled - "incompatible redefintion of String"
 }
+
+---
+
+class() { ##ERROR: syntax error - empty attribute list on unnamed class for 'class'
+}
+
+---
+
+class() Kuduro { ##ERROR: syntax error - empty attribute list on 'Kuduro' for 'class'
+}
+
+---
+
+class(#byte #limited #char) Kuduro { ##ERROR: syntax error - conflicting or duplicate class attribute name '#char'
+}
+
+---
+class(#byte #limited #final #limited) Kuduro { ##ERROR: syntax error - conflicting or duplicate class attribute name '#limited'
+}
+
+
+---
+class(#byte #bytes) Kuduro { ##ERROR: syntax error - unrecognized class attribute name 'bytes'
+}

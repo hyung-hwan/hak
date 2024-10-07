@@ -2469,29 +2469,43 @@ static int check_class_attr_list (hcl_t* hcl, hcl_cnode_t* attr_list, unsigned i
 	static struct
 	{
 		const hcl_bch_t* name;
-		unsigned int flag;
-	} flag_tab[] = {
-		{ "v",          HCL_CLASS_SPEC_FLAG_INDEXED },
-		{ "var",        HCL_CLASS_SPEC_FLAG_INDEXED },
-		{ "varying",    HCL_CLASS_SPEC_FLAG_INDEXED },
-		{ "immutable",  HCL_CLASS_SPEC_FLAG_IMMUTABLE },
-		{ "uncopyable", HCL_CLASS_SPEC_FLAG_UNCOPYABLE },
-	};
+		int shifts;
+		unsigned int mask;
+		unsigned int value;
+	} attr_tab[] = {
+		/* the value with 0xFF in the mask field takes up the whole byte
+		 * the value with 0x00 in the mask field is a bit value.
+		 *
+		 * shifts: 0 for object type, 8 for selfspec bit, 12 for spec bit
+		 * mask: 0xFF for object type, 0x00 for spec/selfspec bit.
+		 *
+		 * keep the table sorted in alphabestical order ascending for
+		 * binary search */
 
-	static struct
-	{
-		const hcl_bch_t* name;
-		hcl_obj_type_t   indexed_type;
-	} type_tab[] = {
-		{ "b",         HCL_OBJ_TYPE_BYTE },
-		{ "byte",      HCL_OBJ_TYPE_BYTE },
-		{ "c",         HCL_OBJ_TYPE_CHAR },
-		{ "char",      HCL_OBJ_TYPE_CHAR },
-		{ "character", HCL_OBJ_TYPE_CHAR },
-		{ "halfword",  HCL_OBJ_TYPE_HALFWORD },
-		{ "hw",        HCL_OBJ_TYPE_HALFWORD },
-		{ "w",         HCL_OBJ_TYPE_WORD },
-		{ "word",      HCL_OBJ_TYPE_WORD }
+		{ "b",           0,  0xFF, HCL_OBJ_TYPE_BYTE },
+		{ "byte",        0,  0xFF, HCL_OBJ_TYPE_BYTE },
+		{ "c",           0,  0xFF, HCL_OBJ_TYPE_CHAR },
+		{ "char",        0,  0xFF, HCL_OBJ_TYPE_CHAR },
+		{ "character",   0,  0xFF, HCL_OBJ_TYPE_CHAR },
+
+		{ "final",       8,  0x00, HCL_CLASS_SELFSPEC_FLAG_FINAL },
+
+		{ "halfword",    0,  0xFF, HCL_OBJ_TYPE_HALFWORD },
+		{ "hw",          0,  0xFF, HCL_OBJ_TYPE_HALFWORD },
+
+		{ "immutable",  12,  0x00, HCL_CLASS_SPEC_FLAG_IMMUTABLE },
+
+		{ "limited",     8,  0x00, HCL_CLASS_SELFSPEC_FLAG_LIMITED },
+
+		{ "uncopyable", 12,  0x00, HCL_CLASS_SPEC_FLAG_UNCOPYABLE },
+
+		{ "v",          12,  0x00, HCL_CLASS_SPEC_FLAG_INDEXED },
+		{ "var",        12,  0x00, HCL_CLASS_SPEC_FLAG_INDEXED },
+		{ "varying",    12,  0x00, HCL_CLASS_SPEC_FLAG_INDEXED },
+
+		{ "w",           0,  0xFF, HCL_OBJ_TYPE_WORD },
+		{ "word",        0,  0xFF, HCL_OBJ_TYPE_WORD }
+
 		/* TODO: uint32 uint16 .. etc */
 	};
 	hcl_obj_type_t ct;
@@ -2517,7 +2531,7 @@ static int check_class_attr_list (hcl_t* hcl, hcl_cnode_t* attr_list, unsigned i
 		{
 			hcl_setsynerrbfmt (
 				hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(attr_list), HCL_NULL,
-				"empty attribute list on unamed class for '%.*js'",
+				"empty attribute list on unnamed class for '%.*js'",
 				HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 		}
 		return -1;
@@ -2525,69 +2539,78 @@ static int check_class_attr_list (hcl_t* hcl, hcl_cnode_t* attr_list, unsigned i
 
 	if (HCL_CNODE_IS_CONS_CONCODED(attr_list, HCL_CONCODE_XLIST))
 	{
-		hcl_cnode_t* c, * a;
+		hcl_cnode_t* c;
 		const hcl_ooch_t* tokptr;
-		hcl_oow_t toklen, i;
+		hcl_oow_t toklen;
 
 		c = attr_list;
 		while (c)
 		{
-			a = HCL_CNODE_CONS_CAR(c);
+			/* [NOTE] this algorithm is underflow safe with hcl_oow_t types */
+			hcl_oow_t base, lim;
+			hcl_cnode_t* attr;
 
-			tokptr = HCL_CNODE_GET_TOKPTR(a);
-			toklen = HCL_CNODE_GET_TOKLEN(a);
+			attr = HCL_CNODE_CONS_CAR(c);
 
-			if (!HCL_CNODE_IS_TYPED(a, HCL_CNODE_SYMLIT))
+			tokptr = HCL_CNODE_GET_TOKPTR(attr);
+			toklen = HCL_CNODE_GET_TOKLEN(attr);
+
+			if (!HCL_CNODE_IS_TYPED(attr, HCL_CNODE_SYMLIT))
 			{
 				hcl_setsynerrbfmt (
-					hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(a), HCL_NULL,
+					hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(attr), HCL_NULL,
 					"invalid class attribute name '%.*js'", toklen, tokptr);
 				return -1;
 			}
 
 			/*
-			 * upper 4 bits: object flags - only 4 bit flags are possible
-			 * lower 4 bits: object type for indexing/variablilty - 16 different combinations are possible
-			 * these are kept as compact as possbile to make use a single byte in encoding this information
-			 * for the bytecode instruction CLASS_ENTER
+			 * 4 bits for spec flags (bit 12 .. 15)
+			 * 4 bits for selfspec flags (bit 8 .. 11)
+			 * 8 bits for object type for indexing/variablility (bit 0 .. 7)
 			 */
-			for (i = 0; i < HCL_COUNTOF(flag_tab); i++)
+
+			for (base = 0, lim = HCL_COUNTOF(attr_tab); lim > 0; lim >>= 1) /* binary search */
 			{
-				if (hcl_comp_oochars_bcstr(tokptr, toklen, flag_tab[i].name) == 0)
+				hcl_oow_t i;
+				int n;
+
+				i = base + (lim >> 1); /* mid-point */
+				n = hcl_comp_oochars_bcstr(tokptr, toklen, attr_tab[i].name);
+				if (n == 0)
 				{
-					if ((ct >> 4) & flag_tab[i].flag)
+					/* this is to derive the real mask: (attr_tab[i].mask | attr_tab[i].value).
+					 * roughly speaking, it's similary to
+					 * 	real_mask = attr_tab[i].mask == 0? attr_tab[i].value: attr_tab[i].mask;
+					 *
+					 * To flag out duplicate or conflicting attribute, we check if
+					 *  - the same bit is already set for a bit-based item (mask field 0x00).
+					 *  - a value is non-zero for a byte-based item (mask field 0xFF)
+					 */
+					if (!!((ct >> attr_tab[i].shifts) & (attr_tab[i].mask | attr_tab[i].value)))
 					{
-					conflict:
 						hcl_setsynerrbfmt (
-							hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(a), HCL_NULL,
-							"conflicting or duplicate class attribute name '%.*js'", toklen, tokptr);
+							hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(attr), HCL_NULL,
+							"conflicting or duplicate class attribute name '#%.*js'", toklen, tokptr);
 						return -1;
 					}
-					ct |= (flag_tab[i].flag << 4);
-					break;
+
+					ct &= ~attr_tab[i].mask;
+					ct |= (attr_tab[i].value << attr_tab[i].shifts);
+					goto found;
 				}
+
+				if (n > 0) { base = i + 1; lim--; }
 			}
-			if (i >= HCL_COUNTOF(flag_tab))
+
+			if (lim <= 0)
 			{
-				for (i = 0; i < HCL_COUNTOF(type_tab); i++)
-				{
-					if (hcl_comp_oochars_bcstr(tokptr, toklen, type_tab[i].name) == 0)
-					{
-						if (ct & 0x0F) goto conflict;
-						ct = type_tab[i].indexed_type;
-						break;
-					}
-				}
-
-				if (i >= HCL_COUNTOF(type_tab))
-				{
-					hcl_setsynerrbfmt (
-						hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(a), HCL_NULL,
-						"unrecognized class attribute name '%.*js'", toklen, tokptr);
-					return -1;
-				}
+				hcl_setsynerrbfmt (
+					hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(attr), HCL_NULL,
+					"unrecognized class attribute name '%.*js'", toklen, tokptr);
+				return -1;
 			}
 
+		found:
 			c = HCL_CNODE_CONS_CDR(c);
 		}
 	}
@@ -2878,10 +2901,11 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 
 	/* class_enter nsuperclasses, nivars, ncvars  */
 	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_ENTER, &cf->u._class.start_loc) <= -1) goto oops;
-	if (emit_byte_instruction(hcl, (hcl_oob_t)cf->u._class.indexed_type, &cf->u._class.start_loc) <= -1) goto oops;
 	if (emit_long_param(hcl, cf->u._class.nsuperclasses) <= -1) goto oops;
 	if (emit_long_param(hcl, vardcl.nivars) <= -1) goto oops;
 	if (emit_long_param(hcl, vardcl.ncvars) <= -1) goto oops;
+	if (emit_byte_instruction(hcl, (hcl_oob_t)((cf->u._class.indexed_type >> 8) & 0xFF), &cf->u._class.start_loc) <= -1) goto oops;
+	if (emit_byte_instruction(hcl, (hcl_oob_t)(cf->u._class.indexed_type & 0xFF), &cf->u._class.start_loc) <= -1) goto oops;
 
 	/* remember the first byte code position to be emitted for the body of
 	 * this class. this posistion is used for empty class body check at the
@@ -2989,7 +3013,7 @@ static int check_fun_attr_list (hcl_t* hcl, hcl_cnode_t* attr_list, unsigned int
 		{
 			hcl_setsynerrbfmt (
 				hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(attr_list), HCL_NULL,
-				"empty attribute list on unamed function for '%.*js'",
+				"empty attribute list on unnamed function for '%.*js'",
 				HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 		}
 		return -1;
@@ -3025,7 +3049,7 @@ static int check_fun_attr_list (hcl_t* hcl, hcl_cnode_t* attr_list, unsigned int
 				conflicting:
 					hcl_setsynerrbfmt (
 						hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(a), HCL_NULL,
-						"conflicting function attribute name '%.*js'", toklen, tokptr);
+						"conflicting function attribute name '#%.*js'", toklen, tokptr);
 					return -1;
 				}
 				ft = FUN_CM;
@@ -3091,7 +3115,7 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 		/* fun (arg..)
 		 * fun name(arg..)
 		 * fun(#attr..) name(arg..)  ## valid as class method, not valid as plain function
-		 * fun(#attr..) (arg..)      ## not valid. not attribute list for unamed functions
+		 * fun(#attr..) (arg..)      ## not valid. not attribute list for unnamed functions
 		 * fun(#attr..) class:name(arg..)
 		 */
 
@@ -3205,7 +3229,7 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 					 *       another hack is to disallow ELIST as attribute list? */
 					hcl_setsynerrbfmt (
 						hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(cmd), HCL_NULL,
-						"unamed function not followed by function body for '%.*js'",
+						"unnamed function not followed by function body for '%.*js'",
 						HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 					return -1;
 				}
@@ -3230,7 +3254,7 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 					{
 						hcl_setsynerrbfmt (
 							hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(cmd), HCL_NULL,
-							"no function body after attribute list and argument list of unamed function for '%.*js'",
+							"no function body after attribute list and argument list of unnamed function for '%.*js'",
 							HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 						return -1;
 					}
@@ -3320,7 +3344,7 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 			{
 				hcl_setsynerrbfmt (
 					hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(attr_list), HCL_NULL,
-					"attribute list prohibited on unamed function for '%.*js'",
+					"attribute list prohibited on unnamed function for '%.*js'",
 					HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 			}
 			return -1;

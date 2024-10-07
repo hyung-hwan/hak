@@ -35,7 +35,7 @@ class Apex {
 class Object: Apex {
 }
 
-class(#uncopyable #varying #limited) Class: Apex [
+class(#uncopyable #varying #limited #final) Class: Apex [
 	_name
 	_mdic
 	_spec
@@ -89,9 +89,9 @@ class FixedSizedCollection: IndexedCollection {
 		if (self:respondsTo "initValue") { ## TODO: change "initValue" to a symbol once supported
 			i := 0
 			iv := (self:initValue)
-			while (i < size) {
+			while (< i size) { ## TODO: change to i < size after having implemented these methods on integer/smallintger
 				core.basicAtPut obj i iv
-				i := (i + 1)
+				i := (+ i 1) ## TODO: change to i + 1 ## TODO: change to i < size after having implemented these methods on integer/smallintger
 			}
 		}
 		return obj
@@ -102,10 +102,10 @@ class FixedSizedCollection: IndexedCollection {
 	##}
 }
 
-class Array: FixedSizedCollection {
+class(#varying) Array: FixedSizedCollection {
 }
 
-class String: FixedSizedCollection {
+class(#char #varying) String: FixedSizedCollection {
 	fun(#class) initValue() {
 		##return '\0'
 		return ' '

@@ -4037,14 +4037,15 @@ static int execute (hcl_t* hcl)
 				hcl_oop_t superclass, ivars_str, cvars_str, class_name, v;
 				hcl_ooi_t expected_spec, expected_selfspec;
 				hcl_oop_class_t class_obj;
-				hcl_oow_t b0, b3;
+				hcl_oow_t b3, b4, b5;
 
-				FETCH_BYTE_CODE_TO (hcl, b0); /* indexed_type */
 				FETCH_PARAM_CODE_TO (hcl, b1); /* nsuperclasses */
 				FETCH_PARAM_CODE_TO (hcl, b2); /* nivars */
 				FETCH_PARAM_CODE_TO (hcl, b3); /* ncvars */
+				FETCH_BYTE_CODE_TO (hcl, b4); /* spec/selfspec */
+				FETCH_BYTE_CODE_TO (hcl, b5); /* indexed_type */
 
-				LOG_INST_4 (hcl, "class_enter %zu %zu %zu %zu", b0, b1, b2, b3);
+				LOG_INST_5 (hcl, "class_enter %zu %zu %zu %#zx %zu", b1, b2, b3, b4, b5);
 
 				if (b3 > 0)
 				{
@@ -4072,8 +4073,8 @@ static int execute (hcl_t* hcl)
  				}
 				else superclass = hcl->_nil;
 
-				expected_spec = HCL_CLASS_SPEC_MAKE(b2, (b0 >> 4), b0 & 0x0F);
-				expected_selfspec = HCL_CLASS_SELFSPEC_MAKE(b3, 0, 0);
+				expected_spec = HCL_CLASS_SPEC_MAKE(b2, ((b4 >> 4) & 0x0F), (b5 & 0xFF));
+				expected_selfspec = HCL_CLASS_SELFSPEC_MAKE(b3, 0, (b4 & 0x0F));
 
 				HCL_STACK_POP_TO(hcl, v);
 				if (HCL_IS_CONS(hcl, v))
@@ -4102,6 +4103,7 @@ static int execute (hcl_t* hcl)
 hcl_logbfmt (hcl, HCL_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncvars=%d<<<\n", class_obj, class_obj->superclass, superclass, b2, b3, (int)HCL_CLASS_SPEC_NAMED_INSTVARS(spec), (int)HCL_CLASS_SELFSPEC_CLASSVARS(spec));
 #endif
 
+hcl_logbfmt (hcl, HCL_LOG_STDERR, " spec %d %d | selfspec %d %d\n", expected_spec, spec, expected_selfspec, selfspec);
 							if (class_obj->superclass != superclass ||
 							    expected_spec != spec ||
 							    expected_selfspec != selfspec ||

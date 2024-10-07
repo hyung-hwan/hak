@@ -84,7 +84,7 @@ fun(#ci) fun1() { ##ERROR: syntax error - attribute list prohibited on plain fun
 
 ---
 
-fun() ()  { ##ERROR: syntax error - attribute list prohibited on unamed function for 'fun'
+fun() ()  { ##ERROR: syntax error - attribute list prohibited on unnamed function for 'fun'
 }
 
 ---

@@ -210,6 +210,8 @@
 #define HCL_CLASS_SPEC_INDEXED_TYPE(spec) \
 	((((hcl_oow_t)(spec)) >> HCL_CLASS_SPEC_FLAG_BITS) & HCL_LBMASK(hcl_oow_t, HCL_OBJ_FLAGS_TYPE_BITS))
 
+/* If you add more than 4 items, you must update code related to CLASS_ENTER instruction
+ * and class attributes as well as HCL_CLASS_SPEC_FLAG_BITS. */
 #define HCL_CLASS_SPEC_FLAG_INDEXED    (1 << 0)
 #define HCL_CLASS_SPEC_FLAG_IMMUTABLE  (1 << 1)
 #define HCL_CLASS_SPEC_FLAG_UNCOPYABLE (1 << 2)
@@ -260,6 +262,8 @@
 #define HCL_CLASS_SELFSPEC_FLAGS(spec) \
 	(((hcl_oow_t)spec) & HCL_LBMASK(hcl_oow_t, HCL_CLASS_SELFSPEC_FLAG_BITS))
 
+/* If you add more than 4 items, you must update code related to CLASS_ENTER instruction
+ * and class attributes as well as HCL_CLASS_SELFSPEC_FLAG_BITS. */
 #define HCL_CLASS_SELFSPEC_FLAG_FINAL   (1 << 0)
 #define HCL_CLASS_SELFSPEC_FLAG_LIMITED (1 << 1) /* not allowed to instantiate normally */
 
