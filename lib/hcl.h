@@ -158,6 +158,7 @@ enum hcl_synerrnum_t
 
 	HCL_SYNERR_CLASS,         /* invalid class definition */
 	HCL_SYNERR_FUN,           /* invalid function definition */
+	HCL_SYNERR_VAR,           /* invalid variable declaration */
 	HCL_SYNERR_ELIF,          /* elif without if */
 	HCL_SYNERR_ELSE,          /* else without if */
 	HCL_SYNERR_CATCH,         /* catch outside try */
@@ -1577,7 +1578,7 @@ enum hcl_compile_flag_t
 	HCL_COMPILE_CLEAR_CODE  = (1 << 0),
 
 	/* clear the top-level function block at the end of hcl_compile() */
-	HCL_COMPILE_CLEAR_FNBLK = (1 << 1)
+	HCL_COMPILE_CLEAR_FUNBLK = (1 << 1)
 };
 typedef enum hcl_compile_flag_t hcl_compile_flag_t;
 #endif

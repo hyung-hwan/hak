@@ -270,5 +270,5 @@ class(#byte #limited #final #limited) Kuduro { ##ERROR: syntax error - conflicti
 
 
 ---
-class(#byte #bytes) Kuduro { ##ERROR: syntax error - unrecognized class attribute name 'bytes'
+class(#byte #bytes) Kuduro { ##ERROR: syntax error - unrecognized class attribute name '#bytes'
 }

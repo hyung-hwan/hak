@@ -529,7 +529,7 @@ static int on_fed_cnode_in_interactive_mode (hcl_t* hcl, hcl_cnode_t* obj)
 	{
 		/* the first expression in the current user input line.
 		 * arrange to clear byte-codes before compiling the expression. */
-		flags = HCL_COMPILE_CLEAR_CODE | HCL_COMPILE_CLEAR_FNBLK;
+		flags = HCL_COMPILE_CLEAR_CODE | HCL_COMPILE_CLEAR_FUNBLK;
 	}
 
 	if (hcl_compile(hcl, obj, flags) <= -1)

@@ -73,7 +73,7 @@ int hcl_marshalcode (hcl_t* hcl, const hcl_code_t* code, hcl_xchg_writer_t wrtr,
 	hcl_oow_t w;
 	hcl_xchg_hdr_t h;
 
-	lfbase = (hcl->option.trait & HCL_TRAIT_INTERACTIVE)? hcl->c->fnblk.info[hcl->c->fnblk.depth].lfbase: 0;
+	lfbase = (hcl->option.trait & HCL_TRAIT_INTERACTIVE)? hcl->c->funblk.info[hcl->c->funblk.depth].lfbase: 0;
 
 	/* start with a header */
 	h.ver = 1;

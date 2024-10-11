@@ -4102,8 +4102,6 @@ static int execute (hcl_t* hcl)
 #if 0
 hcl_logbfmt (hcl, HCL_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncvars=%d<<<\n", class_obj, class_obj->superclass, superclass, b2, b3, (int)HCL_CLASS_SPEC_NAMED_INSTVARS(spec), (int)HCL_CLASS_SELFSPEC_CLASSVARS(spec));
 #endif
-
-hcl_logbfmt (hcl, HCL_LOG_STDERR, " spec %d %d | selfspec %d %d\n", expected_spec, spec, expected_selfspec, selfspec);
 							if (class_obj->superclass != superclass ||
 							    expected_spec != spec ||
 							    expected_selfspec != selfspec ||

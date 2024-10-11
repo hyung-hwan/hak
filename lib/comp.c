@@ -53,7 +53,7 @@ enum
 enum
 {
 	/* these enumerators are stored in the lower 8 bits of
-	 * the fun_type field of hcl_fnblk_info_t.
+	 * the fun_type field of hcl_funblk_info_t.
 	 * the 9th bit of the field indicate a method is defined
 	 * out of a class */
 
@@ -243,25 +243,25 @@ static void kill_temporary_variable_at_offset (hcl_t* hcl, hcl_oow_t offset)
 
 static int is_in_top_scope (hcl_t* hcl)
 {
-	hcl_fnblk_info_t* fbi;
-/*printf (">>> ---- fnblk.depth ....%d\n", (int)hcl->c->fnblk.depth);*/
-	if (hcl->c->fnblk.depth > 0) return 0;
-	HCL_ASSERT (hcl, hcl->c->fnblk.depth >= 0);
-	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
+	hcl_funblk_info_t* fbi;
+/*printf (">>> ---- funblk.depth ....%d\n", (int)hcl->c->funblk.depth);*/
+	if (hcl->c->funblk.depth > 0) return 0;
+	HCL_ASSERT (hcl, hcl->c->funblk.depth >= 0);
+	fbi = &hcl->c->funblk.info[hcl->c->funblk.depth];
 /*printf ("fbi->clsblk_top....%d\n", (int)fbi->clsblk_top);*/
 	return fbi->clsblk_top < 0;
 }
 
 static int is_in_top_fun_scope (hcl_t* hcl)
 {
-	return hcl->c->fnblk.depth == 0;
+	return hcl->c->funblk.depth == 0;
 }
 
 static int is_in_class_init_scope (hcl_t* hcl)
 {
-	hcl_fnblk_info_t* fbi;
-	HCL_ASSERT (hcl, hcl->c->fnblk.depth >= 0);
-	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
+	hcl_funblk_info_t* fbi;
+	HCL_ASSERT (hcl, hcl->c->funblk.depth >= 0);
+	fbi = &hcl->c->funblk.info[hcl->c->funblk.depth];
 	return fbi->clsblk_top >= 0;
 }
 
@@ -269,16 +269,16 @@ static int is_in_class_method_scope (hcl_t* hcl)
 {
 	hcl_oow_t i;
 
-	HCL_ASSERT (hcl, hcl->c->fnblk.depth >= 0);
-	for (i = hcl->c->fnblk.depth + 1; i > 0; )
+	HCL_ASSERT (hcl, hcl->c->funblk.depth >= 0);
+	for (i = hcl->c->funblk.depth + 1; i > 0; )
 	{
-		hcl_fnblk_info_t* fbi;
+		hcl_funblk_info_t* fbi;
 
-		fbi = &hcl->c->fnblk.info[--i];
+		fbi = &hcl->c->funblk.info[--i];
 
 		if (fbi->clsblk_top >= 0)
 		{
-			if (i >= hcl->c->fnblk.depth) return 0; /* in class initialization scope */
+			if (i >= hcl->c->funblk.depth) return 0; /* in class initialization scope */
 			return 1; /* in class method scope */
 		}
 	}
@@ -290,18 +290,18 @@ static int find_variable_backward_with_word (hcl_t* hcl, const hcl_oocs_t* name,
 {
 	hcl_oow_t i;
 
-	HCL_ASSERT (hcl, hcl->c->fnblk.depth >= 0);
-	HCL_ASSERT (hcl, hcl->c->fnblk.info[hcl->c->fnblk.depth].tmprlen == hcl->c->tv.s.len);
+	HCL_ASSERT (hcl, hcl->c->funblk.depth >= 0);
+	HCL_ASSERT (hcl, hcl->c->funblk.info[hcl->c->funblk.depth].tmprlen == hcl->c->tv.s.len);
 
 	/* depth begins at -1. so it is the actual index. let looping begin at depth + 1
 	 * to avoid an extra exit check without it */
-	for (i = hcl->c->fnblk.depth + 1; i > 0; )
+	for (i = hcl->c->funblk.depth + 1; i > 0; )
 	{
-		hcl_fnblk_info_t* fbi;
+		hcl_funblk_info_t* fbi;
 		hcl_oocs_t haystack;
 		hcl_oow_t parent_tmprcnt, parent_tmprlen, index;
 
-		fbi = &hcl->c->fnblk.info[--i];
+		fbi = &hcl->c->funblk.info[--i];
 
 		if (fbi->clsblk_top >= 0)
 		{
@@ -325,7 +325,7 @@ static int find_variable_backward_with_word (hcl_t* hcl, const hcl_oocs_t* name,
 					{
 						hcl_oow_t fi;
 
-						if (i >= hcl->c->fnblk.depth)
+						if (i >= hcl->c->funblk.depth)
 						{
 							/* instance variables are accessible only in an instance method defintion scope.
 							 * it is in class initialization scope */
@@ -333,10 +333,10 @@ static int find_variable_backward_with_word (hcl_t* hcl, const hcl_oocs_t* name,
 							return -1;
 						}
 
-						for (fi = hcl->c->fnblk.depth + 1; fi > i; ) /* TOOD: review this loop for correctness */
+						for (fi = hcl->c->funblk.depth + 1; fi > i; ) /* TOOD: review this loop for correctness */
 						{
 							/* 'i' is the function level that holds the class defintion block. the check must not go past it */
-							if ((hcl->c->fnblk.info[--fi].fun_type & 0xFF) == FUN_CM)
+							if ((hcl->c->funblk.info[--fi].fun_type & 0xFF) == FUN_CM)
 							{
 								/* the function where this variable is defined is a class method or an plain function block within a class method*/
 								hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, loc, name, "prohibited access to instance variable in class method context");
@@ -344,7 +344,7 @@ static int find_variable_backward_with_word (hcl_t* hcl, const hcl_oocs_t* name,
 							}
 
 							/* instance methods and instantiation methods can access instance variables */
-							if ((hcl->c->fnblk.info[fi].fun_type & 0xFF) != FUN_PLAIN) break;
+							if ((hcl->c->funblk.info[fi].fun_type & 0xFF) != FUN_PLAIN) break;
 						}
 
 						vi->type = VAR_INST;
@@ -366,7 +366,7 @@ HCL_INFO6 (hcl, "FOUND INST VAR [%.*js]...[%.*js]................ ===> ctx_offse
 					{
 						/* TODO: VAR_CLASS_CM vs VAR_CLASS_IM, need to know if it's an instance method or a class method */
 /* TODO: check if it's in the class variable .... */
-						vi->type = (i >= hcl->c->fnblk.depth? VAR_CLASS_I: VAR_CLASS_IM);
+						vi->type = (i >= hcl->c->funblk.depth? VAR_CLASS_I: VAR_CLASS_IM);
 						vi->ctx_offset = 0;
 						vi->index_in_ctx = index;
 /*
@@ -379,7 +379,7 @@ HCL_INFO6 (hcl, "FOUND CLASS VAR [%.*js]...[%.*js]................ ===> ctx_offs
 	#if 0
 			}
 
-			if (i == hcl->c->fnblk.depth)
+			if (i == hcl->c->funblk.depth)
 			{
 				/* this condition indicates that the current function level contains a class defintion
 				 * and this variable is looked up inside the class defintion */
@@ -397,8 +397,8 @@ HCL_INFO2 (hcl, "CLASS NAMED VAR [%.*js]\n", name->len, name->ptr);
 
 		if (HCL_LIKELY(i > 0))
 		{
-			parent_tmprlen = hcl->c->fnblk.info[i - 1].tmprlen;
-			parent_tmprcnt = hcl->c->fnblk.info[i - 1].tmprcnt;
+			parent_tmprlen = hcl->c->funblk.info[i - 1].tmprlen;
+			parent_tmprcnt = hcl->c->funblk.info[i - 1].tmprcnt;
 		}
 		else
 		{
@@ -414,17 +414,17 @@ HCL_INFO2 (hcl, "CLASS NAMED VAR [%.*js]\n", name->len, name->ptr);
 		{
 			/* temporary variables or arguments */
 			vi->type = VAR_INDEXED;
-			vi->ctx_offset = hcl->c->fnblk.depth - i; /* context offset */
+			vi->ctx_offset = hcl->c->funblk.depth - i; /* context offset */
 			vi->index_in_ctx = index;
 /*HCL_INFO4 (hcl, "FOUND ...[%.*js]................ ===> ctx_offset %d index %d\n", name->len, name->ptr, (int)(vi->ctx_offset), (int)vi->index_in_ctx);*/
 
 			if (vi->ctx_offset > 0)
 			{
 				/* the current function block accesses temporaries in an outer function block */
-				hcl->c->fnblk.info[hcl->c->fnblk.depth].access_outer = 1;
+				hcl->c->funblk.info[hcl->c->funblk.depth].access_outer = 1;
 				/* temporaries in an outer function block is accessed by the current function block */
 
-				if (i > 0) hcl->c->fnblk.info[i - 1].accessed_by_inner = 1;
+				if (i > 0) hcl->c->funblk.info[i - 1].accessed_by_inner = 1;
 			}
 
 			return 1;
@@ -533,7 +533,7 @@ ok:
 static HCL_INLINE int add_literal (hcl_t* hcl, hcl_oop_t obj, hcl_oow_t* index)
 {
 	hcl_oow_t lfbase;
-	lfbase = (hcl->option.trait & HCL_TRAIT_INTERACTIVE)? hcl->c->fnblk.info[hcl->c->fnblk.depth].lfbase: 0;
+	lfbase = (hcl->option.trait & HCL_TRAIT_INTERACTIVE)? hcl->c->funblk.info[hcl->c->funblk.depth].lfbase: 0;
 	return hcl_addliteraltocode(hcl, &hcl->code, obj, lfbase, index);
 }
 
@@ -982,26 +982,26 @@ static int emit_variable_access (hcl_t* hcl, int mode, const hcl_var_info_t* vi,
 }
 
 /* ========================================================================= */
-static int push_cblk (hcl_t* hcl, const hcl_loc_t* errloc, hcl_cblk_type_t type)
+static int push_ctlblk (hcl_t* hcl, const hcl_loc_t* errloc, hcl_ctlblk_type_t type)
 {
 	hcl_oow_t new_depth;
 
-	HCL_ASSERT (hcl, hcl->c->cblk.depth >= -1);
+	HCL_ASSERT (hcl, hcl->c->ctlblk.depth >= -1);
 
-	if (hcl->c->cblk.depth == HCL_TYPE_MAX(hcl_ooi_t))
+	if (hcl->c->ctlblk.depth == HCL_TYPE_MAX(hcl_ooi_t))
 	{
 		hcl_setsynerrbfmt (hcl, HCL_SYNERR_BLKDEPTH, errloc, HCL_NULL, "control block depth too deep");
 		return -1;
 	}
 
-	new_depth = hcl->c->cblk.depth + 1;
-	if (hcl->c->cblk.depth >= hcl->c->cblk.info_capa)
+	new_depth = hcl->c->ctlblk.depth + 1;
+	if (hcl->c->ctlblk.depth >= hcl->c->ctlblk.info_capa)
 	{
-		hcl_cblk_info_t* tmp;
+		hcl_ctlblk_info_t* tmp;
 		hcl_oow_t newcapa;
 
 		newcapa = HCL_ALIGN(new_depth + 1, BLK_INFO_BUFFER_ALIGN);
-		tmp = (hcl_cblk_info_t*)hcl_reallocmem(hcl, hcl->c->cblk.info, newcapa * HCL_SIZEOF(*tmp));
+		tmp = (hcl_ctlblk_info_t*)hcl_reallocmem(hcl, hcl->c->ctlblk.info, newcapa * HCL_SIZEOF(*tmp));
 		if (HCL_UNLIKELY(!tmp))
 		{
 			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
@@ -1009,32 +1009,34 @@ static int push_cblk (hcl_t* hcl, const hcl_loc_t* errloc, hcl_cblk_type_t type)
 			return -1;
 		}
 
-		hcl->c->cblk.info_capa = newcapa;
-		hcl->c->cblk.info = tmp;
+		hcl->c->ctlblk.info_capa = newcapa;
+		hcl->c->ctlblk.info = tmp;
 	}
 
-	HCL_MEMSET (&hcl->c->cblk.info[new_depth], 0, HCL_SIZEOF(hcl->c->cblk.info[new_depth]));
-	hcl->c->cblk.info[new_depth]._type = type;
-	hcl->c->cblk.depth = new_depth;
+	HCL_MEMSET (&hcl->c->ctlblk.info[new_depth], 0, HCL_SIZEOF(hcl->c->ctlblk.info[new_depth]));
+	hcl->c->ctlblk.info[new_depth]._type = type;
+	hcl->c->ctlblk.depth = new_depth;
 	return 0;
 }
 
-static void pop_cblk (hcl_t* hcl)
+static void pop_ctlblk (hcl_t* hcl)
 {
-	HCL_ASSERT (hcl, hcl->c->cblk.depth >= 0); /* depth is of a signed type */
+	HCL_ASSERT (hcl, hcl->c->ctlblk.depth >= 0); /* depth is of a signed type */
 
 	/* a control block stays inside a function block.
 	 * the control block stack must not be popped past the starting base
 	 * of the owning function block */
-	HCL_ASSERT (hcl, hcl->c->cblk.depth - 1 >= hcl->c->fnblk.info[hcl->c->fnblk.depth].cblk_base);
-	hcl->c->cblk.depth--;
+	HCL_ASSERT (hcl, hcl->c->ctlblk.depth - 1 >= hcl->c->funblk.info[hcl->c->funblk.depth].ctlblk_base);
+	hcl->c->ctlblk.depth--;
 }
 
-static int push_clsblk (hcl_t* hcl, const hcl_loc_t* errloc, hcl_oow_t nivars, hcl_oow_t ncvars, const hcl_ooch_t* ivars_str, hcl_oow_t ivars_strlen, const hcl_ooch_t* cvars_str, hcl_oow_t cvars_strlen)
+static int push_clsblk (
+	hcl_t* hcl, const hcl_loc_t* errloc, hcl_cnode_t* class_name, hcl_oow_t nivars, hcl_oow_t ncvars,
+	const hcl_ooch_t* ivars_str, hcl_oow_t ivars_strlen, const hcl_ooch_t* cvars_str, hcl_oow_t cvars_strlen)
 {
 	hcl_oow_t new_depth;
 	hcl_clsblk_info_t* ci;
-	hcl_fnblk_info_t* fbi;
+	hcl_funblk_info_t* fbi;
 
 	HCL_ASSERT (hcl, hcl->c->clsblk.depth >= -1);
 
@@ -1065,6 +1067,7 @@ static int push_clsblk (hcl_t* hcl, const hcl_loc_t* errloc, hcl_oow_t nivars, h
 
 	ci = &hcl->c->clsblk.info[new_depth];
 	HCL_MEMSET (ci, 0, HCL_SIZEOF(*ci));
+	ci->class_name = class_name;
 	ci->nivars = nivars;
 	ci->ncvars = ncvars;
 
@@ -1086,10 +1089,10 @@ static int push_clsblk (hcl_t* hcl, const hcl_loc_t* errloc, hcl_oow_t nivars, h
 	}
 
 	/* remember the function block depth before the class block is entered */
-	ci->fnblk_base = hcl->c->fnblk.depth;
+	ci->funblk_base = hcl->c->funblk.depth;
 
 	/* attach the class block to the current function block */
-	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
+	fbi = &hcl->c->funblk.info[hcl->c->funblk.depth];
 	if (fbi->clsblk_base <= -1) fbi->clsblk_base = new_depth;
 	fbi->clsblk_top = new_depth;
 
@@ -1099,13 +1102,13 @@ static int push_clsblk (hcl_t* hcl, const hcl_loc_t* errloc, hcl_oow_t nivars, h
 
 static void pop_clsblk (hcl_t* hcl)
 {
-	hcl_fnblk_info_t* fbi;
+	hcl_funblk_info_t* fbi;
 	hcl_clsblk_info_t* cbi;
 
 	HCL_ASSERT (hcl, hcl->c->clsblk.depth >= 0); /* depth is of a signed type */
-	HCL_ASSERT (hcl, hcl->c->fnblk.depth >= 0);
+	HCL_ASSERT (hcl, hcl->c->funblk.depth >= 0);
 
-	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
+	fbi = &hcl->c->funblk.info[hcl->c->funblk.depth];
 	HCL_ASSERT (hcl, fbi->clsblk_base >= 0 && fbi->clsblk_top >= 0 && fbi->clsblk_top >= fbi->clsblk_base);
 	HCL_ASSERT (hcl, fbi->clsblk_top == hcl->c->clsblk.depth);
 	if (fbi->clsblk_top == fbi->clsblk_base)
@@ -1134,28 +1137,28 @@ static void pop_clsblk (hcl_t* hcl)
 }
 
 
-static int push_fnblk (hcl_t* hcl, const hcl_loc_t* errloc,
+static int push_funblk (hcl_t* hcl, const hcl_loc_t* errloc,
 	hcl_oow_t tmpr_va, hcl_oow_t tmpr_nargs, hcl_oow_t tmpr_nrvars, hcl_oow_t tmpr_nlvars,
 	hcl_oow_t tmpr_count, hcl_oow_t tmpr_len, hcl_oow_t make_inst_pos, hcl_oow_t lfbase, unsigned int fun_type)
 {
 	hcl_oow_t new_depth;
-	hcl_fnblk_info_t* fbi;
+	hcl_funblk_info_t* fbi;
 
-	HCL_ASSERT (hcl, hcl->c->fnblk.depth >= -1);
-	if (hcl->c->fnblk.depth == HCL_TYPE_MAX(hcl_ooi_t))
+	HCL_ASSERT (hcl, hcl->c->funblk.depth >= -1);
+	if (hcl->c->funblk.depth == HCL_TYPE_MAX(hcl_ooi_t))
 	{
 		hcl_setsynerrbfmt (hcl, HCL_SYNERR_BLKDEPTH, errloc, HCL_NULL, "function block depth too deep");
 		return -1;
 	}
 
-	new_depth = hcl->c->fnblk.depth + 1;
-	if (hcl->c->fnblk.depth >= hcl->c->fnblk.info_capa)
+	new_depth = hcl->c->funblk.depth + 1;
+	if (hcl->c->funblk.depth >= hcl->c->funblk.info_capa)
 	{
-		hcl_fnblk_info_t* tmp;
+		hcl_funblk_info_t* tmp;
 		hcl_oow_t newcapa;
 
 		newcapa = HCL_ALIGN(new_depth + 1, BLK_INFO_BUFFER_ALIGN);
-		tmp = (hcl_fnblk_info_t*)hcl_reallocmem(hcl, hcl->c->fnblk.info, newcapa * HCL_SIZEOF(*tmp));
+		tmp = (hcl_funblk_info_t*)hcl_reallocmem(hcl, hcl->c->funblk.info, newcapa * HCL_SIZEOF(*tmp));
 		if (HCL_UNLIKELY(!tmp))
 		{
 			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
@@ -1163,11 +1166,11 @@ static int push_fnblk (hcl_t* hcl, const hcl_loc_t* errloc,
 			return -1;
 		}
 
-		hcl->c->fnblk.info_capa = newcapa;
-		hcl->c->fnblk.info = tmp;
+		hcl->c->funblk.info_capa = newcapa;
+		hcl->c->funblk.info = tmp;
 	}
 
-	fbi = &hcl->c->fnblk.info[new_depth];
+	fbi = &hcl->c->funblk.info[new_depth];
 	HCL_MEMSET (fbi, 0, HCL_SIZEOF(*fbi));
 
 	fbi->fun_type = fun_type;
@@ -1180,7 +1183,7 @@ static int push_fnblk (hcl_t* hcl, const hcl_loc_t* errloc,
 	fbi->tmpr_nlvars = tmpr_nlvars;
 
 	/* remember the control block depth before the function block is entered */
-	fbi->cblk_base = hcl->c->cblk.depth;
+	fbi->ctlblk_base = hcl->c->ctlblk.depth;
 
 	/* no class block when the funtion block is entered */
 	fbi->clsblk_base = -1;
@@ -1192,42 +1195,42 @@ static int push_fnblk (hcl_t* hcl, const hcl_loc_t* errloc,
 	fbi->access_outer = 0;
 	fbi->accessed_by_inner = 0;
 
-	hcl->c->fnblk.depth = new_depth;
+	hcl->c->funblk.depth = new_depth;
 	return 0;
 }
 
-static void clear_fnblk_inners (hcl_t* hcl)
+static void clear_funblk_inners (hcl_t* hcl)
 {
-	hcl_fnblk_info_t* fbi;
-	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
-	while (hcl->c->cblk.depth > fbi->cblk_base) pop_cblk (hcl);
+	hcl_funblk_info_t* fbi;
+	fbi = &hcl->c->funblk.info[hcl->c->funblk.depth];
+	while (hcl->c->ctlblk.depth > fbi->ctlblk_base) pop_ctlblk (hcl);
 	while (!(fbi->clsblk_base <= -1 && fbi->clsblk_top <= -1)) pop_clsblk (hcl);
 }
 
-static void pop_fnblk (hcl_t* hcl)
+static void pop_funblk (hcl_t* hcl)
 {
-	hcl_fnblk_info_t* fbi;
+	hcl_funblk_info_t* fbi;
 
-	HCL_ASSERT (hcl, hcl->c->fnblk.depth >= 0);
+	HCL_ASSERT (hcl, hcl->c->funblk.depth >= 0);
 
-	clear_fnblk_inners (hcl);
-	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
-	/* if pop_cblk() has been called properly, the following assertion must be true
+	clear_funblk_inners (hcl);
+	fbi = &hcl->c->funblk.info[hcl->c->funblk.depth];
+	/* if pop_ctlblk() has been called properly, the following assertion must be true
 	 * and the assignment on the next line isn't necessary */
-	HCL_ASSERT (hcl, hcl->c->cblk.depth == fbi->cblk_base);
+	HCL_ASSERT (hcl, hcl->c->ctlblk.depth == fbi->ctlblk_base);
 	HCL_ASSERT (hcl, fbi->clsblk_base <= -1 && fbi->clsblk_top <= -1);
 
-	hcl->c->cblk.depth = fbi->cblk_base;
+	hcl->c->ctlblk.depth = fbi->ctlblk_base;
 	/* keep hcl->code.lit.len without restoration */
 
-	hcl->c->fnblk.depth--;
+	hcl->c->funblk.depth--;
 
-	if (hcl->c->fnblk.depth >= 0)
+	if (hcl->c->funblk.depth >= 0)
 	{
 		/* restore the string length and the word count to the values captured
 		 * at the previous level */
-		hcl->c->tv.s.len = hcl->c->fnblk.info[hcl->c->fnblk.depth].tmprlen;
-		hcl->c->tv.wcount = hcl->c->fnblk.info[hcl->c->fnblk.depth].tmprcnt;
+		hcl->c->tv.s.len = hcl->c->funblk.info[hcl->c->funblk.depth].tmprlen;
+		hcl->c->tv.wcount = hcl->c->funblk.info[hcl->c->funblk.depth].tmprcnt;
 	}
 	else
 	{
@@ -1654,7 +1657,6 @@ enum
 
 	COP_COMPILE_CLASS_P1,
 	COP_COMPILE_CLASS_P2,
-	COP_COMPILE_CLASS_P3,
 
 	COP_EMIT_PUSH_NIL,
 	COP_EMIT_PUSH_SYMBOL,
@@ -1978,19 +1980,19 @@ static int compile_break (hcl_t* hcl, hcl_cnode_t* src)
 		return -1;
 	}
 
-	for (i = hcl->c->cblk.depth; i > hcl->c->fnblk.info[hcl->c->fnblk.depth].cblk_base; --i)
+	for (i = hcl->c->ctlblk.depth; i > hcl->c->funblk.info[hcl->c->funblk.depth].ctlblk_base; --i)
 	{
-		switch (hcl->c->cblk.info[i]._type)
+		switch (hcl->c->ctlblk.info[i]._type)
 		{
-			case HCL_CBLK_TYPE_LOOP:
+			case HCL_CTLBLK_TYPE_LOOP:
 				goto inside_loop;
 
-			case HCL_CBLK_TYPE_TRY:
+			case HCL_CTLBLK_TYPE_TRY:
 				/* emit an instruction to exit from the try loop. */
 				if (emit_byte_instruction(hcl, HCL_CODE_TRY_EXIT, HCL_CNODE_GET_LOC(src)) <= -1) return -1;
 				break;
 
-			case HCL_CBLK_TYPE_CLASS:
+			case HCL_CTLBLK_TYPE_CLASS:
 				/* emit an instruction to exit from the class definition scope being defined */
 				if (emit_byte_instruction(hcl, HCL_CODE_CLASS_EXIT, HCL_CNODE_GET_LOC(src)) <= -1) return -1;
 				break;
@@ -2093,19 +2095,19 @@ static int compile_continue (hcl_t* hcl, hcl_cnode_t* src)
 		return -1;
 	}
 
-	for (i = hcl->c->cblk.depth; i > hcl->c->fnblk.info[hcl->c->fnblk.depth].cblk_base; --i)
+	for (i = hcl->c->ctlblk.depth; i > hcl->c->funblk.info[hcl->c->funblk.depth].ctlblk_base; --i)
 	{
-		switch (hcl->c->cblk.info[i]._type)
+		switch (hcl->c->ctlblk.info[i]._type)
 		{
-			case HCL_CBLK_TYPE_LOOP:
+			case HCL_CTLBLK_TYPE_LOOP:
 				goto inside_loop;
 
-			case HCL_CBLK_TYPE_TRY:
+			case HCL_CTLBLK_TYPE_TRY:
 				/*must emit an instruction to exit from the try loop.*/
 				if (emit_byte_instruction(hcl, HCL_CODE_TRY_EXIT, HCL_CNODE_GET_LOC(src)) <= -1) return -1;
 				break;
 
-			case HCL_CBLK_TYPE_CLASS:
+			case HCL_CTLBLK_TYPE_CLASS:
 				if (emit_byte_instruction(hcl, HCL_CODE_CLASS_EXIT, HCL_CNODE_GET_LOC(src)) <= -1) return -1;
 				break;
 		}
@@ -2151,7 +2153,7 @@ static int compile_expression_block (hcl_t* hcl, hcl_cnode_t* src, const hcl_bch
 {
 	hcl_cnode_t* cmd, * obj;
 	hcl_oow_t nlvars, tvslen;
-	hcl_fnblk_info_t* fbi;
+	hcl_funblk_info_t* fbi;
 	hcl_cframe_t* cf;
 
 	if (flags & CEB_IS_BLOCK)
@@ -2230,7 +2232,7 @@ static int compile_expression_block (hcl_t* hcl, hcl_cnode_t* src, const hcl_bch
 	}
 #endif
 
-	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
+	fbi = &hcl->c->funblk.info[hcl->c->funblk.depth];
 	fbi->tmprlen = hcl->c->tv.s.len;
 	fbi->tmprcnt = hcl->c->tv.wcount;
 	fbi->tmpr_nlvars = fbi->tmpr_nlvars + nlvars;
@@ -2606,7 +2608,7 @@ static int check_class_attr_list (hcl_t* hcl, hcl_cnode_t* attr_list, unsigned i
 			{
 				hcl_setsynerrbfmt (
 					hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(attr), HCL_NULL,
-					"unrecognized class attribute name '%.*js'", toklen, tokptr);
+					"unrecognized class attribute name '#%.*js'", toklen, tokptr);
 				return -1;
 			}
 
@@ -2810,6 +2812,7 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src)
 	cf->u._class.indexed_type = indexed_type;
 	cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
 	cf->u._class.cmd_cnode = cmd;
+	cf->u._class.class_name_cnode = class_name; /* duplicate with operand to COP_COMPILE_CLASS_P2 */
 
 	PUSH_CFRAME (hcl, COP_COMPILE_CLASS_P1, obj); /* 2 - variables declaraions and actual body */
 	cf = GET_TOP_CFRAME(hcl);
@@ -2817,6 +2820,7 @@ static int compile_class (hcl_t* hcl, hcl_cnode_t* src)
 	cf->u._class.indexed_type = indexed_type;
 	cf->u._class.start_loc = *HCL_CNODE_GET_LOC(src); /* TODO: use *HCL_CNODE_GET_LOC(cmd) instead? */
 	cf->u._class.cmd_cnode = cmd;
+	cf->u._class.class_name_cnode = class_name;
 
 	if (superclass) PUSH_CFRAME (hcl, COP_COMPILE_OBJECT, superclass); /* 1 - superclass expression */
 	return 0;
@@ -2879,7 +2883,9 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 		if (vardcl.ncvars > HCL_SMOOI_MAX)
 		{
 			/* TOOD: change the error location ?? */
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARFLOOD, HCL_CNODE_GET_LOC(cf->operand), HCL_NULL, "too many(%zu) class variables", vardcl.ncvars);
+			hcl_setsynerrbfmt (
+				hcl, HCL_SYNERR_VARFLOOD, HCL_CNODE_GET_LOC(cf->operand), HCL_NULL,
+				"too many(%zu) class variables", vardcl.ncvars);
 			goto oops;
 		}
 
@@ -2891,8 +2897,11 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 
 	if (check_block_expression_as_body(hcl, obj, cf->u._class.cmd_cnode, FOR_CLASS) <= -1) return -1;
 
-	if (push_clsblk(hcl, &cf->u._class.start_loc, vardcl.nivars, vardcl.ncvars, &hcl->c->tv.s.ptr[vardcl.ivar_start], vardcl.ivar_len, &hcl->c->tv.s.ptr[vardcl.cvar_start], vardcl.cvar_len) <= -1) goto oops;
-	if (push_cblk(hcl, &cf->u._class.start_loc, HCL_CBLK_TYPE_CLASS) <= -1) goto oops; /* the class block shall be treated as a control block, too */
+	if (push_clsblk(hcl, &cf->u._class.start_loc,
+		cf->u._class.class_name_cnode, vardcl.nivars, vardcl.ncvars,
+		&hcl->c->tv.s.ptr[vardcl.ivar_start], vardcl.ivar_len,
+		&hcl->c->tv.s.ptr[vardcl.cvar_start], vardcl.cvar_len) <= -1) goto oops;
+	if (push_ctlblk(hcl, &cf->u._class.start_loc, HCL_CTLBLK_TYPE_CLASS) <= -1) goto oops; /* the class block shall be treated as a control block, too */
 
 	/* discard the instance variables and class variables in the temporary variable collection buffer
 	 * because they have been pushed to the class block structure */
@@ -2921,27 +2930,12 @@ oops:
 	return -1;
 }
 
-static HCL_INLINE int compile_class_p3 (hcl_t* hcl)
-{
-	hcl_cframe_t* cf;
-
-	cf = GET_TOP_CFRAME(hcl);
-	HCL_ASSERT (hcl, cf->opcode == COP_COMPILE_CLASS_P3);
-
-	/* should i make the assignment in POST?  or after variable declarations immediately? */
-/* TODO: emit instruction to store into the class name...? */
-/* TODO: NEED TO EMIT POP_STACKTOP???? IN THIS CASE CLASS_EXIT MUST PUSH SOMETHING? */
-	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_EXIT, HCL_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
-
-	POP_CFRAME (hcl);
-	return 0;
-}
-
 static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 {
 	hcl_cframe_t* cf;
 	hcl_cnode_t* class_name;
 	hcl_loc_t class_loc;
+	hcl_clsblk_info_t* cbi;
 
 	cf = GET_TOP_CFRAME(hcl);
 	HCL_ASSERT (hcl, cf->opcode == COP_COMPILE_CLASS_P2);
@@ -2956,7 +2950,10 @@ static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 		if (emit_byte_instruction(hcl, HCL_CODE_POP_STACKTOP, &class_loc) <= -1) return -1;
 	}
 
-	pop_cblk (hcl);
+	cbi = &hcl->c->clsblk.info[hcl->c->clsblk.depth];
+/* TODO: PATCH THE CLASS_ENTER instruction */
+
+	pop_ctlblk (hcl);
 	pop_clsblk (hcl);  /* end of the class block */
 
 	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_PEXIT, &class_loc) <= -1) return -1; /* pop + exit */
@@ -3064,7 +3061,7 @@ static int check_fun_attr_list (hcl_t* hcl, hcl_cnode_t* attr_list, unsigned int
 			{
 				hcl_setsynerrbfmt (
 					hcl, HCL_SYNERR_FUN, HCL_CNODE_GET_LOC(a), HCL_NULL,
-					"unrecognized function attribute name '%.*js'", toklen, tokptr);
+					"unrecognized function attribute name '#%.*js'", toklen, tokptr);
 				return -1;
 			}
 
@@ -3517,7 +3514,7 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 
 	HCL_ASSERT (hcl, nargs + nrvars + nlvars == hcl->c->tv.wcount - saved_tv_wcount);
 
-	if (push_fnblk(
+	if (push_funblk(
 		hcl, HCL_CNODE_GET_LOC(src), va, nargs, nrvars, nlvars, hcl->c->tv.wcount,
 		hcl->c->tv.s.len, hcl->code.bc.len, hcl->code.lit.len, fun_type) <= -1) return -1;
 
@@ -3526,13 +3523,13 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 		/* MAKE_FUNCTION attr_mask_1 attr_mask_2 lfbase lfsize */
 		if (emit_double_param_instruction(hcl, HCL_CODE_MAKE_FUNCTION, 0, 0, HCL_CNODE_GET_LOC(cmd)) <= -1) return -1;
 		lfbase_pos = hcl->code.bc.len;
-		if (emit_long_param(hcl, hcl->code.lit.len - hcl->c->fnblk.info[hcl->c->fnblk.depth - 1].lfbase) <= -1) return -1; /* lfbase(literal frame base) */
+		if (emit_long_param(hcl, hcl->code.lit.len - hcl->c->funblk.info[hcl->c->funblk.depth - 1].lfbase) <= -1) return -1; /* lfbase(literal frame base) */
 		lfsize_pos = hcl->code.bc.len; /* literal frame size */
 		if (emit_long_param(hcl, 0) <= -1) return -1; /* place holder for lfsize */
 	}
 	else
 	{
-		/* MAKE_BLOCK attr_mask_1 attr_mask_2 - will patch attr_mask in pop_fnblk() */
+		/* MAKE_BLOCK attr_mask_1 attr_mask_2 - will patch attr_mask in pop_funblk() */
 		if (emit_double_param_instruction(hcl, HCL_CODE_MAKE_BLOCK, 0, 0, HCL_CNODE_GET_LOC(cmd)) <= -1) return -1;
 	}
 
@@ -3561,34 +3558,223 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 
 	return 0;
 }
+/* ========================================================================= */
+
+static int check_var_attr_list (hcl_t* hcl, hcl_cnode_t* attr_list, unsigned int* var_type, hcl_cnode_t* cmd, hcl_cnode_t* class_name, hcl_cnode_t* var_name)
+{
+	unsigned int ft;
+
+	ft = VAR_INST;
+
+	HCL_ASSERT (hcl, attr_list != HCL_NULL);
+	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS_CONCODED(attr_list, HCL_CONCODE_XLIST) ||
+	                 HCL_CNODE_IS_ELIST_CONCODED(attr_list, HCL_CONCODE_XLIST));
+
+	if (HCL_CNODE_IS_ELIST_CONCODED(attr_list, HCL_CONCODE_XLIST))
+	{
+		/* don't allow empty attribute list */
+		if (class_name)
+		{
+			hcl_setsynerrbfmt (
+				hcl, HCL_SYNERR_VAR, HCL_CNODE_GET_LOC(attr_list), HCL_NULL,
+				"empty attribute list on '%.*js' in '%.*js' for '%.*js'",
+				HCL_CNODE_GET_TOKLEN(var_name), HCL_CNODE_GET_TOKPTR(var_name),
+				HCL_CNODE_GET_TOKLEN(class_name), HCL_CNODE_GET_TOKPTR(class_name),
+				HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		}
+		else
+		{
+			hcl_setsynerrbfmt (
+				hcl, HCL_SYNERR_VAR, HCL_CNODE_GET_LOC(attr_list), HCL_NULL,
+				"empty attribute list on '%.*js' in unnamed class for '%.*js'",
+				HCL_CNODE_GET_TOKLEN(var_name), HCL_CNODE_GET_TOKPTR(var_name),
+				HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		}
+		return -1;
+	}
+
+	if (HCL_CNODE_IS_CONS_CONCODED(attr_list, HCL_CONCODE_XLIST))
+	{
+		hcl_cnode_t* c, * a;
+		const hcl_ooch_t* tokptr;
+		hcl_oow_t toklen;
+
+		c = attr_list;
+		while (c)
+		{
+			a = HCL_CNODE_CONS_CAR(c);
+
+			tokptr = HCL_CNODE_GET_TOKPTR(a);
+			toklen = HCL_CNODE_GET_TOKLEN(a);
+
+			if (!HCL_CNODE_IS_TYPED(a, HCL_CNODE_SYMLIT))
+			{
+				hcl_setsynerrbfmt (
+					hcl, HCL_SYNERR_VAR, HCL_CNODE_GET_LOC(a), HCL_NULL,
+					"invalid variable attribute name '%.*js'", toklen, tokptr);
+				return -1;
+			}
+
+			if (hcl_comp_oochars_bcstr(tokptr, toklen, "class") == 0 ||
+			    hcl_comp_oochars_bcstr(tokptr, toklen, "c") == 0)
+			{
+				if (ft != FUN_IM)
+				{
+				conflicting:
+					hcl_setsynerrbfmt (
+						hcl, HCL_SYNERR_VAR, HCL_CNODE_GET_LOC(a), HCL_NULL,
+						"conflicting variable attribute name '#%.*js'", toklen, tokptr);
+					return -1;
+				}
+				ft = VAR_CLASS_I;
+			}
+			else
+			{
+				hcl_setsynerrbfmt (
+					hcl, HCL_SYNERR_VAR, HCL_CNODE_GET_LOC(a), HCL_NULL,
+					"unrecognized variable attribute name '#%.*js'", toklen, tokptr);
+				return -1;
+			}
+
+			c = HCL_CNODE_CONS_CDR(c);
+		}
+	}
+
+	*var_type = ft;
+	return 0;
+}
+
+static int compile_var (hcl_t* hcl, hcl_cnode_t* src)
+{
+	hcl_cnode_t* cmd, * next, * tmp;
+	hcl_cnode_t* attr_list;
+	hcl_clsblk_info_t* cbi;
+
+	/* this is for install/class variable declaration.
+	 * and generates no instruction */
+
+	cmd = HCL_CNODE_CONS_CAR(src);
+	next = HCL_CNODE_CONS_CDR(src);
+	attr_list = HCL_NULL;
+
+/*TODO: put some assertion regarding funblk to cslblk relaion */
+	cbi = &hcl->c->clsblk.info[hcl->c->clsblk.depth];
+
+	HCL_ASSERT (hcl, HCL_CNODE_IS_TYPED(cmd, HCL_CNODE_VAR));
+
+	if (!next)
+	{
+		hcl_setsynerrbfmt (
+			hcl, HCL_SYNERR_VAR, HCL_CNODE_GET_LOC(cmd), HCL_NULL,
+			"'%.*js' not followed by name or (",
+			HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		return -1;
+	}
+
+	/* the reader ensures that the cdr field of a cons cell points to the next cell.
+	 * and only the field of the last cons cell is NULL. */
+	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(next));
+
+	if (!is_in_class_init_scope(hcl))
+	{
+		hcl_setsynerrbfmt (
+			hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(cmd), HCL_NULL,
+			"'%.*js' prohibited in this context",
+			HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		return -1;
+	}
+
+	tmp = HCL_CNODE_CONS_CAR(next);
+	if (HCL_CNODE_IS_CONS_CONCODED(tmp, HCL_CONCODE_XLIST) ||
+	    HCL_CNODE_IS_ELIST_CONCODED(tmp, HCL_CONCODE_XLIST))
+	{
+		/* probably attribute list */
+		attr_list = tmp;
+
+		next = HCL_CNODE_CONS_CDR(next);
+		if (!next)
+		{
+			hcl_setsynerrbfmt (
+				hcl, HCL_SYNERR_VAR, HCL_CNODE_GET_LOC(attr_list), HCL_NULL,
+				"no name after attribute list for '%.*js'",
+				HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+			return -1;
+		}
+
+		tmp = HCL_CNODE_CONS_CAR(next);
+	}
+
+	if (HCL_CNODE_IS_SYMBOL_IDENT(tmp))
+	{
+		unsigned int var_type;
+
+		if (attr_list && check_var_attr_list(hcl, attr_list, &var_type, cmd, cbi->class_name, tmp) <= -1) return -1;
+
+		HCL_ASSERT (hcl, var_type == VAR_INST || var_type == VAR_CLASS_I);
+		while (1)
+		{
+			/* TODO: do something here */
+hcl_logbfmt(hcl, HCL_LOG_STDERR, "VAR=[%.*js]\n", HCL_CNODE_GET_TOKLEN(tmp), HCL_CNODE_GET_TOKPTR(tmp));
+			if (var_type == VAR_INST)
+			{
+				cbi->nivars++;
+/* TODO: update cbi->nivars_name... */
+			}
+			else
+			{
+				cbi->ncvars++;
+/* TODO: update cbi->ncvars_name... */
+			}
+
+
+			next = HCL_CNODE_CONS_CDR(next);
+			if (!next) break;
+			tmp = HCL_CNODE_CONS_CAR(next);
+			if (!HCL_CNODE_IS_SYMBOL_IDENT(tmp)) goto not_ident;
+		}
+	}
+	else
+	{
+	not_ident:
+		hcl_setsynerrbfmt (
+			hcl, HCL_SYNERR_VAR, HCL_CNODE_GET_LOC(tmp), HCL_NULL,
+			"invalid variable name '%.*js' for '%.*js'",
+			HCL_CNODE_GET_TOKLEN(tmp), HCL_CNODE_GET_TOKPTR(tmp),
+			HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
+		return -1;
+	}
+
+	POP_CFRAME (hcl);
+	return 0;
+}
 
 static int compile_return (hcl_t* hcl, hcl_cnode_t* src, int ret_from_home)
 {
 	hcl_cnode_t* obj, * val;
 	hcl_cframe_t* cf;
-	hcl_fnblk_info_t* fbi;
+	hcl_funblk_info_t* fbi;
 	hcl_ooi_t i;
 
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(src));
 	HCL_ASSERT (hcl, HCL_CNODE_IS_TYPED(HCL_CNODE_CONS_CAR(src), HCL_CNODE_RETURN) ||
 	                 HCL_CNODE_IS_TYPED(HCL_CNODE_CONS_CAR(src), HCL_CNODE_REVERT));
 
-	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
+	fbi = &hcl->c->funblk.info[hcl->c->funblk.depth];
 	obj = HCL_CNODE_CONS_CDR(src);
 
-	for (i = hcl->c->cblk.depth; i > hcl->c->fnblk.info[hcl->c->fnblk.depth].cblk_base; --i)
+	for (i = hcl->c->ctlblk.depth; i > hcl->c->funblk.info[hcl->c->funblk.depth].ctlblk_base; --i)
 	{
-		switch (hcl->c->cblk.info[i]._type)
+		switch (hcl->c->ctlblk.info[i]._type)
 		{
-			case HCL_CBLK_TYPE_LOOP:
+			case HCL_CTLBLK_TYPE_LOOP:
 				/* do nothing */
 				break;
 
-			case HCL_CBLK_TYPE_TRY:
+			case HCL_CTLBLK_TYPE_TRY:
 				if (emit_byte_instruction(hcl, HCL_CODE_TRY_EXIT, HCL_CNODE_GET_LOC(src)) <= -1) return -1;
 				break;
 
-			case HCL_CBLK_TYPE_CLASS:
+			case HCL_CTLBLK_TYPE_CLASS:
 				if (emit_byte_instruction(hcl, HCL_CODE_CLASS_EXIT, HCL_CNODE_GET_LOC(src)) <= -1) return -1;
 				break;
 		}
@@ -3600,7 +3786,10 @@ static int compile_return (hcl_t* hcl, hcl_cnode_t* src, int ret_from_home)
 
 		if (ret_from_home)
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(src), HCL_NULL, "%.*js not compatible with return variables", HCL_CNODE_GET_TOKLEN(tmp), HCL_CNODE_GET_TOKPTR(tmp));
+			hcl_setsynerrbfmt (
+				hcl, HCL_SYNERR_BANNED, HCL_CNODE_GET_LOC(src), HCL_NULL,
+				"%.*js not compatible with return variables",
+				HCL_CNODE_GET_TOKLEN(tmp), HCL_CNODE_GET_TOKPTR(tmp));
 			return -1;
 		}
 
@@ -3896,7 +4085,7 @@ static int compile_try (hcl_t* hcl, hcl_cnode_t* src)
 		return -1;
 	}
 
-	if (push_cblk(hcl, HCL_CNODE_GET_LOC(src), HCL_CBLK_TYPE_TRY) <= -1) return -1;
+	if (push_ctlblk(hcl, HCL_CNODE_GET_LOC(src), HCL_CTLBLK_TYPE_TRY) <= -1) return -1;
 
 /* TODO: HCL_TRAIT_INTERACTIVE??? */
 
@@ -3960,7 +4149,7 @@ static HCL_INLINE int compile_catch (hcl_t* hcl)
 	hcl_ooi_t jump_inst_pos;
 	hcl_oow_t exarg_offset;
 	hcl_var_info_t vi;
-	hcl_fnblk_info_t* fbi;
+	hcl_funblk_info_t* fbi;
 	hcl_oow_t par_tmprcnt;
 
 	cf = GET_TOP_CFRAME(hcl);
@@ -4009,9 +4198,9 @@ static HCL_INLINE int compile_catch (hcl_t* hcl)
 	/* add the exception variable to the local variable list. increase the number of local variables */
 	exarg_offset = hcl->c->tv.s.len + 1; /* when the variable name is added, its offset will be the current length + 1 for a space character added */
 
-	if (hcl->c->fnblk.depth > 0)
+	if (hcl->c->funblk.depth > 0)
 	{
-		fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth - 1]; /* parent block */
+		fbi = &hcl->c->funblk.info[hcl->c->funblk.depth - 1]; /* parent block */
 		par_tmprcnt = fbi->tmprcnt;
 	}
 	else
@@ -4027,7 +4216,7 @@ static HCL_INLINE int compile_catch (hcl_t* hcl)
 	vi.index_in_ctx = hcl->c->tv.wcount - par_tmprcnt;
 	if (add_temporary_variable(hcl, HCL_CNODE_GET_TOK(exarg), hcl->c->tv.s.len) <= -1) return -1;
 
-	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
+	fbi = &hcl->c->funblk.info[hcl->c->funblk.depth];
 	HCL_ASSERT (hcl, fbi->tmprlen == hcl->c->tv.s.len - HCL_CNODE_GET_TOKLEN(exarg) - 1);
 	HCL_ASSERT (hcl, fbi->tmprcnt == vi.index_in_ctx + par_tmprcnt);
 	fbi->tmprlen = hcl->c->tv.s.len;
@@ -4058,7 +4247,7 @@ static HCL_INLINE int compile_catch (hcl_t* hcl)
 static HCL_INLINE int post_try (hcl_t* hcl)
 {
 /* TODO: anything else? */
-	pop_cblk (hcl);
+	pop_ctlblk (hcl);
 	POP_CFRAME (hcl);
 	return 0;
 }
@@ -4179,7 +4368,7 @@ static int compile_while (hcl_t* hcl, hcl_cnode_t* src, int next_cop)
 		return -1;
 	}
 
-	if (push_cblk(hcl, HCL_CNODE_GET_LOC(src), HCL_CBLK_TYPE_LOOP) <= -1) return -1;
+	if (push_ctlblk(hcl, HCL_CNODE_GET_LOC(src), HCL_CTLBLK_TYPE_LOOP) <= -1) return -1;
 
 	HCL_ASSERT (hcl, hcl->code.bc.len < HCL_SMOOI_MAX);
 	cond_pos = hcl->code.bc.len; /* position where the bytecode for the conditional is emitted */
@@ -4441,6 +4630,10 @@ static int compile_cons_xlist_expression (hcl_t* hcl, hcl_cnode_t* obj, int nret
 
 		case HCL_CNODE_FUN:
 			if (compile_fun(hcl, obj) <= -1) return -1;
+			goto done;
+
+		case HCL_CNODE_VAR:
+			if (compile_var(hcl, obj) <= -1) return -1;
 			goto done;
 
 		case HCL_CNODE_DO:
@@ -4794,10 +4987,10 @@ static HCL_INLINE int compile_dsymbol (hcl_t* hcl, hcl_cnode_t* obj)
 		hcl_oocs_t name;
 		int x = 0;
 		hcl_var_info_t vi;
-		hcl_fnblk_info_t* fbi;
+		hcl_funblk_info_t* fbi;
 
 		name = *HCL_CNODE_GET_TOK(obj);
-		fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
+		fbi = &hcl->c->funblk.info[hcl->c->funblk.depth];
 
 		sep = hcl_find_oochar(name.ptr, name.len, '.');
 		HCL_ASSERT (hcl, sep != HCL_NULL);
@@ -5131,8 +5324,6 @@ static int compile_symbol_literal (hcl_t* hcl)
 	oprnd = cf->operand;
 	HCL_ASSERT (hcl, HCL_CNODE_GET_TYPE(oprnd) == HCL_CNODE_SYMBOL);
 
-	/* treat a symbol as a string */
-	/* TODO: do i need to create a symbol literal like smalltalk? */
 	lit = hcl_makesymbol(hcl, HCL_CNODE_GET_TOKPTR(oprnd), HCL_CNODE_GET_TOKLEN(oprnd));
 	if (HCL_UNLIKELY(!lit)) return -1;
 
@@ -5368,7 +5559,7 @@ redo:
 			return -1;
 	}
 
-	/* the control reaches here in case a compile_xxxx() functionse.g. compile_cons_xlist_expression) is called.
+	/* the control reaches here in case a compile_xxxx() function(e.g. compile_cons_xlist_expression()) is called.
 	 * such a function removes the top cframe. so POP_CFRAME() needs not be called here */
 	return 0;
 
@@ -5920,8 +6111,8 @@ static HCL_INLINE int post_while_body (hcl_t* hcl)
 
 	POP_CFRAME (hcl);
 
-	HCL_ASSERT (hcl, hcl->c->cblk.info[hcl->c->cblk.depth]._type == HCL_CBLK_TYPE_LOOP);
-	pop_cblk (hcl);
+	HCL_ASSERT (hcl, hcl->c->ctlblk.info[hcl->c->ctlblk.depth]._type == HCL_CTLBLK_TYPE_LOOP);
+	pop_ctlblk (hcl);
 
 	return 0;
 }
@@ -6137,7 +6328,7 @@ static HCL_INLINE int emit_fun (hcl_t* hcl)
 	hcl_cframe_t* cf;
 	hcl_oow_t block_code_size, lfsize;
 	hcl_ooi_t jip;
-	hcl_fnblk_info_t* fbi;
+	hcl_funblk_info_t* fbi;
 	hcl_loc_t* oploc;
 
 	cf = GET_TOP_CFRAME(hcl);
@@ -6145,11 +6336,11 @@ static HCL_INLINE int emit_fun (hcl_t* hcl)
 	HCL_ASSERT (hcl, cf->operand != HCL_NULL);
 
 	oploc = HCL_CNODE_GET_LOC(cf->operand);
-	fbi = &hcl->c->fnblk.info[hcl->c->fnblk.depth];
+	fbi = &hcl->c->funblk.info[hcl->c->funblk.depth];
 	jip = cf->u.fun.jump_inst_pos;
 
 	if (hcl->option.trait & HCL_TRAIT_INTERACTIVE)
-		lfsize = hcl->code.lit.len - hcl->c->fnblk.info[hcl->c->fnblk.depth].lfbase;
+		lfsize = hcl->code.lit.len - hcl->c->funblk.info[hcl->c->funblk.depth].lfbase;
 
 	/* HCL_CODE_LONG_PARAM_SIZE + 1 => size of the long JUMP_FORWARD instruction */
 	block_code_size = hcl->code.bc.len - jip - (HCL_CODE_LONG_PARAM_SIZE + 1);
@@ -6232,10 +6423,10 @@ static HCL_INLINE int post_fun (hcl_t* hcl)
 	cf = GET_TOP_CFRAME(hcl);
 	HCL_ASSERT (hcl, cf->opcode == COP_POST_FUN);
 
-	/*hcl->c->fnblk.depth--;
-	hcl->c->tv.s.len = hcl->c->fnblk.info[hcl->c->fnblk.depth].tmprlen;
-	hcl->c->tv.wcount = hcl->c->fnblk.info[hcl->c->fnblk.depth].tmprcnt;*/
-	pop_fnblk (hcl);
+	/*hcl->c->funblk.depth--;
+	hcl->c->tv.s.len = hcl->c->funblk.info[hcl->c->funblk.depth].tmprlen;
+	hcl->c->tv.wcount = hcl->c->funblk.info[hcl->c->funblk.depth].tmprcnt;*/
+	pop_funblk (hcl);
 
 	if (cf->operand)
 	{
@@ -6532,15 +6723,15 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 {
 	hcl_oow_t saved_bc_len, saved_lit_len;
 	hcl_bitmask_t log_default_type_mask;
-	hcl_fnblk_info_t top_fnblk_saved;
-	int top_fnblk_pushed_here = 0;
+	hcl_funblk_info_t top_funblk_saved;
+	int top_funblk_pushed_here = 0;
 
 	hcl->c->flags = flags;
 
-	HCL_ASSERT (hcl, hcl->c->fnblk.depth <= 0); /* 0 or 1 fnblk must exist at this phase */
+	HCL_ASSERT (hcl, hcl->c->funblk.depth <= 0); /* 0 or 1 funblk must exist at this phase */
 	HCL_ASSERT (hcl, GET_TOP_CFRAME_INDEX(hcl) < 0);
 
-	if (flags & HCL_COMPILE_CLEAR_FNBLK)
+	if (flags & HCL_COMPILE_CLEAR_FUNBLK)
 	{
 		/* if the program is executed in the interactive mode,
 		 * each compiled expression is executed immediately.
@@ -6559,7 +6750,7 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 		 * in the non-interactive mode,
 		 *  (1) is compiled, (2) is compiled, (3) is compiled
 		 *  (1), (2), (3) are executed
-		 * fnblk holds information about temporaries seen so far.
+		 * funblk holds information about temporaries seen so far.
 		 * (2) has defined two temporary variables. this count
 		 * must get carried until (3) has been compiled in the
 		 * non-interactive mode. the accumulated count is used
@@ -6568,8 +6759,8 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 		 * in the interactive mode, the information doesn't have
 		 * to get carried over.
 		 */
-		while (hcl->c->fnblk.depth >= 0) pop_fnblk (hcl);
-		HCL_ASSERT (hcl, hcl->c->fnblk.depth == -1);
+		while (hcl->c->funblk.depth >= 0) pop_funblk (hcl);
+		HCL_ASSERT (hcl, hcl->c->funblk.depth == -1);
 		/* it will be recreated below */
 	}
 	if (flags & HCL_COMPILE_CLEAR_CODE) hcl_clearcode (hcl);
@@ -6612,20 +6803,20 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 	 */
 
 /* TODO: in case i implement all global variables as block arguments at the top level...what should i do? */
-	HCL_ASSERT (hcl, hcl->c->cblk.depth == -1);
+	HCL_ASSERT (hcl, hcl->c->ctlblk.depth == -1);
 
-	if (hcl->c->fnblk.depth <= -1)
+	if (hcl->c->funblk.depth <= -1)
 	{
-		HCL_ASSERT (hcl, hcl->c->fnblk.depth == -1);
+		HCL_ASSERT (hcl, hcl->c->funblk.depth == -1);
 		HCL_ASSERT (hcl, hcl->c->tv.s.len == 0);
 		HCL_ASSERT (hcl, hcl->c->tv.wcount == 0);
 
 		/* keep a virtual function block for the top-level compilation.
 		 * pass HCL_TYPE_MAX(hcl_oow_t) as make_inst_pos because there is
 		 * no actual MAKE_BLOCK/MAKE_FUNCTION instruction which otherwise
-		 * would be patched in pop_fnblk(). */
+		 * would be patched in pop_funblk(). */
 
-		if (push_fnblk(
+		if (push_funblk(
 			hcl, HCL_NULL,
 			0, /* tmpr_va */
 			0, /* tmpr_nargs */
@@ -6638,10 +6829,10 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 			FUN_PLAIN /* fun_type */
 		) <= -1) return -1; /* must not goto oops */
 
-		top_fnblk_pushed_here = 1;
+		top_funblk_pushed_here = 1;
 	}
-	top_fnblk_saved = hcl->c->fnblk.info[0];
-	HCL_ASSERT (hcl, hcl->c->fnblk.depth == 0); /* ensure the virtual function block is added */
+	top_funblk_saved = hcl->c->funblk.info[0];
+	HCL_ASSERT (hcl, hcl->c->funblk.depth == 0); /* ensure the virtual function block is added */
 
 	PUSH_CFRAME (hcl, COP_COMPILE_OBJECT, obj);
 
@@ -6722,10 +6913,6 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 
 			case COP_COMPILE_CLASS_P2:
 				if (compile_class_p2(hcl) <= -1) goto oops;
-				break;
-
-			case COP_COMPILE_CLASS_P3:
-				if (compile_class_p3(hcl) <= -1) goto oops;
 				break;
 
 			case COP_COMPILE_DO_P1:
@@ -6872,15 +7059,15 @@ int hcl_compile (hcl_t* hcl, hcl_cnode_t* obj, int flags)
 	if (emit_byte_instruction(hcl, HCL_CODE_POP_STACKTOP, HCL_NULL) <= -1) goto oops;
 
 	HCL_ASSERT (hcl, GET_TOP_CFRAME_INDEX(hcl) < 0);
-	HCL_ASSERT (hcl, hcl->c->tv.s.len >= hcl->c->fnblk.info[0].tmprlen);
-	HCL_ASSERT (hcl, hcl->c->tv.wcount >= hcl->c->fnblk.info[0].tmprcnt);
-	HCL_ASSERT (hcl, hcl->c->cblk.depth == -1); /* no control blocks expected at this point */
+	HCL_ASSERT (hcl, hcl->c->tv.s.len >= hcl->c->funblk.info[0].tmprlen);
+	HCL_ASSERT (hcl, hcl->c->tv.wcount >= hcl->c->funblk.info[0].tmprcnt);
+	HCL_ASSERT (hcl, hcl->c->ctlblk.depth == -1); /* no control blocks expected at this point */
 
-	HCL_ASSERT (hcl, hcl->c->fnblk.depth == 0); /* ensure the virtual function block be the only one left */
-	hcl->code.ngtmprs = hcl->c->fnblk.info[0].tmprcnt; /* populate the number of global temporary variables */
+	HCL_ASSERT (hcl, hcl->c->funblk.depth == 0); /* ensure the virtual function block be the only one left */
+	hcl->code.ngtmprs = hcl->c->funblk.info[0].tmprcnt; /* populate the number of global temporary variables */
 
-#if defined(CLEAR_FNBLK_ALWAYS)
-	pop_fnblk (hcl);
+#if defined(CLEAR_FUNBLK_ALWAYS)
+	pop_funblk (hcl);
 	HCL_ASSERT (hcl, hcl->c->tv.s.len == 0);
 	HCL_ASSERT (hcl, hcl->c->tv.wcount == 0);
 #endif
@@ -6897,13 +7084,13 @@ oops:
 	hcl->code.bc.len = saved_bc_len;
 	hcl->code.lit.len = saved_lit_len;
 
-	while (hcl->c->fnblk.depth > 0) pop_fnblk (hcl);
-	HCL_ASSERT (hcl, hcl->c->fnblk.depth == 0);
+	while (hcl->c->funblk.depth > 0) pop_funblk (hcl);
+	HCL_ASSERT (hcl, hcl->c->funblk.depth == 0);
 
-	if (top_fnblk_pushed_here)
+	if (top_funblk_pushed_here)
 	{
-		pop_fnblk (hcl);
-		HCL_ASSERT (hcl, hcl->c->fnblk.depth == -1);
+		pop_funblk (hcl);
+		HCL_ASSERT (hcl, hcl->c->funblk.depth == -1);
 		HCL_ASSERT (hcl, hcl->c->tv.s.len == 0);
 		HCL_ASSERT (hcl, hcl->c->tv.wcount == 0);
 	}
@@ -6919,11 +7106,11 @@ oops:
 		*/
 
 		/* restore the top level function block as it's first captured in this function */
-		clear_fnblk_inners (hcl);
-		HCL_ASSERT (hcl, hcl->c->fnblk.depth == 0);
-		hcl->c->fnblk.info[0] = top_fnblk_saved;
-		hcl->c->tv.s.len = top_fnblk_saved.tmprlen;
-		hcl->c->tv.wcount = top_fnblk_saved.tmprcnt;
+		clear_funblk_inners (hcl);
+		HCL_ASSERT (hcl, hcl->c->funblk.depth == 0);
+		hcl->c->funblk.info[0] = top_funblk_saved;
+		hcl->c->tv.s.len = top_funblk_saved.tmprlen;
+		hcl->c->tv.wcount = top_funblk_saved.tmprcnt;
 	}
 
 	return -1;

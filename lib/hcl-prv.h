@@ -308,6 +308,7 @@ enum hcl_tok_type_t
 
 	HCL_TOK_CLASS,
 	HCL_TOK_FUN,
+	HCL_TOK_VAR,
 	HCL_TOK_DO,
 	HCL_TOK_IF,
 	HCL_TOK_ELIF,
@@ -420,6 +421,7 @@ enum hcl_cnode_type_t
 	 * these represent syntactical elements of the language only.  */
 	HCL_CNODE_CLASS, /* first item for  HCL_CNODE_IS_FOR_LANG */
 	HCL_CNODE_FUN,
+	HCL_CNODE_VAR,
 	HCL_CNODE_DO,
 	HCL_CNODE_IF,
 	HCL_CNODE_ELIF,
@@ -684,28 +686,29 @@ struct hcl_cframe_t
 			unsigned int indexed_type;
 			hcl_loc_t start_loc;
 			hcl_cnode_t* cmd_cnode;
+			hcl_cnode_t* class_name_cnode;
 		} _class;
 	} u;
 };
 typedef struct hcl_cframe_t hcl_cframe_t;
 
-enum hcl_cblk_type_t
+enum hcl_ctlblk_type_t
 {
-	HCL_CBLK_TYPE_LOOP,
-	HCL_CBLK_TYPE_TRY,
-	HCL_CBLK_TYPE_CLASS
+	HCL_CTLBLK_TYPE_LOOP,
+	HCL_CTLBLK_TYPE_TRY,
+	HCL_CTLBLK_TYPE_CLASS
 };
-typedef enum hcl_cblk_type_t hcl_cblk_type_t;
+typedef enum hcl_ctlblk_type_t hcl_ctlblk_type_t;
 
 /* control block information for the compiler */
-struct hcl_cblk_info_t
+struct hcl_ctlblk_info_t
 {
-	hcl_cblk_type_t _type;
+	hcl_ctlblk_type_t _type;
 };
-typedef struct hcl_cblk_info_t hcl_cblk_info_t;
+typedef struct hcl_ctlblk_info_t hcl_ctlblk_info_t;
 
 /* function block information for the compiler */
-struct hcl_fnblk_info_t
+struct hcl_funblk_info_t
 {
 	unsigned int fun_type;
 
@@ -720,7 +723,7 @@ struct hcl_fnblk_info_t
 	hcl_oow_t make_inst_pos;
 	hcl_oow_t lfbase;
 
-	hcl_ooi_t cblk_base;
+	hcl_ooi_t ctlblk_base;
 
 	hcl_ooi_t clsblk_base;
 	hcl_ooi_t clsblk_top;
@@ -728,19 +731,21 @@ struct hcl_fnblk_info_t
 	unsigned int access_outer: 1;
 	unsigned int accessed_by_inner: 1;
 };
-typedef struct hcl_fnblk_info_t hcl_fnblk_info_t;
+typedef struct hcl_funblk_info_t hcl_funblk_info_t;
 
 /* class block information for the compiler */
 
 struct hcl_clsblk_info_t
 {
+	hcl_cnode_t* class_name;
+
 	hcl_oow_t nivars;
 	hcl_oow_t ncvars;
 	hcl_ooch_t* ivars_str;
 	hcl_ooch_t* cvars_str;
 	hcl_oow_t spec; /* TODO: byte indexed, word indexed? */
 
-	hcl_ooi_t fnblk_base;
+	hcl_ooi_t funblk_base;
 	hcl_ooi_t class_start_inst_pos; /* the position of the first instruction in the class body after CLASS_ENTER */
 };
 typedef struct hcl_clsblk_info_t hcl_clsblk_info_t;
@@ -998,16 +1003,16 @@ struct hcl_compiler_t
 	struct
 	{
 		hcl_ooi_t depth; /* signed because it starts with -1 */
-		hcl_cblk_info_t* info;
+		hcl_ctlblk_info_t* info;
 		hcl_oow_t info_capa;
-	} cblk; /* control block - loop, try-catch */
+	} ctlblk; /* control block - loop, try-catch */
 
 	struct
 	{
 		hcl_ooi_t depth; /* signed because it starts with -1 */
-		hcl_fnblk_info_t* info;
+		hcl_funblk_info_t* info;
 		hcl_oow_t  info_capa;
-	} fnblk; /* function block */
+	} funblk; /* function block */
 
 	struct
 	{

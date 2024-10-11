@@ -1746,8 +1746,6 @@ oops:
 
 int hcl_ignite (hcl_t* hcl, hcl_oow_t heapsize)
 {
-	hcl_oow_t i;
-
 	if (!hcl->heap)
 	{
 		hcl->heap = hcl_makeheap(hcl, heapsize);

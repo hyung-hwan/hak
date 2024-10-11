@@ -60,6 +60,7 @@ static struct voca_t
 
 	{  5, { 'c','l','a','s','s'                                           } },
 	{  3, { 'f','u','n'                                                   } },
+	{  3, { 'v','a','r'                                                   } },
 	{  2, { 'd','o'                                                       } },
 	{  2, { 'i','f'                                                       } },
 	{  4, { 'e','l','i','f'                                               } },
@@ -120,6 +121,7 @@ enum voca_id_t
 
 	VOCA_KW_CLASS,
 	VOCA_KW_FUN,
+	VOCA_KW_VAR,
 	VOCA_KW_DO,
 	VOCA_KW_IF,
 	VOCA_KW_ELIF,
@@ -470,6 +472,7 @@ static hcl_tok_type_t classify_ident_token (hcl_t* hcl, const hcl_oocs_t* v)
 
 		{ VOCA_KW_CLASS,    HCL_TOK_CLASS    },
 		{ VOCA_KW_FUN,      HCL_TOK_FUN      },
+		{ VOCA_KW_VAR,      HCL_TOK_VAR      },
 		{ VOCA_KW_DO,       HCL_TOK_DO       },
 		{ VOCA_KW_IF,       HCL_TOK_IF       },
 		{ VOCA_KW_ELIF,     HCL_TOK_ELIF     },
@@ -861,14 +864,7 @@ static HCL_INLINE int can_comma_list (hcl_t* hcl)
 	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED)) return 0;
 
 	cc = (hcl_concode_t)LIST_FLAG_GET_CONCODE(rstl->flagv);
-	if (cc == HCL_CONCODE_XLIST)
-	{
-		/* fun f(a :: b c) { b := (a + 10); c := (a + 20) }
-		 * [x y] := (f 9)
-		 * [x,y] := (f 9) */
-		LIST_FLAG_SET_CONCODE(rstl->flagv, HCL_CONCODE_ALIST);
-	}
-	else if (cc == HCL_CONCODE_DIC)
+	if (cc == HCL_CONCODE_DIC)
 	{
 		if (rstl->count & 1) return 0;
 	}
@@ -1443,6 +1439,7 @@ static hcl_cnode_type_t kw_to_cnode_type (int tok_type)
 
 		HCL_CNODE_CLASS,
 		HCL_CNODE_FUN,
+		HCL_CNODE_VAR,
 		HCL_CNODE_DO,
 		HCL_CNODE_IF,
 		HCL_CNODE_ELIF,
@@ -1882,6 +1879,7 @@ static int feed_process_token (hcl_t* hcl)
 
 		case HCL_TOK_CLASS:
 		case HCL_TOK_FUN:
+		case HCL_TOK_VAR:
 		case HCL_TOK_DO:
 		case HCL_TOK_IF:
 		case HCL_TOK_ELIF:
@@ -3926,12 +3924,12 @@ static void fini_compiler_cb (hcl_t* hcl)
 		HCL_ASSERT (hcl, hcl->c->tv.capa == 0);
 		HCL_ASSERT (hcl, hcl->c->tv.wcount == 0);
 
-		if (hcl->c->cblk.info)
+		if (hcl->c->ctlblk.info)
 		{
-			hcl_freemem (hcl, hcl->c->cblk.info);
-			hcl->c->cblk.info = HCL_NULL;
-			hcl->c->cblk.info_capa = 0;
-			hcl->c->cblk.depth = -1;
+			hcl_freemem (hcl, hcl->c->ctlblk.info);
+			hcl->c->ctlblk.info = HCL_NULL;
+			hcl->c->ctlblk.info_capa = 0;
+			hcl->c->ctlblk.depth = -1;
 		}
 
 		if (hcl->c->clsblk.info)
@@ -3942,12 +3940,12 @@ static void fini_compiler_cb (hcl_t* hcl)
 			hcl->c->clsblk.depth = -1;
 		}
 
-		if (hcl->c->fnblk.info)
+		if (hcl->c->funblk.info)
 		{
-			hcl_freemem (hcl, hcl->c->fnblk.info);
-			hcl->c->fnblk.info = HCL_NULL;
-			hcl->c->fnblk.info_capa = 0;
-			hcl->c->fnblk.depth = -1;
+			hcl_freemem (hcl, hcl->c->funblk.info);
+			hcl->c->funblk.info = HCL_NULL;
+			hcl->c->funblk.info_capa = 0;
+			hcl->c->funblk.depth = -1;
 		}
 
 		clear_sr_names (hcl);
@@ -3999,9 +3997,9 @@ static int init_compiler (hcl_t* hcl)
 	hcl->c->r.e = hcl->_nil;
 
 	hcl->c->cfs.top = -1;
-	hcl->c->cblk.depth = -1;
+	hcl->c->ctlblk.depth = -1;
 	hcl->c->clsblk.depth = -1;
-	hcl->c->fnblk.depth = -1;
+	hcl->c->funblk.depth = -1;
 
 	init_feed (hcl);
 	hcl->c->cbp = cbp;

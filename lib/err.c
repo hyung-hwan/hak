@@ -154,6 +154,7 @@ static const char* synerrstr[] =
 
 	"invalid class definition",
 	"invalid function definition",
+	"invalid variable declaration",
 	"elif without if",
 	"else without if",
 	"catch without try",
