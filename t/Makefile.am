@@ -16,7 +16,6 @@ check_SCRIPTS = \
 check_ERRORS = \
 	call-5001.err \
 	class-5001.err \
-	do-5001.err \
 	feed-5001.err \
 	mlist-5001.err \
 	var-5001.err \

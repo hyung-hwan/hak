@@ -85,8 +85,8 @@ if (nqv? R false) (print "ERROR: R is not false\n") \
 else (printf "OK: %O\n" R)
 
 set v #(
-	(do |a b| (set a 10) (set b 20) (+ a b) )
- 	(do |a b| (set a 11) (set b 21) (+ a b) )
+	{ |a b| set a 10; set b 20; + a b }
+	{ |a b| set a 11; set b 21; + a b }
    	999
 )
 

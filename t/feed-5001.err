@@ -194,3 +194,25 @@ throw ##ERROR: syntax error - no value or expression after 'throw'
 ---
 
 throw throw ##ERROR: syntax error - 'throw' prohibited in this context
+
+---
+
+class X {
+     x := {
+          |a| ##ERROR: syntax error - variable declaration disallowed in class init scope
+          a := 20
+     }
+}
+
+---
+
+do ; ## this is ok
+do 1; ## this is ok
+
+k := (do 1 2 3); ## ok too
+## do doesn't allow variable declaration
+do { | k | set k 10 };
+do | k | {set k 10;}; ##ERROR: syntax error - variable declaration disallowed in 'do' context
+
+---
+k := (do | k | {set k 10;}) ##ERROR: syntax error - variable declaration disallowed in 'do' context

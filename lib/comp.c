@@ -2156,6 +2156,8 @@ static int compile_expression_block (hcl_t* hcl, hcl_cnode_t* src, const hcl_bch
 	hcl_funblk_info_t* fbi;
 	hcl_cframe_t* cf;
 
+	/* called for {} after 'do' or a standalone {} */
+
 	if (flags & CEB_IS_BLOCK)
 	{
 		HCL_ASSERT (hcl, HCL_CNODE_IS_CONS_CONCODED(src, HCL_CONCODE_BLOCK) || HCL_CNODE_IS_ELIST_CONCODED(src, HCL_CONCODE_BLOCK));
@@ -2166,6 +2168,7 @@ static int compile_expression_block (hcl_t* hcl, hcl_cnode_t* src, const hcl_bch
 	}
 	else
 	{
+		/* called for 'do ...' */
 		cmd = HCL_CNODE_CONS_CAR(src); /* `do` itself */
 		/* `obj` must point to the expression list after `do` */
 		obj = HCL_CNODE_CONS_CDR(src); /* expression list after it */
@@ -2189,16 +2192,20 @@ static int compile_expression_block (hcl_t* hcl, hcl_cnode_t* src, const hcl_bch
 		}
 
 #if defined(LANG_LIMIT_DO) /* this limitation doesn't seem really useful? or make it #pragma based? */
-		if (!(flags & CEB_IS_BLOCK) && (flags & CEB_AUTO_FORGED))
+		if (!(flags & CEB_IS_BLOCK) /*&& (flags & CEB_AUTO_FORGED)*/)
 		{
-			/* `do` not explicitly enclosed in ().
+			/*
 			 * e.g. do | x | { set x 20; };
 			 *         ^
-			 *         +-- this is not allowed
+			 *         this is not allowed
+			 *
+			 *      k := (do | x | { set x 20; })
+			 *               ^
+			 *               not allowed either
 			 */
 			hcl_setsynerrbfmt (
 				hcl, HCL_SYNERR_VARDCLBANNED, HCL_CNODE_GET_LOC(obj), HCL_NULL,
-				"variable declaration disallowed in %hs context", ctxname);
+				"variable declaration disallowed in '%hs' context", ctxname);
 			return -1;
 		}
 #endif
@@ -2219,19 +2226,6 @@ static int compile_expression_block (hcl_t* hcl, hcl_cnode_t* src, const hcl_bch
 		}
 	}
 
-#if defined(LANG_LIMIT_DO)
-	if (!(flags & CEB_IS_BLOCK) && (flags & CEB_AUTO_FORGED))
-	{
-		if (obj && HCL_CNODE_IS_CONS(obj) && hcl_countcnodecons(hcl, obj) != 1)
-		{
-			hcl_setsynerrbfmt (
-				hcl, HCL_SYNERR_VARDCLBANNED, HCL_CNODE_GET_LOC(obj), HCL_NULL,
-				"more than one expression after %hs", ctxname);
-			return -1;
-		}
-	}
-#endif
-
 	fbi = &hcl->c->funblk.info[hcl->c->funblk.depth];
 	fbi->tmprlen = hcl->c->tv.s.len;
 	fbi->tmprcnt = hcl->c->tv.wcount;
@@ -2247,6 +2241,7 @@ static int compile_expression_block (hcl_t* hcl, hcl_cnode_t* src, const hcl_bch
 	cf = GET_SUBCFRAME(hcl);
 	cf->u.post_do.lvar_start = tvslen;
 	cf->u.post_do.lvar_end = fbi->tmprlen;
+hcl_logbfmt(hcl, HCL_LOG_STDERR, "tvslen=>%d fbi->tmprlen=>%d\n", (int)tvslen, (int)fbi->tmprlen);
 
 	return 0;
 }
@@ -2258,12 +2253,25 @@ static int compile_do (hcl_t* hcl, hcl_cnode_t* xlist)
 #endif
 	int flags = 0;
 
-	/* (do
-	 *   (+ 10 20)
-	 *   (* 2 30)
-	 *  ...
-	 * )
-	 * you can use this to combine multiple expressions to a single expression
+	/*
+	 * 'do' evaluates series of expressions.
+	 *
+	 * do { ... }
+	 * do { ... }  { ... }
+	 * do 1 2 3
+	 * do (printf "111\n") (printf "2222\n")
+	 *
+	 * while it looks like a cosmetic element, the followings show obvious difference:
+	 *   1 2 3    ## the first element is treated as a callable element. in this case syntax error
+	 *   do 1 2 3 ## 1, 2, 3 are just evaulated in that order without 1 being treated as a callable
+	 *
+	 * More serious example:
+	 *   (fun(a b) { return (+ a b) }) 20 30  ## the returned value is 50
+	 *   do (fun(a b) { return (+ a b) }) 20 30  ## the returned value is 30
+	 *
+	 * The following two are mostly equivalent:
+	 *   do (a := 20) (b := 30)
+	 *   { a := 20; b := 30 }
 	 */
 
 	HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(xlist));
@@ -2282,7 +2290,22 @@ static int compile_do_p1 (hcl_t* hcl)
 {
 	hcl_cframe_t* cf;
 	cf = GET_TOP_CFRAME(hcl);
+
+	/* invalidate variables without shrinking the hcl->c->tv buffer.
+	 *   { | a b | }
+	 *   { | d | }
+	 * this way, 'a' doesn't overlap with 'd' in terms of their position
+	 * within the same function context and. however, it make 'a' invisible in
+	 * the second block where 'd' is declared.
+	 *
+	 * If we shrinked the buffer instead, some extra code to initialize overlapping
+	 *    hcl->c->tv.wcount = saved_wcount (not available in the current code)
+	 *    hcl->c->tv.s.len = cf->u.post_do.lvar_start;
+	 * variables upon entry to a block would need to be emitted. 'd' would need to
+	 * get explicitly initialized to `nil` in the above case.
+	 */
 	kill_temporary_variables (hcl, cf->u.post_do.lvar_start, cf->u.post_do.lvar_end);
+
 	POP_CFRAME (hcl);
 	return 0;
 }
