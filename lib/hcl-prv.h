@@ -28,6 +28,7 @@
 #include <hcl.h>
 #include <hcl-chr.h>
 #include <hcl-fmt.h>
+#include <hcl-str.h>
 #include <hcl-utl.h>
 
 /* you can define this to either 1 or 2 */

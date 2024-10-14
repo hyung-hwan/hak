@@ -308,19 +308,19 @@ static int find_variable_backward_with_word (hcl_t* hcl, const hcl_oocs_t* name,
 			/* this function block has a class defined.
 			 * that is, it is in a class defintion.
 			 * variable lookup must be limited to the class scope */
-			hcl_clsblk_info_t* clsbi;
+			hcl_clsblk_info_t* cbi;
 
 		#if 0
 			for (j = fbi->clsblk_top + 1; j > fbi->clsblk_base; )
 			{
-				clsbi = &hcl->c->clsblk.info[--j];
+				cbi = &hcl->c->clsblk.info[--j];
 		#endif
-				clsbi = &hcl->c->clsblk.info[fbi->clsblk_top];
+				cbi = &hcl->c->clsblk.info[fbi->clsblk_top];
 
-				if (clsbi->ivars_str)
+				if (cbi->ivars_str)
 				{
-					haystack.ptr = clsbi->ivars_str;
-					haystack.len = hcl_count_oocstr(clsbi->ivars_str);
+					haystack.ptr = cbi->ivars_str;
+					haystack.len = hcl_count_oocstr(cbi->ivars_str);
 					if (__find_word_in_string(&haystack, name, 1, &index) >= 0)
 					{
 						hcl_oow_t fi;
@@ -358,10 +358,10 @@ HCL_INFO6 (hcl, "FOUND INST VAR [%.*js]...[%.*js]................ ===> ctx_offse
 					}
 				}
 
-				if (clsbi->cvars_str)
+				if (cbi->cvars_str)
 				{
-					haystack.ptr = clsbi->cvars_str;
-					haystack.len = hcl_count_oocstr(clsbi->cvars_str);
+					haystack.ptr = cbi->cvars_str;
+					haystack.len = hcl_count_oocstr(cbi->cvars_str);
 					if (__find_word_in_string(&haystack, name, 1, &index) >= 0)
 					{
 						/* TODO: VAR_CLASS_CM vs VAR_CLASS_IM, need to know if it's an instance method or a class method */
@@ -1071,6 +1071,12 @@ static int push_clsblk (
 	ci->nivars = nivars;
 	ci->ncvars = ncvars;
 
+#if 0
+XXXXXXXXXXXXXXXXXX
+/* TODO: ... */
+	ci->ivars.
+	ci->cvars = hcl_
+#endif
 	if (nivars > 0)
 	{
 		HCL_ASSERT (hcl, ivars_str != HCL_NULL);

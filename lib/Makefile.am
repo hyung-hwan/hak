@@ -54,6 +54,7 @@ pkginclude_HEADERS = \
 	hcl-opt.h \
 	hcl-pac1.h \
 	hcl-rbt.h \
+	hcl-str.h \
 	hcl-upac.h \
 	hcl-utl.h \
 	hcl-xma.h
@@ -85,6 +86,7 @@ libhcl_la_SOURCES = \
 	rbt.c \
 	read.c \
 	std.c \
+	str.c \
 	sym.c \
 	uch-case.h \
 	uch-prop.h \

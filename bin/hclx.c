@@ -27,6 +27,7 @@
 #include <hcl-x.h>
 #include <hcl-json.h>
 #include <hcl-opt.h>
+#include <hcl-str.h>
 #include <hcl-utl.h>
 
 #include <stdio.h>
