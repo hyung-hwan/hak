@@ -30,6 +30,7 @@
 
 #include <hcl.h>
 #include <hcl-chr.h>
+#include <hcl-str.h>
 #include <hcl-utl.h>
 #include <hcl-opt.h>
 

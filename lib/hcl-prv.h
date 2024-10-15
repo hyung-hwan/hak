@@ -27,6 +27,7 @@
 
 #include <hcl.h>
 #include <hcl-chr.h>
+#include <hcl-cmgr.h>
 #include <hcl-fmt.h>
 #include <hcl-str.h>
 #include <hcl-utl.h>

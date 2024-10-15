@@ -150,15 +150,16 @@ am__DEPENDENCIES_5 = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_2) \
 	$(am__DEPENDENCIES_3) $(am__DEPENDENCIES_4)
 libhcl_la_DEPENDENCIES = $(am__DEPENDENCIES_5) $(am__append_6)
 am_libhcl_la_OBJECTS = libhcl_la-bigint.lo libhcl_la-chr.lo \
-	libhcl_la-cnode.lo libhcl_la-comp.lo libhcl_la-debug.lo \
-	libhcl_la-decode.lo libhcl_la-dic.lo libhcl_la-err.lo \
-	libhcl_la-exec.lo libhcl_la-fmt.lo libhcl_la-gc.lo \
-	libhcl_la-hcl.lo libhcl_la-heap.lo libhcl_la-mb8.lo \
-	libhcl_la-number.lo libhcl_la-obj.lo libhcl_la-opt.lo \
-	libhcl_la-prim.lo libhcl_la-print.lo libhcl_la-rbt.lo \
-	libhcl_la-read.lo libhcl_la-std.lo libhcl_la-str.lo \
-	libhcl_la-sym.lo libhcl_la-utf16.lo libhcl_la-utf8.lo \
-	libhcl_la-utl.lo libhcl_la-xchg.lo libhcl_la-xma.lo
+	libhcl_la-cmgr.lo libhcl_la-cnode.lo libhcl_la-comp.lo \
+	libhcl_la-debug.lo libhcl_la-decode.lo libhcl_la-dic.lo \
+	libhcl_la-err.lo libhcl_la-exec.lo libhcl_la-fmt.lo \
+	libhcl_la-gc.lo libhcl_la-hcl.lo libhcl_la-heap.lo \
+	libhcl_la-mb8.lo libhcl_la-number.lo libhcl_la-obj.lo \
+	libhcl_la-opt.lo libhcl_la-prim.lo libhcl_la-print.lo \
+	libhcl_la-rbt.lo libhcl_la-read.lo libhcl_la-std.lo \
+	libhcl_la-str.lo libhcl_la-sym.lo libhcl_la-utf16.lo \
+	libhcl_la-utf8.lo libhcl_la-utl.lo libhcl_la-xchg.lo \
+	libhcl_la-xma.lo
 libhcl_la_OBJECTS = $(am_libhcl_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -197,8 +198,9 @@ DEFAULT_INCLUDES =
 depcomp = $(SHELL) $(top_srcdir)/ac/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ./$(DEPDIR)/libhcl_la-bigint.Plo \
-	./$(DEPDIR)/libhcl_la-chr.Plo ./$(DEPDIR)/libhcl_la-cnode.Plo \
-	./$(DEPDIR)/libhcl_la-comp.Plo ./$(DEPDIR)/libhcl_la-debug.Plo \
+	./$(DEPDIR)/libhcl_la-chr.Plo ./$(DEPDIR)/libhcl_la-cmgr.Plo \
+	./$(DEPDIR)/libhcl_la-cnode.Plo ./$(DEPDIR)/libhcl_la-comp.Plo \
+	./$(DEPDIR)/libhcl_la-debug.Plo \
 	./$(DEPDIR)/libhcl_la-decode.Plo ./$(DEPDIR)/libhcl_la-dic.Plo \
 	./$(DEPDIR)/libhcl_la-err.Plo ./$(DEPDIR)/libhcl_la-exec.Plo \
 	./$(DEPDIR)/libhcl_la-fmt.Plo ./$(DEPDIR)/libhcl_la-gc.Plo \
@@ -243,9 +245,9 @@ am__can_run_installinfo = \
     n|no|NO) false;; \
     *) (install-info --version) >/dev/null 2>&1;; \
   esac
-am__pkginclude_HEADERS_DIST = hcl.h hcl-chr.h hcl-cmn.h hcl-fmt.h \
-	hcl-opt.h hcl-pac1.h hcl-rbt.h hcl-str.h hcl-upac.h hcl-utl.h \
-	hcl-xma.h hcl-x.h hcl-tmr.h hcl-json.h
+am__pkginclude_HEADERS_DIST = hcl.h hcl-chr.h hcl-cmgr.h hcl-cmn.h \
+	hcl-fmt.h hcl-opt.h hcl-pac1.h hcl-rbt.h hcl-str.h hcl-upac.h \
+	hcl-utl.h hcl-xma.h hcl-x.h hcl-tmr.h hcl-json.h
 HEADERS = $(pkginclude_HEADERS)
 am__tagged_files = $(HEADERS) $(SOURCES) $(TAGS_FILES) $(LISP) \
 	hcl-cfg.h.in
@@ -434,14 +436,15 @@ LIBADD_LIB_COMMON = $(LIBM) $(am__append_1) $(am__append_2) \
 @WIN32_TRUE@CPPFLAGS_PFMOD = -DHCL_DEFAULT_PFMODPREFIX=\"libhcl-\" \
 @WIN32_TRUE@	-DHCL_DEFAULT_PFMODPOSTFIX=\"-1.dll\" \
 @WIN32_TRUE@	$(am__append_4) $(am__append_5)
-pkginclude_HEADERS = hcl.h hcl-chr.h hcl-cmn.h hcl-fmt.h hcl-opt.h \
-	hcl-pac1.h hcl-rbt.h hcl-str.h hcl-upac.h hcl-utl.h hcl-xma.h \
-	$(am__append_8)
+pkginclude_HEADERS = hcl.h hcl-chr.h hcl-cmgr.h hcl-cmn.h hcl-fmt.h \
+	hcl-opt.h hcl-pac1.h hcl-rbt.h hcl-str.h hcl-upac.h hcl-utl.h \
+	hcl-xma.h $(am__append_8)
 pkglib_LTLIBRARIES = libhcl.la $(am__append_7)
 libhcl_la_SOURCES = \
 	hcl-prv.h \
 	bigint.c \
 	chr.c \
+	cmgr.c \
 	cnode.c \
 	comp.c \
 	debug.c \
@@ -593,6 +596,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhcl_la-bigint.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhcl_la-chr.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhcl_la-cmgr.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhcl_la-cnode.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhcl_la-comp.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhcl_la-debug.Plo@am__quote@ # am--include-marker
@@ -671,6 +675,13 @@ libhcl_la-chr.lo: chr.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='chr.c' object='libhcl_la-chr.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhcl_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libhcl_la-chr.lo `test -f 'chr.c' || echo '$(srcdir)/'`chr.c
+
+libhcl_la-cmgr.lo: cmgr.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhcl_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libhcl_la-cmgr.lo -MD -MP -MF $(DEPDIR)/libhcl_la-cmgr.Tpo -c -o libhcl_la-cmgr.lo `test -f 'cmgr.c' || echo '$(srcdir)/'`cmgr.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libhcl_la-cmgr.Tpo $(DEPDIR)/libhcl_la-cmgr.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='cmgr.c' object='libhcl_la-cmgr.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhcl_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libhcl_la-cmgr.lo `test -f 'cmgr.c' || echo '$(srcdir)/'`cmgr.c
 
 libhcl_la-cnode.lo: cnode.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhcl_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libhcl_la-cnode.lo -MD -MP -MF $(DEPDIR)/libhcl_la-cnode.Tpo -c -o libhcl_la-cnode.lo `test -f 'cnode.c' || echo '$(srcdir)/'`cnode.c
@@ -1066,6 +1077,7 @@ clean-am: clean-generic clean-libtool clean-pkglibLTLIBRARIES \
 distclean: distclean-am
 		-rm -f ./$(DEPDIR)/libhcl_la-bigint.Plo
 	-rm -f ./$(DEPDIR)/libhcl_la-chr.Plo
+	-rm -f ./$(DEPDIR)/libhcl_la-cmgr.Plo
 	-rm -f ./$(DEPDIR)/libhcl_la-cnode.Plo
 	-rm -f ./$(DEPDIR)/libhcl_la-comp.Plo
 	-rm -f ./$(DEPDIR)/libhcl_la-debug.Plo
@@ -1148,6 +1160,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 		-rm -f ./$(DEPDIR)/libhcl_la-bigint.Plo
 	-rm -f ./$(DEPDIR)/libhcl_la-chr.Plo
+	-rm -f ./$(DEPDIR)/libhcl_la-cmgr.Plo
 	-rm -f ./$(DEPDIR)/libhcl_la-cnode.Plo
 	-rm -f ./$(DEPDIR)/libhcl_la-comp.Plo
 	-rm -f ./$(DEPDIR)/libhcl_la-debug.Plo

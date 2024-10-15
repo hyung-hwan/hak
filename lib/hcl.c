@@ -24,7 +24,6 @@
 
 #include "hcl-prv.h"
 
-
 hcl_t* hcl_open (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, const hcl_vmprim_t* vmprim, hcl_errnum_t* errnum)
 {
 	hcl_t* hcl;

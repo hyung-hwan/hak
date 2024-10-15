@@ -49,6 +49,7 @@ pkglibdir = $(libdir)
 pkginclude_HEADERS = \
 	hcl.h \
 	hcl-chr.h \
+	hcl-cmgr.h \
 	hcl-cmn.h \
 	hcl-fmt.h \
 	hcl-opt.h \
@@ -64,6 +65,7 @@ libhcl_la_SOURCES = \
 	hcl-prv.h \
 	bigint.c \
 	chr.c \
+	cmgr.c \
 	cnode.c \
 	comp.c \
 	debug.c \

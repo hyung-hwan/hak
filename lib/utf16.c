@@ -22,7 +22,7 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "hcl-prv.h"
+#include "hcl-chr.h"
 
 /* TODO: handle different endians - UTF16BE or UTF16LE */
 
