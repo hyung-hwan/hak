@@ -114,7 +114,6 @@ libhclx_la_SOURCES = \
 	hcl-json.h \
 	hcl-tmr.h \
 	hcl-x.h \
-	hcl-xtul.h \
 	json.c \
 	tmr.c \
 	x-client.c \

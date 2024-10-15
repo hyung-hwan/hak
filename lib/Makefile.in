@@ -170,8 +170,8 @@ libhcl_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(libhcl_la_LDFLAGS) $(LDFLAGS) -o $@
 @ENABLE_HCLX_TRUE@libhclx_la_DEPENDENCIES = libhcl.la \
 @ENABLE_HCLX_TRUE@	$(am__DEPENDENCIES_5)
-am__libhclx_la_SOURCES_DIST = hcl-json.h hcl-tmr.h hcl-x.h hcl-xtul.h \
-	json.c tmr.c x-client.c x-proto.c x-server.c x-sys.c x-utl.c \
+am__libhclx_la_SOURCES_DIST = hcl-json.h hcl-tmr.h hcl-x.h json.c \
+	tmr.c x-client.c x-proto.c x-server.c x-sys.c x-utl.c \
 	x-utl-sa.h
 @ENABLE_HCLX_TRUE@am_libhclx_la_OBJECTS = libhclx_la-json.lo \
 @ENABLE_HCLX_TRUE@	libhclx_la-tmr.lo libhclx_la-x-client.lo \
@@ -484,7 +484,6 @@ libhcl_la_LIBADD = $(LIBADD_LIB_COMMON) $(am__append_6)
 @ENABLE_HCLX_TRUE@	hcl-json.h \
 @ENABLE_HCLX_TRUE@	hcl-tmr.h \
 @ENABLE_HCLX_TRUE@	hcl-x.h \
-@ENABLE_HCLX_TRUE@	hcl-xtul.h \
 @ENABLE_HCLX_TRUE@	json.c \
 @ENABLE_HCLX_TRUE@	tmr.c \
 @ENABLE_HCLX_TRUE@	x-client.c \
