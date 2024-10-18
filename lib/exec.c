@@ -4050,14 +4050,14 @@ static int execute (hcl_t* hcl)
 				if (b3 > 0)
 				{
 					HCL_STACK_POP_TO (hcl, cvars_str);
-//					HCL_ASSERT (hcl, HCL_IS_STRING(hcl, cvars_str));
+					HCL_ASSERT (hcl, HCL_IS_STRING(hcl, cvars_str));
 				}
 				else cvars_str = hcl->_nil;
 
 				if (b2 > 0)
 				{
 					HCL_STACK_POP_TO (hcl, ivars_str);
-//					HCL_ASSERT (hcl, HCL_IS_STRING(hcl, ivars_str));
+					HCL_ASSERT (hcl, HCL_IS_STRING(hcl, ivars_str));
 				}
 				else ivars_str = hcl->_nil;
 
