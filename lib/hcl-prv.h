@@ -741,6 +741,9 @@ struct hcl_clsblk_info_t
 {
 	hcl_cnode_t* class_name;
 
+	hcl_oocsc_t ivars;
+	hcl_oocsc_t cvars;
+
 	hcl_oow_t nivars;
 	hcl_oow_t ncvars;
 	hcl_ooch_t* ivars_str;
@@ -749,6 +752,7 @@ struct hcl_clsblk_info_t
 
 	hcl_ooi_t funblk_base;
 	hcl_ooi_t class_start_inst_pos; /* the position of the first instruction in the class body after CLASS_ENTER */
+	hcl_ooi_t class_enter_inst_pos; /* the position of the CLASS_ENTER instruction */
 };
 typedef struct hcl_clsblk_info_t hcl_clsblk_info_t;
 

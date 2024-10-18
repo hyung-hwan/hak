@@ -241,6 +241,44 @@ static void kill_temporary_variable_at_offset (hcl_t* hcl, hcl_oow_t offset)
 	hcl->c->tv.s.ptr[offset] = '('; /* HACK!! put a special character which can't form a variable name */
 }
 
+static int init_class_level_variable_buffer (hcl_t* hcl, hcl_oocsc_t* dst)
+{
+	hcl_ooch_t* tmp;
+
+	tmp = (hcl_ooch_t*)hcl_allocmem(hcl, 1 * HCL_SIZEOF(*dst->ptr));
+	if (HCL_UNLIKELY(!tmp)) return -1;
+
+	dst->ptr = tmp;
+	dst->len = 0;
+	dst->capa = 0;
+
+	return 0;
+}
+
+static void fini_class_level_variable_buffer (hcl_t* hcl, hcl_oocsc_t* dst)
+{
+	if (dst->ptr)
+	{
+		hcl_freemem (hcl, dst->ptr);
+		dst->ptr = HCL_NULL;
+		dst->len = 0;
+		dst->capa = 0;
+	}
+}
+
+static int add_class_level_variable (hcl_t* hcl, hcl_oocsc_t* dst, const hcl_oocs_t* name)
+{
+	/* it downcasts hcl_oocsc_t* to hcl_oocs_t*. take extra care to keep their type defintion
+	 * compatible for downcasting in hcl-cmn.h */
+
+	if (__find_word_in_string((hcl_oocs_t*)dst, name, 0, HCL_NULL) >= 0)
+	{
+		hcl_seterrnum (hcl, HCL_EEXIST);
+		return -1;
+	}
+	return hcl_copy_string_to(hcl, name, (hcl_oocs_t*)dst, &dst->capa, 1, ' ');
+}
+
 static int is_in_top_scope (hcl_t* hcl)
 {
 	hcl_funblk_info_t* fbi;
@@ -317,10 +355,15 @@ static int find_variable_backward_with_word (hcl_t* hcl, const hcl_oocs_t* name,
 		#endif
 				cbi = &hcl->c->clsblk.info[fbi->clsblk_top];
 
+				#if 0
 				if (cbi->ivars_str)
 				{
 					haystack.ptr = cbi->ivars_str;
 					haystack.len = hcl_count_oocstr(cbi->ivars_str);
+				#else
+					haystack.ptr = cbi->ivars.ptr;
+					haystack.len = cbi->ivars.len;
+				#endif
 					if (__find_word_in_string(&haystack, name, 1, &index) >= 0)
 					{
 						hcl_oow_t fi;
@@ -356,12 +399,19 @@ HCL_INFO6 (hcl, "FOUND INST VAR [%.*js]...[%.*js]................ ===> ctx_offse
 */
 						return 1;
 					}
+				#if 0
 				}
+				#endif
 
+				#if 0
 				if (cbi->cvars_str)
 				{
 					haystack.ptr = cbi->cvars_str;
 					haystack.len = hcl_count_oocstr(cbi->cvars_str);
+				#else
+					haystack.ptr = cbi->cvars.ptr;
+					haystack.len = cbi->cvars.len;
+				#endif
 					if (__find_word_in_string(&haystack, name, 1, &index) >= 0)
 					{
 						/* TODO: VAR_CLASS_CM vs VAR_CLASS_IM, need to know if it's an instance method or a class method */
@@ -375,7 +425,9 @@ HCL_INFO6 (hcl, "FOUND CLASS VAR [%.*js]...[%.*js]................ ===> ctx_offs
 */
 						return 1;
 					}
+				#if 0
 				}
+				#endif
 	#if 0
 			}
 
@@ -712,11 +764,11 @@ static int emit_single_param_instruction (hcl_t* hcl, int cmd, hcl_oow_t param_1
 	hcl_seterrbfmt (hcl, HCL_EINVAL, "unhandled single-parameter instruction %u", (unsigned int)cmd);
 	return -1;
 
-write_short:
+write_short: /* short parameter */
 	if (emit_byte_instruction(hcl, bc, srcloc) <= -1) return -1;
 	return 0;
 
-write_long:
+write_long: /* long parameter */
 	if (param_1 > MAX_CODE_PARAM)
 	{
 		hcl_seterrbfmt (hcl, HCL_ERANGE, "parameter too large to single-parameter instruction %u", (unsigned int)cmd);
@@ -732,7 +784,7 @@ write_long:
 #endif
 	return 0;
 
-write_long2:
+write_long2: /* double-long parameter */
 	if (param_1 > MAX_CODE_PARAM2)
 	{
 		hcl_seterrbfmt (hcl, HCL_ERANGE, "parameter too large to single-parameter instruction %u", (unsigned int)cmd);
@@ -1071,12 +1123,9 @@ static int push_clsblk (
 	ci->nivars = nivars;
 	ci->ncvars = ncvars;
 
-#if 0
-XXXXXXXXXXXXXXXXXX
-/* TODO: ... */
-	ci->ivars.
-	ci->cvars = hcl_
-#endif
+	if (init_class_level_variable_buffer(hcl, &ci->ivars) <= -1) return -1;
+	if (init_class_level_variable_buffer(hcl, &ci->cvars) <= -1) return -1;
+
 	if (nivars > 0)
 	{
 		HCL_ASSERT (hcl, ivars_str != HCL_NULL);
@@ -1139,6 +1188,9 @@ static void pop_clsblk (hcl_t* hcl)
 		hcl_freemem (hcl, cbi->ivars_str);
 		cbi->ivars_str = HCL_NULL;
 	}
+
+	fini_class_level_variable_buffer (hcl, &cbi->ivars);
+	fini_class_level_variable_buffer (hcl, &cbi->cvars);
 	hcl->c->clsblk.depth--;
 }
 
@@ -2247,7 +2299,6 @@ static int compile_expression_block (hcl_t* hcl, hcl_cnode_t* src, const hcl_bch
 	cf = GET_SUBCFRAME(hcl);
 	cf->u.post_do.lvar_start = tvslen;
 	cf->u.post_do.lvar_end = fbi->tmprlen;
-hcl_logbfmt(hcl, HCL_LOG_STDERR, "tvslen=>%d fbi->tmprlen=>%d\n", (int)tvslen, (int)fbi->tmprlen);
 
 	return 0;
 }
@@ -2903,6 +2954,12 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 		if (HCL_UNLIKELY(!tmp)) goto oops;
 		if (emit_push_literal(hcl, tmp, &cf->u._class.start_loc) <= -1) goto oops;
 	}
+	else
+	{
+		/* TODO: remove the if part */
+		/* emit a placeholder instruction to be patched in compile_class_p2() */
+		if (emit_single_param_instruction(hcl, HCL_CODE_PUSH_LITERAL_0, MAX_CODE_PARAM2, &cf->u._class.start_loc) <= -1) return -1;
+	}
 
 	if (vardcl.ncvars > 0)
 	{
@@ -2923,6 +2980,12 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 		if (HCL_UNLIKELY(!tmp)) goto oops;
 		if (emit_push_literal(hcl, tmp, &cf->u._class.start_loc) <= -1) goto oops;
 	}
+	else
+	{
+		/* TODO: remove the if part */
+		/* emit a placeholder instruction to be patched in compile_class_p2() */
+		if (emit_single_param_instruction(hcl, HCL_CODE_PUSH_LITERAL_0, MAX_CODE_PARAM2, &cf->u._class.start_loc) <= -1) return -1;
+	}
 
 	if (check_block_expression_as_body(hcl, obj, cf->u._class.cmd_cnode, FOR_CLASS) <= -1) return -1;
 
@@ -2936,6 +2999,9 @@ static HCL_INLINE int compile_class_p1 (hcl_t* hcl)
 	 * because they have been pushed to the class block structure */
 	hcl->c->tv.s.len = saved_tv_slen;
 	hcl->c->tv.wcount = saved_tv_wcount;
+
+	/* the position of the CLASS_ENTER instruction */
+	hcl->c->clsblk.info[hcl->c->clsblk.depth].class_enter_inst_pos = hcl->code.bc.len;
 
 	/* class_enter nsuperclasses, nivars, ncvars  */
 	if (emit_byte_instruction(hcl, HCL_CODE_CLASS_ENTER, &cf->u._class.start_loc) <= -1) goto oops;
@@ -2980,7 +3046,60 @@ static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 	}
 
 	cbi = &hcl->c->clsblk.info[hcl->c->clsblk.depth];
-/* TODO: PATCH THE CLASS_ENTER instruction */
+	if (cbi->class_enter_inst_pos)
+	{
+		/* patch the CLASS_ENTER instruction with the final nicvars and ncvars values.
+		 * CLASS_ENTER nsuperclasses(lp)|nivars(lp)|ncvars(lp)|spec/selfspec(b)|index_type(b)
+		 *  (lp) = long param, (b) = byte */
+		hcl_oow_t patch_pos, patch_end;
+
+		patch_pos = cbi->class_enter_inst_pos + 1;
+		patch_pos += HCL_CODE_LONG_PARAM_SIZE; /* skip nsuperclasses */
+		patch_long_param (hcl, patch_pos, cbi->nivars);
+		patch_pos += HCL_CODE_LONG_PARAM_SIZE; /* skip nivars */
+		patch_long_param (hcl, patch_pos, cbi->ncvars);
+
+		patch_pos = cbi->class_enter_inst_pos - (HCL_CODE_LONG_PARAM_SIZE * 4 + 1);
+		if (cbi->nivars > 0)
+		{
+			/* patch the PUSH_LITERAL instruction for ivars */
+			/* TODO: reduce space waste for fixed double-long param */
+			hcl_oop_t obj;
+			hcl_oow_t index;
+			obj = hcl_makestring(hcl, cbi->ivars.ptr, cbi->ivars.len);
+			if (HCL_UNLIKELY(!obj)) return -1;
+			if (add_literal(hcl, obj, &index) <= -1) return -1;
+			patch_double_long_params_with_oow(hcl, patch_pos, index);
+		}
+		else
+		{
+			/* TODO: reduce space waste for patched NOOP */
+			patch_end = (--patch_pos) + (HCL_CODE_LONG_PARAM_SIZE * 2) + 1;
+			for (; patch_pos < patch_end; patch_pos++)
+				patch_instruction (hcl, patch_pos, HCL_CODE_NOOP);
+		}
+
+		patch_pos = cbi->class_enter_inst_pos - (HCL_CODE_LONG_PARAM_SIZE * 2);
+		if (cbi->ncvars > 0)
+		{
+			/* patch the PUSH_LITERAL instruction for cvars */
+			/* TODO: reduce space waste for fixed double-long param */
+			hcl_oop_t obj;
+			hcl_oow_t index;
+			obj = hcl_makestring(hcl, cbi->cvars.ptr, cbi->cvars.len);
+			if (HCL_UNLIKELY(!obj)) return -1;
+			if (add_literal(hcl, obj, &index) <= -1) return -1;
+			patch_double_long_params_with_oow(hcl, patch_pos, index);
+		}
+		else
+		{
+			/* TODO: reduce space waste for patched NOOP */
+			patch_end = (--patch_pos) + (HCL_CODE_LONG_PARAM_SIZE * 2) + 1;
+			HCL_ASSERT (hcl, patch_end == cbi->class_enter_inst_pos);
+			for (;patch_pos < patch_end; patch_pos++)
+				patch_instruction (hcl, patch_pos, HCL_CODE_NOOP);
+		}
+	}
 
 	pop_ctlblk (hcl);
 	pop_clsblk (hcl);  /* end of the class block */
@@ -3647,7 +3766,7 @@ static int check_var_attr_list (hcl_t* hcl, hcl_cnode_t* attr_list, unsigned int
 			if (hcl_comp_oochars_bcstr(tokptr, toklen, "class") == 0 ||
 			    hcl_comp_oochars_bcstr(tokptr, toklen, "c") == 0)
 			{
-				if (ft != FUN_IM)
+				if (ft != VAR_INST)
 				{
 				conflicting:
 					hcl_setsynerrbfmt (
@@ -3735,26 +3854,23 @@ static int compile_var (hcl_t* hcl, hcl_cnode_t* src)
 
 	if (HCL_CNODE_IS_SYMBOL_IDENT(tmp))
 	{
-		unsigned int var_type;
+		unsigned int var_type = VAR_INST;
 
 		if (attr_list && check_var_attr_list(hcl, attr_list, &var_type, cmd, cbi->class_name, tmp) <= -1) return -1;
 
 		HCL_ASSERT (hcl, var_type == VAR_INST || var_type == VAR_CLASS_I);
 		while (1)
 		{
-			/* TODO: do something here */
-hcl_logbfmt(hcl, HCL_LOG_STDERR, "VAR=[%.*js]\n", HCL_CNODE_GET_TOKLEN(tmp), HCL_CNODE_GET_TOKPTR(tmp));
 			if (var_type == VAR_INST)
 			{
+				if (add_class_level_variable(hcl, &cbi->ivars, HCL_CNODE_GET_TOK(tmp)) <= -1) return -1;
 				cbi->nivars++;
-/* TODO: update cbi->nivars_name... */
 			}
 			else
 			{
+				if (add_class_level_variable(hcl, &cbi->cvars, HCL_CNODE_GET_TOK(tmp)) <= -1) return -1;
 				cbi->ncvars++;
-/* TODO: update cbi->ncvars_name... */
 			}
-
 
 			next = HCL_CNODE_CONS_CDR(next);
 			if (!next) break;
@@ -3772,6 +3888,12 @@ hcl_logbfmt(hcl, HCL_LOG_STDERR, "VAR=[%.*js]\n", HCL_CNODE_GET_TOKLEN(tmp), HCL
 			HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
 		return -1;
 	}
+
+/* if there is assignment with expression, we can arragne to compile RHS. in that case
+ * the explicit PUSH_NIL here isn't needed */
+	/* TODO: hack for POP_STACKPOP generated in compile_object_list().
+	 *       remove generating this instruction after having fixed the problem in that function */
+	if (emit_byte_instruction(hcl, HCL_CODE_PUSH_NIL, HCL_CNODE_GET_LOC(cmd)) <= -1) return -1;
 
 	POP_CFRAME (hcl);
 	return 0;
@@ -5609,7 +5731,7 @@ static int compile_object_r (hcl_t* hcl)
 	HCL_ASSERT (hcl, cf->opcode == COP_COMPILE_OBJECT_R);
 	HCL_ASSERT (hcl, cf->operand != HCL_NULL);
 
-        oprnd = cf->operand;
+	oprnd = cf->operand;
 	if (HCL_CNODE_IS_CONS(oprnd))
 	{
 		hcl_concode_t cc;
@@ -5752,9 +5874,8 @@ static int compile_object_list (hcl_t* hcl)
 		{
 			/* emit POP_STACKTOP before evaluating the second objects
 			 * and onwards. this goes above COP_COMPILE_OBJECT.*/
-
 			/* TODO: if the previous operators is known to divert execution flow, it may skip this.
-			 *       for instance, some 'RETURN' or 'JUMP' operators */
+			 *       for instance, some 'RETURN' or 'JUMP' operators or class-level variable declaration with 'var' */
 			PUSH_CFRAME (hcl, COP_EMIT_POP_STACKTOP, oprnd);
 		}
 	}

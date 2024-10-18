@@ -15,13 +15,15 @@ class B + ##ERROR: syntax error - prohibited binary selector '+'
 
 ---
 
-class A [ a ] {
-	| j | ##ERROR: syntax error - variable declaration disallowed in class init scope
+class A {
+	var a
+	| j | ##ERROR: syntax error - variable declaration disallowed
 }
 
 ---
 
-class 10 [ a ] { ##ERROR: syntax error - invalid class name '10' for 'class'
+class 10 { ##ERROR: syntax error - invalid class name '10' for 'class'
+	var a
 }
 
 ---
@@ -31,7 +33,8 @@ class class { ##ERROR: syntax error - invalid class name 'class' for 'class'
 
 ---
 
-class super.a [ a ] { ##ERROR: syntax error - invalid class name 'super.a' for 'class'
+class super.a { ##ERROR: syntax error - invalid class name 'super.a' for 'class'
+	var a
 }
 
 ---
@@ -70,18 +73,20 @@ t1 := (B:newA) ##ERROR: exception not handled - "unable to send newA to B - 'new
 
 ---
 
-class B [ x ] {
+class B {
+	var x
 	if (x > 0) { ##ERROR: syntax error - prohibited access to instance variable - x
 	}
 }
 
 ---
 
-class B [ x y ] {
-
+class B {
+	var x y
 };
 
-class X: B [ a b ] {
+class X: B {
+	var a b
 	fun(#ci) new(t) {
 		| a |
 		set self.a t;
@@ -156,7 +161,8 @@ Array:boom
 
 ---
 
-class X [ a  b c ] {
+class X {
+	var a b c
 	fun(#ci) new () {
 		self.a := 20
 		return self
@@ -176,10 +182,12 @@ printf "%d\n" ((X:new):get_a)
 
 ---
 
-class F [ a b c ] {
+class F {
+	var a b c
 }
 
-class X [ a b c ] {
+class X {
+	var a b c 
 	fun oh() {
 		fun F:get_a() {
 			return super.a ##ERROR: syntax error - not allowed to prefix with super
@@ -233,7 +241,8 @@ class a {
 
 ---
 
-class X10 [ x ] {
+class X10 {
+	var x
      fun(#ci) make() { x := 1234; return self; };
      fun get-x() { return x };
 }

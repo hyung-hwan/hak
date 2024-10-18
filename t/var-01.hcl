@@ -56,7 +56,8 @@ fun x () {
 x
 
 
-class T [ j ] {
+class T {
+	var j
 
 	fun(#classinst) new() {
 		set j 99

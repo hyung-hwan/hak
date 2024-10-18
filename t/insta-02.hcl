@@ -11,7 +11,8 @@ fun Number: ~= (oprnd) { return (~= self oprnd) }
 
 ## --------------------------------------------------------------
 set t (
-	class [ x ] {
+	class {
+		var x
 		fun(#ci) make() { x := 1234; return self; };
 		fun get-x() { return x };
 	}
@@ -40,16 +41,18 @@ else { printf "OK: value is %d\n" v };
 
 ## --------------------------------------------------------------
 
-class X0 [ a b c d ] {
-        fun(#ci) new() {
-                return self;
-        }
+class X0 {
+	var a b c d
+	fun(#ci) new() {
+		return self;
+	}
 
-        fun x() {
+	fun x() {
 		a := 20 ; self.b:=(a + 10); c := (b + 20)
 		printf "%d %d %d\n" self.a self.b self.c
 		return (+ self.a self.b self.c)
-        }
+	}
+
 	fun y() {
 		self.d := (fun(k) {
 			return (k + 1)
@@ -67,7 +70,8 @@ else { printf "OK: value is %d\n" v }
 
 ## --------------------------------------------------------------
 
-class X1 [ a  b c ] {
+class X1 {
+	var a b c
 	fun(#classinst) new () {
 		self.a := 20
 		return self
@@ -105,10 +109,12 @@ else { printf "OK: value is %d\n" v }
 
 ## --------------------------------------------------------------
 
-class F [ j t ] {
+class F {
+	var j t
 }
 
-class X2 [ a b c ] {
+class X2 {
+	var a b c
 	fun(#classinst) new () {
 		| j |
 		self.a := 20
@@ -178,7 +184,8 @@ if (nqv? v 50) { printf "ERROR: v is not 50 - %d\n" v } \
 else { printf "OK: value is %d\n" v }
 
 ## --------------------------------------------------------------
-class X10 [ x ] {
+class X10 {
+	var x
 	fun(#ci) make() { x := 1234; return self; };
 	fun get-x() { return x };
 }

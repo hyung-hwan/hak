@@ -31,7 +31,8 @@
 
 
 	## test return variables in message sends
-	class B [ [X1 X2] ] {
+	class B {
+		var(#class) X1 X2
 
 		set X1 999;
 		set X2 888;
@@ -59,7 +60,9 @@
 	if (~= d 788) { printf "ERROR: d must be 788\n" } \
 	else { printf "OK: d=%d\n" d }
 
-	class X [ x, y ] {
+	class X {
+		var x y
+
 		fun(#class) f(a :: b c) { b := (+ a 10); c := (+ a 20) }
 
 		fun(#classinst) new(z) {

@@ -96,7 +96,8 @@ if (== y 29) {
 
 ## --------------------------------------
 
-class A [ a b c ] {
+class A {
+	var a b c
 	fun(#ci) newInstance(x y z) {
 		set a x
 		set b y

@@ -12,7 +12,8 @@ fun Number: <= (oprnd) { return (<= self oprnd) }
 fun Number: == (oprnd) { return (== self oprnd) }
 fun Number: ~= (oprnd) { return (~= self oprnd) }
 
-class A [ a b c ]  {
+class A {
+	var a b c
 
 	fun(#ci) newInstance(x y z) {
 		set a x;
@@ -26,7 +27,8 @@ class A [ a b c ]  {
 	fun get-c() { return self.c; };
 };
 
-class B: A [ d e f ] {
+class B: A {
+	var d e f
 
 	fun(#ci) newInstance(x y z) {
 		super:newInstance (* x 2) (* y 2) (* z 2);

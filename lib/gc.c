@@ -1141,7 +1141,7 @@ void hcl_gc (hcl_t* hcl, int full)
 	if (!full && hcl->gci.lazy_sweep)
 	{
 		/* set the lazy sweeping pointer to the head of the allocated blocks.
-		 * hawk_allocbytes() updates hcl->gci.ls.prev if it is called while
+		 * hcl_allocbytes() updates hcl->gci.ls.prev if it is called while
 		 * hcl->gci.ls.curr stays at hcl->gci.b */
 		hcl->gci.ls.prev = HCL_NULL;
 		hcl->gci.ls.curr = hcl->gci.b;

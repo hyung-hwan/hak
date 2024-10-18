@@ -473,12 +473,33 @@ struct hcl_bcs_t
 };
 typedef struct hcl_bcs_t hcl_bcs_t;
 
+struct hcl_ucsc_t
+{
+	/* the first two fields 'ptr' and 'len' must match those in hcl_ucs_t
+	 * for easy downcasting to it.  */
+	hcl_uch_t* ptr;
+	hcl_oow_t  len;  /* length */
+	hcl_oow_t  capa; /* capacity */
+};
+typedef struct hcl_ucsc_t hcl_ucsc_t;
+
+struct hcl_bcsc_t
+{
+	/* the first two fields 'ptr' and 'len' must match those in hcl_bcs_t
+	 * for easy downcasting to it.  */
+	hcl_bch_t* ptr;
+	hcl_oow_t  len;  /* length */
+	hcl_oow_t  capa; /* capacity */
+};
+typedef struct hcl_bcsc_t hcl_bcsc_t;
+
 #if defined(HCL_ENABLE_WIDE_CHAR)
 	typedef hcl_uch_t               hcl_ooch_t;
 	typedef hcl_uchu_t              hcl_oochu_t;
 	typedef hcl_uci_t               hcl_ooci_t;
 	typedef hcl_ucu_t               hcl_oocu_t;
 	typedef hcl_ucs_t               hcl_oocs_t;
+	typedef hcl_ucsc_t              hcl_oocsc_t;
 #	define HCL_OOCH_IS_UCH
 #	define HCL_SIZEOF_OOCH_T HCL_SIZEOF_UCH_T
 #else
@@ -487,6 +508,7 @@ typedef struct hcl_bcs_t hcl_bcs_t;
 	typedef hcl_bci_t               hcl_ooci_t;
 	typedef hcl_bcu_t               hcl_oocu_t;
 	typedef hcl_bcs_t               hcl_oocs_t;
+	typedef hcl_bcsc_t              hcl_oocsc_t;
 #	define HCL_OOCH_IS_BCH
 #	define HCL_SIZEOF_OOCH_T HCL_SIZEOF_BCH_T
 #endif
