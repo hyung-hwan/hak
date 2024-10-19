@@ -98,12 +98,17 @@ literals -->
 int hcl_copy_string_to (hcl_t* hcl, const hcl_oocs_t* src, hcl_oocs_t* dst, hcl_oow_t* dstcapa, int append, hcl_ooch_t delim_char)
 {
 	hcl_oow_t len, pos;
+	int delim = 0;
 
 	if (append)
 	{
 		pos = dst->len;
 		len = dst->len + src->len;
-		if (delim_char != '\0') len++;
+		if (dst->len > 0 && delim_char != '\0')
+		{
+			delim = 1;
+			len++;
+		}
 	}
 	else
 	{
@@ -130,7 +135,7 @@ int hcl_copy_string_to (hcl_t* hcl, const hcl_oocs_t* src, hcl_oocs_t* dst, hcl_
 		*dstcapa = capa - 1;
 	}
 
-	if (append && delim_char != '\0') dst->ptr[pos++] = delim_char;
+	if (delim) dst->ptr[pos++] = delim_char;
 	hcl_copy_oochars (&dst->ptr[pos], src->ptr, src->len);
 	dst->ptr[len] = '\0';
 	dst->len = len;
@@ -3032,6 +3037,7 @@ static HCL_INLINE int compile_class_p2 (hcl_t* hcl)
 			/* TODO: reduce space waste for fixed double-long param */
 			hcl_oop_t obj;
 			hcl_oow_t index;
+
 			obj = hcl_makestring(hcl, cbi->ivars.ptr, cbi->ivars.len);
 			if (HCL_UNLIKELY(!obj)) return -1;
 			if (add_literal(hcl, obj, &index) <= -1) return -1;
@@ -4311,7 +4317,11 @@ static HCL_INLINE int compile_catch (hcl_t* hcl)
 	if (add_temporary_variable(hcl, exarg, hcl->c->tv.s.len, "exception variable", HCL_NULL) <= -1) return -1;
 
 	fbi = &hcl->c->funblk.info[hcl->c->funblk.depth];
-	HCL_ASSERT (hcl, fbi->tmprlen == hcl->c->tv.s.len - HCL_CNODE_GET_TOKLEN(exarg) - 1);
+	/* a variable string inserts a space(' ') between variable name.
+	 * if 'exarg' is the first variable in the variable string, there is no preceding space.
+	 * if it is not, there is a preceding space. */
+	HCL_ASSERT (hcl, (hcl->c->tv.s.len == HCL_CNODE_GET_TOKLEN(exarg) && fbi->tmprlen == hcl->c->tv.s.len - HCL_CNODE_GET_TOKLEN(exarg)) || /* first */
+	                 (hcl->c->tv.s.len > HCL_CNODE_GET_TOKLEN(exarg) && fbi->tmprlen == hcl->c->tv.s.len - HCL_CNODE_GET_TOKLEN(exarg) - 1)); /* not first */
 	HCL_ASSERT (hcl, fbi->tmprcnt == vi.index_in_ctx + par_tmprcnt);
 	fbi->tmprlen = hcl->c->tv.s.len;
 	fbi->tmprcnt = hcl->c->tv.wcount;
