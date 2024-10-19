@@ -241,16 +241,21 @@ static void kill_temporary_variable_at_offset (hcl_t* hcl, hcl_oow_t offset)
 	hcl->c->tv.s.ptr[offset] = '('; /* HACK!! put a special character which can't form a variable name */
 }
 
-static int init_class_level_variable_buffer (hcl_t* hcl, hcl_oocsc_t* dst)
+static int init_class_level_variable_buffer (hcl_t* hcl, hcl_oocsc_t* dst, const hcl_ooch_t* ivptr, hcl_oow_t ivlen)
 {
 	hcl_ooch_t* tmp;
+	hcl_oow_t capa = 128;
 
-	tmp = (hcl_ooch_t*)hcl_allocmem(hcl, 1 * HCL_SIZEOF(*dst->ptr));
+	if (ivlen > capa) capa = ivlen;
+
+	tmp = (hcl_ooch_t*)hcl_allocmem(hcl, (capa + 1) * HCL_SIZEOF(*dst->ptr));
 	if (HCL_UNLIKELY(!tmp)) return -1;
 
 	dst->ptr = tmp;
-	dst->len = 0;
-	dst->capa = 0;
+	dst->len = ivlen;
+	dst->capa = capa;
+
+	if (ivlen > 0) hcl_copy_oochars_to_oocstr(dst->ptr, dst->capa + 1, ivptr, ivlen);
 
 	return 0;
 }
@@ -355,79 +360,62 @@ static int find_variable_backward_with_word (hcl_t* hcl, const hcl_oocs_t* name,
 		#endif
 				cbi = &hcl->c->clsblk.info[fbi->clsblk_top];
 
-				#if 0
-				if (cbi->ivars_str)
-				{
-					haystack.ptr = cbi->ivars_str;
-					haystack.len = hcl_count_oocstr(cbi->ivars_str);
-				#else
-					haystack.ptr = cbi->ivars.ptr;
-					haystack.len = cbi->ivars.len;
-				#endif
-					if (__find_word_in_string(&haystack, name, 1, &index) >= 0)
-					{
-						hcl_oow_t fi;
+				/* find the name in the instance variables */
+				haystack.ptr = cbi->ivars.ptr;
+				haystack.len = cbi->ivars.len;
 
-						if (i >= hcl->c->funblk.depth)
+				if (__find_word_in_string(&haystack, name, 1, &index) >= 0)
+				{
+					hcl_oow_t fi;
+
+					if (i >= hcl->c->funblk.depth)
+					{
+						/* instance variables are accessible only in an instance method defintion scope.
+						 * it is in class initialization scope */
+						hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, loc, name, "prohibited access to instance variable");
+						return -1;
+					}
+
+					for (fi = hcl->c->funblk.depth + 1; fi > i; ) /* TOOD: review this loop for correctness */
+					{
+						/* 'i' is the function level that holds the class defintion block. the check must not go past it */
+						if ((hcl->c->funblk.info[--fi].fun_type & 0xFF) == FUN_CM)
 						{
-							/* instance variables are accessible only in an instance method defintion scope.
-							 * it is in class initialization scope */
-							hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, loc, name, "prohibited access to instance variable");
+							/* the function where this variable is defined is a class method or an plain function block within a class method*/
+							hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, loc, name, "prohibited access to instance variable in class method context");
 							return -1;
 						}
 
-						for (fi = hcl->c->funblk.depth + 1; fi > i; ) /* TOOD: review this loop for correctness */
-						{
-							/* 'i' is the function level that holds the class defintion block. the check must not go past it */
-							if ((hcl->c->funblk.info[--fi].fun_type & 0xFF) == FUN_CM)
-							{
-								/* the function where this variable is defined is a class method or an plain function block within a class method*/
-								hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, loc, name, "prohibited access to instance variable in class method context");
-								return -1;
-							}
+						/* instance methods and instantiation methods can access instance variables */
+						if ((hcl->c->funblk.info[fi].fun_type & 0xFF) != FUN_PLAIN) break;
+					}
 
-							/* instance methods and instantiation methods can access instance variables */
-							if ((hcl->c->funblk.info[fi].fun_type & 0xFF) != FUN_PLAIN) break;
-						}
-
-						vi->type = VAR_INST;
-						vi->ctx_offset = 0;
-						vi->index_in_ctx = index;
+					vi->type = VAR_INST;
+					vi->ctx_offset = 0;
+					vi->index_in_ctx = index;
 /*
 HCL_INFO6 (hcl, "FOUND INST VAR [%.*js]...[%.*js]................ ===> ctx_offset %d index %d\n",
 	haystack.len, haystack.ptr, name->len, name->ptr, (int)(vi->ctx_offset), (int)vi->index_in_ctx);
 */
-						return 1;
-					}
-				#if 0
+					return 1;
 				}
-				#endif
 
-				#if 0
-				if (cbi->cvars_str)
+				/* find the name in the class variables */
+				haystack.ptr = cbi->cvars.ptr;
+				haystack.len = cbi->cvars.len;
+				if (__find_word_in_string(&haystack, name, 1, &index) >= 0)
 				{
-					haystack.ptr = cbi->cvars_str;
-					haystack.len = hcl_count_oocstr(cbi->cvars_str);
-				#else
-					haystack.ptr = cbi->cvars.ptr;
-					haystack.len = cbi->cvars.len;
-				#endif
-					if (__find_word_in_string(&haystack, name, 1, &index) >= 0)
-					{
-						/* TODO: VAR_CLASS_CM vs VAR_CLASS_IM, need to know if it's an instance method or a class method */
+					/* TODO: VAR_CLASS_CM vs VAR_CLASS_IM, need to know if it's an instance method or a class method */
 /* TODO: check if it's in the class variable .... */
-						vi->type = (i >= hcl->c->funblk.depth? VAR_CLASS_I: VAR_CLASS_IM);
-						vi->ctx_offset = 0;
-						vi->index_in_ctx = index;
+					vi->type = (i >= hcl->c->funblk.depth? VAR_CLASS_I: VAR_CLASS_IM);
+					vi->ctx_offset = 0;
+					vi->index_in_ctx = index;
 /*
 HCL_INFO6 (hcl, "FOUND CLASS VAR [%.*js]...[%.*js]................ ===> ctx_offset %d index %d\n",
 	haystack.len, haystack.ptr, name->len, name->ptr, (int)(vi->ctx_offset), (int)vi->index_in_ctx);
 */
-						return 1;
-					}
-				#if 0
+					return 1;
 				}
-				#endif
 	#if 0
 			}
 
@@ -1123,25 +1111,8 @@ static int push_clsblk (
 	ci->nivars = nivars;
 	ci->ncvars = ncvars;
 
-	if (init_class_level_variable_buffer(hcl, &ci->ivars) <= -1) return -1;
-	if (init_class_level_variable_buffer(hcl, &ci->cvars) <= -1) return -1;
-
-	if (nivars > 0)
-	{
-		HCL_ASSERT (hcl, ivars_str != HCL_NULL);
-		ci->ivars_str = hcl_dupoochars(hcl, ivars_str, ivars_strlen);
-		if (HCL_UNLIKELY(!ci->ivars_str)) return -1;
-	}
-	if (ncvars > 0)
-	{
-		HCL_ASSERT (hcl, cvars_str != HCL_NULL);
-		ci->cvars_str = hcl_dupoochars(hcl, cvars_str, cvars_strlen);
-		if (HCL_UNLIKELY(!ci->cvars_str))
-		{
-			if (ci->ivars_str) hcl_freemem (hcl, ci->ivars_str);
-			return -1;
-		}
-	}
+	if (init_class_level_variable_buffer(hcl, &ci->ivars, ivars_str, ivars_strlen) <= -1) return -1;
+	if (init_class_level_variable_buffer(hcl, &ci->cvars, cvars_str, cvars_strlen) <= -1) return -1;
 
 	/* remember the function block depth before the class block is entered */
 	ci->funblk_base = hcl->c->funblk.depth;
@@ -1178,17 +1149,6 @@ static void pop_clsblk (hcl_t* hcl)
 	}
 
 	cbi = &hcl->c->clsblk.info[hcl->c->clsblk.depth];
-	if (cbi->cvars_str)
-	{
-		hcl_freemem (hcl, cbi->cvars_str);
-		cbi->cvars_str = HCL_NULL;
-	}
-	if (cbi->ivars_str)
-	{
-		hcl_freemem (hcl, cbi->ivars_str);
-		cbi->ivars_str = HCL_NULL;
-	}
-
 	fini_class_level_variable_buffer (hcl, &cbi->ivars);
 	fini_class_level_variable_buffer (hcl, &cbi->cvars);
 	hcl->c->clsblk.depth--;

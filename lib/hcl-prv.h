@@ -746,8 +746,6 @@ struct hcl_clsblk_info_t
 
 	hcl_oow_t nivars;
 	hcl_oow_t ncvars;
-	hcl_ooch_t* ivars_str;
-	hcl_ooch_t* cvars_str;
 	hcl_oow_t spec; /* TODO: byte indexed, word indexed? */
 
 	hcl_ooi_t funblk_base;
