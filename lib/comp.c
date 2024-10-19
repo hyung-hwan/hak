@@ -199,16 +199,32 @@ static int __find_word_in_string (const hcl_oocs_t* haystack, const hcl_oocs_t* 
 	return -1; /* not found */
 }
 
-static int add_temporary_variable (hcl_t* hcl, const hcl_oocs_t* name, hcl_oow_t dup_check_start)
+static int add_temporary_variable (hcl_t* hcl, const hcl_cnode_t* var, hcl_oow_t dup_check_start, const hcl_bch_t* desc, const hcl_oocs_t* tgt)
 {
 	hcl_oocs_t s;
+	hcl_oocs_t* name;
 	int x;
+
+	name = HCL_CNODE_GET_TOK(var);
 
 	s.ptr = hcl->c->tv.s.ptr + dup_check_start;
 	s.len = hcl->c->tv.s.len - dup_check_start;
 	if (__find_word_in_string(&s, name, 0, HCL_NULL) >= 0)
 	{
-		hcl_seterrnum (hcl, HCL_EEXIST);
+		if (tgt)
+		{
+			hcl_setsynerrbfmt (
+				hcl, HCL_SYNERR_VARNAMEDUP, HCL_CNODE_GET_LOC(var), HCL_NULL,
+				"duplicate %hs name '%.*js' for '%.*js'",
+				desc, name->len, name->ptr, tgt->len, tgt->ptr);
+		}
+		else
+		{
+			hcl_setsynerrbfmt (
+				hcl, HCL_SYNERR_VARNAMEDUP, HCL_CNODE_GET_LOC(var), HCL_NULL,
+				"duplicate %hs name '%.*js'",
+				desc, name->len, name->ptr);
+		}
 		return -1;
 	}
 	x = hcl_copy_string_to(hcl, name, &hcl->c->tv.s, &hcl->c->tv.capa, 1, ' ');
@@ -271,14 +287,18 @@ static void fini_class_level_variable_buffer (hcl_t* hcl, hcl_oocsc_t* dst)
 	}
 }
 
-static int add_class_level_variable (hcl_t* hcl, hcl_oocsc_t* dst, const hcl_oocs_t* name)
+static int add_class_level_variable (hcl_t* hcl, hcl_oocsc_t* dst, const hcl_cnode_t* var, const hcl_bch_t* desc)
 {
 	/* it downcasts hcl_oocsc_t* to hcl_oocs_t*. take extra care to keep their type defintion
 	 * compatible for downcasting in hcl-cmn.h */
+	hcl_oocs_t* name;
 
+	name = HCL_CNODE_GET_TOK(var);
 	if (__find_word_in_string((hcl_oocs_t*)dst, name, 0, HCL_NULL) >= 0)
 	{
-		hcl_seterrnum (hcl, HCL_EEXIST);
+		hcl_setsynerrbfmt (
+			hcl, HCL_SYNERR_VARNAMEDUP, HCL_CNODE_GET_LOC(var), HCL_NULL,
+			"duplicate %hs variable name '%.*js'", desc, name->len, name->ptr);
 		return -1;
 	}
 	return hcl_copy_string_to(hcl, name, (hcl_oocs_t*)dst, &dst->capa, 1, ' ');
@@ -1428,7 +1448,7 @@ static int collect_vardcl_for_class (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t**
 	hcl_oow_t tv_wcount_saved, tv_slen_saved;
 	hcl_cnode_t* dcl, * dcl_saved;
 	int enclosed = 0;
-	static const hcl_bch_t* desc[] = { "instance", "class" };
+	static const hcl_bch_t* desc[] = { "instance variable", "class variable" };
 
 	HCL_MEMSET (vardcl, 0, HCL_SIZEOF(*vardcl));
 	tv_wcount_saved = hcl->c->tv.wcount;
@@ -1468,15 +1488,8 @@ static int collect_vardcl_for_class (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t**
 		if (!HCL_CNODE_IS_SYMBOL(var) || HCL_CNODE_IS_SYMBOL_BINOP(var)) goto synerr_varname;
 
 		checkpoint = hcl->c->tv.s.len;
-		n = add_temporary_variable(hcl, HCL_CNODE_GET_TOK(var), tv_slen_saved);
-		if (n <= -1)
-		{
-			if (hcl->errnum == HCL_EEXIST)
-			{
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAMEDUP, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "duplicate %hs variable", desc[enclosed]);
-			}
-			return -1;
-		}
+		n = add_temporary_variable(hcl, var, tv_slen_saved, desc[enclosed], HCL_NULL);
+		if (n <= -1) return -1;
 
 		if (enclosed)
 		{
@@ -1519,7 +1532,7 @@ static int collect_vardcl_for_class (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t**
 
 		if (!HCL_CNODE_IS_CONS(dcl))
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(dcl), HCL_CNODE_GET_TOK(dcl), "redundant cdr in %hs variable declaration", desc[enclosed]);
+			hcl_setsynerrbfmt (hcl, HCL_SYNERR_DOTBANNED, HCL_CNODE_GET_LOC(dcl), HCL_CNODE_GET_TOK(dcl), "redundant cdr in %hs declaration", desc[enclosed]);
 			return -1;
 		}
 	}
@@ -1559,14 +1572,7 @@ static int collect_vardcl (hcl_t* hcl, hcl_cnode_t* obj, hcl_cnode_t** nextobj, 
 		HCL_ASSERT (hcl, HCL_CNODE_IS_SYMBOL(var));
 	#endif
 
-		if (add_temporary_variable(hcl, HCL_CNODE_GET_TOK(var), tv_dup_check_start) <= -1)
-		{
-			if (hcl->errnum == HCL_EEXIST)
-			{
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_VARNAMEDUP, HCL_CNODE_GET_LOC(var), HCL_CNODE_GET_TOK(var), "duplicate %hs variable", desc);
-			}
-			return -1;
-		}
+		if (add_temporary_variable(hcl, var, tv_dup_check_start, desc, HCL_NULL) <= -1) return -1;
 		ndcls++;
 
 		dcl = HCL_CNODE_CONS_CDR(dcl);
@@ -3501,19 +3507,7 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 					return -1;
 				}
 
-				if (add_temporary_variable(hcl, HCL_CNODE_GET_TOK(arg), tv_dup_start) <= -1)
-				{
-					if (hcl->errnum == HCL_EEXIST)
-					{
-						/* in 'fun x (y :: z z) {}', the second 'z' is duplicate */
-						hcl_setsynerrbfmt (
-							hcl, HCL_SYNERR_VARNAMEDUP, HCL_CNODE_GET_LOC(arg), HCL_NULL,
-							"duplicate return variable '%.*js' for '%.*js'",
-							HCL_CNODE_GET_TOKLEN(arg), HCL_CNODE_GET_TOKPTR(arg),
-							HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
-					}
-					return -1;
-				}
+				if (add_temporary_variable(hcl, arg, tv_dup_start, "return variable", HCL_CNODE_GET_TOK(cmd)) <= -1) return -1;
 				nrvars++;
 			}
 			else if (va)
@@ -3555,18 +3549,7 @@ static int compile_fun (hcl_t* hcl, hcl_cnode_t* src)
 				}
 				else
 				{
-					if (add_temporary_variable(hcl, HCL_CNODE_GET_TOK(arg), tv_dup_start) <= -1)
-					{
-						if (hcl->errnum == HCL_EEXIST)
-						{
-							hcl_setsynerrbfmt (
-								hcl, HCL_SYNERR_ARGNAMEDUP, HCL_CNODE_GET_LOC(arg), HCL_NULL,
-								"duplicate argument name '%.*js' for '%.*js'",
-								HCL_CNODE_GET_TOKLEN(arg), HCL_CNODE_GET_TOKPTR(arg),
-								HCL_CNODE_GET_TOKLEN(cmd), HCL_CNODE_GET_TOKPTR(cmd));
-						}
-						return -1;
-					}
+					if (add_temporary_variable(hcl, arg, tv_dup_start, "argument", HCL_CNODE_GET_TOK(cmd)) <= -1) return -1;
 					nargs++;
 				}
 			}
@@ -3823,12 +3806,12 @@ static int compile_var (hcl_t* hcl, hcl_cnode_t* src)
 		{
 			if (var_type == VAR_INST)
 			{
-				if (add_class_level_variable(hcl, &cbi->ivars, HCL_CNODE_GET_TOK(tmp)) <= -1) return -1;
+				if (add_class_level_variable(hcl, &cbi->ivars, tmp, "instance") <= -1) return -1;
 				cbi->nivars++;
 			}
 			else
 			{
-				if (add_class_level_variable(hcl, &cbi->cvars, HCL_CNODE_GET_TOK(tmp)) <= -1) return -1;
+				if (add_class_level_variable(hcl, &cbi->cvars, tmp, "class") <= -1) return -1;
 				cbi->ncvars++;
 			}
 
@@ -4325,7 +4308,7 @@ static HCL_INLINE int compile_catch (hcl_t* hcl)
 	vi.type = VAR_INDEXED;
 	vi.ctx_offset = 0;
 	vi.index_in_ctx = hcl->c->tv.wcount - par_tmprcnt;
-	if (add_temporary_variable(hcl, HCL_CNODE_GET_TOK(exarg), hcl->c->tv.s.len) <= -1) return -1;
+	if (add_temporary_variable(hcl, exarg, hcl->c->tv.s.len, "exception variable", HCL_NULL) <= -1) return -1;
 
 	fbi = &hcl->c->funblk.info[hcl->c->funblk.depth];
 	HCL_ASSERT (hcl, fbi->tmprlen == hcl->c->tv.s.len - HCL_CNODE_GET_TOKLEN(exarg) - 1);

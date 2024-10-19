@@ -32,7 +32,7 @@ fun x (x :: self.y) { ##ERROR: syntax error - invalid return variable 'self.y' f
 
 ---
 
-fun x (x :: z z) { ##ERROR: syntax error - duplicate return variable 'z' for 'fun'
+fun x (x :: z z) { ##ERROR: syntax error - duplicate return variable name 'z' for 'fun'
 }
 
 ---
