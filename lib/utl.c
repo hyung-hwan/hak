@@ -22,7 +22,8 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "hcl-prv.h"
+#include <hcl-utl.h>
+#include <hcl.h>
 
 /* some naming conventions
  *  bchars, uchars -> pointer and length

@@ -4299,7 +4299,8 @@ static HCL_INLINE int compile_catch (hcl_t* hcl)
 	}
 
 	/* add the exception variable to the local variable list. increase the number of local variables */
-	exarg_offset = hcl->c->tv.s.len + 1; /* when the variable name is added, its offset will be the current length + 1 for a space character added */
+	exarg_offset = hcl->c->tv.s.len;
+	if (hcl->c->tv.s.len > 0) exarg_offset++; /* if the variable is not the first, add 1 for a preceding space */
 
 	if (hcl->c->funblk.depth > 0)
 	{

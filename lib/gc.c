@@ -662,7 +662,7 @@ static kernel_class_info_t kernel_classes[__KCI_MAX__] =
 
 	KCI(KCI_SYSTEM) {
 		"System",
-		KCI_OBJECT,
+		KCI_APEX,
 		0,
 		0,
 		5, /* asyncsg, gcfin_sem, gcfin_should_exit, ossig_pid, shr */

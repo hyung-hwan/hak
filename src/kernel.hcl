@@ -136,22 +136,16 @@ class(#char #varying) String: FixedSizedCollection {
 ## //           System logNl: 'xxxxx'.
 ## //           System getUint8(ptr,offset)
 ##
-## class System: Apex [
-## [
-## 	asyncsg ## async semaphore group
-## 	gcfin_sem ## gc finalization semaphore
-## 	gcfin_should_exit
-## 	ossig_pid
-## 	shr  ## signal handler registry
-## ]
-##
-## ] {
-## ##	var(#class) asyncsg.
-## ##	var(#class) gcfin_sem.
-## ##	var(#class) gcfin_should_exit := false.
-## ##	var(#class) ossig_pid.
-## ##	var(#class) shr. // signal handler registry
-##
+class System: Apex {
+	var(#class) asyncsg           ## async semaphore group
+	var(#class) gcfin_sem         ## gc finalization semaphore
+	var(#class) gcfin_should_exit
+	var(#class) ossig_pid
+	var(#class) shr               ## signal handler registry
+
+	gcfin_should_exit := false
+
+
 ## ##	pooldic Log
 ## ##	{
 ## ##		// -----------------------------------------------------------
@@ -568,7 +562,7 @@ class(#char #varying) String: FixedSizedCollection {
 ## ##
 ## ##	fun(#class,#primitive) getBytes (rawptr, offset, byte_array, offset_in_buffer, len_in_buffer).
 ## ##	fun(#class,#primitive) putBytes (rawptr, offset, byte_array, offset_in_buffer, len_in_buffer).
-## }
+}
 
 ## ---------------------------------------------------------------------------------
 
