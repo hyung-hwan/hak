@@ -281,3 +281,20 @@ class(#byte #limited #final #limited) Kuduro { ##ERROR: syntax error - conflicti
 ---
 class(#byte #bytes) Kuduro { ##ERROR: syntax error - unrecognized class attribute name '#bytes'
 }
+
+---
+class Kuduro [a b c] {
+	var d e
+	var a  ##ERROR: syntax error - duplicate instance variable name 'a'
+}
+
+---
+class Kuduru [a [b] c] {
+	var d e
+	var b    ##TODO: should this be prohibited?
+}
+
+class Kuduro [a [b] c] {
+	var d e
+	var(#class) b ##ERROR: syntax error - duplicate class variable name 'b'
+}
