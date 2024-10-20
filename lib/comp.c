@@ -295,14 +295,15 @@ static void fini_class_level_variable_buffer (hcl_t* hcl, hcl_oocsc_t* dst)
 	}
 }
 
-static int add_class_level_variable (hcl_t* hcl, hcl_oocsc_t* dst, const hcl_cnode_t* var, const hcl_bch_t* desc)
+static int add_class_level_variable (hcl_t* hcl, hcl_oocsc_t* dst, hcl_oocsc_t* altdst, const hcl_cnode_t* var, const hcl_bch_t* desc)
 {
 	/* it downcasts hcl_oocsc_t* to hcl_oocs_t*. take extra care to keep their type defintion
 	 * compatible for downcasting in hcl-cmn.h */
 	hcl_oocs_t* name;
 
 	name = HCL_CNODE_GET_TOK(var);
-	if (__find_word_in_string((hcl_oocs_t*)dst, name, 0, HCL_NULL) >= 0)
+	if (__find_word_in_string((hcl_oocs_t*)dst, name, 0, HCL_NULL) >= 0 ||
+	   (__find_word_in_string((hcl_oocs_t*)altdst, name, 0, HCL_NULL) >= 0))
 	{
 		hcl_setsynerrbfmt (
 			hcl, HCL_SYNERR_VARNAMEDUP, HCL_CNODE_GET_LOC(var), HCL_NULL,
@@ -3801,7 +3802,7 @@ static int compile_var (hcl_t* hcl, hcl_cnode_t* src)
 					goto oops;
 				}
 
-				if (add_class_level_variable(hcl, &cbi->ivars, tmp, "instance") <= -1) goto oops;
+				if (add_class_level_variable(hcl, &cbi->ivars, &cbi->cvars, tmp, "instance") <= -1) goto oops;
 				cbi->nivars++;
 			}
 			else
@@ -3815,7 +3816,7 @@ static int compile_var (hcl_t* hcl, hcl_cnode_t* src)
 					goto oops;
 				}
 
-				if (add_class_level_variable(hcl, &cbi->cvars, tmp, "class") <= -1) goto oops;
+				if (add_class_level_variable(hcl, &cbi->cvars, &cbi->ivars, tmp, "class") <= -1) goto oops;
 				cbi->ncvars++;
 			}
 

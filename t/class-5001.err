@@ -289,10 +289,13 @@ class Kuduro [a b c] {
 }
 
 ---
-class Kuduru [a [b] c] {
+
+class Kuduro [a [b] c] {
 	var d e
-	var b    ##TODO: should this be prohibited?
+	var b ##ERROR: syntax error - duplicate instance variable name 'b'
 }
+
+---
 
 class Kuduro [a [b] c] {
 	var d e
