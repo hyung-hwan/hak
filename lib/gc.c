@@ -580,7 +580,7 @@ static kernel_class_info_t kernel_classes[__KCI_MAX__] =
 		"Number",
 		KCI_MAGNITUDE,
 		0, /* brand */
-		0,
+		HCL_CLASS_SELFSPEC_FLAG_LIMITED,
 		0,
 		0,
 		0,
