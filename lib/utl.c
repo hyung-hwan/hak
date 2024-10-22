@@ -23,6 +23,7 @@
  */
 
 #include <hcl-utl.h>
+#include <hcl-str.h>
 #include <hcl.h>
 
 /* some naming conventions
