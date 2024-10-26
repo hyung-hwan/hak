@@ -885,15 +885,17 @@ static HCL_INLINE int can_colon_list (hcl_t* hcl)
 
 	HCL_ASSERT (hcl, hcl->c->r.st != HCL_NULL);
 	rstl = hcl->c->r.st;
+	cc = (hcl_concode_t)LIST_FLAG_GET_CONCODE(rstl->flagv);
 
 	if (rstl->count <= 0) return 0; /* not allowed at the list beginning  */
 
 	/* mark the state that a colon has appeared in the list */
-	/*if (HCL_CNODE_IS_TYPED(HCL_CNODE_CONS_CAR(rstl->head), HCL_CNODE_CLASS))*/
-	if (HCL_CNODE_IS_FOR_LANG(HCL_CNODE_CONS_CAR(rstl->head)))
+	if (cc == HCL_CONCODE_XLIST && HCL_CNODE_IS_FOR_LANG(HCL_CNODE_CONS_CAR(rstl->head)))
 	{
-		/* class :superclassame ...
-		 * class name:superclassname ... */
+		/* allow a colon if the first element is 'class', 'fun', or some other keywords:
+		 *   class :superclassame ...
+		 *   class name:superclassname ...
+		 *   fun X:abc ... */
 		return 2;
 	}
 
@@ -941,7 +943,6 @@ static HCL_INLINE int can_colon_list (hcl_t* hcl)
 	/* multiple single-colons  - e.g. #{ "abc": : 20 } */
 	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED)) return 0;
 
-	cc = (hcl_concode_t)LIST_FLAG_GET_CONCODE(rstl->flagv);
 	if (cc == HCL_CONCODE_XLIST)
 	{
 		hcl_cnode_t* tmp;
@@ -967,6 +968,7 @@ static HCL_INLINE int can_colon_list (hcl_t* hcl)
 	}
 	else if (cc != HCL_CONCODE_DIC) return 0; /* no allowed if not in a dictionary */
 
+	/* dictionary */
 	if (!(rstl->count & 1)) return 0; /* not allwed after the value in a dictionary */
 
 	/* mark that it's coloned. this is to be cleared when clear_comma_colon_binop_flag() is called */
@@ -2145,7 +2147,7 @@ static delim_token_t delim_token_tab[] =
 	{ ":>",       2, HCL_TOK_COLONGT },
 	{ ":<",       2, HCL_TOK_COLONLT },
 	{ "::",       2, HCL_TOK_DBLCOLONS }, /* superclass, class variables, class methods */
-	{ ":::",      3, HCL_TOK_TRPCOLONS  },
+	{ ":::",      3, HCL_TOK_TRPCOLONS },
 
 	{ ";",        1, HCL_TOK_SEMICOLON }
 };

@@ -2,7 +2,7 @@ package hcl
 
 /*
 #include <hcl.h>
-#include <hcl-utl.h>
+#include <hcl-str.h>
 #include <stdlib.h> // for C.free
 
 extern int hcl_go_cci_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg);
