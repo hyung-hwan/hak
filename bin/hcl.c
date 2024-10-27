@@ -41,6 +41,11 @@
 #include <errno.h>
 #include <locale.h>
 
+#if defined(HAVE_ISOCLINE_H) && defined(HAVE_ISOCLINE_LIB)
+#	include <isocline.h>
+#	define USE_ISOCLINE
+#endif
+
 #if defined(_WIN32)
 #	include <windows.h>
 #	include <tchar.h>
@@ -86,17 +91,6 @@
 #define FOPEN_R_FLAGS "r"
 #endif
 
-typedef struct bb_t bb_t;
-struct bb_t
-{
-	char buf[1024];
-	hcl_oow_t pos;
-	hcl_oow_t len;
-
-	FILE* fp;
-	hcl_bch_t* fn;
-};
-
 typedef struct xtn_t xtn_t;
 struct xtn_t
 {
@@ -108,7 +102,8 @@ struct xtn_t
 
 	struct
 	{
-		hcl_bch_t buf[1024];
+		hcl_bch_t* ptr;
+		hcl_bch_t buf[1024]; /* not used if isocline is used */
 		hcl_oow_t len;
 		hcl_oow_t pos;
 		int eof;
@@ -134,6 +129,14 @@ static void vm_cleanup (hcl_t* hcl)
 {
 	xtn_t* xtn = (xtn_t*)hcl_getxtn(hcl);
 	xtn->vm_running = 0;
+
+#if defined(USE_ISOCLINE)
+	if (xtn->feed.ptr && xtn->feed.ptr != xtn->feed.buf)
+	{
+		ic_free (xtn->feed.ptr);
+		xtn->feed.ptr = HCL_NULL;
+	}
+#endif
 }
 
 /*
@@ -420,12 +423,40 @@ static void print_error (hcl_t* hcl, const hcl_bch_t* msghdr)
 	/*else hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: %hs - [%d] %js\n", msghdr, hcl_geterrnum(hcl), hcl_geterrmsg(hcl));*/
 }
 
+
+#if defined(USE_ISOCLINE)
+static void print_incomplete_expression_error (hcl_t* hcl)
+{
+	/* isocline is supposed to return a full expression.
+	 * if something is pending in the feed side, the input isn't complete yet */
+	xtn_t* xtn;
+	hcl_loc_t loc;
+
+	xtn = hcl_getxtn(hcl);
+	hcl_getfeedloc (hcl, &loc);
+
+	hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: ");
+	if (loc.file)
+		hcl_logbfmt (hcl, HCL_LOG_STDERR, "%js", loc.file);
+	else
+		hcl_logbfmt (hcl, HCL_LOG_STDERR, "%hs", xtn->cci_path);
+
+	/* if the input is like this
+	 *   a := 2; c := {
+	 * the second expression is incompelete. however, the whole input is not executed.
+	 * the number of compiled expressions so far is in xtn->feed.ncompexprs, however */
+	hcl_logbfmt (hcl, HCL_LOG_STDERR, "[%zu,%zu] incomplete expression\n", loc.line, loc.colm);
+}
+#endif
+
 static void show_prompt (hcl_t* hcl, int level)
 {
 /* TODO: different prompt per level */
-	hcl_resetfeedloc (hcl);
+	hcl_resetfeedloc (hcl); /* restore the line number to 1 in the interactive mode */
+#if !defined(USE_ISOCLINE)
 	hcl_logbfmt (hcl, HCL_LOG_STDOUT, "HCL> ");
 	hcl_logbfmt (hcl, HCL_LOG_STDOUT, HCL_NULL); /* flushing */
+#endif
 }
 
 static hcl_oop_t execute_in_interactive_mode (hcl_t* hcl)
@@ -444,7 +475,7 @@ static hcl_oop_t execute_in_interactive_mode (hcl_t* hcl)
 
 	if (!retv)
 	{
-		print_error (hcl, "cannot execute");
+		print_error (hcl, "execute");
 	}
 	else
 	{
@@ -499,14 +530,8 @@ static hcl_oop_t execute_in_batch_mode(hcl_t* hcl, int verbose)
 	retv = hcl_execute(hcl);
 	hcl_flushudio (hcl);
 
-	if (!retv)
-	{
-		print_error (hcl, "cannot execute");
-	}
-	else if (verbose)
-	{
-		hcl_logbfmt (hcl, HCL_LOG_STDERR, "EXECUTION OK - EXITED WITH %O\n", retv);
-	}
+	if (!retv) print_error (hcl, "execute");
+	else if (verbose) hcl_logbfmt (hcl, HCL_LOG_STDERR, "EXECUTION OK - EXITED WITH %O\n", retv);
 
 	/*cancel_tick();*/
 	g_hcl = HCL_NULL;
@@ -535,7 +560,7 @@ static int on_fed_cnode_in_interactive_mode (hcl_t* hcl, hcl_cnode_t* obj)
 
 	if (hcl_compile(hcl, obj, flags) <= -1)
 	{
-		/*print_error(hcl, "failed to compile"); */
+		/*print_error(hcl, "compile"); */
 		xtn->feed.pos = xtn->feed.len; /* arrange to discard the rest of the line */
 		return -1; /* this causes the feed function to fail and
 		              the error hander for to print the error message */
@@ -551,12 +576,57 @@ static int on_fed_cnode_in_batch_mode (hcl_t* hcl, hcl_cnode_t* obj)
 	return hcl_compile(hcl, obj, 0);
 }
 
+#if defined(USE_ISOCLINE)
+static int get_line (hcl_t* hcl, xtn_t* xtn, FILE* fp)
+{
+	char* inp, * p;
+	static int inited = 0;
+
+	if (!inited)
+	{
+		ic_style_def("kbd","gray underline");     // you can define your own styles
+		ic_style_def("ic-prompt","ansi-maroon");  // or re-define system styles
+		ic_set_history (HCL_NULL, -1);
+		ic_enable_multiline (1);
+		ic_enable_multiline_indent (1);
+		ic_set_matching_braces ("()[]{}");
+		ic_enable_brace_insertion (1);
+		ic_set_insertion_braces("()[]{}\"\"''");
+		inited = 1;
+	}
+
+	if (xtn->feed.eof) return 0;
+
+	xtn->feed.pos = 0;
+	xtn->feed.len = 0;
+	if (xtn->feed.ptr)
+	{
+		HCL_ASSERT (hcl, xtn->feed.ptr != xtn->feed.buf);
+		ic_free (xtn->feed.ptr);
+		xtn->feed.ptr = HCL_NULL;
+	}
+
+	inp = ic_readline("HCL");
+	if (inp == NULL)
+	{
+		/* TODO: check if it's an error or Eof */
+		xtn->feed.eof = 1;
+		if (xtn->feed.len <= 0) return 0;
+		return 0;
+	}
+
+	xtn->feed.len = hcl_count_bcstr(inp);
+	xtn->feed.ptr = inp;
+	return 1;
+}
+#else
 static int get_line (hcl_t* hcl, xtn_t* xtn, FILE* fp)
 {
 	if (xtn->feed.eof) return 0;
 
 	xtn->feed.pos = 0;
 	xtn->feed.len = 0;
+	xtn->feed.ptr = xtn->feed.buf; /* use the internal buffer */
 
 	while (1)
 	{
@@ -581,6 +651,7 @@ static int get_line (hcl_t* hcl, xtn_t* xtn, FILE* fp)
 
 	return 1;
 }
+#endif
 
 static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 {
@@ -620,6 +691,7 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 
 	if (is_tty)
 	{
+		/* interactive mode */
 		show_prompt (hcl, 0);
 
 		while (1)
@@ -628,6 +700,10 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 			hcl_oow_t pos;
 			hcl_oow_t len;
 
+		#if defined(USE_ISOCLINE)
+			int lf_injected = 0;
+		#endif
+
 			/* read a line regardless of the actual expression */
 			n = get_line(hcl, xtn, fp);
 			if (n <= -1) goto oops;
@@ -635,43 +711,80 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 
 			/* feed the line */
 			pos = xtn->feed.pos;
-			/* do this before calling hcl_feedbchars() so that the callback sees the updated value */
+			/* update xtn->feed.pos before calling hcl_feedbchars() so that the callback sees the updated value */
 			xtn->feed.pos = xtn->feed.len;
 			len = xtn->feed.len - pos;
-			if (hcl_feedbchars(hcl, &xtn->feed.buf[pos], len) <= -1)
+			n = hcl_feedbchars(hcl, &xtn->feed.ptr[pos], len);
+		#if defined(USE_ISOCLINE)
+		chars_fed:
+		#endif
+			if (n <= -1)
 			{
-				print_error (hcl, "failed to feed");
-				if (len > 0) show_prompt (hcl, 0);
+				print_error (hcl, "feed"); /* syntax error or something - mostly compile error */
 
-				hcl_clearcode(hcl); /* clear the compiled code but not executed yet in advance */
-				xtn->feed.ncompexprs = 0; /* next time, hcl_compile() is supposed to clear code and fnblks */
+		#if defined(USE_ISOCLINE)
+			reset_on_feed_error:
+		#endif
+				hcl_resetfeed (hcl);
+				hcl_clearcode (hcl); /* clear the compiled code but not executed yet in advance */
+				xtn->feed.ncompexprs = 0; /* next time, on_fed_cnode_in_interactive_mode() clears code and fnblks */
+				/*if (len > 0)*/ show_prompt (hcl, 0); /* show prompt after error */
 			}
 			else
 			{
-				/* TODO: check if this works when HCL_TRAIT_LANG_ENABLE_EOL is not set */
 				if (!hcl_feedpending(hcl))
 				{
-					if (xtn->feed.ncompexprs > 0 && hcl_getbclen(hcl) > 0)
+					if (xtn->feed.ncompexprs > 0)
 					{
-						execute_in_interactive_mode (hcl);
+						if (hcl_getbclen(hcl) > 0) execute_in_interactive_mode (hcl);
 						xtn->feed.ncompexprs = 0;
 					}
-					show_prompt (hcl, 0);
+					else
+					{
+						HCL_ASSERT (hcl, hcl_getbclen(hcl) == 0);
+						/* usually this part is reached if the input string is
+						 * one or more whilespaces and/or comments only */
+					}
+					show_prompt (hcl, 0); /* show prompt after execution */
 				}
+		#if defined(USE_ISOCLINE)
+				else if (!lf_injected)
+				{
+					/* in this mode, one input string must be composed of one or more
+					 * complete expression. however, it doesn't isocline doesn't include
+					 * the ending line-feed in the returned input string. inject one to the feed */
+					static const char lf = '\n';
+					lf_injected = 1;
+					n = hcl_feedbchars(hcl, &lf, 1);
+					goto chars_fed;
+				}
+				else
+				{
+					print_incomplete_expression_error (hcl);
+					goto reset_on_feed_error;
+				}
+		#endif
 			}
 		}
 
+	#if !defined(USE_ISOCLINE)
+		/* eof is given, usually with ctrl-D, no new line is output after the prompt.
+		 * this results in the OS prompt on the same line as this program's prompt.
+		 * however ISOCLINE prints a newline upon ctrl-D. print \n when ISOCLINE is
+		 * not used */
 		hcl_logbfmt (hcl, HCL_LOG_STDOUT, "\n");
+	#endif
 	}
 	else
 	{
+		/* non-interactive mode */
 		while (1)
 		{
 			hcl_bch_t buf[1024];
 			hcl_oow_t xlen;
 
 			xlen = fread(buf, HCL_SIZEOF(buf[0]), HCL_COUNTOF(buf), fp);
-			if (xlen > 0 && hcl_feedbchars(hcl, buf, xlen) <= -1) goto feed_error;
+			if (xlen > 0 && hcl_feedbchars(hcl, buf, xlen) <= -1) goto endfeed_error;
 			if (xlen < HCL_COUNTOF(buf))
 			{
 				if (ferror(fp))
@@ -686,8 +799,8 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 
 	if (hcl_endfeed(hcl) <= -1)
 	{
-	feed_error:
-		print_error (hcl, "failed to feed");
+	endfeed_error:
+		print_error (hcl, "endfeed");
 		goto oops; /* TODO: proceed or just exit? */
 	}
 	fclose (fp);

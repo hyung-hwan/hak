@@ -370,7 +370,7 @@ void hcl_fini (hcl_t* hcl)
 	if (hcl->vmprim.dl_cleanup) hcl->vmprim.dl_cleanup (hcl);
 }
 
-void hcl_reset (hcl_t* hcl)
+void hcl_resetcode (hcl_t* hcl)
 {
 	hcl_oop_t v;
 	hcl_oow_t i;

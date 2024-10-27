@@ -27,7 +27,7 @@ bin_PROGRAMS = hcl
 hcl_SOURCES = hcl.c
 hcl_CPPFLAGS = $(CPPFLAGS_COMMON) 
 hcl_LDFLAGS = $(LDFLAGS_COMMON)
-hcl_LDADD = ../lib/libhcl.la $(LIBADD_COMMON)
+hcl_LDADD = ../lib/libhcl.la $(LIBADD_COMMON) $(ISOCLINE_LIBS)
 
 if ENABLE_HCLX
 

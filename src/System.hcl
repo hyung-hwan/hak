@@ -28,7 +28,6 @@ class System: Apex {
 ## 	## initialize class variables
 ##
 ##
-
 	var(#class) asyncsg           ## async semaphore group
 	var(#class) gcfin_sem         ## gc finalization semaphore
 	var(#class) gcfin_should_exit
@@ -38,6 +37,20 @@ class System: Apex {
 	gcfin_should_exit := false
  	shr := (OrderedCollection:new)
  	asyncsg := (SemaphoreGroup:new)
+
+SemaphoreGroup new
+SemaphoreGroup new: 10
+
+## for keyword message, it's easy to tell...
+a addSemaphore: sem  ## sending addSemaphore to 'a'
+a #addSeamphore sem ## calling the function 'a'
+
+## for binary message, it's also easy to tell.
+1 + 2 ##-- resolved at the reader level
++ 1 2 ##-- 
++ is a function object. `+ a: 10`-> what must be the meaning of this? 
+                             send the a message to the function object '+' with argument 10.
+                             
 
  	fun(#class) addAsyncSemaphore(sem) {
  		return (self.asyncsg addSemaphore sem)
@@ -53,7 +66,7 @@ class System: Apex {
 
 ## 	fun(#class) installSignalHandler: block {
 ## 		return (self.shr addLast: block)
-## 	}
+## 	}`
 ##
 ## 	fun(#class) uninstallSignalHandler: block {
 ## 		self.shr remove: block.
@@ -93,7 +106,7 @@ class System: Apex {
 ## 			self _setSig: 16rFF.
 ## 		].
 ##
-## 		^ret.
+## 		return ret.
 ## 	}
 ##
 ## 	fun(#class) __gc_finalizer

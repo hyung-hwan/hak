@@ -130,4 +130,17 @@ i := (- -16r123abcd128738279878172387123aabbea19849d8282882822332332 123)
 k := -1919784483373631008405784517212288102153752573650638404319957951405
 if (== i k) { printf "OK: i is %d\n" i k } \
 else { printf "ERROR: i is not equal to %d\n" k }
+
+
+a := #{
+  (if (> 10 20) true else false ): 10,
+  (if (< 10 20) true else false ): 20
+}
+b := (dic.get a true)
+c := (dic.get a false)
+if (== b 20) { printf "OK: b is %d\n" b } \
+else { printf "ERROR: b is %d, not 20\n" b }
+if (== c 10) { printf "OK: b is %d\n" b } \
+else { printf "ERROR: b is %d, not 10\n" b }
+
 }  ## END

@@ -324,8 +324,8 @@ typedef enum hcl_obj_type_t hcl_obj_type_t;
  *          terminating null in a variable-char object. internel
  *          use only.
  *   kernel: 0 - ordinary object.
- *           1 - kernel object. can survive hcl_reset().
- *           2 - kernel object. can survive hcl_reset().
+ *           1 - kernel object. can survive hcl_resetcode().
+ *           2 - kernel object. can survive hcl_resetcode().
  *               a symbol object with 2 in the kernel bits cannot be assigned a
  *               value with the 'set' special form.
  *   moved: 0 or 1. used by GC. internal use only.
@@ -2127,27 +2127,6 @@ HCL_EXPORT void hcl_fini (
 	hcl_t*              hcl
 );
 
-/**
- * The hcl_reset() function some internal states back to the initial state.
- * The affected internal states include byte code buffer, literal frame,
- * ordinary global variables. You should take extra precaution as it is
- * a risky function. For instance, a global variable inserted manually
- * with hcl_putatsysdic() gets deleted if the kernel bit is not set on
- * the variable symbol.
- */
-HCL_EXPORT void hcl_reset (
-	hcl_t*   hcl
-);
-
-#define HCL_XTN(hcl) ((void*)((hcl_uint8_t*)hcl + ((hcl_t*)hcl)->_instsize))
-#define HCL_MMGR(hcl) (((hcl_t*)(hcl))->_mmgr)
-#define HCL_CMGR(hcl) (((hcl_t*)(hcl))->_cmgr)
-#define HCL_ERRNUM(hcl) (((hcl_t*)(hcl))->errnum)
-
-void* hcl_getxtn (
-	hcl_t* hcl
-);
-
 HCL_EXPORT hcl_cmgr_t* hcl_getcmgr (
 	hcl_t* hcl
 );
@@ -2513,9 +2492,17 @@ HCL_EXPORT int hcl_feedpending (
 	hcl_t*           hcl
 );
 
+HCL_EXPORT void hcl_resetfeed (
+	hcl_t*           hcl
+);
 
 HCL_EXPORT void hcl_resetfeedloc (
 	hcl_t*           hcl
+);
+
+HCL_EXPORT  void hcl_getfeedloc (
+	hcl_t*           hcl,
+	hcl_loc_t*       loc
 );
 
 HCL_EXPORT int hcl_endfeed (
@@ -2567,9 +2554,31 @@ HCL_EXPORT int hcl_decode (
 	hcl_oow_t          end
 );
 
+/**
+ * The hcl_resetcode() function some internal states back to the initial state.
+ * The affected internal states include byte code buffer, literal frame,
+ * ordinary global variables. You should take extra precaution as it is
+ * a risky function. For instance, a global variable inserted manually
+ * with hcl_putatsysdic() gets deleted if the kernel bit is not set on
+ * the variable symbol.
+ */
+HCL_EXPORT void hcl_resetcode (
+	hcl_t*   hcl
+);
+
 HCL_EXPORT void hcl_clearcode (
 	hcl_t* hcl
 );
+
+#define HCL_XTN(hcl) ((void*)((hcl_uint8_t*)hcl + ((hcl_t*)hcl)->_instsize))
+#define HCL_MMGR(hcl) (((hcl_t*)(hcl))->_mmgr)
+#define HCL_CMGR(hcl) (((hcl_t*)(hcl))->_cmgr)
+#define HCL_ERRNUM(hcl) (((hcl_t*)(hcl))->errnum)
+
+void* hcl_getxtn (
+	hcl_t* hcl
+);
+
 
 #if defined(HCL_HAVE_INLINE)
 static HCL_INLINE hcl_code_t* hcl_getcode (hcl_t* hcl) { return &hcl->code; }

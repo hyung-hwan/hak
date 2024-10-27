@@ -3645,11 +3645,24 @@ int hcl_feedpending (hcl_t* hcl)
 	return !(hcl->c->r.st == HCL_NULL && FLX_STATE(hcl) == HCL_FLX_START);
 }
 
+void hcl_getfeedloc (hcl_t* hcl, hcl_loc_t* loc)
+{
+	*loc = hcl->c->feed.lx.loc;
+}
+
 void hcl_resetfeedloc (hcl_t* hcl)
 {
 	hcl->c->feed.lx.loc.line = 1;
 	hcl->c->feed.lx.loc.colm = 1;
 	hcl->c->feed.lx.loc.file = HCL_NULL;
+}
+
+void hcl_resetfeed (hcl_t* hcl)
+{
+	feed_reset_reader_state (hcl);
+	feed_clean_up_reader_stack (hcl);
+	feed_continue (hcl, HCL_FLX_START);
+	hcl_resetfeedloc (hcl);
 }
 
 int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)

@@ -111,7 +111,7 @@ AC_CHECK_HEADERS([stddef.h wchar.h wctype.h errno.h signal.h fcntl.h dirent.h])
 AC_CHECK_HEADERS([time.h sys/time.h utime.h spawn.h execinfo.h ucontext.h])
 AC_CHECK_HEADERS([dlfcn.h ltdl.h sys/mman.h sys/uio.h])
 AC_CHECK_HEADERS([sys/devpoll.h sys/epoll.h poll.h])
-AC_CHECK_HEADERS([libunwind.h quadmath.h])
+AC_CHECK_HEADERS([libunwind.h quadmath.h isocline.h])
 AC_CHECK_HEADERS([sys/ioctl.h net/if.h])
 
 dnl check data types
@@ -163,6 +163,17 @@ then
 		]
 	)
 	AC_SUBST(UNWIND_LIBS)
+fi
+
+if test "x${ac_cv_header_isocline_h}" = "xyes"
+then
+	AC_CHECK_LIB([isocline], [ic_readline],
+		[
+			ISOCLINE_LIBS="-lisocline"
+			AC_DEFINE([HAVE_ISOCLINE_LIB], [1], [libisocline is available])
+		]
+	)
+	AC_SUBST(ISOCLINE_LIBS)
 fi
 
 dnl check is the import library for unicows.dll exists
