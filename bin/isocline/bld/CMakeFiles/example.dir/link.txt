@@ -1,0 +1,1 @@
+/usr/bin/cc -O3 -DNDEBUG CMakeFiles/example.dir/test/example.c.o -o example  libisocline.a 

@@ -689,7 +689,6 @@ PACKAGE_VERSION_MINOR
 PACKAGE_VERSION_MAJOR
 QUADMATH_LIBS
 UNICOWS_LIBS
-ISOCLINE_LIBS
 UNWIND_LIBS
 LTDL_LIBS
 DL_LIBS
@@ -15578,12 +15577,6 @@ then :
   printf "%s\n" "#define HAVE_QUADMATH_H 1" >>confdefs.h
 
 fi
-ac_fn_c_check_header_compile "$LINENO" "isocline.h" "ac_cv_header_isocline_h" "$ac_includes_default"
-if test "x$ac_cv_header_isocline_h" = xyes
-then :
-  printf "%s\n" "#define HAVE_ISOCLINE_H 1" >>confdefs.h
-
-fi
 
 ac_fn_c_check_header_compile "$LINENO" "sys/ioctl.h" "ac_cv_header_sys_ioctl_h" "$ac_includes_default"
 if test "x$ac_cv_header_sys_ioctl_h" = xyes
@@ -15983,57 +15976,6 @@ then :
 			UNWIND_LIBS="-lunwind"
 
 printf "%s\n" "#define HAVE_UNWIND_LIB 1" >>confdefs.h
-
-
-
-fi
-
-
-fi
-
-if test "x${ac_cv_header_isocline_h}" = "xyes"
-then
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for ic_readline in -lisocline" >&5
-printf %s "checking for ic_readline in -lisocline... " >&6; }
-if test ${ac_cv_lib_isocline_ic_readline+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lisocline  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-char ic_readline ();
-int
-main (void)
-{
-return ic_readline ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"
-then :
-  ac_cv_lib_isocline_ic_readline=yes
-else $as_nop
-  ac_cv_lib_isocline_ic_readline=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_isocline_ic_readline" >&5
-printf "%s\n" "$ac_cv_lib_isocline_ic_readline" >&6; }
-if test "x$ac_cv_lib_isocline_ic_readline" = xyes
-then :
-
-			ISOCLINE_LIBS="-lisocline"
-
-printf "%s\n" "#define HAVE_ISOCLINE_LIB 1" >>confdefs.h
 
 
 

@@ -14,6 +14,8 @@
 
 @SET_MAKE@
 
+
+
 VPATH = @srcdir@
 am__is_gnu_make = { \
   if test -z '$(MAKELEVEL)'; then \
@@ -90,7 +92,7 @@ build_triplet = @build@
 host_triplet = @host@
 
 ##################################################
-# MAIN LIBRARY 
+# MAIN BINARIES
 ##################################################
 @ENABLE_LIBLTDL_TRUE@am__append_1 = $(LTDL_LIBS)
 @ENABLE_LIBLTDL_FALSE@am__append_2 = $(DL_LIBS)
@@ -105,7 +107,8 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/ax_check_sign.m4 \
 	$(top_srcdir)/m4/lt~obsolete.m4 $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
-DIST_COMMON = $(srcdir)/Makefile.am $(am__DIST_COMMON)
+DIST_COMMON = $(srcdir)/Makefile.am $(noinst_HEADERS) \
+	$(am__DIST_COMMON)
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/lib/hcl-cfg.h
 CONFIG_CLEAN_FILES =
@@ -113,6 +116,28 @@ CONFIG_CLEAN_VPATH_FILES =
 @ENABLE_HCLX_TRUE@am__EXEEXT_1 = hclx$(EXEEXT)
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
+LIBRARIES = $(noinst_LIBRARIES)
+ARFLAGS = cru
+AM_V_AR = $(am__v_AR_@AM_V@)
+am__v_AR_ = $(am__v_AR_@AM_DEFAULT_V@)
+am__v_AR_0 = @echo "  AR      " $@;
+am__v_AR_1 = 
+libisocline_a_AR = $(AR) $(ARFLAGS)
+libisocline_a_LIBADD =
+am__dirstamp = $(am__leading_dot)dirstamp
+am_libisocline_a_OBJECTS = isocline/src/attr.$(OBJEXT) \
+	isocline/src/bbcode.$(OBJEXT) \
+	isocline/src/bbcode_colors.$(OBJEXT) \
+	isocline/src/common.$(OBJEXT) \
+	isocline/src/completers.$(OBJEXT) \
+	isocline/src/completions.$(OBJEXT) \
+	isocline/src/editline.$(OBJEXT) \
+	isocline/src/highlight.$(OBJEXT) \
+	isocline/src/history.$(OBJEXT) isocline/src/isocline.$(OBJEXT) \
+	isocline/src/stringbuf.$(OBJEXT) isocline/src/term.$(OBJEXT) \
+	isocline/src/tty.$(OBJEXT) isocline/src/tty_esc.$(OBJEXT) \
+	isocline/src/undo.$(OBJEXT) isocline/src/wcwidth.$(OBJEXT)
+libisocline_a_OBJECTS = $(am_libisocline_a_OBJECTS)
 am_hcl_OBJECTS = hcl-hcl.$(OBJEXT)
 hcl_OBJECTS = $(am_hcl_OBJECTS)
 am__DEPENDENCIES_1 =
@@ -120,7 +145,7 @@ am__DEPENDENCIES_1 =
 @ENABLE_LIBLTDL_FALSE@am__DEPENDENCIES_3 = $(am__DEPENDENCIES_1)
 am__DEPENDENCIES_4 = $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3)
 hcl_DEPENDENCIES = ../lib/libhcl.la $(am__DEPENDENCIES_4) \
-	$(am__DEPENDENCIES_1)
+	./libisocline.a
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -151,7 +176,22 @@ am__v_at_1 =
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/ac/depcomp
 am__maybe_remake_depfiles = depfiles
-am__depfiles_remade = ./$(DEPDIR)/hcl-hcl.Po ./$(DEPDIR)/hclx-hclx.Po
+am__depfiles_remade = ./$(DEPDIR)/hcl-hcl.Po ./$(DEPDIR)/hclx-hclx.Po \
+	isocline/src/$(DEPDIR)/attr.Po \
+	isocline/src/$(DEPDIR)/bbcode.Po \
+	isocline/src/$(DEPDIR)/bbcode_colors.Po \
+	isocline/src/$(DEPDIR)/common.Po \
+	isocline/src/$(DEPDIR)/completers.Po \
+	isocline/src/$(DEPDIR)/completions.Po \
+	isocline/src/$(DEPDIR)/editline.Po \
+	isocline/src/$(DEPDIR)/highlight.Po \
+	isocline/src/$(DEPDIR)/history.Po \
+	isocline/src/$(DEPDIR)/isocline.Po \
+	isocline/src/$(DEPDIR)/stringbuf.Po \
+	isocline/src/$(DEPDIR)/term.Po isocline/src/$(DEPDIR)/tty.Po \
+	isocline/src/$(DEPDIR)/tty_esc.Po \
+	isocline/src/$(DEPDIR)/undo.Po \
+	isocline/src/$(DEPDIR)/wcwidth.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -171,13 +211,15 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(hcl_SOURCES) $(hclx_SOURCES)
-DIST_SOURCES = $(hcl_SOURCES) $(am__hclx_SOURCES_DIST)
+SOURCES = $(libisocline_a_SOURCES) $(hcl_SOURCES) $(hclx_SOURCES)
+DIST_SOURCES = $(libisocline_a_SOURCES) $(hcl_SOURCES) \
+	$(am__hclx_SOURCES_DIST)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
     *) (install-info --version) >/dev/null 2>&1;; \
   esac
+HEADERS = $(noinst_HEADERS)
 am__tagged_files = $(HEADERS) $(SOURCES) $(TAGS_FILES) $(LISP)
 # Read a list of newline-separated strings from the standard input,
 # and print each of them once, without duplicates.  Input order is
@@ -237,7 +279,6 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
-ISOCLINE_LIBS = @ISOCLINE_LIBS@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBM = @LIBM@
@@ -350,10 +391,51 @@ CPPFLAGS_COMMON = \
 CFLAGS_COMMON = 
 LDFLAGS_COMMON = -L$(abs_builddir)/../lib -L$(libdir)
 LIBADD_COMMON = $(am__append_1) $(am__append_2)
+
+##################################################
+# BUNDLED LIBRARIES
+##################################################
+noinst_LIBRARIES = libisocline.a
+noinst_HEADERS = \
+	isocline/include/isocline.h \
+	isocline/src/attr.h \
+	isocline/src/bbcode.h \
+	isocline/src/common.h \
+	isocline/src/completions.h \
+	isocline/src/env.h \
+	isocline/src/highlight.h \
+	isocline/src/history.h \
+	isocline/src/stringbuf.h \
+	isocline/src/term.h \
+	isocline/src/tty.h \
+	isocline/src/undo.h \
+	isocline/src/editline_completion.c \
+	isocline/src/editline_help.c \
+	isocline/src/editline_history.c \
+	isocline/src/term_color.c
+
+libisocline_a_SOURCES = \
+	isocline/src/attr.c \
+	isocline/src/bbcode.c \
+	isocline/src/bbcode_colors.c \
+	isocline/src/common.c \
+	isocline/src/completers.c \
+	isocline/src/completions.c \
+	isocline/src/editline.c \
+	isocline/src/highlight.c \
+	isocline/src/history.c \
+	isocline/src/isocline.c \
+	isocline/src/stringbuf.c \
+	isocline/src/term.c \
+	isocline/src/tty.c \
+	isocline/src/tty_esc.c \
+	isocline/src/undo.c \
+	isocline/src/wcwidth.c
+
 hcl_SOURCES = hcl.c
-hcl_CPPFLAGS = $(CPPFLAGS_COMMON) 
+hcl_CPPFLAGS = $(CPPFLAGS_COMMON) -I$(srcdir)/isocline/include -DHAVE_ISOCLINE_H -DHAVE_ISOCLINE_LIB
 hcl_LDFLAGS = $(LDFLAGS_COMMON)
-hcl_LDADD = ../lib/libhcl.la $(LIBADD_COMMON) $(ISOCLINE_LIBS)
+hcl_LDADD = ../lib/libhcl.la $(LIBADD_COMMON) ./libisocline.a
 @ENABLE_HCLX_TRUE@hclx_SOURCES = hclx.c
 @ENABLE_HCLX_TRUE@hclx_CPPFLAGS = $(CPPFLAGS_COMMON)
 @ENABLE_HCLX_TRUE@hclx_LDFLAGS = $(LDFLAGS_COMMON)
@@ -441,6 +523,52 @@ clean-binPROGRAMS:
 	echo " rm -f" $$list; \
 	rm -f $$list
 
+clean-noinstLIBRARIES:
+	-test -z "$(noinst_LIBRARIES)" || rm -f $(noinst_LIBRARIES)
+isocline/src/$(am__dirstamp):
+	@$(MKDIR_P) isocline/src
+	@: > isocline/src/$(am__dirstamp)
+isocline/src/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) isocline/src/$(DEPDIR)
+	@: > isocline/src/$(DEPDIR)/$(am__dirstamp)
+isocline/src/attr.$(OBJEXT): isocline/src/$(am__dirstamp) \
+	isocline/src/$(DEPDIR)/$(am__dirstamp)
+isocline/src/bbcode.$(OBJEXT): isocline/src/$(am__dirstamp) \
+	isocline/src/$(DEPDIR)/$(am__dirstamp)
+isocline/src/bbcode_colors.$(OBJEXT): isocline/src/$(am__dirstamp) \
+	isocline/src/$(DEPDIR)/$(am__dirstamp)
+isocline/src/common.$(OBJEXT): isocline/src/$(am__dirstamp) \
+	isocline/src/$(DEPDIR)/$(am__dirstamp)
+isocline/src/completers.$(OBJEXT): isocline/src/$(am__dirstamp) \
+	isocline/src/$(DEPDIR)/$(am__dirstamp)
+isocline/src/completions.$(OBJEXT): isocline/src/$(am__dirstamp) \
+	isocline/src/$(DEPDIR)/$(am__dirstamp)
+isocline/src/editline.$(OBJEXT): isocline/src/$(am__dirstamp) \
+	isocline/src/$(DEPDIR)/$(am__dirstamp)
+isocline/src/highlight.$(OBJEXT): isocline/src/$(am__dirstamp) \
+	isocline/src/$(DEPDIR)/$(am__dirstamp)
+isocline/src/history.$(OBJEXT): isocline/src/$(am__dirstamp) \
+	isocline/src/$(DEPDIR)/$(am__dirstamp)
+isocline/src/isocline.$(OBJEXT): isocline/src/$(am__dirstamp) \
+	isocline/src/$(DEPDIR)/$(am__dirstamp)
+isocline/src/stringbuf.$(OBJEXT): isocline/src/$(am__dirstamp) \
+	isocline/src/$(DEPDIR)/$(am__dirstamp)
+isocline/src/term.$(OBJEXT): isocline/src/$(am__dirstamp) \
+	isocline/src/$(DEPDIR)/$(am__dirstamp)
+isocline/src/tty.$(OBJEXT): isocline/src/$(am__dirstamp) \
+	isocline/src/$(DEPDIR)/$(am__dirstamp)
+isocline/src/tty_esc.$(OBJEXT): isocline/src/$(am__dirstamp) \
+	isocline/src/$(DEPDIR)/$(am__dirstamp)
+isocline/src/undo.$(OBJEXT): isocline/src/$(am__dirstamp) \
+	isocline/src/$(DEPDIR)/$(am__dirstamp)
+isocline/src/wcwidth.$(OBJEXT): isocline/src/$(am__dirstamp) \
+	isocline/src/$(DEPDIR)/$(am__dirstamp)
+
+libisocline.a: $(libisocline_a_OBJECTS) $(libisocline_a_DEPENDENCIES) $(EXTRA_libisocline_a_DEPENDENCIES) 
+	$(AM_V_at)-rm -f libisocline.a
+	$(AM_V_AR)$(libisocline_a_AR) libisocline.a $(libisocline_a_OBJECTS) $(libisocline_a_LIBADD)
+	$(AM_V_at)$(RANLIB) libisocline.a
+
 hcl$(EXEEXT): $(hcl_OBJECTS) $(hcl_DEPENDENCIES) $(EXTRA_hcl_DEPENDENCIES) 
 	@rm -f hcl$(EXEEXT)
 	$(AM_V_CCLD)$(hcl_LINK) $(hcl_OBJECTS) $(hcl_LDADD) $(LIBS)
@@ -451,12 +579,29 @@ hclx$(EXEEXT): $(hclx_OBJECTS) $(hclx_DEPENDENCIES) $(EXTRA_hclx_DEPENDENCIES)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
+	-rm -f isocline/src/*.$(OBJEXT)
 
 distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hcl-hcl.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hclx-hclx.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/attr.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/bbcode.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/bbcode_colors.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/common.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/completers.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/completions.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/editline.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/highlight.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/history.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/isocline.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/stringbuf.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/term.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/tty.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/tty_esc.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/undo.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/wcwidth.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
 	@$(MKDIR_P) $(@D)
@@ -608,7 +753,7 @@ distdir-am: $(DISTFILES)
 	done
 check-am: all-am
 check: check-am
-all-am: Makefile $(PROGRAMS)
+all-am: Makefile $(PROGRAMS) $(LIBRARIES) $(HEADERS)
 installdirs:
 	for dir in "$(DESTDIR)$(bindir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
@@ -639,17 +784,36 @@ clean-generic:
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
+	-rm -f isocline/src/$(DEPDIR)/$(am__dirstamp)
+	-rm -f isocline/src/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-am
 
-clean-am: clean-binPROGRAMS clean-generic clean-libtool mostlyclean-am
+clean-am: clean-binPROGRAMS clean-generic clean-libtool \
+	clean-noinstLIBRARIES mostlyclean-am
 
 distclean: distclean-am
 		-rm -f ./$(DEPDIR)/hcl-hcl.Po
 	-rm -f ./$(DEPDIR)/hclx-hclx.Po
+	-rm -f isocline/src/$(DEPDIR)/attr.Po
+	-rm -f isocline/src/$(DEPDIR)/bbcode.Po
+	-rm -f isocline/src/$(DEPDIR)/bbcode_colors.Po
+	-rm -f isocline/src/$(DEPDIR)/common.Po
+	-rm -f isocline/src/$(DEPDIR)/completers.Po
+	-rm -f isocline/src/$(DEPDIR)/completions.Po
+	-rm -f isocline/src/$(DEPDIR)/editline.Po
+	-rm -f isocline/src/$(DEPDIR)/highlight.Po
+	-rm -f isocline/src/$(DEPDIR)/history.Po
+	-rm -f isocline/src/$(DEPDIR)/isocline.Po
+	-rm -f isocline/src/$(DEPDIR)/stringbuf.Po
+	-rm -f isocline/src/$(DEPDIR)/term.Po
+	-rm -f isocline/src/$(DEPDIR)/tty.Po
+	-rm -f isocline/src/$(DEPDIR)/tty_esc.Po
+	-rm -f isocline/src/$(DEPDIR)/undo.Po
+	-rm -f isocline/src/$(DEPDIR)/wcwidth.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -697,6 +861,22 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 		-rm -f ./$(DEPDIR)/hcl-hcl.Po
 	-rm -f ./$(DEPDIR)/hclx-hclx.Po
+	-rm -f isocline/src/$(DEPDIR)/attr.Po
+	-rm -f isocline/src/$(DEPDIR)/bbcode.Po
+	-rm -f isocline/src/$(DEPDIR)/bbcode_colors.Po
+	-rm -f isocline/src/$(DEPDIR)/common.Po
+	-rm -f isocline/src/$(DEPDIR)/completers.Po
+	-rm -f isocline/src/$(DEPDIR)/completions.Po
+	-rm -f isocline/src/$(DEPDIR)/editline.Po
+	-rm -f isocline/src/$(DEPDIR)/highlight.Po
+	-rm -f isocline/src/$(DEPDIR)/history.Po
+	-rm -f isocline/src/$(DEPDIR)/isocline.Po
+	-rm -f isocline/src/$(DEPDIR)/stringbuf.Po
+	-rm -f isocline/src/$(DEPDIR)/term.Po
+	-rm -f isocline/src/$(DEPDIR)/tty.Po
+	-rm -f isocline/src/$(DEPDIR)/tty_esc.Po
+	-rm -f isocline/src/$(DEPDIR)/undo.Po
+	-rm -f isocline/src/$(DEPDIR)/wcwidth.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -718,15 +898,16 @@ uninstall-am: uninstall-binPROGRAMS
 .MAKE: install-am install-strip
 
 .PHONY: CTAGS GTAGS TAGS all all-am am--depfiles check check-am clean \
-	clean-binPROGRAMS clean-generic clean-libtool cscopelist-am \
-	ctags ctags-am distclean distclean-compile distclean-generic \
-	distclean-libtool distclean-tags distdir dvi dvi-am html \
-	html-am info info-am install install-am install-binPROGRAMS \
-	install-data install-data-am install-dvi install-dvi-am \
-	install-exec install-exec-am install-html install-html-am \
-	install-info install-info-am install-man install-pdf \
-	install-pdf-am install-ps install-ps-am install-strip \
-	installcheck installcheck-am installdirs maintainer-clean \
+	clean-binPROGRAMS clean-generic clean-libtool \
+	clean-noinstLIBRARIES cscopelist-am ctags ctags-am distclean \
+	distclean-compile distclean-generic distclean-libtool \
+	distclean-tags distdir dvi dvi-am html html-am info info-am \
+	install install-am install-binPROGRAMS install-data \
+	install-data-am install-dvi install-dvi-am install-exec \
+	install-exec-am install-html install-html-am install-info \
+	install-info-am install-man install-pdf install-pdf-am \
+	install-ps install-ps-am install-strip installcheck \
+	installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-compile \
 	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
 	tags tags-am uninstall uninstall-am uninstall-binPROGRAMS

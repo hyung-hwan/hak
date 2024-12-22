@@ -1,0 +1,1 @@
+/usr/bin/cc -O3 -DNDEBUG CMakeFiles/test_colors.dir/test/test_colors.c.o -o test_colors  libisocline.a 

@@ -1,0 +1,5 @@
+/home/hyung-hwan/projects/isocline/bld/CMakeFiles/isocline.dir
+/home/hyung-hwan/projects/isocline/bld/CMakeFiles/example.dir
+/home/hyung-hwan/projects/isocline/bld/CMakeFiles/test_colors.dir
+/home/hyung-hwan/projects/isocline/bld/CMakeFiles/edit_cache.dir
+/home/hyung-hwan/projects/isocline/bld/CMakeFiles/rebuild_cache.dir
