@@ -816,7 +816,7 @@ start_over:
 
 /* ========================================================================= */
 
-static int feed_json_data (hcl_json_t* json, const hcl_bch_t* data, hcl_oow_t len, hcl_oow_t* xlen)
+static int feed_json_data_b (hcl_json_t* json, const hcl_bch_t* data, hcl_oow_t len, hcl_oow_t* xlen)
 {
 	const hcl_bch_t* ptr;
 	const hcl_bch_t* end;
@@ -867,6 +867,47 @@ oops:
 	return -1;
 }
 
+/* ========================================================================= */
+
+static int feed_json_data_u (hcl_json_t* json, const hcl_uch_t* data, hcl_oow_t len, hcl_oow_t* xlen)
+{
+	const hcl_uch_t* ptr;
+	const hcl_uch_t* end;
+
+	ptr = data;
+	end = ptr + len;
+
+	while (ptr < end)
+	{
+		hcl_ooci_t c;
+
+	#if defined(HCL_OOCH_IS_UCH)
+		c = *ptr++;
+		/* handle a single character */
+		if (handle_char(json, c) <= -1) goto oops;
+	#else
+		hcl_bch_t bcsbuf[HCL_BCSIZE_MAX];
+		hcl_oow_t mlen = 0;
+		hcl_oow_t n, i;
+
+		n = json->_gem.cmgr->uctobc(*ptr++, bcsbuf, HCL_COUNTOF(bcsbuf));
+		if (n == 0) goto oops; // illegal character
+
+		for (i = 0; i < n; i++)
+		{
+			if (handle_char(json, bcsbuf[i]) <= -1) goto oops;
+		}
+	#endif
+	}
+
+	*xlen = ptr - data;
+	return 1;
+
+oops:
+	/* TODO: compute the number of processed bytes so far and return it via a parameter??? */
+/*printf ("feed oops....\n");*/
+	return -1;
+}
 
 /* ========================================================================= */
 
@@ -1105,17 +1146,34 @@ void hcl_json_reset (hcl_json_t* json)
 	json->state_stack->state = HCL_JSON_STATE_START;
 }
 
-int hcl_json_feed (hcl_json_t* json, const void* ptr, hcl_oow_t len, hcl_oow_t* xlen)
+int hcl_json_feedbchars (hcl_json_t* json, const hcl_bch_t* ptr, hcl_oow_t len, hcl_oow_t* xlen)
 {
 	int x;
 	hcl_oow_t total, ylen;
-	const hcl_bch_t* buf;
 
-	buf = (const hcl_bch_t*)ptr;
 	total = 0;
 	while (total < len)
 	{
-		x = feed_json_data(json, &buf[total], len - total, &ylen);
+		x = feed_json_data_b(json, &ptr[total], len - total, &ylen);
+		if (x <= -1) return -1;
+
+		total += ylen;
+		if (x == 0) break; /* incomplete sequence encountered */
+	}
+
+	*xlen = total;
+	return 0;
+}
+
+int hcl_json_feeduchars (hcl_json_t* json, const hcl_uch_t* ptr, hcl_oow_t len, hcl_oow_t* xlen)
+{
+	int x;
+	hcl_oow_t total, ylen;
+
+	total = 0;
+	while (total < len)
+	{
+		x = feed_json_data_u(json, &ptr[total], len - total, &ylen);
 		if (x <= -1) return -1;
 
 		total += ylen;

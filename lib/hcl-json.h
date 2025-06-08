@@ -122,12 +122,27 @@ HCL_EXPORT void hcl_json_reset (
 	hcl_json_t* json
 );
 
-HCL_EXPORT int hcl_json_feed (
-	hcl_json_t*   json,
-	const void*   ptr,
-	hcl_oow_t     len,
-	hcl_oow_t*    xlen
+HCL_EXPORT int hcl_json_feedbchars (
+	hcl_json_t*      json,
+	const hcl_bch_t* ptr,
+	hcl_oow_t        len,
+	hcl_oow_t*       xlen
 );
+
+HCL_EXPORT int hcl_json_feeduchars (
+	hcl_json_t*      json,
+	const hcl_uch_t* ptr,
+	hcl_oow_t        len,
+	hcl_oow_t*       xlen
+);
+
+
+#if defined(HCL_OOCH_IS_UCH)
+#	define hcl_json_feed hcl_json_feeduchars
+#else
+#	define hcl_json_feed hcl_json_feedbchars
+#endif
+
 
 HCL_EXPORT hcl_json_state_t hcl_json_getstate (
 	hcl_json_t* json
