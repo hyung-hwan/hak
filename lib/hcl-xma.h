@@ -72,9 +72,7 @@
  */
 #include <hcl-cmn.h>
 
-#ifdef HCL_BUILD_DEBUG
-#	define HCL_XMA_ENABLE_STAT
-#endif
+#define HCL_XMA_ENABLE_STAT
 
 /** @struct hcl_xma_t
  * The hcl_xma_t type defines a simple memory allocator over a memory zone.
@@ -105,14 +103,22 @@ struct hcl_xma_t
 	/** pre-computed value for fast xfree index calculation */
 	hcl_oow_t     bdec;
 
-#ifdef HCL_XMA_ENABLE_STAT
+#if defined(HCL_XMA_ENABLE_STAT)
 	struct
 	{
 		hcl_oow_t total;
-		hcl_oow_t alloc;
-		hcl_oow_t avail;
-		hcl_oow_t nused;
-		hcl_oow_t nfree;
+		hcl_oow_t alloc; /* allocated size */
+		hcl_oow_t avail; /* available size */
+		hcl_oow_t nused; /* nubmer of used blocks */
+		hcl_oow_t nfree; /* number of free blocks */
+		hcl_oow_t alloc_hwmark; /* high watermark - highest total memory ever allocated */
+		hcl_oow_t nallocops; /* number of alloc operations */
+		hcl_oow_t nallocgoodops; /* number of successful alloc operations */
+		hcl_oow_t nallocbadops; /* number of failed alloc operations */
+		hcl_oow_t nreallocops; /* number of realloc operations */
+		hcl_oow_t nreallocgoodops; /* number of good realloc operations */
+		hcl_oow_t nreallocbadops; /* number of failed realloc operations - could fall back to normal alloc*/
+		hcl_oow_t nfreeops; /* number of free operations */
 	} stat;
 #endif
 };

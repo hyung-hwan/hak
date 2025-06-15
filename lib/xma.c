@@ -250,7 +250,7 @@ int hcl_xma_init (hcl_xma_t* xma, hcl_mmgr_t* mmgr, void* zoneptr, hcl_oow_t zon
 	first->free_prev = HCL_NULL;
 	first->free_next = HCL_NULL;
 
-	HCL_MEMSET (xma, 0, HCL_SIZEOF(*xma));
+	HCL_MEMSET(xma, 0, HCL_SIZEOF(*xma));
 	xma->_mmgr = mmgr;
 	xma->bdec = szlog2(FIXED * ALIGN); /* precalculate the decrement value */
 
@@ -272,6 +272,15 @@ int hcl_xma_init (hcl_xma_t* xma, hcl_mmgr_t* mmgr, void* zoneptr, hcl_oow_t zon
 	xma->stat.avail = zonesize - MBLKHDRSIZE;
 	xma->stat.nfree = 1;
 	xma->stat.nused = 0;
+	xma->stat.alloc_hwmark = 0;
+
+	xma->stat.nallocops = 0;
+	xma->stat.nallocgoodops = 0;
+	xma->stat.nallocbadops = 0;
+	xma->stat.nreallocops = 0;
+	xma->stat.nreallocgoodops = 0;
+	xma->stat.nreallocbadops = 0;
+	xma->stat.nfreeops = 0;
 #endif
 
 	return 0;
@@ -343,7 +352,7 @@ static hcl_xma_fblk_t* alloc_from_freelist (hcl_xma_t* xma, hcl_oow_t xfi, hcl_o
 		{
 			hcl_oow_t rem;
 
-			detach_from_freelist (xma, cand);
+			detach_from_freelist(xma, cand);
 
 			rem = cand->size - size;
 			if (rem >= FBLKMINSIZE)
@@ -366,7 +375,7 @@ static hcl_xma_fblk_t* alloc_from_freelist (hcl_xma_t* xma, hcl_oow_t xfi, hcl_o
 				y->prev_size = cand->size;
 
 				/* add the remaining part to the free list */
-				attach_to_freelist (xma, (hcl_xma_fblk_t*)y);
+				attach_to_freelist(xma, (hcl_xma_fblk_t*)y);
 
 				z = next_mblk(y);
 				if ((hcl_uint8_t*)z < xma->end) z->prev_size = y->size;
@@ -394,6 +403,7 @@ static hcl_xma_fblk_t* alloc_from_freelist (hcl_xma_t* xma, hcl_oow_t xfi, hcl_o
 			xma->stat.nused++;
 			xma->stat.alloc += cand->size;
 			xma->stat.avail -= cand->size;
+			if (xma->stat.alloc > xma->stat.alloc_hwmark) xma->stat.alloc_hwmark = xma->stat.alloc;
 #endif
 			return cand;
 		}
@@ -408,7 +418,11 @@ void* hcl_xma_alloc (hcl_xma_t* xma, hcl_oow_t size)
 	hcl_xma_fblk_t* cand;
 	hcl_oow_t xfi;
 
-	DBG_VERIFY (xma, "alloc start");
+	DBG_VERIFY(xma, "alloc start");
+
+#if defined(HCL_XMA_ENABLE_STAT)
+	xma->stat.nallocops++;
+#endif
 
 	/* round up 'size' to the multiples of ALIGN */
 	if (size < MINALLOCSIZE) size = MINALLOCSIZE;
@@ -426,7 +440,7 @@ void* hcl_xma_alloc (hcl_xma_t* xma, hcl_oow_t size)
 		assert (cand->free != 0);
 		assert (cand->size == size);
 
-		detach_from_freelist (xma, cand);
+		detach_from_freelist(xma, cand);
 		cand->free = 0;
 
 #if defined(HCL_XMA_ENABLE_STAT)
@@ -434,13 +448,20 @@ void* hcl_xma_alloc (hcl_xma_t* xma, hcl_oow_t size)
 		xma->stat.nused++;
 		xma->stat.alloc += cand->size;
 		xma->stat.avail -= cand->size;
+		if (xma->stat.alloc > xma->stat.alloc_hwmark) xma->stat.alloc_hwmark = xma->stat.alloc;
 #endif
 	}
 	else if (xfi == XFIMAX(xma))
 	{
 		/* huge block */
 		cand = alloc_from_freelist(xma, XFIMAX(xma), size);
-		if (!cand) return HCL_NULL;
+		if (!cand)
+		{
+		#if defined(HCL_XMA_ENABLE_STAT)
+			xma->stat.nallocbadops++;
+		#endif
+			return HCL_NULL;
+		}
 	}
 	else
 	{
@@ -469,11 +490,20 @@ void* hcl_xma_alloc (hcl_xma_t* xma, hcl_oow_t size)
 				cand = alloc_from_freelist(xma, xfi, size);
 				if (cand) break;
 			}
-			if (!cand) return HCL_NULL;
+			if (!cand)
+			{
+			#if defined(HCL_XMA_ENABLE_STAT)
+				xma->stat.nallocbadops++;
+			#endif
+				return HCL_NULL;
+			}
 		}
 	}
 
-	DBG_VERIFY (xma, "alloc end");
+#if defined(HCL_XMA_ENABLE_STAT)
+	xma->stat.nallocgoodops++;
+#endif
+	DBG_VERIFY(xma, "alloc end");
 	return SYS_TO_USR(cand);
 }
 
@@ -481,7 +511,7 @@ static void* _realloc_merge (hcl_xma_t* xma, void* b, hcl_oow_t size)
 {
 	hcl_xma_mblk_t* blk = (hcl_xma_mblk_t*)USR_TO_SYS(b);
 
-	DBG_VERIFY (xma, "realloc merge start");
+	DBG_VERIFY(xma, "realloc merge start");
 	/* rounds up 'size' to be multiples of ALIGN */
 	if (size < MINALLOCSIZE) size = MINALLOCSIZE;
 	size = HCL_ALIGN_POW2(size, ALIGN);
@@ -504,7 +534,7 @@ static void* _realloc_merge (hcl_xma_t* xma, void* b, hcl_oow_t size)
 		assert (blk->size == n->prev_size);
 
 		/* let's merge the current block with the next block */
-		detach_from_freelist (xma, (hcl_xma_fblk_t*)n);
+		detach_from_freelist(xma, (hcl_xma_fblk_t*)n);
 
 		rem = (MBLKHDRSIZE + n->size) - req;
 		if (rem >= FBLKMINSIZE)
@@ -521,7 +551,7 @@ static void* _realloc_merge (hcl_xma_t* xma, void* b, hcl_oow_t size)
 			y->free = 1;
 			y->size = rem - MBLKHDRSIZE;
 			y->prev_size = blk->size;
-			attach_to_freelist (xma, (hcl_xma_fblk_t*)y);
+			attach_to_freelist(xma, (hcl_xma_fblk_t*)y);
 
 			z = next_mblk(y);
 			if ((hcl_uint8_t*)z < xma->end) z->prev_size = y->size;
@@ -529,6 +559,7 @@ static void* _realloc_merge (hcl_xma_t* xma, void* b, hcl_oow_t size)
 #if defined(HCL_XMA_ENABLE_STAT)
 			xma->stat.alloc += req;
 			xma->stat.avail -= req; /* req + MBLKHDRSIZE(tmp) - MBLKHDRSIZE(n) */
+			if (xma->stat.alloc > xma->stat.alloc_hwmark) xma->stat.alloc_hwmark = xma->stat.alloc;
 #endif
 		}
 		else
@@ -546,6 +577,7 @@ static void* _realloc_merge (hcl_xma_t* xma, void* b, hcl_oow_t size)
 			xma->stat.nfree--;
 			xma->stat.alloc += MBLKHDRSIZE + n->size;
 			xma->stat.avail -= n->size;
+			if (xma->stat.alloc > xma->stat.alloc_hwmark) xma->stat.alloc_hwmark = xma->stat.alloc;
 #endif
 		}
 	}
@@ -566,7 +598,7 @@ static void* _realloc_merge (hcl_xma_t* xma, void* b, hcl_oow_t size)
 
 				/* make the leftover block merge with the next block */
 
-				detach_from_freelist (xma, (hcl_xma_fblk_t*)n);
+				detach_from_freelist(xma, (hcl_xma_fblk_t*)n);
 
 				blk->size = size;
 
@@ -576,7 +608,7 @@ static void* _realloc_merge (hcl_xma_t* xma, void* b, hcl_oow_t size)
 				y->prev_size = blk->size;
 
 				/* add 'y' to the free list */
-				attach_to_freelist (xma, (hcl_xma_fblk_t*)y);
+				attach_to_freelist(xma, (hcl_xma_fblk_t*)y);
 
 				z = next_mblk(y); /* get adjacent block to the merged block */
 				if ((hcl_uint8_t*)z < xma->end) z->prev_size = y->size;
@@ -598,7 +630,7 @@ static void* _realloc_merge (hcl_xma_t* xma, void* b, hcl_oow_t size)
 				y->size = rem - MBLKHDRSIZE;
 				y->prev_size = blk->size;
 
-				attach_to_freelist (xma, (hcl_xma_fblk_t*)y);
+				attach_to_freelist(xma, (hcl_xma_fblk_t*)y);
 				/*n = next_mblk(y);
 				if ((hcl_uint8_t*)n < xma->end)*/ n->prev_size = y->size;
 
@@ -611,7 +643,7 @@ static void* _realloc_merge (hcl_xma_t* xma, void* b, hcl_oow_t size)
 		}
 	}
 
-	DBG_VERIFY (xma, "realloc merge end");
+	DBG_VERIFY(xma, "realloc merge end");
 	return b;
 }
 
@@ -626,7 +658,7 @@ void* hcl_xma_realloc (hcl_xma_t* xma, void* b, hcl_oow_t size)
 {
 	void* n;
 
-	if (b == HCL_NULL)
+	if (!b)
 	{
 		/* 'realloc' with NULL is the same as 'alloc' */
 		n = hcl_xma_alloc(xma, size);
@@ -634,17 +666,29 @@ void* hcl_xma_realloc (hcl_xma_t* xma, void* b, hcl_oow_t size)
 	else
 	{
 		/* try reallocation by merging the adjacent continuous blocks */
-		n = _realloc_merge (xma, b, size);
+	#if defined(HAWK_XMA_ENABLE_STAT)
+		xma->stat.nreallocops++;
+	#endif
+		n = _realloc_merge(xma, b, size);
 		if (!n)
 		{
+		#if defined(HCL_XMA_ENABLE_STAT)
+			xma->stat.nreallocbadops++;
+		#endif
 			/* reallocation by merging failed. fall back to the slow
 			 * allocation-copy-free scheme */
 			n = hcl_xma_alloc(xma, size);
 			if (n)
 			{
-				HCL_MEMCPY (n, b, size);
-				hcl_xma_free (xma, b);
+				HCL_MEMCPY(n, b, size);
+				hcl_xma_free(xma, b);
 			}
+		}
+		else
+		{
+		#if defined(HCL_XMA_ENABLE_STAT)
+			xma->stat.nreallocgoodops++;
+		#endif
 		}
 	}
 
@@ -657,7 +701,7 @@ void hcl_xma_free (hcl_xma_t* xma, void* b)
 	hcl_xma_mblk_t* x, * y;
 	hcl_oow_t org_blk_size;
 
-	DBG_VERIFY (xma, "free start");
+	DBG_VERIFY(xma, "free start");
 
 	org_blk_size = blk->size;
 
@@ -665,6 +709,7 @@ void hcl_xma_free (hcl_xma_t* xma, void* b)
 	/* update statistical variables */
 	xma->stat.nused--;
 	xma->stat.alloc -= org_blk_size;
+	xma->stat.nfreeops++;
 #endif
 
 	x = prev_mblk(blk);
@@ -692,11 +737,11 @@ void hcl_xma_free (hcl_xma_t* xma, void* b)
 		hcl_oow_t ns = MBLKHDRSIZE + org_blk_size + MBLKHDRSIZE;
 		hcl_oow_t bs = ns + y->size;
 
-		detach_from_freelist (xma, (hcl_xma_fblk_t*)x);
-		detach_from_freelist (xma, (hcl_xma_fblk_t*)y);
+		detach_from_freelist(xma, (hcl_xma_fblk_t*)x);
+		detach_from_freelist(xma, (hcl_xma_fblk_t*)y);
 
 		x->size += bs;
-		attach_to_freelist (xma, (hcl_xma_fblk_t*)x);
+		attach_to_freelist(xma, (hcl_xma_fblk_t*)x);
 
 		z = next_mblk(x);
 		if ((hcl_uint8_t*)z < xma->end) z->prev_size = x->size;
@@ -732,7 +777,7 @@ void hcl_xma_free (hcl_xma_t* xma, void* b)
 		hcl_xma_mblk_t* z = next_mblk(y);
 
 		/* detach y from the free list */
-		detach_from_freelist (xma, (hcl_xma_fblk_t*)y);
+		detach_from_freelist(xma, (hcl_xma_fblk_t*)y);
 
 		/* update the block availability */
 		blk->free = 1;
@@ -743,7 +788,7 @@ void hcl_xma_free (hcl_xma_t* xma, void* b)
 		if ((hcl_uint8_t*)z < xma->end) z->prev_size = blk->size;
 
 		/* attach blk to the free list */
-		attach_to_freelist (xma, (hcl_xma_fblk_t*)blk);
+		attach_to_freelist(xma, (hcl_xma_fblk_t*)blk);
 
 #if defined(HCL_XMA_ENABLE_STAT)
 		xma->stat.avail += org_blk_size + MBLKHDRSIZE;
@@ -765,14 +810,14 @@ void hcl_xma_free (hcl_xma_t* xma, void* b)
 		 * |     X                   |     Y      |
 		 * +-------------------------+------------+
 		 */
-		detach_from_freelist (xma, (hcl_xma_fblk_t*)x);
+		detach_from_freelist(xma, (hcl_xma_fblk_t*)x);
 
 		x->size += MBLKHDRSIZE + org_blk_size;
 
 		assert (y == next_mblk(x));
 		if ((hcl_uint8_t*)y < xma->end) y->prev_size = x->size;
 
-		attach_to_freelist (xma, (hcl_xma_fblk_t*)x);
+		attach_to_freelist(xma, (hcl_xma_fblk_t*)x);
 
 #if defined(HCL_XMA_ENABLE_STAT)
 		xma->stat.avail += MBLKHDRSIZE + org_blk_size;
@@ -781,7 +826,7 @@ void hcl_xma_free (hcl_xma_t* xma, void* b)
 	else
 	{
 		blk->free = 1;
-		attach_to_freelist (xma, (hcl_xma_fblk_t*)blk);
+		attach_to_freelist(xma, (hcl_xma_fblk_t*)blk);
 
 #if defined(HCL_XMA_ENABLE_STAT)
 		xma->stat.nfree++;
@@ -789,7 +834,7 @@ void hcl_xma_free (hcl_xma_t* xma, void* b)
 #endif
 	}
 
-	DBG_VERIFY (xma, "free end");
+	DBG_VERIFY(xma, "free end");
 }
 
 void hcl_xma_dump (hcl_xma_t* xma, hcl_xma_dumper_t dumper, void* ctx)
@@ -800,20 +845,21 @@ void hcl_xma_dump (hcl_xma_t* xma, hcl_xma_dumper_t dumper, void* ctx)
 	hcl_oow_t isum;
 #endif
 
-	dumper (ctx, "<XMA DUMP>\n");
+	dumper(ctx, "[XMA DUMP]\n");
 
 #if defined(HCL_XMA_ENABLE_STAT)
-	dumper (ctx, "== statistics ==\n");
-	dumper (ctx, "total = %zu\n", xma->stat.total);
-	dumper (ctx, "alloc = %zu\n", xma->stat.alloc);
-	dumper (ctx, "avail = %zu\n", xma->stat.avail);
+	dumper(ctx, "== statistics ==\n");
+	dumper(ctx, "Total                = %zu\n", xma->stat.total);
+	dumper(ctx, "Alloc                = %zu\n", xma->stat.alloc);
+	dumper(ctx, "Avail                = %zu\n", xma->stat.avail);
+	dumper(ctx, "Alloc High Watermark = %zu\n", xma->stat.alloc_hwmark);
 #endif
 
-	dumper (ctx, "== blocks ==\n");
-	dumper (ctx, " size               avail address\n");
+	dumper(ctx, "== blocks ==\n");
+	dumper(ctx, " size               avail address\n");
 	for (tmp = (hcl_xma_mblk_t*)xma->start, fsum = 0, asum = 0; (hcl_uint8_t*)tmp < xma->end; tmp = next_mblk(tmp))
 	{
-		dumper (ctx, " %-18zu %-5u %p\n", tmp->size, (unsigned int)tmp->free, tmp);
+		dumper(ctx, " %-18zu %-5u %p\n", tmp->size, (unsigned int)tmp->free, tmp);
 		if (tmp->free) fsum += tmp->size;
 		else asum += tmp->size;
 	}
@@ -822,21 +868,28 @@ void hcl_xma_dump (hcl_xma_t* xma, hcl_xma_dumper_t dumper, void* ctx)
 	isum = (xma->stat.nfree + xma->stat.nused) * MBLKHDRSIZE;
 #endif
 
-	dumper (ctx, "---------------------------------------\n");
-	dumper (ctx, "Allocated blocks: %18zu bytes\n", asum);
-	dumper (ctx, "Available blocks: %18zu bytes\n", fsum);
+	dumper(ctx, "---------------------------------------\n");
+	dumper(ctx, "Allocated blocks       : %18zu bytes\n", asum);
+	dumper(ctx, "Available blocks       : %18zu bytes\n", fsum);
 
 
 #if defined(HCL_XMA_ENABLE_STAT)
-	dumper (ctx, "Internal use    : %18zu bytes\n", isum);
-	dumper (ctx, "Total           : %18zu bytes\n", (asum + fsum + isum));
+	dumper(ctx, "Internal use           : %18zu bytes\n", isum);
+	dumper(ctx, "Total                  : %18zu bytes\n", (asum + fsum + isum));
+	dumper(ctx, "Alloc operations       : %18zu\n", xma->stat.nallocops);
+	dumper(ctx, "Good alloc operations  : %18zu\n", xma->stat.nallocgoodops);
+	dumper(ctx, "Bad alloc operations   : %18zu\n", xma->stat.nallocbadops);
+	dumper(ctx, "Realloc operations     : %18zu\n", xma->stat.nreallocops);
+	dumper(ctx, "Good realloc operations: %18zu\n", xma->stat.nreallocgoodops);
+	dumper(ctx, "Bad realloc operations : %18zu\n", xma->stat.nreallocbadops);
+	dumper(ctx, "Free operations        : %18zu\n", xma->stat.nfreeops);
 #endif
 
 #if defined(HCL_XMA_ENABLE_STAT)
-	assert (asum == xma->stat.alloc);
-	assert (fsum == xma->stat.avail);
-	assert (isum == xma->stat.total - (xma->stat.alloc + xma->stat.avail));
-	assert (asum + fsum + isum == xma->stat.total);
+	HCL_ASSERT(hcl, asum == xma->stat.alloc);
+	HCL_ASSERT(hcl, fsum == xma->stat.avail);
+	HCL_ASSERT(hcl, isum == xma->stat.total - (xma->stat.alloc + xma->stat.avail));
+	HCL_ASSERT(hcl, asum + fsum + isum == xma->stat.total);
 #endif
 }
 

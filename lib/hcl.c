@@ -29,7 +29,7 @@ hcl_t* hcl_open (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, const hcl_vmprim_t* vmprim
 	hcl_t* hcl;
 
 	/* if this assertion fails, correct the type definition in hcl.h */
-	HCL_ASSERT (hcl, HCL_SIZEOF(hcl_oow_t) == HCL_SIZEOF(hcl_oop_t));
+	HCL_ASSERT(hcl, HCL_SIZEOF(hcl_oow_t) == HCL_SIZEOF(hcl_oop_t));
 
 	hcl = (hcl_t*)HCL_MMGR_ALLOC(mmgr, HCL_SIZEOF(*hcl) + xtnsize);
 	if (hcl)
@@ -106,7 +106,7 @@ static void* alloc_heap (hcl_t* hcl, hcl_oow_t* size)
 
 static void free_heap (hcl_t* hcl, void* ptr)
 {
-	hcl_freemem (hcl, ptr);
+	hcl_freemem(hcl, ptr);
 }
 
 int hcl_init (hcl_t* hcl, hcl_mmgr_t* mmgr, const hcl_vmprim_t* vmprim)
@@ -116,19 +116,19 @@ int hcl_init (hcl_t* hcl, hcl_mmgr_t* mmgr, const hcl_vmprim_t* vmprim)
 
 	if (!vmprim->syserrstrb && !vmprim->syserrstru)
 	{
-		hcl_seterrnum (hcl, HCL_EINVAL);
+		hcl_seterrnum(hcl, HCL_EINVAL);
 		return -1;
 	}
 
 #if !defined(HCL_BUILD_RELEASE)
 	if (!vmprim->assertfail)
 	{
-		hcl_seterrnum (hcl, HCL_EINVAL);
+		hcl_seterrnum(hcl, HCL_EINVAL);
 		return -1;
 	}
 #endif
 
-	HCL_MEMSET (hcl, 0, HCL_SIZEOF(*hcl));
+	HCL_MEMSET(hcl, 0, HCL_SIZEOF(*hcl));
 	hcl->_instsize = HCL_SIZEOF(*hcl);
 	hcl->_mmgr = mmgr;
 	hcl->_cmgr = hcl_get_utf8_cmgr();
@@ -188,13 +188,13 @@ int hcl_init (hcl_t* hcl, hcl_mmgr_t* mmgr, const hcl_vmprim_t* vmprim)
 	return 0;
 
 oops:
-	if (modtab_inited) hcl_rbt_fini (&hcl->modtab);
+	if (modtab_inited) hcl_rbt_fini(&hcl->modtab);
 	if (hcl->gci.stack.ptr)
 	{
-		hcl_freemem (hcl, hcl->gci.stack.ptr);
+		hcl_freemem(hcl, hcl->gci.stack.ptr);
 		hcl->gci.stack.capa = 0;
 	}
-	if (hcl->log.ptr) hcl_freemem (hcl, hcl->log.ptr);
+	if (hcl->log.ptr) hcl_freemem(hcl, hcl->log.ptr);
 	hcl->log.capa = 0;
 	return -1;
 }
@@ -205,10 +205,10 @@ static hcl_rbt_walk_t unload_module (hcl_rbt_t* rbt, hcl_rbt_pair_t* pair, void*
 	hcl_mod_data_t* mdp;
 
 	mdp = (hcl_mod_data_t*)HCL_RBT_VPTR(pair);
-	HCL_ASSERT (hcl, mdp != HCL_NULL);
+	HCL_ASSERT(hcl, mdp != HCL_NULL);
 
 	mdp->pair = HCL_NULL; /* to prevent hcl_closemod() from calling  hcl_rbt_delete() */
-	hcl_closemod (hcl, mdp);
+	hcl_closemod(hcl, mdp);
 
 	return HCL_RBT_WALK_FORWARD;
 }
@@ -218,14 +218,14 @@ void hcl_fini (hcl_t* hcl)
 	hcl_cb_t* cb;
 	hcl_oow_t i;
 
-	hcl_rbt_walk (&hcl->modtab, unload_module, hcl);
-	hcl_rbt_fini (&hcl->modtab);
+	hcl_rbt_walk(&hcl->modtab, unload_module, hcl);
+	hcl_rbt_fini(&hcl->modtab);
 
 	if (hcl->log.len > 0)
 	{
 		/* flush pending log messages just in case. */
-		HCL_ASSERT (hcl, hcl->log.ptr != HCL_NULL);
-		HCL_VMPRIM_LOG_WRITE (hcl, hcl->log.last_mask, hcl->log.ptr, hcl->log.len);
+		HCL_ASSERT(hcl, hcl->log.ptr != HCL_NULL);
+		HCL_VMPRIM_LOG_WRITE(hcl, hcl->log.last_mask, hcl->log.ptr, hcl->log.len);
 	}
 
 	for (cb = hcl->cblist; cb; cb = cb->next)
@@ -239,57 +239,57 @@ void hcl_fini (hcl_t* hcl)
 		 * callbacks. however, the actual logging might not be produced at
 		 * this point because one of the callbacks could arrange to stop
 		 * logging */
-		HCL_ASSERT (hcl, hcl->log.ptr != HCL_NULL);
-		HCL_VMPRIM_LOG_WRITE (hcl, hcl->log.last_mask, hcl->log.ptr, hcl->log.len);
+		HCL_ASSERT(hcl, hcl->log.ptr != HCL_NULL);
+		HCL_VMPRIM_LOG_WRITE(hcl, hcl->log.last_mask, hcl->log.ptr, hcl->log.len);
 	}
 
 	/* deregister all callbacks */
-	while (hcl->cblist) hcl_deregcb (hcl, hcl->cblist);
+	while (hcl->cblist) hcl_deregcb(hcl, hcl->cblist);
 
 	/* detach the user data io handlers just in case */
 	hcl_detachudio (hcl);
 
 	if (hcl->sem_list)
 	{
-		hcl_freemem (hcl, hcl->sem_list);
+		hcl_freemem(hcl, hcl->sem_list);
 		hcl->sem_list_capa = 0;
 		hcl->sem_list_count = 0;
 	}
 
 	if (hcl->sem_heap)
 	{
-		hcl_freemem (hcl, hcl->sem_heap);
+		hcl_freemem(hcl, hcl->sem_heap);
 		hcl->sem_heap_capa = 0;
 		hcl->sem_heap_count = 0;
 	}
 
 	if (hcl->sem_io_tuple)
 	{
-		hcl_freemem (hcl, hcl->sem_io_tuple);
+		hcl_freemem(hcl, hcl->sem_io_tuple);
 		hcl->sem_io_tuple_capa = 0;
 		hcl->sem_io_tuple_count = 0;
 	}
 
 	if (hcl->sem_io_map)
 	{
-		hcl_freemem (hcl, hcl->sem_io_map);
+		hcl_freemem(hcl, hcl->sem_io_map);
 		hcl->sem_io_map_capa = 0;
 	}
 
 	if (hcl->proc_map)
 	{
-		hcl_freemem (hcl, hcl->proc_map);
+		hcl_freemem(hcl, hcl->proc_map);
 		hcl->proc_map_capa = 0;
 		hcl->proc_map_used = 0;
 		hcl->proc_map_free_first = -1;
 		hcl->proc_map_free_last = -1;
 	}
 
-	hcl_purgecode (hcl, &hcl->code);
+	hcl_purgecode(hcl, &hcl->code);
 
 	if (hcl->p.s.ptr)
 	{
-		hcl_freemem (hcl, hcl->p.s.ptr);
+		hcl_freemem(hcl, hcl->p.s.ptr);
 		hcl->p.s.ptr= HCL_NULL;
 		hcl->p.s.capa = 0;
 		hcl->p.s.size = 0;
@@ -302,51 +302,51 @@ void hcl_fini (hcl_t* hcl)
 		{
 			next = hcl->gci.b->next;
 			hcl->gci.bsz -= HCL_SIZEOF(hcl_obj_t) + hcl_getobjpayloadbytes(hcl, (hcl_oop_t)(hcl->gci.b + 1));
-			hcl_freeheapmem (hcl, hcl->heap, hcl->gci.b);
+			hcl_freeheapmem(hcl, hcl->heap, hcl->gci.b);
 			hcl->gci.b = next;
 		}
 		while (hcl->gci.b);
 
-		HCL_ASSERT (hcl, hcl->gci.bsz == 0);
+		HCL_ASSERT(hcl, hcl->gci.bsz == 0);
 	}
 
 	if (hcl->gci.stack.ptr)
 	{
-		hcl_freemem (hcl, hcl->gci.stack.ptr);
+		hcl_freemem(hcl, hcl->gci.stack.ptr);
 		hcl->gci.stack.ptr = 0;
 		hcl->gci.stack.capa = 0;
 		hcl->gci.stack.len = 0;
 	}
 
-	if (hcl->heap) hcl_killheap (hcl, hcl->heap);
+	if (hcl->heap) hcl_killheap(hcl, hcl->heap);
 
 	if (hcl->log.ptr)
 	{
-		hcl_freemem (hcl, hcl->log.ptr);
+		hcl_freemem(hcl, hcl->log.ptr);
 		hcl->log.capa = 0;
 		hcl->log.len = 0;
 	}
 
 	if (hcl->option.log_target_u)
 	{
-		hcl_freemem (hcl, hcl->option.log_target_u);
+		hcl_freemem(hcl, hcl->option.log_target_u);
 		hcl->option.log_target_u = HCL_NULL;
 	}
 
 	if (hcl->option.log_target_b)
 	{
-		hcl_freemem (hcl, hcl->option.log_target_b);
+		hcl_freemem(hcl, hcl->option.log_target_b);
 		hcl->option.log_target_b = HCL_NULL;
 	}
 
 	for (i = 0; i < HCL_COUNTOF(hcl->option.mod); i++)
 	{
-		if (hcl->option.mod[i].ptr) hcl_freemem (hcl, hcl->option.mod[i].ptr);
+		if (hcl->option.mod[i].ptr) hcl_freemem(hcl, hcl->option.mod[i].ptr);
 	}
 
 	if (hcl->inttostr.xbuf.ptr)
 	{
-		hcl_freemem (hcl, hcl->inttostr.xbuf.ptr);
+		hcl_freemem(hcl, hcl->inttostr.xbuf.ptr);
 		hcl->inttostr.xbuf.ptr = HCL_NULL;
 		hcl->inttostr.xbuf.capa = 0;
 		hcl->inttostr.xbuf.len = 0;
@@ -354,14 +354,14 @@ void hcl_fini (hcl_t* hcl)
 
 	if (hcl->inttostr.t.ptr)
 	{
-		hcl_freemem (hcl, hcl->inttostr.t.ptr);
+		hcl_freemem(hcl, hcl->inttostr.t.ptr);
 		hcl->inttostr.t.ptr = HCL_NULL;
 		hcl->inttostr.t.capa = 0;
 	}
 
 	if (hcl->sprintf.xbuf.ptr)
 	{
-		hcl_freemem (hcl, hcl->sprintf.xbuf.ptr);
+		hcl_freemem(hcl, hcl->sprintf.xbuf.ptr);
 		hcl->sprintf.xbuf.ptr = HCL_NULL;
 		hcl->sprintf.xbuf.capa = 0;
 		hcl->sprintf.xbuf.len = 0;
@@ -384,7 +384,7 @@ void hcl_resetcode (hcl_t* hcl)
 		{
 			hcl_oop_t key = HCL_CONS_CAR(v);
 			if (!HCL_IS_SYMBOL(hcl,key) || !HCL_OBJ_GET_FLAGS_KERNEL(key))
-				hcl_zapatsysdic (hcl, HCL_CONS_CAR(v));
+				hcl_zapatsysdic(hcl, HCL_CONS_CAR(v));
 		}
 	}
 
@@ -393,7 +393,7 @@ void hcl_resetcode (hcl_t* hcl)
 	hcl->code.lit.len = 0;
 
 	/* clean up object memory */
-	hcl_gc (hcl, 1);
+	hcl_gc(hcl, 1);
 }
 
 void hcl_clearcode (hcl_t* hcl)
@@ -452,7 +452,7 @@ int hcl_setoption (hcl_t* hcl, hcl_option_t id, const void* value)
 			v2 = hcl_dupbtoucstr(hcl, (const hcl_bch_t*)value, HCL_NULL);
 			if (HCL_UNLIKELY(!v2))
 			{
-				hcl_freemem (hcl, v1);
+				hcl_freemem(hcl, v1);
 				return -1;
 			}
 
@@ -472,7 +472,7 @@ int hcl_setoption (hcl_t* hcl, hcl_option_t id, const void* value)
 			v2 = hcl_duputobcstr(hcl, (const hcl_uch_t*)value, HCL_NULL);
 			if (HCL_UNLIKELY(!v2))
 			{
-				hcl_freemem (hcl, v1);
+				hcl_freemem(hcl, v1);
 				return -1;
 			}
 
@@ -493,7 +493,7 @@ int hcl_setoption (hcl_t* hcl, hcl_option_t id, const void* value)
 			v2 = hcl_dupbtouchars(hcl, v->ptr, v->len, HCL_NULL);
 			if (HCL_UNLIKELY(!v2))
 			{
-				hcl_freemem (hcl, v1);
+				hcl_freemem(hcl, v1);
 				return -1;
 			}
 
@@ -514,7 +514,7 @@ int hcl_setoption (hcl_t* hcl, hcl_option_t id, const void* value)
 			v2 = hcl_duputobchars(hcl, v->ptr, v->len, HCL_NULL);
 			if (HCL_UNLIKELY(!v2))
 			{
-				hcl_freemem (hcl, v1);
+				hcl_freemem(hcl, v1);
 				return -1;
 			}
 
@@ -566,7 +566,7 @@ int hcl_setoption (hcl_t* hcl, hcl_option_t id, const void* value)
 			if (dup_str_opt(hcl, (const hcl_ooch_t*)value, &tmp) <= -1) return -1;
 
 			idx = id - HCL_MOD_LIBDIRS;
-			if (hcl->option.mod[idx].ptr) hcl_freemem (hcl, hcl->option.mod[idx].ptr);
+			if (hcl->option.mod[idx].ptr) hcl_freemem(hcl, hcl->option.mod[idx].ptr);
 
 			hcl->option.mod[idx] = tmp;
 			return 0;
@@ -582,13 +582,13 @@ int hcl_setoption (hcl_t* hcl, hcl_option_t id, const void* value)
 
 	for (cb = hcl->cblist; cb; cb = cb->next)
 	{
-		if (cb->on_option) cb->on_option (hcl, id, value);
+		if (cb->on_option) cb->on_option(hcl, id, value);
 	}
 
 	return 0;
 
 einval:
-	hcl_seterrnum (hcl, HCL_EINVAL);
+	hcl_seterrnum(hcl, HCL_EINVAL);
 	return -1;
 }
 
@@ -649,7 +649,7 @@ int hcl_getoption (hcl_t* hcl, hcl_option_t id, void* value)
 			return 0;
 	};
 
-	hcl_seterrnum (hcl, HCL_EINVAL);
+	hcl_seterrnum(hcl, HCL_EINVAL);
 	return -1;
 }
 
@@ -690,10 +690,10 @@ void hcl_deregcb (hcl_t* hcl, hcl_cb_t* cb)
 
 	if (cb->vm_checkbc)
 	{
-		HCL_ASSERT (hcl, hcl->vm_checkbc_cb_count > 0);
+		HCL_ASSERT(hcl, hcl->vm_checkbc_cb_count > 0);
 		hcl->vm_checkbc_cb_count--;
 	}
-	hcl_freemem (hcl, cb);
+	hcl_freemem(hcl, cb);
 }
 
 void* hcl_allocmem (hcl_t* hcl, hcl_oow_t size)
@@ -701,7 +701,7 @@ void* hcl_allocmem (hcl_t* hcl, hcl_oow_t size)
 	void* ptr;
 
 	ptr = HCL_MMGR_ALLOC(HCL_MMGR(hcl), size);
-	if (!ptr) hcl_seterrnum (hcl, HCL_ESYSMEM);
+	if (!ptr) hcl_seterrnum(hcl, HCL_ESYSMEM);
 	return ptr;
 }
 
@@ -710,7 +710,7 @@ void* hcl_callocmem (hcl_t* hcl, hcl_oow_t size)
 	void* ptr;
 
 	ptr = HCL_MMGR_ALLOC(HCL_MMGR(hcl), size);
-	if (!ptr) hcl_seterrnum (hcl, HCL_ESYSMEM);
+	if (!ptr) hcl_seterrnum(hcl, HCL_ESYSMEM);
 	else HCL_MEMSET (ptr, 0, size);
 	return ptr;
 }
@@ -718,7 +718,7 @@ void* hcl_callocmem (hcl_t* hcl, hcl_oow_t size)
 void* hcl_reallocmem (hcl_t* hcl, void* ptr, hcl_oow_t size)
 {
 	ptr = HCL_MMGR_REALLOC(HCL_MMGR(hcl), ptr, size);
-	if (!ptr) hcl_seterrnum (hcl, HCL_ESYSMEM);
+	if (!ptr) hcl_seterrnum(hcl, HCL_ESYSMEM);
 	return ptr;
 }
 
@@ -777,11 +777,11 @@ hcl_mod_data_t* hcl_openmod (hcl_t* hcl, const hcl_ooch_t* name, hcl_oow_t namel
 	if (namelen > HCL_COUNTOF(buf) - (MOD_PREFIX_LEN + 1 + 1))
 	{
 		/* module name too long  */
-		hcl_seterrnum (hcl, HCL_EINVAL); /* TODO: change the  error number to something more specific */
+		hcl_seterrnum(hcl, HCL_EINVAL); /* TODO: change the  error number to something more specific */
 		return HCL_NULL;
 	}
 
-	hcl_copy_oochars (&buf[MOD_PREFIX_LEN], name, namelen);
+	hcl_copy_oochars(&buf[MOD_PREFIX_LEN], name, namelen);
 	buf[MOD_PREFIX_LEN + namelen] = '\0';
 
 #if defined(HCL_ENABLE_STATIC_MODULE)
@@ -801,7 +801,7 @@ hcl_mod_data_t* hcl_openmod (hcl_t* hcl, const hcl_ooch_t* name, hcl_oow_t namel
 	{
 		/* found the module in the static module table */
 
-		HCL_MEMSET (&md, 0, HCL_SIZEOF(md));
+		HCL_MEMSET(&md, 0, HCL_SIZEOF(md));
 		md.mod.inctx = hcl->option.mod_inctx;
 		hcl_copy_oochars ((hcl_ooch_t*)md.mod.name, name, namelen);
 		/* Note md.handle is HCL_NULL for a static module */
@@ -811,40 +811,40 @@ hcl_mod_data_t* hcl_openmod (hcl_t* hcl, const hcl_ooch_t* name, hcl_oow_t namel
 		pair = hcl_rbt_insert(&hcl->modtab, (hcl_ooch_t*)name, namelen, &md, HCL_SIZEOF(md));
 		if (HCL_UNLIKELY(!pair))
 		{
-			hcl_seterrbfmt (hcl, HCL_ESYSMEM, "insufficient system memory in storing static module handle");
+			hcl_seterrbfmt(hcl, HCL_ESYSMEM, "insufficient system memory in storing static module handle");
 			return HCL_NULL;
 		}
 
 		mdp = (hcl_mod_data_t*)HCL_RBT_VPTR(pair);
 		if (load(hcl, &mdp->mod) <= -1)
 		{
-			hcl_rbt_delete (&hcl->modtab, (hcl_ooch_t*)name, namelen);
+			hcl_rbt_delete(&hcl->modtab, (hcl_ooch_t*)name, namelen);
 			return HCL_NULL;
 		}
 
 		mdp->pair = pair;
 
-		HCL_DEBUG1 (hcl, "Opened a static module [%js]\n", mdp->mod.name);
+		HCL_DEBUG1(hcl, "Opened a static module [%js]\n", mdp->mod.name);
 		return mdp;
 	}
 	else
 	{
 	#if !defined(HCL_ENABLE_DYNAMIC_MODULE)
-		HCL_DEBUG2 (hcl, "Cannot find a static module [%.*js]\n", namelen, name);
-		hcl_seterrbfmt (hcl, HCL_ENOENT, "unable to find a static module [%.*js]", namelen, name);
+		HCL_DEBUG2(hcl, "Cannot find a static module [%.*js]\n", namelen, name);
+		hcl_seterrbfmt(hcl, HCL_ENOENT, "unable to find a static module [%.*js]", namelen, name);
 		return HCL_NULL;
 	#endif
 	}
 #endif
 
 #if !defined(HCL_ENABLE_DYNAMIC_MODULE)
-	HCL_DEBUG2 (hcl, "Cannot open module [%.*js] - module loading disabled\n", namelen, name);
-	hcl_seterrbfmt (hcl, HCL_ENOIMPL, "unable to open module [%.*js] - module loading disabled", namelen, name);
+	HCL_DEBUG2(hcl, "Cannot open module [%.*js] - module loading disabled\n", namelen, name);
+	hcl_seterrbfmt(hcl, HCL_ENOIMPL, "unable to open module [%.*js] - module loading disabled", namelen, name);
 	return HCL_NULL;
 #endif
 
 	/* attempt to find a dynamic external module */
-	HCL_MEMSET (&md, 0, HCL_SIZEOF(md));
+	HCL_MEMSET(&md, 0, HCL_SIZEOF(md));
 	md.mod.inctx = hcl->option.mod_inctx;
 	hcl_copy_oochars((hcl_ooch_t*)md.mod.name, name, namelen);
 	if (hcl->vmprim.dl_open && hcl->vmprim.dl_getsym && hcl->vmprim.dl_close)
@@ -854,8 +854,8 @@ hcl_mod_data_t* hcl_openmod (hcl_t* hcl, const hcl_ooch_t* name, hcl_oow_t namel
 
 	if (md.handle == HCL_NULL)
 	{
-		HCL_DEBUG2 (hcl, "Cannot open a module [%.*js]\n", namelen, name);
-		hcl_seterrbfmt (hcl, HCL_ENOENT, "unable to open a module [%.*js]", namelen, name);
+		HCL_DEBUG2(hcl, "Cannot open a module [%.*js]\n", namelen, name);
+		hcl_seterrbfmt(hcl, HCL_ENOENT, "unable to open a module [%.*js]", namelen, name);
 		return HCL_NULL;
 	}
 
@@ -863,9 +863,9 @@ hcl_mod_data_t* hcl_openmod (hcl_t* hcl, const hcl_ooch_t* name, hcl_oow_t namel
 	load = (hcl_mod_load_t)hcl->vmprim.dl_getsym(hcl, md.handle, buf);
 	if (!load)
 	{
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to get module symbol [%js] in [%.*js]", buf, namelen, name);
-		HCL_DEBUG3 (hcl, "Cannot get a module symbol [%js] in [%.*js]\n", buf, namelen, name);
-		hcl->vmprim.dl_close (hcl, md.handle);
+		hcl_seterrbfmt(hcl, HCL_ERRNUM(hcl), "unable to get module symbol [%js] in [%.*js]", buf, namelen, name);
+		HCL_DEBUG3(hcl, "Cannot get a module symbol [%js] in [%.*js]\n", buf, namelen, name);
+		hcl->vmprim.dl_close(hcl, md.handle);
 		return HCL_NULL;
 	}
 
@@ -874,9 +874,9 @@ hcl_mod_data_t* hcl_openmod (hcl_t* hcl, const hcl_ooch_t* name, hcl_oow_t namel
 	pair = hcl_rbt_insert(&hcl->modtab, (void*)name, namelen, &md, HCL_SIZEOF(md));
 	if (pair == HCL_NULL)
 	{
-		HCL_DEBUG2 (hcl, "Cannot register a module [%.*js]\n", namelen, name);
-		hcl_seterrbfmt (hcl, HCL_ESYSMEM, "unable to register a module [%.*js] for memory shortage", namelen, name);
-		hcl->vmprim.dl_close (hcl, md.handle);
+		HCL_DEBUG2(hcl, "Cannot register a module [%.*js]\n", namelen, name);
+		hcl_seterrbfmt(hcl, HCL_ESYSMEM, "unable to register a module [%.*js] for memory shortage", namelen, name);
+		hcl->vmprim.dl_close(hcl, md.handle);
 		return HCL_NULL;
 	}
 
@@ -884,42 +884,42 @@ hcl_mod_data_t* hcl_openmod (hcl_t* hcl, const hcl_ooch_t* name, hcl_oow_t namel
 	if (load(hcl, &mdp->mod) <= -1)
 	{
 		const hcl_ooch_t* oldmsg = hcl_backuperrmsg (hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "module initializer [%js] returned failure in [%.*js] - %js", buf, namelen, name, oldmsg);
-		HCL_DEBUG3 (hcl, "Module function [%js] returned failure in [%.*js]\n", buf, namelen, name);
-		hcl_rbt_delete (&hcl->modtab, name, namelen);
-		hcl->vmprim.dl_close (hcl, mdp->handle);
+		hcl_seterrbfmt(hcl, HCL_ERRNUM(hcl), "module initializer [%js] returned failure in [%.*js] - %js", buf, namelen, name, oldmsg);
+		HCL_DEBUG3(hcl, "Module function [%js] returned failure in [%.*js]\n", buf, namelen, name);
+		hcl_rbt_delete(&hcl->modtab, name, namelen);
+		hcl->vmprim.dl_close(hcl, mdp->handle);
 		return HCL_NULL;
 	}
 
 	mdp->pair = pair;
 
-	HCL_DEBUG2 (hcl, "Opened a module [%js] - %p\n", mdp->mod.name, mdp->handle);
+	HCL_DEBUG2(hcl, "Opened a module [%js] - %p\n", mdp->mod.name, mdp->handle);
 
 	/* the module loader must ensure to set a proper query handler */
-	HCL_ASSERT (hcl, mdp->mod.query != HCL_NULL);
+	HCL_ASSERT(hcl, mdp->mod.query != HCL_NULL);
 
 	return mdp;
 }
 
 void hcl_closemod (hcl_t* hcl, hcl_mod_data_t* mdp)
 {
-	if (mdp->mod.unload) mdp->mod.unload (hcl, &mdp->mod);
+	if (mdp->mod.unload) mdp->mod.unload(hcl, &mdp->mod);
 
 	if (mdp->handle)
 	{
-		hcl->vmprim.dl_close (hcl, mdp->handle);
-		HCL_DEBUG2 (hcl, "Closed a module [%js] - %p\n", mdp->mod.name, mdp->handle);
+		hcl->vmprim.dl_close(hcl, mdp->handle);
+		HCL_DEBUG2(hcl, "Closed a module [%js] - %p\n", mdp->mod.name, mdp->handle);
 		mdp->handle = HCL_NULL;
 	}
 	else
 	{
-		HCL_DEBUG1 (hcl, "Closed a static module [%js]\n", mdp->mod.name);
+		HCL_DEBUG1(hcl, "Closed a static module [%js]\n", mdp->mod.name);
 	}
 
 	if (mdp->pair)
 	{
 		/*mdp->pair = HCL_NULL;*/ /* this reset isn't needed as the area will get freed by hcl_rbt_delete()) */
-		hcl_rbt_delete (&hcl->modtab, mdp->mod.name, hcl_count_oocstr(mdp->mod.name));
+		hcl_rbt_delete(&hcl->modtab, mdp->mod.name, hcl_count_oocstr(mdp->mod.name));
 	}
 }
 
@@ -943,8 +943,8 @@ hcl_pfbase_t* hcl_querymod (hcl_t* hcl, const hcl_ooch_t* pfid, hcl_oow_t pfidle
 		 * guarantee that a period is included in an primitive function identifer.
 		 * what if the compiler is broken? imagine a buggy compiler rewritten
 		 * in hcl itself? */
-		HCL_DEBUG2 (hcl, "Internal error - no period in a primitive function identifier [%.*js] - buggy compiler?\n", pfidlen, pfid);
-		hcl_seterrbfmt (hcl, HCL_EINTERN, "no period in a primitive function identifier [%.*js]", pfidlen, pfid);
+		HCL_DEBUG2(hcl, "Internal error - no period in a primitive function identifier [%.*js] - buggy compiler?\n", pfidlen, pfid);
+		hcl_seterrbfmt(hcl, HCL_EINTERN, "no period in a primitive function identifier [%.*js]", pfidlen, pfid);
 		return HCL_NULL;
 	}
 
@@ -958,7 +958,7 @@ hcl_pfbase_t* hcl_querymod (hcl_t* hcl, const hcl_ooch_t* pfid, hcl_oow_t pfidle
 	if (pair)
 	{
 		mdp = (hcl_mod_data_t*)HCL_RBT_VPTR(pair);
-		HCL_ASSERT (hcl, mdp != HCL_NULL);
+		HCL_ASSERT(hcl, mdp != HCL_NULL);
 	}
 	else
 	{
@@ -970,15 +970,14 @@ hcl_pfbase_t* hcl_querymod (hcl_t* hcl, const hcl_ooch_t* pfid, hcl_oow_t pfidle
 	if ((pfbase = mdp->mod.query(hcl, &mdp->mod, sep + 1, pfidlen - mod_name_len - 1)) == HCL_NULL)
 	{
 		/* the primitive function is not found. but keep the module open even if it's opened above */
-		HCL_DEBUG3 (hcl, "Cannot find a primitive function [%.*js] in a module [%js]\n", pfidlen - mod_name_len - 1, sep + 1, mdp->mod.name);
-		hcl_seterrbfmt (hcl, HCL_ENOENT, "unable to find a primitive function [%.*js] in a module [%js]", pfidlen - mod_name_len - 1, sep + 1, mdp->mod.name);
+		HCL_DEBUG3(hcl, "Cannot find a primitive function [%.*js] in a module [%js]\n", pfidlen - mod_name_len - 1, sep + 1, mdp->mod.name);
+		hcl_seterrbfmt(hcl, HCL_ENOENT, "unable to find a primitive function [%.*js] in a module [%js]", pfidlen - mod_name_len - 1, sep + 1, mdp->mod.name);
 		return HCL_NULL;
 	}
 
 	*mod = &mdp->mod;
 
-	HCL_DEBUG4 (hcl, "Found a primitive function [%.*js] in a module [%js] - %p\n",
-		pfidlen - mod_name_len - 1, sep + 1, mdp->mod.name, pfbase);
+	HCL_DEBUG4(hcl, "Found a primitive function [%.*js] in a module [%js] - %p\n", pfidlen - mod_name_len - 1, sep + 1, mdp->mod.name, pfbase);
 	return pfbase;
 }
 
@@ -1014,7 +1013,7 @@ hcl_pfbase_t* hcl_findpfbase (hcl_t* hcl, hcl_pfinfo_t* pfinfo, hcl_oow_t pfcoun
 	}
 #endif
 
-	hcl_seterrnum (hcl, HCL_ENOENT);
+	hcl_seterrnum(hcl, HCL_ENOENT);
 	return HCL_NULL;
 }
 
