@@ -362,7 +362,7 @@ static HCL_INLINE int add_token_char (hcl_t* hcl, hcl_ooch_t c)
 static HCL_INLINE void unget_char (hcl_t* hcl, const hcl_lxc_t* c)
 {
 	/* Make sure that the unget buffer is large enough */
-	HCL_ASSERT (hcl, hcl->c->nungots < HCL_COUNTOF(hcl->c->ungot));
+	HCL_ASSERT(hcl, hcl->c->nungots < HCL_COUNTOF(hcl->c->ungot));
 	hcl->c->ungot[hcl->c->nungots++] = *c;
 }
 
@@ -525,13 +525,13 @@ static void clear_sr_names (hcl_t* hcl)
 {
 	hcl_link_t* cur;
 
-	HCL_ASSERT (hcl, hcl->c != HCL_NULL);
+	HCL_ASSERT(hcl, hcl->c != HCL_NULL);
 
 	while (hcl->c->sr_names)
 	{
 		cur = hcl->c->sr_names;
 		hcl->c->sr_names = cur->link;
-		hcl_freemem (hcl, cur);
+		hcl_freemem(hcl, cur);
 	}
 }
 
@@ -553,7 +553,7 @@ static const hcl_ooch_t* add_sr_name (hcl_t* hcl, const hcl_oocs_t* name)
 	if (HCL_UNLIKELY(!link))
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "failed to source name [%.*js] - %js", name->len, name->ptr, orgmsg);
+		hcl_seterrbfmt(hcl, HCL_ERRNUM(hcl), "failed to source name [%.*js] - %js", name->len, name->ptr, orgmsg);
 		return HCL_NULL;
 	}
 
@@ -577,7 +577,7 @@ static HCL_INLINE int enter_list (hcl_t* hcl, const hcl_loc_t* loc, int flagv)
 	if (HCL_UNLIKELY(!rstl))
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "failed to allocate reader stack node - %js", orgmsg);
+		hcl_seterrbfmt(hcl, HCL_ERRNUM(hcl), "failed to allocate reader stack node - %js", orgmsg);
 		return -1;
 	}
 	rstl->loc = *loc;
@@ -597,7 +597,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 	hcl_concode_t concode;
 
 	/* the stack must not be empty - cannot leave a list without entering it */
-	HCL_ASSERT (hcl, hcl->c->r.st != HCL_NULL);
+	HCL_ASSERT(hcl, hcl->c->r.st != HCL_NULL);
 	rstl = hcl->c->r.st; /* get the stack top */
 
 	head = rstl->head;
@@ -608,28 +608,28 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 	concode = (hcl_concode_t)LIST_FLAG_GET_CONCODE(fv);
 
 	hcl->c->r.st = rstl->prev; /* pop off  */
-	hcl_freemem (hcl, rstl); /* dispose of the stack node */
+	hcl_freemem(hcl, rstl); /* dispose of the stack node */
 
 	if (fv & (COMMAED | COLONED | COLONEQED | BINOPED))
 	{
 		/* no item after , : := or various binary operators */
 		if (concode == HCL_CONCODE_MLIST)
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_CALLABLE, TOKEN_LOC(hcl), HCL_NULL, "missing message after receiver");
+			hcl_setsynerrbfmt(hcl, HCL_SYNERR_CALLABLE, TOKEN_LOC(hcl), HCL_NULL, "missing message after receiver");
 		}
 		else if (concode == HCL_CONCODE_ALIST)
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_RVALUE, TOKEN_LOC(hcl), HCL_NULL, "missing rvalue after :=");
+			hcl_setsynerrbfmt(hcl, HCL_SYNERR_RVALUE, TOKEN_LOC(hcl), HCL_NULL, "missing rvalue after :=");
 		}
 		else if (concode == HCL_CONCODE_BLIST)
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_NOVALUE, TOKEN_LOC(hcl), HCL_NULL, "missing expression after binary selector");
+			hcl_setsynerrbfmt(hcl, HCL_SYNERR_NOVALUE, TOKEN_LOC(hcl), HCL_NULL, "missing expression after binary selector");
 		}
 		else
 		{
 			hcl_synerrnum_t err;
 			err = (fv & COMMAED)? HCL_SYNERR_COMMANOVALUE: HCL_SYNERR_COLONNOVALUE;
-			hcl_setsynerr (hcl, err, TOKEN_LOC(hcl), HCL_NULL);
+			hcl_setsynerr(hcl, err, TOKEN_LOC(hcl), HCL_NULL);
 		}
 		goto oops;
 	}
@@ -651,7 +651,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 
 	if (head)
 	{
-		HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(head));
+		HCL_ASSERT(hcl, HCL_CNODE_IS_CONS(head));
 
 		if (concode == HCL_CONCODE_ALIST) /* assignment list */
 		{
@@ -667,7 +667,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 			if (lval && HCL_CNODE_IS_ELIST(lval))
 			{
 				/* invalid lvalue - for example, () := 20 */
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_LVALUE, HCL_CNODE_GET_LOC(lval), HCL_CNODE_GET_TOK(lval), "bad lvalue - blank expression");
+				hcl_setsynerrbfmt(hcl, HCL_SYNERR_LVALUE, HCL_CNODE_GET_LOC(lval), HCL_CNODE_GET_TOK(lval), "bad lvalue - blank expression");
 				goto oops;
 			}
 			else if (lval && HCL_CNODE_IS_CONS_CONCODED(lval, HCL_CONCODE_TUPLE))
@@ -694,7 +694,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 					lcar = HCL_CNODE_CONS_CAR(tmp);
 					if (!HCL_CNODE_IS_SYMBOL_IDENT(lcar) && !HCL_CNODE_IS_DSYMBOL_CLA(lcar))
 					{
-						hcl_setsynerrbfmt (hcl, HCL_SYNERR_LVALUE, HCL_CNODE_GET_LOC(lval), HCL_CNODE_GET_TOK(lval), "bad lvalue - invalid element in tuple");
+						hcl_setsynerrbfmt(hcl, HCL_SYNERR_LVALUE, HCL_CNODE_GET_LOC(lval), HCL_CNODE_GET_TOK(lval), "bad lvalue - invalid element in tuple");
 						goto oops;
 					}
 				}
@@ -704,7 +704,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 				 * For [x, y] := (f 9), x and y must be in the same level as set-r after translation.
 				 * so make it 'x y (f 9)' first and place set-r in front of it later. */
 				rval = HCL_CNODE_CONS_CDR(head);
-				hcl_freesinglecnode (hcl, head);
+				hcl_freesinglecnode(hcl, head);
 				head = lval;
 				for (tmp = lval; tmp && HCL_CNODE_IS_CONS(tmp); tmp = HCL_CNODE_CONS_CDR(tmp))
 				{
@@ -720,7 +720,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 			{
 				if (!HCL_CNODE_IS_SYMBOL_IDENT(lval) && !HCL_CNODE_IS_DSYMBOL_CLA(lval))
 				{
-					hcl_setsynerrbfmt (hcl, HCL_SYNERR_LVALUE, HCL_CNODE_GET_LOC(lval), HCL_CNODE_GET_TOK(lval), "bad lvalue - invalid element");
+					hcl_setsynerrbfmt(hcl, HCL_SYNERR_LVALUE, HCL_CNODE_GET_LOC(lval), HCL_CNODE_GET_TOK(lval), "bad lvalue - invalid element");
 					goto oops;
 				}
 		#if defined(TRANSFORM_ALIST)
@@ -730,7 +730,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 		#endif
 			}
 
-			HCL_ASSERT (hcl, count >= 2); /* the missing rvalue check has been done above */
+			HCL_ASSERT(hcl, count >= 2); /* the missing rvalue check has been done above */
 			if (count != 2)
 			{
 				hcl_cnode_t* rval;
@@ -738,7 +738,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 				rval = HCL_CNODE_CONS_CDR(rval);
 				rval = HCL_CNODE_CONS_CAR(rval);
 
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_RVALUE, HCL_CNODE_GET_LOC(rval), HCL_CNODE_GET_TOK(rval), "too many rvalues after :=");
+				hcl_setsynerrbfmt(hcl, HCL_SYNERR_RVALUE, HCL_CNODE_GET_LOC(rval), HCL_CNODE_GET_TOK(rval), "too many rvalues after :=");
 				goto oops;
 			}
 
@@ -747,7 +747,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 			if (HCL_UNLIKELY(!sym))
 			{
 				const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-				hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "failed to create symbol cnode for := - %js", orgmsg);
+				hcl_seterrbfmt(hcl, HCL_ERRNUM(hcl), "failed to create symbol cnode for := - %js", orgmsg);
 				goto oops;
 			}
 
@@ -756,8 +756,8 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 			if (HCL_UNLIKELY(!newhead))
 			{
 				const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-				hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "failed to create cons cnode for := - %js", orgmsg);
-				hcl_freecnode (hcl, sym);
+				hcl_seterrbfmt(hcl, HCL_ERRNUM(hcl), "failed to create cons cnode for := - %js", orgmsg);
+				hcl_freecnode(hcl, sym);
 				goto oops;
 			}
 
@@ -773,15 +773,15 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 			/*x = HCL_CNODE_CONS_CAR(head);*/
 			binop = HCL_CNODE_CONS_CDR(head);
 
-			HCL_ASSERT (hcl, binop && HCL_CNODE_IS_CONS(binop));
-			HCL_ASSERT (hcl, count >= 2); /* the code in can_binop_list() ensures this condition */
+			HCL_ASSERT(hcl, binop && HCL_CNODE_IS_CONS(binop));
+			HCL_ASSERT(hcl, count >= 2); /* the code in can_binop_list() ensures this condition */
 
 			if (count < 3)
 			{
 				/* for example, 1 + */
 				x = HCL_CNODE_CONS_CAR(binop);
 				/* with the transformation, the implementation supports two operands and a single binop in an expression. */
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_NOVALUE, HCL_CNODE_GET_LOC(x), HCL_NULL,
+				hcl_setsynerrbfmt(hcl, HCL_SYNERR_NOVALUE, HCL_CNODE_GET_LOC(x), HCL_NULL,
 					"no operand after binary selector '%.*js'", HCL_CNODE_GET_TOKLEN(x), HCL_CNODE_GET_TOKPTR(x));
 				goto oops;
 			}
@@ -790,7 +790,7 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 				/* for example, 1 + 1 1 */
 				x = HCL_CNODE_CONS_CAR(tail);
 				/* with the transformation, the implementation supports two operands and a single binop in an expression. */
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_NOVALUE, HCL_CNODE_GET_LOC(x), HCL_NULL,
+				hcl_setsynerrbfmt(hcl, HCL_SYNERR_NOVALUE, HCL_CNODE_GET_LOC(x), HCL_NULL,
 					"redundant operand '%.*js'", HCL_CNODE_GET_TOKLEN(x), HCL_CNODE_GET_TOKPTR(x));
 				goto oops;
 			}
@@ -822,14 +822,14 @@ static HCL_INLINE hcl_cnode_t* leave_list (hcl_t* hcl, hcl_loc_t* list_loc, int*
 		if (HCL_UNLIKELY(!head))
 		{
 			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-			hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "failed to create empty list - %js", orgmsg);
+			hcl_seterrbfmt(hcl, HCL_ERRNUM(hcl), "failed to create empty list - %js", orgmsg);
 		}
 	}
 
 	return head;
 
 oops:
-	if (head) hcl_freecnode (hcl, head);
+	if (head) hcl_freecnode(hcl, head);
 	return HCL_NULL;
 }
 
@@ -837,7 +837,7 @@ static HCL_INLINE int can_dot_list (hcl_t* hcl)
 {
 	hcl_rstl_t* rstl;
 
-	HCL_ASSERT (hcl, hcl->c->r.st != HCL_NULL);
+	HCL_ASSERT(hcl, hcl->c->r.st != HCL_NULL);
 	rstl = hcl->c->r.st;
 
 	/* mark the state that a dot has appeared in the list */
@@ -853,7 +853,7 @@ static HCL_INLINE int can_comma_list (hcl_t* hcl)
 	hcl_rstl_t* rstl;
 	hcl_concode_t cc;
 
-	HCL_ASSERT (hcl, hcl->c->r.st != HCL_NULL);
+	HCL_ASSERT(hcl, hcl->c->r.st != HCL_NULL);
 	rstl = hcl->c->r.st;
 
 	if (rstl->count <= 0) return 0;
@@ -883,7 +883,7 @@ static HCL_INLINE int can_colon_list (hcl_t* hcl)
 	hcl_rstl_t* rstl;
 	hcl_concode_t cc;
 
-	HCL_ASSERT (hcl, hcl->c->r.st != HCL_NULL);
+	HCL_ASSERT(hcl, hcl->c->r.st != HCL_NULL);
 	rstl = hcl->c->r.st;
 	cc = (hcl_concode_t)LIST_FLAG_GET_CONCODE(rstl->flagv);
 
@@ -915,7 +915,7 @@ static HCL_INLINE int can_colon_list (hcl_t* hcl)
 		{
 			hcl_cnode_t* tmp, * next;
 			next = HCL_CNODE_CONS_CDR(rstl->head);
-			HCL_ASSERT (hcl, next != HCL_NULL);
+			HCL_ASSERT(hcl, next != HCL_NULL);
 			tmp = HCL_CNODE_CONS_CAR(next); /* second item */
 			if (rstl->count == 2)
 			{
@@ -929,7 +929,7 @@ static HCL_INLINE int can_colon_list (hcl_t* hcl)
 				    HCL_CNODE_IS_ELIST_CONCODED(tmp, HCL_CONCODE_XLIST))
 				{
 					next = HCL_CNODE_CONS_CDR(next);
-					HCL_ASSERT (hcl, next != HCL_NULL);
+					HCL_ASSERT(hcl, next != HCL_NULL);
 					tmp = HCL_CNODE_CONS_CAR(next); /* third item */
 					if (HCL_CNODE_IS_SYMBOL(tmp)) return 2;
 				}
@@ -981,7 +981,7 @@ static HCL_INLINE int can_coloneq_list (hcl_t* hcl)
 	hcl_rstl_t* rstl;
 	hcl_concode_t cc;
 
-	HCL_ASSERT (hcl, hcl->c->r.st != HCL_NULL);
+	HCL_ASSERT(hcl, hcl->c->r.st != HCL_NULL);
 	rstl = hcl->c->r.st;
 
 	if (rstl->count <= 0 || rstl->count >= 2) return 0; /* allowed after the first item only */
@@ -1004,7 +1004,7 @@ static HCL_INLINE int can_binop_list (hcl_t* hcl)
 	hcl_rstl_t* rstl;
 	hcl_concode_t cc;
 
-	HCL_ASSERT (hcl, hcl->c->r.st != HCL_NULL);
+	HCL_ASSERT(hcl, hcl->c->r.st != HCL_NULL);
 	rstl = hcl->c->r.st;
 	cc = (hcl_concode_t)LIST_FLAG_GET_CONCODE(rstl->flagv);
 
@@ -1061,8 +1061,8 @@ static HCL_INLINE int can_binop_list (hcl_t* hcl)
 		 * [TODO]
 		 *   review this implentation such that the BINOPED flag isn't needed
 		 */
-		/*HCL_ASSERT (hcl, rstl->count == 2 || rstl->count == 3); this condition is wrong, for say, 1 + 2 3 + 4 */
-		HCL_ASSERT (hcl, rstl->count >= 2);
+		/*HCL_ASSERT(hcl, rstl->count == 2 || rstl->count == 3); this condition is wrong, for say, 1 + 2 3 + 4 */
+		HCL_ASSERT(hcl, rstl->count >= 2);
 
 		/* [TODO] this condition is a workaround for the failing repetition check.
 		 *   1 + + */
@@ -1077,7 +1077,7 @@ static HCL_INLINE int can_binop_list (hcl_t* hcl)
 
 		/* dirty hack to create a wrapper cell containing the first three items.
 		 * TODO: do i have to do this on the caller side of can_binop_list()? */
-		HCL_ASSERT (hcl, HCL_CNODE_IS_TYPED(rstl->head, HCL_CNODE_CONS));
+		HCL_ASSERT(hcl, HCL_CNODE_IS_TYPED(rstl->head, HCL_CNODE_CONS));
 		wrap = hcl_makecnodecons(hcl, 0, HCL_CNODE_GET_LOC(rstl->head), fake_tok_ptr, rstl->head, HCL_NULL);
 		if (HCL_UNLIKELY(!wrap)) return  -1;
 		HCL_CNODE_CONS_CONCODE(rstl->head) = HCL_CONCODE_BLIST;
@@ -1101,7 +1101,7 @@ static HCL_INLINE int can_binop_list (hcl_t* hcl)
 static HCL_INLINE void clear_comma_colon_binop_flag (hcl_t* hcl)
 {
 	hcl_rstl_t* rstl;
-	HCL_ASSERT (hcl, hcl->c->r.st != HCL_NULL);
+	HCL_ASSERT(hcl, hcl->c->r.st != HCL_NULL);
 	rstl = hcl->c->r.st;
 	rstl->flagv &= ~(COMMAED | COLONED | COLONEQED | BINOPED);
 }
@@ -1112,7 +1112,7 @@ static int chain_to_list (hcl_t* hcl, hcl_cnode_t* obj, hcl_loc_t* loc)
 	int flagv;
 	/*int list_concode;*/
 
-	HCL_ASSERT (hcl, hcl->c->r.st != HCL_NULL);
+	HCL_ASSERT(hcl, hcl->c->r.st != HCL_NULL);
 	rstl = hcl->c->r.st;
 	flagv = rstl->flagv;
 	/*list_concode = (hcl_concode_t)LIST_FLAG_GET_CONCODE(flagv);*/
@@ -1125,21 +1125,21 @@ static int chain_to_list (hcl_t* hcl, hcl_cnode_t* obj, hcl_loc_t* loc)
 		 * can only be triggered by a wrong qlist where a period is
 		 * allowed. so i can safely hard-code the error code to
 		 * HCL_SYNERR_RPAREN */
-		hcl_setsynerr (hcl, HCL_SYNERR_RPAREN, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+		hcl_setsynerr(hcl, HCL_SYNERR_RPAREN, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 		return -1;
 	}
 	else if (flagv & DOTTED)
 	{
 		hcl_cnode_t* tail;
 		/* the list must not be empty to have reached the dotted state */
-		HCL_ASSERT (hcl, rstl->head != HCL_NULL);
-		HCL_ASSERT (hcl, rstl->tail != HCL_NULL);
-		HCL_ASSERT (hcl, rstl->count > 0);
+		HCL_ASSERT(hcl, rstl->head != HCL_NULL);
+		HCL_ASSERT(hcl, rstl->tail != HCL_NULL);
+		HCL_ASSERT(hcl, rstl->count > 0);
 
 		/* chain the object via 'cdr' of the tail cell */
 		tail = rstl->tail;
-		HCL_ASSERT (hcl, tail != HCL_NULL);
-		HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(tail));
+		HCL_ASSERT(hcl, tail != HCL_NULL);
+		HCL_ASSERT(hcl, HCL_CNODE_IS_CONS(tail));
 
 		if (HCL_CNODE_IS_CONS(obj) && HCL_CNODE_CONS_CONCODE(obj) != HCL_CONCODE_QLIST)
 		{
@@ -1175,12 +1175,12 @@ static int chain_to_list (hcl_t* hcl, hcl_cnode_t* obj, hcl_loc_t* loc)
 		{
 			/* there is no separator between array/dictionary elements
 			 * for instance, [1 2] { 10 20 } */
-			hcl_setsynerr (hcl, HCL_SYNERR_NOSEP, TOKEN_LOC(hcl), HCL_NULL);
+			hcl_setsynerr(hcl, HCL_SYNERR_NOSEP, TOKEN_LOC(hcl), HCL_NULL);
 			return -1;
 		}
 
 		/* `loc` may be passed in if the added `obj` is a cons cell for another list */
-		HCL_ASSERT (hcl, (loc && (HCL_CNODE_IS_CONS(obj) || HCL_CNODE_IS_ELIST(obj))) || (!loc && !HCL_CNODE_IS_CONS(obj)));
+		HCL_ASSERT(hcl, (loc && (HCL_CNODE_IS_CONS(obj) || HCL_CNODE_IS_ELIST(obj))) || (!loc && !HCL_CNODE_IS_CONS(obj)));
 		concode = HCL_CNODE_IS_CONS(obj)? HCL_CNODE_CONS_CONCODE(obj):
 		          HCL_CNODE_IS_ELIST(obj)? HCL_CNODE_ELIST_CONCODE(obj): -1;
 
@@ -1200,8 +1200,8 @@ static int chain_to_list (hcl_t* hcl, hcl_cnode_t* obj, hcl_loc_t* loc)
 			/* the list head is not set yet. it is the first
 			 * element added to the list. let both head and tail
 			 * point to the new cons cell */
-			HCL_ASSERT (hcl, rstl->tail == HCL_NULL);
-			HCL_ASSERT (hcl, rstl->head == HCL_NULL);
+			HCL_ASSERT(hcl, rstl->tail == HCL_NULL);
+			HCL_ASSERT(hcl, rstl->head == HCL_NULL);
 
 			rstl->head = cons;
 			rstl->tail = cons;
@@ -1210,7 +1210,7 @@ static int chain_to_list (hcl_t* hcl, hcl_cnode_t* obj, hcl_loc_t* loc)
 		{
 			/* the new cons cell is not the first element. append it to the list */
 			tail = rstl->tail;
-			HCL_ASSERT (hcl, HCL_CNODE_IS_CONS(tail));
+			HCL_ASSERT(hcl, HCL_CNODE_IS_CONS(tail));
 			tail->u.cons.cdr = cons;
 			rstl->tail = cons;
 		}
@@ -1244,7 +1244,7 @@ static int on_fed_cnode (hcl_t* hcl, hcl_cnode_t* obj)
 
 static void init_feed (hcl_t* hcl)
 {
-	HCL_MEMSET (&hcl->c->feed, 0, HCL_SIZEOF(hcl->c->feed));
+	HCL_MEMSET(&hcl->c->feed, 0, HCL_SIZEOF(hcl->c->feed));
 	hcl->c->feed.lx.state = HCL_FLX_START;
 	hcl->c->feed.lx.loc.line = 1;
 	hcl->c->feed.lx.loc.colm = 1;
@@ -1263,7 +1263,7 @@ static int feed_begin_include (hcl_t* hcl)
 	if (HCL_UNLIKELY(!io_name))
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to include %.*js for name registration failure - %js", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl), orgmsg);
+		hcl_seterrbfmt(hcl, HCL_ERRNUM(hcl), "unable to include %.*js for name registration failure - %js", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl), orgmsg);
 		return -1;
 	}
 
@@ -1271,7 +1271,7 @@ static int feed_begin_include (hcl_t* hcl)
 	if (HCL_UNLIKELY(!arg))
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to include %.*js for memory allocation failure - %js", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl), orgmsg);
+		hcl_seterrbfmt(hcl, HCL_ERRNUM(hcl), "unable to include %.*js for memory allocation failure - %js", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl), orgmsg);
 		goto oops;
 	}
 
@@ -1285,7 +1285,7 @@ static int feed_begin_include (hcl_t* hcl)
 	if (hcl->c->cci_rdr(hcl, HCL_IO_OPEN, arg) <= -1)
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_INCLUDE, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "unable to include %js - %js", io_name, orgmsg);
+		hcl_setsynerrbfmt(hcl, HCL_SYNERR_INCLUDE, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "unable to include %js - %js", io_name, orgmsg);
 		goto oops;
 	}
 
@@ -1316,7 +1316,7 @@ static int feed_begin_include (hcl_t* hcl)
 oops:
 	if (arg)
 	{
-		hcl_freemem (hcl, arg);
+		hcl_freemem(hcl, arg);
 	}
 	return -1;
 }
@@ -1351,8 +1351,8 @@ static int feed_end_include (hcl_t* hcl)
 		hcl->c->feed.lx.loc.colm = hcl->c->curinp->colm;
 	}
 
-	HCL_ASSERT (hcl, cur->name != HCL_NULL);
-	hcl_freemem (hcl, cur);
+	HCL_ASSERT(hcl, cur->name != HCL_NULL);
+	hcl_freemem(hcl, cur);
 	/* hcl->parse.depth.incl--; */
 
 	if (x != 0)
@@ -1371,10 +1371,10 @@ static void feed_reset_reader_state (hcl_t* hcl)
 
 	if (frd->obj)
 	{
-		hcl_freecnode (hcl, frd->obj);
+		hcl_freecnode(hcl, frd->obj);
 		frd->obj = HCL_NULL;
 	}
-	HCL_MEMSET (frd, 0, HCL_SIZEOF(*frd));
+	HCL_MEMSET(frd, 0, HCL_SIZEOF(*frd));
 }
 
 static void feed_clean_up_reader_stack (hcl_t* hcl)
@@ -1385,8 +1385,8 @@ static void feed_clean_up_reader_stack (hcl_t* hcl)
 		hcl_rstl_t* rstl;
 		rstl = hcl->c->r.st;
 		hcl->c->r.st = rstl->prev;
-		if (rstl->head) hcl_freecnode (hcl, rstl->head);
-		hcl_freemem (hcl, rstl);
+		if (rstl->head) hcl_freecnode(hcl, rstl->head);
+		hcl_freemem(hcl, rstl);
 	}
 }
 
@@ -1412,7 +1412,7 @@ static int auto_forge_xlist_if_at_block_beginning (hcl_t* hcl, hcl_frd_t* frd)
 		/* this portion is similar to the code below the start_list label */
 		if (frd->level >= HCL_TYPE_MAX(int)) /* the nesting level too deep */
 		{
-			hcl_setsynerr (hcl, HCL_SYNERR_NESTING, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			hcl_setsynerr(hcl, HCL_SYNERR_NESTING, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			return -1;
 		}
 
@@ -1476,7 +1476,7 @@ static int feed_process_token (hcl_t* hcl)
 	/* this function composes an s-expression non-recursively
 	 * by manipulating its own stack. */
 
-/*hcl_logbfmt (hcl, HCL_LOG_STDERR, "TOKEN [%d] EOL[%d]=> [%.*js] type=%d LOC=%d.%d\n", TOKEN_TYPE(hcl), HCL_TOK_EOL, TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl), TOKEN_TYPE(hcl), TOKEN_LOC(hcl)->line, TOKEN_LOC(hcl)->colm);*/
+/*hcl_logbfmt(hcl, HCL_LOG_STDERR, "TOKEN [%d] EOL[%d]=> [%.*js] type=%d LOC=%d.%d\n", TOKEN_TYPE(hcl), HCL_TOK_EOL, TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl), TOKEN_TYPE(hcl), TOKEN_LOC(hcl)->line, TOKEN_LOC(hcl)->colm);*/
 	if (frd->expect_include_file)
 	{
 		/* the #include directive is an exception to the general expression rule.
@@ -1484,14 +1484,14 @@ static int feed_process_token (hcl_t* hcl)
 
 		if (TOKEN_TYPE(hcl) == HCL_TOK_EOL)
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_STRING, TOKEN_LOC(hcl), HCL_NULL,
+			hcl_setsynerrbfmt(hcl, HCL_SYNERR_STRING, TOKEN_LOC(hcl), HCL_NULL,
 				"%.*js target not specified",
 				vocas[VOCA_INCLUDE].len, vocas[VOCA_INCLUDE].str);
 			goto oops;
 		}
 		else if (TOKEN_TYPE(hcl) != HCL_TOK_STRLIT)
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_STRING, TOKEN_LOC(hcl), HCL_NULL,
+			hcl_setsynerrbfmt(hcl, HCL_SYNERR_STRING, TOKEN_LOC(hcl), HCL_NULL,
 				"%.*js target expected in place of '%.*js'",
 				vocas[VOCA_INCLUDE].len, vocas[VOCA_INCLUDE].str,
 				TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
@@ -1513,20 +1513,20 @@ static int feed_process_token (hcl_t* hcl)
 		if (TOKEN_TYPE(hcl) == HCL_TOK_EOL) goto ok; /* ignore EOL inside vlist */
 
 		/* vlist also has special requirement that it can only contain variable names. */
-		hcl_setsynerr (hcl, HCL_SYNERR_VARNAME, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+		hcl_setsynerr(hcl, HCL_SYNERR_VARNAME, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 		goto oops;
 	}
 
 	switch (TOKEN_TYPE(hcl))
 	{
 		default:
-			hcl_setsynerr (hcl, HCL_SYNERR_ILTOK, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			hcl_setsynerr(hcl, HCL_SYNERR_ILTOK, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto oops;
 
 		case HCL_TOK_EOF:
 			if (hcl_feedpending(hcl))
 			{
-				hcl_setsynerr (hcl, HCL_SYNERR_EOF, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+				hcl_setsynerr(hcl, HCL_SYNERR_EOF, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			}
 			else
 			{
@@ -1543,7 +1543,7 @@ static int feed_process_token (hcl_t* hcl)
 
 		case HCL_TOK_PRAGMA:
 			/* TODO: implement this */
-			hcl_setsynerr (hcl, HCL_SYNERR_ILTOK, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+			hcl_setsynerr(hcl, HCL_SYNERR_ILTOK, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 			goto oops;
 
 		case HCL_TOK_VBAR:
@@ -1570,7 +1570,7 @@ static int feed_process_token (hcl_t* hcl)
 				if (hcl->c->r.st && (hcl->c->r.st->flagv & DATA_LIST))
 				{
 					/* if the outer list is a data list */
-					hcl_setsynerr (hcl, HCL_SYNERR_VBARBANNED, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+					hcl_setsynerr(hcl, HCL_SYNERR_VBARBANNED, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 					goto oops;
 				}
 
@@ -1659,7 +1659,7 @@ static int feed_process_token (hcl_t* hcl)
 			if (frd->level >= HCL_TYPE_MAX(int))
 			{
 				/* the nesting level has become too deep */
-				hcl_setsynerr (hcl, HCL_SYNERR_NESTING, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+				hcl_setsynerr(hcl, HCL_SYNERR_NESTING, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 				goto oops;
 			}
 
@@ -1679,7 +1679,7 @@ static int feed_process_token (hcl_t* hcl)
 				 *   1. at the top frd->level - not inside ()
 				 *   2. at the beginning of a list
 				 *   3. inside an array, byte-array, dictionary, xlist */
-				hcl_setsynerr (hcl, HCL_SYNERR_DOTBANNED, TOKEN_LOC(hcl), HCL_NULL);
+				hcl_setsynerr(hcl, HCL_SYNERR_DOTBANNED, TOKEN_LOC(hcl), HCL_NULL);
 				goto oops;
 			}
 			goto ok;
@@ -1689,7 +1689,7 @@ static int feed_process_token (hcl_t* hcl)
 			int n;
 			if (frd->level <= 0 || !(n = can_colon_list(hcl)))
 			{
-				hcl_setsynerr (hcl, HCL_SYNERR_COLONBANNED, TOKEN_LOC(hcl), HCL_NULL);
+				hcl_setsynerr(hcl, HCL_SYNERR_COLONBANNED, TOKEN_LOC(hcl), HCL_NULL);
 				goto oops;
 			}
 			if (n == 2)
@@ -1706,7 +1706,7 @@ static int feed_process_token (hcl_t* hcl)
 		case HCL_TOK_COLONEQ:
 			if (frd->level <= 0 || !can_coloneq_list(hcl))
 			{
-				hcl_setsynerr (hcl, HCL_SYNERR_COLONEQBANNED, TOKEN_LOC(hcl), HCL_NULL);
+				hcl_setsynerr(hcl, HCL_SYNERR_COLONEQBANNED, TOKEN_LOC(hcl), HCL_NULL);
 				goto oops;
 			}
 			goto ok;
@@ -1716,7 +1716,7 @@ static int feed_process_token (hcl_t* hcl)
 			int can = 0;
 			if (frd->level <= 0)
 			{
-				HCL_ASSERT (hcl, hcl->c->r.st == HCL_NULL);
+				HCL_ASSERT(hcl, hcl->c->r.st == HCL_NULL);
 				/*if (hcl->c->r.st) goto banned_binop;*/
 				/* very first even before entering a list including an auto-forged list */
 				can = 1;
@@ -1724,14 +1724,14 @@ static int feed_process_token (hcl_t* hcl)
 			else if (!(can = can_binop_list(hcl)))
 			{
 			/*banned_binop:*/
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_BANNED, TOKEN_LOC(hcl), HCL_NULL,
+				hcl_setsynerrbfmt(hcl, HCL_SYNERR_BANNED, TOKEN_LOC(hcl), HCL_NULL,
 					"prohibited binary selector '%.*js'", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
 				goto oops;
 			}
 			else if (can <= -1) goto oops;
 			if (can == 1) goto ident; /* if binop is the first in the list */
 
-			HCL_ASSERT (hcl, can == 2);
+			HCL_ASSERT(hcl, can == 2);
 
 		#if 0
 /* TODO: ... */
@@ -1745,7 +1745,7 @@ static int feed_process_token (hcl_t* hcl)
 		case HCL_TOK_COMMA:
 			if (frd->level <= 0 || !can_comma_list(hcl))
 			{
-				hcl_setsynerr (hcl, HCL_SYNERR_COMMABANNED, TOKEN_LOC(hcl), HCL_NULL);
+				hcl_setsynerr(hcl, HCL_SYNERR_COMMABANNED, TOKEN_LOC(hcl), HCL_NULL);
 				goto oops;
 			}
 			goto ok;
@@ -1769,7 +1769,7 @@ static int feed_process_token (hcl_t* hcl)
 				if (TOKEN_TYPE(hcl) == HCL_TOK_EOL) goto ok;
 				if (concode == HCL_CONCODE_BLOCK) goto ok;
 
-				hcl_setsynerr (hcl, HCL_SYNERR_SEMICOLON, TOKEN_LOC(hcl), HCL_NULL);
+				hcl_setsynerr(hcl, HCL_SYNERR_SEMICOLON, TOKEN_LOC(hcl), HCL_NULL);
 				goto oops;
 			}
 
@@ -1778,11 +1778,11 @@ static int feed_process_token (hcl_t* hcl)
 /* TODO: remove this part if the assertion is confirmed true in the #else part... */
 			if (concode != HCL_CONCODE_XLIST && concode != HCL_CONCODE_MLIST && concode != HCL_CONCODE_ALIST && concode != HCL_CONCODE_BLIST)
 			{
-				hcl_setsynerr (hcl, HCL_SYNERR_UNBALPBB, TOKEN_LOC(hcl), HCL_NULL);
+				hcl_setsynerr(hcl, HCL_SYNERR_UNBALPBB, TOKEN_LOC(hcl), HCL_NULL);
 				goto oops;
 			}
 #else
-			HCL_ASSERT (hcl, concode == HCL_CONCODE_XLIST || concode == HCL_CONCODE_MLIST || concode == HCL_CONCODE_ALIST || concode == HCL_CONCODE_BLIST);
+			HCL_ASSERT(hcl, concode == HCL_CONCODE_XLIST || concode == HCL_CONCODE_MLIST || concode == HCL_CONCODE_ALIST || concode == HCL_CONCODE_BLIST);
 #endif
 
 			frd->obj = leave_list(hcl, &frd->list_loc, &frd->flagv, &oldflagv);
@@ -1802,7 +1802,7 @@ static int feed_process_token (hcl_t* hcl)
 
 			if (frd->level <= 0)
 			{
-				hcl_setsynerr (hcl, HCL_SYNERR_UNBALPBB, TOKEN_LOC(hcl), HCL_NULL);
+				hcl_setsynerr(hcl, HCL_SYNERR_UNBALPBB, TOKEN_LOC(hcl), HCL_NULL);
 				goto oops;
 			}
 
@@ -1813,7 +1813,7 @@ static int feed_process_token (hcl_t* hcl)
 				{
 				#if 0
 					/* the auto-forged list has not been terminated. it must be terminated closed first */
-					hcl_setsynerrbfmt (hcl, HCL_SYNERR_SEMICOLON, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "semicolon expected");
+					hcl_setsynerrbfmt(hcl, HCL_SYNERR_SEMICOLON, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "semicolon expected");
 					goto oops;
 				#else
 					/* if the expression inside {} is an auto-forged xlist expression and there is no semicolon provided,
@@ -1830,13 +1830,13 @@ static int feed_process_token (hcl_t* hcl)
 			{
 				/* the auto-created xlist can't be terminated with the regular closing symbol
 				 * it must end with the semicolon */
-				hcl_setsynerr (hcl, HCL_SYNERR_UNBALPBB, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+				hcl_setsynerr(hcl, HCL_SYNERR_UNBALPBB, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 				goto oops;
 			}
 
 			if (cons_info[concode].closer != TOKEN_TYPE(hcl))
 			{
-				hcl_setsynerr (hcl, cons_info[concode].synerr, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+				hcl_setsynerr(hcl, cons_info[concode].synerr, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 				goto oops;
 			}
 #if 0
@@ -1859,7 +1859,7 @@ static int feed_process_token (hcl_t* hcl)
 				 * with no opening(left) parenthesis, which is
 				 * indicated by frd->level<=0.
 				 */
-				hcl_setsynerr (hcl, HCL_SYNERR_LPAREN, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+				hcl_setsynerr(hcl, HCL_SYNERR_LPAREN, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 				goto oops;
 			}
 #endif
@@ -1929,16 +1929,16 @@ static int feed_process_token (hcl_t* hcl)
 			hcl_oow_t v = 0;
 
 			/* 0pNNNN */
-			HCL_ASSERT (hcl, TOKEN_NAME_LEN(hcl) >= 3);
+			HCL_ASSERT(hcl, TOKEN_NAME_LEN(hcl) >= 3);
 			for (i = 2; i < TOKEN_NAME_LEN(hcl); i++)
 			{
-				HCL_ASSERT (hcl, is_xdigit_char(TOKEN_NAME_CHAR(hcl, i)));
+				HCL_ASSERT(hcl, is_xdigit_char(TOKEN_NAME_CHAR(hcl, i)));
 				v = v * 16 + HCL_CHAR_TO_NUM(TOKEN_NAME_CHAR(hcl, i), 16);
 			}
 
 			if (!HCL_IN_SMPTR_RANGE(v))
 			{
-				hcl_setsynerr (hcl, HCL_SYNERR_SMPTRLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+				hcl_setsynerr(hcl, HCL_SYNERR_SMPTRLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 				goto oops;
 			}
 
@@ -1951,15 +1951,15 @@ static int feed_process_token (hcl_t* hcl)
 			hcl_oow_t i;
 			hcl_ooi_t v = 0;
 
-			HCL_ASSERT (hcl, TOKEN_NAME_LEN(hcl) >= 3);
+			HCL_ASSERT(hcl, TOKEN_NAME_LEN(hcl) >= 3);
 			for (i = 2; i < TOKEN_NAME_LEN(hcl); i++)
 			{
-				HCL_ASSERT (hcl, is_digit_char(TOKEN_NAME_CHAR(hcl, i)));
+				HCL_ASSERT(hcl, is_digit_char(TOKEN_NAME_CHAR(hcl, i)));
 				v = v * 10 + HCL_CHAR_TO_NUM(TOKEN_NAME_CHAR(hcl, i), 10);
 
 				if (v > HCL_ERROR_MAX)
 				{
-					hcl_setsynerr (hcl, HCL_SYNERR_ERRLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
+					hcl_setsynerr(hcl, HCL_SYNERR_ERRLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl));
 					goto oops;
 				}
 			}
@@ -2033,7 +2033,7 @@ static int feed_process_token (hcl_t* hcl)
 	{
 		int oldflagv;
 
-		HCL_ASSERT (hcl, frd->level > 0);
+		HCL_ASSERT(hcl, frd->level > 0);
 
 		/* if so, append the element read into the quote list */
 		if (chain_to_list(hcl, obj) <= -1) goto oops;
@@ -2052,13 +2052,13 @@ static int feed_process_token (hcl_t* hcl)
 		int n;
 
 		/* upon exit, we must be at the top level */
-		HCL_ASSERT (hcl, frd->flagv & AT_BEGINNING);
+		HCL_ASSERT(hcl, frd->flagv & AT_BEGINNING);
 
-		HCL_ASSERT (hcl, hcl->c->r.st == HCL_NULL);
-		HCL_ASSERT (hcl, frd->obj != HCL_NULL);
+		HCL_ASSERT(hcl, hcl->c->r.st == HCL_NULL);
+		HCL_ASSERT(hcl, frd->obj != HCL_NULL);
 
 		n = hcl->c->feed.on_cnode(hcl, frd->obj);
-		hcl_freecnode (hcl, frd->obj); /* not needed any more */
+		hcl_freecnode(hcl, frd->obj); /* not needed any more */
 		frd->obj = HCL_NULL;
 		if (n <= -1) goto oops;
 	}
@@ -2073,7 +2073,7 @@ static int feed_process_token (hcl_t* hcl)
 		 * is made to oops, the momory block pointed to by obj may get freed twice. */
 		frd->obj = HCL_NULL;
 
-		clear_comma_colon_binop_flag (hcl);
+		clear_comma_colon_binop_flag(hcl);
 	}
 
 ok:
@@ -2087,11 +2087,11 @@ ok:
 	return 0;
 
 oops:
-	feed_reset_reader_state (hcl);
+	feed_reset_reader_state(hcl);
 
 	/* clean up the reader stack for a list */
-	feed_clean_up_reader_stack (hcl);
-	feed_continue (hcl, HCL_FLX_START);
+	feed_clean_up_reader_stack(hcl);
+	feed_continue(hcl, HCL_FLX_START);
 	return oops_ret;
 }
 
@@ -2174,7 +2174,7 @@ static int find_delim_token_char (hcl_t* hcl, const hcl_ooci_t c, int row_start,
 static HCL_INLINE int feed_wrap_up (hcl_t* hcl, hcl_tok_type_t type)
 {
 	int n;
-	SET_TOKEN_TYPE (hcl, type);
+	SET_TOKEN_TYPE(hcl, type);
 
 	n = feed_process_token(hcl);
 
@@ -2184,13 +2184,13 @@ static HCL_INLINE int feed_wrap_up (hcl_t* hcl, hcl_tok_type_t type)
 
 static int feed_wrap_up_with_char (hcl_t* hcl, hcl_ooci_t c, hcl_tok_type_t type)
 {
-	ADD_TOKEN_CHAR (hcl, c);
+	ADD_TOKEN_CHAR(hcl, c);
 	return feed_wrap_up(hcl, type);
 }
 
 static int feed_wrap_up_with_str (hcl_t* hcl, const hcl_ooch_t* str, hcl_oow_t len, hcl_tok_type_t type)
 {
-	ADD_TOKEN_STR (hcl, str, len);
+	ADD_TOKEN_STR(hcl, str, len);
 	return feed_wrap_up(hcl, type);
 }
 
@@ -2201,7 +2201,7 @@ static void feed_continue (hcl_t* hcl, hcl_flx_state_t state)
 
 static int feed_continue_with_char (hcl_t* hcl, hcl_ooci_t c, hcl_flx_state_t state)
 {
-	ADD_TOKEN_CHAR (hcl, c);
+	ADD_TOKEN_CHAR(hcl, c);
 	hcl->c->feed.lx.state = state;
 	return 0;
 }
@@ -2234,28 +2234,28 @@ static int feed_continue_with_char (hcl_t* hcl, hcl_ooci_t c, hcl_flx_state_t st
 
 static HCL_INLINE void init_flx_di (hcl_flx_di_t* di)
 {
-	HCL_MEMSET (di, 0, HCL_SIZEOF(*di));
+	HCL_MEMSET(di, 0, HCL_SIZEOF(*di));
 }
 
 static HCL_INLINE void init_flx_hc (hcl_flx_hc_t* hc)
 {
-	HCL_MEMSET (hc, 0, HCL_SIZEOF(*hc));
+	HCL_MEMSET(hc, 0, HCL_SIZEOF(*hc));
 }
 
 static HCL_INLINE void init_flx_hi (hcl_flx_hi_t* hi)
 {
-	HCL_MEMSET (hi, 0, HCL_SIZEOF(*hi));
+	HCL_MEMSET(hi, 0, HCL_SIZEOF(*hi));
 }
 
 static HCL_INLINE void init_flx_hbc (hcl_flx_hbc_t* hbc, hcl_ooch_t start_c)
 {
-	HCL_MEMSET (hbc, 0, HCL_SIZEOF(*hbc));
+	HCL_MEMSET(hbc, 0, HCL_SIZEOF(*hbc));
 	hbc->start_c = start_c;
 }
 
 static HCL_INLINE void init_flx_qt (hcl_flx_qt_t* qt, hcl_tok_type_t tok_type, hcl_synerrnum_t synerr_code, hcl_ooch_t end_char, hcl_ooch_t esc_char, hcl_oow_t min_len, hcl_oow_t max_len, int is_byte)
 {
-	HCL_MEMSET (qt, 0, HCL_SIZEOF(*qt));
+	HCL_MEMSET(qt, 0, HCL_SIZEOF(*qt));
 	qt->tok_type = tok_type;
 	qt->synerr_code = synerr_code;
 	qt->end_char = end_char;
@@ -2267,17 +2267,17 @@ static HCL_INLINE void init_flx_qt (hcl_flx_qt_t* qt, hcl_tok_type_t tok_type, h
 
 static HCL_INLINE void init_flx_pi (hcl_flx_pi_t* pi)
 {
-	HCL_MEMSET (pi, 0, HCL_SIZEOF(*pi));
+	HCL_MEMSET(pi, 0, HCL_SIZEOF(*pi));
 }
 
 static HCL_INLINE void init_flx_binop (hcl_flx_binop_t* binop)
 {
-	HCL_MEMSET (binop, 0, HCL_SIZEOF(*binop));
+	HCL_MEMSET(binop, 0, HCL_SIZEOF(*binop));
 }
 
 static HCL_INLINE void init_flx_pn (hcl_flx_pn_t* pn, hcl_ooch_t start_digit)
 {
-	HCL_MEMSET (pn, 0, HCL_SIZEOF(*pn));
+	HCL_MEMSET(pn, 0, HCL_SIZEOF(*pn));
 	pn->start_digit = start_digit;
 	pn->radix = 10;
 	pn->radix_cand = 0;
@@ -2287,40 +2287,40 @@ static HCL_INLINE void init_flx_pn (hcl_flx_pn_t* pn, hcl_ooch_t start_digit)
 
 static HCL_INLINE void init_flx_st (hcl_flx_st_t* st, hcl_ooch_t sign_c)
 {
-	HCL_MEMSET (st, 0, HCL_SIZEOF(*st));
+	HCL_MEMSET(st, 0, HCL_SIZEOF(*st));
 	st->sign_c = sign_c;
 }
 
 static HCL_INLINE void init_flx_bcp (hcl_flx_bcp_t* bcp, hcl_ooch_t start_c)
 {
-	HCL_MEMSET (bcp, 0, HCL_SIZEOF(*bcp));
+	HCL_MEMSET(bcp, 0, HCL_SIZEOF(*bcp));
 	bcp->start_c = start_c;
 }
 
 static void reset_flx_token (hcl_t* hcl)
 {
 	/* clear the token name, reset its location */
-	SET_TOKEN_TYPE (hcl, HCL_TOK_EOF); /* is it correct? */
-	CLEAR_TOKEN_NAME (hcl);
-	SET_TOKEN_LOC (hcl, &hcl->c->feed.lx.loc);
+	SET_TOKEN_TYPE(hcl, HCL_TOK_EOF); /* is it correct? */
+	CLEAR_TOKEN_NAME(hcl);
+	SET_TOKEN_LOC(hcl, &hcl->c->feed.lx.loc);
 }
 
 static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 {
-	HCL_ASSERT (hcl, FLX_STATE(hcl) == HCL_FLX_START);
+	HCL_ASSERT(hcl, FLX_STATE(hcl) == HCL_FLX_START);
 
 	if (is_spacechar(c))
 	{
 		if ((hcl->option.trait & HCL_TRAIT_LANG_ENABLE_EOL) && is_linebreak(c))
 		{
-			reset_flx_token (hcl);
-			FEED_WRAP_UP_WITH_CHAR (hcl, c, HCL_TOK_EOL);
+			reset_flx_token(hcl);
+			FEED_WRAP_UP_WITH_CHAR(hcl, c, HCL_TOK_EOL);
 		}
 
 		goto consumed; /* skip spaces */
 	}
 
-	reset_flx_token (hcl);
+	reset_flx_token(hcl);
 
 	if (find_delim_token_char(hcl, c, 0, HCL_COUNTOF(delim_token_tab) - 1, 0, FLX_DT(hcl)))
 	{
@@ -2329,11 +2329,11 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 		    FLX_DT(hcl)->col_next == delim_token_tab[FLX_DT(hcl)->row_start].t_len)
 		{
 			/* single character delimiter token */
-			FEED_WRAP_UP_WITH_CHAR (hcl, c, delim_token_tab[FLX_DT(hcl)->row_start].t_type);
+			FEED_WRAP_UP_WITH_CHAR(hcl, c, delim_token_tab[FLX_DT(hcl)->row_start].t_type);
 		}
 		else
 		{
-			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_DELIM_TOKEN); /* consume c and move to HCL_FLX_DELIM_TOKEN state */
+			FEED_CONTINUE_WITH_CHAR(hcl, c, HCL_FLX_DELIM_TOKEN); /* consume c and move to HCL_FLX_DELIM_TOKEN state */
 		}
 		goto consumed;
 	}
@@ -2343,61 +2343,61 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 		case HCL_OOCI_EOF:
 			/* only EOF of the top-level stream is supposed to be fed in.
 			 * the internal logic discard EOFs of included streams */
-			FEED_WRAP_UP_WITH_CHARS (hcl, vocas[VOCA_EOF].str, vocas[VOCA_EOF].len, HCL_TOK_EOF);
+			FEED_WRAP_UP_WITH_CHARS(hcl, vocas[VOCA_EOF].str, vocas[VOCA_EOF].len, HCL_TOK_EOF);
 			goto consumed;
 
 		case '\\':
-			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_BACKSLASHED);
+			FEED_CONTINUE_WITH_CHAR(hcl, c, HCL_FLX_BACKSLASHED);
 			goto consumed;
 
 		/* this part is never hit because the semicolon sign is part of delim_tok_tab{}
 		   TODO: remove this part once the language spec is finalized to not require this
 		case ';':
-			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_COMMENT);
+			FEED_CONTINUE_WITH_CHAR(hcl, c, HCL_FLX_COMMENT);
 			goto consumed;
 		*/
 
 		case '$':
 			init_flx_di (FLX_DI(hcl));
-			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_DOLLARED_IDENT);
+			FEED_CONTINUE_WITH_CHAR(hcl, c, HCL_FLX_DOLLARED_IDENT);
 			goto consumed;
 
 		case '#':
 			/* no state date to initialize. just change the state */
-			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_HMARKED_TOKEN);
+			FEED_CONTINUE_WITH_CHAR(hcl, c, HCL_FLX_HMARKED_TOKEN);
 			goto consumed;
 
 		case '\"':
 			init_flx_qt (FLX_QT(hcl), HCL_TOK_STRLIT, HCL_SYNERR_STRLIT, c, '\\', 0, HCL_TYPE_MAX(hcl_oow_t), 0);
-			FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard the quote itself. move on the the QUOTED_TOKEN state */
+			FEED_CONTINUE(hcl, HCL_FLX_QUOTED_TOKEN); /* discard the quote itself. move on the the QUOTED_TOKEN state */
 			goto consumed;
 
 		case '\'':
 			init_flx_qt (FLX_QT(hcl), HCL_TOK_CHARLIT, HCL_SYNERR_CHARLIT, c, '\\', 1, 1, 0);
-			FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard the quote itself. move on the the QUOTED_TOKEN state */
+			FEED_CONTINUE(hcl, HCL_FLX_QUOTED_TOKEN); /* discard the quote itself. move on the the QUOTED_TOKEN state */
 			goto consumed;
 
 #if defined(HCL_OOCH_IS_UCH) && defined(HCL_LANG_ENABLE_WIDE_DELIM)
 		case L'\u201C': /* “ ” */
 			init_flx_qt (FLX_QT(hcl), HCL_TOK_STRLIT, HCL_SYNERR_STRLIT, L'\u201D', '\\', 0, HCL_TYPE_MAX(hcl_oow_t), 0);
-			FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard the quote itself. move on the the QUOTED_TOKEN state */
+			FEED_CONTINUE(hcl, HCL_FLX_QUOTED_TOKEN); /* discard the quote itself. move on the the QUOTED_TOKEN state */
 			goto consumed;
 		case L'\u2018': /* ‘ ’ */
 			init_flx_qt (FLX_QT(hcl), HCL_TOK_CHARLIT, HCL_SYNERR_CHARLIT, L'\u2019', '\\', 1, 1, 0);
-			FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard the quote itself. move on the the QUOTED_TOKEN state */
+			FEED_CONTINUE(hcl, HCL_FLX_QUOTED_TOKEN); /* discard the quote itself. move on the the QUOTED_TOKEN state */
 			goto consumed;
 #endif
 
 		case '+':
 		case '-':
 			init_flx_st (FLX_ST(hcl), c);
-			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_SIGNED_TOKEN);
+			FEED_CONTINUE_WITH_CHAR(hcl, c, HCL_FLX_SIGNED_TOKEN);
 			goto consumed;
 
 		case '0': case '1': case '2': case '3': case '4':
 		case '5': case '6': case '7': case '8': case '9':
 			init_flx_pn (FLX_PN(hcl), c);
-			FEED_CONTINUE (hcl, HCL_FLX_PLAIN_NUMBER);
+			FEED_CONTINUE(hcl, HCL_FLX_PLAIN_NUMBER);
 			goto not_consumed;
 
 		case 'B': /* for charcter/string prefixed with B,b,C,c */
@@ -2412,16 +2412,16 @@ static int flx_start (hcl_t* hcl, hcl_ooci_t c)
 			if (is_binop_char(c))
 			{
 				init_flx_binop (FLX_BINOP(hcl));
-				FEED_CONTINUE (hcl, HCL_FLX_BINOP);
+				FEED_CONTINUE(hcl, HCL_FLX_BINOP);
 			}
 			else if (is_lead_ident_char(c))
 			{
 				init_flx_pi (FLX_PI(hcl));
-				FEED_CONTINUE (hcl, HCL_FLX_PLAIN_IDENT);
+				FEED_CONTINUE(hcl, HCL_FLX_PLAIN_IDENT);
 			}
 			else
 			{
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_BACKSLASH, TOKEN_LOC(hcl), HCL_NULL, "invalid token character - %c", c);
+				hcl_setsynerrbfmt(hcl, HCL_SYNERR_BACKSLASH, TOKEN_LOC(hcl), HCL_NULL, "invalid token character - %c", c);
 				return -1;
 			}
 			goto not_consumed;
@@ -2438,11 +2438,11 @@ static int flx_backslashed (hcl_t* hcl, hcl_ooci_t c)
 {
 	if (is_linebreak(c))
 	{
-		FEED_CONTINUE (hcl, HCL_FLX_START);
+		FEED_CONTINUE(hcl, HCL_FLX_START);
 		return 1; /* consumed */
 	}
 
-	hcl_setsynerrbfmt (hcl, HCL_SYNERR_BACKSLASH, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "stray backslash");
+	hcl_setsynerrbfmt(hcl, HCL_SYNERR_BACKSLASH, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "stray backslash");
 	return -1;
 }
 
@@ -2450,7 +2450,7 @@ static int flx_comment (hcl_t* hcl, hcl_ooci_t c)
 {
 	if (is_linebreak(c))
 	{
-		FEED_CONTINUE (hcl, HCL_FLX_START);
+		FEED_CONTINUE(hcl, HCL_FLX_START);
 		/* don't consume the line break together with the comment text
 		 * if a comment text is located at the back of the line in the
 		 * LANG_ENABLE_EOL mode.
@@ -2469,7 +2469,7 @@ static int flx_delim_token (hcl_t* hcl, hcl_ooci_t c)
 		    FLX_DT(hcl)->col_next == delim_token_tab[FLX_DT(hcl)->row_start].t_len)
 		{
 			/* complete token and switch to the HCL_FLX_START state */
-			FEED_WRAP_UP_WITH_CHAR (hcl, c, delim_token_tab[FLX_DT(hcl)->row_start].t_type);
+			FEED_WRAP_UP_WITH_CHAR(hcl, c, delim_token_tab[FLX_DT(hcl)->row_start].t_type);
 		}
 		else
 		{
@@ -2503,20 +2503,20 @@ static int flx_dollared_ident (hcl_t* hcl, hcl_ooci_t c)
 
 		if (di->char_count == 0)
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_ILTOK, FLX_LOC(hcl), HCL_NULL,
+			hcl_setsynerrbfmt(hcl, HCL_SYNERR_ILTOK, FLX_LOC(hcl), HCL_NULL,
 				"no valid character after dollar sign");
 			return -1;
 		}
 
 		if (get_directive_token_type(hcl, &tok_type) <= -1)
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_ILTOK, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
+			hcl_setsynerrbfmt(hcl, HCL_SYNERR_ILTOK, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
 				"invalid dollar-prefixed identifier '%.*js'", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
 			return -1;
 		}
 		else
 		{
-			FEED_WRAP_UP (hcl, tok_type);
+			FEED_WRAP_UP(hcl, tok_type);
 			goto not_consumed;
 		}
 	}
@@ -2526,14 +2526,14 @@ static int flx_dollared_ident (hcl_t* hcl, hcl_ooci_t c)
 		{
 			if (!is_lead_ident_char(c))
 			{
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_ILTOK, TOKEN_LOC(hcl), HCL_NULL,
+				hcl_setsynerrbfmt(hcl, HCL_SYNERR_ILTOK, TOKEN_LOC(hcl), HCL_NULL,
 					"'%c' prohibited as first character after '%.*js'",
 					c, TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
 				return -1;
 			}
 		}
 
-		ADD_TOKEN_CHAR (hcl, c);
+		ADD_TOKEN_CHAR(hcl, c);
 		di->char_count++;
 		goto consumed;
 	}
@@ -2585,8 +2585,8 @@ static int flx_hmarked_token (hcl_t* hcl, hcl_ooci_t c)
 
 	if (is_binop_char(c))
 	{
-		reset_flx_token (hcl);
-		FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_HMARKED_BINOP);
+		reset_flx_token(hcl);
+		FEED_CONTINUE_WITH_CHAR(hcl, c, HCL_FLX_HMARKED_BINOP);
 		goto consumed;
 	}
 
@@ -2597,7 +2597,7 @@ static int flx_hmarked_token (hcl_t* hcl, hcl_ooci_t c)
 			/* ## comment start
 			 * #! also comment start.
 			 * ; comment start */
-			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_COMMENT);
+			FEED_CONTINUE_WITH_CHAR(hcl, c, HCL_FLX_COMMENT);
 			goto consumed;
 
 		/* --------------------------- */
@@ -2618,39 +2618,39 @@ static int flx_hmarked_token (hcl_t* hcl, hcl_ooci_t c)
 		case 'C':
 			/* if #b is followed by [, it is a starter for a byte array */
 			init_flx_hbc (FLX_HBC(hcl), c);
-			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_HMARKED_BC);
+			FEED_CONTINUE_WITH_CHAR(hcl, c, HCL_FLX_HMARKED_BC);
 			break;
 
 		/* --------------------------- */
 		case '\\':
 			init_flx_hc (FLX_HC(hcl));
-			FEED_CONTINUE_WITH_CHAR (hcl, c, HCL_FLX_HMARKED_CHAR);
+			FEED_CONTINUE_WITH_CHAR(hcl, c, HCL_FLX_HMARKED_CHAR);
 			goto consumed;
 
 		/* --------------------------- */
 		case '[': /* #[ */
-			FEED_WRAP_UP_WITH_CHAR (hcl, c, HCL_TOK_APAREN);
+			FEED_WRAP_UP_WITH_CHAR(hcl, c, HCL_TOK_APAREN);
 			goto consumed;
 
 		case '(': /* #( */
-			FEED_WRAP_UP_WITH_CHAR (hcl, c, HCL_TOK_QLPAREN);
+			FEED_WRAP_UP_WITH_CHAR(hcl, c, HCL_TOK_QLPAREN);
 			goto consumed;
 
 		case '{': /* #{ */
-			FEED_WRAP_UP_WITH_CHAR (hcl, c, HCL_TOK_DLPAREN);
+			FEED_WRAP_UP_WITH_CHAR(hcl, c, HCL_TOK_DLPAREN);
 			goto consumed;
 
 		case '"': /* #" - double-quoted symbol */
-			reset_flx_token (hcl);
+			reset_flx_token(hcl);
 			init_flx_qt (FLX_QT(hcl), HCL_TOK_SYMLIT, HCL_SYNERR_SYMLIT, c, '\\', 0, HCL_TYPE_MAX(hcl_oow_t), 0);
-			FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard prefix, quote and move on */
+			FEED_CONTINUE(hcl, HCL_FLX_QUOTED_TOKEN); /* discard prefix, quote and move on */
 			goto consumed;
 
 		/* --------------------------- */
 		default:
 			init_flx_hi (FLX_HI(hcl));
-			reset_flx_token (hcl); /* to discard the leading '#' */
-			FEED_CONTINUE (hcl, HCL_FLX_HMARKED_IDENT);
+			reset_flx_token(hcl); /* to discard the leading '#' */
+			FEED_CONTINUE(hcl, HCL_FLX_HMARKED_IDENT);
 			goto not_consumed;
 	}
 
@@ -2669,7 +2669,7 @@ static int flx_hmarked_char (hcl_t* hcl, hcl_ooci_t c)
 	{
 		if (hc->char_count == 0)
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_CHARLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
+			hcl_setsynerrbfmt(hcl, HCL_SYNERR_CHARLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
 				"no valid character in character literal %.*js", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
 			return -1;
 		}
@@ -2686,7 +2686,7 @@ static int flx_hmarked_char (hcl_t* hcl, hcl_ooci_t c)
 			hexcharlit:
 				if (TOKEN_NAME_LEN(hcl) - 3 > max_digit_count)
 				{
-					hcl_setsynerrbfmt (hcl, HCL_SYNERR_CHARLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
+					hcl_setsynerrbfmt(hcl, HCL_SYNERR_CHARLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
 						"invalid hexadecimal character character literal %.*js", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
 					return -1;
 				}
@@ -2695,7 +2695,7 @@ static int flx_hmarked_char (hcl_t* hcl, hcl_ooci_t c)
 				{
 					if (!is_xdigit_char(TOKEN_NAME_CHAR(hcl, i)))
 					{
-						hcl_setsynerrbfmt (hcl, HCL_SYNERR_CHARLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
+						hcl_setsynerrbfmt(hcl, HCL_SYNERR_CHARLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
 							"invalid hexadecimal character character literal %.*js", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
 						return -1;
 					}
@@ -2728,26 +2728,26 @@ static int flx_hmarked_char (hcl_t* hcl, hcl_ooci_t c)
 			else if (does_token_name_match(hcl, VOCA_CHAR_VTAB))      c = '\v';
 			else
 			{
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_CHARLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
+				hcl_setsynerrbfmt(hcl, HCL_SYNERR_CHARLIT, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
 					"invalid character literal %.*js", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
 				return -1;
 			}
 		}
 		else
 		{
-			HCL_ASSERT (hcl, TOKEN_NAME_LEN(hcl) == 3);
+			HCL_ASSERT(hcl, TOKEN_NAME_LEN(hcl) == 3);
 			c = TOKEN_NAME_CHAR(hcl, 2);
 		}
 
 		/* reset the token name to the converted character */
-		CLEAR_TOKEN_NAME (hcl);
-		ADD_TOKEN_CHAR (hcl, c);
-		FEED_WRAP_UP (hcl, HCL_TOK_CHARLIT);
+		CLEAR_TOKEN_NAME(hcl);
+		ADD_TOKEN_CHAR(hcl, c);
+		FEED_WRAP_UP(hcl, HCL_TOK_CHARLIT);
 		goto not_consumed;
 	}
 	else
 	{
-		ADD_TOKEN_CHAR (hcl, c);
+		ADD_TOKEN_CHAR(hcl, c);
 		hc->char_count++;
 		goto consumed;
 	}
@@ -2770,14 +2770,14 @@ static int flx_hmarked_bc (hcl_t* hcl, hcl_ooci_t c)
 		/*                  char-array word-array 32bit-int-array etc */
 		hcl_tok_type_t tt;
 		tt = (hb->start_c == 'b' || hb->start_c == 'B')? HCL_TOK_BAPAREN: HCL_TOK_CAPAREN;
-		FEED_WRAP_UP_WITH_CHAR (hcl, c, tt);
+		FEED_WRAP_UP_WITH_CHAR(hcl, c, tt);
 		goto consumed;
 	}
 	else
 	{
 		hcl_ooch_t start_c = hb->start_c;
-		reset_flx_token (hcl);
-		FEED_CONTINUE_WITH_CHAR (hcl, start_c, HCL_FLX_HMARKED_IDENT);
+		reset_flx_token(hcl);
+		FEED_CONTINUE_WITH_CHAR(hcl, start_c, HCL_FLX_HMARKED_IDENT);
 		goto not_consumed;
 	}
 
@@ -2802,7 +2802,7 @@ static int flx_hmarked_binop (hcl_t* hcl, hcl_ooci_t c)
 	}
 	else
 	{
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_SYMLIT,
+		hcl_setsynerrbfmt(hcl, HCL_SYNERR_SYMLIT,
 			TOKEN_LOC(hcl), HCL_NULL /* no token name as incomplete */,
 			"invalid binary selector character '%jc' after #%.*js",
 			c, TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
@@ -2826,12 +2826,12 @@ static int flx_hmarked_ident (hcl_t* hcl, hcl_ooci_t c)
 	{
 		if (hi->char_count == 0)
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_SYMLIT, FLX_LOC(hcl), HCL_NULL,
+			hcl_setsynerrbfmt(hcl, HCL_SYNERR_SYMLIT, FLX_LOC(hcl), HCL_NULL,
 				"no valid character after hash sign");
 			return -1;
 		}
 
-		FEED_WRAP_UP (hcl, HCL_TOK_SYMLIT);
+		FEED_WRAP_UP(hcl, HCL_TOK_SYMLIT);
 		goto not_consumed;
 	}
 	else if (is_ident_char(c))
@@ -2840,13 +2840,13 @@ static int flx_hmarked_ident (hcl_t* hcl, hcl_ooci_t c)
 		{
 			if (!is_lead_ident_char(c))
 			{
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_ILTOK, TOKEN_LOC(hcl), HCL_NULL,
+				hcl_setsynerrbfmt(hcl, HCL_SYNERR_ILTOK, TOKEN_LOC(hcl), HCL_NULL,
 					"'%c' prohibited as first character of symbol", c);
 				return -1;
 			}
 		}
 
-		ADD_TOKEN_CHAR (hcl, c);
+		ADD_TOKEN_CHAR(hcl, c);
 		hi->char_count++;
 		goto consumed;
 	}
@@ -2878,7 +2878,7 @@ static int flx_plain_ident (hcl_t* hcl, hcl_ooci_t c) /* identifier */
 
 		if (pi->seg_len == 0)
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_ILTOK, TOKEN_LOC(hcl), HCL_NULL,
+			hcl_setsynerrbfmt(hcl, HCL_SYNERR_ILTOK, TOKEN_LOC(hcl), HCL_NULL,
 				"blank segment after '%.*js'", TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
 			return -1;
 		}
@@ -2888,7 +2888,7 @@ static int flx_plain_ident (hcl_t* hcl, hcl_ooci_t c) /* identifier */
 		seg.len = pi->seg_len;
 		if (seg.ptr[seg.len - 1] == '-')
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_ILTOK, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
+			hcl_setsynerrbfmt(hcl, HCL_SYNERR_ILTOK, TOKEN_LOC(hcl), TOKEN_NAME(hcl),
 				"'%c' prohibited as last character of identifier or identifier segment",
 				seg.ptr[seg.len - 1]);
 			return -1;
@@ -2925,12 +2925,12 @@ static int flx_plain_ident (hcl_t* hcl, hcl_ooci_t c) /* identifier */
 		{
 			if (pi->seg_count == 1)
 			{
-				FEED_WRAP_UP (hcl, pi->last_non_ident_type);
+				FEED_WRAP_UP(hcl, pi->last_non_ident_type);
 				goto not_consumed;
 			}
 			else
 			{
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_ILTOK, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "wrong multi-segment identifier");
+				hcl_setsynerrbfmt(hcl, HCL_SYNERR_ILTOK, TOKEN_LOC(hcl), TOKEN_NAME(hcl), "wrong multi-segment identifier");
 				return -1;
 			}
 		}
@@ -2939,7 +2939,7 @@ static int flx_plain_ident (hcl_t* hcl, hcl_ooci_t c) /* identifier */
 		 * bcause self and super as the first segment have not been marked as a non-identifier above */
 		tok_type = (pi->seg_count == 1? classify_ident_token(hcl, TOKEN_NAME(hcl)):
 		                                (pi->is_cla? HCL_TOK_IDENT_DOTTED_CLA: HCL_TOK_IDENT_DOTTED));
-		FEED_WRAP_UP (hcl, tok_type);
+		FEED_WRAP_UP(hcl, tok_type);
 		goto not_consumed;
 	}
 	else if (is_ident_char(c))
@@ -2948,7 +2948,7 @@ static int flx_plain_ident (hcl_t* hcl, hcl_ooci_t c) /* identifier */
 		{
 			if (!is_lead_ident_char(c))
 			{
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_ILTOK, TOKEN_LOC(hcl), HCL_NULL,
+				hcl_setsynerrbfmt(hcl, HCL_SYNERR_ILTOK, TOKEN_LOC(hcl), HCL_NULL,
 					"'%c' prohibited as first character of identifier or identifier segment after '%.*js'",
 					c, TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
 				return -1;
@@ -2984,12 +2984,12 @@ static int flx_binop (hcl_t* hcl, hcl_ooci_t c) /* binary operator/selector */
 
 	if (is_binop_char(c))
 	{
-		ADD_TOKEN_CHAR (hcl, c);
+		ADD_TOKEN_CHAR(hcl, c);
 		goto consumed;
 	}
 	else
 	{
-		FEED_WRAP_UP (hcl, HCL_TOK_BINOP);
+		FEED_WRAP_UP(hcl, HCL_TOK_BINOP);
 		goto not_consumed;
 	}
 
@@ -3006,7 +3006,7 @@ static int flx_plain_number (hcl_t* hcl, hcl_ooci_t c) /* number */
 
 	if (is_radixed_digit_char(c, pn->radix))
 	{
-		ADD_TOKEN_CHAR (hcl, c);
+		ADD_TOKEN_CHAR(hcl, c);
 		pn->digit_count[pn->fpdec]++;
 		if (pn->tok_type == HCL_TOK_NUMLIT)
 		{
@@ -3022,33 +3022,33 @@ static int flx_plain_number (hcl_t* hcl, hcl_ooci_t c) /* number */
 		{
 			if (pn->radix != 10)
 			{
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, FLX_LOC(hcl), HCL_NULL,
+				hcl_setsynerrbfmt(hcl, HCL_SYNERR_NUMLIT, FLX_LOC(hcl), HCL_NULL,
 					"invalid use of decimal point after radixed number '%.*js'",
 					TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
 				return -1;
 			}
 			pn->fpdec = 1;
 			pn->tok_type = HCL_TOK_FPDECLIT;
-			ADD_TOKEN_CHAR (hcl, c);
+			ADD_TOKEN_CHAR(hcl, c);
 			goto consumed;
 		}
 
 		if (pn->digit_count[0] == 0)
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), HCL_NULL,
+			hcl_setsynerrbfmt(hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), HCL_NULL,
 				"invalid numeric literal with no digit after '%.*js'",
 				TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
 			return -1;
 		}
 		else if (pn->fpdec && pn->digit_count[1] == 0)
 		{
-			hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), HCL_NULL,
+			hcl_setsynerrbfmt(hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), HCL_NULL,
 				"invalid numeric literal with no digit after decimal point '%.*js'",
 				TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
 			return -1;
 		}
 
-		FEED_WRAP_UP (hcl, pn->tok_type);
+		FEED_WRAP_UP(hcl, pn->tok_type);
 		goto not_consumed;
 	}
 	else
@@ -3087,7 +3087,7 @@ static int flx_plain_number (hcl_t* hcl, hcl_ooci_t c) /* number */
 					goto other_char;
 			}
 
-			ADD_TOKEN_CHAR (hcl, c);
+			ADD_TOKEN_CHAR(hcl, c);
 			pn->digit_count[0] = 0;
 			goto consumed;
 		}
@@ -3098,7 +3098,7 @@ static int flx_plain_number (hcl_t* hcl, hcl_ooci_t c) /* number */
 			/* 16rABCD */
 			if (pn->radix_cand_overflown || pn->radix_cand < 2 || pn->radix_cand > 36)
 			{
-				hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), HCL_NULL,
+				hcl_setsynerrbfmt(hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), HCL_NULL,
 					"unsupported radix '%.*js' before '%jc'",
 					TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl), c);
 				return -1;
@@ -3106,12 +3106,12 @@ static int flx_plain_number (hcl_t* hcl, hcl_ooci_t c) /* number */
 
 			pn->tok_type = HCL_TOK_RADNUMLIT;
 			pn->radix = pn->radix_cand;
-			ADD_TOKEN_CHAR (hcl, c);
+			ADD_TOKEN_CHAR(hcl, c);
 			pn->digit_count[0] = 0;
 			goto consumed;
 		}
 
-		hcl_setsynerrbfmt (hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), HCL_NULL,
+		hcl_setsynerrbfmt(hcl, HCL_SYNERR_NUMLIT, TOKEN_LOC(hcl), HCL_NULL,
 			"invalid numeric literal character '%jc' after '%.*js'",
 			c, TOKEN_NAME_LEN(hcl), TOKEN_NAME_PTR(hcl));
 		return -1;
@@ -3148,14 +3148,14 @@ static int flx_quoted_token (hcl_t* hcl, hcl_ooci_t c) /* string, character */
 			{
 				/* should i limit the max to 0xFF/0377?
 				 * if (qt->c_acc > 0377) qt->c_acc = 0377;*/
-				ADD_TOKEN_CHAR (hcl, qt->c_acc);
+				ADD_TOKEN_CHAR(hcl, qt->c_acc);
 				qt->escaped = 0;
 			}
 			goto consumed;
 		}
 		else
 		{
-			ADD_TOKEN_CHAR (hcl, qt->c_acc);
+			ADD_TOKEN_CHAR(hcl, qt->c_acc);
 			qt->escaped = 0;
 		}
 	}
@@ -3167,7 +3167,7 @@ static int flx_quoted_token (hcl_t* hcl, hcl_ooci_t c) /* string, character */
 			qt->digit_count++;
 			if (qt->digit_count >= qt->escaped)
 			{
-				ADD_TOKEN_CHAR (hcl, qt->c_acc);
+				ADD_TOKEN_CHAR(hcl, qt->c_acc);
 				qt->escaped = 0;
 			}
 			goto consumed;
@@ -3178,7 +3178,7 @@ static int flx_quoted_token (hcl_t* hcl, hcl_ooci_t c) /* string, character */
 			qt->digit_count++;
 			if (qt->digit_count >= qt->escaped)
 			{
-				ADD_TOKEN_CHAR (hcl, qt->c_acc);
+				ADD_TOKEN_CHAR(hcl, qt->c_acc);
 				qt->escaped = 0;
 			}
 			goto consumed;
@@ -3189,7 +3189,7 @@ static int flx_quoted_token (hcl_t* hcl, hcl_ooci_t c) /* string, character */
 			qt->digit_count++;
 			if (qt->digit_count >= qt->escaped)
 			{
-				ADD_TOKEN_CHAR (hcl, qt->c_acc);
+				ADD_TOKEN_CHAR(hcl, qt->c_acc);
 				qt->escaped = 0;
 			}
 			goto consumed;
@@ -3200,8 +3200,8 @@ static int flx_quoted_token (hcl_t* hcl, hcl_ooci_t c) /* string, character */
 			rc = (qt->escaped == 2)? 'x':
 			     (qt->escaped == 4)? 'u': 'U';
 			if (qt->digit_count == 0)
-				ADD_TOKEN_CHAR (hcl, rc);
-			else ADD_TOKEN_CHAR (hcl, qt->c_acc);
+				ADD_TOKEN_CHAR(hcl, rc);
+			else ADD_TOKEN_CHAR(hcl, qt->c_acc);
 
 			qt->escaped = 0;
 		}
@@ -3216,7 +3216,7 @@ static int flx_quoted_token (hcl_t* hcl, hcl_ooci_t c) /* string, character */
 		 * string and character literals. see the definition of
 		 * hcl_tok_type_t in hcl-prv.h.
 		 * qt->is_byte is always 0 for HCL_TOK_SYMLIT. */
-		FEED_WRAP_UP (hcl, (hcl_tok_type_t)(qt->tok_type + qt->is_byte)); /* HCL_TOK_STRLIT or HCL_TOK_CHARLIT */
+		FEED_WRAP_UP(hcl, (hcl_tok_type_t)(qt->tok_type + qt->is_byte)); /* HCL_TOK_STRLIT or HCL_TOK_CHARLIT */
 		if (TOKEN_NAME_LEN(hcl) < qt->min_len) goto invalid_token;
 		goto consumed;
 	}
@@ -3291,20 +3291,20 @@ static int flx_quoted_token (hcl_t* hcl, hcl_ooci_t c) /* string, character */
 			 * an unhandled escape sequence can be handled
 			 * outside this function since the escape character
 			 * is preserved.*/
-			ADD_TOKEN_CHAR (hcl, qt->esc_char);
+			ADD_TOKEN_CHAR(hcl, qt->esc_char);
 		}
 
 		qt->escaped = 0;
 	}
 
-	ADD_TOKEN_CHAR (hcl, c);
+	ADD_TOKEN_CHAR(hcl, c);
 
 consumed:
 	if (TOKEN_NAME_LEN(hcl) > qt->max_len) goto invalid_token;
 	return 1;
 
 invalid_token:
-	hcl_setsynerr (hcl, qt->synerr_code, &synerr_loc, HCL_NULL);
+	hcl_setsynerr(hcl, qt->synerr_code, &synerr_loc, HCL_NULL);
 	return -1;
 }
 
@@ -3312,7 +3312,7 @@ static int flx_signed_token (hcl_t* hcl, hcl_ooci_t c)
 {
 	hcl_flx_st_t* st = FLX_ST(hcl);
 
-	HCL_ASSERT (hcl, st->char_count == 0);
+	HCL_ASSERT(hcl, st->char_count == 0);
 	if (is_digit_char(c))
 	{
 		/* the sign is not part of the pn->digit_count[0] but is
@@ -3320,7 +3320,7 @@ static int flx_signed_token (hcl_t* hcl, hcl_ooci_t c)
 		 * include the sign and calling init_flx_pn() to make it 0
 		 * is good enough. */
 		init_flx_pn (FLX_PN(hcl), c);
-		FEED_CONTINUE (hcl, HCL_FLX_PLAIN_NUMBER);
+		FEED_CONTINUE(hcl, HCL_FLX_PLAIN_NUMBER);
 		goto not_consumed;
 	}
 	else
@@ -3330,21 +3330,21 @@ static int flx_signed_token (hcl_t* hcl, hcl_ooci_t c)
 
 		/* the sign is already in the token name buffer.
 		 * adjust the state data for the sign. */
-		HCL_ASSERT (hcl, TOKEN_NAME_LEN(hcl) == 1);
+		HCL_ASSERT(hcl, TOKEN_NAME_LEN(hcl) == 1);
 		FLX_PI(hcl)->char_count++;
 		FLX_PI(hcl)->seg_len++;
 
 		/* let refeeding of 'c' happen at the next iteration */
-		FEED_CONTINUE (hcl, HCL_FLX_PLAIN_IDENT);
+		FEED_CONTINUE(hcl, HCL_FLX_PLAIN_IDENT);
 		goto not_consumed;
 	#else
 		/* the leading sign must be + or - and must be one of the binop chars. */
-		HCL_ASSERT (hcl, is_binop_char(st->sign_c));/* must be + or - and they must be one of the binop chars. */
+		HCL_ASSERT(hcl, is_binop_char(st->sign_c));/* must be + or - and they must be one of the binop chars. */
 
 		/* switch to binop mode */
 		init_flx_binop (FLX_BINOP(hcl));
-		HCL_ASSERT (hcl, TOKEN_NAME_LEN(hcl) == 1);
-		FEED_CONTINUE (hcl, HCL_FLX_BINOP);
+		HCL_ASSERT(hcl, TOKEN_NAME_LEN(hcl) == 1);
+		FEED_CONTINUE(hcl, HCL_FLX_BINOP);
 		goto not_consumed;
 	#endif
 	}
@@ -3364,17 +3364,17 @@ static int flx_bc_prefix (hcl_t* hcl, hcl_ooci_t c)
 	if (c == '\"') /* b" B" c" C" */
 	{
 		int is_byte = (bcp->start_c == 'b' || bcp->start_c == 'B');
-		reset_flx_token (hcl);
+		reset_flx_token(hcl);
 		init_flx_qt (FLX_QT(hcl), HCL_TOK_STRLIT, HCL_SYNERR_STRLIT, c, '\\', 0, HCL_TYPE_MAX(hcl_oow_t), is_byte);
-		FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* discard prefix, quote and move on */
+		FEED_CONTINUE(hcl, HCL_FLX_QUOTED_TOKEN); /* discard prefix, quote and move on */
 		goto consumed;
 	}
 	else if (c == '\'') /* b' B' c' C' */
 	{
 		int is_byte = (bcp->start_c == 'b' || bcp->start_c == 'B');
-		reset_flx_token (hcl);
+		reset_flx_token(hcl);
 		init_flx_qt (FLX_QT(hcl), HCL_TOK_CHARLIT, HCL_SYNERR_CHARLIT, c, '\\', 1, 1, is_byte);
-		FEED_CONTINUE (hcl, HCL_FLX_QUOTED_TOKEN); /* dicard prefix, quote, and move on */
+		FEED_CONTINUE(hcl, HCL_FLX_QUOTED_TOKEN); /* dicard prefix, quote, and move on */
 		goto consumed;
 	}
 	else
@@ -3387,7 +3387,7 @@ static int flx_bc_prefix (hcl_t* hcl, hcl_ooci_t c)
 		FLX_PI(hcl)->seg_len++;
 
 		/* refeed c */
-		FEED_CONTINUE (hcl, HCL_FLX_PLAIN_IDENT);
+		FEED_CONTINUE(hcl, HCL_FLX_PLAIN_IDENT);
 		goto not_consumed;
 	}
 
@@ -3404,7 +3404,7 @@ not_consumed:
 
 static int feed_char (hcl_t* hcl, hcl_ooci_t c)
 {
-/*hcl_logbfmt (hcl, HCL_LOG_STDERR, "FEED->[%jc] %d STATE->%d\n", c, c, FLX_STATE(hcl));*/
+/*hcl_logbfmt(hcl, HCL_LOG_STDERR, "FEED->[%jc] %d STATE->%d\n", c, c, FLX_STATE(hcl));*/
 
 	switch (FLX_STATE(hcl))
 	{
@@ -3431,8 +3431,8 @@ static int feed_char (hcl_t* hcl, hcl_ooci_t c)
 			break;
 	}
 
-	HCL_ASSERT (hcl, !"internal error - this must never happen");
-	hcl_seterrbfmt (hcl, HCL_EINTERN, "internal error - unknown flx state - %d", FLX_STATE(hcl));
+	HCL_ASSERT(hcl, !"internal error - this must never happen");
+	hcl_seterrbfmt(hcl, HCL_EINTERN, "internal error - unknown flx state - %d", FLX_STATE(hcl));
 	return -1;
 }
 
@@ -3472,7 +3472,7 @@ static int feed_from_includee (hcl_t* hcl)
 	hcl_ooch_t c;
 	hcl_io_cciarg_t* curinp;
 
-	HCL_ASSERT (hcl, hcl->c->curinp != HCL_NULL && hcl->c->curinp != &hcl->c->cci_arg);
+	HCL_ASSERT(hcl, hcl->c->curinp != HCL_NULL && hcl->c->curinp != &hcl->c->cci_arg);
 
 	curinp = hcl->c->curinp;
 	do
@@ -3495,7 +3495,7 @@ static int feed_from_includee (hcl_t* hcl)
 				if (x <= -1)
 				{
 					const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-					hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to read bytes from %js - %js", curinp->name, orgmsg);
+					hcl_seterrbfmt(hcl, HCL_ERRNUM(hcl), "unable to read bytes from %js - %js", curinp->name, orgmsg);
 					goto oops;
 				}
 
@@ -3504,10 +3504,10 @@ static int feed_from_includee (hcl_t* hcl)
 					/* got EOF from an included stream */
 					if (curinp->rsd.len > 0)
 					{
-						hcl_seterrbfmt (hcl, HCL_EECERR, "incomplete byte sequence in %js", curinp->name);
+						hcl_seterrbfmt(hcl, HCL_EECERR, "incomplete byte sequence in %js", curinp->name);
 						goto oops;
 					}
-					feed_end_include (hcl);
+					feed_end_include(hcl);
 					curinp = hcl->c->curinp;
 					continue;
 				}
@@ -3520,7 +3520,7 @@ static int feed_from_includee (hcl_t* hcl)
 			{
 				/* there is data in the residue buffer. use the residue buffer to
 				 * locate a proper multi-byte sequence */
-				HCL_ASSERT (hcl, curinp->b.pos == 0);
+				HCL_ASSERT(hcl, curinp->b.pos == 0);
 				inplen = move_cci_residue_bytes(curinp);
 				inpptr = &curinp->rsd.buf[0];
 			}
@@ -3534,12 +3534,12 @@ static int feed_from_includee (hcl_t* hcl)
 			if (n == 0) /* invalid sequence */
 			{
 				/* TODO: more accurate location of the invalid byte sequence */
-				hcl_seterrbfmt (hcl, HCL_EECERR, "invalid byte sequence in %js", curinp->name);
+				hcl_seterrbfmt(hcl, HCL_EECERR, "invalid byte sequence in %js", curinp->name);
 				goto oops;
 			}
 			if (n > inplen) /* incomplete sequence */
 			{
-				HCL_ASSERT (hcl, curinp->rsd.len < HCL_COUNTOF(curinp->rsd.buf));
+				HCL_ASSERT(hcl, curinp->rsd.len < HCL_COUNTOF(curinp->rsd.buf));
 				move_cci_residue_bytes (curinp);
 				goto start_over;
 			}
@@ -3567,13 +3567,13 @@ static int feed_from_includee (hcl_t* hcl)
 				{
 					/* TODO: more accurate location of failure */
 					const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-					hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to read %js - %js", curinp->name, orgmsg);
+					hcl_seterrbfmt(hcl, HCL_ERRNUM(hcl), "unable to read %js - %js", curinp->name, orgmsg);
 					goto oops;
 				}
 				if (curinp->xlen <= 0)
 				{
 					/* got EOF from an included stream */
-					feed_end_include (hcl);
+					feed_end_include(hcl);
 					curinp = hcl->c->curinp;
 					continue;
 				}
@@ -3593,7 +3593,7 @@ static int feed_from_includee (hcl_t* hcl)
 		if (x >= 1)
 		{
 			/* consumed */
-			feed_update_lx_loc (hcl, c);
+			feed_update_lx_loc(hcl, c);
 			curinp->b.pos += taken;
 	#if defined(HCL_OOCH_IS_UCH)
 			curinp->rsd.len = 0; /* clear up the residue byte buffer. needed for byte reading only */
@@ -3627,7 +3627,7 @@ int hcl_beginfeed (hcl_t* hcl, hcl_on_cnode_t on_cnode)
 
 	if (!hcl->c && init_compiler(hcl) <= -1) return -1;
 
-	init_feed (hcl);
+	init_feed(hcl);
 	if (on_cnode) hcl->c->feed.on_cnode = on_cnode;
 	/* if you pass HCL_NULL for on_cnode, hcl->c->feed.on_cnode resets
 	 * back to the default handler in init_feed() */
@@ -3659,10 +3659,10 @@ void hcl_resetfeedloc (hcl_t* hcl)
 
 void hcl_resetfeed (hcl_t* hcl)
 {
-	feed_reset_reader_state (hcl);
-	feed_clean_up_reader_stack (hcl);
-	feed_continue (hcl, HCL_FLX_START);
-	hcl_resetfeedloc (hcl);
+	feed_reset_reader_state(hcl);
+	feed_clean_up_reader_stack(hcl);
+	feed_continue(hcl, HCL_FLX_START);
+	hcl_resetfeedloc(hcl);
 }
 
 int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
@@ -3672,12 +3672,12 @@ int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
 	hcl_oow_t i;
 	int x;
 
-	HCL_ASSERT (hcl, hcl->c != HCL_NULL);
+	HCL_ASSERT(hcl, hcl->c != HCL_NULL);
 
 #if defined(HCL_OOCH_IS_UCH)
 	if (hcl->c->feed.rsd.len > 0 && !hcl->c->feed.rsd.no_check)
 	{
-		hcl_seterrbfmt (hcl, HCL_EPERM, "feed disallowed for incomplete sequence pending more feeding");
+		hcl_seterrbfmt(hcl, HCL_EPERM, "feed disallowed for incomplete sequence pending more feeding");
 		return -1;
 	}
 #endif
@@ -3689,14 +3689,14 @@ int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
 			x = feed_char(hcl, data[i]);
 			if (x <= -1)
 			{
-				feed_update_lx_loc (hcl, data[i]); /* update the location upon an error too */
+				feed_update_lx_loc(hcl, data[i]); /* update the location upon an error too */
 				goto oops; /* TODO: return the number of processed characters via an argument? */
 			}
 
 			if (x > 0)
 			{
 				/* consumed */
-				feed_update_lx_loc (hcl, data[i]);
+				feed_update_lx_loc(hcl, data[i]);
 				i += x; /* x is supposed to be 1. otherwise, some characters may get skipped. */
 			}
 
@@ -3728,7 +3728,7 @@ int hcl_feed (hcl_t* hcl, const hcl_ooch_t* data, hcl_oow_t len)
 	return 0;
 
 oops:
-	feed_reset_reader_state (hcl);
+	feed_reset_reader_state(hcl);
 
 	/* if enter_list() is in feed_process_token(), the stack grows.
 	 * leave_list() pops an element off the stack. the stack can be
@@ -3739,8 +3739,8 @@ oops:
 	 *  ^              ^
 	 *  leave_list()   error in flx_hmarked_ident() before a full cnode is processed
 	 */
-	feed_clean_up_reader_stack (hcl);
-	feed_continue (hcl, HCL_FLX_START);
+	feed_clean_up_reader_stack(hcl);
+	feed_continue(hcl, HCL_FLX_START);
 	return -1;
 }
 
@@ -3751,7 +3751,7 @@ int hcl_feedbchars (hcl_t* hcl, const hcl_bch_t* data, hcl_oow_t len)
 	hcl_oow_t inlen, outlen, inpos, brwlen;
 	int n;
 
-	HCL_ASSERT (hcl, hcl->c != HCL_NULL);
+	HCL_ASSERT(hcl, hcl->c != HCL_NULL);
 
 	inpos = 0;
 
@@ -3785,12 +3785,12 @@ int hcl_feedbchars (hcl_t* hcl, const hcl_bch_t* data, hcl_oow_t len)
 			{
 				/* n == -3. invalid sequence. more feeding is required */
 				/* n == -2. there were extra bytes for the second character in the input */
-				HCL_ASSERT (hcl, (n == -3 && inlen == 0 && outlen == 0) || (n == -2 && inlen > 0));
+				HCL_ASSERT(hcl, (n == -3 && inlen == 0 && outlen == 0) || (n == -2 && inlen > 0));
 				/* nothing to do. carry on */
 			}
 			else
 			{
-				hcl_seterrnum (hcl, (n == -2)? HCL_EBUFFULL: HCL_EECERR);
+				hcl_seterrnum(hcl, (n == -2)? HCL_EBUFFULL: HCL_EECERR);
 				return -1;
 			}
 		}
@@ -3801,14 +3801,14 @@ int hcl_feedbchars (hcl_t* hcl, const hcl_bch_t* data, hcl_oow_t len)
 		 */
 		if (inlen < rsdlen)
 		{
-			HCL_ASSERT (hcl, inlen == 0);
-			HCL_ASSERT (hcl, brwlen ==  len);
+			HCL_ASSERT(hcl, inlen == 0);
+			HCL_ASSERT(hcl, brwlen ==  len);
 			/* brwlen needs no change */
 			/* hcl->c->feed.rsd.len nees no change */
 		}
 		else
 		{
-			HCL_ASSERT (hcl, inlen > rsdlen);
+			HCL_ASSERT(hcl, inlen > rsdlen);
 			brwlen = inlen - rsdlen; /* actual bytes borrowed and converted */
 			hcl->c->feed.rsd.len = 0;
 		}
@@ -3833,15 +3833,15 @@ int hcl_feedbchars (hcl_t* hcl, const hcl_bch_t* data, hcl_oow_t len)
 			if (n == -2 || n == -3)
 			{
 				hcl_oow_t rsdlen;
-				HCL_ASSERT (hcl, len > inlen);
+				HCL_ASSERT(hcl, len > inlen);
 				rsdlen = len - inlen;
-				HCL_ASSERT (hcl, rsdlen <= HCL_COUNTOF(hcl->c->feed.rsd.buf));
-				HCL_MEMCPY (hcl->c->feed.rsd.buf, &data[inpos + inlen], rsdlen);
+				HCL_ASSERT(hcl, rsdlen <= HCL_COUNTOF(hcl->c->feed.rsd.buf));
+				HCL_MEMCPY(hcl->c->feed.rsd.buf, &data[inpos + inlen], rsdlen);
 				hcl->c->feed.rsd.len = len - inlen;
 				break;
 			}
 
-			hcl_seterrnum (hcl, HCL_EECERR);
+			hcl_seterrnum(hcl, HCL_EECERR);
 			return -1;
 		}
 
@@ -3885,7 +3885,7 @@ hcl_setopt (ON_EXPRESSION CALLBACK??? );
 
 
 
-hcl_feed (hcl, "(hello) (10)", 12);
+hcl_feed(hcl, "(hello) (10)", 12);
 	> on_token
 	> on_expression
 	> on_eof
@@ -3922,7 +3922,7 @@ static void fini_compiler_cb (hcl_t* hcl)
 	{
 		if (hcl->c->cfs.ptr)
 		{
-			hcl_freemem (hcl, hcl->c->cfs.ptr);
+			hcl_freemem(hcl, hcl->c->cfs.ptr);
 			hcl->c->cfs.ptr = HCL_NULL;
 			hcl->c->cfs.top = -1;
 			hcl->c->cfs.capa = 0;
@@ -3930,18 +3930,18 @@ static void fini_compiler_cb (hcl_t* hcl)
 
 		if (hcl->c->tv.s.ptr)
 		{
-			hcl_freemem (hcl, hcl->c->tv.s.ptr);
+			hcl_freemem(hcl, hcl->c->tv.s.ptr);
 			hcl->c->tv.s.ptr = HCL_NULL;
 			hcl->c->tv.s.len = 0;
 			hcl->c->tv.capa = 0;
 			hcl->c->tv.wcount = 0;
 		}
-		HCL_ASSERT (hcl, hcl->c->tv.capa == 0);
-		HCL_ASSERT (hcl, hcl->c->tv.wcount == 0);
+		HCL_ASSERT(hcl, hcl->c->tv.capa == 0);
+		HCL_ASSERT(hcl, hcl->c->tv.wcount == 0);
 
 		if (hcl->c->ctlblk.info)
 		{
-			hcl_freemem (hcl, hcl->c->ctlblk.info);
+			hcl_freemem(hcl, hcl->c->ctlblk.info);
 			hcl->c->ctlblk.info = HCL_NULL;
 			hcl->c->ctlblk.info_capa = 0;
 			hcl->c->ctlblk.depth = -1;
@@ -3949,7 +3949,7 @@ static void fini_compiler_cb (hcl_t* hcl)
 
 		if (hcl->c->clsblk.info)
 		{
-			hcl_freemem (hcl, hcl->c->clsblk.info);
+			hcl_freemem(hcl, hcl->c->clsblk.info);
 			hcl->c->clsblk.info = HCL_NULL;
 			hcl->c->clsblk.info_capa = 0;
 			hcl->c->clsblk.depth = -1;
@@ -3957,18 +3957,18 @@ static void fini_compiler_cb (hcl_t* hcl)
 
 		if (hcl->c->funblk.info)
 		{
-			hcl_freemem (hcl, hcl->c->funblk.info);
+			hcl_freemem(hcl, hcl->c->funblk.info);
 			hcl->c->funblk.info = HCL_NULL;
 			hcl->c->funblk.info_capa = 0;
 			hcl->c->funblk.depth = -1;
 		}
 
-		clear_sr_names (hcl);
-		if (hcl->c->tok.name.ptr) hcl_freemem (hcl, hcl->c->tok.name.ptr);
+		clear_sr_names(hcl);
+		if (hcl->c->tok.name.ptr) hcl_freemem(hcl, hcl->c->tok.name.ptr);
 
-		hcl_detachccio (hcl);
+		hcl_detachccio(hcl);
 
-		hcl_freemem (hcl, hcl->c);
+		hcl_freemem(hcl, hcl->c);
 		hcl->c = HCL_NULL;
 	}
 }
@@ -3979,8 +3979,8 @@ static void fini_compiler (hcl_t* hcl)
 	 * between init_compiler success and subquent operation failure */
 	if (hcl->c)
 	{
-		hcl_deregcb (hcl, hcl->c->cbp);
-		fini_compiler_cb (hcl);
+		hcl_deregcb(hcl, hcl->c->cbp);
+		fini_compiler_cb(hcl);
 	}
 }
 
@@ -3988,9 +3988,9 @@ static int init_compiler (hcl_t* hcl)
 {
 	hcl_cb_t cb, * cbp = HCL_NULL;
 
-	HCL_ASSERT (hcl, hcl->c == HCL_NULL);
+	HCL_ASSERT(hcl, hcl->c == HCL_NULL);
 
-	HCL_MEMSET (&cb, 0, HCL_SIZEOF(cb));
+	HCL_MEMSET(&cb, 0, HCL_SIZEOF(cb));
 	cb.on_gc = gc_compiler_cb;
 	cb.on_fini = fini_compiler_cb;
 	cbp = hcl_regcb(hcl, &cb);
@@ -4000,8 +4000,8 @@ static int init_compiler (hcl_t* hcl)
 	if (HCL_UNLIKELY(!hcl->c))
 	{
 		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "failed to allocate compiler - %js", orgmsg);
-		hcl_deregcb (hcl, cbp);
+		hcl_seterrbfmt(hcl, HCL_ERRNUM(hcl), "failed to allocate compiler - %js", orgmsg);
+		hcl_deregcb(hcl, cbp);
 		return -1;
 	}
 
@@ -4016,7 +4016,7 @@ static int init_compiler (hcl_t* hcl)
 	hcl->c->clsblk.depth = -1;
 	hcl->c->funblk.depth = -1;
 
-	init_feed (hcl);
+	init_feed(hcl);
 	hcl->c->cbp = cbp;
 
 
@@ -4047,7 +4047,7 @@ int hcl_attachccio (hcl_t* hcl, hcl_io_impl_t cci_rdr)
 	{
 		/* The name field and the includer field are HCL_NULL
 		 * for the main stream */
-		HCL_MEMSET (&new_cciarg, 0, HCL_SIZEOF(new_cciarg));
+		HCL_MEMSET(&new_cciarg, 0, HCL_SIZEOF(new_cciarg));
 		new_cciarg.line = 1;
 		new_cciarg.colm = 1;
 
@@ -4058,13 +4058,13 @@ int hcl_attachccio (hcl_t* hcl, hcl_io_impl_t cci_rdr)
 		if (hcl->c->cci_rdr)
 		{
 			/* close the old source input stream */
-			hcl->c->cci_rdr (hcl, HCL_IO_CLOSE, &hcl->c->cci_arg);
+			hcl->c->cci_rdr(hcl, HCL_IO_CLOSE, &hcl->c->cci_arg);
 		}
 		hcl->c->cci_rdr = cci_rdr;
 		hcl->c->cci_arg = new_cciarg;
 
 		/* clear unneeded source stream names */
-		/*clear_sr_names (hcl); <---- TODO: tricky to clean up here */
+		/*clear_sr_names(hcl); <---- TODO: tricky to clean up here */
 
 		/* initialize some other key fields */
 		hcl->c->nungots = 0;
@@ -4075,7 +4075,7 @@ int hcl_attachccio (hcl_t* hcl, hcl_io_impl_t cci_rdr)
 	return 0;
 
 oops:
-	if (inited_compiler) fini_compiler (hcl);
+	if (inited_compiler) fini_compiler(hcl);
 	return -1;
 }
 
@@ -4094,15 +4094,15 @@ void hcl_detachccio (hcl_t* hcl)
 				hcl_io_cciarg_t* prev;
 
 				/* nothing much to do about a close error */
-				hcl->c->cci_rdr (hcl, HCL_IO_CLOSE, hcl->c->curinp);
+				hcl->c->cci_rdr(hcl, HCL_IO_CLOSE, hcl->c->curinp);
 
 				prev = hcl->c->curinp->includer;
-				HCL_ASSERT (hcl, hcl->c->curinp->name != HCL_NULL);
-				hcl_freemem (hcl, hcl->c->curinp);
+				HCL_ASSERT(hcl, hcl->c->curinp->name != HCL_NULL);
+				hcl_freemem(hcl, hcl->c->curinp);
 				hcl->c->curinp = prev;
 			}
 
-			hcl->c->cci_rdr (hcl, HCL_IO_CLOSE, hcl->c->curinp);
+			hcl->c->cci_rdr(hcl, HCL_IO_CLOSE, hcl->c->curinp);
 			hcl->c->cci_rdr = HCL_NULL; /* ready for another attachment */
 		}
 	}
@@ -4116,7 +4116,7 @@ int hcl_attachudio (hcl_t* hcl, hcl_io_impl_t udi_rdr, hcl_io_impl_t udo_wrtr)
 
 	if (udi_rdr)
 	{
-		HCL_MEMSET (&new_udiarg, 0, HCL_SIZEOF(new_udiarg));
+		HCL_MEMSET(&new_udiarg, 0, HCL_SIZEOF(new_udiarg));
 		n = udi_rdr(hcl, HCL_IO_OPEN, &new_udiarg);
 		if (n <= -1)
 		{
@@ -4127,11 +4127,11 @@ int hcl_attachudio (hcl_t* hcl, hcl_io_impl_t udi_rdr, hcl_io_impl_t udo_wrtr)
 	if (udo_wrtr)
 	{
 		/* open the new output stream */
-		HCL_MEMSET (&new_udoarg, 0, HCL_SIZEOF(new_udoarg));
+		HCL_MEMSET(&new_udoarg, 0, HCL_SIZEOF(new_udoarg));
 		n = udo_wrtr(hcl, HCL_IO_OPEN, &new_udoarg);
 		if (n <= -1)
 		{
-			if (udi_rdr) udi_rdr (hcl, HCL_IO_CLOSE, &new_udiarg);
+			if (udi_rdr) udi_rdr(hcl, HCL_IO_CLOSE, &new_udiarg);
 			goto oops;
 		}
 	}
@@ -4141,7 +4141,7 @@ int hcl_attachudio (hcl_t* hcl, hcl_io_impl_t udi_rdr, hcl_io_impl_t udo_wrtr)
 		if (hcl->io.udi_rdr)
 		{
 			/* close the old input stream */
-			hcl->io.udi_rdr (hcl, HCL_IO_CLOSE, &hcl->io.udi_arg);
+			hcl->io.udi_rdr(hcl, HCL_IO_CLOSE, &hcl->io.udi_arg);
 		}
 		hcl->io.udi_rdr = udi_rdr;
 		hcl->io.udi_arg = new_udiarg;
@@ -4152,7 +4152,7 @@ int hcl_attachudio (hcl_t* hcl, hcl_io_impl_t udi_rdr, hcl_io_impl_t udo_wrtr)
 		if (hcl->io.udo_wrtr)
 		{
 			/* close the old output stream */
-			hcl->io.udo_wrtr (hcl, HCL_IO_CLOSE, &hcl->io.udo_arg);
+			hcl->io.udo_wrtr(hcl, HCL_IO_CLOSE, &hcl->io.udo_arg);
 		}
 		hcl->io.udo_wrtr = udo_wrtr;
 		hcl->io.udo_arg = new_udoarg;
@@ -4169,23 +4169,23 @@ void hcl_detachudio (hcl_t* hcl)
 {
 	if (hcl->io.udi_rdr)
 	{
-		hcl->io.udi_rdr (hcl, HCL_IO_CLOSE, &hcl->io.udi_arg);
+		hcl->io.udi_rdr(hcl, HCL_IO_CLOSE, &hcl->io.udi_arg);
 		hcl->io.udi_rdr = HCL_NULL; /* ready for another attachment */
 	}
 
 	if (hcl->io.udo_wrtr)
 	{
-		hcl->io.udo_wrtr (hcl, HCL_IO_CLOSE, &hcl->io.udo_arg);
+		hcl->io.udo_wrtr(hcl, HCL_IO_CLOSE, &hcl->io.udo_arg);
 		hcl->io.udo_wrtr = HCL_NULL; /* ready for another attachment */
 	}
 }
 
 void hcl_flushudio (hcl_t* hcl)
 {
-	if (hcl->io.udo_wrtr) hcl->io.udo_wrtr (hcl, HCL_IO_FLUSH, &hcl->io.udo_arg);
+	if (hcl->io.udo_wrtr) hcl->io.udo_wrtr(hcl, HCL_IO_FLUSH, &hcl->io.udo_arg);
 }
 
-/* TODO: discard the fwollowing three functions - hcl_setbasesrloc, hcl_readbasesrchar */
+/* TODO: discard the following three functions - hcl_setbasesrloc, hcl_readbasesrchar */
 void hcl_setbasesrloc (hcl_t* hcl, hcl_oow_t line, hcl_oow_t colm)
 {
 	hcl->c->cci_arg.line = line;
