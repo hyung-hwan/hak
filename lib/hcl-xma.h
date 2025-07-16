@@ -86,7 +86,7 @@ typedef struct hcl_xma_t hcl_xma_t;
 typedef struct hcl_xma_fblk_t hcl_xma_fblk_t;
 typedef struct hcl_xma_mblk_t hcl_xma_mblk_t;
 
-#define HCL_XMA_FIXED 32
+#define HCL_XMA_FIXED (32)
 #define HCL_XMA_SIZE_BITS ((HCL_SIZEOF_OOW_T*8)-1)
 
 struct hcl_xma_t
