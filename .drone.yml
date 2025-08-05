@@ -6,6 +6,7 @@ steps:
 - name: build-with-gcc13
   image: docker.io/gcc:13.1.0
   commands:
+    - find . -exec touch -r {} +
     - mkdir bld-gcc13 && cd bld-gcc13
     - ../configure
     - make && { make check || { cat t/test-suite.log; exit 1; } }
@@ -15,6 +16,7 @@ steps:
 - name: build-with-clang15
   image: docker.io/silkeh/clang:15
   commands:
+    - find . -exec touch -r {} +
     - mkdir bld-clang15 && cd bld-clang15
     - ../configure CC=clang
     - make && { make check || { cat t/test-suite.log; exit 1; } }
