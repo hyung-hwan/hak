@@ -486,8 +486,8 @@ static hcl_oop_t execute_in_interactive_mode (hcl_t* hcl)
 		hcl_oop_cons_t cons = hcl_getatsysdic(hcl, xtn->sym_errstr);
 		if (cons)
 		{
-			HCL_ASSERT (hcl, HCL_IS_CONS(hcl, cons));
-			HCL_ASSERT (hcl, HCL_CONS_CAR(cons) == xtn->sym_errstr);
+			HCL_ASSERT(hcl, HCL_IS_CONS(hcl, cons));
+			HCL_ASSERT(hcl, HCL_CONS_CAR(cons) == xtn->sym_errstr);
 			hcl_print (hcl, HCL_CONS_CDR(cons));
 		}
 		*/
@@ -601,7 +601,7 @@ static int get_line (hcl_t* hcl, xtn_t* xtn, FILE* fp)
 	xtn->feed.len = 0;
 	if (xtn->feed.ptr)
 	{
-		HCL_ASSERT (hcl, xtn->feed.ptr != xtn->feed.buf);
+		HCL_ASSERT(hcl, xtn->feed.ptr != xtn->feed.buf);
 		ic_free (xtn->feed.ptr);
 		xtn->feed.ptr = HCL_NULL;
 	}
@@ -611,7 +611,8 @@ static int get_line (hcl_t* hcl, xtn_t* xtn, FILE* fp)
 	{
 		/* TODO: check if it's an error or Eof */
 		xtn->feed.eof = 1;
-		if (xtn->feed.len <= 0) return 0;
+		HCL_ASSERT(hcl, xtn->feed.pos == 0);
+		HCL_ASSERT(hcl, xtn->feed.len == 0);
 		return 0;
 	}
 
@@ -741,7 +742,7 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 					}
 					else
 					{
-						HCL_ASSERT (hcl, hcl_getbclen(hcl) == 0);
+						HCL_ASSERT(hcl, hcl_getbclen(hcl) == 0);
 						/* usually this part is reached if the input string is
 						 * one or more whilespaces and/or comments only */
 					}

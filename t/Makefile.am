@@ -1,5 +1,13 @@
 AUTOMAKE_OPTIONS = nostdinc
 
+AM_CPPFLAGS = \
+	-I$(abs_builddir) \
+	-I$(abs_builddir)/../lib \
+	-I$(abs_srcdir) \
+	-I$(abs_srcdir)/../lib \
+	-I$(includedir)
+LDADD = ../lib/libhcl.la
+
 check_SCRIPTS = \
 	feed-01.hcl \
 	fun-01.hcl \
@@ -22,10 +30,13 @@ check_ERRORS = \
 	var-5002.err \
 	var-5004.err
 
+check_PROGRAMS = \
+	t-001
+
+t_001_SOURCES = t-001.c tap.h
+
 ##noinst_SCRIPTS = $(check_SCRIPTS)
 EXTRA_DIST = $(check_SCRIPTS) $(check_ERRORS)
-
-check_PROGRAMS =
 
 TESTS = $(check_PROGRAMS) $(check_SCRIPTS) $(check_ERRORS)
 

@@ -439,7 +439,6 @@ static hcl_pfrc_t pf_core_slice (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 
 		default:
 			goto unsliceable;
-			break;
 	}
 
 	HCL_STACK_SETRET (hcl, nargs, slice);

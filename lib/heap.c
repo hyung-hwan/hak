@@ -36,7 +36,7 @@ static void* xma_realloc (hcl_mmgr_t* mmgr, void* ptr, hcl_oow_t size)
 
 static void xma_free (hcl_mmgr_t* mmgr, void* ptr)
 {
-	hcl_xma_free ((hcl_xma_t*)mmgr->ctx, ptr);
+	hcl_xma_free((hcl_xma_t*)mmgr->ctx, ptr);
 }
 
 hcl_heap_t* hcl_makeheap (hcl_t* hcl, hcl_oow_t size)
@@ -63,14 +63,14 @@ hcl_heap_t* hcl_makeheap (hcl_t* hcl, hcl_oow_t size)
 	if (HCL_UNLIKELY(!heap))
 	{
 		const hcl_ooch_t* oldmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to allocate a heap - %js", oldmsg);
+		hcl_seterrbfmt(hcl, HCL_ERRNUM(hcl), "unable to allocate a heap - %js", oldmsg);
 		return HCL_NULL;
 	}
 
 	/* the vmprim.alloc_heap() function is allowed to create a bigger heap than the requested size.
 	 * if the created heap is bigger than requested, the heap will be utilized in full. */
-	HCL_ASSERT (hcl, alloc_size >= HCL_SIZEOF(*heap));
-	HCL_MEMSET (heap, 0, alloc_size);
+	HCL_ASSERT(hcl, alloc_size >= HCL_SIZEOF(*heap));
+	HCL_MEMSET(heap, 0, alloc_size);
 
 	alloc_size -= HCL_SIZEOF(*heap); /* exclude the header size */
 	heap->base = (hcl_uint8_t*)(heap + 1);
@@ -79,7 +79,7 @@ hcl_heap_t* hcl_makeheap (hcl_t* hcl, hcl_oow_t size)
 	if (size == 0)
 	{
 		/* use the existing memory allocator */
-		HCL_ASSERT (hcl, alloc_size == 0);
+		HCL_ASSERT(hcl, alloc_size == 0);
 		heap->xmmgr = *HCL_MMGR(hcl);
 	}
 	else
@@ -89,7 +89,7 @@ hcl_heap_t* hcl_makeheap (hcl_t* hcl, hcl_oow_t size)
 		if (HCL_UNLIKELY(!heap->xma))
 		{
 			hcl->vmprim.free_heap (hcl, heap);
-			hcl_seterrbfmt (hcl, HCL_ESYSMEM, "unable to allocate a memory manager over a heap");
+			hcl_seterrbfmt(hcl, HCL_ESYSMEM, "unable to allocate a memory manager over a heap");
 			return HCL_NULL;
 		}
 
@@ -106,12 +106,12 @@ void hcl_killheap (hcl_t* hcl, hcl_heap_t* heap)
 {
 	if (heap->size == 0)
 	{
-		hcl_freemem (hcl, heap);
+		hcl_freemem(hcl, heap);
 	}
 	else
 	{
-		if (heap->xma) hcl_xma_close (heap->xma);
-		hcl->vmprim.free_heap (hcl, heap);
+		if (heap->xma) hcl_xma_close(heap->xma);
+		hcl->vmprim.free_heap(hcl, heap);
 	}
 }
 
@@ -123,11 +123,11 @@ void* hcl_callocheapmem (hcl_t* hcl, hcl_heap_t* heap, hcl_oow_t size)
 	if (HCL_UNLIKELY(!ptr))
 	{
 		HCL_DEBUG2 (hcl, "Cannot callocate %zd bytes from heap - ptr %p\n", size, heap);
-		hcl_seterrnum (hcl, HCL_EOOMEM);
+		hcl_seterrnum(hcl, HCL_EOOMEM);
 	}
 	else
 	{
-		HCL_MEMSET (ptr, 0, size);
+		HCL_MEMSET(ptr, 0, size);
 	}
 	return ptr;
 }
@@ -136,11 +136,11 @@ void* hcl_callocheapmem_noseterr (hcl_t* hcl, hcl_heap_t* heap, hcl_oow_t size)
 {
 	void* ptr;
 	ptr = HCL_MMGR_ALLOC(&heap->xmmgr, size);
-	if (HCL_LIKELY(ptr)) HCL_MEMSET (ptr, 0, size);
+	if (HCL_LIKELY(ptr)) HCL_MEMSET(ptr, 0, size);
 	return ptr;
 }
 
 void hcl_freeheapmem (hcl_t* hcl, hcl_heap_t* heap, void* ptr)
 {
-	HCL_MMGR_FREE (&heap->xmmgr, ptr);
+	HCL_MMGR_FREE(&heap->xmmgr, ptr);
 }

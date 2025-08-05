@@ -1058,7 +1058,7 @@ void hcl_gc_ms_sweep_lazy (hcl_t* hcl, hcl_oow_t allocsize)
 			objsize = HCL_SIZEOF(hcl_obj_t) + hcl_getobjpayloadbytes(hcl, obj);
 			freed_size += objsize;
 			hcl->gci.bsz -= objsize;
-			hcl_freeheapmem (hcl, hcl->heap, curr); /* destroy */
+			hcl_freeheapmem(hcl, hcl->heap, curr); /* destroy */
 
 			/*if (freed_size > allocsize)*/  /* TODO: can it secure large enough space? */
 			if (objsize == allocsize)
@@ -1077,8 +1077,8 @@ void hcl_gc_ms_sweep_lazy (hcl_t* hcl, hcl_oow_t allocsize)
 done:
 #if defined(HCL_PROFILE_VM)
 	getrusage(RUSAGE_SELF, &ru);
-	HCL_SUB_NTIME_SNS (&rut, &rut, ru.ru_utime.tv_sec, HCL_USEC_TO_NSEC(ru.ru_utime.tv_usec));
-	HCL_SUB_NTIME (&hcl->gci.stat.sweep, &hcl->gci.stat.sweep, &rut); /* do subtraction because rut is negative */
+	HCL_SUB_NTIME_SNS(&rut, &rut, ru.ru_utime.tv_sec, HCL_USEC_TO_NSEC(ru.ru_utime.tv_usec));
+	HCL_SUB_NTIME(&hcl->gci.stat.sweep, &hcl->gci.stat.sweep, &rut); /* do subtraction because rut is negative */
 #endif
 	return;
 }
@@ -1092,7 +1092,7 @@ static HCL_INLINE void gc_ms_sweep (hcl_t* hcl)
 	struct rusage ru;
 	hcl_ntime_t rut;
 	getrusage(RUSAGE_SELF, &ru);
-	HCL_INIT_NTIME (&rut,  ru.ru_utime.tv_sec, HCL_USEC_TO_NSEC(ru.ru_utime.tv_usec));
+	HCL_INIT_NTIME(&rut,  ru.ru_utime.tv_sec, HCL_USEC_TO_NSEC(ru.ru_utime.tv_usec));
 #endif
 
 	prev = HCL_NULL;
@@ -1104,7 +1104,7 @@ static HCL_INLINE void gc_ms_sweep (hcl_t* hcl)
 
 		if (HCL_OBJ_GET_FLAGS_MOVED(obj)) /* if marked */
 		{
-			HCL_OBJ_SET_FLAGS_MOVED (obj, 0); 	/* unmark */
+			HCL_OBJ_SET_FLAGS_MOVED(obj, 0); 	/* unmark */
 			prev = curr;
 		}
 		else
@@ -1113,7 +1113,7 @@ static HCL_INLINE void gc_ms_sweep (hcl_t* hcl)
 			else hcl->gci.b = next;
 
 			hcl->gci.bsz -= HCL_SIZEOF(hcl_obj_t) + hcl_getobjpayloadbytes(hcl, obj);
-			hcl_freeheapmem (hcl, hcl->heap, curr); /* destroy */
+			hcl_freeheapmem(hcl, hcl->heap, curr); /* destroy */
 		}
 
 		curr = next;
@@ -1123,8 +1123,8 @@ static HCL_INLINE void gc_ms_sweep (hcl_t* hcl)
 
 #if defined(HCL_PROFILE_VM)
 	getrusage(RUSAGE_SELF, &ru);
-	HCL_SUB_NTIME_SNS (&rut, &rut, ru.ru_utime.tv_sec, HCL_USEC_TO_NSEC(ru.ru_utime.tv_usec));
-	HCL_SUB_NTIME (&hcl->gci.stat.sweep, &hcl->gci.stat.sweep, &rut); /* do subtraction because rut is negative */
+	HCL_SUB_NTIME_SNS(&rut, &rut, ru.ru_utime.tv_sec, HCL_USEC_TO_NSEC(ru.ru_utime.tv_usec));
+	HCL_SUB_NTIME(&hcl->gci.stat.sweep, &hcl->gci.stat.sweep, &rut); /* do subtraction because rut is negative */
 #endif
 }
 
@@ -1286,7 +1286,7 @@ void hcl_gc (hcl_t* hcl)
 	/* scan the new heap again from the end position of
 	 * the previous scan to move referenced objects by
 	 * the symbol table. */
-	ptr = scan_new_heap (hcl, ptr);
+	ptr = scan_new_heap(hcl, ptr);
 
 	/* the contents of the current heap is not needed any more.
 	 * reset the upper bound to the base. don't forget to align the heap

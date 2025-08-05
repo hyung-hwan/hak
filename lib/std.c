@@ -906,14 +906,14 @@ static void log_write (hcl_t* hcl, hcl_bitmask_t mask, const hcl_ooch_t* msg, hc
 		}
 		#endif
 	#endif
-		write_log (hcl, logfd, ts, tslen);
+		write_log(hcl, logfd, ts, tslen);
 	}
 
 	if (is_tty)
 	{
-		if (mask & HCL_LOG_FATAL) write_log (hcl, logfd, "\x1B[1;31m", 7);
-		else if (mask & HCL_LOG_ERROR) write_log (hcl, logfd, "\x1B[1;32m", 7);
-		else if (mask & HCL_LOG_WARN) write_log (hcl, logfd, "\x1B[1;33m", 7);
+		if (mask & HCL_LOG_FATAL) write_log(hcl, logfd, "\x1B[1;31m", 7);
+		else if (mask & HCL_LOG_ERROR) write_log(hcl, logfd, "\x1B[1;32m", 7);
+		else if (mask & HCL_LOG_WARN) write_log(hcl, logfd, "\x1B[1;33m", 7);
 	}
 
 	if (!msg)
@@ -960,12 +960,12 @@ static void log_write (hcl_t* hcl, hcl_bitmask_t mask, const hcl_ooch_t* msg, hc
 		}
 	}
 #else
-	write_log (hcl, logfd, msg, len);
+	write_log(hcl, logfd, msg, len);
 #endif
 
 	if (is_tty)
 	{
-		if (mask & (HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN)) write_log (hcl, logfd, "\x1B[0m", 4);
+		if (mask & (HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN)) write_log(hcl, logfd, "\x1B[0m", 4);
 	}
 
 flush_log_msg:
