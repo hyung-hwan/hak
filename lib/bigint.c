@@ -424,7 +424,7 @@ int hcl_inttoooi (hcl_t* hcl, hcl_oop_t x, hcl_ooi_t* i)
 	/* do nothing. required macros are defined in hcl.h */
 
 #elif (HCL_SIZEOF_UINTMAX_T == HCL_SIZEOF_OOW_T * 2) || (HCL_SIZEOF_UINTMAX_T == HCL_SIZEOF_OOW_T * 4)
-static HCL_INLINE int bigint_to_uintmax (hcl_t* hcl, hcl_oop_t num, hcl_uintmax_t* w)
+static HCL_INLINE int bigint_to_uintmax_noseterr (hcl_t* hcl, hcl_oop_t num, hcl_uintmax_t* w)
 {
 	HCL_ASSERT (hcl, HCL_OOP_IS_POINTER(num));
 	HCL_ASSERT (hcl, HCL_IS_PBIGINT(hcl, num) || HCL_IS_NBIGINT(hcl, num));
@@ -459,7 +459,7 @@ static HCL_INLINE int bigint_to_uintmax (hcl_t* hcl, hcl_oop_t num, hcl_uintmax_
 	#endif
 
 		default:
-			goto oops_range;
+			return 0; /* not convertable */
 	}
 
 #elif (HCL_LIW_BITS == HCL_OOHW_BITS)
@@ -501,7 +501,7 @@ static HCL_INLINE int bigint_to_uintmax (hcl_t* hcl, hcl_oop_t num, hcl_uintmax_
 	#endif
 
 		default:
-			goto oops_range;
+			return 0; /* not convertable */
 	}
 #else
 #	error UNSUPPORTED LIW BIT SIZE
@@ -509,10 +509,30 @@ static HCL_INLINE int bigint_to_uintmax (hcl_t* hcl, hcl_oop_t num, hcl_uintmax_
 
 done:
 	return (HCL_IS_NBIGINT(hcl, num))? -1: 1;
+}
 
-oops_range:
-	hcl_seterrnum (hcl, HCL_ERANGE);
-	return 0; /* not convertable */
+int hcl_inttouintmax_noseterr (hcl_t* hcl, hcl_oop_t x, hcl_uintmax_t* w)
+{
+	if (HCL_OOP_IS_SMOOI(x))
+	{
+		hcl_ooi_t v;
+
+		v = HCL_OOP_TO_SMOOI(x);
+		if (v < 0)
+		{
+			*w = -v;
+			return -1; /* negative number negated - kind of an error */
+		}
+		else
+		{
+			*w = v;
+			return 1; /* zero or positive number */
+		}
+	}
+
+	if (hcl_isbigint(hcl, x)) return bigint_to_uintmax_noseterr(hcl, x, w);
+
+	return 0; /* not convertable - too big, too small, or not an integer */
 }
 
 int hcl_inttouintmax (hcl_t* hcl, hcl_oop_t x, hcl_uintmax_t* w)
@@ -534,39 +554,94 @@ int hcl_inttouintmax (hcl_t* hcl, hcl_oop_t x, hcl_uintmax_t* w)
 		}
 	}
 
-	if (hcl_isbigint(hcl, x)) return bigint_to_uintmax(hcl, x, w);
+	if (hcl_isbigint(hcl, x))
+	{
+		int n;
+		n = bigint_to_uintmax_noseterr(hcl, x, w);
+		if (n <= 0) hcl_seterrnum(hcl, HCL_ERANGE);
+		return n;
+	}
 
 	hcl_seterrbfmt (hcl, HCL_EINVAL, "not an integer - %O", x);
 	return 0; /* not convertable - too big, too small, or not an integer */
 }
 
+int hcl_inttointmax_noseterr (hcl_t* hcl, hcl_oop_t x, hcl_intmax_t* i)
+{
+	if (HCL_OOP_IS_SMOOI(x))
+	{
+		*i = HCL_OOP_TO_SMOOI(x);
+		return (*i < 0)? -1: 1;
+	}
+
+	if (hcl_isbigint(hcl, x))
+	{
+		int n;
+		hcl_uintmax_t w;
+
+		n = bigint_to_uintmax_noseterr(hcl, x, &w);
+		if (n < 0)
+		{
+			/* negative number negated to a positve number */
+			HCL_STATIC_ASSERT (HCL_TYPE_MAX(hcl_intmax_t) + HCL_TYPE_MIN(hcl_intmax_t) == -1); /* assume 2's complement */
+			if (w > (hcl_uintmax_t)HCL_TYPE_MAX(hcl_intmax_t) + 1) return 0; /* not convertable - too small */
+			*i = (w <= (hcl_uintmax_t)HCL_TYPE_MAX(hcl_intmax_t))? -(hcl_intmax_t)w: HCL_TYPE_MIN(hcl_intmax_t); /* negate back */
+		}
+		else if (n > 0)
+		{
+			if (w > HCL_TYPE_MAX(hcl_intmax_t)) return 0; /* not convertable - too big */
+			*i = w;
+		}
+
+		return n;
+	}
+
+	return 0; /* not convertable - not an integer */
+}
+
 int hcl_inttointmax (hcl_t* hcl, hcl_oop_t x, hcl_intmax_t* i)
 {
-	hcl_uintmax_t w;
-	int n;
-
-	n = hcl_inttouintmax(hcl, x, &w);
-	if (n < 0)
+	if (HCL_OOP_IS_SMOOI(x))
 	{
-		HCL_STATIC_ASSERT (HCL_TYPE_MAX(hcl_intmax_t) + HCL_TYPE_MIN(hcl_intmax_t) == -1); /* assume 2's complement */
-		if (w > (hcl_uintmax_t)HCL_TYPE_MAX(hcl_intmax_t) + 1)
-		{
-			hcl_seterrnum (hcl, HCL_ERANGE); /* not convertable. number too small */
-			return 0;
-		}
-		*i = (w <= (hcl_oow_t)HCL_TYPE_MAX(hcl_intmax_t))? -(hcl_intmax_t)w: HCL_TYPE_MIN(hcl_intmax_t); /* negate back */
-	}
-	else if (n > 0)
-	{
-		if (w > HCL_TYPE_MAX(hcl_intmax_t))
-		{
-			hcl_seterrnum (hcl, HCL_ERANGE); /* not convertable. number too big */
-			return 0;
-		}
-		*i = w;
+		*i = HCL_OOP_TO_SMOOI(x);
+		return (*i < 0)? -1: 1;
 	}
 
-	return n;
+	if (hcl_isbigint(hcl, x))
+	{
+		int n;
+		hcl_uintmax_t w;
+
+		n = bigint_to_uintmax_noseterr(hcl, x, &w);
+		if (n < 0)
+		{
+			/* negative number negated to a positve number */
+			HCL_STATIC_ASSERT (HCL_TYPE_MAX(hcl_intmax_t) + HCL_TYPE_MIN(hcl_intmax_t) == -1); /* assume 2's complement */
+			if (w > (hcl_uintmax_t)HCL_TYPE_MAX(hcl_intmax_t) + 1)
+			{
+				hcl_seterrnum (hcl, HCL_ERANGE);
+				return 0; /* not convertable. too small */
+			}
+			*i = (w <= (hcl_uintmax_t)HCL_TYPE_MAX(hcl_intmax_t))? -(hcl_intmax_t)w: HCL_TYPE_MIN(hcl_intmax_t); /* negate back */
+		}
+		else if (n > 0)
+		{
+			if (w > HCL_TYPE_MAX(hcl_intmax_t))
+			{
+				hcl_seterrnum (hcl, HCL_ERANGE);
+				return 0; /* not convertable. too big */
+			}
+			*i = w;
+		}
+		else
+		{
+			hcl_seterrnum (hcl, HCL_ERANGE);
+		}
+		return n;
+	}
+
+	hcl_seterrbfmt (hcl, HCL_EINVAL, "not an integer - %O", x);
+	return 0; /* not convertable - too big, too small, or not an integer */
 }
 
 #else

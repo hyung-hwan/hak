@@ -2958,7 +2958,9 @@ HCL_EXPORT int hcl_inttoooi (
 );
 
 #if (HCL_SIZEOF_UINTMAX_T == HCL_SIZEOF_OOW_T)
+#   define hcl_inttouintmax_noseterr hcl_inttooow_noseterr
 #   define hcl_inttouintmax hcl_inttooow
+#   define hcl_inttointmax_noseterr hcl_inttoooi_noseterr
 #   define hcl_inttointmax hcl_inttoooi
 #   define hcl_uintmaxtoint hcl_oowtoint
 #   define hcl_intmaxtoint hcl_ooitoint
@@ -2974,10 +2976,22 @@ HCL_EXPORT hcl_oop_t hcl_uintmaxtoint (
 	hcl_uintmax_t i
 );
 
+HCL_EXPORT int hcl_inttouintmax_noseterr (
+	hcl_t*         hcl,
+	hcl_oop_t      x,
+	hcl_uintmax_t* w
+);
+
 HCL_EXPORT int hcl_inttouintmax (
 	hcl_t*         hcl,
 	hcl_oop_t      x,
 	hcl_uintmax_t* w
+);
+
+HCL_EXPORT int hcl_inttointmax_noseterr (
+	hcl_t*        hcl,
+	hcl_oop_t     x,
+	hcl_intmax_t* i
 );
 
 HCL_EXPORT int hcl_inttointmax (
