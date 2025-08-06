@@ -662,6 +662,22 @@ next:
 			break;
 		}
 
+		case HCL_BRAND_CHARACTER_ARRAY:
+		{
+			hcl_oow_t i;
+			if (hcl_bfmt_out(hcl, fmtout, opening_parens[HCL_CONCODE_CHARARRAY][json]) <= -1) return -1;
+			if (HCL_OBJ_GET_SIZE(obj) > 0)
+			{
+				if (hcl_bfmt_out(hcl, fmtout, "'%jc'", ((hcl_oop_char_t)obj)->slot[0]) <= -1) return -1;
+				for (i = 1; i < HCL_OBJ_GET_SIZE(obj); i++)
+				{
+					if (hcl_bfmt_out(hcl, fmtout, "%hs'%jc'", breakers[0][json], ((hcl_oop_char_t)obj)->slot[i]) <= -1) return -1;
+				}
+			}
+			if (hcl_bfmt_out(hcl, fmtout, closing_parens[HCL_CONCODE_CHARARRAY][json]) <= -1) return -1;
+			break;
+		}
+
 		case HCL_BRAND_DIC:
 		{
 			hcl_oow_t bucidx, bucsize, buctally;

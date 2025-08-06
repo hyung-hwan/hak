@@ -1407,7 +1407,7 @@ static int auto_forge_xlist_if_at_block_beginning (hcl_t* hcl, hcl_frd_t* frd)
 		 * or ALIST after more tokens are processed. so handling of MLIST
 		 * or ALIST is needed at this phase */
 		forged_flagv = AUTO_FORGED;
-		LIST_FLAG_SET_CONCODE (forged_flagv, HCL_CONCODE_XLIST);
+		LIST_FLAG_SET_CONCODE(forged_flagv, HCL_CONCODE_XLIST);
 
 		/* this portion is similar to the code below the start_list label */
 		if (frd->level >= HCL_TYPE_MAX(int)) /* the nesting level too deep */
@@ -1577,7 +1577,7 @@ static int feed_process_token (hcl_t* hcl)
 				/* neither a data list nor an executable list. handle this specially using
 				 * a dedicated frd->expect_vlist_item variable */
 				frd->flagv = 0;
-				LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_VLIST);
+				LIST_FLAG_SET_CONCODE(frd->flagv, HCL_CONCODE_VLIST);
 				frd->expect_vlist_item = 1;
 				goto start_list;
 			}
@@ -1585,7 +1585,7 @@ static int feed_process_token (hcl_t* hcl)
 		case HCL_TOK_LBRACK: /* [ */
 			if (auto_forge_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;
 			frd->flagv = DATA_LIST;
-			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_TUPLE);
+			LIST_FLAG_SET_CONCODE(frd->flagv, HCL_CONCODE_TUPLE);
 			goto start_list;
 
 		case HCL_TOK_APAREN: /* #[ */
@@ -1594,43 +1594,43 @@ static int feed_process_token (hcl_t* hcl)
 			 * create the outer XLIST. */
 			if (auto_forge_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;
 			frd->flagv = DATA_LIST;
-			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_ARRAY);
+			LIST_FLAG_SET_CONCODE(frd->flagv, HCL_CONCODE_ARRAY);
 			goto start_list;
 
 		case HCL_TOK_BAPAREN: /* #b[ */
 			if (auto_forge_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;
 			frd->flagv = DATA_LIST;
-			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_BYTEARRAY);
+			LIST_FLAG_SET_CONCODE(frd->flagv, HCL_CONCODE_BYTEARRAY);
 			goto start_list;
 
 		case HCL_TOK_CAPAREN: /* #c[ */
 			if (auto_forge_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;
 			frd->flagv = DATA_LIST;
-			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_CHARARRAY);
+			LIST_FLAG_SET_CONCODE(frd->flagv, HCL_CONCODE_CHARARRAY);
 			goto start_list;
 
 		case HCL_TOK_LBRACE: /* { */
 			/* this is a block opener itself. auto xlist forge at the block beginning only */
 			frd->flagv = 0;
-			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_BLOCK);
+			LIST_FLAG_SET_CONCODE(frd->flagv, HCL_CONCODE_BLOCK);
 			goto start_list;
 
 		case HCL_TOK_DLPAREN: /* #{ */
 			if (auto_forge_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;
 			frd->flagv = DATA_LIST;
-			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_DIC);
+			LIST_FLAG_SET_CONCODE(frd->flagv, HCL_CONCODE_DIC);
 			goto start_list;
 
 		case HCL_TOK_QLPAREN: /* #( */
 			if (auto_forge_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;
 			frd->flagv = DATA_LIST;
-			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_QLIST);
+			LIST_FLAG_SET_CONCODE(frd->flagv, HCL_CONCODE_QLIST);
 			goto start_list;
 
 		#if defined(HCL_TOK_LPARCOLON)
 		case HCL_TOK_LPARCOLON: /* (: */
 			frd->flagv = 0;
-			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_MLIST);
+			LIST_FLAG_SET_CONCODE(frd->flagv, HCL_CONCODE_MLIST);
 			goto start_list;
 		#endif
 
@@ -1654,7 +1654,7 @@ static int feed_process_token (hcl_t* hcl)
 			if (auto_forge_xlist_if_at_block_beginning(hcl, frd) <= -1) goto oops;
 #endif
 			frd->flagv = 0;
-			LIST_FLAG_SET_CONCODE (frd->flagv, HCL_CONCODE_XLIST);
+			LIST_FLAG_SET_CONCODE(frd->flagv, HCL_CONCODE_XLIST);
 		start_list:
 			if (frd->level >= HCL_TYPE_MAX(int))
 			{
@@ -2578,6 +2578,7 @@ static int flx_hmarked_token (hcl_t* hcl, hcl_ooci_t c)
 	 * #include
 	 * #[ ]     array
 	 * #b[ ]    byte array
+	 * #c[ ]    character array
 	 * #( )     qlist
 	 * #{ }     dictionary
 	 * #"..."   symbol literal
@@ -2616,14 +2617,14 @@ static int flx_hmarked_token (hcl_t* hcl, hcl_ooci_t c)
 		case 'B':
 		case 'c': /* character array */
 		case 'C':
-			/* if #b is followed by [, it is a starter for a byte array */
-			init_flx_hbc (FLX_HBC(hcl), c);
+			/* #b[ -> byte array, #c[ -> character array */
+			init_flx_hbc(FLX_HBC(hcl), c);
 			FEED_CONTINUE_WITH_CHAR(hcl, c, HCL_FLX_HMARKED_BC);
 			break;
 
 		/* --------------------------- */
 		case '\\':
-			init_flx_hc (FLX_HC(hcl));
+			init_flx_hc(FLX_HC(hcl));
 			FEED_CONTINUE_WITH_CHAR(hcl, c, HCL_FLX_HMARKED_CHAR);
 			goto consumed;
 
@@ -2642,13 +2643,13 @@ static int flx_hmarked_token (hcl_t* hcl, hcl_ooci_t c)
 
 		case '"': /* #" - double-quoted symbol */
 			reset_flx_token(hcl);
-			init_flx_qt (FLX_QT(hcl), HCL_TOK_SYMLIT, HCL_SYNERR_SYMLIT, c, '\\', 0, HCL_TYPE_MAX(hcl_oow_t), 0);
+			init_flx_qt(FLX_QT(hcl), HCL_TOK_SYMLIT, HCL_SYNERR_SYMLIT, c, '\\', 0, HCL_TYPE_MAX(hcl_oow_t), 0);
 			FEED_CONTINUE(hcl, HCL_FLX_QUOTED_TOKEN); /* discard prefix, quote and move on */
 			goto consumed;
 
 		/* --------------------------- */
 		default:
-			init_flx_hi (FLX_HI(hcl));
+			init_flx_hi(FLX_HI(hcl));
 			reset_flx_token(hcl); /* to discard the leading '#' */
 			FEED_CONTINUE(hcl, HCL_FLX_HMARKED_IDENT);
 			goto not_consumed;
@@ -3319,14 +3320,14 @@ static int flx_signed_token (hcl_t* hcl, hcl_ooci_t c)
 		 * in the current token buffer. pn->digit_count[0] doesn't
 		 * include the sign and calling init_flx_pn() to make it 0
 		 * is good enough. */
-		init_flx_pn (FLX_PN(hcl), c);
+		init_flx_pn(FLX_PN(hcl), c);
 		FEED_CONTINUE(hcl, HCL_FLX_PLAIN_NUMBER);
 		goto not_consumed;
 	}
 	else
 	{
 	#if 0
-		init_flx_pi (FLX_PI(hcl));
+		init_flx_pi(FLX_PI(hcl));
 
 		/* the sign is already in the token name buffer.
 		 * adjust the state data for the sign. */
@@ -3342,7 +3343,7 @@ static int flx_signed_token (hcl_t* hcl, hcl_ooci_t c)
 		HCL_ASSERT(hcl, is_binop_char(st->sign_c));/* must be + or - and they must be one of the binop chars. */
 
 		/* switch to binop mode */
-		init_flx_binop (FLX_BINOP(hcl));
+		init_flx_binop(FLX_BINOP(hcl));
 		HCL_ASSERT(hcl, TOKEN_NAME_LEN(hcl) == 1);
 		FEED_CONTINUE(hcl, HCL_FLX_BINOP);
 		goto not_consumed;
@@ -3365,7 +3366,7 @@ static int flx_bc_prefix (hcl_t* hcl, hcl_ooci_t c)
 	{
 		int is_byte = (bcp->start_c == 'b' || bcp->start_c == 'B');
 		reset_flx_token(hcl);
-		init_flx_qt (FLX_QT(hcl), HCL_TOK_STRLIT, HCL_SYNERR_STRLIT, c, '\\', 0, HCL_TYPE_MAX(hcl_oow_t), is_byte);
+		init_flx_qt(FLX_QT(hcl), HCL_TOK_STRLIT, HCL_SYNERR_STRLIT, c, '\\', 0, HCL_TYPE_MAX(hcl_oow_t), is_byte);
 		FEED_CONTINUE(hcl, HCL_FLX_QUOTED_TOKEN); /* discard prefix, quote and move on */
 		goto consumed;
 	}
@@ -3373,14 +3374,14 @@ static int flx_bc_prefix (hcl_t* hcl, hcl_ooci_t c)
 	{
 		int is_byte = (bcp->start_c == 'b' || bcp->start_c == 'B');
 		reset_flx_token(hcl);
-		init_flx_qt (FLX_QT(hcl), HCL_TOK_CHARLIT, HCL_SYNERR_CHARLIT, c, '\\', 1, 1, is_byte);
+		init_flx_qt(FLX_QT(hcl), HCL_TOK_CHARLIT, HCL_SYNERR_CHARLIT, c, '\\', 1, 1, is_byte);
 		FEED_CONTINUE(hcl, HCL_FLX_QUOTED_TOKEN); /* dicard prefix, quote, and move on */
 		goto consumed;
 	}
 	else
 	{
 		/* not followed by a quote. switch to the plain identifier */
-		init_flx_pi (FLX_PI(hcl));
+		init_flx_pi(FLX_PI(hcl));
 
 		/* the prefix is already in the token buffer. just adjust state data */
 		FLX_PI(hcl)->char_count++;
