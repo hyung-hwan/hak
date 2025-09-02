@@ -1,5 +1,7 @@
 # HAK - Command Language
 
+![HAK](hak.png)
+
 ## Language Syntax
 
 A HAK program is composed of expressions.
