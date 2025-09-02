@@ -1,5 +1,5 @@
 ## test big integer operations
-## hcl --log /dev/null,warn+ test-bi.hcl
+## hak --log /dev/null,warn+ test-bi.hak
 
 (sys.srandom (sys.time))
 (set count 0)

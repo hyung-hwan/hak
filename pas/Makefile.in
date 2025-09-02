@@ -90,8 +90,8 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-bin_PROGRAMS = hcl$(EXEEXT)
-@HCL_LIB_QUADMATH_REQUIRED_TRUE@am__append_1 = -dHCL_LIB_QUADMATH_REQUIRED
+bin_PROGRAMS = hakpas$(EXEEXT)
+@HAK_LIB_QUADMATH_REQUIRED_TRUE@am__append_1 = -dHAK_LIB_QUADMATH_REQUIRED
 subdir = pas
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_check_sign.m4 \
@@ -103,14 +103,14 @@ am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 DIST_COMMON = $(srcdir)/Makefile.am $(am__DIST_COMMON)
 mkinstalldirs = $(install_sh) -d
-CONFIG_HEADER = $(top_builddir)/lib/hcl-cfg.h
+CONFIG_HEADER = $(top_builddir)/lib/hak-cfg.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am_hcl_OBJECTS =
-hcl_OBJECTS = $(am_hcl_OBJECTS)
-hcl_LDADD = $(LDADD)
+am_hakpas_OBJECTS =
+hakpas_OBJECTS = $(am_hakpas_OBJECTS)
+hakpas_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -146,8 +146,8 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(hcl_SOURCES)
-DIST_SOURCES = $(hcl_SOURCES)
+SOURCES = $(hakpas_SOURCES)
+DIST_SOURCES = $(hakpas_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -204,9 +204,9 @@ EXEEXT = @EXEEXT@
 FGREP = @FGREP@
 FILECMD = @FILECMD@
 GREP = @GREP@
-HCL_PROJECT_AUTHOR = @HCL_PROJECT_AUTHOR@
-HCL_PROJECT_URL = @HCL_PROJECT_URL@
-HCL_SYS_LIB_SEARCH_PATH_SPEC = @HCL_SYS_LIB_SEARCH_PATH_SPEC@
+HAK_PROJECT_AUTHOR = @HAK_PROJECT_AUTHOR@
+HAK_PROJECT_URL = @HAK_PROJECT_URL@
+HAK_SYS_LIB_SEARCH_PATH_SPEC = @HAK_SYS_LIB_SEARCH_PATH_SPEC@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -314,11 +314,11 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AUTOMAKE_OPTIONS = nostdinc
-hcl_SOURCES = hcl.pas main.pas 
-hcl_CPPFLAGS = 
-hcl_DEPENDENCIES = hcl.bin
+hakpas_SOURCES = hak.pas main.pas 
+hakpas_CPPFLAGS = 
+hakpas_DEPENDENCIES = hakpas.bin
 PASFLAGS = -Mobjfpc -FcUTF8 -Sm -g $(am__append_1)
-hcl_LINK = cp -pf hcl.bin $(builddir)/hcl$(EXEEXT) || echo 
+hakpas_LINK = cp -pf hakpas.bin $(builddir)/hakpas$(EXEEXT) || echo 
 all: all-am
 
 .SUFFIXES:
@@ -396,9 +396,9 @@ clean-binPROGRAMS:
 	$(am__rm_f) $(bin_PROGRAMS)
 	test -z "$(EXEEXT)" || $(am__rm_f) $(bin_PROGRAMS:$(EXEEXT)=)
 
-hcl$(EXEEXT): $(hcl_OBJECTS) $(hcl_DEPENDENCIES) $(EXTRA_hcl_DEPENDENCIES) 
-	@rm -f hcl$(EXEEXT)
-	$(AM_V_GEN)$(hcl_LINK) $(hcl_OBJECTS) $(hcl_LDADD) $(LIBS)
+hakpas$(EXEEXT): $(hakpas_OBJECTS) $(hakpas_DEPENDENCIES) $(EXTRA_hakpas_DEPENDENCIES) 
+	@rm -f hakpas$(EXEEXT)
+	$(AM_V_GEN)$(hakpas_LINK) $(hakpas_OBJECTS) $(hakpas_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -622,16 +622,16 @@ uninstall-am: uninstall-binPROGRAMS
 .PRECIOUS: Makefile
 
 
-hcl.bin: $(hcl_SOURCES) ../lib/libhcl.la $(hcl_OBJECTS)
+hakpas.bin: $(hakpas_SOURCES) ../lib/libhak.la $(hakpas_OBJECTS)
 	FL='-Fl../lib:../lib/.libs'; \
-	for i in @HCL_SYS_LIB_SEARCH_PATH_SPEC@; do \
+	for i in @HAK_SYS_LIB_SEARCH_PATH_SPEC@; do \
 		FL="$${FL}:$${i}"; \
 	done; \
 	echo fpc -o$(builddir)/$@ $(PASFLAGS) "$${FL}" $(srcdir)/main.pas; \
 	fpc -o$(builddir)/$@ $(PASFLAGS) $(PASFLAGS) "$${FL}" $(srcdir)/main.pas
 
 clean-local:
-	rm -f *.ppu *.res hcl.bin
+	rm -f *.ppu *.res hakpas.bin
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

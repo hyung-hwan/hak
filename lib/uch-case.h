@@ -5,8 +5,8 @@
 typedef struct uch_case_page_t uch_case_page_t;
 
 struct uch_case_page_t {
-	hcl_int32_t upper;
-	hcl_int32_t lower;
+	hak_int32_t upper;
+	hak_int32_t lower;
 };
 
 

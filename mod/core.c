@@ -26,122 +26,122 @@
 
 
 #include "_core.h"
-#include "../lib/hcl-prv.h"
+#include "../lib/hak-prv.h"
 
-static hcl_pfrc_t pf_core_basic_new (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+static hak_pfrc_t pf_core_basic_new (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	hcl_oop_t obj, size, inst;
-	hcl_ooi_t nsize;
+	hak_oop_t obj, size, inst;
+	hak_ooi_t nsize;
 
-	obj = HCL_STACK_GETARG(hcl, nargs, 0);
-	if (!HCL_IS_CLASS(hcl, obj))
+	obj = HAK_STACK_GETARG(hak, nargs, 0);
+	if (!HAK_IS_CLASS(hak, obj))
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "object not class - %O", obj);
-		return HCL_PF_FAILURE;
+		hak_seterrbfmt (hak, HAK_EINVAL, "object not class - %O", obj);
+		return HAK_PF_FAILURE;
 	}
 
-	size = HCL_STACK_GETARG(hcl, nargs, 1);
-	if (!HCL_OOP_IS_SMOOI(size))
+	size = HAK_STACK_GETARG(hak, nargs, 1);
+	if (!HAK_OOP_IS_SMOOI(size))
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "size not numeric - %O", size);
-		return HCL_PF_FAILURE;
+		hak_seterrbfmt (hak, HAK_EINVAL, "size not numeric - %O", size);
+		return HAK_PF_FAILURE;
 	}
 
-	nsize = HCL_OOP_TO_SMOOI(size);
+	nsize = HAK_OOP_TO_SMOOI(size);
 	if (nsize < 0)
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "size not valid - %zd", nsize);
-		return HCL_PF_FAILURE;
+		hak_seterrbfmt (hak, HAK_EINVAL, "size not valid - %zd", nsize);
+		return HAK_PF_FAILURE;
 	}
 
-	inst = hcl_instantiate(hcl, (hcl_oop_class_t)obj, HCL_NULL, nsize);
-	if (HCL_UNLIKELY(!inst)) return HCL_PF_FAILURE;
+	inst = hak_instantiate(hak, (hak_oop_class_t)obj, HAK_NULL, nsize);
+	if (HAK_UNLIKELY(!inst)) return HAK_PF_FAILURE;
 
-	HCL_STACK_SETRET (hcl, nargs, inst);
-	return HCL_PF_SUCCESS;
+	HAK_STACK_SETRET (hak, nargs, inst);
+	return HAK_PF_SUCCESS;
 }
 
-static hcl_pfrc_t __basic_at (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs, int span_fixed)
+static hak_pfrc_t __basic_at (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs, int span_fixed)
 {
-	hcl_oop_t obj, val;
-	hcl_oop_t pos;
-	hcl_oow_t index;
-	hcl_oop_class_t _class;
+	hak_oop_t obj, val;
+	hak_oop_t pos;
+	hak_oow_t index;
+	hak_oop_class_t _class;
 
-	obj = HCL_STACK_GETARG(hcl, nargs, 0);
-	pos = HCL_STACK_GETARG(hcl, nargs, 1);
+	obj = HAK_STACK_GETARG(hak, nargs, 0);
+	pos = HAK_STACK_GETARG(hak, nargs, 1);
 
-	if (!HCL_OOP_IS_POINTER(obj) || !HCL_OBJ_GET_FLAGS_FLEXI(obj))
+	if (!HAK_OOP_IS_POINTER(obj) || !HAK_OBJ_GET_FLAGS_FLEXI(obj))
 	{
 	unindexable:
 		/* the receiver is a special numeric object or a non-indexable object */
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "receiver not indexable - %O", obj);
-		return HCL_PF_FAILURE;
+		hak_seterrbfmt (hak, HAK_EINVAL, "receiver not indexable - %O", obj);
+		return HAK_PF_FAILURE;
 	}
 
-	if (hcl_inttooow_noseterr(hcl, pos, &index) <= 0)
+	if (hak_inttooow_noseterr(hak, pos, &index) <= 0)
 	{
 		/* negative integer or not integer */
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "position not valid - %O", pos);
-		return HCL_PF_FAILURE;
+		hak_seterrbfmt (hak, HAK_EINVAL, "position not valid - %O", pos);
+		return HAK_PF_FAILURE;
 	}
 
-	_class = (hcl_oop_class_t)HCL_CLASSOF(hcl, obj);
+	_class = (hak_oop_class_t)HAK_CLASSOF(hak, obj);
 
 	if (span_fixed)
 	{
-		hcl_oow_t size;
-		size = HCL_OBJ_GET_SIZE(obj);
+		hak_oow_t size;
+		size = HAK_OBJ_GET_SIZE(obj);
 		if (index >= size)
 		{
-			hcl_seterrbfmt (hcl, HCL_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hcl_ooi_t)size);
-			return HCL_PF_FAILURE;
+			hak_seterrbfmt (hak, HAK_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hak_ooi_t)size);
+			return HAK_PF_FAILURE;
 		}
 	}
 	else
 	{
-		hcl_oow_t fixed, flexi;
+		hak_oow_t fixed, flexi;
 
-		fixed = HCL_CLASS_SPEC_NAMED_INSTVARS(_class->spec);
-		flexi = HCL_OBJ_GET_SIZE(obj) - fixed;
+		fixed = HAK_CLASS_SPEC_NAMED_INSTVARS(_class->spec);
+		flexi = HAK_OBJ_GET_SIZE(obj) - fixed;
 		if (index >= flexi)
 		{
-			hcl_seterrbfmt (hcl, HCL_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hcl_ooi_t)flexi);
-			return HCL_PF_FAILURE;
+			hak_seterrbfmt (hak, HAK_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hak_ooi_t)flexi);
+			return HAK_PF_FAILURE;
 		}
 		index += fixed;
 	}
 
-	switch (HCL_OBJ_GET_FLAGS_TYPE(obj))
+	switch (HAK_OBJ_GET_FLAGS_TYPE(obj))
 	{
-		case HCL_OBJ_TYPE_OOP:
-			val = HCL_OBJ_GET_OOP_VAL(obj, index);
+		case HAK_OBJ_TYPE_OOP:
+			val = HAK_OBJ_GET_OOP_VAL(obj, index);
 			break;
 
-		case HCL_OBJ_TYPE_CHAR:
+		case HAK_OBJ_TYPE_CHAR:
 		{
-			hcl_ooch_t c;
-			c = HCL_OBJ_GET_CHAR_VAL(obj, index);
-			val = HCL_CHAR_TO_OOP(c);
+			hak_ooch_t c;
+			c = HAK_OBJ_GET_CHAR_VAL(obj, index);
+			val = HAK_CHAR_TO_OOP(c);
 			break;
 		}
 
-		case HCL_OBJ_TYPE_BYTE:
+		case HAK_OBJ_TYPE_BYTE:
 		{
-			hcl_ooi_t b;
-			b = HCL_OBJ_GET_BYTE_VAL(obj, index);
-			val = HCL_SMOOI_TO_OOP(b);
+			hak_ooi_t b;
+			b = HAK_OBJ_GET_BYTE_VAL(obj, index);
+			val = HAK_SMOOI_TO_OOP(b);
 			break;
 		}
 
-		case HCL_OBJ_TYPE_HALFWORD:
-			val = hcl_oowtoint(hcl, HCL_OBJ_GET_HALFWORD_VAL(obj, index));
-			if (HCL_UNLIKELY(!val)) return HCL_PF_FAILURE;
+		case HAK_OBJ_TYPE_HALFWORD:
+			val = hak_oowtoint(hak, HAK_OBJ_GET_HALFWORD_VAL(obj, index));
+			if (HAK_UNLIKELY(!val)) return HAK_PF_FAILURE;
 			break;
 
-		case HCL_OBJ_TYPE_WORD:
-			val = hcl_oowtoint(hcl, HCL_OBJ_GET_WORD_VAL(obj, index));
-			if (HCL_UNLIKELY(!val)) return HCL_PF_FAILURE;
+		case HAK_OBJ_TYPE_WORD:
+			val = hak_oowtoint(hak, HAK_OBJ_GET_WORD_VAL(obj, index));
+			if (HAK_UNLIKELY(!val)) return HAK_PF_FAILURE;
 			break;
 
 		default:
@@ -149,122 +149,122 @@ static hcl_pfrc_t __basic_at (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs, int s
 	}
 
 
-	HCL_STACK_SETRET (hcl, nargs, val);
-	return HCL_PF_SUCCESS;
+	HAK_STACK_SETRET (hak, nargs, val);
+	return HAK_PF_SUCCESS;
 }
 
-static hcl_pfrc_t pf_core_basic_at (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+static hak_pfrc_t pf_core_basic_at (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	return __basic_at(hcl, mod, nargs, 0);
+	return __basic_at(hak, mod, nargs, 0);
 }
 
-static hcl_pfrc_t pf_core_prim_at (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+static hak_pfrc_t pf_core_prim_at (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	return __basic_at(hcl, mod, nargs, 1);
+	return __basic_at(hak, mod, nargs, 1);
 }
 
-static hcl_pfrc_t __basic_at_put (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs, int span_fixed)
+static hak_pfrc_t __basic_at_put (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs, int span_fixed)
 {
-	hcl_oop_t obj, val;
-	hcl_oop_t pos;
-	hcl_oow_t index;
-	hcl_oop_class_t _class;
+	hak_oop_t obj, val;
+	hak_oop_t pos;
+	hak_oow_t index;
+	hak_oop_class_t _class;
 
-	obj = HCL_STACK_GETARG(hcl, nargs, 0);
-	pos = HCL_STACK_GETARG(hcl, nargs, 1);
-	val = HCL_STACK_GETARG(hcl, nargs, 2);
+	obj = HAK_STACK_GETARG(hak, nargs, 0);
+	pos = HAK_STACK_GETARG(hak, nargs, 1);
+	val = HAK_STACK_GETARG(hak, nargs, 2);
 
-	if (!HCL_OOP_IS_POINTER(obj) || !HCL_OBJ_GET_FLAGS_FLEXI(obj))
+	if (!HAK_OOP_IS_POINTER(obj) || !HAK_OBJ_GET_FLAGS_FLEXI(obj))
 	{
 	unindexable:
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "receiver not indexable - %O", obj);
-		return HCL_PF_FAILURE;
+		hak_seterrbfmt (hak, HAK_EINVAL, "receiver not indexable - %O", obj);
+		return HAK_PF_FAILURE;
 	}
 
-	if (HCL_OBJ_GET_FLAGS_RDONLY(obj))
+	if (HAK_OBJ_GET_FLAGS_RDONLY(obj))
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "receiver immutable - %O", obj);
-		return HCL_PF_FAILURE;
+		hak_seterrbfmt (hak, HAK_EINVAL, "receiver immutable - %O", obj);
+		return HAK_PF_FAILURE;
 	}
 
-	if (hcl_inttooow_noseterr(hcl, pos, &index) <= 0)
+	if (hak_inttooow_noseterr(hak, pos, &index) <= 0)
 	{
 		/* negative integer or not integer */
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "position not valid - %O", pos);
-		return HCL_PF_FAILURE;
+		hak_seterrbfmt (hak, HAK_EINVAL, "position not valid - %O", pos);
+		return HAK_PF_FAILURE;
 	}
 
-	_class = (hcl_oop_class_t)HCL_CLASSOF(hcl, obj);
+	_class = (hak_oop_class_t)HAK_CLASSOF(hak, obj);
 	if (span_fixed) /* include the fixed part in positioning */
 	{
-		hcl_oow_t size;
+		hak_oow_t size;
 
-		size = HCL_OBJ_GET_SIZE(obj);
+		size = HAK_OBJ_GET_SIZE(obj);
 		if (index >= size)
 		{
-			hcl_seterrbfmt (hcl, HCL_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hcl_ooi_t)size);
-			return HCL_PF_FAILURE;
+			hak_seterrbfmt (hak, HAK_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hak_ooi_t)size);
+			return HAK_PF_FAILURE;
 		}
 	}
 	else
 	{
-		hcl_oow_t fixed, flexi;
+		hak_oow_t fixed, flexi;
 
-		fixed = HCL_CLASS_SPEC_NAMED_INSTVARS(_class->spec);
-		flexi = HCL_OBJ_GET_SIZE(obj) - fixed;
+		fixed = HAK_CLASS_SPEC_NAMED_INSTVARS(_class->spec);
+		flexi = HAK_OBJ_GET_SIZE(obj) - fixed;
 		if (index >= flexi)
 		{
-			hcl_seterrbfmt (hcl, HCL_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hcl_ooi_t)HCL_OBJ_GET_SIZE(obj));
-			return HCL_PF_FAILURE;
+			hak_seterrbfmt (hak, HAK_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hak_ooi_t)HAK_OBJ_GET_SIZE(obj));
+			return HAK_PF_FAILURE;
 		}
 		index += fixed;
 	}
 
-	switch (HCL_OBJ_GET_FLAGS_TYPE(obj))
+	switch (HAK_OBJ_GET_FLAGS_TYPE(obj))
 	{
-		case HCL_OBJ_TYPE_OOP:
-			HCL_OBJ_SET_OOP_VAL(obj, index, val);
+		case HAK_OBJ_TYPE_OOP:
+			HAK_OBJ_SET_OOP_VAL(obj, index, val);
 			break;
 
-		case HCL_OBJ_TYPE_CHAR:
+		case HAK_OBJ_TYPE_CHAR:
 		{
-			hcl_ooch_t c;
-			if (!HCL_OOP_IS_CHAR(val))
+			hak_ooch_t c;
+			if (!HAK_OOP_IS_CHAR(val))
 			{
-				hcl_seterrbfmt (hcl, HCL_EINVAL, "value not character - %O", val);
-				return HCL_PF_FAILURE;
+				hak_seterrbfmt (hak, HAK_EINVAL, "value not character - %O", val);
+				return HAK_PF_FAILURE;
 			}
-			c = HCL_OOP_TO_CHAR(val);
-			HCL_OBJ_SET_CHAR_VAL(obj, index, c);
+			c = HAK_OOP_TO_CHAR(val);
+			HAK_OBJ_SET_CHAR_VAL(obj, index, c);
 			break;
 		}
 
-		case HCL_OBJ_TYPE_BYTE:
+		case HAK_OBJ_TYPE_BYTE:
 		{
-			hcl_ooi_t b;
-			if (!HCL_OOP_IS_SMOOI(val))
+			hak_ooi_t b;
+			if (!HAK_OOP_IS_SMOOI(val))
 			{
-				hcl_seterrbfmt (hcl, HCL_EINVAL, "value not byte - %O", val);
-				return HCL_PF_FAILURE;
+				hak_seterrbfmt (hak, HAK_EINVAL, "value not byte - %O", val);
+				return HAK_PF_FAILURE;
 			}
-			b = HCL_OOP_TO_SMOOI(val);
-			HCL_OBJ_SET_BYTE_VAL(obj, index, b);
+			b = HAK_OOP_TO_SMOOI(val);
+			HAK_OBJ_SET_BYTE_VAL(obj, index, b);
 			break;
 		}
 
-		case HCL_OBJ_TYPE_HALFWORD:
+		case HAK_OBJ_TYPE_HALFWORD:
 		{
-			hcl_oow_t w;
-			if (hcl_inttooow(hcl, val, &w) <= -1) return HCL_PF_FAILURE;
-			HCL_OBJ_SET_HALFWORD_VAL(obj, index, w);
+			hak_oow_t w;
+			if (hak_inttooow(hak, val, &w) <= -1) return HAK_PF_FAILURE;
+			HAK_OBJ_SET_HALFWORD_VAL(obj, index, w);
 			break;
 		}
 
-		case HCL_OBJ_TYPE_WORD:
+		case HAK_OBJ_TYPE_WORD:
 		{
-			hcl_oow_t w;
-			if (hcl_inttooow(hcl, val, &w) <= -1) return HCL_PF_FAILURE;
-			HCL_OBJ_SET_WORD_VAL(obj, index, w);
+			hak_oow_t w;
+			if (hak_inttooow(hak, val, &w) <= -1) return HAK_PF_FAILURE;
+			HAK_OBJ_SET_WORD_VAL(obj, index, w);
 			break;
 		}
 
@@ -273,245 +273,245 @@ static hcl_pfrc_t __basic_at_put (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs, i
 	}
 
 
-	HCL_STACK_SETRET (hcl, nargs, val);
-	return HCL_PF_SUCCESS;
+	HAK_STACK_SETRET (hak, nargs, val);
+	return HAK_PF_SUCCESS;
 }
 
-static hcl_pfrc_t pf_core_basic_at_put (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+static hak_pfrc_t pf_core_basic_at_put (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	return __basic_at_put(hcl, mod, nargs, 0);
+	return __basic_at_put(hak, mod, nargs, 0);
 }
 
-static hcl_pfrc_t pf_core_prim_at_put (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+static hak_pfrc_t pf_core_prim_at_put (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	return __basic_at_put(hcl, mod, nargs, 1);
+	return __basic_at_put(hak, mod, nargs, 1);
 }
 
-static hcl_pfrc_t pf_core_basic_size (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+static hak_pfrc_t pf_core_basic_size (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	hcl_oop_oop_t src;
-	hcl_oop_t size;
+	hak_oop_oop_t src;
+	hak_oop_t size;
 
-	src = (hcl_oop_oop_t)HCL_STACK_GETARG(hcl, nargs, 0);
+	src = (hak_oop_oop_t)HAK_STACK_GETARG(hak, nargs, 0);
 
-	if (!HCL_OOP_IS_POINTER(src))
+	if (!HAK_OOP_IS_POINTER(src))
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "source not sizable - %O", src);
-		return HCL_PF_FAILURE;
+		hak_seterrbfmt (hak, HAK_EINVAL, "source not sizable - %O", src);
+		return HAK_PF_FAILURE;
 	}
 
-	size = hcl_oowtoint(hcl, HCL_OBJ_GET_SIZE(src));
-	if (!size) return HCL_PF_FAILURE;
+	size = hak_oowtoint(hak, HAK_OBJ_GET_SIZE(src));
+	if (!size) return HAK_PF_FAILURE;
 
-	HCL_STACK_SETRET (hcl, nargs, size);
-	return HCL_PF_SUCCESS;
+	HAK_STACK_SETRET (hak, nargs, size);
+	return HAK_PF_SUCCESS;
 }
 
-static hcl_pfrc_t pf_core_class_name (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+static hak_pfrc_t pf_core_class_name (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	hcl_oop_t obj;
+	hak_oop_t obj;
 
-	obj = HCL_STACK_GETARG(hcl, nargs, 0);
+	obj = HAK_STACK_GETARG(hak, nargs, 0);
 
-	if (!HCL_IS_CLASS(hcl, obj))
+	if (!HAK_IS_CLASS(hak, obj))
 	{
 	#if 0
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "receiver not class - %O", obj);
-		return HCL_PF_FAILURE;
+		hak_seterrbfmt (hak, HAK_EINVAL, "receiver not class - %O", obj);
+		return HAK_PF_FAILURE;
 	#else
-		obj = (hcl_oop_t)HCL_CLASSOF(hcl, obj);
-		HCL_ASSERT (hcl, HCL_IS_CLASS(hcl, obj));
+		obj = (hak_oop_t)HAK_CLASSOF(hak, obj);
+		HAK_ASSERT (hak, HAK_IS_CLASS(hak, obj));
 	#endif
 	}
 
-	HCL_STACK_SETRET (hcl, nargs, ((hcl_oop_class_t)obj)->name);
-	return HCL_PF_SUCCESS;
+	HAK_STACK_SETRET (hak, nargs, ((hak_oop_class_t)obj)->name);
+	return HAK_PF_SUCCESS;
 }
 
-static hcl_pfrc_t pf_core_class_responds_to (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+static hak_pfrc_t pf_core_class_responds_to (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	hcl_oop_t obj;
-	hcl_oop_t msg;
+	hak_oop_t obj;
+	hak_oop_t msg;
 	int x;
 
-	obj = HCL_STACK_GETARG(hcl, nargs, 0);
-	msg = HCL_STACK_GETARG(hcl, nargs, 1);
-	if (!HCL_IS_CLASS(hcl, obj))
+	obj = HAK_STACK_GETARG(hak, nargs, 0);
+	msg = HAK_STACK_GETARG(hak, nargs, 1);
+	if (!HAK_IS_CLASS(hak, obj))
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "receiver not class - %O", msg);
-		return HCL_PF_FAILURE;
+		hak_seterrbfmt (hak, HAK_EINVAL, "receiver not class - %O", msg);
+		return HAK_PF_FAILURE;
 	}
-	if (!HCL_OBJ_IS_CHAR_POINTER(msg))
+	if (!HAK_OBJ_IS_CHAR_POINTER(msg))
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "invalid message - %O", msg);
-		return HCL_PF_FAILURE;
+		hak_seterrbfmt (hak, HAK_EINVAL, "invalid message - %O", msg);
+		return HAK_PF_FAILURE;
 	}
 
-	x = hcl_class_responds_to(hcl, obj, msg);
-	HCL_STACK_SETRET (hcl, nargs, (x? hcl->_true: hcl->_false));
-	return HCL_PF_SUCCESS;
+	x = hak_class_responds_to(hak, obj, msg);
+	HAK_STACK_SETRET (hak, nargs, (x? hak->_true: hak->_false));
+	return HAK_PF_SUCCESS;
 }
 
-static hcl_pfrc_t pf_core_inst_responds_to (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+static hak_pfrc_t pf_core_inst_responds_to (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	hcl_oop_t obj;
-	hcl_oop_t msg;
+	hak_oop_t obj;
+	hak_oop_t msg;
 	int x;
 
-	obj = HCL_STACK_GETARG(hcl, nargs, 0);
-	msg = HCL_STACK_GETARG(hcl, nargs, 1);
-	if (!HCL_OBJ_IS_CHAR_POINTER(msg))
+	obj = HAK_STACK_GETARG(hak, nargs, 0);
+	msg = HAK_STACK_GETARG(hak, nargs, 1);
+	if (!HAK_OBJ_IS_CHAR_POINTER(msg))
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "invalid message - %O", msg);
-		return HCL_PF_FAILURE;
+		hak_seterrbfmt (hak, HAK_EINVAL, "invalid message - %O", msg);
+		return HAK_PF_FAILURE;
 	}
 
-	x = hcl_inst_responds_to(hcl, obj, msg);
-	HCL_STACK_SETRET (hcl, nargs, (x? hcl->_true: hcl->_false));
-	return HCL_PF_SUCCESS;
+	x = hak_inst_responds_to(hak, obj, msg);
+	HAK_STACK_SETRET (hak, nargs, (x? hak->_true: hak->_false));
+	return HAK_PF_SUCCESS;
 }
 
-static hcl_pfrc_t pf_core_slice (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+static hak_pfrc_t pf_core_slice (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	hcl_oop_t src, slice, a1, a2;
-	hcl_ooi_t size;
-	hcl_ooi_t pos;
-	hcl_ooi_t len;
-	hcl_ooi_t i;
+	hak_oop_t src, slice, a1, a2;
+	hak_ooi_t size;
+	hak_ooi_t pos;
+	hak_ooi_t len;
+	hak_ooi_t i;
 
-	src = HCL_STACK_GETARG(hcl, nargs, 0);
-	a1 = HCL_STACK_GETARG(hcl, nargs, 1);
-	a2 = HCL_STACK_GETARG(hcl, nargs, 2);
+	src = HAK_STACK_GETARG(hak, nargs, 0);
+	a1 = HAK_STACK_GETARG(hak, nargs, 1);
+	a2 = HAK_STACK_GETARG(hak, nargs, 2);
 
-	if (!HCL_OOP_IS_POINTER(src))
+	if (!HAK_OOP_IS_POINTER(src))
 	{
 	unsliceable:
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "source not sliceable - %O", src);
-		return HCL_PF_FAILURE;
+		hak_seterrbfmt (hak, HAK_EINVAL, "source not sliceable - %O", src);
+		return HAK_PF_FAILURE;
 	}
 
-	if (!HCL_OOP_IS_SMOOI(a1))
+	if (!HAK_OOP_IS_SMOOI(a1))
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "position not numeric - %O", a1);
-		return HCL_PF_FAILURE;
+		hak_seterrbfmt (hak, HAK_EINVAL, "position not numeric - %O", a1);
+		return HAK_PF_FAILURE;
 	}
-	if (!HCL_OOP_IS_SMOOI(a2))
+	if (!HAK_OOP_IS_SMOOI(a2))
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "length not numeric - %O", a2);
-		return HCL_PF_FAILURE;
+		hak_seterrbfmt (hak, HAK_EINVAL, "length not numeric - %O", a2);
+		return HAK_PF_FAILURE;
 	}
 
-	size = HCL_OBJ_GET_SIZE(src);
-	pos = HCL_OOP_TO_SMOOI(a1);
-	len = HCL_OOP_TO_SMOOI(a2);
+	size = HAK_OBJ_GET_SIZE(src);
+	pos = HAK_OOP_TO_SMOOI(a1);
+	len = HAK_OOP_TO_SMOOI(a2);
 
 	if (pos < 0) pos = 0;
 	else if (pos >= size) pos = size;
 	if (len >= size - pos) len = size - pos;
 
 /* TODO: check if the object is an indexable object from the class spec... */
-	/* use HCL_OBJ_GET_CLASS() instead of HCL_CLASSOF() as we know it's an object */
-	slice = hcl_instantiate(hcl, (hcl_oop_class_t)HCL_OBJ_GET_CLASS(src), HCL_NULL, len);
-	if (HCL_UNLIKELY(!slice)) return HCL_PF_FAILURE;
+	/* use HAK_OBJ_GET_CLASS() instead of HAK_CLASSOF() as we know it's an object */
+	slice = hak_instantiate(hak, (hak_oop_class_t)HAK_OBJ_GET_CLASS(src), HAK_NULL, len);
+	if (HAK_UNLIKELY(!slice)) return HAK_PF_FAILURE;
 
 /* OR if add by the number of fixed fields??? */
-	switch (HCL_OBJ_GET_FLAGS_TYPE(src))
+	switch (HAK_OBJ_GET_FLAGS_TYPE(src))
 	{
-		case HCL_OBJ_TYPE_OOP:
-			for (i = 0; i < len; i++) HCL_OBJ_GET_OOP_VAL(slice, i) = HCL_OBJ_GET_OOP_VAL(src, pos + i);
+		case HAK_OBJ_TYPE_OOP:
+			for (i = 0; i < len; i++) HAK_OBJ_GET_OOP_VAL(slice, i) = HAK_OBJ_GET_OOP_VAL(src, pos + i);
 			break;
 
-		case HCL_OBJ_TYPE_CHAR:
-			for (i = 0; i < len; i++) HCL_OBJ_GET_CHAR_VAL(slice, i) = HCL_OBJ_GET_CHAR_VAL(src, pos + i);
+		case HAK_OBJ_TYPE_CHAR:
+			for (i = 0; i < len; i++) HAK_OBJ_GET_CHAR_VAL(slice, i) = HAK_OBJ_GET_CHAR_VAL(src, pos + i);
 			break;
 
-		case HCL_OBJ_TYPE_BYTE:
-			for (i = 0; i < len; i++) HCL_OBJ_GET_BYTE_VAL(slice, i) = HCL_OBJ_GET_BYTE_VAL(src, pos + i);
+		case HAK_OBJ_TYPE_BYTE:
+			for (i = 0; i < len; i++) HAK_OBJ_GET_BYTE_VAL(slice, i) = HAK_OBJ_GET_BYTE_VAL(src, pos + i);
 			break;
 
-		case HCL_OBJ_TYPE_HALFWORD:
-			for (i = 0; i < len; i++) HCL_OBJ_GET_HALFWORD_VAL(slice, i) = HCL_OBJ_GET_HALFWORD_VAL(src, pos + i);
+		case HAK_OBJ_TYPE_HALFWORD:
+			for (i = 0; i < len; i++) HAK_OBJ_GET_HALFWORD_VAL(slice, i) = HAK_OBJ_GET_HALFWORD_VAL(src, pos + i);
 			break;
 
-		case HCL_OBJ_TYPE_WORD:
-			for (i = 0; i < len; i++) HCL_OBJ_GET_WORD_VAL(slice, i) = HCL_OBJ_GET_WORD_VAL(src, pos + i);
+		case HAK_OBJ_TYPE_WORD:
+			for (i = 0; i < len; i++) HAK_OBJ_GET_WORD_VAL(slice, i) = HAK_OBJ_GET_WORD_VAL(src, pos + i);
 			break;
 
 		default:
 			goto unsliceable;
 	}
 
-	HCL_STACK_SETRET (hcl, nargs, slice);
-	return HCL_PF_SUCCESS;
+	HAK_STACK_SETRET (hak, nargs, slice);
+	return HAK_PF_SUCCESS;
 }
 
-static hcl_pfrc_t pf_core_char_to_smooi (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+static hak_pfrc_t pf_core_char_to_smooi (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	hcl_oop_t rcv, out;
-	hcl_ooi_t code;
+	hak_oop_t rcv, out;
+	hak_ooi_t code;
 
-	rcv = HCL_STACK_GETARG(hcl, nargs, 0);
-	if (!HCL_OOP_IS_CHAR(rcv))
+	rcv = HAK_STACK_GETARG(hak, nargs, 0);
+	if (!HAK_OOP_IS_CHAR(rcv))
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "receiver not Character - %O", rcv);
-		return HCL_PF_FAILURE;
+		hak_seterrbfmt (hak, HAK_EINVAL, "receiver not Character - %O", rcv);
+		return HAK_PF_FAILURE;
 	}
 
-	code = HCL_OOP_TO_CHAR(rcv);
-	out = HCL_SMOOI_TO_OOP(code);
-	HCL_STACK_SETRET (hcl, nargs, out);
-	return HCL_PF_SUCCESS;
+	code = HAK_OOP_TO_CHAR(rcv);
+	out = HAK_SMOOI_TO_OOP(code);
+	HAK_STACK_SETRET (hak, nargs, out);
+	return HAK_PF_SUCCESS;
 }
 
-static hcl_pfrc_t pf_core_smooi_to_char (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+static hak_pfrc_t pf_core_smooi_to_char (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	hcl_oop_t rcv, out;
-	hcl_ooi_t code;
+	hak_oop_t rcv, out;
+	hak_ooi_t code;
 
-	rcv = HCL_STACK_GETARG(hcl, nargs, 0);
-	if (!HCL_OOP_IS_SMOOI(rcv))
+	rcv = HAK_STACK_GETARG(hak, nargs, 0);
+	if (!HAK_OOP_IS_SMOOI(rcv))
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "receiver not SmallInteger - %O", rcv);
-		return HCL_PF_FAILURE;
+		hak_seterrbfmt (hak, HAK_EINVAL, "receiver not SmallInteger - %O", rcv);
+		return HAK_PF_FAILURE;
 	}
 
-	code = HCL_OOP_TO_SMOOI(rcv);
-	out = HCL_CHAR_TO_OOP(code);
-	HCL_STACK_SETRET (hcl, nargs, out);
-	return HCL_PF_SUCCESS;
+	code = HAK_OOP_TO_SMOOI(rcv);
+	out = HAK_CHAR_TO_OOP(code);
+	HAK_STACK_SETRET (hak, nargs, out);
+	return HAK_PF_SUCCESS;
 }
 
-static hcl_pfinfo_t pfinfos[] =
+static hak_pfinfo_t pfinfos[] =
 {
-	{ "basicAt",            { HCL_PFBASE_FUNC, pf_core_basic_at,              2,  2 } },
-	{ "basicAtPut",         { HCL_PFBASE_FUNC, pf_core_basic_at_put,          3,  3 } },
-	{ "basicNew",           { HCL_PFBASE_FUNC, pf_core_basic_new,             2,  2 } },
-	{ "basicSize",          { HCL_PFBASE_FUNC, pf_core_basic_size,            1,  1 } },
-	{ "charToSmooi",        { HCL_PFBASE_FUNC, pf_core_char_to_smooi,         1,  1 } },
-	{ "className",          { HCL_PFBASE_FUNC, pf_core_class_name,            1,  1 } },
-	{ "classRespondsTo",    { HCL_PFBASE_FUNC, pf_core_class_responds_to,     2,  2 } },
-	{ "instRespondsTo",     { HCL_PFBASE_FUNC, pf_core_inst_responds_to,      2,  2 } },
-	{ "primAt",             { HCL_PFBASE_FUNC, pf_core_prim_at,               2,  2 } },
-	{ "primAtPut",          { HCL_PFBASE_FUNC, pf_core_prim_at_put,           3,  3 } },
-	{ "slice",              { HCL_PFBASE_FUNC, pf_core_slice,                 3,  3 } },
-	{ "smooiToChar",        { HCL_PFBASE_FUNC, pf_core_smooi_to_char,         1,  1 } },
+	{ "basicAt",            { HAK_PFBASE_FUNC, pf_core_basic_at,              2,  2 } },
+	{ "basicAtPut",         { HAK_PFBASE_FUNC, pf_core_basic_at_put,          3,  3 } },
+	{ "basicNew",           { HAK_PFBASE_FUNC, pf_core_basic_new,             2,  2 } },
+	{ "basicSize",          { HAK_PFBASE_FUNC, pf_core_basic_size,            1,  1 } },
+	{ "charToSmooi",        { HAK_PFBASE_FUNC, pf_core_char_to_smooi,         1,  1 } },
+	{ "className",          { HAK_PFBASE_FUNC, pf_core_class_name,            1,  1 } },
+	{ "classRespondsTo",    { HAK_PFBASE_FUNC, pf_core_class_responds_to,     2,  2 } },
+	{ "instRespondsTo",     { HAK_PFBASE_FUNC, pf_core_inst_responds_to,      2,  2 } },
+	{ "primAt",             { HAK_PFBASE_FUNC, pf_core_prim_at,               2,  2 } },
+	{ "primAtPut",          { HAK_PFBASE_FUNC, pf_core_prim_at_put,           3,  3 } },
+	{ "slice",              { HAK_PFBASE_FUNC, pf_core_slice,                 3,  3 } },
+	{ "smooiToChar",        { HAK_PFBASE_FUNC, pf_core_smooi_to_char,         1,  1 } },
 };
 
 /* ------------------------------------------------------------------------ */
 
-static hcl_pfbase_t* query (hcl_t* hcl, hcl_mod_t* mod, const hcl_ooch_t* name, hcl_oow_t namelen)
+static hak_pfbase_t* query (hak_t* hak, hak_mod_t* mod, const hak_ooch_t* name, hak_oow_t namelen)
 {
-	return hcl_findpfbase(hcl, pfinfos, HCL_COUNTOF(pfinfos), name, namelen);
+	return hak_findpfbase(hak, pfinfos, HAK_COUNTOF(pfinfos), name, namelen);
 }
 
-static void unload (hcl_t* hcl, hcl_mod_t* mod)
+static void unload (hak_t* hak, hak_mod_t* mod)
 {
 }
 
-int hcl_mod_core (hcl_t* hcl, hcl_mod_t* mod)
+int hak_mod_core (hak_t* hak, hak_mod_t* mod)
 {
 	mod->query = query;
 	mod->unload = unload; 
-	mod->ctx = HCL_NULL;
+	mod->ctx = HAK_NULL;
 	return 0;
 }

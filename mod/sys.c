@@ -40,28 +40,28 @@
 #	include <time.h>
 #endif
 
-static hcl_pfrc_t pf_sys_time (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+static hak_pfrc_t pf_sys_time (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	hcl_ntime_t now;
-	hcl_oop_t tv;
-	hcl->vmprim.vm_gettime(hcl, &now); /* should I use time() instead? */
-	tv = hcl_oowtoint(hcl, now.sec);
-	if (!tv) return HCL_PF_FAILURE;
-	HCL_STACK_SETRET (hcl, nargs, tv);
-	return HCL_PF_SUCCESS;
+	hak_ntime_t now;
+	hak_oop_t tv;
+	hak->vmprim.vm_gettime(hak, &now); /* should I use time() instead? */
+	tv = hak_oowtoint(hak, now.sec);
+	if (!tv) return HAK_PF_FAILURE;
+	HAK_STACK_SETRET (hak, nargs, tv);
+	return HAK_PF_SUCCESS;
 }
 
-static hcl_pfrc_t pf_sys_stime (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+static hak_pfrc_t pf_sys_stime (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	hcl_oop_t t;
-	hcl_ooi_t ti;
+	hak_oop_t t;
+	hak_ooi_t ti;
 
-	t = HCL_STACK_GETARG(hcl, nargs, 0);
-	if (hcl_inttoooi(hcl, t, &ti) == 0)
+	t = HAK_STACK_GETARG(hak, nargs, 0);
+	if (hak_inttoooi(hak, t, &ti) == 0)
 	{
-		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "unacceptiable time value - %O - %js", t, orgmsg);
-		return HCL_PF_FAILURE;
+		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
+		hak_seterrbfmt (hak, HAK_EINVAL, "unacceptiable time value - %O - %js", t, orgmsg);
+		return HAK_PF_FAILURE;
 	}
 
 	/* ---------------------------------------------------------------- */
@@ -70,7 +70,7 @@ static hcl_pfrc_t pf_sys_stime (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 		struct timeval tv;
 		tv.tv_sec = ti;
 		tv.tv_usec = 0;
-		settimeofday (&tv, HCL_NULL);
+		settimeofday (&tv, HAK_NULL);
 	}
 #elif defined(__DOS__)
 	{
@@ -103,21 +103,21 @@ static hcl_pfrc_t pf_sys_stime (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 #endif
 	/* ---------------------------------------------------------------- */
 
-	HCL_STACK_SETRET (hcl, nargs, hcl->_nil);
-	return HCL_PF_SUCCESS;
+	HAK_STACK_SETRET (hak, nargs, hak->_nil);
+	return HAK_PF_SUCCESS;
 }
 
-static hcl_pfrc_t pf_sys_srandom (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+static hak_pfrc_t pf_sys_srandom (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	hcl_oop_t seed;
-	hcl_oow_t seedw;
+	hak_oop_t seed;
+	hak_oow_t seedw;
 
-	seed = HCL_STACK_GETARG(hcl, nargs, 0);
-	if (hcl_inttooow(hcl, seed, &seedw) == 0)
+	seed = HAK_STACK_GETARG(hak, nargs, 0);
+	if (hak_inttooow(hak, seed, &seedw) == 0)
 	{
-		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "unacceptiable seed - %O - %js", seed, orgmsg);
-		return HCL_PF_FAILURE;
+		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
+		hak_seterrbfmt (hak, HAK_EINVAL, "unacceptiable seed - %O - %js", seed, orgmsg);
+		return HAK_PF_FAILURE;
 	}
 
 #if defined(__DOS__)
@@ -126,48 +126,48 @@ static hcl_pfrc_t pf_sys_srandom (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
 	srandom (seedw);
 #endif
 
-	HCL_STACK_SETRET (hcl, nargs, hcl->_nil);
-	return HCL_PF_SUCCESS;
+	HAK_STACK_SETRET (hak, nargs, hak->_nil);
+	return HAK_PF_SUCCESS;
 }
 
-static hcl_pfrc_t pf_sys_random (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+static hak_pfrc_t pf_sys_random (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	long int r;
-	hcl_ooi_t rv;
+	hak_ooi_t rv;
 
 #if defined(__DOS__)
 	r = rand();
 #else
 	r = random();
 #endif
-	rv = (hcl_ooi_t)(r % HCL_SMOOI_MAX);
-	HCL_STACK_SETRET (hcl, nargs, HCL_SMOOI_TO_OOP(rv));
-	return HCL_PF_SUCCESS;
+	rv = (hak_ooi_t)(r % HAK_SMOOI_MAX);
+	HAK_STACK_SETRET (hak, nargs, HAK_SMOOI_TO_OOP(rv));
+	return HAK_PF_SUCCESS;
 }
 
-static hcl_pfinfo_t pfinfos[] =
+static hak_pfinfo_t pfinfos[] =
 {
-	{ "random",      { HCL_PFBASE_FUNC,  pf_sys_random,       0,  0 } },
-	{ "srandom",     { HCL_PFBASE_FUNC,  pf_sys_srandom,      1,  1 } },
-	{ "stime",       { HCL_PFBASE_FUNC,  pf_sys_stime,        1,  1 } },
-	{ "time",        { HCL_PFBASE_FUNC,  pf_sys_time,         0,  0 } }
+	{ "random",      { HAK_PFBASE_FUNC,  pf_sys_random,       0,  0 } },
+	{ "srandom",     { HAK_PFBASE_FUNC,  pf_sys_srandom,      1,  1 } },
+	{ "stime",       { HAK_PFBASE_FUNC,  pf_sys_stime,        1,  1 } },
+	{ "time",        { HAK_PFBASE_FUNC,  pf_sys_time,         0,  0 } }
 };
 
 /* ------------------------------------------------------------------------ */
 
-static hcl_pfbase_t* query (hcl_t* hcl, hcl_mod_t* mod, const hcl_ooch_t* name, hcl_oow_t namelen)
+static hak_pfbase_t* query (hak_t* hak, hak_mod_t* mod, const hak_ooch_t* name, hak_oow_t namelen)
 {
-	return hcl_findpfbase(hcl, pfinfos, HCL_COUNTOF(pfinfos), name, namelen);
+	return hak_findpfbase(hak, pfinfos, HAK_COUNTOF(pfinfos), name, namelen);
 }
 
-static void unload (hcl_t* hcl, hcl_mod_t* mod)
+static void unload (hak_t* hak, hak_mod_t* mod)
 {
 }
 
-int hcl_mod_sys (hcl_t* hcl, hcl_mod_t* mod)
+int hak_mod_sys (hak_t* hak, hak_mod_t* mod)
 {
 	mod->query = query;
 	mod->unload = unload; 
-	mod->ctx = HCL_NULL;
+	mod->ctx = HAK_NULL;
 	return 0;
 }

@@ -1,36 +1,36 @@
-unit HCL;
+unit HAK;
 
 {$mode objfpc}{$H+}
 {$macro on}
-{$linklib hcl}
+{$linklib hak}
 {$linklib c}
 {$linklib dl}
 {$linklib gcc}
 
-{$if defined(HCL_LIB_QUADMATH_REQUIRED)}
+{$if defined(HAK_LIB_QUADMATH_REQUIRED)}
 {$linklib quadmath}
 {$endif}
 
 interface
 
 type
-	BitMask = longword; (* this must match hcl_bitmask_t in hcl.h *)
+	BitMask = longword; (* this must match hak_bitmask_t in hak.h *)
 
 (*const
 	TRAIT_LANG_ENABLE_EOL = (BitMask(1) shl 14); *)
 
 type
-	TraitBit = ( (* this enum must follow hcl_trait_t in hcl.h *)
+	TraitBit = ( (* this enum must follow hak_trait_t in hak.h *)
 		LANG_ENABLE_EOL = (BitMask(1) shl 14)
 	);
 
-	Option = ( (* this enum must follow hcl_option_t in hcl.h *)
+	Option = ( (* this enum must follow hak_option_t in hak.h *)
 		TRAIT,
 		LOG_MASK,
 		LOG_MAXCAPA
 	);
 
-	IoCmd = ( (* this enum must follow hcl_io_cmd_t in hcl.h *)
+	IoCmd = ( (* this enum must follow hak_io_cmd_t in hak.h *)
 		IO_OPEN,
 		IO_CLOSE,
 		IO_READ,
@@ -40,17 +40,17 @@ type
 		IO_FLUSH
 	);
 
-{$ifndef HCL_CCI_BUF_LEN}
-{$define HCL_CCI_BUF_LEN := 2048}
+{$ifndef HAK_CCI_BUF_LEN}
+{$define HAK_CCI_BUF_LEN := 2048}
 {$endif}
 
 //{$packrecords c}
 	CciArgPtr = ^CciArg;
-	CciArg = record (* this record must follow the public part of hcl_io_cciarg_t in hcl.h *)
+	CciArg = record (* this record must follow the public part of hak_io_cciarg_t in hak.h *)
 		name: pwidechar;
 		handle: pointer;
 		byte_oriented: integer;
-		buf: array[0..(HCL_CCI_BUF_LEN - 1)] of widechar;
+		buf: array[0..(HAK_CCI_BUF_LEN - 1)] of widechar;
 		xlen: System.SizeUint;
 		includer: CciArgPtr;
 	end;
@@ -106,43 +106,43 @@ type
 
 	SynerrPtr = ^Synerr;
 
-(*----- external hcl function -----*)
-function hcl_errnum_to_errbcstr(errnum: integer; errbuf: pointer; errbufsz: System.SizeUint): pointer; cdecl; external;
-function hcl_errnum_is_synerr(errnum: integer): boolean; cdecl; external;
+(*----- external hak function -----*)
+function hak_errnum_to_errbcstr(errnum: integer; errbuf: pointer; errbufsz: System.SizeUint): pointer; cdecl; external;
+function hak_errnum_is_synerr(errnum: integer): boolean; cdecl; external;
 
-function hcl_openstd(xtnsize: System.SizeUint; errnum: pointer): pointer; cdecl; external;
-procedure hcl_close(handle: pointer); cdecl; external;
-function hcl_getxtn(handle: pointer): InterpExtPtr; cdecl; external;
+function hak_openstd(xtnsize: System.SizeUint; errnum: pointer): pointer; cdecl; external;
+procedure hak_close(handle: pointer); cdecl; external;
+function hak_getxtn(handle: pointer): InterpExtPtr; cdecl; external;
 
-function hcl_setoption(handle: pointer; option: Option; value: pointer): integer; cdecl; external;
-function hcl_getoption(handle: pointer; option: Option; value: pointer): integer; cdecl; external;
+function hak_setoption(handle: pointer; option: Option; value: pointer): integer; cdecl; external;
+function hak_getoption(handle: pointer; option: Option; value: pointer): integer; cdecl; external;
 
-procedure hcl_seterrnum (handle: pointer; errnum: integer); cdecl; external;
-function hcl_geterrnum(handle: pointer): integer; cdecl; external;
+procedure hak_seterrnum (handle: pointer; errnum: integer); cdecl; external;
+function hak_geterrnum(handle: pointer): integer; cdecl; external;
 
-procedure hcl_seterrbmsg (handle: pointer; errnum: integer; errmsg: pansichar); cdecl; external;
-function hcl_geterrbmsg(handle: pointer): pansichar; cdecl; external;
+procedure hak_seterrbmsg (handle: pointer; errnum: integer; errmsg: pansichar); cdecl; external;
+function hak_geterrbmsg(handle: pointer): pansichar; cdecl; external;
 
-function hcl_ignite(handle: pointer; heapsize: System.SizeUint): integer; cdecl; external;
-function hcl_addbuiltinprims(handle: pointer): integer; cdecl; external;
-function hcl_beginfeed(handle: pointer; on_cnode: pointer): integer; cdecl; external;
-function hcl_feedbchars(handle: pointer; data: pansichar; len: System.SizeUint): integer; cdecl; external;
-function hcl_feeduchars(handle: pointer; data: pwidechar; len: System.SizeUint): integer; cdecl; external; (* this is wrong in deed - hcl_uchar_t may not been widechar ..*)
-function hcl_endfeed(handle: pointer): integer; cdecl; external;
+function hak_ignite(handle: pointer; heapsize: System.SizeUint): integer; cdecl; external;
+function hak_addbuiltinprims(handle: pointer): integer; cdecl; external;
+function hak_beginfeed(handle: pointer; on_cnode: pointer): integer; cdecl; external;
+function hak_feedbchars(handle: pointer; data: pansichar; len: System.SizeUint): integer; cdecl; external;
+function hak_feeduchars(handle: pointer; data: pwidechar; len: System.SizeUint): integer; cdecl; external; (* this is wrong in deed - hak_uchar_t may not been widechar ..*)
+function hak_endfeed(handle: pointer): integer; cdecl; external;
 
-function hcl_attachccio(handle: pointer; cci: pointer): integer; cdecl; external;
-function hcl_attachcciostdwithbcstr(handle: pointer; cci: pansichar): integer; cdecl; external;
-procedure hcl_detachccio(handle: pointer); cdecl; external;
-function hcl_attachudiostdwithbcstr(handle: pointer; udi: pansichar; udo: pansichar): integer; cdecl; external;
-procedure hcl_detachudio(handle: pointer); cdecl; external;
-function hcl_compile(handle: pointer; cnode: pointer; flags: integer): integer; cdecl; external;
-function hcl_execute(handle: pointer): pointer; cdecl; external;
-procedure hcl_abort(handle: pointer) cdecl; external;
+function hak_attachccio(handle: pointer; cci: pointer): integer; cdecl; external;
+function hak_attachcciostdwithbcstr(handle: pointer; cci: pansichar): integer; cdecl; external;
+procedure hak_detachccio(handle: pointer); cdecl; external;
+function hak_attachudiostdwithbcstr(handle: pointer; udi: pansichar; udo: pansichar): integer; cdecl; external;
+procedure hak_detachudio(handle: pointer); cdecl; external;
+function hak_compile(handle: pointer; cnode: pointer; flags: integer): integer; cdecl; external;
+function hak_execute(handle: pointer): pointer; cdecl; external;
+procedure hak_abort(handle: pointer) cdecl; external;
 
-procedure hcl_getsynerr(handle: pointer; synerr: SynerrPtr) cdecl; external;
-function hcl_syserrstrb(handle: pointer; syserr_type: integer; syserr_code: integer; buf: pansichar; len: System.SizeUint): integer; cdecl; external;
-function hcl_count_ucstr(ptr: pwidechar): System.SizeUint; cdecl; external;
-(*----- end external hcl function -----*)
+procedure hak_getsynerr(handle: pointer; synerr: SynerrPtr) cdecl; external;
+function hak_syserrstrb(handle: pointer; syserr_type: integer; syserr_code: integer; buf: pansichar; len: System.SizeUint): integer; cdecl; external;
+function hak_count_ucstr(ptr: pwidechar): System.SizeUint; cdecl; external;
+(*----- end external hak function -----*)
 
 implementation
 
@@ -164,24 +164,24 @@ var
 	tb: BitMask;
 	ext: InterpExtPtr;
 begin
-	h := hcl_openstd(System.SizeOf(Interp), @errnum);
+	h := hak_openstd(System.SizeOf(Interp), @errnum);
 	if h = nil then begin
-		hcl_errnum_to_errbcstr(errnum, @errmsg, length(errmsg));
+		hak_errnum_to_errbcstr(errnum, @errmsg, length(errmsg));
 		raise Exception.Create(errmsg);
 	end;
 
-	if hcl_getoption(h, Option.TRAIT, @tb) <= -1 then tb := 0;
+	if hak_getoption(h, Option.TRAIT, @tb) <= -1 then tb := 0;
 
 	tb := tb or BitMask(TraitBit.LANG_ENABLE_EOL);
-	if hcl_setoption(h, Option.TRAIT, @tb) <= -1 then begin
-		hcl_errnum_to_errbcstr(errnum, @errmsg, length(errmsg));
-		hcl_close(h);
+	if hak_setoption(h, Option.TRAIT, @tb) <= -1 then begin
+		hak_errnum_to_errbcstr(errnum, @errmsg, length(errmsg));
+		hak_close(h);
 		raise Exception.Create(errmsg);
 	end;
 
 	self.handle := h;
 
-	ext := hcl_getxtn(h);
+	ext := hak_getxtn(h);
 	ext^.self := self;
 end;
 
@@ -189,7 +189,7 @@ destructor Interp.Destroy;
 begin
 	if self.handle <> nil then
 	begin
-		hcl_close(self.handle);
+		hak_close(self.handle);
 		self.handle := nil;
 	end;
 	inherited;
@@ -203,10 +203,10 @@ var
 	filp: pwidechar;
 	tgt: array[0..255] of widechar;
 begin
-	num := hcl_geterrnum(self.handle);
-	if hcl_errnum_is_synerr(num) then begin
-		hcl_getsynerr(self.handle, @serr);
-		bmsg := hcl_geterrbmsg(self.handle);
+	num := hak_geterrnum(self.handle);
+	if hak_errnum_is_synerr(num) then begin
+		hak_getsynerr(self.handle, @serr);
+		bmsg := hak_geterrbmsg(self.handle);
 		filp := pwidechar(widestring(''));
 		if serr.loc.filp <> nil then filp := serr.loc.filp;
 		if serr.tgt.len > 0 then begin
@@ -218,14 +218,14 @@ begin
 		end;
 	end
 	else begin
-		bmsg := hcl_geterrbmsg(self.handle);
+		bmsg := hak_geterrbmsg(self.handle);
 		exit(string(bmsg))
 	end;
 end;
 
 procedure Interp.Ignite(heapsize: System.SizeUint);
 begin
-	if hcl_ignite(self.handle, heapsize) <= -1 then
+	if hak_ignite(self.handle, heapsize) <= -1 then
 	begin
 		raise Exception.Create('failed to ignite - ' + self.FetchErrorMsg())
 	end;
@@ -233,7 +233,7 @@ end;
 
 procedure Interp.AddBuiltinPrims();
 begin
-	if hcl_addbuiltinprims(self.handle) <= -1 then
+	if hak_addbuiltinprims(self.handle) <= -1 then
 	begin
 		raise Exception.Create('failed to add builtin primitives - ' + self.FetchErrorMsg())
 	end;
@@ -243,7 +243,7 @@ function handle_to_self(handle: pointer): Interp;
 var
 	ext: InterpExtPtr;
 begin
-	ext := hcl_getxtn(handle);
+	ext := hak_getxtn(handle);
 	exit(ext^.self);
 end;
 
@@ -276,7 +276,7 @@ begin
 			System.New(nf);
 			if nf = nil then begin
 				err := SysUtils.GetLastOSError();
-				hcl_seterrbmsg(handle, hcl_syserrstrb(handle, 0, err, nil, 0), pansichar(SysUtils.SysErrorMessage(err)));
+				hak_seterrbmsg(handle, hak_syserrstrb(handle, 0, err, nil, 0), pansichar(SysUtils.SysErrorMessage(err)));
 				exit(-1);
 			end;
 
@@ -285,7 +285,7 @@ begin
 				nf^.handle := SysUtils.FileOpen(name, SysUtils.fmOpenRead);
 				if nf^.handle = System.THandle(-1) then begin
 					err := SysUtils.GetLastOSError();
-					hcl_seterrbmsg(handle, hcl_syserrstrb(handle, 0, err, nil, 0), pansichar(SysUtils.SysErrorMessage(err)));
+					hak_seterrbmsg(handle, hak_syserrstrb(handle, 0, err, nil, 0), pansichar(SysUtils.SysErrorMessage(err)));
 					System.Dispose(nf);
 					exit(-1);
 				end;
@@ -309,7 +309,7 @@ begin
 			nf := NamedHandlePtr(arg^.handle);
 			len := SysUtils.FileRead(nf^.handle, arg^.buf, System.SizeOf(arg^.buf)); (* use SizeOf a widechar buffer as it needs to fill it with bytes *)
 			if len <= -1 then begin
-				hcl_seterrbmsg(handle, hcl_syserrstrb(handle, 0, err, nil, 0), pansichar(SysUtils.SysErrorMessage(err)));
+				hak_seterrbmsg(handle, hak_syserrstrb(handle, 0, err, nil, 0), pansichar(SysUtils.SysErrorMessage(err)));
 				exit(-1);
 			end;
 			arg^.xlen := len;
@@ -325,7 +325,7 @@ begin
 		IO_WRITE_BYTES:
 		*)
 		else begin
-			hcl_seterrnum(handle, 999); (* TODO: change error code *)
+			hak_seterrnum(handle, 999); (* TODO: change error code *)
 			exit(-1);
 		end;
 	end;
@@ -352,13 +352,13 @@ begin
 	end;
 
 	self.basefile := filename;
-	if hcl_attachccio(self.handle, @cci_handler) <= -1 then begin
+	if hak_attachccio(self.handle, @cci_handler) <= -1 then begin
 		errmsg := 'failed to attach ccio handler - ' + self.FetchErrorMsg();
 		goto oops;
 	end;
 	attached := true;
 
-	if hcl_beginfeed(self.handle, nil) <= -1 then begin
+	if hak_beginfeed(self.handle, nil) <= -1 then begin
 		errmsg := 'failed to begin feeding - ' + self.FetchErrorMsg();
 		goto oops;
 	end;
@@ -372,28 +372,28 @@ begin
 		end;
 		if len = 0 then break;
 
-		if hcl_feedbchars(self.handle, buf, len) <= -1 then begin
-			errnum := hcl_geterrnum(self.handle);
+		if hak_feedbchars(self.handle, buf, len) <= -1 then begin
+			errnum := hak_geterrnum(self.handle);
 			errmsg := self.FetchErrorMsg();
-			if not hcl_errnum_is_synerr(errnum) then errmsg := 'failed to feed text - ' + errmsg;
+			if not hak_errnum_is_synerr(errnum) then errmsg := 'failed to feed text - ' + errmsg;
 			goto oops;
 		end;
 	end;
 
-	if hcl_endfeed(self.handle) <= -1 then begin
+	if hak_endfeed(self.handle) <= -1 then begin
 		errmsg := 'failed to end feeding - ' + self.FetchErrorMsg();
 		goto oops;
 	end;
 	feed_ongoing := false;
 
-	hcl_detachccio(self.handle);
+	hak_detachccio(self.handle);
 	self.basefile := '';
 	SysUtils.FileClose(f);
 	exit();
 
 oops:
-	if feed_ongoing then hcl_endfeed(self.handle);
-	if attached then hcl_detachccio(self.handle);
+	if feed_ongoing then hak_endfeed(self.handle);
+	if attached then hak_detachccio(self.handle);
 	self.basefile := '';
 	if f <> System.THandle(-1) then SysUtils.FileClose(f);
 	raise Exception.Create(errmsg);
@@ -409,33 +409,33 @@ var
 	errnum: integer;
 	errmsg: string;
 begin
-	if hcl_attachcciostdwithbcstr(self.handle, nil) <= -1 then
+	if hak_attachcciostdwithbcstr(self.handle, nil) <= -1 then
 		raise Exception.Create('failed to attach ccio handler - ' + self.FetchErrorMsg());
 
-	if hcl_beginfeed(self.handle, nil) <= -1 then begin
+	if hak_beginfeed(self.handle, nil) <= -1 then begin
 		errmsg := self.FetchErrorMsg();
-		hcl_detachccio(self.handle);
+		hak_detachccio(self.handle);
 		raise Exception.Create('failed to begin feeding - ' + errmsg);
 	end;
 
-	if hcl_feedbchars(self.handle, text, len) <= -1 then begin
-		errnum := hcl_geterrnum(self.handle);
+	if hak_feedbchars(self.handle, text, len) <= -1 then begin
+		errnum := hak_geterrnum(self.handle);
 		errmsg := self.FetchErrorMsg();
-		hcl_endfeed(self.handle);
-		hcl_detachccio(self.handle);
-		if hcl_errnum_is_synerr(errnum) then
+		hak_endfeed(self.handle);
+		hak_detachccio(self.handle);
+		if hak_errnum_is_synerr(errnum) then
 			raise Exception.Create(errmsg)
 		else
 			raise Exception.Create('failed to feed text - ' + errmsg);
 	end;
 
-	if hcl_endfeed(self.handle) <= -1 then begin
+	if hak_endfeed(self.handle) <= -1 then begin
 		errmsg := self.FetchErrorMsg();
-		hcl_detachccio(self.handle);
+		hak_detachccio(self.handle);
 		raise Exception.Create('failed to end feeding - ' + errmsg)
 	end;
 
-	hcl_detachccio(self.handle);
+	hak_detachccio(self.handle);
 end;
 
 procedure Interp.CompileText(text: pwidechar);
@@ -448,33 +448,33 @@ var
 	errnum: integer;
 	errmsg: string;
 begin
-	if hcl_attachcciostdwithbcstr(self.handle, nil) <= -1 then
+	if hak_attachcciostdwithbcstr(self.handle, nil) <= -1 then
 		raise Exception.Create('failed to attach ccio handler - ' + self.FetchErrorMsg());
 
-	if hcl_beginfeed(self.handle, nil) <= -1 then begin
+	if hak_beginfeed(self.handle, nil) <= -1 then begin
 		errmsg := self.FetchErrorMsg();
-		hcl_detachccio(self.handle);
+		hak_detachccio(self.handle);
 		raise Exception.Create('failed to begin feeding - ' + errmsg);
 	end;
 
-	if hcl_feeduchars(self.handle, text, len) <= -1 then begin
-		errnum := hcl_geterrnum(self.handle);
+	if hak_feeduchars(self.handle, text, len) <= -1 then begin
+		errnum := hak_geterrnum(self.handle);
 		errmsg := self.FetchErrorMsg();
-		hcl_endfeed(self.handle);
-		hcl_detachccio(self.handle);
-		if hcl_errnum_is_synerr(errnum) then
+		hak_endfeed(self.handle);
+		hak_detachccio(self.handle);
+		if hak_errnum_is_synerr(errnum) then
 			raise Exception.Create(errmsg)
 			else
 			raise Exception.Create('failed to feed text - ' + errmsg);
 	end;
 
-	if hcl_endfeed(self.handle) <= -1 then begin
+	if hak_endfeed(self.handle) <= -1 then begin
 		errmsg := self.FetchErrorMsg();
-		hcl_detachccio(self.handle);
+		hak_detachccio(self.handle);
 		raise Exception.Create('failed to end feeding - ' + errmsg)
 	end;
 
-	hcl_detachccio(self.handle);
+	hak_detachccio(self.handle);
 end;
 
 
@@ -482,16 +482,16 @@ procedure Interp.Execute();
 var
 	errmsg: string;
 begin
-	if hcl_attachudiostdwithbcstr(self.handle, nil, nil) <= -1 then begin
+	if hak_attachudiostdwithbcstr(self.handle, nil, nil) <= -1 then begin
 		raise Exception.Create('failed to attach udio handlers - ' + self.FetchErrorMsg())
 	end;
-	if hcl_execute(self.handle) = nil then begin
+	if hak_execute(self.handle) = nil then begin
 		errmsg := self.FetchErrorMsg();
-		hcl_detachudio(self.handle);
+		hak_detachudio(self.handle);
 		raise Exception.Create('failed to execute - ' + errmsg)
 	end;
 
-	hcl_detachudio(self.handle);
+	hak_detachudio(self.handle);
 end;
 
 end. (* unit *)

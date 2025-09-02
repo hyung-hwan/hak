@@ -28,11 +28,11 @@
 #define _CRT_SECURE_NO_WARNINGS
 #endif
 
-#include <hcl.h>
-#include <hcl-chr.h>
-#include <hcl-str.h>
-#include <hcl-utl.h>
-#include <hcl-opt.h>
+#include <hak.h>
+#include <hak-chr.h>
+#include <hak-str.h>
+#include <hak-utl.h>
+#include <hak-opt.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -102,111 +102,111 @@ struct xtn_t
 
 	struct
 	{
-		hcl_bch_t* ptr;
-		hcl_bch_t buf[1024]; /* not used if isocline is used */
-		hcl_oow_t len;
-		hcl_oow_t pos;
+		hak_bch_t* ptr;
+		hak_bch_t buf[1024]; /* not used if isocline is used */
+		hak_oow_t len;
+		hak_oow_t pos;
 		int eof;
-		hcl_oow_t ncompexprs; /* number of compiled expressions */
+		hak_oow_t ncompexprs; /* number of compiled expressions */
 	} feed;
-	/*hcl_oop_t sym_errstr;*/
+	/*hak_oop_t sym_errstr;*/
 };
 
 /* ========================================================================= */
 
-static hcl_t* g_hcl = HCL_NULL;
+static hak_t* g_hak = HAK_NULL;
 
 /* ========================================================================= */
 
-static int vm_startup (hcl_t* hcl)
+static int vm_startup (hak_t* hak)
 {
-	xtn_t* xtn = (xtn_t*)hcl_getxtn(hcl);
+	xtn_t* xtn = (xtn_t*)hak_getxtn(hak);
 	xtn->vm_running = 1;
 	return 0;
 }
 
-static void vm_cleanup (hcl_t* hcl)
+static void vm_cleanup (hak_t* hak)
 {
-	xtn_t* xtn = (xtn_t*)hcl_getxtn(hcl);
+	xtn_t* xtn = (xtn_t*)hak_getxtn(hak);
 	xtn->vm_running = 0;
 
 #if defined(USE_ISOCLINE)
 	if (xtn->feed.ptr && xtn->feed.ptr != xtn->feed.buf)
 	{
 		ic_free (xtn->feed.ptr);
-		xtn->feed.ptr = HCL_NULL;
+		xtn->feed.ptr = HAK_NULL;
 	}
 #endif
 }
 
 /*
-static void vm_checkbc (hcl_t* hcl, hcl_oob_t bcode)
+static void vm_checkbc (hak_t* hak, hak_oob_t bcode)
 {
 }
 */
 
-static void on_gc_hcl (hcl_t* hcl)
+static void on_gc_hak (hak_t* hak)
 {
-	/*xtn_t* xtn = (xtn_t*)hcl_getxtn(hcl);*/
-	/*if (xtn->sym_errstr) xtn->sym_errstr = hcl_moveoop(hcl, xtn->sym_errstr);*/
+	/*xtn_t* xtn = (xtn_t*)hak_getxtn(hak);*/
+	/*if (xtn->sym_errstr) xtn->sym_errstr = hak_moveoop(hak, xtn->sym_errstr);*/
 }
 
 /* ========================================================================= */
 
-static int handle_logopt (hcl_t* hcl, const hcl_bch_t* logstr)
+static int handle_logopt (hak_t* hak, const hak_bch_t* logstr)
 {
-	const hcl_bch_t* cm, * flt;
-	hcl_bitmask_t logmask;
-	hcl_oow_t tlen, i;
-	hcl_bcs_t fname;
+	const hak_bch_t* cm, * flt;
+	hak_bitmask_t logmask;
+	hak_oow_t tlen, i;
+	hak_bcs_t fname;
 
 	static struct
 	{
 		const char* name;
 		int op; /* 0: bitwise-OR, 1: bitwise-AND */
-		hcl_bitmask_t mask;
+		hak_bitmask_t mask;
 	} xtab[] =
 	{
 		{ "",           0, 0 },
 
-		{ "app",        0, HCL_LOG_APP },
-		{ "compiler",   0, HCL_LOG_COMPILER },
-		{ "vm",         0, HCL_LOG_VM },
-		{ "mnemonic",   0, HCL_LOG_MNEMONIC },
-		{ "gc",         0, HCL_LOG_GC },
-		{ "ic",         0, HCL_LOG_IC },
-		{ "primitive",  0, HCL_LOG_PRIMITIVE },
+		{ "app",        0, HAK_LOG_APP },
+		{ "compiler",   0, HAK_LOG_COMPILER },
+		{ "vm",         0, HAK_LOG_VM },
+		{ "mnemonic",   0, HAK_LOG_MNEMONIC },
+		{ "gc",         0, HAK_LOG_GC },
+		{ "ic",         0, HAK_LOG_IC },
+		{ "primitive",  0, HAK_LOG_PRIMITIVE },
 
 		/* select a specific level */
-		{ "fatal",      0, HCL_LOG_FATAL },
-		{ "error",      0, HCL_LOG_ERROR },
-		{ "warn",       0, HCL_LOG_WARN },
-		{ "info",       0, HCL_LOG_INFO },
-		{ "debug",      0, HCL_LOG_DEBUG },
+		{ "fatal",      0, HAK_LOG_FATAL },
+		{ "error",      0, HAK_LOG_ERROR },
+		{ "warn",       0, HAK_LOG_WARN },
+		{ "info",       0, HAK_LOG_INFO },
+		{ "debug",      0, HAK_LOG_DEBUG },
 
 		/* select a specific level or higher */
-		{ "fatal+",     0, HCL_LOG_FATAL },
-		{ "error+",     0, HCL_LOG_FATAL | HCL_LOG_ERROR },
-		{ "warn+",      0, HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN },
-		{ "info+",      0, HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN | HCL_LOG_INFO },
-		{ "debug+",     0, HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN | HCL_LOG_INFO | HCL_LOG_DEBUG },
+		{ "fatal+",     0, HAK_LOG_FATAL },
+		{ "error+",     0, HAK_LOG_FATAL | HAK_LOG_ERROR },
+		{ "warn+",      0, HAK_LOG_FATAL | HAK_LOG_ERROR | HAK_LOG_WARN },
+		{ "info+",      0, HAK_LOG_FATAL | HAK_LOG_ERROR | HAK_LOG_WARN | HAK_LOG_INFO },
+		{ "debug+",     0, HAK_LOG_FATAL | HAK_LOG_ERROR | HAK_LOG_WARN | HAK_LOG_INFO | HAK_LOG_DEBUG },
 
 		/* select a specific level or lower */
-		{ "fatal-",     0, HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN | HCL_LOG_INFO | HCL_LOG_DEBUG },
-		{ "error-",     0, HCL_LOG_ERROR | HCL_LOG_WARN | HCL_LOG_INFO | HCL_LOG_DEBUG },
-		{ "warn-",      0, HCL_LOG_WARN | HCL_LOG_INFO | HCL_LOG_DEBUG },
-		{ "info-",      0, HCL_LOG_INFO | HCL_LOG_DEBUG },
-		{ "debug-",     0, HCL_LOG_DEBUG },
+		{ "fatal-",     0, HAK_LOG_FATAL | HAK_LOG_ERROR | HAK_LOG_WARN | HAK_LOG_INFO | HAK_LOG_DEBUG },
+		{ "error-",     0, HAK_LOG_ERROR | HAK_LOG_WARN | HAK_LOG_INFO | HAK_LOG_DEBUG },
+		{ "warn-",      0, HAK_LOG_WARN | HAK_LOG_INFO | HAK_LOG_DEBUG },
+		{ "info-",      0, HAK_LOG_INFO | HAK_LOG_DEBUG },
+		{ "debug-",     0, HAK_LOG_DEBUG },
 
 		/* exclude a specific level */
-		{ "-fatal",     1, ~(hcl_bitmask_t)HCL_LOG_FATAL },
-		{ "-error",     1, ~(hcl_bitmask_t)HCL_LOG_ERROR },
-		{ "-warn",      1, ~(hcl_bitmask_t)HCL_LOG_WARN },
-		{ "-info",      1, ~(hcl_bitmask_t)HCL_LOG_INFO },
-		{ "-debug",     1, ~(hcl_bitmask_t)HCL_LOG_DEBUG },
+		{ "-fatal",     1, ~(hak_bitmask_t)HAK_LOG_FATAL },
+		{ "-error",     1, ~(hak_bitmask_t)HAK_LOG_ERROR },
+		{ "-warn",      1, ~(hak_bitmask_t)HAK_LOG_WARN },
+		{ "-info",      1, ~(hak_bitmask_t)HAK_LOG_INFO },
+		{ "-debug",     1, ~(hak_bitmask_t)HAK_LOG_DEBUG },
 	};
 
-	cm = hcl_find_bchar_in_bcstr(logstr, ',');
+	cm = hak_find_bchar_in_bcstr(logstr, ',');
 	if (cm)
 	{
 		fname.len = cm - logstr;
@@ -216,12 +216,12 @@ static int handle_logopt (hcl_t* hcl, const hcl_bch_t* logstr)
 		{
 			flt = cm + 1;
 
-			cm = hcl_find_bchar_in_bcstr(flt, ',');
-			tlen = (cm)? (cm - flt): hcl_count_bcstr(flt);
+			cm = hak_find_bchar_in_bcstr(flt, ',');
+			tlen = (cm)? (cm - flt): hak_count_bcstr(flt);
 
-			for (i = 0; i < HCL_COUNTOF(xtab); i++)
+			for (i = 0; i < HAK_COUNTOF(xtab); i++)
 			{
-				if (hcl_comp_bchars_bcstr(flt, tlen, xtab[i].name) == 0)
+				if (hak_comp_bchars_bcstr(flt, tlen, xtab[i].name) == 0)
 				{
 					if (xtab[i].op) logmask &= xtab[i].mask;
 					else logmask |= xtab[i].mask;
@@ -229,7 +229,7 @@ static int handle_logopt (hcl_t* hcl, const hcl_bch_t* logstr)
 				}
 			}
 
-			if (i >= HCL_COUNTOF(xtab))
+			if (i >= HAK_COUNTOF(xtab))
 			{
 				fprintf (stderr, "ERROR: unrecognized value  - [%.*s] - [%s]\n", (int)tlen, flt, logstr);
 				return -1;
@@ -238,39 +238,39 @@ static int handle_logopt (hcl_t* hcl, const hcl_bch_t* logstr)
 		while (cm);
 
 
-		if (!(logmask & HCL_LOG_ALL_TYPES)) logmask |= HCL_LOG_ALL_TYPES;  /* no types specified. force to all types */
-		if (!(logmask & HCL_LOG_ALL_LEVELS)) logmask |= HCL_LOG_ALL_LEVELS;  /* no levels specified. force to all levels */
+		if (!(logmask & HAK_LOG_ALL_TYPES)) logmask |= HAK_LOG_ALL_TYPES;  /* no types specified. force to all types */
+		if (!(logmask & HAK_LOG_ALL_LEVELS)) logmask |= HAK_LOG_ALL_LEVELS;  /* no levels specified. force to all levels */
 	}
 	else
 	{
-		logmask = HCL_LOG_ALL_LEVELS | HCL_LOG_ALL_TYPES;
-		fname.len = hcl_count_bcstr(logstr);
+		logmask = HAK_LOG_ALL_LEVELS | HAK_LOG_ALL_TYPES;
+		fname.len = hak_count_bcstr(logstr);
 	}
 
-	fname.ptr = (hcl_bch_t*)logstr;
-	hcl_setoption (hcl, HCL_LOG_TARGET_BCS, &fname);
-	hcl_setoption (hcl, HCL_LOG_MASK, &logmask);
+	fname.ptr = (hak_bch_t*)logstr;
+	hak_setoption (hak, HAK_LOG_TARGET_BCS, &fname);
+	hak_setoption (hak, HAK_LOG_MASK, &logmask);
 	return 0;
 }
 
-#if defined(HCL_BUILD_DEBUG)
-static int handle_dbgopt (hcl_t* hcl, const hcl_bch_t* str)
+#if defined(HAK_BUILD_DEBUG)
+static int handle_dbgopt (hak_t* hak, const hak_bch_t* str)
 {
-	/*xtn_t* xtn = (xtn_t*)hcl_getxtn(hcl);*/
-	const hcl_bch_t* cm, * flt;
-	hcl_oow_t len;
-	hcl_bitmask_t trait, dbgopt = 0;
+	/*xtn_t* xtn = (xtn_t*)hak_getxtn(hak);*/
+	const hak_bch_t* cm, * flt;
+	hak_oow_t len;
+	hak_bitmask_t trait, dbgopt = 0;
 
 	cm = str - 1;
 	do
 	{
 		flt = cm + 1;
 
-		cm = hcl_find_bchar_in_bcstr(flt, ',');
-		len = cm? (cm - flt): hcl_count_bcstr(flt);
+		cm = hak_find_bchar_in_bcstr(flt, ',');
+		len = cm? (cm - flt): hak_count_bcstr(flt);
 		if (len == 0) continue;
-		else if (hcl_comp_bchars_bcstr(flt, len, "gc") == 0) dbgopt |= HCL_TRAIT_DEBUG_GC;
-		else if (hcl_comp_bchars_bcstr(flt, len, "bigint") == 0) dbgopt |= HCL_TRAIT_DEBUG_BIGINT;
+		else if (hak_comp_bchars_bcstr(flt, len, "gc") == 0) dbgopt |= HAK_TRAIT_DEBUG_GC;
+		else if (hak_comp_bchars_bcstr(flt, len, "bigint") == 0) dbgopt |= HAK_TRAIT_DEBUG_BIGINT;
 		else
 		{
 			fprintf (stderr, "ERROR: unknown debug option value - %.*s\n", (int)len, flt);
@@ -279,9 +279,9 @@ static int handle_dbgopt (hcl_t* hcl, const hcl_bch_t* str)
 	}
 	while (cm);
 
-	hcl_getoption (hcl, HCL_TRAIT, &trait);
+	hak_getoption (hak, HAK_TRAIT, &trait);
 	trait |= dbgopt;
-	hcl_setoption (hcl, HCL_TRAIT, &trait);
+	hak_setoption (hak, HAK_TRAIT, &trait);
 	return 0;
 }
 #endif
@@ -302,19 +302,19 @@ typedef void(*signal_handler_t)(int);
 #if defined(_WIN32) || defined(__DOS__) || defined(__OS2__)
 static void handle_sigint (int sig)
 {
-	if (g_hcl) hcl_abort (g_hcl);
+	if (g_hak) hak_abort (g_hak);
 }
 #elif defined(macintosh)
 /* TODO */
 #elif defined(SA_SIGINFO)
 static void handle_sigint (int sig, siginfo_t* siginfo, void* ctx)
 {
-	if (g_hcl) hcl_abort (g_hcl);
+	if (g_hak) hak_abort (g_hak);
 }
 #else
 static void handle_sigint (int sig)
 {
-	if (g_hcl) hcl_abort (g_hcl);
+	if (g_hak) hak_abort (g_hak);
 }
 #endif
 
@@ -363,8 +363,8 @@ static void set_signal_to_default (int sig)
 
 static void print_info (void)
 {
-#if defined(HCL_CONFIGURE_CMD) && defined(HCL_CONFIGURE_ARGS)
-	printf ("Configured with: %s %s\n", HCL_CONFIGURE_CMD, HCL_CONFIGURE_ARGS);
+#if defined(HAK_CONFIGURE_CMD) && defined(HAK_CONFIGURE_ARGS)
+	printf ("Configured with: %s %s\n", HAK_CONFIGURE_CMD, HAK_CONFIGURE_ARGS);
 #elif defined(_WIN32)
 	printf("Built for windows\n");
 #else
@@ -372,177 +372,177 @@ static void print_info (void)
 #endif
 }
 
-static void print_synerr (hcl_t* hcl)
+static void print_synerr (hak_t* hak)
 {
-	hcl_synerr_t synerr;
+	hak_synerr_t synerr;
 	xtn_t* xtn;
 
-	xtn = (xtn_t*)hcl_getxtn(hcl);
-	hcl_getsynerr (hcl, &synerr);
+	xtn = (xtn_t*)hak_getxtn(hak);
+	hak_getsynerr (hak, &synerr);
 
-	hcl_logbfmt (hcl,HCL_LOG_STDERR, "ERROR: ");
+	hak_logbfmt (hak,HAK_LOG_STDERR, "ERROR: ");
 	if (synerr.loc.file)
-		hcl_logbfmt (hcl, HCL_LOG_STDERR, "%js", synerr.loc.file);
+		hak_logbfmt (hak, HAK_LOG_STDERR, "%js", synerr.loc.file);
 	else
-		hcl_logbfmt (hcl, HCL_LOG_STDERR, "%hs", xtn->cci_path);
+		hak_logbfmt (hak, HAK_LOG_STDERR, "%hs", xtn->cci_path);
 
-	hcl_logbfmt (hcl, HCL_LOG_STDERR, "[%zu,%zu] %js",
+	hak_logbfmt (hak, HAK_LOG_STDERR, "[%zu,%zu] %js",
 		synerr.loc.line, synerr.loc.colm,
-		(hcl_geterrmsg(hcl) != hcl_geterrstr(hcl)? hcl_geterrmsg(hcl): hcl_geterrstr(hcl))
+		(hak_geterrmsg(hak) != hak_geterrstr(hak)? hak_geterrmsg(hak): hak_geterrstr(hak))
 	);
 
 	if (synerr.tgt.len > 0)
-		hcl_logbfmt (hcl, HCL_LOG_STDERR, " - %.*js", synerr.tgt.len, synerr.tgt.val);
+		hak_logbfmt (hak, HAK_LOG_STDERR, " - %.*js", synerr.tgt.len, synerr.tgt.val);
 
-	hcl_logbfmt (hcl, HCL_LOG_STDERR, "\n");
+	hak_logbfmt (hak, HAK_LOG_STDERR, "\n");
 }
 
-static void print_other_error (hcl_t* hcl)
+static void print_other_error (hak_t* hak)
 {
 	xtn_t* xtn;
-	hcl_loc_t loc;
+	hak_loc_t loc;
 
-	xtn = (xtn_t*)hcl_getxtn(hcl);
-	hcl_geterrloc(hcl, &loc);
+	xtn = (xtn_t*)hak_getxtn(hak);
+	hak_geterrloc(hak, &loc);
 
-	hcl_logbfmt (hcl,HCL_LOG_STDERR, "ERROR: ");
+	hak_logbfmt (hak,HAK_LOG_STDERR, "ERROR: ");
 	if (loc.file)
-		hcl_logbfmt (hcl, HCL_LOG_STDERR, "%js", loc.file);
+		hak_logbfmt (hak, HAK_LOG_STDERR, "%js", loc.file);
 	else
-		hcl_logbfmt (hcl, HCL_LOG_STDERR, "%hs", xtn->cci_path);
+		hak_logbfmt (hak, HAK_LOG_STDERR, "%hs", xtn->cci_path);
 
-	hcl_logbfmt (hcl, HCL_LOG_STDERR, "[%zu,%zu] %js", loc.line, loc.colm, hcl_geterrmsg(hcl));
+	hak_logbfmt (hak, HAK_LOG_STDERR, "[%zu,%zu] %js", loc.line, loc.colm, hak_geterrmsg(hak));
 
-	hcl_logbfmt (hcl, HCL_LOG_STDERR, "\n");
+	hak_logbfmt (hak, HAK_LOG_STDERR, "\n");
 }
 
-static void print_error (hcl_t* hcl, const hcl_bch_t* msghdr)
+static void print_error (hak_t* hak, const hak_bch_t* msghdr)
 {
-	if (HCL_ERRNUM(hcl) == HCL_ESYNERR) print_synerr (hcl);
-	else print_other_error (hcl);
-	/*else hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: %hs - [%d] %js\n", msghdr, hcl_geterrnum(hcl), hcl_geterrmsg(hcl));*/
+	if (HAK_ERRNUM(hak) == HAK_ESYNERR) print_synerr (hak);
+	else print_other_error (hak);
+	/*else hak_logbfmt (hak, HAK_LOG_STDERR, "ERROR: %hs - [%d] %js\n", msghdr, hak_geterrnum(hak), hak_geterrmsg(hak));*/
 }
 
 
 #if defined(USE_ISOCLINE)
-static void print_incomplete_expression_error (hcl_t* hcl)
+static void print_incomplete_expression_error (hak_t* hak)
 {
 	/* isocline is supposed to return a full expression.
 	 * if something is pending in the feed side, the input isn't complete yet */
 	xtn_t* xtn;
-	hcl_loc_t loc;
+	hak_loc_t loc;
 
-	xtn = hcl_getxtn(hcl);
-	hcl_getfeedloc (hcl, &loc);
+	xtn = hak_getxtn(hak);
+	hak_getfeedloc (hak, &loc);
 
-	hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: ");
+	hak_logbfmt (hak, HAK_LOG_STDERR, "ERROR: ");
 	if (loc.file)
-		hcl_logbfmt (hcl, HCL_LOG_STDERR, "%js", loc.file);
+		hak_logbfmt (hak, HAK_LOG_STDERR, "%js", loc.file);
 	else
-		hcl_logbfmt (hcl, HCL_LOG_STDERR, "%hs", xtn->cci_path);
+		hak_logbfmt (hak, HAK_LOG_STDERR, "%hs", xtn->cci_path);
 
 	/* if the input is like this
 	 *   a := 2; c := {
 	 * the second expression is incompelete. however, the whole input is not executed.
 	 * the number of compiled expressions so far is in xtn->feed.ncompexprs, however */
-	hcl_logbfmt (hcl, HCL_LOG_STDERR, "[%zu,%zu] incomplete expression\n", loc.line, loc.colm);
+	hak_logbfmt (hak, HAK_LOG_STDERR, "[%zu,%zu] incomplete expression\n", loc.line, loc.colm);
 }
 #endif
 
-static void show_prompt (hcl_t* hcl, int level)
+static void show_prompt (hak_t* hak, int level)
 {
 /* TODO: different prompt per level */
-	hcl_resetfeedloc (hcl); /* restore the line number to 1 in the interactive mode */
+	hak_resetfeedloc (hak); /* restore the line number to 1 in the interactive mode */
 #if !defined(USE_ISOCLINE)
-	hcl_logbfmt (hcl, HCL_LOG_STDOUT, "HCL> ");
-	hcl_logbfmt (hcl, HCL_LOG_STDOUT, HCL_NULL); /* flushing */
+	hak_logbfmt (hak, HAK_LOG_STDOUT, "HAK> ");
+	hak_logbfmt (hak, HAK_LOG_STDOUT, HAK_NULL); /* flushing */
 #endif
 }
 
-static hcl_oop_t execute_in_interactive_mode (hcl_t* hcl)
+static hak_oop_t execute_in_interactive_mode (hak_t* hak)
 {
-	hcl_oop_t retv;
+	hak_oop_t retv;
 
-	hcl_decode (hcl, hcl_getcode(hcl), 0, hcl_getbclen(hcl));
-	HCL_LOG0 (hcl, HCL_LOG_MNEMONIC, "------------------------------------------\n");
-	g_hcl = hcl;
+	hak_decode (hak, hak_getcode(hak), 0, hak_getbclen(hak));
+	HAK_LOG0 (hak, HAK_LOG_MNEMONIC, "------------------------------------------\n");
+	g_hak = hak;
 	/*setup_tick ();*/
 
-	retv = hcl_execute(hcl);
+	retv = hak_execute(hak);
 
 	/* flush pending output data in the interactive mode(e.g. printf without a newline) */
-	hcl_flushudio (hcl);
+	hak_flushudio (hak);
 
 	if (!retv)
 	{
-		print_error (hcl, "execute");
+		print_error (hak, "execute");
 	}
 	else
 	{
 		/* print the result in the interactive mode regardless 'verbose' */
-		hcl_logbfmt (hcl, HCL_LOG_STDOUT, "%O\n", retv); /* TODO: show this go to the output handler?? */
+		hak_logbfmt (hak, HAK_LOG_STDOUT, "%O\n", retv); /* TODO: show this go to the output handler?? */
 		/*
 		 * print the value of ERRSTR.
-		hcl_oop_cons_t cons = hcl_getatsysdic(hcl, xtn->sym_errstr);
+		hak_oop_cons_t cons = hak_getatsysdic(hak, xtn->sym_errstr);
 		if (cons)
 		{
-			HCL_ASSERT(hcl, HCL_IS_CONS(hcl, cons));
-			HCL_ASSERT(hcl, HCL_CONS_CAR(cons) == xtn->sym_errstr);
-			hcl_print (hcl, HCL_CONS_CDR(cons));
+			HAK_ASSERT(hak, HAK_IS_CONS(hak, cons));
+			HAK_ASSERT(hak, HAK_CONS_CAR(cons) == xtn->sym_errstr);
+			hak_print (hak, HAK_CONS_CDR(cons));
 		}
 		*/
 	}
 	/*cancel_tick();*/
-	g_hcl = HCL_NULL;
+	g_hak = HAK_NULL;
 
 	return retv;
 }
 
-static hcl_oop_t execute_in_batch_mode(hcl_t* hcl, int verbose)
+static hak_oop_t execute_in_batch_mode(hak_t* hak, int verbose)
 {
-	hcl_oop_t retv;
+	hak_oop_t retv;
 
-	hcl_decode(hcl, hcl_getcode(hcl), 0, hcl_getbclen(hcl));
-	HCL_LOG3(hcl, HCL_LOG_MNEMONIC, "BYTECODES bclen=%zu lflen=%zu ngtmprs=%zu\n", hcl_getbclen(hcl), hcl_getlflen(hcl), hcl_getngtmprs(hcl));
-	g_hcl = hcl;
+	hak_decode(hak, hak_getcode(hak), 0, hak_getbclen(hak));
+	HAK_LOG3(hak, HAK_LOG_MNEMONIC, "BYTECODES bclen=%zu lflen=%zu ngtmprs=%zu\n", hak_getbclen(hak), hak_getlflen(hak), hak_getngtmprs(hak));
+	g_hak = hak;
 	/*setup_tick ();*/
 
 
 /* TESTING */
 #if 0
 {
-	hcl_code_t xcode;
-	hcl_ptlc_t mem;
+	hak_code_t xcode;
+	hak_ptlc_t mem;
 
-	memset (&xcode, 0, HCL_SIZEOF(xcode));
-	memset (&mem, 0, HCL_SIZEOF(mem));
+	memset (&xcode, 0, HAK_SIZEOF(xcode));
+	memset (&mem, 0, HAK_SIZEOF(mem));
 
-	hcl_marshalcodetomem(hcl, &hcl->code, &mem);
-	hcl_unmarshalcodefrommem(hcl, &xcode, (const hcl_ptl_t*)&mem);
-	hcl_freemem (hcl, mem.ptr);
+	hak_marshalcodetomem(hak, &hak->code, &mem);
+	hak_unmarshalcodefrommem(hak, &xcode, (const hak_ptl_t*)&mem);
+	hak_freemem (hak, mem.ptr);
 
-	hcl_decode(hcl, &xcode, 0, xcode.bc.len);
-	hcl_purgecode (hcl, &xcode);
+	hak_decode(hak, &xcode, 0, xcode.bc.len);
+	hak_purgecode (hak, &xcode);
 }
 #endif
 /* END TESTING */
 
-	retv = hcl_execute(hcl);
-	hcl_flushudio (hcl);
+	retv = hak_execute(hak);
+	hak_flushudio (hak);
 
-	if (!retv) print_error (hcl, "execute");
-	else if (verbose) hcl_logbfmt (hcl, HCL_LOG_STDERR, "EXECUTION OK - EXITED WITH %O\n", retv);
+	if (!retv) print_error (hak, "execute");
+	else if (verbose) hak_logbfmt (hak, HAK_LOG_STDERR, "EXECUTION OK - EXITED WITH %O\n", retv);
 
 	/*cancel_tick();*/
-	g_hcl = HCL_NULL;
-	/*hcl_dumpsymtab (hcl);*/
+	g_hak = HAK_NULL;
+	/*hak_dumpsymtab (hak);*/
 
 	return retv;
 }
 
-static int on_fed_cnode_in_interactive_mode (hcl_t* hcl, hcl_cnode_t* obj)
+static int on_fed_cnode_in_interactive_mode (hak_t* hak, hak_cnode_t* obj)
 {
-	xtn_t* xtn = (xtn_t*)hcl_getxtn(hcl);
+	xtn_t* xtn = (xtn_t*)hak_getxtn(hak);
 	int flags = 0;
 
 	/* in the interactive, the compile error must not break the input loop.
@@ -555,12 +555,12 @@ static int on_fed_cnode_in_interactive_mode (hcl_t* hcl, hcl_cnode_t* obj)
 	{
 		/* the first expression in the current user input line.
 		 * arrange to clear byte-codes before compiling the expression. */
-		flags = HCL_COMPILE_CLEAR_CODE | HCL_COMPILE_CLEAR_FUNBLK;
+		flags = HAK_COMPILE_CLEAR_CODE | HAK_COMPILE_CLEAR_FUNBLK;
 	}
 
-	if (hcl_compile(hcl, obj, flags) <= -1)
+	if (hak_compile(hak, obj, flags) <= -1)
 	{
-		/*print_error(hcl, "compile"); */
+		/*print_error(hak, "compile"); */
 		xtn->feed.pos = xtn->feed.len; /* arrange to discard the rest of the line */
 		return -1; /* this causes the feed function to fail and
 		              the error hander for to print the error message */
@@ -570,14 +570,14 @@ static int on_fed_cnode_in_interactive_mode (hcl_t* hcl, hcl_cnode_t* obj)
 	return 0;
 }
 
-static int on_fed_cnode_in_batch_mode (hcl_t* hcl, hcl_cnode_t* obj)
+static int on_fed_cnode_in_batch_mode (hak_t* hak, hak_cnode_t* obj)
 {
-	/*xtn_t* xtn = (xtn_t*)hcl_getxtn(hcl);*/
-	return hcl_compile(hcl, obj, 0);
+	/*xtn_t* xtn = (xtn_t*)hak_getxtn(hak);*/
+	return hak_compile(hak, obj, 0);
 }
 
 #if defined(USE_ISOCLINE)
-static int get_line (hcl_t* hcl, xtn_t* xtn, FILE* fp)
+static int get_line (hak_t* hak, xtn_t* xtn, FILE* fp)
 {
 	char* inp, * p;
 	static int inited = 0;
@@ -586,7 +586,7 @@ static int get_line (hcl_t* hcl, xtn_t* xtn, FILE* fp)
 	{
 		ic_style_def("kbd","gray underline");     // you can define your own styles
 		ic_style_def("ic-prompt","ansi-maroon");  // or re-define system styles
-		ic_set_history (HCL_NULL, -1);
+		ic_set_history (HAK_NULL, -1);
 		ic_enable_multiline (1);
 		ic_enable_multiline_indent (1);
 		ic_set_matching_braces ("()[]{}");
@@ -601,27 +601,27 @@ static int get_line (hcl_t* hcl, xtn_t* xtn, FILE* fp)
 	xtn->feed.len = 0;
 	if (xtn->feed.ptr)
 	{
-		HCL_ASSERT(hcl, xtn->feed.ptr != xtn->feed.buf);
+		HAK_ASSERT(hak, xtn->feed.ptr != xtn->feed.buf);
 		ic_free (xtn->feed.ptr);
-		xtn->feed.ptr = HCL_NULL;
+		xtn->feed.ptr = HAK_NULL;
 	}
 
-	inp = ic_readline("HCL");
+	inp = ic_readline("HAK");
 	if (inp == NULL)
 	{
 		/* TODO: check if it's an error or Eof */
 		xtn->feed.eof = 1;
-		HCL_ASSERT(hcl, xtn->feed.pos == 0);
-		HCL_ASSERT(hcl, xtn->feed.len == 0);
+		HAK_ASSERT(hak, xtn->feed.pos == 0);
+		HAK_ASSERT(hak, xtn->feed.len == 0);
 		return 0;
 	}
 
-	xtn->feed.len = hcl_count_bcstr(inp);
+	xtn->feed.len = hak_count_bcstr(inp);
 	xtn->feed.ptr = inp;
 	return 1;
 }
 #else
-static int get_line (hcl_t* hcl, xtn_t* xtn, FILE* fp)
+static int get_line (hak_t* hak, xtn_t* xtn, FILE* fp)
 {
 	if (xtn->feed.eof) return 0;
 
@@ -636,7 +636,7 @@ static int get_line (hcl_t* hcl, xtn_t* xtn, FILE* fp)
 		{
 			if (ferror(fp))
 			{
-				hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: failed to read - %hs - %hs\n", xtn->cci_path, strerror(errno));
+				hak_logbfmt (hak, HAK_LOG_STDERR, "ERROR: failed to read - %hs - %hs\n", xtn->cci_path, strerror(errno));
 				return -1;
 			}
 
@@ -646,31 +646,31 @@ static int get_line (hcl_t* hcl, xtn_t* xtn, FILE* fp)
 			break;
 		}
 
-		xtn->feed.buf[xtn->feed.len++] = (hcl_bch_t)(unsigned int)ch;
-		if (ch == '\n' || xtn->feed.len >= HCL_COUNTOF(xtn->feed.buf)) break;
+		xtn->feed.buf[xtn->feed.len++] = (hak_bch_t)(unsigned int)ch;
+		if (ch == '\n' || xtn->feed.len >= HAK_COUNTOF(xtn->feed.buf)) break;
 	}
 
 	return 1;
 }
 #endif
 
-static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
+static int feed_loop (hak_t* hak, xtn_t* xtn, int verbose)
 {
-	FILE* fp = HCL_NULL;
+	FILE* fp = HAK_NULL;
 	int is_tty;
 
 #if defined(_WIN32) && defined(__STDC_WANT_SECURE_LIB__)
 	errno_t err = fopen_s(&fp, xtn->cci_path, FOPEN_R_FLAGS);
 	if (err != 0)
 	{
-		hcl_logbfmt(hcl, HCL_LOG_STDERR, "ERROR: failed to open - %hs - %hs\n", xtn->cci_path, strerror(err));
+		hak_logbfmt(hak, HAK_LOG_STDERR, "ERROR: failed to open - %hs - %hs\n", xtn->cci_path, strerror(err));
 		goto oops;
 	}
 #else
 	fp = fopen(xtn->cci_path, FOPEN_R_FLAGS);
 	if (!fp)
 	{
-		hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: failed to open - %hs - %hs\n", xtn->cci_path, strerror(errno));
+		hak_logbfmt (hak, HAK_LOG_STDERR, "ERROR: failed to open - %hs - %hs\n", xtn->cci_path, strerror(errno));
 		goto oops;
 	}
 #endif
@@ -683,70 +683,70 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 
 	/* override the default cnode handler. the default one simply
 	 * compiles the expression node without execution */
-	/*if (hcl_beginfeed(hcl, is_tty? on_fed_cnode_in_interactive_mode: HCL_NULL) <= -1)*/
-	if (hcl_beginfeed(hcl, is_tty? on_fed_cnode_in_interactive_mode: on_fed_cnode_in_batch_mode) <= -1)
+	/*if (hak_beginfeed(hak, is_tty? on_fed_cnode_in_interactive_mode: HAK_NULL) <= -1)*/
+	if (hak_beginfeed(hak, is_tty? on_fed_cnode_in_interactive_mode: on_fed_cnode_in_batch_mode) <= -1)
 	{
-		hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: cannot begin feed - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
+		hak_logbfmt (hak, HAK_LOG_STDERR, "ERROR: cannot begin feed - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
 		goto oops;
 	}
 
 	if (is_tty)
 	{
 		/* interactive mode */
-		show_prompt (hcl, 0);
+		show_prompt (hak, 0);
 
 		while (1)
 		{
 			int n;
-			hcl_oow_t pos;
-			hcl_oow_t len;
+			hak_oow_t pos;
+			hak_oow_t len;
 
 		#if defined(USE_ISOCLINE)
 			int lf_injected = 0;
 		#endif
 
 			/* read a line regardless of the actual expression */
-			n = get_line(hcl, xtn, fp);
+			n = get_line(hak, xtn, fp);
 			if (n <= -1) goto oops;
 			if (n == 0) break;
 
 			/* feed the line */
 			pos = xtn->feed.pos;
-			/* update xtn->feed.pos before calling hcl_feedbchars() so that the callback sees the updated value */
+			/* update xtn->feed.pos before calling hak_feedbchars() so that the callback sees the updated value */
 			xtn->feed.pos = xtn->feed.len;
 			len = xtn->feed.len - pos;
-			n = hcl_feedbchars(hcl, &xtn->feed.ptr[pos], len);
+			n = hak_feedbchars(hak, &xtn->feed.ptr[pos], len);
 		#if defined(USE_ISOCLINE)
 		chars_fed:
 		#endif
 			if (n <= -1)
 			{
-				print_error (hcl, "feed"); /* syntax error or something - mostly compile error */
+				print_error (hak, "feed"); /* syntax error or something - mostly compile error */
 
 		#if defined(USE_ISOCLINE)
 			reset_on_feed_error:
 		#endif
-				hcl_resetfeed (hcl);
-				hcl_clearcode (hcl); /* clear the compiled code but not executed yet in advance */
+				hak_resetfeed (hak);
+				hak_clearcode (hak); /* clear the compiled code but not executed yet in advance */
 				xtn->feed.ncompexprs = 0; /* next time, on_fed_cnode_in_interactive_mode() clears code and fnblks */
-				/*if (len > 0)*/ show_prompt (hcl, 0); /* show prompt after error */
+				/*if (len > 0)*/ show_prompt (hak, 0); /* show prompt after error */
 			}
 			else
 			{
-				if (!hcl_feedpending(hcl))
+				if (!hak_feedpending(hak))
 				{
 					if (xtn->feed.ncompexprs > 0)
 					{
-						if (hcl_getbclen(hcl) > 0) execute_in_interactive_mode (hcl);
+						if (hak_getbclen(hak) > 0) execute_in_interactive_mode (hak);
 						xtn->feed.ncompexprs = 0;
 					}
 					else
 					{
-						HCL_ASSERT(hcl, hcl_getbclen(hcl) == 0);
+						HAK_ASSERT(hak, hak_getbclen(hak) == 0);
 						/* usually this part is reached if the input string is
 						 * one or more whilespaces and/or comments only */
 					}
-					show_prompt (hcl, 0); /* show prompt after execution */
+					show_prompt (hak, 0); /* show prompt after execution */
 				}
 		#if defined(USE_ISOCLINE)
 				else if (!lf_injected)
@@ -756,12 +756,12 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 					 * the ending line-feed in the returned input string. inject one to the feed */
 					static const char lf = '\n';
 					lf_injected = 1;
-					n = hcl_feedbchars(hcl, &lf, 1);
+					n = hak_feedbchars(hak, &lf, 1);
 					goto chars_fed;
 				}
 				else
 				{
-					print_incomplete_expression_error (hcl);
+					print_incomplete_expression_error (hak);
 					goto reset_on_feed_error;
 				}
 		#endif
@@ -773,7 +773,7 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 		 * this results in the OS prompt on the same line as this program's prompt.
 		 * however ISOCLINE prints a newline upon ctrl-D. print \n when ISOCLINE is
 		 * not used */
-		hcl_logbfmt (hcl, HCL_LOG_STDOUT, "\n");
+		hak_logbfmt (hak, HAK_LOG_STDOUT, "\n");
 	#endif
 	}
 	else
@@ -781,16 +781,16 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 		/* non-interactive mode */
 		while (1)
 		{
-			hcl_bch_t buf[1024];
-			hcl_oow_t xlen;
+			hak_bch_t buf[1024];
+			hak_oow_t xlen;
 
-			xlen = fread(buf, HCL_SIZEOF(buf[0]), HCL_COUNTOF(buf), fp);
-			if (xlen > 0 && hcl_feedbchars(hcl, buf, xlen) <= -1) goto endfeed_error;
-			if (xlen < HCL_COUNTOF(buf))
+			xlen = fread(buf, HAK_SIZEOF(buf[0]), HAK_COUNTOF(buf), fp);
+			if (xlen > 0 && hak_feedbchars(hak, buf, xlen) <= -1) goto endfeed_error;
+			if (xlen < HAK_COUNTOF(buf))
 			{
 				if (ferror(fp))
 				{
-					hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: failed to read - %hs - %hs\n", xtn->cci_path, strerror(errno));
+					hak_logbfmt (hak, HAK_LOG_STDERR, "ERROR: failed to read - %hs - %hs\n", xtn->cci_path, strerror(errno));
 					goto oops;
 				}
 				break;
@@ -798,15 +798,15 @@ static int feed_loop (hcl_t* hcl, xtn_t* xtn, int verbose)
 		}
 	}
 
-	if (hcl_endfeed(hcl) <= -1)
+	if (hak_endfeed(hak) <= -1)
 	{
 	endfeed_error:
-		print_error (hcl, "endfeed");
+		print_error (hak, "endfeed");
 		goto oops; /* TODO: proceed or just exit? */
 	}
 	fclose (fp);
 
-	if (!is_tty && hcl_getbclen(hcl) > 0) execute_in_batch_mode (hcl, verbose);
+	if (!is_tty && hak_getbclen(hak) > 0) execute_in_batch_mode (hak, verbose);
 	return 0;
 
 oops:
@@ -819,14 +819,14 @@ oops:
 
 int main (int argc, char* argv[])
 {
-	hcl_t* hcl = HCL_NULL;
+	hak_t* hak = HAK_NULL;
 	xtn_t* xtn;
-	hcl_cb_t hclcb;
+	hak_cb_t hakcb;
 
-	hcl_bci_t c;
-	static hcl_bopt_lng_t lopt[] =
+	hak_bci_t c;
+	static hak_bopt_lng_t lopt[] =
 	{
-#if defined(HCL_BUILD_DEBUG)
+#if defined(HAK_BUILD_DEBUG)
 		{ ":debug",       '\0' },
 #endif
 		{ ":heapsize",    '\0' },
@@ -834,22 +834,22 @@ int main (int argc, char* argv[])
 		{ "info",         '\0' },
 		{ ":modlibdirs",  '\0' },
 
-		{ HCL_NULL,       '\0' }
+		{ HAK_NULL,       '\0' }
 	};
-	static hcl_bopt_t opt =
+	static hak_bopt_t opt =
 	{
 		"l:v",
 		lopt
 	};
 
-	const char* logopt = HCL_NULL;
-	hcl_oow_t heapsize = DEFAULT_HEAPSIZE;
+	const char* logopt = HAK_NULL;
+	hak_oow_t heapsize = DEFAULT_HEAPSIZE;
 	int verbose = 0;
 	int show_info = 0;
-	const char* modlibdirs = HCL_NULL;
+	const char* modlibdirs = HAK_NULL;
 
-#if defined(HCL_BUILD_DEBUG)
-	const char* dbgopt = HCL_NULL;
+#if defined(HAK_BUILD_DEBUG)
+	const char* dbgopt = HAK_NULL;
 #endif
 
 	setlocale (LC_ALL, "");
@@ -864,7 +864,7 @@ int main (int argc, char* argv[])
 		return -1;
 	}
 
-	while ((c = hcl_getbopt(argc, argv, &opt)) != HCL_BCI_EOF)
+	while ((c = hak_getbopt(argc, argv, &opt)) != HAK_BCI_EOF)
 	{
 		switch (c)
 		{
@@ -877,24 +877,24 @@ int main (int argc, char* argv[])
 				break;
 
 			case '\0':
-				if (hcl_comp_bcstr(opt.lngopt, "heapsize") == 0)
+				if (hak_comp_bcstr(opt.lngopt, "heapsize") == 0)
 				{
-					heapsize = strtoul(opt.arg, HCL_NULL, 0);
+					heapsize = strtoul(opt.arg, HAK_NULL, 0);
 					break;
 				}
-			#if defined(HCL_BUILD_DEBUG)
-				else if (hcl_comp_bcstr(opt.lngopt, "debug") == 0)
+			#if defined(HAK_BUILD_DEBUG)
+				else if (hak_comp_bcstr(opt.lngopt, "debug") == 0)
 				{
 					dbgopt = opt.arg;
 					break;
 				}
 			#endif
-				else if (hcl_comp_bcstr(opt.lngopt, "info") == 0)
+				else if (hak_comp_bcstr(opt.lngopt, "info") == 0)
 				{
 					show_info = 1;
 					break;
 				}
-				else if (hcl_comp_bcstr(opt.lngopt, "modlibdirs") == 0)
+				else if (hak_comp_bcstr(opt.lngopt, "modlibdirs") == 0)
 				{
 					modlibdirs = opt.arg;
 					break;
@@ -918,77 +918,77 @@ int main (int argc, char* argv[])
 	if ((opt.ind + 1) != argc && (opt.ind + 2) != argc && !show_info) goto print_usage;
 #endif
 
-	hcl = hcl_openstd(HCL_SIZEOF(xtn_t), HCL_NULL);
-	if (HCL_UNLIKELY(!hcl))
+	hak = hak_openstd(HAK_SIZEOF(xtn_t), HAK_NULL);
+	if (HAK_UNLIKELY(!hak))
 	{
-		printf ("ERROR: cannot open hcl\n");
+		printf ("ERROR: cannot open hak\n");
 		goto oops;
 	}
 
-	xtn = (xtn_t*)hcl_getxtn(hcl);
+	xtn = (xtn_t*)hak_getxtn(hak);
 
 	{
-		hcl_oow_t tab_size;
+		hak_oow_t tab_size;
 		tab_size = 5000;
-		hcl_setoption (hcl, HCL_SYMTAB_SIZE, &tab_size);
+		hak_setoption (hak, HAK_SYMTAB_SIZE, &tab_size);
 		tab_size = 5000;
-		hcl_setoption (hcl, HCL_SYSDIC_SIZE, &tab_size);
+		hak_setoption (hak, HAK_SYSDIC_SIZE, &tab_size);
 		tab_size = 600; /* TODO: choose a better stack size or make this user specifiable */
-		hcl_setoption (hcl, HCL_PROCSTK_SIZE, &tab_size);
+		hak_setoption (hak, HAK_PROCSTK_SIZE, &tab_size);
 	}
 
 	{
-		hcl_bitmask_t trait = 0;
+		hak_bitmask_t trait = 0;
 
-		/*trait |= HCL_TRAIT_NOGC;*/
-		trait |= HCL_TRAIT_AWAIT_PROCS;
-		trait |= HCL_TRAIT_LANG_ENABLE_EOL;
-		hcl_setoption (hcl, HCL_TRAIT, &trait);
+		/*trait |= HAK_TRAIT_NOGC;*/
+		trait |= HAK_TRAIT_AWAIT_PROCS;
+		trait |= HAK_TRAIT_LANG_ENABLE_EOL;
+		hak_setoption (hak, HAK_TRAIT, &trait);
 	}
 
 	if (modlibdirs)
 	{
-	#if defined(HCL_OOCH_IS_UCH)
-		hcl_ooch_t* tmp;
-		tmp = hcl_dupbtoucstr(hcl, modlibdirs, HCL_NULL);
-		if (HCL_UNLIKELY(!tmp))
+	#if defined(HAK_OOCH_IS_UCH)
+		hak_ooch_t* tmp;
+		tmp = hak_dupbtoucstr(hak, modlibdirs, HAK_NULL);
+		if (HAK_UNLIKELY(!tmp))
 		{
-			hcl_logbfmt (hcl, HCL_LOG_STDERR,"ERROR: cannot duplicate modlibdirs - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
+			hak_logbfmt (hak, HAK_LOG_STDERR,"ERROR: cannot duplicate modlibdirs - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
 			goto oops;
 		}
 
-		if (hcl_setoption(hcl, HCL_MOD_LIBDIRS, tmp) <= -1)
+		if (hak_setoption(hak, HAK_MOD_LIBDIRS, tmp) <= -1)
 		{
-			hcl_logbfmt (hcl, HCL_LOG_STDERR,"ERROR: cannot set modlibdirs - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
-			hcl_freemem (hcl, tmp);
+			hak_logbfmt (hak, HAK_LOG_STDERR,"ERROR: cannot set modlibdirs - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
+			hak_freemem (hak, tmp);
 			goto oops;
 		}
-		hcl_freemem (hcl, tmp);
+		hak_freemem (hak, tmp);
 	#else
-		if (hcl_setoption(hcl, HCL_MOD_LIBDIRS, modlibdirs) <= -1)
+		if (hak_setoption(hak, HAK_MOD_LIBDIRS, modlibdirs) <= -1)
 		{
-			hcl_logbfmt (hcl, HCL_LOG_STDERR,"ERROR: cannot set modlibdirs - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
+			hak_logbfmt (hak, HAK_LOG_STDERR,"ERROR: cannot set modlibdirs - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
 			goto oops;
 		}
 	#endif
 	}
 
-	memset (&hclcb, 0, HCL_SIZEOF(hclcb));
-	hclcb.on_gc = on_gc_hcl;
-	hclcb.vm_startup = vm_startup;
-	hclcb.vm_cleanup = vm_cleanup;
-	/*hclcb.vm_checkbc = vm_checkbc;*/
-	hcl_regcb (hcl, &hclcb);
+	memset (&hakcb, 0, HAK_SIZEOF(hakcb));
+	hakcb.on_gc = on_gc_hak;
+	hakcb.vm_startup = vm_startup;
+	hakcb.vm_cleanup = vm_cleanup;
+	/*hakcb.vm_checkbc = vm_checkbc;*/
+	hak_regcb (hak, &hakcb);
 
 	if (logopt)
 	{
-		if (handle_logopt(hcl, logopt) <= -1) goto oops;
+		if (handle_logopt(hak, logopt) <= -1) goto oops;
 	}
 
-#if defined(HCL_BUILD_DEBUG)
+#if defined(HAK_BUILD_DEBUG)
 	if (dbgopt)
 	{
-		if (handle_dbgopt(hcl, dbgopt) <= -1) goto oops;
+		if (handle_dbgopt(hak, dbgopt) <= -1) goto oops;
 	}
 #endif
 
@@ -998,30 +998,30 @@ int main (int argc, char* argv[])
 		return 0;
 	}
 
-	if (hcl_ignite(hcl, heapsize) <= -1)
+	if (hak_ignite(hak, heapsize) <= -1)
 	{
-		hcl_logbfmt (hcl, HCL_LOG_STDERR, "cannot ignite hcl - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
+		hak_logbfmt (hak, HAK_LOG_STDERR, "cannot ignite hak - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
 		goto oops;
 	}
 
-	if (hcl_addbuiltinprims(hcl) <= -1)
+	if (hak_addbuiltinprims(hak) <= -1)
 	{
-		hcl_logbfmt (hcl, HCL_LOG_STDERR, "cannot add builtin primitives - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
+		hak_logbfmt (hak, HAK_LOG_STDERR, "cannot add builtin primitives - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
 		goto oops;
 	}
 
 	xtn->cci_path = argv[opt.ind++]; /* input source code file */
 	if (opt.ind < argc) xtn->udo_path = argv[opt.ind++];
 
-	if (hcl_attachcciostdwithbcstr(hcl, xtn->cci_path) <= -1)
+	if (hak_attachcciostdwithbcstr(hak, xtn->cci_path) <= -1)
 	{
-		hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: cannot attach source input stream - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
+		hak_logbfmt (hak, HAK_LOG_STDERR, "ERROR: cannot attach source input stream - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
 		goto oops;
 	}
 
-	if (hcl_attachudiostdwithbcstr(hcl, "", xtn->udo_path) <= -1) /* TODO: add udi path */
+	if (hak_attachudiostdwithbcstr(hak, "", xtn->udo_path) <= -1) /* TODO: add udi path */
 	{
-		hcl_logbfmt (hcl, HCL_LOG_STDERR, "ERROR: cannot attach user data streams - [%d] %js\n", hcl_geterrnum(hcl), hcl_geterrmsg(hcl));
+		hak_logbfmt (hak, HAK_LOG_STDERR, "ERROR: cannot attach user data streams - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
 		goto oops;
 	}
 
@@ -1034,22 +1034,22 @@ int main (int argc, char* argv[])
 // in the INTERACTIVE mode, the compiler generates MAKE_FUNCTION for lambda functions.
 // in the non-INTERACTIVE mode, the compiler generates MAKE_BLOCK for lambda functions.
 {
-	hcl_bitmask_t trait;
-	hcl_getoption (hcl, HCL_TRAIT, &trait);
-	trait |= HCL_TRAIT_INTERACTIVE;
-	hcl_setoption (hcl, HCL_TRAIT, &trait);
+	hak_bitmask_t trait;
+	hak_getoption (hak, HAK_TRAIT, &trait);
+	trait |= HAK_TRAIT_INTERACTIVE;
+	hak_setoption (hak, HAK_TRAIT, &trait);
 }
 #endif
 
-	if (feed_loop(hcl, xtn, verbose) <= -1) goto oops;
+	if (feed_loop(hak, xtn, verbose) <= -1) goto oops;
 
 	set_signal_to_default (SIGINT);
-	hcl_close (hcl);
+	hak_close (hak);
 
 	return 0;
 
 oops:
 	set_signal_to_default (SIGINT); /* harmless to call multiple times without set_signal() */
-	if (hcl) hcl_close (hcl);
+	if (hak) hak_close (hak);
 	return -1;
 }

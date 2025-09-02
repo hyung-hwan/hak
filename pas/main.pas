@@ -2,10 +2,10 @@ program main;
 
 {$mode objfpc}{$H+}
 
-uses HCL, SysUtils;
+uses HAK, SysUtils;
 
 var
-	x: HCL.Interp = nil;
+	x: HAK.Interp = nil;
 begin
 	(* System.ParamCount() returns only the number of argumetns except System.ParamStr(0). It is the upper bound to System.ParamStr(). *)
 	if System.ParamCount() <> 1 then begin
@@ -14,7 +14,7 @@ begin
 	end;
 
 	try
-		x := HCL.Interp.Create(100);
+		x := HAK.Interp.Create(100);
 		x.Ignite(0);
 
 		x.AddBuiltinPrims();

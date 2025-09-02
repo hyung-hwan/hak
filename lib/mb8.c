@@ -22,18 +22,18 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "hcl-prv.h"
+#include "hak-prv.h"
 
-hcl_oow_t hcl_uc_to_mb8 (hcl_uch_t wc, hcl_bch_t* mb8, hcl_oow_t size)
+hak_oow_t hak_uc_to_mb8 (hak_uch_t wc, hak_bch_t* mb8, hak_oow_t size)
 {
 	if (size <= 0) return size + 1; /* buffer too small */
-	if (wc > HCL_TYPE_MAX(hcl_uint8_t)) return 0; /* illegal character */
-	if (mb8) *(hcl_uint8_t*)mb8 = wc;
+	if (wc > HAK_TYPE_MAX(hak_uint8_t)) return 0; /* illegal character */
+	if (mb8) *(hak_uint8_t*)mb8 = wc;
 	return 1;
 }
 
-hcl_oow_t hcl_mb8_to_uc (const hcl_bch_t* mb8, hcl_oow_t size, hcl_uch_t* wc)
+hak_oow_t hak_mb8_to_uc (const hak_bch_t* mb8, hak_oow_t size, hak_uch_t* wc)
 {
-	*wc = *(const hcl_uint8_t*)mb8;
+	*wc = *(const hak_uint8_t*)mb8;
 	return 1;
 }

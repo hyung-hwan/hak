@@ -22,14 +22,14 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <hcl-opt.h>
-#include <hcl-str.h>
+#include <hak-opt.h>
+#include <hak-str.h>
 
 #define BADCH   '?'
 #define BADARG  ':'
 
-static hcl_uch_t EMSG_UCH[] = { '\0' };
-static hcl_bch_t EMSG_BCH[] = { '\0' };
+static hak_uch_t EMSG_UCH[] = { '\0' };
+static hak_bch_t EMSG_BCH[] = { '\0' };
 
 /* ------------------------------------------------------------ */
 
@@ -44,14 +44,14 @@ static hcl_bch_t EMSG_BCH[] = { '\0' };
 #undef XCI_EOF
 
 #define XEMSG EMSG_UCH
-#define xch_t hcl_uch_t
-#define xci_t hcl_uci_t
-#define xopt_t hcl_uopt_t
-#define xopt_lng_t hcl_uopt_lng_t
-#define xgetopt hcl_getuopt
-#define xcompcharscstr hcl_comp_uchars_ucstr
-#define xfindcharincstr hcl_find_uchar_in_ucstr
-#define XCI_EOF HCL_BCI_EOF
+#define xch_t hak_uch_t
+#define xci_t hak_uci_t
+#define xopt_t hak_uopt_t
+#define xopt_lng_t hak_uopt_lng_t
+#define xgetopt hak_getuopt
+#define xcompcharscstr hak_comp_uchars_ucstr
+#define xfindcharincstr hak_find_uchar_in_ucstr
+#define XCI_EOF HAK_BCI_EOF
 #include "opt-impl.h"
 
 /* ------------------------------------------------------------ */
@@ -67,14 +67,14 @@ static hcl_bch_t EMSG_BCH[] = { '\0' };
 #undef XCI_EOF
 
 #define XEMSG EMSG_BCH
-#define xch_t hcl_bch_t
-#define xci_t hcl_bci_t
-#define xopt_t hcl_bopt_t
-#define xopt_lng_t hcl_bopt_lng_t
-#define xgetopt hcl_getbopt
-#define xcompcharscstr hcl_comp_bchars_bcstr
-#define xfindcharincstr hcl_find_bchar_in_bcstr
-#define XCI_EOF HCL_UCI_EOF
+#define xch_t hak_bch_t
+#define xci_t hak_bci_t
+#define xopt_t hak_bopt_t
+#define xopt_lng_t hak_bopt_lng_t
+#define xgetopt hak_getbopt
+#define xcompcharscstr hak_comp_bchars_bcstr
+#define xfindcharincstr hak_find_bchar_in_bcstr
+#define XCI_EOF HAK_UCI_EOF
 #include "opt-impl.h"
 
 /* ------------------------------------------------------------ */

@@ -22,47 +22,47 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "hcl-prv.h"
+#include "hak-prv.h"
 
-void hcl_dumpsymtab (hcl_t* hcl)
+void hak_dumpsymtab (hak_t* hak)
 {
-	hcl_oow_t i;
-	hcl_oop_char_t symbol;
+	hak_oow_t i;
+	hak_oop_char_t symbol;
 
-	HCL_DEBUG0 (hcl, "--------------------------------------------\n");
-	HCL_DEBUG1 (hcl, "HCL Symbol Table %zu\n", HCL_OBJ_GET_SIZE(hcl->symtab->bucket));
-	HCL_DEBUG0 (hcl, "--------------------------------------------\n");
+	HAK_DEBUG0 (hak, "--------------------------------------------\n");
+	HAK_DEBUG1 (hak, "HAK Symbol Table %zu\n", HAK_OBJ_GET_SIZE(hak->symtab->bucket));
+	HAK_DEBUG0 (hak, "--------------------------------------------\n");
 
-	for (i = 0; i < HCL_OBJ_GET_SIZE(hcl->symtab->bucket); i++)
+	for (i = 0; i < HAK_OBJ_GET_SIZE(hak->symtab->bucket); i++)
 	{
-		symbol = (hcl_oop_char_t)hcl->symtab->bucket->slot[i];
- 		if ((hcl_oop_t)symbol != hcl->_nil)
+		symbol = (hak_oop_char_t)hak->symtab->bucket->slot[i];
+ 		if ((hak_oop_t)symbol != hak->_nil)
 		{
-			HCL_DEBUG2 (hcl, " %07zu %O\n", i, symbol);
+			HAK_DEBUG2 (hak, " %07zu %O\n", i, symbol);
 		}
 	}
 
-	HCL_DEBUG0 (hcl, "--------------------------------------------\n");
+	HAK_DEBUG0 (hak, "--------------------------------------------\n");
 }
 
-void hcl_dumpdic (hcl_t* hcl, hcl_oop_dic_t dic, const hcl_bch_t* title)
+void hak_dumpdic (hak_t* hak, hak_oop_dic_t dic, const hak_bch_t* title)
 {
-	hcl_oow_t i;
-	hcl_oop_cons_t ass;
+	hak_oow_t i;
+	hak_oop_cons_t ass;
 
-	HCL_DEBUG0 (hcl, "--------------------------------------------\n");
-	HCL_DEBUG2 (hcl, "%s %zu\n", title, HCL_OBJ_GET_SIZE(dic->bucket));
-	HCL_DEBUG0 (hcl, "--------------------------------------------\n");
+	HAK_DEBUG0 (hak, "--------------------------------------------\n");
+	HAK_DEBUG2 (hak, "%s %zu\n", title, HAK_OBJ_GET_SIZE(dic->bucket));
+	HAK_DEBUG0 (hak, "--------------------------------------------\n");
 
-	for (i = 0; i < HCL_OBJ_GET_SIZE(dic->bucket); i++)
+	for (i = 0; i < HAK_OBJ_GET_SIZE(dic->bucket); i++)
 	{
-		ass = (hcl_oop_cons_t)dic->bucket->slot[i];
-		if ((hcl_oop_t)ass != hcl->_nil)
+		ass = (hak_oop_cons_t)dic->bucket->slot[i];
+		if ((hak_oop_t)ass != hak->_nil)
 		{
-			HCL_DEBUG2 (hcl, " %07zu %O\n", i, ass->car);
+			HAK_DEBUG2 (hak, " %07zu %O\n", i, ass->car);
 		}
 	}
-	HCL_DEBUG0 (hcl, "--------------------------------------------\n");
+	HAK_DEBUG0 (hak, "--------------------------------------------\n");
 }
 
 

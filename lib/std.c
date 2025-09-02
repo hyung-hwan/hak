@@ -26,8 +26,8 @@
 #	define _GNU_SOURCE
 #endif
 
-#include "hcl-prv.h"
-#include <hcl-utl.h>
+#include "hak-prv.h"
+#include <hak-utl.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -61,7 +61,7 @@
 #	include <fcntl.h>
 #	include <signal.h>
 #	include <errno.h>
-#	if defined(HCL_HAVE_CFG_H) && defined(HCL_ENABLE_LIBLTDL)
+#	if defined(HAK_HAVE_CFG_H) && defined(HAK_ENABLE_LIBLTDL)
 #		include <ltdl.h>
 #		define USE_LTDL
 #	else
@@ -180,7 +180,7 @@
 #		include <sys/mman.h>
 #	endif
 
-#	if defined(HCL_ENABLE_LIBLTDL)
+#	if defined(HAK_ENABLE_LIBLTDL)
 #		include <ltdl.h>
 #		define USE_LTDL
 #	elif defined(HAVE_DLFCN_H)
@@ -253,42 +253,42 @@
 #	endif
 #endif
 
-#if !defined(HCL_DEFAULT_PFMODDIR)
-#	define HCL_DEFAULT_PFMODDIR ""
+#if !defined(HAK_DEFAULT_PFMODDIR)
+#	define HAK_DEFAULT_PFMODDIR ""
 #endif
 
-#if !defined(HCL_DEFAULT_PFMODPREFIX)
+#if !defined(HAK_DEFAULT_PFMODPREFIX)
 #	if defined(_WIN32)
-#		define HCL_DEFAULT_PFMODPREFIX "hcl-"
+#		define HAK_DEFAULT_PFMODPREFIX "hak-"
 #	elif defined(__OS2__)
-#		define HCL_DEFAULT_PFMODPREFIX "hcl"
+#		define HAK_DEFAULT_PFMODPREFIX "hak"
 #	elif defined(__DOS__)
-#		define HCL_DEFAULT_PFMODPREFIX "hcl"
+#		define HAK_DEFAULT_PFMODPREFIX "hak"
 #	else
-#		define HCL_DEFAULT_PFMODPREFIX "libhcl-"
+#		define HAK_DEFAULT_PFMODPREFIX "libhak-"
 #	endif
 #endif
 
-#if !defined(HCL_DEFAULT_PFMODPOSTFIX)
+#if !defined(HAK_DEFAULT_PFMODPOSTFIX)
 #	if defined(_WIN32)
-#		define HCL_DEFAULT_PFMODPOSTFIX ""
+#		define HAK_DEFAULT_PFMODPOSTFIX ""
 #	elif defined(__OS2__)
-#		define HCL_DEFAULT_PFMODPOSTFIX ""
+#		define HAK_DEFAULT_PFMODPOSTFIX ""
 #	elif defined(__DOS__)
-#		define HCL_DEFAULT_PFMODPOSTFIX ""
+#		define HAK_DEFAULT_PFMODPOSTFIX ""
 #	else
 #		if defined(USE_DLFCN)
-#			define HCL_DEFAULT_PFMODPOSTFIX ".so"
+#			define HAK_DEFAULT_PFMODPOSTFIX ".so"
 #		elif defined(USE_MACH_O_DYLD)
-#			define HCL_DEFAULT_PFMODPOSTFIX ".dylib"
+#			define HAK_DEFAULT_PFMODPOSTFIX ".dylib"
 #		else
-#			define HCL_DEFAULT_PFMODPOSTFIX ""
+#			define HAK_DEFAULT_PFMODPOSTFIX ""
 #		endif
 #	endif
 #endif
 
 #if defined(USE_THREAD)
-#	define MUTEX_INIT(x) pthread_mutex_init((x), HCL_NULL)
+#	define MUTEX_INIT(x) pthread_mutex_init((x), HAK_NULL)
 #	define MUTEX_DESTROY(x) pthread_mutex_destroy(x)
 #	define MUTEX_LOCK(x) pthread_mutex_lock(x)
 #	define MUTEX_UNLOCK(x) pthread_mutex_unlock(x)
@@ -310,12 +310,12 @@ struct select_fd_t
 typedef struct xtn_t xtn_t;
 struct xtn_t
 {
-	hcl_t* next;
-	hcl_t* prev;
+	hak_t* next;
+	hak_t* prev;
 
-	/* hcl_attachiostdwithbcstr() and hcl_attachiostdwithucstr()
+	/* hak_attachiostdwithbcstr() and hak_attachiostdwithucstr()
 	 * set these two field and reset them at the end.
-	 * since hcl_attachio() callls the open handler, these fields
+	 * since hak_attachio() callls the open handler, these fields
 	 * are valid only inside the open handelr */
 	const char* cci_path; /* main source file */
 	const char* udi_path; /* runtime input file */
@@ -324,8 +324,8 @@ struct xtn_t
 	int vm_running;
 	int rcv_tick;
 
-	hcl_cmgr_t* input_cmgr;
-	hcl_cmgr_t* log_cmgr;
+	hak_cmgr_t* input_cmgr;
+	hak_cmgr_t* log_cmgr;
 
 	struct
 	{
@@ -334,8 +334,8 @@ struct xtn_t
 
 		struct
 		{
-			hcl_bch_t buf[4096];
-			hcl_oow_t len;
+			hak_bch_t buf[4096];
+			hak_oow_t len;
 		} out;
 	} log;
 
@@ -346,10 +346,10 @@ struct xtn_t
 	#elif defined(__OS2__)
 	ULONG tc_last;
 	ULONG tc_overflow;
-	hcl_ntime_t tc_last_ret;
+	hak_ntime_t tc_last_ret;
 	#elif defined(__DOS__)
 	clock_t tc_last;
-	hcl_ntime_t tc_last_ret;
+	hak_ntime_t tc_last_ret;
 	#endif
 
 	#if defined(USE_DEVPOLL)
@@ -388,8 +388,8 @@ struct xtn_t
 	#elif defined(USE_KQUEUE)
 		struct
 		{
-			hcl_oow_t* ptr;
-			hcl_oow_t capa;
+			hak_oow_t* ptr;
+			hak_oow_t capa;
 		} reg;
 		struct kevent buf[64];
 	#elif defined(USE_EPOLL)
@@ -400,8 +400,8 @@ struct xtn_t
 		struct
 		{
 			struct pollfd* ptr;
-			hcl_oow_t capa;
-			hcl_oow_t len;
+			hak_oow_t capa;
+			hak_oow_t len;
 		#if defined(USE_THREAD)
 			pthread_mutex_t pmtx;
 		#endif
@@ -422,7 +422,7 @@ struct xtn_t
 		struct select_fd_t buf[FD_SETSIZE];
 	#endif
 
-		hcl_oow_t len;
+		hak_oow_t len;
 
 	#if defined(USE_THREAD)
 		pthread_mutex_t mtx;
@@ -434,42 +434,42 @@ struct xtn_t
 	} ev;
 };
 
-#define GET_XTN(hcl) ((xtn_t*)((hcl_uint8_t*)HCL_XTN(hcl) - HCL_SIZEOF(xtn_t)))
+#define GET_XTN(hak) ((xtn_t*)((hak_uint8_t*)HAK_XTN(hak) - HAK_SIZEOF(xtn_t)))
 
-static hcl_t* g_hcl = HCL_NULL;
+static hak_t* g_hak = HAK_NULL;
 
 /* -----------------------------------------------------------------
  * BASIC MEMORY MANAGER
  * ----------------------------------------------------------------- */
 
-static void* sys_allocmem (hcl_mmgr_t* mmgr, hcl_oow_t size)
+static void* sys_allocmem (hak_mmgr_t* mmgr, hak_oow_t size)
 {
 	return malloc(size);
 }
 
-static void* sys_reallocmem (hcl_mmgr_t* mmgr, void* ptr, hcl_oow_t size)
+static void* sys_reallocmem (hak_mmgr_t* mmgr, void* ptr, hak_oow_t size)
 {
 	return realloc(ptr, size);
 }
 
-static void sys_freemem (hcl_mmgr_t* mmgr, void* ptr)
+static void sys_freemem (hak_mmgr_t* mmgr, void* ptr)
 {
 	free (ptr);
 }
 
-static hcl_mmgr_t sys_mmgr =
+static hak_mmgr_t sys_mmgr =
 {
 	sys_allocmem,
 	sys_reallocmem,
 	sys_freemem,
-	HCL_NULL
+	HAK_NULL
 };
 
 /* -----------------------------------------------------------------
  * HEAP ALLOCATION
  * ----------------------------------------------------------------- */
 
-static int get_huge_page_size (hcl_t* hcl, hcl_oow_t* page_size)
+static int get_huge_page_size (hak_t* hak, hak_oow_t* page_size)
 {
 	FILE* fp;
 	char buf[256];
@@ -485,7 +485,7 @@ static int get_huge_page_size (hcl_t* hcl, hcl_oow_t* page_size)
 		{
 			unsigned long int tmp;
 			tmp = strtoul(&buf[13], NULL, 10);
-			if (tmp == HCL_TYPE_MAX(unsigned long int) && errno == ERANGE) goto oops;
+			if (tmp == HAK_TYPE_MAX(unsigned long int) && errno == ERANGE) goto oops;
 
 			*page_size = tmp * 1024; /* KBytes to Bytes */
 			fclose (fp);
@@ -498,14 +498,14 @@ oops:
 	return -1;
 }
 
-static void* alloc_heap (hcl_t* hcl, hcl_oow_t* size)
+static void* alloc_heap (hak_t* hak, hak_oow_t* size)
 {
 #if defined(_WIN32)
-	hcl_oow_t* ptr;
-	hcl_oow_t req_size, align, aligned_size;
+	hak_oow_t* ptr;
+	hak_oow_t req_size, align, aligned_size;
 	HINSTANCE k32;
 	SIZE_T (*k32_GetLargePageMinimum) (void);
-	HANDLE token = HCL_NULL;
+	HANDLE token = HAK_NULL;
 	TOKEN_PRIVILEGES new_state, prev_state;
 	TOKEN_PRIVILEGES* prev_state_ptr;
 	DWORD prev_state_reqsize = 0;
@@ -528,18 +528,18 @@ static void* alloc_heap (hcl_t* hcl, hcl_oow_t* size)
 		align = si.dwPageSize;
 	}*/
 
-	req_size = HCL_SIZEOF(hcl_oow_t) + size;
-	aligned_size = HCL_ALIGN(req_size, align);
+	req_size = HAK_SIZEOF(hak_oow_t) + size;
+	aligned_size = HAK_ALIGN(req_size, align);
 
 	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &token)) goto oops;
-	if (!LookupPrivilegeValue(HCL_NULL, TEXT("SeLockMemoryPrivilege"), &new_state.Privileges[0].Luid)) goto oops;
+	if (!LookupPrivilegeValue(HAK_NULL, TEXT("SeLockMemoryPrivilege"), &new_state.Privileges[0].Luid)) goto oops;
 	new_state.PrivilegeCount = 1;
 	new_state.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
 
 	prev_state_ptr = &prev_state;
-	if (!AdjustTokenPrivileges(token, FALSE, &new_state, HCL_SIZEOF(prev_state), prev_state_ptr, &prev_state_reqsize) || GetLastError() != ERROR_SUCCESS)
+	if (!AdjustTokenPrivileges(token, FALSE, &new_state, HAK_SIZEOF(prev_state), prev_state_ptr, &prev_state_reqsize) || GetLastError() != ERROR_SUCCESS)
 	{
-		if (prev_state_reqsize >= HCL_SIZEOF(prev_state))
+		if (prev_state_reqsize >= HAK_SIZEOF(prev_state))
 		{
 			/* GetLastError() == ERROR_INSUFFICIENT_BUFFER */
 			prev_state_ptr = (TOKEN_PRIVILEGES*)HeapAlloc(GetProcessHeap(), 0, prev_state_reqsize);
@@ -553,18 +553,18 @@ static void* alloc_heap (hcl_t* hcl, hcl_oow_t* size)
 #if !defined(MEM_LARGE_PAGES)
 #	define MEM_LARGE_PAGES (0x20000000)
 #endif
-	ptr = VirtualAlloc(HCL_NULL, aligned_size, MEM_COMMIT | MEM_RESERVE | MEM_LARGE_PAGES, PAGE_READWRITE);
+	ptr = VirtualAlloc(HAK_NULL, aligned_size, MEM_COMMIT | MEM_RESERVE | MEM_LARGE_PAGES, PAGE_READWRITE);
 	if (!ptr)
 	{
 		SYSTEM_INFO si;
 		GetSystemInfo (&si);
 		align = si.dwPageSize;
-		aligned_size = HCL_ALIGN(req_size, align);
-		ptr = VirtualAlloc(HCL_NULL, aligned_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+		aligned_size = HAK_ALIGN(req_size, align);
+		ptr = VirtualAlloc(HAK_NULL, aligned_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 		if (!ptr) goto oops;
 	}
 
-	AdjustTokenPrivileges (token, FALSE, prev_state_ptr, 0, HCL_NULL, 0);
+	AdjustTokenPrivileges (token, FALSE, prev_state_ptr, 0, HAK_NULL, 0);
 	CloseHandle (token);
 	if (prev_state_ptr && prev_state_ptr != &prev_state) HeapFree (GetProcessHeap(), 0, prev_state_ptr);
 
@@ -572,31 +572,31 @@ static void* alloc_heap (hcl_t* hcl, hcl_oow_t* size)
 	return ptr;
 
 oops:
-	hcl_seterrwithsyserr (hcl, 1, GetLastError());
+	hak_seterrwithsyserr (hak, 1, GetLastError());
 	if (token)
 	{
-		if (token_adjusted) AdjustTokenPrivileges (token, FALSE, prev_state_ptr, 0, HCL_NULL, 0);
+		if (token_adjusted) AdjustTokenPrivileges (token, FALSE, prev_state_ptr, 0, HAK_NULL, 0);
 		CloseHandle (token);
 	}
 	if (prev_state_ptr && prev_state_ptr != &prev_state) HeapFree (GetProcessHeap(), 0, prev_state_ptr);
-	return HCL_NULL;
+	return HAK_NULL;
 
 #elif defined(HAVE_MMAP) && defined(HAVE_MUNMAP) && defined(MAP_ANONYMOUS)
-	/* It's called via hcl_makeheap() when HCL creates a GC heap.
+	/* It's called via hak_makeheap() when HAK creates a GC heap.
 	 * The heap is large in size. I can use a different memory allocation
 	 * function instead of an ordinary malloc.
-	 * upon failure, it doesn't require to set error information as hcl_makeheap()
-	 * set the error number to HCL_EOOMEM. */
+	 * upon failure, it doesn't require to set error information as hak_makeheap()
+	 * set the error number to HAK_EOOMEM. */
 
 #if !defined(MAP_HUGETLB) && (defined(__amd64__) || defined(__x86_64__))
 #	define MAP_HUGETLB 0x40000
 #endif
 
-	hcl_oow_t* ptr;
+	hak_oow_t* ptr;
 	int flags;
-	hcl_oow_t req_size, align, aligned_size;
+	hak_oow_t req_size, align, aligned_size;
 
-	req_size = HCL_SIZEOF(hcl_oow_t) + *size;
+	req_size = HAK_SIZEOF(hak_oow_t) + *size;
 	flags = MAP_PRIVATE | MAP_ANONYMOUS;
 
 	#if defined(MAP_UNINITIALIZED)
@@ -604,7 +604,7 @@ oops:
 	#endif
 
 	#if defined(MAP_HUGETLB)
-	if (get_huge_page_size(hcl, &align) <= -1) align = 2 * 1024 * 1024; /* default to 2MB */
+	if (get_huge_page_size(hak, &align) <= -1) align = 2 * 1024 * 1024; /* default to 2MB */
 	if (req_size > align / 2)
 	{
 		/* if the requested size is large enough, attempt HUGETLB */
@@ -618,49 +618,49 @@ oops:
 	align = sysconf(_SC_PAGESIZE);
 	#endif
 
-	aligned_size = HCL_ALIGN_POW2(req_size, align);
-	ptr = (hcl_oow_t*)mmap(NULL, aligned_size, PROT_READ | PROT_WRITE, flags, -1, 0);
+	aligned_size = HAK_ALIGN_POW2(req_size, align);
+	ptr = (hak_oow_t*)mmap(NULL, aligned_size, PROT_READ | PROT_WRITE, flags, -1, 0);
 	#if defined(MAP_HUGETLB)
 	if (ptr == MAP_FAILED && (flags & MAP_HUGETLB))
 	{
 		flags &= ~MAP_HUGETLB;
 		align = sysconf(_SC_PAGESIZE);
-		aligned_size = HCL_ALIGN_POW2(req_size, align);
-		ptr = (hcl_oow_t*)mmap(NULL, aligned_size, PROT_READ | PROT_WRITE, flags, -1, 0);
+		aligned_size = HAK_ALIGN_POW2(req_size, align);
+		ptr = (hak_oow_t*)mmap(NULL, aligned_size, PROT_READ | PROT_WRITE, flags, -1, 0);
 		if (ptr == MAP_FAILED)
 		{
-			hcl_seterrwithsyserr (hcl, 0, errno);
-			return HCL_NULL;
+			hak_seterrwithsyserr (hak, 0, errno);
+			return HAK_NULL;
 		}
 	}
 	#else
 	if (ptr == MAP_FAILED)
 	{
-		hcl_seterrwithsyserr (hcl, 0, errno);
-		return HCL_NULL;
+		hak_seterrwithsyserr (hak, 0, errno);
+		return HAK_NULL;
 	}
 	#endif
 
 	*ptr = aligned_size;
-	*size = aligned_size - HCL_SIZEOF(hcl_oow_t);
+	*size = aligned_size - HAK_SIZEOF(hak_oow_t);
 	return (void*)(ptr + 1);
 
 #else
-	return HCL_MMGR_ALLOC(hcl->_mmgr, *size);
+	return HAK_MMGR_ALLOC(hak->_mmgr, *size);
 #endif
 }
 
-static void free_heap (hcl_t* hcl, void* ptr)
+static void free_heap (hak_t* hak, void* ptr)
 {
 #if defined(_WIN32)
 	VirtualFree (ptr, 0, MEM_RELEASE); /* release the entire region */
 
 #elif defined(HAVE_MMAP) && defined(HAVE_MUNMAP)
-	hcl_oow_t* actual_ptr;
-	actual_ptr = (hcl_oow_t*)ptr - 1;
+	hak_oow_t* actual_ptr;
+	actual_ptr = (hak_oow_t*)ptr - 1;
 	munmap (actual_ptr, *actual_ptr);
 #else
-	HCL_MMGR_FREE(hcl->_mmgr, ptr);
+	HAK_MMGR_FREE(hak->_mmgr, ptr);
 #endif
 }
 
@@ -677,11 +677,11 @@ enum logfd_flag_t
 	LOGFD_STDOUT_TTY = (1 << 3)
 };
 
-static int write_all (int fd, const hcl_bch_t* ptr, hcl_oow_t len)
+static int write_all (int fd, const hak_bch_t* ptr, hak_oow_t len)
 {
 	while (len > 0)
 	{
-		hcl_ooi_t wr;
+		hak_ooi_t wr;
 
 		wr = write(fd, ptr, len);
 
@@ -711,25 +711,25 @@ static int write_all (int fd, const hcl_bch_t* ptr, hcl_oow_t len)
 	return 0;
 }
 
-static int write_log (hcl_t* hcl, int fd, const hcl_bch_t* ptr, hcl_oow_t len)
+static int write_log (hak_t* hak, int fd, const hak_bch_t* ptr, hak_oow_t len)
 {
-	xtn_t* xtn = GET_XTN(hcl);
+	xtn_t* xtn = GET_XTN(hak);
 
 	while (len > 0)
 	{
 		if (xtn->log.out.len > 0)
 		{
-			hcl_oow_t rcapa, cplen;
+			hak_oow_t rcapa, cplen;
 
-			rcapa = HCL_COUNTOF(xtn->log.out.buf) - xtn->log.out.len;
+			rcapa = HAK_COUNTOF(xtn->log.out.buf) - xtn->log.out.len;
 			cplen = (len >= rcapa)? rcapa: len;
 
-			HCL_MEMCPY (&xtn->log.out.buf[xtn->log.out.len], ptr, cplen);
+			HAK_MEMCPY (&xtn->log.out.buf[xtn->log.out.len], ptr, cplen);
 			xtn->log.out.len += cplen;
 			ptr += cplen;
 			len -= cplen;
 
-			if (xtn->log.out.len >= HCL_COUNTOF(xtn->log.out.buf))
+			if (xtn->log.out.len >= HAK_COUNTOF(xtn->log.out.buf))
 			{
 				int n;
 				n = write_all(fd, xtn->log.out.buf, xtn->log.out.len);
@@ -739,9 +739,9 @@ static int write_log (hcl_t* hcl, int fd, const hcl_bch_t* ptr, hcl_oow_t len)
 		}
 		else
 		{
-			hcl_oow_t rcapa;
+			hak_oow_t rcapa;
 
-			rcapa = HCL_COUNTOF(xtn->log.out.buf);
+			rcapa = HAK_COUNTOF(xtn->log.out.buf);
 			if (len >= rcapa)
 			{
 				if (write_all(fd, ptr, rcapa) <= -1) return -1;
@@ -750,7 +750,7 @@ static int write_log (hcl_t* hcl, int fd, const hcl_bch_t* ptr, hcl_oow_t len)
 			}
 			else
 			{
-				HCL_MEMCPY (xtn->log.out.buf, ptr, len);
+				HAK_MEMCPY (xtn->log.out.buf, ptr, len);
 				xtn->log.out.len += len;
 				ptr += len;
 				len -= len;
@@ -761,9 +761,9 @@ static int write_log (hcl_t* hcl, int fd, const hcl_bch_t* ptr, hcl_oow_t len)
 	return 0;
 }
 
-static void flush_log (hcl_t* hcl, int fd, int force)
+static void flush_log (hak_t* hak, int fd, int force)
 {
-	xtn_t* xtn = GET_XTN(hcl);
+	xtn_t* xtn = GET_XTN(hak);
 	if (xtn->log.out.len > 0 || force)
 	{
 		write_all (fd, xtn->log.out.buf, xtn->log.out.len);
@@ -790,22 +790,22 @@ static size_t sprintf_timestamp (char* ts, struct tm* tmp)
 		tmp->tm_hour, tmp->tm_min, tmp->tm_sec, off_h, off_m);
 }
 
-static void log_write (hcl_t* hcl, hcl_bitmask_t mask, const hcl_ooch_t* msg, hcl_oow_t len)
+static void log_write (hak_t* hak, hak_bitmask_t mask, const hak_ooch_t* msg, hak_oow_t len)
 {
-	hcl_bch_t buf[256];
-	hcl_oow_t msgidx;
+	hak_bch_t buf[256];
+	hak_oow_t msgidx;
 
-	xtn_t* xtn = GET_XTN(hcl);
+	xtn_t* xtn = GET_XTN(hak);
 	int logfd;
 	int is_tty;
 	int force_flush = 0;
 
-	if (mask & HCL_LOG_STDERR)
+	if (mask & HAK_LOG_STDERR)
 	{
 		logfd = STDERR_FILENO;
 		is_tty = !!(xtn->log.fd_flags & LOGFD_STDERR_TTY);
 	}
-	else if (mask & HCL_LOG_STDOUT)
+	else if (mask & HAK_LOG_STDOUT)
 	{
 		logfd = STDOUT_FILENO;
 		is_tty = !!(xtn->log.fd_flags & LOGFD_STDOUT_TTY);
@@ -819,14 +819,14 @@ static void log_write (hcl_t* hcl, hcl_bitmask_t mask, const hcl_ooch_t* msg, hc
 
 /* TODO: beautify the log message.
  *       do classification based on mask. */
-	if (!(mask & (HCL_LOG_STDOUT | HCL_LOG_STDERR)))
+	if (!(mask & (HAK_LOG_STDOUT | HAK_LOG_STDERR)))
 	{
 		time_t now;
 		char ts[64];
 		size_t tslen;
 		struct tm tm, *tmp;
 
-		now = time(HCL_NULL);
+		now = time(HAK_NULL);
 	#if defined(_WIN32)
 		#if 0
 		tmp = localtime(&now);
@@ -868,7 +868,7 @@ static void log_write (hcl_t* hcl, hcl_bitmask_t mask, const hcl_ooch_t* msg, hc
 		#else
 		tslen = strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S %z ", tmp);
 		#endif
-		if (HCL_UNLIKELY(tslen == 0)) tslen = sprintf_timestamp(ts, tmp);
+		if (HAK_UNLIKELY(tslen == 0)) tslen = sprintf_timestamp(ts, tmp);
 
 	#elif defined(__DOS__)
 		tmp = localtime(&now);
@@ -886,34 +886,34 @@ static void log_write (hcl_t* hcl, hcl_bitmask_t mask, const hcl_ooch_t* msg, hc
 		#else
 		tslen = strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S %Z ", tmp);
 		#endif
-		if (HCL_UNLIKELY(tslen == 0)) tslen = sprintf_timestamp(ts, tmp);
+		if (HAK_UNLIKELY(tslen == 0)) tslen = sprintf_timestamp(ts, tmp);
 	#endif
 
-	#if defined(HCL_OOCH_IS_UCH)
+	#if defined(HAK_OOCH_IS_UCH)
 		#if 0 /* time stamp already in ascii. this double convertion is not needed */
-		if (xtn->log_cmgr && hcl_getcmgr(hcl) != xtn->log_cmgr)
+		if (xtn->log_cmgr && hak_getcmgr(hak) != xtn->log_cmgr)
 		{
-			hcl_uch_t tsu[64];
-			hcl_oow_t tsulen;
+			hak_uch_t tsu[64];
+			hak_oow_t tsulen;
 
 			/* the timestamp is likely to contain simple ascii characters only.
 			 * conversion is not likely to fail regardless of encodings.
 			 * so i don't check errors here */
-			tsulen = HCL_COUNTOF(tsu);
-			hcl_convbtooochars (hcl, ts, &tslen, tsu, &tsulen);
-			tslen = HCL_COUNTOF(ts);
-			hcl_conv_uchars_to_bchars_with_cmgr (tsu, &tsulen, ts, &tslen, xtn->log_cmgr);
+			tsulen = HAK_COUNTOF(tsu);
+			hak_convbtooochars (hak, ts, &tslen, tsu, &tsulen);
+			tslen = HAK_COUNTOF(ts);
+			hak_conv_uchars_to_bchars_with_cmgr (tsu, &tsulen, ts, &tslen, xtn->log_cmgr);
 		}
 		#endif
 	#endif
-		write_log(hcl, logfd, ts, tslen);
+		write_log(hak, logfd, ts, tslen);
 	}
 
 	if (is_tty)
 	{
-		if (mask & HCL_LOG_FATAL) write_log(hcl, logfd, "\x1B[1;31m", 7);
-		else if (mask & HCL_LOG_ERROR) write_log(hcl, logfd, "\x1B[1;32m", 7);
-		else if (mask & HCL_LOG_WARN) write_log(hcl, logfd, "\x1B[1;33m", 7);
+		if (mask & HAK_LOG_FATAL) write_log(hak, logfd, "\x1B[1;31m", 7);
+		else if (mask & HAK_LOG_ERROR) write_log(hak, logfd, "\x1B[1;32m", 7);
+		else if (mask & HAK_LOG_WARN) write_log(hak, logfd, "\x1B[1;33m", 7);
 	}
 
 	if (!msg)
@@ -922,17 +922,17 @@ static void log_write (hcl_t* hcl, hcl_bitmask_t mask, const hcl_ooch_t* msg, hc
 		goto flush_log_msg;
 	}
 
-#if defined(HCL_OOCH_IS_UCH)
+#if defined(HAK_OOCH_IS_UCH)
 	msgidx = 0;
 	while (len > 0)
 	{
-		hcl_oow_t ucslen, bcslen;
+		hak_oow_t ucslen, bcslen;
 		int n;
 
 		ucslen = len;
-		bcslen = HCL_COUNTOF(buf);
+		bcslen = HAK_COUNTOF(buf);
 
-		n = hcl_convootobchars(hcl, &msg[msgidx], &ucslen, buf, &bcslen);
+		n = hak_convootobchars(hak, &msg[msgidx], &ucslen, buf, &bcslen);
 		if (n == 0 || n == -2)
 		{
 			/* n = 0:
@@ -941,10 +941,10 @@ static void log_write (hcl_t* hcl, hcl_bitmask_t mask, const hcl_ooch_t* msg, hc
 			 *    buffer not sufficient. not all got converted yet.
 			 *    write what have been converted this round. */
 
-			HCL_ASSERT (hcl, ucslen > 0); /* if this fails, the buffer size must be increased */
+			HAK_ASSERT (hak, ucslen > 0); /* if this fails, the buffer size must be increased */
 
 			/* attempt to write all converted characters */
-			if (write_log(hcl, logfd, buf, bcslen) <= -1) break;
+			if (write_log(hak, logfd, buf, bcslen) <= -1) break;
 
 			if (n == 0) break;
 			else
@@ -960,174 +960,174 @@ static void log_write (hcl_t* hcl, hcl_bitmask_t mask, const hcl_ooch_t* msg, hc
 		}
 	}
 #else
-	write_log(hcl, logfd, msg, len);
+	write_log(hak, logfd, msg, len);
 #endif
 
 	if (is_tty)
 	{
-		if (mask & (HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN)) write_log(hcl, logfd, "\x1B[0m", 4);
+		if (mask & (HAK_LOG_FATAL | HAK_LOG_ERROR | HAK_LOG_WARN)) write_log(hak, logfd, "\x1B[0m", 4);
 	}
 
 flush_log_msg:
-	flush_log (hcl, logfd, force_flush);
+	flush_log (hak, logfd, force_flush);
 }
 
 /* -----------------------------------------------------------------
  * SYSTEM ERROR CONVERSION
  * ----------------------------------------------------------------- */
-static hcl_errnum_t errno_to_errnum (int errcode)
+static hak_errnum_t errno_to_errnum (int errcode)
 {
 	switch (errcode)
 	{
-		case ENOMEM: return HCL_ESYSMEM;
-		case EINVAL: return HCL_EINVAL;
+		case ENOMEM: return HAK_ESYSMEM;
+		case EINVAL: return HAK_EINVAL;
 
 	#if defined(EBUSY)
-		case EBUSY: return HCL_EBUSY;
+		case EBUSY: return HAK_EBUSY;
 	#endif
-		case EACCES: return HCL_EACCES;
+		case EACCES: return HAK_EACCES;
 	#if defined(EPERM)
-		case EPERM: return HCL_EPERM;
+		case EPERM: return HAK_EPERM;
 	#endif
 	#if defined(ENOTDIR)
-		case ENOTDIR: return HCL_ENOTDIR;
+		case ENOTDIR: return HAK_ENOTDIR;
 	#endif
-		case ENOENT: return HCL_ENOENT;
+		case ENOENT: return HAK_ENOENT;
 	#if defined(EEXIST)
-		case EEXIST: return HCL_EEXIST;
+		case EEXIST: return HAK_EEXIST;
 	#endif
 	#if defined(EINTR)
-		case EINTR:  return HCL_EINTR;
+		case EINTR:  return HAK_EINTR;
 	#endif
 
 	#if defined(EPIPE)
-		case EPIPE:  return HCL_EPIPE;
+		case EPIPE:  return HAK_EPIPE;
 	#endif
 
 	#if defined(EAGAIN) && defined(EWOULDBLOCK) && (EAGAIN != EWOULDBLOCK)
 		case EAGAIN:
-		case EWOULDBLOCK: return HCL_EAGAIN;
+		case EWOULDBLOCK: return HAK_EAGAIN;
 	#elif defined(EAGAIN)
-		case EAGAIN: return HCL_EAGAIN;
+		case EAGAIN: return HAK_EAGAIN;
 	#elif defined(EWOULDBLOCK)
-		case EWOULDBLOCK: return HCL_EAGAIN;
+		case EWOULDBLOCK: return HAK_EAGAIN;
 	#endif
 
 	#if defined(EBADF)
-		case EBADF: return HCL_EBADHND;
+		case EBADF: return HAK_EBADHND;
 	#endif
 
 	#if defined(EIO)
-		case EIO: return HCL_EIOERR;
+		case EIO: return HAK_EIOERR;
 	#endif
 
-		default: return HCL_ESYSERR;
+		default: return HAK_ESYSERR;
 	}
 }
 
 #if defined(_WIN32)
-static hcl_errnum_t winerr_to_errnum (DWORD errcode)
+static hak_errnum_t winerr_to_errnum (DWORD errcode)
 {
 	switch (errcode)
 	{
 		case ERROR_NOT_ENOUGH_MEMORY:
 		case ERROR_OUTOFMEMORY:
-			return HCL_ESYSMEM;
+			return HAK_ESYSMEM;
 
 		case ERROR_INVALID_PARAMETER:
 		case ERROR_INVALID_NAME:
-			return HCL_EINVAL;
+			return HAK_EINVAL;
 
 		case ERROR_INVALID_HANDLE:
-			return HCL_EBADHND;
+			return HAK_EBADHND;
 
 		case ERROR_ACCESS_DENIED:
 		case ERROR_SHARING_VIOLATION:
-			return HCL_EACCES;
+			return HAK_EACCES;
 
 	#if defined(ERROR_IO_PRIVILEGE_FAILED)
 		case ERROR_IO_PRIVILEGE_FAILED:
 	#endif
 		case ERROR_PRIVILEGE_NOT_HELD:
-			return HCL_EPERM;
+			return HAK_EPERM;
 
 		case ERROR_FILE_NOT_FOUND:
 		case ERROR_PATH_NOT_FOUND:
-			return HCL_ENOENT;
+			return HAK_ENOENT;
 
 		case ERROR_ALREADY_EXISTS:
 		case ERROR_FILE_EXISTS:
-			return HCL_EEXIST;
+			return HAK_EEXIST;
 
 		case ERROR_BROKEN_PIPE:
-			return HCL_EPIPE;
+			return HAK_EPIPE;
 
 		default:
-			return HCL_ESYSERR;
+			return HAK_ESYSERR;
 	}
 }
 #endif
 
 #if defined(__OS2__)
-static hcl_errnum_t os2err_to_errnum (APIRET errcode)
+static hak_errnum_t os2err_to_errnum (APIRET errcode)
 {
 	/* APIRET e */
 	switch (errcode)
 	{
 		case ERROR_NOT_ENOUGH_MEMORY:
-			return HCL_ESYSMEM;
+			return HAK_ESYSMEM;
 
 		case ERROR_INVALID_PARAMETER:
 		case ERROR_INVALID_NAME:
-			return HCL_EINVAL;
+			return HAK_EINVAL;
 
 		case ERROR_INVALID_HANDLE:
-			return HCL_EBADHND;
+			return HAK_EBADHND;
 
 		case ERROR_ACCESS_DENIED:
 		case ERROR_SHARING_VIOLATION:
-			return HCL_EACCES;
+			return HAK_EACCES;
 
 		case ERROR_FILE_NOT_FOUND:
 		case ERROR_PATH_NOT_FOUND:
-			return HCL_ENOENT;
+			return HAK_ENOENT;
 
 		case ERROR_ALREADY_EXISTS:
-			return HCL_EEXIST;
+			return HAK_EEXIST;
 
 		/*TODO: add more mappings */
 		default:
-			return HCL_ESYSERR;
+			return HAK_ESYSERR;
 	}
 }
 
 #if !defined(TCPV40HDRS)
-static hcl_errnum_t os2sockerr_to_errnum (int errcode)
+static hak_errnum_t os2sockerr_to_errnum (int errcode)
 {
 	switch (errcode)
 	{
-		case SOCEPERM:  return HCL_EPERM;
-		case SOCENOENT: return HCL_ENOENT;
-		case SOCEINTR:  return HCL_EINTR;
-		case SOCEACCES: return HCL_EACCES;
-		case SOCEINVAL: return HCL_EINVAL;
-		case SOCENOMEM: return HCL_ESYSMEM;
-		case SOCEPIPE:  return HCL_EPIPE;
-		default: return HCL_ESYSERR;
+		case SOCEPERM:  return HAK_EPERM;
+		case SOCENOENT: return HAK_ENOENT;
+		case SOCEINTR:  return HAK_EINTR;
+		case SOCEACCES: return HAK_EACCES;
+		case SOCEINVAL: return HAK_EINVAL;
+		case SOCENOMEM: return HAK_ESYSMEM;
+		case SOCEPIPE:  return HAK_EPIPE;
+		default: return HAK_ESYSERR;
 	}
 }
 #endif /* TCPV40HDRS */
 #endif /* __OS2__ */
 
 #if defined(macintosh)
-static hcl_errnum_t macerr_to_errnum (int errcode)
+static hak_errnum_t macerr_to_errnum (int errcode)
 {
 	switch (e)
 	{
 		case notEnoughMemoryErr:
-			return HCL_ESYSMEM;
+			return HAK_ESYSMEM;
 		case paramErr:
-			return HCL_EINVAL;
+			return HAK_EINVAL;
 
 		case qErr: /* queue element not found during deletion */
 		case fnfErr: /* file not found */
@@ -1135,16 +1135,16 @@ static hcl_errnum_t macerr_to_errnum (int errcode)
 		case resNotFound: /* resource not found */
 		case resFNotFound: /* resource file not found */
 		case nbpNotFound: /* name not found on remove */
-			return HCL_ENOENT;
+			return HAK_ENOENT;
 
 		/*TODO: add more mappings */
 		default:
-			return HCL_ESYSERR;
+			return HAK_ESYSERR;
 	}
 }
 #endif
 
-hcl_errnum_t hcl_syserrstrb (hcl_t* hcl, int syserr_type, int syserr_code, hcl_bch_t* buf, hcl_oow_t len)
+hak_errnum_t hak_syserrstrb (hak_t* hak, int syserr_type, int syserr_code, hak_bch_t* buf, hak_oow_t len)
 {
 	switch (syserr_type)
 	{
@@ -1155,12 +1155,12 @@ hcl_errnum_t hcl_syserrstrb (hcl_t* hcl, int syserr_type, int syserr_code, hcl_b
 			{
 				char tmp[64];
 				sprintf (tmp, "socket error %d", (int)syserr_code);
-				hcl_copy_bcstr (buf, len, tmp);
+				hak_copy_bcstr (buf, len, tmp);
 			}
-			return HCL_ESYSERR;
+			return HAK_ESYSERR;
 			#else
 			/* sock_strerror() available in tcpip32.dll only */
-			if (buf) hcl_copy_bcstr (buf, len, sock_strerror(syserr_code));
+			if (buf) hak_copy_bcstr (buf, len, sock_strerror(syserr_code));
 			return os2sockerr_to_errnum(syserr_code);
 			#endif
 		#endif
@@ -1174,7 +1174,7 @@ hcl_errnum_t hcl_syserrstrb (hcl_t* hcl, int syserr_type, int syserr_code, hcl_b
 				rc = FormatMessageA (
 					FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
 					NULL, syserr_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-					buf, len, HCL_NULL
+					buf, len, HAK_NULL
 				);
 				while (rc > 0 && buf[rc - 1] == '\r' || buf[rc - 1] == '\n') buf[--rc] = '\0';
 			}
@@ -1184,12 +1184,12 @@ hcl_errnum_t hcl_syserrstrb (hcl_t* hcl, int syserr_type, int syserr_code, hcl_b
 			{
 				char tmp[64];
 				sprintf (tmp, "system error %d", (int)syserr_code);
-				hcl_copy_bcstr (buf, len, tmp);
+				hak_copy_bcstr (buf, len, tmp);
 			}
 			return os2err_to_errnum(syserr_code);
 		#elif defined(macintosh)
 			/* TODO: convert code to string */
-			if (buf) hcl_copy_bcstr (buf, len, "system error");
+			if (buf) hak_copy_bcstr (buf, len, "system error");
 			return macerr_to_errnum(syserr_code);
 		#else
 			/* in other systems, errno is still the native system error code.
@@ -1203,43 +1203,43 @@ hcl_errnum_t hcl_syserrstrb (hcl_t* hcl, int syserr_type, int syserr_code, hcl_b
 			if (buf && len > 0)
 			{
 				/* to work around mess between XSI and GNU strerror_r */
-				hcl_oow_t x;
+				hak_oow_t x;
 				buf[0] = '\0';
-				/* cast to hcl_oow_t to cater for prototype difference.
+				/* cast to hak_oow_t to cater for prototype difference.
 				 * one returning int, the other returning a pointer.
 				 * x > 1024 in case the XSI version before glibc 2.13 returns
 				 * a positive error code upon failure */
-				x = (hcl_oow_t)strerror_r(syserr_code, buf, len);
-				if (x != (hcl_oow_t)buf && buf[0] == '\0' && x != 0 && x > 1024 && x != (hcl_oow_t)-1)
-					hcl_copy_bcstr (buf, len, (const hcl_bch_t*)x);
+				x = (hak_oow_t)strerror_r(syserr_code, buf, len);
+				if (x != (hak_oow_t)buf && buf[0] == '\0' && x != 0 && x > 1024 && x != (hak_oow_t)-1)
+					hak_copy_bcstr (buf, len, (const hak_bch_t*)x);
 			}
 		#else
 			/* this may be thread unsafe */
-			if (buf && len > 0) hcl_copy_bcstr (buf, len, strerror(syserr_code));
+			if (buf && len > 0) hak_copy_bcstr (buf, len, strerror(syserr_code));
 		#endif
 			return errno_to_errnum(syserr_code);
 	}
 
-	if (buf) hcl_copy_bcstr (buf, len, "system error");
-	return HCL_ESYSERR;
+	if (buf) hak_copy_bcstr (buf, len, "system error");
+	return HAK_ESYSERR;
 }
 
 /* --------------------------------------------------------------------------
  * ASSERTION SUPPORT
  * -------------------------------------------------------------------------- */
 
-#if defined(HCL_BUILD_RELEASE)
+#if defined(HAK_BUILD_RELEASE)
 
-static void _assertfail (hcl_t* hcl, const hcl_bch_t* expr, const hcl_bch_t* file, hcl_oow_t line)
+static void _assertfail (hak_t* hak, const hak_bch_t* expr, const hak_bch_t* file, hak_oow_t line)
 {
 	/* do nothing */
 }
 
-#else /* defined(HCL_BUILD_RELEASE) */
+#else /* defined(HAK_BUILD_RELEASE) */
 
-#if defined(HCL_ENABLE_LIBUNWIND)
+#if defined(HAK_ENABLE_LIBUNWIND)
 #include <libunwind.h>
-static void backtrace_stack_frames (hcl_t* hcl)
+static void backtrace_stack_frames (hak_t* hak)
 {
 	unw_cursor_t cursor;
 	unw_context_t context;
@@ -1248,7 +1248,7 @@ static void backtrace_stack_frames (hcl_t* hcl)
 	unw_getcontext(&context);
 	unw_init_local(&cursor, &context);
 
-	hcl_logbfmt (hcl, HCL_LOG_STDERR | HCL_LOG_UNTYPED | HCL_LOG_DEBUG, "[BACKTRACE]\n");
+	hak_logbfmt (hak, HAK_LOG_STDERR | HAK_LOG_UNTYPED | HAK_LOG_DEBUG, "[BACKTRACE]\n");
 	for (n = 0; unw_step(&cursor) > 0; n++)
 	{
 		unw_word_t ip, sp, off;
@@ -1257,49 +1257,49 @@ static void backtrace_stack_frames (hcl_t* hcl)
 		unw_get_reg (&cursor, UNW_REG_IP, &ip);
 		unw_get_reg (&cursor, UNW_REG_SP, &sp);
 
-		if (unw_get_proc_name(&cursor, symbol, HCL_COUNTOF(symbol), &off))
+		if (unw_get_proc_name(&cursor, symbol, HAK_COUNTOF(symbol), &off))
 		{
-			hcl_copy_bcstr (symbol, HCL_COUNTOF(symbol), "<unknown>");
+			hak_copy_bcstr (symbol, HAK_COUNTOF(symbol), "<unknown>");
 		}
 
-		hcl_logbfmt (hcl, HCL_LOG_STDERR | HCL_LOG_UNTYPED | HCL_LOG_DEBUG,
+		hak_logbfmt (hak, HAK_LOG_STDERR | HAK_LOG_UNTYPED | HAK_LOG_DEBUG,
 			"#%02d ip=0x%*p sp=0x%*p %hs+0x%zu\n",
-			n, HCL_SIZEOF(void*) * 2, (void*)ip, HCL_SIZEOF(void*) * 2, (void*)sp, symbol, (hcl_oow_t)off);
+			n, HAK_SIZEOF(void*) * 2, (void*)ip, HAK_SIZEOF(void*) * 2, (void*)sp, symbol, (hak_oow_t)off);
 	}
 }
 #elif defined(HAVE_BACKTRACE)
 #include <execinfo.h>
-static void backtrace_stack_frames (hcl_t* hcl)
+static void backtrace_stack_frames (hak_t* hak)
 {
 	void* btarray[128];
-	hcl_oow_t btsize;
+	hak_oow_t btsize;
 	char** btsyms;
 
-	btsize = backtrace (btarray, HCL_COUNTOF(btarray));
+	btsize = backtrace (btarray, HAK_COUNTOF(btarray));
 	btsyms = backtrace_symbols (btarray, btsize);
 	if (btsyms)
 	{
-		hcl_oow_t i;
-		hcl_logbfmt (hcl, HCL_LOG_STDERR | HCL_LOG_UNTYPED | HCL_LOG_DEBUG, "[BACKTRACE]\n");
+		hak_oow_t i;
+		hak_logbfmt (hak, HAK_LOG_STDERR | HAK_LOG_UNTYPED | HAK_LOG_DEBUG, "[BACKTRACE]\n");
 
 		for (i = 0; i < btsize; i++)
 		{
-			hcl_logbfmt (hcl, HCL_LOG_STDERR | HCL_LOG_UNTYPED | HCL_LOG_DEBUG, "  %hs\n", btsyms[i]);
+			hak_logbfmt (hak, HAK_LOG_STDERR | HAK_LOG_UNTYPED | HAK_LOG_DEBUG, "  %hs\n", btsyms[i]);
 		}
 		free (btsyms);
 	}
 }
 #else
-static void backtrace_stack_frames (hcl_t* hcl)
+static void backtrace_stack_frames (hak_t* hak)
 {
 	/* do nothing. not supported */
 }
 #endif
 
-static void _assertfail (hcl_t* hcl, const hcl_bch_t* expr, const hcl_bch_t* file, hcl_oow_t line)
+static void _assertfail (hak_t* hak, const hak_bch_t* expr, const hak_bch_t* file, hak_oow_t line)
 {
-	hcl_logbfmt (hcl, HCL_LOG_STDERR | HCL_LOG_UNTYPED | HCL_LOG_FATAL, "ASSERTION FAILURE: %hs at %hs:%zu\n", expr, file, line);
-	backtrace_stack_frames (hcl);
+	hak_logbfmt (hak, HAK_LOG_STDERR | HAK_LOG_UNTYPED | HAK_LOG_FATAL, "ASSERTION FAILURE: %hs at %hs:%zu\n", expr, file, line);
+	backtrace_stack_frames (hak);
 
 #if defined(_WIN32)
 	ExitProcess (249);
@@ -1332,131 +1332,131 @@ static void _assertfail (hcl_t* hcl, const hcl_bch_t* expr, const hcl_bch_t* fil
 #endif
 }
 
-#endif /* defined(HCL_BUILD_RELEASE) */
+#endif /* defined(HAK_BUILD_RELEASE) */
 
 /* -----------------------------------------------------------------
  * POSSIBLY MONOTONIC TIME
  * ----------------------------------------------------------------- */
 
-static void vm_gettime (hcl_t* hcl, hcl_ntime_t* now)
+static void vm_gettime (hak_t* hak, hak_ntime_t* now)
 {
 #if defined(_WIN32)
 
 	#if defined(_WIN64) || (defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0600))
-	hcl_uint64_t bigsec, bigmsec;
+	hak_uint64_t bigsec, bigmsec;
 	bigmsec = GetTickCount64();
 	#else
-	xtn_t* xtn = GET_XTN(hcl);
-	hcl_uint64_t bigsec, bigmsec;
+	xtn_t* xtn = GET_XTN(hak);
+	hak_uint64_t bigsec, bigmsec;
 	DWORD msec;
 
 	msec = GetTickCount(); /* this can sustain for 49.7 days */
 	if (msec < xtn->tc_last)
 	{
 		/* i assume the difference is never bigger than 49.7 days */
-		/*diff = (HCL_TYPE_MAX(DWORD) - xtn->tc_last) + 1 + msec;*/
+		/*diff = (HAK_TYPE_MAX(DWORD) - xtn->tc_last) + 1 + msec;*/
 		xtn->tc_overflow++;
-		bigmsec = ((hcl_uint64_t)HCL_TYPE_MAX(DWORD) * xtn->tc_overflow) + msec;
+		bigmsec = ((hak_uint64_t)HAK_TYPE_MAX(DWORD) * xtn->tc_overflow) + msec;
 	}
 	else bigmsec = msec;
 	xtn->tc_last = msec;
 	#endif
 
-	bigsec = HCL_MSEC_TO_SEC(bigmsec);
-	bigmsec -= HCL_SEC_TO_MSEC(bigsec);
-	HCL_INIT_NTIME(now, bigsec, HCL_MSEC_TO_NSEC(bigmsec));
+	bigsec = HAK_MSEC_TO_SEC(bigmsec);
+	bigmsec -= HAK_SEC_TO_MSEC(bigsec);
+	HAK_INIT_NTIME(now, bigsec, HAK_MSEC_TO_NSEC(bigmsec));
 
 #elif defined(__OS2__)
-	xtn_t* xtn = GET_XTN(hcl);
+	xtn_t* xtn = GET_XTN(hak);
 	ULONG msec;
 
-	#if (HCL_SIZEOF_UINT64_T > 0)
-	hcl_uint64_t bigsec, bigmsec;
+	#if (HAK_SIZEOF_UINT64_T > 0)
+	hak_uint64_t bigsec, bigmsec;
 
 /* TODO: use DosTmrQueryTime() and DosTmrQueryFreq()? */
-	DosQuerySysInfo (QSV_MS_COUNT, QSV_MS_COUNT, &msec, HCL_SIZEOF(msec)); /* milliseconds */
+	DosQuerySysInfo (QSV_MS_COUNT, QSV_MS_COUNT, &msec, HAK_SIZEOF(msec)); /* milliseconds */
 	/* it must return NO_ERROR */
 	if (msec < xtn->tc_last)
 	{
 		xtn->tc_overflow++;
-		bigmsec = ((hcl_uint64_t)HCL_TYPE_MAX(ULONG) * xtn->tc_overflow) + msec;
+		bigmsec = ((hak_uint64_t)HAK_TYPE_MAX(ULONG) * xtn->tc_overflow) + msec;
 	}
 	else bigmsec = msec;
 	xtn->tc_last = msec;
 
-	bigsec = HCL_MSEC_TO_SEC(bigmsec);
-	bigmsec -= HCL_SEC_TO_MSEC(bigsec);
-	HCL_INIT_NTIME (now, bigsec, HCL_MSEC_TO_NSEC(bigmsec));
+	bigsec = HAK_MSEC_TO_SEC(bigmsec);
+	bigmsec -= HAK_SEC_TO_MSEC(bigsec);
+	HAK_INIT_NTIME (now, bigsec, HAK_MSEC_TO_NSEC(bigmsec));
 	#else
-	hcl_uint32_t bigsec, bigmsec;
+	hak_uint32_t bigsec, bigmsec;
 
-	DosQuerySysInfo (QSV_MS_COUNT, QSV_MS_COUNT, &msec, HCL_SIZEOF(msec));
-	bigsec = HCL_MSEC_TO_SEC(msec);
-	bigmsec = msec - HCL_SEC_TO_MSEC(bigsec);
+	DosQuerySysInfo (QSV_MS_COUNT, QSV_MS_COUNT, &msec, HAK_SIZEOF(msec));
+	bigsec = HAK_MSEC_TO_SEC(msec);
+	bigmsec = msec - HAK_SEC_TO_MSEC(bigsec);
 	if (msec < xtn->tc_last)
 	{
 		ULONG i;
-		hcl_uint32_t inc;
+		hak_uint32_t inc;
 
 		xtn->tc_overflow++;
-		inc = HCL_MSEC_TO_SEC(HCL_TYPE_MAX(hcl_uint32_t));
+		inc = HAK_MSEC_TO_SEC(HAK_TYPE_MAX(hak_uint32_t));
 		for (i = 0; i < xtn->tc_overflow; i++)
 		{
-			ULONG max = HCL_TYPE_MAX(hcl_uint32_t) - bigsec;
+			ULONG max = HAK_TYPE_MAX(hak_uint32_t) - bigsec;
 			if (max > inc)
 			{
-				bigsec = HCL_TYPE_MAX(hcl_uint32_t);
+				bigsec = HAK_TYPE_MAX(hak_uint32_t);
 				break;
 			}
 			bigsec += inc;
 		}
 	}
-	HCL_INIT_NTIME (now, bigsec, HCL_MSEC_TO_NSEC(bigmsec));
+	HAK_INIT_NTIME (now, bigsec, HAK_MSEC_TO_NSEC(bigmsec));
     #endif
 
 #elif defined(__DOS__)
-	xtn_t* xtn = GET_XTN(hcl);
+	xtn_t* xtn = GET_XTN(hak);
 	clock_t c, elapsed;
-	hcl_ntime_t et;
+	hak_ntime_t et;
 
 	c = clock();
-	elapsed = (c < xtn->tc_last)? (HCL_TYPE_MAX(clock_t) - xtn->tc_last + c + 1): (c - xtn->tc_last);
+	elapsed = (c < xtn->tc_last)? (HAK_TYPE_MAX(clock_t) - xtn->tc_last + c + 1): (c - xtn->tc_last);
 	xtn->tc_last = c;
 
 	now->sec = c / CLOCKS_PER_SEC;
 	#if (CLOCKS_PER_SEC == 100)
-		now->nsec = HCL_MSEC_TO_NSEC((c % (clock_t)CLOCKS_PER_SEC) * 10);
+		now->nsec = HAK_MSEC_TO_NSEC((c % (clock_t)CLOCKS_PER_SEC) * 10);
 	#elif (CLOCKS_PER_SEC == 1000)
-		now->nsec = HCL_MSEC_TO_NSEC(c % (clock_t)CLOCKS_PER_SEC);
+		now->nsec = HAK_MSEC_TO_NSEC(c % (clock_t)CLOCKS_PER_SEC);
 	#elif (CLOCKS_PER_SEC == 1000000L)
-		now->nsec = HCL_USEC_TO_NSEC(c % (clock_t)CLOCKS_PER_SEC);
+		now->nsec = HAK_USEC_TO_NSEC(c % (clock_t)CLOCKS_PER_SEC);
 	#elif (CLOCKS_PER_SEC == 1000000000L)
 		now->nsec = (c % (clock_t)CLOCKS_PER_SEC);
 	#else
 	#	error UNSUPPORTED CLOCKS_PER_SEC
 	#endif
 
-	HCL_ADD_NTIME (&xtn->tc_last_ret, &xtn->tc_last_ret, &et);
+	HAK_ADD_NTIME (&xtn->tc_last_ret, &xtn->tc_last_ret, &et);
 	*now = xtn->tc_last_ret;
 
 #elif defined(macintosh)
 	UnsignedWide tick;
-	hcl_uint64_t tick64;
+	hak_uint64_t tick64;
 	Microseconds (&tick);
-	tick64 = *(hcl_uint64_t*)&tick;
-	HCL_INIT_NTIME (now, HCL_USEC_TO_SEC(tick64), HCL_USEC_TO_NSEC(tick64));
+	tick64 = *(hak_uint64_t*)&tick;
+	HAK_INIT_NTIME (now, HAK_USEC_TO_SEC(tick64), HAK_USEC_TO_NSEC(tick64));
 #elif defined(HAVE_CLOCK_GETTIME) && defined(CLOCK_MONOTONIC)
 	struct timespec ts;
 	clock_gettime (CLOCK_MONOTONIC, &ts);
-	HCL_INIT_NTIME(now, ts.tv_sec, ts.tv_nsec);
+	HAK_INIT_NTIME(now, ts.tv_sec, ts.tv_nsec);
 #elif defined(HAVE_CLOCK_GETTIME) && defined(CLOCK_REALTIME)
 	struct timespec ts;
 	clock_gettime (CLOCK_REALTIME, &ts);
-	HCL_INIT_NTIME(now, ts.tv_sec, ts.tv_nsec);
+	HAK_INIT_NTIME(now, ts.tv_sec, ts.tv_nsec);
 #else
 	struct timeval tv;
-	gettimeofday (&tv, HCL_NULL);
-	HCL_INIT_NTIME(now, tv.tv_sec, HCL_USEC_TO_NSEC(tv.tv_usec));
+	gettimeofday (&tv, HAK_NULL);
+	HAK_INIT_NTIME(now, tv.tv_sec, HAK_USEC_TO_NSEC(tv.tv_usec));
 #endif
 }
 
@@ -1464,54 +1464,54 @@ static void vm_gettime (hcl_t* hcl, hcl_ntime_t* now)
  * IO MULTIPLEXING
  * ----------------------------------------------------------------- */
 
-static int _add_poll_fd (hcl_t* hcl, int fd, int event_mask)
+static int _add_poll_fd (hak_t* hak, int fd, int event_mask)
 {
 #if defined(USE_DEVPOLL)
-	xtn_t* xtn = GET_XTN(hcl);
+	xtn_t* xtn = GET_XTN(hak);
 	struct pollfd ev;
 
-	HCL_ASSERT (hcl, xtn->ep >= 0);
+	HAK_ASSERT (hak, xtn->ep >= 0);
 	ev.fd = fd;
 	ev.events = event_mask;
 	ev.revents = 0;
-	if (write(xtn->ep, &ev, HCL_SIZEOF(ev)) != HCL_SIZEOF(ev))
+	if (write(xtn->ep, &ev, HAK_SIZEOF(ev)) != HAK_SIZEOF(ev))
 	{
-		hcl_seterrwithsyserr (hcl, 0, errno);
-		HCL_DEBUG2 (hcl, "Cannot add file descriptor %d to devpoll - %hs\n", fd, strerror(errno));
+		hak_seterrwithsyserr (hak, 0, errno);
+		HAK_DEBUG2 (hak, "Cannot add file descriptor %d to devpoll - %hs\n", fd, strerror(errno));
 		return -1;
 	}
 
 	return 0;
 
 #elif defined(USE_KQUEUE)
-	xtn_t* xtn = GET_XTN(hcl);
+	xtn_t* xtn = GET_XTN(hak);
 	struct kevent ev;
-	hcl_oow_t rindex, roffset;
-	hcl_oow_t rv = 0;
+	hak_oow_t rindex, roffset;
+	hak_oow_t rv = 0;
 
-	rindex = (hcl_oow_t)fd / (HCL_BITSOF(hcl_oow_t) >> 1);
-	roffset = ((hcl_oow_t)fd << 1) % HCL_BITSOF(hcl_oow_t);
+	rindex = (hak_oow_t)fd / (HAK_BITSOF(hak_oow_t) >> 1);
+	roffset = ((hak_oow_t)fd << 1) % HAK_BITSOF(hak_oow_t);
 
 	if (rindex >= xtn->ev.reg.capa)
 	{
-		hcl_oow_t* tmp;
-		hcl_oow_t newcapa;
+		hak_oow_t* tmp;
+		hak_oow_t newcapa;
 
-		HCL_STATIC_ASSERT (HCL_SIZEOF(*tmp) == HCL_SIZEOF(*xtn->ev.reg.ptr));
+		HAK_STATIC_ASSERT (HAK_SIZEOF(*tmp) == HAK_SIZEOF(*xtn->ev.reg.ptr));
 
 		newcapa = rindex + 1;
-		newcapa = HCL_ALIGN_POW2(newcapa, 16);
+		newcapa = HAK_ALIGN_POW2(newcapa, 16);
 
-		tmp = (hcl_oow_t*)hcl_reallocmem(hcl, xtn->ev.reg.ptr, newcapa * HCL_SIZEOF(*tmp));
+		tmp = (hak_oow_t*)hak_reallocmem(hak, xtn->ev.reg.ptr, newcapa * HAK_SIZEOF(*tmp));
 		if (!tmp)
 		{
-			const hcl_ooch_t* oldmsg = hcl_backuperrmsg(hcl);
-			hcl_seterrbfmt (hcl, HCL_ESYSERR, "unable to add file descriptor %d to kqueue - %js", fd, oldmsg);
-			HCL_DEBUG1 (hcl, "%js", hcl_geterrmsg(hcl));
+			const hak_ooch_t* oldmsg = hak_backuperrmsg(hak);
+			hak_seterrbfmt (hak, HAK_ESYSERR, "unable to add file descriptor %d to kqueue - %js", fd, oldmsg);
+			HAK_DEBUG1 (hak, "%js", hak_geterrmsg(hak));
 			return -1;
 		}
 
-		HCL_MEMSET (&tmp[xtn->ev.reg.capa], 0, newcapa - xtn->ev.reg.capa);
+		HAK_MEMSET (&tmp[xtn->ev.reg.capa], 0, newcapa - xtn->ev.reg.capa);
 		xtn->ev.reg.ptr = tmp;
 		xtn->ev.reg.capa = newcapa;
 	}
@@ -1519,17 +1519,17 @@ static int _add_poll_fd (hcl_t* hcl, int fd, int event_mask)
 	if (event_mask & XPOLLIN)
 	{
 		/*EV_SET (&ev, fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, 0);*/
-		HCL_MEMSET (&ev, 0, HCL_SIZEOF(ev));
+		HAK_MEMSET (&ev, 0, HAK_SIZEOF(ev));
 		ev.ident = fd;
 		ev.flags = EV_ADD;
 	#if defined(USE_THREAD)
 		ev.flags |= EV_CLEAR; /* EV_CLEAR for edge trigger? */
 	#endif
 		ev.filter = EVFILT_READ;
-		if (kevent(xtn->ep, &ev, 1, HCL_NULL, 0, HCL_NULL) == -1)
+		if (kevent(xtn->ep, &ev, 1, HAK_NULL, 0, HAK_NULL) == -1)
 		{
-			hcl_seterrwithsyserr (hcl, 0, errno);
-			HCL_DEBUG2 (hcl, "Cannot add file descriptor %d to kqueue for read - %hs\n", fd, strerror(errno));
+			hak_seterrwithsyserr (hak, 0, errno);
+			HAK_DEBUG2 (hak, "Cannot add file descriptor %d to kqueue for read - %hs\n", fd, strerror(errno));
 			return -1;
 		}
 
@@ -1538,25 +1538,25 @@ static int _add_poll_fd (hcl_t* hcl, int fd, int event_mask)
 	if (event_mask & XPOLLOUT)
 	{
 		/*EV_SET (&ev, fd, EVFILT_WRITE, EV_ADD | EV_CLEAR, 0, 0, 0);*/
-		HCL_MEMSET (&ev, 0, HCL_SIZEOF(ev));
+		HAK_MEMSET (&ev, 0, HAK_SIZEOF(ev));
 		ev.ident = fd;
 		ev.flags = EV_ADD;
 	#if defined(USE_THREAD)
 		ev.flags |= EV_CLEAR; /* EV_CLEAR for edge trigger? */
 	#endif
 		ev.filter = EVFILT_WRITE;
-		if (kevent(xtn->ep, &ev, 1, HCL_NULL, 0, HCL_NULL) == -1)
+		if (kevent(xtn->ep, &ev, 1, HAK_NULL, 0, HAK_NULL) == -1)
 		{
-			hcl_seterrwithsyserr (hcl, 0, errno);
-			HCL_DEBUG2 (hcl, "Cannot add file descriptor %d to kqueue for write - %hs\n", fd, strerror(errno));
+			hak_seterrwithsyserr (hak, 0, errno);
+			HAK_DEBUG2 (hak, "Cannot add file descriptor %d to kqueue for write - %hs\n", fd, strerror(errno));
 
 			if (event_mask & XPOLLIN)
 			{
-				HCL_MEMSET (&ev, 0, HCL_SIZEOF(ev));
+				HAK_MEMSET (&ev, 0, HAK_SIZEOF(ev));
 				ev.ident = fd;
 				ev.flags = EV_DELETE;
 				ev.filter = EVFILT_READ;
-				kevent(xtn->ep, &ev, 1, HCL_NULL, 0, HCL_NULL);
+				kevent(xtn->ep, &ev, 1, HAK_NULL, 0, HAK_NULL);
 			}
 			return -1;
 		}
@@ -1564,15 +1564,15 @@ static int _add_poll_fd (hcl_t* hcl, int fd, int event_mask)
 		rv |= 2;
 	}
 
-	HCL_SETBITS (hcl_oow_t, xtn->ev.reg.ptr[rindex], roffset, 2, rv);
+	HAK_SETBITS (hak_oow_t, xtn->ev.reg.ptr[rindex], roffset, 2, rv);
 	return 0;
 
 #elif defined(USE_EPOLL)
-	xtn_t* xtn = GET_XTN(hcl);
+	xtn_t* xtn = GET_XTN(hak);
 	struct epoll_event ev;
 
-	HCL_ASSERT (hcl, xtn->ep >= 0);
-	HCL_MEMSET (&ev, 0, HCL_SIZEOF(ev));
+	HAK_ASSERT (hak, xtn->ep >= 0);
+	HAK_MEMSET (&ev, 0, HAK_SIZEOF(ev));
 	ev.events = event_mask;
 	#if defined(USE_THREAD) && defined(EPOLLET)
 	/* epoll_wait may return again if the worker thread consumes events.
@@ -1584,29 +1584,29 @@ static int _add_poll_fd (hcl_t* hcl, int fd, int event_mask)
 	ev.data.fd = fd;
 	if (epoll_ctl(xtn->ep, EPOLL_CTL_ADD, fd, &ev) == -1)
 	{
-		hcl_seterrwithsyserr (hcl, 0, errno);
-		HCL_DEBUG2 (hcl, "Cannot add file descriptor %d to epoll - %hs\n", fd, strerror(errno));
+		hak_seterrwithsyserr (hak, 0, errno);
+		HAK_DEBUG2 (hak, "Cannot add file descriptor %d to epoll - %hs\n", fd, strerror(errno));
 		return -1;
 	}
 	return 0;
 
 #elif defined(USE_POLL)
-	xtn_t* xtn = GET_XTN(hcl);
+	xtn_t* xtn = GET_XTN(hak);
 
 	MUTEX_LOCK (&xtn->ev.reg.pmtx);
 	if (xtn->ev.reg.len >= xtn->ev.reg.capa)
 	{
 		struct pollfd* tmp, * tmp2;
-		hcl_oow_t newcapa;
+		hak_oow_t newcapa;
 
-		newcapa = HCL_ALIGN_POW2 (xtn->ev.reg.len + 1, 256);
-		tmp = (struct pollfd*)hcl_reallocmem(hcl, xtn->ev.reg.ptr, newcapa * HCL_SIZEOF(*tmp));
-		tmp2 = (struct pollfd*)hcl_reallocmem(hcl, xtn->ev.buf, newcapa * HCL_SIZEOF(*tmp2));
+		newcapa = HAK_ALIGN_POW2 (xtn->ev.reg.len + 1, 256);
+		tmp = (struct pollfd*)hak_reallocmem(hak, xtn->ev.reg.ptr, newcapa * HAK_SIZEOF(*tmp));
+		tmp2 = (struct pollfd*)hak_reallocmem(hak, xtn->ev.buf, newcapa * HAK_SIZEOF(*tmp2));
 		if (!tmp || !tmp2)
 		{
-			HCL_DEBUG2 (hcl, "Cannot add file descriptor %d to poll - %hs\n", fd, strerror(errno));
+			HAK_DEBUG2 (hak, "Cannot add file descriptor %d to poll - %hs\n", fd, strerror(errno));
 			MUTEX_UNLOCK (&xtn->ev.reg.pmtx);
-			if (tmp) hcl_freemem (hcl, tmp);
+			if (tmp) hak_freemem (hak, tmp);
 			return -1;
 		}
 
@@ -1625,7 +1625,7 @@ static int _add_poll_fd (hcl_t* hcl, int fd, int event_mask)
 	return 0;
 
 #elif defined(USE_SELECT)
-	xtn_t* xtn = GET_XTN(hcl);
+	xtn_t* xtn = GET_XTN(hak);
 
 	MUTEX_LOCK (&xtn->ev.reg.smtx);
 	if (event_mask & XPOLLIN)
@@ -1644,93 +1644,93 @@ static int _add_poll_fd (hcl_t* hcl, int fd, int event_mask)
 
 #else
 
-	HCL_DEBUG1 (hcl, "Cannot add file descriptor %d to poll - not implemented\n", fd);
-	hcl_seterrnum (hcl, HCL_ENOIMPL);
+	HAK_DEBUG1 (hak, "Cannot add file descriptor %d to poll - not implemented\n", fd);
+	hak_seterrnum (hak, HAK_ENOIMPL);
 	return -1;
 #endif
 
 }
 
-static int _del_poll_fd (hcl_t* hcl, int fd)
+static int _del_poll_fd (hak_t* hak, int fd)
 {
 
 #if defined(USE_DEVPOLL)
-	xtn_t* xtn = GET_XTN(hcl);
+	xtn_t* xtn = GET_XTN(hak);
 	struct pollfd ev;
 
-	HCL_ASSERT (hcl, xtn->ep >= 0);
+	HAK_ASSERT (hak, xtn->ep >= 0);
 	ev.fd = fd;
 	ev.events = POLLREMOVE;
 	ev.revents = 0;
-	if (write(xtn->ep, &ev, HCL_SIZEOF(ev)) != HCL_SIZEOF(ev))
+	if (write(xtn->ep, &ev, HAK_SIZEOF(ev)) != HAK_SIZEOF(ev))
 	{
-		hcl_seterrwithsyserr (hcl, 0, errno);
-		HCL_DEBUG2 (hcl, "Cannot remove file descriptor %d from devpoll - %hs\n", fd, strerror(errno));
+		hak_seterrwithsyserr (hak, 0, errno);
+		HAK_DEBUG2 (hak, "Cannot remove file descriptor %d from devpoll - %hs\n", fd, strerror(errno));
 		return -1;
 	}
 
 	return 0;
 
 #elif defined(USE_KQUEUE)
-	xtn_t* xtn = GET_XTN(hcl);
-	hcl_oow_t rindex, roffset;
+	xtn_t* xtn = GET_XTN(hak);
+	hak_oow_t rindex, roffset;
 	int rv;
 	struct kevent ev;
 
-	rindex = (hcl_oow_t)fd / (HCL_BITSOF(hcl_oow_t) >> 1);
-	roffset = ((hcl_oow_t)fd << 1) % HCL_BITSOF(hcl_oow_t);
+	rindex = (hak_oow_t)fd / (HAK_BITSOF(hak_oow_t) >> 1);
+	roffset = ((hak_oow_t)fd << 1) % HAK_BITSOF(hak_oow_t);
 
 	if (rindex >= xtn->ev.reg.capa)
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "unknown file descriptor %d", fd);
-		HCL_DEBUG2 (hcl, "Cannot remove file descriptor %d from kqueue - %js\n", fd, hcl_geterrmsg(hcl));
+		hak_seterrbfmt (hak, HAK_EINVAL, "unknown file descriptor %d", fd);
+		HAK_DEBUG2 (hak, "Cannot remove file descriptor %d from kqueue - %js\n", fd, hak_geterrmsg(hak));
 		return -1;
 	};
 
-	rv = HCL_GETBITS (hcl_oow_t, xtn->ev.reg.ptr[rindex], roffset, 2);
+	rv = HAK_GETBITS (hak_oow_t, xtn->ev.reg.ptr[rindex], roffset, 2);
 
 	if (rv & 1)
 	{
 		/*EV_SET (&ev, fd, EVFILT_READ, EV_DELETE, 0, 0, 0);*/
-		HCL_MEMSET (&ev, 0, HCL_SIZEOF(ev));
+		HAK_MEMSET (&ev, 0, HAK_SIZEOF(ev));
 		ev.ident = fd;
 		ev.flags = EV_DELETE;
 		ev.filter = EVFILT_READ;
-		kevent(xtn->ep, &ev, 1, HCL_NULL, 0, HCL_NULL);
+		kevent(xtn->ep, &ev, 1, HAK_NULL, 0, HAK_NULL);
 		/* no error check for now */
 	}
 
 	if (rv & 2)
 	{
 		/*EV_SET (&ev, fd, EVFILT_WRITE, EV_DELETE, 0, 0, 0);*/
-		HCL_MEMSET (&ev, 0, HCL_SIZEOF(ev));
+		HAK_MEMSET (&ev, 0, HAK_SIZEOF(ev));
 		ev.ident = fd;
 		ev.flags = EV_DELETE;
 		ev.filter = EVFILT_WRITE;
-		kevent(xtn->ep, &ev, 1, HCL_NULL, 0, HCL_NULL);
+		kevent(xtn->ep, &ev, 1, HAK_NULL, 0, HAK_NULL);
 		/* no error check for now */
 	}
 
-	HCL_SETBITS (hcl_oow_t, xtn->ev.reg.ptr[rindex], roffset, 2, 0);
+	HAK_SETBITS (hak_oow_t, xtn->ev.reg.ptr[rindex], roffset, 2, 0);
 	return 0;
 
 #elif defined(USE_EPOLL)
-	xtn_t* xtn = GET_XTN(hcl);
+	xtn_t* xtn = GET_XTN(hak);
 	struct epoll_event ev;
 
-	HCL_ASSERT (hcl, xtn->ep >= 0);
-	HCL_MEMSET (&ev, 0, HCL_SIZEOF(ev));
+	HAK_ASSERT (hak, xtn->ep >= 0);
+	HAK_MEMSET (&ev, 0, HAK_SIZEOF(ev));
 	if (epoll_ctl(xtn->ep, EPOLL_CTL_DEL, fd, &ev) == -1)
 	{
-		hcl_seterrwithsyserr (hcl, 0, errno);
-		HCL_DEBUG2 (hcl, "Cannot remove file descriptor %d from epoll - %hs\n", fd, strerror(errno));
+		hak_seterrwithsyserr (hak, 0, errno);
+		HAK_DEBUG2 (hak, "Cannot remove file descriptor %d from epoll - %hs\n", fd, strerror(errno));
 		return -1;
 	}
 	return 0;
 
 #elif defined(USE_POLL)
-	xtn_t* xtn = GET_XTN(hcl);
-	hcl_oow_t i;
+	xtn_t* xtn = GET_XTN(hak);
+	hak_oow_t i;
 
 	/* TODO: performance boost. no linear search */
 	MUTEX_LOCK (&xtn->ev.reg.pmtx);
@@ -1739,7 +1739,7 @@ static int _del_poll_fd (hcl_t* hcl, int fd)
 		if (xtn->ev.reg.ptr[i].fd == fd)
 		{
 			xtn->ev.reg.len--;
-			HCL_MEMMOVE (&xtn->ev.reg.ptr[i], &xtn->ev.reg.ptr[i+1], (xtn->ev.reg.len - i) * HCL_SIZEOF(*xtn->ev.reg.ptr));
+			HAK_MEMMOVE (&xtn->ev.reg.ptr[i], &xtn->ev.reg.ptr[i+1], (xtn->ev.reg.len - i) * HAK_SIZEOF(*xtn->ev.reg.ptr));
 			MUTEX_UNLOCK (&xtn->ev.reg.pmtx);
 			return 0;
 		}
@@ -1747,12 +1747,12 @@ static int _del_poll_fd (hcl_t* hcl, int fd)
 	MUTEX_UNLOCK (&xtn->ev.reg.pmtx);
 
 
-	HCL_DEBUG1 (hcl, "Cannot remove file descriptor %d from poll - not found\n", fd);
-	hcl_seterrnum (hcl, HCL_ENOENT);
+	HAK_DEBUG1 (hak, "Cannot remove file descriptor %d from poll - not found\n", fd);
+	hak_seterrnum (hak, HAK_ENOENT);
 	return -1;
 
 #elif defined(USE_SELECT)
-	xtn_t* xtn = GET_XTN(hcl);
+	xtn_t* xtn = GET_XTN(hak);
 
 	MUTEX_LOCK (&xtn->ev.reg.smtx);
 	FD_CLR (fd, &xtn->ev.reg.rfds);
@@ -1773,20 +1773,20 @@ static int _del_poll_fd (hcl_t* hcl, int fd)
 
 #else
 
-	HCL_DEBUG1 (hcl, "Cannot remove file descriptor %d from poll - not implemented\n", fd);
-	hcl_seterrnum (hcl, HCL_ENOIMPL);
+	HAK_DEBUG1 (hak, "Cannot remove file descriptor %d from poll - not implemented\n", fd);
+	hak_seterrnum (hak, HAK_ENOIMPL);
 	return -1;
 #endif
 }
 
 
-static int _mod_poll_fd (hcl_t* hcl, int fd, int event_mask)
+static int _mod_poll_fd (hak_t* hak, int fd, int event_mask)
 {
 #if defined(USE_DEVPOLL)
 
-	if (_del_poll_fd (hcl, fd) <= -1) return -1;
+	if (_del_poll_fd (hak, fd) <= -1) return -1;
 
-	if (_add_poll_fd (hcl, fd, event_mask) <= -1)
+	if (_add_poll_fd (hak, fd, event_mask) <= -1)
 	{
 		/* TODO: any good way to rollback successful deletion? */
 		return -1;
@@ -1794,32 +1794,32 @@ static int _mod_poll_fd (hcl_t* hcl, int fd, int event_mask)
 
 	return 0;
 #elif defined(USE_KQUEUE)
-	xtn_t* xtn = GET_XTN(hcl);
-	hcl_oow_t rindex, roffset;
+	xtn_t* xtn = GET_XTN(hak);
+	hak_oow_t rindex, roffset;
 	int rv, newrv = 0;
 	struct kevent ev;
 
-	rindex = (hcl_oow_t)fd / (HCL_BITSOF(hcl_oow_t) >> 1);
-	roffset = ((hcl_oow_t)fd << 1) % HCL_BITSOF(hcl_oow_t);
+	rindex = (hak_oow_t)fd / (HAK_BITSOF(hak_oow_t) >> 1);
+	roffset = ((hak_oow_t)fd << 1) % HAK_BITSOF(hak_oow_t);
 
 	if (rindex >= xtn->ev.reg.capa)
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "unknown file descriptor %d", fd);
-		HCL_DEBUG2 (hcl, "Cannot modify file descriptor %d in kqueue - %js\n", fd, hcl_geterrmsg(hcl));
+		hak_seterrbfmt (hak, HAK_EINVAL, "unknown file descriptor %d", fd);
+		HAK_DEBUG2 (hak, "Cannot modify file descriptor %d in kqueue - %js\n", fd, hak_geterrmsg(hak));
 		return -1;
 	};
 
-	rv = HCL_GETBITS(hcl_oow_t, xtn->ev.reg.ptr[rindex], roffset, 2);
+	rv = HAK_GETBITS(hak_oow_t, xtn->ev.reg.ptr[rindex], roffset, 2);
 
 	if (rv & 1)
 	{
 		if (!(event_mask & XPOLLIN))
 		{
-			HCL_MEMSET (&ev, 0, HCL_SIZEOF(ev));
+			HAK_MEMSET (&ev, 0, HAK_SIZEOF(ev));
 			ev.ident = fd;
 			ev.flags = EV_DELETE;
 			ev.filter = EVFILT_READ;
-			if (kevent(xtn->ep, &ev, 1, HCL_NULL, 0, HCL_NULL) == -1) goto kqueue_syserr;
+			if (kevent(xtn->ep, &ev, 1, HAK_NULL, 0, HAK_NULL) == -1) goto kqueue_syserr;
 
 			newrv &= ~1;
 		}
@@ -1828,14 +1828,14 @@ static int _mod_poll_fd (hcl_t* hcl, int fd, int event_mask)
 	{
 		if (event_mask & XPOLLIN)
 		{
-			HCL_MEMSET (&ev, 0, HCL_SIZEOF(ev));
+			HAK_MEMSET (&ev, 0, HAK_SIZEOF(ev));
 			ev.ident = fd;
 			ev.flags = EV_ADD;
 		#if defined(USE_THREAD)
 			ev.flags |= EV_CLEAR; /* EV_CLEAR for edge trigger? */
 		#endif
 			ev.filter = EVFILT_READ;
-			if (kevent(xtn->ep, &ev, 1, HCL_NULL, 0, HCL_NULL) == -1) goto kqueue_syserr;
+			if (kevent(xtn->ep, &ev, 1, HAK_NULL, 0, HAK_NULL) == -1) goto kqueue_syserr;
 
 			newrv |= 1;
 		}
@@ -1845,13 +1845,13 @@ static int _mod_poll_fd (hcl_t* hcl, int fd, int event_mask)
 	{
 		if (!(event_mask & XPOLLOUT))
 		{
-			HCL_MEMSET (&ev, 0, HCL_SIZEOF(ev));
+			HAK_MEMSET (&ev, 0, HAK_SIZEOF(ev));
 			ev.ident = fd;
 			ev.flags = EV_DELETE;
 			ev.filter = EVFILT_WRITE;
 			/* there is no operation rollback for the (rv & 1) case.
 			 * the rollback action may fail again even if i try it */
-			if (kevent(xtn->ep, &ev, 1, HCL_NULL, 0, HCL_NULL) == -1) goto kqueue_syserr;
+			if (kevent(xtn->ep, &ev, 1, HAK_NULL, 0, HAK_NULL) == -1) goto kqueue_syserr;
 
 			newrv &= ~2;
 		}
@@ -1860,7 +1860,7 @@ static int _mod_poll_fd (hcl_t* hcl, int fd, int event_mask)
 	{
 		if (event_mask & XPOLLOUT)
 		{
-			HCL_MEMSET (&ev, 0, HCL_SIZEOF(ev));
+			HAK_MEMSET (&ev, 0, HAK_SIZEOF(ev));
 			ev.ident = fd;
 			ev.flags = EV_ADD;
 		#if defined(USE_THREAD)
@@ -1870,26 +1870,26 @@ static int _mod_poll_fd (hcl_t* hcl, int fd, int event_mask)
 
 			/* there is no operation rollback for the (rv & 1) case.
 			 * the rollback action may fail again even if i try it */
-			if (kevent(xtn->ep, &ev, 1, HCL_NULL, 0, HCL_NULL) == -1) goto kqueue_syserr;
+			if (kevent(xtn->ep, &ev, 1, HAK_NULL, 0, HAK_NULL) == -1) goto kqueue_syserr;
 
 			newrv |= 2;
 		}
 	}
 
-	HCL_SETBITS (hcl_oow_t, xtn->ev.reg.ptr[rindex], roffset, 2, newrv);
+	HAK_SETBITS (hak_oow_t, xtn->ev.reg.ptr[rindex], roffset, 2, newrv);
 	return 0;
 
 kqueue_syserr:
-	hcl_seterrwithsyserr (hcl, 0, errno);
-	HCL_DEBUG2 (hcl, "Cannot modify file descriptor %d in kqueue - %hs\n", fd, strerror(errno));
+	hak_seterrwithsyserr (hak, 0, errno);
+	HAK_DEBUG2 (hak, "Cannot modify file descriptor %d in kqueue - %hs\n", fd, strerror(errno));
 	return -1;
 
 #elif defined(USE_EPOLL)
-	xtn_t* xtn = GET_XTN(hcl);
+	xtn_t* xtn = GET_XTN(hak);
 	struct epoll_event ev;
 
-	HCL_ASSERT (hcl, xtn->ep >= 0);
-	HCL_MEMSET (&ev, 0, HCL_SIZEOF(ev));
+	HAK_ASSERT (hak, xtn->ep >= 0);
+	HAK_MEMSET (&ev, 0, HAK_SIZEOF(ev));
 	ev.events = event_mask;
 	#if defined(USE_THREAD) && defined(EPOLLET)
 	/* epoll_wait may return again if the worker thread consumes events.
@@ -1900,8 +1900,8 @@ kqueue_syserr:
 	ev.data.fd = fd;
 	if (epoll_ctl(xtn->ep, EPOLL_CTL_MOD, fd, &ev) == -1)
 	{
-		hcl_seterrwithsyserr (hcl, 0, errno);
-		HCL_DEBUG2 (hcl, "Cannot modify file descriptor %d in epoll - %hs\n", fd, strerror(errno));
+		hak_seterrwithsyserr (hak, 0, errno);
+		HAK_DEBUG2 (hak, "Cannot modify file descriptor %d in epoll - %hs\n", fd, strerror(errno));
 		return -1;
 	}
 
@@ -1909,15 +1909,15 @@ kqueue_syserr:
 
 #elif defined(USE_POLL)
 
-	xtn_t* xtn = GET_XTN(hcl);
-	hcl_oow_t i;
+	xtn_t* xtn = GET_XTN(hak);
+	hak_oow_t i;
 
 	MUTEX_LOCK (&xtn->ev.reg.pmtx);
 	for (i = 0; i < xtn->ev.reg.len; i++)
 	{
 		if (xtn->ev.reg.ptr[i].fd == fd)
 		{
-			HCL_MEMMOVE (&xtn->ev.reg.ptr[i], &xtn->ev.reg.ptr[i+1], (xtn->ev.reg.len - i - 1) * HCL_SIZEOF(*xtn->ev.reg.ptr));
+			HAK_MEMMOVE (&xtn->ev.reg.ptr[i], &xtn->ev.reg.ptr[i+1], (xtn->ev.reg.len - i - 1) * HAK_SIZEOF(*xtn->ev.reg.ptr));
 			xtn->ev.reg.ptr[i].fd = fd;
 			xtn->ev.reg.ptr[i].events = event_mask;
 			xtn->ev.reg.ptr[i].revents = 0;
@@ -1928,16 +1928,16 @@ kqueue_syserr:
 	}
 	MUTEX_UNLOCK (&xtn->ev.reg.pmtx);
 
-	HCL_DEBUG1 (hcl, "Cannot modify file descriptor %d in poll - not found\n", fd);
-	hcl_seterrnum (hcl, HCL_ENOENT);
+	HAK_DEBUG1 (hak, "Cannot modify file descriptor %d in poll - not found\n", fd);
+	hak_seterrnum (hak, HAK_ENOENT);
 	return -1;
 
 #elif defined(USE_SELECT)
 
-	xtn_t* xtn = GET_XTN(hcl);
+	xtn_t* xtn = GET_XTN(hak);
 
 	MUTEX_LOCK (&xtn->ev.reg.smtx);
-	HCL_ASSERT (hcl, fd <= xtn->ev.reg.maxfd);
+	HAK_ASSERT (hak, fd <= xtn->ev.reg.maxfd);
 
 	if (event_mask & XPOLLIN)
 		FD_SET (fd, &xtn->ev.reg.rfds);
@@ -1953,60 +1953,60 @@ kqueue_syserr:
 	return 0;
 
 #else
-	HCL_DEBUG1 (hcl, "Cannot modify file descriptor %d in poll - not implemented\n", fd);
-	hcl_seterrnum (hcl, HCL_ENOIMPL);
+	HAK_DEBUG1 (hak, "Cannot modify file descriptor %d in poll - not implemented\n", fd);
+	hak_seterrnum (hak, HAK_ENOIMPL);
 	return -1;
 #endif
 }
 
-static int vm_muxadd (hcl_t* hcl, hcl_ooi_t io_handle, hcl_ooi_t mask)
+static int vm_muxadd (hak_t* hak, hak_ooi_t io_handle, hak_ooi_t mask)
 {
 	int event_mask;
 
 	event_mask = 0;
-	if (mask & HCL_SEMAPHORE_IO_MASK_INPUT) event_mask |= XPOLLIN;
-	if (mask & HCL_SEMAPHORE_IO_MASK_OUTPUT) event_mask |= XPOLLOUT;
+	if (mask & HAK_SEMAPHORE_IO_MASK_INPUT) event_mask |= XPOLLIN;
+	if (mask & HAK_SEMAPHORE_IO_MASK_OUTPUT) event_mask |= XPOLLOUT;
 
 	if (event_mask == 0)
 	{
-		HCL_DEBUG2 (hcl, "<vm_muxadd> Invalid semaphore mask %zd on handle %zd\n", mask, io_handle);
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "invalid semaphore mask %zd on handle %zd", mask, io_handle);
+		HAK_DEBUG2 (hak, "<vm_muxadd> Invalid semaphore mask %zd on handle %zd\n", mask, io_handle);
+		hak_seterrbfmt (hak, HAK_EINVAL, "invalid semaphore mask %zd on handle %zd", mask, io_handle);
 		return -1;
 	}
 
-	return _add_poll_fd(hcl, io_handle, event_mask);
+	return _add_poll_fd(hak, io_handle, event_mask);
 }
 
-static int vm_muxmod (hcl_t* hcl, hcl_ooi_t io_handle, hcl_ooi_t mask)
+static int vm_muxmod (hak_t* hak, hak_ooi_t io_handle, hak_ooi_t mask)
 {
 	int event_mask;
 
 	event_mask = 0;
-	if (mask & HCL_SEMAPHORE_IO_MASK_INPUT) event_mask |= XPOLLIN;
-	if (mask & HCL_SEMAPHORE_IO_MASK_OUTPUT) event_mask |= XPOLLOUT;
+	if (mask & HAK_SEMAPHORE_IO_MASK_INPUT) event_mask |= XPOLLIN;
+	if (mask & HAK_SEMAPHORE_IO_MASK_OUTPUT) event_mask |= XPOLLOUT;
 
 	if (event_mask == 0)
 	{
-		HCL_DEBUG2 (hcl, "<vm_muxadd> Invalid semaphore mask %zd on handle %zd\n", mask, io_handle);
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "invalid semaphore mask %zd on handle %zd", mask, io_handle);
+		HAK_DEBUG2 (hak, "<vm_muxadd> Invalid semaphore mask %zd on handle %zd\n", mask, io_handle);
+		hak_seterrbfmt (hak, HAK_EINVAL, "invalid semaphore mask %zd on handle %zd", mask, io_handle);
 		return -1;
 	}
 
-	return _mod_poll_fd(hcl, io_handle, event_mask);
+	return _mod_poll_fd(hak, io_handle, event_mask);
 }
 
-static int vm_muxdel (hcl_t* hcl, hcl_ooi_t io_handle)
+static int vm_muxdel (hak_t* hak, hak_ooi_t io_handle)
 {
-	return _del_poll_fd(hcl, io_handle);
+	return _del_poll_fd(hak, io_handle);
 }
 
 #if defined(USE_THREAD)
 static void* iothr_main (void* arg)
 {
-	hcl_t* hcl = (hcl_t*)arg;
-	xtn_t* xtn = GET_XTN(hcl);
+	hak_t* hak = (hak_t*)arg;
+	xtn_t* xtn = GET_XTN(hak);
 
-	/*while (!hcl->abort_req)*/
+	/*while (!hak->abort_req)*/
 	while (!xtn->iothr.abort)
 	{
 		if (xtn->ev.len <= 0) /* TODO: no mutex needed for this check? */
@@ -2017,7 +2017,7 @@ static void* iothr_main (void* arg)
 		#elif defined(USE_KQUEUE)
 			struct timespec ts;
 		#elif defined(USE_POLL)
-			hcl_oow_t nfds;
+			hak_oow_t nfds;
 		#elif defined(USE_SELECT)
 			struct timeval tv;
 			fd_set rfds;
@@ -2030,26 +2030,26 @@ static void* iothr_main (void* arg)
 		#if defined(USE_DEVPOLL)
 			dvp.dp_timeout = 10000; /* milliseconds */
 			dvp.dp_fds = xtn->ev.buf;
-			dvp.dp_nfds = HCL_COUNTOF(xtn->ev.buf);
+			dvp.dp_nfds = HAK_COUNTOF(xtn->ev.buf);
 			n = ioctl (xtn->ep, DP_POLL, &dvp);
 		#elif defined(USE_KQUEUE)
 			ts.tv_sec = 10;
 			ts.tv_nsec = 0;
-			n = kevent(xtn->ep, HCL_NULL, 0, xtn->ev.buf, HCL_COUNTOF(xtn->ev.buf), &ts);
+			n = kevent(xtn->ep, HAK_NULL, 0, xtn->ev.buf, HAK_COUNTOF(xtn->ev.buf), &ts);
 			/* n == 0: timeout
 			 * n == -1: error */
 		#elif defined(USE_EPOLL)
-			n = epoll_wait(xtn->ep, xtn->ev.buf, HCL_COUNTOF(xtn->ev.buf), 10000); /* TODO: make this timeout value in the io thread */
+			n = epoll_wait(xtn->ep, xtn->ev.buf, HAK_COUNTOF(xtn->ev.buf), 10000); /* TODO: make this timeout value in the io thread */
 		#elif defined(USE_POLL)
 			MUTEX_LOCK (&xtn->ev.reg.pmtx);
-			HCL_MEMCPY (xtn->ev.buf, xtn->ev.reg.ptr, xtn->ev.reg.len * HCL_SIZEOF(*xtn->ev.buf));
+			HAK_MEMCPY (xtn->ev.buf, xtn->ev.reg.ptr, xtn->ev.reg.len * HAK_SIZEOF(*xtn->ev.buf));
 			nfds = xtn->ev.reg.len;
 			MUTEX_UNLOCK (&xtn->ev.reg.pmtx);
 			n = poll(xtn->ev.buf, nfds, 10000);
 			if (n > 0)
 			{
 				/* compact the return buffer as poll() doesn't */
-				hcl_oow_t i, j;
+				hak_oow_t i, j;
 				for (i = 0, j = 0; i < nfds && j < n; i++)
 				{
 					if (xtn->ev.buf[i].revents)
@@ -2065,10 +2065,10 @@ static void* iothr_main (void* arg)
 			tv.tv_usec = 0;
 			MUTEX_LOCK (&xtn->ev.reg.smtx);
 			maxfd = xtn->ev.reg.maxfd;
-			HCL_MEMCPY (&rfds, &xtn->ev.reg.rfds, HCL_SIZEOF(rfds));
-			HCL_MEMCPY (&wfds, &xtn->ev.reg.wfds, HCL_SIZEOF(wfds));
+			HAK_MEMCPY (&rfds, &xtn->ev.reg.rfds, HAK_SIZEOF(rfds));
+			HAK_MEMCPY (&wfds, &xtn->ev.reg.wfds, HAK_SIZEOF(wfds));
 			MUTEX_UNLOCK (&xtn->ev.reg.smtx);
-			n = select (maxfd + 1, &rfds, &wfds, HCL_NULL, &tv);
+			n = select (maxfd + 1, &rfds, &wfds, HAK_NULL, &tv);
 			if (n > 0)
 			{
 				int fd, count = 0;
@@ -2080,7 +2080,7 @@ static void* iothr_main (void* arg)
 
 					if (events)
 					{
-						HCL_ASSERT (hcl, count < HCL_COUNTOF(xtn->ev.buf));
+						HAK_ASSERT (hak, count < HAK_COUNTOF(xtn->ev.buf));
 						xtn->ev.buf[count].fd = fd;
 						xtn->ev.buf[count].events = events;
 						count++;
@@ -2088,16 +2088,16 @@ static void* iothr_main (void* arg)
 				}
 
 				n = count;
-				HCL_ASSERT (hcl, n > 0);
+				HAK_ASSERT (hak, n > 0);
 			}
 		#endif
 
 			pthread_mutex_lock (&xtn->ev.mtx);
 			if (n <= -1)
 			{
-				/* TODO: don't use HCL_DEBUG2. it's not thread safe... */
+				/* TODO: don't use HAK_DEBUG2. it's not thread safe... */
 				/* the following call has a race-condition issue when called in this separate thread */
-				/*HCL_DEBUG2 (hcl, "Warning: multiplexer wait failure - %d, %hs\n", errno, strerror(errno));*/
+				/*HAK_DEBUG2 (hak, "Warning: multiplexer wait failure - %d, %hs\n", errno, strerror(errno));*/
 			}
 			else if (n > 0)
 			{
@@ -2124,9 +2124,9 @@ static void* iothr_main (void* arg)
 		#else
 			{
 				struct timeval tv;
-				gettimeofday (&tv, HCL_NULL);
+				gettimeofday (&tv, HAK_NULL);
 				ts.tv_sec = tv.tv_sec;
-				ts.tv_nsec = HCL_USEC_TO_NSEC(tv.tv_usec);
+				ts.tv_nsec = HAK_USEC_TO_NSEC(tv.tv_usec);
 			}
 		#endif
 			ts.tv_sec += 10;
@@ -2137,13 +2137,13 @@ static void* iothr_main (void* arg)
 		/*sched_yield ();*/
 	}
 
-	return HCL_NULL;
+	return HAK_NULL;
 }
 #endif
 
-static void vm_muxwait (hcl_t* hcl, const hcl_ntime_t* dur, hcl_vmprim_muxwait_cb_t muxwcb)
+static void vm_muxwait (hak_t* hak, const hak_ntime_t* dur, hak_vmprim_muxwait_cb_t muxwcb)
 {
-	xtn_t* xtn = GET_XTN(hcl);
+	xtn_t* xtn = GET_XTN(hak);
 
 #if defined(USE_THREAD)
 	int n;
@@ -2152,9 +2152,9 @@ static void vm_muxwait (hcl_t* hcl, const hcl_ntime_t* dur, hcl_vmprim_muxwait_c
 	if (!xtn->iothr.up)
 	{
 		xtn->iothr.up = 1;
-		if (pthread_create(&xtn->iothr.thr, HCL_NULL, iothr_main, hcl) != 0)
+		if (pthread_create(&xtn->iothr.thr, HAK_NULL, iothr_main, hak) != 0)
 		{
-			HCL_LOG2 (hcl, HCL_LOG_WARN, "Warning: pthread_create failure - %d, %hs\n", errno, strerror(errno));
+			HAK_LOG2 (hak, HAK_LOG_WARN, "Warning: pthread_create failure - %d, %hs\n", errno, strerror(errno));
 			xtn->iothr.up = 0;
 /* TODO: switch to the non-threaded mode? */
 		}
@@ -2165,7 +2165,7 @@ static void vm_muxwait (hcl_t* hcl, const hcl_ntime_t* dur, hcl_vmprim_muxwait_c
 	if (xtn->ev.len <= 0)
 	{
 		struct timespec ts;
-		hcl_ntime_t ns;
+		hak_ntime_t ns;
 
 		if (!dur) return; /* immediate check is requested. and there is no event */
 
@@ -2176,12 +2176,12 @@ static void vm_muxwait (hcl_t* hcl, const hcl_ntime_t* dur, hcl_vmprim_muxwait_c
 	#else
 		{
 			struct timeval tv;
-			gettimeofday (&tv, HCL_NULL);
+			gettimeofday (&tv, HAK_NULL);
 			ns.sec = tv.tv_sec;
-			ns.nsec = HCL_USEC_TO_NSEC(tv.tv_usec);
+			ns.nsec = HAK_USEC_TO_NSEC(tv.tv_usec);
 		}
 	#endif
-		HCL_ADD_NTIME (&ns, &ns, dur);
+		HAK_ADD_NTIME (&ns, &ns, dur);
 		ts.tv_sec = ns.sec;
 		ts.tv_nsec = ns.nsec;
 
@@ -2207,7 +2207,7 @@ static void vm_muxwait (hcl_t* hcl, const hcl_ntime_t* dur, hcl_vmprim_muxwait_c
 		#elif defined(USE_KQUEUE)
 			if (xtn->ev.buf[n].ident == xtn->iothr.p[0])
 		#elif defined(USE_EPOLL)
-			/*if (xtn->ev.buf[n].data.ptr == (void*)HCL_TYPE_MAX(hcl_oow_t))*/
+			/*if (xtn->ev.buf[n].data.ptr == (void*)HAK_TYPE_MAX(hak_oow_t))*/
 			if (xtn->ev.buf[n].data.fd == xtn->iothr.p[0])
 		#elif defined(USE_POLL)
 			if (xtn->ev.buf[n].fd == xtn->iothr.p[0])
@@ -2217,8 +2217,8 @@ static void vm_muxwait (hcl_t* hcl, const hcl_ntime_t* dur, hcl_vmprim_muxwait_c
 		#	error UNSUPPORTED
 		#endif
 			{
-				hcl_uint8_t u8;
-				while (read(xtn->iothr.p[0], &u8, HCL_SIZEOF(u8)) > 0)
+				hak_uint8_t u8;
+				while (read(xtn->iothr.p[0], &u8, HAK_SIZEOF(u8)) > 0)
 				{
 					/* consume as much as possible */;
 					if (u8 == 'Q') xtn->iothr.abort = 1;
@@ -2227,13 +2227,13 @@ static void vm_muxwait (hcl_t* hcl, const hcl_ntime_t* dur, hcl_vmprim_muxwait_c
 			else if (muxwcb)
 			{
 				int revents;
-				hcl_ooi_t mask;
+				hak_ooi_t mask;
 
 			#if defined(USE_DEVPOLL)
 				revents = xtn->ev.buf[n].revents;
 			#elif defined(USE_KQUEUE)
-				if (xtn->ev.buf[n].filter == EVFILT_READ) mask = HCL_SEMAPHORE_IO_MASK_INPUT;
-				else if (xtn->ev.buf[n].filter == EVFILT_WRITE) mask = HCL_SEMAPHORE_IO_MASK_OUTPUT;
+				if (xtn->ev.buf[n].filter == EVFILT_READ) mask = HAK_SEMAPHORE_IO_MASK_INPUT;
+				else if (xtn->ev.buf[n].filter == EVFILT_WRITE) mask = HAK_SEMAPHORE_IO_MASK_OUTPUT;
 				else mask = 0;
 				goto call_muxwcb_kqueue;
 			#elif defined(USE_EPOLL)
@@ -2245,22 +2245,22 @@ static void vm_muxwait (hcl_t* hcl, const hcl_ntime_t* dur, hcl_vmprim_muxwait_c
 			#endif
 
 				mask = 0;
-				if (revents & XPOLLIN) mask |= HCL_SEMAPHORE_IO_MASK_INPUT;
-				if (revents & XPOLLOUT) mask |= HCL_SEMAPHORE_IO_MASK_OUTPUT;
-				if (revents & XPOLLERR) mask |= HCL_SEMAPHORE_IO_MASK_ERROR;
-				if (revents & XPOLLHUP) mask |= HCL_SEMAPHORE_IO_MASK_HANGUP;
+				if (revents & XPOLLIN) mask |= HAK_SEMAPHORE_IO_MASK_INPUT;
+				if (revents & XPOLLOUT) mask |= HAK_SEMAPHORE_IO_MASK_OUTPUT;
+				if (revents & XPOLLERR) mask |= HAK_SEMAPHORE_IO_MASK_ERROR;
+				if (revents & XPOLLHUP) mask |= HAK_SEMAPHORE_IO_MASK_HANGUP;
 
 			#if defined(USE_DEVPOLL)
-				muxwcb (hcl, xtn->ev.buf[n].fd, mask);
+				muxwcb (hak, xtn->ev.buf[n].fd, mask);
 			#elif defined(USE_KQUEUE)
 			call_muxwcb_kqueue:
-				muxwcb (hcl, xtn->ev.buf[n].ident, mask);
+				muxwcb (hak, xtn->ev.buf[n].ident, mask);
 			#elif defined(USE_EPOLL)
-				muxwcb (hcl, xtn->ev.buf[n].data.fd, mask);
+				muxwcb (hak, xtn->ev.buf[n].data.fd, mask);
 			#elif defined(USE_POLL)
-				muxwcb (hcl, xtn->ev.buf[n].fd, mask);
+				muxwcb (hak, xtn->ev.buf[n].fd, mask);
 			#elif defined(USE_SELECT)
-				muxwcb (hcl, xtn->ev.buf[n].fd, mask);
+				muxwcb (hak, xtn->ev.buf[n].fd, mask);
 			#else
 			#	error UNSUPPORTED
 			#endif
@@ -2292,11 +2292,11 @@ static void vm_muxwait (hcl_t* hcl, const hcl_ntime_t* dur, hcl_vmprim_muxwait_c
 	#endif
 
 	#if defined(USE_DEVPOLL)
-	tmout = dur? HCL_SECNSEC_TO_MSEC(dur->sec, dur->nsec): 0;
+	tmout = dur? HAK_SECNSEC_TO_MSEC(dur->sec, dur->nsec): 0;
 
 	dvp.dp_timeout = tmout; /* milliseconds */
 	dvp.dp_fds = xtn->ev.buf;
-	dvp.dp_nfds = HCL_COUNTOF(xtn->ev.buf);
+	dvp.dp_nfds = HAK_COUNTOF(xtn->ev.buf);
 	n = ioctl(xtn->ep, DP_POLL, &dvp);
 
 	#elif defined(USE_KQUEUE)
@@ -2312,22 +2312,22 @@ static void vm_muxwait (hcl_t* hcl, const hcl_ntime_t* dur, hcl_vmprim_muxwait_c
 		ts.tv_nsec = 0;
 	}
 
-	n = kevent(xtn->ep, HCL_NULL, 0, xtn->ev.buf, HCL_COUNTOF(xtn->ev.buf), &ts);
+	n = kevent(xtn->ep, HAK_NULL, 0, xtn->ev.buf, HAK_COUNTOF(xtn->ev.buf), &ts);
 	/* n == 0: timeout
 	 * n == -1: error */
 
 	#elif defined(USE_EPOLL)
-	tmout = dur? HCL_SECNSEC_TO_MSEC(dur->sec, dur->nsec): 0;
-	n = epoll_wait(xtn->ep, xtn->ev.buf, HCL_COUNTOF(xtn->ev.buf), tmout);
+	tmout = dur? HAK_SECNSEC_TO_MSEC(dur->sec, dur->nsec): 0;
+	n = epoll_wait(xtn->ep, xtn->ev.buf, HAK_COUNTOF(xtn->ev.buf), tmout);
 
 	#elif defined(USE_POLL)
-	tmout = dur? HCL_SECNSEC_TO_MSEC(dur->sec, dur->nsec): 0;
-	HCL_MEMCPY (xtn->ev.buf, xtn->ev.reg.ptr, xtn->ev.reg.len * HCL_SIZEOF(*xtn->ev.buf));
+	tmout = dur? HAK_SECNSEC_TO_MSEC(dur->sec, dur->nsec): 0;
+	HAK_MEMCPY (xtn->ev.buf, xtn->ev.reg.ptr, xtn->ev.reg.len * HAK_SIZEOF(*xtn->ev.buf));
 	n = poll(xtn->ev.buf, xtn->ev.reg.len, tmout);
 	if (n > 0)
 	{
 		/* compact the return buffer as poll() doesn't */
-		hcl_oow_t i, j;
+		hak_oow_t i, j;
 		for (i = 0, j = 0; i < xtn->ev.reg.len && j < n; i++)
 		{
 			if (xtn->ev.buf[i].revents)
@@ -2342,7 +2342,7 @@ static void vm_muxwait (hcl_t* hcl, const hcl_ntime_t* dur, hcl_vmprim_muxwait_c
 	if (dur)
 	{
 		tv.tv_sec = dur->sec;
-		tv.tv_usec = HCL_NSEC_TO_USEC(dur->nsec);
+		tv.tv_usec = HAK_NSEC_TO_USEC(dur->nsec);
 	}
 	else
 	{
@@ -2350,9 +2350,9 @@ static void vm_muxwait (hcl_t* hcl, const hcl_ntime_t* dur, hcl_vmprim_muxwait_c
 		tv.tv_usec = 0;
 	}
 	maxfd = xtn->ev.reg.maxfd;
-	HCL_MEMCPY (&rfds, &xtn->ev.reg.rfds, HCL_SIZEOF(rfds));
-	HCL_MEMCPY (&wfds, &xtn->ev.reg.wfds, HCL_SIZEOF(wfds));
-	n = select(maxfd + 1, &rfds, &wfds, HCL_NULL, &tv);
+	HAK_MEMCPY (&rfds, &xtn->ev.reg.rfds, HAK_SIZEOF(rfds));
+	HAK_MEMCPY (&wfds, &xtn->ev.reg.wfds, HAK_SIZEOF(wfds));
+	n = select(maxfd + 1, &rfds, &wfds, HAK_NULL, &tv);
 	if (n > 0)
 	{
 		int fd, count = 0;
@@ -2364,7 +2364,7 @@ static void vm_muxwait (hcl_t* hcl, const hcl_ntime_t* dur, hcl_vmprim_muxwait_c
 
 			if (events)
 			{
-				HCL_ASSERT (hcl, count < HCL_COUNTOF(xtn->ev.buf));
+				HAK_ASSERT (hak, count < HAK_COUNTOF(xtn->ev.buf));
 				xtn->ev.buf[count].fd = fd;
 				xtn->ev.buf[count].events = events;
 				count++;
@@ -2372,18 +2372,18 @@ static void vm_muxwait (hcl_t* hcl, const hcl_ntime_t* dur, hcl_vmprim_muxwait_c
 		}
 
 		n = count;
-		HCL_ASSERT (hcl, n > 0);
+		HAK_ASSERT (hak, n > 0);
 	}
 	#endif
 
 	if (n <= -1)
 	{
 	#if defined(__OS2__)
-		hcl_seterrwithsyserr (hcl, 2, sock_errno());
-		HCL_DEBUG2 (hcl, "Warning: multiplexer wait failure - %d, %js\n", sock_errno(), hcl_geterrmsg(hcl));
+		hak_seterrwithsyserr (hak, 2, sock_errno());
+		HAK_DEBUG2 (hak, "Warning: multiplexer wait failure - %d, %js\n", sock_errno(), hak_geterrmsg(hak));
 	#else
-		hcl_seterrwithsyserr (hcl, 0, errno);
-		HCL_DEBUG2 (hcl, "Warning: multiplexer wait failure - %d, %js\n", errno, hcl_geterrmsg(hcl));
+		hak_seterrwithsyserr (hak, 0, errno);
+		HAK_DEBUG2 (hak, "Warning: multiplexer wait failure - %d, %js\n", errno, hak_geterrmsg(hak));
 	#endif
 	}
 	else
@@ -2392,20 +2392,20 @@ static void vm_muxwait (hcl_t* hcl, const hcl_ntime_t* dur, hcl_vmprim_muxwait_c
 	}
 
 	/* the muxwcb must be valid all the time in a non-threaded mode */
-	HCL_ASSERT (hcl, muxwcb != HCL_NULL);
+	HAK_ASSERT (hak, muxwcb != HAK_NULL);
 
 	while (n > 0)
 	{
 		int revents;
-		hcl_ooi_t mask;
+		hak_ooi_t mask;
 
 		--n;
 
 	#if defined(USE_DEVPOLL)
 		revents = xtn->ev.buf[n].revents;
 	#elif defined(USE_KQUEUE)
-		if (xtn->ev.buf[n].filter == EVFILT_READ) mask = HCL_SEMAPHORE_IO_MASK_INPUT;
-		else if (xtn->ev.buf[n].filter == EVFILT_WRITE) mask = HCL_SEMAPHORE_IO_MASK_OUTPUT;
+		if (xtn->ev.buf[n].filter == EVFILT_READ) mask = HAK_SEMAPHORE_IO_MASK_INPUT;
+		else if (xtn->ev.buf[n].filter == EVFILT_WRITE) mask = HAK_SEMAPHORE_IO_MASK_OUTPUT;
 		else mask = 0;
 		goto call_muxwcb_kqueue;
 	#elif defined(USE_EPOLL)
@@ -2419,22 +2419,22 @@ static void vm_muxwait (hcl_t* hcl, const hcl_ntime_t* dur, hcl_vmprim_muxwait_c
 	#endif
 
 		mask = 0;
-		if (revents & XPOLLIN) mask |= HCL_SEMAPHORE_IO_MASK_INPUT;
-		if (revents & XPOLLOUT) mask |= HCL_SEMAPHORE_IO_MASK_OUTPUT;
-		if (revents & XPOLLERR) mask |= HCL_SEMAPHORE_IO_MASK_ERROR;
-		if (revents & XPOLLHUP) mask |= HCL_SEMAPHORE_IO_MASK_HANGUP;
+		if (revents & XPOLLIN) mask |= HAK_SEMAPHORE_IO_MASK_INPUT;
+		if (revents & XPOLLOUT) mask |= HAK_SEMAPHORE_IO_MASK_OUTPUT;
+		if (revents & XPOLLERR) mask |= HAK_SEMAPHORE_IO_MASK_ERROR;
+		if (revents & XPOLLHUP) mask |= HAK_SEMAPHORE_IO_MASK_HANGUP;
 
 	#if defined(USE_DEVPOLL)
-		muxwcb (hcl, xtn->ev.buf[n].fd, mask);
+		muxwcb (hak, xtn->ev.buf[n].fd, mask);
 	#elif defined(USE_KQUEUE)
 	call_muxwcb_kqueue:
-		muxwcb (hcl, xtn->ev.buf[n].ident, mask);
+		muxwcb (hak, xtn->ev.buf[n].ident, mask);
 	#elif defined(USE_EPOLL)
-		muxwcb (hcl, xtn->ev.buf[n].data.fd, mask);
+		muxwcb (hak, xtn->ev.buf[n].data.fd, mask);
 	#elif defined(USE_POLL)
-		muxwcb (hcl, xtn->ev.buf[n].fd, mask);
+		muxwcb (hak, xtn->ev.buf[n].fd, mask);
 	#elif defined(USE_SELECT)
-		muxwcb (hcl, xtn->ev.buf[n].fd, mask);
+		muxwcb (hak, xtn->ev.buf[n].fd, mask);
 	#endif
 	}
 
@@ -2459,28 +2459,28 @@ static void vm_muxwait (hcl_t* hcl, const hcl_ntime_t* dur, hcl_vmprim_muxwait_c
 #	endif
 #endif
 
-static int vm_sleep (hcl_t* hcl, const hcl_ntime_t* dur)
+static int vm_sleep (hak_t* hak, const hak_ntime_t* dur)
 {
 #if defined(_WIN32)
-	xtn_t* xtn = GET_XTN(hcl);
+	xtn_t* xtn = GET_XTN(hak);
 	if (xtn->waitable_timer)
 	{
 		LARGE_INTEGER li;
-		li.QuadPart = -(HCL_SECNSEC_TO_NSEC(dur->sec, dur->nsec) / 100); /* in 100 nanoseconds */
-		if(SetWaitableTimer(xtn->waitable_timer, &li, 0, HCL_NULL, HCL_NULL, FALSE) == FALSE) goto normal_sleep;
+		li.QuadPart = -(HAK_SECNSEC_TO_NSEC(dur->sec, dur->nsec) / 100); /* in 100 nanoseconds */
+		if(SetWaitableTimer(xtn->waitable_timer, &li, 0, HAK_NULL, HAK_NULL, FALSE) == FALSE) goto normal_sleep;
 		WaitForSingleObject(xtn->waitable_timer, INFINITE);
 	}
 	else
 	{
 	normal_sleep:
 		/* fallback to normal Sleep() */
-		Sleep (HCL_SECNSEC_TO_MSEC(dur->sec,dur->nsec));
+		Sleep (HAK_SECNSEC_TO_MSEC(dur->sec,dur->nsec));
 	}
 #elif defined(__OS2__)
 
 	/* TODO: in gui mode, this is not a desirable method???
 	 *       this must be made event-driven coupled with the main event loop */
-	DosSleep (HCL_SECNSEC_TO_MSEC(dur->sec,dur->nsec));
+	DosSleep (HAK_SECNSEC_TO_MSEC(dur->sec,dur->nsec));
 
 #elif defined(macintosh)
 
@@ -2494,11 +2494,11 @@ static int vm_sleep (hcl_t* hcl, const hcl_ntime_t* dur)
 	c += dur->sec * CLOCKS_PER_SEC;
 
 	#if (CLOCKS_PER_SEC == 100)
-		c += HCL_NSEC_TO_MSEC(dur->nsec) / 10;
+		c += HAK_NSEC_TO_MSEC(dur->nsec) / 10;
 	#elif (CLOCKS_PER_SEC == 1000)
-		c += HCL_NSEC_TO_MSEC(dur->nsec);
+		c += HAK_NSEC_TO_MSEC(dur->nsec);
 	#elif (CLOCKS_PER_SEC == 1000000L)
-		c += HCL_NSEC_TO_USEC(dur->nsec);
+		c += HAK_NSEC_TO_USEC(dur->nsec);
 	#elif (CLOCKS_PER_SEC == 1000000000L)
 		c += dur->nsec;
 	#else
@@ -2516,18 +2516,18 @@ static int vm_sleep (hcl_t* hcl, const hcl_ntime_t* dur)
 	/* the sleep callback is called only if there is no IO semaphore
 	 * waiting. so i can safely call vm_muxwait() without a muxwait callback
 	 * when USE_THREAD is true */
-	vm_muxwait (hcl, dur, HCL_NULL);
+	vm_muxwait (hak, dur, HAK_NULL);
 
 #elif defined(HAVE_NANOSLEEP)
 	{
 		struct timespec ts;
 		ts.tv_sec = dur->sec;
 		ts.tv_nsec = dur->nsec;
-		nanosleep (&ts, HCL_NULL);
+		nanosleep (&ts, HAK_NULL);
 	}
 
 #elif defined(HAVE_USLEEP)
-	usleep (HCL_SECNSEC_TO_USEC(dur->sec, dur->nsec));
+	usleep (HAK_SECNSEC_TO_USEC(dur->sec, dur->nsec));
 
 #else
 #	error UNSUPPORT SLEEP
@@ -2540,50 +2540,50 @@ static int vm_sleep (hcl_t* hcl, const hcl_ntime_t* dur)
  * SIGNAL AND TICK HANDLING
  * ----------------------------------------------------------------- */
 
-static hcl_ooi_t vm_getsigfd (hcl_t* hcl)
+static hak_ooi_t vm_getsigfd (hak_t* hak)
 {
-	xtn_t* xtn = GET_XTN(hcl);
+	xtn_t* xtn = GET_XTN(hak);
 	return xtn->sigfd.p[0];
 }
 
-static int vm_getsig (hcl_t* hcl, hcl_uint8_t* u8)
+static int vm_getsig (hak_t* hak, hak_uint8_t* u8)
 {
-	xtn_t* xtn = GET_XTN(hcl);
+	xtn_t* xtn = GET_XTN(hak);
 #if defined(_WIN32)
 	/* TODO: can i make the pipe non-block in win32? */
 	DWORD navail;
-	if (PeekNamedPipe(_get_osfhandle(xtn->sigfd.p[0]), HCL_NULL, 0, HCL_NULL, &navail, HCL_NULL) == 0)
+	if (PeekNamedPipe(_get_osfhandle(xtn->sigfd.p[0]), HAK_NULL, 0, HAK_NULL, &navail, HAK_NULL) == 0)
 	{
-		hcl_seterrwithsyserr (hcl, 1, GetLastError());
+		hak_seterrwithsyserr (hak, 1, GetLastError());
 		return -1;
 	}
 	if (navail <= 0) return 0;
 #endif
-	if (read(xtn->sigfd.p[0], u8, HCL_SIZEOF(*u8)) == -1)
+	if (read(xtn->sigfd.p[0], u8, HAK_SIZEOF(*u8)) == -1)
 	{
 	#if defined(EWOULDBLOCK)
 		if (errno == EINTR || errno == EWOULDBLOCK || errno == EAGAIN) return 0;
 	#else
 		if (errno == EINTR || errno == EAGAIN) return 0;
 	#endif
-		hcl_seterrwithsyserr (hcl, 0, errno);
+		hak_seterrwithsyserr (hak, 0, errno);
 		return -1;
 	}
 
 	return 1;
 }
 
-static int vm_setsig (hcl_t* hcl, hcl_uint8_t u8)
+static int vm_setsig (hak_t* hak, hak_uint8_t u8)
 {
-	xtn_t* xtn = GET_XTN(hcl);
-	if (write(xtn->sigfd.p[1], &u8, HCL_SIZEOF(u8)) == -1)
+	xtn_t* xtn = GET_XTN(hak);
+	if (write(xtn->sigfd.p[1], &u8, HAK_SIZEOF(u8)) == -1)
 	{
 	#if defined(EWOULDBLOCK)
 		if (errno == EINTR || errno == EWOULDBLOCK || errno == EAGAIN) return 0;
 	#else
 		if (errno == EINTR || errno == EAGAIN) return 0;
 	#endif
-		hcl_seterrwithsyserr (hcl, 0, errno);
+		hak_seterrwithsyserr (hak, 0, errno);
 		return -1;
 	}
 	return 1;
@@ -2595,8 +2595,8 @@ static int vm_setsig (hcl_t* hcl, hcl_uint8_t u8)
 typedef struct sig_state_t sig_state_t;
 struct sig_state_t
 {
-	hcl_oow_t handler;
-	hcl_oow_t old_handler;
+	hak_oow_t handler;
+	hak_oow_t old_handler;
 	sigset_t  old_sa_mask;
 	int       old_sa_flags;
 };
@@ -2607,15 +2607,15 @@ static sig_state_t g_sig_state[NSIG];
 
 static void dispatch_siginfo (int sig, siginfo_t* si, void* ctx)
 {
-	if (g_sig_state[sig].handler != (hcl_oow_t)SIG_IGN &&
-	    g_sig_state[sig].handler != (hcl_oow_t)SIG_DFL)
+	if (g_sig_state[sig].handler != (hak_oow_t)SIG_IGN &&
+	    g_sig_state[sig].handler != (hak_oow_t)SIG_DFL)
 	{
 		((sig_handler_t)g_sig_state[sig].handler) (sig);
 	}
 
 	if (g_sig_state[sig].old_handler &&
-	    g_sig_state[sig].old_handler != (hcl_oow_t)SIG_IGN &&
-	    g_sig_state[sig].old_handler != (hcl_oow_t)SIG_DFL)
+	    g_sig_state[sig].old_handler != (hak_oow_t)SIG_IGN &&
+	    g_sig_state[sig].old_handler != (hak_oow_t)SIG_DFL)
 	{
 		((void(*)(int, siginfo_t*, void*))g_sig_state[sig].old_handler) (sig, si, ctx);
 	}
@@ -2623,15 +2623,15 @@ static void dispatch_siginfo (int sig, siginfo_t* si, void* ctx)
 
 static void dispatch_signal (int sig)
 {
-	if (g_sig_state[sig].handler != (hcl_oow_t)SIG_IGN &&
-	    g_sig_state[sig].handler != (hcl_oow_t)SIG_DFL)
+	if (g_sig_state[sig].handler != (hak_oow_t)SIG_IGN &&
+	    g_sig_state[sig].handler != (hak_oow_t)SIG_DFL)
 	{
 		((sig_handler_t)g_sig_state[sig].handler) (sig);
 	}
 
 	if (g_sig_state[sig].old_handler &&
-	    g_sig_state[sig].old_handler != (hcl_oow_t)SIG_IGN &&
-	    g_sig_state[sig].old_handler != (hcl_oow_t)SIG_DFL)
+	    g_sig_state[sig].old_handler != (hak_oow_t)SIG_IGN &&
+	    g_sig_state[sig].old_handler != (hak_oow_t)SIG_DFL)
 	{
 		((sig_handler_t)g_sig_state[sig].old_handler) (sig);
 	}
@@ -2642,16 +2642,16 @@ static int set_signal_handler (int sig, sig_handler_t handler, int extra_flags)
 	if (g_sig_state[sig].handler)
 	{
 		/* already set - allow handler change. ignore extra_flags. */
-		if (g_sig_state[sig].handler == (hcl_oow_t)handler) return -1;
-		g_sig_state[sig].handler = (hcl_oow_t)handler;
+		if (g_sig_state[sig].handler == (hak_oow_t)handler) return -1;
+		g_sig_state[sig].handler = (hak_oow_t)handler;
 	}
 	else
 	{
 		struct sigaction sa, oldsa;
 
-		if (sigaction(sig, HCL_NULL, &oldsa) == -1) return -1;
+		if (sigaction(sig, HAK_NULL, &oldsa) == -1) return -1;
 
-		HCL_MEMSET (&sa, 0, HCL_SIZEOF(sa));
+		HAK_MEMSET (&sa, 0, HAK_SIZEOF(sa));
 		if (oldsa.sa_flags & SA_SIGINFO)
 		{
 			sa.sa_sigaction = dispatch_siginfo;
@@ -2667,13 +2667,13 @@ static int set_signal_handler (int sig, sig_handler_t handler, int extra_flags)
 		sa.sa_flags |= SA_RESTART;*/
 		sigfillset (&sa.sa_mask); /* block all signals while the handler is being executed */
 
-		if (sigaction(sig, &sa, HCL_NULL) == -1) return -1;
+		if (sigaction(sig, &sa, HAK_NULL) == -1) return -1;
 
-		g_sig_state[sig].handler = (hcl_oow_t)handler;
+		g_sig_state[sig].handler = (hak_oow_t)handler;
 		if (oldsa.sa_flags & SA_SIGINFO)
-			g_sig_state[sig].old_handler = (hcl_oow_t)oldsa.sa_sigaction;
+			g_sig_state[sig].old_handler = (hak_oow_t)oldsa.sa_sigaction;
 		else
-			g_sig_state[sig].old_handler = (hcl_oow_t)oldsa.sa_handler;
+			g_sig_state[sig].old_handler = (hak_oow_t)oldsa.sa_handler;
 
 		g_sig_state[sig].old_sa_mask = oldsa.sa_mask;
 		g_sig_state[sig].old_sa_flags = oldsa.sa_flags;
@@ -2688,7 +2688,7 @@ static int unset_signal_handler (int sig)
 
 	if (!g_sig_state[sig].handler) return -1; /* not set */
 
-	HCL_MEMSET (&sa, 0, HCL_SIZEOF(sa));
+	HAK_MEMSET (&sa, 0, HAK_SIZEOF(sa));
 	sa.sa_mask = g_sig_state[sig].old_sa_mask;
 	sa.sa_flags = g_sig_state[sig].old_sa_flags;
 
@@ -2701,7 +2701,7 @@ static int unset_signal_handler (int sig)
 		sa.sa_handler = (sig_handler_t)g_sig_state[sig].old_handler;
 	}
 
-	if (sigaction(sig, &sa, HCL_NULL) == -1) return -1;
+	if (sigaction(sig, &sa, HAK_NULL) == -1) return -1;
 
 	g_sig_state[sig].handler = 0;
 	/* keep other fields untouched */
@@ -2716,53 +2716,53 @@ static int is_signal_handler_set (int sig)
 #endif
 
 
-static HCL_INLINE void abort_all_hcls (int signo)
+static HAK_INLINE void abort_all_haks (int signo)
 {
 	/* TODO: make this atomic */
-	if (g_hcl)
+	if (g_hak)
 	{
-		hcl_t* hcl = g_hcl;
+		hak_t* hak = g_hak;
 		do
 		{
-			xtn_t* xtn = GET_XTN(hcl);
-			hcl_uint8_t u8;
-			/*hcl_abortstd (hcl);*/
+			xtn_t* xtn = GET_XTN(hak);
+			hak_uint8_t u8;
+			/*hak_abortstd (hak);*/
 			u8 = signo & 0xFF;
-			write (xtn->sigfd.p[1], &u8, HCL_SIZEOF(u8));
-			hcl = xtn->next;
+			write (xtn->sigfd.p[1], &u8, HAK_SIZEOF(u8));
+			hak = xtn->next;
 		}
-		while (hcl);
+		while (hak);
 	}
 	/* TODO: make this atomic */
 }
 
-static HCL_INLINE void do_nothing (int unused)
+static HAK_INLINE void do_nothing (int unused)
 {
 }
 
-/*#define HCL_TICKER_INTERVAL_USECS 10000*/ /* microseconds. 0.01 seconds */
-#define HCL_TICKER_INTERVAL_USECS 20000 /* microseconds. 0.02 seconds. */
+/*#define HAK_TICKER_INTERVAL_USECS 10000*/ /* microseconds. 0.01 seconds */
+#define HAK_TICKER_INTERVAL_USECS 20000 /* microseconds. 0.02 seconds. */
 
-static HCL_INLINE void swproc_all_hcls (int unused)
+static HAK_INLINE void swproc_all_haks (int unused)
 {
 	/* TODO: make this atomic */
-	if (g_hcl)
+	if (g_hak)
 	{
-		hcl_t* hcl = g_hcl;
+		hak_t* hak = g_hak;
 		do
 		{
-			xtn_t* xtn = GET_XTN(hcl);
-			if (xtn->rcv_tick) hcl_switchprocess (hcl);
-			hcl = xtn->next;
+			xtn_t* xtn = GET_XTN(hak);
+			if (xtn->rcv_tick) hak_switchprocess (hak);
+			hak = xtn->next;
 		}
-		while (hcl);
+		while (hak);
 	}
 	/* TODO: make this atomic */
 }
 
 #if defined(_WIN32)
 
-static HANDLE msw_tick_timer = HCL_NULL; /*INVALID_HANDLE_VALUE;*/
+static HANDLE msw_tick_timer = HAK_NULL; /*INVALID_HANDLE_VALUE;*/
 static int msw_tick_done = 0;
 
 static DWORD WINAPI msw_wait_for_timer_event (LPVOID ctx)
@@ -2773,38 +2773,38 @@ static DWORD WINAPI msw_wait_for_timer_event (LPVOID ctx)
 	 *   while (!msw_tick_done)
 	 *   {
 	 *       Sleep (...);
-	 *       swproc_all_hcls();
+	 *       swproc_all_haks();
 	 *   }
 	 * but never mind for now. let's do it the hard way.
 	 */
 
-	msw_tick_timer = CreateWaitableTimer(HCL_NULL, FALSE, HCL_NULL);
+	msw_tick_timer = CreateWaitableTimer(HAK_NULL, FALSE, HAK_NULL);
 	if (msw_tick_timer)
 	{
 		LARGE_INTEGER li;
 
 		/* lpDueTime in 100 nanoseconds */
-		li.QuadPart = -HCL_USEC_TO_NSEC(HCL_TICKER_INTERVAL_USECS) / 100;
+		li.QuadPart = -HAK_USEC_TO_NSEC(HAK_TICKER_INTERVAL_USECS) / 100;
 
 	/*#define MSW_TICKER_MANUAL_RESET */
 	#if defined(MSW_TICKER_MANUAL_RESET)
 		/* if manual resetting is enabled, the reset is done after
-		 * swproc_all_hcls has been called. so the interval is the
-		 * interval specified plus the time taken in swproc_all_hcls. */
-		SetWaitableTimer (msw_tick_timer, &li, 0, HCL_NULL, HCL_NULL, FALSE);
+		 * swproc_all_haks has been called. so the interval is the
+		 * interval specified plus the time taken in swproc_all_haks. */
+		SetWaitableTimer (msw_tick_timer, &li, 0, HAK_NULL, HAK_NULL, FALSE);
 	#else
 		/* with auto reset, the interval is not affected by time taken
-		 * in swproc_all_hcls() */
-		SetWaitableTimer (msw_tick_timer, &li, HCL_USEC_TO_MSEC(HCL_TICKER_INTERVAL_USECS), HCL_NULL, HCL_NULL, FALSE);
+		 * in swproc_all_haks() */
+		SetWaitableTimer (msw_tick_timer, &li, HAK_USEC_TO_MSEC(HAK_TICKER_INTERVAL_USECS), HAK_NULL, HAK_NULL, FALSE);
 	#endif
 
 		while (!msw_tick_done)
 		{
 			if (WaitForSingleObject(msw_tick_timer, 100000) == WAIT_OBJECT_0)
 			{
-				swproc_all_hcls (0);
+				swproc_all_haks (0);
 			#if defined(MSW_TICKER_MANUAL_RESET)
-				SetWaitableTimer (msw_tick_timer, &li, 0, HCL_NULL, HCL_NULL, FALSE);
+				SetWaitableTimer (msw_tick_timer, &li, 0, HAK_NULL, HAK_NULL, FALSE);
 			#endif
 			}
 		}
@@ -2812,7 +2812,7 @@ static DWORD WINAPI msw_wait_for_timer_event (LPVOID ctx)
 		CancelWaitableTimer (msw_tick_timer);
 
 		CloseHandle (msw_tick_timer);
-		msw_tick_timer = HCL_NULL;
+		msw_tick_timer = HAK_NULL;
 	}
 
 	msw_tick_done = 0;
@@ -2820,13 +2820,13 @@ static DWORD WINAPI msw_wait_for_timer_event (LPVOID ctx)
 	return 0;
 }
 
-static HCL_INLINE void start_ticker (void)
+static HAK_INLINE void start_ticker (void)
 {
 	HANDLE thr;
 
 	msw_tick_done = 0;
 
-	thr = CreateThread(HCL_NULL, 0, msw_wait_for_timer_event, HCL_NULL, 0, HCL_NULL);
+	thr = CreateThread(HAK_NULL, 0, msw_wait_for_timer_event, HAK_NULL, 0, HAK_NULL);
 	if (thr)
 	{
 		SetThreadPriority (thr, THREAD_PRIORITY_HIGHEST);
@@ -2838,7 +2838,7 @@ static HCL_INLINE void start_ticker (void)
 	}
 }
 
-static HCL_INLINE void stop_ticker (void)
+static HAK_INLINE void stop_ticker (void)
 {
 	if (msw_tick_timer) CancelWaitableTimer (msw_tick_timer);
 	msw_tick_done = 1;
@@ -2855,13 +2855,13 @@ static void EXPENTRY os2_wait_for_timer_event (ULONG x)
 	APIRET rc;
 	ULONG count;
 
-	rc = DosCreateEventSem(HCL_NULL, &os2_tick_sem, DC_SEM_SHARED, FALSE);
+	rc = DosCreateEventSem(HAK_NULL, &os2_tick_sem, DC_SEM_SHARED, FALSE);
 	if (rc != NO_ERROR)
 	{
 		goto done;
 	}
 
-	rc = DosStartTimer(HCL_USEC_TO_MSEC(HCL_TICKER_INTERVAL_USECS), (HSEM)os2_tick_sem, &os2_tick_timer);
+	rc = DosStartTimer(HAK_USEC_TO_MSEC(HAK_TICKER_INTERVAL_USECS), (HSEM)os2_tick_sem, &os2_tick_timer);
 	if (rc != NO_ERROR)
 	{
 		DosCloseEventSem (os2_tick_sem);
@@ -2872,11 +2872,11 @@ static void EXPENTRY os2_wait_for_timer_event (ULONG x)
 	{
 		rc = DosWaitEventSem(os2_tick_sem, 5000L);
 	#if 0
-		swproc_all_hcls (0);
+		swproc_all_haks (0);
 		DosResetEventSem (os2_tick_sem, &count);
 	#else
 		DosResetEventSem (os2_tick_sem, &count);
-		swproc_all_hcls (0);
+		swproc_all_haks (0);
 	#endif
 	}
 
@@ -2890,7 +2890,7 @@ done:
 	DosExit (EXIT_THREAD, 0);
 }
 
-static HCL_INLINE void start_ticker (void)
+static HAK_INLINE void start_ticker (void)
 {
 	static TID tid;
 	os2_tick_done = 0;
@@ -2898,7 +2898,7 @@ static HCL_INLINE void start_ticker (void)
 	/* TODO: Error check */
 }
 
-static HCL_INLINE void stop_ticker (void)
+static HAK_INLINE void stop_ticker (void)
 {
 	if (os2_tick_sem) DosPostEventSem (os2_tick_sem);
 	os2_tick_done = 1;
@@ -2924,17 +2924,17 @@ static void interrupt dos_timer_intr_handler (void)
 	*/
 
 	/* The timer interrupt (normally) occurs 18.2 times per second. */
-	swproc_all_hcls (0);
+	swproc_all_haks (0);
 	_chain_intr (dos_prev_timer_intr_handler);
 }
 
-static HCL_INLINE void start_ticker (void)
+static HAK_INLINE void start_ticker (void)
 {
 	dos_prev_timer_intr_handler = _dos_getvect(0x1C);
 	_dos_setvect (0x1C, dos_timer_intr_handler);
 }
 
-static HCL_INLINE void stop_ticker (void)
+static HAK_INLINE void stop_ticker (void)
 {
 	_dos_setvect (0x1C, dos_prev_timer_intr_handler);
 }
@@ -2945,25 +2945,25 @@ static TMTask mac_tmtask;
 static ProcessSerialNumber mac_psn;
 
 /* milliseconds if positive, microseconds(after negation) if negative */
-#define TMTASK_DELAY HCL_USEC_TO_MSEC(HCL_TICKER_INTERVAL_USECS)
+#define TMTASK_DELAY HAK_USEC_TO_MSEC(HAK_TICKER_INTERVAL_USECS)
 
 static pascal void timer_intr_handler (TMTask* task)
 {
-	swproc_all_hcls (0);
+	swproc_all_haks (0);
 	WakeUpProcess (&mac_psn);
 	PrimeTime ((QElem*)&mac_tmtask, TMTASK_DELAY);
 }
 
-static HCL_INLINE void start_ticker (void)
+static HAK_INLINE void start_ticker (void)
 {
 	GetCurrentProcess (&mac_psn);
-	HCL_MEMSET (&mac_tmtask, 0, HCL_SIZEOF(mac_tmtask));
+	HAK_MEMSET (&mac_tmtask, 0, HAK_SIZEOF(mac_tmtask));
 	mac_tmtask.tmAddr = NewTimerProc (timer_intr_handler);
 	InsXTime ((QElem*)&mac_tmtask);
 	PrimeTime ((QElem*)&mac_tmtask, TMTASK_DELAY);
 }
 
-static HCL_INLINE void stop_ticker (void)
+static HAK_INLINE void stop_ticker (void)
 {
 	RmvTime ((QElem*)&mac_tmtask);
 	/*DisposeTimerProc (mac_tmtask.tmAddr);*/
@@ -2971,39 +2971,39 @@ static HCL_INLINE void stop_ticker (void)
 
 #elif defined(HAVE_SETITIMER) && defined(SIGVTALRM) && defined(ITIMER_VIRTUAL)
 
-static HCL_INLINE void start_ticker (void)
+static HAK_INLINE void start_ticker (void)
 {
-	if (set_signal_handler(SIGVTALRM, swproc_all_hcls, SA_RESTART) >= 0)
+	if (set_signal_handler(SIGVTALRM, swproc_all_haks, SA_RESTART) >= 0)
 	{
 		struct itimerval itv;
 		itv.it_interval.tv_sec = 0;
-		itv.it_interval.tv_usec = HCL_TICKER_INTERVAL_USECS;
+		itv.it_interval.tv_usec = HAK_TICKER_INTERVAL_USECS;
 		itv.it_value.tv_sec = 0;
-		itv.it_value.tv_usec = HCL_TICKER_INTERVAL_USECS;
-		if (setitimer(ITIMER_VIRTUAL, &itv, HCL_NULL) == -1)
+		itv.it_value.tv_usec = HAK_TICKER_INTERVAL_USECS;
+		if (setitimer(ITIMER_VIRTUAL, &itv, HAK_NULL) == -1)
 		{
 			/* WSL supports ITIMER_VIRTUAL only as of windows 10.0.18362.413.
 			   the following is a fallback which will get */
 			unset_signal_handler (SIGVTALRM);
 
 		#if defined(SIGALRM) && defined(ITIMER_REAL)
-			if (set_signal_handler(SIGALRM, swproc_all_hcls, SA_RESTART) >= 0)
+			if (set_signal_handler(SIGALRM, swproc_all_haks, SA_RESTART) >= 0)
 			{
 				/* i double the interval as ITIMER_REAL is against the wall clock.
 				 * if the underlying system is under heavy load, some signals
 				 * will get lost */
 				itv.it_interval.tv_sec = 0;
-				itv.it_interval.tv_usec = HCL_TICKER_INTERVAL_USECS * 2;
+				itv.it_interval.tv_usec = HAK_TICKER_INTERVAL_USECS * 2;
 				itv.it_value.tv_sec = 0;
-				itv.it_value.tv_usec = HCL_TICKER_INTERVAL_USECS * 2;
-				setitimer(ITIMER_REAL, &itv, HCL_NULL);
+				itv.it_value.tv_usec = HAK_TICKER_INTERVAL_USECS * 2;
+				setitimer(ITIMER_REAL, &itv, HAK_NULL);
 			}
 		#endif
 		}
 	}
 }
 
-static HCL_INLINE void stop_ticker (void)
+static HAK_INLINE void stop_ticker (void)
 {
 	/* ignore the signal fired by the activated timer.
 	 * unsetting the signal may cause the program to terminate(default action) */
@@ -3014,7 +3014,7 @@ static HCL_INLINE void stop_ticker (void)
 		itv.it_interval.tv_usec = 0;
 		itv.it_value.tv_sec = 0; /* make setitimer() one-shot only */
 		itv.it_value.tv_usec = 0;
-		setitimer (ITIMER_VIRTUAL, &itv, HCL_NULL);
+		setitimer (ITIMER_VIRTUAL, &itv, HAK_NULL);
 	}
 
 	#if defined(SIGALRM) && defined(ITIMER_REAL)
@@ -3025,7 +3025,7 @@ static HCL_INLINE void stop_ticker (void)
 		itv.it_interval.tv_usec = 0;
 		itv.it_value.tv_sec = 0; /* make setitimer() one-shot only */
 		itv.it_value.tv_usec = 0;
-		setitimer (ITIMER_REAL, &itv, HCL_NULL);
+		setitimer (ITIMER_REAL, &itv, HAK_NULL);
 	}
 	#endif
 }
@@ -3034,10 +3034,10 @@ static HCL_INLINE void stop_ticker (void)
 
 static pid_t ticker_pid = -1;
 
-static HCL_INLINE void start_ticker (void)
+static HAK_INLINE void start_ticker (void)
 {
 #if defined(SIGALRM)
-	if (set_signal_handler(SIGALRM, swproc_all_hcls, SA_RESTART) >= 0)
+	if (set_signal_handler(SIGALRM, swproc_all_haks, SA_RESTART) >= 0)
 	{
 		ticker_pid = fork();
 
@@ -3053,10 +3053,10 @@ static HCL_INLINE void start_ticker (void)
 			#if defined(HAVE_NANOSLEEP)
 				struct timespec ts;
 				ts.tv_sec = 0;
-				ts.tv_nsec = HCL_USEC_TO_NSEC(HCL_TICKER_INTERVAL_USECS) * 2;
-				nanosleep (&ts, HCL_NULL);
+				ts.tv_nsec = HAK_USEC_TO_NSEC(HAK_TICKER_INTERVAL_USECS) * 2;
+				nanosleep (&ts, HAK_NULL);
 			#elif defined(HAVE_USLEEP)
-				usleep (HCL_TICKER_INTERVAL_USECS * 2);
+				usleep (HAK_TICKER_INTERVAL_USECS * 2);
 
 			#else
 			#	error UNDEFINED SLEEP
@@ -3073,7 +3073,7 @@ static HCL_INLINE void start_ticker (void)
 #endif
 }
 
-static HCL_INLINE void stop_ticker (void)
+static HAK_INLINE void stop_ticker (void)
 {
 #if defined(SIGALRM)
 	if (ticker_pid >= 0)
@@ -3110,8 +3110,8 @@ static HCL_INLINE void stop_ticker (void)
 
 #elif defined(USE_WIN_DLL)
 #	define sys_dl_error() msw_dlerror()
-#	define sys_dl_open(x) LoadLibraryExA(x, HCL_NULL, 0)
-#	define sys_dl_openext(x) LoadLibraryExA(x, HCL_NULL, 0)
+#	define sys_dl_open(x) LoadLibraryExA(x, HAK_NULL, 0)
+#	define sys_dl_openext(x) LoadLibraryExA(x, HAK_NULL, 0)
 #	define sys_dl_close(x) FreeLibrary(x)
 #	define sys_dl_getsym(x,n) GetProcAddress(x,n)
 
@@ -3123,25 +3123,25 @@ static HCL_INLINE void stop_ticker (void)
 #	define sys_dl_getsym(x,n) mach_dlsym(x,n)
 
 #else
-static const char* sys_dl_error(void) { return HCL_NULL; }
-static void* sys_dl_open(const char* x) { return HCL_NULL; }
-static void* sys_dl_openext(const char* x) { return HCL_NULL; }
-static void sys_dl_close(void* x) { return HCL_NULL; }
-static void* sys_dl_getsym(void* x, const char* n) { return HCL_NULL; }
+static const char* sys_dl_error(void) { return HAK_NULL; }
+static void* sys_dl_open(const char* x) { return HAK_NULL; }
+static void* sys_dl_openext(const char* x) { return HAK_NULL; }
+static void sys_dl_close(void* x) { return HAK_NULL; }
+static void* sys_dl_getsym(void* x, const char* n) { return HAK_NULL; }
 #endif
 
 #if defined(USE_WIN_DLL)
 
 static const char* msw_dlerror (void)
 {
-	/* TODO: handle wchar_t, hcl_ooch_t etc? */
+	/* TODO: handle wchar_t, hak_ooch_t etc? */
 	static char buf[256];
 	DWORD rc;
 
 	rc = FormatMessageA (
 		FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
 		NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-		buf, HCL_COUNTOF(buf), HCL_NULL
+		buf, HAK_COUNTOF(buf), HAK_NULL
 	);
 	while (rc > 0 && buf[rc - 1] == '\r' || buf[rc - 1] == '\n')
 	{
@@ -3185,20 +3185,20 @@ static void* mach_dlopen (const char* path)
 				mach_dlerror_str = "unknown error";
 				break;
 		}
-		return HCL_NULL;
+		return HAK_NULL;
 	}
 	handle = (void*)NSLinkModule(image, path, NSLINKMODULE_OPTION_PRIVATE | NSLINKMODULE_OPTION_RETURN_ON_ERROR);
 	NSDestroyObjectFileImage (image);
 	return handle;
 }
 
-static HCL_INLINE void mach_dlclose (void* handle)
+static HAK_INLINE void mach_dlclose (void* handle)
 {
 	mach_dlerror_str = "";
 	NSUnLinkModule (handle, NSUNLINKMODULE_OPTION_NONE);
 }
 
-static HCL_INLINE void* mach_dlsym (void* handle, const char* name)
+static HAK_INLINE void* mach_dlsym (void* handle, const char* name)
 {
 	mach_dlerror_str = "";
 	return (void*)NSAddressOfSymbol(NSLookupSymbolInModule(handle, name));
@@ -3217,65 +3217,65 @@ static const char* mach_dlerror (void)
 }
 #endif
 
-static void dl_startup (hcl_t* hcl)
+static void dl_startup (hak_t* hak)
 {
 #if defined(USE_LTDL)
 	lt_dlinit ();
 #endif
 }
 
-static void dl_cleanup (hcl_t* hcl)
+static void dl_cleanup (hak_t* hak)
 {
 #if defined(USE_LTDL)
 	lt_dlexit ();
 #endif
 }
 
-static void* dlopen_pfmod (hcl_t* hcl, const hcl_ooch_t* name, const hcl_ooch_t* dirptr, const hcl_oow_t dirlen, hcl_bch_t* bufptr, hcl_oow_t bufcapa)
+static void* dlopen_pfmod (hak_t* hak, const hak_ooch_t* name, const hak_ooch_t* dirptr, const hak_oow_t dirlen, hak_bch_t* bufptr, hak_oow_t bufcapa)
 {
 	void* handle;
-	hcl_oow_t len, i, xlen, dlen;
-	hcl_oow_t ucslen, bcslen;
+	hak_oow_t len, i, xlen, dlen;
+	hak_oow_t ucslen, bcslen;
 
-	/* opening a primitive function module - mostly libhcl-xxxx.
+	/* opening a primitive function module - mostly libhak-xxxx.
 	 * if PFMODPREFIX is absolute, never use PFMODDIR */
-	if (HCL_IS_PATH_ABSOLUTE(HCL_DEFAULT_PFMODPREFIX))
+	if (HAK_IS_PATH_ABSOLUTE(HAK_DEFAULT_PFMODPREFIX))
 	{
 		dlen = 0;
-		len = hcl_copy_bcstr(&bufptr[dlen], bufcapa - dlen, HCL_DEFAULT_PFMODPREFIX);
+		len = hak_copy_bcstr(&bufptr[dlen], bufcapa - dlen, HAK_DEFAULT_PFMODPREFIX);
 	}
 	else if (dirptr)
 	{
 		xlen = dirlen;
 		dlen = bufcapa;
-		if (hcl_convootobchars(hcl, dirptr, &xlen, bufptr, &dlen) <= -1) return HCL_NULL;
+		if (hak_convootobchars(hak, dirptr, &xlen, bufptr, &dlen) <= -1) return HAK_NULL;
 
-		if (dlen > 0 && bufptr[dlen - 1] != HCL_DFL_PATH_SEP)
+		if (dlen > 0 && bufptr[dlen - 1] != HAK_DFL_PATH_SEP)
 		{
-		#if defined(HCL_HAVE_ALT_PATH_SEP)
-			if (hcl_find_bchar(bufptr, dlen, HCL_ALT_PATH_SEP) &&
-			    !hcl_find_bchar(bufptr, dlen, HCL_DFL_PATH_SEP))
-				bufptr[dlen++] = HCL_ALT_PATH_SEP;
+		#if defined(HAK_HAVE_ALT_PATH_SEP)
+			if (hak_find_bchar(bufptr, dlen, HAK_ALT_PATH_SEP) &&
+			    !hak_find_bchar(bufptr, dlen, HAK_DFL_PATH_SEP))
+				bufptr[dlen++] = HAK_ALT_PATH_SEP;
 			else
-				bufptr[dlen++] = HCL_DFL_PATH_SEP;
+				bufptr[dlen++] = HAK_DFL_PATH_SEP;
 		#endif
-			bufptr[dlen++] = HCL_DFL_PATH_SEP;
+			bufptr[dlen++] = HAK_DFL_PATH_SEP;
 		}
-		len = hcl_copy_bcstr(&bufptr[dlen], bufcapa - dlen, HCL_DEFAULT_PFMODPREFIX);
+		len = hak_copy_bcstr(&bufptr[dlen], bufcapa - dlen, HAK_DEFAULT_PFMODPREFIX);
 		len += dlen;
 	}
 	else
 	{
-		dlen = hcl_copy_bcstr(bufptr, bufcapa, HCL_DEFAULT_PFMODDIR);
-		len = hcl_copy_bcstr(&bufptr[dlen], bufcapa - dlen, HCL_DEFAULT_PFMODPREFIX);
+		dlen = hak_copy_bcstr(bufptr, bufcapa, HAK_DEFAULT_PFMODDIR);
+		len = hak_copy_bcstr(&bufptr[dlen], bufcapa - dlen, HAK_DEFAULT_PFMODPREFIX);
 		len += dlen;
 	}
 
 	bcslen = bufcapa - len;
-#if defined(HCL_OOCH_IS_UCH)
-	hcl_convootobcstr(hcl, name, &ucslen, &bufptr[len], &bcslen);
+#if defined(HAK_OOCH_IS_UCH)
+	hak_convootobcstr(hak, name, &ucslen, &bufptr[len], &bcslen);
 #else
-	bcslen = hcl_copy_bcstr(&bufptr[len], bcslen, name);
+	bcslen = hak_copy_bcstr(&bufptr[len], bcslen, name);
 #endif
 
 	/* length including the directory, the prefix and the name. but excluding the postfix */
@@ -3288,20 +3288,20 @@ static void* dlopen_pfmod (hcl_t* hcl, const hcl_ooch_t* name, const hcl_ooch_t*
 	}
 
 retry:
-	hcl_copy_bcstr (&bufptr[xlen], bufcapa - xlen, HCL_DEFAULT_PFMODPOSTFIX);
+	hak_copy_bcstr (&bufptr[xlen], bufcapa - xlen, HAK_DEFAULT_PFMODPOSTFIX);
 
-	/* both prefix and postfix attached. for instance, libhcl-xxx */
-	HCL_DEBUG3 (hcl, "Opening(ext) PFMOD %hs[%js] - %hs\n", &bufptr[dlen], name, bufptr);
+	/* both prefix and postfix attached. for instance, libhak-xxx */
+	HAK_DEBUG3 (hak, "Opening(ext) PFMOD %hs[%js] - %hs\n", &bufptr[dlen], name, bufptr);
 	handle = sys_dl_openext(bufptr);
 	if (!handle)
 	{
-		HCL_DEBUG3 (hcl, "Unable to open(ext) PFMOD %hs[%js] - %hs\n", &bufptr[dlen], name, sys_dl_error());
+		HAK_DEBUG3 (hak, "Unable to open(ext) PFMOD %hs[%js] - %hs\n", &bufptr[dlen], name, sys_dl_error());
 
 		if (dlen > 0)
 		{
 			handle = sys_dl_openext(&bufptr[0]);
 			if (handle) goto pfmod_open_ok;
-			HCL_DEBUG3 (hcl, "Unable to open(ext) PFMOD %hs[%js] - %hs\n", &bufptr[0], name, sys_dl_error());
+			HAK_DEBUG3 (hak, "Unable to open(ext) PFMOD %hs[%js] - %hs\n", &bufptr[0], name, sys_dl_error());
 		}
 
 		/* try without prefix and postfix */
@@ -3309,13 +3309,13 @@ retry:
 		handle = sys_dl_openext(&bufptr[len]);
 		if (!handle)
 		{
-			hcl_bch_t* dash;
-			const hcl_bch_t* dl_errstr;
+			hak_bch_t* dash;
+			const hak_bch_t* dl_errstr;
 			dl_errstr = sys_dl_error();
-			HCL_DEBUG3 (hcl, "Unable to open(ext) PFMOD %hs[%js] - %hs\n", &bufptr[len], name, dl_errstr);
-			hcl_seterrbfmt (hcl, HCL_ESYSERR, "unable to open(ext) PFMOD %js - %hs", name, dl_errstr);
+			HAK_DEBUG3 (hak, "Unable to open(ext) PFMOD %hs[%js] - %hs\n", &bufptr[len], name, dl_errstr);
+			hak_seterrbfmt (hak, HAK_ESYSERR, "unable to open(ext) PFMOD %js - %hs", name, dl_errstr);
 
-			dash = hcl_rfind_bchar(bufptr, hcl_count_bcstr(bufptr), '-');
+			dash = hak_rfind_bchar(bufptr, hak_count_bcstr(bufptr), '-');
 			if (dash)
 			{
 				/* remove a segment at the back.
@@ -3328,100 +3328,100 @@ retry:
 		}
 		else
 		{
-			HCL_DEBUG3 (hcl, "Opened(ext) PFMOD %hs[%js] handle %p\n", &bufptr[len], name, handle);
+			HAK_DEBUG3 (hak, "Opened(ext) PFMOD %hs[%js] handle %p\n", &bufptr[len], name, handle);
 		}
 	}
 	else
 	{
 	pfmod_open_ok:
-		HCL_DEBUG3 (hcl, "Opened(ext) PFMOD %hs[%js] handle %p\n", &bufptr[dlen], name, handle);
+		HAK_DEBUG3 (hak, "Opened(ext) PFMOD %hs[%js] handle %p\n", &bufptr[dlen], name, handle);
 	}
 
 	return handle;
 }
 
-static void* dlopen_raw (hcl_t* hcl, const hcl_ooch_t* name, hcl_bch_t* bufptr, hcl_oow_t bufcapa)
+static void* dlopen_raw (hak_t* hak, const hak_ooch_t* name, hak_bch_t* bufptr, hak_oow_t bufcapa)
 {
 	void* handle;
-	hcl_oow_t ucslen, bcslen;
+	hak_oow_t ucslen, bcslen;
 
-#if defined(HCL_OOCH_IS_UCH)
+#if defined(HAK_OOCH_IS_UCH)
 	bcslen = bufcapa;
-	hcl_convootobcstr(hcl, name, &ucslen, bufptr, &bcslen);
+	hak_convootobcstr(hak, name, &ucslen, bufptr, &bcslen);
 #else
-	bcslen = hcl_copy_bcstr(bufptr, bufcapa, name);
+	bcslen = hak_copy_bcstr(bufptr, bufcapa, name);
 #endif
 
-	if (hcl_find_bchar(bufptr, bcslen, '.'))
+	if (hak_find_bchar(bufptr, bcslen, '.'))
 	{
 		handle = sys_dl_open(bufptr);
 		if (!handle)
 		{
-			const hcl_bch_t* dl_errstr;
+			const hak_bch_t* dl_errstr;
 			dl_errstr = sys_dl_error();
-			HCL_DEBUG2 (hcl, "Unable to open DL %hs - %hs\n", bufptr, dl_errstr);
-			hcl_seterrbfmt (hcl, HCL_ESYSERR, "unable to open DL %js - %hs", name, dl_errstr);
+			HAK_DEBUG2 (hak, "Unable to open DL %hs - %hs\n", bufptr, dl_errstr);
+			hak_seterrbfmt (hak, HAK_ESYSERR, "unable to open DL %js - %hs", name, dl_errstr);
 		}
-		else HCL_DEBUG2 (hcl, "Opened DL %hs handle %p\n", bufptr, handle);
+		else HAK_DEBUG2 (hak, "Opened DL %hs handle %p\n", bufptr, handle);
 	}
 	else
 	{
 		handle = sys_dl_openext(bufptr);
 		if (!handle)
 		{
-			const hcl_bch_t* dl_errstr;
+			const hak_bch_t* dl_errstr;
 			dl_errstr = sys_dl_error();
-			HCL_DEBUG2 (hcl, "Unable to open(ext) DL %hs - %hs\n", bufptr, dl_errstr);
-			hcl_seterrbfmt (hcl, HCL_ESYSERR, "unable to open(ext) DL %js - %hs", name, dl_errstr);
+			HAK_DEBUG2 (hak, "Unable to open(ext) DL %hs - %hs\n", bufptr, dl_errstr);
+			hak_seterrbfmt (hak, HAK_ESYSERR, "unable to open(ext) DL %js - %hs", name, dl_errstr);
 		}
-		else HCL_DEBUG2 (hcl, "Opened(ext) DL %hs handle %p\n", bufptr, handle);
+		else HAK_DEBUG2 (hak, "Opened(ext) DL %hs handle %p\n", bufptr, handle);
 	}
 
 	return handle;
 }
 
-static void* dl_open (hcl_t* hcl, const hcl_ooch_t* name, int flags)
+static void* dl_open (hak_t* hak, const hak_ooch_t* name, int flags)
 {
 #if defined(USE_LTDL) || defined(USE_DLFCN) || defined(USE_MACH_O_DYLD)
-	hcl_bch_t stabuf[128], * bufptr;
-	hcl_oow_t ucslen, bcslen, bufcapa;
-	void* handle = HCL_NULL;
+	hak_bch_t stabuf[128], * bufptr;
+	hak_oow_t ucslen, bcslen, bufcapa;
+	void* handle = HAK_NULL;
 
-	#if defined(HCL_OOCH_IS_UCH)
-	if (hcl_convootobcstr(hcl, name, &ucslen, HCL_NULL, &bufcapa) <= -1) return HCL_NULL;
+	#if defined(HAK_OOCH_IS_UCH)
+	if (hak_convootobcstr(hak, name, &ucslen, HAK_NULL, &bufcapa) <= -1) return HAK_NULL;
 
-	if (hcl->option.mod[0].len > 0)
+	if (hak->option.mod[0].len > 0)
 	{
-		/* multiple directories separated by a colon can be specified for HCL_MOD_LIBDIRS
+		/* multiple directories separated by a colon can be specified for HAK_MOD_LIBDIRS
 		 * however, use the total length to secure space just for simplicity */
-		ucslen = hcl->option.mod[0].len;
-		if (hcl_convootobchars(hcl, hcl->option.mod[0].ptr, &ucslen, HCL_NULL, &bcslen) <= -1) return HCL_NULL;
+		ucslen = hak->option.mod[0].len;
+		if (hak_convootobchars(hak, hak->option.mod[0].ptr, &ucslen, HAK_NULL, &bcslen) <= -1) return HAK_NULL;
 		bufcapa += bcslen;
 	}
 	#else
-	bufcapa = hcl_count_bcstr(name);
-	bufcapa += (hcl->option.mod[0].len > 0)? hcl->option.mod[0].len: HCL_COUNTOF(HCL_DEFAULT_PFMODDIR);
+	bufcapa = hak_count_bcstr(name);
+	bufcapa += (hak->option.mod[0].len > 0)? hak->option.mod[0].len: HAK_COUNTOF(HAK_DEFAULT_PFMODDIR);
 	#endif
 
-	/* HCL_COUNTOF(HCL_DEFAULT_PFMODPREFIX) and HCL_COUNTOF(HCL_DEFAULT_PFMODPOSTIFX)
+	/* HAK_COUNTOF(HAK_DEFAULT_PFMODPREFIX) and HAK_COUNTOF(HAK_DEFAULT_PFMODPOSTIFX)
 	 * include the terminating nulls. Never mind about the extra 2 characters. */
-	bufcapa += HCL_COUNTOF(HCL_DEFAULT_PFMODPREFIX) + HCL_COUNTOF(HCL_DEFAULT_PFMODPOSTFIX) + 1;
+	bufcapa += HAK_COUNTOF(HAK_DEFAULT_PFMODPREFIX) + HAK_COUNTOF(HAK_DEFAULT_PFMODPOSTFIX) + 1;
 
-	if (bufcapa <= HCL_COUNTOF(stabuf)) bufptr = stabuf;
+	if (bufcapa <= HAK_COUNTOF(stabuf)) bufptr = stabuf;
 	else
 	{
-		bufptr = (hcl_bch_t*)hcl_allocmem(hcl, bufcapa * HCL_SIZEOF(*bufptr));
-		if (!bufptr) return HCL_NULL;
+		bufptr = (hak_bch_t*)hak_allocmem(hak, bufcapa * HAK_SIZEOF(*bufptr));
+		if (!bufptr) return HAK_NULL;
 	}
 
-	if (flags & HCL_VMPRIM_DLOPEN_PFMOD)
+	if (flags & HAK_VMPRIM_DLOPEN_PFMOD)
 	{
-		if (hcl->option.mod[0].len > 0)
+		if (hak->option.mod[0].len > 0)
 		{
-			const hcl_ooch_t* ptr, * end, * seg;
+			const hak_ooch_t* ptr, * end, * seg;
 
-			ptr = hcl->option.mod[0].ptr;
-			end = hcl->option.mod[0].ptr + hcl->option.mod[0].len;
+			ptr = hak->option.mod[0].ptr;
+			end = hak->option.mod[0].ptr + hak->option.mod[0].len;
 			seg = ptr;
 
 			while (ptr <= end)
@@ -3430,7 +3430,7 @@ static void* dl_open (hcl_t* hcl, const hcl_ooch_t* name, int flags)
 				{
 					if (ptr - seg > 0)
 					{
-						handle = dlopen_pfmod(hcl, name, seg, ptr - seg, bufptr, bufcapa);
+						handle = dlopen_pfmod(hak, name, seg, ptr - seg, bufptr, bufcapa);
 						if (handle) break;
 					}
 
@@ -3442,70 +3442,70 @@ static void* dl_open (hcl_t* hcl, const hcl_ooch_t* name, int flags)
 
 		}
 
-		if (!handle) handle = dlopen_pfmod(hcl, name, HCL_NULL, 0, bufptr, bufcapa);
+		if (!handle) handle = dlopen_pfmod(hak, name, HAK_NULL, 0, bufptr, bufcapa);
 	}
 	else
 	{
 		/* opening a raw shared object without a prefix and/or a postfix */
-		handle = dlopen_raw(hcl, name, bufptr, bufcapa);
+		handle = dlopen_raw(hak, name, bufptr, bufcapa);
 	}
 
-	if (bufptr != stabuf) hcl_freemem (hcl, bufptr);
+	if (bufptr != stabuf) hak_freemem (hak, bufptr);
 	return handle;
 
 #else
 
 /* TODO: support various platforms */
 	/* TODO: implemenent this */
-	HCL_DEBUG1 (hcl, "Dynamic loading not implemented - cannot open %js\n", name);
-	hcl_seterrbfmt (hcl, HCL_ENOIMPL, "dynamic loading not implemented - cannot open %js", name);
-	return HCL_NULL;
+	HAK_DEBUG1 (hak, "Dynamic loading not implemented - cannot open %js\n", name);
+	hak_seterrbfmt (hak, HAK_ENOIMPL, "dynamic loading not implemented - cannot open %js", name);
+	return HAK_NULL;
 #endif
 }
 
-static void dl_close (hcl_t* hcl, void* handle)
+static void dl_close (hak_t* hak, void* handle)
 {
 #if defined(USE_LTDL) || defined(USE_DLFCN) || defined(USE_MACH_O_DYLD)
-	HCL_DEBUG1 (hcl, "Closed DL handle %p\n", handle);
+	HAK_DEBUG1 (hak, "Closed DL handle %p\n", handle);
 	sys_dl_close (handle);
 
 #else
 	/* TODO: implemenent this */
-	HCL_DEBUG1 (hcl, "Dynamic loading not implemented - cannot close handle %p\n", handle);
+	HAK_DEBUG1 (hak, "Dynamic loading not implemented - cannot close handle %p\n", handle);
 #endif
 }
 
-static void* dl_getsym (hcl_t* hcl, void* handle, const hcl_ooch_t* name)
+static void* dl_getsym (hak_t* hak, void* handle, const hak_ooch_t* name)
 {
 #if defined(USE_LTDL) || defined(USE_DLFCN) || defined(USE_MACH_O_DYLD)
-	hcl_bch_t stabuf[64], * bufptr;
-	hcl_oow_t bufcapa, ucslen, bcslen, i;
-	const hcl_bch_t* symname;
+	hak_bch_t stabuf[64], * bufptr;
+	hak_oow_t bufcapa, ucslen, bcslen, i;
+	const hak_bch_t* symname;
 	void* sym;
 
-	#if defined(HCL_OOCH_IS_UCH)
-	if (hcl_convootobcstr(hcl, name, &ucslen, HCL_NULL, &bcslen) <= -1) return HCL_NULL;
+	#if defined(HAK_OOCH_IS_UCH)
+	if (hak_convootobcstr(hak, name, &ucslen, HAK_NULL, &bcslen) <= -1) return HAK_NULL;
 	#else
-	bcslen = hcl_count_bcstr (name);
+	bcslen = hak_count_bcstr (name);
 	#endif
 
-	if (bcslen >= HCL_COUNTOF(stabuf) - 2)
+	if (bcslen >= HAK_COUNTOF(stabuf) - 2)
 	{
 		bufcapa = bcslen + 3;
-		bufptr = (hcl_bch_t*)hcl_allocmem(hcl, bufcapa * HCL_SIZEOF(*bufptr));
-		if (!bufptr) return HCL_NULL;
+		bufptr = (hak_bch_t*)hak_allocmem(hak, bufcapa * HAK_SIZEOF(*bufptr));
+		if (!bufptr) return HAK_NULL;
 	}
 	else
 	{
-		bufcapa = HCL_COUNTOF(stabuf);
+		bufcapa = HAK_COUNTOF(stabuf);
 		bufptr = stabuf;
 	}
 
 	bcslen = bufcapa - 1;
-	#if defined(HCL_OOCH_IS_UCH)
-	hcl_convootobcstr (hcl, name, &ucslen, &bufptr[1], &bcslen);
+	#if defined(HAK_OOCH_IS_UCH)
+	hak_convootobcstr (hak, name, &ucslen, &bufptr[1], &bcslen);
 	#else
-	bcslen = hcl_copy_bcstr(&bufptr[1], bcslen, name);
+	bcslen = hak_copy_bcstr(&bufptr[1], bcslen, name);
 	#endif
 
 	/* convert a period(.) to an underscore(_) */
@@ -3532,25 +3532,25 @@ static void* dl_getsym (hcl_t* hcl, void* handle, const hcl_ooch_t* name)
 				sym = sys_dl_getsym(handle, symname);
 				if (!sym)
 				{
-					const hcl_bch_t* dl_errstr;
+					const hak_bch_t* dl_errstr;
 					dl_errstr = sys_dl_error();
-					HCL_DEBUG3 (hcl, "Failed to get module symbol %js from handle %p - %hs\n", name, handle, dl_errstr);
-					hcl_seterrbfmt (hcl, HCL_ENOENT, "unable to get module symbol %hs - %hs", symname, dl_errstr);
+					HAK_DEBUG3 (hak, "Failed to get module symbol %js from handle %p - %hs\n", name, handle, dl_errstr);
+					hak_seterrbfmt (hak, HAK_ENOENT, "unable to get module symbol %hs - %hs", symname, dl_errstr);
 
 				}
 			}
 		}
 	}
 
-	if (sym) HCL_DEBUG3 (hcl, "Loaded module symbol %js from handle %p - %hs\n", name, handle, symname);
-	if (bufptr != stabuf) hcl_freemem (hcl, bufptr);
+	if (sym) HAK_DEBUG3 (hak, "Loaded module symbol %js from handle %p - %hs\n", name, handle, symname);
+	if (bufptr != stabuf) hak_freemem (hak, bufptr);
 	return sym;
 
 #else
 	/* TODO: IMPLEMENT THIS */
-	HCL_DEBUG2 (hcl, "Dynamic loading not implemented - Cannot load module symbol %js from handle %p\n", name, handle);
-	hcl_seterrbfmt (hcl, HCL_ENOIMPL, "dynamic loading not implemented - Cannot load module symbol %js from handle %p", name, handle);
-	return HCL_NULL;
+	HAK_DEBUG2 (hak, "Dynamic loading not implemented - Cannot load module symbol %js from handle %p\n", name, handle);
+	hak_seterrbfmt (hak, HAK_ENOIMPL, "dynamic loading not implemented - Cannot load module symbol %js from handle %p", name, handle);
+	return HAK_NULL;
 #endif
 }
 
@@ -3560,7 +3560,7 @@ static void* dl_getsym (hcl_t* hcl, void* handle, const hcl_ooch_t* name)
 
 /*#define ENABLE_LOG_INITIALLY*/
 
-static HCL_INLINE void reset_log_to_default (xtn_t* xtn)
+static HAK_INLINE void reset_log_to_default (xtn_t* xtn)
 {
 #if defined(ENABLE_LOG_INITIALLY)
 	xtn->log.fd = STDERR_FILENO;
@@ -3579,62 +3579,62 @@ static HCL_INLINE void reset_log_to_default (xtn_t* xtn)
 #endif
 }
 
-static HCL_INLINE void chain (hcl_t* hcl)
+static HAK_INLINE void chain (hak_t* hak)
 {
-        xtn_t* xtn = GET_XTN(hcl);
+        xtn_t* xtn = GET_XTN(hak);
 
         /* TODO: make this atomic */
-        xtn->prev = HCL_NULL;
-        xtn->next = g_hcl;
+        xtn->prev = HAK_NULL;
+        xtn->next = g_hak;
 
-        if (g_hcl) GET_XTN(g_hcl)->prev = hcl;
-        else g_hcl = hcl;
+        if (g_hak) GET_XTN(g_hak)->prev = hak;
+        else g_hak = hak;
         /* TODO: make this atomic */
 }
 
-static HCL_INLINE void unchain (hcl_t* hcl)
+static HAK_INLINE void unchain (hak_t* hak)
 {
-        xtn_t* xtn = GET_XTN(hcl);
+        xtn_t* xtn = GET_XTN(hak);
 
         /* TODO: make this atomic */
         if (xtn->prev) GET_XTN(xtn->prev)->next = xtn->next;
-        else g_hcl = xtn->next;
+        else g_hak = xtn->next;
         if (xtn->next) GET_XTN(xtn->next)->prev = xtn->prev;
         /* TODO: make this atomic */
-        xtn->prev = HCL_NULL;
-        xtn->prev = HCL_NULL;
+        xtn->prev = HAK_NULL;
+        xtn->prev = HAK_NULL;
 }
 
-static void cb_on_fini (hcl_t* hcl)
+static void cb_on_fini (hak_t* hak)
 {
-	xtn_t* xtn = GET_XTN(hcl);
+	xtn_t* xtn = GET_XTN(hak);
 	if ((xtn->log.fd_flags & LOGFD_OPENED_HERE) && xtn->log.fd >= 0) close (xtn->log.fd);
 	reset_log_to_default (xtn);
-	unchain (hcl);
+	unchain (hak);
 }
 
-static void cb_halting (hcl_t* hcl)
+static void cb_halting (hak_t* hak)
 {
-	xtn_t* xtn = GET_XTN(hcl);
+	xtn_t* xtn = GET_XTN(hak);
 	xtn->ev.halting = 1; /* once set, vm_sleep() is supposed to return without waiting */
 }
 
-static void cb_on_option (hcl_t* hcl, hcl_option_t id, const void* value)
+static void cb_on_option (hak_t* hak, hak_option_t id, const void* value)
 {
-	xtn_t* xtn = GET_XTN(hcl);
+	xtn_t* xtn = GET_XTN(hak);
 	int fd;
 
-	if (id != HCL_LOG_TARGET_BCSTR && id != HCL_LOG_TARGET_UCSTR &&
-	    id != HCL_LOG_TARGET_BCS && id != HCL_LOG_TARGET_UCS) return; /* return success. not interested */
+	if (id != HAK_LOG_TARGET_BCSTR && id != HAK_LOG_TARGET_UCSTR &&
+	    id != HAK_LOG_TARGET_BCS && id != HAK_LOG_TARGET_UCS) return; /* return success. not interested */
 
 #if defined(_WIN32)
-	#if defined(HCL_OOCH_IS_UCH) && (HCL_SIZEOF_UCH_T == HCL_SIZEOF_WCHAR_T)
-	fd = _wopen((const wchar_t*)hcl->option.log_target_u, _O_CREAT | _O_WRONLY | _O_APPEND | _O_BINARY , 0644);
+	#if defined(HAK_OOCH_IS_UCH) && (HAK_SIZEOF_UCH_T == HAK_SIZEOF_WCHAR_T)
+	fd = _wopen((const wchar_t*)hak->option.log_target_u, _O_CREAT | _O_WRONLY | _O_APPEND | _O_BINARY , 0644);
 	#else
-	fd = _open(hcl->option.log_target_b, _O_CREAT | _O_WRONLY | _O_APPEND | _O_BINARY , 0644);
+	fd = _open(hak->option.log_target_b, _O_CREAT | _O_WRONLY | _O_APPEND | _O_BINARY , 0644);
 	#endif
 #else
-	fd = open(hcl->option.log_target_b, O_CREAT | O_WRONLY | O_APPEND , 0644);
+	fd = open(hak->option.log_target_b, O_CREAT | O_WRONLY | O_APPEND , 0644);
 #endif
 	if (fd == -1)
 	{
@@ -3668,7 +3668,7 @@ static int os2_socket_pair (int p[2])
 	ULONG msec, idx;
 
 	DosGetInfoBlocks(&tib, &pib);
-	DosQuerySysInfo (QSV_MS_COUNT, QSV_MS_COUNT, &msec, HCL_SIZEOF(msec));
+	DosQuerySysInfo (QSV_MS_COUNT, QSV_MS_COUNT, &msec, HAK_SIZEOF(msec));
 
 	x = socket(PF_OS2, SOCK_STREAM, 0);
 	if (x <= -1) goto oops;
@@ -3676,13 +3676,13 @@ static int os2_socket_pair (int p[2])
 	idx = msec;
 
 attempt_to_bind:
-	HCL_MEMSET (&sa, 0, HCL_SIZEOF(sa));
+	HAK_MEMSET (&sa, 0, HAK_SIZEOF(sa));
 	sa.sun_family = AF_OS2;
 
 	/* OS/2 mandates the socket name should begin with \socket\ */
-	sprintf (sa.sun_path, "\\socket\\hcl-%08lx-%08lx-%08lx", (unsigned long int)pib->pib_ulpid, (unsigned long int)tib->tib_ptib2->tib2_ultid, (unsigned long int)idx);
+	sprintf (sa.sun_path, "\\socket\\hak-%08lx-%08lx-%08lx", (unsigned long int)pib->pib_ulpid, (unsigned long int)tib->tib_ptib2->tib2_ultid, (unsigned long int)idx);
 
-	if (bind(x, (struct sockaddr*)&sa, HCL_SIZEOF(sa)) <= -1)
+	if (bind(x, (struct sockaddr*)&sa, HAK_SIZEOF(sa)) <= -1)
 	{
 		if (sock_errno() != SOCEADDRINUSE) goto oops;
 		if (idx - msec > 9999) goto oops; /* failure after many attempts */
@@ -3694,8 +3694,8 @@ attempt_to_bind:
 
 	y = socket(PF_OS2, SOCK_STREAM, 0);
 	if (y <= -1) goto oops;
-	if (connect(y, (struct sockaddr*)&sa, HCL_SIZEOF(sa)) <= -1) goto oops;
-	z = accept(x, HCL_NULL, HCL_NULL);
+	if (connect(y, (struct sockaddr*)&sa, HAK_SIZEOF(sa)) <= -1) goto oops;
+	z = accept(x, HAK_NULL, HAK_NULL);
 	if (z <= -1) goto oops;
 
 	soclose (x);
@@ -3710,12 +3710,12 @@ oops:
 }
 #endif
 
-static int open_pipes (hcl_t* hcl, int p[2])
+static int open_pipes (hak_t* hak, int p[2])
 {
 #if defined(_WIN32)
 	if (_pipe(p, 256, _O_BINARY | _O_NOINHERIT) == -1)
 	{
-		hcl_seterrbfmtwithsyserr (hcl, 0, errno, "unable to create pipes");
+		hak_seterrbfmtwithsyserr (hak, 0, errno, "unable to create pipes");
 		return -1;
 	}
 
@@ -3727,23 +3727,23 @@ static int open_pipes (hcl_t* hcl, int p[2])
 	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, p) == -1)
 	#endif
 	{
-		hcl_seterrbfmtwithsyserr (hcl, 2, sock_errno(), "unable to create pipes");
+		hak_seterrbfmtwithsyserr (hak, 2, sock_errno(), "unable to create pipes");
 		return -1;
 	}
 #elif defined(__DOS__)
-	hcl_seterrbfmt (hcl, HCL_ENOIMPL, "unable to create pipes - not supported");
+	hak_seterrbfmt (hak, HAK_ENOIMPL, "unable to create pipes - not supported");
 	return -1;
 #elif defined(HAVE_PIPE2) && defined(O_CLOEXEC) && defined(O_NONBLOCK)
 	if (pipe2(p, O_CLOEXEC | O_NONBLOCK) == -1)
 	{
-		hcl_seterrbfmtwithsyserr (hcl, 0, errno, "unable to create pipes");
+		hak_seterrbfmtwithsyserr (hak, 0, errno, "unable to create pipes");
 		return -1;
 	}
 
 #else
 	if (pipe(p) == -1)
 	{
-		hcl_seterrbfmtwithsyserr (hcl, 0, errno, "unable to create pipes");
+		hak_seterrbfmtwithsyserr (hak, 0, errno, "unable to create pipes");
 		return -1;
 	}
 #endif
@@ -3760,8 +3760,8 @@ static int open_pipes (hcl_t* hcl, int p[2])
 #elif defined(__OS2__)
 	{
 		int flags = 1; /* don't block */
-		ioctl (p[0], FIONBIO, (char*)&flags, HCL_SIZEOF(flags));
-		ioctl (p[1], FIONBIO, (char*)&flags, HCL_SIZEOF(flags));
+		ioctl (p[0], FIONBIO, (char*)&flags, HAK_SIZEOF(flags));
+		ioctl (p[1], FIONBIO, (char*)&flags, HAK_SIZEOF(flags));
 	}
 #elif defined(HAVE_PIPE2) && defined(O_CLOEXEC) && defined(O_NONBLOCK)
 	/* do nothing */
@@ -3786,7 +3786,7 @@ static int open_pipes (hcl_t* hcl, int p[2])
 	return 0;
 }
 
-static void close_pipes (hcl_t* hcl, int p[2])
+static void close_pipes (hak_t* hak, int p[2])
 {
 #if defined(_WIN32)
 	_close (p[0]);
@@ -3802,22 +3802,22 @@ static void close_pipes (hcl_t* hcl, int p[2])
 	p[1] = -1;
 }
 
-static int cb_vm_startup (hcl_t* hcl)
+static int cb_vm_startup (hak_t* hak)
 {
-	xtn_t* xtn = GET_XTN(hcl);
+	xtn_t* xtn = GET_XTN(hak);
 	int sigfd_pcount = 0;
 	int iothr_pcount = 0, flags;
 
 #if defined(_WIN32)
-	xtn->waitable_timer = CreateWaitableTimer(HCL_NULL, TRUE, HCL_NULL);
+	xtn->waitable_timer = CreateWaitableTimer(HAK_NULL, TRUE, HAK_NULL);
 #endif
 
 #if defined(USE_DEVPOLL)
 	xtn->ep = open("/dev/poll", O_RDWR);
 	if (xtn->ep == -1)
 	{
-		hcl_seterrwithsyserr (hcl, 0, errno);
-		HCL_DEBUG1 (hcl, "Cannot create devpoll - %hs\n", strerror(errno));
+		hak_seterrwithsyserr (hak, 0, errno);
+		HAK_DEBUG1 (hak, "Cannot create devpoll - %hs\n", strerror(errno));
 		goto oops;
 	}
 
@@ -3835,8 +3835,8 @@ static int cb_vm_startup (hcl_t* hcl)
 	#endif
 	if (xtn->ep == -1)
 	{
-		hcl_seterrwithsyserr (hcl, 0, errno);
-		HCL_DEBUG1 (hcl, "Cannot create kqueue - %hs\n", strerror(errno));
+		hak_seterrwithsyserr (hak, 0, errno);
+		HAK_DEBUG1 (hak, "Cannot create kqueue - %hs\n", strerror(errno));
 		goto oops;
 	}
 
@@ -3854,8 +3854,8 @@ static int cb_vm_startup (hcl_t* hcl)
 	#endif
 	if (xtn->ep == -1)
 	{
-		hcl_seterrwithsyserr (hcl, 0, errno);
-		HCL_DEBUG1 (hcl, "Cannot create epoll - %hs\n", strerror(errno));
+		hak_seterrwithsyserr (hak, 0, errno);
+		HAK_DEBUG1 (hak, "Cannot create epoll - %hs\n", strerror(errno));
 		goto oops;
 	}
 
@@ -3875,23 +3875,23 @@ static int cb_vm_startup (hcl_t* hcl)
 	MUTEX_INIT (&xtn->ev.reg.smtx);
 #endif /* USE_DEVPOLL */
 
-	if (open_pipes(hcl, xtn->sigfd.p) <= -1) goto oops;
+	if (open_pipes(hak, xtn->sigfd.p) <= -1) goto oops;
 	sigfd_pcount = 2;
 
 #if defined(USE_THREAD)
-	if (open_pipes(hcl, xtn->iothr.p) <= -1) goto oops;
+	if (open_pipes(hak, xtn->iothr.p) <= -1) goto oops;
 	iothr_pcount = 2;
 
-	if (_add_poll_fd(hcl, xtn->iothr.p[0], XPOLLIN) <= -1) goto oops;
+	if (_add_poll_fd(hak, xtn->iothr.p[0], XPOLLIN) <= -1) goto oops;
 
-	pthread_mutex_init (&xtn->ev.mtx, HCL_NULL);
-	pthread_cond_init (&xtn->ev.cnd, HCL_NULL);
-	pthread_cond_init (&xtn->ev.cnd2, HCL_NULL);
+	pthread_mutex_init (&xtn->ev.mtx, HAK_NULL);
+	pthread_cond_init (&xtn->ev.cnd, HAK_NULL);
+	pthread_cond_init (&xtn->ev.cnd2, HAK_NULL);
 	xtn->ev.halting = 0;
 
 	xtn->iothr.abort = 0;
 	xtn->iothr.up = 0;
-	/*pthread_create (&xtn->iothr, HCL_NULL, iothr_main, hcl);*/
+	/*pthread_create (&xtn->iothr, HAK_NULL, iothr_main, hak);*/
 
 #endif /* USE_THREAD */
 
@@ -3924,9 +3924,9 @@ oops:
 	return -1;
 }
 
-static void cb_vm_cleanup (hcl_t* hcl)
+static void cb_vm_cleanup (hak_t* hak)
 {
-	xtn_t* xtn = GET_XTN(hcl);
+	xtn_t* xtn = GET_XTN(hak);
 
 	xtn->vm_running = 0;
 
@@ -3934,7 +3934,7 @@ static void cb_vm_cleanup (hcl_t* hcl)
 	if (xtn->waitable_timer)
 	{
 		CloseHandle (xtn->waitable_timer);
-		xtn->waitable_timer = HCL_NULL;
+		xtn->waitable_timer = HAK_NULL;
 	}
 #endif
 
@@ -3944,18 +3944,18 @@ static void cb_vm_cleanup (hcl_t* hcl)
 		xtn->iothr.abort = 1;
 		write (xtn->iothr.p[1], "Q", 1);
 		pthread_cond_signal (&xtn->ev.cnd);
-		pthread_join (xtn->iothr.thr, HCL_NULL);
+		pthread_join (xtn->iothr.thr, HAK_NULL);
 		xtn->iothr.up = 0;
 	}
 	pthread_cond_destroy (&xtn->ev.cnd);
 	pthread_cond_destroy (&xtn->ev.cnd2);
 	pthread_mutex_destroy (&xtn->ev.mtx);
 
-	_del_poll_fd (hcl, xtn->iothr.p[0]);
-	close_pipes (hcl, xtn->iothr.p);
+	_del_poll_fd (hak, xtn->iothr.p[0]);
+	close_pipes (hak, xtn->iothr.p);
 #endif /* USE_THREAD */
 
-	close_pipes (hcl, xtn->sigfd.p);
+	close_pipes (hak, xtn->sigfd.p);
 
 #if defined(USE_DEVPOLL)
 	if (xtn->ep >= 0)
@@ -3963,7 +3963,7 @@ static void cb_vm_cleanup (hcl_t* hcl)
 		close (xtn->ep);
 		xtn->ep = -1;
 	}
-	/*destroy_poll_data_space (hcl);*/
+	/*destroy_poll_data_space (hak);*/
 #elif defined(USE_KQUEUE)
 	if (xtn->ep >= 0)
 	{
@@ -3979,17 +3979,17 @@ static void cb_vm_cleanup (hcl_t* hcl)
 #elif defined(USE_POLL)
 	if (xtn->ev.reg.ptr)
 	{
-		hcl_freemem (hcl, xtn->ev.reg.ptr);
-		xtn->ev.reg.ptr = HCL_NULL;
+		hak_freemem (hak, xtn->ev.reg.ptr);
+		xtn->ev.reg.ptr = HAK_NULL;
 		xtn->ev.reg.len = 0;
 		xtn->ev.reg.capa = 0;
 	}
 	if (xtn->ev.buf)
 	{
-		hcl_freemem (hcl, xtn->ev.buf);
-		xtn->ev.buf = HCL_NULL;
+		hak_freemem (hak, xtn->ev.buf);
+		xtn->ev.buf = HAK_NULL;
 	}
-	/*destroy_poll_data_space (hcl);*/
+	/*destroy_poll_data_space (hak);*/
 	MUTEX_DESTROY (&xtn->ev.reg.pmtx);
 #elif defined(USE_SELECT)
 	FD_ZERO (&xtn->ev.reg.rfds);
@@ -4000,7 +4000,7 @@ static void cb_vm_cleanup (hcl_t* hcl)
 }
 
 /* -----------------------------------------------------------------
- * STANDARD HCL
+ * STANDARD HAK
  * ----------------------------------------------------------------- */
 #if defined(_WIN32)
 static const wchar_t* msw_exception_name (DWORD excode)
@@ -4053,10 +4053,10 @@ static LONG WINAPI msw_exception_filter (struct _EXCEPTION_POINTERS* exinfo)
 
 #if defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0501)
 	GetModuleHandleExW (GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, exinfo->ExceptionRecord->ExceptionAddress, &mod);
-	/*GetModuleInformation (GetCurrentProcess(), mod, &modinfo, HCL_SIZEOF(modinfo));*/
-	GetModuleFileNameExW (GetCurrentProcess(), mod, expath, HCL_SIZEOF(expath));
+	/*GetModuleInformation (GetCurrentProcess(), mod, &modinfo, HAK_SIZEOF(modinfo));*/
+	GetModuleFileNameExW (GetCurrentProcess(), mod, expath, HAK_SIZEOF(expath));
 #else
-	GetModuleFileNameW (HCL_NULL, expath, HCL_SIZEOF(expath));
+	GetModuleFileNameW (HAK_NULL, expath, HAK_SIZEOF(expath));
 #endif
 
 	excode = exinfo->ExceptionRecord->ExceptionCode;
@@ -4064,7 +4064,7 @@ static LONG WINAPI msw_exception_filter (struct _EXCEPTION_POINTERS* exinfo)
 
 	if (excode == EXCEPTION_ACCESS_VIOLATION || excode == EXCEPTION_IN_PAGE_ERROR)
 	{
-		_snwprintf (exmsg, HCL_COUNTOF(exmsg), L"Exception %s(%u) at 0x%p - Invalid operation at 0x%p - %s",
+		_snwprintf (exmsg, HAK_COUNTOF(exmsg), L"Exception %s(%u) at 0x%p - Invalid operation at 0x%p - %s",
 			msw_exception_name(excode), (unsigned int)excode,
 			exinfo->ExceptionRecord->ExceptionAddress,
 			(PVOID)exinfo->ExceptionRecord->ExceptionInformation[1],
@@ -4073,14 +4073,14 @@ static LONG WINAPI msw_exception_filter (struct _EXCEPTION_POINTERS* exinfo)
 	}
 	else
 	{
-		_snwprintf (exmsg, HCL_COUNTOF(exmsg), L"Exception %s(%u) at 0x%p",
+		_snwprintf (exmsg, HAK_COUNTOF(exmsg), L"Exception %s(%u) at 0x%p",
 			msw_exception_name(excode), (unsigned int)excode,
 			exinfo->ExceptionRecord->ExceptionAddress
 		);
 	}
 
 	/* TODO: use a global output callback like vmprim.assertfail().
-	 *       vmprim.assertfail() requires 'hcl'. so i need another global level callback for this */
+	 *       vmprim.assertfail() requires 'hak'. so i need another global level callback for this */
 	MessageBoxW (NULL, exmsg, expath, MB_OK | MB_ICONERROR);
 
 	/*return EXCEPTION_CONTINUE_SEARCH;*/
@@ -4089,17 +4089,17 @@ static LONG WINAPI msw_exception_filter (struct _EXCEPTION_POINTERS* exinfo)
 }
 #endif
 
-hcl_t* hcl_openstdwithmmgr (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, hcl_errnum_t* errnum)
+hak_t* hak_openstdwithmmgr (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_errnum_t* errnum)
 {
-	hcl_t* hcl;
-	hcl_vmprim_t vmprim;
-	hcl_cb_t cb;
+	hak_t* hak;
+	hak_vmprim_t vmprim;
+	hak_cb_t cb;
 
-	HCL_MEMSET (&vmprim, 0, HCL_SIZEOF(vmprim));
+	HAK_MEMSET (&vmprim, 0, HAK_SIZEOF(vmprim));
 	vmprim.alloc_heap = alloc_heap;
 	vmprim.free_heap = free_heap;
 	vmprim.log_write = log_write;
-	vmprim.syserrstrb = hcl_syserrstrb;
+	vmprim.syserrstrb = hak_syserrstrb;
 	vmprim.assertfail = _assertfail;
 	vmprim.dl_startup = dl_startup;
 	vmprim.dl_cleanup = dl_cleanup;
@@ -4116,38 +4116,38 @@ hcl_t* hcl_openstdwithmmgr (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, hcl_errnum_t* e
 	vmprim.vm_getsig = vm_getsig;
 	vmprim.vm_setsig = vm_setsig;
 
-	hcl = hcl_open(mmgr, HCL_SIZEOF(xtn_t) + xtnsize, &vmprim, errnum);
-	if (HCL_UNLIKELY(!hcl)) return HCL_NULL;
+	hak = hak_open(mmgr, HAK_SIZEOF(xtn_t) + xtnsize, &vmprim, errnum);
+	if (HAK_UNLIKELY(!hak)) return HAK_NULL;
 
-	/* adjust the object size by the sizeof xtn_t so that hcl_getxtn() returns the right pointer. */
-	hcl->_instsize += HCL_SIZEOF(xtn_t);
+	/* adjust the object size by the sizeof xtn_t so that hak_getxtn() returns the right pointer. */
+	hak->_instsize += HAK_SIZEOF(xtn_t);
 
-	chain (hcl); /* call chian() before hcl_regcb() as fini_hcl() calls unchain() */
-	reset_log_to_default (GET_XTN(hcl));
+	chain (hak); /* call chian() before hak_regcb() as fini_hak() calls unchain() */
+	reset_log_to_default (GET_XTN(hak));
 
-	HCL_MEMSET (&cb, 0, HCL_SIZEOF(cb));
+	HAK_MEMSET (&cb, 0, HAK_SIZEOF(cb));
 	cb.on_fini   = cb_on_fini;
 	cb.halting   = cb_halting;
 	cb.on_option = cb_on_option;
 	cb.vm_startup = cb_vm_startup;
 	cb.vm_cleanup = cb_vm_cleanup;
-	if (hcl_regcb(hcl, &cb) == HCL_NULL)
+	if (hak_regcb(hak, &cb) == HAK_NULL)
 	{
-		if (errnum) *errnum = HCL_ERRNUM(hcl);
-		hcl_close (hcl);
-		return HCL_NULL;
+		if (errnum) *errnum = HAK_ERRNUM(hak);
+		hak_close (hak);
+		return HAK_NULL;
 	}
 
 #if defined(_WIN32)
 	SetUnhandledExceptionFilter (msw_exception_filter);
 #endif
 
-	return hcl;
+	return hak;
 }
 
-hcl_t* hcl_openstd (hcl_oow_t xtnsize, hcl_errnum_t* errnum)
+hak_t* hak_openstd (hak_oow_t xtnsize, hak_errnum_t* errnum)
 {
-	return hcl_openstdwithmmgr(&sys_mmgr, xtnsize, errnum);
+	return hak_openstdwithmmgr(&sys_mmgr, xtnsize, errnum);
 }
 
 
@@ -4158,11 +4158,11 @@ typedef struct bb_t bb_t;
 struct bb_t
 {
 	char buf[4096];
-	hcl_oow_t pos;
-	hcl_oow_t len;
+	hak_oow_t pos;
+	hak_oow_t len;
 
 	FILE* fp;
-	hcl_bch_t* fn;
+	hak_bch_t* fn;
 };
 
 #if defined(__DOS__) || defined(_WIN32) || defined(__OS2__)
@@ -4171,22 +4171,22 @@ struct bb_t
 #define FOPEN_R_FLAGS "r"
 #endif
 
-static HCL_INLINE int open_cci_stream (hcl_t* hcl, hcl_io_cciarg_t* arg)
+static HAK_INLINE int open_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 {
-	xtn_t* xtn = GET_XTN(hcl);
-	bb_t* bb = HCL_NULL;
+	xtn_t* xtn = GET_XTN(hak);
+	bb_t* bb = HAK_NULL;
 
 /* TOOD: support predefined include directory as well */
 	if (arg->includer)
 	{
 		/* includee */
-		hcl_oow_t ucslen, bcslen, parlen;
-		const hcl_bch_t* fn, * fb;
+		hak_oow_t ucslen, bcslen, parlen;
+		const hak_bch_t* fn, * fb;
 
-	#if defined(HCL_OOCH_IS_UCH)
-		if (hcl_convootobcstr(hcl, arg->name, &ucslen, HCL_NULL, &bcslen) <= -1) goto oops;
+	#if defined(HAK_OOCH_IS_UCH)
+		if (hak_convootobcstr(hak, arg->name, &ucslen, HAK_NULL, &bcslen) <= -1) goto oops;
 	#else
-		bcslen = hcl_count_bcstr(arg->name);
+		bcslen = hak_count_bcstr(arg->name);
 	#endif
 
 		fn = ((bb_t*)arg->includer->handle)->fn;
@@ -4198,42 +4198,42 @@ static HCL_INLINE int open_cci_stream (hcl_t* hcl, hcl_io_cciarg_t* arg)
 		}
 		else
 		{
-			fb = hcl_get_base_name_from_bcstr_path(fn);
+			fb = hak_get_base_name_from_bcstr_path(fn);
 			parlen = fb - fn;
 		}
 
-		bb = (bb_t*)hcl_callocmem(hcl, HCL_SIZEOF(*bb) + (HCL_SIZEOF(hcl_bch_t) * (parlen + bcslen + 1)));
+		bb = (bb_t*)hak_callocmem(hak, HAK_SIZEOF(*bb) + (HAK_SIZEOF(hak_bch_t) * (parlen + bcslen + 1)));
 		if (!bb) goto oops;
 
-		bb->fn = (hcl_bch_t*)(bb + 1);
-		hcl_copy_bchars (bb->fn, fn, parlen);
-	#if defined(HCL_OOCH_IS_UCH)
-		hcl_convootobcstr (hcl, arg->name, &ucslen, &bb->fn[parlen], &bcslen);
+		bb->fn = (hak_bch_t*)(bb + 1);
+		hak_copy_bchars (bb->fn, fn, parlen);
+	#if defined(HAK_OOCH_IS_UCH)
+		hak_convootobcstr (hak, arg->name, &ucslen, &bb->fn[parlen], &bcslen);
 	#else
-		hcl_copy_bcstr (&bb->fn[parlen], bcslen + 1, arg->name);
+		hak_copy_bcstr (&bb->fn[parlen], bcslen + 1, arg->name);
 	#endif
 
 		bb->fp = fopen(bb->fn, FOPEN_R_FLAGS);
 		if (!bb->fp)
 		{
-			hcl_seterrbfmt (hcl, HCL_EIOERR, "unable to open %hs", bb->fn);
+			hak_seterrbfmt (hak, HAK_EIOERR, "unable to open %hs", bb->fn);
 			goto oops;
 		}
 	}
 	else
 	{
 		/* main stream  */
-		hcl_oow_t pathlen;
+		hak_oow_t pathlen;
 
-		pathlen = xtn->cci_path? hcl_count_bcstr(xtn->cci_path): 0;
+		pathlen = xtn->cci_path? hak_count_bcstr(xtn->cci_path): 0;
 
-		bb = (bb_t*)hcl_callocmem(hcl, HCL_SIZEOF(*bb) + (HCL_SIZEOF(hcl_bch_t) * (pathlen + 1)));
+		bb = (bb_t*)hak_callocmem(hak, HAK_SIZEOF(*bb) + (HAK_SIZEOF(hak_bch_t) * (pathlen + 1)));
 		if (!bb) goto oops;
 
-		bb->fn = (hcl_bch_t*)(bb + 1);
+		bb->fn = (hak_bch_t*)(bb + 1);
 		if (pathlen > 0 && xtn->cci_path)
 		{
-			hcl_copy_bcstr (bb->fn, pathlen + 1, xtn->cci_path);
+			hak_copy_bcstr (bb->fn, pathlen + 1, xtn->cci_path);
 			/*bb->fp = fopen(bb->fn, FOPEN_R_FLAGS);*/
 		}
 		else
@@ -4247,11 +4247,11 @@ static HCL_INLINE int open_cci_stream (hcl_t* hcl, hcl_io_cciarg_t* arg)
 	if (!arg->includer) /* if main stream */
 	{
 	/* HACK */
-		HCL_ASSERT (hcl, arg->name == HCL_NULL);
-		arg->name = hcl_dupbtooocstr(hcl, bb->fn, HCL_NULL);
+		HAK_ASSERT (hak, arg->name == HAK_NULL);
+		arg->name = hak_dupbtooocstr(hak, bb->fn, HAK_NULL);
 		/* ignore duplication failure */
-/* TODO: change the type of arg->name from const hcl_ooch_t* to hcl_ooch_t*.
- *       change its specification from [IN] only to [INOUT] in hcl_io_cciarg_t. */
+/* TODO: change the type of arg->name from const hak_ooch_t* to hak_ooch_t*.
+ *       change its specification from [IN] only to [INOUT] in hak_io_cciarg_t. */
 	/* END HACK */
 	}
 
@@ -4262,48 +4262,48 @@ oops:
 	if (bb)
 	{
 		if (bb->fp && bb->fp != stdin) fclose (bb->fp);
-		hcl_freemem (hcl, bb);
+		hak_freemem (hak, bb);
 	}
 	return -1;
 }
 
-static HCL_INLINE int close_cci_stream (hcl_t* hcl, hcl_io_cciarg_t* arg)
+static HAK_INLINE int close_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 {
-	/*xtn_t* xtn = GET_XTN(hcl);*/
+	/*xtn_t* xtn = GET_XTN(hak);*/
 	bb_t* bb;
 
 	bb = (bb_t*)arg->handle;
-	HCL_ASSERT (hcl, bb != HCL_NULL /*&& bb->fp != HCL_NULL*/);
+	HAK_ASSERT (hak, bb != HAK_NULL /*&& bb->fp != HAK_NULL*/);
 
 /* HACK */
 	if (!arg->includer && arg->name)
 	{
 		/* main stream closing */
-		hcl_freemem (hcl, (hcl_ooch_t*)arg->name);
-		arg->name = HCL_NULL;
+		hak_freemem (hak, (hak_ooch_t*)arg->name);
+		arg->name = HAK_NULL;
 	}
 /* END HACK */
 
 	if (bb->fp /*&& bb->fp != stdin*/) fclose (bb->fp);
-	hcl_freemem (hcl, bb);
+	hak_freemem (hak, bb);
 
-	arg->handle = HCL_NULL;
+	arg->handle = HAK_NULL;
 	return 0;
 }
 
-static HCL_INLINE int read_cci_stream (hcl_t* hcl, hcl_io_cciarg_t* arg)
+static HAK_INLINE int read_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 {
-	/*xtn_t* xtn = GET_XTN(hcl);*/
+	/*xtn_t* xtn = GET_XTN(hak);*/
 	bb_t* bb;
-	hcl_oow_t bcslen, ucslen, remlen;
+	hak_oow_t bcslen, ucslen, remlen;
 	int x;
 
 	bb = (bb_t*)arg->handle;
-	HCL_ASSERT (hcl, bb != HCL_NULL);
+	HAK_ASSERT (hak, bb != HAK_NULL);
 
 	if (!bb->fp)
 	{
-		HCL_ASSERT (hcl, arg->includer == HCL_NULL);
+		HAK_ASSERT (hak, arg->includer == HAK_NULL);
 		/* the main stream is opened with no associated file in open_cci_stream(). return no data */
 		arg->xlen = 0;
 		return 0;
@@ -4316,7 +4316,7 @@ static HCL_INLINE int read_cci_stream (hcl_t* hcl, hcl_io_cciarg_t* arg)
 		{
 			if (ferror((FILE*)bb->fp))
 			{
-				hcl_seterrbfmt (hcl, HCL_EIOERR, "I/O error - %hs", strerror(errno));
+				hak_seterrbfmt (hak, HAK_EIOERR, "I/O error - %hs", strerror(errno));
 				return -1;
 			}
 			break;
@@ -4324,12 +4324,12 @@ static HCL_INLINE int read_cci_stream (hcl_t* hcl, hcl_io_cciarg_t* arg)
 
 		bb->buf[bb->len++] = x;
 	}
-	while (bb->len < HCL_COUNTOF(bb->buf) && x != '\r' && x != '\n');
+	while (bb->len < HAK_COUNTOF(bb->buf) && x != '\r' && x != '\n');
 
-#if defined(HCL_OOCH_IS_UCH)
+#if defined(HAK_OOCH_IS_UCH)
 	bcslen = bb->len;
-	ucslen = HCL_COUNTOF(arg->buf.c);
-	x = hcl_convbtooochars(hcl, bb->buf, &bcslen, arg->buf.c, &ucslen);
+	ucslen = HAK_COUNTOF(arg->buf.c);
+	x = hak_convbtooochars(hak, bb->buf, &bcslen, arg->buf.c, &ucslen);
 	if (x <= -1 && ucslen <= 0) return -1;
 	/* if ucslen is greater than 0, i assume that some characters have been
 	 * converted properly. as the loop above reads an entire line if not too
@@ -4337,13 +4337,13 @@ static HCL_INLINE int read_cci_stream (hcl_t* hcl, hcl_io_cciarg_t* arg)
 	 * successful conversion of at least 1 ooch character. so no explicit
 	 * check for the incomplete sequence error is required */
 #else
-	bcslen = (bb->len < HCL_COUNTOF(arg->buf.c))? bb->len: HCL_COUNTOF(arg->buf.c);
+	bcslen = (bb->len < HAK_COUNTOF(arg->buf.c))? bb->len: HAK_COUNTOF(arg->buf.c);
 	ucslen = bcslen;
-	hcl_copy_bchars (arg->buf.c, bb->buf, bcslen);
+	hak_copy_bchars (arg->buf.c, bb->buf, bcslen);
 #endif
 
 	remlen = bb->len - bcslen;
-	if (remlen > 0) HCL_MEMMOVE (bb->buf, &bb->buf[bcslen], remlen);
+	if (remlen > 0) HAK_MEMMOVE (bb->buf, &bb->buf[bcslen], remlen);
 	bb->len = remlen;
 
 	arg->xlen = ucslen;
@@ -4351,49 +4351,49 @@ static HCL_INLINE int read_cci_stream (hcl_t* hcl, hcl_io_cciarg_t* arg)
 }
 
 /* source code input handler */
-static int cci_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg)
+static int cci_handler (hak_t* hak, hak_io_cmd_t cmd, void* arg)
 {
 	switch (cmd)
 	{
-		case HCL_IO_OPEN:
-			return open_cci_stream(hcl, (hcl_io_cciarg_t*)arg);
+		case HAK_IO_OPEN:
+			return open_cci_stream(hak, (hak_io_cciarg_t*)arg);
 
-		case HCL_IO_CLOSE:
-			return close_cci_stream(hcl, (hcl_io_cciarg_t*)arg);
+		case HAK_IO_CLOSE:
+			return close_cci_stream(hak, (hak_io_cciarg_t*)arg);
 
-		case HCL_IO_READ:
-			return read_cci_stream(hcl, (hcl_io_cciarg_t*)arg);
+		case HAK_IO_READ:
+			return read_cci_stream(hak, (hak_io_cciarg_t*)arg);
 
-		case HCL_IO_FLUSH:
+		case HAK_IO_FLUSH:
 			/* no effect on an input stream */
 			return 0;
 
-		case HCL_IO_READ_BYTES: /* byte input prohibited */
-		case HCL_IO_WRITE: /*  character output prohibited */
-		case HCL_IO_WRITE_BYTES: /* byte output prohibited */
+		case HAK_IO_READ_BYTES: /* byte input prohibited */
+		case HAK_IO_WRITE: /*  character output prohibited */
+		case HAK_IO_WRITE_BYTES: /* byte output prohibited */
 		default:
-			hcl_seterrnum (hcl, HCL_EINTERN);
+			hak_seterrnum (hak, HAK_EINTERN);
 			return -1;
 	}
 }
 
 /* --------------------------------------------------------------------- */
-static HCL_INLINE int open_udi_stream (hcl_t* hcl, hcl_io_udiarg_t* arg)
+static HAK_INLINE int open_udi_stream (hak_t* hak, hak_io_udiarg_t* arg)
 {
-	xtn_t* xtn = GET_XTN(hcl);
-	bb_t* bb = HCL_NULL;
+	xtn_t* xtn = GET_XTN(hak);
+	bb_t* bb = HAK_NULL;
 
-	hcl_oow_t pathlen;
+	hak_oow_t pathlen;
 
-	pathlen = xtn->udi_path? hcl_count_bcstr(xtn->udi_path): 0;
+	pathlen = xtn->udi_path? hak_count_bcstr(xtn->udi_path): 0;
 
-	bb = (bb_t*)hcl_callocmem(hcl, HCL_SIZEOF(*bb) + (HCL_SIZEOF(hcl_bch_t) * (pathlen + 1)));
+	bb = (bb_t*)hak_callocmem(hak, HAK_SIZEOF(*bb) + (HAK_SIZEOF(hak_bch_t) * (pathlen + 1)));
 	if (!bb) goto oops;
 
-	bb->fn = (hcl_bch_t*)(bb + 1);
+	bb->fn = (hak_bch_t*)(bb + 1);
 	if (pathlen > 0 && xtn->udi_path)
 	{
-		hcl_copy_bcstr (bb->fn, pathlen + 1, xtn->udi_path);
+		hak_copy_bcstr (bb->fn, pathlen + 1, xtn->udi_path);
 		bb->fp = fopen(bb->fn, FOPEN_R_FLAGS);
 	}
 	else
@@ -4404,7 +4404,7 @@ static HCL_INLINE int open_udi_stream (hcl_t* hcl, hcl_io_udiarg_t* arg)
 
 	if (!bb->fp)
 	{
-		hcl_seterrbfmtwithsyserr (hcl, 0, errno, "unable to open udi stream '%hs'", xtn->udi_path);
+		hak_seterrbfmtwithsyserr (hak, 0, errno, "unable to open udi stream '%hs'", xtn->udi_path);
 		goto oops;
 	}
 
@@ -4416,42 +4416,42 @@ oops:
 	if (bb)
 	{
 		if (bb->fp && bb->fp != stdin) fclose (bb->fp);
-		hcl_freemem (hcl, bb);
+		hak_freemem (hak, bb);
 	}
 	return -1;
 }
 
-static HCL_INLINE int close_udi_stream (hcl_t* hcl, hcl_io_udiarg_t* arg)
+static HAK_INLINE int close_udi_stream (hak_t* hak, hak_io_udiarg_t* arg)
 {
-	/*xtn_t* xtn = GET_XTN(hcl);*/
+	/*xtn_t* xtn = GET_XTN(hak);*/
 	bb_t* bb;
 
 	bb = (bb_t*)arg->handle;
-	HCL_ASSERT (hcl, bb != HCL_NULL && bb->fp != HCL_NULL);
+	HAK_ASSERT (hak, bb != HAK_NULL && bb->fp != HAK_NULL);
 
 	if (bb->fp != stdin) fclose (bb->fp);
-	hcl_freemem (hcl, bb);
+	hak_freemem (hak, bb);
 
-	arg->handle = HCL_NULL;
+	arg->handle = HAK_NULL;
 	return 0;
 }
 
-static HCL_INLINE int read_udi_stream (hcl_t* hcl, hcl_io_udiarg_t* arg)
+static HAK_INLINE int read_udi_stream (hak_t* hak, hak_io_udiarg_t* arg)
 {
-	/*xtn_t* xtn = GET_XTN(hcl);*/
+	/*xtn_t* xtn = GET_XTN(hak);*/
 	bb_t* bb;
-	hcl_oow_t bcslen, ucslen, remlen;
+	hak_oow_t bcslen, ucslen, remlen;
 	int x;
-#if defined(HCL_OOCH_IS_UCH)
+#if defined(HAK_OOCH_IS_UCH)
 	int fetched = 0;
 #endif
 
 	bb = (bb_t*)arg->handle;
-	HCL_ASSERT (hcl, bb != HCL_NULL && bb->fp != HCL_NULL);
+	HAK_ASSERT (hak, bb != HAK_NULL && bb->fp != HAK_NULL);
 
 	if (bb->len > 0)
 	{
-#if defined(HCL_OOCH_IS_UCH)
+#if defined(HAK_OOCH_IS_UCH)
 	real_fetch:
 		fetched = 1;
 #endif
@@ -4462,7 +4462,7 @@ static HCL_INLINE int read_udi_stream (hcl_t* hcl, hcl_io_udiarg_t* arg)
 			{
 				if (ferror((FILE*)bb->fp))
 				{
-					hcl_seterrbfmtwithsyserr (hcl, 0, errno, "unable to read udi stream");
+					hak_seterrbfmtwithsyserr (hak, 0, errno, "unable to read udi stream");
 					return -1;
 				}
 				break;
@@ -4470,13 +4470,13 @@ static HCL_INLINE int read_udi_stream (hcl_t* hcl, hcl_io_udiarg_t* arg)
 
 			bb->buf[bb->len++] = x;
 		}
-		while (bb->len < HCL_COUNTOF(bb->buf) && x != '\r' && x != '\n');
+		while (bb->len < HAK_COUNTOF(bb->buf) && x != '\r' && x != '\n');
 	}
 
-#if defined(HCL_OOCH_IS_UCH)
+#if defined(HAK_OOCH_IS_UCH)
 	bcslen = bb->len;
-	ucslen = HCL_COUNTOF(arg->buf.c);
-	x = hcl_convbtooochars(hcl, bb->buf, &bcslen, arg->buf.c, &ucslen);
+	ucslen = HAK_COUNTOF(arg->buf.c);
+	x = hak_convbtooochars(hak, bb->buf, &bcslen, arg->buf.c, &ucslen);
 	if (x <= -1 && ucslen <= 0)
 	{
 		if (x == -3 && !fetched) goto real_fetch;
@@ -4488,28 +4488,28 @@ static HCL_INLINE int read_udi_stream (hcl_t* hcl, hcl_io_udiarg_t* arg)
 	 * successful conversion of at least 1 ooch character. so no explicit
 	 * check for the incomplete sequence error is required */
 #else
-	bcslen = (bb->len < HCL_COUNTOF(arg->buf.c))? bb->len: HCL_COUNTOF(arg->buf.c);
+	bcslen = (bb->len < HAK_COUNTOF(arg->buf.c))? bb->len: HAK_COUNTOF(arg->buf.c);
 	ucslen = bcslen;
-	hcl_copy_bchars (arg->buf.c, bb->buf, bcslen);
+	hak_copy_bchars (arg->buf.c, bb->buf, bcslen);
 #endif
 
 	remlen = bb->len - bcslen;
-	if (remlen > 0) HCL_MEMMOVE (bb->buf, &bb->buf[bcslen], remlen);
+	if (remlen > 0) HAK_MEMMOVE (bb->buf, &bb->buf[bcslen], remlen);
 	bb->len = remlen;
 
 	arg->xlen = ucslen;
 	return 0;
 }
 
-static HCL_INLINE int read_udi_stream_bytes (hcl_t* hcl, hcl_io_udiarg_t* arg)
+static HAK_INLINE int read_udi_stream_bytes (hak_t* hak, hak_io_udiarg_t* arg)
 {
-	/*xtn_t* xtn = GET_XTN(hcl);*/
+	/*xtn_t* xtn = GET_XTN(hak);*/
 	bb_t* bb;
-	hcl_oow_t bcslen, ucslen, remlen;
+	hak_oow_t bcslen, ucslen, remlen;
 	int x;
 
 	bb = (bb_t*)arg->handle;
-	HCL_ASSERT (hcl, bb != HCL_NULL && bb->fp != HCL_NULL);
+	HAK_ASSERT (hak, bb != HAK_NULL && bb->fp != HAK_NULL);
 
 	if (bb->len <= 0)
 	{
@@ -4520,7 +4520,7 @@ static HCL_INLINE int read_udi_stream_bytes (hcl_t* hcl, hcl_io_udiarg_t* arg)
 			{
 				if (ferror((FILE*)bb->fp))
 					{
-					hcl_seterrbfmtwithsyserr (hcl, 0, errno, "unable to read udi stream");
+					hak_seterrbfmtwithsyserr (hak, 0, errno, "unable to read udi stream");
 					return -1;
 				}
 				break;
@@ -4528,52 +4528,52 @@ static HCL_INLINE int read_udi_stream_bytes (hcl_t* hcl, hcl_io_udiarg_t* arg)
 
 			bb->buf[bb->len++] = x;
 		}
-		while (bb->len < HCL_COUNTOF(bb->buf) && x != '\r' && x != '\n');
+		while (bb->len < HAK_COUNTOF(bb->buf) && x != '\r' && x != '\n');
 	}
 
-	bcslen = (bb->len < HCL_COUNTOF(arg->buf.b))? bb->len: HCL_COUNTOF(arg->buf.b);
+	bcslen = (bb->len < HAK_COUNTOF(arg->buf.b))? bb->len: HAK_COUNTOF(arg->buf.b);
 	ucslen = bcslen;
-	hcl_copy_bchars ((hcl_bch_t*)arg->buf.b, bb->buf, bcslen);
+	hak_copy_bchars ((hak_bch_t*)arg->buf.b, bb->buf, bcslen);
 
 	remlen = bb->len - bcslen;
-	if (remlen > 0) HCL_MEMMOVE (bb->buf, &bb->buf[bcslen], remlen);
+	if (remlen > 0) HAK_MEMMOVE (bb->buf, &bb->buf[bcslen], remlen);
 	bb->len = remlen;
 
 	arg->xlen = ucslen;
 	return 0;
 }
 
-static int udi_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg)
+static int udi_handler (hak_t* hak, hak_io_cmd_t cmd, void* arg)
 {
 	switch (cmd)
 	{
-		case HCL_IO_OPEN:
-			return open_udi_stream(hcl, (hcl_io_udiarg_t*)arg);
+		case HAK_IO_OPEN:
+			return open_udi_stream(hak, (hak_io_udiarg_t*)arg);
 
-		case HCL_IO_CLOSE:
-			return close_udi_stream(hcl, (hcl_io_udiarg_t*)arg);
+		case HAK_IO_CLOSE:
+			return close_udi_stream(hak, (hak_io_udiarg_t*)arg);
 
-		case HCL_IO_READ:
-			return read_udi_stream(hcl, (hcl_io_udiarg_t*)arg);
+		case HAK_IO_READ:
+			return read_udi_stream(hak, (hak_io_udiarg_t*)arg);
 
-		case HCL_IO_READ_BYTES:
-			return read_udi_stream_bytes(hcl, (hcl_io_udiarg_t*)arg);
+		case HAK_IO_READ_BYTES:
+			return read_udi_stream_bytes(hak, (hak_io_udiarg_t*)arg);
 
-		case HCL_IO_FLUSH:
+		case HAK_IO_FLUSH:
 			/* no effect on an input stream */
 			return 0;
 
 		default:
-			hcl_seterrnum (hcl, HCL_EINTERN);
+			hak_seterrnum (hak, HAK_EINTERN);
 			return -1;
 	}
 }
 
 /* --------------------------------------------------------------------- */
 
-static HCL_INLINE int open_udo_stream (hcl_t* hcl, hcl_io_udoarg_t* arg)
+static HAK_INLINE int open_udo_stream (hak_t* hak, hak_io_udoarg_t* arg)
 {
-	xtn_t* xtn = GET_XTN(hcl);
+	xtn_t* xtn = GET_XTN(hak);
 	FILE* fp;
 #if defined(__DOS__) || defined(_WIN32) || defined(__OS2__)
 #define FOPEN_W_FLAGS "wb"
@@ -4585,9 +4585,9 @@ static HCL_INLINE int open_udo_stream (hcl_t* hcl, hcl_io_udoarg_t* arg)
 	if (!fp)
 	{
 		if (xtn->udo_path)
-			hcl_seterrbfmtwithsyserr (hcl, 0, errno, "unable to open udo stream '%hs'", xtn->udo_path);
+			hak_seterrbfmtwithsyserr (hak, 0, errno, "unable to open udo stream '%hs'", xtn->udo_path);
 		else
-			hcl_seterrbfmtwithsyserr (hcl, 0, errno, "unable to open udo stream");
+			hak_seterrbfmtwithsyserr (hak, 0, errno, "unable to open udo stream");
 		return -1;
 	}
 
@@ -4595,47 +4595,47 @@ static HCL_INLINE int open_udo_stream (hcl_t* hcl, hcl_io_udoarg_t* arg)
 	return 0;
 }
 
-static HCL_INLINE int close_udo_stream (hcl_t* hcl, hcl_io_udoarg_t* arg)
+static HAK_INLINE int close_udo_stream (hak_t* hak, hak_io_udoarg_t* arg)
 {
-	/*xtn_t* xtn = GET_XTN(hcl);*/
+	/*xtn_t* xtn = GET_XTN(hak);*/
 	FILE* fp;
 
 	fp = (FILE*)arg->handle;
-	HCL_ASSERT (hcl, fp != HCL_NULL);
+	HAK_ASSERT (hak, fp != HAK_NULL);
 	if (fp != stdout) fclose (fp);
-	arg->handle = HCL_NULL;
+	arg->handle = HAK_NULL;
 	return 0;
 }
 
-static HCL_INLINE int write_udo_stream (hcl_t* hcl, hcl_io_udoarg_t* arg)
+static HAK_INLINE int write_udo_stream (hak_t* hak, hak_io_udoarg_t* arg)
 {
-	/*xtn_t* xtn = GET_XTN(hcl);*/
-	const hcl_ooch_t* ptr;
-	hcl_bch_t bcsbuf[1024];
-	hcl_oow_t bcslen, ucslen, donelen;
+	/*xtn_t* xtn = GET_XTN(hak);*/
+	const hak_ooch_t* ptr;
+	hak_bch_t bcsbuf[1024];
+	hak_oow_t bcslen, ucslen, donelen;
 	int x;
 
-	ptr = (const hcl_ooch_t*)arg->ptr;
+	ptr = (const hak_ooch_t*)arg->ptr;
 	donelen = 0;
 
 	do
 	{
-	#if defined(HCL_OOCH_IS_UCH)
-		bcslen = HCL_COUNTOF(bcsbuf);
+	#if defined(HAK_OOCH_IS_UCH)
+		bcslen = HAK_COUNTOF(bcsbuf);
 		ucslen = arg->len - donelen;
-		x = hcl_convootobchars(hcl, &ptr[donelen], &ucslen, bcsbuf, &bcslen);
+		x = hak_convootobchars(hak, &ptr[donelen], &ucslen, bcsbuf, &bcslen);
 		if (x <= -1 && ucslen <= 0) return -1;
 	#else
-		bcslen = HCL_COUNTOF(bcsbuf);
+		bcslen = HAK_COUNTOF(bcsbuf);
 		ucslen = arg->len - donelen;
 		if (ucslen > bcslen) ucslen = bcslen;
 		else if (ucslen < bcslen) bcslen = ucslen;
-		hcl_copy_bchars (bcsbuf, &ptr[donelen], bcslen);
+		hak_copy_bchars (bcsbuf, &ptr[donelen], bcslen);
 	#endif
 
-		if (fwrite(bcsbuf, HCL_SIZEOF(bcsbuf[0]), bcslen, (FILE*)arg->handle) < bcslen)
+		if (fwrite(bcsbuf, HAK_SIZEOF(bcsbuf[0]), bcslen, (FILE*)arg->handle) < bcslen)
 		{
-			hcl_seterrbfmtwithsyserr (hcl, 0, errno, "unable to write udo stream");
+			hak_seterrbfmtwithsyserr (hak, 0, errno, "unable to write udo stream");
 			return -1;
 		}
 
@@ -4647,16 +4647,16 @@ static HCL_INLINE int write_udo_stream (hcl_t* hcl, hcl_io_udoarg_t* arg)
 	return 0;
 }
 
-static HCL_INLINE int write_udo_stream_bytes (hcl_t* hcl, hcl_io_udoarg_t* arg)
+static HAK_INLINE int write_udo_stream_bytes (hak_t* hak, hak_io_udoarg_t* arg)
 {
-	/*xtn_t* xtn = GET_XTN(hcl);*/
-	const hcl_uint8_t* ptr;
+	/*xtn_t* xtn = GET_XTN(hak);*/
+	const hak_uint8_t* ptr;
 
-	ptr = (const hcl_uint8_t*)arg->ptr; /* take the buffer as a byte series */
+	ptr = (const hak_uint8_t*)arg->ptr; /* take the buffer as a byte series */
 
-	if (fwrite(ptr, HCL_SIZEOF(*ptr), arg->len, (FILE*)arg->handle) < arg->len)
+	if (fwrite(ptr, HAK_SIZEOF(*ptr), arg->len, (FILE*)arg->handle) < arg->len)
 	{
-		hcl_seterrbfmtwithsyserr (hcl, 0, errno, "unable to write udo stream");
+		hak_seterrbfmtwithsyserr (hak, 0, errno, "unable to write udo stream");
 		return -1;
 	}
 
@@ -4664,129 +4664,129 @@ static HCL_INLINE int write_udo_stream_bytes (hcl_t* hcl, hcl_io_udoarg_t* arg)
 	return 0;
 }
 
-static HCL_INLINE int flush_udo_stream (hcl_t* hcl, hcl_io_udoarg_t* arg)
+static HAK_INLINE int flush_udo_stream (hak_t* hak, hak_io_udoarg_t* arg)
 {
 	FILE* fp;
 
 	fp = (FILE*)arg->handle;
-	HCL_ASSERT (hcl, fp != HCL_NULL);
+	HAK_ASSERT (hak, fp != HAK_NULL);
 
 	fflush (fp);
 	return 0;
 }
 
-static int udo_handler (hcl_t* hcl, hcl_io_cmd_t cmd, void* arg)
+static int udo_handler (hak_t* hak, hak_io_cmd_t cmd, void* arg)
 {
 	switch (cmd)
 	{
-		case HCL_IO_OPEN:
-			return open_udo_stream(hcl, (hcl_io_udoarg_t*)arg);
+		case HAK_IO_OPEN:
+			return open_udo_stream(hak, (hak_io_udoarg_t*)arg);
 
-		case HCL_IO_CLOSE:
-			return close_udo_stream(hcl, (hcl_io_udoarg_t*)arg);
+		case HAK_IO_CLOSE:
+			return close_udo_stream(hak, (hak_io_udoarg_t*)arg);
 
-		case HCL_IO_WRITE:
-			return write_udo_stream(hcl, (hcl_io_udoarg_t*)arg);
+		case HAK_IO_WRITE:
+			return write_udo_stream(hak, (hak_io_udoarg_t*)arg);
 
-		case HCL_IO_WRITE_BYTES:
-			return write_udo_stream_bytes(hcl, (hcl_io_udoarg_t*)arg);
+		case HAK_IO_WRITE_BYTES:
+			return write_udo_stream_bytes(hak, (hak_io_udoarg_t*)arg);
 
-		case HCL_IO_FLUSH:
-			return flush_udo_stream(hcl, (hcl_io_udoarg_t*)arg);
+		case HAK_IO_FLUSH:
+			return flush_udo_stream(hak, (hak_io_udoarg_t*)arg);
 
 		default:
-			hcl_seterrnum (hcl, HCL_EINTERN);
+			hak_seterrnum (hak, HAK_EINTERN);
 			return -1;
 	}
 }
 
 /* --------------------------------------------------------------------- */
 
-int hcl_attachcciostdwithbcstr (hcl_t* hcl, const hcl_bch_t* cci_file)
+int hak_attachcciostdwithbcstr (hak_t* hak, const hak_bch_t* cci_file)
 {
-	xtn_t* xtn = GET_XTN(hcl);
+	xtn_t* xtn = GET_XTN(hak);
 	int n;
 
-	HCL_ASSERT (hcl, xtn->cci_path == HCL_NULL);
+	HAK_ASSERT (hak, xtn->cci_path == HAK_NULL);
 
 	xtn->cci_path = cci_file;
 
-	n = hcl_attachccio(hcl, cci_handler);
+	n = hak_attachccio(hak, cci_handler);
 
-	xtn->cci_path = HCL_NULL;
+	xtn->cci_path = HAK_NULL;
 
 	return n;
 }
 
-int hcl_attachcciostdwithucstr (hcl_t* hcl, const hcl_uch_t* cci_file)
+int hak_attachcciostdwithucstr (hak_t* hak, const hak_uch_t* cci_file)
 {
-	xtn_t* xtn = GET_XTN(hcl);
+	xtn_t* xtn = GET_XTN(hak);
 	int n;
 
-	HCL_ASSERT (hcl, xtn->cci_path == HCL_NULL);
+	HAK_ASSERT (hak, xtn->cci_path == HAK_NULL);
 
-	xtn->cci_path = hcl_duputobcstr(hcl, cci_file, HCL_NULL);
-	if (HCL_UNLIKELY(!xtn->cci_path)) return -1;
+	xtn->cci_path = hak_duputobcstr(hak, cci_file, HAK_NULL);
+	if (HAK_UNLIKELY(!xtn->cci_path)) return -1;
 
-	n = hcl_attachccio(hcl, cci_handler);
+	n = hak_attachccio(hak, cci_handler);
 
-	hcl_freemem (hcl, (void*)xtn->cci_path);
-	xtn->cci_path = HCL_NULL;
+	hak_freemem (hak, (void*)xtn->cci_path);
+	xtn->cci_path = HAK_NULL;
 
 	return n;
 }
 
 /* --------------------------------------------------------------------- */
 
-int hcl_attachudiostdwithbcstr (hcl_t* hcl, const hcl_bch_t* udi_file, const hcl_bch_t* udo_file)
+int hak_attachudiostdwithbcstr (hak_t* hak, const hak_bch_t* udi_file, const hak_bch_t* udo_file)
 {
-	xtn_t* xtn = GET_XTN(hcl);
+	xtn_t* xtn = GET_XTN(hak);
 	int n;
 
-	HCL_ASSERT (hcl, xtn->udi_path == HCL_NULL);
-	HCL_ASSERT (hcl, xtn->udo_path == HCL_NULL);
+	HAK_ASSERT (hak, xtn->udi_path == HAK_NULL);
+	HAK_ASSERT (hak, xtn->udo_path == HAK_NULL);
 
 	xtn->udi_path = udi_file;
 	xtn->udo_path = udo_file;
 
-	n = hcl_attachudio(hcl, udi_handler, udo_handler);
+	n = hak_attachudio(hak, udi_handler, udo_handler);
 
-	xtn->udi_path = HCL_NULL;
-	xtn->udo_path = HCL_NULL;
+	xtn->udi_path = HAK_NULL;
+	xtn->udo_path = HAK_NULL;
 
 	return n;
 }
 
-int hcl_attachudiostdwithucstr (hcl_t* hcl, const hcl_uch_t* udi_file, const hcl_uch_t* udo_file)
+int hak_attachudiostdwithucstr (hak_t* hak, const hak_uch_t* udi_file, const hak_uch_t* udo_file)
 {
-	xtn_t* xtn = GET_XTN(hcl);
+	xtn_t* xtn = GET_XTN(hak);
 	int n;
 
-	HCL_ASSERT (hcl, xtn->udi_path == HCL_NULL);
-	HCL_ASSERT (hcl, xtn->udo_path == HCL_NULL);
+	HAK_ASSERT (hak, xtn->udi_path == HAK_NULL);
+	HAK_ASSERT (hak, xtn->udo_path == HAK_NULL);
 
-	xtn->udi_path = hcl_duputobcstr(hcl, udi_file, HCL_NULL);
-	if (HCL_UNLIKELY(!xtn->udi_path))
+	xtn->udi_path = hak_duputobcstr(hak, udi_file, HAK_NULL);
+	if (HAK_UNLIKELY(!xtn->udi_path))
 	{
-		hcl_freemem (hcl, (void*)xtn->cci_path);
+		hak_freemem (hak, (void*)xtn->cci_path);
 		return -1;
 	}
 
-	xtn->udo_path = hcl_duputobcstr(hcl, udo_file, HCL_NULL);
-	if (HCL_UNLIKELY(!xtn->udo_path))
+	xtn->udo_path = hak_duputobcstr(hak, udo_file, HAK_NULL);
+	if (HAK_UNLIKELY(!xtn->udo_path))
 	{
-		hcl_freemem (hcl, (void*)xtn->udi_path);
-		xtn->udi_path = HCL_NULL;
+		hak_freemem (hak, (void*)xtn->udi_path);
+		xtn->udi_path = HAK_NULL;
 		return -1;
 	}
 
-	n = hcl_attachudio(hcl, udi_handler, udo_handler);
+	n = hak_attachudio(hak, udi_handler, udo_handler);
 
-	hcl_freemem (hcl, (void*)xtn->udi_path);
-	hcl_freemem (hcl, (void*)xtn->udo_path);
+	hak_freemem (hak, (void*)xtn->udi_path);
+	hak_freemem (hak, (void*)xtn->udo_path);
 
-	xtn->udi_path = HCL_NULL;
-	xtn->udo_path = HCL_NULL;
+	xtn->udi_path = HAK_NULL;
+	xtn->udo_path = HAK_NULL;
 
 	return n;
 }
@@ -4796,9 +4796,9 @@ int hcl_attachudiostdwithucstr (hcl_t* hcl, const hcl_uch_t* udi_file, const hcl
 
 /* ========================================================================= */
 
-static hcl_uint32_t ticker_started = 0;
+static hak_uint32_t ticker_started = 0;
 
-void hcl_start_ticker (void)
+void hak_start_ticker (void)
 {
 	if (++ticker_started == 1)
 	{
@@ -4806,7 +4806,7 @@ void hcl_start_ticker (void)
 	}
 }
 
-void hcl_stop_ticker (void)
+void hak_stop_ticker (void)
 {
 	if (ticker_started > 0 && --ticker_started == 0)
 	{
@@ -4822,19 +4822,19 @@ static BOOL WINAPI handle_term (DWORD ctrl_type)
 {
 	if (ctrl_type == CTRL_C_EVENT || ctrl_type == CTRL_CLOSE_EVENT)
 	{
-		abort_all_hcls (SIGINT);
+		abort_all_haks (SIGINT);
 		return TRUE;
 	}
 
 	return FALSE;
 }
 
-void hcl_catch_termreq (void)
+void hak_catch_termreq (void)
 {
 	SetConsoleCtrlHandler (handle_term, TRUE);
 }
 
-void hcl_uncatch_termreq (void)
+void hak_uncatch_termreq (void)
 {
 	SetConsoleCtrlHandler (handle_term, FALSE);
 }
@@ -4855,7 +4855,7 @@ static ULONG APIENTRY handle_term (
 		    p1->ExceptionInfo[0] == XCPT_SIGNAL_KILLPROC ||
 		    p1->ExceptionInfo[0] == XCPT_SIGNAL_BREAK)
 		{
-			abort_all_hcls (SIGINT);
+			abort_all_haks (SIGINT);
 			return (DosAcknowledgeSignalException(p1->ExceptionInfo[0]) != NO_ERROR)? 1: XCPT_CONTINUE_EXECUTION;
 		}
 	}
@@ -4863,13 +4863,13 @@ static ULONG APIENTRY handle_term (
 	return XCPT_CONTINUE_SEARCH; /* exception not resolved */
 }
 
-void hcl_catch_termreq (void)
+void hak_catch_termreq (void)
 {
 	os2_excrr.ExceptionHandler = (ERR)handle_term;
 	DosSetExceptionHandler (&os2_excrr); /* TODO: check if NO_ERROR is returned */
 }
 
-void hcl_uncatch_termreq (void)
+void hak_uncatch_termreq (void)
 {
 	DosUnsetExceptionHandler (&os2_excrr);
 }
@@ -4897,7 +4897,7 @@ static void __interrupt dos_int23_handler (void)
 	/* prevent the DOS interrupt handler from being called */
 	_XSTACK* stk = (_XSTACK*)_get_stk_frame();
 	stk->opts |= _STK_NOINT;
-	abort_all_hcls (SIGINT);
+	abort_all_haks (SIGINT);
 	/* if i call the previous handler, it's likely to kill the application.
 	 * so i don't chain-call the previous handler. but another call could
 	 * have changed the handler already to something else. then it would be
@@ -4909,7 +4909,7 @@ static void __interrupt dos_int23_handler (void)
 	#if 0
 	static int extended = 0;
 	static int keyboard[255] = { 0, };
-	hcl_uint8_t sc, status;
+	hak_uint8_t sc, status;
 	/* TODO: determine if the key pressed is ctrl-C or ctrl-break ... */
 
 	sc = inp(0x60);
@@ -4936,7 +4936,7 @@ static void __interrupt dos_int23_handler (void)
 		{
 			keyboard[sc] = 1;
 			/*printf ("%key pressed ... %x %c\n", sc, sc);*/
-			abort_all_hcls (SIGINT);
+			abort_all_haks (SIGINT);
 		}
 
 		extended = 0;
@@ -4945,35 +4945,35 @@ static void __interrupt dos_int23_handler (void)
 	/*_chain_intr (dos_prev_int23_handler);*/
 	outp (0x20, 0x20);
 	#else
-	abort_all_hcls (SIGINT);
+	abort_all_haks (SIGINT);
 	_chain_intr (dos_prev_int23_handler);
 	#endif
 #endif
 }
 
-void hcl_catch_termreq (void)
+void hak_catch_termreq (void)
 {
 	dos_prev_int23_handler = _dos_getvect(IRQ_TERM);
 	_dos_setvect (IRQ_TERM, dos_int23_handler);
 }
 
-void hcl_uncatch_termreq (void)
+void hak_uncatch_termreq (void)
 {
 	_dos_setvect (IRQ_TERM, dos_prev_int23_handler);
-	dos_prev_int23_handler = HCL_NULL;
+	dos_prev_int23_handler = HAK_NULL;
 }
 
 #else
 
-void hcl_catch_termreq (void)
+void hak_catch_termreq (void)
 {
-	set_signal_handler(SIGTERM, abort_all_hcls, 0);
-	set_signal_handler(SIGHUP, abort_all_hcls, 0);
-	set_signal_handler(SIGINT, abort_all_hcls, 0);
+	set_signal_handler(SIGTERM, abort_all_haks, 0);
+	set_signal_handler(SIGHUP, abort_all_haks, 0);
+	set_signal_handler(SIGINT, abort_all_haks, 0);
 	set_signal_handler(SIGPIPE, do_nothing, 0);
 }
 
-void hcl_uncatch_termreq (void)
+void hak_uncatch_termreq (void)
 {
 	unset_signal_handler(SIGTERM);
 	unset_signal_handler(SIGHUP);

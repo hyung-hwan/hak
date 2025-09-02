@@ -22,72 +22,72 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _HCL_OPT_H_
-#define _HCL_OPT_H_
+#ifndef _HAK_OPT_H_
+#define _HAK_OPT_H_
 
-#include <hcl-cmn.h>
+#include <hak-cmn.h>
 
 /** \file
  * This file defines functions and data structures to process
  * command-line arguments.
  */
 
-typedef struct hcl_uopt_t hcl_uopt_t;
-typedef struct hcl_uopt_lng_t hcl_uopt_lng_t;
+typedef struct hak_uopt_t hak_uopt_t;
+typedef struct hak_uopt_lng_t hak_uopt_lng_t;
 
-struct hcl_uopt_lng_t
+struct hak_uopt_lng_t
 {
-	const hcl_uch_t* str;
-	hcl_uci_t        val;
+	const hak_uch_t* str;
+	hak_uci_t        val;
 };
 
-struct hcl_uopt_t
+struct hak_uopt_t
 {
 	/* input */
-	const hcl_uch_t* str; /* option string  */
-	hcl_uopt_lng_t*  lng; /* long options */
+	const hak_uch_t* str; /* option string  */
+	hak_uopt_lng_t*  lng; /* long options */
 
 	/* output */
-	hcl_uci_t        opt; /* character checked for validity */
-	hcl_uch_t*       arg; /* argument associated with an option */
+	hak_uci_t        opt; /* character checked for validity */
+	hak_uch_t*       arg; /* argument associated with an option */
 
 	/* output */
-	const hcl_uch_t* lngopt;
+	const hak_uch_t* lngopt;
 
 	/* input + output */
 	int              ind; /* index into parent argv vector */
 
 	/* input + output - internal*/
-	hcl_uch_t*       cur;
+	hak_uch_t*       cur;
 };
 
-typedef struct hcl_bopt_t hcl_bopt_t;
-typedef struct hcl_bopt_lng_t hcl_bopt_lng_t;
+typedef struct hak_bopt_t hak_bopt_t;
+typedef struct hak_bopt_lng_t hak_bopt_lng_t;
 
-struct hcl_bopt_lng_t
+struct hak_bopt_lng_t
 {
-	const hcl_bch_t* str;
-	hcl_bci_t        val;
+	const hak_bch_t* str;
+	hak_bci_t        val;
 };
 
-struct hcl_bopt_t
+struct hak_bopt_t
 {
 	/* input */
-	const hcl_bch_t* str; /* option string  */
-	hcl_bopt_lng_t*  lng; /* long options */
+	const hak_bch_t* str; /* option string  */
+	hak_bopt_lng_t*  lng; /* long options */
 
 	/* output */
-	hcl_bci_t        opt; /* character checked for validity */
-	hcl_bch_t*       arg; /* argument associated with an option */
+	hak_bci_t        opt; /* character checked for validity */
+	hak_bch_t*       arg; /* argument associated with an option */
 
 	/* output */
-	const hcl_bch_t* lngopt;
+	const hak_bch_t* lngopt;
 
 	/* input + output */
 	int              ind; /* index into parent argv vector */
 
 	/* input + output - internal*/
-	hcl_bch_t*       cur;
+	hak_bch_t*       cur;
 };
 
 #if defined(__cplusplus)
@@ -95,7 +95,7 @@ extern "C" {
 #endif
 
 /**
- * The hcl_getopt() function processes the \a argc command-line arguments
+ * The hak_getopt() function processes the \a argc command-line arguments
  * pointed to by \a argv as configured in \a opt. It can process two
  * different option styles: a single character starting with '-', and a
  * long name starting with '--'.
@@ -107,29 +107,29 @@ extern "C" {
  * - \b ? indicates a bad option stored in the \a opt->opt field.
  * - \b : indicates a bad parameter for an option stored in the \a opt->opt field.
  *
- * @return an option character on success, HCL_CHAR_EOF on no more options.
+ * @return an option character on success, HAK_CHAR_EOF on no more options.
  */
-HCL_EXPORT hcl_uci_t hcl_getuopt (
+HAK_EXPORT hak_uci_t hak_getuopt (
 	int                argc, /* argument count */
-	hcl_uch_t* const*  argv, /* argument array */
-	hcl_uopt_t*        opt   /* option configuration */
+	hak_uch_t* const*  argv, /* argument array */
+	hak_uopt_t*        opt   /* option configuration */
 );
 
-HCL_EXPORT hcl_bci_t hcl_getbopt (
+HAK_EXPORT hak_bci_t hak_getbopt (
 	int                argc, /* argument count */
-	hcl_bch_t* const*  argv, /* argument array */
-	hcl_bopt_t*        opt   /* option configuration */
+	hak_bch_t* const*  argv, /* argument array */
+	hak_bopt_t*        opt   /* option configuration */
 );
 
 
-#if defined(HCL_OOCH_IS_UCH)
-#	define hcl_opt_t hcl_uopt_t
-#	define hcl_opt_lng_t hcl_uopt_lng_t
-#	define hcl_getopt(argc,argv,opt) hcl_getuopt(argc,argv,opt)
+#if defined(HAK_OOCH_IS_UCH)
+#	define hak_opt_t hak_uopt_t
+#	define hak_opt_lng_t hak_uopt_lng_t
+#	define hak_getopt(argc,argv,opt) hak_getuopt(argc,argv,opt)
 #else
-#	define hcl_opt_t hcl_bopt_t
-#	define hcl_opt_lng_t hcl_bopt_lng_t
-#	define hcl_getopt(argc,argv,opt) hcl_getbopt(argc,argv,opt)
+#	define hak_opt_t hak_bopt_t
+#	define hak_opt_lng_t hak_bopt_lng_t
+#	define hak_getopt(argc,argv,opt) hak_getbopt(argc,argv,opt)
 #endif
 
 #if defined(__cplusplus)

@@ -23,8 +23,8 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <hcl-x.h>
-#include "hcl-prv.h"
+#include <hak-x.h>
+#include "hak-prv.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -62,19 +62,19 @@
 #	include <sys/socket.h>
 #endif
 
-int hcl_sys_send (int sck, const void* data, hcl_oow_t* size)
+int hak_sys_send (int sck, const void* data, hak_oow_t* size)
 {
 	ssize_t n, seglen;
-	hcl_oow_t rem;
+	hak_oow_t rem;
 
 	rem = *size;
 	while (rem > 0)
 	{
-		seglen = (rem > HCL_TYPE_MAX(ssize_t))? HCL_TYPE_MAX(ssize_t): rem;
+		seglen = (rem > HAK_TYPE_MAX(ssize_t))? HAK_TYPE_MAX(ssize_t): rem;
 		n = send(sck, data, seglen, 0);
 		if (n <= -1)
 		{
-			if (hcl_sys_is_errno_wb(errno)) break;
+			if (hak_sys_is_errno_wb(errno)) break;
 			*size -= rem; /* update the size to the bytes sent so far upon failure*/
 			return -1;
 		}
@@ -87,7 +87,7 @@ int hcl_sys_send (int sck, const void* data, hcl_oow_t* size)
 	return 0;
 }
 
-int hcl_sys_send_iov (int sck, hcl_iovec_t* iov, int count)
+int hak_sys_send_iov (int sck, hak_iovec_t* iov, int count)
 {
 	int index = 0;
 
@@ -96,13 +96,13 @@ int hcl_sys_send_iov (int sck, hcl_iovec_t* iov, int count)
 		ssize_t nwritten;
 		struct msghdr msg;
 
-		HCL_MEMSET (&msg, 0, HCL_SIZEOF(msg));
+		HAK_MEMSET (&msg, 0, HAK_SIZEOF(msg));
 		msg.msg_iov = (struct iovec*)&iov[index];
 		msg.msg_iovlen = count - index;
 		nwritten = sendmsg(sck, &msg, 0);
 		if (nwritten <= -1)
 		{
-			if (hcl_sys_is_errno_wb(errno))
+			if (hak_sys_is_errno_wb(errno))
 			{
 				/* the incompelete write. the caller shall check the return code
 				 * and iov_len at the last written iov slot. */
@@ -119,7 +119,7 @@ int hcl_sys_send_iov (int sck, hcl_iovec_t* iov, int count)
 
 		if (index == count) break;
 
-		iov[index].iov_base = (void*)((hcl_uint8_t*)iov[index].iov_base + nwritten);
+		iov[index].iov_base = (void*)((hak_uint8_t*)iov[index].iov_base + nwritten);
 		iov[index].iov_len -= nwritten;
 	}
 
@@ -127,21 +127,21 @@ int hcl_sys_send_iov (int sck, hcl_iovec_t* iov, int count)
 }
 
 
-int hcl_sys_open_pipes (int pfd[2], int nonblock)
+int hak_sys_open_pipes (int pfd[2], int nonblock)
 {
 	/* TODO: mimic open_pipes() in std.c */
 
 	if (pipe(pfd) <= -1) return -1;
 
-	hcl_sys_set_nonblock(pfd[0], nonblock);
-	hcl_sys_set_nonblock(pfd[1], nonblock);
-	hcl_sys_set_cloexec(pfd[0], 1);
-	hcl_sys_set_cloexec(pfd[1], 1);
+	hak_sys_set_nonblock(pfd[0], nonblock);
+	hak_sys_set_nonblock(pfd[1], nonblock);
+	hak_sys_set_cloexec(pfd[0], 1);
+	hak_sys_set_cloexec(pfd[1], 1);
 
 	return 0;
 }
 
-void hcl_sys_close_pipes (int pfd[2])
+void hak_sys_close_pipes (int pfd[2])
 {
 	if (pfd[0] >= 0)
 	{
@@ -155,7 +155,7 @@ void hcl_sys_close_pipes (int pfd[2])
 	}
 }
 
-int hcl_sys_set_nonblock (int fd, int v)
+int hak_sys_set_nonblock (int fd, int v)
 {
 #if defined(F_GETFL) && defined(F_SETFL) && defined(O_NONBLOCK)
 	int flags;
@@ -174,7 +174,7 @@ int hcl_sys_set_nonblock (int fd, int v)
 #endif
 }
 
-int hcl_sys_set_cloexec (int fd, int v)
+int hak_sys_set_cloexec (int fd, int v)
 {
 #if defined(F_GETFL) && defined(F_SETFL) && defined(FD_CLOEXEC)
 	int flags;
@@ -193,7 +193,7 @@ int hcl_sys_set_cloexec (int fd, int v)
 #endif
 }
 
-int hcl_sys_is_errno_wb (int no)
+int hak_sys_is_errno_wb (int no)
 {
 	#if defined(EWOULDBLOCK) && defined(EAGAIN) && (EWOULDBLOCK != EAGAIN)
 		return no == EWOULDBLOCK || no == EAGAIN;

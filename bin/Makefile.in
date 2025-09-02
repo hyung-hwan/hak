@@ -98,8 +98,8 @@ host_triplet = @host@
 ##################################################
 @ENABLE_LIBLTDL_TRUE@am__append_1 = $(LTDL_LIBS)
 @ENABLE_LIBLTDL_FALSE@am__append_2 = $(DL_LIBS)
-bin_PROGRAMS = hcl$(EXEEXT) $(am__EXEEXT_1)
-@ENABLE_HCLX_TRUE@am__append_3 = hclx
+bin_PROGRAMS = hak$(EXEEXT) $(am__EXEEXT_1)
+@ENABLE_HAKX_TRUE@am__append_3 = hakx
 subdir = bin
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_check_sign.m4 \
@@ -112,10 +112,10 @@ am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 DIST_COMMON = $(srcdir)/Makefile.am $(noinst_HEADERS) \
 	$(am__DIST_COMMON)
 mkinstalldirs = $(install_sh) -d
-CONFIG_HEADER = $(top_builddir)/lib/hcl-cfg.h
+CONFIG_HEADER = $(top_builddir)/lib/hak-cfg.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
-@ENABLE_HCLX_TRUE@am__EXEEXT_1 = hclx$(EXEEXT)
+@ENABLE_HAKX_TRUE@am__EXEEXT_1 = hakx$(EXEEXT)
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 LIBRARIES = $(noinst_LIBRARIES)
@@ -141,29 +141,29 @@ am_libisocline_a_OBJECTS = isocline/src/attr.$(OBJEXT) \
 	isocline/src/tty.$(OBJEXT) isocline/src/tty_esc.$(OBJEXT) \
 	isocline/src/undo.$(OBJEXT) isocline/src/wcwidth.$(OBJEXT)
 libisocline_a_OBJECTS = $(am_libisocline_a_OBJECTS)
-am_hcl_OBJECTS = hcl-hcl.$(OBJEXT)
-hcl_OBJECTS = $(am_hcl_OBJECTS)
+am_hak_OBJECTS = hak-hak.$(OBJEXT)
+hak_OBJECTS = $(am_hak_OBJECTS)
 am__DEPENDENCIES_1 =
 @ENABLE_LIBLTDL_TRUE@am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
 @ENABLE_LIBLTDL_FALSE@am__DEPENDENCIES_3 = $(am__DEPENDENCIES_1)
 am__DEPENDENCIES_4 = $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3)
-hcl_DEPENDENCIES = ../lib/libhcl.la $(am__DEPENDENCIES_4) \
+hak_DEPENDENCIES = ../lib/libhak.la $(am__DEPENDENCIES_4) \
 	./libisocline.a
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
-hcl_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+hak_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
-	$(hcl_LDFLAGS) $(LDFLAGS) -o $@
-am__hclx_SOURCES_DIST = hclx.c
-@ENABLE_HCLX_TRUE@am_hclx_OBJECTS = hclx-hclx.$(OBJEXT)
-hclx_OBJECTS = $(am_hclx_OBJECTS)
-@ENABLE_HCLX_TRUE@hclx_DEPENDENCIES = ../lib/libhclx.la \
-@ENABLE_HCLX_TRUE@	$(am__DEPENDENCIES_4)
-hclx_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(hak_LDFLAGS) $(LDFLAGS) -o $@
+am__hakx_SOURCES_DIST = hakx.c
+@ENABLE_HAKX_TRUE@am_hakx_OBJECTS = hakx-hakx.$(OBJEXT)
+hakx_OBJECTS = $(am_hakx_OBJECTS)
+@ENABLE_HAKX_TRUE@hakx_DEPENDENCIES = ../lib/libhakx.la \
+@ENABLE_HAKX_TRUE@	$(am__DEPENDENCIES_4)
+hakx_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
-	$(hclx_LDFLAGS) $(LDFLAGS) -o $@
+	$(hakx_LDFLAGS) $(LDFLAGS) -o $@
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -179,7 +179,7 @@ am__v_at_1 =
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/ac/depcomp
 am__maybe_remake_depfiles = depfiles
-am__depfiles_remade = ./$(DEPDIR)/hcl-hcl.Po ./$(DEPDIR)/hclx-hclx.Po \
+am__depfiles_remade = ./$(DEPDIR)/hak-hak.Po ./$(DEPDIR)/hakx-hakx.Po \
 	isocline/src/$(DEPDIR)/attr.Po \
 	isocline/src/$(DEPDIR)/bbcode.Po \
 	isocline/src/$(DEPDIR)/bbcode_colors.Po \
@@ -214,9 +214,9 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(libisocline_a_SOURCES) $(hcl_SOURCES) $(hclx_SOURCES)
-DIST_SOURCES = $(libisocline_a_SOURCES) $(hcl_SOURCES) \
-	$(am__hclx_SOURCES_DIST)
+SOURCES = $(libisocline_a_SOURCES) $(hak_SOURCES) $(hakx_SOURCES)
+DIST_SOURCES = $(libisocline_a_SOURCES) $(hak_SOURCES) \
+	$(am__hakx_SOURCES_DIST)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -274,9 +274,9 @@ EXEEXT = @EXEEXT@
 FGREP = @FGREP@
 FILECMD = @FILECMD@
 GREP = @GREP@
-HCL_PROJECT_AUTHOR = @HCL_PROJECT_AUTHOR@
-HCL_PROJECT_URL = @HCL_PROJECT_URL@
-HCL_SYS_LIB_SEARCH_PATH_SPEC = @HCL_SYS_LIB_SEARCH_PATH_SPEC@
+HAK_PROJECT_AUTHOR = @HAK_PROJECT_AUTHOR@
+HAK_PROJECT_URL = @HAK_PROJECT_URL@
+HAK_SYS_LIB_SEARCH_PATH_SPEC = @HAK_SYS_LIB_SEARCH_PATH_SPEC@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -437,14 +437,14 @@ libisocline_a_SOURCES = \
 	isocline/src/undo.c \
 	isocline/src/wcwidth.c
 
-hcl_SOURCES = hcl.c
-hcl_CPPFLAGS = $(CPPFLAGS_COMMON) -I$(srcdir)/isocline/include -DHAVE_ISOCLINE_H -DHAVE_ISOCLINE_LIB
-hcl_LDFLAGS = $(LDFLAGS_COMMON)
-hcl_LDADD = ../lib/libhcl.la $(LIBADD_COMMON) ./libisocline.a
-@ENABLE_HCLX_TRUE@hclx_SOURCES = hclx.c
-@ENABLE_HCLX_TRUE@hclx_CPPFLAGS = $(CPPFLAGS_COMMON)
-@ENABLE_HCLX_TRUE@hclx_LDFLAGS = $(LDFLAGS_COMMON)
-@ENABLE_HCLX_TRUE@hclx_LDADD = ../lib/libhclx.la $(LIBADD_COMMON)
+hak_SOURCES = hak.c
+hak_CPPFLAGS = $(CPPFLAGS_COMMON) -I$(srcdir)/isocline/include -DHAVE_ISOCLINE_H -DHAVE_ISOCLINE_LIB
+hak_LDFLAGS = $(LDFLAGS_COMMON)
+hak_LDADD = ../lib/libhak.la $(LIBADD_COMMON) ./libisocline.a
+@ENABLE_HAKX_TRUE@hakx_SOURCES = hakx.c
+@ENABLE_HAKX_TRUE@hakx_CPPFLAGS = $(CPPFLAGS_COMMON)
+@ENABLE_HAKX_TRUE@hakx_LDFLAGS = $(LDFLAGS_COMMON)
+@ENABLE_HAKX_TRUE@hakx_LDADD = ../lib/libhakx.la $(LIBADD_COMMON)
 all: all-am
 
 .SUFFIXES:
@@ -569,13 +569,13 @@ libisocline.a: $(libisocline_a_OBJECTS) $(libisocline_a_DEPENDENCIES) $(EXTRA_li
 	$(AM_V_AR)$(libisocline_a_AR) libisocline.a $(libisocline_a_OBJECTS) $(libisocline_a_LIBADD)
 	$(AM_V_at)$(libisocline_a_RANLIB) libisocline.a
 
-hcl$(EXEEXT): $(hcl_OBJECTS) $(hcl_DEPENDENCIES) $(EXTRA_hcl_DEPENDENCIES) 
-	@rm -f hcl$(EXEEXT)
-	$(AM_V_CCLD)$(hcl_LINK) $(hcl_OBJECTS) $(hcl_LDADD) $(LIBS)
+hak$(EXEEXT): $(hak_OBJECTS) $(hak_DEPENDENCIES) $(EXTRA_hak_DEPENDENCIES) 
+	@rm -f hak$(EXEEXT)
+	$(AM_V_CCLD)$(hak_LINK) $(hak_OBJECTS) $(hak_LDADD) $(LIBS)
 
-hclx$(EXEEXT): $(hclx_OBJECTS) $(hclx_DEPENDENCIES) $(EXTRA_hclx_DEPENDENCIES) 
-	@rm -f hclx$(EXEEXT)
-	$(AM_V_CCLD)$(hclx_LINK) $(hclx_OBJECTS) $(hclx_LDADD) $(LIBS)
+hakx$(EXEEXT): $(hakx_OBJECTS) $(hakx_DEPENDENCIES) $(EXTRA_hakx_DEPENDENCIES) 
+	@rm -f hakx$(EXEEXT)
+	$(AM_V_CCLD)$(hakx_LINK) $(hakx_OBJECTS) $(hakx_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -584,8 +584,8 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hcl-hcl.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hclx-hclx.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hak-hak.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hakx-hakx.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/attr.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/bbcode.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/bbcode_colors.Po@am__quote@ # am--include-marker
@@ -633,33 +633,33 @@ am--depfiles: $(am__depfiles_remade)
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LTCOMPILE) -c -o $@ $<
 
-hcl-hcl.o: hcl.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hcl_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT hcl-hcl.o -MD -MP -MF $(DEPDIR)/hcl-hcl.Tpo -c -o hcl-hcl.o `test -f 'hcl.c' || echo '$(srcdir)/'`hcl.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/hcl-hcl.Tpo $(DEPDIR)/hcl-hcl.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='hcl.c' object='hcl-hcl.o' libtool=no @AMDEPBACKSLASH@
+hak-hak.o: hak.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hak_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT hak-hak.o -MD -MP -MF $(DEPDIR)/hak-hak.Tpo -c -o hak-hak.o `test -f 'hak.c' || echo '$(srcdir)/'`hak.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/hak-hak.Tpo $(DEPDIR)/hak-hak.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='hak.c' object='hak-hak.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hcl_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o hcl-hcl.o `test -f 'hcl.c' || echo '$(srcdir)/'`hcl.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hak_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o hak-hak.o `test -f 'hak.c' || echo '$(srcdir)/'`hak.c
 
-hcl-hcl.obj: hcl.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hcl_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT hcl-hcl.obj -MD -MP -MF $(DEPDIR)/hcl-hcl.Tpo -c -o hcl-hcl.obj `if test -f 'hcl.c'; then $(CYGPATH_W) 'hcl.c'; else $(CYGPATH_W) '$(srcdir)/hcl.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/hcl-hcl.Tpo $(DEPDIR)/hcl-hcl.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='hcl.c' object='hcl-hcl.obj' libtool=no @AMDEPBACKSLASH@
+hak-hak.obj: hak.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hak_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT hak-hak.obj -MD -MP -MF $(DEPDIR)/hak-hak.Tpo -c -o hak-hak.obj `if test -f 'hak.c'; then $(CYGPATH_W) 'hak.c'; else $(CYGPATH_W) '$(srcdir)/hak.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/hak-hak.Tpo $(DEPDIR)/hak-hak.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='hak.c' object='hak-hak.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hcl_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o hcl-hcl.obj `if test -f 'hcl.c'; then $(CYGPATH_W) 'hcl.c'; else $(CYGPATH_W) '$(srcdir)/hcl.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hak_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o hak-hak.obj `if test -f 'hak.c'; then $(CYGPATH_W) 'hak.c'; else $(CYGPATH_W) '$(srcdir)/hak.c'; fi`
 
-hclx-hclx.o: hclx.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hclx_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT hclx-hclx.o -MD -MP -MF $(DEPDIR)/hclx-hclx.Tpo -c -o hclx-hclx.o `test -f 'hclx.c' || echo '$(srcdir)/'`hclx.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/hclx-hclx.Tpo $(DEPDIR)/hclx-hclx.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='hclx.c' object='hclx-hclx.o' libtool=no @AMDEPBACKSLASH@
+hakx-hakx.o: hakx.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hakx_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT hakx-hakx.o -MD -MP -MF $(DEPDIR)/hakx-hakx.Tpo -c -o hakx-hakx.o `test -f 'hakx.c' || echo '$(srcdir)/'`hakx.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/hakx-hakx.Tpo $(DEPDIR)/hakx-hakx.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='hakx.c' object='hakx-hakx.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hclx_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o hclx-hclx.o `test -f 'hclx.c' || echo '$(srcdir)/'`hclx.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hakx_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o hakx-hakx.o `test -f 'hakx.c' || echo '$(srcdir)/'`hakx.c
 
-hclx-hclx.obj: hclx.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hclx_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT hclx-hclx.obj -MD -MP -MF $(DEPDIR)/hclx-hclx.Tpo -c -o hclx-hclx.obj `if test -f 'hclx.c'; then $(CYGPATH_W) 'hclx.c'; else $(CYGPATH_W) '$(srcdir)/hclx.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/hclx-hclx.Tpo $(DEPDIR)/hclx-hclx.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='hclx.c' object='hclx-hclx.obj' libtool=no @AMDEPBACKSLASH@
+hakx-hakx.obj: hakx.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hakx_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT hakx-hakx.obj -MD -MP -MF $(DEPDIR)/hakx-hakx.Tpo -c -o hakx-hakx.obj `if test -f 'hakx.c'; then $(CYGPATH_W) 'hakx.c'; else $(CYGPATH_W) '$(srcdir)/hakx.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/hakx-hakx.Tpo $(DEPDIR)/hakx-hakx.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='hakx.c' object='hakx-hakx.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hclx_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o hclx-hclx.obj `if test -f 'hclx.c'; then $(CYGPATH_W) 'hclx.c'; else $(CYGPATH_W) '$(srcdir)/hclx.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hakx_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o hakx-hakx.obj `if test -f 'hakx.c'; then $(CYGPATH_W) 'hakx.c'; else $(CYGPATH_W) '$(srcdir)/hakx.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -796,8 +796,8 @@ clean-am: clean-binPROGRAMS clean-generic clean-libtool \
 	clean-noinstLIBRARIES mostlyclean-am
 
 distclean: distclean-am
-	-rm -f ./$(DEPDIR)/hcl-hcl.Po
-	-rm -f ./$(DEPDIR)/hclx-hclx.Po
+	-rm -f ./$(DEPDIR)/hak-hak.Po
+	-rm -f ./$(DEPDIR)/hakx-hakx.Po
 	-rm -f isocline/src/$(DEPDIR)/attr.Po
 	-rm -f isocline/src/$(DEPDIR)/bbcode.Po
 	-rm -f isocline/src/$(DEPDIR)/bbcode_colors.Po
@@ -859,8 +859,8 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-am
-	-rm -f ./$(DEPDIR)/hcl-hcl.Po
-	-rm -f ./$(DEPDIR)/hclx-hclx.Po
+	-rm -f ./$(DEPDIR)/hak-hak.Po
+	-rm -f ./$(DEPDIR)/hakx-hakx.Po
 	-rm -f isocline/src/$(DEPDIR)/attr.Po
 	-rm -f isocline/src/$(DEPDIR)/bbcode.Po
 	-rm -f isocline/src/$(DEPDIR)/bbcode_colors.Po

@@ -22,521 +22,521 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "hcl-prv.h"
+#include "hak-prv.h"
 
-#if defined(HCL_PROFILE_VM)
+#if defined(HAK_PROFILE_VM)
 #include <sys/time.h>
 #include <sys/resource.h> /* getrusage */
 #endif
 
-void* hcl_allocbytes (hcl_t* hcl, hcl_oow_t size)
+void* hak_allocbytes (hak_t* hak, hak_oow_t size)
 {
-	hcl_gchdr_t* gch;
-	hcl_oow_t allocsize;
+	hak_gchdr_t* gch;
+	hak_oow_t allocsize;
 	int gc_called = 0;
-#if defined(HCL_PROFILE_VM)
+#if defined(HAK_PROFILE_VM)
 	struct rusage ru;
-	hcl_ntime_t rut;
+	hak_ntime_t rut;
 #endif
 
-#if defined(HCL_BUILD_DEBUG)
-	if ((hcl->option.trait & HCL_TRAIT_DEBUG_GC) && !(hcl->option.trait & HCL_TRAIT_NOGC)) hcl_gc (hcl, 1);
+#if defined(HAK_BUILD_DEBUG)
+	if ((hak->option.trait & HAK_TRAIT_DEBUG_GC) && !(hak->option.trait & HAK_TRAIT_NOGC)) hak_gc (hak, 1);
 #endif
 
-#if defined(HCL_PROFILE_VM)
+#if defined(HAK_PROFILE_VM)
 	getrusage(RUSAGE_SELF, &ru);
-	HCL_INIT_NTIME (&rut,  ru.ru_utime.tv_sec, HCL_USEC_TO_NSEC(ru.ru_utime.tv_usec));
+	HAK_INIT_NTIME (&rut,  ru.ru_utime.tv_sec, HAK_USEC_TO_NSEC(ru.ru_utime.tv_usec));
 #endif
 
-	allocsize = HCL_SIZEOF(*gch) + size;
+	allocsize = HAK_SIZEOF(*gch) + size;
 
-	if (hcl->gci.bsz >= hcl->gci.threshold)
+	if (hak->gci.bsz >= hak->gci.threshold)
 	{
-		hcl_gc (hcl, 0);
-		hcl->gci.threshold = hcl->gci.bsz + 100000; /* TODO: change this fomula */
+		hak_gc (hak, 0);
+		hak->gci.threshold = hak->gci.bsz + 100000; /* TODO: change this fomula */
 		gc_called = 1;
 	}
 
-	if (hcl->gci.lazy_sweep) hcl_gc_ms_sweep_lazy (hcl, allocsize);
+	if (hak->gci.lazy_sweep) hak_gc_ms_sweep_lazy (hak, allocsize);
 
-	gch = (hcl_gchdr_t*)hcl_callocheapmem_noseterr(hcl, hcl->heap, allocsize);
+	gch = (hak_gchdr_t*)hak_callocheapmem_noseterr(hak, hak->heap, allocsize);
 	if (!gch)
 	{
-		if (HCL_UNLIKELY(hcl->option.trait & HCL_TRAIT_NOGC)) goto calloc_heapmem_fail;
+		if (HAK_UNLIKELY(hak->option.trait & HAK_TRAIT_NOGC)) goto calloc_heapmem_fail;
 		if (gc_called) goto sweep_the_rest;
 
-		hcl_gc (hcl, 0);
-		if (hcl->gci.lazy_sweep) hcl_gc_ms_sweep_lazy (hcl, allocsize);
+		hak_gc (hak, 0);
+		if (hak->gci.lazy_sweep) hak_gc_ms_sweep_lazy (hak, allocsize);
 
-		gch = (hcl_gchdr_t*)hcl_callocheapmem_noseterr(hcl, hcl->heap, allocsize);
-		if (HCL_UNLIKELY(!gch))
+		gch = (hak_gchdr_t*)hak_callocheapmem_noseterr(hak, hak->heap, allocsize);
+		if (HAK_UNLIKELY(!gch))
 		{
 		sweep_the_rest:
-			if (hcl->gci.lazy_sweep)
+			if (hak->gci.lazy_sweep)
 			{
-				hcl_gc_ms_sweep_lazy (hcl, HCL_TYPE_MAX(hcl_oow_t)); /* sweep the rest */
-				gch = (hcl_gchdr_t*)hcl_callocheapmem(hcl, hcl->heap, allocsize);
-				if (HCL_UNLIKELY(!gch)) return HCL_NULL;
+				hak_gc_ms_sweep_lazy (hak, HAK_TYPE_MAX(hak_oow_t)); /* sweep the rest */
+				gch = (hak_gchdr_t*)hak_callocheapmem(hak, hak->heap, allocsize);
+				if (HAK_UNLIKELY(!gch)) return HAK_NULL;
 			}
 			else
 			{
 			calloc_heapmem_fail:
-				hcl_seterrnum (hcl, HCL_EOOMEM);
-				return HCL_NULL;
+				hak_seterrnum (hak, HAK_EOOMEM);
+				return HAK_NULL;
 			}
 		}
 	}
 
-	if (hcl->gci.lazy_sweep && hcl->gci.ls.curr == hcl->gci.b)
+	if (hak->gci.lazy_sweep && hak->gci.ls.curr == hak->gci.b)
 	{
 		/* if the lazy sweeping point is at the beginning of the allocation block,
-		 * hcl->gc.ls.prev must get updated */
-		HCL_ASSERT (hcl, hcl->gci.ls.prev == HCL_NULL);
-		hcl->gci.ls.prev = gch;
+		 * hak->gc.ls.prev must get updated */
+		HAK_ASSERT (hak, hak->gci.ls.prev == HAK_NULL);
+		hak->gci.ls.prev = gch;
 	}
 
-	gch->next = hcl->gci.b;
-	hcl->gci.b = gch;
-	hcl->gci.bsz += size;
+	gch->next = hak->gci.b;
+	hak->gci.b = gch;
+	hak->gci.bsz += size;
 
 
-#if defined(HCL_PROFILE_VM)
+#if defined(HAK_PROFILE_VM)
 	getrusage(RUSAGE_SELF, &ru);
-	HCL_SUB_NTIME_SNS (&rut, &rut, ru.ru_utime.tv_sec, HCL_USEC_TO_NSEC(ru.ru_utime.tv_usec));
-	HCL_SUB_NTIME (&hcl->gci.stat.alloc, &hcl->gci.stat.alloc, &rut); /* do subtraction because rut is negative */
+	HAK_SUB_NTIME_SNS (&rut, &rut, ru.ru_utime.tv_sec, HAK_USEC_TO_NSEC(ru.ru_utime.tv_usec));
+	HAK_SUB_NTIME (&hak->gci.stat.alloc, &hak->gci.stat.alloc, &rut); /* do subtraction because rut is negative */
 #endif
-	return (hcl_uint8_t*)(gch + 1);
+	return (hak_uint8_t*)(gch + 1);
 
 }
 
-static HCL_INLINE hcl_oop_t alloc_oop_array (hcl_t* hcl, hcl_oow_t size, int ngc)
+static HAK_INLINE hak_oop_t alloc_oop_array (hak_t* hak, hak_oow_t size, int ngc)
 {
-	hcl_oop_oop_t hdr;
-	hcl_oow_t nbytes, nbytes_aligned;
+	hak_oop_oop_t hdr;
+	hak_oow_t nbytes, nbytes_aligned;
 
-	nbytes = size * HCL_SIZEOF(hcl_oop_t);
+	nbytes = size * HAK_SIZEOF(hak_oop_t);
 
 	/* this isn't really necessary since nbytes must be
 	 * aligned already. */
-	nbytes_aligned = HCL_ALIGN(nbytes, HCL_SIZEOF(hcl_oop_t));
+	nbytes_aligned = HAK_ALIGN(nbytes, HAK_SIZEOF(hak_oop_t));
 
-	if (HCL_UNLIKELY(ngc))
+	if (HAK_UNLIKELY(ngc))
 	{
-		hdr = (hcl_oop_oop_t)hcl_callocmem(hcl, HCL_SIZEOF(hcl_obj_t) + nbytes_aligned);
+		hdr = (hak_oop_oop_t)hak_callocmem(hak, HAK_SIZEOF(hak_obj_t) + nbytes_aligned);
 	}
 	else
 	{
 		/* making the number of bytes to allocate a multiple of
-		 * HCL_SIZEOF(hcl_oop_t) will guarantee the starting address
+		 * HAK_SIZEOF(hak_oop_t) will guarantee the starting address
 		 * of the allocated space to be an even number.
-		 * see HCL_OOP_IS_NUMERIC() and HCL_OOP_IS_POINTER() */
-		hdr = (hcl_oop_oop_t)hcl_allocbytes(hcl, HCL_SIZEOF(hcl_obj_t) + nbytes_aligned);
+		 * see HAK_OOP_IS_NUMERIC() and HAK_OOP_IS_POINTER() */
+		hdr = (hak_oop_oop_t)hak_allocbytes(hak, HAK_SIZEOF(hak_obj_t) + nbytes_aligned);
 	}
-	if (!hdr) return HCL_NULL;
+	if (!hdr) return HAK_NULL;
 
-	hdr->_flags = HCL_OBJ_MAKE_FLAGS(HCL_OBJ_TYPE_OOP, HCL_SIZEOF(hcl_oop_t), 0, 0, 0, ngc, 0);
-	HCL_OBJ_SET_SIZE (hdr, size);
-	/*HCL_OBJ_SET_CLASS (hdr, hcl->_nil);*/
+	hdr->_flags = HAK_OBJ_MAKE_FLAGS(HAK_OBJ_TYPE_OOP, HAK_SIZEOF(hak_oop_t), 0, 0, 0, ngc, 0);
+	HAK_OBJ_SET_SIZE (hdr, size);
+	/*HAK_OBJ_SET_CLASS (hdr, hak->_nil);*/
 
-	while (size > 0) hdr->slot[--size] = hcl->_nil;
+	while (size > 0) hdr->slot[--size] = hak->_nil;
 
-	return (hcl_oop_t)hdr;
+	return (hak_oop_t)hdr;
 }
 
 
-hcl_oop_t hcl_allocoopobj (hcl_t* hcl, hcl_oow_t size)
+hak_oop_t hak_allocoopobj (hak_t* hak, hak_oow_t size)
 {
-	return alloc_oop_array(hcl, size, 0);
+	return alloc_oop_array(hak, size, 0);
 }
 
-hcl_oop_t hcl_allocoopobjwithtrailer (hcl_t* hcl, hcl_oow_t size, const hcl_oob_t* bptr, hcl_oow_t blen)
+hak_oop_t hak_allocoopobjwithtrailer (hak_t* hak, hak_oow_t size, const hak_oob_t* bptr, hak_oow_t blen)
 {
-	hcl_oop_oop_t hdr;
-	hcl_oow_t nbytes, nbytes_aligned;
-	hcl_oow_t i;
+	hak_oop_oop_t hdr;
+	hak_oow_t nbytes, nbytes_aligned;
+	hak_oow_t i;
 
-	/* +1 for the trailer size of the hcl_oow_t type */
-	nbytes = (size + 1) * HCL_SIZEOF(hcl_oop_t) + blen;
-	nbytes_aligned = HCL_ALIGN(nbytes, HCL_SIZEOF(hcl_oop_t));
+	/* +1 for the trailer size of the hak_oow_t type */
+	nbytes = (size + 1) * HAK_SIZEOF(hak_oop_t) + blen;
+	nbytes_aligned = HAK_ALIGN(nbytes, HAK_SIZEOF(hak_oop_t));
 
-	hdr = (hcl_oop_oop_t)hcl_allocbytes(hcl, HCL_SIZEOF(hcl_obj_t) + nbytes_aligned);
-	if (HCL_UNLIKELY(!hdr)) return HCL_NULL;
+	hdr = (hak_oop_oop_t)hak_allocbytes(hak, HAK_SIZEOF(hak_obj_t) + nbytes_aligned);
+	if (HAK_UNLIKELY(!hdr)) return HAK_NULL;
 
-	hdr->_flags = HCL_OBJ_MAKE_FLAGS(HCL_OBJ_TYPE_OOP, HCL_SIZEOF(hcl_oop_t), 0, 0, 0, 0, 1);
-	HCL_OBJ_SET_SIZE (hdr, size);
-	/*HCL_OBJ_SET_CLASS (hdr, hcl->_nil);*/
+	hdr->_flags = HAK_OBJ_MAKE_FLAGS(HAK_OBJ_TYPE_OOP, HAK_SIZEOF(hak_oop_t), 0, 0, 0, 0, 1);
+	HAK_OBJ_SET_SIZE (hdr, size);
+	/*HAK_OBJ_SET_CLASS (hdr, hak->_nil);*/
 
-	for (i = 0; i < size; i++) hdr->slot[i] = hcl->_nil;
+	for (i = 0; i < size; i++) hdr->slot[i] = hak->_nil;
 
 	/* [NOTE] this is not converted to a SMOOI object */
-	hdr->slot[size] = (hcl_oop_t)blen;
+	hdr->slot[size] = (hak_oop_t)blen;
 
-	if (bptr) HCL_MEMCPY (&hdr->slot[size + 1], bptr, blen);
-	else HCL_MEMSET (&hdr->slot[size + 1], 0, blen);
+	if (bptr) HAK_MEMCPY (&hdr->slot[size + 1], bptr, blen);
+	else HAK_MEMSET (&hdr->slot[size + 1], 0, blen);
 
-	return (hcl_oop_t)hdr;
+	return (hak_oop_t)hdr;
 }
 
-static HCL_INLINE hcl_oop_t alloc_numeric_array (hcl_t* hcl, const void* ptr, hcl_oow_t len, hcl_obj_type_t type, hcl_oow_t unit, int extra, int ngc)
+static HAK_INLINE hak_oop_t alloc_numeric_array (hak_t* hak, const void* ptr, hak_oow_t len, hak_obj_type_t type, hak_oow_t unit, int extra, int ngc)
 {
 	/* allocate a variable object */
 
-	hcl_oop_t hdr;
-	hcl_oow_t xbytes, nbytes, nbytes_aligned;
+	hak_oop_t hdr;
+	hak_oow_t xbytes, nbytes, nbytes_aligned;
 
 	xbytes = len * unit;
 	/* 'extra' indicates an extra unit to append at the end.
 	 * it's useful to store a string with a terminating null */
 	nbytes = extra? xbytes + unit: xbytes;
-	nbytes_aligned = HCL_ALIGN(nbytes, HCL_SIZEOF(hcl_oop_t));
+	nbytes_aligned = HAK_ALIGN(nbytes, HAK_SIZEOF(hak_oop_t));
 /* TODO: check overflow in size calculation*/
 
 	/* making the number of bytes to allocate a multiple of
-	 * HCL_SIZEOF(hcl_oop_t) will guarantee the starting address
+	 * HAK_SIZEOF(hak_oop_t) will guarantee the starting address
 	 * of the allocated space to be an even number.
-	 * see HCL_OOP_IS_NUMERIC() and HCL_OOP_IS_POINTER() */
-	if (HCL_UNLIKELY(ngc))
-		hdr = (hcl_oop_t)hcl_callocmem(hcl, HCL_SIZEOF(hcl_obj_t) + nbytes_aligned);
+	 * see HAK_OOP_IS_NUMERIC() and HAK_OOP_IS_POINTER() */
+	if (HAK_UNLIKELY(ngc))
+		hdr = (hak_oop_t)hak_callocmem(hak, HAK_SIZEOF(hak_obj_t) + nbytes_aligned);
 	else
-		hdr = (hcl_oop_t)hcl_allocbytes(hcl, HCL_SIZEOF(hcl_obj_t) + nbytes_aligned);
-	if (HCL_UNLIKELY(!hdr)) return HCL_NULL;
+		hdr = (hak_oop_t)hak_allocbytes(hak, HAK_SIZEOF(hak_obj_t) + nbytes_aligned);
+	if (HAK_UNLIKELY(!hdr)) return HAK_NULL;
 
-	hdr->_flags = HCL_OBJ_MAKE_FLAGS(type, unit, extra, 0, 0, ngc, 0);
+	hdr->_flags = HAK_OBJ_MAKE_FLAGS(type, unit, extra, 0, 0, ngc, 0);
 	hdr->_size = len;
-	HCL_OBJ_SET_SIZE (hdr, len);
-	/*HCL_OBJ_SET_CLASS (hdr, hcl->_nil);*/
+	HAK_OBJ_SET_SIZE (hdr, len);
+	/*HAK_OBJ_SET_CLASS (hdr, hak->_nil);*/
 
 	if (ptr)
 	{
 		/* copy data */
-		HCL_MEMCPY (hdr + 1, ptr, xbytes);
-		HCL_MEMSET ((hcl_uint8_t*)(hdr + 1) + xbytes, 0, nbytes_aligned - xbytes);
+		HAK_MEMCPY (hdr + 1, ptr, xbytes);
+		HAK_MEMSET ((hak_uint8_t*)(hdr + 1) + xbytes, 0, nbytes_aligned - xbytes);
 	}
 	else
 	{
 		/* initialize with zeros when the string pointer is not given */
-		HCL_MEMSET (hdr + 1, 0, nbytes_aligned);
+		HAK_MEMSET (hdr + 1, 0, nbytes_aligned);
 	}
 
 	return hdr;
 }
 
-hcl_oop_t hcl_alloccharobj (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_t len)
+hak_oop_t hak_alloccharobj (hak_t* hak, const hak_ooch_t* ptr, hak_oow_t len)
 {
-	return alloc_numeric_array(hcl, ptr, len, HCL_OBJ_TYPE_CHAR, HCL_SIZEOF(hcl_ooch_t), 1, 0);
+	return alloc_numeric_array(hak, ptr, len, HAK_OBJ_TYPE_CHAR, HAK_SIZEOF(hak_ooch_t), 1, 0);
 }
 
-hcl_oop_t hcl_allocbyteobj (hcl_t* hcl, const hcl_oob_t* ptr, hcl_oow_t len)
+hak_oop_t hak_allocbyteobj (hak_t* hak, const hak_oob_t* ptr, hak_oow_t len)
 {
-	return alloc_numeric_array(hcl, ptr, len, HCL_OBJ_TYPE_BYTE, HCL_SIZEOF(hcl_oob_t), 0, 0);
+	return alloc_numeric_array(hak, ptr, len, HAK_OBJ_TYPE_BYTE, HAK_SIZEOF(hak_oob_t), 0, 0);
 }
 
-hcl_oop_t hcl_allochalfwordobj (hcl_t* hcl, const hcl_oohw_t* ptr, hcl_oow_t len)
+hak_oop_t hak_allochalfwordobj (hak_t* hak, const hak_oohw_t* ptr, hak_oow_t len)
 {
-	return alloc_numeric_array(hcl, ptr, len, HCL_OBJ_TYPE_HALFWORD, HCL_SIZEOF(hcl_oohw_t), 0, 0);
+	return alloc_numeric_array(hak, ptr, len, HAK_OBJ_TYPE_HALFWORD, HAK_SIZEOF(hak_oohw_t), 0, 0);
 }
 
-hcl_oop_t hcl_allocwordobj (hcl_t* hcl, const hcl_oow_t* ptr, hcl_oow_t len)
+hak_oop_t hak_allocwordobj (hak_t* hak, const hak_oow_t* ptr, hak_oow_t len)
 {
-	return alloc_numeric_array(hcl, ptr, len, HCL_OBJ_TYPE_WORD, HCL_SIZEOF(hcl_oow_t), 0, 0);
+	return alloc_numeric_array(hak, ptr, len, HAK_OBJ_TYPE_WORD, HAK_SIZEOF(hak_oow_t), 0, 0);
 }
 
 /* ------------------------------------------------------------------------ *
  * COMMON OBJECTS
  * ------------------------------------------------------------------------ */
 
-hcl_oop_t hcl_hatchundef (hcl_t* hcl)
+hak_oop_t hak_hatchundef (hak_t* hak)
 {
 	/* create the undef object for bootstrapping.
 	 * this function doesn't set the class field */
 
-	hcl_oop_t v;
-	v = hcl_allocoopobj(hcl, 0);
-	if (HCL_UNLIKELY(!v))
+	hak_oop_t v;
+	v = hak_allocoopobj(hak, 0);
+	if (HAK_UNLIKELY(!v))
 	{
-		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make undef - %js", orgmsg);
+		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
+		hak_seterrbfmt (hak, HAK_ERRNUM(hak), "unable to make undef - %js", orgmsg);
 	}
 	else
 	{
-		HCL_OBJ_SET_FLAGS_KERNEL(v, 1);
+		HAK_OBJ_SET_FLAGS_KERNEL(v, 1);
 	}
 	return v;
 }
 
-hcl_oop_t hcl_hatchnil (hcl_t* hcl)
+hak_oop_t hak_hatchnil (hak_t* hak)
 {
 	/* create the nil object for bootstrapping.
 	 * this function doesn't set the class field */
 
-	hcl_oop_t v;
-	v = hcl_allocoopobj(hcl, 0);
-	if (HCL_UNLIKELY(!v))
+	hak_oop_t v;
+	v = hak_allocoopobj(hak, 0);
+	if (HAK_UNLIKELY(!v))
 	{
-		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to make nil - %js", orgmsg);
+		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
+		hak_seterrbfmt (hak, HAK_ERRNUM(hak), "unable to make nil - %js", orgmsg);
 	}
 	else
 	{
-		HCL_OBJ_SET_FLAGS_KERNEL(v, 1);
+		HAK_OBJ_SET_FLAGS_KERNEL(v, 1);
 	}
 	return v;
 }
 
-hcl_oop_t hcl_makecons (hcl_t* hcl, hcl_oop_t car, hcl_oop_t cdr)
+hak_oop_t hak_makecons (hak_t* hak, hak_oop_t car, hak_oop_t cdr)
 {
-/* TODO: use hcl_instantiate() */
+/* TODO: use hak_instantiate() */
 #if 0
-	hcl_oop_cons_t cons;
+	hak_oop_cons_t cons;
 
-	hcl_pushvolat (hcl, &car);
-	hcl_pushvolat (hcl, &cdr);
+	hak_pushvolat (hak, &car);
+	hak_pushvolat (hak, &cdr);
 
-	cons = (hcl_oop_cons_t)hcl_allocoopobj(hcl, HCL_BRAND_CONS, 2);
-	if (HCL_LIKELY(cons))
+	cons = (hak_oop_cons_t)hak_allocoopobj(hak, HAK_BRAND_CONS, 2);
+	if (HAK_LIKELY(cons))
 	{
 		cons->car = car;
 		cons->cdr = cdr;
-		HCL_OBJ_SET_CLASS (cons, (hcl_oop_t)hcl->c_cons);
+		HAK_OBJ_SET_CLASS (cons, (hak_oop_t)hak->c_cons);
 	}
 
-	hcl_popvolats (hcl, 2);
+	hak_popvolats (hak, 2);
 
-	return (hcl_oop_t)cons;
+	return (hak_oop_t)cons;
 #else
-	hcl_oop_cons_t v;
-	hcl_pushvolat (hcl, &car);
-	hcl_pushvolat (hcl, &cdr);
-	v = (hcl_oop_cons_t)hcl_instantiate(hcl, hcl->c_cons, HCL_NULL, 0);
-	hcl_popvolats (hcl, 2);
-	if (HCL_UNLIKELY(!v))
+	hak_oop_cons_t v;
+	hak_pushvolat (hak, &car);
+	hak_pushvolat (hak, &cdr);
+	v = (hak_oop_cons_t)hak_instantiate(hak, hak->c_cons, HAK_NULL, 0);
+	hak_popvolats (hak, 2);
+	if (HAK_UNLIKELY(!v))
 	{
-		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to instantiate %O - %js", hcl->c_cons->name, orgmsg);
+		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
+		hak_seterrbfmt (hak, HAK_ERRNUM(hak), "unable to instantiate %O - %js", hak->c_cons->name, orgmsg);
 	}
 	else
 	{
 		v->car = car;
 		v->cdr = cdr;
 	}
-	return (hcl_oop_t)v;
+	return (hak_oop_t)v;
 #endif
 }
 
-hcl_oop_t hcl_makearray (hcl_t* hcl, hcl_oow_t len)
+hak_oop_t hak_makearray (hak_t* hak, hak_oow_t len)
 {
 #if 0
-	hcl_oop_t v;
-	v = hcl_allocoopobj(hcl, HCL_BRAND_ARRAY, size);
-	if (HCL_LIKELY(v)) HCL_OBJ_SET_CLASS (v, (hcl_oop_t)hcl->c_array);
+	hak_oop_t v;
+	v = hak_allocoopobj(hak, HAK_BRAND_ARRAY, size);
+	if (HAK_LIKELY(v)) HAK_OBJ_SET_CLASS (v, (hak_oop_t)hak->c_array);
 	return v;
 #else
-	hcl_oop_t v;
-	v = hcl_instantiate(hcl, hcl->c_array, HCL_NULL, len);
-	if (HCL_UNLIKELY(!v))
+	hak_oop_t v;
+	v = hak_instantiate(hak, hak->c_array, HAK_NULL, len);
+	if (HAK_UNLIKELY(!v))
 	{
-		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl),
-			"unable to instantiate %O - %js", hcl->c_array->name, orgmsg);
+		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
+		hak_seterrbfmt (hak, HAK_ERRNUM(hak),
+			"unable to instantiate %O - %js", hak->c_array->name, orgmsg);
 	}
 	return v;
 #endif
 }
 
-hcl_oop_t hcl_makechararray (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_t len)
+hak_oop_t hak_makechararray (hak_t* hak, const hak_ooch_t* ptr, hak_oow_t len)
 {
-	hcl_oop_t v;
-	v = hcl_instantiate(hcl, hcl->c_character_array, ptr, len);
-	if (HCL_UNLIKELY(!v))
+	hak_oop_t v;
+	v = hak_instantiate(hak, hak->c_character_array, ptr, len);
+	if (HAK_UNLIKELY(!v))
 	{
-		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl),
-			"unable to instantiate %O - %js", hcl->c_character_array->name, orgmsg);
+		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
+		hak_seterrbfmt (hak, HAK_ERRNUM(hak),
+			"unable to instantiate %O - %js", hak->c_character_array->name, orgmsg);
 	}
 	return v;
 }
 
-hcl_oop_t hcl_makebytearray (hcl_t* hcl, const hcl_oob_t* ptr, hcl_oow_t len)
+hak_oop_t hak_makebytearray (hak_t* hak, const hak_oob_t* ptr, hak_oow_t len)
 {
 #if 0
-	hcl_oop_t v;
-	v = hcl_allocbyteobj(hcl, HCL_BRAND_BYTE_ARRAY, ptr, size);
-	if (HCL_LIKELY(v)) HCL_OBJ_SET_CLASS (v, (hcl_oop_t)hcl->c_byte_array);
+	hak_oop_t v;
+	v = hak_allocbyteobj(hak, HAK_BRAND_BYTE_ARRAY, ptr, size);
+	if (HAK_LIKELY(v)) HAK_OBJ_SET_CLASS (v, (hak_oop_t)hak->c_byte_array);
 	return v;
 #else
-	hcl_oop_t v;
-	v = hcl_instantiate(hcl, hcl->c_byte_array, ptr, len);
-	if (HCL_UNLIKELY(!v))
+	hak_oop_t v;
+	v = hak_instantiate(hak, hak->c_byte_array, ptr, len);
+	if (HAK_UNLIKELY(!v))
 	{
-		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl),
-			"unable to instantiate %O - %js", hcl->c_byte_array->name, orgmsg);
+		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
+		hak_seterrbfmt (hak, HAK_ERRNUM(hak),
+			"unable to instantiate %O - %js", hak->c_byte_array->name, orgmsg);
 	}
 	return v;
 #endif
 }
 
-hcl_oop_t hcl_makebytestringwithbytes (hcl_t* hcl, const hcl_oob_t* ptr, hcl_oow_t len)
+hak_oop_t hak_makebytestringwithbytes (hak_t* hak, const hak_oob_t* ptr, hak_oow_t len)
 {
-	hcl_oop_byte_t v;
-	v = (hcl_oop_byte_t)hcl_instantiate(hcl, hcl->c_byte_string, ptr, len);
-	if (HCL_UNLIKELY(!v))
+	hak_oop_byte_t v;
+	v = (hak_oop_byte_t)hak_instantiate(hak, hak->c_byte_string, ptr, len);
+	if (HAK_UNLIKELY(!v))
 	{
-		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl),
-			"unable to instantiate %O with bytes - %js", hcl->c_byte_string->name, orgmsg);
+		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
+		hak_seterrbfmt (hak, HAK_ERRNUM(hak),
+			"unable to instantiate %O with bytes - %js", hak->c_byte_string->name, orgmsg);
 	}
-	return (hcl_oop_t)v;
+	return (hak_oop_t)v;
 }
 
-hcl_oop_t hcl_makebytestring (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_t len)
+hak_oop_t hak_makebytestring (hak_t* hak, const hak_ooch_t* ptr, hak_oow_t len)
 {
 	/* a byte string is a byte array with an extra null at the back.
-	 * the input to this function, however, is the pointer to hcl_ooch_t data
+	 * the input to this function, however, is the pointer to hak_ooch_t data
 	 * because this function is mainly used to convert a token to a byte string.
-	 * the token in the compiler is stored as a hcl_ooch_t string. */
+	 * the token in the compiler is stored as a hak_ooch_t string. */
 
-	hcl_oop_byte_t v;
+	hak_oop_byte_t v;
 
-	v = (hcl_oop_byte_t)hcl_instantiate(hcl, hcl->c_byte_string, HCL_NULL, len);
-	if (HCL_UNLIKELY(!v))
+	v = (hak_oop_byte_t)hak_instantiate(hak, hak->c_byte_string, HAK_NULL, len);
+	if (HAK_UNLIKELY(!v))
 	{
-		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl),
-			"unable to instantiate %O - %js", hcl->c_byte_string->name, orgmsg);
+		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
+		hak_seterrbfmt (hak, HAK_ERRNUM(hak),
+			"unable to instantiate %O - %js", hak->c_byte_string->name, orgmsg);
 	}
 	else
 	{
-		hcl_oow_t i;
-		hcl_oob_t b;
+		hak_oow_t i;
+		hak_oob_t b;
 		for (i = 0; i < len; i++)
 		{
 			b = ptr[i] & 0xFF;
-			HCL_OBJ_SET_BYTE_VAL(v, i, b);
+			HAK_OBJ_SET_BYTE_VAL(v, i, b);
 		}
 	}
 
-	return (hcl_oop_t)v;
+	return (hak_oop_t)v;
 }
 
-hcl_oop_t hcl_makestring (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_t len)
+hak_oop_t hak_makestring (hak_t* hak, const hak_ooch_t* ptr, hak_oow_t len)
 {
-	hcl_oop_t v;
-	v = hcl_instantiate(hcl, hcl->c_string, ptr, len);
-	if (HCL_UNLIKELY(!v))
+	hak_oop_t v;
+	v = hak_instantiate(hak, hak->c_string, ptr, len);
+	if (HAK_UNLIKELY(!v))
 	{
-		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl),
-			"unable to instantiate %O - %js", hcl->c_string->name, orgmsg);
+		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
+		hak_seterrbfmt (hak, HAK_ERRNUM(hak),
+			"unable to instantiate %O - %js", hak->c_string->name, orgmsg);
 	}
 	return v;
 }
 
-hcl_oop_t hcl_makefpdec (hcl_t* hcl, hcl_oop_t value, hcl_ooi_t scale)
+hak_oop_t hak_makefpdec (hak_t* hak, hak_oop_t value, hak_ooi_t scale)
 {
-	hcl_oop_fpdec_t f;
+	hak_oop_fpdec_t f;
 
-	HCL_ASSERT (hcl, hcl_isint(hcl, value));
+	HAK_ASSERT (hak, hak_isint(hak, value));
 
 	if (scale <= 0) return value; /* if scale is 0 or less, return the value as it it */
 
-	if (scale > HCL_SMOOI_MAX)
+	if (scale > HAK_SMOOI_MAX)
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "fpdec scale too large - %zd", scale);
-		return HCL_NULL;
+		hak_seterrbfmt (hak, HAK_EINVAL, "fpdec scale too large - %zd", scale);
+		return HAK_NULL;
 	}
 
-	hcl_pushvolat (hcl, &value);
-	f = (hcl_oop_fpdec_t)hcl_instantiate(hcl, hcl->c_fixed_point_decimal, HCL_NULL, 0);
-	hcl_popvolat (hcl);
+	hak_pushvolat (hak, &value);
+	f = (hak_oop_fpdec_t)hak_instantiate(hak, hak->c_fixed_point_decimal, HAK_NULL, 0);
+	hak_popvolat (hak);
 
-	if (HCL_UNLIKELY(!f))
+	if (HAK_UNLIKELY(!f))
 	{
-		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (
-			hcl, HCL_ERRNUM(hcl), "unable to instantiate %O - %js",
-			hcl->c_fixed_point_decimal->name, orgmsg);
+		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
+		hak_seterrbfmt (
+			hak, HAK_ERRNUM(hak), "unable to instantiate %O - %js",
+			hak->c_fixed_point_decimal->name, orgmsg);
 	}
 	else
 	{
 		f->value = value;
-		f->scale = HCL_SMOOI_TO_OOP(scale);
+		f->scale = HAK_SMOOI_TO_OOP(scale);
 	}
 
-	return (hcl_oop_t)f;
+	return (hak_oop_t)f;
 }
 
-hcl_oop_t hcl_makeclass (hcl_t* hcl, hcl_oop_t class_name, hcl_oop_t superclass, hcl_ooi_t spec, hcl_ooi_t selfspec, hcl_oop_t ivars_str, hcl_oop_t cvars_str)
+hak_oop_t hak_makeclass (hak_t* hak, hak_oop_t class_name, hak_oop_t superclass, hak_ooi_t spec, hak_ooi_t selfspec, hak_oop_t ivars_str, hak_oop_t cvars_str)
 {
-	hcl_oop_class_t c;
+	hak_oop_class_t c;
 
-	hcl_pushvolat (hcl, &class_name);
-	hcl_pushvolat (hcl, &superclass);
-	hcl_pushvolat (hcl, &ivars_str);
-	hcl_pushvolat (hcl, &cvars_str);
-	c = (hcl_oop_class_t)hcl_instantiate(hcl, hcl->c_class, HCL_NULL, HCL_CLASS_SELFSPEC_CLASSVARS(selfspec));
-	hcl_popvolats (hcl, 4);
-	if (HCL_UNLIKELY(!c))
+	hak_pushvolat (hak, &class_name);
+	hak_pushvolat (hak, &superclass);
+	hak_pushvolat (hak, &ivars_str);
+	hak_pushvolat (hak, &cvars_str);
+	c = (hak_oop_class_t)hak_instantiate(hak, hak->c_class, HAK_NULL, HAK_CLASS_SELFSPEC_CLASSVARS(selfspec));
+	hak_popvolats (hak, 4);
+	if (HAK_UNLIKELY(!c))
 	{
-		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl),
+		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
+		hak_seterrbfmt (hak, HAK_ERRNUM(hak),
 			"unable to instantiate class %O - %js", class_name, orgmsg);
 	}
 	else
 	{
-		hcl_ooi_t nivars_super;
+		hak_ooi_t nivars_super;
 
-		if (!HCL_IS_NIL(hcl, superclass))
+		if (!HAK_IS_NIL(hak, superclass))
 		{
-			hcl_ooi_t superspec;
-			superspec = HCL_OOP_TO_SMOOI(((hcl_oop_class_t)superclass)->spec);
-			nivars_super = HCL_OOP_TO_SMOOI(((hcl_oop_class_t)superclass)->nivars_super) + HCL_CLASS_SPEC_NAMED_INSTVARS(superspec);
+			hak_ooi_t superspec;
+			superspec = HAK_OOP_TO_SMOOI(((hak_oop_class_t)superclass)->spec);
+			nivars_super = HAK_OOP_TO_SMOOI(((hak_oop_class_t)superclass)->nivars_super) + HAK_CLASS_SPEC_NAMED_INSTVARS(superspec);
 		}
 		else
 		{
 			nivars_super = 0;
 		}
 
-		c->spec = HCL_SMOOI_TO_OOP(spec);
-		c->selfspec = HCL_SMOOI_TO_OOP(selfspec);
+		c->spec = HAK_SMOOI_TO_OOP(spec);
+		c->selfspec = HAK_SMOOI_TO_OOP(selfspec);
 		c->name = class_name;
 		c->superclass = superclass;
-		c->nivars_super = HCL_SMOOI_TO_OOP(nivars_super);
-		c->ibrand = HCL_SMOOI_TO_OOP(HCL_BRAND_INSTANCE); /* TODO: really need ibrand??? */
+		c->nivars_super = HAK_SMOOI_TO_OOP(nivars_super);
+		c->ibrand = HAK_SMOOI_TO_OOP(HAK_BRAND_INSTANCE); /* TODO: really need ibrand??? */
 
 		/* TODO: remember ivars_str and vars_str? */
 		/* duplicate ivars_str and cvars_str and set it to c->ivarnames and c->cvarnames???? */
 	}
 
-	return (hcl_oop_t)c;
+	return (hak_oop_t)c;
 }
 
 struct decoded_spec_t
 {
-	hcl_obj_type_t type;
-	hcl_oow_t alloclen;
+	hak_obj_type_t type;
+	hak_oow_t alloclen;
 	int flexi;
 };
 typedef struct decoded_spec_t decoded_spec_t;
 
-static HCL_INLINE int decode_spec (hcl_t* hcl, hcl_oop_class_t _class, hcl_oow_t num_flexi_fields, decoded_spec_t* dspec)
+static HAK_INLINE int decode_spec (hak_t* hak, hak_oop_class_t _class, hak_oow_t num_flexi_fields, decoded_spec_t* dspec)
 {
-	hcl_oow_t spec;
-	hcl_oow_t num_fixed_fields;
-	hcl_obj_type_t indexed_type;
+	hak_oow_t spec;
+	hak_oow_t num_fixed_fields;
+	hak_obj_type_t indexed_type;
 
-	HCL_ASSERT (hcl, HCL_OOP_IS_POINTER(_class));
-	HCL_ASSERT (hcl, HCL_CLASSOF(hcl, _class) == (hcl_oop_t)hcl->c_class);
+	HAK_ASSERT (hak, HAK_OOP_IS_POINTER(_class));
+	HAK_ASSERT (hak, HAK_CLASSOF(hak, _class) == (hak_oop_t)hak->c_class);
 
-	HCL_ASSERT (hcl, HCL_OOP_IS_SMOOI(_class->spec));
-	spec = HCL_OOP_TO_SMOOI(_class->spec);
+	HAK_ASSERT (hak, HAK_OOP_IS_SMOOI(_class->spec));
+	spec = HAK_OOP_TO_SMOOI(_class->spec);
 
-	num_fixed_fields = HCL_CLASS_SPEC_NAMED_INSTVARS(spec);
-	HCL_ASSERT (hcl, num_fixed_fields <= HCL_MAX_NAMED_INSTVARS);
+	num_fixed_fields = HAK_CLASS_SPEC_NAMED_INSTVARS(spec);
+	HAK_ASSERT (hak, num_fixed_fields <= HAK_MAX_NAMED_INSTVARS);
 
-	if (HCL_CLASS_SPEC_IS_INDEXED(spec))
+	if (HAK_CLASS_SPEC_IS_INDEXED(spec))
 	{
-		indexed_type = (hcl_obj_type_t)HCL_CLASS_SPEC_INDEXED_TYPE(spec);
+		indexed_type = (hak_obj_type_t)HAK_CLASS_SPEC_INDEXED_TYPE(spec);
 
 		/* the number of the fixed fields for a non-pointer object are supported.
 		 * the fixed fields of a pointer object holds named instance variables
@@ -546,9 +546,9 @@ static HCL_INLINE int decode_spec (hcl_t* hcl, hcl_oop_class_t _class, hcl_oow_t
 		 * when it comes to spec decoding, there is no difference between a pointer
 		 * object and a non-pointer object */
 
-		if (num_flexi_fields > HCL_MAX_INDEXED_INSTVARS(num_fixed_fields))
+		if (num_flexi_fields > HAK_MAX_INDEXED_INSTVARS(num_fixed_fields))
 		{
-			hcl_seterrbfmt (hcl, HCL_EINVAL, "number of flexi-fields(%zu) too big for a class %O", num_flexi_fields, _class);
+			hak_seterrbfmt (hak, HAK_EINVAL, "number of flexi-fields(%zu) too big for a class %O", num_flexi_fields, _class);
 			return -1;
 		}
 	}
@@ -560,49 +560,49 @@ static HCL_INLINE int decode_spec (hcl_t* hcl, hcl_oop_class_t _class, hcl_oow_t
 		/* for an object composed of non-oop fields,
 		 * the field can be accessed using a instance variable name.
 		 * the instructions for instance variable access must cater for this.
-		 * for example, the Primitive class is HCL_OBJ_TYPE_WORD and not variable */
-		/*indexed_type = HCL_OBJ_TYPE_OOP; <- no more fixed to OOP fields only. */
-		indexed_type = (hcl_obj_type_t)HCL_CLASS_SPEC_INDEXED_TYPE(spec);
+		 * for example, the Primitive class is HAK_OBJ_TYPE_WORD and not variable */
+		/*indexed_type = HAK_OBJ_TYPE_OOP; <- no more fixed to OOP fields only. */
+		indexed_type = (hak_obj_type_t)HAK_CLASS_SPEC_INDEXED_TYPE(spec);
 
 		if (num_flexi_fields > 0)
 		{
-			hcl_seterrbfmt (hcl, HCL_EPERM, "flexi-fields(%zu) disallowed for a class %O", num_flexi_fields, _class);
+			hak_seterrbfmt (hak, HAK_EPERM, "flexi-fields(%zu) disallowed for a class %O", num_flexi_fields, _class);
 			return -1;
 		}
 	}
 
-	HCL_ASSERT (hcl, num_fixed_fields + num_flexi_fields <= HCL_OBJ_SIZE_MAX);
-	dspec->flexi = !!HCL_CLASS_SPEC_IS_INDEXED(spec);
+	HAK_ASSERT (hak, num_fixed_fields + num_flexi_fields <= HAK_OBJ_SIZE_MAX);
+	dspec->flexi = !!HAK_CLASS_SPEC_IS_INDEXED(spec);
 	dspec->type = indexed_type;
-	dspec->alloclen = num_fixed_fields + num_flexi_fields + HCL_OOP_TO_SMOOI(_class->nivars_super);
+	dspec->alloclen = num_fixed_fields + num_flexi_fields + HAK_OOP_TO_SMOOI(_class->nivars_super);
 	return 0;
 }
 
-hcl_oop_t hcl_instantiate (hcl_t* hcl, hcl_oop_class_t _class, const void* vptr, hcl_oow_t vlen)
+hak_oop_t hak_instantiate (hak_t* hak, hak_oop_class_t _class, const void* vptr, hak_oow_t vlen)
 {
-	hcl_oop_t oop;
+	hak_oop_t oop;
 	decoded_spec_t dspec;
-	hcl_oow_t tmp_count = 0;
+	hak_oow_t tmp_count = 0;
 
-	HCL_ASSERT (hcl, hcl->_nil != HCL_NULL);
+	HAK_ASSERT (hak, hak->_nil != HAK_NULL);
 
-	if (decode_spec(hcl, _class, vlen, &dspec) <= -1) return HCL_NULL;
+	if (decode_spec(hak, _class, vlen, &dspec) <= -1) return HAK_NULL;
 
-	hcl_pushvolat (hcl, (hcl_oop_t*)&_class); tmp_count++;
+	hak_pushvolat (hak, (hak_oop_t*)&_class); tmp_count++;
 
 	switch (dspec.type)
 	{
-		case HCL_OBJ_TYPE_OOP:
+		case HAK_OBJ_TYPE_OOP:
 			/* both the fixed part(named instance variables) and
 			 * the variable part(indexed instance variables) are allowed. */
-			oop = hcl_allocoopobj(hcl, dspec.alloclen);
-			if (HCL_LIKELY(oop))
+			oop = hak_allocoopobj(hak, dspec.alloclen);
+			if (HAK_LIKELY(oop))
 			{
 		#if 0
 				/* initialize named instance variables with default values */
-				if (_class->initv[0] != hcl->_nil)
+				if (_class->initv[0] != hak->_nil)
 				{
-					hcl_oow_t i = HCL_OBJ_GET_SIZE(_class->initv[0]);
+					hak_oow_t i = HAK_OBJ_GET_SIZE(_class->initv[0]);
 
 					/* [NOTE] i don't deep-copy initial values.
 					 *   if you change the contents of compound values like arrays,
@@ -612,90 +612,90 @@ hcl_oop_t hcl_instantiate (hcl_t* hcl, hcl_oop_class_t _class, const void* vptr,
 					while (i > 0)
 					{
 						--i;
-						HCL_OBJ_SET_OOP_VAL (oop, i, HCL_OBJ_GET_OOP_VAL(_class->initv[0], i));
+						HAK_OBJ_SET_OOP_VAL (oop, i, HAK_OBJ_GET_OOP_VAL(_class->initv[0], i));
 					}
 				}
 		#endif
 			}
-			HCL_ASSERT (hcl, vptr == HCL_NULL);
+			HAK_ASSERT (hak, vptr == HAK_NULL);
 			/*
 			This function is not GC-safe. so i don't want to initialize
 			the payload of a pointer object. The caller can call this
 			function and initialize payloads then.
 			if (oop && vptr && vlen > 0)
 			{
-				hcl_oop_oop_t hdr = (hcl_oop_oop_t)oop;
-				HCL_MEMCPY (&hdr->slot[named_ivar], vptr, vlen * HCL_SIZEOF(hcl_oop_t));
+				hak_oop_oop_t hdr = (hak_oop_oop_t)oop;
+				HAK_MEMCPY (&hdr->slot[named_ivar], vptr, vlen * HAK_SIZEOF(hak_oop_t));
 			}
 
 			For the above code to work, it should protect the elements of
-			the vptr array with hcl_pushvolat(). So it might be better
+			the vptr array with hak_pushvolat(). So it might be better
 			to disallow a non-NULL vptr when indexed_type is OOP. See
 			the assertion above this comment block.
 			*/
 			break;
 
-		case HCL_OBJ_TYPE_CHAR:
-			oop = hcl_alloccharobj(hcl, (const hcl_ooch_t*)vptr, dspec.alloclen);
+		case HAK_OBJ_TYPE_CHAR:
+			oop = hak_alloccharobj(hak, (const hak_ooch_t*)vptr, dspec.alloclen);
 			break;
 
-		case HCL_OBJ_TYPE_BYTE:
-			oop = hcl_allocbyteobj(hcl, (const hcl_oob_t*)vptr, dspec.alloclen);
+		case HAK_OBJ_TYPE_BYTE:
+			oop = hak_allocbyteobj(hak, (const hak_oob_t*)vptr, dspec.alloclen);
 			break;
 
-		case HCL_OBJ_TYPE_HALFWORD:
-			oop = hcl_allochalfwordobj(hcl, (const hcl_oohw_t*)vptr, dspec.alloclen);
+		case HAK_OBJ_TYPE_HALFWORD:
+			oop = hak_allochalfwordobj(hak, (const hak_oohw_t*)vptr, dspec.alloclen);
 			break;
 
-		case HCL_OBJ_TYPE_WORD:
-			oop = hcl_allocwordobj(hcl, (const hcl_oow_t*)vptr, dspec.alloclen);
+		case HAK_OBJ_TYPE_WORD:
+			oop = hak_allocwordobj(hak, (const hak_oow_t*)vptr, dspec.alloclen);
 			break;
 
-		/* TODO: more types... HCL_OBJ_TYPE_INT... HCL_OBJ_TYPE_FLOAT, HCL_OBJ_TYPE_UINT16, etc*/
+		/* TODO: more types... HAK_OBJ_TYPE_INT... HAK_OBJ_TYPE_FLOAT, HAK_OBJ_TYPE_UINT16, etc*/
 		default:
-			hcl_seterrnum (hcl, HCL_EINTERN);
-			oop = HCL_NULL;
+			hak_seterrnum (hak, HAK_EINTERN);
+			oop = HAK_NULL;
 			break;
 	}
 
-	if (HCL_LIKELY(oop))
+	if (HAK_LIKELY(oop))
 	{
-		hcl_ooi_t spec;
-		HCL_OBJ_SET_CLASS (oop, (hcl_oop_t)_class);
-		spec = HCL_OOP_TO_SMOOI(_class->spec);
-		if (HCL_CLASS_SPEC_IS_IMMUTABLE(spec)) HCL_OBJ_SET_FLAGS_RDONLY (oop, 1);
+		hak_ooi_t spec;
+		HAK_OBJ_SET_CLASS (oop, (hak_oop_t)_class);
+		spec = HAK_OOP_TO_SMOOI(_class->spec);
+		if (HAK_CLASS_SPEC_IS_IMMUTABLE(spec)) HAK_OBJ_SET_FLAGS_RDONLY (oop, 1);
 	#if 0 /* TODO: revive this part */
-		if (HCL_CLASS_SPEC_IS_UNCOPYABLE(spec)) HCL_OBJ_SET_FLAGS_UNCOPYABLE (oop, 1);
+		if (HAK_CLASS_SPEC_IS_UNCOPYABLE(spec)) HAK_OBJ_SET_FLAGS_UNCOPYABLE (oop, 1);
 	#endif
-		HCL_OBJ_SET_FLAGS_FLEXI(oop, dspec.flexi);
+		HAK_OBJ_SET_FLAGS_FLEXI(oop, dspec.flexi);
 	}
-	hcl_popvolats (hcl, tmp_count);
+	hak_popvolats (hak, tmp_count);
 	return oop;
 }
 
-hcl_oop_t hcl_instantiatewithtrailer (hcl_t* hcl, hcl_oop_class_t _class, hcl_oow_t vlen, const hcl_oob_t* trptr, hcl_oow_t trlen)
+hak_oop_t hak_instantiatewithtrailer (hak_t* hak, hak_oop_class_t _class, hak_oow_t vlen, const hak_oob_t* trptr, hak_oow_t trlen)
 {
-	hcl_oop_t oop;
+	hak_oop_t oop;
 	decoded_spec_t dspec;
-	hcl_oow_t tmp_count = 0;
+	hak_oow_t tmp_count = 0;
 
-	HCL_ASSERT (hcl, hcl->_nil != HCL_NULL);
+	HAK_ASSERT (hak, hak->_nil != HAK_NULL);
 
-	if (decode_spec(hcl, _class, vlen, &dspec) <= -1) return HCL_NULL;
+	if (decode_spec(hak, _class, vlen, &dspec) <= -1) return HAK_NULL;
 
-	hcl_pushvolat (hcl, (hcl_oop_t*)&_class); tmp_count++;
+	hak_pushvolat (hak, (hak_oop_t*)&_class); tmp_count++;
 
 	switch (dspec.type)
 	{
-		case HCL_OBJ_TYPE_OOP:
-			oop = hcl_allocoopobjwithtrailer(hcl, dspec.alloclen, trptr, trlen);
-			if (HCL_LIKELY(oop))
+		case HAK_OBJ_TYPE_OOP:
+			oop = hak_allocoopobjwithtrailer(hak, dspec.alloclen, trptr, trlen);
+			if (HAK_LIKELY(oop))
 			{
 				/* initialize named instance variables with default values */
 			#if 0 /* TODO: revive this part */
-				if (_class->initv[0] != hcl->_nil)
+				if (_class->initv[0] != hak->_nil)
 				{
-					hcl_oow_t i = HCL_OBJ_GET_SIZE(_class->initv[0]);
+					hak_oow_t i = HAK_OBJ_GET_SIZE(_class->initv[0]);
 
 					/* [NOTE] i don't deep-copy initial values.
 					 *   if you change the contents of compound values like arrays,
@@ -705,7 +705,7 @@ hcl_oop_t hcl_instantiatewithtrailer (hcl_t* hcl, hcl_oop_class_t _class, hcl_oo
 					while (i > 0)
 					{
 						--i;
-						HCL_STORE_OOP (hcl, HCL_OBJ_GET_OOP_PTR(oop, i), HCL_OBJ_GET_OOP_VAL(_class->initv[0], i));
+						HAK_STORE_OOP (hak, HAK_OBJ_GET_OOP_PTR(oop, i), HAK_OBJ_GET_OOP_VAL(_class->initv[0], i));
 					}
 				}
 			#endif
@@ -715,31 +715,31 @@ hcl_oop_t hcl_instantiatewithtrailer (hcl_t* hcl, hcl_oop_class_t _class, hcl_oo
 
 		default:
 		#if 0
-			HCL_DEBUG3 (hcl, "Not allowed to instantiate a non-pointer object of the %.*js class with trailer %zu\n",
-				HCL_OBJ_GET_SIZE(_class->name),
-				HCL_OBJ_GET_CHAR_SLOT(_class->name),
+			HAK_DEBUG3 (hak, "Not allowed to instantiate a non-pointer object of the %.*js class with trailer %zu\n",
+				HAK_OBJ_GET_SIZE(_class->name),
+				HAK_OBJ_GET_CHAR_SLOT(_class->name),
 				trlen);
 		#endif
 
-			hcl_seterrnum (hcl, HCL_EPERM);
-			oop = HCL_NULL;
+			hak_seterrnum (hak, HAK_EPERM);
+			oop = HAK_NULL;
 			break;
 	}
 
-	if (HCL_LIKELY(oop))
+	if (HAK_LIKELY(oop))
 	{
-		hcl_ooi_t spec;
-		HCL_OBJ_SET_CLASS (oop, (hcl_oop_t)_class);
-		spec = HCL_OOP_TO_SMOOI(_class->spec);
-		if (HCL_CLASS_SPEC_IS_IMMUTABLE(spec)) HCL_OBJ_SET_FLAGS_RDONLY (oop, 1);
+		hak_ooi_t spec;
+		HAK_OBJ_SET_CLASS (oop, (hak_oop_t)_class);
+		spec = HAK_OOP_TO_SMOOI(_class->spec);
+		if (HAK_CLASS_SPEC_IS_IMMUTABLE(spec)) HAK_OBJ_SET_FLAGS_RDONLY (oop, 1);
 	#if 0 /* TODO: revive this part */
-		/* the object with trailer is to to uncopyable in hcl_allocoopobjwithtrailer() so no need to check/set it again here
-		if (HCL_CLASS_SPEC_IS_UNCOPYABLE(spec)) HCL_OBJ_SET_FLAGS_UNCOPYABLE (oop, 1);
+		/* the object with trailer is to to uncopyable in hak_allocoopobjwithtrailer() so no need to check/set it again here
+		if (HAK_CLASS_SPEC_IS_UNCOPYABLE(spec)) HAK_OBJ_SET_FLAGS_UNCOPYABLE (oop, 1);
 		*/
 	#endif
-		HCL_OBJ_SET_FLAGS_FLEXI(oop, dspec.flexi);
+		HAK_OBJ_SET_FLAGS_FLEXI(oop, dspec.flexi);
 	}
-	hcl_popvolats (hcl, tmp_count);
+	hak_popvolats (hak, tmp_count);
 	return oop;
 }
 
@@ -747,63 +747,63 @@ hcl_oop_t hcl_instantiatewithtrailer (hcl_t* hcl, hcl_oop_class_t _class, hcl_oo
  * NGC HANDLING
  * ------------------------------------------------------------------------ */
 
-void hcl_freengcobj (hcl_t* hcl, hcl_oop_t obj)
+void hak_freengcobj (hak_t* hak, hak_oop_t obj)
 {
-	if (HCL_OOP_IS_POINTER(obj) && HCL_OBJ_GET_FLAGS_NGC(obj)) hcl_freemem (hcl, obj);
+	if (HAK_OOP_IS_POINTER(obj) && HAK_OBJ_GET_FLAGS_NGC(obj)) hak_freemem (hak, obj);
 }
 
-hcl_oop_t hcl_makengcbytearray (hcl_t* hcl, const hcl_oob_t* ptr, hcl_oow_t len)
+hak_oop_t hak_makengcbytearray (hak_t* hak, const hak_oob_t* ptr, hak_oow_t len)
 {
-	return alloc_numeric_array(hcl, ptr, len, HCL_OBJ_TYPE_BYTE, HCL_SIZEOF(hcl_oob_t), 0, 1);
+	return alloc_numeric_array(hak, ptr, len, HAK_OBJ_TYPE_BYTE, HAK_SIZEOF(hak_oob_t), 0, 1);
 }
 
-hcl_oop_t hcl_remakengcbytearray (hcl_t* hcl, hcl_oop_t obj, hcl_oow_t newsize)
+hak_oop_t hak_remakengcbytearray (hak_t* hak, hak_oop_t obj, hak_oow_t newsize)
 {
-	hcl_oop_t tmp;
+	hak_oop_t tmp;
 
-	HCL_ASSERT (hcl, !obj || (HCL_OOP_IS_POINTER(obj) && HCL_OBJ_GET_FLAGS_NGC(obj)));
+	HAK_ASSERT (hak, !obj || (HAK_OOP_IS_POINTER(obj) && HAK_OBJ_GET_FLAGS_NGC(obj)));
 
-	/* no hcl_pushvolat() is needed because 'obj' is a non-GC object. */
+	/* no hak_pushvolat() is needed because 'obj' is a non-GC object. */
 	/* TODO: improve this by using realloc */
 
-	tmp = hcl_makengcbytearray(hcl, HCL_NULL, newsize);
-	if (HCL_LIKELY(tmp))
+	tmp = hak_makengcbytearray(hak, HAK_NULL, newsize);
+	if (HAK_LIKELY(tmp))
 	{
 		if (obj)
 		{
-			hcl_oow_t cpsize;
-			cpsize =  (newsize > HCL_OBJ_GET_SIZE(obj))? HCL_OBJ_GET_SIZE(obj): newsize;
-			HCL_MEMCPY (((hcl_oop_byte_t)tmp)->slot, ((hcl_oop_byte_t)obj)->slot, cpsize * HCL_SIZEOF(hcl_oob_t));
+			hak_oow_t cpsize;
+			cpsize =  (newsize > HAK_OBJ_GET_SIZE(obj))? HAK_OBJ_GET_SIZE(obj): newsize;
+			HAK_MEMCPY (((hak_oop_byte_t)tmp)->slot, ((hak_oop_byte_t)obj)->slot, cpsize * HAK_SIZEOF(hak_oob_t));
 		}
-		hcl_freengcobj (hcl, obj);
+		hak_freengcobj (hak, obj);
 	}
 	return tmp;
 }
 
-hcl_oop_t hcl_makengcarray (hcl_t* hcl, hcl_oow_t len)
+hak_oop_t hak_makengcarray (hak_t* hak, hak_oow_t len)
 {
-	return alloc_numeric_array(hcl, HCL_NULL, len, HCL_OBJ_TYPE_OOP, HCL_SIZEOF(hcl_oop_t), 0, 1);
+	return alloc_numeric_array(hak, HAK_NULL, len, HAK_OBJ_TYPE_OOP, HAK_SIZEOF(hak_oop_t), 0, 1);
 }
 
-hcl_oop_t hcl_remakengcarray (hcl_t* hcl, hcl_oop_t obj, hcl_oow_t newsize)
+hak_oop_t hak_remakengcarray (hak_t* hak, hak_oop_t obj, hak_oow_t newsize)
 {
-	hcl_oop_t tmp;
+	hak_oop_t tmp;
 
-	HCL_ASSERT (hcl, !obj || (HCL_OOP_IS_POINTER(obj) && HCL_OBJ_GET_FLAGS_NGC(obj)));
+	HAK_ASSERT (hak, !obj || (HAK_OOP_IS_POINTER(obj) && HAK_OBJ_GET_FLAGS_NGC(obj)));
 
-	/* no hcl_pushvolat() is needed because 'obj' is a non-GC object. */
+	/* no hak_pushvolat() is needed because 'obj' is a non-GC object. */
 	/* TODO: improve this by using realloc */
 
-	tmp = hcl_makengcarray(hcl, newsize);
-	if (HCL_LIKELY(tmp))
+	tmp = hak_makengcarray(hak, newsize);
+	if (HAK_LIKELY(tmp))
 	{
 		if (obj)
 		{
-			hcl_oow_t cpsize;
-			cpsize =  (newsize > HCL_OBJ_GET_SIZE(obj))? HCL_OBJ_GET_SIZE(obj): newsize;
-			HCL_MEMCPY (((hcl_oop_oop_t)tmp)->slot, ((hcl_oop_oop_t)obj)->slot, cpsize * HCL_SIZEOF(hcl_oop_t));
+			hak_oow_t cpsize;
+			cpsize =  (newsize > HAK_OBJ_GET_SIZE(obj))? HAK_OBJ_GET_SIZE(obj): newsize;
+			HAK_MEMCPY (((hak_oop_oop_t)tmp)->slot, ((hak_oop_oop_t)obj)->slot, cpsize * HAK_SIZEOF(hak_oop_t));
 		}
-		hcl_freengcobj (hcl, obj);
+		hak_freengcobj (hak, obj);
 	}
 	return tmp;
 }
@@ -811,16 +811,16 @@ hcl_oop_t hcl_remakengcarray (hcl_t* hcl, hcl_oop_t obj, hcl_oow_t newsize)
 /* ------------------------------------------------------------------------ *
  * CONS
  * ------------------------------------------------------------------------ */
-hcl_oow_t hcl_countcons (hcl_t* hcl, hcl_oop_t cons)
+hak_oow_t hak_countcons (hak_t* hak, hak_oop_t cons)
 {
 	/* this function ignores the last cdr */
-	hcl_oow_t count = 1;
+	hak_oow_t count = 1;
 
-	HCL_ASSERT (hcl, HCL_IS_CONS(hcl, cons));
+	HAK_ASSERT (hak, HAK_IS_CONS(hak, cons));
 	do
 	{
-		cons = HCL_CONS_CDR(cons);
-		if (!HCL_IS_CONS(hcl, cons)) break;
+		cons = HAK_CONS_CDR(cons);
+		if (!HAK_IS_CONS(hak, cons)) break;
 		count++;
 	}
 	while (1);
@@ -828,37 +828,37 @@ hcl_oow_t hcl_countcons (hcl_t* hcl, hcl_oop_t cons)
 	return count;
 }
 
-hcl_oop_t hcl_getlastconscdr (hcl_t* hcl, hcl_oop_t cons)
+hak_oop_t hak_getlastconscdr (hak_t* hak, hak_oop_t cons)
 {
-	HCL_ASSERT (hcl, HCL_IS_CONS(hcl, cons));
+	HAK_ASSERT (hak, HAK_IS_CONS(hak, cons));
 	do
 	{
-		cons = HCL_CONS_CDR(cons);
-		if (!HCL_IS_CONS(hcl, cons)) break;
+		cons = HAK_CONS_CDR(cons);
+		if (!HAK_IS_CONS(hak, cons)) break;
 	}
 	while (1);
 
 	return cons;
 }
 
-hcl_oop_t hcl_reversecons (hcl_t* hcl, hcl_oop_t cons)
+hak_oop_t hak_reversecons (hak_t* hak, hak_oop_t cons)
 {
-	hcl_oop_t ptr, prev, next;
+	hak_oop_t ptr, prev, next;
 
 	/* Note: The non-nil cdr in the last cons cell gets lost.
 	 *  e.g.) Reversing (1 2 3 . 4) results in (3 2 1) */
 
-	HCL_ASSERT (hcl, HCL_IS_CONS(hcl, cons));
+	HAK_ASSERT (hak, HAK_IS_CONS(hak, cons));
 
-	prev = hcl->_nil;
+	prev = hak->_nil;
 	ptr = cons;
 
 	do
 	{
-		next = HCL_CONS_CDR(ptr);
-		HCL_CONS_CDR(ptr) = prev;
+		next = HAK_CONS_CDR(ptr);
+		HAK_CONS_CDR(ptr) = prev;
 		prev = ptr;
-		if (!HCL_IS_CONS(hcl, next)) break;
+		if (!HAK_IS_CONS(hak, next)) break;
 		ptr = next;
 	}
 	while (1);
@@ -870,45 +870,45 @@ hcl_oop_t hcl_reversecons (hcl_t* hcl, hcl_oop_t cons)
 /* ------------------------------------------------------------------------ *
  * OBJECT HASHING
  * ------------------------------------------------------------------------ */
-int hcl_hashobj (hcl_t* hcl, hcl_oop_t obj, hcl_oow_t* xhv)
+int hak_hashobj (hak_t* hak, hak_oop_t obj, hak_oow_t* xhv)
 {
-	hcl_oow_t hv;
+	hak_oow_t hv;
 
-	if (obj == hcl->_nil)
+	if (obj == hak->_nil)
 	{
 		*xhv = 0;
 		return 0;
 	}
-	else if (obj == hcl->_true)
+	else if (obj == hak->_true)
 	{
 		*xhv = 1;
 		return 0;
 	}
-	else if (obj == hcl->_false)
+	else if (obj == hak->_false)
 	{
 		*xhv = 2;
 		return 0;
 	}
 
-	switch (HCL_OOP_GET_TAG(obj))
+	switch (HAK_OOP_GET_TAG(obj))
 	{
-		case HCL_OOP_TAG_SMOOI:
-			hv = HCL_OOP_TO_SMOOI(obj);
+		case HAK_OOP_TAG_SMOOI:
+			hv = HAK_OOP_TO_SMOOI(obj);
 			break;
 
 /*
-		case HCL_OOP_TAG_SMPTR:
-			hv = (hcl_oow_t)HCL_OOP_TO_SMPTR(obj);
+		case HAK_OOP_TAG_SMPTR:
+			hv = (hak_oow_t)HAK_OOP_TO_SMPTR(obj);
 			break;
 */
 
-		case HCL_OOP_TAG_CHAR:
-			hv = HCL_OOP_TO_CHAR(obj);
+		case HAK_OOP_TAG_CHAR:
+			hv = HAK_OOP_TO_CHAR(obj);
 			break;
 
 /*
-		case HCL_OOP_TAG_ERROR:
-			hv = HCL_OOP_TO_ERROR(obj);
+		case HAK_OOP_TAG_ERROR:
+			hv = HAK_OOP_TO_ERROR(obj);
 			break;
 */
 
@@ -916,38 +916,38 @@ int hcl_hashobj (hcl_t* hcl, hcl_oop_t obj, hcl_oow_t* xhv)
 		{
 			int type;
 
-			HCL_ASSERT (hcl, HCL_OOP_IS_POINTER(obj));
-			type = HCL_OBJ_GET_FLAGS_TYPE(obj);
+			HAK_ASSERT (hak, HAK_OOP_IS_POINTER(obj));
+			type = HAK_OBJ_GET_FLAGS_TYPE(obj);
 			switch (type)
 			{
-				case HCL_OBJ_TYPE_BYTE:
-					hv = hcl_hash_bytes(((hcl_oop_byte_t)obj)->slot, HCL_OBJ_GET_SIZE(obj));
+				case HAK_OBJ_TYPE_BYTE:
+					hv = hak_hash_bytes(((hak_oop_byte_t)obj)->slot, HAK_OBJ_GET_SIZE(obj));
 					break;
 
-				case HCL_OBJ_TYPE_CHAR:
-					hv = hcl_hash_oochars(((hcl_oop_char_t)obj)->slot, HCL_OBJ_GET_SIZE(obj));
+				case HAK_OBJ_TYPE_CHAR:
+					hv = hak_hash_oochars(((hak_oop_char_t)obj)->slot, HAK_OBJ_GET_SIZE(obj));
 					break;
 
-				case HCL_OBJ_TYPE_HALFWORD:
-					hv = hcl_hash_halfwords(((hcl_oop_halfword_t)obj)->slot, HCL_OBJ_GET_SIZE(obj));
+				case HAK_OBJ_TYPE_HALFWORD:
+					hv = hak_hash_halfwords(((hak_oop_halfword_t)obj)->slot, HAK_OBJ_GET_SIZE(obj));
 					break;
 
-				case HCL_OBJ_TYPE_WORD:
-					hv = hcl_hash_words(((hcl_oop_word_t)obj)->slot, HCL_OBJ_GET_SIZE(obj));
+				case HAK_OBJ_TYPE_WORD:
+					hv = hak_hash_words(((hak_oop_word_t)obj)->slot, HAK_OBJ_GET_SIZE(obj));
 					break;
 
 				default:
-					/* HCL_OBJ_TYPE_OOP, ... */
-					hcl_seterrbfmt(hcl, HCL_ENOIMPL, "no builtin hash implemented for %O", obj); /* TODO: better error code? */
+					/* HAK_OBJ_TYPE_OOP, ... */
+					hak_seterrbfmt(hak, HAK_ENOIMPL, "no builtin hash implemented for %O", obj); /* TODO: better error code? */
 					return -1;
 			}
 			break;
 		}
 	}
 
-	/* i assume that hcl_hashxxx() functions limits the return value to fall
-	 * between 0 and HCL_SMOOI_MAX inclusive */
-	HCL_ASSERT (hcl, hv >= 0 && hv <= HCL_SMOOI_MAX);
+	/* i assume that hak_hashxxx() functions limits the return value to fall
+	 * between 0 and HAK_SMOOI_MAX inclusive */
+	HAK_ASSERT (hak, hv >= 0 && hv <= HAK_SMOOI_MAX);
 	*xhv = hv;
 	return 0;
 }
@@ -955,74 +955,74 @@ int hcl_hashobj (hcl_t* hcl, hcl_oop_t obj, hcl_oow_t* xhv)
 /* ------------------------------------------------------------------------ *
  * OBJECT EQUALITY
  * ------------------------------------------------------------------------ */
-int hcl_equalobjs (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t arg)
+int hak_equalobjs (hak_t* hak, hak_oop_t rcv, hak_oop_t arg)
 {
 	int rtag;
 
 	if (rcv == arg) return 1; /* identical. so equal */
 
-	rtag = HCL_OOP_GET_TAG(rcv);
-	if (rtag != HCL_OOP_GET_TAG(arg)) return 0;
+	rtag = HAK_OOP_GET_TAG(rcv);
+	if (rtag != HAK_OOP_GET_TAG(arg)) return 0;
 
 	switch (rtag)
 	{
-		case HCL_OOP_TAG_SMOOI:
-			return HCL_OOP_TO_SMOOI(rcv) == HCL_OOP_TO_SMOOI(arg)? 1: 0;
+		case HAK_OOP_TAG_SMOOI:
+			return HAK_OOP_TO_SMOOI(rcv) == HAK_OOP_TO_SMOOI(arg)? 1: 0;
 
-		case HCL_OOP_TAG_SMPTR:
-			return HCL_OOP_TO_SMPTR(rcv) == HCL_OOP_TO_SMPTR(arg)? 1: 0;
+		case HAK_OOP_TAG_SMPTR:
+			return HAK_OOP_TO_SMPTR(rcv) == HAK_OOP_TO_SMPTR(arg)? 1: 0;
 
-		case HCL_OOP_TAG_CHAR:
-			return HCL_OOP_TO_CHAR(rcv) == HCL_OOP_TO_CHAR(arg)? 1: 0;
+		case HAK_OOP_TAG_CHAR:
+			return HAK_OOP_TO_CHAR(rcv) == HAK_OOP_TO_CHAR(arg)? 1: 0;
 
-		case HCL_OOP_TAG_ERROR:
-			return HCL_OOP_TO_ERROR(rcv) == HCL_OOP_TO_ERROR(arg)? 1: 0;
+		case HAK_OOP_TAG_ERROR:
+			return HAK_OOP_TO_ERROR(rcv) == HAK_OOP_TO_ERROR(arg)? 1: 0;
 
 		default:
 		{
-			HCL_ASSERT (hcl, HCL_OOP_IS_POINTER(rcv));
+			HAK_ASSERT (hak, HAK_OOP_IS_POINTER(rcv));
 
-			if (HCL_OBJ_GET_CLASS(rcv) != HCL_OBJ_GET_CLASS(arg)) return 0; /* different class, not equal */
-			HCL_ASSERT (hcl, HCL_OBJ_GET_FLAGS_TYPE(rcv) == HCL_OBJ_GET_FLAGS_TYPE(arg));
+			if (HAK_OBJ_GET_CLASS(rcv) != HAK_OBJ_GET_CLASS(arg)) return 0; /* different class, not equal */
+			HAK_ASSERT (hak, HAK_OBJ_GET_FLAGS_TYPE(rcv) == HAK_OBJ_GET_FLAGS_TYPE(arg));
 
-			if (HCL_OBJ_GET_SIZE(rcv) != HCL_OBJ_GET_SIZE(arg)) return 0; /* different size, not equal */
+			if (HAK_OBJ_GET_SIZE(rcv) != HAK_OBJ_GET_SIZE(arg)) return 0; /* different size, not equal */
 
-			switch (HCL_OBJ_GET_FLAGS_TYPE(rcv))
+			switch (HAK_OBJ_GET_FLAGS_TYPE(rcv))
 			{
-				case HCL_OBJ_TYPE_BYTE:
-				case HCL_OBJ_TYPE_CHAR:
-				case HCL_OBJ_TYPE_HALFWORD:
-				case HCL_OBJ_TYPE_WORD:
-					return (HCL_MEMCMP(HCL_OBJ_GET_BYTE_SLOT(rcv), HCL_OBJ_GET_BYTE_SLOT(arg), HCL_BYTESOF(hcl,rcv)) == 0)? 1: 0;
+				case HAK_OBJ_TYPE_BYTE:
+				case HAK_OBJ_TYPE_CHAR:
+				case HAK_OBJ_TYPE_HALFWORD:
+				case HAK_OBJ_TYPE_WORD:
+					return (HAK_MEMCMP(HAK_OBJ_GET_BYTE_SLOT(rcv), HAK_OBJ_GET_BYTE_SLOT(arg), HAK_BYTESOF(hak,rcv)) == 0)? 1: 0;
 
 				default:
 				{
-					hcl_oow_t i, size;
+					hak_oow_t i, size;
 
-					if (rcv == hcl->_nil) return arg == hcl->_nil? 1: 0;
-					if (rcv == hcl->_true) return arg == hcl->_true? 1: 0;
-					if (rcv == hcl->_false) return arg == hcl->_false? 1: 0;
+					if (rcv == hak->_nil) return arg == hak->_nil? 1: 0;
+					if (rcv == hak->_true) return arg == hak->_true? 1: 0;
+					if (rcv == hak->_false) return arg == hak->_false? 1: 0;
 
-					/* HCL_OBJ_TYPE_OOP, ... */
-					HCL_ASSERT (hcl, HCL_OBJ_GET_FLAGS_TYPE(rcv) == HCL_OBJ_TYPE_OOP);
+					/* HAK_OBJ_TYPE_OOP, ... */
+					HAK_ASSERT (hak, HAK_OBJ_GET_FLAGS_TYPE(rcv) == HAK_OBJ_TYPE_OOP);
 
 				#if 0
-					hcl_seterrbfmt (hcl, HCL_ENOIMPL, "no builtin comparison implemented for %O and %O", rcv, arg); /* TODO: better error code */
+					hak_seterrbfmt (hak, HAK_ENOIMPL, "no builtin comparison implemented for %O and %O", rcv, arg); /* TODO: better error code */
 					return -1;
 				#else
 
-					if (HCL_IS_PROCESS(hcl,rcv))
+					if (HAK_IS_PROCESS(hak,rcv))
 					{
 						/* the stack in a process object doesn't need to be
 						 * scanned in full. the slots above the stack pointer
 						 * are garbages. */
-						size = HCL_PROCESS_NAMED_INSTVARS +
-							  HCL_OOP_TO_SMOOI(((hcl_oop_process_t)rcv)->sp) + 1;
-						HCL_ASSERT (hcl, size <= HCL_OBJ_GET_SIZE(rcv));
+						size = HAK_PROCESS_NAMED_INSTVARS +
+							  HAK_OOP_TO_SMOOI(((hak_oop_process_t)rcv)->sp) + 1;
+						HAK_ASSERT (hak, size <= HAK_OBJ_GET_SIZE(rcv));
 					}
 					else
 					{
-						size = HCL_OBJ_GET_SIZE(rcv);
+						size = HAK_OBJ_GET_SIZE(rcv);
 					}
 					for (i = 0; i < size; i++)
 					{
@@ -1030,7 +1030,7 @@ int hcl_equalobjs (hcl_t* hcl, hcl_oop_t rcv, hcl_oop_t arg)
 						/* TODO: remove recursion */
 						/* NOTE: even if the object implements the equality method,
 						 * this primitive method doesn't honor it. */
-						n = hcl_equalobjs(hcl, ((hcl_oop_oop_t)rcv)->slot[i], ((hcl_oop_oop_t)arg)->slot[i]);
+						n = hak_equalobjs(hak, ((hak_oop_oop_t)rcv)->slot[i], ((hak_oop_oop_t)arg)->slot[i]);
 						if (n <= 0) return n;
 					}
 

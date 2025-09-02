@@ -22,92 +22,92 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <hcl-tmr.h>
-#include "hcl-prv.h"
+#include <hak-tmr.h>
+#include "hak-prv.h"
 
 #define HEAP_PARENT(x) (((x) - 1) / 2)
 #define HEAP_LEFT(x)   ((x) * 2 + 1)
 #define HEAP_RIGHT(x)  ((x) * 2 + 2)
 
-#define YOUNGER_THAN(x,y) (HCL_CMP_NTIME(&(x)->when, &(y)->when) < 0)
+#define YOUNGER_THAN(x,y) (HAK_CMP_NTIME(&(x)->when, &(y)->when) < 0)
 
-hcl_tmr_t* hcl_tmr_open (hcl_t* hcl, hcl_oow_t xtnsize, hcl_oow_t capa)
+hak_tmr_t* hak_tmr_open (hak_t* hak, hak_oow_t xtnsize, hak_oow_t capa)
 {
-	hcl_tmr_t* tmr;
+	hak_tmr_t* tmr;
 
-	tmr = (hcl_tmr_t*)hcl_allocmem(hcl, HCL_SIZEOF(*tmr) + xtnsize);
+	tmr = (hak_tmr_t*)hak_allocmem(hak, HAK_SIZEOF(*tmr) + xtnsize);
 	if (tmr)
 	{
-		if (hcl_tmr_init(tmr, hcl, capa) <= -1)
+		if (hak_tmr_init(tmr, hak, capa) <= -1)
 		{
-			hcl_freemem (tmr->hcl, tmr);
-			return HCL_NULL;
+			hak_freemem (tmr->hak, tmr);
+			return HAK_NULL;
 		}
-		else HCL_MEMSET (tmr + 1, 0, xtnsize);
+		else HAK_MEMSET (tmr + 1, 0, xtnsize);
 	}
 
 	return tmr;
 }
 
-void hcl_tmr_close (hcl_tmr_t* tmr)
+void hak_tmr_close (hak_tmr_t* tmr)
 {
-	hcl_tmr_fini (tmr);
-	hcl_freemem (tmr->hcl, tmr);
+	hak_tmr_fini (tmr);
+	hak_freemem (tmr->hak, tmr);
 }
 
-int hcl_tmr_init (hcl_tmr_t* tmr, hcl_t* hcl, hcl_oow_t capa)
+int hak_tmr_init (hak_tmr_t* tmr, hak_t* hak, hak_oow_t capa)
 {
-	hcl_tmr_event_t* tmp;
+	hak_tmr_event_t* tmp;
 
-	HCL_MEMSET (tmr, 0, HCL_SIZEOF(*tmr));
+	HAK_MEMSET (tmr, 0, HAK_SIZEOF(*tmr));
 
 	if (capa <= 0) capa = 1;
 
-	tmp = (hcl_tmr_event_t*)hcl_allocmem(hcl, capa * HCL_SIZEOF(*tmp));
+	tmp = (hak_tmr_event_t*)hak_allocmem(hak, capa * HAK_SIZEOF(*tmp));
 	if (!tmp) return -1;
 
-	tmr->hcl = hcl;
+	tmr->hak = hak;
 	tmr->capa = capa;
 	tmr->event = tmp;
 
 	return 0;
 }
 
-void hcl_tmr_fini (hcl_tmr_t* tmr)
+void hak_tmr_fini (hak_tmr_t* tmr)
 {
-	hcl_tmr_clear (tmr);
+	hak_tmr_clear (tmr);
 	if (tmr->event)
 	{
-		hcl_freemem (tmr->hcl, tmr->event);
-		tmr->event = HCL_NULL;
+		hak_freemem (tmr->hak, tmr->event);
+		tmr->event = HAK_NULL;
 	}
 }
 
 /*
-hcl_mmgr_t* hcl_tmr_getmmgr (hcl_tmr_t* tmr)
+hak_mmgr_t* hak_tmr_getmmgr (hak_tmr_t* tmr)
 {
-	return tmr->hcl->mmgr;
+	return tmr->hak->mmgr;
 }*/
 
-void* hcl_tmr_getxtn (hcl_tmr_t* tmr)
+void* hak_tmr_getxtn (hak_tmr_t* tmr)
 {
 	return (void*)(tmr + 1);
 }
 
-void hcl_tmr_clear (hcl_tmr_t* tmr)
+void hak_tmr_clear (hak_tmr_t* tmr)
 {
-	while (tmr->size > 0) hcl_tmr_delete (tmr, 0);
+	while (tmr->size > 0) hak_tmr_delete (tmr, 0);
 }
 
-static hcl_tmr_index_t sift_up (hcl_tmr_t* tmr, hcl_tmr_index_t index, int notify)
+static hak_tmr_index_t sift_up (hak_tmr_t* tmr, hak_tmr_index_t index, int notify)
 {
-	hcl_oow_t parent;
+	hak_oow_t parent;
 
 	parent = HEAP_PARENT(index);
 	if (index > 0 && YOUNGER_THAN(&tmr->event[index], &tmr->event[parent]))
 	{
-		hcl_tmr_event_t item;
-		hcl_oow_t old_index;
+		hak_tmr_event_t item;
+		hak_oow_t old_index;
 
 		item = tmr->event[index];
 		old_index = index;
@@ -124,8 +124,8 @@ static hcl_tmr_index_t sift_up (hcl_tmr_t* tmr, hcl_tmr_index_t index, int notif
 		}
 		while (index > 0 && YOUNGER_THAN(&item, &tmr->event[parent]));
 
-		/* we send no notification if the item is added with hcl_tmr_insert()
-		 * or updated with hcl_tmr_update(). the caller of these functions
+		/* we send no notification if the item is added with hak_tmr_insert()
+		 * or updated with hak_tmr_update(). the caller of these functions
 		 * must rely on the return value. */
 		tmr->event[index] = item;
 		if (notify && index != old_index)
@@ -135,21 +135,21 @@ static hcl_tmr_index_t sift_up (hcl_tmr_t* tmr, hcl_tmr_index_t index, int notif
 	return index;
 }
 
-static hcl_tmr_index_t sift_down (hcl_tmr_t* tmr, hcl_tmr_index_t index, int notify)
+static hak_tmr_index_t sift_down (hak_tmr_t* tmr, hak_tmr_index_t index, int notify)
 {
-	hcl_oow_t base = tmr->size / 2;
+	hak_oow_t base = tmr->size / 2;
 
 	if (index < base) /* at least 1 child is under the 'index' position */
 	{
-		hcl_tmr_event_t item;
-		hcl_oow_t old_index;
+		hak_tmr_event_t item;
+		hak_oow_t old_index;
 
 		item = tmr->event[index];
 		old_index = index;
 
 		do
 		{
-			hcl_oow_t left, right, younger;
+			hak_oow_t left, right, younger;
 
 			left = HEAP_LEFT(index);
 			right = HEAP_RIGHT(index);
@@ -180,14 +180,14 @@ static hcl_tmr_index_t sift_down (hcl_tmr_t* tmr, hcl_tmr_index_t index, int not
 	return index;
 }
 
-void hcl_tmr_delete (hcl_tmr_t* tmr, hcl_tmr_index_t index)
+void hak_tmr_delete (hak_tmr_t* tmr, hak_tmr_index_t index)
 {
-	hcl_tmr_event_t item;
+	hak_tmr_event_t item;
 
-	HCL_ASSERT (tmr->hcl, index < tmr->size);
+	HAK_ASSERT (tmr->hak, index < tmr->size);
 
 	item = tmr->event[index];
-	tmr->event[index].updater (tmr, index, HCL_TMR_INVALID_INDEX, &tmr->event[index]);
+	tmr->event[index].updater (tmr, index, HAK_TMR_INVALID_INDEX, &tmr->event[index]);
 
 	tmr->size = tmr->size - 1;
 	if (tmr->size > 0 && index != tmr->size)
@@ -198,61 +198,61 @@ void hcl_tmr_delete (hcl_tmr_t* tmr, hcl_tmr_index_t index)
 	}
 }
 
-hcl_tmr_index_t hcl_tmr_insert (hcl_tmr_t* tmr, const hcl_tmr_event_t* event)
+hak_tmr_index_t hak_tmr_insert (hak_tmr_t* tmr, const hak_tmr_event_t* event)
 {
-	hcl_tmr_index_t index = tmr->size;
+	hak_tmr_index_t index = tmr->size;
 
 	if (index >= tmr->capa)
 	{
-		hcl_tmr_event_t* tmp;
-		hcl_oow_t new_capa;
+		hak_tmr_event_t* tmp;
+		hak_oow_t new_capa;
 
-		HCL_ASSERT (tmr->hcl, tmr->capa >= 1);
+		HAK_ASSERT (tmr->hak, tmr->capa >= 1);
 		new_capa = tmr->capa * 2;
-		tmp = (hcl_tmr_event_t*)hcl_reallocmem(tmr->hcl, tmr->event, new_capa * HCL_SIZEOF(*tmp));
-		if (!tmp) return HCL_TMR_INVALID_INDEX;
+		tmp = (hak_tmr_event_t*)hak_reallocmem(tmr->hak, tmr->event, new_capa * HAK_SIZEOF(*tmp));
+		if (!tmp) return HAK_TMR_INVALID_INDEX;
 
 		tmr->event = tmp;
 		tmr->capa = new_capa;
 	}
 
-	HCL_ASSERT (tmr->hcl, event->handler != HCL_NULL);
-	HCL_ASSERT (tmr->hcl, event->updater != HCL_NULL);
+	HAK_ASSERT (tmr->hak, event->handler != HAK_NULL);
+	HAK_ASSERT (tmr->hak, event->updater != HAK_NULL);
 
 	tmr->size = tmr->size + 1;
 	tmr->event[index] = *event;
 	return sift_up(tmr, index, 0);
 }
 
-hcl_tmr_index_t hcl_tmr_update (hcl_tmr_t* tmr, hcl_oow_t index, const hcl_tmr_event_t* event)
+hak_tmr_index_t hak_tmr_update (hak_tmr_t* tmr, hak_oow_t index, const hak_tmr_event_t* event)
 {
-	hcl_tmr_event_t item;
+	hak_tmr_event_t item;
 
-	HCL_ASSERT (tmr->hcl, event->handler != HCL_NULL);
-	HCL_ASSERT (tmr->hcl, event->updater != HCL_NULL);
+	HAK_ASSERT (tmr->hak, event->handler != HAK_NULL);
+	HAK_ASSERT (tmr->hak, event->updater != HAK_NULL);
 
 	item = tmr->event[index];
 	tmr->event[index] = *event;
 	return YOUNGER_THAN(event, &item)? sift_up(tmr, index, 0): sift_down(tmr, index, 0);
 }
 
-int hcl_tmr_fire (hcl_tmr_t* tmr, const hcl_ntime_t* tm, hcl_oow_t* firecnt)
+int hak_tmr_fire (hak_tmr_t* tmr, const hak_ntime_t* tm, hak_oow_t* firecnt)
 {
-	hcl_ntime_t now;
-	hcl_tmr_event_t event;
-	hcl_oow_t fire_count = 0;
+	hak_ntime_t now;
+	hak_tmr_event_t event;
+	hak_oow_t fire_count = 0;
 
 	/* if the current time is not specified, get it from the system */
 	if (tm) now = *tm;
-	/*else if (hcl_gettime(&now) <= -1) return -1;*/
-	tmr->hcl->vmprim.vm_gettime (tmr->hcl, &now);
+	/*else if (hak_gettime(&now) <= -1) return -1;*/
+	tmr->hak->vmprim.vm_gettime (tmr->hak, &now);
 
 	while (tmr->size > 0)
 	{
-		if (HCL_CMP_NTIME(&tmr->event[0].when, &now) > 0) break;
+		if (HAK_CMP_NTIME(&tmr->event[0].when, &now) > 0) break;
 
 		event = tmr->event[0];
-		hcl_tmr_delete (tmr, 0); /* remove the registered event structure */
+		hak_tmr_delete (tmr, 0); /* remove the registered event structure */
 
 		fire_count++;
 		event.handler (tmr, &now, &event); /* then fire the event */
@@ -262,25 +262,25 @@ int hcl_tmr_fire (hcl_tmr_t* tmr, const hcl_ntime_t* tm, hcl_oow_t* firecnt)
 	return 0;
 }
 
-int hcl_tmr_gettmout (hcl_tmr_t* tmr, const hcl_ntime_t* tm, hcl_ntime_t* tmout)
+int hak_tmr_gettmout (hak_tmr_t* tmr, const hak_ntime_t* tm, hak_ntime_t* tmout)
 {
-	hcl_ntime_t now;
+	hak_ntime_t now;
 
 	/* time-out can't be calculated when there's no event scheduled */
 	if (tmr->size <= 0) return -1;
 
 	/* if the current time is not specified, get it from the system */
 	if (tm) now = *tm;
-	/*else if (hcl_gettime(&now) <= -1) return -1;*/
-	tmr->hcl->vmprim.vm_gettime (tmr->hcl, &now);
+	/*else if (hak_gettime(&now) <= -1) return -1;*/
+	tmr->hak->vmprim.vm_gettime (tmr->hak, &now);
 
-	HCL_SUB_NTIME (tmout, &tmr->event[0].when, &now);
-	if (tmout->sec < 0) HCL_CLEAR_NTIME (tmout);
+	HAK_SUB_NTIME (tmout, &tmr->event[0].when, &now);
+	if (tmout->sec < 0) HAK_CLEAR_NTIME (tmout);
 
 	return 0;
 }
 
-hcl_tmr_event_t* hcl_tmr_getevent (hcl_tmr_t* tmr, hcl_tmr_index_t index)
+hak_tmr_event_t* hak_tmr_getevent (hak_tmr_t* tmr, hak_tmr_index_t index)
 {
-	return (index < 0 || index >= tmr->size)? HCL_NULL: &tmr->event[index];
+	return (index < 0 || index >= tmr->size)? HAK_NULL: &tmr->event[index];
 }

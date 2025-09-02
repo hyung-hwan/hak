@@ -63,18 +63,18 @@ else
 LIBADD_COMMON += $(DL_LIBS)
 endif
 
-bin_PROGRAMS = hcl
-hcl_SOURCES = hcl.c
-hcl_CPPFLAGS = $(CPPFLAGS_COMMON) -I$(srcdir)/isocline/include -DHAVE_ISOCLINE_H -DHAVE_ISOCLINE_LIB
-hcl_LDFLAGS = $(LDFLAGS_COMMON)
-hcl_LDADD = ../lib/libhcl.la $(LIBADD_COMMON) ./libisocline.a
+bin_PROGRAMS = hak
+hak_SOURCES = hak.c
+hak_CPPFLAGS = $(CPPFLAGS_COMMON) -I$(srcdir)/isocline/include -DHAVE_ISOCLINE_H -DHAVE_ISOCLINE_LIB
+hak_LDFLAGS = $(LDFLAGS_COMMON)
+hak_LDADD = ../lib/libhak.la $(LIBADD_COMMON) ./libisocline.a
 
-if ENABLE_HCLX
+if ENABLE_HAKX
 
-bin_PROGRAMS += hclx
-hclx_SOURCES = hclx.c
-hclx_CPPFLAGS = $(CPPFLAGS_COMMON)
-hclx_LDFLAGS = $(LDFLAGS_COMMON)
-hclx_LDADD = ../lib/libhclx.la $(LIBADD_COMMON)
+bin_PROGRAMS += hakx
+hakx_SOURCES = hakx.c
+hakx_CPPFLAGS = $(CPPFLAGS_COMMON)
+hakx_LDFLAGS = $(LDFLAGS_COMMON)
+hakx_LDADD = ../lib/libhakx.la $(LIBADD_COMMON)
 
 endif

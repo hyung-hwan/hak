@@ -26,11 +26,11 @@
 /* this file is supposed to be included by opt.c multiple times */
 
 
-#include <hcl-opt.h>
-#include <hcl-utl.h>
+#include <hak-opt.h>
+#include <hak-utl.h>
 
 /*
- * hcl_getopt is based on BSD getopt.
+ * hak_getopt is based on BSD getopt.
  * --------------------------------------------------------------------------
  *
  * Copyright (c) 1987-2002 The Regents of the University of California.
@@ -70,10 +70,10 @@ xci_t xgetopt (int argc, xch_t* const* argv, xopt_t* opt)
 	xch_t* oli; /* option letter list index */
 	int dbldash = 0;
 
-	opt->arg = HCL_NULL;
-	opt->lngopt = HCL_NULL;
+	opt->arg = HAK_NULL;
+	opt->lngopt = HAK_NULL;
 
-	if (opt->cur == HCL_NULL)
+	if (opt->cur == HAK_NULL)
 	{
 		opt->cur = XEMSG;
 		opt->ind = 1;
@@ -118,7 +118,7 @@ xci_t xgetopt (int argc, xch_t* const* argv, xopt_t* opt)
 		}
 	}
 
-	if (dbldash && opt->lng != HCL_NULL)
+	if (dbldash && opt->lng != HAK_NULL)
 	{
 		const xopt_lng_t* o;
 		xch_t* end = opt->cur;
@@ -145,9 +145,9 @@ xci_t xgetopt (int argc, xch_t* const* argv, xopt_t* opt)
 			if (*o->str != ':')
 			{
 				/* should not have an option argument */
-				if (opt->arg != HCL_NULL) return BADARG;
+				if (opt->arg != HAK_NULL) return BADARG;
 			}
-			else if (opt->arg == HCL_NULL)
+			else if (opt->arg == HAK_NULL)
 			{
 				/* check if it has a remaining argument
 				 * available */
@@ -161,13 +161,13 @@ xci_t xgetopt (int argc, xch_t* const* argv, xopt_t* opt)
 			return o->val;
 		}
 
-		/*if (*end == HCL_T('=')) *end = HCL_T('\0');*/
+		/*if (*end == HAK_T('=')) *end = HAK_T('\0');*/
 		opt->lngopt = opt->cur;
 		return BADCH;
 	}
 
 	if ((opt->opt = *opt->cur++) == ':' ||
-	    (oli = xfindcharincstr(opt->str, opt->opt)) == HCL_NULL)
+	    (oli = xfindcharincstr(opt->str, opt->opt)) == HAK_NULL)
 	{
 		/*
 		 * if the user didn't specify '-' as an option,

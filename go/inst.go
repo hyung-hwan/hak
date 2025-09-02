@@ -1,7 +1,7 @@
-package hcl
+package hak
 
 /*
-#include <hcl.h>
+#include <hak.h>
 */
 import "C"
 import (
@@ -9,8 +9,8 @@ import (
 )
 
 type Instance struct {
-	c *C.hcl_t // c object
-	g *HCL     // go object
+	c *C.hak_t // c object
+	g *HAK     // go object
 }
 
 type InstanceTable struct {
@@ -19,7 +19,7 @@ type InstanceTable struct {
 	free_slots []int
 }
 
-func (itab *InstanceTable) add_instance(c *C.hcl_t, g *HCL) int {
+func (itab *InstanceTable) add_instance(c *C.hak_t, g *HAK) int {
 	itab.mtx.Lock()
 	defer itab.mtx.Unlock()
 

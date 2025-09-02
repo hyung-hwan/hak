@@ -22,7 +22,7 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "hcl-chr.h"
+#include "hak-chr.h"
 
 /* TODO: handle different endians - UTF16BE or UTF16LE */
 
@@ -34,16 +34,16 @@ enum
 	LOW_SURROGATE_END    = 0xDFFF
 };
 
-hcl_oow_t hcl_uc_to_utf16 (hcl_uch_t uc, hcl_bch_t* utf16, hcl_oow_t size)
+hak_oow_t hak_uc_to_utf16 (hak_uch_t uc, hak_bch_t* utf16, hak_oow_t size)
 {
-	hcl_uint16_t* u16 = (hcl_uint16_t*)utf16;
+	hak_uint16_t* u16 = (hak_uint16_t*)utf16;
 
 	if (uc <= 0xFFFF)
 	{
-		u16[0] = (hcl_uint16_t)uc;
+		u16[0] = (hak_uint16_t)uc;
 		return 2;
 	}
-#if (HCL_SIZEOF_UCH_T > 2)
+#if (HAK_SIZEOF_UCH_T > 2)
 	else if (uc <= 0x10FFFF)
 	{
 		u16[0] = HIGH_SURROGATE_START | (((uc >> 16) & 0x1F) - 1) | (uc >> 10);
@@ -55,9 +55,9 @@ hcl_oow_t hcl_uc_to_utf16 (hcl_uch_t uc, hcl_bch_t* utf16, hcl_oow_t size)
 	return 0; /* illegal character */
 }
 
-hcl_oow_t hcl_utf16_to_uc (const hcl_bch_t* utf16, hcl_oow_t size, hcl_uch_t* uc)
+hak_oow_t hak_utf16_to_uc (const hak_bch_t* utf16, hak_oow_t size, hak_uch_t* uc)
 {
-	const hcl_uint16_t* u16 = (const hcl_uint16_t*)utf16;
+	const hak_uint16_t* u16 = (const hak_uint16_t*)utf16;
 
 	if (size < 2) return 0; /* incomplete sequence */
 
@@ -67,7 +67,7 @@ hcl_oow_t hcl_utf16_to_uc (const hcl_bch_t* utf16, hcl_oow_t size, hcl_uch_t* uc
 		*uc = u16[0];
 		return 2;
 	}
-#if (HCL_SIZEOF_UCH_T > 2)
+#if (HAK_SIZEOF_UCH_T > 2)
 	else if (u16[0] >= HIGH_SURROGATE_START && u16[0] <= HIGH_SURROGATE_END) /* high-surrogate */
 	{
 		if (size < 4) return 0; /* incomplete */

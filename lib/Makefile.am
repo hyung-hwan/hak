@@ -33,13 +33,13 @@ endif
 if WIN32
 # you must adjust the value of DEFAULT_MODPOSTFIX according 
 # to the first number in -version-info above
-CPPFLAGS_PFMOD = -DHCL_DEFAULT_PFMODPREFIX=\"libhcl-\" -DHCL_DEFAULT_PFMODPOSTFIX=\"-1.dll\"
+CPPFLAGS_PFMOD = -DHAK_DEFAULT_PFMODPREFIX=\"libhak-\" -DHAK_DEFAULT_PFMODPOSTFIX=\"-1.dll\"
 else
-CPPFLAGS_PFMOD = -DHCL_DEFAULT_PFMODPREFIX=\"$(libdir)/libhcl-\" 
+CPPFLAGS_PFMOD = -DHAK_DEFAULT_PFMODPREFIX=\"$(libdir)/libhak-\" 
 if MACOSX
-CPPFLAGS_PFMOD += -DHCL_DEFAULT_PFMODPOSTFIX=\".dylib\"
+CPPFLAGS_PFMOD += -DHAK_DEFAULT_PFMODPOSTFIX=\".dylib\"
 else
-CPPFLAGS_PFMOD += -DHCL_DEFAULT_PFMODPOSTFIX=\".so\"
+CPPFLAGS_PFMOD += -DHAK_DEFAULT_PFMODPOSTFIX=\".so\"
 endif
 endif
 
@@ -47,22 +47,22 @@ pkgincludedir = $(includedir)
 pkglibdir = $(libdir)
 
 pkginclude_HEADERS = \
-	hcl.h \
-	hcl-chr.h \
-	hcl-cmgr.h \
-	hcl-cmn.h \
-	hcl-fmt.h \
-	hcl-opt.h \
-	hcl-pac1.h \
-	hcl-rbt.h \
-	hcl-str.h \
-	hcl-upac.h \
-	hcl-utl.h \
-	hcl-xma.h
+	hak.h \
+	hak-chr.h \
+	hak-cmgr.h \
+	hak-cmn.h \
+	hak-fmt.h \
+	hak-opt.h \
+	hak-pac1.h \
+	hak-rbt.h \
+	hak-str.h \
+	hak-upac.h \
+	hak-utl.h \
+	hak-xma.h
 
-pkglib_LTLIBRARIES = libhcl.la
-libhcl_la_SOURCES = \
-	hcl-prv.h \
+pkglib_LTLIBRARIES = libhak.la
+libhak_la_SOURCES = \
+	hak-prv.h \
 	bigint.c \
 	chr.c \
 	cmgr.c \
@@ -76,7 +76,7 @@ libhcl_la_SOURCES = \
 	fmt-imp.h \
 	fmt.c \
 	gc.c \
-	hcl.c \
+	hak.c \
 	heap.c \
 	mb8.c \
 	number.c \
@@ -97,23 +97,23 @@ libhcl_la_SOURCES = \
 	utl.c \
 	xchg.c \
 	xma.c 
-libhcl_la_CPPFLAGS = $(CPPFLAGS_LIB_COMMON)
-libhcl_la_LDFLAGS = $(LDFLAGS_LIB_COMMON)
-libhcl_la_LIBADD = $(LIBADD_LIB_COMMON)
+libhak_la_CPPFLAGS = $(CPPFLAGS_LIB_COMMON)
+libhak_la_LDFLAGS = $(LDFLAGS_LIB_COMMON)
+libhak_la_LIBADD = $(LIBADD_LIB_COMMON)
 
 if ENABLE_STATIC_MODULE
-libhcl_la_LIBADD += ../mod/libhcl-core.la
-libhcl_la_LIBADD += ../mod/libhcl-dic.la
-libhcl_la_LIBADD += ../mod/libhcl-sys.la
+libhak_la_LIBADD += ../mod/libhak-core.la
+libhak_la_LIBADD += ../mod/libhak-dic.la
+libhak_la_LIBADD += ../mod/libhak-sys.la
 endif
 
-if ENABLE_HCLX
-pkglib_LTLIBRARIES += libhclx.la
-pkginclude_HEADERS += hcl-x.h hcl-tmr.h hcl-json.h
-libhclx_la_SOURCES = \
-	hcl-json.h \
-	hcl-tmr.h \
-	hcl-x.h \
+if ENABLE_HAKX
+pkglib_LTLIBRARIES += libhakx.la
+pkginclude_HEADERS += hak-x.h hak-tmr.h hak-json.h
+libhakx_la_SOURCES = \
+	hak-json.h \
+	hak-tmr.h \
+	hak-x.h \
 	json.c \
 	tmr.c \
 	x-client.c \
@@ -122,20 +122,20 @@ libhclx_la_SOURCES = \
 	x-sys.c \
 	x-utl.c \
 	x-utl-sa.h
-libhclx_la_CPPFLAGS = $(CPPFLAGS_LIB_COMMON) $(CPPFLAGS_PFMOD)
-libhclx_la_LDFLAGS = $(LDFLAGS_LIB_COMMON)
-libhclx_la_LIBADD = libhcl.la $(LIBADD_LIB_COMMON)
+libhakx_la_CPPFLAGS = $(CPPFLAGS_LIB_COMMON) $(CPPFLAGS_PFMOD)
+libhakx_la_LDFLAGS = $(LDFLAGS_LIB_COMMON)
+libhakx_la_LIBADD = libhak.la $(LIBADD_LIB_COMMON)
 endif
 
 
 install-data-hook:
-	@echo "#ifndef _HCL_CFG_H_" > "$(DESTDIR)$(pkgincludedir)/hcl-cfg.h"
-	@echo "#define _HCL_CFG_H_" >> "$(DESTDIR)$(pkgincludedir)/hcl-cfg.h"
-	@$(EGREP) "#define[ ]+HCL_" "$(abs_builddir)/hcl-cfg.h" >> "$(DESTDIR)$(pkgincludedir)/hcl-cfg.h" 
-	@echo "#endif" >> "$(DESTDIR)$(pkgincludedir)/hcl-cfg.h"
-	@rm -f "$(DESTDIR)$(pkgincludedir)/hcl-cfg.h.in"
-	@$(SED) 's|/\*#define HCL_HAVE_CFG_H\*/|#define HCL_HAVE_CFG_H|' "$(srcdir)/hcl-cmn.h" > "$(DESTDIR)$(pkgincludedir)/hcl-cmn.h"
+	@echo "#ifndef _HAK_CFG_H_" > "$(DESTDIR)$(pkgincludedir)/hak-cfg.h"
+	@echo "#define _HAK_CFG_H_" >> "$(DESTDIR)$(pkgincludedir)/hak-cfg.h"
+	@$(EGREP) "#define[ ]+HAK_" "$(abs_builddir)/hak-cfg.h" >> "$(DESTDIR)$(pkgincludedir)/hak-cfg.h" 
+	@echo "#endif" >> "$(DESTDIR)$(pkgincludedir)/hak-cfg.h"
+	@rm -f "$(DESTDIR)$(pkgincludedir)/hak-cfg.h.in"
+	@$(SED) 's|/\*#define HAK_HAVE_CFG_H\*/|#define HAK_HAVE_CFG_H|' "$(srcdir)/hak-cmn.h" > "$(DESTDIR)$(pkgincludedir)/hak-cmn.h"
 
 uninstall-hook:
-	@rm -f "$(DESTDIR)$(pkgincludedir)/hcl-cfg.h"
+	@rm -f "$(DESTDIR)$(pkgincludedir)/hak-cfg.h"
 

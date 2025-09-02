@@ -22,11 +22,11 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-static int str_to_ipv4 (const ooch_t* str, hcl_oow_t len, struct in_addr* inaddr)
+static int str_to_ipv4 (const ooch_t* str, hak_oow_t len, struct in_addr* inaddr)
 {
 	const ooch_t* end;
 	int dots = 0, digits = 0;
-	hcl_uint32_t acc = 0, addr = 0;
+	hak_uint32_t acc = 0, addr = 0;
 	ooch_t c;
 
 	end = str + len;
@@ -59,15 +59,15 @@ static int str_to_ipv4 (const ooch_t* str, hcl_oow_t len, struct in_addr* inaddr
 	}
 	while (1);
 
-	inaddr->s_addr = hcl_hton32(addr);
+	inaddr->s_addr = hak_hton32(addr);
 	return 0;
 
 }
 
-#if (HCL_SIZEOF_STRUCT_SOCKADDR_IN6 > 0)
-static int str_to_ipv6 (const ooch_t* src, hcl_oow_t len, struct in6_addr* inaddr)
+#if (HAK_SIZEOF_STRUCT_SOCKADDR_IN6 > 0)
+static int str_to_ipv6 (const ooch_t* src, hak_oow_t len, struct in6_addr* inaddr)
 {
-	hcl_uint8_t* tp, * endp, * colonp;
+	hak_uint8_t* tp, * endp, * colonp;
 	const ooch_t* curtok;
 	ooch_t ch;
 	int saw_xdigit;
@@ -76,10 +76,10 @@ static int str_to_ipv6 (const ooch_t* src, hcl_oow_t len, struct in6_addr* inadd
 
 	src_end = src + len;
 
-	HCL_MEMSET (inaddr, 0, HCL_SIZEOF(*inaddr));
+	HAK_MEMSET (inaddr, 0, HAK_SIZEOF(*inaddr));
 	tp = &inaddr->s6_addr[0];
-	endp = &inaddr->s6_addr[HCL_COUNTOF(inaddr->s6_addr)];
-	colonp = HCL_NULL;
+	endp = &inaddr->s6_addr[HAK_COUNTOF(inaddr->s6_addr)];
+	colonp = HAK_NULL;
 
 	/* Leading :: requires some special handling. */
 	if (src < src_end && *src == ':')
@@ -129,17 +129,17 @@ static int str_to_ipv6 (const ooch_t* src, hcl_oow_t len, struct in6_addr* inadd
 				return -1;
 			}
 
-			*tp++ = (hcl_uint8_t)(val >> 8) & 0xff;
-			*tp++ = (hcl_uint8_t)val & 0xff;
+			*tp++ = (hak_uint8_t)(val >> 8) & 0xff;
+			*tp++ = (hak_uint8_t)val & 0xff;
 			saw_xdigit = 0;
 			val = 0;
 			continue;
 		}
 
-		if (ch == '.' && ((tp + HCL_SIZEOF(struct in_addr)) <= endp) &&
+		if (ch == '.' && ((tp + HAK_SIZEOF(struct in_addr)) <= endp) &&
 		    str_to_ipv4(curtok, src_end - curtok, (struct in_addr*)tp) == 0)
 		{
-			tp += HCL_SIZEOF(struct in_addr*);
+			tp += HAK_SIZEOF(struct in_addr*);
 			saw_xdigit = 0;
 			break;
 		}
@@ -149,18 +149,18 @@ static int str_to_ipv6 (const ooch_t* src, hcl_oow_t len, struct in6_addr* inadd
 
 	if (saw_xdigit)
 	{
-		if (tp + HCL_SIZEOF(hcl_uint16_t) > endp) return -1;
-		*tp++ = (hcl_uint8_t)(val >> 8) & 0xff;
-		*tp++ = (hcl_uint8_t)val & 0xff;
+		if (tp + HAK_SIZEOF(hak_uint16_t) > endp) return -1;
+		*tp++ = (hak_uint8_t)(val >> 8) & 0xff;
+		*tp++ = (hak_uint8_t)val & 0xff;
 	}
-	if (colonp != HCL_NULL)
+	if (colonp != HAK_NULL)
 	{
 		/*
 		 * Since some memmove()'s erroneously fail to handle
 		 * overlapping regions, we'll do the shift by hand.
 		 */
-		hcl_oow_t n = tp - colonp;
-		hcl_oow_t i;
+		hak_oow_t n = tp - colonp;
+		hak_oow_t i;
 
 		for (i = 1; i <= n; i++)
 		{
@@ -176,7 +176,7 @@ static int str_to_ipv6 (const ooch_t* src, hcl_oow_t len, struct in6_addr* inadd
 }
 #endif
 
-static int str_to_ifindex (hcl_t* hcl, const ooch_t* ptr, hcl_oow_t len, unsigned int* ifindex)
+static int str_to_ifindex (hak_t* hak, const ooch_t* ptr, hak_oow_t len, unsigned int* ifindex)
 {
 #if defined(SIOCGIFINDEX)
 	int h, x;
@@ -186,24 +186,24 @@ static int str_to_ifindex (hcl_t* hcl, const ooch_t* ptr, hcl_oow_t len, unsigne
 	h = socket(AF_INET6, SOCK_DGRAM, 0);
 	if (h <= -1)
 	{
-		hcl_seterrbfmtwithsyserr (hcl, 0, errno, "unable to open socket for if_nametoindex conversion");
+		hak_seterrbfmtwithsyserr (hak, 0, errno, "unable to open socket for if_nametoindex conversion");
 		return -1;
 	}
 
-	HCL_MEMSET (&ifr, 0, HCL_SIZEOF(ifr));
+	HAK_MEMSET (&ifr, 0, HAK_SIZEOF(ifr));
 
 #if (ooch_mode == 2)
-	hcl_oow_t ucslen, bcslen;
+	hak_oow_t ucslen, bcslen;
 	ucslen = len;
-	bcslen = HCL_COUNTOF(ifr.ifr_name) - 1;
-	if (hcl_convutobchars(hcl, ptr, &ucslen, ifr.ifr_name, &bcslen) <= -1)
+	bcslen = HAK_COUNTOF(ifr.ifr_name) - 1;
+	if (hak_convutobchars(hak, ptr, &ucslen, ifr.ifr_name, &bcslen) <= -1)
 	{
 		close (h);
 		return -1;
 	}
 	ifr.ifr_name[bcslen] = '\0';
 #else
-	if (hcl_copy_bchars_to_bcstr(ifr.ifr_name, HCL_COUNTOF(ifr.ifr_name), ptr, len) < len)
+	if (hak_copy_bchars_to_bcstr(ifr.ifr_name, HAK_COUNTOF(ifr.ifr_name), ptr, len) < len)
 	{
 		close (h);
 		return -1;
@@ -225,12 +225,12 @@ static int str_to_ifindex (hcl_t* hcl, const ooch_t* ptr, hcl_oow_t len, unsigne
 	return x;
 #else
 /* TODO: use if_nametoindex()? */
-	hcl_seterrbfmt (hcl, HCL_ENOIMPL, "ifname to ifindex conversion not implemented");
+	hak_seterrbfmt (hak, HAK_ENOIMPL, "ifname to ifindex conversion not implemented");
 	return -1;
 #endif
 }
 
-int str_to_sockaddr (hcl_t* hcl, const ooch_t* str, hcl_oow_t len, hcl_sckaddr_t* sckaddr, hcl_scklen_t* scklen)
+int str_to_sockaddr (hak_t* hak, const ooch_t* str, hak_oow_t len, hak_sckaddr_t* sckaddr, hak_scklen_t* scklen)
 {
 	const ooch_t* p;
 	const ooch_t* end;
@@ -242,13 +242,13 @@ int str_to_sockaddr (hcl_t* hcl, const ooch_t* str, hcl_oow_t len, hcl_sckaddr_t
 
 	if (p >= end)
 	{
-		if (hcl) hcl_seterrbfmt (hcl, HCL_EINVAL, "blank address");
+		if (hak) hak_seterrbfmt (hak, HAK_EINVAL, "blank address");
 		return -1;
 	}
 
-	HCL_MEMSET (nwad, 0, HCL_SIZEOF(*nwad));
+	HAK_MEMSET (nwad, 0, HAK_SIZEOF(*nwad));
 
-#if (HCL_SIZEOF_STRUCT_SOCKADDR_IN6 > 0)
+#if (HAK_SIZEOF_STRUCT_SOCKADDR_IN6 > 0)
 	if (*p == '[')
 	{
 		/* IPv6 address */
@@ -261,14 +261,14 @@ int str_to_sockaddr (hcl_t* hcl, const ooch_t* str, hcl_oow_t len, hcl_sckaddr_t
 		if (*p == '%')
 		{
 			/* handle scope id */
-			hcl_uint32_t x, y;
+			hak_uint32_t x, y;
 
 			p++; /* skip % */
 
 			if (p >= end)
 			{
 				/* premature end */
-				if (hcl) hcl_seterrbfmt (hcl, HCL_EINVAL, "scope id blank");
+				if (hak) hak_seterrbfmt (hak, HAK_EINVAL, "scope id blank");
 				return -1;
 			}
 
@@ -281,7 +281,7 @@ int str_to_sockaddr (hcl_t* hcl, const ooch_t* str, hcl_oow_t len, hcl_sckaddr_t
 					x = y * 10 + (*p - '0');
 					if (x < y)
 					{
-						if (hcl) hcl_seterrbfmt (hcl, HCL_EINVAL, "scope id too large");
+						if (hak) hak_seterrbfmt (hak, HAK_EINVAL, "scope id too large");
 						return -1; /* overflow */
 					}
 					y = x;
@@ -296,7 +296,7 @@ int str_to_sockaddr (hcl_t* hcl, const ooch_t* str, hcl_oow_t len, hcl_sckaddr_t
 				const ooch_t* stmp = p;
 				unsigned int index;
 				do p++; while (p < end && *p != ']');
-				if (str_to_ifindex(hcl, stmp, p - stmp, &index) <= -1) return -1;
+				if (str_to_ifindex(hak, stmp, p - stmp, &index) <= -1) return -1;
 				nwad->in6.sin6_scope_id = index;
 			}
 
@@ -317,7 +317,7 @@ int str_to_sockaddr (hcl_t* hcl, const ooch_t* str, hcl_oow_t len, hcl_sckaddr_t
 
 		if (str_to_ipv4(tmp.ptr, tmp.len, &nwad->in4.sin_addr) <= -1)
 		{
-		#if (HCL_SIZEOF_STRUCT_SOCKADDR_IN6 > 0)
+		#if (HAK_SIZEOF_STRUCT_SOCKADDR_IN6 > 0)
 			/* check if it is an IPv6 address not enclosed in [].
 			 * the port number can't be specified in this format. */
 			if (p >= end || *p != ':')
@@ -334,14 +334,14 @@ int str_to_sockaddr (hcl_t* hcl, const ooch_t* str, hcl_oow_t len, hcl_sckaddr_t
 			if (p < end && *p == '%')
 			{
 				/* handle scope id */
-				hcl_uint32_t x, y;
+				hak_uint32_t x, y;
 
 				p++; /* skip % */
 
 				if (p >= end)
 				{
 					/* premature end */
-					if (hcl) hcl_seterrbfmt (hcl, HCL_EINVAL, "scope id blank");
+					if (hak) hak_seterrbfmt (hak, HAK_EINVAL, "scope id blank");
 					return -1;
 				}
 
@@ -354,7 +354,7 @@ int str_to_sockaddr (hcl_t* hcl, const ooch_t* str, hcl_oow_t len, hcl_sckaddr_t
 						x = y * 10 + (*p - '0');
 						if (x < y)
 						{
-							if (hcl) hcl_seterrbfmt (hcl, HCL_EINVAL, "scope id too large");
+							if (hak) hak_seterrbfmt (hak, HAK_EINVAL, "scope id too large");
 							return -1; /* overflow */
 						}
 						y = x;
@@ -369,7 +369,7 @@ int str_to_sockaddr (hcl_t* hcl, const ooch_t* str, hcl_oow_t len, hcl_sckaddr_t
 					const ooch_t* stmp = p;
 					unsigned int index;
 					do p++; while (p < end);
-					if (str_to_ifindex(hcl, stmp, p - stmp, &index) <= -1) return -1;
+					if (str_to_ifindex(hak, stmp, p - stmp, &index) <= -1) return -1;
 					nwad->in6.sin6_scope_id = index;
 				}
 			}
@@ -377,7 +377,7 @@ int str_to_sockaddr (hcl_t* hcl, const ooch_t* str, hcl_oow_t len, hcl_sckaddr_t
 			if (p < end) goto unrecog; /* some gargage after the end? */
 
 			nwad->in6.sin6_family = AF_INET6;
-			*scklen = HCL_SIZEOF(nwad->in6);
+			*scklen = HAK_SIZEOF(nwad->in6);
 			return nwad->in6.sin6_family;
 		#else
 			goto unrecog;
@@ -385,14 +385,14 @@ int str_to_sockaddr (hcl_t* hcl, const ooch_t* str, hcl_oow_t len, hcl_sckaddr_t
 		}
 
 		nwad->in4.sin_family = AF_INET;
-#if (HCL_SIZEOF_STRUCT_SOCKADDR_IN6 > 0)
+#if (HAK_SIZEOF_STRUCT_SOCKADDR_IN6 > 0)
 	}
 #endif
 
 	if (p < end && *p == ':')
 	{
 		/* port number */
-		hcl_uint32_t port = 0;
+		hak_uint32_t port = 0;
 
 		p++; /* skip : */
 
@@ -405,30 +405,30 @@ int str_to_sockaddr (hcl_t* hcl, const ooch_t* str, hcl_oow_t len, hcl_sckaddr_t
 
 		tmp.len = p - tmp.ptr;
 		if (tmp.len <= 0 || tmp.len >= 6 ||
-		    port > HCL_TYPE_MAX(hcl_uint16_t))
+		    port > HAK_TYPE_MAX(hak_uint16_t))
 		{
-			if (hcl) hcl_seterrbfmt (hcl, HCL_EINVAL, "port number blank or too large");
+			if (hak) hak_seterrbfmt (hak, HAK_EINVAL, "port number blank or too large");
 			return -1;
 		}
 
-	#if (HCL_SIZEOF_STRUCT_SOCKADDR_IN6 > 0)
+	#if (HAK_SIZEOF_STRUCT_SOCKADDR_IN6 > 0)
 		if (nwad->in4.sin_family == AF_INET)
-			nwad->in4.sin_port = hcl_hton16(port);
+			nwad->in4.sin_port = hak_hton16(port);
 		else
-			nwad->in6.sin6_port = hcl_hton16(port);
+			nwad->in6.sin6_port = hak_hton16(port);
 	#else
-		nwad->in4.sin_port = hcl_hton16(port);
+		nwad->in4.sin_port = hak_hton16(port);
 	#endif
 	}
 
-	*scklen = (nwad->in4.sin_family == AF_INET)? HCL_SIZEOF(nwad->in4): HCL_SIZEOF(nwad->in6);
+	*scklen = (nwad->in4.sin_family == AF_INET)? HAK_SIZEOF(nwad->in4): HAK_SIZEOF(nwad->in6);
 	return nwad->in4.sin_family;
 
 unrecog:
-	if (hcl) hcl_seterrbfmt (hcl, HCL_EINVAL, "unrecognized address");
+	if (hak) hak_seterrbfmt (hak, HAK_EINVAL, "unrecognized address");
 	return -1;
 
 no_rbrack:
-	if (hcl) hcl_seterrbfmt (hcl, HCL_EINVAL, "missing right bracket");
+	if (hak) hak_seterrbfmt (hak, HAK_EINVAL, "missing right bracket");
 	return -1;
 }

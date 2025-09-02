@@ -22,65 +22,65 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "hcl-prv.h"
+#include "hak-prv.h"
 
-#if defined(HCL_ENABLE_LIBUNWIND)
+#if defined(HAK_ENABLE_LIBUNWIND)
 #	define UNW_LOCAL_ONLY
 #	include <libunwind.h>
 #endif
 
-static hcl_ooch_t errstr_0[] = {'n','o',' ','e','r','r','o','r','\0'};
-static hcl_ooch_t errstr_1[] = {'g','e','n','e','r','i','c',' ','e','r','r','o','r','\0'};
-static hcl_ooch_t errstr_2[] = {'n','o','t',' ','i','m','p','l','e','m','e','n','t','e','d','\0'};
-static hcl_ooch_t errstr_3[] = {'s','u','b','s','y','s','t','e','m',' ','e','r','r','o','r','\0'};
-static hcl_ooch_t errstr_4[] = {'i','n','t','e','r','n','a','l',' ','e','r','r','o','r',' ','t','h','a','t',' ','s','h','o','u','l','d',' ','n','e','v','e','r',' ','h','a','v','e',' ','h','a','p','p','e','n','e','d','\0'};
+static hak_ooch_t errstr_0[] = {'n','o',' ','e','r','r','o','r','\0'};
+static hak_ooch_t errstr_1[] = {'g','e','n','e','r','i','c',' ','e','r','r','o','r','\0'};
+static hak_ooch_t errstr_2[] = {'n','o','t',' ','i','m','p','l','e','m','e','n','t','e','d','\0'};
+static hak_ooch_t errstr_3[] = {'s','u','b','s','y','s','t','e','m',' ','e','r','r','o','r','\0'};
+static hak_ooch_t errstr_4[] = {'i','n','t','e','r','n','a','l',' ','e','r','r','o','r',' ','t','h','a','t',' ','s','h','o','u','l','d',' ','n','e','v','e','r',' ','h','a','v','e',' ','h','a','p','p','e','n','e','d','\0'};
 
-static hcl_ooch_t errstr_5[] = {'i','n','s','u','f','f','i','c','i','e','n','t',' ','s','y','s','t','e','m',' ','m','e','m','o','r','y','\0'};
-static hcl_ooch_t errstr_6[] = {'i','n','s','u','f','f','i','c','i','e','n','t',' ','o','b','j','e','c','t',' ','m','e','m','o','r','y','\0'};
-static hcl_ooch_t errstr_7[] = {'i','n','v','a','l','i','d',' ','c','l','a','s','s','/','t','y','p','e','\0'};
-static hcl_ooch_t errstr_8[] = {'i','n','v','a','l','i','d',' ','p','a','r','a','m','e','t','e','r','/','a','r','g','u','m','e','n','t','\0'};
-static hcl_ooch_t errstr_9[] = {'d','a','t','a',' ','n','o','t',' ','f','o','u','n','d','\0'};
+static hak_ooch_t errstr_5[] = {'i','n','s','u','f','f','i','c','i','e','n','t',' ','s','y','s','t','e','m',' ','m','e','m','o','r','y','\0'};
+static hak_ooch_t errstr_6[] = {'i','n','s','u','f','f','i','c','i','e','n','t',' ','o','b','j','e','c','t',' ','m','e','m','o','r','y','\0'};
+static hak_ooch_t errstr_7[] = {'i','n','v','a','l','i','d',' ','c','l','a','s','s','/','t','y','p','e','\0'};
+static hak_ooch_t errstr_8[] = {'i','n','v','a','l','i','d',' ','p','a','r','a','m','e','t','e','r','/','a','r','g','u','m','e','n','t','\0'};
+static hak_ooch_t errstr_9[] = {'d','a','t','a',' ','n','o','t',' ','f','o','u','n','d','\0'};
 
-static hcl_ooch_t errstr_10[] = {'e','x','i','s','t','i','n','g','/','d','u','p','l','i','c','a','t','e',' ','d','a','t','a','\0'};
-static hcl_ooch_t errstr_11[] = {'b','u','s','y','\0'};
-static hcl_ooch_t errstr_12[] = {'a','c','c','e','s','s',' ','d','e','n','i','e','d','\0'};
-static hcl_ooch_t errstr_13[] = {'o','p','e','r','a','t','i','o','n',' ','n','o','t',' ','p','e','r','m','i','t','t','e','d','\0'};
-static hcl_ooch_t errstr_14[] = {'n','o','t',' ','a',' ','d','i','r','e','c','t','o','r','y','\0'};
+static hak_ooch_t errstr_10[] = {'e','x','i','s','t','i','n','g','/','d','u','p','l','i','c','a','t','e',' ','d','a','t','a','\0'};
+static hak_ooch_t errstr_11[] = {'b','u','s','y','\0'};
+static hak_ooch_t errstr_12[] = {'a','c','c','e','s','s',' ','d','e','n','i','e','d','\0'};
+static hak_ooch_t errstr_13[] = {'o','p','e','r','a','t','i','o','n',' ','n','o','t',' ','p','e','r','m','i','t','t','e','d','\0'};
+static hak_ooch_t errstr_14[] = {'n','o','t',' ','a',' ','d','i','r','e','c','t','o','r','y','\0'};
 
-static hcl_ooch_t errstr_15[] = {'i','n','t','e','r','r','u','p','t','e','d','\0'};
-static hcl_ooch_t errstr_16[] = {'p','i','p','e',' ','e','r','r','o','r','\0'};
-static hcl_ooch_t errstr_17[] = {'r','e','s','o','u','r','c','e',' ','t','e','m','p','o','r','a','r','i','l','y',' ','u','n','a','v','a','i','l','a','b','l','e','\0'};
-static hcl_ooch_t errstr_18[] = {'b','a','d',' ','s','y','s','t','e','m',' ','h','a','n','d','l','e','\0'};
-static hcl_ooch_t errstr_19[] = {'t','o','o',' ','m','a','n','y',' ','f','r','a','m','e','s','\0'};
+static hak_ooch_t errstr_15[] = {'i','n','t','e','r','r','u','p','t','e','d','\0'};
+static hak_ooch_t errstr_16[] = {'p','i','p','e',' ','e','r','r','o','r','\0'};
+static hak_ooch_t errstr_17[] = {'r','e','s','o','u','r','c','e',' ','t','e','m','p','o','r','a','r','i','l','y',' ','u','n','a','v','a','i','l','a','b','l','e','\0'};
+static hak_ooch_t errstr_18[] = {'b','a','d',' ','s','y','s','t','e','m',' ','h','a','n','d','l','e','\0'};
+static hak_ooch_t errstr_19[] = {'t','o','o',' ','m','a','n','y',' ','f','r','a','m','e','s','\0'};
 
-static hcl_ooch_t errstr_20[] = {'m','e','s','s','a','g','e',' ','r','e','c','e','i','v','e','r',' ','e','r','r','o','r','\0'};
-static hcl_ooch_t errstr_21[] = {'m','e','s','s','a','g','e',' ','s','e','n','d','i','n','g',' ','e','r','r','o','r','\0'};
-static hcl_ooch_t errstr_22[] = {'w','r','o','n','g',' ','n','u','m','b','e','r',' ','o','f',' ','a','r','g','u','m','e','n','t','s','\0'};
-static hcl_ooch_t errstr_23[] = {'r','a','n','g','e',' ','e','r','r','o','r','\0'};
-static hcl_ooch_t errstr_24[] = {'b','y','t','e','-','c','o','d','e',' ','f','u','l','l','\0'};
+static hak_ooch_t errstr_20[] = {'m','e','s','s','a','g','e',' ','r','e','c','e','i','v','e','r',' ','e','r','r','o','r','\0'};
+static hak_ooch_t errstr_21[] = {'m','e','s','s','a','g','e',' ','s','e','n','d','i','n','g',' ','e','r','r','o','r','\0'};
+static hak_ooch_t errstr_22[] = {'w','r','o','n','g',' ','n','u','m','b','e','r',' ','o','f',' ','a','r','g','u','m','e','n','t','s','\0'};
+static hak_ooch_t errstr_23[] = {'r','a','n','g','e',' ','e','r','r','o','r','\0'};
+static hak_ooch_t errstr_24[] = {'b','y','t','e','-','c','o','d','e',' ','f','u','l','l','\0'};
 
-static hcl_ooch_t errstr_25[] = {'d','i','c','t','i','o','n','a','r','y',' ','f','u','l','l','\0'};
-static hcl_ooch_t errstr_26[] = {'p','r','o','c','e','s','s','o','r',' ','f','u','l','l','\0'};
-static hcl_ooch_t errstr_27[] = {'n','o',' ','m','o','r','e',' ','i','n','p','u','t','\0'};
-static hcl_ooch_t errstr_28[] = {'t','o','o',' ','m','a','n','y',' ','i','t','e','m','s','\0'};
-static hcl_ooch_t errstr_29[] = {'d','i','v','i','d','e',' ','b','y',' ','z','e','r','o','\0'};
+static hak_ooch_t errstr_25[] = {'d','i','c','t','i','o','n','a','r','y',' ','f','u','l','l','\0'};
+static hak_ooch_t errstr_26[] = {'p','r','o','c','e','s','s','o','r',' ','f','u','l','l','\0'};
+static hak_ooch_t errstr_27[] = {'n','o',' ','m','o','r','e',' ','i','n','p','u','t','\0'};
+static hak_ooch_t errstr_28[] = {'t','o','o',' ','m','a','n','y',' ','i','t','e','m','s','\0'};
+static hak_ooch_t errstr_29[] = {'d','i','v','i','d','e',' ','b','y',' ','z','e','r','o','\0'};
 
-static hcl_ooch_t errstr_30[] = {'I','/','O',' ','e','r','r','o','r','\0'};
-static hcl_ooch_t errstr_31[] = {'e','n','c','o','d','i','n','g',' ','c','o','n','v','e','r','s','i','o','n',' ','e','r','r','o','r','\0'};
-static hcl_ooch_t errstr_32[] = {'b','u','f','f','e','r',' ','f','u','l','l','\0'};
-static hcl_ooch_t errstr_33[] = {'s','y','n','t','a','x',' ','e','r','r','o','r','\0'};
-static hcl_ooch_t errstr_34[] = {'c','a','l','l',' ','e','r','r','o','r','\0'};
+static hak_ooch_t errstr_30[] = {'I','/','O',' ','e','r','r','o','r','\0'};
+static hak_ooch_t errstr_31[] = {'e','n','c','o','d','i','n','g',' ','c','o','n','v','e','r','s','i','o','n',' ','e','r','r','o','r','\0'};
+static hak_ooch_t errstr_32[] = {'b','u','f','f','e','r',' ','f','u','l','l','\0'};
+static hak_ooch_t errstr_33[] = {'s','y','n','t','a','x',' ','e','r','r','o','r','\0'};
+static hak_ooch_t errstr_34[] = {'c','a','l','l',' ','e','r','r','o','r','\0'};
 
-static hcl_ooch_t errstr_35[] = {'a','r','g','u','m','e','n','t',' ','n','u','m','b','e','r',' ','e','r','r','o','r','\0'};
-static hcl_ooch_t errstr_36[] = {'r','e','t','u','r','n',' ','c','o','u','n','t',' ','e','r','r','o','r','\0'};
-static hcl_ooch_t errstr_37[] = {'t','o','o',' ','m','a','n','y',' ','s','e','m','a','p','h','o','r','e','s','\0'};
-static hcl_ooch_t errstr_38[] = {'e','x','c','e','p','a','i','o','n',' ','n','o','t',' ','h','a','n','d','l','e','d','\0'};
-static hcl_ooch_t errstr_39[] = {'s','t','a','c','k',' ','u','n','d','e','r','f','l','o','w','\0'};
+static hak_ooch_t errstr_35[] = {'a','r','g','u','m','e','n','t',' ','n','u','m','b','e','r',' ','e','r','r','o','r','\0'};
+static hak_ooch_t errstr_36[] = {'r','e','t','u','r','n',' ','c','o','u','n','t',' ','e','r','r','o','r','\0'};
+static hak_ooch_t errstr_37[] = {'t','o','o',' ','m','a','n','y',' ','s','e','m','a','p','h','o','r','e','s','\0'};
+static hak_ooch_t errstr_38[] = {'e','x','c','e','p','a','i','o','n',' ','n','o','t',' ','h','a','n','d','l','e','d','\0'};
+static hak_ooch_t errstr_39[] = {'s','t','a','c','k',' ','u','n','d','e','r','f','l','o','w','\0'};
 
-static hcl_ooch_t errstr_40[] = {'s','t','a','c','k',' ','o','v','e','r','f','l','o','w','\0'};
-static hcl_ooch_t errstr_41[] = {'u','n','d','e','f','i','n','e','d',' ','v','a','r','i','a','b','l','e',' ','a','c','c','e','s','s','\0'};
+static hak_ooch_t errstr_40[] = {'s','t','a','c','k',' ','o','v','e','r','f','l','o','w','\0'};
+static hak_ooch_t errstr_41[] = {'u','n','d','e','f','i','n','e','d',' ','v','a','r','i','a','b','l','e',' ','a','c','c','e','s','s','\0'};
 
-static hcl_ooch_t* errstr[] =
+static hak_ooch_t* errstr[] =
 {
 	errstr_0, errstr_1, errstr_2, errstr_3, errstr_4, errstr_5, errstr_6, errstr_7,
 	errstr_8, errstr_9, errstr_10, errstr_11, errstr_12, errstr_13, errstr_14, errstr_15,
@@ -175,414 +175,414 @@ static const char* synerrstr[] =
  * ERROR NUMBER TO STRING CONVERSION
  * -------------------------------------------------------------------------- */
 
-static hcl_bch_t e_unknown_b[] = {'u','n','k','n','o','w','n',' ','e','r','r','o','r','\0'};
-static hcl_uch_t e_unknown_u[] = {'u','n','k','n','o','w','n',' ','e','r','r','o','r','\0'};
-#if defined(HCL_OOCH_IS_BCH)
+static hak_bch_t e_unknown_b[] = {'u','n','k','n','o','w','n',' ','e','r','r','o','r','\0'};
+static hak_uch_t e_unknown_u[] = {'u','n','k','n','o','w','n',' ','e','r','r','o','r','\0'};
+#if defined(HAK_OOCH_IS_BCH)
 #	define e_unknown e_unknown_b
 #else
 #	define e_unknown e_unknown_u
 #endif
 
 
-int hcl_errnum_is_synerr (hcl_errnum_t errnum)
+int hak_errnum_is_synerr (hak_errnum_t errnum)
 {
-	return errnum == HCL_ESYNERR;
+	return errnum == HAK_ESYNERR;
 }
 
-const hcl_ooch_t* hcl_errnum_to_errstr (hcl_errnum_t errnum)
+const hak_ooch_t* hak_errnum_to_errstr (hak_errnum_t errnum)
 {
-	return (errnum >= 0 && errnum < HCL_COUNTOF(errstr))? errstr[errnum]: e_unknown;
+	return (errnum >= 0 && errnum < HAK_COUNTOF(errstr))? errstr[errnum]: e_unknown;
 }
 
-const hcl_bch_t* hcl_errnum_to_errbcstr (hcl_errnum_t errnum, hcl_bch_t* buf, hcl_oow_t len)
+const hak_bch_t* hak_errnum_to_errbcstr (hak_errnum_t errnum, hak_bch_t* buf, hak_oow_t len)
 {
 	/* it's ok to copy without conversion because the messages above are simple acsii text */
-#if defined(HCL_OOCH_IS_BCH)
-	hcl_copy_bcstr(buf, len, (errnum >= 0 && errnum < HCL_COUNTOF(errstr))? errstr[errnum]: e_unknown_b);
+#if defined(HAK_OOCH_IS_BCH)
+	hak_copy_bcstr(buf, len, (errnum >= 0 && errnum < HAK_COUNTOF(errstr))? errstr[errnum]: e_unknown_b);
 #else
-	hcl_copy_ucstr_to_bcstr(buf, len, (errnum >= 0 && errnum < HCL_COUNTOF(errstr))? errstr[errnum]: e_unknown_u);
+	hak_copy_ucstr_to_bcstr(buf, len, (errnum >= 0 && errnum < HAK_COUNTOF(errstr))? errstr[errnum]: e_unknown_u);
 #endif
 	return buf;
 }
 
-const hcl_uch_t* hcl_errnum_to_errucstr (hcl_errnum_t errnum, hcl_uch_t* buf, hcl_oow_t len)
+const hak_uch_t* hak_errnum_to_errucstr (hak_errnum_t errnum, hak_uch_t* buf, hak_oow_t len)
 {
 	/* it's ok to copy without conversion because the messages above are simple acsii text */
-#if defined(HCL_OOCH_IS_BCH)
-	hcl_copy_bcstr_to_ucstr(buf, len, (errnum >= 0 && errnum < HCL_COUNTOF(errstr))? errstr[errnum]: e_unknown_b);
+#if defined(HAK_OOCH_IS_BCH)
+	hak_copy_bcstr_to_ucstr(buf, len, (errnum >= 0 && errnum < HAK_COUNTOF(errstr))? errstr[errnum]: e_unknown_b);
 #else
-	hcl_copy_ucstr(buf, len, (errnum >= 0 && errnum < HCL_COUNTOF(errstr))? errstr[errnum]: e_unknown_u);
+	hak_copy_ucstr(buf, len, (errnum >= 0 && errnum < HAK_COUNTOF(errstr))? errstr[errnum]: e_unknown_u);
 #endif
 	return buf;
 }
 
-static const hcl_bch_t* synerr_to_errstr (hcl_synerrnum_t errnum)
+static const hak_bch_t* synerr_to_errstr (hak_synerrnum_t errnum)
 {
-	return (errnum >= 0 && errnum < HCL_COUNTOF(synerrstr))? synerrstr[errnum]: e_unknown_b;
+	return (errnum >= 0 && errnum < HAK_COUNTOF(synerrstr))? synerrstr[errnum]: e_unknown_b;
 }
 
 /* --------------------------------------------------------------------------
  * ERROR NUMBER/MESSAGE HANDLING
  * -------------------------------------------------------------------------- */
 
-const hcl_ooch_t* hcl_geterrstr (hcl_t* hcl)
+const hak_ooch_t* hak_geterrstr (hak_t* hak)
 {
-	return hcl_errnum_to_errstr(hcl->errnum);
+	return hak_errnum_to_errstr(hak->errnum);
 }
 
 /*
-const hcl_ooch_t* hcl_geterrmsg (hcl_t* hcl)
+const hak_ooch_t* hak_geterrmsg (hak_t* hak)
 {
-	if (hcl->errmsg.len <= 0) return hcl_errnum_to_errstr(hcl->errnum);
-	return hcl->errmsg.buf;
+	if (hak->errmsg.len <= 0) return hak_errnum_to_errstr(hak->errnum);
+	return hak->errmsg.buf;
 }
 */
 
-const hcl_bch_t* hcl_geterrbmsg (hcl_t* hcl)
+const hak_bch_t* hak_geterrbmsg (hak_t* hak)
 {
-#if defined(HCL_OOCH_IS_BCH)
-	return (hcl->errmsg.len <= 0)? hcl_errnum_to_errstr(hcl->errnum): hcl->errmsg.buf;
+#if defined(HAK_OOCH_IS_BCH)
+	return (hak->errmsg.len <= 0)? hak_errnum_to_errstr(hak->errnum): hak->errmsg.buf;
 #else
-	const hcl_ooch_t* msg;
-	hcl_oow_t wcslen, mbslen;
+	const hak_ooch_t* msg;
+	hak_oow_t wcslen, mbslen;
 
-	msg = (hcl->errmsg.len <= 0)? hcl_errnum_to_errstr(hcl->errnum): hcl->errmsg.buf;
+	msg = (hak->errmsg.len <= 0)? hak_errnum_to_errstr(hak->errnum): hak->errmsg.buf;
 
-	mbslen = HCL_COUNTOF(hcl->errmsg.xerrmsg);
-	hcl_conv_ucstr_to_bcstr_with_cmgr (msg, &wcslen, hcl->errmsg.xerrmsg, &mbslen, HCL_CMGR(hcl));
+	mbslen = HAK_COUNTOF(hak->errmsg.xerrmsg);
+	hak_conv_ucstr_to_bcstr_with_cmgr (msg, &wcslen, hak->errmsg.xerrmsg, &mbslen, HAK_CMGR(hak));
 
-	return hcl->errmsg.xerrmsg;
+	return hak->errmsg.xerrmsg;
 #endif
 }
 
-const hcl_uch_t* hcl_geterrumsg (hcl_t* hcl)
+const hak_uch_t* hak_geterrumsg (hak_t* hak)
 {
-#if defined(HCL_OOCH_IS_BCH)
-	const hcl_ooch_t* msg;
-	hcl_oow_t wcslen, mbslen;
+#if defined(HAK_OOCH_IS_BCH)
+	const hak_ooch_t* msg;
+	hak_oow_t wcslen, mbslen;
 
-	msg = (hcl->errmsg.len <= 0)? hcl_errnum_to_errstr(hcl->errnum): hcl->errmsg.buf;
+	msg = (hak->errmsg.len <= 0)? hak_errnum_to_errstr(hak->errnum): hak->errmsg.buf;
 
-	wcslen = HCL_COUNTOF(hcl->errmsg.xerrmsg);
-	hcl_conv_bcstr_to_ucstr_with_cmgr (msg, &mbslen, hcl->errmsg.xerrmsg, &wcslen, HCL_CMGR(hcl), 1);
+	wcslen = HAK_COUNTOF(hak->errmsg.xerrmsg);
+	hak_conv_bcstr_to_ucstr_with_cmgr (msg, &mbslen, hak->errmsg.xerrmsg, &wcslen, HAK_CMGR(hak), 1);
 
-	return hcl->errmsg.xerrmsg;
+	return hak->errmsg.xerrmsg;
 #else
-	return (hcl->errmsg.len == '\0')? hcl_errnum_to_errstr(hcl->errnum): hcl->errmsg.buf;
+	return (hak->errmsg.len == '\0')? hak_errnum_to_errstr(hak->errnum): hak->errmsg.buf;
 #endif
 }
 
-hcl_oow_t hcl_copyerrbmsg (hcl_t* hcl, hcl_bch_t* buf, hcl_oow_t len)
+hak_oow_t hak_copyerrbmsg (hak_t* hak, hak_bch_t* buf, hak_oow_t len)
 {
-	return hcl_copy_bcstr(buf, len, hcl_geterrbmsg(hcl));
+	return hak_copy_bcstr(buf, len, hak_geterrbmsg(hak));
 }
 
-hcl_oow_t hcl_copyerrumsg (hcl_t* hcl, hcl_uch_t* buf, hcl_oow_t len)
+hak_oow_t hak_copyerrumsg (hak_t* hak, hak_uch_t* buf, hak_oow_t len)
 {
-	return hcl_copy_ucstr(buf, len, hcl_geterrumsg(hcl));
+	return hak_copy_ucstr(buf, len, hak_geterrumsg(hak));
 }
 
-const hcl_ooch_t* hcl_backuperrmsg (hcl_t* hcl)
+const hak_ooch_t* hak_backuperrmsg (hak_t* hak)
 {
-	hcl_copy_oocstr (hcl->errmsg.tmpbuf.ooch, HCL_COUNTOF(hcl->errmsg.tmpbuf.ooch), hcl_geterrmsg(hcl));
-	return hcl->errmsg.tmpbuf.ooch;
+	hak_copy_oocstr (hak->errmsg.tmpbuf.ooch, HAK_COUNTOF(hak->errmsg.tmpbuf.ooch), hak_geterrmsg(hak));
+	return hak->errmsg.tmpbuf.ooch;
 }
 
-hcl_errnum_t hcl_geterrnum (hcl_t* hcl)
+hak_errnum_t hak_geterrnum (hak_t* hak)
 {
-	return HCL_ERRNUM(hcl);
+	return HAK_ERRNUM(hak);
 }
 
-void hcl_seterrnum (hcl_t* hcl, hcl_errnum_t errnum)
+void hak_seterrnum (hak_t* hak, hak_errnum_t errnum)
 {
-	if (hcl->shuterr) return;
-	hcl->errnum = errnum;
-	hcl->errmsg.len = 0;
-	HCL_MEMSET (&hcl->errloc, 0, HCL_SIZEOF(hcl->errloc));
+	if (hak->shuterr) return;
+	hak->errnum = errnum;
+	hak->errmsg.len = 0;
+	HAK_MEMSET (&hak->errloc, 0, HAK_SIZEOF(hak->errloc));
 }
 
-void hcl_geterrloc (hcl_t* hcl, hcl_loc_t* loc)
+void hak_geterrloc (hak_t* hak, hak_loc_t* loc)
 {
-	if (loc) *loc = hcl->errloc;
+	if (loc) *loc = hak->errloc;
 }
 
-void hcl_seterrbmsg (hcl_t* hcl, hcl_errnum_t errnum, const hcl_bch_t* errmsg)
+void hak_seterrbmsg (hak_t* hak, hak_errnum_t errnum, const hak_bch_t* errmsg)
 {
-	hcl_seterrbfmt(hcl, errnum, "%hs", errmsg);
+	hak_seterrbfmt(hak, errnum, "%hs", errmsg);
 }
 
-void hcl_seterrumsg (hcl_t* hcl, hcl_errnum_t errnum, const hcl_uch_t* errmsg)
+void hak_seterrumsg (hak_t* hak, hak_errnum_t errnum, const hak_uch_t* errmsg)
 {
-	hcl_seterrbfmt(hcl, errnum, "%ls", errmsg);
+	hak_seterrbfmt(hak, errnum, "%ls", errmsg);
 }
 
-static int err_bcs (hcl_t* hcl, hcl_fmtout_t* fmtout, const hcl_bch_t* ptr, hcl_oow_t len)
+static int err_bcs (hak_t* hak, hak_fmtout_t* fmtout, const hak_bch_t* ptr, hak_oow_t len)
 {
-	hcl_oow_t max;
+	hak_oow_t max;
 
-	max = HCL_COUNTOF(hcl->errmsg.buf) - hcl->errmsg.len - 1;
+	max = HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len - 1;
 
-#if defined(HCL_OOCH_IS_UCH)
+#if defined(HAK_OOCH_IS_UCH)
 	if (max <= 0) return 1;
-	hcl_conv_bchars_to_uchars_with_cmgr (ptr, &len, &hcl->errmsg.buf[hcl->errmsg.len], &max, HCL_CMGR(hcl), 1);
-	hcl->errmsg.len += max;
+	hak_conv_bchars_to_uchars_with_cmgr (ptr, &len, &hak->errmsg.buf[hak->errmsg.len], &max, HAK_CMGR(hak), 1);
+	hak->errmsg.len += max;
 #else
 	if (len > max) len = max;
 	if (len <= 0) return 1;
-	HCL_MEMCPY (&hcl->errmsg.buf[hcl->errmsg.len], ptr, len * HCL_SIZEOF(*ptr));
-	hcl->errmsg.len += len;
+	HAK_MEMCPY (&hak->errmsg.buf[hak->errmsg.len], ptr, len * HAK_SIZEOF(*ptr));
+	hak->errmsg.len += len;
 #endif
 
-	hcl->errmsg.buf[hcl->errmsg.len] = '\0';
+	hak->errmsg.buf[hak->errmsg.len] = '\0';
 
 	return 1; /* success */
 }
 
-static int err_ucs (hcl_t* hcl, hcl_fmtout_t* fmtout, const hcl_uch_t* ptr, hcl_oow_t len)
+static int err_ucs (hak_t* hak, hak_fmtout_t* fmtout, const hak_uch_t* ptr, hak_oow_t len)
 {
-	hcl_oow_t max;
+	hak_oow_t max;
 
-	max = HCL_COUNTOF(hcl->errmsg.buf) - hcl->errmsg.len - 1;
+	max = HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len - 1;
 
-#if defined(HCL_OOCH_IS_UCH)
+#if defined(HAK_OOCH_IS_UCH)
 	if (len > max) len = max;
 	if (len <= 0) return 1;
-	HCL_MEMCPY (&hcl->errmsg.buf[hcl->errmsg.len], ptr, len * HCL_SIZEOF(*ptr));
-	hcl->errmsg.len += len;
+	HAK_MEMCPY (&hak->errmsg.buf[hak->errmsg.len], ptr, len * HAK_SIZEOF(*ptr));
+	hak->errmsg.len += len;
 #else
 	if (max <= 0) return 1;
-	hcl_conv_uchars_to_bchars_with_cmgr (ptr, &len, &hcl->errmsg.buf[hcl->errmsg.len], &max, HCL_CMGR(hcl));
-	hcl->errmsg.len += max;
+	hak_conv_uchars_to_bchars_with_cmgr (ptr, &len, &hak->errmsg.buf[hak->errmsg.len], &max, HAK_CMGR(hak));
+	hak->errmsg.len += max;
 #endif
-	hcl->errmsg.buf[hcl->errmsg.len] = '\0';
+	hak->errmsg.buf[hak->errmsg.len] = '\0';
 	return 1; /* success */
 }
 
-void hcl_seterrbfmt (hcl_t* hcl, hcl_errnum_t errnum, const hcl_bch_t* fmt, ...)
+void hak_seterrbfmt (hak_t* hak, hak_errnum_t errnum, const hak_bch_t* fmt, ...)
 {
 	va_list ap;
-	hcl_fmtout_t fo;
+	hak_fmtout_t fo;
 
-	if (hcl->shuterr) return;
-	hcl->errmsg.len = 0;
+	if (hak->shuterr) return;
+	hak->errmsg.len = 0;
 
-	HCL_MEMSET (&fo, 0, HCL_SIZEOF(fo));
+	HAK_MEMSET (&fo, 0, HAK_SIZEOF(fo));
 	fo.putbchars = err_bcs;
 	fo.putuchars = err_ucs;
-	fo.putobj = hcl_fmt_object;
+	fo.putobj = hak_fmt_object;
 
 	va_start (ap, fmt);
-	hcl_bfmt_outv (hcl, &fo, fmt, ap);
+	hak_bfmt_outv (hak, &fo, fmt, ap);
 	va_end (ap);
 
-	hcl->errnum = errnum;
-	HCL_MEMSET (&hcl->errloc, 0, HCL_SIZEOF(hcl->errloc));
+	hak->errnum = errnum;
+	HAK_MEMSET (&hak->errloc, 0, HAK_SIZEOF(hak->errloc));
 }
 
-void hcl_seterrufmt (hcl_t* hcl, hcl_errnum_t errnum, const hcl_uch_t* fmt, ...)
+void hak_seterrufmt (hak_t* hak, hak_errnum_t errnum, const hak_uch_t* fmt, ...)
 {
 	va_list ap;
-	hcl_fmtout_t fo;
+	hak_fmtout_t fo;
 
-	if (hcl->shuterr) return;
-	hcl->errmsg.len = 0;
+	if (hak->shuterr) return;
+	hak->errmsg.len = 0;
 
-	HCL_MEMSET (&fo, 0, HCL_SIZEOF(fo));
+	HAK_MEMSET (&fo, 0, HAK_SIZEOF(fo));
 	fo.putbchars = err_bcs;
 	fo.putuchars = err_ucs;
-	fo.putobj = hcl_fmt_object;
+	fo.putobj = hak_fmt_object;
 
 	va_start (ap, fmt);
-	hcl_ufmt_outv (hcl, &fo, fmt, ap);
+	hak_ufmt_outv (hak, &fo, fmt, ap);
 	va_end (ap);
 
-	hcl->errnum = errnum;
-	HCL_MEMSET (&hcl->errloc, 0, HCL_SIZEOF(hcl->errloc));
+	hak->errnum = errnum;
+	HAK_MEMSET (&hak->errloc, 0, HAK_SIZEOF(hak->errloc));
 }
 
 
-void hcl_seterrbfmtv (hcl_t* hcl, hcl_errnum_t errnum, const hcl_bch_t* fmt, va_list ap)
+void hak_seterrbfmtv (hak_t* hak, hak_errnum_t errnum, const hak_bch_t* fmt, va_list ap)
 {
-	hcl_fmtout_t fo;
+	hak_fmtout_t fo;
 
-	if (hcl->shuterr) return;
+	if (hak->shuterr) return;
 
-	hcl->errmsg.len = 0;
+	hak->errmsg.len = 0;
 
-	HCL_MEMSET (&fo, 0, HCL_SIZEOF(fo));
+	HAK_MEMSET (&fo, 0, HAK_SIZEOF(fo));
 	fo.putbchars = err_bcs;
 	fo.putuchars = err_ucs;
-	fo.putobj = hcl_fmt_object;
+	fo.putobj = hak_fmt_object;
 
-	hcl_bfmt_outv (hcl, &fo, fmt, ap);
-	hcl->errnum = errnum;
-	HCL_MEMSET (&hcl->errloc, 0, HCL_SIZEOF(hcl->errloc));
+	hak_bfmt_outv (hak, &fo, fmt, ap);
+	hak->errnum = errnum;
+	HAK_MEMSET (&hak->errloc, 0, HAK_SIZEOF(hak->errloc));
 }
 
-void hcl_seterrufmtv (hcl_t* hcl, hcl_errnum_t errnum, const hcl_uch_t* fmt, va_list ap)
+void hak_seterrufmtv (hak_t* hak, hak_errnum_t errnum, const hak_uch_t* fmt, va_list ap)
 {
-	hcl_fmtout_t fo;
+	hak_fmtout_t fo;
 
-	if (hcl->shuterr) return;
+	if (hak->shuterr) return;
 
-	hcl->errmsg.len = 0;
+	hak->errmsg.len = 0;
 
-	HCL_MEMSET (&fo, 0, HCL_SIZEOF(fo));
+	HAK_MEMSET (&fo, 0, HAK_SIZEOF(fo));
 	fo.putbchars = err_bcs;
 	fo.putuchars = err_ucs;
-	fo.putobj = hcl_fmt_object;
+	fo.putobj = hak_fmt_object;
 
-	hcl_ufmt_outv (hcl, &fo, fmt, ap);
-	hcl->errnum = errnum;
-	HCL_MEMSET (&hcl->errloc, 0, HCL_SIZEOF(hcl->errloc));
+	hak_ufmt_outv (hak, &fo, fmt, ap);
+	hak->errnum = errnum;
+	HAK_MEMSET (&hak->errloc, 0, HAK_SIZEOF(hak->errloc));
 }
 
-void hcl_seterrbfmtloc (hcl_t* hcl, hcl_errnum_t errnum, const hcl_loc_t* loc, const hcl_bch_t* fmt, ...)
-{
-	va_list ap;
-	va_start (ap, fmt);
-	hcl_seterrbfmtv (hcl, errnum, fmt, ap);
-	va_end (ap);
-	hcl->errloc = *loc;
-}
-
-void hcl_seterrufmtloc (hcl_t* hcl, hcl_errnum_t errnum, const hcl_loc_t* loc, const hcl_uch_t* fmt, ...)
+void hak_seterrbfmtloc (hak_t* hak, hak_errnum_t errnum, const hak_loc_t* loc, const hak_bch_t* fmt, ...)
 {
 	va_list ap;
 	va_start (ap, fmt);
-	hcl_seterrufmtv (hcl, errnum, fmt, ap);
+	hak_seterrbfmtv (hak, errnum, fmt, ap);
 	va_end (ap);
-	hcl->errloc = *loc;
+	hak->errloc = *loc;
 }
 
-void hcl_seterrwithsyserr (hcl_t* hcl, int syserr_type, int syserr_code)
+void hak_seterrufmtloc (hak_t* hak, hak_errnum_t errnum, const hak_loc_t* loc, const hak_uch_t* fmt, ...)
 {
-	hcl_errnum_t errnum;
+	va_list ap;
+	va_start (ap, fmt);
+	hak_seterrufmtv (hak, errnum, fmt, ap);
+	va_end (ap);
+	hak->errloc = *loc;
+}
 
-	if (hcl->shuterr) return;
+void hak_seterrwithsyserr (hak_t* hak, int syserr_type, int syserr_code)
+{
+	hak_errnum_t errnum;
 
-	if (hcl->vmprim.syserrstrb)
+	if (hak->shuterr) return;
+
+	if (hak->vmprim.syserrstrb)
 	{
-		errnum = hcl->vmprim.syserrstrb(hcl, syserr_type, syserr_code, hcl->errmsg.tmpbuf.bch, HCL_COUNTOF(hcl->errmsg.tmpbuf.bch));
-		hcl_seterrbfmt (hcl, errnum, "%hs", hcl->errmsg.tmpbuf.bch);
+		errnum = hak->vmprim.syserrstrb(hak, syserr_type, syserr_code, hak->errmsg.tmpbuf.bch, HAK_COUNTOF(hak->errmsg.tmpbuf.bch));
+		hak_seterrbfmt (hak, errnum, "%hs", hak->errmsg.tmpbuf.bch);
 	}
 	else
 	{
-		HCL_ASSERT (hcl, hcl->vmprim.syserrstru != HCL_NULL);
-		errnum = hcl->vmprim.syserrstru(hcl, syserr_type, syserr_code, hcl->errmsg.tmpbuf.uch, HCL_COUNTOF(hcl->errmsg.tmpbuf.uch));
-		hcl_seterrbfmt (hcl, errnum, "%ls", hcl->errmsg.tmpbuf.uch);
+		HAK_ASSERT (hak, hak->vmprim.syserrstru != HAK_NULL);
+		errnum = hak->vmprim.syserrstru(hak, syserr_type, syserr_code, hak->errmsg.tmpbuf.uch, HAK_COUNTOF(hak->errmsg.tmpbuf.uch));
+		hak_seterrbfmt (hak, errnum, "%ls", hak->errmsg.tmpbuf.uch);
 	}
 }
 
-void hcl_seterrbfmtwithsyserr (hcl_t* hcl, int syserr_type, int syserr_code, const hcl_bch_t* fmt, ...)
+void hak_seterrbfmtwithsyserr (hak_t* hak, int syserr_type, int syserr_code, const hak_bch_t* fmt, ...)
 {
-	hcl_errnum_t errnum;
-	hcl_oow_t ucslen, bcslen;
+	hak_errnum_t errnum;
+	hak_oow_t ucslen, bcslen;
 	va_list ap;
 
-	if (hcl->shuterr) return;
+	if (hak->shuterr) return;
 
-	if (hcl->vmprim.syserrstrb)
+	if (hak->vmprim.syserrstrb)
 	{
-		errnum = hcl->vmprim.syserrstrb(hcl, syserr_type, syserr_code, hcl->errmsg.tmpbuf.bch, HCL_COUNTOF(hcl->errmsg.tmpbuf.bch));
+		errnum = hak->vmprim.syserrstrb(hak, syserr_type, syserr_code, hak->errmsg.tmpbuf.bch, HAK_COUNTOF(hak->errmsg.tmpbuf.bch));
 
 		va_start (ap, fmt);
-		hcl_seterrbfmtv (hcl, errnum, fmt, ap);
+		hak_seterrbfmtv (hak, errnum, fmt, ap);
 		va_end (ap);
 
-		if (HCL_COUNTOF(hcl->errmsg.buf) - hcl->errmsg.len >= 5)
+		if (HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len >= 5)
 		{
-			hcl->errmsg.buf[hcl->errmsg.len++] = ' ';
-			hcl->errmsg.buf[hcl->errmsg.len++] = '-';
-			hcl->errmsg.buf[hcl->errmsg.len++] = ' ';
+			hak->errmsg.buf[hak->errmsg.len++] = ' ';
+			hak->errmsg.buf[hak->errmsg.len++] = '-';
+			hak->errmsg.buf[hak->errmsg.len++] = ' ';
 
-		#if defined(HCL_OOCH_IS_BCH)
-			hcl->errmsg.len += hcl_copy_bcstr(&hcl->errmsg.buf[hcl->errmsg.len], HCL_COUNTOF(hcl->errmsg.buf) - hcl->errmsg.len, hcl->errmsg.tmpbuf.bch);
+		#if defined(HAK_OOCH_IS_BCH)
+			hak->errmsg.len += hak_copy_bcstr(&hak->errmsg.buf[hak->errmsg.len], HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len, hak->errmsg.tmpbuf.bch);
 		#else
-			ucslen = HCL_COUNTOF(hcl->errmsg.buf) - hcl->errmsg.len;
-			hcl_convbtoucstr (hcl, hcl->errmsg.tmpbuf.bch, &bcslen, &hcl->errmsg.buf[hcl->errmsg.len], &ucslen);
-			hcl->errmsg.len += ucslen;
+			ucslen = HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len;
+			hak_convbtoucstr (hak, hak->errmsg.tmpbuf.bch, &bcslen, &hak->errmsg.buf[hak->errmsg.len], &ucslen);
+			hak->errmsg.len += ucslen;
 		#endif
 		}
 	}
 	else
 	{
-		HCL_ASSERT (hcl, hcl->vmprim.syserrstru != HCL_NULL);
-		errnum = hcl->vmprim.syserrstru(hcl, syserr_type, syserr_code, hcl->errmsg.tmpbuf.uch, HCL_COUNTOF(hcl->errmsg.tmpbuf.uch));
+		HAK_ASSERT (hak, hak->vmprim.syserrstru != HAK_NULL);
+		errnum = hak->vmprim.syserrstru(hak, syserr_type, syserr_code, hak->errmsg.tmpbuf.uch, HAK_COUNTOF(hak->errmsg.tmpbuf.uch));
 
 		va_start (ap, fmt);
-		hcl_seterrbfmtv (hcl, errnum, fmt, ap);
+		hak_seterrbfmtv (hak, errnum, fmt, ap);
 		va_end (ap);
 
-		if (HCL_COUNTOF(hcl->errmsg.buf) - hcl->errmsg.len >= 5)
+		if (HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len >= 5)
 		{
-			hcl->errmsg.buf[hcl->errmsg.len++] = ' ';
-			hcl->errmsg.buf[hcl->errmsg.len++] = '-';
-			hcl->errmsg.buf[hcl->errmsg.len++] = ' ';
+			hak->errmsg.buf[hak->errmsg.len++] = ' ';
+			hak->errmsg.buf[hak->errmsg.len++] = '-';
+			hak->errmsg.buf[hak->errmsg.len++] = ' ';
 
-		#if defined(HCL_OOCH_IS_BCH)
-			bcslen = HCL_COUNTOF(hcl->errmsg.buf) - hcl->errmsg.len;
-			hcl_convutobcstr (hcl, hcl->errmsg.tmpbuf.uch, &ucslen, &hcl->errmsg.buf[hcl->errmsg.len], &bcslen);
-			hcl->errmsg.len += bcslen;
+		#if defined(HAK_OOCH_IS_BCH)
+			bcslen = HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len;
+			hak_convutobcstr (hak, hak->errmsg.tmpbuf.uch, &ucslen, &hak->errmsg.buf[hak->errmsg.len], &bcslen);
+			hak->errmsg.len += bcslen;
 		#else
-			hcl->errmsg.len += hcl_copy_ucstr(&hcl->errmsg.buf[hcl->errmsg.len], HCL_COUNTOF(hcl->errmsg.buf) - hcl->errmsg.len, hcl->errmsg.tmpbuf.uch);
+			hak->errmsg.len += hak_copy_ucstr(&hak->errmsg.buf[hak->errmsg.len], HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len, hak->errmsg.tmpbuf.uch);
 		#endif
 		}
 	}
 }
 
-void hcl_seterrufmtwithsyserr (hcl_t* hcl, int syserr_type, int syserr_code, const hcl_uch_t* fmt, ...)
+void hak_seterrufmtwithsyserr (hak_t* hak, int syserr_type, int syserr_code, const hak_uch_t* fmt, ...)
 {
-	hcl_errnum_t errnum;
-	hcl_oow_t ucslen, bcslen;
+	hak_errnum_t errnum;
+	hak_oow_t ucslen, bcslen;
 	va_list ap;
 
-	if (hcl->shuterr) return;
+	if (hak->shuterr) return;
 
-	if (hcl->vmprim.syserrstrb)
+	if (hak->vmprim.syserrstrb)
 	{
-		errnum = hcl->vmprim.syserrstrb(hcl, syserr_type, syserr_code, hcl->errmsg.tmpbuf.bch, HCL_COUNTOF(hcl->errmsg.tmpbuf.bch));
+		errnum = hak->vmprim.syserrstrb(hak, syserr_type, syserr_code, hak->errmsg.tmpbuf.bch, HAK_COUNTOF(hak->errmsg.tmpbuf.bch));
 
 		va_start (ap, fmt);
-		hcl_seterrufmtv (hcl, errnum, fmt, ap);
+		hak_seterrufmtv (hak, errnum, fmt, ap);
 		va_end (ap);
 
-		if (HCL_COUNTOF(hcl->errmsg.buf) - hcl->errmsg.len >= 5)
+		if (HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len >= 5)
 		{
-			hcl->errmsg.buf[hcl->errmsg.len++] = ' ';
-			hcl->errmsg.buf[hcl->errmsg.len++] = '-';
-			hcl->errmsg.buf[hcl->errmsg.len++] = ' ';
+			hak->errmsg.buf[hak->errmsg.len++] = ' ';
+			hak->errmsg.buf[hak->errmsg.len++] = '-';
+			hak->errmsg.buf[hak->errmsg.len++] = ' ';
 
-		#if defined(HCL_OOCH_IS_BCH)
-			hcl->errmsg.len += hcl_copy_bcstr(&hcl->errmsg.buf[hcl->errmsg.len], HCL_COUNTOF(hcl->errmsg.buf) - hcl->errmsg.len, hcl->errmsg.tmpbuf.bch);
+		#if defined(HAK_OOCH_IS_BCH)
+			hak->errmsg.len += hak_copy_bcstr(&hak->errmsg.buf[hak->errmsg.len], HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len, hak->errmsg.tmpbuf.bch);
 		#else
-			ucslen = HCL_COUNTOF(hcl->errmsg.buf) - hcl->errmsg.len;
-			hcl_convbtoucstr (hcl, hcl->errmsg.tmpbuf.bch, &bcslen, &hcl->errmsg.buf[hcl->errmsg.len], &ucslen);
-			hcl->errmsg.len += ucslen;
+			ucslen = HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len;
+			hak_convbtoucstr (hak, hak->errmsg.tmpbuf.bch, &bcslen, &hak->errmsg.buf[hak->errmsg.len], &ucslen);
+			hak->errmsg.len += ucslen;
 		#endif
 		}
 	}
 	else
 	{
-		HCL_ASSERT (hcl, hcl->vmprim.syserrstru != HCL_NULL);
-		errnum = hcl->vmprim.syserrstru(hcl, syserr_type, syserr_code, hcl->errmsg.tmpbuf.uch, HCL_COUNTOF(hcl->errmsg.tmpbuf.uch));
+		HAK_ASSERT (hak, hak->vmprim.syserrstru != HAK_NULL);
+		errnum = hak->vmprim.syserrstru(hak, syserr_type, syserr_code, hak->errmsg.tmpbuf.uch, HAK_COUNTOF(hak->errmsg.tmpbuf.uch));
 
 		va_start (ap, fmt);
-		hcl_seterrufmtv (hcl, errnum, fmt, ap);
+		hak_seterrufmtv (hak, errnum, fmt, ap);
 		va_end (ap);
 
-		if (HCL_COUNTOF(hcl->errmsg.buf) - hcl->errmsg.len >= 5)
+		if (HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len >= 5)
 		{
-			hcl->errmsg.buf[hcl->errmsg.len++] = ' ';
-			hcl->errmsg.buf[hcl->errmsg.len++] = '-';
-			hcl->errmsg.buf[hcl->errmsg.len++] = ' ';
+			hak->errmsg.buf[hak->errmsg.len++] = ' ';
+			hak->errmsg.buf[hak->errmsg.len++] = '-';
+			hak->errmsg.buf[hak->errmsg.len++] = ' ';
 
-		#if defined(HCL_OOCH_IS_BCH)
-			bcslen = HCL_COUNTOF(hcl->errmsg.buf) - hcl->errmsg.len;
-			hcl_convutobcstr (hcl, hcl->errmsg.tmpbuf.uch, &ucslen, &hcl->errmsg.buf[hcl->errmsg.len], &bcslen);
-			hcl->errmsg.len += bcslen;
+		#if defined(HAK_OOCH_IS_BCH)
+			bcslen = HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len;
+			hak_convutobcstr (hak, hak->errmsg.tmpbuf.uch, &ucslen, &hak->errmsg.buf[hak->errmsg.len], &bcslen);
+			hak->errmsg.len += bcslen;
 		#else
-			hcl->errmsg.len += hcl_copy_ucstr(&hcl->errmsg.buf[hcl->errmsg.len], HCL_COUNTOF(hcl->errmsg.buf) - hcl->errmsg.len, hcl->errmsg.tmpbuf.uch);
+			hak->errmsg.len += hak_copy_ucstr(&hak->errmsg.buf[hak->errmsg.len], HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len, hak->errmsg.tmpbuf.uch);
 		#endif
 		}
 	}
@@ -592,23 +592,23 @@ void hcl_seterrufmtwithsyserr (hcl_t* hcl, int syserr_type, int syserr_code, con
  * SYNTAX ERROR HANDLING
  * -------------------------------------------------------------------------- */
 
-void hcl_getsynerr (hcl_t* hcl, hcl_synerr_t* synerr)
+void hak_getsynerr (hak_t* hak, hak_synerr_t* synerr)
 {
-	HCL_ASSERT (hcl, hcl->c != HCL_NULL);
-	if (synerr) *synerr = hcl->c->synerr;
+	HAK_ASSERT (hak, hak->c != HAK_NULL);
+	if (synerr) *synerr = hak->c->synerr;
 }
 
-hcl_synerrnum_t hcl_getsynerrnum (hcl_t* hcl)
+hak_synerrnum_t hak_getsynerrnum (hak_t* hak)
 {
-	HCL_ASSERT (hcl, hcl->c != HCL_NULL);
-	return hcl->c->synerr.num;
+	HAK_ASSERT (hak, hak->c != HAK_NULL);
+	return hak->c->synerr.num;
 }
 
-void hcl_setsynerrbfmt (hcl_t* hcl, hcl_synerrnum_t num, const hcl_loc_t* loc, const hcl_oocs_t* tgt, const hcl_bch_t* msgfmt, ...)
+void hak_setsynerrbfmt (hak_t* hak, hak_synerrnum_t num, const hak_loc_t* loc, const hak_oocs_t* tgt, const hak_bch_t* msgfmt, ...)
 {
-	static hcl_bch_t syntax_error[] = "syntax error - ";
+	static hak_bch_t syntax_error[] = "syntax error - ";
 
-	if (hcl->shuterr) return;
+	if (hak->shuterr) return;
 
 	if (msgfmt)
 	{
@@ -616,58 +616,58 @@ void hcl_setsynerrbfmt (hcl_t* hcl, hcl_synerrnum_t num, const hcl_loc_t* loc, c
 		int i, selen;
 
 		va_start (ap, msgfmt);
-		hcl_seterrbfmtv (hcl, HCL_ESYNERR, msgfmt, ap);
+		hak_seterrbfmtv (hak, HAK_ESYNERR, msgfmt, ap);
 		va_end (ap);
 
-		selen = HCL_COUNTOF(syntax_error) - 1;
-		HCL_MEMMOVE (&hcl->errmsg.buf[selen], &hcl->errmsg.buf[0], HCL_SIZEOF(hcl->errmsg.buf[0]) * (HCL_COUNTOF(hcl->errmsg.buf) - selen));
-		for (i = 0; i < selen; i++) hcl->errmsg.buf[i] = syntax_error[i];
-		hcl->errmsg.buf[HCL_COUNTOF(hcl->errmsg.buf) - 1] = '\0';
+		selen = HAK_COUNTOF(syntax_error) - 1;
+		HAK_MEMMOVE (&hak->errmsg.buf[selen], &hak->errmsg.buf[0], HAK_SIZEOF(hak->errmsg.buf[0]) * (HAK_COUNTOF(hak->errmsg.buf) - selen));
+		for (i = 0; i < selen; i++) hak->errmsg.buf[i] = syntax_error[i];
+		hak->errmsg.buf[HAK_COUNTOF(hak->errmsg.buf) - 1] = '\0';
 	}
 	else
 	{
-		hcl_seterrbfmt (hcl, HCL_ESYNERR, "%hs%hs", syntax_error, synerr_to_errstr(num));
+		hak_seterrbfmt (hak, HAK_ESYNERR, "%hs%hs", syntax_error, synerr_to_errstr(num));
 	}
-	hcl->c->synerr.num = num;
+	hak->c->synerr.num = num;
 
 	/* The SCO compiler complains of this ternary operation saying:
 	 *    error: operands have incompatible types: op ":"
 	 * it seems to complain of type mismatch between *loc and
-	 * hcl->c->tok.loc due to 'const' prefixed to loc. */
-	/*hcl->c->synerr.loc = loc? *loc: hcl->c->tok.loc;*/
+	 * hak->c->tok.loc due to 'const' prefixed to loc. */
+	/*hak->c->synerr.loc = loc? *loc: hak->c->tok.loc;*/
 	if (loc)
 	{
-		hcl->c->synerr.loc = *loc;
+		hak->c->synerr.loc = *loc;
 	}
 	else
 	{
-		hcl->c->synerr.loc = hcl->c->tok.loc;
+		hak->c->synerr.loc = hak->c->tok.loc;
 	}
 
 	if (tgt)
 	{
-		hcl_oow_t n;
-		n = hcl_copy_oochars_to_oocstr(hcl->c->synerr.tgt.val, HCL_COUNTOF(hcl->c->synerr.tgt.val), tgt->ptr, tgt->len);
+		hak_oow_t n;
+		n = hak_copy_oochars_to_oocstr(hak->c->synerr.tgt.val, HAK_COUNTOF(hak->c->synerr.tgt.val), tgt->ptr, tgt->len);
 		if (n < tgt->len)
 		{
-			hcl->c->synerr.tgt.val[n - 1] = '.';
-			hcl->c->synerr.tgt.val[n - 2] = '.';
-			hcl->c->synerr.tgt.val[n - 3] = '.';
+			hak->c->synerr.tgt.val[n - 1] = '.';
+			hak->c->synerr.tgt.val[n - 2] = '.';
+			hak->c->synerr.tgt.val[n - 3] = '.';
 		}
-		hcl->c->synerr.tgt.len = n;
+		hak->c->synerr.tgt.len = n;
 	}
 	else
 	{
-		hcl->c->synerr.tgt.val[0] = '\0';
-		hcl->c->synerr.tgt.len = 0;
+		hak->c->synerr.tgt.val[0] = '\0';
+		hak->c->synerr.tgt.len = 0;
 	}
 }
 
-void hcl_setsynerrufmt (hcl_t* hcl, hcl_synerrnum_t num, const hcl_loc_t* loc, const hcl_oocs_t* tgt, const hcl_uch_t* msgfmt, ...)
+void hak_setsynerrufmt (hak_t* hak, hak_synerrnum_t num, const hak_loc_t* loc, const hak_oocs_t* tgt, const hak_uch_t* msgfmt, ...)
 {
-	static hcl_bch_t syntax_error[] = "syntax error - ";
+	static hak_bch_t syntax_error[] = "syntax error - ";
 
-	if (hcl->shuterr) return;
+	if (hak->shuterr) return;
 
 	if (msgfmt)
 	{
@@ -675,50 +675,50 @@ void hcl_setsynerrufmt (hcl_t* hcl, hcl_synerrnum_t num, const hcl_loc_t* loc, c
 		int i, selen;
 
 		va_start (ap, msgfmt);
-		hcl_seterrufmtv (hcl, HCL_ESYNERR, msgfmt, ap);
+		hak_seterrufmtv (hak, HAK_ESYNERR, msgfmt, ap);
 		va_end (ap);
 
-		selen = HCL_COUNTOF(syntax_error) - 1;
-		HCL_MEMMOVE (&hcl->errmsg.buf[selen], &hcl->errmsg.buf[0], HCL_SIZEOF(hcl->errmsg.buf[0]) * (HCL_COUNTOF(hcl->errmsg.buf) - selen));
-		for (i = 0; i < selen; i++) hcl->errmsg.buf[i] = syntax_error[i];
-		hcl->errmsg.buf[HCL_COUNTOF(hcl->errmsg.buf) - 1] = '\0';
+		selen = HAK_COUNTOF(syntax_error) - 1;
+		HAK_MEMMOVE (&hak->errmsg.buf[selen], &hak->errmsg.buf[0], HAK_SIZEOF(hak->errmsg.buf[0]) * (HAK_COUNTOF(hak->errmsg.buf) - selen));
+		for (i = 0; i < selen; i++) hak->errmsg.buf[i] = syntax_error[i];
+		hak->errmsg.buf[HAK_COUNTOF(hak->errmsg.buf) - 1] = '\0';
 	}
 	else
 	{
-		hcl_seterrbfmt (hcl, HCL_ESYNERR, "%hs%hs", syntax_error, synerr_to_errstr(num));
+		hak_seterrbfmt (hak, HAK_ESYNERR, "%hs%hs", syntax_error, synerr_to_errstr(num));
 	}
-	hcl->c->synerr.num = num;
+	hak->c->synerr.num = num;
 
 	/* The SCO compiler complains of this ternary operation saying:
 	 *    error: operands have incompatible types: op ":"
 	 * it seems to complain of type mismatch between *loc and
-	 * hcl->c->tok.loc due to 'const' prefixed to loc. */
-	/*hcl->c->synerr.loc = loc? *loc: hcl->c->tok.loc;*/
+	 * hak->c->tok.loc due to 'const' prefixed to loc. */
+	/*hak->c->synerr.loc = loc? *loc: hak->c->tok.loc;*/
 	if (loc)
 	{
-		hcl->c->synerr.loc = *loc;
+		hak->c->synerr.loc = *loc;
 	}
 	else
 	{
-		hcl->c->synerr.loc = hcl->c->tok.loc;
+		hak->c->synerr.loc = hak->c->tok.loc;
 	}
 
 	if (tgt)
 	{
-		hcl_oow_t n;
-		n = hcl_copy_oochars_to_oocstr(hcl->c->synerr.tgt.val, HCL_COUNTOF(hcl->c->synerr.tgt.val), tgt->ptr, tgt->len);
+		hak_oow_t n;
+		n = hak_copy_oochars_to_oocstr(hak->c->synerr.tgt.val, HAK_COUNTOF(hak->c->synerr.tgt.val), tgt->ptr, tgt->len);
 		if (n < tgt->len)
 		{
-			hcl->c->synerr.tgt.val[n - 1] = '.';
-			hcl->c->synerr.tgt.val[n - 2] = '.';
-			hcl->c->synerr.tgt.val[n - 3] = '.';
+			hak->c->synerr.tgt.val[n - 1] = '.';
+			hak->c->synerr.tgt.val[n - 2] = '.';
+			hak->c->synerr.tgt.val[n - 3] = '.';
 		}
-		hcl->c->synerr.tgt.len = n;
+		hak->c->synerr.tgt.len = n;
 	}
 	else
 	{
-		hcl->c->synerr.tgt.val[0] = '\0';
-		hcl->c->synerr.tgt.len = 0;
+		hak->c->synerr.tgt.val[0] = '\0';
+		hak->c->synerr.tgt.len = 0;
 	}
 }
 

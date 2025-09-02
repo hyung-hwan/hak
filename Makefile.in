@@ -92,7 +92,7 @@ build_triplet = @build@
 host_triplet = @host@
 @ENABLE_STATIC_MODULE_TRUE@am__append_1 = mod lib bin t
 @ENABLE_STATIC_MODULE_FALSE@am__append_2 = lib mod bin t
-@ENABLE_HCLGO_TRUE@bin_PROGRAMS = hclgo$(EXEEXT)
+@ENABLE_HAKGO_TRUE@bin_PROGRAMS = hakgo$(EXEEXT)
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_check_sign.m4 \
@@ -107,18 +107,18 @@ DIST_COMMON = $(srcdir)/Makefile.am $(top_srcdir)/configure \
 am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
  configure.lineno config.status.lineno
 mkinstalldirs = $(install_sh) -d
-CONFIG_HEADER = $(top_builddir)/lib/hcl-cfg.h
+CONFIG_HEADER = $(top_builddir)/lib/hak-cfg.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am__hclgo_SOURCES_DIST = go/hcl.go go/cb.go go/inst.go main.go go.mod
+am__hakgo_SOURCES_DIST = go/hak.go go/cb.go go/inst.go main.go go.mod
 am__dirstamp = $(am__leading_dot)dirstamp
-@ENABLE_HCLGO_TRUE@am_hclgo_OBJECTS = go/hcl.$(OBJEXT) go/cb.$(OBJEXT) \
-@ENABLE_HCLGO_TRUE@	go/inst.$(OBJEXT) main.$(OBJEXT) \
-@ENABLE_HCLGO_TRUE@	go.$(OBJEXT)
-hclgo_OBJECTS = $(am_hclgo_OBJECTS)
-hclgo_LDADD = $(LDADD)
+@ENABLE_HAKGO_TRUE@am_hakgo_OBJECTS = go/hak.$(OBJEXT) go/cb.$(OBJEXT) \
+@ENABLE_HAKGO_TRUE@	go/inst.$(OBJEXT) main.$(OBJEXT) \
+@ENABLE_HAKGO_TRUE@	go.$(OBJEXT)
+hakgo_OBJECTS = $(am_hakgo_OBJECTS)
+hakgo_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -132,8 +132,8 @@ am__v_at_ = $(am__v_at_@AM_DEFAULT_V@)
 am__v_at_0 = @
 am__v_at_1 = 
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/lib
-SOURCES = $(hclgo_SOURCES)
-DIST_SOURCES = $(am__hclgo_SOURCES_DIST)
+SOURCES = $(hakgo_SOURCES)
+DIST_SOURCES = $(am__hakgo_SOURCES_DIST)
 RECURSIVE_TARGETS = all-recursive check-recursive cscopelist-recursive \
 	ctags-recursive dvi-recursive html-recursive info-recursive \
 	install-data-recursive install-dvi-recursive \
@@ -256,9 +256,9 @@ EXEEXT = @EXEEXT@
 FGREP = @FGREP@
 FILECMD = @FILECMD@
 GREP = @GREP@
-HCL_PROJECT_AUTHOR = @HCL_PROJECT_AUTHOR@
-HCL_PROJECT_URL = @HCL_PROJECT_URL@
-HCL_SYS_LIB_SEARCH_PATH_SPEC = @HCL_SYS_LIB_SEARCH_PATH_SPEC@
+HAK_PROJECT_AUTHOR = @HAK_PROJECT_AUTHOR@
+HAK_PROJECT_URL = @HAK_PROJECT_URL@
+HAK_SYS_LIB_SEARCH_PATH_SPEC = @HAK_SYS_LIB_SEARCH_PATH_SPEC@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -367,22 +367,22 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AUTOMAKE_OPTION = foreign
 ACLOCAL_AMFLAGS = -I m4
-EXTRA_DIST = t t/test-bi.hcl
+EXTRA_DIST = t t/test-bi.hak
 SUBDIRS = $(am__append_1) $(am__append_2)
 DIST_SUBDIRS = $(SUBDIRS) pas
-@ENABLE_HCLGO_TRUE@hclgo_SOURCES = \
-@ENABLE_HCLGO_TRUE@	go/hcl.go \
-@ENABLE_HCLGO_TRUE@	go/cb.go \
-@ENABLE_HCLGO_TRUE@	go/inst.go \
-@ENABLE_HCLGO_TRUE@	main.go \
-@ENABLE_HCLGO_TRUE@	go.mod
+@ENABLE_HAKGO_TRUE@hakgo_SOURCES = \
+@ENABLE_HAKGO_TRUE@	go/hak.go \
+@ENABLE_HAKGO_TRUE@	go/cb.go \
+@ENABLE_HAKGO_TRUE@	go/inst.go \
+@ENABLE_HAKGO_TRUE@	main.go \
+@ENABLE_HAKGO_TRUE@	go.mod
 
-@ENABLE_HCLGO_TRUE@hclgo_DEPENDENCIES = hclgo.bin
-@ENABLE_HCLGO_TRUE@hclgo_LINK = cp -pf hclgo.bin hclgo$(EXEEXT) || echo "FAILED TO LINK"
-@ENABLE_HCLGO_TRUE@@ENABLE_STATIC_FALSE@CGO_CFLAGS_EXTRA = ""
-@ENABLE_HCLGO_TRUE@@ENABLE_STATIC_TRUE@CGO_CFLAGS_EXTRA = "-static"
-@ENABLE_HCLGO_TRUE@@ENABLE_STATIC_FALSE@CGO_LDFLAGS_EXTRA = ""
-@ENABLE_HCLGO_TRUE@@ENABLE_STATIC_TRUE@CGO_LDFLAGS_EXTRA = "-static"
+@ENABLE_HAKGO_TRUE@hakgo_DEPENDENCIES = hakgo.bin
+@ENABLE_HAKGO_TRUE@hakgo_LINK = cp -pf hakgo.bin hakgo$(EXEEXT) || echo "FAILED TO LINK"
+@ENABLE_HAKGO_TRUE@@ENABLE_STATIC_FALSE@CGO_CFLAGS_EXTRA = ""
+@ENABLE_HAKGO_TRUE@@ENABLE_STATIC_TRUE@CGO_CFLAGS_EXTRA = "-static"
+@ENABLE_HAKGO_TRUE@@ENABLE_STATIC_FALSE@CGO_LDFLAGS_EXTRA = ""
+@ENABLE_HAKGO_TRUE@@ENABLE_STATIC_TRUE@CGO_LDFLAGS_EXTRA = "-static"
 all: all-recursive
 
 .SUFFIXES:
@@ -470,13 +470,13 @@ go/$(am__dirstamp):
 go/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) go/$(DEPDIR)
 	@: >>go/$(DEPDIR)/$(am__dirstamp)
-go/hcl.$(OBJEXT): go/$(am__dirstamp) go/$(DEPDIR)/$(am__dirstamp)
+go/hak.$(OBJEXT): go/$(am__dirstamp) go/$(DEPDIR)/$(am__dirstamp)
 go/cb.$(OBJEXT): go/$(am__dirstamp) go/$(DEPDIR)/$(am__dirstamp)
 go/inst.$(OBJEXT): go/$(am__dirstamp) go/$(DEPDIR)/$(am__dirstamp)
 
-hclgo$(EXEEXT): $(hclgo_OBJECTS) $(hclgo_DEPENDENCIES) $(EXTRA_hclgo_DEPENDENCIES) 
-	@rm -f hclgo$(EXEEXT)
-	$(AM_V_GEN)$(hclgo_LINK) $(hclgo_OBJECTS) $(hclgo_LDADD) $(LIBS)
+hakgo$(EXEEXT): $(hakgo_OBJECTS) $(hakgo_DEPENDENCIES) $(EXTRA_hakgo_DEPENDENCIES) 
+	@rm -f hakgo$(EXEEXT)
+	$(AM_V_GEN)$(hakgo_LINK) $(hakgo_OBJECTS) $(hakgo_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -938,21 +938,21 @@ distclean-local:
 clean-local:
 	rm -rf $(builddir)/go.mod $(builddir)/go.sum
 
-@ENABLE_HCLGO_TRUE@hclgo.bin: lib/libhcl.la $(hclgo_OBJECTS)
-@ENABLE_HCLGO_TRUE@	cp -pf $(srcdir)/go.mod $(builddir)/go.mod >/dev/null 2>&1 || true
-@ENABLE_HCLGO_TRUE@	chmod u+w $(builddir)/go.mod ## with `make distcheck`, the echo's redirection to the file fails without this permission change
-@ENABLE_HCLGO_TRUE@	[ -f $(srcdir)/go.sum ] && cp -pf $(srcdir)/go.sum $(builddir)/go.sum >/dev/null 2>&1 || true
-@ENABLE_HCLGO_TRUE@	CC=$(CC) \
-@ENABLE_HCLGO_TRUE@	CGO_CFLAGS="-I$(abs_srcdir)/lib -I$(abs_builddir)/lib $(CFLAGS) $(CGO_CFLAGS_EXTRA)" \
-@ENABLE_HCLGO_TRUE@	CGO_LDFLAGS="-L$(abs_builddir)/lib -L$(abs_builddir)/lib/.libs -lhcl -ldl $(LIBM) $(CGO_LDFLAGS_EXTRA)"  \
-@ENABLE_HCLGO_TRUE@	go build -C $(srcdir) -ldflags "-X 'main.BINDIR=$(bindir)' -X 'main.SBINDIR=$(sbindir)' -X 'main.LIBDIR=$(libdir)' -X 'main.SYSCONFDIR=$(sysconfdir)'" -x -o $(abs_builddir)/hclgo.bin -modfile $(abs_builddir)/go.mod
-@ENABLE_HCLGO_TRUE@	go clean -C $(srcdir) -x -modfile $(abs_builddir)/go.mod
+@ENABLE_HAKGO_TRUE@hakgo.bin: lib/libhak.la $(hakgo_OBJECTS)
+@ENABLE_HAKGO_TRUE@	cp -pf $(srcdir)/go.mod $(builddir)/go.mod >/dev/null 2>&1 || true
+@ENABLE_HAKGO_TRUE@	chmod u+w $(builddir)/go.mod ## with `make distcheck`, the echo's redirection to the file fails without this permission change
+@ENABLE_HAKGO_TRUE@	[ -f $(srcdir)/go.sum ] && cp -pf $(srcdir)/go.sum $(builddir)/go.sum >/dev/null 2>&1 || true
+@ENABLE_HAKGO_TRUE@	CC=$(CC) \
+@ENABLE_HAKGO_TRUE@	CGO_CFLAGS="-I$(abs_srcdir)/lib -I$(abs_builddir)/lib $(CFLAGS) $(CGO_CFLAGS_EXTRA)" \
+@ENABLE_HAKGO_TRUE@	CGO_LDFLAGS="-L$(abs_builddir)/lib -L$(abs_builddir)/lib/.libs -lhak -ldl $(LIBM) $(CGO_LDFLAGS_EXTRA)"  \
+@ENABLE_HAKGO_TRUE@	go build -C $(srcdir) -ldflags "-X 'main.BINDIR=$(bindir)' -X 'main.SBINDIR=$(sbindir)' -X 'main.LIBDIR=$(libdir)' -X 'main.SYSCONFDIR=$(sysconfdir)'" -x -o $(abs_builddir)/hakgo.bin -modfile $(abs_builddir)/go.mod
+@ENABLE_HAKGO_TRUE@	go clean -C $(srcdir) -x -modfile $(abs_builddir)/go.mod
 
-@ENABLE_HCLGO_TRUE@.go.o:
-@ENABLE_HCLGO_TRUE@	echo $< > $@
+@ENABLE_HAKGO_TRUE@.go.o:
+@ENABLE_HAKGO_TRUE@	echo $< > $@
 
-@ENABLE_HCLGO_TRUE@.mod.o:
-@ENABLE_HCLGO_TRUE@	echo $< > $@
+@ENABLE_HAKGO_TRUE@.mod.o:
+@ENABLE_HAKGO_TRUE@	echo $< > $@
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

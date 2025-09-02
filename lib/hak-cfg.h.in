@@ -1,7 +1,169 @@
-/* lib/hcl-cfg.h.in.  Generated from configure.ac by autoheader.  */
+/* lib/hak-cfg.h.in.  Generated from configure.ac by autoheader.  */
 
 /* Define if building universal (internal helper macro) */
 #undef AC_APPLE_UNIVERSAL_BUILD
+
+/* build release/debug */
+#undef HAK_BUILD_DEBUG
+
+/* build release/debug */
+#undef HAK_BUILD_RELEASE
+
+/* configure arguments */
+#undef HAK_CONFIGURE_ARGS
+
+/* configure command */
+#undef HAK_CONFIGURE_CMD
+
+/* enable dynamic module capability */
+#undef HAK_ENABLE_DYNAMIC_MODULE
+
+/* Use a full word as a large integer word */
+#undef HAK_ENABLE_FULL_LIW
+
+/* use libltdl when loading a dynamic module */
+#undef HAK_ENABLE_LIBLTDL
+
+/* use libunwind for backtracing stack frames */
+#undef HAK_ENABLE_LIBUNWIND
+
+/* link modules statically into the main library */
+#undef HAK_ENABLE_STATIC_MODULE
+
+/* Use the wide-character type as the default character type */
+#undef HAK_ENABLE_WIDE_CHAR
+
+/* Big Endian */
+#undef HAK_ENDIAN_BIG
+
+/* Little Endian */
+#undef HAK_ENDIAN_LITTLE
+
+/* Unknown Endian */
+#undef HAK_ENDIAN_UNKNOWN
+
+/* MB_LEN_MAX */
+#undef HAK_MBLEN_MAX
+
+/* offsetof(struct sockaddr, sa_family) */
+#undef HAK_OFFSETOF_SA_FAMILY
+
+/* Author */
+#undef HAK_PACKAGE_AUTHOR
+
+/* package name */
+#undef HAK_PACKAGE_NAME
+
+/* Project URL */
+#undef HAK_PACKAGE_URL
+
+/* Package version */
+#undef HAK_PACKAGE_VERSION
+
+/* Major version number */
+#undef HAK_PACKAGE_VERSION_MAJOR
+
+/* Minor version number */
+#undef HAK_PACKAGE_VERSION_MINOR
+
+/* Patch level */
+#undef HAK_PACKAGE_VERSION_PATCH
+
+/* PATH_MAX */
+#undef HAK_PATH_MAX
+
+/* Define if sa_family_t is signed */
+#undef HAK_SA_FAMILY_T_IS_SIGNED
+
+/* sizeof(char) */
+#undef HAK_SIZEOF_CHAR
+
+/* sizeof(double) */
+#undef HAK_SIZEOF_DOUBLE
+
+/* sizeof(float) */
+#undef HAK_SIZEOF_FLOAT
+
+/* sizeof(int) */
+#undef HAK_SIZEOF_INT
+
+/* sizeof(long) */
+#undef HAK_SIZEOF_LONG
+
+/* sizeof(long double) */
+#undef HAK_SIZEOF_LONG_DOUBLE
+
+/* sizeof(long long) */
+#undef HAK_SIZEOF_LONG_LONG
+
+/* sizeof(mbstate_t) */
+#undef HAK_SIZEOF_MBSTATE_T
+
+/* sizeof(off64_t) */
+#undef HAK_SIZEOF_OFF64_T
+
+/* sizeof(off_t) */
+#undef HAK_SIZEOF_OFF_T
+
+/* sizeof(sa_family_t) */
+#undef HAK_SIZEOF_SA_FAMILY_T
+
+/* sizeof(short) */
+#undef HAK_SIZEOF_SHORT
+
+/* sizeof(socklen_t) */
+#undef HAK_SIZEOF_SOCKLEN_T
+
+/* sizeof(struct sockaddr_dl) */
+#undef HAK_SIZEOF_STRUCT_SOCKADDR_DL
+
+/* sizeof(struct sockaddr_in) */
+#undef HAK_SIZEOF_STRUCT_SOCKADDR_IN
+
+/* sizeof(struct sockaddr_in6) */
+#undef HAK_SIZEOF_STRUCT_SOCKADDR_IN6
+
+/* sizeof(struct sockaddr_ll) */
+#undef HAK_SIZEOF_STRUCT_SOCKADDR_LL
+
+/* sizeof(struct sockaddr_un) */
+#undef HAK_SIZEOF_STRUCT_SOCKADDR_UN
+
+/* sizeof(void*) */
+#undef HAK_SIZEOF_VOID_P
+
+/* sizeof(wchar_t) */
+#undef HAK_SIZEOF_WCHAR_T
+
+/* sizeof(__float128) */
+#undef HAK_SIZEOF___FLOAT128
+
+/* sizeof(__int128) */
+#undef HAK_SIZEOF___INT128
+
+/* sizeof(__int128_t) */
+#undef HAK_SIZEOF___INT128_T
+
+/* sizeof(__int16) */
+#undef HAK_SIZEOF___INT16
+
+/* sizeof(__int32) */
+#undef HAK_SIZEOF___INT32
+
+/* sizeof(__int64) */
+#undef HAK_SIZEOF___INT64
+
+/* sizeof(__int8) */
+#undef HAK_SIZEOF___INT8
+
+/* sizeof(__uint128_t) */
+#undef HAK_SIZEOF___UINT128_T
+
+/* Define if socklen_t is signed */
+#undef HAK_SOCKLEN_T_IS_SIGNED
+
+/* Wide-character type size */
+#undef HAK_WIDE_CHAR_SIZE
 
 /* Define to 1 if you have the 'accept4' function. */
 #undef HAVE_ACCEPT4
@@ -296,168 +458,6 @@
 
 /* __va_copy is available */
 #undef HAVE___VA_COPY
-
-/* build release/debug */
-#undef HCL_BUILD_DEBUG
-
-/* build release/debug */
-#undef HCL_BUILD_RELEASE
-
-/* configure arguments */
-#undef HCL_CONFIGURE_ARGS
-
-/* configure command */
-#undef HCL_CONFIGURE_CMD
-
-/* enable dynamic module capability */
-#undef HCL_ENABLE_DYNAMIC_MODULE
-
-/* Use a full word as a large integer word */
-#undef HCL_ENABLE_FULL_LIW
-
-/* use libltdl when loading a dynamic module */
-#undef HCL_ENABLE_LIBLTDL
-
-/* use libunwind for backtracing stack frames */
-#undef HCL_ENABLE_LIBUNWIND
-
-/* link modules statically into the main library */
-#undef HCL_ENABLE_STATIC_MODULE
-
-/* Use the wide-character type as the default character type */
-#undef HCL_ENABLE_WIDE_CHAR
-
-/* Big Endian */
-#undef HCL_ENDIAN_BIG
-
-/* Little Endian */
-#undef HCL_ENDIAN_LITTLE
-
-/* Unknown Endian */
-#undef HCL_ENDIAN_UNKNOWN
-
-/* MB_LEN_MAX */
-#undef HCL_MBLEN_MAX
-
-/* offsetof(struct sockaddr, sa_family) */
-#undef HCL_OFFSETOF_SA_FAMILY
-
-/* Author */
-#undef HCL_PACKAGE_AUTHOR
-
-/* package name */
-#undef HCL_PACKAGE_NAME
-
-/* Project URL */
-#undef HCL_PACKAGE_URL
-
-/* Package version */
-#undef HCL_PACKAGE_VERSION
-
-/* Major version number */
-#undef HCL_PACKAGE_VERSION_MAJOR
-
-/* Minor version number */
-#undef HCL_PACKAGE_VERSION_MINOR
-
-/* Patch level */
-#undef HCL_PACKAGE_VERSION_PATCH
-
-/* PATH_MAX */
-#undef HCL_PATH_MAX
-
-/* Define if sa_family_t is signed */
-#undef HCL_SA_FAMILY_T_IS_SIGNED
-
-/* sizeof(char) */
-#undef HCL_SIZEOF_CHAR
-
-/* sizeof(double) */
-#undef HCL_SIZEOF_DOUBLE
-
-/* sizeof(float) */
-#undef HCL_SIZEOF_FLOAT
-
-/* sizeof(int) */
-#undef HCL_SIZEOF_INT
-
-/* sizeof(long) */
-#undef HCL_SIZEOF_LONG
-
-/* sizeof(long double) */
-#undef HCL_SIZEOF_LONG_DOUBLE
-
-/* sizeof(long long) */
-#undef HCL_SIZEOF_LONG_LONG
-
-/* sizeof(mbstate_t) */
-#undef HCL_SIZEOF_MBSTATE_T
-
-/* sizeof(off64_t) */
-#undef HCL_SIZEOF_OFF64_T
-
-/* sizeof(off_t) */
-#undef HCL_SIZEOF_OFF_T
-
-/* sizeof(sa_family_t) */
-#undef HCL_SIZEOF_SA_FAMILY_T
-
-/* sizeof(short) */
-#undef HCL_SIZEOF_SHORT
-
-/* sizeof(socklen_t) */
-#undef HCL_SIZEOF_SOCKLEN_T
-
-/* sizeof(struct sockaddr_dl) */
-#undef HCL_SIZEOF_STRUCT_SOCKADDR_DL
-
-/* sizeof(struct sockaddr_in) */
-#undef HCL_SIZEOF_STRUCT_SOCKADDR_IN
-
-/* sizeof(struct sockaddr_in6) */
-#undef HCL_SIZEOF_STRUCT_SOCKADDR_IN6
-
-/* sizeof(struct sockaddr_ll) */
-#undef HCL_SIZEOF_STRUCT_SOCKADDR_LL
-
-/* sizeof(struct sockaddr_un) */
-#undef HCL_SIZEOF_STRUCT_SOCKADDR_UN
-
-/* sizeof(void*) */
-#undef HCL_SIZEOF_VOID_P
-
-/* sizeof(wchar_t) */
-#undef HCL_SIZEOF_WCHAR_T
-
-/* sizeof(__float128) */
-#undef HCL_SIZEOF___FLOAT128
-
-/* sizeof(__int128) */
-#undef HCL_SIZEOF___INT128
-
-/* sizeof(__int128_t) */
-#undef HCL_SIZEOF___INT128_T
-
-/* sizeof(__int16) */
-#undef HCL_SIZEOF___INT16
-
-/* sizeof(__int32) */
-#undef HCL_SIZEOF___INT32
-
-/* sizeof(__int64) */
-#undef HCL_SIZEOF___INT64
-
-/* sizeof(__int8) */
-#undef HCL_SIZEOF___INT8
-
-/* sizeof(__uint128_t) */
-#undef HCL_SIZEOF___UINT128_T
-
-/* Define if socklen_t is signed */
-#undef HCL_SOCKLEN_T_IS_SIGNED
-
-/* Wide-character type size */
-#undef HCL_WIDE_CHAR_SIZE
 
 /* Define to the sub-directory where libtool stores uninstalled libraries. */
 #undef LT_OBJDIR

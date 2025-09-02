@@ -24,12 +24,12 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <hcl-x.h>
-#include <hcl-cmgr.h>
-#include <hcl-json.h>
-#include <hcl-opt.h>
-#include <hcl-str.h>
-#include <hcl-utl.h>
+#include <hak-x.h>
+#include <hak-cmgr.h>
+#include <hak-json.h>
+#include <hak-opt.h>
+#include <hak-str.h>
+#include <hak-utl.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -59,13 +59,13 @@ typedef struct server_xtn_t server_xtn_t;
 struct server_xtn_t
 {
 	int logfd;
-	hcl_bitmask_t logmask;
+	hak_bitmask_t logmask;
 	int logfd_istty;
 
 	struct
 	{
-		hcl_bch_t buf[4096];
-		hcl_oow_t len;
+		hak_bch_t buf[4096];
+		hak_oow_t len;
 	} logbuf;
 
 
@@ -79,35 +79,35 @@ typedef server_xtn_t json_xtn_t;
 
 /* ========================================================================= */
 
-static void* sys_alloc (hcl_mmgr_t* mmgr, hcl_oow_t size)
+static void* sys_alloc (hak_mmgr_t* mmgr, hak_oow_t size)
 {
 	return malloc(size);
 }
 
-static void* sys_realloc (hcl_mmgr_t* mmgr, void* ptr, hcl_oow_t size)
+static void* sys_realloc (hak_mmgr_t* mmgr, void* ptr, hak_oow_t size)
 {
 	return realloc(ptr, size);
 }
 
-static void sys_free (hcl_mmgr_t* mmgr, void* ptr)
+static void sys_free (hak_mmgr_t* mmgr, void* ptr)
 {
 	free (ptr);
 }
 
-static hcl_mmgr_t sys_mmgr =
+static hak_mmgr_t sys_mmgr =
 {
 	sys_alloc,
 	sys_realloc,
 	sys_free,
-	HCL_NULL
+	HAK_NULL
 };
 /* ========================================================================= */
 
-static int write_all (int fd, const hcl_bch_t* ptr, hcl_oow_t len)
+static int write_all (int fd, const hak_bch_t* ptr, hak_oow_t len)
 {
 	while (len > 0)
 	{
-		hcl_ooi_t wr;
+		hak_ooi_t wr;
 
 		wr = write(fd, ptr, len);
 
@@ -138,15 +138,15 @@ static int write_all (int fd, const hcl_bch_t* ptr, hcl_oow_t len)
 }
 
 
-static int write_log (server_xtn_t* xtn, int fd, const hcl_bch_t* ptr, hcl_oow_t len)
+static int write_log (server_xtn_t* xtn, int fd, const hak_bch_t* ptr, hak_oow_t len)
 {
 	while (len > 0)
 	{
 		if (xtn->logbuf.len > 0)
 		{
-			hcl_oow_t rcapa, cplen;
+			hak_oow_t rcapa, cplen;
 
-			rcapa = HCL_COUNTOF(xtn->logbuf.buf) - xtn->logbuf.len;
+			rcapa = HAK_COUNTOF(xtn->logbuf.buf) - xtn->logbuf.len;
 			cplen = (len >= rcapa)? rcapa: len;
 
 			memcpy (&xtn->logbuf.buf[xtn->logbuf.len], ptr, cplen);
@@ -154,7 +154,7 @@ static int write_log (server_xtn_t* xtn, int fd, const hcl_bch_t* ptr, hcl_oow_t
 			ptr += cplen;
 			len -= cplen;
 
-			if (xtn->logbuf.len >= HCL_COUNTOF(xtn->logbuf.buf))
+			if (xtn->logbuf.len >= HAK_COUNTOF(xtn->logbuf.buf))
 			{
 				write_all(fd, xtn->logbuf.buf, xtn->logbuf.len);
 				xtn->logbuf.len = 0;
@@ -162,9 +162,9 @@ static int write_log (server_xtn_t* xtn, int fd, const hcl_bch_t* ptr, hcl_oow_t
 		}
 		else
 		{
-			hcl_oow_t rcapa;
+			hak_oow_t rcapa;
 
-			rcapa = HCL_COUNTOF(xtn->logbuf.buf);
+			rcapa = HAK_COUNTOF(xtn->logbuf.buf);
 			if (len >= rcapa)
 			{
 				write_all (fd, ptr, rcapa);
@@ -194,24 +194,24 @@ static void flush_log (server_xtn_t* xtn, int fd)
 	}
 }
 
-static void log_write (server_xtn_t* xtn, hcl_oow_t wid, hcl_bitmask_t mask, const hcl_ooch_t* msg, hcl_oow_t len)
+static void log_write (server_xtn_t* xtn, hak_oow_t wid, hak_bitmask_t mask, const hak_ooch_t* msg, hak_oow_t len)
 {
-	hcl_bch_t buf[256];
-	hcl_oow_t ucslen, bcslen;
-	hcl_oow_t msgidx;
+	hak_bch_t buf[256];
+	hak_oow_t ucslen, bcslen;
+	hak_oow_t msgidx;
 	int n, logfd;
 
-	if (mask & HCL_LOG_STDERR)
+	if (mask & HAK_LOG_STDERR)
 	{
 		/* the messages that go to STDERR don't get masked out */
 		logfd = 2;
 	}
 	else
 	{
-		if (!(xtn->logmask & mask & ~HCL_LOG_ALL_LEVELS)) return;  /* check log types */
-		if (!(xtn->logmask & mask & ~HCL_LOG_ALL_TYPES)) return;  /* check log levels */
+		if (!(xtn->logmask & mask & ~HAK_LOG_ALL_LEVELS)) return;  /* check log types */
+		if (!(xtn->logmask & mask & ~HAK_LOG_ALL_TYPES)) return;  /* check log levels */
 
-		if (mask & HCL_LOG_STDOUT) logfd = 1;
+		if (mask & HAK_LOG_STDOUT) logfd = 1;
 		else
 		{
 			logfd = xtn->logfd;
@@ -221,7 +221,7 @@ static void log_write (server_xtn_t* xtn, hcl_oow_t wid, hcl_bitmask_t mask, con
 
 /* TODO: beautify the log message.
  *       do classification based on mask. */
-	if (!(mask & (HCL_LOG_STDOUT | HCL_LOG_STDERR)))
+	if (!(mask & (HAK_LOG_STDOUT | HAK_LOG_STDERR)))
 	{
 		time_t now;
 		char ts[32];
@@ -250,7 +250,7 @@ static void log_write (server_xtn_t* xtn, hcl_oow_t wid, hcl_bitmask_t mask, con
 
 		write_log (xtn, logfd, ts, tslen);
 
-		if (wid != HCL_SERVER_WID_INVALID)
+		if (wid != HAK_SERVER_WID_INVALID)
 		{
 			/* TODO: check if the underlying snprintf support %zd */
 			tslen = snprintf (ts, sizeof(ts), "[%zu] ", wid);
@@ -260,19 +260,19 @@ static void log_write (server_xtn_t* xtn, hcl_oow_t wid, hcl_bitmask_t mask, con
 
 	if (logfd == xtn->logfd && xtn->logfd_istty)
 	{
-		if (mask & HCL_LOG_FATAL) write_log (xtn, logfd, "\x1B[1;31m", 7);
-		else if (mask & HCL_LOG_ERROR) write_log (xtn, logfd, "\x1B[1;32m", 7);
-		else if (mask & HCL_LOG_WARN) write_log (xtn, logfd, "\x1B[1;33m", 7);
+		if (mask & HAK_LOG_FATAL) write_log (xtn, logfd, "\x1B[1;31m", 7);
+		else if (mask & HAK_LOG_ERROR) write_log (xtn, logfd, "\x1B[1;32m", 7);
+		else if (mask & HAK_LOG_WARN) write_log (xtn, logfd, "\x1B[1;33m", 7);
 	}
 
-#if defined(HCL_OOCH_IS_UCH)
+#if defined(HAK_OOCH_IS_UCH)
 	msgidx = 0;
 	while (len > 0)
 	{
 		ucslen = len;
-		bcslen = HCL_COUNTOF(buf);
+		bcslen = HAK_COUNTOF(buf);
 
-		n = hcl_conv_oochars_to_bchars_with_cmgr(&msg[msgidx], &ucslen, buf, &bcslen, hcl_get_utf8_cmgr());
+		n = hak_conv_oochars_to_bchars_with_cmgr(&msg[msgidx], &ucslen, buf, &bcslen, hak_get_utf8_cmgr());
 		if (n == 0 || n == -2)
 		{
 			/* n = 0:
@@ -281,7 +281,7 @@ static void log_write (server_xtn_t* xtn, hcl_oow_t wid, hcl_bitmask_t mask, con
 			 *    buffer not sufficient. not all got converted yet.
 			 *    write what have been converted this round. */
 
-			/*HCL_ASSERT (hcl, ucslen > 0); */ /* if this fails, the buffer size must be increased */
+			/*HAK_ASSERT (hak, ucslen > 0); */ /* if this fails, the buffer size must be increased */
 			/*assert (ucslen > 0);*/
 
 			/* attempt to write all converted characters */
@@ -309,7 +309,7 @@ static void log_write (server_xtn_t* xtn, hcl_oow_t wid, hcl_bitmask_t mask, con
 
 	if (logfd == xtn->logfd && xtn->logfd_istty)
 	{
-		if (mask & (HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN)) write_log (xtn, logfd, "\x1B[0m", 4);
+		if (mask & (HAK_LOG_FATAL | HAK_LOG_ERROR | HAK_LOG_WARN)) write_log (xtn, logfd, "\x1B[0m", 4);
 	}
 
 	flush_log (xtn, logfd);
@@ -317,25 +317,25 @@ static void log_write (server_xtn_t* xtn, hcl_oow_t wid, hcl_bitmask_t mask, con
 
 /* ========================================================================= */
 
-static void server_log_write (hcl_server_t* server, hcl_oow_t wid, hcl_bitmask_t mask, const hcl_ooch_t* msg, hcl_oow_t len)
+static void server_log_write (hak_server_t* server, hak_oow_t wid, hak_bitmask_t mask, const hak_ooch_t* msg, hak_oow_t len)
 {
-	log_write ((server_xtn_t*)hcl_server_getxtn(server), wid, mask, msg, len);
+	log_write ((server_xtn_t*)hak_server_getxtn(server), wid, mask, msg, len);
 }
 
-static void client_log_write (hcl_client_t* client, hcl_bitmask_t mask, const hcl_ooch_t* msg, hcl_oow_t len)
+static void client_log_write (hak_client_t* client, hak_bitmask_t mask, const hak_ooch_t* msg, hak_oow_t len)
 {
-	log_write ((client_xtn_t*)hcl_client_getxtn(client), HCL_SERVER_WID_INVALID, mask, msg, len);
+	log_write ((client_xtn_t*)hak_client_getxtn(client), HAK_SERVER_WID_INVALID, mask, msg, len);
 }
 
-static void json_log_write (hcl_json_t* json, hcl_bitmask_t mask, const hcl_ooch_t* msg, hcl_oow_t len)
+static void json_log_write (hak_json_t* json, hak_bitmask_t mask, const hak_ooch_t* msg, hak_oow_t len)
 {
-	log_write ((json_xtn_t*)hcl_json_getxtn(json), HCL_SERVER_WID_INVALID, mask, msg, len);
+	log_write ((json_xtn_t*)hak_json_getxtn(json), HAK_SERVER_WID_INVALID, mask, msg, len);
 }
 
 /* ========================================================================= */
 
-static hcl_server_t* g_server = HCL_NULL;
-static hcl_client_t* g_client = HCL_NULL;
+static hak_server_t* g_server = HAK_NULL;
+static hak_client_t* g_client = HAK_NULL;
 
 /* ========================================================================= */
 
@@ -343,8 +343,8 @@ typedef void (*signal_handler_t) (int, siginfo_t*, void*);
 
 static void handle_sigint (int sig, siginfo_t* siginfo, void* ctx)
 {
-	if (g_server) hcl_server_stop (g_server);
-	if (g_client) hcl_client_stop (g_client);
+	if (g_server) hak_server_stop (g_server);
+	if (g_client) hak_client_stop (g_client);
 }
 
 static void set_signal (int sig, signal_handler_t handler)
@@ -386,13 +386,13 @@ static void set_signal_to_default (int sig)
 
 /* ========================================================================= */
 
-static int handle_logopt (server_xtn_t* xtn, const hcl_bch_t* str)
+static int handle_logopt (server_xtn_t* xtn, const hak_bch_t* str)
 {
-	hcl_bch_t* xstr = (hcl_bch_t*)str;
-	hcl_bch_t* cm, * flt;
-	hcl_bitmask_t logmask;
+	hak_bch_t* xstr = (hak_bch_t*)str;
+	hak_bch_t* cm, * flt;
+	hak_bitmask_t logmask;
 
-	cm = hcl_find_bchar_in_bcstr(xstr, ',');
+	cm = hak_find_bchar_in_bcstr(xstr, ',');
 	if (cm)
 	{
 		/* i duplicate this string for open() below as open() doesn't
@@ -404,7 +404,7 @@ static int handle_logopt (server_xtn_t* xtn, const hcl_bch_t* str)
 			return -1;
 		}
 
-		cm = hcl_find_bchar_in_bcstr(xstr, ',');
+		cm = hak_find_bchar_in_bcstr(xstr, ',');
 		*cm = '\0';
 
 		logmask = xtn->logmask;
@@ -412,28 +412,28 @@ static int handle_logopt (server_xtn_t* xtn, const hcl_bch_t* str)
 		{
 			flt = cm + 1;
 
-			cm = hcl_find_bchar_in_bcstr(flt, ',');
+			cm = hak_find_bchar_in_bcstr(flt, ',');
 			if (cm) *cm = '\0';
 
-			if (hcl_comp_bcstr(flt, "app") == 0) logmask |= HCL_LOG_APP;
-			else if (hcl_comp_bcstr(flt, "compiler") == 0) logmask |= HCL_LOG_COMPILER;
-			else if (hcl_comp_bcstr(flt, "vm") == 0) logmask |= HCL_LOG_VM;
-			else if (hcl_comp_bcstr(flt, "mnemonic") == 0) logmask |= HCL_LOG_MNEMONIC;
-			else if (hcl_comp_bcstr(flt, "gc") == 0) logmask |= HCL_LOG_GC;
-			else if (hcl_comp_bcstr(flt, "ic") == 0) logmask |= HCL_LOG_IC;
-			else if (hcl_comp_bcstr(flt, "primitive") == 0) logmask |= HCL_LOG_PRIMITIVE;
+			if (hak_comp_bcstr(flt, "app") == 0) logmask |= HAK_LOG_APP;
+			else if (hak_comp_bcstr(flt, "compiler") == 0) logmask |= HAK_LOG_COMPILER;
+			else if (hak_comp_bcstr(flt, "vm") == 0) logmask |= HAK_LOG_VM;
+			else if (hak_comp_bcstr(flt, "mnemonic") == 0) logmask |= HAK_LOG_MNEMONIC;
+			else if (hak_comp_bcstr(flt, "gc") == 0) logmask |= HAK_LOG_GC;
+			else if (hak_comp_bcstr(flt, "ic") == 0) logmask |= HAK_LOG_IC;
+			else if (hak_comp_bcstr(flt, "primitive") == 0) logmask |= HAK_LOG_PRIMITIVE;
 
-			else if (hcl_comp_bcstr(flt, "fatal") == 0) logmask |= HCL_LOG_FATAL;
-			else if (hcl_comp_bcstr(flt, "error") == 0) logmask |= HCL_LOG_ERROR;
-			else if (hcl_comp_bcstr(flt, "warn") == 0) logmask |= HCL_LOG_WARN;
-			else if (hcl_comp_bcstr(flt, "info") == 0) logmask |= HCL_LOG_INFO;
-			else if (hcl_comp_bcstr(flt, "debug") == 0) logmask |= HCL_LOG_DEBUG;
+			else if (hak_comp_bcstr(flt, "fatal") == 0) logmask |= HAK_LOG_FATAL;
+			else if (hak_comp_bcstr(flt, "error") == 0) logmask |= HAK_LOG_ERROR;
+			else if (hak_comp_bcstr(flt, "warn") == 0) logmask |= HAK_LOG_WARN;
+			else if (hak_comp_bcstr(flt, "info") == 0) logmask |= HAK_LOG_INFO;
+			else if (hak_comp_bcstr(flt, "debug") == 0) logmask |= HAK_LOG_DEBUG;
 
-			else if (hcl_comp_bcstr(flt, "fatal+") == 0) logmask |= HCL_LOG_FATAL;
-			else if (hcl_comp_bcstr(flt, "error+") == 0) logmask |= HCL_LOG_FATAL | HCL_LOG_ERROR;
-			else if (hcl_comp_bcstr(flt, "warn+") == 0) logmask |= HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN;
-			else if (hcl_comp_bcstr(flt, "info+") == 0) logmask |= HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN | HCL_LOG_INFO;
-			else if (hcl_comp_bcstr(flt, "debug+") == 0) logmask |= HCL_LOG_FATAL | HCL_LOG_ERROR | HCL_LOG_WARN | HCL_LOG_INFO | HCL_LOG_DEBUG;
+			else if (hak_comp_bcstr(flt, "fatal+") == 0) logmask |= HAK_LOG_FATAL;
+			else if (hak_comp_bcstr(flt, "error+") == 0) logmask |= HAK_LOG_FATAL | HAK_LOG_ERROR;
+			else if (hak_comp_bcstr(flt, "warn+") == 0) logmask |= HAK_LOG_FATAL | HAK_LOG_ERROR | HAK_LOG_WARN;
+			else if (hak_comp_bcstr(flt, "info+") == 0) logmask |= HAK_LOG_FATAL | HAK_LOG_ERROR | HAK_LOG_WARN | HAK_LOG_INFO;
+			else if (hak_comp_bcstr(flt, "debug+") == 0) logmask |= HAK_LOG_FATAL | HAK_LOG_ERROR | HAK_LOG_WARN | HAK_LOG_INFO | HAK_LOG_DEBUG;
 
 			else
 			{
@@ -444,12 +444,12 @@ static int handle_logopt (server_xtn_t* xtn, const hcl_bch_t* str)
 		}
 		while (cm);
 
-		if (!(logmask & HCL_LOG_ALL_TYPES)) logmask |= HCL_LOG_ALL_TYPES;  /* no types specified. force to all types */
-		if (!(logmask & HCL_LOG_ALL_LEVELS)) logmask |= HCL_LOG_ALL_LEVELS;  /* no levels specified. force to all levels */
+		if (!(logmask & HAK_LOG_ALL_TYPES)) logmask |= HAK_LOG_ALL_TYPES;  /* no types specified. force to all types */
+		if (!(logmask & HAK_LOG_ALL_LEVELS)) logmask |= HAK_LOG_ALL_LEVELS;  /* no levels specified. force to all levels */
 	}
 	else
 	{
-		logmask = HCL_LOG_ALL_LEVELS | HCL_LOG_ALL_TYPES;
+		logmask = HAK_LOG_ALL_LEVELS | HAK_LOG_ALL_TYPES;
 	}
 
 	xtn->logfd = open(xstr, O_CREAT | O_WRONLY | O_APPEND , 0644);
@@ -469,34 +469,34 @@ static int handle_logopt (server_xtn_t* xtn, const hcl_bch_t* str)
 	return 0;
 }
 
-static int server_handle_logopt (hcl_server_t* server, const hcl_bch_t* str)
+static int server_handle_logopt (hak_server_t* server, const hak_bch_t* str)
 {
-	return handle_logopt((server_xtn_t*)hcl_server_getxtn(server), str);
+	return handle_logopt((server_xtn_t*)hak_server_getxtn(server), str);
 }
 
-static int client_handle_logopt (hcl_client_t* client, const hcl_bch_t* str)
+static int client_handle_logopt (hak_client_t* client, const hak_bch_t* str)
 {
-	return handle_logopt((client_xtn_t*)hcl_client_getxtn(client), str);
+	return handle_logopt((client_xtn_t*)hak_client_getxtn(client), str);
 }
 
-#if defined(HCL_BUILD_DEBUG)
-static int handle_dbgopt (hcl_server_t* server, const char* str)
+#if defined(HAK_BUILD_DEBUG)
+static int handle_dbgopt (hak_server_t* server, const char* str)
 {
-	const hcl_bch_t* cm, * flt;
-	hcl_oow_t len;
-	hcl_bitmask_t trait;
+	const hak_bch_t* cm, * flt;
+	hak_oow_t len;
+	hak_bitmask_t trait;
 
-	hcl_server_getoption (server, HCL_SERVER_TRAIT, &trait);
+	hak_server_getoption (server, HAK_SERVER_TRAIT, &trait);
 
 	cm = str - 1;
 	do
 	{
 		flt = cm + 1;
 
-		cm = hcl_find_bchar_in_bcstr(flt, ',');
-		len = cm? (cm - flt): hcl_count_bcstr(flt);
-		if (hcl_comp_bchars_bcstr(flt, len, "gc") == 0)  trait |= HCL_SERVER_TRAIT_DEBUG_GC;
-		else if (hcl_comp_bchars_bcstr(flt, len, "bigint") == 0)  trait |= HCL_SERVER_TRAIT_DEBUG_BIGINT;
+		cm = hak_find_bchar_in_bcstr(flt, ',');
+		len = cm? (cm - flt): hak_count_bcstr(flt);
+		if (hak_comp_bchars_bcstr(flt, len, "gc") == 0)  trait |= HAK_SERVER_TRAIT_DEBUG_GC;
+		else if (hak_comp_bchars_bcstr(flt, len, "bigint") == 0)  trait |= HAK_SERVER_TRAIT_DEBUG_BIGINT;
 		else
 		{
 			fprintf (stderr, "ERROR: unknown debug option value - %.*s\n", (int)len, flt);
@@ -505,22 +505,22 @@ static int handle_dbgopt (hcl_server_t* server, const char* str)
 	}
 	while (cm);
 
-	hcl_server_setoption (server, HCL_SERVER_TRAIT, &trait);
+	hak_server_setoption (server, HAK_SERVER_TRAIT, &trait);
 	return 0;
 }
 #endif
 
-static int handle_incpath (hcl_server_t* server, const char* str)
+static int handle_incpath (hak_server_t* server, const char* str)
 {
-#if defined(HCL_OOCH_IS_UCH)
-	hcl_ooch_t incpath[HCL_PATH_MAX + 1];
-	hcl_oow_t bcslen, ucslen;
+#if defined(HAK_OOCH_IS_UCH)
+	hak_ooch_t incpath[HAK_PATH_MAX + 1];
+	hak_oow_t bcslen, ucslen;
 
-	ucslen = HCL_COUNTOF(incpath);
-	if (hcl_conv_bcstr_to_ucstr_with_cmgr(str, &bcslen, incpath, &ucslen, hcl_server_getcmgr(server), 1) <= -1) return -1;
-	return hcl_server_setoption(server, HCL_SERVER_SCRIPT_INCLUDE_PATH, incpath);
+	ucslen = HAK_COUNTOF(incpath);
+	if (hak_conv_bcstr_to_ucstr_with_cmgr(str, &bcslen, incpath, &ucslen, hak_server_getcmgr(server), 1) <= -1) return -1;
+	return hak_server_setoption(server, HAK_SERVER_SCRIPT_INCLUDE_PATH, incpath);
 #else
-	return hcl_server_setoption(server, HCL_SERVER_SCRIPT_INCLUDE_PATH, str);
+	return hak_server_setoption(server, HAK_SERVER_SCRIPT_INCLUDE_PATH, str);
 #endif
 }
 
@@ -531,8 +531,8 @@ static int handle_incpath (hcl_server_t* server, const char* str)
 
 static int server_main (const char* outer, int argc, char* argv[])
 {
-	hcl_bci_t c;
-	static hcl_bopt_lng_t lopt[] =
+	hak_bci_t c;
+	static hak_bopt_lng_t lopt[] =
 	{
 		{ ":log",                  'l'  },
 		{ ":worker-max-count",     '\0' },
@@ -541,30 +541,30 @@ static int server_main (const char* outer, int argc, char* argv[])
 		{ ":actor-heap-size",      'm'  },
 		{ ":actor-max-runtime",    '\0' },
 		{ ":script-include-path",  '\0' },
-	#if defined(HCL_BUILD_DEBUG)
+	#if defined(HAK_BUILD_DEBUG)
 		{ ":debug",       '\0' }, /* NOTE: there is no short option for --debug */
 	#endif
-		{ HCL_NULL,       '\0' }
+		{ HAK_NULL,       '\0' }
 	};
-	static hcl_bopt_t opt =
+	static hak_bopt_t opt =
 	{
 		"l:m:",
 		lopt
 	};
 
-	hcl_server_t* server;
+	hak_server_t* server;
 	server_xtn_t* xtn;
-	hcl_server_prim_t server_prim;
+	hak_server_prim_t server_prim;
 	int n;
 
-	const char* logopt = HCL_NULL;
-	const char* dbgopt = HCL_NULL;
-	const char* incpath = HCL_NULL;
-	hcl_oow_t worker_max_count = 0;
-	hcl_oow_t worker_stack_size = MIN_ACTOR_HEAP_SIZE;
-	hcl_ntime_t worker_idle_timeout = { 0, 0 };
-	hcl_oow_t actor_heap_size = MIN_ACTOR_HEAP_SIZE;
-	hcl_ntime_t actor_max_runtime = { 0, 0 };
+	const char* logopt = HAK_NULL;
+	const char* dbgopt = HAK_NULL;
+	const char* incpath = HAK_NULL;
+	hak_oow_t worker_max_count = 0;
+	hak_oow_t worker_stack_size = MIN_ACTOR_HEAP_SIZE;
+	hak_ntime_t worker_idle_timeout = { 0, 0 };
+	hak_oow_t actor_heap_size = MIN_ACTOR_HEAP_SIZE;
+	hak_ntime_t actor_max_runtime = { 0, 0 };
 
 	setlocale (LC_ALL, "");
 
@@ -575,7 +575,7 @@ static int server_main (const char* outer, int argc, char* argv[])
 		return -1;
 	}
 
-	while ((c = hcl_getbopt(argc, argv, &opt)) != HCL_BCI_EOF)
+	while ((c = hak_getbopt(argc, argv, &opt)) != HAK_BCI_EOF)
 	{
 		switch (c)
 		{
@@ -584,34 +584,34 @@ static int server_main (const char* outer, int argc, char* argv[])
 				break;
 
 			case 'm':
-				actor_heap_size = strtoul(opt.arg, HCL_NULL, 0);
+				actor_heap_size = strtoul(opt.arg, HAK_NULL, 0);
 				if (actor_heap_size > 0 && actor_heap_size <= MIN_ACTOR_HEAP_SIZE) actor_heap_size = MIN_ACTOR_HEAP_SIZE;
 				break;
 
 			case '\0':
-				if (hcl_comp_bcstr(opt.lngopt, "worker-max-count") == 0)
+				if (hak_comp_bcstr(opt.lngopt, "worker-max-count") == 0)
 				{
-					worker_max_count = strtoul(opt.arg, HCL_NULL, 0);
+					worker_max_count = strtoul(opt.arg, HAK_NULL, 0);
 				}
-				else if (hcl_comp_bcstr(opt.lngopt, "worker-stack-size") == 0)
+				else if (hak_comp_bcstr(opt.lngopt, "worker-stack-size") == 0)
 				{
-					worker_stack_size = strtoul(opt.arg, HCL_NULL, 0);
+					worker_stack_size = strtoul(opt.arg, HAK_NULL, 0);
 					if (worker_stack_size <= MIN_WORKER_STACK_SIZE) worker_stack_size = MIN_WORKER_STACK_SIZE;
 				}
-				else if (hcl_comp_bcstr(opt.lngopt, "worker-idle-timeout") == 0)
+				else if (hak_comp_bcstr(opt.lngopt, "worker-idle-timeout") == 0)
 				{
-					worker_idle_timeout.sec = strtoul(opt.arg, HCL_NULL, 0);
+					worker_idle_timeout.sec = strtoul(opt.arg, HAK_NULL, 0);
 				}
-				else if (hcl_comp_bcstr(opt.lngopt, "actor-max-runtime") == 0)
+				else if (hak_comp_bcstr(opt.lngopt, "actor-max-runtime") == 0)
 				{
-					actor_max_runtime.sec = strtoul(opt.arg, HCL_NULL, 0);
+					actor_max_runtime.sec = strtoul(opt.arg, HAK_NULL, 0);
 				}
-				else if (hcl_comp_bcstr(opt.lngopt, "script-include-path") == 0)
+				else if (hak_comp_bcstr(opt.lngopt, "script-include-path") == 0)
 				{
 					incpath = opt.arg;
 				}
-			#if defined(HCL_BUILD_DEBUG)
-				else if (hcl_comp_bcstr(opt.lngopt, "debug") == 0)
+			#if defined(HAK_BUILD_DEBUG)
+				else if (hak_comp_bcstr(opt.lngopt, "debug") == 0)
 				{
 					dbgopt = opt.arg;
 				}
@@ -634,17 +634,17 @@ static int server_main (const char* outer, int argc, char* argv[])
 
 	if (opt.ind >= argc) goto print_usage;
 
-	memset (&server_prim, 0, HCL_SIZEOF(server_prim));
+	memset (&server_prim, 0, HAK_SIZEOF(server_prim));
 	server_prim.log_write = server_log_write;
 
-	server = hcl_server_open(&sys_mmgr, HCL_SIZEOF(server_xtn_t), &server_prim, HCL_NULL);
+	server = hak_server_open(&sys_mmgr, HAK_SIZEOF(server_xtn_t), &server_prim, HAK_NULL);
 	if (!server)
 	{
 		fprintf (stderr, "cannot open server\n");
 		return -1;
 	}
 
-	xtn = (server_xtn_t*)hcl_server_getxtn(server);
+	xtn = (server_xtn_t*)hak_server_getxtn(server);
 	xtn->logfd = -1;
 	xtn->logfd_istty = 0;
 
@@ -655,10 +655,10 @@ static int server_main (const char* outer, int argc, char* argv[])
 	else
 	{
 		/* default logging mask when no logging option is set */
-		xtn->logmask = HCL_LOG_ALL_TYPES | HCL_LOG_ERROR | HCL_LOG_FATAL;
+		xtn->logmask = HAK_LOG_ALL_TYPES | HAK_LOG_ERROR | HAK_LOG_FATAL;
 	}
 
-#if defined(HCL_BUILD_DEBUG)
+#if defined(HAK_BUILD_DEBUG)
 	if (dbgopt)
 	{
 		if (handle_dbgopt(server, dbgopt) <= -1) goto oops;
@@ -670,17 +670,17 @@ static int server_main (const char* outer, int argc, char* argv[])
 		if (handle_incpath(server, incpath) <= -1) goto oops;
 	}
 
-	hcl_server_setoption (server, HCL_SERVER_WORKER_MAX_COUNT, &worker_max_count);
-	hcl_server_setoption (server, HCL_SERVER_WORKER_STACK_SIZE, &worker_stack_size);
-	hcl_server_setoption (server, HCL_SERVER_WORKER_IDLE_TIMEOUT, &worker_idle_timeout);
-	hcl_server_setoption (server, HCL_SERVER_ACTOR_HEAP_SIZE, &actor_heap_size);
-	hcl_server_setoption (server, HCL_SERVER_ACTOR_MAX_RUNTIME, &actor_max_runtime);
+	hak_server_setoption (server, HAK_SERVER_WORKER_MAX_COUNT, &worker_max_count);
+	hak_server_setoption (server, HAK_SERVER_WORKER_STACK_SIZE, &worker_stack_size);
+	hak_server_setoption (server, HAK_SERVER_WORKER_IDLE_TIMEOUT, &worker_idle_timeout);
+	hak_server_setoption (server, HAK_SERVER_ACTOR_HEAP_SIZE, &actor_heap_size);
+	hak_server_setoption (server, HAK_SERVER_ACTOR_MAX_RUNTIME, &actor_max_runtime);
 
 	g_server = server;
 	set_signal (SIGINT, handle_sigint);
 	set_signal_to_ignore (SIGPIPE);
 
-	n = hcl_server_start(server, argv[opt.ind]);
+	n = hak_server_start(server, argv[opt.ind]);
 
 	set_signal_to_default (SIGINT);
 	set_signal_to_default (SIGPIPE);
@@ -688,7 +688,7 @@ static int server_main (const char* outer, int argc, char* argv[])
 
 	if (n <= -1)
 	{
-		hcl_server_logbfmt (server, HCL_LOG_APP | HCL_LOG_FATAL, "server error[%d] - %js\n", hcl_server_geterrnum(server), hcl_server_geterrmsg(server));
+		hak_server_logbfmt (server, HAK_LOG_APP | HAK_LOG_FATAL, "server error[%d] - %js\n", hak_server_geterrnum(server), hak_server_geterrmsg(server));
 	}
 
 	if (xtn->logfd >= 0)
@@ -698,58 +698,58 @@ static int server_main (const char* outer, int argc, char* argv[])
 		xtn->logfd_istty = 0;
 	}
 
-	hcl_server_close (server);
+	hak_server_close (server);
 	return n;
 
 oops:
-	if (server) hcl_server_close (server);
+	if (server) hak_server_close (server);
 	return -1;
 }
 
 /* -------------------------------------------------------------- */
-static int client_on_packet (hcl_client_t* client, hcl_xpkt_type_t type, const void* data, hcl_oow_t len)
+static int client_on_packet (hak_client_t* client, hak_xpkt_type_t type, const void* data, hak_oow_t len)
 {
-	if (type == HCL_XPKT_STDOUT)
+	if (type == HAK_XPKT_STDOUT)
 	{
 		if (len > 0) fprintf (stdout, "%.*s", (int)len, data);
 	}
-	else if (type == HCL_XPKT_STDERR)
+	else if (type == HAK_XPKT_STDERR)
 	{
 		if (len > 0) fprintf (stderr, "%.*s", (int)len, data);
 	}
-	else if (type == HCL_XPKT_ERROR)
+	else if (type == HAK_XPKT_ERROR)
 	{
 		/* error notification */
 		if (len > 0) fprintf (stderr, "ERROR: %.*s\n", (int)len, data);
 	}
-	else if (type == HCL_XPKT_RETVAL)
+	else if (type == HAK_XPKT_RETVAL)
 	{
 		if (len > 0) fprintf (stderr, "RETURN VALUE: %.*s\n", (int)len, data);
-		hcl_client_stop (client);
+		hak_client_stop (client);
 	}
 	return 1;
 }
 
 static int client_main (const char* outer, int argc, char* argv[])
 {
-	hcl_bci_t c;
-	static hcl_bopt_lng_t lopt[] =
+	hak_bci_t c;
+	static hak_bopt_lng_t lopt[] =
 	{
 		{ ":log",                  'l'  },
 		{ "shutwr",                '\0' },
-		{ HCL_NULL,                '\0' }
+		{ HAK_NULL,                '\0' }
 	};
-	static hcl_bopt_t opt =
+	static hak_bopt_t opt =
 	{
 		"l:",
 		lopt
 	};
 
-	hcl_client_t* client;
+	hak_client_t* client;
 	client_xtn_t* xtn;
-	hcl_client_prim_t client_prim;
+	hak_client_prim_t client_prim;
 	int n;
-	const char* logopt = HCL_NULL;
+	const char* logopt = HAK_NULL;
 	int shut_wr_after_req = 0;
 
 	setlocale (LC_ALL, "");
@@ -764,7 +764,7 @@ static int client_main (const char* outer, int argc, char* argv[])
 		return -1;
 	}
 
-	while ((c = hcl_getbopt(argc, argv, &opt)) != HCL_BCI_EOF)
+	while ((c = hak_getbopt(argc, argv, &opt)) != HAK_BCI_EOF)
 	{
 		switch (c)
 		{
@@ -773,7 +773,7 @@ static int client_main (const char* outer, int argc, char* argv[])
 				break;
 
 			case '\0':
-				if (hcl_comp_bcstr(opt.lngopt, "shutwr") == 0)
+				if (hak_comp_bcstr(opt.lngopt, "shutwr") == 0)
 				{
 					shut_wr_after_req = 1;
 				}
@@ -799,18 +799,18 @@ static int client_main (const char* outer, int argc, char* argv[])
 	/* needs 2 fixed arguments */
 	if (opt.ind + 1 >= argc) goto print_usage;
 
-	memset (&client_prim, 0, HCL_SIZEOF(client_prim));
+	memset (&client_prim, 0, HAK_SIZEOF(client_prim));
 	client_prim.log_write = client_log_write;
 	client_prim.on_packet = client_on_packet;
 
-	client = hcl_client_open(&sys_mmgr, HCL_SIZEOF(client_xtn_t), &client_prim, HCL_NULL);
+	client = hak_client_open(&sys_mmgr, HAK_SIZEOF(client_xtn_t), &client_prim, HAK_NULL);
 	if (!client)
 	{
 		fprintf (stderr, "cannot open client\n");
 		return -1;
 	}
 
-	xtn = (client_xtn_t*)hcl_client_getxtn(client);
+	xtn = (client_xtn_t*)hak_client_getxtn(client);
 	xtn->logfd = -1;
 	xtn->logfd_istty = 0;
 
@@ -821,17 +821,17 @@ static int client_main (const char* outer, int argc, char* argv[])
 	else
 	{
 		/* default logging mask when no logging option is set */
-		xtn->logmask = HCL_LOG_ALL_TYPES | HCL_LOG_ERROR | HCL_LOG_FATAL;
+		xtn->logmask = HAK_LOG_ALL_TYPES | HAK_LOG_ERROR | HAK_LOG_FATAL;
 	}
 
 	g_client = client;
 	set_signal (SIGINT, handle_sigint);
 	set_signal_to_ignore (SIGPIPE);
 
-	n = hcl_client_start(client, argv[opt.ind], /*argv[opt.ind + 1],*/ shut_wr_after_req);
+	n = hak_client_start(client, argv[opt.ind], /*argv[opt.ind + 1],*/ shut_wr_after_req);
 	if (n <= -1)
 	{
-		fprintf (stderr, "ERROR: %s\n", hcl_client_geterrbmsg(client));
+		fprintf (stderr, "ERROR: %s\n", hak_client_geterrbmsg(client));
 		goto oops;
 	}
 
@@ -846,50 +846,50 @@ static int client_main (const char* outer, int argc, char* argv[])
 		xtn->logfd_istty = 0;
 	}
 
-	hcl_client_close (client);
+	hak_client_close (client);
 	return n;
 
 oops:
-	if (client) hcl_client_close (client);
+	if (client) hak_client_close (client);
 	return -1;
 }
 
 /* -------------------------------------------------------------- */
 
-static int json_inst_cb (hcl_json_t* json, hcl_json_inst_t it, const hcl_oocs_t* str)
+static int json_inst_cb (hak_json_t* json, hak_json_inst_t it, const hak_oocs_t* str)
 {
-	json_xtn_t* json_xtn = (json_xtn_t*)hcl_json_getxtn(json);
+	json_xtn_t* json_xtn = (json_xtn_t*)hak_json_getxtn(json);
 
 	switch (it)
 	{
-		case HCL_JSON_INST_START_ARRAY:
+		case HAK_JSON_INST_START_ARRAY:
 			json_xtn->json_depth++;
-			hcl_json_logbfmt (json, HCL_LOG_INFO | HCL_LOG_APP,  "[\n");
+			hak_json_logbfmt (json, HAK_LOG_INFO | HAK_LOG_APP,  "[\n");
 			break;
-		case HCL_JSON_INST_END_ARRAY:
+		case HAK_JSON_INST_END_ARRAY:
 			json_xtn->json_depth--;
-			hcl_json_logbfmt (json, HCL_LOG_INFO | HCL_LOG_APP,  "]\n");
+			hak_json_logbfmt (json, HAK_LOG_INFO | HAK_LOG_APP,  "]\n");
 			break;
-		case HCL_JSON_INST_START_DIC:
+		case HAK_JSON_INST_START_DIC:
 			json_xtn->json_depth++;
-			hcl_json_logbfmt (json, HCL_LOG_INFO | HCL_LOG_APP,  "{\n");
+			hak_json_logbfmt (json, HAK_LOG_INFO | HAK_LOG_APP,  "{\n");
 			break;
-		case HCL_JSON_INST_END_DIC:
+		case HAK_JSON_INST_END_DIC:
 			json_xtn->json_depth--;
-			hcl_json_logbfmt (json, HCL_LOG_INFO | HCL_LOG_APP,  "}\n");
+			hak_json_logbfmt (json, HAK_LOG_INFO | HAK_LOG_APP,  "}\n");
 			break;
 
-		case HCL_JSON_INST_KEY:
-			hcl_json_logbfmt (json, HCL_LOG_INFO | HCL_LOG_APP,  "%.*js: ", str->len, str->ptr);
+		case HAK_JSON_INST_KEY:
+			hak_json_logbfmt (json, HAK_LOG_INFO | HAK_LOG_APP,  "%.*js: ", str->len, str->ptr);
 			break;
 
-		case HCL_JSON_INST_CHARACTER:
-		case HCL_JSON_INST_STRING:
-		case HCL_JSON_INST_NUMBER:
-		case HCL_JSON_INST_TRUE:
-		case HCL_JSON_INST_FALSE:
-		case HCL_JSON_INST_NIL:
-			hcl_json_logbfmt (json, HCL_LOG_INFO | HCL_LOG_APP,  "%.*js\n", str->len, str->ptr);
+		case HAK_JSON_INST_CHARACTER:
+		case HAK_JSON_INST_STRING:
+		case HAK_JSON_INST_NUMBER:
+		case HAK_JSON_INST_TRUE:
+		case HAK_JSON_INST_FALSE:
+		case HAK_JSON_INST_NIL:
+			hak_json_logbfmt (json, HAK_LOG_INFO | HAK_LOG_APP,  "%.*js\n", str->len, str->ptr);
 			break;
 	}
 
@@ -898,36 +898,36 @@ static int json_inst_cb (hcl_json_t* json, hcl_json_inst_t it, const hcl_oocs_t*
 
 int json_main (const char* outer, int argc, char* argv[])
 {
-	hcl_json_t* json;
-	hcl_json_prim_t json_prim;
+	hak_json_t* json;
+	hak_json_prim_t json_prim;
 	json_xtn_t* json_xtn;
-	hcl_oow_t xlen;
+	hak_oow_t xlen;
 	const char* p;
 
 /* TODO: enhance this to accept parameters from  command line */
 
-	memset (&json_prim, 0, HCL_SIZEOF(json_prim));
+	memset (&json_prim, 0, HAK_SIZEOF(json_prim));
 	json_prim.log_write = json_log_write;
 	json_prim.instcb = json_inst_cb;
 
-	json = hcl_json_open (&sys_mmgr, HCL_SIZEOF(json_xtn_t), &json_prim, NULL);
+	json = hak_json_open (&sys_mmgr, HAK_SIZEOF(json_xtn_t), &json_prim, NULL);
 
-	json_xtn = (json_xtn_t*)hcl_json_getxtn(json);
-	json_xtn->logmask = HCL_LOG_ALL_LEVELS | HCL_LOG_ALL_TYPES;
+	json_xtn = (json_xtn_t*)hak_json_getxtn(json);
+	json_xtn->logmask = HAK_LOG_ALL_LEVELS | HAK_LOG_ALL_TYPES;
 
 	p = "[ \"ab\\xab\\uC88B\\uC544\\uC6A9c\", \"kaden\", \"iron\", true, { \"null\": \"a\\1bc\", \"123\": \"AA20AA\", \"10\": -0.123, \"way\": '\\uC88A' } ]";
 	/*p = "{ \"result\": \"SUCCESS\", \"message\": \"1 clients\", \"sessions\": [] }";*/
 
-	if (hcl_json_feed(json, p, strlen(p), &xlen) <= -1)
+	if (hak_json_feed(json, p, strlen(p), &xlen) <= -1)
 	{
-		hcl_json_logbfmt (json, HCL_LOG_FATAL | HCL_LOG_APP, "ERROR: unable to process - %js\n", hcl_json_geterrmsg(json));
+		hak_json_logbfmt (json, HAK_LOG_FATAL | HAK_LOG_APP, "ERROR: unable to process - %js\n", hak_json_geterrmsg(json));
 	}
 	else if (json_xtn->json_depth != 0)
 	{
-		hcl_json_logbfmt (json, HCL_LOG_FATAL | HCL_LOG_APP, "ERROR: incomplete input\n");
+		hak_json_logbfmt (json, HAK_LOG_FATAL | HAK_LOG_APP, "ERROR: incomplete input\n");
 	}
 
-	hcl_json_close (json);
+	hak_json_close (json);
 	return 0;
 }
 
@@ -943,7 +943,7 @@ int main (int argc, char* argv[])
 	int n;
 	const char* argv0;
 
-	argv0 = hcl_get_base_name_from_bcstr_path(argv[0]);
+	argv0 = hak_get_base_name_from_bcstr_path(argv[0]);
 
 	if (argc < 2)
 	{

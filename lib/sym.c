@@ -22,15 +22,15 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "hcl-prv.h"
+#include "hak-prv.h"
 
-static hcl_oop_oop_t expand_bucket (hcl_t* hcl, hcl_oop_oop_t oldbuc)
+static hak_oop_oop_t expand_bucket (hak_t* hak, hak_oop_oop_t oldbuc)
 {
-	hcl_oop_oop_t newbuc;
-	hcl_oow_t oldsz, newsz, index;
-	hcl_oop_char_t symbol;
+	hak_oop_oop_t newbuc;
+	hak_oow_t oldsz, newsz, index;
+	hak_oop_char_t symbol;
 
-	oldsz = HCL_OBJ_GET_SIZE(oldbuc);
+	oldsz = HAK_OBJ_GET_SIZE(oldbuc);
 
 /* TODO: better growth policy? */
 	if (oldsz < 5000) newsz = oldsz + oldsz;
@@ -42,100 +42,100 @@ static hcl_oop_oop_t expand_bucket (hcl_t* hcl, hcl_oop_oop_t oldbuc)
 	else if (oldsz < 1600000) newsz = oldsz + (oldsz / 64);
 	else
 	{
-		hcl_oow_t inc, inc_max;
+		hak_oow_t inc, inc_max;
 
 		inc = oldsz / 128;
-		inc_max = HCL_OBJ_SIZE_MAX - oldsz;
+		inc_max = HAK_OBJ_SIZE_MAX - oldsz;
 		if (inc > inc_max)
 		{
 			if (inc_max > 0) inc = inc_max;
 			else
 			{
-				hcl_seterrnum (hcl, HCL_EOOMEM);
-				return HCL_NULL;
+				hak_seterrnum (hak, HAK_EOOMEM);
+				return HAK_NULL;
 			}
 		}
 		newsz = oldsz + inc;
 	}
 
-	hcl_pushvolat (hcl, (hcl_oop_t*)&oldbuc);
-	newbuc = (hcl_oop_oop_t)hcl_makearray(hcl, newsz);
-	hcl_popvolat (hcl);
-	if (!newbuc) return HCL_NULL;
+	hak_pushvolat (hak, (hak_oop_t*)&oldbuc);
+	newbuc = (hak_oop_oop_t)hak_makearray(hak, newsz);
+	hak_popvolat (hak);
+	if (!newbuc) return HAK_NULL;
 
 	while (oldsz > 0)
 	{
-		symbol = (hcl_oop_char_t)oldbuc->slot[--oldsz];
-		if ((hcl_oop_t)symbol != hcl->_nil)
+		symbol = (hak_oop_char_t)oldbuc->slot[--oldsz];
+		if ((hak_oop_t)symbol != hak->_nil)
 		{
-			HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl, symbol));
-			/*HCL_ASSERT (hcl, sym->size > 0);*/
+			HAK_ASSERT (hak, HAK_IS_SYMBOL(hak, symbol));
+			/*HAK_ASSERT (hak, sym->size > 0);*/
 
-			index = hcl_hash_oochars(symbol->slot, HCL_OBJ_GET_SIZE(symbol)) % newsz;
-			while (newbuc->slot[index] != hcl->_nil) index = (index + 1) % newsz;
-			newbuc->slot[index] = (hcl_oop_t)symbol;
+			index = hak_hash_oochars(symbol->slot, HAK_OBJ_GET_SIZE(symbol)) % newsz;
+			while (newbuc->slot[index] != hak->_nil) index = (index + 1) % newsz;
+			newbuc->slot[index] = (hak_oop_t)symbol;
 		}
 	}
 
 	return newbuc;
 }
 
-static hcl_oop_t find_or_make_symbol (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_t len, int create)
+static hak_oop_t find_or_make_symbol (hak_t* hak, const hak_ooch_t* ptr, hak_oow_t len, int create)
 {
-	hcl_ooi_t tally;
-	hcl_oow_t index;
-	hcl_oop_char_t sym;
+	hak_ooi_t tally;
+	hak_oow_t index;
+	hak_oop_char_t sym;
 
-	HCL_ASSERT (hcl, len > 0);
+	HAK_ASSERT (hak, len > 0);
 	if (len <= 0)
 	{
 		/* i don't allow an empty symbol name */
-		hcl_seterrnum (hcl, HCL_EINVAL);
-		return HCL_NULL;
+		hak_seterrnum (hak, HAK_EINVAL);
+		return HAK_NULL;
 	}
 
-	HCL_ASSERT (hcl, HCL_IS_ARRAY(hcl, hcl->symtab->bucket));
-	index = hcl_hash_oochars(ptr, len) % HCL_OBJ_GET_SIZE(hcl->symtab->bucket);
+	HAK_ASSERT (hak, HAK_IS_ARRAY(hak, hak->symtab->bucket));
+	index = hak_hash_oochars(ptr, len) % HAK_OBJ_GET_SIZE(hak->symtab->bucket);
 
 	/* find a matching symbol in the open-addressed symbol table */
-	while (hcl->symtab->bucket->slot[index] != hcl->_nil)
+	while (hak->symtab->bucket->slot[index] != hak->_nil)
 	{
-		sym = (hcl_oop_char_t)hcl->symtab->bucket->slot[index];
-		HCL_ASSERT (hcl, HCL_IS_SYMBOL(hcl, sym));
+		sym = (hak_oop_char_t)hak->symtab->bucket->slot[index];
+		HAK_ASSERT (hak, HAK_IS_SYMBOL(hak, sym));
 
-		if (len == HCL_OBJ_GET_SIZE(sym) &&
-		    hcl_equal_oochars(ptr, sym->slot, len))
+		if (len == HAK_OBJ_GET_SIZE(sym) &&
+		    hak_equal_oochars(ptr, sym->slot, len))
 		{
-			return (hcl_oop_t)sym;
+			return (hak_oop_t)sym;
 		}
 
-		index = (index + 1) % HCL_OBJ_GET_SIZE(hcl->symtab->bucket);
+		index = (index + 1) % HAK_OBJ_GET_SIZE(hak->symtab->bucket);
 	}
 
 	if (!create)
 	{
-		hcl_seterrnum (hcl, HCL_ENOENT);
-		return HCL_NULL;
+		hak_seterrnum (hak, HAK_ENOENT);
+		return HAK_NULL;
 	}
 
 	/* make a new symbol and insert it */
-	HCL_ASSERT (hcl, HCL_OOP_IS_SMOOI(hcl->symtab->tally));
-	tally = HCL_OOP_TO_SMOOI(hcl->symtab->tally);
-	if (tally >= HCL_SMOOI_MAX)
+	HAK_ASSERT (hak, HAK_OOP_IS_SMOOI(hak->symtab->tally));
+	tally = HAK_OOP_TO_SMOOI(hak->symtab->tally);
+	if (tally >= HAK_SMOOI_MAX)
 	{
 		/* this built-in table is not allowed to hold more than
-		 * HCL_SMOOI_MAX items for efficiency sake */
-		hcl_seterrnum (hcl, HCL_EDFULL);
-		return HCL_NULL;
+		 * HAK_SMOOI_MAX items for efficiency sake */
+		hak_seterrnum (hak, HAK_EDFULL);
+		return HAK_NULL;
 	}
 
-	/* no conversion to hcl_oow_t is necessary for tally + 1.
-	 * the maximum value of tally is checked to be HCL_SMOOI_MAX - 1.
-	 * tally + 1 can produce at most HCL_SMOOI_MAX. above all,
-	 * HCL_SMOOI_MAX is way smaller than HCL_TYPE_MAX(hcl_ooi_t). */
-	if (tally + 1 >= HCL_OBJ_GET_SIZE(hcl->symtab->bucket))
+	/* no conversion to hak_oow_t is necessary for tally + 1.
+	 * the maximum value of tally is checked to be HAK_SMOOI_MAX - 1.
+	 * tally + 1 can produce at most HAK_SMOOI_MAX. above all,
+	 * HAK_SMOOI_MAX is way smaller than HAK_TYPE_MAX(hak_ooi_t). */
+	if (tally + 1 >= HAK_OBJ_GET_SIZE(hak->symtab->bucket))
 	{
-		hcl_oop_oop_t bucket;
+		hak_oop_oop_t bucket;
 
 		/* TODO: make the growth policy configurable instead of growing
 		         it just before it gets full. The polcy can be grow it
@@ -145,76 +145,76 @@ static hcl_oop_t find_or_make_symbol (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow
 		 * make sure that it has at least one free slot left
 		 * after having added a new symbol. this is to help
 		 * traversal end at a _nil slot if no entry is found. */
-		bucket = expand_bucket(hcl, hcl->symtab->bucket);
-		if (!bucket) return HCL_NULL;
+		bucket = expand_bucket(hak, hak->symtab->bucket);
+		if (!bucket) return HAK_NULL;
 
-		hcl->symtab->bucket = bucket;
+		hak->symtab->bucket = bucket;
 
 		/* recalculate the index for the expanded bucket */
-		index = hcl_hash_oochars(ptr, len) % HCL_OBJ_GET_SIZE(hcl->symtab->bucket);
+		index = hak_hash_oochars(ptr, len) % HAK_OBJ_GET_SIZE(hak->symtab->bucket);
 
-		while (hcl->symtab->bucket->slot[index] != hcl->_nil)
-			index = (index + 1) % HCL_OBJ_GET_SIZE(hcl->symtab->bucket);
+		while (hak->symtab->bucket->slot[index] != hak->_nil)
+			index = (index + 1) % HAK_OBJ_GET_SIZE(hak->symtab->bucket);
 	}
 
 	/* create a new symbol since it isn't found in the symbol table */
-	/*sym = (hcl_oop_char_t)hcl_alloccharobj(hcl, HCL_BRAND_SYMBOL, ptr, len);*/
-	sym = (hcl_oop_char_t)hcl_instantiate(hcl, hcl->c_symbol, ptr, len);
-	if (HCL_LIKELY(sym))
+	/*sym = (hak_oop_char_t)hak_alloccharobj(hak, HAK_BRAND_SYMBOL, ptr, len);*/
+	sym = (hak_oop_char_t)hak_instantiate(hak, hak->c_symbol, ptr, len);
+	if (HAK_LIKELY(sym))
 	{
-		HCL_ASSERT (hcl, tally < HCL_SMOOI_MAX);
-		hcl->symtab->tally = HCL_SMOOI_TO_OOP(tally + 1);
-		hcl->symtab->bucket->slot[index] = (hcl_oop_t)sym;
+		HAK_ASSERT (hak, tally < HAK_SMOOI_MAX);
+		hak->symtab->tally = HAK_SMOOI_TO_OOP(tally + 1);
+		hak->symtab->bucket->slot[index] = (hak_oop_t)sym;
 	}
 	else
 	{
-		const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-		hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl),
-			"unable to instantiate %O with %.*js - %js", hcl->c_symbol->name, len, ptr, orgmsg);
+		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
+		hak_seterrbfmt (hak, HAK_ERRNUM(hak),
+			"unable to instantiate %O with %.*js - %js", hak->c_symbol->name, len, ptr, orgmsg);
 	}
-	return (hcl_oop_t)sym;
+	return (hak_oop_t)sym;
 }
 
-hcl_oop_t hcl_makesymbol (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_t len)
+hak_oop_t hak_makesymbol (hak_t* hak, const hak_ooch_t* ptr, hak_oow_t len)
 {
-	return find_or_make_symbol(hcl, ptr, len, 1);
+	return find_or_make_symbol(hak, ptr, len, 1);
 }
 
-hcl_oop_t hcl_findsymbol (hcl_t* hcl, const hcl_ooch_t* ptr, hcl_oow_t len)
+hak_oop_t hak_findsymbol (hak_t* hak, const hak_ooch_t* ptr, hak_oow_t len)
 {
-	return find_or_make_symbol(hcl, ptr, len, 0);
+	return find_or_make_symbol(hak, ptr, len, 0);
 }
 
-hcl_oop_t hcl_makesymbolwithbcstr (hcl_t* hcl, const hcl_bch_t* ptr)
+hak_oop_t hak_makesymbolwithbcstr (hak_t* hak, const hak_bch_t* ptr)
 {
-#if defined(HCL_OOCH_IS_UCH)
-	hcl_uch_t* ucsptr;
-	hcl_oow_t ucslen;
-	hcl_oop_t v;
+#if defined(HAK_OOCH_IS_UCH)
+	hak_uch_t* ucsptr;
+	hak_oow_t ucslen;
+	hak_oop_t v;
 /* TODO: no duplication? */
-	ucsptr = hcl_dupbtoucstr(hcl, ptr, &ucslen);
-	if (HCL_UNLIKELY(!ucsptr)) return HCL_NULL;
-	v = hcl_makesymbol(hcl, ucsptr, ucslen);
-	hcl_freemem (hcl, ucsptr);
+	ucsptr = hak_dupbtoucstr(hak, ptr, &ucslen);
+	if (HAK_UNLIKELY(!ucsptr)) return HAK_NULL;
+	v = hak_makesymbol(hak, ucsptr, ucslen);
+	hak_freemem (hak, ucsptr);
 	return v;
 #else
-	return hcl_makesymbol(hcl, ptr, hcl_count_bcstr(ptr));
+	return hak_makesymbol(hak, ptr, hak_count_bcstr(ptr));
 #endif
 }
 
-hcl_oop_t hcl_makesymbolwithucstr (hcl_t* hcl, const hcl_uch_t* ptr)
+hak_oop_t hak_makesymbolwithucstr (hak_t* hak, const hak_uch_t* ptr)
 {
-#if defined(HCL_OOCH_IS_UCH)
-	return hcl_makesymbol(hcl, ptr, hcl_count_ucstr(ptr));
+#if defined(HAK_OOCH_IS_UCH)
+	return hak_makesymbol(hak, ptr, hak_count_ucstr(ptr));
 #else
-	hcl_uch_t* bcsptr;
-	hcl_oow_t bcslen;
-	hcl_oop_t v;
+	hak_uch_t* bcsptr;
+	hak_oow_t bcslen;
+	hak_oop_t v;
 /* TODO: no duplication? */
-	bcsptr = hcl_duputobcstr(hcl, ptr, &bcslen);
-	if (HCL_UNLIKELY(!bcsptr)) return HCL_NULL;
-	v = hcl_makesymbol(hcl, bcsptr, bcslen);
-	hcl_freemem (hcl, bcsptr);
+	bcsptr = hak_duputobcstr(hak, ptr, &bcslen);
+	if (HAK_UNLIKELY(!bcsptr)) return HAK_NULL;
+	v = hak_makesymbol(hak, bcsptr, bcslen);
+	hak_freemem (hak, bcsptr);
 	return v;
 #endif
 }

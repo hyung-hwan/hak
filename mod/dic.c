@@ -27,111 +27,111 @@
 
 #include "_dic.h"
 
-static hcl_pfrc_t pf_dic_get (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+static hak_pfrc_t pf_dic_get (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	hcl_oop_t dic;
-	hcl_oop_t key;
-	hcl_oop_cons_t pair;
+	hak_oop_t dic;
+	hak_oop_t key;
+	hak_oop_cons_t pair;
 
-	dic = HCL_STACK_GETARG(hcl, nargs, 0);
-	key = HCL_STACK_GETARG(hcl, nargs, 1);
+	dic = HAK_STACK_GETARG(hak, nargs, 0);
+	key = HAK_STACK_GETARG(hak, nargs, 1);
 
-	if (!HCL_IS_DIC(hcl,dic))
+	if (!HAK_IS_DIC(hak,dic))
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not an dictionary - %O", dic);
-		return HCL_PF_FAILURE;
+		hak_seterrbfmt (hak, HAK_EINVAL, "parameter not an dictionary - %O", dic);
+		return HAK_PF_FAILURE;
 	}
 
-	pair = hcl_getatdic(hcl, (hcl_oop_dic_t)dic, key);
+	pair = hak_getatdic(hak, (hak_oop_dic_t)dic, key);
 	if (!pair)
 	{
-		HCL_STACK_SETRETTOERROR (hcl, nargs, HCL_ENOENT);
-		return HCL_PF_SUCCESS;
+		HAK_STACK_SETRETTOERROR (hak, nargs, HAK_ENOENT);
+		return HAK_PF_SUCCESS;
 	}
 
-	HCL_STACK_SETRET (hcl, nargs, HCL_CONS_CDR(pair));
-	return HCL_PF_SUCCESS;
+	HAK_STACK_SETRET (hak, nargs, HAK_CONS_CDR(pair));
+	return HAK_PF_SUCCESS;
 }
 
 
-static hcl_pfrc_t pf_dic_put (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+static hak_pfrc_t pf_dic_put (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	hcl_oop_t dic;
-	hcl_oop_t key, val;
-	hcl_oop_cons_t pair;
+	hak_oop_t dic;
+	hak_oop_t key, val;
+	hak_oop_cons_t pair;
 
-	dic = HCL_STACK_GETARG(hcl, nargs, 0);
-	key = HCL_STACK_GETARG(hcl, nargs, 1);
-	val = HCL_STACK_GETARG(hcl, nargs, 2);
+	dic = HAK_STACK_GETARG(hak, nargs, 0);
+	key = HAK_STACK_GETARG(hak, nargs, 1);
+	val = HAK_STACK_GETARG(hak, nargs, 2);
 
-	if (!HCL_IS_DIC(hcl,dic))
+	if (!HAK_IS_DIC(hak,dic))
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not an dictionary - %O", dic);
-		return HCL_PF_FAILURE;
+		hak_seterrbfmt (hak, HAK_EINVAL, "parameter not an dictionary - %O", dic);
+		return HAK_PF_FAILURE;
 	}
 
-	pair = hcl_putatdic(hcl, (hcl_oop_dic_t)dic, key, val);
+	pair = hak_putatdic(hak, (hak_oop_dic_t)dic, key, val);
 	if (!pair)
 	{
-		HCL_STACK_SETRETTOERRNUM (hcl, nargs);
-		return HCL_PF_SUCCESS;
+		HAK_STACK_SETRETTOERRNUM (hak, nargs);
+		return HAK_PF_SUCCESS;
 	}
 
-	HCL_STACK_SETRET (hcl, nargs, HCL_CONS_CDR(pair));
-	return HCL_PF_SUCCESS;
+	HAK_STACK_SETRET (hak, nargs, HAK_CONS_CDR(pair));
+	return HAK_PF_SUCCESS;
 }
 
 
-static int walker (hcl_t* hcl, hcl_oop_dic_t dic, hcl_oop_cons_t pair, void* ctx)
+static int walker (hak_t* hak, hak_oop_dic_t dic, hak_oop_cons_t pair, void* ctx)
 {
-	HCL_DEBUG2 (hcl, "walker ===> %O  =====> %O\n", HCL_CONS_CAR(pair), HCL_CONS_CDR(pair));
+	HAK_DEBUG2 (hak, "walker ===> %O  =====> %O\n", HAK_CONS_CAR(pair), HAK_CONS_CDR(pair));
 	return 0;
 }
 
-static hcl_pfrc_t pf_dic_walk (hcl_t* hcl, hcl_mod_t* mod, hcl_ooi_t nargs)
+static hak_pfrc_t pf_dic_walk (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 /* TODO: write a proper function 
  * (dic.apply #{ ... } callable-or-lambda)
  */
-	hcl_oop_t arg;
+	hak_oop_t arg;
 
-	arg = HCL_STACK_GETARG(hcl, nargs, 0);
-	if (!HCL_IS_DIC(hcl,arg))
+	arg = HAK_STACK_GETARG(hak, nargs, 0);
+	if (!HAK_IS_DIC(hak,arg))
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not a dictionary - %O", arg);
-		return HCL_PF_FAILURE;
+		hak_seterrbfmt (hak, HAK_EINVAL, "parameter not a dictionary - %O", arg);
+		return HAK_PF_FAILURE;
 	}
 
-	hcl_walkdic (hcl, (hcl_oop_dic_t)arg, walker, HCL_NULL);
-	HCL_STACK_SETRET (hcl, nargs, hcl->_true);
-	return HCL_PF_SUCCESS;
+	hak_walkdic (hak, (hak_oop_dic_t)arg, walker, HAK_NULL);
+	HAK_STACK_SETRET (hak, nargs, hak->_true);
+	return HAK_PF_SUCCESS;
 }
 
 
-static hcl_pfinfo_t pfinfos[] =
+static hak_pfinfo_t pfinfos[] =
 {
-	{ "get",   { HCL_PFBASE_FUNC, pf_dic_get,     2,  2 } },
-/*	{ "make",  { HCL_PFBASE_FUNC, pf_dic_make,    1,  1 } }, */
-	{ "put",   { HCL_PFBASE_FUNC, pf_dic_put,     3,  3 } },
-	{ "walk",  { HCL_PFBASE_FUNC, pf_dic_walk,    2,  2 } },
+	{ "get",   { HAK_PFBASE_FUNC, pf_dic_get,     2,  2 } },
+/*	{ "make",  { HAK_PFBASE_FUNC, pf_dic_make,    1,  1 } }, */
+	{ "put",   { HAK_PFBASE_FUNC, pf_dic_put,     3,  3 } },
+	{ "walk",  { HAK_PFBASE_FUNC, pf_dic_walk,    2,  2 } },
 };
 
 /* ------------------------------------------------------------------------ */
 
-static hcl_pfbase_t* query (hcl_t* hcl, hcl_mod_t* mod, const hcl_ooch_t* name, hcl_oow_t namelen)
+static hak_pfbase_t* query (hak_t* hak, hak_mod_t* mod, const hak_ooch_t* name, hak_oow_t namelen)
 {
-	return hcl_findpfbase(hcl, pfinfos, HCL_COUNTOF(pfinfos), name, namelen);
+	return hak_findpfbase(hak, pfinfos, HAK_COUNTOF(pfinfos), name, namelen);
 }
 
 
-static void unload (hcl_t* hcl, hcl_mod_t* mod)
+static void unload (hak_t* hak, hak_mod_t* mod)
 {
 }
 
-int hcl_mod_dic (hcl_t* hcl, hcl_mod_t* mod)
+int hak_mod_dic (hak_t* hak, hak_mod_t* mod)
 {
 	mod->query = query;
 	mod->unload = unload; 
-	mod->ctx = HCL_NULL;
+	mod->ctx = HAK_NULL;
 	return 0;
 }

@@ -22,91 +22,91 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <hcl-chr.h>
+#include <hak-chr.h>
 
 /* ---------------------------------------------------------- */
 #include "uch-prop.h"
 #include "uch-case.h"
 /* ---------------------------------------------------------- */
 
-#define UCH_PROP_MAP_INDEX(c) ((c) / HCL_COUNTOF(uch_prop_page_0000))
-#define UCH_PROP_PAGE_INDEX(c) ((c) % HCL_COUNTOF(uch_prop_page_0000))
+#define UCH_PROP_MAP_INDEX(c) ((c) / HAK_COUNTOF(uch_prop_page_0000))
+#define UCH_PROP_PAGE_INDEX(c) ((c) % HAK_COUNTOF(uch_prop_page_0000))
 
-#define UCH_CASE_MAP_INDEX(c) ((c) / HCL_COUNTOF(uch_case_page_0000))
-#define UCH_CASE_PAGE_INDEX(c) ((c) % HCL_COUNTOF(uch_case_page_0000))
+#define UCH_CASE_MAP_INDEX(c) ((c) / HAK_COUNTOF(uch_case_page_0000))
+#define UCH_CASE_PAGE_INDEX(c) ((c) % HAK_COUNTOF(uch_case_page_0000))
 
 #define UCH_IS_TYPE(c,type) \
 	((c) >= 0 && (c) <= UCH_PROP_MAX && \
 	 (uch_prop_map[UCH_PROP_MAP_INDEX(c)][UCH_PROP_PAGE_INDEX(c)] & (type)) != 0)
 
-int hcl_is_uch_type (hcl_uch_t c, hcl_uch_prop_t type)
+int hak_is_uch_type (hak_uch_t c, hak_uch_prop_t type)
 {
-	return UCH_IS_TYPE((hcl_uchu_t)c, type);
+	return UCH_IS_TYPE((hak_uchu_t)c, type);
 }
 
-int hcl_is_uch_upper (hcl_uch_t c)
+int hak_is_uch_upper (hak_uch_t c)
 {
-	return UCH_IS_TYPE((hcl_uchu_t)c, HCL_UCH_PROP_UPPER);
+	return UCH_IS_TYPE((hak_uchu_t)c, HAK_UCH_PROP_UPPER);
 }
 
-int hcl_is_uch_lower (hcl_uch_t c)
+int hak_is_uch_lower (hak_uch_t c)
 {
-	return UCH_IS_TYPE((hcl_uchu_t)c, HCL_UCH_PROP_LOWER);
+	return UCH_IS_TYPE((hak_uchu_t)c, HAK_UCH_PROP_LOWER);
 }
 
-int hcl_is_uch_alpha (hcl_uch_t c)
+int hak_is_uch_alpha (hak_uch_t c)
 {
-	return UCH_IS_TYPE((hcl_uchu_t)c, HCL_UCH_PROP_ALPHA);
+	return UCH_IS_TYPE((hak_uchu_t)c, HAK_UCH_PROP_ALPHA);
 }
 
-int hcl_is_uch_digit (hcl_uch_t c)
+int hak_is_uch_digit (hak_uch_t c)
 {
-	return UCH_IS_TYPE((hcl_uchu_t)c, HCL_UCH_PROP_DIGIT);
+	return UCH_IS_TYPE((hak_uchu_t)c, HAK_UCH_PROP_DIGIT);
 }
 
-int hcl_is_uch_xdigit (hcl_uch_t c)
+int hak_is_uch_xdigit (hak_uch_t c)
 {
-	return UCH_IS_TYPE((hcl_uchu_t)c, HCL_UCH_PROP_XDIGIT);
+	return UCH_IS_TYPE((hak_uchu_t)c, HAK_UCH_PROP_XDIGIT);
 }
 
-int hcl_is_uch_alnum (hcl_uch_t c)
+int hak_is_uch_alnum (hak_uch_t c)
 {
-	return UCH_IS_TYPE((hcl_uchu_t)c, HCL_UCH_PROP_ALNUM);
+	return UCH_IS_TYPE((hak_uchu_t)c, HAK_UCH_PROP_ALNUM);
 }
 
-int hcl_is_uch_space (hcl_uch_t c)
+int hak_is_uch_space (hak_uch_t c)
 {
-	return UCH_IS_TYPE((hcl_uchu_t)c, HCL_UCH_PROP_SPACE);
+	return UCH_IS_TYPE((hak_uchu_t)c, HAK_UCH_PROP_SPACE);
 }
 
-int hcl_is_uch_print (hcl_uch_t c)
+int hak_is_uch_print (hak_uch_t c)
 {
-	return UCH_IS_TYPE((hcl_uchu_t)c, HCL_UCH_PROP_PRINT);
+	return UCH_IS_TYPE((hak_uchu_t)c, HAK_UCH_PROP_PRINT);
 }
 
-int hcl_is_uch_graph (hcl_uch_t c)
+int hak_is_uch_graph (hak_uch_t c)
 {
-	return UCH_IS_TYPE((hcl_uchu_t)c, HCL_UCH_PROP_GRAPH);
+	return UCH_IS_TYPE((hak_uchu_t)c, HAK_UCH_PROP_GRAPH);
 }
 
-int hcl_is_uch_cntrl (hcl_uch_t c)
+int hak_is_uch_cntrl (hak_uch_t c)
 {
-	return UCH_IS_TYPE((hcl_uchu_t)c, HCL_UCH_PROP_CNTRL);
+	return UCH_IS_TYPE((hak_uchu_t)c, HAK_UCH_PROP_CNTRL);
 }
 
-int hcl_is_uch_punct (hcl_uch_t c)
+int hak_is_uch_punct (hak_uch_t c)
 {
-	return UCH_IS_TYPE((hcl_uchu_t)c, HCL_UCH_PROP_PUNCT);
+	return UCH_IS_TYPE((hak_uchu_t)c, HAK_UCH_PROP_PUNCT);
 }
 
-int hcl_is_uch_blank (hcl_uch_t c)
+int hak_is_uch_blank (hak_uch_t c)
 {
-	return UCH_IS_TYPE((hcl_uchu_t)c, HCL_UCH_PROP_BLANK);
+	return UCH_IS_TYPE((hak_uchu_t)c, HAK_UCH_PROP_BLANK);
 }
 
-hcl_uch_t hcl_to_uch_upper (hcl_uch_t c)
+hak_uch_t hak_to_uch_upper (hak_uch_t c)
 {
-	hcl_uchu_t uc = (hcl_uchu_t)c;
+	hak_uchu_t uc = (hak_uchu_t)c;
 	if (uc >= 0 && uc <= UCH_CASE_MAX)
 	{
 	 	uch_case_page_t* page;
@@ -116,9 +116,9 @@ hcl_uch_t hcl_to_uch_upper (hcl_uch_t c)
 	return c;
 }
 
-hcl_uch_t hcl_to_uch_lower (hcl_uch_t c)
+hak_uch_t hak_to_uch_lower (hak_uch_t c)
 {
-	hcl_uchu_t uc = (hcl_uchu_t)c;
+	hak_uchu_t uc = (hak_uchu_t)c;
 	if (uc >= 0 && uc <= UCH_CASE_MAX)
 	{
 	 	uch_case_page_t* page;
@@ -130,52 +130,52 @@ hcl_uch_t hcl_to_uch_lower (hcl_uch_t c)
 
 /* ---------------------------------------------------------- */
 
-int hcl_is_bch_type (hcl_bch_t c, hcl_bch_prop_t type)
+int hak_is_bch_type (hak_bch_t c, hak_bch_prop_t type)
 {
 	switch (type)
 	{
-		case HCL_OOCH_PROP_UPPER:
-			return hcl_is_bch_upper(c);
-		case HCL_OOCH_PROP_LOWER:
-			return hcl_is_bch_lower(c);
-		case HCL_OOCH_PROP_ALPHA:
-			return hcl_is_bch_alpha(c);
-		case HCL_OOCH_PROP_DIGIT:
-			return hcl_is_bch_digit(c);
-		case HCL_OOCH_PROP_XDIGIT:
-			return hcl_is_bch_xdigit(c);
-		case HCL_OOCH_PROP_ALNUM:
-			return hcl_is_bch_alnum(c);
-		case HCL_OOCH_PROP_SPACE:
-			return hcl_is_bch_space(c);
-		case HCL_OOCH_PROP_PRINT:
-			return hcl_is_bch_print(c);
-		case HCL_OOCH_PROP_GRAPH:
-			return hcl_is_bch_graph(c);
-		case HCL_OOCH_PROP_CNTRL:
-			return hcl_is_bch_cntrl(c);
-		case HCL_OOCH_PROP_PUNCT:
-			return hcl_is_bch_punct(c);
-		case HCL_OOCH_PROP_BLANK:
-			return hcl_is_bch_blank(c);
+		case HAK_OOCH_PROP_UPPER:
+			return hak_is_bch_upper(c);
+		case HAK_OOCH_PROP_LOWER:
+			return hak_is_bch_lower(c);
+		case HAK_OOCH_PROP_ALPHA:
+			return hak_is_bch_alpha(c);
+		case HAK_OOCH_PROP_DIGIT:
+			return hak_is_bch_digit(c);
+		case HAK_OOCH_PROP_XDIGIT:
+			return hak_is_bch_xdigit(c);
+		case HAK_OOCH_PROP_ALNUM:
+			return hak_is_bch_alnum(c);
+		case HAK_OOCH_PROP_SPACE:
+			return hak_is_bch_space(c);
+		case HAK_OOCH_PROP_PRINT:
+			return hak_is_bch_print(c);
+		case HAK_OOCH_PROP_GRAPH:
+			return hak_is_bch_graph(c);
+		case HAK_OOCH_PROP_CNTRL:
+			return hak_is_bch_cntrl(c);
+		case HAK_OOCH_PROP_PUNCT:
+			return hak_is_bch_punct(c);
+		case HAK_OOCH_PROP_BLANK:
+			return hak_is_bch_blank(c);
 	}
 
 	/* must not reach here */
 	return 0;
 }
 
-#if !defined(hcl_to_bch_upper)
-hcl_bch_t hcl_to_bch_upper (hcl_bch_t c)
+#if !defined(hak_to_bch_upper)
+hak_bch_t hak_to_bch_upper (hak_bch_t c)
 {
-	if(hcl_is_bch_lower(c)) return c & 95;
+	if(hak_is_bch_lower(c)) return c & 95;
 	return c;
 }
 #endif
 
-#if !defined(hcl_to_bch_lower)
-hcl_bch_t hcl_to_bch_lower (hcl_bch_t c)
+#if !defined(hak_to_bch_lower)
+hak_bch_t hak_to_bch_lower (hak_bch_t c)
 {
-	if(hcl_is_bch_upper(c)) return c | 32;
+	if(hak_is_bch_upper(c)) return c | 32;
 	return c;
 }
 #endif
@@ -193,7 +193,7 @@ struct interval
 };
 
 /* auxiliary function for binary search in interval table */
-static int bisearch(hcl_uch_t ucs, const struct interval *table, int max)
+static int bisearch(hak_uch_t ucs, const struct interval *table, int max)
 {
 	int min = 0;
 	int mid;
@@ -242,7 +242,7 @@ static int bisearch(hcl_uch_t ucs, const struct interval *table, int max)
  * in ISO 10646.
  */
 
-int hcl_get_ucwidth (hcl_uch_t uc)
+int hak_get_ucwidth (hak_uch_t uc)
 {
 	/* sorted list of non-overlapping intervals of non-spacing characters */
 	/* generated by "uniset +cat=Me +cat=Mn +cat=Cf -00AD +1160-11FF +200B c" */
@@ -317,7 +317,7 @@ int hcl_get_ucwidth (hcl_uch_t uc)
 		    (uc >= 0xfe30 && uc <= 0xfe6f) || /* CJK Compatibility Forms */
 		    (uc >= 0xff00 && uc <= 0xff60) || /* Fullwidth Forms */
 		    (uc >= 0xffe0 && uc <= 0xffe6)
-		#if (HCL_SIZEOF_UCH_T  > 2)
+		#if (HAK_SIZEOF_UCH_T  > 2)
 		    ||
 		    (uc >= 0x20000 && uc <= 0x2fffd) ||
 		    (uc >= 0x30000 && uc <= 0x3fffd)

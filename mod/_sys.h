@@ -24,16 +24,16 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _HCL_MOD_SYS_H_
-#define _HCL_MOD_SYS_H_
+#ifndef _HAK_MOD_SYS_H_
+#define _HAK_MOD_SYS_H_
 
-#include <hcl.h>
+#include <hak.h>
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
-HCL_EXPORT int hcl_mod_sys (hcl_t* hcl, hcl_mod_t* mod);
+HAK_EXPORT int hak_mod_sys (hak_t* hak, hak_mod_t* mod);
 
 #if defined(__cplusplus)
 }

@@ -77,9 +77,9 @@ class Object: Apex {
 
 ## ---------------------------------------------------------------------------------
 
-$include "Magnitude.hcl"
-$include "Collection.hcl"
-##$include "System.hcl"
+$include "Magnitude.hak"
+$include "Collection.hak"
+##$include "System.hak"
 
 ## ---------------------------------------------------------------------------------
 

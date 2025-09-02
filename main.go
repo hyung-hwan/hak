@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 	//"strings"
-	"code.miflux.com/hyung-hwan/hcl/go"
+	"code.miflux.com/hyung-hwan/hak/go"
 )
 
 /*
@@ -13,7 +13,7 @@ import (
 			`(printf ">>>>>>>>> [%d]\n" (+ 30 455))
 
 (printf ">>>>>>>>> [%d]\n" (+ 11 455))
-#include "a.hcl"
+#include "a.hak"
 (printf ">>>>>>>>> [%d]\n" (+ 20 455))
 `))
 */
@@ -89,20 +89,20 @@ func handle_arguments(param *Param) error {
 
 	param.input_file = fs.Arg(0);
 	param.log_file = *log // TODO: parse the option part  (e.g. --log /dev/stderr,debug+)
-	param.heapsize = *heapsize // TODO: set this to hcl
-	param.modlibdirs = *modlibdirs // TODO: set this to hcl
+	param.heapsize = *heapsize // TODO: set this to hak
+	param.modlibdirs = *modlibdirs // TODO: set this to hak
 	return nil;
 }
 
 func main() {
 
-	var x *hcl.HCL = nil
+	var x *hak.HAK = nil
 	var err error = nil
 	var param Param
 
-	var rfh hcl.CciFileHandler
-	var sfh hcl.UdiFileHandler
-	var pfh hcl.UdoFileHandler
+	var rfh hak.CciFileHandler
+	var sfh hak.UdiFileHandler
+	var pfh hak.UdoFileHandler
 
 	err = handle_arguments(&param)
 	if err != nil {
@@ -111,18 +111,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	x, err = hcl.New()
+	x, err = hak.New()
 	if err != nil {
-		fmt.Printf("ERROR: failed to instantiate hcl - %s\n", err.Error())
+		fmt.Printf("ERROR: failed to instantiate hak - %s\n", err.Error())
 		os.Exit(1)
 	}
 
 	if param.log_file != "" {
-		x.SetLogMask(^hcl.BitMask(0))
+		x.SetLogMask(^hak.BitMask(0))
 		x.SetLogTarget("/dev/stderr")
 	}
 
-	x.SetTrait(x.GetTrait() | hcl.TRAIT_LANG_ENABLE_EOL)
+	x.SetTrait(x.GetTrait() | hak.TRAIT_LANG_ENABLE_EOL)
 
 	err = x.Ignite(1000000)
 	if err != nil {
@@ -156,7 +156,7 @@ func main() {
 	err = x.FeedFromFile(param.input_file)
 	//err = x.FeedString(`(printf ">>>>>>>>> [%d]\n" (+ 30 455))
 	//   (printf ">>>>>>>>> [%d]\n" (+ 11 455))
-	//   #include "a.hcl"
+	//   #include "a.hak"
 	//   (printf ">>>>>>>>> [%d]\n" (+ 20 455))`)
 	if err != nil {
 		fmt.Printf("ERROR: %s\n", err.Error())

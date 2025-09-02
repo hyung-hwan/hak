@@ -1,8 +1,8 @@
-package hcl
+package hak
 
 /*
-#include <hcl.h>
-#include <hcl-utl.h>
+#include <hak.h>
+#include <hak-utl.h>
 #include <string.h> // for memcpy
 */
 import "C"
@@ -82,26 +82,26 @@ func (io *IOHandleTable) slot_to_io_handle(slot int) IOHandle {
 
 var io_tab IOHandleTable = IOHandleTable{}
 
-//export hcl_go_cci_handler
-func hcl_go_cci_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.int {
+//export hak_go_cci_handler
+func hak_go_cci_handler(c *C.hak_t, cmd C.hak_io_cmd_t, arg unsafe.Pointer) C.int {
 	var (
-		g   *HCL
+		g   *HAK
 		err error
 	)
 
 	g = c_to_go(c)
 
 	switch cmd {
-	case C.HCL_IO_OPEN:
+	case C.HAK_IO_OPEN:
 		var (
-			ioarg         *C.hcl_io_cciarg_t
+			ioarg         *C.hak_io_cciarg_t
 			name          string
 			fd            int
 			tptr          unsafe.Pointer
 			tlen          C.size_t
 		)
 
-		ioarg = (*C.hcl_io_cciarg_t)(arg)
+		ioarg = (*C.hak_io_cciarg_t)(arg)
 
 		if ioarg.includer == nil /* || ioarg.includer.name == nil */ {
 			// main stream
@@ -120,9 +120,9 @@ func hcl_go_cci_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.in
 		}
 
 		tlen = C.size_t(len(name)) // number of bytes in the string
-		tptr = C.hcl_allocmem(c, C.size_t(unsafe.Sizeof(fd)) + C.size_t(unsafe.Sizeof(tlen)) + tlen)
+		tptr = C.hak_allocmem(c, C.size_t(unsafe.Sizeof(fd)) + C.size_t(unsafe.Sizeof(tlen)) + tlen)
 		if tptr == nil {
-			g.set_errmsg(C.HCL_ESYSMEM, "cci name allocation failure")
+			g.set_errmsg(C.HAK_ESYSMEM, "cci name allocation failure")
 			return -1
 		}
 
@@ -131,8 +131,8 @@ func hcl_go_cci_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.in
 		} else {
 			fd, err = g.io.cci.Open(g, name)
 			if err != nil {
-				g.set_errmsg(C.HCL_EIOERR, err.Error())
-				C.hcl_freemem(c, tptr)
+				g.set_errmsg(C.HAK_EIOERR, err.Error())
+				C.hak_freemem(c, tptr)
 				return -1
 			}
 		}
@@ -152,38 +152,38 @@ func hcl_go_cci_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.in
 		ioarg.handle = tptr
 		return 0
 
-	case C.HCL_IO_CLOSE:
+	case C.HAK_IO_CLOSE:
 		var (
 			fd    int
-			ioarg *C.hcl_io_cciarg_t
+			ioarg *C.hak_io_cciarg_t
 		)
 
-		ioarg = (*C.hcl_io_cciarg_t)(arg)
+		ioarg = (*C.hak_io_cciarg_t)(arg)
 		fd = *(*int)(ioarg.handle) // the descriptor at the beginning
 		if fd >= 0 {
 			g.io.cci.Close(fd)
 		}
-		C.hcl_freemem(c, ioarg.handle)
+		C.hak_freemem(c, ioarg.handle)
 		ioarg.handle = nil
 		return 0
 
-	case C.HCL_IO_READ:
+	case C.HAK_IO_READ:
 		var (
-			ioarg *C.hcl_io_cciarg_t
+			ioarg *C.hak_io_cciarg_t
 			n     int
 			i     int
 			buf   []rune
-			dummy C.hcl_uch_t
+			dummy C.hak_uch_t
 			fd    int
 		)
-		ioarg = (*C.hcl_io_cciarg_t)(arg)
+		ioarg = (*C.hak_io_cciarg_t)(arg)
 
 		fd = *(*int)(ioarg.handle) // the descriptor at the beginning
 
 		buf = make([]rune, 1024) // TODO:  different size...
 		n, err = g.io.cci.Read(fd, buf)
 		if err != nil {
-			g.set_errmsg(C.HCL_EIOERR, err.Error())
+			g.set_errmsg(C.HAK_EIOERR, err.Error())
 			return -1
 		}
 
@@ -199,34 +199,34 @@ func hcl_go_cci_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.in
 			// member fields. cgo treats union as byte aggregates.
 			dst = uintptr(unsafe.Pointer(&ioarg.buf[0]))
 			for i = 0; i < n; i++ {
-				//ioarg.buf.c[i] = C.hcl_uch_t(buf[i])
-				*(*C.hcl_uch_t)(unsafe.Pointer(dst)) = C.hcl_uch_t(buf[i])
+				//ioarg.buf.c[i] = C.hak_uch_t(buf[i])
+				*(*C.hak_uch_t)(unsafe.Pointer(dst)) = C.hak_uch_t(buf[i])
 				dst += unsafe.Sizeof(dummy)
 			}
 		}
 
-		ioarg.xlen = C.hcl_oow_t(n)
+		ioarg.xlen = C.hak_oow_t(n)
 		return 0
 	}
 
-	C.hcl_seterrnum(c, C.HCL_EIOERR)
+	C.hak_seterrnum(c, C.HAK_EIOERR)
 	return -1
 }
 
-//export hcl_go_udi_handler
-func hcl_go_udi_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.int {
+//export hak_go_udi_handler
+func hak_go_udi_handler(c *C.hak_t, cmd C.hak_io_cmd_t, arg unsafe.Pointer) C.int {
 	var (
-		g   *HCL
+		g   *HAK
 		err error
 	)
 
 	g = c_to_go(c)
 
 	switch cmd {
-	case C.HCL_IO_OPEN:
+	case C.HAK_IO_OPEN:
 		err = g.io.udi.Open(g)
 		if err != nil {
-			g.set_errmsg(C.HCL_EIOERR, err.Error())
+			g.set_errmsg(C.HAK_EIOERR, err.Error())
 			return -1
 		}
 
@@ -234,47 +234,47 @@ func hcl_go_udi_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.in
 		// mapping has been established and it doesn't handle multiple streams
 		return 0
 
-	case C.HCL_IO_CLOSE:
+	case C.HAK_IO_CLOSE:
 		g.io.udi.Close()
 		return 0
 
-	case C.HCL_IO_READ:
+	case C.HAK_IO_READ:
 		var (
-			ioarg *C.hcl_io_udiarg_t
+			ioarg *C.hak_io_udiarg_t
 			n     int
 			err   error
 			buf   []rune
 		)
-		ioarg = (*C.hcl_io_udiarg_t)(arg)
+		ioarg = (*C.hak_io_udiarg_t)(arg)
 
 		buf = make([]rune, 1024) // TODO:  different size...
 		n, err = g.io.udi.Read(buf)
 		if err != nil {
-			g.set_errmsg(C.HCL_EIOERR, err.Error())
+			g.set_errmsg(C.HAK_EIOERR, err.Error())
 			return -1
 		}
 		ioarg.xlen = C.ulong(n)
 		return 0
 	}
 
-	C.hcl_seterrnum(c, C.HCL_EIOERR)
+	C.hak_seterrnum(c, C.HAK_EIOERR)
 	return -1
 }
 
-//export hcl_go_udo_handler
-func hcl_go_udo_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.int {
+//export hak_go_udo_handler
+func hak_go_udo_handler(c *C.hak_t, cmd C.hak_io_cmd_t, arg unsafe.Pointer) C.int {
 	var (
-		g   *HCL
+		g   *HAK
 		err error
 	)
 
 	g = c_to_go(c)
 
 	switch cmd {
-	case C.HCL_IO_OPEN:
+	case C.HAK_IO_OPEN:
 		err = g.io.udo.Open(g)
 		if err != nil {
-			g.set_errmsg(C.HCL_EIOERR, err.Error())
+			g.set_errmsg(C.HAK_EIOERR, err.Error())
 			return -1
 		}
 
@@ -282,61 +282,61 @@ func hcl_go_udo_handler(c *C.hcl_t, cmd C.hcl_io_cmd_t, arg unsafe.Pointer) C.in
 		// mapping has been established and it doesn't handle multiple streams
 		return 0
 
-	case C.HCL_IO_CLOSE:
+	case C.HAK_IO_CLOSE:
 		g.io.udo.Close()
 		return 0
 
-	case C.HCL_IO_WRITE:
+	case C.HAK_IO_WRITE:
 		var (
-			ioarg *C.hcl_io_udoarg_t
+			ioarg *C.hak_io_udoarg_t
 			data  []rune
 			err   error
 		)
-		ioarg = (*C.hcl_io_udoarg_t)(arg)
-		data = uchars_to_rune_slice((*C.hcl_uch_t)(ioarg.ptr), uintptr(ioarg.len))
+		ioarg = (*C.hak_io_udoarg_t)(arg)
+		data = uchars_to_rune_slice((*C.hak_uch_t)(ioarg.ptr), uintptr(ioarg.len))
 		err = g.io.udo.Write(data)
 		if err != nil {
-			g.set_errmsg(C.HCL_EIOERR, err.Error())
+			g.set_errmsg(C.HAK_EIOERR, err.Error())
 			return -1
 		}
-		ioarg.xlen = C.hcl_oow_t(len(data))
+		ioarg.xlen = C.hak_oow_t(len(data))
 		return 0
 
-	case C.HCL_IO_WRITE_BYTES:
+	case C.HAK_IO_WRITE_BYTES:
 		var (
-			ioarg *C.hcl_io_udoarg_t
+			ioarg *C.hak_io_udoarg_t
 			data  []byte
 			err   error
 		)
-		ioarg = (*C.hcl_io_udoarg_t)(arg)
+		ioarg = (*C.hak_io_udoarg_t)(arg)
 		data = unsafe.Slice((*byte)(ioarg.ptr), ioarg.len)
 		err = g.io.udo.WriteBytes(data)
 		if err != nil {
-			g.set_errmsg(C.HCL_EIOERR, err.Error())
+			g.set_errmsg(C.HAK_EIOERR, err.Error())
 			return -1
 		}
-		ioarg.xlen = C.hcl_oow_t(len(data))
+		ioarg.xlen = C.hak_oow_t(len(data))
 		return 0
 
-	case C.HCL_IO_FLUSH:
+	case C.HAK_IO_FLUSH:
 		var err error = g.io.udo.Flush()
 		if err != nil {
-			g.set_errmsg(C.HCL_EIOERR, err.Error())
+			g.set_errmsg(C.HAK_EIOERR, err.Error())
 			return -1
 		}
 		return 0
 	}
 
-	C.hcl_seterrnum(c, C.HCL_EIOERR)
+	C.hak_seterrnum(c, C.HAK_EIOERR)
 	return -1
 }
 
 // ------------------------------------------------------
 type CciFileHandler struct {
-	g *HCL
+	g *HAK
 }
 
-func (p *CciFileHandler) Open(g *HCL, name string) (int, error) {
+func (p *CciFileHandler) Open(g *HAK, name string) (int, error) {
 	var (
 		f   *os.File
 		r   *bufio.Reader
@@ -398,12 +398,12 @@ func (p *CciFileHandler) Read(fd int, buf []rune) (int, error) {
 
 // ------------------------------------------------------
 type UdiFileHandler struct {
-	g *HCL
+	g *HAK
 	f *os.File
 	r *bufio.Reader
 }
 
-func (p *UdiFileHandler) Open(g *HCL) error {
+func (p *UdiFileHandler) Open(g *HAK) error {
 	var (
 		f *os.File
 	//	err error
@@ -463,7 +463,7 @@ type UdoFileHandler struct {
 	w *bufio.Writer
 }
 
-func (p *UdoFileHandler) Open(g *HCL) error {
+func (p *UdoFileHandler) Open(g *HAK) error {
 	var (
 		f *os.File
 	//	err error

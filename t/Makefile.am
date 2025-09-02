@@ -6,20 +6,20 @@ AM_CPPFLAGS = \
 	-I$(abs_srcdir) \
 	-I$(abs_srcdir)/../lib \
 	-I$(includedir)
-LDADD = ../lib/libhcl.la
+LDADD = ../lib/libhak.la
 
 check_SCRIPTS = \
-	feed-01.hcl \
-	fun-01.hcl \
-	insta-01.hcl \
-	insta-02.hcl \
-	proc-01.hcl \
-	ret-01.hcl \
-	retvar-01.hcl \
-	va-01.hcl \
-	var-01.hcl \
-	var-02.hcl \
-	var-03.hcl
+	feed-01.hak \
+	fun-01.hak \
+	insta-01.hak \
+	insta-02.hak \
+	proc-01.hak \
+	ret-01.hak \
+	retvar-01.hak \
+	va-01.hak \
+	var-01.hak \
+	var-02.hak \
+	var-03.hak
 
 check_ERRORS = \
 	call-5001.err \
@@ -40,12 +40,12 @@ EXTRA_DIST = $(check_SCRIPTS) $(check_ERRORS)
 
 TESTS = $(check_PROGRAMS) $(check_SCRIPTS) $(check_ERRORS)
 
-TEST_EXTENSIONS = .hcl .err
+TEST_EXTENSIONS = .hak .err
 
-HCLBIN = $(top_builddir)/bin/hcl
+HAKBIN = $(top_builddir)/bin/hak
 
-HCL_LOG_COMPILER = $(SHELL) $(abs_srcdir)/run.sh $(HCLBIN) --modlibdirs="@abs_top_builddir@/mod:@abs_top_builddir@/mod/.libs" --heapsize=0
-AM_HCL_LOG_FLAGS =
+HAK_LOG_COMPILER = $(SHELL) $(abs_srcdir)/run.sh $(HAKBIN) --modlibdirs="@abs_top_builddir@/mod:@abs_top_builddir@/mod/.libs" --heapsize=0
+AM_HAK_LOG_FLAGS =
 
-ERR_LOG_COMPILER = $(SHELL) $(abs_srcdir)/err.sh $(HCLBIN) --modlibdirs="@abs_top_builddir@/mod:@abs_top_builddir@/mod/.libs" --heapsize=0
+ERR_LOG_COMPILER = $(SHELL) $(abs_srcdir)/err.sh $(HAKBIN) --modlibdirs="@abs_top_builddir@/mod:@abs_top_builddir@/mod/.libs" --heapsize=0
 AM_ERR_LOG_FLAGS =

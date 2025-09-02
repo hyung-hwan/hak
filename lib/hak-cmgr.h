@@ -22,55 +22,55 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _HCL_CMGR_H_
-#define _HCL_CMGR_H_
+#ifndef _HAK_CMGR_H_
+#define _HAK_CMGR_H_
 
-#include <hcl-cmn.h>
+#include <hak-cmn.h>
 
-enum hcl_cmgr_id_t
+enum hak_cmgr_id_t
 {
-	HCL_CMGR_UTF8,
-	HCL_CMGR_UTF16,
-	HCL_CMGR_MB8
+	HAK_CMGR_UTF8,
+	HAK_CMGR_UTF16,
+	HAK_CMGR_MB8
 };
-typedef enum hcl_cmgr_id_t hcl_cmgr_id_t;
+typedef enum hak_cmgr_id_t hak_cmgr_id_t;
 
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
-HCL_EXPORT hcl_cmgr_t* hcl_get_utf8_cmgr (
+HAK_EXPORT hak_cmgr_t* hak_get_utf8_cmgr (
 	void
 );
 
-HCL_EXPORT hcl_cmgr_t* hcl_get_cmgr_by_id (
-	hcl_cmgr_id_t id
+HAK_EXPORT hak_cmgr_t* hak_get_cmgr_by_id (
+	hak_cmgr_id_t id
 );
 
-HCL_EXPORT hcl_cmgr_t* hcl_get_cmgr_by_bcstr (
-	const hcl_bch_t* name
+HAK_EXPORT hak_cmgr_t* hak_get_cmgr_by_bcstr (
+	const hak_bch_t* name
 );
 
-HCL_EXPORT hcl_cmgr_t* hcl_get_cmgr_by_ucstr (
-	const hcl_uch_t* name
+HAK_EXPORT hak_cmgr_t* hak_get_cmgr_by_ucstr (
+	const hak_uch_t* name
 );
 
-#if defined(HCL_OOCH_IS_UCH)
-#	define hcl_get_cmgr_by_name(name) hcl_get_cmgr_by_ucstr(name)
+#if defined(HAK_OOCH_IS_UCH)
+#	define hak_get_cmgr_by_name(name) hak_get_cmgr_by_ucstr(name)
 #else
-#	define hcl_get_cmgr_by_name(name) hcl_get_cmgr_by_bcstr(name)
+#	define hak_get_cmgr_by_name(name) hak_get_cmgr_by_bcstr(name)
 #endif
 
-#define hcl_get_utf8_cmgr() hcl_get_cmgr_by_id(HCL_CMGR_UTF8)
-#define hcl_get_utf16_cmgr() hcl_get_cmgr_by_id(HCL_CMGR_UTF16)
-#define hcl_get_mb8_cmgr() hcl_get_cmgr_by_id(HCL_CMGR_MB8)
+#define hak_get_utf8_cmgr() hak_get_cmgr_by_id(HAK_CMGR_UTF8)
+#define hak_get_utf16_cmgr() hak_get_cmgr_by_id(HAK_CMGR_UTF16)
+#define hak_get_mb8_cmgr() hak_get_cmgr_by_id(HAK_CMGR_MB8)
 
 
 /* ------------------------------------------------------------------------- */
 
 /**
- * The hcl_conv_uchars_to_utf8() function converts a unicode character string \a ucs
+ * The hak_conv_uchars_to_utf8() function converts a unicode character string \a ucs
  * to a UTF8 string and writes it into the buffer pointed to by \a bcs, but
  * not more than \a bcslen bytes including the terminating null.
  *
@@ -78,7 +78,7 @@ HCL_EXPORT hcl_cmgr_t* hcl_get_cmgr_by_ucstr (
  * \a bcs excluding the terminating null; \a ucslen is modified to the number of
  * wide characters converted.
  *
- * You may pass #HCL_NULL for \a bcs to dry-run conversion or to get the
+ * You may pass #HAK_NULL for \a bcs to dry-run conversion or to get the
  * required buffer size for conversion. -2 is never returned in this case.
  *
  * \return
@@ -87,36 +87,36 @@ HCL_EXPORT hcl_cmgr_t* hcl_get_cmgr_by_ucstr (
  * - -2 on no or partial conversion for a small buffer.
  *
  * \code
- *   const hcl_uch_t ucs[] = { 'H', 'e', 'l', 'l', 'o' };
- *   hcl_bch_t bcs[10];
- *   hcl_oow_t ucslen = 5;
- *   hcl_oow_t bcslen = HCL_COUNTOF(bcs);
- *   n = hcl_conv_uchars_to_utf8 (ucs, &ucslen, bcs, &bcslen);
+ *   const hak_uch_t ucs[] = { 'H', 'e', 'l', 'l', 'o' };
+ *   hak_bch_t bcs[10];
+ *   hak_oow_t ucslen = 5;
+ *   hak_oow_t bcslen = HAK_COUNTOF(bcs);
+ *   n = hak_conv_uchars_to_utf8 (ucs, &ucslen, bcs, &bcslen);
  *   if (n <= -1)
  *   {
  *      // conversion error
  *   }
  * \endcode
  */
-HCL_EXPORT int hcl_conv_uchars_to_utf8 (
-	const hcl_uch_t*    ucs,
-	hcl_oow_t*          ucslen,
-	hcl_bch_t*          bcs,
-	hcl_oow_t*          bcslen
+HAK_EXPORT int hak_conv_uchars_to_utf8 (
+	const hak_uch_t*    ucs,
+	hak_oow_t*          ucslen,
+	hak_bch_t*          bcs,
+	hak_oow_t*          bcslen
 );
 
 /**
- * The hcl_conv_utf8_to_uchars() function converts a UTF8 string to a uncide string.
+ * The hak_conv_utf8_to_uchars() function converts a UTF8 string to a uncide string.
  *
- * It never returns -2 if \a ucs is #HCL_NULL.
+ * It never returns -2 if \a ucs is #HAK_NULL.
  *
  * \code
- *  const hcl_bch_t* bcs = "test string";
- *  hcl_uch_t ucs[100];
- *  hcl_oow_t ucslen = HCL_COUNTOF(buf), n;
- *  hcl_oow_t bcslen = 11;
+ *  const hak_bch_t* bcs = "test string";
+ *  hak_uch_t ucs[100];
+ *  hak_oow_t ucslen = HAK_COUNTOF(buf), n;
+ *  hak_oow_t bcslen = 11;
  *  int n;
- *  n = hcl_conv_utf8_to_uchars (bcs, &bcslen, ucs, &ucslen);
+ *  n = hak_conv_utf8_to_uchars (bcs, &bcslen, ucs, &ucslen);
  *  if (n <= -1) { invalid/incomplenete sequence or buffer to small }
  * \endcode
  *
@@ -129,26 +129,26 @@ HCL_EXPORT int hcl_conv_uchars_to_utf8 (
  *         -2 if the wide-character string buffer is too small.
  *         -3 if \a bcs is not a complete sequence.
  */
-HCL_EXPORT int hcl_conv_utf8_to_uchars (
-	const hcl_bch_t*   bcs,
-	hcl_oow_t*         bcslen,
-	hcl_uch_t*         ucs,
-	hcl_oow_t*         ucslen
+HAK_EXPORT int hak_conv_utf8_to_uchars (
+	const hak_bch_t*   bcs,
+	hak_oow_t*         bcslen,
+	hak_uch_t*         ucs,
+	hak_oow_t*         ucslen
 );
 
 
-HCL_EXPORT int hcl_conv_ucstr_to_utf8 (
-	const hcl_uch_t*    ucs,
-	hcl_oow_t*          ucslen,
-	hcl_bch_t*          bcs,
-	hcl_oow_t*          bcslen
+HAK_EXPORT int hak_conv_ucstr_to_utf8 (
+	const hak_uch_t*    ucs,
+	hak_oow_t*          ucslen,
+	hak_bch_t*          bcs,
+	hak_oow_t*          bcslen
 );
 
-HCL_EXPORT int hcl_conv_utf8_to_ucstr (
-	const hcl_bch_t*   bcs,
-	hcl_oow_t*         bcslen,
-	hcl_uch_t*         ucs,
-	hcl_oow_t*         ucslen
+HAK_EXPORT int hak_conv_utf8_to_ucstr (
+	const hak_bch_t*   bcs,
+	hak_oow_t*         bcslen,
+	hak_uch_t*         ucs,
+	hak_oow_t*         ucslen
 );
 #if defined(__cplusplus)
 }

@@ -22,9 +22,9 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <hcl-xma.h>
-#include "hcl-prv.h"
-#include <assert.h> /* TODO: replace assert() with HCL_ASSERT() or something */
+#include <hak-xma.h>
+#include "hak-prv.h"
+#include <assert.h> /* TODO: replace assert() with HAK_ASSERT() or something */
 
 
 /*
@@ -46,48 +46,48 @@ $1 = (xxx_int_t *) 0x7fffea722f78
 
 /* set ALIGN to twice the pointer size to prevent unaligned memory access by
  * instructions dealing with data larger than the system word size. e.g. movaps on x86_64 */
-#define ALIGN (HCL_SIZEOF_VOID_P * 2) /* this must be a power of 2 */
+#define ALIGN (HAK_SIZEOF_VOID_P * 2) /* this must be a power of 2 */
 
-#define MBLKHDRSIZE (HCL_SIZEOF(hcl_xma_mblk_t))
-#define MINALLOCSIZE (HCL_SIZEOF(hcl_xma_fblk_t) - HCL_SIZEOF(hcl_xma_mblk_t))
-#define FBLKMINSIZE (MBLKHDRSIZE + MINALLOCSIZE) /* or HCL_SIZEOF(hcl_xma_fblk_t) - need space for the free links when the block is freeed */
+#define MBLKHDRSIZE (HAK_SIZEOF(hak_xma_mblk_t))
+#define MINALLOCSIZE (HAK_SIZEOF(hak_xma_fblk_t) - HAK_SIZEOF(hak_xma_mblk_t))
+#define FBLKMINSIZE (MBLKHDRSIZE + MINALLOCSIZE) /* or HAK_SIZEOF(hak_xma_fblk_t) - need space for the free links when the block is freeed */
 
 /* NOTE: you must ensure that FBLKMINSIZE is equal to ALIGN or multiples of ALIGN */
 
-#define SYS_TO_USR(b) ((hcl_uint8_t*)(b) + MBLKHDRSIZE)
-#define USR_TO_SYS(b) ((hcl_uint8_t*)(b) - MBLKHDRSIZE)
+#define SYS_TO_USR(b) ((hak_uint8_t*)(b) + MBLKHDRSIZE)
+#define USR_TO_SYS(b) ((hak_uint8_t*)(b) - MBLKHDRSIZE)
 
 /*
  * the xfree array is divided into three region
  * 0 ....................... FIXED ......................... XFIMAX-1 ... XFIMAX
  * |  small fixed-size chains |     large  chains                | huge chain |
  */
-#define FIXED HCL_XMA_FIXED
-#define XFIMAX(xma) (HCL_COUNTOF(xma->xfree)-1)
+#define FIXED HAK_XMA_FIXED
+#define XFIMAX(xma) (HAK_COUNTOF(xma->xfree)-1)
 
 
-#define fblk_free(b) (((hcl_xma_fblk_t*)(b))->free)
-#define fblk_size(b) (((hcl_xma_fblk_t*)(b))->size)
-#define fblk_prev_size(b) (((hcl_xma_fblk_t*)(b))->prev_size)
+#define fblk_free(b) (((hak_xma_fblk_t*)(b))->free)
+#define fblk_size(b) (((hak_xma_fblk_t*)(b))->size)
+#define fblk_prev_size(b) (((hak_xma_fblk_t*)(b))->prev_size)
 #if 0
-#define mblk_free(b) (((hcl_xma_mblk_t*)(b))->free)
-#define mblk_size(b) (((hcl_xma_mblk_t*)(b))->size)
-#define mblk_prev_size(b) (((hcl_xma_mblk_t*)(b))->prev_size)
+#define mblk_free(b) (((hak_xma_mblk_t*)(b))->free)
+#define mblk_size(b) (((hak_xma_mblk_t*)(b))->size)
+#define mblk_prev_size(b) (((hak_xma_mblk_t*)(b))->prev_size)
 #else
 /* Let mblk_free(), mblk_size(), mblk_prev_size() be an alias to
  * fblk_free(), fblk_size(), fblk_prev_size() to follow strict aliasing rule.
- * if gcc/clang is used, specifying __attribute__((__may_alias__)) to hcl_xma_mblk_t
- * and hcl_xma_fblk_t would also work. */
+ * if gcc/clang is used, specifying __attribute__((__may_alias__)) to hak_xma_mblk_t
+ * and hak_xma_fblk_t would also work. */
 #define mblk_free(b) fblk_free(b)
 #define mblk_size(b) fblk_size(b)
 #define mblk_prev_size(b) fblk_prev_size(b)
 #endif
-#define next_mblk(b) ((hcl_xma_mblk_t*)((hcl_uint8_t*)b + MBLKHDRSIZE + mblk_size(b)))
-#define prev_mblk(b) ((hcl_xma_mblk_t*)((hcl_uint8_t*)b - (MBLKHDRSIZE + mblk_prev_size(b))))
+#define next_mblk(b) ((hak_xma_mblk_t*)((hak_uint8_t*)b + MBLKHDRSIZE + mblk_size(b)))
+#define prev_mblk(b) ((hak_xma_mblk_t*)((hak_uint8_t*)b - (MBLKHDRSIZE + mblk_prev_size(b))))
 
-struct hcl_xma_mblk_t
+struct hak_xma_mblk_t
 {
-	hcl_oow_t prev_size;
+	hak_oow_t prev_size;
 
 	/* the block size is shifted by 1 bit and the maximum value is
 	 * offset by 1 bit because of the 'free' bit-field.
@@ -96,42 +96,42 @@ struct hcl_xma_mblk_t
 	 * never be 1. i don't think there is a practical use case where
 	 * you need to allocate a huge chunk covering the entire
 	 * address space of your machine. */
-	hcl_oow_t free: 1;
-	hcl_oow_t size: HCL_XMA_SIZE_BITS; /**< block size */
+	hak_oow_t free: 1;
+	hak_oow_t size: HAK_XMA_SIZE_BITS; /**< block size */
 };
 
-struct hcl_xma_fblk_t
+struct hak_xma_fblk_t
 {
-	hcl_oow_t prev_size;
-	hcl_oow_t free: 1;
-	hcl_oow_t size: HCL_XMA_SIZE_BITS;/**< block size */
+	hak_oow_t prev_size;
+	hak_oow_t free: 1;
+	hak_oow_t size: HAK_XMA_SIZE_BITS;/**< block size */
 
-	/* the fields are must be identical to the fields of hcl_xma_mblk_t */
+	/* the fields are must be identical to the fields of hak_xma_mblk_t */
 	/* the two fields below are used only if the block is free */
-	hcl_xma_fblk_t* free_prev; /**< link to the previous free block */
-	hcl_xma_fblk_t* free_next; /**< link to the next free block */
+	hak_xma_fblk_t* free_prev; /**< link to the previous free block */
+	hak_xma_fblk_t* free_next; /**< link to the next free block */
 };
 
 /*#define VERIFY*/
 #if defined(VERIFY)
-static void DBG_VERIFY (hcl_xma_t* xma, const char* desc)
+static void DBG_VERIFY (hak_xma_t* xma, const char* desc)
 {
-	hcl_xma_mblk_t* tmp, * next;
-	hcl_oow_t cnt;
-	hcl_oow_t fsum, asum;
-#if defined(HCL_XMA_ENABLE_STAT)
-	hcl_oow_t isum;
+	hak_xma_mblk_t* tmp, * next;
+	hak_oow_t cnt;
+	hak_oow_t fsum, asum;
+#if defined(HAK_XMA_ENABLE_STAT)
+	hak_oow_t isum;
 #endif
 
-	for (tmp = (hcl_xma_mblk_t*)xma->start, cnt = 0, fsum = 0, asum = 0; (hcl_uint8_t*)tmp < xma->end; tmp = next, cnt++)
+	for (tmp = (hak_xma_mblk_t*)xma->start, cnt = 0, fsum = 0, asum = 0; (hak_uint8_t*)tmp < xma->end; tmp = next, cnt++)
 	{
 		next = next_mblk(tmp);
 
-		if ((hcl_uint8_t*)tmp == xma->start)
+		if ((hak_uint8_t*)tmp == xma->start)
 		{
 			assert (tmp->prev_size == 0);
 		}
-		if ((hcl_uint8_t*)next < xma->end)
+		if ((hak_uint8_t*)next < xma->end)
 		{
 			assert (next->prev_size == tmp->size);
 		}
@@ -140,7 +140,7 @@ static void DBG_VERIFY (hcl_xma_t* xma, const char* desc)
 		else asum += tmp->size;
 	}
 
-#if defined(HCL_XMA_ENABLE_STAT)
+#if defined(HAK_XMA_ENABLE_STAT)
 	isum = (xma->stat.nfree + xma->stat.nused) * MBLKHDRSIZE;
 	assert (asum == xma->stat.alloc);
 	assert (fsum == xma->stat.avail);
@@ -152,7 +152,7 @@ static void DBG_VERIFY (hcl_xma_t* xma, const char* desc)
 #define DBG_VERIFY(xma, desc)
 #endif
 
-static HCL_INLINE hcl_oow_t szlog2 (hcl_oow_t n)
+static HAK_INLINE hak_oow_t szlog2 (hak_oow_t n)
 {
 	/*
 	 * 2**x = n;
@@ -163,90 +163,90 @@ static HCL_INLINE hcl_oow_t szlog2 (hcl_oow_t n)
 	 * 	return x;
 	 */
 
-#define BITS (HCL_SIZEOF_OOW_T * 8)
+#define BITS (HAK_SIZEOF_OOW_T * 8)
 	int x = BITS - 1;
 
-#if HCL_SIZEOF_OOW_T >= 128
-#	error hcl_oow_t too large. unsupported platform
+#if HAK_SIZEOF_OOW_T >= 128
+#	error hak_oow_t too large. unsupported platform
 #endif
 
-#if HCL_SIZEOF_OOW_T >= 64
-	if ((n & (~(hcl_oow_t)0 << (BITS-128))) == 0) { x -= 256; n <<= 256; }
+#if HAK_SIZEOF_OOW_T >= 64
+	if ((n & (~(hak_oow_t)0 << (BITS-128))) == 0) { x -= 256; n <<= 256; }
 #endif
-#if HCL_SIZEOF_OOW_T >= 32
-	if ((n & (~(hcl_oow_t)0 << (BITS-128))) == 0) { x -= 128; n <<= 128; }
+#if HAK_SIZEOF_OOW_T >= 32
+	if ((n & (~(hak_oow_t)0 << (BITS-128))) == 0) { x -= 128; n <<= 128; }
 #endif
-#if HCL_SIZEOF_OOW_T >= 16
-	if ((n & (~(hcl_oow_t)0 << (BITS-64))) == 0) { x -= 64; n <<= 64; }
+#if HAK_SIZEOF_OOW_T >= 16
+	if ((n & (~(hak_oow_t)0 << (BITS-64))) == 0) { x -= 64; n <<= 64; }
 #endif
-#if HCL_SIZEOF_OOW_T >= 8
-	if ((n & (~(hcl_oow_t)0 << (BITS-32))) == 0) { x -= 32; n <<= 32; }
+#if HAK_SIZEOF_OOW_T >= 8
+	if ((n & (~(hak_oow_t)0 << (BITS-32))) == 0) { x -= 32; n <<= 32; }
 #endif
-#if HCL_SIZEOF_OOW_T >= 4
-	if ((n & (~(hcl_oow_t)0 << (BITS-16))) == 0) { x -= 16; n <<= 16; }
+#if HAK_SIZEOF_OOW_T >= 4
+	if ((n & (~(hak_oow_t)0 << (BITS-16))) == 0) { x -= 16; n <<= 16; }
 #endif
-#if HCL_SIZEOF_OOW_T >= 2
-	if ((n & (~(hcl_oow_t)0 << (BITS-8))) == 0) { x -= 8; n <<= 8; }
+#if HAK_SIZEOF_OOW_T >= 2
+	if ((n & (~(hak_oow_t)0 << (BITS-8))) == 0) { x -= 8; n <<= 8; }
 #endif
-#if HCL_SIZEOF_OOW_T >= 1
-	if ((n & (~(hcl_oow_t)0 << (BITS-4))) == 0) { x -= 4; n <<= 4; }
+#if HAK_SIZEOF_OOW_T >= 1
+	if ((n & (~(hak_oow_t)0 << (BITS-4))) == 0) { x -= 4; n <<= 4; }
 #endif
-	if ((n & (~(hcl_oow_t)0 << (BITS-2))) == 0) { x -= 2; n <<= 2; }
-	if ((n & (~(hcl_oow_t)0 << (BITS-1))) == 0) { x -= 1; }
+	if ((n & (~(hak_oow_t)0 << (BITS-2))) == 0) { x -= 2; n <<= 2; }
+	if ((n & (~(hak_oow_t)0 << (BITS-1))) == 0) { x -= 1; }
 
 	return x;
 #undef BITS
 }
 
-static HCL_INLINE hcl_oow_t getxfi (hcl_xma_t* xma, hcl_oow_t size)
+static HAK_INLINE hak_oow_t getxfi (hak_xma_t* xma, hak_oow_t size)
 {
-	hcl_oow_t xfi = ((size) / ALIGN) - 1;
+	hak_oow_t xfi = ((size) / ALIGN) - 1;
 	if (xfi >= FIXED) xfi = szlog2(size) - (xma)->bdec + FIXED;
 	if (xfi > XFIMAX(xma)) xfi = XFIMAX(xma);
 	return xfi;
 }
 
-hcl_xma_t* hcl_xma_open (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, void* zoneptr, hcl_oow_t zonesize)
+hak_xma_t* hak_xma_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, void* zoneptr, hak_oow_t zonesize)
 {
-	hcl_xma_t* xma;
+	hak_xma_t* xma;
 
-	xma = (hcl_xma_t*)HCL_MMGR_ALLOC(mmgr, HCL_SIZEOF(*xma) + xtnsize);
-	if (HCL_UNLIKELY(!xma)) return HCL_NULL;
+	xma = (hak_xma_t*)HAK_MMGR_ALLOC(mmgr, HAK_SIZEOF(*xma) + xtnsize);
+	if (HAK_UNLIKELY(!xma)) return HAK_NULL;
 
-	if (hcl_xma_init(xma, mmgr, zoneptr, zonesize) <= -1)
+	if (hak_xma_init(xma, mmgr, zoneptr, zonesize) <= -1)
 	{
-		HCL_MMGR_FREE (mmgr, xma);
-		return HCL_NULL;
+		HAK_MMGR_FREE (mmgr, xma);
+		return HAK_NULL;
 	}
 
-	HCL_MEMSET (xma + 1, 0, xtnsize);
+	HAK_MEMSET (xma + 1, 0, xtnsize);
 	return xma;
 }
 
-void hcl_xma_close (hcl_xma_t* xma)
+void hak_xma_close (hak_xma_t* xma)
 {
-	hcl_xma_fini (xma);
-	HCL_MMGR_FREE (xma->_mmgr, xma);
+	hak_xma_fini (xma);
+	HAK_MMGR_FREE (xma->_mmgr, xma);
 }
 
-int hcl_xma_init (hcl_xma_t* xma, hcl_mmgr_t* mmgr, void* zoneptr, hcl_oow_t zonesize)
+int hak_xma_init (hak_xma_t* xma, hak_mmgr_t* mmgr, void* zoneptr, hak_oow_t zonesize)
 {
-	hcl_xma_fblk_t* first;
-	hcl_oow_t xfi;
+	hak_xma_fblk_t* first;
+	hak_oow_t xfi;
 	int internal = 0;
 
 	if (!zoneptr)
 	{
 		/* round 'zonesize' to be the multiples of ALIGN */
-		zonesize = HCL_ALIGN_POW2(zonesize, ALIGN);
+		zonesize = HAK_ALIGN_POW2(zonesize, ALIGN);
 
 		/* adjust 'zonesize' to be large enough to hold a single smallest block */
 		if (zonesize < FBLKMINSIZE) zonesize = FBLKMINSIZE;
 
-		zoneptr = HCL_MMGR_ALLOC(mmgr, zonesize);
-		if (HCL_UNLIKELY(!zoneptr)) return -1;
+		zoneptr = HAK_MMGR_ALLOC(mmgr, zonesize);
+		if (HAK_UNLIKELY(!zoneptr)) return -1;
 
-		internal = 1; /* internally created. must be freed upon hcl_xma_fini() */
+		internal = 1; /* internally created. must be freed upon hak_xma_fini() */
 	}
 	else if (zonesize < FBLKMINSIZE)
 	{
@@ -255,16 +255,16 @@ int hcl_xma_init (hcl_xma_t* xma, hcl_mmgr_t* mmgr, void* zoneptr, hcl_oow_t zon
 		return -1;
 	}
 
-	first = (hcl_xma_fblk_t*)zoneptr;
+	first = (hak_xma_fblk_t*)zoneptr;
 
 	/* initialize the header part of the free chunk. the entire zone is a single free block */
 	first->prev_size = 0;
 	first->free = 1;
 	first->size = zonesize - MBLKHDRSIZE; /* size excluding the block header */
-	first->free_prev = HCL_NULL;
-	first->free_next = HCL_NULL;
+	first->free_prev = HAK_NULL;
+	first->free_next = HAK_NULL;
 
-	HCL_MEMSET(xma, 0, HCL_SIZEOF(*xma));
+	HAK_MEMSET(xma, 0, HAK_SIZEOF(*xma));
 	xma->_mmgr = mmgr;
 	xma->bdec = szlog2(FIXED * ALIGN); /* precalculate the decrement value */
 
@@ -275,12 +275,12 @@ int hcl_xma_init (hcl_xma_t* xma, hcl_mmgr_t* mmgr, void* zoneptr, hcl_oow_t zon
 	/* locate it into an apporopriate slot */
 	xma->xfree[xfi] = first;
 	/* let it be the head, which is natural with only a block */
-	xma->start = (hcl_uint8_t*)first;
+	xma->start = (hak_uint8_t*)first;
 	xma->end = xma->start + zonesize;
 	xma->internal = internal;
 
 	/* initialize some statistical variables */
-#if defined(HCL_XMA_ENABLE_STAT)
+#if defined(HAK_XMA_ENABLE_STAT)
 	xma->stat.total = zonesize;
 	xma->stat.alloc = 0;
 	xma->stat.avail = zonesize - MBLKHDRSIZE;
@@ -300,35 +300,35 @@ int hcl_xma_init (hcl_xma_t* xma, hcl_mmgr_t* mmgr, void* zoneptr, hcl_oow_t zon
 	return 0;
 }
 
-void hcl_xma_fini (hcl_xma_t* xma)
+void hak_xma_fini (hak_xma_t* xma)
 {
 	/* the head must point to the free chunk allocated in init().
 	 * let's deallocate it */
-	if (xma->internal) HCL_MMGR_FREE (xma->_mmgr, xma->start);
-	xma->start = HCL_NULL;
-	xma->end = HCL_NULL;
+	if (xma->internal) HAK_MMGR_FREE (xma->_mmgr, xma->start);
+	xma->start = HAK_NULL;
+	xma->end = HAK_NULL;
 }
 
-static HCL_INLINE void attach_to_freelist (hcl_xma_t* xma, hcl_xma_fblk_t* b)
+static HAK_INLINE void attach_to_freelist (hak_xma_t* xma, hak_xma_fblk_t* b)
 {
 	/*
 	 * attach a block to a free list
 	 */
 
 	/* get the free list index for the block size */
-	hcl_oow_t xfi = getxfi(xma, b->size);
+	hak_oow_t xfi = getxfi(xma, b->size);
 
 	/* let it be the head of the free list doubly-linked */
-	b->free_prev = HCL_NULL;
+	b->free_prev = HAK_NULL;
 	b->free_next = xma->xfree[xfi];
 	if (xma->xfree[xfi]) xma->xfree[xfi]->free_prev = b;
 	xma->xfree[xfi] = b;
 }
 
-static HCL_INLINE void detach_from_freelist (hcl_xma_t* xma, hcl_xma_fblk_t* b)
+static HAK_INLINE void detach_from_freelist (hak_xma_t* xma, hak_xma_fblk_t* b)
 {
 	/* detach a block from a free list */
-	hcl_xma_fblk_t* p, * n;
+	hak_xma_fblk_t* p, * n;
 
 	/* alias the previous and the next with short variable names */
 	p = b->free_prev;
@@ -344,7 +344,7 @@ static HCL_INLINE void detach_from_freelist (hcl_xma_t* xma, hcl_xma_fblk_t* b)
 	{
 		/* the previous item does not exist. the block is the first
  		 * item in the free list. */
-		hcl_oow_t xfi = getxfi(xma, b->size);
+		hak_oow_t xfi = getxfi(xma, b->size);
 		assert (b == xma->xfree[xfi]);
 		/* let's update the free list head */
 		xma->xfree[xfi] = n;
@@ -355,22 +355,22 @@ static HCL_INLINE void detach_from_freelist (hcl_xma_t* xma, hcl_xma_fblk_t* b)
 	if (n) n->free_prev = p;
 }
 
-static hcl_xma_fblk_t* alloc_from_freelist (hcl_xma_t* xma, hcl_oow_t xfi, hcl_oow_t size)
+static hak_xma_fblk_t* alloc_from_freelist (hak_xma_t* xma, hak_oow_t xfi, hak_oow_t size)
 {
-	hcl_xma_fblk_t* cand;
+	hak_xma_fblk_t* cand;
 
 	for (cand = xma->xfree[xfi]; cand; cand = cand->free_next)
 	{
 		if (cand->size >= size)
 		{
-			hcl_oow_t rem;
+			hak_oow_t rem;
 
 			detach_from_freelist(xma, cand);
 
 			rem = cand->size - size;
 			if (rem >= FBLKMINSIZE)
 			{
-				hcl_xma_mblk_t* y, * z;
+				hak_xma_mblk_t* y, * z;
 
 				/* the remaining part is large enough to hold
 				 * another block. let's split it
@@ -388,16 +388,16 @@ static hcl_xma_fblk_t* alloc_from_freelist (hcl_xma_t* xma, hcl_oow_t xfi, hcl_o
 				y->prev_size = cand->size;
 
 				/* add the remaining part to the free list */
-				attach_to_freelist(xma, (hcl_xma_fblk_t*)y);
+				attach_to_freelist(xma, (hak_xma_fblk_t*)y);
 
 				z = next_mblk(y);
-				if ((hcl_uint8_t*)z < xma->end) z->prev_size = y->size;
+				if ((hak_uint8_t*)z < xma->end) z->prev_size = y->size;
 
-#if defined(HCL_XMA_ENABLE_STAT)
+#if defined(HAK_XMA_ENABLE_STAT)
 				xma->stat.avail -= MBLKHDRSIZE;
 #endif
 			}
-#if defined(HCL_XMA_ENABLE_STAT)
+#if defined(HAK_XMA_ENABLE_STAT)
 			else
 			{
 				/* decrement the number of free blocks as the current
@@ -408,11 +408,11 @@ static hcl_xma_fblk_t* alloc_from_freelist (hcl_xma_t* xma, hcl_oow_t xfi, hcl_o
 
 			cand->free = 0;
 			/*
-			cand->free_next = HCL_NULL;
-			cand->free_prev = HCL_NULL;
+			cand->free_next = HAK_NULL;
+			cand->free_prev = HAK_NULL;
 			*/
 
-#if defined(HCL_XMA_ENABLE_STAT)
+#if defined(HAK_XMA_ENABLE_STAT)
 			xma->stat.nused++;
 			xma->stat.alloc += cand->size;
 			xma->stat.avail -= cand->size;
@@ -422,24 +422,24 @@ static hcl_xma_fblk_t* alloc_from_freelist (hcl_xma_t* xma, hcl_oow_t xfi, hcl_o
 		}
 	}
 
-	return HCL_NULL;
+	return HAK_NULL;
 }
 
 
-void* hcl_xma_alloc (hcl_xma_t* xma, hcl_oow_t size)
+void* hak_xma_alloc (hak_xma_t* xma, hak_oow_t size)
 {
-	hcl_xma_fblk_t* cand;
-	hcl_oow_t xfi, native_xfi;
+	hak_xma_fblk_t* cand;
+	hak_oow_t xfi, native_xfi;
 
 	DBG_VERIFY(xma, "alloc start");
 
-#if defined(HCL_XMA_ENABLE_STAT)
+#if defined(HAK_XMA_ENABLE_STAT)
 	xma->stat.nallocops++;
 #endif
 
 	/* round up 'size' to the multiples of ALIGN */
 	if (size < MINALLOCSIZE) size = MINALLOCSIZE;
-	size = HCL_ALIGN_POW2(size, ALIGN);
+	size = HAK_ALIGN_POW2(size, ALIGN);
 
 	assert (size >= ALIGN);
 	xfi = getxfi(xma, size);
@@ -457,7 +457,7 @@ void* hcl_xma_alloc (hcl_xma_t* xma, hcl_oow_t size)
 		detach_from_freelist(xma, cand);
 		cand->free = 0;
 
-#if defined(HCL_XMA_ENABLE_STAT)
+#if defined(HAK_XMA_ENABLE_STAT)
 		xma->stat.nfree--;
 		xma->stat.nused++;
 		xma->stat.alloc += cand->size;
@@ -471,10 +471,10 @@ void* hcl_xma_alloc (hcl_xma_t* xma, hcl_oow_t size)
 		cand = alloc_from_freelist(xma, XFIMAX(xma), size);
 		if (!cand)
 		{
-		#if defined(HCL_XMA_ENABLE_STAT)
+		#if defined(HAK_XMA_ENABLE_STAT)
 			xma->stat.nallocbadops++;
 		#endif
-			return HCL_NULL;
+			return HAK_NULL;
 		}
 	}
 	else
@@ -514,50 +514,50 @@ void* hcl_xma_alloc (hcl_xma_t* xma, hcl_oow_t size)
 				}
 				if (!cand)
 				{
-				#if defined(HCL_XMA_ENABLE_STAT)
+				#if defined(HAK_XMA_ENABLE_STAT)
 					xma->stat.nallocbadops++;
 				#endif
-					return HCL_NULL;
+					return HAK_NULL;
 				}
 			}
 		}
 	}
 
-#if defined(HCL_XMA_ENABLE_STAT)
+#if defined(HAK_XMA_ENABLE_STAT)
 	xma->stat.nallocgoodops++;
 #endif
 	DBG_VERIFY(xma, "alloc end");
 	return SYS_TO_USR(cand);
 }
 
-static void* _realloc_merge (hcl_xma_t* xma, void* b, hcl_oow_t size)
+static void* _realloc_merge (hak_xma_t* xma, void* b, hak_oow_t size)
 {
-	hcl_uint8_t* blk = (hcl_uint8_t*)USR_TO_SYS(b);
+	hak_uint8_t* blk = (hak_uint8_t*)USR_TO_SYS(b);
 
 	DBG_VERIFY(xma, "realloc merge start");
 	/* rounds up 'size' to be multiples of ALIGN */
 	if (size < MINALLOCSIZE) size = MINALLOCSIZE;
-	size = HCL_ALIGN_POW2(size, ALIGN);
+	size = HAK_ALIGN_POW2(size, ALIGN);
 
 	if (size > mblk_size(blk))
 	{
 		/* grow the current block */
-		hcl_oow_t req;
-		hcl_uint8_t* n;
-		hcl_oow_t rem;
+		hak_oow_t req;
+		hak_uint8_t* n;
+		hak_oow_t rem;
 
 		req = size - mblk_size(blk); /* required size additionally */
 
-		n = (hcl_uint8_t*)next_mblk(blk);
+		n = (hak_uint8_t*)next_mblk(blk);
 		/* check if the next adjacent block is available */
-		if (n >= xma->end || !mblk_free(n) || req > mblk_size(n)) return HCL_NULL; /* no! */
+		if (n >= xma->end || !mblk_free(n) || req > mblk_size(n)) return HAK_NULL; /* no! */
 /* TODO: check more blocks if the next block is free but small in size.
  *       check the previous adjacent blocks also */
 
 		assert(mblk_size(blk) == mblk_prev_size(n));
 
 		/* let's merge the current block with the next block */
-		detach_from_freelist(xma, (hcl_xma_fblk_t*)n);
+		detach_from_freelist(xma, (hak_xma_fblk_t*)n);
 
 		rem = (MBLKHDRSIZE + mblk_size(n)) - req;
 		if (rem >= FBLKMINSIZE)
@@ -566,19 +566,19 @@ static void* _realloc_merge (hcl_xma_t* xma, void* b, hcl_oow_t size)
 			 * the remaining part of the next block is large enough
 			 * to hold a block. break the next block.
 			 */
-			hcl_uint8_t* y, * z;
+			hak_uint8_t* y, * z;
 
 			mblk_size(blk) += req;
-			y = (hcl_uint8_t*)next_mblk(blk);
+			y = (hak_uint8_t*)next_mblk(blk);
 			mblk_free(y) = 1;
 			mblk_size(y) = rem - MBLKHDRSIZE;
 			mblk_prev_size(y) = mblk_size(blk);
-			attach_to_freelist(xma, (hcl_xma_fblk_t*)y);
+			attach_to_freelist(xma, (hak_xma_fblk_t*)y);
 
-			z = (hcl_uint8_t*)next_mblk(y);
+			z = (hak_uint8_t*)next_mblk(y);
 			if (z < xma->end) mblk_prev_size(z) = mblk_size(y);
 
-		#if defined(HCL_XMA_ENABLE_STAT)
+		#if defined(HAK_XMA_ENABLE_STAT)
 			xma->stat.alloc += req;
 			xma->stat.avail -= req; /* req + MBLKHDRSIZE(tmp) - MBLKHDRSIZE(n) */
 			if (xma->stat.alloc > xma->stat.alloc_hwmark) xma->stat.alloc_hwmark = xma->stat.alloc;
@@ -586,16 +586,16 @@ static void* _realloc_merge (hcl_xma_t* xma, void* b, hcl_oow_t size)
 		}
 		else
 		{
-			hcl_uint8_t* z;
+			hak_uint8_t* z;
 
 			/* the remaining part of the next block is too small to form an indepent block.
 			 * utilize the whole block by merging to the resizing block */
 			mblk_size(blk) += MBLKHDRSIZE + mblk_size(n);
 
-			z = (hcl_uint8_t*)next_mblk(blk);
+			z = (hak_uint8_t*)next_mblk(blk);
 			if (z < xma->end) mblk_prev_size(z) = mblk_size(blk);
 
-		#if defined(HCL_XMA_ENABLE_STAT)
+		#if defined(HAK_XMA_ENABLE_STAT)
 			xma->stat.nfree--;
 			xma->stat.alloc += MBLKHDRSIZE + mblk_size(n);
 			xma->stat.avail -= mblk_size(n);
@@ -606,57 +606,57 @@ static void* _realloc_merge (hcl_xma_t* xma, void* b, hcl_oow_t size)
 	else if (size < mblk_size(blk))
 	{
 		/* shrink the block */
-		hcl_oow_t rem = mblk_size(blk) - size;
+		hak_oow_t rem = mblk_size(blk) - size;
 		if (rem >= FBLKMINSIZE)
 		{
-			hcl_uint8_t* n;
+			hak_uint8_t* n;
 
-			n = (hcl_uint8_t*)next_mblk(blk);
+			n = (hak_uint8_t*)next_mblk(blk);
 
 			/* the leftover is large enough to hold a block of minimum size.split the current block */
 			if (n < xma->end && mblk_free(n))
 			{
-				hcl_uint8_t* y, * z;
+				hak_uint8_t* y, * z;
 
 				/* make the leftover block merge with the next block */
 
-				detach_from_freelist(xma, (hcl_xma_fblk_t*)n);
+				detach_from_freelist(xma, (hak_xma_fblk_t*)n);
 
 				mblk_size(blk) = size;
 
-				y = (hcl_uint8_t*)next_mblk(blk); /* update y to the leftover block with the new block size set above */
+				y = (hak_uint8_t*)next_mblk(blk); /* update y to the leftover block with the new block size set above */
 				mblk_free(y) = 1;
 				mblk_size(y) = rem + mblk_size(n); /* add up the adjust block - (rem + MBLKHDRSIZE(n) + n->size) - MBLKHDRSIZE(y) */
 				mblk_prev_size(y) = mblk_size(blk);
 
 				/* add 'y' to the free list */
-				attach_to_freelist(xma, (hcl_xma_fblk_t*)y);
+				attach_to_freelist(xma, (hak_xma_fblk_t*)y);
 
-				z = (hcl_uint8_t*)next_mblk(y); /* get adjacent block to the merged block */
+				z = (hak_uint8_t*)next_mblk(y); /* get adjacent block to the merged block */
 				if (z < xma->end) mblk_prev_size(z) = mblk_size(y);
 
-			#if defined(HCL_XMA_ENABLE_STAT)
+			#if defined(HAK_XMA_ENABLE_STAT)
 				xma->stat.alloc -= rem;
 				xma->stat.avail += rem; /* rem - MBLKHDRSIZE(y) + MBLKHDRSIZE(n) */
 			#endif
 			}
 			else
 			{
-				hcl_uint8_t* y;
+				hak_uint8_t* y;
 
 				/* link the leftover block to the free list */
 				mblk_size(blk) = size;
 
-				y = (hcl_uint8_t*)next_mblk(blk); /* update y to the leftover block with the new block size set above */
+				y = (hak_uint8_t*)next_mblk(blk); /* update y to the leftover block with the new block size set above */
 				mblk_free(y) = 1;
 				mblk_size(y) = rem - MBLKHDRSIZE;
 				mblk_prev_size(y) = mblk_size(blk);
 
-				attach_to_freelist(xma, (hcl_xma_fblk_t*)y);
-				/*n = (hcl_uint8_t*)next_mblk(y);
+				attach_to_freelist(xma, (hak_xma_fblk_t*)y);
+				/*n = (hak_uint8_t*)next_mblk(y);
 				if (n < xma->end)*/ mblk_prev_size(n) = mblk_size(y);
 
-			#if defined(HCL_XMA_ENABLE_STAT)
+			#if defined(HAK_XMA_ENABLE_STAT)
 				xma->stat.nfree++;
 				xma->stat.alloc -= rem;
 				xma->stat.avail += mblk_size(y);
@@ -669,21 +669,21 @@ static void* _realloc_merge (hcl_xma_t* xma, void* b, hcl_oow_t size)
 	return b;
 }
 
-void* hcl_xma_calloc (hcl_xma_t* xma, hcl_oow_t size)
+void* hak_xma_calloc (hak_xma_t* xma, hak_oow_t size)
 {
-	void* ptr = hcl_xma_alloc(xma, size);
-	if (ptr) HCL_MEMSET (ptr, 0, size);
+	void* ptr = hak_xma_alloc(xma, size);
+	if (ptr) HAK_MEMSET (ptr, 0, size);
 	return ptr;
 }
 
-void* hcl_xma_realloc (hcl_xma_t* xma, void* b, hcl_oow_t size)
+void* hak_xma_realloc (hak_xma_t* xma, void* b, hak_oow_t size)
 {
 	void* n;
 
 	if (!b)
 	{
 		/* 'realloc' with NULL is the same as 'alloc' */
-		n = hcl_xma_alloc(xma, size);
+		n = hak_xma_alloc(xma, size);
 	}
 	else
 	{
@@ -694,21 +694,21 @@ void* hcl_xma_realloc (hcl_xma_t* xma, void* b, hcl_oow_t size)
 		n = _realloc_merge(xma, b, size);
 		if (!n)
 		{
-		#if defined(HCL_XMA_ENABLE_STAT)
+		#if defined(HAK_XMA_ENABLE_STAT)
 			xma->stat.nreallocbadops++;
 		#endif
 			/* reallocation by merging failed. fall back to the slow
 			 * allocation-copy-free scheme */
-			n = hcl_xma_alloc(xma, size);
+			n = hak_xma_alloc(xma, size);
 			if (n)
 			{
-				HCL_MEMCPY(n, b, size);
-				hcl_xma_free(xma, b);
+				HAK_MEMCPY(n, b, size);
+				hak_xma_free(xma, b);
 			}
 		}
 		else
 		{
-		#if defined(HCL_XMA_ENABLE_STAT)
+		#if defined(HAK_XMA_ENABLE_STAT)
 			xma->stat.nreallocgoodops++;
 		#endif
 		}
@@ -717,25 +717,25 @@ void* hcl_xma_realloc (hcl_xma_t* xma, void* b, hcl_oow_t size)
 	return n;
 }
 
-void hcl_xma_free (hcl_xma_t* xma, void* b)
+void hak_xma_free (hak_xma_t* xma, void* b)
 {
-	hcl_uint8_t* blk = (hcl_uint8_t*)USR_TO_SYS(b);
-	hcl_uint8_t* x, * y;
-	hcl_oow_t org_blk_size;
+	hak_uint8_t* blk = (hak_uint8_t*)USR_TO_SYS(b);
+	hak_uint8_t* x, * y;
+	hak_oow_t org_blk_size;
 
 	DBG_VERIFY(xma, "free start");
 
 	org_blk_size = mblk_size(blk);
 
-#if defined(HCL_XMA_ENABLE_STAT)
+#if defined(HAK_XMA_ENABLE_STAT)
 	/* update statistical variables */
 	xma->stat.nused--;
 	xma->stat.alloc -= org_blk_size;
 	xma->stat.nfreeops++;
 #endif
 
-	x = (hcl_uint8_t*)prev_mblk(blk);
-	y = (hcl_uint8_t*)next_mblk(blk);
+	x = (hak_uint8_t*)prev_mblk(blk);
+	y = (hak_uint8_t*)next_mblk(blk);
 	if ((x >= xma->start && mblk_free(x)) && (y < xma->end && mblk_free(y)))
 	{
 		/*
@@ -755,21 +755,21 @@ void hcl_xma_free (hcl_xma_t* xma, void* b)
 		 *
 		 */
 
-		hcl_uint8_t* z;
-		hcl_oow_t ns = MBLKHDRSIZE + org_blk_size + MBLKHDRSIZE;
+		hak_uint8_t* z;
+		hak_oow_t ns = MBLKHDRSIZE + org_blk_size + MBLKHDRSIZE;
 		                /* blk's header  size + blk->size + y's header size */
-		hcl_oow_t bs = ns + mblk_size(y);
+		hak_oow_t bs = ns + mblk_size(y);
 
-		detach_from_freelist(xma, (hcl_xma_fblk_t*)x);
-		detach_from_freelist(xma, (hcl_xma_fblk_t*)y);
+		detach_from_freelist(xma, (hak_xma_fblk_t*)x);
+		detach_from_freelist(xma, (hak_xma_fblk_t*)y);
 
 		mblk_size(x) += bs;
-		attach_to_freelist(xma, (hcl_xma_fblk_t*)x);
+		attach_to_freelist(xma, (hak_xma_fblk_t*)x);
 
-		z = (hcl_uint8_t*)next_mblk(x);
-		if ((hcl_uint8_t*)z < xma->end) mblk_prev_size(z) = mblk_size(x);
+		z = (hak_uint8_t*)next_mblk(x);
+		if ((hak_uint8_t*)z < xma->end) mblk_prev_size(z) = mblk_size(x);
 
-#if defined(HCL_XMA_ENABLE_STAT)
+#if defined(HAK_XMA_ENABLE_STAT)
 		xma->stat.nfree--;
 		xma->stat.avail += ns;
 #endif
@@ -797,10 +797,10 @@ void hcl_xma_free (hcl_xma_t* xma, void* b)
 		 *
 		 *
 		 */
-		hcl_uint8_t* z = (hcl_uint8_t*)next_mblk(y);
+		hak_uint8_t* z = (hak_uint8_t*)next_mblk(y);
 
 		/* detach y from the free list */
-		detach_from_freelist(xma, (hcl_xma_fblk_t*)y);
+		detach_from_freelist(xma, (hak_xma_fblk_t*)y);
 
 		/* update the block availability */
 		mblk_free(blk) = 1;
@@ -808,12 +808,12 @@ void hcl_xma_free (hcl_xma_t* xma, void* b)
 		mblk_size(blk) += MBLKHDRSIZE + mblk_size(y);
 
 		/* update the backward link of Y */
-		if ((hcl_uint8_t*)z < xma->end) mblk_prev_size(z) = mblk_size(blk);
+		if ((hak_uint8_t*)z < xma->end) mblk_prev_size(z) = mblk_size(blk);
 
 		/* attach blk to the free list */
-		attach_to_freelist(xma, (hcl_xma_fblk_t*)blk);
+		attach_to_freelist(xma, (hak_xma_fblk_t*)blk);
 
-#if defined(HCL_XMA_ENABLE_STAT)
+#if defined(HAK_XMA_ENABLE_STAT)
 		xma->stat.avail += org_blk_size + MBLKHDRSIZE;
 #endif
 	}
@@ -833,25 +833,25 @@ void hcl_xma_free (hcl_xma_t* xma, void* b)
 		 * |     X                   |     Y      |
 		 * +-------------------------+------------+
 		 */
-		detach_from_freelist(xma, (hcl_xma_fblk_t*)x);
+		detach_from_freelist(xma, (hak_xma_fblk_t*)x);
 
 		mblk_size(x) += MBLKHDRSIZE + org_blk_size;
 
 		assert(y == next_mblk(x));
-		if ((hcl_uint8_t*)y < xma->end) mblk_prev_size(y) = mblk_size(x);
+		if ((hak_uint8_t*)y < xma->end) mblk_prev_size(y) = mblk_size(x);
 
-		attach_to_freelist(xma, (hcl_xma_fblk_t*)x);
+		attach_to_freelist(xma, (hak_xma_fblk_t*)x);
 
-#if defined(HCL_XMA_ENABLE_STAT)
+#if defined(HAK_XMA_ENABLE_STAT)
 		xma->stat.avail += MBLKHDRSIZE + org_blk_size;
 #endif
 	}
 	else
 	{
 		mblk_free(blk) = 1;
-		attach_to_freelist(xma, (hcl_xma_fblk_t*)blk);
+		attach_to_freelist(xma, (hak_xma_fblk_t*)blk);
 
-#if defined(HCL_XMA_ENABLE_STAT)
+#if defined(HAK_XMA_ENABLE_STAT)
 		xma->stat.nfree++;
 		xma->stat.avail += org_blk_size;
 #endif
@@ -860,17 +860,17 @@ void hcl_xma_free (hcl_xma_t* xma, void* b)
 	DBG_VERIFY(xma, "free end");
 }
 
-void hcl_xma_dump (hcl_xma_t* xma, hcl_xma_dumper_t dumper, void* ctx)
+void hak_xma_dump (hak_xma_t* xma, hak_xma_dumper_t dumper, void* ctx)
 {
-	hcl_xma_mblk_t* tmp;
-	hcl_oow_t fsum, asum, xfi;
-#if defined(HCL_XMA_ENABLE_STAT)
-	hcl_oow_t isum;
+	hak_xma_mblk_t* tmp;
+	hak_oow_t fsum, asum, xfi;
+#if defined(HAK_XMA_ENABLE_STAT)
+	hak_oow_t isum;
 #endif
 
 	dumper(ctx, "[XMA DUMP]\n");
 
-#if defined(HCL_XMA_ENABLE_STAT)
+#if defined(HAK_XMA_ENABLE_STAT)
 	dumper(ctx, "== statistics ==\n");
 	dumper(ctx, "Total                = %zu\n", xma->stat.total);
 	dumper(ctx, "Alloc                = %zu\n", xma->stat.alloc);
@@ -880,7 +880,7 @@ void hcl_xma_dump (hcl_xma_t* xma, hcl_xma_dumper_t dumper, void* ctx)
 
 	dumper(ctx, "== blocks ==\n");
 	dumper(ctx, " size               avail address\n");
-	for (tmp = (hcl_xma_mblk_t*)xma->start, fsum = 0, asum = 0; (hcl_uint8_t*)tmp < xma->end; tmp = next_mblk(tmp))
+	for (tmp = (hak_xma_mblk_t*)xma->start, fsum = 0, asum = 0; (hak_uint8_t*)tmp < xma->end; tmp = next_mblk(tmp))
 	{
 		dumper(ctx, " %-18zu %-5u %p\n", tmp->size, (unsigned int)tmp->free, tmp);
 		if (tmp->free) fsum += tmp->size;
@@ -892,7 +892,7 @@ void hcl_xma_dump (hcl_xma_t* xma, hcl_xma_dumper_t dumper, void* ctx)
 	{
 		if (xma->xfree[xfi])
 		{
-			hcl_xma_fblk_t* f;
+			hak_xma_fblk_t* f;
 			for (f = xma->xfree[xfi]; f; f = f->free_next)
 			{
 				dumper(ctx, " xfi %d fblk %p size %lu\n", xfi, f, (unsigned long)f->size);
@@ -900,7 +900,7 @@ void hcl_xma_dump (hcl_xma_t* xma, hcl_xma_dumper_t dumper, void* ctx)
 		}
 	}
 
-#if defined(HCL_XMA_ENABLE_STAT)
+#if defined(HAK_XMA_ENABLE_STAT)
 	isum = (xma->stat.nfree + xma->stat.nused) * MBLKHDRSIZE;
 #endif
 
@@ -909,7 +909,7 @@ void hcl_xma_dump (hcl_xma_t* xma, hcl_xma_dumper_t dumper, void* ctx)
 	dumper(ctx, "Available blocks       : %18zu bytes\n", fsum);
 
 
-#if defined(HCL_XMA_ENABLE_STAT)
+#if defined(HAK_XMA_ENABLE_STAT)
 	dumper(ctx, "Internal use           : %18zu bytes\n", isum);
 	dumper(ctx, "Total                  : %18zu bytes\n", (asum + fsum + isum));
 	dumper(ctx, "Alloc operations       : %18zu\n", xma->stat.nallocops);
@@ -921,7 +921,7 @@ void hcl_xma_dump (hcl_xma_t* xma, hcl_xma_dumper_t dumper, void* ctx)
 	dumper(ctx, "Free operations        : %18zu\n", xma->stat.nfreeops);
 #endif
 
-#if defined(HCL_XMA_ENABLE_STAT)
+#if defined(HAK_XMA_ENABLE_STAT)
 	assert(asum == xma->stat.alloc);
 	assert(fsum == xma->stat.avail);
 	assert(isum == xma->stat.total - (xma->stat.alloc + xma->stat.avail));

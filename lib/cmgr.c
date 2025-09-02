@@ -22,144 +22,144 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <hcl-cmgr.h>
-#include <hcl-chr.h>
-#include <hcl-str.h>
+#include <hak-cmgr.h>
+#include <hak-chr.h>
+#include <hak-str.h>
 
-static hcl_cmgr_t builtin_cmgr[] =
+static hak_cmgr_t builtin_cmgr[] =
 {
-	/* keep the order aligned with hcl_cmgr_id_t values in <hcl-utl.h> */
-	{ hcl_utf8_to_uc,  hcl_uc_to_utf8 },
-	{ hcl_utf16_to_uc, hcl_uc_to_utf16 },
-	{ hcl_mb8_to_uc,   hcl_uc_to_mb8 }
+	/* keep the order aligned with hak_cmgr_id_t values in <hak-utl.h> */
+	{ hak_utf8_to_uc,  hak_uc_to_utf8 },
+	{ hak_utf16_to_uc, hak_uc_to_utf16 },
+	{ hak_mb8_to_uc,   hak_uc_to_mb8 }
 };
 
-hcl_cmgr_t* hcl_get_cmgr_by_id (hcl_cmgr_id_t id)
+hak_cmgr_t* hak_get_cmgr_by_id (hak_cmgr_id_t id)
 {
 	return &builtin_cmgr[id];
 }
 
 static struct
 {
-	const hcl_bch_t* name;
-	hcl_cmgr_id_t     id;
+	const hak_bch_t* name;
+	hak_cmgr_id_t     id;
 } builtin_cmgr_tab[] =
 {
-	{ "utf8",    HCL_CMGR_UTF8 },
-	{ "utf16",   HCL_CMGR_UTF16 },
-	{ "mb8",     HCL_CMGR_MB8 }
+	{ "utf8",    HAK_CMGR_UTF8 },
+	{ "utf16",   HAK_CMGR_UTF16 },
+	{ "mb8",     HAK_CMGR_MB8 }
 };
 
-hcl_cmgr_t* hcl_get_cmgr_by_bcstr (const hcl_bch_t* name)
+hak_cmgr_t* hak_get_cmgr_by_bcstr (const hak_bch_t* name)
 {
 	if (name)
 	{
-		hcl_oow_t i;
+		hak_oow_t i;
 
-		for (i = 0; i < HCL_COUNTOF(builtin_cmgr_tab); i++)
+		for (i = 0; i < HAK_COUNTOF(builtin_cmgr_tab); i++)
 		{
-			if (hcl_comp_bcstr(name, builtin_cmgr_tab[i].name) == 0)
+			if (hak_comp_bcstr(name, builtin_cmgr_tab[i].name) == 0)
 			{
 				return &builtin_cmgr[builtin_cmgr_tab[i].id];
 			}
 		 }
 	}
 
-	return HCL_NULL;
+	return HAK_NULL;
 }
 
-hcl_cmgr_t* hcl_get_cmgr_by_ucstr (const hcl_uch_t* name)
+hak_cmgr_t* hak_get_cmgr_by_ucstr (const hak_uch_t* name)
 {
 	if (name)
 	{
-		hcl_oow_t i;
+		hak_oow_t i;
 
-		for (i = 0; i < HCL_COUNTOF(builtin_cmgr_tab); i++)
+		for (i = 0; i < HAK_COUNTOF(builtin_cmgr_tab); i++)
 		{
-			if (hcl_comp_ucstr_bcstr(name, builtin_cmgr_tab[i].name) == 0)
+			if (hak_comp_ucstr_bcstr(name, builtin_cmgr_tab[i].name) == 0)
 			{
 				return &builtin_cmgr[builtin_cmgr_tab[i].id];
 			}
 		 }
 	}
 
-	return HCL_NULL;
+	return HAK_NULL;
 }
 
 /* ----------------------------------------------------------------------- */
 
-int hcl_conv_utf8_to_uchars (const hcl_bch_t* bcs, hcl_oow_t* bcslen, hcl_uch_t* ucs, hcl_oow_t* ucslen)
+int hak_conv_utf8_to_uchars (const hak_bch_t* bcs, hak_oow_t* bcslen, hak_uch_t* ucs, hak_oow_t* ucslen)
 {
 	/* the source is length bound */
-	return hcl_conv_bchars_to_uchars_with_cmgr(bcs, bcslen, ucs, ucslen, &builtin_cmgr[HCL_CMGR_UTF8], 0);
+	return hak_conv_bchars_to_uchars_with_cmgr(bcs, bcslen, ucs, ucslen, &builtin_cmgr[HAK_CMGR_UTF8], 0);
 }
 
-int hcl_conv_uchars_to_utf8 (const hcl_uch_t* ucs, hcl_oow_t* ucslen, hcl_bch_t* bcs, hcl_oow_t* bcslen)
+int hak_conv_uchars_to_utf8 (const hak_uch_t* ucs, hak_oow_t* ucslen, hak_bch_t* bcs, hak_oow_t* bcslen)
 {
 	/* length bound */
-	return hcl_conv_uchars_to_bchars_with_cmgr(ucs, ucslen, bcs, bcslen, &builtin_cmgr[HCL_CMGR_UTF8]);
+	return hak_conv_uchars_to_bchars_with_cmgr(ucs, ucslen, bcs, bcslen, &builtin_cmgr[HAK_CMGR_UTF8]);
 }
 
-int hcl_conv_utf8_to_ucstr (const hcl_bch_t* bcs, hcl_oow_t* bcslen, hcl_uch_t* ucs, hcl_oow_t* ucslen)
+int hak_conv_utf8_to_ucstr (const hak_bch_t* bcs, hak_oow_t* bcslen, hak_uch_t* ucs, hak_oow_t* ucslen)
 {
 	/* null-terminated. */
-	return hcl_conv_bcstr_to_ucstr_with_cmgr(bcs, bcslen, ucs, ucslen, &builtin_cmgr[HCL_CMGR_UTF8], 0);
+	return hak_conv_bcstr_to_ucstr_with_cmgr(bcs, bcslen, ucs, ucslen, &builtin_cmgr[HAK_CMGR_UTF8], 0);
 }
 
-int hcl_conv_ucstr_to_utf8 (const hcl_uch_t* ucs, hcl_oow_t* ucslen, hcl_bch_t* bcs, hcl_oow_t* bcslen)
+int hak_conv_ucstr_to_utf8 (const hak_uch_t* ucs, hak_oow_t* ucslen, hak_bch_t* bcs, hak_oow_t* bcslen)
 {
 	/* null-terminated */
-	return hcl_conv_ucstr_to_bcstr_with_cmgr(ucs, ucslen, bcs, bcslen, &builtin_cmgr[HCL_CMGR_UTF8]);
+	return hak_conv_ucstr_to_bcstr_with_cmgr(ucs, ucslen, bcs, bcslen, &builtin_cmgr[HAK_CMGR_UTF8]);
 }
 
 /* ----------------------------------------------------------------------- */
 
-int hcl_conv_utf16_to_uchars (const hcl_bch_t* bcs, hcl_oow_t* bcslen, hcl_uch_t* ucs, hcl_oow_t* ucslen)
+int hak_conv_utf16_to_uchars (const hak_bch_t* bcs, hak_oow_t* bcslen, hak_uch_t* ucs, hak_oow_t* ucslen)
 {
 	/* the source is length bound */
-	return hcl_conv_bchars_to_uchars_with_cmgr(bcs, bcslen, ucs, ucslen, &builtin_cmgr[HCL_CMGR_UTF16], 0);
+	return hak_conv_bchars_to_uchars_with_cmgr(bcs, bcslen, ucs, ucslen, &builtin_cmgr[HAK_CMGR_UTF16], 0);
 }
 
-int hcl_conv_uchars_to_utf16 (const hcl_uch_t* ucs, hcl_oow_t* ucslen, hcl_bch_t* bcs, hcl_oow_t* bcslen)
+int hak_conv_uchars_to_utf16 (const hak_uch_t* ucs, hak_oow_t* ucslen, hak_bch_t* bcs, hak_oow_t* bcslen)
 {
 	/* length bound */
-	return hcl_conv_uchars_to_bchars_with_cmgr(ucs, ucslen, bcs, bcslen, &builtin_cmgr[HCL_CMGR_UTF16]);
+	return hak_conv_uchars_to_bchars_with_cmgr(ucs, ucslen, bcs, bcslen, &builtin_cmgr[HAK_CMGR_UTF16]);
 }
 
-int hcl_conv_utf16_to_ucstr (const hcl_bch_t* bcs, hcl_oow_t* bcslen, hcl_uch_t* ucs, hcl_oow_t* ucslen)
+int hak_conv_utf16_to_ucstr (const hak_bch_t* bcs, hak_oow_t* bcslen, hak_uch_t* ucs, hak_oow_t* ucslen)
 {
 	/* null-terminated. */
-	return hcl_conv_bcstr_to_ucstr_with_cmgr(bcs, bcslen, ucs, ucslen, &builtin_cmgr[HCL_CMGR_UTF16], 0);
+	return hak_conv_bcstr_to_ucstr_with_cmgr(bcs, bcslen, ucs, ucslen, &builtin_cmgr[HAK_CMGR_UTF16], 0);
 }
 
-int hcl_conv_ucstr_to_utf16 (const hcl_uch_t* ucs, hcl_oow_t* ucslen, hcl_bch_t* bcs, hcl_oow_t* bcslen)
+int hak_conv_ucstr_to_utf16 (const hak_uch_t* ucs, hak_oow_t* ucslen, hak_bch_t* bcs, hak_oow_t* bcslen)
 {
 	/* null-terminated */
-	return hcl_conv_ucstr_to_bcstr_with_cmgr(ucs, ucslen, bcs, bcslen, &builtin_cmgr[HCL_CMGR_UTF16]);
+	return hak_conv_ucstr_to_bcstr_with_cmgr(ucs, ucslen, bcs, bcslen, &builtin_cmgr[HAK_CMGR_UTF16]);
 }
 
 /* ----------------------------------------------------------------------- */
 
-int hcl_conv_mb8_to_uchars (const hcl_bch_t* bcs, hcl_oow_t* bcslen, hcl_uch_t* ucs, hcl_oow_t* ucslen)
+int hak_conv_mb8_to_uchars (const hak_bch_t* bcs, hak_oow_t* bcslen, hak_uch_t* ucs, hak_oow_t* ucslen)
 {
 	/* the source is length bound */
-	return hcl_conv_bchars_to_uchars_with_cmgr(bcs, bcslen, ucs, ucslen, &builtin_cmgr[HCL_CMGR_MB8], 0);
+	return hak_conv_bchars_to_uchars_with_cmgr(bcs, bcslen, ucs, ucslen, &builtin_cmgr[HAK_CMGR_MB8], 0);
 }
 
-int hcl_conv_uchars_to_mb8 (const hcl_uch_t* ucs, hcl_oow_t* ucslen, hcl_bch_t* bcs, hcl_oow_t* bcslen)
+int hak_conv_uchars_to_mb8 (const hak_uch_t* ucs, hak_oow_t* ucslen, hak_bch_t* bcs, hak_oow_t* bcslen)
 {
 	/* length bound */
-	return hcl_conv_uchars_to_bchars_with_cmgr(ucs, ucslen, bcs, bcslen, &builtin_cmgr[HCL_CMGR_MB8]);
+	return hak_conv_uchars_to_bchars_with_cmgr(ucs, ucslen, bcs, bcslen, &builtin_cmgr[HAK_CMGR_MB8]);
 }
 
-int hcl_conv_mb8_to_ucstr (const hcl_bch_t* bcs, hcl_oow_t* bcslen, hcl_uch_t* ucs, hcl_oow_t* ucslen)
+int hak_conv_mb8_to_ucstr (const hak_bch_t* bcs, hak_oow_t* bcslen, hak_uch_t* ucs, hak_oow_t* ucslen)
 {
 	/* null-terminated. */
-	return hcl_conv_bcstr_to_ucstr_with_cmgr(bcs, bcslen, ucs, ucslen, &builtin_cmgr[HCL_CMGR_MB8], 0);
+	return hak_conv_bcstr_to_ucstr_with_cmgr(bcs, bcslen, ucs, ucslen, &builtin_cmgr[HAK_CMGR_MB8], 0);
 }
 
-int hcl_conv_ucstr_to_mb8 (const hcl_uch_t* ucs, hcl_oow_t* ucslen, hcl_bch_t* bcs, hcl_oow_t* bcslen)
+int hak_conv_ucstr_to_mb8 (const hak_uch_t* ucs, hak_oow_t* ucslen, hak_bch_t* bcs, hak_oow_t* bcslen)
 {
 	/* null-terminated */
-	return hcl_conv_ucstr_to_bcstr_with_cmgr(ucs, ucslen, bcs, bcslen, &builtin_cmgr[HCL_CMGR_MB8]);
+	return hak_conv_ucstr_to_bcstr_with_cmgr(ucs, ucslen, bcs, bcslen, &builtin_cmgr[HAK_CMGR_MB8]);
 }

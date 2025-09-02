@@ -22,8 +22,8 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <hcl-x.h>
-#include "hcl-prv.h"
+#include <hak-x.h>
+#include "hak-prv.h"
 
 #if defined(_WIN32)
 #	include <winsock2.h>
@@ -51,10 +51,10 @@
 union sockaddr_t
 {
 	struct sockaddr sa;
-#if (HCL_SIZEOF_STRUCT_SOCKADDR_IN > 0)
+#if (HAK_SIZEOF_STRUCT_SOCKADDR_IN > 0)
 	struct sockaddr_in in4;
 #endif
-#if (HCL_SIZEOF_STRUCT_SOCKADDR_IN6 > 0)
+#if (HAK_SIZEOF_STRUCT_SOCKADDR_IN6 > 0)
 	struct sockaddr_in6 in6;
 #endif
 };
@@ -69,12 +69,12 @@ typedef union sockaddr_t sockaddr_t;
 #undef str_to_ifindex
 
 #define ooch_mode (1)
-#define ooch_t hcl_bch_t
-#define oocs_t hcl_bcs_t
+#define ooch_t hak_bch_t
+#define oocs_t hak_bcs_t
 #define str_to_ipv4 bchars_to_ipv4
 #define str_to_ipv6 bchars_to_ipv6
 #define str_to_ifindex bchars_to_ifindex
-#define str_to_sockaddr hcl_bcharstosckaddr
+#define str_to_sockaddr hak_bcharstosckaddr
 #include "x-utl-sa.h"
 
 #undef ooch_mode
@@ -86,30 +86,30 @@ typedef union sockaddr_t sockaddr_t;
 #undef str_to_sockaddr
 
 #define ooch_mode (2)
-#define ooch_t hcl_uch_t
-#define oocs_t hcl_ucs_t
+#define ooch_t hak_uch_t
+#define oocs_t hak_ucs_t
 #define str_to_ipv4 uchars_to_ipv4
 #define str_to_ipv6 uchars_to_ipv6
 #define str_to_ifindex uchars_to_ifindex
-#define str_to_sockaddr hcl_ucharstosckaddr
+#define str_to_sockaddr hak_ucharstosckaddr
 #include "x-utl-sa.h"
 
-int hcl_get_sckaddr_info (const hcl_sckaddr_t* sckaddr, hcl_scklen_t* scklen)
+int hak_get_sckaddr_info (const hak_sckaddr_t* sckaddr, hak_scklen_t* scklen)
 {
 	sockaddr_t* sa = (sockaddr_t*)sckaddr;
 	if (scklen)
 	{
 		switch (sa->sa.sa_family)
 		{
-		#if (HCL_SIZEOF_STRUCT_SOCKADDR_IN > 0)
+		#if (HAK_SIZEOF_STRUCT_SOCKADDR_IN > 0)
 			case AF_INET:
-				*scklen = HCL_SIZEOF(sa->in4);
+				*scklen = HAK_SIZEOF(sa->in4);
 				break;
 		#endif
 
-		#if (HCL_SIZEOF_STRUCT_SOCKADDR_IN6 > 0)
+		#if (HAK_SIZEOF_STRUCT_SOCKADDR_IN6 > 0)
 			case AF_INET6:
-				*scklen = HCL_SIZEOF(sa->in6);
+				*scklen = HAK_SIZEOF(sa->in6);
 				break;
 		#endif
 

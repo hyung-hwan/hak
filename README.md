@@ -1,8 +1,8 @@
-# HCL - Hybrid Command Language
+# HAK - Command Language
 
 ## Language Syntax
 
-A HCL program is composed of expressions.
+A HAK program is composed of expressions.
 
 ## Keywords
 - nil
@@ -47,6 +47,7 @@ do { | k | set k 20; printf "k=%d\n" k; };
 - dictionary `#{ }`
 - array `#[ ]`
 - byte array `#b[ ]`
+- character array `#c[ ]`
 - list `#( )`
 - function calls `( )`
 - message sends `(rcv:msg arg1 ...)`
@@ -168,10 +169,10 @@ do { | k | set k 20; printf "k=%d\n" k; };
 (printf "--------------------------\n")
 ```
 
-## HCL Exchange Protocol
+## HAK Exchange Protocol
 
-The HCL library contains a simple server/client libraries that can exchange
-HCL scripts and results over network. The following describes the protocol
+The HAK library contains a simple server/client libraries that can exchange
+HAK scripts and results over network. The following describes the protocol
 briefly.
 
 ### Request message

@@ -1,8 +1,8 @@
 AC_PREREQ([2.71])
 
-AC_INIT([hcl],[0.1.0],[Chung, Hyung-Hwan (hyunghwan.chung@gmail.com)],[],[http://code.miflux.com/hyung-hwan/hcl])
+AC_INIT([hak],[0.1.0],[Chung, Hyung-Hwan (hyunghwan.chung@gmail.com)],[],[http://code.miflux.com/hyung-hwan/hak])
 
-AC_CONFIG_HEADERS([lib/hcl-cfg.h])
+AC_CONFIG_HEADERS([lib/hak-cfg.h])
 AC_CONFIG_AUX_DIR([ac])
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -40,7 +40,7 @@ then
 fi
 
 dnl indicate the existence of config.h
-CFLAGS="$CFLAGS -DHCL_HAVE_CFG_H"
+CFLAGS="$CFLAGS -DHAK_HAVE_CFG_H"
 
 dnl make visible the 64-bit interface to the file system
 CFLAGS="$CFLAGS -D_LARGEFILE64_SOURCE"
@@ -283,7 +283,7 @@ then
 	if test ${ac_cv_sizeof_socklen_t} -gt 0
 	then
 		AX_CHECK_SIGN([socklen_t],
-			[ AC_DEFINE(HCL_SOCKLEN_T_IS_SIGNED, 1, [Define if socklen_t is signed]) ],
+			[ AC_DEFINE(HAK_SOCKLEN_T_IS_SIGNED, 1, [Define if socklen_t is signed]) ],
 			[ AS_ECHO_N("") ],
 			[#include <winsock2.h>
 			 #include <ws2tcpip.h>])
@@ -295,7 +295,7 @@ then
 	if test ${ac_cv_sizeof_sa_family_t} -gt 0
 	then
 		AX_CHECK_SIGN([sa_family_t],
-			[ AC_DEFINE(HCL_SA_FAMILY_T_IS_SIGNED, 1, [Define if sa_family_t is signed]) ],
+			[ AC_DEFINE(HAK_SA_FAMILY_T_IS_SIGNED, 1, [Define if sa_family_t is signed]) ],
 			[ AS_ECHO_N("") ],
 			[#include <winsock2.h>
 			 #include <ws2tcpip.h>])
@@ -308,7 +308,7 @@ then
 		 #include <winsock2.h>
 		 #include <ws2tcpip.h>], [ac_cv_offsteof_sa_family=0])
 	AC_MSG_RESULT([$ac_cv_offsetof_sa_family])
-	AC_DEFINE_UNQUOTED(HCL_OFFSETOF_SA_FAMILY, ${ac_cv_offsetof_sa_family}, [offsetof(struct sockaddr, sa_family)])
+	AC_DEFINE_UNQUOTED(HAK_OFFSETOF_SA_FAMILY, ${ac_cv_offsetof_sa_family}, [offsetof(struct sockaddr, sa_family)])
 
 else
 	AC_CHECK_SIZEOF(struct sockaddr_in,,[
@@ -339,7 +339,7 @@ else
 	if test ${ac_cv_sizeof_socklen_t} -gt 0
 	then
 		AX_CHECK_SIGN([socklen_t],
-			[ AC_DEFINE(HCL_SOCKLEN_T_IS_SIGNED, 1, [Define if socklen_t is signed]) ],
+			[ AC_DEFINE(HAK_SOCKLEN_T_IS_SIGNED, 1, [Define if socklen_t is signed]) ],
 			[ AS_ECHO_N("") ],
 			[#include <sys/types.h>
 			 #include <sys/socket.h>])
@@ -352,7 +352,7 @@ else
 	if test ${ac_cv_sizeof_sa_family_t} -gt 0
 	then
 		AX_CHECK_SIGN([sa_family_t],
-			[ AC_DEFINE(HCL_SA_FAMILY_T_IS_SIGNED, 1, [Define if sa_family_t is signed]) ],
+			[ AC_DEFINE(HAK_SA_FAMILY_T_IS_SIGNED, 1, [Define if sa_family_t is signed]) ],
 			[ AS_ECHO_N("") ],
 			[#include <sys/types.h>
 			 #include <sys/socket.h>
@@ -366,7 +366,7 @@ else
 		 #include <sys/types.h>
 		 #include <sys/socket.h>], [ac_cv_offsteof_sa_family=0])
 	AC_MSG_RESULT([$ac_cv_offsetof_sa_family])
-	AC_DEFINE_UNQUOTED(HCL_OFFSETOF_SA_FAMILY, ${ac_cv_offsetof_sa_family}, [offsetof(struct sockaddr, sa_family)])
+	AC_DEFINE_UNQUOTED(HAK_OFFSETOF_SA_FAMILY, ${ac_cv_offsetof_sa_family}, [offsetof(struct sockaddr, sa_family)])
 fi
 
 dnl gcc 3.4.3 on opensolaris x86 gave this warning without -msse or 
@@ -378,7 +378,7 @@ dnl so i've added this check to determine if the compiler has
 dnl proper support for __int128_t.
 dnl 
 dnl Changing ac_cv_sizeof___int128_t here doesn't corret SIZEOF___INT128_T
-dnl since it's already generated. It only affects HCL_SIZEOF___INT128_T below.
+dnl since it's already generated. It only affects HAK_SIZEOF___INT128_T below.
 if test ${ac_cv_sizeof___int128_t} -gt 0
 then
 	AC_MSG_CHECKING([__int128_t with % and va_arg])
@@ -423,7 +423,7 @@ fi
 dnl Quadmath functions may not be in the default c library.
 dnl Find a library containing them. Disable the float128 type
 dnl if they are not available.
-hcl_lib_quadmath_required=""
+hak_lib_quadmath_required=""
 if test ${ac_cv_sizeof___float128} -gt 0
 then
 	AC_CHECK_FUNCS([quadmath_snprintf])
@@ -442,7 +442,7 @@ then
 			AC_CHECK_LIB([quadmath], [quadmath_snprintf], [
 				QUADMATH_LIBS="-lquadmath"
 				LIBM="-lquadmath $LIBM"
-				hcl_lib_quadmath_required="yes"
+				hak_lib_quadmath_required="yes"
 				AC_DEFINE(HAVE_QUADMATH_SNPRINTF, 1)
 			])
 
@@ -469,79 +469,79 @@ fi
 AC_SUBST(QUADMATH_LIBS)
 
 
-AC_DEFINE_UNQUOTED(HCL_SIZEOF_CHAR, ${ac_cv_sizeof_char}, [sizeof(char)])
-AC_DEFINE_UNQUOTED(HCL_SIZEOF_SHORT, ${ac_cv_sizeof_short}, [sizeof(short)])
-AC_DEFINE_UNQUOTED(HCL_SIZEOF_INT, ${ac_cv_sizeof_int}, [sizeof(int)])
-AC_DEFINE_UNQUOTED(HCL_SIZEOF_LONG, ${ac_cv_sizeof_long}, [sizeof(long)])
-AC_DEFINE_UNQUOTED(HCL_SIZEOF_LONG_LONG, ${ac_cv_sizeof_long_long}, [sizeof(long long)])
-AC_DEFINE_UNQUOTED(HCL_SIZEOF___INT8, ${ac_cv_sizeof___int8}, [sizeof(__int8)])
-AC_DEFINE_UNQUOTED(HCL_SIZEOF___INT16, ${ac_cv_sizeof___int16}, [sizeof(__int16)])
-AC_DEFINE_UNQUOTED(HCL_SIZEOF___INT32, ${ac_cv_sizeof___int32}, [sizeof(__int32)])
-AC_DEFINE_UNQUOTED(HCL_SIZEOF___INT64, ${ac_cv_sizeof___int64}, [sizeof(__int64)])
-AC_DEFINE_UNQUOTED(HCL_SIZEOF___INT128, ${ac_cv_sizeof___int128}, [sizeof(__int128)])
-AC_DEFINE_UNQUOTED(HCL_SIZEOF___INT128_T, ${ac_cv_sizeof___int128_t}, [sizeof(__int128_t)])
-AC_DEFINE_UNQUOTED(HCL_SIZEOF___UINT128_T, ${ac_cv_sizeof___uint128_t}, [sizeof(__uint128_t)])
-AC_DEFINE_UNQUOTED(HCL_SIZEOF_VOID_P, ${ac_cv_sizeof_void_p}, [sizeof(void*)])
-AC_DEFINE_UNQUOTED(HCL_SIZEOF_FLOAT, ${ac_cv_sizeof_float}, [sizeof(float)])
-AC_DEFINE_UNQUOTED(HCL_SIZEOF_DOUBLE, ${ac_cv_sizeof_double}, [sizeof(double)])
-AC_DEFINE_UNQUOTED(HCL_SIZEOF_LONG_DOUBLE, ${ac_cv_sizeof_long_double}, [sizeof(long double)])
-AC_DEFINE_UNQUOTED(HCL_SIZEOF___FLOAT128, ${ac_cv_sizeof___float128}, [sizeof(__float128)])
+AC_DEFINE_UNQUOTED(HAK_SIZEOF_CHAR, ${ac_cv_sizeof_char}, [sizeof(char)])
+AC_DEFINE_UNQUOTED(HAK_SIZEOF_SHORT, ${ac_cv_sizeof_short}, [sizeof(short)])
+AC_DEFINE_UNQUOTED(HAK_SIZEOF_INT, ${ac_cv_sizeof_int}, [sizeof(int)])
+AC_DEFINE_UNQUOTED(HAK_SIZEOF_LONG, ${ac_cv_sizeof_long}, [sizeof(long)])
+AC_DEFINE_UNQUOTED(HAK_SIZEOF_LONG_LONG, ${ac_cv_sizeof_long_long}, [sizeof(long long)])
+AC_DEFINE_UNQUOTED(HAK_SIZEOF___INT8, ${ac_cv_sizeof___int8}, [sizeof(__int8)])
+AC_DEFINE_UNQUOTED(HAK_SIZEOF___INT16, ${ac_cv_sizeof___int16}, [sizeof(__int16)])
+AC_DEFINE_UNQUOTED(HAK_SIZEOF___INT32, ${ac_cv_sizeof___int32}, [sizeof(__int32)])
+AC_DEFINE_UNQUOTED(HAK_SIZEOF___INT64, ${ac_cv_sizeof___int64}, [sizeof(__int64)])
+AC_DEFINE_UNQUOTED(HAK_SIZEOF___INT128, ${ac_cv_sizeof___int128}, [sizeof(__int128)])
+AC_DEFINE_UNQUOTED(HAK_SIZEOF___INT128_T, ${ac_cv_sizeof___int128_t}, [sizeof(__int128_t)])
+AC_DEFINE_UNQUOTED(HAK_SIZEOF___UINT128_T, ${ac_cv_sizeof___uint128_t}, [sizeof(__uint128_t)])
+AC_DEFINE_UNQUOTED(HAK_SIZEOF_VOID_P, ${ac_cv_sizeof_void_p}, [sizeof(void*)])
+AC_DEFINE_UNQUOTED(HAK_SIZEOF_FLOAT, ${ac_cv_sizeof_float}, [sizeof(float)])
+AC_DEFINE_UNQUOTED(HAK_SIZEOF_DOUBLE, ${ac_cv_sizeof_double}, [sizeof(double)])
+AC_DEFINE_UNQUOTED(HAK_SIZEOF_LONG_DOUBLE, ${ac_cv_sizeof_long_double}, [sizeof(long double)])
+AC_DEFINE_UNQUOTED(HAK_SIZEOF___FLOAT128, ${ac_cv_sizeof___float128}, [sizeof(__float128)])
 
-AC_DEFINE_UNQUOTED(HCL_SIZEOF_WCHAR_T, ${ac_cv_sizeof_wchar_t}, [sizeof(wchar_t)])
-AC_DEFINE_UNQUOTED(HCL_SIZEOF_OFF_T, ${ac_cv_sizeof_off_t}, [sizeof(off_t)])
-AC_DEFINE_UNQUOTED(HCL_SIZEOF_OFF64_T, ${ac_cv_sizeof_off64_t}, [sizeof(off64_t)])
+AC_DEFINE_UNQUOTED(HAK_SIZEOF_WCHAR_T, ${ac_cv_sizeof_wchar_t}, [sizeof(wchar_t)])
+AC_DEFINE_UNQUOTED(HAK_SIZEOF_OFF_T, ${ac_cv_sizeof_off_t}, [sizeof(off_t)])
+AC_DEFINE_UNQUOTED(HAK_SIZEOF_OFF64_T, ${ac_cv_sizeof_off64_t}, [sizeof(off64_t)])
 
-AC_DEFINE_UNQUOTED(HCL_SIZEOF_MBSTATE_T, ${ac_cv_sizeof_mbstate_t}, [sizeof(mbstate_t)])
-AC_DEFINE_UNQUOTED(HCL_MBLEN_MAX, ${ax_cv_numvalof_MB_LEN_MAX}, [MB_LEN_MAX])
+AC_DEFINE_UNQUOTED(HAK_SIZEOF_MBSTATE_T, ${ac_cv_sizeof_mbstate_t}, [sizeof(mbstate_t)])
+AC_DEFINE_UNQUOTED(HAK_MBLEN_MAX, ${ax_cv_numvalof_MB_LEN_MAX}, [MB_LEN_MAX])
 if test ${ax_cv_numvalof_PATH_MAX} -gt 0
 then
-	AC_DEFINE_UNQUOTED(HCL_PATH_MAX, ${ax_cv_numvalof_PATH_MAX}, [PATH_MAX])
+	AC_DEFINE_UNQUOTED(HAK_PATH_MAX, ${ax_cv_numvalof_PATH_MAX}, [PATH_MAX])
 fi
 
-AC_DEFINE_UNQUOTED(HCL_SIZEOF_STRUCT_SOCKADDR_IN, ${ac_cv_sizeof_struct_sockaddr_in}, [sizeof(struct sockaddr_in)])
-AC_DEFINE_UNQUOTED(HCL_SIZEOF_STRUCT_SOCKADDR_IN6, ${ac_cv_sizeof_struct_sockaddr_in6}, [sizeof(struct sockaddr_in6)])
-AC_DEFINE_UNQUOTED(HCL_SIZEOF_STRUCT_SOCKADDR_LL, ${ac_cv_sizeof_struct_sockaddr_ll}, [sizeof(struct sockaddr_ll)])
-AC_DEFINE_UNQUOTED(HCL_SIZEOF_STRUCT_SOCKADDR_UN, ${ac_cv_sizeof_struct_sockaddr_un}, [sizeof(struct sockaddr_un)])
-AC_DEFINE_UNQUOTED(HCL_SIZEOF_STRUCT_SOCKADDR_DL, ${ac_cv_sizeof_struct_sockaddr_dl}, [sizeof(struct sockaddr_dl)])
+AC_DEFINE_UNQUOTED(HAK_SIZEOF_STRUCT_SOCKADDR_IN, ${ac_cv_sizeof_struct_sockaddr_in}, [sizeof(struct sockaddr_in)])
+AC_DEFINE_UNQUOTED(HAK_SIZEOF_STRUCT_SOCKADDR_IN6, ${ac_cv_sizeof_struct_sockaddr_in6}, [sizeof(struct sockaddr_in6)])
+AC_DEFINE_UNQUOTED(HAK_SIZEOF_STRUCT_SOCKADDR_LL, ${ac_cv_sizeof_struct_sockaddr_ll}, [sizeof(struct sockaddr_ll)])
+AC_DEFINE_UNQUOTED(HAK_SIZEOF_STRUCT_SOCKADDR_UN, ${ac_cv_sizeof_struct_sockaddr_un}, [sizeof(struct sockaddr_un)])
+AC_DEFINE_UNQUOTED(HAK_SIZEOF_STRUCT_SOCKADDR_DL, ${ac_cv_sizeof_struct_sockaddr_dl}, [sizeof(struct sockaddr_dl)])
 
 
-AC_DEFINE_UNQUOTED(HCL_SIZEOF_SOCKLEN_T, ${ac_cv_sizeof_socklen_t}, [sizeof(socklen_t)])
-AC_DEFINE_UNQUOTED(HCL_SIZEOF_SA_FAMILY_T, ${ac_cv_sizeof_sa_family_t}, [sizeof(sa_family_t)])
+AC_DEFINE_UNQUOTED(HAK_SIZEOF_SOCKLEN_T, ${ac_cv_sizeof_socklen_t}, [sizeof(socklen_t)])
+AC_DEFINE_UNQUOTED(HAK_SIZEOF_SA_FAMILY_T, ${ac_cv_sizeof_sa_family_t}, [sizeof(sa_family_t)])
 
-hcl_package_version_major="`echo ${PACKAGE_VERSION} | cut -d. -f1`"
-hcl_package_version_minor="`echo ${PACKAGE_VERSION} | cut -d. -f2`"
-hcl_package_version_patch="`echo ${PACKAGE_VERSION} | cut -d. -f3`"
-AC_SUBST(PACKAGE_VERSION_MAJOR, ${hcl_package_version_major})
-AC_SUBST(PACKAGE_VERSION_MINOR, ${hcl_package_version_minor})
-AC_SUBST(PACKAGE_VERSION_PATCH, ${hcl_package_version_patch})
+hak_package_version_major="`echo ${PACKAGE_VERSION} | cut -d. -f1`"
+hak_package_version_minor="`echo ${PACKAGE_VERSION} | cut -d. -f2`"
+hak_package_version_patch="`echo ${PACKAGE_VERSION} | cut -d. -f3`"
+AC_SUBST(PACKAGE_VERSION_MAJOR, ${hak_package_version_major})
+AC_SUBST(PACKAGE_VERSION_MINOR, ${hak_package_version_minor})
+AC_SUBST(PACKAGE_VERSION_PATCH, ${hak_package_version_patch})
 
-AC_DEFINE_UNQUOTED(HCL_PACKAGE_VERSION, "${PACKAGE_VERSION}", [Package version])
-dnl AC_DEFINE_UNQUOTED(HCL_PACKAGE_VERSION_MAJOR, $(echo ${VERSION} | cut -d. -f1), [Major version number])
-dnl AC_DEFINE_UNQUOTED(HCL_PACKAGE_VERSION_MINOR, $(echo ${VERSION} | cut -d. -f2), [Minor version number])
-dnl AC_DEFINE_UNQUOTED(HCL_PACKAGE_VERSION_PATCH, $(echo ${VERSION} | cut -d. -f3), [Patch level])
-AC_DEFINE_UNQUOTED(HCL_PACKAGE_VERSION_MAJOR, ${hcl_package_version_major}, [Major version number])
-AC_DEFINE_UNQUOTED(HCL_PACKAGE_VERSION_MINOR, ${hcl_package_version_minor}, [Minor version number])
-AC_DEFINE_UNQUOTED(HCL_PACKAGE_VERSION_PATCH, ${hcl_package_version_patch}, [Patch level])
+AC_DEFINE_UNQUOTED(HAK_PACKAGE_VERSION, "${PACKAGE_VERSION}", [Package version])
+dnl AC_DEFINE_UNQUOTED(HAK_PACKAGE_VERSION_MAJOR, $(echo ${VERSION} | cut -d. -f1), [Major version number])
+dnl AC_DEFINE_UNQUOTED(HAK_PACKAGE_VERSION_MINOR, $(echo ${VERSION} | cut -d. -f2), [Minor version number])
+dnl AC_DEFINE_UNQUOTED(HAK_PACKAGE_VERSION_PATCH, $(echo ${VERSION} | cut -d. -f3), [Patch level])
+AC_DEFINE_UNQUOTED(HAK_PACKAGE_VERSION_MAJOR, ${hak_package_version_major}, [Major version number])
+AC_DEFINE_UNQUOTED(HAK_PACKAGE_VERSION_MINOR, ${hak_package_version_minor}, [Minor version number])
+AC_DEFINE_UNQUOTED(HAK_PACKAGE_VERSION_PATCH, ${hak_package_version_patch}, [Patch level])
 
-AC_DEFINE_UNQUOTED(HCL_PACKAGE_AUTHOR,"${PACKAGE_BUGREPORT}", [Author])
-AC_DEFINE_UNQUOTED(HCL_PACKAGE_NAME,"${PACKAGE_NAME}", [package name])
-AC_DEFINE_UNQUOTED(HCL_PACKAGE_URL, "${PACKAGE_URL}", [Project URL])
+AC_DEFINE_UNQUOTED(HAK_PACKAGE_AUTHOR,"${PACKAGE_BUGREPORT}", [Author])
+AC_DEFINE_UNQUOTED(HAK_PACKAGE_NAME,"${PACKAGE_NAME}", [package name])
+AC_DEFINE_UNQUOTED(HAK_PACKAGE_URL, "${PACKAGE_URL}", [Project URL])
 
 AC_C_BIGENDIAN(
-	[AC_DEFINE([HCL_ENDIAN_BIG],[],[Big Endian])],
-	[AC_DEFINE([HCL_ENDIAN_LITTLE],[],[Little Endian])],
-	[AC_DEFINE([HCL_ENDIAN_UNKNOWN],[],[Unknown Endian])])
+	[AC_DEFINE([HAK_ENDIAN_BIG],[],[Big Endian])],
+	[AC_DEFINE([HAK_ENDIAN_LITTLE],[],[Little Endian])],
+	[AC_DEFINE([HAK_ENDIAN_UNKNOWN],[],[Unknown Endian])])
 
 AC_ARG_ENABLE([debug], [AS_HELP_STRING([--enable-debug],[build the library in the debug mode (default. no)])],
 	enable_debug=$enableval,enable_debug=no)
 if test "x$enable_debug" = "xyes"
 then
 	[CFLAGS="$CFLAGS -g -D_DEBUG -UNDEBUG -U_FORTIFY_SOURCE"]
-	AC_DEFINE([HCL_BUILD_DEBUG],[1],[build release/debug])
+	AC_DEFINE([HAK_BUILD_DEBUG],[1],[build release/debug])
 	AC_SUBST(BUILD_MODE, "debug")
 else
 	[CFLAGS="$CFLAGS -DNDEBUG -U_DEBUG -U_FORTIFY_SOURCE"]
-	AC_DEFINE([HCL_BUILD_RELEASE],[1],[build release/debug])
+	AC_DEFINE([HAK_BUILD_RELEASE],[1],[build release/debug])
 	AC_SUBST(BUILD_MODE, "release")
 fi
 
@@ -552,24 +552,24 @@ AC_ARG_ENABLE([wide-char],
 )
 if test "${enable_wide_char}" = "yes:4"
 then
-	AC_DEFINE([HCL_WIDE_CHAR_SIZE],[4],[Wide-character type size])
-	AC_DEFINE([HCL_ENABLE_WIDE_CHAR],[1],[Use the wide-character type as the default character type])
+	AC_DEFINE([HAK_WIDE_CHAR_SIZE],[4],[Wide-character type size])
+	AC_DEFINE([HAK_ENABLE_WIDE_CHAR],[1],[Use the wide-character type as the default character type])
 elif test "${enable_wide_char}" = "yes:2"
 then
-	AC_DEFINE([HCL_WIDE_CHAR_SIZE],[2],[Wide-character type size])
-	AC_DEFINE([HCL_ENABLE_WIDE_CHAR],[1],[Use the wide-character type as the default character type])
+	AC_DEFINE([HAK_WIDE_CHAR_SIZE],[2],[Wide-character type size])
+	AC_DEFINE([HAK_ENABLE_WIDE_CHAR],[1],[Use the wide-character type as the default character type])
 elif test "${enable_wide_char}" = "yes"
 then
-	AC_DEFINE([HCL_WIDE_CHAR_SIZE],[1],[Wide-character type size])
-	AC_DEFINE([HCL_ENABLE_WIDE_CHAR],[1],[Use the wide-character type as the default character type])
+	AC_DEFINE([HAK_WIDE_CHAR_SIZE],[1],[Wide-character type size])
+	AC_DEFINE([HAK_ENABLE_WIDE_CHAR],[1],[Use the wide-character type as the default character type])
 elif test "${enable_wide_char}" = "no:4"
 then
-	AC_DEFINE([HCL_WIDE_CHAR_SIZE],[4],[Wide-character type size])
+	AC_DEFINE([HAK_WIDE_CHAR_SIZE],[4],[Wide-character type size])
 elif test "${enable_wide_char}" = "no:2"
 then
-	AC_DEFINE([HCL_WIDE_CHAR_SIZE],[2],[Wide-character type size])
+	AC_DEFINE([HAK_WIDE_CHAR_SIZE],[2],[Wide-character type size])
 else
-	AC_DEFINE([HCL_WIDE_CHAR_SIZE],[1],[Wide-character type size])
+	AC_DEFINE([HAK_WIDE_CHAR_SIZE],[1],[Wide-character type size])
 fi
 
 AC_ARG_ENABLE([full-liw],
@@ -579,7 +579,7 @@ AC_ARG_ENABLE([full-liw],
 )
 if test "${enable_full_liw}" = "yes"
 then
-	AC_DEFINE([HCL_ENABLE_FULL_LIW],[1],[Use a full word as a large integer word])
+	AC_DEFINE([HAK_ENABLE_FULL_LIW],[1],[Use a full word as a large integer word])
 fi
 
 dnl ===== enable-dynamic-module =====
@@ -595,7 +595,7 @@ fi
 
 if test "x${enable_dynamic_module}" = "xyes"
 then
-	AC_DEFINE([HCL_ENABLE_DYNAMIC_MODULE],[1],[enable dynamic module capability])
+	AC_DEFINE([HAK_ENABLE_DYNAMIC_MODULE],[1],[enable dynamic module capability])
 fi
 AM_CONDITIONAL(ENABLE_DYNAMIC_MODULE, test "x${enable_dynamic_module}" = "xyes")
 
@@ -613,7 +613,7 @@ fi
 
 if test "x${enable_static_module}" = "xyes"
 then
-	AC_DEFINE([HCL_ENABLE_STATIC_MODULE],[1],[link modules statically into the main library])
+	AC_DEFINE([HAK_ENABLE_STATIC_MODULE],[1],[link modules statically into the main library])
 fi
 AM_CONDITIONAL(ENABLE_STATIC_MODULE, test "x${enable_static_module}" = "xyes")
 
@@ -632,7 +632,7 @@ if test "x${enable_libltdl}" = "xyes"
 then
 	if test "x${ac_cv_header_ltdl_h}" = "xyes"  -a "${LTDL_LIBS}" != ""
 	then
-		AC_DEFINE([HCL_ENABLE_LIBLTDL],[],[use libltdl when loading a dynamic module])
+		AC_DEFINE([HAK_ENABLE_LIBLTDL],[],[use libltdl when loading a dynamic module])
 	else
 		enable_libltdl="no"
 	fi
@@ -649,7 +649,7 @@ if test "x${enable_libunwind}" = "xyes"
 then
 	if test "x${ac_cv_header_libunwind_h}" = "xyes"  -a "${UNWIND_LIBS}" != ""
 	then
-		AC_DEFINE([HCL_ENABLE_LIBUNWIND],[],[use libunwind for backtracing stack frames])
+		AC_DEFINE([HAK_ENABLE_LIBUNWIND],[],[use libunwind for backtracing stack frames])
 	else
 		enable_libunwind="no"
 	fi
@@ -667,38 +667,38 @@ then
 	[LIBS="$LIBS $PTHREAD_LIBS"]
 fi
 
-dnl ===== enable-hclx =====
-AC_ARG_ENABLE([hclx],
-	[AS_HELP_STRING([--enable-hclx],[build libhclx(default. no)])],
-	enable_hclx=$enableval,
-	enable_hclx=no
+dnl ===== enable-hakx =====
+AC_ARG_ENABLE([hakx],
+	[AS_HELP_STRING([--enable-hakx],[build libhakx(default. no)])],
+	enable_hakx=$enableval,
+	enable_hakx=no
 )
-AM_CONDITIONAL(ENABLE_HCLX, test "x${enable_hclx}" = "xyes")
+AM_CONDITIONAL(ENABLE_HAKX, test "x${enable_hakx}" = "xyes")
 
-dnl ===== enable-hclgo =====
-AC_ARG_ENABLE([hclgo],
-	[AS_HELP_STRING([--enable-hclgo],[build the go wrapper(default. no)])],
-	enable_hclgo=$enableval,
-	enable_hclgo=no
+dnl ===== enable-hakgo =====
+AC_ARG_ENABLE([hakgo],
+	[AS_HELP_STRING([--enable-hakgo],[build the go wrapper(default. no)])],
+	enable_hakgo=$enableval,
+	enable_hakgo=no
 )
-AM_CONDITIONAL(ENABLE_HCLGO, test "x${enable_hclgo}" = "xyes")
+AM_CONDITIONAL(ENABLE_HAKGO, test "x${enable_hakgo}" = "xyes")
 
 
 dnl ====  subsititution of some key items ====
-AC_SUBST(HCL_PROJECT_AUTHOR, "${PACKAGE_BUGREPORT}")
-AC_SUBST(HCL_PROJECT_URL, "${PACKAGE_URL}")
-AC_SUBST(HCL_SYS_LIB_SEARCH_PATH_SPEC, ["${sys_lib_search_path_spec}"])
-AM_CONDITIONAL(HCL_LIB_QUADMATH_REQUIRED, test "x${hcl_lib_quadmath_required}" = "xyes")
+AC_SUBST(HAK_PROJECT_AUTHOR, "${PACKAGE_BUGREPORT}")
+AC_SUBST(HAK_PROJECT_URL, "${PACKAGE_URL}")
+AC_SUBST(HAK_SYS_LIB_SEARCH_PATH_SPEC, ["${sys_lib_search_path_spec}"])
+AM_CONDITIONAL(HAK_LIB_QUADMATH_REQUIRED, test "x${hak_lib_quadmath_required}" = "xyes")
 
 dnl === configure arguments
 if test `expr " [$]0" : " '.*"` = 0; then
-	hcl_configure_cmd="'[$]0'"
+	hak_configure_cmd="'[$]0'"
 else
-	hcl_configure_cmd="[$]0"
+	hak_configure_cmd="[$]0"
 fi
 
-AC_DEFINE_UNQUOTED(HCL_CONFIGURE_ARGS, ["$ac_configure_args"], [configure arguments])
-AC_DEFINE_UNQUOTED(HCL_CONFIGURE_CMD, ["$hcl_configure_cmd"], [configure command])
+AC_DEFINE_UNQUOTED(HAK_CONFIGURE_ARGS, ["$ac_configure_args"], [configure arguments])
+AC_DEFINE_UNQUOTED(HAK_CONFIGURE_CMD, ["$hak_configure_cmd"], [configure command])
 
 AC_CONFIG_FILES([
 	Makefile 

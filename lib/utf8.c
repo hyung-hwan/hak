@@ -22,7 +22,7 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <hcl-chr.h>
+#include <hak-chr.h>
 
 /*#define RETAIN_RFC2279 1*/
 
@@ -46,11 +46,11 @@
 
 struct __utf8_t
 {
-	hcl_uint32_t  lower;
-	hcl_uint32_t  upper;
-	hcl_uint8_t   fbyte;  /* mask to the first utf8 byte */
-	hcl_uint8_t   mask;
-	hcl_uint8_t   fmask;
+	hak_uint32_t  lower;
+	hak_uint32_t  upper;
+	hak_uint8_t   fbyte;  /* mask to the first utf8 byte */
+	hak_uint8_t   mask;
+	hak_uint8_t   fmask;
 	int           length; /* number of bytes */
 };
 
@@ -70,14 +70,14 @@ static __utf8_t utf8_table[] =
 #endif
 };
 
-static HCL_INLINE __utf8_t* get_utf8_slot (hcl_uch_t uc)
+static HAK_INLINE __utf8_t* get_utf8_slot (hak_uch_t uc)
 {
 	__utf8_t* cur, * end;
 
-	/*HCL_ASSERT (hcl, HCL_SIZEOF(hcl_bch_t) == 1);
-	HCL_ASSERT (hcl, HCL_SIZEOF(hcl_uch_t) >= 2);*/
+	/*HAK_ASSERT (hak, HAK_SIZEOF(hak_bch_t) == 1);
+	HAK_ASSERT (hak, HAK_SIZEOF(hak_uch_t) >= 2);*/
 
-	end = utf8_table + HCL_COUNTOF(utf8_table);
+	end = utf8_table + HAK_COUNTOF(utf8_table);
 	cur = utf8_table;
 
 	while (cur < end)
@@ -86,14 +86,14 @@ static HCL_INLINE __utf8_t* get_utf8_slot (hcl_uch_t uc)
 		cur++;
 	}
 
-	return HCL_NULL; /* invalid character */
+	return HAK_NULL; /* invalid character */
 }
 
-hcl_oow_t hcl_uc_to_utf8 (hcl_uch_t uc, hcl_bch_t* utf8, hcl_oow_t size)
+hak_oow_t hak_uc_to_utf8 (hak_uch_t uc, hak_bch_t* utf8, hak_oow_t size)
 {
 	__utf8_t* cur = get_utf8_slot(uc);
 
-	if (cur == HCL_NULL) return 0; /* illegal character */
+	if (cur == HAK_NULL) return 0; /* illegal character */
 
 	if (utf8 && cur->length <= size)
 	{
@@ -113,19 +113,19 @@ hcl_oow_t hcl_uc_to_utf8 (hcl_uch_t uc, hcl_bch_t* utf8, hcl_oow_t size)
 
 	/* small buffer is also indicated by this return value
 	 * greater than 'size'. */
-	return (hcl_oow_t)cur->length;
+	return (hak_oow_t)cur->length;
 }
 
-hcl_oow_t hcl_utf8_to_uc (const hcl_bch_t* utf8, hcl_oow_t size, hcl_uch_t* uc)
+hak_oow_t hak_utf8_to_uc (const hak_bch_t* utf8, hak_oow_t size, hak_uch_t* uc)
 {
 	__utf8_t* cur, * end;
 
-	/*HCL_ASSERT (hcl, utf8 != HCL_NULL);
-	HCL_ASSERT (hcl, size > 0);
-	HCL_ASSERT (hcl, HCL_SIZEOF(hcl_bch_t) == 1);
-	HCL_ASSERT (hcl, HCL_SIZEOF(hcl_uch_t) >= 2);*/
+	/*HAK_ASSERT (hak, utf8 != HAK_NULL);
+	HAK_ASSERT (hak, size > 0);
+	HAK_ASSERT (hak, HAK_SIZEOF(hak_bch_t) == 1);
+	HAK_ASSERT (hak, HAK_SIZEOF(hak_uch_t) >= 2);*/
 
-	end = utf8_table + HCL_COUNTOF(utf8_table);
+	end = utf8_table + HAK_COUNTOF(utf8_table);
 	cur = utf8_table;
 
 	while (cur < end)
@@ -143,7 +143,7 @@ hcl_oow_t hcl_utf8_to_uc (const hcl_bch_t* utf8, hcl_oow_t size, hcl_uch_t* uc)
 
 				if (uc)
 				{
-					hcl_uch_t w;
+					hak_uch_t w;
 
 					w = utf8[0] & cur->fmask;
 					for (i = 1; i < cur->length; i++)
@@ -179,7 +179,7 @@ hcl_oow_t hcl_utf8_to_uc (const hcl_bch_t* utf8, hcl_oow_t size, hcl_uch_t* uc)
 			 * and
 			 *    the incomplete seqeunce error (size < cur->length).
 			 */
-			return (hcl_oow_t)cur->length;
+			return (hak_oow_t)cur->length;
 		}
 		cur++;
 	}

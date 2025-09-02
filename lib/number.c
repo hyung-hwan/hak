@@ -22,39 +22,39 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "hcl-prv.h"
+#include "hak-prv.h"
 
-static hcl_ooi_t equalize_scale (hcl_t* hcl, hcl_oop_t* x, hcl_oop_t* y)
+static hak_ooi_t equalize_scale (hak_t* hak, hak_oop_t* x, hak_oop_t* y)
 {
-	hcl_ooi_t xs, ys;
-	hcl_oop_t nv;
-	hcl_oop_t xv, yv;
+	hak_ooi_t xs, ys;
+	hak_oop_t nv;
+	hak_oop_t xv, yv;
 
 	/* this function assumes that x and y are protected by the caller */
 
 	xs = 0;
 	xv = *x;
-	if (HCL_IS_FPDEC(hcl, xv))
+	if (HAK_IS_FPDEC(hak, xv))
 	{
-		xs = HCL_OOP_TO_SMOOI(((hcl_oop_fpdec_t)xv)->scale);
-		xv = ((hcl_oop_fpdec_t)xv)->value;
+		xs = HAK_OOP_TO_SMOOI(((hak_oop_fpdec_t)xv)->scale);
+		xv = ((hak_oop_fpdec_t)xv)->value;
 	}
-	else if (!hcl_isint(hcl, xv))
+	else if (!hak_isint(hak, xv))
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not numeric - %O", xv);
+		hak_seterrbfmt (hak, HAK_EINVAL, "parameter not numeric - %O", xv);
 		return -1;
 	}
 
 	ys = 0;
 	yv = *y;
-	if (HCL_IS_FPDEC(hcl, yv))
+	if (HAK_IS_FPDEC(hak, yv))
 	{
-		ys = HCL_OOP_TO_SMOOI(((hcl_oop_fpdec_t)yv)->scale);
-		yv = ((hcl_oop_fpdec_t)yv)->value;
+		ys = HAK_OOP_TO_SMOOI(((hak_oop_fpdec_t)yv)->scale);
+		yv = ((hak_oop_fpdec_t)yv)->value;
 	}
-	else if (!hcl_isint(hcl, yv))
+	else if (!hak_isint(hak, yv))
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not numeric - %O", yv);
+		hak_seterrbfmt (hak, HAK_EINVAL, "parameter not numeric - %O", yv);
 		return -1;
 	}
 
@@ -64,12 +64,12 @@ static hcl_ooi_t equalize_scale (hcl_t* hcl, hcl_oop_t* x, hcl_oop_t* y)
 		while (xs < ys)
 		{
 			/* TODO: optmize this. less multiplications */
-			nv = hcl_mulints(hcl, nv, HCL_SMOOI_TO_OOP(10));
+			nv = hak_mulints(hak, nv, HAK_SMOOI_TO_OOP(10));
 			if (!nv) return -1;
 			xs++;
 		}
 
-		nv = hcl_makefpdec(hcl, nv, xs);
+		nv = hak_makefpdec(hak, nv, xs);
 		if (!nv) return -1;
 
 		*x = nv;
@@ -79,12 +79,12 @@ static hcl_ooi_t equalize_scale (hcl_t* hcl, hcl_oop_t* x, hcl_oop_t* y)
 		nv = yv;
 		while (ys < xs)
 		{
-			nv = hcl_mulints(hcl, nv, HCL_SMOOI_TO_OOP(10));
+			nv = hak_mulints(hak, nv, HAK_SMOOI_TO_OOP(10));
 			if (!nv) return -1;
 			ys++;
 		}
 
-		nv = hcl_makefpdec(hcl, nv, ys);
+		nv = hak_makefpdec(hak, nv, ys);
 		if (!nv) return -1;
 
 		*y = nv;
@@ -93,7 +93,7 @@ static hcl_ooi_t equalize_scale (hcl_t* hcl, hcl_oop_t* x, hcl_oop_t* y)
 	return xs;
 }
 
-hcl_oop_t hcl_truncfpdecval (hcl_t* hcl, hcl_oop_t iv, hcl_ooi_t cs, hcl_ooi_t ns)
+hak_oop_t hak_truncfpdecval (hak_t* hak, hak_oop_t iv, hak_ooi_t cs, hak_ooi_t ns)
 {
 	/* this function truncates an existing fixed-point decimal.
 	 * it doesn't create a new object */
@@ -103,8 +103,8 @@ hcl_oop_t hcl_truncfpdecval (hcl_t* hcl, hcl_oop_t iv, hcl_ooi_t cs, hcl_ooi_t n
 		do
 		{
 			/* TODO: optimizatino... less divisions */
-			iv = hcl_divints(hcl, iv, HCL_SMOOI_TO_OOP(10), 0, HCL_NULL);
-			if (!iv) return HCL_NULL;
+			iv = hak_divints(hak, iv, HAK_SMOOI_TO_OOP(10), 0, HAK_NULL);
+			if (!iv) return HAK_NULL;
 			cs--;
 		}
 		while (cs > ns);
@@ -113,282 +113,282 @@ hcl_oop_t hcl_truncfpdecval (hcl_t* hcl, hcl_oop_t iv, hcl_ooi_t cs, hcl_ooi_t n
 	return iv;
 }
 
-hcl_oop_t hcl_addnums (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
+hak_oop_t hak_addnums (hak_t* hak, hak_oop_t x, hak_oop_t y)
 {
-	if (!HCL_IS_FPDEC(hcl, x) && !HCL_IS_FPDEC(hcl, y))
+	if (!HAK_IS_FPDEC(hak, x) && !HAK_IS_FPDEC(hak, y))
 	{
 		/* both are probably integers */
-		return hcl_addints(hcl, x, y);
+		return hak_addints(hak, x, y);
 	}
 	else
 	{
-		hcl_oop_t v;
-		hcl_ooi_t scale;
+		hak_oop_t v;
+		hak_ooi_t scale;
 
-		hcl_pushvolat (hcl, &x);
-		hcl_pushvolat (hcl, &y);
+		hak_pushvolat (hak, &x);
+		hak_pushvolat (hak, &y);
 
-		scale = equalize_scale(hcl, &x, &y);
+		scale = equalize_scale(hak, &x, &y);
 		if (scale <= -1)
 		{
-			hcl_popvolats (hcl, 2);
-			return HCL_NULL;
+			hak_popvolats (hak, 2);
+			return HAK_NULL;
 		}
-		v = hcl_addints(hcl, ((hcl_oop_fpdec_t)x)->value, ((hcl_oop_fpdec_t)y)->value);
-		hcl_popvolats (hcl, 2);
-		if (!v) return HCL_NULL;
+		v = hak_addints(hak, ((hak_oop_fpdec_t)x)->value, ((hak_oop_fpdec_t)y)->value);
+		hak_popvolats (hak, 2);
+		if (!v) return HAK_NULL;
 
-		return hcl_makefpdec(hcl, v, scale);
+		return hak_makefpdec(hak, v, scale);
 	}
 }
 
-hcl_oop_t hcl_subnums (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
+hak_oop_t hak_subnums (hak_t* hak, hak_oop_t x, hak_oop_t y)
 {
-	if (!HCL_IS_FPDEC(hcl, x) && !HCL_IS_FPDEC(hcl, y))
+	if (!HAK_IS_FPDEC(hak, x) && !HAK_IS_FPDEC(hak, y))
 	{
 		/* both are probably integers */
-		return hcl_subints(hcl, x, y);
+		return hak_subints(hak, x, y);
 	}
 	else
 	{
-		hcl_oop_t v;
-		hcl_ooi_t scale;
+		hak_oop_t v;
+		hak_ooi_t scale;
 
-		hcl_pushvolat (hcl, &x);
-		hcl_pushvolat (hcl, &y);
+		hak_pushvolat (hak, &x);
+		hak_pushvolat (hak, &y);
 
-		scale = equalize_scale(hcl, &x, &y);
+		scale = equalize_scale(hak, &x, &y);
 		if (scale <= -1)
 		{
-			hcl_popvolats (hcl, 2);
-			return HCL_NULL;
+			hak_popvolats (hak, 2);
+			return HAK_NULL;
 		}
-		v = hcl_subints(hcl, ((hcl_oop_fpdec_t)x)->value, ((hcl_oop_fpdec_t)y)->value);
-		hcl_popvolats (hcl, 2);
-		if (!v) return HCL_NULL;
+		v = hak_subints(hak, ((hak_oop_fpdec_t)x)->value, ((hak_oop_fpdec_t)y)->value);
+		hak_popvolats (hak, 2);
+		if (!v) return HAK_NULL;
 
-		return hcl_makefpdec(hcl, v, scale);
+		return hak_makefpdec(hak, v, scale);
 	}
 }
 
-static hcl_oop_t mul_nums (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y, int mult)
+static hak_oop_t mul_nums (hak_t* hak, hak_oop_t x, hak_oop_t y, int mult)
 {
-	hcl_ooi_t xs, ys, cs, ns;
-	hcl_oop_t nv;
-	hcl_oop_t xv, yv;
+	hak_ooi_t xs, ys, cs, ns;
+	hak_oop_t nv;
+	hak_oop_t xv, yv;
 
 	xs = 0;
 	xv = x;
-	if (HCL_IS_FPDEC(hcl, xv))
+	if (HAK_IS_FPDEC(hak, xv))
 	{
-		xs = HCL_OOP_TO_SMOOI(((hcl_oop_fpdec_t)xv)->scale);
-		xv = ((hcl_oop_fpdec_t)xv)->value;
+		xs = HAK_OOP_TO_SMOOI(((hak_oop_fpdec_t)xv)->scale);
+		xv = ((hak_oop_fpdec_t)xv)->value;
 	}
-	else if (!hcl_isint(hcl, xv))
+	else if (!hak_isint(hak, xv))
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not numeric - %O", xv);
-		return HCL_NULL;
+		hak_seterrbfmt (hak, HAK_EINVAL, "parameter not numeric - %O", xv);
+		return HAK_NULL;
 	}
 
 	ys = 0;
 	yv = y;
-	if (HCL_IS_FPDEC(hcl, y))
+	if (HAK_IS_FPDEC(hak, y))
 	{
-		ys = HCL_OOP_TO_SMOOI(((hcl_oop_fpdec_t)yv)->scale);
-		yv = ((hcl_oop_fpdec_t)yv)->value;
+		ys = HAK_OOP_TO_SMOOI(((hak_oop_fpdec_t)yv)->scale);
+		yv = ((hak_oop_fpdec_t)yv)->value;
 	}
-	else if (!hcl_isint(hcl, yv))
+	else if (!hak_isint(hak, yv))
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not numeric - %O", yv);
-		return HCL_NULL;
+		hak_seterrbfmt (hak, HAK_EINVAL, "parameter not numeric - %O", yv);
+		return HAK_NULL;
 	}
 
-	nv = hcl_mulints(hcl, xv, yv);
-	if (!nv) return HCL_NULL;
+	nv = hak_mulints(hak, xv, yv);
+	if (!nv) return HAK_NULL;
 
 	cs = xs + ys;
 	if (cs <= 0) return nv; /* the result must be an integer */
 
 	ns = (mult || xs > ys)? xs: ys;
 
-	/* cs may be larger than HCL_SMOOI_MAX. but ns is guaranteed to be
-	 * equal to or less than HCL_SMOOI_MAX */
-	HCL_ASSERT (hcl, ns <= HCL_SMOOI_MAX);
+	/* cs may be larger than HAK_SMOOI_MAX. but ns is guaranteed to be
+	 * equal to or less than HAK_SMOOI_MAX */
+	HAK_ASSERT (hak, ns <= HAK_SMOOI_MAX);
 
-	nv = hcl_truncfpdecval(hcl, nv, cs, ns);
-	if (!nv) return HCL_NULL;
+	nv = hak_truncfpdecval(hak, nv, cs, ns);
+	if (!nv) return HAK_NULL;
 
-	return (ns <= 0)? nv: hcl_makefpdec(hcl, nv, ns);
+	return (ns <= 0)? nv: hak_makefpdec(hak, nv, ns);
 }
 
-hcl_oop_t hcl_mulnums (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
+hak_oop_t hak_mulnums (hak_t* hak, hak_oop_t x, hak_oop_t y)
 {
 	/* (* 1.00 12.123) => 12.123 */
-	return mul_nums(hcl, x, y, 0);
+	return mul_nums(hak, x, y, 0);
 }
 
-hcl_oop_t hcl_mltnums (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
+hak_oop_t hak_mltnums (hak_t* hak, hak_oop_t x, hak_oop_t y)
 {
 	/* (mlt 1.00 12.123) =>  12.12 */
-	return mul_nums(hcl, x, y, 1);
+	return mul_nums(hak, x, y, 1);
 }
 
-hcl_oop_t hcl_divnums (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
+hak_oop_t hak_divnums (hak_t* hak, hak_oop_t x, hak_oop_t y)
 {
-	hcl_ooi_t xs, ys, i;
-	hcl_oop_t nv;
-	hcl_oop_t xv, yv;
+	hak_ooi_t xs, ys, i;
+	hak_oop_t nv;
+	hak_oop_t xv, yv;
 
 	xs = 0;
 	xv = x;
-	if (HCL_IS_FPDEC(hcl, xv))
+	if (HAK_IS_FPDEC(hak, xv))
 	{
-		xs = HCL_OOP_TO_SMOOI(((hcl_oop_fpdec_t)xv)->scale);
-		xv = ((hcl_oop_fpdec_t)xv)->value;
+		xs = HAK_OOP_TO_SMOOI(((hak_oop_fpdec_t)xv)->scale);
+		xv = ((hak_oop_fpdec_t)xv)->value;
 	}
-	else if (!hcl_isint(hcl, xv))
+	else if (!hak_isint(hak, xv))
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not numeric - %O", xv);
-		return HCL_NULL;
+		hak_seterrbfmt (hak, HAK_EINVAL, "parameter not numeric - %O", xv);
+		return HAK_NULL;
 	}
 
 	ys = 0;
 	yv = y;
-	if (HCL_IS_FPDEC(hcl, y))
+	if (HAK_IS_FPDEC(hak, y))
 	{
-		ys = HCL_OOP_TO_SMOOI(((hcl_oop_fpdec_t)yv)->scale);
-		yv = ((hcl_oop_fpdec_t)yv)->value;
+		ys = HAK_OOP_TO_SMOOI(((hak_oop_fpdec_t)yv)->scale);
+		yv = ((hak_oop_fpdec_t)yv)->value;
 	}
-	else if (!hcl_isint(hcl, yv))
+	else if (!hak_isint(hak, yv))
 	{
-		hcl_seterrbfmt (hcl, HCL_EINVAL, "parameter not numeric - %O", yv);
-		return HCL_NULL;
+		hak_seterrbfmt (hak, HAK_EINVAL, "parameter not numeric - %O", yv);
+		return HAK_NULL;
 	}
 
 	nv = xv;
 
-	hcl_pushvolat (hcl, &yv);
+	hak_pushvolat (hak, &yv);
 	for (i = 0; i < ys; i++)
 	{
-		nv = hcl_mulints(hcl, nv, HCL_SMOOI_TO_OOP(10));
+		nv = hak_mulints(hak, nv, HAK_SMOOI_TO_OOP(10));
 		if (!nv)
 		{
-			hcl_popvolat (hcl);
-			return HCL_NULL;
+			hak_popvolat (hak);
+			return HAK_NULL;
 		}
 	}
 
-	nv = hcl_divints(hcl, nv, yv, 0, HCL_NULL);
-	hcl_popvolat (hcl);
-	if (!nv) return HCL_NULL;
+	nv = hak_divints(hak, nv, yv, 0, HAK_NULL);
+	hak_popvolat (hak);
+	if (!nv) return HAK_NULL;
 
-	return hcl_makefpdec(hcl, nv, xs);
+	return hak_makefpdec(hak, nv, xs);
 }
 
-static hcl_oop_t comp_nums (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y, hcl_oop_t (*comper) (hcl_t*, hcl_oop_t, hcl_oop_t))
+static hak_oop_t comp_nums (hak_t* hak, hak_oop_t x, hak_oop_t y, hak_oop_t (*comper) (hak_t*, hak_oop_t, hak_oop_t))
 {
-	if (!HCL_IS_FPDEC(hcl, x) && !HCL_IS_FPDEC(hcl, y))
+	if (!HAK_IS_FPDEC(hak, x) && !HAK_IS_FPDEC(hak, y))
 	{
 		/* both are probably integers */
-		return comper(hcl, x, y);
+		return comper(hak, x, y);
 	}
 	else
 	{
-		hcl_oop_t v;
-		hcl_ooi_t scale;
+		hak_oop_t v;
+		hak_ooi_t scale;
 
-		hcl_pushvolat (hcl, &x);
-		hcl_pushvolat (hcl, &y);
+		hak_pushvolat (hak, &x);
+		hak_pushvolat (hak, &y);
 
-		scale = equalize_scale(hcl, &x, &y);
+		scale = equalize_scale(hak, &x, &y);
 		if (scale <= -1)
 		{
-			hcl_popvolats (hcl, 2);
-			return HCL_NULL;
+			hak_popvolats (hak, 2);
+			return HAK_NULL;
 		}
-		v = comper(hcl, ((hcl_oop_fpdec_t)x)->value, ((hcl_oop_fpdec_t)y)->value);
-		hcl_popvolats (hcl, 2);
+		v = comper(hak, ((hak_oop_fpdec_t)x)->value, ((hak_oop_fpdec_t)y)->value);
+		hak_popvolats (hak, 2);
 		return v;
 	}
 }
 
 
-hcl_oop_t hcl_gtnums (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
+hak_oop_t hak_gtnums (hak_t* hak, hak_oop_t x, hak_oop_t y)
 {
-	return comp_nums(hcl, x, y, hcl_gtints);
+	return comp_nums(hak, x, y, hak_gtints);
 }
-hcl_oop_t hcl_genums (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
+hak_oop_t hak_genums (hak_t* hak, hak_oop_t x, hak_oop_t y)
 {
-	return comp_nums(hcl, x, y, hcl_geints);
-}
-
-
-hcl_oop_t hcl_ltnums (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
-{
-	return comp_nums(hcl, x, y, hcl_ltints);
-}
-hcl_oop_t hcl_lenums (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
-{
-	return comp_nums(hcl, x, y, hcl_leints);
+	return comp_nums(hak, x, y, hak_geints);
 }
 
-hcl_oop_t hcl_eqnums (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
+
+hak_oop_t hak_ltnums (hak_t* hak, hak_oop_t x, hak_oop_t y)
 {
-	return comp_nums(hcl, x, y, hcl_eqints);
+	return comp_nums(hak, x, y, hak_ltints);
 }
-hcl_oop_t hcl_nenums (hcl_t* hcl, hcl_oop_t x, hcl_oop_t y)
+hak_oop_t hak_lenums (hak_t* hak, hak_oop_t x, hak_oop_t y)
 {
-	return comp_nums(hcl, x, y, hcl_neints);
+	return comp_nums(hak, x, y, hak_leints);
 }
 
-hcl_oop_t hcl_sqrtnum (hcl_t* hcl, hcl_oop_t x)
+hak_oop_t hak_eqnums (hak_t* hak, hak_oop_t x, hak_oop_t y)
 {
-	if (!HCL_IS_FPDEC(hcl, x))
+	return comp_nums(hak, x, y, hak_eqints);
+}
+hak_oop_t hak_nenums (hak_t* hak, hak_oop_t x, hak_oop_t y)
+{
+	return comp_nums(hak, x, y, hak_neints);
+}
+
+hak_oop_t hak_sqrtnum (hak_t* hak, hak_oop_t x)
+{
+	if (!HAK_IS_FPDEC(hak, x))
 	{
-		return hcl_sqrtint(hcl, x);
+		return hak_sqrtint(hak, x);
 	}
 	else
 	{
-		hcl_oop_t v;
-		hcl_ooi_t i, scale;
+		hak_oop_t v;
+		hak_ooi_t i, scale;
 
-		scale = HCL_OOP_TO_SMOOI(((hcl_oop_fpdec_t)x)->scale);
+		scale = HAK_OOP_TO_SMOOI(((hak_oop_fpdec_t)x)->scale);
 
-		v = ((hcl_oop_fpdec_t)x)->value;
+		v = ((hak_oop_fpdec_t)x)->value;
 		for (i = 0; i < scale ; i++)
 		{
-			v = hcl_mulints(hcl, v, HCL_SMOOI_TO_OOP(10));
+			v = hak_mulints(hak, v, HAK_SMOOI_TO_OOP(10));
 			if (!v)
 			{
-				hcl_popvolat (hcl);
-				return HCL_NULL;
+				hak_popvolat (hak);
+				return HAK_NULL;
 			}
 		}
 
-		v = hcl_sqrtint(hcl, v);
-		if (!v) return HCL_NULL;
+		v = hak_sqrtint(hak, v);
+		if (!v) return HAK_NULL;
 
-		return hcl_makefpdec(hcl, v, scale);
+		return hak_makefpdec(hak, v, scale);
 	}
 }
 
-hcl_oop_t hcl_absnum (hcl_t* hcl, hcl_oop_t x)
+hak_oop_t hak_absnum (hak_t* hak, hak_oop_t x)
 {
-	if (!HCL_IS_FPDEC(hcl, x))
+	if (!HAK_IS_FPDEC(hak, x))
 	{
-		return hcl_absint(hcl, x);
+		return hak_absint(hak, x);
 	}
 	else
 	{
-		hcl_oop_t v;
-		hcl_ooi_t scale;
+		hak_oop_t v;
+		hak_ooi_t scale;
 
-		scale = HCL_OOP_TO_SMOOI(((hcl_oop_fpdec_t)x)->scale);
-		v = ((hcl_oop_fpdec_t)x)->value;
+		scale = HAK_OOP_TO_SMOOI(((hak_oop_fpdec_t)x)->scale);
+		v = ((hak_oop_fpdec_t)x)->value;
 
-		v = hcl_absint(hcl, v);
-		if (!v) return HCL_NULL;
+		v = hak_absint(hak, v);
+		if (!v) return HAK_NULL;
 
-		return hcl_makefpdec(hcl, v, scale);
+		return hak_makefpdec(hak, v, scale);
 	}
 }

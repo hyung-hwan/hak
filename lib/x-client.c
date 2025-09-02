@@ -23,17 +23,17 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <hcl-x.h>
-#include <hcl-tmr.h>
-#include "hcl-prv.h"
+#include <hak-x.h>
+#include <hak-tmr.h>
+#include "hak-prv.h"
 
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
 
-#define HCL_SERVER_TOKEN_NAME_ALIGN 64
-#define HCL_SERVER_WID_MAP_ALIGN 512
-#define HCL_XPROTO_REPLY_BUF_SIZE 1300
+#define HAK_SERVER_TOKEN_NAME_ALIGN 64
+#define HAK_SERVER_WID_MAP_ALIGN 512
+#define HAK_XPROTO_REPLY_BUF_SIZE 1300
 
 #if defined(_WIN32)
 #	include <windows.h>
@@ -67,11 +67,11 @@
 #	include <unistd.h>
 #endif
 
-struct client_hcl_xtn_t
+struct client_hak_xtn_t
 {
-	hcl_client_t* client;
+	hak_client_t* client;
 };
-typedef struct client_hcl_xtn_t client_hcl_xtn_t;
+typedef struct client_hak_xtn_t client_hak_xtn_t;
 
 enum state_flag_t
 {
@@ -79,36 +79,36 @@ enum state_flag_t
 	STATE_LOCAL_OUT_CLOSED  = (1 << 1),
 	STATE_REMOTE_IN_CLOSED = (1 << 2),
 
-	HCL_CLIENT_ALL_CLOSED = (STATE_LOCAL_IN_CLOSED | STATE_LOCAL_OUT_CLOSED | STATE_REMOTE_IN_CLOSED)
+	HAK_CLIENT_ALL_CLOSED = (STATE_LOCAL_IN_CLOSED | STATE_LOCAL_OUT_CLOSED | STATE_REMOTE_IN_CLOSED)
 };
 typedef enum state_flag_t state_flag_t;
 
-struct hcl_client_t
+struct hak_client_t
 {
-	hcl_oow_t   _instsize;
-	hcl_mmgr_t* _mmgr;
-	hcl_cmgr_t* _cmgr;
+	hak_oow_t   _instsize;
+	hak_mmgr_t* _mmgr;
+	hak_cmgr_t* _cmgr;
 
-	hcl_client_prim_t prim;
-	hcl_t* dummy_hcl;
+	hak_client_prim_t prim;
+	hak_t* dummy_hak;
 
-	hcl_errnum_t errnum;
+	hak_errnum_t errnum;
 	struct
 	{
-	#if defined(HCL_OOCH_IS_BCH)
-		hcl_uch_t  xerrmsg[HCL_ERRMSG_CAPA];
+	#if defined(HAK_OOCH_IS_BCH)
+		hak_uch_t  xerrmsg[HAK_ERRMSG_CAPA];
 	#else
-		hcl_bch_t  xerrmsg[HCL_ERRMSG_CAPA * 2];
+		hak_bch_t  xerrmsg[HAK_ERRMSG_CAPA * 2];
 	#endif
-		hcl_ooch_t buf[HCL_ERRMSG_CAPA];
-		hcl_oow_t len;
+		hak_ooch_t buf[HAK_ERRMSG_CAPA];
+		hak_oow_t len;
 	} errmsg;
 	int stopreq;
 
 	struct
 	{
-		hcl_bitmask_t trait;
-		hcl_bitmask_t logmask;
+		hak_bitmask_t trait;
+		hak_bitmask_t logmask;
 	} cfg;
 
 	int mux_pipe[2]; /* pipe to break the blocking multiplexer in the main server loop */
@@ -117,7 +117,7 @@ struct hcl_client_t
 	struct
 	{
 		int sck;
-		hcl_xproto_t* proto;
+		hak_xproto_t* proto;
 	} remote;
 
 	struct
@@ -128,73 +128,73 @@ struct hcl_client_t
 
 		struct
 		{
-			hcl_uint8_t* ptr;
-			hcl_oow_t capa;
-			hcl_oow_t pos;
-			hcl_oow_t len;
+			hak_uint8_t* ptr;
+			hak_oow_t capa;
+			hak_oow_t pos;
+			hak_oow_t len;
 		} pw2r; /* pending write to the remote side */
 	} local;
 
 
 	struct
 	{
-		hcl_bch_t buf[4096];
-		hcl_oow_t pos;
-		hcl_oow_t len;
+		hak_bch_t buf[4096];
+		hak_oow_t pos;
+		hak_oow_t len;
 	} script;
 };
 
 
 /* ========================================================================= */
 
-static void client_log_write_for_dummy (hcl_t* hcl, hcl_bitmask_t mask, const hcl_ooch_t* msg, hcl_oow_t len)
+static void client_log_write_for_dummy (hak_t* hak, hak_bitmask_t mask, const hak_ooch_t* msg, hak_oow_t len)
 {
-	client_hcl_xtn_t* xtn = (client_hcl_xtn_t*)hcl_getxtn(hcl);
-	hcl_client_t* client;
+	client_hak_xtn_t* xtn = (client_hak_xtn_t*)hak_getxtn(hak);
+	hak_client_t* client;
 
 	client = xtn->client;
 	client->prim.log_write (client, mask, msg, len);
 }
 
-hcl_client_t* hcl_client_open (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, hcl_client_prim_t* prim, hcl_errnum_t* errnum)
+hak_client_t* hak_client_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_client_prim_t* prim, hak_errnum_t* errnum)
 {
-	hcl_client_t* client = HCL_NULL;
-	hcl_t* hcl = HCL_NULL;
-	client_hcl_xtn_t* xtn;
+	hak_client_t* client = HAK_NULL;
+	hak_t* hak = HAK_NULL;
+	client_hak_xtn_t* xtn;
 	int pfd[2];
 
-	client = (hcl_client_t*)HCL_MMGR_ALLOC(mmgr, HCL_SIZEOF(*client) + xtnsize);
-	if (HCL_UNLIKELY(!client))
+	client = (hak_client_t*)HAK_MMGR_ALLOC(mmgr, HAK_SIZEOF(*client) + xtnsize);
+	if (HAK_UNLIKELY(!client))
 	{
-		if (errnum) *errnum = HCL_ESYSMEM;
-		return HCL_NULL;
+		if (errnum) *errnum = HAK_ESYSMEM;
+		return HAK_NULL;
 	}
 
-	hcl = hcl_openstdwithmmgr(mmgr, HCL_SIZEOF(*xtn), errnum);
-	if (HCL_UNLIKELY(!hcl))
+	hak = hak_openstdwithmmgr(mmgr, HAK_SIZEOF(*xtn), errnum);
+	if (HAK_UNLIKELY(!hak))
 	{
-		HCL_MMGR_FREE (mmgr, client);
-		return HCL_NULL;
+		HAK_MMGR_FREE (mmgr, client);
+		return HAK_NULL;
 	}
 
-	if (hcl_sys_open_pipes(pfd, 1) <= -1)
+	if (hak_sys_open_pipes(pfd, 1) <= -1)
 	{
-		if (errnum) *errnum = hcl->vmprim.syserrstrb(hcl, 0, errno, HCL_NULL, 0);
+		if (errnum) *errnum = hak->vmprim.syserrstrb(hak, 0, errno, HAK_NULL, 0);
 		goto oops;
 	}
 
 	/* replace the vmprim.log_write function */
-	hcl->vmprim.log_write = client_log_write_for_dummy;
+	hak->vmprim.log_write = client_log_write_for_dummy;
 
-	xtn = (client_hcl_xtn_t*)hcl_getxtn(hcl);
+	xtn = (client_hak_xtn_t*)hak_getxtn(hak);
 	xtn->client = client;
 
-	HCL_MEMSET (client, 0, HCL_SIZEOF(*client) + xtnsize);
-	client->_instsize = HCL_SIZEOF(*client);
+	HAK_MEMSET (client, 0, HAK_SIZEOF(*client) + xtnsize);
+	client->_instsize = HAK_SIZEOF(*client);
 	client->_mmgr = mmgr;
-	client->_cmgr = hcl_get_utf8_cmgr();
+	client->_cmgr = hak_get_utf8_cmgr();
 	client->prim = *prim;
-	client->dummy_hcl = hcl;
+	client->dummy_hak = hak;
 	client->mux_pipe[0] = pfd[0];
 	client->mux_pipe[1] = pfd[1];
 	client->remote.sck = -1;
@@ -202,21 +202,21 @@ hcl_client_t* hcl_client_open (hcl_mmgr_t* mmgr, hcl_oow_t xtnsize, hcl_client_p
 	client->local.out = -1;
 	client->local.err = -1;
 
-	client->cfg.logmask = ~(hcl_bitmask_t)0;
+	client->cfg.logmask = ~(hak_bitmask_t)0;
 
-	/* the dummy hcl is used for this client to perform primitive operations
+	/* the dummy hak is used for this client to perform primitive operations
 	 * such as getting system time or logging. so the heap size doesn't
 	 * need to be changed from the tiny value set above. */
-	hcl_setoption (client->dummy_hcl, HCL_LOG_MASK, &client->cfg.logmask);
-	hcl_setcmgr (client->dummy_hcl, client->_cmgr);
+	hak_setoption (client->dummy_hak, HAK_LOG_MASK, &client->cfg.logmask);
+	hak_setcmgr (client->dummy_hak, client->_cmgr);
 
 	return client;
 
 oops:
 	/* NOTE: pipe should be closed if jump to here is made after pipe() above */
-	if (hcl) hcl_close (hcl);
-	if (client) HCL_MMGR_FREE (mmgr, client);
-	return HCL_NULL;
+	if (hak) hak_close (hak);
+	if (client) HAK_MMGR_FREE (mmgr, client);
+	return HAK_NULL;
 }
 
 static int is_stdio_fd (int fd)
@@ -224,261 +224,261 @@ static int is_stdio_fd (int fd)
 	return fd == STDIN_FILENO || fd == STDOUT_FILENO || fd == STDERR_FILENO;
 }
 
-void hcl_client_close (hcl_client_t* client)
+void hak_client_close (hak_client_t* client)
 {
-	if (client->remote.proto) hcl_xproto_close (client->remote.proto);
+	if (client->remote.proto) hak_xproto_close (client->remote.proto);
 	if (client->remote.sck >= 0) close (client->remote.sck);
 	if (client->local.in >= 0 && is_stdio_fd(client->local.in)) close (client->local.in);
 	if (client->local.out >= 0 && is_stdio_fd(client->local.out)) close (client->local.out);
 	if (client->local.err >= 0 && is_stdio_fd(client->local.err)) close (client->local.err);
 
-	hcl_sys_close_pipes(client->mux_pipe);
-	hcl_close (client->dummy_hcl);
-	HCL_MMGR_FREE (client->_mmgr, client);
+	hak_sys_close_pipes(client->mux_pipe);
+	hak_close (client->dummy_hak);
+	HAK_MMGR_FREE (client->_mmgr, client);
 }
 
-int hcl_client_setoption (hcl_client_t* client, hcl_client_option_t id, const void* value)
+int hak_client_setoption (hak_client_t* client, hak_client_option_t id, const void* value)
 {
 	switch (id)
 	{
-		case HCL_CLIENT_TRAIT:
-			client->cfg.trait = *(const hcl_bitmask_t*)value;
+		case HAK_CLIENT_TRAIT:
+			client->cfg.trait = *(const hak_bitmask_t*)value;
 			return 0;
 
-		case HCL_CLIENT_LOG_MASK:
-			client->cfg.logmask = *(const hcl_bitmask_t*)value;
-			if (client->dummy_hcl)
+		case HAK_CLIENT_LOG_MASK:
+			client->cfg.logmask = *(const hak_bitmask_t*)value;
+			if (client->dummy_hak)
 			{
-				/* setting this affects the dummy hcl immediately.
-				 * existing hcl instances inside worker threads won't get
-				 * affected. new hcl instances to be created later
+				/* setting this affects the dummy hak immediately.
+				 * existing hak instances inside worker threads won't get
+				 * affected. new hak instances to be created later
 				 * is supposed to use the new value */
-				hcl_setoption (client->dummy_hcl, HCL_LOG_MASK, value);
+				hak_setoption (client->dummy_hak, HAK_LOG_MASK, value);
 			}
 			return 0;
 	}
 
-	hcl_client_seterrnum (client, HCL_EINVAL);
+	hak_client_seterrnum (client, HAK_EINVAL);
 	return -1;
 }
 
-int hcl_client_getoption (hcl_client_t* client, hcl_client_option_t id, void* value)
+int hak_client_getoption (hak_client_t* client, hak_client_option_t id, void* value)
 {
 	switch (id)
 	{
-		case HCL_CLIENT_TRAIT:
-			*(hcl_bitmask_t*)value = client->cfg.trait;
+		case HAK_CLIENT_TRAIT:
+			*(hak_bitmask_t*)value = client->cfg.trait;
 			return 0;
 
-		case HCL_CLIENT_LOG_MASK:
-			*(hcl_bitmask_t*)value = client->cfg.logmask;
+		case HAK_CLIENT_LOG_MASK:
+			*(hak_bitmask_t*)value = client->cfg.logmask;
 			return 0;
 	};
 
-	hcl_client_seterrnum (client, HCL_EINVAL);
+	hak_client_seterrnum (client, HAK_EINVAL);
 	return -1;
 }
 
 
-void* hcl_client_getxtn (hcl_client_t* client)
+void* hak_client_getxtn (hak_client_t* client)
 {
-	return (void*)((hcl_uint8_t*)client + client->_instsize);
+	return (void*)((hak_uint8_t*)client + client->_instsize);
 }
 
-hcl_mmgr_t* hcl_client_getmmgr (hcl_client_t* client)
+hak_mmgr_t* hak_client_getmmgr (hak_client_t* client)
 {
 	return client->_mmgr;
 }
 
-hcl_cmgr_t* hcl_client_getcmgr (hcl_client_t* client)
+hak_cmgr_t* hak_client_getcmgr (hak_client_t* client)
 {
 	return client->_cmgr;
 }
 
-void hcl_client_setcmgr (hcl_client_t* client, hcl_cmgr_t* cmgr)
+void hak_client_setcmgr (hak_client_t* client, hak_cmgr_t* cmgr)
 {
 	client->_cmgr = cmgr;
 }
 
-hcl_errnum_t hcl_client_geterrnum (hcl_client_t* client)
+hak_errnum_t hak_client_geterrnum (hak_client_t* client)
 {
 	return client->errnum;
 }
 
-const hcl_ooch_t* hcl_client_geterrstr (hcl_client_t* client)
+const hak_ooch_t* hak_client_geterrstr (hak_client_t* client)
 {
-	return hcl_errnum_to_errstr(client->errnum);
+	return hak_errnum_to_errstr(client->errnum);
 }
 
-const hcl_ooch_t* hcl_client_geterrmsg (hcl_client_t* client)
+const hak_ooch_t* hak_client_geterrmsg (hak_client_t* client)
 {
-	if (client->errmsg.len <= 0) return hcl_errnum_to_errstr(client->errnum);
+	if (client->errmsg.len <= 0) return hak_errnum_to_errstr(client->errnum);
 	return client->errmsg.buf;
 }
 
-const hcl_bch_t* hcl_client_geterrbmsg (hcl_client_t* client)
+const hak_bch_t* hak_client_geterrbmsg (hak_client_t* client)
 {
-#if defined(HCL_OOCH_IS_BCH)
-	return (client->errmsg.len <= 0)? hcl_errnum_to_errstr(client->errnum): client->errmsg.buf;
+#if defined(HAK_OOCH_IS_BCH)
+	return (client->errmsg.len <= 0)? hak_errnum_to_errstr(client->errnum): client->errmsg.buf;
 #else
-	const hcl_ooch_t* msg;
-	hcl_oow_t wcslen, mbslen;
+	const hak_ooch_t* msg;
+	hak_oow_t wcslen, mbslen;
 
-	msg = (client->errmsg.len <= 0)? hcl_errnum_to_errstr(client->errnum): client->errmsg.buf;
+	msg = (client->errmsg.len <= 0)? hak_errnum_to_errstr(client->errnum): client->errmsg.buf;
 
-	mbslen = HCL_COUNTOF(client->errmsg.xerrmsg);
-	hcl_conv_ucstr_to_bcstr_with_cmgr (msg, &wcslen, client->errmsg.xerrmsg, &mbslen, client->_cmgr);
+	mbslen = HAK_COUNTOF(client->errmsg.xerrmsg);
+	hak_conv_ucstr_to_bcstr_with_cmgr (msg, &wcslen, client->errmsg.xerrmsg, &mbslen, client->_cmgr);
 
 	return client->errmsg.xerrmsg;
 #endif
 }
 
-const hcl_uch_t* hcl_client_geterrumsg (hcl_client_t* client)
+const hak_uch_t* hak_client_geterrumsg (hak_client_t* client)
 {
-#if defined(HCL_OOCH_IS_BCH)
-	const hcl_ooch_t* msg;
-	hcl_oow_t wcslen, mbslen;
+#if defined(HAK_OOCH_IS_BCH)
+	const hak_ooch_t* msg;
+	hak_oow_t wcslen, mbslen;
 
-	msg = (client->errmsg.len <= 0)? hcl_errnum_to_errstr(client->errnum): client->errmsg.buf;
+	msg = (client->errmsg.len <= 0)? hak_errnum_to_errstr(client->errnum): client->errmsg.buf;
 
-	wcslen = HCL_COUNTOF(client->errmsg.xerrmsg);
-	hcl_conv_bcstr_to_ucstr_with_cmgr (msg, &mbslen, client->errmsg.xerrmsg, &wcslen, client->_cmgr, 1);
+	wcslen = HAK_COUNTOF(client->errmsg.xerrmsg);
+	hak_conv_bcstr_to_ucstr_with_cmgr (msg, &mbslen, client->errmsg.xerrmsg, &wcslen, client->_cmgr, 1);
 
 	return client->errmsg.xerrmsg;
 #else
-	return (client->errmsg.len == '\0')? hcl_errnum_to_errstr(client->errnum): client->errmsg.buf;
+	return (client->errmsg.len == '\0')? hak_errnum_to_errstr(client->errnum): client->errmsg.buf;
 #endif
 }
 
-void hcl_client_seterrnum (hcl_client_t* client, hcl_errnum_t errnum)
+void hak_client_seterrnum (hak_client_t* client, hak_errnum_t errnum)
 {
 	/*if (client->shuterr) return; */
 	client->errnum = errnum;
 	client->errmsg.len = 0;
 }
 
-void hcl_client_seterrbfmt (hcl_client_t* client, hcl_errnum_t errnum, const hcl_bch_t* fmt, ...)
+void hak_client_seterrbfmt (hak_client_t* client, hak_errnum_t errnum, const hak_bch_t* fmt, ...)
 {
 	va_list ap;
 
 	va_start (ap, fmt);
-	hcl_seterrbfmtv (client->dummy_hcl, errnum, fmt, ap);
+	hak_seterrbfmtv (client->dummy_hak, errnum, fmt, ap);
 	va_end (ap);
 
-	HCL_ASSERT (client->dummy_hcl, HCL_COUNTOF(client->errmsg.buf) == HCL_COUNTOF(client->dummy_hcl->errmsg.buf));
+	HAK_ASSERT (client->dummy_hak, HAK_COUNTOF(client->errmsg.buf) == HAK_COUNTOF(client->dummy_hak->errmsg.buf));
 	client->errnum = errnum;
-	hcl_copy_oochars (client->errmsg.buf, client->dummy_hcl->errmsg.buf, HCL_COUNTOF(client->errmsg.buf));
-	client->errmsg.len = client->dummy_hcl->errmsg.len;
+	hak_copy_oochars (client->errmsg.buf, client->dummy_hak->errmsg.buf, HAK_COUNTOF(client->errmsg.buf));
+	client->errmsg.len = client->dummy_hak->errmsg.len;
 }
 
-void hcl_client_seterrufmt (hcl_client_t* client, hcl_errnum_t errnum, const hcl_uch_t* fmt, ...)
+void hak_client_seterrufmt (hak_client_t* client, hak_errnum_t errnum, const hak_uch_t* fmt, ...)
 {
 	va_list ap;
 
 	va_start (ap, fmt);
-	hcl_seterrufmtv (client->dummy_hcl, errnum, fmt, ap);
+	hak_seterrufmtv (client->dummy_hak, errnum, fmt, ap);
 	va_end (ap);
 
-	HCL_ASSERT (client->dummy_hcl, HCL_COUNTOF(client->errmsg.buf) == HCL_COUNTOF(client->dummy_hcl->errmsg.buf));
+	HAK_ASSERT (client->dummy_hak, HAK_COUNTOF(client->errmsg.buf) == HAK_COUNTOF(client->dummy_hak->errmsg.buf));
 	client->errnum = errnum;
-	hcl_copy_oochars (client->errmsg.buf, client->dummy_hcl->errmsg.buf, HCL_COUNTOF(client->errmsg.buf));
-	client->errmsg.len = client->dummy_hcl->errmsg.len;
+	hak_copy_oochars (client->errmsg.buf, client->dummy_hak->errmsg.buf, HAK_COUNTOF(client->errmsg.buf));
+	client->errmsg.len = client->dummy_hak->errmsg.len;
 }
 
 /* ========================================================================= */
 
-void hcl_client_logbfmt (hcl_client_t* client, hcl_bitmask_t mask, const hcl_bch_t* fmt, ...)
+void hak_client_logbfmt (hak_client_t* client, hak_bitmask_t mask, const hak_bch_t* fmt, ...)
 {
 	va_list ap;
 	va_start (ap, fmt);
-	hcl_logbfmtv (client->dummy_hcl, mask, fmt, ap);
+	hak_logbfmtv (client->dummy_hak, mask, fmt, ap);
 	va_end (ap);
 }
 
-void hcl_client_logufmt (hcl_client_t* client, hcl_bitmask_t mask, const hcl_uch_t* fmt, ...)
+void hak_client_logufmt (hak_client_t* client, hak_bitmask_t mask, const hak_uch_t* fmt, ...)
 {
 	va_list ap;
 	va_start (ap, fmt);
-	hcl_logufmtv (client->dummy_hcl, mask, fmt, ap);
+	hak_logufmtv (client->dummy_hak, mask, fmt, ap);
 	va_end (ap);
 }
 
 /* ========================================================================= */
 
-void* hcl_client_allocmem (hcl_client_t* client, hcl_oow_t size)
+void* hak_client_allocmem (hak_client_t* client, hak_oow_t size)
 {
 	void* ptr;
 
-	ptr = HCL_MMGR_ALLOC(client->_mmgr, size);
-	if (!ptr) hcl_client_seterrnum (client, HCL_ESYSMEM);
+	ptr = HAK_MMGR_ALLOC(client->_mmgr, size);
+	if (!ptr) hak_client_seterrnum (client, HAK_ESYSMEM);
 	return ptr;
 }
 
-void* hcl_client_callocmem (hcl_client_t* client, hcl_oow_t size)
+void* hak_client_callocmem (hak_client_t* client, hak_oow_t size)
 {
 	void* ptr;
 
-	ptr = HCL_MMGR_ALLOC(client->_mmgr, size);
-	if (!ptr) hcl_client_seterrnum (client, HCL_ESYSMEM);
-	else HCL_MEMSET (ptr, 0, size);
+	ptr = HAK_MMGR_ALLOC(client->_mmgr, size);
+	if (!ptr) hak_client_seterrnum (client, HAK_ESYSMEM);
+	else HAK_MEMSET (ptr, 0, size);
 	return ptr;
 }
 
-void* hcl_client_reallocmem (hcl_client_t* client, void* ptr, hcl_oow_t size)
+void* hak_client_reallocmem (hak_client_t* client, void* ptr, hak_oow_t size)
 {
-	ptr = HCL_MMGR_REALLOC(client->_mmgr, ptr, size);
-	if (!ptr) hcl_client_seterrnum (client, HCL_ESYSMEM);
+	ptr = HAK_MMGR_REALLOC(client->_mmgr, ptr, size);
+	if (!ptr) hak_client_seterrnum (client, HAK_ESYSMEM);
 	return ptr;
 }
 
-void hcl_client_freemem (hcl_client_t* client, void* ptr)
+void hak_client_freemem (hak_client_t* client, void* ptr)
 {
-	HCL_MMGR_FREE (client->_mmgr, ptr);
+	HAK_MMGR_FREE (client->_mmgr, ptr);
 }
 
 /* ========================================================================= */
 
 struct proto_xtn_t
 {
-	hcl_client_t* client;
+	hak_client_t* client;
 };
 typedef struct proto_xtn_t proto_xtn_t;
 
-static int proto_on_packet (hcl_xproto_t* proto, hcl_xpkt_type_t type, const void* data, hcl_oow_t len)
+static int proto_on_packet (hak_xproto_t* proto, hak_xpkt_type_t type, const void* data, hak_oow_t len)
 {
 	proto_xtn_t* proto_xtn;
-	hcl_client_t* client;
-	proto_xtn = hcl_xproto_getxtn(proto);
+	hak_client_t* client;
+	proto_xtn = hak_xproto_getxtn(proto);
 	client = proto_xtn->client;
 	return client->prim.on_packet(client, type, data, len);
 }
 
-static int client_connect_to_server (hcl_client_t* client, const char* ipaddr)
+static int client_connect_to_server (hak_client_t* client, const char* ipaddr)
 {
-	hcl_sckaddr_t sckaddr;
-	hcl_scklen_t scklen;
+	hak_sckaddr_t sckaddr;
+	hak_scklen_t scklen;
 	int sckfam;
 	int sck = -1;
-	hcl_xproto_t* proto = HCL_NULL;
+	hak_xproto_t* proto = HAK_NULL;
 
 	proto_xtn_t* proto_xtn;
-	hcl_xproto_cb_t proto_cb;
+	hak_xproto_cb_t proto_cb;
 
-	sckfam = hcl_bchars_to_sckaddr(ipaddr, strlen(ipaddr), &sckaddr, &scklen);
+	sckfam = hak_bchars_to_sckaddr(ipaddr, strlen(ipaddr), &sckaddr, &scklen);
 	if (sckfam <= -1)
 	{
-		hcl_client_seterrbfmt (client, HCL_EINVAL, "cannot convert ip address - %hs", ipaddr);
+		hak_client_seterrbfmt (client, HAK_EINVAL, "cannot convert ip address - %hs", ipaddr);
 		goto oops;
 	}
 
 	sck = socket(sckfam, SOCK_STREAM, 0);
 	if (sck <= -1)
 	{
-		hcl_client_seterrbfmt (client, HCL_ESYSERR, "cannot create socket - %hs", strerror(errno));
+		hak_client_seterrbfmt (client, HAK_ESYSERR, "cannot create socket - %hs", strerror(errno));
 		goto oops;
 	}
 
-	hcl_sys_set_cloexec(sck, 1);
+	hak_sys_set_cloexec(sck, 1);
 
 #if 0
 	if (sckfam == AF_INET)
@@ -486,11 +486,11 @@ static int client_connect_to_server (hcl_client_t* client, const char* ipaddr)
 		struct sockaddr_in anyaddr;
 		int opt = 1;
 		setsockopt(sck, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt));
-		HCL_MEMSET (&anyaddr, 0, HCL_SIZEOF(anyaddr));
+		HAK_MEMSET (&anyaddr, 0, HAK_SIZEOF(anyaddr));
 		anyaddr.sin_family = sckfam;
 		if (bind(sck, (struct sockaddr *)&anyaddr, scklen) <= -1)
 		{
-			hcl_client_seterrbfmt (client, HCL_ESYSERR,
+			hak_client_seterrbfmt (client, HAK_ESYSERR,
 				"cannot bind socket %d - %hs", sck, strerror(errno));
 			goto oops;
 		}
@@ -500,11 +500,11 @@ static int client_connect_to_server (hcl_client_t* client, const char* ipaddr)
 		struct sockaddr_in6 anyaddr;
 		int opt = 1;
 		setsockopt(sck, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt));
-		HCL_MEMSET (&anyaddr, 0, HCL_SIZEOF(anyaddr));
+		HAK_MEMSET (&anyaddr, 0, HAK_SIZEOF(anyaddr));
 		anyaddr.sin6_family = sckfam;
 		if (bind(sck, (struct sockaddr *)&anyaddr, scklen) <= -1)
 		{
-			hcl_client_seterrbfmt (client, HCL_ESYSERR,
+			hak_client_seterrbfmt (client, HAK_ESYSERR,
 				"cannot bind socket %d - %hs", sck, strerror(errno));
 			goto oops;
 		}
@@ -515,23 +515,23 @@ static int client_connect_to_server (hcl_client_t* client, const char* ipaddr)
 /* TODO: connect timeout */
 	if (connect(sck, (struct sockaddr*)&sckaddr, scklen) <= -1)
 	{
-		hcl_client_seterrbfmt (client, HCL_ESYSERR,
+		hak_client_seterrbfmt (client, HAK_ESYSERR,
 			"cannot connect socket %d to %hs - %hs", sck, ipaddr, strerror(errno));
 		goto oops;
 	}
 
-	hcl_sys_set_nonblock(sck, 1); /* make it nonblocking after connection has been established */
+	hak_sys_set_nonblock(sck, 1); /* make it nonblocking after connection has been established */
 
-	HCL_MEMSET (&proto, 0, HCL_SIZEOF(proto_cb));
+	HAK_MEMSET (&proto, 0, HAK_SIZEOF(proto_cb));
 	proto_cb.on_packet = proto_on_packet;
 
-	proto = hcl_xproto_open(hcl_client_getmmgr(client), &proto_cb, HCL_SIZEOF(*proto_xtn));
-	if (HCL_UNLIKELY(!proto))
+	proto = hak_xproto_open(hak_client_getmmgr(client), &proto_cb, HAK_SIZEOF(*proto_xtn));
+	if (HAK_UNLIKELY(!proto))
 	{
-		hcl_client_seterrbfmt (client, HCL_ESYSERR, "cannot open protocol to %s", ipaddr);
+		hak_client_seterrbfmt (client, HAK_ESYSERR, "cannot open protocol to %s", ipaddr);
 		goto oops;
 	}
-	proto_xtn = hcl_xproto_getxtn(proto);
+	proto_xtn = hak_xproto_getxtn(proto);
 	proto_xtn->client = client;
 
 	client->remote.sck = sck;
@@ -539,18 +539,18 @@ static int client_connect_to_server (hcl_client_t* client, const char* ipaddr)
 	return 0;
 
 oops:
-	if (proto) hcl_xproto_close (proto);
+	if (proto) hak_xproto_close (proto);
 	if (sck >= 0) close (sck);
 	return -1;
 }
 
 
-static void client_close (hcl_client_t* client)
+static void client_close (hak_client_t* client)
 {
 	if (client->remote.proto)
 	{
-		hcl_xproto_close (client->remote.proto);
-		client->remote.proto = HCL_NULL;
+		hak_xproto_close (client->remote.proto);
+		client->remote.proto = HAK_NULL;
 	}
 
 	if (client->remote.sck >= 0)
@@ -560,36 +560,36 @@ static void client_close (hcl_client_t* client)
 	}
 }
 
-static int client_add_to_local_pw2r (hcl_client_t* client, const hcl_uint8_t* ptr, hcl_oow_t len)
+static int client_add_to_local_pw2r (hak_client_t* client, const hak_uint8_t* ptr, hak_oow_t len)
 {
 	if (client->local.pw2r.len >= client->local.pw2r.capa)
 	{
-		hcl_uint8_t* tmp;
-		hcl_oow_t newcapa;
+		hak_uint8_t* tmp;
+		hak_oow_t newcapa;
 
-		newcapa = HCL_ALIGN_POW2(client->local.pw2r.capa + len, 128);
-		tmp = hcl_client_reallocmem(client, client->local.pw2r.ptr, newcapa * HCL_SIZEOF(*client->local.pw2r.ptr));
-		if (HCL_UNLIKELY(!tmp)) return -1;
+		newcapa = HAK_ALIGN_POW2(client->local.pw2r.capa + len, 128);
+		tmp = hak_client_reallocmem(client, client->local.pw2r.ptr, newcapa * HAK_SIZEOF(*client->local.pw2r.ptr));
+		if (HAK_UNLIKELY(!tmp)) return -1;
 
 		client->local.pw2r.capa = newcapa;
 		client->local.pw2r.ptr = tmp;
 	}
 
-	HCL_MEMCPY (&client->local.pw2r.ptr[client->local.pw2r.len], ptr, len);
+	HAK_MEMCPY (&client->local.pw2r.ptr[client->local.pw2r.len], ptr, len);
 	client->local.pw2r.len += len;
 	return 0;
 }
 
-static int client_send_to_remote (hcl_client_t* client, hcl_xpkt_type_t pktype, const hcl_uint8_t* ptr, hcl_oow_t len)
+static int client_send_to_remote (hak_client_t* client, hak_xpkt_type_t pktype, const hak_uint8_t* ptr, hak_oow_t len)
 {
-	hcl_xpkt_hdr_t hdr;
+	hak_xpkt_hdr_t hdr;
 	struct iovec iov[2];
-	hcl_uint16_t seglen;
+	hak_uint16_t seglen;
 	int n, i;
 
 	do
 	{
-		seglen = (len > HCL_XPKT_MAX_PLD_LEN)? HCL_XPKT_MAX_PLD_LEN: len;
+		seglen = (len > HAK_XPKT_MAX_PLD_LEN)? HAK_XPKT_MAX_PLD_LEN: len;
 
 		hdr.id = 1; /* TODO: */
 		hdr.type = pktype | (((seglen >> 8) & 0x0F) << 4);
@@ -597,14 +597,14 @@ static int client_send_to_remote (hcl_client_t* client, hcl_xpkt_type_t pktype, 
 
 		i = 0;
 		iov[i].iov_base = &hdr;
-		iov[i++].iov_len = HCL_SIZEOF(hdr);
+		iov[i++].iov_len = HAK_SIZEOF(hdr);
 		if (seglen > 0)
 		{
 			iov[i].iov_base = ptr;
 			iov[i++].iov_len = seglen;
 		}
 
-		n = hcl_sys_send_iov(client->remote.sck, iov, i);
+		n = hak_sys_send_iov(client->remote.sck, iov, i);
 		if (n <= -1) return -1;
 
 		if (n < i || iov[n - 1].iov_len > 0)
@@ -632,25 +632,25 @@ static int client_send_to_remote (hcl_client_t* client, hcl_xpkt_type_t pktype, 
 
 /* ========================================================================= */
 
-static void on_control_event (hcl_client_t* client, struct pollfd* pfd)
+static void on_control_event (hak_client_t* client, struct pollfd* pfd)
 {
 	char tmp[128];
-hcl_client_logbfmt(client, HCL_LOG_STDERR, "ON CONTROL EVENT \n");
-	while (read(client->mux_pipe[0], tmp, HCL_SIZEOF(tmp)) > 0) /* nothing */;
+hak_client_logbfmt(client, HAK_LOG_STDERR, "ON CONTROL EVENT \n");
+	while (read(client->mux_pipe[0], tmp, HAK_SIZEOF(tmp)) > 0) /* nothing */;
 /* TODO: handle different command? */
 }
 
-static void on_remote_event (hcl_client_t* client, struct pollfd* pfd, int shut_wr_after_req)
+static void on_remote_event (hak_client_t* client, struct pollfd* pfd, int shut_wr_after_req)
 {
-//hcl_client_logbfmt(client, HCL_LOG_STDERR, "ON REMOTE EVENT \n");
+//hak_client_logbfmt(client, HAK_LOG_STDERR, "ON REMOTE EVENT \n");
 
 	if (pfd->revents & POLLOUT)
 	{
 		ssize_t n;
-		hcl_oow_t len;
+		hak_oow_t len;
 
 		len = client->local.pw2r.len - client->local.pw2r.pos;
-		n = hcl_sys_send(client->remote.sck, &client->local.pw2r.ptr[client->local.pw2r.pos], &len);
+		n = hak_sys_send(client->remote.sck, &client->local.pw2r.ptr[client->local.pw2r.pos], &len);
 		client->local.pw2r.pos += len;
 		if (client->local.pw2r.pos >= client->local.pw2r.len)
 		{
@@ -662,39 +662,39 @@ static void on_remote_event (hcl_client_t* client, struct pollfd* pfd, int shut_
 		if (n <= -1)
 		{
 			/* TODO: logging */
-hcl_client_logbfmt(client, HCL_LOG_STDERR, "send error - %hs\n", strerror(errno));
+hak_client_logbfmt(client, HAK_LOG_STDERR, "send error - %hs\n", strerror(errno));
 			goto reqstop;
 		}
 	}
 
 	if (pfd->revents & POLLIN)
 	{
-		hcl_oow_t bcap;
-		hcl_uint8_t* bptr;
+		hak_oow_t bcap;
+		hak_uint8_t* bptr;
 		ssize_t x;
 
-		bptr = hcl_xproto_getbuf(client->remote.proto, &bcap);;
+		bptr = hak_xproto_getbuf(client->remote.proto, &bcap);;
 		x = recv(client->remote.sck, bptr, bcap, 0);
 		if (x <= -1)
 		{
 			if (errno == EINTR) goto carry_on; /* didn't read read */
-hcl_client_logbfmt(client, HCL_LOG_STDERR, "recv error from remote - %hs", strerror(errno));
-			/*hcl_seterrwithsyserr (hcl, 0, errno); */
+hak_client_logbfmt(client, HAK_LOG_STDERR, "recv error from remote - %hs", strerror(errno));
+			/*hak_seterrwithsyserr (hak, 0, errno); */
 			/* TODO: error info set... */
 			goto reqstop;
 		}
-		if (x == 0) hcl_xproto_seteof(client->remote.proto, 1);
-		hcl_xproto_advbuf (client->remote.proto, x);
+		if (x == 0) hak_xproto_seteof(client->remote.proto, 1);
+		hak_xproto_advbuf (client->remote.proto, x);
 	}
 
 
 carry_on:
 	/* handle the data received from the remote side */
-	while (hcl_xproto_ready(client->remote.proto))
+	while (hak_xproto_ready(client->remote.proto))
 	{
 		int n;
 
-		if ((n = hcl_xproto_process(client->remote.proto)) <= -1)
+		if ((n = hak_xproto_process(client->remote.proto)) <= -1)
 		{
 			/* TODO: proper error message */
 			printf ("PROTOCOL PROCESSING ERROR...\n");
@@ -708,7 +708,7 @@ carry_on:
 		}
 	}
 
-	if (hcl_xproto_geteof(client->remote.proto))
+	if (hak_xproto_geteof(client->remote.proto))
 	{
 		client->state |= STATE_REMOTE_IN_CLOSED;
 		goto reqstop;
@@ -720,43 +720,43 @@ reqstop:
 	return;
 }
 
-static void on_local_in_event (hcl_client_t* client, struct pollfd* pfd)
+static void on_local_in_event (hak_client_t* client, struct pollfd* pfd)
 {
 	ssize_t n;
-	hcl_uint8_t buf[128];
+	hak_uint8_t buf[128];
 
-//hcl_client_logbfmt(client, HCL_LOG_STDERR, "local in on %d\n", pfd->fd);
-	n = read(pfd->fd, buf, HCL_SIZEOF(buf));
+//hak_client_logbfmt(client, HAK_LOG_STDERR, "local in on %d\n", pfd->fd);
+	n = read(pfd->fd, buf, HAK_SIZEOF(buf));
 	if (n <= -1)
 	{
-		//if (hcl_sys_is_errno_wb(errno)) ...
-hcl_client_logbfmt(client, HCL_LOG_STDERR, "local in read error - %hs\n", strerror(errno));
+		//if (hak_sys_is_errno_wb(errno)) ...
+hak_client_logbfmt(client, HAK_LOG_STDERR, "local in read error - %hs\n", strerror(errno));
 		client->stopreq = 1;
 	}
 	else if (n == 0)
 	{
-/*hcl_client_logbfmt(client, HCL_LOG_STDERR, "local in eof\n");*/
+/*hak_client_logbfmt(client, HAK_LOG_STDERR, "local in eof\n");*/
 /* TODO ARRANGE TO FINISH.. AFTER EXUCTION OF REMAINING STUFF... */
 		//client->stopreq = 1;
 		client->state |= STATE_LOCAL_IN_CLOSED;
-		n = client_send_to_remote(client, HCL_XPKT_EXECUTE, HCL_NULL, 0);
+		n = client_send_to_remote(client, HAK_XPKT_EXECUTE, HAK_NULL, 0);
 		if (n <= -1)
 		{
-hcl_client_logbfmt(client, HCL_LOG_STDERR, "local to remote  (execute)- %hs\n", strerror(errno));
+hak_client_logbfmt(client, HAK_LOG_STDERR, "local to remote  (execute)- %hs\n", strerror(errno));
 		}
 	}
 	else
 	{
-/*hcl_client_logbfmt(client, HCL_LOG_STDERR, "local read - %ld\n", (long)n);*/
-		n = client_send_to_remote(client, HCL_XPKT_CODE, buf, n);
+/*hak_client_logbfmt(client, HAK_LOG_STDERR, "local read - %ld\n", (long)n);*/
+		n = client_send_to_remote(client, HAK_XPKT_CODE, buf, n);
 		if (n <= -1)
 		{
-hcl_client_logbfmt(client, HCL_LOG_STDERR, "local to remote (code)- %hs\n", strerror(errno));
+hak_client_logbfmt(client, HAK_LOG_STDERR, "local to remote (code)- %hs\n", strerror(errno));
 		}
 	}
 }
 
-static int client_setup_local(hcl_client_t* client)
+static int client_setup_local(hak_client_t* client)
 {
 	client->local.in = STDIN_FILENO;
 	client->local.out = STDOUT_FILENO;
@@ -764,29 +764,29 @@ static int client_setup_local(hcl_client_t* client)
 	return 0;
 }
 
-int hcl_client_start (hcl_client_t* client, const char* ipaddr, int shut_wr_after_req)
+int hak_client_start (hak_client_t* client, const char* ipaddr, int shut_wr_after_req)
 {
 	/*  TODO: cin, cout, cerr could be actual files or something other than the console.
 	          the actual loop won't begin until all these file descriptors are ready */
 
 	client->stopreq = 0;
 	if (client_setup_local(client) <= -1) return -1;
-hcl_client_logbfmt(client, HCL_LOG_STDERR, "staritg XXXXXXXXXXX loop... ...\n");
+hak_client_logbfmt(client, HAK_LOG_STDERR, "staritg XXXXXXXXXXX loop... ...\n");
 	if (client_connect_to_server(client, ipaddr) <= -1) return -1; /* TODO: support time out or abort while connecting... */
 
-hcl_client_logbfmt(client, HCL_LOG_STDERR, "staritg client loop... ...\n");
+hak_client_logbfmt(client, HAK_LOG_STDERR, "staritg client loop... ...\n");
 	while (!client->stopreq)
 	{
 		int nfds, i;
 		struct pollfd pfd[10];
 
-		if ((client->state & HCL_CLIENT_ALL_CLOSED) == HCL_CLIENT_ALL_CLOSED)
+		if ((client->state & HAK_CLIENT_ALL_CLOSED) == HAK_CLIENT_ALL_CLOSED)
 		{
 			/* no explicit stop request. but all file descriptors reached EOF */
 			break;
 		}
 
-		HCL_MEMSET (pfd, 0, HCL_SIZEOF(pfd));
+		HAK_MEMSET (pfd, 0, HAK_SIZEOF(pfd));
 		nfds = 0;
 
 		/* always monitor the control channel */
@@ -807,7 +807,7 @@ hcl_client_logbfmt(client, HCL_LOG_STDERR, "staritg client loop... ...\n");
 		{
 			if (client->local.pw2r.pos >= client->local.pw2r.len)
 			{
-//hcl_client_logbfmt(client, HCL_LOG_STDERR, "ADDING LOCAL IN TO MULTIPLEX...\n");
+//hak_client_logbfmt(client, HAK_LOG_STDERR, "ADDING LOCAL IN TO MULTIPLEX...\n");
 				pfd[nfds].fd = client->local.in;
 				pfd[nfds].events = POLLIN;
 				pfd[nfds++].revents = 0;
@@ -815,10 +815,10 @@ hcl_client_logbfmt(client, HCL_LOG_STDERR, "staritg client loop... ...\n");
 		}
 
 		i = poll(pfd, nfds, 1000);
-//hcl_client_logbfmt(client, HCL_LOG_STDERR, "poll returned %d\n", i);
+//hak_client_logbfmt(client, HAK_LOG_STDERR, "poll returned %d\n", i);
 		if (i <= -1)
 		{
-			hcl_client_seterrbfmt (client, HCL_ESYSERR, "poll error - %hs", strerror(errno));
+			hak_client_seterrbfmt (client, HAK_ESYSERR, "poll error - %hs", strerror(errno));
 			goto oops;
 		}
 
@@ -832,7 +832,7 @@ hcl_client_logbfmt(client, HCL_LOG_STDERR, "staritg client loop... ...\n");
 		{
 			if (!pfd[i].revents) continue;
 
-//hcl_client_logbfmt(client, HCL_LOG_STDERR, "EVENT ON %d mux[%d], remote[%d], local[%d]\n", pfd[i].fd, client->mux_pipe[0], client->remote.sck, client->local.in);
+//hak_client_logbfmt(client, HAK_LOG_STDERR, "EVENT ON %d mux[%d], remote[%d], local[%d]\n", pfd[i].fd, client->mux_pipe[0], client->remote.sck, client->local.in);
 			if (pfd[i].fd == client->mux_pipe[0])
 			{
 				on_control_event (client, &pfd[i]);
@@ -867,7 +867,7 @@ oops:
 	return -1;
 }
 
-void hcl_client_stop (hcl_client_t* client)
+void hak_client_stop (hak_client_t* client)
 {
 	client->stopreq = 1;
 	write (client->mux_pipe[1], "Q", 1); /* don't care about failure */

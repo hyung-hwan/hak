@@ -101,7 +101,7 @@ am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 DIST_COMMON = $(srcdir)/Makefile.am $(am__DIST_COMMON)
 mkinstalldirs = $(install_sh) -d
-CONFIG_HEADER = $(top_builddir)/lib/hcl-cfg.h
+CONFIG_HEADER = $(top_builddir)/lib/hak-cfg.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
@@ -133,38 +133,38 @@ am__uninstall_files_from_dir = { \
 am__installdirs = "$(DESTDIR)$(pkgmodexecdir)"
 LTLIBRARIES = $(noinst_LTLIBRARIES) $(pkgmodexec_LTLIBRARIES)
 am__DEPENDENCIES_1 =
-libhcl_core_la_DEPENDENCIES = $(am__DEPENDENCIES_1)
-am_libhcl_core_la_OBJECTS = libhcl_core_la-core.lo
-libhcl_core_la_OBJECTS = $(am_libhcl_core_la_OBJECTS)
+libhak_core_la_DEPENDENCIES = $(am__DEPENDENCIES_1)
+am_libhak_core_la_OBJECTS = libhak_core_la-core.lo
+libhak_core_la_OBJECTS = $(am_libhak_core_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
-libhcl_core_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
+libhak_core_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
-	$(libhcl_core_la_CFLAGS) $(CFLAGS) $(libhcl_core_la_LDFLAGS) \
+	$(libhak_core_la_CFLAGS) $(CFLAGS) $(libhak_core_la_LDFLAGS) \
 	$(LDFLAGS) -o $@
-@ENABLE_STATIC_MODULE_FALSE@am_libhcl_core_la_rpath = -rpath \
+@ENABLE_STATIC_MODULE_FALSE@am_libhak_core_la_rpath = -rpath \
 @ENABLE_STATIC_MODULE_FALSE@	$(pkgmodexecdir)
-@ENABLE_STATIC_MODULE_TRUE@am_libhcl_core_la_rpath =
-libhcl_dic_la_DEPENDENCIES = $(am__DEPENDENCIES_1)
-am_libhcl_dic_la_OBJECTS = libhcl_dic_la-dic.lo
-libhcl_dic_la_OBJECTS = $(am_libhcl_dic_la_OBJECTS)
-libhcl_dic_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
-	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(libhcl_dic_la_CFLAGS) \
-	$(CFLAGS) $(libhcl_dic_la_LDFLAGS) $(LDFLAGS) -o $@
-@ENABLE_STATIC_MODULE_FALSE@am_libhcl_dic_la_rpath = -rpath \
+@ENABLE_STATIC_MODULE_TRUE@am_libhak_core_la_rpath =
+libhak_dic_la_DEPENDENCIES = $(am__DEPENDENCIES_1)
+am_libhak_dic_la_OBJECTS = libhak_dic_la-dic.lo
+libhak_dic_la_OBJECTS = $(am_libhak_dic_la_OBJECTS)
+libhak_dic_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(libhak_dic_la_CFLAGS) \
+	$(CFLAGS) $(libhak_dic_la_LDFLAGS) $(LDFLAGS) -o $@
+@ENABLE_STATIC_MODULE_FALSE@am_libhak_dic_la_rpath = -rpath \
 @ENABLE_STATIC_MODULE_FALSE@	$(pkgmodexecdir)
-@ENABLE_STATIC_MODULE_TRUE@am_libhcl_dic_la_rpath =
-libhcl_sys_la_DEPENDENCIES = $(am__DEPENDENCIES_1)
-am_libhcl_sys_la_OBJECTS = libhcl_sys_la-sys.lo
-libhcl_sys_la_OBJECTS = $(am_libhcl_sys_la_OBJECTS)
-libhcl_sys_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
-	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(libhcl_sys_la_CFLAGS) \
-	$(CFLAGS) $(libhcl_sys_la_LDFLAGS) $(LDFLAGS) -o $@
-@ENABLE_STATIC_MODULE_FALSE@am_libhcl_sys_la_rpath = -rpath \
+@ENABLE_STATIC_MODULE_TRUE@am_libhak_dic_la_rpath =
+libhak_sys_la_DEPENDENCIES = $(am__DEPENDENCIES_1)
+am_libhak_sys_la_OBJECTS = libhak_sys_la-sys.lo
+libhak_sys_la_OBJECTS = $(am_libhak_sys_la_OBJECTS)
+libhak_sys_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(libhak_sys_la_CFLAGS) \
+	$(CFLAGS) $(libhak_sys_la_LDFLAGS) $(LDFLAGS) -o $@
+@ENABLE_STATIC_MODULE_FALSE@am_libhak_sys_la_rpath = -rpath \
 @ENABLE_STATIC_MODULE_FALSE@	$(pkgmodexecdir)
-@ENABLE_STATIC_MODULE_TRUE@am_libhcl_sys_la_rpath =
+@ENABLE_STATIC_MODULE_TRUE@am_libhak_sys_la_rpath =
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -180,9 +180,9 @@ am__v_at_1 =
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/ac/depcomp
 am__maybe_remake_depfiles = depfiles
-am__depfiles_remade = ./$(DEPDIR)/libhcl_core_la-core.Plo \
-	./$(DEPDIR)/libhcl_dic_la-dic.Plo \
-	./$(DEPDIR)/libhcl_sys_la-sys.Plo
+am__depfiles_remade = ./$(DEPDIR)/libhak_core_la-core.Plo \
+	./$(DEPDIR)/libhak_dic_la-dic.Plo \
+	./$(DEPDIR)/libhak_sys_la-sys.Plo
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -202,10 +202,10 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(libhcl_core_la_SOURCES) $(libhcl_dic_la_SOURCES) \
-	$(libhcl_sys_la_SOURCES)
-DIST_SOURCES = $(libhcl_core_la_SOURCES) $(libhcl_dic_la_SOURCES) \
-	$(libhcl_sys_la_SOURCES)
+SOURCES = $(libhak_core_la_SOURCES) $(libhak_dic_la_SOURCES) \
+	$(libhak_sys_la_SOURCES)
+DIST_SOURCES = $(libhak_core_la_SOURCES) $(libhak_dic_la_SOURCES) \
+	$(libhak_sys_la_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -262,9 +262,9 @@ EXEEXT = @EXEEXT@
 FGREP = @FGREP@
 FILECMD = @FILECMD@
 GREP = @GREP@
-HCL_PROJECT_AUTHOR = @HCL_PROJECT_AUTHOR@
-HCL_PROJECT_URL = @HCL_PROJECT_URL@
-HCL_SYS_LIB_SEARCH_PATH_SPEC = @HCL_SYS_LIB_SEARCH_PATH_SPEC@
+HAK_PROJECT_AUTHOR = @HAK_PROJECT_AUTHOR@
+HAK_PROJECT_URL = @HAK_PROJECT_URL@
+HAK_SYS_LIB_SEARCH_PATH_SPEC = @HAK_SYS_LIB_SEARCH_PATH_SPEC@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -390,28 +390,28 @@ CFLAGS_COMMON =
 # STATIC MODULES BUILT INTO MAIN LIBRARY
 ##################################################
 @ENABLE_STATIC_MODULE_TRUE@LDFLAGS_COMMON = -L$(libdir)
-@ENABLE_STATIC_MODULE_FALSE@LIBADD_COMMON = -lhcl
+@ENABLE_STATIC_MODULE_FALSE@LIBADD_COMMON = -lhak
 @ENABLE_STATIC_MODULE_TRUE@LIBADD_COMMON = 
-@ENABLE_STATIC_MODULE_TRUE@noinst_LTLIBRARIES = libhcl-core.la \
-@ENABLE_STATIC_MODULE_TRUE@	libhcl-dic.la libhcl-sys.la
+@ENABLE_STATIC_MODULE_TRUE@noinst_LTLIBRARIES = libhak-core.la \
+@ENABLE_STATIC_MODULE_TRUE@	libhak-dic.la libhak-sys.la
 @ENABLE_STATIC_MODULE_FALSE@pkgmodexecdir = $(libdir)
-@ENABLE_STATIC_MODULE_FALSE@pkgmodexec_LTLIBRARIES = libhcl-core.la \
-@ENABLE_STATIC_MODULE_FALSE@	libhcl-dic.la libhcl-sys.la
-libhcl_core_la_SOURCES = core.c _core.h
-libhcl_core_la_CPPFLAGS = $(CPPFLAGS_COMMON)
-libhcl_core_la_CFLAGS = $(CFLAGS_COMMON)
-libhcl_core_la_LDFLAGS = $(LDFLAGS_COMMON)
-libhcl_core_la_LIBADD = $(LIBADD_COMMON)
-libhcl_dic_la_SOURCES = dic.c _dic.h
-libhcl_dic_la_CPPFLAGS = $(CPPFLAGS_COMMON)
-libhcl_dic_la_CFLAGS = $(CFLAGS_COMMON)
-libhcl_dic_la_LDFLAGS = $(LDFLAGS_COMMON)
-libhcl_dic_la_LIBADD = $(LIBADD_COMMON)
-libhcl_sys_la_SOURCES = sys.c _sys.h
-libhcl_sys_la_CPPFLAGS = $(CPPFLAGS_COMMON)
-libhcl_sys_la_CFLAGS = $(CFLAGS_COMMON)
-libhcl_sys_la_LDFLAGS = $(LDFLAGS_COMMON)
-libhcl_sys_la_LIBADD = $(LIBADD_COMMON)
+@ENABLE_STATIC_MODULE_FALSE@pkgmodexec_LTLIBRARIES = libhak-core.la \
+@ENABLE_STATIC_MODULE_FALSE@	libhak-dic.la libhak-sys.la
+libhak_core_la_SOURCES = core.c _core.h
+libhak_core_la_CPPFLAGS = $(CPPFLAGS_COMMON)
+libhak_core_la_CFLAGS = $(CFLAGS_COMMON)
+libhak_core_la_LDFLAGS = $(LDFLAGS_COMMON)
+libhak_core_la_LIBADD = $(LIBADD_COMMON)
+libhak_dic_la_SOURCES = dic.c _dic.h
+libhak_dic_la_CPPFLAGS = $(CPPFLAGS_COMMON)
+libhak_dic_la_CFLAGS = $(CFLAGS_COMMON)
+libhak_dic_la_LDFLAGS = $(LDFLAGS_COMMON)
+libhak_dic_la_LIBADD = $(LIBADD_COMMON)
+libhak_sys_la_SOURCES = sys.c _sys.h
+libhak_sys_la_CPPFLAGS = $(CPPFLAGS_COMMON)
+libhak_sys_la_CFLAGS = $(CFLAGS_COMMON)
+libhak_sys_la_LDFLAGS = $(LDFLAGS_COMMON)
+libhak_sys_la_LIBADD = $(LIBADD_COMMON)
 all: all-am
 
 .SUFFIXES:
@@ -488,14 +488,14 @@ clean-pkgmodexecLTLIBRARIES:
 	echo rm -f $${locs}; \
 	$(am__rm_f) $${locs}
 
-libhcl-core.la: $(libhcl_core_la_OBJECTS) $(libhcl_core_la_DEPENDENCIES) $(EXTRA_libhcl_core_la_DEPENDENCIES) 
-	$(AM_V_CCLD)$(libhcl_core_la_LINK) $(am_libhcl_core_la_rpath) $(libhcl_core_la_OBJECTS) $(libhcl_core_la_LIBADD) $(LIBS)
+libhak-core.la: $(libhak_core_la_OBJECTS) $(libhak_core_la_DEPENDENCIES) $(EXTRA_libhak_core_la_DEPENDENCIES) 
+	$(AM_V_CCLD)$(libhak_core_la_LINK) $(am_libhak_core_la_rpath) $(libhak_core_la_OBJECTS) $(libhak_core_la_LIBADD) $(LIBS)
 
-libhcl-dic.la: $(libhcl_dic_la_OBJECTS) $(libhcl_dic_la_DEPENDENCIES) $(EXTRA_libhcl_dic_la_DEPENDENCIES) 
-	$(AM_V_CCLD)$(libhcl_dic_la_LINK) $(am_libhcl_dic_la_rpath) $(libhcl_dic_la_OBJECTS) $(libhcl_dic_la_LIBADD) $(LIBS)
+libhak-dic.la: $(libhak_dic_la_OBJECTS) $(libhak_dic_la_DEPENDENCIES) $(EXTRA_libhak_dic_la_DEPENDENCIES) 
+	$(AM_V_CCLD)$(libhak_dic_la_LINK) $(am_libhak_dic_la_rpath) $(libhak_dic_la_OBJECTS) $(libhak_dic_la_LIBADD) $(LIBS)
 
-libhcl-sys.la: $(libhcl_sys_la_OBJECTS) $(libhcl_sys_la_DEPENDENCIES) $(EXTRA_libhcl_sys_la_DEPENDENCIES) 
-	$(AM_V_CCLD)$(libhcl_sys_la_LINK) $(am_libhcl_sys_la_rpath) $(libhcl_sys_la_OBJECTS) $(libhcl_sys_la_LIBADD) $(LIBS)
+libhak-sys.la: $(libhak_sys_la_OBJECTS) $(libhak_sys_la_DEPENDENCIES) $(EXTRA_libhak_sys_la_DEPENDENCIES) 
+	$(AM_V_CCLD)$(libhak_sys_la_LINK) $(am_libhak_sys_la_rpath) $(libhak_sys_la_OBJECTS) $(libhak_sys_la_LIBADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -503,9 +503,9 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhcl_core_la-core.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhcl_dic_la-dic.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhcl_sys_la-sys.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhak_core_la-core.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhak_dic_la-dic.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhak_sys_la-sys.Plo@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
 	@$(MKDIR_P) $(@D)
@@ -537,26 +537,26 @@ am--depfiles: $(am__depfiles_remade)
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LTCOMPILE) -c -o $@ $<
 
-libhcl_core_la-core.lo: core.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhcl_core_la_CPPFLAGS) $(CPPFLAGS) $(libhcl_core_la_CFLAGS) $(CFLAGS) -MT libhcl_core_la-core.lo -MD -MP -MF $(DEPDIR)/libhcl_core_la-core.Tpo -c -o libhcl_core_la-core.lo `test -f 'core.c' || echo '$(srcdir)/'`core.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libhcl_core_la-core.Tpo $(DEPDIR)/libhcl_core_la-core.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='core.c' object='libhcl_core_la-core.lo' libtool=yes @AMDEPBACKSLASH@
+libhak_core_la-core.lo: core.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhak_core_la_CPPFLAGS) $(CPPFLAGS) $(libhak_core_la_CFLAGS) $(CFLAGS) -MT libhak_core_la-core.lo -MD -MP -MF $(DEPDIR)/libhak_core_la-core.Tpo -c -o libhak_core_la-core.lo `test -f 'core.c' || echo '$(srcdir)/'`core.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libhak_core_la-core.Tpo $(DEPDIR)/libhak_core_la-core.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='core.c' object='libhak_core_la-core.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhcl_core_la_CPPFLAGS) $(CPPFLAGS) $(libhcl_core_la_CFLAGS) $(CFLAGS) -c -o libhcl_core_la-core.lo `test -f 'core.c' || echo '$(srcdir)/'`core.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhak_core_la_CPPFLAGS) $(CPPFLAGS) $(libhak_core_la_CFLAGS) $(CFLAGS) -c -o libhak_core_la-core.lo `test -f 'core.c' || echo '$(srcdir)/'`core.c
 
-libhcl_dic_la-dic.lo: dic.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhcl_dic_la_CPPFLAGS) $(CPPFLAGS) $(libhcl_dic_la_CFLAGS) $(CFLAGS) -MT libhcl_dic_la-dic.lo -MD -MP -MF $(DEPDIR)/libhcl_dic_la-dic.Tpo -c -o libhcl_dic_la-dic.lo `test -f 'dic.c' || echo '$(srcdir)/'`dic.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libhcl_dic_la-dic.Tpo $(DEPDIR)/libhcl_dic_la-dic.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='dic.c' object='libhcl_dic_la-dic.lo' libtool=yes @AMDEPBACKSLASH@
+libhak_dic_la-dic.lo: dic.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhak_dic_la_CPPFLAGS) $(CPPFLAGS) $(libhak_dic_la_CFLAGS) $(CFLAGS) -MT libhak_dic_la-dic.lo -MD -MP -MF $(DEPDIR)/libhak_dic_la-dic.Tpo -c -o libhak_dic_la-dic.lo `test -f 'dic.c' || echo '$(srcdir)/'`dic.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libhak_dic_la-dic.Tpo $(DEPDIR)/libhak_dic_la-dic.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='dic.c' object='libhak_dic_la-dic.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhcl_dic_la_CPPFLAGS) $(CPPFLAGS) $(libhcl_dic_la_CFLAGS) $(CFLAGS) -c -o libhcl_dic_la-dic.lo `test -f 'dic.c' || echo '$(srcdir)/'`dic.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhak_dic_la_CPPFLAGS) $(CPPFLAGS) $(libhak_dic_la_CFLAGS) $(CFLAGS) -c -o libhak_dic_la-dic.lo `test -f 'dic.c' || echo '$(srcdir)/'`dic.c
 
-libhcl_sys_la-sys.lo: sys.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhcl_sys_la_CPPFLAGS) $(CPPFLAGS) $(libhcl_sys_la_CFLAGS) $(CFLAGS) -MT libhcl_sys_la-sys.lo -MD -MP -MF $(DEPDIR)/libhcl_sys_la-sys.Tpo -c -o libhcl_sys_la-sys.lo `test -f 'sys.c' || echo '$(srcdir)/'`sys.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libhcl_sys_la-sys.Tpo $(DEPDIR)/libhcl_sys_la-sys.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='sys.c' object='libhcl_sys_la-sys.lo' libtool=yes @AMDEPBACKSLASH@
+libhak_sys_la-sys.lo: sys.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhak_sys_la_CPPFLAGS) $(CPPFLAGS) $(libhak_sys_la_CFLAGS) $(CFLAGS) -MT libhak_sys_la-sys.lo -MD -MP -MF $(DEPDIR)/libhak_sys_la-sys.Tpo -c -o libhak_sys_la-sys.lo `test -f 'sys.c' || echo '$(srcdir)/'`sys.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libhak_sys_la-sys.Tpo $(DEPDIR)/libhak_sys_la-sys.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='sys.c' object='libhak_sys_la-sys.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhcl_sys_la_CPPFLAGS) $(CPPFLAGS) $(libhcl_sys_la_CFLAGS) $(CFLAGS) -c -o libhcl_sys_la-sys.lo `test -f 'sys.c' || echo '$(srcdir)/'`sys.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhak_sys_la_CPPFLAGS) $(CPPFLAGS) $(libhak_sys_la_CFLAGS) $(CFLAGS) -c -o libhak_sys_la-sys.lo `test -f 'sys.c' || echo '$(srcdir)/'`sys.c
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -691,9 +691,9 @@ clean-am: clean-generic clean-libtool clean-noinstLTLIBRARIES \
 	clean-pkgmodexecLTLIBRARIES mostlyclean-am
 
 distclean: distclean-am
-	-rm -f ./$(DEPDIR)/libhcl_core_la-core.Plo
-	-rm -f ./$(DEPDIR)/libhcl_dic_la-dic.Plo
-	-rm -f ./$(DEPDIR)/libhcl_sys_la-sys.Plo
+	-rm -f ./$(DEPDIR)/libhak_core_la-core.Plo
+	-rm -f ./$(DEPDIR)/libhak_dic_la-dic.Plo
+	-rm -f ./$(DEPDIR)/libhak_sys_la-sys.Plo
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -739,9 +739,9 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-am
-	-rm -f ./$(DEPDIR)/libhcl_core_la-core.Plo
-	-rm -f ./$(DEPDIR)/libhcl_dic_la-dic.Plo
-	-rm -f ./$(DEPDIR)/libhcl_sys_la-sys.Plo
+	-rm -f ./$(DEPDIR)/libhak_core_la-core.Plo
+	-rm -f ./$(DEPDIR)/libhak_dic_la-dic.Plo
+	-rm -f ./$(DEPDIR)/libhak_sys_la-sys.Plo
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

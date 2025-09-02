@@ -22,230 +22,230 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "hcl-prv.h"
+#include "hak-prv.h"
 
 /* compiler's literal representation */
 
-#include <hcl-pac1.h>
-struct hcl_xchg_hdr_t
+#include <hak-pac1.h>
+struct hak_xchg_hdr_t
 {
-	hcl_uint8_t ver;
-	hcl_uint8_t oow_size;
+	hak_uint8_t ver;
+	hak_uint8_t oow_size;
 };
-typedef struct hcl_xchg_hdr_t hcl_xchg_hdr_t;
-#include <hcl-upac.h>
+typedef struct hak_xchg_hdr_t hak_xchg_hdr_t;
+#include <hak-upac.h>
 
-enum hcl_xchg_type_t
+enum hak_xchg_type_t
 {
 	/* byte code */
-	HCL_XCHG_BC = 0x00,
+	HAK_XCHG_BC = 0x00,
 
 	/* literals */
-	HCL_XCHG_STRING_U,
-	HCL_XCHG_STRING_B,
-	HCL_XCHG_SYMLIT_U, /* literal symbol */
-	HCL_XCHG_SYMLIT_B, /* literal symbol */
-	HCL_XCHG_SYMBOL_U, /* contained in a cons cell */
-	HCL_XCHG_SYMBOL_B, /* contained in a cons cell */
-	HCL_XCHG_SMOOI,
-	HCL_XCHG_PBIGINT,
-	HCL_XCHG_NBIGINT,
-	HCL_XCHG_FPDEC_1, /* smooi + smooi */
-	HCL_XCHG_FPDEC_2, /* pbigint + smooi */
-	HCL_XCHG_FPDEC_3, /* nbigint + smooi */
-	HCL_XCHG_PRIM,
+	HAK_XCHG_STRING_U,
+	HAK_XCHG_STRING_B,
+	HAK_XCHG_SYMLIT_U, /* literal symbol */
+	HAK_XCHG_SYMLIT_B, /* literal symbol */
+	HAK_XCHG_SYMBOL_U, /* contained in a cons cell */
+	HAK_XCHG_SYMBOL_B, /* contained in a cons cell */
+	HAK_XCHG_SMOOI,
+	HAK_XCHG_PBIGINT,
+	HAK_XCHG_NBIGINT,
+	HAK_XCHG_FPDEC_1, /* smooi + smooi */
+	HAK_XCHG_FPDEC_2, /* pbigint + smooi */
+	HAK_XCHG_FPDEC_3, /* nbigint + smooi */
+	HAK_XCHG_PRIM,
 
 	/* end marker */
-	HCL_XCHG_END =0xFF /* end marker. not a real literal type */
+	HAK_XCHG_END =0xFF /* end marker. not a real literal type */
 };
-typedef enum hcl_xchg_type_t hcl_xchg_type_t;
+typedef enum hak_xchg_type_t hak_xchg_type_t;
 
 /* -------------------------------------------------------------------- */
 
-int hcl_marshalcode (hcl_t* hcl, const hcl_code_t* code, hcl_xchg_writer_t wrtr, void* ctx)
+int hak_marshalcode (hak_t* hak, const hak_code_t* code, hak_xchg_writer_t wrtr, void* ctx)
 {
-	hcl_oow_t i, lfbase = 0;
-	hcl_oop_t tmp;
-	hcl_oop_class_t _class;
+	hak_oow_t i, lfbase = 0;
+	hak_oop_t tmp;
+	hak_oop_class_t _class;
 	int brand;
-	hcl_oow_t tsize;
-	hcl_uint8_t b;
-	hcl_oow_t w;
-	hcl_xchg_hdr_t h;
+	hak_oow_t tsize;
+	hak_uint8_t b;
+	hak_oow_t w;
+	hak_xchg_hdr_t h;
 
-	lfbase = (hcl->option.trait & HCL_TRAIT_INTERACTIVE)? hcl->c->funblk.info[hcl->c->funblk.depth].lfbase: 0;
+	lfbase = (hak->option.trait & HAK_TRAIT_INTERACTIVE)? hak->c->funblk.info[hak->c->funblk.depth].lfbase: 0;
 
 	/* start with a header */
 	h.ver = 1;
-	h.oow_size = (hcl_uint8_t)HCL_SIZEOF(hcl_oow_t); /* the size must not exceed 256 */
-	if (wrtr(hcl, &h, HCL_SIZEOF(h), ctx) <= -1) goto oops;
+	h.oow_size = (hak_uint8_t)HAK_SIZEOF(hak_oow_t); /* the size must not exceed 256 */
+	if (wrtr(hak, &h, HAK_SIZEOF(h), ctx) <= -1) goto oops;
 
 	/* write the byte-code */
-	b = HCL_XCHG_BC;
-	if (wrtr(hcl, &b, HCL_SIZEOF(b), ctx) <= -1) goto oops;
-	w = hcl_htoleoow(code->bc.len);
-	if (wrtr(hcl, &w, HCL_SIZEOF(w), ctx) <= -1) goto oops;
-	if (wrtr(hcl, code->bc.ptr, code->bc.len, ctx) <= -1) goto oops;
+	b = HAK_XCHG_BC;
+	if (wrtr(hak, &b, HAK_SIZEOF(b), ctx) <= -1) goto oops;
+	w = hak_htoleoow(code->bc.len);
+	if (wrtr(hak, &w, HAK_SIZEOF(w), ctx) <= -1) goto oops;
+	if (wrtr(hak, code->bc.ptr, code->bc.len, ctx) <= -1) goto oops;
 
 	/* write actual literals */
 	for (i = lfbase; i < code->lit.len; i++)
 	{
-		tmp = ((hcl_oop_oop_t)code->lit.arr)->slot[i];
-		if (HCL_OOP_IS_SMOOI(tmp))
+		tmp = ((hak_oop_oop_t)code->lit.arr)->slot[i];
+		if (HAK_OOP_IS_SMOOI(tmp))
 		{
-			b = HCL_XCHG_SMOOI;
-			if (wrtr(hcl, &b, HCL_SIZEOF(b), ctx) <= -1) goto oops;
-			w = hcl_htoleoow((hcl_oow_t)HCL_OOP_TO_SMOOI(tmp));
-			if (wrtr(hcl, &w, HCL_SIZEOF(w), ctx) <= -1) goto oops;
+			b = HAK_XCHG_SMOOI;
+			if (wrtr(hak, &b, HAK_SIZEOF(b), ctx) <= -1) goto oops;
+			w = hak_htoleoow((hak_oow_t)HAK_OOP_TO_SMOOI(tmp));
+			if (wrtr(hak, &w, HAK_SIZEOF(w), ctx) <= -1) goto oops;
 			continue;
 		}
 
-		_class = (hcl_oop_class_t)HCL_CLASSOF(hcl, tmp);
-		brand = HCL_OOP_TO_SMOOI(_class->ibrand);
-		tsize = HCL_OBJ_GET_SIZE(tmp);
+		_class = (hak_oop_class_t)HAK_CLASSOF(hak, tmp);
+		brand = HAK_OOP_TO_SMOOI(_class->ibrand);
+		tsize = HAK_OBJ_GET_SIZE(tmp);
 
 		switch (brand)
 		{
-			case HCL_BRAND_PBIGINT:
-			case HCL_BRAND_NBIGINT:
+			case HAK_BRAND_PBIGINT:
+			case HAK_BRAND_NBIGINT:
 			{
-				hcl_oow_t nbytes;
-				hcl_oow_t j;
-				hcl_liw_t liw;
+				hak_oow_t nbytes;
+				hak_oow_t j;
+				hak_liw_t liw;
 
 				/* write the brand */
-				b = (brand == HCL_BRAND_PBIGINT ? HCL_XCHG_PBIGINT : HCL_XCHG_NBIGINT);
-				if (wrtr(hcl, &b, HCL_SIZEOF(b), ctx) <= -1) goto oops;
+				b = (brand == HAK_BRAND_PBIGINT ? HAK_XCHG_PBIGINT : HAK_XCHG_NBIGINT);
+				if (wrtr(hak, &b, HAK_SIZEOF(b), ctx) <= -1) goto oops;
 
 			bigint_body:
 				/* write the number of bytes in the little-endian */
-				nbytes = tsize * HCL_SIZEOF(hcl_liw_t);
-				w = hcl_htoleoow(nbytes);
-				if (wrtr(hcl, &w, HCL_SIZEOF(w), ctx) <= -1) goto oops;
+				nbytes = tsize * HAK_SIZEOF(hak_liw_t);
+				w = hak_htoleoow(nbytes);
+				if (wrtr(hak, &w, HAK_SIZEOF(w), ctx) <= -1) goto oops;
 
 				for (j = 0; j < tsize; j++)
 				{
-					liw = HCL_OBJ_GET_LIWORD_VAL(tmp, j);
-					liw = hcl_htoleliw(liw);
-					if (wrtr(hcl, &liw, HCL_SIZEOF(liw), ctx) <= -1) goto oops;
+					liw = HAK_OBJ_GET_LIWORD_VAL(tmp, j);
+					liw = hak_htoleliw(liw);
+					if (wrtr(hak, &liw, HAK_SIZEOF(liw), ctx) <= -1) goto oops;
 				}
 				break;
 			}
 
-			case HCL_BRAND_FPDEC:
+			case HAK_BRAND_FPDEC:
 			{
-				hcl_oop_fpdec_t f;
+				hak_oop_fpdec_t f;
 
-				f = (hcl_oop_fpdec_t)tmp;
-				HCL_ASSERT (hcl, HCL_OOP_IS_SMOOI(f->scale));
-				HCL_ASSERT(hcl, HCL_OOP_IS_SMOOI(f->value) || HCL_OOP_IS_POINTER(f->value));
+				f = (hak_oop_fpdec_t)tmp;
+				HAK_ASSERT (hak, HAK_OOP_IS_SMOOI(f->scale));
+				HAK_ASSERT(hak, HAK_OOP_IS_SMOOI(f->value) || HAK_OOP_IS_POINTER(f->value));
 
 				/* write 1-byte brand */
-				if (HCL_OOP_IS_SMOOI(f->value)) b = HCL_XCHG_FPDEC_1;
-				else if (HCL_IS_PBIGINT(hcl, f->value)) b = HCL_XCHG_FPDEC_2;
+				if (HAK_OOP_IS_SMOOI(f->value)) b = HAK_XCHG_FPDEC_1;
+				else if (HAK_IS_PBIGINT(hak, f->value)) b = HAK_XCHG_FPDEC_2;
 				else
 				{
-					HCL_ASSERT(hcl, HCL_IS_NBIGINT(hcl, f->value));
-					b = HCL_XCHG_FPDEC_2;
+					HAK_ASSERT(hak, HAK_IS_NBIGINT(hak, f->value));
+					b = HAK_XCHG_FPDEC_2;
 				}
-				if (wrtr(hcl, &b, HCL_SIZEOF(b), ctx) <= -1) goto oops;
+				if (wrtr(hak, &b, HAK_SIZEOF(b), ctx) <= -1) goto oops;
 
-				/* cast the scale part from hcl_ooi_t to hcl_oow_t and write it */
-				w = hcl_htoleoow((hcl_oow_t)HCL_OOP_TO_SMOOI(f->scale));
-				if (wrtr(hcl, &w, HCL_SIZEOF(w), ctx) <= -1) goto oops;
+				/* cast the scale part from hak_ooi_t to hak_oow_t and write it */
+				w = hak_htoleoow((hak_oow_t)HAK_OOP_TO_SMOOI(f->scale));
+				if (wrtr(hak, &w, HAK_SIZEOF(w), ctx) <= -1) goto oops;
 
 				/* write the value part */
-				if (b == HCL_XCHG_FPDEC_1)
+				if (b == HAK_XCHG_FPDEC_1)
 				{
-					w = hcl_htoleoow((hcl_oow_t)HCL_OOP_TO_SMOOI(f->value));
-					if (wrtr(hcl, &w, HCL_SIZEOF(w), ctx) <= -1) goto oops;
+					w = hak_htoleoow((hak_oow_t)HAK_OOP_TO_SMOOI(f->value));
+					if (wrtr(hak, &w, HAK_SIZEOF(w), ctx) <= -1) goto oops;
 				}
 				else
 				{
 					tmp = f->value;
-					tsize = HCL_OBJ_GET_SIZE(tmp);
+					tsize = HAK_OBJ_GET_SIZE(tmp);
 					goto bigint_body;
 				}
 				break;
 			}
 
-			case HCL_BRAND_CONS:
+			case HAK_BRAND_CONS:
 			{
 				/* write 1-byte brand */
-			#if defined(HCL_OOCH_IS_UCH)
-				b = (hcl_uint8_t)HCL_XCHG_SYMBOL_U;
+			#if defined(HAK_OOCH_IS_UCH)
+				b = (hak_uint8_t)HAK_XCHG_SYMBOL_U;
 			#else
-				b = (hcl_uint8_t)HCL_XCHG_SYMBOL_B;
+				b = (hak_uint8_t)HAK_XCHG_SYMBOL_B;
 			#endif
-				if (wrtr(hcl, &b, HCL_SIZEOF(b), ctx) <= -1) goto oops;
+				if (wrtr(hak, &b, HAK_SIZEOF(b), ctx) <= -1) goto oops;
 
 				/* get the symbol at CAR and make it as if it is the current object processed.*/
-				tmp = HCL_CONS_CAR(tmp);
-				tsize = HCL_OBJ_GET_SIZE(tmp);
+				tmp = HAK_CONS_CAR(tmp);
+				tsize = HAK_OBJ_GET_SIZE(tmp);
 
-				HCL_ASSERT(hcl, HCL_CLASSOF(hcl, tmp) == (hcl_oop_t)hcl->c_symbol);
+				HAK_ASSERT(hak, HAK_CLASSOF(hak, tmp) == (hak_oop_t)hak->c_symbol);
 				goto string_body;
 			}
 
-			case HCL_BRAND_STRING:
-			case HCL_BRAND_SYMBOL:
+			case HAK_BRAND_STRING:
+			case HAK_BRAND_SYMBOL:
 			{
-			#if defined(HCL_OOCH_IS_UCH)
-				hcl_uch_t* ucsptr;
-				hcl_oow_t ucspos, ucslen;
-				hcl_bch_t bcsbuf[128];
-				hcl_oow_t bcslen;
+			#if defined(HAK_OOCH_IS_UCH)
+				hak_uch_t* ucsptr;
+				hak_oow_t ucspos, ucslen;
+				hak_bch_t bcsbuf[128];
+				hak_oow_t bcslen;
 				int n;
 
 				/* write 1-byte brand */
-				b = (hcl_uint8_t)(brand == HCL_BRAND_STRING? HCL_XCHG_STRING_U: HCL_XCHG_SYMLIT_U);
-				if (wrtr(hcl, &b, HCL_SIZEOF(b), ctx) <= -1) goto oops;
+				b = (hak_uint8_t)(brand == HAK_BRAND_STRING? HAK_XCHG_STRING_U: HAK_XCHG_SYMLIT_U);
+				if (wrtr(hak, &b, HAK_SIZEOF(b), ctx) <= -1) goto oops;
 
 			string_body:
-				ucsptr = HCL_OBJ_GET_CHAR_SLOT(tmp);
+				ucsptr = HAK_OBJ_GET_CHAR_SLOT(tmp);
 				ucslen = tsize;
-				if (hcl_convutobchars(hcl, ucsptr, &ucslen, HCL_NULL, &bcslen) <= -1) goto oops;
+				if (hak_convutobchars(hak, ucsptr, &ucslen, HAK_NULL, &bcslen) <= -1) goto oops;
 
 				/* write the number of characters in the little endian */
-				w = hcl_htoleoow(tsize);
-				if (wrtr(hcl, &w, HCL_SIZEOF(w), ctx) <= -1) goto oops;
+				w = hak_htoleoow(tsize);
+				if (wrtr(hak, &w, HAK_SIZEOF(w), ctx) <= -1) goto oops;
 
 				/* write the number of bytes in the little endian */
-				w = hcl_htoleoow(bcslen);
-				if (wrtr(hcl, &w, HCL_SIZEOF(w), ctx) <= -1) goto oops;
+				w = hak_htoleoow(bcslen);
+				if (wrtr(hak, &w, HAK_SIZEOF(w), ctx) <= -1) goto oops;
 
 				/* write string in bytess and write to the callback.*/
 				ucspos = 0;
 				while (ucspos < tsize)
 				{
-					bcslen = HCL_COUNTOF(bcsbuf);
+					bcslen = HAK_COUNTOF(bcsbuf);
 					ucslen = tsize - ucspos;
-					n = hcl_convutobchars(hcl, &ucsptr[ucspos], &ucslen, bcsbuf, &bcslen);
+					n = hak_convutobchars(hak, &ucsptr[ucspos], &ucslen, bcsbuf, &bcslen);
 					if (n <= -1 && bcslen == 0) goto oops;
-					if (wrtr(hcl, bcsbuf, bcslen, ctx) <= -1) goto oops;
+					if (wrtr(hak, bcsbuf, bcslen, ctx) <= -1) goto oops;
 					ucspos += ucslen;
 				}
 			#else
 				/* write 1-byte brand */
-				if (wrtr(hcl, &b, HCL_SIZEOF(b), ctx) <= -1) goto oops;
+				if (wrtr(hak, &b, HAK_SIZEOF(b), ctx) <= -1) goto oops;
 
 			string_body:
-				w = hcl_htoleoow(tsize);
-				if (wrtr(hcl, &w, HCL_SIZEOF(w), ctx) <= -1) goto oops;
+				w = hak_htoleoow(tsize);
+				if (wrtr(hak, &w, HAK_SIZEOF(w), ctx) <= -1) goto oops;
 
-				if (wrtr(hcl, HCL_OBJ_GET_CHAR_SLOT(tmp), tsize, ctx) <= -1) goto oops;
+				if (wrtr(hak, HAK_OBJ_GET_CHAR_SLOT(tmp), tsize, ctx) <= -1) goto oops;
 			#endif
 				break;
 			}
 
-			case HCL_BRAND_PRIM:
+			case HAK_BRAND_PRIM:
 				/* TODO: can't have resolved pointer... need module name and the functio name??? */
 				break;
 		}
 	}
 
-	b = HCL_XCHG_END;
-	if (wrtr(hcl, &b, HCL_SIZEOF(b), ctx) <= -1) goto oops;
+	b = HAK_XCHG_END;
+	if (wrtr(hak, &b, HAK_SIZEOF(b), ctx) <= -1) goto oops;
 	return 0;
 
 oops:
@@ -254,140 +254,140 @@ oops:
 
 /* -------------------------------------------------------------------- */
 
-static void set_rdr_ioerr (hcl_t* hcl, const hcl_bch_t* msg)
+static void set_rdr_ioerr (hak_t* hak, const hak_bch_t* msg)
 {
-	const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-	hcl_seterrbfmt(hcl, HCL_EIOERR, "%hs - %js", orgmsg);
+	const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
+	hak_seterrbfmt(hak, HAK_EIOERR, "%hs - %js", orgmsg);
 }
 
-int hcl_unmarshalcode (hcl_t* hcl, hcl_code_t* code, hcl_xchg_reader_t rdr, void* ctx)
+int hak_unmarshalcode (hak_t* hak, hak_code_t* code, hak_xchg_reader_t rdr, void* ctx)
 {
 	int n;
-	hcl_xchg_hdr_t h;
-	hcl_uint8_t b;
-	hcl_oow_t w;
+	hak_xchg_hdr_t h;
+	hak_uint8_t b;
+	hak_oow_t w;
 
-	hcl_uch_t* usym_buf = HCL_NULL;
-	hcl_oow_t usym_buf_capa = 0;
+	hak_uch_t* usym_buf = HAK_NULL;
+	hak_oow_t usym_buf_capa = 0;
 
 	/* [NOTE]
 	 *  this function may pollute the code data when it fails because it doesn't
 	 *  roll back changed made to the memory pointed to by 'code'. the caller side
-	 *  may use two code structs. and switch between them for each call to hcl_unmarshalcode()
+	 *  may use two code structs. and switch between them for each call to hak_unmarshalcode()
 	 *  to avoid this issue.
 	 */
 
-	if (hcl_brewcode(hcl, code) <= -1) goto oops;
+	if (hak_brewcode(hak, code) <= -1) goto oops;
 
-	n = rdr(hcl, &h, HCL_SIZEOF(h), ctx);
+	n = rdr(hak, &h, HAK_SIZEOF(h), ctx);
 	if (n <= -1)
 	{
-		set_rdr_ioerr(hcl, "erroneous or insufficient header");
+		set_rdr_ioerr(hak, "erroneous or insufficient header");
 		goto oops;
 	}
 
 	if (h.ver != 1)
 	{
-		hcl_seterrbfmt(hcl, HCL_EIOERR, "unsupported header version %d", (int)h.ver);
+		hak_seterrbfmt(hak, HAK_EIOERR, "unsupported header version %d", (int)h.ver);
 		goto oops;
 	}
 
-	if (h.oow_size != HCL_SIZEOF(hcl_oow_t))
+	if (h.oow_size != HAK_SIZEOF(hak_oow_t))
 	{
 		/* no support for cross-architecture exchange yet */
-		hcl_seterrbfmt(hcl, HCL_EIOERR, "unsupported word size %d", (int)h.oow_size);
+		hak_seterrbfmt(hak, HAK_EIOERR, "unsupported word size %d", (int)h.oow_size);
 		goto oops;
 	}
 
 	while (1)
 	{
 		/* read 1-byte brand */
-		n = rdr(hcl, &b, HCL_SIZEOF(b), ctx);
+		n = rdr(hak, &b, HAK_SIZEOF(b), ctx);
 		if (n <= -1)
 		{
-			set_rdr_ioerr(hcl, "erroneous or insufficient record type");
+			set_rdr_ioerr(hak, "erroneous or insufficient record type");
 			goto oops;
 		}
 
-		if (b == HCL_XCHG_END) break;
+		if (b == HAK_XCHG_END) break;
 
 		switch (b)
 		{
-			case HCL_XCHG_BC:
+			case HAK_XCHG_BC:
 			{
-				hcl_oow_t nbytes;
+				hak_oow_t nbytes;
 
 				/* this must appear only once but never mind about multiple occurrences */
-				n = rdr(hcl, &w, HCL_SIZEOF(w), ctx);
+				n = rdr(hak, &w, HAK_SIZEOF(w), ctx);
 				if (n <= -1)
 				{
-					set_rdr_ioerr(hcl, "erroneous or insufficient record length");
+					set_rdr_ioerr(hak, "erroneous or insufficient record length");
 					goto oops;
 				}
-				nbytes = hcl_leoowtoh(w);
+				nbytes = hak_leoowtoh(w);
 
 				if (nbytes > code->bc.capa)
 				{
 					/* grow the buffer */
-					hcl_oow_t newcapa;
-					hcl_oob_t* newptr;
+					hak_oow_t newcapa;
+					hak_oob_t* newptr;
 
 					newcapa = nbytes;
-					if (HCL_UNLIKELY(newcapa <= 0)) newcapa++;
-					newcapa = HCL_ALIGN(newcapa, HCL_BC_BUFFER_ALIGN);
-					newptr = (hcl_oob_t*)hcl_reallocmem(hcl, code->bc.ptr, newcapa);
-					if (HCL_UNLIKELY(!newptr)) goto oops;
+					if (HAK_UNLIKELY(newcapa <= 0)) newcapa++;
+					newcapa = HAK_ALIGN(newcapa, HAK_BC_BUFFER_ALIGN);
+					newptr = (hak_oob_t*)hak_reallocmem(hak, code->bc.ptr, newcapa);
+					if (HAK_UNLIKELY(!newptr)) goto oops;
 
 					code->bc.ptr = newptr;
 					code->bc.capa = newcapa;
 				}
 
-				n = rdr(hcl, code->bc.ptr, nbytes, ctx);
+				n = rdr(hak, code->bc.ptr, nbytes, ctx);
 				if (n <= -1) goto oops;
 
 				code->bc.len = nbytes;
 				break;
 			}
 
-			case HCL_XCHG_STRING_U:
-			case HCL_XCHG_SYMLIT_U:
-			case HCL_XCHG_SYMBOL_U:
+			case HAK_XCHG_STRING_U:
+			case HAK_XCHG_SYMLIT_U:
+			case HAK_XCHG_SYMBOL_U:
 			{
-				hcl_bch_t bcsbuf[64];
-				hcl_uch_t* ucsptr;
-				hcl_oow_t bcslen, bcsres, ucslen, ucspos;
-				hcl_oow_t nbytes, nchars;
-				hcl_oop_t ns;
+				hak_bch_t bcsbuf[64];
+				hak_uch_t* ucsptr;
+				hak_oow_t bcslen, bcsres, ucslen, ucspos;
+				hak_oow_t nbytes, nchars;
+				hak_oop_t ns;
 
-				n = rdr(hcl, &w, HCL_SIZEOF(w), ctx);
+				n = rdr(hak, &w, HAK_SIZEOF(w), ctx);
 				if (n <= -1)
 				{
-					set_rdr_ioerr(hcl, "erroneous or insufficient record length");
+					set_rdr_ioerr(hak, "erroneous or insufficient record length");
 					goto oops;
 				}
-				nchars = hcl_leoowtoh(w);
+				nchars = hak_leoowtoh(w);
 
-				n = rdr(hcl, &w, HCL_SIZEOF(w), ctx);
+				n = rdr(hak, &w, HAK_SIZEOF(w), ctx);
 				if (n <= -1)
 				{
-					set_rdr_ioerr(hcl, "erroneous or insufficient record length");
+					set_rdr_ioerr(hak, "erroneous or insufficient record length");
 					goto oops;
 				}
-				nbytes = hcl_leoowtoh(w);
+				nbytes = hak_leoowtoh(w);
 
-				if (b == HCL_XCHG_STRING_U)
+				if (b == HAK_XCHG_STRING_U)
 				{
-					ns = hcl_makestring(hcl, HCL_NULL, nchars);
-					if (HCL_UNLIKELY(!ns)) goto oops;
-					ucsptr = HCL_OBJ_GET_CHAR_PTR(ns, 0);
+					ns = hak_makestring(hak, HAK_NULL, nchars);
+					if (HAK_UNLIKELY(!ns)) goto oops;
+					ucsptr = HAK_OBJ_GET_CHAR_PTR(ns, 0);
 				}
 				else
 				{
 					if (nchars > usym_buf_capa)
 					{
-						usym_buf_capa = nchars * HCL_SIZEOF(usym_buf[0]);
-						usym_buf = (hcl_uch_t*)hcl_allocmem(hcl, usym_buf_capa);
-						if (HCL_UNLIKELY(!usym_buf)) goto oops;
+						usym_buf_capa = nchars * HAK_SIZEOF(usym_buf[0]);
+						usym_buf = (hak_uch_t*)hak_allocmem(hak, usym_buf_capa);
+						if (HAK_UNLIKELY(!usym_buf)) goto oops;
 					}
 					ucsptr = usym_buf;
 				}
@@ -396,18 +396,18 @@ int hcl_unmarshalcode (hcl_t* hcl, hcl_code_t* code, hcl_xchg_reader_t rdr, void
 				bcsres = 0;
 				while (nbytes > 0)
 				{
-					bcslen = nbytes <= HCL_SIZEOF(bcsbuf)? nbytes : HCL_SIZEOF(bcsbuf);
-					n = rdr(hcl, &bcsbuf[bcsres], bcslen - bcsres, ctx);
+					bcslen = nbytes <= HAK_SIZEOF(bcsbuf)? nbytes : HAK_SIZEOF(bcsbuf);
+					n = rdr(hak, &bcsbuf[bcsres], bcslen - bcsres, ctx);
 					if (n <= -1)
 					{
-						set_rdr_ioerr(hcl, "erroneous or insufficient record data");
+						set_rdr_ioerr(hak, "erroneous or insufficient record data");
 						goto oops;
 					}
 
-					HCL_ASSERT(hcl, ucspos < nchars);
+					HAK_ASSERT(hak, ucspos < nchars);
 					bcsres = bcslen;
 					ucslen = nchars - ucspos;
-					if (hcl_convbtouchars(hcl, bcsbuf, &bcslen, &ucsptr[ucspos], &ucslen) <= -1 && bcslen <= 0)
+					if (hak_convbtouchars(hak, bcsbuf, &bcslen, &ucsptr[ucspos], &ucslen) <= -1 && bcslen <= 0)
 					{
 						goto oops;
 					}
@@ -415,144 +415,144 @@ int hcl_unmarshalcode (hcl_t* hcl, hcl_code_t* code, hcl_xchg_reader_t rdr, void
 					ucspos += ucslen;
 					nbytes -= bcslen;
 					bcsres -= bcslen;
-					if (bcsres > 0) HCL_MEMMOVE(bcsbuf, &bcsbuf[bcslen], bcsres);
+					if (bcsres > 0) HAK_MEMMOVE(bcsbuf, &bcsbuf[bcslen], bcsres);
 				}
 
-				HCL_ASSERT(hcl, ucspos == nchars);
+				HAK_ASSERT(hak, ucspos == nchars);
 
-				if (b != HCL_XCHG_STRING_U)
+				if (b != HAK_XCHG_STRING_U)
 				{
-					ns = hcl_makesymbol(hcl, usym_buf, nchars);
-					if (HCL_UNLIKELY(!ns)) goto oops;
+					ns = hak_makesymbol(hak, usym_buf, nchars);
+					if (HAK_UNLIKELY(!ns)) goto oops;
 
-					if (b == HCL_XCHG_SYMBOL_U)
+					if (b == HAK_XCHG_SYMBOL_U)
 					{
 					/* form a cons cell */
-						hcl_oop_t nc;
-						hcl_pushvolat(hcl, &ns);
-						nc = hcl_makecons(hcl, ns, hcl->_nil);
-						hcl_popvolat(hcl);
-						if (HCL_UNLIKELY(!nc)) goto oops;
+						hak_oop_t nc;
+						hak_pushvolat(hak, &ns);
+						nc = hak_makecons(hak, ns, hak->_nil);
+						hak_popvolat(hak);
+						if (HAK_UNLIKELY(!nc)) goto oops;
 						ns = nc;
 					}
 				}
 
-				if (hcl_addliteraltocode(hcl, code, ns, 0, HCL_NULL) <= -1) goto oops;
+				if (hak_addliteraltocode(hak, code, ns, 0, HAK_NULL) <= -1) goto oops;
 				break;
 			}
 
-			case HCL_XCHG_STRING_B:
-			case HCL_XCHG_SYMBOL_B:
+			case HAK_XCHG_STRING_B:
+			case HAK_XCHG_SYMBOL_B:
 				/* TODO */
 				break;
 
-			case HCL_XCHG_SMOOI:
+			case HAK_XCHG_SMOOI:
 			{
-				hcl_oop_t ns;
-				if (rdr(hcl, &w, HCL_SIZEOF(w), ctx) <= -1) goto oops;
-				w = hcl_leoowtoh(w);
-				ns = HCL_SMOOI_TO_OOP((hcl_ooi_t)w);
-				if (hcl_addliteraltocode(hcl, code, ns, 0, HCL_NULL) <= -1) goto oops;
+				hak_oop_t ns;
+				if (rdr(hak, &w, HAK_SIZEOF(w), ctx) <= -1) goto oops;
+				w = hak_leoowtoh(w);
+				ns = HAK_SMOOI_TO_OOP((hak_ooi_t)w);
+				if (hak_addliteraltocode(hak, code, ns, 0, HAK_NULL) <= -1) goto oops;
 				break;
 			}
 
-			case HCL_XCHG_PBIGINT:
-			case HCL_XCHG_NBIGINT:
+			case HAK_XCHG_PBIGINT:
+			case HAK_XCHG_NBIGINT:
 			{
-				hcl_oow_t nbytes, nwords, j;
-				hcl_liw_t liw;
-				hcl_oop_t ns;
+				hak_oow_t nbytes, nwords, j;
+				hak_liw_t liw;
+				hak_oop_t ns;
 
-				n = rdr(hcl, &w, HCL_SIZEOF(w), ctx);
+				n = rdr(hak, &w, HAK_SIZEOF(w), ctx);
 				if (n <= -1)
 				{
-					set_rdr_ioerr(hcl, "erroneous or insufficient bigint length");
+					set_rdr_ioerr(hak, "erroneous or insufficient bigint length");
 					goto oops;
 				}
-				nbytes = hcl_leoowtoh(w);
+				nbytes = hak_leoowtoh(w);
 
-				if (nbytes % HCL_SIZEOF(hcl_liw_t)) goto oops; /* not the right number of bytes */
-				nwords = nbytes / HCL_SIZEOF(hcl_liw_t);
+				if (nbytes % HAK_SIZEOF(hak_liw_t)) goto oops; /* not the right number of bytes */
+				nwords = nbytes / HAK_SIZEOF(hak_liw_t);
 
-				ns = hcl_instantiate(hcl, ((b == HCL_XCHG_PBIGINT)? hcl->c_large_positive_integer: hcl->c_large_negative_integer), HCL_NULL, nwords);
-				if (HCL_UNLIKELY(!ns)) goto oops;
+				ns = hak_instantiate(hak, ((b == HAK_XCHG_PBIGINT)? hak->c_large_positive_integer: hak->c_large_negative_integer), HAK_NULL, nwords);
+				if (HAK_UNLIKELY(!ns)) goto oops;
 
 				for (j = 0; j < nwords; j ++)
 				{
-					if (rdr(hcl, &liw, HCL_SIZEOF(liw), ctx) <= -1) goto oops;
-					liw = hcl_leliwtoh(liw);
-					HCL_OBJ_SET_LIWORD_VAL(ns, j, liw);
+					if (rdr(hak, &liw, HAK_SIZEOF(liw), ctx) <= -1) goto oops;
+					liw = hak_leliwtoh(liw);
+					HAK_OBJ_SET_LIWORD_VAL(ns, j, liw);
 				}
 
-				if (hcl_addliteraltocode(hcl, code, ns, 0, HCL_NULL) <= -1) goto oops;
+				if (hak_addliteraltocode(hak, code, ns, 0, HAK_NULL) <= -1) goto oops;
 				break;
 			}
 
-			case HCL_XCHG_FPDEC_1:
-			case HCL_XCHG_FPDEC_2:
-			case HCL_XCHG_FPDEC_3:
+			case HAK_XCHG_FPDEC_1:
+			case HAK_XCHG_FPDEC_2:
+			case HAK_XCHG_FPDEC_3:
 			{
-				hcl_ooi_t scale;
-				hcl_oop_t ns;
+				hak_ooi_t scale;
+				hak_oop_t ns;
 
 				/* read scale */
-				n = rdr(hcl, &w, HCL_SIZEOF(w), ctx);
+				n = rdr(hak, &w, HAK_SIZEOF(w), ctx);
 				if (n <= -1)
 				{
-					set_rdr_ioerr(hcl, "erroneous or insufficient record length");
+					set_rdr_ioerr(hak, "erroneous or insufficient record length");
 					goto oops;
 				}
-				scale = (hcl_ooi_t)hcl_leoowtoh(w);
+				scale = (hak_ooi_t)hak_leoowtoh(w);
 
-				if (b == HCL_XCHG_FPDEC_1)
+				if (b == HAK_XCHG_FPDEC_1)
 				{
-					hcl_ooi_t value;
-					n = rdr(hcl, &w, HCL_SIZEOF(w), ctx);
+					hak_ooi_t value;
+					n = rdr(hak, &w, HAK_SIZEOF(w), ctx);
 					if (n <= -1)
 					{
-						set_rdr_ioerr(hcl, "erroneous or insufficient record length");
+						set_rdr_ioerr(hak, "erroneous or insufficient record length");
 						goto oops;
 					}
-					value = (hcl_ooi_t)hcl_leoowtoh(w);
-					ns = hcl_makefpdec(hcl, HCL_SMOOI_TO_OOP(value), scale);
-					if (HCL_UNLIKELY(!ns)) goto oops;
+					value = (hak_ooi_t)hak_leoowtoh(w);
+					ns = hak_makefpdec(hak, HAK_SMOOI_TO_OOP(value), scale);
+					if (HAK_UNLIKELY(!ns)) goto oops;
 				}
 				else
 				{
-					hcl_oow_t j, nbytes, nwords;
-					hcl_liw_t liw;
-					hcl_oop_t v;
+					hak_oow_t j, nbytes, nwords;
+					hak_liw_t liw;
+					hak_oop_t v;
 
-					n = rdr(hcl, &w, HCL_SIZEOF(w), ctx);
+					n = rdr(hak, &w, HAK_SIZEOF(w), ctx);
 					if (n <= -1)
 					{
-						set_rdr_ioerr(hcl, "erroneous or insufficient record length");
+						set_rdr_ioerr(hak, "erroneous or insufficient record length");
 						goto oops;
 					}
-					nbytes = hcl_leoowtoh(w);
+					nbytes = hak_leoowtoh(w);
 
-					if (nbytes % HCL_SIZEOF(hcl_liw_t)) goto oops; /* not the right number of bytes */
-					nwords = nbytes / HCL_SIZEOF(hcl_liw_t);
+					if (nbytes % HAK_SIZEOF(hak_liw_t)) goto oops; /* not the right number of bytes */
+					nwords = nbytes / HAK_SIZEOF(hak_liw_t);
 
-					v = hcl_instantiate(hcl, ((b == HCL_XCHG_FPDEC_2) ? hcl->c_large_positive_integer : hcl->c_large_negative_integer), HCL_NULL, nwords);
-					if (HCL_UNLIKELY(!v)) goto oops;
+					v = hak_instantiate(hak, ((b == HAK_XCHG_FPDEC_2) ? hak->c_large_positive_integer : hak->c_large_negative_integer), HAK_NULL, nwords);
+					if (HAK_UNLIKELY(!v)) goto oops;
 
 					for (j = 0; j < nwords; j++)
 					{
-						if (rdr(hcl, &liw, HCL_SIZEOF(liw), ctx) <= -1) goto oops;
-						liw = hcl_leliwtoh(liw);
-						HCL_OBJ_SET_LIWORD_VAL(v, j, liw);
+						if (rdr(hak, &liw, HAK_SIZEOF(liw), ctx) <= -1) goto oops;
+						liw = hak_leliwtoh(liw);
+						HAK_OBJ_SET_LIWORD_VAL(v, j, liw);
 					}
-					hcl_pushvolat (hcl, &v);
-					ns = hcl_makefpdec(hcl, v, scale);
-					hcl_popvolat (hcl);
-					if (HCL_UNLIKELY(!ns)) goto oops;
+					hak_pushvolat (hak, &v);
+					ns = hak_makefpdec(hak, v, scale);
+					hak_popvolat (hak);
+					if (HAK_UNLIKELY(!ns)) goto oops;
 				}
-				if (hcl_addliteraltocode(hcl, code, ns, 0, HCL_NULL) <= -1) goto oops;
+				if (hak_addliteraltocode(hak, code, ns, 0, HAK_NULL) <= -1) goto oops;
 				break;
 			}
 
-			case HCL_XCHG_PRIM:
+			case HAK_XCHG_PRIM:
 				/* TODO: */
 				break;
 		}
@@ -561,168 +561,168 @@ int hcl_unmarshalcode (hcl_t* hcl, hcl_code_t* code, hcl_xchg_reader_t rdr, void
 	return 0;
 
 oops:
-	if (usym_buf) hcl_freemem (hcl, usym_buf);
+	if (usym_buf) hak_freemem (hak, usym_buf);
 	return -1;
 }
 /* -------------------------------------------------------------------- */
 
-static int mem_code_writer (hcl_t* hcl, const void* ptr, hcl_oow_t len, void* ctx)
+static int mem_code_writer (hak_t* hak, const void* ptr, hak_oow_t len, void* ctx)
 {
-	hcl_ptlc_t* dst = (hcl_ptlc_t*)ctx;
-	const hcl_uint8_t* p = (const hcl_uint8_t*)ptr;
-	const hcl_uint8_t* e = p + len;
+	hak_ptlc_t* dst = (hak_ptlc_t*)ctx;
+	const hak_uint8_t* p = (const hak_uint8_t*)ptr;
+	const hak_uint8_t* e = p + len;
 
 	if (dst->capa - dst->len < len)
 	{
-		hcl_oow_t newcapa;
-		hcl_uint8_t* newptr;
+		hak_oow_t newcapa;
+		hak_uint8_t* newptr;
 
 		newcapa = dst->len + len;
-		newcapa = HCL_ALIGN_POW2(newcapa, 64);
-		newptr = (hcl_uint8_t*)hcl_reallocmem(hcl, dst->ptr, newcapa);
-		if (HCL_UNLIKELY(!newptr)) return -1;
+		newcapa = HAK_ALIGN_POW2(newcapa, 64);
+		newptr = (hak_uint8_t*)hak_reallocmem(hak, dst->ptr, newcapa);
+		if (HAK_UNLIKELY(!newptr)) return -1;
 
 		dst->ptr = newptr;
 		dst->capa = newcapa;
 	}
 
-	while (p < e) ((hcl_uint8_t*)dst->ptr)[dst->len++] = *p++;
+	while (p < e) ((hak_uint8_t*)dst->ptr)[dst->len++] = *p++;
 	return 0;
 }
 
-int hcl_marshalcodetomem (hcl_t* hcl, const hcl_code_t* code, hcl_ptlc_t* dst)
+int hak_marshalcodetomem (hak_t* hak, const hak_code_t* code, hak_ptlc_t* dst)
 {
-	return hcl_marshalcode(hcl, code, mem_code_writer, dst);
+	return hak_marshalcode(hak, code, mem_code_writer, dst);
 }
 
 /* -------------------------------------------------------------------- */
 
 struct cmr_t
 {
-	const hcl_ptl_t* src;
-	hcl_oow_t pos;
+	const hak_ptl_t* src;
+	hak_oow_t pos;
 };
 
-static int mem_code_reader(hcl_t* hcl, void* ptr, hcl_oow_t len, void* ctx)
+static int mem_code_reader(hak_t* hak, void* ptr, hak_oow_t len, void* ctx)
 {
 	struct cmr_t* cmr = (struct cmr_t*)ctx;
-	hcl_uint8_t* p = (hcl_uint8_t*)ptr;
-	hcl_uint8_t* e = p + len;
+	hak_uint8_t* p = (hak_uint8_t*)ptr;
+	hak_uint8_t* e = p + len;
 
-	HCL_ASSERT (hcl, cmr->pos <= cmr->src->len);
+	HAK_ASSERT (hak, cmr->pos <= cmr->src->len);
 
 	if (cmr->src->len - cmr->pos < len)
 	{
-		hcl_seterrbfmt (hcl, HCL_ENOENT, "no more data");
+		hak_seterrbfmt (hak, HAK_ENOENT, "no more data");
 		return -1;
 	}
 
-	while (p < e) *p++ = ((const hcl_uint8_t*)cmr->src->ptr)[cmr->pos++];
+	while (p < e) *p++ = ((const hak_uint8_t*)cmr->src->ptr)[cmr->pos++];
 	return 0;
 }
 
-int hcl_unmarshalcodefrommem (hcl_t* hcl, hcl_code_t* code, const hcl_ptl_t* src)
+int hak_unmarshalcodefrommem (hak_t* hak, hak_code_t* code, const hak_ptl_t* src)
 {
 	struct cmr_t cmr;
 	cmr.src = src;
 	cmr.pos = 0;
-	return hcl_unmarshalcode(hcl, code, mem_code_reader, &cmr);
+	return hak_unmarshalcode(hak, code, mem_code_reader, &cmr);
 }
 
 /* -------------------------------------------------------------------- */
 
-int hcl_brewcode (hcl_t* hcl, hcl_code_t* code)
+int hak_brewcode (hak_t* hak, hak_code_t* code)
 {
 	/* create space to hold byte code and debug information */
 
 	if (!code->bc.ptr)
 	{
-		code->bc.ptr = (hcl_oob_t*)hcl_allocmem(hcl, HCL_SIZEOF(*code->bc.ptr) * HCL_BC_BUFFER_INIT); /* TODO: set a proper intial size */
-		if (HCL_UNLIKELY(!code->bc.ptr))
+		code->bc.ptr = (hak_oob_t*)hak_allocmem(hak, HAK_SIZEOF(*code->bc.ptr) * HAK_BC_BUFFER_INIT); /* TODO: set a proper intial size */
+		if (HAK_UNLIKELY(!code->bc.ptr))
 		{
-			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-			hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to allocate code buffer - %js", orgmsg);
+			const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
+			hak_seterrbfmt (hak, HAK_ERRNUM(hak), "unable to allocate code buffer - %js", orgmsg);
 			return -1;
 		}
-		HCL_ASSERT (hcl, code->bc.len == 0);
-		code->bc.capa = HCL_BC_BUFFER_INIT;
+		HAK_ASSERT (hak, code->bc.len == 0);
+		code->bc.capa = HAK_BC_BUFFER_INIT;
 	}
 
 	if (!code->dbgi)
 	{
-		code->dbgi = (hcl_dbgi_t*)hcl_allocmem(hcl, HCL_SIZEOF(*code->dbgi) * HCL_BC_BUFFER_INIT);
-		if (HCL_UNLIKELY(!code->dbgi))
+		code->dbgi = (hak_dbgi_t*)hak_allocmem(hak, HAK_SIZEOF(*code->dbgi) * HAK_BC_BUFFER_INIT);
+		if (HAK_UNLIKELY(!code->dbgi))
 		{
-			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-			hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to allocate debug info buffer - %js", orgmsg);
+			const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
+			hak_seterrbfmt (hak, HAK_ERRNUM(hak), "unable to allocate debug info buffer - %js", orgmsg);
 
 			/* bc.ptr and dbgi go together. so free bc.ptr if dbgi allocation fails */
-			hcl_freemem (hcl, code->bc.ptr);
-			code->bc.ptr = HCL_NULL;
+			hak_freemem (hak, code->bc.ptr);
+			code->bc.ptr = HAK_NULL;
 			code->bc.len = 0;
 			code->bc.capa = 0;
 
 			return -1;
 		}
 
-		HCL_MEMSET (code->dbgi, 0, HCL_SIZEOF(*code->dbgi) * HCL_BC_BUFFER_INIT);
+		HAK_MEMSET (code->dbgi, 0, HAK_SIZEOF(*code->dbgi) * HAK_BC_BUFFER_INIT);
 	}
 
-	/* TODO: move code.lit.arr creation to hcl_init() after swithching to hcl_allocmem? */
+	/* TODO: move code.lit.arr creation to hak_init() after swithching to hak_allocmem? */
         if (!code->lit.arr)
         {
-                code->lit.arr = (hcl_oop_oop_t)hcl_makengcarray(hcl, HCL_LIT_BUFFER_INIT); /* TOOD: set a proper initial size */
-                if (HCL_UNLIKELY(!code->lit.arr))
+                code->lit.arr = (hak_oop_oop_t)hak_makengcarray(hak, HAK_LIT_BUFFER_INIT); /* TOOD: set a proper initial size */
+                if (HAK_UNLIKELY(!code->lit.arr))
 		{
-			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-			hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to allocate literal frame - %js", orgmsg);
+			const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
+			hak_seterrbfmt (hak, HAK_ERRNUM(hak), "unable to allocate literal frame - %js", orgmsg);
 			return -1;
 		}
-                HCL_ASSERT (hcl, code->lit.len == 0);
+                HAK_ASSERT (hak, code->lit.len == 0);
         }
 
 	return 0;
 }
 
-void hcl_purgecode (hcl_t* hcl, hcl_code_t* code)
+void hak_purgecode (hak_t* hak, hak_code_t* code)
 {
 	if (code->dbgi)
         {
-		hcl_freemem (hcl, code->dbgi);
-		code->dbgi = HCL_NULL;
+		hak_freemem (hak, code->dbgi);
+		code->dbgi = HAK_NULL;
         }
 
 	if (code->bc.ptr)
 	{
-		hcl_freemem (hcl, code->bc.ptr);
-		code->bc.ptr = HCL_NULL;
+		hak_freemem (hak, code->bc.ptr);
+		code->bc.ptr = HAK_NULL;
 		code->bc.len = 0;
 		code->bc.capa = 0;
 	}
 
 	if (code->lit.arr)
 	{
-		hcl_freengcobj (hcl, (hcl_oop_t)code->lit.arr);
-		code->lit.arr = HCL_NULL;
+		hak_freengcobj (hak, (hak_oop_t)code->lit.arr);
+		code->lit.arr = HAK_NULL;
 		code->lit.len = 0;
 	}
 
-	HCL_MEMSET (&code, 0, HCL_SIZEOF(code));
+	HAK_MEMSET (&code, 0, HAK_SIZEOF(code));
 }
 
 /* -------------------------------------------------------------------- */
 
-int hcl_addliteraltocode (hcl_t* hcl, hcl_code_t* code, hcl_oop_t obj, hcl_oow_t lfbase, hcl_oow_t* index)
+int hak_addliteraltocode (hak_t* hak, hak_code_t* code, hak_oop_t obj, hak_oow_t lfbase, hak_oow_t* index)
 {
-	hcl_oow_t capa, i;
-	hcl_oop_t tmp;
+	hak_oow_t capa, i;
+	hak_oop_t tmp;
 
 	/* TODO: speed up the following duplicate check loop */
 	for (i = lfbase; i < code->lit.len; i++)
 	{
-		tmp = ((hcl_oop_oop_t)code->lit.arr)->slot[i];
+		tmp = ((hak_oop_oop_t)code->lit.arr)->slot[i];
 
-		if (tmp == obj || hcl_equalobjs(hcl, obj, tmp))
+		if (tmp == obj || hak_equalobjs(hak, obj, tmp))
 		{
 			/* this removes redundancy of symbols, characters, and integers.
 			 * a string object requires equality check. however,
@@ -734,30 +734,30 @@ int hcl_addliteraltocode (hcl_t* hcl, hcl_code_t* code, hcl_oop_t obj, hcl_oow_t
 		}
 	}
 
-	capa = HCL_OBJ_GET_SIZE(code->lit.arr);
+	capa = HAK_OBJ_GET_SIZE(code->lit.arr);
 	if (code->lit.len >= capa)
 	{
-		hcl_oop_t tmp;
-		hcl_oow_t newcapa;
+		hak_oop_t tmp;
+		hak_oow_t newcapa;
 
-		newcapa = HCL_ALIGN(capa + 1, HCL_LIT_BUFFER_ALIGN);
-		tmp = hcl_remakengcarray(hcl, (hcl_oop_t)code->lit.arr, newcapa);
-		if (HCL_UNLIKELY(!tmp))
+		newcapa = HAK_ALIGN(capa + 1, HAK_LIT_BUFFER_ALIGN);
+		tmp = hak_remakengcarray(hak, (hak_oop_t)code->lit.arr, newcapa);
+		if (HAK_UNLIKELY(!tmp))
 		{
-			const hcl_ooch_t* orgmsg = hcl_backuperrmsg(hcl);
-			hcl_seterrbfmt (hcl, HCL_ERRNUM(hcl), "unable to resize literal frame - %js", orgmsg);
+			const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
+			hak_seterrbfmt (hak, HAK_ERRNUM(hak), "unable to resize literal frame - %js", orgmsg);
 			return -1;
 		}
 
-		code->lit.arr = (hcl_oop_oop_t)tmp;
+		code->lit.arr = (hak_oop_oop_t)tmp;
 	}
 
 	if (index) *index = code->lit.len - lfbase;
 
-	((hcl_oop_oop_t)code->lit.arr)->slot[code->lit.len++] = obj;
+	((hak_oop_oop_t)code->lit.arr)->slot[code->lit.len++] = obj;
 	/* make read-only an object in the literal table.
 	 * some immutable objects(e.g. literal symbol) don't need this part
 	 * but we just execute it regardless */
-	if (HCL_OOP_IS_POINTER(obj)) HCL_OBJ_SET_FLAGS_RDONLY (obj, 1);
+	if (HAK_OOP_IS_POINTER(obj)) HAK_OBJ_SET_FLAGS_RDONLY (obj, 1);
 	return 0;
 }
