@@ -102,7 +102,7 @@ static hak_pfrc_t __basic_at (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs, int s
 	{
 		hak_oow_t fixed, flexi;
 
-		fixed = HAK_CLASS_SPEC_NAMED_INSTVARS(_class->spec);
+		fixed = HAK_CLASS_SPEC_NAMED_INSTVARS(HAK_OOP_TO_SMOOI(_class->spec));
 		flexi = HAK_OBJ_GET_SIZE(obj) - fixed;
 		if (index >= flexi)
 		{
@@ -210,7 +210,7 @@ static hak_pfrc_t __basic_at_put (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs, i
 	{
 		hak_oow_t fixed, flexi;
 
-		fixed = HAK_CLASS_SPEC_NAMED_INSTVARS(_class->spec);
+		fixed = HAK_CLASS_SPEC_NAMED_INSTVARS(HAK_OOP_TO_SMOOI(_class->spec));
 		flexi = HAK_OBJ_GET_SIZE(obj) - fixed;
 		if (index >= flexi)
 		{

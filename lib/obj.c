@@ -81,7 +81,7 @@ void* hak_allocbytes (hak_t* hak, hak_oow_t size)
 			else
 			{
 			calloc_heapmem_fail:
-				hak_seterrnum (hak, HAK_EOOMEM);
+				hak_seterrnum(hak, HAK_EOOMEM);
 				return HAK_NULL;
 			}
 		}
@@ -91,7 +91,7 @@ void* hak_allocbytes (hak_t* hak, hak_oow_t size)
 	{
 		/* if the lazy sweeping point is at the beginning of the allocation block,
 		 * hak->gc.ls.prev must get updated */
-		HAK_ASSERT (hak, hak->gci.ls.prev == HAK_NULL);
+		HAK_ASSERT(hak, hak->gci.ls.prev == HAK_NULL);
 		hak->gci.ls.prev = gch;
 	}
 
@@ -255,7 +255,7 @@ hak_oop_t hak_hatchundef (hak_t* hak)
 	if (HAK_UNLIKELY(!v))
 	{
 		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-		hak_seterrbfmt (hak, HAK_ERRNUM(hak), "unable to make undef - %js", orgmsg);
+		hak_seterrbfmt(hak, HAK_ERRNUM(hak), "unable to make undef - %js", orgmsg);
 	}
 	else
 	{
@@ -274,7 +274,7 @@ hak_oop_t hak_hatchnil (hak_t* hak)
 	if (HAK_UNLIKELY(!v))
 	{
 		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-		hak_seterrbfmt (hak, HAK_ERRNUM(hak), "unable to make nil - %js", orgmsg);
+		hak_seterrbfmt(hak, HAK_ERRNUM(hak), "unable to make nil - %js", orgmsg);
 	}
 	else
 	{
@@ -289,8 +289,8 @@ hak_oop_t hak_makecons (hak_t* hak, hak_oop_t car, hak_oop_t cdr)
 #if 0
 	hak_oop_cons_t cons;
 
-	hak_pushvolat (hak, &car);
-	hak_pushvolat (hak, &cdr);
+	hak_pushvolat(hak, &car);
+	hak_pushvolat(hak, &cdr);
 
 	cons = (hak_oop_cons_t)hak_allocoopobj(hak, HAK_BRAND_CONS, 2);
 	if (HAK_LIKELY(cons))
@@ -300,19 +300,19 @@ hak_oop_t hak_makecons (hak_t* hak, hak_oop_t car, hak_oop_t cdr)
 		HAK_OBJ_SET_CLASS (cons, (hak_oop_t)hak->c_cons);
 	}
 
-	hak_popvolats (hak, 2);
+	hak_popvolats(hak, 2);
 
 	return (hak_oop_t)cons;
 #else
 	hak_oop_cons_t v;
-	hak_pushvolat (hak, &car);
-	hak_pushvolat (hak, &cdr);
+	hak_pushvolat(hak, &car);
+	hak_pushvolat(hak, &cdr);
 	v = (hak_oop_cons_t)hak_instantiate(hak, hak->c_cons, HAK_NULL, 0);
-	hak_popvolats (hak, 2);
+	hak_popvolats(hak, 2);
 	if (HAK_UNLIKELY(!v))
 	{
 		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-		hak_seterrbfmt (hak, HAK_ERRNUM(hak), "unable to instantiate %O - %js", hak->c_cons->name, orgmsg);
+		hak_seterrbfmt(hak, HAK_ERRNUM(hak), "unable to instantiate %O - %js", hak->c_cons->name, orgmsg);
 	}
 	else
 	{
@@ -336,7 +336,7 @@ hak_oop_t hak_makearray (hak_t* hak, hak_oow_t len)
 	if (HAK_UNLIKELY(!v))
 	{
 		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-		hak_seterrbfmt (hak, HAK_ERRNUM(hak),
+		hak_seterrbfmt(hak, HAK_ERRNUM(hak),
 			"unable to instantiate %O - %js", hak->c_array->name, orgmsg);
 	}
 	return v;
@@ -350,7 +350,7 @@ hak_oop_t hak_makechararray (hak_t* hak, const hak_ooch_t* ptr, hak_oow_t len)
 	if (HAK_UNLIKELY(!v))
 	{
 		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-		hak_seterrbfmt (hak, HAK_ERRNUM(hak),
+		hak_seterrbfmt(hak, HAK_ERRNUM(hak),
 			"unable to instantiate %O - %js", hak->c_character_array->name, orgmsg);
 	}
 	return v;
@@ -369,7 +369,7 @@ hak_oop_t hak_makebytearray (hak_t* hak, const hak_oob_t* ptr, hak_oow_t len)
 	if (HAK_UNLIKELY(!v))
 	{
 		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-		hak_seterrbfmt (hak, HAK_ERRNUM(hak),
+		hak_seterrbfmt(hak, HAK_ERRNUM(hak),
 			"unable to instantiate %O - %js", hak->c_byte_array->name, orgmsg);
 	}
 	return v;
@@ -383,7 +383,7 @@ hak_oop_t hak_makebytestringwithbytes (hak_t* hak, const hak_oob_t* ptr, hak_oow
 	if (HAK_UNLIKELY(!v))
 	{
 		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-		hak_seterrbfmt (hak, HAK_ERRNUM(hak),
+		hak_seterrbfmt(hak, HAK_ERRNUM(hak),
 			"unable to instantiate %O with bytes - %js", hak->c_byte_string->name, orgmsg);
 	}
 	return (hak_oop_t)v;
@@ -402,7 +402,7 @@ hak_oop_t hak_makebytestring (hak_t* hak, const hak_ooch_t* ptr, hak_oow_t len)
 	if (HAK_UNLIKELY(!v))
 	{
 		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-		hak_seterrbfmt (hak, HAK_ERRNUM(hak),
+		hak_seterrbfmt(hak, HAK_ERRNUM(hak),
 			"unable to instantiate %O - %js", hak->c_byte_string->name, orgmsg);
 	}
 	else
@@ -426,7 +426,7 @@ hak_oop_t hak_makestring (hak_t* hak, const hak_ooch_t* ptr, hak_oow_t len)
 	if (HAK_UNLIKELY(!v))
 	{
 		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-		hak_seterrbfmt (hak, HAK_ERRNUM(hak),
+		hak_seterrbfmt(hak, HAK_ERRNUM(hak),
 			"unable to instantiate %O - %js", hak->c_string->name, orgmsg);
 	}
 	return v;
@@ -436,24 +436,24 @@ hak_oop_t hak_makefpdec (hak_t* hak, hak_oop_t value, hak_ooi_t scale)
 {
 	hak_oop_fpdec_t f;
 
-	HAK_ASSERT (hak, hak_isint(hak, value));
+	HAK_ASSERT(hak, hak_isint(hak, value));
 
 	if (scale <= 0) return value; /* if scale is 0 or less, return the value as it it */
 
 	if (scale > HAK_SMOOI_MAX)
 	{
-		hak_seterrbfmt (hak, HAK_EINVAL, "fpdec scale too large - %zd", scale);
+		hak_seterrbfmt(hak, HAK_EINVAL, "fpdec scale too large - %zd", scale);
 		return HAK_NULL;
 	}
 
-	hak_pushvolat (hak, &value);
+	hak_pushvolat(hak, &value);
 	f = (hak_oop_fpdec_t)hak_instantiate(hak, hak->c_fixed_point_decimal, HAK_NULL, 0);
-	hak_popvolat (hak);
+	hak_popvolat(hak);
 
 	if (HAK_UNLIKELY(!f))
 	{
 		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-		hak_seterrbfmt (
+		hak_seterrbfmt(
 			hak, HAK_ERRNUM(hak), "unable to instantiate %O - %js",
 			hak->c_fixed_point_decimal->name, orgmsg);
 	}
@@ -470,16 +470,16 @@ hak_oop_t hak_makeclass (hak_t* hak, hak_oop_t class_name, hak_oop_t superclass,
 {
 	hak_oop_class_t c;
 
-	hak_pushvolat (hak, &class_name);
-	hak_pushvolat (hak, &superclass);
-	hak_pushvolat (hak, &ivars_str);
-	hak_pushvolat (hak, &cvars_str);
+	hak_pushvolat(hak, &class_name);
+	hak_pushvolat(hak, &superclass);
+	hak_pushvolat(hak, &ivars_str);
+	hak_pushvolat(hak, &cvars_str);
 	c = (hak_oop_class_t)hak_instantiate(hak, hak->c_class, HAK_NULL, HAK_CLASS_SELFSPEC_CLASSVARS(selfspec));
-	hak_popvolats (hak, 4);
+	hak_popvolats(hak, 4);
 	if (HAK_UNLIKELY(!c))
 	{
 		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-		hak_seterrbfmt (hak, HAK_ERRNUM(hak),
+		hak_seterrbfmt(hak, HAK_ERRNUM(hak),
 			"unable to instantiate class %O - %js", class_name, orgmsg);
 	}
 	else
@@ -525,14 +525,14 @@ static HAK_INLINE int decode_spec (hak_t* hak, hak_oop_class_t _class, hak_oow_t
 	hak_oow_t num_fixed_fields;
 	hak_obj_type_t indexed_type;
 
-	HAK_ASSERT (hak, HAK_OOP_IS_POINTER(_class));
-	HAK_ASSERT (hak, HAK_CLASSOF(hak, _class) == (hak_oop_t)hak->c_class);
+	HAK_ASSERT(hak, HAK_OOP_IS_POINTER(_class));
+	HAK_ASSERT(hak, HAK_CLASSOF(hak, _class) == (hak_oop_t)hak->c_class);
 
-	HAK_ASSERT (hak, HAK_OOP_IS_SMOOI(_class->spec));
+	HAK_ASSERT(hak, HAK_OOP_IS_SMOOI(_class->spec));
 	spec = HAK_OOP_TO_SMOOI(_class->spec);
 
 	num_fixed_fields = HAK_CLASS_SPEC_NAMED_INSTVARS(spec);
-	HAK_ASSERT (hak, num_fixed_fields <= HAK_MAX_NAMED_INSTVARS);
+	HAK_ASSERT(hak, num_fixed_fields <= HAK_MAX_NAMED_INSTVARS);
 
 	if (HAK_CLASS_SPEC_IS_INDEXED(spec))
 	{
@@ -548,7 +548,7 @@ static HAK_INLINE int decode_spec (hak_t* hak, hak_oop_class_t _class, hak_oow_t
 
 		if (num_flexi_fields > HAK_MAX_INDEXED_INSTVARS(num_fixed_fields))
 		{
-			hak_seterrbfmt (hak, HAK_EINVAL, "number of flexi-fields(%zu) too big for a class %O", num_flexi_fields, _class);
+			hak_seterrbfmt(hak, HAK_EINVAL, "number of flexi-fields(%zu) too big for class %O", num_flexi_fields, _class);
 			return -1;
 		}
 	}
@@ -566,12 +566,12 @@ static HAK_INLINE int decode_spec (hak_t* hak, hak_oop_class_t _class, hak_oow_t
 
 		if (num_flexi_fields > 0)
 		{
-			hak_seterrbfmt (hak, HAK_EPERM, "flexi-fields(%zu) disallowed for a class %O", num_flexi_fields, _class);
+			hak_seterrbfmt(hak, HAK_EPERM, "flexi-fields(%zu) disallowed for class %O", num_flexi_fields, _class);
 			return -1;
 		}
 	}
 
-	HAK_ASSERT (hak, num_fixed_fields + num_flexi_fields <= HAK_OBJ_SIZE_MAX);
+	HAK_ASSERT(hak, num_fixed_fields + num_flexi_fields <= HAK_OBJ_SIZE_MAX);
 	dspec->flexi = !!HAK_CLASS_SPEC_IS_INDEXED(spec);
 	dspec->type = indexed_type;
 	dspec->alloclen = num_fixed_fields + num_flexi_fields + HAK_OOP_TO_SMOOI(_class->nivars_super);
@@ -584,11 +584,11 @@ hak_oop_t hak_instantiate (hak_t* hak, hak_oop_class_t _class, const void* vptr,
 	decoded_spec_t dspec;
 	hak_oow_t tmp_count = 0;
 
-	HAK_ASSERT (hak, hak->_nil != HAK_NULL);
+	HAK_ASSERT(hak, hak->_nil != HAK_NULL);
 
 	if (decode_spec(hak, _class, vlen, &dspec) <= -1) return HAK_NULL;
 
-	hak_pushvolat (hak, (hak_oop_t*)&_class); tmp_count++;
+	hak_pushvolat(hak, (hak_oop_t*)&_class); tmp_count++;
 
 	switch (dspec.type)
 	{
@@ -617,7 +617,7 @@ hak_oop_t hak_instantiate (hak_t* hak, hak_oop_class_t _class, const void* vptr,
 				}
 		#endif
 			}
-			HAK_ASSERT (hak, vptr == HAK_NULL);
+			HAK_ASSERT(hak, vptr == HAK_NULL);
 			/*
 			This function is not GC-safe. so i don't want to initialize
 			the payload of a pointer object. The caller can call this
@@ -653,7 +653,7 @@ hak_oop_t hak_instantiate (hak_t* hak, hak_oop_class_t _class, const void* vptr,
 
 		/* TODO: more types... HAK_OBJ_TYPE_INT... HAK_OBJ_TYPE_FLOAT, HAK_OBJ_TYPE_UINT16, etc*/
 		default:
-			hak_seterrnum (hak, HAK_EINTERN);
+			hak_seterrnum(hak, HAK_EINTERN);
 			oop = HAK_NULL;
 			break;
 	}
@@ -669,7 +669,7 @@ hak_oop_t hak_instantiate (hak_t* hak, hak_oop_class_t _class, const void* vptr,
 	#endif
 		HAK_OBJ_SET_FLAGS_FLEXI(oop, dspec.flexi);
 	}
-	hak_popvolats (hak, tmp_count);
+	hak_popvolats(hak, tmp_count);
 	return oop;
 }
 
@@ -679,11 +679,11 @@ hak_oop_t hak_instantiatewithtrailer (hak_t* hak, hak_oop_class_t _class, hak_oo
 	decoded_spec_t dspec;
 	hak_oow_t tmp_count = 0;
 
-	HAK_ASSERT (hak, hak->_nil != HAK_NULL);
+	HAK_ASSERT(hak, hak->_nil != HAK_NULL);
 
 	if (decode_spec(hak, _class, vlen, &dspec) <= -1) return HAK_NULL;
 
-	hak_pushvolat (hak, (hak_oop_t*)&_class); tmp_count++;
+	hak_pushvolat(hak, (hak_oop_t*)&_class); tmp_count++;
 
 	switch (dspec.type)
 	{
@@ -721,7 +721,7 @@ hak_oop_t hak_instantiatewithtrailer (hak_t* hak, hak_oop_class_t _class, hak_oo
 				trlen);
 		#endif
 
-			hak_seterrnum (hak, HAK_EPERM);
+			hak_seterrnum(hak, HAK_EPERM);
 			oop = HAK_NULL;
 			break;
 	}
@@ -739,7 +739,7 @@ hak_oop_t hak_instantiatewithtrailer (hak_t* hak, hak_oop_class_t _class, hak_oo
 	#endif
 		HAK_OBJ_SET_FLAGS_FLEXI(oop, dspec.flexi);
 	}
-	hak_popvolats (hak, tmp_count);
+	hak_popvolats(hak, tmp_count);
 	return oop;
 }
 
@@ -761,7 +761,7 @@ hak_oop_t hak_remakengcbytearray (hak_t* hak, hak_oop_t obj, hak_oow_t newsize)
 {
 	hak_oop_t tmp;
 
-	HAK_ASSERT (hak, !obj || (HAK_OOP_IS_POINTER(obj) && HAK_OBJ_GET_FLAGS_NGC(obj)));
+	HAK_ASSERT(hak, !obj || (HAK_OOP_IS_POINTER(obj) && HAK_OBJ_GET_FLAGS_NGC(obj)));
 
 	/* no hak_pushvolat() is needed because 'obj' is a non-GC object. */
 	/* TODO: improve this by using realloc */
@@ -789,7 +789,7 @@ hak_oop_t hak_remakengcarray (hak_t* hak, hak_oop_t obj, hak_oow_t newsize)
 {
 	hak_oop_t tmp;
 
-	HAK_ASSERT (hak, !obj || (HAK_OOP_IS_POINTER(obj) && HAK_OBJ_GET_FLAGS_NGC(obj)));
+	HAK_ASSERT(hak, !obj || (HAK_OOP_IS_POINTER(obj) && HAK_OBJ_GET_FLAGS_NGC(obj)));
 
 	/* no hak_pushvolat() is needed because 'obj' is a non-GC object. */
 	/* TODO: improve this by using realloc */
@@ -816,7 +816,7 @@ hak_oow_t hak_countcons (hak_t* hak, hak_oop_t cons)
 	/* this function ignores the last cdr */
 	hak_oow_t count = 1;
 
-	HAK_ASSERT (hak, HAK_IS_CONS(hak, cons));
+	HAK_ASSERT(hak, HAK_IS_CONS(hak, cons));
 	do
 	{
 		cons = HAK_CONS_CDR(cons);
@@ -830,7 +830,7 @@ hak_oow_t hak_countcons (hak_t* hak, hak_oop_t cons)
 
 hak_oop_t hak_getlastconscdr (hak_t* hak, hak_oop_t cons)
 {
-	HAK_ASSERT (hak, HAK_IS_CONS(hak, cons));
+	HAK_ASSERT(hak, HAK_IS_CONS(hak, cons));
 	do
 	{
 		cons = HAK_CONS_CDR(cons);
@@ -848,7 +848,7 @@ hak_oop_t hak_reversecons (hak_t* hak, hak_oop_t cons)
 	/* Note: The non-nil cdr in the last cons cell gets lost.
 	 *  e.g.) Reversing (1 2 3 . 4) results in (3 2 1) */
 
-	HAK_ASSERT (hak, HAK_IS_CONS(hak, cons));
+	HAK_ASSERT(hak, HAK_IS_CONS(hak, cons));
 
 	prev = hak->_nil;
 	ptr = cons;
@@ -916,7 +916,7 @@ int hak_hashobj (hak_t* hak, hak_oop_t obj, hak_oow_t* xhv)
 		{
 			int type;
 
-			HAK_ASSERT (hak, HAK_OOP_IS_POINTER(obj));
+			HAK_ASSERT(hak, HAK_OOP_IS_POINTER(obj));
 			type = HAK_OBJ_GET_FLAGS_TYPE(obj);
 			switch (type)
 			{
@@ -947,7 +947,7 @@ int hak_hashobj (hak_t* hak, hak_oop_t obj, hak_oow_t* xhv)
 
 	/* i assume that hak_hashxxx() functions limits the return value to fall
 	 * between 0 and HAK_SMOOI_MAX inclusive */
-	HAK_ASSERT (hak, hv >= 0 && hv <= HAK_SMOOI_MAX);
+	HAK_ASSERT(hak, hv >= 0 && hv <= HAK_SMOOI_MAX);
 	*xhv = hv;
 	return 0;
 }
@@ -980,10 +980,10 @@ int hak_equalobjs (hak_t* hak, hak_oop_t rcv, hak_oop_t arg)
 
 		default:
 		{
-			HAK_ASSERT (hak, HAK_OOP_IS_POINTER(rcv));
+			HAK_ASSERT(hak, HAK_OOP_IS_POINTER(rcv));
 
 			if (HAK_OBJ_GET_CLASS(rcv) != HAK_OBJ_GET_CLASS(arg)) return 0; /* different class, not equal */
-			HAK_ASSERT (hak, HAK_OBJ_GET_FLAGS_TYPE(rcv) == HAK_OBJ_GET_FLAGS_TYPE(arg));
+			HAK_ASSERT(hak, HAK_OBJ_GET_FLAGS_TYPE(rcv) == HAK_OBJ_GET_FLAGS_TYPE(arg));
 
 			if (HAK_OBJ_GET_SIZE(rcv) != HAK_OBJ_GET_SIZE(arg)) return 0; /* different size, not equal */
 
@@ -1004,10 +1004,10 @@ int hak_equalobjs (hak_t* hak, hak_oop_t rcv, hak_oop_t arg)
 					if (rcv == hak->_false) return arg == hak->_false? 1: 0;
 
 					/* HAK_OBJ_TYPE_OOP, ... */
-					HAK_ASSERT (hak, HAK_OBJ_GET_FLAGS_TYPE(rcv) == HAK_OBJ_TYPE_OOP);
+					HAK_ASSERT(hak, HAK_OBJ_GET_FLAGS_TYPE(rcv) == HAK_OBJ_TYPE_OOP);
 
 				#if 0
-					hak_seterrbfmt (hak, HAK_ENOIMPL, "no builtin comparison implemented for %O and %O", rcv, arg); /* TODO: better error code */
+					hak_seterrbfmt(hak, HAK_ENOIMPL, "no builtin comparison implemented for %O and %O", rcv, arg); /* TODO: better error code */
 					return -1;
 				#else
 
@@ -1018,7 +1018,7 @@ int hak_equalobjs (hak_t* hak, hak_oop_t rcv, hak_oop_t arg)
 						 * are garbages. */
 						size = HAK_PROCESS_NAMED_INSTVARS +
 							  HAK_OOP_TO_SMOOI(((hak_oop_process_t)rcv)->sp) + 1;
-						HAK_ASSERT (hak, size <= HAK_OBJ_GET_SIZE(rcv));
+						HAK_ASSERT(hak, size <= HAK_OBJ_GET_SIZE(rcv));
 					}
 					else
 					{
