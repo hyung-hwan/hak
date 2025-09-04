@@ -141,13 +141,26 @@ class (#varying) Z: Object [ a b c ] {
 		self.a := 10
 		self.b := 20
 		self.c := 30
-printf "Z:new called\n"
+	}
+
+	fun aaa() {
+	printf "%d %d %d\n" a b c
 	}
 }
 
-k := (Z:basicNew 10)
-##k := (Z:new)
+fun Z:abc() {
+	printf "%d %d %d\n" a b c ## this is not recognized as ....
+}
+
+fun k () {
+k := (Z:basicNew 10) ## #varying is really required? what is the big deal even if you allow it regardless?
+##k := (Z:new) ## no way to add extra fields.
 k:basicAtPut 2 "hello"
 k:basicAtPut 3 "world"
 printf "----------------------------------------\n"
-printf "%O\n" (k:basicAt 2)
+printf "%O\n" (k:basicAt 20)
+
+##k := (Z:new)
+##k:aaa
+}
+(k)

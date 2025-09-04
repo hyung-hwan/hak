@@ -559,7 +559,7 @@ static const hak_ooch_t* add_sr_name (hak_t* hak, const hak_oocs_t* name)
 
 	nptr = (hak_ooch_t*)(link + 1);
 
-	hak_copy_oochars (nptr, name->ptr, name->len);
+	hak_copy_oochars(nptr, name->ptr, name->len);
 	nptr[name->len] = '\0';
 
 	link->link = hak->c->sr_names;

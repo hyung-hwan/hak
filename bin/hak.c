@@ -231,7 +231,7 @@ static int handle_logopt (hak_t* hak, const hak_bch_t* logstr)
 
 			if (i >= HAK_COUNTOF(xtab))
 			{
-				fprintf (stderr, "ERROR: unrecognized value  - [%.*s] - [%s]\n", (int)tlen, flt, logstr);
+				fprintf(stderr, "ERROR: unrecognized value  - [%.*s] - [%s]\n", (int)tlen, flt, logstr);
 				return -1;
 			}
 		}
@@ -273,7 +273,7 @@ static int handle_dbgopt (hak_t* hak, const hak_bch_t* str)
 		else if (hak_comp_bchars_bcstr(flt, len, "bigint") == 0) dbgopt |= HAK_TRAIT_DEBUG_BIGINT;
 		else
 		{
-			fprintf (stderr, "ERROR: unknown debug option value - %.*s\n", (int)len, flt);
+			fprintf(stderr, "ERROR: unknown debug option value - %.*s\n", (int)len, flt);
 			return -1;
 		}
 	}
@@ -380,21 +380,21 @@ static void print_synerr (hak_t* hak)
 	xtn = (xtn_t*)hak_getxtn(hak);
 	hak_getsynerr (hak, &synerr);
 
-	hak_logbfmt (hak,HAK_LOG_STDERR, "ERROR: ");
+	hak_logbfmt(hak,HAK_LOG_STDERR, "ERROR: ");
 	if (synerr.loc.file)
-		hak_logbfmt (hak, HAK_LOG_STDERR, "%js", synerr.loc.file);
+		hak_logbfmt(hak, HAK_LOG_STDERR, "%js", synerr.loc.file);
 	else
-		hak_logbfmt (hak, HAK_LOG_STDERR, "%hs", xtn->cci_path);
+		hak_logbfmt(hak, HAK_LOG_STDERR, "%hs", xtn->cci_path);
 
-	hak_logbfmt (hak, HAK_LOG_STDERR, "[%zu,%zu] %js",
+	hak_logbfmt(hak, HAK_LOG_STDERR, "[%zu,%zu] %js",
 		synerr.loc.line, synerr.loc.colm,
 		(hak_geterrmsg(hak) != hak_geterrstr(hak)? hak_geterrmsg(hak): hak_geterrstr(hak))
 	);
 
 	if (synerr.tgt.len > 0)
-		hak_logbfmt (hak, HAK_LOG_STDERR, " - %.*js", synerr.tgt.len, synerr.tgt.val);
+		hak_logbfmt(hak, HAK_LOG_STDERR, " - %.*js", synerr.tgt.len, synerr.tgt.val);
 
-	hak_logbfmt (hak, HAK_LOG_STDERR, "\n");
+	hak_logbfmt(hak, HAK_LOG_STDERR, "\n");
 }
 
 static void print_other_error (hak_t* hak)
@@ -405,22 +405,22 @@ static void print_other_error (hak_t* hak)
 	xtn = (xtn_t*)hak_getxtn(hak);
 	hak_geterrloc(hak, &loc);
 
-	hak_logbfmt (hak,HAK_LOG_STDERR, "ERROR: ");
+	hak_logbfmt(hak,HAK_LOG_STDERR, "ERROR: ");
 	if (loc.file)
-		hak_logbfmt (hak, HAK_LOG_STDERR, "%js", loc.file);
+		hak_logbfmt(hak, HAK_LOG_STDERR, "%js", loc.file);
 	else
-		hak_logbfmt (hak, HAK_LOG_STDERR, "%hs", xtn->cci_path);
+		hak_logbfmt(hak, HAK_LOG_STDERR, "%hs", xtn->cci_path);
 
-	hak_logbfmt (hak, HAK_LOG_STDERR, "[%zu,%zu] %js", loc.line, loc.colm, hak_geterrmsg(hak));
+	hak_logbfmt(hak, HAK_LOG_STDERR, "[%zu,%zu] %js", loc.line, loc.colm, hak_geterrmsg(hak));
 
-	hak_logbfmt (hak, HAK_LOG_STDERR, "\n");
+	hak_logbfmt(hak, HAK_LOG_STDERR, "\n");
 }
 
 static void print_error (hak_t* hak, const hak_bch_t* msghdr)
 {
 	if (HAK_ERRNUM(hak) == HAK_ESYNERR) print_synerr (hak);
 	else print_other_error (hak);
-	/*else hak_logbfmt (hak, HAK_LOG_STDERR, "ERROR: %hs - [%d] %js\n", msghdr, hak_geterrnum(hak), hak_geterrmsg(hak));*/
+	/*else hak_logbfmt(hak, HAK_LOG_STDERR, "ERROR: %hs - [%d] %js\n", msghdr, hak_geterrnum(hak), hak_geterrmsg(hak));*/
 }
 
 
@@ -435,17 +435,17 @@ static void print_incomplete_expression_error (hak_t* hak)
 	xtn = hak_getxtn(hak);
 	hak_getfeedloc (hak, &loc);
 
-	hak_logbfmt (hak, HAK_LOG_STDERR, "ERROR: ");
+	hak_logbfmt(hak, HAK_LOG_STDERR, "ERROR: ");
 	if (loc.file)
-		hak_logbfmt (hak, HAK_LOG_STDERR, "%js", loc.file);
+		hak_logbfmt(hak, HAK_LOG_STDERR, "%js", loc.file);
 	else
-		hak_logbfmt (hak, HAK_LOG_STDERR, "%hs", xtn->cci_path);
+		hak_logbfmt(hak, HAK_LOG_STDERR, "%hs", xtn->cci_path);
 
 	/* if the input is like this
 	 *   a := 2; c := {
 	 * the second expression is incompelete. however, the whole input is not executed.
 	 * the number of compiled expressions so far is in xtn->feed.ncompexprs, however */
-	hak_logbfmt (hak, HAK_LOG_STDERR, "[%zu,%zu] incomplete expression\n", loc.line, loc.colm);
+	hak_logbfmt(hak, HAK_LOG_STDERR, "[%zu,%zu] incomplete expression\n", loc.line, loc.colm);
 }
 #endif
 
@@ -454,8 +454,8 @@ static void show_prompt (hak_t* hak, int level)
 /* TODO: different prompt per level */
 	hak_resetfeedloc (hak); /* restore the line number to 1 in the interactive mode */
 #if !defined(USE_ISOCLINE)
-	hak_logbfmt (hak, HAK_LOG_STDOUT, "HAK> ");
-	hak_logbfmt (hak, HAK_LOG_STDOUT, HAK_NULL); /* flushing */
+	hak_logbfmt(hak, HAK_LOG_STDOUT, "HAK> ");
+	hak_logbfmt(hak, HAK_LOG_STDOUT, HAK_NULL); /* flushing */
 #endif
 }
 
@@ -480,7 +480,7 @@ static hak_oop_t execute_in_interactive_mode (hak_t* hak)
 	else
 	{
 		/* print the result in the interactive mode regardless 'verbose' */
-		hak_logbfmt (hak, HAK_LOG_STDOUT, "%O\n", retv); /* TODO: show this go to the output handler?? */
+		hak_logbfmt(hak, HAK_LOG_STDOUT, "%O\n", retv); /* TODO: show this go to the output handler?? */
 		/*
 		 * print the value of ERRSTR.
 		hak_oop_cons_t cons = hak_getatsysdic(hak, xtn->sym_errstr);
@@ -519,7 +519,7 @@ static hak_oop_t execute_in_batch_mode(hak_t* hak, int verbose)
 
 	hak_marshalcodetomem(hak, &hak->code, &mem);
 	hak_unmarshalcodefrommem(hak, &xcode, (const hak_ptl_t*)&mem);
-	hak_freemem (hak, mem.ptr);
+	hak_freemem(hak, mem.ptr);
 
 	hak_decode(hak, &xcode, 0, xcode.bc.len);
 	hak_purgecode (hak, &xcode);
@@ -531,7 +531,7 @@ static hak_oop_t execute_in_batch_mode(hak_t* hak, int verbose)
 	hak_flushudio (hak);
 
 	if (!retv) print_error (hak, "execute");
-	else if (verbose) hak_logbfmt (hak, HAK_LOG_STDERR, "EXECUTION OK - EXITED WITH %O\n", retv);
+	else if (verbose) hak_logbfmt(hak, HAK_LOG_STDERR, "EXECUTION OK - EXITED WITH %O\n", retv);
 
 	/*cancel_tick();*/
 	g_hak = HAK_NULL;
@@ -636,7 +636,7 @@ static int get_line (hak_t* hak, xtn_t* xtn, FILE* fp)
 		{
 			if (ferror(fp))
 			{
-				hak_logbfmt (hak, HAK_LOG_STDERR, "ERROR: failed to read - %hs - %hs\n", xtn->cci_path, strerror(errno));
+				hak_logbfmt(hak, HAK_LOG_STDERR, "ERROR: failed to read - %hs - %hs\n", xtn->cci_path, strerror(errno));
 				return -1;
 			}
 
@@ -670,7 +670,7 @@ static int feed_loop (hak_t* hak, xtn_t* xtn, int verbose)
 	fp = fopen(xtn->cci_path, FOPEN_R_FLAGS);
 	if (!fp)
 	{
-		hak_logbfmt (hak, HAK_LOG_STDERR, "ERROR: failed to open - %hs - %hs\n", xtn->cci_path, strerror(errno));
+		hak_logbfmt(hak, HAK_LOG_STDERR, "ERROR: failed to open - %hs - %hs\n", xtn->cci_path, strerror(errno));
 		goto oops;
 	}
 #endif
@@ -686,7 +686,7 @@ static int feed_loop (hak_t* hak, xtn_t* xtn, int verbose)
 	/*if (hak_beginfeed(hak, is_tty? on_fed_cnode_in_interactive_mode: HAK_NULL) <= -1)*/
 	if (hak_beginfeed(hak, is_tty? on_fed_cnode_in_interactive_mode: on_fed_cnode_in_batch_mode) <= -1)
 	{
-		hak_logbfmt (hak, HAK_LOG_STDERR, "ERROR: cannot begin feed - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
+		hak_logbfmt(hak, HAK_LOG_STDERR, "ERROR: cannot begin feed - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
 		goto oops;
 	}
 
@@ -773,7 +773,7 @@ static int feed_loop (hak_t* hak, xtn_t* xtn, int verbose)
 		 * this results in the OS prompt on the same line as this program's prompt.
 		 * however ISOCLINE prints a newline upon ctrl-D. print \n when ISOCLINE is
 		 * not used */
-		hak_logbfmt (hak, HAK_LOG_STDOUT, "\n");
+		hak_logbfmt(hak, HAK_LOG_STDOUT, "\n");
 	#endif
 	}
 	else
@@ -790,7 +790,7 @@ static int feed_loop (hak_t* hak, xtn_t* xtn, int verbose)
 			{
 				if (ferror(fp))
 				{
-					hak_logbfmt (hak, HAK_LOG_STDERR, "ERROR: failed to read - %hs - %hs\n", xtn->cci_path, strerror(errno));
+					hak_logbfmt(hak, HAK_LOG_STDERR, "ERROR: failed to read - %hs - %hs\n", xtn->cci_path, strerror(errno));
 					goto oops;
 				}
 				break;
@@ -852,15 +852,15 @@ int main (int argc, char* argv[])
 	const char* dbgopt = HAK_NULL;
 #endif
 
-	setlocale (LC_ALL, "");
+	setlocale(LC_ALL, "");
 
 #if !defined(macintosh)
 	if (argc < 2)
 	{
 	print_usage:
-		fprintf (stderr, "Usage: %s [options] script-filename [output-filename]\n", argv[0]);
-		fprintf (stderr, "Options are:\n");
-		fprintf (stderr, " -v  show verbose messages\n");
+		fprintf(stderr, "Usage: %s [options] script-filename [output-filename]\n", argv[0]);
+		fprintf(stderr, "Options are:\n");
+		fprintf(stderr, " -v  show verbose messages\n");
 		return -1;
 	}
 
@@ -904,9 +904,9 @@ int main (int argc, char* argv[])
 
 			case ':':
 				if (opt.lngopt)
-					fprintf (stderr, "bad argument for '%s'\n", opt.lngopt);
+					fprintf(stderr, "bad argument for '%s'\n", opt.lngopt);
 				else
-					fprintf (stderr, "bad argument for '%c'\n", opt.opt);
+					fprintf(stderr, "bad argument for '%c'\n", opt.opt);
 
 				return -1;
 
@@ -953,21 +953,21 @@ int main (int argc, char* argv[])
 		tmp = hak_dupbtoucstr(hak, modlibdirs, HAK_NULL);
 		if (HAK_UNLIKELY(!tmp))
 		{
-			hak_logbfmt (hak, HAK_LOG_STDERR,"ERROR: cannot duplicate modlibdirs - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
+			hak_logbfmt(hak, HAK_LOG_STDERR,"ERROR: cannot duplicate modlibdirs - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
 			goto oops;
 		}
 
 		if (hak_setoption(hak, HAK_MOD_LIBDIRS, tmp) <= -1)
 		{
-			hak_logbfmt (hak, HAK_LOG_STDERR,"ERROR: cannot set modlibdirs - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
-			hak_freemem (hak, tmp);
+			hak_logbfmt(hak, HAK_LOG_STDERR,"ERROR: cannot set modlibdirs - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
+			hak_freemem(hak, tmp);
 			goto oops;
 		}
-		hak_freemem (hak, tmp);
+		hak_freemem(hak, tmp);
 	#else
 		if (hak_setoption(hak, HAK_MOD_LIBDIRS, modlibdirs) <= -1)
 		{
-			hak_logbfmt (hak, HAK_LOG_STDERR,"ERROR: cannot set modlibdirs - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
+			hak_logbfmt(hak, HAK_LOG_STDERR,"ERROR: cannot set modlibdirs - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
 			goto oops;
 		}
 	#endif
@@ -1000,13 +1000,13 @@ int main (int argc, char* argv[])
 
 	if (hak_ignite(hak, heapsize) <= -1)
 	{
-		hak_logbfmt (hak, HAK_LOG_STDERR, "cannot ignite hak - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
+		hak_logbfmt(hak, HAK_LOG_STDERR, "cannot ignite hak - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
 		goto oops;
 	}
 
 	if (hak_addbuiltinprims(hak) <= -1)
 	{
-		hak_logbfmt (hak, HAK_LOG_STDERR, "cannot add builtin primitives - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
+		hak_logbfmt(hak, HAK_LOG_STDERR, "cannot add builtin primitives - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
 		goto oops;
 	}
 
@@ -1015,19 +1015,19 @@ int main (int argc, char* argv[])
 
 	if (hak_attachcciostdwithbcstr(hak, xtn->cci_path) <= -1)
 	{
-		hak_logbfmt (hak, HAK_LOG_STDERR, "ERROR: cannot attach source input stream - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
+		hak_logbfmt(hak, HAK_LOG_STDERR, "ERROR: cannot attach source input stream - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
 		goto oops;
 	}
 
 	if (hak_attachudiostdwithbcstr(hak, "", xtn->udo_path) <= -1) /* TODO: add udi path */
 	{
-		hak_logbfmt (hak, HAK_LOG_STDERR, "ERROR: cannot attach user data streams - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
+		hak_logbfmt(hak, HAK_LOG_STDERR, "ERROR: cannot attach user data streams - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
 		goto oops;
 	}
 
 	/* -- from this point onward, any failure leads to jumping to the oops label
 	 * -- instead of returning -1 immediately. --*/
-	set_signal (SIGINT, handle_sigint);
+	set_signal(SIGINT, handle_sigint);
 
 #if 0
 // TODO: change the option name
@@ -1043,13 +1043,13 @@ int main (int argc, char* argv[])
 
 	if (feed_loop(hak, xtn, verbose) <= -1) goto oops;
 
-	set_signal_to_default (SIGINT);
-	hak_close (hak);
+	set_signal_to_default(SIGINT);
+	hak_close(hak);
 
 	return 0;
 
 oops:
-	set_signal_to_default (SIGINT); /* harmless to call multiple times without set_signal() */
-	if (hak) hak_close (hak);
+	set_signal_to_default(SIGINT); /* harmless to call multiple times without set_signal() */
+	if (hak) hak_close(hak);
 	return -1;
 }
