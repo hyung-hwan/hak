@@ -2037,12 +2037,12 @@ static int sprint_ucs (hak_t* hak, hak_fmtout_t* fmtout, const hak_uch_t* ptr, h
 	if ((arg_state)->idx >= nargs) { (arg_state)->stop = 1;  goto invalid_format; } \
 	arg = HAK_STACK_GETARG(hak, nargs, (arg_state)->idx); \
 	(arg_state)->idx++; \
-} while(0)
+} while (0)
 
 #define GET_NEXT_CHAR_TO(hak,fmt,fmtend,ch) do { \
 	if (fmt >= fmtend) ch = HAK_OOCI_EOF; \
 	else { ch = *(fmt); (fmt)++; }\
-} while(0)
+} while (0)
 
 static HAK_INLINE int format_stack_args (hak_t* hak, hak_fmtout_t* fmtout, hak_ooi_t nargs, int rcv_is_fmtstr)
 {
@@ -2648,7 +2648,7 @@ static HAK_INLINE int format_stack_args (hak_t* hak, hak_fmtout_t* fmtout, hak_o
 				 * i will drop all digits after the fixed point */
 				hak_pushvolat(hak, &arg);
 				nv = hak_truncfpdecval(hak, fa->value, HAK_OOP_TO_SMOOI(fa->scale), 0);
-				hak_popvolat (hak);
+				hak_popvolat(hak);
 				if (!nv)
 				{
 					HAK_LOG1 (hak, HAK_LOG_WARN | HAK_LOG_UNTYPED, "unable to truncate a fixed-point number %O to an integer for output\n", arg);

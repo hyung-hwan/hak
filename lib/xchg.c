@@ -545,7 +545,7 @@ int hak_unmarshalcode (hak_t* hak, hak_code_t* code, hak_xchg_reader_t rdr, void
 					}
 					hak_pushvolat(hak, &v);
 					ns = hak_makefpdec(hak, v, scale);
-					hak_popvolat (hak);
+					hak_popvolat(hak);
 					if (HAK_UNLIKELY(!ns)) goto oops;
 				}
 				if (hak_addliteraltocode(hak, code, ns, 0, HAK_NULL) <= -1) goto oops;
@@ -758,6 +758,6 @@ int hak_addliteraltocode (hak_t* hak, hak_code_t* code, hak_oop_t obj, hak_oow_t
 	/* make read-only an object in the literal table.
 	 * some immutable objects(e.g. literal symbol) don't need this part
 	 * but we just execute it regardless */
-	if (HAK_OOP_IS_POINTER(obj)) HAK_OBJ_SET_FLAGS_RDONLY (obj, 1);
+	if (HAK_OOP_IS_POINTER(obj)) HAK_OBJ_SET_FLAGS_RDONLY(obj, 1);
 	return 0;
 }

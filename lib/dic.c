@@ -66,7 +66,7 @@ static hak_oop_oop_t expand_bucket (hak_t* hak, hak_oop_oop_t oldbuc)
 
 	hak_pushvolat(hak, (hak_oop_t*)&oldbuc);
 	newbuc = (hak_oop_oop_t)hak_makearray(hak, newsz);
-	hak_popvolat (hak);
+	hak_popvolat(hak);
 	if (!newbuc) return HAK_NULL;
 
 	while (oldsz > 0)
@@ -224,7 +224,7 @@ static hak_oop_cons_t find_or_upsert (hak_t* hak, hak_oop_dic_t dic, hak_oop_t k
 		HAK_ASSERT(hak, HAK_IS_COMPILED_BLOCK(hak, value));
 		hak_pushvolat(hak, &key);
 		pair = hak_makecons(hak, (is_method & 1? value: hak->_nil), (is_method & 2? value: hak->_nil));
-		hak_popvolat (hak);
+		hak_popvolat(hak);
 		if (HAK_UNLIKELY(!pair)) goto oops;
 		value = pair;
 	}
@@ -468,7 +468,7 @@ hak_oop_t hak_makedic (hak_t* hak, hak_oow_t inisize)
 
 		hak_pushvolat(hak, (hak_oop_t*)&obj);
 		bucket = (hak_oop_oop_t)hak_makearray(hak, inisize);
-		hak_popvolat (hak);
+		hak_popvolat(hak);
 
 		if (!bucket) obj = HAK_NULL;
 		else obj->bucket = bucket;
@@ -493,7 +493,7 @@ hak_oop_t hak_makedic (hak_t* hak, hak_oow_t inisize)
 
 		hak_pushvolat(hak, (hak_oop_t*)&v);
 		bucket = (hak_oop_oop_t)hak_makearray(hak, inisize);
-		hak_popvolat (hak);
+		hak_popvolat(hak);
 
 		if (HAK_UNLIKELY(!bucket))
 		{
@@ -521,7 +521,7 @@ int hak_walkdic (hak_t* hak, hak_oop_dic_t dic, hak_dic_walker_t walker, void* c
 		if (HAK_IS_CONS(hak, tmp) && walker(hak, dic, (hak_oop_cons_t)tmp, ctx) <= -1) return -1;
 	}
 
-	hak_popvolat (hak);
+	hak_popvolat(hak);
 	return 0;
 }
 

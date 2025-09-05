@@ -578,15 +578,15 @@ struct hak_fpdec_t
 #define HAK_FUNCTION_GET_CODE_BYTE(m) HAK_OBJ_GET_TRAILER_BYTE(m)
 #define HAK_FUNCTION_GET_CODE_SIZE(m) HAK_OBJ_GET_TRAILER_SIZE(m)
 
-#define HAK_FUNCTION_NAMED_INSTVARS 3   /* this excludes literal frames and byte codes */
+#define HAK_FUNCTION_NAMED_INSTVARS 5   /* this excludes literal frames and byte codes */
 typedef struct hak_function_t hak_function_t;
 typedef struct hak_function_t* hak_oop_function_t;
 
-#define HAK_BLOCK_NAMED_INSTVARS 3
+#define HAK_BLOCK_NAMED_INSTVARS 4
 typedef struct hak_block_t hak_block_t;
 typedef struct hak_block_t* hak_oop_block_t;
 
-#define HAK_CONTEXT_NAMED_INSTVARS 10
+#define HAK_CONTEXT_NAMED_INSTVARS 11
 typedef struct hak_context_t hak_context_t;
 typedef struct hak_context_t* hak_oop_context_t;
 
@@ -595,9 +595,11 @@ struct hak_function_t
 	HAK_OBJ_HEADER;
 
 	hak_oop_t         attr_mask; /* smooi */
+	hak_oop_t         name; /* symbol or nil */
 	hak_oop_context_t home; /* home context. nil for the initial function */
 
 	hak_oop_t dbgi; /* byte array containing debug information. nil if not available */
+	hak_oop_t literal_frame_size;
 
 	/* == variable indexed part == */
 	hak_oop_t literal_frame[1]; /* it stores literals. it may not exist */
@@ -614,6 +616,7 @@ struct hak_block_t
 	HAK_OBJ_HEADER;
 
 	hak_oop_t         attr_mask; /* smooi */
+	hak_oop_t         name; /* symbol or nil */
 	hak_oop_context_t home; /* home context */
 	hak_oop_t         ip; /* smooi. instruction pointer where the byte code begins in home->base */
 };
@@ -627,6 +630,7 @@ struct hak_context_t
 
 	/* SmallInteger. */
 	hak_oop_t          attr_mask;
+	hak_oop_t          name; /* symbol or nil. copied from the compiled block.  TODO: is it better to maintain the backward pointer to the compiled block itself? */
 
 	/* SmallInteger, instruction pointer */
 	hak_oop_t          ip;

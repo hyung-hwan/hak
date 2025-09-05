@@ -34,6 +34,7 @@
 #define LOG_INST_5(hak,fmt,a1,a2,a3,a4,a5) HAK_LOG6(hak, DECODE_LOG_MASK, " %06zd " fmt "\n", fetched_instruction_pointer, a1, a2, a3, a4, a5)
 #define LOG_INST_6(hak,fmt,a1,a2,a3,a4,a5,a6) HAK_LOG7(hak, DECODE_LOG_MASK, " %06zd " fmt "\n", fetched_instruction_pointer, a1, a2, a3, a4, a5, a6)
 #define LOG_INST_7(hak,fmt,a1,a2,a3,a4,a5,a6,a7) HAK_LOG8(hak, DECODE_LOG_MASK, " %06zd " fmt "\n", fetched_instruction_pointer, a1, a2, a3, a4, a5, a6, a7)
+#define LOG_INST_8(hak,fmt,a1,a2,a3,a4,a5,a6,a7,a8) HAK_LOG9(hak, DECODE_LOG_MASK, " %06zd " fmt "\n", fetched_instruction_pointer, a1, a2, a3, a4, a5, a6, a7, a8)
 
 
 #define FETCH_BYTE_CODE(hak) (cdptr[ip++])
@@ -703,45 +704,62 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 
 			case HAK_CODE_MAKE_FUNCTION:
 			{
-				hak_oow_t b3, b4;
-				/* b1 - block mask
-				 * b2 - block mask
-				 * b3 - base literal frame start
-				 * b4 - base literal frame end */
+				hak_oow_t b3, b4, x;
+				/* - block mask(extended long)
+				 * - literal frame index to the name symbol(extended long)
+				 * - base literal frame start
+				 * - base literal frame end */
 				FETCH_PARAM_CODE_TO(hak, b1);
+				FETCH_PARAM_CODE_TO(hak, x);
+				b1 = (b1 << (8 * HAK_CODE_LONG_PARAM_SIZE)) | x;
+
+				/* lfindex to name is an extended long parameter */
 				FETCH_PARAM_CODE_TO(hak, b2);
+				FETCH_PARAM_CODE_TO(hak, x);
+				b2 = (b2 << (8 * HAK_CODE_LONG_PARAM_SIZE)) | x;
+
 				FETCH_PARAM_CODE_TO(hak, b3);
 				FETCH_PARAM_CODE_TO(hak, b4);
 
-				b1 = (b1 << (8 * HAK_CODE_LONG_PARAM_SIZE)) | b2;
-				LOG_INST_7 (hak, "make_function %zu %zu %zu %zu %zu %zu %zu",
+				LOG_INST_8 (hak, "make_function %zu %zu %zu %zu %zu %zu %zu %zu",
 					GET_BLK_MASK_INSTA(b1),
 					GET_BLK_MASK_VA(b1),
 					GET_BLK_MASK_NARGS(b1),
 					GET_BLK_MASK_NRVARS(b1),
 					GET_BLK_MASK_NLVARS(b1),
-					b3, b4);
+					b2, b3, b4);
 
 				HAK_ASSERT(hak, b1 >= 0);
 				break;
 			}
 
 			case HAK_CODE_MAKE_BLOCK:
-				/* b1 - block mask
-				 * b2 - block mask */
-				FETCH_PARAM_CODE_TO(hak, b1);
-				FETCH_PARAM_CODE_TO(hak, b2);
-				b1 = (b1 << (8 * HAK_CODE_LONG_PARAM_SIZE)) | b2;
+			{
+				hak_oow_t x;
 
-				LOG_INST_5 (hak, "make_block %zu %zu %zu %zu %zu",
+				/* block mask (extended long)
+				 * literal frame index to the name symbol(extended long)
+				 */
+				FETCH_PARAM_CODE_TO(hak, b1);
+				FETCH_PARAM_CODE_TO(hak, x);
+				b1 = (b1 << (8 * HAK_CODE_LONG_PARAM_SIZE)) | x;
+
+				/* lfindex to name is an extended long parameter */
+				FETCH_PARAM_CODE_TO(hak, b2);
+				FETCH_PARAM_CODE_TO(hak, x);
+				b2 = (b2 << (8 * HAK_CODE_LONG_PARAM_SIZE)) | x;
+
+				LOG_INST_6 (hak, "make_block %zu %zu %zu %zu %zu %zu",
 					GET_BLK_MASK_INSTA(b1),
 					GET_BLK_MASK_VA(b1),
 					GET_BLK_MASK_NARGS(b1),
 					GET_BLK_MASK_NRVARS(b1),
-					GET_BLK_MASK_NLVARS(b1));
+					GET_BLK_MASK_NLVARS(b1),
+					b2);
 
 				HAK_ASSERT(hak, b1 >= 0);
 				break;
+			}
 
 			case HAK_CODE_NOOP:
 				/* do nothing */

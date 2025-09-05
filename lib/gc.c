@@ -892,7 +892,7 @@ static HAK_INLINE void gc_ms_scan_stack (hak_t* hak)
 static HAK_INLINE void gc_ms_mark (hak_t* hak, hak_oop_t oop)
 {
 	gc_ms_mark_object(hak, oop);
-	gc_ms_scan_stack (hak);
+	gc_ms_scan_stack(hak);
 }
 #endif
 
@@ -987,7 +987,7 @@ static HAK_INLINE void gc_ms_mark_roots (hak_t* hak)
 
 	for (cb = hak->cblist; cb; cb = cb->next)
 	{
-		if (cb->on_gc) cb->on_gc (hak);
+		if (cb->on_gc) cb->on_gc(hak);
 	}
 
 #if defined(ENABLE_GCFIN)
@@ -1136,7 +1136,7 @@ void hak_gc (hak_t* hak, int full)
 
 	hak->gci.stack.len = 0;
 	/*hak->gci.stack.max = 0;*/
-	gc_ms_mark_roots (hak);
+	gc_ms_mark_roots(hak);
 
 	if (!full && hak->gci.lazy_sweep)
 	{
@@ -1148,7 +1148,7 @@ void hak_gc (hak_t* hak, int full)
 	}
 	else
 	{
-	    gc_ms_sweep (hak);
+	    gc_ms_sweep(hak);
 	}
 
 	HAK_LOG2 (hak, HAK_LOG_GC | HAK_LOG_INFO, "Finished GC (mark-sweep) - gci.bsz = %zu, gci.stack.max %zu\n", hak->gci.bsz, hak->gci.stack.max);
@@ -1267,7 +1267,7 @@ void hak_gc (hak_t* hak)
 
 	for (cb = hak->cblist; cb; cb = cb->next)
 	{
-		if (cb->gc) cb->gc (hak);
+		if (cb->gc) cb->gc(hak);
 	}
 
 	/* scan the new heap to move referenced objects */

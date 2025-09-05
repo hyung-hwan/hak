@@ -60,7 +60,7 @@ static hak_oop_oop_t expand_bucket (hak_t* hak, hak_oop_oop_t oldbuc)
 
 	hak_pushvolat(hak, (hak_oop_t*)&oldbuc);
 	newbuc = (hak_oop_oop_t)hak_makearray(hak, newsz);
-	hak_popvolat (hak);
+	hak_popvolat(hak);
 	if (!newbuc) return HAK_NULL;
 
 	while (oldsz > 0)

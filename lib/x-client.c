@@ -214,7 +214,7 @@ hak_client_t* hak_client_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_client_p
 
 oops:
 	/* NOTE: pipe should be closed if jump to here is made after pipe() above */
-	if (hak) hak_close (hak);
+	if (hak) hak_close(hak);
 	if (client) HAK_MMGR_FREE (mmgr, client);
 	return HAK_NULL;
 }

@@ -555,7 +555,7 @@ printf ("IO CLOSE SOMETHING...........\n");
 
 				/* writing failure on the socket is a critical failure.
 				 * execution must get aborted */
-				hak_abort (hak);
+				hak_abort(hak);
 				return -1;
 			}
 
@@ -575,7 +575,7 @@ printf ("IO CLOSE SOMETHING...........\n");
 
 				/* writing failure on the socket is a critical failure.
 				 * execution must get aborted */
-				hak_abort (hak);
+				hak_abort(hak);
 				return -1;
 			}
 			outarg->xlen = outarg->len;
@@ -968,8 +968,8 @@ printf ("EXECUTING hak_executing......\n");
 				/* save error message before other calls override erro info */
 				errlen = hak_copyerrbmsg(hak, errmsg, HAK_COUNTOF(errmsg));
 
-				hak_flushudio (hak);
-				hak_clearcode (hak);
+				hak_flushudio(hak);
+				hak_clearcode(hak);
 
 				if (send_bytes(proto, HAK_XPKT_ERROR, errmsg, errlen) <= -1)
 				{
@@ -983,8 +983,8 @@ printf ("EXECUTING hak_executing......\n");
 				hak_bch_t rvbuf[512]; /* TODO make this dynamic in side? */
 				hak_oow_t rvlen;
 
-				hak_flushudio (hak);
-				hak_clearcode (hak);
+				hak_flushudio(hak);
+				hak_clearcode(hak);
 
 				/* TODO or make hak_fmtXXXX  that accepts the output function */
 				rvlen = hak_fmttobcstr(hak, rvbuf, HAK_COUNTOF(rvbuf), "[%O]", retv);
@@ -1187,7 +1187,7 @@ hak_server_t* hak_server_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_server_p
 oops:
 	/* NOTE: pipe should be closed if jump to here is made after pipe() above */
 	if (tmr) hak_tmr_close (tmr);
-	if (hak) hak_close (hak);
+	if (hak) hak_close(hak);
 	if (server) HAK_MMGR_FREE (mmgr, server);
 	return HAK_NULL;
 }
@@ -1545,7 +1545,7 @@ static int init_worker_hak (hak_server_worker_t* worker)
 	return 0;
 
 oops:
-	if (hak) hak_close (hak);
+	if (hak) hak_close(hak);
 	return -1;
 }
 

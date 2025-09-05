@@ -1470,7 +1470,7 @@ static HAK_INLINE void multiply_unsigned_array (const hak_liw_t* x, hak_oow_t xs
 
 #if defined(HAK_BUILD_DEBUG)
 #define CANNOT_KARATSUBA(hak,xs,ys) \
-	((xs) < (hak)->option.karatsuba_cutoff || (ys) < (hak)->option.karatsuba_cutoff || \
+	((xs) <(hak)->option.karatsuba_cutoff || (ys) <(hak)->option.karatsuba_cutoff || \
 	((xs) > (ys) && (ys) <= (((xs) + 1) / 2)) || \
 	((xs) < (ys) && (xs) <= (((ys) + 1) / 2)))
 #else

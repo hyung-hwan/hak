@@ -159,7 +159,7 @@ static HAK_INLINE hak_oow_t szlog2 (hak_oow_t n)
 	 * x = log2(n);
 	 * -------------------------------------------
 	 * 	unsigned int x = 0;
-	 * 	while((n >> x) > 1) ++x;
+	 * 	while ((n >> x) > 1) ++x;
 	 * 	return x;
 	 */
 

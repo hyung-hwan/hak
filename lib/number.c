@@ -273,13 +273,13 @@ hak_oop_t hak_divnums (hak_t* hak, hak_oop_t x, hak_oop_t y)
 		nv = hak_mulints(hak, nv, HAK_SMOOI_TO_OOP(10));
 		if (!nv)
 		{
-			hak_popvolat (hak);
+			hak_popvolat(hak);
 			return HAK_NULL;
 		}
 	}
 
 	nv = hak_divints(hak, nv, yv, 0, HAK_NULL);
-	hak_popvolat (hak);
+	hak_popvolat(hak);
 	if (!nv) return HAK_NULL;
 
 	return hak_makefpdec(hak, nv, xs);
@@ -360,7 +360,7 @@ hak_oop_t hak_sqrtnum (hak_t* hak, hak_oop_t x)
 			v = hak_mulints(hak, v, HAK_SMOOI_TO_OOP(10));
 			if (!v)
 			{
-				hak_popvolat (hak);
+				hak_popvolat(hak);
 				return HAK_NULL;
 			}
 		}

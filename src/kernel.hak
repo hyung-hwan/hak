@@ -152,7 +152,8 @@ fun Z:abc() {
 	printf "%d %d %d\n" a b c ## this is not recognized as ....
 }
 
-fun k () {
+class Q {
+fun(#class) k () {
 k := (Z:basicNew 10) ## #varying is really required? what is the big deal even if you allow it regardless?
 ##k := (Z:new) ## no way to add extra fields.
 k:basicAtPut 2 "hello"
@@ -163,4 +164,16 @@ printf "%O\n" (k:basicAt 20)
 ##k := (Z:new)
 ##k:aaa
 }
-(k)
+}
+
+try {
+(Q:k)
+} catch (e) {
+	printf "EXCEPTION: %O\n" e
+
+	try {
+		throw 10000
+	} catch (e) {
+		printf "EXCEPTION-X: %O\n" e
+	}
+}

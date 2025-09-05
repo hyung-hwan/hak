@@ -602,8 +602,20 @@ ok:
 static HAK_INLINE int add_literal (hak_t* hak, hak_oop_t obj, hak_oow_t* index)
 {
 	hak_oow_t lfbase;
+	int n;
+
 	lfbase = (hak->option.trait & HAK_TRAIT_INTERACTIVE)? hak->c->funblk.info[hak->c->funblk.depth].lfbase: 0;
-	return hak_addliteraltocode(hak, &hak->code, obj, lfbase, index);
+	n = hak_addliteraltocode(hak, &hak->code, obj, lfbase, index);
+	if (n <= -1) return -1;
+	if (*index >= MAX_CODE_PARAM2)
+	{
+		/* most literal-related instructions can't handle index higher than MAX_CODE_PARAM2.
+		 * MAKE_FUNCTION uses MAX_CODE_PARAM2 as an indicator that no name literal is specified.
+		 * To be safe, limit the maximum number of index to MAX_CODE_PARAM2 - 1 */
+		hak_seterrbfmt(hak, HAK_EFLOOD, "literal frame full - %O\n", obj);
+		return -1;
+	}
+	return 0;
 }
 
 /* ========================================================================= */
@@ -676,7 +688,7 @@ int hak_emitbyteinstruction (hak_t* hak, hak_oob_t bc)
 	return emit_byte_instruction(hak, bc, HAK_NULL);
 }*/
 
-static int emit_single_param_instruction (hak_t* hak, int cmd, hak_oow_t param_1, const hak_loc_t* srcloc)
+static int emit_one_param_instruction (hak_t* hak, int cmd, hak_oow_t param_1, const hak_loc_t* srcloc)
 {
 	hak_oob_t bc;
 
@@ -794,7 +806,7 @@ write_long: /* long parameter */
 #if (HAK_CODE_LONG_PARAM_SIZE == 2)
 	if (emit_byte_instruction(hak, bc, srcloc) <= -1 ||
 	    emit_byte_instruction(hak, (param_1 >> 8) & 0xFF, HAK_NULL) <= -1 ||
-	    emit_byte_instruction(hak, param_1 & 0xFF, HAK_NULL) <= -1) return -1;
+	    emit_byte_instruction(hak, (param_1 >> 0) & 0xFF, HAK_NULL) <= -1) return -1;
 #else
 	if (emit_byte_instruction(hak, bc, srcloc) <= -1 ||
 	    emit_byte_instruction(hak, param_1, HAK_NULL) <= -1) return -1;
@@ -821,7 +833,7 @@ write_long2: /* double-long parameter */
 	return 0;
 }
 
-static int emit_double_param_instruction (hak_t* hak, int cmd, hak_oow_t param_1, hak_oow_t param_2, const hak_loc_t* srcloc)
+static int emit_two_param_instruction (hak_t* hak, int cmd, hak_oow_t param_1, hak_oow_t param_2, const hak_loc_t* srcloc)
 {
 	hak_oob_t bc;
 
@@ -851,8 +863,8 @@ static int emit_double_param_instruction (hak_t* hak, int cmd, hak_oow_t param_1
 		 * however the instruction format is the same up to the second
 		 * parameters between MAKE_FUNCTION and MAKE_BLOCK.
 		 */
-		case HAK_CODE_MAKE_BLOCK:
 		case HAK_CODE_MAKE_FUNCTION:
+		case HAK_CODE_MAKE_BLOCK:
 		case HAK_CODE_CALL_R:
 		case HAK_CODE_SEND_R:
 			bc = cmd;
@@ -876,9 +888,9 @@ write_long:
 #if (HAK_CODE_LONG_PARAM_SIZE == 2)
 	if (emit_byte_instruction(hak, bc, srcloc) <= -1 ||
 	    emit_byte_instruction(hak, (param_1 >> 8) & 0xFF, HAK_NULL) <= -1 ||
-	    emit_byte_instruction(hak, param_1 & 0xFF, HAK_NULL) <= -1 ||
+	    emit_byte_instruction(hak, (param_1 >> 0) & 0xFF, HAK_NULL) <= -1 ||
 	    emit_byte_instruction(hak, (param_2 >> 8) & 0xFF, HAK_NULL) <= -1 ||
-	    emit_byte_instruction(hak, param_2 & 0xFF, HAK_NULL) <= -1) return -1;
+	    emit_byte_instruction(hak, (param_2 >> 0) & 0xFF, HAK_NULL) <= -1) return -1;
 #else
 	if (emit_byte_instruction(hak, bc, srcloc) <= -1 ||
 	    emit_byte_instruction(hak, param_1, HAK_NULL) <= -1 ||
@@ -889,6 +901,7 @@ write_long:
 
 static HAK_INLINE int emit_long_param (hak_t* hak, hak_oow_t param)
 {
+	/* generate a long parameter */
 	if (param > MAX_CODE_PARAM)
 	{
 		hak_seterrnum(hak, HAK_ERANGE);
@@ -896,10 +909,34 @@ static HAK_INLINE int emit_long_param (hak_t* hak, hak_oow_t param)
 	}
 
 #if (HAK_CODE_LONG_PARAM_SIZE == 2)
-	return (emit_byte_instruction(hak, param >> 8, HAK_NULL) <= -1 ||
-	        emit_byte_instruction(hak, param & 0xFF, HAK_NULL) <= -1)? -1: 0;
+	/* take up 2 bytes */
+	return (emit_byte_instruction(hak, (param >> 8) & 0xFF, HAK_NULL) <= -1 ||
+	        emit_byte_instruction(hak, (param >> 0) & 0xFF, HAK_NULL) <= -1)? -1: 0;
 #else
+	/* take up 1 byte */
 	return emit_byte_instruction(hak, param_1, HAK_NULL);
+#endif
+}
+
+static HAK_INLINE int emit_extended_long_param (hak_t* hak, hak_oow_t param)
+{
+	/* generate an extended long parameter */
+	if (param > MAX_CODE_PARAM2)
+	{
+		hak_seterrnum(hak, HAK_ERANGE);
+		return -1;
+	}
+
+#if (HAK_CODE_LONG_PARAM_SIZE == 2)
+	/* take up 4 bytes */
+	return (emit_byte_instruction(hak, (param >> 24) & 0xFF, HAK_NULL) <= -1 ||
+	        emit_byte_instruction(hak, (param >> 16) & 0xFF, HAK_NULL) <= -1 ||
+	        emit_byte_instruction(hak, (param >> 8) & 0xFF, HAK_NULL) <= -1 ||
+	        emit_byte_instruction(hak, (param >> 0) & 0xFF, HAK_NULL) <= -1)? -1: 0;
+#else
+	/* take up 2 bytes */
+	return (emit_byte_instruction(hak, (param >> 8) & 0xFF, HAK_NULL) <= -1 ||
+	        emit_byte_instruction(hak, (param >> 0) & 0xFF, HAK_NULL) <= -1)? -1: 0;
 #endif
 }
 
@@ -929,11 +966,11 @@ static int emit_push_literal (hak_t* hak, hak_oop_t obj, const hak_loc_t* srcloc
 
 		if (i >= 0 && i <= MAX_CODE_PARAM)
 		{
-			return emit_single_param_instruction(hak, HAK_CODE_PUSH_INTLIT, i, srcloc);
+			return emit_one_param_instruction(hak, HAK_CODE_PUSH_INTLIT, i, srcloc);
 		}
 		else if (i < 0 && i >= -(hak_ooi_t)MAX_CODE_PARAM)
 		{
-			return emit_single_param_instruction(hak, HAK_CODE_PUSH_NEGINTLIT, -i, srcloc);
+			return emit_one_param_instruction(hak, HAK_CODE_PUSH_NEGINTLIT, -i, srcloc);
 		}
 	}
 	else if (HAK_OOP_IS_CHAR(obj))
@@ -943,11 +980,11 @@ static int emit_push_literal (hak_t* hak, hak_oop_t obj, const hak_loc_t* srcloc
 		i = HAK_OOP_TO_CHAR(obj);
 
 		if (i >= 0 && i <= MAX_CODE_PARAM)
-			return emit_single_param_instruction(hak, HAK_CODE_PUSH_CHARLIT, i, srcloc);
+			return emit_one_param_instruction(hak, HAK_CODE_PUSH_CHARLIT, i, srcloc);
 	}
 
 	if (add_literal(hak, obj, &index) <= -1 ||
-	    emit_single_param_instruction(hak, HAK_CODE_PUSH_LITERAL_0, index, srcloc) <= -1) return -1;
+	    emit_one_param_instruction(hak, HAK_CODE_PUSH_LITERAL_0, index, srcloc) <= -1) return -1;
 
 	return 0;
 }
@@ -984,6 +1021,8 @@ static HAK_INLINE void patch_long_jump (hak_t* hak, hak_ooi_t jip, hak_ooi_t jum
 
 static HAK_INLINE void patch_long_param (hak_t* hak, hak_ooi_t ip, hak_oow_t param)
 {
+	HAK_ASSERT(hak, param <= MAX_CODE_PARAM);
+
 #if (HAK_CODE_LONG_PARAM_SIZE == 2)
 	patch_instruction(hak, ip, param >> 8);
 	patch_instruction(hak, ip + 1, param & 0xFF);
@@ -992,7 +1031,8 @@ static HAK_INLINE void patch_long_param (hak_t* hak, hak_ooi_t ip, hak_oow_t par
 #endif
 }
 
-static HAK_INLINE void patch_double_long_params (hak_t* hak, hak_ooi_t ip, hak_oow_t param_1, hak_oow_t param_2)
+/*
+static HAK_INLINE void patch_two_long_params (hak_t* hak, hak_ooi_t ip, hak_oow_t param_1, hak_oow_t param_2)
 {
 #if (HAK_CODE_LONG_PARAM_SIZE == 2)
 	patch_instruction(hak, ip, param_1 >> 8);
@@ -1004,9 +1044,12 @@ static HAK_INLINE void patch_double_long_params (hak_t* hak, hak_ooi_t ip, hak_o
 	patch_instruction(hak, ip + 1, param_2);
 #endif
 }
+*/
 
-static HAK_INLINE void patch_double_long_params_with_oow (hak_t* hak, hak_ooi_t ip, hak_oow_t param)
+static HAK_INLINE void patch_extended_long_param (hak_t* hak, hak_ooi_t ip, hak_oow_t param)
 {
+	HAK_ASSERT(hak, param <= MAX_CODE_PARAM2);
+
 #if (HAK_CODE_LONG_PARAM_SIZE == 2)
 	patch_instruction(hak, ip,     (param >> 24) & 0xFF);
 	patch_instruction(hak, ip + 1, (param >> 16) & 0xFF);
@@ -1031,20 +1074,20 @@ static int emit_variable_access (hak_t* hak, int mode, const hak_var_info_t* vi,
 	switch (vi->type)
 	{
 		case VAR_INDEXED:
-			return emit_double_param_instruction(hak, inst_map[0][mode], vi->ctx_offset, vi->index_in_ctx, srcloc);
+			return emit_two_param_instruction(hak, inst_map[0][mode], vi->ctx_offset, vi->index_in_ctx, srcloc);
 
 		case VAR_INST:
 			HAK_ASSERT(hak, vi->ctx_offset == 0);
-			return emit_single_param_instruction(hak, inst_map[1][mode], vi->index_in_ctx, srcloc);
+			return emit_one_param_instruction(hak, inst_map[1][mode], vi->index_in_ctx, srcloc);
 
 		case VAR_CLASS_I: /* class variable in initialization scope */
 			HAK_ASSERT(hak, vi->ctx_offset == 0);
-			return emit_single_param_instruction(hak, inst_map[2][mode], vi->index_in_ctx, srcloc);
+			return emit_one_param_instruction(hak, inst_map[2][mode], vi->index_in_ctx, srcloc);
 
 		case VAR_CLASS_CM: /* class variable in class method scope */
 		case VAR_CLASS_IM: /* class variable in instance method scope */
 			HAK_ASSERT(hak, vi->ctx_offset == 0);
-			return emit_single_param_instruction(hak, inst_map[3][mode], vi->index_in_ctx, srcloc);
+			return emit_one_param_instruction(hak, inst_map[3][mode], vi->index_in_ctx, srcloc);
 	}
 
 	return -1;
@@ -1250,8 +1293,8 @@ static void clear_funblk_inners (hak_t* hak)
 {
 	hak_funblk_info_t* fbi;
 	fbi = &hak->c->funblk.info[hak->c->funblk.depth];
-	while (hak->c->ctlblk.depth > fbi->ctlblk_base) pop_ctlblk (hak);
-	while (!(fbi->clsblk_base <= -1 && fbi->clsblk_top <= -1)) pop_clsblk (hak);
+	while (hak->c->ctlblk.depth > fbi->ctlblk_base) pop_ctlblk(hak);
+	while (!(fbi->clsblk_base <= -1 && fbi->clsblk_top <= -1)) pop_clsblk(hak);
 }
 
 static void pop_funblk (hak_t* hak)
@@ -1260,7 +1303,7 @@ static void pop_funblk (hak_t* hak)
 
 	HAK_ASSERT(hak, hak->c->funblk.depth >= 0);
 
-	clear_funblk_inners (hak);
+	clear_funblk_inners(hak);
 	fbi = &hak->c->funblk.info[hak->c->funblk.depth];
 	/* if pop_ctlblk() has been called properly, the following assertion must be true
 	 * and the assignment on the next line isn't necessary */
@@ -1301,7 +1344,7 @@ static void pop_funblk (hak_t* hak)
 		 * and it's split to two intruction parameters when used with MAKE_BLOCK and MAKE_FUNCTION.
 		 * the INSTA bit is on if fbi->fun_type == FUN_CIM */
 		attr_mask = ENCODE_BLK_MASK(((fbi->fun_type & 0xFF) == FUN_CIM), fbi->tmpr_va, fbi->tmpr_nargs, fbi->tmpr_nrvars, fbi->tmpr_nlvars);
-		patch_double_long_params_with_oow(hak, fbi->make_inst_pos + 1, attr_mask);
+		patch_extended_long_param(hak, fbi->make_inst_pos + 1, attr_mask);
 	}
 }
 
@@ -1375,10 +1418,10 @@ static HAK_INLINE void pop_cframe (hak_t* hak)
 }
 
 #define PUSH_CFRAME(hak,opcode,operand) \
-	do { if (push_cframe(hak,opcode,operand) <= -1) return -1; } while(0)
+	do { if (push_cframe(hak,opcode,operand) <= -1) return -1; } while (0)
 
 #define INSERT_CFRAME(hak,index,opcode,operand) \
-	do { if (insert_cframe(hak,index,opcode,operand) <= -1) return -1; } while(0)
+	do { if (insert_cframe(hak,index,opcode,operand) <= -1) return -1; } while (0)
 
 #define POP_CFRAME(hak) pop_cframe(hak)
 
@@ -1395,14 +1438,14 @@ static HAK_INLINE void pop_cframe (hak_t* hak)
 		hak_cframe_t* _cf = GET_TOP_CFRAME(hak); \
 		_cf->opcode = _opcode; \
 		_cf->operand = _operand; \
-	} while(0)
+	} while (0)
 
 #define SWITCH_CFRAME(hak,_index,_opcode,_operand) \
 	do { \
 		hak_cframe_t* _cf = GET_CFRAME(hak,_index); \
 		_cf->opcode = _opcode; \
 		_cf->operand = _operand; \
-	} while(0)
+	} while (0)
 
 static int push_subcframe (hak_t* hak, int opcode, hak_cnode_t* operand)
 {
@@ -1435,7 +1478,7 @@ static HAK_INLINE hak_cframe_t* find_cframe_from_top (hak_t* hak, int opcode)
 }
 
 #define PUSH_SUBCFRAME(hak,opcode,operand) \
-	do { if (push_subcframe(hak,opcode,operand) <= -1) return -1; } while(0)
+	do { if (push_subcframe(hak,opcode,operand) <= -1) return -1; } while (0)
 
 #define GET_SUBCFRAME(hak) (&hak->c->cfs.ptr[hak->c->cfs.top - 1])
 
@@ -1805,7 +1848,7 @@ static HAK_INLINE int compile_and_p1 (hak_t* hak)
 	jump_inst_pos = hak->code.bc.len;
 
 	/* this conditional jump make evaluation short-circuited. the actual jump point is to be patched in compile_and_p2() */
-	if (emit_single_param_instruction(hak, HAK_CODE_JUMP_FORWARD_IF_FALSE, MAX_CODE_JUMP, HAK_CNODE_GET_LOC(obj)) <= -1) return -1;
+	if (emit_one_param_instruction(hak, HAK_CODE_JUMP_FORWARD_IF_FALSE, MAX_CODE_JUMP, HAK_CNODE_GET_LOC(obj)) <= -1) return -1;
 	if (emit_byte_instruction(hak, HAK_CODE_POP_STACKTOP, HAK_CNODE_GET_LOC(obj)) <= -1) return -1;
 
 	expr = HAK_CNODE_CONS_CAR(obj);
@@ -1900,7 +1943,7 @@ static HAK_INLINE int compile_or_p1 (hak_t* hak)
 	jump_inst_pos = hak->code.bc.len;
 
 	/* this conditional jump makes evaluation short-circuited. the actual jump point is to be patched in compile_or_p2() */
-	if (emit_single_param_instruction(hak, HAK_CODE_JUMP_FORWARD_IF_TRUE, MAX_CODE_JUMP, HAK_CNODE_GET_LOC(obj)) <= -1) return -1;
+	if (emit_one_param_instruction(hak, HAK_CODE_JUMP_FORWARD_IF_TRUE, MAX_CODE_JUMP, HAK_CNODE_GET_LOC(obj)) <= -1) return -1;
 	if (emit_byte_instruction(hak, HAK_CODE_POP_STACKTOP, HAK_CNODE_GET_LOC(obj)) <= -1) return -1;
 
 	expr = HAK_CNODE_CONS_CAR(obj);
@@ -2001,7 +2044,7 @@ static HAK_INLINE int emit_plus (hak_t* hak)
 
 	if (emit_byte_instruction(hak, HAK_CODE_PLUS, HAK_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
 
-	POP_CFRAME (hak);
+	POP_CFRAME(hak);
 	return 0;
 }
 
@@ -2078,12 +2121,12 @@ inside_loop:
 			HAK_ASSERT(hak, hak->code.bc.len < HAK_SMOOI_MAX);
 			jump_inst_pos = hak->code.bc.len;
 
-			if (emit_single_param_instruction(hak, HAK_CODE_JUMP_FORWARD_0, MAX_CODE_JUMP, HAK_CNODE_GET_LOC(cmd)) <= -1) return -1;
+			if (emit_one_param_instruction(hak, HAK_CODE_JUMP_FORWARD_0, MAX_CODE_JUMP, HAK_CNODE_GET_LOC(cmd)) <= -1) return -1;
 			INSERT_CFRAME(hak, i, COP_COMPILE_BREAK_P1, cmd);
 			cf = GET_CFRAME(hak, i);
 			cf->u._break.jump_inst_pos = jump_inst_pos;
 
-			POP_CFRAME (hak);
+			POP_CFRAME(hak);
 			return 0;
 		}
 	}
@@ -2116,7 +2159,7 @@ static int compile_break_p1 (hak_t* hak)
 	HAK_ASSERT(hak, jump_offset <= MAX_CODE_JUMP * 2);
 	patch_long_jump(hak, jip, jump_offset);
 
-	POP_CFRAME (hak);
+	POP_CFRAME(hak);
 	return 0;
 }
 
@@ -2182,9 +2225,9 @@ inside_loop:
 			HAK_ASSERT(hak, hak->code.bc.len < HAK_SMOOI_MAX);
 			jump_offset = hak->code.bc.len - tcf->u.post_while.cond_pos + 1;
 			if (jump_offset > 3) jump_offset += HAK_CODE_LONG_PARAM_SIZE;
-			if (emit_single_param_instruction(hak, HAK_CODE_JUMP_BACKWARD_0, jump_offset, HAK_CNODE_GET_LOC(cmd)) <= -1) return -1;
+			if (emit_one_param_instruction(hak, HAK_CODE_JUMP_BACKWARD_0, jump_offset, HAK_CNODE_GET_LOC(cmd)) <= -1) return -1;
 
-			POP_CFRAME (hak);
+			POP_CFRAME(hak);
 			return 0;
 		}
 	}
@@ -2356,7 +2399,7 @@ static int compile_do_p1 (hak_t* hak)
 	 */
 	kill_temporary_variables(hak, cf->u.post_do.lvar_start, cf->u.post_do.lvar_end);
 
-	POP_CFRAME (hak);
+	POP_CFRAME(hak);
 	return 0;
 }
 
@@ -2439,7 +2482,7 @@ static HAK_INLINE int patch_nearest_post_if_body (hak_t* hak, hak_cnode_t* cmd)
 	/* emit jump_forward before the beginning of the else block.
 	 * this is to make the earlier if or elif block to skip
 	 * the else part. it is to be patched in post_else_body(). */
-	if (emit_single_param_instruction(hak, HAK_CODE_JUMP_FORWARD_0, MAX_CODE_JUMP, HAK_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+	if (emit_one_param_instruction(hak, HAK_CODE_JUMP_FORWARD_0, MAX_CODE_JUMP, HAK_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
 
 	/* HAK_CODE_LONG_PARAM_SIZE + 1 => size of the long JUMP_FORWARD instruction */
 	jump_offset = hak->code.bc.len - jip - (HAK_CODE_LONG_PARAM_SIZE + 1);
@@ -2869,7 +2912,7 @@ static int compile_class (hak_t* hak, hak_cnode_t* src)
 		 * this provides performance advantage at the execution time because
 		 * the dictionary doesn't need to be searched for the object.  */
 		if (add_literal(hak, cons, &index) <= -1 ||
-		    emit_single_param_instruction(hak, HAK_CODE_PUSH_LITERAL_0, index, HAK_CNODE_GET_LOC(class_name)) <= -1) return -1;
+		    emit_one_param_instruction(hak, HAK_CODE_PUSH_LITERAL_0, index, HAK_CNODE_GET_LOC(class_name)) <= -1) return -1;
 	#endif
 	}
 	else
@@ -2877,7 +2920,7 @@ static int compile_class (hak_t* hak, hak_cnode_t* src)
 		/* push nil for class name of an anonymous class */
 		if (emit_byte_instruction(hak, HAK_CODE_PUSH_NIL, HAK_CNODE_GET_LOC(cmd)) <= -1) return -1;
 	}
-	POP_CFRAME (hak);
+	POP_CFRAME(hak);
 
 	PUSH_CFRAME(hak, COP_COMPILE_CLASS_P2, class_name); /* 3 - use class name for assignment */
 	cf = GET_TOP_CFRAME(hak);
@@ -2931,8 +2974,8 @@ static HAK_INLINE int compile_class_p1 (hak_t* hak)
 	}
 
 	/* emit placeholder instructions to be patched in compile_class_p2() */
-	if (emit_single_param_instruction(hak, HAK_CODE_PUSH_LITERAL_0, MAX_CODE_PARAM2, &cf->u._class.start_loc) <= -1) return -1;
-	if (emit_single_param_instruction(hak, HAK_CODE_PUSH_LITERAL_0, MAX_CODE_PARAM2, &cf->u._class.start_loc) <= -1) return -1;
+	if (emit_one_param_instruction(hak, HAK_CODE_PUSH_LITERAL_0, MAX_CODE_PARAM2, &cf->u._class.start_loc) <= -1) return -1;
+	if (emit_one_param_instruction(hak, HAK_CODE_PUSH_LITERAL_0, MAX_CODE_PARAM2, &cf->u._class.start_loc) <= -1) return -1;
 
 	if (check_block_expression_as_body(hak, obj, cf->u._class.cmd_cnode, FOR_CLASS) <= -1) return -1;
 
@@ -3021,7 +3064,7 @@ static HAK_INLINE int compile_class_p2 (hak_t* hak)
 		obj = hak_makestring(hak, cbi->ivars.ptr, cbi->ivars.len);
 		if (HAK_UNLIKELY(!obj)) return -1;
 		if (add_literal(hak, obj, &index) <= -1) return -1;
-		patch_double_long_params_with_oow(hak, patch_pos, index);
+		patch_extended_long_param(hak, patch_pos, index);
 	}
 	else
 	{
@@ -3043,7 +3086,7 @@ static HAK_INLINE int compile_class_p2 (hak_t* hak)
 		obj = hak_makestring(hak, cbi->cvars.ptr, cbi->cvars.len);
 		if (HAK_UNLIKELY(!obj)) return -1;
 		if (add_literal(hak, obj, &index) <= -1) return -1;
-		patch_double_long_params_with_oow(hak, patch_pos, index);
+		patch_extended_long_param(hak, patch_pos, index);
 	}
 	else
 	{
@@ -3054,8 +3097,8 @@ static HAK_INLINE int compile_class_p2 (hak_t* hak)
 			patch_instruction(hak, patch_pos, HAK_CODE_NOOP);
 	}
 
-	pop_ctlblk (hak);
-	pop_clsblk (hak);  /* end of the class block */
+	pop_ctlblk(hak);
+	pop_clsblk(hak);  /* end of the class block */
 
 	if (emit_byte_instruction(hak, HAK_CODE_CLASS_PEXIT, &class_loc) <= -1) return -1; /* pop + exit */
 
@@ -3069,7 +3112,7 @@ static HAK_INLINE int compile_class_p2 (hak_t* hak)
 	}
 	else
 	{
-		POP_CFRAME (hak);
+		POP_CFRAME(hak);
 	}
 
 	return 0;
@@ -3178,9 +3221,10 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 {
 	hak_cnode_t* cmd, * next;
 	hak_oow_t va, nargs, nrvars, nlvars;
-	hak_ooi_t jump_inst_pos, lfbase_pos, lfsize_pos;
+	hak_ooi_t jump_inst_pos, lfsize_pos;
 	hak_oow_t saved_tv_wcount, tv_dup_start;
 	hak_cnode_t* fun_name;
+	hak_ooi_t fun_name_lfindex;
 	hak_cnode_t* class_name;
 	hak_cnode_t* attr_list;
 	hak_cnode_t* arg_list;
@@ -3596,43 +3640,60 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 		hak, HAK_CNODE_GET_LOC(src), va, nargs, nrvars, nlvars, hak->c->tv.wcount,
 		hak->c->tv.s.len, hak->code.bc.len, hak->code.lit.len, fun_type) <= -1) return -1;
 
+	fun_name_lfindex = MAX_CODE_PARAM2; /* this maximum value indicates no function name */
+	if (fun_name)
+	{
+		hak_oop_t sym;
+		sym = hak_makesymbol(hak, HAK_CNODE_GET_TOKPTR(fun_name), HAK_CNODE_GET_TOKLEN(fun_name));
+		if (HAK_UNLIKELY(!sym)) return -1;
+		if (add_literal(hak, sym, &fun_name_lfindex) <= -1) return -1;
+	}
+
 	if (hak->option.trait & HAK_TRAIT_INTERACTIVE)
 	{
-		/* MAKE_FUNCTION attr_mask_1 attr_mask_2 lfbase lfsize */
-		if (emit_double_param_instruction(hak, HAK_CODE_MAKE_FUNCTION, 0, 0, HAK_CNODE_GET_LOC(cmd)) <= -1) return -1;
-		lfbase_pos = hak->code.bc.len;
-		if (emit_long_param(hak, hak->code.lit.len - hak->c->funblk.info[hak->c->funblk.depth - 1].lfbase) <= -1) return -1; /* lfbase(literal frame base) */
+		/* MAKE_FUNCTION attr_mask_1 attr_mask_2 name_lfindex lfbase lfsize */
+		hak_oow_t lfbase;
+
+		lfbase = hak->code.lit.len - hak->c->funblk.info[hak->c->funblk.depth - 1].lfbase;
+		if (lfbase > MAX_CODE_PARAM2)
+		{
+			hak_seterrbfmt(hak, HAK_ERANGE, "literal frame base too large");
+			return -1;
+		}
+
+		if (emit_two_param_instruction(hak, HAK_CODE_MAKE_FUNCTION, 0, 0, HAK_CNODE_GET_LOC(cmd)) <= -1) return -1;
+		if (emit_extended_long_param(hak, fun_name_lfindex) <= -1) return -1;
+		if (emit_long_param(hak, lfbase) <= -1) return -1; /* lfbase(literal frame base) */
 		lfsize_pos = hak->code.bc.len; /* literal frame size */
 		if (emit_long_param(hak, 0) <= -1) return -1; /* place holder for lfsize */
 	}
 	else
 	{
 		/* MAKE_BLOCK attr_mask_1 attr_mask_2 - will patch attr_mask in pop_funblk() */
-		if (emit_double_param_instruction(hak, HAK_CODE_MAKE_BLOCK, 0, 0, HAK_CNODE_GET_LOC(cmd)) <= -1) return -1;
+		if (emit_two_param_instruction(hak, HAK_CODE_MAKE_BLOCK, 0, 0, HAK_CNODE_GET_LOC(cmd)) <= -1) return -1;
+		if (emit_extended_long_param(hak, fun_name_lfindex) <= -1) return -1;
 	}
 
 	HAK_ASSERT(hak, hak->code.bc.len < HAK_SMOOI_MAX);  /* guaranteed in emit_byte_instruction() */
 	jump_inst_pos = hak->code.bc.len;
-	/* specifying MAX_CODE_JUMP causes emit_single_param_instruction() to
+	/* specifying MAX_CODE_JUMP causes emit_one_param_instruction() to
 	 * produce the long jump instruction (HAK_CODE_JUMP_FORWARD_X) */
-	if (emit_single_param_instruction(hak, HAK_CODE_JUMP_FORWARD_0, MAX_CODE_JUMP, HAK_CNODE_GET_LOC(cmd)) <= -1) return -1;
+	if (emit_one_param_instruction(hak, HAK_CODE_JUMP_FORWARD_0, MAX_CODE_JUMP, HAK_CNODE_GET_LOC(cmd)) <= -1) return -1;
 
 	SWITCH_TOP_CFRAME(hak, COP_COMPILE_OBJECT_LIST, fun_body); /* 1 */
 	PUSH_SUBCFRAME(hak, COP_POST_FUN, fun_name); /* 3*/
 	cf = GET_SUBCFRAME(hak);
 	cf->u.fun.fun_type = fun_type;
 	cf->u.fun.class_name = class_name;
+	cf->u.fun.jump_inst_pos = jump_inst_pos;
+	if (hak->option.trait & HAK_TRAIT_INTERACTIVE) cf->u.fun.lfsize_pos = lfsize_pos;
 
 	PUSH_SUBCFRAME(hak, COP_EMIT_FUN, src); /* 2 */
 	cf = GET_SUBCFRAME(hak);
 	cf->u.fun.fun_type = fun_type;
+	cf->u.fun.class_name = class_name;
 	cf->u.fun.jump_inst_pos = jump_inst_pos;
-
-	if (hak->option.trait & HAK_TRAIT_INTERACTIVE)
-	{
-		cf->u.fun.lfbase_pos = lfbase_pos;
-		cf->u.fun.lfsize_pos = lfsize_pos;
-	}
+	if (hak->option.trait & HAK_TRAIT_INTERACTIVE) cf->u.fun.lfsize_pos = lfsize_pos;
 
 	return 0;
 }
@@ -3843,7 +3904,7 @@ static int compile_var (hak_t* hak, hak_cnode_t* src)
 	 *       remove generating this instruction after having fixed the problem in that function */
 	if (emit_byte_instruction(hak, HAK_CODE_PUSH_NIL, HAK_CNODE_GET_LOC(cmd)) <= -1) return -1;
 
-	POP_CFRAME (hak);
+	POP_CFRAME(hak);
 	return 0;
 
 
@@ -3905,7 +3966,7 @@ static int compile_return (hak_t* hak, hak_cnode_t* src, int ret_from_home)
 
 /* TODO: pop stack if this is not the first statement... */
 		if (emit_byte_instruction(hak, HAK_CODE_PUSH_RETURN_R, HAK_CNODE_GET_LOC(tmp)) <= -1) return -1;
-		POP_CFRAME (hak);
+		POP_CFRAME(hak);
 	}
 	else
 	{
@@ -4193,7 +4254,7 @@ static int compile_try (hak_t* hak, hak_cnode_t* src)
 /* TODO: HAK_TRAIT_INTERACTIVE??? */
 
 	jump_inst_pos = hak->code.bc.len;
-	if (emit_single_param_instruction(hak, HAK_CODE_TRY_ENTER, MAX_CODE_JUMP, HAK_CNODE_GET_LOC(cmd)) <= -1) return -1;
+	if (emit_one_param_instruction(hak, HAK_CODE_TRY_ENTER, MAX_CODE_JUMP, HAK_CNODE_GET_LOC(cmd)) <= -1) return -1;
 
 	if (check_block_expression_as_body(hak, obj, cmd, FOR_TRY) <= -1) return -1;
 
@@ -4230,7 +4291,7 @@ static HAK_INLINE int patch_nearest_post_try (hak_t* hak, hak_ooi_t* catch_skip_
 	if (emit_byte_instruction(hak, HAK_CODE_TRY_EXIT, HAK_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
 
 	*catch_skip_jip = hak->code.bc.len;
-	if (emit_single_param_instruction(hak, HAK_CODE_JUMP_FORWARD_0,  MAX_CODE_JUMP, HAK_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+	if (emit_one_param_instruction(hak, HAK_CODE_JUMP_FORWARD_0,  MAX_CODE_JUMP, HAK_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
 
 	/* HAK_CODE_LONG_PARAM_SIZE + 1 => size of the long JUMP_FORWARD instruction */
 	block_code_size = hak->code.bc.len - jip - (HAK_CODE_LONG_PARAM_SIZE + 1);
@@ -4355,8 +4416,8 @@ static HAK_INLINE int compile_catch (hak_t* hak)
 static HAK_INLINE int post_try (hak_t* hak)
 {
 /* TODO: anything else? */
-	pop_ctlblk (hak);
-	POP_CFRAME (hak);
+	pop_ctlblk(hak);
+	POP_CFRAME(hak);
 	return 0;
 }
 
@@ -4395,7 +4456,7 @@ static HAK_INLINE int post_catch (hak_t* hak)
 	 * the variable entity is still be accounted into the local variable list. */
 	kill_temporary_variable_at_offset(hak, cf->u.post_catch.exarg_offset);
 
-	POP_CFRAME (hak);
+	POP_CFRAME(hak);
 	return 0;
 }
 
@@ -5068,7 +5129,7 @@ static HAK_INLINE int compile_symbol (hak_t* hak, hak_cnode_t* obj)
 
 		/* add the entire cons pair to the literal frame */
 		if (add_literal(hak, cons, &index) <= -1 ||
-		    emit_single_param_instruction(hak, HAK_CODE_PUSH_OBJECT_0, index, HAK_CNODE_GET_LOC(obj)) <= -1) return -1;
+		    emit_one_param_instruction(hak, HAK_CODE_PUSH_OBJECT_0, index, HAK_CNODE_GET_LOC(obj)) <= -1) return -1;
 
 		return 0;
 	}
@@ -5194,17 +5255,17 @@ static HAK_INLINE int compile_dsymbol (hak_t* hak, hak_cnode_t* obj)
 				break;
 
 			default:
-				hak_popvolat (hak);
+				hak_popvolat(hak);
 				hak_seterrbfmt(hak, HAK_EINVAL, "invalid pfbase type - %d\n", pfbase->type);
 				return -1;
 		}
 
 		if (!val || !(cons = (hak_oop_t)hak_putatsysdic(hak, sym, val)))
 		{
-			hak_popvolat (hak);
+			hak_popvolat(hak);
 			return -1;
 		}
-		hak_popvolat (hak);
+		hak_popvolat(hak);
 
 		/* make this dotted symbol special that it can't get changed
 		 * to a different value */
@@ -5212,7 +5273,7 @@ static HAK_INLINE int compile_dsymbol (hak_t* hak, hak_cnode_t* obj)
 	}
 
 	if (add_literal(hak, cons, &index) <= -1 ||
-	    emit_single_param_instruction(hak, HAK_CODE_PUSH_OBJECT_0, index, HAK_CNODE_GET_LOC(obj)) <= -1) return -1;
+	    emit_one_param_instruction(hak, HAK_CODE_PUSH_OBJECT_0, index, HAK_CNODE_GET_LOC(obj)) <= -1) return -1;
 
 	return 0;
 }
@@ -5436,7 +5497,7 @@ static int compile_symbol_literal (hak_t* hak)
 	if (HAK_UNLIKELY(!lit)) return -1;
 
 	if (emit_push_literal(hak, lit, HAK_CNODE_GET_LOC(oprnd)) <= -1) return -1;
-	POP_CFRAME (hak);
+	POP_CFRAME(hak);
 	return 0;
 }
 
@@ -5611,19 +5672,19 @@ redo:
 					break;
 
 				case HAK_CONCODE_ARRAY:
-					if (emit_single_param_instruction(hak, HAK_CODE_MAKE_ARRAY, 0, HAK_CNODE_GET_LOC(oprnd)) <= -1) return -1;
+					if (emit_one_param_instruction(hak, HAK_CODE_MAKE_ARRAY, 0, HAK_CNODE_GET_LOC(oprnd)) <= -1) return -1;
 					goto done;
 
 				case HAK_CONCODE_BYTEARRAY:
-					if (emit_single_param_instruction(hak, HAK_CODE_MAKE_BYTEARRAY, 0, HAK_CNODE_GET_LOC(oprnd)) <= -1) return -1;
+					if (emit_one_param_instruction(hak, HAK_CODE_MAKE_BYTEARRAY, 0, HAK_CNODE_GET_LOC(oprnd)) <= -1) return -1;
 					goto done;
 
 				case HAK_CONCODE_CHARARRAY:
-					if (emit_single_param_instruction(hak, HAK_CODE_MAKE_CHARARRAY, 0, HAK_CNODE_GET_LOC(oprnd)) <= -1) return -1;
+					if (emit_one_param_instruction(hak, HAK_CODE_MAKE_CHARARRAY, 0, HAK_CNODE_GET_LOC(oprnd)) <= -1) return -1;
 					goto done;
 
 				case HAK_CONCODE_DIC:
-					if (emit_single_param_instruction(hak, HAK_CODE_MAKE_DIC, 16, HAK_CNODE_GET_LOC(oprnd)) <= -1) return -1;
+					if (emit_one_param_instruction(hak, HAK_CODE_MAKE_DIC, 16, HAK_CNODE_GET_LOC(oprnd)) <= -1) return -1;
 					goto done;
 
 				case HAK_CONCODE_QLIST:
@@ -5675,7 +5736,7 @@ literal:
 	if (emit_push_literal(hak, lit, HAK_CNODE_GET_LOC(oprnd)) <= -1) return -1;
 
 done:
-	POP_CFRAME (hak);
+	POP_CFRAME(hak);
 	return 0;
 }
 
@@ -5739,7 +5800,7 @@ static int compile_object_list (hak_t* hak)
 
 	if (!oprnd)
 	{
-		POP_CFRAME (hak);
+		POP_CFRAME(hak);
 	}
 	else
 	{
@@ -5853,7 +5914,7 @@ static int compile_array_list (hak_t* hak)
 
 	if (!oprnd)
 	{
-		POP_CFRAME (hak);
+		POP_CFRAME(hak);
 	}
 	else
 	{
@@ -5899,7 +5960,7 @@ static int compile_pure_array_list (hak_t* hak)
 
 	if (!oprnd)
 	{
-		POP_CFRAME (hak);
+		POP_CFRAME(hak);
 	}
 	else
 	{
@@ -5953,7 +6014,7 @@ static int compile_dic_list (hak_t* hak)
 
 	if (!oprnd)
 	{
-		POP_CFRAME (hak);
+		POP_CFRAME(hak);
 	}
 	else
 	{
@@ -6002,7 +6063,7 @@ static int compile_qlist (hak_t* hak)
 
 	if (!oprnd)
 	{
-		POP_CFRAME (hak);
+		POP_CFRAME(hak);
 	}
 	else
 	{
@@ -6056,7 +6117,7 @@ static HAK_INLINE int post_if_cond (hak_t* hak)
 	HAK_ASSERT(hak, hak->code.bc.len < HAK_SMOOI_MAX);
 	jump_inst_pos = hak->code.bc.len;
 
-	if (emit_single_param_instruction(hak, HAK_CODE_JUMP_FORWARD_IF_FALSE, MAX_CODE_JUMP, &cf->u.post_if.start_loc) <= -1) return -1;
+	if (emit_one_param_instruction(hak, HAK_CODE_JUMP_FORWARD_IF_FALSE, MAX_CODE_JUMP, &cf->u.post_if.start_loc) <= -1) return -1;
 
 	/* to drop the result of the conditional when it is true */
 	if (emit_byte_instruction(hak, HAK_CODE_POP_STACKTOP, &cf->u.post_if.start_loc) <= -1) return -1;
@@ -6110,7 +6171,7 @@ static HAK_INLINE int post_if_body (hak_t* hak)
 	}
 	patch_long_jump(hak, jip, jump_offset);
 
-	POP_CFRAME (hak);
+	POP_CFRAME(hak);
 	return 0;
 }
 
@@ -6150,7 +6211,7 @@ static HAK_INLINE int post_while_cond (hak_t* hak)
 		next_cop = COP_POST_WHILE_BODY;
 	}
 
-	if (emit_single_param_instruction(hak, jump_inst, MAX_CODE_JUMP, HAK_CNODE_GET_LOC(cond)) <= -1) return -1;
+	if (emit_one_param_instruction(hak, jump_inst, MAX_CODE_JUMP, HAK_CNODE_GET_LOC(cond)) <= -1) return -1;
 	if (emit_byte_instruction(hak, HAK_CODE_POP_STACKTOP, HAK_CNODE_GET_LOC(cond)) <= -1) return -1;
 
 	HAK_ASSERT(hak, hak->code.bc.len < HAK_SMOOI_MAX);
@@ -6204,7 +6265,7 @@ static HAK_INLINE int post_while_body (hak_t* hak)
 	HAK_ASSERT(hak, hak->code.bc.len < HAK_SMOOI_MAX);
 	jump_offset = hak->code.bc.len - cf->u.post_while.cond_pos + 1;
 	if (jump_offset > 3) jump_offset += HAK_CODE_LONG_PARAM_SIZE;
-	if (emit_single_param_instruction(hak, HAK_CODE_JUMP_BACKWARD_0, jump_offset, HAK_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+	if (emit_one_param_instruction(hak, HAK_CODE_JUMP_BACKWARD_0, jump_offset, HAK_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
 
 	jip = cf->u.post_while.jump_inst_pos;
 	/* HAK_CODE_LONG_PARAM_SIZE + 1 => size of the long JUMP_FORWARD_IF_FALSE/JUMP_FORWARD_IF_TRUE instruction */
@@ -6216,10 +6277,10 @@ static HAK_INLINE int post_while_body (hak_t* hak)
 	}
 	patch_long_jump(hak, jip, jump_offset);
 
-	POP_CFRAME (hak);
+	POP_CFRAME(hak);
 
 	HAK_ASSERT(hak, hak->c->ctlblk.info[hak->c->ctlblk.depth]._type == HAK_CTLBLK_TYPE_LOOP);
-	pop_ctlblk (hak);
+	pop_ctlblk(hak);
 
 	return 0;
 }
@@ -6238,14 +6299,14 @@ static HAK_INLINE int emit_call (hak_t* hak)
 
 	if (cf->u.call.nrets > 0)
 	{
-		n = emit_double_param_instruction(hak, HAK_CODE_CALL_R, cf->u.call.index, cf->u.call.nrets, HAK_CNODE_GET_LOC(cf->operand));
+		n = emit_two_param_instruction(hak, HAK_CODE_CALL_R, cf->u.call.index, cf->u.call.nrets, HAK_CNODE_GET_LOC(cf->operand));
 	}
 	else
 	{
-		n = emit_single_param_instruction(hak, HAK_CODE_CALL_0, cf->u.call.index, HAK_CNODE_GET_LOC(cf->operand));
+		n = emit_one_param_instruction(hak, HAK_CODE_CALL_0, cf->u.call.index, HAK_CNODE_GET_LOC(cf->operand));
 	}
 
-	POP_CFRAME (hak);
+	POP_CFRAME(hak);
 	return n;
 }
 
@@ -6259,7 +6320,7 @@ static HAK_INLINE int emit_push_nil (hak_t* hak)
 	HAK_ASSERT(hak, cf->operand != HAK_NULL);
 
 	n = emit_byte_instruction(hak, HAK_CODE_PUSH_NIL, HAK_CNODE_GET_LOC(cf->operand));
-	POP_CFRAME (hak);
+	POP_CFRAME(hak);
 	return n;
 }
 
@@ -6276,7 +6337,7 @@ static HAK_INLINE int emit_push_symbol (hak_t* hak)
 	if (HAK_UNLIKELY(!lit)) return -1;
 	if (emit_push_literal(hak, lit, HAK_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
 
-	POP_CFRAME (hak);
+	POP_CFRAME(hak);
 	return 0;
 }
 
@@ -6291,14 +6352,14 @@ static HAK_INLINE int emit_send (hak_t* hak)
 
 	if (cf->u.sendmsg.nrets > 0)
 	{
-		n = emit_double_param_instruction(hak, (cf->u.sendmsg.to_super? HAK_CODE_SEND_TO_SUPER_R: HAK_CODE_SEND_R), cf->u.sendmsg.nargs, cf->u.sendmsg.nrets, HAK_CNODE_GET_LOC(cf->operand));
+		n = emit_two_param_instruction(hak, (cf->u.sendmsg.to_super? HAK_CODE_SEND_TO_SUPER_R: HAK_CODE_SEND_R), cf->u.sendmsg.nargs, cf->u.sendmsg.nrets, HAK_CNODE_GET_LOC(cf->operand));
 	}
 	else
 	{
-		n = emit_single_param_instruction(hak, (cf->u.sendmsg.to_super? HAK_CODE_SEND_TO_SUPER_0: HAK_CODE_SEND_0), cf->u.sendmsg.nargs, HAK_CNODE_GET_LOC(cf->operand));
+		n = emit_one_param_instruction(hak, (cf->u.sendmsg.to_super? HAK_CODE_SEND_TO_SUPER_0: HAK_CODE_SEND_0), cf->u.sendmsg.nargs, HAK_CNODE_GET_LOC(cf->operand));
 	}
 
-	POP_CFRAME (hak);
+	POP_CFRAME(hak);
 	return n;
 }
 
@@ -6313,9 +6374,9 @@ static HAK_INLINE int emit_make_array (hak_t* hak)
 	HAK_ASSERT(hak, cf->opcode == COP_EMIT_MAKE_ARRAY);
 	HAK_ASSERT(hak, cf->operand != HAK_NULL);
 
-	n = emit_single_param_instruction(hak, HAK_CODE_MAKE_ARRAY, cf->u.array_list.index, HAK_CNODE_GET_LOC(cf->operand));
+	n = emit_one_param_instruction(hak, HAK_CODE_MAKE_ARRAY, cf->u.array_list.index, HAK_CNODE_GET_LOC(cf->operand));
 
-	POP_CFRAME (hak);
+	POP_CFRAME(hak);
 	return n;
 }
 
@@ -6329,9 +6390,9 @@ static HAK_INLINE int emit_make_pure_array (hak_t* hak)
 	HAK_ASSERT(hak, cf->operand != HAK_NULL);
 
 	inst = (cf->u.pure_array_list.elem_type == HAK_CONCODE_BYTEARRAY)? HAK_CODE_MAKE_BYTEARRAY: HAK_CODE_MAKE_CHARARRAY;
-	n = emit_single_param_instruction(hak, inst, cf->u.pure_array_list.index, HAK_CNODE_GET_LOC(cf->operand));
+	n = emit_one_param_instruction(hak, inst, cf->u.pure_array_list.index, HAK_CNODE_GET_LOC(cf->operand));
 
-	POP_CFRAME (hak);
+	POP_CFRAME(hak);
 	return n;
 }
 
@@ -6344,9 +6405,9 @@ static HAK_INLINE int emit_make_dic (hak_t* hak)
 	HAK_ASSERT(hak, cf->opcode == COP_EMIT_MAKE_DIC);
 	HAK_ASSERT(hak, cf->operand != HAK_NULL);
 
-	n = emit_single_param_instruction(hak, HAK_CODE_MAKE_DIC, cf->u.dic_list.index, HAK_CNODE_GET_LOC(cf->operand));
+	n = emit_one_param_instruction(hak, HAK_CODE_MAKE_DIC, cf->u.dic_list.index, HAK_CNODE_GET_LOC(cf->operand));
 
-	POP_CFRAME (hak);
+	POP_CFRAME(hak);
 	return n;
 }
 
@@ -6361,7 +6422,7 @@ static HAK_INLINE int emit_make_cons (hak_t* hak)
 
 	n = emit_byte_instruction(hak, HAK_CODE_MAKE_CONS, HAK_CNODE_GET_LOC(cf->operand));
 
-	POP_CFRAME (hak);
+	POP_CFRAME(hak);
 	return n;
 }
 
@@ -6374,9 +6435,9 @@ static HAK_INLINE int emit_pop_into_array (hak_t* hak)
 	HAK_ASSERT(hak, cf->opcode == COP_EMIT_POP_INTO_ARRAY);
 	HAK_ASSERT(hak, cf->operand != HAK_NULL);
 
-	n = emit_single_param_instruction(hak, HAK_CODE_POP_INTO_ARRAY, cf->u.array_list.index, HAK_CNODE_GET_LOC(cf->operand));
+	n = emit_one_param_instruction(hak, HAK_CODE_POP_INTO_ARRAY, cf->u.array_list.index, HAK_CNODE_GET_LOC(cf->operand));
 
-	POP_CFRAME (hak);
+	POP_CFRAME(hak);
 	return n;
 }
 
@@ -6390,9 +6451,9 @@ static HAK_INLINE int emit_pop_into_pure_array (hak_t* hak)
 	HAK_ASSERT(hak, cf->operand != HAK_NULL);
 
 	inst = (cf->u.pure_array_list.elem_type == HAK_CONCODE_BYTEARRAY)? HAK_CODE_POP_INTO_BYTEARRAY: HAK_CODE_POP_INTO_CHARARRAY;
-	n = emit_single_param_instruction(hak, inst, cf->u.pure_array_list.index, HAK_CNODE_GET_LOC(cf->operand));
+	n = emit_one_param_instruction(hak, inst, cf->u.pure_array_list.index, HAK_CNODE_GET_LOC(cf->operand));
 
-	POP_CFRAME (hak);
+	POP_CFRAME(hak);
 	return n;
 }
 
@@ -6407,7 +6468,7 @@ static HAK_INLINE int emit_pop_into_dic (hak_t* hak)
 
 	n = emit_byte_instruction(hak, HAK_CODE_POP_INTO_DIC, HAK_CNODE_GET_LOC(cf->operand));
 
-	POP_CFRAME (hak);
+	POP_CFRAME(hak);
 	return n;
 }
 
@@ -6424,7 +6485,7 @@ static HAK_INLINE int emit_pop_into_cons (hak_t* hak, int cmd)
 
 	n = emit_byte_instruction(hak, cmd, HAK_CNODE_GET_LOC(cf->operand));
 
-	POP_CFRAME (hak);
+	POP_CFRAME(hak);
 	return n;
 }
 
@@ -6519,7 +6580,7 @@ static HAK_INLINE int emit_fun (hak_t* hak)
 	if (hak->option.trait & HAK_TRAIT_INTERACTIVE)
 		patch_long_param(hak, cf->u.fun.lfsize_pos, lfsize);
 
-	POP_CFRAME (hak);
+	POP_CFRAME(hak);
 	return 0;
 }
 
@@ -6533,7 +6594,7 @@ static HAK_INLINE int post_fun (hak_t* hak)
 	/*hak->c->funblk.depth--;
 	hak->c->tv.s.len = hak->c->funblk.info[hak->c->funblk.depth].tmprlen;
 	hak->c->tv.wcount = hak->c->funblk.info[hak->c->funblk.depth].tmprcnt;*/
-	pop_funblk (hak);
+	pop_funblk(hak);
 
 	if (cf->operand)
 	{
@@ -6659,9 +6720,9 @@ static HAK_INLINE int post_fun (hak_t* hak)
 						return -1;
 				}
 
-				if (emit_single_param_instruction(hak, inst, index, HAK_CNODE_GET_LOC(fun_name)) <= -1) return -1;
+				if (emit_one_param_instruction(hak, inst, index, HAK_CNODE_GET_LOC(fun_name)) <= -1) return -1;
 				if (emit_byte_instruction(hak, HAK_CODE_CLASS_EXIT, HAK_CNODE_GET_LOC(class_name)) <= -1) return -1;
-				POP_CFRAME (hak);
+				POP_CFRAME(hak);
 			}
 			else
 			{
@@ -6676,7 +6737,7 @@ static HAK_INLINE int post_fun (hak_t* hak)
 	}
 	else
 	{
-		POP_CFRAME (hak);
+		POP_CFRAME(hak);
 	}
 
 	return 0;
@@ -6695,7 +6756,7 @@ static HAK_INLINE int emit_pop_stacktop (hak_t* hak)
 
 	n = emit_byte_instruction(hak, HAK_CODE_POP_STACKTOP, HAK_CNODE_GET_LOC(cf->operand));
 
-	POP_CFRAME (hak);
+	POP_CFRAME(hak);
 	return n;
 }
 
@@ -6710,7 +6771,7 @@ static HAK_INLINE int emit_return (hak_t* hak)
 
 	n = emit_byte_instruction(hak, (cf->u._return.from_home? HAK_CODE_RETURN_STACKTOP: HAK_CODE_RETURN_FROM_BLOCK), HAK_CNODE_GET_LOC(cf->operand));
 
-	POP_CFRAME (hak);
+	POP_CFRAME(hak);
 	return n;
 }
 
@@ -6740,7 +6801,7 @@ static HAK_INLINE int emit_set (hak_t* hak)
 		}
 
 		if (add_literal(hak, cons, &index) <= -1) return -1;
-		if (emit_single_param_instruction(hak, (cf->u.set.mode == VAR_ACCESS_POP? HAK_CODE_POP_INTO_OBJECT_0: HAK_CODE_STORE_INTO_OBJECT_0), index, HAK_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+		if (emit_one_param_instruction(hak, (cf->u.set.mode == VAR_ACCESS_POP? HAK_CODE_POP_INTO_OBJECT_0: HAK_CODE_STORE_INTO_OBJECT_0), index, HAK_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
 	}
 	else
 	{
@@ -6748,7 +6809,7 @@ static HAK_INLINE int emit_set (hak_t* hak)
 		if (emit_variable_access(hak, cf->u.set.mode, &cf->u.set.vi, HAK_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
 	}
 
-	POP_CFRAME (hak);
+	POP_CFRAME(hak);
 	return 0;
 }
 
@@ -6765,9 +6826,9 @@ static HAK_INLINE int emit_class_cmstore (hak_t* hak)
 	if (HAK_UNLIKELY(!lit)) return -1;
 
 	if (add_literal(hak, lit, &index) <= -1) return -1;
-	if (emit_single_param_instruction(hak, HAK_CODE_CLASS_CMSTORE, index, HAK_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+	if (emit_one_param_instruction(hak, HAK_CODE_CLASS_CMSTORE, index, HAK_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
 
-	POP_CFRAME (hak);
+	POP_CFRAME(hak);
 	return 0;
 }
 
@@ -6784,9 +6845,9 @@ static HAK_INLINE int emit_class_cimstore (hak_t* hak)
 	if (HAK_UNLIKELY(!lit)) return -1;
 
 	if (add_literal(hak, lit, &index) <= -1) return -1;
-	if (emit_single_param_instruction(hak, HAK_CODE_CLASS_CIMSTORE, index, HAK_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+	if (emit_one_param_instruction(hak, HAK_CODE_CLASS_CIMSTORE, index, HAK_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
 
-	POP_CFRAME (hak);
+	POP_CFRAME(hak);
 	return 0;
 }
 
@@ -6803,9 +6864,9 @@ static HAK_INLINE int emit_class_imstore (hak_t* hak)
 	if (HAK_UNLIKELY(!lit)) return -1;
 
 	if (add_literal(hak, lit, &index) <= -1) return -1;
-	if (emit_single_param_instruction(hak, HAK_CODE_CLASS_IMSTORE, index, HAK_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+	if (emit_one_param_instruction(hak, HAK_CODE_CLASS_IMSTORE, index, HAK_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
 
-	POP_CFRAME (hak);
+	POP_CFRAME(hak);
 	return 0;
 }
 
@@ -6820,7 +6881,7 @@ static HAK_INLINE int emit_throw (hak_t* hak)
 
 	n = emit_byte_instruction(hak, HAK_CODE_THROW, HAK_CNODE_GET_LOC(cf->operand));
 
-	POP_CFRAME (hak);
+	POP_CFRAME(hak);
 	return n;
 }
 
@@ -6866,11 +6927,11 @@ int hak_compile (hak_t* hak, hak_cnode_t* obj, int flags)
 		 * in the interactive mode, the information doesn't have
 		 * to get carried over.
 		 */
-		while (hak->c->funblk.depth >= 0) pop_funblk (hak);
+		while (hak->c->funblk.depth >= 0) pop_funblk(hak);
 		HAK_ASSERT(hak, hak->c->funblk.depth == -1);
 		/* it will be recreated below */
 	}
-	if (flags & HAK_COMPILE_CLEAR_CODE) hak_clearcode (hak);
+	if (flags & HAK_COMPILE_CLEAR_CODE) hak_clearcode(hak);
 
 	saved_bc_len = hak->code.bc.len;
 	saved_lit_len = hak->code.lit.len;
@@ -6991,7 +7052,7 @@ int hak_compile (hak_t* hak, hak_cnode_t* obj, int flags)
 				break;
 
 			case COP_COMPILE_ELIF:
-				if (compile_elif(hak) <= -1) goto oops;
+				if (compile_elif (hak) <= -1) goto oops;
 				break;
 
 			case COP_COMPILE_ELSE:
@@ -7174,7 +7235,7 @@ int hak_compile (hak_t* hak, hak_cnode_t* obj, int flags)
 	hak->code.ngtmprs = hak->c->funblk.info[0].tmprcnt; /* populate the number of global temporary variables */
 
 #if defined(CLEAR_FUNBLK_ALWAYS)
-	pop_funblk (hak);
+	pop_funblk(hak);
 	HAK_ASSERT(hak, hak->c->tv.s.len == 0);
 	HAK_ASSERT(hak, hak->c->tv.wcount == 0);
 #endif
@@ -7183,7 +7244,7 @@ int hak_compile (hak_t* hak, hak_cnode_t* obj, int flags)
 	return 0;
 
 oops:
-	POP_ALL_CFRAMES (hak);
+	POP_ALL_CFRAMES(hak);
 
 	hak->log.default_type_mask = log_default_type_mask;
 
@@ -7191,12 +7252,12 @@ oops:
 	hak->code.bc.len = saved_bc_len;
 	hak->code.lit.len = saved_lit_len;
 
-	while (hak->c->funblk.depth > 0) pop_funblk (hak);
+	while (hak->c->funblk.depth > 0) pop_funblk(hak);
 	HAK_ASSERT(hak, hak->c->funblk.depth == 0);
 
 	if (top_funblk_pushed_here)
 	{
-		pop_funblk (hak);
+		pop_funblk(hak);
 		HAK_ASSERT(hak, hak->c->funblk.depth == -1);
 		HAK_ASSERT(hak, hak->c->tv.s.len == 0);
 		HAK_ASSERT(hak, hak->c->tv.wcount == 0);
@@ -7213,7 +7274,7 @@ oops:
 		*/
 
 		/* restore the top level function block as it's first captured in this function */
-		clear_funblk_inners (hak);
+		clear_funblk_inners(hak);
 		HAK_ASSERT(hak, hak->c->funblk.depth == 0);
 		hak->c->funblk.info[0] = top_funblk_saved;
 		hak->c->tv.s.len = top_funblk_saved.tmprlen;

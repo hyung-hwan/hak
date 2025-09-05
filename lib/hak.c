@@ -49,7 +49,7 @@ hak_t* hak_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, const hak_vmprim_t* vmprim
 
 void hak_close (hak_t* hak)
 {
-	hak_fini (hak);
+	hak_fini(hak);
 	HAK_MMGR_FREE (HAK_MMGR(hak), hak);
 }
 
@@ -164,7 +164,7 @@ int hak_init (hak_t* hak, hak_mmgr_t* mmgr, const hak_vmprim_t* vmprim)
 	modtab_inited = 1;
 	hak_rbt_setstyle(&hak->modtab, hak_get_rbt_style(HAK_RBT_STYLE_INLINE_COPIERS));
 
-	fill_bigint_tables (hak);
+	fill_bigint_tables(hak);
 
 	hak->tagged_brands[HAK_OOP_TAG_SMOOI] = HAK_BRAND_SMOOI;
 	hak->tagged_brands[HAK_OOP_TAG_SMPTR] = HAK_BRAND_SMPTR;
@@ -184,7 +184,7 @@ int hak_init (hak_t* hak, hak_mmgr_t* mmgr, const hak_vmprim_t* vmprim)
 	hak->sp = -1;
 	hak->ip = 0;
 
-	if (hak->vmprim.dl_startup) hak->vmprim.dl_startup (hak);
+	if (hak->vmprim.dl_startup) hak->vmprim.dl_startup(hak);
 	return 0;
 
 oops:
@@ -230,7 +230,7 @@ void hak_fini (hak_t* hak)
 
 	for (cb = hak->cblist; cb; cb = cb->next)
 	{
-		if (cb->on_fini) cb->on_fini (hak);
+		if (cb->on_fini) cb->on_fini(hak);
 	}
 
 	if (hak->log.len > 0)
@@ -247,7 +247,7 @@ void hak_fini (hak_t* hak)
 	while (hak->cblist) hak_deregcb(hak, hak->cblist);
 
 	/* detach the user data io handlers just in case */
-	hak_detachudio (hak);
+	hak_detachudio(hak);
 
 	if (hak->sem_list)
 	{
@@ -367,7 +367,7 @@ void hak_fini (hak_t* hak)
 		hak->sprintf.xbuf.len = 0;
 	}
 
-	if (hak->vmprim.dl_cleanup) hak->vmprim.dl_cleanup (hak);
+	if (hak->vmprim.dl_cleanup) hak->vmprim.dl_cleanup(hak);
 }
 
 void hak_resetcode (hak_t* hak)
@@ -883,7 +883,7 @@ hak_mod_data_t* hak_openmod (hak_t* hak, const hak_ooch_t* name, hak_oow_t namel
 	mdp = (hak_mod_data_t*)HAK_RBT_VPTR(pair);
 	if (load(hak, &mdp->mod) <= -1)
 	{
-		const hak_ooch_t* oldmsg = hak_backuperrmsg (hak);
+		const hak_ooch_t* oldmsg = hak_backuperrmsg(hak);
 		hak_seterrbfmt(hak, HAK_ERRNUM(hak), "module initializer [%js] returned failure in [%.*js] - %js", buf, namelen, name, oldmsg);
 		HAK_DEBUG3(hak, "Module function [%js] returned failure in [%.*js]\n", buf, namelen, name);
 		hak_rbt_delete(&hak->modtab, name, namelen);

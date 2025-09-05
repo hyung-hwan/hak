@@ -1299,7 +1299,7 @@ static void backtrace_stack_frames (hak_t* hak)
 static void _assertfail (hak_t* hak, const hak_bch_t* expr, const hak_bch_t* file, hak_oow_t line)
 {
 	hak_logbfmt(hak, HAK_LOG_STDERR | HAK_LOG_UNTYPED | HAK_LOG_FATAL, "ASSERTION FAILURE: %hs at %hs:%zu\n", expr, file, line);
-	backtrace_stack_frames (hak);
+	backtrace_stack_frames(hak);
 
 #if defined(_WIN32)
 	ExitProcess (249);
@@ -2726,7 +2726,7 @@ static HAK_INLINE void abort_all_haks (int signo)
 		{
 			xtn_t* xtn = GET_XTN(hak);
 			hak_uint8_t u8;
-			/*hak_abortstd (hak);*/
+			/*hak_abortstd(hak);*/
 			u8 = signo & 0xFF;
 			write (xtn->sigfd.p[1], &u8, HAK_SIZEOF(u8));
 			hak = xtn->next;
@@ -2752,7 +2752,7 @@ static HAK_INLINE void swproc_all_haks (int unused)
 		do
 		{
 			xtn_t* xtn = GET_XTN(hak);
-			if (xtn->rcv_tick) hak_switchprocess (hak);
+			if (xtn->rcv_tick) hak_switchprocess(hak);
 			hak = xtn->next;
 		}
 		while (hak);
@@ -3610,7 +3610,7 @@ static void cb_on_fini (hak_t* hak)
 	xtn_t* xtn = GET_XTN(hak);
 	if ((xtn->log.fd_flags & LOGFD_OPENED_HERE) && xtn->log.fd >= 0) close (xtn->log.fd);
 	reset_log_to_default (xtn);
-	unchain (hak);
+	unchain(hak);
 }
 
 static void cb_halting (hak_t* hak)
@@ -3963,7 +3963,7 @@ static void cb_vm_cleanup (hak_t* hak)
 		close (xtn->ep);
 		xtn->ep = -1;
 	}
-	/*destroy_poll_data_space (hak);*/
+	/*destroy_poll_data_space(hak);*/
 #elif defined(USE_KQUEUE)
 	if (xtn->ep >= 0)
 	{
@@ -3989,7 +3989,7 @@ static void cb_vm_cleanup (hak_t* hak)
 		hak_freemem(hak, xtn->ev.buf);
 		xtn->ev.buf = HAK_NULL;
 	}
-	/*destroy_poll_data_space (hak);*/
+	/*destroy_poll_data_space(hak);*/
 	MUTEX_DESTROY (&xtn->ev.reg.pmtx);
 #elif defined(USE_SELECT)
 	FD_ZERO (&xtn->ev.reg.rfds);
@@ -4122,7 +4122,7 @@ hak_t* hak_openstdwithmmgr (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_errnum_t* e
 	/* adjust the object size by the sizeof xtn_t so that hak_getxtn() returns the right pointer. */
 	hak->_instsize += HAK_SIZEOF(xtn_t);
 
-	chain (hak); /* call chian() before hak_regcb() as fini_hak() calls unchain() */
+	chain(hak); /* call chian() before hak_regcb() as fini_hak() calls unchain() */
 	reset_log_to_default (GET_XTN(hak));
 
 	HAK_MEMSET(&cb, 0, HAK_SIZEOF(cb));
@@ -4134,7 +4134,7 @@ hak_t* hak_openstdwithmmgr (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_errnum_t* e
 	if (hak_regcb(hak, &cb) == HAK_NULL)
 	{
 		if (errnum) *errnum = HAK_ERRNUM(hak);
-		hak_close (hak);
+		hak_close(hak);
 		return HAK_NULL;
 	}
 

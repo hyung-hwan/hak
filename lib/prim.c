@@ -1392,7 +1392,7 @@ int hak_addbuiltinprims (hak_t* hak)
 
 		hak_pushvolat(hak, &prim);
 		name = hak_makesymbol(hak, builtin_prims[i].name, builtin_prims[i].namelen);
-		hak_popvolat (hak);
+		hak_popvolat(hak);
 		if (HAK_UNLIKELY(!name))
 		{
 			const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
@@ -1403,7 +1403,7 @@ int hak_addbuiltinprims (hak_t* hak)
 
 		hak_pushvolat(hak, &name);
 		cons = hak_putatsysdic(hak, name, prim);
-		hak_popvolat (hak);
+		hak_popvolat(hak);
 		if (HAK_UNLIKELY(!cons))
 		{
 			const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);

@@ -314,8 +314,8 @@ static HAK_INLINE int is_ident_char (hak_ooci_t c)
 #define GET_CHAR_TO(hak,c) \
 	do { \
 		if (get_char(hak) <= -1) return -1; \
-		c = (hak)->c->lxc.c; \
-	} while(0)
+		c =(hak)->c->lxc.c; \
+	} while (0)
 
 
 #define ADD_TOKEN_STR(hak,s,l) \
@@ -2206,11 +2206,11 @@ static int feed_continue_with_char (hak_t* hak, hak_ooci_t c, hak_flx_state_t st
 	return 0;
 }
 
-#define FEED_WRAP_UP(hak, type) do { if (feed_wrap_up(hak, type) <= -1) return -1; } while(0)
-#define FEED_WRAP_UP_WITH_CHAR(hak, c, type) do { if (feed_wrap_up_with_char(hak, c, type) <= -1) return -1; } while(0)
-#define FEED_WRAP_UP_WITH_CHARS(hak, str, len, type) do { if (feed_wrap_up_with_str(hak, str, len, type) <= -1) return -1; } while(0)
+#define FEED_WRAP_UP(hak, type) do { if (feed_wrap_up(hak, type) <= -1) return -1; } while (0)
+#define FEED_WRAP_UP_WITH_CHAR(hak, c, type) do { if (feed_wrap_up_with_char(hak, c, type) <= -1) return -1; } while (0)
+#define FEED_WRAP_UP_WITH_CHARS(hak, str, len, type) do { if (feed_wrap_up_with_str(hak, str, len, type) <= -1) return -1; } while (0)
 #define FEED_CONTINUE(hak, state) (feed_continue(hak, state))
-#define FEED_CONTINUE_WITH_CHAR(hak, c, state) do { if (feed_continue_with_char(hak, c, state) <= -1) return -1; } while(0)
+#define FEED_CONTINUE_WITH_CHAR(hak, c, state) do { if (feed_continue_with_char(hak, c, state) <= -1) return -1; } while (0)
 
 /* ------------------------------------------------------------------------ */
 

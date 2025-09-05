@@ -663,8 +663,7 @@ struct hak_cframe_t
 		struct
 		{
 			unsigned int fun_type;
-			hak_oow_t jump_inst_pos;
-			hak_ooi_t lfbase_pos;
+			hak_ooi_t jump_inst_pos;
 			hak_ooi_t lfsize_pos;
 			hak_cnode_t* class_name; /* class name for out-of-class method definition */
 		} fun;
@@ -1355,7 +1354,7 @@ enum hak_bcode_t
 	HAK_CODE_PUSH_CHARLIT             = 0xB4, /* 180 */
 
 	HAK_CODE_PLUS = 0xB5, /* 181 TOOD: move it to a lower code number later after killing OBJVAR instructions */
-	/* UNUSED - 0xB6 - 0xB7 */
+	/* UNUSED - 0xB6-0xB7 */
 
 	HAK_CODE_STORE_INTO_OBJECT_X      = 0xB8, /* 184 ## */
 	HAK_CODE_POP_INTO_OBJECT_X        = 0xBC, /* 188 ## */
