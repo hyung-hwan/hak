@@ -45,7 +45,7 @@ hak_oop_t hak_makeprim (hak_t* hak, hak_pfimpl_t primimpl, hak_oow_t minargs, ha
 	if (HAK_UNLIKELY(!v))
 	{
 		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-		hak_seterrbfmt (hak, HAK_ERRNUM(hak),
+		hak_seterrbfmt(hak, HAK_ERRNUM(hak),
 			"unable to instantiate %O - %js", hak->c_primitive->name, orgmsg);
 	}
 	else
@@ -67,7 +67,7 @@ static void log_char_object (hak_t* hak, hak_bitmask_t mask, hak_oop_char_t msg)
 	hak_oow_t rem;
 	const hak_ooch_t* ptr;
 
-	HAK_ASSERT (hak, HAK_OBJ_GET_FLAGS_TYPE(msg) == HAK_OBJ_TYPE_CHAR);
+	HAK_ASSERT(hak, HAK_OBJ_GET_FLAGS_TYPE(msg) == HAK_OBJ_TYPE_CHAR);
 
 	rem = HAK_OBJ_GET_SIZE(msg);
 	ptr = msg->slot;
@@ -77,22 +77,22 @@ start_over:
 	{
 		if (*ptr == '\0')
 		{
-			n = hak_logbfmt (hak, mask, "%jc", *ptr);
-			HAK_ASSERT (hak, n == 1);
+			n = hak_logbfmt(hak, mask, "%jc", *ptr);
+			HAK_ASSERT(hak, n == 1);
 			rem -= n;
 			ptr += n;
 			goto start_over;
 		}
 
-		n = hak_logbfmt (hak, mask, "%.*js", rem, ptr);
+		n = hak_logbfmt(hak, mask, "%.*js", rem, ptr);
 		if (n <= -1) break;
 		if (n == 0)
 		{
 			/* to skip the unprinted character.
 			 * actually, this check is not needed because of '\0' skipping
 			 * at the beginning  of the loop */
-			n = hak_logbfmt (hak, mask, "%jc", *ptr);
-			HAK_ASSERT (hak, n == 1);
+			n = hak_logbfmt(hak, mask, "%jc", *ptr);
+			HAK_ASSERT(hak, n == 1);
 		}
 		rem -= n;
 		ptr += n;
@@ -113,7 +113,7 @@ static hak_pfrc_t pf_log (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 
 	for (k = 0; k < nargs; k++)
 	{
-		msg = HAK_STACK_GETARG (hak, nargs, k);
+		msg = HAK_STACK_GETARG(hak, nargs, k);
 
 		if (msg == hak->_nil || msg == hak->_true || msg == hak->_false)
 		{
@@ -121,13 +121,13 @@ static hak_pfrc_t pf_log (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		}
 		else if (HAK_OOP_IS_CHAR(msg))
 		{
-			hak_logbfmt (hak, mask, "%jc", HAK_OOP_TO_CHAR(msg));
+			hak_logbfmt(hak, mask, "%jc", HAK_OOP_TO_CHAR(msg));
 		}
 		else if (HAK_OOP_IS_POINTER(msg))
 		{
 			if (HAK_OBJ_GET_FLAGS_TYPE(msg) == HAK_OBJ_TYPE_CHAR)
 			{
-				log_char_object (hak, mask, (hak_oop_char_t)msg);
+				log_char_object(hak, mask, (hak_oop_char_t)msg);
 			}
 			else if (HAK_OBJ_GET_FLAGS_TYPE(msg) == HAK_OBJ_TYPE_OOP)
 			{
@@ -141,18 +141,18 @@ static hak_pfrc_t pf_log (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 				{
 					inner = ((hak_oop_oop_t)msg)->slot[i];
 
-					if (i > 0) hak_logbfmt (hak, mask, " ");
+					if (i > 0) hak_logbfmt(hak, mask, " ");
 					if (HAK_OOP_IS_CHAR(inner))
 					{
-						hak_logbfmt (hak, mask, "%jc", HAK_OOP_TO_CHAR(inner));
+						hak_logbfmt(hak, mask, "%jc", HAK_OOP_TO_CHAR(inner));
 					}
 					else if (HAK_OOP_IS_POINTER(inner) && HAK_OBJ_GET_FLAGS_TYPE(inner) == HAK_OBJ_TYPE_CHAR)
 					{
-						log_char_object (hak, mask, (hak_oop_char_t)inner);
+						log_char_object(hak, mask, (hak_oop_char_t)inner);
 					}
 					else
 					{
-						hak_logbfmt (hak, mask, "%O", inner);
+						hak_logbfmt(hak, mask, "%O", inner);
 					}
 				}
 			}
@@ -161,11 +161,11 @@ static hak_pfrc_t pf_log (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		else
 		{
 		dump_object:
-			hak_logbfmt (hak, mask, "%O", msg);
+			hak_logbfmt(hak, mask, "%O", msg);
 		}
 	}
 
-	HAK_STACK_SETRET (hak, nargs, hak->_nil);
+	HAK_STACK_SETRET(hak, nargs, hak->_nil);
 	return HAK_PF_SUCCESS;
 }
 
@@ -173,12 +173,12 @@ static hak_pfrc_t pf_logf (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	if (hak_logfmtcallstack(hak, nargs) <= -1)
 	{
-		HAK_STACK_SETRETTOERRNUM (hak, nargs);
+		HAK_STACK_SETRETTOERRNUM(hak, nargs);
 	}
 	else
 	{
 /* TODO: better return code? */
-		HAK_STACK_SETRET (hak, nargs, hak->_nil);
+		HAK_STACK_SETRET(hak, nargs, hak->_nil);
 	}
 
 	return HAK_PF_SUCCESS;
@@ -188,12 +188,12 @@ static hak_pfrc_t pf_printf (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	if (hak_prfmtcallstack(hak, nargs) <= -1)
 	{
-		HAK_STACK_SETRETTOERRNUM (hak, nargs);
+		HAK_STACK_SETRETTOERRNUM(hak, nargs);
 	}
 	else
 	{
 /* TODO: better return code? */
-		HAK_STACK_SETRET (hak, nargs, hak->_nil);
+		HAK_STACK_SETRET(hak, nargs, hak->_nil);
 	}
 
 	return HAK_PF_SUCCESS;
@@ -203,7 +203,7 @@ static hak_pfrc_t pf_sprintf (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	if (hak_strfmtcallstack(hak, nargs) <= -1)
 	{
-		HAK_STACK_SETRETTOERRNUM (hak, nargs);
+		HAK_STACK_SETRETTOERRNUM(hak, nargs);
 	}
 	else
 	{
@@ -211,7 +211,7 @@ static hak_pfrc_t pf_sprintf (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		str = hak_makestring(hak, hak->sprintf.xbuf.ptr, hak->sprintf.xbuf.len);
 		if (!str) return HAK_PF_FAILURE;
 
-		HAK_STACK_SETRET (hak, nargs, str);
+		HAK_STACK_SETRET(hak, nargs, str);
 	}
 
 	return HAK_PF_SUCCESS;
@@ -261,7 +261,7 @@ static int get_udi_char (hak_t* hak, hak_ooch_t* ch)
 			if (x <= -1)
 			{
 				const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-				hak_seterrbfmt (hak, HAK_ERRNUM(hak), "unable to read bytes from input stream - %js", orgmsg);
+				hak_seterrbfmt(hak, HAK_ERRNUM(hak), "unable to read bytes from input stream - %js", orgmsg);
 				return -1;
 			}
 
@@ -270,7 +270,7 @@ static int get_udi_char (hak_t* hak, hak_ooch_t* ch)
 				/* got EOF from an included stream */
 				if (curinp->rsd.len > 0)
 				{
-					hak_seterrbfmt (hak, HAK_EECERR, "incomplete byte sequence in input stream");
+					hak_seterrbfmt(hak, HAK_EECERR, "incomplete byte sequence in input stream");
 					return -1;
 				}
 				curinp->eof_reached = 1;
@@ -285,7 +285,7 @@ static int get_udi_char (hak_t* hak, hak_ooch_t* ch)
 		{
 			/* there is data in the residue buffer. use the residue buffer to
 			 * locate a proper multi-byte sequence */
-			HAK_ASSERT (hak, curinp->b.pos == 0);
+			HAK_ASSERT(hak, curinp->b.pos == 0);
 			inplen = move_udi_residue_bytes(curinp);
 			inpptr = &curinp->rsd.buf[0];
 		}
@@ -298,12 +298,12 @@ static int get_udi_char (hak_t* hak, hak_ooch_t* ch)
 		n = cmgr->bctouc((const hak_bch_t*)inpptr, inplen, &c);
 		if (n == 0) /* invalid sequence */
 		{
-			hak_seterrbfmt (hak, HAK_EECERR, "invalid byte sequence in input stream");
+			hak_seterrbfmt(hak, HAK_EECERR, "invalid byte sequence in input stream");
 			return -1;
 		}
 		if (n > inplen) /* incomplete sequence */
 		{
-			HAK_ASSERT (hak, curinp->rsd.len < HAK_COUNTOF(curinp->rsd.buf));
+			HAK_ASSERT(hak, curinp->rsd.len < HAK_COUNTOF(curinp->rsd.buf));
 			move_udi_residue_bytes (curinp);
 			goto start_over;
 		}
@@ -330,7 +330,7 @@ static int get_udi_char (hak_t* hak, hak_ooch_t* ch)
 			if (x <= -1)
 			{
 				const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-				hak_seterrbfmt (hak, HAK_ERRNUM(hak), "unable to read input stream - %js", orgmsg);
+				hak_seterrbfmt(hak, HAK_ERRNUM(hak), "unable to read input stream - %js", orgmsg);
 				return -1;
 			}
 			if (curinp->xlen <= 0)
@@ -368,7 +368,7 @@ static int get_udi_byte (hak_t* hak, hak_uint8_t* bt)
 	if (!hak->io.udi_arg.byte_oriented)
 	{
 /* TODO: convert characters to bytes? but do we know the original encoding? */
-		hak_seterrbfmt (hak, HAK_EPERM, "byte-oriented input prohibited on character-oriented stream");
+		hak_seterrbfmt(hak, HAK_EPERM, "byte-oriented input prohibited on character-oriented stream");
 		return -1;
 	}
 #endif
@@ -380,7 +380,7 @@ static int get_udi_byte (hak_t* hak, hak_uint8_t* bt)
 		if (x <= -1)
 		{
 			const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-			hak_seterrbfmt (hak, HAK_ERRNUM(hak), "unable to read input stream - %js", orgmsg);
+			hak_seterrbfmt(hak, HAK_ERRNUM(hak), "unable to read input stream - %js", orgmsg);
 			return -1;
 		}
 		if (curinp->xlen <= 0)
@@ -409,7 +409,7 @@ static hak_pfrc_t pf_getbyte (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 
 	/* return nil on EOF, or the actual character read */
 	v = (n == 0)? hak->_nil: HAK_SMOOI_TO_OOP(bt);
-	HAK_STACK_SETRET (hak, nargs, v);
+	HAK_STACK_SETRET(hak, nargs, v);
 	return HAK_PF_SUCCESS;
 }
 
@@ -424,7 +424,7 @@ static hak_pfrc_t pf_getch (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 
 	/* return nil on EOF, or the actual character read */
 	v = (n == 0)? hak->_nil: HAK_CHAR_TO_OOP(ch);
-	HAK_STACK_SETRET (hak, nargs, v);
+	HAK_STACK_SETRET(hak, nargs, v);
 	return HAK_PF_SUCCESS;
 }
 
@@ -465,7 +465,7 @@ static hak_pfrc_t pf_gets (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 				{
 					tmp = (hak_ooch_t*)hak_allocmem(hak, HAK_SIZEOF(*ptr) * newcapa);
 					if (HAK_UNLIKELY(!tmp)) return HAK_PF_FAILURE;
-					HAK_MEMCPY (tmp, buf, HAK_SIZEOF(buf));
+					HAK_MEMCPY(tmp, buf, HAK_SIZEOF(buf));
 				}
 				else
 				{
@@ -486,7 +486,7 @@ static hak_pfrc_t pf_gets (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 
 		if (len <= 0)
 		{
-			HAK_ASSERT (hak, ptr == buf);
+			HAK_ASSERT(hak, ptr == buf);
 			v = hak->_nil;
 		}
 		else
@@ -498,7 +498,7 @@ static hak_pfrc_t pf_gets (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 
 	}
 
-	HAK_STACK_SETRET (hak, nargs, v);
+	HAK_STACK_SETRET(hak, nargs, v);
 	return HAK_PF_SUCCESS;
 }
 
@@ -506,12 +506,12 @@ static hak_pfrc_t pf_scanf (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	if (hak_scfmtcallstack(hak, nargs) <= -1)
 	{
-		HAK_STACK_SETRETTOERRNUM (hak, nargs);
+		HAK_STACK_SETRETTOERRNUM(hak, nargs);
 	}
 	else
 	{
 /* TODO: better return code? */
-		HAK_STACK_SETRET (hak, nargs, hak->_nil);
+		HAK_STACK_SETRET(hak, nargs, hak->_nil);
 	}
 
 	return HAK_PF_SUCCESS;
@@ -521,8 +521,8 @@ static hak_pfrc_t pf_scanf (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 
 static hak_pfrc_t pf_gc (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	hak_gc (hak, 1);
-	HAK_STACK_SETRET (hak, nargs, hak->_nil);
+	hak_gc(hak, 1);
+	HAK_STACK_SETRET(hak, nargs, hak->_nil);
 	return HAK_PF_SUCCESS;
 }
 
@@ -537,7 +537,7 @@ static hak_pfrc_t pf_eqv (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 
 	rv = (a0 == a1? hak->_true: hak->_false);
 
-	HAK_STACK_SETRET (hak, nargs, rv);
+	HAK_STACK_SETRET(hak, nargs, rv);
 	return HAK_PF_SUCCESS;
 }
 
@@ -547,7 +547,7 @@ static hak_pfrc_t pf_eql (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	n = hak_equalobjs(hak, HAK_STACK_GETARG(hak, nargs, 0), HAK_STACK_GETARG(hak, nargs, 1));
 	if (n <= -1) return HAK_PF_FAILURE;
 
-	HAK_STACK_SETRET (hak, nargs, (n? hak->_true: hak->_false));
+	HAK_STACK_SETRET(hak, nargs, (n? hak->_true: hak->_false));
 	return HAK_PF_SUCCESS;
 }
 
@@ -561,7 +561,7 @@ static hak_pfrc_t pf_eqk (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 
 	rv = (HAK_CLASSOF(hak, a0) == HAK_CLASSOF(hak, a1)? hak->_true: hak->_false);
 
-	HAK_STACK_SETRET (hak, nargs, rv);
+	HAK_STACK_SETRET(hak, nargs, rv);
 	return HAK_PF_SUCCESS;
 }
 
@@ -574,7 +574,7 @@ static hak_pfrc_t pf_nqv (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 
 	rv = (a0 != a1? hak->_true: hak->_false);
 
-	HAK_STACK_SETRET (hak, nargs, rv);
+	HAK_STACK_SETRET(hak, nargs, rv);
 	return HAK_PF_SUCCESS;
 }
 
@@ -584,7 +584,7 @@ static hak_pfrc_t pf_nql (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	n = hak_equalobjs(hak, HAK_STACK_GETARG(hak, nargs, 0), HAK_STACK_GETARG(hak, nargs, 1));
 	if (n <= -1) return HAK_PF_FAILURE;
 
-	HAK_STACK_SETRET (hak, nargs, (!n? hak->_true: hak->_false));
+	HAK_STACK_SETRET(hak, nargs, (!n? hak->_true: hak->_false));
 	return HAK_PF_SUCCESS;
 }
 
@@ -598,7 +598,7 @@ static hak_pfrc_t pf_nqk (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 
 	rv = (HAK_CLASSOF(hak, a0) != HAK_CLASSOF(hak, a1)? hak->_true: hak->_false);
 
-	HAK_STACK_SETRET (hak, nargs, rv);
+	HAK_STACK_SETRET(hak, nargs, rv);
 	return HAK_PF_SUCCESS;
 }
 
@@ -608,7 +608,7 @@ static hak_pfrc_t pf_is_nil (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_oop_t rv;
 	rv = (HAK_STACK_GETARG(hak, nargs, 0) == hak->_nil)? hak->_true: hak->_false;
-	HAK_STACK_SETRET (hak, nargs, rv);
+	HAK_STACK_SETRET(hak, nargs, rv);
 	return HAK_PF_SUCCESS;
 }
 
@@ -618,7 +618,7 @@ static hak_pfrc_t pf_is_boolean (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	hak_oop_t rv, x;
 	x = HAK_STACK_GETARG(hak, nargs, 0);
 	rv = (HAK_IS_TRUE(hak, x) || HAK_IS_FALSE(hak, x))? hak->_true: hak->_false;
-	HAK_STACK_SETRET (hak, nargs, rv);
+	HAK_STACK_SETRET(hak, nargs, rv);
 	return HAK_PF_SUCCESS;
 }
 
@@ -627,7 +627,7 @@ static hak_pfrc_t pf_is_character (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	hak_oop_t rv, x;
 	x = HAK_STACK_GETARG(hak, nargs, 0);
 	rv = (HAK_OOP_IS_CHAR(x))? hak->_true: hak->_false;
-	HAK_STACK_SETRET (hak, nargs, rv);
+	HAK_STACK_SETRET(hak, nargs, rv);
 	return HAK_PF_SUCCESS;
 }
 
@@ -636,7 +636,7 @@ static hak_pfrc_t pf_is_error (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	hak_oop_t rv, x;
 	x = HAK_STACK_GETARG(hak, nargs, 0);
 	rv = (HAK_OOP_IS_ERROR(x))? hak->_true: hak->_false;
-	HAK_STACK_SETRET (hak, nargs, rv);
+	HAK_STACK_SETRET(hak, nargs, rv);
 	return HAK_PF_SUCCESS;
 }
 
@@ -645,7 +645,7 @@ static hak_pfrc_t pf_is_smptr (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	hak_oop_t rv, x;
 	x = HAK_STACK_GETARG(hak, nargs, 0);
 	rv = (HAK_OOP_IS_SMPTR(x))? hak->_true: hak->_false;
-	HAK_STACK_SETRET (hak, nargs, rv);
+	HAK_STACK_SETRET(hak, nargs, rv);
 	return HAK_PF_SUCCESS;
 }
 
@@ -654,7 +654,7 @@ static hak_pfrc_t pf_is_integer (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	hak_oop_t rv, x;
 	x = HAK_STACK_GETARG(hak, nargs, 0);
 	rv = (hak_isint(hak, x))? hak->_true: hak->_false;
-	HAK_STACK_SETRET (hak, nargs, rv);
+	HAK_STACK_SETRET(hak, nargs, rv);
 	return HAK_PF_SUCCESS;
 }
 
@@ -663,7 +663,7 @@ static hak_pfrc_t pf_is_numeric(hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	hak_oop_t rv, x;
 	x = HAK_STACK_GETARG(hak, nargs, 0);
 	rv = (hak_isint(hak, x) || HAK_IS_FPDEC(hak, x))? hak->_true: hak->_false;
-	HAK_STACK_SETRET (hak, nargs, rv);
+	HAK_STACK_SETRET(hak, nargs, rv);
 	return HAK_PF_SUCCESS;
 }
 
@@ -672,7 +672,7 @@ static hak_pfrc_t pf_is_string (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	hak_oop_t rv, x;
 	x = HAK_STACK_GETARG(hak, nargs, 0);
 	rv = (HAK_IS_STRING(hak, x))? hak->_true: hak->_false;
-	HAK_STACK_SETRET (hak, nargs, rv);
+	HAK_STACK_SETRET(hak, nargs, rv);
 	return HAK_PF_SUCCESS;
 }
 
@@ -681,7 +681,7 @@ static hak_pfrc_t pf_is_array (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	hak_oop_t rv, x;
 	x = HAK_STACK_GETARG(hak, nargs, 0);
 	rv = (HAK_IS_ARRAY(hak, x))? hak->_true: hak->_false;
-	HAK_STACK_SETRET (hak, nargs, rv);
+	HAK_STACK_SETRET(hak, nargs, rv);
 	return HAK_PF_SUCCESS;
 }
 
@@ -690,7 +690,7 @@ static hak_pfrc_t pf_is_bytearray (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	hak_oop_t rv, x;
 	x = HAK_STACK_GETARG(hak, nargs, 0);
 	rv = (HAK_IS_BYTEARRAY(hak, x))? hak->_true: hak->_false;
-	HAK_STACK_SETRET (hak, nargs, rv);
+	HAK_STACK_SETRET(hak, nargs, rv);
 	return HAK_PF_SUCCESS;
 }
 
@@ -699,7 +699,7 @@ static hak_pfrc_t pf_is_dictionary (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	hak_oop_t rv, x;
 	x = HAK_STACK_GETARG(hak, nargs, 0);
 	rv = (HAK_IS_DIC(hak, x))? hak->_true: hak->_false;
-	HAK_STACK_SETRET (hak, nargs, rv);
+	HAK_STACK_SETRET(hak, nargs, rv);
 	return HAK_PF_SUCCESS;
 }
 
@@ -708,7 +708,7 @@ static hak_pfrc_t pf_is_compiled_block (hak_t* hak, hak_mod_t* mod, hak_ooi_t na
 	hak_oop_t rv, x;
 	x = HAK_STACK_GETARG(hak, nargs, 0);
 	rv = (HAK_IS_COMPILED_BLOCK(hak, x))? hak->_true: hak->_false;
-	HAK_STACK_SETRET (hak, nargs, rv);
+	HAK_STACK_SETRET(hak, nargs, rv);
 	return HAK_PF_SUCCESS;
 }
 
@@ -717,7 +717,7 @@ static hak_pfrc_t pf_is_class (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	hak_oop_t rv, x;
 	x = HAK_STACK_GETARG(hak, nargs, 0);
 	rv = (HAK_IS_CLASS(hak, x))? hak->_true: hak->_false;
-	HAK_STACK_SETRET (hak, nargs, rv);
+	HAK_STACK_SETRET(hak, nargs, rv);
 	return HAK_PF_SUCCESS;
 }
 
@@ -727,7 +727,7 @@ static hak_pfrc_t pf_is_object (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	x = HAK_STACK_GETARG(hak, nargs, 0);
 	/*rv = (HAK_IS_INSTANCE(hak, x))? hak->_true: hak->_false;*/
 	rv = (!HAK_IS_CLASS(hak, x))? hak->_true: hak->_false; /* true if not a class object itself */
-	HAK_STACK_SETRET (hak, nargs, rv);
+	HAK_STACK_SETRET(hak, nargs, rv);
 	return HAK_PF_SUCCESS;
 }
 
@@ -742,11 +742,11 @@ static hak_pfrc_t pf_not (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	else if (arg == hak->_false) rv = hak->_true;
 	else
 	{
-		hak_seterrbfmt (hak, HAK_EINVAL, "boolean parameter expected - %O", arg);
+		hak_seterrbfmt(hak, HAK_EINVAL, "boolean parameter expected - %O", arg);
 		return HAK_PF_FAILURE;
 	}
 
-	HAK_STACK_SETRET (hak, nargs, rv);
+	HAK_STACK_SETRET(hak, nargs, rv);
 	return HAK_PF_SUCCESS;
 }
 
@@ -770,12 +770,12 @@ static hak_pfrc_t pf_and (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		}
 		else
 		{
-			hak_seterrbfmt (hak, HAK_EINVAL, "boolean parameter expected - %O", arg);
+			hak_seterrbfmt(hak, HAK_EINVAL, "boolean parameter expected - %O", arg);
 			return HAK_PF_FAILURE;
 		}
 	}
 
-	HAK_STACK_SETRET (hak, nargs, rv);
+	HAK_STACK_SETRET(hak, nargs, rv);
 	return HAK_PF_SUCCESS;
 }
 
@@ -799,12 +799,12 @@ static hak_pfrc_t pf_or (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		}
 		else
 		{
-			hak_seterrbfmt (hak, HAK_EINVAL, "boolean parameter expected - %O", arg);
+			hak_seterrbfmt(hak, HAK_EINVAL, "boolean parameter expected - %O", arg);
 			return HAK_PF_FAILURE;
 		}
 	}
 
-	HAK_STACK_SETRET (hak, nargs, rv);
+	HAK_STACK_SETRET(hak, nargs, rv);
 	return HAK_PF_SUCCESS;
 }
 
@@ -824,7 +824,7 @@ static hak_pfrc_t pf_number_add (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		if (!ret) return HAK_PF_FAILURE;
 	}
 
-	HAK_STACK_SETRET (hak, nargs, ret);
+	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
 
@@ -842,7 +842,7 @@ static hak_pfrc_t pf_number_sub (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		if (!ret) return HAK_PF_FAILURE;
 	}
 
-	HAK_STACK_SETRET (hak, nargs, ret);
+	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
 
@@ -860,7 +860,7 @@ static hak_pfrc_t pf_number_mul (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		if (!ret) return HAK_PF_FAILURE;
 	}
 
-	HAK_STACK_SETRET (hak, nargs, ret);
+	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
 
@@ -877,7 +877,7 @@ static hak_pfrc_t pf_number_mlt (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		if (!ret) return HAK_PF_FAILURE;
 	}
 
-	HAK_STACK_SETRET (hak, nargs, ret);
+	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
 
@@ -894,7 +894,7 @@ static hak_pfrc_t pf_number_div (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		if (!ret) return HAK_PF_FAILURE;
 	}
 
-	HAK_STACK_SETRET (hak, nargs, ret);
+	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
 
@@ -911,7 +911,7 @@ static hak_pfrc_t pf_integer_quo (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		if (!ret) return HAK_PF_FAILURE;
 	}
 
-	HAK_STACK_SETRET (hak, nargs, ret);
+	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
 
@@ -929,7 +929,7 @@ static hak_pfrc_t pf_integer_rem (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		ret = rem;
 	}
 
-	HAK_STACK_SETRET (hak, nargs, ret);
+	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
 
@@ -946,7 +946,7 @@ static hak_pfrc_t pf_integer_mquo (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		if (!ret) return HAK_PF_FAILURE;
 	}
 
-	HAK_STACK_SETRET (hak, nargs, ret);
+	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
 
@@ -964,7 +964,7 @@ static hak_pfrc_t pf_integer_mod (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		ret = rem;
 	}
 
-	HAK_STACK_SETRET (hak, nargs, ret);
+	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
 
@@ -974,7 +974,7 @@ static hak_pfrc_t pf_number_sqrt (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	ret = hak_sqrtnum(hak, HAK_STACK_GETARG(hak, nargs, 0));
 	if (!ret) return HAK_PF_FAILURE;
 
-	HAK_STACK_SETRET (hak, nargs, ret);
+	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
 
@@ -984,7 +984,7 @@ static hak_pfrc_t pf_number_abs (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	ret = hak_absnum(hak, HAK_STACK_GETARG(hak, nargs, 0));
 	if (!ret) return HAK_PF_FAILURE;
 
-	HAK_STACK_SETRET (hak, nargs, ret);
+	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
 
@@ -994,7 +994,7 @@ static hak_pfrc_t pf_number_gt (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	ret = hak_gtnums(hak, HAK_STACK_GETARG(hak, nargs, 0), HAK_STACK_GETARG(hak, nargs, 1));
 	if (!ret) return HAK_PF_FAILURE;
 
-	HAK_STACK_SETRET (hak, nargs, ret);
+	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
 
@@ -1005,7 +1005,7 @@ static hak_pfrc_t pf_number_ge (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	ret = hak_genums(hak, HAK_STACK_GETARG(hak, nargs, 0), HAK_STACK_GETARG(hak, nargs, 1));
 	if (!ret) return HAK_PF_FAILURE;
 
-	HAK_STACK_SETRET (hak, nargs, ret);
+	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
 
@@ -1015,7 +1015,7 @@ static hak_pfrc_t pf_number_lt (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	ret = hak_ltnums(hak, HAK_STACK_GETARG(hak, nargs, 0), HAK_STACK_GETARG(hak, nargs, 1));
 	if (!ret) return HAK_PF_FAILURE;
 
-	HAK_STACK_SETRET (hak, nargs, ret);
+	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
 static hak_pfrc_t pf_number_le (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
@@ -1024,7 +1024,7 @@ static hak_pfrc_t pf_number_le (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	ret = hak_lenums(hak, HAK_STACK_GETARG(hak, nargs, 0), HAK_STACK_GETARG(hak, nargs, 1));
 	if (!ret) return HAK_PF_FAILURE;
 
-	HAK_STACK_SETRET (hak, nargs, ret);
+	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
 static hak_pfrc_t pf_number_eq (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
@@ -1033,7 +1033,7 @@ static hak_pfrc_t pf_number_eq (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	ret = hak_eqnums(hak, HAK_STACK_GETARG(hak, nargs, 0), HAK_STACK_GETARG(hak, nargs, 1));
 	if (!ret) return HAK_PF_FAILURE;
 
-	HAK_STACK_SETRET (hak, nargs, ret);
+	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
 static hak_pfrc_t pf_number_ne (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
@@ -1042,7 +1042,7 @@ static hak_pfrc_t pf_number_ne (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	ret = hak_nenums(hak, HAK_STACK_GETARG(hak, nargs, 0), HAK_STACK_GETARG(hak, nargs, 1));
 	if (!ret) return HAK_PF_FAILURE;
 
-	HAK_STACK_SETRET (hak, nargs, ret);
+	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
 
@@ -1054,7 +1054,7 @@ static hak_pfrc_t pf_integer_band (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	ret = hak_bitandints(hak, HAK_STACK_GETARG(hak, nargs, 0), HAK_STACK_GETARG(hak, nargs, 1));
 	if (!ret) return HAK_PF_FAILURE;
 
-	HAK_STACK_SETRET (hak, nargs, ret);
+	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
 
@@ -1064,7 +1064,7 @@ static hak_pfrc_t pf_integer_bor (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	ret = hak_bitorints(hak, HAK_STACK_GETARG(hak, nargs, 0), HAK_STACK_GETARG(hak, nargs, 1));
 	if (!ret) return HAK_PF_FAILURE;
 
-	HAK_STACK_SETRET (hak, nargs, ret);
+	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
 static hak_pfrc_t pf_integer_bxor (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
@@ -1073,7 +1073,7 @@ static hak_pfrc_t pf_integer_bxor (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	ret = hak_bitxorints(hak, HAK_STACK_GETARG(hak, nargs, 0), HAK_STACK_GETARG(hak, nargs, 1));
 	if (!ret) return HAK_PF_FAILURE;
 
-	HAK_STACK_SETRET (hak, nargs, ret);
+	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
 static hak_pfrc_t pf_integer_bnot (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
@@ -1082,7 +1082,7 @@ static hak_pfrc_t pf_integer_bnot (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	ret = hak_bitinvint(hak, HAK_STACK_GETARG(hak, nargs, 0));
 	if (!ret) return HAK_PF_FAILURE;
 
-	HAK_STACK_SETRET (hak, nargs, ret);
+	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
 static hak_pfrc_t pf_integer_bshift (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
@@ -1091,14 +1091,14 @@ static hak_pfrc_t pf_integer_bshift (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs
 	ret = hak_bitshiftint(hak, HAK_STACK_GETARG(hak, nargs, 0), HAK_STACK_GETARG(hak, nargs, 1));
 	if (!ret) return HAK_PF_FAILURE;
 
-	HAK_STACK_SETRET (hak, nargs, ret);
+	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
 
 /* ------------------------------------------------------------------------- */
 static hak_pfrc_t pf_va_context (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	HAK_STACK_SETRET (hak, nargs, (hak_oop_t)hak->active_context);
+	HAK_STACK_SETRET(hak, nargs, (hak_oop_t)hak->active_context);
 	return HAK_PF_SUCCESS;
 }
 
@@ -1112,7 +1112,7 @@ static hak_pfrc_t pf_va_count (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		ctx = (hak_oop_context_t)HAK_STACK_GETARG(hak, nargs, 0);
 		if (!HAK_IS_CONTEXT(hak, ctx))
 		{
-			hak_seterrbfmt (hak, HAK_EINVAL, "not a proper va context - %O", ctx);
+			hak_seterrbfmt(hak, HAK_EINVAL, "not a proper va context - %O", ctx);
 			return HAK_PF_FAILURE;
 		}
 	}
@@ -1133,7 +1133,7 @@ static hak_pfrc_t pf_va_count (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	}*/
 
 	nvaargs = HAK_OBJ_GET_SIZE(ctx) - fixed_nargs - nrvars - nlvars - HAK_CONTEXT_NAMED_INSTVARS;
-	HAK_STACK_SETRET (hak, nargs, HAK_SMOOI_TO_OOP(nvaargs));
+	HAK_STACK_SETRET(hak, nargs, HAK_SMOOI_TO_OOP(nvaargs));
 	return HAK_PF_SUCCESS;
 }
 
@@ -1150,7 +1150,7 @@ static hak_pfrc_t pf_va_get (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		ctx = (hak_oop_context_t)HAK_STACK_GETARG(hak, nargs, 1);
 		if (!HAK_IS_CONTEXT(hak, ctx))
 		{
-			hak_seterrbfmt (hak, HAK_EINVAL, "not a proper va context - %O", ctx);
+			hak_seterrbfmt(hak, HAK_EINVAL, "not a proper va context - %O", ctx);
 			return HAK_PF_FAILURE;
 		}
 	}
@@ -1169,7 +1169,7 @@ static hak_pfrc_t pf_va_get (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	n = hak_inttooow(hak, idx, &index);
 	if (n <= 0)
 	{
-		if (n <= -1) hak_seterrbfmt (hak, HAK_EINVAL, "invalid index - %O", idx);
+		if (n <= -1) hak_seterrbfmt(hak, HAK_EINVAL, "invalid index - %O", idx);
 		return HAK_PF_FAILURE;
 	}
 
@@ -1181,11 +1181,11 @@ static hak_pfrc_t pf_va_get (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	nvaargs = HAK_OBJ_GET_SIZE(ctx) - fixed_nargs - nrvars - nlvars - HAK_CONTEXT_NAMED_INSTVARS;
 	if (index >= nvaargs)
 	{
-		hak_seterrbfmt (hak, HAK_EINVAL, "va index(%zu) out of bounds for va of size %zd", index, nvaargs);
+		hak_seterrbfmt(hak, HAK_EINVAL, "va index(%zu) out of bounds for va of size %zd", index, nvaargs);
 		return HAK_PF_FAILURE;
 	}
 
-	HAK_STACK_SETRET (hak, nargs, ctx->slot[fixed_nargs + nrvars + nlvars + index]);
+	HAK_STACK_SETRET(hak, nargs, ctx->slot[fixed_nargs + nrvars + nlvars + index]);
 	return HAK_PF_SUCCESS;
 }
 
@@ -1199,7 +1199,7 @@ static hak_pfrc_t pf_object_new (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	_class = HAK_STACK_GETARG(hak, nargs, 0);
 	if (!HAK_IS_CLASS(hak, _class))
 	{
-		hak_seterrbfmt (hak, HAK_EINVAL, "not a class - %O", _class);
+		hak_seterrbfmt(hak, HAK_EINVAL, "not a class - %O", _class);
 		return HAK_PF_FAILURE;
 	}
 
@@ -1213,7 +1213,7 @@ static hak_pfrc_t pf_object_new (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		if (n == 0) return HAK_PF_FAILURE;
 		if (n <= -1)
 		{
-			hak_seterrbfmt (hak, HAK_EINVAL, "invalid size - %O", sz);
+			hak_seterrbfmt(hak, HAK_EINVAL, "invalid size - %O", sz);
 			return HAK_PF_FAILURE;
 		}
 	}
@@ -1221,7 +1221,7 @@ static hak_pfrc_t pf_object_new (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	obj = hak_instantiate(hak, (hak_oop_class_t)_class, HAK_NULL, size);
 	if (HAK_UNLIKELY(!obj)) return HAK_PF_FAILURE;
 
-	HAK_STACK_SETRET (hak, nargs, obj);
+	HAK_STACK_SETRET(hak, nargs, obj);
 	return HAK_PF_SUCCESS;
 }
 
@@ -1231,7 +1231,7 @@ static hak_pfrc_t pf_system_get_sigfd (hak_t* hak, hak_mod_t* mod, hak_ooi_t nar
 {
 	hak_ooi_t fd;
 	fd = hak->vmprim.vm_getsigfd(hak);
-	HAK_STACK_SETRET (hak, nargs, HAK_SMOOI_TO_OOP(fd));
+	HAK_STACK_SETRET(hak, nargs, HAK_SMOOI_TO_OOP(fd));
 	return HAK_PF_SUCCESS;
 }
 
@@ -1243,8 +1243,8 @@ static hak_pfrc_t pf_system_get_sig (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs
 	n = hak->vmprim.vm_getsig(hak, &sig);
 	if (n <= -1) return HAK_PF_FAILURE;
 
-	if (n == 0) HAK_STACK_SETRETTOERROR (hak, nargs, HAK_ENOENT);
-	else HAK_STACK_SETRET (hak, nargs, HAK_SMOOI_TO_OOP((hak_ooi_t)sig));
+	if (n == 0) HAK_STACK_SETRETTOERROR(hak, nargs, HAK_ENOENT);
+	else HAK_STACK_SETRET(hak, nargs, HAK_SMOOI_TO_OOP((hak_ooi_t)sig));
 
 	return HAK_PF_SUCCESS;
 }
@@ -1256,13 +1256,13 @@ static hak_pfrc_t pf_system_set_sig (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs
 	int n;
 
 	tmp = HAK_STACK_GETARG(hak, nargs, 0);
-	HAK_PF_CHECK_ARGS (hak, nargs, HAK_OOP_IS_SMOOI(tmp));
+	HAK_PF_CHECK_ARGS(hak, nargs, HAK_OOP_IS_SMOOI(tmp));
 
 	sig = (hak_uint8_t)HAK_OOP_TO_SMOOI(tmp);
 	n = hak->vmprim.vm_setsig(hak, sig);
 	if (n <= -1) return HAK_PF_FAILURE;
 
-	HAK_STACK_SETRET (hak, nargs, HAK_SMOOI_TO_OOP((hak_ooi_t)sig));
+	HAK_STACK_SETRET(hak, nargs, HAK_SMOOI_TO_OOP((hak_ooi_t)sig));
 
 	return HAK_PF_SUCCESS;
 }
@@ -1385,29 +1385,29 @@ int hak_addbuiltinprims (hak_t* hak)
 		if (HAK_UNLIKELY(!prim))
 		{
 			const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-			hak_seterrbfmt (hak, HAK_ERRNUM(hak), "unable to make primitive '%.*js' - %js",
+			hak_seterrbfmt(hak, HAK_ERRNUM(hak), "unable to make primitive '%.*js' - %js",
 				builtin_prims[i].namelen, builtin_prims[i].name, orgmsg);
 			return -1;
 		}
 
-		hak_pushvolat (hak, &prim);
+		hak_pushvolat(hak, &prim);
 		name = hak_makesymbol(hak, builtin_prims[i].name, builtin_prims[i].namelen);
 		hak_popvolat (hak);
 		if (HAK_UNLIKELY(!name))
 		{
 			const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-			hak_seterrbfmt (hak, HAK_ERRNUM(hak), "unable to make primitive name '%.*js' - %js",
+			hak_seterrbfmt(hak, HAK_ERRNUM(hak), "unable to make primitive name '%.*js' - %js",
 				builtin_prims[i].namelen, builtin_prims[i].name, orgmsg);
 			return -1;
 		}
 
-		hak_pushvolat (hak, &name);
+		hak_pushvolat(hak, &name);
 		cons = hak_putatsysdic(hak, name, prim);
 		hak_popvolat (hak);
 		if (HAK_UNLIKELY(!cons))
 		{
 			const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-			hak_seterrbfmt (hak, HAK_ERRNUM(hak), "unable to add primitive '%.*js' to system dictionary - %js",
+			hak_seterrbfmt(hak, HAK_ERRNUM(hak), "unable to add primitive '%.*js' to system dictionary - %js",
 				builtin_prims[i].namelen, builtin_prims[i].name, orgmsg);
 			return -1;
 		}

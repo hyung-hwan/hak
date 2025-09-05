@@ -688,9 +688,9 @@ static void compact_symbol_table (hak_t* hak, hak_oop_t _nil)
 
 	/* the symbol table doesn't allow more data items than HAK_SMOOI_MAX.
 	 * so hak->symtab->tally must always be a small integer */
-	HAK_ASSERT (hak, HAK_OOP_IS_SMOOI(hak->symtab->tally));
+	HAK_ASSERT(hak, HAK_OOP_IS_SMOOI(hak->symtab->tally));
 	tally = HAK_OOP_TO_SMOOI(hak->symtab->tally);
-	HAK_ASSERT (hak, tally >= 0); /* it must not be less than 0 */
+	HAK_ASSERT(hak, tally >= 0); /* it must not be less than 0 */
 	if (tally <= 0) return;
 
 	/* NOTE: in theory, the bucket size can be greater than HAK_SMOOI_MAX
@@ -705,7 +705,7 @@ static void compact_symbol_table (hak_t* hak, hak_oop_t _nil)
 			continue;
 		}
 
-		HAK_ASSERT (hak, hak->symtab->bucket->slot[index] != _nil);
+		HAK_ASSERT(hak, hak->symtab->bucket->slot[index] != _nil);
 
 		for (i = 0, x = index, y = index; i < bucket_size; i++)
 		{
@@ -718,7 +718,7 @@ static void compact_symbol_table (hak_t* hak, hak_oop_t _nil)
 			 * at the current hash index */
 			symbol = (hak_oop_char_t)hak->symtab->bucket->slot[y];
 
-			HAK_ASSERT (hak, HAK_IS_SYMBOL(hak, symbol));
+			HAK_ASSERT(hak, HAK_IS_SYMBOL(hak, symbol));
 
 			z = hak_hash_oochars(symbol->slot, HAK_OBJ_GET_SIZE(symbol)) % bucket_size;
 
@@ -735,8 +735,8 @@ static void compact_symbol_table (hak_t* hak, hak_oop_t _nil)
 		tally--;
 	}
 
-	HAK_ASSERT (hak, tally >= 0);
-	HAK_ASSERT (hak, tally <= HAK_SMOOI_MAX);
+	HAK_ASSERT(hak, tally >= 0);
+	HAK_ASSERT(hak, tally <= HAK_SMOOI_MAX);
 	hak->symtab->tally = HAK_SMOOI_TO_OOP(tally);
 }
 
@@ -760,9 +760,9 @@ hak_oow_t hak_getobjpayloadbytes (hak_t* hak, hak_oop_t oop)
 		 * |   Z       | <-- if TRAILER is set, it is the number of bytes in the trailer
 		 * |  |  |  |  |
 		 */
-		HAK_ASSERT (hak, HAK_OBJ_GET_FLAGS_TYPE(oop) == HAK_OBJ_TYPE_OOP);
-		HAK_ASSERT (hak, HAK_OBJ_GET_FLAGS_UNIT(oop) == HAK_SIZEOF(hak_oow_t));
-		HAK_ASSERT (hak, HAK_OBJ_GET_FLAGS_EXTRA(oop) == 0); /* no 'extra' for an OOP object */
+		HAK_ASSERT(hak, HAK_OBJ_GET_FLAGS_TYPE(oop) == HAK_OBJ_TYPE_OOP);
+		HAK_ASSERT(hak, HAK_OBJ_GET_FLAGS_UNIT(oop) == HAK_SIZEOF(hak_oow_t));
+		HAK_ASSERT(hak, HAK_OBJ_GET_FLAGS_EXTRA(oop) == 0); /* no 'extra' for an OOP object */
 
 		nbytes = HAK_OBJ_BYTESOF(oop) + HAK_SIZEOF(hak_oow_t) + HAK_OBJ_GET_TRAILER_SIZE(oop);
 		nbytes_aligned = HAK_ALIGN(nbytes, HAK_SIZEOF(hak_oop_t));
@@ -793,7 +793,7 @@ static HAK_INLINE void gc_ms_mark (hak_t* hak, hak_oop_t oop)
 
 	HAK_OBJ_SET_FLAGS_MOVED(oop, 1); /* mark */
 
-	/*gc_ms_mark (hak, (hak_oop_t)HAK_OBJ_GET_CLASS(oop));*/ /* TODO: remove recursion */
+	/*gc_ms_mark(hak, (hak_oop_t)HAK_OBJ_GET_CLASS(oop));*/ /* TODO: remove recursion */
 
 	if (HAK_OBJ_GET_FLAGS_TYPE(oop) == HAK_OBJ_TYPE_OOP)
 	{
@@ -807,7 +807,7 @@ static HAK_INLINE void gc_ms_mark (hak_t* hak, hak_oop_t oop)
 			 * scanned in full. the slots above the stack pointer
 			 * are garbages. */
 			size = HAK_PROCESS_NAMED_INSTVARS + HAK_OOP_TO_SMOOI(((hak_oop_process_t)oop)->sp) + 1;
-			HAK_ASSERT (hak, size <= HAK_OBJ_GET_SIZE(oop));
+			HAK_ASSERT(hak, size <= HAK_OBJ_GET_SIZE(oop));
 		}
 		else
 		{
@@ -817,7 +817,7 @@ static HAK_INLINE void gc_ms_mark (hak_t* hak, hak_oop_t oop)
 		for (i = 0; i < size; i++)
 		{
 			hak_oop_t tmp = HAK_OBJ_GET_OOP_VAL(oop, i);
-			if (HAK_OOP_IS_POINTER(tmp)) gc_ms_mark (hak, tmp);  /* TODO: no resursion */
+			if (HAK_OOP_IS_POINTER(tmp)) gc_ms_mark(hak, tmp);  /* TODO: no resursion */
 		}
 	}
 }
@@ -830,7 +830,7 @@ static HAK_INLINE void gc_ms_mark_object (hak_t* hak, hak_oop_t oop)
 	if (!HAK_OOP_IS_POINTER(oop) || HAK_OBJ_GET_FLAGS_MOVED(oop)) return; /* non-pointer or already marked */
 
 	HAK_OBJ_SET_FLAGS_MOVED(oop, 1); /* mark */
-	HAK_ASSERT (hak, hak->gci.stack.len < hak->gci.stack.capa);
+	HAK_ASSERT(hak, hak->gci.stack.len < hak->gci.stack.capa);
 	hak->gci.stack.ptr[hak->gci.stack.len++] = oop; /* push */
 	if (hak->gci.stack.len > hak->gci.stack.max) hak->gci.stack.max = hak->gci.stack.len;
 }
@@ -843,7 +843,7 @@ static HAK_INLINE void gc_ms_scan_stack (hak_t* hak)
 	{
 		oop = hak->gci.stack.ptr[--hak->gci.stack.len];
 
-		gc_ms_mark_object (hak, (hak_oop_t)HAK_OBJ_GET_CLASS(oop));
+		gc_ms_mark_object(hak, (hak_oop_t)HAK_OBJ_GET_CLASS(oop));
 
 		if (HAK_OBJ_GET_FLAGS_TYPE(oop) == HAK_OBJ_TYPE_OOP)
 		{
@@ -855,7 +855,7 @@ static HAK_INLINE void gc_ms_scan_stack (hak_t* hak)
 			{
 				hak_oop_process_t proc;
 
-				HAK_ASSERT (hak, HAK_IS_PROCESS(hak, oop));
+				HAK_ASSERT(hak, HAK_IS_PROCESS(hak, oop));
 				/* the stack in a process object doesn't need to be
 				 * scanned in full. the slots above the stack pointer
 				 * are garbages. */
@@ -863,27 +863,27 @@ static HAK_INLINE void gc_ms_scan_stack (hak_t* hak)
 
 				/* the fixed part */
 				ll = HAK_PROCESS_NAMED_INSTVARS;
-				for (i = 0; i < ll; i++) gc_ms_mark_object (hak, HAK_OBJ_GET_OOP_VAL(oop, i));
+				for (i = 0; i < ll; i++) gc_ms_mark_object(hak, HAK_OBJ_GET_OOP_VAL(oop, i));
 
 				/* stack */
 				ll = HAK_OOP_TO_SMOOI(proc->sp);
-				HAK_ASSERT (hak, ll < (hak_ooi_t)(HAK_OBJ_GET_SIZE(oop) - HAK_PROCESS_NAMED_INSTVARS));
-				for (i = 0; i <= ll; i++) gc_ms_mark_object (hak, proc->slot[i]);
+				HAK_ASSERT(hak, ll < (hak_ooi_t)(HAK_OBJ_GET_SIZE(oop) - HAK_PROCESS_NAMED_INSTVARS));
+				for (i = 0; i <= ll; i++) gc_ms_mark_object(hak, proc->slot[i]);
 
 				/* exception stack */
 				ll = HAK_OOP_TO_SMOOI(proc->exsp);
-				HAK_ASSERT (hak, ll < (hak_ooi_t)(HAK_OBJ_GET_SIZE(oop) - HAK_PROCESS_NAMED_INSTVARS));
-				for (i = HAK_OOP_TO_SMOOI(proc->st) + 1; i <= ll; i++) gc_ms_mark_object (hak, proc->slot[i]);
+				HAK_ASSERT(hak, ll < (hak_ooi_t)(HAK_OBJ_GET_SIZE(oop) - HAK_PROCESS_NAMED_INSTVARS));
+				for (i = HAK_OOP_TO_SMOOI(proc->st) + 1; i <= ll; i++) gc_ms_mark_object(hak, proc->slot[i]);
 
 				/* class stack */
 				ll = HAK_OOP_TO_SMOOI(proc->clsp);
-				HAK_ASSERT (hak, ll < (hak_ooi_t)(HAK_OBJ_GET_SIZE(oop) - HAK_PROCESS_NAMED_INSTVARS));
-				for (i = HAK_OOP_TO_SMOOI(proc->exst) + 1; i <= ll; i++) gc_ms_mark_object (hak, proc->slot[i]);
+				HAK_ASSERT(hak, ll < (hak_ooi_t)(HAK_OBJ_GET_SIZE(oop) - HAK_PROCESS_NAMED_INSTVARS));
+				for (i = HAK_OOP_TO_SMOOI(proc->exst) + 1; i <= ll; i++) gc_ms_mark_object(hak, proc->slot[i]);
 			}
 			else
 			{
 				ll = HAK_OBJ_GET_SIZE(oop);
-				for (i = 0; i < ll; i++) gc_ms_mark_object (hak, HAK_OBJ_GET_OOP_VAL(oop, i));
+				for (i = 0; i < ll; i++) gc_ms_mark_object(hak, HAK_OBJ_GET_OOP_VAL(oop, i));
 			}
 		}
 	}
@@ -891,7 +891,7 @@ static HAK_INLINE void gc_ms_scan_stack (hak_t* hak)
 
 static HAK_INLINE void gc_ms_mark (hak_t* hak, hak_oop_t oop)
 {
-	gc_ms_mark_object (hak, oop);
+	gc_ms_mark_object(hak, oop);
 	gc_ms_scan_stack (hak);
 }
 #endif
@@ -913,75 +913,75 @@ static HAK_INLINE void gc_ms_mark_roots (hak_t* hak)
 
 	if (hak->processor && hak->processor->active)
 	{
-		HAK_ASSERT (hak, (hak_oop_t)hak->processor != hak->_nil);
-		HAK_ASSERT (hak, (hak_oop_t)hak->processor->active != hak->_nil);
+		HAK_ASSERT(hak, (hak_oop_t)hak->processor != hak->_nil);
+		HAK_ASSERT(hak, (hak_oop_t)hak->processor->active != hak->_nil);
 
 		/* commit the stack pointer to the active process because
 		 * gc needs the correct stack pointer for a process object */
 		hak->processor->active->sp = HAK_SMOOI_TO_OOP(hak->sp);
 	}
 
-	gc_ms_mark (hak, hak->_undef);
-	gc_ms_mark (hak, hak->_nil);
-	gc_ms_mark (hak, hak->_true);
-	gc_ms_mark (hak, hak->_false);
+	gc_ms_mark(hak, hak->_undef);
+	gc_ms_mark(hak, hak->_nil);
+	gc_ms_mark(hak, hak->_true);
+	gc_ms_mark(hak, hak->_false);
 
 	for (i = 0; i < HAK_COUNTOF(kernel_classes); i++)
 	{
-		gc_ms_mark (hak, *(hak_oop_t*)((hak_uint8_t*)hak + kernel_classes[i].offset));
+		gc_ms_mark(hak, *(hak_oop_t*)((hak_uint8_t*)hak + kernel_classes[i].offset));
 	}
 
-	gc_ms_mark (hak, (hak_oop_t)hak->sysdic);
-	gc_ms_mark (hak, (hak_oop_t)hak->processor);
-	gc_ms_mark (hak, (hak_oop_t)hak->nil_process);
+	gc_ms_mark(hak, (hak_oop_t)hak->sysdic);
+	gc_ms_mark(hak, (hak_oop_t)hak->processor);
+	gc_ms_mark(hak, (hak_oop_t)hak->nil_process);
 
 
 	for (i = 0; i < hak->code.lit.len; i++)
 	{
 		/* the literal array ia a NGC object. but the literal objects
 		 * pointed by the elements of this array must be gabage-collected. */
-		gc_ms_mark (hak, ((hak_oop_oop_t)hak->code.lit.arr)->slot[i]);
+		gc_ms_mark(hak, ((hak_oop_oop_t)hak->code.lit.arr)->slot[i]);
 	}
-	gc_ms_mark (hak, hak->p.e);
+	gc_ms_mark(hak, hak->p.e);
 
 	for (i = 0; i < hak->sem_list_count; i++)
 	{
-		gc_ms_mark (hak, (hak_oop_t)hak->sem_list[i]);
+		gc_ms_mark(hak, (hak_oop_t)hak->sem_list[i]);
 	}
 
 	for (i = 0; i < hak->sem_heap_count; i++)
 	{
-		gc_ms_mark (hak, (hak_oop_t)hak->sem_heap[i]);
+		gc_ms_mark(hak, (hak_oop_t)hak->sem_heap[i]);
 	}
 
 	for (i = 0; i < hak->sem_io_tuple_count; i++)
 	{
 		if (hak->sem_io_tuple[i].sem[HAK_SEMAPHORE_IO_TYPE_INPUT])
-			gc_ms_mark (hak, (hak_oop_t)hak->sem_io_tuple[i].sem[HAK_SEMAPHORE_IO_TYPE_INPUT]);
+			gc_ms_mark(hak, (hak_oop_t)hak->sem_io_tuple[i].sem[HAK_SEMAPHORE_IO_TYPE_INPUT]);
 		if (hak->sem_io_tuple[i].sem[HAK_SEMAPHORE_IO_TYPE_OUTPUT])
-			gc_ms_mark (hak, (hak_oop_t)hak->sem_io_tuple[i].sem[HAK_SEMAPHORE_IO_TYPE_OUTPUT]);
+			gc_ms_mark(hak, (hak_oop_t)hak->sem_io_tuple[i].sem[HAK_SEMAPHORE_IO_TYPE_OUTPUT]);
 	}
 
 #if defined(ENABLE_GCFIN)
-	gc_ms_mark (hak, (hak_oop_t)hak->sem_gcfin);
+	gc_ms_mark(hak, (hak_oop_t)hak->sem_gcfin);
 #endif
 
 	for (i = 0; i < hak->proc_map_capa; i++)
 	{
-		gc_ms_mark (hak, hak->proc_map[i]);
+		gc_ms_mark(hak, hak->proc_map[i]);
 	}
 
 	for (i = 0; i < hak->volat_count; i++)
 	{
-		gc_ms_mark (hak, *hak->volat_stack[i]);
+		gc_ms_mark(hak, *hak->volat_stack[i]);
 	}
 
-	if (hak->initial_context) gc_ms_mark (hak, (hak_oop_t)hak->initial_context);
-	if (hak->active_context) gc_ms_mark (hak, (hak_oop_t)hak->active_context);
-	if (hak->initial_function) gc_ms_mark (hak, (hak_oop_t)hak->initial_function);
-	if (hak->active_function) gc_ms_mark (hak, (hak_oop_t)hak->active_function);
+	if (hak->initial_context) gc_ms_mark(hak, (hak_oop_t)hak->initial_context);
+	if (hak->active_context) gc_ms_mark(hak, (hak_oop_t)hak->active_context);
+	if (hak->initial_function) gc_ms_mark(hak, (hak_oop_t)hak->initial_function);
+	if (hak->active_function) gc_ms_mark(hak, (hak_oop_t)hak->active_function);
 
-	if (hak->last_retv) gc_ms_mark (hak, hak->last_retv);
+	if (hak->last_retv) gc_ms_mark(hak, hak->last_retv);
 
 	/*hak_rbt_walk (&hak->modtab, call_module_gc, hak); */
 
@@ -996,9 +996,9 @@ static HAK_INLINE void gc_ms_mark_roots (hak_t* hak)
 
 	if (hak->symtab)
 	{
-		compact_symbol_table (hak, hak->_nil); /* delete symbol table entries that are not marked */
+		compact_symbol_table(hak, hak->_nil); /* delete symbol table entries that are not marked */
 	#if 0
-		gc_ms_mark (hak, (hak_oop_t)hak->symtab); /* mark the symbol table */
+		gc_ms_mark(hak, (hak_oop_t)hak->symtab); /* mark the symbol table */
 	#else
 		HAK_OBJ_SET_FLAGS_MOVED(hak->symtab, 1); /* mark */
 		HAK_OBJ_SET_FLAGS_MOVED(hak->symtab->bucket, 1); /* mark */
@@ -1130,7 +1130,7 @@ static HAK_INLINE void gc_ms_sweep (hak_t* hak)
 
 void hak_gc (hak_t* hak, int full)
 {
-	if (hak->gci.lazy_sweep) hak_gc_ms_sweep_lazy (hak, HAK_TYPE_MAX(hak_oow_t));
+	if (hak->gci.lazy_sweep) hak_gc_ms_sweep_lazy(hak, HAK_TYPE_MAX(hak_oow_t));
 
 	HAK_LOG1 (hak, HAK_LOG_GC | HAK_LOG_INFO, "Starting GC (mark-sweep) - gci.bsz = %zu\n", hak->gci.bsz);
 
@@ -1156,7 +1156,7 @@ void hak_gc (hak_t* hak, int full)
 
 hak_oop_t hak_moveoop (hak_t* hak, hak_oop_t oop)
 {
-	if (oop) gc_ms_mark (hak, oop);
+	if (oop) gc_ms_mark(hak, oop);
 	return oop;
 }
 
@@ -1177,9 +1177,9 @@ void hak_gc (hak_t* hak)
 
 	if (hak->active_context)
 	{
-		HAK_ASSERT (hak, (hak_oop_t)hak->processor != hak->_nil);
-		HAK_ASSERT (hak, (hak_oop_t)hak->processor->active != hak->_nil);
-		HAK_ASSERT (hak, HAK_IS_PROCESS(hak, hak->processor->active));
+		HAK_ASSERT(hak, (hak_oop_t)hak->processor != hak->_nil);
+		HAK_ASSERT(hak, (hak_oop_t)hak->processor->active != hak->_nil);
+		HAK_ASSERT(hak, HAK_IS_PROCESS(hak, hak->processor->active));
 		/* commit the stack pointer to the active process */
 		hak->processor->active->sp = HAK_SMOOI_TO_OOP(hak->sp);
 		/* commit the instruction pointer to the active context */
@@ -1278,7 +1278,7 @@ void hak_gc (hak_t* hak)
 	 * if the symbol has not moved to the new heap, the symbol
 	 * is not referenced by any other objects than the symbol
 	 * table itself */
-	compact_symbol_table (hak, old_nil);
+	compact_symbol_table(hak, old_nil);
 
 	/* move the symbol table itself */
 	hak->symtab = (hak_oop_dic_t)hak_moveoop(hak, (hak_oop_t)hak->symtab);
@@ -1329,19 +1329,19 @@ void hak_pushvolat (hak_t* hak, hak_oop_t* oop_ptr)
 {
 	/* if you have too many temporaries pushed, something must be wrong.
 	 * change your code not to exceede the stack limit */
-	HAK_ASSERT (hak, hak->volat_count < HAK_COUNTOF(hak->volat_stack));
+	HAK_ASSERT(hak, hak->volat_count < HAK_COUNTOF(hak->volat_stack));
 	hak->volat_stack[hak->volat_count++] = oop_ptr;
 }
 
 void hak_popvolat (hak_t* hak)
 {
-	HAK_ASSERT (hak, hak->volat_count > 0);
+	HAK_ASSERT(hak, hak->volat_count > 0);
 	hak->volat_count--;
 }
 
 void hak_popvolats (hak_t* hak, hak_oow_t count)
 {
-	HAK_ASSERT (hak, hak->volat_count >= count);
+	HAK_ASSERT(hak, hak->volat_count >= count);
 	hak->volat_count -= count;
 }
 
@@ -1355,11 +1355,11 @@ hak_oop_t hak_shallowcopy (hak_t* hak, hak_oop_t oop)
 
 		total_bytes = HAK_SIZEOF(hak_obj_t) + hak_getobjpayloadbytes(hak, oop);
 
-		hak_pushvolat (hak, &oop);
+		hak_pushvolat(hak, &oop);
 		z = (hak_oop_t)hak_allocbytes(hak, total_bytes);
 		hak_popvolat(hak);
 
-		HAK_MEMCPY (z, oop, total_bytes);
+		HAK_MEMCPY(z, oop, total_bytes);
 		return z;
 	}
 
@@ -1405,10 +1405,10 @@ static int ignite_1 (hak_t* hak)
 	 * Create fundamental class objects with some fields mis-initialized yet.
 	 * Such fields include 'superclass', 'subclasses', 'name', etc.
 	 */
-	HAK_ASSERT (hak, hak->_nil != HAK_NULL);
-	HAK_ASSERT (hak, HAK_OBJ_GET_CLASS(hak->_nil) == HAK_NULL);
+	HAK_ASSERT(hak, hak->_nil != HAK_NULL);
+	HAK_ASSERT(hak, HAK_OBJ_GET_CLASS(hak->_nil) == HAK_NULL);
 
-	HAK_ASSERT (hak, hak->c_class == HAK_NULL);
+	HAK_ASSERT(hak, hak->c_class == HAK_NULL);
 	/* --------------------------------------------------------------
 	 * Class
 	 * The instance of Class can have indexed instance variables
@@ -1416,7 +1416,7 @@ static int ignite_1 (hak_t* hak)
 	 * -------------------------------------------------------------- */
 	if (HAK_LIKELY(!hak->c_class))
 	{
-		HAK_ASSERT (hak, kernel_classes[KCI_CLASS].superclass_kci >= 0);
+		HAK_ASSERT(hak, kernel_classes[KCI_CLASS].superclass_kci >= 0);
 		hak->c_class = alloc_kernel_class(
 			hak,
 			kernel_classes[KCI_CLASS].class_flags,
@@ -1429,11 +1429,11 @@ static int ignite_1 (hak_t* hak)
 		if (HAK_UNLIKELY(!hak->c_class))
 		{
 			const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-			hak_seterrbfmt (hak, HAK_ERRNUM(hak), "unable to allocate %hs - %js", kernel_classes[KCI_CLASS].name, orgmsg);
+			hak_seterrbfmt(hak, HAK_ERRNUM(hak), "unable to allocate %hs - %js", kernel_classes[KCI_CLASS].name, orgmsg);
 			return -1;
 		}
 
-		HAK_ASSERT (hak, HAK_OBJ_GET_CLASS(hak->c_class) == HAK_NULL);
+		HAK_ASSERT(hak, HAK_OBJ_GET_CLASS(hak->c_class) == HAK_NULL);
 		HAK_OBJ_SET_CLASS (hak->c_class, (hak_oop_t)hak->c_class);
 	}
 
@@ -1460,7 +1460,7 @@ static int ignite_1 (hak_t* hak)
 		if (HAK_UNLIKELY(!tmp))
 		{
 			const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-			hak_seterrbfmt (hak, HAK_ERRNUM(hak), "unable to allocate %hs - %js", kernel_classes[i].name, orgmsg);
+			hak_seterrbfmt(hak, HAK_ERRNUM(hak), "unable to allocate %hs - %js", kernel_classes[i].name, orgmsg);
 			return -1;
 		}
 		*(hak_oop_class_t*)((hak_uint8_t*)hak + kernel_classes[i].offset) = tmp;
@@ -1551,7 +1551,7 @@ static int ignite_2 (hak_t* hak)
 		* The pointer 'hak->symtab; can change in hak_instantiate() and the
 		* target address of assignment may get set before hak_instantiate()
 		* is called. */
-		HAK_ASSERT (hak, hak->option.dfl_symtab_size > 0);
+		HAK_ASSERT(hak, hak->option.dfl_symtab_size > 0);
 		tmp = hak_instantiate(hak, hak->c_array, HAK_NULL, hak->option.dfl_symtab_size);
 		if (HAK_UNLIKELY(!tmp)) goto oops; /* TODO: delete hak->symtab instad of this separate initialization of the bucket??? */
 		hak->symtab->bucket = (hak_oop_oop_t)tmp;
@@ -1653,9 +1653,9 @@ static int ignite_3 (hak_t* hak)
 		if (HAK_UNLIKELY(!sym)) return -1;
 
 		_class = *(hak_oop_class_t*)((hak_uint8_t*)hak + kernel_classes[i].offset);
-		HAK_STORE_OOP (hak, (hak_oop_t*)&_class->name, sym);
+		HAK_STORE_OOP(hak, (hak_oop_t*)&_class->name, sym);
 #if 0
-		HAK_STORE_OOP (hak, (hak_oop_t*)&_class->nsup, (hak_oop_t)hak->sysdic);
+		HAK_STORE_OOP(hak, (hak_oop_t*)&_class->nsup, (hak_oop_t)hak->sysdic);
 #endif
 
 		if (!hak_putatsysdic(hak, sym, (hak_oop_t)_class)) return -1;
@@ -1663,11 +1663,11 @@ static int ignite_3 (hak_t* hak)
 
 #if 0
 	/* Attach the system dictionary to the nsdic field of the System class */
-	HAK_STORE_OOP (hak, (hak_oop_t*)&hak->_system->nsdic, (hak_oop_t)hak->sysdic);
+	HAK_STORE_OOP(hak, (hak_oop_t*)&hak->_system->nsdic, (hak_oop_t)hak->sysdic);
 	/* Set the name field of the system dictionary */
-	HAK_STORE_OOP (hak, (hak_oop_t*)&hak->sysdic->name, (hak_oop_t)hak->_system->name);
+	HAK_STORE_OOP(hak, (hak_oop_t*)&hak->sysdic->name, (hak_oop_t)hak->_system->name);
 	/* Set the owning class field of the system dictionary, it's circular here */
-	HAK_STORE_OOP (hak, (hak_oop_t*)&hak->sysdic->nsup, (hak_oop_t)hak->_system);
+	HAK_STORE_OOP(hak, (hak_oop_t*)&hak->sysdic->nsup, (hak_oop_t)hak->_system);
 
 	/* Make the process scheduler avaialble as the global name 'Processor' */
 	sym = hak_makesymbol(hak, str_processor, HAK_COUNTOF(str_processor));
@@ -1754,8 +1754,8 @@ int hak_ignite (hak_t* hak, hak_oow_t heapsize)
 
 	if (make_kernel_objs(hak) <= -1) return -1;
 
-	HAK_ASSERT (hak, hak->_true != HAK_NULL);
-	HAK_ASSERT (hak, hak->_false != HAK_NULL);
+	HAK_ASSERT(hak, hak->_true != HAK_NULL);
+	HAK_ASSERT(hak, hak->_false != HAK_NULL);
 
 	if (!hak->symtab)
 	{
@@ -1778,7 +1778,7 @@ int hak_ignite (hak_t* hak, hak_oow_t heapsize)
 		if (HAK_UNLIKELY(!hak->nil_process))
 		{
 			const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-			hak_seterrbfmt (hak, HAK_ERRNUM(hak),
+			hak_seterrbfmt(hak, HAK_ERRNUM(hak),
 				"unable to instantiate %O to be nil process - %js", hak->c_process->name, orgmsg);
 			goto oops;
 		}
@@ -1801,7 +1801,7 @@ int hak_ignite (hak_t* hak, hak_oow_t heapsize)
 		if (HAK_UNLIKELY(!hak->processor))
 		{
 			const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-			hak_seterrbfmt (hak, HAK_ERRNUM(hak),
+			hak_seterrbfmt(hak, HAK_ERRNUM(hak),
 				"unable to instantiate %O - %js",hak->c_process_scheduler->name, orgmsg);
 			goto oops;
 		}

@@ -81,7 +81,7 @@ HAK_INLINE hak_rbt_pair_t* hak_rbt_allocpair (
 	else if (kcop == HAK_RBT_COPIER_INLINE)
 	{
 		KPTR(pair) = pair + 1;
-		if (kptr) HAK_MEMCPY (KPTR(pair), kptr, KTOB(rbt,klen));
+		if (kptr) HAK_MEMCPY(KPTR(pair), kptr, KTOB(rbt,klen));
 	}
 	else
 	{
@@ -103,7 +103,7 @@ HAK_INLINE hak_rbt_pair_t* hak_rbt_allocpair (
 		VPTR(pair) = pair + 1;
 		if (kcop == HAK_RBT_COPIER_INLINE)
 			VPTR(pair) = (hak_oob_t*)VPTR(pair) + HAK_ALIGN_POW2(KTOB(rbt,klen), HAK_SIZEOF_VOID_P);
-		if (vptr) HAK_MEMCPY (VPTR(pair), vptr, VTOB(rbt,vlen));
+		if (vptr) HAK_MEMCPY(VPTR(pair), vptr, VTOB(rbt,vlen));
 	}
 	else
 	{
@@ -198,11 +198,11 @@ hak_rbt_t* hak_rbt_open (hak_t* hak, hak_oow_t xtnsize, int kscale, int vscale)
 
 	if (hak_rbt_init(rbt, hak, kscale, vscale) <= -1)
 	{
-		hak_freemem (hak, rbt);
+		hak_freemem(hak, rbt);
 		return HAK_NULL;
 	}
 
-	HAK_MEMSET (rbt + 1, 0, xtnsize);
+	HAK_MEMSET(rbt + 1, 0, xtnsize);
 	return rbt;
 }
 
@@ -215,7 +215,7 @@ void hak_rbt_close (hak_rbt_t* rbt)
 int hak_rbt_init (hak_rbt_t* rbt, hak_t* hak, int kscale, int vscale)
 {
 	/* do not zero out the extension */
-	HAK_MEMSET (rbt, 0, HAK_SIZEOF(*rbt));
+	HAK_MEMSET(rbt, 0, HAK_SIZEOF(*rbt));
 	rbt->hak = hak;
 
 	rbt->scale[HAK_RBT_KEY] = (kscale < 1)? 1: kscale;
@@ -253,7 +253,7 @@ const hak_rbt_style_t* hak_rbt_getstyle (const hak_rbt_t* rbt)
 
 void hak_rbt_setstyle (hak_rbt_t* rbt, const hak_rbt_style_t* style)
 {
-	HAK_ASSERT (rbt->hak, style != HAK_NULL);
+	HAK_ASSERT(rbt->hak, style != HAK_NULL);
 	rbt->style = style;
 }
 
@@ -317,7 +317,7 @@ static void rotate (hak_rbt_t* rbt, hak_rbt_pair_t* pivot, int leftwise)
 	hak_rbt_pair_t* parent, * z, * c;
 	int cid1, cid2;
 
-	HAK_ASSERT (rbt->hak, pivot != HAK_NULL);
+	HAK_ASSERT(rbt->hak, pivot != HAK_NULL);
 
 	if (leftwise)
 	{
@@ -345,13 +345,13 @@ static void rotate (hak_rbt_t* rbt, hak_rbt_pair_t* pivot, int leftwise)
 		}
 		else
 		{
-			HAK_ASSERT (rbt->hak, parent->right == pivot);
+			HAK_ASSERT(rbt->hak, parent->right == pivot);
 			parent->right = z;
 		}
 	}
 	else
 	{
-		HAK_ASSERT (rbt->hak, rbt->root == pivot);
+		HAK_ASSERT(rbt->hak, rbt->root == pivot);
 		rbt->root = z;
 	}
 
@@ -372,7 +372,7 @@ static void adjust (hak_rbt_t* rbt, hak_rbt_pair_t* pair)
 		x_par = pair->parent;
 		if (x_par->color == HAK_RBT_BLACK) break;
 
-		HAK_ASSERT (rbt->hak, x_par->parent != HAK_NULL);
+		HAK_ASSERT(rbt->hak, x_par->parent != HAK_NULL);
 
 		if (x_par == x_par->parent->child[LEFT])
 		{
@@ -439,7 +439,7 @@ static hak_rbt_pair_t* change_pair_val (
 		{
 			if (ovlen == vlen)
 			{
-				if (vptr) HAK_MEMCPY (VPTR(pair), vptr, VTOB(rbt,vlen));
+				if (vptr) HAK_MEMCPY(VPTR(pair), vptr, VTOB(rbt,vlen));
 			}
 			else
 			{
@@ -462,7 +462,7 @@ static hak_rbt_pair_t* change_pair_val (
 					}
 					else
 					{
-						HAK_ASSERT (rbt->hak, pair->parent->right == pair);
+						HAK_ASSERT(rbt->hak, pair->parent->right == pair);
 						pair->parent->right = p;
 					}
 				}
@@ -535,7 +535,7 @@ static hak_rbt_pair_t* insert (
 	if (x_par == HAK_NULL)
 	{
 		/* the tree contains no pair */
-		HAK_ASSERT (rbt->hak, rbt->root == &rbt->xnil);
+		HAK_ASSERT(rbt->hak, rbt->root == &rbt->xnil);
 		rbt->root = x_new;
 	}
 	else
@@ -544,12 +544,12 @@ static hak_rbt_pair_t* insert (
 		int n = rbt->style->comper (rbt, kptr, klen, KPTR(x_par), KLEN(x_par));
 		if (n > 0)
 		{
-			HAK_ASSERT (rbt->hak, x_par->right == &rbt->xnil);
+			HAK_ASSERT(rbt->hak, x_par->right == &rbt->xnil);
 			x_par->right = x_new;
 		}
 		else
 		{
-			HAK_ASSERT (rbt->hak, x_par->left == &rbt->xnil);
+			HAK_ASSERT(rbt->hak, x_par->left == &rbt->xnil);
 			x_par->left = x_new;
 		}
 
@@ -632,7 +632,7 @@ hak_rbt_pair_t* hak_rbt_cbsert (
 					}
 					else
 					{
-						HAK_ASSERT (rbt->hak, tmp.parent->right == x_cur);
+						HAK_ASSERT(rbt->hak, tmp.parent->right == x_cur);
 						tmp.parent->right = x_new;
 					}
 				}
@@ -657,7 +657,7 @@ hak_rbt_pair_t* hak_rbt_cbsert (
 	if (x_par == HAK_NULL)
 	{
 		/* the tree contains no pair */
-		HAK_ASSERT (rbt->hak, rbt->root == &rbt->xnil);
+		HAK_ASSERT(rbt->hak, rbt->root == &rbt->xnil);
 		rbt->root = x_new;
 	}
 	else
@@ -666,12 +666,12 @@ hak_rbt_pair_t* hak_rbt_cbsert (
 		int n = rbt->style->comper (rbt, kptr, klen, KPTR(x_par), KLEN(x_par));
 		if (n > 0)
 		{
-			HAK_ASSERT (rbt->hak, x_par->right == &rbt->xnil);
+			HAK_ASSERT(rbt->hak, x_par->right == &rbt->xnil);
 			x_par->right = x_new;
 		}
 		else
 		{
-			HAK_ASSERT (rbt->hak, x_par->left == &rbt->xnil);
+			HAK_ASSERT(rbt->hak, x_par->left == &rbt->xnil);
 			x_par->left = x_new;
 		}
 
@@ -731,7 +731,7 @@ static void adjust_for_delete (hak_rbt_t* rbt, hak_rbt_pair_t* pair, hak_rbt_pai
 		}
 		else
 		{
-			HAK_ASSERT (rbt->hak, pair == par->right);
+			HAK_ASSERT(rbt->hak, pair == par->right);
 			tmp = par->left;
 			if (tmp->color == HAK_RBT_RED)
 			{
@@ -776,7 +776,7 @@ static void delete_pair (hak_rbt_t* rbt, hak_rbt_pair_t* pair)
 {
 	hak_rbt_pair_t* x, * y, * par;
 
-	HAK_ASSERT (rbt->hak, pair && !IS_NIL(rbt,pair));
+	HAK_ASSERT(rbt->hak, pair && !IS_NIL(rbt,pair));
 
 	if (IS_NIL(rbt,pair->left) || IS_NIL(rbt,pair->right))
 	{
@@ -954,7 +954,7 @@ static HAK_INLINE void walk (hak_rbt_t* rbt, walker_t walker, void* ctx, int l, 
 		else
 		{
 			/* both the left child and the right child have been traversed */
-			HAK_ASSERT (rbt->hak, prev == x_cur->child[r]);
+			HAK_ASSERT(rbt->hak, prev == x_cur->child[r]);
 			/* just move up to the parent */
 			prev = x_cur;
 			x_cur = x_cur->parent;

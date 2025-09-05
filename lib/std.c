@@ -572,7 +572,7 @@ static void* alloc_heap (hak_t* hak, hak_oow_t* size)
 	return ptr;
 
 oops:
-	hak_seterrwithsyserr (hak, 1, GetLastError());
+	hak_seterrwithsyserr(hak, 1, GetLastError());
 	if (token)
 	{
 		if (token_adjusted) AdjustTokenPrivileges (token, FALSE, prev_state_ptr, 0, HAK_NULL, 0);
@@ -629,14 +629,14 @@ oops:
 		ptr = (hak_oow_t*)mmap(NULL, aligned_size, PROT_READ | PROT_WRITE, flags, -1, 0);
 		if (ptr == MAP_FAILED)
 		{
-			hak_seterrwithsyserr (hak, 0, errno);
+			hak_seterrwithsyserr(hak, 0, errno);
 			return HAK_NULL;
 		}
 	}
 	#else
 	if (ptr == MAP_FAILED)
 	{
-		hak_seterrwithsyserr (hak, 0, errno);
+		hak_seterrwithsyserr(hak, 0, errno);
 		return HAK_NULL;
 	}
 	#endif
@@ -724,7 +724,7 @@ static int write_log (hak_t* hak, int fd, const hak_bch_t* ptr, hak_oow_t len)
 			rcapa = HAK_COUNTOF(xtn->log.out.buf) - xtn->log.out.len;
 			cplen = (len >= rcapa)? rcapa: len;
 
-			HAK_MEMCPY (&xtn->log.out.buf[xtn->log.out.len], ptr, cplen);
+			HAK_MEMCPY(&xtn->log.out.buf[xtn->log.out.len], ptr, cplen);
 			xtn->log.out.len += cplen;
 			ptr += cplen;
 			len -= cplen;
@@ -750,7 +750,7 @@ static int write_log (hak_t* hak, int fd, const hak_bch_t* ptr, hak_oow_t len)
 			}
 			else
 			{
-				HAK_MEMCPY (xtn->log.out.buf, ptr, len);
+				HAK_MEMCPY(xtn->log.out.buf, ptr, len);
 				xtn->log.out.len += len;
 				ptr += len;
 				len -= len;
@@ -900,7 +900,7 @@ static void log_write (hak_t* hak, hak_bitmask_t mask, const hak_ooch_t* msg, ha
 			 * conversion is not likely to fail regardless of encodings.
 			 * so i don't check errors here */
 			tsulen = HAK_COUNTOF(tsu);
-			hak_convbtooochars (hak, ts, &tslen, tsu, &tsulen);
+			hak_convbtooochars(hak, ts, &tslen, tsu, &tsulen);
 			tslen = HAK_COUNTOF(ts);
 			hak_conv_uchars_to_bchars_with_cmgr (tsu, &tsulen, ts, &tslen, xtn->log_cmgr);
 		}
@@ -941,7 +941,7 @@ static void log_write (hak_t* hak, hak_bitmask_t mask, const hak_ooch_t* msg, ha
 			 *    buffer not sufficient. not all got converted yet.
 			 *    write what have been converted this round. */
 
-			HAK_ASSERT (hak, ucslen > 0); /* if this fails, the buffer size must be increased */
+			HAK_ASSERT(hak, ucslen > 0); /* if this fails, the buffer size must be increased */
 
 			/* attempt to write all converted characters */
 			if (write_log(hak, logfd, buf, bcslen) <= -1) break;
@@ -969,7 +969,7 @@ static void log_write (hak_t* hak, hak_bitmask_t mask, const hak_ooch_t* msg, ha
 	}
 
 flush_log_msg:
-	flush_log (hak, logfd, force_flush);
+	flush_log(hak, logfd, force_flush);
 }
 
 /* -----------------------------------------------------------------
@@ -1248,7 +1248,7 @@ static void backtrace_stack_frames (hak_t* hak)
 	unw_getcontext(&context);
 	unw_init_local(&cursor, &context);
 
-	hak_logbfmt (hak, HAK_LOG_STDERR | HAK_LOG_UNTYPED | HAK_LOG_DEBUG, "[BACKTRACE]\n");
+	hak_logbfmt(hak, HAK_LOG_STDERR | HAK_LOG_UNTYPED | HAK_LOG_DEBUG, "[BACKTRACE]\n");
 	for (n = 0; unw_step(&cursor) > 0; n++)
 	{
 		unw_word_t ip, sp, off;
@@ -1262,7 +1262,7 @@ static void backtrace_stack_frames (hak_t* hak)
 			hak_copy_bcstr (symbol, HAK_COUNTOF(symbol), "<unknown>");
 		}
 
-		hak_logbfmt (hak, HAK_LOG_STDERR | HAK_LOG_UNTYPED | HAK_LOG_DEBUG,
+		hak_logbfmt(hak, HAK_LOG_STDERR | HAK_LOG_UNTYPED | HAK_LOG_DEBUG,
 			"#%02d ip=0x%*p sp=0x%*p %hs+0x%zu\n",
 			n, HAK_SIZEOF(void*) * 2, (void*)ip, HAK_SIZEOF(void*) * 2, (void*)sp, symbol, (hak_oow_t)off);
 	}
@@ -1280,11 +1280,11 @@ static void backtrace_stack_frames (hak_t* hak)
 	if (btsyms)
 	{
 		hak_oow_t i;
-		hak_logbfmt (hak, HAK_LOG_STDERR | HAK_LOG_UNTYPED | HAK_LOG_DEBUG, "[BACKTRACE]\n");
+		hak_logbfmt(hak, HAK_LOG_STDERR | HAK_LOG_UNTYPED | HAK_LOG_DEBUG, "[BACKTRACE]\n");
 
 		for (i = 0; i < btsize; i++)
 		{
-			hak_logbfmt (hak, HAK_LOG_STDERR | HAK_LOG_UNTYPED | HAK_LOG_DEBUG, "  %hs\n", btsyms[i]);
+			hak_logbfmt(hak, HAK_LOG_STDERR | HAK_LOG_UNTYPED | HAK_LOG_DEBUG, "  %hs\n", btsyms[i]);
 		}
 		free (btsyms);
 	}
@@ -1298,7 +1298,7 @@ static void backtrace_stack_frames (hak_t* hak)
 
 static void _assertfail (hak_t* hak, const hak_bch_t* expr, const hak_bch_t* file, hak_oow_t line)
 {
-	hak_logbfmt (hak, HAK_LOG_STDERR | HAK_LOG_UNTYPED | HAK_LOG_FATAL, "ASSERTION FAILURE: %hs at %hs:%zu\n", expr, file, line);
+	hak_logbfmt(hak, HAK_LOG_STDERR | HAK_LOG_UNTYPED | HAK_LOG_FATAL, "ASSERTION FAILURE: %hs at %hs:%zu\n", expr, file, line);
 	backtrace_stack_frames (hak);
 
 #if defined(_WIN32)
@@ -1470,13 +1470,13 @@ static int _add_poll_fd (hak_t* hak, int fd, int event_mask)
 	xtn_t* xtn = GET_XTN(hak);
 	struct pollfd ev;
 
-	HAK_ASSERT (hak, xtn->ep >= 0);
+	HAK_ASSERT(hak, xtn->ep >= 0);
 	ev.fd = fd;
 	ev.events = event_mask;
 	ev.revents = 0;
 	if (write(xtn->ep, &ev, HAK_SIZEOF(ev)) != HAK_SIZEOF(ev))
 	{
-		hak_seterrwithsyserr (hak, 0, errno);
+		hak_seterrwithsyserr(hak, 0, errno);
 		HAK_DEBUG2 (hak, "Cannot add file descriptor %d to devpoll - %hs\n", fd, strerror(errno));
 		return -1;
 	}
@@ -1497,7 +1497,7 @@ static int _add_poll_fd (hak_t* hak, int fd, int event_mask)
 		hak_oow_t* tmp;
 		hak_oow_t newcapa;
 
-		HAK_STATIC_ASSERT (HAK_SIZEOF(*tmp) == HAK_SIZEOF(*xtn->ev.reg.ptr));
+		HAK_STATIC_ASSERT(HAK_SIZEOF(*tmp) == HAK_SIZEOF(*xtn->ev.reg.ptr));
 
 		newcapa = rindex + 1;
 		newcapa = HAK_ALIGN_POW2(newcapa, 16);
@@ -1506,12 +1506,12 @@ static int _add_poll_fd (hak_t* hak, int fd, int event_mask)
 		if (!tmp)
 		{
 			const hak_ooch_t* oldmsg = hak_backuperrmsg(hak);
-			hak_seterrbfmt (hak, HAK_ESYSERR, "unable to add file descriptor %d to kqueue - %js", fd, oldmsg);
+			hak_seterrbfmt(hak, HAK_ESYSERR, "unable to add file descriptor %d to kqueue - %js", fd, oldmsg);
 			HAK_DEBUG1 (hak, "%js", hak_geterrmsg(hak));
 			return -1;
 		}
 
-		HAK_MEMSET (&tmp[xtn->ev.reg.capa], 0, newcapa - xtn->ev.reg.capa);
+		HAK_MEMSET(&tmp[xtn->ev.reg.capa], 0, newcapa - xtn->ev.reg.capa);
 		xtn->ev.reg.ptr = tmp;
 		xtn->ev.reg.capa = newcapa;
 	}
@@ -1519,7 +1519,7 @@ static int _add_poll_fd (hak_t* hak, int fd, int event_mask)
 	if (event_mask & XPOLLIN)
 	{
 		/*EV_SET (&ev, fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, 0);*/
-		HAK_MEMSET (&ev, 0, HAK_SIZEOF(ev));
+		HAK_MEMSET(&ev, 0, HAK_SIZEOF(ev));
 		ev.ident = fd;
 		ev.flags = EV_ADD;
 	#if defined(USE_THREAD)
@@ -1528,7 +1528,7 @@ static int _add_poll_fd (hak_t* hak, int fd, int event_mask)
 		ev.filter = EVFILT_READ;
 		if (kevent(xtn->ep, &ev, 1, HAK_NULL, 0, HAK_NULL) == -1)
 		{
-			hak_seterrwithsyserr (hak, 0, errno);
+			hak_seterrwithsyserr(hak, 0, errno);
 			HAK_DEBUG2 (hak, "Cannot add file descriptor %d to kqueue for read - %hs\n", fd, strerror(errno));
 			return -1;
 		}
@@ -1538,7 +1538,7 @@ static int _add_poll_fd (hak_t* hak, int fd, int event_mask)
 	if (event_mask & XPOLLOUT)
 	{
 		/*EV_SET (&ev, fd, EVFILT_WRITE, EV_ADD | EV_CLEAR, 0, 0, 0);*/
-		HAK_MEMSET (&ev, 0, HAK_SIZEOF(ev));
+		HAK_MEMSET(&ev, 0, HAK_SIZEOF(ev));
 		ev.ident = fd;
 		ev.flags = EV_ADD;
 	#if defined(USE_THREAD)
@@ -1547,12 +1547,12 @@ static int _add_poll_fd (hak_t* hak, int fd, int event_mask)
 		ev.filter = EVFILT_WRITE;
 		if (kevent(xtn->ep, &ev, 1, HAK_NULL, 0, HAK_NULL) == -1)
 		{
-			hak_seterrwithsyserr (hak, 0, errno);
+			hak_seterrwithsyserr(hak, 0, errno);
 			HAK_DEBUG2 (hak, "Cannot add file descriptor %d to kqueue for write - %hs\n", fd, strerror(errno));
 
 			if (event_mask & XPOLLIN)
 			{
-				HAK_MEMSET (&ev, 0, HAK_SIZEOF(ev));
+				HAK_MEMSET(&ev, 0, HAK_SIZEOF(ev));
 				ev.ident = fd;
 				ev.flags = EV_DELETE;
 				ev.filter = EVFILT_READ;
@@ -1571,8 +1571,8 @@ static int _add_poll_fd (hak_t* hak, int fd, int event_mask)
 	xtn_t* xtn = GET_XTN(hak);
 	struct epoll_event ev;
 
-	HAK_ASSERT (hak, xtn->ep >= 0);
-	HAK_MEMSET (&ev, 0, HAK_SIZEOF(ev));
+	HAK_ASSERT(hak, xtn->ep >= 0);
+	HAK_MEMSET(&ev, 0, HAK_SIZEOF(ev));
 	ev.events = event_mask;
 	#if defined(USE_THREAD) && defined(EPOLLET)
 	/* epoll_wait may return again if the worker thread consumes events.
@@ -1584,7 +1584,7 @@ static int _add_poll_fd (hak_t* hak, int fd, int event_mask)
 	ev.data.fd = fd;
 	if (epoll_ctl(xtn->ep, EPOLL_CTL_ADD, fd, &ev) == -1)
 	{
-		hak_seterrwithsyserr (hak, 0, errno);
+		hak_seterrwithsyserr(hak, 0, errno);
 		HAK_DEBUG2 (hak, "Cannot add file descriptor %d to epoll - %hs\n", fd, strerror(errno));
 		return -1;
 	}
@@ -1606,7 +1606,7 @@ static int _add_poll_fd (hak_t* hak, int fd, int event_mask)
 		{
 			HAK_DEBUG2 (hak, "Cannot add file descriptor %d to poll - %hs\n", fd, strerror(errno));
 			MUTEX_UNLOCK (&xtn->ev.reg.pmtx);
-			if (tmp) hak_freemem (hak, tmp);
+			if (tmp) hak_freemem(hak, tmp);
 			return -1;
 		}
 
@@ -1645,7 +1645,7 @@ static int _add_poll_fd (hak_t* hak, int fd, int event_mask)
 #else
 
 	HAK_DEBUG1 (hak, "Cannot add file descriptor %d to poll - not implemented\n", fd);
-	hak_seterrnum (hak, HAK_ENOIMPL);
+	hak_seterrnum(hak, HAK_ENOIMPL);
 	return -1;
 #endif
 
@@ -1658,13 +1658,13 @@ static int _del_poll_fd (hak_t* hak, int fd)
 	xtn_t* xtn = GET_XTN(hak);
 	struct pollfd ev;
 
-	HAK_ASSERT (hak, xtn->ep >= 0);
+	HAK_ASSERT(hak, xtn->ep >= 0);
 	ev.fd = fd;
 	ev.events = POLLREMOVE;
 	ev.revents = 0;
 	if (write(xtn->ep, &ev, HAK_SIZEOF(ev)) != HAK_SIZEOF(ev))
 	{
-		hak_seterrwithsyserr (hak, 0, errno);
+		hak_seterrwithsyserr(hak, 0, errno);
 		HAK_DEBUG2 (hak, "Cannot remove file descriptor %d from devpoll - %hs\n", fd, strerror(errno));
 		return -1;
 	}
@@ -1682,7 +1682,7 @@ static int _del_poll_fd (hak_t* hak, int fd)
 
 	if (rindex >= xtn->ev.reg.capa)
 	{
-		hak_seterrbfmt (hak, HAK_EINVAL, "unknown file descriptor %d", fd);
+		hak_seterrbfmt(hak, HAK_EINVAL, "unknown file descriptor %d", fd);
 		HAK_DEBUG2 (hak, "Cannot remove file descriptor %d from kqueue - %js\n", fd, hak_geterrmsg(hak));
 		return -1;
 	};
@@ -1692,7 +1692,7 @@ static int _del_poll_fd (hak_t* hak, int fd)
 	if (rv & 1)
 	{
 		/*EV_SET (&ev, fd, EVFILT_READ, EV_DELETE, 0, 0, 0);*/
-		HAK_MEMSET (&ev, 0, HAK_SIZEOF(ev));
+		HAK_MEMSET(&ev, 0, HAK_SIZEOF(ev));
 		ev.ident = fd;
 		ev.flags = EV_DELETE;
 		ev.filter = EVFILT_READ;
@@ -1703,7 +1703,7 @@ static int _del_poll_fd (hak_t* hak, int fd)
 	if (rv & 2)
 	{
 		/*EV_SET (&ev, fd, EVFILT_WRITE, EV_DELETE, 0, 0, 0);*/
-		HAK_MEMSET (&ev, 0, HAK_SIZEOF(ev));
+		HAK_MEMSET(&ev, 0, HAK_SIZEOF(ev));
 		ev.ident = fd;
 		ev.flags = EV_DELETE;
 		ev.filter = EVFILT_WRITE;
@@ -1718,11 +1718,11 @@ static int _del_poll_fd (hak_t* hak, int fd)
 	xtn_t* xtn = GET_XTN(hak);
 	struct epoll_event ev;
 
-	HAK_ASSERT (hak, xtn->ep >= 0);
-	HAK_MEMSET (&ev, 0, HAK_SIZEOF(ev));
+	HAK_ASSERT(hak, xtn->ep >= 0);
+	HAK_MEMSET(&ev, 0, HAK_SIZEOF(ev));
 	if (epoll_ctl(xtn->ep, EPOLL_CTL_DEL, fd, &ev) == -1)
 	{
-		hak_seterrwithsyserr (hak, 0, errno);
+		hak_seterrwithsyserr(hak, 0, errno);
 		HAK_DEBUG2 (hak, "Cannot remove file descriptor %d from epoll - %hs\n", fd, strerror(errno));
 		return -1;
 	}
@@ -1739,7 +1739,7 @@ static int _del_poll_fd (hak_t* hak, int fd)
 		if (xtn->ev.reg.ptr[i].fd == fd)
 		{
 			xtn->ev.reg.len--;
-			HAK_MEMMOVE (&xtn->ev.reg.ptr[i], &xtn->ev.reg.ptr[i+1], (xtn->ev.reg.len - i) * HAK_SIZEOF(*xtn->ev.reg.ptr));
+			HAK_MEMMOVE(&xtn->ev.reg.ptr[i], &xtn->ev.reg.ptr[i+1], (xtn->ev.reg.len - i) * HAK_SIZEOF(*xtn->ev.reg.ptr));
 			MUTEX_UNLOCK (&xtn->ev.reg.pmtx);
 			return 0;
 		}
@@ -1748,7 +1748,7 @@ static int _del_poll_fd (hak_t* hak, int fd)
 
 
 	HAK_DEBUG1 (hak, "Cannot remove file descriptor %d from poll - not found\n", fd);
-	hak_seterrnum (hak, HAK_ENOENT);
+	hak_seterrnum(hak, HAK_ENOENT);
 	return -1;
 
 #elif defined(USE_SELECT)
@@ -1774,7 +1774,7 @@ static int _del_poll_fd (hak_t* hak, int fd)
 #else
 
 	HAK_DEBUG1 (hak, "Cannot remove file descriptor %d from poll - not implemented\n", fd);
-	hak_seterrnum (hak, HAK_ENOIMPL);
+	hak_seterrnum(hak, HAK_ENOIMPL);
 	return -1;
 #endif
 }
@@ -1784,9 +1784,9 @@ static int _mod_poll_fd (hak_t* hak, int fd, int event_mask)
 {
 #if defined(USE_DEVPOLL)
 
-	if (_del_poll_fd (hak, fd) <= -1) return -1;
+	if (_del_poll_fd(hak, fd) <= -1) return -1;
 
-	if (_add_poll_fd (hak, fd, event_mask) <= -1)
+	if (_add_poll_fd(hak, fd, event_mask) <= -1)
 	{
 		/* TODO: any good way to rollback successful deletion? */
 		return -1;
@@ -1804,7 +1804,7 @@ static int _mod_poll_fd (hak_t* hak, int fd, int event_mask)
 
 	if (rindex >= xtn->ev.reg.capa)
 	{
-		hak_seterrbfmt (hak, HAK_EINVAL, "unknown file descriptor %d", fd);
+		hak_seterrbfmt(hak, HAK_EINVAL, "unknown file descriptor %d", fd);
 		HAK_DEBUG2 (hak, "Cannot modify file descriptor %d in kqueue - %js\n", fd, hak_geterrmsg(hak));
 		return -1;
 	};
@@ -1815,7 +1815,7 @@ static int _mod_poll_fd (hak_t* hak, int fd, int event_mask)
 	{
 		if (!(event_mask & XPOLLIN))
 		{
-			HAK_MEMSET (&ev, 0, HAK_SIZEOF(ev));
+			HAK_MEMSET(&ev, 0, HAK_SIZEOF(ev));
 			ev.ident = fd;
 			ev.flags = EV_DELETE;
 			ev.filter = EVFILT_READ;
@@ -1828,7 +1828,7 @@ static int _mod_poll_fd (hak_t* hak, int fd, int event_mask)
 	{
 		if (event_mask & XPOLLIN)
 		{
-			HAK_MEMSET (&ev, 0, HAK_SIZEOF(ev));
+			HAK_MEMSET(&ev, 0, HAK_SIZEOF(ev));
 			ev.ident = fd;
 			ev.flags = EV_ADD;
 		#if defined(USE_THREAD)
@@ -1845,7 +1845,7 @@ static int _mod_poll_fd (hak_t* hak, int fd, int event_mask)
 	{
 		if (!(event_mask & XPOLLOUT))
 		{
-			HAK_MEMSET (&ev, 0, HAK_SIZEOF(ev));
+			HAK_MEMSET(&ev, 0, HAK_SIZEOF(ev));
 			ev.ident = fd;
 			ev.flags = EV_DELETE;
 			ev.filter = EVFILT_WRITE;
@@ -1860,7 +1860,7 @@ static int _mod_poll_fd (hak_t* hak, int fd, int event_mask)
 	{
 		if (event_mask & XPOLLOUT)
 		{
-			HAK_MEMSET (&ev, 0, HAK_SIZEOF(ev));
+			HAK_MEMSET(&ev, 0, HAK_SIZEOF(ev));
 			ev.ident = fd;
 			ev.flags = EV_ADD;
 		#if defined(USE_THREAD)
@@ -1880,7 +1880,7 @@ static int _mod_poll_fd (hak_t* hak, int fd, int event_mask)
 	return 0;
 
 kqueue_syserr:
-	hak_seterrwithsyserr (hak, 0, errno);
+	hak_seterrwithsyserr(hak, 0, errno);
 	HAK_DEBUG2 (hak, "Cannot modify file descriptor %d in kqueue - %hs\n", fd, strerror(errno));
 	return -1;
 
@@ -1888,8 +1888,8 @@ kqueue_syserr:
 	xtn_t* xtn = GET_XTN(hak);
 	struct epoll_event ev;
 
-	HAK_ASSERT (hak, xtn->ep >= 0);
-	HAK_MEMSET (&ev, 0, HAK_SIZEOF(ev));
+	HAK_ASSERT(hak, xtn->ep >= 0);
+	HAK_MEMSET(&ev, 0, HAK_SIZEOF(ev));
 	ev.events = event_mask;
 	#if defined(USE_THREAD) && defined(EPOLLET)
 	/* epoll_wait may return again if the worker thread consumes events.
@@ -1900,7 +1900,7 @@ kqueue_syserr:
 	ev.data.fd = fd;
 	if (epoll_ctl(xtn->ep, EPOLL_CTL_MOD, fd, &ev) == -1)
 	{
-		hak_seterrwithsyserr (hak, 0, errno);
+		hak_seterrwithsyserr(hak, 0, errno);
 		HAK_DEBUG2 (hak, "Cannot modify file descriptor %d in epoll - %hs\n", fd, strerror(errno));
 		return -1;
 	}
@@ -1917,7 +1917,7 @@ kqueue_syserr:
 	{
 		if (xtn->ev.reg.ptr[i].fd == fd)
 		{
-			HAK_MEMMOVE (&xtn->ev.reg.ptr[i], &xtn->ev.reg.ptr[i+1], (xtn->ev.reg.len - i - 1) * HAK_SIZEOF(*xtn->ev.reg.ptr));
+			HAK_MEMMOVE(&xtn->ev.reg.ptr[i], &xtn->ev.reg.ptr[i+1], (xtn->ev.reg.len - i - 1) * HAK_SIZEOF(*xtn->ev.reg.ptr));
 			xtn->ev.reg.ptr[i].fd = fd;
 			xtn->ev.reg.ptr[i].events = event_mask;
 			xtn->ev.reg.ptr[i].revents = 0;
@@ -1929,7 +1929,7 @@ kqueue_syserr:
 	MUTEX_UNLOCK (&xtn->ev.reg.pmtx);
 
 	HAK_DEBUG1 (hak, "Cannot modify file descriptor %d in poll - not found\n", fd);
-	hak_seterrnum (hak, HAK_ENOENT);
+	hak_seterrnum(hak, HAK_ENOENT);
 	return -1;
 
 #elif defined(USE_SELECT)
@@ -1937,7 +1937,7 @@ kqueue_syserr:
 	xtn_t* xtn = GET_XTN(hak);
 
 	MUTEX_LOCK (&xtn->ev.reg.smtx);
-	HAK_ASSERT (hak, fd <= xtn->ev.reg.maxfd);
+	HAK_ASSERT(hak, fd <= xtn->ev.reg.maxfd);
 
 	if (event_mask & XPOLLIN)
 		FD_SET (fd, &xtn->ev.reg.rfds);
@@ -1954,7 +1954,7 @@ kqueue_syserr:
 
 #else
 	HAK_DEBUG1 (hak, "Cannot modify file descriptor %d in poll - not implemented\n", fd);
-	hak_seterrnum (hak, HAK_ENOIMPL);
+	hak_seterrnum(hak, HAK_ENOIMPL);
 	return -1;
 #endif
 }
@@ -1970,7 +1970,7 @@ static int vm_muxadd (hak_t* hak, hak_ooi_t io_handle, hak_ooi_t mask)
 	if (event_mask == 0)
 	{
 		HAK_DEBUG2 (hak, "<vm_muxadd> Invalid semaphore mask %zd on handle %zd\n", mask, io_handle);
-		hak_seterrbfmt (hak, HAK_EINVAL, "invalid semaphore mask %zd on handle %zd", mask, io_handle);
+		hak_seterrbfmt(hak, HAK_EINVAL, "invalid semaphore mask %zd on handle %zd", mask, io_handle);
 		return -1;
 	}
 
@@ -1988,7 +1988,7 @@ static int vm_muxmod (hak_t* hak, hak_ooi_t io_handle, hak_ooi_t mask)
 	if (event_mask == 0)
 	{
 		HAK_DEBUG2 (hak, "<vm_muxadd> Invalid semaphore mask %zd on handle %zd\n", mask, io_handle);
-		hak_seterrbfmt (hak, HAK_EINVAL, "invalid semaphore mask %zd on handle %zd", mask, io_handle);
+		hak_seterrbfmt(hak, HAK_EINVAL, "invalid semaphore mask %zd on handle %zd", mask, io_handle);
 		return -1;
 	}
 
@@ -2042,7 +2042,7 @@ static void* iothr_main (void* arg)
 			n = epoll_wait(xtn->ep, xtn->ev.buf, HAK_COUNTOF(xtn->ev.buf), 10000); /* TODO: make this timeout value in the io thread */
 		#elif defined(USE_POLL)
 			MUTEX_LOCK (&xtn->ev.reg.pmtx);
-			HAK_MEMCPY (xtn->ev.buf, xtn->ev.reg.ptr, xtn->ev.reg.len * HAK_SIZEOF(*xtn->ev.buf));
+			HAK_MEMCPY(xtn->ev.buf, xtn->ev.reg.ptr, xtn->ev.reg.len * HAK_SIZEOF(*xtn->ev.buf));
 			nfds = xtn->ev.reg.len;
 			MUTEX_UNLOCK (&xtn->ev.reg.pmtx);
 			n = poll(xtn->ev.buf, nfds, 10000);
@@ -2065,8 +2065,8 @@ static void* iothr_main (void* arg)
 			tv.tv_usec = 0;
 			MUTEX_LOCK (&xtn->ev.reg.smtx);
 			maxfd = xtn->ev.reg.maxfd;
-			HAK_MEMCPY (&rfds, &xtn->ev.reg.rfds, HAK_SIZEOF(rfds));
-			HAK_MEMCPY (&wfds, &xtn->ev.reg.wfds, HAK_SIZEOF(wfds));
+			HAK_MEMCPY(&rfds, &xtn->ev.reg.rfds, HAK_SIZEOF(rfds));
+			HAK_MEMCPY(&wfds, &xtn->ev.reg.wfds, HAK_SIZEOF(wfds));
 			MUTEX_UNLOCK (&xtn->ev.reg.smtx);
 			n = select (maxfd + 1, &rfds, &wfds, HAK_NULL, &tv);
 			if (n > 0)
@@ -2080,7 +2080,7 @@ static void* iothr_main (void* arg)
 
 					if (events)
 					{
-						HAK_ASSERT (hak, count < HAK_COUNTOF(xtn->ev.buf));
+						HAK_ASSERT(hak, count < HAK_COUNTOF(xtn->ev.buf));
 						xtn->ev.buf[count].fd = fd;
 						xtn->ev.buf[count].events = events;
 						count++;
@@ -2088,7 +2088,7 @@ static void* iothr_main (void* arg)
 				}
 
 				n = count;
-				HAK_ASSERT (hak, n > 0);
+				HAK_ASSERT(hak, n > 0);
 			}
 		#endif
 
@@ -2251,16 +2251,16 @@ static void vm_muxwait (hak_t* hak, const hak_ntime_t* dur, hak_vmprim_muxwait_c
 				if (revents & XPOLLHUP) mask |= HAK_SEMAPHORE_IO_MASK_HANGUP;
 
 			#if defined(USE_DEVPOLL)
-				muxwcb (hak, xtn->ev.buf[n].fd, mask);
+				muxwcb(hak, xtn->ev.buf[n].fd, mask);
 			#elif defined(USE_KQUEUE)
 			call_muxwcb_kqueue:
-				muxwcb (hak, xtn->ev.buf[n].ident, mask);
+				muxwcb(hak, xtn->ev.buf[n].ident, mask);
 			#elif defined(USE_EPOLL)
-				muxwcb (hak, xtn->ev.buf[n].data.fd, mask);
+				muxwcb(hak, xtn->ev.buf[n].data.fd, mask);
 			#elif defined(USE_POLL)
-				muxwcb (hak, xtn->ev.buf[n].fd, mask);
+				muxwcb(hak, xtn->ev.buf[n].fd, mask);
 			#elif defined(USE_SELECT)
-				muxwcb (hak, xtn->ev.buf[n].fd, mask);
+				muxwcb(hak, xtn->ev.buf[n].fd, mask);
 			#else
 			#	error UNSUPPORTED
 			#endif
@@ -2322,7 +2322,7 @@ static void vm_muxwait (hak_t* hak, const hak_ntime_t* dur, hak_vmprim_muxwait_c
 
 	#elif defined(USE_POLL)
 	tmout = dur? HAK_SECNSEC_TO_MSEC(dur->sec, dur->nsec): 0;
-	HAK_MEMCPY (xtn->ev.buf, xtn->ev.reg.ptr, xtn->ev.reg.len * HAK_SIZEOF(*xtn->ev.buf));
+	HAK_MEMCPY(xtn->ev.buf, xtn->ev.reg.ptr, xtn->ev.reg.len * HAK_SIZEOF(*xtn->ev.buf));
 	n = poll(xtn->ev.buf, xtn->ev.reg.len, tmout);
 	if (n > 0)
 	{
@@ -2350,8 +2350,8 @@ static void vm_muxwait (hak_t* hak, const hak_ntime_t* dur, hak_vmprim_muxwait_c
 		tv.tv_usec = 0;
 	}
 	maxfd = xtn->ev.reg.maxfd;
-	HAK_MEMCPY (&rfds, &xtn->ev.reg.rfds, HAK_SIZEOF(rfds));
-	HAK_MEMCPY (&wfds, &xtn->ev.reg.wfds, HAK_SIZEOF(wfds));
+	HAK_MEMCPY(&rfds, &xtn->ev.reg.rfds, HAK_SIZEOF(rfds));
+	HAK_MEMCPY(&wfds, &xtn->ev.reg.wfds, HAK_SIZEOF(wfds));
 	n = select(maxfd + 1, &rfds, &wfds, HAK_NULL, &tv);
 	if (n > 0)
 	{
@@ -2364,7 +2364,7 @@ static void vm_muxwait (hak_t* hak, const hak_ntime_t* dur, hak_vmprim_muxwait_c
 
 			if (events)
 			{
-				HAK_ASSERT (hak, count < HAK_COUNTOF(xtn->ev.buf));
+				HAK_ASSERT(hak, count < HAK_COUNTOF(xtn->ev.buf));
 				xtn->ev.buf[count].fd = fd;
 				xtn->ev.buf[count].events = events;
 				count++;
@@ -2372,17 +2372,17 @@ static void vm_muxwait (hak_t* hak, const hak_ntime_t* dur, hak_vmprim_muxwait_c
 		}
 
 		n = count;
-		HAK_ASSERT (hak, n > 0);
+		HAK_ASSERT(hak, n > 0);
 	}
 	#endif
 
 	if (n <= -1)
 	{
 	#if defined(__OS2__)
-		hak_seterrwithsyserr (hak, 2, sock_errno());
+		hak_seterrwithsyserr(hak, 2, sock_errno());
 		HAK_DEBUG2 (hak, "Warning: multiplexer wait failure - %d, %js\n", sock_errno(), hak_geterrmsg(hak));
 	#else
-		hak_seterrwithsyserr (hak, 0, errno);
+		hak_seterrwithsyserr(hak, 0, errno);
 		HAK_DEBUG2 (hak, "Warning: multiplexer wait failure - %d, %js\n", errno, hak_geterrmsg(hak));
 	#endif
 	}
@@ -2392,7 +2392,7 @@ static void vm_muxwait (hak_t* hak, const hak_ntime_t* dur, hak_vmprim_muxwait_c
 	}
 
 	/* the muxwcb must be valid all the time in a non-threaded mode */
-	HAK_ASSERT (hak, muxwcb != HAK_NULL);
+	HAK_ASSERT(hak, muxwcb != HAK_NULL);
 
 	while (n > 0)
 	{
@@ -2425,16 +2425,16 @@ static void vm_muxwait (hak_t* hak, const hak_ntime_t* dur, hak_vmprim_muxwait_c
 		if (revents & XPOLLHUP) mask |= HAK_SEMAPHORE_IO_MASK_HANGUP;
 
 	#if defined(USE_DEVPOLL)
-		muxwcb (hak, xtn->ev.buf[n].fd, mask);
+		muxwcb(hak, xtn->ev.buf[n].fd, mask);
 	#elif defined(USE_KQUEUE)
 	call_muxwcb_kqueue:
-		muxwcb (hak, xtn->ev.buf[n].ident, mask);
+		muxwcb(hak, xtn->ev.buf[n].ident, mask);
 	#elif defined(USE_EPOLL)
-		muxwcb (hak, xtn->ev.buf[n].data.fd, mask);
+		muxwcb(hak, xtn->ev.buf[n].data.fd, mask);
 	#elif defined(USE_POLL)
-		muxwcb (hak, xtn->ev.buf[n].fd, mask);
+		muxwcb(hak, xtn->ev.buf[n].fd, mask);
 	#elif defined(USE_SELECT)
-		muxwcb (hak, xtn->ev.buf[n].fd, mask);
+		muxwcb(hak, xtn->ev.buf[n].fd, mask);
 	#endif
 	}
 
@@ -2516,7 +2516,7 @@ static int vm_sleep (hak_t* hak, const hak_ntime_t* dur)
 	/* the sleep callback is called only if there is no IO semaphore
 	 * waiting. so i can safely call vm_muxwait() without a muxwait callback
 	 * when USE_THREAD is true */
-	vm_muxwait (hak, dur, HAK_NULL);
+	vm_muxwait(hak, dur, HAK_NULL);
 
 #elif defined(HAVE_NANOSLEEP)
 	{
@@ -2554,7 +2554,7 @@ static int vm_getsig (hak_t* hak, hak_uint8_t* u8)
 	DWORD navail;
 	if (PeekNamedPipe(_get_osfhandle(xtn->sigfd.p[0]), HAK_NULL, 0, HAK_NULL, &navail, HAK_NULL) == 0)
 	{
-		hak_seterrwithsyserr (hak, 1, GetLastError());
+		hak_seterrwithsyserr(hak, 1, GetLastError());
 		return -1;
 	}
 	if (navail <= 0) return 0;
@@ -2566,7 +2566,7 @@ static int vm_getsig (hak_t* hak, hak_uint8_t* u8)
 	#else
 		if (errno == EINTR || errno == EAGAIN) return 0;
 	#endif
-		hak_seterrwithsyserr (hak, 0, errno);
+		hak_seterrwithsyserr(hak, 0, errno);
 		return -1;
 	}
 
@@ -2583,7 +2583,7 @@ static int vm_setsig (hak_t* hak, hak_uint8_t u8)
 	#else
 		if (errno == EINTR || errno == EAGAIN) return 0;
 	#endif
-		hak_seterrwithsyserr (hak, 0, errno);
+		hak_seterrwithsyserr(hak, 0, errno);
 		return -1;
 	}
 	return 1;
@@ -2651,7 +2651,7 @@ static int set_signal_handler (int sig, sig_handler_t handler, int extra_flags)
 
 		if (sigaction(sig, HAK_NULL, &oldsa) == -1) return -1;
 
-		HAK_MEMSET (&sa, 0, HAK_SIZEOF(sa));
+		HAK_MEMSET(&sa, 0, HAK_SIZEOF(sa));
 		if (oldsa.sa_flags & SA_SIGINFO)
 		{
 			sa.sa_sigaction = dispatch_siginfo;
@@ -2688,7 +2688,7 @@ static int unset_signal_handler (int sig)
 
 	if (!g_sig_state[sig].handler) return -1; /* not set */
 
-	HAK_MEMSET (&sa, 0, HAK_SIZEOF(sa));
+	HAK_MEMSET(&sa, 0, HAK_SIZEOF(sa));
 	sa.sa_mask = g_sig_state[sig].old_sa_mask;
 	sa.sa_flags = g_sig_state[sig].old_sa_flags;
 
@@ -2957,7 +2957,7 @@ static pascal void timer_intr_handler (TMTask* task)
 static HAK_INLINE void start_ticker (void)
 {
 	GetCurrentProcess (&mac_psn);
-	HAK_MEMSET (&mac_tmtask, 0, HAK_SIZEOF(mac_tmtask));
+	HAK_MEMSET(&mac_tmtask, 0, HAK_SIZEOF(mac_tmtask));
 	mac_tmtask.tmAddr = NewTimerProc (timer_intr_handler);
 	InsXTime ((QElem*)&mac_tmtask);
 	PrimeTime ((QElem*)&mac_tmtask, TMTASK_DELAY);
@@ -3313,7 +3313,7 @@ retry:
 			const hak_bch_t* dl_errstr;
 			dl_errstr = sys_dl_error();
 			HAK_DEBUG3 (hak, "Unable to open(ext) PFMOD %hs[%js] - %hs\n", &bufptr[len], name, dl_errstr);
-			hak_seterrbfmt (hak, HAK_ESYSERR, "unable to open(ext) PFMOD %js - %hs", name, dl_errstr);
+			hak_seterrbfmt(hak, HAK_ESYSERR, "unable to open(ext) PFMOD %js - %hs", name, dl_errstr);
 
 			dash = hak_rfind_bchar(bufptr, hak_count_bcstr(bufptr), '-');
 			if (dash)
@@ -3360,7 +3360,7 @@ static void* dlopen_raw (hak_t* hak, const hak_ooch_t* name, hak_bch_t* bufptr, 
 			const hak_bch_t* dl_errstr;
 			dl_errstr = sys_dl_error();
 			HAK_DEBUG2 (hak, "Unable to open DL %hs - %hs\n", bufptr, dl_errstr);
-			hak_seterrbfmt (hak, HAK_ESYSERR, "unable to open DL %js - %hs", name, dl_errstr);
+			hak_seterrbfmt(hak, HAK_ESYSERR, "unable to open DL %js - %hs", name, dl_errstr);
 		}
 		else HAK_DEBUG2 (hak, "Opened DL %hs handle %p\n", bufptr, handle);
 	}
@@ -3372,7 +3372,7 @@ static void* dlopen_raw (hak_t* hak, const hak_ooch_t* name, hak_bch_t* bufptr, 
 			const hak_bch_t* dl_errstr;
 			dl_errstr = sys_dl_error();
 			HAK_DEBUG2 (hak, "Unable to open(ext) DL %hs - %hs\n", bufptr, dl_errstr);
-			hak_seterrbfmt (hak, HAK_ESYSERR, "unable to open(ext) DL %js - %hs", name, dl_errstr);
+			hak_seterrbfmt(hak, HAK_ESYSERR, "unable to open(ext) DL %js - %hs", name, dl_errstr);
 		}
 		else HAK_DEBUG2 (hak, "Opened(ext) DL %hs handle %p\n", bufptr, handle);
 	}
@@ -3450,7 +3450,7 @@ static void* dl_open (hak_t* hak, const hak_ooch_t* name, int flags)
 		handle = dlopen_raw(hak, name, bufptr, bufcapa);
 	}
 
-	if (bufptr != stabuf) hak_freemem (hak, bufptr);
+	if (bufptr != stabuf) hak_freemem(hak, bufptr);
 	return handle;
 
 #else
@@ -3458,7 +3458,7 @@ static void* dl_open (hak_t* hak, const hak_ooch_t* name, int flags)
 /* TODO: support various platforms */
 	/* TODO: implemenent this */
 	HAK_DEBUG1 (hak, "Dynamic loading not implemented - cannot open %js\n", name);
-	hak_seterrbfmt (hak, HAK_ENOIMPL, "dynamic loading not implemented - cannot open %js", name);
+	hak_seterrbfmt(hak, HAK_ENOIMPL, "dynamic loading not implemented - cannot open %js", name);
 	return HAK_NULL;
 #endif
 }
@@ -3503,7 +3503,7 @@ static void* dl_getsym (hak_t* hak, void* handle, const hak_ooch_t* name)
 
 	bcslen = bufcapa - 1;
 	#if defined(HAK_OOCH_IS_UCH)
-	hak_convootobcstr (hak, name, &ucslen, &bufptr[1], &bcslen);
+	hak_convootobcstr(hak, name, &ucslen, &bufptr[1], &bcslen);
 	#else
 	bcslen = hak_copy_bcstr(&bufptr[1], bcslen, name);
 	#endif
@@ -3535,7 +3535,7 @@ static void* dl_getsym (hak_t* hak, void* handle, const hak_ooch_t* name)
 					const hak_bch_t* dl_errstr;
 					dl_errstr = sys_dl_error();
 					HAK_DEBUG3 (hak, "Failed to get module symbol %js from handle %p - %hs\n", name, handle, dl_errstr);
-					hak_seterrbfmt (hak, HAK_ENOENT, "unable to get module symbol %hs - %hs", symname, dl_errstr);
+					hak_seterrbfmt(hak, HAK_ENOENT, "unable to get module symbol %hs - %hs", symname, dl_errstr);
 
 				}
 			}
@@ -3543,13 +3543,13 @@ static void* dl_getsym (hak_t* hak, void* handle, const hak_ooch_t* name)
 	}
 
 	if (sym) HAK_DEBUG3 (hak, "Loaded module symbol %js from handle %p - %hs\n", name, handle, symname);
-	if (bufptr != stabuf) hak_freemem (hak, bufptr);
+	if (bufptr != stabuf) hak_freemem(hak, bufptr);
 	return sym;
 
 #else
 	/* TODO: IMPLEMENT THIS */
 	HAK_DEBUG2 (hak, "Dynamic loading not implemented - Cannot load module symbol %js from handle %p\n", name, handle);
-	hak_seterrbfmt (hak, HAK_ENOIMPL, "dynamic loading not implemented - Cannot load module symbol %js from handle %p", name, handle);
+	hak_seterrbfmt(hak, HAK_ENOIMPL, "dynamic loading not implemented - Cannot load module symbol %js from handle %p", name, handle);
 	return HAK_NULL;
 #endif
 }
@@ -3581,28 +3581,28 @@ static HAK_INLINE void reset_log_to_default (xtn_t* xtn)
 
 static HAK_INLINE void chain (hak_t* hak)
 {
-        xtn_t* xtn = GET_XTN(hak);
+	xtn_t* xtn = GET_XTN(hak);
 
-        /* TODO: make this atomic */
-        xtn->prev = HAK_NULL;
-        xtn->next = g_hak;
+	/* TODO: make this atomic */
+	xtn->prev = HAK_NULL;
+	xtn->next = g_hak;
 
-        if (g_hak) GET_XTN(g_hak)->prev = hak;
-        else g_hak = hak;
-        /* TODO: make this atomic */
+	if (g_hak) GET_XTN(g_hak)->prev = hak;
+	else g_hak = hak;
+	/* TODO: make this atomic */
 }
 
 static HAK_INLINE void unchain (hak_t* hak)
 {
-        xtn_t* xtn = GET_XTN(hak);
+	xtn_t* xtn = GET_XTN(hak);
 
-        /* TODO: make this atomic */
-        if (xtn->prev) GET_XTN(xtn->prev)->next = xtn->next;
-        else g_hak = xtn->next;
-        if (xtn->next) GET_XTN(xtn->next)->prev = xtn->prev;
-        /* TODO: make this atomic */
-        xtn->prev = HAK_NULL;
-        xtn->prev = HAK_NULL;
+	/* TODO: make this atomic */
+	if (xtn->prev) GET_XTN(xtn->prev)->next = xtn->next;
+	else g_hak = xtn->next;
+	if (xtn->next) GET_XTN(xtn->next)->prev = xtn->prev;
+	/* TODO: make this atomic */
+	xtn->prev = HAK_NULL;
+	xtn->prev = HAK_NULL;
 }
 
 static void cb_on_fini (hak_t* hak)
@@ -3676,7 +3676,7 @@ static int os2_socket_pair (int p[2])
 	idx = msec;
 
 attempt_to_bind:
-	HAK_MEMSET (&sa, 0, HAK_SIZEOF(sa));
+	HAK_MEMSET(&sa, 0, HAK_SIZEOF(sa));
 	sa.sun_family = AF_OS2;
 
 	/* OS/2 mandates the socket name should begin with \socket\ */
@@ -3715,7 +3715,7 @@ static int open_pipes (hak_t* hak, int p[2])
 #if defined(_WIN32)
 	if (_pipe(p, 256, _O_BINARY | _O_NOINHERIT) == -1)
 	{
-		hak_seterrbfmtwithsyserr (hak, 0, errno, "unable to create pipes");
+		hak_seterrbfmtwithsyserr(hak, 0, errno, "unable to create pipes");
 		return -1;
 	}
 
@@ -3727,23 +3727,23 @@ static int open_pipes (hak_t* hak, int p[2])
 	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, p) == -1)
 	#endif
 	{
-		hak_seterrbfmtwithsyserr (hak, 2, sock_errno(), "unable to create pipes");
+		hak_seterrbfmtwithsyserr(hak, 2, sock_errno(), "unable to create pipes");
 		return -1;
 	}
 #elif defined(__DOS__)
-	hak_seterrbfmt (hak, HAK_ENOIMPL, "unable to create pipes - not supported");
+	hak_seterrbfmt(hak, HAK_ENOIMPL, "unable to create pipes - not supported");
 	return -1;
 #elif defined(HAVE_PIPE2) && defined(O_CLOEXEC) && defined(O_NONBLOCK)
 	if (pipe2(p, O_CLOEXEC | O_NONBLOCK) == -1)
 	{
-		hak_seterrbfmtwithsyserr (hak, 0, errno, "unable to create pipes");
+		hak_seterrbfmtwithsyserr(hak, 0, errno, "unable to create pipes");
 		return -1;
 	}
 
 #else
 	if (pipe(p) == -1)
 	{
-		hak_seterrbfmtwithsyserr (hak, 0, errno, "unable to create pipes");
+		hak_seterrbfmtwithsyserr(hak, 0, errno, "unable to create pipes");
 		return -1;
 	}
 #endif
@@ -3816,7 +3816,7 @@ static int cb_vm_startup (hak_t* hak)
 	xtn->ep = open("/dev/poll", O_RDWR);
 	if (xtn->ep == -1)
 	{
-		hak_seterrwithsyserr (hak, 0, errno);
+		hak_seterrwithsyserr(hak, 0, errno);
 		HAK_DEBUG1 (hak, "Cannot create devpoll - %hs\n", strerror(errno));
 		goto oops;
 	}
@@ -3835,7 +3835,7 @@ static int cb_vm_startup (hak_t* hak)
 	#endif
 	if (xtn->ep == -1)
 	{
-		hak_seterrwithsyserr (hak, 0, errno);
+		hak_seterrwithsyserr(hak, 0, errno);
 		HAK_DEBUG1 (hak, "Cannot create kqueue - %hs\n", strerror(errno));
 		goto oops;
 	}
@@ -3854,7 +3854,7 @@ static int cb_vm_startup (hak_t* hak)
 	#endif
 	if (xtn->ep == -1)
 	{
-		hak_seterrwithsyserr (hak, 0, errno);
+		hak_seterrwithsyserr(hak, 0, errno);
 		HAK_DEBUG1 (hak, "Cannot create epoll - %hs\n", strerror(errno));
 		goto oops;
 	}
@@ -3951,11 +3951,11 @@ static void cb_vm_cleanup (hak_t* hak)
 	pthread_cond_destroy (&xtn->ev.cnd2);
 	pthread_mutex_destroy (&xtn->ev.mtx);
 
-	_del_poll_fd (hak, xtn->iothr.p[0]);
-	close_pipes (hak, xtn->iothr.p);
+	_del_poll_fd(hak, xtn->iothr.p[0]);
+	close_pipes(hak, xtn->iothr.p);
 #endif /* USE_THREAD */
 
-	close_pipes (hak, xtn->sigfd.p);
+	close_pipes(hak, xtn->sigfd.p);
 
 #if defined(USE_DEVPOLL)
 	if (xtn->ep >= 0)
@@ -3979,14 +3979,14 @@ static void cb_vm_cleanup (hak_t* hak)
 #elif defined(USE_POLL)
 	if (xtn->ev.reg.ptr)
 	{
-		hak_freemem (hak, xtn->ev.reg.ptr);
+		hak_freemem(hak, xtn->ev.reg.ptr);
 		xtn->ev.reg.ptr = HAK_NULL;
 		xtn->ev.reg.len = 0;
 		xtn->ev.reg.capa = 0;
 	}
 	if (xtn->ev.buf)
 	{
-		hak_freemem (hak, xtn->ev.buf);
+		hak_freemem(hak, xtn->ev.buf);
 		xtn->ev.buf = HAK_NULL;
 	}
 	/*destroy_poll_data_space (hak);*/
@@ -4095,7 +4095,7 @@ hak_t* hak_openstdwithmmgr (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_errnum_t* e
 	hak_vmprim_t vmprim;
 	hak_cb_t cb;
 
-	HAK_MEMSET (&vmprim, 0, HAK_SIZEOF(vmprim));
+	HAK_MEMSET(&vmprim, 0, HAK_SIZEOF(vmprim));
 	vmprim.alloc_heap = alloc_heap;
 	vmprim.free_heap = free_heap;
 	vmprim.log_write = log_write;
@@ -4125,7 +4125,7 @@ hak_t* hak_openstdwithmmgr (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_errnum_t* e
 	chain (hak); /* call chian() before hak_regcb() as fini_hak() calls unchain() */
 	reset_log_to_default (GET_XTN(hak));
 
-	HAK_MEMSET (&cb, 0, HAK_SIZEOF(cb));
+	HAK_MEMSET(&cb, 0, HAK_SIZEOF(cb));
 	cb.on_fini   = cb_on_fini;
 	cb.halting   = cb_halting;
 	cb.on_option = cb_on_option;
@@ -4208,7 +4208,7 @@ static HAK_INLINE int open_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 		bb->fn = (hak_bch_t*)(bb + 1);
 		hak_copy_bchars (bb->fn, fn, parlen);
 	#if defined(HAK_OOCH_IS_UCH)
-		hak_convootobcstr (hak, arg->name, &ucslen, &bb->fn[parlen], &bcslen);
+		hak_convootobcstr(hak, arg->name, &ucslen, &bb->fn[parlen], &bcslen);
 	#else
 		hak_copy_bcstr (&bb->fn[parlen], bcslen + 1, arg->name);
 	#endif
@@ -4216,7 +4216,7 @@ static HAK_INLINE int open_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 		bb->fp = fopen(bb->fn, FOPEN_R_FLAGS);
 		if (!bb->fp)
 		{
-			hak_seterrbfmt (hak, HAK_EIOERR, "unable to open %hs", bb->fn);
+			hak_seterrbfmt(hak, HAK_EIOERR, "unable to open %hs", bb->fn);
 			goto oops;
 		}
 	}
@@ -4247,7 +4247,7 @@ static HAK_INLINE int open_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 	if (!arg->includer) /* if main stream */
 	{
 	/* HACK */
-		HAK_ASSERT (hak, arg->name == HAK_NULL);
+		HAK_ASSERT(hak, arg->name == HAK_NULL);
 		arg->name = hak_dupbtooocstr(hak, bb->fn, HAK_NULL);
 		/* ignore duplication failure */
 /* TODO: change the type of arg->name from const hak_ooch_t* to hak_ooch_t*.
@@ -4262,7 +4262,7 @@ oops:
 	if (bb)
 	{
 		if (bb->fp && bb->fp != stdin) fclose (bb->fp);
-		hak_freemem (hak, bb);
+		hak_freemem(hak, bb);
 	}
 	return -1;
 }
@@ -4273,19 +4273,19 @@ static HAK_INLINE int close_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 	bb_t* bb;
 
 	bb = (bb_t*)arg->handle;
-	HAK_ASSERT (hak, bb != HAK_NULL /*&& bb->fp != HAK_NULL*/);
+	HAK_ASSERT(hak, bb != HAK_NULL /*&& bb->fp != HAK_NULL*/);
 
 /* HACK */
 	if (!arg->includer && arg->name)
 	{
 		/* main stream closing */
-		hak_freemem (hak, (hak_ooch_t*)arg->name);
+		hak_freemem(hak, (hak_ooch_t*)arg->name);
 		arg->name = HAK_NULL;
 	}
 /* END HACK */
 
 	if (bb->fp /*&& bb->fp != stdin*/) fclose (bb->fp);
-	hak_freemem (hak, bb);
+	hak_freemem(hak, bb);
 
 	arg->handle = HAK_NULL;
 	return 0;
@@ -4299,11 +4299,11 @@ static HAK_INLINE int read_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 	int x;
 
 	bb = (bb_t*)arg->handle;
-	HAK_ASSERT (hak, bb != HAK_NULL);
+	HAK_ASSERT(hak, bb != HAK_NULL);
 
 	if (!bb->fp)
 	{
-		HAK_ASSERT (hak, arg->includer == HAK_NULL);
+		HAK_ASSERT(hak, arg->includer == HAK_NULL);
 		/* the main stream is opened with no associated file in open_cci_stream(). return no data */
 		arg->xlen = 0;
 		return 0;
@@ -4316,7 +4316,7 @@ static HAK_INLINE int read_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 		{
 			if (ferror((FILE*)bb->fp))
 			{
-				hak_seterrbfmt (hak, HAK_EIOERR, "I/O error - %hs", strerror(errno));
+				hak_seterrbfmt(hak, HAK_EIOERR, "I/O error - %hs", strerror(errno));
 				return -1;
 			}
 			break;
@@ -4343,7 +4343,7 @@ static HAK_INLINE int read_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 #endif
 
 	remlen = bb->len - bcslen;
-	if (remlen > 0) HAK_MEMMOVE (bb->buf, &bb->buf[bcslen], remlen);
+	if (remlen > 0) HAK_MEMMOVE(bb->buf, &bb->buf[bcslen], remlen);
 	bb->len = remlen;
 
 	arg->xlen = ucslen;
@@ -4372,7 +4372,7 @@ static int cci_handler (hak_t* hak, hak_io_cmd_t cmd, void* arg)
 		case HAK_IO_WRITE: /*  character output prohibited */
 		case HAK_IO_WRITE_BYTES: /* byte output prohibited */
 		default:
-			hak_seterrnum (hak, HAK_EINTERN);
+			hak_seterrnum(hak, HAK_EINTERN);
 			return -1;
 	}
 }
@@ -4404,7 +4404,7 @@ static HAK_INLINE int open_udi_stream (hak_t* hak, hak_io_udiarg_t* arg)
 
 	if (!bb->fp)
 	{
-		hak_seterrbfmtwithsyserr (hak, 0, errno, "unable to open udi stream '%hs'", xtn->udi_path);
+		hak_seterrbfmtwithsyserr(hak, 0, errno, "unable to open udi stream '%hs'", xtn->udi_path);
 		goto oops;
 	}
 
@@ -4416,7 +4416,7 @@ oops:
 	if (bb)
 	{
 		if (bb->fp && bb->fp != stdin) fclose (bb->fp);
-		hak_freemem (hak, bb);
+		hak_freemem(hak, bb);
 	}
 	return -1;
 }
@@ -4427,10 +4427,10 @@ static HAK_INLINE int close_udi_stream (hak_t* hak, hak_io_udiarg_t* arg)
 	bb_t* bb;
 
 	bb = (bb_t*)arg->handle;
-	HAK_ASSERT (hak, bb != HAK_NULL && bb->fp != HAK_NULL);
+	HAK_ASSERT(hak, bb != HAK_NULL && bb->fp != HAK_NULL);
 
 	if (bb->fp != stdin) fclose (bb->fp);
-	hak_freemem (hak, bb);
+	hak_freemem(hak, bb);
 
 	arg->handle = HAK_NULL;
 	return 0;
@@ -4447,7 +4447,7 @@ static HAK_INLINE int read_udi_stream (hak_t* hak, hak_io_udiarg_t* arg)
 #endif
 
 	bb = (bb_t*)arg->handle;
-	HAK_ASSERT (hak, bb != HAK_NULL && bb->fp != HAK_NULL);
+	HAK_ASSERT(hak, bb != HAK_NULL && bb->fp != HAK_NULL);
 
 	if (bb->len > 0)
 	{
@@ -4462,7 +4462,7 @@ static HAK_INLINE int read_udi_stream (hak_t* hak, hak_io_udiarg_t* arg)
 			{
 				if (ferror((FILE*)bb->fp))
 				{
-					hak_seterrbfmtwithsyserr (hak, 0, errno, "unable to read udi stream");
+					hak_seterrbfmtwithsyserr(hak, 0, errno, "unable to read udi stream");
 					return -1;
 				}
 				break;
@@ -4494,7 +4494,7 @@ static HAK_INLINE int read_udi_stream (hak_t* hak, hak_io_udiarg_t* arg)
 #endif
 
 	remlen = bb->len - bcslen;
-	if (remlen > 0) HAK_MEMMOVE (bb->buf, &bb->buf[bcslen], remlen);
+	if (remlen > 0) HAK_MEMMOVE(bb->buf, &bb->buf[bcslen], remlen);
 	bb->len = remlen;
 
 	arg->xlen = ucslen;
@@ -4509,7 +4509,7 @@ static HAK_INLINE int read_udi_stream_bytes (hak_t* hak, hak_io_udiarg_t* arg)
 	int x;
 
 	bb = (bb_t*)arg->handle;
-	HAK_ASSERT (hak, bb != HAK_NULL && bb->fp != HAK_NULL);
+	HAK_ASSERT(hak, bb != HAK_NULL && bb->fp != HAK_NULL);
 
 	if (bb->len <= 0)
 	{
@@ -4520,7 +4520,7 @@ static HAK_INLINE int read_udi_stream_bytes (hak_t* hak, hak_io_udiarg_t* arg)
 			{
 				if (ferror((FILE*)bb->fp))
 					{
-					hak_seterrbfmtwithsyserr (hak, 0, errno, "unable to read udi stream");
+					hak_seterrbfmtwithsyserr(hak, 0, errno, "unable to read udi stream");
 					return -1;
 				}
 				break;
@@ -4536,7 +4536,7 @@ static HAK_INLINE int read_udi_stream_bytes (hak_t* hak, hak_io_udiarg_t* arg)
 	hak_copy_bchars ((hak_bch_t*)arg->buf.b, bb->buf, bcslen);
 
 	remlen = bb->len - bcslen;
-	if (remlen > 0) HAK_MEMMOVE (bb->buf, &bb->buf[bcslen], remlen);
+	if (remlen > 0) HAK_MEMMOVE(bb->buf, &bb->buf[bcslen], remlen);
 	bb->len = remlen;
 
 	arg->xlen = ucslen;
@@ -4564,7 +4564,7 @@ static int udi_handler (hak_t* hak, hak_io_cmd_t cmd, void* arg)
 			return 0;
 
 		default:
-			hak_seterrnum (hak, HAK_EINTERN);
+			hak_seterrnum(hak, HAK_EINTERN);
 			return -1;
 	}
 }
@@ -4585,9 +4585,9 @@ static HAK_INLINE int open_udo_stream (hak_t* hak, hak_io_udoarg_t* arg)
 	if (!fp)
 	{
 		if (xtn->udo_path)
-			hak_seterrbfmtwithsyserr (hak, 0, errno, "unable to open udo stream '%hs'", xtn->udo_path);
+			hak_seterrbfmtwithsyserr(hak, 0, errno, "unable to open udo stream '%hs'", xtn->udo_path);
 		else
-			hak_seterrbfmtwithsyserr (hak, 0, errno, "unable to open udo stream");
+			hak_seterrbfmtwithsyserr(hak, 0, errno, "unable to open udo stream");
 		return -1;
 	}
 
@@ -4601,7 +4601,7 @@ static HAK_INLINE int close_udo_stream (hak_t* hak, hak_io_udoarg_t* arg)
 	FILE* fp;
 
 	fp = (FILE*)arg->handle;
-	HAK_ASSERT (hak, fp != HAK_NULL);
+	HAK_ASSERT(hak, fp != HAK_NULL);
 	if (fp != stdout) fclose (fp);
 	arg->handle = HAK_NULL;
 	return 0;
@@ -4635,7 +4635,7 @@ static HAK_INLINE int write_udo_stream (hak_t* hak, hak_io_udoarg_t* arg)
 
 		if (fwrite(bcsbuf, HAK_SIZEOF(bcsbuf[0]), bcslen, (FILE*)arg->handle) < bcslen)
 		{
-			hak_seterrbfmtwithsyserr (hak, 0, errno, "unable to write udo stream");
+			hak_seterrbfmtwithsyserr(hak, 0, errno, "unable to write udo stream");
 			return -1;
 		}
 
@@ -4656,7 +4656,7 @@ static HAK_INLINE int write_udo_stream_bytes (hak_t* hak, hak_io_udoarg_t* arg)
 
 	if (fwrite(ptr, HAK_SIZEOF(*ptr), arg->len, (FILE*)arg->handle) < arg->len)
 	{
-		hak_seterrbfmtwithsyserr (hak, 0, errno, "unable to write udo stream");
+		hak_seterrbfmtwithsyserr(hak, 0, errno, "unable to write udo stream");
 		return -1;
 	}
 
@@ -4669,7 +4669,7 @@ static HAK_INLINE int flush_udo_stream (hak_t* hak, hak_io_udoarg_t* arg)
 	FILE* fp;
 
 	fp = (FILE*)arg->handle;
-	HAK_ASSERT (hak, fp != HAK_NULL);
+	HAK_ASSERT(hak, fp != HAK_NULL);
 
 	fflush (fp);
 	return 0;
@@ -4695,7 +4695,7 @@ static int udo_handler (hak_t* hak, hak_io_cmd_t cmd, void* arg)
 			return flush_udo_stream(hak, (hak_io_udoarg_t*)arg);
 
 		default:
-			hak_seterrnum (hak, HAK_EINTERN);
+			hak_seterrnum(hak, HAK_EINTERN);
 			return -1;
 	}
 }
@@ -4707,7 +4707,7 @@ int hak_attachcciostdwithbcstr (hak_t* hak, const hak_bch_t* cci_file)
 	xtn_t* xtn = GET_XTN(hak);
 	int n;
 
-	HAK_ASSERT (hak, xtn->cci_path == HAK_NULL);
+	HAK_ASSERT(hak, xtn->cci_path == HAK_NULL);
 
 	xtn->cci_path = cci_file;
 
@@ -4723,14 +4723,14 @@ int hak_attachcciostdwithucstr (hak_t* hak, const hak_uch_t* cci_file)
 	xtn_t* xtn = GET_XTN(hak);
 	int n;
 
-	HAK_ASSERT (hak, xtn->cci_path == HAK_NULL);
+	HAK_ASSERT(hak, xtn->cci_path == HAK_NULL);
 
 	xtn->cci_path = hak_duputobcstr(hak, cci_file, HAK_NULL);
 	if (HAK_UNLIKELY(!xtn->cci_path)) return -1;
 
 	n = hak_attachccio(hak, cci_handler);
 
-	hak_freemem (hak, (void*)xtn->cci_path);
+	hak_freemem(hak, (void*)xtn->cci_path);
 	xtn->cci_path = HAK_NULL;
 
 	return n;
@@ -4743,8 +4743,8 @@ int hak_attachudiostdwithbcstr (hak_t* hak, const hak_bch_t* udi_file, const hak
 	xtn_t* xtn = GET_XTN(hak);
 	int n;
 
-	HAK_ASSERT (hak, xtn->udi_path == HAK_NULL);
-	HAK_ASSERT (hak, xtn->udo_path == HAK_NULL);
+	HAK_ASSERT(hak, xtn->udi_path == HAK_NULL);
+	HAK_ASSERT(hak, xtn->udo_path == HAK_NULL);
 
 	xtn->udi_path = udi_file;
 	xtn->udo_path = udo_file;
@@ -4762,28 +4762,28 @@ int hak_attachudiostdwithucstr (hak_t* hak, const hak_uch_t* udi_file, const hak
 	xtn_t* xtn = GET_XTN(hak);
 	int n;
 
-	HAK_ASSERT (hak, xtn->udi_path == HAK_NULL);
-	HAK_ASSERT (hak, xtn->udo_path == HAK_NULL);
+	HAK_ASSERT(hak, xtn->udi_path == HAK_NULL);
+	HAK_ASSERT(hak, xtn->udo_path == HAK_NULL);
 
 	xtn->udi_path = hak_duputobcstr(hak, udi_file, HAK_NULL);
 	if (HAK_UNLIKELY(!xtn->udi_path))
 	{
-		hak_freemem (hak, (void*)xtn->cci_path);
+		hak_freemem(hak, (void*)xtn->cci_path);
 		return -1;
 	}
 
 	xtn->udo_path = hak_duputobcstr(hak, udo_file, HAK_NULL);
 	if (HAK_UNLIKELY(!xtn->udo_path))
 	{
-		hak_freemem (hak, (void*)xtn->udi_path);
+		hak_freemem(hak, (void*)xtn->udi_path);
 		xtn->udi_path = HAK_NULL;
 		return -1;
 	}
 
 	n = hak_attachudio(hak, udi_handler, udo_handler);
 
-	hak_freemem (hak, (void*)xtn->udi_path);
-	hak_freemem (hak, (void*)xtn->udo_path);
+	hak_freemem(hak, (void*)xtn->udi_path);
+	hak_freemem(hak, (void*)xtn->udo_path);
 
 	xtn->udi_path = HAK_NULL;
 	xtn->udo_path = HAK_NULL;

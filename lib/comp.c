@@ -650,7 +650,7 @@ static int emit_byte_instruction (hak_t* hak, hak_oob_t bc, const hak_loc_t* src
 			hak_freemem(hak, tmp);
 			return -1;
 		}
-		HAK_MEMSET (&tmp2[hak->code.bc.capa], 0, HAK_SIZEOF(*tmp2) * (newcapa - hak->code.bc.capa));
+		HAK_MEMSET(&tmp2[hak->code.bc.capa], 0, HAK_SIZEOF(*tmp2) * (newcapa - hak->code.bc.capa));
 
 		hak->code.bc.ptr = tmp;
 		hak->code.bc.capa = newcapa;
@@ -1082,7 +1082,7 @@ static int push_ctlblk (hak_t* hak, const hak_loc_t* errloc, hak_ctlblk_type_t t
 		hak->c->ctlblk.info = tmp;
 	}
 
-	HAK_MEMSET (&hak->c->ctlblk.info[new_depth], 0, HAK_SIZEOF(hak->c->ctlblk.info[new_depth]));
+	HAK_MEMSET(&hak->c->ctlblk.info[new_depth], 0, HAK_SIZEOF(hak->c->ctlblk.info[new_depth]));
 	hak->c->ctlblk.info[new_depth]._type = type;
 	hak->c->ctlblk.depth = new_depth;
 	return 0;
@@ -1135,7 +1135,7 @@ static int push_clsblk (
 	}
 
 	ci = &hak->c->clsblk.info[new_depth];
-	HAK_MEMSET (ci, 0, HAK_SIZEOF(*ci));
+	HAK_MEMSET(ci, 0, HAK_SIZEOF(*ci));
 	ci->class_name = class_name;
 	ci->nivars = nivars;
 	ci->ncvars = ncvars;
@@ -1218,7 +1218,7 @@ static int push_funblk (hak_t* hak, const hak_loc_t* errloc,
 	}
 
 	fbi = &hak->c->funblk.info[new_depth];
-	HAK_MEMSET (fbi, 0, HAK_SIZEOF(*fbi));
+	HAK_MEMSET(fbi, 0, HAK_SIZEOF(*fbi));
 
 	fbi->fun_type = fun_type;
 
@@ -1336,13 +1336,13 @@ static HAK_INLINE int _insert_cframe (hak_t* hak, hak_ooi_t index, int opcode, h
 
 	if (index < hak->c->cfs.top)
 	{
-		HAK_MEMMOVE (&hak->c->cfs.ptr[index + 1], &hak->c->cfs.ptr[index], (hak->c->cfs.top - index) * HAK_SIZEOF(*tmp));
+		HAK_MEMMOVE(&hak->c->cfs.ptr[index + 1], &hak->c->cfs.ptr[index], (hak->c->cfs.top - index) * HAK_SIZEOF(*tmp));
 	}
 
 	tmp = &hak->c->cfs.ptr[index];
 	tmp->opcode = opcode;
 	tmp->operand = operand;
-	HAK_MEMSET (&tmp->u, 0, HAK_SIZEOF(tmp->u));
+	HAK_MEMSET(&tmp->u, 0, HAK_SIZEOF(tmp->u));
 	return 0;
 }
 
@@ -1459,7 +1459,7 @@ static int collect_vardcl_for_class (hak_t* hak, hak_cnode_t* obj, hak_cnode_t**
 	int enclosed = 0;
 	static const hak_bch_t* desc[] = { "instance variable", "class variable" };
 
-	HAK_MEMSET (vardcl, 0, HAK_SIZEOF(*vardcl));
+	HAK_MEMSET(vardcl, 0, HAK_SIZEOF(*vardcl));
 	tv_wcount_saved = hak->c->tv.wcount;
 	tv_slen_saved = hak->c->tv.s.len;
 
@@ -2913,7 +2913,7 @@ static HAK_INLINE int compile_class_p1 (hak_t* hak)
 	saved_tv_wcount = hak->c->tv.wcount;
 	saved_tv_slen = hak->c->tv.s.len;
 
-	HAK_MEMSET (&vardcl, 0, HAK_SIZEOF(vardcl));
+	HAK_MEMSET(&vardcl, 0, HAK_SIZEOF(vardcl));
 
 	if (obj && HAK_CNODE_IS_CONS(obj))
 	{
@@ -5405,7 +5405,7 @@ static hak_oop_t string_to_fpdec (hak_t* hak, hak_oocs_t* str, const hak_loc_t* 
 			}
 
 			HAK_ASSERT(hak, scale > 0);
-			/*if (scale > 0)*/ HAK_MEMMOVE (&str->ptr[pos], &str->ptr[pos + 1], scale * HAK_SIZEOF(str->ptr[0])); /* remove the decimal point */
+			/*if (scale > 0)*/ HAK_MEMMOVE(&str->ptr[pos], &str->ptr[pos + 1], scale * HAK_SIZEOF(str->ptr[0])); /* remove the decimal point */
 			break;
 		}
 	}

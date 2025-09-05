@@ -74,8 +74,8 @@ static HAK_INLINE __utf8_t* get_utf8_slot (hak_uch_t uc)
 {
 	__utf8_t* cur, * end;
 
-	/*HAK_ASSERT (hak, HAK_SIZEOF(hak_bch_t) == 1);
-	HAK_ASSERT (hak, HAK_SIZEOF(hak_uch_t) >= 2);*/
+	/*HAK_ASSERT(hak, HAK_SIZEOF(hak_bch_t) == 1);
+	HAK_ASSERT(hak, HAK_SIZEOF(hak_uch_t) >= 2);*/
 
 	end = utf8_table + HAK_COUNTOF(utf8_table);
 	cur = utf8_table;
@@ -120,10 +120,10 @@ hak_oow_t hak_utf8_to_uc (const hak_bch_t* utf8, hak_oow_t size, hak_uch_t* uc)
 {
 	__utf8_t* cur, * end;
 
-	/*HAK_ASSERT (hak, utf8 != HAK_NULL);
-	HAK_ASSERT (hak, size > 0);
-	HAK_ASSERT (hak, HAK_SIZEOF(hak_bch_t) == 1);
-	HAK_ASSERT (hak, HAK_SIZEOF(hak_uch_t) >= 2);*/
+	/*HAK_ASSERT(hak, utf8 != HAK_NULL);
+	HAK_ASSERT(hak, size > 0);
+	HAK_ASSERT(hak, HAK_SIZEOF(hak_bch_t) == 1);
+	HAK_ASSERT(hak, HAK_SIZEOF(hak_uch_t) >= 2);*/
 
 	end = utf8_table + HAK_COUNTOF(utf8_table);
 	cur = utf8_table;

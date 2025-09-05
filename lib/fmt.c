@@ -481,11 +481,11 @@ static int fmt_outv (hak_t* hak, hak_fmtout_t* fmtout, va_list ap)
 			{
 				if (bch == '\0')
 				{
-					PUT_BCS (hak, fmtout, start, end - start - 1);
+					PUT_BCS(hak, fmtout, start, end - start - 1);
 					goto done;
 				}
 			}
-			PUT_BCS (hak, fmtout, start, end - start - 1);
+			PUT_BCS(hak, fmtout, start, end - start - 1);
 			fmtptr = (const hak_uint8_t*)end;
 			percent = (const hak_uint8_t*)(end - 1);
 		}
@@ -499,11 +499,11 @@ static int fmt_outv (hak_t* hak, hak_fmtout_t* fmtout, va_list ap)
 			{
 				if (uch == '\0')
 				{
-					PUT_UCS (hak, fmtout, start, end - start - 1);
+					PUT_UCS(hak, fmtout, start, end - start - 1);
 					goto done;
 				}
 			}
-			PUT_UCS (hak, fmtout, start, end - start - 1);
+			PUT_UCS(hak, fmtout, start, end - start - 1);
 			fmtptr = (const hak_uint8_t*)end;
 			percent = (const hak_uint8_t*)(end - 1);
 		}
@@ -776,9 +776,9 @@ static int fmt_outv (hak_t* hak, hak_fmtout_t* fmtout, va_list ap)
 		print_lowercase_c:
 			/* precision 0 doesn't kill the letter */
 			width--;
-			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_BCH (hak, fmtout, padc, width);
-			PUT_BCH (hak, fmtout, bch, 1);
-			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_BCH (hak, fmtout, padc, width);
+			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_BCH(hak, fmtout, padc, width);
+			PUT_BCH(hak, fmtout, bch, 1);
+			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_BCH(hak, fmtout, padc, width);
 			break;
 		}
 
@@ -795,9 +795,9 @@ static int fmt_outv (hak_t* hak, hak_fmtout_t* fmtout, va_list ap)
 
 			/* precision 0 doesn't kill the letter */
 			width--;
-			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_UCH (hak, fmtout, padc, width);
-			PUT_UCH (hak, fmtout, uch, 1);
-			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_UCH (hak, fmtout, padc, width);
+			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_UCH(hak, fmtout, padc, width);
+			PUT_UCH(hak, fmtout, uch, 1);
+			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_UCH(hak, fmtout, padc, width);
 			break;
 		}
 
@@ -827,9 +827,9 @@ static int fmt_outv (hak_t* hak, hak_fmtout_t* fmtout, va_list ap)
 
 			width -= n;
 
-			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_BCH (hak, fmtout, padc, width);
-			PUT_BCS (hak, fmtout, bsp, n);
-			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_BCH (hak, fmtout, padc, width);
+			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_BCH(hak, fmtout, padc, width);
+			PUT_BCS(hak, fmtout, bsp, n);
+			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_BCH(hak, fmtout, padc, width);
 			break;
 		}
 
@@ -859,9 +859,9 @@ static int fmt_outv (hak_t* hak, hak_fmtout_t* fmtout, va_list ap)
 
 			width -= n;
 
-			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_UCH (hak, fmtout, padc, width);
-			PUT_UCS (hak, fmtout, usp, n);
-			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_UCH (hak, fmtout, padc, width);
+			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_UCH(hak, fmtout, padc, width);
+			PUT_UCS(hak, fmtout, usp, n);
+			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_UCH(hak, fmtout, padc, width);
 
 			break;
 		}
@@ -921,25 +921,25 @@ static int fmt_outv (hak_t* hak, hak_fmtout_t* fmtout, va_list ap)
 				width -= (n * k_hex_width);
 			}
 
-			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (hak, fmtout, padc, width);
+			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH(hak, fmtout, padc, width);
 
 			while (n--)
 			{
 				if ((lm_flag & LF_H) && BYTE_PRINTABLE(*bsp))
 				{
-					PUT_BCH (hak, fmtout, *bsp, 1);
+					PUT_BCH(hak, fmtout, *bsp, 1);
 				}
 				else
 				{
 					hak_bch_t xbuf[3];
 					hak_byte_to_bcstr (*bsp, xbuf, HAK_COUNTOF(xbuf), (16 | (uch == 'k'? HAK_BYTE_TO_BCSTR_LOWERCASE: 0)), '0');
-					if (lm_flag & (LF_H | LF_L)) PUT_BCS (hak, fmtout, "\\x", 2);
-					PUT_BCS (hak, fmtout, xbuf, 2);
+					if (lm_flag & (LF_H | LF_L)) PUT_BCS(hak, fmtout, "\\x", 2);
+					PUT_BCS(hak, fmtout, xbuf, 2);
 				}
 				bsp++;
 			}
 
-			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (hak, fmtout, padc, width);
+			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH(hak, fmtout, padc, width);
 			break;
 		}
 
@@ -980,36 +980,36 @@ static int fmt_outv (hak_t* hak, hak_fmtout_t* fmtout, va_list ap)
 				}
 			}
 
-			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (hak, fmtout, padc, width);
+			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH(hak, fmtout, padc, width);
 
 			while (n--)
 			{
 				if ((lm_flag & LF_H) && BYTE_PRINTABLE(*usp))
 				{
-					PUT_OOCH (hak, fmtout, *usp, 1);
+					PUT_OOCH(hak, fmtout, *usp, 1);
 				}
 				else if (!(lm_flag & LF_L) && *usp <= 0xFFFF)
 				{
 					hak_uint16_t u16 = *usp;
 					int extra_flags = ((uch) == 'w'? HAK_BYTE_TO_BCSTR_LOWERCASE: 0);
-					PUT_BCS (hak, fmtout, "\\u", 2);
-					PUT_BYTE_IN_HEX (hak, fmtout, (u16 >> 8) & 0xFF, extra_flags);
-					PUT_BYTE_IN_HEX (hak, fmtout, u16 & 0xFF, extra_flags);
+					PUT_BCS(hak, fmtout, "\\u", 2);
+					PUT_BYTE_IN_HEX(hak, fmtout, (u16 >> 8) & 0xFF, extra_flags);
+					PUT_BYTE_IN_HEX(hak, fmtout, u16 & 0xFF, extra_flags);
 				}
 				else
 				{
 					hak_uint32_t u32 = *usp;
 					int extra_flags = ((uch) == 'w'? HAK_BYTE_TO_BCSTR_LOWERCASE: 0);
-					PUT_BCS (hak, fmtout, "\\u", 2);
-					PUT_BYTE_IN_HEX (hak, fmtout, (u32 >> 24) & 0xFF, extra_flags);
-					PUT_BYTE_IN_HEX (hak, fmtout, (u32 >> 16) & 0xFF, extra_flags);
-					PUT_BYTE_IN_HEX (hak, fmtout, (u32 >> 8) & 0xFF, extra_flags);
-					PUT_BYTE_IN_HEX (hak, fmtout, u32 & 0xFF, extra_flags);
+					PUT_BCS(hak, fmtout, "\\u", 2);
+					PUT_BYTE_IN_HEX(hak, fmtout, (u32 >> 24) & 0xFF, extra_flags);
+					PUT_BYTE_IN_HEX(hak, fmtout, (u32 >> 16) & 0xFF, extra_flags);
+					PUT_BYTE_IN_HEX(hak, fmtout, (u32 >> 8) & 0xFF, extra_flags);
+					PUT_BYTE_IN_HEX(hak, fmtout, u32 & 0xFF, extra_flags);
 				}
 				usp++;
 			}
 
-			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (hak, fmtout, padc, width);
+			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH(hak, fmtout, padc, width);
 			break;
 		}
 
@@ -1173,7 +1173,7 @@ static int fmt_outv (hak_t* hak, hak_fmtout_t* fmtout, va_list ap)
 			newcapa = precision + width + 32;
 			if (fb.out.capa < newcapa)
 			{
-				/*HAK_ASSERT (hak, fb.out.ptr == fb.out.sbuf);*/
+				/*HAK_ASSERT(hak, fb.out.ptr == fb.out.sbuf);*/
 
 				fb.out.ptr = (hak_bch_t*)HAK_MMGR_ALLOC(fmtout->mmgr, HAK_SIZEOF(hak_bch_t) * (newcapa + 1));
 				if (!fb.out.ptr) goto oops;
@@ -1228,7 +1228,7 @@ static int fmt_outv (hak_t* hak, hak_fmtout_t* fmtout, va_list ap)
 
 			bsp = fb.out.ptr;
 			n = 0; while (bsp[n] != '\0') n++;
-			PUT_BCS (hak, fmtout, bsp, n);
+			PUT_BCS(hak, fmtout, bsp, n);
 			break;
 		}
 #endif
@@ -1348,49 +1348,49 @@ static int fmt_outv (hak_t* hak, hak_fmtout_t* fmtout, va_list ap)
 
 			if (!(flagc & FLAGC_LEFTADJ) && !(flagc & FLAGC_ZEROPAD) && width > 0 && (width -= tmp) > 0)
 			{
-				PUT_OOCH (hak, fmtout, padc, width);
+				PUT_OOCH(hak, fmtout, padc, width);
 				width = 0;
 			}
 
-			if (neg) PUT_OOCH (hak, fmtout, '-', 1);
-			else if (flagc & FLAGC_SIGN) PUT_OOCH (hak, fmtout, '+', 1);
-			else if (flagc & FLAGC_SPACE) PUT_OOCH (hak, fmtout, ' ', 1);
+			if (neg) PUT_OOCH(hak, fmtout, '-', 1);
+			else if (flagc & FLAGC_SIGN) PUT_OOCH(hak, fmtout, '+', 1);
+			else if (flagc & FLAGC_SPACE) PUT_OOCH(hak, fmtout, ' ', 1);
 
 			if ((flagc & FLAGC_SHARP) && num != 0)
 			{
 				if (base == 2)
 				{
-					PUT_OOCH (hak, fmtout, '0', 1);
-					PUT_OOCH (hak, fmtout, 'b', 1);
+					PUT_OOCH(hak, fmtout, '0', 1);
+					PUT_OOCH(hak, fmtout, 'b', 1);
 				}
 				if (base == 8)
 				{
-					PUT_OOCH (hak, fmtout, '0', 1);
-					PUT_OOCH (hak, fmtout, 'o', 1);
+					PUT_OOCH(hak, fmtout, '0', 1);
+					PUT_OOCH(hak, fmtout, 'o', 1);
 				}
 				else if (base == 16)
 				{
-					PUT_OOCH (hak, fmtout, '0', 1);
-					PUT_OOCH (hak, fmtout, 'x', 1);
+					PUT_OOCH(hak, fmtout, '0', 1);
+					PUT_OOCH(hak, fmtout, 'x', 1);
 				}
 			}
 
 			if ((flagc & FLAGC_DOT) && precision > numlen)
 			{
 				/* extra zeros for precision specified */
-				PUT_OOCH (hak, fmtout, '0', precision - numlen);
+				PUT_OOCH(hak, fmtout, '0', precision - numlen);
 			}
 
 			if (!(flagc & FLAGC_LEFTADJ) && width > 0 && (width -= tmp) > 0)
 			{
-				PUT_OOCH (hak, fmtout, padc, width);
+				PUT_OOCH(hak, fmtout, padc, width);
 			}
 
-			while (*nbufp) PUT_OOCH (hak, fmtout, *nbufp--, 1); /* output actual digits */
+			while (*nbufp) PUT_OOCH(hak, fmtout, *nbufp--, 1); /* output actual digits */
 
 			if ((flagc & FLAGC_LEFTADJ) && width > 0 && (width -= tmp) > 0)
 			{
-				PUT_OOCH (hak, fmtout, padc, width);
+				PUT_OOCH(hak, fmtout, padc, width);
 			}
 			break;
 
@@ -1398,10 +1398,10 @@ static int fmt_outv (hak_t* hak, hak_fmtout_t* fmtout, va_list ap)
 			switch (fmtout->fmt_type)
 			{
 				case HAK_FMTOUT_FMT_TYPE_BCH:
-					PUT_BCS (hak, fmtout, (const hak_bch_t*)percent, (fmtptr - percent) / fmtchsz);
+					PUT_BCS(hak, fmtout, (const hak_bch_t*)percent, (fmtptr - percent) / fmtchsz);
 					break;
 				case HAK_FMTOUT_FMT_TYPE_UCH:
-					PUT_UCS (hak, fmtout, (const hak_uch_t*)percent, (fmtptr - percent) / fmtchsz);
+					PUT_UCS(hak, fmtout, (const hak_uch_t*)percent, (fmtptr - percent) / fmtchsz);
 					break;
 			}
 			break;
@@ -1410,10 +1410,10 @@ static int fmt_outv (hak_t* hak, hak_fmtout_t* fmtout, va_list ap)
 			switch (fmtout->fmt_type)
 			{
 				case HAK_FMTOUT_FMT_TYPE_BCH:
-					PUT_BCS (hak, fmtout, (const hak_bch_t*)percent, (fmtptr - percent) / fmtchsz);
+					PUT_BCS(hak, fmtout, (const hak_bch_t*)percent, (fmtptr - percent) / fmtchsz);
 					break;
 				case HAK_FMTOUT_FMT_TYPE_UCH:
-					PUT_UCS (hak, fmtout, (const hak_uch_t*)percent, (fmtptr - percent) / fmtchsz);
+					PUT_UCS(hak, fmtout, (const hak_uch_t*)percent, (fmtptr - percent) / fmtchsz);
 					break;
 			}
 			/*
@@ -1544,7 +1544,7 @@ static int log_oocs (hak_t* hak, hak_fmtout_t* fmtout, const hak_ooch_t* ptr, ha
 			hak->log.ptr[hak->log.len++] = '\n';
 		}
 
-		HAK_VMPRIM_LOG_WRITE (hak, hak->log.last_mask, hak->log.ptr, hak->log.len);
+		HAK_VMPRIM_LOG_WRITE(hak, hak->log.last_mask, hak->log.ptr, hak->log.len);
 		hak->log.len = 0;
 	}
 
@@ -1588,7 +1588,7 @@ redo:
 					/* no line ending - append a line terminator */
 					hak->log.ptr[hak->log.len++] = '\n';
 				}
-				HAK_VMPRIM_LOG_WRITE (hak, hak->log.last_mask, hak->log.ptr, hak->log.len);
+				HAK_VMPRIM_LOG_WRITE(hak, hak->log.last_mask, hak->log.ptr, hak->log.len);
 				hak->log.len = 0;
 			}
 
@@ -1605,7 +1605,7 @@ redo:
 		}
 	}
 
-	HAK_MEMCPY (&hak->log.ptr[hak->log.len], ptr, len * HAK_SIZEOF(*ptr));
+	HAK_MEMCPY(&hak->log.ptr[hak->log.len], ptr, len * HAK_SIZEOF(*ptr));
 	hak->log.len += len;
 	hak->log.last_mask = fmtout->mask;
 
@@ -1633,7 +1633,7 @@ static int log_ucs (hak_t* hak, hak_fmtout_t* fmtout, const hak_uch_t* ptr, hak_
 		len = rem;
 		bcslen = HAK_COUNTOF(bcs);
 		hak_conv_uchars_to_bchars_with_cmgr (ptr, &len, bcs, &bcslen, HAK_CMGR(hak));
-		log_bcs (hak, fmtout, bcs, bcslen);
+		log_bcs(hak, fmtout, bcs, bcslen);
 		rem -= len;
 		ptr += len;
 	}
@@ -1656,7 +1656,7 @@ static int log_bcs (hak_t* hak, hak_fmtout_t* fmtout, const hak_bch_t* ptr, hak_
 		len = rem;
 		ucslen = HAK_COUNTOF(ucs);
 		hak_conv_bchars_to_uchars_with_cmgr (ptr, &len, ucs, &ucslen, HAK_CMGR(hak), 1);
-		log_ucs (hak, fmtout, ucs, ucslen);
+		log_ucs(hak, fmtout, ucs, ucslen);
 		rem -= len;
 		ptr += len;
 	}
@@ -1693,14 +1693,14 @@ hak_ooi_t hak_logbfmtv (hak_t* hak, hak_bitmask_t mask, const hak_bch_t* fmt, va
 		/* perform flushing only if fmt is NULL */
 		if (hak->log.len > 0)
 		{
-			HAK_VMPRIM_LOG_WRITE (hak, hak->log.last_mask, hak->log.ptr, hak->log.len);
+			HAK_VMPRIM_LOG_WRITE(hak, hak->log.last_mask, hak->log.ptr, hak->log.len);
 			hak->log.len = 0;
 		}
-		HAK_VMPRIM_LOG_WRITE (hak, hak->log.last_mask, HAK_NULL, 0); /* forced flushing */
+		HAK_VMPRIM_LOG_WRITE(hak, hak->log.last_mask, HAK_NULL, 0); /* forced flushing */
 		return 0;
 	}
 
-	HAK_MEMSET (&fo, 0, HAK_SIZEOF(fo));
+	HAK_MEMSET(&fo, 0, HAK_SIZEOF(fo));
 	fo.fmt_type = HAK_FMTOUT_FMT_TYPE_BCH;
 	fo.fmt_str = fmt;
 	fo.mask = mask;
@@ -1713,7 +1713,7 @@ hak_ooi_t hak_logbfmtv (hak_t* hak, hak_bitmask_t mask, const hak_bch_t* fmt, va
 
 	if (hak->log.len > 0 && hak->log.ptr[hak->log.len - 1] == '\n')
 	{
-		HAK_VMPRIM_LOG_WRITE (hak, hak->log.last_mask, hak->log.ptr, hak->log.len);
+		HAK_VMPRIM_LOG_WRITE(hak, hak->log.last_mask, hak->log.ptr, hak->log.len);
 		hak->log.len = 0;
 	}
 
@@ -1760,14 +1760,14 @@ hak_ooi_t hak_logufmtv (hak_t* hak, hak_bitmask_t mask, const hak_uch_t* fmt, va
 		/* perform flushing only if fmt is NULL */
 		if (hak->log.len > 0)
 		{
-			HAK_VMPRIM_LOG_WRITE (hak, hak->log.last_mask, hak->log.ptr, hak->log.len);
+			HAK_VMPRIM_LOG_WRITE(hak, hak->log.last_mask, hak->log.ptr, hak->log.len);
 			hak->log.len = 0;
 		}
-		HAK_VMPRIM_LOG_WRITE (hak, hak->log.last_mask, HAK_NULL, 0); /* forced flushing */
+		HAK_VMPRIM_LOG_WRITE(hak, hak->log.last_mask, HAK_NULL, 0); /* forced flushing */
 		return 0;
 	}
 
-	HAK_MEMSET (&fo, 0, HAK_SIZEOF(fo));
+	HAK_MEMSET(&fo, 0, HAK_SIZEOF(fo));
 	fo.fmt_type = HAK_FMTOUT_FMT_TYPE_UCH;
 	fo.fmt_str = fmt;
 	fo.mask = mask;
@@ -1780,7 +1780,7 @@ hak_ooi_t hak_logufmtv (hak_t* hak, hak_bitmask_t mask, const hak_uch_t* fmt, va
 
 	if (hak->log.len > 0 && hak->log.ptr[hak->log.len - 1] == '\n')
 	{
-		HAK_VMPRIM_LOG_WRITE (hak, hak->log.last_mask, hak->log.ptr, hak->log.len);
+		HAK_VMPRIM_LOG_WRITE(hak, hak->log.last_mask, hak->log.ptr, hak->log.len);
 		hak->log.len = 0;
 	}
 
@@ -1809,7 +1809,7 @@ static int print_bcs (hak_t* hak, hak_fmtout_t* fmtout, const hak_bch_t* ptr, ha
 
 	if (HAK_UNLIKELY(!hak->io.udo_wrtr))
 	{
-		hak_seterrbmsg (hak, HAK_EINVAL, "no user-defined output handler");
+		hak_seterrbmsg(hak, HAK_EINVAL, "no user-defined output handler");
 		return -1;
 	}
 
@@ -1822,7 +1822,7 @@ static int print_bcs (hak_t* hak, hak_fmtout_t* fmtout, const hak_bch_t* ptr, ha
 		if (hak->io.udo_wrtr(hak, HAK_IO_WRITE_BYTES, &hak->io.udo_arg) <= -1) return -1;
 		if (hak->io.udo_arg.xlen <= 0) return 0; /* end of stream. but not failure */
 
-		HAK_ASSERT (hak, hak->io.udo_arg.xlen <= len);
+		HAK_ASSERT(hak, hak->io.udo_arg.xlen <= len);
 		optr += hak->io.udo_arg.xlen;
 		len -= hak->io.udo_arg.xlen;
 	}
@@ -1842,7 +1842,7 @@ static int print_ucs (hak_t* hak, hak_fmtout_t* fmtout, const hak_uch_t* ptr, ha
 
 	if (HAK_UNLIKELY(!hak->io.udo_wrtr))
 	{
-		hak_seterrbmsg (hak, HAK_EINVAL, "no user-defined output handler");
+		hak_seterrbmsg(hak, HAK_EINVAL, "no user-defined output handler");
 		return -1;
 	}
 
@@ -1856,7 +1856,7 @@ static int print_ucs (hak_t* hak, hak_fmtout_t* fmtout, const hak_uch_t* ptr, ha
 		if (hak->io.udo_wrtr(hak, HAK_IO_WRITE, &hak->io.udo_arg) <= -1) return -1;
 		if (hak->io.udo_arg.xlen <= 0) return 0; /* end of stream. but not failure */
 
-		HAK_ASSERT (hak, hak->io.udo_arg.xlen <= len);
+		HAK_ASSERT(hak, hak->io.udo_arg.xlen <= len);
 		optr += hak->io.udo_arg.xlen;
 		len -= hak->io.udo_arg.xlen;
 	}
@@ -1876,7 +1876,7 @@ static int print_ucs (hak_t* hak, hak_fmtout_t* fmtout, const hak_uch_t* ptr, ha
 			if (hak->io.udo_wrtr(hak, HAK_IO_WRITE, &hak->io.udo_arg) <= -1) return -1;
 			if (hak->io.udo_arg.xlen <= 0) return 0; /* end of stream. but not failure */
 
-			HAK_ASSERT (hak, hak->io.udo_arg.xlen <= len);
+			HAK_ASSERT(hak, hak->io.udo_arg.xlen <= len);
 			bcsptr += hak->io.udo_arg.xlen;
 			bcslen -= hak->io.udo_arg.xlen;
 		}
@@ -1895,7 +1895,7 @@ hak_ooi_t hak_prbfmtv (hak_t* hak, const hak_bch_t* fmt, va_list ap)
 	int x;
 	hak_fmtout_t fo;
 
-	HAK_MEMSET (&fo, 0, HAK_SIZEOF(fo));
+	HAK_MEMSET(&fo, 0, HAK_SIZEOF(fo));
 	fo.fmt_type = HAK_FMTOUT_FMT_TYPE_BCH;
 	fo.fmt_str = fmt;
 	fo.mask = 0;
@@ -1927,7 +1927,7 @@ hak_ooi_t hak_prufmtv (hak_t* hak, const hak_uch_t* fmt, va_list ap)
 
 	hak_fmtout_t fo;
 
-	HAK_MEMSET (&fo, 0, HAK_SIZEOF(fo));
+	HAK_MEMSET(&fo, 0, HAK_SIZEOF(fo));
 	fo.fmt_type = HAK_FMTOUT_FMT_TYPE_UCH;
 	fo.fmt_str = fmt;
 	fo.mask = 0;
@@ -1988,7 +1988,7 @@ static int sprint_bcs (hak_t* hak, hak_fmtout_t* fmtout, const hak_bch_t* ptr, h
 #if defined(HAK_OOCH_IS_UCH)
 	hak_conv_bchars_to_uchars_with_cmgr (ptr, &len, &hak->sprintf.xbuf.ptr[hak->sprintf.xbuf.len], &oolen, HAK_CMGR(hak), 1);
 #else
-	HAK_MEMCPY (&hak->sprintf.xbuf.ptr[hak->sprintf.xbuf.len], ptr, len * HAK_SIZEOF(*ptr));
+	HAK_MEMCPY(&hak->sprintf.xbuf.ptr[hak->sprintf.xbuf.len], ptr, len * HAK_SIZEOF(*ptr));
 #endif
 	hak->sprintf.xbuf.len += oolen;
 
@@ -2024,7 +2024,7 @@ static int sprint_ucs (hak_t* hak, hak_fmtout_t* fmtout, const hak_uch_t* ptr, h
 	}
 
 #if defined(HAK_OOCH_IS_UCH)
-	HAK_MEMCPY (&hak->sprintf.xbuf.ptr[hak->sprintf.xbuf.len], ptr, len * HAK_SIZEOF(*ptr));
+	HAK_MEMCPY(&hak->sprintf.xbuf.ptr[hak->sprintf.xbuf.len], ptr, len * HAK_SIZEOF(*ptr));
 #else
 	hak_conv_uchars_to_bchars_with_cmgr (ptr, &len, &hak->sprintf.xbuf.ptr[hak->sprintf.xbuf.len], &oolen, HAK_CMGR(hak));
 #endif
@@ -2062,7 +2062,7 @@ static HAK_INLINE int format_stack_args (hak_t* hak, hak_fmtout_t* fmtout, hak_o
 	} arg_state;
 	hak_oop_t arg;
 
-	HAK_ASSERT (hak, fmtout->putobj != HAK_NULL);
+	HAK_ASSERT(hak, fmtout->putobj != HAK_NULL);
 
 	fmtout->count = 0;
 
@@ -2102,18 +2102,18 @@ static HAK_INLINE int format_stack_args (hak_t* hak, hak_fmtout_t* fmtout, hak_o
 
 		while (1)
 		{
-			GET_NEXT_CHAR_TO (hak, fmtptr, fmtend, ch);
+			GET_NEXT_CHAR_TO(hak, fmtptr, fmtend, ch);
 			if (ch == '%' && !arg_state.stop) break;
 
 			if (ch == HAK_OOCI_EOF)
 			{
 				/* fmt is not advanced when it is length-bounded.
 				 * so not fmt - checkpoint - 1 */
-				PUT_OOCS (hak, fmtout, checkpoint, fmtptr - checkpoint);
+				PUT_OOCS(hak, fmtout, checkpoint, fmtptr - checkpoint);
 				goto done;
 			}
 		}
-		PUT_OOCS (hak, fmtout, checkpoint, fmtptr - checkpoint - 1);
+		PUT_OOCS(hak, fmtout, checkpoint, fmtptr - checkpoint - 1);
 
 		percent = fmtptr - 1;
 
@@ -2125,7 +2125,7 @@ static HAK_INLINE int format_stack_args (hak_t* hak, hak_fmtout_t* fmtout, hak_o
 		radix_flags = HAK_INTTOSTR_NONEWOBJ;
 
 	reswitch:
-		GET_NEXT_CHAR_TO (hak, fmtptr, fmtend, ch);
+		GET_NEXT_CHAR_TO(hak, fmtptr, fmtend, ch);
 		switch (ch)
 		{
 		case '%': /* %% */
@@ -2177,7 +2177,7 @@ static HAK_INLINE int format_stack_args (hak_t* hak, hak_fmtout_t* fmtout, hak_o
 				if (flagc & (FLAGC_STAR2 | FLAGC_PRECISION)) goto invalid_format;
 				flagc |= FLAGC_STAR2;
 
-				GET_NEXT_ARG_TO (hak, nargs, &arg_state, arg);
+				GET_NEXT_ARG_TO(hak, nargs, &arg_state, arg);
 				if (hak_inttoooi(hak, arg, &precision) <= -1) goto invalid_format;
 				if (precision < 0)
 				{
@@ -2192,7 +2192,7 @@ static HAK_INLINE int format_stack_args (hak_t* hak, hak_fmtout_t* fmtout, hak_o
 				if (flagc & (FLAGC_STAR1 | FLAGC_WIDTH)) goto invalid_format;
 				flagc |= FLAGC_STAR1;
 
-				GET_NEXT_ARG_TO (hak, nargs, &arg_state, arg);
+				GET_NEXT_ARG_TO(hak, nargs, &arg_state, arg);
 				if (hak_inttoooi(hak, arg, &width) <= -1) goto invalid_format;
 				if (width < 0)
 				{
@@ -2271,7 +2271,7 @@ static HAK_INLINE int format_stack_args (hak_t* hak, hak_fmtout_t* fmtout, hak_o
 			hak_oow_t nslen;
 			hak_oow_t scale = 0;
 
-			GET_NEXT_ARG_TO (hak, nargs, &arg_state, arg);
+			GET_NEXT_ARG_TO(hak, nargs, &arg_state, arg);
 			if (HAK_OOP_IS_CHAR(arg))
 			{
 				arg = HAK_SMOOI_TO_OOP(HAK_OOP_TO_CHAR(arg));
@@ -2291,11 +2291,11 @@ static HAK_INLINE int format_stack_args (hak_t* hak, hak_fmtout_t* fmtout, hak_o
 
 			nsptr = hak->inttostr.xbuf.ptr;
 			nslen = hak->inttostr.xbuf.len;
-			HAK_ASSERT (hak, nslen > 0);
+			HAK_ASSERT(hak, nslen > 0);
 
 			if (nsptr[0] == '-')
 			{
-				HAK_ASSERT (hak, (HAK_OOP_IS_SMOOI(arg) && HAK_OOP_TO_SMOOI(arg) < 0) || HAK_IS_NBIGINT(hak,arg));
+				HAK_ASSERT(hak, (HAK_OOP_IS_SMOOI(arg) && HAK_OOP_TO_SMOOI(arg) < 0) || HAK_IS_NBIGINT(hak,arg));
 				nsptr++;
 				nslen--;
 				neg = 1;
@@ -2343,55 +2343,55 @@ static HAK_INLINE int format_stack_args (hak_t* hak, hak_fmtout_t* fmtout, hak_o
 			if (!(flagc & FLAGC_LEFTADJ) && !(flagc & FLAGC_ZEROPAD) && width > extra)
 			{
 				width -= extra;
-				PUT_OOCH (hak, fmtout, padc, width);
+				PUT_OOCH(hak, fmtout, padc, width);
 				width = 0;
 			}
-			if (neg) PUT_OOCH (hak, fmtout, '-', 1);
-			else if (flagc & FLAGC_SIGN) PUT_OOCH (hak, fmtout, '+', 1);
-			else if (flagc & FLAGC_SPACE) PUT_OOCH (hak, fmtout, ' ', 1);
+			if (neg) PUT_OOCH(hak, fmtout, '-', 1);
+			else if (flagc & FLAGC_SIGN) PUT_OOCH(hak, fmtout, '+', 1);
+			else if (flagc & FLAGC_SPACE) PUT_OOCH(hak, fmtout, ' ', 1);
 
 			if (!(flagc & FLAGC_LEFTADJ) && width > extra)
 			{
 				width -= extra;
-				PUT_OOCH (hak, fmtout, padc, width);
+				PUT_OOCH(hak, fmtout, padc, width);
 			}
 
 			if (nslen < scale + 1)
 			{
-				PUT_OOCH (hak, fmtout, '0', 1);
+				PUT_OOCH(hak, fmtout, '0', 1);
 				if (precision > 0)
 				{
-					PUT_OOCH (hak, fmtout, '.', 1);
-					PUT_OOCH (hak, fmtout, '0', scale - nslen);
-					PUT_OOCS (hak, fmtout, nsptr, nslen);
+					PUT_OOCH(hak, fmtout, '.', 1);
+					PUT_OOCH(hak, fmtout, '0', scale - nslen);
+					PUT_OOCS(hak, fmtout, nsptr, nslen);
 				}
 			}
 			else
 			{
-				if (nslen > 0) PUT_OOCS (hak, fmtout, nsptr, nslen - scale);
+				if (nslen > 0) PUT_OOCS(hak, fmtout, nsptr, nslen - scale);
 				if (precision > 0)
 				{
-					PUT_OOCH (hak, fmtout, '.', 1);
-					if (nslen > 0) PUT_OOCS (hak, fmtout, &nsptr[nslen - scale], scale);
+					PUT_OOCH(hak, fmtout, '.', 1);
+					if (nslen > 0) PUT_OOCS(hak, fmtout, &nsptr[nslen - scale], scale);
 				}
 			}
 			if (precision > scale)
 			{
 				/* trailing zeros in the fractional part */
-				PUT_OOCH (hak, fmtout, '0', precision - scale);
+				PUT_OOCH(hak, fmtout, '0', precision - scale);
 			}
 
 			if ((flagc & FLAGC_LEFTADJ) && width > extra)
 			{
 				width -= extra;
-				PUT_OOCH (hak, fmtout, padc, width);
+				PUT_OOCH(hak, fmtout, padc, width);
 			}
 			break;
 		}
 
 		case 'c':
 		case 'C':
-			GET_NEXT_ARG_TO (hak, nargs, &arg_state, arg);
+			GET_NEXT_ARG_TO(hak, nargs, &arg_state, arg);
 			if (HAK_OOP_IS_SMOOI(arg)) arg = HAK_CHAR_TO_OOP(HAK_OOP_TO_SMOOI(arg));
 			if (!HAK_OOP_IS_CHAR(arg)) goto invalid_format;
 			ooch = HAK_OOP_TO_CHAR(arg);
@@ -2402,9 +2402,9 @@ static HAK_INLINE int format_stack_args (hak_t* hak, hak_fmtout_t* fmtout, hak_o
 
 			/* precision 0 doesn't kill the letter */
 			width--;
-			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (hak, fmtout, padc, width);
-			PUT_OOCH (hak, fmtout, ooch, 1);
-			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (hak, fmtout, padc, width);
+			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH(hak, fmtout, padc, width);
+			PUT_OOCH(hak, fmtout, ooch, 1);
+			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH(hak, fmtout, padc, width);
 			break;
 
 		case 's':
@@ -2413,7 +2413,7 @@ static HAK_INLINE int format_stack_args (hak_t* hak, hak_fmtout_t* fmtout, hak_o
 			/* zeropad must not take effect for 'S' */
 			if (flagc & FLAGC_ZEROPAD) padc = ' ';
 
-			GET_NEXT_ARG_TO (hak, nargs, &arg_state, arg);
+			GET_NEXT_ARG_TO(hak, nargs, &arg_state, arg);
 			if (!HAK_OOP_IS_POINTER(arg)) goto invalid_format;
 			switch (HAK_OBJ_GET_FLAGS_TYPE(arg))
 			{
@@ -2432,9 +2432,9 @@ static HAK_INLINE int format_stack_args (hak_t* hak, hak_fmtout_t* fmtout, hak_o
 					}
 					width -= oosl;
 
-					if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (hak, fmtout, padc, width);
-					PUT_OOCS (hak, fmtout, oosp, oosl);
-					if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (hak, fmtout, padc, width);
+					if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH(hak, fmtout, padc, width);
+					PUT_OOCS(hak, fmtout, oosp, oosl);
+					if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH(hak, fmtout, padc, width);
 					break;
 				}
 
@@ -2453,9 +2453,9 @@ static HAK_INLINE int format_stack_args (hak_t* hak, hak_fmtout_t* fmtout, hak_o
 					}
 					width -= bsl;
 
-					if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (hak, fmtout, padc, width);
-					PUT_BCS (hak, fmtout, (const hak_bch_t*)bsp, bsl);
-					if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (hak, fmtout, padc, width);
+					if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH(hak, fmtout, padc, width);
+					PUT_BCS(hak, fmtout, (const hak_bch_t*)bsp, bsl);
+					if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH(hak, fmtout, padc, width);
 					break;
 				}
 
@@ -2476,7 +2476,7 @@ static HAK_INLINE int format_stack_args (hak_t* hak, hak_fmtout_t* fmtout, hak_o
 			const hak_uint8_t* bsp;
 			hak_oow_t bsl, k_hex_width;
 
-			GET_NEXT_ARG_TO (hak, nargs, &arg_state, arg);
+			GET_NEXT_ARG_TO(hak, nargs, &arg_state, arg);
 			if (!HAK_OOP_IS_POINTER(arg)) goto invalid_format;
 
 			if (flagc & FLAGC_ZEROPAD) padc = ' ';
@@ -2511,13 +2511,13 @@ static HAK_INLINE int format_stack_args (hak_t* hak, hak_fmtout_t* fmtout, hak_o
 						width -= (n * k_hex_width);
 					}
 
-					if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (hak, fmtout, padc, width);
+					if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH(hak, fmtout, padc, width);
 
 					while (n--)
 					{
 						if ((lm_flag & LF_H) && BYTE_PRINTABLE(*bsp))
 						{
-							PUT_BCH (hak, fmtout, *bsp, 1);
+							PUT_BCH(hak, fmtout, *bsp, 1);
 						}
 						else
 						{
@@ -2529,13 +2529,13 @@ static HAK_INLINE int format_stack_args (hak_t* hak, hak_fmtout_t* fmtout, hak_o
 							if (ch == 'k' || ch == 'w') flagged_radix |= HAK_BYTE_TO_BCSTR_LOWERCASE;
 						#endif
 							hak_byte_to_bcstr (*bsp, xbuf, HAK_COUNTOF(xbuf), flagged_radix, '0');
-							if (lm_flag & (LF_H | LF_L)) PUT_BCS (hak, fmtout, "\\x", 2);
-							PUT_BCS (hak, fmtout, xbuf, 2);
+							if (lm_flag & (LF_H | LF_L)) PUT_BCS(hak, fmtout, "\\x", 2);
+							PUT_BCS(hak, fmtout, xbuf, 2);
 						}
 						bsp++;
 					}
 
-					if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (hak, fmtout, padc, width);
+					if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH(hak, fmtout, padc, width);
 					break;
 
 				default:
@@ -2557,7 +2557,7 @@ static HAK_INLINE int format_stack_args (hak_t* hak, hak_fmtout_t* fmtout, hak_o
 			const hak_uch_t* usp;
 			hak_oow_t usl, i, uwid;
 
-			GET_NEXT_ARG_TO (hak, nargs, &arg_state, arg);
+			GET_NEXT_ARG_TO(hak, nargs, &arg_state, arg);
 			if (!HAK_OOP_IS_POINTER(arg) || HAK_OBJ_GET_FLAGS_TYPE(arg) != HAK_OBJ_TYPE_CHAR) goto invalid_format;
 
 			if (flagc & FLAGC_ZEROPAD) padc = ' ';
@@ -2579,49 +2579,49 @@ static HAK_INLINE int format_stack_args (hak_t* hak, hak_fmtout_t* fmtout, hak_o
 				width -= uwid;
 			}
 
-			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (hak, fmtout, padc, width);
+			if (!(flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH(hak, fmtout, padc, width);
 
 			while (n--)
 			{
 				if ((lm_flag & LF_H) && BYTE_PRINTABLE(*usp))
 				{
-					PUT_OOCH (hak, fmtout, *usp, 1);
+					PUT_OOCH(hak, fmtout, *usp, 1);
 				}
 				else if (!(lm_flag & LF_L) && *usp <= 0xFFFF)
 				{
 					hak_uint16_t u16 = *usp;
 					int extra_flags = ((ch) == 'w'? HAK_BYTE_TO_BCSTR_LOWERCASE: 0);
-					PUT_BCS (hak, fmtout, "\\u", 2);
-					PUT_BYTE_IN_HEX (hak, fmtout, (u16 >> 8) & 0xFF, extra_flags);
-					PUT_BYTE_IN_HEX (hak, fmtout, u16 & 0xFF, extra_flags);
+					PUT_BCS(hak, fmtout, "\\u", 2);
+					PUT_BYTE_IN_HEX(hak, fmtout, (u16 >> 8) & 0xFF, extra_flags);
+					PUT_BYTE_IN_HEX(hak, fmtout, u16 & 0xFF, extra_flags);
 				}
 				else
 				{
 					hak_uint32_t u32 = *usp;
 					int extra_flags = ((ch) == 'w'? HAK_BYTE_TO_BCSTR_LOWERCASE: 0);
-					PUT_BCS (hak, fmtout, "\\u", 2);
-					PUT_BYTE_IN_HEX (hak, fmtout, (u32 >> 24) & 0xFF, extra_flags);
-					PUT_BYTE_IN_HEX (hak, fmtout, (u32 >> 16) & 0xFF, extra_flags);
-					PUT_BYTE_IN_HEX (hak, fmtout, (u32 >> 8) & 0xFF, extra_flags);
-					PUT_BYTE_IN_HEX (hak, fmtout, u32 & 0xFF, extra_flags);
+					PUT_BCS(hak, fmtout, "\\u", 2);
+					PUT_BYTE_IN_HEX(hak, fmtout, (u32 >> 24) & 0xFF, extra_flags);
+					PUT_BYTE_IN_HEX(hak, fmtout, (u32 >> 16) & 0xFF, extra_flags);
+					PUT_BYTE_IN_HEX(hak, fmtout, (u32 >> 8) & 0xFF, extra_flags);
+					PUT_BYTE_IN_HEX(hak, fmtout, u32 & 0xFF, extra_flags);
 				}
 				usp++;
 			}
 
-			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH (hak, fmtout, padc, width);
+			if ((flagc & FLAGC_LEFTADJ) && width > 0) PUT_OOCH(hak, fmtout, padc, width);
 			break;
 		}
 	#endif
 
 		case 'O': /* object - ignore precision, width, adjustment */
-			GET_NEXT_ARG_TO (hak, nargs, &arg_state, arg);
+			GET_NEXT_ARG_TO(hak, nargs, &arg_state, arg);
 			if (fmtout->putobj(hak, fmtout, arg) <= -1) goto oops;
 			break;
 
 		case 'J':
 		{
 			hak_bitmask_t tmp;
-			GET_NEXT_ARG_TO (hak, nargs, &arg_state, arg);
+			GET_NEXT_ARG_TO(hak, nargs, &arg_state, arg);
 			tmp = fmtout->mask;
 			fmtout->mask |= HAK_LOG_PREFER_JSON;
 			if (fmtout->putobj(hak, fmtout, arg) <= -1) goto oops;
@@ -2634,7 +2634,7 @@ static HAK_INLINE int format_stack_args (hak_t* hak, hak_fmtout_t* fmtout, hak_o
 			const hak_ooch_t* nsptr;
 			hak_oow_t nslen;
 
-			GET_NEXT_ARG_TO (hak, nargs, &arg_state, arg);
+			GET_NEXT_ARG_TO(hak, nargs, &arg_state, arg);
 			if (HAK_OOP_IS_CHAR(arg))
 			{
 				arg = HAK_SMOOI_TO_OOP(HAK_OOP_TO_CHAR(arg));
@@ -2646,7 +2646,7 @@ static HAK_INLINE int format_stack_args (hak_t* hak, hak_fmtout_t* fmtout, hak_o
 
 				/* the given number for integer output is a fixed-point decimal.
 				 * i will drop all digits after the fixed point */
-				hak_pushvolat (hak, &arg);
+				hak_pushvolat(hak, &arg);
 				nv = hak_truncfpdecval(hak, fa->value, HAK_OOP_TO_SMOOI(fa->scale), 0);
 				hak_popvolat (hak);
 				if (!nv)
@@ -2660,7 +2660,7 @@ static HAK_INLINE int format_stack_args (hak_t* hak, hak_fmtout_t* fmtout, hak_o
 
 			if (!hak_inttostr(hak, arg, radix | radix_flags))
 			{
-				/*hak_seterrbfmt (hak, HAK_EINVAL, "not a valid number - %O", arg);
+				/*hak_seterrbfmt(hak, HAK_EINVAL, "not a valid number - %O", arg);
 				goto oops;*/
 				HAK_LOG2 (hak, HAK_LOG_WARN | HAK_LOG_UNTYPED, "unable to convert %O for integer output - %js\n", arg, hak_geterrmsg(hak));
 				goto invalid_format;
@@ -2669,12 +2669,12 @@ static HAK_INLINE int format_stack_args (hak_t* hak, hak_fmtout_t* fmtout, hak_o
 			nsptr = hak->inttostr.xbuf.ptr;
 			nslen = hak->inttostr.xbuf.len;
 
-			HAK_ASSERT (hak, nslen > 0);
+			HAK_ASSERT(hak, nslen > 0);
 			if (nsptr[0] == '-')
 			{
 				/* a negative number was given. i must skip the minus sign
 				 * added by hak_inttostr() for a negative number. */
-				HAK_ASSERT (hak, (HAK_OOP_IS_SMOOI(arg) && HAK_OOP_TO_SMOOI(arg) < 0) || HAK_IS_NBIGINT(hak,arg));
+				HAK_ASSERT(hak, (HAK_OOP_IS_SMOOI(arg) && HAK_OOP_TO_SMOOI(arg) < 0) || HAK_IS_NBIGINT(hak,arg));
 				nsptr++;
 				nslen--;
 			}
@@ -2699,59 +2699,59 @@ static HAK_INLINE int format_stack_args (hak_t* hak, hak_fmtout_t* fmtout, hak_o
 
 			if (!(flagc & FLAGC_LEFTADJ) && !(flagc & FLAGC_ZEROPAD) && width > 0 && (width -= extra) > 0)
 			{
-				PUT_OOCH (hak, fmtout, padc, width);
+				PUT_OOCH(hak, fmtout, padc, width);
 				width = 0;
 			}
 
-			if (neg) PUT_OOCH (hak, fmtout, '-', 1);
-			else if (flagc & FLAGC_SIGN) PUT_OOCH (hak, fmtout, '+', 1);
-			else if (flagc & FLAGC_SPACE) PUT_OOCH (hak, fmtout, ' ', 1);
+			if (neg) PUT_OOCH(hak, fmtout, '-', 1);
+			else if (flagc & FLAGC_SIGN) PUT_OOCH(hak, fmtout, '+', 1);
+			else if (flagc & FLAGC_SPACE) PUT_OOCH(hak, fmtout, ' ', 1);
 
 			if ((flagc & FLAGC_SHARP) && arg != HAK_SMOOI_TO_OOP(0))
 			{
 				if (radix == 2)
 				{
-					PUT_OOCH (hak, fmtout, '0', 1);
-					PUT_OOCH (hak, fmtout, 'b', 1);
+					PUT_OOCH(hak, fmtout, '0', 1);
+					PUT_OOCH(hak, fmtout, 'b', 1);
 				}
 				if (radix == 8)
 				{
-					PUT_OOCH (hak, fmtout, '0', 1);
-					PUT_OOCH (hak, fmtout, 'o', 1);
+					PUT_OOCH(hak, fmtout, '0', 1);
+					PUT_OOCH(hak, fmtout, 'o', 1);
 				}
 				else if (radix == 16)
 				{
-					PUT_OOCH (hak, fmtout, '0', 1);
-					PUT_OOCH (hak, fmtout, 'x', 1);
+					PUT_OOCH(hak, fmtout, '0', 1);
+					PUT_OOCH(hak, fmtout, 'x', 1);
 				}
 			}
 
 			if ((flagc & FLAGC_DOT) && precision > nslen)
 			{
 				/* extra zeros for precision specified */
-				PUT_OOCH (hak, fmtout, '0', precision - nslen);
+				PUT_OOCH(hak, fmtout, '0', precision - nslen);
 			}
 
 			if (!(flagc & FLAGC_LEFTADJ) && width > 0 && (width -= extra) > 0)
 			{
-				PUT_OOCH (hak, fmtout, padc, width);
+				PUT_OOCH(hak, fmtout, padc, width);
 			}
 
-			PUT_OOCS (hak, fmtout, nsptr, nslen);
+			PUT_OOCS(hak, fmtout, nsptr, nslen);
 
 			if ((flagc & FLAGC_LEFTADJ) && width > 0 && (width -= extra) > 0)
 			{
-				PUT_OOCH (hak, fmtout, padc, width);
+				PUT_OOCH(hak, fmtout, padc, width);
 			}
 			break;
 		}
 
 		invalid_format:
-			PUT_OOCS (hak, fmtout, percent, fmtptr - percent);
+			PUT_OOCS(hak, fmtout, percent, fmtptr - percent);
 			break;
 
 		default:
-			PUT_OOCS (hak, fmtout, percent, fmtptr - percent);
+			PUT_OOCS(hak, fmtout, percent, fmtptr - percent);
 			/*
 			 * Since we ignore an formatting argument it is no
 			 * longer safe to obey the remaining formatting
@@ -2775,7 +2775,7 @@ int hak_strfmtcallstack (hak_t* hak, hak_ooi_t nargs)
 	/* format a string using the receiver and arguments on the stack */
 	hak_fmtout_t fo;
 
-	HAK_MEMSET (&fo, 0, HAK_SIZEOF(fo));
+	HAK_MEMSET(&fo, 0, HAK_SIZEOF(fo));
 	fo.putbchars = sprint_bcs;
 	fo.putuchars = sprint_ucs;
 	fo.putobj = hak_fmt_object;
@@ -2791,7 +2791,7 @@ int hak_prfmtcallstack (hak_t* hak, hak_ooi_t nargs)
 	/* format a string using the receiver and arguments on the stack */
 	hak_fmtout_t fo;
 
-	HAK_MEMSET (&fo, 0, HAK_SIZEOF(fo));
+	HAK_MEMSET(&fo, 0, HAK_SIZEOF(fo));
 	fo.mask = 0;
 	fo.mmgr = HAK_MMGR(hak);
 	fo.putbchars = print_bcs;
@@ -2807,7 +2807,7 @@ int hak_logfmtcallstack (hak_t* hak, hak_ooi_t nargs)
 	/* format a string using the receiver and arguments on the stack */
 	hak_fmtout_t fo;
 
-	HAK_MEMSET (&fo, 0, HAK_SIZEOF(fo));
+	HAK_MEMSET(&fo, 0, HAK_SIZEOF(fo));
 
 	fo.mask = HAK_LOG_FATAL | HAK_LOG_APP;
 	if (hak->log.default_type_mask & HAK_LOG_ALL_TYPES)
@@ -2840,7 +2840,7 @@ static int read_bcs (hak_t* hak, hak_fmtin_t* fmtout, hak_bch_t* buf, hak_oow_t 
 {
 	if (HAK_UNLIKELY(!hak->io.udo_wrtr))
 	{
-		hak_seterrbmsg (hak, HAK_EINVAL, "no user-defined output handler");
+		hak_seterrbmsg(hak, HAK_EINVAL, "no user-defined output handler");
 		return -1;
 	}
 
@@ -2851,7 +2851,7 @@ static int read_ucs (hak_t* hak, hak_fmtin_t* fmtin, hak_uch_t* buf, hak_oow_t l
 {
 	if (HAK_UNLIKELY(!hak->io.udo_wrtr))
 	{
-		hak_seterrbmsg (hak, HAK_EINVAL, "no user-defined output handler");
+		hak_seterrbmsg(hak, HAK_EINVAL, "no user-defined output handler");
 		return -1;
 	}
 
@@ -2868,7 +2868,7 @@ int hak_scfmtcallstack (hak_t* hak, hak_ooi_t nargs)
 {
 	hak_fmtin_t fi;
 
-	HAK_MEMSET (&fi, 0, HAK_SIZEOF(fi));
+	HAK_MEMSET(&fi, 0, HAK_SIZEOF(fi));
 	/*
 	 * TODO:
 	fi.getbchars =
@@ -2941,14 +2941,14 @@ hak_oow_t hak_vfmttoucstr (hak_t* hak, hak_uch_t* buf, hak_oow_t bufsz, const ha
 
 	if (bufsz <= 0) return 0;
 
-	HAK_MEMSET (&fo, 0, HAK_SIZEOF(fo));
+	HAK_MEMSET(&fo, 0, HAK_SIZEOF(fo));
 	fo.mmgr = hak->_mmgr;
 	fo.putbchars = fmt_put_bchars_to_uch_buf;
 	fo.putuchars = fmt_put_uchars_to_uch_buf;
 	fo.putobj = hak_fmt_object;
 	fo.ctx = &fb;
 
-	HAK_MEMSET (&fb, 0, HAK_SIZEOF(fb));
+	HAK_MEMSET(&fb, 0, HAK_SIZEOF(fb));
 	fb.hak = hak;
 	fb.ptr = buf;
 	fb.capa = bufsz - 1;
@@ -3032,14 +3032,14 @@ hak_oow_t hak_vfmttobcstr (hak_t* hak, hak_bch_t* buf, hak_oow_t bufsz, const ha
 
 	if (bufsz <= 0) return 0;
 
-	HAK_MEMSET (&fo, 0, HAK_SIZEOF(fo));
+	HAK_MEMSET(&fo, 0, HAK_SIZEOF(fo));
 	fo.mmgr = hak->_mmgr;
 	fo.putbchars = fmt_put_bchars_to_bch_buf;
 	fo.putuchars = fmt_put_uchars_to_bch_buf;
 	fo.putobj = hak_fmt_object;
 	fo.ctx = &fb;
 
-	HAK_MEMSET (&fb, 0, HAK_SIZEOF(fb));
+	HAK_MEMSET(&fb, 0, HAK_SIZEOF(fb));
 	fb.hak = hak;
 	fb.ptr = buf;
 	fb.capa = bufsz - 1;

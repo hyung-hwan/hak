@@ -234,7 +234,7 @@ static void pop_state (hak_json_t* json)
 	hak_json_state_node_t* ss;
 
 	ss = json->state_stack;
-	HAK_ASSERT (json->dummy_hak, ss != HAK_NULL && ss != &json->state_top);
+	HAK_ASSERT(json->dummy_hak, ss != HAK_NULL && ss != &json->state_top);
 	json->state_stack = ss->next;
 
 	if (json->state_stack->state == HAK_JSON_STATE_IN_ARRAY)
@@ -512,7 +512,7 @@ static int handle_numeric_value_char (hak_json_t* json, hak_ooci_t c)
 
 	pop_state (json);
 
-	HAK_ASSERT (json->dummy_hak, json->tok.len > 0);
+	HAK_ASSERT(json->dummy_hak, json->tok.len > 0);
 	if (!is_digitchar(json->tok.ptr[json->tok.len - 1]))
 	{
 		hak_json_seterrbfmt (json, HAK_EINVAL, "invalid numeric value - %.*js", json->tok.len, json->tok.ptr);
@@ -936,7 +936,7 @@ hak_json_t* hak_json_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_json_prim_t*
 	xtn = (json_hak_xtn_t*)hak_getxtn(hak);
 	xtn->json = json;
 
-	HAK_MEMSET (json, 0, HAK_SIZEOF(*json) + xtnsize);
+	HAK_MEMSET(json, 0, HAK_SIZEOF(*json) + xtnsize);
 	json->mmgr = mmgr;
 	json->cmgr = hak_get_utf8_cmgr();
 	json->prim = *prim;
@@ -947,8 +947,8 @@ hak_json_t* hak_json_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_json_prim_t*
 	/* the dummy hak is used for this json to perform primitive operations
 	 * such as getting system time or logging. so the heap size doesn't
 	 * need to be changed from the tiny value set above. */
-	hak_setoption (json->dummy_hak, HAK_LOG_MASK, &json->cfg.logmask);
-	hak_setcmgr (json->dummy_hak, json->cmgr);
+	hak_setoption(json->dummy_hak, HAK_LOG_MASK, &json->cfg.logmask);
+	hak_setcmgr(json->dummy_hak, json->cmgr);
 
 
 	json->state_top.state = HAK_JSON_STATE_START;
@@ -960,10 +960,10 @@ hak_json_t* hak_json_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_json_prim_t*
 
 void hak_json_close (hak_json_t* json)
 {
-	pop_all_states (json);
-	if (json->tok.ptr) hak_json_freemem (json, json->tok.ptr);
-	hak_close (json->dummy_hak);
-	HAK_MMGR_FREE (json->mmgr, json);
+	pop_all_states(json);
+	if (json->tok.ptr) hak_json_freemem(json, json->tok.ptr);
+	hak_close(json->dummy_hak);
+	HAK_MMGR_FREE(json->mmgr, json);
 }
 
 int hak_json_setoption (hak_json_t* json, hak_json_option_t id, const void* value)
@@ -982,7 +982,7 @@ int hak_json_setoption (hak_json_t* json, hak_json_option_t id, const void* valu
 				 * existing hak instances inside worker threads won't get
 				 * affected. new hak instances to be created later
 				 * is supposed to use the new value */
-				hak_setoption (json->dummy_hak, HAK_LOG_MASK, value);
+				hak_setoption(json->dummy_hak, HAK_LOG_MASK, value);
 			}
 			return 0;
 	}
@@ -1060,7 +1060,7 @@ void hak_json_seterrbfmt (hak_json_t* json, hak_errnum_t errnum, const hak_bch_t
 	hak_seterrbfmtv (json->dummy_hak, errnum, fmt, ap);
 	va_end (ap);
 
-	HAK_ASSERT (json->dummy_hak, HAK_COUNTOF(json->errmsg.buf) == HAK_COUNTOF(json->dummy_hak->errmsg.buf));
+	HAK_ASSERT(json->dummy_hak, HAK_COUNTOF(json->errmsg.buf) == HAK_COUNTOF(json->dummy_hak->errmsg.buf));
 	json->errnum = errnum;
 	hak_copy_oochars (json->errmsg.buf, json->dummy_hak->errmsg.buf, HAK_COUNTOF(json->errmsg.buf));
 	json->errmsg.len = json->dummy_hak->errmsg.len;
@@ -1074,7 +1074,7 @@ void hak_json_seterrufmt (hak_json_t* json, hak_errnum_t errnum, const hak_uch_t
 	hak_seterrufmtv (json->dummy_hak, errnum, fmt, ap);
 	va_end (ap);
 
-	HAK_ASSERT (json->dummy_hak, HAK_COUNTOF(json->errmsg.buf) == HAK_COUNTOF(json->dummy_hak->errmsg.buf));
+	HAK_ASSERT(json->dummy_hak, HAK_COUNTOF(json->errmsg.buf) == HAK_COUNTOF(json->dummy_hak->errmsg.buf));
 	json->errnum = errnum;
 	hak_copy_oochars (json->errmsg.buf, json->dummy_hak->errmsg.buf, HAK_COUNTOF(json->errmsg.buf));
 	json->errmsg.len = json->dummy_hak->errmsg.len;
@@ -1115,7 +1115,7 @@ void* hak_json_callocmem (hak_json_t* json, hak_oow_t size)
 
 	ptr = HAK_MMGR_ALLOC(json->mmgr, size);
 	if (!ptr) hak_json_seterrnum (json, HAK_ESYSMEM);
-	else HAK_MEMSET (ptr, 0, size);
+	else HAK_MEMSET(ptr, 0, size);
 	return ptr;
 }
 
@@ -1142,7 +1142,7 @@ void hak_json_reset (hak_json_t* json)
 {
 	/* TODO: reset XXXXXXXXXXXXXXXXXXXXXXXXXXXxxxxx */
 	pop_all_states (json);
-	HAK_ASSERT (json->dummy_hak, json->state_stack == &json->state_top);
+	HAK_ASSERT(json->dummy_hak, json->state_stack == &json->state_top);
 	json->state_stack->state = HAK_JSON_STATE_START;
 }
 

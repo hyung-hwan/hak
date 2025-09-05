@@ -56,7 +56,7 @@ int hak_convbtouchars (hak_t* hak, const hak_bch_t* bcs, hak_oow_t* bcslen, hak_
 	if (n <= -1)
 	{
 		/* -1: illegal character, -2: buffer too small, -3: incomplete sequence */
-		hak_seterrnum (hak, (n == -2)? HAK_EBUFFULL: HAK_EECERR);
+		hak_seterrnum(hak, (n == -2)? HAK_EBUFFULL: HAK_EECERR);
 	}
 
 	return n;
@@ -71,7 +71,7 @@ int hak_convutobchars (hak_t* hak, const hak_uch_t* ucs, hak_oow_t* ucslen, hak_
 
 	if (n <= -1)
 	{
-		hak_seterrnum (hak, (n == -2)? HAK_EBUFFULL: HAK_EECERR);
+		hak_seterrnum(hak, (n == -2)? HAK_EBUFFULL: HAK_EECERR);
 	}
 
 	return n;
@@ -86,7 +86,7 @@ int hak_convbtoucstr (hak_t* hak, const hak_bch_t* bcs, hak_oow_t* bcslen, hak_u
 
 	if (n <= -1)
 	{
-		hak_seterrnum (hak, (n == -2)? HAK_EBUFFULL: HAK_EECERR);
+		hak_seterrnum(hak, (n == -2)? HAK_EBUFFULL: HAK_EECERR);
 	}
 
 	return n;
@@ -101,7 +101,7 @@ int hak_convutobcstr (hak_t* hak, const hak_uch_t* ucs, hak_oow_t* ucslen, hak_b
 
 	if (n <= -1)
 	{
-		hak_seterrnum (hak, (n == -2)? HAK_EBUFFULL: HAK_EECERR);
+		hak_seterrnum(hak, (n == -2)? HAK_EBUFFULL: HAK_EECERR);
 	}
 
 	return n;
@@ -115,7 +115,7 @@ hak_uch_t* hak_dupbtoucharswithheadroom (hak_t* hak, hak_oow_t headroom_bytes, c
 	hak_uch_t* ptr;
 
 	inlen = bcslen;
-	if (hak_convbtouchars (hak, bcs, &inlen, HAK_NULL, &outlen) <= -1)
+	if (hak_convbtouchars(hak, bcs, &inlen, HAK_NULL, &outlen) <= -1)
 	{
 		/* note it's also an error if no full conversion is made in this function */
 		return HAK_NULL;
@@ -127,7 +127,7 @@ hak_uch_t* hak_dupbtoucharswithheadroom (hak_t* hak, hak_oow_t headroom_bytes, c
 	inlen = bcslen;
 
 	ptr = (hak_uch_t*)((hak_oob_t*)ptr + headroom_bytes);
-	hak_convbtouchars (hak, bcs, &inlen, ptr, &outlen);
+	hak_convbtouchars(hak, bcs, &inlen, ptr, &outlen);
 
 	/* hak_convbtouchars() doesn't null-terminate the target.
 	 * but in hak_dupbtouchars(), i allocate space. so i don't mind
@@ -139,7 +139,7 @@ hak_uch_t* hak_dupbtoucharswithheadroom (hak_t* hak, hak_oow_t headroom_bytes, c
 
 hak_uch_t* hak_dupbtouchars (hak_t* hak, const hak_bch_t* bcs, hak_oow_t bcslen, hak_oow_t* ucslen)
 {
-	return hak_dupbtoucharswithheadroom (hak, 0, bcs, bcslen, ucslen);
+	return hak_dupbtoucharswithheadroom(hak, 0, bcs, bcslen, ucslen);
 }
 
 hak_bch_t* hak_duputobcharswithheadroom (hak_t* hak, hak_oow_t headroom_bytes, const hak_uch_t* ucs, hak_oow_t ucslen, hak_oow_t* bcslen)
@@ -159,7 +159,7 @@ hak_bch_t* hak_duputobcharswithheadroom (hak_t* hak, hak_oow_t headroom_bytes, c
 
 	inlen = ucslen;
 	ptr = (hak_bch_t*)((hak_oob_t*)ptr + headroom_bytes);
-	hak_convutobchars (hak, ucs, &inlen, ptr, &outlen);
+	hak_convutobchars(hak, ucs, &inlen, ptr, &outlen);
 
 	ptr[outlen] = '\0';
 	if (bcslen) *bcslen = outlen;
@@ -168,7 +168,7 @@ hak_bch_t* hak_duputobcharswithheadroom (hak_t* hak, hak_oow_t headroom_bytes, c
 
 hak_bch_t* hak_duputobchars (hak_t* hak, const hak_uch_t* ucs, hak_oow_t ucslen, hak_oow_t* bcslen)
 {
-	return hak_duputobcharswithheadroom (hak, 0, ucs, ucslen, bcslen);
+	return hak_duputobcharswithheadroom(hak, 0, ucs, ucslen, bcslen);
 }
 
 
@@ -189,14 +189,14 @@ hak_uch_t* hak_dupbtoucstrwithheadroom (hak_t* hak, hak_oow_t headroom_bytes, co
 	ptr = (hak_uch_t*)hak_allocmem(hak, headroom_bytes + (outlen * HAK_SIZEOF(hak_uch_t)));
 	if (HAK_UNLIKELY(!ptr)) return HAK_NULL;
 
-	hak_convbtoucstr (hak, bcs, &inlen, ptr, &outlen);
+	hak_convbtoucstr(hak, bcs, &inlen, ptr, &outlen);
 	if (ucslen) *ucslen = outlen;
 	return ptr;
 }
 
 hak_uch_t* hak_dupbtoucstr (hak_t* hak, const hak_bch_t* bcs, hak_oow_t* ucslen)
 {
-	return hak_dupbtoucstrwithheadroom (hak, 0, bcs, ucslen);
+	return hak_dupbtoucstrwithheadroom(hak, 0, bcs, ucslen);
 }
 
 hak_bch_t* hak_duputobcstrwithheadroom (hak_t* hak, hak_oow_t headroom_bytes, const hak_uch_t* ucs, hak_oow_t* bcslen)
@@ -204,7 +204,7 @@ hak_bch_t* hak_duputobcstrwithheadroom (hak_t* hak, hak_oow_t headroom_bytes, co
 	hak_oow_t inlen, outlen;
 	hak_bch_t* ptr;
 
-	if (hak_convutobcstr (hak, ucs, &inlen, HAK_NULL, &outlen) <= -1)
+	if (hak_convutobcstr(hak, ucs, &inlen, HAK_NULL, &outlen) <= -1)
 	{
 		/* note it's also an error if no full conversion is made in this function */
 		return HAK_NULL;
@@ -216,14 +216,14 @@ hak_bch_t* hak_duputobcstrwithheadroom (hak_t* hak, hak_oow_t headroom_bytes, co
 
 	ptr = (hak_bch_t*)((hak_oob_t*)ptr + headroom_bytes);
 
-	hak_convutobcstr (hak, ucs, &inlen, ptr, &outlen);
+	hak_convutobcstr(hak, ucs, &inlen, ptr, &outlen);
 	if (bcslen) *bcslen = outlen;
 	return ptr;
 }
 
 hak_bch_t* hak_duputobcstr (hak_t* hak, const hak_uch_t* ucs, hak_oow_t* bcslen)
 {
-	return hak_duputobcstrwithheadroom (hak, 0, ucs, bcslen);
+	return hak_duputobcstrwithheadroom(hak, 0, ucs, bcslen);
 }
 /* ----------------------------------------------------------------------- */
 
@@ -284,8 +284,8 @@ void hak_add_ntime (hak_ntime_t* z, const hak_ntime_t* x, const hak_ntime_t* y)
 	hak_ntime_sec_t xs, ys;
 	hak_ntime_nsec_t ns;
 
-	/*HAK_ASSERT (x->nsec >= 0 && x->nsec < HAK_NSECS_PER_SEC);
-	HAK_ASSERT (y->nsec >= 0 && y->nsec < HAK_NSECS_PER_SEC);*/
+	/*HAK_ASSERT(x->nsec >= 0 && x->nsec < HAK_NSECS_PER_SEC);
+	HAK_ASSERT(y->nsec >= 0 && y->nsec < HAK_NSECS_PER_SEC);*/
 
 	ns = x->nsec + y->nsec;
 	if (ns >= HAK_NSECS_PER_SEC)
@@ -338,8 +338,8 @@ void hak_sub_ntime (hak_ntime_t* z, const hak_ntime_t* x, const hak_ntime_t* y)
 	hak_ntime_sec_t xs, ys;
 	hak_ntime_nsec_t ns;
 
-	/*HAK_ASSERT (x->nsec >= 0 && x->nsec < HAK_NSECS_PER_SEC);
-	HAK_ASSERT (y->nsec >= 0 && y->nsec < HAK_NSECS_PER_SEC);*/
+	/*HAK_ASSERT(x->nsec >= 0 && x->nsec < HAK_NSECS_PER_SEC);
+	HAK_ASSERT(y->nsec >= 0 && y->nsec < HAK_NSECS_PER_SEC);*/
 
 	ns = x->nsec - y->nsec;
 	if (ns < 0)

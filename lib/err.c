@@ -298,7 +298,7 @@ void hak_seterrnum (hak_t* hak, hak_errnum_t errnum)
 	if (hak->shuterr) return;
 	hak->errnum = errnum;
 	hak->errmsg.len = 0;
-	HAK_MEMSET (&hak->errloc, 0, HAK_SIZEOF(hak->errloc));
+	HAK_MEMSET(&hak->errloc, 0, HAK_SIZEOF(hak->errloc));
 }
 
 void hak_geterrloc (hak_t* hak, hak_loc_t* loc)
@@ -329,7 +329,7 @@ static int err_bcs (hak_t* hak, hak_fmtout_t* fmtout, const hak_bch_t* ptr, hak_
 #else
 	if (len > max) len = max;
 	if (len <= 0) return 1;
-	HAK_MEMCPY (&hak->errmsg.buf[hak->errmsg.len], ptr, len * HAK_SIZEOF(*ptr));
+	HAK_MEMCPY(&hak->errmsg.buf[hak->errmsg.len], ptr, len * HAK_SIZEOF(*ptr));
 	hak->errmsg.len += len;
 #endif
 
@@ -347,7 +347,7 @@ static int err_ucs (hak_t* hak, hak_fmtout_t* fmtout, const hak_uch_t* ptr, hak_
 #if defined(HAK_OOCH_IS_UCH)
 	if (len > max) len = max;
 	if (len <= 0) return 1;
-	HAK_MEMCPY (&hak->errmsg.buf[hak->errmsg.len], ptr, len * HAK_SIZEOF(*ptr));
+	HAK_MEMCPY(&hak->errmsg.buf[hak->errmsg.len], ptr, len * HAK_SIZEOF(*ptr));
 	hak->errmsg.len += len;
 #else
 	if (max <= 0) return 1;
@@ -366,17 +366,17 @@ void hak_seterrbfmt (hak_t* hak, hak_errnum_t errnum, const hak_bch_t* fmt, ...)
 	if (hak->shuterr) return;
 	hak->errmsg.len = 0;
 
-	HAK_MEMSET (&fo, 0, HAK_SIZEOF(fo));
+	HAK_MEMSET(&fo, 0, HAK_SIZEOF(fo));
 	fo.putbchars = err_bcs;
 	fo.putuchars = err_ucs;
 	fo.putobj = hak_fmt_object;
 
 	va_start (ap, fmt);
-	hak_bfmt_outv (hak, &fo, fmt, ap);
+	hak_bfmt_outv(hak, &fo, fmt, ap);
 	va_end (ap);
 
 	hak->errnum = errnum;
-	HAK_MEMSET (&hak->errloc, 0, HAK_SIZEOF(hak->errloc));
+	HAK_MEMSET(&hak->errloc, 0, HAK_SIZEOF(hak->errloc));
 }
 
 void hak_seterrufmt (hak_t* hak, hak_errnum_t errnum, const hak_uch_t* fmt, ...)
@@ -387,17 +387,17 @@ void hak_seterrufmt (hak_t* hak, hak_errnum_t errnum, const hak_uch_t* fmt, ...)
 	if (hak->shuterr) return;
 	hak->errmsg.len = 0;
 
-	HAK_MEMSET (&fo, 0, HAK_SIZEOF(fo));
+	HAK_MEMSET(&fo, 0, HAK_SIZEOF(fo));
 	fo.putbchars = err_bcs;
 	fo.putuchars = err_ucs;
 	fo.putobj = hak_fmt_object;
 
 	va_start (ap, fmt);
-	hak_ufmt_outv (hak, &fo, fmt, ap);
+	hak_ufmt_outv(hak, &fo, fmt, ap);
 	va_end (ap);
 
 	hak->errnum = errnum;
-	HAK_MEMSET (&hak->errloc, 0, HAK_SIZEOF(hak->errloc));
+	HAK_MEMSET(&hak->errloc, 0, HAK_SIZEOF(hak->errloc));
 }
 
 
@@ -409,14 +409,14 @@ void hak_seterrbfmtv (hak_t* hak, hak_errnum_t errnum, const hak_bch_t* fmt, va_
 
 	hak->errmsg.len = 0;
 
-	HAK_MEMSET (&fo, 0, HAK_SIZEOF(fo));
+	HAK_MEMSET(&fo, 0, HAK_SIZEOF(fo));
 	fo.putbchars = err_bcs;
 	fo.putuchars = err_ucs;
 	fo.putobj = hak_fmt_object;
 
-	hak_bfmt_outv (hak, &fo, fmt, ap);
+	hak_bfmt_outv(hak, &fo, fmt, ap);
 	hak->errnum = errnum;
-	HAK_MEMSET (&hak->errloc, 0, HAK_SIZEOF(hak->errloc));
+	HAK_MEMSET(&hak->errloc, 0, HAK_SIZEOF(hak->errloc));
 }
 
 void hak_seterrufmtv (hak_t* hak, hak_errnum_t errnum, const hak_uch_t* fmt, va_list ap)
@@ -427,21 +427,21 @@ void hak_seterrufmtv (hak_t* hak, hak_errnum_t errnum, const hak_uch_t* fmt, va_
 
 	hak->errmsg.len = 0;
 
-	HAK_MEMSET (&fo, 0, HAK_SIZEOF(fo));
+	HAK_MEMSET(&fo, 0, HAK_SIZEOF(fo));
 	fo.putbchars = err_bcs;
 	fo.putuchars = err_ucs;
 	fo.putobj = hak_fmt_object;
 
-	hak_ufmt_outv (hak, &fo, fmt, ap);
+	hak_ufmt_outv(hak, &fo, fmt, ap);
 	hak->errnum = errnum;
-	HAK_MEMSET (&hak->errloc, 0, HAK_SIZEOF(hak->errloc));
+	HAK_MEMSET(&hak->errloc, 0, HAK_SIZEOF(hak->errloc));
 }
 
 void hak_seterrbfmtloc (hak_t* hak, hak_errnum_t errnum, const hak_loc_t* loc, const hak_bch_t* fmt, ...)
 {
 	va_list ap;
 	va_start (ap, fmt);
-	hak_seterrbfmtv (hak, errnum, fmt, ap);
+	hak_seterrbfmtv(hak, errnum, fmt, ap);
 	va_end (ap);
 	hak->errloc = *loc;
 }
@@ -450,7 +450,7 @@ void hak_seterrufmtloc (hak_t* hak, hak_errnum_t errnum, const hak_loc_t* loc, c
 {
 	va_list ap;
 	va_start (ap, fmt);
-	hak_seterrufmtv (hak, errnum, fmt, ap);
+	hak_seterrufmtv(hak, errnum, fmt, ap);
 	va_end (ap);
 	hak->errloc = *loc;
 }
@@ -464,13 +464,13 @@ void hak_seterrwithsyserr (hak_t* hak, int syserr_type, int syserr_code)
 	if (hak->vmprim.syserrstrb)
 	{
 		errnum = hak->vmprim.syserrstrb(hak, syserr_type, syserr_code, hak->errmsg.tmpbuf.bch, HAK_COUNTOF(hak->errmsg.tmpbuf.bch));
-		hak_seterrbfmt (hak, errnum, "%hs", hak->errmsg.tmpbuf.bch);
+		hak_seterrbfmt(hak, errnum, "%hs", hak->errmsg.tmpbuf.bch);
 	}
 	else
 	{
-		HAK_ASSERT (hak, hak->vmprim.syserrstru != HAK_NULL);
+		HAK_ASSERT(hak, hak->vmprim.syserrstru != HAK_NULL);
 		errnum = hak->vmprim.syserrstru(hak, syserr_type, syserr_code, hak->errmsg.tmpbuf.uch, HAK_COUNTOF(hak->errmsg.tmpbuf.uch));
-		hak_seterrbfmt (hak, errnum, "%ls", hak->errmsg.tmpbuf.uch);
+		hak_seterrbfmt(hak, errnum, "%ls", hak->errmsg.tmpbuf.uch);
 	}
 }
 
@@ -487,7 +487,7 @@ void hak_seterrbfmtwithsyserr (hak_t* hak, int syserr_type, int syserr_code, con
 		errnum = hak->vmprim.syserrstrb(hak, syserr_type, syserr_code, hak->errmsg.tmpbuf.bch, HAK_COUNTOF(hak->errmsg.tmpbuf.bch));
 
 		va_start (ap, fmt);
-		hak_seterrbfmtv (hak, errnum, fmt, ap);
+		hak_seterrbfmtv(hak, errnum, fmt, ap);
 		va_end (ap);
 
 		if (HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len >= 5)
@@ -500,18 +500,18 @@ void hak_seterrbfmtwithsyserr (hak_t* hak, int syserr_type, int syserr_code, con
 			hak->errmsg.len += hak_copy_bcstr(&hak->errmsg.buf[hak->errmsg.len], HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len, hak->errmsg.tmpbuf.bch);
 		#else
 			ucslen = HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len;
-			hak_convbtoucstr (hak, hak->errmsg.tmpbuf.bch, &bcslen, &hak->errmsg.buf[hak->errmsg.len], &ucslen);
+			hak_convbtoucstr(hak, hak->errmsg.tmpbuf.bch, &bcslen, &hak->errmsg.buf[hak->errmsg.len], &ucslen);
 			hak->errmsg.len += ucslen;
 		#endif
 		}
 	}
 	else
 	{
-		HAK_ASSERT (hak, hak->vmprim.syserrstru != HAK_NULL);
+		HAK_ASSERT(hak, hak->vmprim.syserrstru != HAK_NULL);
 		errnum = hak->vmprim.syserrstru(hak, syserr_type, syserr_code, hak->errmsg.tmpbuf.uch, HAK_COUNTOF(hak->errmsg.tmpbuf.uch));
 
 		va_start (ap, fmt);
-		hak_seterrbfmtv (hak, errnum, fmt, ap);
+		hak_seterrbfmtv(hak, errnum, fmt, ap);
 		va_end (ap);
 
 		if (HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len >= 5)
@@ -522,7 +522,7 @@ void hak_seterrbfmtwithsyserr (hak_t* hak, int syserr_type, int syserr_code, con
 
 		#if defined(HAK_OOCH_IS_BCH)
 			bcslen = HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len;
-			hak_convutobcstr (hak, hak->errmsg.tmpbuf.uch, &ucslen, &hak->errmsg.buf[hak->errmsg.len], &bcslen);
+			hak_convutobcstr(hak, hak->errmsg.tmpbuf.uch, &ucslen, &hak->errmsg.buf[hak->errmsg.len], &bcslen);
 			hak->errmsg.len += bcslen;
 		#else
 			hak->errmsg.len += hak_copy_ucstr(&hak->errmsg.buf[hak->errmsg.len], HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len, hak->errmsg.tmpbuf.uch);
@@ -544,7 +544,7 @@ void hak_seterrufmtwithsyserr (hak_t* hak, int syserr_type, int syserr_code, con
 		errnum = hak->vmprim.syserrstrb(hak, syserr_type, syserr_code, hak->errmsg.tmpbuf.bch, HAK_COUNTOF(hak->errmsg.tmpbuf.bch));
 
 		va_start (ap, fmt);
-		hak_seterrufmtv (hak, errnum, fmt, ap);
+		hak_seterrufmtv(hak, errnum, fmt, ap);
 		va_end (ap);
 
 		if (HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len >= 5)
@@ -557,18 +557,18 @@ void hak_seterrufmtwithsyserr (hak_t* hak, int syserr_type, int syserr_code, con
 			hak->errmsg.len += hak_copy_bcstr(&hak->errmsg.buf[hak->errmsg.len], HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len, hak->errmsg.tmpbuf.bch);
 		#else
 			ucslen = HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len;
-			hak_convbtoucstr (hak, hak->errmsg.tmpbuf.bch, &bcslen, &hak->errmsg.buf[hak->errmsg.len], &ucslen);
+			hak_convbtoucstr(hak, hak->errmsg.tmpbuf.bch, &bcslen, &hak->errmsg.buf[hak->errmsg.len], &ucslen);
 			hak->errmsg.len += ucslen;
 		#endif
 		}
 	}
 	else
 	{
-		HAK_ASSERT (hak, hak->vmprim.syserrstru != HAK_NULL);
+		HAK_ASSERT(hak, hak->vmprim.syserrstru != HAK_NULL);
 		errnum = hak->vmprim.syserrstru(hak, syserr_type, syserr_code, hak->errmsg.tmpbuf.uch, HAK_COUNTOF(hak->errmsg.tmpbuf.uch));
 
 		va_start (ap, fmt);
-		hak_seterrufmtv (hak, errnum, fmt, ap);
+		hak_seterrufmtv(hak, errnum, fmt, ap);
 		va_end (ap);
 
 		if (HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len >= 5)
@@ -579,7 +579,7 @@ void hak_seterrufmtwithsyserr (hak_t* hak, int syserr_type, int syserr_code, con
 
 		#if defined(HAK_OOCH_IS_BCH)
 			bcslen = HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len;
-			hak_convutobcstr (hak, hak->errmsg.tmpbuf.uch, &ucslen, &hak->errmsg.buf[hak->errmsg.len], &bcslen);
+			hak_convutobcstr(hak, hak->errmsg.tmpbuf.uch, &ucslen, &hak->errmsg.buf[hak->errmsg.len], &bcslen);
 			hak->errmsg.len += bcslen;
 		#else
 			hak->errmsg.len += hak_copy_ucstr(&hak->errmsg.buf[hak->errmsg.len], HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len, hak->errmsg.tmpbuf.uch);
@@ -594,13 +594,13 @@ void hak_seterrufmtwithsyserr (hak_t* hak, int syserr_type, int syserr_code, con
 
 void hak_getsynerr (hak_t* hak, hak_synerr_t* synerr)
 {
-	HAK_ASSERT (hak, hak->c != HAK_NULL);
+	HAK_ASSERT(hak, hak->c != HAK_NULL);
 	if (synerr) *synerr = hak->c->synerr;
 }
 
 hak_synerrnum_t hak_getsynerrnum (hak_t* hak)
 {
-	HAK_ASSERT (hak, hak->c != HAK_NULL);
+	HAK_ASSERT(hak, hak->c != HAK_NULL);
 	return hak->c->synerr.num;
 }
 
@@ -616,17 +616,17 @@ void hak_setsynerrbfmt (hak_t* hak, hak_synerrnum_t num, const hak_loc_t* loc, c
 		int i, selen;
 
 		va_start (ap, msgfmt);
-		hak_seterrbfmtv (hak, HAK_ESYNERR, msgfmt, ap);
+		hak_seterrbfmtv(hak, HAK_ESYNERR, msgfmt, ap);
 		va_end (ap);
 
 		selen = HAK_COUNTOF(syntax_error) - 1;
-		HAK_MEMMOVE (&hak->errmsg.buf[selen], &hak->errmsg.buf[0], HAK_SIZEOF(hak->errmsg.buf[0]) * (HAK_COUNTOF(hak->errmsg.buf) - selen));
+		HAK_MEMMOVE(&hak->errmsg.buf[selen], &hak->errmsg.buf[0], HAK_SIZEOF(hak->errmsg.buf[0]) * (HAK_COUNTOF(hak->errmsg.buf) - selen));
 		for (i = 0; i < selen; i++) hak->errmsg.buf[i] = syntax_error[i];
 		hak->errmsg.buf[HAK_COUNTOF(hak->errmsg.buf) - 1] = '\0';
 	}
 	else
 	{
-		hak_seterrbfmt (hak, HAK_ESYNERR, "%hs%hs", syntax_error, synerr_to_errstr(num));
+		hak_seterrbfmt(hak, HAK_ESYNERR, "%hs%hs", syntax_error, synerr_to_errstr(num));
 	}
 	hak->c->synerr.num = num;
 
@@ -675,17 +675,17 @@ void hak_setsynerrufmt (hak_t* hak, hak_synerrnum_t num, const hak_loc_t* loc, c
 		int i, selen;
 
 		va_start (ap, msgfmt);
-		hak_seterrufmtv (hak, HAK_ESYNERR, msgfmt, ap);
+		hak_seterrufmtv(hak, HAK_ESYNERR, msgfmt, ap);
 		va_end (ap);
 
 		selen = HAK_COUNTOF(syntax_error) - 1;
-		HAK_MEMMOVE (&hak->errmsg.buf[selen], &hak->errmsg.buf[0], HAK_SIZEOF(hak->errmsg.buf[0]) * (HAK_COUNTOF(hak->errmsg.buf) - selen));
+		HAK_MEMMOVE(&hak->errmsg.buf[selen], &hak->errmsg.buf[0], HAK_SIZEOF(hak->errmsg.buf[0]) * (HAK_COUNTOF(hak->errmsg.buf) - selen));
 		for (i = 0; i < selen; i++) hak->errmsg.buf[i] = syntax_error[i];
 		hak->errmsg.buf[HAK_COUNTOF(hak->errmsg.buf) - 1] = '\0';
 	}
 	else
 	{
-		hak_seterrbfmt (hak, HAK_ESYNERR, "%hs%hs", syntax_error, synerr_to_errstr(num));
+		hak_seterrbfmt(hak, HAK_ESYNERR, "%hs%hs", syntax_error, synerr_to_errstr(num));
 	}
 	hak->c->synerr.num = num;
 

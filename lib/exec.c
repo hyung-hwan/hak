@@ -259,7 +259,7 @@ static HAK_INLINE int vm_startup (hak_t* hak)
 	hak->sem_gcfin_sigreq = 0;
 #endif
 
-	hak->vmprim.vm_gettime (hak, &hak->exec_start_time); /* raw time. no adjustment */
+	hak->vmprim.vm_gettime(hak, &hak->exec_start_time); /* raw time. no adjustment */
 
 	return 0;
 }
@@ -297,11 +297,11 @@ static void vm_cleanup (hak_t* hak)
 
 			if (hak->sem_io_tuple[sem_io_index].sem[HAK_SEMAPHORE_IO_TYPE_INPUT])
 			{
-				delete_sem_from_sem_io_tuple (hak, hak->sem_io_tuple[sem_io_index].sem[HAK_SEMAPHORE_IO_TYPE_INPUT], 1);
+				delete_sem_from_sem_io_tuple(hak, hak->sem_io_tuple[sem_io_index].sem[HAK_SEMAPHORE_IO_TYPE_INPUT], 1);
 			}
 			if (hak->sem_io_tuple[sem_io_index].sem[HAK_SEMAPHORE_IO_TYPE_OUTPUT])
 			{
-				delete_sem_from_sem_io_tuple (hak, hak->sem_io_tuple[sem_io_index].sem[HAK_SEMAPHORE_IO_TYPE_OUTPUT], 1);
+				delete_sem_from_sem_io_tuple(hak, hak->sem_io_tuple[sem_io_index].sem[HAK_SEMAPHORE_IO_TYPE_OUTPUT], 1);
 			}
 
 			HAK_ASSERT(hak, hak->sem_io_map[i] <= -1);
@@ -315,7 +315,7 @@ static void vm_cleanup (hak_t* hak)
 	HAK_ASSERT(hak, hak->sem_io_tuple_count == 0);
 	HAK_ASSERT(hak, hak->sem_io_count == 0);
 
-	hak->vmprim.vm_gettime (hak, &hak->exec_end_time); /* raw time. no adjustment */
+	hak->vmprim.vm_gettime(hak, &hak->exec_end_time); /* raw time. no adjustment */
 	for (cb = hak->cblist; cb; cb = cb->next)
 	{
 		if (cb->vm_cleanup) cb->vm_cleanup(hak);
@@ -336,7 +336,7 @@ static void vm_cleanup (hak_t* hak)
 
 static HAK_INLINE void vm_gettime (hak_t* hak, hak_ntime_t* now)
 {
-	hak->vmprim.vm_gettime (hak, now);
+	hak->vmprim.vm_gettime(hak, now);
 	/* in vm_startup(), hak->exec_start_time has been set to the time of
 	 * that moment. time returned here get offset by hak->exec_start_time and
 	 * thus becomes relative to it. this way, it is kept small such that it
@@ -354,7 +354,7 @@ static HAK_INLINE int vm_sleep (hak_t* hak, const hak_ntime_t* dur)
 
 static HAK_INLINE void vm_muxwait (hak_t* hak, const hak_ntime_t* dur)
 {
-	hak->vmprim.vm_muxwait (hak, dur, signal_io_semaphore);
+	hak->vmprim.vm_muxwait(hak, dur, signal_io_semaphore);
 }
 
 static void vm_checkbc (hak_t* hak, hak_oob_t bcode)
@@ -396,7 +396,7 @@ static HAK_INLINE hak_oop_function_t make_function (hak_t* hak, hak_oow_t lfsize
 	if (dbgi)
 	{
 		hak_oop_t tmp;
-		hak_pushvolat (hak, (hak_oop_t*)&func);
+		hak_pushvolat(hak, (hak_oop_t*)&func);
 		tmp = hak_makebytearray(hak, (hak_oob_t*)dbgi, HAK_SIZEOF(*dbgi) * blen);
 		hak_popvolat (hak);
 		if (HAK_LIKELY(tmp)) func->dbgi = tmp;
@@ -557,7 +557,7 @@ static hak_oop_process_t make_process (hak_t* hak, hak_oop_context_t c)
 	if (clstksize > maxsize) clstksize = maxsize;
 	else if (clstksize < 32) clstksize = 32;
 
-	hak_pushvolat (hak, (hak_oop_t*)&c);
+	hak_pushvolat(hak, (hak_oop_t*)&c);
 	proc = (hak_oop_process_t)hak_instantiate(hak, hak->c_process, HAK_NULL, stksize + exstksize + clstksize);
 	hak_popvolat (hak);
 	if (HAK_UNLIKELY(!proc))
@@ -572,7 +572,7 @@ static hak_oop_process_t make_process (hak_t* hak, hak_oop_context_t c)
 	proc->state = HAK_SMOOI_TO_OOP(HAK_PROCESS_STATE_SUSPENDED);
 
 	/* assign a process id to the process */
-	alloc_pid (hak, proc);
+	alloc_pid(hak, proc);
 
 	proc->initial_context = c;
 	proc->current_context = c;
@@ -597,7 +597,7 @@ static hak_oop_process_t make_process (hak_t* hak, hak_oop_context_t c)
 
 	/* a process is created in the SUSPENDED state. chain it to the suspended process list */
 	suspended_count = HAK_OOP_TO_SMOOI(hak->processor->suspended.count);
-	HAK_APPEND_TO_OOP_LIST (hak, &hak->processor->suspended, hak_oop_process_t, proc, ps);
+	HAK_APPEND_TO_OOP_LIST(hak, &hak->processor->suspended, hak_oop_process_t, proc, ps);
 	suspended_count++;
 	hak->processor->suspended.count = HAK_SMOOI_TO_OOP(suspended_count);
 
@@ -637,7 +637,7 @@ static HAK_INLINE void wake_process (hak_t* hak, hak_oop_process_t proc)
 	LOAD_ACTIVE_SP(hak);
 
 	/* activate the suspended context of the new process */
-	SWITCH_ACTIVE_CONTEXT (hak, proc->current_context);
+	SWITCH_ACTIVE_CONTEXT(hak, proc->current_context);
 
 #if defined(HAK_DEBUG_VM_PROCESSOR) && (HAK_DEBUG_VM_PROCESSOR >= 2)
 	HAK_LOG3(hak, HAK_LOG_IC | HAK_LOG_DEBUG, "Processor - woke up process[%zd] context %O ip=%zd\n", HAK_OOP_TO_SMOOI(hak->processor->active->id), hak->active_context, hak->ip);
@@ -653,8 +653,8 @@ static void switch_to_process (hak_t* hak, hak_oop_process_t proc, int new_state
 	HAK_ASSERT(hak, proc->state == HAK_SMOOI_TO_OOP(HAK_PROCESS_STATE_RUNNABLE) ||
 	                 proc->state == HAK_SMOOI_TO_OOP(HAK_PROCESS_STATE_WAITING));
 
-	sleep_active_process (hak, new_state_for_old_active);
-	wake_process (hak, proc);
+	sleep_active_process(hak, new_state_for_old_active);
+	wake_process(hak, proc);
 
 	hak->proc_switched = 1;
 }
@@ -662,7 +662,7 @@ static void switch_to_process (hak_t* hak, hak_oop_process_t proc, int new_state
 static HAK_INLINE void switch_to_process_from_nil (hak_t* hak, hak_oop_process_t proc)
 {
 	HAK_ASSERT(hak, hak->processor->active == hak->nil_process);
-	wake_process (hak, proc);
+	wake_process(hak, proc);
 	hak->proc_switched = 1;
 }
 
@@ -679,7 +679,7 @@ static HAK_INLINE void switch_to_next_runnable_process (hak_t* hak)
 {
 	hak_oop_process_t nrp;
 	nrp = find_next_runnable_process(hak);
-	if (nrp != hak->processor->active) switch_to_process (hak, nrp, HAK_PROCESS_STATE_RUNNABLE);
+	if (nrp != hak->processor->active) switch_to_process(hak, nrp, HAK_PROCESS_STATE_RUNNABLE);
 }
 
 static HAK_INLINE void chain_into_processor (hak_t* hak, hak_oop_process_t proc, int new_state)
@@ -708,12 +708,12 @@ static HAK_INLINE void chain_into_processor (hak_t* hak, hak_oop_process_t proc,
 	HAK_ASSERT(hak, runnable_count >= 0);
 
 	suspended_count = HAK_OOP_TO_SMOOI(hak->processor->suspended.count);
-	HAK_DELETE_FROM_OOP_LIST (hak, &hak->processor->suspended, proc, ps);
+	HAK_DELETE_FROM_OOP_LIST(hak, &hak->processor->suspended, proc, ps);
 	suspended_count--;
 	hak->processor->suspended.count = HAK_SMOOI_TO_OOP(suspended_count);
 
 	/* append to the runnable list */
-	HAK_APPEND_TO_OOP_LIST (hak, &hak->processor->runnable, hak_oop_process_t, proc, ps);
+	HAK_APPEND_TO_OOP_LIST(hak, &hak->processor->runnable, hak_oop_process_t, proc, ps);
 	proc->state = HAK_SMOOI_TO_OOP(new_state);
 
 	runnable_count++;
@@ -740,7 +740,7 @@ static HAK_INLINE void unchain_from_processor (hak_t* hak, hak_oop_process_t pro
 	{
 		suspended_count = HAK_OOP_TO_SMOOI(hak->processor->suspended.count);
 		HAK_ASSERT(hak, suspended_count > 0);
-		HAK_DELETE_FROM_OOP_LIST (hak, &hak->processor->suspended, proc, ps);
+		HAK_DELETE_FROM_OOP_LIST(hak, &hak->processor->suspended, proc, ps);
 		suspended_count--;
 		hak->processor->suspended.count = HAK_SMOOI_TO_OOP(suspended_count);
 	}
@@ -748,7 +748,7 @@ static HAK_INLINE void unchain_from_processor (hak_t* hak, hak_oop_process_t pro
 	{
 		runnable_count = HAK_OOP_TO_SMOOI(hak->processor->runnable.count);
 		HAK_ASSERT(hak, runnable_count > 0);
-		HAK_DELETE_FROM_OOP_LIST (hak, &hak->processor->runnable, proc, ps);
+		HAK_DELETE_FROM_OOP_LIST(hak, &hak->processor->runnable, proc, ps);
 		runnable_count--;
 		hak->processor->runnable.count = HAK_SMOOI_TO_OOP(runnable_count);
 		if (runnable_count == 0) hak->processor->active = hak->nil_process;
@@ -770,7 +770,7 @@ static HAK_INLINE void unchain_from_processor (hak_t* hak, hak_oop_process_t pro
 		HAK_ASSERT(hak, new_state == HAK_PROCESS_STATE_SUSPENDED);
 
 		suspended_count = HAK_OOP_TO_SMOOI(hak->processor->suspended.count);
-		HAK_APPEND_TO_OOP_LIST (hak, &hak->processor->suspended, hak_oop_process_t, proc, ps);
+		HAK_APPEND_TO_OOP_LIST(hak, &hak->processor->suspended, hak_oop_process_t, proc, ps);
 		suspended_count++;
 		hak->processor->suspended.count= HAK_SMOOI_TO_OOP(suspended_count);
 	}
@@ -799,7 +799,7 @@ static HAK_INLINE void chain_into_semaphore (hak_t* hak, hak_oop_process_t proc,
 	HAK_ASSERT(hak, HAK_OFFSETOF(hak_semaphore_t,waiting) ==
 	                 HAK_OFFSETOF(hak_semaphore_group_t,waiting));
 
-	HAK_APPEND_TO_OOP_LIST (hak, &sem->waiting, hak_oop_process_t, proc, sem_wait);
+	HAK_APPEND_TO_OOP_LIST(hak, &sem->waiting, hak_oop_process_t, proc, sem_wait);
 
 	proc->sem = (hak_oop_t)sem;
 }
@@ -817,7 +817,7 @@ static HAK_INLINE void unchain_from_semaphore (hak_t* hak, hak_oop_process_t pro
 	 * in both Semaphore and SemaphoreGroup. there is no need to
 	 * write different code for each class. */
 	sem = (hak_oop_semaphore_t)proc->sem;  /* semgrp = (hak_oop_semaphore_group_t)proc->sem */
-	HAK_DELETE_FROM_OOP_LIST (hak, &sem->waiting, proc, sem_wait);
+	HAK_DELETE_FROM_OOP_LIST(hak, &sem->waiting, proc, sem_wait);
 
 	proc->sem_wait.prev = (hak_oop_process_t)hak->_nil;
 	proc->sem_wait.next = (hak_oop_process_t)hak->_nil;
@@ -946,8 +946,8 @@ static void terminate_process (hak_t* hak, hak_oop_process_t proc)
 
 			STORE_ACTIVE_SP (hak); /* commit the stack pointer before termination */
 
-			unchain_from_processor (hak, proc, HAK_PROCESS_STATE_TERMINATED);
-			reset_process_stack_pointers (hak, proc); /* invalidate the process stack */
+			unchain_from_processor(hak, proc, HAK_PROCESS_STATE_TERMINATED);
+			reset_process_stack_pointers(hak, proc); /* invalidate the process stack */
 			proc->current_context = proc->initial_context; /* not needed but just in case */
 			/* a runnable or running process must not be chanined to the
 			 * process list of a semaphore */
@@ -968,25 +968,25 @@ static void terminate_process (hak_t* hak, hak_oop_process_t proc)
 						hak->sem_io_wait_count
 					);
 
-					dump_process_info (hak, HAK_LOG_IC | HAK_LOG_DEBUG);
+					dump_process_info(hak, HAK_LOG_IC | HAK_LOG_DEBUG);
 				}
 			}
 			else
 			{
 				/* there are other processes to schedule */
-				switch_to_process (hak, nrp, HAK_PROCESS_STATE_TERMINATED);
+				switch_to_process(hak, nrp, HAK_PROCESS_STATE_TERMINATED);
 			}
 		}
 		else
 		{
 			/* termiante a runnable process which is not an actively running process */
 			HAK_ASSERT(hak, proc->state == HAK_SMOOI_TO_OOP(HAK_PROCESS_STATE_RUNNABLE));
-			unchain_from_processor (hak, proc, HAK_PROCESS_STATE_TERMINATED);
-			reset_process_stack_pointers (hak, proc); /* invalidate the process stack */
+			unchain_from_processor(hak, proc, HAK_PROCESS_STATE_TERMINATED);
+			reset_process_stack_pointers(hak, proc); /* invalidate the process stack */
 		}
 
 		/* when terminated, clear it from the pid table and set the process id to a negative number */
-		free_pid (hak, proc);
+		free_pid(hak, proc);
 	}
 	else if (proc->state == HAK_SMOOI_TO_OOP(HAK_PROCESS_STATE_SUSPENDED))
 	{
@@ -996,8 +996,8 @@ static void terminate_process (hak_t* hak, hak_oop_process_t proc)
 	#endif
 
 		/*proc->state = HAK_SMOOI_TO_OOP(HAK_PROCESS_STATE_TERMINATED);*/
-		unchain_from_processor (hak, proc, HAK_PROCESS_STATE_TERMINATED);
-		reset_process_stack_pointers (hak, proc); /* invalidate the process stack */
+		unchain_from_processor(hak, proc, HAK_PROCESS_STATE_TERMINATED);
+		reset_process_stack_pointers(hak, proc); /* invalidate the process stack */
 
 		if ((hak_oop_t)proc->sem != hak->_nil)
 		{
@@ -1029,7 +1029,7 @@ static void terminate_process (hak_t* hak, hak_oop_process_t proc)
 		}
 
 		/* when terminated, clear it from the pid table and set the process id to a negative number */
-		free_pid (hak, proc);
+		free_pid(hak, proc);
 	}
 #if 0
 	else if (proc->state == HAK_SMOOI_TO_OOP(HAK_PROCESS_STATE_WAITING))
@@ -1044,12 +1044,12 @@ static void terminate_all_processes (hak_t* hak)
 {
 	while (HAK_OOP_TO_SMOOI(hak->processor->suspended.count) > 0)
 	{
-		terminate_process (hak, hak->processor->suspended.first);
+		terminate_process(hak, hak->processor->suspended.first);
 	}
 
 	while (HAK_OOP_TO_SMOOI(hak->processor->runnable.count) > 0)
 	{
-		terminate_process (hak, hak->processor->runnable.first);
+		terminate_process(hak, hak->processor->runnable.first);
 	}
 
 	HAK_ASSERT(hak, HAK_OOP_TO_SMOOI(hak->processor->total_count) == 0);
@@ -1070,7 +1070,7 @@ static void resume_process (hak_t* hak, hak_oop_process_t proc)
 
 		/* don't switch to this process. just change the state to RUNNABLE.
 		 * process switching should be triggerd by the process scheduler. */
-		chain_into_processor (hak, proc, HAK_PROCESS_STATE_RUNNABLE);
+		chain_into_processor(hak, proc, HAK_PROCESS_STATE_RUNNABLE);
 		/*proc->current_context = proc->initial_context;*/
 	}
 #if 0
@@ -1079,7 +1079,7 @@ static void resume_process (hak_t* hak, hak_oop_process_t proc)
 		/* RUNNABLE ---> RUNNING */
 		/* TODO: should i allow this? */
 		HAK_ASSERT(hak, hak->processor->active != proc);
-		switch_to_process (hak, proc, HAK_PROCESS_STATE_RUNNABLE);
+		switch_to_process(hak, proc, HAK_PROCESS_STATE_RUNNABLE);
 	}
 #endif
 }
@@ -1104,8 +1104,8 @@ static void suspend_process (hak_t* hak, hak_oop_process_t proc)
 			if (nrp == proc)
 			{
 				/* no runnable process after suspension */
-				sleep_active_process (hak, HAK_PROCESS_STATE_RUNNABLE);
-				unchain_from_processor (hak, proc, HAK_PROCESS_STATE_SUSPENDED);
+				sleep_active_process(hak, HAK_PROCESS_STATE_RUNNABLE);
+				unchain_from_processor(hak, proc, HAK_PROCESS_STATE_SUSPENDED);
 
 				/* the last running/runnable process has been unchained
 				 * from the processor and set to SUSPENDED. the active
@@ -1122,14 +1122,14 @@ static void suspend_process (hak_t* hak, hak_oop_process_t proc)
 				 * done in unchain_from_processor(). the state of the active
 				 * process is somewhat wrong for a short period of time until
 				 * switch_to_process() has changed the active process. */
-				unchain_from_processor (hak, proc, HAK_PROCESS_STATE_SUSPENDED);
+				unchain_from_processor(hak, proc, HAK_PROCESS_STATE_SUSPENDED);
 				HAK_ASSERT(hak, hak->processor->active != hak->nil_process);
-				switch_to_process (hak, nrp, HAK_PROCESS_STATE_SUSPENDED);
+				switch_to_process(hak, nrp, HAK_PROCESS_STATE_SUSPENDED);
 			}
 		}
 		else
 		{
-			unchain_from_processor (hak, proc, HAK_PROCESS_STATE_SUSPENDED);
+			unchain_from_processor(hak, proc, HAK_PROCESS_STATE_SUSPENDED);
 		}
 	}
 }
@@ -1152,7 +1152,7 @@ static void yield_process (hak_t* hak, hak_oop_process_t proc)
 		#if defined(HAK_DEBUG_VM_PROCESSOR)
 			HAK_LOG2(hak, HAK_LOG_IC | HAK_LOG_DEBUG, "Processor - process[%zd] %hs->RUNNABLE in yield_process\n", HAK_OOP_TO_SMOOI(proc->id), proc_state_to_string(HAK_OOP_TO_SMOOI(proc->state)));
 		#endif
-			switch_to_process (hak, nrp, HAK_PROCESS_STATE_RUNNABLE);
+			switch_to_process(hak, nrp, HAK_PROCESS_STATE_RUNNABLE);
 		}
 	}
 }
@@ -1204,7 +1204,7 @@ static hak_oop_process_t signal_semaphore (hak_t* hak, hak_oop_semaphore_t sem)
 			proc = sg->waiting.first; /* will wake the first process in the waiting list */
 
 			unchain_from_semaphore(hak, proc);
-			resume_process (hak, proc);
+			resume_process(hak, proc);
 
 			/* [IMPORTANT] RETURN VALUE of SemaphoreGroup's wait.
 			 * ------------------------------------------------------------
@@ -1253,8 +1253,8 @@ static hak_oop_process_t signal_semaphore (hak_t* hak, hak_oop_semaphore_t sem)
 		{
 			/* move the semaphore from the unsignaled list to the signaled list
 			 * if the semaphore count has changed from 0 to 1 in a group */
-			HAK_DELETE_FROM_OOP_LIST (hak, &sg->sems[HAK_SEMAPHORE_GROUP_SEMS_UNSIG], sem, grm);
-			HAK_APPEND_TO_OOP_LIST (hak, &sg->sems[HAK_SEMAPHORE_GROUP_SEMS_SIG], hak_oop_semaphore_t, sem, grm);
+			HAK_DELETE_FROM_OOP_LIST(hak, &sg->sems[HAK_SEMAPHORE_GROUP_SEMS_UNSIG], sem, grm);
+			HAK_APPEND_TO_OOP_LIST(hak, &sg->sems[HAK_SEMAPHORE_GROUP_SEMS_SIG], hak_oop_semaphore_t, sem, grm);
 		}
 
 		/* no process has been resumed */
@@ -1269,7 +1269,7 @@ static hak_oop_process_t signal_semaphore (hak_t* hak, hak_oop_semaphore_t sem)
 		/* detach a process from a semaphore's waiting list and
 		 * make it runnable */
 		unchain_from_semaphore(hak, proc);
-		resume_process (hak, proc);
+		resume_process(hak, proc);
 
 		if (sem->subtype == HAK_SMOOI_TO_OOP(HAK_SEMAPHORE_SUBTYPE_IO))
 		{
@@ -1314,9 +1314,9 @@ static HAK_INLINE void await_semaphore (hak_t* hak, hak_oop_semaphore_t sem)
 			int sems_idx;
 			/* TODO: if i disallow individual wait on a semaphore in a group,
 			 *       this membership manipulation is redundant */
-			HAK_DELETE_FROM_OOP_LIST (hak, &semgrp->sems[HAK_SEMAPHORE_GROUP_SEMS_SIG], sem, grm);
+			HAK_DELETE_FROM_OOP_LIST(hak, &semgrp->sems[HAK_SEMAPHORE_GROUP_SEMS_SIG], sem, grm);
 			sems_idx = count > 0? HAK_SEMAPHORE_GROUP_SEMS_SIG: HAK_SEMAPHORE_GROUP_SEMS_UNSIG;
-			HAK_APPEND_TO_OOP_LIST (hak, &semgrp->sems[sems_idx], hak_oop_semaphore_t, sem, grm);
+			HAK_APPEND_TO_OOP_LIST(hak, &semgrp->sems[sems_idx], hak_oop_semaphore_t, sem, grm);
 		}
 	}
 	else
@@ -1325,7 +1325,7 @@ static HAK_INLINE void await_semaphore (hak_t* hak, hak_oop_semaphore_t sem)
 		proc = hak->processor->active;
 
 		/* suspend the active process */
-		suspend_process (hak, proc);
+		suspend_process(hak, proc);
 
 		/* link the suspended process to the semaphore's process list */
 		chain_into_semaphore(hak, proc, sem);
@@ -1373,9 +1373,9 @@ static HAK_INLINE hak_oop_t await_semaphore_group (hak_t* hak, hak_oop_semaphore
 		count--;
 		sem->count = HAK_SMOOI_TO_OOP(count);
 
-		HAK_DELETE_FROM_OOP_LIST (hak, &semgrp->sems[HAK_SEMAPHORE_GROUP_SEMS_SIG], sem, grm);
+		HAK_DELETE_FROM_OOP_LIST(hak, &semgrp->sems[HAK_SEMAPHORE_GROUP_SEMS_SIG], sem, grm);
 		sems_idx = count > 0? HAK_SEMAPHORE_GROUP_SEMS_SIG: HAK_SEMAPHORE_GROUP_SEMS_UNSIG;
-		HAK_APPEND_TO_OOP_LIST (hak, &semgrp->sems[sems_idx], hak_oop_semaphore_t, sem, grm);
+		HAK_APPEND_TO_OOP_LIST(hak, &semgrp->sems[sems_idx], hak_oop_semaphore_t, sem, grm);
 
 		return (hak_oop_t)sem;
 	}
@@ -1385,7 +1385,7 @@ static HAK_INLINE hak_oop_t await_semaphore_group (hak_t* hak, hak_oop_semaphore
 	proc = hak->processor->active;
 
 	/* suspend the active process */
-	suspend_process (hak, proc);
+	suspend_process(hak, proc);
 
 	/* link the suspended process to the semaphore group's process list */
 	chain_into_semaphore(hak, proc, (hak_oop_semaphore_t)semgrp);
@@ -1514,7 +1514,7 @@ static int add_to_sem_heap (hak_t* hak, hak_oop_semaphore_t sem)
 	sem->subtype = HAK_SMOOI_TO_OOP(HAK_SEMAPHORE_SUBTYPE_TIMED);
 	hak->sem_heap_count++;
 
-	sift_up_sem_heap (hak, index);
+	sift_up_sem_heap(hak, index);
 	return 0;
 }
 
@@ -1540,9 +1540,9 @@ static void delete_from_sem_heap (hak_t* hak, hak_ooi_t index)
 		hak->sem_heap[index] = lastsem;
 
 		if (SEM_HEAP_EARLIER_THAN(hak, lastsem, sem))
-			sift_up_sem_heap (hak, index);
+			sift_up_sem_heap(hak, index);
 		else
-			sift_down_sem_heap (hak, index);
+			sift_down_sem_heap(hak, index);
 	}
 }
 
@@ -1559,9 +1559,9 @@ static void update_sem_heap (hak_t* hak, hak_ooi_t index, hak_oop_semaphore_t ne
 	hak->sem_heap[index] = newsem;
 
 	if (SEM_HEAP_EARLIER_THAN(hak, newsem, sem))
-		sift_up_sem_heap (hak, index);
+		sift_up_sem_heap(hak, index);
 	else
-		sift_down_sem_heap (hak, index);
+		sift_down_sem_heap(hak, index);
 }
 #endif
 
@@ -1645,7 +1645,7 @@ static int add_sem_to_sem_io_tuple (hak_t* hak, hak_oop_semaphore_t sem, hak_ooi
 
 		new_mask = ((hak_ooi_t)1 << io_type);
 
-		hak_pushvolat (hak, (hak_oop_t*)&sem);
+		hak_pushvolat(hak, (hak_oop_t*)&sem);
 		n = hak->vmprim.vm_muxadd(hak, io_handle, new_mask);
 		hak_popvolat (hak);
 	}
@@ -1660,7 +1660,7 @@ static int add_sem_to_sem_io_tuple (hak_t* hak, hak_oop_semaphore_t sem, hak_ooi
 		new_mask = hak->sem_io_tuple[index].mask; /* existing mask */
 		new_mask |= ((hak_ooi_t)1 << io_type);
 
-		hak_pushvolat (hak, (hak_oop_t*)&sem);
+		hak_pushvolat(hak, (hak_oop_t*)&sem);
 		n = hak->vmprim.vm_muxmod(hak, io_handle, new_mask);
 		hak_popvolat (hak);
 	}
@@ -1728,7 +1728,7 @@ static int delete_sem_from_sem_io_tuple (hak_t* hak, hak_oop_semaphore_t sem, in
 	new_mask = hak->sem_io_tuple[index].mask;
 	new_mask &= ~((hak_ooi_t)1 << io_type); /* this is the new mask after deletion */
 
-	hak_pushvolat (hak, (hak_oop_t*)&sem);
+	hak_pushvolat(hak, (hak_oop_t*)&sem);
 	x = new_mask? hak->vmprim.vm_muxmod(hak, io_handle, new_mask):
 	              hak->vmprim.vm_muxdel(hak, io_handle);
 	hak_popvolat (hak);
@@ -1812,10 +1812,10 @@ static void _signal_io_semaphore (hak_t* hak, hak_oop_semaphore_t sem)
 		HAK_ASSERT(hak, proc == hak->processor->runnable.first);
 
 	#if 0
-		wake_process (hak, proc); /* switch to running */
+		wake_process(hak, proc); /* switch to running */
 		hak->proc_switched = 1;
 	#else
-		switch_to_process_from_nil (hak, proc);
+		switch_to_process_from_nil(hak, proc);
 	#endif
 	}
 }
@@ -1874,7 +1874,7 @@ void hak_releaseiohandle (hak_t* hak, hak_ooi_t io_handle)
 			if (sem)
 			{
 				HAK_ASSERT(hak, sem->subtype == HAK_SMOOI_TO_OOP(HAK_SEMAPHORE_SUBTYPE_IO));
-				delete_sem_from_sem_io_tuple (hak, sem, 0);
+				delete_sem_from_sem_io_tuple(hak, sem, 0);
 			}
 		}
 	}
@@ -1892,7 +1892,7 @@ void hak_releaseiohandle (hak_t* hak, hak_ooi_t io_handle)
 			if (sem)
 			{
 				HAK_ASSERT(hak, sem->subtype == HAK_SMOOI_TO_OOP(HAK_SEMAPHORE_SUBTYPE_IO));
-				delete_sem_from_sem_io_tuple (hak, sem, 0);
+				delete_sem_from_sem_io_tuple(hak, sem, 0);
 			}
 		}
 	}
@@ -1940,7 +1940,7 @@ static int prepare_new_context (hak_t* hak, hak_oop_block_t op_blk, hak_ooi_t na
 	}
 
 	/* create a new block context to clone op_blk */
-	hak_pushvolat (hak, (hak_oop_t*)&op_blk);
+	hak_pushvolat(hak, (hak_oop_t*)&op_blk);
 	blkctx = make_context(hak, fixed_nargs + fblk_nrvars + fblk_nlvars + excess_nargs);
 	hak_popvolat (hak);
 	if (HAK_UNLIKELY(!blkctx)) return -1;
@@ -2036,7 +2036,7 @@ static HAK_INLINE int activate_block (hak_t* hak, hak_ooi_t nargs, hak_ooi_t nrv
 	x = __activate_block(hak, op_blk, nargs, nrvars, 0, 0, &newctx);
 	if (HAK_UNLIKELY(x <= -1)) return -1;
 
-	SWITCH_ACTIVE_CONTEXT (hak, newctx);
+	SWITCH_ACTIVE_CONTEXT(hak, newctx);
 	return 0;
 }
 
@@ -2078,7 +2078,7 @@ static int __activate_function (hak_t* hak, hak_oop_function_t op_func, hak_ooi_
 	}
 
 	/* create a new block context to clone op_func */
-	hak_pushvolat (hak, (hak_oop_t*)&op_func);
+	hak_pushvolat(hak, (hak_oop_t*)&op_func);
 	functx = make_context(hak, fixed_nargs + nrvars + nlvars + excess_nargs);
 	hak_popvolat (hak);
 	if (HAK_UNLIKELY(!functx)) return -1;
@@ -2123,7 +2123,7 @@ static HAK_INLINE int activate_function (hak_t* hak, hak_ooi_t nargs)
 	x = __activate_function(hak, op_func, nargs, &newctx);
 	if (HAK_UNLIKELY(x <= -1)) return -1;
 
-	SWITCH_ACTIVE_CONTEXT (hak, newctx);
+	SWITCH_ACTIVE_CONTEXT(hak, newctx);
 	return 0;
 }
 
@@ -2327,14 +2327,14 @@ static HAK_INLINE int send_message (hak_t* hak, hak_oop_t rcv, hak_oop_t msg, in
 		{
 			hak_oop_t newrcv;
 
-			hak_pushvolat (hak, (hak_oop_t*)&mth_blk);
-			hak_pushvolat (hak, &msg);
-			hak_pushvolat (hak, &rcv);
+			hak_pushvolat(hak, (hak_oop_t*)&mth_blk);
+			hak_pushvolat(hak, &msg);
+			hak_pushvolat(hak, &rcv);
 			newrcv = hak_instantiate(hak, (hak_oop_class_t)_class, HAK_NULL, 0);
-			hak_popvolats (hak, 3);
+			hak_popvolats(hak, 3);
 			if (HAK_UNLIKELY(!newrcv)) return -1;
 
-			HAK_STACK_SETRCV (hak, nargs, newrcv); /* prepare_new_context() will take this as a receiver */
+			HAK_STACK_SETRCV(hak, nargs, newrcv); /* prepare_new_context() will take this as a receiver */
 		}
 	}
 	else
@@ -2358,7 +2358,7 @@ static HAK_INLINE int send_message (hak_t* hak, hak_oop_t rcv, hak_oop_t msg, in
 	/* update the method owner field of the new context created */
 	newctx->owner = (hak_oop_t)owner;
 
-	SWITCH_ACTIVE_CONTEXT (hak, newctx);
+	SWITCH_ACTIVE_CONTEXT(hak, newctx);
 	return 0;
 }
 
@@ -2389,7 +2389,7 @@ static HAK_INLINE int do_throw (hak_t* hak, hak_oop_t val, hak_ooi_t ip)
 			HAK_MEMSET(&loc, 0, HAK_SIZEOF(loc));
 			loc.file = dbgi[ip].fname;
 			loc.line = dbgi[ip].sline;
-			hak_seterrbfmtloc (hak, HAK_EEXCEPT, &loc, "exception not handled - %O", val);
+			hak_seterrbfmtloc(hak, HAK_EEXCEPT, &loc, "exception not handled - %O", val);
 			/* column number is not available */
 		}
 		else
@@ -2425,7 +2425,7 @@ static HAK_INLINE int do_throw (hak_t* hak, hak_oop_t val, hak_ooi_t ip)
 		}
 
 		/* exception not handled. terminate the active process */
-		/*terminate_process (hak, hak->processor->active); <- the vm cleanup code will do this */
+		/*terminate_process(hak, hak->processor->active); <- the vm cleanup code will do this */
 		return -1;
 	}
 
@@ -2442,11 +2442,11 @@ static HAK_INLINE int do_throw (hak_t* hak, hak_oop_t val, hak_ooi_t ip)
 	 * )
 	 * 'throw' is triggered before the end of defintion of X is reached.
 	 */
-	HAK_CLSTACK_CHOP (hak, clsp);
+	HAK_CLSTACK_CHOP(hak, clsp);
 
 	/* the below code is similar to do_return_from_block() */
 	hak->ip = -1; /* mark context dead. saved into hak->active_context->ip in SWITCH_ACTIVE_CONTEXT */
-	SWITCH_ACTIVE_CONTEXT (hak, catch_ctx);
+	SWITCH_ACTIVE_CONTEXT(hak, catch_ctx);
 	hak->ip = catch_ip; /* override the instruction pointer */
 
 	hak->sp = sp; /* restore the stack pointer of the active process context */
@@ -2470,7 +2470,7 @@ static void supplement_errmsg (hak_t* hak, hak_ooi_t ip)
 		HAK_ASSERT(hak, HAK_IS_BYTEARRAY(hak, hak->active_function->dbgi));
 		dbgi = (hak_dbgi_t*)HAK_OBJ_GET_BYTE_SLOT(hak->active_function->dbgi);
 
-		hak_seterrbfmtloc (hak, orgnum, &orgloc, "%js (%js:%zu)", orgmsg,
+		hak_seterrbfmtloc(hak, orgnum, &orgloc, "%js (%js:%zu)", orgmsg,
 			(dbgi[ip].fname? dbgi[ip].fname: oocstr_dash), dbgi[ip].sline);
 
 		/* no column info available */
@@ -2686,7 +2686,7 @@ static hak_oop_process_t start_initial_process (hak_t* hak, hak_oop_context_t ct
 	/* do something that resume_process() would do with less overhead */
 	HAK_ASSERT(hak, (hak_oop_t)proc->current_context != hak->_nil);
 	HAK_ASSERT(hak, proc->current_context == proc->initial_context);
-	SWITCH_ACTIVE_CONTEXT (hak, proc->current_context);
+	SWITCH_ACTIVE_CONTEXT(hak, proc->current_context);
 
 	return proc;
 }
@@ -2732,7 +2732,7 @@ static int start_initial_process_and_context (hak_t* hak, hak_ooi_t initial_ip, 
 	 * let's force set active_context to ctx directly. */
 	hak->active_context = ctx;
 
-	hak_pushvolat (hak, (hak_oop_t*)&ctx);
+	hak_pushvolat(hak, (hak_oop_t*)&ctx);
 	proc = start_initial_process(hak, ctx);
 	hak_popvolat (hak);
 	if (HAK_UNLIKELY(!proc)) return -1;
@@ -2761,7 +2761,7 @@ static HAK_INLINE int switch_process_if_needed (hak_t* hak)
 		/* handle timed semaphores */
 		hak_ntime_t ft, now;
 
-		vm_gettime (hak, &now);
+		vm_gettime(hak, &now);
 
 		do
 		{
@@ -2785,7 +2785,7 @@ static HAK_INLINE int switch_process_if_needed (hak_t* hak)
 				/* [NOTE] no hak_pushvolat() on proc. no GC must occur
 				 *        in the following line until it's used for
 				 *        wake_process() below. */
-				delete_from_sem_heap (hak, 0); /* hak->sem_heap_count is decremented in delete_from_sem_heap() */
+				delete_from_sem_heap(hak, 0); /* hak->sem_heap_count is decremented in delete_from_sem_heap() */
 
 				/* if no process is waiting on the semaphore,
 				 * signal_semaphore() returns hak->_nil. */
@@ -2805,10 +2805,10 @@ static HAK_INLINE int switch_process_if_needed (hak_t* hak)
 					HAK_ASSERT(hak, proc->state == HAK_SMOOI_TO_OOP(HAK_PROCESS_STATE_RUNNABLE));
 					HAK_ASSERT(hak, proc == hak->processor->runnable.last); /* resume_process() appends to the runnable list */
 				#if 0
-					wake_process (hak, proc); /* switch to running */
+					wake_process(hak, proc); /* switch to running */
 					hak->proc_switched = 1;
 				#else
-					switch_to_process_from_nil (hak, proc);
+					switch_to_process_from_nil(hak, proc);
 				#endif
 				}
 			}
@@ -2820,7 +2820,7 @@ static HAK_INLINE int switch_process_if_needed (hak_t* hak)
 				if (hak->sem_io_wait_count > 0)
 				{
 					/* no running process but io semaphore being waited on */
-					vm_muxwait (hak, &ft);
+					vm_muxwait(hak, &ft);
 
 					/* exit early if a process has been woken up.
 					 * the break in the else part further down will get hit
@@ -2842,11 +2842,11 @@ static HAK_INLINE int switch_process_if_needed (hak_t* hak)
 
 					if (halting)
 					{
-						vm_gettime (hak, &now);
+						vm_gettime(hak, &now);
 						goto signal_timed;
 					}
 				}
-				vm_gettime (hak, &now);
+				vm_gettime(hak, &now);
 			}
 			else
 			{
@@ -2881,7 +2881,7 @@ static HAK_INLINE int switch_process_if_needed (hak_t* hak)
 				do
 				{
 					HAK_INIT_NTIME (&ft, 3, 0); /* TODO: use a configured time */
-					vm_muxwait (hak, &ft);
+					vm_muxwait(hak, &ft);
 				}
 				while (hak->processor->active == hak->nil_process && !hak->abort_req);
 			}
@@ -2896,7 +2896,7 @@ static HAK_INLINE int switch_process_if_needed (hak_t* hak)
 			 *       because this is called everytime process switching is requested.
 			 *       the actual callback implementation should try to avoid invoking
 			 *       actual system calls too frequently for less overhead. */
-			vm_muxwait (hak, HAK_NULL);
+			vm_muxwait(hak, HAK_NULL);
 		}
 	}
 
@@ -2915,7 +2915,7 @@ static HAK_INLINE int switch_process_if_needed (hak_t* hak)
 			{
 				HAK_ASSERT(hak, proc->state == HAK_SMOOI_TO_OOP(HAK_PROCESS_STATE_RUNNABLE));
 				HAK_ASSERT(hak, proc == hak->processor->runnable.first);
-				switch_to_process_from_nil (hak, proc);
+				switch_to_process_from_nil(hak, proc);
 			}
 
 			hak->sem_gcfin_sigreq = 0;
@@ -2960,7 +2960,7 @@ static HAK_INLINE int switch_process_if_needed (hak_t* hak)
 					HAK_ASSERT(hak, proc->state == HAK_SMOOI_TO_OOP(HAK_PROCESS_STATE_RUNNABLE));
 					HAK_ASSERT(hak, proc == hak->processor->runnable.first);
 					hak->_system->cvar[2] = hak->_true; /* set gcfin_should_exit in System to true. if the postion of the class variable changes, the index must get changed, too. */
-					switch_to_process_from_nil (hak, proc); /* sechedule the gc finalizer process */
+					switch_to_process_from_nil(hak, proc); /* sechedule the gc finalizer process */
 				}
 			}
 		}
@@ -3035,7 +3035,7 @@ static HAK_INLINE int do_return_from_block (hak_t* hak)
 		 * in start_initial_process_and_context() */
 		HAK_ASSERT(hak, (hak_oop_t)hak->active_context->sender == hak->_nil);
 		hak->active_context->ip = HAK_SMOOI_TO_OOP(-1); /* mark context dead */
-		terminate_process (hak, hak->processor->active);
+		terminate_process(hak, hak->processor->active);
 		return 1; /* indiate process termination */
 	}
 	else
@@ -3115,7 +3115,7 @@ static HAK_INLINE int do_return_from_block (hak_t* hak)
 		/* it is a normal block return as the active block context
 		 * is not the initial context of a process */
 		hak->ip = -1; /* mark context dead. saved into hak->active_context->ip in SWITCH_ACTIVE_CONTEXT */
-		SWITCH_ACTIVE_CONTEXT (hak, (hak_oop_context_t)hak->active_context->sender);
+		SWITCH_ACTIVE_CONTEXT(hak, (hak_oop_context_t)hak->active_context->sender);
 		return 0; /* normal return */
 	}
 }
@@ -3141,7 +3141,7 @@ static HAK_INLINE int do_return_from_home (hak_t* hak, hak_oop_t return_value, h
 			HAK_LOG1(hak, HAK_LOG_IC | HAK_LOG_WARN, "Warning - stack not empty on return-from-home - SP %zd\n", hak->sp); /* TODO: include line number and file name */
 		}
 
-		terminate_process (hak, hak->processor->active);
+		terminate_process(hak, hak->processor->active);
 	}
 	/*else if (hak->active_context->home == hak->processor->active->initial_context) // read the interactive mode note below...*/
 	else if ((hak_oop_t)hak->active_context->home->home == hak->_nil)
@@ -3172,7 +3172,7 @@ static HAK_INLINE int do_return_from_home (hak_t* hak, hak_oop_t return_value, h
 			HAK_LOG1(hak, HAK_LOG_IC | HAK_LOG_WARN, "Warning - stack not empty on non-local return-from-home - SP %zd\n", hak->sp); /* TODO: include line number and file name */
 		}
 
-		terminate_process (hak, hak->processor->active);
+		terminate_process(hak, hak->processor->active);
 	}
 	else
 	{
@@ -3197,7 +3197,7 @@ static HAK_INLINE int do_return_from_home (hak_t* hak, hak_oop_t return_value, h
 
 		hak->active_context->home->ip = HAK_SMOOI_TO_OOP(-1); /* mark that the home context has returned */
 		hak->ip = -1; /* mark that the active context has returned. committed to hak->active_context->ip in SWITCH_ACTIVE_CONTEXT() */
-		SWITCH_ACTIVE_CONTEXT (hak, hak->active_context->home->sender);
+		SWITCH_ACTIVE_CONTEXT(hak, hak->active_context->home->sender);
 
 		/* push the return value to the stack of the final active context */
 		HAK_STACK_PUSH(hak, return_value);
@@ -3279,7 +3279,7 @@ static HAK_INLINE int do_return_from_home (hak_t* hak, hak_oop_t return_value, h
 		while (hak->active_context != home)
 		{
 			hak->ip = -1; /* mark context dead. saved into hak->active_context->ip in SWITCH_ACTIVE_CONTEXT */
-			SWITCH_ACTIVE_CONTEXT (hak, (hak_oop_context_t)hak->active_context->sender);
+			SWITCH_ACTIVE_CONTEXT(hak, (hak_oop_context_t)hak->active_context->sender);
 		}
 
 		if (HAK_UNLIKELY((hak_oop_t)sender == hak->_nil))
@@ -3307,7 +3307,7 @@ static HAK_INLINE int do_return_from_home (hak_t* hak, hak_oop_t return_value, h
 
 		HAK_ASSERT(hak, hak->active_context->sender == sender);
 		hak->ip = -1; /* mark context dead. saved into hak->active_context->ip in SWITCH_ACTIVE_CONTEXT */
-		SWITCH_ACTIVE_CONTEXT (hak, (hak_oop_context_t)hak->active_context->sender);
+		SWITCH_ACTIVE_CONTEXT(hak, (hak_oop_context_t)hak->active_context->sender);
 		HAK_STACK_PUSH(hak, return_value);
 	}
 #endif
@@ -3454,7 +3454,7 @@ static int execute (hak_t* hak)
 		FETCH_BYTE_CODE_TO(hak, bcode);
 		/*while (bcode == HAK_CODE_NOOP) FETCH_BYTE_CODE_TO(hak, bcode);*/
 
-		if (hak->vm_checkbc_cb_count) vm_checkbc (hak, bcode);
+		if (hak->vm_checkbc_cb_count) vm_checkbc(hak, bcode);
 
 		if (HAK_UNLIKELY(hak->abort_req))
 		{
@@ -4044,7 +4044,7 @@ static int execute (hak_t* hak)
 				/* push the class off the stack top on the class stack */
 				LOG_INST_0(hak, "class_load");
 
-				HAK_STACK_POP_TO (hak, t);
+				HAK_STACK_POP_TO(hak, t);
 				if (!HAK_IS_CLASS(hak, t))
 				{
 					/*hak_seterrbfmt(hak, HAK_EUNDEFVAR, "%.*js is not class", HAK_OBJ_GET_SIZE(t->car), HAK_OBJ_GET_CHAR_SLOT(t->car));*/
@@ -4079,21 +4079,21 @@ static int execute (hak_t* hak)
 
 				if (b3 > 0)
 				{
-					HAK_STACK_POP_TO (hak, cvars_str);
+					HAK_STACK_POP_TO(hak, cvars_str);
 					HAK_ASSERT(hak, HAK_IS_STRING(hak, cvars_str));
 				}
 				else cvars_str = hak->_nil;
 
 				if (b2 > 0)
 				{
-					HAK_STACK_POP_TO (hak, ivars_str);
+					HAK_STACK_POP_TO(hak, ivars_str);
 					HAK_ASSERT(hak, HAK_IS_STRING(hak, ivars_str));
 				}
 				else ivars_str = hak->_nil;
 
 				if (b1 > 0)
 				{
-					HAK_STACK_POP_TO (hak, superclass); /* TODO: support more than 1 superclass later when the compiler supports more */
+					HAK_STACK_POP_TO(hak, superclass); /* TODO: support more than 1 superclass later when the compiler supports more */
 					if (!HAK_IS_CLASS(hak, superclass))
 					{
 						hak_seterrbfmt(hak, HAK_ECALL, "invalid superclass %O", superclass);
@@ -4130,7 +4130,7 @@ static int execute (hak_t* hak)
 							nivars_super = HAK_OOP_TO_SMOOI(class_obj->nivars_super);
 							nivars_super_real = HAK_IS_NIL(hak, superclass)? 0: HAK_OOP_TO_SMOOI(((hak_oop_class_t)superclass)->nivars_super);
 #if 0
-hak_logbfmt (hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncvars=%d<<<\n", class_obj, class_obj->superclass, superclass, b2, b3, (int)HAK_CLASS_SPEC_NAMED_INSTVARS(spec), (int)HAK_CLASS_SELFSPEC_CLASSVARS(spec));
+hak_logbfmt(hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncvars=%d<<<\n", class_obj, class_obj->superclass, superclass, b2, b3, (int)HAK_CLASS_SPEC_NAMED_INSTVARS(spec), (int)HAK_CLASS_SELFSPEC_CLASSVARS(spec));
 #endif
 							if (class_obj->superclass != superclass ||
 							    expected_spec != spec ||
@@ -4195,7 +4195,7 @@ hak_logbfmt (hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d nc
 					hak_seterrbfmt(hak, HAK_ESTKUNDFLW, "class stack underflow");
 					goto oops_with_errmsg_supplement;
 				}
-				HAK_CLSTACK_POP_TO (hak, c);
+				HAK_CLSTACK_POP_TO(hak, c);
 				HAK_STACK_PUSH(hak, c);
 
 				break;
@@ -4219,14 +4219,14 @@ hak_logbfmt (hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d nc
 
 				HAK_ASSERT(hak, !HAK_CLSTACK_IS_EMPTY(hak));
 
-				HAK_CLSTACK_FETCH_TOP_TO (hak, _class);
+				HAK_CLSTACK_FETCH_TOP_TO(hak, _class);
 				HAK_ASSERT(hak, HAK_IS_CLASS(hak, _class));
 
 				mdic = ((hak_oop_class_t)_class)->mdic; /* instance-side dictionary */
 				HAK_ASSERT(hak, HAK_IS_NIL(hak, mdic) || HAK_IS_DIC(hak, mdic));
 				if (HAK_IS_NIL(hak, mdic))
 				{
-					hak_pushvolat (hak, (hak_oop_t*)&_class);
+					hak_pushvolat(hak, (hak_oop_t*)&_class);
 					mdic = hak_makedic(hak, 16); /* TODO: configurable initial size? */
 					hak_popvolat (hak);
 					if (HAK_UNLIKELY(!mdic)) goto oops_with_errmsg_supplement;
@@ -4786,7 +4786,7 @@ hak_logbfmt (hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d nc
 				{
 					hak_oop_t t;
 
-					hak_pushvolat (hak, &t3);
+					hak_pushvolat(hak, &t3);
 					t = hak_makecons(hak, t1, hak->_nil);
 					hak_popvolat (hak);
 					if (HAK_UNLIKELY(!t)) goto oops;
@@ -4824,7 +4824,7 @@ hak_logbfmt (hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d nc
 				{
 					hak_oop_t t;
 
-					hak_pushvolat (hak, &t3);
+					hak_pushvolat(hak, &t3);
 					t = hak_makecons(hak, t1, hak->_nil);
 					hak_popvolat (hak);
 					if (HAK_UNLIKELY(!t)) goto oops;
@@ -4958,7 +4958,7 @@ hak_logbfmt (hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d nc
 			#endif
 				if (HAK_UNLIKELY(!funcobj)) goto oops;
 
-				fill_function_data (hak, funcobj, b1, hak->active_context, &hak->active_function->literal_frame[b3], b4);
+				fill_function_data(hak, funcobj, b1, hak->active_context, &hak->active_function->literal_frame[b3], b4);
 
 				/* push the new function to the stack of the active context */
 				HAK_STACK_PUSH(hak, (hak_oop_t)funcobj);
@@ -5019,7 +5019,7 @@ done:
 	return 0;
 
 oops_with_errmsg_supplement:
-	supplement_errmsg (hak, fetched_instruction_pointer);
+	supplement_errmsg(hak, fetched_instruction_pointer);
 
 oops:
 	hak->gci.lazy_sweep = 1;
@@ -5069,7 +5069,7 @@ hak_oop_t hak_execute (hak_t* hak)
 	if (HAK_UNLIKELY(!funcobj)) return HAK_NULL;
 
 	/* pass nil for the home context of the initial function */
-	fill_function_data (hak, funcobj, ENCODE_BLK_MASK(0,0,0,0,hak->code.ngtmprs), (hak_oop_context_t)hak->_nil, hak->code.lit.arr->slot, hak->code.lit.len);
+	fill_function_data(hak, funcobj, ENCODE_BLK_MASK(0,0,0,0,hak->code.ngtmprs), (hak_oop_context_t)hak->_nil, hak->code.lit.arr->slot, hak->code.lit.len);
 
 	hak->initial_function = funcobj; /* the initial function is ready */
 
@@ -5177,12 +5177,12 @@ hak_pfrc_t hak_pf_process_fork (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	HAK_ASSERT(hak, (hak_oop_t)newctx->sender == hak->_nil);
 	newctx->home = (hak_oop_context_t)hak->_nil; /* the new context is the initial context in the new process. so reset it to nil */
 
-	hak_pushvolat (hak, (hak_oop_t*)&newctx);
+	hak_pushvolat(hak, (hak_oop_t*)&newctx);
 	newprc = make_process(hak, newctx);
 	hak_popvolat (hak);
 	if (HAK_UNLIKELY(!newprc)) return HAK_PF_FAILURE;
 
-	chain_into_processor (hak, newprc, HAK_PROCESS_STATE_RUNNABLE);
+	chain_into_processor(hak, newprc, HAK_PROCESS_STATE_RUNNABLE);
 
 	HAK_STACK_SETRET(hak, nargs, (hak_oop_t)newprc);
 	return HAK_PF_SUCCESS;
@@ -5199,7 +5199,7 @@ hak_pfrc_t hak_pf_process_resume (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		return HAK_PF_FAILURE;
 	}
 
-	resume_process (hak, prc);
+	resume_process(hak, prc);
 	return  HAK_PF_SUCCESS;
 }
 
@@ -5221,7 +5221,7 @@ hak_pfrc_t hak_pf_process_suspend (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		prc = hak->processor->active;
 	}
 
-	suspend_process (hak, prc);
+	suspend_process(hak, prc);
 	return  HAK_PF_SUCCESS;
 }
 
@@ -5243,7 +5243,7 @@ hak_pfrc_t hak_pf_process_terminate (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs
 		prc = hak->processor->active;
 	}
 
-	terminate_process (hak, prc);
+	terminate_process(hak, prc);
 	return  HAK_PF_SUCCESS;
 }
 
@@ -5255,7 +5255,7 @@ hak_pfrc_t hak_pf_process_terminate_all (hak_t* hak, hak_mod_t* mod, hak_ooi_t n
 
 hak_pfrc_t hak_pf_process_yield (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	yield_process (hak, hak->processor->active);
+	yield_process(hak, hak->processor->active);
 	return  HAK_PF_SUCCESS;
 }
 
@@ -5327,7 +5327,7 @@ hak_pfrc_t hak_pf_semaphore_signal (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		HAK_ASSERT(hak, HAK_OOP_IS_SMOOI(sem->u.timed.index) && HAK_OOP_TO_SMOOI(sem->u.timed.index) >= 0);
 
 		/* if the semaphore is already been added. remove it first */
-		delete_from_sem_heap (hak, HAK_OOP_TO_SMOOI(sem->u.timed.index));
+		delete_from_sem_heap(hak, HAK_OOP_TO_SMOOI(sem->u.timed.index));
 		HAK_ASSERT(hak, sem->subtype == hak->_nil && sem->u.timed.index == hak->_nil);
 
 		/*
@@ -5360,7 +5360,7 @@ hak_pfrc_t hak_pf_semaphore_signal (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 #endif
 	/* this code assumes that the monotonic clock returns a small value
 	 * that can fit into a SmallInteger, even after some additions. */
-	vm_gettime (hak, &now);
+	vm_gettime(hak, &now);
 	HAK_ADD_NTIME_SNS (&ft, &now, HAK_OOP_TO_SMOOI(sec), HAK_OOP_TO_SMOOI(nsec));
 	if (ft.sec < 0 || ft.sec > HAK_SMOOI_MAX)
 	{
@@ -5451,12 +5451,12 @@ hak_pfrc_t hak_pf_semaphore_signal_on_gcfin (hak_t* hak, hak_mod_t* mod, hak_ooi
 	hak_oop_semaphore_t sem;
 
 	sem = (hak_oop_semaphore_t)HAK_STACK_GETRCV(hak, nargs);
-	HAK_PF_CHECK_RCV (hak, hak_iskindof(hak, (hak_oop_t)sem, hak->_semaphore));
+	HAK_PF_CHECK_RCV(hak, hak_iskindof(hak, (hak_oop_t)sem, hak->_semaphore));
 
 /* TODO: should i prevent overwriting? */
 	hak->sem_gcfin = sem;
 
-	HAK_STACK_SETRETTORCV (hak, nargs); /* ^self */
+	HAK_STACK_SETRETTORCV(hak, nargs); /* ^self */
 	return HAK_PF_SUCCESS;
 }
 #endif
@@ -5514,7 +5514,7 @@ TODO: add this back if gcfin support is added
 	{
 		/* the semaphore is in the timed semaphore heap */
 		HAK_ASSERT(hak, HAK_OOP_IS_SMOOI(sem->u.timed.index) && HAK_OOP_TO_SMOOI(sem->u.timed.index) >= 0);
-		delete_from_sem_heap (hak, HAK_OOP_TO_SMOOI(sem->u.timed.index));
+		delete_from_sem_heap(hak, HAK_OOP_TO_SMOOI(sem->u.timed.index));
 		HAK_ASSERT(hak, sem->u.timed.index == hak->_nil);
 	}
 	else if (sem->subtype == HAK_SMOOI_TO_OOP(HAK_SEMAPHORE_SUBTYPE_IO))
@@ -5603,7 +5603,7 @@ hak_pfrc_t hak_pf_semaphore_group_add_semaphore (hak_t* hak, hak_mod_t* mod, hak
 		int sems_idx;
 
 		sems_idx = HAK_OOP_TO_SMOOI(sem->count) > 0? HAK_SEMAPHORE_GROUP_SEMS_SIG: HAK_SEMAPHORE_GROUP_SEMS_UNSIG;
-		HAK_APPEND_TO_OOP_LIST (hak, &sg->sems[sems_idx], hak_oop_semaphore_t, sem, grm);
+		HAK_APPEND_TO_OOP_LIST(hak, &sg->sems[sems_idx], hak_oop_semaphore_t, sem, grm);
 		sem->group = sg;
 
 		count = HAK_OOP_TO_SMOOI(sg->sem_count);
@@ -5709,7 +5709,7 @@ hak_pfrc_t hak_pf_semaphore_group_remove_semaphore (hak_t* hak, hak_mod_t* mod, 
 #endif
 
 		sems_idx = HAK_OOP_TO_SMOOI(sem->count) > 0? HAK_SEMAPHORE_GROUP_SEMS_SIG: HAK_SEMAPHORE_GROUP_SEMS_UNSIG;
-		HAK_DELETE_FROM_OOP_LIST (hak, &sg->sems[sems_idx], sem, grm);
+		HAK_DELETE_FROM_OOP_LIST(hak, &sg->sems[sems_idx], sem, grm);
 		sem->grm.prev = (hak_oop_semaphore_t)hak->_nil;
 		sem->grm.next = (hak_oop_semaphore_t)hak->_nil;
 		sem->group = (hak_oop_semaphore_group_t)hak->_nil;
@@ -5780,7 +5780,7 @@ hak_pfrc_t hak_pf_semaphore_group_wait (hak_t* hak, hak_mod_t* mod, hak_ooi_t na
 		/* there was a signaled semaphore. the active process won't get
 		 * suspended. change the return value of the current process
 		 * forcibly to the signaled semaphore */
-		HAK_STACK_SETTOP (hak, sem);
+		HAK_STACK_SETTOP(hak, sem);
 	}
 
 	/* the return value will get changed to an actual semaphore signaled

@@ -88,7 +88,7 @@ hak_heap_t* hak_makeheap (hak_t* hak, hak_oow_t size)
 		heap->xma = hak_xma_open(HAK_MMGR(hak), 0, heap->base, heap->size);
 		if (HAK_UNLIKELY(!heap->xma))
 		{
-			hak->vmprim.free_heap (hak, heap);
+			hak->vmprim.free_heap(hak, heap);
 			hak_seterrbfmt(hak, HAK_ESYSMEM, "unable to allocate a memory manager over a heap");
 			return HAK_NULL;
 		}

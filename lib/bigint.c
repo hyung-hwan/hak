@@ -143,8 +143,8 @@ static HAK_INLINE int shaki_mul_overflow (hak_t* hak, hak_ooi_t a, hak_ooi_t b, 
 #if (HAK_SIZEOF_UINTMAX_T > HAK_SIZEOF_OOI_T)
 	hak_intmax_t k;
 
-	HAK_ASSERT (hak, HAK_IN_SMOOI_RANGE(a));
-	HAK_ASSERT (hak, HAK_IN_SMOOI_RANGE(b));
+	HAK_ASSERT(hak, HAK_IN_SMOOI_RANGE(a));
+	HAK_ASSERT(hak, HAK_IN_SMOOI_RANGE(b));
 
 	k = (hak_intmax_t)a * (hak_intmax_t)b;
 	*c = (hak_ooi_t)k;
@@ -154,8 +154,8 @@ static HAK_INLINE int shaki_mul_overflow (hak_t* hak, hak_ooi_t a, hak_ooi_t b, 
 
 	hak_ooi_t ua, ub;
 
-	HAK_ASSERT (hak, HAK_IN_SMOOI_RANGE(a));
-	HAK_ASSERT (hak, HAK_IN_SMOOI_RANGE(b));
+	HAK_ASSERT(hak, HAK_IN_SMOOI_RANGE(a));
+	HAK_ASSERT(hak, HAK_IN_SMOOI_RANGE(b));
 
 	*c = a * b;
 
@@ -214,7 +214,7 @@ static int is_normalized_integer (hak_t* hak, hak_oop_t oop)
 	{
 		hak_oow_t sz;
 		sz = HAK_OBJ_GET_SIZE(oop);
-		HAK_ASSERT (hak, sz >= 1);
+		HAK_ASSERT(hak, sz >= 1);
 		return HAK_OBJ_GET_LIWORD_VAL(oop, sz - 1) != 0;
 	}
 
@@ -223,10 +223,10 @@ static int is_normalized_integer (hak_t* hak, hak_oop_t oop)
 
 static HAK_INLINE int bigint_to_oow_noseterr (hak_t* hak, hak_oop_t num, hak_oow_t* w)
 {
-	HAK_ASSERT (hak, HAK_IS_BIGINT(hak,num));
+	HAK_ASSERT(hak, HAK_IS_BIGINT(hak,num));
 
 #if (HAK_LIW_BITS == HAK_OOW_BITS)
-	HAK_ASSERT (hak, HAK_OBJ_GET_SIZE(num) >= 1);
+	HAK_ASSERT(hak, HAK_OBJ_GET_SIZE(num) >= 1);
 	if (HAK_OBJ_GET_SIZE(num) == 1)
 	{
 		*w = HAK_OBJ_GET_WORD_VAL(num, 0);
@@ -239,7 +239,7 @@ static HAK_INLINE int bigint_to_oow_noseterr (hak_t* hak, hak_oop_t num, hak_oow
 	 * you must not call this function with an unnormalized
 	 * large integer. */
 
-	HAK_ASSERT (hak, HAK_OBJ_GET_SIZE(num) >= 2);
+	HAK_ASSERT(hak, HAK_OBJ_GET_SIZE(num) >= 2);
 	if (HAK_OBJ_GET_SIZE(num) == 2)
 	{
 		*w = MAKE_WORD(HAK_OBJ_GET_HALFWORD_VAL(num, 0), HAK_OBJ_GET_HALFWORD_VAL(num, 1));
@@ -284,7 +284,7 @@ static HAK_INLINE int integer_to_oow_noseterr (hak_t* hak, hak_oop_t x, hak_oow_
 		}
 	}
 
-	HAK_ASSERT (hak, hak_isbigint(hak, x));
+	HAK_ASSERT(hak, hak_isbigint(hak, x));
 	return bigint_to_oow_noseterr(hak, x, w);
 }
 
@@ -321,7 +321,7 @@ int hak_inttooow (hak_t* hak, hak_oop_t x, hak_oow_t* w)
 		if (v < 0)
 		{
 			*w = -v;
-			hak_seterrnum (hak, HAK_ERANGE);
+			hak_seterrnum(hak, HAK_ERANGE);
 			return -1; /* negative number negated - kind of an error */
 		}
 		else
@@ -334,11 +334,11 @@ int hak_inttooow (hak_t* hak, hak_oop_t x, hak_oow_t* w)
 	if (hak_isbigint(hak, x))
 	{
 		int n;
-		if ((n = bigint_to_oow_noseterr(hak, x, w)) <= 0) hak_seterrnum (hak, HAK_ERANGE);
+		if ((n = bigint_to_oow_noseterr(hak, x, w)) <= 0) hak_seterrnum(hak, HAK_ERANGE);
 		return n;
 	}
 
-	hak_seterrbfmt (hak, HAK_EINVAL, "not integer - %O", x);
+	hak_seterrbfmt(hak, HAK_EINVAL, "not integer - %O", x);
 	return 0; /* not convertable - too big, too small, or not integer */
 }
 
@@ -358,7 +358,7 @@ int hak_inttoooi_noseterr (hak_t* hak, hak_oop_t x, hak_ooi_t* i)
 		n = bigint_to_oow_noseterr(hak, x, &w);
 		if (n < 0)
 		{
-			HAK_STATIC_ASSERT (HAK_TYPE_MAX(hak_ooi_t) + HAK_TYPE_MIN(hak_ooi_t) == -1); /* assume 2's complement */
+			HAK_STATIC_ASSERT(HAK_TYPE_MAX(hak_ooi_t) + HAK_TYPE_MIN(hak_ooi_t) == -1); /* assume 2's complement */
 			if (w > (hak_oow_t)HAK_TYPE_MAX(hak_ooi_t) + 1) return 0; /* too small */
 			*i = (w <= (hak_oow_t)HAK_TYPE_MAX(hak_ooi_t))? -(hak_ooi_t)w: HAK_TYPE_MIN(hak_ooi_t); /* negate back */
 		}
@@ -390,10 +390,10 @@ int hak_inttoooi (hak_t* hak, hak_oop_t x, hak_ooi_t* i)
 		n = bigint_to_oow_noseterr(hak, x, &w);
 		if (n < 0)
 		{
-			HAK_STATIC_ASSERT (HAK_TYPE_MAX(hak_ooi_t) + HAK_TYPE_MIN(hak_ooi_t) == -1); /* assume 2's complement */
+			HAK_STATIC_ASSERT(HAK_TYPE_MAX(hak_ooi_t) + HAK_TYPE_MIN(hak_ooi_t) == -1); /* assume 2's complement */
 			if (w > (hak_oow_t)HAK_TYPE_MAX(hak_ooi_t) + 1)
 			{
-				hak_seterrnum (hak, HAK_ERANGE);
+				hak_seterrnum(hak, HAK_ERANGE);
 				return 0; /* too small */
 			}
 			*i = (w <= (hak_oow_t)HAK_TYPE_MAX(hak_ooi_t))? -(hak_ooi_t)w: HAK_TYPE_MIN(hak_ooi_t); /* negate back */
@@ -402,20 +402,20 @@ int hak_inttoooi (hak_t* hak, hak_oop_t x, hak_ooi_t* i)
 		{
 			if (w > HAK_TYPE_MAX(hak_ooi_t))
 			{
-				hak_seterrnum (hak, HAK_ERANGE);
+				hak_seterrnum(hak, HAK_ERANGE);
 				return 0; /* too big */
 			}
 			*i = w;
 		}
 		else
 		{
-			hak_seterrnum (hak, HAK_ERANGE);
+			hak_seterrnum(hak, HAK_ERANGE);
 		}
 
 		return n;
 	}
 
-	hak_seterrbfmt (hak, HAK_EINVAL, "not an integer - %O", x);
+	hak_seterrbfmt(hak, HAK_EINVAL, "not an integer - %O", x);
 	return 0;  /* not integer */
 }
 
@@ -426,11 +426,11 @@ int hak_inttoooi (hak_t* hak, hak_oop_t x, hak_ooi_t* i)
 #elif (HAK_SIZEOF_UINTMAX_T == HAK_SIZEOF_OOW_T * 2) || (HAK_SIZEOF_UINTMAX_T == HAK_SIZEOF_OOW_T * 4)
 static HAK_INLINE int bigint_to_uintmax_noseterr (hak_t* hak, hak_oop_t num, hak_uintmax_t* w)
 {
-	HAK_ASSERT (hak, HAK_OOP_IS_POINTER(num));
-	HAK_ASSERT (hak, HAK_IS_PBIGINT(hak, num) || HAK_IS_NBIGINT(hak, num));
+	HAK_ASSERT(hak, HAK_OOP_IS_POINTER(num));
+	HAK_ASSERT(hak, HAK_IS_PBIGINT(hak, num) || HAK_IS_NBIGINT(hak, num));
 
 #if (HAK_LIW_BITS == HAK_OOW_BITS)
-	HAK_ASSERT (hak, HAK_OBJ_GET_SIZE(num) >= 1);
+	HAK_ASSERT(hak, HAK_OBJ_GET_SIZE(num) >= 1);
 
 	switch (HAK_OBJ_GET_SIZE(num))
 	{
@@ -463,7 +463,7 @@ static HAK_INLINE int bigint_to_uintmax_noseterr (hak_t* hak, hak_oop_t num, hak
 	}
 
 #elif (HAK_LIW_BITS == HAK_OOHW_BITS)
-	HAK_ASSERT (hak, HAK_OBJ_GET_SIZE(num) >= 2);
+	HAK_ASSERT(hak, HAK_OBJ_GET_SIZE(num) >= 2);
 	switch (HAK_OBJ_GET_SIZE(num))
 	{
 		case 2:
@@ -562,7 +562,7 @@ int hak_inttouintmax (hak_t* hak, hak_oop_t x, hak_uintmax_t* w)
 		return n;
 	}
 
-	hak_seterrbfmt (hak, HAK_EINVAL, "not an integer - %O", x);
+	hak_seterrbfmt(hak, HAK_EINVAL, "not an integer - %O", x);
 	return 0; /* not convertable - too big, too small, or not an integer */
 }
 
@@ -583,7 +583,7 @@ int hak_inttointmax_noseterr (hak_t* hak, hak_oop_t x, hak_intmax_t* i)
 		if (n < 0)
 		{
 			/* negative number negated to a positve number */
-			HAK_STATIC_ASSERT (HAK_TYPE_MAX(hak_intmax_t) + HAK_TYPE_MIN(hak_intmax_t) == -1); /* assume 2's complement */
+			HAK_STATIC_ASSERT(HAK_TYPE_MAX(hak_intmax_t) + HAK_TYPE_MIN(hak_intmax_t) == -1); /* assume 2's complement */
 			if (w > (hak_uintmax_t)HAK_TYPE_MAX(hak_intmax_t) + 1) return 0; /* not convertable - too small */
 			*i = (w <= (hak_uintmax_t)HAK_TYPE_MAX(hak_intmax_t))? -(hak_intmax_t)w: HAK_TYPE_MIN(hak_intmax_t); /* negate back */
 		}
@@ -616,10 +616,10 @@ int hak_inttointmax (hak_t* hak, hak_oop_t x, hak_intmax_t* i)
 		if (n < 0)
 		{
 			/* negative number negated to a positve number */
-			HAK_STATIC_ASSERT (HAK_TYPE_MAX(hak_intmax_t) + HAK_TYPE_MIN(hak_intmax_t) == -1); /* assume 2's complement */
+			HAK_STATIC_ASSERT(HAK_TYPE_MAX(hak_intmax_t) + HAK_TYPE_MIN(hak_intmax_t) == -1); /* assume 2's complement */
 			if (w > (hak_uintmax_t)HAK_TYPE_MAX(hak_intmax_t) + 1)
 			{
-				hak_seterrnum (hak, HAK_ERANGE);
+				hak_seterrnum(hak, HAK_ERANGE);
 				return 0; /* not convertable. too small */
 			}
 			*i = (w <= (hak_uintmax_t)HAK_TYPE_MAX(hak_intmax_t))? -(hak_intmax_t)w: HAK_TYPE_MIN(hak_intmax_t); /* negate back */
@@ -628,19 +628,19 @@ int hak_inttointmax (hak_t* hak, hak_oop_t x, hak_intmax_t* i)
 		{
 			if (w > HAK_TYPE_MAX(hak_intmax_t))
 			{
-				hak_seterrnum (hak, HAK_ERANGE);
+				hak_seterrnum(hak, HAK_ERANGE);
 				return 0; /* not convertable. too big */
 			}
 			*i = w;
 		}
 		else
 		{
-			hak_seterrnum (hak, HAK_ERANGE);
+			hak_seterrnum(hak, HAK_ERANGE);
 		}
 		return n;
 	}
 
-	hak_seterrbfmt (hak, HAK_EINVAL, "not an integer - %O", x);
+	hak_seterrbfmt(hak, HAK_EINVAL, "not an integer - %O", x);
 	return 0; /* not convertable - too big, too small, or not an integer */
 }
 
@@ -651,7 +651,7 @@ int hak_inttointmax (hak_t* hak, hak_oop_t x, hak_intmax_t* i)
 static HAK_INLINE hak_oop_t make_bigint_with_oow (hak_t* hak, hak_oow_t w)
 {
 #if (HAK_LIW_BITS == HAK_OOW_BITS)
-	HAK_ASSERT (hak, HAK_SIZEOF(hak_oow_t) == HAK_SIZEOF(hak_liw_t));
+	HAK_ASSERT(hak, HAK_SIZEOF(hak_oow_t) == HAK_SIZEOF(hak_liw_t));
 	return make_pbigint(hak, &w, 1);
 #elif (HAK_LIW_BITS == HAK_OOHW_BITS)
 	hak_liw_t hw[2];
@@ -668,7 +668,7 @@ static HAK_INLINE hak_oop_t make_bigint_with_ooi (hak_t* hak, hak_ooi_t i)
 #if (HAK_LIW_BITS == HAK_OOW_BITS)
 	hak_oow_t w;
 
-	HAK_STATIC_ASSERT (hak, HAK_SIZEOF(hak_oow_t) == HAK_SIZEOF(hak_liw_t));
+	HAK_STATIC_ASSERT(hak, HAK_SIZEOF(hak_oow_t) == HAK_SIZEOF(hak_liw_t));
 	if (i >= 0)
 	{
 		w = i;
@@ -683,7 +683,7 @@ static HAK_INLINE hak_oop_t make_bigint_with_ooi (hak_t* hak, hak_ooi_t i)
 	hak_liw_t hw[2];
 	hak_oow_t w;
 
-	HAK_STATIC_ASSERT (HAK_SIZEOF(hak_oohw_t) == HAK_SIZEOF(hak_liw_t));
+	HAK_STATIC_ASSERT(HAK_SIZEOF(hak_oohw_t) == HAK_SIZEOF(hak_liw_t));
 	if (i >= 0)
 	{
 		w = i;
@@ -710,8 +710,8 @@ static HAK_INLINE hak_oop_t make_bloated_bigint_with_ooi (hak_t* hak, hak_ooi_t 
 	hak_oow_t w;
 	hak_oop_t z;
 
-	HAK_ASSERT (hak, extra <= HAK_OBJ_SIZE_MAX - 1);
-	HAK_STATIC_ASSERT (hak, HAK_SIZEOF(hak_oow_t) == HAK_SIZEOF(hak_liw_t));
+	HAK_ASSERT(hak, extra <= HAK_OBJ_SIZE_MAX - 1);
+	HAK_STATIC_ASSERT(hak, HAK_SIZEOF(hak_oow_t) == HAK_SIZEOF(hak_liw_t));
 	if (i >= 0)
 	{
 		w = i;
@@ -732,7 +732,7 @@ static HAK_INLINE hak_oop_t make_bloated_bigint_with_ooi (hak_t* hak, hak_ooi_t 
 	hak_oow_t w;
 	hak_oop_t z;
 
-	HAK_ASSERT (hak, extra <= HAK_OBJ_SIZE_MAX - 2);
+	HAK_ASSERT(hak, extra <= HAK_OBJ_SIZE_MAX - 2);
 	if (i >= 0)
 	{
 		w = i;
@@ -766,7 +766,7 @@ static HAK_INLINE hak_oop_t make_bigint_with_intmax (hak_t* hak, hak_intmax_t v)
 
 	/* this is not a generic function. it can't handle v
 	 * if it's HAK_TYPE_MIN(hak_intmax_t) */
-	HAK_ASSERT (hak, v > HAK_TYPE_MIN(hak_intmax_t));
+	HAK_ASSERT(hak, v > HAK_TYPE_MIN(hak_intmax_t));
 
 	if (v >= 0)
 	{
@@ -808,7 +808,7 @@ static HAK_INLINE hak_oop_t make_bigint_with_uintmax (hak_t* hak, hak_uintmax_t 
 
 hak_oop_t hak_oowtoint (hak_t* hak, hak_oow_t w)
 {
-	HAK_ASSERT (hak, HAK_TYPE_IS_UNSIGNED(hak_oow_t));
+	HAK_ASSERT(hak, HAK_TYPE_IS_UNSIGNED(hak_oow_t));
 	/*if (HAK_IN_SMOOI_RANGE(w))*/
 	if (w <= HAK_SMOOI_MAX)
 	{
@@ -866,12 +866,12 @@ static HAK_INLINE hak_oop_t expand_bigint (hak_t* hak, hak_oop_t oop, hak_oow_t 
 	hak_oow_t i;
 	hak_oow_t count;
 
-	HAK_ASSERT (hak, HAK_OOP_IS_POINTER(oop));
+	HAK_ASSERT(hak, HAK_OOP_IS_POINTER(oop));
 	count = HAK_OBJ_GET_SIZE(oop);
 
 	if (inc > HAK_OBJ_SIZE_MAX - count)
 	{
-		hak_seterrbfmt (hak, HAK_EOOMEM, "unable to expand bigint %O by %zu liwords", oop, inc); /* TODO: is it a soft failure or a hard failure? is this error code proper? */
+		hak_seterrbfmt(hak, HAK_EOOMEM, "unable to expand bigint %O by %zu liwords", oop, inc); /* TODO: is it a soft failure or a hard failure? is this error code proper? */
 		return HAK_NULL;
 	}
 
@@ -881,7 +881,7 @@ static HAK_INLINE hak_oop_t expand_bigint (hak_t* hak, hak_oop_t oop, hak_oow_t 
 	if (HAK_UNLIKELY(!z))
 	{
 		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-		hak_seterrbfmt (hak, HAK_ERRNUM(hak), "unable to clone bigint %O for expansion - %s", oop, orgmsg);
+		hak_seterrbfmt(hak, HAK_ERRNUM(hak), "unable to clone bigint %O for expansion - %s", oop, orgmsg);
 		return HAK_NULL;
 	}
 
@@ -897,7 +897,7 @@ static HAK_INLINE hak_oop_t _clone_bigint (hak_t* hak, hak_oop_t oop, hak_oow_t 
 	hak_oop_t z;
 	hak_oow_t i;
 
-	HAK_ASSERT (hak, HAK_OOP_IS_POINTER(oop));
+	HAK_ASSERT(hak, HAK_OOP_IS_POINTER(oop));
 	if (count <= 0) count = HAK_OBJ_GET_SIZE(oop);
 
 	hak_pushvolat(hak, &oop);
@@ -921,7 +921,7 @@ static HAK_INLINE hak_oop_t clone_bigint_negated (hak_t* hak, hak_oop_t oop, hak
 {
 	hak_oop_class_t _class;
 
-	HAK_ASSERT (hak, HAK_IS_BIGINT(hak,oop));
+	HAK_ASSERT(hak, HAK_IS_BIGINT(hak,oop));
 
 	if (HAK_IS_PBIGINT(hak, oop))
 	{
@@ -929,7 +929,7 @@ static HAK_INLINE hak_oop_t clone_bigint_negated (hak_t* hak, hak_oop_t oop, hak
 	}
 	else
 	{
-		HAK_ASSERT (hak, HAK_IS_NBIGINT(hak, oop));
+		HAK_ASSERT(hak, HAK_IS_NBIGINT(hak, oop));
 		_class = hak->c_large_positive_integer;
 	}
 
@@ -969,7 +969,7 @@ static hak_oop_t normalize_bigint (hak_t* hak, hak_oop_t oop)
 {
 	hak_oow_t count;
 
-	HAK_ASSERT (hak, HAK_OOP_IS_POINTER(oop));
+	HAK_ASSERT(hak, HAK_OOP_IS_POINTER(oop));
 	count = count_effective_digits(oop);
 
 #if (HAK_LIW_BITS == HAK_OOW_BITS)
@@ -984,8 +984,8 @@ static hak_oop_t normalize_bigint (hak_t* hak, hak_oop_t oop)
 		}
 		else
 		{
-			HAK_ASSERT (hak, -HAK_SMOOI_MAX  == HAK_SMOOI_MIN);
-			HAK_ASSERT (hak, HAK_IS_NBIGINT(hak, oop));
+			HAK_ASSERT(hak, -HAK_SMOOI_MAX  == HAK_SMOOI_MIN);
+			HAK_ASSERT(hak, HAK_IS_NBIGINT(hak, oop));
 			if (w <= HAK_SMOOI_MAX) return HAK_SMOOI_TO_OOP(-(hak_ooi_t)w);
 		}
 	}
@@ -999,7 +999,7 @@ static hak_oop_t normalize_bigint (hak_t* hak, hak_oop_t oop)
 		}
 		else
 		{
-			HAK_ASSERT (hak, HAK_IS_NBIGINT(hak, oop));
+			HAK_ASSERT(hak, HAK_IS_NBIGINT(hak, oop));
 			return HAK_SMOOI_TO_OOP(-(hak_ooi_t)((hak_oop_liword_t)oop)->slot[0]);
 		}
 	}
@@ -1014,8 +1014,8 @@ static hak_oop_t normalize_bigint (hak_t* hak, hak_oop_t oop)
 		}
 		else
 		{
-			HAK_ASSERT (hak, -HAK_SMOOI_MAX  == HAK_SMOOI_MIN);
-			HAK_ASSERT (hak, HAK_IS_NBIGINT(hak, oop));
+			HAK_ASSERT(hak, -HAK_SMOOI_MAX  == HAK_SMOOI_MIN);
+			HAK_ASSERT(hak, HAK_IS_NBIGINT(hak, oop));
 			if (w <= HAK_SMOOI_MAX) return HAK_SMOOI_TO_OOP(-(hak_ooi_t)w);
 		}
 	}
@@ -1132,7 +1132,7 @@ static void complement2_unsigned_array (hak_t* hak, const hak_liw_t* x, hak_oow_
 	 * this function is not designed to handle such a case.
 	 * in fact, 0 is a small integer and it must not stand a change
 	 * to be given to this function */
-	HAK_ASSERT (hak, carry == 0);
+	HAK_ASSERT(hak, carry == 0);
 }
 
 static HAK_INLINE hak_oow_t add_unsigned_array (const hak_liw_t* x, hak_oow_t xs, const hak_liw_t* y, hak_oow_t ys, hak_liw_t* z)
@@ -1235,12 +1235,12 @@ static HAK_INLINE hak_oow_t subtract_unsigned_array (hak_t* hak, const hak_liw_t
 
 	if (x == y)
 	{
-		HAK_ASSERT (hak, xs == ys);
+		HAK_ASSERT(hak, xs == ys);
 		z[0] = 0;
 		return 1;
 	}
 
-	HAK_ASSERT (hak, !is_less_unsigned_array(x, xs, y, ys));
+	HAK_ASSERT(hak, !is_less_unsigned_array(x, xs, y, ys));
 
 	for (i = 0; i < ys; i++)
 	{
@@ -1273,12 +1273,12 @@ static HAK_INLINE hak_oow_t subtract_unsigned_array (hak_t* hak, const hak_liw_t
 
 	if (x == y)
 	{
-		HAK_ASSERT (hak, xs == ys);
+		HAK_ASSERT(hak, xs == ys);
 		z[0] = 0;
 		return 1;
 	}
 
-	HAK_ASSERT (hak, !is_less_unsigned_array(x, xs, y, ys));
+	HAK_ASSERT(hak, !is_less_unsigned_array(x, xs, y, ys));
 
 	borrowed_word = (hak_lidw_t)1 << HAK_LIW_BITS;
 	for (i = 0; i < ys; i++)
@@ -1310,7 +1310,7 @@ static HAK_INLINE hak_oow_t subtract_unsigned_array (hak_t* hak, const hak_liw_t
 		}
 	}
 
-	HAK_ASSERT (hak, borrow == 0);
+	HAK_ASSERT(hak, borrow == 0);
 
 	while (i > 1 && z[i - 1] == 0) i--;
 	return i; /* the number of effective digits in the result */
@@ -1532,8 +1532,8 @@ static HAK_INLINE hak_oow_t multiply_unsigned_array_karatsuba (hak_t* hak, const
 	ndigits_yl = nshifts; /* ndigits of lower part of y */
 	ndigits_yh = ys - nshifts; /* ndigits of uppoer part of y */
 
-	HAK_ASSERT (hak, ndigits_xl >= ndigits_xh);
-	HAK_ASSERT (hak, ndigits_yl >= ndigits_yh);
+	HAK_ASSERT(hak, ndigits_xl >= ndigits_xh);
+	HAK_ASSERT(hak, ndigits_yl >= ndigits_yh);
 
 	/* make a temporary buffer for (b0 + b1) and (a1 * b1) */
 	tmplen[0] = ndigits_xh + ndigits_yh;
@@ -1571,7 +1571,7 @@ static HAK_INLINE hak_oow_t multiply_unsigned_array_karatsuba (hak_t* hak, const
 
 	/* tmp[0] = a0 * b0 */
 	tmplen[0] = ndigits_xl + ndigits_yl;
-	HAK_MEMSET (tmp[0], 0, sizeof(hak_liw_t) * tmplen[0]);
+	HAK_MEMSET(tmp[0], 0, sizeof(hak_liw_t) * tmplen[0]);
 	if (CANNOT_KARATSUBA(hak, ndigits_xl, ndigits_yl))
 	{
 		multiply_unsigned_array (x, ndigits_xl, y, ndigits_yl, tmp[0]);
@@ -1585,7 +1585,7 @@ static HAK_INLINE hak_oow_t multiply_unsigned_array_karatsuba (hak_t* hak, const
 
 	/* tmp[1] = a1 * b1 */
 	tmplen[1] = ndigits_xh + ndigits_yh;
-	HAK_MEMSET (tmp[1], 0, sizeof(hak_liw_t) * tmplen[1]);
+	HAK_MEMSET(tmp[1], 0, sizeof(hak_liw_t) * tmplen[1]);
 	if (CANNOT_KARATSUBA(hak, ndigits_xh, ndigits_yh))
 	{
 		multiply_unsigned_array (x + nshifts, ndigits_xh, y + nshifts, ndigits_yh, tmp[1]);
@@ -1610,13 +1610,13 @@ static HAK_INLINE hak_oow_t multiply_unsigned_array_karatsuba (hak_t* hak, const
 	/* z = z + a0b0. a0b0 is in tmp[0] */
 	xlen = add_unsigned_array(z, zcapa, tmp[0], tmplen[0], z);
 
-	hak_freemem (hak, tmp[1]);
-	hak_freemem (hak, tmp[0]);
+	hak_freemem(hak, tmp[1]);
+	hak_freemem(hak, tmp[0]);
 	return count_effective(z, xlen);
 
 oops:
-	if (tmp[1]) hak_freemem (hak, tmp[1]);
-	if (tmp[0]) hak_freemem (hak, tmp[0]);
+	if (tmp[1]) hak_freemem(hak, tmp[1]);
+	if (tmp[0]) hak_freemem(hak, tmp[0]);
 	return 0;
 
 #else
@@ -1669,8 +1669,8 @@ oops:
 	ndigits_yl = nshifts; /* ndigits of lower part of y */
 	ndigits_yh = ys - nshifts; /* ndigits of uppoer part of y */
 
-	HAK_ASSERT (hak, ndigits_xl >= ndigits_xh);
-	HAK_ASSERT (hak, ndigits_yl >= ndigits_yh);
+	HAK_ASSERT(hak, ndigits_xl >= ndigits_xh);
+	HAK_ASSERT(hak, ndigits_yl >= ndigits_yh);
 
 	/* make a temporary buffer for (b0 + b1) and (a1 * b1) */
 	tmplen[0] = ndigits_yl + ndigits_yh + 1;
@@ -1707,7 +1707,7 @@ oops:
 
 	/* tmp[0] = a0 * b0 */
 	tmplen[0] = ndigits_xl + ndigits_yl;
-	HAK_MEMSET (tmp[0], 0, sizeof(hak_liw_t) * tmplen[0]);
+	HAK_MEMSET(tmp[0], 0, sizeof(hak_liw_t) * tmplen[0]);
 	if (CANNOT_KARATSUBA(hak, ndigits_xl, ndigits_yl))
 	{
 		multiply_unsigned_array (x, ndigits_xl, y, ndigits_yl, tmp[0]);
@@ -1721,7 +1721,7 @@ oops:
 
 	/* tmp[1] = a1 * b1 */
 	tmplen[1] = ndigits_xh + ndigits_yh;
-	HAK_MEMSET (tmp[1], 0, sizeof(hak_liw_t) * tmplen[1]);
+	HAK_MEMSET(tmp[1], 0, sizeof(hak_liw_t) * tmplen[1]);
 	if (CANNOT_KARATSUBA(hak, ndigits_xh, ndigits_yh))
 	{
 		multiply_unsigned_array (x + nshifts, ndigits_xh, y + nshifts, ndigits_yh, tmp[1]);
@@ -1748,16 +1748,16 @@ oops:
 	/* z = z + a0b0. a0b0 is in tmp[0] */
 	xlen = add_unsigned_array(z, zcapa, tmp[0], tmplen[0], z);
 
-	hak_freemem (hak, tmp[2]);
-	hak_freemem (hak, tmp[1]);
-	hak_freemem (hak, tmp[0]);
+	hak_freemem(hak, tmp[2]);
+	hak_freemem(hak, tmp[1]);
+	hak_freemem(hak, tmp[0]);
 
 	return count_effective(z, xlen);
 
 oops:
-	if (tmp[2]) hak_freemem (hak, tmp[2]);
-	if (tmp[1]) hak_freemem (hak, tmp[1]);
-	if (tmp[0]) hak_freemem (hak, tmp[0]);
+	if (tmp[2]) hak_freemem(hak, tmp[2]);
+	if (tmp[1]) hak_freemem(hak, tmp[1]);
+	if (tmp[0]) hak_freemem(hak, tmp[0]);
 	return 0;
 #endif
 }
@@ -1774,7 +1774,7 @@ static HAK_INLINE void lshift_unsigned_array (hak_liw_t* x, hak_oow_t xs, hak_oo
 	word_shifts = bits / HAK_LIW_BITS;
 	if (word_shifts >= xs)
 	{
-		HAK_MEMSET (x, 0, xs * HAK_SIZEOF(hak_liw_t));
+		HAK_MEMSET(x, 0, xs * HAK_SIZEOF(hak_liw_t));
 		return;
 	}
 
@@ -1794,7 +1794,7 @@ static HAK_INLINE void lshift_unsigned_array (hak_liw_t* x, hak_oow_t xs, hak_oo
 
 	/* fill the remaining part with zeros */
 	if (word_shifts > 0)
-		HAK_MEMSET (x, 0, word_shifts * HAK_SIZEOF(hak_liw_t));
+		HAK_MEMSET(x, 0, word_shifts * HAK_SIZEOF(hak_liw_t));
 }
 
 static HAK_INLINE void rshift_unsigned_array (hak_liw_t* x, hak_oow_t xs, hak_oow_t bits)
@@ -1809,7 +1809,7 @@ static HAK_INLINE void rshift_unsigned_array (hak_liw_t* x, hak_oow_t xs, hak_oo
 	word_shifts = bits / HAK_LIW_BITS;
 	if (word_shifts >= xs)
 	{
-		HAK_MEMSET (x, 0, xs * HAK_SIZEOF(hak_liw_t));
+		HAK_MEMSET(x, 0, xs * HAK_SIZEOF(hak_liw_t));
 		return;
 	}
 
@@ -1831,7 +1831,7 @@ static HAK_INLINE void rshift_unsigned_array (hak_liw_t* x, hak_oow_t xs, hak_oo
 
 	/* fill the remaining part with zeros */
 	if (word_shifts > 0)
-		HAK_MEMSET (&x[xs - word_shifts], 0, word_shifts * HAK_SIZEOF(hak_liw_t));
+		HAK_MEMSET(&x[xs - word_shifts], 0, word_shifts * HAK_SIZEOF(hak_liw_t));
 }
 
 static void divide_unsigned_array (hak_t* hak, const hak_liw_t* x, hak_oow_t xs, const hak_liw_t* y, hak_oow_t ys, hak_liw_t* q, hak_liw_t* r)
@@ -1856,14 +1856,14 @@ static void divide_unsigned_array (hak_t* hak, const hak_liw_t* x, hak_oow_t xs,
 
 	hak_oow_t rs, rrs, i , j;
 
-	HAK_ASSERT (hak, xs >= ys);
+	HAK_ASSERT(hak, xs >= ys);
 
 	/* the caller must ensure:
 	 *   - q and r are all zeros. can skip memset() with zero.
 	 *   - q is as large as xs in size.
 	 *   - r is as large as ys + 1 in size  */
-	/*HAK_MEMSET (q, 0, HAK_SIZEOF(*q) * xs);
-	HAK_MEMSET (r, 0, HAK_SIZEOF(*q) * ys);*/
+	/*HAK_MEMSET(q, 0, HAK_SIZEOF(*q) * xs);
+	HAK_MEMSET(r, 0, HAK_SIZEOF(*q) * ys);*/
 
 	rrs = ys + 1;
 	for (i = xs; i > 0; )
@@ -1882,7 +1882,7 @@ static void divide_unsigned_array (hak_t* hak, const hak_liw_t* x, hak_oow_t xs,
 			rs = count_effective(r, rrs);
 			if (!is_less_unsigned_array(r, rs, y, ys))
 			{
-				subtract_unsigned_array (hak, r, rs, y, ys, r);
+				subtract_unsigned_array(hak, r, rs, y, ys, r);
 				HAK_SETBITS (hak_liw_t, q[i], j, 1, 1);
 			}
 		}
@@ -1913,7 +1913,7 @@ static HAK_INLINE hak_liw_t calculate_remainder (hak_t* hak, hak_liw_t* qr, hak_
 		c = (hak_liw_t)(dw >> HAK_LIW_BITS);
 		b = (hak_liw_t)dw;
 
-		HAK_ASSERT (hak, c == 0);
+		HAK_ASSERT(hak, c == 0);
 	}
 	return b;
 }
@@ -1926,7 +1926,7 @@ static void divide_unsigned_array2 (hak_t* hak, const hak_liw_t* x, hak_oow_t xs
 	/* the caller must ensure:
 	 *  - q can hold 'xs + 1' words and r can hold 'ys' words.
 	 *  - q and r are set to all zeros. */
-	HAK_ASSERT (hak, xs >= ys);
+	HAK_ASSERT(hak, xs >= ys);
 
 	if (ys == 1)
 	{
@@ -1967,7 +1967,7 @@ static void divide_unsigned_array2 (hak_t* hak, const hak_liw_t* x, hak_oow_t xs
 			carry = (hak_liw_t)(dw >> HAK_LIW_BITS);
 			r[i] = (hak_liw_t)dw;
 		}
-		HAK_ASSERT (hak, carry == 0);
+		HAK_ASSERT(hak, carry == 0);
 
 		/* q = q * d */
 		for (carry = 0, i = 0; i < xs; i++)
@@ -2026,7 +2026,7 @@ static void divide_unsigned_array2 (hak_t* hak, const hak_liw_t* x, hak_oow_t xs
 				q[j] = (hak_liw_t)dw;
 			}
 
-			HAK_ASSERT (hak, carry == 1);
+			HAK_ASSERT(hak, carry == 1);
 			q[i] = quo - 1;
 		}
 		else
@@ -2068,7 +2068,7 @@ static void divide_unsigned_array3 (hak_t* hak, const hak_liw_t* x, hak_oow_t xs
 	/* the caller must ensure:
 	 *  - q can hold 'xs + 1' words and r can hold 'ys' words.
 	 *  - q and r are set to all zeros. */
-	HAK_ASSERT (hak, xs >= ys);
+	HAK_ASSERT(hak, xs >= ys);
 
 	if (ys == 1)
 	{
@@ -2113,7 +2113,7 @@ static void divide_unsigned_array3 (hak_t* hak, const hak_liw_t* x, hak_oow_t xs
 
 	y1 = y[ys - 1];
 	/*s = HAK_LIW_BITS - ((y1 == 0)? -1: hak_get_pos_of_msb_set(y1)) - 1;*/
-	HAK_ASSERT (hak, y1 > 0); /* the highest word can't be non-zero in the context where this function is called */
+	HAK_ASSERT(hak, y1 > 0); /* the highest word can't be non-zero in the context where this function is called */
 	s = HAK_LIW_BITS - hak_get_pos_of_msb_set(y1) - 1;
 	for (i = ys; i > 1; )
 	{
@@ -2158,7 +2158,7 @@ static void divide_unsigned_array3 (hak_t* hak, const hak_liw_t* x, hak_oow_t xs
 			ci = (dw >> HAK_LIW_BITS) - (di >> HAK_LIW_BITS);
 			qq[i] = (hak_liw_t)di;
 		}
-		HAK_ASSERT (hak, i == j);
+		HAK_ASSERT(hak, i == j);
 		di = qq[i] - ci;
 		qq[i] = di;
 
@@ -2172,8 +2172,8 @@ static void divide_unsigned_array3 (hak_t* hak, const hak_liw_t* x, hak_oow_t xs
 				qq[i] = (hak_liw_t)di;
 			}
 
-			HAK_ASSERT (hak, i == j);
-			/*HAK_ASSERT (hak, ci == 1);*/
+			HAK_ASSERT(hak, i == j);
+			/*HAK_ASSERT(hak, ci == 1);*/
 			qq[i] += ci;
 
 		#if defined(SHARED_QQ)
@@ -2220,7 +2220,7 @@ static hak_oop_t add_unsigned_integers (hak_t* hak, hak_oop_t x, hak_oop_t y)
 
 	if (zs >= HAK_OBJ_SIZE_MAX)
 	{
-		hak_seterrnum (hak, HAK_EOOMEM); /* TOOD: is it a soft failure or hard failure? */
+		hak_seterrnum(hak, HAK_EOOMEM); /* TOOD: is it a soft failure or hard failure? */
 		return HAK_NULL;
 	}
 	zs++;
@@ -2244,7 +2244,7 @@ static hak_oop_t subtract_unsigned_integers (hak_t* hak, hak_oop_t x, hak_oop_t 
 {
 	hak_oop_t z;
 
-	HAK_ASSERT (hak, !is_less_unsigned(x, y));
+	HAK_ASSERT(hak, !is_less_unsigned(x, y));
 
 	hak_pushvolat(hak, &x);
 	hak_pushvolat(hak, &y);
@@ -2252,7 +2252,7 @@ static hak_oop_t subtract_unsigned_integers (hak_t* hak, hak_oop_t x, hak_oop_t 
 	hak_popvolats(hak, 2);
 	if (HAK_UNLIKELY(!z)) return HAK_NULL;
 
-	subtract_unsigned_array (hak,
+	subtract_unsigned_array(hak,
 		((hak_oop_liword_t)x)->slot, HAK_OBJ_GET_SIZE(x),
 		((hak_oop_liword_t)y)->slot, HAK_OBJ_GET_SIZE(y),
 		((hak_oop_liword_t)z)->slot);
@@ -2269,7 +2269,7 @@ static hak_oop_t multiply_unsigned_integers (hak_t* hak, hak_oop_t x, hak_oop_t 
 
 	if (ys > HAK_OBJ_SIZE_MAX - xs)
 	{
-		hak_seterrnum (hak, HAK_EOOMEM); /* TOOD: is it a soft failure or hard failure? */
+		hak_seterrnum(hak, HAK_EOOMEM); /* TOOD: is it a soft failure or hard failure? */
 		return HAK_NULL;
 	}
 
@@ -2331,7 +2331,7 @@ static hak_oop_t divide_unsigned_integers (hak_t* hak, hak_oop_t x, hak_oop_t y,
 	}
 
 	/* the caller must ensure that x >= y */
-	HAK_ASSERT (hak, !is_less_unsigned(x, y));
+	HAK_ASSERT(hak, !is_less_unsigned(x, y));
 	hak_pushvolat(hak, &x);
 	hak_pushvolat(hak, &y);
 
@@ -2367,7 +2367,7 @@ static hak_oop_t divide_unsigned_integers (hak_t* hak, hak_oop_t x, hak_oop_t y,
 #elif defined(USE_DIVIDE_UNSIGNED_ARRAY2)
 	divide_unsigned_array2 (hak,
 #else
-	divide_unsigned_array (hak,
+	divide_unsigned_array(hak,
 #endif
 		((hak_oop_liword_t)x)->slot, HAK_OBJ_GET_SIZE(x),
 		((hak_oop_liword_t)y)->slot, HAK_OBJ_GET_SIZE(y),
@@ -2390,8 +2390,8 @@ hak_oop_t hak_addints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 
 		/* no integer overflow/underflow must occur as the possible integer
 		 * range is narrowed by the tag bits used */
-		HAK_ASSERT (hak, HAK_SMOOI_MAX + HAK_SMOOI_MAX < HAK_TYPE_MAX(hak_ooi_t));
-		HAK_ASSERT (hak, HAK_SMOOI_MIN + HAK_SMOOI_MIN > HAK_TYPE_MIN(hak_ooi_t));
+		HAK_ASSERT(hak, HAK_SMOOI_MAX + HAK_SMOOI_MAX < HAK_TYPE_MAX(hak_ooi_t));
+		HAK_ASSERT(hak, HAK_SMOOI_MIN + HAK_SMOOI_MIN > HAK_TYPE_MIN(hak_ooi_t));
 
 		i = HAK_OOP_TO_SMOOI(x) + HAK_OOP_TO_SMOOI(y);
 		if (HAK_IN_SMOOI_RANGE(i)) return HAK_SMOOI_TO_OOP(i);
@@ -2479,7 +2479,7 @@ hak_oop_t hak_addints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 	return normalize_bigint(hak, z);
 
 oops_einval:
-	hak_seterrbfmt (hak, HAK_EINVAL, "not integer - %O, %O", x, y);
+	hak_seterrbfmt(hak, HAK_EINVAL, "not integer - %O, %O", x, y);
 	return HAK_NULL;
 }
 
@@ -2493,8 +2493,8 @@ hak_oop_t hak_subints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 
 		/* no integer overflow/underflow must occur as the possible integer
 		 * range is narrowed by the tag bits used */
-		HAK_ASSERT (hak, HAK_SMOOI_MAX - HAK_SMOOI_MIN < HAK_TYPE_MAX(hak_ooi_t));
-		HAK_ASSERT (hak, HAK_SMOOI_MIN - HAK_SMOOI_MAX > HAK_TYPE_MIN(hak_ooi_t));
+		HAK_ASSERT(hak, HAK_SMOOI_MAX - HAK_SMOOI_MIN < HAK_TYPE_MAX(hak_ooi_t));
+		HAK_ASSERT(hak, HAK_SMOOI_MIN - HAK_SMOOI_MAX > HAK_TYPE_MIN(hak_ooi_t));
 
 		i = HAK_OOP_TO_SMOOI(x) - HAK_OOP_TO_SMOOI(y);
 		if (HAK_IN_SMOOI_RANGE(i)) return HAK_SMOOI_TO_OOP(i);
@@ -2567,10 +2567,10 @@ hak_oop_t hak_subints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 		}
 	}
 
-	return normalize_bigint (hak, z);
+	return normalize_bigint(hak, z);
 
 oops_einval:
-	hak_seterrbfmt (hak, HAK_EINVAL, "not integer - %O, %O", x, y);
+	hak_seterrbfmt(hak, HAK_EINVAL, "not integer - %O, %O", x, y);
 	return HAK_NULL;
 }
 
@@ -2655,7 +2655,7 @@ hak_oop_t hak_mulints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 			}
 
 			hak_pushvolat(hak, &x);
-			y = make_bigint_with_ooi (hak, v);
+			y = make_bigint_with_ooi(hak, v);
 			hak_popvolat(hak);
 			if (HAK_UNLIKELY(!y)) return HAK_NULL;
 		}
@@ -2675,7 +2675,7 @@ hak_oop_t hak_mulints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 	return normalize_bigint(hak, z);
 
 oops_einval:
-	hak_seterrbfmt (hak, HAK_EINVAL, "not integer - %O, %O", x, y);
+	hak_seterrbfmt(hak, HAK_EINVAL, "not integer - %O, %O", x, y);
 	return HAK_NULL;
 }
 
@@ -2693,7 +2693,7 @@ hak_oop_t hak_divints (hak_t* hak, hak_oop_t x, hak_oop_t y, int modulo, hak_oop
 
 		if (yv == 0)
 		{
-			hak_seterrnum (hak, HAK_EDIVBY0);
+			hak_seterrnum(hak, HAK_EDIVBY0);
 			return HAK_NULL;
 		}
 
@@ -2722,7 +2722,7 @@ hak_oop_t hak_divints (hak_t* hak, hak_oop_t x, hak_oop_t y, int modulo, hak_oop
 		 */
 
 		q = xv / yv;
-		HAK_ASSERT (hak, HAK_IN_SMOOI_RANGE(q));
+		HAK_ASSERT(hak, HAK_IN_SMOOI_RANGE(q));
 
 		ri = xv - yv * q; /* xv % yv; */
 		if (ri)
@@ -2747,7 +2747,7 @@ hak_oop_t hak_divints (hak_t* hak, hak_oop_t x, hak_oop_t y, int modulo, hak_oop
 					 * change the sign of r to the divisor's sign */
 					ri += yv;
 					--q;
-					HAK_ASSERT (hak, ri && !IS_SIGN_DIFF(yv, ri));
+					HAK_ASSERT(hak, ri && !IS_SIGN_DIFF(yv, ri));
 				}
 			}
 			else
@@ -2771,14 +2771,14 @@ hak_oop_t hak_divints (hak_t* hak, hak_oop_t x, hak_oop_t y, int modulo, hak_oop
 					 * architecture. */
 					ri -= yv;
 					++q;
-					HAK_ASSERT (hak, xv && !IS_SIGN_DIFF(xv, ri));
+					HAK_ASSERT(hak, xv && !IS_SIGN_DIFF(xv, ri));
 				}
 			}
 		}
 
 		if (rem)
 		{
-			HAK_ASSERT (hak, HAK_IN_SMOOI_RANGE(ri));
+			HAK_ASSERT(hak, HAK_IN_SMOOI_RANGE(ri));
 			*rem = HAK_SMOOI_TO_OOP(ri);
 		}
 
@@ -2825,7 +2825,7 @@ hak_oop_t hak_divints (hak_t* hak, hak_oop_t x, hak_oop_t y, int modulo, hak_oop
 			switch (yv)
 			{
 				case 0:
-					hak_seterrnum (hak, HAK_EDIVBY0);
+					hak_seterrnum(hak, HAK_EDIVBY0);
 					return HAK_NULL;
 
 				case 1:
@@ -2871,7 +2871,7 @@ hak_oop_t hak_divints (hak_t* hak, hak_oop_t x, hak_oop_t y, int modulo, hak_oop
 					}
 					/*if (zw[zs - 1] == 0) zs--;*/
 
-					HAK_ASSERT (hak, carry <= HAK_SMOOI_MAX);
+					HAK_ASSERT(hak, carry <= HAK_SMOOI_MAX);
 					ri = carry;
 					if (x_neg_sign) ri = -ri;
 
@@ -2990,7 +2990,7 @@ hak_oop_t hak_divints (hak_t* hak, hak_oop_t x, hak_oop_t y, int modulo, hak_oop
 	return z;
 
 oops_einval:
-	hak_seterrbfmt (hak, HAK_EINVAL, "not integer - %O, %O", x, y);
+	hak_seterrbfmt(hak, HAK_EINVAL, "not integer - %O, %O", x, y);
 	return HAK_NULL;
 }
 
@@ -3006,11 +3006,11 @@ hak_oop_t hak_negateint (hak_t* hak, hak_oop_t x)
 	else
 	{
 		if (!hak_isbigint(hak, x)) goto oops_einval;
-		return clone_bigint_negated (hak, x, HAK_OBJ_GET_SIZE(x));
+		return clone_bigint_negated(hak, x, HAK_OBJ_GET_SIZE(x));
 	}
 
 oops_einval:
-	hak_seterrbfmt (hak, HAK_EINVAL, "not integer - %O", x);
+	hak_seterrbfmt(hak, HAK_EINVAL, "not integer - %O", x);
 	return HAK_NULL;
 }
 
@@ -3103,7 +3103,7 @@ hak_oop_t hak_bitatint (hak_t* hak, hak_oop_t x, hak_oop_t y)
 	#if defined(HAK_LIMIT_OBJ_SIZE)
 		if (HAK_IS_NBIGINT(hak, y)) return HAK_SMOOI_TO_OOP(0);
 
-		HAK_ASSERT (hak, HAK_OBJ_SIZE_BITS_MAX <= HAK_TYPE_MAX(hak_oow_t));
+		HAK_ASSERT(hak, HAK_OBJ_SIZE_BITS_MAX <= HAK_TYPE_MAX(hak_oow_t));
 		if (HAK_IS_PBIGINT(hak, x))
 		{
 			return HAK_SMOOI_TO_OOP(0);
@@ -3118,7 +3118,7 @@ hak_oop_t hak_bitatint (hak_t* hak, hak_oop_t x, hak_oop_t y)
 		if (HAK_IS_NBIGINT(hak, y)) return HAK_SMOOI_TO_OOP(0);
 
 		sign = bigint_to_oow_noseterr(hak, y, &w);
-		HAK_ASSERT (hak, sign >= 0);
+		HAK_ASSERT(hak, sign >= 0);
 		if (sign >= 1)
 		{
 			wp = w / HAK_LIW_BITS;
@@ -3128,7 +3128,7 @@ hak_oop_t hak_bitatint (hak_t* hak, hak_oop_t x, hak_oop_t y)
 		{
 			hak_oop_t quo, rem;
 
-			HAK_ASSERT (hak, sign == 0);
+			HAK_ASSERT(hak, sign == 0);
 
 			hak_pushvolat(hak, &x);
 			quo = hak_divints(hak, y, HAK_SMOOI_TO_OOP(HAK_LIW_BITS), 0, &rem);
@@ -3136,7 +3136,7 @@ hak_oop_t hak_bitatint (hak_t* hak, hak_oop_t x, hak_oop_t y)
 			if (!quo) return HAK_NULL;
 
 			sign = integer_to_oow_noseterr(hak, quo, &wp);
-			HAK_ASSERT (hak, sign >= 0);
+			HAK_ASSERT(hak, sign >= 0);
 			if (sign == 0)
 			{
 				/* too large. set it to xs so that it gets out of
@@ -3144,9 +3144,9 @@ hak_oop_t hak_bitatint (hak_t* hak, hak_oop_t x, hak_oop_t y)
 				wp = xs;
 			}
 
-			HAK_ASSERT (hak, HAK_OOP_IS_SMOOI(rem));
+			HAK_ASSERT(hak, HAK_OOP_IS_SMOOI(rem));
 			bp = HAK_OOP_TO_SMOOI(rem);
-			HAK_ASSERT (hak, bp >= 0 && bp < HAK_LIW_BITS);
+			HAK_ASSERT(hak, bp >= 0 && bp < HAK_LIW_BITS);
 		}
 
 		if (HAK_IS_PBIGINT(hak, x))
@@ -3175,7 +3175,7 @@ hak_oop_t hak_bitatint (hak_t* hak, hak_oop_t x, hak_oop_t y)
 	}
 
 oops_einval:
-	hak_seterrbfmt (hak, HAK_EINVAL, "not integer - %O, %O", x, y);
+	hak_seterrbfmt(hak, HAK_EINVAL, "not integer - %O, %O", x, y);
 	return HAK_NULL;
 }
 
@@ -3190,7 +3190,7 @@ hak_oop_t hak_bitandints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 		v3 = v1 & v2;
 
 		if (HAK_IN_SMOOI_RANGE(v3)) return HAK_SMOOI_TO_OOP(v3);
-		return make_bigint_with_ooi (hak, v3);
+		return make_bigint_with_ooi(hak, v3);
 	}
 	else if (HAK_OOP_IS_SMOOI(x))
 	{
@@ -3218,7 +3218,7 @@ hak_oop_t hak_bitandints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 		if (v == 0) return HAK_SMOOI_TO_OOP(0);
 
 		hak_pushvolat(hak, &x);
-		y = make_bigint_with_ooi (hak, v);
+		y = make_bigint_with_ooi(hak, v);
 		hak_popvolat(hak);
 		if (HAK_UNLIKELY(!x)) return HAK_NULL;
 
@@ -3296,7 +3296,7 @@ hak_oop_t hak_bitandints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 
 				((hak_oop_liword_t)z)->slot[i] = (hak_liw_t)w[0] & (hak_liw_t)w[1];
 			}
-			HAK_ASSERT (hak, carry[1] == 0);
+			HAK_ASSERT(hak, carry[1] == 0);
 
 			/* 2's complement on the remaining part of x. the lacking part
 			 * in y is treated as if they are all 1s. */
@@ -3306,7 +3306,7 @@ hak_oop_t hak_bitandints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 				carry[0] = w[0] >> HAK_LIW_BITS;
 				((hak_oop_liword_t)z)->slot[i] = (hak_liw_t)w[0];
 			}
-			HAK_ASSERT (hak, carry[0] == 0);
+			HAK_ASSERT(hak, carry[0] == 0);
 
 			/* 2's complement on the final result */
 			((hak_oop_liword_t)z)->slot[zs] = ~(hak_liw_t)0;
@@ -3317,7 +3317,7 @@ hak_oop_t hak_bitandints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 				carry[0] = w[0] >> HAK_LIW_BITS;
 				((hak_oop_liword_t)z)->slot[i] = (hak_liw_t)w[0];
 			}
-			HAK_ASSERT (hak, carry[0] == 0);
+			HAK_ASSERT(hak, carry[0] == 0);
 
 			HAK_OBJ_SET_CLASS (z, (hak_oop_t)hak->c_large_negative_integer);
 		}
@@ -3351,7 +3351,7 @@ hak_oop_t hak_bitandints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 				carry = w >> HAK_LIW_BITS;
 				((hak_oop_liword_t)z)->slot[i] = ((hak_oop_liword_t)x)->slot[i] & (hak_liw_t)w;
 			}
-			HAK_ASSERT (hak, carry == 0);
+			HAK_ASSERT(hak, carry == 0);
 
 			/* handle the longer part in x than y
 			 *
@@ -3388,7 +3388,7 @@ hak_oop_t hak_bitandints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 	}
 
 oops_einval:
-	hak_seterrbfmt (hak, HAK_EINVAL, "not integer - %O, %O", x, y);
+	hak_seterrbfmt(hak, HAK_EINVAL, "not integer - %O, %O", x, y);
 	return HAK_NULL;
 }
 
@@ -3487,7 +3487,7 @@ hak_oop_t hak_bitorints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 		if (zalloc < zs)
 		{
 			/* overflow in zalloc calculation above */
-			hak_seterrnum (hak, HAK_EOOMEM); /* TODO: is it a soft failure or hard failure? */
+			hak_seterrnum(hak, HAK_EOOMEM); /* TODO: is it a soft failure or hard failure? */
 			return HAK_NULL;
 		}
 
@@ -3516,7 +3516,7 @@ hak_oop_t hak_bitorints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 
 				((hak_oop_liword_t)z)->slot[i] = (hak_liw_t)w[0] | (hak_liw_t)w[1];
 			}
-			HAK_ASSERT (hak, carry[1] == 0);
+			HAK_ASSERT(hak, carry[1] == 0);
 
 			/* do nothing about the extra part in x and the lacking part
 			 * in y for the reason shown in [NOTE] in the 'else if' block
@@ -3532,7 +3532,7 @@ hak_oop_t hak_bitorints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 				carry[0] = w[0] >> HAK_LIW_BITS;
 				((hak_oop_liword_t)z)->slot[i] = (hak_liw_t)w[0];
 			}
-			HAK_ASSERT (hak, carry[0] == 0);
+			HAK_ASSERT(hak, carry[0] == 0);
 
 			HAK_OBJ_SET_CLASS (z, (hak_oop_t)hak->c_large_negative_integer);
 		}
@@ -3556,7 +3556,7 @@ hak_oop_t hak_bitorints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 				((hak_oop_liword_t)z)->slot[i] = (hak_liw_t)w;
 			}
 
-			HAK_ASSERT (hak, carry == 0);
+			HAK_ASSERT(hak, carry == 0);
 			goto adjust_to_negative;
 		}
 		else if (negy)
@@ -3572,7 +3572,7 @@ hak_oop_t hak_bitorints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 				carry = w >> HAK_LIW_BITS;
 				((hak_oop_liword_t)z)->slot[i] = ((hak_oop_liword_t)x)->slot[i] | (hak_liw_t)w;
 			}
-			HAK_ASSERT (hak, carry == 0);
+			HAK_ASSERT(hak, carry == 0);
 
 			/* [NOTE]
 			 *  in theory, the lacking part in ys is all 1s when y is
@@ -3606,7 +3606,7 @@ hak_oop_t hak_bitorints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 	}
 
 oops_einval:
-	hak_seterrbfmt (hak, HAK_EINVAL, "not integer - %O, %O", x, y);
+	hak_seterrbfmt(hak, HAK_EINVAL, "not integer - %O, %O", x, y);
 	return HAK_NULL;
 }
 
@@ -3621,7 +3621,7 @@ hak_oop_t hak_bitxorints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 		v3 = v1 ^ v2;
 
 		if (HAK_IN_SMOOI_RANGE(v3)) return HAK_SMOOI_TO_OOP(v3);
-		return make_bigint_with_ooi (hak, v3);
+		return make_bigint_with_ooi(hak, v3);
 	}
 	else if (HAK_OOP_IS_SMOOI(x))
 	{
@@ -3633,7 +3633,7 @@ hak_oop_t hak_bitxorints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 		if (v == 0) return clone_bigint(hak, y, HAK_OBJ_GET_SIZE(y));
 
 		hak_pushvolat(hak, &y);
-		x = make_bigint_with_ooi (hak, v);
+		x = make_bigint_with_ooi(hak, v);
 		hak_popvolat(hak);
 		if (HAK_UNLIKELY(!x)) return HAK_NULL;
 
@@ -3649,7 +3649,7 @@ hak_oop_t hak_bitxorints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 		if (v == 0) return clone_bigint(hak, x, HAK_OBJ_GET_SIZE(x));
 
 		hak_pushvolat(hak, &x);
-		y = make_bigint_with_ooi (hak, v);
+		y = make_bigint_with_ooi(hak, v);
 		hak_popvolat(hak);
 		if (HAK_UNLIKELY(!x)) return HAK_NULL;
 
@@ -3705,7 +3705,7 @@ hak_oop_t hak_bitxorints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 		if (zalloc < zs)
 		{
 			/* overflow in zalloc calculation above */
-			hak_seterrnum (hak, HAK_EOOMEM); /* TODO: is it a soft failure or hard failure? */
+			hak_seterrnum(hak, HAK_EOOMEM); /* TODO: is it a soft failure or hard failure? */
 			return HAK_NULL;
 		}
 
@@ -3734,7 +3734,7 @@ hak_oop_t hak_bitxorints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 
 				((hak_oop_liword_t)z)->slot[i] = (hak_liw_t)w[0] ^ (hak_liw_t)w[1];
 			}
-			HAK_ASSERT (hak, carry[1] == 0);
+			HAK_ASSERT(hak, carry[1] == 0);
 
 			/* treat the lacking part in y as all 1s */
 			for (; i < xs; i++)
@@ -3743,7 +3743,7 @@ hak_oop_t hak_bitxorints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 				carry[0] = w[0] >> HAK_LIW_BITS;
 				((hak_oop_liword_t)z)->slot[i] = (hak_liw_t)w[0] ^ (~(hak_liw_t)0);
 			}
-			HAK_ASSERT (hak, carry[0] == 0);
+			HAK_ASSERT(hak, carry[0] == 0);
 		}
 		else if (negx)
 		{
@@ -3765,7 +3765,7 @@ hak_oop_t hak_bitxorints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 				carry = w >> HAK_LIW_BITS;
 				((hak_oop_liword_t)z)->slot[i] = (hak_liw_t)w;
 			}
-			HAK_ASSERT (hak, carry == 0);
+			HAK_ASSERT(hak, carry == 0);
 
 		adjust_to_negative:
 			/* 2's complement on the final result */
@@ -3777,7 +3777,7 @@ hak_oop_t hak_bitxorints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 				carry = w >> HAK_LIW_BITS;
 				((hak_oop_liword_t)z)->slot[i] = (hak_liw_t)w;
 			}
-			HAK_ASSERT (hak, carry == 0);
+			HAK_ASSERT(hak, carry == 0);
 
 			HAK_OBJ_SET_CLASS (z, (hak_oop_t)hak->c_large_negative_integer);
 		}
@@ -3794,7 +3794,7 @@ hak_oop_t hak_bitxorints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 				carry = w >> HAK_LIW_BITS;
 				((hak_oop_liword_t)z)->slot[i] = ((hak_oop_liword_t)x)->slot[i] ^ (hak_liw_t)w;
 			}
-			HAK_ASSERT (hak, carry == 0);
+			HAK_ASSERT(hak, carry == 0);
 
 			/* treat the lacking part in y as all 1s */
 			for (; i < xs; i++)
@@ -3823,7 +3823,7 @@ hak_oop_t hak_bitxorints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 	}
 
 oops_einval:
-	hak_seterrbfmt (hak, HAK_EINVAL, "not integer - %O, %O", x, y);
+	hak_seterrbfmt(hak, HAK_EINVAL, "not integer - %O, %O", x, y);
 	return HAK_NULL;
 }
 
@@ -3837,7 +3837,7 @@ hak_oop_t hak_bitinvint (hak_t* hak, hak_oop_t x)
 		v = ~v;
 
 		if (HAK_IN_SMOOI_RANGE(v)) return HAK_SMOOI_TO_OOP(v);
-		return make_bigint_with_ooi (hak, v);
+		return make_bigint_with_ooi(hak, v);
 	}
 	else
 	{
@@ -3864,7 +3864,7 @@ hak_oop_t hak_bitinvint (hak_t* hak, hak_oop_t x)
 		if (zalloc < zs)
 		{
 			/* overflow in zalloc calculation above */
-			hak_seterrnum (hak, HAK_EOOMEM); /* TODO: is it a soft failure or hard failure? */
+			hak_seterrnum(hak, HAK_EOOMEM); /* TODO: is it a soft failure or hard failure? */
 			return HAK_NULL;
 		}
 
@@ -3884,7 +3884,7 @@ hak_oop_t hak_bitinvint (hak_t* hak, hak_oop_t x)
 				carry = w >> HAK_LIW_BITS;
 				HAK_OBJ_SET_LIWORD_VAL (z, i, ~(hak_liw_t)w);
 			}
-			HAK_ASSERT (hak, carry == 0);
+			HAK_ASSERT(hak, carry == 0);
 		}
 		else
 		{
@@ -3904,7 +3904,7 @@ hak_oop_t hak_bitinvint (hak_t* hak, hak_oop_t x)
 				carry = w >> HAK_LIW_BITS;
 				HAK_OBJ_SET_LIWORD_VAL (z, i, (hak_liw_t)w);
 			}
-			HAK_ASSERT (hak, carry == 0);
+			HAK_ASSERT(hak, carry == 0);
 		#else
 			carry = 1;
 			for (i = 0; i < xs; i++)
@@ -3913,9 +3913,9 @@ hak_oop_t hak_bitinvint (hak_t* hak, hak_oop_t x)
 				carry = w >> HAK_LIW_BITS;
 				HAK_OBJ_SET_LIWORD_VAL (z, i, (hak_liw_t)w);
 			}
-			HAK_ASSERT (hak, i == zs);
+			HAK_ASSERT(hak, i == zs);
 			HAK_OBJ_SET_LIWORD_VAL (z, i, (hak_liw_t)carry);
-			HAK_ASSERT (hak, (carry >> HAK_LIW_BITS) == 0);
+			HAK_ASSERT(hak, (carry >> HAK_LIW_BITS) == 0);
 		#endif
 
 			HAK_OBJ_SET_CLASS (z, (hak_oop_t)hak->c_large_negative_integer);
@@ -3925,7 +3925,7 @@ hak_oop_t hak_bitinvint (hak_t* hak, hak_oop_t x)
 	}
 
 oops_einval:
-	hak_seterrbfmt (hak, HAK_EINVAL, "not integer - %O", x);
+	hak_seterrbfmt(hak, HAK_EINVAL, "not integer - %O", x);
 	return HAK_NULL;
 }
 
@@ -3936,7 +3936,7 @@ static HAK_INLINE hak_oop_t rshift_negative_bigint (hak_t* hak, hak_oop_t x, hak
 	hak_lidw_t carry;
 	hak_oow_t i, xs;
 
-	HAK_ASSERT (hak, HAK_IS_NBIGINT(hak, x));
+	HAK_ASSERT(hak, HAK_IS_NBIGINT(hak, x));
 	xs = HAK_OBJ_GET_SIZE(x);
 
 	hak_pushvolat(hak, &x);
@@ -3945,7 +3945,7 @@ static HAK_INLINE hak_oop_t rshift_negative_bigint (hak_t* hak, hak_oop_t x, hak
 	hak_popvolat(hak);
 	if (HAK_UNLIKELY(!z)) return HAK_NULL;
 
-	/* the following lines roughly for 'z = hak_bitinv (hak, x)' */
+	/* the following lines roughly for 'z = hak_bitinv(hak, x)' */
 	carry = 1;
 	for (i = 0; i < xs; i++)
 	{
@@ -3953,12 +3953,12 @@ static HAK_INLINE hak_oop_t rshift_negative_bigint (hak_t* hak, hak_oop_t x, hak
 		carry = w >> HAK_LIW_BITS;
 		HAK_OBJ_SET_LIWORD_VAL (z, i, ~(hak_liw_t)w);
 	}
-	HAK_ASSERT (hak, carry == 0);
+	HAK_ASSERT(hak, carry == 0);
 
 	/* shift to the right */
 	rshift_unsigned_array (((hak_oop_liword_t)z)->slot, xs, shift);
 
-	/* the following lines roughly for 'z = hak_bitinv (hak, z)' */
+	/* the following lines roughly for 'z = hak_bitinv(hak, z)' */
 #if 0
 	for (i = 0; i < xs; i++)
 	{
@@ -3973,7 +3973,7 @@ static HAK_INLINE hak_oop_t rshift_negative_bigint (hak_t* hak, hak_oop_t x, hak
 		carry = w >> HAK_LIW_BITS;
 		HAK_OBJ_SET_LIWORD_VAL (z, i, (hak_liw_t)w);
 	}
-	HAK_ASSERT (hak, carry == 0);
+	HAK_ASSERT(hak, carry == 0);
 #else
 	carry = 1;
 	for (i = 0; i < xs; i++)
@@ -3983,7 +3983,7 @@ static HAK_INLINE hak_oop_t rshift_negative_bigint (hak_t* hak, hak_oop_t x, hak
 		((hak_oop_liword_t)z)->slot[i] = (hak_liw_t)w;
 	}
 	HAK_OBJ_SET_LIWORD_VAL (z, i, (hak_liw_t)carry);
-	HAK_ASSERT (hak, (carry >> HAK_LIW_BITS) == 0);
+	HAK_ASSERT(hak, (carry >> HAK_LIW_BITS) == 0);
 #endif
 
 	return z; /* z is not normalized */
@@ -3999,8 +3999,8 @@ static HAK_INLINE hak_oop_t rshift_negative_bigint_and_normalize (hak_t* hak, ha
 	hak_oow_t shift;
 	int sign;
 
-	HAK_ASSERT (hak, HAK_IS_NBIGINT(hak, x));
-	HAK_ASSERT (hak, HAK_IS_NBIGINT(hak, y));
+	HAK_ASSERT(hak, HAK_IS_NBIGINT(hak, x));
+	HAK_ASSERT(hak, HAK_IS_NBIGINT(hak, y));
 
 	/* for convenience in subtraction below.
 	 * it could be HAK_TYPE_MAX(hak_oow_t)
@@ -4029,7 +4029,7 @@ static HAK_INLINE hak_oop_t rshift_negative_bigint_and_normalize (hak_t* hak, ha
 				/* no more shift */
 				return normalize_bigint(hak, z);
 			}
-			HAK_ASSERT (hak, sign <= -1);
+			HAK_ASSERT(hak, sign <= -1);
 		}
 
 		hak_pushvolat(hak, &y);
@@ -4043,7 +4043,7 @@ static HAK_INLINE hak_oop_t rshift_negative_bigint_and_normalize (hak_t* hak, ha
 			hak_ooi_t v;
 
 			v = HAK_OOP_TO_SMOOI(x);
-			HAK_ASSERT (hak, v < 0);
+			HAK_ASSERT(hak, v < 0);
 
 			/* normal right shift of a small negative integer */
 			if (shift >= HAK_OOI_BITS - 1)
@@ -4059,15 +4059,15 @@ static HAK_INLINE hak_oop_t rshift_negative_bigint_and_normalize (hak_t* hak, ha
 				if (HAK_IN_SMOOI_RANGE(v))
 					return HAK_SMOOI_TO_OOP(v);
 				else
-					return make_bigint_with_ooi (hak, v);
+					return make_bigint_with_ooi(hak, v);
 			}
 		}
 	}
 	while (1);
 
 	/* this part must not be reached */
-	HAK_ASSERT (hak, !"internal error - must not happen");
-	hak_seterrnum (hak, HAK_EINTERN);
+	HAK_ASSERT(hak, !"internal error - must not happen");
+	hak_seterrnum(hak, HAK_EINTERN);
 	return HAK_NULL;
 }
 
@@ -4077,8 +4077,8 @@ static HAK_INLINE hak_oop_t rshift_positive_bigint_and_normalize (hak_t* hak, ha
 	hak_oow_t zs, shift;
 	int sign;
 
-	HAK_ASSERT (hak, HAK_IS_PBIGINT(hak, x));
-	HAK_ASSERT (hak, HAK_IS_NBIGINT(hak, y));
+	HAK_ASSERT(hak, HAK_IS_PBIGINT(hak, x));
+	HAK_ASSERT(hak, HAK_IS_NBIGINT(hak, y));
 
 	zs = HAK_OBJ_GET_SIZE(x);
 
@@ -4113,7 +4113,7 @@ static HAK_INLINE hak_oop_t rshift_positive_bigint_and_normalize (hak_t* hak, ha
 		else
 		{
 			if (shift == 0) break;
-			HAK_ASSERT (hak, sign <= -1);
+			HAK_ASSERT(hak, sign <= -1);
 		}
 	}
 	while (1);
@@ -4127,7 +4127,7 @@ static HAK_INLINE hak_oop_t lshift_bigint_and_normalize (hak_t* hak, hak_oop_t x
 	hak_oow_t wshift, shift;
 	int sign;
 
-	HAK_ASSERT (hak, HAK_IS_PBIGINT(hak, y));
+	HAK_ASSERT(hak, HAK_IS_PBIGINT(hak, y));
 
 	/* this loop is very inefficient as shifting is repeated
 	 * with lshift_unsigned_array(). however, this part of the
@@ -4167,17 +4167,17 @@ static HAK_INLINE hak_oop_t lshift_bigint_and_normalize (hak_t* hak, hak_oop_t x
 		{
 			if (shift == 0)
 			{
-				HAK_ASSERT (hak, is_normalized_integer(hak, x));
+				HAK_ASSERT(hak, is_normalized_integer(hak, x));
 				return x;
 			}
-			HAK_ASSERT (hak, sign >= 1);
+			HAK_ASSERT(hak, sign >= 1);
 		}
 	}
 	while (1);
 
 	/* this part must not be reached */
-	HAK_ASSERT (hak, !"internal error - must not happen");
-	hak_seterrnum (hak, HAK_EINTERN);
+	HAK_ASSERT(hak, !"internal error - must not happen");
+	hak_seterrnum(hak, HAK_EINTERN);
 	return HAK_NULL;
 }
 
@@ -4254,7 +4254,7 @@ hak_oop_t hak_bitshiftint (hak_t* hak, hak_oop_t x, hak_oop_t y)
 				else v = v1 >> v2;
 			}
 			if (HAK_IN_SMOOI_RANGE(v)) return HAK_SMOOI_TO_OOP(v);
-			return make_bigint_with_ooi (hak, v);
+			return make_bigint_with_ooi(hak, v);
 		}
 	}
 	else
@@ -4333,7 +4333,7 @@ hak_oop_t hak_bitshiftint (hak_t* hak, hak_oop_t x, hak_oop_t y)
 					/* the maximum number of bit shifts are guaranteed to be
 					 * small enough to fit into the hak_oow_t type. so i can
 					 * easily assume that all bits are shifted out */
-					HAK_ASSERT (hak, HAK_OBJ_SIZE_BITS_MAX <= HAK_TYPE_MAX(hak_oow_t));
+					HAK_ASSERT(hak, HAK_OBJ_SIZE_BITS_MAX <= HAK_TYPE_MAX(hak_oow_t));
 					return (negx)? HAK_SMOOI_TO_OOP(-1): HAK_SMOOI_TO_OOP(0);
 				#else
 					if (negx)
@@ -4350,8 +4350,8 @@ hak_oop_t hak_bitshiftint (hak_t* hak, hak_oop_t x, hak_oop_t y)
 					 * small enough to fit into the hak_oow_t type. so i can
 					 * simply return a failure here becuase it's surely too
 					 * large after shifting */
-					HAK_ASSERT (hak, HAK_TYPE_MAX(hak_oow_t) >= HAK_OBJ_SIZE_BITS_MAX);
-					hak_seterrnum (hak, HAK_EOOMEM); /* is it a soft failure or a hard failure? is this error code proper? */
+					HAK_ASSERT(hak, HAK_TYPE_MAX(hak_oow_t) >= HAK_OBJ_SIZE_BITS_MAX);
+					hak_seterrnum(hak, HAK_EOOMEM); /* is it a soft failure or a hard failure? is this error code proper? */
 					return HAK_NULL;
 				#else
 					return lshift_bigint_and_normalize(hak, x, y);
@@ -4377,7 +4377,7 @@ hak_oop_t hak_bitshiftint (hak_t* hak, hak_oop_t x, hak_oop_t y)
 				/* right shift */
 			bigint_and_negative_oow:
 
-				HAK_ASSERT (hak, sign <= -1);
+				HAK_ASSERT(hak, sign <= -1);
 
 				if (negx)
 				{
@@ -4397,7 +4397,7 @@ hak_oop_t hak_bitshiftint (hak_t* hak, hak_oop_t x, hak_oop_t y)
 	}
 
 oops_einval:
-	hak_seterrbfmt (hak, HAK_EINVAL, "not integer - %O, %O", x, y);
+	hak_seterrbfmt(hak, HAK_EINVAL, "not integer - %O, %O", x, y);
 	return HAK_NULL;
 }
 
@@ -4429,7 +4429,7 @@ hak_oop_t hak_strtoint (hak_t* hak, const hak_ooch_t* str, hak_oow_t len, int ra
 		radix = -radix;
 	}
 
-	HAK_ASSERT (hak, radix >= 2 && radix <= 36);
+	HAK_ASSERT(hak, radix >= 2 && radix <= 36);
 
 	ptr = str;
 	end = str + len;
@@ -4509,7 +4509,7 @@ hak_oop_t hak_strtoint (hak_t* hak, const hak_ooch_t* str, hak_oow_t len, int ra
 			ptr--;
 		}
 
-		HAK_ASSERT (hak, w <= HAK_TYPE_MAX(hak_liw_t));
+		HAK_ASSERT(hak, w <= HAK_TYPE_MAX(hak_liw_t));
 		if (hwlen == 0 || w > 0) hwp[hwlen++] = w;
 	}
 	else
@@ -4535,7 +4535,7 @@ hak_oop_t hak_strtoint (hak_t* hak, const hak_ooch_t* str, hak_oow_t len, int ra
 			hwp = hw;
 		}
 
-		HAK_ASSERT (hak, ptr < end);
+		HAK_ASSERT(hak, ptr < end);
 		do
 		{
 			r1 = 0;
@@ -4581,25 +4581,25 @@ hak_oop_t hak_strtoint (hak_t* hak, const hak_ooch_t* str, hak_oow_t len, int ra
 		while (ptr < end);
 	}
 
-	HAK_ASSERT (hak, hwlen >= 1);
+	HAK_ASSERT(hak, hwlen >= 1);
 
 #if (HAK_LIW_BITS == HAK_OOW_BITS)
 	if (hwlen == 1)
 	{
 		w = hwp[0];
-		HAK_ASSERT (hak, -HAK_SMOOI_MAX == HAK_SMOOI_MIN);
+		HAK_ASSERT(hak, -HAK_SMOOI_MAX == HAK_SMOOI_MIN);
 		if (w <= HAK_SMOOI_MAX) return HAK_SMOOI_TO_OOP((hak_ooi_t)w * sign);
 	}
 #elif (HAK_LIW_BITS == HAK_OOHW_BITS)
 	if (hwlen == 1)
 	{
-		HAK_ASSERT (hak, hwp[0] <= HAK_SMOOI_MAX);
+		HAK_ASSERT(hak, hwp[0] <= HAK_SMOOI_MAX);
 		return HAK_SMOOI_TO_OOP((hak_ooi_t)hwp[0] * sign);
 	}
 	else if (hwlen == 2)
 	{
 		w = MAKE_WORD(hwp[0], hwp[1]);
-		HAK_ASSERT (hak, -HAK_SMOOI_MAX == HAK_SMOOI_MIN);
+		HAK_ASSERT(hak, -HAK_SMOOI_MAX == HAK_SMOOI_MIN);
 		if (w <= HAK_SMOOI_MAX) return HAK_SMOOI_TO_OOP((hak_ooi_t)w * sign);
 	}
 #else
@@ -4607,13 +4607,13 @@ hak_oop_t hak_strtoint (hak_t* hak, const hak_ooch_t* str, hak_oow_t len, int ra
 #endif
 
 	res = hak_instantiate(hak, (sign < 0? hak->c_large_negative_integer: hak->c_large_positive_integer), hwp, hwlen);
-	if (hwp && hw != hwp) hak_freemem (hak, hwp);
+	if (hwp && hw != hwp) hak_freemem(hak, hwp);
 
 	return res;
 
 oops_einval:
-	if (hwp && hw != hwp) hak_freemem (hak, hwp);
-	hak_seterrbfmt (hak, HAK_EINVAL, "unable to convert '%.*js' to integer", len, str);
+	if (hwp && hw != hwp) hak_freemem(hak, hwp);
+	hak_seterrbfmt(hak, HAK_EINVAL, "unable to convert '%.*js' to integer", len, str);
 	return HAK_NULL;
 }
 
@@ -4625,7 +4625,7 @@ static hak_oow_t oow_to_text (hak_t* hak, hak_oow_t w, int flagged_radix, hak_oo
 
 	radix = flagged_radix & HAK_INTTOSTR_RADIXMASK;
 	_digitc =  _digitc_array[!!(flagged_radix & HAK_INTTOSTR_LOWERCASE)];
-	HAK_ASSERT (hak, radix >= 2 && radix <= 36);
+	HAK_ASSERT(hak, radix >= 2 && radix <= 36);
 
 	ptr = buf;
 	do
@@ -4669,7 +4669,7 @@ hak_oop_t hak_eqints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 	}
 
 oops_einval:
-	hak_seterrbfmt (hak, HAK_EINVAL, "not integer - %O, %O", x, y);
+	hak_seterrbfmt(hak, HAK_EINVAL, "not integer - %O, %O", x, y);
 	return HAK_NULL;
 }
 
@@ -4690,7 +4690,7 @@ hak_oop_t hak_neints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 	}
 
 oops_einval:
-	hak_seterrbfmt (hak, HAK_EINVAL, "not integer - %O, %O", x, y);
+	hak_seterrbfmt(hak, HAK_EINVAL, "not integer - %O, %O", x, y);
 	return HAK_NULL;
 }
 
@@ -4717,7 +4717,7 @@ hak_oop_t hak_gtints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 	}
 
 oops_einval:
-	hak_seterrbfmt (hak, HAK_EINVAL, "not integer - %O, %O", x, y);
+	hak_seterrbfmt(hak, HAK_EINVAL, "not integer - %O, %O", x, y);
 	return HAK_NULL;
 }
 
@@ -4744,7 +4744,7 @@ hak_oop_t hak_geints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 	}
 
 oops_einval:
-	hak_seterrbfmt (hak, HAK_EINVAL, "not integer - %O, %O", x, y);
+	hak_seterrbfmt(hak, HAK_EINVAL, "not integer - %O, %O", x, y);
 	return HAK_NULL;
 }
 
@@ -4771,7 +4771,7 @@ hak_oop_t hak_ltints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 	}
 
 oops_einval:
-	hak_seterrbfmt (hak, HAK_EINVAL, "not integer - %O, %O", x, y);
+	hak_seterrbfmt(hak, HAK_EINVAL, "not integer - %O, %O", x, y);
 	return HAK_NULL;
 }
 
@@ -4798,7 +4798,7 @@ hak_oop_t hak_leints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 	}
 
 oops_einval:
-	hak_seterrbfmt (hak, HAK_EINVAL, "not integer - %O, %O", x, y);
+	hak_seterrbfmt(hak, HAK_EINVAL, "not integer - %O, %O", x, y);
 	return HAK_NULL;
 }
 
@@ -4810,7 +4810,7 @@ hak_oop_t hak_sqrtint (hak_t* hak, hak_oop_t x)
 
 	if (!hak_isint(hak, x))
 	{
-		hak_seterrbfmt (hak, HAK_EINVAL, "not integer - %O", x);
+		hak_seterrbfmt(hak, HAK_EINVAL, "not integer - %O", x);
 		return HAK_NULL;
 	}
 
@@ -4904,7 +4904,7 @@ hak_oop_t hak_absint (hak_t* hak, hak_oop_t x)
 	}
 	else
 	{
-		hak_seterrbfmt (hak, HAK_EINVAL, "not integer - %O", x);
+		hak_seterrbfmt(hak, HAK_EINVAL, "not integer - %O", x);
 		return HAK_NULL;
 	}
 
@@ -4919,7 +4919,7 @@ static HAK_INLINE hak_liw_t get_last_digit (hak_t* hak, hak_liw_t* x, hak_oow_t*
 	hak_oow_t i;
 	hak_lidw_t dw;
 
-	HAK_ASSERT (hak, oxs > 0);
+	HAK_ASSERT(hak, oxs > 0);
 
 	for (i = oxs; i > 0; )
 	{
@@ -4947,7 +4947,7 @@ hak_oop_t hak_inttostr (hak_t* hak, hak_oop_t num, int flagged_radix)
 
 	radix = flagged_radix & HAK_INTTOSTR_RADIXMASK;
 	_digitc =  _digitc_array[!!(flagged_radix & HAK_INTTOSTR_LOWERCASE)];
-	HAK_ASSERT (hak, radix >= 2 && radix <= 36);
+	HAK_ASSERT(hak, radix >= 2 && radix <= 36);
 
 	if (!hak_isint(hak,num)) goto oops_einval;
 	v = integer_to_oow_noseterr(hak, num, &w);
@@ -5015,7 +5015,7 @@ hak_oop_t hak_inttostr (hak_t* hak, hak_oop_t num, int flagged_radix)
 		t = hak->inttostr.t.ptr;
 	}
 
-	HAK_MEMCPY (t, ((hak_oop_liword_t)num)->slot, HAK_SIZEOF(*t) * as);
+	HAK_MEMCPY(t, ((hak_oop_liword_t)num)->slot, HAK_SIZEOF(*t) * as);
 
 	do
 	{
@@ -5037,6 +5037,6 @@ hak_oop_t hak_inttostr (hak_t* hak, hak_oop_t num, int flagged_radix)
 	return hak_makestring(hak, xbuf, xlen);
 
 oops_einval:
-	hak_seterrnum (hak, HAK_EINVAL);
+	hak_seterrnum(hak, HAK_EINVAL);
 	return HAK_NULL;
 }

@@ -57,14 +57,14 @@ static hak_oop_oop_t expand_bucket (hak_t* hak, hak_oop_oop_t oldbuc)
 			if (inc_max > 0) inc = inc_max;
 			else
 			{
-				hak_seterrnum (hak, HAK_EOOMEM);
+				hak_seterrnum(hak, HAK_EOOMEM);
 				return HAK_NULL;
 			}
 		}
 		newsz = oldsz + inc;
 	}
 
-	hak_pushvolat (hak, (hak_oop_t*)&oldbuc);
+	hak_pushvolat(hak, (hak_oop_t*)&oldbuc);
 	newbuc = (hak_oop_oop_t)hak_makearray(hak, newsz);
 	hak_popvolat (hak);
 	if (!newbuc) return HAK_NULL;
@@ -76,15 +76,15 @@ static hak_oop_oop_t expand_bucket (hak_t* hak, hak_oop_oop_t oldbuc)
 		{
 		#if defined(SYMBOL_ONLY_KEY)
 			hak_oop_char_t key;
-			HAK_ASSERT (hak, HAK_IS_CONS(hak,ass));
+			HAK_ASSERT(hak, HAK_IS_CONS(hak,ass));
 			key = (hak_oop_char_t)ass->car;
-			HAK_ASSERT (hak, HAK_IS_SYMBOL(hak,key));
+			HAK_ASSERT(hak, HAK_IS_SYMBOL(hak,key));
 			index = hak_hash_oochars(key->slot, HAK_OBJ_GET_SIZE(key)) % newsz;
 		#else
 			int n;
-			HAK_ASSERT (hak, HAK_IS_CONS(hak,ass));
+			HAK_ASSERT(hak, HAK_IS_CONS(hak,ass));
 			n = hak_hashobj(hak, ass->car, &index);
-			HAK_ASSERT (hak, n == 0); /* since it's expanding, the existing one in the bucket should always be hashable */
+			HAK_ASSERT(hak, n == 0); /* since it's expanding, the existing one in the bucket should always be hashable */
 			index %= newsz;
 		#endif
 			while (newbuc->slot[index] != hak->_nil) index = (index + 1) % newsz;
@@ -105,10 +105,10 @@ static hak_oop_cons_t find_or_upsert (hak_t* hak, hak_oop_dic_t dic, hak_oop_t k
 	/* the system dictionary is not a generic dictionary.
 	 * it accepts only a symbol as a key. */
 #if defined(SYMBOL_ONLY_KEY)
-	HAK_ASSERT (hak, HAK_IS_SYMBOL(hak,key));
+	HAK_ASSERT(hak, HAK_IS_SYMBOL(hak,key));
 #endif
-	HAK_ASSERT (hak, HAK_OOP_IS_SMOOI(dic->tally));
-	HAK_ASSERT (hak, HAK_IS_ARRAY(hak,dic->bucket));
+	HAK_ASSERT(hak, HAK_OOP_IS_SMOOI(dic->tally));
+	HAK_ASSERT(hak, HAK_IS_ARRAY(hak,dic->bucket));
 
 #if defined(SYMBOL_ONLY_KEY)
 	index = hak_hash_oochars(HAK_OBJ_GET_CHAR_SLOT(key), HAK_OBJ_GET_SIZE(key)) % HAK_OBJ_GET_SIZE(dic->bucket);
@@ -127,10 +127,10 @@ static hak_oop_cons_t find_or_upsert (hak_t* hak, hak_oop_dic_t dic, hak_oop_t k
 #endif
 
 		ass = (hak_oop_cons_t)dic->bucket->slot[index];
-		HAK_ASSERT (hak, HAK_IS_CONS(hak,ass));
+		HAK_ASSERT(hak, HAK_IS_CONS(hak,ass));
 
 #if defined(SYMBOL_ONLY_KEY)
-		HAK_ASSERT (hak, HAK_IS_SYMBOL(hak,ass->car));
+		HAK_ASSERT(hak, HAK_IS_SYMBOL(hak,ass->car));
 		if (HAK_OBJ_GET_SIZE(key) == HAK_OBJ_GET_SIZE(ass->car) &&
 		    hak_equal_oochars(HAK_OBJ_GET_CHAR_SLOT(key), HAK_OBJ_GET_CHAR_SLOT(ass->car), HAK_OBJ_GET_SIZE(key)))
 #else
@@ -146,8 +146,8 @@ static hak_oop_cons_t find_or_upsert (hak_t* hak, hak_oop_dic_t dic, hak_oop_t k
 				{
 					hak_oop_cons_t pair;
 					pair = (hak_oop_cons_t)ass->cdr; /* once found, this must be a pair of method pointers  */
-					HAK_ASSERT (hak, HAK_IS_CONS(hak, pair));
-					HAK_ASSERT (hak, HAK_IS_COMPILED_BLOCK(hak, value));
+					HAK_ASSERT(hak, HAK_IS_CONS(hak, pair));
+					HAK_ASSERT(hak, HAK_IS_COMPILED_BLOCK(hak, value));
 					if (is_method & 1) pair->car = value; /* class method */
 					if (is_method & 2) pair->cdr = value; /* instance method */
 					/* the class instantiation method goes to both cells.
@@ -166,24 +166,24 @@ static hak_oop_cons_t find_or_upsert (hak_t* hak, hak_oop_dic_t dic, hak_oop_t k
 	{
 		/* when value is HAK_NULL, perform no insertion.
 		 * the value of HAK_NULL indicates no insertion or update. */
-		hak_seterrbfmt (hak, HAK_ENOENT, "key not found - %O", key);
+		hak_seterrbfmt(hak, HAK_ENOENT, "key not found - %O", key);
 		return HAK_NULL;
 	}
 
 	/* the key is not found. insert it. */
-	HAK_ASSERT (hak, HAK_OOP_IS_SMOOI(dic->tally));
+	HAK_ASSERT(hak, HAK_OOP_IS_SMOOI(dic->tally));
 	tally = HAK_OOP_TO_SMOOI(dic->tally);
 	if (tally >= HAK_SMOOI_MAX)
 	{
 		/* this built-in dictionary is not allowed to hold more than
 		 * HAK_SMOOI_MAX items for efficiency sake */
-		hak_seterrnum (hak, HAK_EDFULL);
+		hak_seterrnum(hak, HAK_EDFULL);
 		return HAK_NULL;
 	}
 
-	hak_pushvolat (hak, (hak_oop_t*)&dic); tmp_count++;
-	hak_pushvolat (hak, (hak_oop_t*)&key); tmp_count++;
-	hak_pushvolat (hak, &value); tmp_count++;
+	hak_pushvolat(hak, (hak_oop_t*)&dic); tmp_count++;
+	hak_pushvolat(hak, (hak_oop_t*)&key); tmp_count++;
+	hak_pushvolat(hak, &value); tmp_count++;
 
 	/* no conversion to hak_oow_t is necessary for tally + 1.
 	 * the maximum value of tally is checked to be HAK_SMOOI_MAX - 1.
@@ -221,8 +221,8 @@ static hak_oop_cons_t find_or_upsert (hak_t* hak, hak_oop_dic_t dic, hak_oop_t k
 	{
 		/* create a new pair that holds a class method at the first cell and an instance method at the second cell */
 		hak_oop_t pair;
-		HAK_ASSERT (hak, HAK_IS_COMPILED_BLOCK(hak, value));
-		hak_pushvolat (hak, &key);
+		HAK_ASSERT(hak, HAK_IS_COMPILED_BLOCK(hak, value));
+		hak_pushvolat(hak, &key);
 		pair = hak_makecons(hak, (is_method & 1? value: hak->_nil), (is_method & 2? value: hak->_nil));
 		hak_popvolat (hak);
 		if (HAK_UNLIKELY(!pair)) goto oops;
@@ -236,15 +236,15 @@ static hak_oop_cons_t find_or_upsert (hak_t* hak, hak_oop_dic_t dic, hak_oop_t k
 
 	/* the current tally must be less than the maximum value. otherwise,
 	 * it overflows after increment below */
-	HAK_ASSERT (hak, tally < HAK_SMOOI_MAX);
+	HAK_ASSERT(hak, tally < HAK_SMOOI_MAX);
 	dic->tally = HAK_SMOOI_TO_OOP(tally + 1);
 	dic->bucket->slot[index] = (hak_oop_t)ass;
 
-	hak_popvolats (hak, tmp_count);
+	hak_popvolats(hak, tmp_count);
 	return ass;
 
 oops:
-	hak_popvolats (hak, tmp_count);
+	hak_popvolats(hak, tmp_count);
 	return HAK_NULL;
 }
 
@@ -256,14 +256,14 @@ static hak_oop_cons_t lookupdic_noseterr (hak_t* hak, hak_oop_dic_t dic, const h
 	hak_oow_t index;
 	hak_oop_cons_t ass;
 
-	HAK_ASSERT (hak, HAK_OOP_IS_SMOOI(dic->tally));
-	HAK_ASSERT (hak, HAK_IS_ARRAY(hak,dic->bucket));
+	HAK_ASSERT(hak, HAK_OOP_IS_SMOOI(dic->tally));
+	HAK_ASSERT(hak, HAK_IS_ARRAY(hak,dic->bucket));
 
 	index = hak_hash_oochars(name->ptr, name->len) % HAK_OBJ_GET_SIZE(dic->bucket);
 
 	while ((hak_oop_t)(ass = (hak_oop_cons_t)HAK_OBJ_GET_OOP_VAL(dic->bucket, index)) != hak->_nil)
 	{
-		HAK_ASSERT (hak, HAK_IS_CONS(hak,ass));
+		HAK_ASSERT(hak, HAK_IS_CONS(hak,ass));
 		if (HAK_IS_SYMBOL(hak, ass->car))
 		{
 			if (name->len == HAK_OBJ_GET_SIZE(ass->car) &&
@@ -308,7 +308,7 @@ hak_oop_cons_t hak_lookupdicforsymbol (hak_t* hak, hak_oop_dic_t dic, const hak_
 hak_oop_cons_t hak_putatsysdic (hak_t* hak, hak_oop_t key, hak_oop_t value)
 {
 #if defined(SYMBOL_ONLY_KEY)
-	HAK_ASSERT (hak, HAK_IS_SYMBOL(hak,key));
+	HAK_ASSERT(hak, HAK_IS_SYMBOL(hak,key));
 #endif
 	return find_or_upsert(hak, hak->sysdic, key, value, 0);
 }
@@ -316,7 +316,7 @@ hak_oop_cons_t hak_putatsysdic (hak_t* hak, hak_oop_t key, hak_oop_t value)
 hak_oop_cons_t hak_getatsysdic (hak_t* hak, hak_oop_t key)
 {
 #if defined(SYMBOL_ONLY_KEY)
-	HAK_ASSERT (hak, HAK_IS_SYMBOL(hak,key));
+	HAK_ASSERT(hak, HAK_IS_SYMBOL(hak,key));
 #endif
 	return find_or_upsert(hak, hak->sysdic, key, HAK_NULL, 0);
 }
@@ -334,7 +334,7 @@ hak_oop_cons_t hak_lookupsysdicforsymbol (hak_t* hak, const hak_oocs_t* name)
 int hak_zapatsysdic (hak_t* hak, hak_oop_t key)
 {
 #if defined(SYMBOL_ONLY_KEY)
-	HAK_ASSERT (hak, HAK_IS_SYMBOL(hak,key));
+	HAK_ASSERT(hak, HAK_IS_SYMBOL(hak,key));
 #endif
 	return hak_zapatdic(hak, hak->sysdic, key);
 }
@@ -342,7 +342,7 @@ int hak_zapatsysdic (hak_t* hak, hak_oop_t key)
 hak_oop_cons_t hak_putatdic (hak_t* hak, hak_oop_dic_t dic, hak_oop_t key, hak_oop_t value)
 {
 #if defined(SYMBOL_ONLY_KEY)
-	HAK_ASSERT (hak, HAK_IS_SYMBOL(hak,key));
+	HAK_ASSERT(hak, HAK_IS_SYMBOL(hak,key));
 #endif
 	return find_or_upsert(hak, dic, key, value, 0);
 }
@@ -350,7 +350,7 @@ hak_oop_cons_t hak_putatdic (hak_t* hak, hak_oop_dic_t dic, hak_oop_t key, hak_o
 hak_oop_cons_t hak_putatdic_method (hak_t* hak, hak_oop_dic_t dic, hak_oop_t key, hak_oop_t value, int mtype)
 {
 #if defined(SYMBOL_ONLY_KEY)
-	HAK_ASSERT (hak, HAK_IS_SYMBOL(hak,key));
+	HAK_ASSERT(hak, HAK_IS_SYMBOL(hak,key));
 #endif
 	return find_or_upsert(hak, dic, key, value, mtype);
 }
@@ -358,7 +358,7 @@ hak_oop_cons_t hak_putatdic_method (hak_t* hak, hak_oop_dic_t dic, hak_oop_t key
 hak_oop_cons_t hak_getatdic (hak_t* hak, hak_oop_dic_t dic, hak_oop_t key)
 {
 #if defined(SYMBOL_ONLY_KEY)
-	HAK_ASSERT (hak, HAK_IS_SYMBOL(hak,key));
+	HAK_ASSERT(hak, HAK_IS_SYMBOL(hak,key));
 #endif
 	return find_or_upsert(hak, dic, key, HAK_NULL, 0);
 }
@@ -375,10 +375,10 @@ int hak_zapatdic (hak_t* hak, hak_oop_dic_t dic, hak_oop_t key)
 	/* the system dictionary is not a generic dictionary.
 	 * it accepts only a symbol as a key. */
 #if defined(SYMBOL_ONLY_KEY)
-	HAK_ASSERT (hak, HAK_IS_SYMBOL(hak,key));
+	HAK_ASSERT(hak, HAK_IS_SYMBOL(hak,key));
 #endif
-	HAK_ASSERT (hak, HAK_OOP_IS_SMOOI(dic->tally));
-	HAK_ASSERT (hak, HAK_IS_ARRAY(hak,dic->bucket));
+	HAK_ASSERT(hak, HAK_OOP_IS_SMOOI(dic->tally));
+	HAK_ASSERT(hak, HAK_IS_ARRAY(hak,dic->bucket));
 
 #if defined(SYMBOL_ONLY_KEY)
 	index = hak_hash_oochars(HAK_OBJ_GET_CHAR_SLOT(key), HAK_OBJ_GET_SIZE(key)) % bs;
@@ -392,8 +392,8 @@ int hak_zapatdic (hak_t* hak, hak_oop_dic_t dic, hak_oop_t key)
 	{
 	#if defined(SYMBOL_ONLY_KEY)
 		ass = (hak_oop_cons_t)dic->bucket->slot[index];
-		HAK_ASSERT (hak, HAK_IS_CONS(hak,ass));
-		HAK_ASSERT (hak, HAK_IS_SYMBOL(hak,ass->car));
+		HAK_ASSERT(hak, HAK_IS_CONS(hak,ass));
+		HAK_ASSERT(hak, HAK_IS_SYMBOL(hak,ass->car));
 
 		if (HAK_OBJ_GET_SIZE(key) == HAK_OBJ_GET_SIZE(ass->car) &&
 		    hak_equal_oochars(HAK_OBJ_GET_CHAR_SLOT(key), HAK_OBJ_GET_CHAR_SLOT(ass->car), HAK_OBJ_GET_SIZE(key)))
@@ -405,7 +405,7 @@ int hak_zapatdic (hak_t* hak, hak_oop_dic_t dic, hak_oop_t key)
 		int n;
 
 		ass = (hak_oop_cons_t)dic->bucket->slot[index];
-		HAK_ASSERT (hak, HAK_IS_CONS(hak,ass));
+		HAK_ASSERT(hak, HAK_IS_CONS(hak,ass));
 
 		n = hak_equalobjs(hak, (hak_oop_t)key, ass->car);
 		if (n <= -1) return -1;
@@ -415,7 +415,7 @@ int hak_zapatdic (hak_t* hak, hak_oop_dic_t dic, hak_oop_t key)
 		index = (index + 1) % bs;
 	}
 
-	hak_seterrnum (hak, HAK_ENOENT);
+	hak_seterrnum(hak, HAK_ENOENT);
 	return -1;
 
 found:
@@ -466,7 +466,7 @@ hak_oop_t hak_makedic (hak_t* hak, hak_oow_t inisize)
 
 		obj->tally = HAK_SMOOI_TO_OOP(0);
 
-		hak_pushvolat (hak, (hak_oop_t*)&obj);
+		hak_pushvolat(hak, (hak_oop_t*)&obj);
 		bucket = (hak_oop_oop_t)hak_makearray(hak, inisize);
 		hak_popvolat (hak);
 
@@ -482,7 +482,7 @@ hak_oop_t hak_makedic (hak_t* hak, hak_oow_t inisize)
 	if (HAK_UNLIKELY(!v))
 	{
 		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-		hak_seterrbfmt (hak, HAK_ERRNUM(hak),
+		hak_seterrbfmt(hak, HAK_ERRNUM(hak),
 			"unable to instantiate %O - %js", hak->c_dictionary->name, orgmsg);
 	}
 	else
@@ -491,7 +491,7 @@ hak_oop_t hak_makedic (hak_t* hak, hak_oow_t inisize)
 
 		v->tally = HAK_SMOOI_TO_OOP(0);
 
-		hak_pushvolat (hak, (hak_oop_t*)&v);
+		hak_pushvolat(hak, (hak_oop_t*)&v);
 		bucket = (hak_oop_oop_t)hak_makearray(hak, inisize);
 		hak_popvolat (hak);
 
@@ -513,7 +513,7 @@ int hak_walkdic (hak_t* hak, hak_oop_dic_t dic, hak_dic_walker_t walker, void* c
 {
 	hak_oow_t i;
 
-	hak_pushvolat (hak, (hak_oop_t*)&dic);
+	hak_pushvolat(hak, (hak_oop_t*)&dic);
 
 	for (i = 0; i < HAK_OBJ_GET_SIZE(dic->bucket); i++)
 	{

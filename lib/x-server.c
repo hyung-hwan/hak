@@ -300,7 +300,7 @@ static HAK_INLINE int open_read_stream (hak_t* hak, hak_io_cciarg_t* arg)
 		if (fn[0] == '\0' && server->cfg.script_include_path[0] != '\0')
 		{
 		#if defined(HAK_OOCH_IS_UCH)
-			hak_convootobcstr (hak, server->cfg.script_include_path, &ucslen, bb->fn, &parlen);
+			hak_convootobcstr(hak, server->cfg.script_include_path, &ucslen, bb->fn, &parlen);
 		#else
 			hak_copy_bchars (bb->fn, server->cfg.script_include_path, parlen);
 		#endif
@@ -312,7 +312,7 @@ static HAK_INLINE int open_read_stream (hak_t* hak, hak_io_cciarg_t* arg)
 		}
 
 	#if defined(HAK_OOCH_IS_UCH)
-		hak_convootobcstr (hak, arg->name, &ucslen, &bb->fn[parlen], &bcslen);
+		hak_convootobcstr(hak, arg->name, &ucslen, &bb->fn[parlen], &bcslen);
 	#else
 		hak_copy_bcstr (&bb->fn[parlen], bcslen + 1, arg->name);
 	#endif
@@ -320,7 +320,7 @@ static HAK_INLINE int open_read_stream (hak_t* hak, hak_io_cciarg_t* arg)
 
 		if (bb->fd <= -1)
 		{
-			hak_seterrnum (hak, HAK_EIOERR);
+			hak_seterrnum(hak, HAK_EIOERR);
 			goto oops;
 		}
 	}
@@ -338,7 +338,7 @@ static HAK_INLINE int open_read_stream (hak_t* hak, hak_io_cciarg_t* arg)
 		bb->fd = xtn->worker->sck;
 	}
 
-	HAK_ASSERT (hak, bb->fd >= 0);
+	HAK_ASSERT(hak, bb->fd >= 0);
 
 	arg->handle = bb;
 	return 0;
@@ -347,7 +347,7 @@ oops:
 	if (bb)
 	{
 		if (bb->fd >= 0 && bb->fd != xtn->worker->sck) close (bb->fd);
-		hak_freemem (hak, bb);
+		hak_freemem(hak, bb);
 	}
 	return -1;
 }
@@ -358,10 +358,10 @@ static HAK_INLINE int close_read_stream (hak_t* hak, hak_io_cciarg_t* arg)
 	bb_t* bb;
 
 	bb = (bb_t*)arg->handle;
-	HAK_ASSERT (hak, bb != HAK_NULL && bb->fd >= 0);
+	HAK_ASSERT(hak, bb != HAK_NULL && bb->fd >= 0);
 
 	if (bb->fd != xtn->worker->sck) close (bb->fd);
-	hak_freemem (hak, bb);
+	hak_freemem(hak, bb);
 
 	arg->handle = HAK_NULL;
 	return 0;
@@ -377,7 +377,7 @@ static HAK_INLINE int read_read_stream (hak_t* hak, hak_io_cciarg_t* arg)
 	int y;
 
 	bb = (bb_t*)arg->handle;
-	HAK_ASSERT (hak, bb != HAK_NULL && bb->fd >= 0);
+	HAK_ASSERT(hak, bb != HAK_NULL && bb->fd >= 0);
 
 	worker = xtn->worker;
 
@@ -387,7 +387,7 @@ start_over:
 		/* includee */
 		if (HAK_UNLIKELY(worker->server->stopreq))
 		{
-			hak_seterrbfmt (hak, HAK_EGENERIC, "stop requested");
+			hak_seterrbfmt(hak, HAK_EGENERIC, "stop requested");
 			return -1;
 		}
 
@@ -395,7 +395,7 @@ start_over:
 		if (x <= -1)
 		{
 			if (errno == EINTR) goto start_over;
-			hak_seterrwithsyserr (hak, 0, errno);
+			hak_seterrwithsyserr(hak, 0, errno);
 			return -1;
 		}
 
@@ -406,7 +406,7 @@ start_over:
 		/* main stream */
 		hak_server_t* server;
 
-		HAK_ASSERT (hak, bb->fd == worker->sck);
+		HAK_ASSERT(hak, bb->fd == worker->sck);
 		server = worker->server;
 
 		while (1)
@@ -417,7 +417,7 @@ start_over:
 
 			if (HAK_UNLIKELY(server->stopreq))
 			{
-				hak_seterrbfmt (hak, HAK_EGENERIC, "stop requested");
+				hak_seterrbfmt(hak, HAK_EGENERIC, "stop requested");
 				return -1;
 			}
 
@@ -430,7 +430,7 @@ start_over:
 			if (n <= -1)
 			{
 				if (errno == EINTR) goto start_over;
-				hak_seterrwithsyserr (hak, 0, errno);
+				hak_seterrwithsyserr(hak, 0, errno);
 				return -1;
 			}
 			else if (n >= 1) break;
@@ -438,7 +438,7 @@ start_over:
 			/* timed out - no activity on the pfd */
 			if (tmout > 0)
 			{
-				hak_seterrbfmt (hak, HAK_EGENERIC, "no activity on the worker socket %d", bb->fd);
+				hak_seterrbfmt(hak, HAK_EGENERIC, "no activity on the worker socket %d", bb->fd);
 				return -1;
 			}
 		}
@@ -447,7 +447,7 @@ start_over:
 		if (x <= -1)
 		{
 			if (errno == EINTR) goto start_over;
-			hak_seterrwithsyserr (hak, 0, errno);
+			hak_seterrwithsyserr(hak, 0, errno);
 			return -1;
 		}
 
@@ -472,7 +472,7 @@ start_over:
 #endif
 
 	remlen = bb->len - bcslen;
-	if (remlen > 0) HAK_MEMMOVE (bb->buf, &bb->buf[bcslen], remlen);
+	if (remlen > 0) HAK_MEMMOVE(bb->buf, &bb->buf[bcslen], remlen);
 	bb->len = remlen;
 
 	arg->xlen = ucslen;
@@ -494,7 +494,7 @@ static int read_handler (hak_t* hak, hak_io_cmd_t cmd, void* arg)
 			return read_read_stream(hak, (hak_io_cciarg_t*)arg);
 
 		default:
-			hak_seterrnum (hak, HAK_EINTERN);
+			hak_seterrnum(hak, HAK_EINTERN);
 			return -1;
 	}
 }
@@ -525,7 +525,7 @@ static int scan_handler (hak_t* hak, hak_io_cmd_t cmd, void* arg)
 #endif
 
 		default:
-			hak_seterrnum (hak, HAK_EINTERN);
+			hak_seterrnum(hak, HAK_EINTERN);
 			return -1;
 	}
 }
@@ -551,7 +551,7 @@ printf ("IO CLOSE SOMETHING...........\n");
 			if (send_chars(xtn->worker->proto, HAK_XPKT_STDOUT, outarg->ptr, outarg->len) <= -1)
 			{
 				/* TODO: change error code and message. propagage the errormessage from proto */
-				hak_seterrbfmt (hak, HAK_EIOERR, "failed to write message via proto");
+				hak_seterrbfmt(hak, HAK_EIOERR, "failed to write message via proto");
 
 				/* writing failure on the socket is a critical failure.
 				 * execution must get aborted */
@@ -571,7 +571,7 @@ printf ("IO CLOSE SOMETHING...........\n");
 			if (send_bytes(xtn->worker->proto, HAK_XPKT_STDOUT, outarg->ptr, outarg->len) <= -1)
 			{
 				/* TODO: change error code and message. propagage the errormessage from proto */
-				hak_seterrbfmt (hak, HAK_EIOERR, "failed to write message via proto");
+				hak_seterrbfmt(hak, HAK_EIOERR, "failed to write message via proto");
 
 				/* writing failure on the socket is a critical failure.
 				 * execution must get aborted */
@@ -587,7 +587,7 @@ printf ("IO CLOSE SOMETHING...........\n");
 			return 0;
 
 		default:
-			hak_seterrnum (hak, HAK_EINTERN);
+			hak_seterrnum(hak, HAK_EINTERN);
 			return -1;
 	}
 }
@@ -711,7 +711,7 @@ static void exec_runtime_updater (hak_tmr_t* tmr, hak_tmr_index_t old_index, hak
 
 	proto = (hak_xproto_t*)evt->ctx;
 	worker = proto_to_worker(proto);
-	HAK_ASSERT (worker->hak, worker->exec_runtime_event_index == old_index);
+	HAK_ASSERT(worker->hak, worker->exec_runtime_event_index == old_index);
 
 	/* the event is being removed by hak_tmr_fire() or by hak_tmr_delete()
 	 * if new_index is HAK_TMR_INVALID_INDEX. it's being updated if not. */
@@ -730,9 +730,9 @@ static int insert_exec_timer (hak_xproto_t* proto, const hak_ntime_t* tmout)
 	worker = proto_to_worker(proto);
 	server = worker->server;
 
-	HAK_ASSERT (worker->hak, worker->exec_runtime_event_index == HAK_TMR_INVALID_INDEX);
+	HAK_ASSERT(worker->hak, worker->exec_runtime_event_index == HAK_TMR_INVALID_INDEX);
 
-	HAK_MEMSET (&event, 0, HAK_SIZEOF(event));
+	HAK_MEMSET(&event, 0, HAK_SIZEOF(event));
 	event.ctx = proto;
 	worker->hak->vmprim.vm_gettime (worker->hak, &event.when);
 	HAK_ADD_NTIME (&event.when, &event.when, tmout);
@@ -770,7 +770,7 @@ static void delete_exec_timer (hak_xproto_t* proto)
 		 * if it has been fired, the index it shall be HAK_TMR_INVALID_INDEX already */
 
 		hak_tmr_delete (server->tmr, worker->exec_runtime_event_index);
-		HAK_ASSERT (worker->hak, worker->exec_runtime_event_index == HAK_TMR_INVALID_INDEX);
+		HAK_ASSERT(worker->hak, worker->exec_runtime_event_index == HAK_TMR_INVALID_INDEX);
 		/*worker->exec_runtime_event_index = HAK_TMR_INVALID_INDEX;	*/
 	}
 	pthread_mutex_unlock (&server->tmr_mutex);
@@ -839,7 +839,7 @@ static void reformat_synerr (hak_t* hak)
 	const hak_ooch_t* orgmsg;
 	static hak_ooch_t nullstr[] = { '\0' };
 
-	hak_getsynerr (hak, &synerr);
+	hak_getsynerr(hak, &synerr);
 
 	orgmsg = hak_backuperrmsg(hak);
 	hak_seterrbfmt (
@@ -947,7 +947,7 @@ printf ("FEEDING [%.*s]\n", (int)len, data);
 			hak_oop_t retv;
 printf ("EXECUTING hak_executing......\n");
 
-			hak_decode (hak, hak_getcode(hak), 0, hak_getbclen(hak));
+			hak_decode(hak, hak_getcode(hak), 0, hak_getbclen(hak));
 			if (hak_feedpending(hak))
 			{
 				/* TODO: change the message */
@@ -1143,7 +1143,7 @@ hak_server_t* hak_server_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_server_p
 	xtn = (server_hak_xtn_t*)hak_getxtn(hak);
 	xtn->server = server;
 
-	HAK_MEMSET (server, 0, HAK_SIZEOF(*server) + xtnsize);
+	HAK_MEMSET(server, 0, HAK_SIZEOF(*server) + xtnsize);
 	server->_instsize = HAK_SIZEOF(*server);
 	server->_mmgr = mmgr;
 	server->_cmgr = hak_get_utf8_cmgr();
@@ -1194,9 +1194,9 @@ oops:
 
 void hak_server_close (hak_server_t* server)
 {
-	HAK_ASSERT (server->dummy_hak, server->listener.head == HAK_NULL);
-	HAK_ASSERT (server->dummy_hak, server->listener.count == 0);
-	HAK_ASSERT (server->dummy_hak, server->listener.ep_fd == -1);
+	HAK_ASSERT(server->dummy_hak, server->listener.head == HAK_NULL);
+	HAK_ASSERT(server->dummy_hak, server->listener.count == 0);
+	HAK_ASSERT(server->dummy_hak, server->listener.ep_fd == -1);
 
 	if (server->wid_map.ptr)
 	{
@@ -1224,8 +1224,8 @@ static HAK_INLINE int prepare_to_acquire_wid (hak_server_t* server)
 	hak_oow_t i, j;
 	hak_server_wid_map_data_t* tmp;
 
-	HAK_ASSERT (server->dummy_hak, server->wid_map.free_first == HAK_SERVER_WID_INVALID);
-	HAK_ASSERT (server->dummy_hak, server->wid_map.free_last == HAK_SERVER_WID_INVALID);
+	HAK_ASSERT(server->dummy_hak, server->wid_map.free_first == HAK_SERVER_WID_INVALID);
+	HAK_ASSERT(server->dummy_hak, server->wid_map.free_last == HAK_SERVER_WID_INVALID);
 
 	new_capa = HAK_ALIGN_POW2(server->wid_map.capa + 1, HAK_SERVER_WID_MAP_ALIGN);
 	if (new_capa > HAK_SERVER_WID_MAX)
@@ -1277,13 +1277,13 @@ static HAK_INLINE void release_wid (hak_server_t* server, hak_server_worker_t* w
 	hak_oow_t wid;
 
 	wid = worker->wid;
-	HAK_ASSERT (server->dummy_hak, wid < server->wid_map.capa && wid != HAK_SERVER_WID_INVALID);
+	HAK_ASSERT(server->dummy_hak, wid < server->wid_map.capa && wid != HAK_SERVER_WID_INVALID);
 
 	server->wid_map.ptr[wid].used = 0;
 	server->wid_map.ptr[wid].u.next = HAK_SERVER_WID_INVALID;
 	if (server->wid_map.free_last == HAK_SERVER_WID_INVALID)
 	{
-		HAK_ASSERT (server->dummy_hak, server->wid_map.free_first <= HAK_SERVER_WID_INVALID);
+		HAK_ASSERT(server->dummy_hak, server->wid_map.free_first <= HAK_SERVER_WID_INVALID);
 		server->wid_map.free_first = wid;
 	}
 	else
@@ -1301,7 +1301,7 @@ static hak_server_worker_t* alloc_worker (hak_server_t* server, int cli_sck, con
 	worker = (hak_server_worker_t*)hak_server_allocmem(server, HAK_SIZEOF(*worker));
 	if (!worker) return HAK_NULL;
 
-	HAK_MEMSET (worker, 0, HAK_SIZEOF(*worker));
+	HAK_MEMSET(worker, 0, HAK_SIZEOF(*worker));
 	worker->state = HAK_SERVER_WORKER_STATE_ZOMBIE;
 	worker->opstate = HAK_SERVER_WORKER_OPSTATE_IDLE;
 	worker->sck = cli_sck;
@@ -1359,7 +1359,7 @@ static void free_worker (hak_server_worker_t* worker)
 
 static void add_worker_to_server (hak_server_t* server, hak_server_worker_state_t wstate, hak_server_worker_t* worker)
 {
-	HAK_ASSERT (server->dummy_hak, worker->server == server);
+	HAK_ASSERT(server->dummy_hak, worker->server == server);
 
 	if (server->worker_list[wstate].tail)
 	{
@@ -1384,7 +1384,7 @@ static void zap_worker_in_server (hak_server_t* server, hak_server_worker_t* wor
 {
 	hak_server_worker_state_t wstate;
 
-	HAK_ASSERT (server->dummy_hak, worker->server == server);
+	HAK_ASSERT(server->dummy_hak, worker->server == server);
 
 	wstate = worker->state;
 	if (worker->prev_worker) worker->prev_worker->next_worker = worker->next_worker;
@@ -1392,7 +1392,7 @@ static void zap_worker_in_server (hak_server_t* server, hak_server_worker_t* wor
 	if (worker->next_worker) worker->next_worker->prev_worker = worker->prev_worker;
 	else server->worker_list[wstate].tail = worker->prev_worker;
 
-	HAK_ASSERT (server->dummy_hak, server->worker_list[wstate].count > 0);
+	HAK_ASSERT(server->dummy_hak, server->worker_list[wstate].count > 0);
 	server->worker_list[wstate].count--;
 	worker->state = HAK_SERVER_WORKER_STATE_ZOMBIE;
 	worker->prev_worker = HAK_NULL;
@@ -1409,12 +1409,12 @@ static int worker_step (hak_server_worker_t* worker)
 	ssize_t x;
 	int n;
 
-	//HAK_ASSERT (hak, proto->rcv.len < proto->rcv.len_needed);
+	//HAK_ASSERT(hak, proto->rcv.len < proto->rcv.len_needed);
 
 	if (HAK_UNLIKELY(hak_xproto_geteof(proto)))
 	{
 // TODO: may not be an error if writable needs to be checked...
-		hak_seterrbfmt (hak, HAK_EGENERIC, "connection closed");
+		hak_seterrbfmt(hak, HAK_EGENERIC, "connection closed");
 		return -1;
 	}
 
@@ -1432,7 +1432,7 @@ static int worker_step (hak_server_worker_t* worker)
 		if (n <= -1)
 		{
 			if (errno == EINTR) return 0;
-			hak_seterrwithsyserr (hak, 0, errno);
+			hak_seterrwithsyserr(hak, 0, errno);
 			return -1;
 		}
 		else if (n == 0)
@@ -1441,7 +1441,7 @@ static int worker_step (hak_server_worker_t* worker)
 			if (tmout > 0)
 			{
 				/* timeout explicity set. no activity for that duration. considered idle */
-				hak_seterrbfmt (hak, HAK_EGENERIC, "no activity on the worker socket %d", worker->sck);
+				hak_seterrbfmt(hak, HAK_EGENERIC, "no activity on the worker socket %d", worker->sck);
 				return -1;
 			}
 
@@ -1450,7 +1450,7 @@ static int worker_step (hak_server_worker_t* worker)
 
 		if (pfd.revents & POLLERR)
 		{
-			hak_seterrbfmt (hak, HAK_EGENERIC, "error condition detected on workder socket %d", worker->sck);
+			hak_seterrbfmt(hak, HAK_EGENERIC, "error condition detected on workder socket %d", worker->sck);
 			return -1;
 		}
 
@@ -1468,7 +1468,7 @@ static int worker_step (hak_server_worker_t* worker)
 			if (x <= -1)
 			{
 				if (errno == EINTR) goto carry_on; /* didn't read read */
-				hak_seterrwithsyserr (hak, 0, errno);
+				hak_seterrwithsyserr(hak, 0, errno);
 				return -1;
 			}
 
@@ -1513,25 +1513,25 @@ static int init_worker_hak (hak_server_worker_t* worker)
 	xtn = (worker_hak_xtn_t*)hak_getxtn(hak);
 	xtn->worker = worker;
 
-	hak_setoption (hak, HAK_MOD_INCTX, &server->cfg.module_inctx);
-	hak_setoption (hak, HAK_LOG_MASK, &server->cfg.logmask);
-	hak_setcmgr (hak, hak_server_getcmgr(server));
+	hak_setoption(hak, HAK_MOD_INCTX, &server->cfg.module_inctx);
+	hak_setoption(hak, HAK_LOG_MASK, &server->cfg.logmask);
+	hak_setcmgr(hak, hak_server_getcmgr(server));
 
-	hak_getoption (hak, HAK_TRAIT, &trait);
+	hak_getoption(hak, HAK_TRAIT, &trait);
 #if defined(HAK_BUILD_DEBUG)
 	if (server->cfg.trait & HAK_SERVER_TRAIT_DEBUG_GC) trait |= HAK_TRAIT_DEBUG_GC;
 	if (server->cfg.trait & HAK_SERVER_TRAIT_DEBUG_BIGINT) trait |= HAK_TRAIT_DEBUG_BIGINT;
 #endif
 	trait |= HAK_TRAIT_LANG_ENABLE_EOL;
-	hak_setoption (hak, HAK_TRAIT, &trait);
+	hak_setoption(hak, HAK_TRAIT, &trait);
 
-	HAK_MEMSET (&hakcb, 0, HAK_SIZEOF(hakcb));
+	HAK_MEMSET(&hakcb, 0, HAK_SIZEOF(hakcb));
 	/*hakcb.fini = fini_hak;
 	hakcb.gc = gc_hak;*/
 	hakcb.vm_startup =  vm_startup;
 	hakcb.vm_cleanup = vm_cleanup;
 	hakcb.vm_checkbc = vm_checkbc;
-	hak_regcb (hak, &hakcb);
+	hak_regcb(hak, &hakcb);
 
 	if (hak_ignite(hak, server->cfg.actor_heap_size) <= -1) goto oops;
 	if (hak_addbuiltinprims(hak) <= -1) goto oops;
@@ -1567,7 +1567,7 @@ static int init_worker_proto (hak_server_worker_t* worker)
 	proto_xtn_t* xtn;
 	hak_xproto_cb_t cb;
 
-	HAK_MEMSET (&cb, 0, HAK_SIZEOF(cb));
+	HAK_MEMSET(&cb, 0, HAK_SIZEOF(cb));
 	cb.on_packet = server_on_packet;
 
 	proto = hak_xproto_open(hak_server_getmmgr(worker->server), &cb, HAK_SIZEOF(*xtn));
@@ -1704,13 +1704,13 @@ static void set_err_with_syserr (hak_server_t* server, int syserr_type, int syse
 		errnum = hak->vmprim.syserrstrb(hak, syserr_type, syserr_code, hak->errmsg.tmpbuf.bch, HAK_COUNTOF(hak->errmsg.tmpbuf.bch));
 
 		va_start (ap, bfmt);
-		hak_seterrbfmtv (hak, errnum, bfmt, ap);
+		hak_seterrbfmtv(hak, errnum, bfmt, ap);
 		va_end (ap);
 
 	#if defined(HAK_OOCH_IS_UCH)
 		hak->errmsg.len += hak_copy_ucstr(&hak->errmsg.buf[hak->errmsg.len], HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len, u_dash);
 		tmplen2 = HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len;
-		hak_convbtoucstr (hak, hak->errmsg.tmpbuf.bch, &tmplen, &hak->errmsg.buf[hak->errmsg.len], &tmplen2);
+		hak_convbtoucstr(hak, hak->errmsg.tmpbuf.bch, &tmplen, &hak->errmsg.buf[hak->errmsg.len], &tmplen2);
 		hak->errmsg.len += tmplen2; /* ignore conversion errors */
 	#else
 		hak->errmsg.len += hak_copy_bcstr(&hak->errmsg.buf[hak->errmsg.len], HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len, b_dash);
@@ -1720,12 +1720,12 @@ static void set_err_with_syserr (hak_server_t* server, int syserr_type, int syse
 	}
 	else
 	{
-		HAK_ASSERT (hak, hak->vmprim.syserrstru != HAK_NULL);
+		HAK_ASSERT(hak, hak->vmprim.syserrstru != HAK_NULL);
 
 		errnum = hak->vmprim.syserrstru(hak, syserr_type, syserr_code, hak->errmsg.tmpbuf.uch, HAK_COUNTOF(hak->errmsg.tmpbuf.uch));
 
 		va_start (ap, bfmt);
-		hak_seterrbfmtv (hak, errnum, bfmt, ap);
+		hak_seterrbfmtv(hak, errnum, bfmt, ap);
 		va_end (ap);
 
 	#if defined(HAK_OOCH_IS_UCH)
@@ -1734,7 +1734,7 @@ static void set_err_with_syserr (hak_server_t* server, int syserr_type, int syse
 	#else
 		hak->errmsg.len += hak_copy_bcstr(&hak->errmsg.buf[hak->errmsg.len], HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len, b_dash);
 		tmplen2 = HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len;
-		hak_convutobcstr (hak, hak->errmsg.tmpbuf.uch, &tmplen, &hak->errmsg.buf[hak->errmsg.len], &tmplen2);
+		hak_convutobcstr(hak, hak->errmsg.tmpbuf.uch, &tmplen, &hak->errmsg.buf[hak->errmsg.len], &tmplen2);
 		hak->errmsg.len += tmplen2; /* ignore conversion errors */
 	#endif
 	}
@@ -1767,7 +1767,7 @@ static void free_all_listeners (hak_server_t* server)
 	}
 
 #if defined(USE_EPOLL)
-	HAK_ASSERT (server->dummy_hak, server->listener.ep_fd >= 0);
+	HAK_ASSERT(server->dummy_hak, server->listener.ep_fd >= 0);
 	close (server->listener.ep_fd);
 	server->listener.ep_fd = -1;
 #endif
@@ -1790,7 +1790,7 @@ static int setup_listeners (hak_server_t* server, const hak_bch_t* addrs)
 
 	hak_sys_set_cloexec(ep_fd, 1);
 
-	HAK_MEMSET (&ev, 0, HAK_SIZEOF(ev));
+	HAK_MEMSET(&ev, 0, HAK_SIZEOF(ev));
 	ev.events = EPOLLIN | EPOLLHUP | EPOLLERR;
 	ev.data.fd = server->mux_pipe[0];
 	if (epoll_ctl(ep_fd, EPOLL_CTL_ADD, server->mux_pipe[0], &ev) <= -1)
@@ -1855,7 +1855,7 @@ static int setup_listeners (hak_server_t* server, const hak_bch_t* addrs)
 
 
 #if defined(USE_EPOLL)
-		HAK_MEMSET (&ev, 0, HAK_SIZEOF(ev));
+		HAK_MEMSET(&ev, 0, HAK_SIZEOF(ev));
 		ev.events = EPOLLIN | EPOLLHUP | EPOLLERR;
 		ev.data.fd = srv_fd;
 		if (epoll_ctl(ep_fd, EPOLL_CTL_ADD, srv_fd, &ev) <= -1)
@@ -1874,7 +1874,7 @@ static int setup_listeners (hak_server_t* server, const hak_bch_t* addrs)
 			goto next_segment;
 		}
 
-		HAK_MEMSET (listener, 0, HAK_SIZEOF(*listener));
+		HAK_MEMSET(listener, 0, HAK_SIZEOF(*listener));
 		listener->sck = srv_fd;
 		listener->sckaddr = srv_addr;
 		listener->next_listener = server->listener.head;
@@ -2196,7 +2196,7 @@ void hak_server_seterrbfmt (hak_server_t* server, hak_errnum_t errnum, const hak
 	hak_seterrbfmtv (server->dummy_hak, errnum, fmt, ap);
 	va_end (ap);
 
-	HAK_ASSERT (server->dummy_hak, HAK_COUNTOF(server->errmsg.buf) == HAK_COUNTOF(server->dummy_hak->errmsg.buf));
+	HAK_ASSERT(server->dummy_hak, HAK_COUNTOF(server->errmsg.buf) == HAK_COUNTOF(server->dummy_hak->errmsg.buf));
 	server->errnum = errnum;
 	hak_copy_oochars (server->errmsg.buf, server->dummy_hak->errmsg.buf, HAK_COUNTOF(server->errmsg.buf));
 	server->errmsg.len = server->dummy_hak->errmsg.len;
@@ -2210,7 +2210,7 @@ void hak_server_seterrufmt (hak_server_t* server, hak_errnum_t errnum, const hak
 	hak_seterrufmtv (server->dummy_hak, errnum, fmt, ap);
 	va_end (ap);
 
-	HAK_ASSERT (server->dummy_hak, HAK_COUNTOF(server->errmsg.buf) == HAK_COUNTOF(server->dummy_hak->errmsg.buf));
+	HAK_ASSERT(server->dummy_hak, HAK_COUNTOF(server->errmsg.buf) == HAK_COUNTOF(server->dummy_hak->errmsg.buf));
 	server->errnum = errnum;
 	server->errnum = errnum;
 	hak_copy_oochars (server->errmsg.buf, server->dummy_hak->errmsg.buf, HAK_COUNTOF(server->errmsg.buf));
@@ -2232,7 +2232,7 @@ void* hak_server_callocmem (hak_server_t* server, hak_oow_t size)
 
 	ptr = HAK_MMGR_ALLOC(server->_mmgr, size);
 	if (!ptr) hak_server_seterrnum (server, HAK_ESYSMEM);
-	else HAK_MEMSET (ptr, 0, size);
+	else HAK_MEMSET(ptr, 0, size);
 	return ptr;
 }
 

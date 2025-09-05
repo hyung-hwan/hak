@@ -208,7 +208,7 @@ hak_cnode_t* hak_makecnodeshell (hak_t* hak, int flags, const hak_loc_t* loc, ha
 
 void hak_freesinglecnode (hak_t* hak, hak_cnode_t* c)
 {
-	hak_freemem (hak, c);
+	hak_freemem(hak, c);
 }
 
 void hak_freecnode (hak_t* hak, hak_cnode_t* c)
@@ -223,9 +223,9 @@ redo:
 			tmp1 = c->u.cons.car;
 			tmp2 = c->u.cons.cdr;
 
-			HAK_ASSERT (hak, tmp1 != HAK_NULL);
-			hak_freemem (hak, c);
-			hak_freecnode (hak, tmp1); /* TODO: remove recursion? */
+			HAK_ASSERT(hak, tmp1 != HAK_NULL);
+			hak_freemem(hak, c);
+			hak_freecnode(hak, tmp1); /* TODO: remove recursion? */
 			if (tmp2)
 			{
 				c = tmp2;
@@ -240,7 +240,7 @@ redo:
 			hak_cnode_t* tmp;
 
 			tmp = c->u.shell.obj;
-			hak_freemem (hak, c);
+			hak_freemem(hak, c);
 			if (tmp)
 			{
 				c = tmp;
@@ -251,7 +251,7 @@ redo:
 		}
 
 		default:
-			hak_freemem (hak, c);
+			hak_freemem(hak, c);
 			break;
 	}
 }
@@ -261,7 +261,7 @@ hak_oow_t hak_countcnodecons (hak_t* hak, hak_cnode_t* cons)
 	/* this function ignores the last cdr */
 	hak_oow_t count = 1;
 
-	HAK_ASSERT (hak, HAK_CNODE_IS_CONS(cons));
+	HAK_ASSERT(hak, HAK_CNODE_IS_CONS(cons));
 	do
 	{
 		cons = HAK_CNODE_CONS_CDR(cons);

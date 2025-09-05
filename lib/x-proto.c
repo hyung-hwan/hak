@@ -69,7 +69,7 @@ hak_xproto_t* hak_xproto_open (hak_mmgr_t* mmgr, hak_xproto_cb_t* cb, hak_oow_t 
 	proto = (hak_xproto_t*)HAK_MMGR_ALLOC(mmgr, HAK_SIZEOF(*proto) + xtnsize);
 	if (HAK_UNLIKELY(!proto)) return HAK_NULL;
 
-	HAK_MEMSET (proto, 0, HAK_SIZEOF(*proto));
+	HAK_MEMSET(proto, 0, HAK_SIZEOF(*proto));
 	proto->_instsize = HAK_SIZEOF(*proto);
 	proto->_mmgr = mmgr;
 	proto->_cb = *cb;
@@ -133,7 +133,7 @@ int hak_xproto_process (hak_xproto_t* proto)
 			proto->rcv.hdr.len = (hak_uint16_t)hdr->len  | ((hak_uint16_t)(hdr->type >> 4) << 8);
 
 			/* consume the header */
-			HAK_MEMMOVE (proto->rcv.buf, &proto->rcv.buf[HAK_XPKT_HDR_LEN], proto->rcv.len - HAK_XPKT_HDR_LEN);
+			HAK_MEMMOVE(proto->rcv.buf, &proto->rcv.buf[HAK_XPKT_HDR_LEN], proto->rcv.len - HAK_XPKT_HDR_LEN);
 			proto->rcv.len -= HAK_XPKT_HDR_LEN;
 
 			/* switch to the payload mode */
@@ -162,7 +162,7 @@ int hak_xproto_process (hak_xproto_t* proto)
 			if (proto->rcv.hdr.len > 0)
 			{
 /* TODO: minimize the use of HAK_MEMOVE... use the buffer */
-				HAK_MEMMOVE (proto->rcv.buf, &proto->rcv.buf[proto->rcv.hdr.len], proto->rcv.len - proto->rcv.hdr.len);
+				HAK_MEMMOVE(proto->rcv.buf, &proto->rcv.buf[proto->rcv.hdr.len], proto->rcv.len - proto->rcv.hdr.len);
 				proto->rcv.len -= proto->rcv.hdr.len;
 			}
 			proto->rcv.state = HAK_XPROTO_RCV_HDR;
@@ -175,7 +175,7 @@ int hak_xproto_process (hak_xproto_t* proto)
 
 		default:
 /*
-			hak_seterrbfmt (hak, HAK_EINTERN, "invalid request state %d", (int)proto->rcv.state);
+			hak_seterrbfmt(hak, HAK_EINTERN, "invalid request state %d", (int)proto->rcv.state);
 */
 /* TODO: call back */
 			goto fail_with_errmsg;

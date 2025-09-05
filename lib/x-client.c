@@ -189,7 +189,7 @@ hak_client_t* hak_client_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_client_p
 	xtn = (client_hak_xtn_t*)hak_getxtn(hak);
 	xtn->client = client;
 
-	HAK_MEMSET (client, 0, HAK_SIZEOF(*client) + xtnsize);
+	HAK_MEMSET(client, 0, HAK_SIZEOF(*client) + xtnsize);
 	client->_instsize = HAK_SIZEOF(*client);
 	client->_mmgr = mmgr;
 	client->_cmgr = hak_get_utf8_cmgr();
@@ -365,7 +365,7 @@ void hak_client_seterrbfmt (hak_client_t* client, hak_errnum_t errnum, const hak
 	hak_seterrbfmtv (client->dummy_hak, errnum, fmt, ap);
 	va_end (ap);
 
-	HAK_ASSERT (client->dummy_hak, HAK_COUNTOF(client->errmsg.buf) == HAK_COUNTOF(client->dummy_hak->errmsg.buf));
+	HAK_ASSERT(client->dummy_hak, HAK_COUNTOF(client->errmsg.buf) == HAK_COUNTOF(client->dummy_hak->errmsg.buf));
 	client->errnum = errnum;
 	hak_copy_oochars (client->errmsg.buf, client->dummy_hak->errmsg.buf, HAK_COUNTOF(client->errmsg.buf));
 	client->errmsg.len = client->dummy_hak->errmsg.len;
@@ -379,7 +379,7 @@ void hak_client_seterrufmt (hak_client_t* client, hak_errnum_t errnum, const hak
 	hak_seterrufmtv (client->dummy_hak, errnum, fmt, ap);
 	va_end (ap);
 
-	HAK_ASSERT (client->dummy_hak, HAK_COUNTOF(client->errmsg.buf) == HAK_COUNTOF(client->dummy_hak->errmsg.buf));
+	HAK_ASSERT(client->dummy_hak, HAK_COUNTOF(client->errmsg.buf) == HAK_COUNTOF(client->dummy_hak->errmsg.buf));
 	client->errnum = errnum;
 	hak_copy_oochars (client->errmsg.buf, client->dummy_hak->errmsg.buf, HAK_COUNTOF(client->errmsg.buf));
 	client->errmsg.len = client->dummy_hak->errmsg.len;
@@ -420,7 +420,7 @@ void* hak_client_callocmem (hak_client_t* client, hak_oow_t size)
 
 	ptr = HAK_MMGR_ALLOC(client->_mmgr, size);
 	if (!ptr) hak_client_seterrnum (client, HAK_ESYSMEM);
-	else HAK_MEMSET (ptr, 0, size);
+	else HAK_MEMSET(ptr, 0, size);
 	return ptr;
 }
 
@@ -486,7 +486,7 @@ static int client_connect_to_server (hak_client_t* client, const char* ipaddr)
 		struct sockaddr_in anyaddr;
 		int opt = 1;
 		setsockopt(sck, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt));
-		HAK_MEMSET (&anyaddr, 0, HAK_SIZEOF(anyaddr));
+		HAK_MEMSET(&anyaddr, 0, HAK_SIZEOF(anyaddr));
 		anyaddr.sin_family = sckfam;
 		if (bind(sck, (struct sockaddr *)&anyaddr, scklen) <= -1)
 		{
@@ -500,7 +500,7 @@ static int client_connect_to_server (hak_client_t* client, const char* ipaddr)
 		struct sockaddr_in6 anyaddr;
 		int opt = 1;
 		setsockopt(sck, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt));
-		HAK_MEMSET (&anyaddr, 0, HAK_SIZEOF(anyaddr));
+		HAK_MEMSET(&anyaddr, 0, HAK_SIZEOF(anyaddr));
 		anyaddr.sin6_family = sckfam;
 		if (bind(sck, (struct sockaddr *)&anyaddr, scklen) <= -1)
 		{
@@ -522,7 +522,7 @@ static int client_connect_to_server (hak_client_t* client, const char* ipaddr)
 
 	hak_sys_set_nonblock(sck, 1); /* make it nonblocking after connection has been established */
 
-	HAK_MEMSET (&proto, 0, HAK_SIZEOF(proto_cb));
+	HAK_MEMSET(&proto, 0, HAK_SIZEOF(proto_cb));
 	proto_cb.on_packet = proto_on_packet;
 
 	proto = hak_xproto_open(hak_client_getmmgr(client), &proto_cb, HAK_SIZEOF(*proto_xtn));
@@ -575,7 +575,7 @@ static int client_add_to_local_pw2r (hak_client_t* client, const hak_uint8_t* pt
 		client->local.pw2r.ptr = tmp;
 	}
 
-	HAK_MEMCPY (&client->local.pw2r.ptr[client->local.pw2r.len], ptr, len);
+	HAK_MEMCPY(&client->local.pw2r.ptr[client->local.pw2r.len], ptr, len);
 	client->local.pw2r.len += len;
 	return 0;
 }
@@ -679,7 +679,7 @@ hak_client_logbfmt(client, HAK_LOG_STDERR, "send error - %hs\n", strerror(errno)
 		{
 			if (errno == EINTR) goto carry_on; /* didn't read read */
 hak_client_logbfmt(client, HAK_LOG_STDERR, "recv error from remote - %hs", strerror(errno));
-			/*hak_seterrwithsyserr (hak, 0, errno); */
+			/*hak_seterrwithsyserr(hak, 0, errno); */
 			/* TODO: error info set... */
 			goto reqstop;
 		}
@@ -786,7 +786,7 @@ hak_client_logbfmt(client, HAK_LOG_STDERR, "staritg client loop... ...\n");
 			break;
 		}
 
-		HAK_MEMSET (pfd, 0, HAK_SIZEOF(pfd));
+		HAK_MEMSET(pfd, 0, HAK_SIZEOF(pfd));
 		nfds = 0;
 
 		/* always monitor the control channel */

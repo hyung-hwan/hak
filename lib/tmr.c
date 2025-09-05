@@ -43,7 +43,7 @@ hak_tmr_t* hak_tmr_open (hak_t* hak, hak_oow_t xtnsize, hak_oow_t capa)
 			hak_freemem (tmr->hak, tmr);
 			return HAK_NULL;
 		}
-		else HAK_MEMSET (tmr + 1, 0, xtnsize);
+		else HAK_MEMSET(tmr + 1, 0, xtnsize);
 	}
 
 	return tmr;
@@ -59,7 +59,7 @@ int hak_tmr_init (hak_tmr_t* tmr, hak_t* hak, hak_oow_t capa)
 {
 	hak_tmr_event_t* tmp;
 
-	HAK_MEMSET (tmr, 0, HAK_SIZEOF(*tmr));
+	HAK_MEMSET(tmr, 0, HAK_SIZEOF(*tmr));
 
 	if (capa <= 0) capa = 1;
 
@@ -184,7 +184,7 @@ void hak_tmr_delete (hak_tmr_t* tmr, hak_tmr_index_t index)
 {
 	hak_tmr_event_t item;
 
-	HAK_ASSERT (tmr->hak, index < tmr->size);
+	HAK_ASSERT(tmr->hak, index < tmr->size);
 
 	item = tmr->event[index];
 	tmr->event[index].updater (tmr, index, HAK_TMR_INVALID_INDEX, &tmr->event[index]);
@@ -207,7 +207,7 @@ hak_tmr_index_t hak_tmr_insert (hak_tmr_t* tmr, const hak_tmr_event_t* event)
 		hak_tmr_event_t* tmp;
 		hak_oow_t new_capa;
 
-		HAK_ASSERT (tmr->hak, tmr->capa >= 1);
+		HAK_ASSERT(tmr->hak, tmr->capa >= 1);
 		new_capa = tmr->capa * 2;
 		tmp = (hak_tmr_event_t*)hak_reallocmem(tmr->hak, tmr->event, new_capa * HAK_SIZEOF(*tmp));
 		if (!tmp) return HAK_TMR_INVALID_INDEX;
@@ -216,8 +216,8 @@ hak_tmr_index_t hak_tmr_insert (hak_tmr_t* tmr, const hak_tmr_event_t* event)
 		tmr->capa = new_capa;
 	}
 
-	HAK_ASSERT (tmr->hak, event->handler != HAK_NULL);
-	HAK_ASSERT (tmr->hak, event->updater != HAK_NULL);
+	HAK_ASSERT(tmr->hak, event->handler != HAK_NULL);
+	HAK_ASSERT(tmr->hak, event->updater != HAK_NULL);
 
 	tmr->size = tmr->size + 1;
 	tmr->event[index] = *event;
@@ -228,8 +228,8 @@ hak_tmr_index_t hak_tmr_update (hak_tmr_t* tmr, hak_oow_t index, const hak_tmr_e
 {
 	hak_tmr_event_t item;
 
-	HAK_ASSERT (tmr->hak, event->handler != HAK_NULL);
-	HAK_ASSERT (tmr->hak, event->updater != HAK_NULL);
+	HAK_ASSERT(tmr->hak, event->handler != HAK_NULL);
+	HAK_ASSERT(tmr->hak, event->updater != HAK_NULL);
 
 	item = tmr->event[index];
 	tmr->event[index] = *event;

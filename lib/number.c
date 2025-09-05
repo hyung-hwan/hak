@@ -41,7 +41,7 @@ static hak_ooi_t equalize_scale (hak_t* hak, hak_oop_t* x, hak_oop_t* y)
 	}
 	else if (!hak_isint(hak, xv))
 	{
-		hak_seterrbfmt (hak, HAK_EINVAL, "parameter not numeric - %O", xv);
+		hak_seterrbfmt(hak, HAK_EINVAL, "parameter not numeric - %O", xv);
 		return -1;
 	}
 
@@ -54,7 +54,7 @@ static hak_ooi_t equalize_scale (hak_t* hak, hak_oop_t* x, hak_oop_t* y)
 	}
 	else if (!hak_isint(hak, yv))
 	{
-		hak_seterrbfmt (hak, HAK_EINVAL, "parameter not numeric - %O", yv);
+		hak_seterrbfmt(hak, HAK_EINVAL, "parameter not numeric - %O", yv);
 		return -1;
 	}
 
@@ -125,17 +125,17 @@ hak_oop_t hak_addnums (hak_t* hak, hak_oop_t x, hak_oop_t y)
 		hak_oop_t v;
 		hak_ooi_t scale;
 
-		hak_pushvolat (hak, &x);
-		hak_pushvolat (hak, &y);
+		hak_pushvolat(hak, &x);
+		hak_pushvolat(hak, &y);
 
 		scale = equalize_scale(hak, &x, &y);
 		if (scale <= -1)
 		{
-			hak_popvolats (hak, 2);
+			hak_popvolats(hak, 2);
 			return HAK_NULL;
 		}
 		v = hak_addints(hak, ((hak_oop_fpdec_t)x)->value, ((hak_oop_fpdec_t)y)->value);
-		hak_popvolats (hak, 2);
+		hak_popvolats(hak, 2);
 		if (!v) return HAK_NULL;
 
 		return hak_makefpdec(hak, v, scale);
@@ -154,17 +154,17 @@ hak_oop_t hak_subnums (hak_t* hak, hak_oop_t x, hak_oop_t y)
 		hak_oop_t v;
 		hak_ooi_t scale;
 
-		hak_pushvolat (hak, &x);
-		hak_pushvolat (hak, &y);
+		hak_pushvolat(hak, &x);
+		hak_pushvolat(hak, &y);
 
 		scale = equalize_scale(hak, &x, &y);
 		if (scale <= -1)
 		{
-			hak_popvolats (hak, 2);
+			hak_popvolats(hak, 2);
 			return HAK_NULL;
 		}
 		v = hak_subints(hak, ((hak_oop_fpdec_t)x)->value, ((hak_oop_fpdec_t)y)->value);
-		hak_popvolats (hak, 2);
+		hak_popvolats(hak, 2);
 		if (!v) return HAK_NULL;
 
 		return hak_makefpdec(hak, v, scale);
@@ -186,7 +186,7 @@ static hak_oop_t mul_nums (hak_t* hak, hak_oop_t x, hak_oop_t y, int mult)
 	}
 	else if (!hak_isint(hak, xv))
 	{
-		hak_seterrbfmt (hak, HAK_EINVAL, "parameter not numeric - %O", xv);
+		hak_seterrbfmt(hak, HAK_EINVAL, "parameter not numeric - %O", xv);
 		return HAK_NULL;
 	}
 
@@ -199,7 +199,7 @@ static hak_oop_t mul_nums (hak_t* hak, hak_oop_t x, hak_oop_t y, int mult)
 	}
 	else if (!hak_isint(hak, yv))
 	{
-		hak_seterrbfmt (hak, HAK_EINVAL, "parameter not numeric - %O", yv);
+		hak_seterrbfmt(hak, HAK_EINVAL, "parameter not numeric - %O", yv);
 		return HAK_NULL;
 	}
 
@@ -213,7 +213,7 @@ static hak_oop_t mul_nums (hak_t* hak, hak_oop_t x, hak_oop_t y, int mult)
 
 	/* cs may be larger than HAK_SMOOI_MAX. but ns is guaranteed to be
 	 * equal to or less than HAK_SMOOI_MAX */
-	HAK_ASSERT (hak, ns <= HAK_SMOOI_MAX);
+	HAK_ASSERT(hak, ns <= HAK_SMOOI_MAX);
 
 	nv = hak_truncfpdecval(hak, nv, cs, ns);
 	if (!nv) return HAK_NULL;
@@ -248,7 +248,7 @@ hak_oop_t hak_divnums (hak_t* hak, hak_oop_t x, hak_oop_t y)
 	}
 	else if (!hak_isint(hak, xv))
 	{
-		hak_seterrbfmt (hak, HAK_EINVAL, "parameter not numeric - %O", xv);
+		hak_seterrbfmt(hak, HAK_EINVAL, "parameter not numeric - %O", xv);
 		return HAK_NULL;
 	}
 
@@ -261,13 +261,13 @@ hak_oop_t hak_divnums (hak_t* hak, hak_oop_t x, hak_oop_t y)
 	}
 	else if (!hak_isint(hak, yv))
 	{
-		hak_seterrbfmt (hak, HAK_EINVAL, "parameter not numeric - %O", yv);
+		hak_seterrbfmt(hak, HAK_EINVAL, "parameter not numeric - %O", yv);
 		return HAK_NULL;
 	}
 
 	nv = xv;
 
-	hak_pushvolat (hak, &yv);
+	hak_pushvolat(hak, &yv);
 	for (i = 0; i < ys; i++)
 	{
 		nv = hak_mulints(hak, nv, HAK_SMOOI_TO_OOP(10));
@@ -297,17 +297,17 @@ static hak_oop_t comp_nums (hak_t* hak, hak_oop_t x, hak_oop_t y, hak_oop_t (*co
 		hak_oop_t v;
 		hak_ooi_t scale;
 
-		hak_pushvolat (hak, &x);
-		hak_pushvolat (hak, &y);
+		hak_pushvolat(hak, &x);
+		hak_pushvolat(hak, &y);
 
 		scale = equalize_scale(hak, &x, &y);
 		if (scale <= -1)
 		{
-			hak_popvolats (hak, 2);
+			hak_popvolats(hak, 2);
 			return HAK_NULL;
 		}
 		v = comper(hak, ((hak_oop_fpdec_t)x)->value, ((hak_oop_fpdec_t)y)->value);
-		hak_popvolats (hak, 2);
+		hak_popvolats(hak, 2);
 		return v;
 	}
 }

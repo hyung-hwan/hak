@@ -137,7 +137,7 @@ int hak_marshalcode (hak_t* hak, const hak_code_t* code, hak_xchg_writer_t wrtr,
 				hak_oop_fpdec_t f;
 
 				f = (hak_oop_fpdec_t)tmp;
-				HAK_ASSERT (hak, HAK_OOP_IS_SMOOI(f->scale));
+				HAK_ASSERT(hak, HAK_OOP_IS_SMOOI(f->scale));
 				HAK_ASSERT(hak, HAK_OOP_IS_SMOOI(f->value) || HAK_OOP_IS_POINTER(f->value));
 
 				/* write 1-byte brand */
@@ -543,7 +543,7 @@ int hak_unmarshalcode (hak_t* hak, hak_code_t* code, hak_xchg_reader_t rdr, void
 						liw = hak_leliwtoh(liw);
 						HAK_OBJ_SET_LIWORD_VAL(v, j, liw);
 					}
-					hak_pushvolat (hak, &v);
+					hak_pushvolat(hak, &v);
 					ns = hak_makefpdec(hak, v, scale);
 					hak_popvolat (hak);
 					if (HAK_UNLIKELY(!ns)) goto oops;
@@ -561,7 +561,7 @@ int hak_unmarshalcode (hak_t* hak, hak_code_t* code, hak_xchg_reader_t rdr, void
 	return 0;
 
 oops:
-	if (usym_buf) hak_freemem (hak, usym_buf);
+	if (usym_buf) hak_freemem(hak, usym_buf);
 	return -1;
 }
 /* -------------------------------------------------------------------- */
@@ -609,11 +609,11 @@ static int mem_code_reader(hak_t* hak, void* ptr, hak_oow_t len, void* ctx)
 	hak_uint8_t* p = (hak_uint8_t*)ptr;
 	hak_uint8_t* e = p + len;
 
-	HAK_ASSERT (hak, cmr->pos <= cmr->src->len);
+	HAK_ASSERT(hak, cmr->pos <= cmr->src->len);
 
 	if (cmr->src->len - cmr->pos < len)
 	{
-		hak_seterrbfmt (hak, HAK_ENOENT, "no more data");
+		hak_seterrbfmt(hak, HAK_ENOENT, "no more data");
 		return -1;
 	}
 
@@ -641,10 +641,10 @@ int hak_brewcode (hak_t* hak, hak_code_t* code)
 		if (HAK_UNLIKELY(!code->bc.ptr))
 		{
 			const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-			hak_seterrbfmt (hak, HAK_ERRNUM(hak), "unable to allocate code buffer - %js", orgmsg);
+			hak_seterrbfmt(hak, HAK_ERRNUM(hak), "unable to allocate code buffer - %js", orgmsg);
 			return -1;
 		}
-		HAK_ASSERT (hak, code->bc.len == 0);
+		HAK_ASSERT(hak, code->bc.len == 0);
 		code->bc.capa = HAK_BC_BUFFER_INIT;
 	}
 
@@ -654,10 +654,10 @@ int hak_brewcode (hak_t* hak, hak_code_t* code)
 		if (HAK_UNLIKELY(!code->dbgi))
 		{
 			const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-			hak_seterrbfmt (hak, HAK_ERRNUM(hak), "unable to allocate debug info buffer - %js", orgmsg);
+			hak_seterrbfmt(hak, HAK_ERRNUM(hak), "unable to allocate debug info buffer - %js", orgmsg);
 
 			/* bc.ptr and dbgi go together. so free bc.ptr if dbgi allocation fails */
-			hak_freemem (hak, code->bc.ptr);
+			hak_freemem(hak, code->bc.ptr);
 			code->bc.ptr = HAK_NULL;
 			code->bc.len = 0;
 			code->bc.capa = 0;
@@ -665,21 +665,21 @@ int hak_brewcode (hak_t* hak, hak_code_t* code)
 			return -1;
 		}
 
-		HAK_MEMSET (code->dbgi, 0, HAK_SIZEOF(*code->dbgi) * HAK_BC_BUFFER_INIT);
+		HAK_MEMSET(code->dbgi, 0, HAK_SIZEOF(*code->dbgi) * HAK_BC_BUFFER_INIT);
 	}
 
 	/* TODO: move code.lit.arr creation to hak_init() after swithching to hak_allocmem? */
-        if (!code->lit.arr)
-        {
-                code->lit.arr = (hak_oop_oop_t)hak_makengcarray(hak, HAK_LIT_BUFFER_INIT); /* TOOD: set a proper initial size */
-                if (HAK_UNLIKELY(!code->lit.arr))
+	if (!code->lit.arr)
+	{
+		code->lit.arr = (hak_oop_oop_t)hak_makengcarray(hak, HAK_LIT_BUFFER_INIT); /* TOOD: set a proper initial size */
+		if (HAK_UNLIKELY(!code->lit.arr))
 		{
 			const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-			hak_seterrbfmt (hak, HAK_ERRNUM(hak), "unable to allocate literal frame - %js", orgmsg);
+			hak_seterrbfmt(hak, HAK_ERRNUM(hak), "unable to allocate literal frame - %js", orgmsg);
 			return -1;
 		}
-                HAK_ASSERT (hak, code->lit.len == 0);
-        }
+		HAK_ASSERT(hak, code->lit.len == 0);
+	}
 
 	return 0;
 }
@@ -687,14 +687,14 @@ int hak_brewcode (hak_t* hak, hak_code_t* code)
 void hak_purgecode (hak_t* hak, hak_code_t* code)
 {
 	if (code->dbgi)
-        {
-		hak_freemem (hak, code->dbgi);
+	{
+		hak_freemem(hak, code->dbgi);
 		code->dbgi = HAK_NULL;
-        }
+	}
 
 	if (code->bc.ptr)
 	{
-		hak_freemem (hak, code->bc.ptr);
+		hak_freemem(hak, code->bc.ptr);
 		code->bc.ptr = HAK_NULL;
 		code->bc.len = 0;
 		code->bc.capa = 0;
@@ -702,12 +702,12 @@ void hak_purgecode (hak_t* hak, hak_code_t* code)
 
 	if (code->lit.arr)
 	{
-		hak_freengcobj (hak, (hak_oop_t)code->lit.arr);
+		hak_freengcobj(hak, (hak_oop_t)code->lit.arr);
 		code->lit.arr = HAK_NULL;
 		code->lit.len = 0;
 	}
 
-	HAK_MEMSET (&code, 0, HAK_SIZEOF(code));
+	HAK_MEMSET(&code, 0, HAK_SIZEOF(code));
 }
 
 /* -------------------------------------------------------------------- */
@@ -745,7 +745,7 @@ int hak_addliteraltocode (hak_t* hak, hak_code_t* code, hak_oop_t obj, hak_oow_t
 		if (HAK_UNLIKELY(!tmp))
 		{
 			const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-			hak_seterrbfmt (hak, HAK_ERRNUM(hak), "unable to resize literal frame - %js", orgmsg);
+			hak_seterrbfmt(hak, HAK_ERRNUM(hak), "unable to resize literal frame - %js", orgmsg);
 			return -1;
 		}
 

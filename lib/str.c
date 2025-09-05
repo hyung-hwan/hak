@@ -733,7 +733,7 @@ int hak_conv_uchars_to_bchars_with_cmgr (const hak_uch_t* ucs, hak_oow_t* ucslen
 			}
 
 			/* it assumes that bcsbuf is large enough to hold a character */
-			/*HAK_ASSERT (hak, n <= HAK_COUNTOF(bcsbuf));*/
+			/*HAK_ASSERT(hak, n <= HAK_COUNTOF(bcsbuf));*/
 
 			p++; mlen += n;
 		}
@@ -812,7 +812,7 @@ int hak_conv_ucstr_to_bcstr_with_cmgr (const hak_uch_t* ucs, hak_oow_t* ucslen, 
 			}
 
 			/* it assumes that bcs is large enough to hold a character */
-			/*HAK_ASSERT (hak, n <= HAK_COUNTOF(bcs));*/
+			/*HAK_ASSERT(hak, n <= HAK_COUNTOF(bcs));*/
 
 			p++; mlen += n;
 		}

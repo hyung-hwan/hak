@@ -219,11 +219,11 @@ hak_xma_t* hak_xma_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, void* zoneptr, hak
 		return HAK_NULL;
 	}
 
-	HAK_MEMSET (xma + 1, 0, xtnsize);
+	HAK_MEMSET(xma + 1, 0, xtnsize);
 	return xma;
 }
 
-void hak_xma_close (hak_xma_t* xma)
+void hak_xma_close(hak_xma_t* xma)
 {
 	hak_xma_fini (xma);
 	HAK_MMGR_FREE (xma->_mmgr, xma);
@@ -343,7 +343,7 @@ static HAK_INLINE void detach_from_freelist (hak_xma_t* xma, hak_xma_fblk_t* b)
 	else
 	{
 		/* the previous item does not exist. the block is the first
- 		 * item in the free list. */
+		 * item in the free list. */
 		hak_oow_t xfi = getxfi(xma, b->size);
 		assert (b == xma->xfree[xfi]);
 		/* let's update the free list head */
@@ -672,7 +672,7 @@ static void* _realloc_merge (hak_xma_t* xma, void* b, hak_oow_t size)
 void* hak_xma_calloc (hak_xma_t* xma, hak_oow_t size)
 {
 	void* ptr = hak_xma_alloc(xma, size);
-	if (ptr) HAK_MEMSET (ptr, 0, size);
+	if (ptr) HAK_MEMSET(ptr, 0, size);
 	return ptr;
 }
 

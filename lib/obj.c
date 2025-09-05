@@ -40,7 +40,7 @@ void* hak_allocbytes (hak_t* hak, hak_oow_t size)
 #endif
 
 #if defined(HAK_BUILD_DEBUG)
-	if ((hak->option.trait & HAK_TRAIT_DEBUG_GC) && !(hak->option.trait & HAK_TRAIT_NOGC)) hak_gc (hak, 1);
+	if ((hak->option.trait & HAK_TRAIT_DEBUG_GC) && !(hak->option.trait & HAK_TRAIT_NOGC)) hak_gc(hak, 1);
 #endif
 
 #if defined(HAK_PROFILE_VM)
@@ -52,12 +52,12 @@ void* hak_allocbytes (hak_t* hak, hak_oow_t size)
 
 	if (hak->gci.bsz >= hak->gci.threshold)
 	{
-		hak_gc (hak, 0);
+		hak_gc(hak, 0);
 		hak->gci.threshold = hak->gci.bsz + 100000; /* TODO: change this fomula */
 		gc_called = 1;
 	}
 
-	if (hak->gci.lazy_sweep) hak_gc_ms_sweep_lazy (hak, allocsize);
+	if (hak->gci.lazy_sweep) hak_gc_ms_sweep_lazy(hak, allocsize);
 
 	gch = (hak_gchdr_t*)hak_callocheapmem_noseterr(hak, hak->heap, allocsize);
 	if (!gch)
@@ -65,8 +65,8 @@ void* hak_allocbytes (hak_t* hak, hak_oow_t size)
 		if (HAK_UNLIKELY(hak->option.trait & HAK_TRAIT_NOGC)) goto calloc_heapmem_fail;
 		if (gc_called) goto sweep_the_rest;
 
-		hak_gc (hak, 0);
-		if (hak->gci.lazy_sweep) hak_gc_ms_sweep_lazy (hak, allocsize);
+		hak_gc(hak, 0);
+		if (hak->gci.lazy_sweep) hak_gc_ms_sweep_lazy(hak, allocsize);
 
 		gch = (hak_gchdr_t*)hak_callocheapmem_noseterr(hak, hak->heap, allocsize);
 		if (HAK_UNLIKELY(!gch))
@@ -74,7 +74,7 @@ void* hak_allocbytes (hak_t* hak, hak_oow_t size)
 		sweep_the_rest:
 			if (hak->gci.lazy_sweep)
 			{
-				hak_gc_ms_sweep_lazy (hak, HAK_TYPE_MAX(hak_oow_t)); /* sweep the rest */
+				hak_gc_ms_sweep_lazy(hak, HAK_TYPE_MAX(hak_oow_t)); /* sweep the rest */
 				gch = (hak_gchdr_t*)hak_callocheapmem(hak, hak->heap, allocsize);
 				if (HAK_UNLIKELY(!gch)) return HAK_NULL;
 			}
@@ -171,8 +171,8 @@ hak_oop_t hak_allocoopobjwithtrailer (hak_t* hak, hak_oow_t size, const hak_oob_
 	/* [NOTE] this is not converted to a SMOOI object */
 	hdr->slot[size] = (hak_oop_t)blen;
 
-	if (bptr) HAK_MEMCPY (&hdr->slot[size + 1], bptr, blen);
-	else HAK_MEMSET (&hdr->slot[size + 1], 0, blen);
+	if (bptr) HAK_MEMCPY(&hdr->slot[size + 1], bptr, blen);
+	else HAK_MEMSET(&hdr->slot[size + 1], 0, blen);
 
 	return (hak_oop_t)hdr;
 }
@@ -209,13 +209,13 @@ static HAK_INLINE hak_oop_t alloc_numeric_array (hak_t* hak, const void* ptr, ha
 	if (ptr)
 	{
 		/* copy data */
-		HAK_MEMCPY (hdr + 1, ptr, xbytes);
-		HAK_MEMSET ((hak_uint8_t*)(hdr + 1) + xbytes, 0, nbytes_aligned - xbytes);
+		HAK_MEMCPY(hdr + 1, ptr, xbytes);
+		HAK_MEMSET((hak_uint8_t*)(hdr + 1) + xbytes, 0, nbytes_aligned - xbytes);
 	}
 	else
 	{
 		/* initialize with zeros when the string pointer is not given */
-		HAK_MEMSET (hdr + 1, 0, nbytes_aligned);
+		HAK_MEMSET(hdr + 1, 0, nbytes_aligned);
 	}
 
 	return hdr;
@@ -625,7 +625,7 @@ hak_oop_t hak_instantiate (hak_t* hak, hak_oop_class_t _class, const void* vptr,
 			if (oop && vptr && vlen > 0)
 			{
 				hak_oop_oop_t hdr = (hak_oop_oop_t)oop;
-				HAK_MEMCPY (&hdr->slot[named_ivar], vptr, vlen * HAK_SIZEOF(hak_oop_t));
+				HAK_MEMCPY(&hdr->slot[named_ivar], vptr, vlen * HAK_SIZEOF(hak_oop_t));
 			}
 
 			For the above code to work, it should protect the elements of
@@ -705,7 +705,7 @@ hak_oop_t hak_instantiatewithtrailer (hak_t* hak, hak_oop_class_t _class, hak_oo
 					while (i > 0)
 					{
 						--i;
-						HAK_STORE_OOP (hak, HAK_OBJ_GET_OOP_PTR(oop, i), HAK_OBJ_GET_OOP_VAL(_class->initv[0], i));
+						HAK_STORE_OOP(hak, HAK_OBJ_GET_OOP_PTR(oop, i), HAK_OBJ_GET_OOP_VAL(_class->initv[0], i));
 					}
 				}
 			#endif
@@ -749,7 +749,7 @@ hak_oop_t hak_instantiatewithtrailer (hak_t* hak, hak_oop_class_t _class, hak_oo
 
 void hak_freengcobj (hak_t* hak, hak_oop_t obj)
 {
-	if (HAK_OOP_IS_POINTER(obj) && HAK_OBJ_GET_FLAGS_NGC(obj)) hak_freemem (hak, obj);
+	if (HAK_OOP_IS_POINTER(obj) && HAK_OBJ_GET_FLAGS_NGC(obj)) hak_freemem(hak, obj);
 }
 
 hak_oop_t hak_makengcbytearray (hak_t* hak, const hak_oob_t* ptr, hak_oow_t len)
@@ -773,9 +773,9 @@ hak_oop_t hak_remakengcbytearray (hak_t* hak, hak_oop_t obj, hak_oow_t newsize)
 		{
 			hak_oow_t cpsize;
 			cpsize =  (newsize > HAK_OBJ_GET_SIZE(obj))? HAK_OBJ_GET_SIZE(obj): newsize;
-			HAK_MEMCPY (((hak_oop_byte_t)tmp)->slot, ((hak_oop_byte_t)obj)->slot, cpsize * HAK_SIZEOF(hak_oob_t));
+			HAK_MEMCPY(((hak_oop_byte_t)tmp)->slot, ((hak_oop_byte_t)obj)->slot, cpsize * HAK_SIZEOF(hak_oob_t));
 		}
-		hak_freengcobj (hak, obj);
+		hak_freengcobj(hak, obj);
 	}
 	return tmp;
 }
@@ -801,9 +801,9 @@ hak_oop_t hak_remakengcarray (hak_t* hak, hak_oop_t obj, hak_oow_t newsize)
 		{
 			hak_oow_t cpsize;
 			cpsize =  (newsize > HAK_OBJ_GET_SIZE(obj))? HAK_OBJ_GET_SIZE(obj): newsize;
-			HAK_MEMCPY (((hak_oop_oop_t)tmp)->slot, ((hak_oop_oop_t)obj)->slot, cpsize * HAK_SIZEOF(hak_oop_t));
+			HAK_MEMCPY(((hak_oop_oop_t)tmp)->slot, ((hak_oop_oop_t)obj)->slot, cpsize * HAK_SIZEOF(hak_oop_t));
 		}
-		hak_freengcobj (hak, obj);
+		hak_freengcobj(hak, obj);
 	}
 	return tmp;
 }

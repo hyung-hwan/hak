@@ -70,7 +70,7 @@ static HAK_INLINE int push (hak_t* hak, print_stack_t* info)
 
 static HAK_INLINE void pop (hak_t* hak, print_stack_t* info)
 {
-	HAK_ASSERT (hak, hak->p.s.size > 0);
+	HAK_ASSERT(hak, hak->p.s.size > 0);
 	hak->p.s.size--;
 	*info = ((print_stack_t*)hak->p.s.ptr)[hak->p.s.size];
 }
@@ -367,7 +367,7 @@ next:
 			tmp = hak_inttostr(hak, obj, 10 | HAK_INTTOSTR_NONEWOBJ);
 			if (!tmp) return -1;
 
-			HAK_ASSERT (hak, (hak_oop_t)tmp == hak->_nil);
+			HAK_ASSERT(hak, (hak_oop_t)tmp == hak->_nil);
 			if (hak_bfmt_out(hak, fmtout, "%.*js", hak->inttostr.xbuf.len, hak->inttostr.xbuf.ptr) <= -1) return -1;
 			break;
 		}
@@ -442,7 +442,7 @@ next:
 			#endif
 			);
 
-			OUTPUT_STR (hak, buf);
+			OUTPUT_STR(hak, buf);
 			break;
 		}
 #endif
@@ -556,7 +556,7 @@ next:
 				goto next;
 
 			resume_cons:
-				HAK_ASSERT (hak, ps.type == PRINT_STACK_CONS);
+				HAK_ASSERT(hak, ps.type == PRINT_STACK_CONS);
 				cur = ps.obj; /* Get back the CDR pushed */
 				concode = ps.idx; /* restore the concode */
 				if (HAK_IS_NIL(hak,cur))
@@ -619,11 +619,11 @@ next:
 				}
 				else
 				{
-					HAK_ASSERT (hak, ps.type == PRINT_STACK_ARRAY);
+					HAK_ASSERT(hak, ps.type == PRINT_STACK_ARRAY);
 					ps.obj = obj;
 				}
 
-				x = push (hak, &ps);
+				x = push(hak, &ps);
 				if (x <= -1) return -1;
 
 				obj = ((hak_oop_oop_t)obj)->slot[arridx];
@@ -638,7 +638,7 @@ next:
 				goto next;
 
 			resume_array:
-				HAK_ASSERT (hak, ps.type == PRINT_STACK_ARRAY);
+				HAK_ASSERT(hak, ps.type == PRINT_STACK_ARRAY);
 				arridx = ps.idx;
 				obj = ps.obj;
 			}
@@ -686,7 +686,7 @@ next:
 			if (hak_bfmt_out(hak, fmtout, opening_parens[HAK_CONCODE_DIC][json]) <= -1) return -1;
 
 			dic = (hak_oop_dic_t)obj;
-			HAK_ASSERT (hak, HAK_OOP_IS_SMOOI(dic->tally));
+			HAK_ASSERT(hak, HAK_OOP_IS_SMOOI(dic->tally));
 			if (HAK_OOP_TO_SMOOI(dic->tally) <= 0)
 			{
 				if (hak_bfmt_out(hak, fmtout, closing_parens[HAK_CONCODE_DIC][json]) <= -1) return -1;
@@ -720,16 +720,16 @@ next:
 					}
 
 					ps.idx = bucidx; /* no increment yet */
-					HAK_ASSERT (hak, ps.idx < bucsize);
-					HAK_ASSERT (hak, ps.type == PRINT_STACK_DIC);
+					HAK_ASSERT(hak, ps.idx < bucsize);
+					HAK_ASSERT(hak, ps.type == PRINT_STACK_DIC);
 
 					ps.obj = dic->bucket->slot[ps.idx];
 					ps.idx2 = buctally + 1;
 
-					x = push (hak, &ps);
+					x = push(hak, &ps);
 					if (x <= -1) return -1;
 
-					HAK_ASSERT (hak, HAK_IS_CONS(hak,obj));
+					HAK_ASSERT(hak, HAK_IS_CONS(hak,obj));
 					obj = HAK_CONS_CAR(obj);
 				}
 				else
@@ -742,15 +742,15 @@ next:
 					}
 					else
 					{
-						HAK_ASSERT (hak, ps.type == PRINT_STACK_DIC);
+						HAK_ASSERT(hak, ps.type == PRINT_STACK_DIC);
 						ps.obj = dic->bucket->slot[ps.idx];
 					}
 					ps.idx2 = buctally + 1;
 
-					x = push (hak, &ps);
+					x = push(hak, &ps);
 					if (x <= -1) return -1;
 
-					HAK_ASSERT (hak, HAK_IS_CONS(hak,obj));
+					HAK_ASSERT(hak, HAK_IS_CONS(hak,obj));
 					obj = HAK_CONS_CDR(obj);
 				}
 
@@ -766,7 +766,7 @@ next:
 				goto next;
 
 			resume_dic:
-				HAK_ASSERT (hak, ps.type == PRINT_STACK_DIC);
+				HAK_ASSERT(hak, ps.type == PRINT_STACK_DIC);
 				bucidx = ps.idx;
 				buctally = ps.idx2;
 				obj = ps.obj;
@@ -818,7 +818,7 @@ next:
 				word_index = WORD_CLASS;
 				goto print_word;
 			}
-			HAK_ASSERT (hak, HAK_IS_SYMBOL(hak, _class->name));
+			HAK_ASSERT(hak, HAK_IS_SYMBOL(hak, _class->name));
 			if (hak_bfmt_out(hak, fmtout, "%.*js", HAK_OBJ_GET_SIZE(_class->name), HAK_OBJ_GET_CHAR_SLOT(_class->name)) <= -1) return -1;
 			break;
 		}
@@ -826,21 +826,21 @@ next:
 		case HAK_BRAND_INSTANCE:
 		{
 			hak_oop_class_t _class = (hak_oop_class_t)HAK_CLASSOF(hak, obj);
-			HAK_ASSERT (hak, HAK_IS_CLASS(hak, _class));
+			HAK_ASSERT(hak, HAK_IS_CLASS(hak, _class));
 			if (HAK_IS_NIL(hak, _class->name))
 			{
 				word_index = WORD_INSTANCE;
 				goto print_word;
 			}
-			HAK_ASSERT (hak, HAK_IS_SYMBOL(hak, _class->name));
+			HAK_ASSERT(hak, HAK_IS_SYMBOL(hak, _class->name));
 			if (hak_bfmt_out(hak, fmtout, "#INSTANCE OF %.*js", HAK_OBJ_GET_SIZE(_class->name), HAK_OBJ_GET_CHAR_SLOT(_class->name)) <= -1) return -1;
 			break;
 		}
 
 		default:
 			HAK_DEBUG3 (hak, "Internal error - unknown object brand %d at %s:%d\n", (int)brand, __FILE__, __LINE__);
-			HAK_ASSERT (hak, "Unknown object brand" == HAK_NULL);
-			hak_seterrbfmt (hak, HAK_EINTERN, "unknown object brand %d", (int)brand);
+			HAK_ASSERT(hak, "Unknown object brand" == HAK_NULL);
+			hak_seterrbfmt(hak, HAK_EINTERN, "unknown object brand %d", (int)brand);
 			return -1;
 
 		print_word:
@@ -852,7 +852,7 @@ done:
 	/* if the printing stack is not empty, we still got more to print */
 	while (hak->p.s.size > 0)
 	{
-		pop (hak, &ps);
+		pop(hak, &ps);
 		switch (ps.type)
 		{
 			case PRINT_STACK_CONS:
@@ -874,7 +874,7 @@ done:
 
 			default:
 				HAK_DEBUG3 (hak, "Internal error - unknown print stack type %d at %s:%d\n", (int)ps.type, __FILE__, __LINE__);
-				hak_seterrbfmt (hak, HAK_EINTERN, "internal error - unknown print stack type %d", (int)ps.type);
+				hak_seterrbfmt(hak, HAK_EINTERN, "internal error - unknown print stack type %d", (int)ps.type);
 				return -1;
 		}
 	}
@@ -887,7 +887,7 @@ int hak_outfmtobj (hak_t* hak, hak_bitmask_t mask, hak_oop_t obj, hak_outbfmt_t 
 	int n;
 
 	/* the printer stack must be empty. buggy if not. */
-	HAK_ASSERT (hak, hak->p.s.size == 0);
+	HAK_ASSERT(hak, hak->p.s.size == 0);
 
 	hak->p.e = obj; /* remember the head of the object to print */
 	n = hak_proutbfmt(hak, mask, obj);
@@ -898,7 +898,7 @@ int hak_outfmtobj (hak_t* hak, hak_bitmask_t mask, hak_oop_t obj, hak_outbfmt_t 
 	if (n <= -1) hak->p.s.size = 0;
 
 	/* the printer stack must get empty when done. buggy if not */
-	HAK_ASSERT (hak, hak->p.s.size == 0);
+	HAK_ASSERT(hak, hak->p.s.size == 0);
 
 	return n;
 }
@@ -906,7 +906,7 @@ int hak_outfmtobj (hak_t* hak, hak_bitmask_t mask, hak_oop_t obj, hak_outbfmt_t 
 
 int hak_print (hak_t* hak, hak_oop_t obj)
 {
-	HAK_ASSERT (hak, hak->io.udo_wrtr != HAK_NULL);
+	HAK_ASSERT(hak, hak->io.udo_wrtr != HAK_NULL);
 	/*return hak_outfmtobj(hak, HAK_LOG_APP | HAK_LOG_FATAL, obj);*/
 	return hak_prbfmt(hak, "%O", obj);
 }
@@ -967,44 +967,44 @@ void hak_dumpcnode (hak_t* hak, hak_cnode_t* cnode, int newline)
 			case HAK_CNODE_COLON:
 			case HAK_CNODE_COLONGT:
 			case HAK_CNODE_COLONLT:
-				hak_logbfmt (hak, HAK_LOG_FATAL, " %.*js ", HAK_CNODE_GET_TOKLEN(cnode), HAK_CNODE_GET_TOKPTR(cnode));
+				hak_logbfmt(hak, HAK_LOG_FATAL, " %.*js ", HAK_CNODE_GET_TOKLEN(cnode), HAK_CNODE_GET_TOKPTR(cnode));
 				break;
 
 			case HAK_CNODE_CONS:
 			{
 				hak_concode_t cc;
 
-				hak_logbfmt (hak, HAK_LOG_FATAL, " (");
-				hak_dumpcnode (hak, HAK_CNODE_CONS_CAR(cnode), 0);
+				hak_logbfmt(hak, HAK_LOG_FATAL, " (");
+				hak_dumpcnode(hak, HAK_CNODE_CONS_CAR(cnode), 0);
 
 				cc = HAK_CNODE_CONS_CONCODE(cnode);
 				switch (cc)
 				{
 					case HAK_CONCODE_ALIST:
-						hak_logbfmt (hak, HAK_LOG_FATAL, " := ");
+						hak_logbfmt(hak, HAK_LOG_FATAL, " := ");
 						break;
 					case HAK_CONCODE_BLIST:
 					case HAK_CONCODE_MLIST:
-						hak_logbfmt (hak, HAK_LOG_FATAL, ":");
+						hak_logbfmt(hak, HAK_LOG_FATAL, ":");
 						break;
 				}
 
-				hak_dumpcnode (hak, HAK_CNODE_CONS_CDR(cnode),0);
-				hak_logbfmt (hak, HAK_LOG_FATAL, ") ");
+				hak_dumpcnode(hak, HAK_CNODE_CONS_CDR(cnode),0);
+				hak_logbfmt(hak, HAK_LOG_FATAL, ") ");
 				break;
 			}
 
 			case HAK_CNODE_ELIST:
-				hak_logbfmt (hak, HAK_LOG_FATAL, " () ", HAK_CNODE_GET_TOKLEN(cnode), HAK_CNODE_GET_TOKPTR(cnode));
+				hak_logbfmt(hak, HAK_LOG_FATAL, " () ", HAK_CNODE_GET_TOKLEN(cnode), HAK_CNODE_GET_TOKPTR(cnode));
 				break;
 
 			case HAK_CNODE_SHELL:
-				hak_logbfmt (hak, HAK_LOG_FATAL, " () ", HAK_CNODE_GET_TOKLEN(cnode), HAK_CNODE_GET_TOKPTR(cnode));
+				hak_logbfmt(hak, HAK_LOG_FATAL, " () ", HAK_CNODE_GET_TOKLEN(cnode), HAK_CNODE_GET_TOKPTR(cnode));
 				break;
 		}
 	}
 
-	if  (newline) hak_logbfmt (hak, HAK_LOG_FATAL, "\n");
+	if  (newline) hak_logbfmt(hak, HAK_LOG_FATAL, "\n");
 }
 
 

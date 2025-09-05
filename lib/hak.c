@@ -40,7 +40,7 @@ hak_t* hak_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, const hak_vmprim_t* vmprim
 			HAK_MMGR_FREE (mmgr, hak);
 			hak = HAK_NULL;
 		}
-		else HAK_MEMSET (hak + 1, 0, xtnsize);
+		else HAK_MEMSET(hak + 1, 0, xtnsize);
 	}
 	else if (errnum) *errnum = HAK_ESYSMEM;
 
@@ -711,7 +711,7 @@ void* hak_callocmem (hak_t* hak, hak_oow_t size)
 
 	ptr = HAK_MMGR_ALLOC(HAK_MMGR(hak), size);
 	if (!ptr) hak_seterrnum(hak, HAK_ESYSMEM);
-	else HAK_MEMSET (ptr, 0, size);
+	else HAK_MEMSET(ptr, 0, size);
 	return ptr;
 }
 

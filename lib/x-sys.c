@@ -96,7 +96,7 @@ int hak_sys_send_iov (int sck, hak_iovec_t* iov, int count)
 		ssize_t nwritten;
 		struct msghdr msg;
 
-		HAK_MEMSET (&msg, 0, HAK_SIZEOF(msg));
+		HAK_MEMSET(&msg, 0, HAK_SIZEOF(msg));
 		msg.msg_iov = (struct iovec*)&iov[index];
 		msg.msg_iovlen = count - index;
 		nwritten = sendmsg(sck, &msg, 0);
@@ -145,12 +145,12 @@ void hak_sys_close_pipes (int pfd[2])
 {
 	if (pfd[0] >= 0)
 	{
-		close (pfd[0]);
+		close(pfd[0]);
 		pfd[0] = -1;
 	}
 	if (pfd[1] >= 0)
 	{
-		close (pfd[1]);
+		close(pfd[1]);
 		pfd[1] = -1;
 	}
 }

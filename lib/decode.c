@@ -60,12 +60,12 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 
 	if (!code) code = &hak->code;
 
-	HAK_ASSERT (hak, start >= 0 && end >= 0);
-	HAK_ASSERT (hak, code->bc.len < HAK_SMOOI_MAX); /* asserted by the compiler */
-	HAK_ASSERT (hak, end <= code->bc.len); /* not harmful though this fails */
+	HAK_ASSERT(hak, start >= 0 && end >= 0);
+	HAK_ASSERT(hak, code->bc.len < HAK_SMOOI_MAX); /* asserted by the compiler */
+	HAK_ASSERT(hak, end <= code->bc.len); /* not harmful though this fails */
 	if (start >= code->bc.len)
 	{
-		hak_seterrnum (hak, HAK_EINVAL);
+		hak_seterrnum(hak, HAK_EINVAL);
 		return -1;
 	}
 	if (end > code->bc.len) end = code->bc.len;
@@ -88,7 +88,7 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 
 			/* -------------------------------------------------------- */
 			case HAK_CODE_PUSH_IVAR_X:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				goto push_ivar;
 			case HAK_CODE_PUSH_IVAR_0:
 			case HAK_CODE_PUSH_IVAR_1:
@@ -106,7 +106,7 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 			/* ------------------------------------------------- */
 
 			case HAK_CODE_STORE_INTO_IVAR_X:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				goto store_into_ivar;
 			case HAK_CODE_STORE_INTO_IVAR_0:
 			case HAK_CODE_STORE_INTO_IVAR_1:
@@ -122,7 +122,7 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 				break;
 
 			case HAK_CODE_POP_INTO_IVAR_X:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				goto pop_into_ivar;
 			case HAK_CODE_POP_INTO_IVAR_0:
 			case HAK_CODE_POP_INTO_IVAR_1:
@@ -141,7 +141,7 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 			case HAK_CODE_PUSH_TEMPVAR_X:
 			case HAK_CODE_STORE_INTO_TEMPVAR_X:
 			case HAK_CODE_POP_INTO_TEMPVAR_X:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				goto handle_tempvar;
 
 			case HAK_CODE_PUSH_TEMPVAR_0:
@@ -193,13 +193,13 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 
 			/* ------------------------------------------------- */
 			case HAK_CODE_PUSH_LITERAL_X2:
-				FETCH_PARAM_CODE_TO (hak, b1);
-				FETCH_PARAM_CODE_TO (hak, b2);
+				FETCH_PARAM_CODE_TO(hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b2);
 				b1 = (b1 << (8 * HAK_CODE_LONG_PARAM_SIZE)) | b2;
 				goto push_literal;
 
 			case HAK_CODE_PUSH_LITERAL_X:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				goto push_literal;
 
 			case HAK_CODE_PUSH_LITERAL_0:
@@ -219,7 +219,7 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 			case HAK_CODE_PUSH_OBJECT_X:
 			case HAK_CODE_STORE_INTO_OBJECT_X:
 			case HAK_CODE_POP_INTO_OBJECT_X:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				goto handle_object;
 
 			case HAK_CODE_PUSH_OBJECT_0:
@@ -256,7 +256,7 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 			/* -------------------------------------------------------- */
 
 			case HAK_CODE_JUMP_FORWARD_X:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "jump_forward %zu", b1);
 				break;
 
@@ -268,7 +268,7 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 				break;
 
 			case HAK_CODE_JUMP_BACKWARD_X:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "jump_backward %zu", b1);
 				hak->ip += b1;
 				break;
@@ -281,52 +281,52 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 				break;
 
 			case HAK_CODE_JUMP_FORWARD_IF_TRUE:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "jump_forward_if_true %zu", b1);
 				break;
 
 			case HAK_CODE_JUMP2_FORWARD_IF_TRUE:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "jump2_forward_if_true %zu", b1);
 				break;
 
 			case HAK_CODE_JUMP_FORWARD_IF_FALSE:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "jump_forward_if_false %zu", b1);
 				break;
 
 			case HAK_CODE_JUMP2_FORWARD_IF_FALSE:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "jump2_forward_if_false %zu", b1);
 				break;
 
 			case HAK_CODE_JUMP2_FORWARD:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "jump2_forward %zu", b1);
 				break;
 
 			case HAK_CODE_JUMP_BACKWARD_IF_TRUE:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "jump_backward_if_true %zu", b1);
 				break;
 
 			case HAK_CODE_JUMP2_BACKWARD_IF_TRUE:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "jump2_backward_if_true %zu", b1);
 				break;
 
 			case HAK_CODE_JUMP_BACKWARD_IF_FALSE:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "jump_backward_if_false %zu", b1);
 				break;
 
 			case HAK_CODE_JUMP2_BACKWARD_IF_FALSE:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "jump2_backward_if_false %zu", b1);
 				break;
 
 			case HAK_CODE_JUMP2_BACKWARD:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "jump2_backward %zu", b1);
 				break;
 
@@ -336,13 +336,13 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 				break;
 
 			case HAK_CODE_CALL_R:
-				FETCH_PARAM_CODE_TO (hak, b1); /* nargs */
-				FETCH_PARAM_CODE_TO (hak, b2); /* nrvars */
+				FETCH_PARAM_CODE_TO(hak, b1); /* nargs */
+				FETCH_PARAM_CODE_TO(hak, b2); /* nrvars */
 				LOG_INST_2 (hak, "call %zu %zu", b1, b2);
 				break;
 
 			case HAK_CODE_CALL_X:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				goto handle_call;
 
 			case HAK_CODE_CALL_0:
@@ -356,12 +356,12 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 
 			/* -------------------------------------------------------- */
 			case HAK_CODE_TRY_ENTER:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "try_enter %zu", b1);
 				break;
 
 			case HAK_CODE_TRY_ENTER2:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "try_enter2 %zu", b1);
 				break;
 
@@ -380,11 +380,11 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 			case HAK_CODE_CLASS_ENTER:
 			{
 				hak_oow_t b3, b4, b5;
-				FETCH_PARAM_CODE_TO (hak, b1);
-				FETCH_PARAM_CODE_TO (hak, b2);
-				FETCH_PARAM_CODE_TO (hak, b3);
-				FETCH_BYTE_CODE_TO (hak, b4); /* spec/selfspec */
-				FETCH_BYTE_CODE_TO (hak, b5); /* indexed_type */
+				FETCH_PARAM_CODE_TO(hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b2);
+				FETCH_PARAM_CODE_TO(hak, b3);
+				FETCH_BYTE_CODE_TO(hak, b4); /* spec/selfspec */
+				FETCH_BYTE_CODE_TO(hak, b5); /* indexed_type */
 				LOG_INST_5 (hak, "class_enter %zu %zu %zu %#zx %zu", b1, b2, b3, b4, b5);
 				break;
 			}
@@ -398,17 +398,17 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 				break;
 
 			case HAK_CODE_CLASS_CMSTORE:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "class_cmstore @%zu", b1);
 				break;
 
 			case HAK_CODE_CLASS_CIMSTORE:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "class_cimstore @%zu", b1);
 				break;
 
 			case HAK_CODE_CLASS_IMSTORE:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "class_imstore @%zu", b1);
 				break;
 			/* -------------------------------------------------------- */
@@ -416,8 +416,8 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 			case HAK_CODE_PUSH_CTXTEMPVAR_X:
 			case HAK_CODE_STORE_INTO_CTXTEMPVAR_X:
 			case HAK_CODE_POP_INTO_CTXTEMPVAR_X:
-				FETCH_PARAM_CODE_TO (hak, b1);
-				FETCH_PARAM_CODE_TO (hak, b2);
+				FETCH_PARAM_CODE_TO(hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b2);
 				goto handle_ctxtempvar;
 			case HAK_CODE_PUSH_CTXTEMPVAR_0:
 			case HAK_CODE_PUSH_CTXTEMPVAR_1:
@@ -432,7 +432,7 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 			case HAK_CODE_POP_INTO_CTXTEMPVAR_2:
 			case HAK_CODE_POP_INTO_CTXTEMPVAR_3:
 				b1 = bcode & 0x3; /* low 2 bits */
-				FETCH_BYTE_CODE_TO (hak, b2);
+				FETCH_BYTE_CODE_TO(hak, b2);
 
 			handle_ctxtempvar:
 				if ((bcode >> 3) & 1)
@@ -460,8 +460,8 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 			case HAK_CODE_PUSH_OBJVAR_X:
 			case HAK_CODE_STORE_INTO_OBJVAR_X:
 			case HAK_CODE_POP_INTO_OBJVAR_X:
-				FETCH_PARAM_CODE_TO (hak, b1);
-				FETCH_PARAM_CODE_TO (hak, b2);
+				FETCH_PARAM_CODE_TO(hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b2);
 				goto handle_objvar;
 
 			case HAK_CODE_PUSH_OBJVAR_0:
@@ -479,7 +479,7 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 				/* b1 -> variable index to the object indicated by b2.
 				 * b2 -> object index stored in the literal frame. */
 				b1 = bcode & 0x3; /* low 2 bits */
-				FETCH_BYTE_CODE_TO (hak, b2);
+				FETCH_BYTE_CODE_TO(hak, b2);
 
 			handle_objvar:
 				if ((bcode >> 3) & 1)
@@ -504,19 +504,19 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 			/* -------------------------------------------------------- */
 
 			case HAK_CODE_SEND_R:
-				FETCH_PARAM_CODE_TO (hak, b1); /* nargs */
-				FETCH_PARAM_CODE_TO (hak, b2); /* nrvars */
+				FETCH_PARAM_CODE_TO(hak, b1); /* nargs */
+				FETCH_PARAM_CODE_TO(hak, b2); /* nrvars */
 				LOG_INST_2 (hak, "send_r %zu %zu", b1, b2);
 				break;
 			case HAK_CODE_SEND_TO_SUPER_R:
-				FETCH_PARAM_CODE_TO (hak, b1); /* nargs */
-				FETCH_PARAM_CODE_TO (hak, b2); /* nrvars */
+				FETCH_PARAM_CODE_TO(hak, b1); /* nargs */
+				FETCH_PARAM_CODE_TO(hak, b2); /* nrvars */
 				LOG_INST_2 (hak, "send_to_super_r %zu %zu", b1, b2);
 				break;
 
 			case HAK_CODE_SEND_X:
 			case HAK_CODE_SEND_TO_SUPER_X:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				goto handle_send;
 
 			case HAK_CODE_SEND_0:
@@ -536,34 +536,34 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 			/* -------------------------------------------------------- */
 
 			case HAK_CODE_PUSH_CVAR_I_X:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "push_cvar_i %zu", b1);
 				break;
 
 			case HAK_CODE_STORE_INTO_CVAR_I_X:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "store_into_cvar_i %zu", b1);
 				break;
 
 			case HAK_CODE_POP_INTO_CVAR_I_X:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "pop_into_cvar_i %zu", b1);
 				break;
 
 			/* -------------------------------------------------------- */
 
 			case HAK_CODE_PUSH_CVAR_M_X:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "push_cvar_m %zu", b1);
 				break;
 
 			case HAK_CODE_STORE_INTO_CVAR_M_X:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "store_into_cvar_m %zu", b1);
 				break;
 
 			case HAK_CODE_POP_INTO_CVAR_M_X:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "pop_into_cvar_m %zu", b1);
 				break;
 
@@ -610,53 +610,53 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 				break;
 
 			case HAK_CODE_PUSH_INTLIT:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "push_intlit %zu", b1);
 				break;
 
 			case HAK_CODE_PUSH_NEGINTLIT:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "push_negintlit %zu", b1);
 				break;
 
 			case HAK_CODE_PUSH_CHARLIT:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "push_charlit %zu", b1);
 				break;
 			/* -------------------------------------------------------- */
 
 			case HAK_CODE_MAKE_ARRAY:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "make_array %zu", b1);
 				break;
 
 			case HAK_CODE_POP_INTO_ARRAY:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "pop_into_array %zu", b1);
 				break;
 
 			case HAK_CODE_MAKE_BYTEARRAY:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "make_bytearray %zu", b1);
 				break;
 
 			case HAK_CODE_POP_INTO_BYTEARRAY:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "pop_into_bytearray %zu", b1);
 				break;
 
 			case HAK_CODE_MAKE_CHARARRAY:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "make_chararray %zu", b1);
 				break;
 
 			case HAK_CODE_POP_INTO_CHARARRAY:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "pop_into_chararray %zu", b1);
 				break;
 
 			case HAK_CODE_MAKE_DIC:
-				FETCH_PARAM_CODE_TO (hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "make_dic %zu", b1);
 				break;
 
@@ -708,10 +708,10 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 				 * b2 - block mask
 				 * b3 - base literal frame start
 				 * b4 - base literal frame end */
-				FETCH_PARAM_CODE_TO (hak, b1);
-				FETCH_PARAM_CODE_TO (hak, b2);
-				FETCH_PARAM_CODE_TO (hak, b3);
-				FETCH_PARAM_CODE_TO (hak, b4);
+				FETCH_PARAM_CODE_TO(hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b2);
+				FETCH_PARAM_CODE_TO(hak, b3);
+				FETCH_PARAM_CODE_TO(hak, b4);
 
 				b1 = (b1 << (8 * HAK_CODE_LONG_PARAM_SIZE)) | b2;
 				LOG_INST_7 (hak, "make_function %zu %zu %zu %zu %zu %zu %zu",
@@ -722,15 +722,15 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 					GET_BLK_MASK_NLVARS(b1),
 					b3, b4);
 
-				HAK_ASSERT (hak, b1 >= 0);
+				HAK_ASSERT(hak, b1 >= 0);
 				break;
 			}
 
 			case HAK_CODE_MAKE_BLOCK:
 				/* b1 - block mask
 				 * b2 - block mask */
-				FETCH_PARAM_CODE_TO (hak, b1);
-				FETCH_PARAM_CODE_TO (hak, b2);
+				FETCH_PARAM_CODE_TO(hak, b1);
+				FETCH_PARAM_CODE_TO(hak, b2);
 				b1 = (b1 << (8 * HAK_CODE_LONG_PARAM_SIZE)) | b2;
 
 				LOG_INST_5 (hak, "make_block %zu %zu %zu %zu %zu",
@@ -740,7 +740,7 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 					GET_BLK_MASK_NRVARS(b1),
 					GET_BLK_MASK_NLVARS(b1));
 
-				HAK_ASSERT (hak, b1 >= 0);
+				HAK_ASSERT(hak, b1 >= 0);
 				break;
 
 			case HAK_CODE_NOOP:
@@ -750,7 +750,7 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 
 			default:
 				LOG_INST_1 (hak, "UNKNOWN BYTE CODE ENCOUNTERED %x", (int)bcode);
-				hak_seterrnum (hak, HAK_EINTERN);
+				hak_seterrnum(hak, HAK_EINTERN);
 				break;
 		}
 	}

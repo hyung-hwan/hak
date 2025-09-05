@@ -51,14 +51,14 @@ static hak_oop_oop_t expand_bucket (hak_t* hak, hak_oop_oop_t oldbuc)
 			if (inc_max > 0) inc = inc_max;
 			else
 			{
-				hak_seterrnum (hak, HAK_EOOMEM);
+				hak_seterrnum(hak, HAK_EOOMEM);
 				return HAK_NULL;
 			}
 		}
 		newsz = oldsz + inc;
 	}
 
-	hak_pushvolat (hak, (hak_oop_t*)&oldbuc);
+	hak_pushvolat(hak, (hak_oop_t*)&oldbuc);
 	newbuc = (hak_oop_oop_t)hak_makearray(hak, newsz);
 	hak_popvolat (hak);
 	if (!newbuc) return HAK_NULL;
@@ -68,8 +68,8 @@ static hak_oop_oop_t expand_bucket (hak_t* hak, hak_oop_oop_t oldbuc)
 		symbol = (hak_oop_char_t)oldbuc->slot[--oldsz];
 		if ((hak_oop_t)symbol != hak->_nil)
 		{
-			HAK_ASSERT (hak, HAK_IS_SYMBOL(hak, symbol));
-			/*HAK_ASSERT (hak, sym->size > 0);*/
+			HAK_ASSERT(hak, HAK_IS_SYMBOL(hak, symbol));
+			/*HAK_ASSERT(hak, sym->size > 0);*/
 
 			index = hak_hash_oochars(symbol->slot, HAK_OBJ_GET_SIZE(symbol)) % newsz;
 			while (newbuc->slot[index] != hak->_nil) index = (index + 1) % newsz;
@@ -86,22 +86,22 @@ static hak_oop_t find_or_make_symbol (hak_t* hak, const hak_ooch_t* ptr, hak_oow
 	hak_oow_t index;
 	hak_oop_char_t sym;
 
-	HAK_ASSERT (hak, len > 0);
+	HAK_ASSERT(hak, len > 0);
 	if (len <= 0)
 	{
 		/* i don't allow an empty symbol name */
-		hak_seterrnum (hak, HAK_EINVAL);
+		hak_seterrnum(hak, HAK_EINVAL);
 		return HAK_NULL;
 	}
 
-	HAK_ASSERT (hak, HAK_IS_ARRAY(hak, hak->symtab->bucket));
+	HAK_ASSERT(hak, HAK_IS_ARRAY(hak, hak->symtab->bucket));
 	index = hak_hash_oochars(ptr, len) % HAK_OBJ_GET_SIZE(hak->symtab->bucket);
 
 	/* find a matching symbol in the open-addressed symbol table */
 	while (hak->symtab->bucket->slot[index] != hak->_nil)
 	{
 		sym = (hak_oop_char_t)hak->symtab->bucket->slot[index];
-		HAK_ASSERT (hak, HAK_IS_SYMBOL(hak, sym));
+		HAK_ASSERT(hak, HAK_IS_SYMBOL(hak, sym));
 
 		if (len == HAK_OBJ_GET_SIZE(sym) &&
 		    hak_equal_oochars(ptr, sym->slot, len))
@@ -114,18 +114,18 @@ static hak_oop_t find_or_make_symbol (hak_t* hak, const hak_ooch_t* ptr, hak_oow
 
 	if (!create)
 	{
-		hak_seterrnum (hak, HAK_ENOENT);
+		hak_seterrnum(hak, HAK_ENOENT);
 		return HAK_NULL;
 	}
 
 	/* make a new symbol and insert it */
-	HAK_ASSERT (hak, HAK_OOP_IS_SMOOI(hak->symtab->tally));
+	HAK_ASSERT(hak, HAK_OOP_IS_SMOOI(hak->symtab->tally));
 	tally = HAK_OOP_TO_SMOOI(hak->symtab->tally);
 	if (tally >= HAK_SMOOI_MAX)
 	{
 		/* this built-in table is not allowed to hold more than
 		 * HAK_SMOOI_MAX items for efficiency sake */
-		hak_seterrnum (hak, HAK_EDFULL);
+		hak_seterrnum(hak, HAK_EDFULL);
 		return HAK_NULL;
 	}
 
@@ -162,14 +162,14 @@ static hak_oop_t find_or_make_symbol (hak_t* hak, const hak_ooch_t* ptr, hak_oow
 	sym = (hak_oop_char_t)hak_instantiate(hak, hak->c_symbol, ptr, len);
 	if (HAK_LIKELY(sym))
 	{
-		HAK_ASSERT (hak, tally < HAK_SMOOI_MAX);
+		HAK_ASSERT(hak, tally < HAK_SMOOI_MAX);
 		hak->symtab->tally = HAK_SMOOI_TO_OOP(tally + 1);
 		hak->symtab->bucket->slot[index] = (hak_oop_t)sym;
 	}
 	else
 	{
 		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-		hak_seterrbfmt (hak, HAK_ERRNUM(hak),
+		hak_seterrbfmt(hak, HAK_ERRNUM(hak),
 			"unable to instantiate %O with %.*js - %js", hak->c_symbol->name, len, ptr, orgmsg);
 	}
 	return (hak_oop_t)sym;
@@ -195,7 +195,7 @@ hak_oop_t hak_makesymbolwithbcstr (hak_t* hak, const hak_bch_t* ptr)
 	ucsptr = hak_dupbtoucstr(hak, ptr, &ucslen);
 	if (HAK_UNLIKELY(!ucsptr)) return HAK_NULL;
 	v = hak_makesymbol(hak, ucsptr, ucslen);
-	hak_freemem (hak, ucsptr);
+	hak_freemem(hak, ucsptr);
 	return v;
 #else
 	return hak_makesymbol(hak, ptr, hak_count_bcstr(ptr));
@@ -214,7 +214,7 @@ hak_oop_t hak_makesymbolwithucstr (hak_t* hak, const hak_uch_t* ptr)
 	bcsptr = hak_duputobcstr(hak, ptr, &bcslen);
 	if (HAK_UNLIKELY(!bcsptr)) return HAK_NULL;
 	v = hak_makesymbol(hak, bcsptr, bcslen);
-	hak_freemem (hak, bcsptr);
+	hak_freemem(hak, bcsptr);
 	return v;
 #endif
 }
