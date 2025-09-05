@@ -314,7 +314,7 @@ static HAK_INLINE int is_ident_char (hak_ooci_t c)
 #define GET_CHAR_TO(hak,c) \
 	do { \
 		if (get_char(hak) <= -1) return -1; \
-		c =(hak)->c->lxc.c; \
+		c = (hak)->c->lxc.c; \
 	} while (0)
 
 

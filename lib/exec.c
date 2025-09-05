@@ -74,21 +74,21 @@ static hak_ooch_t oocstr_dash[] = { '-', '\0' };
 #define LOAD_SP(hak, v_ctx) ((hak)->sp = HAK_OOP_TO_SMOOI((v_ctx)->sp))
 #define STORE_SP(hak, v_ctx) ((v_ctx)->sp = HAK_SMOOI_TO_OOP((hak)->sp))
 
-#define LOAD_ACTIVE_IP(hak) LOAD_IP(hak,(hak)->active_context)
-#define STORE_ACTIVE_IP(hak) STORE_IP(hak,(hak)->active_context)
+#define LOAD_ACTIVE_IP(hak) LOAD_IP(hak, (hak)->active_context)
+#define STORE_ACTIVE_IP(hak) STORE_IP(hak, (hak)->active_context)
 
-#define LOAD_ACTIVE_SP(hak) LOAD_SP(hak,(hak)->processor->active)
-#define STORE_ACTIVE_SP(hak) STORE_SP(hak,(hak)->processor->active)
+#define LOAD_ACTIVE_SP(hak) LOAD_SP(hak, (hak)->processor->active)
+#define STORE_ACTIVE_SP(hak) STORE_SP(hak, (hak)->processor->active)
 
 #define SWITCH_ACTIVE_CONTEXT(hak,v_ctx) \
 	do \
 	{ \
 		STORE_ACTIVE_IP(hak); \
 		(hak)->active_context = (v_ctx); \
-		(hak)->active_function =(hak)->active_context->base; \
+		(hak)->active_function = (hak)->active_context->base; \
 		(hak)->active_code = HAK_FUNCTION_GET_CODE_BYTE((hak)->active_function); \
 		LOAD_ACTIVE_IP(hak); \
-		(hak)->processor->active->current_context =(hak)->active_context; \
+		(hak)->processor->active->current_context = (hak)->active_context; \
 	} while (0)
 
 /*#define FETCH_BYTE_CODE(hak) ((hak)->code.bc.arr->slot[(hak)->ip++])*/
@@ -137,7 +137,7 @@ static void terminate_all_processes (hak_t* hak);
 
 #define HAK_EXSTACK_PUSH(hak, ctx_, ip_, clsp_, sp_) \
 	do { \
-		hak_oop_process_t ap =(hak)->processor->active; \
+		hak_oop_process_t ap = (hak)->processor->active; \
 		hak_ooi_t exsp = HAK_OOP_TO_SMOOI(ap->exsp); \
 		if (exsp >= HAK_OOP_TO_SMOOI(ap->exst) - 1) \
 		{ \
@@ -153,7 +153,7 @@ static void terminate_all_processes (hak_t* hak);
 
 #define HAK_EXSTACK_POP(hak) \
 	do { \
-		hak_oop_process_t ap =(hak)->processor->active; \
+		hak_oop_process_t ap = (hak)->processor->active; \
 		hak_ooi_t exsp = HAK_OOP_TO_SMOOI(ap->exsp); \
 		exsp -= 4; \
 		ap->exsp = HAK_SMOOI_TO_OOP(exsp); \
@@ -161,7 +161,7 @@ static void terminate_all_processes (hak_t* hak);
 
 #define HAK_EXSTACK_POP_TO(hak, ctx_, ip_, clsp_, sp_) \
 	do { \
-		hak_oop_process_t ap =(hak)->processor->active; \
+		hak_oop_process_t ap = (hak)->processor->active; \
 		hak_ooi_t exsp = HAK_OOP_TO_SMOOI(ap->exsp); \
 		sp_ = HAK_OOP_TO_SMOOI(ap->slot[exsp]); exsp--; \
 		clsp_ = HAK_OOP_TO_SMOOI(ap->slot[exsp]); exsp--; \
@@ -180,7 +180,7 @@ static void terminate_all_processes (hak_t* hak);
 
 #define HAK_CLSTACK_PUSH(hak, v) \
 	do { \
-		hak_oop_process_t ap =(hak)->processor->active; \
+		hak_oop_process_t ap = (hak)->processor->active; \
 		hak_ooi_t clsp_ = HAK_OOP_TO_SMOOI(ap->clsp); \
 		if (clsp_ >= HAK_OOP_TO_SMOOI(ap->clst)) \
 		{ \
@@ -193,7 +193,7 @@ static void terminate_all_processes (hak_t* hak);
 
 #define HAK_CLSTACK_POP(hak) \
 	do { \
-		hak_oop_process_t ap =(hak)->processor->active; \
+		hak_oop_process_t ap = (hak)->processor->active; \
 		hak_ooi_t clsp_ = HAK_OOP_TO_SMOOI(ap->clsp); \
 		clsp_--; \
 		ap->clsp = HAK_SMOOI_TO_OOP(clsp_); \
@@ -201,7 +201,7 @@ static void terminate_all_processes (hak_t* hak);
 
 #define HAK_CLSTACK_POPS(hak, count) \
 	do { \
-		hak_oop_process_t ap =(hak)->processor->active; \
+		hak_oop_process_t ap = (hak)->processor->active; \
 		hak_ooi_t clsp_ = HAK_OOP_TO_SMOOI(ap->clsp); \
 		clsp_ -= count; \
 		ap->clsp = HAK_SMOOI_TO_OOP(clsp_); \
@@ -209,7 +209,7 @@ static void terminate_all_processes (hak_t* hak);
 
 #define HAK_CLSTACK_POP_TO(hak, v) \
 	do { \
-		hak_oop_process_t ap =(hak)->processor->active; \
+		hak_oop_process_t ap = (hak)->processor->active; \
 		hak_ooi_t clsp_ = HAK_OOP_TO_SMOOI(ap->clsp); \
 		v = ap->slot[clsp_]; clsp_--; \
 		ap->clsp = HAK_SMOOI_TO_OOP(clsp_); \
@@ -217,7 +217,7 @@ static void terminate_all_processes (hak_t* hak);
 
 #define HAK_CLSTACK_FETCH_TOP_TO(hak, v) \
 	do { \
-		hak_oop_process_t ap =(hak)->processor->active; \
+		hak_oop_process_t ap = (hak)->processor->active; \
 		hak_ooi_t clsp_ = HAK_OOP_TO_SMOOI(ap->clsp); \
 		v = ap->slot[clsp_]; \
 	} while (0)
@@ -2414,7 +2414,8 @@ static HAK_INLINE int do_throw (hak_t* hak, hak_oop_t val, hak_ooi_t ip)
 		/* output backtrace */
 		HAK_LOG0(hak, HAK_LOG_IC | HAK_LOG_INFO, "[BACKTRACE]\n");
 		c = hak->active_context;
-		while ((hak_oop_t)c != hak->_nil) {
+		while ((hak_oop_t)c != hak->_nil)
+		{
 			f = c->base;
 			if (f->dbgi != hak->_nil)
 			{
@@ -2425,7 +2426,8 @@ static HAK_INLINE int do_throw (hak_t* hak, hak_oop_t val, hak_ooi_t ip)
 				hak_loc_t loc;
 				hak_ooi_t cip;
 
-				cip = HAK_OOP_TO_SMOOI(c->ip);
+				/* use the given ip for the active context instead of the value from the ip field */
+				cip = (c == hak->active_context)? ip: HAK_OOP_TO_SMOOI(c->ip);
 				dbgi = (hak_dbgi_t*)HAK_OBJ_GET_BYTE_SLOT(f->dbgi);
 				HAK_MEMSET(&loc, 0, HAK_SIZEOF(loc));
 				loc.file = dbgi[cip].fname;

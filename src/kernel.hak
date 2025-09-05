@@ -166,14 +166,15 @@ printf "%O\n" (k:basicAt 20)
 }
 }
 
-try {
-(Q:k)
-} catch (e) {
+##try {
+	printf ">>>>>>>>>>>>>>>\n"
+	(Q:k)
+##} catch (e) {
 	printf "EXCEPTION: %O\n" e
 
-	try {
+##	try {
 		throw 10000
-	} catch (e) {
-		printf "EXCEPTION-X: %O\n" e
-	}
-}
+##	} catch (e) {
+##		printf "EXCEPTION-X: %O\n" e
+##	}
+##}
