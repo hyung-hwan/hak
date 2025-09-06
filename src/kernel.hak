@@ -166,9 +166,16 @@ printf "%O\n" (k:basicAt 20)
 }
 }
 
+fun c() {
+	(Q:k)
+}
 ##try {
 	printf ">>>>>>>>>>>>>>>\n"
-	(Q:k)
+
+	fun j(){
+		(c)
+	}
+	(j)
 ##} catch (e) {
 	printf "EXCEPTION: %O\n" e
 

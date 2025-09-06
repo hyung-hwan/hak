@@ -4150,7 +4150,6 @@ hak_t* hak_openstd (hak_oow_t xtnsize, hak_errnum_t* errnum)
 	return hak_openstdwithmmgr(&sys_mmgr, xtnsize, errnum);
 }
 
-
 /* --------------------------------------------------------------------- */
 
 

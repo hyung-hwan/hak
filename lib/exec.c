@@ -45,7 +45,9 @@ static HAK_INLINE const char* proc_state_to_string (int state)
 	return str[state + 1];
 }
 
-static hak_ooch_t oocstr_dash[] = { '-', '\0' };
+static hak_ooch_t oocstr_colon[2] = { ':', '\0' };
+static hak_ooch_t oocstr_dash[2] = { '-', '\0' };
+static hak_ooch_t oocstr_none[1] = { '\0' };
 
 #define PROC_MAP_INC 64
 
@@ -2414,34 +2416,37 @@ static HAK_INLINE int do_throw (hak_t* hak, hak_oop_t val, hak_ooi_t ip)
 		/* output backtrace */
 		HAK_LOG0(hak, HAK_LOG_IC | HAK_LOG_INFO, "[BACKTRACE]\n");
 		c = hak->active_context;
-		while ((hak_oop_t)c != hak->_nil)
+		if ((hak_oop_t)c != hak->_nil)
 		{
-			f = c->base;
-			if (f->dbgi != hak->_nil)
+			hak_ooi_t cip;
+
+			cip = ip; /* use the given ip for the active context instead of the value from the ip field */
+			do
 			{
-				static hak_ooch_t none[1] = { '\0' };
-				static hak_ooch_t colon[2] = { ':', '\0' };
+				f = c->base;
+				if (f->dbgi != hak->_nil)
+				{
+					hak_dbgi_t* dbgi;
+					hak_loc_t loc;
 
-				hak_dbgi_t* dbgi;
-				hak_loc_t loc;
-				hak_ooi_t cip;
+					dbgi = (hak_dbgi_t*)HAK_OBJ_GET_BYTE_SLOT(f->dbgi);
+					HAK_MEMSET(&loc, 0, HAK_SIZEOF(loc));
+					loc.file = dbgi[cip].fname;
+					loc.line = dbgi[cip].sline;
 
-				/* use the given ip for the active context instead of the value from the ip field */
-				cip = (c == hak->active_context)? ip: HAK_OOP_TO_SMOOI(c->ip);
-				dbgi = (hak_dbgi_t*)HAK_OBJ_GET_BYTE_SLOT(f->dbgi);
-				HAK_MEMSET(&loc, 0, HAK_SIZEOF(loc));
-				loc.file = dbgi[cip].fname;
-				loc.line = dbgi[cip].sline;
-
-				HAK_LOG7(hak, HAK_LOG_IC | HAK_LOG_INFO, "  %.*js%js%.*js(%js:%zu)\n",
-					(c->owner == hak->_nil? 0: HAK_OBJ_GET_SIZE(((hak_oop_class_t)c->owner)->name)),
-					(c->owner == hak->_nil? none: ((hak_oop_char_t)((hak_oop_class_t)c->owner)->name)->slot),
-					(c->owner == hak->_nil? none: colon),
-					(c->owner == hak->_nil? 0: HAK_OBJ_GET_SIZE(((hak_oop_char_t)c->name))),
-					(c->name == hak->_nil? none: ((hak_oop_char_t)c->name)->slot),
-					(dbgi[cip].fname? dbgi[ip].fname: oocstr_dash), dbgi[cip].sline);
-			}
-			c = c->sender;
+					/* TODO: include arguments? */
+					HAK_LOG7(hak, HAK_LOG_IC | HAK_LOG_INFO, "  %.*js%js%.*js(%js:%zu)\n",
+						(c->owner == hak->_nil? 0: HAK_OBJ_GET_SIZE(((hak_oop_class_t)c->owner)->name)),
+						(c->owner == hak->_nil? oocstr_none: ((hak_oop_char_t)((hak_oop_class_t)c->owner)->name)->slot),
+						(c->owner == hak->_nil? oocstr_none: oocstr_colon),
+						(c->name == hak->_nil? 0: HAK_OBJ_GET_SIZE(((hak_oop_char_t)c->name))),
+						(c->name == hak->_nil? oocstr_none: ((hak_oop_char_t)c->name)->slot),
+						(dbgi[cip].fname? dbgi[ip].fname: oocstr_dash), dbgi[cip].sline);
+				}
+				c = c->sender;
+				if ((hak_oop_t)c == hak->_nil) break;
+				cip = HAK_OOP_TO_SMOOI(c->ip);
+			} while (1);
 		}
 
 		/* exception not handled. terminate the active process */
