@@ -488,13 +488,13 @@ static int get_huge_page_size (hak_t* hak, hak_oow_t* page_size)
 			if (tmp == HAK_TYPE_MAX(unsigned long int) && errno == ERANGE) goto oops;
 
 			*page_size = tmp * 1024; /* KBytes to Bytes */
-			fclose (fp);
+			fclose(fp);
 			return 0;
 		}
 	}
 
 oops:
-	fclose (fp);
+	fclose(fp);
 	return -1;
 }
 
@@ -1155,12 +1155,12 @@ hak_errnum_t hak_syserrstrb (hak_t* hak, int syserr_type, int syserr_code, hak_b
 			{
 				char tmp[64];
 				sprintf (tmp, "socket error %d", (int)syserr_code);
-				hak_copy_bcstr (buf, len, tmp);
+				hak_copy_bcstr(buf, len, tmp);
 			}
 			return HAK_ESYSERR;
 			#else
 			/* sock_strerror() available in tcpip32.dll only */
-			if (buf) hak_copy_bcstr (buf, len, sock_strerror(syserr_code));
+			if (buf) hak_copy_bcstr(buf, len, sock_strerror(syserr_code));
 			return os2sockerr_to_errnum(syserr_code);
 			#endif
 		#endif
@@ -1184,12 +1184,12 @@ hak_errnum_t hak_syserrstrb (hak_t* hak, int syserr_type, int syserr_code, hak_b
 			{
 				char tmp[64];
 				sprintf (tmp, "system error %d", (int)syserr_code);
-				hak_copy_bcstr (buf, len, tmp);
+				hak_copy_bcstr(buf, len, tmp);
 			}
 			return os2err_to_errnum(syserr_code);
 		#elif defined(macintosh)
 			/* TODO: convert code to string */
-			if (buf) hak_copy_bcstr (buf, len, "system error");
+			if (buf) hak_copy_bcstr(buf, len, "system error");
 			return macerr_to_errnum(syserr_code);
 		#else
 			/* in other systems, errno is still the native system error code.
@@ -1211,16 +1211,16 @@ hak_errnum_t hak_syserrstrb (hak_t* hak, int syserr_type, int syserr_code, hak_b
 				 * a positive error code upon failure */
 				x = (hak_oow_t)strerror_r(syserr_code, buf, len);
 				if (x != (hak_oow_t)buf && buf[0] == '\0' && x != 0 && x > 1024 && x != (hak_oow_t)-1)
-					hak_copy_bcstr (buf, len, (const hak_bch_t*)x);
+					hak_copy_bcstr(buf, len, (const hak_bch_t*)x);
 			}
 		#else
 			/* this may be thread unsafe */
-			if (buf && len > 0) hak_copy_bcstr (buf, len, strerror(syserr_code));
+			if (buf && len > 0) hak_copy_bcstr(buf, len, strerror(syserr_code));
 		#endif
 			return errno_to_errnum(syserr_code);
 	}
 
-	if (buf) hak_copy_bcstr (buf, len, "system error");
+	if (buf) hak_copy_bcstr(buf, len, "system error");
 	return HAK_ESYSERR;
 }
 
@@ -1259,7 +1259,7 @@ static void backtrace_stack_frames (hak_t* hak)
 
 		if (unw_get_proc_name(&cursor, symbol, HAK_COUNTOF(symbol), &off))
 		{
-			hak_copy_bcstr (symbol, HAK_COUNTOF(symbol), "<unknown>");
+			hak_copy_bcstr(symbol, HAK_COUNTOF(symbol), "<unknown>");
 		}
 
 		hak_logbfmt(hak, HAK_LOG_STDERR | HAK_LOG_UNTYPED | HAK_LOG_DEBUG,
@@ -3288,7 +3288,7 @@ static void* dlopen_pfmod (hak_t* hak, const hak_ooch_t* name, const hak_ooch_t*
 	}
 
 retry:
-	hak_copy_bcstr (&bufptr[xlen], bufcapa - xlen, HAK_DEFAULT_PFMODPOSTFIX);
+	hak_copy_bcstr(&bufptr[xlen], bufcapa - xlen, HAK_DEFAULT_PFMODPOSTFIX);
 
 	/* both prefix and postfix attached. for instance, libhak-xxx */
 	HAK_DEBUG3 (hak, "Opening(ext) PFMOD %hs[%js] - %hs\n", &bufptr[dlen], name, bufptr);
@@ -4209,7 +4209,7 @@ static HAK_INLINE int open_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 	#if defined(HAK_OOCH_IS_UCH)
 		hak_convootobcstr(hak, arg->name, &ucslen, &bb->fn[parlen], &bcslen);
 	#else
-		hak_copy_bcstr (&bb->fn[parlen], bcslen + 1, arg->name);
+		hak_copy_bcstr(&bb->fn[parlen], bcslen + 1, arg->name);
 	#endif
 
 		bb->fp = fopen(bb->fn, FOPEN_R_FLAGS);
@@ -4232,7 +4232,7 @@ static HAK_INLINE int open_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 		bb->fn = (hak_bch_t*)(bb + 1);
 		if (pathlen > 0 && xtn->cci_path)
 		{
-			hak_copy_bcstr (bb->fn, pathlen + 1, xtn->cci_path);
+			hak_copy_bcstr(bb->fn, pathlen + 1, xtn->cci_path);
 			/*bb->fp = fopen(bb->fn, FOPEN_R_FLAGS);*/
 		}
 		else
@@ -4240,11 +4240,7 @@ static HAK_INLINE int open_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 			bb->fn[0] = '\0';
 			/*bb->fp = stdin;*/
 		}
-	}
 
-
-	if (!arg->includer) /* if main stream */
-	{
 	/* HACK */
 		HAK_ASSERT(hak, arg->name == HAK_NULL);
 		arg->name = hak_dupbtooocstr(hak, bb->fn, HAK_NULL);
@@ -4260,7 +4256,7 @@ static HAK_INLINE int open_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 oops:
 	if (bb)
 	{
-		if (bb->fp && bb->fp != stdin) fclose (bb->fp);
+		if (bb->fp && bb->fp != stdin) fclose(bb->fp);
 		hak_freemem(hak, bb);
 	}
 	return -1;
@@ -4283,7 +4279,7 @@ static HAK_INLINE int close_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 	}
 /* END HACK */
 
-	if (bb->fp /*&& bb->fp != stdin*/) fclose (bb->fp);
+	if (bb->fp /*&& bb->fp != stdin*/) fclose(bb->fp);
 	hak_freemem(hak, bb);
 
 	arg->handle = HAK_NULL;
@@ -4392,7 +4388,7 @@ static HAK_INLINE int open_udi_stream (hak_t* hak, hak_io_udiarg_t* arg)
 	bb->fn = (hak_bch_t*)(bb + 1);
 	if (pathlen > 0 && xtn->udi_path)
 	{
-		hak_copy_bcstr (bb->fn, pathlen + 1, xtn->udi_path);
+		hak_copy_bcstr(bb->fn, pathlen + 1, xtn->udi_path);
 		bb->fp = fopen(bb->fn, FOPEN_R_FLAGS);
 	}
 	else
@@ -4414,7 +4410,7 @@ static HAK_INLINE int open_udi_stream (hak_t* hak, hak_io_udiarg_t* arg)
 oops:
 	if (bb)
 	{
-		if (bb->fp && bb->fp != stdin) fclose (bb->fp);
+		if (bb->fp && bb->fp != stdin) fclose(bb->fp);
 		hak_freemem(hak, bb);
 	}
 	return -1;
@@ -4428,7 +4424,7 @@ static HAK_INLINE int close_udi_stream (hak_t* hak, hak_io_udiarg_t* arg)
 	bb = (bb_t*)arg->handle;
 	HAK_ASSERT(hak, bb != HAK_NULL && bb->fp != HAK_NULL);
 
-	if (bb->fp != stdin) fclose (bb->fp);
+	if (bb->fp != stdin) fclose(bb->fp);
 	hak_freemem(hak, bb);
 
 	arg->handle = HAK_NULL;
@@ -4601,7 +4597,7 @@ static HAK_INLINE int close_udo_stream (hak_t* hak, hak_io_udoarg_t* arg)
 
 	fp = (FILE*)arg->handle;
 	HAK_ASSERT(hak, fp != HAK_NULL);
-	if (fp != stdout) fclose (fp);
+	if (fp != stdout) fclose(fp);
 	arg->handle = HAK_NULL;
 	return 0;
 }

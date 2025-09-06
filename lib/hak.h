@@ -1789,7 +1789,6 @@ struct hak_t
 	int tagged_brands[16];
 	hak_oop_class_t* tagged_classes[16]; /* this is a pointer to hak_oop_class_t which is also a pointer */
 
-
 	hak_oop_t* volat_stack[256]; /* stack for temporaries */
 	hak_oow_t volat_count;
 
@@ -1842,7 +1841,6 @@ struct hak_t
 			hak_oow_t len;
 		} xbuf; /* buffer to support sprintf */
 	} sprintf;
-
 
 	hak_code_t code;
 

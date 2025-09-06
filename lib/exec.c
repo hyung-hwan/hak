@@ -2427,12 +2427,12 @@ static HAK_INLINE int do_throw (hak_t* hak, hak_oop_t val, hak_ooi_t ip)
 				if (f->dbgi != hak->_nil)
 				{
 					hak_dbgi_t* dbgi;
-					hak_loc_t loc;
+					const hak_ooch_t* fname;
 
 					dbgi = (hak_dbgi_t*)HAK_OBJ_GET_BYTE_SLOT(f->dbgi);
-					HAK_MEMSET(&loc, 0, HAK_SIZEOF(loc));
-					loc.file = dbgi[cip].fname;
-					loc.line = dbgi[cip].sline;
+
+					fname = dbgi[cip].fname;
+					if (!fname && hak->c) fname = hak->c->cci_arg.name;
 
 					/* TODO: include arguments? */
 					HAK_LOG7(hak, HAK_LOG_IC | HAK_LOG_INFO, "  %.*js%js%.*js(%js:%zu)\n",
@@ -2441,7 +2441,7 @@ static HAK_INLINE int do_throw (hak_t* hak, hak_oop_t val, hak_ooi_t ip)
 						(c->owner == hak->_nil? oocstr_none: oocstr_colon),
 						(c->name == hak->_nil? 0: HAK_OBJ_GET_SIZE(((hak_oop_char_t)c->name))),
 						(c->name == hak->_nil? oocstr_none: ((hak_oop_char_t)c->name)->slot),
-						(dbgi[cip].fname? dbgi[ip].fname: oocstr_dash), dbgi[cip].sline);
+						(fname? fname: oocstr_dash), dbgi[cip].sline);
 				}
 				c = c->sender;
 				if ((hak_oop_t)c == hak->_nil) break;
