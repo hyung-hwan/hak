@@ -210,7 +210,7 @@ static int __find_word_in_string (const hak_oocs_t* haystack, const hak_oocs_t* 
 static int add_temporary_variable (hak_t* hak, const hak_cnode_t* var, hak_oow_t dup_check_start, const hak_bch_t* desc, const hak_oocs_t* tgt)
 {
 	hak_oocs_t s;
-	hak_oocs_t* name;
+	const hak_oocs_t* name;
 	int x;
 
 	name = HAK_CNODE_GET_TOK(var);
@@ -299,7 +299,7 @@ static int add_class_level_variable (hak_t* hak, hak_oocsc_t* dst, hak_oocsc_t* 
 {
 	/* it downcasts hak_oocsc_t* to hak_oocs_t*. take extra care to keep their type defintion
 	 * compatible for downcasting in hak-cmn.h */
-	hak_oocs_t* name;
+	const hak_oocs_t* name;
 
 	name = HAK_CNODE_GET_TOK(var);
 	if (__find_word_in_string((hak_oocs_t*)dst, name, 0, HAK_NULL) >= 0 ||
@@ -1607,6 +1607,20 @@ static int collect_vardcl_for_class (hak_t* hak, hak_cnode_t* obj, hak_cnode_t**
 		}
 	}
 	while (1);
+
+	/* remove leading spaces if any */
+	while (vardcl->ivar_len > 0)
+	{
+		if (hak->c->tv.s.ptr[vardcl->ivar_start] != ' ') break;
+		vardcl->ivar_start++;
+		vardcl->ivar_len--;
+	}
+	while (vardcl->cvar_len > 0)
+	{
+		if (hak->c->tv.s.ptr[vardcl->cvar_start] != ' ') break;
+		vardcl->cvar_start++;
+		vardcl->cvar_len--;
+	}
 
 	HAK_ASSERT(hak, vardcl->nivars + vardcl->ncvars == hak->c->tv.wcount - tv_wcount_saved);
 	*nextobj = HAK_CNODE_CONS_CDR(obj);
@@ -3048,8 +3062,8 @@ static HAK_INLINE int compile_class_p2 (hak_t* hak)
 
 	/* two placeholder instructions have been pushed before push_clsblk()
 	 * in compile_class_p1().
-	 *   push_literal long-param long-param <-- (1) position of first long-param
-	 *   push_literal long-param long-param <-- (2) position of first long-param
+	 *   push_literal long-param long-param <-- (1) position of first long-param (extended long)
+	 *   push_literal long-param long-param <-- (2) position of first long-param (extended long)
 	 *   class_enter ...                    <-- class_enter_inst_pos
 	 */
 	patch_pos = cbi->class_enter_inst_pos - (HAK_CODE_LONG_PARAM_SIZE * 4 + 1); /* (1) */
@@ -3078,7 +3092,7 @@ static HAK_INLINE int compile_class_p2 (hak_t* hak)
 	if (cbi->ncvars > 0)
 	{
 		/* patch the PUSH_LITERAL instruction for cvars */
-		/* TODO: reduce space waste for fixed double-long param */
+		/* TODO: reduce space waste for fixed extended long param */
 		hak_oop_t obj;
 		hak_oow_t index;
 
@@ -3224,7 +3238,7 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 	hak_ooi_t jump_inst_pos, lfsize_pos;
 	hak_oow_t saved_tv_wcount, tv_dup_start;
 	hak_cnode_t* fun_name;
-	hak_ooi_t fun_name_lfindex;
+	hak_oow_t fun_name_lfindex;
 	hak_cnode_t* class_name;
 	hak_cnode_t* attr_list;
 	hak_cnode_t* arg_list;
@@ -4398,7 +4412,7 @@ static HAK_INLINE int compile_catch (hak_t* hak)
 	if (check_block_expression_as_body(hak, obj, cmd, FOR_NONE) <= -1) return -1;
 
 	/* jump_inst_pos hold the instruction pointer that skips the catch block at the end of the try block */
-	patch_nearest_post_try(hak, &jump_inst_pos);
+	if (patch_nearest_post_try(hak, &jump_inst_pos) <= -1) return -1;
 
 	/* produce an instruction to store the exception value to an exception variable pushed by the 'throw' instruction */
 	if (emit_variable_access(hak, VAR_ACCESS_POP, &vi, HAK_CNODE_GET_LOC(src)) <= -1) return -1;

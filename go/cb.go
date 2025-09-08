@@ -253,7 +253,7 @@ func hak_go_udi_handler(c *C.hak_t, cmd C.hak_io_cmd_t, arg unsafe.Pointer) C.in
 			g.set_errmsg(C.HAK_EIOERR, err.Error())
 			return -1
 		}
-		ioarg.xlen = C.ulong(n)
+		ioarg.xlen = C.hak_oow_t(n)
 		return 0
 	}
 

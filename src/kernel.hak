@@ -172,10 +172,12 @@ fun c() {
 ##try {
 	printf ">>>>>>>>>>>>>>>\n"
 
-	fun j(){
-		(c)
-	}
-	(j)
+	d := ((fun (x){
+		printf "<<%d>>\n" x
+		c
+	}) 90)
+	##(j)
+	(d 10)
 ##} catch (e) {
 	printf "EXCEPTION: %O\n" e
 
@@ -185,3 +187,8 @@ fun c() {
 ##		printf "EXCEPTION-X: %O\n" e
 ##	}
 ##}
+
+
+## if the assigne operator is seen
+## a := (fun (x) { })
+## a := fun (x) { } <<--- can I support this syntax??
