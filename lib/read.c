@@ -1553,6 +1553,7 @@ static int feed_process_token (hak_t* hak)
 				int oldflagv;
 				frd->expect_vlist_item = 0;
 				frd->obj = leave_list(hak, &frd->list_loc, &frd->flagv, &oldflagv);
+				if (HAK_LIKELY(frd->obj)) frd->obj->cn_llvl = frd->level;
 				frd->level--;
 				frd->flagv |= AT_BEGINNING;
 				list_loc = &frd->list_loc;
@@ -1786,6 +1787,7 @@ static int feed_process_token (hak_t* hak)
 #endif
 
 			frd->obj = leave_list(hak, &frd->list_loc, &frd->flagv, &oldflagv);
+			if (HAK_LIKELY(frd->obj)) frd->obj->cn_llvl = frd->level; /* list level */
 			frd->level--;
 			frd->flagv |= AT_BEGINNING; /* the current one is over. move on the beginning for the next expression */
 			list_loc = &frd->list_loc;
@@ -2026,6 +2028,8 @@ static int feed_process_token (hak_t* hak)
 	}
 
 	if (!frd->obj) goto oops; /* TODO: this doesn't have to be checked if jump has been made to auto_xlist... so restructure the flow */
+
+	frd->obj->cn_llvl = frd->level; /* list level */
 
 #if 0
 	/* check if the element is read for a quoted list */
@@ -2539,7 +2543,7 @@ static int flx_dollared_ident (hak_t* hak, hak_ooci_t c)
 	}
 	else
 	{
-		hak_setsynerrbfmt (
+		hak_setsynerrbfmt(
 			hak, HAK_SYNERR_ILTOK, TOKEN_LOC(hak), HAK_NULL,
 			"invalid dollar-prefixed identifier character '%jc' after '%.*js'", c,
 			TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
@@ -2853,7 +2857,7 @@ static int flx_hmarked_ident (hak_t* hak, hak_ooci_t c)
 	}
 	else
 	{
-		hak_setsynerrbfmt (
+		hak_setsynerrbfmt(
 			hak, HAK_SYNERR_ILTOK, TOKEN_LOC(hak), HAK_NULL,
 			"invalid symbol character '%jc' after '%.*js'", c,
 			TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
@@ -2963,7 +2967,7 @@ static int flx_plain_ident (hak_t* hak, hak_ooci_t c) /* identifier */
 	}
 	else
 	{
-		hak_setsynerrbfmt (
+		hak_setsynerrbfmt(
 			hak, HAK_SYNERR_ILTOK, TOKEN_LOC(hak), HAK_NULL,
 			"invalid identifier character '%jc' after '%.*js'", c,
 			TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));

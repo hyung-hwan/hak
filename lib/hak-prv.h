@@ -460,6 +460,7 @@ typedef enum hak_cnode_flag_t hak_cnode_flag_t;
 
 #define HAK_CNODE_GET_TYPE(x) ((x)->cn_type)
 #define HAK_CNODE_GET_FLAGS(x) ((x)->cn_flags)
+#define HAK_CNODE_GET_LLVL(x) ((x)->cn_llvl)
 #define HAK_CNODE_GET_LOC(x) (&(x)->cn_loc)
 #define HAK_CNODE_GET_TOK(x) (&(x)->cn_tok)
 #define HAK_CNODE_GET_TOKPTR(x) ((x)->cn_tok.ptr)
@@ -505,6 +506,7 @@ struct hak_cnode_t
 	int cn_flags;
 	hak_loc_t cn_loc;
 	hak_oocs_t cn_tok;
+	hak_oow_t cn_llvl; /* list level */
 
 	union
 	{
@@ -685,6 +687,7 @@ struct hak_cframe_t
 		{
 			hak_ooi_t nsuperclasses;
 			unsigned int indexed_type;
+			hak_oow_t llvl; /* copied from cnode->cn_llvl */
 			hak_loc_t start_loc;
 			hak_cnode_t* cmd_cnode;
 			hak_cnode_t* class_name_cnode;
@@ -738,6 +741,7 @@ typedef struct hak_funblk_info_t hak_funblk_info_t;
 
 struct hak_clsblk_info_t
 {
+	hak_oow_t def_llvl; /* defined list level */
 	hak_cnode_t* class_name;
 
 	hak_oocsc_t ivars;

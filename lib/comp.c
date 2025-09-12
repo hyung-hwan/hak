@@ -337,6 +337,14 @@ static int is_in_class_init_scope (hak_t* hak)
 	return fbi->clsblk_top >= 0;
 }
 
+static int is_in_class_init_scope_but_not_at_llvl (hak_t* hak, hak_oow_t llvl)
+{
+	hak_funblk_info_t* fbi;
+	HAK_ASSERT(hak, hak->c->funblk.depth >= 0);
+	fbi = &hak->c->funblk.info[hak->c->funblk.depth];
+	return fbi->clsblk_top >= 0 && hak->c->clsblk.info[fbi->clsblk_top].def_llvl != llvl;
+}
+
 static int is_in_class_method_scope (hak_t* hak)
 {
 	hak_oow_t i;
@@ -345,9 +353,7 @@ static int is_in_class_method_scope (hak_t* hak)
 	for (i = hak->c->funblk.depth + 1; i > 0; )
 	{
 		hak_funblk_info_t* fbi;
-
 		fbi = &hak->c->funblk.info[--i];
-
 		if (fbi->clsblk_top >= 0)
 		{
 			if (i >= hak->c->funblk.depth) return 0; /* in class initialization scope */
@@ -1143,7 +1149,7 @@ static void pop_ctlblk (hak_t* hak)
 }
 
 static int push_clsblk (
-	hak_t* hak, const hak_loc_t* errloc, hak_cnode_t* class_name, hak_oow_t nivars, hak_oow_t ncvars,
+	hak_t* hak, const hak_loc_t* errloc, hak_oow_t llvl, hak_cnode_t* class_name, hak_oow_t nivars, hak_oow_t ncvars,
 	const hak_ooch_t* ivars_str, hak_oow_t ivars_strlen, const hak_ooch_t* cvars_str, hak_oow_t cvars_strlen)
 {
 	hak_oow_t new_depth;
@@ -1179,6 +1185,7 @@ static int push_clsblk (
 
 	ci = &hak->c->clsblk.info[new_depth];
 	HAK_MEMSET(ci, 0, HAK_SIZEOF(*ci));
+	ci->def_llvl = llvl;
 	ci->class_name = class_name;
 	ci->nivars = nivars;
 	ci->ncvars = ncvars;
@@ -2940,6 +2947,7 @@ static int compile_class (hak_t* hak, hak_cnode_t* src)
 	cf = GET_TOP_CFRAME(hak);
 	cf->u._class.nsuperclasses = 0; /* unsed for CLASS_P2 */
 	cf->u._class.indexed_type = indexed_type;
+	cf->u._class.llvl = HAK_CNODE_GET_LLVL(src);
 	cf->u._class.start_loc = *HAK_CNODE_GET_LOC(src); /* TODO: use *HAK_CNODE_GET_LOC(cmd) instead? */
 	cf->u._class.cmd_cnode = cmd;
 	cf->u._class.class_name_cnode = class_name; /* duplicate with operand to COP_COMPILE_CLASS_P2 */
@@ -2948,6 +2956,7 @@ static int compile_class (hak_t* hak, hak_cnode_t* src)
 	cf = GET_TOP_CFRAME(hak);
 	cf->u._class.nsuperclasses = nsuperclasses; /* this needs to change if we support multiple superclasses... */
 	cf->u._class.indexed_type = indexed_type;
+	cf->u._class.llvl = HAK_CNODE_GET_LLVL(src);
 	cf->u._class.start_loc = *HAK_CNODE_GET_LOC(src); /* TODO: use *HAK_CNODE_GET_LOC(cmd) instead? */
 	cf->u._class.cmd_cnode = cmd;
 	cf->u._class.class_name_cnode = class_name;
@@ -2993,7 +3002,7 @@ static HAK_INLINE int compile_class_p1 (hak_t* hak)
 
 	if (check_block_expression_as_body(hak, obj, cf->u._class.cmd_cnode, FOR_CLASS) <= -1) return -1;
 
-	if (push_clsblk(hak, &cf->u._class.start_loc,
+	if (push_clsblk(hak, &cf->u._class.start_loc, cf->u._class.llvl,
 		cf->u._class.class_name_cnode, vardcl.nivars, vardcl.ncvars,
 		&hak->c->tv.s.ptr[vardcl.ivar_start], vardcl.ivar_len,
 		&hak->c->tv.s.ptr[vardcl.cvar_start], vardcl.cvar_len) <= -1) goto oops;
@@ -3423,6 +3432,26 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 				}
 			}
 
+			if (src->cn_llvl >= 2 && is_in_class_init_scope_but_not_at_llvl(hak, src->cn_llvl - 2))
+			{
+				if (fun_name)
+				{
+					hak_setsynerrbfmt(
+						hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(cmd), HAK_NULL,
+						"function '%.*js' defined with '%.*js' prohibited in class initialziation context",
+						HAK_CNODE_GET_TOKLEN(fun_name), HAK_CNODE_GET_TOKPTR(fun_name),
+						HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
+				}
+				else
+				{
+					hak_setsynerrbfmt(
+						hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(cmd), HAK_NULL,
+						"unnamed function defined with '%.*js' prohibited in class initialziation context",
+						HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
+				}
+				return -1;
+			}
+
 			if (!fun_name && is_in_class_init_scope(hak))
 			{
 				/* TODO: it must allow as rvalue..
@@ -3465,7 +3494,7 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 			return -1;
 		}
 	}
-	else
+	else /* !next */
 	{
 		/* nothing after 'fun' (e.g. fun ) */
 		hak_setsynerrbfmt(
@@ -3920,7 +3949,6 @@ static int compile_var (hak_t* hak, hak_cnode_t* src)
 
 	POP_CFRAME(hak);
 	return 0;
-
 
 oops:
 	return -1;
@@ -5802,12 +5830,12 @@ static int compile_object_list (hak_t* hak)
 
 	cf = GET_TOP_CFRAME(hak);
 	HAK_ASSERT(hak, cf->opcode == COP_COMPILE_ARGUMENT_LIST ||
-	                 cf->opcode == COP_COMPILE_OBJECT_LIST ||
-	                 cf->opcode == COP_COMPILE_OBJECT_LIST_TAIL ||
-	                 cf->opcode == COP_COMPILE_IF_OBJECT_LIST ||
-	                 cf->opcode == COP_COMPILE_IF_OBJECT_LIST_TAIL ||
-	                 cf->opcode == COP_COMPILE_TRY_OBJECT_LIST ||
-	                 cf->opcode == COP_COMPILE_TRY_OBJECT_LIST_TAIL);
+	                cf->opcode == COP_COMPILE_OBJECT_LIST ||
+	                cf->opcode == COP_COMPILE_OBJECT_LIST_TAIL ||
+	                cf->opcode == COP_COMPILE_IF_OBJECT_LIST ||
+	                cf->opcode == COP_COMPILE_IF_OBJECT_LIST_TAIL ||
+	                cf->opcode == COP_COMPILE_TRY_OBJECT_LIST ||
+	                cf->opcode == COP_COMPILE_TRY_OBJECT_LIST_TAIL);
 
 	cop = cf->opcode;
 	oprnd = cf->operand;
