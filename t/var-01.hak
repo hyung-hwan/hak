@@ -59,7 +59,7 @@ x
 class T {
 	var j
 
-	fun(#classinst) new() {
+	fun[#classinst] new() {
 		set j 99
 		return self
 	}

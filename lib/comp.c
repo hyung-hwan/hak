@@ -1514,7 +1514,7 @@ static int collect_vardcl_for_class (hak_t* hak, hak_cnode_t* obj, hak_cnode_t**
 	tv_slen_saved = hak->c->tv.s.len;
 
 	dcl = HAK_CNODE_CONS_CAR(obj);
-	HAK_ASSERT(hak, HAK_CNODE_IS_CONS_CONCODED(dcl, HAK_CONCODE_TUPLE));
+	HAK_ASSERT(hak, HAK_CNODE_IS_CONS_CONCODED(dcl, HAK_CONCODE_XLIST));
 
 	do
 	{
@@ -1524,7 +1524,7 @@ static int collect_vardcl_for_class (hak_t* hak, hak_cnode_t* obj, hak_cnode_t**
 
 		var = HAK_CNODE_CONS_CAR(dcl);
 
-		if (HAK_CNODE_IS_CONS_CONCODED(var, HAK_CONCODE_TUPLE)) /* [ ... ] */
+		if (HAK_CNODE_IS_CONS_CONCODED(var, HAK_CONCODE_XLIST)) /* ( ... ) */
 		{
 			if (enclosed)
 			{
@@ -1539,10 +1539,10 @@ static int collect_vardcl_for_class (hak_t* hak, hak_cnode_t* obj, hak_cnode_t**
 			dcl = var;
 			continue; /* start over */
 		}
-		else if (HAK_CNODE_IS_ELIST_CONCODED(var, HAK_CONCODE_TUPLE))
+		else if (HAK_CNODE_IS_ELIST_CONCODED(var, HAK_CONCODE_XLIST))
 		{
-			/* no variables inside [] */
-			if (enclosed) goto synerr_varname; /* [] inside [] */
+			/* no variables inside () */
+			if (enclosed) goto synerr_varname; /* () inside () */
 			goto next;
 		}
 
@@ -2652,10 +2652,10 @@ static int check_class_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned i
 	ct = HAK_OBJ_TYPE_OOP;
 
 	HAK_ASSERT(hak, attr_list != HAK_NULL);
-	HAK_ASSERT(hak, HAK_CNODE_IS_CONS_CONCODED(attr_list, HAK_CONCODE_XLIST) ||
-	                 HAK_CNODE_IS_ELIST_CONCODED(attr_list, HAK_CONCODE_XLIST));
+	HAK_ASSERT(hak, HAK_CNODE_IS_CONS_CONCODED(attr_list, HAK_CONCODE_TUPLE) ||
+	                HAK_CNODE_IS_ELIST_CONCODED(attr_list, HAK_CONCODE_TUPLE));
 
-	if (HAK_CNODE_IS_ELIST_CONCODED(attr_list, HAK_CONCODE_XLIST))
+	if (HAK_CNODE_IS_ELIST_CONCODED(attr_list, HAK_CONCODE_TUPLE))
 	{
 		/* don't allow empty attribute list */
 		if (class_name)
@@ -2676,7 +2676,7 @@ static int check_class_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned i
 		return -1;
 	}
 
-	if (HAK_CNODE_IS_CONS_CONCODED(attr_list, HAK_CONCODE_XLIST))
+	if (HAK_CNODE_IS_CONS_CONCODED(attr_list, HAK_CONCODE_TUPLE))
 	{
 		hak_cnode_t* c;
 		const hak_ooch_t* tokptr;
@@ -2759,30 +2759,23 @@ static int check_class_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned i
 }
 
 /*
-	(class A
-		[ x y ] ## instance variables
-		:: | x y z | ## class variables <--- how to initialize the class variables???
+	class[#attr1 #attr2] Name: SuperclassName (ivar1 ivar2 (cvar1) ivar3) {
+		cvar1 := 20
+		fun[#ci] new(a b c) {
+			self.ivar1 := a
+			ivar2 := b
+			ivar3 := (self.cvar1 * 2)
+		}
+	}
 
-		## everything inside class after the variable declarations are normal expressions.
-		## however, the resolution of some variables will fall under the enclosing class.
-		(set x 20)
-		(printf "normal statement ....\n");
-
-		(fun new (a b c)
-(printf "%O\n" self) ; self is A
-			(set obj super.new)
-			(obj.init a b c)
-			;(obj.x 10)
-			;(obj.y 20)
-			(return obj)
-		)
-	)
-
-	(class B :: A ; A is a parent class
-		| p q |
-		....
-	)
-
+	class Name(ivar1 ivar2 (cvar1) ivar3) {
+		cvar1 := 20
+		fun[#ci] new(a b c) {
+			self.ivar1 := a
+			ivar2 := b
+			ivar3 := (self.cvar1 * 2)
+		}
+	}
 */
 
 static int compile_class (hak_t* hak, hak_cnode_t* src)
@@ -2807,9 +2800,10 @@ static int compile_class (hak_t* hak, hak_cnode_t* src)
 	{
 		HAK_ASSERT(hak, HAK_CNODE_IS_CONS(obj));
 
+		/* class[#b] .... */
 		tmp = HAK_CNODE_CONS_CAR(obj);
-		if (HAK_CNODE_IS_ELIST_CONCODED(tmp, HAK_CONCODE_XLIST) ||
-		    HAK_CNODE_IS_CONS_CONCODED(tmp, HAK_CONCODE_XLIST))
+		if (HAK_CNODE_IS_ELIST_CONCODED(tmp, HAK_CONCODE_TUPLE) ||
+		    HAK_CNODE_IS_CONS_CONCODED(tmp, HAK_CONCODE_TUPLE))
 		{
 			attr_list = tmp;
 			obj = HAK_CNODE_CONS_CDR(obj);
@@ -2984,13 +2978,13 @@ static HAK_INLINE int compile_class_p1 (hak_t* hak)
 	if (obj && HAK_CNODE_IS_CONS(obj))
 	{
 		/* class-level variables - instance variables and class variable
-		 *  - class X [ a b c [d e] x ] { ... }
+		 *  - class X ( a b c (d e) x ) { ... }
 		 *  - a b c are instance variables.
 		 *  - d e, enclsoed in another [], are class variables.
 		 * */
 		hak_cnode_t* tmp;
 		tmp = HAK_CNODE_CONS_CAR(obj);
-		if (HAK_CNODE_IS_CONS_CONCODED(tmp, HAK_CONCODE_TUPLE))
+		if (HAK_CNODE_IS_CONS_CONCODED(tmp, HAK_CONCODE_XLIST))
 		{
 			if (collect_vardcl_for_class(hak, obj, &obj, &vardcl) <= -1) return -1;
 		}
@@ -3150,10 +3144,10 @@ static int check_fun_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned int
 	ft = FUN_IM;
 
 	HAK_ASSERT(hak, attr_list != HAK_NULL);
-	HAK_ASSERT(hak, HAK_CNODE_IS_CONS_CONCODED(attr_list, HAK_CONCODE_XLIST) ||
-	                 HAK_CNODE_IS_ELIST_CONCODED(attr_list, HAK_CONCODE_XLIST));
+	HAK_ASSERT(hak, HAK_CNODE_IS_CONS_CONCODED(attr_list, HAK_CONCODE_TUPLE) ||
+	                HAK_CNODE_IS_ELIST_CONCODED(attr_list, HAK_CONCODE_TUPLE));
 
-	if (HAK_CNODE_IS_ELIST_CONCODED(attr_list, HAK_CONCODE_XLIST))
+	if (HAK_CNODE_IS_ELIST_CONCODED(attr_list, HAK_CONCODE_TUPLE))
 	{
 		/* don't allow empty attribute list */
 		if (class_name && fun_name)
@@ -3183,7 +3177,7 @@ static int check_fun_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned int
 		return -1;
 	}
 
-	if (HAK_CNODE_IS_CONS_CONCODED(attr_list, HAK_CONCODE_XLIST))
+	if (HAK_CNODE_IS_CONS_CONCODED(attr_list, HAK_CONCODE_TUPLE))
 	{
 		hak_cnode_t* c, * a;
 		const hak_ooch_t* tokptr;
@@ -3279,12 +3273,28 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 
 		/* fun (arg..)
 		 * fun name(arg..)
-		 * fun(#attr..) name(arg..)  ## valid as class method, not valid as plain function
-		 * fun(#attr..) (arg..)      ## not valid. not attribute list for unnamed functions
-		 * fun(#attr..) class:name(arg..)
+		 * fun[#attr..] name(arg..)  ## valid as class method, not valid as plain function
+		 * fun[#attr..] (arg..)      ## not valid. no attribute list for unnamed functions
+		 * fun[#attr..] class:name(arg..)
 		 */
 
 		tmp = HAK_CNODE_CONS_CAR(next);
+		if (HAK_CNODE_IS_CONS_CONCODED(tmp, HAK_CONCODE_TUPLE) ||
+		    HAK_CNODE_IS_ELIST_CONCODED(tmp, HAK_CONCODE_TUPLE))
+		{
+			attr_list = tmp;
+			next = HAK_CNODE_CONS_CDR(next);
+			if (!next)
+			{
+				hak_setsynerrbfmt(
+					hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(fun_name), HAK_NULL,
+					"no function name or arguments after attribute list for '%.*js'",
+					HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
+				return -1;
+			}
+			tmp = HAK_CNODE_CONS_CAR(next);
+		}
+
 		if (HAK_CNODE_IS_SYMBOL(tmp))
 		{
 			/* 'fun' followed by name */
@@ -3365,72 +3375,32 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 		{
 			/* 'fun' followed by attribute or argument list */
 			arg_list = tmp;
-			if (fun_name)
+			/* argument list
+			 *   fun class:name()
+			 *   fun name      ()
+			 *   fun           ()
+			 *                 ^  */
+			next = HAK_CNODE_CONS_CDR(next); /* point past argument list */
+			if (!next)
 			{
-				/* argument list for sure
-				 *   fun class:name()
-				 *   fun name      ()
-				 *                 ^  */
-				next = HAK_CNODE_CONS_CDR(next); /* point past argument list */
-				if (!next)
+				if (fun_name)
 				{
 					hak_setsynerrbfmt(
 						hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(cmd), HAK_NULL,
 						"no function body after argument list of function '%.*js' for '%.*js'",
 						HAK_CNODE_GET_TOKLEN(fun_name), HAK_CNODE_GET_TOKPTR(fun_name),
 						HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
-					return -1;
 				}
-				fun_body = next;
-			}
-			else
-			{
-				/* not clear if it is attribute list or argument list */
-				next = HAK_CNODE_CONS_CDR(next); /* point past attribute/argument list */
-				if (!next)
+				else
 				{
-					/* TODO: guess if the current list looks like attribute list or
-					 *       not by inspecting elements and produce better error mesage.
-					 *       another hack is to disallow ELIST as attribute list? */
 					hak_setsynerrbfmt(
 						hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(cmd), HAK_NULL,
 						"unnamed function not followed by function body for '%.*js'",
 						HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
-					return -1;
 				}
-
-				tmp = HAK_CNODE_CONS_CAR(next);
-				if (HAK_CNODE_IS_SYMBOL(tmp))
-				{
-					/* it is attribute list for sure. fun(#attr..) name */
-					attr_list = arg_list;
-					arg_list = HAK_NULL;
-					goto fun_got_name;
-				}
-				else if (HAK_CNODE_IS_CONS_CONCODED(tmp, HAK_CONCODE_XLIST) ||
-				         HAK_CNODE_IS_ELIST_CONCODED(tmp, HAK_CONCODE_XLIST))
-				{
-					/* fun(#attr..) (arg..) .. */
-					attr_list = arg_list;
-					arg_list = tmp;
-
-					next = HAK_CNODE_CONS_CDR(next); /* point past argument list */
-					if (!next)
-					{
-						hak_setsynerrbfmt(
-							hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(cmd), HAK_NULL,
-							"no function body after attribute list and argument list of unnamed function for '%.*js'",
-							HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
-						return -1;
-					}
-					fun_body = next;
-				}
-				else
-				{
-					/* fun(arg..) .. */
-					fun_body = next;
-				}
+				return -1;
 			}
+			fun_body = next;
 
 			if (src->cn_llvl >= 2 && is_in_class_init_scope_but_not_at_llvl(hak, src->cn_llvl - 2))
 			{

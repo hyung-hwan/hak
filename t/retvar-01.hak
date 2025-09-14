@@ -37,12 +37,12 @@
 		set X1 999;
 		set X2 888;
 
-		fun(#class) get ( :: x y)  {
+		fun[#class] get ( :: x y)  {
 			set x X1;
 			set y X2;
 		};
 
-		fun(#class) get2 (inc :: x y)  {
+		fun[#class] get2 (inc :: x y)  {
 			set x (+ X1 inc);
 			set y (+ X2 inc);
 		};
@@ -63,9 +63,9 @@
 	class X {
 		var x y
 
-		fun(#class) f(a :: b c) { b := (+ a 10); c := (+ a 20) }
+		fun[#class] f(a :: b c) { b := (+ a 10); c := (+ a 20) }
 
-		fun(#classinst) new(z) {
+		fun[#classinst] new(z) {
 			## multi-variable assignment with return variables to member variables
 			[self.x, self.y] := (X:f z)
 			return self;

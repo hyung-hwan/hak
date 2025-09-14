@@ -58,13 +58,33 @@ class a: #(1 2) { ##ERROR: syntax error - no valid superclass name after ':' for
 J := 11
 class B {
 	if (== J 10) {
-		fun(#ci) newA() {
+		fun[#ci] newA() {  ##ERROR: syntax error - function 'newA' defined with 'fun' prohibited in class initialziation context
 			return self
 		}
 	} else {
-		fun(#ci) newB() {
+		fun[#ci] newB() {
 			return self
 		}
+	}
+}
+
+##t2 := (B:newB)
+##t1 := (B:newA) ##error: exception not handled - "unable to send newA to B - 'newA' not found in B"
+
+---
+
+class B {
+
+}
+
+J := 11
+if (== J 10) {
+	fun[#ci] B:newA() {
+		return self
+	}
+} else {
+	fun[#ci] B:newB() {
+		return self
 	}
 }
 
@@ -87,7 +107,7 @@ class B {
 
 class X: B {
 	var a b
-	fun(#ci) new(t) {
+	fun[#ci] new(t) {
 		| a |
 		set self.a t;
 		set a 100;
@@ -109,11 +129,11 @@ class X: B {
 ---
 
 class X {
-	fun(#ci) xxx() {
+	fun[#ci] xxx() {
 		return X;
 	}
 
-	fun(#ci) qqq() {
+	fun[#ci] qqq() {
 		return "hello"
 	}
 
@@ -124,10 +144,10 @@ class X {
 
 ---
 class X {
-	fun(#ci) xxx() {
+	fun[#ci] xxx() {
 		return X;
 	}
-	fun(#ci) qqq() {
+	fun[#ci] qqq() {
 		return "hello"
 	}
 }
@@ -152,7 +172,7 @@ fun X:xxx() { ##ERROR: exception not handled - "not class"
 ## and the clase instantiation method can't specify the size
 ## you can't place an item in the arrya at all.
 
-fun(#ci) Array:boom() {
+fun[#ci] Array:boom() {
 	core.basicAtPut self 0 10 ##ERROR: exception not handled - "position(0) out of range - negative or greater than or equal to 0"
 	printf "%O" self
 	return self
@@ -163,7 +183,7 @@ Array:boom
 
 class X {
 	var a b c
-	fun(#ci) new () {
+	fun[#ci] new () {
 		self.a := 20
 		return self
 	}
@@ -243,7 +263,7 @@ class a {
 
 class X10 {
 	var x
-     fun(#ci) make() { x := 1234; return self; };
+     fun[#ci] make() { x := 1234; return self; };
      fun get-x() { return x };
 }
 
@@ -260,44 +280,44 @@ class String { ##ERROR: exception not handled - "incompatible redefintion of Str
 
 ---
 
-class() { ##ERROR: syntax error - empty attribute list on unnamed class for 'class'
+class[] { ##ERROR: syntax error - empty attribute list on unnamed class for 'class'
 }
 
 ---
 
-class() Kuduro { ##ERROR: syntax error - empty attribute list on 'Kuduro' for 'class'
+class[] Kuduro { ##ERROR: syntax error - empty attribute list on 'Kuduro' for 'class'
 }
 
 ---
 
-class(#byte #limited #char) Kuduro { ##ERROR: syntax error - conflicting or duplicate class attribute name '#char'
+class[#byte #limited #char] Kuduro { ##ERROR: syntax error - conflicting or duplicate class attribute name '#char'
 }
 
 ---
-class(#byte #limited #final #limited) Kuduro { ##ERROR: syntax error - conflicting or duplicate class attribute name '#limited'
+class[#byte #limited #final #limited] Kuduro { ##ERROR: syntax error - conflicting or duplicate class attribute name '#limited'
 }
 
 
 ---
-class(#byte #bytes) Kuduro { ##ERROR: syntax error - unrecognized class attribute name '#bytes'
+class[#byte #bytes] Kuduro { ##ERROR: syntax error - unrecognized class attribute name '#bytes'
 }
 
 ---
-class Kuduro [a b c] {
+class Kuduro (a b c) {
 	var d e
 	var a  ##ERROR: syntax error - duplicate instance variable name 'a'
 }
 
 ---
 
-class Kuduro [a [b] c] {
+class Kuduro (a (b) c) {
 	var d e
 	var b ##ERROR: syntax error - duplicate instance variable name 'b'
 }
 
 ---
 
-class Kuduro [a [b] c] {
+class Kuduro (a (b) c) {
 	var d e
 	var(#class) b ##ERROR: syntax error - duplicate class variable name 'b'
 }

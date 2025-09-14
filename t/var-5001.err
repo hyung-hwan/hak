@@ -1,5 +1,5 @@
-class A [ a ] {
-	fun(#ci) init1() {
+class A ( a ) {
+	fun[#ci] init1() {
 		| b |
 		set b (+ 1 2);
 		set a b;
@@ -15,7 +15,7 @@ class A [ a ] {
 		printf ">>> %d\n" j;
 	}
 
-	fun(#ci) init2() {
+	fun[#ci] init2() {
 		| b |
 		set b (+ 10 20);
 		set a b;
@@ -31,24 +31,28 @@ fun String length() { ##ERROR: syntax error - 'String' not followed by ( but fol
 
 ---
 
-class A [ 10 ] { ##ERROR: syntax error - not variable name '10'
+class A ( 10 ) { ##ERROR: syntax error - not variable name '10'
 }
 
 ---
 
-class A [ a := 20 ] { ##ERROR: syntax error - := disallowed
+class A ( a := 20 ) { ##ERROR: syntax error - block expression expected as 'class' body
 }
 
 ---
-class A [ [ [a] ] ] { ##ERROR: syntax error - not variable name
+
+class A ( ( (a) ) ) { ##ERROR: syntax error - not variable name
 }
 
 ---
-class A [ a + ] { ##ERROR: syntax error - not variable name '+'
+
+## TODO: improve the reader to be aware that it's in the class definition context
+##       while reading '(a + )' and to flag + as an invalid variable name...
+class A ( a + ) { ##ERROR: syntax error - no operand after binary selector '+'
 }
 
 ---
-class A [ + ] { ##ERROR: syntax error - not variable name '+'
+class A ( + ) { ##ERROR: syntax error - not variable name '+'
 }
 
 ---

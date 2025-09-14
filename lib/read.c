@@ -1553,7 +1553,6 @@ static int feed_process_token (hak_t* hak)
 				int oldflagv;
 				frd->expect_vlist_item = 0;
 				frd->obj = leave_list(hak, &frd->list_loc, &frd->flagv, &oldflagv);
-				if (HAK_LIKELY(frd->obj)) frd->obj->cn_llvl = frd->level;
 				frd->level--;
 				frd->flagv |= AT_BEGINNING;
 				list_loc = &frd->list_loc;
@@ -1787,7 +1786,6 @@ static int feed_process_token (hak_t* hak)
 #endif
 
 			frd->obj = leave_list(hak, &frd->list_loc, &frd->flagv, &oldflagv);
-			if (HAK_LIKELY(frd->obj)) frd->obj->cn_llvl = frd->level; /* list level */
 			frd->level--;
 			frd->flagv |= AT_BEGINNING; /* the current one is over. move on the beginning for the next expression */
 			list_loc = &frd->list_loc;

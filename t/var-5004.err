@@ -79,22 +79,22 @@ fun fun fun1() { ##ERROR: syntax error - invalid function name 'fun' for 'fun'
 
 ---
 
-fun(#ci) fun1() { ##ERROR: syntax error - attribute list prohibited on plain function 'fun1'
+fun[#ci] fun1() { ##ERROR: syntax error - attribute list prohibited on plain function 'fun1'
 }
 
 ---
 
-fun() ()  { ##ERROR: syntax error - attribute list prohibited on unnamed function for 'fun'
+fun[] ()  { ##ERROR: syntax error - attribute list prohibited on unnamed function for 'fun'
 }
 
 ---
 
-fun() X:y() { ##ERROR: syntax error - empty attribute list on 'X:y' for 'fun'
+fun[] X:y() { ##ERROR: syntax error - empty attribute list on 'X:y' for 'fun'
 }
 
 ---
 
 class X {
-	fun() y() { ##ERROR: syntax error - empty attribute list on 'y' for 'fun'
+	fun[] y() { ##ERROR: syntax error - empty attribute list on 'y' for 'fun'
 	}
 }

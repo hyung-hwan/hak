@@ -98,7 +98,7 @@ if (== y 29) {
 
 class A {
 	var a b c
-	fun(#ci) newInstance(x y z) {
+	fun[#ci] newInstance(x y z) {
 		set a x
 		set b y
 		set c z
