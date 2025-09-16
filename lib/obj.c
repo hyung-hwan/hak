@@ -182,7 +182,10 @@ static HAK_INLINE hak_oop_t alloc_numeric_array (hak_t* hak, const void* ptr, ha
 	/* allocate a variable object */
 
 	hak_oop_t hdr;
-	hak_oow_t xbytes, nbytes, nbytes_aligned;
+	hak_oow_t xbytes;
+	hak_oow_t nbytes;
+	hak_oow_t nbytes_aligned;
+	hak_oow_t nbytes_total;
 
 	xbytes = len * unit;
 	/* 'extra' indicates an extra unit to append at the end.
@@ -191,31 +194,34 @@ static HAK_INLINE hak_oop_t alloc_numeric_array (hak_t* hak, const void* ptr, ha
 	nbytes_aligned = HAK_ALIGN(nbytes, HAK_SIZEOF(hak_oop_t));
 /* TODO: check overflow in size calculation*/
 
+	nbytes_total = HAK_SIZEOF(hak_obj_t) + nbytes_aligned;
 	/* making the number of bytes to allocate a multiple of
 	 * HAK_SIZEOF(hak_oop_t) will guarantee the starting address
 	 * of the allocated space to be an even number.
 	 * see HAK_OOP_IS_NUMERIC() and HAK_OOP_IS_POINTER() */
 	if (HAK_UNLIKELY(ngc))
-		hdr = (hak_oop_t)hak_callocmem(hak, HAK_SIZEOF(hak_obj_t) + nbytes_aligned);
+		hdr = (hak_oop_t)hak_callocmem(hak, nbytes_total);
 	else
-		hdr = (hak_oop_t)hak_allocbytes(hak, HAK_SIZEOF(hak_obj_t) + nbytes_aligned);
-	if (HAK_UNLIKELY(!hdr)) return HAK_NULL;
+		hdr = (hak_oop_t)hak_allocbytes(hak, nbytes_total);
 
-	hdr->_flags = HAK_OBJ_MAKE_FLAGS(type, unit, extra, 0, 0, ngc, 0);
-	hdr->_size = len;
-	HAK_OBJ_SET_SIZE (hdr, len);
-	/*HAK_OBJ_SET_CLASS (hdr, hak->_nil);*/
+	if (HAK_LIKELY(hdr))
+	{
+		hdr->_flags = HAK_OBJ_MAKE_FLAGS(type, unit, extra, 0, 0, ngc, 0);
+		hdr->_size = len;
+		HAK_OBJ_SET_SIZE (hdr, len);
+		/*HAK_OBJ_SET_CLASS (hdr, hak->_nil);*/
 
-	if (ptr)
-	{
-		/* copy data */
-		HAK_MEMCPY(hdr + 1, ptr, xbytes);
-		HAK_MEMSET((hak_uint8_t*)(hdr + 1) + xbytes, 0, nbytes_aligned - xbytes);
-	}
-	else
-	{
-		/* initialize with zeros when the string pointer is not given */
-		HAK_MEMSET(hdr + 1, 0, nbytes_aligned);
+		if (ptr)
+		{
+			/* copy data */
+			HAK_MEMCPY(hdr + 1, ptr, xbytes);
+			HAK_MEMSET((hak_uint8_t*)(hdr + 1) + xbytes, 0, nbytes_aligned - xbytes);
+		}
+		else
+		{
+			/* initialize with zeros when the string pointer is not given */
+			HAK_MEMSET(hdr + 1, 0, nbytes_aligned);
+		}
 	}
 
 	return hdr;

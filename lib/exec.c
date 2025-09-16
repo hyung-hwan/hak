@@ -3386,21 +3386,21 @@ static int store_into_numeric_rcv_slot (hak_t* hak, hak_oop_t rcv, hak_oow_t b1,
 	hak_obj_type_t rcv_type;
 
 	if (HAK_OOP_IS_CHAR(v)) w = HAK_OOP_TO_CHAR(v);
-	else if (hak_inttooow(hak, v, &w) <= -1) return -1;
+	else if (hak_inttooow(hak, v, &w) <= 0) return -1;
 
 	rcv_type = (hak_obj_type_t)HAK_OBJ_GET_FLAGS_TYPE(rcv);
 	switch (rcv_type)
 	{
 		case HAK_OBJ_TYPE_CHAR:
-			((hak_oop_char_t)rcv)->slot[b1] = w;
+			((hak_oop_char_t)rcv)->slot[b1] = (hak_ooch_t)(hak_oochu_t)w;
 			break;
 
 		case HAK_OBJ_TYPE_BYTE:
-			((hak_oop_byte_t)rcv)->slot[b1] = w;
+			((hak_oop_byte_t)rcv)->slot[b1] = (hak_oob_t)w;
 			break;
 
 		case HAK_OBJ_TYPE_HALFWORD:
-			((hak_oop_halfword_t)rcv)->slot[b1] = w;
+			((hak_oop_halfword_t)rcv)->slot[b1] = (hak_oohw_t)w;
 			break;
 
 		case HAK_OBJ_TYPE_WORD:

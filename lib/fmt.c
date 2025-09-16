@@ -65,7 +65,6 @@
 
 #include "hak-prv.h"
 
-
 #if defined(HAK_ENABLE_FLTFMT)
 
 #include <stdio.h> /* for snrintf(). used for floating-point number formatting */
@@ -318,7 +317,7 @@ static hak_bch_t* sprintn_lower (hak_bch_t* nbuf, hak_uintmax_t num, int base, h
 	hak_bch_t* p;
 
 	p = nbuf; *p = '\0';
-	do {*++p = hex2ascii_lower[num % base]; } while (num /= base);
+	do { *++p = hex2ascii_lower[num % base]; } while (num /= base);
 
 	if (lenp) *lenp = p - nbuf;
 	return p; /* returns the end */

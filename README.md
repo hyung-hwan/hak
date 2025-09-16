@@ -114,8 +114,25 @@ class[attributes] Name: Superclass (ivars (cvars)) {
         function body
     }
 }
+```
+
 
 ```
+class[#b] B (a b) {
+    fun[#ci] new() {
+        self.a := 88
+        self.b := 99
+    }
+
+    fun print() {
+        printf "%d %d\n" self.a self.b
+    }
+}
+
+x := (B:new)
+x:print
+```
+
 
 ## Redefining a primitive function
 

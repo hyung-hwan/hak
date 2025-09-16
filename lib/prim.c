@@ -1166,7 +1166,7 @@ static hak_pfrc_t pf_va_get (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	nlvars = GET_BLK_MASK_NLVARS(attr_mask);
 
 	idx = HAK_STACK_GETARG(hak, nargs, 0);
-	n = hak_inttooow(hak, idx, &index);
+	n = hak_inttooow_noseterr(hak, idx, &index);
 	if (n <= 0)
 	{
 		if (n <= -1) hak_seterrbfmt(hak, HAK_EINVAL, "invalid index - %O", idx);
@@ -1209,9 +1209,8 @@ static hak_pfrc_t pf_object_new (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		hak_oop_t sz;
 
 		sz = HAK_STACK_GETARG(hak, nargs, 1);
-		n = hak_inttooow(hak, sz, &size);
-		if (n == 0) return HAK_PF_FAILURE;
-		if (n <= -1)
+		n = hak_inttooow_noseterr(hak, sz, &size);
+		if (n <= 0)
 		{
 			hak_seterrbfmt(hak, HAK_EINVAL, "invalid size - %O", sz);
 			return HAK_PF_FAILURE;
