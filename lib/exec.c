@@ -3356,7 +3356,7 @@ static hak_oop_t fetch_numeric_rcv_slot (hak_t* hak, hak_oop_t rcv, hak_oow_t b1
 	hak_obj_type_t rcv_type;
 
 	rcv_type = (hak_obj_type_t)HAK_OBJ_GET_FLAGS_TYPE(rcv);
-	switch (HAK_LIKELY(rcv_type))
+	switch (rcv_type)
 	{
 		case HAK_OBJ_TYPE_CHAR:
 			w = ((hak_oop_char_t)rcv)->slot[b1];
@@ -3389,7 +3389,7 @@ static int store_into_numeric_rcv_slot (hak_t* hak, hak_oop_t rcv, hak_oow_t b1,
 	else if (hak_inttooow(hak, v, &w) <= -1) return -1;
 
 	rcv_type = (hak_obj_type_t)HAK_OBJ_GET_FLAGS_TYPE(rcv);
-	switch (HAK_LIKELY(rcv_type))
+	switch (rcv_type)
 	{
 		case HAK_OBJ_TYPE_CHAR:
 			((hak_oop_char_t)rcv)->slot[b1] = w;
@@ -3542,12 +3542,16 @@ static int execute (hak_t* hak)
 				else
 				{
 					hak_oop_t v;
+
 					v = fetch_numeric_rcv_slot(hak, rcv, b1);
+
 					if (HAK_UNLIKELY(!v))
 					{
 						if (do_throw_with_internal_errmsg(hak, fetched_instruction_pointer) >= 0) break;
 						goto oops_with_errmsg_supplement;
 					}
+
+					HAK_STACK_PUSH(hak, v);
 				}
 				break;
 			}

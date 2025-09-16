@@ -317,9 +317,8 @@ static hak_bch_t* sprintn_lower (hak_bch_t* nbuf, hak_uintmax_t num, int base, h
 {
 	hak_bch_t* p;
 
-	p = nbuf;
-	*p = '\0';
-	do { *++p = hex2ascii_lower[num % base]; } while (num /= base);
+	p = nbuf; *p = '\0';
+	do {*++p = hex2ascii_lower[num % base]; } while (num /= base);
 
 	if (lenp) *lenp = p - nbuf;
 	return p; /* returns the end */
@@ -329,8 +328,7 @@ static hak_bch_t* sprintn_upper (hak_bch_t* nbuf, hak_uintmax_t num, int base, h
 {
 	hak_bch_t* p;
 
-	p = nbuf;
-	*p = '\0';
+	p = nbuf; *p = '\0';
 	do { *++p = hex2ascii_upper[num % base]; } while (num /= base);
 
 	if (lenp) *lenp = p - nbuf;
@@ -512,7 +510,7 @@ static int fmt_outv (hak_t* hak, hak_fmtout_t* fmtout, va_list ap)
 	handle_percent:
 		padc = ' ';
 		width = 0; precision = 0; neg = 0; sign = 0;
-		lm_flag = 0; lm_dflag = 0; flagc = 0;
+		lm_flag = 0; lm_dflag = 0; flagc = 0; base = 10;
 		sprintn = sprintn_lower;
 
 	reswitch:

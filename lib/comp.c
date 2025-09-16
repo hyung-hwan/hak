@@ -3010,7 +3010,7 @@ static HAK_INLINE int compile_class_p1 (hak_t* hak)
 	/* the position of the CLASS_ENTER instruction */
 	hak->c->clsblk.info[hak->c->clsblk.depth].class_enter_inst_pos = hak->code.bc.len;
 
-	/* class_enter nsuperclasses, nivars, ncvars  */
+	/* class_enter nsuperclasses, nivars, ncvars, spec/selfspec, indexed_type  */
 	if (emit_byte_instruction(hak, HAK_CODE_CLASS_ENTER, &cf->u._class.start_loc) <= -1) goto oops;
 	if (emit_long_param(hak, cf->u._class.nsuperclasses) <= -1) goto oops;
 	if (emit_long_param(hak, vardcl.nivars) <= -1) goto oops;
@@ -3426,8 +3426,9 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 			{
 				/* TODO: it must allow as rvalue..
 				 * class X {
-				 *     b := (fun() {}) ## this is allowed  <- TODO: not supported yet
-				 *     fun() {} ## this is prohibited
+				 *     b := (fun() {}) ## this is prohibited in the previous if check
+				 *     (fun() {}) ## this is prohibited in the previous if check as well
+				 *     fun() {} ## this is prohibited in this if check
 				 * }
 				 */
 				hak_setsynerrbfmt(
@@ -3478,11 +3479,14 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 	{
 		if (is_in_class_init_scope(hak) || class_name)
 		{
-/* TODO: */
-			/* TODO: THIS IS ALSO WRONG.
-			 *  class X {
-			 *    a := (fun x(){}) ## this context is also class_init_scope. so the check above isn't good enough
-			 *  } */
+			/* NOTE
+			 *  checking simply with is_in_class_init_scope() isn't sufficient for code like this:
+			 *    class X {
+			 *      a := (fun[#ci] x(){})
+			 *    }
+			 * but the prior checks prevents the function definition itself in that context.
+			 * so the simple check is just ok.
+			 */
 			if (check_fun_attr_list(hak, attr_list, &fun_type, cmd, class_name, fun_name) <= -1) return -1;
 			if (class_name) fun_type |= 0x100; /* defined in `fun class:xxx` style outside class */
 		}
@@ -3520,7 +3524,7 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 	nrvars = 0;
 
 	HAK_ASSERT(hak, HAK_CNODE_IS_ELIST_CONCODED(arg_list, HAK_CONCODE_XLIST) ||
-	                 HAK_CNODE_IS_CONS_CONCODED(arg_list, HAK_CONCODE_XLIST));
+	                HAK_CNODE_IS_CONS_CONCODED(arg_list, HAK_CONCODE_XLIST));
 	if (HAK_CNODE_IS_ELIST_CONCODED(arg_list, HAK_CONCODE_XLIST))
 	{
 		/* empty list - no argument - fun () {+ 10 20} */
@@ -3720,7 +3724,7 @@ static int check_var_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned int
 
 	HAK_ASSERT(hak, attr_list != HAK_NULL);
 	HAK_ASSERT(hak, HAK_CNODE_IS_CONS_CONCODED(attr_list, HAK_CONCODE_XLIST) ||
-	                 HAK_CNODE_IS_ELIST_CONCODED(attr_list, HAK_CONCODE_XLIST));
+	                HAK_CNODE_IS_ELIST_CONCODED(attr_list, HAK_CONCODE_XLIST));
 
 	if (HAK_CNODE_IS_ELIST_CONCODED(attr_list, HAK_CONCODE_XLIST))
 	{
@@ -3933,7 +3937,7 @@ static int compile_return (hak_t* hak, hak_cnode_t* src, int ret_from_home)
 
 	HAK_ASSERT(hak, HAK_CNODE_IS_CONS(src));
 	HAK_ASSERT(hak, HAK_CNODE_IS_TYPED(HAK_CNODE_CONS_CAR(src), HAK_CNODE_RETURN) ||
-	                 HAK_CNODE_IS_TYPED(HAK_CNODE_CONS_CAR(src), HAK_CNODE_REVERT));
+	                HAK_CNODE_IS_TYPED(HAK_CNODE_CONS_CAR(src), HAK_CNODE_REVERT));
 
 	fbi = &hak->c->funblk.info[hak->c->funblk.depth];
 	obj = HAK_CNODE_CONS_CDR(src);
@@ -4398,7 +4402,7 @@ static HAK_INLINE int compile_catch (hak_t* hak)
 	 * if 'exarg' is the first variable in the variable string, there is no preceding space.
 	 * if it is not, there is a preceding space. */
 	HAK_ASSERT(hak, (hak->c->tv.s.len == HAK_CNODE_GET_TOKLEN(exarg) && fbi->tmprlen == hak->c->tv.s.len - HAK_CNODE_GET_TOKLEN(exarg)) || /* first */
-	                 (hak->c->tv.s.len > HAK_CNODE_GET_TOKLEN(exarg) && fbi->tmprlen == hak->c->tv.s.len - HAK_CNODE_GET_TOKLEN(exarg) - 1)); /* not first */
+	                (hak->c->tv.s.len > HAK_CNODE_GET_TOKLEN(exarg) && fbi->tmprlen == hak->c->tv.s.len - HAK_CNODE_GET_TOKLEN(exarg) - 1)); /* not first */
 	HAK_ASSERT(hak, fbi->tmprcnt == vi.index_in_ctx + par_tmprcnt);
 	fbi->tmprlen = hak->c->tv.s.len;
 	fbi->tmprcnt = hak->c->tv.wcount;
@@ -4531,7 +4535,7 @@ static int compile_while (hak_t* hak, hak_cnode_t* src, int next_cop)
 
 	HAK_ASSERT(hak, HAK_CNODE_IS_CONS(src));
 	HAK_ASSERT(hak, HAK_CNODE_IS_TYPED(HAK_CNODE_CONS_CAR(src), HAK_CNODE_UNTIL) ||
-	                 HAK_CNODE_IS_TYPED(HAK_CNODE_CONS_CAR(src), HAK_CNODE_WHILE));
+	                HAK_CNODE_IS_TYPED(HAK_CNODE_CONS_CAR(src), HAK_CNODE_WHILE));
 	HAK_ASSERT(hak, next_cop == COP_POST_UNTIL_COND || next_cop == COP_POST_WHILE_COND);
 
 	cmd = HAK_CNODE_CONS_CAR(src); /* while or until itself */
@@ -5006,7 +5010,7 @@ static int compile_cons_mlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 	 *  (<receiver> <binop> <operand>
 	 */
 	HAK_ASSERT(hak, HAK_CNODE_IS_CONS_CONCODED(obj, HAK_CONCODE_BLIST) ||
-	                 HAK_CNODE_IS_CONS_CONCODED(obj, HAK_CONCODE_MLIST));
+	                HAK_CNODE_IS_CONS_CONCODED(obj, HAK_CONCODE_MLIST));
 
 	car = HAK_CNODE_CONS_CAR(obj);
 

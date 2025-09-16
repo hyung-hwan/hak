@@ -87,39 +87,34 @@ do { | k | set k 20; printf "k=%d\n" k; };
 ## Defining a function
 
 ```
-(fun function-name (arguments)
+fun function-name(arguments) {
 	| local variables |
 	function body
-)
+}
 ```
 
 ```
-(set function-name (lambda (arguments)
+set function-name (fun(arguments) {
 	| local variables |
 	function body
-)
+})
 ```
 
 ## Class
 
 ```
-(class T
-        :: | A B C | ## class variables
+class[attributes] Name: Superclass (ivars (cvars)) {
+    ivar ivar1
+    cvar cvar1
 
-        (printf "initializing....\n")
+    set cvar1 20
 
-        (fun :: dump()
-                (printf "%d %d %d\n" A B C)
-        )
+    fun[attributes] name(arguments) {
+        | local variables |
+        function body
+    }
+}
 
-        (set A 10)
-        (set B 20)
-        (set C 30)
-
-        (printf "initialization done....\n")
-)
-
-(:T dump)
 ```
 
 ## Redefining a primitive function
