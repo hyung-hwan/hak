@@ -321,3 +321,28 @@ class Kuduro (a (b) c) {
 	var d e
 	var(#class) b ##ERROR: syntax error - duplicate class variable name 'b'
 }
+
+---
+
+## TODO: some of these can be detected as an error at the compile time..
+
+class[#b] X (a) {
+	fun[#ci] new() {
+		## the instance variable is a byte because the class is a byte-oriented class
+		self.a := -20 ##ERROR: exception not handled - "negative number - -20"
+	}
+}
+
+X:new
+
+---
+
+class[#b] X (a) {
+	fun[#ci] new() {
+		## the instance variable is a byte because the class is a byte-oriented class
+		self.a := -20 ##ERROR: exception not handled - "negative number - -20"
+	}
+}
+
+class Y: X { ##ERROR: exception not handled - "incompatible byte superclass X with oop class"
+}

@@ -4122,10 +4122,24 @@ static int execute (hak_t* hak)
 
 				if (b1 > 0)
 				{
+					hak_ooi_t super_spec;
+					hak_obj_type_t super_indexed_type;
+
 					HAK_STACK_POP_TO(hak, superclass); /* TODO: support more than 1 superclass later when the compiler supports more */
 					if (!HAK_IS_CLASS(hak, superclass))
 					{
 						hak_seterrbfmt(hak, HAK_ECALL, "invalid superclass %O", superclass);
+						if (do_throw_with_internal_errmsg(hak, fetched_instruction_pointer) >= 0) break;
+						goto oops_with_errmsg_supplement;
+					}
+
+					super_spec = HAK_OOP_TO_SMOOI(((hak_oop_class_t)superclass)->spec);
+					super_indexed_type = HAK_CLASS_SPEC_INDEXED_TYPE(super_spec);
+					if (super_indexed_type != b5)
+					{
+						/* TODO: include the class indexed type in the message .. */
+						hak_seterrbfmt(hak, HAK_ECALL, "incompatible %hs superclass %O with %hs class",
+							hak_obj_type_to_bcstr(super_indexed_type), superclass, hak_obj_type_to_bcstr(b5));
 						if (do_throw_with_internal_errmsg(hak, fetched_instruction_pointer) >= 0) break;
 						goto oops_with_errmsg_supplement;
 					}

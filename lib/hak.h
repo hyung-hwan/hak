@@ -2097,6 +2097,10 @@ typedef int (*hak_xchg_writer_t) (
 extern "C" {
 #endif
 
+HAK_EXPORT const hak_bch_t* hak_obj_type_to_bcstr (
+	hak_obj_type_t type
+);
+
 HAK_EXPORT hak_t* hak_open (
 	hak_mmgr_t*         mmgr,
 	hak_oow_t           xtnsize,

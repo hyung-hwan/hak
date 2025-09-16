@@ -1017,3 +1017,15 @@ hak_pfbase_t* hak_findpfbase (hak_t* hak, hak_pfinfo_t* pfinfo, hak_oow_t pfcoun
 	return HAK_NULL;
 }
 
+const hak_bch_t* hak_obj_type_to_bcstr (hak_obj_type_t type)
+{
+	static const hak_bch_t* names[] = {
+		"oop",
+		"char",
+		"byte",
+		"halfword",
+		"word",
+	};
+
+	return (type < HAK_COUNTOF(names))? names[type]: "";
+}
