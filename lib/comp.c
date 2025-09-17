@@ -4997,7 +4997,7 @@ done:
 	return 0;
 }
 
-static int compile_cons_mlist_expression (hak_t* hak, hak_cnode_t* obj, int nrets)
+static int compile_cons_mlist_expression (hak_t* hak, hak_cnode_t* obj, hak_ooi_t nrets)
 {
 	hak_cnode_t* car, * cdr, * rcv;
 	hak_ooi_t nargs;

@@ -980,16 +980,10 @@ int main (int argc, char* argv[])
 	/*hakcb.vm_checkbc = vm_checkbc;*/
 	hak_regcb (hak, &hakcb);
 
-	if (logopt)
-	{
-		if (handle_logopt(hak, logopt) <= -1) goto oops;
-	}
+	if (logopt && handle_logopt(hak, logopt) <= -1) goto oops;
 
 #if defined(HAK_BUILD_DEBUG)
-	if (dbgopt)
-	{
-		if (handle_dbgopt(hak, dbgopt) <= -1) goto oops;
-	}
+	if (dbgopt && handle_dbgopt(hak, dbgopt) <= -1) goto oops;
 #endif
 
 	if (show_info)

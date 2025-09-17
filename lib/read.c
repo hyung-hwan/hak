@@ -2458,7 +2458,7 @@ static int flx_comment (hak_t* hak, hak_ooci_t c)
 		 * LANG_ENABLE_EOL mode.
 		 * TODO: Consider removing this check because not consuming it
 		 *       in another mode doesn't cause a problem. */
-		if ((hak->option.trait & HAK_TRAIT_LANG_ENABLE_EOL)) return 0; /* not consumed */
+		if (hak->option.trait & HAK_TRAIT_LANG_ENABLE_EOL) return 0; /* not consumed */
 	}
 	return 1; /* consumed */
 }

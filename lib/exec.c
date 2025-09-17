@@ -2394,7 +2394,7 @@ static HAK_INLINE int do_throw (hak_t* hak, hak_oop_t val, hak_ooi_t ip)
 		while (!HAK_CLSTACK_IS_EMPTY(hak)) HAK_CLSTACK_POP(hak);
 
 		f = hak->active_function;
-		if (f->dbgi != hak->_nil)
+		if (f->dbgi != hak->_nil && ip >= 0)
 		{
 			hak_dbgi_t* dbgi;
 			hak_loc_t loc;
@@ -2416,7 +2416,7 @@ static HAK_INLINE int do_throw (hak_t* hak, hak_oop_t val, hak_ooi_t ip)
 		/* output backtrace */
 		HAK_LOG0(hak, HAK_LOG_IC | HAK_LOG_INFO, "[BACKTRACE]\n");
 		c = hak->active_context;
-		if ((hak_oop_t)c != hak->_nil)
+		if ((hak_oop_t)c != hak->_nil && ip >= 0)
 		{
 			hak_ooi_t cip;
 
@@ -3437,6 +3437,8 @@ static int execute (hak_t* hak)
 	HAK_INIT_NTIME (&hak->gci.stat.mark, 0, 0);
 	HAK_INIT_NTIME (&hak->gci.stat.sweep, 0, 0);
 
+	fetched_instruction_pointer = -1;
+
 	while (1)
 	{
 		/* stop requested or no more runnable process */
@@ -4135,7 +4137,7 @@ static int execute (hak_t* hak)
 
 					super_spec = HAK_OOP_TO_SMOOI(((hak_oop_class_t)superclass)->spec);
 					super_indexed_type = HAK_CLASS_SPEC_INDEXED_TYPE(super_spec);
-					if (super_indexed_type != b5)
+					if (HAK_CLASS_SPEC_NAMED_INSTVARS(super_spec) > 0 && super_indexed_type != b5)
 					{
 						/* TODO: include the class indexed type in the message .. */
 						hak_seterrbfmt(hak, HAK_ECALL, "incompatible %hs superclass %O with %hs class",

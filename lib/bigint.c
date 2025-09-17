@@ -693,7 +693,6 @@ static HAK_INLINE hak_oop_t make_bigint_with_ooi (hak_t* hak, hak_ooi_t i)
 	}
 	else
 	{
-		w = -i;
 		w = (i == HAK_TYPE_MIN(hak_ooi_t))? ((hak_oow_t)HAK_TYPE_MAX(hak_ooi_t) + 1): -i;
 		hw[0] = w /*& HAK_LBMASK(hak_oow_t,HAK_LIW_BITS)*/;
 		hw[1] = w >> HAK_LIW_BITS;
@@ -4528,7 +4527,7 @@ hak_oop_t hak_strtoint (hak_t* hak, const hak_ooch_t* str, hak_oow_t len, int ra
 		if (outlen > HAK_COUNTOF(hw))
 		{
 			hwp = (hak_liw_t*)hak_allocmem(hak, outlen * HAK_SIZEOF(hak_liw_t));
-			if (!hwp) return HAK_NULL;
+			if (HAK_UNLIKELY(!hwp)) return HAK_NULL;
 		}
 		else
 		{

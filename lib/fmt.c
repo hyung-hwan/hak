@@ -1211,13 +1211,13 @@ static int fmt_outv (hak_t* hak, hak_fmtout_t* fmtout, va_list ap)
 				if (fb.out.ptr == fb.out.sbuf)
 				{
 					fb.out.ptr = (hak_bch_t*)HAK_MMGR_ALLOC(fmtout->mmgr, HAK_SIZEOF(hak_bch_t) * (newcapa + 1));
-					if (!fb.out.ptr) goto oops;
+					if (HAK_UNLIKELY(!fb.out.ptr)) goto oops;
 				}
 				else
 				{
 					hak_bch_t* tmpptr;
 					tmpptr = (hak_bch_t*)HAK_MMGR_REALLOC(fmtout->mmgr, fb.out.ptr, HAK_SIZEOF(hak_bch_t) * (newcapa + 1));
-					if (!tmpptr) goto oops;
+					if (HAK_UNLIKELY(!tmpptr)) goto oops;
 					fb.out.ptr = tmpptr;
 				}
 				fb.out.capa = newcapa;
