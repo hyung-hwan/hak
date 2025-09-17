@@ -99,7 +99,9 @@ host_triplet = @host@
 @ENABLE_LIBLTDL_TRUE@am__append_1 = $(LTDL_LIBS)
 @ENABLE_LIBLTDL_FALSE@am__append_2 = $(DL_LIBS)
 bin_PROGRAMS = hak$(EXEEXT) $(am__EXEEXT_1)
-@ENABLE_HAKX_TRUE@am__append_3 = hakx
+@ENABLE_ISOCLINE_TRUE@am__append_3 = -I$(srcdir)/isocline/include -DHAVE_ISOCLINE_H -DHAVE_ISOCLINE_LIB
+@ENABLE_ISOCLINE_TRUE@am__append_4 = ./libisocline.a
+@ENABLE_HAKX_TRUE@am__append_5 = hakx
 subdir = bin
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_check_sign.m4 \
@@ -109,7 +111,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/ax_check_sign.m4 \
 	$(top_srcdir)/m4/lt~obsolete.m4 $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
-DIST_COMMON = $(srcdir)/Makefile.am $(noinst_HEADERS) \
+DIST_COMMON = $(srcdir)/Makefile.am $(am__noinst_HEADERS_DIST) \
 	$(am__DIST_COMMON)
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/lib/hak-cfg.h
@@ -127,19 +129,32 @@ am__v_AR_1 =
 libisocline_a_AR = $(AR) $(ARFLAGS)
 libisocline_a_RANLIB = $(RANLIB)
 libisocline_a_LIBADD =
+am__libisocline_a_SOURCES_DIST = isocline/src/attr.c \
+	isocline/src/bbcode.c isocline/src/bbcode_colors.c \
+	isocline/src/common.c isocline/src/completers.c \
+	isocline/src/completions.c isocline/src/editline.c \
+	isocline/src/highlight.c isocline/src/history.c \
+	isocline/src/isocline.c isocline/src/stringbuf.c \
+	isocline/src/term.c isocline/src/tty.c isocline/src/tty_esc.c \
+	isocline/src/undo.c isocline/src/wcwidth.c
 am__dirstamp = $(am__leading_dot)dirstamp
-am_libisocline_a_OBJECTS = isocline/src/attr.$(OBJEXT) \
-	isocline/src/bbcode.$(OBJEXT) \
-	isocline/src/bbcode_colors.$(OBJEXT) \
-	isocline/src/common.$(OBJEXT) \
-	isocline/src/completers.$(OBJEXT) \
-	isocline/src/completions.$(OBJEXT) \
-	isocline/src/editline.$(OBJEXT) \
-	isocline/src/highlight.$(OBJEXT) \
-	isocline/src/history.$(OBJEXT) isocline/src/isocline.$(OBJEXT) \
-	isocline/src/stringbuf.$(OBJEXT) isocline/src/term.$(OBJEXT) \
-	isocline/src/tty.$(OBJEXT) isocline/src/tty_esc.$(OBJEXT) \
-	isocline/src/undo.$(OBJEXT) isocline/src/wcwidth.$(OBJEXT)
+@ENABLE_ISOCLINE_TRUE@am_libisocline_a_OBJECTS =  \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/attr.$(OBJEXT) \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/bbcode.$(OBJEXT) \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/bbcode_colors.$(OBJEXT) \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/common.$(OBJEXT) \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/completers.$(OBJEXT) \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/completions.$(OBJEXT) \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/editline.$(OBJEXT) \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/highlight.$(OBJEXT) \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/history.$(OBJEXT) \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/isocline.$(OBJEXT) \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/stringbuf.$(OBJEXT) \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/term.$(OBJEXT) \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/tty.$(OBJEXT) \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/tty_esc.$(OBJEXT) \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/undo.$(OBJEXT) \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/wcwidth.$(OBJEXT)
 libisocline_a_OBJECTS = $(am_libisocline_a_OBJECTS)
 am_hak_OBJECTS = hak-hak.$(OBJEXT)
 hak_OBJECTS = $(am_hak_OBJECTS)
@@ -148,7 +163,7 @@ am__DEPENDENCIES_1 =
 @ENABLE_LIBLTDL_FALSE@am__DEPENDENCIES_3 = $(am__DEPENDENCIES_1)
 am__DEPENDENCIES_4 = $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3)
 hak_DEPENDENCIES = ../lib/libhak.la $(am__DEPENDENCIES_4) \
-	./libisocline.a
+	$(am__append_4)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -215,13 +230,22 @@ am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
 SOURCES = $(libisocline_a_SOURCES) $(hak_SOURCES) $(hakx_SOURCES)
-DIST_SOURCES = $(libisocline_a_SOURCES) $(hak_SOURCES) \
+DIST_SOURCES = $(am__libisocline_a_SOURCES_DIST) $(hak_SOURCES) \
 	$(am__hakx_SOURCES_DIST)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
     *) (install-info --version) >/dev/null 2>&1;; \
   esac
+am__noinst_HEADERS_DIST = isocline/include/isocline.h \
+	isocline/src/attr.h isocline/src/bbcode.h \
+	isocline/src/common.h isocline/src/completions.h \
+	isocline/src/env.h isocline/src/highlight.h \
+	isocline/src/history.h isocline/src/stringbuf.h \
+	isocline/src/term.h isocline/src/tty.h isocline/src/undo.h \
+	isocline/src/editline_completion.c \
+	isocline/src/editline_help.c isocline/src/editline_history.c \
+	isocline/src/term_color.c
 HEADERS = $(noinst_HEADERS)
 am__tagged_files = $(HEADERS) $(SOURCES) $(TAGS_FILES) $(LISP)
 # Read a list of newline-separated strings from the standard input,
@@ -400,47 +424,47 @@ LIBADD_COMMON = $(am__append_1) $(am__append_2)
 ##################################################
 # BUNDLED LIBRARIES
 ##################################################
-noinst_LIBRARIES = libisocline.a
-noinst_HEADERS = \
-	isocline/include/isocline.h \
-	isocline/src/attr.h \
-	isocline/src/bbcode.h \
-	isocline/src/common.h \
-	isocline/src/completions.h \
-	isocline/src/env.h \
-	isocline/src/highlight.h \
-	isocline/src/history.h \
-	isocline/src/stringbuf.h \
-	isocline/src/term.h \
-	isocline/src/tty.h \
-	isocline/src/undo.h \
-	isocline/src/editline_completion.c \
-	isocline/src/editline_help.c \
-	isocline/src/editline_history.c \
-	isocline/src/term_color.c
+@ENABLE_ISOCLINE_TRUE@noinst_LIBRARIES = libisocline.a
+@ENABLE_ISOCLINE_TRUE@noinst_HEADERS = \
+@ENABLE_ISOCLINE_TRUE@	isocline/include/isocline.h \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/attr.h \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/bbcode.h \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/common.h \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/completions.h \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/env.h \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/highlight.h \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/history.h \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/stringbuf.h \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/term.h \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/tty.h \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/undo.h \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/editline_completion.c \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/editline_help.c \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/editline_history.c \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/term_color.c
 
-libisocline_a_SOURCES = \
-	isocline/src/attr.c \
-	isocline/src/bbcode.c \
-	isocline/src/bbcode_colors.c \
-	isocline/src/common.c \
-	isocline/src/completers.c \
-	isocline/src/completions.c \
-	isocline/src/editline.c \
-	isocline/src/highlight.c \
-	isocline/src/history.c \
-	isocline/src/isocline.c \
-	isocline/src/stringbuf.c \
-	isocline/src/term.c \
-	isocline/src/tty.c \
-	isocline/src/tty_esc.c \
-	isocline/src/undo.c \
-	isocline/src/wcwidth.c
+@ENABLE_ISOCLINE_TRUE@libisocline_a_SOURCES = \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/attr.c \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/bbcode.c \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/bbcode_colors.c \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/common.c \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/completers.c \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/completions.c \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/editline.c \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/highlight.c \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/history.c \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/isocline.c \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/stringbuf.c \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/term.c \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/tty.c \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/tty_esc.c \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/undo.c \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/wcwidth.c
 
 hak_SOURCES = hak.c
-hak_CPPFLAGS = $(CPPFLAGS_COMMON) -I$(srcdir)/isocline/include -DHAVE_ISOCLINE_H -DHAVE_ISOCLINE_LIB
+hak_CPPFLAGS = $(CPPFLAGS_COMMON) $(am__append_3)
 hak_LDFLAGS = $(LDFLAGS_COMMON)
-hak_LDADD = ../lib/libhak.la $(LIBADD_COMMON) ./libisocline.a
+hak_LDADD = ../lib/libhak.la $(LIBADD_COMMON) $(am__append_4)
 @ENABLE_HAKX_TRUE@hakx_SOURCES = hakx.c
 @ENABLE_HAKX_TRUE@hakx_CPPFLAGS = $(CPPFLAGS_COMMON)
 @ENABLE_HAKX_TRUE@hakx_LDFLAGS = $(LDFLAGS_COMMON)

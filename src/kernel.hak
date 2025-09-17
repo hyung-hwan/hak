@@ -2,11 +2,11 @@ class Apex {
 	fun isNil?() { return false }
 	fun notNil?() { return true }
 
-	fun(#class) basicNew(size) {
+	fun[#class] basicNew(size) {
 		return (core.basicNew self size)
 	}
 
-	fun(#class) respondsTo(mth) {
+	fun[#class] respondsTo(mth) {
 		return (core.classRespondsTo self mth)
 	}
 
@@ -40,7 +40,7 @@ class Apex {
 	## TODO: fun perform(name ...) {}
 }
 
-class(#uncopyable #varying #limited #final) Class: Apex [
+class[#uncopyable #varying #limited #final] Class: Apex (
 	_name
 	_mdic
 	_spec
@@ -50,7 +50,7 @@ class(#uncopyable #varying #limited #final) Class: Apex [
 	_ibrand
 	_ivarnames
 	_cvarnames
-] {
+) {
 	fun name() {
 		##return (core.className self)
 		return _class
@@ -136,8 +136,8 @@ printf "----------------------------------------\n"
 k := #[1 2 3]
 printf "%O\n" (k:basicAt 2)
 
-class (#varying) Z: Object [ a b c ] {
-	fun(#classinst) new() {
+class [#varying] Z: Object (a b c) {
+	fun[#classinst] new() {
 		self.a := 10
 		self.b := 20
 		self.c := 30
@@ -153,7 +153,7 @@ fun Z:abc() {
 }
 
 class Q {
-fun(#class) k () {
+fun[#class] k () {
 k := (Z:basicNew 10) ## #varying is really required? what is the big deal even if you allow it regardless?
 ##k := (Z:new) ## no way to add extra fields.
 k:basicAtPut 2 "hello"

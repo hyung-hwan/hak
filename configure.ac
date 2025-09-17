@@ -622,6 +622,14 @@ dnl =====  conditionals - ENABLE_STATIC and ENABLE_SHARED =====
 AM_CONDITIONAL(ENABLE_STATIC, test "x${enable_static}" = "xyes")
 AM_CONDITIONAL(ENABLE_SHARED, test "x${enable_shared}" = "xyes")
 
+dnl ==== enable-isocline ====
+AC_ARG_ENABLE([isocline],
+	[AS_HELP_STRING([--enable-isocline],[use isocline(default. yes)])],
+	enable_isocline=$enableval,
+	enable_isocline=yes
+)
+AM_CONDITIONAL(ENABLE_ISOCLINE, test "x${enable_isocline}" = "xyes")
+
 dnl ===== enable-libltdl =====
 AC_ARG_ENABLE([libltdl],
 	[AS_HELP_STRING([--enable-libltdl],[use libltdl(default. no)])],

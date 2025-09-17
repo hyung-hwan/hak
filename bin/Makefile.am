@@ -17,6 +17,7 @@ LIBADD_COMMON =
 # BUNDLED LIBRARIES
 ##################################################
 
+if ENABLE_ISOCLINE
 noinst_LIBRARIES = libisocline.a
 noinst_HEADERS = \
 	isocline/include/isocline.h \
@@ -52,6 +53,7 @@ libisocline_a_SOURCES = \
 	isocline/src/tty_esc.c \
 	isocline/src/undo.c \
 	isocline/src/wcwidth.c
+endif
 
 ##################################################
 # MAIN BINARIES
@@ -65,9 +67,14 @@ endif
 
 bin_PROGRAMS = hak
 hak_SOURCES = hak.c
-hak_CPPFLAGS = $(CPPFLAGS_COMMON) -I$(srcdir)/isocline/include -DHAVE_ISOCLINE_H -DHAVE_ISOCLINE_LIB
+hak_CPPFLAGS = $(CPPFLAGS_COMMON)
 hak_LDFLAGS = $(LDFLAGS_COMMON)
-hak_LDADD = ../lib/libhak.la $(LIBADD_COMMON) ./libisocline.a
+hak_LDADD = ../lib/libhak.la $(LIBADD_COMMON)
+
+if ENABLE_ISOCLINE
+hak_CPPFLAGS += -I$(srcdir)/isocline/include -DHAVE_ISOCLINE_H -DHAVE_ISOCLINE_LIB
+hak_LDADD += ./libisocline.a
+endif
 
 if ENABLE_HAKX
 

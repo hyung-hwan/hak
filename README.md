@@ -125,11 +125,23 @@ class[#b] B (a b) {
     }
 
     fun print() {
-        printf "%d %d\n" self.a self.b
+        printf "A: %d B: %d\n" self.a self.b
     }
 }
 
-x := (B:new)
+class[#b] C: B (c) {
+    fun[#ci] new() {
+        super:new
+        self.c := 77
+    }
+
+    fun print() {
+        super:print
+        printf "C: %d\n" self.c
+    }
+}
+
+x := (C:new)
 x:print
 ```
 

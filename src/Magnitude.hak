@@ -6,7 +6,7 @@ class Magnitude: Object {
 	fun >= (oprnd) { return ((self < oprnd):not) }
 }
 
-class(#limited) Number: Magnitude {
+class[#limited] Number: Magnitude {
 	fun + (oprnd) { return (+ self oprnd) }
 	fun - (oprnd) { return (- self oprnd) }
 	fun * (oprnd) { return (* self oprnd) }

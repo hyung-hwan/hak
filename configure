@@ -668,6 +668,8 @@ ENABLE_LIBUNWIND_FALSE
 ENABLE_LIBUNWIND_TRUE
 ENABLE_LIBLTDL_FALSE
 ENABLE_LIBLTDL_TRUE
+ENABLE_ISOCLINE_FALSE
+ENABLE_ISOCLINE_TRUE
 ENABLE_SHARED_FALSE
 ENABLE_SHARED_TRUE
 ENABLE_STATIC_FALSE
@@ -836,6 +838,7 @@ enable_wide_char
 enable_full_liw
 enable_dynamic_module
 enable_static_module
+enable_isocline
 enable_libltdl
 enable_libunwind
 enable_pthread_flags
@@ -1504,6 +1507,7 @@ Optional Features:
   --enable-dynamic-module enable dynamic module capability(default. yes)
   --enable-static-module  build modules statically into the main
                           library(default. no)
+  --enable-isocline       use isocline(default. yes)
   --enable-libltdl        use libltdl(default. no)
   --enable-libunwind      use libunwind(default. no)
   --enable-pthread-flags  add thread flags to CFLAGS, LIBS(default. yes)
@@ -20041,6 +20045,25 @@ else
 fi
 
 
+# Check whether --enable-isocline was given.
+if test ${enable_isocline+y}
+then :
+  enableval=$enable_isocline; enable_isocline=$enableval
+else case e in #(
+  e) enable_isocline=yes
+ ;;
+esac
+fi
+
+ if test "x${enable_isocline}" = "xyes"; then
+  ENABLE_ISOCLINE_TRUE=
+  ENABLE_ISOCLINE_FALSE='#'
+else
+  ENABLE_ISOCLINE_TRUE='#'
+  ENABLE_ISOCLINE_FALSE=
+fi
+
+
 # Check whether --enable-libltdl was given.
 if test ${enable_libltdl+y}
 then :
@@ -20357,6 +20380,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_SHARED_TRUE}" && test -z "${ENABLE_SHARED_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_SHARED\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ENABLE_ISOCLINE_TRUE}" && test -z "${ENABLE_ISOCLINE_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_ISOCLINE\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_LIBLTDL_TRUE}" && test -z "${ENABLE_LIBLTDL_FALSE}"; then
