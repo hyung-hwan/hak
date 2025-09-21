@@ -25,6 +25,8 @@
 
 #include "hak-prv.h"
 
+#define ENABLE_SYSCMD
+
 static const char* io_type_str[] =
 {
 	"input",
@@ -2145,23 +2147,23 @@ static HAK_INLINE int activate_function (hak_t* hak, hak_ooi_t nargs)
 /* ------------------------------------------------------------------------- */
 static HAK_INLINE int call_primitive (hak_t* hak, hak_ooi_t nargs)
 {
-	hak_oop_prim_t rcv;
+	hak_oop_prim_t op_prim;
 
-	rcv = (hak_oop_prim_t)HAK_STACK_GETOP(hak, nargs);
-	HAK_ASSERT(hak, HAK_IS_PRIM(hak, rcv));
-	HAK_ASSERT(hak, HAK_OBJ_GET_SIZE(rcv) == HAK_PRIM_NAMED_INSTVARS);
+	op_prim = (hak_oop_prim_t)HAK_STACK_GETOP(hak, nargs);
+	HAK_ASSERT(hak, HAK_IS_PRIM(hak, op_prim));
+	HAK_ASSERT(hak, HAK_OBJ_GET_SIZE(op_prim) == HAK_PRIM_NAMED_INSTVARS);
 
-	if (nargs < rcv->min_nargs && nargs > rcv->max_nargs)
+	if (nargs < op_prim->min_nargs && nargs > op_prim->max_nargs)
 	{
 /* TODO: include a primitive name... */
 		HAK_LOG3(hak, HAK_LOG_IC | HAK_LOG_ERROR,
 			"Error - wrong number of arguments to a primitive - expecting %zd-%zd, got %zd\n",
-			rcv->min_nargs, rcv->max_nargs, nargs);
+			op_prim->min_nargs, op_prim->max_nargs, nargs);
 		hak_seterrnum(hak, HAK_ECALLARG);
 		return -1;
 	}
 
-	return ((hak_pfimpl_t)rcv->impl)(hak, (hak_mod_t*)rcv->mod, nargs);
+	return ((hak_pfimpl_t)op_prim->impl)(hak, (hak_mod_t*)op_prim->mod, nargs);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -2495,6 +2497,7 @@ static void supplement_errmsg (hak_t* hak, hak_ooi_t ip)
 		HAK_ASSERT(hak, HAK_IS_BYTEARRAY(hak, hak->active_function->dbgi));
 		dbgi = (hak_dbgi_t*)HAK_OBJ_GET_BYTE_SLOT(hak->active_function->dbgi);
 
+		orgloc.line = dbgi[ip].sline; /* update the line of the location at least */
 		hak_seterrbfmtloc(hak, orgnum, &orgloc, "%js (%js:%zu)", orgmsg,
 			(dbgi[ip].fname? dbgi[ip].fname: oocstr_dash), dbgi[ip].sline);
 
@@ -2515,7 +2518,7 @@ static int do_throw_with_internal_errmsg (hak_t* hak, hak_ooi_t ip)
 /* ------------------------------------------------------------------------- */
 
 
-#if 0
+#if defined(ENABLE_SYSCMD)
 /* EXPERIMENTAL CODE INTEGRATING EXTERNAL COMMANDS */
 
 #include <unistd.h>
@@ -2595,29 +2598,29 @@ done:
 
 static HAK_INLINE int exec_syscmd (hak_t* hak, hak_ooi_t nargs)
 {
-	hak_oop_word_t rcv;
+	hak_oop_word_t op_cmd;
 	hak_bch_t* cmd = HAK_NULL;
 	hak_bch_t* xcmd = HAK_NULL;
 
-	rcv = (hak_oop_word_t)HAK_STACK_GETOP(hak, nargs);
-	/*HAK_ASSERT(hak, HAK_IS_STRING(hak, rcv) || HAK_IS_SYMBOL(hak, rcv));*/
-	HAK_ASSERT(hak, HAK_OBJ_IS_CHAR_POINTER(rcv));
+	op_cmd = (hak_oop_word_t)HAK_STACK_GETOP(hak, nargs);
+	/*HAK_ASSERT(hak, HAK_IS_STRING(hak, op_cmd) || HAK_IS_SYMBOL(hak, op_cmd));*/
+	HAK_ASSERT(hak, HAK_OBJ_IS_CHAR_POINTER(op_cmd));
 
-	if (HAK_OBJ_GET_SIZE(rcv) == 0 || hak_count_oocstr(HAK_OBJ_GET_CHAR_SLOT(rcv)) != HAK_OBJ_GET_SIZE(rcv))
+	if (HAK_OBJ_GET_SIZE(op_cmd) == 0 || hak_count_oocstr(HAK_OBJ_GET_CHAR_SLOT(op_cmd)) != HAK_OBJ_GET_SIZE(op_cmd))
 	{
 		/* '\0' is contained in the middle */
-		hak_seterrbfmt(hak, HAK_EINVAL, "invalid callable %O", rcv);
+		hak_seterrbfmt(hak, HAK_EINVAL, "invalid callable %O", op_cmd);
 		goto oops;
 	}
 
-	cmd = hak_dupootobcstr(hak, HAK_OBJ_GET_CHAR_SLOT(rcv), HAK_NULL);
+	cmd = hak_dupootobcstr(hak, HAK_OBJ_GET_CHAR_SLOT(op_cmd), HAK_NULL);
 	if (!cmd) goto oops;
 
 	if (hak_find_bchar_in_bcstr(cmd, '/'))
 	{
 		if (!is_regular_executable_file_by_me(cmd))
 		{
-			hak_seterrbfmt(hak, HAK_ECALL, "cannot execute %O", rcv);
+			hak_seterrbfmt(hak, HAK_ECALL, "cannot execute %O", op_cmd);
 			goto oops;
 		}
 
@@ -3636,7 +3639,7 @@ static int execute (hak_t* hak)
 
 			/* ------------------------------------------------- */
 		#if 0
-			// the compiler never emits these instructions. reuse these instructions for other purposes
+			/* the compiler never emits these instructions. reuse these instructions for other purposes */
 			case HAK_CODE_PUSH_TEMPVAR_X:
 			case HAK_CODE_STORE_INTO_TEMPVAR_X:
 			case HAK_CODE_POP_INTO_TEMPVAR_X:
@@ -4006,6 +4009,17 @@ static int execute (hak_t* hak)
 								goto call_failed;
 							}
 							break;
+
+#if defined(ENABLE_SYSCMD)
+						case HAK_BRAND_STRING:
+						case HAK_BRAND_SYMBOL:
+							if (exec_syscmd(hak, b1) <= -1)
+							{
+								if (do_throw_with_internal_errmsg(hak, fetched_instruction_pointer) >= 0) break;
+								goto call_failed;
+							}
+							break;
+#endif
 
 						default:
 							goto cannot_call;
@@ -4786,7 +4800,7 @@ hak_logbfmt(hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncv
 				t2 = HAK_STACK_GETTOP(hak); /* key */
 				HAK_STACK_POP(hak);
 				t3 = HAK_STACK_GETTOP(hak); /* dictionary */
-				if (!hak_putatdic(hak, (hak_oop_dic_t)t3, t2, t1)) goto oops;
+				if (!hak_putatdic(hak, (hak_oop_dic_t)t3, t2, t1)) goto oops_with_errmsg_supplement;
 				break;
 			}
 
@@ -4834,7 +4848,7 @@ hak_logbfmt(hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncv
 					hak_pushvolat(hak, &t3);
 					t = hak_makecons(hak, t1, hak->_nil);
 					hak_popvolat(hak);
-					if (HAK_UNLIKELY(!t)) goto oops;
+					if (HAK_UNLIKELY(!t)) goto oops_with_errmsg_supplement;
 
 					((hak_oop_oop_t)t3)->slot[1] = t;
 					HAK_STACK_PUSH(hak, t);
@@ -4872,7 +4886,7 @@ hak_logbfmt(hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncv
 					hak_pushvolat(hak, &t3);
 					t = hak_makecons(hak, t1, hak->_nil);
 					hak_popvolat(hak);
-					if (HAK_UNLIKELY(!t)) goto oops;
+					if (HAK_UNLIKELY(!t)) goto oops_with_errmsg_supplement;
 
 					((hak_oop_oop_t)t3)->slot[1] = t;
 				}

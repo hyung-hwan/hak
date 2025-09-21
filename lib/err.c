@@ -115,6 +115,7 @@ static const char* synerrstr[] =
 	"} expected",
 	"| expected",
 
+	"identifier expected",
 	"string expected",
 	"byte too small or too large",
 	"nesting level too deep",
@@ -161,6 +162,7 @@ static const char* synerrstr[] =
 	"break outside loop",
 
 	"invalid callable",
+	"invalid message",
 	"unbalanced key/value pair",
 	"unbalanced parenthesis/brace/bracket",
 	"unexpected semicolon",

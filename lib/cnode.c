@@ -135,6 +135,11 @@ hak_cnode_t* hak_makecnodedsymbol (hak_t* hak, int flags, const hak_loc_t* loc, 
 	return c;
 }
 
+hak_cnode_t* hak_makecnodebinop (hak_t* hak, int flags, const hak_loc_t* loc, const  hak_oocs_t* tok)
+{
+	return hak_makecnode(hak, HAK_CNODE_BINOP, flags, loc, tok);
+}
+
 hak_cnode_t* hak_makecnodestrlit (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok)
 {
 	return hak_makecnode(hak, HAK_CNODE_STRLIT, flags, loc, tok);

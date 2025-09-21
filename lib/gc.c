@@ -1045,7 +1045,7 @@ void hak_gc_ms_sweep_lazy (hak_t* hak, hak_oow_t allocsize)
 
 		if (HAK_OBJ_GET_FLAGS_MOVED(obj)) /* if marked */
 		{
-			HAK_OBJ_SET_FLAGS_MOVED (obj, 0); /* unmark */
+			HAK_OBJ_SET_FLAGS_MOVED(obj, 0); /* unmark */
 			prev = curr;
 		}
 		else
@@ -1380,15 +1380,15 @@ static hak_oop_class_t alloc_kernel_class (hak_t* hak, int class_flags, hak_oow_
 	c = (hak_oop_class_t)hak_allocoopobj(hak, HAK_CLASS_NAMED_INSTVARS + num_classvars);
 	if (HAK_UNLIKELY(!c)) return HAK_NULL;
 
-	HAK_OBJ_SET_FLAGS_KERNEL (c, HAK_OBJ_FLAGS_KERNEL_IMMATURE);
+	HAK_OBJ_SET_FLAGS_KERNEL(c, HAK_OBJ_FLAGS_KERNEL_IMMATURE);
 
 	cspec = kernel_classes[KCI_CLASS].class_spec_flags;
-	if (HAK_CLASS_SPEC_IS_IMMUTABLE(cspec)) HAK_OBJ_SET_FLAGS_RDONLY (c, 1); /* just for completeness of code. will never be true as it's not defined in the kernel class info table */
+	if (HAK_CLASS_SPEC_IS_IMMUTABLE(cspec)) HAK_OBJ_SET_FLAGS_RDONLY(c, 1); /* just for completeness of code. will never be true as it's not defined in the kernel class info table */
 #if 0 /* TODO extend the flags and uncomment this part */
-	if (HAK_CLASS_SPEC_IS_UNCOPYABLE(cspec)) HAK_OBJ_SET_FLAGS_UNCOPYABLE (c, 1); /* class itself is uncopyable */
+	if (HAK_CLASS_SPEC_IS_UNCOPYABLE(cspec)) HAK_OBJ_SET_FLAGS_UNCOPYABLE(c, 1); /* class itself is uncopyable */
 #endif
 
-	HAK_OBJ_SET_CLASS (c, (hak_oop_t)hak->c_class);
+	HAK_OBJ_SET_CLASS(c, (hak_oop_t)hak->c_class);
 	c->spec = HAK_SMOOI_TO_OOP(spec);
 	c->selfspec = HAK_SMOOI_TO_OOP(HAK_CLASS_SELFSPEC_MAKE(num_classvars, 0, class_flags));
 	c->nivars_super = HAK_SMOOI_TO_OOP(nivars_super); /* TODO: encode it into spec? */

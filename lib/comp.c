@@ -71,26 +71,25 @@ enum
 
 /* --------------------------------------------
 
+fun plus(x y) {
+	printf "plus %d %d\n" x y
+	fun minus(x y) {
+		printf "minus %d %d\n" x y
+		- x y
+	}
+	+ x y
+}
 
-(fun plus(x y)
-	(printf "plus %d %d\n" x y)
-	(fun minus(x y)
-		(printf "minus %d %d\n" x y)
-		(- x y)
-	)
-	(+ x y)
-)
+fun dummy(q) {
+	printf "%s\n" q
+}
 
-(fun dummy(q)
-	(printf "%s\n" q)
-)
+plus 10 20 ## minus is now available after plus is executed
+minus 10 1
 
-(plus 10 20)
-    <---- minus is now available
-(minus 10 1)
 literals -->
 //
-// characeter 'A'
+// character 'A'
 // "string"
 // B"byte string" <-- not yet implemented
 // array ---> #[   ] or [ ] ? constant or not?  dynamic???
@@ -459,7 +458,7 @@ HAK_INFO6(hak, "FOUND CLASS VAR [%.*js]...[%.*js]................ ===> ctx_offse
 				/* this condition indicates that the current function level contains a class defintion
 				 * and this variable is looked up inside the class defintion */
 HAK_INFO2(hak, "CLASS NAMED VAR [%.*js]\n", name->len, name->ptr);
-				vi->type = VAR_CLASS;//_NAMED; // TODO: create VAR_CLASS_NAMED???
+				vi->type = VAR_CLASS;/*_NAMED;*/ // TODO: create VAR_CLASS_NAMED???
 				vi->ctx_offset = 0;
 				vi->index_in_ctx = 0;
 			}
@@ -1546,7 +1545,7 @@ static int collect_vardcl_for_class (hak_t* hak, hak_cnode_t* obj, hak_cnode_t**
 			goto next;
 		}
 
-		if (!HAK_CNODE_IS_SYMBOL(var) || HAK_CNODE_IS_SYMBOL_BINOP(var)) goto synerr_varname;
+		if (!HAK_CNODE_IS_SYMBOL(var) /*|| HAK_CNODE_IS_SYMBOL_BINOP(var)*/) goto synerr_varname;
 
 		checkpoint = hak->c->tv.s.len;
 		n = add_temporary_variable(hak, var, tv_slen_saved, desc[enclosed], HAK_NULL);
@@ -1790,7 +1789,9 @@ enum
 	COP_EMIT_POP_INTO_CONS_CDR,
 
 	COP_EMIT_FUN,
+#if defined(USE_KW_PLUS)
 	COP_EMIT_PLUS,
+#endif
 	COP_EMIT_POP_STACKTOP,
 	COP_EMIT_RETURN,
 	COP_EMIT_SET,
@@ -2004,6 +2005,7 @@ static HAK_INLINE int compile_or_p2 (hak_t* hak)
 
 /* ========================================================================= */
 
+#if defined(USE_KW_PLUS)
 /* EXPERIMENT WITH BINOP */
 static int compile_plus (hak_t* hak, hak_cnode_t* src)
 {
@@ -2068,6 +2070,7 @@ static HAK_INLINE int emit_plus (hak_t* hak)
 	POP_CFRAME(hak);
 	return 0;
 }
+#endif
 
 /* ========================================================================= */
 
@@ -2819,7 +2822,7 @@ static int compile_class (hak_t* hak, hak_cnode_t* src)
 	check_class_name:
 		if (HAK_CNODE_IS_FOR_DATA_SIMPLE(tmp) || HAK_CNODE_IS_FOR_LANG(tmp))
 		{
-			if (!HAK_CNODE_IS_SYMBOL_IDENT(tmp))
+			if (!HAK_CNODE_IS_SYMBOL(tmp))
 			{
 				hak_setsynerrbfmt(
 					hak, HAK_SYNERR_CLASS, HAK_CNODE_GET_LOC(tmp), HAK_NULL,
@@ -3295,7 +3298,7 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 			tmp = HAK_CNODE_CONS_CAR(next);
 		}
 
-		if (HAK_CNODE_IS_SYMBOL(tmp))
+		if (HAK_CNODE_IS_SYMBOL(tmp) || HAK_CNODE_IS_BINOP(tmp))
 		{
 			/* 'fun' followed by name */
 		fun_got_name:
@@ -3332,7 +3335,7 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 				}
 
 				tmp = HAK_CNODE_CONS_CAR(next);
-				if (!HAK_CNODE_IS_SYMBOL(tmp))
+				if (!HAK_CNODE_IS_SYMBOL(tmp) && !HAK_CNODE_IS_BINOP(tmp))
 				{
 					hak_setsynerrbfmt(
 						hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(tmp), HAK_NULL,
@@ -3543,7 +3546,7 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 
 			if (in_ret_args)
 			{
-				if (!HAK_CNODE_IS_SYMBOL_IDENT(arg))
+				if (!HAK_CNODE_IS_SYMBOL(arg))
 				{
 					/* in 'fun x (x :: 20) { }', '20' is not a valid return variable name.
 					 * in 'fun x (x :: if) { }', 'if' is not a valid return variable name. */
@@ -3586,7 +3589,7 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 				{
 					va = 1;
 				}
-				else if (!HAK_CNODE_IS_SYMBOL_IDENT(arg))
+				else if (!HAK_CNODE_IS_SYMBOL(arg))
 				{
 					hak_setsynerrbfmt(
 						hak, HAK_SYNERR_ARGNAME, HAK_CNODE_GET_LOC(arg), HAK_NULL,
@@ -3613,6 +3616,18 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 			}
 		}
 		while (1);
+	}
+
+	if ((fun_type & 0xFF) == FUN_IM && fun_name && HAK_CNODE_IS_BINOP(fun_name) && (is_in_class_init_scope(hak) || class_name) && nargs != 1)
+	{
+		hak_setsynerrbfmt(
+			hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(arg_list), HAK_NULL,
+			"only one argument expected for '%.*js%hs%.*js'",
+			(class_name? HAK_CNODE_GET_TOKLEN(class_name): 0),
+			(class_name? HAK_CNODE_GET_TOKPTR(class_name): HAK_NULL),
+			(class_name? ":": ""),
+			HAK_CNODE_GET_TOKLEN(fun_name), HAK_CNODE_GET_TOKPTR(fun_name));
+		return -1;
 	}
 
 	if (nargs > MAX_CODE_NBLKARGS) /*TODO: change this limit to max call argument count */
@@ -3860,7 +3875,7 @@ static int compile_var (hak_t* hak, hak_cnode_t* src)
 		tmp = HAK_CNODE_CONS_CAR(next);
 	}
 
-	if (HAK_CNODE_IS_SYMBOL_IDENT(tmp))
+	if (HAK_CNODE_IS_SYMBOL(tmp))
 	{
 		unsigned int var_type = VAR_INST;
 
@@ -3901,7 +3916,7 @@ static int compile_var (hak_t* hak, hak_cnode_t* src)
 			next = HAK_CNODE_CONS_CDR(next);
 			if (!next) break;
 			tmp = HAK_CNODE_CONS_CAR(next);
-			if (!HAK_CNODE_IS_SYMBOL_IDENT(tmp)) goto not_ident;
+			if (!HAK_CNODE_IS_SYMBOL(tmp)) goto not_ident;
 		}
 	}
 	else
@@ -4136,7 +4151,7 @@ static int compile_set_r (hak_t* hak, hak_cnode_t* src)
 	do
 	{
 		var = HAK_CNODE_CONS_CAR(obj);
-		if (!HAK_CNODE_IS_SYMBOL(var)) /* TODO: should this be HAK_CNODE_IS_SYMBOL(var)?? */
+		if (!HAK_CNODE_IS_SYMBOL(var))
 		{
 			if (nvars > 0) break;
 			hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(var), HAK_CNODE_GET_TOK(var), "variable name not symbol in %.*js", HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
@@ -4883,9 +4898,11 @@ static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 			if (compile_or(hak, obj) <= -1) return -1;
 			goto done;
 
+#if defined(USE_KW_PLUS)
 		case HAK_CNODE_PLUS:
 			if (compile_plus(hak, obj) <= -1) return -1;
 			goto done;
+#endif
 
 		case HAK_CNODE_SET:
 			if (compile_set(hak, obj) <= -1) return -1;
@@ -4896,7 +4913,9 @@ static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 			goto done;
 	}
 
-	if (HAK_CNODE_IS_SYMBOL(car)  || HAK_CNODE_IS_DSYMBOL(car) ||
+	if (HAK_CNODE_IS_SYMBOL(car)  || HAK_CNODE_IS_DSYMBOL(car) || HAK_CNODE_IS_BINOP(car) ||
+	    HAK_CNODE_IS_STRLIT(car) || /* this condition to represent an external program TODO: change this to a dedicated cnode */
+	    HAK_CNODE_IS_SYMLIT(car) || /* this condition to represent an external program TODO: change this to a dedicated cnode */
 	    HAK_CNODE_IS_CONS_CONCODED(car, HAK_CONCODE_XLIST) ||
 	    HAK_CNODE_IS_CONS_CONCODED(car, HAK_CONCODE_MLIST) ||
 	    HAK_CNODE_IS_CONS_CONCODED(car, HAK_CONCODE_BLIST) ||
@@ -4947,7 +4966,7 @@ static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 			}
 		}
 
-		if (HAK_CNODE_IS_SYMBOL(car) || HAK_CNODE_IS_DSYMBOL(car))
+		if (HAK_CNODE_IS_SYMBOL(car) || HAK_CNODE_IS_DSYMBOL(car) || HAK_CNODE_IS_BINOP(car))
 		{
 			hak_oop_cons_t sdc;
 
@@ -5038,14 +5057,34 @@ static int compile_cons_mlist_expression (hak_t* hak, hak_cnode_t* obj, hak_ooi_
 		return -1;
 	}
 	car = HAK_CNODE_CONS_CAR(cdr);
-	if (HAK_CNODE_IS_SYMBOL(car))
+	if (HAK_CNODE_IS_SYMBOL(car) || HAK_CNODE_IS_BINOP(car))
 	{
+		/* do not resolve the message itself to an associated value.
+		 * treat it as if it's a literal.
+		 * the actual message sending can be written with a symbol
+		 * as well as a symbol literal in that sense.
+		 *
+		 * For this class definition
+		 *   class X { fun[#ci] new() {} }
+		 * X:new is equivalent to X:#new
+		 *
+		 * If the method is a binop selector,
+		 *  class X { fun[#ci] +(a) {} } ## one argument is guaranteed by the reader
+		 * the followings are equivalent.
+		 *   X + 20
+		 *   X:#+ 20
+		 */
 		PUSH_CFRAME(hak, COP_EMIT_PUSH_SYMBOL, car);
+	}
+	else if (HAK_CNODE_IS_SYMLIT(car) || HAK_CNODE_IS_STRLIT(car))
+	{
+		PUSH_CFRAME(hak, COP_COMPILE_OBJECT, car);
 	}
 	else
 	{
-/* TODO: more sanity check on what can be used as a method */
-		PUSH_CFRAME(hak, COP_COMPILE_OBJECT, car);
+		hak_setsynerrbfmt(hak, HAK_SYNERR_MESSAGE, HAK_CNODE_GET_LOC(car), HAK_NULL,
+			"invalid message '%.*js'", HAK_CNODE_GET_TOKLEN(car), HAK_CNODE_GET_TOKPTR(car));
+		return -1;
 	}
 
 	/* compile <operand1> ... etc */
@@ -5071,31 +5110,6 @@ static int compile_cons_mlist_expression (hak_t* hak, hak_cnode_t* obj, hak_ooi_
 		}
 	}
 
-#if 0
-	if (HAK_CNODE_IS_SYMBOL(car) || HAK_CNODE_IS_DSYMBOL(car))
-	{
-		hak_oop_cons_t sdc;
-
-		/* only symbols are added to the system dictionary.
-		 * perform this lookup only if car is a symbol */
-		sdc = hak_lookupsysdicforsymbol_noseterr(hak, HAK_CNODE_GET_TOK(car));
-		if (sdc)
-		{
-			hak_oop_word_t sdv;
-			sdv = (hak_oop_word_t)HAK_CONS_CDR(sdc);
-			if (HAK_IS_PRIM(hak, sdv))
-			{
-				if (nargs < sdv->slot[1] || nargs > sdv->slot[2])
-				{
-					hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(car), HAK_NULL,
-						"parameters count(%zd) mismatch in function call - %.*js - expecting %zu-%zu parameters", nargs, HAK_CNODE_GET_TOKLEN(car), HAK_CNODE_GET_TOKPTR(car), sdv->slot[1], sdv->slot[2]);
-					return -1;
-				}
-			}
-		}
-	}
-#endif
-
 	/* redundant cdr check is performed inside compile_object_list() */
 	PUSH_SUBCFRAME(hak, COP_COMPILE_ARGUMENT_LIST, cdr);
 
@@ -5120,7 +5134,7 @@ static HAK_INLINE int compile_symbol (hak_t* hak, hak_cnode_t* obj)
 	hak_var_info_t vi;
 	int x;
 
-	HAK_ASSERT(hak, HAK_CNODE_IS_SYMBOL(obj));
+	HAK_ASSERT(hak, HAK_CNODE_IS_SYMBOL(obj) || HAK_CNODE_IS_BINOP(obj));
 
 	/* check if a symbol is a local variable */
 	x = find_variable_backward_with_token(hak, obj, &vi);
@@ -5598,6 +5612,7 @@ redo:
 			lit = HAK_ERROR_TO_OOP(oprnd->u.errlit.v);
 			goto literal;
 
+		case HAK_CNODE_BINOP: /* binop symbol. treat it like a normal symbol in the object context */
 		case HAK_CNODE_SYMBOL: /* symbol. but not a literal. usually a variable */
 			if (compile_symbol(hak, oprnd) <= -1) return -1;
 			goto done;
@@ -6626,7 +6641,7 @@ static HAK_INLINE int post_fun (hak_t* hak)
 		hak_var_info_t vi;
 		int x;
 
-		HAK_ASSERT(hak, HAK_CNODE_IS_SYMBOL(fun_name));
+		HAK_ASSERT(hak, HAK_CNODE_IS_SYMBOL(fun_name) || HAK_CNODE_IS_BINOP(fun_name));
 
 		if (is_in_class_init_scope(hak))
 		{
@@ -6804,7 +6819,7 @@ static HAK_INLINE int emit_set (hak_t* hak)
 		hak_oow_t index;
 		hak_oop_t cons, sym;
 
-		HAK_ASSERT(hak, HAK_CNODE_IS_SYMBOL(cf->operand));
+		HAK_ASSERT(hak, HAK_CNODE_IS_SYMBOL(cf->operand) || HAK_CNODE_IS_BINOP(cf->operand));
 
 		sym = hak_makesymbol(hak, HAK_CNODE_GET_TOKPTR(cf->operand), HAK_CNODE_GET_TOKLEN(cf->operand));
 		if (HAK_UNLIKELY(!sym)) return -1;
@@ -7171,9 +7186,11 @@ int hak_compile (hak_t* hak, hak_cnode_t* obj, int flags)
 				if (emit_fun(hak) <= -1) goto oops;
 				break;
 
+#if defined(USE_KW_PLUS)
 			case COP_EMIT_PLUS:
 				if (emit_plus(hak) <= -1) goto oops;
 				break;
+#endif
 
 			case COP_EMIT_POP_STACKTOP:
 				if (emit_pop_stacktop(hak) <= -1) goto oops;

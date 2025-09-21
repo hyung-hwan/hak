@@ -891,7 +891,7 @@ static int feed_json_data_u (hak_json_t* json, const hak_uch_t* data, hak_oow_t 
 		hak_oow_t n, i;
 
 		n = json->_gem.cmgr->uctobc(*ptr++, bcsbuf, HAK_COUNTOF(bcsbuf));
-		if (n == 0) goto oops; // illegal character
+		if (n == 0) goto oops; /* illegal character */
 
 		for (i = 0; i < n; i++)
 		{

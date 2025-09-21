@@ -326,7 +326,9 @@ enum hak_tok_type_t
 	HAK_TOK_REVERT,
 	HAK_TOK_AND,
 	HAK_TOK_OR,
+#if defined(USE_KW_PLUS)
 	HAK_TOK_PLUS,
+#endif
 	HAK_TOK_SET,
 	HAK_TOK_SET_R,
 
@@ -396,6 +398,7 @@ enum hak_cnode_type_t
 	HAK_CNODE_BCHRLIT,
 	HAK_CNODE_SYMBOL,
 	HAK_CNODE_DSYMBOL, /* dotted symbol */
+	HAK_CNODE_BINOP,
 	HAK_CNODE_STRLIT,
 	HAK_CNODE_BSTRLIT,
 	HAK_CNODE_SYMLIT,
@@ -439,7 +442,9 @@ enum hak_cnode_type_t
 	HAK_CNODE_REVERT,
 	HAK_CNODE_AND,
 	HAK_CNODE_OR,
+#if defined(USE_KW_PLUS)
 	HAK_CNODE_PLUS,
+#endif
 	HAK_CNODE_SET,
 	HAK_CNODE_SET_R,  /* language item for HAK_CODE_IS_FOR_LANG */
 
@@ -483,8 +488,9 @@ typedef enum hak_cnode_flag_t hak_cnode_flag_t;
 #define HAK_CNODE_IS_COLONLT(x) ((x)->cn_type == HAK_CNODE_COLONLT)
 
 #define HAK_CNODE_IS_SYMBOL(x) ((x)->cn_type == HAK_CNODE_SYMBOL)
-#define HAK_CNODE_IS_SYMBOL_IDENT(x) (HAK_CNODE_IS_SYMBOL(x) && !hak_is_binop_char((x)->cn_tok.ptr[0]))
-#define HAK_CNODE_IS_SYMBOL_BINOP(x) (HAK_CNODE_IS_SYMBOL(x) && hak_is_binop_char((x)->cn_tok.ptr[0]))
+#define HAK_CNODE_IS_BINOP(x) ((x)->cn_type == HAK_CNODE_BINOP)
+#define HAK_CNODE_IS_STRLIT(x) ((x)->cn_type == HAK_CNODE_STRLIT)
+#define HAK_CNODE_IS_SYMLIT(x) ((x)->cn_type == HAK_CNODE_SYMLIT)
 
 #define HAK_CNODE_IS_DSYMBOL(x) ((x)->cn_type == HAK_CNODE_DSYMBOL)
 #define HAK_CNODE_IS_DSYMBOL_CLA(x) ((x)->cn_type == HAK_CNODE_DSYMBOL && (x)->u.dsymbol.is_cla)
@@ -900,6 +906,7 @@ struct hak_frd_t
 {
 	int level;
 	int flagv;
+	int expect_pragma_item;
 	int expect_include_file;
 	int expect_vlist_item;
 	int do_include_file;
@@ -1357,6 +1364,7 @@ enum hak_bcode_t
 	HAK_CODE_PUSH_NEGINTLIT           = 0xB3, /* 179 */
 	HAK_CODE_PUSH_CHARLIT             = 0xB4, /* 180 */
 
+/* TODO: generalize it to support binops, not just plus */
 	HAK_CODE_PLUS = 0xB5, /* 181 TOOD: move it to a lower code number later after killing OBJVAR instructions */
 	/* UNUSED - 0xB6-0xB7 */
 
@@ -2022,6 +2030,7 @@ hak_cnode_t* hak_makecnodecharlit (hak_t* hak, int flags, const hak_loc_t* loc, 
 hak_cnode_t* hak_makecnodebchrlit (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok, hak_oob_t v);
 hak_cnode_t* hak_makecnodesymbol (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok);
 hak_cnode_t* hak_makecnodedsymbol (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok, int is_cla);
+hak_cnode_t* hak_makecnodebinop (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok);
 hak_cnode_t* hak_makecnodestrlit (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok);
 hak_cnode_t* hak_makecnodebstrlit (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok);
 hak_cnode_t* hak_makecnodesymlit (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok);

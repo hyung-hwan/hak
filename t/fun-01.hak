@@ -126,3 +126,22 @@ if (== v 30) { printf "OK - %d\n" v } else { printf "ERROR - %d, not 30\n" v };
 fun k(x) (+ x 30)  ## (+ x 30) is valid function body
 v := (k 10)
 if (== v 40) { printf "OK - %d\n" v } else { printf "ERROR - %d, not 40\n" v };
+
+
+## ----------------------------------------
+fun plus(x y) {
+     ##printf "plus %d %d\n" x y
+     fun minus(x y) {
+          ##printf "minus %d %d\n" x y
+          - x y
+     }
+     + x y
+}
+
+fun dummy(q) {
+     printf "%s\n" q
+}
+
+plus 10 20 ## minus is now available after plus is executed
+v := (minus 10 1)
+if (== v 9) { printf "OK - %d\n" v } else { printf "ERROR - %d, not 9\n" v }

@@ -132,6 +132,7 @@ if (== i k) { printf "OK: i is %d\n" i k } \
 else { printf "ERROR: i is not equal to %d\n" k }
 
 
+## dictionary
 a := #{
   (if (> 10 20) true else false ): 10,
   (if (< 10 20) true else false ): 20

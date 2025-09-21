@@ -119,6 +119,7 @@ enum hak_synerrnum_t
 	HAK_SYNERR_RBRACE,        /* } expected */
 	HAK_SYNERR_VBAR,          /* | expected */
 
+	HAK_SYNERR_IDENT,         /* identifier expected */
 	HAK_SYNERR_STRING,        /* string expected */
 	HAK_SYNERR_BYTERANGE,     /* byte too small or too large */
 	HAK_SYNERR_NESTING,       /* nesting level too deep */
@@ -165,6 +166,7 @@ enum hak_synerrnum_t
 	HAK_SYNERR_BREAK,         /* break outside loop */
 
 	HAK_SYNERR_CALLABLE,      /* invalid callable */
+	HAK_SYNERR_MESSAGE,       /* invalid message */
 	HAK_SYNERR_UNBALKV,       /* unbalanced key/value pair */
 	HAK_SYNERR_UNBALPBB,      /* unbalanced parenthesis/brace/bracket */
 	HAK_SYNERR_SEMICOLON,     /* unexpected semicolon */

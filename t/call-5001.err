@@ -105,3 +105,33 @@ core.basicAtPut "xbcdefghiklmnl" 4 k ##ERROR: exception not handled - "receiver 
 
 k := (core.basicAt #abcdefg 1)
 core.basicAtPut #xbcdefghiklmnl 4 k ##ERROR: exception not handled - "receiver immutable - xbcdefghiklmnl"
+
+---
+
+## the compiler/runtime needs to improve on this although this is an error for now.
+fun + (a b) {}
+printf "%O\n" #{+: 20} ##ERROR: no builtin hash implemented for #<BLOCK>
+
+---
+
+class X {
+	fun + () {} ##ERROR: syntax error - only one argument expected for '+'
+}
+
+---
+
+## the binop method defined for a class must have one argument
+class X {
+	fun + (t) {}
+	fun f1 (t1 t2) {}
+}
+
+fun X:- (a b) {} ##ERROR: syntax error - only one argument expected for 'X:-'
+
+---
+
+class X {
+     fun[#ci] +(a b c) { printf "jjj\n" } ## the one argument rule applies to binary instance methods only.
+     fun +(c d) { printf "jjj\n" } ##ERROR: syntax error - only one argument expected for '+'
+}
+

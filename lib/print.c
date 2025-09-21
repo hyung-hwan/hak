@@ -957,7 +957,9 @@ void hak_dumpcnode (hak_t* hak, hak_cnode_t* cnode, int newline)
 			case HAK_CNODE_REVERT:
 			case HAK_CNODE_AND:
 			case HAK_CNODE_OR:
+#if defined(USE_KW_PLUS)
 			case HAK_CNODE_PLUS:
+#endif
 			case HAK_CNODE_SET:
 			case HAK_CNODE_SET_R:
 

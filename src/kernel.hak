@@ -6,12 +6,12 @@ class Apex {
 		return (core.basicNew self size)
 	}
 
-	fun[#class] respondsTo(mth) {
-		return (core.classRespondsTo self mth)
+	fun[#class] respondsTo(mthname) {
+		return (core.classRespondsTo self mthname)
 	}
 
-	fun respondsTo(mth) {
-		return (core.instRespondsTo self mth)
+	fun respondsTo(mthname) {
+		return (core.instRespondsTo self mthname)
 	}
 
 	fun primAt(pos) {
