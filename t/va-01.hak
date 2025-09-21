@@ -54,3 +54,18 @@ if (~= c 30) {
 } else {
 	printf "OK: %d\n" c
 }
+
+## TODO: make the below line work...
+##set prim-plus +   ## this is not allowed currently...
+##fun plus (a b ...) {
+##	| sum vac i |
+##	sum := (prim-plus  a b)
+##	vac := (va-count)
+##	i := 0;
+##	while (< i vac) {
+##	sum := (prim-plus sum (va-get i))
+##		i := (prim-plus i 1)
+##	}
+##	sum := (prim-plus sum 9999)
+##}
+##printf "%d\n" (plus 10 20 30)

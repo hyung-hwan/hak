@@ -38,6 +38,8 @@ static struct voca_t
 	hak_ooch_t str[11];
 } vocas[] =
 {
+/* TODO: change $include and $pragma to #\include or #\pragma or use some other prefix like #^ -> $ to use really for variable reference or something...
+ * TODO: change #\ to something else... */
 	{  8, { '$','i','n','c','l','u','d','e'                               } },
 	{  7, { '$','p','r','a','g','m','a'                                   } },
 
@@ -289,12 +291,11 @@ static HAK_INLINE int is_delim_char (hak_ooci_t c)
 	       c == '#' || c == '\"' || c == '\'' || c == '\\' || is_spacechar(c) || c == HAK_OOCI_EOF;
 }
 
-int hak_is_binop_char (hak_ooci_t c) /* not static HAK_INLINE for shared use with comp.c via HAK_CNODE_IS_SYMBOL() */
+static HAK_INLINE int is_binop_char (hak_ooci_t c)
 {
 	return c == '&' || c == '*' || c == '+' || c == '-' || c == '/' || c == '%' ||
 	       c == '<' || c == '>' || c == '=' || c == '@' || c == '|' || c == '~';
 }
-#define is_binop_char(c) hak_is_binop_char(c)
 
 static HAK_INLINE int is_pure_lead_ident_char (hak_ooci_t c)
 {
@@ -476,10 +477,43 @@ static int get_char (hak_t* hak)
 	return n;
 }
 
-static hak_tok_type_t classify_ident_token (hak_t* hak, const hak_oocs_t* v)
+static int is_pure_ident (hak_t* hak, const hak_oocs_t* v)
+{
+	if (is_pure_lead_ident_char(v->ptr[0]))
+	{
+		/* check if the word conforms to pure identifier rules:
+		 *  begins with alnum or _
+		 *  may contains a dash or dashes in between
+		 *  ends with alnum or _ or ?
+		 */
+		hak_oow_t i;
+		hak_oow_t wc = 1;
+		int q = 0;
+		for (i = 1; i < v->len; i++)
+		{
+			if (q && v->ptr[i] != '?') goto not_ident;
+
+			if (v->ptr[i] == '-')
+			{
+				/*if (wc == 0) goto not_ident;*/
+				wc = 0;
+			}
+			else if (v->ptr[i] == '?') q = 1;
+			else if (!is_pure_ident_char(v->ptr[i])) goto not_ident;
+			else wc++;
+		}
+
+		if (wc > 0) return 1;
+	}
+
+not_ident:
+	return 0;
+}
+
+static int classify_ident_token (hak_t* hak, const hak_oocs_t* v, const hak_loc_t* errloc, hak_tok_type_t* tok_type)
 {
 	hak_oow_t i;
-	int is_binop;
+	int binop_char_count;
 	static struct
 	{
 		int voca_id;
@@ -520,47 +554,40 @@ static hak_tok_type_t classify_ident_token (hak_t* hak, const hak_oocs_t* v)
 	for (i = 0; i < HAK_COUNTOF(tab); i++)
 	{
 		int vid = tab[i].voca_id;
-		if (hak_comp_oochars(v->ptr, v->len, vocas[vid].str, vocas[vid].len) == 0) return tab[i].type;
-	}
-
-	if (is_pure_lead_ident_char(v->ptr[0]))
-	{
-		/* check if the word conforms to pure identifier rules:
-		 *  begins with alnum or _
-		 *  may contains a dash or dashes in between
-		 *  ends with alnum or _ or ?
-		 */
-		hak_oow_t wc = 1;
-		int q = 0;
-		for (i = 1; i < v->len; i++)
+		if (hak_comp_oochars(v->ptr, v->len, vocas[vid].str, vocas[vid].len) == 0)
 		{
-			if (q && v->ptr[i] != '?') goto not_ident;
-
-			if (v->ptr[i] == '-')
-			{
-				/*if (wc == 0) goto not_ident;*/
-				wc = 0;
-			}
-			else if (v->ptr[i] == '?') q = 1;
-			else if (!is_pure_ident_char(v->ptr[i])) goto not_ident;
-			else wc++;
+			*tok_type = tab[i].type;
+			return 0;
 		}
-
-		if (wc > 0) return HAK_TOK_IDENT;
 	}
 
-not_ident:
-	is_binop = 1;
+	if (is_pure_ident(hak, v))
+	{
+		*tok_type = HAK_TOK_IDENT;
+		return 0;
+	}
+
+	binop_char_count = 0;
 	for (i = 0; i < v->len; i++)
 	{
-		if (!is_binop_char(v->ptr[i]))
-		{
-			is_binop = 0;
-			break;
-		}
+		if (is_binop_char(v->ptr[i])) binop_char_count++;
 	}
 
-	return is_binop? HAK_TOK_BINOP: HAK_TOK_SYMLIT;
+	if (binop_char_count == v->len)
+	{
+		*tok_type = HAK_TOK_BINOP;
+		return 0;
+	}
+
+	if (binop_char_count > 0)
+	{
+		hak_setsynerrbfmt(hak, HAK_SYNERR_ILTOK, errloc, HAK_NULL,
+			"illegal identifier '%.*js'", v->len, v->ptr);
+		return -1;
+	}
+
+	*tok_type = HAK_TOK_SYMLIT;
+	return 0;
 }
 
 static int is_sr_name_in_use (hak_t* hak, const hak_ooch_t* sr_name)
@@ -1545,7 +1572,7 @@ static int feed_process_token (hak_t* hak)
 		/* the pragmas changes the behavior of the reader and the compiler */
 		if (frd->expect_pragma_item >= 3) /* eol expected */
 		{
-			if (TOKEN_TYPE(hak) != HAK_TOK_EOL)
+			if (TOKEN_TYPE(hak) != HAK_TOK_EOL && TOKEN_TYPE(hak) != HAK_TOK_SEMICOLON)
 			{
 				hak_setsynerrbfmt(hak, HAK_SYNERR_ILTOK, TOKEN_LOC(hak), HAK_NULL,
 					"redundant token '%.*js' for '%.*js'",
@@ -1557,7 +1584,7 @@ static int feed_process_token (hak_t* hak)
 		}
 		else
 		{
-			if (TOKEN_TYPE(hak) == HAK_TOK_EOL)
+			if (TOKEN_TYPE(hak) == HAK_TOK_EOL || TOKEN_TYPE(hak) == HAK_TOK_SEMICOLON)
 			{
 				hak_setsynerrbfmt(hak, HAK_SYNERR_IDENT, TOKEN_LOC(hak), HAK_NULL,
 					"'%.*js' %hs not specified",
@@ -1577,6 +1604,7 @@ static int feed_process_token (hak_t* hak)
 
 			if (frd->expect_pragma_item == 1)
 			{
+				/* TODO: add items .. */
 				frd->expect_pragma_item = 2; /* expect value */
 			}
 			else
@@ -1591,7 +1619,7 @@ static int feed_process_token (hak_t* hak)
 	{
 		/* the #include directive is an exception to the general expression rule.
 		 * use this exceptional code block to divert the major token processing */
-		if (TOKEN_TYPE(hak) == HAK_TOK_EOL)
+		if (TOKEN_TYPE(hak) == HAK_TOK_EOL || TOKEN_TYPE(hak) == HAK_TOK_SEMICOLON)
 		{
 			hak_setsynerrbfmt(hak, HAK_SYNERR_STRING, TOKEN_LOC(hak), HAK_NULL,
 				"'%.*js' target not specified",
@@ -3007,16 +3035,7 @@ static int flx_plain_ident (hak_t* hak, hak_ooci_t c) /* identifier */
 		start = TOKEN_NAME_LEN(hak) - pi->seg_len;
 		seg.ptr = &TOKEN_NAME_CHAR(hak, start);
 		seg.len = pi->seg_len;
-#if defined(STRICT_BINOP)
-		if (seg.ptr[seg.len - 1] == '-')
-		{
-			hak_setsynerrbfmt(hak, HAK_SYNERR_ILTOK, TOKEN_LOC(hak), TOKEN_NAME(hak),
-				"'%c' prohibited as last character of identifier or identifier segment",
-				seg.ptr[seg.len - 1]);
-			return -1;
-		}
-#endif
-		tok_type = classify_ident_token(hak, &seg);
+		if (classify_ident_token(hak, &seg, TOKEN_LOC(hak), &tok_type) <= -1) return -1;
 		if (tok_type != HAK_TOK_IDENT)
 		{
 			if (pi->seg_count == 0 && (tok_type == HAK_TOK_SELF || tok_type == HAK_TOK_SUPER))
@@ -3060,8 +3079,14 @@ static int flx_plain_ident (hak_t* hak, hak_ooci_t c) /* identifier */
 
 		/* if single-segmented, perform classification(call classify_ident_token()) again
 		 * bcause self and super as the first segment have not been marked as a non-identifier above */
-		tok_type = (pi->seg_count == 1? classify_ident_token(hak, TOKEN_NAME(hak)):
-		                                (pi->is_cla? HAK_TOK_IDENT_DOTTED_CLA: HAK_TOK_IDENT_DOTTED));
+		if (pi->seg_count == 1)
+		{
+			if (classify_ident_token(hak, TOKEN_NAME(hak), TOKEN_LOC(hak), &tok_type) <= -1) return -1;
+		}
+		else
+		{
+			tok_type = pi->is_cla? HAK_TOK_IDENT_DOTTED_CLA: HAK_TOK_IDENT_DOTTED;
+		}
 		FEED_WRAP_UP(hak, tok_type);
 		goto not_consumed;
 	}

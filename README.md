@@ -149,50 +149,49 @@ x:print
 ## Redefining a primitive function
 
 ```
-(set prim-plus +)
-(fun + (a b ...)
-	(prim-plus a b 9999)
+set prim-plus +
+fun + (a b ...)
+	prim-plus a b 9999
 )
-
-(printf "%d\n" (+ 10 20))
+printf "%d\n" (+ 10 20)
 ```
 
 ## Variadic arguments
 
 ```
-(fun fn-y (t1 t2 va-ctx)
+fun fn-y (t1 t2 va-ctx) {
         | i |
-        (set i 0)
-        (while (< i (va-count va-ctx))
-                (printf "fn-y=>Y-VA[%d]=>[%d]\n" i (va-get i va-ctx))
-                (set i (+ i 1))
-        )
-)
+        set i 0
+        while (< i (va-count va-ctx)) {
+                printf "fn-y=>Y-VA[%d]=>[%d]\n" i (va-get i va-ctx)
+                set i (+ i 1)
+        }
+}
 
-(fun x(a b ... :: x y z)
-        |i|
+fun x(a b ... :: x y z) {
+    |i|
 
-##       (printf "VA_COUNT(x) = %d\n" (va-count))
-        (set x "xxx")
-        (set y "yyy")
-        (set z "zzz")
-        (set z (+ a b))
+##  printf "VA_COUNT(x) = %d\n" (va-count)
+    set x "xxx"
+    set y "yyy"
+    set z "zzz"
+    set z (+ a b)
 
-        (set i 0)
-        (while (< i (va-count))
-                (printf "VA[%d]=>[%d]\n" i (va-get i))
-                (set i (+ i 1))
-        )
-        (fn-y "hello" "world" (va-context))
+    set i 0
+    while (< i (va-count)) {
+        printf "VA[%d]=>[%d]\n" i (va-get i)
+        set i (+ i 1)
+    }
+    fn-y "hello" "world" (va-context)
 
-        (return)
-)
+    return
+}
 
-(printf "--------------------------\n")
-(printf "[%O]\n" (x 10 20 30))
-(printf "--------------------------\n")
-(set q (set-r a b c (x 10 20 30 40 50)))
-(printf "--------------------------\n")
+printf "--------------------------\n"
+printf "[%O]\n" (x 10 20 30)
+printf "--------------------------\n"
+set q (set-r a b c (x 10 20 30 40 50))
+printf "--------------------------\n"
 ```
 
 ## HAK Exchange Protocol
