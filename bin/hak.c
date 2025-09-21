@@ -418,8 +418,8 @@ static void print_other_error (hak_t* hak)
 
 static void print_error (hak_t* hak, const hak_bch_t* msghdr)
 {
-	if (HAK_ERRNUM(hak) == HAK_ESYNERR) print_synerr (hak);
-	else print_other_error (hak);
+	if (HAK_ERRNUM(hak) == HAK_ESYNERR) print_synerr(hak);
+	else print_other_error(hak);
 	/*else hak_logbfmt(hak, HAK_LOG_STDERR, "ERROR: %hs - [%d] %js\n", msghdr, hak_geterrnum(hak), hak_geterrmsg(hak));*/
 }
 
@@ -475,7 +475,7 @@ static hak_oop_t execute_in_interactive_mode (hak_t* hak)
 
 	if (!retv)
 	{
-		print_error (hak, "execute");
+		print_error(hak, "execute");
 	}
 	else
 	{
@@ -514,15 +514,15 @@ static hak_oop_t execute_in_batch_mode(hak_t* hak, int verbose)
 	hak_code_t xcode;
 	hak_ptlc_t mem;
 
-	memset (&xcode, 0, HAK_SIZEOF(xcode));
-	memset (&mem, 0, HAK_SIZEOF(mem));
+	memset(&xcode, 0, HAK_SIZEOF(xcode));
+	memset(&mem, 0, HAK_SIZEOF(mem));
 
 	hak_marshalcodetomem(hak, &hak->code, &mem);
 	hak_unmarshalcodefrommem(hak, &xcode, (const hak_ptl_t*)&mem);
 	hak_freemem(hak, mem.ptr);
 
 	hak_decode(hak, &xcode, 0, xcode.bc.len);
-	hak_purgecode (hak, &xcode);
+	hak_purgecode(hak, &xcode);
 }
 #endif
 /* END TESTING */
@@ -530,7 +530,7 @@ static hak_oop_t execute_in_batch_mode(hak_t* hak, int verbose)
 	retv = hak_execute(hak);
 	hak_flushudio (hak);
 
-	if (!retv) print_error (hak, "execute");
+	if (!retv) print_error(hak, "execute");
 	else if (verbose) hak_logbfmt(hak, HAK_LOG_STDERR, "EXECUTION OK - EXITED WITH %O\n", retv);
 
 	/*cancel_tick();*/
@@ -579,7 +579,7 @@ static int on_fed_cnode_in_batch_mode (hak_t* hak, hak_cnode_t* obj)
 #if defined(USE_ISOCLINE)
 static int get_line (hak_t* hak, xtn_t* xtn, FILE* fp)
 {
-	char* inp, * p;
+	char* inp;
 	static int inited = 0;
 
 	if (!inited)
@@ -721,15 +721,15 @@ static int feed_loop (hak_t* hak, xtn_t* xtn, int verbose)
 		#endif
 			if (n <= -1)
 			{
-				print_error (hak, "feed"); /* syntax error or something - mostly compile error */
+				print_error(hak, "feed"); /* syntax error or something - mostly compile error */
 
 		#if defined(USE_ISOCLINE)
 			reset_on_feed_error:
 		#endif
-				hak_resetfeed (hak);
-				hak_clearcode (hak); /* clear the compiled code but not executed yet in advance */
+				hak_resetfeed(hak);
+				hak_clearcode(hak); /* clear the compiled code but not executed yet in advance */
 				xtn->feed.ncompexprs = 0; /* next time, on_fed_cnode_in_interactive_mode() clears code and fnblks */
-				/*if (len > 0)*/ show_prompt (hak, 0); /* show prompt after error */
+				/*if (len > 0)*/ show_prompt(hak, 0); /* show prompt after error */
 			}
 			else
 			{
@@ -742,9 +742,13 @@ static int feed_loop (hak_t* hak, xtn_t* xtn, int verbose)
 					}
 					else
 					{
-						HAK_ASSERT(hak, hak_getbclen(hak) == 0);
 						/* usually this part is reached if the input string is
-						 * one or more whilespaces and/or comments only */
+						 * one or more whilespaces and/or comments only.
+						 * ------------------------------------------------------
+						 * if the previous compiled code has not been cleared (e.g.
+						 * hcl_compile() ever called with HCL_COMPILE_CLEAR_CODE
+						 * or hcl_clearcode() explicitly called), hak_getbcllen(hak)
+						 * may still return a positive number greater than 0. */
 					}
 					show_prompt (hak, 0); /* show prompt after execution */
 				}
@@ -801,7 +805,7 @@ static int feed_loop (hak_t* hak, xtn_t* xtn, int verbose)
 	if (hak_endfeed(hak) <= -1)
 	{
 	endfeed_error:
-		print_error (hak, "endfeed");
+		print_error(hak, "endfeed");
 		goto oops; /* TODO: proceed or just exit? */
 	}
 	fclose (fp);
