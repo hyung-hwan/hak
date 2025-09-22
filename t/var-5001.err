@@ -58,12 +58,12 @@ class A ( + ) { ##ERROR: syntax error - not variable name '+'
 ---
 
 fun xxx(x :: p q) { p := (x + 1); q := (x + 2) }
-[a,[b]] := (xxx 20) ##ERROR: syntax error - bad lvalue - invalid element in tuple
+[a,[b]] := (xxx 20) ##ERROR: syntax error - bad lvalue - invalid identifier in tuple
 printf "%d %d\n" a b
 
 ---
 
-20 := 90 ##ERROR: syntax error - bad lvalue - invalid element - 20
+20 := 90 ##ERROR: syntax error - bad lvalue - invalid identifier - 20
 
 ---
 

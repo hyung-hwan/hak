@@ -97,6 +97,10 @@ static struct voca_t
 	{  3, { '[',' ',']' /* TUPLE */                                       } },
 	{  3, { '|',' ','|' /* VLIST */                                       } },
 
+	{  7, { 'l','i','b','e','r','a','l'                                   } },
+	{  2, { 'o','n'                                                       } },
+	{  3, { 'o','f','f'                                                   } },
+
 	{  5, { '<','E','O','L','>'                                           } },
 	{  5, { '<','E','O','F','>'                                           } }
 };
@@ -159,6 +163,10 @@ enum voca_id_t
 	VOCA_QLIST,
 	VOCA_TUPLE,
 	VOCA_VLIST,
+
+	VOCA_PRG_LIBERAL,
+	VOCA_PRG_ON,
+	VOCA_PRG_OFF,
 
 	VOCA_EOL,
 	VOCA_EOF
@@ -299,7 +307,7 @@ static HAK_INLINE int is_binop_char (hak_ooci_t c)
 
 static HAK_INLINE int is_pure_lead_ident_char (hak_ooci_t c)
 {
-	return hak_is_ooch_alnum(c) || c == '_';
+	return hak_is_ooch_alpha(c) || c == '_';
 }
 
 static HAK_INLINE int is_pure_ident_char (hak_ooci_t c)
@@ -309,11 +317,7 @@ static HAK_INLINE int is_pure_ident_char (hak_ooci_t c)
 
 static HAK_INLINE int is_lead_ident_char (hak_ooci_t c)
 {
-#if defined(STRICT_BINOP)
-	return hak_is_ooch_alpha(c) || c == '_';
-#else
-	return hak_is_ooch_alnum(c) || c == '_' || c == '-' || c == '?' || is_binop_char(c);
-#endif
+	return hak_is_ooch_alpha(c) || c == '_' || c == '-' || c == '?' || is_binop_char(c);
 }
 
 static HAK_INLINE int is_ident_char (hak_ooci_t c)
@@ -322,11 +326,7 @@ static HAK_INLINE int is_ident_char (hak_ooci_t c)
 	 *  '-' is prohibited as the last character of an identifier or an identifier segment.
 	 *  see flx_plain_ident().
 	 */
-#if defined(STRICT_BINOP)
-	return hak_is_ooch_alnum(c) || c == '_' || c == '-' || c == '?';
-#else
 	return hak_is_ooch_alnum(c) || c == '_' || c == '-' || c == '?' || is_binop_char(c);
-#endif
 }
 
 /* TODO: remove GET_CHAR(), GET_CHAR_TO(), get_char(), _get_char() */
@@ -579,14 +579,15 @@ static int classify_ident_token (hak_t* hak, const hak_oocs_t* v, const hak_loc_
 		return 0;
 	}
 
-	if (binop_char_count > 0)
+	if (binop_char_count > 0 && !(hak->option.trait & HAK_TRAIT_LANG_LIBERAL))
 	{
 		hak_setsynerrbfmt(hak, HAK_SYNERR_ILTOK, errloc, HAK_NULL,
 			"illegal identifier '%.*js'", v->len, v->ptr);
 		return -1;
 	}
 
-	*tok_type = HAK_TOK_SYMLIT;
+	/**tok_type = HAK_TOK_SYMLIT;*/
+	*tok_type = HAK_TOK_STRLIT;
 	return 0;
 }
 
@@ -782,7 +783,7 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 					lcar = HAK_CNODE_CONS_CAR(tmp);
 					if (!HAK_CNODE_IS_SYMBOL(lcar) && !HAK_CNODE_IS_DSYMBOL_CLA(lcar))
 					{
-						hak_setsynerrbfmt(hak, HAK_SYNERR_LVALUE, HAK_CNODE_GET_LOC(lval), HAK_CNODE_GET_TOK(lval), "bad lvalue - invalid element in tuple");
+						hak_setsynerrbfmt(hak, HAK_SYNERR_LVALUE, HAK_CNODE_GET_LOC(lval), HAK_CNODE_GET_TOK(lval), "bad lvalue - invalid identifier in tuple");
 						goto oops;
 					}
 				}
@@ -808,7 +809,7 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 			{
 				if (!HAK_CNODE_IS_SYMBOL(lval) && !HAK_CNODE_IS_DSYMBOL_CLA(lval))
 				{
-					hak_setsynerrbfmt(hak, HAK_SYNERR_LVALUE, HAK_CNODE_GET_LOC(lval), HAK_CNODE_GET_TOK(lval), "bad lvalue - invalid element");
+					hak_setsynerrbfmt(hak, HAK_SYNERR_LVALUE, HAK_CNODE_GET_LOC(lval), HAK_CNODE_GET_TOK(lval), "bad lvalue - invalid identifier");
 					goto oops;
 				}
 		#if defined(TRANSFORM_ALIST)
@@ -1570,7 +1571,7 @@ static int feed_process_token (hak_t* hak)
 	if (frd->expect_pragma_item)
 	{
 		/* the pragmas changes the behavior of the reader and the compiler */
-		if (frd->expect_pragma_item >= 3) /* eol expected */
+		if (frd->expect_pragma_item <= -1) /* eol expected */
 		{
 			if (TOKEN_TYPE(hak) != HAK_TOK_EOL && TOKEN_TYPE(hak) != HAK_TOK_SEMICOLON)
 			{
@@ -1604,12 +1605,38 @@ static int feed_process_token (hak_t* hak)
 
 			if (frd->expect_pragma_item == 1)
 			{
-				/* TODO: add items .. */
-				frd->expect_pragma_item = 2; /* expect value */
+				if (does_token_name_match(hak, VOCA_PRG_LIBERAL))
+				{
+					frd->expect_pragma_item = 501; /* expect value */
+				}
+				/* TODO: more pragmas */
+				else
+				{
+					hak_setsynerrbfmt(hak, HAK_SYNERR_IDENT, TOKEN_LOC(hak), HAK_NULL,
+						"invalid pragma name '%.*js'",
+						TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
+					goto oops;
+				}
 			}
-			else
+			else if (frd->expect_pragma_item == 501)
 			{
-				frd->expect_pragma_item = 3; /* expect eol */
+				if (does_token_name_match(hak, VOCA_PRG_ON))
+				{
+					hak->option.trait |= HAK_TRAIT_LANG_LIBERAL;
+				}
+				else if (does_token_name_match(hak, VOCA_PRG_OFF))
+				{
+					hak->option.trait &= ~HAK_TRAIT_LANG_LIBERAL;
+				}
+				else
+				{
+					hak_setsynerrbfmt(hak, HAK_SYNERR_IDENT, TOKEN_LOC(hak), HAK_NULL,
+						"invalid pragma value '%.*js'",
+						TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
+					goto oops;
+				}
+
+				frd->expect_pragma_item = -1; /* expect eol */
 			}
 		}
 		goto ok;
@@ -2368,7 +2395,6 @@ static int feed_continue_with_char (hak_t* hak, hak_ooci_t c, hak_flx_state_t st
 #define FLX_HN(hak) (&((hak)->c->feed.lx.u.hn))
 #define FLX_HI(hak) (&((hak)->c->feed.lx.u.hi))
 #define FLX_PI(hak) (&((hak)->c->feed.lx.u.pi))
-#define FLX_BINOP(hak) (&((hak)->c->feed.lx.u.binop))
 #define FLX_PN(hak) (&((hak)->c->feed.lx.u.pn))
 #define FLX_QT(hak) (&((hak)->c->feed.lx.u.qt))
 #define FLX_ST(hak) (&((hak)->c->feed.lx.u.st))
@@ -2410,11 +2436,6 @@ static HAK_INLINE void init_flx_qt (hak_flx_qt_t* qt, hak_tok_type_t tok_type, h
 static HAK_INLINE void init_flx_pi (hak_flx_pi_t* pi)
 {
 	HAK_MEMSET(pi, 0, HAK_SIZEOF(*pi));
-}
-
-static HAK_INLINE void init_flx_binop (hak_flx_binop_t* binop)
-{
-	HAK_MEMSET(binop, 0, HAK_SIZEOF(*binop));
 }
 
 static HAK_INLINE void init_flx_pn (hak_flx_pn_t* pn, hak_ooch_t start_digit)
@@ -2551,14 +2572,6 @@ static int flx_start (hak_t* hak, hak_ooci_t c)
 			goto consumed;
 
 		default:
-#if defined(STRICT_BINOP)
-			if (is_binop_char(c))
-			{
-				init_flx_binop(FLX_BINOP(hak));
-				FEED_CONTINUE(hak, HAK_FLX_BINOP);
-			}
-			else
-#endif
 			if (is_lead_ident_char(c))
 			{
 				init_flx_pi(FLX_PI(hak));
@@ -2729,15 +2742,6 @@ static int flx_hmarked_token (hak_t* hak, hak_ooci_t c)
 	 * #{ }     dictionary
 	 * #"..."   symbol literal
 	 */
-
-#if defined(STRICT_BINOP)
-	if (is_binop_char(c))
-	{
-		reset_flx_token(hak);
-		FEED_CONTINUE_WITH_CHAR(hak, c, HAK_FLX_HMARKED_BINOP);
-		goto consumed;
-	}
-#endif
 
 	switch (c)
 	{
@@ -3124,30 +3128,6 @@ not_consumed:
 	return 0;
 }
 
-static int flx_binop (hak_t* hak, hak_ooci_t c) /* binary operator/selector */
-{
-#if 0
-	hak_flx_binop_t* binop = FLX_BINOP(hak);
-#endif
-
-	if (is_binop_char(c))
-	{
-		ADD_TOKEN_CHAR(hak, c);
-		goto consumed;
-	}
-	else
-	{
-		FEED_WRAP_UP(hak, HAK_TOK_BINOP);
-		goto not_consumed;
-	}
-
-consumed:
-	return 1;
-
-not_consumed:
-	return 0;
-}
-
 static int flx_plain_number (hak_t* hak, hak_ooci_t c) /* number */
 {
 	hak_flx_pn_t* pn = FLX_PN(hak);
@@ -3473,16 +3453,6 @@ static int flx_signed_token (hak_t* hak, hak_ooci_t c)
 	}
 	else
 	{
-	#if defined(STRICT_BINOP)
-		/* the leading sign must be + or - and must be one of the binop chars. */
-		HAK_ASSERT(hak, is_binop_char(st->sign_c));/* must be + or - and they must be one of the binop chars. */
-
-		/* switch to binop mode */
-		init_flx_binop(FLX_BINOP(hak));
-		HAK_ASSERT(hak, TOKEN_NAME_LEN(hak) == 1);
-		FEED_CONTINUE(hak, HAK_FLX_BINOP);
-		goto not_consumed;
-	#else
 		init_flx_pi(FLX_PI(hak));
 
 		/* the sign is already in the token name buffer.
@@ -3494,7 +3464,6 @@ static int flx_signed_token (hak_t* hak, hak_ooci_t c)
 		/* let refeeding of 'c' happen at the next iteration */
 		FEED_CONTINUE(hak, HAK_FLX_PLAIN_IDENT);
 		goto not_consumed;
-	#endif
 	}
 
 consumed:
@@ -3568,7 +3537,6 @@ static int feed_char (hak_t* hak, hak_ooci_t c)
 		case HAK_FLX_HMARKED_IDENT:    return flx_hmarked_ident(hak, c);
 
 		case HAK_FLX_PLAIN_IDENT:      return flx_plain_ident(hak, c);
-		case HAK_FLX_BINOP:            return flx_binop(hak, c);
 		case HAK_FLX_PLAIN_NUMBER:     return flx_plain_number(hak, c);
 		case HAK_FLX_QUOTED_TOKEN:     return flx_quoted_token(hak, c);
 		case HAK_FLX_SIGNED_TOKEN:     return flx_signed_token(hak, c);

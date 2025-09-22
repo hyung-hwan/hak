@@ -5033,12 +5033,12 @@ hak_logbfmt(hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncv
 				hak_oow_t x;
 				hak_oop_block_t blkobj;
 
-				/* block temporaries mask (extended long)
-				 * literal frame index to name (extended long) */
+				/* block temporaries mask (extended long) */
 				FETCH_PARAM_CODE_TO(hak, b1);
 				FETCH_PARAM_CODE_TO(hak, x);
 				b1 = (b1 << (8 * HAK_CODE_LONG_PARAM_SIZE)) | x;
 
+				/* literal frame index to name (extended long) */
 				FETCH_PARAM_CODE_TO(hak, b2);
 				FETCH_PARAM_CODE_TO(hak, x);
 				b2 = (b2 << (8 * HAK_CODE_LONG_PARAM_SIZE)) | x;

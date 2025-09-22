@@ -824,12 +824,6 @@ struct hak_flx_pi_t
 	int is_cla; /* class-level accrssor. prefixed with self/super */
 };
 
-typedef struct hak_flx_binop_t hak_flx_binop_t;
-struct hak_flx_binop_t
-{
-	hak_oow_t _not_used;
-};
-
 typedef struct hak_flx_pn_t hak_flx_pn_t;
 struct hak_flx_pn_t
 {
@@ -893,7 +887,6 @@ enum hak_flx_state_t
 	HAK_FLX_HMARKED_CHAR,   /* hash-marked character that begins with #\ */
 	HAK_FLX_HMARKED_IDENT,  /* literal symbol */
 	HAK_FLX_PLAIN_IDENT,    /* plain identifier */
-	HAK_FLX_BINOP,          /* binary operator */
 	HAK_FLX_PLAIN_NUMBER,   /* plain number */
 	HAK_FLX_QUOTED_TOKEN,   /* string, character */
 	HAK_FLX_SIGNED_TOKEN,   /* prefixed with + or - */
@@ -986,7 +979,6 @@ struct hak_compiler_t
 				hak_flx_hi_t hi; /* hash-marked identifier - literal symbol */
 				hak_flx_hbc_t hbc; /* #b #c ... */
 				hak_flx_pi_t pi; /* plain identifier */
-				hak_flx_binop_t binop; /* binary operator */
 				hak_flx_pn_t pn; /* plain number */
 				hak_flx_qt_t qt; /* quoted token */
 				hak_flx_st_t st; /* signed token */

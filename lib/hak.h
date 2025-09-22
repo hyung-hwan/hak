@@ -240,6 +240,9 @@ enum hak_trait_t
 
 	/* return EOL as a token */ /* TODO: make this pragma controllable */
 	HAK_TRAIT_LANG_ENABLE_EOL = (((hak_bitmask_t)1) << 14),
+
+	/* TODO: make this pragma controllable */
+	HAK_TRAIT_LANG_LIBERAL = ((hak_bitmask_t)1) << 15
 };
 typedef enum hak_trait_t hak_trait_t;
 

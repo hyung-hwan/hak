@@ -3655,7 +3655,6 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 
 	/*
 	 * fun aa(a b) { ...	};
-	 * (fun aa(a b) { ... })
 	 *
 	 * the block expression must be the first and the only expression at the body position.
 	 * the variable declaration can't be placed before the block expression.
@@ -4256,14 +4255,14 @@ static int compile_try (hak_t* hak, hak_cnode_t* src)
 
 	HAK_ASSERT(hak, HAK_CNODE_IS_TYPED(HAK_CNODE_CONS_CAR(src), HAK_CNODE_TRY));
 
-	/* (try
-	 *   (perform this)
-	 *   (perform that)
-	 *   (throw 10)
-	 *  catch (x)
-	 *   (perform xxx)
-	 *   (perform yyy)
-	 * )
+	/* try {
+	 *   perform this
+	 *   perform that
+	 *   throw 10
+	 * } catch (x) {
+	 *   perform xxx
+	 *   perform yyy
+	 * }
 	 */
 	cmd = HAK_CNODE_CONS_CAR(src);
 	obj = HAK_CNODE_CONS_CDR(src);
@@ -6981,11 +6980,11 @@ int hak_compile (hak_t* hak, hak_cnode_t* obj, int flags)
 	 * frame base can be 0. The means it is ok for a top-level code to
 	 * reference part of the literal frame reserved for a function.
 	 *
-	 *  (set b 1)
-	 *  (fun set-a(x) (set a x))
-	 *  (set a 2)
-	 *  (set-a 4)
-	 *  (printf "%d\n" a)
+	 *  set b 1
+	 *  fun set-a(x) { set a x }
+	 *  set a 2
+	 *  set-a 4
+	 *  printf "%d\n" a
 	 *
 	 * the global literal frame looks like this:
 	 *  @0         (b)
