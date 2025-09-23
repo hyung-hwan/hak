@@ -55,17 +55,26 @@ if (~= c 30) {
 	printf "OK: %d\n" c
 }
 
-## TODO: make the below line work...
-##set prim-plus +   ## this is not allowed currently...
-##fun plus (a b ...) {
-##	| sum vac i |
-##	sum := (prim-plus  a b)
-##	vac := (va-count)
-##	i := 0;
-##	while (< i vac) {
-##	sum := (prim-plus sum (va-get i))
-##		i := (prim-plus i 1)
-##	}
-##	sum := (prim-plus sum 9999)
-##}
-##printf "%d\n" (plus 10 20 30)
+## Redefine the plus function. core.+ still can refer to the built-in
+## numeric plus primitive.
+## [NOTE] Don't add other test cases below this test case
+##        as the + function has been manipulated for testing purpose
+##        Add new cases above here.
+fun + (a b ...) {
+	| sum vac i |
+	sum := (core.+  a b)
+	vac := (va-count)
+	i := 0;
+	while (< i vac) {
+		sum := (core.+ sum (va-get i))
+		i := (core.+ i 1)
+	}
+	sum := (core.+ sum 9999)
+	return sum
+}
+c := (+ 10 20 30)
+if (~= c 10059) {
+	printf "ERROR: c is not 30\n"
+} else {
+	printf "OK: %d\n" c
+}

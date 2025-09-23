@@ -138,6 +138,10 @@ printf if; ##ERROR: syntax error - 'if' prohibited in this context
 
 ---
 
+#234 ##ERROR: syntax error - '2' prohibited as first character of symbol
+
+---
+
 abc- := 20 ##ERROR: syntax error - illegal identifier 'abc-'
 
 ---
@@ -159,7 +163,6 @@ abc. := 20 ##ERROR: syntax error - blank segment after 'abc.'
 ---
 
 abc.? := 20 ##ERROR: syntax error - wrong multi-segment identifier - abc.?
-
 
 ---
 

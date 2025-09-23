@@ -810,7 +810,7 @@ static hak_pfrc_t pf_or (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 
 /* ------------------------------------------------------------------------- */
 
-static hak_pfrc_t pf_number_add (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_number_add (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_ooi_t i;
 	hak_oop_t arg, ret;
@@ -828,7 +828,7 @@ static hak_pfrc_t pf_number_add (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	return HAK_PF_SUCCESS;
 }
 
-static hak_pfrc_t pf_number_sub (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_number_sub (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_ooi_t i;
 	hak_oop_t arg, ret;
@@ -846,7 +846,7 @@ static hak_pfrc_t pf_number_sub (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	return HAK_PF_SUCCESS;
 }
 
-static hak_pfrc_t pf_number_mul (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_number_mul (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_ooi_t i;
 	hak_oop_t arg, ret;
@@ -881,7 +881,7 @@ static hak_pfrc_t pf_number_mlt (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	return HAK_PF_SUCCESS;
 }
 
-static hak_pfrc_t pf_number_div (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_number_div (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_ooi_t i;
 	hak_oop_t arg, ret;
@@ -1316,11 +1316,11 @@ static pf_t builtin_prims[] =
 	{ 1, 1,                       pf_is_object,       7,  { 'o','b','j','e','c','t','?' } },
 
 
-	{ 1, HAK_TYPE_MAX(hak_oow_t), pf_number_add,      1,  { '+' } },
-	{ 1, HAK_TYPE_MAX(hak_oow_t), pf_number_sub,      1,  { '-' } },
-	{ 1, HAK_TYPE_MAX(hak_oow_t), pf_number_mul,      1,  { '*' } },
+	{ 1, HAK_TYPE_MAX(hak_oow_t), hak_pf_number_add,  1,  { '+' } },
+	{ 1, HAK_TYPE_MAX(hak_oow_t), hak_pf_number_sub,  1,  { '-' } },
+	{ 1, HAK_TYPE_MAX(hak_oow_t), hak_pf_number_mul,  1,  { '*' } },
 	{ 1, HAK_TYPE_MAX(hak_oow_t), pf_number_mlt,      3,  { 'm','l','t' } },
-	{ 1, HAK_TYPE_MAX(hak_oow_t), pf_number_div,      1,  { '/' } },
+	{ 1, HAK_TYPE_MAX(hak_oow_t), hak_pf_number_div,  1,  { '/' } },
 	{ 1, 1,                       pf_number_sqrt,     4,  { 's','q','r','t' } },
 	{ 1, 1,                       pf_number_abs,      3,  { 'a','b','s' } },
 

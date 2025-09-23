@@ -821,6 +821,7 @@ struct hak_flx_pi_t
 	hak_oow_t seg_len;
 	hak_oow_t non_ident_seg_count;
 	hak_tok_type_t last_non_ident_type;
+	hak_oow_t last_non_ident_seg;
 	int is_cla; /* class-level accrssor. prefixed with self/super */
 };
 
@@ -2049,6 +2050,11 @@ int hak_is_binop_char (hak_ooci_t c);
 /* ========================================================================= */
 int hak_class_responds_to (hak_t* hak, hak_oop_t rcv, hak_oop_t msg);
 int hak_inst_responds_to (hak_t* hak, hak_oop_t rcv, hak_oop_t msg);
+
+hak_pfrc_t hak_pf_number_add (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_number_sub (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_number_mul (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_number_div (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
 
 hak_pfrc_t hak_pf_process_current (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
 hak_pfrc_t hak_pf_process_fork (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);

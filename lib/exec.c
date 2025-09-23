@@ -377,11 +377,12 @@ static void vm_checkbc (hak_t* hak, hak_oob_t bcode)
 static HAK_INLINE hak_oop_context_t make_context (hak_t* hak, hak_ooi_t ntmprs)
 {
 	hak_oop_context_t ctx;
+
 	HAK_ASSERT(hak, ntmprs >= 0);
 	/*return (hak_oop_context_t)hak_allocoopobj(hak, HAK_BRAND_CONTEXT, HAK_CONTEXT_NAMED_INSTVARS + (hak_oow_t)ntmprs);*/
 	ctx = (hak_oop_context_t)hak_instantiate(hak, hak->c_block_context, HAK_NULL, ntmprs);
 
-	/* TODO: a good way to initialize smooi field to 0 in hak_insstantiate()?
+	/* TODO: a good way to initialize smooi field to 0 in hak_instantiate()?
 	 *      for this, there must be a way to specify the type of the member variables...
 	 *      it's error-prone to initialize the numeric value to nil where 0 is necessary */
 
@@ -5134,12 +5135,18 @@ hak_oop_t hak_execute (hak_t* hak)
 	#endif
 	}
 
-	/* create a virtual function object that holds the byte code generated plus the literal frame */
+	/* create a virtual function object that holds the byte code generated plus the literal frame.
+	 * when hcl_execute() is called repeatedly, especially in the interactive mode, functions and
+	 * methods defined in the previous call refers to data in the previous virtual function. the
+	 * instruction pointers and literal frame indicies, if such functions are called, don't reference
+	 * data in this new function. */
 	funcobj = make_function(hak, hak->code.lit.len, hak->code.bc.ptr, hak->code.bc.len, hak->code.dbgi);
 	if (HAK_UNLIKELY(!funcobj)) return HAK_NULL;
 
 	/* pass nil for the home context of the initial function */
-	fill_function_data(hak, funcobj, ENCODE_BLK_MASK(0,0,0,0,hak->code.ngtmprs), HAK_TYPE_MAX(hak_oow_t), (hak_oop_context_t)hak->_nil, hak->code.lit.arr->slot, hak->code.lit.len);
+	fill_function_data(
+		hak, funcobj, ENCODE_BLK_MASK(0,0,0,0,hak->code.ngtmprs), HAK_TYPE_MAX(hak_oow_t),
+		(hak_oop_context_t)hak->_nil, hak->code.lit.arr->slot, hak->code.lit.len);
 
 	hak->initial_function = funcobj; /* the initial function is ready */
 

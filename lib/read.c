@@ -312,6 +312,7 @@ static HAK_INLINE int is_pure_lead_ident_char (hak_ooci_t c)
 
 static HAK_INLINE int is_pure_ident_char (hak_ooci_t c)
 {
+	/* ? is still allowed at the back. see classify_ident_token() */
 	return hak_is_ooch_alnum(c) || c == '_' || c == '-';
 }
 
@@ -322,10 +323,6 @@ static HAK_INLINE int is_lead_ident_char (hak_ooci_t c)
 
 static HAK_INLINE int is_ident_char (hak_ooci_t c)
 {
-	/* [NOTE]
-	 *  '-' is prohibited as the last character of an identifier or an identifier segment.
-	 *  see flx_plain_ident().
-	 */
 	return hak_is_ooch_alnum(c) || c == '_' || c == '-' || c == '?' || is_binop_char(c);
 }
 
@@ -3052,6 +3049,7 @@ static int flx_plain_ident (hak_t* hak, hak_ooci_t c) /* identifier */
 				/* for example, if.if.abc - flag the error after having consumed all the segments */
 				pi->non_ident_seg_count++;
 				pi->last_non_ident_type = tok_type;
+				pi->last_non_ident_seg = pi->seg_count;
 			}
 		}
 
@@ -3074,6 +3072,12 @@ static int flx_plain_ident (hak_t* hak, hak_ooci_t c) /* identifier */
 				FEED_WRAP_UP(hak, pi->last_non_ident_type);
 				goto not_consumed;
 			}
+			else if (!pi->is_cla && pi->seg_count == pi->last_non_ident_seg + 1 && pi->last_non_ident_type == HAK_TOK_BINOP)
+			{
+				/* allow it if the last segment is binop and not prefixed with self. or super. */
+				/* for example, core.+ */
+				/* do nothing */
+			}
 			else
 			{
 				hak_setsynerrbfmt(hak, HAK_SYNERR_ILTOK, TOKEN_LOC(hak), TOKEN_NAME(hak), "wrong multi-segment identifier");
@@ -3082,7 +3086,7 @@ static int flx_plain_ident (hak_t* hak, hak_ooci_t c) /* identifier */
 		}
 
 		/* if single-segmented, perform classification(call classify_ident_token()) again
-		 * bcause self and super as the first segment have not been marked as a non-identifier above */
+		 * because self and super as the first segment have not been marked as a non-identifier above */
 		if (pi->seg_count == 1)
 		{
 			if (classify_ident_token(hak, TOKEN_NAME(hak), TOKEN_LOC(hak), &tok_type) <= -1) return -1;

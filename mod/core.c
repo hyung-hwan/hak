@@ -483,6 +483,11 @@ static hak_pfrc_t pf_core_smooi_to_char (hak_t* hak, hak_mod_t* mod, hak_ooi_t n
 
 static hak_pfinfo_t pfinfos[] =
 {
+	{ "*",                  { HAK_PFBASE_FUNC, hak_pf_number_mul,             1, HAK_TYPE_MAX(hak_oow_t) } },
+	{ "+",                  { HAK_PFBASE_FUNC, hak_pf_number_add,             1, HAK_TYPE_MAX(hak_oow_t) } },
+	{ "-",                  { HAK_PFBASE_FUNC, hak_pf_number_sub,             1, HAK_TYPE_MAX(hak_oow_t) } },
+	{ "/",                  { HAK_PFBASE_FUNC, hak_pf_number_div,             1, HAK_TYPE_MAX(hak_oow_t) } },
+/* TODO: add more builtin primitives here... */
 	{ "basicAt",            { HAK_PFBASE_FUNC, pf_core_basic_at,              2,  2 } },
 	{ "basicAtPut",         { HAK_PFBASE_FUNC, pf_core_basic_at_put,          3,  3 } },
 	{ "basicNew",           { HAK_PFBASE_FUNC, pf_core_basic_new,             2,  2 } },
