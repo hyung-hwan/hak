@@ -787,7 +787,7 @@ static hak_pfrc_t pf_or (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	rv = hak->_false;
 	for (i = 1; i < nargs; i++)
 	{
-			arg = HAK_STACK_GETARG(hak, nargs, i);
+		arg = HAK_STACK_GETARG(hak, nargs, i);
 		if (arg == hak->_true)
 		{
 			rv = hak->_true;
@@ -821,7 +821,7 @@ hak_pfrc_t hak_pf_number_add (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		arg = HAK_STACK_GETARG(hak, nargs, i);
 		/*ret = hak_addints(hak, ret, arg);*/
 		ret = hak_addnums(hak, ret, arg);
-		if (!ret) return HAK_PF_FAILURE;
+		if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
 	}
 
 	HAK_STACK_SETRET(hak, nargs, ret);
@@ -839,7 +839,7 @@ hak_pfrc_t hak_pf_number_sub (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		arg = HAK_STACK_GETARG(hak, nargs, i);
 		/*ret = hak_subints(hak, ret, arg);*/
 		ret = hak_subnums(hak, ret, arg);
-		if (!ret) return HAK_PF_FAILURE;
+		if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
 	}
 
 	HAK_STACK_SETRET(hak, nargs, ret);
@@ -857,7 +857,7 @@ hak_pfrc_t hak_pf_number_mul (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		arg = HAK_STACK_GETARG(hak, nargs, i);
 		/*ret = hak_mulints(hak, ret, arg);*/
 		ret = hak_mulnums(hak, ret, arg);
-		if (!ret) return HAK_PF_FAILURE;
+		if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
 	}
 
 	HAK_STACK_SETRET(hak, nargs, ret);
@@ -874,7 +874,7 @@ static hak_pfrc_t pf_number_mlt (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	{
 		arg = HAK_STACK_GETARG(hak, nargs, i);
 		ret = hak_mltnums(hak, ret, arg);
-		if (!ret) return HAK_PF_FAILURE;
+		if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
 	}
 
 	HAK_STACK_SETRET(hak, nargs, ret);
@@ -891,7 +891,7 @@ hak_pfrc_t hak_pf_number_div (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	{
 		arg = HAK_STACK_GETARG(hak, nargs, i);
 		ret = hak_divnums(hak, ret, arg);
-		if (!ret) return HAK_PF_FAILURE;
+		if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
 	}
 
 	HAK_STACK_SETRET(hak, nargs, ret);
@@ -908,7 +908,7 @@ static hak_pfrc_t pf_integer_quo (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	{
 		arg = HAK_STACK_GETARG(hak, nargs, i);
 		ret = hak_divints(hak, ret, arg, 0, HAK_NULL);
-		if (!ret) return HAK_PF_FAILURE;
+		if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
 	}
 
 	HAK_STACK_SETRET(hak, nargs, ret);
@@ -925,7 +925,7 @@ static hak_pfrc_t pf_integer_rem (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	{
 		arg = HAK_STACK_GETARG(hak, nargs, i);
 		ret = hak_divints(hak, ret, arg, 0, &rem);
-		if (!ret) return HAK_PF_FAILURE;
+		if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
 		ret = rem;
 	}
 
@@ -943,7 +943,7 @@ static hak_pfrc_t pf_integer_mquo (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	{
 		arg = HAK_STACK_GETARG(hak, nargs, i);
 		ret = hak_divints(hak, ret, arg, 1, HAK_NULL);
-		if (!ret) return HAK_PF_FAILURE;
+		if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
 	}
 
 	HAK_STACK_SETRET(hak, nargs, ret);
@@ -960,7 +960,7 @@ static hak_pfrc_t pf_integer_mod (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	{
 		arg = HAK_STACK_GETARG(hak, nargs, i);
 		ret = hak_divints(hak, ret, arg, 1, &rem);
-		if (!ret) return HAK_PF_FAILURE;
+		if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
 		ret = rem;
 	}
 
@@ -968,79 +968,79 @@ static hak_pfrc_t pf_integer_mod (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	return HAK_PF_SUCCESS;
 }
 
-static hak_pfrc_t pf_number_sqrt (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_number_sqrt (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_oop_t ret;
 	ret = hak_sqrtnum(hak, HAK_STACK_GETARG(hak, nargs, 0));
-	if (!ret) return HAK_PF_FAILURE;
+	if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
 
 	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
 
-static hak_pfrc_t pf_number_abs (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_number_abs (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_oop_t ret;
 	ret = hak_absnum(hak, HAK_STACK_GETARG(hak, nargs, 0));
-	if (!ret) return HAK_PF_FAILURE;
+	if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
 
 	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
 
-static hak_pfrc_t pf_number_gt (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_number_gt (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_oop_t ret;
 	ret = hak_gtnums(hak, HAK_STACK_GETARG(hak, nargs, 0), HAK_STACK_GETARG(hak, nargs, 1));
-	if (!ret) return HAK_PF_FAILURE;
+	if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
 
 	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
 
 
-static hak_pfrc_t pf_number_ge (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_number_ge (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_oop_t ret;
 	ret = hak_genums(hak, HAK_STACK_GETARG(hak, nargs, 0), HAK_STACK_GETARG(hak, nargs, 1));
-	if (!ret) return HAK_PF_FAILURE;
+	if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
 
 	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
 
-static hak_pfrc_t pf_number_lt (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_number_lt (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_oop_t ret;
 	ret = hak_ltnums(hak, HAK_STACK_GETARG(hak, nargs, 0), HAK_STACK_GETARG(hak, nargs, 1));
-	if (!ret) return HAK_PF_FAILURE;
+	if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
 
 	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
-static hak_pfrc_t pf_number_le (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_number_le (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_oop_t ret;
 	ret = hak_lenums(hak, HAK_STACK_GETARG(hak, nargs, 0), HAK_STACK_GETARG(hak, nargs, 1));
-	if (!ret) return HAK_PF_FAILURE;
+	if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
 
 	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
-static hak_pfrc_t pf_number_eq (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_number_eq (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_oop_t ret;
 	ret = hak_eqnums(hak, HAK_STACK_GETARG(hak, nargs, 0), HAK_STACK_GETARG(hak, nargs, 1));
-	if (!ret) return HAK_PF_FAILURE;
+	if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
 
 	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
-static hak_pfrc_t pf_number_ne (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_number_ne (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_oop_t ret;
 	ret = hak_nenums(hak, HAK_STACK_GETARG(hak, nargs, 0), HAK_STACK_GETARG(hak, nargs, 1));
-	if (!ret) return HAK_PF_FAILURE;
+	if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
 
 	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
@@ -1321,16 +1321,16 @@ static pf_t builtin_prims[] =
 	{ 1, HAK_TYPE_MAX(hak_oow_t), hak_pf_number_mul,  1,  { '*' } },
 	{ 1, HAK_TYPE_MAX(hak_oow_t), pf_number_mlt,      3,  { 'm','l','t' } },
 	{ 1, HAK_TYPE_MAX(hak_oow_t), hak_pf_number_div,  1,  { '/' } },
-	{ 1, 1,                       pf_number_sqrt,     4,  { 's','q','r','t' } },
-	{ 1, 1,                       pf_number_abs,      3,  { 'a','b','s' } },
+	{ 1, 1,                       hak_pf_number_sqrt, 4,  { 's','q','r','t' } },
+	{ 1, 1,                       hak_pf_number_abs,  3,  { 'a','b','s' } },
 
-	{ 2, 2,                       pf_number_gt,       1,  { '>' } },
-	{ 2, 2,                       pf_number_ge,       2,  { '>','=' } },
-	{ 2, 2,                       pf_number_lt,       1,  { '<' } },
-	{ 2, 2,                       pf_number_le,       2,  { '<','=' } },
-	{ 2, 2,                       pf_number_eq,       1,  { '=' } },
-	{ 2, 2,                       pf_number_eq,       2,  { '=', '=' } },
-	{ 2, 2,                       pf_number_ne,       2,  { '~','=' } },
+	{ 2, 2,                       hak_pf_number_gt,   1,  { '>' } },
+	{ 2, 2,                       hak_pf_number_ge,   2,  { '>','=' } },
+	{ 2, 2,                       hak_pf_number_lt,   1,  { '<' } },
+	{ 2, 2,                       hak_pf_number_le,   2,  { '<','=' } },
+	{ 2, 2,                       hak_pf_number_eq,   1,  { '=' } },
+	{ 2, 2,                       hak_pf_number_eq,   2,  { '=', '=' } },
+	{ 2, 2,                       hak_pf_number_ne,   2,  { '~','=' } },
 
 	/* bitwise operations are supported for integers only */
 	{ 2, 2,                       pf_integer_band,    7,  { 'b','i','t','-','a','n','d' } },

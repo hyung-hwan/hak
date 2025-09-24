@@ -30,7 +30,7 @@
 
 static hak_pfrc_t pf_core_basic_new (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	hak_oop_t obj, size, inst;
+	hak_oop_t obj, inst;
 	hak_ooi_t nsize;
 
 	obj = HAK_STACK_GETARG(hak, nargs, 0);
@@ -40,24 +40,30 @@ static hak_pfrc_t pf_core_basic_new (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs
 		return HAK_PF_FAILURE;
 	}
 
-	size = HAK_STACK_GETARG(hak, nargs, 1);
-	if (!HAK_OOP_IS_SMOOI(size))
+	nsize = 0;
+	if (nargs >= 2)
 	{
-		hak_seterrbfmt (hak, HAK_EINVAL, "size not numeric - %O", size);
-		return HAK_PF_FAILURE;
-	}
+		hak_oop_t size;
 
-	nsize = HAK_OOP_TO_SMOOI(size);
-	if (nsize < 0)
-	{
-		hak_seterrbfmt (hak, HAK_EINVAL, "size not valid - %zd", nsize);
-		return HAK_PF_FAILURE;
+		size = HAK_STACK_GETARG(hak, nargs, 1);
+		if (!HAK_OOP_IS_SMOOI(size))
+		{
+			hak_seterrbfmt (hak, HAK_EINVAL, "size not numeric - %O", size);
+			return HAK_PF_FAILURE;
+		}
+
+		nsize = HAK_OOP_TO_SMOOI(size);
+		if (nsize < 0)
+		{
+			hak_seterrbfmt (hak, HAK_EINVAL, "size not valid - %zd", nsize);
+			return HAK_PF_FAILURE;
+		}
 	}
 
 	inst = hak_instantiate(hak, (hak_oop_class_t)obj, HAK_NULL, nsize);
 	if (HAK_UNLIKELY(!inst)) return HAK_PF_FAILURE;
 
-	HAK_STACK_SETRET (hak, nargs, inst);
+	HAK_STACK_SETRET(hak, nargs, inst);
 	return HAK_PF_SUCCESS;
 }
 
@@ -149,7 +155,7 @@ static hak_pfrc_t __basic_at (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs, int s
 	}
 
 
-	HAK_STACK_SETRET (hak, nargs, val);
+	HAK_STACK_SETRET(hak, nargs, val);
 	return HAK_PF_SUCCESS;
 }
 
@@ -273,7 +279,7 @@ static hak_pfrc_t __basic_at_put (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs, i
 	}
 
 
-	HAK_STACK_SETRET (hak, nargs, val);
+	HAK_STACK_SETRET(hak, nargs, val);
 	return HAK_PF_SUCCESS;
 }
 
@@ -303,7 +309,7 @@ static hak_pfrc_t pf_core_basic_size (hak_t* hak, hak_mod_t* mod, hak_ooi_t narg
 	size = hak_oowtoint(hak, HAK_OBJ_GET_SIZE(src));
 	if (!size) return HAK_PF_FAILURE;
 
-	HAK_STACK_SETRET (hak, nargs, size);
+	HAK_STACK_SETRET(hak, nargs, size);
 	return HAK_PF_SUCCESS;
 }
 
@@ -324,7 +330,7 @@ static hak_pfrc_t pf_core_class_name (hak_t* hak, hak_mod_t* mod, hak_ooi_t narg
 	#endif
 	}
 
-	HAK_STACK_SETRET (hak, nargs, ((hak_oop_class_t)obj)->name);
+	HAK_STACK_SETRET(hak, nargs, ((hak_oop_class_t)obj)->name);
 	return HAK_PF_SUCCESS;
 }
 
@@ -348,7 +354,7 @@ static hak_pfrc_t pf_core_class_responds_to (hak_t* hak, hak_mod_t* mod, hak_ooi
 	}
 
 	x = hak_class_responds_to(hak, obj, msg);
-	HAK_STACK_SETRET (hak, nargs, (x? hak->_true: hak->_false));
+	HAK_STACK_SETRET(hak, nargs, (x? hak->_true: hak->_false));
 	return HAK_PF_SUCCESS;
 }
 
@@ -367,7 +373,7 @@ static hak_pfrc_t pf_core_inst_responds_to (hak_t* hak, hak_mod_t* mod, hak_ooi_
 	}
 
 	x = hak_inst_responds_to(hak, obj, msg);
-	HAK_STACK_SETRET (hak, nargs, (x? hak->_true: hak->_false));
+	HAK_STACK_SETRET(hak, nargs, (x? hak->_true: hak->_false));
 	return HAK_PF_SUCCESS;
 }
 
@@ -441,7 +447,7 @@ static hak_pfrc_t pf_core_slice (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 			goto unsliceable;
 	}
 
-	HAK_STACK_SETRET (hak, nargs, slice);
+	HAK_STACK_SETRET(hak, nargs, slice);
 	return HAK_PF_SUCCESS;
 }
 
@@ -459,7 +465,7 @@ static hak_pfrc_t pf_core_char_to_smooi (hak_t* hak, hak_mod_t* mod, hak_ooi_t n
 
 	code = HAK_OOP_TO_CHAR(rcv);
 	out = HAK_SMOOI_TO_OOP(code);
-	HAK_STACK_SETRET (hak, nargs, out);
+	HAK_STACK_SETRET(hak, nargs, out);
 	return HAK_PF_SUCCESS;
 }
 
@@ -477,7 +483,7 @@ static hak_pfrc_t pf_core_smooi_to_char (hak_t* hak, hak_mod_t* mod, hak_ooi_t n
 
 	code = HAK_OOP_TO_SMOOI(rcv);
 	out = HAK_CHAR_TO_OOP(code);
-	HAK_STACK_SETRET (hak, nargs, out);
+	HAK_STACK_SETRET(hak, nargs, out);
 	return HAK_PF_SUCCESS;
 }
 
@@ -487,10 +493,17 @@ static hak_pfinfo_t pfinfos[] =
 	{ "+",                  { HAK_PFBASE_FUNC, hak_pf_number_add,             1, HAK_TYPE_MAX(hak_oow_t) } },
 	{ "-",                  { HAK_PFBASE_FUNC, hak_pf_number_sub,             1, HAK_TYPE_MAX(hak_oow_t) } },
 	{ "/",                  { HAK_PFBASE_FUNC, hak_pf_number_div,             1, HAK_TYPE_MAX(hak_oow_t) } },
+	{ "<",                  { HAK_PFBASE_FUNC, hak_pf_number_lt,              2, 2 } },
+	{ "<=",                 { HAK_PFBASE_FUNC, hak_pf_number_le,              2, 2 } },
+	{ "=",                  { HAK_PFBASE_FUNC, hak_pf_number_eq,              2, 2 } },
+	{ "==",                 { HAK_PFBASE_FUNC, hak_pf_number_eq,              2, 2 } },
+	{ ">",                  { HAK_PFBASE_FUNC, hak_pf_number_gt,              2, 2 } },
+	{ ">=",                 { HAK_PFBASE_FUNC, hak_pf_number_ge,              2, 2 } },
 /* TODO: add more builtin primitives here... */
+	{ "abs",                { HAK_PFBASE_FUNC, hak_pf_number_abs,             1,  1 } },
 	{ "basicAt",            { HAK_PFBASE_FUNC, pf_core_basic_at,              2,  2 } },
 	{ "basicAtPut",         { HAK_PFBASE_FUNC, pf_core_basic_at_put,          3,  3 } },
-	{ "basicNew",           { HAK_PFBASE_FUNC, pf_core_basic_new,             2,  2 } },
+	{ "basicNew",           { HAK_PFBASE_FUNC, pf_core_basic_new,             1,  2 } },
 	{ "basicSize",          { HAK_PFBASE_FUNC, pf_core_basic_size,            1,  1 } },
 	{ "charToSmooi",        { HAK_PFBASE_FUNC, pf_core_char_to_smooi,         1,  1 } },
 	{ "className",          { HAK_PFBASE_FUNC, pf_core_class_name,            1,  1 } },
@@ -500,6 +513,8 @@ static hak_pfinfo_t pfinfos[] =
 	{ "primAtPut",          { HAK_PFBASE_FUNC, pf_core_prim_at_put,           3,  3 } },
 	{ "slice",              { HAK_PFBASE_FUNC, pf_core_slice,                 3,  3 } },
 	{ "smooiToChar",        { HAK_PFBASE_FUNC, pf_core_smooi_to_char,         1,  1 } },
+	{ "sqrt",               { HAK_PFBASE_FUNC, hak_pf_number_sqrt,            1,  1 } },
+	{ "~=",                 { HAK_PFBASE_FUNC, hak_pf_number_ne,              2,  2 } },
 };
 
 /* ------------------------------------------------------------------------ */

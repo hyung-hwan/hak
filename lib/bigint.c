@@ -4828,11 +4828,16 @@ hak_oop_t hak_sqrtint (hak_t* hak, hak_oop_t x)
 	if (HAK_UNLIKELY(!a)) goto oops;
 	if (a == hak->_true)
 	{
+	#if 0
 		/* the given number is a negative number.
 		 * i will arrange the return value to be negative. */
 		x = hak_negateint(hak, x);
 		if (HAK_UNLIKELY(!x)) goto oops;
 		neg = 1;
+	#else
+		hak_seterrbfmt(hak, HAK_EINVAL, "negative number - %O", x);
+		goto oops;
+	#endif
 	}
 	else neg = 0;
 

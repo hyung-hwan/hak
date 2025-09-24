@@ -65,12 +65,12 @@ static hak_ooi_t equalize_scale (hak_t* hak, hak_oop_t* x, hak_oop_t* y)
 		{
 			/* TODO: optmize this. less multiplications */
 			nv = hak_mulints(hak, nv, HAK_SMOOI_TO_OOP(10));
-			if (!nv) return -1;
+			if (HAK_UNLIKELY(!nv)) return -1;
 			xs++;
 		}
 
 		nv = hak_makefpdec(hak, nv, xs);
-		if (!nv) return -1;
+		if (HAK_UNLIKELY(!nv)) return -1;
 
 		*x = nv;
 	}
@@ -80,12 +80,12 @@ static hak_ooi_t equalize_scale (hak_t* hak, hak_oop_t* x, hak_oop_t* y)
 		while (ys < xs)
 		{
 			nv = hak_mulints(hak, nv, HAK_SMOOI_TO_OOP(10));
-			if (!nv) return -1;
+			if (HAK_UNLIKELY(!nv)) return -1;
 			ys++;
 		}
 
 		nv = hak_makefpdec(hak, nv, ys);
-		if (!nv) return -1;
+		if (HAK_UNLIKELY(!nv)) return -1;
 
 		*y = nv;
 	}
@@ -104,7 +104,7 @@ hak_oop_t hak_truncfpdecval (hak_t* hak, hak_oop_t iv, hak_ooi_t cs, hak_ooi_t n
 		{
 			/* TODO: optimizatino... less divisions */
 			iv = hak_divints(hak, iv, HAK_SMOOI_TO_OOP(10), 0, HAK_NULL);
-			if (!iv) return HAK_NULL;
+			if (HAK_UNLIKELY(!iv)) return HAK_NULL;
 			cs--;
 		}
 		while (cs > ns);
@@ -136,7 +136,7 @@ hak_oop_t hak_addnums (hak_t* hak, hak_oop_t x, hak_oop_t y)
 		}
 		v = hak_addints(hak, ((hak_oop_fpdec_t)x)->value, ((hak_oop_fpdec_t)y)->value);
 		hak_popvolats(hak, 2);
-		if (!v) return HAK_NULL;
+		if (HAK_UNLIKELY(!v)) return HAK_NULL;
 
 		return hak_makefpdec(hak, v, scale);
 	}
@@ -165,7 +165,7 @@ hak_oop_t hak_subnums (hak_t* hak, hak_oop_t x, hak_oop_t y)
 		}
 		v = hak_subints(hak, ((hak_oop_fpdec_t)x)->value, ((hak_oop_fpdec_t)y)->value);
 		hak_popvolats(hak, 2);
-		if (!v) return HAK_NULL;
+		if (HAK_UNLIKELY(!v)) return HAK_NULL;
 
 		return hak_makefpdec(hak, v, scale);
 	}
@@ -204,7 +204,7 @@ static hak_oop_t mul_nums (hak_t* hak, hak_oop_t x, hak_oop_t y, int mult)
 	}
 
 	nv = hak_mulints(hak, xv, yv);
-	if (!nv) return HAK_NULL;
+	if (HAK_UNLIKELY(!nv)) return HAK_NULL;
 
 	cs = xs + ys;
 	if (cs <= 0) return nv; /* the result must be an integer */
@@ -216,20 +216,20 @@ static hak_oop_t mul_nums (hak_t* hak, hak_oop_t x, hak_oop_t y, int mult)
 	HAK_ASSERT(hak, ns <= HAK_SMOOI_MAX);
 
 	nv = hak_truncfpdecval(hak, nv, cs, ns);
-	if (!nv) return HAK_NULL;
+	if (HAK_UNLIKELY(!nv)) return HAK_NULL;
 
 	return (ns <= 0)? nv: hak_makefpdec(hak, nv, ns);
 }
 
 hak_oop_t hak_mulnums (hak_t* hak, hak_oop_t x, hak_oop_t y)
 {
-	/* (* 1.00 12.123) => 12.123 */
+	/* * 1.00 12.123 => 12.123, use the wider precision of the either operands */
 	return mul_nums(hak, x, y, 0);
 }
 
 hak_oop_t hak_mltnums (hak_t* hak, hak_oop_t x, hak_oop_t y)
 {
-	/* (mlt 1.00 12.123) =>  12.12 */
+	/* mlt 1.00 12.123 =>  12.12, use the precision of the first operand */
 	return mul_nums(hak, x, y, 1);
 }
 
