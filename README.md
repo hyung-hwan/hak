@@ -83,6 +83,8 @@ do { | k | set k 20; printf "k=%d\n" k; };
 * bit-xor
 * bit-not
 * bit-shift
+* bit-left-shift
+* bit-right-shift
 
 ## Defining a function
 
@@ -149,9 +151,8 @@ x:print
 ## Redefining a primitive function
 
 ```
-set prim-plus +
-fun + (a b ...)
-	prim-plus a b 9999
+fun + (a b) {
+	core.+ a b 9999
 )
 printf "%d\n" (+ 10 20)
 ```

@@ -2248,17 +2248,28 @@ static HAK_INLINE int format_stack_args (hak_t* hak, hak_fmtout_t* fmtout, hak_o
 			goto print_integer;
 		case 'o':
 			radix = 8;
+			sign = 1;
 			goto print_integer;
+		/* Showing a negative number in 2's complement bit patterns is not
+		 * proper when dealing with arbitrary precision.
+		 * if you want the output in 2's complement, you will have to perform
+		 * some bit manipulation. For example, to print -10 in 2's complement in 2 byte width:
+		 *   (core.bit-and -10 (- (core.bit-left-shift 1 16) 1))
+		 *   printf "%b\n" (core.bit-and -10 (- (core.bit-left-shift 1 16) 1))
+		 *
 		case 'u':
 			radix = 10;
 			goto print_integer;
+		*/
 		case 'x':
 			radix_flags |= HAK_INTTOSTR_LOWERCASE;
 		case 'X':
 			radix = 16;
+			sign = 1;
 			goto print_integer;
 		case 'b':
 			radix = 2;
+			sign = 1;
 			goto print_integer;
 		/* end of integer conversions */
 

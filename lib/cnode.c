@@ -96,16 +96,6 @@ hak_cnode_t* hak_makecnodecolon (hak_t* hak, int flags, const hak_loc_t* loc, co
 	return hak_makecnode(hak, HAK_CNODE_COLON, flags, loc, tok);
 }
 
-hak_cnode_t* hak_makecnodecolongt (hak_t* hak, int flags, const hak_loc_t* loc, const  hak_oocs_t* tok)
-{
-	return hak_makecnode(hak, HAK_CNODE_COLONGT, flags, loc, tok);
-}
-
-hak_cnode_t* hak_makecnodecolonlt (hak_t* hak, int flags, const hak_loc_t* loc, const  hak_oocs_t* tok)
-{
-	return hak_makecnode(hak, HAK_CNODE_COLONLT, flags, loc, tok);
-}
-
 hak_cnode_t* hak_makecnodecharlit (hak_t* hak, int flags, const hak_loc_t* loc, const  hak_oocs_t* tok, hak_ooch_t v)
 {
 	hak_cnode_t* c = hak_makecnode(hak, HAK_CNODE_CHARLIT, flags, loc, tok);

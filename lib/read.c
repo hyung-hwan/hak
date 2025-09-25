@@ -23,7 +23,7 @@
  */
 
 #include "hak-prv.h"
-
+#include <stdio.h>
 #define HAK_LANG_ENABLE_WIDE_DELIM
 #define HAK_LANG_AUTO_FORGE_XLIST_ALWAYS
 
@@ -224,6 +224,7 @@ static struct
 static int init_compiler (hak_t* hak);
 static void feed_continue (hak_t* hak, hak_flx_state_t state);
 static int is_at_block_beginning (hak_t* hak);
+static int flx_plain_ident (hak_t* hak, hak_ooci_t c);
 
 /* ----------------------------------------------------------------- */
 
@@ -476,6 +477,8 @@ static int get_char (hak_t* hak)
 
 static int is_pure_ident (hak_t* hak, const hak_oocs_t* v)
 {
+	HAK_ASSERT(hak, v->len > 0); /* you must not pass the zero-length value */
+
 	if (is_pure_lead_ident_char(v->ptr[0]))
 	{
 		/* check if the word conforms to pure identifier rules:
@@ -505,6 +508,19 @@ static int is_pure_ident (hak_t* hak, const hak_oocs_t* v)
 
 not_ident:
 	return 0;
+}
+
+int hak_is_binop_string (const hak_oocs_t* v)
+{
+	hak_oow_t i;
+
+	if (v->len <= 0) return 0; /* you can pass the zero-length value */
+
+	for (i = 0; i < v->len; i++)
+	{
+		if (!is_binop_char(v->ptr[i])) return 0;
+	}
+	return 1;
 }
 
 static int classify_ident_token (hak_t* hak, const hak_oocs_t* v, const hak_loc_t* errloc, hak_tok_type_t* tok_type)
@@ -1893,15 +1909,9 @@ static int feed_process_token (hak_t* hak)
 			}
 			else if (can <= -1) goto oops;
 
-		#if 1
 			HAK_ASSERT(hak, can == 1 || can == 2);
 			frd->obj = hak_makecnodebinop(hak, 0, TOKEN_LOC(hak), TOKEN_NAME(hak));
 			goto auto_xlist;
-		#else
-			if (can == 1) goto ident; /* if binop is the first in the list */
-			HAK_ASSERT(hak, can == 2);
-			goto ident;
-		#endif
 		}
 
 		case HAK_TOK_COMMA:
@@ -2077,14 +2087,6 @@ static int feed_process_token (hak_t* hak)
 
 		case HAK_TOK_DBLCOLONS:
 			frd->obj = hak_makecnodedblcolons(hak, 0, TOKEN_LOC(hak), TOKEN_NAME(hak));
-			goto auto_xlist;
-
-		case HAK_TOK_COLONGT:
-			frd->obj = hak_makecnodecolongt(hak, 0, TOKEN_LOC(hak), TOKEN_NAME(hak));
-			goto auto_xlist;
-
-		case HAK_TOK_COLONLT:
-			frd->obj = hak_makecnodecolonlt(hak, 0, TOKEN_LOC(hak), TOKEN_NAME(hak));
 			goto auto_xlist;
 
 		case HAK_TOK_SMPTRLIT:
@@ -2308,10 +2310,12 @@ static delim_token_t delim_token_tab[] =
 	{ "..",       2, HAK_TOK_DBLDOTS },
 	{ "...",      3, HAK_TOK_ELLIPSIS }, /* for variable arguments */
 
+	/* the tokens beginning with a colon must be handled separately in flx_colon_token()
+	 * becuase some characters(= only as of now) after the colon are binop charaters, i
+	 * don't want to find the match from the beginning. if a colon is followed by binop
+	 * characters, i want to read all of them first and determin the token types */
 	{ ":",        1, HAK_TOK_COLON }, /* key-value separator in dictionary or for method call or definition */
 	{ ":=",       2, HAK_TOK_COLONEQ }, /* assignment */
-	{ ":>",       2, HAK_TOK_COLONGT },
-	{ ":<",       2, HAK_TOK_COLONLT },
 	{ "::",       2, HAK_TOK_DBLCOLONS }, /* superclass, class variables, class methods */
 	{ ":::",      3, HAK_TOK_TRPCOLONS },
 
@@ -2482,7 +2486,12 @@ static int flx_start (hak_t* hak, hak_ooci_t c)
 
 	reset_flx_token(hak);
 
-	if (find_delim_token_char(hak, c, 0, HAK_COUNTOF(delim_token_tab) - 1, 0, FLX_DT(hak)))
+	if (c == ':')
+	{
+		FEED_CONTINUE_WITH_CHAR(hak, c, HAK_FLX_COLON_TOKEN);
+		goto consumed;
+	}
+	else if (find_delim_token_char(hak, c, 0, HAK_COUNTOF(delim_token_tab) - 1, 0, FLX_DT(hak)))
 	{
 		/* the character is one of the first character of a delimiter token such as (, [, :, etc */
 		if (FLX_DT(hak)->row_start == FLX_DT(hak)->row_end &&
@@ -2614,6 +2623,54 @@ static int flx_comment (hak_t* hak, hak_ooci_t c)
 		if (hak->option.trait & HAK_TRAIT_LANG_ENABLE_EOL) return 0; /* not consumed */
 	}
 	return 1; /* consumed */
+}
+
+static int flx_colon_token (hak_t* hak, hak_ooci_t c)
+{
+	if (c == '=')
+	{
+		FEED_CONTINUE_WITH_CHAR(hak, c, HAK_FLX_COLONEQ_TOKEN);
+		goto consumed;
+	}
+	else
+	{
+		/* as if it's called in flx_start() */
+		find_delim_token_char(hak, ':', 0, HAK_COUNTOF(delim_token_tab) - 1, 0, FLX_DT(hak)); /* this must succeed */
+		FEED_CONTINUE(hak, HAK_FLX_DELIM_TOKEN);
+		goto not_consumed;
+	}
+
+consumed:
+	return 1;
+
+not_consumed:
+	return 0;
+}
+
+static int flx_coloneq_token (hak_t* hak, hak_ooci_t c)
+{
+	if (is_binop_char(c))
+	{
+		/* := followed by another binop char */
+		TOKEN_NAME_LEN(hak)--; /* as if = after : is not in the token buffer */
+		FEED_WRAP_UP(hak, HAK_TOK_COLON);
+
+		/* as if feed_char('=') has been called. super ugly!! it plays trick to make this part just work. i hate this part  */
+		reset_flx_token(hak);
+		TOKEN_LOC(hak)->colm--; /* since the actual starting = is one character before c */
+		init_flx_pi(FLX_PI(hak));
+		if (flx_plain_ident(hak, '=') <= -1) return -1;
+		FEED_CONTINUE(hak, HAK_FLX_PLAIN_IDENT);
+		goto not_consumed;
+	}
+	else
+	{
+		FEED_WRAP_UP(hak, HAK_TOK_COLONEQ);
+		goto not_consumed;
+	}
+
+not_consumed:
+	return 0;
 }
 
 static int flx_delim_token (hak_t* hak, hak_ooci_t c)
@@ -3532,6 +3589,8 @@ static int feed_char (hak_t* hak, hak_ooci_t c)
 		case HAK_FLX_START:            return flx_start(hak, c);
 		case HAK_FLX_BACKSLASHED:      return flx_backslashed(hak, c);
 		case HAK_FLX_COMMENT:          return flx_comment(hak, c);
+		case HAK_FLX_COLON_TOKEN:      return flx_colon_token(hak, c);
+		case HAK_FLX_COLONEQ_TOKEN:    return flx_coloneq_token(hak, c);
 		case HAK_FLX_DELIM_TOKEN:      return flx_delim_token(hak, c);
 		case HAK_FLX_DOLLARED_IDENT:   return flx_dollared_ident(hak, c);
 		case HAK_FLX_HMARKED_TOKEN:    return flx_hmarked_token(hak, c);

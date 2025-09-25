@@ -343,8 +343,6 @@ enum hak_tok_type_t
 	HAK_TOK_DBLCOLONS, /* :: */
 	HAK_TOK_TRPCOLONS, /* ::: */
 	HAK_TOK_COLONEQ,   /* := */
-	HAK_TOK_COLONGT,   /* :+ */
-	HAK_TOK_COLONLT,   /* :+ */
 	HAK_TOK_SEMICOLON, /* ; */
 	HAK_TOK_COMMA,     /* , */
 	HAK_TOK_LPAREN,    /* ( */
@@ -452,8 +450,6 @@ enum hak_cnode_type_t
 	HAK_CNODE_TRPCOLONS, /* ::: */
 	HAK_CNODE_DBLCOLONS, /* :: */
 	HAK_CNODE_COLON, /* : */
-	HAK_CNODE_COLONGT, /* :> */
-	HAK_CNODE_COLONLT /* :< */
 };
 typedef enum hak_cnode_type_t hak_cnode_type_t;
 
@@ -484,8 +480,6 @@ typedef enum hak_cnode_flag_t hak_cnode_flag_t;
 #define HAK_CNODE_IS_TRPCOLONS(x) ((x)->cn_type == HAK_CNODE_TRPCOLONS)
 #define HAK_CNODE_IS_DBLCOLONS(x) ((x)->cn_type == HAK_CNODE_DBLCOLONS)
 #define HAK_CNODE_IS_COLON(x) ((x)->cn_type == HAK_CNODE_COLON)
-#define HAK_CNODE_IS_COLONGT(x) ((x)->cn_type == HAK_CNODE_COLONGT)
-#define HAK_CNODE_IS_COLONLT(x) ((x)->cn_type == HAK_CNODE_COLONLT)
 
 #define HAK_CNODE_IS_SYMBOL(x) ((x)->cn_type == HAK_CNODE_SYMBOL)
 #define HAK_CNODE_IS_BINOP(x) ((x)->cn_type == HAK_CNODE_BINOP)
@@ -880,6 +874,8 @@ enum hak_flx_state_t
 	HAK_FLX_START,
 	HAK_FLX_BACKSLASHED,
 	HAK_FLX_COMMENT,
+	HAK_FLX_COLON_TOKEN,    /* token beginning with : */
+	HAK_FLX_COLONEQ_TOKEN,  /* token beginning with := */
 	HAK_FLX_DELIM_TOKEN,
 	HAK_FLX_DOLLARED_IDENT,
 	HAK_FLX_HMARKED_TOKEN,  /* hash-marked token */
@@ -2017,8 +2013,6 @@ hak_cnode_t* hak_makecnodeellipsis (hak_t* hak, int flags, const hak_loc_t* loc,
 hak_cnode_t* hak_makecnodetrpcolons (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok);
 hak_cnode_t* hak_makecnodedblcolons (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok);
 hak_cnode_t* hak_makecnodecolon (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok);
-hak_cnode_t* hak_makecnodecolongt (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok);
-hak_cnode_t* hak_makecnodecolonlt (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok);
 hak_cnode_t* hak_makecnodecharlit (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok, hak_ooch_t v);
 hak_cnode_t* hak_makecnodebchrlit (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok, hak_oob_t v);
 hak_cnode_t* hak_makecnodesymbol (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok);
@@ -2043,7 +2037,7 @@ void hak_dumpcnode (hak_t* hak,  hak_cnode_t* c, int newline);
 /* ========================================================================= */
 /* read.c                                                                    */
 /* ========================================================================= */
-int hak_is_binop_char (hak_ooci_t c);
+int hak_is_binop_string (const hak_oocs_t* v);
 
 /* ========================================================================= */
 /* exec.c                                                                    */
@@ -2058,12 +2052,27 @@ hak_pfrc_t hak_pf_number_div (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
 hak_pfrc_t hak_pf_number_sqrt (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
 hak_pfrc_t hak_pf_number_abs (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
 
+hak_pfrc_t hak_pf_integer_band (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_integer_blshift (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_integer_bnot (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_integer_bor (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_integer_brshift (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_integer_bshift (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_integer_bxor (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+
 hak_pfrc_t hak_pf_number_gt (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
 hak_pfrc_t hak_pf_number_ge (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
 hak_pfrc_t hak_pf_number_lt (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
 hak_pfrc_t hak_pf_number_le (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
 hak_pfrc_t hak_pf_number_eq (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
 hak_pfrc_t hak_pf_number_ne (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+
+hak_pfrc_t hak_pf_eqv (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_eql (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_eqk (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_nqv (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_nql (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_nqk (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
 
 hak_pfrc_t hak_pf_process_current (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
 hak_pfrc_t hak_pf_process_fork (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);

@@ -3237,6 +3237,16 @@ static int check_fun_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned int
 	return 0;
 }
 
+static int is_cnode_eligible_for_fun_name (const hak_cnode_t* tmp)
+{
+	return HAK_CNODE_IS_SYMBOL(tmp) || HAK_CNODE_IS_BINOP(tmp);
+}
+
+static int is_cnode_eligible_for_fun_name_after_colon (const hak_cnode_t* tmp)
+{
+	return HAK_CNODE_IS_SYMBOL(tmp) || HAK_CNODE_IS_BINOP(tmp) || (HAK_CNODE_IS_STRLIT(tmp) && hak_is_binop_string(HAK_CNODE_GET_TOK(tmp)));
+}
+
 static int compile_fun (hak_t* hak, hak_cnode_t* src)
 {
 	hak_cnode_t* cmd, * next;
@@ -3298,7 +3308,7 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 			tmp = HAK_CNODE_CONS_CAR(next);
 		}
 
-		if (HAK_CNODE_IS_SYMBOL(tmp) || HAK_CNODE_IS_BINOP(tmp))
+		if (is_cnode_eligible_for_fun_name(tmp))
 		{
 			/* 'fun' followed by name */
 		fun_got_name:
@@ -3335,7 +3345,7 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 				}
 
 				tmp = HAK_CNODE_CONS_CAR(next);
-				if (!HAK_CNODE_IS_SYMBOL(tmp) && !HAK_CNODE_IS_BINOP(tmp))
+				if (!is_cnode_eligible_for_fun_name_after_colon(tmp))
 				{
 					hak_setsynerrbfmt(
 						hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(tmp), HAK_NULL,
@@ -5746,8 +5756,6 @@ redo:
 		case HAK_CNODE_TRPCOLONS:
 		case HAK_CNODE_DBLCOLONS:
 		case HAK_CNODE_COLON:
-		case HAK_CNODE_COLONLT:
-		case HAK_CNODE_COLONGT:
 		default:
 			/*
 			hak_setsynerrbfmt(hak, HAK_SYNERR_INTERN, HAK_CNODE_GET_LOC(oprnd), HAK_CNODE_GET_TOK(oprnd), "internal error - unexpected object type %d", HAK_CNODE_GET_TYPE(oprnd));
@@ -6640,7 +6648,7 @@ static HAK_INLINE int post_fun (hak_t* hak)
 		hak_var_info_t vi;
 		int x;
 
-		HAK_ASSERT(hak, HAK_CNODE_IS_SYMBOL(fun_name) || HAK_CNODE_IS_BINOP(fun_name));
+		HAK_ASSERT(hak, is_cnode_eligible_for_fun_name_after_colon(fun_name));
 
 		if (is_in_class_init_scope(hak))
 		{

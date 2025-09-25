@@ -346,3 +346,12 @@ class[#b] X (a) {
 
 class Y: X { ##ERROR: exception not handled - "incompatible byte superclass X with oop class"
 }
+
+---
+
+## you can't send a binary message to an object the receiver:message syntax.
+## you must omit the colon for the binary message
+## it must be '20 == 40'
+
+fun Number:==(b) { return (core.+ self b) }
+20 :== 40  ##ERROR: syntax error - prohibited binary selector '=='

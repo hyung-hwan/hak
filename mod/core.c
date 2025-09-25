@@ -499,16 +499,36 @@ static hak_pfinfo_t pfinfos[] =
 	{ "==",                 { HAK_PFBASE_FUNC, hak_pf_number_eq,              2, 2 } },
 	{ ">",                  { HAK_PFBASE_FUNC, hak_pf_number_gt,              2, 2 } },
 	{ ">=",                 { HAK_PFBASE_FUNC, hak_pf_number_ge,              2, 2 } },
+
 /* TODO: add more builtin primitives here... */
 	{ "abs",                { HAK_PFBASE_FUNC, hak_pf_number_abs,             1,  1 } },
 	{ "basicAt",            { HAK_PFBASE_FUNC, pf_core_basic_at,              2,  2 } },
 	{ "basicAtPut",         { HAK_PFBASE_FUNC, pf_core_basic_at_put,          3,  3 } },
 	{ "basicNew",           { HAK_PFBASE_FUNC, pf_core_basic_new,             1,  2 } },
 	{ "basicSize",          { HAK_PFBASE_FUNC, pf_core_basic_size,            1,  1 } },
+
+	{ "bit-and",            { HAK_PFBASE_FUNC, hak_pf_integer_band,           2,  2 } },
+	{ "bit-left-shift",     { HAK_PFBASE_FUNC, hak_pf_integer_blshift,        2,  2 } },
+	{ "bit-not",            { HAK_PFBASE_FUNC, hak_pf_integer_bnot,           1,  1 } },
+	{ "bit-or",             { HAK_PFBASE_FUNC, hak_pf_integer_bor,            2,  2 } },
+	{ "bit-right-shift",    { HAK_PFBASE_FUNC, hak_pf_integer_brshift,        2,  2 } },
+	{ "bit-shift",          { HAK_PFBASE_FUNC, hak_pf_integer_bshift,         2,  2 } },
+	{ "bit-xor",            { HAK_PFBASE_FUNC, hak_pf_integer_bxor,           2,  2 } },
+
 	{ "charToSmooi",        { HAK_PFBASE_FUNC, pf_core_char_to_smooi,         1,  1 } },
 	{ "className",          { HAK_PFBASE_FUNC, pf_core_class_name,            1,  1 } },
 	{ "classRespondsTo",    { HAK_PFBASE_FUNC, pf_core_class_responds_to,     2,  2 } },
+
+	{ "eqk?",               { HAK_PFBASE_FUNC, hak_pf_eqk,                    2,  2 } },
+	{ "eql?",               { HAK_PFBASE_FUNC, hak_pf_eql,                    2,  2 } },
+	{ "eqv?",               { HAK_PFBASE_FUNC, hak_pf_eqv,                    2,  2 } },
+
 	{ "instRespondsTo",     { HAK_PFBASE_FUNC, pf_core_inst_responds_to,      2,  2 } },
+
+	{ "nqk?",               { HAK_PFBASE_FUNC, hak_pf_nqk,                    2,  2 } },
+	{ "nql?",               { HAK_PFBASE_FUNC, hak_pf_nql,                    2,  2 } },
+	{ "nqv?",               { HAK_PFBASE_FUNC, hak_pf_nqv,                    2,  2 } },
+
 	{ "primAt",             { HAK_PFBASE_FUNC, pf_core_prim_at,               2,  2 } },
 	{ "primAtPut",          { HAK_PFBASE_FUNC, pf_core_prim_at_put,           3,  3 } },
 	{ "slice",              { HAK_PFBASE_FUNC, pf_core_slice,                 3,  3 } },

@@ -967,8 +967,6 @@ void hak_dumpcnode (hak_t* hak, hak_cnode_t* cnode, int newline)
 			case HAK_CNODE_TRPCOLONS:
 			case HAK_CNODE_DBLCOLONS:
 			case HAK_CNODE_COLON:
-			case HAK_CNODE_COLONGT:
-			case HAK_CNODE_COLONLT:
 				hak_logbfmt(hak, HAK_LOG_FATAL, " %.*js ", HAK_CNODE_GET_TOKLEN(cnode), HAK_CNODE_GET_TOKPTR(cnode));
 				break;
 

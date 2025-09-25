@@ -528,7 +528,7 @@ static hak_pfrc_t pf_gc (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 
 /* ------------------------------------------------------------------------- */
 
-static hak_pfrc_t pf_eqv (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_eqv (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_oop_t a0, a1, rv;
 
@@ -541,7 +541,7 @@ static hak_pfrc_t pf_eqv (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	return HAK_PF_SUCCESS;
 }
 
-static hak_pfrc_t pf_eql (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_eql (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	int n;
 	n = hak_equalobjs(hak, HAK_STACK_GETARG(hak, nargs, 0), HAK_STACK_GETARG(hak, nargs, 1));
@@ -551,7 +551,7 @@ static hak_pfrc_t pf_eql (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	return HAK_PF_SUCCESS;
 }
 
-static hak_pfrc_t pf_eqk (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_eqk (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	/* equal kind? */
 	hak_oop_t a0, a1, rv;
@@ -565,7 +565,7 @@ static hak_pfrc_t pf_eqk (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	return HAK_PF_SUCCESS;
 }
 
-static hak_pfrc_t pf_nqv (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_nqv (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_oop_t a0, a1, rv;
 
@@ -578,7 +578,7 @@ static hak_pfrc_t pf_nqv (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	return HAK_PF_SUCCESS;
 }
 
-static hak_pfrc_t pf_nql (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_nql (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	int n;
 	n = hak_equalobjs(hak, HAK_STACK_GETARG(hak, nargs, 0), HAK_STACK_GETARG(hak, nargs, 1));
@@ -588,7 +588,7 @@ static hak_pfrc_t pf_nql (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	return HAK_PF_SUCCESS;
 }
 
-static hak_pfrc_t pf_nqk (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_nqk (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	/* not equal kind? */
 	hak_oop_t a0, a1, rv;
@@ -1046,50 +1046,77 @@ hak_pfrc_t hak_pf_number_ne (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	return HAK_PF_SUCCESS;
 }
 
+/* ------------------------------------------------------------------------- */
 
-
-static hak_pfrc_t pf_integer_band (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_integer_band (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_oop_t ret;
 	ret = hak_bitandints(hak, HAK_STACK_GETARG(hak, nargs, 0), HAK_STACK_GETARG(hak, nargs, 1));
-	if (!ret) return HAK_PF_FAILURE;
+	if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
 
 	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
 
-static hak_pfrc_t pf_integer_bor (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_integer_bor (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_oop_t ret;
 	ret = hak_bitorints(hak, HAK_STACK_GETARG(hak, nargs, 0), HAK_STACK_GETARG(hak, nargs, 1));
-	if (!ret) return HAK_PF_FAILURE;
+	if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
 
 	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
-static hak_pfrc_t pf_integer_bxor (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+
+hak_pfrc_t hak_pf_integer_bxor (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_oop_t ret;
 	ret = hak_bitxorints(hak, HAK_STACK_GETARG(hak, nargs, 0), HAK_STACK_GETARG(hak, nargs, 1));
-	if (!ret) return HAK_PF_FAILURE;
+	if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
 
 	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
-static hak_pfrc_t pf_integer_bnot (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+
+hak_pfrc_t hak_pf_integer_bnot (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_oop_t ret;
 	ret = hak_bitinvint(hak, HAK_STACK_GETARG(hak, nargs, 0));
-	if (!ret) return HAK_PF_FAILURE;
+	if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
 
 	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
-static hak_pfrc_t pf_integer_bshift (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+
+hak_pfrc_t hak_pf_integer_bshift (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_oop_t ret;
 	ret = hak_bitshiftint(hak, HAK_STACK_GETARG(hak, nargs, 0), HAK_STACK_GETARG(hak, nargs, 1));
-	if (!ret) return HAK_PF_FAILURE;
+	if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
+
+	HAK_STACK_SETRET(hak, nargs, ret);
+	return HAK_PF_SUCCESS;
+}
+
+hak_pfrc_t hak_pf_integer_blshift (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+{
+	hak_oop_t ret;
+	ret = hak_bitshiftint(hak, HAK_STACK_GETARG(hak, nargs, 0), HAK_STACK_GETARG(hak, nargs, 1));
+	if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
+
+	HAK_STACK_SETRET(hak, nargs, ret);
+	return HAK_PF_SUCCESS;
+}
+
+hak_pfrc_t hak_pf_integer_brshift (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+{
+	hak_oop_t ret;
+
+	ret = hak_negateint(hak, HAK_STACK_GETARG(hak, nargs, 1));
+	if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
+
+	ret = hak_bitshiftint(hak, HAK_STACK_GETARG(hak, nargs, 0), ret);
+	if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
 
 	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
@@ -1293,12 +1320,12 @@ static pf_t builtin_prims[] =
 	/* this is a long-cirtuit logical or. the short-circuit 'or' is treated as a special form */
 	{ 2, HAK_TYPE_MAX(hak_oow_t), pf_or,              3,  { '_','o','r' } },
 
-	{ 2, 2,                       pf_eqv,             4,  { 'e','q','v','?' } },
-	{ 2, 2,                       pf_eql,             4,  { 'e','q','l','?' } },
-	{ 2, 2,                       pf_eqk,             4,  { 'e','q','k','?' } },
-	{ 2, 2,                       pf_nqv,             4,  { 'n','q','v','?' } },
-	{ 2, 2,                       pf_nql,             4,  { 'n','q','l','?' } },
-	{ 2, 2,                       pf_nqk,             4,  { 'n','q','k','?' } },
+	{ 2, 2,                       hak_pf_eqv,         4,  { 'e','q','v','?' } },
+	{ 2, 2,                       hak_pf_eql,         4,  { 'e','q','l','?' } },
+	{ 2, 2,                       hak_pf_eqk,         4,  { 'e','q','k','?' } },
+	{ 2, 2,                       hak_pf_nqv,         4,  { 'n','q','v','?' } },
+	{ 2, 2,                       hak_pf_nql,         4,  { 'n','q','l','?' } },
+	{ 2, 2,                       hak_pf_nqk,         4,  { 'n','q','k','?' } },
 
 	{ 1, 1,                       pf_is_nil,          4,  { 'n','i','l','?' } },
 	{ 1, 1,                       pf_is_boolean,      8,  { 'b','o','o','l','e','a','n','?' } },
@@ -1333,11 +1360,13 @@ static pf_t builtin_prims[] =
 	{ 2, 2,                       hak_pf_number_ne,   2,  { '~','=' } },
 
 	/* bitwise operations are supported for integers only */
-	{ 2, 2,                       pf_integer_band,    7,  { 'b','i','t','-','a','n','d' } },
-	{ 2, 2,                       pf_integer_bor,     6,  { 'b','i','t','-','o','r' } },
-	{ 2, 2,                       pf_integer_bxor,    7,  { 'b','i','t','-','x','o','r' } },
-	{ 1, 1,                       pf_integer_bnot,    7,  { 'b','i','t','-','n','o','t' } },
-	{ 2, 2,                       pf_integer_bshift,  9,  { 'b','i','t','-','s','h','i','f','t'  } },
+	{ 2, 2,                       hak_pf_integer_band, 7,  { 'b','i','t','-','a','n','d' } },
+	{ 2, 2,                       hak_pf_integer_bor,  6,  { 'b','i','t','-','o','r' } },
+	{ 2, 2,                       hak_pf_integer_bxor, 7,  { 'b','i','t','-','x','o','r' } },
+	{ 1, 1,                       hak_pf_integer_bnot, 7,  { 'b','i','t','-','n','o','t' } },
+	{ 2, 2,                       hak_pf_integer_bshift, 9,  { 'b','i','t','-','s','h','i','f','t'  } },
+	{ 2, 2,                       hak_pf_integer_blshift, 14,  { 'b','i','t','-','l','e','f','t','-','s','h','i','f','t'  } },
+	{ 2, 2,                       hak_pf_integer_brshift, 15,  { 'b','i','t','-','r','i','g','h','t','-','s','h','i','f','t'  } },
 
 	{ 1, HAK_TYPE_MAX(hak_oow_t), pf_integer_quo,     3,  { 'd','i','v' } },
 	{ 2, HAK_TYPE_MAX(hak_oow_t), pf_integer_rem,     3,  { 'r','e','m' } },

@@ -13,6 +13,7 @@ check_SCRIPTS = \
 	fun-01.hak \
 	insta-01.hak \
 	insta-02.hak \
+	prim-01.hak \
 	proc-01.hak \
 	ret-01.hak \
 	retvar-01.hak \
