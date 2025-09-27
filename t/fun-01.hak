@@ -145,3 +145,11 @@ fun dummy(q) {
 plus 10 20 ## minus is now available after plus is executed
 v := (minus 10 1)
 if (== v 9) { printf "OK - %d\n" v } else { printf "ERROR - %d, not 9\n" v }
+
+
+## ----------------------------------------
+fun sum (x) {
+	if (< x 2) 1 else { core.+ x (sum (- x 1)) }
+}
+v := (sum 10)
+if (== v 55) { printf "OK - %d\n" v } else { printf "ERROR - %d, not 55\n" v }

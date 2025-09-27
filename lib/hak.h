@@ -1560,11 +1560,11 @@ typedef struct hak_synerr_t hak_synerr_t;
 struct hak_synerr_t
 {
 	hak_synerrnum_t num;
-	hak_loc_t     loc;
+	hak_loc_t       loc;
 	struct
 	{
 		hak_ooch_t val[256];
-		hak_oow_t len;
+		hak_oow_t  len;
 	} tgt;
 };
 

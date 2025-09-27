@@ -22,7 +22,6 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 #include "hak-prv.h"
 
 #define ENABLE_SYSCMD
@@ -744,8 +743,8 @@ static HAK_INLINE void unchain_from_processor (hak_t* hak, hak_oop_process_t pro
 	hak_ooi_t total_count;
 
 	HAK_ASSERT(hak, proc->state == HAK_SMOOI_TO_OOP(HAK_PROCESS_STATE_RUNNING) ||
-	                 proc->state == HAK_SMOOI_TO_OOP(HAK_PROCESS_STATE_RUNNABLE) ||
-	                 proc->state == HAK_SMOOI_TO_OOP(HAK_PROCESS_STATE_SUSPENDED));
+	                proc->state == HAK_SMOOI_TO_OOP(HAK_PROCESS_STATE_RUNNABLE) ||
+	                proc->state == HAK_SMOOI_TO_OOP(HAK_PROCESS_STATE_SUSPENDED));
 
 	HAK_ASSERT(hak, proc->state != HAK_SMOOI_TO_OOP(new_state));
 
@@ -2071,10 +2070,10 @@ static int __activate_function (hak_t* hak, hak_oop_function_t op_func, hak_ooi_
 	hak_ooi_t nargs_offset = 0;
 
 	/*
-	  (defun sum (x)
-	      (if (< x 2) 1
-	       else (+ x (sum (- x 1)))))
-	  (printf ">>>> %d\n" (sum 10))
+	  fun sum (x) {
+	    if (< x 2) 1 else { core.+ x (sum (- x 1)) }
+	  }
+	  printf ">>>> %d\n" (sum 10)
 	 */
 
 	HAK_ASSERT(hak, HAK_IS_FUNCTION(hak, op_func));
@@ -2338,10 +2337,9 @@ static HAK_INLINE int send_message (hak_t* hak, hak_oop_t rcv, hak_oop_t msg, in
 	{
 		_class = (hak_oop_class_t)rcv;
 		mth_blk = find_cmethod_noseterr(hak, _class, msg, to_super, &ivaroff, &owner);
-
 		if (!mth_blk) goto msg_not_found;
 
-		if (GET_BLK_MASK_INSTA(HAK_OOP_TO_SMOOI(mth_blk->attr_mask)))
+		if (GET_BLK_MASK_INSTA(HAK_OOP_TO_SMOOI(mth_blk->attr_mask))) /* #ci method */
 		{
 			hak_oop_t newrcv;
 
@@ -2382,6 +2380,26 @@ static HAK_INLINE int send_message (hak_t* hak, hak_oop_t rcv, hak_oop_t msg, in
 
 /* ------------------------------------------------------------------------- */
 
+static int get_ip_dbgi (hak_t* hak, hak_oop_function_t f, hak_ooi_t ip, hak_dbgi_t* dbgi)
+{
+	HAK_ASSERT(hak, f != HAK_NULL);
+	HAK_MEMSET(dbgi, 0, HAK_SIZEOF(*dbgi));
+
+	if (f->dbgi != hak->_nil && ip >= 0 && ip < HAK_OBJ_GET_SIZE(f->dbgi) / HAK_SIZEOF(*dbgi))
+	{
+		hak_dbgi_t* f_dbgi;
+		f_dbgi = (hak_dbgi_t*)HAK_OBJ_GET_BYTE_SLOT(f->dbgi);
+
+		*dbgi = f_dbgi[ip];
+		if (!dbgi->fname && hak->c) dbgi->fname = hak->c->cci_arg.name;
+		return 0; /* found */
+	}
+
+	return -1; /* not found */
+}
+
+/* ------------------------------------------------------------------------- */
+
 static HAK_INLINE int do_throw (hak_t* hak, hak_oop_t val, hak_ooi_t ip)
 {
 	hak_oop_context_t catch_ctx;
@@ -2390,30 +2408,29 @@ static HAK_INLINE int do_throw (hak_t* hak, hak_oop_t val, hak_ooi_t ip)
 
 	if (HAK_EXSTACK_IS_EMPTY(hak))
 	{
-		hak_oop_function_t f;
+		hak_dbgi_t dbgi;
 
 		/* the exception stack is empty.
 		 * clear the class stack if it is not empty */
 		while (!HAK_CLSTACK_IS_EMPTY(hak)) HAK_CLSTACK_POP(hak);
 
-		f = hak->active_function;
-		if (f->dbgi != hak->_nil && ip >= 0)
+		if (get_ip_dbgi(hak, hak->active_function, ip, &dbgi) <= -1)
 		{
-			hak_dbgi_t* dbgi;
-			hak_loc_t loc;
-
-			dbgi = (hak_dbgi_t*)HAK_OBJ_GET_BYTE_SLOT(f->dbgi);
-			HAK_LOG3(hak, HAK_LOG_IC | HAK_LOG_WARN, "Warning - exception not handled %js:%zu - %O\n", (dbgi[ip].fname? dbgi[ip].fname: oocstr_dash), dbgi[ip].sline, val);
-			HAK_MEMSET(&loc, 0, HAK_SIZEOF(loc));
-			loc.file = dbgi[ip].fname;
-			loc.line = dbgi[ip].sline;
-			hak_seterrbfmtloc(hak, HAK_EEXCEPT, &loc, "exception not handled - %O", val);
-			/* column number is not available */
+			HAK_LOG1(hak, HAK_LOG_IC | HAK_LOG_WARN,
+				"Warning - exception not handled - %O", val);
+			hak_seterrbfmt(hak, HAK_EEXCEPT, "exception not handled - %O", val);
 		}
 		else
 		{
-			HAK_LOG1(hak, HAK_LOG_IC | HAK_LOG_WARN, "Warning - exception not handled - %O", val);
-			hak_seterrbfmt(hak, HAK_EEXCEPT, "exception not handled - %O", val);
+			hak_loc_t loc;
+			HAK_LOG3(hak, HAK_LOG_IC | HAK_LOG_WARN,
+				"Warning - exception not handled %js:%zu - %O\n",
+				(dbgi.fname? dbgi.fname: oocstr_dash), dbgi.sline, val);
+			HAK_MEMSET(&loc, 0, HAK_SIZEOF(loc));
+			loc.file = dbgi.fname;
+			loc.line = dbgi.sline;
+			hak_seterrbfmtloc(hak, HAK_EEXCEPT, &loc, "exception not handled - %O", val);
+			/* column number is not available */
 		}
 
 		/* output backtrace */
@@ -2421,22 +2438,15 @@ static HAK_INLINE int do_throw (hak_t* hak, hak_oop_t val, hak_ooi_t ip)
 		c = hak->active_context;
 		if ((hak_oop_t)c != hak->_nil && ip >= 0)
 		{
+			hak_oop_function_t f;
 			hak_ooi_t cip;
 
 			cip = ip; /* use the given ip for the active context instead of the value from the ip field */
 			do
 			{
 				f = c->base;
-				if (f->dbgi != hak->_nil)
+				if (get_ip_dbgi(hak, f, cip, &dbgi) >= 0)
 				{
-					hak_dbgi_t* dbgi;
-					const hak_ooch_t* fname;
-
-					dbgi = (hak_dbgi_t*)HAK_OBJ_GET_BYTE_SLOT(f->dbgi);
-
-					fname = dbgi[cip].fname;
-					if (!fname && hak->c) fname = hak->c->cci_arg.name;
-
 					/* TODO: include arguments? */
 					HAK_LOG7(hak, HAK_LOG_IC | HAK_LOG_INFO, "  %.*js%js%.*js(%js:%zu)\n",
 						(c->owner == hak->_nil? 0: HAK_OBJ_GET_SIZE(((hak_oop_class_t)c->owner)->name)),
@@ -2444,8 +2454,9 @@ static HAK_INLINE int do_throw (hak_t* hak, hak_oop_t val, hak_ooi_t ip)
 						(c->owner == hak->_nil? oocstr_none: oocstr_colon),
 						(c->name == hak->_nil? 0: HAK_OBJ_GET_SIZE(((hak_oop_char_t)c->name))),
 						(c->name == hak->_nil? oocstr_none: ((hak_oop_char_t)c->name)->slot),
-						(fname? fname: oocstr_dash), dbgi[cip].sline);
+						(dbgi.fname? dbgi.fname: oocstr_dash), dbgi.sline);
 				}
+
 				c = c->sender;
 				if ((hak_oop_t)c == hak->_nil) break;
 				cip = HAK_OOP_TO_SMOOI(c->ip);
@@ -2488,20 +2499,17 @@ static HAK_INLINE int do_throw (hak_t* hak, hak_oop_t val, hak_ooi_t ip)
 
 static void supplement_errmsg (hak_t* hak, hak_ooi_t ip)
 {
-	if (hak->active_function->dbgi != hak->_nil)
+	hak_dbgi_t dbgi;
+
+	if (get_ip_dbgi(hak, hak->active_function, ip, &dbgi) >= 0)
 	{
-		hak_dbgi_t* dbgi;
 		hak_loc_t orgloc = hak->errloc;
 		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
 		hak_errnum_t orgnum = HAK_ERRNUM(hak);
 
-		HAK_ASSERT(hak, HAK_IS_BYTEARRAY(hak, hak->active_function->dbgi));
-		dbgi = (hak_dbgi_t*)HAK_OBJ_GET_BYTE_SLOT(hak->active_function->dbgi);
-
-		orgloc.line = dbgi[ip].sline; /* update the line of the location at least */
-		hak_seterrbfmtloc(hak, orgnum, &orgloc, "%js (%js:%zu)", orgmsg,
-			(dbgi[ip].fname? dbgi[ip].fname: oocstr_dash), dbgi[ip].sline);
-
+		orgloc.line = dbgi.sline; /* update the line of the location at least */
+		hak_seterrbfmtloc(hak, orgnum, &orgloc, "%js (%js:%zu)",
+			orgmsg, (dbgi.fname? dbgi.fname: oocstr_dash), dbgi.sline);
 		/* no column info available */
 	}
 }
@@ -3280,6 +3288,7 @@ static HAK_INLINE int do_return_from_home (hak_t* hak, hak_oop_t return_value, h
 	else
 	{
 		hak_oop_context_t sender, home, ctx;
+		hak_dbgi_t dbgi;
 
 		home = hak->active_context->home;
 		sender = hak->active_context->home->sender;
@@ -3292,15 +3301,15 @@ static HAK_INLINE int do_return_from_home (hak_t* hak, hak_oop_t return_value, h
 			if (ctx == home) goto do_return;
 		}
 
-		if (hak->active_function->dbgi != hak->_nil)
-		{
-			hak_dbgi_t* dbgi = (hak_dbgi_t*)HAK_OBJ_GET_BYTE_SLOT(hak->active_function->dbgi);
-			HAK_LOG2(hak, HAK_LOG_IC | HAK_LOG_ERROR, "Error - cannot return from dead context - throwing an exception (%js:%zu)\n", (dbgi[ip].fname? dbgi[ip].fname: oocstr_dash), dbgi[ip].sline);
-		}
-		else
+		if (get_ip_dbgi(hak, hak->active_function, ip, &dbgi) <= -1)
 		{
 			HAK_LOG0 (hak, HAK_LOG_IC | HAK_LOG_ERROR, "Error - cannot return from dead context - throwing an exception\n");
 		}
+		else
+		{
+			HAK_LOG2(hak, HAK_LOG_IC | HAK_LOG_ERROR, "Error - cannot return from dead context - throwing an exception (%js:%zu)\n", (dbgi.fname? dbgi.fname: oocstr_dash), dbgi.sline);
+		}
+
 		hak_seterrbfmt(hak, HAK_EINTERN, "unable to return from dead context"); /* TODO: can i make this error catchable at the hak level? */
 		return do_throw_with_internal_errmsg(hak, ip);
 
@@ -4270,6 +4279,7 @@ hak_logbfmt(hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncv
 				int mtype;
 				static const hak_bch_t* pfx[] = { "c", "i", "ci" };
 
+				/* mtype => c: 1, i: 2, ci: (1 | 2) */
 				mtype = (bcode - HAK_CODE_CLASS_CMSTORE) + 1;
 				HAK_ASSERT(hak, mtype >= 1 && mtype <= 3);
 				FETCH_PARAM_CODE_TO(hak, b1);
@@ -4297,7 +4307,38 @@ hak_logbfmt(hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncv
 				name = hak->active_function->literal_frame[b1]; /* method name */
 				/* put the code at method dictionary
 				   pass 1 for class method, 2 for instance method, 3 for class instantiation method */
-				if (!hak_putatdic_method(hak, (hak_oop_dic_t)mdic, name, blk, mtype)) goto oops_with_errmsg_supplement;
+				if (!hak_putatdic_method(hak, (hak_oop_dic_t)mdic, name, blk, &mtype)) goto oops_with_errmsg_supplement;
+				if (mtype && HAK_LOG_ENABLED(hak, HAK_LOG_IC | HAK_LOG_WARN)) 
+				{
+					hak_oop_t class_name;
+					hak_dbgi_t dbgi;
+
+					class_name = ((hak_oop_class_t)_class)->name;
+					HAK_ASSERT(hak, HAK_OBJ_IS_CHAR_POINTER(class_name));
+
+					get_ip_dbgi(hak, hak->active_function, fetched_instruction_pointer, &dbgi);
+
+					if (class_name != hak->_nil)
+					{
+						hak_logbfmt(hak, HAK_LOG_IC | HAK_LOG_WARN, "Warning - redefined method %.*js:%.*js at %js:%zu\n",
+							HAK_OBJ_GET_SIZE(class_name),
+							HAK_OBJ_GET_CHAR_SLOT(class_name),
+							HAK_OBJ_GET_SIZE(name),
+							HAK_OBJ_GET_CHAR_SLOT(name),
+							(dbgi.fname? dbgi.fname: oocstr_dash),
+							dbgi.sline
+						);
+					}
+					else
+					{
+						hak_logbfmt(hak, HAK_LOG_IC | HAK_LOG_WARN, "Warning - redefined method %.*js for anonymous class at %js:%zu\n",
+							HAK_OBJ_GET_SIZE(name),
+							HAK_OBJ_GET_CHAR_SLOT(name),
+							(dbgi.fname? dbgi.fname: oocstr_dash),
+							dbgi.sline
+						);
+					}
+				}
 				break;
 			}
 			/* -------------------------------------------------------- */
@@ -5136,7 +5177,7 @@ hak_oop_t hak_execute (hak_t* hak)
 	}
 
 	/* create a virtual function object that holds the byte code generated plus the literal frame.
-	 * when hcl_execute() is called repeatedly, especially in the interactive mode, functions and
+	 * when hak_execute() is called repeatedly, especially in the interactive mode, functions and
 	 * methods defined in the previous call refers to data in the previous virtual function. the
 	 * instruction pointers and literal frame indicies, if such functions are called, don't reference
 	 * data in this new function. */

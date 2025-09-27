@@ -1004,7 +1004,7 @@ void hak_dumpcnode (hak_t* hak, hak_cnode_t* cnode, int newline)
 		}
 	}
 
-	if  (newline) hak_logbfmt(hak, HAK_LOG_FATAL, "\n");
+	if (newline) hak_logbfmt(hak, HAK_LOG_FATAL, "\n");
 }
 
 

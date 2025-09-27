@@ -1619,7 +1619,8 @@ hak_oop_cons_t hak_putatdic_method (
 	hak_oop_dic_t dic,
 	hak_oop_t     key,
 	hak_oop_t     value,
-	int           mtype /* 1 for class method, 2 for instance method */
+	int*          mtype_flags /* [IN] 1 for class method, 2 for instance method,
+	                             [OUT] bit 0(1) or bit 1(2) set for each method type redefined */
 );
 
 /* ========================================================================= */

@@ -25,8 +25,8 @@
 #include "hak-prv.h"
 
 /* The dictionary functions in this file are used for storing
- * a dictionary object enclosed in {}. So putting a non-symbol
- * key is allowed like { 1 2 3 4 } where 1 and 3 are keys.
+ * a dictionary object enclosed in #{}. So putting a non-symbol
+ * key is allowed like #{ 1 2 3 4 } where 1 and 3 are keys.
  * so SYMBOL_ONLY_KEY must not be defined */
 /*#define SYMBOL_ONLY_KEY*/
 
@@ -95,7 +95,7 @@ static hak_oop_oop_t expand_bucket (hak_t* hak, hak_oop_oop_t oldbuc)
 	return newbuc;
 }
 
-static hak_oop_cons_t find_or_upsert (hak_t* hak, hak_oop_dic_t dic, hak_oop_t key, hak_oop_t value, int is_method)
+static hak_oop_cons_t find_or_upsert (hak_t* hak, hak_oop_dic_t dic, hak_oop_t key, hak_oop_t value, int* method_types)
 {
 	hak_ooi_t tally;
 	hak_oow_t index;
@@ -125,7 +125,6 @@ static hak_oop_cons_t find_or_upsert (hak_t* hak, hak_oop_dic_t dic, hak_oop_t k
 #else
 		int n;
 #endif
-
 		ass = (hak_oop_cons_t)dic->bucket->slot[index];
 		HAK_ASSERT(hak, HAK_IS_CONS(hak,ass));
 
@@ -142,14 +141,30 @@ static hak_oop_cons_t find_or_upsert (hak_t* hak, hak_oop_dic_t dic, hak_oop_t k
 			/* the value of HAK_NULL indicates no insertion or update. */
 			if (value)
 			{
-				if (is_method)
+				if (method_types)
 				{
 					hak_oop_cons_t pair;
+					int mtype;
+					int mtype_redef;
+
 					pair = (hak_oop_cons_t)ass->cdr; /* once found, this must be a pair of method pointers  */
 					HAK_ASSERT(hak, HAK_IS_CONS(hak, pair));
 					HAK_ASSERT(hak, HAK_IS_COMPILED_BLOCK(hak, value));
-					if (is_method & 1) pair->car = value; /* class method */
-					if (is_method & 2) pair->cdr = value; /* instance method */
+
+					mtype = *method_types;
+					mtype_redef = 0;
+					if (mtype & 1)
+					{
+						if (pair->car != hak->_nil) mtype_redef |= 1;
+						pair->car = value; /* class method */
+					}
+					if (mtype & 2)
+					{
+						if (pair->cdr != hak->_nil) mtype_redef |= 2;
+						pair->cdr = value; /* instance method */
+					}
+
+					*method_types = mtype_redef;
 					/* the class instantiation method goes to both cells.
 					 * you can't define a class method or an instance method with the name of
 					 * a class instantiation method */
@@ -217,13 +232,19 @@ static hak_oop_cons_t find_or_upsert (hak_t* hak, hak_oop_dic_t dic, hak_oop_t k
 			index = (index + 1) % HAK_OBJ_GET_SIZE(dic->bucket);
 	}
 
-	if (is_method)
+	if (method_types)
 	{
 		/* create a new pair that holds a class method at the first cell and an instance method at the second cell */
 		hak_oop_t pair;
+		int mtype;
+
 		HAK_ASSERT(hak, HAK_IS_COMPILED_BLOCK(hak, value));
+
+		mtype = *method_types;
+		*method_types = 0; /* nothing is redefined*/
+
 		hak_pushvolat(hak, &key);
-		pair = hak_makecons(hak, (is_method & 1? value: hak->_nil), (is_method & 2? value: hak->_nil));
+		pair = hak_makecons(hak, ((mtype & 1)? value: hak->_nil), ((mtype & 2)? value: hak->_nil));
 		hak_popvolat(hak);
 		if (HAK_UNLIKELY(!pair)) goto oops;
 		value = pair;
@@ -310,7 +331,7 @@ hak_oop_cons_t hak_putatsysdic (hak_t* hak, hak_oop_t key, hak_oop_t value)
 #if defined(SYMBOL_ONLY_KEY)
 	HAK_ASSERT(hak, HAK_IS_SYMBOL(hak,key));
 #endif
-	return find_or_upsert(hak, hak->sysdic, key, value, 0);
+	return find_or_upsert(hak, hak->sysdic, key, value, HAK_NULL);
 }
 
 hak_oop_cons_t hak_getatsysdic (hak_t* hak, hak_oop_t key)
@@ -318,7 +339,7 @@ hak_oop_cons_t hak_getatsysdic (hak_t* hak, hak_oop_t key)
 #if defined(SYMBOL_ONLY_KEY)
 	HAK_ASSERT(hak, HAK_IS_SYMBOL(hak,key));
 #endif
-	return find_or_upsert(hak, hak->sysdic, key, HAK_NULL, 0);
+	return find_or_upsert(hak, hak->sysdic, key, HAK_NULL, HAK_NULL);
 }
 
 hak_oop_cons_t hak_lookupsysdicforsymbol_noseterr (hak_t* hak, const hak_oocs_t* name)
@@ -344,15 +365,15 @@ hak_oop_cons_t hak_putatdic (hak_t* hak, hak_oop_dic_t dic, hak_oop_t key, hak_o
 #if defined(SYMBOL_ONLY_KEY)
 	HAK_ASSERT(hak, HAK_IS_SYMBOL(hak,key));
 #endif
-	return find_or_upsert(hak, dic, key, value, 0);
+	return find_or_upsert(hak, dic, key, value, HAK_NULL);
 }
 
-hak_oop_cons_t hak_putatdic_method (hak_t* hak, hak_oop_dic_t dic, hak_oop_t key, hak_oop_t value, int mtype)
+hak_oop_cons_t hak_putatdic_method (hak_t* hak, hak_oop_dic_t dic, hak_oop_t key, hak_oop_t value, int* mtype_bits)
 {
 #if defined(SYMBOL_ONLY_KEY)
 	HAK_ASSERT(hak, HAK_IS_SYMBOL(hak,key));
 #endif
-	return find_or_upsert(hak, dic, key, value, mtype);
+	return find_or_upsert(hak, dic, key, value, mtype_bits);
 }
 
 hak_oop_cons_t hak_getatdic (hak_t* hak, hak_oop_dic_t dic, hak_oop_t key)
