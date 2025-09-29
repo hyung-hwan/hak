@@ -25,7 +25,7 @@
 #ifndef _HAK_XMA_H_
 #define _HAK_XMA_H_
 
-/** @file
+/** \file
  * This file defines an extravagant memory allocator. Why? It may be so.
  * The memory allocator allows you to maintain memory blocks from a
  * larger memory chunk allocated with an outer memory allocator.
@@ -34,7 +34,7 @@
  *
  * See the example below. Note it omits error handling.
  *
- * @code
+ * \code
  * #include <hak-xma.h>
  * #include <stdio.h>
  * #include <stdarg.h>
@@ -68,13 +68,13 @@
  *   hak_xma_close (xma); //  destroy the memory allocator
  *   return 0;
  * }
- * @endcode
+ * \endcode
  */
 #include <hak-cmn.h>
 
 #define HAK_XMA_ENABLE_STAT
 
-/** @struct hak_xma_t
+/** \struct hak_xma_t
  * The hak_xma_t type defines a simple memory allocator over a memory zone.
  * It can obtain a relatively large zone of memory and manage it.
  */
@@ -139,11 +139,11 @@ extern "C" {
 
 /**
  * The hak_xma_open() function creates a memory allocator. It obtains a memory
- * zone of the @a zonesize bytes with the memory manager @a mmgr. It also makes
- * available the extension area of the @a xtnsize bytes that you can get the
+ * zone of the \a zonesize bytes with the memory manager \a mmgr. It also makes
+ * available the extension area of the \a xtnsize bytes that you can get the
  * pointer to with hak_xma_getxtn().
  *
- * @return pointer to a memory allocator on success, #HAK_NULL on failure
+ * \return pointer to a memory allocator on success, #HAK_NULL on failure
  */
 HAK_EXPORT hak_xma_t* hak_xma_open (
 	hak_mmgr_t* mmgr,    /**< memory manager */
@@ -178,9 +178,9 @@ static HAK_INLINE void* hak_xma_getxtn (hak_xma_t* xma) { return (void*)(xma + 1
  * The hak_xma_init() initializes a memory allocator. If you have the hak_xma_t
  * structure statically declared or already allocated, you may pass the pointer
  * to this function instead of calling hak_xma_open(). It obtains a memory zone
- * of @a zonesize bytes with the memory manager @a mmgr. Unlike hak_xma_open(),
+ * of \a zonesize bytes with the memory manager \a mmgr. Unlike hak_xma_open(),
  * it does not accept the extension size, thus not creating an extention area.
- * @return 0 on success, -1 on failure
+ * \return 0 on success, -1 on failure
  */
 HAK_EXPORT int hak_xma_init (
 	hak_xma_t*  xma,     /**< memory allocator */
@@ -198,8 +198,8 @@ HAK_EXPORT void hak_xma_fini (
 );
 
 /**
- * The hak_xma_alloc() function allocates @a size bytes.
- * @return pointer to a memory block on success, #HAK_NULL on failure
+ * The hak_xma_alloc() function allocates \a size bytes.
+ * \return pointer to a memory block on success, #HAK_NULL on failure
  */
 HAK_EXPORT void* hak_xma_alloc (
 	hak_xma_t* xma, /**< memory allocator */
@@ -212,8 +212,8 @@ HAK_EXPORT void* hak_xma_calloc (
 );
 
 /**
- * The hak_xma_alloc() function resizes the memory block @a b to @a size bytes.
- * @return pointer to a resized memory block on success, #HAK_NULL on failure
+ * The hak_xma_alloc() function resizes the memory block \a b to \a size bytes.
+ * \return pointer to a resized memory block on success, #HAK_NULL on failure
  */
 HAK_EXPORT void* hak_xma_realloc (
 	hak_xma_t* xma,  /**< memory allocator */
@@ -222,7 +222,7 @@ HAK_EXPORT void* hak_xma_realloc (
 );
 
 /**
- * The hak_xma_alloc() function frees the memory block @a b.
+ * The hak_xma_alloc() function frees the memory block \a b.
  */
 HAK_EXPORT void hak_xma_free (
 	hak_xma_t* xma, /**< memory allocator */
@@ -231,7 +231,7 @@ HAK_EXPORT void hak_xma_free (
 
 /**
  * The hak_xma_dump() function dumps the contents of the memory zone
- * with the output function @a dumper provided. The debug build shows
+ * with the output function \a dumper provided. The debug build shows
  * more statistical counters.
  */
 HAK_EXPORT void hak_xma_dump (

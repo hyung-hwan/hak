@@ -840,22 +840,24 @@ typedef void* (*hak_mmgr_realloc_t) (hak_mmgr_t* mmgr, void* ptr, hak_oow_t n);
 typedef void  (*hak_mmgr_free_t)    (hak_mmgr_t* mmgr, void* ptr);
 
 /**
- * The hak_mmgr_t type defines the memory management interface.
- * As the type is merely a structure, it is just used as a single container
- * for memory management functions with a pointer to user-defined data.
- * The user-defined data pointer \a ctx is passed to each memory management
- * function whenever it is called. You can allocate, reallocate, and free
- * a memory chunk.
+ * The hak_mmgr_t type defines a memory management interface. It is a structure
+ * that serves as a container for function pointers to allocation, reallocation,
+ * and deallocation routines, along with a user-defined context pointer.
  *
- * For example, a hak_xxx_open() function accepts a pointer of the hak_mmgr_t
- * type and the xxx object uses it to manage dynamic data within the object.
+ * The \a ctx field stores a user-defined data pointer, which is passed to each
+ * memory management function whenever it is invoked. This allows the user to
+ * associate custom state or configuration with their memory manager.
+ *
+ * For example, a hak_xxx_open() function may accept a pointer to a hak_mmgr_t
+ * instance, enabling the xxx object to manage its dynamic memory through the
+ * provided allocation functions.
  */
 struct hak_mmgr_t
 {
 	hak_mmgr_alloc_t   allocmem;   /**< allocation function */
 	hak_mmgr_realloc_t reallocmem; /**< resizing function */
 	hak_mmgr_free_t    freemem;    /**< disposal function */
-	void*              ctx;     /**< user-defined data pointer */
+	void*              ctx;        /**< user-defined data pointer */
 };
 
 /**

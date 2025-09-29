@@ -107,7 +107,7 @@ extern "C" {
  * - \b ? indicates a bad option stored in the \a opt->opt field.
  * - \b : indicates a bad parameter for an option stored in the \a opt->opt field.
  *
- * @return an option character on success, HAK_CHAR_EOF on no more options.
+ * \return an option character on success, HAK_CHAR_EOF on no more options.
  */
 HAK_EXPORT hak_uci_t hak_getuopt (
 	int                argc, /* argument count */

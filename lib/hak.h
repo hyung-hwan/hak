@@ -94,6 +94,7 @@ enum hak_errnum_t
 	HAK_EUNDEFVAR   /**< runtime error - undefined variable access */
 };
 typedef enum hak_errnum_t hak_errnum_t;
+/**/
 
 enum hak_synerrnum_t
 {
@@ -947,6 +948,7 @@ struct hak_class_t
  */
 #define HAK_CLASSOF(hak,oop) \
 	(HAK_OOP_GET_TAG(oop)? ((hak_oop_t)(*(hak)->tagged_classes[HAK_OOP_GET_TAG(oop)])): HAK_OBJ_GET_CLASS(oop))
+/**/
 
 
 /**
@@ -956,6 +958,7 @@ struct hak_class_t
  */
 #define HAK_BYTESOF(hak,oop) \
 	(HAK_OOP_IS_NUMERIC(oop)? HAK_SIZEOF(hak_oow_t): HAK_OBJ_BYTESOF(oop))
+/**/
 
 
 /**
@@ -963,6 +966,7 @@ struct hak_class_t
  */
 #define HAK_ISTYPEOF(hak,oop,type) \
 	(!HAK_OOP_IS_NUMERIC(oop) && HAK_OBJ_GET_FLAGS_TYPE(oop) == (type))
+/**/
 
 /* =========================================================================
  * HEAP
@@ -1270,6 +1274,9 @@ typedef struct hak_lxc_t hak_lxc_t;
 #define HAK_CCI_BUF_LEN (2048)
 #endif
 
+/**
+ * The hak_io_cciarg_t defines the input stream to the compiler.
+ */
 typedef struct hak_io_cciarg_t hak_io_cciarg_t;
 struct hak_io_cciarg_t
 {
@@ -1336,7 +1343,11 @@ struct hak_io_cciarg_t
 	hak_lxc_t lxc;
 	/*-----------------------------------------------------------------*/
 };
+/**/
 
+/**
+ * The hak_io_udiarg_t defines the user-defined input stream handler.
+ */
 typedef struct hak_io_udiarg_t hak_io_udiarg_t;
 struct hak_io_udiarg_t
 {
@@ -1384,7 +1395,11 @@ struct hak_io_udiarg_t
 
 	int eof_reached;
 };
+/**/
 
+/**
+ * The hak_io_udiarg_t defines the user-defined output stream handler.
+ */
 typedef struct hak_io_udoarg_t hak_io_udoarg_t;
 struct hak_io_udoarg_t
 {
@@ -1415,6 +1430,7 @@ struct hak_io_udoarg_t
 	 */
 	hak_oow_t xlen;
 };
+/**/
 
 /**
  * The hak_io_impl_t type defines a callback function prototype
@@ -1425,6 +1441,7 @@ typedef int (*hak_io_impl_t) (
 	hak_io_cmd_t  cmd,
 	void*         arg /* one of hak_io_cciarg_t*, hak_io_udiarg_t*, hak_io_udoarg_t* */
 );
+/**/
 
 /* =========================================================================
  * CALLBACK MANIPULATION
@@ -2106,27 +2123,39 @@ HAK_EXPORT const hak_bch_t* hak_obj_type_to_bcstr (
 	hak_obj_type_t type
 );
 
+/**
+ * The hak_open() function creates a hak object.
+ */
 HAK_EXPORT hak_t* hak_open (
 	hak_mmgr_t*         mmgr,
 	hak_oow_t           xtnsize,
 	const hak_vmprim_t* vmprim,
 	hak_errnum_t*       errnum
 );
+/**/
 
+/**
+ * The hak_openstdwithmmgr() function creates a hak objuect with the default primitve functions.
+ */
 HAK_EXPORT hak_t* hak_openstdwithmmgr (
 	hak_mmgr_t*         mmgr,
 	hak_oow_t           xtnsize,
 	hak_errnum_t*       errnum
 );
+/**/
 
 HAK_EXPORT hak_t* hak_openstd (
 	hak_oow_t           xtnsize,
 	hak_errnum_t*       errnum
 );
 
+/**
+ * The hak_close() function destroys a hak object.
+ */
 HAK_EXPORT void hak_close (
-	hak_t* vm
+	hak_t* hak
 );
+/**/
 
 HAK_EXPORT int hak_init (
 	hak_t*              hak,

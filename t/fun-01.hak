@@ -149,7 +149,7 @@ if (== v 9) { printf "OK - %d\n" v } else { printf "ERROR - %d, not 9\n" v }
 
 ## ----------------------------------------
 fun sum (x) {
-	if (< x 2) 1 else { core.+ x (sum (- x 1)) }
+	if (core.< x 2) 1 else { core.+ x (sum (core.- x 1)) }
 }
 v := (sum 10)
 if (== v 55) { printf "OK - %d\n" v } else { printf "ERROR - %d, not 55\n" v }
