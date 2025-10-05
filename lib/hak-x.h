@@ -251,7 +251,7 @@ HAK_EXPORT hak_server_t* hak_server_open (
 	hak_mmgr_t*        mmgr,
 	hak_oow_t          xtnsize,
 	hak_server_prim_t* prim,
-	hak_errnum_t*      errnum
+	hak_errinf_t*      errinf
 );
 
 HAK_EXPORT void hak_server_close (
@@ -372,7 +372,7 @@ HAK_EXPORT hak_client_t* hak_client_open (
 	hak_mmgr_t*        mmgr,
 	hak_oow_t          xtnsize,
 	hak_client_prim_t* prim,
-	hak_errnum_t*      errnum
+	hak_errinf_t*      errinf
 );
 
 HAK_EXPORT void hak_client_close (

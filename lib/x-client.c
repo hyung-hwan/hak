@@ -156,7 +156,7 @@ static void client_log_write_for_dummy (hak_t* hak, hak_bitmask_t mask, const ha
 	client->prim.log_write (client, mask, msg, len);
 }
 
-hak_client_t* hak_client_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_client_prim_t* prim, hak_errnum_t* errnum)
+hak_client_t* hak_client_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_client_prim_t* prim, hak_errinf_t* errinf)
 {
 	hak_client_t* client = HAK_NULL;
 	hak_t* hak = HAK_NULL;
@@ -166,20 +166,25 @@ hak_client_t* hak_client_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_client_p
 	client = (hak_client_t*)HAK_MMGR_ALLOC(mmgr, HAK_SIZEOF(*client) + xtnsize);
 	if (HAK_UNLIKELY(!client))
 	{
-		if (errnum) *errnum = HAK_ESYSMEM;
-		return HAK_NULL;
+		if (errinf)
+		{
+			HAK_MEMSET(errinf, 0, HAK_SIZEOF(*errinf));
+			errinf->num = HAK_ESYSMEM;
+			hak_copy_oocstr(errinf->msg, HAK_COUNTOF(errinf->msg), hak_errnum_to_errstr(errinf->num));
+		}
+		goto oops;
 	}
 
-	hak = hak_openstdwithmmgr(mmgr, HAK_SIZEOF(*xtn), errnum);
-	if (HAK_UNLIKELY(!hak))
-	{
-		HAK_MMGR_FREE (mmgr, client);
-		return HAK_NULL;
-	}
+	hak = hak_openstdwithmmgr(mmgr, HAK_SIZEOF(*xtn), errinf);
+	if (HAK_UNLIKELY(!hak)) goto oops;
 
 	if (hak_sys_open_pipes(pfd, 1) <= -1)
 	{
-		if (errnum) *errnum = hak->vmprim.syserrstrb(hak, 0, errno, HAK_NULL, 0);
+		if (errinf)
+		{
+			hak_seterrbfmtwithsyserr(hak, 0, errno, HAK_NULL, 0);
+			hak_geterrinf(hak, errinf);
+		}
 		goto oops;
 	}
 
@@ -215,7 +220,7 @@ hak_client_t* hak_client_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_client_p
 oops:
 	/* NOTE: pipe should be closed if jump to here is made after pipe() above */
 	if (hak) hak_close(hak);
-	if (client) HAK_MMGR_FREE (mmgr, client);
+	if (client) HAK_MMGR_FREE(mmgr, client);
 	return HAK_NULL;
 }
 
@@ -234,7 +239,7 @@ void hak_client_close (hak_client_t* client)
 
 	hak_sys_close_pipes(client->mux_pipe);
 	hak_close (client->dummy_hak);
-	HAK_MMGR_FREE (client->_mmgr, client);
+	HAK_MMGR_FREE(client->_mmgr, client);
 }
 
 int hak_client_setoption (hak_client_t* client, hak_client_option_t id, const void* value)
@@ -433,7 +438,7 @@ void* hak_client_reallocmem (hak_client_t* client, void* ptr, hak_oow_t size)
 
 void hak_client_freemem (hak_client_t* client, void* ptr)
 {
-	HAK_MMGR_FREE (client->_mmgr, ptr);
+	HAK_MMGR_FREE(client->_mmgr, ptr);
 }
 
 /* ========================================================================= */
@@ -673,7 +678,7 @@ hak_client_logbfmt(client, HAK_LOG_STDERR, "send error - %hs\n", strerror(errno)
 		hak_uint8_t* bptr;
 		ssize_t x;
 
-		bptr = hak_xproto_getbuf(client->remote.proto, &bcap);;
+		bptr = hak_xproto_getbuf(client->remote.proto, &bcap);
 		x = recv(client->remote.sck, bptr, bcap, 0);
 		if (x <= -1)
 		{

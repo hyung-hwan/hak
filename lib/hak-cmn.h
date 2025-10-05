@@ -420,21 +420,23 @@ typedef unsigned char           hak_bchu_t; /* unsigned version of hak_bch_t for
 #define HAK_SIZEOF_BCI_T HAK_SIZEOF_INT
 
 #if defined(HAK_WIDE_CHAR_SIZE) && (HAK_WIDE_CHAR_SIZE >= 4)
-#	if defined(__GNUC__) && defined(__CHAR32_TYPE__)
+#	if defined(__WCHAR_TYPE__) && defined(__SIZEOF_WCHAR_T__) && (__SIZEOF_WCHAR_T__ == HAK_WIDE_CHAR_SIZE)
+	typedef __WCHAR_TYPE__     hak_uch_t;
+#	elif defined(__GNUC__) && defined(__CHAR32_TYPE__)
 	typedef __CHAR32_TYPE__    hak_uch_t;
 #	else
 	typedef hak_uint32_t       hak_uch_t;
 #	endif
-	typedef hak_uint32_t       hak_uchu_t; /* same as hak_uch_t as it is already unsigned */
+	typedef hak_uint32_t       hak_uchu_t;
 #	define HAK_SIZEOF_UCH_T 4
 
 #elif defined(__GNUC__) && defined(__CHAR16_TYPE__)
 	typedef __CHAR16_TYPE__    hak_uch_t;
-	typedef hak_uint16_t       hak_uchu_t; /* same as hak_uch_t as it is already unsigned */
+	typedef hak_uint16_t       hak_uchu_t;
 #	define HAK_SIZEOF_UCH_T 2
 #else
 	typedef hak_uint16_t       hak_uch_t;
-	typedef hak_uint16_t       hak_uchu_t; /* same as hak_uch_t as it is already unsigned */
+	typedef hak_uint16_t       hak_uchu_t;
 #	define HAK_SIZEOF_UCH_T 2
 #endif
 

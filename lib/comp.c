@@ -2172,7 +2172,7 @@ static int compile_break_p1 (hak_t* hak)
 	HAK_ASSERT(hak, cf->opcode == COP_COMPILE_BREAK_P1);
 	HAK_ASSERT(hak, cf->operand != HAK_NULL);
 
-	jip = cf->u._break.jump_inst_pos;;
+	jip = cf->u._break.jump_inst_pos;
 
 	/* HAK_CODE_LONG_PARAM_SIZE + 1 => size of the long JUMP_FORWARD instruction */
 	jump_offset = hak->code.bc.len - jip - (HAK_CODE_LONG_PARAM_SIZE + 1);

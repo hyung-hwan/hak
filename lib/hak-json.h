@@ -111,7 +111,7 @@ HAK_EXPORT hak_json_t* hak_json_open (
 	hak_mmgr_t*        mmgr,
 	hak_oow_t          xtnsize,
 	hak_json_prim_t*   prim,
-	hak_errnum_t*      errnum
+	hak_errinf_t*      errinf
 );
 
 HAK_EXPORT void hak_json_close (

@@ -888,10 +888,10 @@ static int kill_server_worker (hak_xproto_t* proto, hak_oow_t wid)
 	worker = proto_to_worker(proto);
 	server = worker->server;
 
-	pthread_mutex_lock (&server->worker_mutex);
+	pthread_mutex_lock(&server->worker_mutex);
 	if (wid >= server->wid_map.capa)
 	{
-		hak_server_seterrnum (server, HAK_ENOENT);
+		hak_server_seterrnum(server, HAK_ENOENT);
 		xret = -1;
 	}
 	else
@@ -900,7 +900,7 @@ static int kill_server_worker (hak_xproto_t* proto, hak_oow_t wid)
 
 		if (!server->wid_map.ptr[wid].used)
 		{
-			hak_server_seterrnum (server, HAK_ENOENT);
+			hak_server_seterrnum(server, HAK_ENOENT);
 			xret = -1;
 		}
 		else
@@ -908,17 +908,17 @@ static int kill_server_worker (hak_xproto_t* proto, hak_oow_t wid)
 			worker = server->wid_map.ptr[wid].u.worker;
 			if (!worker)
 			{
-				hak_server_seterrnum (server, HAK_ENOENT);
+				hak_server_seterrnum(server, HAK_ENOENT);
 				xret = -1;
 			}
 			else
 			{
-				if (worker->sck) shutdown (worker->sck, SHUT_RDWR);
-				if (worker->hak) hak_abort (worker->hak);
+				if (worker->sck) shutdown(worker->sck, SHUT_RDWR);
+				if (worker->hak) hak_abort(worker->hak);
 			}
 		}
 	}
-	pthread_mutex_unlock (&server->worker_mutex);
+	pthread_mutex_unlock(&server->worker_mutex);
 	return xret;
 }
 
@@ -1105,7 +1105,7 @@ static int send_chars (hak_xproto_t* proto, hak_xpkt_type_t xpkt_type, const hak
 
 /* ========================================================================= */
 
-hak_server_t* hak_server_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_server_prim_t* prim, hak_errnum_t* errnum)
+hak_server_t* hak_server_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_server_prim_t* prim, hak_errinf_t* errinf)
 {
 	hak_server_t* server = HAK_NULL;
 	hak_t* hak = HAK_NULL;
@@ -1117,26 +1117,32 @@ hak_server_t* hak_server_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_server_p
 	server = (hak_server_t*)HAK_MMGR_ALLOC(mmgr, HAK_SIZEOF(*server) + xtnsize);
 	if (!server)
 	{
-		if (errnum) *errnum = HAK_ESYSMEM;
-		return HAK_NULL;
+	esysmem:
+		if (errinf)
+		{
+			HAK_MEMSET(errinf, 0, HAK_SIZEOF(*errinf));
+			errinf->num = HAK_ESYSMEM;
+			hak_copy_oocstr(errinf->msg, HAK_COUNTOF(errinf->msg), hak_errnum_to_errstr(errinf->num));
+		}
+		goto oops;
 	}
 
-	hak = hak_openstdwithmmgr(mmgr, HAK_SIZEOF(*xtn), errnum);
+	hak = hak_openstdwithmmgr(mmgr, HAK_SIZEOF(*xtn), errinf);
 	if (!hak) goto oops;
 
 	/* replace the vmprim.log_write function */
 	hak->vmprim.log_write = server_log_write_for_dummy;
 
 	tmr = hak_tmr_open(hak, 0, 1024); /* TOOD: make the timer's default size configurable */
-	if (!tmr)
-	{
-		if (errnum) *errnum = HAK_ESYSMEM;
-		goto oops;
-	}
+	if (!tmr) goto esysmem;
 
 	if (hak_sys_open_pipes(pfd, 1) <= -1)
 	{
-		if (errnum) *errnum = hak->vmprim.syserrstrb(hak, 0, errno, HAK_NULL, 0);
+		if (errinf)
+		{
+			hak_seterrbfmtwithsyserr(hak, 0, errno, HAK_NULL, 0);
+			hak_geterrinf(hak, errinf);
+		}
 		goto oops;
 	}
 
@@ -1188,7 +1194,7 @@ oops:
 	/* NOTE: pipe should be closed if jump to here is made after pipe() above */
 	if (tmr) hak_tmr_close (tmr);
 	if (hak) hak_close(hak);
-	if (server) HAK_MMGR_FREE (mmgr, server);
+	if (server) HAK_MMGR_FREE(mmgr, server);
 	return HAK_NULL;
 }
 
@@ -1215,7 +1221,7 @@ void hak_server_close (hak_server_t* server)
 	hak_tmr_close (server->tmr);
 	hak_close (server->dummy_hak);
 
-	HAK_MMGR_FREE (server->_mmgr, server);
+	HAK_MMGR_FREE(server->_mmgr, server);
 }
 
 static HAK_INLINE int prepare_to_acquire_wid (hak_server_t* server)
@@ -1232,7 +1238,7 @@ static HAK_INLINE int prepare_to_acquire_wid (hak_server_t* server)
 	{
 		if (server->wid_map.capa >= HAK_SERVER_WID_MAX)
 		{
-			hak_server_seterrnum (server, HAK_EFLOOD);
+			hak_server_seterrnum(server, HAK_EFLOOD);
 			return -1;
 		}
 
@@ -1463,7 +1469,7 @@ static int worker_step (hak_server_worker_t* worker)
 			hak_oow_t bcap;
 			hak_uint8_t* bptr;
 
-			bptr = hak_xproto_getbuf(proto, &bcap);;
+			bptr = hak_xproto_getbuf(proto, &bcap);
 			x = recv(worker->sck, bptr, bcap, 0);
 			if (x <= -1)
 			{
@@ -2096,7 +2102,7 @@ int hak_server_setoption (hak_server_t* server, hak_server_option_t id, const vo
 			return 0;
 	}
 
-	hak_server_seterrnum (server, HAK_EINVAL);
+	hak_server_seterrnum(server, HAK_EINVAL);
 	return -1;
 }
 
@@ -2141,7 +2147,7 @@ int hak_server_getoption (hak_server_t* server, hak_server_option_t id, void* va
 			return 0;
 	};
 
-	hak_server_seterrnum (server, HAK_EINVAL);
+	hak_server_seterrnum(server, HAK_EINVAL);
 	return -1;
 }
 
@@ -2181,7 +2187,7 @@ const hak_ooch_t* hak_server_geterrmsg (hak_server_t* server)
 	return server->errmsg.buf;
 }
 
-void hak_server_seterrnum (hak_server_t* server, hak_errnum_t errnum)
+void hak_server_seterrnum(hak_server_t* server, hak_errnum_t errnum)
 {
 	/*if (server->shuterr) return; */
 	server->errnum = errnum;
@@ -2222,7 +2228,7 @@ void* hak_server_allocmem (hak_server_t* server, hak_oow_t size)
 	void* ptr;
 
 	ptr = HAK_MMGR_ALLOC(server->_mmgr, size);
-	if (!ptr) hak_server_seterrnum (server, HAK_ESYSMEM);
+	if (!ptr) hak_server_seterrnum(server, HAK_ESYSMEM);
 	return ptr;
 }
 
@@ -2231,7 +2237,7 @@ void* hak_server_callocmem (hak_server_t* server, hak_oow_t size)
 	void* ptr;
 
 	ptr = HAK_MMGR_ALLOC(server->_mmgr, size);
-	if (!ptr) hak_server_seterrnum (server, HAK_ESYSMEM);
+	if (!ptr) hak_server_seterrnum(server, HAK_ESYSMEM);
 	else HAK_MEMSET(ptr, 0, size);
 	return ptr;
 }
@@ -2239,11 +2245,11 @@ void* hak_server_callocmem (hak_server_t* server, hak_oow_t size)
 void* hak_server_reallocmem (hak_server_t* server, void* ptr, hak_oow_t size)
 {
 	ptr = HAK_MMGR_REALLOC(server->_mmgr, ptr, size);
-	if (!ptr) hak_server_seterrnum (server, HAK_ESYSMEM);
+	if (!ptr) hak_server_seterrnum(server, HAK_ESYSMEM);
 	return ptr;
 }
 
 void hak_server_freemem (hak_server_t* server, void* ptr)
 {
-	HAK_MMGR_FREE (server->_mmgr, ptr);
+	HAK_MMGR_FREE(server->_mmgr, ptr);
 }

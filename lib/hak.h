@@ -39,6 +39,30 @@ typedef struct hak_mod_t hak_mod_t;
 
 /* ========================================================================== */
 
+struct hak_bloc_t
+{
+	hak_oow_t line; /**< line */
+	hak_oow_t colm; /**< column */
+	const hak_bch_t* file; /**< file specified in #include */
+};
+typedef struct hak_bloc_t hak_bloc_t;
+
+struct hak_uloc_t
+{
+	hak_oow_t line; /**< line */
+	hak_oow_t colm; /**< column */
+	const hak_uch_t* file; /**< file specified in #include */
+};
+typedef struct hak_uloc_t hak_uloc_t;
+
+#if defined(HAK_OOCH_IS_UCH)
+typedef hak_uloc_t hak_loc_t;
+#else
+typedef hak_bloc_t hak_loc_t;
+#endif
+
+/* ========================================================================== */
+
 /**
  * The hak_errnum_t type defines the error codes.
  */
@@ -178,6 +202,40 @@ enum hak_synerrnum_t
 	HAK_SYNERR_RVALUE         /* invalid rvalue */
 };
 typedef enum hak_synerrnum_t hak_synerrnum_t;
+
+
+/* ========================================================================== */
+
+#define HAK_ERRMSG_CAPA (2048)
+
+/**
+ * The hak_errbinf_t type defines a placeholder for error information.
+ */
+struct hak_errbinf_t
+{
+	hak_oow_t    _instsize;
+	hak_errnum_t num;                  /**< error number */
+	hak_bch_t    msg[HAK_ERRMSG_CAPA]; /**< error message */
+	hak_bloc_t   loc;                  /**< error location */
+};
+typedef struct hak_errbinf_t hak_errbinf_t;
+
+struct hak_erruinf_t
+{
+	hak_oow_t    _instsize;
+	hak_errnum_t num;                  /**< error number */
+	hak_uch_t    msg[HAK_ERRMSG_CAPA]; /**< error message */
+	hak_uloc_t   loc;                  /**< error location */
+};
+typedef struct hak_erruinf_t hak_erruinf_t;
+
+#if defined(HAK_OOCH_IS_UCH)
+typedef hak_erruinf_t hak_errinf_t;
+#else
+typedef hak_errbinf_t hak_errinf_t;
+#endif
+
+/* ========================================================================== */
 
 enum hak_option_t
 {
@@ -1255,14 +1313,6 @@ enum hak_io_cmd_t
 };
 typedef enum hak_io_cmd_t hak_io_cmd_t;
 
-struct hak_loc_t
-{
-	hak_oow_t line; /**< line */
-	hak_oow_t colm; /**< column */
-	const hak_ooch_t*  file; /**< file specified in #include */
-};
-typedef struct hak_loc_t hak_loc_t;
-
 struct hak_lxc_t
 {
 	hak_ooci_t   c; /**< character */
@@ -1649,14 +1699,15 @@ struct hak_t
 			hak_bch_t bch[HAK_ERRMSG_CAPA];
 			hak_uch_t uch[HAK_ERRMSG_CAPA];
 		} tmpbuf;
-	#if defined(HAK_OOCH_IS_BCH)
-		hak_uch_t  xerrmsg[HAK_ERRMSG_CAPA];
-	#else
+	#if defined(HAK_OOCH_IS_UCH)
 		hak_bch_t  xerrmsg[HAK_ERRMSG_CAPA * 2];
+		hak_bch_t  xerrlocfile[256 * 2];
+	#else
+		hak_uch_t  xerrmsg[HAK_ERRMSG_CAPA];
+		hak_uch_t  xerrlocfile[256];
 	#endif
 		hak_ooch_t buf[HAK_ERRMSG_CAPA];
 		hak_oow_t len;
-
 	} errmsg;
 	hak_loc_t errloc;
 	int shuterr;
@@ -2130,7 +2181,7 @@ HAK_EXPORT hak_t* hak_open (
 	hak_mmgr_t*         mmgr,
 	hak_oow_t           xtnsize,
 	const hak_vmprim_t* vmprim,
-	hak_errnum_t*       errnum
+	hak_errinf_t*       errinf
 );
 /**/
 
@@ -2140,13 +2191,13 @@ HAK_EXPORT hak_t* hak_open (
 HAK_EXPORT hak_t* hak_openstdwithmmgr (
 	hak_mmgr_t*         mmgr,
 	hak_oow_t           xtnsize,
-	hak_errnum_t*       errnum
+	hak_errinf_t*       errinf
 );
 /**/
 
 HAK_EXPORT hak_t* hak_openstd (
 	hak_oow_t           xtnsize,
-	hak_errnum_t*       errnum
+	hak_errinf_t*       errinf
 );
 
 /**
@@ -2280,6 +2331,21 @@ HAK_EXPORT const hak_uch_t* hak_geterrumsg (
 HAK_EXPORT const hak_bch_t* hak_geterrbmsg (
 	hak_t* hak
 );
+
+HAK_EXPORT void hak_geterrbinf (
+	hak_t*         hak,
+	hak_errbinf_t* errinf
+);
+
+HAK_EXPORT void hak_geterruinf (
+	hak_t*         hak,
+	hak_erruinf_t* errinf
+);
+#if defined(HAK_OOCH_IS_UCH)
+#	define hak_geterrinf hak_geterruinf
+#else
+#	define hak_geterrinf hak_geterrbinf
+#endif
 
 HAK_EXPORT hak_oow_t hak_copyerrbmsg (
 	hak_t*     hak,

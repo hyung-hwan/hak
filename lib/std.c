@@ -4089,7 +4089,7 @@ static LONG WINAPI msw_exception_filter (struct _EXCEPTION_POINTERS* exinfo)
 }
 #endif
 
-hak_t* hak_openstdwithmmgr (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_errnum_t* errnum)
+hak_t* hak_openstdwithmmgr (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_errinf_t* errinf)
 {
 	hak_t* hak;
 	hak_vmprim_t vmprim;
@@ -4116,7 +4116,7 @@ hak_t* hak_openstdwithmmgr (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_errnum_t* e
 	vmprim.vm_getsig = vm_getsig;
 	vmprim.vm_setsig = vm_setsig;
 
-	hak = hak_open(mmgr, HAK_SIZEOF(xtn_t) + xtnsize, &vmprim, errnum);
+	hak = hak_open(mmgr, HAK_SIZEOF(xtn_t) + xtnsize, &vmprim, errinf);
 	if (HAK_UNLIKELY(!hak)) return HAK_NULL;
 
 	/* adjust the object size by the sizeof xtn_t so that hak_getxtn() returns the right pointer. */
@@ -4133,7 +4133,7 @@ hak_t* hak_openstdwithmmgr (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_errnum_t* e
 	cb.vm_cleanup = cb_vm_cleanup;
 	if (hak_regcb(hak, &cb) == HAK_NULL)
 	{
-		if (errnum) *errnum = HAK_ERRNUM(hak);
+		if (errinf) hak_geterrinf(hak, errinf);
 		hak_close(hak);
 		return HAK_NULL;
 	}
@@ -4145,9 +4145,9 @@ hak_t* hak_openstdwithmmgr (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_errnum_t* e
 	return hak;
 }
 
-hak_t* hak_openstd (hak_oow_t xtnsize, hak_errnum_t* errnum)
+hak_t* hak_openstd (hak_oow_t xtnsize, hak_errinf_t* errinf)
 {
-	return hak_openstdwithmmgr(&sys_mmgr, xtnsize, errnum);
+	return hak_openstdwithmmgr(&sys_mmgr, xtnsize, errinf);
 }
 
 /* --------------------------------------------------------------------- */

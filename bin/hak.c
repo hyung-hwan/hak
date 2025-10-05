@@ -30,6 +30,7 @@
 
 #include <hak.h>
 #include <hak-chr.h>
+#include <hak-cmgr.h>
 #include <hak-str.h>
 #include <hak-utl.h>
 #include <hak-opt.h>
@@ -279,9 +280,9 @@ static int handle_dbgopt (hak_t* hak, const hak_bch_t* str)
 	}
 	while (cm);
 
-	hak_getoption (hak, HAK_TRAIT, &trait);
+	hak_getoption(hak, HAK_TRAIT, &trait);
 	trait |= dbgopt;
-	hak_setoption (hak, HAK_TRAIT, &trait);
+	hak_setoption(hak, HAK_TRAIT, &trait);
 	return 0;
 }
 #endif
@@ -364,7 +365,7 @@ static void set_signal_to_default (int sig)
 static void print_info (void)
 {
 #if defined(HAK_CONFIGURE_CMD) && defined(HAK_CONFIGURE_ARGS)
-	printf ("Configured with: %s %s\n", HAK_CONFIGURE_CMD, HAK_CONFIGURE_ARGS);
+	printf("Configured with: %s %s\n", HAK_CONFIGURE_CMD, HAK_CONFIGURE_ARGS);
 #elif defined(_WIN32)
 	printf("Built for windows\n");
 #else
@@ -563,7 +564,7 @@ static int on_fed_cnode_in_interactive_mode (hak_t* hak, hak_cnode_t* obj)
 		/*print_error(hak, "compile"); */
 		xtn->feed.pos = xtn->feed.len; /* arrange to discard the rest of the line */
 		return -1; /* this causes the feed function to fail and
-		              the error hander for to print the error message */
+		              the error handler to print the error message */
 	}
 
 	xtn->feed.ncompexprs++;
@@ -765,7 +766,7 @@ static int feed_loop (hak_t* hak, xtn_t* xtn, int verbose)
 				}
 				else
 				{
-					print_incomplete_expression_error (hak);
+					print_incomplete_expression_error(hak);
 					goto reset_on_feed_error;
 				}
 		#endif
@@ -826,6 +827,7 @@ int main (int argc, char* argv[])
 	hak_t* hak = HAK_NULL;
 	xtn_t* xtn;
 	hak_cb_t hakcb;
+	hak_errinf_t errinf;
 
 	hak_bci_t c;
 	static hak_bopt_lng_t lopt[] =
@@ -922,10 +924,21 @@ int main (int argc, char* argv[])
 	if ((opt.ind + 1) != argc && (opt.ind + 2) != argc && !show_info) goto print_usage;
 #endif
 
-	hak = hak_openstd(HAK_SIZEOF(xtn_t), HAK_NULL);
+	hak = hak_openstd(HAK_SIZEOF(xtn_t), &errinf);
 	if (HAK_UNLIKELY(!hak))
 	{
-		printf ("ERROR: cannot open hak\n");
+		const hak_bch_t* msg;
+	#if defined(HAK_OOCH_IS_UCH)
+		hak_bch_t msgbuf[HAK_ERRMSG_CAPA];
+		hak_oow_t msglen, wcslen;
+		msglen = HAK_COUNTOF(msgbuf);
+		hak_conv_ucstr_to_bcstr_with_cmgr(errinf.msg, &wcslen, msgbuf, &msglen, hak_get_cmgr_by_id(HAK_CMGR_UTF8));
+		msg = msgbuf;
+	#else
+		msg = errinf.msg;
+	#endif
+
+		printf("ERROR: cannot open hak - %s\n", msg);
 		goto oops;
 	}
 
@@ -992,7 +1005,7 @@ int main (int argc, char* argv[])
 
 	if (show_info)
 	{
-		print_info ();
+		print_info();
 		return 0;
 	}
 
@@ -1033,9 +1046,9 @@ int main (int argc, char* argv[])
 // in the non-INTERACTIVE mode, the compiler generates MAKE_BLOCK for lambda functions.
 {
 	hak_bitmask_t trait;
-	hak_getoption (hak, HAK_TRAIT, &trait);
+	hak_getoption(hak, HAK_TRAIT, &trait);
 	trait |= HAK_TRAIT_INTERACTIVE;
-	hak_setoption (hak, HAK_TRAIT, &trait);
+	hak_setoption(hak, HAK_TRAIT, &trait);
 }
 #endif
 

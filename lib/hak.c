@@ -24,7 +24,7 @@
 
 #include "hak-prv.h"
 
-hak_t* hak_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, const hak_vmprim_t* vmprim, hak_errnum_t* errnum)
+hak_t* hak_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, const hak_vmprim_t* vmprim, hak_errinf_t* errinf)
 {
 	hak_t* hak;
 
@@ -32,17 +32,22 @@ hak_t* hak_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, const hak_vmprim_t* vmprim
 	HAK_ASSERT(hak, HAK_SIZEOF(hak_oow_t) == HAK_SIZEOF(hak_oop_t));
 
 	hak = (hak_t*)HAK_MMGR_ALLOC(mmgr, HAK_SIZEOF(*hak) + xtnsize);
-	if (hak)
+	if (HAK_LIKELY(hak))
 	{
 		if (hak_init(hak, mmgr, vmprim) <= -1)
 		{
-			if (errnum) *errnum = hak->errnum;
-			HAK_MMGR_FREE (mmgr, hak);
+			if (errinf) hak_geterrinf(hak, errinf);
+			HAK_MMGR_FREE(mmgr, hak);
 			hak = HAK_NULL;
 		}
 		else HAK_MEMSET(hak + 1, 0, xtnsize);
 	}
-	else if (errnum) *errnum = HAK_ESYSMEM;
+	else if (errinf)
+	{
+		HAK_MEMSET(errinf, 0, HAK_SIZEOF(*errinf));
+		errinf->num = HAK_ESYSMEM;
+		hak_copy_oocstr(errinf->msg, HAK_COUNTOF(errinf->msg), hak_errnum_to_errstr(errinf->num));
+	}
 
 	return hak;
 }
@@ -50,7 +55,7 @@ hak_t* hak_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, const hak_vmprim_t* vmprim
 void hak_close (hak_t* hak)
 {
 	hak_fini(hak);
-	HAK_MMGR_FREE (HAK_MMGR(hak), hak);
+	HAK_MMGR_FREE(HAK_MMGR(hak), hak);
 }
 
 void* hak_getxtn (hak_t* hak)
@@ -440,7 +445,6 @@ int hak_setoption (hak_t* hak, hak_option_t id, const void* value)
 			hak->option.log_maxcapa = *(hak_oow_t*)value;
 			break;
 
-
 		case HAK_LOG_TARGET_BCSTR:
 		{
 			hak_bch_t* v1;
@@ -724,7 +728,7 @@ void* hak_reallocmem (hak_t* hak, void* ptr, hak_oow_t size)
 
 void hak_freemem (hak_t* hak, void* ptr)
 {
-	HAK_MMGR_FREE (HAK_MMGR(hak), ptr);
+	HAK_MMGR_FREE(HAK_MMGR(hak), ptr);
 }
 
 

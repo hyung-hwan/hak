@@ -617,7 +617,7 @@ static int fmt_outv (hak_t* hak, hak_fmtout_t* fmtout, va_list ap)
 		case '5': case '6': case '7': case '8': case '9':
 		{
 			if (flagc & FLAGC_LENMOD) goto invalid_format;
-			for (n = 0;; fmtptr += fmtchsz)
+			for (n = 0; ; fmtptr += fmtchsz)
 			{
 				n = n * 10 + uch - '0';
 				switch (fmtout->fmt_type)
@@ -2212,7 +2212,7 @@ static HAK_INLINE int format_stack_args (hak_t* hak, hak_fmtout_t* fmtout, hak_o
 		case '1': case '2': case '3': case '4':
 		case '5': case '6': case '7': case '8': case '9':
 			if (flagc & FLAGC_LENMOD) goto invalid_format;
-			for (n = 0;; ++fmtptr)
+			for (n = 0; ; ++fmtptr)
 			{
 				n = n * 10 + ch - '0';
 				ch = *fmtptr;

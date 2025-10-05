@@ -263,7 +263,7 @@ static int invoke_data_inst (hak_json_t* json, hak_json_inst_t inst)
 	{
 		if (inst != HAK_JSON_INST_STRING)
 		{
-			hak_json_seterrbfmt (json, HAK_EINVAL, "dictionary key not a string - %.*js", json->tok.len, json->tok.ptr);
+			hak_json_seterrbfmt(json, HAK_EINVAL, "dictionary key not a string - %.*js", json->tok.len, json->tok.ptr);
 			return -1;
 		}
 
@@ -328,7 +328,7 @@ static int handle_string_value_char (hak_json_t* json, hak_ooci_t c)
 				if (n == 0 || n > HAK_COUNTOF(bcsbuf))
 				{
 					/* illegal character or buffer to small */
-					hak_json_seterrbfmt (json, HAK_EECERR, "unable to convert %jc", json->state_stack->u.sv.acc);
+					hak_json_seterrbfmt(json, HAK_EECERR, "unable to convert %jc", json->state_stack->u.sv.acc);
 					return -1;
 				}
 
@@ -476,7 +476,7 @@ static int handle_character_value_char (hak_json_t* json, hak_ooci_t c)
 
 		if (json->tok.len < 1)
 		{
-			hak_json_seterrbfmt (json, HAK_EINVAL, "no character in a character literal");
+			hak_json_seterrbfmt(json, HAK_EINVAL, "no character in a character literal");
 			return -1;
 		}
 		if (invoke_data_inst(json, HAK_JSON_INST_CHARACTER) <= -1) return -1;
@@ -488,7 +488,7 @@ static int handle_character_value_char (hak_json_t* json, hak_ooci_t c)
 
 	if (json->tok.len > 1)
 	{
-		hak_json_seterrbfmt (json, HAK_EINVAL, "too many characters in a character literal - %.*js", json->tok.len, json->tok.ptr);
+		hak_json_seterrbfmt(json, HAK_EINVAL, "too many characters in a character literal - %.*js", json->tok.len, json->tok.ptr);
 		return -1;
 	}
 
@@ -515,7 +515,7 @@ static int handle_numeric_value_char (hak_json_t* json, hak_ooci_t c)
 	HAK_ASSERT(json->dummy_hak, json->tok.len > 0);
 	if (!is_digitchar(json->tok.ptr[json->tok.len - 1]))
 	{
-		hak_json_seterrbfmt (json, HAK_EINVAL, "invalid numeric value - %.*js", json->tok.len, json->tok.ptr);
+		hak_json_seterrbfmt(json, HAK_EINVAL, "invalid numeric value - %.*js", json->tok.len, json->tok.ptr);
 		return -1;
 	}
 	if (invoke_data_inst(json, HAK_JSON_INST_NUMBER) <= -1) return -1;
@@ -539,7 +539,7 @@ static int handle_word_value_char (hak_json_t* json, hak_ooci_t c)
 	else if (hak_comp_oochars_bcstr(json->tok.ptr, json->tok.len, "false") == 0) inst = HAK_JSON_INST_FALSE;
 	else
 	{
-		hak_json_seterrbfmt (json, HAK_EINVAL, "invalid word value - %.*js", json->tok.len, json->tok.ptr);
+		hak_json_seterrbfmt(json, HAK_EINVAL, "invalid word value - %.*js", json->tok.len, json->tok.ptr);
 		return -1;
 	}
 
@@ -572,7 +572,7 @@ static int handle_start_char (hak_json_t* json, hak_ooci_t c)
 	}
 	else
 	{
-		hak_json_seterrbfmt (json, HAK_EINVAL, "not starting with [ or { - %jc", (hak_ooch_t)c);
+		hak_json_seterrbfmt(json, HAK_EINVAL, "not starting with [ or { - %jc", (hak_ooch_t)c);
 		return -1;
 	}
 }
@@ -589,7 +589,7 @@ static int handle_char_in_array (hak_json_t* json, hak_ooci_t c)
 	{
 		if (!json->state_stack->u.ia.got_value)
 		{
-			hak_json_seterrbfmt (json, HAK_EINVAL, "redundant comma in array - %jc", (hak_ooch_t)c);
+			hak_json_seterrbfmt(json, HAK_EINVAL, "redundant comma in array - %jc", (hak_ooch_t)c);
 			return -1;
 		}
 		json->state_stack->u.ia.got_value = 0;
@@ -604,7 +604,7 @@ static int handle_char_in_array (hak_json_t* json, hak_ooci_t c)
 	{
 		if (json->state_stack->u.ia.got_value)
 		{
-			hak_json_seterrbfmt (json, HAK_EINVAL, "comma required in array - %jc", (hak_ooch_t)c);
+			hak_json_seterrbfmt(json, HAK_EINVAL, "comma required in array - %jc", (hak_ooch_t)c);
 			return -1;
 		}
 
@@ -651,7 +651,7 @@ static int handle_char_in_array (hak_json_t* json, hak_ooci_t c)
 		}
 		else
 		{
-			hak_json_seterrbfmt (json, HAK_EINVAL, "wrong character inside array - %jc[%d]", (hak_ooch_t)c, (int)c);
+			hak_json_seterrbfmt(json, HAK_EINVAL, "wrong character inside array - %jc[%d]", (hak_ooch_t)c, (int)c);
 			return -1;
 		}
 	}
@@ -669,7 +669,7 @@ static int handle_char_in_dic (hak_json_t* json, hak_ooci_t c)
 	{
 		if (json->state_stack->u.id.state != 1)
 		{
-			hak_json_seterrbfmt (json, HAK_EINVAL, "redundant colon in dictionary - %jc", (hak_ooch_t)c);
+			hak_json_seterrbfmt(json, HAK_EINVAL, "redundant colon in dictionary - %jc", (hak_ooch_t)c);
 			return -1;
 		}
 		json->state_stack->u.id.state++;
@@ -679,7 +679,7 @@ static int handle_char_in_dic (hak_json_t* json, hak_ooci_t c)
 	{
 		if (json->state_stack->u.id.state != 3)
 		{
-			hak_json_seterrbfmt (json, HAK_EINVAL, "redundant comma in dicitonary - %jc", (hak_ooch_t)c);
+			hak_json_seterrbfmt(json, HAK_EINVAL, "redundant comma in dicitonary - %jc", (hak_ooch_t)c);
 			return -1;
 		}
 		json->state_stack->u.id.state = 0;
@@ -694,12 +694,12 @@ static int handle_char_in_dic (hak_json_t* json, hak_ooci_t c)
 	{
 		if (json->state_stack->u.id.state == 1)
 		{
-			hak_json_seterrbfmt (json, HAK_EINVAL, "colon required in dicitonary - %jc", (hak_ooch_t)c);
+			hak_json_seterrbfmt(json, HAK_EINVAL, "colon required in dicitonary - %jc", (hak_ooch_t)c);
 			return -1;
 		}
 		else if (json->state_stack->u.id.state == 3)
 		{
-			hak_json_seterrbfmt (json, HAK_EINVAL, "comma required in dicitonary - %jc", (hak_ooch_t)c);
+			hak_json_seterrbfmt(json, HAK_EINVAL, "comma required in dicitonary - %jc", (hak_ooch_t)c);
 			return -1;
 		}
 
@@ -746,7 +746,7 @@ static int handle_char_in_dic (hak_json_t* json, hak_ooci_t c)
 		}
 		else
 		{
-			hak_json_seterrbfmt (json, HAK_EINVAL, "wrong character inside dictionary - %jc[%d]", (hak_ooch_t)c, (int)c);
+			hak_json_seterrbfmt(json, HAK_EINVAL, "wrong character inside dictionary - %jc[%d]", (hak_ooch_t)c, (int)c);
 			return -1;
 		}
 	}
@@ -768,7 +768,7 @@ start_over:
 		}
 		else
 		{
-			hak_json_seterrbfmt (json, HAK_EFINIS, "unexpected end of data");
+			hak_json_seterrbfmt(json, HAK_EFINIS, "unexpected end of data");
 			return -1;
 		}
 	}
@@ -804,7 +804,7 @@ start_over:
 			break;
 
 		default:
-			hak_json_seterrbfmt (json, HAK_EINTERN, "internal error - must not be called for state %d", (int)json->state_stack->state);
+			hak_json_seterrbfmt(json, HAK_EINTERN, "internal error - must not be called for state %d", (int)json->state_stack->state);
 			return -1;
 	}
 
@@ -911,7 +911,7 @@ oops:
 
 /* ========================================================================= */
 
-hak_json_t* hak_json_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_json_prim_t* prim, hak_errnum_t* errnum)
+hak_json_t* hak_json_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_json_prim_t* prim, hak_errinf_t* errinf)
 {
 	hak_json_t* json;
 	hak_t* hak;
@@ -920,14 +920,19 @@ hak_json_t* hak_json_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_json_prim_t*
 	json = (hak_json_t*)HAK_MMGR_ALLOC(mmgr, HAK_SIZEOF(*json) + xtnsize);
 	if (!json)
 	{
-		if (errnum) *errnum = HAK_ESYSMEM;
+		if (errinf)
+		{
+			HAK_MEMSET(errinf, 0, HAK_SIZEOF(*errinf));
+			errinf->num = HAK_ESYSMEM;
+			hak_copy_oocstr(errinf->msg, HAK_COUNTOF(errinf->msg), hak_errnum_to_errstr(errinf->num));
+		}
 		return HAK_NULL;
 	}
 
-	hak = hak_openstdwithmmgr(mmgr, HAK_SIZEOF(*xtn), errnum);
+	hak = hak_openstdwithmmgr(mmgr, HAK_SIZEOF(*xtn), errinf);
 	if (!hak)
 	{
-		HAK_MMGR_FREE (mmgr, json);
+		HAK_MMGR_FREE(mmgr, json);
 		return HAK_NULL;
 	}
 
@@ -987,7 +992,7 @@ int hak_json_setoption (hak_json_t* json, hak_json_option_t id, const void* valu
 			return 0;
 	}
 
-	hak_json_seterrnum (json, HAK_EINVAL);
+	hak_json_seterrnum(json, HAK_EINVAL);
 	return -1;
 }
 
@@ -1004,7 +1009,7 @@ int hak_json_getoption (hak_json_t* json, hak_json_option_t id, void* value)
 			return 0;
 	};
 
-	hak_json_seterrnum (json, HAK_EINVAL);
+	hak_json_seterrnum(json, HAK_EINVAL);
 	return -1;
 }
 
@@ -1057,7 +1062,7 @@ void hak_json_seterrbfmt (hak_json_t* json, hak_errnum_t errnum, const hak_bch_t
 	va_list ap;
 
 	va_start (ap, fmt);
-	hak_seterrbfmtv (json->dummy_hak, errnum, fmt, ap);
+	hak_seterrbfmtv(json->dummy_hak, errnum, fmt, ap);
 	va_end (ap);
 
 	HAK_ASSERT(json->dummy_hak, HAK_COUNTOF(json->errmsg.buf) == HAK_COUNTOF(json->dummy_hak->errmsg.buf));
@@ -1071,7 +1076,7 @@ void hak_json_seterrufmt (hak_json_t* json, hak_errnum_t errnum, const hak_uch_t
 	va_list ap;
 
 	va_start (ap, fmt);
-	hak_seterrufmtv (json->dummy_hak, errnum, fmt, ap);
+	hak_seterrufmtv(json->dummy_hak, errnum, fmt, ap);
 	va_end (ap);
 
 	HAK_ASSERT(json->dummy_hak, HAK_COUNTOF(json->errmsg.buf) == HAK_COUNTOF(json->dummy_hak->errmsg.buf));
@@ -1105,7 +1110,7 @@ void* hak_json_allocmem (hak_json_t* json, hak_oow_t size)
 	void* ptr;
 
 	ptr = HAK_MMGR_ALLOC(json->mmgr, size);
-	if (!ptr) hak_json_seterrnum (json, HAK_ESYSMEM);
+	if (!ptr) hak_json_seterrnum(json, HAK_ESYSMEM);
 	return ptr;
 }
 
@@ -1114,7 +1119,7 @@ void* hak_json_callocmem (hak_json_t* json, hak_oow_t size)
 	void* ptr;
 
 	ptr = HAK_MMGR_ALLOC(json->mmgr, size);
-	if (!ptr) hak_json_seterrnum (json, HAK_ESYSMEM);
+	if (!ptr) hak_json_seterrnum(json, HAK_ESYSMEM);
 	else HAK_MEMSET(ptr, 0, size);
 	return ptr;
 }
@@ -1122,13 +1127,13 @@ void* hak_json_callocmem (hak_json_t* json, hak_oow_t size)
 void* hak_json_reallocmem (hak_json_t* json, void* ptr, hak_oow_t size)
 {
 	ptr = HAK_MMGR_REALLOC(json->mmgr, ptr, size);
-	if (!ptr) hak_json_seterrnum (json, HAK_ESYSMEM);
+	if (!ptr) hak_json_seterrnum(json, HAK_ESYSMEM);
 	return ptr;
 }
 
 void hak_json_freemem (hak_json_t* json, void* ptr)
 {
-	HAK_MMGR_FREE (json->mmgr, ptr);
+	HAK_MMGR_FREE(json->mmgr, ptr);
 }
 
 /* ========================================================================= */
