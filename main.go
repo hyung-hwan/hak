@@ -96,7 +96,7 @@ func handle_arguments(param *Param) error {
 
 func main() {
 
-	var x *hak.HAK = nil
+	var x *hak.Hak = nil
 	var err error = nil
 	var param Param
 

@@ -31,26 +31,26 @@ import (
 )
 
 type CciImpl interface {
-	Open(g *HAK, name string) (int, error)
+	Open(g *Hak, name string) (int, error)
 	Close(fd int)
 	Read(fd int, buf []rune) (int, error)
 }
 
 type UdiImpl interface {
-	Open(g *HAK) error
+	Open(g *Hak) error
 	Close()
 	Read(buf []rune) (int, error)
 }
 
 type UdoImpl interface {
-	Open(g *HAK) error
+	Open(g *Hak) error
 	Close()
 	Write(data []rune) error
 	WriteBytes(data []byte) error
 	Flush() error
 }
 
-type HAK struct {
+type Hak struct {
 	c       *C.hak_t
 	inst_no int
 	io      struct {
@@ -79,33 +79,29 @@ const TRAIT_LANG_ENABLE_EOL BitMask = C.HAK_TRAIT_LANG_ENABLE_EOL
 
 var inst_table InstanceTable
 
-func deregister_instance(g *HAK) {
+func deregister_instance(g *Hak) {
 	if g.inst_no >= 0 {
 		inst_table.delete_instance(g.inst_no)
 		g.inst_no = -1
 	}
 }
 
-func New() (*HAK, error) {
+func New() (*Hak, error) {
 	var c *C.hak_t
-	var g *HAK
+	var g *Hak
 	var ext *Ext
-	var errnum C.hak_errnum_t
+	var errinf C.hak_errinf_t
 
-	c = C.hak_openstd(C.hak_oow_t(unsafe.Sizeof(*ext)), &errnum)
+	c = C.hak_openstd(C.hak_oow_t(unsafe.Sizeof(*ext)), &errinf)
 	if c == nil {
-		var buf [64]C.hak_uch_t
-		var ptr *C.hak_uch_t
 		var err error
-
-		ptr = C.hak_errnum_to_errucstr(errnum, &buf[0], C.hak_oow_t(cap(buf)))
-		err = fmt.Errorf("%s", string(ucstr_to_rune_slice(ptr)))
+		err = fmt.Errorf("%s", string(ucstr_to_rune_slice(&errinf.msg[0])))
 		return nil, err
 	}
 
 	ext = (*Ext)(unsafe.Pointer(C.hak_getxtn(c)))
 
-	g = &HAK{c: c, inst_no: -1}
+	g = &Hak{c: c, inst_no: -1}
 
 	runtime.SetFinalizer(g, deregister_instance)
 	g.inst_no = inst_table.add_instance(c, g)
@@ -114,12 +110,12 @@ func New() (*HAK, error) {
 	return g, nil
 }
 
-func (hak *HAK) Close() {
+func (hak *Hak) Close() {
 	C.hak_close(hak.c)
 	deregister_instance(hak)
 }
 
-func (hak *HAK) make_errinfo() *Err {
+func (hak *Hak) make_errinfo() *Err {
 	var loc C.hak_loc_t
 	var err Err
 	var errnum C.hak_errnum_t
@@ -147,7 +143,7 @@ func (hak *HAK) make_errinfo() *Err {
 	return &err
 }
 
-func (hak *HAK) GetTrait() BitMask {
+func (hak *Hak) GetTrait() BitMask {
 	var x C.int
 	var log_mask BitMask = 0
 
@@ -160,7 +156,7 @@ func (hak *HAK) GetTrait() BitMask {
 	return log_mask
 }
 
-func (hak *HAK) SetTrait(log_mask BitMask) {
+func (hak *Hak) SetTrait(log_mask BitMask) {
 	var x C.int
 
 	x = C.hak_setoption(hak.c, C.HAK_TRAIT, unsafe.Pointer(&log_mask))
@@ -170,7 +166,7 @@ func (hak *HAK) SetTrait(log_mask BitMask) {
 	}
 }
 
-func (hak *HAK) GetLogMask() BitMask {
+func (hak *Hak) GetLogMask() BitMask {
 	var x C.int
 	var log_mask BitMask = 0
 
@@ -183,7 +179,7 @@ func (hak *HAK) GetLogMask() BitMask {
 	return log_mask
 }
 
-func (hak *HAK) SetLogMask(log_mask BitMask) {
+func (hak *Hak) SetLogMask(log_mask BitMask) {
 	var x C.int
 
 	x = C.hak_setoption(hak.c, C.HAK_LOG_MASK, unsafe.Pointer(&log_mask))
@@ -193,7 +189,7 @@ func (hak *HAK) SetLogMask(log_mask BitMask) {
 	}
 }
 
-func (hak *HAK) GetLogTarget() string {
+func (hak *Hak) GetLogTarget() string {
 	var x C.int
 	var tgt *C.char
 
@@ -206,7 +202,7 @@ func (hak *HAK) GetLogTarget() string {
 	return C.GoString(tgt)
 }
 
-func (hak *HAK) SetLogTarget(target string) {
+func (hak *Hak) SetLogTarget(target string) {
 	var x C.int
 	var tgt *C.char
 
@@ -220,7 +216,7 @@ func (hak *HAK) SetLogTarget(target string) {
 	}
 }
 
-func (hak *HAK) Ignite(memsize uintptr) error {
+func (hak *Hak) Ignite(memsize uintptr) error {
 	var x C.int
 
 	x = C.hak_ignite(hak.c, C.hak_oow_t(memsize))
@@ -232,7 +228,7 @@ func (hak *HAK) Ignite(memsize uintptr) error {
 	return nil
 }
 
-func (hak *HAK) AddBuiltinPrims() error {
+func (hak *Hak) AddBuiltinPrims() error {
 	var x C.int
 
 	x = C.hak_addbuiltinprims(hak.c)
@@ -247,7 +243,7 @@ func (hak *HAK) AddBuiltinPrims() error {
 // - the main stream is not handled by this IO handler
 // - the feeder must read the main stream and pass data.
 // - the inclusion of another file from the main stream requires the path information of the main strea.
-func (hak *HAK) AttachCCIO(cci CciImpl, main_cci_name string) error {
+func (hak *Hak) AttachCCIO(cci CciImpl, main_cci_name string) error {
 	var x C.int
 	var old_cci CciImpl
 	var old_cci_name string
@@ -269,7 +265,7 @@ func (hak *HAK) AttachCCIO(cci CciImpl, main_cci_name string) error {
 	return nil
 }
 
-func (hak *HAK) AttachUDIO(udi UdiImpl, udo UdoImpl) error {
+func (hak *Hak) AttachUDIO(udi UdiImpl, udo UdoImpl) error {
 	var x C.int
 	var os UdiImpl
 	var op UdoImpl
@@ -293,7 +289,7 @@ func (hak *HAK) AttachUDIO(udi UdiImpl, udo UdoImpl) error {
 	return nil
 }
 
-func (hak *HAK) BeginFeed() error {
+func (hak *Hak) BeginFeed() error {
 	var x C.int
 
 	x = C.hak_beginfeed(hak.c, nil)
@@ -305,7 +301,7 @@ func (hak *HAK) BeginFeed() error {
 	return nil
 }
 
-func (hak *HAK) EndFeed() error {
+func (hak *Hak) EndFeed() error {
 	var x C.int
 
 	x = C.hak_endfeed(hak.c)
@@ -317,7 +313,7 @@ func (hak *HAK) EndFeed() error {
 	return nil
 }
 
-func (hak *HAK) FeedString(str string) error {
+func (hak *Hak) FeedString(str string) error {
 	var x C.int
 	var q []C.hak_uch_t
 
@@ -330,7 +326,7 @@ func (hak *HAK) FeedString(str string) error {
 	return nil
 }
 
-func (hak *HAK) FeedRunes(str []rune) error {
+func (hak *Hak) FeedRunes(str []rune) error {
 	var x C.int
 	var q []C.hak_uch_t
 
@@ -343,7 +339,7 @@ func (hak *HAK) FeedRunes(str []rune) error {
 	return nil
 }
 
-func (hak *HAK) FeedFromReader(rdr io.Reader) error {
+func (hak *Hak) FeedFromReader(rdr io.Reader) error {
 	var err error
 	var n int
 	var x C.int
@@ -368,7 +364,7 @@ func (hak *HAK) FeedFromReader(rdr io.Reader) error {
 	return nil
 }
 
-func (hak *HAK) FeedFromFile(file string) error {
+func (hak *Hak) FeedFromFile(file string) error {
 	var f *os.File
 	var err error
 
@@ -382,7 +378,7 @@ func (hak *HAK) FeedFromFile(file string) error {
 	return hak.FeedFromReader(bufio.NewReader(f))
 }
 
-func (hak *HAK) Execute() error {
+func (hak *Hak) Execute() error {
 	var x C.hak_oop_t
 
 	x = C.hak_execute(hak.c)
@@ -396,7 +392,7 @@ func (hak *HAK) Execute() error {
 	return nil
 }
 
-func (hak *HAK) Decode() error {
+func (hak *Hak) Decode() error {
 	var x C.int
 
 	x = C.hak_decode(hak.c, C.hak_getcode(hak.c), 0, C.hak_getbclen(hak.c))
@@ -408,11 +404,11 @@ func (hak *HAK) Decode() error {
 	return nil
 }
 
-func (hak *HAK) get_errmsg() string {
+func (hak *Hak) get_errmsg() string {
 	return C.GoString(C.hak_geterrbmsg(hak.c))
 }
 
-func (hak *HAK) set_errmsg(num C.hak_errnum_t, msg string) {
+func (hak *Hak) set_errmsg(num C.hak_errnum_t, msg string) {
 	var ptr *C.char
 	ptr = C.CString(msg)
 	defer C.free(unsafe.Pointer(ptr))
@@ -467,7 +463,7 @@ func rune_slice_to_uchars(r []rune) []C.hak_uch_t {
 	return c
 }
 
-func c_to_go(c *C.hak_t) *HAK {
+func c_to_go(c *C.hak_t) *Hak {
 	var ext *Ext
 	var inst Instance
 

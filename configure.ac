@@ -554,22 +554,28 @@ if test "${enable_wide_char}" = "yes:4"
 then
 	AC_DEFINE([HAK_WIDE_CHAR_SIZE],[4],[Wide-character type size])
 	AC_DEFINE([HAK_ENABLE_WIDE_CHAR],[1],[Use the wide-character type as the default character type])
+	wide_char_size=4
 elif test "${enable_wide_char}" = "yes:2"
 then
 	AC_DEFINE([HAK_WIDE_CHAR_SIZE],[2],[Wide-character type size])
 	AC_DEFINE([HAK_ENABLE_WIDE_CHAR],[1],[Use the wide-character type as the default character type])
+	wide_char_size=2
 elif test "${enable_wide_char}" = "yes"
 then
-	AC_DEFINE([HAK_WIDE_CHAR_SIZE],[1],[Wide-character type size])
+	AC_DEFINE([HAK_WIDE_CHAR_SIZE],[2],[Wide-character type size])
 	AC_DEFINE([HAK_ENABLE_WIDE_CHAR],[1],[Use the wide-character type as the default character type])
+	wide_char_size=2
 elif test "${enable_wide_char}" = "no:4"
 then
 	AC_DEFINE([HAK_WIDE_CHAR_SIZE],[4],[Wide-character type size])
+	wide_char_size=4
 elif test "${enable_wide_char}" = "no:2"
 then
 	AC_DEFINE([HAK_WIDE_CHAR_SIZE],[2],[Wide-character type size])
+	wide_char_size=2
 else
-	AC_DEFINE([HAK_WIDE_CHAR_SIZE],[1],[Wide-character type size])
+	AC_DEFINE([HAK_WIDE_CHAR_SIZE],[2],[Wide-character type size])
+	wide_char_size=2
 fi
 
 AC_ARG_ENABLE([full-liw],
@@ -696,6 +702,8 @@ dnl ====  subsititution of some key items ====
 AC_SUBST(HAK_PROJECT_AUTHOR, "${PACKAGE_BUGREPORT}")
 AC_SUBST(HAK_PROJECT_URL, "${PACKAGE_URL}")
 AC_SUBST(HAK_SYS_LIB_SEARCH_PATH_SPEC, ["${sys_lib_search_path_spec}"])
+AM_CONDITIONAL(HAK_WIDE_CHAR_SIZE_IS_4, test "x${wide_char_size}" = "x4")
+AM_CONDITIONAL(HAK_WIDE_CHAR_SIZE_IS_2, test "x${wide_char_size}" = "x2")
 AM_CONDITIONAL(HAK_LIB_QUADMATH_REQUIRED, test "x${hak_lib_quadmath_required}" = "xyes")
 
 dnl === configure arguments

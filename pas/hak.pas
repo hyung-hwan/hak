@@ -20,6 +20,17 @@ type
 	TRAIT_LANG_ENABLE_EOL = (BitMask(1) shl 14); *)
 
 type
+	Bchar = System.AnsiChar;
+	PBchar = System.PAnsiChar;
+
+{$if defined(HAK_WIDE_CHAR_SIZE_IS_4)}
+	Uchar = System.UCS4Char;
+	PUchar = System.PUCS4Char;
+{$else}
+	Uchar = System.WideChar;
+	PUchar = System.PWideChar;
+{$endif}
+
 	TraitBit = ( (* this enum must follow hak_trait_t in hak.h *)
 		LANG_ENABLE_EOL = (BitMask(1) shl 14)
 	);
@@ -47,10 +58,10 @@ type
 //{$packrecords c}
 	CciArgPtr = ^CciArg;
 	CciArg = record (* this record must follow the public part of hak_io_cciarg_t in hak.h *)
-		name: pwidechar;
+		name: PUchar;
 		handle: pointer;
 		byte_oriented: integer;
-		buf: array[0..(HAK_CCI_BUF_LEN - 1)] of widechar;
+		buf: array[0..(HAK_CCI_BUF_LEN - 1)] of Uchar;
 		xlen: System.SizeUint;
 		includer: CciArgPtr;
 	end;
@@ -66,11 +77,15 @@ type
 		destructor Destroy(); override;
 		procedure Ignite(heapsize: System.SizeUint);
 		procedure AddBuiltinPrims();
-		procedure CompileFile(filename: pansichar);
-		procedure CompileText(text: pansichar);
-		procedure CompileText(text: pansichar; len: System.SizeUint);
-		procedure CompileText(text: pwidechar);
-		procedure CompileText(text: pwidechar; len: System.SizeUint);
+		procedure CompileFile(filename: PBchar);
+		procedure CompileText(text: PBchar);
+		procedure CompileText(text: PBchar; len: System.SizeUint);
+		procedure CompileText(text: PUchar);
+		procedure CompileText(text: PUchar; len: System.SizeUint);
+{$if defined(HAK_WIDE_CHAR_SIZE_IS_4)}
+		procedure CompileText(text: PWideChar);
+		procedure CompileText(text: PWideChar; len: System.SizeUint);
+{$endif}
 		procedure Execute();
 
 	protected
@@ -93,55 +108,75 @@ type
 	Location = record
 		line: System.SizeUint;
 		colm: System.SizeUint;
-		filp: pwidechar;
+		filp: PUchar;
 	end;
+
+	SynerrPtr = ^Synerr;
 	Synerr = record
 		num: integer;
 		loc: Location;
 		tgt: record
-			val: array[0..255] of widechar;
+			val: array[0..255] of Uchar;
 			len: System.SizeUint;
 		end;
 	end;
 
-	SynerrPtr = ^Synerr;
+	ErrbinfPtr = ^Errbinf;
+	Errbinf = record
+		num: integer;
+		msg: array[0..2047] of Bchar;
+		loc: Location;
+	end;
+
+	ErruinfPtr = ^Errbinf;
+	Erruinf = record
+		num: integer;
+		msg: array[0..2047] of Uchar;
+		loc: Location;
+	end;
+
+	Errinf = Erruinf;
+	ErrinfPtr = ErruinfPtr;
 
 (*----- external hak function -----*)
 function hak_errnum_to_errbcstr(errnum: integer; errbuf: pointer; errbufsz: System.SizeUint): pointer; cdecl; external;
 function hak_errnum_is_synerr(errnum: integer): boolean; cdecl; external;
 
-function hak_openstd(xtnsize: System.SizeUint; errnum: pointer): pointer; cdecl; external;
+function hak_openstd(xtnsize: System.SizeUint; errinf: pointer): pointer; cdecl; external;
 procedure hak_close(handle: pointer); cdecl; external;
 function hak_getxtn(handle: pointer): InterpExtPtr; cdecl; external;
 
 function hak_setoption(handle: pointer; option: Option; value: pointer): integer; cdecl; external;
 function hak_getoption(handle: pointer; option: Option; value: pointer): integer; cdecl; external;
 
-procedure hak_seterrnum (handle: pointer; errnum: integer); cdecl; external;
+procedure hak_seterrnum(handle: pointer; errnum: integer); cdecl; external;
 function hak_geterrnum(handle: pointer): integer; cdecl; external;
 
-procedure hak_seterrbmsg (handle: pointer; errnum: integer; errmsg: pansichar); cdecl; external;
-function hak_geterrbmsg(handle: pointer): pansichar; cdecl; external;
+procedure hak_seterrbmsg(handle: pointer; errnum: integer; errmsg: PBchar); cdecl; external;
+function hak_geterrbmsg(handle: pointer): PBchar; cdecl; external;
+
+procedure hak_geterrbinf(handle: pointer; errinf: pointer); cdecl; external;
+procedure hak_geterruinf(handle: pointer; errinf: pointer); cdecl; external;
 
 function hak_ignite(handle: pointer; heapsize: System.SizeUint): integer; cdecl; external;
 function hak_addbuiltinprims(handle: pointer): integer; cdecl; external;
 function hak_beginfeed(handle: pointer; on_cnode: pointer): integer; cdecl; external;
-function hak_feedbchars(handle: pointer; data: pansichar; len: System.SizeUint): integer; cdecl; external;
-function hak_feeduchars(handle: pointer; data: pwidechar; len: System.SizeUint): integer; cdecl; external; (* this is wrong in deed - hak_uchar_t may not been widechar ..*)
+function hak_feedbchars(handle: pointer; data: PBchar; len: System.SizeUint): integer; cdecl; external;
+function hak_feeduchars(handle: pointer; data: PUchar; len: System.SizeUint): integer; cdecl; external; (* this is wrong in deed - hak_uchar_t may not been Uchar ..*)
 function hak_endfeed(handle: pointer): integer; cdecl; external;
 
 function hak_attachccio(handle: pointer; cci: pointer): integer; cdecl; external;
-function hak_attachcciostdwithbcstr(handle: pointer; cci: pansichar): integer; cdecl; external;
+function hak_attachcciostdwithbcstr(handle: pointer; cci: PBchar): integer; cdecl; external;
 procedure hak_detachccio(handle: pointer); cdecl; external;
-function hak_attachudiostdwithbcstr(handle: pointer; udi: pansichar; udo: pansichar): integer; cdecl; external;
+function hak_attachudiostdwithbcstr(handle: pointer; udi: PBchar; udo: PBchar): integer; cdecl; external;
 procedure hak_detachudio(handle: pointer); cdecl; external;
 function hak_compile(handle: pointer; cnode: pointer; flags: integer): integer; cdecl; external;
 function hak_execute(handle: pointer): pointer; cdecl; external;
 procedure hak_abort(handle: pointer) cdecl; external;
 
 procedure hak_getsynerr(handle: pointer; synerr: SynerrPtr) cdecl; external;
-function hak_syserrstrb(handle: pointer; syserr_type: integer; syserr_code: integer; buf: pansichar; len: System.SizeUint): integer; cdecl; external;
-function hak_count_ucstr(ptr: pwidechar): System.SizeUint; cdecl; external;
+function hak_syserrstrb(handle: pointer; syserr_type: integer; syserr_code: integer; buf: PBchar; len: System.SizeUint): integer; cdecl; external;
+function hak_count_ucstr(ptr: PUchar): System.SizeUint; cdecl; external;
 (*----- end external hak function -----*)
 
 implementation
@@ -156,27 +191,68 @@ type
 
 	NamedHandlePtr = ^NamedHandle;
 
+
+function PUCS4CharLength(p: PUCS4Char): System.SizeUint;
+var
+	len: System.SizeUint;
+begin
+	len := 0;
+	while p[len] <> 0 do Inc(len);
+	exit(len);
+end;
+
+function PUCS4CharToWideString(p: PUCS4Char): System.WideString;
+var
+	len: System.SizeUint;
+	arr: System.UCS4String;
+begin
+	len := PUCS4CharLength(p);
+
+	(* len + 1 for SetLength because UCS4StringToWideString() skips the last character in RTL.
+	   https://gitlab.com/freepascal.org/fpc/source/-/blob/main/rtl/inc/ustrings.inc
+  function UCS4StringToUnicodeString(const s : UCS4String) : UnicodeString;
+  var
+    i        : SizeInt;
+    reslen   : SizeInt;
+  begin
+    reslen:=0;
+    for i:=0 to length(s)-2 do
+      Inc(reslen,1+ord((s[i]>$ffff) and (cardinal(s[i])<=$10ffff)));
+    SetLength(result,reslen);
+    UCS4Decode(s,pointer(result));
+  end;
+	*)
+
+	SetLength(arr, len + 1);
+	Move(p^, arr[0], len * SizeOf(UCS4Char));
+
+	exit(UCS4StringToWideString(arr));
+end;
+
 constructor Interp.Create (x: integer);
 var
 	h: pointer;
-	errnum: integer;
-	errmsg: array[0..255] of AnsiChar;
+	ei: Errinf;
+	ebi: Errbinf;
 	tb: BitMask;
 	ext: InterpExtPtr;
 begin
-	h := hak_openstd(System.SizeOf(Interp), @errnum);
+	h := hak_openstd(System.SizeOf(Interp), @ei);
 	if h = nil then begin
-		hak_errnum_to_errbcstr(errnum, @errmsg, length(errmsg));
-		raise Exception.Create(errmsg);
+{$if defined(HAK_WIDE_CHAR_SIZE_IS_4)}
+		raise Exception.Create(System.UTF8Encode(PUCS4CharToWideString(ei.msg)));
+{$else}
+		raise Exception.Create(System.UTF8Encode(ei.msg));
+{$endif}
 	end;
 
 	if hak_getoption(h, Option.TRAIT, @tb) <= -1 then tb := 0;
 
 	tb := tb or BitMask(TraitBit.LANG_ENABLE_EOL);
 	if hak_setoption(h, Option.TRAIT, @tb) <= -1 then begin
-		hak_errnum_to_errbcstr(errnum, @errmsg, length(errmsg));
+		hak_geterrbinf(h, @ebi);
 		hak_close(h);
-		raise Exception.Create(errmsg);
+		raise Exception.Create(ebi.msg);
 	end;
 
 	self.handle := h;
@@ -198,20 +274,27 @@ end;
 function Interp.FetchErrorMsg(): string;
 var
 	num: integer;
-	bmsg: pansichar;
+	bmsg: PBchar;
 	serr: Synerr;
-	filp: pwidechar;
-	tgt: array[0..255] of widechar;
+	filp: PUchar;
+	(*tgt: array[0..255] of Uchar;*)
+	tgt: string;
 begin
 	num := hak_geterrnum(self.handle);
 	if hak_errnum_is_synerr(num) then begin
 		hak_getsynerr(self.handle, @serr);
 		bmsg := hak_geterrbmsg(self.handle);
-		filp := pwidechar(widestring(''));
+		filp := PUchar(WideString(''));
 		if serr.loc.filp <> nil then filp := serr.loc.filp;
 		if serr.tgt.len > 0 then begin
-			SysUtils.Strlcopy(@tgt, serr.tgt.val, Math.Min(serr.tgt.len, length(tgt) - 1));
-			exit(SysUtils.Format('%s at %s[%u:%u] - %s', [string(bmsg), string(filp), serr.loc.line, serr.loc.colm, string(tgt)]));
+{$if defined(HAK_WIDE_CHAR_SIZE_IS_4)}
+			tgt := System.UTF8Encode(PUCS4CharToWideString(serr.tgt.val));
+{$elseif defined(HAK_WIDE_CHAR_SIZE_IS_2)}
+			tgt := System.UTF8Encode(serr.tgt.val);
+{$else}
+			tgt := string(serr.tgt.val);
+{$endif}
+			exit(SysUtils.Format('%s at %s[%u:%u] - %s', [string(bmsg), string(filp), serr.loc.line, serr.loc.colm, tgt]));
 		end
 		else begin
 			exit(SysUtils.Format('%s at %s[%u:%u]', [string(bmsg), string(filp), serr.loc.line, serr.loc.colm]));
@@ -276,7 +359,7 @@ begin
 			System.New(nf);
 			if nf = nil then begin
 				err := SysUtils.GetLastOSError();
-				hak_seterrbmsg(handle, hak_syserrstrb(handle, 0, err, nil, 0), pansichar(SysUtils.SysErrorMessage(err)));
+				hak_seterrbmsg(handle, hak_syserrstrb(handle, 0, err, nil, 0), PBchar(SysUtils.SysErrorMessage(err)));
 				exit(-1);
 			end;
 
@@ -285,7 +368,7 @@ begin
 				nf^.handle := SysUtils.FileOpen(name, SysUtils.fmOpenRead);
 				if nf^.handle = System.THandle(-1) then begin
 					err := SysUtils.GetLastOSError();
-					hak_seterrbmsg(handle, hak_syserrstrb(handle, 0, err, nil, 0), pansichar(SysUtils.SysErrorMessage(err)));
+					hak_seterrbmsg(handle, hak_syserrstrb(handle, 0, err, nil, 0), PBchar(SysUtils.SysErrorMessage(err)));
 					System.Dispose(nf);
 					exit(-1);
 				end;
@@ -307,9 +390,9 @@ begin
 
 		IO_READ_BYTES: begin
 			nf := NamedHandlePtr(arg^.handle);
-			len := SysUtils.FileRead(nf^.handle, arg^.buf, System.SizeOf(arg^.buf)); (* use SizeOf a widechar buffer as it needs to fill it with bytes *)
+			len := SysUtils.FileRead(nf^.handle, arg^.buf, System.SizeOf(arg^.buf)); (* use SizeOf a Uchar buffer as it needs to fill it with bytes *)
 			if len <= -1 then begin
-				hak_seterrbmsg(handle, hak_syserrstrb(handle, 0, err, nil, 0), pansichar(SysUtils.SysErrorMessage(err)));
+				hak_seterrbmsg(handle, hak_syserrstrb(handle, 0, err, nil, 0), PBchar(SysUtils.SysErrorMessage(err)));
 				exit(-1);
 			end;
 			arg^.xlen := len;
@@ -333,14 +416,14 @@ begin
 	exit(0);
 end;
 
-procedure Interp.CompileFile(filename: pansichar);
+procedure Interp.CompileFile(filename: PBchar);
 var
 	f: System.THandle = -1;
 	attached: boolean = false;
 	feed_ongoing: boolean = false;
 	errnum: System.Integer;
 	errmsg: string;
-	buf: array[0..1023] of ansichar;
+	buf: array[0..1023] of Bchar;
 	len: System.LongInt;
 label
 	oops;
@@ -399,12 +482,12 @@ oops:
 	raise Exception.Create(errmsg);
 end;
 
-procedure Interp.CompileText(text: pansichar);
+procedure Interp.CompileText(text: PBchar);
 begin
 	self.CompileText(text, SysUtils.Strlen(text));
 end;
 
-procedure Interp.CompileText(text: pansichar; len: System.SizeUint);
+procedure Interp.CompileText(text: PBchar; len: System.SizeUint);
 var
 	errnum: integer;
 	errmsg: string;
@@ -438,12 +521,40 @@ begin
 	hak_detachccio(self.handle);
 end;
 
-procedure Interp.CompileText(text: pwidechar);
+{$if defined(HAK_WIDE_CHAR_SIZE_IS_4)}
+procedure Interp.CompileText(text: PWideChar);
+var
+	x: UCS4String;
 begin
-	self.CompileText(text, SysUtils.Strlen(text));
+	x := WideStringToUcs4String(text);
+	self.CompileText(PUchar(x));
 end;
 
-procedure Interp.CompileText(text: pwidechar; len: System.SizeUint);
+procedure Interp.CompileText(text: PWideChar; len: System.SizeUint);
+var
+
+	x_text: PBchar;
+	x_capa: System.SizeUint;
+	x_len: System.SizeUint;
+begin
+	x_capa := len * 4 + 1; (* allocation sizing for the worst case *)
+	System.GetMem(x_text, x_capa);
+	try
+		x_len := System.UnicodeToUtf8(x_text, x_capa, text, len);
+		self.CompileText(x_text, x_len);
+	finally
+		FreeMem(x_text);
+	end;
+end;
+{$endif}
+
+procedure Interp.CompileText(text: PUchar);
+begin
+	(*self.CompileText(text, SysUtils.Strlen(text));*)
+	self.CompileText(text, hak_count_ucstr(text));
+end;
+
+procedure Interp.CompileText(text: PUchar; len: System.SizeUint);
 var
 	errnum: integer;
 	errmsg: string;

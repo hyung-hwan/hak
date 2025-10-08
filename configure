@@ -657,6 +657,10 @@ LTLIBOBJS
 LIBOBJS
 HAK_LIB_QUADMATH_REQUIRED_FALSE
 HAK_LIB_QUADMATH_REQUIRED_TRUE
+HAK_WIDE_CHAR_SIZE_IS_2_FALSE
+HAK_WIDE_CHAR_SIZE_IS_2_TRUE
+HAK_WIDE_CHAR_SIZE_IS_4_FALSE
+HAK_WIDE_CHAR_SIZE_IS_4_TRUE
 HAK_SYS_LIB_SEARCH_PATH_SPEC
 HAK_PROJECT_URL
 HAK_PROJECT_AUTHOR
@@ -19917,6 +19921,7 @@ printf "%s\n" "#define HAK_WIDE_CHAR_SIZE 4" >>confdefs.h
 
 printf "%s\n" "#define HAK_ENABLE_WIDE_CHAR 1" >>confdefs.h
 
+	wide_char_size=4
 elif test "${enable_wide_char}" = "yes:2"
 then
 
@@ -19925,28 +19930,33 @@ printf "%s\n" "#define HAK_WIDE_CHAR_SIZE 2" >>confdefs.h
 
 printf "%s\n" "#define HAK_ENABLE_WIDE_CHAR 1" >>confdefs.h
 
+	wide_char_size=2
 elif test "${enable_wide_char}" = "yes"
 then
 
-printf "%s\n" "#define HAK_WIDE_CHAR_SIZE 1" >>confdefs.h
+printf "%s\n" "#define HAK_WIDE_CHAR_SIZE 2" >>confdefs.h
 
 
 printf "%s\n" "#define HAK_ENABLE_WIDE_CHAR 1" >>confdefs.h
 
+	wide_char_size=2
 elif test "${enable_wide_char}" = "no:4"
 then
 
 printf "%s\n" "#define HAK_WIDE_CHAR_SIZE 4" >>confdefs.h
 
+	wide_char_size=4
 elif test "${enable_wide_char}" = "no:2"
 then
 
 printf "%s\n" "#define HAK_WIDE_CHAR_SIZE 2" >>confdefs.h
 
+	wide_char_size=2
 else
 
-printf "%s\n" "#define HAK_WIDE_CHAR_SIZE 1" >>confdefs.h
+printf "%s\n" "#define HAK_WIDE_CHAR_SIZE 2" >>confdefs.h
 
+	wide_char_size=2
 fi
 
 # Check whether --enable-full-liw was given.
@@ -20184,6 +20194,22 @@ HAK_PROJECT_URL="${PACKAGE_URL}"
 
 HAK_SYS_LIB_SEARCH_PATH_SPEC="${sys_lib_search_path_spec}"
 
+ if test "x${wide_char_size}" = "x4"; then
+  HAK_WIDE_CHAR_SIZE_IS_4_TRUE=
+  HAK_WIDE_CHAR_SIZE_IS_4_FALSE='#'
+else
+  HAK_WIDE_CHAR_SIZE_IS_4_TRUE='#'
+  HAK_WIDE_CHAR_SIZE_IS_4_FALSE=
+fi
+
+ if test "x${wide_char_size}" = "x2"; then
+  HAK_WIDE_CHAR_SIZE_IS_2_TRUE=
+  HAK_WIDE_CHAR_SIZE_IS_2_FALSE='#'
+else
+  HAK_WIDE_CHAR_SIZE_IS_2_TRUE='#'
+  HAK_WIDE_CHAR_SIZE_IS_2_FALSE=
+fi
+
  if test "x${hak_lib_quadmath_required}" = "xyes"; then
   HAK_LIB_QUADMATH_REQUIRED_TRUE=
   HAK_LIB_QUADMATH_REQUIRED_FALSE='#'
@@ -20400,6 +20426,14 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_HAKGO_TRUE}" && test -z "${ENABLE_HAKGO_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_HAKGO\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${HAK_WIDE_CHAR_SIZE_IS_4_TRUE}" && test -z "${HAK_WIDE_CHAR_SIZE_IS_4_FALSE}"; then
+  as_fn_error $? "conditional \"HAK_WIDE_CHAR_SIZE_IS_4\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${HAK_WIDE_CHAR_SIZE_IS_2_TRUE}" && test -z "${HAK_WIDE_CHAR_SIZE_IS_2_FALSE}"; then
+  as_fn_error $? "conditional \"HAK_WIDE_CHAR_SIZE_IS_2\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${HAK_LIB_QUADMATH_REQUIRED_TRUE}" && test -z "${HAK_LIB_QUADMATH_REQUIRED_FALSE}"; then

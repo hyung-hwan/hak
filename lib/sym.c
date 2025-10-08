@@ -202,16 +202,50 @@ hak_oop_t hak_makesymbolwithbcstr (hak_t* hak, const hak_bch_t* ptr)
 #endif
 }
 
+hak_oop_t hak_makesymbolwithbchars (hak_t* hak, const hak_bch_t* ptr, hak_oow_t len)
+{
+#if defined(HAK_OOCH_IS_UCH)
+	hak_uch_t* ucsptr;
+	hak_oow_t ucslen;
+	hak_oop_t v;
+/* TODO: no duplication? */
+	ucsptr = hak_dupbtouchars(hak, ptr, len, &ucslen);
+	if (HAK_UNLIKELY(!ucsptr)) return HAK_NULL;
+	v = hak_makesymbol(hak, ucsptr, ucslen);
+	hak_freemem(hak, ucsptr);
+	return v;
+#else
+	return hak_makesymbol(hak, ptr, len);
+#endif
+}
+
 hak_oop_t hak_makesymbolwithucstr (hak_t* hak, const hak_uch_t* ptr)
 {
 #if defined(HAK_OOCH_IS_UCH)
 	return hak_makesymbol(hak, ptr, hak_count_ucstr(ptr));
 #else
-	hak_uch_t* bcsptr;
+	hak_bch_t* bcsptr;
 	hak_oow_t bcslen;
 	hak_oop_t v;
 /* TODO: no duplication? */
 	bcsptr = hak_duputobcstr(hak, ptr, &bcslen);
+	if (HAK_UNLIKELY(!bcsptr)) return HAK_NULL;
+	v = hak_makesymbol(hak, bcsptr, bcslen);
+	hak_freemem(hak, bcsptr);
+	return v;
+#endif
+}
+
+hak_oop_t hak_makesymbolwithuchars (hak_t* hak, const hak_uch_t* ptr, hak_oow_t len)
+{
+#if defined(HAK_OOCH_IS_UCH)
+	return hak_makesymbol(hak, ptr, len);
+#else
+	hak_bch_t* bcsptr;
+	hak_oow_t bcslen;
+	hak_oop_t v;
+/* TODO: no duplication? */
+	bcsptr = hak_duputobchars(hak, ptr, len, &bcslen);
 	if (HAK_UNLIKELY(!bcsptr)) return HAK_NULL;
 	v = hak_makesymbol(hak, bcsptr, bcslen);
 	hak_freemem(hak, bcsptr);

@@ -5,7 +5,6 @@ int main(int argc, char* argv[])
 {
 	hak_t* hak;
 	hak_oop_t v;
-	hak_liw_t liw;
 	hak_ooi_t i, j;
 	int n;
 

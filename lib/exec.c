@@ -2660,7 +2660,7 @@ static HAK_INLINE int exec_syscmd (hak_t* hak, hak_ooi_t nargs)
 		if (HAK_LIKELY(argv))
 		{
 			argv[0] = cmd;
-HAK_DEBUG1 (hak, "NARG %d\n", (int)nargs);
+//HAK_DEBUG1 (hak, "NARG %d\n", (int)nargs);
 			for (i = 0; i < nargs;)
 			{
 				hak_oop_t ta = HAK_STACK_GETARG(hak, nargs, i);
@@ -2669,17 +2669,21 @@ HAK_DEBUG1 (hak, "NARG %d\n", (int)nargs);
 				{
 /* TODO: rewrite this part */
 					hak_bch_t tmp[64];
-					snprintf (tmp, sizeof(tmp), "%ld", (long int)HAK_OOP_TO_SMOOI(ta));
+					snprintf(tmp, sizeof(tmp), "%ld", (long int)HAK_OOP_TO_SMOOI(ta));
 					argv[++i] = hak_dupbchars(hak, tmp, strlen(tmp));
 				}
 				else
 				{
+				#if defined(HAK_OOCH_IS_UCH)
 					argv[++i] = hak_dupootobchars(hak, HAK_OBJ_GET_CHAR_SLOT(ta), HAK_OBJ_GET_SIZE(ta), HAK_NULL);
+				#else
+					argv[++i] = hak_dupoochars(hak, HAK_OBJ_GET_CHAR_SLOT(ta), HAK_OBJ_GET_SIZE(ta));
+				#endif
 				}
 				/*HAK_DEBUG2 (hak, "ARG %d -> %hs\n", (int)i - 1, argv[i]);*/
 			}
 			argv[nargs + 1] = HAK_NULL;
-			execvp (xcmd, argv);
+			execvp(xcmd, argv);
 		}
 
 		if (cmd) hak_freemem(hak, cmd);

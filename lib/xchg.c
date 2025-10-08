@@ -375,22 +375,13 @@ int hak_unmarshalcode (hak_t* hak, hak_code_t* code, hak_xchg_reader_t rdr, void
 				}
 				nbytes = hak_leoowtoh(w);
 
-				if (b == HAK_XCHG_STRING_U)
+				if (nchars > usym_buf_capa)
 				{
-					ns = hak_makestring(hak, HAK_NULL, nchars);
-					if (HAK_UNLIKELY(!ns)) goto oops;
-					ucsptr = HAK_OBJ_GET_CHAR_PTR(ns, 0);
+					usym_buf_capa = nchars * HAK_SIZEOF(usym_buf[0]);
+					usym_buf = (hak_uch_t*)hak_allocmem(hak, usym_buf_capa);
+					if (HAK_UNLIKELY(!usym_buf)) goto oops;
 				}
-				else
-				{
-					if (nchars > usym_buf_capa)
-					{
-						usym_buf_capa = nchars * HAK_SIZEOF(usym_buf[0]);
-						usym_buf = (hak_uch_t*)hak_allocmem(hak, usym_buf_capa);
-						if (HAK_UNLIKELY(!usym_buf)) goto oops;
-					}
-					ucsptr = usym_buf;
-				}
+				ucsptr = usym_buf;
 
 				ucspos = 0;
 				bcsres = 0;
@@ -420,14 +411,20 @@ int hak_unmarshalcode (hak_t* hak, hak_code_t* code, hak_xchg_reader_t rdr, void
 
 				HAK_ASSERT(hak, ucspos == nchars);
 
-				if (b != HAK_XCHG_STRING_U)
+				if (b == HAK_XCHG_STRING_U)
 				{
-					ns = hak_makesymbol(hak, usym_buf, nchars);
+					ns = hak_makestringwithuchars(hak, usym_buf, nchars);
+					if (HAK_UNLIKELY(!ns)) goto oops;
+				}
+				else
+				{
+					/* symlit or symbol */
+					ns = hak_makesymbolwithuchars(hak, usym_buf, nchars);
 					if (HAK_UNLIKELY(!ns)) goto oops;
 
 					if (b == HAK_XCHG_SYMBOL_U)
 					{
-					/* form a cons cell */
+						/* form a cons cell */
 						hak_oop_t nc;
 						hak_pushvolat(hak, &ns);
 						nc = hak_makecons(hak, ns, hak->_nil);

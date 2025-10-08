@@ -85,7 +85,7 @@ var io_tab IOHandleTable = IOHandleTable{}
 //export hak_go_cci_handler
 func hak_go_cci_handler(c *C.hak_t, cmd C.hak_io_cmd_t, arg unsafe.Pointer) C.int {
 	var (
-		g   *HAK
+		g   *Hak
 		err error
 	)
 
@@ -216,7 +216,7 @@ func hak_go_cci_handler(c *C.hak_t, cmd C.hak_io_cmd_t, arg unsafe.Pointer) C.in
 //export hak_go_udi_handler
 func hak_go_udi_handler(c *C.hak_t, cmd C.hak_io_cmd_t, arg unsafe.Pointer) C.int {
 	var (
-		g   *HAK
+		g   *Hak
 		err error
 	)
 
@@ -264,7 +264,7 @@ func hak_go_udi_handler(c *C.hak_t, cmd C.hak_io_cmd_t, arg unsafe.Pointer) C.in
 //export hak_go_udo_handler
 func hak_go_udo_handler(c *C.hak_t, cmd C.hak_io_cmd_t, arg unsafe.Pointer) C.int {
 	var (
-		g   *HAK
+		g   *Hak
 		err error
 	)
 
@@ -333,10 +333,10 @@ func hak_go_udo_handler(c *C.hak_t, cmd C.hak_io_cmd_t, arg unsafe.Pointer) C.in
 
 // ------------------------------------------------------
 type CciFileHandler struct {
-	g *HAK
+	g *Hak
 }
 
-func (p *CciFileHandler) Open(g *HAK, name string) (int, error) {
+func (p *CciFileHandler) Open(g *Hak, name string) (int, error) {
 	var (
 		f   *os.File
 		r   *bufio.Reader
@@ -398,12 +398,12 @@ func (p *CciFileHandler) Read(fd int, buf []rune) (int, error) {
 
 // ------------------------------------------------------
 type UdiFileHandler struct {
-	g *HAK
+	g *Hak
 	f *os.File
 	r *bufio.Reader
 }
 
-func (p *UdiFileHandler) Open(g *HAK) error {
+func (p *UdiFileHandler) Open(g *Hak) error {
 	var (
 		f *os.File
 	//	err error
@@ -463,7 +463,7 @@ type UdoFileHandler struct {
 	w *bufio.Writer
 }
 
-func (p *UdoFileHandler) Open(g *HAK) error {
+func (p *UdoFileHandler) Open(g *Hak) error {
 	var (
 		f *os.File
 	//	err error

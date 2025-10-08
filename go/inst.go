@@ -10,7 +10,7 @@ import (
 
 type Instance struct {
 	c *C.hak_t // c object
-	g *HAK     // go object
+	g *Hak     // go object
 }
 
 type InstanceTable struct {
@@ -19,7 +19,7 @@ type InstanceTable struct {
 	free_slots []int
 }
 
-func (itab *InstanceTable) add_instance(c *C.hak_t, g *HAK) int {
+func (itab *InstanceTable) add_instance(c *C.hak_t, g *Hak) int {
 	itab.mtx.Lock()
 	defer itab.mtx.Unlock()
 

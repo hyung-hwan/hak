@@ -3248,7 +3248,11 @@ static void* dlopen_pfmod (hak_t* hak, const hak_ooch_t* name, const hak_ooch_t*
 	{
 		xlen = dirlen;
 		dlen = bufcapa;
+	#if defined(HAK_OOCH_IS_UCH)
 		if (hak_convootobchars(hak, dirptr, &xlen, bufptr, &dlen) <= -1) return HAK_NULL;
+	#else
+		dlen = hak_copy_bchars_to_bcstr(bufptr, bufcapa, dirptr, dirlen);
+	#endif
 
 		if (dlen > 0 && bufptr[dlen - 1] != HAK_DFL_PATH_SEP)
 		{

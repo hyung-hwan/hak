@@ -213,7 +213,6 @@ typedef enum hak_synerrnum_t hak_synerrnum_t;
  */
 struct hak_errbinf_t
 {
-	hak_oow_t    _instsize;
 	hak_errnum_t num;                  /**< error number */
 	hak_bch_t    msg[HAK_ERRMSG_CAPA]; /**< error message */
 	hak_bloc_t   loc;                  /**< error location */
@@ -222,7 +221,6 @@ typedef struct hak_errbinf_t hak_errbinf_t;
 
 struct hak_erruinf_t
 {
-	hak_oow_t    _instsize;
 	hak_errnum_t num;                  /**< error number */
 	hak_uch_t    msg[HAK_ERRMSG_CAPA]; /**< error message */
 	hak_uloc_t   loc;                  /**< error location */
@@ -2972,6 +2970,18 @@ HAK_EXPORT hak_oop_t hak_makestring (
 	hak_oow_t         len
 );
 
+HAK_EXPORT hak_oop_t hak_makestringwithuchars (
+	hak_t*            hak,
+	const hak_uch_t*  ptr,
+	hak_oow_t         len
+);
+
+HAK_EXPORT hak_oop_t hak_makestringwithbchars (
+	hak_t*            hak,
+	const hak_bch_t*  ptr,
+	hak_oow_t         len
+);
+
 HAK_EXPORT hak_oop_t hak_makefpdec (
 	hak_t*            hak,
 	hak_oop_t         value,
@@ -3312,8 +3322,9 @@ HAK_EXPORT int hak_convutobcstr (
 #	define hak_dupootobcstr(hak,oocs,bcslen) hak_duputobcstr(hak,oocs,bcslen)
 #	define hak_dupbtooocstr(hak,bcs,oocslen) hak_dupbtoucstr(hak,bcs,oocslen)
 
-#   define hak_dupootoucstr(hak,oocs,ucslen) hak_dupucstr(hak,oocs,ucslen)
-#   define hak_duputooocstr(hak,ucs,oocslen) hak_dupucstr(hak,ucs,oocslen)
+#	define hak_dupootoucstr(hak,oocs,ucslen) hak_dupucstr(hak,oocs,ucslen)
+#	define hak_duputooocstr(hak,ucs,oocslen) hak_dupucstr(hak,ucs,oocslen)
+
 #else
 #	define hak_dupootoucharswithheadroom(hak,hrb,oocs,oocslen,ucslen) hak_dupbtoucharswithheadroom(hak,hrb,oocs,oocslen,ucslen)
 #	define hak_duputooocharswithheadroom(hak,hrb,ucs,ucslen,oocslen) hak_duputobcharswithheadroom(hak,hrb,ucs,ucslen,oocslen)
@@ -3393,7 +3404,7 @@ HAK_EXPORT hak_bch_t* hak_duputobcstr (
 #	define hak_dupoocstr(hak,oocs,oocslen) hak_dupucstr(hak,oocs,oocslen)
 #else
 #	define hak_dupoochars(hak,oocs,oocslen) hak_dupbchars(hak,oocs,oocslen)
-#   define hak_dupoocstr(hak,oocs,oocslen) hak_dupbcstr(hak,oocs,oocslen)
+#	define hak_dupoocstr(hak,oocs,oocslen) hak_dupbcstr(hak,oocs,oocslen)
 #endif
 
 HAK_EXPORT hak_uch_t* hak_dupuchars (

@@ -92,6 +92,7 @@ build_triplet = @build@
 host_triplet = @host@
 bin_PROGRAMS = hakpas$(EXEEXT)
 @HAK_LIB_QUADMATH_REQUIRED_TRUE@am__append_1 = -dHAK_LIB_QUADMATH_REQUIRED
+@HAK_WIDE_CHAR_SIZE_IS_4_TRUE@am__append_2 = -dHAK_WIDE_CHAR_SIZE_IS_4
 subdir = pas
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_check_sign.m4 \
@@ -317,7 +318,7 @@ AUTOMAKE_OPTIONS = nostdinc
 hakpas_SOURCES = hak.pas main.pas 
 hakpas_CPPFLAGS = 
 hakpas_DEPENDENCIES = hakpas.bin
-PASFLAGS = -Mobjfpc -FcUTF8 -Sm -g $(am__append_1)
+PASFLAGS = -Mobjfpc -FcUTF8 -Sm -g $(am__append_1) $(am__append_2)
 hakpas_LINK = cp -pf hakpas.bin $(builddir)/hakpas$(EXEEXT) || echo 
 all: all-am
 

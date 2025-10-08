@@ -1599,9 +1599,21 @@ hak_oop_t hak_makesymbolwithbcstr (
 	const hak_bch_t*   ptr
 );
 
+hak_oop_t hak_makesymbolwithbchars (
+	hak_t*             hak,
+	const hak_bch_t*   ptr,
+	hak_oow_t          len
+);
+
 hak_oop_t hak_makesymbolwithucstr (
 	hak_t*             hak,
 	const hak_uch_t*   ptr
+);
+
+hak_oop_t hak_makesymbolwithuchars (
+	hak_t*             hak,
+	const hak_uch_t*   ptr,
+	hak_oow_t          len
 );
 
 hak_oop_t hak_findsymbol (

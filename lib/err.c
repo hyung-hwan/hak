@@ -279,7 +279,7 @@ void hak_geterrbinf (hak_t* hak, hak_errbinf_t* errinf)
 #if defined(HAK_OOCH_IS_BCH)
 	errinf->num = hak->errnum;
 	errinf->loc = hak->errloc;
-	hak_copy_oocstr(errinf->msg, HAK_COUNTOF(errinf->msg), (hak->errmsg[0] == '\0'? hak_errnum_to_errstr(hak->errnum): hak->errmsg));
+	hak_copy_oocstr(errinf->msg, HAK_COUNTOF(errinf->msg), (hak->errmsg.buf[0] == '\0'? hak_errnum_to_errstr(hak->errnum): hak->errmsg.buf));
 #else
 	const hak_ooch_t* msg;
 	hak_oow_t wcslen, mbslen;
@@ -313,12 +313,12 @@ void hak_geterruinf (hak_t* hak, hak_erruinf_t* errinf)
 	if (!hak->errloc.file) errinf->loc.file = HAK_NULL;
 	else
 	{
-		wcslen = HAK_COUNTOF(hak->xerrlocfile);
-		hak_conv_bcstr_to_ucstr_with_cmgr(hak->errloc.file, &mbslen, hak->xerrlocfile, &wcslen, hak->_cmgr, 1);
-		errinf->loc.file = hak->xerrlocfile; /* this can be truncated and is transient */
+		wcslen = HAK_COUNTOF(hak->errmsg.xerrlocfile);
+		hak_conv_bcstr_to_ucstr_with_cmgr(hak->errloc.file, &mbslen, hak->errmsg.xerrlocfile, &wcslen, hak->_cmgr, 1);
+		errinf->loc.file = hak->errmsg.xerrlocfile; /* this can be truncated and is transient */
 	}
 
-	msg = (hak->errmsg[0] == '\0')? hak_errnum_to_errstr(hak->errnum): hak->errmsg;
+	msg = (hak->errmsg.buf[0] == '\0')? hak_errnum_to_errstr(hak->errnum): hak->errmsg.buf;
 	wcslen = HAK_COUNTOF(errinf->msg);
 	hak_conv_bcstr_to_ucstr_with_cmgr(msg, &mbslen, errinf->msg, &wcslen, hak->_cmgr, 1);
 #else

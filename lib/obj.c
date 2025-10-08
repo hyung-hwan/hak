@@ -438,6 +438,66 @@ hak_oop_t hak_makestring (hak_t* hak, const hak_ooch_t* ptr, hak_oow_t len)
 	return v;
 }
 
+hak_oop_t hak_makestringwithuchars (hak_t* hak, const hak_uch_t* ptr, hak_oow_t len)
+{
+	/* you must provide the payload when calling this variant. it can't figure out
+	 * the actual number of hak_ooch_t characters */
+	if (!ptr)
+	{
+		hak_seterrbfmt(hak, HAK_EINVAL,
+			"unable to instantiate %O - null payload", hak->c_string->name);
+		return HAK_NULL;
+	}
+
+#if defined(HAK_OOCH_IS_UCH)
+	return hak_makestring(hak, ptr, len);
+#else
+	hak_oow_t xlen;
+	hak_ooch_t* xptr;
+
+	xptr = hak_duputooochars(hak, ptr, len, &xlen);
+	if (HAK_UNLIKELY(!xptr))
+	{
+		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
+		hak_seterrbfmt(hak, HAK_ERRNUM(hak),
+			"unable to instantiate %O - %js", hak->c_string->name, orgmsg);
+		return HAK_NULL;
+	}
+
+	return hak_makestring(hak, xptr, xlen);
+#endif
+}
+
+hak_oop_t hak_makestringwithbchars (hak_t* hak, const hak_bch_t* ptr, hak_oow_t len)
+{
+	/* you must provide the payload when calling this variant. it can't figure out
+	 * the actual number of hak_ooch_t characters */
+	if (!ptr)
+	{
+		hak_seterrbfmt(hak, HAK_EINVAL,
+			"unable to instantiate %O - null payload", hak->c_string->name);
+		return HAK_NULL;
+	}
+
+#if defined(HAK_OOCH_IS_UCH)
+	hak_oow_t xlen;
+	hak_ooch_t* xptr;
+
+	xptr = hak_dupbtooochars(hak, ptr, len, &xlen);
+	if (HAK_UNLIKELY(!xptr))
+	{
+		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
+		hak_seterrbfmt(hak, HAK_ERRNUM(hak),
+			"unable to instantiate %O - %js", hak->c_string->name, orgmsg);
+		return HAK_NULL;
+	}
+
+	return hak_makestring(hak, xptr, xlen);
+#else
+	return hak_makestring(hak, ptr, len);
+#endif
+}
+
 hak_oop_t hak_makefpdec (hak_t* hak, hak_oop_t value, hak_ooi_t scale)
 {
 	hak_oop_fpdec_t f;

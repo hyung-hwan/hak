@@ -173,7 +173,7 @@ static HAK_INLINE int print_single_char (hak_t* hak, hak_fmtout_t* fmtout, hak_o
 		#if (HAK_SIZEOF_OOCH_T >= 4)
 			if (chu >= 0x10000u)
 			{
-				if (hak_bfmt_out(fmtout, "\\U%08X", chu) <= -1) return -1;
+				if (hak_bfmt_out(hak, fmtout, "\\U%08X", chu) <= -1) return -1;
 			}
 			else
 		#endif
