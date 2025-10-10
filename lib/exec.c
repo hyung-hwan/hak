@@ -2660,7 +2660,7 @@ static HAK_INLINE int exec_syscmd (hak_t* hak, hak_ooi_t nargs)
 		if (HAK_LIKELY(argv))
 		{
 			argv[0] = cmd;
-//HAK_DEBUG1 (hak, "NARG %d\n", (int)nargs);
+/*HAK_DEBUG1 (hak, "NARG %d\n", (int)nargs);*/
 			for (i = 0; i < nargs;)
 			{
 				hak_oop_t ta = HAK_STACK_GETARG(hak, nargs, i);

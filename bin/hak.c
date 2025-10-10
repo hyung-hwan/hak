@@ -379,7 +379,7 @@ static void print_synerr (hak_t* hak)
 	xtn_t* xtn;
 
 	xtn = (xtn_t*)hak_getxtn(hak);
-	hak_getsynerr (hak, &synerr);
+	hak_getsynerr(hak, &synerr);
 
 	hak_logbfmt(hak,HAK_LOG_STDERR, "ERROR: ");
 	if (synerr.loc.file)

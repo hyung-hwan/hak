@@ -1021,6 +1021,11 @@ hak_pfbase_t* hak_findpfbase (hak_t* hak, hak_pfinfo_t* pfinfo, hak_oow_t pfcoun
 	return HAK_NULL;
 }
 
+hak_oow_t hak_get_sizeof_uch (void)
+{
+	return HAK_SIZEOF(hak_uch_t);
+}
+
 const hak_bch_t* hak_obj_type_to_bcstr (hak_obj_type_t type)
 {
 	static const hak_bch_t* names[] = {

@@ -729,9 +729,10 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 		}
 		else
 		{
-			hak_synerrnum_t err;
-			err = (fv & COMMAED)? HAK_SYNERR_COMMANOVALUE: HAK_SYNERR_COLONNOVALUE;
-			hak_setsynerr(hak, err, TOKEN_LOC(hak), HAK_NULL);
+			if (fv & COMMAED)
+				hak_setsynerrbfmt(hak, HAK_SYNERR_COMMANOVALUE, TOKEN_LOC(hak), HAK_NULL, "no valid token after comma");
+			else
+				hak_setsynerrbfmt(hak, HAK_SYNERR_COMMANOVALUE, TOKEN_LOC(hak), HAK_NULL, "no valid token after colon");
 		}
 		goto oops;
 	}
@@ -769,7 +770,7 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 			if (lval && HAK_CNODE_IS_ELIST(lval))
 			{
 				/* invalid lvalue - for example, () := 20 */
-				hak_setsynerrbfmt(hak, HAK_SYNERR_LVALUE, HAK_CNODE_GET_LOC(lval), HAK_CNODE_GET_TOK(lval), "bad lvalue - blank expression");
+				hak_setsynerrbfmt(hak, HAK_SYNERR_LVALUE, HAK_CNODE_GET_LOC(lval), HAK_NULL, "bad lvalue - blank expression");
 				goto oops;
 			}
 			else if (lval && HAK_CNODE_IS_CONS_CONCODED(lval, HAK_CONCODE_TUPLE))
@@ -796,7 +797,10 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 					lcar = HAK_CNODE_CONS_CAR(tmp);
 					if (!HAK_CNODE_IS_SYMBOL(lcar) && !HAK_CNODE_IS_DSYMBOL_CLA(lcar))
 					{
-						hak_setsynerrbfmt(hak, HAK_SYNERR_LVALUE, HAK_CNODE_GET_LOC(lval), HAK_CNODE_GET_TOK(lval), "bad lvalue - invalid identifier in tuple");
+						hak_setsynerrbfmt(hak, HAK_SYNERR_LVALUE, HAK_CNODE_GET_LOC(lcar), HAK_NULL,
+							"bad lvalue - invalid token%hs%.*js in tuple",
+							(HAK_CNODE_GET_TOKLEN(lcar) > 0? " ": ""),
+							HAK_CNODE_GET_TOKLEN(lcar), HAK_CNODE_GET_TOKPTR(lcar));
 						goto oops;
 					}
 				}
@@ -822,7 +826,10 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 			{
 				if (!HAK_CNODE_IS_SYMBOL(lval) && !HAK_CNODE_IS_DSYMBOL_CLA(lval))
 				{
-					hak_setsynerrbfmt(hak, HAK_SYNERR_LVALUE, HAK_CNODE_GET_LOC(lval), HAK_CNODE_GET_TOK(lval), "bad lvalue - invalid identifier");
+					/* for example, 1 := 20 */
+					hak_setsynerrbfmt(hak, HAK_SYNERR_LVALUE, HAK_CNODE_GET_LOC(lval), HAK_NULL,
+						"bad lvalue - invalid identifier '%.*js'",
+						HAK_CNODE_GET_TOKLEN(lval), HAK_CNODE_GET_TOKPTR(lval));
 					goto oops;
 				}
 		#if defined(TRANSFORM_ALIST)
@@ -840,7 +847,9 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 				rval = HAK_CNODE_CONS_CDR(rval);
 				rval = HAK_CNODE_CONS_CAR(rval);
 
-				hak_setsynerrbfmt(hak, HAK_SYNERR_RVALUE, HAK_CNODE_GET_LOC(rval), HAK_CNODE_GET_TOK(rval), "too many rvalues after :=");
+				hak_setsynerrbfmt(hak, HAK_SYNERR_RVALUE, HAK_CNODE_GET_LOC(rval), HAK_NULL,
+					"too many rvalues after := around '%.*js'",
+					HAK_CNODE_GET_TOKLEN(rval), HAK_CNODE_GET_TOKPTR(rval));
 				goto oops;
 			}
 
@@ -1227,7 +1236,7 @@ static int chain_to_list (hak_t* hak, hak_cnode_t* obj, hak_loc_t* loc)
 		 * can only be triggered by a wrong qlist where a period is
 		 * allowed. so i can safely hard-code the error code to
 		 * HAK_SYNERR_RPAREN */
-		hak_setsynerr(hak, HAK_SYNERR_RPAREN, TOKEN_LOC(hak), TOKEN_NAME(hak));
+		hak_setsynerrbfmt(hak, HAK_SYNERR_RPAREN, TOKEN_LOC(hak), HAK_NULL, ") expected around '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 		return -1;
 	}
 	else if (flagv & DOTTED)
@@ -1276,8 +1285,10 @@ static int chain_to_list (hak_t* hak, hak_cnode_t* obj, hak_loc_t* loc)
 		if ((flagv & JSON) && rstl->count > 0 && !(flagv & (COMMAED | COLONED)))
 		{
 			/* there is no separator between array/dictionary elements
-			 * for instance, [1 2] { 10 20 } */
-			hak_setsynerr(hak, HAK_SYNERR_NOSEP, TOKEN_LOC(hak), HAK_NULL);
+			 * for instance, #{10:20, 30:40 40:50} */
+			hak_setsynerrbfmt(hak, HAK_SYNERR_NOSEP, TOKEN_LOC(hak), HAK_NULL,
+				"no separator between array/dictionary elements around '%.*js",
+				TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 			return -1;
 		}
 
@@ -1387,7 +1398,7 @@ static int feed_begin_include (hak_t* hak)
 	if (hak->c->cci_rdr(hak, HAK_IO_OPEN, arg) <= -1)
 	{
 		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-		hak_setsynerrbfmt(hak, HAK_SYNERR_INCLUDE, TOKEN_LOC(hak), TOKEN_NAME(hak), "unable to include %js - %js", io_name, orgmsg);
+		hak_setsynerrbfmt(hak, HAK_SYNERR_INCLUDE, TOKEN_LOC(hak), HAK_NULL, "unable to include %js - %js", io_name, orgmsg);
 		goto oops;
 	}
 

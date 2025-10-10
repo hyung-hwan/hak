@@ -77,9 +77,9 @@ type
 		destructor Destroy(); override;
 		procedure Ignite(heapsize: System.SizeUint);
 		procedure AddBuiltinPrims();
-		procedure CompileFile(filename: PBchar);
-		procedure CompileText(text: PBchar);
-		procedure CompileText(text: PBchar; len: System.SizeUint);
+		procedure CompileFile(filename: System.PAnsiChar);
+		procedure CompileText(text: System.PAnsiChar);
+		procedure CompileText(text: System.PAnsiChar; len: System.SizeUint);
 		procedure CompileText(text: PUchar);
 		procedure CompileText(text: PUchar; len: System.SizeUint);
 {$if defined(HAK_WIDE_CHAR_SIZE_IS_4)}
@@ -416,14 +416,14 @@ begin
 	exit(0);
 end;
 
-procedure Interp.CompileFile(filename: PBchar);
+procedure Interp.CompileFile(filename: System.PAnsiChar);
 var
 	f: System.THandle = -1;
 	attached: boolean = false;
 	feed_ongoing: boolean = false;
 	errnum: System.Integer;
 	errmsg: string;
-	buf: array[0..1023] of Bchar;
+	buf: array[0..1023] of System.AnsiChar;
 	len: System.LongInt;
 label
 	oops;
@@ -482,12 +482,12 @@ oops:
 	raise Exception.Create(errmsg);
 end;
 
-procedure Interp.CompileText(text: PBchar);
+procedure Interp.CompileText(text: System.PAnsiChar);
 begin
 	self.CompileText(text, SysUtils.Strlen(text));
 end;
 
-procedure Interp.CompileText(text: PBchar; len: System.SizeUint);
+procedure Interp.CompileText(text: System.PAnsiChar; len: System.SizeUint);
 var
 	errnum: integer;
 	errmsg: string;

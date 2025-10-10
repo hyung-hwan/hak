@@ -654,6 +654,64 @@ void hak_getsynerr (hak_t* hak, hak_synerr_t* synerr)
 	if (synerr) *synerr = hak->c->synerr;
 }
 
+void hak_getbsynerr (hak_t* hak, hak_bsynerr_t* synerr)
+{
+	HAK_ASSERT(hak, hak->c != HAK_NULL);
+	if (synerr)
+	{
+	#if defined(HAK_OOCH_IS_UCH)
+		hak_synerr_t* s;
+		const hak_ooch_t* msg;
+		hak_oow_t wcslen, mbslen;
+
+		s = &hak->c->synerr;
+		HAK_MEMSET(synerr, 0, HAK_SIZEOF(*synerr));
+		synerr->num = s->num;
+		synerr->loc.line = s->loc.line;
+		synerr->loc.colm = s->loc.colm;
+		if (s->loc.file)
+		{
+			mbslen = HAK_COUNTOF(hak->errmsg.xerrlocfile);
+			hak_conv_ucstr_to_bcstr_with_cmgr(s->loc.file, &wcslen, hak->errmsg.xerrlocfile, &mbslen, hak->_cmgr);
+			synerr->loc.file = hak->errmsg.xerrlocfile; /* this can be truncated and is transient */
+		}
+
+/*
+		msg = (hak->errmsg.buf[0] == '\0')? hak_errnum_to_errstr(hak->errnum): hak->errmsg.buf;
+		mbslen = HAK_COUNTOF(synerr->tgt.val);
+		hak_conv_ucstr_to_bcstr_with_cmgr(msg, &wcslen, errinf->msg, &mbslen, hak->_cmgr);
+*/
+
+/*
+		synerr->
+
+     hak_synerrnum_t num;
+     hak_bloc_t      loc;
+     struct
+     {
+		hak_bch_t val[256];
+		hak_oow_t len;
+	} tgt;
+*/
+
+	#else
+		*synerr = hak->c->synerr;
+	#endif
+	}
+}
+
+void hak_getusynerr (hak_t* hak, hak_usynerr_t* synerr)
+{
+	HAK_ASSERT(hak, hak->c != HAK_NULL);
+	if (synerr)
+	{
+	#if defined(HAK_OOCH_IS_UCH)
+		*synerr = hak->c->synerr;
+	#else
+	#endif
+	}
+}
+
 hak_synerrnum_t hak_getsynerrnum (hak_t* hak)
 {
 	HAK_ASSERT(hak, hak->c != HAK_NULL);
