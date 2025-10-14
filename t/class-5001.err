@@ -95,7 +95,7 @@ t1 := (B:newA) ##ERROR: exception not handled - "unable to send newA to B - 'new
 
 class B {
 	var x
-	if (x > 0) { ##ERROR: syntax error - prohibited access to instance variable - x
+	if (x > 0) { ##ERROR: syntax error - prohibited access to instance variable around 'x'
 	}
 }
 

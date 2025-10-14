@@ -1236,7 +1236,8 @@ static int chain_to_list (hak_t* hak, hak_cnode_t* obj, hak_loc_t* loc)
 		 * can only be triggered by a wrong qlist where a period is
 		 * allowed. so i can safely hard-code the error code to
 		 * HAK_SYNERR_RPAREN */
-		hak_setsynerrbfmt(hak, HAK_SYNERR_RPAREN, TOKEN_LOC(hak), HAK_NULL, ") expected around '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
+		hak_setsynerrbfmt(hak, HAK_SYNERR_RPAREN, TOKEN_LOC(hak), HAK_NULL,
+			") expected around '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 		return -1;
 	}
 	else if (flagv & DOTTED)
@@ -1525,7 +1526,8 @@ static int auto_forge_xlist_if_at_block_beginning (hak_t* hak, hak_frd_t* frd)
 		/* this portion is similar to the code below the start_list label */
 		if (frd->level >= HAK_TYPE_MAX(int)) /* the nesting level too deep */
 		{
-			hak_setsynerr(hak, HAK_SYNERR_NESTING, TOKEN_LOC(hak), TOKEN_NAME(hak));
+			hak_setsynerrbfmt(hak, HAK_SYNERR_NESTING, TOKEN_LOC(hak), HAK_NULL,
+				"nesting level too deep around '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 			return -1;
 		}
 
@@ -1701,20 +1703,23 @@ static int feed_process_token (hak_t* hak)
 		if (TOKEN_TYPE(hak) == HAK_TOK_EOL) goto ok; /* ignore EOL inside vlist */
 
 		/* vlist also has special requirement that it can only contain variable names. */
-		hak_setsynerr(hak, HAK_SYNERR_VARNAME, TOKEN_LOC(hak), TOKEN_NAME(hak));
+		hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAME, TOKEN_LOC(hak), HAK_NULL,
+			"invalid variable name '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 		goto oops;
 	}
 
 	switch (TOKEN_TYPE(hak))
 	{
 		default:
-			hak_setsynerr(hak, HAK_SYNERR_ILTOK, TOKEN_LOC(hak), TOKEN_NAME(hak));
+			hak_setsynerrbfmt(hak, HAK_SYNERR_ILTOK, TOKEN_LOC(hak), HAK_NULL,
+				"illegal token '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 			goto oops;
 
 		case HAK_TOK_EOF:
 			if (hak_feedpending(hak))
 			{
-				hak_setsynerr(hak, HAK_SYNERR_EOF, TOKEN_LOC(hak), TOKEN_NAME(hak));
+				hak_setsynerrbfmt(hak, HAK_SYNERR_EOF, TOKEN_LOC(hak), HAK_NULL,
+					"premature end of input '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 			}
 			else
 			{
@@ -1759,8 +1764,9 @@ static int feed_process_token (hak_t* hak)
 				 */
 				if (hak->c->r.st && (hak->c->r.st->flagv & DATA_LIST))
 				{
-					/* if the outer list is a data list */
-					hak_setsynerr(hak, HAK_SYNERR_VBARBANNED, TOKEN_LOC(hak), TOKEN_NAME(hak));
+					/* if the outer list is a data list e.g. ${ | a | } */
+					hak_setsynerrbfmt(hak, HAK_SYNERR_VBARBANNED, TOKEN_LOC(hak), HAK_NULL,
+						"prohibited vertical bar around '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 					goto oops;
 				}
 
@@ -1849,7 +1855,8 @@ static int feed_process_token (hak_t* hak)
 			if (frd->level >= HAK_TYPE_MAX(int))
 			{
 				/* the nesting level has become too deep */
-				hak_setsynerr(hak, HAK_SYNERR_NESTING, TOKEN_LOC(hak), TOKEN_NAME(hak));
+				hak_setsynerrbfmt(hak, HAK_SYNERR_NESTING, TOKEN_LOC(hak), HAK_NULL,
+					"nesting level too deep around '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 				goto oops;
 			}
 
@@ -1869,7 +1876,8 @@ static int feed_process_token (hak_t* hak)
 				 *   1. at the top frd->level - not inside ()
 				 *   2. at the beginning of a list
 				 *   3. inside an array, byte-array, dictionary, xlist */
-				hak_setsynerr(hak, HAK_SYNERR_DOTBANNED, TOKEN_LOC(hak), HAK_NULL);
+				hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, TOKEN_LOC(hak), HAK_NULL,
+					"prohibited dot around '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 				goto oops;
 			}
 			goto ok;
@@ -1879,7 +1887,8 @@ static int feed_process_token (hak_t* hak)
 			int n;
 			if (frd->level <= 0 || !(n = can_colon_list(hak)))
 			{
-				hak_setsynerr(hak, HAK_SYNERR_COLONBANNED, TOKEN_LOC(hak), HAK_NULL);
+				hak_setsynerrbfmt(hak, HAK_SYNERR_COLONBANNED, TOKEN_LOC(hak), HAK_NULL,
+					"prohibited colon around '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 				goto oops;
 			}
 			if (n == 2)
@@ -1896,7 +1905,8 @@ static int feed_process_token (hak_t* hak)
 		case HAK_TOK_COLONEQ:
 			if (frd->level <= 0 || !can_coloneq_list(hak))
 			{
-				hak_setsynerr(hak, HAK_SYNERR_COLONEQBANNED, TOKEN_LOC(hak), HAK_NULL);
+				hak_setsynerrbfmt(hak, HAK_SYNERR_COLONEQBANNED, TOKEN_LOC(hak), HAK_NULL,
+					"prohibited assignment around '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 				goto oops;
 			}
 			goto ok;
@@ -1928,7 +1938,8 @@ static int feed_process_token (hak_t* hak)
 		case HAK_TOK_COMMA:
 			if (frd->level <= 0 || !can_comma_list(hak))
 			{
-				hak_setsynerr(hak, HAK_SYNERR_COMMABANNED, TOKEN_LOC(hak), HAK_NULL);
+				hak_setsynerrbfmt(hak, HAK_SYNERR_COMMABANNED, TOKEN_LOC(hak), HAK_NULL,
+					"prohibited comma around '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 				goto oops;
 			}
 			goto ok;
@@ -1952,7 +1963,8 @@ static int feed_process_token (hak_t* hak)
 				if (TOKEN_TYPE(hak) == HAK_TOK_EOL) goto ok;
 				if (concode == HAK_CONCODE_BLOCK) goto ok;
 
-				hak_setsynerr(hak, HAK_SYNERR_SEMICOLON, TOKEN_LOC(hak), HAK_NULL);
+				hak_setsynerrbfmt(hak, HAK_SYNERR_SEMICOLON, TOKEN_LOC(hak), HAK_NULL,
+					"unexpected semicolon '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 				goto oops;
 			}
 
@@ -1985,7 +1997,8 @@ static int feed_process_token (hak_t* hak)
 
 			if (frd->level <= 0)
 			{
-				hak_setsynerr(hak, HAK_SYNERR_UNBALPBB, TOKEN_LOC(hak), HAK_NULL);
+				hak_setsynerrbfmt(hak, HAK_SYNERR_UNBALPBB, TOKEN_LOC(hak), HAK_NULL,
+					"unbalanced closer token '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 				goto oops;
 			}
 
@@ -1996,7 +2009,8 @@ static int feed_process_token (hak_t* hak)
 				{
 				#if 0
 					/* the auto-forged list has not been terminated. it must be terminated closed first */
-					hak_setsynerrbfmt(hak, HAK_SYNERR_SEMICOLON, TOKEN_LOC(hak), TOKEN_NAME(hak), "semicolon expected");
+					hak_setsynerrbfmt(hak, HAK_SYNERR_SEMICOLON, TOKEN_LOC(hak), HAK_NULL,
+						"semicolon expected around %.*js", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 					goto oops;
 				#else
 					/* if the expression inside {} is an auto-forged xlist expression and there is no semicolon provided,
@@ -2617,7 +2631,8 @@ static int flx_backslashed (hak_t* hak, hak_ooci_t c)
 		return 1; /* consumed */
 	}
 
-	hak_setsynerrbfmt(hak, HAK_SYNERR_BACKSLASH, TOKEN_LOC(hak), TOKEN_NAME(hak), "stray backslash");
+	hak_setsynerrbfmt(hak, HAK_SYNERR_BACKSLASH, TOKEN_LOC(hak), HAK_NULL,
+		"stray backslash around %.*js", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 	return -1;
 }
 
@@ -2733,7 +2748,7 @@ static int flx_dollared_ident (hak_t* hak, hak_ooci_t c)
 
 		if (get_directive_token_type(hak, &tok_type) <= -1)
 		{
-			hak_setsynerrbfmt(hak, HAK_SYNERR_ILTOK, TOKEN_LOC(hak), TOKEN_NAME(hak),
+			hak_setsynerrbfmt(hak, HAK_SYNERR_ILTOK, TOKEN_LOC(hak), HAK_NULL,
 				"invalid dollar-prefixed identifier '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 			return -1;
 		}
@@ -2763,10 +2778,9 @@ static int flx_dollared_ident (hak_t* hak, hak_ooci_t c)
 	}
 	else
 	{
-		hak_setsynerrbfmt(
-			hak, HAK_SYNERR_ILTOK, TOKEN_LOC(hak), HAK_NULL,
-			"invalid dollar-prefixed identifier character '%jc' after '%.*js'", c,
-			TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
+		hak_setsynerrbfmt(hak, HAK_SYNERR_ILTOK, TOKEN_LOC(hak), HAK_NULL,
+			"invalid dollar-prefixed identifier character '%jc' after '%.*js'",
+			c, TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 		return -1;
 	}
 
@@ -2887,7 +2901,7 @@ static int flx_hmarked_char (hak_t* hak, hak_ooci_t c)
 	{
 		if (hc->char_count == 0)
 		{
-			hak_setsynerrbfmt(hak, HAK_SYNERR_CHARLIT, TOKEN_LOC(hak), TOKEN_NAME(hak),
+			hak_setsynerrbfmt(hak, HAK_SYNERR_CHARLIT, TOKEN_LOC(hak), HAK_NULL,
 				"no valid character in character literal %.*js", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 			return -1;
 		}
@@ -2904,7 +2918,7 @@ static int flx_hmarked_char (hak_t* hak, hak_ooci_t c)
 			hexcharlit:
 				if (TOKEN_NAME_LEN(hak) - 3 > max_digit_count)
 				{
-					hak_setsynerrbfmt(hak, HAK_SYNERR_CHARLIT, TOKEN_LOC(hak), TOKEN_NAME(hak),
+					hak_setsynerrbfmt(hak, HAK_SYNERR_CHARLIT, TOKEN_LOC(hak), HAK_NULL,
 						"invalid hexadecimal character character literal %.*js", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 					return -1;
 				}
@@ -2913,7 +2927,7 @@ static int flx_hmarked_char (hak_t* hak, hak_ooci_t c)
 				{
 					if (!is_xdigit_char(TOKEN_NAME_CHAR(hak, i)))
 					{
-						hak_setsynerrbfmt(hak, HAK_SYNERR_CHARLIT, TOKEN_LOC(hak), TOKEN_NAME(hak),
+						hak_setsynerrbfmt(hak, HAK_SYNERR_CHARLIT, TOKEN_LOC(hak), HAK_NULL,
 							"invalid hexadecimal character character literal %.*js", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 						return -1;
 					}
@@ -2946,7 +2960,7 @@ static int flx_hmarked_char (hak_t* hak, hak_ooci_t c)
 			else if (does_token_name_match(hak, VOCA_CHAR_VTAB))      c = '\v';
 			else
 			{
-				hak_setsynerrbfmt(hak, HAK_SYNERR_CHARLIT, TOKEN_LOC(hak), TOKEN_NAME(hak),
+				hak_setsynerrbfmt(hak, HAK_SYNERR_CHARLIT, TOKEN_LOC(hak), HAK_NULL,
 					"invalid character literal %.*js", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 				return -1;
 			}
@@ -3020,8 +3034,7 @@ static int flx_hmarked_binop (hak_t* hak, hak_ooci_t c)
 	}
 	else
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_SYMLIT,
-			TOKEN_LOC(hak), HAK_NULL /* no token name as incomplete */,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_SYMLIT, TOKEN_LOC(hak), HAK_NULL,
 			"invalid binary selector character '%jc' after #%.*js",
 			c, TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 		return -1;
@@ -3070,10 +3083,9 @@ static int flx_hmarked_ident (hak_t* hak, hak_ooci_t c)
 	}
 	else
 	{
-		hak_setsynerrbfmt(
-			hak, HAK_SYNERR_ILTOK, TOKEN_LOC(hak), HAK_NULL,
-			"invalid symbol character '%jc' after '%.*js'", c,
-			TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
+		hak_setsynerrbfmt(hak, HAK_SYNERR_ILTOK, TOKEN_LOC(hak), HAK_NULL,
+			"invalid symbol character '%jc' after '%.*js'",
+			c, TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 		return -1;
 	}
 
@@ -3148,7 +3160,8 @@ static int flx_plain_ident (hak_t* hak, hak_ooci_t c) /* identifier */
 			}
 			else
 			{
-				hak_setsynerrbfmt(hak, HAK_SYNERR_ILTOK, TOKEN_LOC(hak), TOKEN_NAME(hak), "wrong multi-segment identifier");
+				hak_setsynerrbfmt(hak, HAK_SYNERR_ILTOK, TOKEN_LOC(hak), HAK_NULL,
+					"wrong multi-segment identifier '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 				return -1;
 			}
 		}
@@ -3186,8 +3199,7 @@ static int flx_plain_ident (hak_t* hak, hak_ooci_t c) /* identifier */
 	}
 	else
 	{
-		hak_setsynerrbfmt(
-			hak, HAK_SYNERR_ILTOK, TOKEN_LOC(hak), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_ILTOK, TOKEN_LOC(hak), HAK_NULL,
 			"invalid identifier character '%jc' after '%.*js'", c,
 			TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 		return -1;

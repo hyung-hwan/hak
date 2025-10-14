@@ -39,7 +39,7 @@ x := (10 +); ##ERROR: syntax error - no operand after binary selector
 ---
 
 ## you can't have another colon before the method..
-(obj: :method) ##ERROR: syntax error - : disallowed
+(obj: :method) ##ERROR: syntax error - prohibited colon around ':'
 
 ---
 
@@ -162,15 +162,15 @@ abc. := 20 ##ERROR: syntax error - blank segment after 'abc.'
 
 ---
 
-abc.? := 20 ##ERROR: syntax error - wrong multi-segment identifier - abc.?
+abc.? := 20 ##ERROR: syntax error - wrong multi-segment identifier 'abc.?'
 
 ---
 
-- := 20 ##ERROR: syntax error - bad lvalue - invalid identifier - -
+- := 20 ##ERROR: syntax error - bad lvalue - invalid identifier '-'
 
 ---
 
-+++ := 20 ##ERROR: syntax error - bad lvalue - invalid identifier - +++
++++ := 20 ##ERROR: syntax error - bad lvalue - invalid identifier '+++'
 
 ---
 

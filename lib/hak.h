@@ -1621,48 +1621,38 @@ typedef struct hak_sem_tuple_t hak_sem_tuple_t;
 /* =========================================================================
  * HAK VM
  * ========================================================================= */
-/*
-typedef struct hak_synerr_t hak_synerr_t;
-struct hak_synerr_t
-{
-	hak_synerrnum_t num;
-	hak_loc_t       loc;
-	struct
-	{
-		hak_ooch_t val[256];
-		hak_oow_t  len;
-	} tgt;
-};
-*/
-
-typedef struct hak_bsynerr_t hak_bsynerr_t;
-struct hak_bsynerr_t
+typedef struct hak_synerrb_t hak_synerrb_t;
+struct hak_synerrb_t
 {
 	hak_synerrnum_t num;
 	hak_bloc_t      loc;
+/*
 	struct
 	{
 		hak_bch_t val[256];
 		hak_oow_t len;
 	} tgt;
+*/
 };
 
-typedef struct hak_usynerr_t hak_usynerr_t;
-struct hak_usynerr_t
+typedef struct hak_synerru_t hak_synerru_t;
+struct hak_synerru_t
 {
 	hak_synerrnum_t num;
 	hak_uloc_t      loc;
+/*
 	struct
 	{
 		hak_uch_t val[256];
 		hak_oow_t len;
 	} tgt;
+*/
 };
 
 #if defined(HAK_OOCH_IS_UCH)
-typedef hak_usynerr_t hak_synerr_t;
+typedef hak_synerru_t hak_synerr_t;
 #else
-typedef hak_bsynerr_t hak_synerr_t;
+typedef hak_synerrb_t hak_synerr_t;
 #endif
 
 typedef struct hak_dbgi_t hak_dbgi_t;
@@ -2739,14 +2729,14 @@ static HAK_INLINE hak_ooi_t hak_getip (hak_t* hak) { return hak->ip; }
 /* =========================================================================
  * SYNTAX ERROR HANDLING
  * ========================================================================= */
-HAK_EXPORT void hak_getbsynerr (
+HAK_EXPORT void hak_getsynerrb (
 	hak_t*             hak,
-	hak_bsynerr_t*     synerr
+	hak_synerrb_t*     synerr
 );
 
-HAK_EXPORT void hak_getusynerr (
+HAK_EXPORT void hak_getsynerru (
 	hak_t*             hak,
-	hak_usynerr_t*     synerr
+	hak_synerru_t*     synerr
 );
 
 HAK_EXPORT void hak_getsynerr (

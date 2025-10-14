@@ -392,9 +392,6 @@ static void print_synerr (hak_t* hak)
 		(hak_geterrmsg(hak) != hak_geterrstr(hak)? hak_geterrmsg(hak): hak_geterrstr(hak))
 	);
 
-	if (synerr.tgt.len > 0)
-		hak_logbfmt(hak, HAK_LOG_STDERR, " - %.*js", synerr.tgt.len, synerr.tgt.val);
-
 	hak_logbfmt(hak, HAK_LOG_STDERR, "\n");
 }
 

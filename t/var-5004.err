@@ -62,7 +62,7 @@ fun x (... a) { ##ERROR: syntax error - unexpected token 'a' after '...' for 'fu
 
 ---
 
-fun x (... : a) { ##ERROR: syntax error - : disallowed
+fun x (... : a) { ##ERROR: syntax error - prohibited colon around ':'
 }
 
 ---

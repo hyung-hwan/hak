@@ -70,7 +70,6 @@ type Err struct {
 	Colm uint
 	File string
 	Msg string
-	Tgt string
 }
 
 type BitMask C.hak_bitmask_t
@@ -127,8 +126,6 @@ func (hak *Hak) make_errinfo() *Err {
 		var synerr C.hak_synerr_t
 		C.hak_getsynerr(hak.c, &synerr)
 		loc = synerr.loc
-
-		err.Tgt = string(uchars_to_rune_slice(&synerr.tgt.val[0], uintptr(synerr.tgt.len)))
 	} else {
 		C.hak_geterrloc(hak.c, &loc)
 	}
@@ -475,9 +472,5 @@ func c_to_go(c *C.hak_t) *Hak {
 // -----------------------------------------------------------
 
 func (err* Err) Error() string {
-	if err.Tgt == "" {
-		return fmt.Sprintf("%s[%d,%d] %s", err.File, err.Line, err.Colm, err.Msg)
-	} else {
-	}
-		return fmt.Sprintf("%s[%d,%d] %s - %s", err.File, err.Line, err.Colm, err.Msg, err.Tgt)
+	return fmt.Sprintf("%s[%d,%d] %s", err.File, err.Line, err.Colm, err.Msg)
 }

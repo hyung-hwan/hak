@@ -105,34 +105,36 @@ type
 		function Read(): System.SizeUint; virtual; abstract;
 	end;
 
-	Location = record
+	LocationB = record
+		line: System.SizeUint;
+		colm: System.SizeUint;
+		filp: PBchar;
+	end;
+
+	LocationU = record
 		line: System.SizeUint;
 		colm: System.SizeUint;
 		filp: PUchar;
 	end;
 
-	SynerrPtr = ^Synerr;
-	Synerr = record
+	SynerrBPtr = ^SynerrB;
+	SynerrB = record
 		num: integer;
-		loc: Location;
-		tgt: record
-			val: array[0..255] of Uchar;
-			len: System.SizeUint;
-		end;
+		loc: LocationB;
 	end;
 
 	ErrbinfPtr = ^Errbinf;
 	Errbinf = record
 		num: integer;
 		msg: array[0..2047] of Bchar;
-		loc: Location;
+		loc: LocationB;
 	end;
 
 	ErruinfPtr = ^Errbinf;
 	Erruinf = record
 		num: integer;
 		msg: array[0..2047] of Uchar;
-		loc: Location;
+		loc: LocationU;
 	end;
 
 	Errinf = Erruinf;
@@ -174,7 +176,7 @@ function hak_compile(handle: pointer; cnode: pointer; flags: integer): integer; 
 function hak_execute(handle: pointer): pointer; cdecl; external;
 procedure hak_abort(handle: pointer) cdecl; external;
 
-procedure hak_getsynerr(handle: pointer; synerr: SynerrPtr) cdecl; external;
+procedure hak_getsynerrb(handle: pointer; synerr: SynerrBPtr) cdecl; external;
 function hak_syserrstrb(handle: pointer; syserr_type: integer; syserr_code: integer; buf: PBchar; len: System.SizeUint): integer; cdecl; external;
 function hak_count_ucstr(ptr: PUchar): System.SizeUint; cdecl; external;
 (*----- end external hak function -----*)
@@ -275,30 +277,16 @@ function Interp.FetchErrorMsg(): string;
 var
 	num: integer;
 	bmsg: PBchar;
-	serr: Synerr;
-	filp: PUchar;
-	(*tgt: array[0..255] of Uchar;*)
-	tgt: string;
+	serr: SynerrB;
+	filp: PBchar;
 begin
 	num := hak_geterrnum(self.handle);
 	if hak_errnum_is_synerr(num) then begin
-		hak_getsynerr(self.handle, @serr);
 		bmsg := hak_geterrbmsg(self.handle);
-		filp := PUchar(WideString(''));
+		hak_getsynerrb(self.handle, @serr);
+		filp := PBchar('');
 		if serr.loc.filp <> nil then filp := serr.loc.filp;
-		if serr.tgt.len > 0 then begin
-{$if defined(HAK_WIDE_CHAR_SIZE_IS_4)}
-			tgt := System.UTF8Encode(PUCS4CharToWideString(serr.tgt.val));
-{$elseif defined(HAK_WIDE_CHAR_SIZE_IS_2)}
-			tgt := System.UTF8Encode(serr.tgt.val);
-{$else}
-			tgt := string(serr.tgt.val);
-{$endif}
-			exit(SysUtils.Format('%s at %s[%u:%u] - %s', [string(bmsg), string(filp), serr.loc.line, serr.loc.colm, tgt]));
-		end
-		else begin
-			exit(SysUtils.Format('%s at %s[%u:%u]', [string(bmsg), string(filp), serr.loc.line, serr.loc.colm]));
-		end;
+		exit(SysUtils.Format('%s at %s[%u:%u]', [string(bmsg), string(filp), serr.loc.line, serr.loc.colm]));
 	end
 	else begin
 		bmsg := hak_geterrbmsg(self.handle);
