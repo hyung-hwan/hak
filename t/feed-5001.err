@@ -2,6 +2,22 @@ $?a           ##ERROR: syntax error - invalid dollar-prefixed identifier '$?a'
 
 ---
 
+-0e00    ##ERROR: syntax error - illegal erorr literal '-0e00'
+
+---
+
++0e11    ##ERROR: syntax error - illegal erorr literal '+0e11'
+
+---
+
+-0p00    ##ERROR: syntax error - illegal smptr literal '-0p00'
+
+---
+
++0p11    ##ERROR: syntax error - illegal smptr literal '+0p11'
+
+---
+
 $include     ##ERROR: syntax error - '$include' target not specified
 
 ---

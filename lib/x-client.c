@@ -332,7 +332,7 @@ const hak_bch_t* hak_client_geterrbmsg (hak_client_t* client)
 	msg = (client->errmsg.len <= 0)? hak_errnum_to_errstr(client->errnum): client->errmsg.buf;
 
 	mbslen = HAK_COUNTOF(client->errmsg.xerrmsg);
-	hak_conv_ucstr_to_bcstr_with_cmgr (msg, &wcslen, client->errmsg.xerrmsg, &mbslen, client->_cmgr);
+	hak_conv_ucstr_to_bcstr_with_cmgr(msg, &wcslen, client->errmsg.xerrmsg, &mbslen, client->_cmgr);
 
 	return client->errmsg.xerrmsg;
 #endif
@@ -347,7 +347,7 @@ const hak_uch_t* hak_client_geterrumsg (hak_client_t* client)
 	msg = (client->errmsg.len <= 0)? hak_errnum_to_errstr(client->errnum): client->errmsg.buf;
 
 	wcslen = HAK_COUNTOF(client->errmsg.xerrmsg);
-	hak_conv_bcstr_to_ucstr_with_cmgr (msg, &mbslen, client->errmsg.xerrmsg, &wcslen, client->_cmgr, 1);
+	hak_conv_bcstr_to_ucstr_with_cmgr(msg, &mbslen, client->errmsg.xerrmsg, &wcslen, client->_cmgr, 1);
 
 	return client->errmsg.xerrmsg;
 #else

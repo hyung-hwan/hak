@@ -2027,13 +2027,15 @@ static int feed_process_token (hak_t* hak)
 			{
 				/* the auto-created xlist can't be terminated with the regular closing symbol
 				 * it must end with the semicolon */
-				hak_setsynerr(hak, HAK_SYNERR_UNBALPBB, TOKEN_LOC(hak), TOKEN_NAME(hak));
+				hak_setsynerrbfmt(hak, HAK_SYNERR_UNBALPBB, TOKEN_LOC(hak), HAK_NULL,
+					"unbalanced parenthesis/brace/bracket around '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 				goto oops;
 			}
 
 			if (cons_info[concode].closer != TOKEN_TYPE(hak))
 			{
-				hak_setsynerr(hak, cons_info[concode].synerr, TOKEN_LOC(hak), TOKEN_NAME(hak));
+				hak_setsynerrbfmt(hak, cons_info[concode].synerr, TOKEN_LOC(hak), HAK_NULL,
+					"invalid closer token around '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 				goto oops;
 			}
 #if 0
@@ -2056,7 +2058,7 @@ static int feed_process_token (hak_t* hak)
 				 * with no opening(left) parenthesis, which is
 				 * indicated by frd->level<=0.
 				 */
-				hak_setsynerr(hak, HAK_SYNERR_LPAREN, TOKEN_LOC(hak), TOKEN_NAME(hak));
+				hak_setsynerrbfmt(hak, HAK_SYNERR_LPAREN, TOKEN_LOC(hak), HAK_NULL, "( expected around '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 				goto oops;
 			}
 #endif
@@ -2114,22 +2116,29 @@ static int feed_process_token (hak_t* hak)
 			frd->obj = hak_makecnodedblcolons(hak, 0, TOKEN_LOC(hak), TOKEN_NAME(hak));
 			goto auto_xlist;
 
-		case HAK_TOK_SMPTRLIT:
+		case HAK_TOK_SMPTRLIT: /* 0pXXXX */
 		{
 			hak_oow_t i;
 			hak_oow_t v = 0;
+			hak_ooch_t tc;
 
-			/* 0pNNNN */
 			HAK_ASSERT(hak, TOKEN_NAME_LEN(hak) >= 3);
+
+			tc = TOKEN_NAME_CHAR(hak, 0);
+			if (tc != '0') goto illegal_smptr_literal; /* most likely + or - */
+
 			for (i = 2; i < TOKEN_NAME_LEN(hak); i++)
 			{
-				HAK_ASSERT(hak, is_xdigit_char(TOKEN_NAME_CHAR(hak, i)));
-				v = v * 16 + HAK_CHAR_TO_NUM(TOKEN_NAME_CHAR(hak, i), 16);
+				tc = TOKEN_NAME_CHAR(hak, i);
+				HAK_ASSERT(hak, is_xdigit_char(tc));
+				v = v * 16 + HAK_CHAR_TO_NUM(tc, 16);
 			}
 
 			if (!HAK_IN_SMPTR_RANGE(v))
 			{
-				hak_setsynerr(hak, HAK_SYNERR_SMPTRLIT, TOKEN_LOC(hak), TOKEN_NAME(hak));
+			illegal_smptr_literal:
+				hak_setsynerrbfmt(hak, HAK_SYNERR_SMPTRLIT, TOKEN_LOC(hak), HAK_NULL,
+					"illegal smptr literal '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 				goto oops;
 			}
 
@@ -2137,20 +2146,28 @@ static int feed_process_token (hak_t* hak)
 			goto auto_xlist;
 		}
 
-		case HAK_TOK_ERRLIT:
+		case HAK_TOK_ERRLIT: /* 0eNNNN */
 		{
 			hak_oow_t i;
 			hak_ooi_t v = 0;
+			hak_ooch_t tc;
 
 			HAK_ASSERT(hak, TOKEN_NAME_LEN(hak) >= 3);
+
+			tc = TOKEN_NAME_CHAR(hak, 0);
+			if (tc != '0') goto illegal_error_literal; /* most likely + or - */
+
 			for (i = 2; i < TOKEN_NAME_LEN(hak); i++)
 			{
-				HAK_ASSERT(hak, is_digit_char(TOKEN_NAME_CHAR(hak, i)));
-				v = v * 10 + HAK_CHAR_TO_NUM(TOKEN_NAME_CHAR(hak, i), 10);
+				tc = TOKEN_NAME_CHAR(hak, i);
+				HAK_ASSERT(hak, is_digit_char(tc));
+				v = v * 10 + HAK_CHAR_TO_NUM(tc, 10);
 
 				if (v > HAK_ERROR_MAX)
 				{
-					hak_setsynerr(hak, HAK_SYNERR_ERRLIT, TOKEN_LOC(hak), TOKEN_NAME(hak));
+				illegal_error_literal:
+					hak_setsynerrbfmt(hak, HAK_SYNERR_ERRLIT, TOKEN_LOC(hak), HAK_NULL,
+						"illegal erorr literal '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 					goto oops;
 				}
 			}

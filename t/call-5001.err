@@ -1,3 +1,12 @@
+return 1 2 ##ERROR: syntax error - excessive argument to 'return' around '2'
+
+---
+
+## TODO: improve the return to show the actual parenthensis like around '('
+return 1 (+ 1 2) ##ERROR: syntax error - excessive argument to 'return' around ''
+
+---
+
 ## the expression begins with a dictionary expression. 
 ## it is not a function name and can'be be invoked.
 #{100:1, 200: 3}; ##ERROR: syntax error - invalid callable

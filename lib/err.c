@@ -699,7 +699,7 @@ void hak_getsynerru (hak_t* hak, hak_synerru_t* synerr)
 		if (s->loc.file)
 		{
 			wcslen = HAK_COUNTOF(hak->errmsg.xerrlocfile);
-			hak_conv_bcstr_to_ucstr_with_cmgr(s->loc.file, &mbslen, hak->errmsg.xerrlocfile, &wcslen, hak->_cmgr);
+			hak_conv_bcstr_to_ucstr_with_cmgr(s->loc.file, &mbslen, hak->errmsg.xerrlocfile, &wcslen, hak->_cmgr, 1);
 			synerr->loc.file = hak->errmsg.xerrlocfile; /* this can be truncated and is transient */
 		}
 	#endif
