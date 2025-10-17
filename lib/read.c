@@ -717,15 +717,24 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 		/* no item after , : := or various binary operators */
 		if (concode == HAK_CONCODE_MLIST)
 		{
-			hak_setsynerrbfmt(hak, HAK_SYNERR_CALLABLE, TOKEN_LOC(hak), HAK_NULL, "missing message after receiver");
+			hak_cnode_t* tmp;
+			tmp = HAK_CNODE_CONS_CAR(tail);
+			hak_setsynerrbfmt(hak, HAK_SYNERR_CALLABLE, TOKEN_LOC(hak), HAK_NULL,
+				"missing message for '%.*js'", HAK_CNODE_GET_TOKLEN(tmp), HAK_CNODE_GET_TOKPTR(tmp));
 		}
 		else if (concode == HAK_CONCODE_ALIST)
 		{
-			hak_setsynerrbfmt(hak, HAK_SYNERR_RVALUE, TOKEN_LOC(hak), HAK_NULL, "missing rvalue after :=");
+			hak_cnode_t* tmp;
+			tmp = HAK_CNODE_CONS_CAR(tail);
+			hak_setsynerrbfmt(hak, HAK_SYNERR_RVALUE, TOKEN_LOC(hak), HAK_NULL,
+				"missing rvalue for '%.*js'", HAK_CNODE_GET_TOKLEN(tmp), HAK_CNODE_GET_TOKPTR(tmp));
 		}
 		else if (concode == HAK_CONCODE_BLIST)
 		{
-			hak_setsynerrbfmt(hak, HAK_SYNERR_NOVALUE, TOKEN_LOC(hak), HAK_NULL, "missing expression after binary selector");
+			hak_cnode_t* tmp;
+			tmp = HAK_CNODE_CONS_CAR(tail);
+			hak_setsynerrbfmt(hak, HAK_SYNERR_NOVALUE, TOKEN_LOC(hak), HAK_NULL,
+				"missing expression after binary selector '%.*js'", HAK_CNODE_GET_TOKLEN(tmp), HAK_CNODE_GET_TOKPTR(tmp));
 		}
 		else
 		{
@@ -1547,6 +1556,7 @@ static int auto_forge_xlist_if_at_block_beginning (hak_t* hak, hak_frd_t* frd)
 
 static hak_cnode_type_t kw_to_cnode_type (int tok_type)
 {
+	/* this must match the keyword token enumerator order in hak_tok_type_t() in hak-prv.h */
 	static hak_cnode_type_t mapping[] = {
 		HAK_CNODE_NIL,
 		HAK_CNODE_TRUE,

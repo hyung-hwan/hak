@@ -102,6 +102,12 @@ class B {
 ---
 
 class B {
+	self.x := 20 ##ERROR: syntax error - unknown class-level variable name 'self.x'
+}
+
+---
+
+class B {
 	var x y
 };
 
@@ -113,7 +119,7 @@ class X: B {
 		set a 100;
 		set self.b (* t 2);
 
-		set self.c (fun(b) {  ##ERROR: syntax error - unknown class-level variable name
+		set self.c (fun(b) {  ##ERROR: syntax error - unknown class-level variable name 'self.c'
 			printf "xxxx [%d]\n" b;
 		});
 		return self;

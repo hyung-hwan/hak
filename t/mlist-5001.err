@@ -1,1 +1,5 @@
-(1:) ##ERROR: syntax error - missing message after receiver
+(1:) ##ERROR: syntax error - missing message for '1'
+
+---
+
+a +  ##ERROR: syntax error - no operand after binary selector '+'

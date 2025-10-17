@@ -205,6 +205,10 @@ abc.? := 20 ##ERROR: syntax error - wrong multi-segment identifier 'abc.?'
 
 ---
 
+aaa := ##ERROR: syntax error - missing rvalue for 'aaa'
+
+---
+
 throw ##ERROR: syntax error - no value or expression after 'throw'
 
 ---

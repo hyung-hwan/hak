@@ -302,6 +302,7 @@ enum hak_tok_type_t
 	HAK_TOK_SMPTRLIT,
 	HAK_TOK_ERRLIT,
 
+	/* these keyword enumerators must match the mapping order in kw_to_cnode_type() in read.c */
 	HAK_TOK_NIL,
 	HAK_TOK_TRUE,
 	HAK_TOK_FALSE,
@@ -331,6 +332,7 @@ enum hak_tok_type_t
 #endif
 	HAK_TOK_SET,
 	HAK_TOK_SET_R,
+	/* end of keyword enumerators */
 
 	HAK_TOK_BINOP,
 	HAK_TOK_IDENT,

@@ -1,3 +1,7 @@
+return ##ERROR: syntax error - no value specified for 'return'
+
+---
+
 return 1 2 ##ERROR: syntax error - excessive argument to 'return' around '2'
 
 ---
@@ -60,6 +64,14 @@ if (< 20 30) else { ##ERROR: syntax error - block expression expected as 'if' bo
 	printf "ok\n"
 }
 
+
+---
+
+elif (< 20 30) { } ##ERROR: syntax error - elif without if
+
+---
+
+else (< 20 30) { } ##ERROR: syntax error - else without if
 
 ---
 
