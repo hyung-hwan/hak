@@ -1626,13 +1626,6 @@ struct hak_synerrb_t
 {
 	hak_synerrnum_t num;
 	hak_bloc_t      loc;
-/*
-	struct
-	{
-		hak_bch_t val[256];
-		hak_oow_t len;
-	} tgt;
-*/
 };
 
 typedef struct hak_synerru_t hak_synerru_t;
@@ -1640,13 +1633,6 @@ struct hak_synerru_t
 {
 	hak_synerrnum_t num;
 	hak_uloc_t      loc;
-/*
-	struct
-	{
-		hak_uch_t val[256];
-		hak_oow_t len;
-	} tgt;
-*/
 };
 
 #if defined(HAK_OOCH_IS_UCH)
@@ -2000,7 +1986,7 @@ struct hak_t
 	do { \
 		if (HAK_UNLIKELY((hak)->sp >= HAK_OOP_TO_SMOOI((hak)->processor->active->st))) \
 		{ \
-			hak_seterrbfmt (hak, HAK_EOOMEM, "process stack overflow"); \
+			hak_seterrbfmt(hak, HAK_EOOMEM, "process stack overflow"); \
 			(hak)->abort_req = -1; \
 		} \
 		(hak)->sp = (hak)->sp + 1; \
@@ -2253,65 +2239,65 @@ HAK_EXPORT void hak_setcmgr (
 
 HAK_EXPORT hak_errnum_t hak_geterrnum (
 	hak_t* hak
-);
+) HAK_NONNULL_1(1);
 
 HAK_EXPORT void hak_seterrnum (
 	hak_t*       hak,
 	hak_errnum_t errnum
-);
+) HAK_NONNULL_1(1);
 
 HAK_EXPORT void hak_geterrloc (
 	hak_t*     hak,
 	hak_loc_t* loc
-);
+) HAK_NONNULL_1(1);
 
 HAK_EXPORT void hak_seterrbmsg (
 	hak_t*           hak,
 	hak_errnum_t     errnum,
 	const hak_bch_t* errmsg
-);
+) HAK_NONNULL_1(1);
 
 HAK_EXPORT void hak_seterrumsg (
 	hak_t*           hak,
 	hak_errnum_t     errnum,
 	const hak_uch_t* errmsg
-);
+) HAK_NONNULL_1(1);
 
 HAK_EXPORT void hak_seterrwithsyserr (
 	hak_t*       hak,
 	int          syserr_type,
 	int          syserr_code
-);
+) HAK_NONNULL_1(1);
 
 HAK_EXPORT void hak_seterrbfmtwithsyserr (
 	hak_t*           hak,
 	int              syserr_type,
 	int              syserr_code,
 	const hak_bch_t* fmt,
-       	...
-);
+	...
+) HAK_NONNULL_2(1,4);
 
 HAK_EXPORT void hak_seterrufmtwithsyserr (
 	hak_t*           hak,
 	int              syserr_type,
 	int              syserr_code,
 	const hak_uch_t* fmt,
-       	...
-);
+	...
+) HAK_NONNULL_2(1,4);
 
 HAK_EXPORT void hak_seterrbfmt (
 	hak_t*           hak,
 	hak_errnum_t     errnum,
 	const hak_bch_t* fmt,
 	...
-);
+) HAK_NONNULL_2(1,3);
 
 HAK_EXPORT void hak_seterrufmt (
 	hak_t*           hak,
 	hak_errnum_t     errnum,
 	const hak_uch_t* fmt,
 	...
-);
+) HAK_NONNULL_2(1,3);
 
 HAK_EXPORT void hak_seterrbfmtloc (
 	hak_t*           hak,
@@ -2319,7 +2305,7 @@ HAK_EXPORT void hak_seterrbfmtloc (
 	const hak_loc_t* loc,
 	const hak_bch_t* fmt,
 	...
-);
+) HAK_NONNULL_3(1,3,4);
 
 HAK_EXPORT void hak_seterrufmtloc (
 	hak_t*           hak,
@@ -2327,44 +2313,43 @@ HAK_EXPORT void hak_seterrufmtloc (
 	const hak_loc_t* loc,
 	const hak_uch_t* fmt,
 	...
-);
+) HAK_NONNULL_3(1,3,4);
 
 HAK_EXPORT void hak_seterrbfmtv (
 	hak_t*           hak,
 	hak_errnum_t     errnum,
 	const hak_bch_t* fmt,
 	va_list          ap
-);
+) HAK_NONNULL_2(1,3);
 
 HAK_EXPORT void hak_seterrufmtv (
 	hak_t*           hak,
 	hak_errnum_t     errnum,
 	const hak_uch_t* fmt,
 	va_list          ap
-);
-
+) HAK_NONNULL_2(1,3);
 
 HAK_EXPORT const hak_ooch_t* hak_geterrstr (
 	hak_t* hak
-);
+) HAK_NONNULL_1(1);
 
 HAK_EXPORT const hak_uch_t* hak_geterrumsg (
 	hak_t* hak
-);
+) HAK_NONNULL_1(1);
 
 HAK_EXPORT const hak_bch_t* hak_geterrbmsg (
 	hak_t* hak
-);
+) HAK_NONNULL_1(1);
 
 HAK_EXPORT void hak_geterrbinf (
 	hak_t*         hak,
 	hak_errbinf_t* errinf
-);
+) HAK_NONNULL_2(1,2);
 
 HAK_EXPORT void hak_geterruinf (
 	hak_t*         hak,
 	hak_erruinf_t* errinf
-);
+) HAK_NONNULL_2(1,2);
 #if defined(HAK_OOCH_IS_UCH)
 #	define hak_geterrinf hak_geterruinf
 #else
@@ -2375,13 +2360,13 @@ HAK_EXPORT hak_oow_t hak_copyerrbmsg (
 	hak_t*     hak,
 	hak_bch_t* buf,
 	hak_oow_t  len
-);
+) HAK_NONNULL_2(1,2);
 
 HAK_EXPORT hak_oow_t hak_copyerrumsg (
 	hak_t*     hak,
 	hak_uch_t* buf,
 	hak_oow_t  len
-);
+) HAK_NONNULL_2(1,2);
 
 #if defined(HAK_OOCH_IS_UCH)
 #	define hak_geterrmsg  hak_geterrumsg
@@ -2395,7 +2380,7 @@ HAK_EXPORT hak_oow_t hak_copyerrumsg (
 
 HAK_EXPORT const hak_ooch_t* hak_backuperrmsg (
 	hak_t* hak
-);
+) HAK_NONNULL_1(1);
 
 HAK_EXPORT int hak_errnum_is_synerr (
 	hak_errnum_t errnum
@@ -2409,12 +2394,16 @@ HAK_EXPORT const hak_bch_t* hak_errnum_to_errbcstr (
 	hak_errnum_t errnum,
 	hak_bch_t*   buf,
 	hak_oow_t    len
-);
+) HAK_NONNULL_1(2);
 
 HAK_EXPORT const hak_uch_t* hak_errnum_to_errucstr (
 	hak_errnum_t errnum,
 	hak_uch_t*   buf,
 	hak_oow_t    len
+) HAK_NONNULL_1(2);
+
+HAK_EXPORT const hak_bch_t* hak_synerr_to_errbcstr (
+	hak_synerrnum_t errnum
 );
 
 /**
@@ -2752,28 +2741,17 @@ HAK_EXPORT void hak_setsynerrbfmt (
 	hak_t*              hak,
 	hak_synerrnum_t     num,
 	const hak_loc_t*    loc,
-	const hak_oocs_t*   tgt,
 	const hak_bch_t*    msgfmt,
 	...
-);
+) HAK_NONNULL_2(1,4);
 
 HAK_EXPORT void hak_setsynerrufmt (
 	hak_t*              hak,
 	hak_synerrnum_t     num,
 	const hak_loc_t*    loc,
-	const hak_oocs_t*   tgt,
 	const hak_uch_t*    msgfmt,
 	...
-);
-
-#if defined(HAK_HAVE_INLINE)
-static HAK_INLINE void hak_setsynerr (hak_t* hak, hak_synerrnum_t num, const hak_loc_t* loc, const hak_oocs_t* tgt)
-{
-	hak_setsynerrbfmt (hak, num, loc, tgt, HAK_NULL);
-}
-#else
-#	define hak_setsynerr(hak,num,loc,tgt) hak_setsynerrbfmt(hak,num,loc,tgt,HAK_NULL)
-#endif
+) HAK_NONNULL_2(1,4);
 
 /* =========================================================================
  * TEMPORARY OOP MANAGEMENT FUNCTIONS

@@ -4312,7 +4312,7 @@ hak_logbfmt(hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncv
 				/* put the code at method dictionary
 				   pass 1 for class method, 2 for instance method, 3 for class instantiation method */
 				if (!hak_putatdic_method(hak, (hak_oop_dic_t)mdic, name, blk, &mtype)) goto oops_with_errmsg_supplement;
-				if (mtype && HAK_LOG_ENABLED(hak, HAK_LOG_IC | HAK_LOG_WARN)) 
+				if (mtype && HAK_LOG_ENABLED(hak, HAK_LOG_IC | HAK_LOG_WARN))
 				{
 					hak_oop_t class_name;
 					hak_dbgi_t dbgi;

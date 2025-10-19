@@ -69,6 +69,9 @@ enum
 #define TV_BUFFER_ALIGN 256
 #define BLK_INFO_BUFFER_ALIGN 128
 
+
+static hak_ooch_t _empty_str_[1] = { '\0' };
+
 /* --------------------------------------------
 
 fun plus(x y) {
@@ -220,13 +223,13 @@ static int add_temporary_variable (hak_t* hak, const hak_cnode_t* var, hak_oow_t
 	{
 		if (tgt)
 		{
-			hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAMEDUP, HAK_CNODE_GET_LOC(var), HAK_NULL,
+			hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAMEDUP, HAK_CNODE_GET_LOC(var),
 				"duplicate %hs name '%.*js' for '%.*js'",
 				desc, name->len, name->ptr, tgt->len, tgt->ptr);
 		}
 		else
 		{
-			hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAMEDUP, HAK_CNODE_GET_LOC(var), HAK_NULL,
+			hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAMEDUP, HAK_CNODE_GET_LOC(var),
 				"duplicate %hs name '%.*js'",
 				desc, name->len, name->ptr);
 		}
@@ -302,7 +305,7 @@ static int add_class_level_variable (hak_t* hak, hak_oocsc_t* dst, hak_oocsc_t* 
 	if (__find_word_in_string((hak_oocs_t*)dst, name, 0, HAK_NULL) >= 0 ||
 	   (__find_word_in_string((hak_oocs_t*)altdst, name, 0, HAK_NULL) >= 0))
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAMEDUP, HAK_CNODE_GET_LOC(var), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAMEDUP, HAK_CNODE_GET_LOC(var),
 			"duplicate %hs variable name '%.*js'", desc, name->len, name->ptr);
 		return -1;
 	}
@@ -403,7 +406,7 @@ static int find_variable_backward_with_word (hak_t* hak, const hak_oocs_t* name,
 					{
 						/* instance variables are accessible only in an instance method defintion scope.
 						 * it is in class initialization scope */
-						hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, loc, HAK_NULL,
+						hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, loc,
 							"prohibited access to instance variable around '%.*js'", name->len, name->ptr);
 						return -1;
 					}
@@ -414,7 +417,7 @@ static int find_variable_backward_with_word (hak_t* hak, const hak_oocs_t* name,
 						if ((hak->c->funblk.info[--fi].fun_type & 0xFF) == FUN_CM)
 						{
 							/* the function where this variable is defined is a class method or an plain function block within a class method*/
-							hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, loc, HAK_NULL,
+							hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, loc,
 								"prohibited access to instance variable in class method context around '%.*js'",
 								name->len, name->ptr);
 							return -1;
@@ -547,7 +550,7 @@ static int check_block_expression_as_body (hak_t* hak, hak_cnode_t* c, const hak
 	{
 	no_block:
 		hak_setsynerrbfmt(hak, HAK_SYNERR_BLOCK,
-			(car? HAK_CNODE_GET_LOC(car): c? HAK_CNODE_GET_LOC(c): HAK_CNODE_GET_LOC(ctx)), HAK_NULL,
+			(car? HAK_CNODE_GET_LOC(car): c? HAK_CNODE_GET_LOC(c): HAK_CNODE_GET_LOC(ctx)),
 			"block expression expected as '%.*js' body", HAK_CNODE_GET_TOKLEN(ctx), HAK_CNODE_GET_TOKPTR(ctx)
 		);
 		return -1;
@@ -590,7 +593,7 @@ static int check_block_expression_as_body (hak_t* hak, hak_cnode_t* c, const hak
 		}
 
 		hak_setsynerrbfmt(
-			hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(cdr), HAK_NULL,
+			hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(cdr),
 			"redundant expression prohibited after '%.*js' body",
 			HAK_CNODE_GET_TOKLEN(ctx), HAK_CNODE_GET_TOKPTR(ctx)
 		);
@@ -1106,7 +1109,7 @@ static int push_ctlblk (hak_t* hak, const hak_loc_t* errloc, hak_ctlblk_type_t t
 
 	if (hak->c->ctlblk.depth == HAK_TYPE_MAX(hak_ooi_t))
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_BLKDEPTH, errloc, HAK_NULL, "control block depth too deep");
+		hak_setsynerrbfmt(hak, HAK_SYNERR_BLKDEPTH, errloc, "control block depth too deep");
 		return -1;
 	}
 
@@ -1158,7 +1161,7 @@ static int push_clsblk (
 
 	if (hak->c->clsblk.depth == HAK_TYPE_MAX(hak_ooi_t))
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_BLKDEPTH, errloc, HAK_NULL, "class block depth too deep");
+		hak_setsynerrbfmt(hak, HAK_SYNERR_BLKDEPTH, errloc, "class block depth too deep");
 		return -1;
 	}
 
@@ -1242,7 +1245,7 @@ static int push_funblk (hak_t* hak, const hak_loc_t* errloc,
 	HAK_ASSERT(hak, hak->c->funblk.depth >= -1);
 	if (hak->c->funblk.depth == HAK_TYPE_MAX(hak_ooi_t))
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_BLKDEPTH, errloc, HAK_NULL, "function block depth too deep");
+		hak_setsynerrbfmt(hak, HAK_SYNERR_BLKDEPTH, errloc, "function block depth too deep");
 		return -1;
 	}
 
@@ -1528,7 +1531,7 @@ static int collect_vardcl_for_class (hak_t* hak, hak_cnode_t* obj, hak_cnode_t**
 			{
 			synerr_varname:
 				hak_setsynerrbfmt(
-					hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(var), HAK_NULL,
+					hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(var),
 					"not variable name '%.*js'", HAK_CNODE_GET_TOKLEN(var), HAK_CNODE_GET_TOKPTR(var));
 				return -1;
 			}
@@ -1556,7 +1559,7 @@ static int collect_vardcl_for_class (hak_t* hak, hak_cnode_t* obj, hak_cnode_t**
 			if (vardcl->nivars >= MAX_NCVARS)
 			{
 				hak_setsynerrbfmt(
-					hak, HAK_SYNERR_VARFLOOD, HAK_CNODE_GET_LOC(var), HAK_NULL,
+					hak, HAK_SYNERR_VARFLOOD, HAK_CNODE_GET_LOC(var),
 					"too many(%zu) class variables before '%.*js'",
 					vardcl->nivars, HAK_CNODE_GET_TOKLEN(var), HAK_CNODE_GET_TOKPTR(var));
 				return -1;
@@ -1573,7 +1576,7 @@ static int collect_vardcl_for_class (hak_t* hak, hak_cnode_t* obj, hak_cnode_t**
 			if (vardcl->nivars >= MAX_NIVARS)
 			{
 				hak_setsynerrbfmt(
-					hak, HAK_SYNERR_VARFLOOD, HAK_CNODE_GET_LOC(var), HAK_NULL,
+					hak, HAK_SYNERR_VARFLOOD, HAK_CNODE_GET_LOC(var),
 					"too many(%zu) instance variables before '%.*js'",
 					vardcl->nivars, HAK_CNODE_GET_TOKLEN(var), HAK_CNODE_GET_TOKPTR(var));
 				return -1;
@@ -1607,7 +1610,7 @@ static int collect_vardcl_for_class (hak_t* hak, hak_cnode_t* obj, hak_cnode_t**
 
 		if (!HAK_CNODE_IS_CONS(dcl))
 		{
-			hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(dcl), HAK_NULL,
+			hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(dcl),
 				"redundant cdr in %hs declaration around '%.*js'",
 				desc[enclosed], HAK_CNODE_GET_TOKLEN(dcl), HAK_CNODE_GET_TOKPTR(dcl));
 			return -1;
@@ -1653,7 +1656,7 @@ static int collect_vardcl (hak_t* hak, hak_cnode_t* obj, hak_cnode_t** nextobj, 
 		if (!HAK_CNODE_IS_SYMBOL(var))
 		{
 			hak_setsynerrbfmt(
-				hak, HAK_SYNERR_ARGNAME, HAK_CNODE_GET_LOC(var), HAK_NULL,
+				hak, HAK_SYNERR_ARGNAME, HAK_CNODE_GET_LOC(var),
 				"invalid local variable name '%.*js'",
 				HAK_CNODE_GET_TOKLEN(var), HAK_CNODE_GET_TOKPTR(var));
 			return -1;
@@ -1671,7 +1674,7 @@ static int collect_vardcl (hak_t* hak, hak_cnode_t* obj, hak_cnode_t** nextobj, 
 
 		if (!HAK_CNODE_IS_CONS(dcl))
 		{
-			hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(dcl), HAK_NULL,
+			hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(dcl),
 				"redundant cdr in %hs variable list around '%.*js'",
 				desc, HAK_CNODE_GET_TOKLEN(dcl), HAK_CNODE_GET_TOKPTR(dcl));
 			return -1;
@@ -1725,13 +1728,13 @@ static int check_if_plain_cnode (hak_t* hak, hak_cnode_t* obj, hak_cnode_t* prev
 {
 	if (!obj)
 	{
-		hak_setsynerrbfmt(hak, errnum, HAK_CNODE_GET_LOC(prev), HAK_NULL,
+		hak_setsynerrbfmt(hak, errnum, HAK_CNODE_GET_LOC(prev),
 			"no %hs in %.*js", bname, HAK_CNODE_GET_TOKLEN(container), HAK_CNODE_GET_TOKPTR(container));
 		return -1;
 	}
 	else if (!HAK_CNODE_IS_CONS(obj))
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(prev), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(prev),
 			"redundant cdr where %.*js is expected in %.*js around '%.*js'",
 			bname, HAK_CNODE_GET_TOKLEN(container), HAK_CNODE_GET_TOKPTR(container),
 			HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
@@ -1835,12 +1838,12 @@ static int compile_and (hak_t* hak, hak_cnode_t* src)
 	if (!obj)
 	{
 		/* no value */
-		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(src), HAK_NULL, "no expression specified in and");
+		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(src), "no expression specified in 'and'");
 		return -1;
 	}
 	else if (!HAK_CNODE_IS_CONS(obj))
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj),
 			"redundant cdr in 'and' around '%.*js'", HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
 		return -1;
 	}
@@ -1870,7 +1873,7 @@ static HAK_INLINE int compile_and_p1 (hak_t* hak)
 	obj = cf->operand;
 	if (!HAK_CNODE_IS_CONS(obj))
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj),
 			"redundant cdr in 'and' around '%.*js'", HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
 		return -1;
 	}
@@ -1931,12 +1934,12 @@ static int compile_or (hak_t* hak, hak_cnode_t* src)
 	if (!obj)
 	{
 		/* no value */
-		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(src), HAK_NULL, "no expression specified in 'or'");
+		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(src), "no expression specified in 'or'");
 		return -1;
 	}
 	else if (!HAK_CNODE_IS_CONS(obj))
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj),
 			"redundant cdr in 'or' around '%.*js'", HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
 		return -1;
 	}
@@ -1967,7 +1970,7 @@ static HAK_INLINE int compile_or_p1 (hak_t* hak)
 	obj = cf->operand;
 	if (!HAK_CNODE_IS_CONS(obj))
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj),
 			"redundant cdr in 'or' around '%.*js'", HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
 		return -1;
 	}
@@ -2029,12 +2032,12 @@ static int compile_plus (hak_t* hak, hak_cnode_t* src)
 	if (!obj)
 	{
 		/* no value */
-		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(src), HAK_NULL, "no expression specified in plus");
+		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(src), "no expression specified in 'plus'");
 		return -1;
 	}
 	else if (!HAK_CNODE_IS_CONS(obj))
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj),
 			"redundant cdr in plus around '%.*js'", HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
 		return -1;
 	}
@@ -2046,13 +2049,13 @@ static int compile_plus (hak_t* hak, hak_cnode_t* src)
 
 	if (!obj)
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(src), HAK_NULL, "no second expression specified in plus");
+		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(src), "no second expression specified in 'plus'");
 		return -1;
 	}
 	else if (!HAK_CNODE_IS_CONS(obj))
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj), HAK_NULL,
-			"redundant cdr in plus around '%.*js", HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
+		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj),
+			"redundant cdr in 'plus' around '%.*js", HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
 		return -1;
 	}
 
@@ -2061,8 +2064,8 @@ static int compile_plus (hak_t* hak, hak_cnode_t* src)
 
 	if (obj)
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj), HAK_NULL,
-			"redundant cdr in plus around '%.*js", HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
+		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj),
+			"redundant cdr in 'plus' around '%.*js", HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
 		return -1;
 	}
 
@@ -2103,13 +2106,17 @@ static int compile_break (hak_t* hak, hak_cnode_t* src)
 	{
 		if (HAK_CNODE_IS_CONS(obj))
 		{
-			hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(obj), HAK_NULL,
-				"redundant argument in %.*js", HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
+			hak_cnode_t* tmp;
+			tmp = HAK_CNODE_CONS_CAR(obj);
+			hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(obj),
+				"excessive argument to '%.*js' around '%.*js'",
+				HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd),
+				HAK_CNODE_GET_TOKLEN(tmp), HAK_CNODE_GET_TOKPTR(tmp));
 		}
 		else
 		{
-			hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj), HAK_NULL,
-			"redundant cdr in %.*js around '%.*js'",
+			hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj),
+			"redundant cdr in '%.*js' around '%.*js'",
 			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd),
 			HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
 		}
@@ -2135,7 +2142,7 @@ static int compile_break (hak_t* hak, hak_cnode_t* src)
 		}
 	}
 
-	hak_setsynerrbfmt(hak, HAK_SYNERR_BREAK, HAK_CNODE_GET_LOC(src), HAK_NULL,
+	hak_setsynerrbfmt(hak, HAK_SYNERR_BREAK, HAK_CNODE_GET_LOC(src),
 		"%.*js outside loop", HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 	return -1;
 
@@ -2174,7 +2181,7 @@ inside_loop:
 
 	/* this part must no be reached. if a loop control block is found,
 	 * there must exist a COP_POST_UNTIL_BODY or COP_POST_WHILE_BODY frame */
-	hak_setsynerrbfmt(hak, HAK_SYNERR_INTERN, HAK_CNODE_GET_LOC(src), HAK_NULL,
+	hak_setsynerrbfmt(hak, HAK_SYNERR_INTERN, HAK_CNODE_GET_LOC(src),
 		"internal error in compiling %.*js", HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 	return -1;
 }
@@ -2220,12 +2227,16 @@ static int compile_continue (hak_t* hak, hak_cnode_t* src)
 	{
 		if (HAK_CNODE_IS_CONS(obj))
 		{
-			hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(obj), HAK_NULL,
-				"redundant argument in %.*js", HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
+			hak_cnode_t* tmp;
+			tmp = HAK_CNODE_CONS_CAR(obj);
+			hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(obj),
+				"excessive argument to '%.*js' around '%.*js'",
+				HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd),
+				HAK_CNODE_GET_TOKLEN(tmp), HAK_CNODE_GET_TOKPTR(tmp));
 		}
 		else
 		{
-			hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj), HAK_NULL,
+			hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj),
 				"redundant cdr in %.*js around %.*js",
 				HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd),
 				HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
@@ -2251,7 +2262,8 @@ static int compile_continue (hak_t* hak, hak_cnode_t* src)
 		}
 	}
 
-	hak_setsynerrbfmt(hak, HAK_SYNERR_BREAK, HAK_CNODE_GET_LOC(src), HAK_NULL, "%.*js outside loop", HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
+	hak_setsynerrbfmt(hak, HAK_SYNERR_BREAK, HAK_CNODE_GET_LOC(src),
+		"%.*js outside loop", HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 	return -1;
 
 inside_loop:
@@ -2278,7 +2290,8 @@ inside_loop:
 
 	/* this part must no be reached. if a loop control block is found,
 	 * there must exist a COP_POST_UNTIL_BODY or COP_POST_WHILE_BODY frame */
-	hak_setsynerrbfmt(hak, HAK_SYNERR_INTERN, HAK_CNODE_GET_LOC(src), HAK_NULL, "internal error in compiling %.*js", HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
+	hak_setsynerrbfmt(hak, HAK_SYNERR_INTERN, HAK_CNODE_GET_LOC(src),
+		"internal error in compiling %.*js", HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 	return -1;
 }
 
@@ -2312,7 +2325,7 @@ static int compile_expression_block (hak_t* hak, hak_cnode_t* src, const hak_bch
 		obj = HAK_CNODE_CONS_CDR(src); /* expression list after it */
 		if (obj && !HAK_CNODE_IS_CONS(obj))
 		{
-			hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj), HAK_NULL,
+			hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj),
 				"redundant cdr in %.*js around %.*js",
 				HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd),
 				HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
@@ -2324,7 +2337,7 @@ static int compile_expression_block (hak_t* hak, hak_cnode_t* src, const hak_bch
 	{
 		if (is_in_class_init_scope(hak))
 		{
-			hak_setsynerrbfmt(hak, HAK_SYNERR_VARDCLBANNED, HAK_CNODE_GET_LOC(obj), HAK_NULL,
+			hak_setsynerrbfmt(hak, HAK_SYNERR_VARDCLBANNED, HAK_CNODE_GET_LOC(obj),
 				"variable declaration disallowed in class init scope");
 			return -1;
 		}
@@ -2342,7 +2355,7 @@ static int compile_expression_block (hak_t* hak, hak_cnode_t* src, const hak_bch
 			 *               not allowed either
 			 */
 			hak_setsynerrbfmt(
-				hak, HAK_SYNERR_VARDCLBANNED, HAK_CNODE_GET_LOC(obj), HAK_NULL,
+				hak, HAK_SYNERR_VARDCLBANNED, HAK_CNODE_GET_LOC(obj),
 				"variable declaration disallowed in '%hs' context", ctxname);
 			return -1;
 		}
@@ -2358,7 +2371,7 @@ static int compile_expression_block (hak_t* hak, hak_cnode_t* src, const hak_bch
 		if (nlvars > MAX_CODE_NBLKLVARS)
 		{
 			hak_setsynerrbfmt(
-				hak, HAK_SYNERR_VARFLOOD, HAK_CNODE_GET_LOC(tmp), HAK_NULL,
+				hak, HAK_SYNERR_VARFLOOD, HAK_CNODE_GET_LOC(tmp),
 				"too many(%zu) variables in %.*js", nlvars, HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 			return -1;
 		}
@@ -2472,13 +2485,13 @@ static int compile_if (hak_t* hak, hak_cnode_t* src)
 	if (!obj)
 	{
 		/* no value */
-		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(src), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(src),
 			"no conditional expression after '%.*js'", HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 		return -1;
 	}
 	else if (!HAK_CNODE_IS_CONS(obj))
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj),
 			"redundant cdr in %.*js around %.*js",
 			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd),
 			HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
@@ -2537,7 +2550,9 @@ static HAK_INLINE int patch_nearest_post_if_body (hak_t* hak, hak_cnode_t* cmd)
 
 	if (jump_offset > MAX_CODE_JUMP * 2)
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_IFFLOOD, HAK_CNODE_GET_LOC(cmd), HAK_NULL, "code in %.*js too big - size %zu", HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd), jump_offset);
+		hak_setsynerrbfmt(hak, HAK_SYNERR_IFFLOOD, HAK_CNODE_GET_LOC(cmd),
+			"code in %.*js too big - size %zu",
+			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd), jump_offset);
 		return -1;
 	}
 	patch_long_jump(hak, jip, jump_offset);
@@ -2577,13 +2592,13 @@ static HAK_INLINE int compile_elif (hak_t* hak)
 	if (!obj)
 	{
 		/* no value */
-		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(src), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(src),
 			"no conditional expression after '%.*js'", HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 		return -1;
 	}
 	else if (!HAK_CNODE_IS_CONS(obj))
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj),
 			"redundant cdr in %.*js around %.*js",
 			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd),
 			HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
@@ -2621,7 +2636,7 @@ static HAK_INLINE int compile_else (hak_t* hak)
 
 	if (obj && !HAK_CNODE_IS_CONS(obj))
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj),
 			"redundant cdr in %.*js around %.*js",
 			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd),
 			HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
@@ -2695,7 +2710,7 @@ static int check_class_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned i
 		if (class_name)
 		{
 			hak_setsynerrbfmt(
-				hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(attr_list), HAK_NULL,
+				hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(attr_list),
 				"empty attribute list on '%.*js' for '%.*js'",
 				HAK_CNODE_GET_TOKLEN(class_name), HAK_CNODE_GET_TOKPTR(class_name),
 				HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
@@ -2703,7 +2718,7 @@ static int check_class_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned i
 		else
 		{
 			hak_setsynerrbfmt(
-				hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(attr_list), HAK_NULL,
+				hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(attr_list),
 				"empty attribute list on unnamed class for '%.*js'",
 				HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 		}
@@ -2731,7 +2746,7 @@ static int check_class_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned i
 			if (!HAK_CNODE_IS_TYPED(attr, HAK_CNODE_SYMLIT))
 			{
 				hak_setsynerrbfmt(
-					hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(attr), HAK_NULL,
+					hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(attr),
 					"invalid class attribute name '%.*js'", toklen, tokptr);
 				return -1;
 			}
@@ -2762,7 +2777,7 @@ static int check_class_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned i
 					if (!!((ct >> attr_tab[i].shifts) & (attr_tab[i].mask | attr_tab[i].value)))
 					{
 						hak_setsynerrbfmt(
-							hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(attr), HAK_NULL,
+							hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(attr),
 							"conflicting or duplicate class attribute name '#%.*js'", toklen, tokptr);
 						return -1;
 					}
@@ -2778,7 +2793,7 @@ static int check_class_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned i
 			if (lim <= 0)
 			{
 				hak_setsynerrbfmt(
-					hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(attr), HAK_NULL,
+					hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(attr),
 					"unrecognized class attribute name '#%.*js'", toklen, tokptr);
 				return -1;
 			}
@@ -2856,7 +2871,7 @@ static int compile_class (hak_t* hak, hak_cnode_t* src)
 			if (!HAK_CNODE_IS_SYMBOL(tmp))
 			{
 				hak_setsynerrbfmt(
-					hak, HAK_SYNERR_CLASS, HAK_CNODE_GET_LOC(tmp), HAK_NULL,
+					hak, HAK_SYNERR_CLASS, HAK_CNODE_GET_LOC(tmp),
 					"invalid class name '%.*js' for '%.*js'",
 					HAK_CNODE_GET_TOKLEN(tmp), HAK_CNODE_GET_TOKPTR(tmp),
 					HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
@@ -2873,7 +2888,7 @@ static int compile_class (hak_t* hak, hak_cnode_t* src)
 		if (class_name)
 		{
 			hak_setsynerrbfmt(
-				hak, HAK_SYNERR_CLASS, HAK_CNODE_GET_LOC(src), HAK_NULL,
+				hak, HAK_SYNERR_CLASS, HAK_CNODE_GET_LOC(src),
 				"incomplete definition of '%.*js' for '%.*js'",
 				HAK_CNODE_GET_TOKLEN(class_name), HAK_CNODE_GET_TOKPTR(class_name),
 				HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
@@ -2881,7 +2896,7 @@ static int compile_class (hak_t* hak, hak_cnode_t* src)
 		else
 		{
 			hak_setsynerrbfmt(
-				hak, HAK_SYNERR_CLASS, HAK_CNODE_GET_LOC(src), HAK_NULL,
+				hak, HAK_SYNERR_CLASS, HAK_CNODE_GET_LOC(src),
 				"incomplete defintion of unnamed class for '%.*js'",
 				HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 		}
@@ -2900,7 +2915,7 @@ static int compile_class (hak_t* hak, hak_cnode_t* src)
 		if (!obj || !HAK_CNODE_IS_CONS(obj))
 		{
 			hak_setsynerrbfmt(
-				hak, HAK_SYNERR_CLASS, HAK_CNODE_GET_LOC(marker), HAK_NULL,
+				hak, HAK_SYNERR_CLASS, HAK_CNODE_GET_LOC(marker),
 				"no expression or declaration after %.*js",
 				HAK_CNODE_GET_TOKLEN(marker), HAK_CNODE_GET_TOKPTR(marker));
 			return -1;
@@ -2913,7 +2928,7 @@ static int compile_class (hak_t* hak, hak_cnode_t* src)
 			if (HAK_CNODE_IS_FOR_DATA_SIMPLE(superclass) || HAK_CNODE_IS_FOR_LANG(superclass))
 			{
 				hak_setsynerrbfmt(
-					hak, HAK_SYNERR_CLASS, HAK_CNODE_GET_LOC(marker), HAK_NULL,
+					hak, HAK_SYNERR_CLASS, HAK_CNODE_GET_LOC(marker),
 					"invalid superclass name '%.*js' after '%.*js' for '%.*js'",
 					HAK_CNODE_GET_TOKLEN(superclass), HAK_CNODE_GET_TOKPTR(superclass),
 					HAK_CNODE_GET_TOKLEN(marker), HAK_CNODE_GET_TOKPTR(marker),
@@ -2922,7 +2937,7 @@ static int compile_class (hak_t* hak, hak_cnode_t* src)
 			else
 			{
 				hak_setsynerrbfmt(
-					hak, HAK_SYNERR_CLASS, HAK_CNODE_GET_LOC(marker), HAK_NULL,
+					hak, HAK_SYNERR_CLASS, HAK_CNODE_GET_LOC(marker),
 					"no valid superclass name after '%.*js' for '%.*js'",
 					HAK_CNODE_GET_TOKLEN(marker), HAK_CNODE_GET_TOKPTR(marker),
 					HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
@@ -3186,8 +3201,7 @@ static int check_fun_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned int
 		/* don't allow empty attribute list */
 		if (class_name && fun_name)
 		{
-			hak_setsynerrbfmt(
-				hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(attr_list), HAK_NULL,
+			hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(attr_list),
 				"empty attribute list on '%.*js:%.*js' for '%.*js'",
 				HAK_CNODE_GET_TOKLEN(class_name), HAK_CNODE_GET_TOKPTR(class_name),
 				HAK_CNODE_GET_TOKLEN(fun_name), HAK_CNODE_GET_TOKPTR(fun_name),
@@ -3195,16 +3209,14 @@ static int check_fun_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned int
 		}
 		else if (fun_name)
 		{
-			hak_setsynerrbfmt(
-				hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(attr_list), HAK_NULL,
+			hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(attr_list),
 				"empty attribute list on '%.*js' for '%.*js'",
 				HAK_CNODE_GET_TOKLEN(fun_name), HAK_CNODE_GET_TOKPTR(fun_name),
 				HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 		}
 		else
 		{
-			hak_setsynerrbfmt(
-				hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(attr_list), HAK_NULL,
+			hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(attr_list),
 				"empty attribute list on unnamed function for '%.*js'",
 				HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 		}
@@ -3227,8 +3239,7 @@ static int check_fun_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned int
 
 			if (!HAK_CNODE_IS_TYPED(a, HAK_CNODE_SYMLIT))
 			{
-				hak_setsynerrbfmt(
-					hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(a), HAK_NULL,
+				hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(a),
 					"invalid function attribute name '%.*js'", toklen, tokptr);
 				return -1;
 			}
@@ -3239,8 +3250,7 @@ static int check_fun_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned int
 				if (ft != FUN_IM)
 				{
 				conflicting:
-					hak_setsynerrbfmt(
-						hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(a), HAK_NULL,
+					hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(a),
 						"conflicting function attribute name '#%.*js'", toklen, tokptr);
 					return -1;
 				}
@@ -3254,8 +3264,7 @@ static int check_fun_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned int
 			}
 			else
 			{
-				hak_setsynerrbfmt(
-					hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(a), HAK_NULL,
+				hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(a),
 					"unrecognized function attribute name '#%.*js'", toklen, tokptr);
 				return -1;
 			}
@@ -3330,8 +3339,7 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 			next = HAK_CNODE_CONS_CDR(next);
 			if (!next)
 			{
-				hak_setsynerrbfmt(
-					hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(fun_name), HAK_NULL,
+				hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(fun_name),
 					"no function name or arguments after attribute list for '%.*js'",
 					HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 				return -1;
@@ -3349,8 +3357,7 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 			next = HAK_CNODE_CONS_CDR(next);
 			if (!next)
 			{
-				hak_setsynerrbfmt(
-					hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(fun_name), HAK_NULL,
+				hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(fun_name),
 					"function name '%.*js' not followed by ( or : for '%.*js'",
 					HAK_CNODE_GET_TOKLEN(fun_name), HAK_CNODE_GET_TOKPTR(fun_name),
 					HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
@@ -3367,8 +3374,7 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 				next = HAK_CNODE_CONS_CDR(next);
 				if (!next)
 				{
-					hak_setsynerrbfmt(
-						hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(class_name), HAK_NULL,
+					hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(class_name),
 						"no function name after class name '%.*js:' for '%.*js'",
 						HAK_CNODE_GET_TOKLEN(class_name), HAK_CNODE_GET_TOKPTR(class_name),
 						HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
@@ -3378,8 +3384,7 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 				tmp = HAK_CNODE_CONS_CAR(next);
 				if (!is_cnode_eligible_for_fun_name_after_colon(tmp))
 				{
-					hak_setsynerrbfmt(
-						hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(tmp), HAK_NULL,
+					hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(tmp),
 						"invalid function name '%.*js' after '%.*js:' for '%.*js'",
 						HAK_CNODE_GET_TOKLEN(tmp), HAK_CNODE_GET_TOKPTR(tmp),
 						HAK_CNODE_GET_TOKLEN(class_name), HAK_CNODE_GET_TOKPTR(class_name),
@@ -3391,8 +3396,7 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 				next = HAK_CNODE_CONS_CDR(next);
 				if (!next)
 				{
-					hak_setsynerrbfmt(
-						hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(fun_name), HAK_NULL,
+					hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(fun_name),
 						"function name '%.*js:%.*js' not followed by ( for '%.*js'",
 						HAK_CNODE_GET_TOKLEN(class_name), HAK_CNODE_GET_TOKPTR(class_name),
 						HAK_CNODE_GET_TOKLEN(fun_name), HAK_CNODE_GET_TOKPTR(fun_name),
@@ -3404,8 +3408,7 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 
 				if (is_in_class_init_scope(hak))
 				{
-					hak_setsynerrbfmt(
-						hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(fun_name), HAK_NULL,
+					hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(fun_name),
 						"class name '%.*js' before :'%.*js' prohibited in class initialization context",
 						HAK_CNODE_GET_TOKLEN(class_name), HAK_CNODE_GET_TOKPTR(class_name),
 						HAK_CNODE_GET_TOKLEN(fun_name), HAK_CNODE_GET_TOKPTR(fun_name));
@@ -3429,16 +3432,14 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 			{
 				if (fun_name)
 				{
-					hak_setsynerrbfmt(
-						hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(cmd), HAK_NULL,
+					hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(cmd),
 						"no function body after argument list of function '%.*js' for '%.*js'",
 						HAK_CNODE_GET_TOKLEN(fun_name), HAK_CNODE_GET_TOKPTR(fun_name),
 						HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 				}
 				else
 				{
-					hak_setsynerrbfmt(
-						hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(cmd), HAK_NULL,
+					hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(cmd),
 						"unnamed function not followed by function body for '%.*js'",
 						HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 				}
@@ -3450,16 +3451,14 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 			{
 				if (fun_name)
 				{
-					hak_setsynerrbfmt(
-						hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(cmd), HAK_NULL,
+					hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(cmd),
 						"function '%.*js' defined with '%.*js' prohibited in class initialziation context",
 						HAK_CNODE_GET_TOKLEN(fun_name), HAK_CNODE_GET_TOKPTR(fun_name),
 						HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 				}
 				else
 				{
-					hak_setsynerrbfmt(
-						hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(cmd), HAK_NULL,
+					hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(cmd),
 						"unnamed function defined with '%.*js' prohibited in class initialziation context",
 						HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 				}
@@ -3475,8 +3474,7 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 				 *     fun() {} ## this is prohibited in this if check
 				 * }
 				 */
-				hak_setsynerrbfmt(
-					hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(cmd), HAK_NULL,
+				hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(cmd),
 					"unnamed function defined with '%.*js' prohibited in class initialziation context",
 					HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 				return -1;
@@ -3492,16 +3490,14 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 			 */
 			if (fun_name)
 			{
-				hak_setsynerrbfmt(
-					hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(tmp), HAK_NULL,
+				hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(tmp),
 					"'%.*js' not followed by ( but followed by '%.*js'",
 					HAK_CNODE_GET_TOKLEN(fun_name), HAK_CNODE_GET_TOKPTR(fun_name),
 					HAK_CNODE_GET_TOKLEN(tmp), HAK_CNODE_GET_TOKPTR(tmp));
 			}
 			else
 			{
-				hak_setsynerrbfmt(
-					hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(tmp), HAK_NULL,
+				hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(tmp),
 					"invalid function name '%.*js' for '%.*js'",
 					HAK_CNODE_GET_TOKLEN(tmp), HAK_CNODE_GET_TOKPTR(tmp),
 					HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
@@ -3512,8 +3508,7 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 	else /* !next */
 	{
 		/* nothing after 'fun' (e.g. fun ) */
-		hak_setsynerrbfmt(
-			hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(cmd), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(cmd),
 			"'%.*js' not followed by name or (",
 			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 		return -1;
@@ -3538,15 +3533,13 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 		{
 			if (fun_name)
 			{
-				hak_setsynerrbfmt(
-					hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(attr_list), HAK_NULL,
+				hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(attr_list),
 					"attribute list prohibited on plain function '%.*js'",
 					HAK_CNODE_GET_TOKLEN(fun_name), HAK_CNODE_GET_TOKPTR(fun_name));
 			}
 			else
 			{
-				hak_setsynerrbfmt(
-					hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(attr_list), HAK_NULL,
+				hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(attr_list),
 					"attribute list prohibited on unnamed function for '%.*js'",
 					HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 			}
@@ -3591,8 +3584,7 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 				{
 					/* in 'fun x (x :: 20) { }', '20' is not a valid return variable name.
 					 * in 'fun x (x :: if) { }', 'if' is not a valid return variable name. */
-					hak_setsynerrbfmt(
-						hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(arg), HAK_NULL,
+					hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(arg),
 						"invalid return variable '%.*js' for '%.*js'",
 						HAK_CNODE_GET_TOKLEN(arg), HAK_CNODE_GET_TOKPTR(arg),
 						HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
@@ -3612,8 +3604,7 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 				{
 					/* in 'fun x (... a) {}', 'a' is an unexpected token.
 					 * only ')' or '::' can follow ... */
-					hak_setsynerrbfmt(
-						hak, HAK_SYNERR_CNODE, HAK_CNODE_GET_LOC(arg), HAK_NULL,
+					hak_setsynerrbfmt(hak, HAK_SYNERR_CNODE, HAK_CNODE_GET_LOC(arg),
 						"unexpected token '%.*js' after '...' for '%.*js'",
 						HAK_CNODE_GET_TOKLEN(arg), HAK_CNODE_GET_TOKPTR(arg),
 						HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
@@ -3632,8 +3623,7 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 				}
 				else if (!HAK_CNODE_IS_SYMBOL(arg))
 				{
-					hak_setsynerrbfmt(
-						hak, HAK_SYNERR_ARGNAME, HAK_CNODE_GET_LOC(arg), HAK_NULL,
+					hak_setsynerrbfmt(hak, HAK_SYNERR_ARGNAME, HAK_CNODE_GET_LOC(arg),
 						"invalid argument name '%.*js' for '%.*js'",
 						HAK_CNODE_GET_TOKLEN(arg), HAK_CNODE_GET_TOKPTR(arg),
 						HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
@@ -3651,7 +3641,7 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 
 			if (!HAK_CNODE_IS_CONS(dcl))
 			{
-				hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(dcl), HAK_NULL,
+				hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(dcl),
 					"redundant cdr in argument list in %.*js around %.*js",
 					HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd),
 					HAK_CNODE_GET_TOKLEN(dcl), HAK_CNODE_GET_TOKPTR(dcl));
@@ -3663,11 +3653,10 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 
 	if ((fun_type & 0xFF) == FUN_IM && fun_name && HAK_CNODE_IS_BINOP(fun_name) && (is_in_class_init_scope(hak) || class_name) && nargs != 1)
 	{
-		hak_setsynerrbfmt(
-			hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(arg_list), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(arg_list),
 			"only one argument expected for '%.*js%hs%.*js'",
 			(class_name? HAK_CNODE_GET_TOKLEN(class_name): 0),
-			(class_name? HAK_CNODE_GET_TOKPTR(class_name): HAK_NULL),
+			(class_name? HAK_CNODE_GET_TOKPTR(class_name): _empty_str_),
 			(class_name? ":": ""),
 			HAK_CNODE_GET_TOKLEN(fun_name), HAK_CNODE_GET_TOKPTR(fun_name));
 		return -1;
@@ -3679,8 +3668,7 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 		 * block arguments, evaluation which is done by message passing
 		 * limits the number of arguments that can be passed. so the
 		 * check is implemented */
-		hak_setsynerrbfmt(
-			hak, HAK_SYNERR_ARGFLOOD, HAK_CNODE_GET_LOC(arg_list), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGFLOOD, HAK_CNODE_GET_LOC(arg_list),
 			"too many(%zu) arguments in %.*js", nargs,
 			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 		return -1;
@@ -3688,8 +3676,7 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 
 	if (nrvars > MAX_CODE_NBLKLVARS)
 	{
-		hak_setsynerrbfmt(
-			hak, HAK_SYNERR_VARFLOOD, HAK_CNODE_GET_LOC(arg_list), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_VARFLOOD, HAK_CNODE_GET_LOC(arg_list),
 			"too many(%zu) return variables in %.*js", nrvars,
 			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 		return -1;
@@ -3789,7 +3776,7 @@ static int check_var_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned int
 		if (class_name)
 		{
 			hak_setsynerrbfmt(
-				hak, HAK_SYNERR_VAR, HAK_CNODE_GET_LOC(attr_list), HAK_NULL,
+				hak, HAK_SYNERR_VAR, HAK_CNODE_GET_LOC(attr_list),
 				"empty attribute list on '%.*js' in '%.*js' for '%.*js'",
 				HAK_CNODE_GET_TOKLEN(var_name), HAK_CNODE_GET_TOKPTR(var_name),
 				HAK_CNODE_GET_TOKLEN(class_name), HAK_CNODE_GET_TOKPTR(class_name),
@@ -3798,7 +3785,7 @@ static int check_var_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned int
 		else
 		{
 			hak_setsynerrbfmt(
-				hak, HAK_SYNERR_VAR, HAK_CNODE_GET_LOC(attr_list), HAK_NULL,
+				hak, HAK_SYNERR_VAR, HAK_CNODE_GET_LOC(attr_list),
 				"empty attribute list on '%.*js' in unnamed class for '%.*js'",
 				HAK_CNODE_GET_TOKLEN(var_name), HAK_CNODE_GET_TOKPTR(var_name),
 				HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
@@ -3822,8 +3809,7 @@ static int check_var_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned int
 
 			if (!HAK_CNODE_IS_TYPED(a, HAK_CNODE_SYMLIT))
 			{
-				hak_setsynerrbfmt(
-					hak, HAK_SYNERR_VAR, HAK_CNODE_GET_LOC(a), HAK_NULL,
+				hak_setsynerrbfmt(hak, HAK_SYNERR_VAR, HAK_CNODE_GET_LOC(a),
 					"invalid variable attribute name '%.*js'", toklen, tokptr);
 				return -1;
 			}
@@ -3834,8 +3820,7 @@ static int check_var_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned int
 				if (ft != VAR_INST)
 				{
 				conflicting:
-					hak_setsynerrbfmt(
-						hak, HAK_SYNERR_VAR, HAK_CNODE_GET_LOC(a), HAK_NULL,
+					hak_setsynerrbfmt(hak, HAK_SYNERR_VAR, HAK_CNODE_GET_LOC(a),
 						"conflicting variable attribute name '#%.*js'", toklen, tokptr);
 					return -1;
 				}
@@ -3843,8 +3828,7 @@ static int check_var_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned int
 			}
 			else
 			{
-				hak_setsynerrbfmt(
-					hak, HAK_SYNERR_VAR, HAK_CNODE_GET_LOC(a), HAK_NULL,
+				hak_setsynerrbfmt(hak, HAK_SYNERR_VAR, HAK_CNODE_GET_LOC(a),
 					"unrecognized variable attribute name '#%.*js'", toklen, tokptr);
 				return -1;
 			}
@@ -3877,8 +3861,7 @@ static int compile_var (hak_t* hak, hak_cnode_t* src)
 
 	if (!next)
 	{
-		hak_setsynerrbfmt(
-			hak, HAK_SYNERR_VAR, HAK_CNODE_GET_LOC(cmd), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_VAR, HAK_CNODE_GET_LOC(cmd),
 			"'%.*js' not followed by name or (",
 			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 		goto oops;
@@ -3890,8 +3873,7 @@ static int compile_var (hak_t* hak, hak_cnode_t* src)
 
 	if (!is_in_class_init_scope(hak))
 	{
-		hak_setsynerrbfmt(
-			hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(cmd), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(cmd),
 			"'%.*js' prohibited in this context",
 			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 		goto oops;
@@ -3907,8 +3889,7 @@ static int compile_var (hak_t* hak, hak_cnode_t* src)
 		next = HAK_CNODE_CONS_CDR(next);
 		if (!next)
 		{
-			hak_setsynerrbfmt(
-				hak, HAK_SYNERR_VAR, HAK_CNODE_GET_LOC(attr_list), HAK_NULL,
+			hak_setsynerrbfmt(hak, HAK_SYNERR_VAR, HAK_CNODE_GET_LOC(attr_list),
 				"no name after attribute list for '%.*js'",
 				HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 			goto oops;
@@ -3930,8 +3911,7 @@ static int compile_var (hak_t* hak, hak_cnode_t* src)
 			{
 				if (cbi->nivars >= MAX_NIVARS)
 				{
-					hak_setsynerrbfmt(
-						hak, HAK_SYNERR_VARFLOOD, HAK_CNODE_GET_LOC(tmp), HAK_NULL,
+					hak_setsynerrbfmt(hak, HAK_SYNERR_VARFLOOD, HAK_CNODE_GET_LOC(tmp),
 						"too many(%zu) instance variables before '%.*js'",
 						cbi->nivars, HAK_CNODE_GET_TOKLEN(tmp), HAK_CNODE_GET_TOKPTR(tmp));
 					goto oops;
@@ -3944,8 +3924,7 @@ static int compile_var (hak_t* hak, hak_cnode_t* src)
 			{
 				if (cbi->ncvars >= MAX_NCVARS)
 				{
-					hak_setsynerrbfmt(
-						hak, HAK_SYNERR_VARFLOOD, HAK_CNODE_GET_LOC(tmp), HAK_NULL,
+					hak_setsynerrbfmt(hak, HAK_SYNERR_VARFLOOD, HAK_CNODE_GET_LOC(tmp),
 						"too many(%zu) class variables before '%.*js'",
 						cbi->ncvars, HAK_CNODE_GET_TOKLEN(tmp), HAK_CNODE_GET_TOKPTR(tmp));
 					goto oops;
@@ -3964,8 +3943,7 @@ static int compile_var (hak_t* hak, hak_cnode_t* src)
 	else
 	{
 	not_ident:
-		hak_setsynerrbfmt(
-			hak, HAK_SYNERR_VAR, HAK_CNODE_GET_LOC(tmp), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_VAR, HAK_CNODE_GET_LOC(tmp),
 			"invalid variable name '%.*js' for '%.*js'",
 			HAK_CNODE_GET_TOKLEN(tmp), HAK_CNODE_GET_TOKPTR(tmp),
 			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
@@ -4023,8 +4001,7 @@ static int compile_return (hak_t* hak, hak_cnode_t* src, int ret_from_home)
 
 		if (ret_from_home)
 		{
-			hak_setsynerrbfmt(
-				hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(src), HAK_NULL,
+			hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(src),
 				"'%.*js' not compatible with return variables",
 				HAK_CNODE_GET_TOKLEN(tmp), HAK_CNODE_GET_TOKPTR(tmp));
 			return -1;
@@ -4033,7 +4010,7 @@ static int compile_return (hak_t* hak, hak_cnode_t* src, int ret_from_home)
 		/* if a return variable are specified in the current function block, the return statement must not be followed by a return value */
 		if (obj)
 		{
-			hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(src), HAK_NULL,
+			hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(src),
 				"use of return value in '%.*js' not compatible with return variables",
 				HAK_CNODE_GET_TOKLEN(tmp), HAK_CNODE_GET_TOKPTR(tmp));
 			return -1;
@@ -4050,14 +4027,14 @@ static int compile_return (hak_t* hak, hak_cnode_t* src, int ret_from_home)
 	/* TODO: should i allow (return)? does it return the last value on the stack? */
 			/* no value */
 			hak_cnode_t* tmp = HAK_CNODE_CONS_CAR(src);
-			hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(src), HAK_NULL,
+			hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(src),
 				"no value specified for '%.*js'", HAK_CNODE_GET_TOKLEN(tmp), HAK_CNODE_GET_TOKPTR(tmp));
 			return -1;
 		}
 		else if (!HAK_CNODE_IS_CONS(obj))
 		{
 			hak_cnode_t* tmp = HAK_CNODE_CONS_CAR(src);
-			hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj), HAK_NULL,
+			hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj),
 				"redundant cdr in '%.*js' around '%.*js'",
 				HAK_CNODE_GET_TOKLEN(tmp), HAK_CNODE_GET_TOKPTR(tmp),
 				HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
@@ -4071,7 +4048,7 @@ static int compile_return (hak_t* hak, hak_cnode_t* src, int ret_from_home)
 		{
 			hak_cnode_t* tmp = HAK_CNODE_CONS_CAR(src);
 			hak_cnode_t* next = HAK_CNODE_CONS_CAR(obj);
-			hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(obj), HAK_NULL,
+			hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(obj),
 				"excessive argument to '%.*js' around '%.*js'",
 				HAK_CNODE_GET_TOKLEN(tmp), HAK_CNODE_GET_TOKPTR(tmp),
 				HAK_CNODE_GET_TOKLEN(next), HAK_CNODE_GET_TOKPTR(next));
@@ -4103,13 +4080,13 @@ static int compile_set (hak_t* hak, hak_cnode_t* src)
 
 	if (!obj)
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(src), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(src),
 			"no variable name in %.*js", HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 		return -1;
 	}
 	else if (!HAK_CNODE_IS_CONS(obj))
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj),
 			"redundant cdr in %.*js around %.*js",
 			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd),
 			HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
@@ -4119,7 +4096,7 @@ static int compile_set (hak_t* hak, hak_cnode_t* src)
 	var = HAK_CNODE_CONS_CAR(obj);
 	if (!HAK_CNODE_IS_SYMBOL(var) && !HAK_CNODE_IS_DSYMBOL_CLA(var))
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(var), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(var),
 			"variable name not symbol in %.*js around %.*js",
 			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd),
 			HAK_CNODE_GET_TOKLEN(var), HAK_CNODE_GET_TOKPTR(var));
@@ -4130,7 +4107,7 @@ static int compile_set (hak_t* hak, hak_cnode_t* src)
 	if (!obj)
 	{
 		hak_setsynerrbfmt(
-			hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(var), HAK_NULL,
+			hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(var),
 			"no value after '%.*js' for '%.*js'",
 			HAK_CNODE_GET_TOKLEN(var), HAK_CNODE_GET_TOKPTR(var),
 			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
@@ -4138,8 +4115,8 @@ static int compile_set (hak_t* hak, hak_cnode_t* src)
 	}
 	else if (!HAK_CNODE_IS_CONS(obj))
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj), HAK_NULL,
-			"redundant cdr in %.*js around %.*js",
+		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj),
+			"redundant cdr in '%.*js' around '%.*js'",
 			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd),
 			HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
 		return -1;
@@ -4151,7 +4128,7 @@ static int compile_set (hak_t* hak, hak_cnode_t* src)
 	if (obj)
 	{
 		hak_cnode_t* next = HAK_CNODE_CONS_CAR(obj);
-		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(obj), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(obj),
 			"too many arguments to '%.*js' around '%.*js'",
 			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd),
 			HAK_CNODE_GET_TOKLEN(next), HAK_CNODE_GET_TOKPTR(next));
@@ -4167,7 +4144,7 @@ static int compile_set (hak_t* hak, hak_cnode_t* src)
 	{
 		if (HAK_CNODE_IS_DSYMBOL_CLA(var))
 		{
-			hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAMEUNKNOWN, HAK_CNODE_GET_LOC(var), HAK_NULL,
+			hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAMEUNKNOWN, HAK_CNODE_GET_LOC(var),
 				"unknown class-level variable name '%.*js'",
 				HAK_CNODE_GET_TOKLEN(var), HAK_CNODE_GET_TOKPTR(var));
 			return -1;
@@ -4205,13 +4182,14 @@ static int compile_set_r (hak_t* hak, hak_cnode_t* src)
 
 	if (!obj)
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(src), HAK_NULL,
-			"no variable name in '%.*js'", HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
+		hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(src),
+			"no variable name in '%.*js'",
+			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 		return -1;
 	}
 	else if (!HAK_CNODE_IS_CONS(obj))
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj),
 			"redundant cdr in '%.*js' around '%.*js'",
 			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd),
 			HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
@@ -4226,7 +4204,7 @@ static int compile_set_r (hak_t* hak, hak_cnode_t* src)
 		if (!HAK_CNODE_IS_SYMBOL(var))
 		{
 			if (nvars > 0) break;
-			hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(var), HAK_NULL,
+			hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(var),
 				"variable name not symbol in '%.*js' around '%.*js'",
 				HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd),
 				HAK_CNODE_GET_TOKLEN(var), HAK_CNODE_GET_TOKPTR(var));
@@ -4242,7 +4220,7 @@ static int compile_set_r (hak_t* hak, hak_cnode_t* src)
 	if (!obj)
 	{
 		hak_setsynerrbfmt(
-			hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(var), HAK_NULL,
+			hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(var),
 			"no value after '%.*js' for '%.*js'",
 			HAK_CNODE_GET_TOKLEN(var), HAK_CNODE_GET_TOKPTR(var),
 			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
@@ -4250,7 +4228,7 @@ static int compile_set_r (hak_t* hak, hak_cnode_t* src)
 	}
 	else if (!HAK_CNODE_IS_CONS(obj))
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj),
 			"redundant cdr in '%.*js' around '%.*js'",
 			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd),
 			HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
@@ -4262,7 +4240,7 @@ static int compile_set_r (hak_t* hak, hak_cnode_t* src)
 	obj = HAK_CNODE_CONS_CDR(obj);
 	if (obj)
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(obj), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(obj),
 			"too many arguments to '%.*js' around '%.*js'",
 			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd),
 			HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
@@ -4286,7 +4264,7 @@ static int compile_set_r (hak_t* hak, hak_cnode_t* src)
 		{
 			if (HAK_CNODE_IS_DSYMBOL_CLA(var))
 			{
-				hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAMEUNKNOWN, HAK_CNODE_GET_LOC(var), HAK_NULL,
+				hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAMEUNKNOWN, HAK_CNODE_GET_LOC(var),
 					"unknown class-level variable name '%.*js'", HAK_CNODE_GET_TOKLEN(var), HAK_CNODE_GET_TOKPTR(var));
 				return -1;
 			}
@@ -4353,13 +4331,13 @@ static int compile_try (hak_t* hak, hak_cnode_t* src)
 	if (!obj)
 	{
 		/* no value */
-		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(src), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(src),
 			"no expression specified in '%.*js'", HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 		return -1;
 	}
 	else if (!HAK_CNODE_IS_CONS(obj))
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj),
 			"redundant cdr in '%.*js' around '%.*js'",
 			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd),
 			HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
@@ -4415,7 +4393,7 @@ static HAK_INLINE int patch_nearest_post_try (hak_t* hak, hak_ooi_t* catch_skip_
 
 	if (block_code_size > MAX_CODE_JUMP * 2)
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_BLKFLOOD, HAK_CNODE_GET_LOC(cf->operand), HAK_NULL, "code too big - size %zu", block_code_size);
+		hak_setsynerrbfmt(hak, HAK_SYNERR_BLKFLOOD, HAK_CNODE_GET_LOC(cf->operand), "code too big - size %zu", block_code_size);
 		return -1;
 	}
 	patch_long_jump(hak, jip, block_code_size); /* patch TRY_ENTER */
@@ -4446,13 +4424,13 @@ static HAK_INLINE int compile_catch (hak_t* hak)
 	if (!obj)
 	{
 /* TODO: change error code */
-		hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(src), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(src),
 			"no exception variable for '%.*js'", HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 		return -1;
 	}
 	else if (!HAK_CNODE_IS_CONS(obj))
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj),
 			"redundant cdr in '%.*js' around '%.*js'",
 			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd),
 			HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
@@ -4463,7 +4441,7 @@ static HAK_INLINE int compile_catch (hak_t* hak)
 	if (!HAK_CNODE_IS_CONS_CONCODED(exarg, HAK_CONCODE_XLIST) || hak_countcnodecons(hak, exarg) != 1)
 	{
 		hak_setsynerrbfmt(
-			hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(exarg), HAK_NULL,
+			hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(exarg),
 			"improper exception variable for '%.*js'",
 			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 		return -1;
@@ -4473,7 +4451,7 @@ static HAK_INLINE int compile_catch (hak_t* hak)
 	if (!HAK_CNODE_IS_SYMBOL(exarg))
 	{
 		hak_setsynerrbfmt(
-			hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(exarg), HAK_NULL,
+			hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(exarg),
 			"invalid exception variable name '%.*js' for '%.*js'",
 			HAK_CNODE_GET_TOKLEN(exarg), HAK_CNODE_GET_TOKPTR(exarg),
 			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
@@ -4567,7 +4545,7 @@ static HAK_INLINE int post_catch (hak_t* hak)
 
 	if (block_code_size > MAX_CODE_JUMP * 2)
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_BLKFLOOD, HAK_CNODE_GET_LOC(cf->operand), HAK_NULL, "code too big - size %zu", block_code_size);
+		hak_setsynerrbfmt(hak, HAK_SYNERR_BLKFLOOD, HAK_CNODE_GET_LOC(cf->operand), "code too big - size %zu", block_code_size);
 		return -1;
 	}
 
@@ -4597,7 +4575,7 @@ static int compile_throw (hak_t* hak, hak_cnode_t* src)
 		/* no value */
 		hak_cnode_t* tmp = HAK_CNODE_CONS_CAR(src);
 		hak_setsynerrbfmt(
-			hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(src), HAK_NULL,
+			hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(src),
 			"no value or expression after '%.*js'",
 			HAK_CNODE_GET_TOKLEN(tmp), HAK_CNODE_GET_TOKPTR(tmp));
 		return -1;
@@ -4605,7 +4583,7 @@ static int compile_throw (hak_t* hak, hak_cnode_t* src)
 	else if (!HAK_CNODE_IS_CONS(obj))
 	{
 		hak_cnode_t* tmp = HAK_CNODE_CONS_CAR(src);
-		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj),
 			"redundant cdr in '%.*js' around '%.*js'",
 			HAK_CNODE_GET_TOKLEN(tmp), HAK_CNODE_GET_TOKPTR(tmp),
 			HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
@@ -4618,7 +4596,7 @@ static int compile_throw (hak_t* hak, hak_cnode_t* src)
 	if (obj)
 	{
 		hak_cnode_t* tmp = HAK_CNODE_CONS_CAR(src);
-		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(obj), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(obj),
 			"excessive argument in '%.*js' around '%.*js'",
 			HAK_CNODE_GET_TOKLEN(tmp), HAK_CNODE_GET_TOKPTR(tmp),
 			HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
@@ -4655,13 +4633,13 @@ static int compile_while (hak_t* hak, hak_cnode_t* src, int next_cop)
 	if (!obj)
 	{
 		/* no value */
-		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(src), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(src),
 			"no loop condition specified in %.*js", HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 		return -1;
 	}
 	else if (!HAK_CNODE_IS_CONS(obj))
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj),
 			"redundant cdr around '%.*js' in '%.%js'",
 			HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj),
 			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
@@ -4702,7 +4680,7 @@ static int compile_cons_array_expression (hak_t* hak, hak_cnode_t* obj)
 	nargs = hak_countcnodecons(hak, obj);
 	if (nargs > MAX_CODE_PARAM)
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGFLOOD, HAK_CNODE_GET_LOC(obj), HAK_NULL, "too many(%zd) elements in array", nargs);
+		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGFLOOD, HAK_CNODE_GET_LOC(obj), "too many(%zd) elements in array", nargs);
 		return -1;
 	}
 
@@ -4728,7 +4706,7 @@ static int compile_cons_bytearray_expression (hak_t* hak, hak_cnode_t* obj, int 
 	nargs = hak_countcnodecons(hak, obj);
 	if (nargs > MAX_CODE_PARAM)
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGFLOOD, HAK_CNODE_GET_LOC(obj), HAK_NULL, "too many(%zd) elements in byte-array", nargs);
+		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGFLOOD, HAK_CNODE_GET_LOC(obj), "too many(%zd) elements in byte-array", nargs);
 		return -1;
 	}
 
@@ -4755,7 +4733,7 @@ static int compile_cons_dic_expression (hak_t* hak, hak_cnode_t* obj)
 	nargs = hak_countcnodecons(hak, obj);
 	if (nargs > MAX_CODE_PARAM)
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGFLOOD, HAK_CNODE_GET_LOC(obj), HAK_NULL, "too many(%zd) elements in dictionary", nargs);
+		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGFLOOD, HAK_CNODE_GET_LOC(obj), "too many(%zd) elements in dictionary", nargs);
 		return -1;
 	}
 
@@ -4830,7 +4808,7 @@ static int compile_cons_alist_expression (hak_t* hak, hak_cnode_t* cmd)
 			{
 				if (HAK_CNODE_IS_DSYMBOL_CLA(var))
 				{
-					hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAMEUNKNOWN, HAK_CNODE_GET_LOC(var), HAK_NULL,
+					hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAMEUNKNOWN, HAK_CNODE_GET_LOC(var),
 						"unknown class-level variable name '%.*js'", HAK_CNODE_GET_TOKLEN(var), HAK_CNODE_GET_TOKPTR(var));
 					return -1;
 				}
@@ -4882,7 +4860,7 @@ static int compile_cons_alist_expression (hak_t* hak, hak_cnode_t* cmd)
 			/* not found */
 			if (HAK_CNODE_IS_DSYMBOL_CLA(var))
 			{
-				hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAMEUNKNOWN, HAK_CNODE_GET_LOC(var), HAK_NULL,
+				hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAMEUNKNOWN, HAK_CNODE_GET_LOC(var),
 					"unknown class-level variable name '%.*js'", HAK_CNODE_GET_TOKLEN(var), HAK_CNODE_GET_TOKPTR(var));
 				return -1;
 			}
@@ -4942,12 +4920,12 @@ static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 			goto done;
 
 		case HAK_CNODE_ELIF: /* elif without if */
-			hak_setsynerrbfmt(hak, HAK_SYNERR_ELIF, HAK_CNODE_GET_LOC(car), HAK_NULL,
+			hak_setsynerrbfmt(hak, HAK_SYNERR_ELIF, HAK_CNODE_GET_LOC(car),
 				"%.*js without if", HAK_CNODE_GET_TOKLEN(car), HAK_CNODE_GET_TOKPTR(car));
 			return -1;
 
 		case HAK_CNODE_ELSE: /* else without if */
-			hak_setsynerrbfmt(hak, HAK_SYNERR_ELSE, HAK_CNODE_GET_LOC(car), HAK_NULL,
+			hak_setsynerrbfmt(hak, HAK_SYNERR_ELSE, HAK_CNODE_GET_LOC(car),
 				"%.*js without if", HAK_CNODE_GET_TOKLEN(car), HAK_CNODE_GET_TOKPTR(car));
 			return -1;
 
@@ -4960,7 +4938,7 @@ static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 			goto done;
 
 		case HAK_CNODE_CATCH: /* catch without try */
-			hak_setsynerrbfmt(hak, HAK_SYNERR_CATCH, HAK_CNODE_GET_LOC(car), HAK_NULL,
+			hak_setsynerrbfmt(hak, HAK_SYNERR_CATCH, HAK_CNODE_GET_LOC(car),
 				"%.*js without try", HAK_CNODE_GET_TOKLEN(car), HAK_CNODE_GET_TOKPTR(car));
 			return -1;
 
@@ -5054,15 +5032,16 @@ static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 			if (!HAK_CNODE_IS_CONS(cdr))
 			{
 				/* (funname . 10) */
-				hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(cdr), HAK_NULL,
-					"redundant cdr in function call around '%.*js'", HAK_CNODE_GET_TOKLEN(cdr), HAK_CNODE_GET_TOKPTR(cdr));
+				hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(cdr),
+					"redundant cdr in function call around '%.*js'",
+					HAK_CNODE_GET_TOKLEN(cdr), HAK_CNODE_GET_TOKPTR(cdr));
 				return -1;
 			}
 
 			nargs = hak_countcnodecons(hak, cdr);
 			if (nargs > MAX_CODE_PARAM)
 			{
-				hak_setsynerrbfmt(hak, HAK_SYNERR_ARGFLOOD, HAK_CNODE_GET_LOC(cdr), HAK_NULL,
+				hak_setsynerrbfmt(hak, HAK_SYNERR_ARGFLOOD, HAK_CNODE_GET_LOC(cdr),
 					"too many(%zd) parameters in function call", nargs);
 				return -1;
 			}
@@ -5083,7 +5062,7 @@ static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 				{
 					if (nargs < sdv->slot[1] || nargs > sdv->slot[2])
 					{
-						hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(car), HAK_NULL,
+						hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(car),
 							"parameters count(%zd) mismatch in function call - %.*js - expecting %zu-%zu parameters",
 							nargs, HAK_CNODE_GET_TOKLEN(car), HAK_CNODE_GET_TOKPTR(car), sdv->slot[1], sdv->slot[2]);
 						return -1;
@@ -5108,7 +5087,7 @@ static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 	}
 	else
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_CALLABLE, HAK_CNODE_GET_LOC(car), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_CALLABLE, HAK_CNODE_GET_LOC(car),
 			"invalid callable '%.*js' in function call",
 			HAK_CNODE_GET_TOKLEN(car), HAK_CNODE_GET_TOKPTR(car));
 		return -1;
@@ -5150,14 +5129,14 @@ static int compile_cons_mlist_expression (hak_t* hak, hak_cnode_t* obj, hak_ooi_
 	if (!cdr)
 	{
 		/* thie part may never be reached as the reader ensures this doesn't happen */
-		hak_setsynerrbfmt(hak, HAK_SYNERR_CALLABLE, HAK_CNODE_GET_LOC(car), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_CALLABLE, HAK_CNODE_GET_LOC(car),
 			"missing message for '%.*js'", HAK_CNODE_GET_TOKLEN(car), HAK_CNODE_GET_TOKPTR(car));
 		return -1;
 	}
 	if (!HAK_CNODE_IS_CONS(cdr))
 	{
 		/* (<receiver> . 10) */
-		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(cdr), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(cdr),
 			"redundant cdr in message send around '%.*js'", HAK_CNODE_GET_TOKLEN(cdr), HAK_CNODE_GET_TOKPTR(cdr));
 		return -1;
 	}
@@ -5187,7 +5166,7 @@ static int compile_cons_mlist_expression (hak_t* hak, hak_cnode_t* obj, hak_ooi_
 	}
 	else
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_MESSAGE, HAK_CNODE_GET_LOC(car), HAK_NULL,
+		hak_setsynerrbfmt(hak, HAK_SYNERR_MESSAGE, HAK_CNODE_GET_LOC(car),
 			"invalid message '%.*js'", HAK_CNODE_GET_TOKLEN(car), HAK_CNODE_GET_TOKPTR(car));
 		return -1;
 	}
@@ -5203,7 +5182,7 @@ static int compile_cons_mlist_expression (hak_t* hak, hak_cnode_t* obj, hak_ooi_
 		if (!HAK_CNODE_IS_CONS(cdr))
 		{
 			/* (funname . 10) */
-			hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(cdr), HAK_NULL,
+			hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(cdr),
 				"redundant cdr in function call around '%.*js'",
 				HAK_CNODE_GET_TOKLEN(cdr), HAK_CNODE_GET_TOKPTR(cdr));
 			return -1;
@@ -5212,7 +5191,8 @@ static int compile_cons_mlist_expression (hak_t* hak, hak_cnode_t* obj, hak_ooi_
 		nargs = hak_countcnodecons(hak, cdr);
 		if (nargs > MAX_CODE_PARAM)
 		{
-			hak_setsynerrbfmt(hak, HAK_SYNERR_ARGFLOOD, HAK_CNODE_GET_LOC(cdr), HAK_NULL, "too many(%zd) parameters in function call", nargs);
+			hak_setsynerrbfmt(hak, HAK_SYNERR_ARGFLOOD, HAK_CNODE_GET_LOC(cdr),
+				"too many(%zd) parameters in function call", nargs);
 			return -1;
 		}
 	}
@@ -5318,7 +5298,7 @@ static HAK_INLINE int compile_dsymbol (hak_t* hak, hak_cnode_t* obj)
 				 *   }
 				 * }
 				 */
-				hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(obj), HAK_NULL,
+				hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(obj),
 					"not allowed to prefix with self in out-of-class method context around '%.*js'",
 					HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
 				return -1;
@@ -5331,7 +5311,7 @@ static HAK_INLINE int compile_dsymbol (hak_t* hak, hak_cnode_t* obj)
 		{
 			if (fbi->fun_type >> 8) /* if defined using A:xxx syntax */
 			{
-				hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(obj), HAK_NULL,
+				hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(obj),
 					"not allowed to prefix with super in out-of-class method context around '%.*js'",
 					HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
 				return -1;
@@ -5368,7 +5348,7 @@ static HAK_INLINE int compile_dsymbol (hak_t* hak, hak_cnode_t* obj)
 		pfbase = hak_querymod(hak, HAK_CNODE_GET_TOKPTR(obj), HAK_CNODE_GET_TOKLEN(obj), &mod);
 		if (!pfbase)
 		{
-			hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(obj), HAK_NULL,
+			hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(obj),
 				"unknown dotted symbol '%.*js'", HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
 			return -1;
 		}
@@ -5577,7 +5557,7 @@ static hak_oop_t string_to_num (hak_t* hak, hak_oocs_t* str, const hak_loc_t* lo
 		/*
 		if (base < 2 || base > 36)
 		{
-			hak_setsynerrbfmt(hak, HAK_SYNERR_RADIX, loc, HAK_NULL,
+			hak_setsynerrbfmt(hak, HAK_SYNERR_RADIX, loc,
 				"unsupported radix '%d' in radixed number '%.*js'", base, str->len, str->ptr);
 			return HAK_NULL;
 		}*/
@@ -5603,7 +5583,7 @@ static hak_oop_t string_to_fpdec (hak_t* hak, hak_oocs_t* str, const hak_loc_t* 
 			scale = str->len - pos - 1;
 			if (scale > HAK_SMOOI_MAX)
 			{
-				hak_setsynerrbfmt(hak, HAK_SYNERR_NUMRANGE, loc, HAK_NULL, "too many digits after decimal point around '%.*js'", str->len, str->ptr);
+				hak_setsynerrbfmt(hak, HAK_SYNERR_NUMRANGE, loc, "too many digits after decimal point around '%.*js'", str->len, str->ptr);
 				return HAK_NULL;
 			}
 
@@ -5772,16 +5752,16 @@ redo:
 					break;
 
 				case HAK_CONCODE_VLIST:
-					hak_setsynerrbfmt(hak, HAK_SYNERR_VARDCLBANNED, HAK_CNODE_GET_LOC(oprnd), HAK_NULL, "variable declaration disallowed");
+					hak_setsynerrbfmt(hak, HAK_SYNERR_VARDCLBANNED, HAK_CNODE_GET_LOC(oprnd), "variable declaration disallowed");
 					return -1;
 
 				case HAK_CONCODE_TUPLE:
 					/* [a, b] is only allowed as a lvalue or in class member varialble declaration for now */
-					hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(oprnd), HAK_NULL, "tuple disallowed");
+					hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(oprnd), "tuple disallowed");
 					return -1;
 
 				default:
-					hak_setsynerrbfmt(hak, HAK_SYNERR_INTERN, HAK_CNODE_GET_LOC(oprnd), HAK_NULL, "internal error - unknown cons type %d", HAK_CNODE_CONS_CONCODE(oprnd));
+					hak_setsynerrbfmt(hak, HAK_SYNERR_INTERN, HAK_CNODE_GET_LOC(oprnd), "internal error - unknown cons type %d", HAK_CNODE_CONS_CONCODE(oprnd));
 					return -1;
 			}
 
@@ -5794,20 +5774,20 @@ redo:
 			switch (HAK_CNODE_ELIST_CONCODE(oprnd))
 			{
 				case HAK_CONCODE_ALIST:
-					hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(oprnd), HAK_NULL, "empty assignment list");
+					hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(oprnd), "empty assignment list");
 					return -1;
 
 				case HAK_CONCODE_XLIST:
-					hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(oprnd), HAK_NULL, "empty executable list");
+					hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(oprnd), "empty executable list");
 					return -1;
 
 				case HAK_CONCODE_BLIST:
 					/* this must not happend as the reader prevents it */
-					hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(oprnd), HAK_NULL, "empty binop list");
+					hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(oprnd), "empty binop list");
 					return -1;
 
 				case HAK_CONCODE_MLIST:
-					hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(oprnd), HAK_NULL, "empty message send list");
+					hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(oprnd), "empty message send list");
 					return -1;
 
 				case HAK_CONCODE_BLOCK:
@@ -5835,15 +5815,15 @@ redo:
 					goto done;
 
 				case HAK_CONCODE_VLIST:
-					hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(oprnd), HAK_NULL, "empty variable declaration");
+					hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(oprnd), "empty variable declaration");
 					return -1;
 
 				case HAK_CONCODE_TUPLE:
-					hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(oprnd), HAK_NULL, "empty tuple");
+					hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(oprnd), "empty tuple");
 					return -1;
 
 				default:
-					hak_setsynerrbfmt(hak, HAK_SYNERR_INTERN, HAK_CNODE_GET_LOC(oprnd), HAK_NULL,
+					hak_setsynerrbfmt(hak, HAK_SYNERR_INTERN, HAK_CNODE_GET_LOC(oprnd),
 						"internal error - unknown list type %d", HAK_CNODE_CONS_CONCODE(oprnd));
 					return -1;
 			}
@@ -5861,7 +5841,7 @@ redo:
 		case HAK_CNODE_DBLCOLONS:
 		case HAK_CNODE_COLON:
 		default:
-			hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(oprnd), HAK_NULL,
+			hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(oprnd),
 				"'%.*js' prohibited in this context",
 				HAK_CNODE_GET_TOKLEN(oprnd), HAK_CNODE_GET_TOKPTR(oprnd));
 			return -1;
@@ -5915,7 +5895,7 @@ static int compile_object_r (hak_t* hak)
 		}
 	}
 
-	hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(oprnd), HAK_NULL, "non-function call/non-message send disallowed");
+	hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(oprnd), "non-function call/non-message send disallowed");
 	return -1;
 }
 
@@ -5973,7 +5953,7 @@ static int compile_object_list (hak_t* hak)
 #endif
 		if (!HAK_CNODE_IS_CONS(oprnd))
 		{
-			hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(oprnd), HAK_NULL,
+			hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(oprnd),
 				"redundant cdr in the object list around '%.*js'",
 				HAK_CNODE_GET_TOKLEN(oprnd), HAK_CNODE_GET_TOKPTR(oprnd));
 			return -1;
@@ -6064,7 +6044,7 @@ static int compile_array_list (hak_t* hak)
 
 		if (!HAK_CNODE_IS_CONS(oprnd))
 		{
-			hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(oprnd), HAK_NULL,
+			hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(oprnd),
 				"redundant cdr in the array list around '%.*js'",
 				HAK_CNODE_GET_TOKLEN(oprnd), HAK_CNODE_GET_TOKPTR(oprnd));
 			return -1;
@@ -6113,7 +6093,7 @@ static int compile_pure_array_list (hak_t* hak)
 
 		if (!HAK_CNODE_IS_CONS(oprnd))
 		{
-			hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(oprnd), HAK_NULL,
+			hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(oprnd),
 				"redundant cdr in the byte-array list around '%.*js'",
 				HAK_CNODE_GET_TOKLEN(oprnd), HAK_CNODE_GET_TOKPTR(oprnd));
 			return -1;
@@ -6167,7 +6147,7 @@ static int compile_dic_list (hak_t* hak)
 
 		if (!HAK_CNODE_IS_CONS(oprnd))
 		{
-			hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(oprnd), HAK_NULL,
+			hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(oprnd),
 				"redundant cdr in the dictionary list around '%.*js'", HAK_CNODE_GET_TOKLEN(oprnd), HAK_CNODE_GET_TOKPTR(oprnd));
 			return -1;
 		}
@@ -6178,7 +6158,7 @@ static int compile_dic_list (hak_t* hak)
 		SWITCH_TOP_CFRAME(hak, COP_COMPILE_OBJECT, car);
 		if (!cdr)
 		{
-			hak_setsynerrbfmt(hak, HAK_SYNERR_UNBALKV, HAK_CNODE_GET_LOC(car), HAK_NULL,
+			hak_setsynerrbfmt(hak, HAK_SYNERR_UNBALKV, HAK_CNODE_GET_LOC(car),
 				"no value for key %.*js", HAK_CNODE_GET_TOKLEN(car), HAK_CNODE_GET_TOKPTR(car));
 			return -1;
 		}
@@ -6313,7 +6293,7 @@ static HAK_INLINE int post_if_body (hak_t* hak)
 
 	if (jump_offset > MAX_CODE_JUMP * 2)
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_IFFLOOD, &cf->u.post_if.start_loc, HAK_NULL, "code too big - size %zu", jump_offset);
+		hak_setsynerrbfmt(hak, HAK_SYNERR_IFFLOOD, &cf->u.post_if.start_loc, "code too big - size %zu", jump_offset);
 		return -1;
 	}
 	patch_long_jump(hak, jip, jump_offset);
@@ -6419,7 +6399,7 @@ static HAK_INLINE int post_while_body (hak_t* hak)
 	jump_offset = hak->code.bc.len - jip - (HAK_CODE_LONG_PARAM_SIZE + 1);
 	if (jump_offset > MAX_CODE_JUMP * 2)
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_BLKFLOOD, &cf->u.post_while.start_loc, HAK_NULL, "code too big - size %zu", jump_offset);
+		hak_setsynerrbfmt(hak, HAK_SYNERR_BLKFLOOD, &cf->u.post_while.start_loc, "code too big - size %zu", jump_offset);
 		return -1;
 	}
 	patch_long_jump(hak, jip, jump_offset);
@@ -6719,7 +6699,7 @@ static HAK_INLINE int emit_fun (hak_t* hak)
 
 	if (block_code_size > MAX_CODE_JUMP * 2)
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_BLKFLOOD, oploc, HAK_NULL, "code too big - size %zu", block_code_size);
+		hak_setsynerrbfmt(hak, HAK_SYNERR_BLKFLOOD, oploc, "code too big - size %zu", block_code_size);
 		return -1;
 	}
 	patch_long_jump(hak, jip, block_code_size);
@@ -6767,7 +6747,7 @@ static HAK_INLINE int post_fun (hak_t* hak)
 			{
 				/* something wrong - this must not happen because the reader must prevent this
 				 * but if it happens, it is a syntax error */
-				hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(class_name), HAK_NULL,
+				hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(class_name),
 					"class name '%.*js' prohibited class initialization context",
 					HAK_CNODE_GET_TOKLEN(class_name), HAK_CNODE_GET_TOKPTR(class_name));
 				return -1;
@@ -6802,7 +6782,7 @@ static HAK_INLINE int post_fun (hak_t* hak)
 			}
 			else
 			{
-				hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAMEDUP, HAK_CNODE_GET_LOC(fun_name), HAK_NULL,
+				hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAMEDUP, HAK_CNODE_GET_LOC(fun_name),
 					"duplicate method name '%.*js'", HAK_CNODE_GET_TOKLEN(fun_name), HAK_CNODE_GET_TOKPTR(fun_name));
 				return -1;
 			}

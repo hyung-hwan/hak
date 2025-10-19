@@ -19,6 +19,7 @@ distclean-local:
 
 clean-local:
 	rm -rf $(builddir)/go.mod $(builddir)/go.sum
+	go clean -C $(srcdir) -x -modfile $(abs_builddir)/go.mod -cache
 
 if ENABLE_HAKGO
 

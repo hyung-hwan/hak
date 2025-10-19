@@ -959,6 +959,22 @@ typedef struct hak_t hak_t;
 #	define HAK_SENTINEL(v)
 #endif
 
+#if __has_attribute(nonnull)
+#	define HAK_NONNULL() __attribute__((nonnull))
+#	define HAK_NONNULL_1(x1) __attribute__((nonnull(x1)))
+#	define HAK_NONNULL_2(x1,x2) __attribute__((nonnull(x1,x2)))
+#	define HAK_NONNULL_3(x1,x2,x3) __attribute__((nonnull(x1,x2,x3)))
+#	define HAK_NONNULL_4(x1,x2,x3,x4) __attribute__((nonnull(x1,x2,x3,x4)))
+#	define HAK_NONNULL_5(x1,x2,x3,x4,x5) __attribute__((nonnull(x1,x2,x3,x4,x5)))
+#else
+#	define HAK_NONNULL()
+#	define HAK_NONNULL_1(x1)
+#	define HAK_NONNULL_2(x1,x2)
+#	define HAK_NONNULL_3(x1,x2,x3)
+#	define HAK_NONNULL_4(x1,x2,x3,x4)
+#	define HAK_NONNULL_5(x1,x2,x3,x4,x5)
+#endif
+
 #if defined(__GNUC__) && (__GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ > 4))
 #	define HAK_UNUSED __attribute__((__unused__))
 #else

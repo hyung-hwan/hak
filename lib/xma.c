@@ -837,8 +837,8 @@ void hak_xma_free (hak_xma_t* xma, void* b)
 
 		mblk_size(x) += MBLKHDRSIZE + org_blk_size;
 
-		assert(y == next_mblk(x));
-		if ((hak_uint8_t*)y < xma->end) mblk_prev_size(y) = mblk_size(x);
+		assert(y == (hak_uint8_t*)next_mblk(x));
+		if (y < xma->end) mblk_prev_size(y) = mblk_size(x);
 
 		attach_to_freelist(xma, (hak_xma_fblk_t*)x);
 

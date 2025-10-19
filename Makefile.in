@@ -937,6 +937,7 @@ distclean-local:
 
 clean-local:
 	rm -rf $(builddir)/go.mod $(builddir)/go.sum
+	go clean -C $(srcdir) -x -modfile $(abs_builddir)/go.mod -cache
 
 @ENABLE_HAKGO_TRUE@hakgo.bin: lib/libhak.la $(hakgo_OBJECTS)
 @ENABLE_HAKGO_TRUE@	cp -pf $(srcdir)/go.mod $(builddir)/go.mod >/dev/null 2>&1 || true

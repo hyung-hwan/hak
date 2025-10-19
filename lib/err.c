@@ -218,7 +218,7 @@ const hak_uch_t* hak_errnum_to_errucstr (hak_errnum_t errnum, hak_uch_t* buf, ha
 	return buf;
 }
 
-static const hak_bch_t* synerr_to_errstr (hak_synerrnum_t errnum)
+const hak_bch_t* hak_synerr_to_errbcstr (hak_synerrnum_t errnum)
 {
 	return (errnum >= 0 && errnum < HAK_COUNTOF(synerrstr))? synerrstr[errnum]: e_unknown_b;
 }
@@ -712,30 +712,23 @@ hak_synerrnum_t hak_getsynerrnum (hak_t* hak)
 	return hak->c->synerr.num;
 }
 
-void hak_setsynerrbfmt (hak_t* hak, hak_synerrnum_t num, const hak_loc_t* loc, const hak_oocs_t* tgt, const hak_bch_t* msgfmt, ...)
+void hak_setsynerrbfmt (hak_t* hak, hak_synerrnum_t num, const hak_loc_t* loc, const hak_bch_t* msgfmt, ...)
 {
 	static hak_bch_t syntax_error[] = "syntax error - ";
+	va_list ap;
+	int i, selen;
 
 	if (hak->shuterr) return;
 
-	if (msgfmt)
-	{
-		va_list ap;
-		int i, selen;
+	va_start(ap, msgfmt);
+	hak_seterrbfmtv(hak, HAK_ESYNERR, msgfmt, ap);
+	va_end(ap);
 
-		va_start(ap, msgfmt);
-		hak_seterrbfmtv(hak, HAK_ESYNERR, msgfmt, ap);
-		va_end(ap);
+	selen = HAK_COUNTOF(syntax_error) - 1;
+	HAK_MEMMOVE(&hak->errmsg.buf[selen], &hak->errmsg.buf[0], HAK_SIZEOF(hak->errmsg.buf[0]) * (HAK_COUNTOF(hak->errmsg.buf) - selen));
+	for (i = 0; i < selen; i++) hak->errmsg.buf[i] = syntax_error[i];
+	hak->errmsg.buf[HAK_COUNTOF(hak->errmsg.buf) - 1] = '\0';
 
-		selen = HAK_COUNTOF(syntax_error) - 1;
-		HAK_MEMMOVE(&hak->errmsg.buf[selen], &hak->errmsg.buf[0], HAK_SIZEOF(hak->errmsg.buf[0]) * (HAK_COUNTOF(hak->errmsg.buf) - selen));
-		for (i = 0; i < selen; i++) hak->errmsg.buf[i] = syntax_error[i];
-		hak->errmsg.buf[HAK_COUNTOF(hak->errmsg.buf) - 1] = '\0';
-	}
-	else
-	{
-		hak_seterrbfmt(hak, HAK_ESYNERR, "%hs%hs", syntax_error, synerr_to_errstr(num));
-	}
 	hak->c->synerr.num = num;
 
 	/* The SCO compiler complains of this ternary operation saying:
@@ -753,30 +746,23 @@ void hak_setsynerrbfmt (hak_t* hak, hak_synerrnum_t num, const hak_loc_t* loc, c
 	}
 }
 
-void hak_setsynerrufmt (hak_t* hak, hak_synerrnum_t num, const hak_loc_t* loc, const hak_oocs_t* tgt, const hak_uch_t* msgfmt, ...)
+void hak_setsynerrufmt (hak_t* hak, hak_synerrnum_t num, const hak_loc_t* loc, const hak_uch_t* msgfmt, ...)
 {
 	static hak_bch_t syntax_error[] = "syntax error - ";
+	va_list ap;
+	int i, selen;
 
 	if (hak->shuterr) return;
 
-	if (msgfmt)
-	{
-		va_list ap;
-		int i, selen;
+	va_start(ap, msgfmt);
+	hak_seterrufmtv(hak, HAK_ESYNERR, msgfmt, ap);
+	va_end(ap);
 
-		va_start(ap, msgfmt);
-		hak_seterrufmtv(hak, HAK_ESYNERR, msgfmt, ap);
-		va_end(ap);
+	selen = HAK_COUNTOF(syntax_error) - 1;
+	HAK_MEMMOVE(&hak->errmsg.buf[selen], &hak->errmsg.buf[0], HAK_SIZEOF(hak->errmsg.buf[0]) * (HAK_COUNTOF(hak->errmsg.buf) - selen));
+	for (i = 0; i < selen; i++) hak->errmsg.buf[i] = syntax_error[i];
+	hak->errmsg.buf[HAK_COUNTOF(hak->errmsg.buf) - 1] = '\0';
 
-		selen = HAK_COUNTOF(syntax_error) - 1;
-		HAK_MEMMOVE(&hak->errmsg.buf[selen], &hak->errmsg.buf[0], HAK_SIZEOF(hak->errmsg.buf[0]) * (HAK_COUNTOF(hak->errmsg.buf) - selen));
-		for (i = 0; i < selen; i++) hak->errmsg.buf[i] = syntax_error[i];
-		hak->errmsg.buf[HAK_COUNTOF(hak->errmsg.buf) - 1] = '\0';
-	}
-	else
-	{
-		hak_seterrbfmt(hak, HAK_ESYNERR, "%hs%hs", syntax_error, synerr_to_errstr(num));
-	}
 	hak->c->synerr.num = num;
 
 	/* The SCO compiler complains of this ternary operation saying:
