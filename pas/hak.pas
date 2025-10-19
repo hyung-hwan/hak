@@ -1,4 +1,4 @@
-unit HAK;
+unit Hak;
 
 {$mode objfpc}{$H+}
 {$macro on}
@@ -12,6 +12,8 @@ unit HAK;
 {$endif}
 
 interface
+
+uses SysUtils;
 
 type
 	BitMask = longword; (* this must match hak_bitmask_t in hak.h *)
@@ -51,6 +53,35 @@ type
 		IO_FLUSH
 	);
 
+	LocationB = record
+		line: System.SizeUint;
+		colm: System.SizeUint;
+		filp: PBchar;
+	end;
+
+	LocationU = record
+		line: System.SizeUint;
+		colm: System.SizeUint;
+		filp: PUchar;
+	end;
+
+	ErrorException = class(SysUtils.Exception)
+	private
+		error_code: integer;
+		error_file: string;
+		error_line: System.SizeUint;
+		error_colm: System.SizeUint;
+
+	public
+		constructor Create(const msg: string); overload;
+		constructor Create(const msg: string; cod: integer; const fil: string; lin: System.SizeUint; col: System.SizeUint); overload;
+
+		property Code: integer read error_code;
+		property Line: System.SizeUint read error_line;
+		property Column: System.SizeUint read error_colm;
+		property FileName: string read error_file;
+	end;
+
 {$ifndef HAK_CCI_BUF_LEN}
 {$define HAK_CCI_BUF_LEN := 2048}
 {$endif}
@@ -89,7 +120,7 @@ type
 		procedure Execute();
 
 	protected
-		function FetchErrorMsg(): string;
+		function FetchException(const hdr: string): Exception;
 	end;
 
 	InterpExt = record
@@ -103,18 +134,6 @@ type
 		procedure Open(); virtual; abstract;
 		procedure Close(); virtual; abstract;
 		function Read(): System.SizeUint; virtual; abstract;
-	end;
-
-	LocationB = record
-		line: System.SizeUint;
-		colm: System.SizeUint;
-		filp: PBchar;
-	end;
-
-	LocationU = record
-		line: System.SizeUint;
-		colm: System.SizeUint;
-		filp: PUchar;
 	end;
 
 	SynerrBPtr = ^SynerrB;
@@ -139,6 +158,7 @@ type
 
 	Errinf = Erruinf;
 	ErrinfPtr = ErruinfPtr;
+
 
 (*----- external hak function -----*)
 function hak_errnum_to_errbcstr(errnum: integer; errbuf: pointer; errbufsz: System.SizeUint): pointer; cdecl; external;
@@ -183,7 +203,7 @@ function hak_count_ucstr(ptr: PUchar): System.SizeUint; cdecl; external;
 
 implementation
 
-uses SysUtils, Math, Classes;
+uses Math, Classes;
 
 type
 	NamedHandle = record
@@ -231,6 +251,20 @@ begin
 	exit(UCS4StringToWideString(arr));
 end;
 
+constructor ErrorException.Create (const msg: string);
+begin
+	inherited Create(msg);
+end;
+
+constructor ErrorException.Create (const msg: string; cod: integer; const fil: string; lin: System.SizeUint; col: System.SizeUint);
+begin
+	inherited Create(msg);
+	self.error_code := cod;
+	self.error_file := fil;
+	self.error_line := lin;
+	self.error_colm := col;
+end;
+
 constructor Interp.Create (x: integer);
 var
 	h: pointer;
@@ -273,24 +307,29 @@ begin
 	inherited;
 end;
 
-function Interp.FetchErrorMsg(): string;
+function Interp.FetchException(const hdr: string): Exception;
 var
-	num: integer;
-	bmsg: PBchar;
+	ebi: Errbinf;
 	serr: SynerrB;
 	filp: PBchar;
+	xmsg: string;
 begin
-	num := hak_geterrnum(self.handle);
-	if hak_errnum_is_synerr(num) then begin
-		bmsg := hak_geterrbmsg(self.handle);
+	hak_geterrbinf(self.handle, @ebi);
+	if hak_errnum_is_synerr(ebi.num) then begin
 		hak_getsynerrb(self.handle, @serr);
 		filp := PBchar('');
 		if serr.loc.filp <> nil then filp := serr.loc.filp;
-		exit(SysUtils.Format('%s at %s[%u:%u]', [string(bmsg), string(filp), serr.loc.line, serr.loc.colm]));
+		exit(ErrorException.Create(string(ebi.msg), ebi.num, string(filp), serr.loc.line, serr.loc.colm));
+	end
+	else if ebi.loc.line > 0 then begin
+		exit(ErrorException.Create(string(ebi.msg), ebi.num, string(ebi.loc.filp), ebi.loc.line, ebi.loc.colm));
 	end
 	else begin
-		bmsg := hak_geterrbmsg(self.handle);
-		exit(string(bmsg))
+		if hdr = '' then
+			xmsg := string(ebi.msg)
+		else
+			xmsg := SysUtils.Format('%s - %s', [hdr, string(ebi.msg)]);
+		exit(Exception.Create(xmsg));
 	end;
 end;
 
@@ -298,7 +337,7 @@ procedure Interp.Ignite(heapsize: System.SizeUint);
 begin
 	if hak_ignite(self.handle, heapsize) <= -1 then
 	begin
-		raise Exception.Create('failed to ignite - ' + self.FetchErrorMsg())
+		raise self.FetchException('failed to ignite');
 	end;
 end;
 
@@ -306,7 +345,7 @@ procedure Interp.AddBuiltinPrims();
 begin
 	if hak_addbuiltinprims(self.handle) <= -1 then
 	begin
-		raise Exception.Create('failed to add builtin primitives - ' + self.FetchErrorMsg())
+		raise self.FetchException('failed to add builtin primitives');
 	end;
 end;
 
@@ -409,28 +448,27 @@ var
 	f: System.THandle = -1;
 	attached: boolean = false;
 	feed_ongoing: boolean = false;
-	errnum: System.Integer;
-	errmsg: string;
 	buf: array[0..1023] of System.AnsiChar;
 	len: System.LongInt;
+	excpt: SysUtils.Exception;
 label
 	oops;
 begin
 	f := SysUtils.FileOpen(filename, SysUtils.fmOpenRead);
 	if f = System.THandle(-1) then begin
-		errmsg := 'failed to open ' + filename + ' - ' +  SysUtils.SysErrorMessage(SysUtils.GetLastOSError());
+		excpt := Exception.Create('failed to open ' + filename + ' - ' +  SysUtils.SysErrorMessage(SysUtils.GetLastOSError()));
 		goto oops;
 	end;
 
 	self.basefile := filename;
 	if hak_attachccio(self.handle, @cci_handler) <= -1 then begin
-		errmsg := 'failed to attach ccio handler - ' + self.FetchErrorMsg();
+		excpt := self.FetchException('failed to attach ccio handler');
 		goto oops;
 	end;
 	attached := true;
 
 	if hak_beginfeed(self.handle, nil) <= -1 then begin
-		errmsg := 'failed to begin feeding - ' + self.FetchErrorMsg();
+		excpt := self.FetchException('failed to begin feeding');
 		goto oops;
 	end;
 	feed_ongoing := true;
@@ -438,21 +476,19 @@ begin
 	while true do begin
 		len := SysUtils.FileRead(f, buf, System.SizeOf(buf));
 		if len <= -1 then begin
-			errmsg := 'failed to read ' + filename + ' - ' +  SysUtils.SysErrorMessage(SysUtils.GetLastOSError());
+			excpt := Exception.Create('failed to read ' + filename + ' - ' +  SysUtils.SysErrorMessage(SysUtils.GetLastOSError()));
 			goto oops;
 		end;
 		if len = 0 then break;
 
 		if hak_feedbchars(self.handle, buf, len) <= -1 then begin
-			errnum := hak_geterrnum(self.handle);
-			errmsg := self.FetchErrorMsg();
-			if not hak_errnum_is_synerr(errnum) then errmsg := 'failed to feed text - ' + errmsg;
+			excpt := self.FetchException('failed to feed text');
 			goto oops;
 		end;
 	end;
 
 	if hak_endfeed(self.handle) <= -1 then begin
-		errmsg := 'failed to end feeding - ' + self.FetchErrorMsg();
+		excpt := self.FetchException('failed to end feeding');
 		goto oops;
 	end;
 	feed_ongoing := false;
@@ -467,7 +503,7 @@ oops:
 	if attached then hak_detachccio(self.handle);
 	self.basefile := '';
 	if f <> System.THandle(-1) then SysUtils.FileClose(f);
-	raise Exception.Create(errmsg);
+	raise excpt;
 end;
 
 procedure Interp.CompileText(text: System.PAnsiChar);
@@ -477,33 +513,30 @@ end;
 
 procedure Interp.CompileText(text: System.PAnsiChar; len: System.SizeUint);
 var
-	errnum: integer;
-	errmsg: string;
+	excpt: Exception;
 begin
-	if hak_attachcciostdwithbcstr(self.handle, nil) <= -1 then
-		raise Exception.Create('failed to attach ccio handler - ' + self.FetchErrorMsg());
+	if hak_attachcciostdwithbcstr(self.handle, nil) <= -1 then begin
+		excpt := self.FetchException('failed to attach ccio handler');
+		raise excpt;
+	end;
 
 	if hak_beginfeed(self.handle, nil) <= -1 then begin
-		errmsg := self.FetchErrorMsg();
+		excpt := self.FetchException('failed to begin feeding');
 		hak_detachccio(self.handle);
-		raise Exception.Create('failed to begin feeding - ' + errmsg);
+		raise excpt;
 	end;
 
 	if hak_feedbchars(self.handle, text, len) <= -1 then begin
-		errnum := hak_geterrnum(self.handle);
-		errmsg := self.FetchErrorMsg();
+		excpt := self.FetchException('failed to feed text');
 		hak_endfeed(self.handle);
 		hak_detachccio(self.handle);
-		if hak_errnum_is_synerr(errnum) then
-			raise Exception.Create(errmsg)
-		else
-			raise Exception.Create('failed to feed text - ' + errmsg);
+		raise excpt;
 	end;
 
 	if hak_endfeed(self.handle) <= -1 then begin
-		errmsg := self.FetchErrorMsg();
+		excpt := self.FetchException('failed to end feeding');
 		hak_detachccio(self.handle);
-		raise Exception.Create('failed to end feeding - ' + errmsg)
+		raise excpt;
 	end;
 
 	hak_detachccio(self.handle);
@@ -544,33 +577,30 @@ end;
 
 procedure Interp.CompileText(text: PUchar; len: System.SizeUint);
 var
-	errnum: integer;
-	errmsg: string;
+	excpt: Exception;
 begin
-	if hak_attachcciostdwithbcstr(self.handle, nil) <= -1 then
-		raise Exception.Create('failed to attach ccio handler - ' + self.FetchErrorMsg());
+	if hak_attachcciostdwithbcstr(self.handle, nil) <= -1 then begin
+		excpt := self.FetchException('failed to attach ccio handler');
+		raise excpt;
+	end;
 
 	if hak_beginfeed(self.handle, nil) <= -1 then begin
-		errmsg := self.FetchErrorMsg();
+		excpt := self.FetchException('failed to begin feeding');
 		hak_detachccio(self.handle);
-		raise Exception.Create('failed to begin feeding - ' + errmsg);
+		raise excpt;
 	end;
 
 	if hak_feeduchars(self.handle, text, len) <= -1 then begin
-		errnum := hak_geterrnum(self.handle);
-		errmsg := self.FetchErrorMsg();
+		excpt := self.FetchException('failed to feed text');
 		hak_endfeed(self.handle);
 		hak_detachccio(self.handle);
-		if hak_errnum_is_synerr(errnum) then
-			raise Exception.Create(errmsg)
-			else
-			raise Exception.Create('failed to feed text - ' + errmsg);
+		raise excpt;
 	end;
 
 	if hak_endfeed(self.handle) <= -1 then begin
-		errmsg := self.FetchErrorMsg();
+		excpt := self.FetchException('failed to end feeding');
 		hak_detachccio(self.handle);
-		raise Exception.Create('failed to end feeding - ' + errmsg)
+		raise excpt;
 	end;
 
 	hak_detachccio(self.handle);
@@ -579,19 +609,19 @@ end;
 
 procedure Interp.Execute();
 var
-	errmsg: string;
+	excpt: Exception;
 begin
 	if hak_attachudiostdwithbcstr(self.handle, nil, nil) <= -1 then begin
-		raise Exception.Create('failed to attach udio handlers - ' + self.FetchErrorMsg())
+		excpt := self.FetchException('failed to attach udio handlers');
+		raise excpt;
 	end;
 	if hak_execute(self.handle) = nil then begin
-		errmsg := self.FetchErrorMsg();
+		excpt := self.FetchException(''); (* no header message used to make the error format the same as bin/hak *)
 		hak_detachudio(self.handle);
-		raise Exception.Create('failed to execute - ' + errmsg)
+		raise excpt;
 	end;
 
 	hak_detachudio(self.handle);
 end;
 
 end. (* unit *)
-

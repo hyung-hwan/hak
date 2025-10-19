@@ -284,7 +284,7 @@ void hak_geterrbinf (hak_t* hak, hak_errbinf_t* errinf)
 	const hak_ooch_t* msg;
 	hak_oow_t wcslen, mbslen;
 
-	/*errinf->num = hak->errnum;*/
+	errinf->num = hak->errnum;
 	errinf->loc.line = hak->errloc.line;
 	errinf->loc.colm = hak->errloc.colm;
 	if (!hak->errloc.file) errinf->loc.file = HAK_NULL;
@@ -307,7 +307,7 @@ void hak_geterruinf (hak_t* hak, hak_erruinf_t* errinf)
 	const hak_ooch_t* msg;
 	hak_oow_t wcslen, mbslen;
 
-	/*errinf->num = hak->errnum;*/
+	errinf->num = hak->errnum;
 	errinf->loc.line = hak->errloc.line;
 	errinf->loc.colm = hak->errloc.colm;
 	if (!hak->errloc.file) errinf->loc.file = HAK_NULL;
