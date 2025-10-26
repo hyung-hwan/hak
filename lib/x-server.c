@@ -844,10 +844,8 @@ static void reformat_synerr (hak_t* hak)
 	orgmsg = hak_backuperrmsg(hak);
 	hak_seterrbfmt (
 		hak, HAK_ESYNERR,
-		"%js%hs%.*js at %js%hsline %zu column %zu",
+		"%js at %js%hsline %zu column %zu",
 		orgmsg,
-		(synerr.tgt.len > 0? " near ": ""),
-		synerr.tgt.len, synerr.tgt.val,
 		(synerr.loc.file? synerr.loc.file: nullstr),
 		(synerr.loc.file? " ": ""),
 		synerr.loc.line, synerr.loc.colm
