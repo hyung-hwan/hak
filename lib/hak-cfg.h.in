@@ -165,43 +165,43 @@
 /* Wide-character type size */
 #undef HAK_WIDE_CHAR_SIZE
 
-/* Define to 1 if you have the 'accept4' function. */
+/* Define to 1 if you have the `accept4' function. */
 #undef HAVE_ACCEPT4
 
-/* Define to 1 if you have the 'acosq' function. */
+/* Define to 1 if you have the `acosq' function. */
 #undef HAVE_ACOSQ
 
-/* Define to 1 if you have the 'asinq' function. */
+/* Define to 1 if you have the `asinq' function. */
 #undef HAVE_ASINQ
 
-/* Define to 1 if you have the 'atan2q' function. */
+/* Define to 1 if you have the `atan2q' function. */
 #undef HAVE_ATAN2Q
 
-/* Define to 1 if you have the 'atanq' function. */
+/* Define to 1 if you have the `atanq' function. */
 #undef HAVE_ATANQ
 
-/* Define to 1 if you have the 'backtrace' function. */
+/* Define to 1 if you have the `backtrace' function. */
 #undef HAVE_BACKTRACE
 
-/* Define to 1 if you have the 'backtrace_symbols' function. */
+/* Define to 1 if you have the `backtrace_symbols' function. */
 #undef HAVE_BACKTRACE_SYMBOLS
 
-/* Define to 1 if you have the 'ceilq' function. */
+/* Define to 1 if you have the `ceilq' function. */
 #undef HAVE_CEILQ
 
-/* Define to 1 if you have the 'clock_gettime' function. */
+/* Define to 1 if you have the `clock_gettime' function. */
 #undef HAVE_CLOCK_GETTIME
 
-/* Define to 1 if you have the 'clock_nanosleep' function. */
+/* Define to 1 if you have the `clock_nanosleep' function. */
 #undef HAVE_CLOCK_NANOSLEEP
 
-/* Define to 1 if you have the 'clock_settime' function. */
+/* Define to 1 if you have the `clock_settime' function. */
 #undef HAVE_CLOCK_SETTIME
 
-/* Define to 1 if you have the 'coshq' function. */
+/* Define to 1 if you have the `coshq' function. */
 #undef HAVE_COSHQ
 
-/* Define to 1 if you have the 'cosq' function. */
+/* Define to 1 if you have the `cosq' function. */
 #undef HAVE_COSQ
 
 /* Define to 1 if you have the <dirent.h> header file. */
@@ -210,10 +210,10 @@
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
 
-/* Define to 1 if you have the 'epoll_create' function. */
+/* Define to 1 if you have the `epoll_create' function. */
 #undef HAVE_EPOLL_CREATE
 
-/* Define to 1 if you have the 'epoll_create1' function. */
+/* Define to 1 if you have the `epoll_create1' function. */
 #undef HAVE_EPOLL_CREATE1
 
 /* Define to 1 if you have the <errno.h> header file. */
@@ -222,79 +222,79 @@
 /* Define to 1 if you have the <execinfo.h> header file. */
 #undef HAVE_EXECINFO_H
 
-/* Define to 1 if you have the 'expq' function. */
+/* Define to 1 if you have the `expq' function. */
 #undef HAVE_EXPQ
 
 /* Define to 1 if you have the <fcntl.h> header file. */
 #undef HAVE_FCNTL_H
 
-/* Define to 1 if you have the 'floorq' function. */
+/* Define to 1 if you have the `floorq' function. */
 #undef HAVE_FLOORQ
 
-/* Define to 1 if you have the 'fmodq' function. */
+/* Define to 1 if you have the `fmodq' function. */
 #undef HAVE_FMODQ
 
-/* Define to 1 if you have the 'getcontext' function. */
+/* Define to 1 if you have the `getcontext' function. */
 #undef HAVE_GETCONTEXT
 
-/* Define to 1 if you have the 'getitimer' function. */
+/* Define to 1 if you have the `getitimer' function. */
 #undef HAVE_GETITIMER
 
-/* Define to 1 if you have the 'gettimeofday' function. */
+/* Define to 1 if you have the `gettimeofday' function. */
 #undef HAVE_GETTIMEOFDAY
 
-/* Define to 1 if you have the 'gmtime_r' function. */
+/* Define to 1 if you have the `gmtime_r' function. */
 #undef HAVE_GMTIME_R
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
-/* Define to 1 if you have the 'isatty' function. */
+/* Define to 1 if you have the `isatty' function. */
 #undef HAVE_ISATTY
 
-/* Define to 1 if you have the 'kqueue' function. */
+/* Define to 1 if you have the `kqueue' function. */
 #undef HAVE_KQUEUE
 
-/* Define to 1 if you have the 'kqueue1' function. */
+/* Define to 1 if you have the `kqueue1' function. */
 #undef HAVE_KQUEUE1
 
 /* Define to 1 if you have the <libunwind.h> header file. */
 #undef HAVE_LIBUNWIND_H
 
-/* Define to 1 if you have the 'localtime_r' function. */
+/* Define to 1 if you have the `localtime_r' function. */
 #undef HAVE_LOCALTIME_R
 
-/* Define to 1 if you have the 'log10q' function. */
+/* Define to 1 if you have the `log10q' function. */
 #undef HAVE_LOG10Q
 
-/* Define to 1 if you have the 'logq' function. */
+/* Define to 1 if you have the `logq' function. */
 #undef HAVE_LOGQ
 
 /* Define to 1 if you have the <ltdl.h> header file. */
 #undef HAVE_LTDL_H
 
-/* Define to 1 if you have the 'makecontext' function. */
+/* Define to 1 if you have the `makecontext' function. */
 #undef HAVE_MAKECONTEXT
 
-/* Define to 1 if you have the 'mmap' function. */
+/* Define to 1 if you have the `mmap' function. */
 #undef HAVE_MMAP
 
-/* Define to 1 if you have the 'munmap' function. */
+/* Define to 1 if you have the `munmap' function. */
 #undef HAVE_MUNMAP
 
-/* Define to 1 if you have the 'nanosleep' function. */
+/* Define to 1 if you have the `nanosleep' function. */
 #undef HAVE_NANOSLEEP
 
 /* Define to 1 if you have the <net/if.h> header file. */
 #undef HAVE_NET_IF_H
 
-/* Define to 1 if you have the 'pipe2' function. */
+/* Define to 1 if you have the `pipe2' function. */
 #undef HAVE_PIPE2
 
 /* Define to 1 if you have the <poll.h> header file. */
 #undef HAVE_POLL_H
 
-/* Define to 1 if you have the 'powq' function. */
+/* Define to 1 if you have the `powq' function. */
 #undef HAVE_POWQ
 
 /* Define if you have POSIX threads libraries and header files. */
@@ -306,43 +306,43 @@
 /* Define to 1 if you have the <quadmath.h> header file. */
 #undef HAVE_QUADMATH_H
 
-/* Define to 1 if you have the 'quadmath_snprintf' function. */
+/* Define to 1 if you have the `quadmath_snprintf' function. */
 #undef HAVE_QUADMATH_SNPRINTF
 
-/* Define to 1 if you have the 'roundq' function. */
+/* Define to 1 if you have the `roundq' function. */
 #undef HAVE_ROUNDQ
 
-/* Define to 1 if you have the 'setcontext' function. */
+/* Define to 1 if you have the `setcontext' function. */
 #undef HAVE_SETCONTEXT
 
-/* Define to 1 if you have the 'setitimer' function. */
+/* Define to 1 if you have the `setitimer' function. */
 #undef HAVE_SETITIMER
 
-/* Define to 1 if you have the 'settimeofday' function. */
+/* Define to 1 if you have the `settimeofday' function. */
 #undef HAVE_SETTIMEOFDAY
 
-/* Define to 1 if you have the 'sigaction' function. */
+/* Define to 1 if you have the `sigaction' function. */
 #undef HAVE_SIGACTION
 
-/* Define to 1 if you have the 'signal' function. */
+/* Define to 1 if you have the `signal' function. */
 #undef HAVE_SIGNAL
 
 /* Define to 1 if you have the <signal.h> header file. */
 #undef HAVE_SIGNAL_H
 
-/* Define to 1 if you have the 'sinhq' function. */
+/* Define to 1 if you have the `sinhq' function. */
 #undef HAVE_SINHQ
 
-/* Define to 1 if you have the 'sinq' function. */
+/* Define to 1 if you have the `sinq' function. */
 #undef HAVE_SINQ
 
-/* Define to 1 if you have the 'snprintf' function. */
+/* Define to 1 if you have the `snprintf' function. */
 #undef HAVE_SNPRINTF
 
 /* Define to 1 if you have the <spawn.h> header file. */
 #undef HAVE_SPAWN_H
 
-/* Define to 1 if you have the 'sqrtq' function. */
+/* Define to 1 if you have the `sqrtq' function. */
 #undef HAVE_SQRTQ
 
 /* Define to 1 if you have the <stddef.h> header file. */
@@ -357,7 +357,7 @@
 /* Define to 1 if you have the <stdlib.h> header file. */
 #undef HAVE_STDLIB_H
 
-/* Define to 1 if you have the 'strerror_r' function. */
+/* Define to 1 if you have the `strerror_r' function. */
 #undef HAVE_STRERROR_R
 
 /* strftime supports %z */
@@ -369,16 +369,16 @@
 /* Define to 1 if you have the <string.h> header file. */
 #undef HAVE_STRING_H
 
-/* Define to 1 if you have the 'strtoflt128' function. */
+/* Define to 1 if you have the `strtoflt128' function. */
 #undef HAVE_STRTOFLT128
 
-/* Define to 1 if 'ifr_ifindex' is a member of 'struct ifreq'. */
+/* Define to 1 if `ifr_ifindex' is a member of `struct ifreq'. */
 #undef HAVE_STRUCT_IFREQ_IFR_IFINDEX
 
-/* Define to 1 if 'ifr_mtu' is a member of 'struct ifreq'. */
+/* Define to 1 if `ifr_mtu' is a member of `struct ifreq'. */
 #undef HAVE_STRUCT_IFREQ_IFR_MTU
 
-/* Define to 1 if you have the 'swapcontext' function. */
+/* Define to 1 if you have the `swapcontext' function. */
 #undef HAVE_SWAPCONTEXT
 
 /* Define to 1 if you have the <sys/devpoll.h> header file. */
@@ -405,10 +405,10 @@
 /* Define to 1 if you have the <sys/uio.h> header file. */
 #undef HAVE_SYS_UIO_H
 
-/* Define to 1 if you have the 'tanhq' function. */
+/* Define to 1 if you have the `tanhq' function. */
 #undef HAVE_TANHQ
 
-/* Define to 1 if you have the 'tanq' function. */
+/* Define to 1 if you have the `tanq' function. */
 #undef HAVE_TANQ
 
 /* Define to 1 if you have the <time.h> header file. */
@@ -423,7 +423,7 @@
 /* libunwind is available */
 #undef HAVE_UNWIND_LIB
 
-/* Define to 1 if you have the 'usleep' function. */
+/* Define to 1 if you have the `usleep' function. */
 #undef HAVE_USLEEP
 
 /* Define to 1 if you have the <utime.h> header file. */
@@ -438,10 +438,10 @@
 /* Define to 1 if you have the <wctype.h> header file. */
 #undef HAVE_WCTYPE_H
 
-/* Define to 1 if you have the '_vsnprintf' function. */
+/* Define to 1 if you have the `_vsnprintf' function. */
 #undef HAVE__VSNPRINTF
 
-/* Define to 1 if you have the '_vsnwprintf' function. */
+/* Define to 1 if you have the `_vsnwprintf' function. */
 #undef HAVE__VSNWPRINTF
 
 /* __builtin_memcmp */
@@ -493,109 +493,109 @@
    your system. */
 #undef PTHREAD_CREATE_JOINABLE
 
-/* The size of 'char', as computed by sizeof. */
+/* The size of `char', as computed by sizeof. */
 #undef SIZEOF_CHAR
 
-/* The size of 'char16_t', as computed by sizeof. */
+/* The size of `char16_t', as computed by sizeof. */
 #undef SIZEOF_CHAR16_T
 
-/* The size of 'char32_t', as computed by sizeof. */
+/* The size of `char32_t', as computed by sizeof. */
 #undef SIZEOF_CHAR32_T
 
-/* The size of 'double', as computed by sizeof. */
+/* The size of `double', as computed by sizeof. */
 #undef SIZEOF_DOUBLE
 
-/* The size of 'float', as computed by sizeof. */
+/* The size of `float', as computed by sizeof. */
 #undef SIZEOF_FLOAT
 
-/* The size of 'int', as computed by sizeof. */
+/* The size of `int', as computed by sizeof. */
 #undef SIZEOF_INT
 
-/* The size of 'long', as computed by sizeof. */
+/* The size of `long', as computed by sizeof. */
 #undef SIZEOF_LONG
 
-/* The size of 'long double', as computed by sizeof. */
+/* The size of `long double', as computed by sizeof. */
 #undef SIZEOF_LONG_DOUBLE
 
-/* The size of 'long long', as computed by sizeof. */
+/* The size of `long long', as computed by sizeof. */
 #undef SIZEOF_LONG_LONG
 
-/* The size of 'mbstate_t', as computed by sizeof. */
+/* The size of `mbstate_t', as computed by sizeof. */
 #undef SIZEOF_MBSTATE_T
 
-/* The size of 'off64_t', as computed by sizeof. */
+/* The size of `off64_t', as computed by sizeof. */
 #undef SIZEOF_OFF64_T
 
-/* The size of 'off_t', as computed by sizeof. */
+/* The size of `off_t', as computed by sizeof. */
 #undef SIZEOF_OFF_T
 
-/* The size of 'sa_family_t', as computed by sizeof. */
+/* The size of `sa_family_t', as computed by sizeof. */
 #undef SIZEOF_SA_FAMILY_T
 
-/* The size of 'short', as computed by sizeof. */
+/* The size of `short', as computed by sizeof. */
 #undef SIZEOF_SHORT
 
-/* The size of 'socklen_t', as computed by sizeof. */
+/* The size of `socklen_t', as computed by sizeof. */
 #undef SIZEOF_SOCKLEN_T
 
-/* The size of 'struct sockaddr_dl', as computed by sizeof. */
+/* The size of `struct sockaddr_dl', as computed by sizeof. */
 #undef SIZEOF_STRUCT_SOCKADDR_DL
 
-/* The size of 'struct sockaddr_in', as computed by sizeof. */
+/* The size of `struct sockaddr_in', as computed by sizeof. */
 #undef SIZEOF_STRUCT_SOCKADDR_IN
 
-/* The size of 'struct sockaddr_in6', as computed by sizeof. */
+/* The size of `struct sockaddr_in6', as computed by sizeof. */
 #undef SIZEOF_STRUCT_SOCKADDR_IN6
 
-/* The size of 'struct sockaddr_ll', as computed by sizeof. */
+/* The size of `struct sockaddr_ll', as computed by sizeof. */
 #undef SIZEOF_STRUCT_SOCKADDR_LL
 
-/* The size of 'struct sockaddr_un', as computed by sizeof. */
+/* The size of `struct sockaddr_un', as computed by sizeof. */
 #undef SIZEOF_STRUCT_SOCKADDR_UN
 
-/* The size of 'void *', as computed by sizeof. */
+/* The size of `void *', as computed by sizeof. */
 #undef SIZEOF_VOID_P
 
-/* The size of 'wchar_t', as computed by sizeof. */
+/* The size of `wchar_t', as computed by sizeof. */
 #undef SIZEOF_WCHAR_T
 
-/* The size of '__float128', as computed by sizeof. */
+/* The size of `__float128', as computed by sizeof. */
 #undef SIZEOF___FLOAT128
 
-/* The size of '__int128', as computed by sizeof. */
+/* The size of `__int128', as computed by sizeof. */
 #undef SIZEOF___INT128
 
-/* The size of '__int128_t', as computed by sizeof. */
+/* The size of `__int128_t', as computed by sizeof. */
 #undef SIZEOF___INT128_T
 
-/* The size of '__int16', as computed by sizeof. */
+/* The size of `__int16', as computed by sizeof. */
 #undef SIZEOF___INT16
 
-/* The size of '__int16_t', as computed by sizeof. */
+/* The size of `__int16_t', as computed by sizeof. */
 #undef SIZEOF___INT16_T
 
-/* The size of '__int32', as computed by sizeof. */
+/* The size of `__int32', as computed by sizeof. */
 #undef SIZEOF___INT32
 
-/* The size of '__int32_t', as computed by sizeof. */
+/* The size of `__int32_t', as computed by sizeof. */
 #undef SIZEOF___INT32_T
 
-/* The size of '__int64', as computed by sizeof. */
+/* The size of `__int64', as computed by sizeof. */
 #undef SIZEOF___INT64
 
-/* The size of '__int64_t', as computed by sizeof. */
+/* The size of `__int64_t', as computed by sizeof. */
 #undef SIZEOF___INT64_T
 
-/* The size of '__int8', as computed by sizeof. */
+/* The size of `__int8', as computed by sizeof. */
 #undef SIZEOF___INT8
 
-/* The size of '__int8_t', as computed by sizeof. */
+/* The size of `__int8_t', as computed by sizeof. */
 #undef SIZEOF___INT8_T
 
-/* The size of '__uint128_t', as computed by sizeof. */
+/* The size of `__uint128_t', as computed by sizeof. */
 #undef SIZEOF___UINT128_T
 
-/* Define to 1 if all of the C89 standard headers exist (not just the ones
+/* Define to 1 if all of the C90 standard headers exist (not just the ones
    required in a freestanding environment). This macro is provided for
    backward compatibility; new code need not use it. */
 #undef STDC_HEADERS

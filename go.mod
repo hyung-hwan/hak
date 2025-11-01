@@ -1,3 +1,3 @@
-module code.miflux.com/hyung-hwan/hak
+module hak
 
 go 1.20

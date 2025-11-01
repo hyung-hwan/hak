@@ -76,8 +76,6 @@ type BitMask C.hak_bitmask_t
 
 const TRAIT_LANG_ENABLE_EOL BitMask = C.HAK_TRAIT_LANG_ENABLE_EOL
 
-var inst_table InstanceTable
-
 func deregister_instance(g *Hak) {
 	if g.inst_no >= 0 {
 		inst_table.delete_instance(g.inst_no)
@@ -466,7 +464,7 @@ func c_to_go(c *C.hak_t) *Hak {
 
 	ext = (*Ext)(unsafe.Pointer(C.hak_getxtn(c)))
 	inst = inst_table.slot_to_instance(ext.inst_no)
-	return inst.g
+	return inst.g.Value()
 }
 
 // -----------------------------------------------------------

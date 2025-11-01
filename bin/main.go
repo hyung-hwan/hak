@@ -3,9 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
+	"hak"
 	"os"
 	//"strings"
-	"code.miflux.com/hyung-hwan/hak/go"
 )
 
 /*

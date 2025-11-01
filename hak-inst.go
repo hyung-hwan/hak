@@ -4,13 +4,12 @@ package hak
 #include <hak.h>
 */
 import "C"
-import (
-	"sync"
-)
+import "sync"
+import "weak"
 
 type Instance struct {
 	c *C.hak_t // c object
-	g *Hak     // go object
+	g weak.Pointer[Hak] // go object as a weak pointer
 }
 
 type InstanceTable struct {
@@ -19,6 +18,8 @@ type InstanceTable struct {
 	free_slots []int
 }
 
+var inst_table InstanceTable
+
 func (itab *InstanceTable) add_instance(c *C.hak_t, g *Hak) int {
 	itab.mtx.Lock()
 	defer itab.mtx.Unlock()
@@ -26,7 +27,7 @@ func (itab *InstanceTable) add_instance(c *C.hak_t, g *Hak) int {
 	var n int = len(itab.free_slots)
 
 	if n <= 0 { // no free slots
-		itab.insts = append(itab.insts, Instance{c: c, g: g})
+		itab.insts = append(itab.insts, Instance{c: c, g: weak.Make(g)})
 		return len(itab.insts) - 1
 	} else {
 		var slot int
@@ -39,17 +40,15 @@ func (itab *InstanceTable) add_instance(c *C.hak_t, g *Hak) int {
 }
 
 func (itab *InstanceTable) delete_instance(slot int) Instance {
-	var (
-		h Instance
-		n int
-	)
+	var h Instance
+	var n int
 
 	itab.mtx.Lock()
 	defer itab.mtx.Unlock()
 
 	h = itab.insts[slot]
 	itab.insts[slot].c = nil
-	itab.insts[slot].g = nil
+	itab.insts[slot].g = weak.Make((*Hak)(nil))
 
 	n = len(itab.insts)
 	if slot == n-1 {
