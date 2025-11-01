@@ -13,7 +13,6 @@
 # PARTICULAR PURPOSE.
 
 @SET_MAKE@
-
 VPATH = @srcdir@
 am__is_gnu_make = { \
   if test -z '$(MAKELEVEL)'; then \
@@ -92,7 +91,6 @@ build_triplet = @build@
 host_triplet = @host@
 @ENABLE_STATIC_MODULE_TRUE@am__append_1 = mod lib bin t
 @ENABLE_STATIC_MODULE_FALSE@am__append_2 = lib mod bin t
-@ENABLE_HAKGO_TRUE@bin_PROGRAMS = bin/hakgo$(EXEEXT)
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_check_sign.m4 \
@@ -110,20 +108,6 @@ mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/lib/hak-cfg.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
-am__installdirs = "$(DESTDIR)$(bindir)"
-PROGRAMS = $(bin_PROGRAMS)
-am__bin_hakgo_SOURCES_DIST = hak.go hak-cb.go hak-inst.go bin/main.go \
-	go.mod
-am__dirstamp = $(am__leading_dot)dirstamp
-@ENABLE_HAKGO_TRUE@am_bin_hakgo_OBJECTS = hak.$(OBJEXT) \
-@ENABLE_HAKGO_TRUE@	hak-cb.$(OBJEXT) hak-inst.$(OBJEXT) \
-@ENABLE_HAKGO_TRUE@	bin/main.$(OBJEXT) go.$(OBJEXT)
-bin_hakgo_OBJECTS = $(am_bin_hakgo_OBJECTS)
-bin_hakgo_LDADD = $(LDADD)
-AM_V_lt = $(am__v_lt_@AM_V@)
-am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
-am__v_lt_0 = --silent
-am__v_lt_1 = 
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -136,9 +120,8 @@ AM_V_at = $(am__v_at_@AM_V@)
 am__v_at_ = $(am__v_at_@AM_DEFAULT_V@)
 am__v_at_0 = @
 am__v_at_1 = 
-DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/lib
-SOURCES = $(bin_hakgo_SOURCES)
-DIST_SOURCES = $(am__bin_hakgo_SOURCES_DIST)
+SOURCES =
+DIST_SOURCES =
 RECURSIVE_TARGETS = all-recursive check-recursive cscopelist-recursive \
 	ctags-recursive dvi-recursive html-recursive info-recursive \
 	install-data-recursive install-dvi-recursive \
@@ -375,22 +358,9 @@ ACLOCAL_AMFLAGS = -I m4
 EXTRA_DIST = t t/test-bi.hak
 SUBDIRS = $(am__append_1) $(am__append_2)
 DIST_SUBDIRS = $(SUBDIRS) pas
-@ENABLE_HAKGO_TRUE@bin_hakgo_SOURCES = \
-@ENABLE_HAKGO_TRUE@	hak.go \
-@ENABLE_HAKGO_TRUE@	hak-cb.go \
-@ENABLE_HAKGO_TRUE@	hak-inst.go \
-@ENABLE_HAKGO_TRUE@	bin/main.go \
-@ENABLE_HAKGO_TRUE@	go.mod
-
-@ENABLE_HAKGO_TRUE@bin_hakgo_DEPENDENCIES = hakgo.bin
-@ENABLE_HAKGO_TRUE@@ENABLE_STATIC_FALSE@CGO_CFLAGS_EXTRA = ""
-@ENABLE_HAKGO_TRUE@@ENABLE_STATIC_TRUE@CGO_CFLAGS_EXTRA = "-static"
-@ENABLE_HAKGO_TRUE@@ENABLE_STATIC_FALSE@CGO_LDFLAGS_EXTRA = ""
-@ENABLE_HAKGO_TRUE@@ENABLE_STATIC_TRUE@CGO_LDFLAGS_EXTRA = "-static"
 all: all-recursive
 
 .SUFFIXES:
-.SUFFIXES: .go .mod .o
 am--refresh: Makefile
 	@:
 $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
@@ -424,75 +394,12 @@ $(top_srcdir)/configure:  $(am__configure_deps)
 $(ACLOCAL_M4):  $(am__aclocal_m4_deps)
 	$(am__cd) $(srcdir) && $(ACLOCAL) $(ACLOCAL_AMFLAGS)
 $(am__aclocal_m4_deps):
-install-binPROGRAMS: $(bin_PROGRAMS)
-	@$(NORMAL_INSTALL)
-	@list='$(bin_PROGRAMS)'; test -n "$(bindir)" || list=; \
-	if test -n "$$list"; then \
-	  echo " $(MKDIR_P) '$(DESTDIR)$(bindir)'"; \
-	  $(MKDIR_P) "$(DESTDIR)$(bindir)" || exit 1; \
-	fi; \
-	for p in $$list; do echo "$$p $$p"; done | \
-	sed 's/$(EXEEXT)$$//' | \
-	while read p p1; do if test -f $$p \
-	 || test -f $$p1 \
-	  ; then echo "$$p"; echo "$$p"; else :; fi; \
-	done | \
-	sed -e 'p;s,.*/,,;n;h' \
-	    -e 's|.*|.|' \
-	    -e 'p;x;s,.*/,,;s/$(EXEEXT)$$//;$(transform);s/$$/$(EXEEXT)/' | \
-	sed 'N;N;N;s,\n, ,g' | \
-	$(AWK) 'BEGIN { files["."] = ""; dirs["."] = 1 } \
-	  { d=$$3; if (dirs[d] != 1) { print "d", d; dirs[d] = 1 } \
-	    if ($$2 == $$4) files[d] = files[d] " " $$1; \
-	    else { print "f", $$3 "/" $$4, $$1; } } \
-	  END { for (d in files) print "f", d, files[d] }' | \
-	while read type dir files; do \
-	    if test "$$dir" = .; then dir=; else dir=/$$dir; fi; \
-	    test -z "$$files" || { \
-	    echo " $(INSTALL_PROGRAM_ENV) $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(INSTALL_PROGRAM) $$files '$(DESTDIR)$(bindir)$$dir'"; \
-	    $(INSTALL_PROGRAM_ENV) $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(INSTALL_PROGRAM) $$files "$(DESTDIR)$(bindir)$$dir" || exit $$?; \
-	    } \
-	; done
-
-uninstall-binPROGRAMS:
-	@$(NORMAL_UNINSTALL)
-	@list='$(bin_PROGRAMS)'; test -n "$(bindir)" || list=; \
-	files=`for p in $$list; do echo "$$p"; done | \
-	  sed -e 'h;s,^.*/,,;s/$(EXEEXT)$$//;$(transform)' \
-	      -e 's/$$/$(EXEEXT)/' \
-	`; \
-	test -n "$$list" || exit 0; \
-	echo " ( cd '$(DESTDIR)$(bindir)' && rm -f" $$files ")"; \
-	cd "$(DESTDIR)$(bindir)" && $(am__rm_f) $$files
-
-clean-binPROGRAMS:
-	$(am__rm_f) $(bin_PROGRAMS)
-	test -z "$(EXEEXT)" || $(am__rm_f) $(bin_PROGRAMS:$(EXEEXT)=)
-bin/$(am__dirstamp):
-	@$(MKDIR_P) bin
-	@: >>bin/$(am__dirstamp)
-bin/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) bin/$(DEPDIR)
-	@: >>bin/$(DEPDIR)/$(am__dirstamp)
-bin/main.$(OBJEXT): bin/$(am__dirstamp) bin/$(DEPDIR)/$(am__dirstamp)
-
-@ENABLE_HAKGO_FALSE@bin/hakgo$(EXEEXT): $(bin_hakgo_OBJECTS) $(bin_hakgo_DEPENDENCIES) $(EXTRA_bin_hakgo_DEPENDENCIES) bin/$(am__dirstamp)
-@ENABLE_HAKGO_FALSE@	@rm -f bin/hakgo$(EXEEXT)
-@ENABLE_HAKGO_FALSE@	$(AM_V_CCLD)$(LINK) $(bin_hakgo_OBJECTS) $(bin_hakgo_LDADD) $(LIBS)
-
-mostlyclean-compile:
-	-rm -f *.$(OBJEXT)
-	-rm -f bin/*.$(OBJEXT)
-
-distclean-compile:
-	-rm -f *.tab.c
 
 mostlyclean-libtool:
 	-rm -f *.lo
 
 clean-libtool:
 	-rm -rf .libs _libs
-	-rm -rf bin/.libs bin/_libs
 
 distclean-libtool:
 	-rm -f libtool config.lt
@@ -808,12 +715,9 @@ distcleancheck: distclean
 	       exit 1; } >&2
 check-am: all-am
 check: check-recursive
-all-am: Makefile $(PROGRAMS)
+all-am: Makefile
 installdirs: installdirs-recursive
 installdirs-am:
-	for dir in "$(DESTDIR)$(bindir)"; do \
-	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
-	done
 install: install-recursive
 install-exec: install-exec-recursive
 install-data: install-data-recursive
@@ -840,22 +744,19 @@ clean-generic:
 distclean-generic:
 	-$(am__rm_f) $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || $(am__rm_f) $(CONFIG_CLEAN_VPATH_FILES)
-	-$(am__rm_f) bin/$(DEPDIR)/$(am__dirstamp)
-	-$(am__rm_f) bin/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-recursive
 
-clean-am: clean-binPROGRAMS clean-generic clean-libtool clean-local \
-	mostlyclean-am
+clean-am: clean-generic clean-libtool clean-local mostlyclean-am
 
 distclean: distclean-recursive
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -f Makefile
-distclean-am: clean-am distclean-compile distclean-generic \
-	distclean-libtool distclean-local distclean-tags
+distclean-am: clean-am distclean-generic distclean-libtool \
+	distclean-local distclean-tags
 
 dvi: dvi-recursive
 
@@ -875,7 +776,7 @@ install-dvi: install-dvi-recursive
 
 install-dvi-am:
 
-install-exec-am: install-binPROGRAMS
+install-exec-am:
 
 install-html: install-html-recursive
 
@@ -905,8 +806,7 @@ maintainer-clean-am: distclean-am maintainer-clean-generic
 
 mostlyclean: mostlyclean-recursive
 
-mostlyclean-am: mostlyclean-compile mostlyclean-generic \
-	mostlyclean-libtool
+mostlyclean-am: mostlyclean-generic mostlyclean-libtool
 
 pdf: pdf-recursive
 
@@ -916,28 +816,26 @@ ps: ps-recursive
 
 ps-am:
 
-uninstall-am: uninstall-binPROGRAMS
+uninstall-am:
 
 .MAKE: $(am__recursive_targets) install-am install-strip
 
 .PHONY: $(am__recursive_targets) CTAGS GTAGS TAGS all all-am \
-	am--refresh check check-am clean clean-binPROGRAMS \
-	clean-cscope clean-generic clean-libtool clean-local cscope \
-	cscopelist-am ctags ctags-am dist dist-all dist-bzip2 \
-	dist-bzip3 dist-gzip dist-lzip dist-shar dist-tarZ dist-xz \
-	dist-zip dist-zstd distcheck distclean distclean-compile \
-	distclean-generic distclean-libtool distclean-local \
+	am--refresh check check-am clean clean-cscope clean-generic \
+	clean-libtool clean-local cscope cscopelist-am ctags ctags-am \
+	dist dist-all dist-bzip2 dist-bzip3 dist-gzip dist-lzip \
+	dist-shar dist-tarZ dist-xz dist-zip dist-zstd distcheck \
+	distclean distclean-generic distclean-libtool distclean-local \
 	distclean-tags distcleancheck distdir distuninstallcheck dvi \
 	dvi-am html html-am info info-am install install-am \
-	install-binPROGRAMS install-data install-data-am install-dvi \
-	install-dvi-am install-exec install-exec-am install-html \
-	install-html-am install-info install-info-am install-man \
-	install-pdf install-pdf-am install-ps install-ps-am \
-	install-strip installcheck installcheck-am installdirs \
-	installdirs-am maintainer-clean maintainer-clean-generic \
-	mostlyclean mostlyclean-compile mostlyclean-generic \
-	mostlyclean-libtool pdf pdf-am ps ps-am tags tags-am uninstall \
-	uninstall-am uninstall-binPROGRAMS
+	install-data install-data-am install-dvi install-dvi-am \
+	install-exec install-exec-am install-html install-html-am \
+	install-info install-info-am install-man install-pdf \
+	install-pdf-am install-ps install-ps-am install-strip \
+	installcheck installcheck-am installdirs installdirs-am \
+	maintainer-clean maintainer-clean-generic mostlyclean \
+	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
+	tags tags-am uninstall uninstall-am
 
 .PRECIOUS: Makefile
 
@@ -948,22 +846,6 @@ distclean-local:
 clean-local:
 	rm -rf $(builddir)/go.mod $(builddir)/go.sum
 	go clean -C $(srcdir) -x -modfile $(abs_builddir)/go.mod -cache
-
-@ENABLE_HAKGO_TRUE@bin/hakgo$(EXEEXT): lib/libhak.la $(hakgo_OBJECTS)
-@ENABLE_HAKGO_TRUE@	cp -pf $(srcdir)/go.mod $(builddir)/go.mod >/dev/null 2>&1 || true
-@ENABLE_HAKGO_TRUE@	chmod u+w $(builddir)/go.mod ## with `make distcheck`, the echo's redirection to the file fails without this permission change
-@ENABLE_HAKGO_TRUE@	[ -f $(srcdir)/go.sum ] && cp -pf $(srcdir)/go.sum $(builddir)/go.sum >/dev/null 2>&1 || true
-@ENABLE_HAKGO_TRUE@	CC=$(CC) \
-@ENABLE_HAKGO_TRUE@	CGO_CFLAGS="-I$(abs_srcdir)/lib -I$(abs_builddir)/lib $(CFLAGS) $(CGO_CFLAGS_EXTRA)" \
-@ENABLE_HAKGO_TRUE@	CGO_LDFLAGS="-L$(abs_builddir)/lib -L$(abs_builddir)/lib/.libs -lhak -ldl $(LIBM) $(CGO_LDFLAGS_EXTRA)"  \
-@ENABLE_HAKGO_TRUE@	go build -C $(srcdir) -ldflags "-X 'main.BINDIR=$(bindir)' -X 'main.SBINDIR=$(sbindir)' -X 'main.LIBDIR=$(libdir)' -X 'main.SYSCONFDIR=$(sysconfdir)'" -x -o $(abs_builddir)/$@ -modfile $(abs_builddir)/go.mod  $(abs_srcdir)/bin/main.go
-@ENABLE_HAKGO_TRUE@	go clean -C $(srcdir) -x -modfile $(abs_builddir)/go.mod
-
-@ENABLE_HAKGO_TRUE@.go.o:
-@ENABLE_HAKGO_TRUE@	echo $< > $@
-
-@ENABLE_HAKGO_TRUE@.mod.o:
-@ENABLE_HAKGO_TRUE@	echo $< > $@
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

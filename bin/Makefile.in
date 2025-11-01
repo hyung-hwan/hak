@@ -98,10 +98,12 @@ host_triplet = @host@
 ##################################################
 @ENABLE_LIBLTDL_TRUE@am__append_1 = $(LTDL_LIBS)
 @ENABLE_LIBLTDL_FALSE@am__append_2 = $(DL_LIBS)
-bin_PROGRAMS = hak$(EXEEXT) $(am__EXEEXT_1)
+bin_PROGRAMS = hak$(EXEEXT) $(am__EXEEXT_1) $(am__EXEEXT_2)
 @ENABLE_ISOCLINE_TRUE@am__append_3 = -I$(srcdir)/isocline/include -DHAVE_ISOCLINE_H -DHAVE_ISOCLINE_LIB
 @ENABLE_ISOCLINE_TRUE@am__append_4 = ./libisocline.a
-@ENABLE_HAKX_TRUE@am__append_5 = hakx
+@ENABLE_ISOCLINE_TRUE@am__append_5 = ./libisocline.a
+@ENABLE_HAKX_TRUE@am__append_6 = hakx
+@ENABLE_HAKGO_TRUE@am__append_7 = hakgo
 subdir = bin
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_check_sign.m4 \
@@ -118,6 +120,7 @@ CONFIG_HEADER = $(top_builddir)/lib/hak-cfg.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 @ENABLE_HAKX_TRUE@am__EXEEXT_1 = hakx$(EXEEXT)
+@ENABLE_HAKGO_TRUE@am__EXEEXT_2 = hakgo$(EXEEXT)
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 LIBRARIES = $(noinst_LIBRARIES)
@@ -162,8 +165,6 @@ am__DEPENDENCIES_1 =
 @ENABLE_LIBLTDL_TRUE@am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
 @ENABLE_LIBLTDL_FALSE@am__DEPENDENCIES_3 = $(am__DEPENDENCIES_1)
 am__DEPENDENCIES_4 = $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3)
-hak_DEPENDENCIES = ../lib/libhak.la $(am__DEPENDENCIES_4) \
-	$(am__append_4)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -171,11 +172,16 @@ am__v_lt_1 =
 hak_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(hak_LDFLAGS) $(LDFLAGS) -o $@
+am__hakgo_SOURCES_DIST = ../go.mod ../hak.go ../hak-cb.go \
+	../hak-inst.go main.go
+@ENABLE_HAKGO_TRUE@am_hakgo_OBJECTS = ../go.$(OBJEXT) ../hak.$(OBJEXT) \
+@ENABLE_HAKGO_TRUE@	../hak-cb.$(OBJEXT) ../hak-inst.$(OBJEXT) \
+@ENABLE_HAKGO_TRUE@	main.$(OBJEXT)
+hakgo_OBJECTS = $(am_hakgo_OBJECTS)
+hakgo_LDADD = $(LDADD)
 am__hakx_SOURCES_DIST = hakx.c
 @ENABLE_HAKX_TRUE@am_hakx_OBJECTS = hakx-hakx.$(OBJEXT)
 hakx_OBJECTS = $(am_hakx_OBJECTS)
-@ENABLE_HAKX_TRUE@hakx_DEPENDENCIES = ../lib/libhakx.la \
-@ENABLE_HAKX_TRUE@	$(am__DEPENDENCIES_4)
 hakx_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(hakx_LDFLAGS) $(LDFLAGS) -o $@
@@ -229,9 +235,10 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(libisocline_a_SOURCES) $(hak_SOURCES) $(hakx_SOURCES)
+SOURCES = $(libisocline_a_SOURCES) $(hak_SOURCES) $(hakgo_SOURCES) \
+	$(hakx_SOURCES)
 DIST_SOURCES = $(am__libisocline_a_SOURCES_DIST) $(hak_SOURCES) \
-	$(am__hakx_SOURCES_DIST)
+	$(am__hakgo_SOURCES_DIST) $(am__hakx_SOURCES_DIST)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -465,14 +472,28 @@ hak_SOURCES = hak.c
 hak_CPPFLAGS = $(CPPFLAGS_COMMON) $(am__append_3)
 hak_LDFLAGS = $(LDFLAGS_COMMON)
 hak_LDADD = ../lib/libhak.la $(LIBADD_COMMON) $(am__append_4)
+hak_DEPENDENCIES = ../lib/libhak.la $(am__append_5)
 @ENABLE_HAKX_TRUE@hakx_SOURCES = hakx.c
 @ENABLE_HAKX_TRUE@hakx_CPPFLAGS = $(CPPFLAGS_COMMON)
 @ENABLE_HAKX_TRUE@hakx_LDFLAGS = $(LDFLAGS_COMMON)
 @ENABLE_HAKX_TRUE@hakx_LDADD = ../lib/libhakx.la $(LIBADD_COMMON)
+@ENABLE_HAKX_TRUE@hakx_DEPENDENCIES = ../lib/libhakx.la
+@ENABLE_HAKGO_TRUE@hakgo_SOURCES = \
+@ENABLE_HAKGO_TRUE@	../go.mod \
+@ENABLE_HAKGO_TRUE@	../hak.go \
+@ENABLE_HAKGO_TRUE@	../hak-cb.go \
+@ENABLE_HAKGO_TRUE@	../hak-inst.go \
+@ENABLE_HAKGO_TRUE@	main.go
+
+@ENABLE_HAKGO_TRUE@hakgo_LINK = 
+@ENABLE_HAKGO_TRUE@@ENABLE_STATIC_FALSE@CGO_CFLAGS_EXTRA = ""
+@ENABLE_HAKGO_TRUE@@ENABLE_STATIC_TRUE@CGO_CFLAGS_EXTRA = "-static"
+@ENABLE_HAKGO_TRUE@@ENABLE_STATIC_FALSE@CGO_LDFLAGS_EXTRA = ""
+@ENABLE_HAKGO_TRUE@@ENABLE_STATIC_TRUE@CGO_LDFLAGS_EXTRA = "-static"
 all: all-am
 
 .SUFFIXES:
-.SUFFIXES: .c .lo .o .obj
+.SUFFIXES: .c .go .lo .mod .o .obj
 $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
@@ -596,6 +617,20 @@ libisocline.a: $(libisocline_a_OBJECTS) $(libisocline_a_DEPENDENCIES) $(EXTRA_li
 hak$(EXEEXT): $(hak_OBJECTS) $(hak_DEPENDENCIES) $(EXTRA_hak_DEPENDENCIES) 
 	@rm -f hak$(EXEEXT)
 	$(AM_V_CCLD)$(hak_LINK) $(hak_OBJECTS) $(hak_LDADD) $(LIBS)
+../$(am__dirstamp):
+	@$(MKDIR_P) ..
+	@: >>../$(am__dirstamp)
+../$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) ../$(DEPDIR)
+	@: >>../$(DEPDIR)/$(am__dirstamp)
+../go.$(OBJEXT): ../$(am__dirstamp) ../$(DEPDIR)/$(am__dirstamp)
+../hak.$(OBJEXT): ../$(am__dirstamp) ../$(DEPDIR)/$(am__dirstamp)
+../hak-cb.$(OBJEXT): ../$(am__dirstamp) ../$(DEPDIR)/$(am__dirstamp)
+../hak-inst.$(OBJEXT): ../$(am__dirstamp) ../$(DEPDIR)/$(am__dirstamp)
+
+@ENABLE_HAKGO_FALSE@hakgo$(EXEEXT): $(hakgo_OBJECTS) $(hakgo_DEPENDENCIES) $(EXTRA_hakgo_DEPENDENCIES) 
+@ENABLE_HAKGO_FALSE@	@rm -f hakgo$(EXEEXT)
+@ENABLE_HAKGO_FALSE@	$(AM_V_GEN)$(hakgo_LINK) $(hakgo_OBJECTS) $(hakgo_LDADD) $(LIBS)
 
 hakx$(EXEEXT): $(hakx_OBJECTS) $(hakx_DEPENDENCIES) $(EXTRA_hakx_DEPENDENCIES) 
 	@rm -f hakx$(EXEEXT)
@@ -603,6 +638,7 @@ hakx$(EXEEXT): $(hakx_OBJECTS) $(hakx_DEPENDENCIES) $(EXTRA_hakx_DEPENDENCIES)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
+	-rm -f ../*.$(OBJEXT)
 	-rm -f isocline/src/*.$(OBJEXT)
 
 distclean-compile:
@@ -809,6 +845,8 @@ clean-generic:
 distclean-generic:
 	-$(am__rm_f) $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || $(am__rm_f) $(CONFIG_CLEAN_VPATH_FILES)
+	-$(am__rm_f) ../$(DEPDIR)/$(am__dirstamp)
+	-$(am__rm_f) ../$(am__dirstamp)
 	-$(am__rm_f) isocline/src/$(DEPDIR)/$(am__dirstamp)
 	-$(am__rm_f) isocline/src/$(am__dirstamp)
 
@@ -939,6 +977,22 @@ uninstall-am: uninstall-binPROGRAMS
 
 .PRECIOUS: Makefile
 
+
+@ENABLE_HAKGO_TRUE@hakgo$(EXEEXT): ../lib/libhak.la $(hakgo_OBJECTS)
+@ENABLE_HAKGO_TRUE@	cp -pf $(top_srcdir)/go.mod $(builddir)/go.mod >/dev/null 2>&1 || true
+@ENABLE_HAKGO_TRUE@	chmod u+w $(builddir)/go.mod ## with `make distcheck`, the echo's redirection to the file fails without this permission change
+@ENABLE_HAKGO_TRUE@	[ -f $(srcdir)/go.sum ] && cp -pf $(srcdir)/go.sum $(builddir)/go.sum >/dev/null 2>&1 || true
+@ENABLE_HAKGO_TRUE@	CC=$(CC) \
+@ENABLE_HAKGO_TRUE@	CGO_CFLAGS="-I$(abs_top_srcdir)/lib -I$(abs_top_builddir)/lib $(CFLAGS) $(CGO_CFLAGS_EXTRA)" \
+@ENABLE_HAKGO_TRUE@	CGO_LDFLAGS="-L$(abs_top_builddir)/lib -L$(abs_top_builddir)/lib/.libs -lhak -ldl $(LIBM) $(CGO_LDFLAGS_EXTRA)"  \
+@ENABLE_HAKGO_TRUE@	go build -C $(srcdir) -ldflags "-X 'main.BINDIR=$(bindir)' -X 'main.SBINDIR=$(sbindir)' -X 'main.LIBDIR=$(libdir)' -X 'main.SYSCONFDIR=$(sysconfdir)'" -x -o $(abs_builddir)/$@ -modfile $(abs_builddir)/go.mod  $(abs_srcdir)/main.go
+@ENABLE_HAKGO_TRUE@	go clean -C $(srcdir) -x -modfile $(abs_builddir)/go.mod
+
+@ENABLE_HAKGO_TRUE@.go.o:
+@ENABLE_HAKGO_TRUE@	echo $< > $@
+
+@ENABLE_HAKGO_TRUE@.mod.o:
+@ENABLE_HAKGO_TRUE@	echo $< > $@
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
