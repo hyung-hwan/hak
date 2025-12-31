@@ -35,6 +35,7 @@ func (itab *InstanceTable) add_instance(c *C.hak_t, g *Hak) int {
 		slot = itab.free_slots[n]
 		itab.free_slots = itab.free_slots[:n]
 		itab.insts[slot].c = c
+		itab.insts[slot].g = weak.Make(g)
 		return slot
 	}
 }

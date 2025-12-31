@@ -355,7 +355,7 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AUTOMAKE_OPTION = foreign
 ACLOCAL_AMFLAGS = -I m4
-EXTRA_DIST = t t/test-bi.hak
+EXTRA_DIST = go.mod t t/test-bi.hak
 SUBDIRS = $(am__append_1) $(am__append_2)
 DIST_SUBDIRS = $(SUBDIRS) pas
 all: all-recursive
