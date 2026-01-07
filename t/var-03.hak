@@ -17,14 +17,14 @@ a := 1234
 	g := 70
 	h := 80
 		
-	if (~= a 10) { print "ERROR: a inside the block expression is not 10\n" } \
+	if (!= a 10) { printf "ERROR: a inside the block expression is not 10\n" } \
 	else { printf "OK: %d\n" a };
 }
 
 a := (+ a 1)
 c := (sprintf "%d" a)
 
-if (~= a 1235) { printf "ERROR: a is not 1235\n" } \
+if (!= a 1235) { printf "ERROR: a is not 1235\n" } \
 else { printf "OK: %d\n" a };
 
 if (nql? c "1235") { printf "ERROR: c is not \"1235\"\n" } \

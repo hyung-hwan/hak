@@ -863,7 +863,11 @@ int main (int argc, char* argv[])
 	print_usage:
 		fprintf(stderr, "Usage: %s [options] script-filename [output-filename]\n", argv[0]);
 		fprintf(stderr, "Options are:\n");
-		fprintf(stderr, " -v  show verbose messages\n");
+		fprintf(stderr, " --info               show build information\n");
+		fprintf(stderr, " -l, --log    string  specify the log file path and options\n");
+		fprintf(stderr, " --modlibdirs string  specify directories to load modules from\n");
+		fprintf(stderr, " -v                   show verbose messages\n");
+
 		return -1;
 	}
 

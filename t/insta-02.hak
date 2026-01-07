@@ -7,7 +7,7 @@ fun Number: < (oprnd) { return (< self oprnd) }
 fun Number: >= (oprnd) { return (>= self oprnd) }
 fun Number: <= (oprnd) { return (<= self oprnd) }
 fun Number: == (oprnd) { return (== self oprnd) }
-fun Number: ~= (oprnd) { return (~= self oprnd) }
+fun Number: != (oprnd) { return (!= self oprnd) }
 
 ## --------------------------------------------------------------
 set t (

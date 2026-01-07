@@ -1357,7 +1357,7 @@ static pf_t builtin_prims[] =
 	{ 2, 2,                       hak_pf_number_le,   2,  { '<','=' } },
 	{ 2, 2,                       hak_pf_number_eq,   1,  { '=' } },
 	{ 2, 2,                       hak_pf_number_eq,   2,  { '=', '=' } },
-	{ 2, 2,                       hak_pf_number_ne,   2,  { '~','=' } },
+	{ 2, 2,                       hak_pf_number_ne,   2,  { '!','=' } },
 
 	/* bitwise operations are supported for integers only */
 	{ 2, 2,                       hak_pf_integer_band, 7,  { 'b','i','t','-','a','n','d' } },
@@ -1448,4 +1448,3 @@ int hak_addbuiltinprims (hak_t* hak)
 
 	return 0;
 }
-

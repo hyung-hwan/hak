@@ -303,7 +303,7 @@ static HAK_INLINE int is_delim_char (hak_ooci_t c)
 static HAK_INLINE int is_binop_char (hak_ooci_t c)
 {
 	return c == '&' || c == '*' || c == '+' || c == '-' || c == '/' || c == '%' ||
-	       c == '<' || c == '>' || c == '=' || c == '@' || c == '|' || c == '~';
+	       c == '<' || c == '>' || c == '=' || c == '@' || c == '|' || c == '~' || c == '!';
 }
 
 static HAK_INLINE int is_pure_lead_ident_char (hak_ooci_t c)

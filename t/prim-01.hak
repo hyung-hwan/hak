@@ -17,7 +17,7 @@ fun Number:-(b) { return (core.- self b) }
 fun Number:*(b) { return (core.* self b) }
 fun Number:/(b) { return (core./ self b) }
 fun Apex:==(b) { return (core.eql? self b) }
-fun Apex:~=(b) { return (core.nql? self b) }
+fun Apex:!=(b) { return (core.nql? self b) }
 ## big numbers and fixed pointer decimals don't share the same object for the same values.
 ## we must use eql or nql, can't use eqv or nqv.
 
@@ -29,7 +29,7 @@ if ((x := (1 + 2 * 3 / 4)) == expected) { ## note: there is no operator preceden
 }
 
 expected := 2.2
-if ((x := (1.0 + 2 * 3 / 4)) ~= expected) {
+if ((x := (1.0 + 2 * 3 / 4)) != expected) {
 	printf "BAD: x is not %O - %O\n" expected x
 } else {
 	printf "OK: %O\n" expected
