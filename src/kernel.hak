@@ -36,7 +36,7 @@ class Apex {
 
 	## TODO: ...
 	fun == (oprnd) { return (== self oprnd) }
-	fun ~= (oprnd) { return (~= self oprnd) }
+	fun != (oprnd) { return (!= self oprnd) }
 	## TODO: fun perform(name ...) {}
 }
 

@@ -47,6 +47,152 @@
 /* enable floating-pointer number support in the basic formatting functions */
 #define HAK_ENABLE_FLTFMT
 
+#define HAK_ENABLE_STACK_CONTEXT
+
+#if defined(HAK_ENABLE_STACK_CONTEXT)
+
+/* hak_stack_context_t must mirror hak_context_t except the header.
+ * there are extra fields at the back, however */
+typedef struct hak_stack_context_t hak_stack_context_t;
+struct hak_stack_context_t
+{
+	hak_oop_t req_nrets;
+	hak_oop_t attr_mask;
+	hak_oop_t name;
+	hak_oop_t ip;
+	hak_oop_t base;
+	hak_oop_t sender;
+	hak_oop_t receiver;
+	hak_oop_t home;
+	hak_oop_t mthhome;
+	hak_oop_t ivaroff;
+	hak_oop_t owner;
+
+	hak_oop_t slot_count;
+	hak_oop_t stack_base;
+	hak_oop_t frame_base;
+	hak_oop_t heap_ctx;
+
+	hak_oop_t slot_base[1];
+};
+
+/*#define HAK_STACK_CONTEXT_NAMED_SLOTS (HAK_SIZEOF(hak_stack_context_t) / HAK_SIZEOF(hak_oop_t))*/
+#define HAK_STACK_CONTEXT_NAMED_SLOTS (15) /* excludes slot_base */
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+hak_oop_context_t hak_reify_stack_context (hak_t* hak, hak_stack_context_t* sctx);
+
+#if defined(__cplusplus)
+}
+#endif
+
+#define HAK_CTX_IS_STACK(ctx) (HAK_OOP_IS_SMPTR(ctx))
+#define HAK_CTX_TO_STACK(ctx) ((hak_stack_context_t*)HAK_OOP_TO_SMPTR(ctx))
+#define HAK_CTX_TO_OOP(hak, ctx) (HAK_CTX_IS_STACK(ctx)? hak_reify_stack_context((hak), HAK_CTX_TO_STACK(ctx)): (hak_oop_context_t)(ctx))
+
+#if 0
+#define HAK_CTX_SLOT(hak, ctx) (HAK_CTX_IS_STACK(ctx)? (hak_oop_t*)HAK_OOP_TO_SMPTR(HAK_CTX_TO_STACK(ctx)->slot_base) : ((hak_oop_context_t)(ctx))->slot)
+#define HAK_CTX_SLOT_AT(hak, ctx, idx) (HAK_CTX_IS_STACK(ctx)? ((hak_oop_t*)HAK_OOP_TO_SMPTR(HAK_CTX_TO_STACK(ctx)->slot_base))[idx] : ((hak_oop_context_t)(ctx))->slot[idx])
+#define HAK_CTX_SLOT_AT_PUT(hak, ctx, idx, val) \
+do { \
+	if (HAK_CTX_IS_STACK(ctx)) \
+		((hak_oop_t*)HAK_OOP_TO_SMPTR(HAK_CTX_TO_STACK(ctx)->slot_base))[idx] = (val); \
+	else \
+		((hak_oop_context_t)(ctx))->slot[idx] = (val); \
+} while(0)
+#else
+
+#define HAK_CTX_SLOT(hak, ctx) (HAK_CTX_IS_STACK(ctx)? HAK_CTX_TO_STACK(ctx)->slot_base : ((hak_oop_context_t)(ctx))->slot)
+
+#define HAK_CTX_SLOT_AT(hak, ctx, idx) \
+	(HAK_CTX_IS_STACK(ctx)? HAK_CTX_TO_STACK(ctx)->slot_base[idx]: ((hak_oop_context_t)(ctx))->slot[idx])
+
+#define HAK_CTX_SLOT_AT_PUT(hak, ctx, idx, val) \
+do { \
+	if (HAK_CTX_IS_STACK(ctx)) \
+		HAK_CTX_TO_STACK(ctx)->slot_base[idx] = (val); \
+	else \
+		((hak_oop_context_t)(ctx))->slot[idx] = (val); \
+} while(0)
+#endif
+
+#define HAK_CTX_GET_REQNRETS(hak, ctx) (HAK_CTX_IS_STACK(ctx)? HAK_CTX_TO_STACK(ctx)->req_nrets : ((hak_oop_context_t)(ctx))->req_nrets)
+#define HAK_CTX_SET_REQNRETS(hak, ctx, v) do { if (HAK_CTX_IS_STACK(ctx)) HAK_CTX_TO_STACK(ctx)->req_nrets = (v); else ((hak_oop_context_t)(ctx))->req_nrets = (v); } while (0)
+#define HAK_CTX_GET_ATTR_MASK(hak, ctx) (HAK_CTX_IS_STACK(ctx)? HAK_CTX_TO_STACK(ctx)->attr_mask : ((hak_oop_context_t)(ctx))->attr_mask)
+#define HAK_CTX_SET_ATTR_MASK(hak, ctx, v) do { if (HAK_CTX_IS_STACK(ctx)) HAK_CTX_TO_STACK(ctx)->attr_mask = (v); else ((hak_oop_context_t)(ctx))->attr_mask = (v); } while (0)
+#define HAK_CTX_GET_NAME(hak, ctx) (HAK_CTX_IS_STACK(ctx)? HAK_CTX_TO_STACK(ctx)->name : ((hak_oop_context_t)(ctx))->name)
+#define HAK_CTX_SET_NAME(hak, ctx, v) do { if (HAK_CTX_IS_STACK(ctx)) HAK_CTX_TO_STACK(ctx)->name = (v); else ((hak_oop_context_t)(ctx))->name = (v); } while (0)
+#define HAK_CTX_GET_IP(hak, ctx) (HAK_CTX_IS_STACK(ctx)? HAK_CTX_TO_STACK(ctx)->ip : ((hak_oop_context_t)(ctx))->ip)
+#define HAK_CTX_SET_IP(hak, ctx, v) do { if (HAK_CTX_IS_STACK(ctx)) HAK_CTX_TO_STACK(ctx)->ip = (v); else ((hak_oop_context_t)(ctx))->ip = (v); } while (0)
+
+#define HAK_CTX_GET_BASE(hak, ctx) (HAK_CTX_IS_STACK(ctx)? (hak_oop_function_t)HAK_CTX_TO_STACK(ctx)->base : ((hak_oop_context_t)(ctx))->base)
+
+#define HAK_CTX_SET_BASE(hak, ctx, v) do { if (HAK_CTX_IS_STACK(ctx)) HAK_CTX_TO_STACK(ctx)->base = (hak_oop_t)(v); else ((hak_oop_context_t)(ctx))->base = (hak_oop_function_t)(v); } while (0)
+#define HAK_CTX_GET_SENDER(hak, ctx) (HAK_CTX_IS_STACK(ctx)? HAK_CTX_TO_STACK(ctx)->sender : (hak_oop_t)((hak_oop_context_t)(ctx))->sender)
+#define HAK_CTX_SET_SENDER(hak, ctx, v) do { if (HAK_CTX_IS_STACK(ctx)) HAK_CTX_TO_STACK(ctx)->sender = (v); else ((hak_oop_context_t)(ctx))->sender = (hak_oop_context_t)(v); } while (0)
+#define HAK_CTX_GET_RECEIVER(hak, ctx) (HAK_CTX_IS_STACK(ctx)? HAK_CTX_TO_STACK(ctx)->receiver : ((hak_oop_context_t)(ctx))->receiver)
+#define HAK_CTX_SET_RECEIVER(hak, ctx, v) do { if (HAK_CTX_IS_STACK(ctx)) HAK_CTX_TO_STACK(ctx)->receiver = (v); else ((hak_oop_context_t)(ctx))->receiver = (v); } while (0)
+#define HAK_CTX_GET_HOME(hak, ctx) (HAK_CTX_IS_STACK(ctx)? HAK_CTX_TO_STACK(ctx)->home : (hak_oop_t)((hak_oop_context_t)(ctx))->home)
+#define HAK_CTX_SET_HOME(hak, ctx, v) do { if (HAK_CTX_IS_STACK(ctx)) HAK_CTX_TO_STACK(ctx)->home = (v); else ((hak_oop_context_t)(ctx))->home = (hak_oop_context_t)(v); } while (0)
+#define HAK_CTX_GET_MTHHOME(hak, ctx) (HAK_CTX_IS_STACK(ctx)? HAK_CTX_TO_STACK(ctx)->mthhome : (hak_oop_t)((hak_oop_context_t)(ctx))->mthhome)
+#define HAK_CTX_SET_MTHHOME(hak, ctx, v) do { if (HAK_CTX_IS_STACK(ctx)) HAK_CTX_TO_STACK(ctx)->mthhome = (v); else ((hak_oop_context_t)(ctx))->mthhome = (hak_oop_context_t)(v); } while (0)
+#define HAK_CTX_GET_IVAROFF(hak, ctx) (HAK_CTX_IS_STACK(ctx)? HAK_CTX_TO_STACK(ctx)->ivaroff : ((hak_oop_context_t)(ctx))->ivaroff)
+#define HAK_CTX_SET_IVAROFF(hak, ctx, v) do { if (HAK_CTX_IS_STACK(ctx)) HAK_CTX_TO_STACK(ctx)->ivaroff = (v); else ((hak_oop_context_t)(ctx))->ivaroff = (v); } while (0)
+#define HAK_CTX_GET_OWNER(hak, ctx) (HAK_CTX_IS_STACK(ctx)? HAK_CTX_TO_STACK(ctx)->owner : ((hak_oop_context_t)(ctx))->owner)
+#define HAK_CTX_SET_OWNER(hak, ctx, v) do { if (HAK_CTX_IS_STACK(ctx)) HAK_CTX_TO_STACK(ctx)->owner = (v); else ((hak_oop_context_t)(ctx))->owner = (v); } while (0)
+#define HAK_CTX_GET_SLOT_COUNT(hak, ctx) (HAK_CTX_IS_STACK(ctx)? HAK_CTX_TO_STACK(ctx)->slot_count : HAK_SMOOI_TO_OOP(HAK_OBJ_GET_SIZE((hak_oop_context_t)(ctx)) - HAK_CONTEXT_NAMED_INSTVARS))
+#define HAK_CTX_SET_SLOT_COUNT(hak, ctx, v) do { if (HAK_CTX_IS_STACK(ctx)) HAK_CTX_TO_STACK(ctx)->slot_count = (v); } while (0)
+#define HAK_CTX_GET_STACK_BASE(hak, ctx) (HAK_CTX_IS_STACK(ctx)? HAK_CTX_TO_STACK(ctx)->stack_base : HAK_SMOOI_TO_OOP(-1))
+#define HAK_CTX_SET_STACK_BASE(hak, ctx, v) do { if (HAK_CTX_IS_STACK(ctx)) HAK_CTX_TO_STACK(ctx)->stack_base = (v); } while (0)
+#define HAK_CTX_GET_FRAME_BASE(hak, ctx) (HAK_CTX_IS_STACK(ctx)? HAK_CTX_TO_STACK(ctx)->frame_base : HAK_SMOOI_TO_OOP(-1))
+#define HAK_CTX_SET_FRAME_BASE(hak, ctx, v) do { if (HAK_CTX_IS_STACK(ctx)) HAK_CTX_TO_STACK(ctx)->frame_base = (v); } while (0)
+#define HAK_CTX_GET_HEAP_CTX(hak, ctx) (HAK_CTX_IS_STACK(ctx)? HAK_CTX_TO_STACK(ctx)->heap_ctx : (hak_oop_t)(ctx))
+#define HAK_CTX_SET_HEAP_CTX(hak, ctx, v) do { if (HAK_CTX_IS_STACK(ctx)) HAK_CTX_TO_STACK(ctx)->heap_ctx = (v); } while (0)
+
+#else
+
+#define HAK_CTX_IS_STACK(ctx) (0)
+#define HAK_CTX_TO_OOP(hak, ctx) ((hak_oop_context_t)(ctx))
+#define HAK_CTX_SLOT(hak, ctx) (((hak_oop_context_t)(ctx))->slot)
+#define HAK_CTX_SLOT_AT(hak, ctx, idx) (((hak_oop_context_t)(ctx))->slot[idx])
+#define HAK_CTX_SLOT_AT_PUT(hak, ctx, idx, val) do { ((hak_oop_context_t)(ctx))->slot[idx] = (val); } while(0)
+#define HAK_CTX_GET_REQNRETS(hak, ctx) (((hak_oop_context_t)(ctx))->req_nrets)
+#define HAK_CTX_SET_REQNRETS(hak, ctx, v) (((hak_oop_context_t)(ctx))->req_nrets = (v))
+#define HAK_CTX_GET_ATTR_MASK(hak, ctx) (((hak_oop_context_t)(ctx))->attr_mask)
+#define HAK_CTX_SET_ATTR_MASK(hak, ctx, v) (((hak_oop_context_t)(ctx))->attr_mask = (v))
+#define HAK_CTX_GET_NAME(hak, ctx) (((hak_oop_context_t)(ctx))->name)
+#define HAK_CTX_SET_NAME(hak, ctx, v) (((hak_oop_context_t)(ctx))->name = (v))
+#define HAK_CTX_GET_IP(hak, ctx) (((hak_oop_context_t)(ctx))->ip)
+#define HAK_CTX_SET_IP(hak, ctx, v) (((hak_oop_context_t)(ctx))->ip = (v))
+#define HAK_CTX_GET_BASE(hak, ctx) (((hak_oop_context_t)(ctx))->base)
+#define HAK_CTX_SET_BASE(hak, ctx, v) (((hak_oop_context_t)(ctx))->base = (v))
+#define HAK_CTX_GET_SENDER(hak, ctx) ((hak_oop_t)((hak_oop_context_t)(ctx))->sender)
+#define HAK_CTX_SET_SENDER(hak, ctx, v) (((hak_oop_context_t)(ctx))->sender = (hak_oop_context_t)(v))
+#define HAK_CTX_GET_RECEIVER(hak, ctx) (((hak_oop_context_t)(ctx))->receiver)
+#define HAK_CTX_SET_RECEIVER(hak, ctx, v) (((hak_oop_context_t)(ctx))->receiver = (v))
+#define HAK_CTX_GET_HOME(hak, ctx) ((hak_oop_t)((hak_oop_context_t)(ctx))->home)
+#define HAK_CTX_SET_HOME(hak, ctx, v) (((hak_oop_context_t)(ctx))->home = (hak_oop_context_t)(v))
+#define HAK_CTX_GET_MTHHOME(hak, ctx) ((hak_oop_t)((hak_oop_context_t)(ctx))->mthhome)
+#define HAK_CTX_SET_MTHHOME(hak, ctx, v) (((hak_oop_context_t)(ctx))->mthhome = (hak_oop_context_t)(v))
+#define HAK_CTX_GET_IVAROFF(hak, ctx) (((hak_oop_context_t)(ctx))->ivaroff)
+#define HAK_CTX_SET_IVAROFF(hak, ctx, v) (((hak_oop_context_t)(ctx))->ivaroff = (v))
+#define HAK_CTX_GET_OWNER(hak, ctx) (((hak_oop_context_t)(ctx))->owner)
+#define HAK_CTX_SET_OWNER(hak, ctx, v) (((hak_oop_context_t)(ctx))->owner = (v))
+#define HAK_CTX_GET_SLOT_COUNT(hak, ctx) (HAK_SMOOI_TO_OOP(HAK_OBJ_GET_SIZE((hak_oop_context_t)(ctx)) - HAK_CONTEXT_NAMED_INSTVARS))
+#define HAK_CTX_SET_SLOT_COUNT(hak, ctx, v)
+#define HAK_CTX_GET_STACK_BASE(hak, ctx) (HAK_SMOOI_TO_OOP(-1))
+#define HAK_CTX_SET_STACK_BASE(hak, ctx, v)
+#define HAK_CTX_GET_FRAME_BASE(hak, ctx) (HAK_SMOOI_TO_OOP(-1))
+#define HAK_CTX_SET_FRAME_BASE(hak, ctx, v)
+#define HAK_CTX_GET_HEAP_CTX(hak, ctx) ((hak_oop_t)(ctx))
+#define HAK_CTX_SET_HEAP_CTX(hak, ctx, v)
+#endif
+
+#define HAK_CTX_IS_CONTEXT(hak, ctx) (HAK_CTX_IS_STACK(ctx) || HAK_IS_CONTEXT(hak, ctx))
+
 #if defined(HAK_BUILD_DEBUG)
 /*#define HAK_DEBUG_LEXER 1*/
 #define HAK_DEBUG_VM_PROCESSOR 1

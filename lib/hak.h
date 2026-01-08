@@ -114,7 +114,7 @@ enum hak_errnum_t
 	HAK_ESEMFLOOD,  /**< runtime error - too many semaphores */
 	HAK_EEXCEPT,    /**< runtime error - exception not handled */
 	HAK_ESTKOVRFLW, /**< runtime error - stack overflow */
-	HAK_ESTKUNDFLW, /**< runtime error - stack overflow */
+	HAK_ESTKUNDFLW, /**< runtime error - stack underflow */
 	HAK_EUNDEFVAR   /**< runtime error - undefined variable access */
 };
 typedef enum hak_errnum_t hak_errnum_t;
@@ -648,7 +648,7 @@ typedef struct hak_function_t* hak_oop_function_t;
 typedef struct hak_block_t hak_block_t;
 typedef struct hak_block_t* hak_oop_block_t;
 
-#define HAK_CONTEXT_NAMED_INSTVARS 11
+#define HAK_CONTEXT_NAMED_INSTVARS 11 /* exclude the slot field, which is the beginning of the variable part */
 typedef struct hak_context_t hak_context_t;
 typedef struct hak_context_t* hak_oop_context_t;
 
@@ -683,6 +683,12 @@ struct hak_block_t
 	hak_oop_t         ip; /* smooi. instruction pointer where the byte code begins in home->base */
 };
 
+/* the fields of hak_context_t must be mirroed to hak_stack_context_t
+ * in hak-prv.h. there are functions affected by the layout change
+ * of these structures:
+ * - hak_reify_stack_context() in lib/exec.
+ * - make_stack_context() in lib/exec.c
+ */
 struct hak_context_t
 {
 	HAK_OBJ_HEADER;
@@ -746,7 +752,7 @@ struct hak_context_t
 	hak_oop_t          slot[1]; /* arguments, return variables, local variables, other arguments, etc */
 };
 
-#define HAK_PROCESS_NAMED_INSTVARS (15)
+#define HAK_PROCESS_NAMED_INSTVARS (17)
 typedef struct hak_process_t hak_process_t;
 typedef struct hak_process_t* hak_oop_process_t;
 
@@ -782,6 +788,9 @@ struct hak_process_t
 
 	hak_oop_t         clsp; /* class stack pointer */
 	hak_oop_t         clst; /* class stack  top */
+
+	hak_oop_t         fsp;  /* frame stack pointer */
+	hak_oop_t         fst;  /* frame stack top */
 
 	struct
 	{
@@ -1980,21 +1989,19 @@ struct hak_t
 #endif
 };
 
-
-/* TODO: stack bound check when pushing */
 #define HAK_STACK_PUSH(hak,v) \
 	do { \
 		if (HAK_UNLIKELY((hak)->sp >= HAK_OOP_TO_SMOOI((hak)->processor->active->st))) \
 		{ \
-			hak_seterrbfmt(hak, HAK_EOOMEM, "process stack overflow"); \
+			hak_seterrbfmt(hak, HAK_ESTKOVRFLW, "process stack overflow"); \
 			(hak)->abort_req = -1; \
 		} \
 		(hak)->sp = (hak)->sp + 1; \
-		(hak)->processor->active->slot[(hak)->sp] = v; \
+		(hak)->processor->active->slot[(hak)->sp] = (v); \
 	} while (0)
 
 #define HAK_STACK_GET(hak,sp_) ((hak)->processor->active->slot[sp_])
-#define HAK_STACK_SET(hak,sp_,obj_) ((hak)->processor->active->slot[sp_] = obj_)
+#define HAK_STACK_SET(hak,sp_,obj_) do { (hak)->processor->active->slot[sp_] = (obj_); } while(0)
 
 #define HAK_STACK_GETTOP(hak) HAK_STACK_GET(hak, (hak)->sp)
 #define HAK_STACK_SETTOP(hak,obj_) HAK_STACK_SET(hak, (hak)->sp, obj_)

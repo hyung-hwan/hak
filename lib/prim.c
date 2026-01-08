@@ -1125,7 +1125,7 @@ hak_pfrc_t hak_pf_integer_brshift (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 /* ------------------------------------------------------------------------- */
 static hak_pfrc_t pf_va_context (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	HAK_STACK_SETRET(hak, nargs, (hak_oop_t)hak->active_context);
+	HAK_STACK_SETRET(hak, nargs, (hak_oop_t)HAK_CTX_TO_OOP(hak, hak->active_context));
 	return HAK_PF_SUCCESS;
 }
 
@@ -1145,7 +1145,7 @@ static hak_pfrc_t pf_va_count (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	}
 	else
 	{
-		ctx = hak->active_context;
+		ctx = HAK_CTX_TO_OOP(hak, hak->active_context);
 	}
 
 	attr_mask = HAK_OOP_TO_SMOOI(ctx->attr_mask);
@@ -1183,7 +1183,7 @@ static hak_pfrc_t pf_va_get (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	}
 	else
 	{
-		ctx = hak->active_context;
+		ctx = HAK_CTX_TO_OOP(hak, hak->active_context);
 	}
 	attr_mask = HAK_OOP_TO_SMOOI(ctx->attr_mask);
 
