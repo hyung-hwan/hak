@@ -85,6 +85,7 @@ static struct voca_t
 	{  5, { 's','e','t','-','r'                                           } },
 
 	{  3, { '(',' ',')'      /* XLIST */                                  } },
+	{  4, { '$','(',' ',')'  /* DLIST */                                  } },
 	{  4, { '(',':',' ',')'  /* MLIST */                                  } },
 	{  4, { '(',':','=',')'  /* ALIST - x := y */                         } },
 	{  4, { '(','B','O',')'  /* BLIST - x binop y */                      } },
@@ -152,6 +153,7 @@ enum voca_id_t
 	VOCA_KW_SET_R,
 
 	VOCA_XLIST,
+	VOCA_DLIST,
 	VOCA_MLIST,
 	VOCA_ALIST, /* assignment list */
 	VOCA_BLIST, /* just fake entry */
@@ -204,6 +206,7 @@ static struct
 } cons_info[] =
 {
 	HAK_AID(HAK_CONCODE_XLIST)     { HAK_TOK_RPAREN, HAK_SYNERR_RPAREN, VOCA_XLIST }, /* XLIST     ( )  */
+	HAK_AID(HAK_CONCODE_DLIST)     { HAK_TOK_RPAREN, HAK_SYNERR_RPAREN, VOCA_DLIST }, /* DLIST     $( )  */
 	HAK_AID(HAK_CONCODE_MLIST)     { HAK_TOK_RPAREN, HAK_SYNERR_RPAREN, VOCA_MLIST }, /* MLIST     (obj:message) */
 	HAK_AID(HAK_CONCODE_ALIST)     { HAK_TOK_RPAREN, HAK_SYNERR_RPAREN, VOCA_ALIST }, /* ALIST     (var:=value) */
 	HAK_AID(HAK_CONCODE_BLIST)     { HAK_TOK_RPAREN, HAK_SYNERR_RPAREN, VOCA_BLIST }, /* BLIST     (x + y) */
@@ -1838,6 +1841,7 @@ static int feed_process_token (hak_t* hak)
 			goto start_list;
 		#endif
 
+		case HAK_TOK_DPAREN: /* $( */
 		case HAK_TOK_LPAREN: /* ( */
 #if defined(HAK_LANG_AUTO_FORGE_XLIST_ALWAYS)
 			/* with this feature on, you must not enclose an expression with ()
@@ -1858,7 +1862,10 @@ static int feed_process_token (hak_t* hak)
 			if (auto_forge_xlist_if_at_block_beginning(hak, frd) <= -1) goto oops;
 #endif
 			frd->flagv = 0;
-			LIST_FLAG_SET_CONCODE(frd->flagv, HAK_CONCODE_XLIST);
+			if (TOKEN_TYPE(hak) == HAK_TOK_DPAREN)
+				LIST_FLAG_SET_CONCODE(frd->flagv, HAK_CONCODE_DLIST);
+			else
+				LIST_FLAG_SET_CONCODE(frd->flagv, HAK_CONCODE_XLIST);
 		start_list:
 			if (frd->level >= HAK_TYPE_MAX(int))
 			{
@@ -2758,9 +2765,20 @@ static int flx_dollared_ident (hak_t* hak, hak_ooci_t c)
 
 		if (di->char_count == 0)
 		{
-			hak_setsynerrbfmt(hak, HAK_SYNERR_ILTOK, FLX_LOC(hak),
-				"no valid character after dollar sign");
-			return -1;
+			if (c == '(') /* $( */
+			{
+				ADD_TOKEN_CHAR(hak, '$');
+				ADD_TOKEN_CHAR(hak, c);
+				di->char_count += 2;
+				FEED_WRAP_UP(hak, HAK_TOK_DPAREN);
+				goto consumed;
+			}
+			else
+			{
+				hak_setsynerrbfmt(hak, HAK_SYNERR_ILTOK, FLX_LOC(hak),
+					"no valid character after dollar sign");
+				return -1;
+			}
 		}
 
 		if (get_directive_token_type(hak, &tok_type) <= -1)

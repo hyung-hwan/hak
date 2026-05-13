@@ -495,6 +495,7 @@ enum hak_tok_type_t
 	HAK_TOK_COMMA,     /* , */
 	HAK_TOK_LPAREN,    /* ( */
 	HAK_TOK_RPAREN,    /* ) */
+	HAK_TOK_DPAREN,    /* $( - dollared parenthesis */
 
 #if 0 /* use the (obj:message ... ) syntax instad. no more mlist by (: */
 	HAK_TOK_LPARCOLON, /* (: */

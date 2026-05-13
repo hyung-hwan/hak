@@ -4882,6 +4882,14 @@ static int compile_cons_alist_expression (hak_t* hak, hak_cnode_t* cmd)
 	return 0;
 }
 
+static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nrets);
+
+static int compile_cons_dlist_expression (hak_t* hak, hak_cnode_t* obj, int nrets)
+{
+/* TODO: */
+	return compile_cons_xlist_expression(hak, obj, nrets);
+}
+
 static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nrets)
 {
 	hak_cnode_t* car;
@@ -4897,6 +4905,8 @@ static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 	HAK_ASSERT(hak, HAK_CNODE_IS_CONS_CONCODED(obj, HAK_CONCODE_XLIST));
 
 	car = HAK_CNODE_CONS_CAR(obj);
+
+	/* check if the first element inside () is a special word */
 	switch (HAK_CNODE_GET_TYPE(car))
 	{
 		case HAK_CNODE_CLASS:
@@ -4991,10 +5001,12 @@ static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 			goto done;
 	}
 
+	/* the first word is not a special word */
 	if (HAK_CNODE_IS_SYMBOL(car)  || HAK_CNODE_IS_DSYMBOL(car) || HAK_CNODE_IS_BINOP(car) ||
 	    HAK_CNODE_IS_STRLIT(car) || /* this condition to represent an external program TODO: change this to a dedicated cnode */
 	    HAK_CNODE_IS_SYMLIT(car) || /* this condition to represent an external program TODO: change this to a dedicated cnode */
-	    HAK_CNODE_IS_CONS_CONCODED(car, HAK_CONCODE_XLIST) ||
+	    HAK_CNODE_IS_CONS_CONCODED(car, HAK_CONCODE_XLIST) || /* () is nested */
+	    HAK_CNODE_IS_CONS_CONCODED(car, HAK_CONCODE_DLIST) || /* $() is nested */
 	    HAK_CNODE_IS_CONS_CONCODED(car, HAK_CONCODE_MLIST) ||
 	    HAK_CNODE_IS_CONS_CONCODED(car, HAK_CONCODE_BLIST) ||
 	    HAK_CNODE_IS_CONS_CONCODED(car, HAK_CONCODE_ALIST))
@@ -5725,6 +5737,10 @@ redo:
 					if (compile_cons_xlist_expression(hak, oprnd, 0) <= -1) return -1;
 					break;
 
+				case HAK_CONCODE_DLIST:
+					if (compile_cons_dlist_expression(hak, oprnd, 0) <= -1) return -1;
+					break;
+
 				case HAK_CONCODE_BLIST: /* message send with binop */
 				case HAK_CONCODE_MLIST: /* message send expression */
 					if (compile_cons_mlist_expression(hak, oprnd, 0) <= -1) return -1;
@@ -5879,6 +5895,9 @@ static int compile_object_r (hak_t* hak)
 		{
 			case HAK_CONCODE_XLIST:
 				return compile_cons_xlist_expression(hak, oprnd, cf->u.obj_r.nrets);
+
+			case HAK_CONCODE_DLIST:
+				return compile_cons_dlist_expression(hak, oprnd, cf->u.obj_r.nrets);
 
 			case HAK_CONCODE_BLIST:
 			case HAK_CONCODE_MLIST:

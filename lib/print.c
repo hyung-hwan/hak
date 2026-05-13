@@ -279,6 +279,7 @@ int hak_fmt_object (hak_t* hak, hak_fmtout_t* fmtout, hak_oop_t obj)
 	{
 		                            /* navtive   json */
 		HAK_AID(HAK_CONCODE_XLIST)     { "(",     "(" },
+		HAK_AID(HAK_CONCODE_DLIST)     { "$(",    "(" },
 		HAK_AID(HAK_CONCODE_MLIST)     { "(",     "(" },
 		HAK_AID(HAK_CONCODE_ALIST)     { "(",     "(" },
 		HAK_AID(HAK_CONCODE_BLIST)     { "(",     "(" },
@@ -294,6 +295,7 @@ int hak_fmt_object (hak_t* hak, hak_fmtout_t* fmtout, hak_oop_t obj)
 	static const hak_bch_t *closing_parens[][2] =
 	{
 		HAK_AID(HAK_CONCODE_XLIST)     { ")",     ")" },
+		HAK_AID(HAK_CONCODE_DLIST)     { ")",     ")" },
 		HAK_AID(HAK_CONCODE_MLIST)     { ")",     ")" },
 		HAK_AID(HAK_CONCODE_ALIST)     { ")",     ")" },
 		HAK_AID(HAK_CONCODE_BLIST)     { ")",     ")" },
@@ -974,10 +976,14 @@ void hak_dumpcnode (hak_t* hak, hak_cnode_t* cnode, int newline)
 			{
 				hak_concode_t cc;
 
-				hak_logbfmt(hak, HAK_LOG_FATAL, " (");
+				cc = HAK_CNODE_CONS_CONCODE(cnode);
+
+				if (cc == HAK_CONCODE_DLIST)
+					hak_logbfmt(hak, HAK_LOG_FATAL, " $(");
+				else
+					hak_logbfmt(hak, HAK_LOG_FATAL, " (");
 				hak_dumpcnode(hak, HAK_CNODE_CONS_CAR(cnode), 0);
 
-				cc = HAK_CNODE_CONS_CONCODE(cnode);
 				switch (cc)
 				{
 					case HAK_CONCODE_ALIST:

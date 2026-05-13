@@ -2115,6 +2115,7 @@ enum hak_concode_t
 	/* if you have more than 16 elements, increase HAK_OBJ_FLAGS_CONCODE_BITS */
 
 	HAK_CONCODE_XLIST = 0,  /* ( ) - executable list */
+	HAK_CONCODE_DLIST,      /* ( ) - dollared executable list for capturing stdout/stderr */
 	HAK_CONCODE_MLIST,      /* (obj:message) - message send list */
 	HAK_CONCODE_ALIST,      /* (a := 20) assignment list */
 	HAK_CONCODE_BLIST,      /* (10 + 20) expression with binary operator */
