@@ -5733,6 +5733,7 @@ static hak_pfrc_t __semaphore_signal_on_io (hak_t* hak, hak_ooi_t nargs, hak_sem
 	 * hak_closehnd() will later unbind whatever we register here. */
 	hnd = hak_gethndwithoop(hak, HAK_STACK_GETARG(hak, nargs, 1), HAK_HND_TYPE_ALL_MUXABLE);
 	if (HAK_UNLIKELY(!hnd)) return HAK_PF_FAILURE;
+#endif
 
 	if (sem->subtype != hak->_nil)
 	{
