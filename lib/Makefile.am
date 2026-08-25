@@ -52,6 +52,7 @@ pkginclude_HEADERS = \
 	hak-cmgr.h \
 	hak-cmn.h \
 	hak-fmt.h \
+	hak-htb.h \
 	hak-opt.h \
 	hak-pac1.h \
 	hak-rbt.h \
@@ -78,6 +79,7 @@ libhak_la_SOURCES = \
 	gc.c \
 	hak.c \
 	heap.c \
+	htb.c \
 	mb8.c \
 	number.c \
 	obj.c \

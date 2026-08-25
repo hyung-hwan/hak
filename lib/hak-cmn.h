@@ -953,6 +953,26 @@ typedef struct hak_t hak_t;
 #	undef HAK_HAVE_INLINE
 #endif
 
+#if defined(__has_attribute)
+#	if __has_attribute(always_inline)
+#		define HAK_INLINE_ALWAYS __inline__ __attribute__((always_inline))
+#		define HAK_HAVE_INLINE_ALWAYS
+#	endif
+#endif
+
+#if !defined(HAK_HAVE_INLINE_ALWAYS)
+#	if defined(__GNUC__) && (__GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ > 0))
+#		define HAK_INLINE_ALWAYS __inline__ __attribute__((__always_inline__))
+#		define HAK_HAVE_INLINE_ALWAYS
+#	elif defined(_MSC_VER) || defined(__CC_ARM) || defined(__ARMCC__)
+#		define HAK_INLINE_ALWAYS __forceinline
+#		define HAK_HAVE_INLINE_ALWAYS
+#	else
+		/* fallback to normal inline */
+#		define HAK_INLINE_ALWAYS HAK_INLINE
+#	endif
+#endif
+
 #if __has_attribute(__sentinel__) || (defined(__GNUC__) && (__GNUC__ >= 4))
 #	define HAK_SENTINEL(v) __attribute__((__sentinel__(x)))
 #else

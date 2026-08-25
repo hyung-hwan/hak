@@ -26,6 +26,7 @@
 
 
 #include "_sys.h"
+#include <hak-str.h>
 #include <stdlib.h>
 
 #if defined(HAVE_SYS_TIME_H)
@@ -47,7 +48,7 @@ static hak_pfrc_t pf_sys_time (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	hak->vmprim.vm_gettime(hak, &now); /* should I use time() instead? */
 	tv = hak_oowtoint(hak, now.sec);
 	if (!tv) return HAK_PF_FAILURE;
-	HAK_STACK_SETRET (hak, nargs, tv);
+	HAK_STACK_SETRET(hak, nargs, tv);
 	return HAK_PF_SUCCESS;
 }
 
@@ -103,7 +104,7 @@ static hak_pfrc_t pf_sys_stime (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 #endif
 	/* ---------------------------------------------------------------- */
 
-	HAK_STACK_SETRET (hak, nargs, hak->_nil);
+	HAK_STACK_SETRET(hak, nargs, hak->_nil);
 	return HAK_PF_SUCCESS;
 }
 
@@ -126,7 +127,7 @@ static hak_pfrc_t pf_sys_srandom (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	srandom (seedw);
 #endif
 
-	HAK_STACK_SETRET (hak, nargs, hak->_nil);
+	HAK_STACK_SETRET(hak, nargs, hak->_nil);
 	return HAK_PF_SUCCESS;
 }
 
@@ -141,12 +142,70 @@ static hak_pfrc_t pf_sys_random (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	r = random();
 #endif
 	rv = (hak_ooi_t)(r % HAK_SMOOI_MAX);
-	HAK_STACK_SETRET (hak, nargs, HAK_SMOOI_TO_OOP(rv));
+	HAK_STACK_SETRET(hak, nargs, HAK_SMOOI_TO_OOP(rv));
+	return HAK_PF_SUCCESS;
+}
+
+#include <stdio.h> // TODO: remove this and replace it by own impl
+static hak_pfrc_t pf_sys_popen (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+{
+	hak_oop_t t;
+	hak_bch_t* cmd;
+	FILE* pp;
+
+	t = HAK_STACK_GETARG(hak, nargs, 0);
+// TODO: support byte array?
+	/*if (!HAK_IS_STRING(hak, t)) goto oops;*/
+	if (!HAK_OBJ_IS_CHAR_POINTER(t) ||
+	    HAK_OBJ_GET_SIZE(t) == 0 ||
+	    hak_count_oocstr(HAK_OBJ_GET_CHAR_SLOT(t)) != HAK_OBJ_GET_SIZE(t))
+	{
+		/* invalid command arguments */
+		goto oops;
+	}
+
+	cmd = hak_dupootobcstr(hak, HAK_OBJ_GET_CHAR_SLOT(t), HAK_NULL);
+	if (!cmd) goto oops;
+
+	/* TODO: we need a bidirectional popen.. replace it with our own impl. */
+	pp = popen(cmd, "r");
+	if (!pp) goto oops;
+
+	if (!HAK_IN_SMPTR_RANGE(pp))
+	{
+		pclose(pp);
+		goto oops;
+	}
+
+/* using smptr in this mannger is dangerous. because the caller may set random values to other function like pclose...... */
+	HAK_STACK_SETRET(hak, nargs, HAK_SMPTR_TO_OOP(pp));
+	return HAK_PF_SUCCESS;
+
+oops:
+	// TODO: set return value..
+	return HAK_PF_SUCCESS;
+}
+
+static hak_pfrc_t pf_sys_pclose (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+{
+	hak_oop_t t;
+
+	t = HAK_STACK_GETARG(hak, nargs, 0);
+	if (HAK_OOP_IS_SMPTR(t))
+	{
+		FILE* pp;
+		pp = (FILE*)HAK_OOP_TO_SMPTR(t);
+		if (pp) pclose(pp);
+	}
+
+	HAK_STACK_SETRET(hak, nargs, HAK_SMOOI_TO_OOP(0));
 	return HAK_PF_SUCCESS;
 }
 
 static hak_pfinfo_t pfinfos[] =
 {
+	{ "pclose",      { HAK_PFBASE_FUNC,  pf_sys_pclose,       1,  1 } },
+	{ "popen",       { HAK_PFBASE_FUNC,  pf_sys_popen,        1,  2 } },
 	{ "random",      { HAK_PFBASE_FUNC,  pf_sys_random,       0,  0 } },
 	{ "srandom",     { HAK_PFBASE_FUNC,  pf_sys_srandom,      1,  1 } },
 	{ "stime",       { HAK_PFBASE_FUNC,  pf_sys_stime,        1,  1 } },

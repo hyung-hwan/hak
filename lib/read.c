@@ -89,6 +89,7 @@ static struct voca_t
 	{  4, { '(',':',' ',')'  /* MLIST */                                  } },
 	{  4, { '(',':','=',')'  /* ALIST - x := y */                         } },
 	{  4, { '(','B','O',')'  /* BLIST - x binop y */                      } },
+	{  4, { '(','-','>',')'  /* PLIST - in -> .. -> out */                } },
 	{  3, { '{',' ','}'      /* BLOCK */                                  } },
 	{  4, { '#','[',' ',']'  /* ARRAY */                                  } },
 	{  5, { '#','b','[',' ',']' /* BYTE ARRAY */                          } },
@@ -157,6 +158,7 @@ enum voca_id_t
 	VOCA_MLIST,
 	VOCA_ALIST, /* assignment list */
 	VOCA_BLIST, /* just fake entry */
+	VOCA_PLIST, /* piping list */
 	VOCA_BLOCK,
 	VOCA_ARRAY,
 	VOCA_BYTEARRAY,
@@ -184,14 +186,15 @@ enum list_flag_t
 	COLONED      = (1 << 3),
 	COLONEQED    = (1 << 4),
 	BINOPED      = (1 << 5),
+	PIPOPED      = (1 << 6),
 
-	CLOSED       = (1 << 6),
-	JSON         = (1 << 7),
-	DATA_LIST    = (1 << 8),
-	AUTO_FORGED  = (1 << 9),  /* automatically added list. only applicable to XLIST */
-	AT_BEGINNING = (1 << 10)
+	CLOSED       = (1 << 7),
+	JSON         = (1 << 8),
+	DATA_LIST    = (1 << 9),
+	AUTO_FORGED  = (1 << 10),  /* automatically added list. only applicable to XLIST */
+	AT_BEGINNING = (1 << 11)
 
-	/* TOTOAL 16 items are allowed for LIST_FLAG_GET_CONCODE() and LIST_FLAG_SET_CONCODE().
+	/* TOTAL 16 items are allowed for LIST_FLAG_GET_CONCODE() and LIST_FLAG_SET_CONCODE().
 	 * they reserve lower 16 bits as flag bits.*/
 };
 
@@ -210,6 +213,7 @@ static struct
 	HAK_AID(HAK_CONCODE_MLIST)     { HAK_TOK_RPAREN, HAK_SYNERR_RPAREN, VOCA_MLIST }, /* MLIST     (obj:message) */
 	HAK_AID(HAK_CONCODE_ALIST)     { HAK_TOK_RPAREN, HAK_SYNERR_RPAREN, VOCA_ALIST }, /* ALIST     (var:=value) */
 	HAK_AID(HAK_CONCODE_BLIST)     { HAK_TOK_RPAREN, HAK_SYNERR_RPAREN, VOCA_BLIST }, /* BLIST     (x + y) */
+	HAK_AID(HAK_CONCODE_PLIST)     { HAK_TOK_RPAREN, HAK_SYNERR_RPAREN, VOCA_PLIST }, /* PLIST     (x -> .. -> y) */
 	HAK_AID(HAK_CONCODE_BLOCK)     { HAK_TOK_RBRACE, HAK_SYNERR_RBRACE, VOCA_BLOCK }, /* BLOCK     { } */
 	HAK_AID(HAK_CONCODE_ARRAY)     { HAK_TOK_RBRACK, HAK_SYNERR_RBRACK, VOCA_ARRAY }, /* ARRAY     #[ ] */
 	HAK_AID(HAK_CONCODE_BYTEARRAY) { HAK_TOK_RBRACK, HAK_SYNERR_RBRACK, VOCA_BYTEARRAY }, /* BYTEARRAY #b[ ] */
@@ -518,6 +522,7 @@ int hak_is_binop_string (const hak_oocs_t* v)
 	hak_oow_t i;
 
 	if (v->len <= 0) return 0; /* you can pass the zero-length value */
+	if (v->len == 2 && v->ptr[0] == '-' && v->ptr[1] == '>') return 0; /* -> is special piping operator */
 
 	for (i = 0; i < v->len; i++)
 	{
@@ -591,6 +596,13 @@ static int classify_ident_token (hak_t* hak, const hak_oocs_t* v, const hak_loc_
 
 	if (binop_char_count == v->len)
 	{
+		if (binop_char_count == 2 && v->ptr[0] == '-' && v->ptr[1] == '>')
+		{
+			/* "->" - special operator for piping */
+			*tok_type = HAK_TOK_PIPOP;
+			return 0;
+		}
+
 		*tok_type = HAK_TOK_BINOP;
 		return 0;
 	}
@@ -715,7 +727,7 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 	hak->c->r.st = rstl->prev; /* pop off  */
 	hak_freemem(hak, rstl); /* dispose of the stack node */
 
-	if (fv & (COMMAED | COLONED | COLONEQED | BINOPED))
+	if (fv & (COMMAED | COLONED | COLONEQED | BINOPED | PIPOPED))
 	{
 		/* no item after , : := or various binary operators */
 		if (concode == HAK_CONCODE_MLIST)
@@ -738,6 +750,13 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 			tmp = HAK_CNODE_CONS_CAR(tail);
 			hak_setsynerrbfmt(hak, HAK_SYNERR_NOVALUE, TOKEN_LOC(hak),
 				"missing expression after binary selector '%.*js'", HAK_CNODE_GET_TOKLEN(tmp), HAK_CNODE_GET_TOKPTR(tmp));
+		}
+		else if (concode == HAK_CONCODE_PLIST)
+		{
+			hak_cnode_t* tmp;
+			tmp = HAK_CNODE_CONS_CAR(tail);
+			hak_setsynerrbfmt(hak, HAK_SYNERR_NOVALUE, TOKEN_LOC(hak),
+				"missing operand after piping operator '%.*js'", HAK_CNODE_GET_TOKLEN(tmp), HAK_CNODE_GET_TOKPTR(tmp));
 		}
 		else
 		{
@@ -923,7 +942,7 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 			 * if transformation is done, it is a normal executable expression
 			 * where the binary operator is a primitive function.
 			 *
-			 * alternatively, the compiler treat this as a message send expression
+			 * alternatively, the compiler treats this as a message send expression
 			 * if the reader skips this transformation.
 			 *
 			 * We keep this part commented out to have this trated as a message
@@ -937,6 +956,11 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 
 		HAK_CNODE_CONS_CONCODE(head) = concode;
 		if (fv & AUTO_FORGED) HAK_CNODE_GET_FLAGS(head) |= HAK_CNODE_AUTO_FORGED;
+	}
+	else if (concode == HAK_CONCODE_PLIST)
+	{
+/* TODO */
+hak_logbfmt(hak, HAK_LOG_STDERR, "PLIST %hs:%d", __FILE__, __LINE__);
 	}
 	else
 	{
@@ -984,7 +1008,7 @@ static HAK_INLINE int can_comma_list (hak_t* hak)
 	if (rstl->count == 1) rstl->flagv |= JSON;
 	else if (!(rstl->flagv & JSON)) return 0;
 
-	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED)) return 0;
+	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED | PIPOPED)) return 0;
 
 	cc = (hak_concode_t)LIST_FLAG_GET_CONCODE(rstl->flagv);
 	if (cc == HAK_CONCODE_DIC)
@@ -1064,7 +1088,7 @@ static HAK_INLINE int can_colon_list (hak_t* hak)
 	}
 
 	/* multiple single-colons  - e.g. #{ "abc": : 20 } */
-	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED)) return 0;
+	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED | PIPOPED)) return 0;
 
 	if (cc == HAK_CONCODE_XLIST)
 	{
@@ -1110,7 +1134,7 @@ static HAK_INLINE int can_coloneq_list (hak_t* hak)
 	if (rstl->count <= 0 || rstl->count >= 2) return 0; /* allowed after the first item only */
 
 	/* repeated delimiters - e.g (a := := ...)   (a : := ... )  */
-	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED)) return 0;
+	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED | PIPOPED)) return 0;
 
 	cc = (hak_concode_t)LIST_FLAG_GET_CONCODE(rstl->flagv);
 
@@ -1159,7 +1183,7 @@ static HAK_INLINE int can_binop_list (hak_t* hak)
 	}
 
 	/* repeated delimiters - e.g (a ++ ++ ...)   (a : := ... )  */
-	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED)) return 0;
+	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED | PIPOPED)) return 0;
 
 	if (cc == HAK_CONCODE_BLIST)
 	{
@@ -1221,12 +1245,48 @@ static HAK_INLINE int can_binop_list (hak_t* hak)
 	return 2;
 }
 
+static HAK_INLINE int can_pipop_list (hak_t* hak)
+{
+	hak_rstl_t* rstl;
+	hak_concode_t cc;
+
+	HAK_ASSERT(hak, hak->c->r.st != HAK_NULL);
+	rstl = hak->c->r.st;
+
+	/*
+	 * in -> @{...}              second
+	 * @{...} -> out             second
+	 * in -> @{...} -> out       second and fourth
+	 *
+	 *   "hello\nworld\n" -> @{ grep hello } -> h
+	 * the counter check doesn't include "->" itself.
+	 * in and out part can be @{...}. it's not supposed to be as flexible as
+	 * shell programming languages in this regards.
+	 */
+	if (rstl->count != 1 && rstl->count !=  2) return 0;
+
+	/* since there is a check using the number of items, it's not error if popoped is repeated.
+	 * the state transition is:
+	 *   the first "->" is seen: cc must be XLIST. flags set with POPOPED, concode set to PLIST
+	 *   the second "->" is seen: cc must be PLIST. */
+	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED /*| PIPOPED*/)) return 0;
+
+	cc = (hak_concode_t)LIST_FLAG_GET_CONCODE(rstl->flagv);
+
+	/* piping operator allowed only in XLIST */
+	if (cc != HAK_CONCODE_XLIST && cc != HAK_CONCODE_PLIST) return 0;
+
+	LIST_FLAG_SET_CONCODE(rstl->flagv, HAK_CONCODE_PLIST);
+	rstl->flagv |= PIPOPED;
+	return 1;
+}
+
 static HAK_INLINE void clear_comma_colon_binop_flag (hak_t* hak)
 {
 	hak_rstl_t* rstl;
 	HAK_ASSERT(hak, hak->c->r.st != HAK_NULL);
 	rstl = hak->c->r.st;
-	rstl->flagv &= ~(COMMAED | COLONED | COLONEQED | BINOPED);
+	rstl->flagv &= ~(COMMAED | COLONED | COLONEQED | BINOPED | PIPOPED);
 }
 
 static int chain_to_list (hak_t* hak, hak_cnode_t* obj, hak_loc_t* loc)
@@ -1950,6 +2010,16 @@ static int feed_process_token (hak_t* hak)
 			goto auto_xlist;
 		}
 
+		case HAK_TOK_PIPOP:
+			if (frd->level <= 0 || !can_pipop_list(hak))
+			{
+				/* TODO: new error code HAK_SYNERR_PIPOPBANNED? */
+				hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, TOKEN_LOC(hak),
+					"prohibited piping operator around '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
+				goto oops;
+			}
+			goto ok;
+
 		case HAK_TOK_COMMA:
 			if (frd->level <= 0 || !can_comma_list(hak))
 			{
@@ -1984,7 +2054,7 @@ static int feed_process_token (hak_t* hak)
 			}
 
 			/* if auto-forged */
-			HAK_ASSERT(hak, concode == HAK_CONCODE_XLIST || concode == HAK_CONCODE_MLIST || concode == HAK_CONCODE_ALIST || concode == HAK_CONCODE_BLIST);
+			HAK_ASSERT(hak, concode == HAK_CONCODE_XLIST || concode == HAK_CONCODE_MLIST || concode == HAK_CONCODE_ALIST || concode == HAK_CONCODE_BLIST || concode == HAK_CONCODE_PLIST);
 
 			frd->obj = leave_list(hak, &frd->list_loc, &frd->flagv, &oldflagv);
 			frd->level--;

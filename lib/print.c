@@ -283,6 +283,7 @@ int hak_fmt_object (hak_t* hak, hak_fmtout_t* fmtout, hak_oop_t obj)
 		HAK_AID(HAK_CONCODE_MLIST)     { "(",     "(" },
 		HAK_AID(HAK_CONCODE_ALIST)     { "(",     "(" },
 		HAK_AID(HAK_CONCODE_BLIST)     { "(",     "(" },
+		HAK_AID(HAK_CONCODE_PLIST)     { "(",     "(" },
 		HAK_AID(HAK_CONCODE_BLOCK)     { "{",     "{" },
 		HAK_AID(HAK_CONCODE_ARRAY)     { "#[",    "[" },
 		HAK_AID(HAK_CONCODE_BYTEARRAY) { "#b[",   "[" },
@@ -298,6 +299,7 @@ int hak_fmt_object (hak_t* hak, hak_fmtout_t* fmtout, hak_oop_t obj)
 		HAK_AID(HAK_CONCODE_DLIST)     { ")",     ")" },
 		HAK_AID(HAK_CONCODE_MLIST)     { ")",     ")" },
 		HAK_AID(HAK_CONCODE_ALIST)     { ")",     ")" },
+		HAK_AID(HAK_CONCODE_PLIST)     { ")",     ")" },
 		HAK_AID(HAK_CONCODE_BLIST)     { ")",     ")" },
 		HAK_AID(HAK_CONCODE_BLOCK)     { "}",     "}" },
 		HAK_AID(HAK_CONCODE_ARRAY)     { "]",     "]" },
@@ -992,6 +994,10 @@ void hak_dumpcnode (hak_t* hak, hak_cnode_t* cnode, int newline)
 					case HAK_CONCODE_BLIST:
 					case HAK_CONCODE_MLIST:
 						hak_logbfmt(hak, HAK_LOG_FATAL, ":");
+						break;
+
+					case HAK_CONCODE_PLIST: /* TODO: must do something */
+						hak_logbfmt(hak, HAK_LOG_FATAL, " -> ");
 						break;
 				}
 

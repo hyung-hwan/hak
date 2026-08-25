@@ -36,7 +36,7 @@ static hak_pfrc_t pf_core_basic_new (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs
 	obj = HAK_STACK_GETARG(hak, nargs, 0);
 	if (!HAK_IS_CLASS(hak, obj))
 	{
-		hak_seterrbfmt (hak, HAK_EINVAL, "object not class - %O", obj);
+		hak_seterrbfmt(hak, HAK_EINVAL, "object not class - %O", obj);
 		return HAK_PF_FAILURE;
 	}
 
@@ -48,14 +48,14 @@ static hak_pfrc_t pf_core_basic_new (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs
 		size = HAK_STACK_GETARG(hak, nargs, 1);
 		if (!HAK_OOP_IS_SMOOI(size))
 		{
-			hak_seterrbfmt (hak, HAK_EINVAL, "size not numeric - %O", size);
+			hak_seterrbfmt(hak, HAK_EINVAL, "size not numeric - %O", size);
 			return HAK_PF_FAILURE;
 		}
 
 		nsize = HAK_OOP_TO_SMOOI(size);
 		if (nsize < 0)
 		{
-			hak_seterrbfmt (hak, HAK_EINVAL, "size not valid - %zd", nsize);
+			hak_seterrbfmt(hak, HAK_EINVAL, "size not valid - %zd", nsize);
 			return HAK_PF_FAILURE;
 		}
 	}
@@ -81,14 +81,14 @@ static hak_pfrc_t __basic_at (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs, int s
 	{
 	unindexable:
 		/* the receiver is a special numeric object or a non-indexable object */
-		hak_seterrbfmt (hak, HAK_EINVAL, "receiver not indexable - %O", obj);
+		hak_seterrbfmt(hak, HAK_EINVAL, "receiver not indexable - %O", obj);
 		return HAK_PF_FAILURE;
 	}
 
 	if (hak_inttooow_noseterr(hak, pos, &index) <= 0)
 	{
 		/* negative integer or not integer */
-		hak_seterrbfmt (hak, HAK_EINVAL, "position not valid - %O", pos);
+		hak_seterrbfmt(hak, HAK_EINVAL, "position not valid - %O", pos);
 		return HAK_PF_FAILURE;
 	}
 
@@ -100,7 +100,7 @@ static hak_pfrc_t __basic_at (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs, int s
 		size = HAK_OBJ_GET_SIZE(obj);
 		if (index >= size)
 		{
-			hak_seterrbfmt (hak, HAK_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hak_ooi_t)size);
+			hak_seterrbfmt(hak, HAK_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hak_ooi_t)size);
 			return HAK_PF_FAILURE;
 		}
 	}
@@ -112,7 +112,7 @@ static hak_pfrc_t __basic_at (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs, int s
 		flexi = HAK_OBJ_GET_SIZE(obj) - fixed;
 		if (index >= flexi)
 		{
-			hak_seterrbfmt (hak, HAK_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hak_ooi_t)flexi);
+			hak_seterrbfmt(hak, HAK_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hak_ooi_t)flexi);
 			return HAK_PF_FAILURE;
 		}
 		index += fixed;
@@ -183,20 +183,20 @@ static hak_pfrc_t __basic_at_put (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs, i
 	if (!HAK_OOP_IS_POINTER(obj) || !HAK_OBJ_GET_FLAGS_FLEXI(obj))
 	{
 	unindexable:
-		hak_seterrbfmt (hak, HAK_EINVAL, "receiver not indexable - %O", obj);
+		hak_seterrbfmt(hak, HAK_EINVAL, "receiver not indexable - %O", obj);
 		return HAK_PF_FAILURE;
 	}
 
 	if (HAK_OBJ_GET_FLAGS_RDONLY(obj))
 	{
-		hak_seterrbfmt (hak, HAK_EINVAL, "receiver immutable - %O", obj);
+		hak_seterrbfmt(hak, HAK_EINVAL, "receiver immutable - %O", obj);
 		return HAK_PF_FAILURE;
 	}
 
 	if (hak_inttooow_noseterr(hak, pos, &index) <= 0)
 	{
 		/* negative integer or not integer */
-		hak_seterrbfmt (hak, HAK_EINVAL, "position not valid - %O", pos);
+		hak_seterrbfmt(hak, HAK_EINVAL, "position not valid - %O", pos);
 		return HAK_PF_FAILURE;
 	}
 
@@ -208,7 +208,7 @@ static hak_pfrc_t __basic_at_put (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs, i
 		size = HAK_OBJ_GET_SIZE(obj);
 		if (index >= size)
 		{
-			hak_seterrbfmt (hak, HAK_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hak_ooi_t)size);
+			hak_seterrbfmt(hak, HAK_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hak_ooi_t)size);
 			return HAK_PF_FAILURE;
 		}
 	}
@@ -220,7 +220,7 @@ static hak_pfrc_t __basic_at_put (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs, i
 		flexi = HAK_OBJ_GET_SIZE(obj) - fixed;
 		if (index >= flexi)
 		{
-			hak_seterrbfmt (hak, HAK_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hak_ooi_t)HAK_OBJ_GET_SIZE(obj));
+			hak_seterrbfmt(hak, HAK_EINVAL, "position(%zd) out of range - negative or greater than or equal to %zu", index, (hak_ooi_t)HAK_OBJ_GET_SIZE(obj));
 			return HAK_PF_FAILURE;
 		}
 		index += fixed;
@@ -237,7 +237,7 @@ static hak_pfrc_t __basic_at_put (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs, i
 			hak_ooch_t c;
 			if (!HAK_OOP_IS_CHAR(val))
 			{
-				hak_seterrbfmt (hak, HAK_EINVAL, "value not character - %O", val);
+				hak_seterrbfmt(hak, HAK_EINVAL, "value not character - %O", val);
 				return HAK_PF_FAILURE;
 			}
 			c = HAK_OOP_TO_CHAR(val);
@@ -250,7 +250,7 @@ static hak_pfrc_t __basic_at_put (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs, i
 			hak_ooi_t b;
 			if (!HAK_OOP_IS_SMOOI(val))
 			{
-				hak_seterrbfmt (hak, HAK_EINVAL, "value not byte - %O", val);
+				hak_seterrbfmt(hak, HAK_EINVAL, "value not byte - %O", val);
 				return HAK_PF_FAILURE;
 			}
 			b = HAK_OOP_TO_SMOOI(val);
@@ -302,7 +302,7 @@ static hak_pfrc_t pf_core_basic_size (hak_t* hak, hak_mod_t* mod, hak_ooi_t narg
 
 	if (!HAK_OOP_IS_POINTER(src))
 	{
-		hak_seterrbfmt (hak, HAK_EINVAL, "source not sizable - %O", src);
+		hak_seterrbfmt(hak, HAK_EINVAL, "source not sizable - %O", src);
 		return HAK_PF_FAILURE;
 	}
 
@@ -322,7 +322,7 @@ static hak_pfrc_t pf_core_class_name (hak_t* hak, hak_mod_t* mod, hak_ooi_t narg
 	if (!HAK_IS_CLASS(hak, obj))
 	{
 	#if 0
-		hak_seterrbfmt (hak, HAK_EINVAL, "receiver not class - %O", obj);
+		hak_seterrbfmt(hak, HAK_EINVAL, "receiver not class - %O", obj);
 		return HAK_PF_FAILURE;
 	#else
 		obj = (hak_oop_t)HAK_CLASSOF(hak, obj);
@@ -344,12 +344,12 @@ static hak_pfrc_t pf_core_class_responds_to (hak_t* hak, hak_mod_t* mod, hak_ooi
 	msg = HAK_STACK_GETARG(hak, nargs, 1);
 	if (!HAK_IS_CLASS(hak, obj))
 	{
-		hak_seterrbfmt (hak, HAK_EINVAL, "receiver not class - %O", msg);
+		hak_seterrbfmt(hak, HAK_EINVAL, "receiver not class - %O", msg);
 		return HAK_PF_FAILURE;
 	}
 	if (!HAK_OBJ_IS_CHAR_POINTER(msg))
 	{
-		hak_seterrbfmt (hak, HAK_EINVAL, "invalid message - %O", msg);
+		hak_seterrbfmt(hak, HAK_EINVAL, "invalid message - %O", msg);
 		return HAK_PF_FAILURE;
 	}
 
@@ -368,7 +368,7 @@ static hak_pfrc_t pf_core_inst_responds_to (hak_t* hak, hak_mod_t* mod, hak_ooi_
 	msg = HAK_STACK_GETARG(hak, nargs, 1);
 	if (!HAK_OBJ_IS_CHAR_POINTER(msg))
 	{
-		hak_seterrbfmt (hak, HAK_EINVAL, "invalid message - %O", msg);
+		hak_seterrbfmt(hak, HAK_EINVAL, "invalid message - %O", msg);
 		return HAK_PF_FAILURE;
 	}
 
@@ -392,18 +392,18 @@ static hak_pfrc_t pf_core_slice (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	if (!HAK_OOP_IS_POINTER(src))
 	{
 	unsliceable:
-		hak_seterrbfmt (hak, HAK_EINVAL, "source not sliceable - %O", src);
+		hak_seterrbfmt(hak, HAK_EINVAL, "source not sliceable - %O", src);
 		return HAK_PF_FAILURE;
 	}
 
 	if (!HAK_OOP_IS_SMOOI(a1))
 	{
-		hak_seterrbfmt (hak, HAK_EINVAL, "position not numeric - %O", a1);
+		hak_seterrbfmt(hak, HAK_EINVAL, "position not numeric - %O", a1);
 		return HAK_PF_FAILURE;
 	}
 	if (!HAK_OOP_IS_SMOOI(a2))
 	{
-		hak_seterrbfmt (hak, HAK_EINVAL, "length not numeric - %O", a2);
+		hak_seterrbfmt(hak, HAK_EINVAL, "length not numeric - %O", a2);
 		return HAK_PF_FAILURE;
 	}
 
@@ -459,7 +459,7 @@ static hak_pfrc_t pf_core_char_to_smooi (hak_t* hak, hak_mod_t* mod, hak_ooi_t n
 	rcv = HAK_STACK_GETARG(hak, nargs, 0);
 	if (!HAK_OOP_IS_CHAR(rcv))
 	{
-		hak_seterrbfmt (hak, HAK_EINVAL, "receiver not Character - %O", rcv);
+		hak_seterrbfmt(hak, HAK_EINVAL, "receiver not Character - %O", rcv);
 		return HAK_PF_FAILURE;
 	}
 
@@ -477,7 +477,7 @@ static hak_pfrc_t pf_core_smooi_to_char (hak_t* hak, hak_mod_t* mod, hak_ooi_t n
 	rcv = HAK_STACK_GETARG(hak, nargs, 0);
 	if (!HAK_OOP_IS_SMOOI(rcv))
 	{
-		hak_seterrbfmt (hak, HAK_EINVAL, "receiver not SmallInteger - %O", rcv);
+		hak_seterrbfmt(hak, HAK_EINVAL, "receiver not SmallInteger - %O", rcv);
 		return HAK_PF_FAILURE;
 	}
 

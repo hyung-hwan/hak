@@ -4882,6 +4882,74 @@ static int compile_cons_alist_expression (hak_t* hak, hak_cnode_t* cmd)
 	return 0;
 }
 
+static int compile_cons_plist_expression (hak_t* hak, hak_cnode_t* obj, int nrets)
+{
+	hak_cframe_t* cf;
+	hak_cnode_t* c1, * c2, * c3;
+	hak_var_info_t vi;
+	int x;
+
+	HAK_ASSERT(hak, HAK_CNODE_IS_CONS_CONCODED(obj, HAK_CONCODE_PLIST));
+
+	c1 = HAK_CNODE_CONS_CAR(obj);
+	obj = HAK_CNODE_CONS_CDR(obj);
+
+/*
+ret := (input -> @{ls -laF} -> output)
+-> transform?
+[ret, output] := (sys.run "ls -laF" input)
+
+
+input -> @{ls -laF} -> output
+-> transform
+out := (sys.run_noret "ls -laF" input)
+
+input -> @{ls -laF}
+-> transform
+sys.run_noret "ls -laF" input
+
+@{ls -laF} -> output
+-> transform
+out := (sys.run_noret "ls -laF")
+*/
+
+//	HAK_ASSERT(hak, HAK_CNODE_IS_SYMBOL(var) || HAK_CNODE_IS_DSYMBOL_CLA(var) || HAK_CNODE_IS_CONS_CONCODED(var, HAK_CONCODE_TUPLE));
+	HAK_ASSERT(hak, obj && HAK_CNODE_IS_CONS(obj)); /* reader guaranteed */
+
+	c2 = HAK_CNODE_CONS_CAR(obj);
+	obj = HAK_CNODE_CONS_CDR(obj);
+
+	c3 = HAK_NULL;
+	if (obj)
+	{
+		HAK_ASSERT(hak, HAK_CNODE_IS_CONS(obj)); /* reader guaranteed */
+		c3 = HAK_CNODE_CONS_CAR(obj);
+	}
+
+	HAK_ASSERT(hak, HAK_CNODE_CONS_CDR(obj) ==  HAK_NULL); /* reader guaranteed */
+
+	if (c3)
+	{
+		SWITCH_TOP_CFRAME(hak, COP_COMPILE_OBJECT, c1); /* 1 */
+		if (obj) PUSH_SUBCFRAME(hak, COP_COMPILE_AND_P1, obj); /* 2 */
+	}
+	else
+	{
+	}
+/*
+	if (HAK_CNODE_IS_CONS_CONCODED(c1, HAK_CONCODE_TUPLE))
+	{
+
+	}
+	else if (HAK_CNODE_IS_CONS_CONCODED(c1, HCK_CNODE_DLIST))
+	{
+	}
+*/
+
+	hak_setsynerrbfmt(hak, HAK_SYNERR_INTERN, HAK_CNODE_GET_LOC(obj), "internal error - piping expression not implemented");
+	return -1;
+}
+
 static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nrets);
 
 static int compile_cons_dlist_expression (hak_t* hak, hak_cnode_t* obj, int nrets)
@@ -5007,6 +5075,7 @@ static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 	    HAK_CNODE_IS_SYMLIT(car) || /* this condition to represent an external program TODO: change this to a dedicated cnode */
 	    HAK_CNODE_IS_CONS_CONCODED(car, HAK_CONCODE_XLIST) || /* () is nested */
 	    HAK_CNODE_IS_CONS_CONCODED(car, HAK_CONCODE_DLIST) || /* $() is nested */
+	    HAK_CNODE_IS_CONS_CONCODED(car, HAK_CONCODE_PLIST) ||
 	    HAK_CNODE_IS_CONS_CONCODED(car, HAK_CONCODE_MLIST) ||
 	    HAK_CNODE_IS_CONS_CONCODED(car, HAK_CONCODE_BLIST) ||
 	    HAK_CNODE_IS_CONS_CONCODED(car, HAK_CONCODE_ALIST))
@@ -5746,6 +5815,10 @@ redo:
 					if (compile_cons_mlist_expression(hak, oprnd, 0) <= -1) return -1;
 					break;
 
+				case HAK_CONCODE_PLIST: /* piping expression: in -> @{} -> out */
+					if (compile_cons_plist_expression(hak, oprnd, 0) <= -1) return -1;
+					break;
+
 				case HAK_CONCODE_BLOCK:
 					if (compile_cons_block_expression(hak, oprnd) <= -1) return -1;
 					break;
@@ -5798,12 +5871,17 @@ redo:
 					return -1;
 
 				case HAK_CONCODE_BLIST:
-					/* this must not happend as the reader prevents it */
+					/* this must not happen as the reader prevents it */
 					hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(oprnd), "empty binop list");
 					return -1;
 
 				case HAK_CONCODE_MLIST:
 					hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(oprnd), "empty message send list");
+					return -1;
+
+				case HAK_CONCODE_PLIST:
+					/* this must not happen as the reader prevents it */
+					hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(oprnd), "empty piping expression list");
 					return -1;
 
 				case HAK_CONCODE_BLOCK:
@@ -5898,6 +5976,9 @@ static int compile_object_r (hak_t* hak)
 
 			case HAK_CONCODE_DLIST:
 				return compile_cons_dlist_expression(hak, oprnd, cf->u.obj_r.nrets);
+
+			case HAK_CONCODE_PLIST:
+				return compile_cons_plist_expression(hak, oprnd, cf->u.obj_r.nrets);
 
 			case HAK_CONCODE_BLIST:
 			case HAK_CONCODE_MLIST:

@@ -1027,6 +1027,7 @@ hak_pfrc_t hak_pf_number_le (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
+
 hak_pfrc_t hak_pf_number_eq (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_oop_t ret;
@@ -1036,6 +1037,7 @@ hak_pfrc_t hak_pf_number_eq (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	HAK_STACK_SETRET(hak, nargs, ret);
 	return HAK_PF_SUCCESS;
 }
+
 hak_pfrc_t hak_pf_number_ne (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_oop_t ret;

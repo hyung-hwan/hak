@@ -26,6 +26,7 @@
 #define _HAK_H_
 
 #include <hak-cmn.h>
+#include <hak-htb.h>
 #include <hak-rbt.h>
 #include <hak-xma.h>
 #include <stdarg.h>
@@ -1751,6 +1752,8 @@ struct hak_t
 
 	hak_oow_t vm_checkbc_cb_count;
 	hak_cb_t* cblist;
+
+	hak_htb_t static_mods;
 	hak_rbt_t modtab; /* primitive module table */
 
 	struct
@@ -2119,6 +2122,7 @@ enum hak_concode_t
 	HAK_CONCODE_MLIST,      /* (obj:message) - message send list */
 	HAK_CONCODE_ALIST,      /* (a := 20) assignment list */
 	HAK_CONCODE_BLIST,      /* (10 + 20) expression with binary operator */
+	HAK_CONCODE_PLIST,      /* (in -> .. -> out) piping list */
 	HAK_CONCODE_BLOCK,      /* { } */
 	HAK_CONCODE_ARRAY,      /* #[ ] */
 	HAK_CONCODE_BYTEARRAY,  /* #b[ ] */
@@ -2485,6 +2489,24 @@ HAK_EXPORT int hak_ignite (
 HAK_EXPORT int hak_addbuiltinprims (
 	hak_t*      hak
 );
+
+HAK_EXPORT int hak_addstaticmodwithbcstr (
+	hak_t*           hak,
+	const hak_bch_t* name,
+	hak_mod_load_t   load
+);
+
+HAK_EXPORT int hak_addstaticmodwithucstr (
+	hak_t*           hak,
+	const hak_uch_t* name,
+	hak_mod_load_t   load
+);
+
+#if defined(HAK_OOCH_IS_UCH)
+#define hak_addstaticmodwithoocstr(hak,name,load) hak_addstaticmodwithucstr(hak,name,load)
+#else
+#define hak_addstaticmodwithoocstr(hak,name,load) hak_addstaticmodwithbcstr(hak,name,load)
+#endif
 
 /**
  * The hak_execute() function executes an activated context.

@@ -116,6 +116,7 @@ static void free_heap (hak_t* hak, void* ptr)
 
 int hak_init (hak_t* hak, hak_mmgr_t* mmgr, const hak_vmprim_t* vmprim)
 {
+	int static_mods_inited = 0;
 	int modtab_inited = 0;
 	int n;
 
@@ -164,6 +165,11 @@ int hak_init (hak_t* hak, hak_mmgr_t* mmgr, const hak_vmprim_t* vmprim)
 	hak->gci.stack.ptr = (hak_oop_t*)hak_allocmem(hak, (hak->gci.stack.capa + 1) * HAK_SIZEOF(*hak->gci.stack.ptr));
 	if (HAK_UNLIKELY(!hak->gci.stack.ptr)) goto oops;
 
+	n = hak_htb_init(&hak->static_mods, hak, 128, 70, HAK_SIZEOF(hak_ooch_t), 1);
+	if (HAK_UNLIKELY(n <= -1)) goto oops;
+	static_mods_inited = 1;
+	hak_htb_setstyle(&hak->static_mods, hak_get_htb_style(HAK_HTB_STYLE_INLINE_KEY_COPIER));
+
 	n = hak_rbt_init(&hak->modtab, hak, HAK_SIZEOF(hak_ooch_t), 1);
 	if (HAK_UNLIKELY(n <= -1)) goto oops;
 	modtab_inited = 1;
@@ -194,6 +200,7 @@ int hak_init (hak_t* hak, hak_mmgr_t* mmgr, const hak_vmprim_t* vmprim)
 
 oops:
 	if (modtab_inited) hak_rbt_fini(&hak->modtab);
+	if (static_mods_inited) hak_htb_fini(&hak->static_mods);
 	if (hak->gci.stack.ptr)
 	{
 		hak_freemem(hak, hak->gci.stack.ptr);
@@ -225,6 +232,7 @@ void hak_fini (hak_t* hak)
 
 	hak_rbt_walk(&hak->modtab, unload_module, hak);
 	hak_rbt_fini(&hak->modtab);
+	hak_htb_fini(&hak->static_mods);
 
 	if (hak->log.len > 0)
 	{
@@ -756,6 +764,68 @@ static_modtab[] =
 };
 #endif
 
+int hak_addstaticmodwithbcstr (hak_t* hak, const hak_bch_t* name, hak_mod_load_t load)
+{
+	hak_htb_pair_t* pair;
+
+#if defined(HAK_OOCH_IS_BCH)
+	pair = hak_htb_insert(&hak->static_mods, (hak_bch_t*)name, hak_count_bcstr(name), load, 0);
+#else
+	{
+		hak_ucs_t wcs;
+		wcs.ptr = hak_dupbtoucstr(hak, name, &wcs.len);
+		if (HAK_UNLIKELY(!wcs.ptr))
+		{
+			const hak_ooch_t* bem = hak_backuperrmsg(hak);
+			hak_seterrbfmt(hak, hak_geterrnum(hak),
+				"unable to add static module '%hs' - %js", name, bem);
+			return -1;
+		}
+		pair = hak_htb_insert(&hak->static_mods, wcs.ptr, wcs.len, load, 0);
+		hak_freemem(hak, wcs.ptr);
+	}
+#endif
+	if (HAK_UNLIKELY(!pair))
+	{
+		const hak_ooch_t* bem = hak_backuperrmsg(hak);
+		hak_seterrbfmt(hak, hak_geterrnum(hak), "unable to add static module '%js' - %js", name, bem);
+		return -1;
+	}
+
+	return 0;
+}
+
+int hak_addstaticmodwithucstr (hak_t* hak, const hak_uch_t* name, hak_mod_load_t load)
+{
+	hak_htb_pair_t* pair;
+
+#if defined(HAK_OOCH_IS_BCH)
+	{
+		hak_bcs_t mbs;
+		mbs.ptr = hak_duputobcstr(hak, name, &mbs.len);
+		if (HAK_UNLIKELY(!mbs.ptr))
+		{
+			const hak_ooch_t* bem = hak_backuperrmsg(hak);
+			hak_seterrbfmt(hak, hak_geterrnum(hak),
+				"unable to add static module '%ls' - %js", name, bem);
+			return -1;
+		}
+		pair = hak_htb_insert(&hak->static_mods, mbs.ptr, mbs.len, load, 0);
+		hak_freemem(hak, mbs.ptr);
+	}
+#else
+	pair = hak_htb_insert(&hak->static_mods, (hak_uch_t*)name, hak_count_ucstr(name), load, 0);
+#endif
+	if (HAK_UNLIKELY(!pair))
+	{
+		const hak_ooch_t* bem = hak_backuperrmsg(hak);
+		hak_seterrbfmt(hak, hak_geterrnum(hak), "unable to add static module '%js' - %js", name, bem);
+		return -1;
+	}
+
+	return 0;
+}
+
 hak_mod_data_t* hak_openmod (hak_t* hak, const hak_ooch_t* name, hak_oow_t namelen)
 {
 	hak_rbt_pair_t* pair;
@@ -801,13 +871,21 @@ hak_mod_data_t* hak_openmod (hak_t* hak, const hak_ooch_t* name, hak_oow_t namel
 		}
 	}
 
+	if (!load)
+	{
+		/* check in the user-added static module table populated with
+		 * hak_addstaticmodwithbcstr() or hak_addstaticmodwithucstr() */
+		hak_htb_pair_t* pair;
+		pair = hak_htb_search(&hak->static_mods, name, namelen);
+		if (pair) load = (hak_mod_load_t)pair->val.ptr;
+	}
+
 	if (load)
 	{
 		/* found the module in the static module table */
-
 		HAK_MEMSET(&md, 0, HAK_SIZEOF(md));
 		md.mod.inctx = hak->option.mod_inctx;
-		hak_copy_oochars ((hak_ooch_t*)md.mod.name, name, namelen);
+		hak_copy_oochars((hak_ooch_t*)md.mod.name, name, namelen);
 		/* Note md.handle is HAK_NULL for a static module */
 
 		/* i copy-insert 'md' into the table before calling 'load'.

@@ -38,18 +38,18 @@ static hak_pfrc_t pf_dic_get (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 
 	if (!HAK_IS_DIC(hak,dic))
 	{
-		hak_seterrbfmt (hak, HAK_EINVAL, "parameter not an dictionary - %O", dic);
+		hak_seterrbfmt(hak, HAK_EINVAL, "parameter not an dictionary - %O", dic);
 		return HAK_PF_FAILURE;
 	}
 
 	pair = hak_getatdic(hak, (hak_oop_dic_t)dic, key);
 	if (!pair)
 	{
-		HAK_STACK_SETRETTOERROR (hak, nargs, HAK_ENOENT);
+		HAK_STACK_SETRETTOERROR(hak, nargs, HAK_ENOENT);
 		return HAK_PF_SUCCESS;
 	}
 
-	HAK_STACK_SETRET (hak, nargs, HAK_CONS_CDR(pair));
+	HAK_STACK_SETRET(hak, nargs, HAK_CONS_CDR(pair));
 	return HAK_PF_SUCCESS;
 }
 
@@ -66,25 +66,25 @@ static hak_pfrc_t pf_dic_put (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 
 	if (!HAK_IS_DIC(hak,dic))
 	{
-		hak_seterrbfmt (hak, HAK_EINVAL, "parameter not an dictionary - %O", dic);
+		hak_seterrbfmt(hak, HAK_EINVAL, "parameter not an dictionary - %O", dic);
 		return HAK_PF_FAILURE;
 	}
 
 	pair = hak_putatdic(hak, (hak_oop_dic_t)dic, key, val);
 	if (!pair)
 	{
-		HAK_STACK_SETRETTOERRNUM (hak, nargs);
+		HAK_STACK_SETRETTOERRNUM(hak, nargs);
 		return HAK_PF_SUCCESS;
 	}
 
-	HAK_STACK_SETRET (hak, nargs, HAK_CONS_CDR(pair));
+	HAK_STACK_SETRET(hak, nargs, HAK_CONS_CDR(pair));
 	return HAK_PF_SUCCESS;
 }
 
 
 static int walker (hak_t* hak, hak_oop_dic_t dic, hak_oop_cons_t pair, void* ctx)
 {
-	HAK_DEBUG2 (hak, "walker ===> %O  =====> %O\n", HAK_CONS_CAR(pair), HAK_CONS_CDR(pair));
+	HAK_DEBUG2(hak, "walker ===> %O  =====> %O\n", HAK_CONS_CAR(pair), HAK_CONS_CDR(pair));
 	return 0;
 }
 
@@ -98,12 +98,12 @@ static hak_pfrc_t pf_dic_walk (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	arg = HAK_STACK_GETARG(hak, nargs, 0);
 	if (!HAK_IS_DIC(hak,arg))
 	{
-		hak_seterrbfmt (hak, HAK_EINVAL, "parameter not a dictionary - %O", arg);
+		hak_seterrbfmt(hak, HAK_EINVAL, "parameter not a dictionary - %O", arg);
 		return HAK_PF_FAILURE;
 	}
 
-	hak_walkdic (hak, (hak_oop_dic_t)arg, walker, HAK_NULL);
-	HAK_STACK_SETRET (hak, nargs, hak->_true);
+	hak_walkdic(hak, (hak_oop_dic_t)arg, walker, HAK_NULL);
+	HAK_STACK_SETRET(hak, nargs, hak->_true);
 	return HAK_PF_SUCCESS;
 }
 

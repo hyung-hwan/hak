@@ -481,6 +481,7 @@ enum hak_tok_type_t
 	/* end of keyword enumerators */
 
 	HAK_TOK_BINOP,
+	HAK_TOK_PIPOP,     /* -> */
 	HAK_TOK_IDENT,
 	HAK_TOK_IDENT_DOTTED,
 	HAK_TOK_IDENT_DOTTED_CLA,
