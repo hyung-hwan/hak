@@ -55,6 +55,7 @@ pkginclude_HEADERS = \
 	hak-htb.h \
 	hak-opt.h \
 	hak-pac1.h \
+	hak-pio.h \
 	hak-rbt.h \
 	hak-str.h \
 	hak-upac.h \
@@ -85,6 +86,7 @@ libhak_la_SOURCES = \
 	obj.c \
 	opt-impl.h \
 	opt.c \
+	pio.c \
 	prim.c \
 	print.c \
 	rbt.c \

@@ -1,7 +1,10 @@
 AUTOMAKE_OPTION = foreign
 ACLOCAL_AMFLAGS = -I m4
 
-EXTRA_DIST = go.mod t t/test-bi.hak
+gosrcdir = $(datadir)/hak/go
+gosrc_DATA = go.mod hak.go hak-inst.go hak-cb.go
+
+EXTRA_DIST = t t/test-bi.hak
 
 SUBDIRS =
 

@@ -688,7 +688,7 @@ void* hak_xma_realloc (hak_xma_t* xma, void* b, hak_oow_t size)
 	else
 	{
 		/* try reallocation by merging the adjacent continuous blocks */
-	#if defined(HAWK_XMA_ENABLE_STAT)
+	#if defined(HAK_XMA_ENABLE_STAT)
 		xma->stat.nreallocops++;
 	#endif
 		n = _realloc_merge(xma, b, size);

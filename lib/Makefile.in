@@ -156,11 +156,11 @@ am_libhak_la_OBJECTS = libhak_la-bigint.lo libhak_la-chr.lo \
 	libhak_la-err.lo libhak_la-exec.lo libhak_la-fmt.lo \
 	libhak_la-gc.lo libhak_la-hak.lo libhak_la-heap.lo \
 	libhak_la-htb.lo libhak_la-mb8.lo libhak_la-number.lo \
-	libhak_la-obj.lo libhak_la-opt.lo libhak_la-prim.lo \
-	libhak_la-print.lo libhak_la-rbt.lo libhak_la-read.lo \
-	libhak_la-std.lo libhak_la-str.lo libhak_la-sym.lo \
-	libhak_la-utf16.lo libhak_la-utf8.lo libhak_la-utl.lo \
-	libhak_la-xchg.lo libhak_la-xma.lo
+	libhak_la-obj.lo libhak_la-opt.lo libhak_la-pio.lo \
+	libhak_la-prim.lo libhak_la-print.lo libhak_la-rbt.lo \
+	libhak_la-read.lo libhak_la-std.lo libhak_la-str.lo \
+	libhak_la-sym.lo libhak_la-utf16.lo libhak_la-utf8.lo \
+	libhak_la-utl.lo libhak_la-xchg.lo libhak_la-xma.lo
 libhak_la_OBJECTS = $(am_libhak_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -208,14 +208,14 @@ am__depfiles_remade = ./$(DEPDIR)/libhak_la-bigint.Plo \
 	./$(DEPDIR)/libhak_la-hak.Plo ./$(DEPDIR)/libhak_la-heap.Plo \
 	./$(DEPDIR)/libhak_la-htb.Plo ./$(DEPDIR)/libhak_la-mb8.Plo \
 	./$(DEPDIR)/libhak_la-number.Plo ./$(DEPDIR)/libhak_la-obj.Plo \
-	./$(DEPDIR)/libhak_la-opt.Plo ./$(DEPDIR)/libhak_la-prim.Plo \
-	./$(DEPDIR)/libhak_la-print.Plo ./$(DEPDIR)/libhak_la-rbt.Plo \
-	./$(DEPDIR)/libhak_la-read.Plo ./$(DEPDIR)/libhak_la-std.Plo \
-	./$(DEPDIR)/libhak_la-str.Plo ./$(DEPDIR)/libhak_la-sym.Plo \
-	./$(DEPDIR)/libhak_la-utf16.Plo ./$(DEPDIR)/libhak_la-utf8.Plo \
-	./$(DEPDIR)/libhak_la-utl.Plo ./$(DEPDIR)/libhak_la-xchg.Plo \
-	./$(DEPDIR)/libhak_la-xma.Plo ./$(DEPDIR)/libhakx_la-json.Plo \
-	./$(DEPDIR)/libhakx_la-tmr.Plo \
+	./$(DEPDIR)/libhak_la-opt.Plo ./$(DEPDIR)/libhak_la-pio.Plo \
+	./$(DEPDIR)/libhak_la-prim.Plo ./$(DEPDIR)/libhak_la-print.Plo \
+	./$(DEPDIR)/libhak_la-rbt.Plo ./$(DEPDIR)/libhak_la-read.Plo \
+	./$(DEPDIR)/libhak_la-std.Plo ./$(DEPDIR)/libhak_la-str.Plo \
+	./$(DEPDIR)/libhak_la-sym.Plo ./$(DEPDIR)/libhak_la-utf16.Plo \
+	./$(DEPDIR)/libhak_la-utf8.Plo ./$(DEPDIR)/libhak_la-utl.Plo \
+	./$(DEPDIR)/libhak_la-xchg.Plo ./$(DEPDIR)/libhak_la-xma.Plo \
+	./$(DEPDIR)/libhakx_la-json.Plo ./$(DEPDIR)/libhakx_la-tmr.Plo \
 	./$(DEPDIR)/libhakx_la-x-client.Plo \
 	./$(DEPDIR)/libhakx_la-x-proto.Plo \
 	./$(DEPDIR)/libhakx_la-x-server.Plo \
@@ -248,8 +248,9 @@ am__can_run_installinfo = \
     *) (install-info --version) >/dev/null 2>&1;; \
   esac
 am__pkginclude_HEADERS_DIST = hak.h hak-chr.h hak-cmgr.h hak-cmn.h \
-	hak-fmt.h hak-htb.h hak-opt.h hak-pac1.h hak-rbt.h hak-str.h \
-	hak-upac.h hak-utl.h hak-xma.h hak-x.h hak-tmr.h hak-json.h
+	hak-fmt.h hak-htb.h hak-opt.h hak-pac1.h hak-pio.h hak-rbt.h \
+	hak-str.h hak-upac.h hak-utl.h hak-xma.h hak-x.h hak-tmr.h \
+	hak-json.h
 HEADERS = $(pkginclude_HEADERS)
 am__tagged_files = $(HEADERS) $(SOURCES) $(TAGS_FILES) $(LISP) \
 	hak-cfg.h.in
@@ -441,8 +442,8 @@ LIBADD_LIB_COMMON = $(LIBM) $(am__append_1) $(am__append_2) \
 @WIN32_TRUE@	-DHAK_DEFAULT_PFMODPOSTFIX=\"-1.dll\" \
 @WIN32_TRUE@	$(am__append_4) $(am__append_5)
 pkginclude_HEADERS = hak.h hak-chr.h hak-cmgr.h hak-cmn.h hak-fmt.h \
-	hak-htb.h hak-opt.h hak-pac1.h hak-rbt.h hak-str.h hak-upac.h \
-	hak-utl.h hak-xma.h $(am__append_8)
+	hak-htb.h hak-opt.h hak-pac1.h hak-pio.h hak-rbt.h hak-str.h \
+	hak-upac.h hak-utl.h hak-xma.h $(am__append_8)
 pkglib_LTLIBRARIES = libhak.la $(am__append_7)
 libhak_la_SOURCES = \
 	hak-prv.h \
@@ -467,6 +468,7 @@ libhak_la_SOURCES = \
 	obj.c \
 	opt-impl.h \
 	opt.c \
+	pio.c \
 	prim.c \
 	print.c \
 	rbt.c \
@@ -615,6 +617,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhak_la-number.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhak_la-obj.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhak_la-opt.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhak_la-pio.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhak_la-prim.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhak_la-print.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhak_la-rbt.Plo@am__quote@ # am--include-marker
@@ -797,6 +800,13 @@ libhak_la-opt.lo: opt.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='opt.c' object='libhak_la-opt.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhak_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libhak_la-opt.lo `test -f 'opt.c' || echo '$(srcdir)/'`opt.c
+
+libhak_la-pio.lo: pio.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhak_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libhak_la-pio.lo -MD -MP -MF $(DEPDIR)/libhak_la-pio.Tpo -c -o libhak_la-pio.lo `test -f 'pio.c' || echo '$(srcdir)/'`pio.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libhak_la-pio.Tpo $(DEPDIR)/libhak_la-pio.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='pio.c' object='libhak_la-pio.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhak_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libhak_la-pio.lo `test -f 'pio.c' || echo '$(srcdir)/'`pio.c
 
 libhak_la-prim.lo: prim.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhak_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libhak_la-prim.lo -MD -MP -MF $(DEPDIR)/libhak_la-prim.Tpo -c -o libhak_la-prim.lo `test -f 'prim.c' || echo '$(srcdir)/'`prim.c
@@ -1105,6 +1115,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/libhak_la-number.Plo
 	-rm -f ./$(DEPDIR)/libhak_la-obj.Plo
 	-rm -f ./$(DEPDIR)/libhak_la-opt.Plo
+	-rm -f ./$(DEPDIR)/libhak_la-pio.Plo
 	-rm -f ./$(DEPDIR)/libhak_la-prim.Plo
 	-rm -f ./$(DEPDIR)/libhak_la-print.Plo
 	-rm -f ./$(DEPDIR)/libhak_la-rbt.Plo
@@ -1189,6 +1200,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/libhak_la-number.Plo
 	-rm -f ./$(DEPDIR)/libhak_la-obj.Plo
 	-rm -f ./$(DEPDIR)/libhak_la-opt.Plo
+	-rm -f ./$(DEPDIR)/libhak_la-pio.Plo
 	-rm -f ./$(DEPDIR)/libhak_la-prim.Plo
 	-rm -f ./$(DEPDIR)/libhak_la-print.Plo
 	-rm -f ./$(DEPDIR)/libhak_la-rbt.Plo
