@@ -23,6 +23,7 @@
  */
 
 #include "hak-prv.h"
+#include <hak-hnd.h>
 
 hak_t* hak_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, const hak_vmprim_t* vmprim, hak_errinf_t* errinf)
 {
@@ -118,6 +119,7 @@ int hak_init (hak_t* hak, hak_mmgr_t* mmgr, const hak_vmprim_t* vmprim)
 {
 	int static_mods_inited = 0;
 	int modtab_inited = 0;
+	int hndtab_inited = 0;
 	int n;
 
 	if (!vmprim->syserrstrb && !vmprim->syserrstru)
@@ -175,6 +177,10 @@ int hak_init (hak_t* hak, hak_mmgr_t* mmgr, const hak_vmprim_t* vmprim)
 	modtab_inited = 1;
 	hak_rbt_setstyle(&hak->modtab, hak_get_rbt_style(HAK_RBT_STYLE_INLINE_COPIERS));
 
+	n = hak_inithndtab(hak);
+	if (HAK_UNLIKELY(n <= -1)) goto oops;
+	hndtab_inited = 1;
+
 	fill_bigint_tables(hak);
 
 	hak->tagged_brands[HAK_OOP_TAG_SMOOI] = HAK_BRAND_SMOOI;
@@ -199,6 +205,7 @@ int hak_init (hak_t* hak, hak_mmgr_t* mmgr, const hak_vmprim_t* vmprim)
 	return 0;
 
 oops:
+	if (hndtab_inited) hak_finihndtab(hak);
 	if (modtab_inited) hak_rbt_fini(&hak->modtab);
 	if (static_mods_inited) hak_htb_fini(&hak->static_mods);
 	if (hak->gci.stack.ptr)
@@ -233,6 +240,10 @@ void hak_fini (hak_t* hak)
 	hak_rbt_walk(&hak->modtab, unload_module, hak);
 	hak_rbt_fini(&hak->modtab);
 	hak_htb_fini(&hak->static_mods);
+
+	/* after the modules, so that a module's unload can close its own handles
+	 * first; whatever hak code leaked is closed here. */
+	hak_finihndtab(hak);
 
 	if (hak->log.len > 0)
 	{

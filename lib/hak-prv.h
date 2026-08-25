@@ -29,6 +29,7 @@
 #include <hak-chr.h>
 #include <hak-cmgr.h>
 #include <hak-fmt.h>
+#include <hak-hnd.h>
 #include <hak-str.h>
 #include <hak-utl.h>
 
@@ -1652,6 +1653,19 @@ hak_heap_t* hak_makeheap (
 /**
  * The hak_killheap() function destroys the heap pointed to by \a heap.
  */
+/* --------------------------------------------------------------------------
+ * IO SEMAPHORE TUPLES (exec.c)
+ * -------------------------------------------------------------------------- */
+
+/* hak_bindhnd() in hnd.c is the only intended caller. binding is kept behind
+ * the handle table so that a raw descriptor can never be named from hak code. */
+int hak_add_sem_to_sem_io_tuple (
+	hak_t*                  hak,
+	hak_oop_semaphore_t     sem,
+	hak_ooi_t               io_handle,
+	hak_semaphore_io_type_t io_type
+);
+
 void hak_killheap (
 	hak_t*      hak,
 	hak_heap_t* heap

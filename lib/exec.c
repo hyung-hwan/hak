@@ -1739,7 +1739,7 @@ static void update_sem_heap (hak_t* hak, hak_ooi_t index, hak_oop_semaphore_t ne
 }
 #endif
 
-static int add_sem_to_sem_io_tuple (hak_t* hak, hak_oop_semaphore_t sem, hak_ooi_t io_handle, hak_semaphore_io_type_t io_type)
+int hak_add_sem_to_sem_io_tuple (hak_t* hak, hak_oop_semaphore_t sem, hak_ooi_t io_handle, hak_semaphore_io_type_t io_type)
 {
 	hak_ooi_t index;
 	hak_ooi_t new_mask;
@@ -5705,7 +5705,11 @@ hak_pfrc_t hak_pf_semaphore_signal (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 static hak_pfrc_t __semaphore_signal_on_io (hak_t* hak, hak_ooi_t nargs, hak_semaphore_io_type_t io_type)
 {
 	hak_oop_semaphore_t sem;
+#if 0
 	hak_oop_t fd;
+#else
+	hak_hnd_t* hnd;
+#endif
 
 	sem = (hak_oop_semaphore_t)HAK_STACK_GETARG(hak, nargs, 0);
 	if (!HAK_IS_SEMAPHORE(hak, sem))
@@ -5714,13 +5718,21 @@ static hak_pfrc_t __semaphore_signal_on_io (hak_t* hak, hak_ooi_t nargs, hak_sem
 		return HAK_PF_FAILURE;
 	}
 
+#if 0
 	fd = HAK_STACK_GETARG(hak, nargs, 1);
-
 	if (!HAK_OOP_IS_SMOOI(fd))
 	{
 		hak_seterrbfmt(hak, HAK_EINVAL, "handle not a small integer - %O", fd);
 		return HAK_PF_FAILURE;
 	}
+#else
+	/* the second argument is a system handle id, not a raw descriptor.
+	 * resolving it through the handle table is what stops hak code from
+	 * naming a descriptor it never opened - hak's own multiplexer, signal
+	 * and io-thread descriptors among them - and what guarantees that
+	 * hak_closehnd() will later unbind whatever we register here. */
+	hnd = hak_gethndwithoop(hak, HAK_STACK_GETARG(hak, nargs, 1), HAK_HND_TYPE_ALL_MUXABLE);
+	if (HAK_UNLIKELY(!hnd)) return HAK_PF_FAILURE;
 
 	if (sem->subtype != hak->_nil)
 	{
@@ -5743,10 +5755,18 @@ static hak_pfrc_t __semaphore_signal_on_io (hak_t* hak, hak_ooi_t nargs, hak_sem
 		return HAK_PF_FAILURE;
 	}
 
+#if 0
 	if (add_sem_to_sem_io_tuple(hak, sem, HAK_OOP_TO_SMOOI(fd), io_type) <= -1)
+#else
+	if (hak_bindhnd(hak, hnd, sem, io_type) <= -1)
+#endif
 	{
 		const hak_ooch_t* oldmsg = hak_backuperrmsg(hak);
+#if 0
 		hak_seterrbfmt(hak, hak->errnum, "unable to add the handle %zd to the multiplexer for %hs - %js", HAK_OOP_TO_SMOOI(fd), io_type_str[io_type], oldmsg);
+#else
+		hak_seterrbfmt(hak, hak->errnum, "unable to add the handle %zd to the multiplexer for %hs - %js", hnd->id, io_type_str[io_type], oldmsg);
+#endif
 		return HAK_PF_FAILURE;
 	}
 

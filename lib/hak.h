@@ -119,6 +119,9 @@ enum hak_errnum_t
 	HAK_EUNDEFVAR   /**< runtime error - undefined variable access */
 };
 typedef enum hak_errnum_t hak_errnum_t;
+
+/* defined in hak-hnd.h */
+typedef struct hak_hndtab_t hak_hndtab_t;
 /**/
 
 enum hak_synerrnum_t
@@ -1868,6 +1871,10 @@ struct hak_t
 	hak_oow_t sem_io_map_capa;
 	/* ============================================================================= */
 
+	/* the system handle table. see hak-hnd.h. opaque here so that hak.h need
+	 * not pull in the handle definitions. */
+	hak_hndtab_t* hndtab;
+
 	hak_oop_t* proc_map;
 	hak_oow_t proc_map_capa;
 	hak_oow_t proc_map_used;
@@ -2274,6 +2281,20 @@ HAK_EXPORT void hak_seterrumsg (
 	hak_errnum_t     errnum,
 	const hak_uch_t* errmsg
 ) HAK_NONNULL_1(1);
+
+/**
+ * The hak_releaseiohandle() function deletes the resources associated with
+ * the given IO handle, the IO semaphores among them. It must be called before
+ * closing an IO handle, or the multiplexer keeps watching a handle number that
+ * may since have been recycled for something unrelated.
+ *
+ * hak_closehnd() in hak-hnd.h does this for you; call it directly only for a
+ * handle the handle table does not own.
+ */
+HAK_EXPORT void hak_releaseiohandle (
+	hak_t*    hak,
+	hak_ooi_t io_handle
+);
 
 HAK_EXPORT void hak_seterrwithsyserr (
 	hak_t*       hak,

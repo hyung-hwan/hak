@@ -1137,7 +1137,7 @@ void hak_gc (hak_t* hak, int full)
 {
 	if (hak->gci.lazy_sweep) hak_gc_ms_sweep_lazy(hak, HAK_TYPE_MAX(hak_oow_t));
 
-	HAK_LOG1 (hak, HAK_LOG_GC | HAK_LOG_INFO, "Starting GC (mark-sweep) - gci.bsz = %zu\n", hak->gci.bsz);
+	HAK_LOG1(hak, HAK_LOG_GC | HAK_LOG_INFO, "Starting GC (mark-sweep) - gci.bsz = %zu\n", hak->gci.bsz);
 
 	hak->gci.stack.len = 0;
 	/*hak->gci.stack.max = 0;*/
@@ -1156,7 +1156,7 @@ void hak_gc (hak_t* hak, int full)
 	    gc_ms_sweep(hak);
 	}
 
-	HAK_LOG2 (hak, HAK_LOG_GC | HAK_LOG_INFO, "Finished GC (mark-sweep) - gci.bsz = %zu, gci.stack.max %zu\n", hak->gci.bsz, hak->gci.stack.max);
+	HAK_LOG2(hak, HAK_LOG_GC | HAK_LOG_INFO, "Finished GC (mark-sweep) - gci.bsz = %zu, gci.stack.max %zu\n", hak->gci.bsz, hak->gci.stack.max);
 }
 
 hak_oop_t hak_moveoop (hak_t* hak, hak_oop_t oop)
@@ -1314,7 +1314,7 @@ void hak_gc (hak_t* hak)
 		{
 			if ((hak_oop_t)buc->slot[index] != hak->_nil)
 			{
-				HAK_LOG1 (hak, HAK_LOG_GC | HAK_LOG_DEBUG, "\t%O\n", buc->slot[index]);
+				HAK_LOG1(hak, HAK_LOG_GC | HAK_LOG_DEBUG, "\t%O\n", buc->slot[index]);
 			}
 		}
 		HAK_LOG0 (hak, HAK_LOG_GC | HAK_LOG_DEBUG, "--------------------------------------------\n");
