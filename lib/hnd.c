@@ -213,6 +213,7 @@ static void free_node (hak_t* hak, hak_hnd_t* node)
 	node->flags = 0;
 	node->owner = -1;
 	node->u.ptr = HAK_NULL;
+	node->dtor = HAK_NULL;
 
 	if (tab->map.high == id + 1)
 	{
@@ -370,7 +371,7 @@ hak_hnd_t* hak_wrapfd (hak_t* hak, int fd, hak_hnd_type_t type_hint, int flags)
 	return node;
 }
 
-hak_hnd_t* hak_wrapptr (hak_t* hak, void* ptr, hak_hnd_type_t type, int flags)
+hak_hnd_t* hak_wrapptr (hak_t* hak, void* ptr, hak_hnd_type_t type, int flags, hak_hnd_dtor_t dtor)
 {
 	hak_hnd_t* node;
 
@@ -386,7 +387,24 @@ hak_hnd_t* hak_wrapptr (hak_t* hak, void* ptr, hak_hnd_type_t type, int flags)
 	node->type = type;
 	node->flags = flags & HAK_HND_FLAG_KEEPOPEN; /* never muxable */
 	node->u.ptr = ptr;
+	node->dtor = dtor;
 	return node;
+}
+
+hak_hnd_t* hak_wrapfd_once (hak_t* hak, int fd, hak_hnd_type_t type_hint, int flags)
+{
+	hak_ooi_t id;
+
+	if (fd < 0)
+	{
+		hak_seterrbfmt(hak, HAK_EINVAL, "invalid handle %d", fd);
+		return HAK_NULL;
+	}
+
+	id = fd_to_id(hak, fd);
+	if (id >= 0) return hak->hndtab->map.tab[id];
+
+	return hak_wrapfd(hak, fd, type_hint, flags);
 }
 
 void hak_ownhnd (hak_t* hak, hak_hnd_t* hnd, hak_hnd_t* owner)
@@ -457,8 +475,17 @@ int hak_closehnd (hak_t* hak, hak_hnd_t* hnd)
 	/* 3. release the resource itself */
 	if (!(hnd->flags & HAK_HND_FLAG_KEEPOPEN))
 	{
-		if (hnd->type & HAK_HND_TYPE_ALL_FD)
+		if (hnd->dtor) /* destructor available */
 		{
+			/* the subsystem that created the resource knows how to dispose of
+			 * it. this is also the path hak_finihndtab() takes, which is why a
+			 * pointer-shaped node needs a destructor to avoid leaking both the
+			 * resource and, for a child process, the process itself. */
+			hnd->dtor(hak, hnd);
+		}
+		else if (hnd->type & HAK_HND_TYPE_ALL_FD)
+		{
+			/* all file-descriptor based handles */
 		#if defined(_WIN32)
 			if (!CloseHandle((HANDLE)(hak_uintptr_t)hnd->u.fd)) n = -1;
 		#else
@@ -469,12 +496,16 @@ int hak_closehnd (hak_t* hak, hak_hnd_t* hnd)
 			}
 		#endif
 		}
-		/* HAK_HND_TYPE_DIR and _PROC own a pointer whose disposal belongs to
-		 * the subsystem that created it. it must close the node through its
-		 * own entry point, which frees the pointer before getting here. */
+		/* a pointer-shaped node with no destructor releases nothing, which is
+		 * only correct when the pointer is owned elsewhere. */
 	}
 
-	if (hnd->type & HAK_HND_TYPE_ALL_FD) forget_fd(hak, hnd->u.fd);
+	if (hnd->type & HAK_HND_TYPE_ALL_FD)
+	{
+		/* all file-descriptor based handles */
+		forget_fd(hak, hnd->u.fd);
+	}
+
 	free_node(hak, hnd);
 	return n;
 }

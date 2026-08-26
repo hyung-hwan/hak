@@ -23,6 +23,7 @@
  */
 
 #include "hak-prv.h"
+#include <hak-hnd.h>
 
 struct pf_t
 {
@@ -1258,8 +1259,19 @@ static hak_pfrc_t pf_object_new (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 static hak_pfrc_t pf_system_get_sigfd (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_ooi_t fd;
+	hak_hnd_t* hnd;
+
 	fd = hak->vmprim.vm_getsigfd(hak);
-	HAK_STACK_SETRET(hak, nargs, HAK_SMOOI_TO_OOP(fd));
+
+	/* hand back a system handle id rather than the descriptor itself, so that
+	 * the result can be given to sem-signal-on-input - which resolves handle
+	 * ids, not descriptors. wrapped HAK_HND_OPEN_KEEPOPEN because the VM owns
+	 * this descriptor and manages its blocking mode; the table must never
+	 * close it. wrapfd_once() keeps the id stable across calls. */
+	hnd = hak_wrapfd_once(hak, (int)fd, 0, HAK_HND_OPEN_KEEPOPEN);
+	if (HAK_UNLIKELY(!hnd)) return HAK_PF_FAILURE;
+
+	HAK_STACK_SETRET(hak, nargs, HAK_SMOOI_TO_OOP(hnd->id));
 	return HAK_PF_SUCCESS;
 }
 

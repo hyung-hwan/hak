@@ -102,6 +102,21 @@ typedef enum hak_hnd_flag_t hak_hnd_flag_t;
 #define HAK_HND_OPEN_KEEPOPEN HAK_HND_FLAG_KEEPOPEN
 
 typedef struct hak_hnd_t hak_hnd_t;
+
+/**
+ * The hak_hnd_dtor_t type defines how a node's underlying resource is
+ * released. It is what lets a pointer-shaped resource - a directory stream, a
+ * child process - be disposed of correctly even when hak code never closed it
+ * and hak_finihndtab() is doing the closing at teardown.
+ *
+ * The node itself is still returned to the free list afterwards; a destructor
+ * only has to deal with what \a hnd points at.
+ */
+typedef void (*hak_hnd_dtor_t) (
+	hak_t*     hak,
+	hak_hnd_t* hnd
+);
+
 struct hak_hnd_t
 {
 	/* the id is what hak code holds. it is always >= 0 and always within
@@ -119,6 +134,11 @@ struct hak_hnd_t
 		int   fd;  /**< HAK_HND_TYPE_FILE, _PIPE, _SCK, _CHR */
 		void* ptr; /**< HAK_HND_TYPE_DIR, _PROC */
 	} u;
+
+	/* how to release u.ptr, or a descriptor needing more than close().
+	 * HAK_NULL means the default: close() for a descriptor, nothing for a
+	 * pointer - which is why a pointer-shaped node without one leaks. */
+	hak_hnd_dtor_t dtor;
 
 	/* house keeping. do not touch from outside hnd.c */
 	hak_hnd_t* prev;
@@ -187,11 +207,32 @@ hak_hnd_t* hak_wrapfd (
 /**
  * Wraps a pointer-shaped resource, such as a directory stream or a child
  * process object. Such a node is never muxable.
+ *
+ * \a dtor is how \a ptr gets released, and is called by hak_closehnd() -
+ * including the closes that hak_finihndtab() performs at teardown. Passing
+ * #HAK_NULL means the pointer is owned elsewhere and this node must not
+ * release it.
  */
 hak_hnd_t* hak_wrapptr (
 	hak_t*         hak,
 	void*          ptr,
 	hak_hnd_type_t type,
+	int            flags,
+	hak_hnd_dtor_t dtor
+);
+
+/**
+ * Like hak_wrapfd() but idempotent: if \a fd already has a node, that node is
+ * returned instead of failing the way hak_wrapfd() does. Use it for a
+ * descriptor the VM owns and hands out repeatedly - the signal descriptor, for
+ * instance - so that hak code always sees the same id for it.
+ *
+ * Pass #HAK_HND_OPEN_KEEPOPEN for anything the handle table must not close.
+ */
+hak_hnd_t* hak_wrapfd_once (
+	hak_t*         hak,
+	int            fd,
+	hak_hnd_type_t type_hint,
 	int            flags
 );
 
@@ -236,8 +277,10 @@ hak_hnd_t* hak_gethndwithoop (
 
 /**
  * Closes \a hnd. Handles owned by it are closed first, any multiplexer
- * registration is dropped through hak_releaseiohandle() before the
- * underlying handle goes away, and the node is returned to the free list.
+ * registration is dropped through hak_releaseiohandle() before the underlying
+ * handle goes away, the resource is released through the node's
+ * #hak_hnd_dtor_t (or close() when it has none and is a descriptor), and the
+ * node is returned to the free list.
  * \return 0 on success, -1 if the underlying close failed (the node is
  *         released either way)
  */
