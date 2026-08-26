@@ -1345,6 +1345,42 @@ void hak_pio_fini (hak_pio_t* pio)
 	hak_pio_wait(pio);
 }
 
+void hak_pio_free (hak_pio_t* pio)
+{
+	hak_t* hak = pio->hak;
+	hak_errnum_t errnum;
+
+	/* a teardown path must not clobber whatever error brought us here */
+	errnum = hak_geterrnum(hak);
+
+	hak_pio_end(pio, HAK_PIO_ERR);
+	hak_pio_end(pio, HAK_PIO_OUT);
+	hak_pio_end(pio, HAK_PIO_IN);
+
+	if (pio->child != HAK_PIO_PID_NIL)
+	{
+		int n;
+
+		/* look without blocking first - a child that has already exited
+		 * needs no killing */
+		pio->flags |= HAK_PIO_WAITNOBLOCK;
+		pio->flags &= ~HAK_PIO_WAITNORETRY;
+		n = hak_pio_wait(pio);
+
+		if (n == 255 + 1)
+		{
+			/* still running. SIGKILL cannot be caught or ignored, so the
+			 * blocking wait below is bounded however the child behaves. */
+			hak_pio_kill(pio);
+			pio->flags &= ~HAK_PIO_WAITNOBLOCK;
+			hak_pio_wait(pio);
+		}
+	}
+
+	hak_freemem(hak, pio);
+	hak_seterrnum(hak, errnum);
+}
+
 hak_pio_hnd_t hak_pio_gethnd (const hak_pio_t* pio, hak_pio_hid_t hid)
 {
 	return pio->handle[hid];

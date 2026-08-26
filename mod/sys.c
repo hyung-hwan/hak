@@ -32,6 +32,7 @@
 
 #include "_sys.h"
 #include <hak-hnd.h>
+#include <hak-pio.h>
 #include <hak-str.h>
 #include <stdlib.h>
 
@@ -440,59 +441,256 @@ oops:
 #endif
 }
 
-#include <stdio.h> // TODO: remove this and replace it by own impl
+/* ------------------------------------------------------------------------ *
+ * CHILD PROCESSES
+ *
+ * A child is represented as a group of handles: one HAK_HND_TYPE_PROC node
+ * holding the hak_pio_t, plus one HAK_HND_TYPE_PIPE node per requested stream.
+ * The pipe nodes are owned by the proc node, so tearing the proc node down
+ * tears the whole group down in the right order - children first, which is
+ * what lets each pipe unbind itself from the multiplexer while its descriptor
+ * is still valid.
+ *
+ * pio owns those descriptors, so a stream node closes itself through
+ * hak_pio_end() rather than close(2). That keeps pio's own view consistent -
+ * it nils the handle it just closed, so the later hak_pio_free() will not
+ * close it twice - and it means sys.close on a child's stdin really does send
+ * EOF, which is how a filter like `tr` is told to flush and exit.
+ *
+ * Every pipe is non-blocking, so sys.read and sys.write on a child's streams
+ * behave exactly like they do on a sys.pipe handle - including returning -1
+ * for "would block", which is what makes a child usable from a coprocess
+ * without stalling the VM.
+ * ------------------------------------------------------------------------ */
+
+/* kept in the pio extension area, so no separate allocation is needed */
+struct proc_xtn_t
+{
+	int reaped;  /* has the child been waited on already? */
+	int status;  /* ...and what did it exit with */
+};
+typedef struct proc_xtn_t proc_xtn_t;
+
+static void proc_dtor (hak_t* hak, hak_hnd_t* hnd)
+{
+	/* hak_pio_free() ends the pipes, reaps the child - killing it if it is
+	 * still running - and frees the object, all without an unbounded wait.
+	 * this runs from sys.pclose and from hak_finihndtab() alike, so a script
+	 * that simply forgets a child still cannot leak one. */
+	hak_pio_free((hak_pio_t*)hnd->u.ptr);
+}
+
+/* close a child's stream through pio, so that pio stops believing it still
+ * owns the descriptor. the stream is identified by matching the descriptor,
+ * which is unambiguous because a pio's three ends are always distinct. */
+static void stream_dtor (hak_t* hak, hak_hnd_t* hnd)
+{
+	hak_hnd_t* ph;
+
+	/* the owner is still alive here: hak_closehnd() closes what a node owns
+	 * before closing the node itself */
+	ph = hak_gethnd(hak, hnd->owner, HAK_HND_TYPE_PROC);
+	if (ph)
+	{
+		hak_pio_t* pio = (hak_pio_t*)ph->u.ptr;
+		hak_pio_hid_t hid;
+
+		for (hid = HAK_PIO_IN; hid <= HAK_PIO_ERR; hid++)
+		{
+			if (hak_pio_gethnd(pio, hid) == (hak_pio_hnd_t)hnd->u.fd)
+			{
+				hak_pio_end(pio, hid);
+				return;
+			}
+		}
+	}
+
+	/* the owner is gone, or the stream is no longer pio's - fall back so the
+	 * descriptor is not leaked */
+	close(hnd->u.fd);
+}
+
+/* wrap one of the child's streams as a pipe handle owned by the proc node */
+static hak_hnd_t* wrap_stream (hak_t* hak, hak_pio_t* pio, hak_pio_hid_t hid, hak_hnd_t* owner)
+{
+	hak_hnd_t* h;
+
+	h = hak_wrapfd(hak, (int)hak_pio_gethnd(pio, hid), HAK_HND_TYPE_PIPE, 0);
+	if (HAK_UNLIKELY(!h)) return HAK_NULL;
+
+	hak_ownhnd(hak, h, owner);
+	h->dtor = stream_dtor;
+	return h;
+}
+
+/* (sys.popen cmd [mode]) -> #[proc in out err]
+ *
+ * mode is any combination of 'r' (read the child's stdout), 'w' (write to its
+ * stdin) and 'e' (read its stderr); the default is "r". A stream that was not
+ * requested comes back as nil. The command is run through a shell, as popen()
+ * does.
+ */
 static hak_pfrc_t pf_sys_popen (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	hak_oop_t t;
-	hak_bch_t* cmd;
-	FILE* pp;
+	hak_oop_t cmdoop, arr;
+	hak_pio_t* pio;
+	proc_xtn_t* x;
+	hak_hnd_t *ph, *ih = HAK_NULL, *oh = HAK_NULL, *eh = HAK_NULL;
+	int flags;
 
-	t = HAK_STACK_GETARG(hak, nargs, 0);
-// TODO: support byte array?
-	/*if (!HAK_IS_STRING(hak, t)) goto oops;*/
-	if (!HAK_OBJ_IS_CHAR_POINTER(t) ||
-	    HAK_OBJ_GET_SIZE(t) == 0 ||
-	    hak_count_oocstr(HAK_OBJ_GET_CHAR_SLOT(t)) != HAK_OBJ_GET_SIZE(t))
+	cmdoop = HAK_STACK_GETARG(hak, nargs, 0);
+	if (!HAK_OBJ_IS_CHAR_POINTER(cmdoop) || HAK_OBJ_GET_SIZE(cmdoop) == 0 ||
+	    hak_count_oocstr(HAK_OBJ_GET_CHAR_SLOT(cmdoop)) != HAK_OBJ_GET_SIZE(cmdoop))
 	{
-		/* invalid command arguments */
-		goto oops;
+		hak_seterrbfmt(hak, HAK_EINVAL, "command not a proper string - %O", cmdoop);
+		return HAK_PF_FAILURE;
 	}
 
-	cmd = hak_dupootobcstr(hak, HAK_OBJ_GET_CHAR_SLOT(t), HAK_NULL);
-	if (!cmd) goto oops;
+	/* every wait is non-blocking; sys.pwait reports 256 for a live child
+	 * rather than stopping every other coprocess. */
+	flags = HAK_PIO_SHELL | HAK_PIO_WAITNOBLOCK;
 
-	/* TODO: we need a bidirectional popen.. replace it with our own impl. */
-	pp = popen(cmd, "r");
-	if (!pp) goto oops;
-
-	if (!HAK_IN_SMPTR_RANGE(pp))
+	if (nargs >= 2)
 	{
-		pclose(pp);
-		goto oops;
+		hak_oop_t m = HAK_STACK_GETARG(hak, nargs, 1);
+		const hak_ooch_t* p;
+		hak_oow_t i, len;
+
+		if (!HAK_OBJ_IS_CHAR_POINTER(m))
+		{
+			hak_seterrbfmt(hak, HAK_EINVAL, "mode not a string - %O", m);
+			return HAK_PF_FAILURE;
+		}
+
+		p = HAK_OBJ_GET_CHAR_SLOT(m);
+		len = HAK_OBJ_GET_SIZE(m);
+		for (i = 0; i < len; i++)
+		{
+			switch (p[i])
+			{
+				case 'r': flags |= HAK_PIO_READOUT | HAK_PIO_OUTNOBLOCK; break;
+				case 'w': flags |= HAK_PIO_WRITEIN | HAK_PIO_INNOBLOCK;  break;
+				case 'e': flags |= HAK_PIO_READERR | HAK_PIO_ERRNOBLOCK; break;
+				default:
+					hak_seterrbfmt(hak, HAK_EINVAL, "unrecognized popen mode - %O", m);
+					return HAK_PF_FAILURE;
+			}
+		}
+	}
+	else flags |= HAK_PIO_READOUT | HAK_PIO_OUTNOBLOCK;
+
+	pio = hak_pio_open(hak, HAK_SIZEOF(proc_xtn_t), HAK_OBJ_GET_CHAR_SLOT(cmdoop), flags, HAK_NULL, HAK_NULL);
+	if (HAK_UNLIKELY(!pio)) return HAK_PF_FAILURE;
+
+	x = (proc_xtn_t*)hak_pio_getxtn(pio);
+	x->reaped = 0;
+	x->status = 0;
+
+	/* the proc node owns the pio object from here on: if any wrap below
+	 * fails, closing it disposes of the child through proc_dtor(). */
+	ph = hak_wrapptr(hak, pio, HAK_HND_TYPE_PROC, 0, proc_dtor);
+	if (HAK_UNLIKELY(!ph))
+	{
+		hak_pio_free(pio);
+		return HAK_PF_FAILURE;
 	}
 
-/* using smptr in this mannger is dangerous. because the caller may set random values to other function like pclose...... */
-	HAK_STACK_SETRET(hak, nargs, HAK_SMPTR_TO_OOP(pp));
+	if ((flags & HAK_PIO_WRITEIN) && !(ih = wrap_stream(hak, pio, HAK_PIO_IN, ph))) goto oops;
+	if ((flags & HAK_PIO_READOUT) && !(oh = wrap_stream(hak, pio, HAK_PIO_OUT, ph))) goto oops;
+	if ((flags & HAK_PIO_READERR) && !(eh = wrap_stream(hak, pio, HAK_PIO_ERR, ph))) goto oops;
+
+	/* this may collect, but handle nodes live outside the object heap */
+	arr = hak_makearray(hak, 4);
+	if (HAK_UNLIKELY(!arr)) goto oops;
+
+	HAK_OBJ_SET_OOP_VAL(arr, 0, HAK_SMOOI_TO_OOP(ph->id));
+	HAK_OBJ_SET_OOP_VAL(arr, 1, ih? HAK_SMOOI_TO_OOP(ih->id): hak->_nil);
+	HAK_OBJ_SET_OOP_VAL(arr, 2, oh? HAK_SMOOI_TO_OOP(oh->id): hak->_nil);
+	HAK_OBJ_SET_OOP_VAL(arr, 3, eh? HAK_SMOOI_TO_OOP(eh->id): hak->_nil);
+
+	HAK_STACK_SETRET(hak, nargs, arr);
 	return HAK_PF_SUCCESS;
 
 oops:
-	// TODO: set return value..
+	hak_closehnd(hak, ph); /* takes the stream nodes and the child with it */
+	return HAK_PF_FAILURE;
+}
+
+/* (sys.pwait proc) -> 0..255 | 256 + signo | 256 if still running
+ *
+ * Never blocks. A script that wants to wait can loop on this, or - once
+ * SIGCHLD is routed to the signal descriptor - wait on that instead.
+ */
+static hak_pfrc_t pf_sys_pwait (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+{
+	hak_hnd_t* ph;
+	hak_pio_t* pio;
+	proc_xtn_t* x;
+	int n;
+
+	ph = hak_gethndwithoop(hak, HAK_STACK_GETARG(hak, nargs, 0), HAK_HND_TYPE_PROC);
+	if (HAK_UNLIKELY(!ph)) return HAK_PF_FAILURE;
+
+	pio = (hak_pio_t*)ph->u.ptr;
+	x = (proc_xtn_t*)hak_pio_getxtn(pio);
+
+	if (x->reaped)
+	{
+		/* the child was waited on already; waitpid() would now fail with
+		 * ECHILD, so report what it exited with instead */
+		HAK_STACK_SETRET(hak, nargs, HAK_SMOOI_TO_OOP(x->status));
+		return HAK_PF_SUCCESS;
+	}
+
+	n = hak_pio_wait(pio);
+	if (n <= -1) return HAK_PF_FAILURE;
+
+	if (n != 255 + 1)
+	{
+		x->reaped = 1;
+		x->status = n;
+	}
+
+	HAK_STACK_SETRET(hak, nargs, HAK_SMOOI_TO_OOP(n));
 	return HAK_PF_SUCCESS;
 }
 
+/* (sys.pkill proc) - SIGKILL the child */
+static hak_pfrc_t pf_sys_pkill (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+{
+	hak_hnd_t* ph;
+
+	ph = hak_gethndwithoop(hak, HAK_STACK_GETARG(hak, nargs, 0), HAK_HND_TYPE_PROC);
+	if (HAK_UNLIKELY(!ph)) return HAK_PF_FAILURE;
+
+	if (hak_pio_kill((hak_pio_t*)ph->u.ptr) <= -1) return HAK_PF_FAILURE;
+
+	HAK_STACK_SETRET(hak, nargs, hak->_nil);
+	return HAK_PF_SUCCESS;
+}
+
+/* (sys.pclose proc) -> the child's exit status if it is known, else nil
+ *
+ * Tears the whole group down: the stream handles are released and unbound
+ * from the multiplexer, and the child is reaped - killed first if it has not
+ * exited. It does not wait for a running child to finish on its own, so it
+ * cannot stall the other coprocesses; use sys.pwait for that.
+ */
 static hak_pfrc_t pf_sys_pclose (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	hak_oop_t t;
+	hak_hnd_t* ph;
+	proc_xtn_t* x;
+	hak_oop_t retv;
 
-	t = HAK_STACK_GETARG(hak, nargs, 0);
-	if (HAK_OOP_IS_SMPTR(t))
-	{
-		FILE* pp;
-		pp = (FILE*)HAK_OOP_TO_SMPTR(t);
-		if (pp) pclose(pp);
-	}
+	ph = hak_gethndwithoop(hak, HAK_STACK_GETARG(hak, nargs, 0), HAK_HND_TYPE_PROC);
+	if (HAK_UNLIKELY(!ph)) return HAK_PF_FAILURE;
 
-	HAK_STACK_SETRET(hak, nargs, HAK_SMOOI_TO_OOP(0));
+	x = (proc_xtn_t*)hak_pio_getxtn((hak_pio_t*)ph->u.ptr);
+	retv = x->reaped? HAK_SMOOI_TO_OOP(x->status): hak->_nil;
+
+	if (hak_closehnd(hak, ph) <= -1) return HAK_PF_FAILURE;
+
+	HAK_STACK_SETRET(hak, nargs, retv);
 	return HAK_PF_SUCCESS;
 }
 
@@ -502,7 +700,9 @@ static hak_pfinfo_t pfinfos[] =
 	{ "open",        { HAK_PFBASE_FUNC,  pf_sys_open,         2,  3 } },
 	{ "pclose",      { HAK_PFBASE_FUNC,  pf_sys_pclose,       1,  1 } },
 	{ "pipe",        { HAK_PFBASE_FUNC,  pf_sys_pipe,         0,  0 } },
+	{ "pkill",       { HAK_PFBASE_FUNC,  pf_sys_pkill,        1,  1 } },
 	{ "popen",       { HAK_PFBASE_FUNC,  pf_sys_popen,        1,  2 } },
+	{ "pwait",       { HAK_PFBASE_FUNC,  pf_sys_pwait,        1,  1 } },
 	{ "random",      { HAK_PFBASE_FUNC,  pf_sys_random,       0,  0 } },
 	{ "read",        { HAK_PFBASE_FUNC,  pf_sys_read,         2,  4 } },
 	{ "srandom",     { HAK_PFBASE_FUNC,  pf_sys_srandom,      1,  1 } },

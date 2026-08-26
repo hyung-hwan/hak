@@ -286,6 +286,22 @@ HAK_EXPORT void hak_pio_fini (
 	hak_pio_t* pio /**< pio object */
 );
 
+/**
+ * The hak_pio_free() function closes the pipes, makes sure the child is
+ * reaped, and frees the #hak_pio_t structure.
+ *
+ * Unlike hak_pio_close() it never waits indefinitely: the child is looked at
+ * without blocking first, and only if it is still running is it killed, which
+ * bounds the wait that follows because SIGKILL cannot be caught. Use this
+ * wherever an unbounded wait is unacceptable - inside a scheduler that has
+ * other work to run, or while tearing down a #hak_t.
+ *
+ * The error currently set on \a hak is preserved across the call.
+ */
+HAK_EXPORT void hak_pio_free (
+	hak_pio_t* pio /**< pio object */
+);
+
 #if defined(HAK_HAVE_INLINE)
 static HAK_INLINE void* hak_pio_getxtn (hak_pio_t* pio) { return (void*)(pio + 1); }
 #else
