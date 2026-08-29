@@ -89,7 +89,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-check_PROGRAMS = t-001$(EXEEXT)
+check_PROGRAMS = t-001$(EXEEXT) t-002$(EXEEXT)
 subdir = t
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_check_sign.m4 \
@@ -112,6 +112,10 @@ AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
+am_t_002_OBJECTS = t-002.$(OBJEXT)
+t_002_OBJECTS = $(am_t_002_OBJECTS)
+t_002_LDADD = $(LDADD)
+t_002_DEPENDENCIES = ../lib/libhak.la
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -127,7 +131,7 @@ am__v_at_1 =
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/ac/depcomp
 am__maybe_remake_depfiles = depfiles
-am__depfiles_remade = ./$(DEPDIR)/t-001.Po
+am__depfiles_remade = ./$(DEPDIR)/t-001.Po ./$(DEPDIR)/t-002.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -147,8 +151,8 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(t_001_SOURCES)
-DIST_SOURCES = $(t_001_SOURCES)
+SOURCES = $(t_001_SOURCES) $(t_002_SOURCES)
+DIST_SOURCES = $(t_001_SOURCES) $(t_002_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -538,14 +542,24 @@ AM_CPPFLAGS = \
 
 LDADD = ../lib/libhak.la
 check_SCRIPTS = \
+	classof-01.hak \
+	cons-01.hak \
+	dic-01.hak \
 	feed-01.hak \
 	fun-01.hak \
+	hnd-01.hak \
+	hnd-02.hak \
+	hnd-03.hak \
 	insta-01.hak \
 	insta-02.hak \
 	prim-01.hak \
 	proc-01.hak \
+	proclib-01.hak \
 	ret-01.hak \
 	retvar-01.hak \
+	sig-01.hak \
+	sysproc-01.hak \
+	sysproc-02.hak \
 	va-01.hak \
 	var-01.hak \
 	var-02.hak \
@@ -555,12 +569,15 @@ check_ERRORS = \
 	call-5001.err \
 	class-5001.err \
 	feed-5001.err \
+	hnd-5001.err \
 	mlist-5001.err \
+	sig-5001.err \
 	var-5001.err \
 	var-5002.err \
 	var-5004.err
 
 t_001_SOURCES = t-001.c tap.h
+t_002_SOURCES = t-002.c tap.h
 EXTRA_DIST = $(check_SCRIPTS) $(check_ERRORS)
 TESTS = $(check_PROGRAMS) $(check_SCRIPTS) $(check_ERRORS)
 TEST_EXTENSIONS = .hak .err
@@ -611,6 +628,10 @@ t-001$(EXEEXT): $(t_001_OBJECTS) $(t_001_DEPENDENCIES) $(EXTRA_t_001_DEPENDENCIE
 	@rm -f t-001$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(t_001_OBJECTS) $(t_001_LDADD) $(LIBS)
 
+t-002$(EXEEXT): $(t_002_OBJECTS) $(t_002_DEPENDENCIES) $(EXTRA_t_002_DEPENDENCIES) 
+	@rm -f t-002$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(t_002_OBJECTS) $(t_002_LDADD) $(LIBS)
+
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
 
@@ -618,6 +639,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/t-001.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/t-002.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
 	@$(MKDIR_P) $(@D)
@@ -880,6 +902,13 @@ t-001.log: t-001$(EXEEXT)
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
+t-002.log: t-002$(EXEEXT)
+	@p='t-002$(EXEEXT)'; \
+	b='t-002'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
 .hak.log:
 	@p='$<'; \
 	$(am__set_b); \
@@ -988,6 +1017,7 @@ clean-am: clean-checkPROGRAMS clean-generic clean-libtool \
 
 distclean: distclean-am
 	-rm -f ./$(DEPDIR)/t-001.Po
+	-rm -f ./$(DEPDIR)/t-002.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -1034,6 +1064,7 @@ installcheck-am:
 
 maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/t-001.Po
+	-rm -f ./$(DEPDIR)/t-002.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

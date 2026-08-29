@@ -1,0 +1,36 @@
+## sys.pipe and the non-blocking I/O contract
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+p := (sys.pipe)
+chk (array? p) "sys.pipe returns an array"
+r := (core.basicAt p 0)
+w := (core.basicAt p 1)
+chk (integer? r) "the read end is a handle id"
+chk (integer? w) "the write end is a handle id"
+chk (not (= r w)) "the two ends are distinct handles"
+
+buf := (core.basicNew ByteArray 16)
+
+## a pipe with nothing in it must report "would block" rather than stalling
+chk (= (sys.read r buf) -1) "reading an empty pipe returns -1 (would block)"
+
+wb := (core.basicNew ByteArray 3)
+core.basicAtPut wb 0 97
+core.basicAtPut wb 1 98
+core.basicAtPut wb 2 99
+chk (= (sys.write w wb) 3) "writing to the pipe returns the count"
+
+n := (sys.read r buf)
+chk (= n 3) "the data comes back"
+chk (= (core.basicAt buf 0) 97) "byte 0 correct"
+chk (= (core.basicAt buf 2) 99) "byte 2 correct"
+chk (= (sys.read r buf) -1) "the pipe is empty again"
+
+## closing the writer turns the next read into an end-of-file
+sys.close w
+chk (= (sys.read r buf) 0) "reading after the writer closed returns 0 (eof)"
+sys.close r

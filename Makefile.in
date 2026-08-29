@@ -386,7 +386,7 @@ AUTOMAKE_OPTION = foreign
 ACLOCAL_AMFLAGS = -I m4
 gosrcdir = $(datadir)/hak/go
 gosrc_DATA = go.mod hak.go hak-inst.go hak-cb.go
-EXTRA_DIST = t t/test-bi.hak
+EXTRA_DIST = t t/test-bi.hak src
 SUBDIRS = $(am__append_1) $(am__append_2)
 DIST_SUBDIRS = $(SUBDIRS) pas
 all: all-recursive

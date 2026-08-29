@@ -1,0 +1,82 @@
+## the async I/O model: a coprocess blocked on a handle must not stall the VM.
+## the primitive never blocks - it returns -1 - and the wait happens on a
+## semaphore bound to the handle, so the scheduler keeps running everyone else.
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+iosem := (sem-new)
+tmo   := (sem-new)
+sg    := (semgr-new)
+semgr-add sg iosem
+semgr-add sg tmo
+fin   := (sem-new)
+
+## returns 1 when the handle became readable, 0 when the timeout won
+fun waitin(h secs) {
+	| s |
+	sem-signal tmo secs 0
+	sem-signal-on-input iosem h
+	s := (semgr-wait sg)
+	sem-unsignal iosem
+	sem-unsignal tmo
+	if (eqv? s tmo) { return 0 } \
+	else { return 1 }
+}
+
+## --- the timeout arm: nothing is ever written ---
+q := (sys.pipe)
+chk (= (waitin (core.basicAt q 0) 1) 0) "a semaphore group timeout fires when no data arrives"
+sys.close (core.basicAt q 0)
+sys.close (core.basicAt q 1)
+
+## --- the readable arm, with a coprocess proving the VM kept running ---
+p     := (sys.pipe)
+r     := (core.basicAt p 0)
+w     := (core.basicAt p 1)
+ticks := 0
+got   := -2
+
+fun reader() {
+	| buf n |
+	buf := (core.basicNew ByteArray 16)
+	while true {
+		n := (sys.read r buf)
+		if (>= n 0) {
+			got := n
+			sem-signal fin
+			return 0
+		}
+		if (= (waitin r 5) 0) {
+			got := -1
+			sem-signal fin
+			return 0
+		}
+	}
+}
+
+fun writer() {
+	| wb |
+	## yield a few times first: the reader is blocked on the semaphore by now,
+	## so these ticks only happen if the VM is still scheduling
+	while (< ticks 4) {
+		ticks := (+ ticks 1)
+		yield
+	}
+	wb := (core.basicNew ByteArray 2)
+	core.basicAtPut wb 0 120
+	core.basicAtPut wb 1 121
+	sys.write w wb
+}
+
+fork reader
+fork writer
+sem-wait fin
+
+chk (= ticks 4) "other coprocesses ran while the reader was blocked"
+chk (= got 2) "the reader woke and read the data"
+
+sys.close r
+sys.close w

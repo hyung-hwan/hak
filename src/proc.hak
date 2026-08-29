@@ -1,0 +1,235 @@
+## ---------------------------------------------------------------------------
+## Child process supervision.
+##
+## sys.popen hands back a group of handles and sys.pwait never blocks, which
+## leaves every caller to invent its own way of learning that a child has
+## finished. This layer supplies one: a set of children watched together, so
+## that a coprocess can wait for whichever of them finishes first without
+## stalling the rest of the virtual machine.
+##
+## Two mechanisms can report a child's exit, and they have different shapes:
+##
+##   - An exit handle (a pidfd on linux) belongs to one child and stays
+##     readable once that child is gone. Each child gets its own semaphore in
+##     the group, so a wakeup names exactly the child that finished.
+##
+##   - SIGCHLD is a single process-wide event. Only one semaphore may be bound
+##     to a descriptor, so the whole group shares one semaphore on the signal
+##     descriptor; and because standard signals coalesce - three children
+##     exiting can produce one SIGCHLD - a wakeup must examine every child
+##     rather than just one.
+##
+## The difference is confined to spawn() and wait(). Callers see the same
+## interface either way, and read the same #[proc in out err exit sem] record.
+## ---------------------------------------------------------------------------
+
+## record slots
+## 0 proc handle, 1 stdin, 2 stdout, 3 stderr, 4 exit handle, 5 semaphore
+
+class ChildGroup(
+	sg      ## semaphore group: the per-child semaphores or the shared one,
+	        ## plus tmo
+	tmo     ## timeout semaphore, always a member of sg
+	kids    ## array of child records, nil in a freed slot
+	capa
+	nkids
+	shared  ## true when exit handles are unavailable and SIGCHLD is in use
+	sigsem  ## the shared semaphore; only in shared mode
+) {
+	fun[#ci] new() {
+		set sg (semgr-new)
+		set tmo (sem-new)
+		semgr-add sg tmo
+		set capa 8
+		set kids (core.basicNew Array 8)
+		set nkids 0
+		set shared false
+		set sigsem nil
+		return self
+	}
+
+	fun count() { return self.nkids }
+
+	## --- registry ------------------------------------------------------
+
+	fun remember(kid) {
+		| i n bigger |
+		i := 0
+		while (< i self.capa) {
+			if (nil? (core.basicAt self.kids i)) {
+				core.basicAtPut self.kids i kid
+				set nkids (+ self.nkids 1)
+				return kid
+			}
+			i := (+ i 1)
+		}
+		## no free slot: widen the array and retry
+		n := (* self.capa 2)
+		bigger := (core.basicNew Array n)
+		i := 0
+		while (< i self.capa) {
+			core.basicAtPut bigger i (core.basicAt self.kids i)
+			i := (+ i 1)
+		}
+		set kids bigger
+		set capa n
+		return (self:remember kid)
+	}
+
+	fun forget(kid) {
+		| i |
+		i := 0
+		while (< i self.capa) {
+			if (eqv? (core.basicAt self.kids i) kid) {
+				core.basicAtPut self.kids i nil
+				set nkids (- self.nkids 1)
+				return kid
+			}
+			i := (+ i 1)
+		}
+		return nil
+	}
+
+	## --- spawning ------------------------------------------------------
+
+	## Spawn a command and watch it. mode is as sys.popen takes it.
+	## Returns the child record.
+	fun spawn(cmd mode) {
+		| p proc xh sem kid |
+
+		p := (sys.popen cmd mode)
+		proc := (core.basicAt p 0)
+		xh := (core.basicAt p 4)
+		sem := nil
+
+		if (nil? xh) {
+			## No per-child exit handle on this platform. Establish one shared
+			## semaphore on the signal descriptor for the whole group, once.
+			if (not self.shared) {
+				set shared true
+				system-catch-sig 17                 ## SIGCHLD - define this as a constant...
+				set sigsem (sem-new)
+				semgr-add self.sg self.sigsem
+				sem-signal-on-input self.sigsem (system-get-sigfd)
+			}
+		} else {
+			## A handle of its own, so a wakeup identifies this child directly.
+			sem := (sem-new)
+			semgr-add self.sg sem
+			sem-signal-on-input sem xh
+		}
+
+		kid := (core.basicNew Array 6)
+		core.basicAtPut kid 0 proc
+		core.basicAtPut kid 1 (core.basicAt p 1)
+		core.basicAtPut kid 2 (core.basicAt p 2)
+		core.basicAtPut kid 3 (core.basicAt p 3)
+		core.basicAtPut kid 4 xh
+		core.basicAtPut kid 5 sem
+		return (self:remember kid)
+	}
+
+	## --- waiting -------------------------------------------------------
+
+	## The first child that has already finished, or nil.
+	## Scanning every child is what makes SIGCHLD coalescing harmless: one
+	## signal covering three exits loses nothing.
+	fun finished() {
+		| i kid |
+		i := 0
+		while (< i self.capa) {
+			kid := (core.basicAt self.kids i)
+			if (not (nil? kid)) {
+				if (not (= (sys.pwait (core.basicAt kid 0)) 256)) { return kid }
+			}
+			i := (+ i 1)
+		}
+		return nil
+	}
+
+	fun kid-of-sem(sem) {
+		| i kid |
+		i := 0
+		while (< i self.capa) {
+			kid := (core.basicAt self.kids i)
+			if (not (nil? kid)) {
+				if (eqv? (core.basicAt kid 5) sem) { return kid }
+			}
+			i := (+ i 1)
+		}
+		return nil
+	}
+
+	## Wait for one of the watched children to finish, or for secs to elapse.
+	## Returns the child record, or nil on timeout. Other coprocesses keep
+	## running throughout: the wait is on a semaphore, not on a system call.
+	fun wait(secs) {
+		| w kid |
+
+		## one may have finished before we were asked
+		kid := (self:finished)
+		if (not (nil? kid)) { return kid }
+
+		while true {
+			sem-signal self.tmo secs 0
+			w := (semgr-wait self.sg)
+			sem-unsignal self.tmo
+
+			if (eqv? w self.tmo) { return nil }
+
+			if self.shared {
+				## the signal descriptor spoke: take the byte, then look at
+				## everyone, since one SIGCHLD may stand for several exits
+				system-get-sig
+				kid := (self:finished)
+				if (not (nil? kid)) { return kid }
+				## otherwise it was a SIGCHLD for a child of the host
+				## application, or one already reaped. keep waiting.
+			} else {
+				kid := (self:kid-of-sem w)
+				if (not (nil? kid)) {
+					sem-unsignal w
+					return kid
+				}
+			}
+		}
+	}
+
+	## --- accessors and teardown ----------------------------------------
+
+	fun proc-of(kid) { return (core.basicAt kid 0) }
+	fun in-of(kid) { return (core.basicAt kid 1) }
+	fun out-of(kid) { return (core.basicAt kid 2) }
+	fun err-of(kid) { return (core.basicAt kid 3) }
+
+	## The exit status, or 256 while the child is still running.
+	fun status(kid) { return (sys.pwait (core.basicAt kid 0)) }
+
+	## Stop watching a child and release everything it holds.
+	fun close(kid) {
+		| sem |
+		sem := (core.basicAt kid 5)
+		if (not (nil? sem)) {
+			sem-unsignal sem
+			semgr-remove self.sg sem
+		}
+		self:forget kid
+		sys.pclose (core.basicAt kid 0)
+	}
+
+	## Release the group. Any children still in it are torn down.
+	fun done() {
+		| i kid |
+		i := 0
+		while (< i self.capa) {
+			kid := (core.basicAt self.kids i)
+			if (not (nil? kid)) { self:close kid }
+			i := (+ i 1)
+		}
+		if self.shared {
+			sem-unsignal self.sigsem
+			system-uncatch-sig 17
+			set shared false
+		}
+	}
+}

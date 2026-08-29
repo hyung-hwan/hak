@@ -4,7 +4,7 @@ ACLOCAL_AMFLAGS = -I m4
 gosrcdir = $(datadir)/hak/go
 gosrc_DATA = go.mod hak.go hak-inst.go hak-cb.go
 
-EXTRA_DIST = t t/test-bi.hak
+EXTRA_DIST = t t/test-bi.hak src
 
 SUBDIRS =
 

@@ -1289,6 +1289,50 @@ static hak_pfrc_t pf_system_get_sig (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs
 	return HAK_PF_SUCCESS;
 }
 
+/* (system-catch-sig signo)   - route an operating system signal into the
+ *                              signal descriptor, where hak code can wait for
+ *                              it with sem-signal-on-input
+ * (system-uncatch-sig signo) - release it again
+ *
+ * Note the difference from system-set-sig, which does not touch the operating
+ * system at all: that one injects a number into the descriptor directly, as a
+ * way for hak code to post a synthetic signal to itself.
+ */
+static hak_pfrc_t __system_catch_sig (hak_t* hak, hak_ooi_t nargs, int enable)
+{
+	hak_oop_t tmp;
+	hak_ooi_t signo;
+
+	tmp = HAK_STACK_GETARG(hak, nargs, 0);
+	if (!HAK_OOP_IS_SMOOI(tmp))
+	{
+		hak_seterrbfmt(hak, HAK_EINVAL, "signal number not a small integer - %O", tmp);
+		return HAK_PF_FAILURE;
+	}
+	signo = HAK_OOP_TO_SMOOI(tmp);
+
+	if (!hak->vmprim.vm_catchsig)
+	{
+		hak_seterrbfmt(hak, HAK_ENOIMPL, "signal routing not supported");
+		return HAK_PF_FAILURE;
+	}
+
+	if (hak->vmprim.vm_catchsig(hak, (int)signo, enable) <= -1) return HAK_PF_FAILURE;
+
+	HAK_STACK_SETRET(hak, nargs, HAK_SMOOI_TO_OOP(signo));
+	return HAK_PF_SUCCESS;
+}
+
+static hak_pfrc_t pf_system_catch_sig (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+{
+	return __system_catch_sig(hak, nargs, 1);
+}
+
+static hak_pfrc_t pf_system_uncatch_sig (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+{
+	return __system_catch_sig(hak, nargs, 0);
+}
+
 static hak_pfrc_t pf_system_set_sig (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_oop_t tmp;
@@ -1322,9 +1366,11 @@ static pf_t builtin_prims[] =
 	{ 1, HAK_TYPE_MAX(hak_oow_t), pf_scanf,           5,  { 's','c','a','n','f' } },
 	{ 1, HAK_TYPE_MAX(hak_oow_t), pf_sprintf,         7,  { 's','p','r','i','n','t','f' } },
 
-	{ 0, 0,                       pf_system_get_sigfd,16, { 's','y','s','t','e','m','-','g','e','t','-','s','i','g','f','d' } },
-	{ 0, 0,                       pf_system_get_sig,  14,  { 's','y','s','t','e','m','-','g','e','t','-','s','i','g' } },
-	{ 1, 1,                       pf_system_set_sig,  14,  { 's','y','s','t','e','m','-','s','e','t','-','s','i','g' } },
+	{ 0, 0,                       pf_system_get_sigfd,   16, { 's','y','s','t','e','m','-','g','e','t','-','s','i','g','f','d' } },
+	{ 0, 0,                       pf_system_get_sig,     14,  { 's','y','s','t','e','m','-','g','e','t','-','s','i','g' } },
+	{ 1, 1,                       pf_system_set_sig,     14,  { 's','y','s','t','e','m','-','s','e','t','-','s','i','g' } },
+	{ 1, 1,                       pf_system_catch_sig,   16, { 's','y','s','t','e','m','-','c','a','t','c','h','-','s','i','g' } },
+	{ 1, 1,                       pf_system_uncatch_sig, 18, { 's','y','s','t','e','m','-','u','n','c','a','t','c','h','-','s','i','g' } },
 
 	{ 0, 0,                       pf_gc,              2,  { 'g','c' } },
 

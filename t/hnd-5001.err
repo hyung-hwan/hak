@@ -1,0 +1,61 @@
+## a raw file descriptor is not a system handle. this is the property that
+## stops hak code naming a descriptor it never opened - including hak's own
+## multiplexer, signal and io-thread descriptors, and anything the host
+## application that embeds hak holds open.
+s := (sem-new)
+sem-signal-on-input s 0 ##ERROR: system handle 0
+
+---
+
+s := (sem-new)
+sem-signal-on-input s 4 ##ERROR: system handle 4
+
+---
+
+## a handle id stops resolving once it is closed, so a stale id cannot reach
+## a descriptor that has since been recycled
+p := (sys.pipe)
+r := (core.basicAt p 0)
+sys.close r
+sys.read r (core.basicNew ByteArray 4) ##ERROR: system handle 0
+
+---
+
+## a regular file is never accepted by the multiplexer: epoll refuses one
+## outright, and poll() would report it permanently ready
+f := (sys.open "/proc/version" "r")
+s := (sem-new)
+sem-signal-on-input s f ##ERROR: not of an acceptable kind
+
+---
+
+## the type gate: a pipe handle is not a process handle
+p := (sys.pipe)
+sys.pwait (core.basicAt p 0) ##ERROR: not of an acceptable kind
+
+---
+
+## ...and a process handle is not a stream
+p := (sys.popen "true" "r")
+sys.read (core.basicAt p 0) (core.basicNew ByteArray 4) ##ERROR: not of an acceptable kind
+
+---
+
+## an exit handle is muxable but carries no bytes
+p := (sys.popen "true" "r")
+sys.read (core.basicAt p 4) (core.basicNew ByteArray 4) ##ERROR: not readable
+
+---
+
+## a missing file is reported, not guessed at
+sys.open "/nonexistent/definitely-not-here" "r" ##ERROR: open /nonexistent/definitely-not-here
+
+---
+
+## an unknown open mode is rejected
+sys.open "/tmp/hak-hnd-5001.tmp" "q" ##ERROR: open mode
+
+---
+
+## an unknown popen mode likewise
+sys.popen "true" "z" ##ERROR: popen mode

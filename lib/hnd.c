@@ -296,6 +296,14 @@ static int probe_fd (hak_t* hak, int fd, hak_hnd_type_t* type, int* muxable)
 	if (S_ISFIFO(st.st_mode))      { *type = HAK_HND_TYPE_PIPE; *muxable = 1; }
 	else if (S_ISSOCK(st.st_mode)) { *type = HAK_HND_TYPE_SCK;  *muxable = 1; }
 	else if (S_ISCHR(st.st_mode))  { *type = HAK_HND_TYPE_CHR;  *muxable = 1; }
+	else if ((st.st_mode & S_IFMT) == 0)
+	{
+		/* an anonymous inode. linux hands these out for pidfd, eventfd,
+		 * timerfd and signalfd: no file type bits at all, yet all of them are
+		 * pollable. without this arm they would fall through to FILE below and
+		 * the multiplexer would refuse them. */
+		*type = HAK_HND_TYPE_EVT;  *muxable = 1;
+	}
 	else                           { *type = HAK_HND_TYPE_FILE; *muxable = 0; }
 
 	return 0;
@@ -359,7 +367,8 @@ hak_hnd_t* hak_wrapfd (hak_t* hak, int fd, hak_hnd_type_t type_hint, int flags)
 
 	node->type = type;
 	node->flags = flags & (HAK_HND_FLAG_NONBLOCK | HAK_HND_FLAG_KEEPOPEN);
-	if (muxable) node->flags |= HAK_HND_FLAG_MUXABLE;
+	/* the probe decides, unless the caller asserts it knows better */
+	if (muxable || (flags & HAK_HND_FLAG_MUXABLE)) node->flags |= HAK_HND_FLAG_MUXABLE;
 	node->u.fd = fd;
 
 	if (remember_fd(hak, fd, node->id) <= -1)
@@ -536,7 +545,7 @@ hak_ooi_t hak_readhnd (hak_t* hak, hak_hnd_t* hnd, void* buf, hak_oow_t len)
 	hak_ooi_t n;
 #endif
 
-	if (!(hnd->type & HAK_HND_TYPE_ALL_FD))
+	if (!(hnd->type & HAK_HND_TYPE_ALL_STREAM))
 	{
 		hak_seterrbfmt(hak, HAK_EBADHND, "system handle %zd not readable", hnd->id);
 		return HAK_HND_IO_ERROR;
@@ -582,7 +591,7 @@ hak_ooi_t hak_writehnd (hak_t* hak, hak_hnd_t* hnd, const void* buf, hak_oow_t l
 	hak_ooi_t n;
 #endif
 
-	if (!(hnd->type & HAK_HND_TYPE_ALL_FD))
+	if (!(hnd->type & HAK_HND_TYPE_ALL_STREAM))
 	{
 		hak_seterrbfmt(hak, HAK_EBADHND, "system handle %zd not writable", hnd->id);
 		return HAK_HND_IO_ERROR;

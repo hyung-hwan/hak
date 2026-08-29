@@ -1,0 +1,85 @@
+## the child supervision layer in src/proc.hak
+
+$include "../src/proc.hak"
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+## --- children are collected in completion order, whichever finishes first ---
+g := (ChildGroup:new)
+chk (= (g:count) 0) "a new group watches nothing"
+a := (g:spawn "sleep 3; exit 11" "r")
+b := (g:spawn "sleep 1; exit 22" "r")
+c := (g:spawn "sleep 2; exit 33" "r")
+chk (= (g:count) 3) "spawn adds to the group"
+chk (integer? (g:proc-of a)) "the record carries a process handle"
+chk (integer? (g:out-of a)) "...and the requested stream"
+chk (nil? (g:in-of a)) "...and nil for one not requested"
+
+ticks := 0
+fun ticker() {
+	while (< ticks 5) {
+		ticks := (+ ticks 1)
+		yield
+	}
+}
+fork ticker
+
+order := (core.basicNew Array 3)
+n := 0
+while (< n 3) {
+	kid := (g:wait 25)
+	if (nil? kid) {
+		printf "ERROR: g:wait timed out\n"
+		n := 3
+	} \
+	else {
+		core.basicAtPut order n (g:status kid)
+		g:close kid
+		n := (+ n 1)
+	}
+}
+
+chk (= (core.basicAt order 0) 22) "the first to finish was reported first"
+chk (= (core.basicAt order 1) 33) "then the second"
+chk (= (core.basicAt order 2) 11) "then the third"
+chk (= ticks 5) "coprocesses ran while the group waited"
+chk (= (g:count) 0) "close removes a child from the group"
+g:done
+
+## --- simultaneous exits ---
+## standard signals do not queue, so on the SIGCHLD path one signal can stand
+## for every one of these; the group must still account for all of them.
+g2 := (ChildGroup:new)
+i := 0
+while (< i 6) {
+	g2:spawn "sleep 1; exit 7" "r"
+	i := (+ i 1)
+}
+seen := 0
+bad := 0
+while (< seen 6) {
+	kid := (g2:wait 25)
+	if (nil? kid) {
+		printf "ERROR: timed out with children unaccounted for\n"
+		seen := 6
+		bad := 1
+	} \
+	else {
+		if (not (= (g2:status kid) 7)) { bad := 1 }
+		g2:close kid
+		seen := (+ seen 1)
+	}
+}
+chk (= bad 0) "six children exiting together were all collected"
+g2:done
+
+## --- a timeout is reported as nil, not as a hang ---
+g3 := (ChildGroup:new)
+g3:spawn "sleep 30" "r"
+chk (= (g3:count) 1) "the group is watching the long-running child"
+chk (nil? (g3:wait 1)) "g:wait returns nil when nothing finishes in time"
+g3:done
+chk (= (g3:count) 0) "g:done emptied a group that still held a running child"

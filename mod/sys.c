@@ -42,6 +42,7 @@
 #	include <unistd.h>
 #	include <fcntl.h>
 #	include <errno.h>
+#	include <sys/syscall.h>
 #endif
 
 #if defined(HAVE_SYS_TIME_H)
@@ -344,8 +345,9 @@ static int get_buf_args (hak_t* hak, hak_ooi_t nargs, hak_oop_t bufoop,
 		}
 	}
 
-	/* no allocation happens between here and the read/write, so a raw slot
-	 * pointer cannot be invalidated by a garbage collection */
+	/* a raw slot pointer is safe to hold here: the collector is mark-sweep so
+	 * it never relocates an object, and the buffer stays rooted on the
+	 * argument stack for the duration of the call */
 	*ptr = &HAK_OBJ_GET_BYTE_SLOT(bufoop)[offset];
 	*len = length;
 	return 0;
@@ -461,6 +463,14 @@ oops:
  * behave exactly like they do on a sys.pipe handle - including returning -1
  * for "would block", which is what makes a child usable from a coprocess
  * without stalling the VM.
+ *
+ * Where the platform provides pidfd_open(), the group also carries an exit
+ * handle: a descriptor that becomes readable when the child terminates. It is
+ * an ordinary muxable handle, so waiting for a child costs nothing more than
+ * waiting for a pipe - no signal handler, no shared signal stream, and none of
+ * the coalescing that makes SIGCHLD awkward, since the handle is per child and
+ * stays readable once set. Without it the exit handle is nil and a caller has
+ * to poll sys.pwait.
  * ------------------------------------------------------------------------ */
 
 /* kept in the pio extension area, so no separate allocation is needed */
@@ -523,19 +533,19 @@ static hak_hnd_t* wrap_stream (hak_t* hak, hak_pio_t* pio, hak_pio_hid_t hid, ha
 	return h;
 }
 
-/* (sys.popen cmd [mode]) -> #[proc in out err]
+/* (sys.popen cmd [mode]) -> #[proc in out err exit]
  *
  * mode is any combination of 'r' (read the child's stdout), 'w' (write to its
  * stdin) and 'e' (read its stderr); the default is "r". A stream that was not
- * requested comes back as nil. The command is run through a shell, as popen()
- * does.
+ * requested comes back as nil, as does the exit handle where the platform has
+ * no pidfd_open(). The command is run through a shell, as popen() does.
  */
 static hak_pfrc_t pf_sys_popen (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_oop_t cmdoop, arr;
 	hak_pio_t* pio;
 	proc_xtn_t* x;
-	hak_hnd_t *ph, *ih = HAK_NULL, *oh = HAK_NULL, *eh = HAK_NULL;
+	hak_hnd_t *ph, *ih = HAK_NULL, *oh = HAK_NULL, *eh = HAK_NULL, *xh = HAK_NULL;
 	int flags;
 
 	cmdoop = HAK_STACK_GETARG(hak, nargs, 0);
@@ -599,14 +609,42 @@ static hak_pfrc_t pf_sys_popen (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	if ((flags & HAK_PIO_READOUT) && !(oh = wrap_stream(hak, pio, HAK_PIO_OUT, ph))) goto oops;
 	if ((flags & HAK_PIO_READERR) && !(eh = wrap_stream(hak, pio, HAK_PIO_ERR, ph))) goto oops;
 
+/* -DHAK_SYS_NO_EXITHND suppresses the exit handle, which is how the SIGCHLD
+ * fallback path in the library layer gets exercised on a platform that does
+ * have pidfd_open(). */
+#if defined(SYS_pidfd_open) && !defined(HAK_SYS_NO_EXITHND)
+	{
+		/* the syscall directly rather than the glibc wrapper, which only
+		 * appeared in glibc 2.36 */
+		int xfd = (int)syscall(SYS_pidfd_open, (pid_t)hak_pio_getchild(pio), 0);
+		if (xfd >= 0)
+		{
+			/* HAK_HND_OPEN_MUXABLE because we know a pidfd is pollable; the
+			 * probe reaches the same conclusion via its anonymous-inode arm,
+			 * but saying so here keeps this correct on a platform where it
+			 * does not. */
+			xh = hak_wrapfd(hak, xfd, 0, HAK_HND_OPEN_MUXABLE);
+			if (HAK_UNLIKELY(!xh))
+			{
+				close(xfd);
+				goto oops;
+			}
+			hak_ownhnd(hak, xh, ph);
+		}
+		/* a failure here is not fatal: an older kernel simply means no exit
+		 * handle, and the caller polls sys.pwait instead. */
+	}
+#endif
+
 	/* this may collect, but handle nodes live outside the object heap */
-	arr = hak_makearray(hak, 4);
+	arr = hak_makearray(hak, 5);
 	if (HAK_UNLIKELY(!arr)) goto oops;
 
 	HAK_OBJ_SET_OOP_VAL(arr, 0, HAK_SMOOI_TO_OOP(ph->id));
 	HAK_OBJ_SET_OOP_VAL(arr, 1, ih? HAK_SMOOI_TO_OOP(ih->id): hak->_nil);
 	HAK_OBJ_SET_OOP_VAL(arr, 2, oh? HAK_SMOOI_TO_OOP(oh->id): hak->_nil);
 	HAK_OBJ_SET_OOP_VAL(arr, 3, eh? HAK_SMOOI_TO_OOP(eh->id): hak->_nil);
+	HAK_OBJ_SET_OOP_VAL(arr, 4, xh? HAK_SMOOI_TO_OOP(xh->id): hak->_nil);
 
 	HAK_STACK_SETRET(hak, nargs, arr);
 	return HAK_PF_SUCCESS;

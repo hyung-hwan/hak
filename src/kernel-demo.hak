@@ -1,0 +1,122 @@
+## ---------------------------------------------------------------------------------
+## Exercises for the kernel classes.
+##
+## This was the tail of kernel.hak. It is kept apart because kernel.hak has to
+## be loadable as a library: anything with $include "kernel.hak" in it was
+## running these exercises, and their output - and their deliberate errors -
+## came along with it.
+##
+## Run it directly:   hak src/kernel-demo.hak
+## ---------------------------------------------------------------------------------
+
+$include "kernel.hak"
+
+k := "abcdefghijklmn"
+printf "string length %d\n" ("aaaa":length)
+printf "substring [%s]\n" (k:slice 5 6)
+
+try {
+	printf "substring [%c]\n" (k:at 13)
+	k:atPut 14 'A'
+	printf "[%s]\n" k
+} catch (e) {
+	printf "EXCEPTION %O\n" e
+}
+
+k := #[1 2 3 4 5 6 7 8 9 10 11 12 13 14 15]
+
+try {
+	k:atPut 2 'A'
+	printf "%O\n" k
+} catch (e) {
+	printf "EXCEPTION %O\n" e
+}
+
+k := #b[1 2 3 4 5 6 7 8 9 10 11 12 13 14 15]
+try {
+	k:atPut 2 -10
+	printf "%O\n" k
+} catch (e) {
+	printf "EXCEPTION %O\n" e
+}
+
+
+k := (Array:new 10)
+k:atPut 3 "hello"
+printf "%O\n" k
+
+printf "[%O]\n" (String:new 5)
+printf "[%O]\n" (String:basicNew 5)
+
+printf "[%O]\n" (String:respondsTo "new")
+printf "[%O]\n" (String:respondsTo "newx")
+printf "[%O]\n" (" ":respondsTo "new")
+printf "[%O]\n" (" ":respondsTo "length")
+
+##printf "[%O]\n" (String:classVariableNames)
+##printf "[%O]\n" (String:instanceVariableNames)
+
+##printf "%O\n" #"abcdefg"
+
+
+printf "----------------------------------------\n"
+
+k := #[1 2 3]
+printf "%O\n" (k:basicAt 2)
+
+class [#varying] Z: Object (a b c) {
+	fun[#classinst] new() {
+		self.a := 10
+		self.b := 20
+		self.c := 30
+	}
+
+	fun aaa() {
+	printf "%d %d %d\n" a b c
+	}
+}
+
+fun Z:abc() {
+	printf "%d %d %d\n" a b c ## this is not recognized as ....
+}
+
+class Q {
+fun[#class] k () {
+k := (Z:basicNew 10) ## #varying is really required? what is the big deal even if you allow it regardless?
+##k := (Z:new) ## no way to add extra fields.
+k:basicAtPut 2 "hello"
+k:basicAtPut 3 "world"
+printf "----------------------------------------\n"
+printf "%O\n" (k:basicAt 20)
+
+##k := (Z:new)
+##k:aaa
+}
+}
+
+fun c() {
+	(Q:k)
+}
+##try {
+	printf ">>>>>>>>>>>>>>>\n"
+
+	d := ((fun (x){
+		printf "<<%d>>\n" x
+		c
+	}) 90)
+	##(j)
+	(d 10)
+##} catch (e) {
+	printf "EXCEPTION: %O\n" e
+
+##	try {
+		throw 10000
+##	} catch (e) {
+##		printf "EXCEPTION-X: %O\n" e
+##	}
+##}
+
+
+## if the assigne operator is seen
+## a := (fun (x) { })
+## a := fun (x) { } <<--- can I support this syntax??

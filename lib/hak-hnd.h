@@ -64,17 +64,26 @@ enum hak_hnd_type_t
 	HAK_HND_TYPE_SCK  = (1 << 2), /**< socket */
 	HAK_HND_TYPE_CHR  = (1 << 3), /**< terminal or character device */
 	HAK_HND_TYPE_DIR  = (1 << 4), /**< directory stream - a pointer, not a descriptor */
-	HAK_HND_TYPE_PROC = (1 << 5)  /**< child process - a pointer, not a descriptor */
+	HAK_HND_TYPE_PROC = (1 << 5), /**< child process - a pointer, not a descriptor */
+	HAK_HND_TYPE_EVT  = (1 << 6)  /**< anonymous-inode descriptor: pidfd, eventfd,
+	                               *   timerfd, signalfd. pollable but carries no
+	                               *   file type bits, and generally not readable
+	                               *   as a byte stream. */
 };
 typedef enum hak_hnd_type_t hak_hnd_type_t;
 
 /** every type that is backed by a file descriptor */
 #define HAK_HND_TYPE_ALL_FD \
+	(HAK_HND_TYPE_FILE | HAK_HND_TYPE_PIPE | HAK_HND_TYPE_SCK | \
+	 HAK_HND_TYPE_CHR | HAK_HND_TYPE_EVT)
+
+/** every type that moves bytes, and so may be given to hak_readhnd() */
+#define HAK_HND_TYPE_ALL_STREAM \
 	(HAK_HND_TYPE_FILE | HAK_HND_TYPE_PIPE | HAK_HND_TYPE_SCK | HAK_HND_TYPE_CHR)
 
 /** every type the multiplexer can accept */
 #define HAK_HND_TYPE_ALL_MUXABLE \
-	(HAK_HND_TYPE_PIPE | HAK_HND_TYPE_SCK | HAK_HND_TYPE_CHR)
+	(HAK_HND_TYPE_PIPE | HAK_HND_TYPE_SCK | HAK_HND_TYPE_CHR | HAK_HND_TYPE_EVT)
 
 enum hak_hnd_flag_t
 {
@@ -98,6 +107,9 @@ typedef enum hak_hnd_flag_t hak_hnd_flag_t;
 
 /** hak_wrapfd() should put the descriptor into non-blocking mode */
 #define HAK_HND_OPEN_NONBLOCK HAK_HND_FLAG_NONBLOCK
+/** force #HAK_HND_FLAG_MUXABLE regardless of what the probe concluded, for a
+ *  caller that knows the descriptor is pollable */
+#define HAK_HND_OPEN_MUXABLE  HAK_HND_FLAG_MUXABLE
 /** hak_closehnd() should not close the underlying handle */
 #define HAK_HND_OPEN_KEEPOPEN HAK_HND_FLAG_KEEPOPEN
 

@@ -1,0 +1,79 @@
+## core.car / core.cdr / core.cons
+##
+## A data list #(1 2 3) is a chain of Cons cells whose head and tail live in
+## named instance variables, so basicAt and primAt cannot reach them. These
+## three are what let the class library walk and build a list.
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+l := #(1 2 3)
+chk (eqv? (core.classOf l) Cons) "a data list is a chain of Cons cells"
+chk (= (core.car l) 1) "car answers the head"
+chk (eqv? (core.classOf (core.cdr l)) Cons) "cdr answers the tail"
+chk (= (core.car (core.cdr l)) 2) "cadr reaches the second element"
+chk (nil? (core.cdr (core.cdr (core.cdr l)))) "the tail of the last cell is nil"
+
+## walking
+n := 0
+sum := 0
+p := l
+while (not (nil? p)) {
+	n := (+ n 1)
+	sum := (+ sum (core.car p))
+	p := (core.cdr p)
+}
+chk (= n 3) "a list can be walked to its end"
+chk (= sum 6) "and every element visited"
+
+## building
+b := (core.cons 1 (core.cons 2 (core.cons 3 nil)))
+chk (eqv? (core.classOf b) Cons) "cons builds a cell"
+chk (= (core.car b) 1) "the built list starts where it should"
+chk (= (core.car (core.cdr (core.cdr b))) 3) "and ends where it should"
+chk (nil? (core.cdr (core.cdr (core.cdr b)))) "and is properly terminated"
+
+## an improper list is allowed - the tail need not be a list
+i := (core.cons 1 2)
+chk (= (core.cdr i) 2) "cons accepts a non-list tail"
+
+## select over a list, species preserved, built with cons alone
+fun l-reverse(l) {
+	| p out |
+	out := nil
+	p := l
+	while (not (nil? p)) {
+		out := (core.cons (core.car p) out)
+		p := (core.cdr p)
+	}
+	return out
+}
+fun l-select(l blk) {
+	| p out x |
+	out := nil
+	p := l
+	while (not (nil? p)) {
+		x := (core.car p)
+		if (blk x) { out := (core.cons x out) }
+		p := (core.cdr p)
+	}
+	return (l-reverse out)
+}
+v := #(1 2 3 4 5 6)
+r := (l-select v (fun(x) { return (= 0 (rem x 2)) }))
+chk (eqv? (core.classOf r) Cons) "select over a list answers a list"
+chk (= (core.car r) 2) "with the right first element"
+chk (= (core.car (core.cdr r)) 4) "and the right second"
+chk (= (core.car (core.cdr (core.cdr r))) 6) "and the right third"
+chk (nil? (core.cdr (core.cdr (core.cdr r)))) "and nothing more"
+chk (= (core.car v) 1) "the original list is untouched"
+
+## the type gate
+bad := 0
+try { core.car nil } catch (e) { bad := (+ bad 1) }
+try { core.cdr nil } catch (e) { bad := (+ bad 1) }
+try { core.car #[1 2] } catch (e) { bad := (+ bad 1) }
+try { core.cdr "s" } catch (e) { bad := (+ bad 1) }
+chk (= bad 4) "car and cdr refuse anything that is not a cons"

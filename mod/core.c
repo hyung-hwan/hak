@@ -313,6 +313,88 @@ static hak_pfrc_t pf_core_basic_size (hak_t* hak, hak_mod_t* mod, hak_ooi_t narg
 	return HAK_PF_SUCCESS;
 }
 
+/* ------------------------------------------------------------------------ *
+ * CONS CELLS
+ *
+ * A data list written #(1 2 3) is a chain of Cons cells, and a Cons keeps its
+ * head and tail in named instance variables rather than indexed slots. That
+ * puts it outside the reach of basicAt and primAt, both of which require a
+ * flexi (indexed) receiver, so a list was previously opaque to hak code. These
+ * three give the class library what it needs to walk one and to build one.
+ * ------------------------------------------------------------------------ */
+
+static hak_pfrc_t pf_core_car (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+{
+	hak_oop_t obj;
+
+	obj = HAK_STACK_GETARG(hak, nargs, 0);
+	if (!HAK_IS_CONS(hak, obj))
+	{
+		hak_seterrbfmt(hak, HAK_EINVAL, "receiver not a cons - %O", obj);
+		return HAK_PF_FAILURE;
+	}
+
+	HAK_STACK_SETRET(hak, nargs, HAK_CONS_CAR(obj));
+	return HAK_PF_SUCCESS;
+}
+
+static hak_pfrc_t pf_core_cdr (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+{
+	hak_oop_t obj;
+
+	obj = HAK_STACK_GETARG(hak, nargs, 0);
+	if (!HAK_IS_CONS(hak, obj))
+	{
+		hak_seterrbfmt(hak, HAK_EINVAL, "receiver not a cons - %O", obj);
+		return HAK_PF_FAILURE;
+	}
+
+	HAK_STACK_SETRET(hak, nargs, HAK_CONS_CDR(obj));
+	return HAK_PF_SUCCESS;
+}
+
+/* (core.cons head tail) -> a new cons cell */
+static hak_pfrc_t pf_core_cons (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+{
+	hak_oop_t car, cdr, c;
+
+	car = HAK_STACK_GETARG(hak, nargs, 0);
+	cdr = HAK_STACK_GETARG(hak, nargs, 1);
+
+	/* keep both rooted across the allocation. the argument stack roots them
+	 * too and the collector is mark-sweep, so this is belt-and-braces; it is
+	 * what would keep these local copies valid if the compacting collector in
+	 * gc.c were ever turned on. */
+	hak_pushvolat(hak, &car);
+	hak_pushvolat(hak, &cdr);
+	c = hak_makecons(hak, car, cdr);
+	hak_popvolats(hak, 2);
+	if (HAK_UNLIKELY(!c)) return HAK_PF_FAILURE;
+
+	HAK_STACK_SETRET(hak, nargs, c);
+	return HAK_PF_SUCCESS;
+}
+
+/* (core.classOf obj) -> the class of obj
+ *
+ * className answers a string, which is no use for building something of the
+ * same kind as the receiver. This answers the class itself, so that a method
+ * can do what Smalltalk spells "self species new:" - collect and select on a
+ * String returning a String rather than an Array of characters.
+ *
+ * HAK_CLASSOF() copes with a value encoded into the pointer - a small integer,
+ * a character, an error or a small pointer - so this is total: every object has
+ * a class.
+ */
+static hak_pfrc_t pf_core_class_of (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+{
+	hak_oop_t obj;
+
+	obj = HAK_STACK_GETARG(hak, nargs, 0);
+	HAK_STACK_SETRET(hak, nargs, (hak_oop_t)HAK_CLASSOF(hak, obj));
+	return HAK_PF_SUCCESS;
+}
+
 static hak_pfrc_t pf_core_class_name (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_oop_t obj;
@@ -515,9 +597,13 @@ static hak_pfinfo_t pfinfos[] =
 	{ "bit-shift",          { HAK_PFBASE_FUNC, hak_pf_integer_bshift,         2,  2 } },
 	{ "bit-xor",            { HAK_PFBASE_FUNC, hak_pf_integer_bxor,           2,  2 } },
 
+	{ "car",                { HAK_PFBASE_FUNC, pf_core_car,                   1,  1 } },
+	{ "cdr",                { HAK_PFBASE_FUNC, pf_core_cdr,                   1,  1 } },
 	{ "charToSmooi",        { HAK_PFBASE_FUNC, pf_core_char_to_smooi,         1,  1 } },
 	{ "className",          { HAK_PFBASE_FUNC, pf_core_class_name,            1,  1 } },
+	{ "classOf",            { HAK_PFBASE_FUNC, pf_core_class_of,              1,  1 } },
 	{ "classRespondsTo",    { HAK_PFBASE_FUNC, pf_core_class_responds_to,     2,  2 } },
+	{ "cons",               { HAK_PFBASE_FUNC, pf_core_cons,                  2,  2 } },
 
 	{ "eqk?",               { HAK_PFBASE_FUNC, hak_pf_eqk,                    2,  2 } },
 	{ "eql?",               { HAK_PFBASE_FUNC, hak_pf_eql,                    2,  2 } },

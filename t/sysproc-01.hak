@@ -1,0 +1,100 @@
+## child processes: sys.popen / pwait / pkill / pclose over the handle table
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+iosem := (sem-new)
+tmo   := (sem-new)
+sg    := (semgr-new)
+semgr-add sg iosem
+semgr-add sg tmo
+
+fun waitin(h secs) {
+	| s |
+	sem-signal tmo secs 0
+	sem-signal-on-input iosem h
+	s := (semgr-wait sg)
+	sem-unsignal iosem
+	sem-unsignal tmo
+	if (eqv? s tmo) { return 0 } else { return 1 }
+}
+
+## read until data arrives, retrying on -1
+fun rd(h buf) {
+	| n |
+	while true {
+		n := (sys.read h buf)
+		if (>= n 0) { return n }
+		if (= (waitin h 5) 0) { return -1 }
+	}
+}
+
+## reap without blocking the VM, waiting on a short timer between looks
+fun reap(proc) {
+	| n k |
+	k := 0
+	while (< k 300) {
+		n := (sys.pwait proc)
+		if (not (= n 256)) { return n }
+		sem-signal tmo 0 20000000
+		semgr-wait sg
+		sem-unsignal tmo
+		k := (+ k 1)
+	}
+	return 256
+}
+
+buf := (core.basicNew ByteArray 64)
+
+## --- stdout and the exit status ---
+p := (sys.popen "printf abc; exit 3" "r")
+chk (array? p) "sys.popen returns a handle array"
+chk (integer? (core.basicAt p 0)) "slot 0 is the process handle"
+chk (nil? (core.basicAt p 1)) "stdin is nil when 'w' was not requested"
+chk (integer? (core.basicAt p 2)) "stdout is a handle when 'r' was requested"
+chk (nil? (core.basicAt p 3)) "stderr is nil when 'e' was not requested"
+chk (= (rd (core.basicAt p 2) buf) 3) "the child's stdout is readable"
+chk (= (reap (core.basicAt p 0)) 3) "the exit status comes through"
+sys.pclose (core.basicAt p 0)
+
+## --- bidirectional: write to stdin, read stdout ---
+p    := (sys.popen "tr a-z A-Z" "rw")
+inh  := (core.basicAt p 1)
+outh := (core.basicAt p 2)
+chk (integer? inh) "stdin is a handle when 'w' was requested"
+wb := (core.basicNew ByteArray 3)
+core.basicAtPut wb 0 120
+core.basicAtPut wb 1 121
+core.basicAtPut wb 2 122
+chk (= (sys.write inh wb) 3) "writing to the child's stdin works"
+## closing the child's stdin must really send eof, or tr never flushes
+sys.close inh
+chk (= (rd outh buf) 3) "the child answered after stdin was closed"
+chk (= (core.basicAt buf 0) 88) "the child transformed the data (x -> X)"
+sys.pclose (core.basicAt p 0)
+
+## --- stderr kept separate from stdout ---
+p := (sys.popen "printf OUT; printf ERRR 1>&2" "re")
+chk (= (rd (core.basicAt p 2) buf) 3) "stdout has its own stream"
+chk (= (rd (core.basicAt p 3) buf) 4) "stderr has its own stream"
+sys.pclose (core.basicAt p 0)
+
+## --- a signalled child reports 256 + signo ---
+p := (sys.popen "kill -TERM $$" "r")
+chk (= (reap (core.basicAt p 0)) 271) "a signalled child reports 256 + SIGTERM"
+sys.pclose (core.basicAt p 0)
+
+## --- sys.pkill ---
+p := (sys.popen "sleep 60" "r")
+chk (= (sys.pwait (core.basicAt p 0)) 256) "a running child reports 256"
+sys.pkill (core.basicAt p 0)
+chk (= (reap (core.basicAt p 0)) 265) "after pkill the child reports 256 + SIGKILL"
+sys.pclose (core.basicAt p 0)
+
+## --- pclose tears the whole group down ---
+p    := (sys.popen "sleep 60" "r")
+outh := (core.basicAt p 2)
+sys.pclose (core.basicAt p 0)
+chk true "pclose released the group"

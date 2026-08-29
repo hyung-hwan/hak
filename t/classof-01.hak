@@ -1,0 +1,34 @@
+## core.classOf
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+## every kind of object has a class, including values encoded in the pointer
+chk (eqv? (core.classOf #[1 2]) Array) "an array's class is Array"
+chk (eqv? (core.classOf #b[1 2]) ByteArray) "a byte array's class is ByteArray"
+chk (eqv? (core.classOf "s") String) "a string's class is String"
+chk (eqv? (core.classOf #{}) Dictionary) "a dictionary's class is Dictionary"
+chk (eqv? (core.classOf #(1 2)) Cons) "a data list's class is Cons"
+chk (class? (core.classOf 42)) "a small integer has a class"
+chk (class? (core.classOf 'c')) "a character has a class"
+chk (class? (core.classOf nil)) "nil has a class"
+chk (class? (core.classOf true)) "true has a class"
+chk (class? (core.classOf (fun(x) { return x }))) "a block has a class"
+
+## a class is itself an object, so it has a class of its own. this is where
+## classOf and className differ: className answers the receiver's own name
+## when handed a class, classOf answers what the class is an instance of.
+chk (class? (core.classOf Array)) "a class has a class"
+## className answers a symbol, not a string, and for a class it answers that
+## class's own name - so an instance and its class agree
+chk (eqv? (core.className #[1 2]) (core.className Array)) "className of an instance matches its class"
+chk (not (eqv? (core.classOf Array) Array)) "a class is not an instance of itself"
+
+## the point of it: building something of the receiver's own kind
+fun newLike(x size) { return (core.basicNew (core.classOf x) size) }
+chk (eqv? (core.classOf (newLike #[1] 2)) Array) "an array can make an array"
+chk (eqv? (core.classOf (newLike "s" 2)) String) "a string can make a string"
+chk (eqv? (core.classOf (newLike #b[1] 2)) ByteArray) "a byte array can make a byte array"
+chk (= (core.basicSize (newLike #[1] 5)) 5) "the new one has the requested size"

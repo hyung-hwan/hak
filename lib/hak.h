@@ -1264,6 +1264,22 @@ typedef int (*hak_vmprim_getsig_t) (
 	hak_uint8_t*       sig
 );
 
+/**
+ * The hak_vmprim_catchsig_t type defines how an operating system signal is
+ * routed into hak. With \a enable non-zero the signal is caught and its number
+ * posted to the signal descriptor returned by \a vm_getsigfd, so that hak code
+ * can wait on that descriptor and read the number with \a vm_getsig. With
+ * \a enable zero the signal is released back to its previous disposition.
+ *
+ * Signals that cannot be caught, that indicate a crash, or that hak uses for
+ * process switching are refused.
+ */
+typedef int (*hak_vmprim_catchsig_t) (
+	hak_t*             hak,
+	int                signo,
+	int                enable
+);
+
 typedef int (*hak_vmprim_setsig_t) (
 	hak_t*             hak,
 	hak_uint8_t        sig
@@ -1304,6 +1320,7 @@ struct hak_vmprim_t
 	hak_vmprim_getsigfd_t  vm_getsigfd;
 	hak_vmprim_getsig_t    vm_getsig;
 	hak_vmprim_setsig_t    vm_setsig;
+	hak_vmprim_catchsig_t  vm_catchsig; /* optional. may be HAK_NULL */
 };
 
 typedef struct hak_vmprim_t hak_vmprim_t;

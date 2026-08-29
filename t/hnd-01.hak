@@ -1,0 +1,48 @@
+## system handle table: file open/read/write/close and the validation gate
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+path := "/tmp/hak-hnd-01.tmp"
+
+## --- write ---
+h := (sys.open path "w")
+chk (integer? h) "sys.open for write returns a handle id"
+
+buf := (core.basicNew ByteArray 5)
+core.basicAtPut buf 0 104
+core.basicAtPut buf 1 101
+core.basicAtPut buf 2 108
+core.basicAtPut buf 3 108
+core.basicAtPut buf 4 111
+chk (= (sys.write h buf) 5) "sys.write returns the byte count"
+sys.close h
+
+## --- read it back ---
+h := (sys.open path "r")
+rb := (core.basicNew ByteArray 16)
+n := (sys.read h rb)
+chk (= n 5) "sys.read returns the byte count"
+chk (= (core.basicAt rb 0) 104) "first byte round-tripped"
+chk (= (core.basicAt rb 4) 111) "last byte round-tripped"
+chk (= (sys.read h rb) 0) "sys.read at end of file returns 0"
+
+## --- offset and length ---
+sys.close h
+h := (sys.open path "r")
+zb := (core.basicNew ByteArray 16)
+chk (= (sys.read h zb 2 3) 3) "sys.read honours offset and length"
+chk (= (core.basicAt zb 0) 0) "bytes before the offset are untouched"
+chk (= (core.basicAt zb 2) 104) "data landed at the offset"
+sys.close h
+
+## --- close returns nil ---
+h := (sys.open path "r")
+chk (nil? (sys.close h)) "sys.close returns nil"
+
+## --- a fresh handle reuses the freed id ---
+h2 := (sys.open path "r")
+chk (integer? h2) "a handle id is handed out again after a close"
+sys.close h2

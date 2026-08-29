@@ -1,0 +1,82 @@
+## operating system signal routing
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+## --- SIGPIPE must not be fatal ---
+## with the default disposition, writing to a pipe whose reader has gone kills
+## the process outright and no I/O primitive can ever report the condition.
+p := (sys.pipe)
+r := (core.basicAt p 0)
+w := (core.basicAt p 1)
+sys.close r
+raised := false
+try {
+	sys.write w (core.basicNew ByteArray 4)
+} catch (e) {
+	raised := true
+}
+chk raised "writing to a pipe with no reader raises instead of killing the VM"
+sys.close w
+## the VM is genuinely still usable afterwards, not merely still alive
+q := (sys.pipe)
+chk (= (sys.write (core.basicAt q 1) (core.basicNew ByteArray 2)) 2) "I/O still works after SIGPIPE"
+sys.close (core.basicAt q 0)
+sys.close (core.basicAt q 1)
+
+## --- catch and uncatch are idempotent ---
+chk (= (system-catch-sig 10) 10) "system-catch-sig returns the signal number"
+chk (= (system-catch-sig 10) 10) "catching an already caught signal is fine"
+chk (= (system-uncatch-sig 10) 10) "system-uncatch-sig returns the signal number"
+chk (= (system-uncatch-sig 10) 10) "uncatching an uncaught signal is fine"
+
+## --- a real signal reaches hak code, without stalling the coprocesses ---
+## SIGCHLD is used because a child exiting is something this test can arrange
+## on its own, with no outside help.
+system-catch-sig 17
+
+h     := (system-get-sigfd)
+s     := (sem-new)
+tmo   := (sem-new)
+sg    := (semgr-new)
+semgr-add sg s
+semgr-add sg tmo
+fin   := (sem-new)
+ticks := 0
+signo := -1
+
+pr   := (sys.popen "sleep 1; exit 4" "r")
+proc := (core.basicAt pr 0)
+
+fun waiter() {
+	| w |
+	sem-signal tmo 20 0
+	sem-signal-on-input s h
+	w := (semgr-wait sg)
+	sem-unsignal s
+	sem-unsignal tmo
+	if (eqv? w tmo) { signo := -2 } \
+	else { signo := (system-get-sig) }
+	sem-signal fin
+	return 0
+}
+
+fun ticker() {
+	## the waiter is parked on the signal descriptor by now
+	while (< ticks 4) {
+		ticks := (+ ticks 1)
+		yield
+	}
+}
+
+fork waiter
+fork ticker
+sem-wait fin
+
+chk (= ticks 4) "coprocesses ran while a coprocess waited on a signal"
+chk (= signo 17) "the signal number came through the signal descriptor"
+chk (= (sys.pwait proc) 4) "and the child's exit status is readable"
+sys.pclose proc
+system-uncatch-sig 17

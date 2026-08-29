@@ -299,6 +299,32 @@
 #	define MUTEX_UNLOCK(x)
 #endif
 
+/* --------------------------------------------------------------------------
+ * THE PROCESS-WIDE LOCK
+ *
+ * The mutexes above live in xtn and guard one instance's own event registry.
+ * Two things are shared by every instance in the process instead: the signal
+ * dispositions in g_sig_state, and the chain of live instances rooted at
+ * g_hak. An application embedding hak may well create instances from more than
+ * one thread, and hak_openstd() reaches both - it installs a SIGPIPE handler
+ * and chains the new instance - so neither can be left unguarded.
+ *
+ * Statically initialised, so it is ready before the first hak_open() and needs
+ * no ordering of its own.
+ *
+ * It must never be taken from a signal handler: pthread_mutex_lock() is not
+ * async-signal-safe, and a signal arriving on the thread that already holds it
+ * would deadlock. post_sig_to_all_haks() therefore walks the chain without it.
+ * -------------------------------------------------------------------------- */
+#if defined(USE_THREAD)
+static pthread_mutex_t g_mtx = PTHREAD_MUTEX_INITIALIZER;
+#	define GLOBAL_LOCK()   pthread_mutex_lock(&g_mtx)
+#	define GLOBAL_UNLOCK() pthread_mutex_unlock(&g_mtx)
+#else
+#	define GLOBAL_LOCK()
+#	define GLOBAL_UNLOCK()
+#endif
+
 #if defined(USE_SELECT)
 struct select_fd_t
 {
@@ -1477,7 +1503,7 @@ static int _add_poll_fd (hak_t* hak, int fd, int event_mask)
 	if (write(xtn->ep, &ev, HAK_SIZEOF(ev)) != HAK_SIZEOF(ev))
 	{
 		hak_seterrwithsyserr(hak, 0, errno);
-		HAK_DEBUG2 (hak, "Cannot add file descriptor %d to devpoll - %hs\n", fd, strerror(errno));
+		HAK_DEBUG2(hak, "Cannot add file descriptor %d to devpoll - %hs\n", fd, strerror(errno));
 		return -1;
 	}
 
@@ -1507,7 +1533,7 @@ static int _add_poll_fd (hak_t* hak, int fd, int event_mask)
 		{
 			const hak_ooch_t* oldmsg = hak_backuperrmsg(hak);
 			hak_seterrbfmt(hak, HAK_ESYSERR, "unable to add file descriptor %d to kqueue - %js", fd, oldmsg);
-			HAK_DEBUG1 (hak, "%js", hak_geterrmsg(hak));
+			HAK_DEBUG1(hak, "%js", hak_geterrmsg(hak));
 			return -1;
 		}
 
@@ -1529,7 +1555,7 @@ static int _add_poll_fd (hak_t* hak, int fd, int event_mask)
 		if (kevent(xtn->ep, &ev, 1, HAK_NULL, 0, HAK_NULL) == -1)
 		{
 			hak_seterrwithsyserr(hak, 0, errno);
-			HAK_DEBUG2 (hak, "Cannot add file descriptor %d to kqueue for read - %hs\n", fd, strerror(errno));
+			HAK_DEBUG2(hak, "Cannot add file descriptor %d to kqueue for read - %hs\n", fd, strerror(errno));
 			return -1;
 		}
 
@@ -1548,7 +1574,7 @@ static int _add_poll_fd (hak_t* hak, int fd, int event_mask)
 		if (kevent(xtn->ep, &ev, 1, HAK_NULL, 0, HAK_NULL) == -1)
 		{
 			hak_seterrwithsyserr(hak, 0, errno);
-			HAK_DEBUG2 (hak, "Cannot add file descriptor %d to kqueue for write - %hs\n", fd, strerror(errno));
+			HAK_DEBUG2(hak, "Cannot add file descriptor %d to kqueue for write - %hs\n", fd, strerror(errno));
 
 			if (event_mask & XPOLLIN)
 			{
@@ -1585,7 +1611,7 @@ static int _add_poll_fd (hak_t* hak, int fd, int event_mask)
 	if (epoll_ctl(xtn->ep, EPOLL_CTL_ADD, fd, &ev) == -1)
 	{
 		hak_seterrwithsyserr(hak, 0, errno);
-		HAK_DEBUG2 (hak, "Cannot add file descriptor %d to epoll - %hs\n", fd, strerror(errno));
+		HAK_DEBUG2(hak, "Cannot add file descriptor %d to epoll - %hs\n", fd, strerror(errno));
 		return -1;
 	}
 	return 0;
@@ -1593,7 +1619,7 @@ static int _add_poll_fd (hak_t* hak, int fd, int event_mask)
 #elif defined(USE_POLL)
 	xtn_t* xtn = GET_XTN(hak);
 
-	MUTEX_LOCK (&xtn->ev.reg.pmtx);
+	MUTEX_LOCK(&xtn->ev.reg.pmtx);
 	if (xtn->ev.reg.len >= xtn->ev.reg.capa)
 	{
 		struct pollfd* tmp, * tmp2;
@@ -1604,8 +1630,8 @@ static int _add_poll_fd (hak_t* hak, int fd, int event_mask)
 		tmp2 = (struct pollfd*)hak_reallocmem(hak, xtn->ev.buf, newcapa * HAK_SIZEOF(*tmp2));
 		if (!tmp || !tmp2)
 		{
-			HAK_DEBUG2 (hak, "Cannot add file descriptor %d to poll - %hs\n", fd, strerror(errno));
-			MUTEX_UNLOCK (&xtn->ev.reg.pmtx);
+			HAK_DEBUG2(hak, "Cannot add file descriptor %d to poll - %hs\n", fd, strerror(errno));
+			MUTEX_UNLOCK(&xtn->ev.reg.pmtx);
 			if (tmp) hak_freemem(hak, tmp);
 			return -1;
 		}
@@ -1620,14 +1646,14 @@ static int _add_poll_fd (hak_t* hak, int fd, int event_mask)
 	xtn->ev.reg.ptr[xtn->ev.reg.len].events = event_mask;
 	xtn->ev.reg.ptr[xtn->ev.reg.len].revents = 0;
 	xtn->ev.reg.len++;
-	MUTEX_UNLOCK (&xtn->ev.reg.pmtx);
+	MUTEX_UNLOCK(&xtn->ev.reg.pmtx);
 
 	return 0;
 
 #elif defined(USE_SELECT)
 	xtn_t* xtn = GET_XTN(hak);
 
-	MUTEX_LOCK (&xtn->ev.reg.smtx);
+	MUTEX_LOCK(&xtn->ev.reg.smtx);
 	if (event_mask & XPOLLIN)
 	{
 		FD_SET (fd, &xtn->ev.reg.rfds);
@@ -1638,13 +1664,13 @@ static int _add_poll_fd (hak_t* hak, int fd, int event_mask)
 		FD_SET (fd, &xtn->ev.reg.wfds);
 		if (fd > xtn->ev.reg.maxfd) xtn->ev.reg.maxfd = fd;
 	}
-	MUTEX_UNLOCK (&xtn->ev.reg.smtx);
+	MUTEX_UNLOCK(&xtn->ev.reg.smtx);
 
 	return 0;
 
 #else
 
-	HAK_DEBUG1 (hak, "Cannot add file descriptor %d to poll - not implemented\n", fd);
+	HAK_DEBUG1(hak, "Cannot add file descriptor %d to poll - not implemented\n", fd);
 	hak_seterrnum(hak, HAK_ENOIMPL);
 	return -1;
 #endif
@@ -1665,7 +1691,7 @@ static int _del_poll_fd (hak_t* hak, int fd)
 	if (write(xtn->ep, &ev, HAK_SIZEOF(ev)) != HAK_SIZEOF(ev))
 	{
 		hak_seterrwithsyserr(hak, 0, errno);
-		HAK_DEBUG2 (hak, "Cannot remove file descriptor %d from devpoll - %hs\n", fd, strerror(errno));
+		HAK_DEBUG2(hak, "Cannot remove file descriptor %d from devpoll - %hs\n", fd, strerror(errno));
 		return -1;
 	}
 
@@ -1683,7 +1709,7 @@ static int _del_poll_fd (hak_t* hak, int fd)
 	if (rindex >= xtn->ev.reg.capa)
 	{
 		hak_seterrbfmt(hak, HAK_EINVAL, "unknown file descriptor %d", fd);
-		HAK_DEBUG2 (hak, "Cannot remove file descriptor %d from kqueue - %js\n", fd, hak_geterrmsg(hak));
+		HAK_DEBUG2(hak, "Cannot remove file descriptor %d from kqueue - %js\n", fd, hak_geterrmsg(hak));
 		return -1;
 	};
 
@@ -1723,7 +1749,7 @@ static int _del_poll_fd (hak_t* hak, int fd)
 	if (epoll_ctl(xtn->ep, EPOLL_CTL_DEL, fd, &ev) == -1)
 	{
 		hak_seterrwithsyserr(hak, 0, errno);
-		HAK_DEBUG2 (hak, "Cannot remove file descriptor %d from epoll - %hs\n", fd, strerror(errno));
+		HAK_DEBUG2(hak, "Cannot remove file descriptor %d from epoll - %hs\n", fd, strerror(errno));
 		return -1;
 	}
 	return 0;
@@ -1733,28 +1759,28 @@ static int _del_poll_fd (hak_t* hak, int fd)
 	hak_oow_t i;
 
 	/* TODO: performance boost. no linear search */
-	MUTEX_LOCK (&xtn->ev.reg.pmtx);
+	MUTEX_LOCK(&xtn->ev.reg.pmtx);
 	for (i = 0; i < xtn->ev.reg.len; i++)
 	{
 		if (xtn->ev.reg.ptr[i].fd == fd)
 		{
 			xtn->ev.reg.len--;
 			HAK_MEMMOVE(&xtn->ev.reg.ptr[i], &xtn->ev.reg.ptr[i+1], (xtn->ev.reg.len - i) * HAK_SIZEOF(*xtn->ev.reg.ptr));
-			MUTEX_UNLOCK (&xtn->ev.reg.pmtx);
+			MUTEX_UNLOCK(&xtn->ev.reg.pmtx);
 			return 0;
 		}
 	}
-	MUTEX_UNLOCK (&xtn->ev.reg.pmtx);
+	MUTEX_UNLOCK(&xtn->ev.reg.pmtx);
 
 
-	HAK_DEBUG1 (hak, "Cannot remove file descriptor %d from poll - not found\n", fd);
+	HAK_DEBUG1(hak, "Cannot remove file descriptor %d from poll - not found\n", fd);
 	hak_seterrnum(hak, HAK_ENOENT);
 	return -1;
 
 #elif defined(USE_SELECT)
 	xtn_t* xtn = GET_XTN(hak);
 
-	MUTEX_LOCK (&xtn->ev.reg.smtx);
+	MUTEX_LOCK(&xtn->ev.reg.smtx);
 	FD_CLR (fd, &xtn->ev.reg.rfds);
 	FD_CLR (fd, &xtn->ev.reg.wfds);
 	if (fd >= xtn->ev.reg.maxfd)
@@ -1767,13 +1793,13 @@ static int _del_poll_fd (hak_t* hak, int fd)
 		}
 		xtn->ev.reg.maxfd = i;
 	}
-	MUTEX_UNLOCK (&xtn->ev.reg.smtx);
+	MUTEX_UNLOCK(&xtn->ev.reg.smtx);
 
 	return 0;
 
 #else
 
-	HAK_DEBUG1 (hak, "Cannot remove file descriptor %d from poll - not implemented\n", fd);
+	HAK_DEBUG1(hak, "Cannot remove file descriptor %d from poll - not implemented\n", fd);
 	hak_seterrnum(hak, HAK_ENOIMPL);
 	return -1;
 #endif
@@ -1805,7 +1831,7 @@ static int _mod_poll_fd (hak_t* hak, int fd, int event_mask)
 	if (rindex >= xtn->ev.reg.capa)
 	{
 		hak_seterrbfmt(hak, HAK_EINVAL, "unknown file descriptor %d", fd);
-		HAK_DEBUG2 (hak, "Cannot modify file descriptor %d in kqueue - %js\n", fd, hak_geterrmsg(hak));
+		HAK_DEBUG2(hak, "Cannot modify file descriptor %d in kqueue - %js\n", fd, hak_geterrmsg(hak));
 		return -1;
 	};
 
@@ -1881,7 +1907,7 @@ static int _mod_poll_fd (hak_t* hak, int fd, int event_mask)
 
 kqueue_syserr:
 	hak_seterrwithsyserr(hak, 0, errno);
-	HAK_DEBUG2 (hak, "Cannot modify file descriptor %d in kqueue - %hs\n", fd, strerror(errno));
+	HAK_DEBUG2(hak, "Cannot modify file descriptor %d in kqueue - %hs\n", fd, strerror(errno));
 	return -1;
 
 #elif defined(USE_EPOLL)
@@ -1901,7 +1927,7 @@ kqueue_syserr:
 	if (epoll_ctl(xtn->ep, EPOLL_CTL_MOD, fd, &ev) == -1)
 	{
 		hak_seterrwithsyserr(hak, 0, errno);
-		HAK_DEBUG2 (hak, "Cannot modify file descriptor %d in epoll - %hs\n", fd, strerror(errno));
+		HAK_DEBUG2(hak, "Cannot modify file descriptor %d in epoll - %hs\n", fd, strerror(errno));
 		return -1;
 	}
 
@@ -1912,7 +1938,7 @@ kqueue_syserr:
 	xtn_t* xtn = GET_XTN(hak);
 	hak_oow_t i;
 
-	MUTEX_LOCK (&xtn->ev.reg.pmtx);
+	MUTEX_LOCK(&xtn->ev.reg.pmtx);
 	for (i = 0; i < xtn->ev.reg.len; i++)
 	{
 		if (xtn->ev.reg.ptr[i].fd == fd)
@@ -1921,14 +1947,14 @@ kqueue_syserr:
 			xtn->ev.reg.ptr[i].fd = fd;
 			xtn->ev.reg.ptr[i].events = event_mask;
 			xtn->ev.reg.ptr[i].revents = 0;
-			MUTEX_UNLOCK (&xtn->ev.reg.pmtx);
+			MUTEX_UNLOCK(&xtn->ev.reg.pmtx);
 
 			return 0;
 		}
 	}
-	MUTEX_UNLOCK (&xtn->ev.reg.pmtx);
+	MUTEX_UNLOCK(&xtn->ev.reg.pmtx);
 
-	HAK_DEBUG1 (hak, "Cannot modify file descriptor %d in poll - not found\n", fd);
+	HAK_DEBUG1(hak, "Cannot modify file descriptor %d in poll - not found\n", fd);
 	hak_seterrnum(hak, HAK_ENOENT);
 	return -1;
 
@@ -1936,24 +1962,24 @@ kqueue_syserr:
 
 	xtn_t* xtn = GET_XTN(hak);
 
-	MUTEX_LOCK (&xtn->ev.reg.smtx);
+	MUTEX_LOCK(&xtn->ev.reg.smtx);
 	HAK_ASSERT(hak, fd <= xtn->ev.reg.maxfd);
 
 	if (event_mask & XPOLLIN)
-		FD_SET (fd, &xtn->ev.reg.rfds);
+		FD_SET(fd, &xtn->ev.reg.rfds);
 	else
-		FD_CLR (fd, &xtn->ev.reg.rfds);
+		FD_CLR(fd, &xtn->ev.reg.rfds);
 
 	if (event_mask & XPOLLOUT)
-		FD_SET (fd, &xtn->ev.reg.wfds);
+		FD_SET(fd, &xtn->ev.reg.wfds);
 	else
-		FD_CLR (fd, &xtn->ev.reg.wfds);
-	MUTEX_UNLOCK (&xtn->ev.reg.smtx);
+		FD_CLR(fd, &xtn->ev.reg.wfds);
+	MUTEX_UNLOCK(&xtn->ev.reg.smtx);
 
 	return 0;
 
 #else
-	HAK_DEBUG1 (hak, "Cannot modify file descriptor %d in poll - not implemented\n", fd);
+	HAK_DEBUG1(hak, "Cannot modify file descriptor %d in poll - not implemented\n", fd);
 	hak_seterrnum(hak, HAK_ENOIMPL);
 	return -1;
 #endif
@@ -1969,7 +1995,7 @@ static int vm_muxadd (hak_t* hak, hak_ooi_t io_handle, hak_ooi_t mask)
 
 	if (event_mask == 0)
 	{
-		HAK_DEBUG2 (hak, "<vm_muxadd> Invalid semaphore mask %zd on handle %zd\n", mask, io_handle);
+		HAK_DEBUG2(hak, "<vm_muxadd> Invalid semaphore mask %zd on handle %zd\n", mask, io_handle);
 		hak_seterrbfmt(hak, HAK_EINVAL, "invalid semaphore mask %zd on handle %zd", mask, io_handle);
 		return -1;
 	}
@@ -1987,7 +2013,7 @@ static int vm_muxmod (hak_t* hak, hak_ooi_t io_handle, hak_ooi_t mask)
 
 	if (event_mask == 0)
 	{
-		HAK_DEBUG2 (hak, "<vm_muxadd> Invalid semaphore mask %zd on handle %zd\n", mask, io_handle);
+		HAK_DEBUG2(hak, "<vm_muxadd> Invalid semaphore mask %zd on handle %zd\n", mask, io_handle);
 		hak_seterrbfmt(hak, HAK_EINVAL, "invalid semaphore mask %zd on handle %zd", mask, io_handle);
 		return -1;
 	}
@@ -2041,10 +2067,10 @@ static void* iothr_main (void* arg)
 		#elif defined(USE_EPOLL)
 			n = epoll_wait(xtn->ep, xtn->ev.buf, HAK_COUNTOF(xtn->ev.buf), 10000); /* TODO: make this timeout value in the io thread */
 		#elif defined(USE_POLL)
-			MUTEX_LOCK (&xtn->ev.reg.pmtx);
+			MUTEX_LOCK(&xtn->ev.reg.pmtx);
 			HAK_MEMCPY(xtn->ev.buf, xtn->ev.reg.ptr, xtn->ev.reg.len * HAK_SIZEOF(*xtn->ev.buf));
 			nfds = xtn->ev.reg.len;
-			MUTEX_UNLOCK (&xtn->ev.reg.pmtx);
+			MUTEX_UNLOCK(&xtn->ev.reg.pmtx);
 			n = poll(xtn->ev.buf, nfds, 10000);
 			if (n > 0)
 			{
@@ -2063,12 +2089,12 @@ static void* iothr_main (void* arg)
 		#elif defined(USE_SELECT)
 			tv.tv_sec = 10;
 			tv.tv_usec = 0;
-			MUTEX_LOCK (&xtn->ev.reg.smtx);
+			MUTEX_LOCK(&xtn->ev.reg.smtx);
 			maxfd = xtn->ev.reg.maxfd;
 			HAK_MEMCPY(&rfds, &xtn->ev.reg.rfds, HAK_SIZEOF(rfds));
 			HAK_MEMCPY(&wfds, &xtn->ev.reg.wfds, HAK_SIZEOF(wfds));
-			MUTEX_UNLOCK (&xtn->ev.reg.smtx);
-			n = select (maxfd + 1, &rfds, &wfds, HAK_NULL, &tv);
+			MUTEX_UNLOCK(&xtn->ev.reg.smtx);
+			n = select(maxfd + 1, &rfds, &wfds, HAK_NULL, &tv);
 			if (n > 0)
 			{
 				int fd, count = 0;
@@ -2097,7 +2123,7 @@ static void* iothr_main (void* arg)
 			{
 				/* TODO: don't use HAK_DEBUG2. it's not thread safe... */
 				/* the following call has a race-condition issue when called in this separate thread */
-				/*HAK_DEBUG2 (hak, "Warning: multiplexer wait failure - %d, %hs\n", errno, strerror(errno));*/
+				/*HAK_DEBUG2(hak, "Warning: multiplexer wait failure - %d, %hs\n", errno, strerror(errno));*/
 			}
 			else if (n > 0)
 			{
@@ -2380,10 +2406,10 @@ static void vm_muxwait (hak_t* hak, const hak_ntime_t* dur, hak_vmprim_muxwait_c
 	{
 	#if defined(__OS2__)
 		hak_seterrwithsyserr(hak, 2, sock_errno());
-		HAK_DEBUG2 (hak, "Warning: multiplexer wait failure - %d, %js\n", sock_errno(), hak_geterrmsg(hak));
+		HAK_DEBUG2(hak, "Warning: multiplexer wait failure - %d, %js\n", sock_errno(), hak_geterrmsg(hak));
 	#else
 		hak_seterrwithsyserr(hak, 0, errno);
-		HAK_DEBUG2 (hak, "Warning: multiplexer wait failure - %d, %js\n", errno, hak_geterrmsg(hak));
+		HAK_DEBUG2(hak, "Warning: multiplexer wait failure - %d, %js\n", errno, hak_geterrmsg(hak));
 	#endif
 	}
 	else
@@ -2637,88 +2663,129 @@ static void dispatch_signal (int sig)
 	}
 }
 
+/* The whole of this must be one atomic step. The test of g_sig_state below and
+ * the sigaction() that follows form a read-modify-write: without the lock, two
+ * threads creating instances at the same time both find the signal unset, both
+ * install dispatch_signal, and the second records the first's dispatch_signal
+ * as old_handler - so the next delivery recurses into itself until the stack
+ * is gone. hak_openstd() reaches here for SIGPIPE, so this is the ordinary
+ * multi-instance path, not an exotic one.
+ *
+ * Single exit, so the lock is released however it ends. */
 static int set_signal_handler (int sig, sig_handler_t handler, int extra_flags)
 {
+	int rc = 0;
+
+	GLOBAL_LOCK();
+
 	if (g_sig_state[sig].handler)
 	{
 		/* already set - allow handler change. ignore extra_flags. */
-		if (g_sig_state[sig].handler == (hak_oow_t)handler) return -1;
-		g_sig_state[sig].handler = (hak_oow_t)handler;
+		if (g_sig_state[sig].handler == (hak_oow_t)handler) rc = -1;
+		else g_sig_state[sig].handler = (hak_oow_t)handler;
 	}
 	else
 	{
 		struct sigaction sa, oldsa;
 
-		if (sigaction(sig, HAK_NULL, &oldsa) == -1) return -1;
-
-		HAK_MEMSET(&sa, 0, HAK_SIZEOF(sa));
-		if (oldsa.sa_flags & SA_SIGINFO)
-		{
-			sa.sa_sigaction = dispatch_siginfo;
-			sa.sa_flags = SA_SIGINFO;
-		}
+		if (sigaction(sig, HAK_NULL, &oldsa) == -1) rc = -1;
 		else
 		{
-			sa.sa_handler = dispatch_signal;
-			sa.sa_flags = 0;
+			HAK_MEMSET(&sa, 0, HAK_SIZEOF(sa));
+			if (oldsa.sa_flags & SA_SIGINFO)
+			{
+				sa.sa_sigaction = dispatch_siginfo;
+				sa.sa_flags = SA_SIGINFO;
+			}
+			else
+			{
+				sa.sa_handler = dispatch_signal;
+				sa.sa_flags = 0;
+			}
+			sa.sa_flags |= extra_flags;
+			/*sa.sa_flags |= SA_INTERUPT;
+			sa.sa_flags |= SA_RESTART;*/
+			sigfillset(&sa.sa_mask); /* block all signals while the handler is being executed */
+
+			if (sigaction(sig, &sa, HAK_NULL) == -1) rc = -1;
+			else
+			{
+				g_sig_state[sig].handler = (hak_oow_t)handler;
+				if (oldsa.sa_flags & SA_SIGINFO)
+					g_sig_state[sig].old_handler = (hak_oow_t)oldsa.sa_sigaction;
+				else
+					g_sig_state[sig].old_handler = (hak_oow_t)oldsa.sa_handler;
+
+				g_sig_state[sig].old_sa_mask = oldsa.sa_mask;
+				g_sig_state[sig].old_sa_flags = oldsa.sa_flags;
+			}
 		}
-		sa.sa_flags |= extra_flags;
-		/*sa.sa_flags |= SA_INTERUPT;
-		sa.sa_flags |= SA_RESTART;*/
-		sigfillset (&sa.sa_mask); /* block all signals while the handler is being executed */
-
-		if (sigaction(sig, &sa, HAK_NULL) == -1) return -1;
-
-		g_sig_state[sig].handler = (hak_oow_t)handler;
-		if (oldsa.sa_flags & SA_SIGINFO)
-			g_sig_state[sig].old_handler = (hak_oow_t)oldsa.sa_sigaction;
-		else
-			g_sig_state[sig].old_handler = (hak_oow_t)oldsa.sa_handler;
-
-		g_sig_state[sig].old_sa_mask = oldsa.sa_mask;
-		g_sig_state[sig].old_sa_flags = oldsa.sa_flags;
 	}
 
-	return 0;
+	GLOBAL_UNLOCK();
+	return rc;
 }
 
+/* same read-modify-write, same lock. single exit. */
 static int unset_signal_handler (int sig)
 {
 	struct sigaction sa;
+	int rc = 0;
 
-	if (!g_sig_state[sig].handler) return -1; /* not set */
+	GLOBAL_LOCK();
 
-	HAK_MEMSET(&sa, 0, HAK_SIZEOF(sa));
-	sa.sa_mask = g_sig_state[sig].old_sa_mask;
-	sa.sa_flags = g_sig_state[sig].old_sa_flags;
-
-	if (sa.sa_flags & SA_SIGINFO)
-	{
-		sa.sa_sigaction = (void(*)(int,siginfo_t*,void*))g_sig_state[sig].old_handler;
-	}
+	if (!g_sig_state[sig].handler) rc = -1; /* not set */
 	else
 	{
-		sa.sa_handler = (sig_handler_t)g_sig_state[sig].old_handler;
+		HAK_MEMSET(&sa, 0, HAK_SIZEOF(sa));
+		sa.sa_mask = g_sig_state[sig].old_sa_mask;
+		sa.sa_flags = g_sig_state[sig].old_sa_flags;
+
+		if (sa.sa_flags & SA_SIGINFO)
+		{
+			sa.sa_sigaction = (void(*)(int,siginfo_t*,void*))g_sig_state[sig].old_handler;
+		}
+		else
+		{
+			sa.sa_handler = (sig_handler_t)g_sig_state[sig].old_handler;
+		}
+
+		if (sigaction(sig, &sa, HAK_NULL) == -1) rc = -1;
+		else
+		{
+			g_sig_state[sig].handler = 0;
+			/* keep other fields untouched */
+		}
 	}
 
-	if (sigaction(sig, &sa, HAK_NULL) == -1) return -1;
-
-	g_sig_state[sig].handler = 0;
-	/* keep other fields untouched */
-
-	return 0;
+	GLOBAL_UNLOCK();
+	return rc;
 }
 
 static int is_signal_handler_set (int sig)
 {
-	return !!g_sig_state[sig].handler;
+	int rc;
+	GLOBAL_LOCK();
+	rc = !!g_sig_state[sig].handler;
+	GLOBAL_UNLOCK();
+	return rc;
 }
 #endif
 
-
-static HAK_INLINE void abort_all_haks (int signo)
+/* post a signal number into every hak instance's signal descriptor, so that
+ * hak code waiting on it wakes up. this runs in signal context, so write() is
+ * about all it may legally do. */
+static HAK_INLINE void post_sig_to_all_haks (int signo)
 {
-	/* TODO: make this atomic */
+	/* This walks the instance chain unlocked, and must: it runs in signal
+	 * context, where pthread_mutex_lock() is not async-signal-safe and would
+	 * deadlock outright if the signal landed on the thread already holding
+	 * GLOBAL_LOCK. Do not add one here.
+	 *
+	 * chain() and unchain() do hold the lock, so writers cannot race each
+	 * other; what remains is that a signal arriving in the middle of one can
+	 * see the chain mid-relink. Closing that needs the chain made safe for a
+	 * lock-free reader rather than another mutex. */
 	if (g_hak)
 	{
 		hak_t* hak = g_hak;
@@ -2728,12 +2795,88 @@ static HAK_INLINE void abort_all_haks (int signo)
 			hak_uint8_t u8;
 			/*hak_abortstd(hak);*/
 			u8 = signo & 0xFF;
-			write (xtn->sigfd.p[1], &u8, HAK_SIZEOF(u8));
+			write(xtn->sigfd.p[1], &u8, HAK_SIZEOF(u8));
 			hak = xtn->next;
 		}
 		while (hak);
 	}
-	/* TODO: make this atomic */
+}
+
+/* signals that must never be routed: either they cannot be caught, or turning
+ * them into a byte on a pipe and carrying on would paper over a crash, or hak
+ * itself owns them for process switching. */
+static int sig_is_routable (hak_t* hak, int signo)
+{
+	switch (signo)
+	{
+		case 0: /* just in case all below signals are not defined at all */
+	#if defined(SIGKILL)
+		case SIGKILL:
+	#endif
+	#if defined(SIGSTOP)
+		case SIGSTOP:
+	#endif
+	#if defined(SIGSEGV)
+		case SIGSEGV:
+	#endif
+	#if defined(SIGBUS)
+		case SIGBUS:
+	#endif
+	#if defined(SIGFPE)
+		case SIGFPE:
+	#endif
+	#if defined(SIGILL)
+		case SIGILL:
+	#endif
+	#if defined(SIGVTALRM)
+		case SIGVTALRM: /* the process-switching ticker */
+	#endif
+	#if defined(SIGALRM)
+		case SIGALRM:   /* the ticker's fallback */
+	#endif
+			return 0;
+
+		default:
+			return signo > 0 && signo < NSIG;
+	}
+}
+
+static int vm_catchsig (hak_t* hak, int signo, int enable)
+{
+#if defined(HAVE_SIGACTION)
+	if (!sig_is_routable(hak, signo))
+	{
+		hak_seterrbfmt(hak, HAK_EINVAL, "signal %d not routable", signo);
+		return -1;
+	}
+
+	if (enable)
+	{
+		/* set_signal_handler() reports -1 when the same handler is already
+		 * installed; for a caller asking to catch a signal that is already
+		 * caught, that is success. */
+		if (is_signal_handler_set(signo)) return 0;
+
+		if (set_signal_handler(signo, post_sig_to_all_haks, SA_RESTART) <= -1)
+		{
+			hak_seterrbfmtwithsyserr(hak, 0, errno, "unable to catch signal %d", signo);
+			return -1;
+		}
+	}
+	else
+	{
+		if (!is_signal_handler_set(signo)) return 0;
+		if (unset_signal_handler(signo) <= -1)
+		{
+			hak_seterrbfmtwithsyserr(hak, 0, errno, "unable to uncatch signal %d", signo);
+			return -1;
+		}
+	}
+	return 0;
+#else
+	hak_seterrnum(hak, HAK_ENOIMPL);
+	return -1;
+#endif
 }
 
 static HAK_INLINE void do_nothing (int unused)
@@ -2745,7 +2888,8 @@ static HAK_INLINE void do_nothing (int unused)
 
 static HAK_INLINE void swproc_all_haks (int unused)
 {
-	/* TODO: make this atomic */
+	/* the process-switching ticker handler - signal context again, so the same
+	 * rule as post_sig_to_all_haks(): no lock here. */
 	if (g_hak)
 	{
 		hak_t* hak = g_hak;
@@ -2757,7 +2901,6 @@ static HAK_INLINE void swproc_all_haks (int unused)
 		}
 		while (hak);
 	}
-	/* TODO: make this atomic */
 }
 
 #if defined(_WIN32)
@@ -2791,11 +2934,11 @@ static DWORD WINAPI msw_wait_for_timer_event (LPVOID ctx)
 		/* if manual resetting is enabled, the reset is done after
 		 * swproc_all_haks has been called. so the interval is the
 		 * interval specified plus the time taken in swproc_all_haks. */
-		SetWaitableTimer (msw_tick_timer, &li, 0, HAK_NULL, HAK_NULL, FALSE);
+		SetWaitableTimer(msw_tick_timer, &li, 0, HAK_NULL, HAK_NULL, FALSE);
 	#else
 		/* with auto reset, the interval is not affected by time taken
 		 * in swproc_all_haks() */
-		SetWaitableTimer (msw_tick_timer, &li, HAK_USEC_TO_MSEC(HAK_TICKER_INTERVAL_USECS), HAK_NULL, HAK_NULL, FALSE);
+		SetWaitableTimer(msw_tick_timer, &li, HAK_USEC_TO_MSEC(HAK_TICKER_INTERVAL_USECS), HAK_NULL, HAK_NULL, FALSE);
 	#endif
 
 		while (!msw_tick_done)
@@ -2804,14 +2947,14 @@ static DWORD WINAPI msw_wait_for_timer_event (LPVOID ctx)
 			{
 				swproc_all_haks (0);
 			#if defined(MSW_TICKER_MANUAL_RESET)
-				SetWaitableTimer (msw_tick_timer, &li, 0, HAK_NULL, HAK_NULL, FALSE);
+				SetWaitableTimer(msw_tick_timer, &li, 0, HAK_NULL, HAK_NULL, FALSE);
 			#endif
 			}
 		}
 
-		CancelWaitableTimer (msw_tick_timer);
+		CancelWaitableTimer(msw_tick_timer);
 
-		CloseHandle (msw_tick_timer);
+		CloseHandle(msw_tick_timer);
 		msw_tick_timer = HAK_NULL;
 	}
 
@@ -2875,32 +3018,32 @@ static void EXPENTRY os2_wait_for_timer_event (ULONG x)
 		swproc_all_haks (0);
 		DosResetEventSem (os2_tick_sem, &count);
 	#else
-		DosResetEventSem (os2_tick_sem, &count);
+		DosResetEventSem(os2_tick_sem, &count);
 		swproc_all_haks (0);
 	#endif
 	}
 
-	DosStopTimer (os2_tick_timer);
-	DosCloseEventSem (os2_tick_sem);
+	DosStopTimer(os2_tick_timer);
+	DosCloseEventSem(os2_tick_sem);
 
 done:
 	os2_tick_timer = NULL;
 	os2_tick_sem = NULL;
 	os2_tick_done = 0;
-	DosExit (EXIT_THREAD, 0);
+	DosExit(EXIT_THREAD, 0);
 }
 
 static HAK_INLINE void start_ticker (void)
 {
 	static TID tid;
 	os2_tick_done = 0;
-	DosCreateThread (&tid, os2_wait_for_timer_event, 0, 0, 4096);
+	DosCreateThread(&tid, os2_wait_for_timer_event, 0, 0, 4096);
 	/* TODO: Error check */
 }
 
 static HAK_INLINE void stop_ticker (void)
 {
-	if (os2_tick_sem) DosPostEventSem (os2_tick_sem);
+	if (os2_tick_sem) DosPostEventSem(os2_tick_sem);
 	os2_tick_done = 1;
 }
 
@@ -2924,19 +3067,19 @@ static void interrupt dos_timer_intr_handler (void)
 	*/
 
 	/* The timer interrupt (normally) occurs 18.2 times per second. */
-	swproc_all_haks (0);
-	_chain_intr (dos_prev_timer_intr_handler);
+	swproc_all_haks(0);
+	_chain_intr(dos_prev_timer_intr_handler);
 }
 
 static HAK_INLINE void start_ticker (void)
 {
 	dos_prev_timer_intr_handler = _dos_getvect(0x1C);
-	_dos_setvect (0x1C, dos_timer_intr_handler);
+	_dos_setvect(0x1C, dos_timer_intr_handler);
 }
 
 static HAK_INLINE void stop_ticker (void)
 {
-	_dos_setvect (0x1C, dos_prev_timer_intr_handler);
+	_dos_setvect(0x1C, dos_prev_timer_intr_handler);
 }
 
 #elif defined(macintosh)
@@ -2949,23 +3092,23 @@ static ProcessSerialNumber mac_psn;
 
 static pascal void timer_intr_handler (TMTask* task)
 {
-	swproc_all_haks (0);
-	WakeUpProcess (&mac_psn);
-	PrimeTime ((QElem*)&mac_tmtask, TMTASK_DELAY);
+	swproc_all_haks(0);
+	WakeUpProcess(&mac_psn);
+	PrimeTime((QElem*)&mac_tmtask, TMTASK_DELAY);
 }
 
 static HAK_INLINE void start_ticker (void)
 {
-	GetCurrentProcess (&mac_psn);
+	GetCurrentProcess(&mac_psn);
 	HAK_MEMSET(&mac_tmtask, 0, HAK_SIZEOF(mac_tmtask));
 	mac_tmtask.tmAddr = NewTimerProc (timer_intr_handler);
-	InsXTime ((QElem*)&mac_tmtask);
-	PrimeTime ((QElem*)&mac_tmtask, TMTASK_DELAY);
+	InsXTime((QElem*)&mac_tmtask);
+	PrimeTime((QElem*)&mac_tmtask, TMTASK_DELAY);
 }
 
 static HAK_INLINE void stop_ticker (void)
 {
-	RmvTime ((QElem*)&mac_tmtask);
+	RmvTime((QElem*)&mac_tmtask);
 	/*DisposeTimerProc (mac_tmtask.tmAddr);*/
 }
 
@@ -2984,7 +3127,7 @@ static HAK_INLINE void start_ticker (void)
 		{
 			/* WSL supports ITIMER_VIRTUAL only as of windows 10.0.18362.413.
 			   the following is a fallback which will get */
-			unset_signal_handler (SIGVTALRM);
+			unset_signal_handler(SIGVTALRM);
 
 		#if defined(SIGALRM) && defined(ITIMER_REAL)
 			if (set_signal_handler(SIGALRM, swproc_all_haks, SA_RESTART) >= 0)
@@ -3014,7 +3157,7 @@ static HAK_INLINE void stop_ticker (void)
 		itv.it_interval.tv_usec = 0;
 		itv.it_value.tv_sec = 0; /* make setitimer() one-shot only */
 		itv.it_value.tv_usec = 0;
-		setitimer (ITIMER_VIRTUAL, &itv, HAK_NULL);
+		setitimer(ITIMER_VIRTUAL, &itv, HAK_NULL);
 	}
 
 	#if defined(SIGALRM) && defined(ITIMER_REAL)
@@ -3025,7 +3168,7 @@ static HAK_INLINE void stop_ticker (void)
 		itv.it_interval.tv_usec = 0;
 		itv.it_value.tv_sec = 0; /* make setitimer() one-shot only */
 		itv.it_value.tv_usec = 0;
-		setitimer (ITIMER_REAL, &itv, HAK_NULL);
+		setitimer(ITIMER_REAL, &itv, HAK_NULL);
 	}
 	#endif
 }
@@ -3043,7 +3186,7 @@ static HAK_INLINE void start_ticker (void)
 
 		if (ticker_pid <= -1)
 		{
-			unset_signal_handler (SIGALRM);
+			unset_signal_handler(SIGALRM);
 		}
 		else if (ticker_pid == 0)
 		{
@@ -3054,18 +3197,18 @@ static HAK_INLINE void start_ticker (void)
 				struct timespec ts;
 				ts.tv_sec = 0;
 				ts.tv_nsec = HAK_USEC_TO_NSEC(HAK_TICKER_INTERVAL_USECS) * 2;
-				nanosleep (&ts, HAK_NULL);
+				nanosleep(&ts, HAK_NULL);
 			#elif defined(HAVE_USLEEP)
-				usleep (HAK_TICKER_INTERVAL_USECS * 2);
+				usleep(HAK_TICKER_INTERVAL_USECS * 2);
 
 			#else
 			#	error UNDEFINED SLEEP
 			#endif
 
-				kill (getppid(), SIGALRM);
+				kill(getppid(), SIGALRM);
 			}
 
-			_exit (0);
+			_exit(0);
 		}
 
 		/* parent just carries on. */
@@ -3079,11 +3222,11 @@ static HAK_INLINE void stop_ticker (void)
 	if (ticker_pid >= 0)
 	{
 		int wstatus;
-		kill (ticker_pid, SIGKILL);
+		kill(ticker_pid, SIGKILL);
 		while (waitpid(ticker_pid, &wstatus, 0) != ticker_pid);
 		ticker_pid = -1;
 
-		unset_signal_handler (SIGALRM);
+		unset_signal_handler(SIGALRM);
 	}
 #endif
 }
@@ -3138,7 +3281,7 @@ static const char* msw_dlerror (void)
 	static char buf[256];
 	DWORD rc;
 
-	rc = FormatMessageA (
+	rc = FormatMessageA(
 		FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
 		NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
 		buf, HAK_COUNTOF(buf), HAK_NULL
@@ -3195,7 +3338,7 @@ static void* mach_dlopen (const char* path)
 static HAK_INLINE void mach_dlclose (void* handle)
 {
 	mach_dlerror_str = "";
-	NSUnLinkModule (handle, NSUNLINKMODULE_OPTION_NONE);
+	NSUnLinkModule(handle, NSUNLINKMODULE_OPTION_NONE);
 }
 
 static HAK_INLINE void* mach_dlsym (void* handle, const char* name)
@@ -3211,7 +3354,7 @@ static const char* mach_dlerror (void)
 	NSLinkEditErrors err;
 
 	if (mach_dlerror_str[0] == '\0')
-		NSLinkEditError (&err, &err_no, &err_file, &mach_dlerror_str);
+		NSLinkEditError(&err, &err_no, &err_file, &mach_dlerror_str);
 
 	return mach_dlerror_str;
 }
@@ -3295,17 +3438,17 @@ retry:
 	hak_copy_bcstr(&bufptr[xlen], bufcapa - xlen, HAK_DEFAULT_PFMODPOSTFIX);
 
 	/* both prefix and postfix attached. for instance, libhak-xxx */
-	HAK_DEBUG3 (hak, "Opening(ext) PFMOD %hs[%js] - %hs\n", &bufptr[dlen], name, bufptr);
+	HAK_DEBUG3(hak, "Opening(ext) PFMOD %hs[%js] - %hs\n", &bufptr[dlen], name, bufptr);
 	handle = sys_dl_openext(bufptr);
 	if (!handle)
 	{
-		HAK_DEBUG3 (hak, "Unable to open(ext) PFMOD %hs[%js] - %hs\n", &bufptr[dlen], name, sys_dl_error());
+		HAK_DEBUG3(hak, "Unable to open(ext) PFMOD %hs[%js] - %hs\n", &bufptr[dlen], name, sys_dl_error());
 
 		if (dlen > 0)
 		{
 			handle = sys_dl_openext(&bufptr[0]);
 			if (handle) goto pfmod_open_ok;
-			HAK_DEBUG3 (hak, "Unable to open(ext) PFMOD %hs[%js] - %hs\n", &bufptr[0], name, sys_dl_error());
+			HAK_DEBUG3(hak, "Unable to open(ext) PFMOD %hs[%js] - %hs\n", &bufptr[0], name, sys_dl_error());
 		}
 
 		/* try without prefix and postfix */
@@ -3316,7 +3459,7 @@ retry:
 			hak_bch_t* dash;
 			const hak_bch_t* dl_errstr;
 			dl_errstr = sys_dl_error();
-			HAK_DEBUG3 (hak, "Unable to open(ext) PFMOD %hs[%js] - %hs\n", &bufptr[len], name, dl_errstr);
+			HAK_DEBUG3(hak, "Unable to open(ext) PFMOD %hs[%js] - %hs\n", &bufptr[len], name, dl_errstr);
 			hak_seterrbfmt(hak, HAK_ESYSERR, "unable to open(ext) PFMOD %js - %hs", name, dl_errstr);
 
 			dash = hak_rfind_bchar(bufptr, hak_count_bcstr(bufptr), '-');
@@ -3332,13 +3475,13 @@ retry:
 		}
 		else
 		{
-			HAK_DEBUG3 (hak, "Opened(ext) PFMOD %hs[%js] handle %p\n", &bufptr[len], name, handle);
+			HAK_DEBUG3(hak, "Opened(ext) PFMOD %hs[%js] handle %p\n", &bufptr[len], name, handle);
 		}
 	}
 	else
 	{
 	pfmod_open_ok:
-		HAK_DEBUG3 (hak, "Opened(ext) PFMOD %hs[%js] handle %p\n", &bufptr[dlen], name, handle);
+		HAK_DEBUG3(hak, "Opened(ext) PFMOD %hs[%js] handle %p\n", &bufptr[dlen], name, handle);
 	}
 
 	return handle;
@@ -3363,10 +3506,10 @@ static void* dlopen_raw (hak_t* hak, const hak_ooch_t* name, hak_bch_t* bufptr, 
 		{
 			const hak_bch_t* dl_errstr;
 			dl_errstr = sys_dl_error();
-			HAK_DEBUG2 (hak, "Unable to open DL %hs - %hs\n", bufptr, dl_errstr);
+			HAK_DEBUG2(hak, "Unable to open DL %hs - %hs\n", bufptr, dl_errstr);
 			hak_seterrbfmt(hak, HAK_ESYSERR, "unable to open DL %js - %hs", name, dl_errstr);
 		}
-		else HAK_DEBUG2 (hak, "Opened DL %hs handle %p\n", bufptr, handle);
+		else HAK_DEBUG2(hak, "Opened DL %hs handle %p\n", bufptr, handle);
 	}
 	else
 	{
@@ -3375,10 +3518,10 @@ static void* dlopen_raw (hak_t* hak, const hak_ooch_t* name, hak_bch_t* bufptr, 
 		{
 			const hak_bch_t* dl_errstr;
 			dl_errstr = sys_dl_error();
-			HAK_DEBUG2 (hak, "Unable to open(ext) DL %hs - %hs\n", bufptr, dl_errstr);
+			HAK_DEBUG2(hak, "Unable to open(ext) DL %hs - %hs\n", bufptr, dl_errstr);
 			hak_seterrbfmt(hak, HAK_ESYSERR, "unable to open(ext) DL %js - %hs", name, dl_errstr);
 		}
-		else HAK_DEBUG2 (hak, "Opened(ext) DL %hs handle %p\n", bufptr, handle);
+		else HAK_DEBUG2(hak, "Opened(ext) DL %hs handle %p\n", bufptr, handle);
 	}
 
 	return handle;
@@ -3461,7 +3604,7 @@ static void* dl_open (hak_t* hak, const hak_ooch_t* name, int flags)
 
 /* TODO: support various platforms */
 	/* TODO: implemenent this */
-	HAK_DEBUG1 (hak, "Dynamic loading not implemented - cannot open %js\n", name);
+	HAK_DEBUG1(hak, "Dynamic loading not implemented - cannot open %js\n", name);
 	hak_seterrbfmt(hak, HAK_ENOIMPL, "dynamic loading not implemented - cannot open %js", name);
 	return HAK_NULL;
 #endif
@@ -3470,12 +3613,12 @@ static void* dl_open (hak_t* hak, const hak_ooch_t* name, int flags)
 static void dl_close (hak_t* hak, void* handle)
 {
 #if defined(USE_LTDL) || defined(USE_DLFCN) || defined(USE_MACH_O_DYLD)
-	HAK_DEBUG1 (hak, "Closed DL handle %p\n", handle);
-	sys_dl_close (handle);
+	HAK_DEBUG1(hak, "Closed DL handle %p\n", handle);
+	sys_dl_close(handle);
 
 #else
 	/* TODO: implemenent this */
-	HAK_DEBUG1 (hak, "Dynamic loading not implemented - cannot close handle %p\n", handle);
+	HAK_DEBUG1(hak, "Dynamic loading not implemented - cannot close handle %p\n", handle);
 #endif
 }
 
@@ -3490,7 +3633,7 @@ static void* dl_getsym (hak_t* hak, void* handle, const hak_ooch_t* name)
 	#if defined(HAK_OOCH_IS_UCH)
 	if (hak_convootobcstr(hak, name, &ucslen, HAK_NULL, &bcslen) <= -1) return HAK_NULL;
 	#else
-	bcslen = hak_count_bcstr (name);
+	bcslen = hak_count_bcstr(name);
 	#endif
 
 	if (bcslen >= HAK_COUNTOF(stabuf) - 2)
@@ -3538,7 +3681,7 @@ static void* dl_getsym (hak_t* hak, void* handle, const hak_ooch_t* name)
 				{
 					const hak_bch_t* dl_errstr;
 					dl_errstr = sys_dl_error();
-					HAK_DEBUG3 (hak, "Failed to get module symbol %js from handle %p - %hs\n", name, handle, dl_errstr);
+					HAK_DEBUG3(hak, "Failed to get module symbol %js from handle %p - %hs\n", name, handle, dl_errstr);
 					hak_seterrbfmt(hak, HAK_ENOENT, "unable to get module symbol %hs - %hs", symname, dl_errstr);
 
 				}
@@ -3546,13 +3689,13 @@ static void* dl_getsym (hak_t* hak, void* handle, const hak_ooch_t* name)
 		}
 	}
 
-	if (sym) HAK_DEBUG3 (hak, "Loaded module symbol %js from handle %p - %hs\n", name, handle, symname);
+	if (sym) HAK_DEBUG3(hak, "Loaded module symbol %js from handle %p - %hs\n", name, handle, symname);
 	if (bufptr != stabuf) hak_freemem(hak, bufptr);
 	return sym;
 
 #else
 	/* TODO: IMPLEMENT THIS */
-	HAK_DEBUG2 (hak, "Dynamic loading not implemented - Cannot load module symbol %js from handle %p\n", name, handle);
+	HAK_DEBUG2(hak, "Dynamic loading not implemented - Cannot load module symbol %js from handle %p\n", name, handle);
 	hak_seterrbfmt(hak, HAK_ENOIMPL, "dynamic loading not implemented - Cannot load module symbol %js from handle %p", name, handle);
 	return HAK_NULL;
 #endif
@@ -3587,33 +3730,33 @@ static HAK_INLINE void chain (hak_t* hak)
 {
 	xtn_t* xtn = GET_XTN(hak);
 
-	/* TODO: make this atomic */
+	GLOBAL_LOCK();
 	xtn->prev = HAK_NULL;
 	xtn->next = g_hak;
 
 	if (g_hak) GET_XTN(g_hak)->prev = hak;
-	else g_hak = hak;
-	/* TODO: make this atomic */
+	g_hak = hak; /* the new node is the head whether or not the list was empty */
+	GLOBAL_UNLOCK();
 }
 
 static HAK_INLINE void unchain (hak_t* hak)
 {
 	xtn_t* xtn = GET_XTN(hak);
 
-	/* TODO: make this atomic */
+	GLOBAL_LOCK();
 	if (xtn->prev) GET_XTN(xtn->prev)->next = xtn->next;
 	else g_hak = xtn->next;
 	if (xtn->next) GET_XTN(xtn->next)->prev = xtn->prev;
-	/* TODO: make this atomic */
 	xtn->prev = HAK_NULL;
-	xtn->prev = HAK_NULL;
+	xtn->next = HAK_NULL;
+	GLOBAL_UNLOCK();
 }
 
 static void cb_on_fini (hak_t* hak)
 {
 	xtn_t* xtn = GET_XTN(hak);
-	if ((xtn->log.fd_flags & LOGFD_OPENED_HERE) && xtn->log.fd >= 0) close (xtn->log.fd);
-	reset_log_to_default (xtn);
+	if ((xtn->log.fd_flags & LOGFD_OPENED_HERE) && xtn->log.fd >= 0) close(xtn->log.fd);
+	reset_log_to_default(xtn);
 	unchain(hak);
 }
 
@@ -3646,7 +3789,7 @@ static void cb_on_option (hak_t* hak, hak_option_t id, const void* value)
 	}
 	else
 	{
-		if ((xtn->log.fd_flags & LOGFD_OPENED_HERE) && xtn->log.fd >= 0) close (xtn->log.fd);
+		if ((xtn->log.fd_flags & LOGFD_OPENED_HERE) && xtn->log.fd >= 0) close(xtn->log.fd);
 
 		xtn->log.fd = fd;
 		xtn->log.fd_flags &= ~LOGFD_TTY;
@@ -3702,14 +3845,14 @@ attempt_to_bind:
 	z = accept(x, HAK_NULL, HAK_NULL);
 	if (z <= -1) goto oops;
 
-	soclose (x);
+	soclose(x);
 	p[0] = z;
 	p[1] = y;
 	return 0;
 
 oops:
-	if (y >= 0) soclose (y);
-	if (x >= 0) soclose (x);
+	if (y >= 0) soclose(y);
+	if (x >= 0) soclose(x);
 	return -1;
 }
 #endif
@@ -3793,14 +3936,14 @@ static int open_pipes (hak_t* hak, int p[2])
 static void close_pipes (hak_t* hak, int p[2])
 {
 #if defined(_WIN32)
-	_close (p[0]);
-	_close (p[1]);
+	_close(p[0]);
+	_close(p[1]);
 #elif defined(__OS2__)
-	soclose (p[0]);
-	soclose (p[1]);
+	soclose(p[0]);
+	soclose(p[1]);
 #else
-	close (p[0]);
-	close (p[1]);
+	close(p[0]);
+	close(p[1]);
 #endif
 	p[0] = -1;
 	p[1] = -1;
@@ -3821,13 +3964,13 @@ static int cb_vm_startup (hak_t* hak)
 	if (xtn->ep == -1)
 	{
 		hak_seterrwithsyserr(hak, 0, errno);
-		HAK_DEBUG1 (hak, "Cannot create devpoll - %hs\n", strerror(errno));
+		HAK_DEBUG1(hak, "Cannot create devpoll - %hs\n", strerror(errno));
 		goto oops;
 	}
 
 	#if defined(FD_CLOEXEC)
 	flags = fcntl(xtn->ep, F_GETFD);
-	if (flags >= 0) fcntl (xtn->ep, F_SETFD, flags | FD_CLOEXEC);
+	if (flags >= 0) fcntl(xtn->ep, F_SETFD, flags | FD_CLOEXEC);
 	#endif
 
 #elif defined(USE_KQUEUE)
@@ -3840,13 +3983,13 @@ static int cb_vm_startup (hak_t* hak)
 	if (xtn->ep == -1)
 	{
 		hak_seterrwithsyserr(hak, 0, errno);
-		HAK_DEBUG1 (hak, "Cannot create kqueue - %hs\n", strerror(errno));
+		HAK_DEBUG1(hak, "Cannot create kqueue - %hs\n", strerror(errno));
 		goto oops;
 	}
 
 	#if defined(FD_CLOEXEC)
 	flags = fcntl(xtn->ep, F_GETFD);
-	if (flags >= 0 && !(flags & FD_CLOEXEC)) fcntl (xtn->ep, F_SETFD, flags | FD_CLOEXEC);
+	if (flags >= 0 && !(flags & FD_CLOEXEC)) fcntl(xtn->ep, F_SETFD, flags | FD_CLOEXEC);
 	#endif
 
 #elif defined(USE_EPOLL)
@@ -3859,24 +4002,24 @@ static int cb_vm_startup (hak_t* hak)
 	if (xtn->ep == -1)
 	{
 		hak_seterrwithsyserr(hak, 0, errno);
-		HAK_DEBUG1 (hak, "Cannot create epoll - %hs\n", strerror(errno));
+		HAK_DEBUG1(hak, "Cannot create epoll - %hs\n", strerror(errno));
 		goto oops;
 	}
 
 	#if defined(FD_CLOEXEC)
 	flags = fcntl(xtn->ep, F_GETFD);
-	if (flags >= 0 && !(flags & FD_CLOEXEC)) fcntl (xtn->ep, F_SETFD, flags | FD_CLOEXEC);
+	if (flags >= 0 && !(flags & FD_CLOEXEC)) fcntl(xtn->ep, F_SETFD, flags | FD_CLOEXEC);
 	#endif
 
 #elif defined(USE_POLL)
 
-	MUTEX_INIT (&xtn->ev.reg.pmtx);
+	MUTEX_INIT(&xtn->ev.reg.pmtx);
 
 #elif defined(USE_SELECT)
-	FD_ZERO (&xtn->ev.reg.rfds);
-	FD_ZERO (&xtn->ev.reg.wfds);
+	FD_ZERO(&xtn->ev.reg.rfds);
+	FD_ZERO(&xtn->ev.reg.wfds);
 	xtn->ev.reg.maxfd = -1;
-	MUTEX_INIT (&xtn->ev.reg.smtx);
+	MUTEX_INIT(&xtn->ev.reg.smtx);
 #endif /* USE_DEVPOLL */
 
 	if (open_pipes(hak, xtn->sigfd.p) <= -1) goto oops;
@@ -3888,9 +4031,9 @@ static int cb_vm_startup (hak_t* hak)
 
 	if (_add_poll_fd(hak, xtn->iothr.p[0], XPOLLIN) <= -1) goto oops;
 
-	pthread_mutex_init (&xtn->ev.mtx, HAK_NULL);
-	pthread_cond_init (&xtn->ev.cnd, HAK_NULL);
-	pthread_cond_init (&xtn->ev.cnd2, HAK_NULL);
+	pthread_mutex_init(&xtn->ev.mtx, HAK_NULL);
+	pthread_cond_init(&xtn->ev.cnd, HAK_NULL);
+	pthread_cond_init(&xtn->ev.cnd2, HAK_NULL);
 	xtn->ev.halting = 0;
 
 	xtn->iothr.abort = 0;
@@ -3906,21 +4049,21 @@ oops:
 #if defined(USE_THREAD)
 	if (iothr_pcount > 0)
 	{
-		close (xtn->iothr.p[0]);
-		close (xtn->iothr.p[1]);
+		close(xtn->iothr.p[0]);
+		close(xtn->iothr.p[1]);
 	}
 #endif
 
 	if (sigfd_pcount > 0)
 	{
-		close (xtn->sigfd.p[0]);
-		close (xtn->sigfd.p[1]);
+		close(xtn->sigfd.p[0]);
+		close(xtn->sigfd.p[1]);
 	}
 
 #if defined(USE_DEVPOLL) || defined(USE_EPOLL)
 	if (xtn->ep >= 0)
 	{
-		close (xtn->ep);
+		close(xtn->ep);
 		xtn->ep = -1;
 	}
 #endif
@@ -3937,7 +4080,7 @@ static void cb_vm_cleanup (hak_t* hak)
 #if defined(_WIN32)
 	if (xtn->waitable_timer)
 	{
-		CloseHandle (xtn->waitable_timer);
+		CloseHandle(xtn->waitable_timer);
 		xtn->waitable_timer = HAK_NULL;
 	}
 #endif
@@ -3946,14 +4089,14 @@ static void cb_vm_cleanup (hak_t* hak)
 	if (xtn->iothr.up)
 	{
 		xtn->iothr.abort = 1;
-		write (xtn->iothr.p[1], "Q", 1);
-		pthread_cond_signal (&xtn->ev.cnd);
-		pthread_join (xtn->iothr.thr, HAK_NULL);
+		write(xtn->iothr.p[1], "Q", 1);
+		pthread_cond_signal(&xtn->ev.cnd);
+		pthread_join(xtn->iothr.thr, HAK_NULL);
 		xtn->iothr.up = 0;
 	}
-	pthread_cond_destroy (&xtn->ev.cnd);
-	pthread_cond_destroy (&xtn->ev.cnd2);
-	pthread_mutex_destroy (&xtn->ev.mtx);
+	pthread_cond_destroy(&xtn->ev.cnd);
+	pthread_cond_destroy(&xtn->ev.cnd2);
+	pthread_mutex_destroy(&xtn->ev.mtx);
 
 	_del_poll_fd(hak, xtn->iothr.p[0]);
 	close_pipes(hak, xtn->iothr.p);
@@ -3964,20 +4107,20 @@ static void cb_vm_cleanup (hak_t* hak)
 #if defined(USE_DEVPOLL)
 	if (xtn->ep >= 0)
 	{
-		close (xtn->ep);
+		close(xtn->ep);
 		xtn->ep = -1;
 	}
 	/*destroy_poll_data_space(hak);*/
 #elif defined(USE_KQUEUE)
 	if (xtn->ep >= 0)
 	{
-		close (xtn->ep);
+		close(xtn->ep);
 		xtn->ep = -1;
 	}
 #elif defined(USE_EPOLL)
 	if (xtn->ep >= 0)
 	{
-		close (xtn->ep);
+		close(xtn->ep);
 		xtn->ep = -1;
 	}
 #elif defined(USE_POLL)
@@ -3994,12 +4137,12 @@ static void cb_vm_cleanup (hak_t* hak)
 		xtn->ev.buf = HAK_NULL;
 	}
 	/*destroy_poll_data_space(hak);*/
-	MUTEX_DESTROY (&xtn->ev.reg.pmtx);
+	MUTEX_DESTROY(&xtn->ev.reg.pmtx);
 #elif defined(USE_SELECT)
-	FD_ZERO (&xtn->ev.reg.rfds);
-	FD_ZERO (&xtn->ev.reg.wfds);
+	FD_ZERO(&xtn->ev.reg.rfds);
+	FD_ZERO(&xtn->ev.reg.wfds);
 	xtn->ev.reg.maxfd = -1;
-	MUTEX_DESTROY (&xtn->ev.reg.smtx);
+	MUTEX_DESTROY(&xtn->ev.reg.smtx);
 #endif
 }
 
@@ -4056,11 +4199,11 @@ static LONG WINAPI msw_exception_filter (struct _EXCEPTION_POINTERS* exinfo)
 	static wchar_t expath[128];
 
 #if defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0501)
-	GetModuleHandleExW (GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, exinfo->ExceptionRecord->ExceptionAddress, &mod);
+	GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, exinfo->ExceptionRecord->ExceptionAddress, &mod);
 	/*GetModuleInformation (GetCurrentProcess(), mod, &modinfo, HAK_SIZEOF(modinfo));*/
-	GetModuleFileNameExW (GetCurrentProcess(), mod, expath, HAK_SIZEOF(expath));
+	GetModuleFileNameExW(GetCurrentProcess(), mod, expath, HAK_SIZEOF(expath));
 #else
-	GetModuleFileNameW (HAK_NULL, expath, HAK_SIZEOF(expath));
+	GetModuleFileNameW(HAK_NULL, expath, HAK_SIZEOF(expath));
 #endif
 
 	excode = exinfo->ExceptionRecord->ExceptionCode;
@@ -4068,7 +4211,7 @@ static LONG WINAPI msw_exception_filter (struct _EXCEPTION_POINTERS* exinfo)
 
 	if (excode == EXCEPTION_ACCESS_VIOLATION || excode == EXCEPTION_IN_PAGE_ERROR)
 	{
-		_snwprintf (exmsg, HAK_COUNTOF(exmsg), L"Exception %s(%u) at 0x%p - Invalid operation at 0x%p - %s",
+		_snwprintf(exmsg, HAK_COUNTOF(exmsg), L"Exception %s(%u) at 0x%p - Invalid operation at 0x%p - %s",
 			msw_exception_name(excode), (unsigned int)excode,
 			exinfo->ExceptionRecord->ExceptionAddress,
 			(PVOID)exinfo->ExceptionRecord->ExceptionInformation[1],
@@ -4077,7 +4220,7 @@ static LONG WINAPI msw_exception_filter (struct _EXCEPTION_POINTERS* exinfo)
 	}
 	else
 	{
-		_snwprintf (exmsg, HAK_COUNTOF(exmsg), L"Exception %s(%u) at 0x%p",
+		_snwprintf(exmsg, HAK_COUNTOF(exmsg), L"Exception %s(%u) at 0x%p",
 			msw_exception_name(excode), (unsigned int)excode,
 			exinfo->ExceptionRecord->ExceptionAddress
 		);
@@ -4085,7 +4228,7 @@ static LONG WINAPI msw_exception_filter (struct _EXCEPTION_POINTERS* exinfo)
 
 	/* TODO: use a global output callback like vmprim.assertfail().
 	 *       vmprim.assertfail() requires 'hak'. so i need another global level callback for this */
-	MessageBoxW (NULL, exmsg, expath, MB_OK | MB_ICONERROR);
+	MessageBoxW(NULL, exmsg, expath, MB_OK | MB_ICONERROR);
 
 	/*return EXCEPTION_CONTINUE_SEARCH;*/
 	/*return EXCEPTION_CONTINUE_EXECUTION;*/
@@ -4119,9 +4262,20 @@ hak_t* hak_openstdwithmmgr (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_errinf_t* e
 	vmprim.vm_getsigfd = vm_getsigfd;
 	vmprim.vm_getsig = vm_getsig;
 	vmprim.vm_setsig = vm_setsig;
+	vmprim.vm_catchsig = vm_catchsig;
 
 	hak = hak_open(mmgr, HAK_SIZEOF(xtn_t) + xtnsize, &vmprim, errinf);
 	if (HAK_UNLIKELY(!hak)) return HAK_NULL;
+
+#if defined(HAVE_SIGACTION) && defined(SIGPIPE)
+	/* Neutralise SIGPIPE. This is not a policy choice an embedder would want
+	 * to make differently: with the default disposition, writing to a pipe or
+	 * socket whose peer has gone away kills the process outright, so no I/O
+	 * primitive here could ever report EPIPE to hak code. do_nothing() rather
+	 * than SIG_IGN so that dispatch_signal() still chains to whatever handler
+	 * the host application had installed. */
+	set_signal_handler(SIGPIPE, do_nothing, SA_RESTART);
+#endif
 
 	/* adjust the object size by the sizeof xtn_t so that hak_getxtn() returns the right pointer. */
 	hak->_instsize += HAK_SIZEOF(xtn_t);
@@ -4135,15 +4289,16 @@ hak_t* hak_openstdwithmmgr (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_errinf_t* e
 	cb.on_option = cb_on_option;
 	cb.vm_startup = cb_vm_startup;
 	cb.vm_cleanup = cb_vm_cleanup;
-	if (hak_regcb(hak, &cb) == HAK_NULL)
+	if (!hak_regcb(hak, &cb))
 	{
 		if (errinf) hak_geterrinf(hak, errinf);
+		unchain(hak); /* if registered properly, this would not be needed. but registration failed */
 		hak_close(hak);
 		return HAK_NULL;
 	}
 
 #if defined(_WIN32)
-	SetUnhandledExceptionFilter (msw_exception_filter);
+	SetUnhandledExceptionFilter(msw_exception_filter);
 #endif
 
 	return hak;
@@ -4799,20 +4954,21 @@ static hak_uint32_t ticker_started = 0;
 
 void hak_start_ticker (void)
 {
+/* TODO: use atomic op */
 	if (++ticker_started == 1)
 	{
-		start_ticker ();
+		start_ticker();
 	}
 }
 
 void hak_stop_ticker (void)
 {
+/* TODO: use atomic op */
 	if (ticker_started > 0 && --ticker_started == 0)
 	{
-		stop_ticker ();
+		stop_ticker();
 	}
 }
-
 
 /* ========================================================================== */
 
@@ -4821,7 +4977,7 @@ static BOOL WINAPI handle_term (DWORD ctrl_type)
 {
 	if (ctrl_type == CTRL_C_EVENT || ctrl_type == CTRL_CLOSE_EVENT)
 	{
-		abort_all_haks (SIGINT);
+		post_sig_to_all_haks(SIGINT);
 		return TRUE;
 	}
 
@@ -4830,12 +4986,12 @@ static BOOL WINAPI handle_term (DWORD ctrl_type)
 
 void hak_catch_termreq (void)
 {
-	SetConsoleCtrlHandler (handle_term, TRUE);
+	SetConsoleCtrlHandler(handle_term, TRUE);
 }
 
 void hak_uncatch_termreq (void)
 {
-	SetConsoleCtrlHandler (handle_term, FALSE);
+	SetConsoleCtrlHandler(handle_term, FALSE);
 }
 
 #elif defined(__OS2__)
@@ -4854,7 +5010,7 @@ static ULONG APIENTRY handle_term (
 		    p1->ExceptionInfo[0] == XCPT_SIGNAL_KILLPROC ||
 		    p1->ExceptionInfo[0] == XCPT_SIGNAL_BREAK)
 		{
-			abort_all_haks (SIGINT);
+			post_sig_to_all_haks(SIGINT);
 			return (DosAcknowledgeSignalException(p1->ExceptionInfo[0]) != NO_ERROR)? 1: XCPT_CONTINUE_EXECUTION;
 		}
 	}
@@ -4865,12 +5021,12 @@ static ULONG APIENTRY handle_term (
 void hak_catch_termreq (void)
 {
 	os2_excrr.ExceptionHandler = (ERR)handle_term;
-	DosSetExceptionHandler (&os2_excrr); /* TODO: check if NO_ERROR is returned */
+	DosSetExceptionHandler(&os2_excrr); /* TODO: check if NO_ERROR is returned */
 }
 
 void hak_uncatch_termreq (void)
 {
-	DosUnsetExceptionHandler (&os2_excrr);
+	DosUnsetExceptionHandler(&os2_excrr);
 }
 
 #elif defined(__DOS__)
@@ -4896,7 +5052,7 @@ static void __interrupt dos_int23_handler (void)
 	/* prevent the DOS interrupt handler from being called */
 	_XSTACK* stk = (_XSTACK*)_get_stk_frame();
 	stk->opts |= _STK_NOINT;
-	abort_all_haks (SIGINT);
+	post_sig_to_all_haks(SIGINT);
 	/* if i call the previous handler, it's likely to kill the application.
 	 * so i don't chain-call the previous handler. but another call could
 	 * have changed the handler already to something else. then it would be
@@ -4935,7 +5091,7 @@ static void __interrupt dos_int23_handler (void)
 		{
 			keyboard[sc] = 1;
 			/*printf ("%key pressed ... %x %c\n", sc, sc);*/
-			abort_all_haks (SIGINT);
+			post_sig_to_all_haks(SIGINT);
 		}
 
 		extended = 0;
@@ -4944,8 +5100,8 @@ static void __interrupt dos_int23_handler (void)
 	/*_chain_intr (dos_prev_int23_handler);*/
 	outp (0x20, 0x20);
 	#else
-	abort_all_haks (SIGINT);
-	_chain_intr (dos_prev_int23_handler);
+	post_sig_to_all_haks(SIGINT);
+	_chain_intr(dos_prev_int23_handler);
 	#endif
 #endif
 }
@@ -4953,12 +5109,12 @@ static void __interrupt dos_int23_handler (void)
 void hak_catch_termreq (void)
 {
 	dos_prev_int23_handler = _dos_getvect(IRQ_TERM);
-	_dos_setvect (IRQ_TERM, dos_int23_handler);
+	_dos_setvect(IRQ_TERM, dos_int23_handler);
 }
 
 void hak_uncatch_termreq (void)
 {
-	_dos_setvect (IRQ_TERM, dos_prev_int23_handler);
+	_dos_setvect(IRQ_TERM, dos_prev_int23_handler);
 	dos_prev_int23_handler = HAK_NULL;
 }
 
@@ -4966,9 +5122,9 @@ void hak_uncatch_termreq (void)
 
 void hak_catch_termreq (void)
 {
-	set_signal_handler(SIGTERM, abort_all_haks, 0);
-	set_signal_handler(SIGHUP, abort_all_haks, 0);
-	set_signal_handler(SIGINT, abort_all_haks, 0);
+	set_signal_handler(SIGTERM, post_sig_to_all_haks, 0);
+	set_signal_handler(SIGHUP, post_sig_to_all_haks, 0);
+	set_signal_handler(SIGINT, post_sig_to_all_haks, 0);
 	set_signal_handler(SIGPIPE, do_nothing, 0);
 }
 

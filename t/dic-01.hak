@@ -1,0 +1,133 @@
+## the dic module
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+d := #{}
+chk (dictionary? d) "#{} is a dictionary"
+chk (= (dic.size d) 0) "a new dictionary is empty"
+
+dic.put d "a" 1
+dic.put d "b" 2
+dic.put d "c" 3
+chk (= (dic.size d) 3) "dic.size counts the pairs"
+chk (= (dic.get d "b") 2) "dic.get finds a value"
+chk (error? (dic.get d "z")) "dic.get answers with an error for a missing key"
+chk (dic.has? d "b") "dic.has? is true for a present key"
+chk (not (dic.has? d "z")) "dic.has? is false for a missing key"
+
+## replacing a value must not grow the dictionary
+dic.put d "b" 22
+chk (= (dic.get d "b") 22) "dic.put replaces a value"
+chk (= (dic.size d) 3) "replacing does not change the size"
+
+## keys and values line up pair by pair, whatever order the buckets give
+ks := (dic.keys d)
+vs := (dic.values d)
+chk (array? ks) "dic.keys returns an array"
+chk (array? vs) "dic.values returns an array"
+chk (= (core.basicSize ks) 3) "dic.keys has one entry per pair"
+chk (= (core.basicSize vs) 3) "dic.values has one entry per pair"
+aligned := 0
+i := 0
+while (< i 3) {
+	if (= (dic.get d (core.basicAt ks i)) (core.basicAt vs i)) { aligned := (+ aligned 1) }
+	i := (+ i 1)
+}
+chk (= aligned 3) "dic.keys and dic.values are in the same order"
+
+chk (dic.delete d "b") "dic.delete reports a removal"
+chk (not (dic.delete d "b")) "dic.delete reports nothing to remove the second time"
+chk (= (dic.size d) 2) "dic.delete shrinks the dictionary"
+chk (not (dic.has? d "b")) "the deleted key is gone"
+chk (= (core.basicSize (dic.keys d)) 2) "dic.keys reflects the removal"
+
+## dic.make, for choosing a bucket size up front
+e := (dic.make 64)
+chk (dictionary? e) "dic.make returns a dictionary"
+chk (= (dic.size e) 0) "dic.make starts empty"
+dic.put e 1 "one"
+chk (eql? (dic.get e 1) "one") "a dic.make dictionary works"
+f := (dic.make)
+chk (dictionary? f) "dic.make takes no argument too"
+
+## non-string keys
+g := #{}
+dic.put g 7 "seven"
+dic.put g "7" "string seven"
+chk (eql? (dic.get g 7) "seven") "an integer key works"
+chk (eql? (dic.get g "7") "string seven") "and does not collide with the string of it"
+
+chk (= (dic.clear d) 2) "dic.clear reports how many went"
+chk (= (dic.size d) 0) "dic.clear empties the dictionary"
+chk (= (core.basicSize (dic.keys d)) 0) "dic.keys is empty afterwards"
+chk (= (dic.clear d) 0) "clearing an empty dictionary removes nothing"
+
+## survives collection while holding a sizeable dictionary
+h := #{}
+n := 200
+i := 0
+while (< i n) {
+	dic.put h i (* i 3)
+	i := (+ i 1)
+}
+gc
+bad := 0
+hk := (dic.keys h)
+hv := (dic.values h)
+i := 0
+while (< i n) {
+	if (not (= (core.basicAt hv i) (* (core.basicAt hk i) 3))) { bad := (+ bad 1) }
+	i := (+ i 1)
+}
+chk (= (dic.size h) n) "a 200 pair dictionary keeps its size across a collection"
+chk (= bad 0) "and every key still maps to its own value"
+
+## --- one array instead of two ---
+p2 := #{}
+dic.put p2 "x" 10
+dic.put p2 "y" 20
+ps := (dic.pairs p2)
+chk (array? ps) "dic.pairs returns an array"
+chk (= (core.basicSize ps) 2) "dic.pairs has one entry per pair"
+chk (eqv? (core.classOf (core.basicAt ps 0)) Cons) "each entry is an association"
+paired := 0
+i := 0
+while (< i 2) {
+	a := (core.basicAt ps i)
+	if (eqv? (dic.get p2 (core.car a)) (core.cdr a)) { paired := (+ paired 1) }
+	i := (+ i 1)
+}
+chk (= paired 2) "car and cdr of each association agree with dic.get"
+
+## --- traversal that allocates nothing ---
+chk (integer? (dic.bucketSize p2)) "dic.bucketSize answers how many slots to walk"
+chk (>= (dic.bucketSize p2) (dic.size p2)) "the bucket is at least as big as the population"
+n := (dic.bucketSize p2)
+found := 0
+i := 0
+while (< i n) {
+	a := (dic.pairAt p2 i)
+	if (not (nil? a)) {
+		if (eqv? (dic.get p2 (core.car a)) (core.cdr a)) { found := (+ found 1) }
+	}
+	i := (+ i 1)
+}
+chk (= found 2) "walking the slots visits every pair exactly once"
+
+## an empty slot answers nil rather than failing
+empties := 0
+i := 0
+while (< i n) {
+	if (nil? (dic.pairAt p2 i)) { empties := (+ empties 1) }
+	i := (+ i 1)
+}
+chk (= (+ empties 2) n) "every slot is either an association or nil"
+
+## out of range is an error, not a silent nil
+oob := 0
+try { dic.pairAt p2 n } catch (e) { oob := (+ oob 1) }
+try { dic.pairAt p2 -1 } catch (e) { oob := (+ oob 1) }
+chk (= oob 2) "dic.pairAt refuses a slot outside the bucket"

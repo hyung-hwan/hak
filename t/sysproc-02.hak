@@ -1,0 +1,64 @@
+## the exit handle: waiting for a child to terminate with no polling at all.
+##
+## sys.popen's slot 4 is a handle that becomes readable when the child exits,
+## so it is waited on exactly like a pipe. Where the platform has no such
+## facility the slot is nil and this test reports that it was skipped.
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+iosem := (sem-new)
+tmo   := (sem-new)
+sg    := (semgr-new)
+semgr-add sg iosem
+semgr-add sg tmo
+fin   := (sem-new)
+
+p    := (sys.popen "sleep 1; exit 5" "r")
+proc := (core.basicAt p 0)
+xh   := (core.basicAt p 4)
+
+if (nil? xh) {
+	printf "OK: no exit handle on this platform - skipped\n"
+	sys.pclose proc
+} \
+else {
+	ticks := 0
+	status := -2
+
+	fun waiter() {
+		| s |
+		sem-signal tmo 20 0
+		sem-signal-on-input iosem xh
+		s := (semgr-wait sg)
+		sem-unsignal iosem
+		sem-unsignal tmo
+		if (eqv? s tmo) { status := -1 } \
+		else { status := (sys.pwait proc) }
+		sem-signal fin
+		return 0
+	}
+
+	fun ticker() {
+		## the waiter is parked on the exit handle by now; these ticks only
+		## happen if the VM went on scheduling instead of blocking
+		while (< ticks 4) {
+			ticks := (+ ticks 1)
+			yield
+		}
+	}
+
+	chk (integer? xh) "sys.popen hands back an exit handle"
+	fork waiter
+	fork ticker
+	sem-wait fin
+
+	chk (= ticks 4) "other coprocesses ran while the child was alive"
+	chk (= status 5) "the exit handle woke the waiter and the status was read"
+
+	## it belongs to the process handle, so pclose takes it away
+	sys.pclose proc
+	chk true "pclose released the exit handle with the group"
+}
