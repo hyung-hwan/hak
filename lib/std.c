@@ -328,8 +328,7 @@
  * about async-signal-safety - the spinlock is built out of atomics and is safe
  * by that measure - but about reentrancy: a signal delivered to the thread
  * that already holds the lock would spin, or block, on a lock that thread can
- * no longer reach the end of. post_sig_to_all_haks() and swproc_all_haks()
- * therefore walk the chain without it.
+ * no longer reach the end of. post_sig_to_all_haks() therefore walk the chain without it.
  * -------------------------------------------------------------------------- */
 
 #if defined(USE_THREAD)
@@ -370,7 +369,6 @@ struct xtn_t
 	const char* udo_path; /* runtime output file */
 
 	int vm_running;
-	int rcv_tick;
 
 	hak_cmgr_t* input_cmgr;
 	hak_cmgr_t* log_cmgr;
@@ -3012,29 +3010,8 @@ static int vm_catchsig (hak_t* hak, int signo, int enable)
 #endif
 }
 
-static HAK_INLINE void do_nothing (int unused)
-{
-}
-
 /*#define HAK_TICKER_INTERVAL_USECS 10000*/ /* microseconds. 0.01 seconds */
 #define HAK_TICKER_INTERVAL_USECS 20000 /* microseconds. 0.02 seconds. */
-
-static HAK_INLINE void swproc_all_haks (int unused)
-{
-	/* the process-switching ticker handler - signal context again, so the same
-	 * rule as post_sig_to_all_haks(): no lock here. */
-	if (g_hak)
-	{
-		hak_t* hak = g_hak;
-		do
-		{
-			xtn_t* xtn = GET_XTN(hak);
-			if (xtn->rcv_tick) hak_switchprocess(hak);
-			hak = xtn->next;
-		}
-		while (hak);
-	}
-}
 
 #if defined(_WIN32)
 
@@ -3049,7 +3026,7 @@ static DWORD WINAPI msw_wait_for_timer_event (LPVOID ctx)
 	 *   while (!msw_tick_done)
 	 *   {
 	 *       Sleep (...);
-	 *       swproc_all_haks();
+	 *       hak_raise_gtick(0);
 	 *   }
 	 * but never mind for now. let's do it the hard way.
 	 */
@@ -3065,12 +3042,12 @@ static DWORD WINAPI msw_wait_for_timer_event (LPVOID ctx)
 	/*#define MSW_TICKER_MANUAL_RESET */
 	#if defined(MSW_TICKER_MANUAL_RESET)
 		/* if manual resetting is enabled, the reset is done after
-		 * swproc_all_haks has been called. so the interval is the
-		 * interval specified plus the time taken in swproc_all_haks. */
+		 * hak_raise_gtick has been called. so the interval is the
+		 * interval specified plus the time taken in hak_raise_gtick. */
 		SetWaitableTimer(msw_tick_timer, &li, 0, HAK_NULL, HAK_NULL, FALSE);
 	#else
 		/* with auto reset, the interval is not affected by time taken
-		 * in swproc_all_haks() */
+		 * in hak_raise_gtick() */
 		SetWaitableTimer(msw_tick_timer, &li, HAK_USEC_TO_MSEC(HAK_TICKER_INTERVAL_USECS), HAK_NULL, HAK_NULL, FALSE);
 	#endif
 
@@ -3078,7 +3055,7 @@ static DWORD WINAPI msw_wait_for_timer_event (LPVOID ctx)
 		{
 			if (WaitForSingleObject(msw_tick_timer, 100000) == WAIT_OBJECT_0)
 			{
-				swproc_all_haks (0);
+				hak_raise_gtick(0);
 			#if defined(MSW_TICKER_MANUAL_RESET)
 				SetWaitableTimer(msw_tick_timer, &li, 0, HAK_NULL, HAK_NULL, FALSE);
 			#endif
@@ -3148,11 +3125,11 @@ static void EXPENTRY os2_wait_for_timer_event (ULONG x)
 	{
 		rc = DosWaitEventSem(os2_tick_sem, 5000L);
 	#if 0
-		swproc_all_haks (0);
+		hak_raise_gtick(0);
 		DosResetEventSem (os2_tick_sem, &count);
 	#else
 		DosResetEventSem(os2_tick_sem, &count);
-		swproc_all_haks (0);
+		hak_raise_gtick(0);
 	#endif
 	}
 
@@ -3200,7 +3177,7 @@ static void interrupt dos_timer_intr_handler (void)
 	*/
 
 	/* The timer interrupt (normally) occurs 18.2 times per second. */
-	swproc_all_haks(0);
+	hak_raise_gtick(0);
 	_chain_intr(dos_prev_timer_intr_handler);
 }
 
@@ -3225,7 +3202,7 @@ static ProcessSerialNumber mac_psn;
 
 static pascal void timer_intr_handler (TMTask* task)
 {
-	swproc_all_haks(0);
+	hak_raise_gtick(0);
 	WakeUpProcess(&mac_psn);
 	PrimeTime((QElem*)&mac_tmtask, TMTASK_DELAY);
 }
@@ -3249,7 +3226,7 @@ static HAK_INLINE void stop_ticker (void)
 
 static HAK_INLINE void start_ticker (void)
 {
-	if (set_signal_handler(SIGVTALRM, SH_HOW_UPSERT, swproc_all_haks, SA_RESTART) >= 0)
+	if (set_signal_handler(SIGVTALRM, SH_HOW_UPSERT, hak_raise_gtick, SA_RESTART) >= 0)
 	{
 		struct itimerval itv;
 		itv.it_interval.tv_sec = 0;
@@ -3263,7 +3240,7 @@ static HAK_INLINE void start_ticker (void)
 			unset_signal_handler(SIGVTALRM);
 
 		#if defined(SIGALRM) && defined(ITIMER_REAL)
-			if (set_signal_handler(SIGALRM, SH_HOW_UPSERT, swproc_all_haks, SA_RESTART) >= 0)
+			if (set_signal_handler(SIGALRM, SH_HOW_UPSERT, hak_raise_gtick, SA_RESTART) >= 0)
 			{
 				/* i double the interval as ITIMER_REAL is against the wall clock.
 				 * if the underlying system is under heavy load, some signals
@@ -3313,7 +3290,7 @@ static pid_t ticker_pid = -1;
 static HAK_INLINE void start_ticker (void)
 {
 #if defined(SIGALRM)
-	if (set_signal_handler(SIGALRM, SH_HOW_UPSERT, swproc_all_haks, SA_RESTART) >= 0)
+	if (set_signal_handler(SIGALRM, SH_HOW_UPSERT, hak_raise_gtick, SA_RESTART) >= 0)
 	{
 		ticker_pid = fork();
 
@@ -5093,12 +5070,6 @@ void hak_stop_ticker (void)
 	}
 }
 
-void hak_rcvtickstd (hak_t* hak, int enabled)
-{
-	xtn_t* xtn = GET_XTN(hak);
-	xtn->rcv_tick = enabled; /* TODO: use atomic? */
-}
-
 /* ========================================================================== */
 
 #if defined(_WIN32)
@@ -5254,7 +5225,6 @@ void hak_catch_termreq (void)
 	set_signal_handler(SIGTERM, SH_HOW_UPSERT, post_sig_to_all_haks, 0);
 	set_signal_handler(SIGHUP, SH_HOW_UPSERT, post_sig_to_all_haks, 0);
 	set_signal_handler(SIGINT, SH_HOW_UPSERT, post_sig_to_all_haks, 0);
-	set_signal_handler(SIGPIPE, SH_HOW_UPSERT, do_nothing, 0);
 }
 
 void hak_uncatch_termreq (void)
@@ -5262,7 +5232,7 @@ void hak_uncatch_termreq (void)
 	unset_signal_handler(SIGTERM);
 	unset_signal_handler(SIGHUP);
 	unset_signal_handler(SIGINT);
-	unset_signal_handler(SIGPIPE);
+	/*unset_signal_handler(SIGPIPE);*/
 }
 
 #endif

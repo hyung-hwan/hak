@@ -50,6 +50,12 @@ static hak_ooch_t oocstr_colon[2] = { ':', '\0' };
 static hak_ooch_t oocstr_dash[2] = { '-', '\0' };
 static hak_ooch_t oocstr_none[1] = { '\0' };
 
+/* global tick counter - all instances configured to receive ticks
+ * switch processes based on this counter.
+ * sig_atomic_t is more strict choice but hak_uint32_t is believed to be safe enough. */
+/* static volatile sig_atomic_t gtick = 0; */
+static volatile hak_uint32_t gtick = 0;
+
 #define PROC_MAP_INC 64
 
 /* TODO: adjust these max semaphore pointer buffer capacity,
@@ -3212,22 +3218,48 @@ static HAK_INLINE int switch_process_if_needed (hak_t* hak)
 
 switch_to_next:
 	/* TODO: implement different process switching scheme - time-slice or clock based??? */
-#if defined(HAK_EXTERNAL_PROCESS_SWITCH)
-	if (hak->switch_proc)
+#if 0
+	if (hak->rcv_tick && (hak->last_tick != hak->tick || hak->last_gtick != gtick))
 	{
-#endif
-		if (!hak->proc_switched)
-		{
-			switch_to_next_runnable_process(hak);
-			hak->proc_switched = 0;
-		}
-#if defined(HAK_EXTERNAL_PROCESS_SWITCH)
-		hak->switch_proc = 0;
-	}
-	else hak->proc_switched = 0;
-#endif
+		/* clear the state regardless of the actual switching */
+		hak->last_gtick = gtick;
+		hak->last_tick = hak->tick;
 
+		/* switching happens only if it didn't happen yet */
+		if (!hak->proc_switched) switch_to_next_runnable_process(hak);
+	}
+#else
+	if (hak->rcv_tick && !hak->proc_switched && (hak->last_tick != hak->tick || hak->last_gtick != gtick))
+	{
+		/* clear the state only if the actual switching would happen */
+		hak->last_gtick = gtick;
+		hak->last_tick = hak->tick;
+		switch_to_next_runnable_process(hak); /* actual switching */
+	}
+#endif
+	hak->proc_switched = 0;
 	return 1;
+}
+
+void hak_rcvtick (hak_t* hak, int enabled)
+{
+	if (enabled)
+	{
+		hak->last_gtick = gtick;
+		hak->last_tick = hak->tick;
+	}
+	hak->rcv_tick = !!enabled;
+}
+
+void hak_raisetick (hak_t* hak)
+{
+	hak->tick++;
+}
+
+void hak_raise_gtick (int unused)
+{
+	/* this function is global and not bound to a specific instance. */
+	gtick++;
 }
 
 /* ------------------------------------------------------------------------- */

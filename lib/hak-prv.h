@@ -201,10 +201,6 @@ do { \
 /*#define HAK_PROFILE_VM 1*/
 #endif
 
-/* allow the caller to drive process switching by calling
- * stix_switchprocess(). */
-#define HAK_EXTERNAL_PROCESS_SWITCH
-
 /* limit the maximum object size such that:
  *   1. an index to an object field can be represented in a small integer.
  *   2. the maximum number of bits including bit-shifts can be represented

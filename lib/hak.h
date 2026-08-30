@@ -1915,10 +1915,14 @@ struct hak_t
 	hak_oob_t* active_code;
 	hak_ooi_t sp;
 	hak_ooi_t ip;
-	int no_proc_switch; /* process switching disabled */
-	int proc_switched; /* TODO: this is temporary. implement something else to skip immediate context switching */
-	int switch_proc;
-	int abort_req;
+	hak_uint8_t abort_req;
+	hak_uint8_t no_proc_switch; /* process switching disabled */
+	hak_uint8_t proc_switched; /* TODO: this is temporary. implement something else to skip immediate context switching */
+	hak_uint8_t rcv_tick; /* whether to receive tick or not */
+	hak_uint32_t tick; /* instance specific tick */
+	hak_uint32_t last_tick;  /* last instance specific tick this instance acted on */
+	hak_uint32_t last_gtick;  /* last global tick this instance acted on */
+
 	hak_ntime_t exec_start_time;
 	hak_ntime_t exec_end_time;
 	hak_oop_t last_retv;
@@ -2246,11 +2250,6 @@ HAK_EXPORT hak_t* hak_openstd (
 	hak_errinf_t*       errinf
 );
 
-HAK_EXPORT void hak_rcvtickstd (
-	hak_t*              hak,
-	int                 enabled
-);
-
 /**
  * The hak_close() function destroys a hak object.
  */
@@ -2562,12 +2561,25 @@ HAK_EXPORT void hak_abort (
 	hak_t* hak
 );
 
+HAK_EXPORT void hak_rcvtick (
+	hak_t* hak,
+	int    enabled
+);
 
-#if defined(HAK_HAVE_INLINE)
-	static HAK_INLINE void hak_switchprocess (hak_t* hak) { hak->switch_proc = 1; }
-#else
-#	define hak_switchprocess(hak) ((hak)->switch_proc = 1)
-#endif
+/**
+ * The hak_raisetick() function raises a tick for the given instance only.
+ * hak_raise_gtick(), on the other hand, raises one for every instance in the
+ * process; it is safe to call from a signal handler, as it only increments a
+ * counter.
+ *
+ * A raised tick makes the instance switch to the next runnable process at its
+ * next opportunity. Reception must be enabled first: an instance ignores both
+ * kinds of tick until hak_rcvtick(hak, 1) has been called on it, and a global
+ * tick reaches only those instances that have enabled it.
+ */
+HAK_EXPORT void hak_raisetick (
+	hak_t* hak
+);
 
 HAK_EXPORT void hak_setbasesrloc (
 	hak_t*    hak,
@@ -2770,7 +2782,6 @@ HAK_EXPORT void hak_clearcode (
 void* hak_getxtn (
 	hak_t* hak
 );
-
 
 #if defined(HAK_HAVE_INLINE)
 static HAK_INLINE hak_code_t* hak_getcode (hak_t* hak) { return &hak->code; }
@@ -3546,6 +3557,10 @@ HAK_EXPORT void hak_catch_termreq (
 
 HAK_EXPORT void hak_uncatch_termreq (
 	void
+);
+
+HAK_EXPORT void hak_raise_gtick (
+	int unused
 );
 
 #if defined(__cplusplus)

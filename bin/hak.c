@@ -485,7 +485,7 @@ static hak_oop_t execute_in_interactive_mode (hak_t* hak)
 
 	hak_catch_termreq();
 	hak_start_ticker();
-	hak_rcvtickstd(hak, 1);
+	hak_rcvtick(hak, 1);
 
 	retv = hak_execute(hak);
 
@@ -512,7 +512,7 @@ static hak_oop_t execute_in_interactive_mode (hak_t* hak)
 		*/
 	}
 
-	hak_rcvtickstd(hak, 0);
+	hak_rcvtick(hak, 0);
 	hak_stop_ticker();
 	hak_uncatch_termreq();
 
@@ -531,7 +531,7 @@ static hak_oop_t execute_in_batch_mode(hak_t* hak, int verbose)
 
 	hak_catch_termreq();
 	hak_start_ticker();
-	hak_rcvtickstd(hak, 1);
+	hak_rcvtick(hak, 1);
 
 /* TESTING */
 #if 0
@@ -558,7 +558,7 @@ static hak_oop_t execute_in_batch_mode(hak_t* hak, int verbose)
 	if (!retv) print_error(hak, "execute");
 	else if (verbose) hak_logbfmt(hak, HAK_LOG_STDERR, "EXECUTION OK - EXITED WITH %O\n", retv);
 
-	hak_rcvtickstd(hak, 0);
+	hak_rcvtick(hak, 0);
 	hak_stop_ticker();
 	hak_uncatch_termreq();
 

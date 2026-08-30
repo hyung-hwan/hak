@@ -190,9 +190,6 @@ static const int TERMREQ[] = {
 #if defined(SIGHUP)
 	, SIGHUP
 #endif
-#if defined(SIGPIPE)
-	, SIGPIPE
-#endif
 };
 #define NTERMREQ ((int)(sizeof(TERMREQ) / sizeof(TERMREQ[0])))
 
@@ -208,8 +205,22 @@ static void termreq_round_trips (void)
 		if (disposition_of(TERMREQ[i], &before[i]) <= -1) return; /* no sigaction */
 	}
 
+#if defined(SIGPIPE)
+	/* SIGPIPE is deliberately NOT in the set above. It is not a termination
+	 * request - it is the opposite, a measure against being terminated - and
+	 * neutralising it is the application's call, not the library's, because
+	 * the disposition is process-wide. bin/hak.c makes that call for itself.
+	 * So termreq must leave it exactly alone. */
+	void* pipe_before;
+	void* pipe_during;
+	int pipe_probed = (disposition_of(SIGPIPE, &pipe_before) >= 0);
+#endif
+
 	hak_catch_termreq();
 	for (i = 0; i < NTERMREQ; i++) disposition_of(TERMREQ[i], &during[i]);
+#if defined(SIGPIPE)
+	if (pipe_probed) disposition_of(SIGPIPE, &pipe_during);
+#endif
 
 	hak_uncatch_termreq();
 	for (i = 0; i < NTERMREQ; i++) disposition_of(TERMREQ[i], &after[i]);
@@ -219,6 +230,9 @@ static void termreq_round_trips (void)
 		OK (during[i] != before[i], "hak_catch_termreq installs a handler");
 		OK (after[i] == before[i], "hak_uncatch_termreq restores the original");
 	}
+#if defined(SIGPIPE)
+	if (pipe_probed) OK (pipe_during == pipe_before, "hak_catch_termreq leaves SIGPIPE to the application");
+#endif
 }
 
 int main (int argc, char* argv[])

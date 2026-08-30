@@ -1,0 +1,45 @@
+## preemptive process switching driven by the global tick counter
+##
+## The ticker - a signal handler on POSIX, a thread on _WIN32/__OS2__, a timer
+## interrupt on __DOS__ - only increments a global counter. Each instance
+## notices the change itself in switch_process_if_needed() and switches to the
+## next runnable process. Nothing else can interrupt a process that does not
+## yield, so a process yielding the CPU without ever asking to is proof that
+## the whole path works: hak_start_ticker, hak_rcvtick, the counter, and the
+## comparison against last_tick.
+
+fun chk(ok msg) {
+	if ok {
+		printf "OK: %s\n" msg
+	} else { 
+		printf "ERROR: %s\n" msg
+	}
+}
+
+flag := 0
+fun setter() { flag := 1 }
+
+## setter is runnable from here on, but it cannot run while this process holds
+## the CPU - and this process never calls yield.
+p := (fork setter)
+
+i := 0
+while (< i 3000000) {
+	if (== flag 1) { break }
+	i := (+ i 1)
+}
+
+## Without preemption the loop runs to its bound with flag still 0. With the
+## bound at 3000000 that takes well under a second, so a broken tick path
+## fails quickly rather than hanging.
+chk (== flag 1) "a process that never yields is preempted so another can run"
+
+## Guards against this test going vacuous if fork() ever switches to the new
+## process immediately: then setter would have run before the loop started and
+## i would be ~0, proving nothing about preemption. One tick is 20ms, which is
+## a great many iterations.
+chk (> i 1000) "the switch came from the ticker, not from an eager fork"
+
+## The preempted process must be resumed, not abandoned - reaching here at all
+## means the scheduler came back to it.
+chk (< i 3000000) "the preempted process resumes and runs to completion"

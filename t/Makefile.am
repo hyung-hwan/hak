@@ -27,6 +27,7 @@ check_SCRIPTS = \
 	sig-01.hak \
 	sysproc-01.hak \
 	sysproc-02.hak \
+	tick-01.hak \
 	va-01.hak \
 	var-01.hak \
 	var-02.hak \
@@ -45,10 +46,12 @@ check_ERRORS = \
 
 check_PROGRAMS = \
 	t-001 \
-	t-002
+	t-002 \
+	t-003
 
 t_001_SOURCES = t-001.c tap.h
 t_002_SOURCES = t-002.c tap.h
+t_003_SOURCES = t-003.c tap.h
 
 ##noinst_SCRIPTS = $(check_SCRIPTS)
 EXTRA_DIST = $(check_SCRIPTS) $(check_ERRORS)
