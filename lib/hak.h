@@ -2246,6 +2246,11 @@ HAK_EXPORT hak_t* hak_openstd (
 	hak_errinf_t*       errinf
 );
 
+HAK_EXPORT void hak_rcvtickstd (
+	hak_t*              hak,
+	int                 enabled
+);
+
 /**
  * The hak_close() function destroys a hak object.
  */

@@ -251,8 +251,8 @@ am__can_run_installinfo = \
   esac
 am__pkginclude_HEADERS_DIST = hak.h hak-chr.h hak-cmgr.h hak-cmn.h \
 	hak-fmt.h hak-htb.h hak-opt.h hak-pac1.h hak-hnd.h hak-pio.h \
-	hak-rbt.h hak-str.h hak-upac.h hak-utl.h hak-xma.h hak-x.h \
-	hak-tmr.h hak-json.h
+	hak-spl.h hak-rbt.h hak-str.h hak-upac.h hak-utl.h hak-xma.h \
+	hak-x.h hak-tmr.h hak-json.h
 HEADERS = $(pkginclude_HEADERS)
 am__tagged_files = $(HEADERS) $(SOURCES) $(TAGS_FILES) $(LISP) \
 	hak-cfg.h.in
@@ -444,8 +444,9 @@ LIBADD_LIB_COMMON = $(LIBM) $(am__append_1) $(am__append_2) \
 @WIN32_TRUE@	-DHAK_DEFAULT_PFMODPOSTFIX=\"-1.dll\" \
 @WIN32_TRUE@	$(am__append_4) $(am__append_5)
 pkginclude_HEADERS = hak.h hak-chr.h hak-cmgr.h hak-cmn.h hak-fmt.h \
-	hak-htb.h hak-opt.h hak-pac1.h hak-hnd.h hak-pio.h hak-rbt.h \
-	hak-str.h hak-upac.h hak-utl.h hak-xma.h $(am__append_8)
+	hak-htb.h hak-opt.h hak-pac1.h hak-hnd.h hak-pio.h hak-spl.h \
+	hak-rbt.h hak-str.h hak-upac.h hak-utl.h hak-xma.h \
+	$(am__append_8)
 pkglib_LTLIBRARIES = libhak.la $(am__append_7)
 libhak_la_SOURCES = \
 	hak-prv.h \

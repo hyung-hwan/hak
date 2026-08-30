@@ -360,6 +360,24 @@ static void set_signal_to_default (int sig)
 #endif
 }
 
+static void set_signal_to_ignore (int sig)
+{
+#if defined(_WIN32) || defined(__DOS__) || defined(__OS2__)
+	signal (sig, SIG_IGN);
+#elif defined(macintosh)
+	/* TODO: implement this */
+#else
+	struct sigaction sa;
+
+	memset (&sa, 0, sizeof(sa));
+	sa.sa_handler = SIG_IGN;
+	sa.sa_flags = 0;
+	sigemptyset (&sa.sa_mask);
+
+	sigaction (sig, &sa, NULL);
+#endif
+}
+
 /* ========================================================================= */
 
 static void print_info (void)
@@ -464,7 +482,10 @@ static hak_oop_t execute_in_interactive_mode (hak_t* hak)
 	hak_decode (hak, hak_getcode(hak), 0, hak_getbclen(hak));
 	HAK_LOG0 (hak, HAK_LOG_MNEMONIC, "------------------------------------------\n");
 	g_hak = hak;
-	/*setup_tick ();*/
+
+	hak_catch_termreq();
+	hak_start_ticker();
+	hak_rcvtickstd(hak, 1);
 
 	retv = hak_execute(hak);
 
@@ -490,7 +511,11 @@ static hak_oop_t execute_in_interactive_mode (hak_t* hak)
 		}
 		*/
 	}
-	/*cancel_tick();*/
+
+	hak_rcvtickstd(hak, 0);
+	hak_stop_ticker();
+	hak_uncatch_termreq();
+
 	g_hak = HAK_NULL;
 
 	return retv;
@@ -503,8 +528,10 @@ static hak_oop_t execute_in_batch_mode(hak_t* hak, int verbose)
 	hak_decode(hak, hak_getcode(hak), 0, hak_getbclen(hak));
 	HAK_LOG3(hak, HAK_LOG_MNEMONIC, "BYTECODES bclen=%zu lflen=%zu ngtmprs=%zu\n", hak_getbclen(hak), hak_getlflen(hak), hak_getngtmprs(hak));
 	g_hak = hak;
-	/*setup_tick ();*/
 
+	hak_catch_termreq();
+	hak_start_ticker();
+	hak_rcvtickstd(hak, 1);
 
 /* TESTING */
 #if 0
@@ -531,9 +558,14 @@ static hak_oop_t execute_in_batch_mode(hak_t* hak, int verbose)
 	if (!retv) print_error(hak, "execute");
 	else if (verbose) hak_logbfmt(hak, HAK_LOG_STDERR, "EXECUTION OK - EXITED WITH %O\n", retv);
 
+	hak_rcvtickstd(hak, 0);
+	hak_stop_ticker();
+	hak_uncatch_termreq();
+
 	/*cancel_tick();*/
 	g_hak = HAK_NULL;
 	/*hak_dumpsymtab (hak);*/
+
 
 	return retv;
 }
@@ -808,7 +840,7 @@ static int feed_loop (hak_t* hak, xtn_t* xtn, int verbose)
 	}
 	fclose (fp);
 
-	if (!is_tty && hak_getbclen(hak) > 0) execute_in_batch_mode (hak, verbose);
+	if (!is_tty && hak_getbclen(hak) > 0) execute_in_batch_mode(hak, verbose);
 	return 0;
 
 oops:
@@ -996,7 +1028,7 @@ int main (int argc, char* argv[])
 	hakcb.vm_startup = vm_startup;
 	hakcb.vm_cleanup = vm_cleanup;
 	/*hakcb.vm_checkbc = vm_checkbc;*/
-	hak_regcb (hak, &hakcb);
+	hak_regcb(hak, &hakcb);
 
 	if (logopt && handle_logopt(hak, logopt) <= -1) goto oops;
 
@@ -1037,9 +1069,21 @@ int main (int argc, char* argv[])
 		goto oops;
 	}
 
+
 	/* -- from this point onward, any failure leads to jumping to the oops label
 	 * -- instead of returning -1 immediately. --*/
 	set_signal(SIGINT, handle_sigint);
+#if defined(SIGPIPE)
+	/* Writing to a pipe whose reader has gone - `hak foo.hak | head -1', or a
+	 * child spawned by sys.popen exiting early - raises SIGPIPE, which kills
+	 * the process by default before write() ever returns EPIPE. Ignore it here
+	 * so the failing write reports an error the script can act on instead.
+	 *
+	 * This belongs to the application, not to the library: the disposition is
+	 * process-wide, and a program that would rather die quietly on a broken
+	 * pipe is making a legitimate choice that hak must not overrule. */
+	set_signal_to_ignore(SIGPIPE);
+#endif
 
 #if 0
 // TODO: change the option name
@@ -1056,12 +1100,18 @@ int main (int argc, char* argv[])
 	if (feed_loop(hak, xtn, verbose) <= -1) goto oops;
 
 	set_signal_to_default(SIGINT);
+#if defined(SIGPIPE)
+	set_signal_to_default(SIGPIPE);
+#endif
 	hak_close(hak);
 
 	return 0;
 
 oops:
 	set_signal_to_default(SIGINT); /* harmless to call multiple times without set_signal() */
+#if defined(SIGPIPE)
+	set_signal_to_default(SIGPIPE);
+#endif
 	if (hak) hak_close(hak);
 	return -1;
 }

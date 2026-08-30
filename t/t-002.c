@@ -31,14 +31,15 @@
 #define NINST 4
 
 #if defined(HAVE_SIGACTION)
-static int sigpipe_handled (void)
+static int disposition_of (int sig, void** handler)
 {
 	struct sigaction sa;
-	if (sigaction(SIGPIPE, (struct sigaction*)0, &sa) <= -1) return -1;
-	return sa.sa_handler != SIG_DFL;
+	if (sigaction(sig, (struct sigaction*)0, &sa) <= -1) return -1;
+	*handler = (sa.sa_flags & SA_SIGINFO)? (void*)sa.sa_sigaction: (void*)sa.sa_handler;
+	return 0;
 }
 #else
-static int sigpipe_handled (void) { return -1; }
+static int disposition_of (int sig, void** handler) { *handler = (void*)0; return -1; }
 #endif
 
 /* open NINST instances, then close them in an order that leaves the one being
@@ -135,34 +136,99 @@ static int stress (int nthr)
 }
 #endif
 
+/* Signal dispositions are process-wide, so the library must not touch them
+ * behind the host's back. Neutralising SIGPIPE is the application's call -
+ * bin/hak.c makes it - and a program that would rather die quietly on a broken
+ * pipe is entitled to that. Opening and closing an instance must therefore
+ * leave every disposition exactly as it found it. */
+static const int WATCHED[] = {
+#if defined(SIGPIPE)
+	SIGPIPE,
+#endif
+	SIGINT, SIGTERM
+};
+#define NWATCHED ((int)(sizeof(WATCHED) / sizeof(WATCHED[0])))
+
+static void host_signals_untouched (void)
+{
+	void* before[NWATCHED];
+	void* during[NWATCHED];
+	void* after[NWATCHED];
+	hak_t* h;
+	int i, probed = 0;
+
+	for (i = 0; i < NWATCHED; i++)
+	{
+		if (disposition_of(WATCHED[i], &before[i]) <= -1) return; /* no sigaction */
+		probed = 1;
+	}
+	if (!probed) return;
+
+	h = hak_openstd(0, HAK_NULL);
+	OK (h != HAK_NULL, "instantiation failure");
+	if (!h) return;
+
+	for (i = 0; i < NWATCHED; i++) disposition_of(WATCHED[i], &during[i]);
+	hak_close(h);
+	for (i = 0; i < NWATCHED; i++) disposition_of(WATCHED[i], &after[i]);
+
+	for (i = 0; i < NWATCHED; i++)
+	{
+		OK (during[i] == before[i], "an open instance leaves the host disposition alone");
+		OK (after[i] == before[i], "a closed instance leaves the host disposition alone");
+	}
+}
+
+/* hak_catch_termreq() is the sanctioned way to hand hak the termination
+ * signals, and hak_uncatch_termreq() must put the host's dispositions back
+ * exactly as it found them. Nothing in the tree calls either, so this is the
+ * only exercise they get - and the only coverage of the restore path in
+ * unset_signal_handler(). */
+static const int TERMREQ[] = {
+	SIGTERM,
+	SIGINT
+#if defined(SIGHUP)
+	, SIGHUP
+#endif
+#if defined(SIGPIPE)
+	, SIGPIPE
+#endif
+};
+#define NTERMREQ ((int)(sizeof(TERMREQ) / sizeof(TERMREQ[0])))
+
+static void termreq_round_trips (void)
+{
+	void* before[NTERMREQ];
+	void* during[NTERMREQ];
+	void* after[NTERMREQ];
+	int i;
+
+	for (i = 0; i < NTERMREQ; i++)
+	{
+		if (disposition_of(TERMREQ[i], &before[i]) <= -1) return; /* no sigaction */
+	}
+
+	hak_catch_termreq();
+	for (i = 0; i < NTERMREQ; i++) disposition_of(TERMREQ[i], &during[i]);
+
+	hak_uncatch_termreq();
+	for (i = 0; i < NTERMREQ; i++) disposition_of(TERMREQ[i], &after[i]);
+
+	for (i = 0; i < NTERMREQ; i++)
+	{
+		OK (during[i] != before[i], "hak_catch_termreq installs a handler");
+		OK (after[i] == before[i], "hak_uncatch_termreq restores the original");
+	}
+}
+
 int main (int argc, char* argv[])
 {
-	int before, during;
-
 	if (argc > 1) return stress(atoi(argv[1]));
 
 	no_plan();
 
-	before = sigpipe_handled();
-
-	{
-		hak_t* h = hak_openstd(0, HAK_NULL);
-		OK (h != HAK_NULL, "instantiation failure");
-		during = sigpipe_handled();
-		if (h) hak_close(h);
-	}
-
-	/* hak neutralises SIGPIPE so a write to a dead pipe cannot kill the host.
-	 * It is installed on the first instance and, by design, is never restored
-	 * on close - so it stays installed once any instance has existed. */
-	if (before >= 0)
-	{
-		OK (during == 1, "SIGPIPE is handled while an instance is open");
-	}
-	else
-	{
-		printf("# sigaction unavailable - SIGPIPE disposition not checked\n");
-	}
+	host_signals_untouched();
+	termreq_round_trips();
 
 	interleaved();
 	survivor();

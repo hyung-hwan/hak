@@ -28,6 +28,7 @@
 
 #include "hak-prv.h"
 #include <hak-utl.h>
+#include <hak-spl.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -306,21 +307,42 @@
  * Two things are shared by every instance in the process instead: the signal
  * dispositions in g_sig_state, and the chain of live instances rooted at
  * g_hak. An application embedding hak may well create instances from more than
- * one thread, and hak_openstd() reaches both - it installs a SIGPIPE handler
- * and chains the new instance - so neither can be left unguarded.
+ * one thread, and hak_openstd() chains each new one, so neither can be left
+ * unguarded.
  *
- * Statically initialised, so it is ready before the first hak_open() and needs
- * no ordering of its own.
+ * There are three implementations, in order of preference:
  *
- * It must never be taken from a signal handler: pthread_mutex_lock() is not
- * async-signal-safe, and a signal arriving on the thread that already holds it
- * would deadlock. post_sig_to_all_haks() therefore walks the chain without it.
+ *   1. a pthread mutex, wherever pthreads exist. it blocks instead of burning
+ *      a timeslice when contended, and glibc's is adaptive - it spins briefly
+ *      before sleeping - so it already behaves like a spinlock when it is not.
+ *   2. hak_spl_t from hak-spl.h, for the platforms that run threads without
+ *      pthreads. _WIN32 and __OS2__ both start a ticker thread that walks the
+ *      g_hak chain.
+ *   3. nothing at all, for targets that cannot run a second thread: __DOS__
+ *      and EMSCRIPTEN.
+ *
+ * Every form is ready before the first hak_open() and needs no ordering of its
+ * own, so none of this depends on a library initialisation call.
+ *
+ * None of them may be taken from a signal handler. That is not a statement
+ * about async-signal-safety - the spinlock is built out of atomics and is safe
+ * by that measure - but about reentrancy: a signal delivered to the thread
+ * that already holds the lock would spin, or block, on a lock that thread can
+ * no longer reach the end of. post_sig_to_all_haks() and swproc_all_haks()
+ * therefore walk the chain without it.
  * -------------------------------------------------------------------------- */
+
 #if defined(USE_THREAD)
 static pthread_mutex_t g_mtx = PTHREAD_MUTEX_INITIALIZER;
 #	define GLOBAL_LOCK()   pthread_mutex_lock(&g_mtx)
 #	define GLOBAL_UNLOCK() pthread_mutex_unlock(&g_mtx)
+#elif defined(HAK_SUPPORT_SPL)
+static hak_spl_t g_mtx = HAK_SPL_INIT;
+#	define GLOBAL_LOCK()   hak_spl_lock(&g_mtx)
+#	define GLOBAL_UNLOCK() hak_spl_unlock(&g_mtx)
 #else
+	/* __DOS__ and EMSCRIPTEN only. anything else reaching this arm runs
+	 * threads with an unguarded g_hak, so it wants an arm in hak-spl.h. */
 #	define GLOBAL_LOCK()
 #	define GLOBAL_UNLOCK()
 #endif
@@ -2621,10 +2643,11 @@ static int vm_setsig (hak_t* hak, hak_uint8_t u8)
 typedef struct sig_state_t sig_state_t;
 struct sig_state_t
 {
-	hak_oow_t handler;
-	hak_oow_t old_handler;
+	hak_uintptr_t handler;
+	hak_uintptr_t old_handler;
 	sigset_t  old_sa_mask;
 	int       old_sa_flags;
+	int       busy; /* a thread is between claiming this signal and publishing it */
 };
 
 typedef void (*sig_handler_t) (int sig);
@@ -2633,110 +2656,214 @@ static sig_state_t g_sig_state[NSIG];
 
 static void dispatch_siginfo (int sig, siginfo_t* si, void* ctx)
 {
-	if (g_sig_state[sig].handler != (hak_oow_t)SIG_IGN &&
-	    g_sig_state[sig].handler != (hak_oow_t)SIG_DFL)
+	if (g_sig_state[sig].handler != (hak_uintptr_t)SIG_IGN &&
+	    g_sig_state[sig].handler != (hak_uintptr_t)SIG_DFL)
 	{
-		((sig_handler_t)g_sig_state[sig].handler) (sig);
+		((sig_handler_t)g_sig_state[sig].handler)(sig);
 	}
 
 	if (g_sig_state[sig].old_handler &&
-	    g_sig_state[sig].old_handler != (hak_oow_t)SIG_IGN &&
-	    g_sig_state[sig].old_handler != (hak_oow_t)SIG_DFL)
+	    g_sig_state[sig].old_handler != (hak_uintptr_t)SIG_IGN &&
+	    g_sig_state[sig].old_handler != (hak_uintptr_t)SIG_DFL)
 	{
-		((void(*)(int, siginfo_t*, void*))g_sig_state[sig].old_handler) (sig, si, ctx);
+		((void(*)(int, siginfo_t*, void*))g_sig_state[sig].old_handler)(sig, si, ctx);
 	}
 }
 
 static void dispatch_signal (int sig)
 {
-	if (g_sig_state[sig].handler != (hak_oow_t)SIG_IGN &&
-	    g_sig_state[sig].handler != (hak_oow_t)SIG_DFL)
+	/* run the current handler */
+	if (g_sig_state[sig].handler != (hak_uintptr_t)SIG_IGN &&
+	    g_sig_state[sig].handler != (hak_uintptr_t)SIG_DFL)
 	{
-		((sig_handler_t)g_sig_state[sig].handler) (sig);
+		((sig_handler_t)g_sig_state[sig].handler)(sig);
 	}
 
+	/* run the previous handler remembered */
 	if (g_sig_state[sig].old_handler &&
-	    g_sig_state[sig].old_handler != (hak_oow_t)SIG_IGN &&
-	    g_sig_state[sig].old_handler != (hak_oow_t)SIG_DFL)
+	    g_sig_state[sig].old_handler != (hak_uintptr_t)SIG_IGN &&
+	    g_sig_state[sig].old_handler != (hak_uintptr_t)SIG_DFL)
 	{
-		((sig_handler_t)g_sig_state[sig].old_handler) (sig);
+		((sig_handler_t)g_sig_state[sig].old_handler)(sig);
 	}
 }
 
-/* The whole of this must be one atomic step. The test of g_sig_state below and
- * the sigaction() that follows form a read-modify-write: without the lock, two
- * threads creating instances at the same time both find the signal unset, both
- * install dispatch_signal, and the second records the first's dispatch_signal
- * as old_handler - so the next delivery recurses into itself until the stack
- * is gone. hak_openstd() reaches here for SIGPIPE, so this is the ordinary
- * multi-instance path, not an exotic one.
+#define SH_HOW_INSERT       (1)
+#define SH_HOW_MUST_INSERT  (2)
+#define SH_HOW_UPDATE       (3)
+#define SH_HOW_MUST_UPDATE  (4)
+#define SH_HOW_UPSERT       (5)
+
+/* The test of g_sig_state below and the sigaction() that follows form a
+ * read-modify-write - without serialisation, two threads creating instances at
+ * the same time both find the signal unset, both install dispatch_signal, and
+ * the second records the first's dispatch_signal as old_handler - so the next
+ * delivery recurses into itself until the stack is gone.
  *
- * Single exit, so the lock is released however it ends. */
-static int set_signal_handler (int sig, sig_handler_t handler, int extra_flags)
+ * The lock is not held across sigaction(). A caller claims the signal with
+ * busy, drops the lock for the syscalls, and takes it again to publish; a
+ * second thread arriving in between is told the signal is taken rather than
+ * waiting behind a syscall. Every critical section here is therefore plain
+ * memory access, which is what makes the spinlock arm of GLOBAL_LOCK() a
+ * reasonable trade - spinning across someone else's syscall would not be.
+ */
+static int set_signal_handler (int sig, int sh_how, sig_handler_t handler, int extra_sig_flags)
 {
+	struct sigaction sa, oldsa;
 	int rc = 0;
+	int claimed = 0;
 
-	GLOBAL_LOCK();
-
-	if (g_sig_state[sig].handler)
+	while (1) /* loop until it can acquire the lock successfully with the busy flag of 0 */
 	{
-		/* already set - allow handler change. ignore extra_flags. */
-		if (g_sig_state[sig].handler == (hak_oow_t)handler) rc = -1;
-		else g_sig_state[sig].handler = (hak_oow_t)handler;
+		GLOBAL_LOCK();
+		if (!g_sig_state[sig].busy) /* no other threads are installing this signal */
+		{
+			/* no unlock. keep it locked when breaking out of the loop */
+			break;
+		}
+		GLOBAL_UNLOCK();
+		HAK_SPL_RELAX();
+	}
+
+	switch (sh_how)
+	{
+		case SH_HOW_INSERT:
+		case SH_HOW_MUST_INSERT:
+			if (g_sig_state[sig].handler)
+			{
+				/* already set */
+				if (sh_how == SH_HOW_MUST_INSERT) rc = -1;
+			}
+			else
+			{
+				g_sig_state[sig].busy = 1;
+				claimed = 1; /* acquired the ownership */
+				rc = 1;
+			}
+			break;
+
+		case SH_HOW_UPDATE:
+		case SH_HOW_MUST_UPDATE:
+			if (g_sig_state[sig].handler)
+			{
+				/* update */
+				if (g_sig_state[sig].handler != (hak_uintptr_t)handler)
+				{
+					g_sig_state[sig].handler = (hak_uintptr_t)handler;
+					rc = 1; /* updated */
+				}
+			}
+			else
+			{
+				/* not set */
+				if (sh_how == SH_HOW_MUST_UPDATE) rc = -1;
+			}
+			break;
+
+		case SH_HOW_UPSERT:
+			if (g_sig_state[sig].handler)
+			{
+				/* update */
+				if (g_sig_state[sig].handler != (hak_uintptr_t)handler)
+				{
+					g_sig_state[sig].handler = (hak_uintptr_t)handler;
+					rc = 1; /* updated */
+				}
+			}
+			else
+			{
+				/* insert */
+				g_sig_state[sig].busy = 1;
+				claimed = 1; /* acquired the ownership */
+				rc = 1;
+			}
+			break;
+
+		default:
+			rc = -1; /* invalid method */
+	}
+	GLOBAL_UNLOCK();
+
+	if (!claimed) return rc;
+
+	/* query the existing handler */
+	if (sigaction(sig, HAK_NULL, &oldsa) == -1)
+	{
+		GLOBAL_LOCK();
+		g_sig_state[sig].busy = 0;
+		GLOBAL_UNLOCK();
+		return -1;
+	}
+
+	HAK_MEMSET(&sa, 0, HAK_SIZEOF(sa));
+	if (oldsa.sa_flags & SA_SIGINFO)
+	{
+		sa.sa_sigaction = dispatch_siginfo;
+		sa.sa_flags = SA_SIGINFO;
 	}
 	else
 	{
-		struct sigaction sa, oldsa;
-
-		if (sigaction(sig, HAK_NULL, &oldsa) == -1) rc = -1;
-		else
-		{
-			HAK_MEMSET(&sa, 0, HAK_SIZEOF(sa));
-			if (oldsa.sa_flags & SA_SIGINFO)
-			{
-				sa.sa_sigaction = dispatch_siginfo;
-				sa.sa_flags = SA_SIGINFO;
-			}
-			else
-			{
-				sa.sa_handler = dispatch_signal;
-				sa.sa_flags = 0;
-			}
-			sa.sa_flags |= extra_flags;
-			/*sa.sa_flags |= SA_INTERUPT;
-			sa.sa_flags |= SA_RESTART;*/
-			sigfillset(&sa.sa_mask); /* block all signals while the handler is being executed */
-
-			if (sigaction(sig, &sa, HAK_NULL) == -1) rc = -1;
-			else
-			{
-				g_sig_state[sig].handler = (hak_oow_t)handler;
-				if (oldsa.sa_flags & SA_SIGINFO)
-					g_sig_state[sig].old_handler = (hak_oow_t)oldsa.sa_sigaction;
-				else
-					g_sig_state[sig].old_handler = (hak_oow_t)oldsa.sa_handler;
-
-				g_sig_state[sig].old_sa_mask = oldsa.sa_mask;
-				g_sig_state[sig].old_sa_flags = oldsa.sa_flags;
-			}
-		}
+		sa.sa_handler = dispatch_signal;
+		sa.sa_flags = 0;
 	}
+	sa.sa_flags |= extra_sig_flags;
+	/*sa.sa_flags |= SA_INTERUPT;
+	sa.sa_flags |= SA_RESTART;*/
 
+	/* fill the sa_mask field to block all signals while the handler is being execute */
+	sigfillset(&sa.sa_mask);
+
+	/* publish before installing. dispatch_signal() reads g_sig_state, so a
+	 * delivery arriving the instant sigaction() returns has to find it already
+	 * complete; filling it in afterwards leaves a window in which the signal
+	 * is swallowed by a handler that thinks nothing is registered. */
+	GLOBAL_LOCK();
+	g_sig_state[sig].handler = (hak_uintptr_t)handler;
+	if (oldsa.sa_flags & SA_SIGINFO)
+		g_sig_state[sig].old_handler = (hak_uintptr_t)oldsa.sa_sigaction;
+	else
+		g_sig_state[sig].old_handler = (hak_uintptr_t)oldsa.sa_handler;
+	g_sig_state[sig].old_sa_mask = oldsa.sa_mask;
+	g_sig_state[sig].old_sa_flags = oldsa.sa_flags;
+	GLOBAL_UNLOCK();
+
+	if (sigaction(sig, &sa, HAK_NULL) == -1) rc = -1;
+
+	GLOBAL_LOCK();
+	if (rc <= -1) g_sig_state[sig].handler = 0; /* nothing got installed - undo the publish */
+	g_sig_state[sig].busy = 0;
 	GLOBAL_UNLOCK();
 	return rc;
 }
 
-/* same read-modify-write, same lock. single exit. */
+/* same read-modify-write, same claim-then-syscall shape as above. */
 static int unset_signal_handler (int sig)
 {
 	struct sigaction sa;
 	int rc = 0;
+	int claimed = 0;
 
-	GLOBAL_LOCK();
+	while (1) /* loop until it can acquire the lock successfully with the busy flag of 0 */
+	{
+		GLOBAL_LOCK();
+		if (!g_sig_state[sig].busy) /* no other threads are installing this signal */
+		{
+			/* no unlock. keep it locked when breaking out of the loop */
+			break;
+		}
+		GLOBAL_UNLOCK();
+		HAK_SPL_RELAX();
+	}
 
+#if 0
 	if (!g_sig_state[sig].handler) rc = -1; /* not set */
 	else
+#else
+	if (g_sig_state[sig].handler)
+#endif
 	{
+		/* read the saved disposition out while the lock is held, so the
+		 * syscall below needs nothing shared. */
 		HAK_MEMSET(&sa, 0, HAK_SIZEOF(sa));
 		sa.sa_mask = g_sig_state[sig].old_sa_mask;
 		sa.sa_flags = g_sig_state[sig].old_sa_flags;
@@ -2750,18 +2877,29 @@ static int unset_signal_handler (int sig)
 			sa.sa_handler = (sig_handler_t)g_sig_state[sig].old_handler;
 		}
 
-		if (sigaction(sig, &sa, HAK_NULL) == -1) rc = -1;
-		else
-		{
-			g_sig_state[sig].handler = 0;
-			/* keep other fields untouched */
-		}
+		g_sig_state[sig].busy = 1;
+		claimed = 1;
+		rc = 1; /* to indicate successful unset */
 	}
-
 	GLOBAL_UNLOCK();
+
+	if (!claimed) return rc;
+
+	if (sigaction(sig, &sa, HAK_NULL) == -1) rc = -1;
+
+	GLOBAL_LOCK();
+#if 0
+	if (rc == 0) g_sig_state[sig].handler = 0; /* keep other fields untouched */
+#else
+	if (rc >= 1) g_sig_state[sig].handler = 0; /* keep other fields untouched */
+#endif
+	g_sig_state[sig].busy = 0;
+	GLOBAL_UNLOCK();
+
 	return rc;
 }
 
+#if 0
 static int is_signal_handler_set (int sig)
 {
 	int rc;
@@ -2770,6 +2908,7 @@ static int is_signal_handler_set (int sig)
 	GLOBAL_UNLOCK();
 	return rc;
 }
+#endif
 #endif
 
 /* post a signal number into every hak instance's signal descriptor, so that
@@ -2852,12 +2991,7 @@ static int vm_catchsig (hak_t* hak, int signo, int enable)
 
 	if (enable)
 	{
-		/* set_signal_handler() reports -1 when the same handler is already
-		 * installed; for a caller asking to catch a signal that is already
-		 * caught, that is success. */
-		if (is_signal_handler_set(signo)) return 0;
-
-		if (set_signal_handler(signo, post_sig_to_all_haks, SA_RESTART) <= -1)
+		if (set_signal_handler(signo, SH_HOW_INSERT, post_sig_to_all_haks, SA_RESTART) <= -1)
 		{
 			hak_seterrbfmtwithsyserr(hak, 0, errno, "unable to catch signal %d", signo);
 			return -1;
@@ -2865,7 +2999,6 @@ static int vm_catchsig (hak_t* hak, int signo, int enable)
 	}
 	else
 	{
-		if (!is_signal_handler_set(signo)) return 0;
 		if (unset_signal_handler(signo) <= -1)
 		{
 			hak_seterrbfmtwithsyserr(hak, 0, errno, "unable to uncatch signal %d", signo);
@@ -3116,7 +3249,7 @@ static HAK_INLINE void stop_ticker (void)
 
 static HAK_INLINE void start_ticker (void)
 {
-	if (set_signal_handler(SIGVTALRM, swproc_all_haks, SA_RESTART) >= 0)
+	if (set_signal_handler(SIGVTALRM, SH_HOW_UPSERT, swproc_all_haks, SA_RESTART) >= 0)
 	{
 		struct itimerval itv;
 		itv.it_interval.tv_sec = 0;
@@ -3130,7 +3263,7 @@ static HAK_INLINE void start_ticker (void)
 			unset_signal_handler(SIGVTALRM);
 
 		#if defined(SIGALRM) && defined(ITIMER_REAL)
-			if (set_signal_handler(SIGALRM, swproc_all_haks, SA_RESTART) >= 0)
+			if (set_signal_handler(SIGALRM, SH_HOW_UPSERT, swproc_all_haks, SA_RESTART) >= 0)
 			{
 				/* i double the interval as ITIMER_REAL is against the wall clock.
 				 * if the underlying system is under heavy load, some signals
@@ -3150,7 +3283,7 @@ static HAK_INLINE void stop_ticker (void)
 {
 	/* ignore the signal fired by the activated timer.
 	 * unsetting the signal may cause the program to terminate(default action) */
-	if (is_signal_handler_set(SIGVTALRM) && set_signal_handler(SIGVTALRM, SIG_IGN, 0) >= 0)
+	if (set_signal_handler(SIGVTALRM, SH_HOW_UPDATE, SIG_IGN, 0) >= 1)
 	{
 		struct itimerval itv;
 		itv.it_interval.tv_sec = 0;
@@ -3161,7 +3294,7 @@ static HAK_INLINE void stop_ticker (void)
 	}
 
 	#if defined(SIGALRM) && defined(ITIMER_REAL)
-	if (is_signal_handler_set(SIGALRM) && set_signal_handler(SIGALRM, SIG_IGN, 0) >= 0)
+	if (set_signal_handler(SIGALRM, SH_HOW_UPDATE, SIG_IGN, 0) >= 1)
 	{
 		struct itimerval itv;
 		itv.it_interval.tv_sec = 0;
@@ -3180,7 +3313,7 @@ static pid_t ticker_pid = -1;
 static HAK_INLINE void start_ticker (void)
 {
 #if defined(SIGALRM)
-	if (set_signal_handler(SIGALRM, swproc_all_haks, SA_RESTART) >= 0)
+	if (set_signal_handler(SIGALRM, SH_HOW_UPSERT, swproc_all_haks, SA_RESTART) >= 0)
 	{
 		ticker_pid = fork();
 
@@ -4267,16 +4400,6 @@ hak_t* hak_openstdwithmmgr (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_errinf_t* e
 	hak = hak_open(mmgr, HAK_SIZEOF(xtn_t) + xtnsize, &vmprim, errinf);
 	if (HAK_UNLIKELY(!hak)) return HAK_NULL;
 
-#if defined(HAVE_SIGACTION) && defined(SIGPIPE)
-	/* Neutralise SIGPIPE. This is not a policy choice an embedder would want
-	 * to make differently: with the default disposition, writing to a pipe or
-	 * socket whose peer has gone away kills the process outright, so no I/O
-	 * primitive here could ever report EPIPE to hak code. do_nothing() rather
-	 * than SIG_IGN so that dispatch_signal() still chains to whatever handler
-	 * the host application had installed. */
-	set_signal_handler(SIGPIPE, do_nothing, SA_RESTART);
-#endif
-
 	/* adjust the object size by the sizeof xtn_t so that hak_getxtn() returns the right pointer. */
 	hak->_instsize += HAK_SIZEOF(xtn_t);
 
@@ -4970,6 +5093,12 @@ void hak_stop_ticker (void)
 	}
 }
 
+void hak_rcvtickstd (hak_t* hak, int enabled)
+{
+	xtn_t* xtn = GET_XTN(hak);
+	xtn->rcv_tick = enabled; /* TODO: use atomic? */
+}
+
 /* ========================================================================== */
 
 #if defined(_WIN32)
@@ -5122,10 +5251,10 @@ void hak_uncatch_termreq (void)
 
 void hak_catch_termreq (void)
 {
-	set_signal_handler(SIGTERM, post_sig_to_all_haks, 0);
-	set_signal_handler(SIGHUP, post_sig_to_all_haks, 0);
-	set_signal_handler(SIGINT, post_sig_to_all_haks, 0);
-	set_signal_handler(SIGPIPE, do_nothing, 0);
+	set_signal_handler(SIGTERM, SH_HOW_UPSERT, post_sig_to_all_haks, 0);
+	set_signal_handler(SIGHUP, SH_HOW_UPSERT, post_sig_to_all_haks, 0);
+	set_signal_handler(SIGINT, SH_HOW_UPSERT, post_sig_to_all_haks, 0);
+	set_signal_handler(SIGPIPE, SH_HOW_UPSERT, do_nothing, 0);
 }
 
 void hak_uncatch_termreq (void)

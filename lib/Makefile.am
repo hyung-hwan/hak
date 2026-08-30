@@ -57,6 +57,7 @@ pkginclude_HEADERS = \
 	hak-pac1.h \
 	hak-hnd.h \
 	hak-pio.h \
+	hak-spl.h \
 	hak-rbt.h \
 	hak-str.h \
 	hak-upac.h \
