@@ -221,7 +221,7 @@
 #		define XPOLLERR POLLERR
 #		define XPOLLHUP POLLHUP
 #	elif defined(HAVE_SYS_EVENT_H) && defined(HAVE_KQUEUE)
-		/* netbsd, openbsd, etc */
+		/* netbsd, openbsd, freebsd, etc */
 #		include <sys/event.h>
 #		define USE_KQUEUE
 		/* fake XPOLLXXX values */

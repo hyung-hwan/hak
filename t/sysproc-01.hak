@@ -98,3 +98,17 @@ p    := (sys.popen "sleep 60" "r")
 outh := (core.basicAt p 2)
 sys.pclose (core.basicAt p 0)
 chk true "pclose released the group"
+
+## --- the exit handle ---
+## it is muxable but carries no bytes. it exists only where the platform has
+## pidfd_open(); elsewhere sys.popen answers nil for it, so guard the check
+## rather than assuming Linux.
+p := (sys.popen "true" "r")
+xh := (core.basicAt p 4)
+if (nil? xh) { printf "OK: no exit handle where the platform has no pidfd\n" } \
+else {
+	raised := false
+	try { sys.read xh (core.basicNew ByteArray 4) } catch (e) { raised := true }
+	chk raised "the exit handle carries no bytes"
+}
+sys.pclose (core.basicAt p 0)

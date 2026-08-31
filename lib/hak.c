@@ -237,13 +237,17 @@ void hak_fini (hak_t* hak)
 	hak_cb_t* cb;
 	hak_oow_t i;
 
+	/* BEFORE the modules are unloaded. a handle's destructor is a function in
+	 * the module that created it - mod/sys.c's proc_dtor(), say - so unloading
+	 * first leaves hnd->dtor pointing into an unmapped object, and calling it
+	 * jumps into nowhere. glibc often keeps a dlclose()d object mapped, which
+	 * hides this; FreeBSD unmaps it and the process dies with a wild PC.
+	 * we must finalize the handle table before unloading modules. */
+	hak_finihndtab(hak);
+
 	hak_rbt_walk(&hak->modtab, unload_module, hak);
 	hak_rbt_fini(&hak->modtab);
 	hak_htb_fini(&hak->static_mods);
-
-	/* after the modules, so that a module's unload can close its own handles
-	 * first; whatever hak code leaked is closed here. */
-	hak_finihndtab(hak);
 
 	if (hak->log.len > 0)
 	{

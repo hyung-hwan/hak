@@ -35,6 +35,7 @@
 #include <hak-pio.h>
 #include <hak-str.h>
 #include <stdlib.h>
+#include <signal.h>
 
 #if !defined(_WIN32)
 #	include <sys/types.h>
@@ -734,19 +735,89 @@ static hak_pfrc_t pf_sys_pclose (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 
 static hak_pfinfo_t pfinfos[] =
 {
-	{ "close",       { HAK_PFBASE_FUNC,  pf_sys_close,        1,  1 } },
-	{ "open",        { HAK_PFBASE_FUNC,  pf_sys_open,         2,  3 } },
-	{ "pclose",      { HAK_PFBASE_FUNC,  pf_sys_pclose,       1,  1 } },
-	{ "pipe",        { HAK_PFBASE_FUNC,  pf_sys_pipe,         0,  0 } },
-	{ "pkill",       { HAK_PFBASE_FUNC,  pf_sys_pkill,        1,  1 } },
-	{ "popen",       { HAK_PFBASE_FUNC,  pf_sys_popen,        1,  2 } },
-	{ "pwait",       { HAK_PFBASE_FUNC,  pf_sys_pwait,        1,  1 } },
-	{ "random",      { HAK_PFBASE_FUNC,  pf_sys_random,       0,  0 } },
-	{ "read",        { HAK_PFBASE_FUNC,  pf_sys_read,         2,  4 } },
-	{ "srandom",     { HAK_PFBASE_FUNC,  pf_sys_srandom,      1,  1 } },
-	{ "stime",       { HAK_PFBASE_FUNC,  pf_sys_stime,        1,  1 } },
-	{ "time",        { HAK_PFBASE_FUNC,  pf_sys_time,         0,  0 } },
-	{ "write",       { HAK_PFBASE_FUNC,  pf_sys_write,        2,  4 } }
+#if defined(SIGABRT)
+	{ "SIGABRT",       { HAK_PFBASE_CONST_SMOOI, HAK_NULL,          0, (hak_oow_t)(hak_ooi_t)SIGABRT }},
+#endif
+#if defined(SIGALRM)
+	{ "SIGALRM",       { HAK_PFBASE_CONST_SMOOI, HAK_NULL,          0, (hak_oow_t)(hak_ooi_t)SIGALRM }},
+#endif
+#if defined(SIGBUS)
+	{ "SIGBUS",        { HAK_PFBASE_CONST_SMOOI, HAK_NULL,          0, (hak_oow_t)(hak_ooi_t)SIGBUS }},
+#endif
+#if defined(SIGCHLD)
+	{ "SIGCHLD",       { HAK_PFBASE_CONST_SMOOI, HAK_NULL,          0, (hak_oow_t)(hak_ooi_t)SIGCHLD }},
+#endif
+#if defined(SIGCONT)
+	{ "SIGCONT",       { HAK_PFBASE_CONST_SMOOI, HAK_NULL,          0, (hak_oow_t)(hak_ooi_t)SIGCONT }},
+#endif
+#if defined(SIGFPE)
+	{ "SIGFPE",        { HAK_PFBASE_CONST_SMOOI, HAK_NULL,          0, (hak_oow_t)(hak_ooi_t)SIGFPE }},
+#endif
+#if defined(SIGHUP)
+	{ "SIGHUP",        { HAK_PFBASE_CONST_SMOOI, HAK_NULL,          0, (hak_oow_t)(hak_ooi_t)SIGHUP }},
+#endif
+#if defined(SIGILL)
+	{ "SIGILL",        { HAK_PFBASE_CONST_SMOOI, HAK_NULL,          0, (hak_oow_t)(hak_ooi_t)SIGILL }},
+#endif
+#if defined(SIGINT)
+	{ "SIGINT",        { HAK_PFBASE_CONST_SMOOI, HAK_NULL,          0, (hak_oow_t)(hak_ooi_t)SIGINT }},
+#endif
+#if defined(SIGKILL)
+	{ "SIGKILL",       { HAK_PFBASE_CONST_SMOOI, HAK_NULL,          0, (hak_oow_t)(hak_ooi_t)SIGKILL }},
+#endif
+#if defined(SIGPIPE)
+	{ "SIGPIPE",       { HAK_PFBASE_CONST_SMOOI, HAK_NULL,          0, (hak_oow_t)(hak_ooi_t)SIGPIPE }},
+#endif
+#if defined(SIGQUIT)
+	{ "SIGQUIT",       { HAK_PFBASE_CONST_SMOOI, HAK_NULL,          0, (hak_oow_t)(hak_ooi_t)SIGQUIT }},
+#endif
+#if defined(SIGSEGV)
+	{ "SIGSEGV",       { HAK_PFBASE_CONST_SMOOI, HAK_NULL,          0, (hak_oow_t)(hak_ooi_t)SIGSEGV }},
+#endif
+#if defined(SIGSTOP)
+	{ "SIGSTOP",       { HAK_PFBASE_CONST_SMOOI, HAK_NULL,          0, (hak_oow_t)(hak_ooi_t)SIGSTOP }},
+#endif
+#if defined(SIGTERM)
+	{ "SIGTERM",       { HAK_PFBASE_CONST_SMOOI, HAK_NULL,          0, (hak_oow_t)(hak_ooi_t)SIGTERM }},
+#endif
+#if defined(SIGTSTP)
+	{ "SIGTSTP",       { HAK_PFBASE_CONST_SMOOI, HAK_NULL,          0, (hak_oow_t)(hak_ooi_t)SIGTSTP }},
+#endif
+#if defined(SIGTTIN)
+	{ "SIGTTIN",       { HAK_PFBASE_CONST_SMOOI, HAK_NULL,          0, (hak_oow_t)(hak_ooi_t)SIGTTIN }},
+#endif
+#if defined(SIGTTOU)
+	{ "SIGTTOU",       { HAK_PFBASE_CONST_SMOOI, HAK_NULL,          0, (hak_oow_t)(hak_ooi_t)SIGTTOU }},
+#endif
+#if defined(SIGURG)
+	{ "SIGURG",        { HAK_PFBASE_CONST_SMOOI, HAK_NULL,          0, (hak_oow_t)(hak_ooi_t)SIGURG }},
+#endif
+#if defined(SIGUSR1)
+	{ "SIGUSR1",       { HAK_PFBASE_CONST_SMOOI, HAK_NULL,          0, (hak_oow_t)(hak_ooi_t)SIGUSR1 }},
+#endif
+#if defined(SIGUSR2)
+	{ "SIGUSR2",       { HAK_PFBASE_CONST_SMOOI, HAK_NULL,          0, (hak_oow_t)(hak_ooi_t)SIGUSR2 }},
+#endif
+#if defined(SIGVTALRM)
+	{ "SIGVTALRM",     { HAK_PFBASE_CONST_SMOOI, HAK_NULL,          0, (hak_oow_t)(hak_ooi_t)SIGVTALRM }},
+#endif
+#if defined(SIGWINCH)
+	{ "SIGWINCH",      { HAK_PFBASE_CONST_SMOOI, HAK_NULL,          0, (hak_oow_t)(hak_ooi_t)SIGWINCH }},
+#endif
+
+	{ "close",       { HAK_PFBASE_FUNC,        pf_sys_close,        1,  1 } },
+	{ "open",        { HAK_PFBASE_FUNC,        pf_sys_open,         2,  3 } },
+	{ "pclose",      { HAK_PFBASE_FUNC,        pf_sys_pclose,       1,  1 } },
+	{ "pipe",        { HAK_PFBASE_FUNC,        pf_sys_pipe,         0,  0 } },
+	{ "pkill",       { HAK_PFBASE_FUNC,        pf_sys_pkill,        1,  1 } },
+	{ "popen",       { HAK_PFBASE_FUNC,        pf_sys_popen,        1,  2 } },
+	{ "pwait",       { HAK_PFBASE_FUNC,        pf_sys_pwait,        1,  1 } },
+	{ "random",      { HAK_PFBASE_FUNC,        pf_sys_random,       0,  0 } },
+	{ "read",        { HAK_PFBASE_FUNC,        pf_sys_read,         2,  4 } },
+	{ "srandom",     { HAK_PFBASE_FUNC,        pf_sys_srandom,      1,  1 } },
+	{ "stime",       { HAK_PFBASE_FUNC,        pf_sys_stime,        1,  1 } },
+	{ "time",        { HAK_PFBASE_FUNC,        pf_sys_time,         0,  0 } },
+	{ "write",       { HAK_PFBASE_FUNC,        pf_sys_write,        2,  4 } }
 };
 
 /* ------------------------------------------------------------------------ */

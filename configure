@@ -16896,6 +16896,12 @@ then :
   printf "%s\n" "#define HAVE_SYS_DEVPOLL_H 1" >>confdefs.h
 
 fi
+ac_fn_c_check_header_compile "$LINENO" "sys/event.h" "ac_cv_header_sys_event_h" "$ac_includes_default"
+if test "x$ac_cv_header_sys_event_h" = xyes
+then :
+  printf "%s\n" "#define HAVE_SYS_EVENT_H 1" >>confdefs.h
+
+fi
 ac_fn_c_check_header_compile "$LINENO" "sys/epoll.h" "ac_cv_header_sys_epoll_h" "$ac_includes_default"
 if test "x$ac_cv_header_sys_epoll_h" = xyes
 then :

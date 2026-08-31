@@ -107,7 +107,7 @@ class ChildGroup(
 			## semaphore on the signal descriptor for the whole group, once.
 			if (not self.shared) {
 				set shared true
-				system-catch-sig 17                 ## SIGCHLD - define this as a constant...
+				system-catch-sig sys.SIGCHLD
 				set sigsem (sem-new)
 				semgr-add self.sg self.sigsem
 				sem-signal-on-input self.sigsem (system-get-sigfd)
@@ -228,7 +228,7 @@ class ChildGroup(
 		}
 		if self.shared {
 			sem-unsignal self.sigsem
-			system-uncatch-sig 17
+			system-uncatch-sig sys.SIGCHLD
 			set shared false
 		}
 	}

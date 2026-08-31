@@ -27,15 +27,15 @@ sys.close (core.basicAt q 0)
 sys.close (core.basicAt q 1)
 
 ## --- catch and uncatch are idempotent ---
-chk (= (system-catch-sig 10) 10) "system-catch-sig returns the signal number"
-chk (= (system-catch-sig 10) 10) "catching an already caught signal is fine"
-chk (= (system-uncatch-sig 10) 10) "system-uncatch-sig returns the signal number"
-chk (= (system-uncatch-sig 10) 10) "uncatching an uncaught signal is fine"
+chk (= (system-catch-sig sys.SIGUSR1) sys.SIGUSR1) "system-catch-sig returns the signal number"
+chk (= (system-catch-sig sys.SIGUSR1) sys.SIGUSR1) "catching an already caught signal is fine"
+chk (= (system-uncatch-sig sys.SIGUSR1) sys.SIGUSR1) "system-uncatch-sig returns the signal number"
+chk (= (system-uncatch-sig sys.SIGUSR1) sys.SIGUSR1) "uncatching an uncaught signal is fine"
 
 ## --- a real signal reaches hak code, without stalling the coprocesses ---
 ## SIGCHLD is used because a child exiting is something this test can arrange
 ## on its own, with no outside help.
-system-catch-sig 17
+system-catch-sig sys.SIGCHLD
 
 h     := (system-get-sigfd)
 s     := (sem-new)
@@ -76,7 +76,7 @@ fork ticker
 sem-wait fin
 
 chk (= ticks 4) "coprocesses ran while a coprocess waited on a signal"
-chk (= signo 17) "the signal number came through the signal descriptor"
+chk (= signo sys.SIGCHLD) "the signal number came through the signal descriptor"
 chk (= (sys.pwait proc) 4) "and the child's exit status is readable"
 sys.pclose proc
-system-uncatch-sig 17
+system-uncatch-sig sys.SIGCHLD

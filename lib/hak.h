@@ -1570,9 +1570,9 @@ typedef hak_pfrc_t (*hak_pfimpl_t) (
 
 enum hak_pfbase_type_t
 {
-	HAK_PFBASE_FUNC  = 0,
-	HAK_PFBASE_VAR   = 1,
-	HAK_PFBASE_CONST = 2
+	HAK_PFBASE_FUNC        = 0,
+	HAK_PFBASE_VAR         = 1,
+	HAK_PFBASE_CONST_SMOOI = 2
 };
 typedef enum hak_pfbase_type_t hak_pfbase_type_t;
 

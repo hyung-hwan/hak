@@ -23,7 +23,7 @@ sys.read r (core.basicNew ByteArray 4) ##ERROR: system handle 0
 
 ## a regular file is never accepted by the multiplexer: epoll refuses one
 ## outright, and poll() would report it permanently ready
-f := (sys.open "/proc/version" "r")
+f := (sys.open "/etc/passwd" "r")
 s := (sem-new)
 sem-signal-on-input s f ##ERROR: not of an acceptable kind
 
@@ -38,12 +38,6 @@ sys.pwait (core.basicAt p 0) ##ERROR: not of an acceptable kind
 ## ...and a process handle is not a stream
 p := (sys.popen "true" "r")
 sys.read (core.basicAt p 0) (core.basicNew ByteArray 4) ##ERROR: not of an acceptable kind
-
----
-
-## an exit handle is muxable but carries no bytes
-p := (sys.popen "true" "r")
-sys.read (core.basicAt p 4) (core.basicNew ByteArray 4) ##ERROR: not readable
 
 ---
 

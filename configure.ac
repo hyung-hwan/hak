@@ -110,7 +110,7 @@ AC_PROG_EGREP
 AC_CHECK_HEADERS([stddef.h wchar.h wctype.h errno.h signal.h fcntl.h dirent.h])
 AC_CHECK_HEADERS([time.h sys/time.h utime.h spawn.h execinfo.h ucontext.h])
 AC_CHECK_HEADERS([dlfcn.h ltdl.h sys/mman.h sys/uio.h])
-AC_CHECK_HEADERS([sys/devpoll.h sys/epoll.h poll.h])
+AC_CHECK_HEADERS([sys/devpoll.h sys/event.h sys/epoll.h poll.h])
 AC_CHECK_HEADERS([libunwind.h quadmath.h])
 AC_CHECK_HEADERS([sys/ioctl.h net/if.h])
 AC_CHECK_HEADERS([sys/wait.h sys/resource.h])

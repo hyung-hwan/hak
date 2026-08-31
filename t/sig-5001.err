@@ -1,32 +1,32 @@
 ## signals that cannot be caught
-system-catch-sig 9 ##ERROR: 9 not routable
+system-catch-sig sys.SIGKILL ##ERROR: not routable
 
 ---
 
-system-catch-sig 19 ##ERROR: 19 not routable
+system-catch-sig sys.SIGSTOP ##ERROR: not routable
 
 ---
 
 ## signals that indicate a crash: turning one into a byte on a pipe and
 ## carrying on would hide the fault rather than report it
-system-catch-sig 11 ##ERROR: 11 not routable
+system-catch-sig sys.SIGSEGV ##ERROR: not routable
 
 ---
 
-system-catch-sig 7 ##ERROR: 7 not routable
+system-catch-sig sys.SIGBUS ##ERROR: not routable
 
 ---
 
-system-catch-sig 8 ##ERROR: 8 not routable
+system-catch-sig sys.SIGFPE ##ERROR: not routable
 
 ---
 
-system-catch-sig 4 ##ERROR: 4 not routable
+system-catch-sig sys.SIGILL ##ERROR: not routable
 
 ---
 
 ## the timer signal hak itself uses to switch processes
-system-catch-sig 26 ##ERROR: 26 not routable
+system-catch-sig sys.SIGVTALRM ##ERROR: not routable
 
 ---
 

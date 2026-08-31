@@ -5450,12 +5450,17 @@ static HAK_INLINE int compile_dsymbol (hak_t* hak, hak_cnode_t* obj)
 				val = hak->_nil;
 				break;
 
-			case HAK_PFBASE_CONST:
+			case HAK_PFBASE_CONST_SMOOI:
+			{
 				/* TODO: create a value from the pfbase information. it needs to get extended first
 				 * can i make use of pfbase->handler type-cast to a differnt type? */
+				/* maxarg -> actual value cast to (hak_oow_t)(hak_ooi_t) */
+				hak_ooi_t v = (hak_ooi_t)pfbase->maxargs;
+				HAK_ASSERT(hak, HAK_IN_SMOOI_RANGE(v));
 				kernel_bits = 2;
-				val = hak->_nil;
+				val = HAK_SMOOI_TO_OOP(v);
 				break;
+			}
 
 			default:
 				hak_popvolat(hak);
@@ -5472,7 +5477,7 @@ static HAK_INLINE int compile_dsymbol (hak_t* hak, hak_cnode_t* obj)
 
 		/* make this dotted symbol special that it can't get changed
 		 * to a different value */
-		HAK_OBJ_SET_FLAGS_KERNEL (sym, kernel_bits);
+		HAK_OBJ_SET_FLAGS_KERNEL(sym, kernel_bits);
 	}
 
 	if (add_literal(hak, cons, &index) <= -1 ||
