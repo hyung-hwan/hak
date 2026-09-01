@@ -557,12 +557,15 @@ check_SCRIPTS = \
 	hnd-03.hak \
 	insta-01.hak \
 	insta-02.hak \
+	mux-01.hak \
+	mux-02.hak \
 	prim-01.hak \
 	proc-01.hak \
 	proclib-01.hak \
 	ret-01.hak \
 	retvar-01.hak \
 	sig-01.hak \
+	sig-02.hak \
 	sysproc-01.hak \
 	sysproc-02.hak \
 	tick-01.hak \

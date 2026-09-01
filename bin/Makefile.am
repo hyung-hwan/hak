@@ -75,7 +75,8 @@ hak_DEPENDENCIES = ../lib/libhak.la
 if ENABLE_ISOCLINE
 hak_CPPFLAGS += -I$(srcdir)/isocline/include -DHAVE_ISOCLINE_H -DHAVE_ISOCLINE_LIB
 hak_LDADD += ./libisocline.a
-hak_DEPENDENCIES += ./libisocline.a
+##hak_DEPENDENCIES += ./libisocline.a
+hak_DEPENDENCIES += libisocline.a
 endif
 
 if ENABLE_HAKX

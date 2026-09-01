@@ -857,6 +857,9 @@ struct hak_semaphore_t
 	} waiting; /* list of processes waiting on this semaphore */
 	/* [END IMPORTANT] */
 
+	/* number of signals not consumed on ths semaphore.
+	 * it's incremented when the semaphore is signaled.
+	 * it's decremented when it's signaled at least once and awaited */
 	hak_oop_t count; /* SmallInteger */
 
 	/* nil for normal. SmallInteger if associated with
@@ -1640,11 +1643,14 @@ struct hak_mod_data_t
 typedef struct hak_mod_data_t hak_mod_data_t;
 
 
+/* The hak_sem_tuple_t type holds extra information on IO driven semaphore state.
+ * It doesn't belong to the object memory and is not visible outside the VM instance */
 struct hak_sem_tuple_t
 {
 	hak_oop_semaphore_t sem[2]; /* [0] input, [1] output */
 	hak_ooi_t handle; /* io handle */
 	hak_ooi_t mask;
+	hak_ooi_t unawaited[2]; /* the number of IO-raised signal counts unawaited yet and not consumed */
 };
 typedef struct hak_sem_tuple_t hak_sem_tuple_t;
 

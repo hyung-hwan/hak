@@ -1470,6 +1470,29 @@ static HAK_INLINE int can_await_semaphore (hak_t* hak, hak_oop_semaphore_t sem)
 	return (hak_oop_t)sem->group == hak->_nil;
 }
 
+static HAK_INLINE void drop_unawaited_io_signal_count_in_semaphore (hak_t* hak, hak_oop_semaphore_t sem)
+{
+	hak_ooi_t index;
+	hak_ooi_t io_type;
+
+	if (sem->subtype != HAK_SMOOI_TO_OOP(HAK_SEMAPHORE_SUBTYPE_IO)) return;
+
+	/* io.index must be nil or smooi */
+	/*if ((hak_oop_t)sem->u.io.index == hak->_nil) return;*/
+	if (!HAK_OOP_IS_SMOOI(sem->u.io.index)) return;
+
+	/* u.io.index is nil once the semaphore has been unbound, so a stale IO
+	 * subtype cannot lead us into the tuple array with a dead index. */
+	index = HAK_OOP_TO_SMOOI(sem->u.io.index);
+	io_type = HAK_OOP_TO_SMOOI(sem->u.io.type);
+
+	HAK_ASSERT(hak, index >= 0 && index < (hak_ooi_t)hak->sem_io_tuple_count);
+	HAK_ASSERT(hak, io_type == HAK_SEMAPHORE_IO_TYPE_INPUT || io_type == HAK_SEMAPHORE_IO_TYPE_OUTPUT);
+
+	if (hak->sem_io_tuple[index].unawaited[io_type] > 0)
+		hak->sem_io_tuple[index].unawaited[io_type]--;
+}
+
 static HAK_INLINE void await_semaphore (hak_t* hak, hak_oop_semaphore_t sem)
 {
 	hak_oop_process_t proc;
@@ -1487,10 +1510,10 @@ static HAK_INLINE void await_semaphore (hak_t* hak, hak_oop_semaphore_t sem)
 		/* it's already signaled */
 		count--;
 		sem->count = HAK_SMOOI_TO_OOP(count);
+		drop_unawaited_io_signal_count_in_semaphore(hak, sem);
 
 		if ((hak_oop_t)semgrp != hak->_nil && count == 0)
 		{
-
 			int sems_idx;
 			/* TODO: if i disallow individual wait on a semaphore in a group,
 			 *       this membership manipulation is redundant */
@@ -1552,6 +1575,7 @@ static HAK_INLINE hak_oop_t await_semaphore_group (hak_t* hak, hak_oop_semaphore
 		HAK_ASSERT(hak, count > 0);
 		count--;
 		sem->count = HAK_SMOOI_TO_OOP(count);
+		drop_unawaited_io_signal_count_in_semaphore(hak, sem);
 
 		HAK_DELETE_FROM_OOP_LIST(hak, &semgrp->sems[HAK_SEMAPHORE_GROUP_SEMS_SIG], sem, grm);
 		sems_idx = count > 0? HAK_SEMAPHORE_GROUP_SEMS_SIG: HAK_SEMAPHORE_GROUP_SEMS_UNSIG;
@@ -1778,6 +1802,7 @@ int hak_add_sem_to_sem_io_tuple (hak_t* hak, hak_oop_semaphore_t sem, hak_ooi_t 
 			return -1;
 		}
 
+		/* initialize it to -1 to indicate no binding yet */
 		for (i = hak->sem_io_map_capa; i < new_capa; i++) tmp[i] = -1;
 
 		hak->sem_io_map = tmp;
@@ -1805,6 +1830,9 @@ int hak_add_sem_to_sem_io_tuple (hak_t* hak, hak_oop_semaphore_t sem, hak_ooi_t 
 			tmp = (hak_sem_tuple_t*)hak_reallocmem(hak, hak->sem_io_tuple, HAK_SIZEOF(hak_sem_tuple_t) * new_capa);
 			if (HAK_UNLIKELY(!tmp)) return -1;
 
+			/* initialize the newly added tuples with zeros */
+			HAK_MEMSET(&tmp[hak->sem_io_tuple_capa], 0, HAK_SIZEOF(hak_sem_tuple_t) * SEM_IO_TUPLE_INC);
+
 			hak->sem_io_tuple = tmp;
 			hak->sem_io_tuple_capa = new_capa;
 		}
@@ -1822,6 +1850,8 @@ int hak_add_sem_to_sem_io_tuple (hak_t* hak, hak_oop_semaphore_t sem, hak_ooi_t 
 		hak->sem_io_tuple[index].sem[HAK_SEMAPHORE_IO_TYPE_OUTPUT] = HAK_NULL;
 		hak->sem_io_tuple[index].handle = io_handle;
 		hak->sem_io_tuple[index].mask = 0;
+		hak->sem_io_tuple[index].unawaited[HAK_SEMAPHORE_IO_TYPE_INPUT] = 0;
+		hak->sem_io_tuple[index].unawaited[HAK_SEMAPHORE_IO_TYPE_OUTPUT] = 0;
 
 		new_mask = ((hak_ooi_t)1 << io_type);
 
@@ -1861,6 +1891,7 @@ int hak_add_sem_to_sem_io_tuple (hak_t* hak, hak_oop_semaphore_t sem, hak_ooi_t 
 	hak->sem_io_tuple[index].handle = io_handle;
 	hak->sem_io_tuple[index].mask = new_mask;
 	hak->sem_io_tuple[index].sem[io_type] = sem;
+	hak->sem_io_tuple[index].unawaited[io_type] = 0; /* init for a new binding into the existing slot */
 
 	hak->sem_io_count++;
 	if (tuple_added)
@@ -1883,7 +1914,7 @@ int hak_add_sem_to_sem_io_tuple (hak_t* hak, hak_oop_semaphore_t sem, hak_ooi_t 
 
 static int delete_sem_from_sem_io_tuple (hak_t* hak, hak_oop_semaphore_t sem, int force)
 {
-	hak_ooi_t index;
+	hak_ooi_t index, unawaited;
 	hak_ooi_t new_mask, io_handle, io_type;
 	int x;
 
@@ -1945,6 +1976,33 @@ static int delete_sem_from_sem_io_tuple (hak_t* hak, hak_oop_semaphore_t sem, in
 		sem->group->sem_io_count = HAK_SMOOI_TO_OOP(count);
 	}
 
+
+	/* ----------------------------------------------------------------------
+	 * [OPTIMIZATION] it would work without this part and unawaited handling.
+	 * ----------------------------------------------------------------------
+	 * retract only what the multiplexer signaled. Those counts stand for an
+	 * unconsumed edge on THIS descriptor; with the binding gone they refer to
+	 * nothing, and a rebind re-arms the multiplexer anyway. Counts from a
+	 * manual sem-signal are left alone: hak_pf_semaphore_signal() accepts an
+	 * IO semaphore, so both sources share sem->count.
+	 * ---------------------------------------------------------------------- */
+	unawaited = hak->sem_io_tuple[index].unawaited[io_type];
+	hak->sem_io_tuple[index].unawaited[io_type] = 0;
+	if (unawaited > 0)
+	{
+		hak_ooi_t count = HAK_OOP_TO_SMOOI(sem->count);
+		HAK_ASSERT(hak, unawaited <= count);
+		count -= unawaited;
+		sem->count = HAK_SMOOI_TO_OOP(count);
+
+		if (count == 0 && (hak_oop_t)sem->group != hak->_nil)
+		{
+			HAK_DELETE_FROM_OOP_LIST(hak, &sem->group->sems[HAK_SEMAPHORE_GROUP_SEMS_SIG], sem, grm);
+			HAK_APPEND_TO_OOP_LIST(hak, &sem->group->sems[HAK_SEMAPHORE_GROUP_SEMS_UNSIG], hak_oop_semaphore_t, sem, grm);
+		}
+	}
+	/* ---------------------------------------------------------------------- */
+
 	if (new_mask)
 	{
 		hak->sem_io_tuple[index].mask = new_mask;
@@ -1975,7 +2033,7 @@ static int delete_sem_from_sem_io_tuple (hak_t* hak, hak_oop_semaphore_t sem, in
 	return 0;
 }
 
-static void _signal_io_semaphore (hak_t* hak, hak_oop_semaphore_t sem)
+static hak_oop_process_t _signal_io_semaphore (hak_t* hak, hak_oop_semaphore_t sem)
 {
 	hak_oop_process_t proc;
 
@@ -1998,6 +2056,8 @@ static void _signal_io_semaphore (hak_t* hak, hak_oop_semaphore_t sem)
 		switch_to_process_from_nil(hak, proc);
 	#endif
 	}
+
+	return proc;
 }
 
 static void signal_io_semaphore (hak_t* hak, hak_ooi_t io_handle, hak_ooi_t mask)
@@ -2016,7 +2076,12 @@ static void signal_io_semaphore (hak_t* hak, hak_ooi_t io_handle, hak_ooi_t mask
 			if ((mask & (HAK_SEMAPHORE_IO_MASK_OUTPUT | HAK_SEMAPHORE_IO_MASK_ERROR)) ||
 			    (!insem && (mask & HAK_SEMAPHORE_IO_MASK_HANGUP)))
 			{
-				_signal_io_semaphore(hak, outsem);
+				if ((hak_oop_t)_signal_io_semaphore(hak, outsem) == hak->_nil)
+				{
+					/* no process was waiting so the signal is pending and not consumed.
+					 * raise the io signal count unawaited */
+					hak->sem_io_tuple[sem_io_index].unawaited[HAK_SEMAPHORE_IO_TYPE_OUTPUT]++;
+				}
 			}
 		}
 
@@ -2024,7 +2089,12 @@ static void signal_io_semaphore (hak_t* hak, hak_ooi_t io_handle, hak_ooi_t mask
 		{
 			if (mask & (HAK_SEMAPHORE_IO_MASK_INPUT | HAK_SEMAPHORE_IO_MASK_HANGUP | HAK_SEMAPHORE_IO_MASK_ERROR))
 			{
-				_signal_io_semaphore(hak, insem);
+				if ((hak_oop_t)_signal_io_semaphore(hak, insem) == hak->_nil)
+				{
+					/* no process was waiting so the signal is pending and not consumed.
+					 * raise the io signal count unawaited */
+					hak->sem_io_tuple[sem_io_index].unawaited[HAK_SEMAPHORE_IO_TYPE_INPUT]++;
+				}
 			}
 		}
 	}

@@ -1,0 +1,66 @@
+## several io bindings alive at once, and unbinding one from the middle
+##
+## Each sem-signal-on-input adds an entry to the VM's io tuple array; removing
+## one compacts the gap by migrating the last entry into the freed slot, which
+## has to fix up the moved semaphore's recorded index. Nothing exercises that
+## unless two or more bindings exist simultaneously - a single binding always
+## occupies the last slot and compaction is a no-op.
+##
+## The children finish in a known order, so the semaphore each wait answers is
+## predictable, and a mixed-up index shows as the wrong semaphore or a read
+## that finds nothing.
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+sg  := (semgr-new)
+sa  := (sem-new)
+sb  := (sem-new)
+sc  := (sem-new)
+tmo := (sem-new)
+semgr-add sg sa
+semgr-add sg sb
+semgr-add sg sc
+semgr-add sg tmo
+
+## staggered so the completion order is a, then b, then c
+pa := (sys.popen "sleep 0.2; echo aaa" "r")
+pb := (sys.popen "sleep 0.5; echo bbb" "r")
+pc := (sys.popen "sleep 0.8; echo ccc" "r")
+
+ha := (core.basicAt pa 2)
+hb := (core.basicAt pb 2)
+hc := (core.basicAt pc 2)
+
+## all three bound at the same time - three live tuple entries
+sem-signal-on-input sa ha
+sem-signal-on-input sb hb
+sem-signal-on-input sc hc
+sem-signal tmo 9 0
+
+fun expect(want h name) {
+	| s buf got |
+	s := (semgr-wait sg)
+	chk (eqv? s want) name
+	buf := (core.basicNew ByteArray 8)
+	got := (sys.read h buf)
+	chk (== got 4) "the woken handle carried its child's bytes"
+}
+
+## unbinding sa frees the first slot, so the last entry migrates into it and
+## sb/sc must still resolve to their own handles afterwards
+expect sa ha "the first child woke its own semaphore"
+sem-unsignal sa
+
+expect sb hb "the second child woke its own semaphore after compaction"
+sem-unsignal sb
+
+expect sc hc "the third child woke its own semaphore after compaction"
+sem-unsignal sc
+
+sem-unsignal tmo
+sys.pclose (core.basicAt pa 0)
+sys.pclose (core.basicAt pb 0)
+sys.pclose (core.basicAt pc 0)

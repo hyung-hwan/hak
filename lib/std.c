@@ -1557,7 +1557,7 @@ static int _add_poll_fd (hak_t* hak, int fd, int event_mask)
 			return -1;
 		}
 
-		HAK_MEMSET(&tmp[xtn->ev.reg.capa], 0, newcapa - xtn->ev.reg.capa);
+		HAK_MEMSET(&tmp[xtn->ev.reg.capa], 0, (newcapa - xtn->ev.reg.capa) * HAK_SIZEOF(*tmp));
 		xtn->ev.reg.ptr = tmp;
 		xtn->ev.reg.capa = newcapa;
 	}
@@ -1699,7 +1699,6 @@ static int _add_poll_fd (hak_t* hak, int fd, int event_mask)
 
 static int _del_poll_fd (hak_t* hak, int fd)
 {
-
 #if defined(USE_DEVPOLL)
 	xtn_t* xtn = GET_XTN(hak);
 	struct pollfd ev;
@@ -1733,11 +1732,11 @@ static int _del_poll_fd (hak_t* hak, int fd)
 		return -1;
 	};
 
-	rv = HAK_GETBITS (hak_oow_t, xtn->ev.reg.ptr[rindex], roffset, 2);
+	rv = HAK_GETBITS(hak_oow_t, xtn->ev.reg.ptr[rindex], roffset, 2);
 
 	if (rv & 1)
 	{
-		/*EV_SET (&ev, fd, EVFILT_READ, EV_DELETE, 0, 0, 0);*/
+		/*EV_SET(&ev, fd, EVFILT_READ, EV_DELETE, 0, 0, 0);*/
 		HAK_MEMSET(&ev, 0, HAK_SIZEOF(ev));
 		ev.ident = fd;
 		ev.flags = EV_DELETE;
@@ -1748,7 +1747,7 @@ static int _del_poll_fd (hak_t* hak, int fd)
 
 	if (rv & 2)
 	{
-		/*EV_SET (&ev, fd, EVFILT_WRITE, EV_DELETE, 0, 0, 0);*/
+		/*EV_SET(&ev, fd, EVFILT_WRITE, EV_DELETE, 0, 0, 0);*/
 		HAK_MEMSET(&ev, 0, HAK_SIZEOF(ev));
 		ev.ident = fd;
 		ev.flags = EV_DELETE;
@@ -1757,7 +1756,7 @@ static int _del_poll_fd (hak_t* hak, int fd)
 		/* no error check for now */
 	}
 
-	HAK_SETBITS (hak_oow_t, xtn->ev.reg.ptr[rindex], roffset, 2, 0);
+	HAK_SETBITS(hak_oow_t, xtn->ev.reg.ptr[rindex], roffset, 2, 0);
 	return 0;
 
 #elif defined(USE_EPOLL)
@@ -1792,7 +1791,6 @@ static int _del_poll_fd (hak_t* hak, int fd)
 	}
 	MUTEX_UNLOCK(&xtn->ev.reg.pmtx);
 
-
 	HAK_DEBUG1(hak, "Cannot remove file descriptor %d from poll - not found\n", fd);
 	hak_seterrnum(hak, HAK_ENOENT);
 	return -1;
@@ -1818,7 +1816,6 @@ static int _del_poll_fd (hak_t* hak, int fd)
 	return 0;
 
 #else
-
 	HAK_DEBUG1(hak, "Cannot remove file descriptor %d from poll - not implemented\n", fd);
 	hak_seterrnum(hak, HAK_ENOIMPL);
 	return -1;
@@ -1994,8 +1991,8 @@ kqueue_syserr:
 		FD_SET(fd, &xtn->ev.reg.wfds);
 	else
 		FD_CLR(fd, &xtn->ev.reg.wfds);
-	MUTEX_UNLOCK(&xtn->ev.reg.smtx);
 
+	MUTEX_UNLOCK(&xtn->ev.reg.smtx);
 	return 0;
 
 #else
@@ -2004,6 +2001,52 @@ kqueue_syserr:
 	return -1;
 #endif
 }
+
+#if defined(USE_THREAD)
+/* Drop multiplexer events already sitting in the buffer for this descriptor.
+ *
+ * iothr_main() reads events straight into xtn->ev.buf and publishes ev.len;
+ * the VM consumes them later. Removing a descriptor from the underlying
+ * multiplexer therefore does not reach events that have already been handed
+ * back. If the descriptor is then closed and its number reused before the VM
+ * drains the buffer - which sys.popen/sys.pclose does on every call - the
+ * stale event is dispatched against whatever now owns that number: a semaphore
+ * is signalled for a descriptor that was never ready, and the read that
+ * follows answers nothing. See t/mux-01.hak.
+ *
+ * Must not be called from inside the dispatch loop in vm_muxwait(). That loop
+ * caches ev.len and would walk entries this function compacts away. Nothing
+ * does today - signalling a semaphore only makes a process runnable, it does
+ * not run hak code - but the loop has no defence if that ever changes. */
+static void purge_muxevts (hak_t* hak, int fd)
+{
+	xtn_t* xtn = GET_XTN(hak);
+	hak_oow_t i, j;
+
+	MUTEX_LOCK(&xtn->ev.mtx);
+
+	for (i = 0, j = 0; i < xtn->ev.len; i++)
+	{
+	#if defined(USE_DEVPOLL) || defined(USE_POLL) || defined(USE_SELECT)
+		if (xtn->ev.buf[i].fd == fd) continue;
+	#elif defined(USE_KQUEUE)
+		if ((int)xtn->ev.buf[i].ident == fd) continue;
+	#elif defined(USE_EPOLL)
+		if (xtn->ev.buf[i].data.fd == fd) continue;
+	#endif
+		if (j != i) xtn->ev.buf[j] = xtn->ev.buf[i];
+		j++;
+	}
+
+	if (j != xtn->ev.len)
+	{
+		xtn->ev.len = j;
+		if (j <= 0) pthread_cond_signal(&xtn->ev.cnd); // TODO: use a generic wrapper??
+	}
+	MUTEX_UNLOCK(&xtn->ev.mtx);
+
+}
+#endif
 
 static int vm_muxadd (hak_t* hak, hak_ooi_t io_handle, hak_ooi_t mask)
 {
@@ -2039,11 +2082,32 @@ static int vm_muxmod (hak_t* hak, hak_ooi_t io_handle, hak_ooi_t mask)
 	}
 
 	return _mod_poll_fd(hak, io_handle, event_mask);
+
+	/* [NOTE]
+	 *   this may need the same mux event purge as vm_muxdel() for accuracy.
+	 *   if a file descriptor is removed for one direction while another direction
+	 *   is still watched, this function is invoked. in that case, xtn->evt.buf
+	 *   may have some stale events and they can raise spurious signals.
+	 *
+	 *   TODO: per-direction event purge
+	 */
 }
 
 static int vm_muxdel (hak_t* hak, hak_ooi_t io_handle)
 {
-	return _del_poll_fd(hak, io_handle);
+	int n;
+
+	n = _del_poll_fd(hak, io_handle);
+
+#if defined(USE_THREAD)
+	/* purge after the descriptor is out of the multiplexer, so nothing new can
+	 * be queued for it behind us - and unconditionally, because a failed
+	 * delete does not make a buffered event any less stale.
+	 * delete_sem_from_sem_io_tuple() carries on regardless when force is set.
+	 */
+	purge_muxevts(hak, (int)io_handle);
+#endif
+	return n;
 }
 
 #if defined(USE_THREAD)
@@ -2077,7 +2141,7 @@ static void* iothr_main (void* arg)
 			dvp.dp_timeout = 10000; /* milliseconds */
 			dvp.dp_fds = xtn->ev.buf;
 			dvp.dp_nfds = HAK_COUNTOF(xtn->ev.buf);
-			n = ioctl (xtn->ep, DP_POLL, &dvp);
+			n = ioctl(xtn->ep, DP_POLL, &dvp);
 		#elif defined(USE_KQUEUE)
 			ts.tv_sec = 10;
 			ts.tv_nsec = 0;
@@ -2118,7 +2182,7 @@ static void* iothr_main (void* arg)
 			if (n > 0)
 			{
 				int fd, count = 0;
-				for (fd = 0;  fd <= maxfd; fd++)
+				for (fd = 0; fd <= maxfd; fd++)
 				{
 					int events = 0;
 					if (FD_ISSET(fd, &rfds)) events |= XPOLLIN;
@@ -2138,7 +2202,7 @@ static void* iothr_main (void* arg)
 			}
 		#endif
 
-			pthread_mutex_lock (&xtn->ev.mtx);
+			MUTEX_LOCK(&xtn->ev.mtx);
 			if (n <= -1)
 			{
 				/* TODO: don't use HAK_DEBUG2. it's not thread safe... */
@@ -2149,35 +2213,35 @@ static void* iothr_main (void* arg)
 			{
 				xtn->ev.len = n;
 			}
-			pthread_cond_signal (&xtn->ev.cnd2);
-			pthread_mutex_unlock (&xtn->ev.mtx);
+			pthread_cond_signal(&xtn->ev.cnd2);
+			MUTEX_UNLOCK(&xtn->ev.mtx);
 		}
 		else
 		{
 			/* the event buffer has not been emptied yet */
 			struct timespec ts;
 
-			pthread_mutex_lock (&xtn->ev.mtx);
+			MUTEX_LOCK(&xtn->ev.mtx);
 			if (xtn->ev.len <= 0)
 			{
 				/* it got emptied between the if check and pthread_mutex_lock() above */
-				pthread_mutex_unlock (&xtn->ev.mtx);
+				MUTEX_UNLOCK(&xtn->ev.mtx);
 				goto poll_for_event;
 			}
 
 		#if defined(HAVE_CLOCK_GETTIME) && defined(CLOCK_REALTIME)
-			clock_gettime (CLOCK_REALTIME, &ts);
+			clock_gettime(CLOCK_REALTIME, &ts);
 		#else
 			{
 				struct timeval tv;
-				gettimeofday (&tv, HAK_NULL);
+				gettimeofday(&tv, HAK_NULL);
 				ts.tv_sec = tv.tv_sec;
 				ts.tv_nsec = HAK_USEC_TO_NSEC(tv.tv_usec);
 			}
 		#endif
 			ts.tv_sec += 10;
-			pthread_cond_timedwait (&xtn->ev.cnd, &xtn->ev.mtx, &ts);
-			pthread_mutex_unlock (&xtn->ev.mtx);
+			pthread_cond_timedwait(&xtn->ev.cnd, &xtn->ev.mtx, &ts);
+			MUTEX_UNLOCK(&xtn->ev.mtx);
 		}
 
 		/*sched_yield ();*/
@@ -2216,28 +2280,28 @@ static void vm_muxwait (hak_t* hak, const hak_ntime_t* dur, hak_vmprim_muxwait_c
 		if (!dur) return; /* immediate check is requested. and there is no event */
 
 	#if defined(HAVE_CLOCK_GETTIME) && defined(CLOCK_REALTIME)
-		clock_gettime (CLOCK_REALTIME, &ts);
+		clock_gettime(CLOCK_REALTIME, &ts);
 		ns.sec = ts.tv_sec;
 		ns.nsec = ts.tv_nsec;
 	#else
 		{
 			struct timeval tv;
-			gettimeofday (&tv, HAK_NULL);
+			gettimeofday(&tv, HAK_NULL);
 			ns.sec = tv.tv_sec;
 			ns.nsec = HAK_USEC_TO_NSEC(tv.tv_usec);
 		}
 	#endif
-		HAK_ADD_NTIME (&ns, &ns, dur);
+		HAK_ADD_NTIME(&ns, &ns, dur);
 		ts.tv_sec = ns.sec;
 		ts.tv_nsec = ns.nsec;
 
-		pthread_mutex_lock (&xtn->ev.mtx);
+		MUTEX_LOCK(&xtn->ev.mtx);
 		if (xtn->ev.len <= 0)
 		{
 			/* the event buffer is still empty */
-			pthread_cond_timedwait (&xtn->ev.cnd2, &xtn->ev.mtx, &ts);
+			pthread_cond_timedwait(&xtn->ev.cnd2, &xtn->ev.mtx, &ts);
 		}
-		pthread_mutex_unlock (&xtn->ev.mtx);
+		MUTEX_UNLOCK(&xtn->ev.mtx);
 	}
 
 	n = xtn->ev.len;
@@ -2278,10 +2342,11 @@ static void vm_muxwait (hak_t* hak, const hak_ntime_t* dur, hak_vmprim_muxwait_c
 			#if defined(USE_DEVPOLL)
 				revents = xtn->ev.buf[n].revents;
 			#elif defined(USE_KQUEUE)
-				if (xtn->ev.buf[n].filter == EVFILT_READ) mask = HAK_SEMAPHORE_IO_MASK_INPUT;
-				else if (xtn->ev.buf[n].filter == EVFILT_WRITE) mask = HAK_SEMAPHORE_IO_MASK_OUTPUT;
-				else mask = 0;
-				goto call_muxwcb_kqueue;
+				revents = 0;
+				if (xtn->ev.buf[n].filter == EVFILT_READ) revents |= XPOLLIN;
+				else if (xtn->ev.buf[n].filter == EVFILT_WRITE) revents |= XPOLLOUT;
+				if (xtn->ev.buf[n].flags & EV_EOF) revents |= XPOLLHUP;
+				if (xtn->ev.buf[n].flags & EV_ERROR) revents |= XPOLLERR;
 			#elif defined(USE_EPOLL)
 				revents = xtn->ev.buf[n].events;
 			#elif defined(USE_POLL)
@@ -2299,7 +2364,6 @@ static void vm_muxwait (hak_t* hak, const hak_ntime_t* dur, hak_vmprim_muxwait_c
 			#if defined(USE_DEVPOLL)
 				muxwcb(hak, xtn->ev.buf[n].fd, mask);
 			#elif defined(USE_KQUEUE)
-			call_muxwcb_kqueue:
 				muxwcb(hak, xtn->ev.buf[n].ident, mask);
 			#elif defined(USE_EPOLL)
 				muxwcb(hak, xtn->ev.buf[n].data.fd, mask);
@@ -2314,10 +2378,10 @@ static void vm_muxwait (hak_t* hak, const hak_ntime_t* dur, hak_vmprim_muxwait_c
 		}
 		while (n > 0);
 
-		pthread_mutex_lock (&xtn->ev.mtx);
+		MUTEX_LOCK(&xtn->ev.mtx);
 		xtn->ev.len = 0;
-		pthread_cond_signal (&xtn->ev.cnd);
-		pthread_mutex_unlock (&xtn->ev.mtx);
+		pthread_cond_signal(&xtn->ev.cnd);
+		MUTEX_UNLOCK(&xtn->ev.mtx);
 	}
 
 #else /* USE_THREAD */
@@ -2450,10 +2514,11 @@ static void vm_muxwait (hak_t* hak, const hak_ntime_t* dur, hak_vmprim_muxwait_c
 	#if defined(USE_DEVPOLL)
 		revents = xtn->ev.buf[n].revents;
 	#elif defined(USE_KQUEUE)
-		if (xtn->ev.buf[n].filter == EVFILT_READ) mask = HAK_SEMAPHORE_IO_MASK_INPUT;
-		else if (xtn->ev.buf[n].filter == EVFILT_WRITE) mask = HAK_SEMAPHORE_IO_MASK_OUTPUT;
-		else mask = 0;
-		goto call_muxwcb_kqueue;
+		revents = 0;
+		if (xtn->ev.buf[n].filter == EVFILT_READ) revents |= XPOLLIN;
+		else if (xtn->ev.buf[n].filter == EVFILT_WRITE) revents |= XPOLLOUT;
+		if (xtn->ev.buf[n].flags & EV_EOF) revents |= XPOLLHUP;
+		if (xtn->ev.buf[n].flags & EV_ERROR) revents |= XPOLLERR;
 	#elif defined(USE_EPOLL)
 		revents = xtn->ev.buf[n].events;
 	#elif defined(USE_POLL)
@@ -2473,7 +2538,6 @@ static void vm_muxwait (hak_t* hak, const hak_ntime_t* dur, hak_vmprim_muxwait_c
 	#if defined(USE_DEVPOLL)
 		muxwcb(hak, xtn->ev.buf[n].fd, mask);
 	#elif defined(USE_KQUEUE)
-	call_muxwcb_kqueue:
 		muxwcb(hak, xtn->ev.buf[n].ident, mask);
 	#elif defined(USE_EPOLL)
 		muxwcb(hak, xtn->ev.buf[n].data.fd, mask);

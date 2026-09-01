@@ -1,0 +1,61 @@
+## the signal constants exported by the sys module
+##
+## Signal numbers differ between platforms - 10 is SIGUSR1 on Linux but SIGBUS
+## on FreeBSD, 17 is SIGCHLD on Linux but SIGSTOP on FreeBSD - so hak code must
+## name them rather than spell the numbers. These constants exist for that.
+##
+## Naming one that does not resolve is a compile-time error, which makes this
+## file a guard on the module's pfinfo table too: that table is binary-searched
+## by hak_findpfbase(), so an entry out of C-collation order stops resolving
+## with no other symptom.
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+fun isnum(v name) { chk (integer? v) name }
+
+isnum sys.SIGABRT   "sys.SIGABRT"
+isnum sys.SIGALRM   "sys.SIGALRM"
+isnum sys.SIGBUS    "sys.SIGBUS"
+isnum sys.SIGCHLD   "sys.SIGCHLD"
+isnum sys.SIGCONT   "sys.SIGCONT"
+isnum sys.SIGFPE    "sys.SIGFPE"
+isnum sys.SIGHUP    "sys.SIGHUP"
+isnum sys.SIGILL    "sys.SIGILL"
+isnum sys.SIGINT    "sys.SIGINT"
+isnum sys.SIGKILL   "sys.SIGKILL"
+isnum sys.SIGPIPE   "sys.SIGPIPE"
+isnum sys.SIGQUIT   "sys.SIGQUIT"
+isnum sys.SIGSEGV   "sys.SIGSEGV"
+isnum sys.SIGSTOP   "sys.SIGSTOP"
+isnum sys.SIGTERM   "sys.SIGTERM"
+isnum sys.SIGTSTP   "sys.SIGTSTP"
+isnum sys.SIGTTIN   "sys.SIGTTIN"
+isnum sys.SIGTTOU   "sys.SIGTTOU"
+isnum sys.SIGURG    "sys.SIGURG"
+isnum sys.SIGUSR1   "sys.SIGUSR1"
+isnum sys.SIGUSR2   "sys.SIGUSR2"
+isnum sys.SIGVTALRM "sys.SIGVTALRM"
+isnum sys.SIGWINCH  "sys.SIGWINCH"
+
+## the constants must be distinct from one another - a table entry pointing at
+## the wrong value would otherwise pass every check above
+chk (not (== sys.SIGKILL sys.SIGSTOP)) "SIGKILL and SIGSTOP differ"
+chk (not (== sys.SIGUSR1 sys.SIGUSR2)) "SIGUSR1 and SIGUSR2 differ"
+chk (not (== sys.SIGCHLD sys.SIGSTOP)) "SIGCHLD and SIGSTOP differ"
+chk (not (== sys.SIGBUS  sys.SIGUSR1)) "SIGBUS and SIGUSR1 differ"
+
+## these three are the same number everywhere hak runs, so they can be pinned
+chk (== sys.SIGKILL 9)  "SIGKILL is 9"
+chk (== sys.SIGSEGV 11) "SIGSEGV is 11"
+chk (== sys.SIGTERM 15) "SIGTERM is 15"
+
+## and the constants behave: a routable one can be caught, an unroutable one
+## cannot, whatever the numbers happen to be here
+chk (== (system-catch-sig sys.SIGUSR1) sys.SIGUSR1) "SIGUSR1 is catchable"
+chk (== (system-uncatch-sig sys.SIGUSR1) sys.SIGUSR1) "SIGUSR1 is uncatchable again"
+raised := false
+try { system-catch-sig sys.SIGKILL } catch (e) { raised := true }
+chk raised "SIGKILL is refused"

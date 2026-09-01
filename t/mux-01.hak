@@ -1,0 +1,54 @@
+## a recycled descriptor number must not inherit a readiness event
+##
+## The io thread reads multiplexer events into a buffer that the VM drains
+## later, so unregistering a descriptor does not reach events already handed
+## back. sys.pclose then closes the descriptor and the next sys.popen gets the
+## same number, at which point a leftover event is delivered against the new
+## pipe: the semaphore fires for something that was never ready and the read
+## finds nothing.
+##
+## The child sleeps before writing, so a wakeup that arrives before the write
+## is unmistakably spurious rather than merely early - which is what makes this
+## deterministic instead of a race. Each round must read its own three bytes.
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+iosem := (sem-new)
+tmo   := (sem-new)
+sg    := (semgr-new)
+semgr-add sg iosem
+semgr-add sg tmo
+
+## 1 when the handle became readable, 0 when the timer won instead
+fun waitin(h secs) {
+	| s |
+	sem-signal tmo secs 0
+	sem-signal-on-input iosem h
+	s := (semgr-wait sg)
+	sem-unsignal iosem
+	sem-unsignal tmo
+	if (eqv? s tmo) { return 0 } else { return 1 }
+}
+
+fun round(n) {
+	| p outh buf ready got |
+	p := (sys.popen "sleep 0.4; echo hi" "r")
+	outh := (core.basicAt p 2)
+	ready := (waitin outh 5)
+	buf := (core.basicNew ByteArray 8)
+	got := (sys.read outh buf)
+	chk (== ready 1) "the child's output was reported ready"
+	## -1 here means the wakeup belonged to a previous round's pipe
+	chk (== got 3) "the ready descriptor really had the child's bytes"
+	sys.pclose (core.basicAt p 0)
+}
+
+## every round closes its pipe, so the next popen gets the same descriptor
+## number back - that reuse is what exposes a stale event
+round 1
+round 2
+round 3
+round 4
