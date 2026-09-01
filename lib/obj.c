@@ -470,6 +470,10 @@ hak_oop_t hak_makestringwithuchars (hak_t* hak, const hak_uch_t* ptr, hak_oow_t 
 
 hak_oop_t hak_makestringwithbchars (hak_t* hak, const hak_bch_t* ptr, hak_oow_t len)
 {
+#if defined(HAK_OOCH_IS_UCH)
+	hak_oow_t xlen;
+	hak_ooch_t* xptr;
+#endif
 	/* you must provide the payload when calling this variant. it can't figure out
 	 * the actual number of hak_ooch_t characters */
 	if (!ptr)
@@ -480,9 +484,6 @@ hak_oop_t hak_makestringwithbchars (hak_t* hak, const hak_bch_t* ptr, hak_oow_t 
 	}
 
 #if defined(HAK_OOCH_IS_UCH)
-	hak_oow_t xlen;
-	hak_ooch_t* xptr;
-
 	xptr = hak_dupbtooochars(hak, ptr, len, &xlen);
 	if (HAK_UNLIKELY(!xptr))
 	{
