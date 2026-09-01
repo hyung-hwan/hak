@@ -300,7 +300,7 @@ static HAK_INLINE int is_delim_char (hak_ooci_t c)
 	return c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' ||
 	       c == '|' || c == ',' || c == '.' || c == ':' || c == ';' ||
 	       /* the first characters of tokens in delim_token_tab up to this point */
-#if defined(HAK_OOCH_IS_UCH) && defined(HAK_LANG_ENABLE_WIDE_DELIM)
+#if defined(HAK_OOCH_IS_UCH) && defined(HAK_LANG_ENABLE_WIDE_DELIM) && defined(HAVE_ESCAPE_U)
 	       c == L'\u201C' || c == L'\u201D' ||  /* “ ” */
 	       c == L'\u2018' || c == L'\u2019' ||  /* ‘ ’ */
 #endif
@@ -2665,7 +2665,7 @@ static int flx_start (hak_t* hak, hak_ooci_t c)
 			FEED_CONTINUE(hak, HAK_FLX_QUOTED_TOKEN); /* discard the quote itself. move on the the QUOTED_TOKEN state */
 			goto consumed;
 
-#if defined(HAK_OOCH_IS_UCH) && defined(HAK_LANG_ENABLE_WIDE_DELIM)
+#if defined(HAK_OOCH_IS_UCH) && defined(HAK_LANG_ENABLE_WIDE_DELIM) && defined(HAVE_ESCAPE_U)
 		case L'\u201C': /* “ ” */
 			init_flx_qt(FLX_QT(hak), HAK_TOK_STRLIT, HAK_SYNERR_STRLIT, L'\u201D', '\\', 0, HAK_TYPE_MAX(hak_oow_t), 0);
 			FEED_CONTINUE(hak, HAK_FLX_QUOTED_TOKEN); /* discard the quote itself. move on the the QUOTED_TOKEN state */

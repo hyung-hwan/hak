@@ -226,6 +226,9 @@
 /* Define to 1 if you have the <errno.h> header file. */
 #undef HAVE_ERRNO_H
 
+/* Define to 1 if compiler supports \u escape sequences */
+#undef HAVE_ESCAPE_U
+
 /* Define to 1 if you have the <execinfo.h> header file. */
 #undef HAVE_EXECINFO_H
 

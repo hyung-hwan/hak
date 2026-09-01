@@ -70,6 +70,21 @@ AC_SUBST(LIBM, $LIBM)
 
 AX_PTHREAD()
 
+dnl check some compiler features
+AC_MSG_CHECKING([whether compiler supports \u escape sequences])
+AC_COMPILE_IFELSE([
+	AC_LANG_PROGRAM([[
+		const char* test_str = "\u00e9";
+	]], [[
+		if (test_str[0] != 'A') return 1;
+	]])
+], [
+	AC_MSG_RESULT([yes])
+	AC_DEFINE([HAVE_ESCAPE_U], [1], [Define to 1 if compiler supports \u escape sequences])
+], [
+	AC_MSG_RESULT([no])
+])
+
 dnl check some compiler builtins
 AC_MSG_CHECKING([for __builtin_memset])
 AC_LINK_IFELSE(
