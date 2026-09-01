@@ -199,12 +199,6 @@ static void termreq_round_trips (void)
 	void* during[NTERMREQ];
 	void* after[NTERMREQ];
 	int i;
-
-	for (i = 0; i < NTERMREQ; i++)
-	{
-		if (disposition_of(TERMREQ[i], &before[i]) <= -1) return; /* no sigaction */
-	}
-
 #if defined(SIGPIPE)
 	/* SIGPIPE is deliberately NOT in the set above. It is not a termination
 	 * request - it is the opposite, a measure against being terminated - and
@@ -213,7 +207,16 @@ static void termreq_round_trips (void)
 	 * So termreq must leave it exactly alone. */
 	void* pipe_before;
 	void* pipe_during;
-	int pipe_probed = (disposition_of(SIGPIPE, &pipe_before) >= 0);
+	int pipe_probed;
+#endif
+
+	for (i = 0; i < NTERMREQ; i++)
+	{
+		if (disposition_of(TERMREQ[i], &before[i]) <= -1) return; /* no sigaction */
+	}
+
+#if defined(SIGPIPE)
+	pipe_probed = (disposition_of(SIGPIPE, &pipe_before) >= 0);
 #endif
 
 	hak_catch_termreq();
