@@ -1,0 +1,53 @@
+## both directions bound to one descriptor, then one of them dropped
+##
+## Binding an input and an output semaphore to the same handle gives the VM a
+## tuple with two directions. Unbinding one of them leaves the other in place,
+## so delete_sem_from_sem_io_tuple() modifies the registration rather than
+## removing it - vm_muxmod() instead of vm_muxdel(). Nothing else in the suite
+## takes that path, so the per-direction event purge behind it is otherwise
+## never executed.
+##
+## A pipe's write end is used because it is always writable, so the output
+## semaphore has something to report; the input side is registered but never
+## fires, which is fine - what matters is that both directions are registered.
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+sg   := (semgr-new)
+isem := (sem-new)
+osem := (sem-new)
+tmo  := (sem-new)
+semgr-add sg isem
+semgr-add sg osem
+semgr-add sg tmo
+
+p := (sys.pipe)
+r := (core.basicAt p 0)
+w := (core.basicAt p 1)
+
+## one descriptor, two directions - the tuple now carries both
+sem-signal-on-input isem w
+sem-signal-on-output osem w
+
+## drop only the input direction. the output registration must survive, and so
+## must any event already reported for it
+sem-unsignal isem
+
+sem-signal tmo 5 0
+s := (semgr-wait sg)
+chk (eqv? s osem) "the surviving direction still reports after a partial unbind"
+sem-unsignal tmo
+
+## and the full unbind from that state really removes the registration -
+## with nothing bound, only the timer can win the group
+sem-unsignal osem
+sem-signal tmo 0 300000000
+s := (semgr-wait sg)
+chk (eqv? s tmo) "nothing reports once both directions are unbound"
+sem-unsignal tmo
+
+sys.close r
+sys.close w

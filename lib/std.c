@@ -1919,6 +1919,7 @@ static int _mod_poll_fd (hak_t* hak, int fd, int event_mask)
 		}
 	}
 
+	fprintf(stderr, "MOD fd=%d mask=%#x rv=%#x -> newrv=%#x\n", fd, (unsigned)event_mask, (unsigned)rv, (unsigned)newrv);
 	HAK_SETBITS (hak_oow_t, xtn->ev.reg.ptr[rindex], roffset, 2, newrv);
 	return 0;
 
@@ -2003,6 +2004,22 @@ kqueue_syserr:
 }
 
 #if defined(USE_THREAD)
+
+#if defined(USE_KQUEUE)
+	/* kqueue reports one filter per event rather than a mask, so it has no
+	 * MUXEVT_MASK - the entry is kept or dropped whole. */
+#	define MUXEVT_FD(e)   ((int)(e).ident)
+#elif defined(USE_DEVPOLL) || defined(USE_POLL)
+#	define MUXEVT_FD(e)   ((e).fd)
+#	define MUXEVT_MASK(e) ((e).revents)
+#elif defined(USE_EPOLL)
+#	define MUXEVT_FD(e)   ((e).data.fd)
+#	define MUXEVT_MASK(e) ((e).events)
+#elif defined(USE_SELECT)
+#	define MUXEVT_FD(e)   ((e).fd)
+#	define MUXEVT_MASK(e) ((e).events)
+#endif
+
 /* Drop multiplexer events already sitting in the buffer for this descriptor.
  *
  * iothr_main() reads events straight into xtn->ev.buf and publishes ev.len;
@@ -2018,22 +2035,36 @@ kqueue_syserr:
  * caches ev.len and would walk entries this function compacts away. Nothing
  * does today - signalling a semaphore only makes a process runnable, it does
  * not run hak code - but the loop has no defence if that ever changes. */
-static void purge_muxevts (hak_t* hak, int fd)
+static void purge_muxevts (hak_t* hak, int fd, int keep_mask)
 {
 	xtn_t* xtn = GET_XTN(hak);
 	hak_oow_t i, j;
+#if defined(USE_KQUEUE)
+	int dir_mask;
+#else
+	int drop = (XPOLLIN | XPOLLOUT) & ~keep_mask;
+#endif
 
 	MUTEX_LOCK(&xtn->ev.mtx);
 
 	for (i = 0, j = 0; i < xtn->ev.len; i++)
 	{
-	#if defined(USE_DEVPOLL) || defined(USE_POLL) || defined(USE_SELECT)
-		if (xtn->ev.buf[i].fd == fd) continue;
-	#elif defined(USE_KQUEUE)
-		if ((int)xtn->ev.buf[i].ident == fd) continue;
-	#elif defined(USE_EPOLL)
-		if (xtn->ev.buf[i].data.fd == fd) continue;
-	#endif
+		if (MUXEVT_FD(xtn->ev.buf[i]) == fd)
+		{
+			if (!keep_mask) continue; /* nothing registered survives */
+		#if defined(USE_KQUEUE)
+			dir_mask = 0;
+			/* it's "if .. else if" because kqueue filter is either READ or WRITE.
+			 * the flags field which can set with EV_EOF or EV_ERROR is not used here */
+			if (xtn->ev.buf[i].filter == EVFILT_READ) dir_mask |= XPOLLIN;
+			else if (xtn->ev.buf[i].filter == EVFILT_WRITE) dir_mask |= XPOLLOUT;
+			if (!(dir_mask & keep_mask)) continue;
+		#else
+			MUXEVT_MASK(xtn->ev.buf[i]) &= ~drop;
+			if (!(MUXEVT_MASK(xtn->ev.buf[i]) & (XPOLLIN | XPOLLOUT | XPOLLERR | XPOLLHUP))) continue;
+		#endif
+		}
+
 		if (j != i) xtn->ev.buf[j] = xtn->ev.buf[i];
 		j++;
 	}
@@ -2069,6 +2100,7 @@ static int vm_muxadd (hak_t* hak, hak_ooi_t io_handle, hak_ooi_t mask)
 static int vm_muxmod (hak_t* hak, hak_ooi_t io_handle, hak_ooi_t mask)
 {
 	int event_mask;
+	int n;
 
 	event_mask = 0;
 	if (mask & HAK_SEMAPHORE_IO_MASK_INPUT) event_mask |= XPOLLIN;
@@ -2081,16 +2113,13 @@ static int vm_muxmod (hak_t* hak, hak_ooi_t io_handle, hak_ooi_t mask)
 		return -1;
 	}
 
-	return _mod_poll_fd(hak, io_handle, event_mask);
+	n = _mod_poll_fd(hak, io_handle, event_mask);
 
-	/* [NOTE]
-	 *   this may need the same mux event purge as vm_muxdel() for accuracy.
-	 *   if a file descriptor is removed for one direction while another direction
-	 *   is still watched, this function is invoked. in that case, xtn->evt.buf
-	 *   may have some stale events and they can raise spurious signals.
-	 *
-	 *   TODO: per-direction event purge
-	 */
+#if defined(USE_THREAD)
+	purge_muxevts(hak, (int)io_handle, event_mask);
+#endif
+
+	return n;
 }
 
 static int vm_muxdel (hak_t* hak, hak_ooi_t io_handle)
@@ -2105,7 +2134,7 @@ static int vm_muxdel (hak_t* hak, hak_ooi_t io_handle)
 	 * delete does not make a buffered event any less stale.
 	 * delete_sem_from_sem_io_tuple() carries on regardless when force is set.
 	 */
-	purge_muxevts(hak, (int)io_handle);
+	purge_muxevts(hak, (int)io_handle, 0);
 #endif
 	return n;
 }
@@ -2343,6 +2372,7 @@ static void vm_muxwait (hak_t* hak, const hak_ntime_t* dur, hak_vmprim_muxwait_c
 				revents = xtn->ev.buf[n].revents;
 			#elif defined(USE_KQUEUE)
 				revents = 0;
+				/* it's "if .. else if" because kqueue filter is either READ or WRITE. */
 				if (xtn->ev.buf[n].filter == EVFILT_READ) revents |= XPOLLIN;
 				else if (xtn->ev.buf[n].filter == EVFILT_WRITE) revents |= XPOLLOUT;
 				if (xtn->ev.buf[n].flags & EV_EOF) revents |= XPOLLHUP;
@@ -2515,6 +2545,7 @@ static void vm_muxwait (hak_t* hak, const hak_ntime_t* dur, hak_vmprim_muxwait_c
 		revents = xtn->ev.buf[n].revents;
 	#elif defined(USE_KQUEUE)
 		revents = 0;
+		/* it's "if .. else if" because kqueue filter is either READ or WRITE. */
 		if (xtn->ev.buf[n].filter == EVFILT_READ) revents |= XPOLLIN;
 		else if (xtn->ev.buf[n].filter == EVFILT_WRITE) revents |= XPOLLOUT;
 		if (xtn->ev.buf[n].flags & EV_EOF) revents |= XPOLLHUP;

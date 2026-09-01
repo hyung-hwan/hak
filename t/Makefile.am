@@ -21,6 +21,7 @@ check_SCRIPTS = \
 	insta-02.hak \
 	mux-01.hak \
 	mux-02.hak \
+	mux-03.hak \
 	prim-01.hak \
 	proc-01.hak \
 	proclib-01.hak \

@@ -43,7 +43,6 @@
 #	include <unistd.h>
 #	include <fcntl.h>
 #	include <errno.h>
-#	include <sys/syscall.h>
 #endif
 
 #if defined(HAVE_SYS_TIME_H)
