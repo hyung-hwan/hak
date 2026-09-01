@@ -1839,7 +1839,7 @@ static int _mod_poll_fd (hak_t* hak, int fd, int event_mask)
 #elif defined(USE_KQUEUE)
 	xtn_t* xtn = GET_XTN(hak);
 	hak_oow_t rindex, roffset;
-	int rv, newrv = 0;
+	int rv, newrv;
 	struct kevent ev;
 
 	rindex = (hak_oow_t)fd / (HAK_BITSOF(hak_oow_t) >> 1);
@@ -1853,6 +1853,7 @@ static int _mod_poll_fd (hak_t* hak, int fd, int event_mask)
 	};
 
 	rv = HAK_GETBITS(hak_oow_t, xtn->ev.reg.ptr[rindex], roffset, 2);
+	newrv = rv; /* start from what is registered; each branch below applies its own diff */
 
 	if (rv & 1)
 	{
@@ -1919,7 +1920,6 @@ static int _mod_poll_fd (hak_t* hak, int fd, int event_mask)
 		}
 	}
 
-	fprintf(stderr, "MOD fd=%d mask=%#x rv=%#x -> newrv=%#x\n", fd, (unsigned)event_mask, (unsigned)rv, (unsigned)newrv);
 	HAK_SETBITS (hak_oow_t, xtn->ev.reg.ptr[rindex], roffset, 2, newrv);
 	return 0;
 

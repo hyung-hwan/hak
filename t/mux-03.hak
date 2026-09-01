@@ -41,9 +41,23 @@ s := (semgr-wait sg)
 chk (eqv? s osem) "the surviving direction still reports after a partial unbind"
 sem-unsignal tmo
 
-## and the full unbind from that state really removes the registration -
-## with nothing bound, only the timer can win the group
+## put the input direction back while the output one is still registered. this
+## is the add branch of the modify path - the mirror of the drop above - and it
+## has to leave the output registration alone.
+sem-signal-on-input isem w
+
+## now drop the output direction instead, keeping input. a write end is never
+## readable, so with input alone nothing can report and the timer must win. if
+## the modify path had left the output registration behind, its writability
+## would be reported here and the timer would lose.
 sem-unsignal osem
+sem-signal tmo 0 300000000
+s := (semgr-wait sg)
+chk (eqv? s tmo) "the dropped direction stops reporting after a partial unbind"
+sem-unsignal tmo
+
+## and the full unbind from that state really removes the registration
+sem-unsignal isem
 sem-signal tmo 0 300000000
 s := (semgr-wait sg)
 chk (eqv? s tmo) "nothing reports once both directions are unbound"
