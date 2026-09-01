@@ -16595,24 +16595,25 @@ printf %s "checking whether compiler supports \u escape sequences... " >&6; }
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-
-		const char* test_str = "\u00e9";
+		/* define a macro that forces a compilation error if condition is false */
+		#define STATIC_ASSERT(expr) char assert_array[(expr) ? 1 : -1]
 
 int
 main (void)
 {
 
-		if (test_str[0] != 'A') return 1;
+		/* true UTF-8 "\u00e9" is 3 bytes including the null terminator.
+		* GCC 2.95's "u00e9" is 6 bytes. */
+		STATIC_ASSERT(sizeof("\u00e9") == 3);
 
   ;
   return 0;
 }
-
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
 printf "%s\n" "#define HAVE_ESCAPE_U 1" >>confdefs.h
@@ -16620,8 +16621,9 @@ printf "%s\n" "#define HAVE_ESCAPE_U 1" >>confdefs.h
 
 else case e in #(
   e)
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
+
  ;;
 esac
 fi

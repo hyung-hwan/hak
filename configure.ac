@@ -72,18 +72,21 @@ AX_PTHREAD()
 
 dnl check some compiler features
 AC_MSG_CHECKING([whether compiler supports \u escape sequences])
-AC_COMPILE_IFELSE([
-	AC_LANG_PROGRAM([[
-		const char* test_str = "\u00e9";
-	]], [[
-		if (test_str[0] != 'A') return 1;
-	]])
-], [
-	AC_MSG_RESULT([yes])
-	AC_DEFINE([HAVE_ESCAPE_U], [1], [Define to 1 if compiler supports \u escape sequences])
-], [
-	AC_MSG_RESULT([no])
-])
+AC_COMPILE_IFELSE(
+	[AC_LANG_PROGRAM([
+		/* define a macro that forces a compilation error if condition is false */
+		#define STATIC_ASSERT(expr) char assert_array[(expr) ? 1 : -1]
+	], [
+		/* true UTF-8 "\u00e9" is 3 bytes including the null terminator.
+		* GCC 2.95's "u00e9" is 6 bytes. */
+		STATIC_ASSERT(sizeof("\u00e9") == 3);
+	])], [
+		AC_MSG_RESULT([yes])
+		AC_DEFINE([HAVE_ESCAPE_U], [1], [Define to 1 if \u encodes properly])
+	], [
+		AC_MSG_RESULT([no])
+	]
+)
 
 dnl check some compiler builtins
 AC_MSG_CHECKING([for __builtin_memset])
