@@ -221,7 +221,26 @@
 #		include <sched.h>
 #	endif
 
-#	if defined(HAVE_SYS_DEVPOLL_H)
+	/* define FORCE_USE_SELECT or FORCE_USE_POLL to test those backends on a
+	 * platform that would otherwise pick a better multiplexer. they must come
+	 * first in this chain so the auto-detection below is skipped entirely -
+	 * otherwise USE_EPOLL and USE_SELECT both end up defined and the XPOLLXXX
+	 * values get redefined. */
+#	if defined(FORCE_USE_POLL)
+#		include <poll.h>
+#		define USE_POLL
+#		define XPOLLIN POLLIN
+#		define XPOLLOUT POLLOUT
+#		define XPOLLERR POLLERR
+#		define XPOLLHUP POLLHUP
+#	elif defined(FORCE_USE_SELECT)
+#		define USE_SELECT
+		/* fake XPOLLXXX values */
+#		define XPOLLIN  (1 << 0)
+#		define XPOLLOUT (1 << 1)
+#		define XPOLLERR (1 << 2)
+#		define XPOLLHUP (1 << 3)
+#	elif defined(HAVE_SYS_DEVPOLL_H)
 		/* solaris */
 #		include <sys/devpoll.h>
 #		define USE_DEVPOLL
@@ -474,6 +493,10 @@ struct xtn_t
 			fd_set rfds;
 			fd_set wfds;
 			int maxfd;
+			/* see the epoch field in the USE_POLL registry above - select()
+			 * works on a copy of rfds/wfds in the same way and needs the
+			 * same protection against a descriptor unregistered mid-call. */
+			hak_oow_t epoch;
 		#if defined(USE_THREAD)
 			pthread_mutex_t smtx;
 		#endif
@@ -1524,6 +1547,32 @@ static void vm_gettime (hak_t* hak, hak_ntime_t* now)
  * IO MULTIPLEXING
  * ----------------------------------------------------------------- */
 
+#if defined(USE_THREAD) && (defined(USE_POLL) || defined(USE_SELECT))
+/* Kick the io thread out of poll()/select().
+ *
+ * these two backends wait on a snapshot of the registry, so a descriptor
+ * registered or unregistered by the vm while the thread is blocked does not
+ * take effect until the current wait expires - up to the 10 second timeout in
+ * iothr_main(). The vm would sit there waiting for input on a descriptor the
+ * multiplexer is not even watching yet. The kernel-object backends (devpoll,
+ * kqueue, epoll) need none of this because the registration itself lands in
+ * the object the thread is blocked on.
+ *
+ * iothr.p[0] is registered for input, so one byte here makes the wait return
+ * at once and the next round re-snapshots. Anything other than 'Q' is drained
+ * and ignored by the dispatch loop in vm_muxwait().
+ *
+ * called from the vm thread with no registry lock held: the pipe is
+ * non-blocking, and a full pipe (EAGAIN) already means a wake is pending. */
+static void wake_iothr (hak_t* hak)
+{
+	xtn_t* xtn = GET_XTN(hak);
+	if (xtn->iothr.up && !xtn->iothr.abort) write(xtn->iothr.p[1], "W", 1);
+}
+#else
+#	define wake_iothr(hak) ((void)0)
+#endif
+
 static int _add_poll_fd (hak_t* hak, int fd, int event_mask)
 {
 #if defined(USE_DEVPOLL)
@@ -1683,6 +1732,7 @@ static int _add_poll_fd (hak_t* hak, int fd, int event_mask)
 	xtn->ev.reg.epoch++;
 	MUTEX_UNLOCK(&xtn->ev.reg.pmtx);
 
+	wake_iothr(hak);
 	return 0;
 
 #elif defined(USE_SELECT)
@@ -1699,8 +1749,10 @@ static int _add_poll_fd (hak_t* hak, int fd, int event_mask)
 		FD_SET (fd, &xtn->ev.reg.wfds);
 		if (fd > xtn->ev.reg.maxfd) xtn->ev.reg.maxfd = fd;
 	}
+	xtn->ev.reg.epoch++;
 	MUTEX_UNLOCK(&xtn->ev.reg.smtx);
 
+	wake_iothr(hak);
 	return 0;
 
 #else
@@ -1802,6 +1854,13 @@ static int _del_poll_fd (hak_t* hak, int fd)
 			HAK_MEMMOVE(&xtn->ev.reg.ptr[i], &xtn->ev.reg.ptr[i+1], (xtn->ev.reg.len - i) * HAK_SIZEOF(*xtn->ev.reg.ptr));
 			xtn->ev.reg.epoch++;
 			MUTEX_UNLOCK(&xtn->ev.reg.pmtx);
+
+			/* wake on delete too, not just on add. the epoch bump above
+			 * already stops a stale result from being dispatched, but until
+			 * the thread re-snapshots it keeps waiting on a descriptor the vm
+			 * has dropped - and the pending epoch mismatch discards the next
+			 * batch whole, however genuine the rest of it is. */
+			wake_iothr(hak);
 			return 0;
 		}
 	}
@@ -1827,8 +1886,10 @@ static int _del_poll_fd (hak_t* hak, int fd)
 		}
 		xtn->ev.reg.maxfd = i;
 	}
+	xtn->ev.reg.epoch++;
 	MUTEX_UNLOCK(&xtn->ev.reg.smtx);
 
+	wake_iothr(hak);
 	return 0;
 
 #else
@@ -1977,12 +2038,18 @@ kqueue_syserr:
 	{
 		if (xtn->ev.reg.ptr[i].fd == fd)
 		{
-			HAK_MEMMOVE(&xtn->ev.reg.ptr[i], &xtn->ev.reg.ptr[i+1], (xtn->ev.reg.len - i - 1) * HAK_SIZEOF(*xtn->ev.reg.ptr));
-			xtn->ev.reg.ptr[i].fd = fd;
+			/* modify in place. shifting the tail down the way a delete does
+			 * would drop the entry at i+1 - it lands on i and is overwritten
+			 * right after - and leave a stale duplicate in the last slot,
+			 * since len does not change. */
 			xtn->ev.reg.ptr[i].events = event_mask;
 			xtn->ev.reg.ptr[i].revents = 0;
+			/* the direction changed, so a result computed from the old mask
+			 * must not be dispatched. see the epoch check in iothr_main(). */
+			xtn->ev.reg.epoch++;
 			MUTEX_UNLOCK(&xtn->ev.reg.pmtx);
 
+			wake_iothr(hak);
 			return 0;
 		}
 	}
@@ -2009,7 +2076,10 @@ kqueue_syserr:
 	else
 		FD_CLR(fd, &xtn->ev.reg.wfds);
 
+	xtn->ev.reg.epoch++;
 	MUTEX_UNLOCK(&xtn->ev.reg.smtx);
+
+	wake_iothr(hak);
 	return 0;
 
 #else
@@ -2179,6 +2249,7 @@ static void* iothr_main (void* arg)
 			fd_set rfds;
 			fd_set wfds;
 			int maxfd;
+			hak_oow_t epoch;
 		#endif
 
 		poll_for_event:
@@ -2238,8 +2309,17 @@ static void* iothr_main (void* arg)
 			maxfd = xtn->ev.reg.maxfd;
 			HAK_MEMCPY(&rfds, &xtn->ev.reg.rfds, HAK_SIZEOF(rfds));
 			HAK_MEMCPY(&wfds, &xtn->ev.reg.wfds, HAK_SIZEOF(wfds));
+			epoch = xtn->ev.reg.epoch;
 			MUTEX_UNLOCK(&xtn->ev.reg.smtx);
 			n = select(maxfd + 1, &rfds, &wfds, HAK_NULL, &tv);
+
+			/* the registry changed while select() held a copy of it - the
+			 * result may name a descriptor that is no longer the one that was
+			 * registered. drop the batch; select() is level triggered, so
+			 * anything genuinely ready comes back on the next call. */
+			MUTEX_LOCK(&xtn->ev.reg.smtx);
+			if (epoch != xtn->ev.reg.epoch) n = 0; /* to report nothing */
+			MUTEX_UNLOCK(&xtn->ev.reg.smtx);
 			if (n > 0)
 			{
 				int fd, count = 0;
@@ -4277,6 +4357,7 @@ static int cb_vm_startup (hak_t* hak)
 	FD_ZERO(&xtn->ev.reg.rfds);
 	FD_ZERO(&xtn->ev.reg.wfds);
 	xtn->ev.reg.maxfd = -1;
+	xtn->ev.reg.epoch = 0;
 	MUTEX_INIT(&xtn->ev.reg.smtx);
 #endif /* USE_DEVPOLL */
 
