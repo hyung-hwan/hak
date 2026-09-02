@@ -457,6 +457,11 @@ struct xtn_t
 			struct pollfd* ptr;
 			hak_oow_t capa;
 			hak_oow_t len;
+			/* bumped on every add and delete. poll() works on a copy of ptr[]
+			 * taken before it blocks, so a descriptor unregistered during the
+			 * call cannot be withdrawn from it. this lets the io thread notice
+			 * that the set changed underneath a wait and discard its results. */
+			hak_oow_t epoch;
 		#if defined(USE_THREAD)
 			pthread_mutex_t pmtx;
 		#endif
@@ -1675,6 +1680,7 @@ static int _add_poll_fd (hak_t* hak, int fd, int event_mask)
 	xtn->ev.reg.ptr[xtn->ev.reg.len].events = event_mask;
 	xtn->ev.reg.ptr[xtn->ev.reg.len].revents = 0;
 	xtn->ev.reg.len++;
+	xtn->ev.reg.epoch++;
 	MUTEX_UNLOCK(&xtn->ev.reg.pmtx);
 
 	return 0;
@@ -1794,6 +1800,7 @@ static int _del_poll_fd (hak_t* hak, int fd)
 		{
 			xtn->ev.reg.len--;
 			HAK_MEMMOVE(&xtn->ev.reg.ptr[i], &xtn->ev.reg.ptr[i+1], (xtn->ev.reg.len - i) * HAK_SIZEOF(*xtn->ev.reg.ptr));
+			xtn->ev.reg.epoch++;
 			MUTEX_UNLOCK(&xtn->ev.reg.pmtx);
 			return 0;
 		}
@@ -2166,6 +2173,7 @@ static void* iothr_main (void* arg)
 			struct timespec ts;
 		#elif defined(USE_POLL)
 			hak_oow_t nfds;
+			hak_oow_t epoch;
 		#elif defined(USE_SELECT)
 			struct timeval tv;
 			fd_set rfds;
@@ -2192,8 +2200,23 @@ static void* iothr_main (void* arg)
 			MUTEX_LOCK(&xtn->ev.reg.pmtx);
 			HAK_MEMCPY(xtn->ev.buf, xtn->ev.reg.ptr, xtn->ev.reg.len * HAK_SIZEOF(*xtn->ev.buf));
 			nfds = xtn->ev.reg.len;
+			epoch = xtn->ev.reg.epoch;
 			MUTEX_UNLOCK(&xtn->ev.reg.pmtx);
+
 			n = poll(xtn->ev.buf, nfds, 10000);
+
+			/* poll() worked on the copy taken above, so unregistering a
+			 * descriptor while it was blocked could not withdraw it from the
+			 * call. If the registry changed meanwhile, a returned descriptor
+			 * may no longer be the one that was registered - the number can
+			 * have been closed and handed to a different pipe already - and
+			 * dispatching it would signal a semaphore for something that was
+			 * never ready. Drop the whole batch instead: poll() is level
+			 * triggered, so whatever is genuinely ready is reported again by
+			 * the next call and nothing is lost. */
+			MUTEX_LOCK(&xtn->ev.reg.pmtx);
+			if (epoch != xtn->ev.reg.epoch) n = 0; /* to report nothing */
+			MUTEX_UNLOCK(&xtn->ev.reg.pmtx);
 			if (n > 0)
 			{
 				/* compact the return buffer as poll() doesn't */
