@@ -1084,6 +1084,52 @@ typedef struct hak_t hak_t;
 		#define HAK_HAVE_BUILTIN_CLZLL
 	#endif
 
+	#if __has_builtin(__atomic_compare_exchange_n)
+		#define HAK_HAVE_ATOMIC_COMPARE_EXCHANGE_N
+	#endif
+
+	#if __has_builtin(__atomic_exchange_n)
+		#define HAK_HAVE_ATOMIC_EXCHANGE_N
+	#endif
+
+	#if __has_builtin(__atomic_fetch_add)
+		#define HAK_HAVE_ATOMIC_FETCH_ADD
+	#endif
+	#if __has_builtin(__atomic_add_fetch)
+		#define HAK_HAVE_ATOMIC_ADD_FETCH
+	#endif
+	#if __has_builtin(__atomic_fetch_and)
+		#define HAK_HAVE_ATOMIC_FETCH_AND
+	#endif
+	#if __has_builtin(__atomic_and_fetch)
+		#define HAK_HAVE_ATOMIC_AND_FETCH
+	#endif
+	#if __has_builtin(__atomic_fetch_or)
+		#define HAK_HAVE_ATOMIC_FETCH_OR
+	#endif
+	#if __has_builtin(__atomic_or_fetch)
+		#define HAK_HAVE_ATOMIC_OR_FETCH
+	#endif
+	#if __has_builtin(__atomic_fetch_sub)
+		#define HAK_HAVE_ATOMIC_FETCH_SUB
+	#endif
+	#if __has_builtin(__atomic_sub_fetch)
+		#define HAK_HAVE_ATOMIC_SUB_FETCH
+	#endif
+	#if __has_builtin(__atomic_fetch_xor)
+		#define HAK_HAVE_ATOMIC_FETCH_XOR
+	#endif
+	#if __has_builtin(__atomic_xor_fetch)
+		#define HAK_HAVE_ATOMIC_XOR_FETCH
+	#endif
+
+	#if __has_builtin(__atomic_load_n)
+		#define HAK_HAVE_ATOMIC_LOAD_N
+	#endif
+	#if __has_builtin(__atomic_store_n)
+		#define HAK_HAVE_ATOMIC_STORE_N
+	#endif
+
 	#if __has_builtin(__builtin_uadd_overflow)
 		#define HAK_HAVE_BUILTIN_UADD_OVERFLOW
 	#endif
@@ -1158,11 +1204,19 @@ typedef struct hak_t hak_t;
 	#endif
 
 #elif defined(__GNUC__) && defined(__GNUC_MINOR__)
-
 	#if (__GNUC__ >= 4)
+		#define HAK_HAVE_SYNC_FETCH_AND_ADD
+		#define HAK_HAVE_SYNC_ADD_AND_FETCH
+		#define HAK_HAVE_SYNC_FETCH_AND_AND
+		#define HAK_HAVE_SYNC_AND_AND_FETCH
+		#define HAK_HAVE_SYNC_FETCH_AND_OR
+		#define HAK_HAVE_SYNC_OR_AND_FETCH
+		#define HAK_HAVE_SYNC_FETCH_AND_SUB
+		#define HAK_HAVE_SYNC_SUB_AND_FETCH
+		#define HAK_HAVE_SYNC_FETCH_AND_XOR
+		#define HAK_HAVE_SYNC_XOR_AND_FETCH
 		#define HAK_HAVE_SYNC_LOCK_TEST_AND_SET
 		#define HAK_HAVE_SYNC_LOCK_RELEASE
-
 		#define HAK_HAVE_SYNC_SYNCHRONIZE
 		#define HAK_HAVE_SYNC_BOOL_COMPARE_AND_SWAP
 		#define HAK_HAVE_SYNC_VAL_COMPARE_AND_SWAP
@@ -1194,6 +1248,19 @@ typedef struct hak_t hak_t;
 		#define HAK_HAVE_BUILTIN_SMULLL_OVERFLOW
 	#endif
 
+	#if (__GNUC__ >= 5) || (__GNUC__ == 4 && __GNUC_MINOR__ >= 7)
+		#define HAK_HAVE_ATOMIC_FETCH_ADD
+		#define HAK_HAVE_ATOMIC_ADD_FETCH
+		#define HAK_HAVE_ATOMIC_FETCH_AND
+		#define HAK_HAVE_ATOMIC_AND_FETCH
+		#define HAK_HAVE_ATOMIC_FETCH_OR
+		#define HAK_HAVE_ATOMIC_OR_FETCH
+		#define HAK_HAVE_ATOMIC_FETCH_SUB
+		#define HAK_HAVE_ATOMIC_SUB_FETCH
+		#define HAK_HAVE_ATOMIC_FETCH_XOR
+		#define HAK_HAVE_ATOMIC_XOR_FETCH
+	#endif
+
 	#if (__GNUC__ >= 5) || (__GNUC__ == 4 && __GNUC_MINOR__ >= 8)
 		/* 4.8.0 or later */
 		#define HAK_HAVE_BUILTIN_BSWAP16
@@ -1207,12 +1274,129 @@ typedef struct hak_t hak_t;
 
 #endif
 
+#if defined(__has_builtin)
+#	define HAK_HAS_BUILTIN(v) __has_builtin(v)
+#else
+#	define HAK_HAS_BUILTIN(v) 0
+#endif
+
 #if defined(HAK_HAVE_BUILTIN_EXPECT)
 #	define HAK_LIKELY(x) (__builtin_expect(!!(x),1))
 #	define HAK_UNLIKELY(x) (__builtin_expect(!!(x),0))
 #else
 #	define HAK_LIKELY(x) (x)
 #	define HAK_UNLIKELY(x) (x)
+#endif
+
+#if defined(HAK_HAVE_ATOMIC_EXCHANGE_N)
+#	define HAK_ATOMIC_EXCHANGE(ptr,val,mo) __atomic_exchange_n((ptr),(val),(mo))
+#elif defined(HAK_HAVE_SYNC_LOCK_TEST_AND_SET)
+#	define HAK_ATOMIC_EXCHANGE(ptr,val,mo) __sync_lock_test_and_set((ptr),(val))
+#endif
+
+#if defined(HAK_HAVE_ATOMIC_FETCH_ADD)
+#	define HAK_ATOMIC_FETCH_ADD(ptr,val,mo) __atomic_fetch_add((ptr),(val),(mo))
+#elif defined(HAK_HAVE_SYNC_FETCH_AND_ADD)
+#	define HAK_ATOMIC_FETCH_ADD(ptr,val,mo) __sync_fetch_and_add((ptr),(val))
+#endif
+
+#if defined(HAK_HAVE_ATOMIC_ADD_FETCH)
+#	define HAK_ATOMIC_ADD_FETCH(ptr,val,mo) __atomic_add_fetch((ptr),(val),(mo))
+#elif defined(HAK_HAVE_SYNC_ADD_AND_FETCH)
+#	define HAK_ATOMIC_ADD_FETCH(ptr,val,mo) __sync_add_and_fetch((ptr),(val))
+#endif
+
+#if defined(HAK_HAVE_ATOMIC_FETCH_AND)
+#	define HAK_ATOMIC_FETCH_AND(ptr,val,mo) __atomic_fetch_and((ptr),(val),(mo))
+#elif defined(HAK_HAVE_SYNC_FETCH_AND_AND)
+#	define HAK_ATOMIC_FETCH_AND(ptr,val,mo) __sync_fetch_and_and((ptr),(val))
+#endif
+
+#if defined(HAK_HAVE_ATOMIC_AND_FETCH)
+#	define HAK_ATOMIC_AND_FETCH(ptr,val,mo) __atomic_and_fetch((ptr),(val),(mo))
+#elif defined(HAK_HAVE_SYNC_AND_AND_FETCH)
+#	define HAK_ATOMIC_AND_FETCH(ptr,val,mo) __sync_and_and_fetch((ptr),(val))
+#endif
+
+#if defined(HAK_HAVE_ATOMIC_FETCH_OR)
+#	define HAK_ATOMIC_FETCH_OR(ptr,val,mo) __atomic_fetch_or((ptr),(val),(mo))
+#elif defined(HAK_HAVE_SYNC_FETCH_AND_OR)
+#	define HAK_ATOMIC_FETCH_OR(ptr,val,mo) __sync_fetch_and_or((ptr),(val))
+#endif
+
+#if defined(HAK_HAVE_ATOMIC_OR_FETCH)
+#	define HAK_ATOMIC_OR_FETCH(ptr,val,mo) __atomic_or_fetch((ptr),(val),(mo))
+#elif defined(HAK_HAVE_SYNC_OR_AND_FETCH)
+#	define HAK_ATOMIC_OR_FETCH(ptr,val,mo) __sync_or_and_fetch((ptr),(val))
+#endif
+
+#if defined(HAK_HAVE_ATOMIC_FETCH_SUB)
+#	define HAK_ATOMIC_FETCH_SUB(ptr,val,mo) __atomic_fetch_sub((ptr),(val),(mo))
+#elif defined(HAK_HAVE_SYNC_FETCH_AND_SUB)
+#	define HAK_ATOMIC_FETCH_SUB(ptr,val,mo) __sync_fetch_and_sub((ptr),(val))
+#endif
+
+#if defined(HAK_HAVE_ATOMIC_SUB_FETCH)
+#	define HAK_ATOMIC_SUB_FETCH(ptr,val,mo) __atomic_sub_fetch((ptr),(val),(mo))
+#elif defined(HAK_HAVE_SYNC_SUB_AND_FETCH)
+#	define HAK_ATOMIC_SUB_FETCH(ptr,val,mo) __sync_sub_and_fetch((ptr),(val))
+#endif
+
+#if defined(HAK_HAVE_ATOMIC_FETCH_XOR)
+#	define HAK_ATOMIC_FETCH_XOR(ptr,val,mo) __atomic_fetch_xor((ptr),(val),(mo))
+#elif defined(HAK_HAVE_SYNC_FETCH_AND_XOR)
+#	define HAK_ATOMIC_FETCH_XOR(ptr,val,mo) __sync_fetch_and_xor((ptr),(val))
+#endif
+
+#if defined(HAK_HAVE_ATOMIC_XOR_FETCH)
+#	define HAK_ATOMIC_XOR_FETCH(ptr,val,mo) __atomic_xor_fetch((ptr),(val),(mo))
+#elif defined(HAK_HAVE_SYNC_XOR_AND_FETCH)
+#	define HAK_ATOMIC_XOR_FETCH(ptr,val,mo) __sync_xor_and_fetch((ptr),(val))
+#endif
+
+#if defined(HAK_HAVE_ATOMIC_LOAD_N)
+#	define HAK_ATOMIC_LOAD(ptr,mo) __atomic_load_n((ptr),(mo))
+#elif defined(HAK_HAVE_SYNC_FETCH_AND_OR)
+#	define HAK_ATOMIC_LOAD(ptr,mo) __sync_fetch_and_or((ptr),0)
+#endif
+
+#if defined(HAK_HAVE_ATOMIC_STORE_N)
+#	define HAK_ATOMIC_STORE(ptr,val,mo) __atomic_store_n((ptr),(val),(mo))
+#elif defined(HAK_HAVE_SYNC_LOCK_TEST_AND_SET) && defined(HAK_HAVE_SYNC_SYNCHRONIZE)
+#	define HAK_ATOMIC_STORE(ptr,val,mo) do { __sync_lock_test_and_set((ptr),(val)); __sync_synchronize(); } while(0)
+#endif
+
+#if defined(HAK_HAVE_ATOMIC_COMPARE_EXCHANGE_N)
+#	define HAK_ATOMIC_CAS_BOOL(ptr, expected_ptr, desired, memmod_succ, memmod_fail) \
+		__atomic_compare_exchange_n((ptr), (expected_ptr), (desired), 0, (memmod_succ), (memmod_fail))
+#	define HAK_ATOMIC_CAS_BOOL_YIELD_OLDVAL
+#elif defined(HAK_HAVE_SYNC_BOOL_COMPARE_AND_SWAP)
+#	define HAK_ATOMIC_CAS_BOOL(ptr, expected_ptr, desired, memmod_succ, memmod_fail) \
+		__sync_bool_compare_and_swap((ptr), *(expected_ptr), (desired))
+#endif
+
+#if defined(__ATOMIC_RELAXED)
+#	define HAK_ATOMIC_RELAXED __ATOMIC_RELAXED
+#else
+#	define HAK_ATOMIC_RELAXED 0
+#endif
+
+#if defined(__ATOMIC_ACQUIRE)
+#	define HAK_ATOMIC_ACQUIRE __ATOMIC_ACQUIRE
+#else
+#	define HAK_ATOMIC_ACQUIRE 2
+#endif
+
+#if defined(__ATOMIC_RELEASE)
+#	define HAK_ATOMIC_RELEASE __ATOMIC_RELEASE
+#else
+#	define HAK_ATOMIC_RELEASE 3
+#endif
+
+#if defined(__ATOMIC_ACQ_REL)
+#	define HAK_ATOMIC_ACQ_REL __ATOMIC_ACQ_REL
+#else
+#	define HAK_ATOMIC_ACQ_REL 4
 #endif
 
 /* =========================================================================

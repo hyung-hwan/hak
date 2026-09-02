@@ -17196,6 +17196,7 @@ then :
 
 fi
 
+
 ac_fn_c_check_func "$LINENO" "posix_spawn" "ac_cv_func_posix_spawn"
 if test "x$ac_cv_func_posix_spawn" = xyes
 then :

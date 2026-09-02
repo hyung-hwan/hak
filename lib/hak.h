@@ -3549,7 +3549,11 @@ HAK_EXPORT void hak_assertfailed (
 /* =========================================================================
  * HELPERS
  * ========================================================================= */
-HAK_EXPORT void hak_start_ticker (
+/**
+ * The hak_start_ticker() starts the ticker for process switching.
+ * It returns 1 on success, 0 if already started, -1 upon failure.
+ */
+HAK_EXPORT int hak_start_ticker (
 	void
 );
 

@@ -150,6 +150,7 @@ AC_CHECK_FUNCS([sigaction signal])
 AC_CHECK_FUNCS([snprintf _vsnprintf _vsnwprintf strerror_r])
 AC_CHECK_FUNCS([accept4 pipe2 epoll_create epoll_create1 kqueue kqueue1])
 AC_CHECK_FUNCS([isatty mmap munmap])
+
 AC_CHECK_FUNCS([posix_spawn getrlimit sysconf dirfd])
 dnl dirfd may be provided as a macro rather than a function
 AC_CHECK_DECLS([dirfd],[],[],[[#include <dirent.h>]])

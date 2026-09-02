@@ -38,6 +38,15 @@
 #	define USE_THREAD
 #endif
 
+/* BeOS and Haiku accept ITIMER_VIRTUAL, count it down, and never raise
+ * SIGVTALRM. setitimer() reports success, so the -1 fallback in start_ticker()
+ * cannot catch it and the wall-clock timer has to be chosen up front. Stated
+ * in the negative so an unknown platform keeps preferring the cpu-time timer,
+ * which is what every other system here implements correctly. */
+#if defined(__BEOS__) || defined(__HAIKU__)
+#	define ITIMER_VIRTUAL_NOT_WORKING
+#endif
+
 #if defined(__BORLANDC__) && defined(__DOS__)  && defined(_WIN32) && defined(__DPMI32__)
 /* bcc32 with powerpack seems to define _WIN32 in DPMI32 mode */
 #	undef _WIN32
@@ -3168,7 +3177,7 @@ static DWORD WINAPI msw_wait_for_timer_event (LPVOID ctx)
 	return 0;
 }
 
-static HAK_INLINE void start_ticker (void)
+static HAK_INLINE int start_ticker (void)
 {
 	HANDLE thr;
 
@@ -3177,13 +3186,16 @@ static HAK_INLINE void start_ticker (void)
 	thr = CreateThread(HAK_NULL, 0, msw_wait_for_timer_event, HAK_NULL, 0, HAK_NULL);
 	if (thr)
 	{
-		SetThreadPriority (thr, THREAD_PRIORITY_HIGHEST);
+		SetThreadPriority(thr, THREAD_PRIORITY_HIGHEST);
 
 		/* MSDN - The thread object remains in the system until the thread has terminated
 		 *        and all handles to it have been closed through a call to CloseHandle.
 		 * it is safe to close the handle here */
-		CloseHandle (thr);
+		CloseHandle(thr);
+		return 0;
 	}
+
+	return -1;
 }
 
 static HAK_INLINE void stop_ticker (void)
@@ -3238,12 +3250,13 @@ done:
 	DosExit(EXIT_THREAD, 0);
 }
 
-static HAK_INLINE void start_ticker (void)
+static HAK_INLINE int start_ticker (void)
 {
 	static TID tid;
 	os2_tick_done = 0;
 	DosCreateThread(&tid, os2_wait_for_timer_event, 0, 0, 4096);
 	/* TODO: Error check */
+	return 0;
 }
 
 static HAK_INLINE void stop_ticker (void)
@@ -3276,10 +3289,11 @@ static void interrupt dos_timer_intr_handler (void)
 	_chain_intr(dos_prev_timer_intr_handler);
 }
 
-static HAK_INLINE void start_ticker (void)
+static HAK_INLINE int start_ticker (void)
 {
 	dos_prev_timer_intr_handler = _dos_getvect(0x1C);
 	_dos_setvect(0x1C, dos_timer_intr_handler);
+	return 0;
 }
 
 static HAK_INLINE void stop_ticker (void)
@@ -3302,13 +3316,14 @@ static pascal void timer_intr_handler (TMTask* task)
 	PrimeTime((QElem*)&mac_tmtask, TMTASK_DELAY);
 }
 
-static HAK_INLINE void start_ticker (void)
+static HAK_INLINE int start_ticker (void)
 {
 	GetCurrentProcess(&mac_psn);
 	HAK_MEMSET(&mac_tmtask, 0, HAK_SIZEOF(mac_tmtask));
 	mac_tmtask.tmAddr = NewTimerProc (timer_intr_handler);
 	InsXTime((QElem*)&mac_tmtask);
 	PrimeTime((QElem*)&mac_tmtask, TMTASK_DELAY);
+	return 0;
 }
 
 static HAK_INLINE void stop_ticker (void)
@@ -3319,36 +3334,48 @@ static HAK_INLINE void stop_ticker (void)
 
 #elif defined(HAVE_SETITIMER) && defined(SIGVTALRM) && defined(ITIMER_VIRTUAL)
 
-static HAK_INLINE void start_ticker (void)
+static HAK_INLINE int start_ticker (void)
 {
+#if !defined(ITIMER_VIRTUAL_NOT_WORKING)
+	/* a cpu-time timer only fires while the vm is actually computing, which is
+	 * exactly when a process needs preempting, so prefer it where it works. */
 	if (set_signal_handler(SIGVTALRM, SH_HOW_UPSERT, hak_raise_gtick, SA_RESTART) >= 0)
 	{
 		struct itimerval itv;
+
 		itv.it_interval.tv_sec = 0;
 		itv.it_interval.tv_usec = HAK_TICKER_INTERVAL_USECS;
 		itv.it_value.tv_sec = 0;
 		itv.it_value.tv_usec = HAK_TICKER_INTERVAL_USECS;
-		if (setitimer(ITIMER_VIRTUAL, &itv, HAK_NULL) == -1)
-		{
-			/* WSL supports ITIMER_VIRTUAL only as of windows 10.0.18362.413.
-			   the following is a fallback which will get */
-			unset_signal_handler(SIGVTALRM);
+		if (setitimer(ITIMER_VIRTUAL, &itv, HAK_NULL) == 0) return 0;
 
-		#if defined(SIGALRM) && defined(ITIMER_REAL)
-			if (set_signal_handler(SIGALRM, SH_HOW_UPSERT, hak_raise_gtick, SA_RESTART) >= 0)
-			{
-				/* i double the interval as ITIMER_REAL is against the wall clock.
-				 * if the underlying system is under heavy load, some signals
-				 * will get lost */
-				itv.it_interval.tv_sec = 0;
-				itv.it_interval.tv_usec = HAK_TICKER_INTERVAL_USECS * 2;
-				itv.it_value.tv_sec = 0;
-				itv.it_value.tv_usec = HAK_TICKER_INTERVAL_USECS * 2;
-				setitimer(ITIMER_REAL, &itv, HAK_NULL);
-			}
-		#endif
-		}
+		/* WSL before windows 10.0.18362.413 rejects ITIMER_VIRTUAL outright. */
+		unset_signal_handler(SIGVTALRM);
 	}
+#endif
+
+#if defined(SIGALRM) && defined(ITIMER_REAL)
+	/* The wall-clock timer. Reached when ITIMER_VIRTUAL is absent, refused at
+	 * runtime, or known not to deliver on this platform. */
+	if (set_signal_handler(SIGALRM, SH_HOW_UPSERT, hak_raise_gtick, SA_RESTART) >= 0)
+	{
+		struct itimerval itv;
+
+		/* i double the interval as ITIMER_REAL is against the wall clock.
+		 * if the underlying system is under heavy load, some signals
+		 * will get lost */
+		itv.it_interval.tv_sec = 0;
+		itv.it_interval.tv_usec = HAK_TICKER_INTERVAL_USECS * 2;
+		itv.it_value.tv_sec = 0;
+		itv.it_value.tv_usec = HAK_TICKER_INTERVAL_USECS * 2;
+
+		if (setitimer(ITIMER_REAL, &itv, HAK_NULL) == 0) return 0;
+		unset_signal_handler(SIGALRM);
+	}
+#endif
+
+	/* [NOTE] there is no ticker installed if the code reach here */
+	return -1;
 }
 
 static HAK_INLINE void stop_ticker (void)
@@ -3382,7 +3409,7 @@ static HAK_INLINE void stop_ticker (void)
 
 static pid_t ticker_pid = -1;
 
-static HAK_INLINE void start_ticker (void)
+static HAK_INLINE int start_ticker (void)
 {
 #if defined(SIGALRM)
 	if (set_signal_handler(SIGALRM, SH_HOW_UPSERT, hak_raise_gtick, SA_RESTART) >= 0)
@@ -3417,8 +3444,11 @@ static HAK_INLINE void start_ticker (void)
 		}
 
 		/* parent just carries on. */
+		return 0; /* success */
 	}
 #endif
+
+	return -1;
 }
 
 static HAK_INLINE void stop_ticker (void)
@@ -5145,24 +5175,74 @@ int hak_attachudiostdwithucstr (hak_t* hak, const hak_uch_t* udi_file, const hak
 
 /* ========================================================================= */
 
+#if defined(HAK_ATOMIC_LOAD) && defined(HAK_ATOMIC_ADD_FETCH) && \
+    defined(HAK_ATOMIC_SUB_FETCH) && defined(HAK_ATOMIC_CAS_BOOL)
+#	define USE_TICKER_ATOMICS
+#endif
+
 static hak_uint32_t ticker_started = 0;
 
-void hak_start_ticker (void)
+int hak_start_ticker (void)
 {
-/* TODO: use atomic op */
+#if defined(USE_TICKER_ATOMICS)
+	hak_uint32_t x;
+	/* ACQ_REL rather than RELAXED - this counter gates the one-time
+	 * start_ticker() call, so it must carry ordering and not merely be
+	 * indivisible. The __sync_* fallbacks ignore the memory order argument
+	 * and are already sequentially consistent. */
+	x = HAK_ATOMIC_ADD_FETCH(&ticker_started, 1, HAK_ATOMIC_ACQ_REL);
+	if (x == 1)
+#else
 	if (++ticker_started == 1)
+#endif
 	{
-		start_ticker();
+		int n;
+		n = start_ticker();
+		if (n <= -1)
+		{
+			/* roll the claim back, so a retry can take it again and an
+			 * unbalanced hak_stop_ticker() cannot tear down a ticker that was
+			 * never installed. */
+		#if defined(USE_TICKER_ATOMICS)
+			HAK_ATOMIC_SUB_FETCH(&ticker_started, 1, HAK_ATOMIC_ACQ_REL);
+		#else
+			ticker_started--;
+		#endif
+
+			return -1;
+		}
+
+		return 1;
 	}
+
+	/* [NOTE] potentially this answer of 0 could be misleading if hak_start_ticker()
+	 *        is called in parallel without a guard/mutex and start_ticker() fails mid-loop. */
+	return 0; /* ok. already started */
 }
 
 void hak_stop_ticker (void)
 {
-/* TODO: use atomic op */
-	if (ticker_started > 0 && --ticker_started == 0)
+#if defined(USE_TICKER_ATOMICS)
+	hak_uint32_t old;
+
+	/* decrement only if non-zero - ticker_started is unsigned, so an
+	 * unbalanced stop would otherwise wrap it round to its maximum. no single
+	 * atomic operation expresses "decrement if greater than zero". */
+	old = HAK_ATOMIC_LOAD(&ticker_started, HAK_ATOMIC_ACQUIRE);
+	while (old > 0)
 	{
-		stop_ticker();
+		if (HAK_ATOMIC_CAS_BOOL(&ticker_started, &old, old - 1, HAK_ATOMIC_ACQ_REL, HAK_ATOMIC_ACQUIRE)) break;
+	#if !defined(HAK_ATOMIC_CAS_BOOL_YIELD_OLDVAL)
+		/* __sync_bool_compare_and_swap() does not write the observed value
+		 * back into old on failure, so reload it before retrying. */
+		old = HAK_ATOMIC_LOAD(&ticker_started, HAK_ATOMIC_ACQUIRE);
+	#endif
 	}
+
+	if (old == 1) stop_ticker();
+#else
+	if (ticker_started > 0 && --ticker_started == 0) stop_ticker();
+#endif
 }
 
 /* ========================================================================== */
