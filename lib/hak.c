@@ -150,6 +150,8 @@ int hak_init (hak_t* hak, hak_mmgr_t* mmgr, const hak_vmprim_t* vmprim)
 	hak->option.dfl_symtab_size = HAK_DFL_SYMTAB_SIZE;
 	hak->option.dfl_sysdic_size = HAK_DFL_SYSDIC_SIZE;
 	hak->option.dfl_procstk_size = HAK_DFL_PROCSTK_SIZE;
+	hak->option.dfl_exstk_size = HAK_DFL_EXSTK_SIZE;
+	hak->option.dfl_clstk_size = HAK_DFL_CLSTK_SIZE;
 #if defined(HAK_BUILD_DEBUG)
 	hak->option.karatsuba_cutoff = HAK_KARATSUBA_CUTOFF; /* this won't be used when NDEBUG is set */
 #endif
@@ -583,6 +585,28 @@ int hak_setoption (hak_t* hak, hak_option_t id, const void* value)
 			break;
 		}
 
+		case HAK_EXSTK_SIZE:
+		{
+			hak_oow_t w;
+
+			w = *(hak_oow_t*)value;
+			if (w <= 0 || w > HAK_SMOOI_MAX) goto einval;
+
+			hak->option.dfl_exstk_size = *(hak_oow_t*)value;
+			break;
+		}
+
+		case HAK_CLSTK_SIZE:
+		{
+			hak_oow_t w;
+
+			w = *(hak_oow_t*)value;
+			if (w <= 0 || w > HAK_SMOOI_MAX) goto einval;
+
+			hak->option.dfl_clstk_size = *(hak_oow_t*)value;
+			break;
+		}
+
 		case HAK_MOD_LIBDIRS:
 		case HAK_MOD_PREFIX:
 		case HAK_MOD_POSTFIX:
@@ -663,6 +687,14 @@ int hak_getoption (hak_t* hak, hak_option_t id, void* value)
 
 		case HAK_PROCSTK_SIZE:
 			*(hak_oow_t*)value = hak->option.dfl_procstk_size;
+			return 0;
+
+		case HAK_EXSTK_SIZE:
+			*(hak_oow_t*)value = hak->option.dfl_exstk_size;
+			return 0;
+
+		case HAK_CLSTK_SIZE:
+			*(hak_oow_t*)value = hak->option.dfl_clstk_size;
 			return 0;
 
 		case HAK_MOD_LIBDIRS:

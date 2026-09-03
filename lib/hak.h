@@ -262,6 +262,8 @@ enum hak_option_t
 	HAK_SYMTAB_SIZE,  /* default system table size */
 	HAK_SYSDIC_SIZE,  /* default system dictionary size */
 	HAK_PROCSTK_SIZE, /* default process stack size */
+	HAK_EXSTK_SIZE,   /* default exception stack size */
+	HAK_CLSTK_SIZE,   /* default class stack size */
 
 	HAK_MOD_LIBDIRS,
 	HAK_MOD_PREFIX,
@@ -279,9 +281,16 @@ enum hak_option_dflval_t
 	HAK_DFL_LOG_MAXCAPA = HAK_LOG_CAPA_ALIGN * 16,
 	HAK_DFL_SYMTAB_SIZE = 5000,
 	HAK_DFL_SYSDIC_SIZE = 5000,
-	HAK_DFL_PROCSTK_SIZE = 5000
+	HAK_DFL_PROCSTK_SIZE = 5000,
+	HAK_DFL_EXSTK_SIZE = 128,
+	HAK_DFL_CLSTK_SIZE = 64
 };
 typedef enum hak_option_dflval_t hak_option_dflval_t;
+
+#define HAK_MIN_PROCSTK_SIZE (192)
+#define HAK_MIN_EXSTK_SIZE   (32) /* 4 slots/try  -> 8 nested trys */
+#define HAK_MIN_CLSTK_SIZE   (16) /* 1 slot/class -> 16 nested classes */
+#define HAK_MIN_FSTK_SIZE    (1024)
 
 enum hak_trait_t
 {
@@ -1764,6 +1773,8 @@ struct hak_t
 		hak_oow_t dfl_symtab_size;
 		hak_oow_t dfl_sysdic_size;
 		hak_oow_t dfl_procstk_size;
+		hak_oow_t dfl_exstk_size;
+		hak_oow_t dfl_clstk_size;
 		void* mod_inctx;
 
 		hak_oocs_t mod[3];
@@ -1921,11 +1932,11 @@ struct hak_t
 	hak_oob_t* active_code;
 	hak_ooi_t sp;
 	hak_ooi_t ip;
-	hak_uint8_t abort_req;
+	volatile hak_int8_t abort_req;
 	hak_uint8_t no_proc_switch; /* process switching disabled */
 	hak_uint8_t proc_switched; /* TODO: this is temporary. implement something else to skip immediate context switching */
 	hak_uint8_t rcv_tick; /* whether to receive tick or not */
-	hak_uint32_t tick; /* instance specific tick */
+	volatile hak_uint32_t tick; /* instance specific tick */
 	hak_uint32_t last_tick;  /* last instance specific tick this instance acted on */
 	hak_uint32_t last_gtick;  /* last global tick this instance acted on */
 

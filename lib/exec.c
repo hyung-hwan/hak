@@ -715,23 +715,23 @@ static hak_oop_process_t make_process (hak_t* hak, hak_oop_context_t c)
 	if (hak->proc_map_free_first <= -1 && prepare_to_alloc_pid(hak) <= -1) return HAK_NULL;
 
 	stksize = hak->option.dfl_procstk_size; /* stack */
-	exstksize = 128; /* exception stack size */ /* TODO: make it configurable */
-	clstksize = 64; /* class stack size */ /* TODO: make it configurable too */
+	exstksize = hak->option.dfl_exstk_size; /* exception stack size */
+	clstksize = hak->option.dfl_clstk_size; /* class stack size */
 	fstksize = stksize; /* frame stack size */
 
 	maxsize = (HAK_TYPE_MAX(hak_ooi_t) - HAK_PROCESS_NAMED_INSTVARS) / 4;
 
 	if (stksize > maxsize) stksize = maxsize;
-	else if (stksize < 192) stksize = 192;
+	else if (stksize < HAK_MIN_PROCSTK_SIZE) stksize = HAK_MIN_PROCSTK_SIZE;
 
 	if (exstksize > maxsize) exstksize = maxsize;
-	else if (exstksize < 128) exstksize = 128;
+	else if (exstksize < HAK_MIN_EXSTK_SIZE) exstksize = HAK_MIN_EXSTK_SIZE;
 
 	if (clstksize > maxsize) clstksize = maxsize;
-	else if (clstksize < 32) clstksize = 32;
+	else if (clstksize < HAK_MIN_CLSTK_SIZE) clstksize = HAK_MIN_CLSTK_SIZE;
 
 	if (fstksize > maxsize) fstksize = maxsize;
-	else if (fstksize < 1024) fstksize = 1024;
+	else if (fstksize < HAK_MIN_FSTK_SIZE) fstksize = HAK_MIN_FSTK_SIZE;
 
 	hak_pushvolat(hak, (hak_oop_t*)&c);
 	proc = (hak_oop_process_t)hak_instantiate(hak, hak->c_process, HAK_NULL, stksize + exstksize + clstksize + fstksize);
@@ -3323,13 +3323,21 @@ void hak_rcvtick (hak_t* hak, int enabled)
 
 void hak_raisetick (hak_t* hak)
 {
+#if defined(HAK_ATOMIC_ADD_FETCH)
+	HAK_ATOMIC_ADD_FETCH(&hak->tick, 1, HAK_ATOMIC_RELAXED);
+#else
 	hak->tick++;
+#endif
 }
 
 void hak_raise_gtick (int unused)
 {
 	/* this function is global and not bound to a specific instance. */
+#if defined(HAK_ATOMIC_ADD_FETCH)
+	HAK_ATOMIC_ADD_FETCH(&gtick, 1, HAK_ATOMIC_RELAXED);
+#else
 	gtick++;
+#endif
 }
 
 /* ------------------------------------------------------------------------- */

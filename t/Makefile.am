@@ -51,11 +51,13 @@ check_ERRORS = \
 check_PROGRAMS = \
 	t-001 \
 	t-002 \
-	t-003
+	t-003 \
+	t-004
 
 t_001_SOURCES = t-001.c tap.h
 t_002_SOURCES = t-002.c tap.h
 t_003_SOURCES = t-003.c tap.h
+t_004_SOURCES = t-004.c tap.h
 
 ##noinst_SCRIPTS = $(check_SCRIPTS)
 EXTRA_DIST = $(check_SCRIPTS) $(check_ERRORS)
