@@ -1134,6 +1134,7 @@ static int push_ctlblk (hak_t* hak, const hak_loc_t* errloc, hak_ctlblk_type_t t
 
 	HAK_MEMSET(&hak->c->ctlblk.info[new_depth], 0, HAK_SIZEOF(hak->c->ctlblk.info[new_depth]));
 	hak->c->ctlblk.info[new_depth]._type = type;
+	/*hak->c->ctlblk.info[new_depth].in_catch = 0; not needed for memset above */
 	hak->c->ctlblk.depth = new_depth;
 	return 0;
 }
@@ -2104,8 +2105,9 @@ static int emit_ctlblk_unwind (hak_t* hak, hak_cnode_t* src, int stop_at_loop)
 				break;
 
 			case HAK_CTLBLK_TYPE_TRY:
-				/* emit an instruction to exit from the try loop. */
-				if (emit_byte_instruction(hak, HAK_CODE_TRY_EXIT, HAK_CNODE_GET_LOC(src)) <= -1) return -1;
+				/* emit an instruction to exit from the try loop. when it is in the catch side. don't emit anything */
+				if (!hak->c->ctlblk.info[i].in_catch &&
+				    emit_byte_instruction(hak, HAK_CODE_TRY_EXIT, HAK_CNODE_GET_LOC(src)) <= -1) return -1;
 				break;
 
 			case HAK_CTLBLK_TYPE_CLASS:
@@ -2116,6 +2118,25 @@ static int emit_ctlblk_unwind (hak_t* hak, hak_cnode_t* src, int stop_at_loop)
 	}
 
 	return 0;
+}
+
+static void update_try_ctlblk_for_catch (hak_t* hak)
+{
+	hak_ooi_t i;
+
+	/* find the innermost try block info and mark that it's now in the catch block side */
+	for (i = hak->c->ctlblk.depth; i > hak->c->funblk.info[hak->c->funblk.depth].ctlblk_base; --i)
+	{
+		if (hak->c->ctlblk.info[i]._type == HAK_CTLBLK_TYPE_TRY)
+		{
+				hak->c->ctlblk.info[i].in_catch = 1;
+				return;
+		}
+	}
+
+	/* this must not happend. compile_catch() must not be invoked without
+	 * going through the enclosing TRY block first. */
+	HAK_ASSERT(hak, !"internal error - this must never happen");
 }
 
 static int compile_break (hak_t* hak, hak_cnode_t* src)
@@ -4486,6 +4507,7 @@ static HAK_INLINE int compile_catch (hak_t* hak)
 	/* produce an instruction to store the exception value to an exception variable pushed by the 'throw' instruction */
 	if (emit_variable_access(hak, VAR_ACCESS_POP, &vi, HAK_CNODE_GET_LOC(src)) <= -1) return -1;
 
+	update_try_ctlblk_for_catch(hak);
 	SWITCH_TOP_CFRAME(hak, COP_COMPILE_OBJECT_LIST, obj);
 
 	PUSH_SUBCFRAME(hak, COP_POST_CATCH, cmd);

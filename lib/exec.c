@@ -180,6 +180,8 @@ static void terminate_all_processes (hak_t* hak);
 		ap->exsp = HAK_SMOOI_TO_OOP(exsp); \
 	} while (0)
 
+/* normal stack top is the base of exstack */
+#define HAK_EXSTACK_GET_BASE(hak) HAK_OOP_TO_SMOOI(((hak)->processor->active)->st)
 #define HAK_EXSTACK_GET_ST(hak) HAK_OOP_TO_SMOOI(((hak)->processor->active)->exst)
 #define HAK_EXSTACK_GET_SP(hak) HAK_OOP_TO_SMOOI(((hak)->processor->active)->exsp)
 
@@ -235,6 +237,8 @@ static void terminate_all_processes (hak_t* hak);
 
 #define HAK_CLSTACK_CHOP(hak, clsp_) ((hak)->processor->active->clsp = HAK_SMOOI_TO_OOP(clsp_))
 
+/* exstack top is the base of clstack */
+#define HAK_CLSTACK_GET_BASE(hak) HAK_OOP_TO_SMOOI(((hak)->processor->active)->exst)
 #define HAK_CLSTACK_GET_ST(hak) HAK_OOP_TO_SMOOI(((hak)->processor->active)->clst)
 #define HAK_CLSTACK_GET_SP(hak) HAK_OOP_TO_SMOOI(((hak)->processor->active)->clsp)
 
@@ -4364,7 +4368,15 @@ static int execute (hak_t* hak)
 
 			case HAK_CODE_TRY_EXIT:
 				LOG_INST_0(hak, "try_exit");
-				/* TODO: stack underflow check? */
+				/* writing the condition this way would be more explicit.
+				 *  if (HAK_EXSTACK_GET_SP(hak) - HAK_EXSTACK_GET_BASE(hak) < 4)
+				 * it's simpler to use HAK_EXSTACK_IS_EMPTY() base PUSH, POP, POP_TO all move
+				 * exsp by exactly 4.  */
+				if (HAK_EXSTACK_IS_EMPTY(hak))
+				{
+					hak_seterrbfmt(hak, HAK_ESTKUNDFLW, "exception stack underflow");
+					goto oops_with_errmsg_supplement;
+				}
 				HAK_EXSTACK_POP(hak);
 				break;
 

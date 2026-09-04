@@ -855,6 +855,7 @@ typedef enum hak_ctlblk_type_t hak_ctlblk_type_t;
 struct hak_ctlblk_info_t
 {
 	hak_ctlblk_type_t _type;
+	int in_catch; /* used for HAK_CTLBLK_TYPE_TRY only */
 };
 typedef struct hak_ctlblk_info_t hak_ctlblk_info_t;
 
