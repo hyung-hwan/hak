@@ -279,11 +279,20 @@ typedef enum hak_option_t hak_option_t;
 enum hak_option_dflval_t
 {
 	HAK_DFL_LOG_MAXCAPA = HAK_LOG_CAPA_ALIGN * 16,
-	HAK_DFL_SYMTAB_SIZE = 5000,
-	HAK_DFL_SYSDIC_SIZE = 5000,
-	HAK_DFL_PROCSTK_SIZE = 5000,
-	HAK_DFL_EXSTK_SIZE = 128,
-	HAK_DFL_CLSTK_SIZE = 64
+
+#if defined(HAK_SMALL_MEMORY_FOOTPRINT)
+	HAK_DFL_SYMTAB_SIZE  = 1024,
+	HAK_DFL_SYSDIC_SIZE  = 1024
+	HAK_DFL_PROCSTK_SIZE = 1024,   /* -> fstk 1024, the FSTK floor */
+	HAK_DFL_EXSTK_SIZE   = 256,    /* 4 slots/level x 59 levels = 236 */
+	HAK_DFL_CLSTK_SIZE   = 16,     /* = HAK_MIN_CLSTK_SIZE */
+#else
+	HAK_DFL_SYMTAB_SIZE  = 8192,
+	HAK_DFL_SYSDIC_SIZE  = 8192,
+	HAK_DFL_PROCSTK_SIZE = 8192,
+	HAK_DFL_EXSTK_SIZE   = 2048,
+	HAK_DFL_CLSTK_SIZE   = 64
+#endif
 };
 typedef enum hak_option_dflval_t hak_option_dflval_t;
 

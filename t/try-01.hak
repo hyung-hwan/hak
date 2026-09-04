@@ -1,0 +1,125 @@
+## a 'return' inside a try must not discard the handlers that protect its own
+## return value.
+##
+## compile_return() used to emit TRY_EXIT/CLASS_EXIT before the return value
+## was compiled, so the value expression ran with every enclosing handler in
+## the function already popped - not just the innermost one. The unwinding is
+## now emitted from emit_return(), which runs after the value is on the stack.
+##
+## What made this hard to notice is that only the syntactic form mattered:
+## try { x := (f) } caught what f threw, while try { return (f) } did not.
+## Both forms are checked here for that reason.
+##
+## [NOTE] no catch body below uses 'return'. A 'return' inside a catch pops the
+## exception stack a second time - the throw has already unwound the frame - and
+## corrupts it for every try that follows in the same process. That is a
+## separate defect, present before this fix and unaffected by it; keeping it out
+## of these cases is what lets them test the return-inside-try path alone.
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+fun boom() { throw 99 }
+
+## --- the core case ---
+fun c1() {
+	| v |
+	v := 0
+	try { return (boom) } catch (e) { v := (+ e 1) }
+	return v
+}
+chk (= (c1) 100) "a throw in a return value is caught by the enclosing try"
+
+## --- execution resumes after the try when the catch falls through ---
+seen := 0
+fun c2() {
+	try { return (boom) } catch (e) { seen := e }
+	return 7
+}
+chk (= (c2) 7) "execution resumes after the try when the catch does not return"
+chk (= seen 99) "the catch body ran"
+
+## --- an empty catch swallows it and must not abort the process ---
+fun c3() {
+	try { return (boom) } catch (e) { }
+	return 8
+}
+chk (= (c3) 8) "an empty catch body still handles the throw"
+
+## --- nesting: the innermost handler wins and the outer one stays untouched.
+##     the old code unwound both, so neither fired. ---
+inner := 0
+outer := 0
+fun c4() {
+	try {
+		try { return (boom) } catch (e) { inner := (+ inner 1) }
+	} catch (e2) { outer := (+ outer 1) }
+	return 9
+}
+chk (= (c4) 9) "a nested try returns normally after handling"
+chk (= inner 1) "the innermost try catches"
+chk (= outer 0) "the outer try is left out of it"
+
+## --- across a call boundary the callee's own handler wins. the old code let
+##     the throw escape to the caller's handler instead. ---
+g_seen := 0
+h_seen := 0
+fun g() {
+	| v |
+	v := 0
+	try { return (boom) } catch (e) { g_seen := 1 ; v := -1 }
+	return v
+}
+fun h() {
+	| v |
+	v := 0
+	try { return (g) } catch (e) { h_seen := 1 ; v := -2 }
+	return v
+}
+chk (= (h) -1) "the callee handles its own throw"
+chk (= g_seen 1) "the callee's catch ran"
+chk (= h_seen 0) "the caller's catch did not"
+
+## --- the form that always worked must keep working ---
+fun c5() {
+	| v |
+	v := 0
+	try { v := (boom) } catch (e) { v := e }
+	return v
+}
+chk (= (c5) 99) "a throw in an assignment is still caught"
+
+## --- break and continue share the same unwinding helper, so they must still
+##     pop the handler on the way out. a leaked frame would exhaust the
+##     exception stack long before these loops finish. ---
+i := 0
+n := 0
+while (< i 2000) {
+	i := (+ i 1)
+	try { if (= (mod i 2) 0) { continue } ; n := (+ n 1) } catch (e) { n := -1 }
+}
+chk (= n 1000) "continue inside a try unwinds without leaking a handler"
+
+i := 0
+while (< i 2000) {
+	i := (+ i 1)
+	try { if (= i 7) { break } } catch (e) { }
+}
+chk (= i 7) "break inside a try unwinds and leaves the loop"
+
+## --- a handler stays live across the whole call chain, so recursion with a
+##     try per frame is caught at the frame that threw ---
+hits := 0
+caught := 0
+fun rec(k) {
+	| v |
+	v := 0
+	if (<= k 0) { throw 55 }
+	try { return (rec (- k 1)) } catch (e) { hits := (+ hits 1) ; caught := e ; v := e }
+	return v
+}
+chk (= (rec 20) 55) "recursion with a try per frame propagates the value"
+chk (= caught 55) "the thrown value arrives intact"
+chk (= hits 1) "only the frame nearest the throw handles it"

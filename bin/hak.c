@@ -979,12 +979,16 @@ int main (int argc, char* argv[])
 
 	{
 		hak_oow_t tab_size;
-		tab_size = 5000;
+		tab_size = HAK_DFL_SYMTAB_SIZE;
 		hak_setoption (hak, HAK_SYMTAB_SIZE, &tab_size);
-		tab_size = 5000;
+		tab_size = HAK_DFL_SYSDIC_SIZE;
 		hak_setoption (hak, HAK_SYSDIC_SIZE, &tab_size);
-		tab_size = 600; /* TODO: choose a better stack size or make this user specifiable */
+		tab_size = HAK_DFL_PROCSTK_SIZE; /* TODO: choose a better stack size or make this user specifiable */
 		hak_setoption (hak, HAK_PROCSTK_SIZE, &tab_size);
+		tab_size = HAK_DFL_EXSTK_SIZE; /* TODO: choose a better stack size or make this user specifiable */
+		hak_setoption (hak, HAK_EXSTK_SIZE, &tab_size);
+		tab_size = HAK_DFL_CLSTK_SIZE; /* TODO: choose a better stack size or make this user specifiable */
+		hak_setoption (hak, HAK_CLSTK_SIZE, &tab_size);
 	}
 
 	{

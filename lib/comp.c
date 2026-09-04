@@ -2090,12 +2090,40 @@ static HAK_INLINE int emit_plus (hak_t* hak)
 #endif
 
 /* ========================================================================= */
+static int emit_ctlblk_unwind (hak_t* hak, hak_cnode_t* src, int stop_at_loop)
+{
+	hak_ooi_t i;
+
+	for (i = hak->c->ctlblk.depth; i > hak->c->funblk.info[hak->c->funblk.depth].ctlblk_base; --i)
+	{
+		switch (hak->c->ctlblk.info[i]._type)
+		{
+			case HAK_CTLBLK_TYPE_LOOP:
+				/* a loop block needs no unwinding instruction */
+				if (stop_at_loop) return 1; /* for break/continue inside loop */
+				break;
+
+			case HAK_CTLBLK_TYPE_TRY:
+				/* emit an instruction to exit from the try loop. */
+				if (emit_byte_instruction(hak, HAK_CODE_TRY_EXIT, HAK_CNODE_GET_LOC(src)) <= -1) return -1;
+				break;
+
+			case HAK_CTLBLK_TYPE_CLASS:
+				/* emit an instruction to exit from the class definition scope being defined */
+				if (emit_byte_instruction(hak, HAK_CODE_CLASS_EXIT, HAK_CNODE_GET_LOC(src)) <= -1) return -1;
+				break;
+		}
+	}
+
+	return 0;
+}
 
 static int compile_break (hak_t* hak, hak_cnode_t* src)
 {
 	/* (break) */
 	hak_cnode_t* cmd, * obj;
 	hak_ooi_t i;
+	int n;
 
 	HAK_ASSERT(hak, HAK_CNODE_IS_CONS(src));
 	HAK_ASSERT(hak, HAK_CNODE_IS_TYPED(HAK_CNODE_CONS_CAR(src), HAK_CNODE_BREAK));
@@ -2123,30 +2151,15 @@ static int compile_break (hak_t* hak, hak_cnode_t* src)
 		return -1;
 	}
 
-	for (i = hak->c->ctlblk.depth; i > hak->c->funblk.info[hak->c->funblk.depth].ctlblk_base; --i)
+	n = emit_ctlblk_unwind(hak, cmd, 1);
+	if (n <= -1) return -1;
+	if (n == 0)
 	{
-		switch (hak->c->ctlblk.info[i]._type)
-		{
-			case HAK_CTLBLK_TYPE_LOOP:
-				goto inside_loop;
-
-			case HAK_CTLBLK_TYPE_TRY:
-				/* emit an instruction to exit from the try loop. */
-				if (emit_byte_instruction(hak, HAK_CODE_TRY_EXIT, HAK_CNODE_GET_LOC(src)) <= -1) return -1;
-				break;
-
-			case HAK_CTLBLK_TYPE_CLASS:
-				/* emit an instruction to exit from the class definition scope being defined */
-				if (emit_byte_instruction(hak, HAK_CODE_CLASS_EXIT, HAK_CNODE_GET_LOC(src)) <= -1) return -1;
-				break;
-		}
+		hak_setsynerrbfmt(hak, HAK_SYNERR_BREAK, HAK_CNODE_GET_LOC(cmd),
+			"%.*js outside loop", HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
+		return -1;
 	}
 
-	hak_setsynerrbfmt(hak, HAK_SYNERR_BREAK, HAK_CNODE_GET_LOC(src),
-		"%.*js outside loop", HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
-	return -1;
-
-inside_loop:
 	for (i = hak->c->cfs.top; i >= 0; --i)
 	{
 		const hak_cframe_t* tcf;
@@ -2217,6 +2230,7 @@ static int compile_continue (hak_t* hak, hak_cnode_t* src)
 	/* (continue) */
 	hak_cnode_t* cmd, * obj;
 	hak_ooi_t i;
+	int n;
 
 	HAK_ASSERT(hak, HAK_CNODE_IS_CONS(src));
 	HAK_ASSERT(hak, HAK_CNODE_IS_TYPED(HAK_CNODE_CONS_CAR(src), HAK_CNODE_CONTINUE));
@@ -2244,29 +2258,15 @@ static int compile_continue (hak_t* hak, hak_cnode_t* src)
 		return -1;
 	}
 
-	for (i = hak->c->ctlblk.depth; i > hak->c->funblk.info[hak->c->funblk.depth].ctlblk_base; --i)
+	n = emit_ctlblk_unwind(hak, cmd, 1);
+	if (n <= -1) return -1;
+	if (n == 0)
 	{
-		switch (hak->c->ctlblk.info[i]._type)
-		{
-			case HAK_CTLBLK_TYPE_LOOP:
-				goto inside_loop;
-
-			case HAK_CTLBLK_TYPE_TRY:
-				/*must emit an instruction to exit from the try loop.*/
-				if (emit_byte_instruction(hak, HAK_CODE_TRY_EXIT, HAK_CNODE_GET_LOC(src)) <= -1) return -1;
-				break;
-
-			case HAK_CTLBLK_TYPE_CLASS:
-				if (emit_byte_instruction(hak, HAK_CODE_CLASS_EXIT, HAK_CNODE_GET_LOC(src)) <= -1) return -1;
-				break;
-		}
+		hak_setsynerrbfmt(hak, HAK_SYNERR_BREAK, HAK_CNODE_GET_LOC(cmd),
+			"%.*js outside loop", HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
+		return -1;
 	}
 
-	hak_setsynerrbfmt(hak, HAK_SYNERR_BREAK, HAK_CNODE_GET_LOC(src),
-		"%.*js outside loop", HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
-	return -1;
-
-inside_loop:
 	for (i = hak->c->cfs.top; i >= 0; --i)
 	{
 		const hak_cframe_t* tcf;
@@ -3968,7 +3968,6 @@ static int compile_return (hak_t* hak, hak_cnode_t* src, int ret_from_home)
 	hak_cnode_t* obj, * val;
 	hak_cframe_t* cf;
 	hak_funblk_info_t* fbi;
-	hak_ooi_t i;
 
 	HAK_ASSERT(hak, HAK_CNODE_IS_CONS(src));
 	HAK_ASSERT(hak, HAK_CNODE_IS_TYPED(HAK_CNODE_CONS_CAR(src), HAK_CNODE_RETURN) ||
@@ -3976,24 +3975,6 @@ static int compile_return (hak_t* hak, hak_cnode_t* src, int ret_from_home)
 
 	fbi = &hak->c->funblk.info[hak->c->funblk.depth];
 	obj = HAK_CNODE_CONS_CDR(src);
-
-	for (i = hak->c->ctlblk.depth; i > hak->c->funblk.info[hak->c->funblk.depth].ctlblk_base; --i)
-	{
-		switch (hak->c->ctlblk.info[i]._type)
-		{
-			case HAK_CTLBLK_TYPE_LOOP:
-				/* do nothing */
-				break;
-
-			case HAK_CTLBLK_TYPE_TRY:
-				if (emit_byte_instruction(hak, HAK_CODE_TRY_EXIT, HAK_CNODE_GET_LOC(src)) <= -1) return -1;
-				break;
-
-			case HAK_CTLBLK_TYPE_CLASS:
-				if (emit_byte_instruction(hak, HAK_CODE_CLASS_EXIT, HAK_CNODE_GET_LOC(src)) <= -1) return -1;
-				break;
-		}
-	}
 
 	if (fbi->tmpr_nrvars > 0)
 	{
@@ -4015,6 +3996,9 @@ static int compile_return (hak_t* hak, hak_cnode_t* src, int ret_from_home)
 				HAK_CNODE_GET_TOKLEN(tmp), HAK_CNODE_GET_TOKPTR(tmp));
 			return -1;
 		}
+
+		/* emit unwinding expression just before emitting the actual return instruction */
+		if (emit_ctlblk_unwind(hak, src, 0) <= -1) return -1;
 
 /* TODO: pop stack if this is not the first statement... */
 		if (emit_byte_instruction(hak, HAK_CODE_PUSH_RETURN_R, HAK_CNODE_GET_LOC(tmp)) <= -1) return -1;
@@ -7000,6 +6984,9 @@ static HAK_INLINE int emit_return (hak_t* hak)
 	cf = GET_TOP_CFRAME(hak);
 	HAK_ASSERT(hak, cf->opcode == COP_EMIT_RETURN);
 	HAK_ASSERT(hak, cf->operand != HAK_NULL);
+
+	/* emit unwinding expression just before emitting the actual return instruction */
+	if (emit_ctlblk_unwind(hak, cf->operand, 0) <= -1) return -1;
 
 	n = emit_byte_instruction(hak, (cf->u._return.from_home? HAK_CODE_RETURN_STACKTOP: HAK_CODE_RETURN_FROM_BLOCK), HAK_CNODE_GET_LOC(cf->operand));
 

@@ -577,6 +577,7 @@ check_SCRIPTS = \
 	sysproc-01.hak \
 	sysproc-02.hak \
 	tick-01.hak \
+	try-01.hak \
 	va-01.hak \
 	var-01.hak \
 	var-02.hak \
