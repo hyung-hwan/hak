@@ -269,7 +269,8 @@ enum hak_option_t
 	HAK_MOD_PREFIX,
 	HAK_MOD_POSTFIX,
 
-	HAK_MOD_INCTX
+	HAK_MOD_INCTX,
+	HAK_OPT_INCDIRS
 };
 typedef enum hak_option_t hak_option_t;
 
@@ -1787,6 +1788,7 @@ struct hak_t
 		void* mod_inctx;
 
 		hak_oocs_t mod[3];
+		hak_oocs_t incdirs;
 
 	#if defined(HAK_BUILD_DEBUG)
 		/* set automatically when trait is set */

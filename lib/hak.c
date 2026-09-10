@@ -369,9 +369,22 @@ void hak_fini (hak_t* hak)
 		hak->option.log_target_b = HAK_NULL;
 	}
 
+	/* destroy dynamically allocated options */
 	for (i = 0; i < HAK_COUNTOF(hak->option.mod); i++)
 	{
-		if (hak->option.mod[i].ptr) hak_freemem(hak, hak->option.mod[i].ptr);
+		if (hak->option.mod[i].ptr)
+		{
+			hak_freemem(hak, hak->option.mod[i].ptr);
+			hak->option.mod[i].ptr = HAK_NULL;
+			hak->option.mod[i].len = 0;
+		}
+	}
+
+	if (hak->option.incdirs.ptr)
+	{
+		hak_freemem(hak, hak->option.incdirs.ptr);
+		hak->option.incdirs.ptr = HAK_NULL;
+		hak->option.incdirs.len = 0;
 	}
 
 	if (hak->inttostr.xbuf.ptr)
@@ -627,6 +640,15 @@ int hak_setoption (hak_t* hak, hak_option_t id, const void* value)
 			hak->option.mod_inctx = *(void**)value;
 			break;
 
+		case HAK_OPT_INCDIRS:
+		{
+			hak_oocs_t tmp;
+			if (dup_str_opt(hak, value, &tmp) <= -1) return -1;
+			if (hak->option.incdirs.ptr) hak_freemem(hak, hak->option.incdirs.ptr);
+			hak->option.incdirs = tmp;
+			break;
+		}
+
 		default:
 			goto einval;
 	}
@@ -705,6 +727,10 @@ int hak_getoption (hak_t* hak, hak_option_t id, void* value)
 
 		case HAK_MOD_INCTX:
 			*(void**)value = hak->option.mod_inctx;
+			return 0;
+
+		case HAK_OPT_INCDIRS:
+			*(const hak_ooch_t**)value = hak->option.incdirs.ptr;
 			return 0;
 	};
 
