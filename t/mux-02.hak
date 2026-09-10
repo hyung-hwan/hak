@@ -15,15 +15,15 @@ fun chk(ok msg) {
 	else { printf "ERROR: %s\n" msg }
 }
 
-sg  := (semgr-new)
-sa  := (sem-new)
-sb  := (sem-new)
-sc  := (sem-new)
-tmo := (sem-new)
-semgr-add sg sa
-semgr-add sg sb
-semgr-add sg sc
-semgr-add sg tmo
+sg  := (core.semgr-new)
+sa  := (core.sem-new)
+sb  := (core.sem-new)
+sc  := (core.sem-new)
+tmo := (core.sem-new)
+core.semgr-add sg sa
+core.semgr-add sg sb
+core.semgr-add sg sc
+core.semgr-add sg tmo
 
 ## staggered so the completion order is a, then b, then c
 pa := (sys.popen "sleep 0.2; echo aaa" "r")
@@ -35,14 +35,14 @@ hb := (core.basicAt pb 2)
 hc := (core.basicAt pc 2)
 
 ## all three bound at the same time - three live tuple entries
-sem-signal-on-input sa ha
-sem-signal-on-input sb hb
-sem-signal-on-input sc hc
-sem-signal tmo 9 0
+core.sem-signal-on-input sa ha
+core.sem-signal-on-input sb hb
+core.sem-signal-on-input sc hc
+core.sem-signal tmo 9 0
 
 fun expect(want h name) {
 	| s buf got |
-	s := (semgr-wait sg)
+	s := (core.semgr-wait sg)
 	chk (eqv? s want) name
 	buf := (core.basicNew ByteArray 8)
 	got := (sys.read h buf)
@@ -52,15 +52,15 @@ fun expect(want h name) {
 ## unbinding sa frees the first slot, so the last entry migrates into it and
 ## sb/sc must still resolve to their own handles afterwards
 expect sa ha "the first child woke its own semaphore"
-sem-unsignal sa
+core.sem-unsignal sa
 
 expect sb hb "the second child woke its own semaphore after compaction"
-sem-unsignal sb
+core.sem-unsignal sb
 
 expect sc hc "the third child woke its own semaphore after compaction"
-sem-unsignal sc
+core.sem-unsignal sc
 
-sem-unsignal tmo
+core.sem-unsignal tmo
 sys.pclose (core.basicAt pa 0)
 sys.pclose (core.basicAt pb 0)
 sys.pclose (core.basicAt pc 0)

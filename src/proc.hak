@@ -37,9 +37,9 @@ class ChildGroup(
 	sigsem  ## the shared semaphore; only in shared mode
 ) {
 	fun[#ci] new() {
-		set sg (semgr-new)
-		set tmo (sem-new)
-		semgr-add sg tmo
+		set sg (core.semgr-new)
+		set tmo (core.sem-new)
+		core.semgr-add sg tmo
 		set capa 8
 		set kids (core.basicNew Array 8)
 		set nkids 0
@@ -108,15 +108,15 @@ class ChildGroup(
 			if (not self.shared) {
 				set shared true
 				system-catch-sig sys.SIGCHLD
-				set sigsem (sem-new)
-				semgr-add self.sg self.sigsem
-				sem-signal-on-input self.sigsem (system-get-sigfd)
+				set sigsem (core.sem-new)
+				core.semgr-add self.sg self.sigsem
+				core.sem-signal-on-input self.sigsem (system-get-sigfd)
 			}
 		} else {
 			## A handle of its own, so a wakeup identifies this child directly.
-			sem := (sem-new)
-			semgr-add self.sg sem
-			sem-signal-on-input sem xh
+			sem := (core.sem-new)
+			core.semgr-add self.sg sem
+			core.sem-signal-on-input sem xh
 		}
 
 		kid := (core.basicNew Array 6)
@@ -171,9 +171,9 @@ class ChildGroup(
 		if (not (nil? kid)) { return kid }
 
 		while true {
-			sem-signal self.tmo secs 0
-			w := (semgr-wait self.sg)
-			sem-unsignal self.tmo
+			core.sem-signal self.tmo secs 0
+			w := (core.semgr-wait self.sg)
+			core.sem-unsignal self.tmo
 
 			if (eqv? w self.tmo) { return nil }
 
@@ -188,7 +188,7 @@ class ChildGroup(
 			} else {
 				kid := (self:kid-of-sem w)
 				if (not (nil? kid)) {
-					sem-unsignal w
+					core.sem-unsignal w
 					return kid
 				}
 			}
@@ -210,8 +210,8 @@ class ChildGroup(
 		| sem |
 		sem := (core.basicAt kid 5)
 		if (not (nil? sem)) {
-			sem-unsignal sem
-			semgr-remove self.sg sem
+			core.sem-unsignal sem
+			core.semgr-remove self.sg sem
 		}
 		self:forget kid
 		sys.pclose (core.basicAt kid 0)
@@ -227,7 +227,7 @@ class ChildGroup(
 			i := (+ i 1)
 		}
 		if self.shared {
-			sem-unsignal self.sigsem
+			core.sem-unsignal self.sigsem
 			system-uncatch-sig sys.SIGCHLD
 			set shared false
 		}

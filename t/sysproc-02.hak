@@ -9,12 +9,12 @@ fun chk(ok msg) {
 	else { printf "ERROR: %s\n" msg }
 }
 
-iosem := (sem-new)
-tmo   := (sem-new)
-sg    := (semgr-new)
-semgr-add sg iosem
-semgr-add sg tmo
-fin   := (sem-new)
+iosem := (core.sem-new)
+tmo   := (core.sem-new)
+sg    := (core.semgr-new)
+core.semgr-add sg iosem
+core.semgr-add sg tmo
+fin   := (core.sem-new)
 
 p    := (sys.popen "sleep 1; exit 5" "r")
 proc := (core.basicAt p 0)
@@ -30,14 +30,14 @@ else {
 
 	fun waiter() {
 		| s |
-		sem-signal tmo 20 0
-		sem-signal-on-input iosem xh
-		s := (semgr-wait sg)
-		sem-unsignal iosem
-		sem-unsignal tmo
+		core.sem-signal tmo 20 0
+		core.sem-signal-on-input iosem xh
+		s := (core.semgr-wait sg)
+		core.sem-unsignal iosem
+		core.sem-unsignal tmo
 		if (eqv? s tmo) { status := -1 } \
 		else { status := (sys.pwait proc) }
-		sem-signal fin
+		core.sem-signal fin
 		return 0
 	}
 
@@ -46,14 +46,14 @@ else {
 		## happen if the VM went on scheduling instead of blocking
 		while (< ticks 4) {
 			ticks := (+ ticks 1)
-			yield
+			core.yield
 		}
 	}
 
 	chk (integer? xh) "sys.popen hands back an exit handle"
-	fork waiter
-	fork ticker
-	sem-wait fin
+	core.fork waiter
+	core.fork ticker
+	core.sem-wait fin
 
 	chk (= ticks 4) "other coprocesses ran while the child was alive"
 	chk (= status 5) "the exit handle woke the waiter and the status was read"

@@ -80,12 +80,12 @@ static void state_contract (void)
 
 static const char SRC[] =
 	"flag := 0\n"
-	"s := (sem-new)\n"
-	"fun setter() { flag := 1 ; sem-signal s }\n"
-	"p := (fork setter)\n"
+	"s := (core.sem-new)\n"
+	"fun setter() { flag := 1 ; core.sem-signal s }\n"
+	"p := (core.fork setter)\n"
 	"i := 0\n"
 	"while (< i 300000) { if (== flag 1) { break } ; i := (+ i 1) }\n"
-	"sem-wait s\n"
+	"core.sem-wait s\n"
 	"r := i\n";
 
 static hak_oow_t bc_seen = 0;
@@ -105,6 +105,33 @@ static int on_cnode (hak_t* hak, hak_cnode_t* obj)
 	return hak_compile(hak, obj, 0);
 }
 
+/* The script below reaches the process and semaphore primitives through the
+ * core module, which is where they are registered. A build configured with
+ * --enable-static-module links that module in and resolves it unaided, but one
+ * without it has to load the module from the build tree, and a bare
+ * hak_openstd() has nowhere to look. HAK_TEST_MODLIBDIRS comes from
+ * t/Makefile.am and names the same directories run.sh passes to the script
+ * tests via --modlibdirs. */
+static int set_modlibdirs (hak_t* hak)
+{
+#if defined(HAK_TEST_MODLIBDIRS)
+#	if defined(HAK_OOCH_IS_UCH)
+	hak_ooch_t* tmp;
+	int n;
+
+	tmp = hak_dupbtoucstr(hak, HAK_TEST_MODLIBDIRS, HAK_NULL);
+	if (HAK_UNLIKELY(!tmp)) return -1;
+	n = hak_setoption(hak, HAK_MOD_LIBDIRS, tmp);
+	hak_freemem(hak, tmp);
+	return n;
+#	else
+	return hak_setoption(hak, HAK_MOD_LIBDIRS, HAK_TEST_MODLIBDIRS);
+#	endif
+#else
+	return 0;
+#endif
+}
+
 static void preempts_a_spinner (void)
 {
 	hak_t* hak;
@@ -120,6 +147,8 @@ static void preempts_a_spinner (void)
 	hak_getoption(hak, HAK_TRAIT, &trait);
 	trait |= HAK_TRAIT_AWAIT_PROCS | HAK_TRAIT_LANG_ENABLE_EOL;
 	hak_setoption(hak, HAK_TRAIT, &trait);
+
+	OK (set_modlibdirs(hak) == 0, "module search path");
 
 	memset (&cb, 0, sizeof(cb));
 	cb.vm_checkbc = cb_checkbc;

@@ -2,13 +2,13 @@
 ## stops hak code naming a descriptor it never opened - including hak's own
 ## multiplexer, signal and io-thread descriptors, and anything the host
 ## application that embeds hak holds open.
-s := (sem-new)
-sem-signal-on-input s 0 ##ERROR: system handle 0
+s := (core.sem-new)
+core.sem-signal-on-input s 0 ##ERROR: system handle 0
 
 ---
 
-s := (sem-new)
-sem-signal-on-input s 4 ##ERROR: system handle 4
+s := (core.sem-new)
+core.sem-signal-on-input s 4 ##ERROR: system handle 4
 
 ---
 
@@ -24,8 +24,8 @@ sys.read r (core.basicNew ByteArray 4) ##ERROR: system handle 0
 ## a regular file is never accepted by the multiplexer: epoll refuses one
 ## outright, and poll() would report it permanently ready
 f := (sys.open "/etc/passwd" "r")
-s := (sem-new)
-sem-signal-on-input s f ##ERROR: not of an acceptable kind
+s := (core.sem-new)
+core.sem-signal-on-input s f ##ERROR: not of an acceptable kind
 
 ---
 

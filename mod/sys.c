@@ -174,7 +174,7 @@ static hak_pfrc_t pf_sys_random (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
  * sys.read and sys.write follow the non-blocking contract: they return the
  * byte count, 0 at end of file, or -1 when the handle would have blocked.
  * -1 is an ordinary outcome - the caller is expected to wait on a semaphore
- * bound with sem-signal-on-input/-output and try again. Only a genuine
+ * bound with core.sem-signal-on-input/-output and try again. Only a genuine
  * failure raises.
  * ------------------------------------------------------------------------ */
 

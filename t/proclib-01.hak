@@ -22,10 +22,10 @@ ticks := 0
 fun ticker() {
 	while (< ticks 5) {
 		ticks := (+ ticks 1)
-		yield
+		core.yield
 	}
 }
-fork ticker
+core.fork ticker
 
 order := (core.basicNew Array 3)
 n := 0

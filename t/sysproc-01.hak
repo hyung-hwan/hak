@@ -5,19 +5,19 @@ fun chk(ok msg) {
 	else { printf "ERROR: %s\n" msg }
 }
 
-iosem := (sem-new)
-tmo   := (sem-new)
-sg    := (semgr-new)
-semgr-add sg iosem
-semgr-add sg tmo
+iosem := (core.sem-new)
+tmo   := (core.sem-new)
+sg    := (core.semgr-new)
+core.semgr-add sg iosem
+core.semgr-add sg tmo
 
 fun waitin(h secs) {
 	| s |
-	sem-signal tmo secs 0
-	sem-signal-on-input iosem h
-	s := (semgr-wait sg)
-	sem-unsignal iosem
-	sem-unsignal tmo
+	core.sem-signal tmo secs 0
+	core.sem-signal-on-input iosem h
+	s := (core.semgr-wait sg)
+	core.sem-unsignal iosem
+	core.sem-unsignal tmo
 	if (eqv? s tmo) { return 0 } else { return 1 }
 }
 
@@ -38,9 +38,9 @@ fun reap(proc) {
 	while (< k 300) {
 		n := (sys.pwait proc)
 		if (not (= n 256)) { return n }
-		sem-signal tmo 0 20000000
-		semgr-wait sg
-		sem-unsignal tmo
+		core.sem-signal tmo 0 20000000
+		core.semgr-wait sg
+		core.sem-unsignal tmo
 		k := (+ k 1)
 	}
 	return 256

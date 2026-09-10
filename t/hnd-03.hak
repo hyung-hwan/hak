@@ -7,21 +7,21 @@ fun chk(ok msg) {
 	else { printf "ERROR: %s\n" msg }
 }
 
-iosem := (sem-new)
-tmo   := (sem-new)
-sg    := (semgr-new)
-semgr-add sg iosem
-semgr-add sg tmo
-fin   := (sem-new)
+iosem := (core.sem-new)
+tmo   := (core.sem-new)
+sg    := (core.semgr-new)
+core.semgr-add sg iosem
+core.semgr-add sg tmo
+fin   := (core.sem-new)
 
 ## returns 1 when the handle became readable, 0 when the timeout won
 fun waitin(h secs) {
 	| s |
-	sem-signal tmo secs 0
-	sem-signal-on-input iosem h
-	s := (semgr-wait sg)
-	sem-unsignal iosem
-	sem-unsignal tmo
+	core.sem-signal tmo secs 0
+	core.sem-signal-on-input iosem h
+	s := (core.semgr-wait sg)
+	core.sem-unsignal iosem
+	core.sem-unsignal tmo
 	if (eqv? s tmo) { return 0 } \
 	else { return 1 }
 }
@@ -46,12 +46,12 @@ fun reader() {
 		n := (sys.read r buf)
 		if (>= n 0) {
 			got := n
-			sem-signal fin
+			core.sem-signal fin
 			return 0
 		}
 		if (= (waitin r 5) 0) {
 			got := -1
-			sem-signal fin
+			core.sem-signal fin
 			return 0
 		}
 	}
@@ -63,7 +63,7 @@ fun writer() {
 	## so these ticks only happen if the VM is still scheduling
 	while (< ticks 4) {
 		ticks := (+ ticks 1)
-		yield
+		core.yield
 	}
 	wb := (core.basicNew ByteArray 2)
 	core.basicAtPut wb 0 120
@@ -71,9 +71,9 @@ fun writer() {
 	sys.write w wb
 }
 
-fork reader
-fork writer
-sem-wait fin
+core.fork reader
+core.fork writer
+core.sem-wait fin
 
 chk (= ticks 4) "other coprocesses ran while the reader was blocked"
 chk (= got 2) "the reader woke and read the data"

@@ -8,11 +8,11 @@ fun loop1() {
 	while (< k 100) {
 		printf "loop1 => %d\n" k
 		k := (+ k 2)
-		yield
+		core.yield
 	}
 
 	z1 := k
-	sem-signal s1
+	core.sem-signal s1
 }
 
 fun loop2() {
@@ -22,26 +22,26 @@ fun loop2() {
 	while (< k 100) {
 		printf "loop2 => %d\n" k
 		k := (+ k 2)
-		yield
+		core.yield
 	}
 
 	z2 := k
-	sem-signal s2
+	core.sem-signal s2
 }
 
-s1 := (sem-new)
-s2 := (sem-new)
+s1 := (core.sem-new)
+s2 := (core.sem-new)
 
-p1 := (fork loop1)
-p2 := (fork loop2)
+p1 := (core.fork loop1)
+p2 := (core.fork loop2)
 
-##suspend p1
-##suspend p2
-##resume p1
-##resume p2
+##core.suspend p1
+##core.suspend p2
+##core.resume p1
+##core.resume p2
 
-sem-wait s1
-sem-wait s2
+core.sem-wait s1
+core.sem-wait s2
 
 if (== z1 101) { printf "OK: z1 is %d\n" z1 } \
 else { printf "ERROR: z1 is not 101 - %d\n" z1 }

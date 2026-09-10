@@ -16,52 +16,52 @@ fun chk(ok msg) {
 	else { printf "ERROR: %s\n" msg }
 }
 
-sg   := (semgr-new)
-isem := (sem-new)
-osem := (sem-new)
-tmo  := (sem-new)
-semgr-add sg isem
-semgr-add sg osem
-semgr-add sg tmo
+sg   := (core.semgr-new)
+isem := (core.sem-new)
+osem := (core.sem-new)
+tmo  := (core.sem-new)
+core.semgr-add sg isem
+core.semgr-add sg osem
+core.semgr-add sg tmo
 
 p := (sys.pipe)
 r := (core.basicAt p 0)
 w := (core.basicAt p 1)
 
 ## one descriptor, two directions - the tuple now carries both
-sem-signal-on-input isem w
-sem-signal-on-output osem w
+core.sem-signal-on-input isem w
+core.sem-signal-on-output osem w
 
 ## drop only the input direction. the output registration must survive, and so
 ## must any event already reported for it
-sem-unsignal isem
+core.sem-unsignal isem
 
-sem-signal tmo 5 0
-s := (semgr-wait sg)
+core.sem-signal tmo 5 0
+s := (core.semgr-wait sg)
 chk (eqv? s osem) "the surviving direction still reports after a partial unbind"
-sem-unsignal tmo
+core.sem-unsignal tmo
 
 ## put the input direction back while the output one is still registered. this
 ## is the add branch of the modify path - the mirror of the drop above - and it
 ## has to leave the output registration alone.
-sem-signal-on-input isem w
+core.sem-signal-on-input isem w
 
 ## now drop the output direction instead, keeping input. a write end is never
 ## readable, so with input alone nothing can report and the timer must win. if
 ## the modify path had left the output registration behind, its writability
 ## would be reported here and the timer would lose.
-sem-unsignal osem
-sem-signal tmo 0 300000000
-s := (semgr-wait sg)
+core.sem-unsignal osem
+core.sem-signal tmo 0 300000000
+s := (core.semgr-wait sg)
 chk (eqv? s tmo) "the dropped direction stops reporting after a partial unbind"
-sem-unsignal tmo
+core.sem-unsignal tmo
 
 ## and the full unbind from that state really removes the registration
-sem-unsignal isem
-sem-signal tmo 0 300000000
-s := (semgr-wait sg)
+core.sem-unsignal isem
+core.sem-signal tmo 0 300000000
+s := (core.semgr-wait sg)
 chk (eqv? s tmo) "nothing reports once both directions are unbound"
-sem-unsignal tmo
+core.sem-unsignal tmo
 
 sys.close r
 sys.close w

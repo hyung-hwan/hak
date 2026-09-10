@@ -2248,6 +2248,8 @@ hak_pfrc_t hak_pf_nqv (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
 hak_pfrc_t hak_pf_nql (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
 hak_pfrc_t hak_pf_nqk (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
 
+hak_pfrc_t hak_pf_object_new (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+
 hak_pfrc_t hak_pf_process_current (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
 hak_pfrc_t hak_pf_process_fork (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
 hak_pfrc_t hak_pf_process_resume (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);

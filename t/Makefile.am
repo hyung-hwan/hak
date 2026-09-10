@@ -5,7 +5,8 @@ AM_CPPFLAGS = \
 	-I$(abs_builddir)/../lib \
 	-I$(abs_srcdir) \
 	-I$(abs_srcdir)/../lib \
-	-I$(includedir)
+	-I$(includedir) \
+	-DHAK_TEST_MODLIBDIRS='"@abs_top_builddir@/mod:@abs_top_builddir@/mod/.libs"'
 LDADD = ../lib/libhak.la
 
 check_SCRIPTS = \

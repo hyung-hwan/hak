@@ -1220,7 +1220,7 @@ static hak_pfrc_t pf_va_get (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 }
 
 
-static hak_pfrc_t pf_object_new (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_object_new (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_oop_t obj;
 	hak_oop_t _class;
@@ -1264,7 +1264,7 @@ static hak_pfrc_t pf_system_get_sigfd (hak_t* hak, hak_mod_t* mod, hak_ooi_t nar
 	fd = hak->vmprim.vm_getsigfd(hak);
 
 	/* hand back a system handle id rather than the descriptor itself, so that
-	 * the result can be given to sem-signal-on-input - which resolves handle
+	 * the result can be given to core.sem-signal-on-input - which resolves handle
 	 * ids, not descriptors. wrapped HAK_HND_OPEN_KEEPOPEN because the VM owns
 	 * this descriptor and manages its blocking mode; the table must never
 	 * close it. wrapfd_once() keeps the id stable across calls. */
@@ -1291,7 +1291,7 @@ static hak_pfrc_t pf_system_get_sig (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs
 
 /* (system-catch-sig signo)   - route an operating system signal into the
  *                              signal descriptor, where hak code can wait for
- *                              it with sem-signal-on-input
+ *                              it with core.sem-signal-on-input
  * (system-uncatch-sig signo) - release it again
  *
  * Note the difference from system-set-sig, which does not touch the operating
@@ -1435,30 +1435,7 @@ static pf_t builtin_prims[] =
 
 	{ 0, 0,                       pf_va_context,      10, { 'v','a','-','c','o','n','t','e','x','t' } },
 	{ 0, 1,                       pf_va_count,        8,  { 'v','a','-','c','o','u','n','t' } },
-	{ 1, 2,                       pf_va_get,          6,  { 'v','a','-','g','e','t' } },
-
-	{ 1, 2,                       pf_object_new,                           10, { 'o','b','j','e','c','t','-','n','e','w' } },
-
-	{ 0, 0,                       hak_pf_process_current,                  15, { 'c','u','r','r','e','n','t','-','p','r','o','c','e','s','s'} },
-	{ 1, HAK_TYPE_MAX(hak_oow_t), hak_pf_process_fork,                      4, { 'f','o','r','k'} },
-	{ 1, 1,                       hak_pf_process_resume,                    6, { 'r','e','s','u','m','e' } },
-	{ 0, 1,                       hak_pf_process_suspend,                   7, { 's','u','s','p','e','n','d' } },
-	{ 0, 1,                       hak_pf_process_terminate,                 9, { 't','e','r','m','i','n','a','t','e' } },
-	{ 0, 0,                       hak_pf_process_terminate_all,            13, { 't','e','r','m','i','n','a','t','e','-','a','l','l' } },
-	{ 0, 0,                       hak_pf_process_yield,                     5, { 'y','i','e','l','d'} },
-
-
-	{ 0, 0,                       hak_pf_semaphore_new,                     7, { 's','e','m','-','n','e','w'} },
-	{ 1, 1,                       hak_pf_semaphore_wait,                    8, { 's','e','m','-','w','a','i','t'} },
-	{ 1, 3,                       hak_pf_semaphore_signal,                 10, { 's','e','m','-','s','i','g','n','a','l'} },
-	{ 2, 2,                       hak_pf_semaphore_signal_on_input,        19, { 's','e','m','-','s','i','g','n','a','l','-','o','n','-','i','n','p','u','t'} },
-	{ 2, 2,                       hak_pf_semaphore_signal_on_output,       20, { 's','e','m','-','s','i','g','n','a','l','-','o','n','-','o','u','t','p','u','t'} },
-	{ 1, 1,                       hak_pf_semaphore_unsignal,               12, { 's','e','m','-','u','n','s','i','g','n','a','l'} },
-
-	{ 0, 0,                       hak_pf_semaphore_group_new,               9, { 's','e','m','g','r','-','n','e','w'} },
-	{ 1, 2,                       hak_pf_semaphore_group_add_semaphore,     9, { 's','e','m','g','r','-','a','d','d'} },
-	{ 1, 2,                       hak_pf_semaphore_group_remove_semaphore, 12, { 's','e','m','g','r','-','r','e','m','o','v','e'} },
-	{ 1, 1,                       hak_pf_semaphore_group_wait,             10, { 's','e','m','g','r','-','w','a','i','t'} }
+	{ 1, 2,                       pf_va_get,          6,  { 'v','a','-','g','e','t' } }
 };
 
 int hak_addbuiltinprims (hak_t* hak)

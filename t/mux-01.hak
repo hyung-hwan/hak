@@ -16,20 +16,20 @@ fun chk(ok msg) {
 	else { printf "ERROR: %s\n" msg }
 }
 
-iosem := (sem-new)
-tmo   := (sem-new)
-sg    := (semgr-new)
-semgr-add sg iosem
-semgr-add sg tmo
+iosem := (core.sem-new)
+tmo   := (core.sem-new)
+sg    := (core.semgr-new)
+core.semgr-add sg iosem
+core.semgr-add sg tmo
 
 ## 1 when the handle became readable, 0 when the timer won instead
 fun waitin(h secs) {
 	| s |
-	sem-signal tmo secs 0
-	sem-signal-on-input iosem h
-	s := (semgr-wait sg)
-	sem-unsignal iosem
-	sem-unsignal tmo
+	core.sem-signal tmo secs 0
+	core.sem-signal-on-input iosem h
+	s := (core.semgr-wait sg)
+	core.sem-unsignal iosem
+	core.sem-unsignal tmo
 	if (eqv? s tmo) { return 0 } else { return 1 }
 }
 
