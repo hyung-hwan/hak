@@ -1,84 +1,8 @@
-class Apex {
-	fun isNil?() { return false }
-	fun notNil?() { return true }
-
-	fun[#class] basicNew(size) {
-		return (core.basicNew self size)
-	}
-
-	fun[#class] respondsTo(mthname) {
-		return (core.classRespondsTo self mthname)
-	}
-
-	fun respondsTo(mthname) {
-		return (core.instRespondsTo self mthname)
-	}
-
-	fun primAt(pos) {
-		return (core.primAt self pos)
-	}
-
-	fun primtAtPut(pos value) {
-		return (core.primAtPut self pos value)
-	}
-
-	fun basicAt(pos) {
-		return (core.basicAt self pos)
-	}
-
-	fun basicAtPut(pos value) {
-		return (core.basicAtPut self pos value)
-	}
-
-	fun basicSize() {
-		return (core.basicSize self)
-	}
-
-	## TODO: ...
-	fun == (oprnd) { return (== self oprnd) }
-	fun != (oprnd) { return (!= self oprnd) }
-	## TODO: fun perform(name ...) {}
-}
-
-class[#uncopyable #varying #limited #final] Class: Apex (
-	_name
-	_mdic
-	_spec
-	_selfspec
-	_superclass
-	_nivars_super
-	_ibrand
-	_ivarnames
-	_cvarnames
-) {
-	fun name() {
-		##return (core.className self)
-		return _class
-	}
-
-	fun instanceVariableNames() {
-		## TODO: this still returns nil as the acutal manipulation of the field has not been implemented
-		return _ivarnames
-	}
-
-	fun classVariableNames() {
-		## TODO: this still returns nil as the acutal manipulation of the field has not been implemented
-		return _cvarnames
-	}
-}
-
-class UndefinedObject: Apex {
-	fun isNil?() { return true }
-	fun notNil?() { return false }
-}
-
-class Object: Apex {
-}
-
-## ---------------------------------------------------------------------------------
-
+$include "Object.hak"
 $include "Magnitude.hak"
 $include "Collection.hak"
+$include "Semaphore.hak"
+
 ##$include "System.hak"
 
 ## ---------------------------------------------------------------------------------

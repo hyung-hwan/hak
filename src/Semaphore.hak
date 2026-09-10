@@ -1,0 +1,65 @@
+
+class[#uncopyable] Semaphore: Object(
+	_waiting_first
+	_wait_last
+	_count
+	_subtype
+	_index		
+	_ftime_sec_or_handle
+	_ftime_nsec_or_type
+	_signal_action
+	_group
+	_grm_prev
+	_grm_next
+) {
+	fun[#class] new() {
+		return (sem-new)
+	}
+
+	fun signalAfter(secs nsecs) {
+		sem-signal self secs nsecs
+	}
+
+	fun signalOnInput(handle) {
+		sem-signal-on-input self handle
+	}
+
+	fun signalOnOutput(handle) {
+		sem-signal-on-output self handle
+	}
+
+	fun unsignal() {
+		sem-unsignal self
+	}
+
+	fun wait() {
+		sem-wait self
+	}
+}
+
+class[#uncopyable] SemaphoreGroup: Object(
+	_waiting_first
+	_waiting_last
+	_sem_unsig_first
+	_sem_unsig_last
+	_sem_sig_first
+	_sem_sig_last
+	_sem_io_count
+	_sem_count
+) {
+	fun[#class] new() {
+		return (semgr-new)
+	}
+
+	fun add(sem) {
+		semgr-add self sem
+	}
+
+	fun remove(sem) {
+		semgr-remove self sem
+	}
+
+	fun wait() {
+		semgr-wait self
+	}
+}

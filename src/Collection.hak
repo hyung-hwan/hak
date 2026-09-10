@@ -42,6 +42,9 @@ class FixedSizedCollection: IndexedCollection {
 class[#varying] Array: FixedSizedCollection {
 }
 
+class[#byte #varying] ByteArray: FixedSizedCollection {
+}
+
 class[#char #varying] String: FixedSizedCollection {
 	fun[#class] initValue() {
 		##return '\0'
