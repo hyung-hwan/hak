@@ -3877,7 +3877,7 @@ static void* dl_open (hak_t* hak, const hak_ooch_t* name, int flags)
 
 	if (hak->option.mod[0].len > 0)
 	{
-		/* multiple directories separated by a colon can be specified for HAK_MOD_LIBDIRS
+		/* multiple directories separated by a colon can be specified for HAK_OPT_MOD_LIBDIRS
 		 * however, use the total length to secure space just for simplicity */
 		ucslen = hak->option.mod[0].len;
 		if (hak_convootobchars(hak, hak->option.mod[0].ptr, &ucslen, HAK_NULL, &bcslen) <= -1) return HAK_NULL;

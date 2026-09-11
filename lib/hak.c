@@ -620,23 +620,23 @@ int hak_setoption (hak_t* hak, hak_option_t id, const void* value)
 			break;
 		}
 
-		case HAK_MOD_LIBDIRS:
-		case HAK_MOD_PREFIX:
-		case HAK_MOD_POSTFIX:
+		case HAK_OPT_MOD_LIBDIRS:
+		case HAK_OPT_MOD_PREFIX:
+		case HAK_OPT_MOD_POSTFIX:
 		{
 			hak_oocs_t tmp;
 			int idx;
 
 			if (dup_str_opt(hak, (const hak_ooch_t*)value, &tmp) <= -1) return -1;
 
-			idx = id - HAK_MOD_LIBDIRS;
+			idx = id - HAK_OPT_MOD_LIBDIRS;
 			if (hak->option.mod[idx].ptr) hak_freemem(hak, hak->option.mod[idx].ptr);
 
 			hak->option.mod[idx] = tmp;
 			return 0;
 		}
 
-		case HAK_MOD_INCTX:
+		case HAK_OPT_MOD_INCTX:
 			hak->option.mod_inctx = *(void**)value;
 			break;
 
@@ -719,13 +719,13 @@ int hak_getoption (hak_t* hak, hak_option_t id, void* value)
 			*(hak_oow_t*)value = hak->option.dfl_clstk_size;
 			return 0;
 
-		case HAK_MOD_LIBDIRS:
-		case HAK_MOD_PREFIX:
-		case HAK_MOD_POSTFIX:
-			*(const hak_ooch_t**)value = hak->option.mod[id - HAK_MOD_LIBDIRS].ptr;
+		case HAK_OPT_MOD_LIBDIRS:
+		case HAK_OPT_MOD_PREFIX:
+		case HAK_OPT_MOD_POSTFIX:
+			*(const hak_ooch_t**)value = hak->option.mod[id - HAK_OPT_MOD_LIBDIRS].ptr;
 			return 0;
 
-		case HAK_MOD_INCTX:
+		case HAK_OPT_MOD_INCTX:
 			*(void**)value = hak->option.mod_inctx;
 			return 0;
 

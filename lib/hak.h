@@ -265,11 +265,12 @@ enum hak_option_t
 	HAK_EXSTK_SIZE,   /* default exception stack size */
 	HAK_CLSTK_SIZE,   /* default class stack size */
 
-	HAK_MOD_LIBDIRS,
-	HAK_MOD_PREFIX,
-	HAK_MOD_POSTFIX,
+	HAK_OPT_MOD_LIBDIRS,
+	HAK_OPT_MOD_PREFIX,
+	HAK_OPT_MOD_POSTFIX,
 
-	HAK_MOD_INCTX,
+	HAK_OPT_MOD_INCTX,
+
 	HAK_OPT_INCDIRS
 };
 typedef enum hak_option_t hak_option_t;

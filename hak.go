@@ -191,13 +191,13 @@ func (hak *Hak) GetLogTarget() string {
 	x = C.hak_getoption(hak.c, C.HAK_LOG_TARGET_BCSTR, unsafe.Pointer(&tgt))
 	if x <= -1 {
 		// this must not happen
-		panic(fmt.Errorf("unable to set log target - %s", hak.get_errmsg()))
+		panic(fmt.Errorf("unable to get log target - %s", hak.get_errmsg()))
 	}
 
 	return C.GoString(tgt)
 }
 
-func (hak *Hak) SetLogTarget(target string) {
+func (hak *Hak) SetLogTarget(target string) error {
 	var x C.int
 	var tgt *C.char
 
@@ -205,10 +205,65 @@ func (hak *Hak) SetLogTarget(target string) {
 	defer C.free(unsafe.Pointer(tgt))
 
 	x = C.hak_setoption(hak.c, C.HAK_LOG_TARGET_BCSTR, unsafe.Pointer(tgt))
+	if x <= -1 { return hak.make_errinfo() }
+
+	return nil
+}
+
+func (hak *Hak) GetIncDirs() string {
+	var x C.int
+	var tgt *C.char
+
+// TODO: THIS IS WRONG. must be BCH/UCH aware
+	x = C.hak_getoption(hak.c, C.HAK_OPT_INCDIRS, unsafe.Pointer(&tgt))
 	if x <= -1 {
 		// this must not happen
-		panic(fmt.Errorf("unable to set log target - %s", hak.get_errmsg()))
+		panic(fmt.Errorf("unable to get include directories - %s", hak.get_errmsg()))
 	}
+
+	return C.GoString(tgt)
+}
+
+func (hak *Hak) SetIncDirs(target string) error {
+	var x C.int
+	var tgt *C.char
+
+	tgt = C.CString(target) // TODO: need error check?
+	defer C.free(unsafe.Pointer(tgt))
+
+// TODO: THIS IS WRONG. must be BCH/UCH aware
+	x = C.hak_setoption(hak.c, C.HAK_OPT_INCDIRS, unsafe.Pointer(tgt))
+	if x <= -1 { return hak.make_errinfo() }
+
+	return nil
+}
+
+func (hak *Hak) GetModLibDirs() string {
+	var x C.int
+	var tgt *C.char
+
+// TODO: THIS IS WRONG. must be BCH/UCH aware
+	x = C.hak_getoption(hak.c, C.HAK_OPT_MOD_LIBDIRS, unsafe.Pointer(&tgt))
+	if x <= -1 {
+		// this must not happen
+		panic(fmt.Errorf("unable to get module library directories - %s", hak.get_errmsg()))
+	}
+
+	return C.GoString(tgt)
+}
+
+func (hak *Hak) SetModLibDirs(target string) error {
+	var x C.int
+	var tgt *C.char
+
+	tgt = C.CString(target) // TODO: need error check?
+	defer C.free(unsafe.Pointer(tgt))
+
+// TODO: THIS IS WRONG. must be BCH/UCH aware
+	x = C.hak_setoption(hak.c, C.HAK_OPT_MOD_LIBDIRS, unsafe.Pointer(tgt))
+	if x <= -1 { return hak.make_errinfo() }
+
+	return nil
 }
 
 func (hak *Hak) Ignite(memsize uintptr) error {

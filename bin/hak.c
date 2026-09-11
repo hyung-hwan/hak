@@ -1050,7 +1050,7 @@ int main (int argc, char* argv[])
 			goto oops;
 		}
 
-		if (hak_setoption(hak, HAK_MOD_LIBDIRS, tmp) <= -1)
+		if (hak_setoption(hak, HAK_OPT_MOD_LIBDIRS, tmp) <= -1)
 		{
 			hak_logbfmt(hak, HAK_LOG_STDERR,"ERROR: cannot set modlibdirs - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
 			hak_freemem(hak, tmp);
@@ -1058,7 +1058,7 @@ int main (int argc, char* argv[])
 		}
 		hak_freemem(hak, tmp);
 	#else
-		if (hak_setoption(hak, HAK_MOD_LIBDIRS, modlibdirs) <= -1)
+		if (hak_setoption(hak, HAK_OPT_MOD_LIBDIRS, modlibdirs) <= -1)
 		{
 			hak_logbfmt(hak, HAK_LOG_STDERR,"ERROR: cannot set modlibdirs - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
 			goto oops;

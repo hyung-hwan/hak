@@ -29,6 +29,7 @@ type Param struct {
 	input_file string
 	heapsize   uint
 	modlibdirs string
+	incdirs    string
 	fs_usage   func()
 }
 
@@ -120,6 +121,14 @@ func main() {
 	if param.log_file != "" {
 		x.SetLogMask(^hak.BitMask(0))
 		x.SetLogTarget("/dev/stderr")
+	}
+
+	if param.incdirs != "" {
+		x.SetIncDirs(param.incdirs)
+	}
+
+	if param.modlibdirs != "" {
+		x.SetModLibDirs(param.modlibdirs)
 	}
 
 	x.SetTrait(x.GetTrait() | hak.TRAIT_LANG_ENABLE_EOL)

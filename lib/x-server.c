@@ -1517,7 +1517,7 @@ static int init_worker_hak (hak_server_worker_t* worker)
 	xtn = (worker_hak_xtn_t*)hak_getxtn(hak);
 	xtn->worker = worker;
 
-	hak_setoption(hak, HAK_MOD_INCTX, &server->cfg.module_inctx);
+	hak_setoption(hak, HAK_OPT_MOD_INCTX, &server->cfg.module_inctx);
 	hak_setoption(hak, HAK_LOG_MASK, &server->cfg.logmask);
 	hak_setcmgr(hak, hak_server_getcmgr(server));
 
