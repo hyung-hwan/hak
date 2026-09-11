@@ -482,6 +482,16 @@ func (hak *Hak) Decode() error {
 	return nil
 }
 
+func (hak *Hak) RcvTick(enabled bool) {
+	var i C.int
+	if enabled { i = 1 } else { i = 0 }
+	C.hak_rcvtick(hak.c, i)
+}
+
+func (hak *Hak) RaiseTick() {
+	C.hak_raisetick(hak.c)
+}
+
 func (hak *Hak) get_errmsg() string {
 	return C.GoString(C.hak_geterrbmsg(hak.c))
 }

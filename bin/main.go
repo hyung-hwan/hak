@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 )
 
 /*
@@ -221,11 +222,56 @@ func handle_arguments(param *Param) error {
 	return nil
 }
 
+func start_ticker(x *hak.Hak) func() {
+	var ticker *time.Ticker
+	var ticker_stop chan bool
+	var ticker_done chan bool
+	var stopper func()
+
+	ticker = time.NewTicker(20 * time.Millisecond)
+	ticker_done = make(chan bool)
+	ticker_stop = make(chan bool)
+
+	go func() {
+		for {
+			select {
+				case <- ticker_stop:
+					goto done
+				case <- ticker.C:
+					x.RaiseTick()
+			}
+		}
+
+	done:
+		ticker.Stop()
+		ticker_done <- true
+	}()
+	x.RcvTick(true)
+
+	stopper = func() {
+		x.RcvTick(false)
+		ticker_stop <- true
+		<- ticker_done // wait for the ticker to stop
+
+		// if i don't close the the two channels below, the multiple calls to the
+		// returned stopper function wouldn't cause immediate panic for writing
+		// on a closed channel. but i would still close them as i don't want to
+		// cater for generic use of this function and this function wasn't
+		// written to be generic. i don't care to use any other more advanced
+		// mechanisms. the caller must ensure to call this stopper only once.
+		close(ticker_stop)
+		close(ticker_done)
+	}
+
+	return stopper
+}
+
 func main() {
 
 	var x *hak.Hak = nil
 	var err error = nil
 	var param Param
+	var stop_ticker func()
 
 	var rfh hak.CciFileHandler
 	var sfh hak.UdiFileHandler
@@ -321,7 +367,9 @@ func main() {
 	 * whole of Execute(). */
 	x.Decode()
 
+	stop_ticker = start_ticker(x)
 	err = x.Execute()
+	stop_ticker()
 	if err != nil {
 		//fmt.Printf("ERROR: %s[%d:%d] - %s\n", herr.File, herr.Line, herr.Colm, herr.Msg)
 		fmt.Printf("ERROR: %s\n", err.Error())

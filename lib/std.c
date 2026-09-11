@@ -3535,7 +3535,6 @@ static HAK_INLINE int start_ticker (void)
 				nanosleep(&ts, HAK_NULL);
 			#elif defined(HAVE_USLEEP)
 				usleep(HAK_TICKER_INTERVAL_USECS * 2);
-
 			#else
 			#	error UNDEFINED SLEEP
 			#endif
