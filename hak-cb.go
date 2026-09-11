@@ -12,6 +12,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"strings"
 	"path/filepath"
 	"reflect"
 	"sync"
@@ -96,6 +97,8 @@ func hak_go_cci_handler(c *C.hak_t, cmd C.hak_io_cmd_t, arg unsafe.Pointer) C.in
 		var (
 			ioarg         *C.hak_io_cciarg_t
 			name          string
+			raw           string
+			try_incdirs   bool
 			fd            int
 			tptr          unsafe.Pointer
 			tlen          C.size_t
@@ -110,31 +113,62 @@ func hak_go_cci_handler(c *C.hak_t, cmd C.hak_io_cmd_t, arg unsafe.Pointer) C.in
 			// actual included stream
 			var includer_name string
 
-			name = string(ucstr_to_rune_slice(ioarg.name))
+			raw = string(ucstr_to_rune_slice(ioarg.name))
 
 			tptr = ioarg.includer.handle
 			tlen = *(*C.size_t)(unsafe.Pointer(uintptr(tptr) + unsafe.Sizeof(fd)))
 
 			includer_name = C.GoStringN((*C.char)(unsafe.Pointer(uintptr(tptr)+unsafe.Sizeof(fd)+unsafe.Sizeof(tlen))), C.int(tlen))
-			name = filepath.Join(path.Dir(includer_name), name)
+			name = filepath.Join(path.Dir(includer_name), raw)
+
+			// a name anchored by the author - absolute, or explicitly ./ or
+			// ../ - is meant to resolve against the includer alone. anything
+			// else may fall back to the include directories. this mirrors
+			// what open_cci_stream() does in lib/std.c.
+			try_incdirs = !filepath.IsAbs(raw) &&
+				!strings.HasPrefix(raw, "./") && !strings.HasPrefix(raw, "../")
+		}
+
+		// [NOTE] the open has to happen before the allocation below, because
+		//        the include-directory search can settle on a different (and
+		//        longer) path than the one first tried, and the block is
+		//        sized from the name it ends up storing.
+		if ioarg.includer == nil {
+			fd = -1
+		} else {
+			fd, err = g.io.cci.Open(g, name)
+			if err != nil && try_incdirs {
+				// walk the colon-separated include directories, as the C
+				// reader does. an empty entry means the current directory.
+				for _, dir := range strings.Split(g.GetIncDirs(), ":") {
+					var cand string = filepath.Join(dir, raw)
+					var fd2 int
+					var err2 error
+
+					fd2, err2 = g.io.cci.Open(g, cand)
+					if err2 == nil {
+						// the stored name becomes the includer path for
+						// anything this file includes in turn, so it has to
+						// be the path that actually opened
+						fd, err, name = fd2, nil, cand
+						break
+					}
+				}
+			}
+			if err != nil {
+				g.set_errmsg(C.HAK_EIOERR, err.Error())
+				return -1
+			}
 		}
 
 		tlen = C.size_t(len(name)) // number of bytes in the string
 		tptr = C.hak_allocmem(c, C.size_t(unsafe.Sizeof(fd)) + C.size_t(unsafe.Sizeof(tlen)) + tlen)
 		if tptr == nil {
+			if ioarg.includer != nil {
+				g.io.cci.Close(fd)
+			}
 			g.set_errmsg(C.HAK_ESYSMEM, "cci name allocation failure")
 			return -1
-		}
-
-		if ioarg.includer == nil {
-			fd = -1
-		} else {
-			fd, err = g.io.cci.Open(g, name)
-			if err != nil {
-				g.set_errmsg(C.HAK_EIOERR, err.Error())
-				C.hak_freemem(c, tptr)
-				return -1
-			}
 		}
 
 		// | fd | length | name bytes of the length |

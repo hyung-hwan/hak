@@ -76,6 +76,38 @@ type BitMask C.hak_bitmask_t
 
 const TRAIT_LANG_ENABLE_EOL BitMask = C.HAK_TRAIT_LANG_ENABLE_EOL
 
+/* log levels */
+const (
+	LOG_DEBUG BitMask = C.HAK_LOG_DEBUG
+	LOG_INFO  BitMask = C.HAK_LOG_INFO
+	LOG_WARN  BitMask = C.HAK_LOG_WARN
+	LOG_ERROR BitMask = C.HAK_LOG_ERROR
+	LOG_FATAL BitMask = C.HAK_LOG_FATAL
+)
+
+/* log types */
+const (
+	LOG_UNTYPED   BitMask = C.HAK_LOG_UNTYPED
+	LOG_COMPILER  BitMask = C.HAK_LOG_COMPILER
+	LOG_VM        BitMask = C.HAK_LOG_VM
+	LOG_MNEMONIC  BitMask = C.HAK_LOG_MNEMONIC
+	LOG_GC        BitMask = C.HAK_LOG_GC
+	LOG_IC        BitMask = C.HAK_LOG_IC
+	LOG_PRIMITIVE BitMask = C.HAK_LOG_PRIMITIVE
+	LOG_APP       BitMask = C.HAK_LOG_APP
+)
+
+const (
+	LOG_ALL_LEVELS BitMask = C.HAK_LOG_ALL_LEVELS
+	LOG_ALL_TYPES  BitMask = C.HAK_LOG_ALL_TYPES
+)
+
+/* BuildInfo answers how the underlying C library was configured. it mirrors
+ * what bin/hak.c prints for --info. */
+func BuildInfo() string {
+	return fmt.Sprintf("Configured with: %s %s", C.HAK_CONFIGURE_CMD, C.HAK_CONFIGURE_ARGS)
+}
+
 func deregister_instance(g *Hak) {
 	if g.inst_no >= 0 {
 		inst_table.delete_instance(g.inst_no)
