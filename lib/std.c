@@ -4663,12 +4663,13 @@ static HAK_INLINE int open_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 	xtn_t* xtn = GET_XTN(hak);
 	bb_t* bb = HAK_NULL;
 
-/* TOOD: support predefined include directory as well */
 	if (arg->includer)
 	{
 		/* includee */
 		hak_oow_t ucslen, bcslen, parlen;
 		const hak_bch_t* fn, * fb;
+		int attempt_incdirs;
+		const hak_ooch_t* incdirs_ptr;
 
 	#if defined(HAK_OOCH_IS_UCH)
 		if (hak_convootobcstr(hak, arg->name, &ucslen, HAK_NULL, &bcslen) <= -1) goto oops;
@@ -4682,27 +4683,95 @@ static HAK_INLINE int open_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 		{
 			fb = "";
 			parlen = 0;
+			attempt_incdirs = 0;
 		}
 		else
 		{
 			fb = hak_get_base_name_from_bcstr_path(fn);
 			parlen = fb - fn;
+			attempt_incdirs = !((arg->name[0] == '.' && arg->name[1] == '/') || (arg->name[0] == '.' && arg->name[1] == '.' && arg->name[2] == '/'));
 		}
 
 		bb = (bb_t*)hak_callocmem(hak, HAK_SIZEOF(*bb) + (HAK_SIZEOF(hak_bch_t) * (parlen + bcslen + 1)));
-		if (!bb) goto oops;
+		if (HAK_UNLIKELY(!bb)) goto oops;
 
 		bb->fn = (hak_bch_t*)(bb + 1);
-		hak_copy_bchars (bb->fn, fn, parlen);
+		hak_copy_bchars(bb->fn, fn, parlen);
 	#if defined(HAK_OOCH_IS_UCH)
 		hak_convootobcstr(hak, arg->name, &ucslen, &bb->fn[parlen], &bcslen);
 	#else
 		hak_copy_bcstr(&bb->fn[parlen], bcslen + 1, arg->name);
 	#endif
 
+		incdirs_ptr = hak->option.incdirs.ptr;
+retry:
 		bb->fp = fopen(bb->fn, FOPEN_R_FLAGS);
 		if (!bb->fp)
 		{
+			if ((errno == ENOENT || errno == ENOTDIR) && attempt_incdirs && incdirs_ptr && incdirs_ptr[0] != '\0')
+			{
+				hak_oow_t incdir_bcslen;
+				hak_ooch_t* colon;
+
+				hak_freemem(hak, bb); bb = HAK_NULL;
+
+				colon = hak_find_oochar_in_oocstr(incdirs_ptr, ':');
+				if (colon)
+				{
+				#if defined(HAK_OOCH_IS_UCH)
+					ucslen = colon - incdirs_ptr;
+					if (hak_convutobchars(hak, incdirs_ptr, &ucslen, HAK_NULL, &incdir_bcslen) <= -1) goto oops;
+				#else
+					incdir_bcslen = colon - incdirs_ptr;
+				#endif
+				}
+				else
+				{ /* all the remaining */
+				#if defined(HAK_OOCH_IS_UCH)
+					if (hak_convutobcstr(hak, incdirs_ptr, &ucslen, HAK_NULL, &incdir_bcslen) <= -1) goto oops;
+				#else
+					incdir_bcslen = hak_count_bcstr(incdirs_ptr);
+				#endif
+				}
+
+				bb = (bb_t*)hak_callocmem(hak, HAK_SIZEOF(*bb) + (HAK_SIZEOF(hak_bch_t) * (incdir_bcslen + bcslen + 2)));
+				if (HAK_UNLIKELY(!bb)) goto oops;
+
+				bb->fn = (hak_bch_t*)(bb + 1);
+
+/* TODO: i need to support different directory separator */
+				if (colon)
+				{
+				#if defined(HAK_OOCH_IS_UCH)
+					ucslen = colon - incdirs_ptr;
+					hak_convutobchars(hak, incdirs_ptr, &ucslen, bb->fn, &incdir_bcslen);
+					if (incdir_bcslen > 0 && bb->fn[incdir_bcslen - 1] != '/') bb->fn[incdir_bcslen++] = '/';
+					hak_convutobcstr(hak, arg->name, &ucslen, &bb->fn[incdir_bcslen], &bcslen);
+				#else
+					hak_copy_bchars(bb->fn, incdirs_ptr, incdir_bcslen);
+					if (incdir_bcslen > 0 && bb->fn[incdir_bcslen - 1] != '/') bb->fn[incdir_bcslen++] = '/';
+					hak_copy_bcstr(&bb->fn[incdir_bcslen], bcslen + 1, arg->name);
+				#endif
+					incdirs_ptr = colon + 1;
+				}
+				else
+				{
+				#if defined(HAK_OOCH_IS_UCH)
+					hak_convutobcstr(hak, incdirs_ptr, &ucslen, bb->fn, &incdir_bcslen);
+					if (incdir_bcslen > 0 && bb->fn[incdir_bcslen - 1] != '/') bb->fn[incdir_bcslen++] = '/';
+					hak_convutobcstr(hak, arg->name, &ucslen, &bb->fn[incdir_bcslen], &bcslen);
+				#else
+					hak_copy_bchars(bb->fn, incdirs_ptr, incdir_bcslen);
+					if (incdir_bcslen > 0 && bb->fn[incdir_bcslen - 1] != '/') bb->fn[incdir_bcslen++] = '/';
+					hak_copy_bcstr(&bb->fn[incdir_bcslen], bcslen + 1, arg->name);
+				#endif
+					incdirs_ptr = HAK_NULL;
+				}
+
+/*printf("RETRYING bb->fn [%s]\n", bb->fn);*/
+				goto retry;
+			}
+
 			hak_seterrbfmt(hak, HAK_EIOERR, "unable to open %hs", bb->fn);
 			goto oops;
 		}
@@ -4710,6 +4779,15 @@ static HAK_INLINE int open_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 	else
 	{
 		/* main stream  */
+
+		/* [NOTE]
+		 *   in the current implementation, the main stream is rarely used read
+		 *   because the input the the reader/compiler is fed via hak_feed() and its relatives.
+		 *   this part doesn't really open the specified file.
+		 */
+
+		/* TODO: make if hak_feed() is going to be used or not.
+		 *       if it's not used, it can open it as usual as xtn->cci_path point to the file name anyways */
 		hak_oow_t pathlen;
 
 		pathlen = xtn->cci_path? hak_count_bcstr(xtn->cci_path): 0;
@@ -4822,7 +4900,7 @@ static HAK_INLINE int read_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 #else
 	bcslen = (bb->len < HAK_COUNTOF(arg->buf.c))? bb->len: HAK_COUNTOF(arg->buf.c);
 	ucslen = bcslen;
-	hak_copy_bchars (arg->buf.c, bb->buf, bcslen);
+	hak_copy_bchars(arg->buf.c, bb->buf, bcslen);
 #endif
 
 	remlen = bb->len - bcslen;
@@ -4973,7 +5051,7 @@ static HAK_INLINE int read_udi_stream (hak_t* hak, hak_io_udiarg_t* arg)
 #else
 	bcslen = (bb->len < HAK_COUNTOF(arg->buf.c))? bb->len: HAK_COUNTOF(arg->buf.c);
 	ucslen = bcslen;
-	hak_copy_bchars (arg->buf.c, bb->buf, bcslen);
+	hak_copy_bchars(arg->buf.c, bb->buf, bcslen);
 #endif
 
 	remlen = bb->len - bcslen;
@@ -5016,7 +5094,7 @@ static HAK_INLINE int read_udi_stream_bytes (hak_t* hak, hak_io_udiarg_t* arg)
 
 	bcslen = (bb->len < HAK_COUNTOF(arg->buf.b))? bb->len: HAK_COUNTOF(arg->buf.b);
 	ucslen = bcslen;
-	hak_copy_bchars ((hak_bch_t*)arg->buf.b, bb->buf, bcslen);
+	hak_copy_bchars((hak_bch_t*)arg->buf.b, bb->buf, bcslen);
 
 	remlen = bb->len - bcslen;
 	if (remlen > 0) HAK_MEMMOVE(bb->buf, &bb->buf[bcslen], remlen);
@@ -5113,7 +5191,7 @@ static HAK_INLINE int write_udo_stream (hak_t* hak, hak_io_udoarg_t* arg)
 		ucslen = arg->len - donelen;
 		if (ucslen > bcslen) ucslen = bcslen;
 		else if (ucslen < bcslen) bcslen = ucslen;
-		hak_copy_bchars (bcsbuf, &ptr[donelen], bcslen);
+		hak_copy_bchars(bcsbuf, &ptr[donelen], bcslen);
 	#endif
 
 		if (fwrite(bcsbuf, HAK_SIZEOF(bcsbuf[0]), bcslen, (FILE*)arg->handle) < bcslen)

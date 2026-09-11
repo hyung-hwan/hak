@@ -865,6 +865,7 @@ int main (int argc, char* argv[])
 		{ ":debug",       '\0' },
 #endif
 		{ ":heapsize",    '\0' },
+		{ ":incdirs",     '\0' },
 		{ ":log",         'l'  },
 		{ "info",         '\0' },
 		{ ":modlibdirs",  '\0' },
@@ -873,7 +874,7 @@ int main (int argc, char* argv[])
 	};
 	static hak_bopt_t opt =
 	{
-		"l:v",
+		"I:l:v",
 		lopt
 	};
 
@@ -882,6 +883,7 @@ int main (int argc, char* argv[])
 	int verbose = 0;
 	int show_info = 0;
 	const char* modlibdirs = HAK_NULL;
+	const char* incdirs = HAK_NULL;
 
 #if defined(HAK_BUILD_DEBUG)
 	const char* dbgopt = HAK_NULL;
@@ -895,10 +897,11 @@ int main (int argc, char* argv[])
 	print_usage:
 		fprintf(stderr, "Usage: %s [options] script-filename [output-filename]\n", argv[0]);
 		fprintf(stderr, "Options are:\n");
-		fprintf(stderr, " --info               show build information\n");
-		fprintf(stderr, " -l, --log    string  specify the log file path and options\n");
-		fprintf(stderr, " --modlibdirs string  specify directories to load modules from\n");
-		fprintf(stderr, " -v                   show verbose messages\n");
+		fprintf(stderr, " --info                show build information\n");
+		fprintf(stderr, " -I, --incdirs string  specify the list of include directories\n");
+		fprintf(stderr, " -l, --log     string  specify the log file path and options\n");
+		fprintf(stderr, " --modlibdirs  string  specify directories to load modules from\n");
+		fprintf(stderr, " -v                    show verbose messages\n");
 
 		return -1;
 	}
@@ -907,6 +910,10 @@ int main (int argc, char* argv[])
 	{
 		switch (c)
 		{
+			case 'I':
+				incdirs = opt.arg;
+				break;
+
 			case 'l':
 				logopt = opt.arg;
 				break;
@@ -931,6 +938,11 @@ int main (int argc, char* argv[])
 				else if (hak_comp_bcstr(opt.lngopt, "info") == 0)
 				{
 					show_info = 1;
+					break;
+				}
+				else if (hak_comp_bcstr(opt.lngopt, "incdirs") == 0)
+				{
+					incdirs = opt.arg;
 					break;
 				}
 				else if (hak_comp_bcstr(opt.lngopt, "modlibdirs") == 0)
@@ -998,6 +1010,33 @@ int main (int argc, char* argv[])
 		trait |= HAK_TRAIT_AWAIT_PROCS;
 		trait |= HAK_TRAIT_LANG_ENABLE_EOL;
 		hak_setoption (hak, HAK_TRAIT, &trait);
+	}
+
+	if (incdirs)
+	{
+	#if defined(HAK_OOCH_IS_UCH)
+		hak_ooch_t* tmp;
+		tmp = hak_dupbtoucstr(hak, incdirs, HAK_NULL);
+		if (HAK_UNLIKELY(!tmp))
+		{
+			hak_logbfmt(hak, HAK_LOG_STDERR,"ERROR: cannot duplicate incdirs - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
+			goto oops;
+		}
+
+		if (hak_setoption(hak, HAK_OPT_INCDIRS, tmp) <= -1)
+		{
+			hak_logbfmt(hak, HAK_LOG_STDERR,"ERROR: cannot set incdirs - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
+			hak_freemem(hak, tmp);
+			goto oops;
+		}
+		hak_freemem(hak, tmp);
+	#else
+		if (hak_setoption(hak, HAK_OPT_INCDIRS, incdirs) <= -1)
+		{
+			hak_logbfmt(hak, HAK_LOG_STDERR,"ERROR: cannot set incdirs - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
+			goto oops;
+		}
+	#endif
 	}
 
 	if (modlibdirs)
