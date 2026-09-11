@@ -214,8 +214,7 @@ func (hak *Hak) GetIncDirs() string {
 	var x C.int
 	var tgt *C.char
 
-// TODO: THIS IS WRONG. must be BCH/UCH aware
-	x = C.hak_getoption(hak.c, C.HAK_OPT_INCDIRS, unsafe.Pointer(&tgt))
+	x = C.hak_getoption(hak.c, C.HAK_OPT_INCDIRS_BCSTR, unsafe.Pointer(&tgt))
 	if x <= -1 {
 		// this must not happen
 		panic(fmt.Errorf("unable to get include directories - %s", hak.get_errmsg()))
@@ -231,8 +230,7 @@ func (hak *Hak) SetIncDirs(target string) error {
 	tgt = C.CString(target) // TODO: need error check?
 	defer C.free(unsafe.Pointer(tgt))
 
-// TODO: THIS IS WRONG. must be BCH/UCH aware
-	x = C.hak_setoption(hak.c, C.HAK_OPT_INCDIRS, unsafe.Pointer(tgt))
+	x = C.hak_setoption(hak.c, C.HAK_OPT_INCDIRS_BCSTR, unsafe.Pointer(tgt))
 	if x <= -1 { return hak.make_errinfo() }
 
 	return nil
@@ -242,8 +240,7 @@ func (hak *Hak) GetModLibDirs() string {
 	var x C.int
 	var tgt *C.char
 
-// TODO: THIS IS WRONG. must be BCH/UCH aware
-	x = C.hak_getoption(hak.c, C.HAK_OPT_MODLIBDIRS, unsafe.Pointer(&tgt))
+	x = C.hak_getoption(hak.c, C.HAK_OPT_MODLIBDIRS_BCSTR, unsafe.Pointer(&tgt))
 	if x <= -1 {
 		// this must not happen
 		panic(fmt.Errorf("unable to get module library directories - %s", hak.get_errmsg()))
@@ -259,8 +256,7 @@ func (hak *Hak) SetModLibDirs(target string) error {
 	tgt = C.CString(target) // TODO: need error check?
 	defer C.free(unsafe.Pointer(tgt))
 
-// TODO: THIS IS WRONG. must be BCH/UCH aware
-	x = C.hak_setoption(hak.c, C.HAK_OPT_MODLIBDIRS, unsafe.Pointer(tgt))
+	x = C.hak_setoption(hak.c, C.HAK_OPT_MODLIBDIRS_BCSTR, unsafe.Pointer(tgt))
 	if x <= -1 { return hak.make_errinfo() }
 
 	return nil

@@ -1009,56 +1009,24 @@ int main (int argc, char* argv[])
 
 	if (incdirs)
 	{
-	#if defined(HAK_OOCH_IS_UCH)
-		hak_ooch_t* tmp;
-		tmp = hak_dupbtoucstr(hak, incdirs, HAK_NULL);
-		if (HAK_UNLIKELY(!tmp))
-		{
-			hak_logbfmt(hak, HAK_LOG_STDERR,"ERROR: cannot duplicate incdirs - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
-			goto oops;
-		}
-
-		if (hak_setoption(hak, HAK_OPT_INCDIRS, tmp) <= -1)
-		{
-			hak_logbfmt(hak, HAK_LOG_STDERR,"ERROR: cannot set incdirs - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
-			hak_freemem(hak, tmp);
-			goto oops;
-		}
-		hak_freemem(hak, tmp);
-	#else
-		if (hak_setoption(hak, HAK_OPT_INCDIRS, incdirs) <= -1)
+		/* the option is stored in both encodings, so the byte form from
+		 * the command line goes in as is - no conversion needed here. */
+		if (hak_setoption(hak, HAK_OPT_INCDIRS_BCSTR, incdirs) <= -1)
 		{
 			hak_logbfmt(hak, HAK_LOG_STDERR,"ERROR: cannot set incdirs - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
 			goto oops;
 		}
-	#endif
 	}
 
 	if (modlibdirs)
 	{
-	#if defined(HAK_OOCH_IS_UCH)
-		hak_ooch_t* tmp;
-		tmp = hak_dupbtoucstr(hak, modlibdirs, HAK_NULL);
-		if (HAK_UNLIKELY(!tmp))
-		{
-			hak_logbfmt(hak, HAK_LOG_STDERR,"ERROR: cannot duplicate modlibdirs - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
-			goto oops;
-		}
-
-		if (hak_setoption(hak, HAK_OPT_MODLIBDIRS, tmp) <= -1)
-		{
-			hak_logbfmt(hak, HAK_LOG_STDERR,"ERROR: cannot set modlibdirs - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
-			hak_freemem(hak, tmp);
-			goto oops;
-		}
-		hak_freemem(hak, tmp);
-	#else
-		if (hak_setoption(hak, HAK_OPT_MODLIBDIRS, modlibdirs) <= -1)
+		/* the option is stored in both encodings, so the byte form from
+		 * the command line goes in as is - no conversion needed here. */
+		if (hak_setoption(hak, HAK_OPT_MODLIBDIRS_BCSTR, modlibdirs) <= -1)
 		{
 			hak_logbfmt(hak, HAK_LOG_STDERR,"ERROR: cannot set modlibdirs - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
 			goto oops;
 		}
-	#endif
 	}
 
 	memset (&hakcb, 0, HAK_SIZEOF(hakcb));

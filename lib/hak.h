@@ -265,13 +265,26 @@ enum hak_option_t
 	HAK_OPT_EXSTK_SIZE,   /* default exception stack size */
 	HAK_OPT_CLSTK_SIZE,   /* default class stack size */
 
-	HAK_OPT_MODLIBDIRS,
+	HAK_OPT_MODLIBDIRS_BCSTR,
+	HAK_OPT_MODLIBDIRS_UCSTR,
+#if defined(HAK_OOCH_IS_UCH)
+#	define HAK_OPT_MODLIBDIRS HAK_OPT_MODLIBDIRS_UCSTR
+#else
+#	define HAK_OPT_MODLIBDIRS HAK_OPT_MODLIBDIRS_BCSTR
+#endif
+
 	HAK_OPT_MODPREFIX,
 	HAK_OPT_MODPOSTFIX,
 
 	HAK_OPT_MODINCTX,
 
-	HAK_OPT_INCDIRS
+	HAK_OPT_INCDIRS_BCSTR,
+	HAK_OPT_INCDIRS_UCSTR
+#if defined(HAK_OOCH_IS_UCH)
+#	define HAK_OPT_INCDIRS HAK_OPT_INCDIRS_UCSTR
+#else
+#	define HAK_OPT_INCDIRS HAK_OPT_INCDIRS_BCSTR
+#endif
 };
 typedef enum hak_option_t hak_option_t;
 
@@ -1788,8 +1801,18 @@ struct hak_t
 		hak_oow_t dfl_clstk_size;
 		void* mod_inctx;
 
-		hak_oocs_t mod[3];
-		hak_oocs_t incdirs;
+		/* both representations are kept for the two options whose consumers
+		 * are byte oriented: dl_open() feeds dlopen() and open_cci_stream()
+		 * feeds fopen(), so the bch form is what actually gets used, while the
+		 * uch form serves getoption and %js. converting once at set time beats
+		 * converting on every module load and every include attempt. */
+		hak_bch_t* modlibdirs_b;
+		hak_uch_t* modlibdirs_u;
+		hak_bch_t* incdirs_b;
+		hak_uch_t* incdirs_u;
+
+		/* prefix and postfix only - indexed by (id - HAK_OPT_MODPREFIX) */
+		hak_oocs_t mod[2];
 
 	#if defined(HAK_BUILD_DEBUG)
 		/* set automatically when trait is set */

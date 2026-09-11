@@ -3712,11 +3712,17 @@ static void dl_cleanup (hak_t* hak)
 #endif
 }
 
-static void* dlopen_pfmod (hak_t* hak, const hak_ooch_t* name, const hak_ooch_t* dirptr, const hak_oow_t dirlen, hak_bch_t* bufptr, hak_oow_t bufcapa)
+/* [NOTE] dirptr/dirlen is a byte string - it is a segment of the modlibdirs
+ *        option, which is stored in the byte form precisely because it ends up
+ *        here and in dlopen(). only 'name' still needs converting. */
+static void* dlopen_pfmod (hak_t* hak, const hak_ooch_t* name, const hak_bch_t* dirptr, const hak_oow_t dirlen, hak_bch_t* bufptr, hak_oow_t bufcapa)
 {
 	void* handle;
 	hak_oow_t len, i, xlen, dlen;
-	hak_oow_t ucslen, bcslen;
+	hak_oow_t bcslen;
+#if defined(HAK_OOCH_IS_UCH)
+	hak_oow_t ucslen;
+#endif
 
 	/* opening a primitive function module - mostly libhak-xxxx.
 	 * if PFMODPREFIX is absolute, never use PFMODDIR */
@@ -3727,13 +3733,7 @@ static void* dlopen_pfmod (hak_t* hak, const hak_ooch_t* name, const hak_ooch_t*
 	}
 	else if (dirptr)
 	{
-		xlen = dirlen;
-		dlen = bufcapa;
-	#if defined(HAK_OOCH_IS_UCH)
-		if (hak_convootobchars(hak, dirptr, &xlen, bufptr, &dlen) <= -1) return HAK_NULL;
-	#else
 		dlen = hak_copy_bchars_to_bcstr(bufptr, bufcapa, dirptr, dirlen);
-	#endif
 
 		if (dlen > 0 && bufptr[dlen - 1] != HAK_DFL_PATH_SEP)
 		{
@@ -3869,24 +3869,27 @@ static void* dl_open (hak_t* hak, const hak_ooch_t* name, int flags)
 {
 #if defined(USE_LTDL) || defined(USE_DLFCN) || defined(USE_MACH_O_DYLD)
 	hak_bch_t stabuf[128], * bufptr;
-	hak_oow_t ucslen, bcslen, bufcapa;
 	void* handle = HAK_NULL;
+	hak_oow_t bufcapa;
+	const hak_bch_t* modlibdirs;
+	#if defined(HAK_OOCH_IS_UCH)
+	hak_oow_t ucslen;
+	#endif
+
+	modlibdirs = hak->option.modlibdirs_b;
 
 	#if defined(HAK_OOCH_IS_UCH)
 	if (hak_convootobcstr(hak, name, &ucslen, HAK_NULL, &bufcapa) <= -1) return HAK_NULL;
-
-	if (hak->option.mod[0].len > 0)
-	{
-		/* multiple directories separated by a colon can be specified for HAK_OPT_MODLIBDIRS
-		 * however, use the total length to secure space just for simplicity */
-		ucslen = hak->option.mod[0].len;
-		if (hak_convootobchars(hak, hak->option.mod[0].ptr, &ucslen, HAK_NULL, &bcslen) <= -1) return HAK_NULL;
-		bufcapa += bcslen;
-	}
 	#else
 	bufcapa = hak_count_bcstr(name);
-	bufcapa += (hak->option.mod[0].len > 0)? hak->option.mod[0].len: HAK_COUNTOF(HAK_DEFAULT_PFMODDIR);
 	#endif
+
+	/* modlibdirs is stored in the byte form too, so no conversion is needed
+	 * here. multiple directories separated by a colon can be specified for
+	 * HAK_OPT_MODLIBDIRS - use the total length to secure space, for
+	 * simplicity. */
+	bufcapa += (modlibdirs && modlibdirs[0] != '\0')?
+		hak_count_bcstr(modlibdirs): HAK_COUNTOF(HAK_DEFAULT_PFMODDIR);
 
 	/* HAK_COUNTOF(HAK_DEFAULT_PFMODPREFIX) and HAK_COUNTOF(HAK_DEFAULT_PFMODPOSTIFX)
 	 * include the terminating nulls. Never mind about the extra 2 characters. */
@@ -3901,12 +3904,12 @@ static void* dl_open (hak_t* hak, const hak_ooch_t* name, int flags)
 
 	if (flags & HAK_VMPRIM_DLOPEN_PFMOD)
 	{
-		if (hak->option.mod[0].len > 0)
+		if (modlibdirs && modlibdirs[0] != '\0')
 		{
-			const hak_ooch_t* ptr, * end, * seg;
+			const hak_bch_t* ptr, * end, * seg;
 
-			ptr = hak->option.mod[0].ptr;
-			end = hak->option.mod[0].ptr + hak->option.mod[0].len;
+			ptr = modlibdirs;
+			end = modlibdirs + hak_count_bcstr(modlibdirs);
 			seg = ptr;
 
 			while (ptr <= end)
@@ -4669,7 +4672,7 @@ static HAK_INLINE int open_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 		hak_oow_t ucslen, bcslen, parlen;
 		const hak_bch_t* fn, * fb;
 		int attempt_incdirs;
-		const hak_ooch_t* incdirs_ptr;
+		const hak_bch_t* incdirs_ptr;
 
 	#if defined(HAK_OOCH_IS_UCH)
 		if (hak_convootobcstr(hak, arg->name, &ucslen, HAK_NULL, &bcslen) <= -1) goto oops;
@@ -4703,7 +4706,7 @@ static HAK_INLINE int open_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 		hak_copy_bcstr(&bb->fn[parlen], bcslen + 1, arg->name);
 	#endif
 
-		incdirs_ptr = hak->option.incdirs.ptr;
+		incdirs_ptr = hak->option.incdirs_b;
 retry:
 		bb->fp = fopen(bb->fn, FOPEN_R_FLAGS);
 		if (!bb->fp)
@@ -4711,28 +4714,14 @@ retry:
 			if ((errno == ENOENT || errno == ENOTDIR) && attempt_incdirs && incdirs_ptr && incdirs_ptr[0] != '\0')
 			{
 				hak_oow_t incdir_bcslen;
-				hak_ooch_t* colon;
+				const hak_bch_t* colon;
 
 				hak_freemem(hak, bb); bb = HAK_NULL;
 
-				colon = hak_find_oochar_in_oocstr(incdirs_ptr, ':');
-				if (colon)
-				{
-				#if defined(HAK_OOCH_IS_UCH)
-					ucslen = colon - incdirs_ptr;
-					if (hak_convutobchars(hak, incdirs_ptr, &ucslen, HAK_NULL, &incdir_bcslen) <= -1) goto oops;
-				#else
-					incdir_bcslen = colon - incdirs_ptr;
-				#endif
-				}
-				else
-				{ /* all the remaining */
-				#if defined(HAK_OOCH_IS_UCH)
-					if (hak_convutobcstr(hak, incdirs_ptr, &ucslen, HAK_NULL, &incdir_bcslen) <= -1) goto oops;
-				#else
-					incdir_bcslen = hak_count_bcstr(incdirs_ptr);
-				#endif
-				}
+				/* incdirs is kept in the byte form as well, so the directory part
+				 * needs no conversion here - only the include name does. */
+				colon = hak_find_bchar_in_bcstr(incdirs_ptr, ':');
+				incdir_bcslen = colon? (hak_oow_t)(colon - incdirs_ptr): hak_count_bcstr(incdirs_ptr);
 
 				bb = (bb_t*)hak_callocmem(hak, HAK_SIZEOF(*bb) + (HAK_SIZEOF(hak_bch_t) * (incdir_bcslen + bcslen + 2)));
 				if (HAK_UNLIKELY(!bb)) goto oops;
@@ -4740,33 +4729,15 @@ retry:
 				bb->fn = (hak_bch_t*)(bb + 1);
 
 /* TODO: i need to support different directory separator */
-				if (colon)
-				{
-				#if defined(HAK_OOCH_IS_UCH)
-					ucslen = colon - incdirs_ptr;
-					hak_convutobchars(hak, incdirs_ptr, &ucslen, bb->fn, &incdir_bcslen);
-					if (incdir_bcslen > 0 && bb->fn[incdir_bcslen - 1] != '/') bb->fn[incdir_bcslen++] = '/';
-					hak_convutobcstr(hak, arg->name, &ucslen, &bb->fn[incdir_bcslen], &bcslen);
-				#else
-					hak_copy_bchars(bb->fn, incdirs_ptr, incdir_bcslen);
-					if (incdir_bcslen > 0 && bb->fn[incdir_bcslen - 1] != '/') bb->fn[incdir_bcslen++] = '/';
-					hak_copy_bcstr(&bb->fn[incdir_bcslen], bcslen + 1, arg->name);
-				#endif
-					incdirs_ptr = colon + 1;
-				}
-				else
-				{
-				#if defined(HAK_OOCH_IS_UCH)
-					hak_convutobcstr(hak, incdirs_ptr, &ucslen, bb->fn, &incdir_bcslen);
-					if (incdir_bcslen > 0 && bb->fn[incdir_bcslen - 1] != '/') bb->fn[incdir_bcslen++] = '/';
-					hak_convutobcstr(hak, arg->name, &ucslen, &bb->fn[incdir_bcslen], &bcslen);
-				#else
-					hak_copy_bchars(bb->fn, incdirs_ptr, incdir_bcslen);
-					if (incdir_bcslen > 0 && bb->fn[incdir_bcslen - 1] != '/') bb->fn[incdir_bcslen++] = '/';
-					hak_copy_bcstr(&bb->fn[incdir_bcslen], bcslen + 1, arg->name);
-				#endif
-					incdirs_ptr = HAK_NULL;
-				}
+				hak_copy_bchars(bb->fn, incdirs_ptr, incdir_bcslen);
+				if (incdir_bcslen > 0 && bb->fn[incdir_bcslen - 1] != '/') bb->fn[incdir_bcslen++] = '/';
+			#if defined(HAK_OOCH_IS_UCH)
+				hak_convootobcstr(hak, arg->name, &ucslen, &bb->fn[incdir_bcslen], &bcslen);
+			#else
+				hak_copy_bcstr(&bb->fn[incdir_bcslen], bcslen + 1, arg->name);
+			#endif
+
+				incdirs_ptr = colon? colon + 1: HAK_NULL;
 
 /*printf("RETRYING bb->fn [%s]\n", bb->fn);*/
 				goto retry;

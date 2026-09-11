@@ -380,11 +380,28 @@ void hak_fini (hak_t* hak)
 		}
 	}
 
-	if (hak->option.incdirs.ptr)
+	if (hak->option.modlibdirs_b)
 	{
-		hak_freemem(hak, hak->option.incdirs.ptr);
-		hak->option.incdirs.ptr = HAK_NULL;
-		hak->option.incdirs.len = 0;
+		hak_freemem(hak, hak->option.modlibdirs_b);
+		hak->option.modlibdirs_b = HAK_NULL;
+	}
+
+	if (hak->option.modlibdirs_u)
+	{
+		hak_freemem(hak, hak->option.modlibdirs_u);
+		hak->option.modlibdirs_u = HAK_NULL;
+	}
+
+	if (hak->option.incdirs_b)
+	{
+		hak_freemem(hak, hak->option.incdirs_b);
+		hak->option.incdirs_b = HAK_NULL;
+	}
+
+	if (hak->option.incdirs_u)
+	{
+		hak_freemem(hak, hak->option.incdirs_u);
+		hak->option.incdirs_u = HAK_NULL;
 	}
 
 	if (hak->inttostr.xbuf.ptr)
@@ -459,6 +476,52 @@ static int dup_str_opt (hak_t* hak, const hak_ooch_t* value, hak_oocs_t* tmp)
 		tmp->len = 0;
 	}
 
+	return 0;
+}
+
+/* Store a string option in both representations at once.
+ *
+ * The consumers of these options are byte oriented - dlopen() and fopen() -
+ * so the bch form is what gets used, and converting once here saves a
+ * conversion on every module load and every include attempt. The uch form is
+ * kept so getoption can answer in either encoding without allocating.
+ *
+ * Both conversions are done before either slot is replaced, so a failure
+ * leaves the previous value in place rather than half-updating it. */
+static int set_dual_str_opt (hak_t* hak, const void* value, int value_is_bch, hak_bch_t** bp, hak_uch_t** up)
+{
+	hak_bch_t* v_b;
+	hak_uch_t* v_u;
+
+	if (value_is_bch)
+	{
+		v_b = hak_dupbcstr(hak, (const hak_bch_t*)value, HAK_NULL);
+		if (HAK_UNLIKELY(!v_b)) return -1;
+
+		v_u = hak_dupbtoucstr(hak, (const hak_bch_t*)value, HAK_NULL);
+		if (HAK_UNLIKELY(!v_u))
+		{
+			hak_freemem(hak, v_b);
+			return -1;
+		}
+	}
+	else
+	{
+		v_u = hak_dupucstr(hak, (const hak_uch_t*)value, HAK_NULL);
+		if (HAK_UNLIKELY(!v_u)) return -1;
+
+		v_b = hak_duputobcstr(hak, (const hak_uch_t*)value, HAK_NULL);
+		if (HAK_UNLIKELY(!v_b))
+		{
+			hak_freemem(hak, v_u);
+			return -1;
+		}
+	}
+
+	if (*bp) hak_freemem(hak, *bp);
+	if (*up) hak_freemem(hak, *up);
+	*bp = v_b;
+	*up = v_u;
 	return 0;
 }
 
@@ -620,7 +683,14 @@ int hak_setoption (hak_t* hak, hak_option_t id, const void* value)
 			break;
 		}
 
-		case HAK_OPT_MODLIBDIRS:
+		case HAK_OPT_MODLIBDIRS_BCSTR:
+			if (set_dual_str_opt(hak, value, 1, &hak->option.modlibdirs_b, &hak->option.modlibdirs_u) <= -1) return -1;
+			break;
+
+		case HAK_OPT_MODLIBDIRS_UCSTR:
+			if (set_dual_str_opt(hak, value, 0, &hak->option.modlibdirs_b, &hak->option.modlibdirs_u) <= -1) return -1;
+			break;
+
 		case HAK_OPT_MODPREFIX:
 		case HAK_OPT_MODPOSTFIX:
 		{
@@ -629,7 +699,7 @@ int hak_setoption (hak_t* hak, hak_option_t id, const void* value)
 
 			if (dup_str_opt(hak, (const hak_ooch_t*)value, &tmp) <= -1) return -1;
 
-			idx = id - HAK_OPT_MODLIBDIRS;
+			idx = id - HAK_OPT_MODPREFIX;
 			if (hak->option.mod[idx].ptr) hak_freemem(hak, hak->option.mod[idx].ptr);
 
 			hak->option.mod[idx] = tmp;
@@ -640,14 +710,13 @@ int hak_setoption (hak_t* hak, hak_option_t id, const void* value)
 			hak->option.mod_inctx = *(void**)value;
 			break;
 
-		case HAK_OPT_INCDIRS:
-		{
-			hak_oocs_t tmp;
-			if (dup_str_opt(hak, value, &tmp) <= -1) return -1;
-			if (hak->option.incdirs.ptr) hak_freemem(hak, hak->option.incdirs.ptr);
-			hak->option.incdirs = tmp;
+		case HAK_OPT_INCDIRS_BCSTR:
+			if (set_dual_str_opt(hak, value, 1, &hak->option.incdirs_b, &hak->option.incdirs_u) <= -1) return -1;
 			break;
-		}
+
+		case HAK_OPT_INCDIRS_UCSTR:
+			if (set_dual_str_opt(hak, value, 0, &hak->option.incdirs_b, &hak->option.incdirs_u) <= -1) return -1;
+			break;
 
 		default:
 			goto einval;
@@ -719,18 +788,29 @@ int hak_getoption (hak_t* hak, hak_option_t id, void* value)
 			*(hak_oow_t*)value = hak->option.dfl_clstk_size;
 			return 0;
 
-		case HAK_OPT_MODLIBDIRS:
+		case HAK_OPT_MODLIBDIRS_BCSTR:
+			*(const hak_bch_t**)value = hak->option.modlibdirs_b;
+			return 0;
+
+		case HAK_OPT_MODLIBDIRS_UCSTR:
+			*(const hak_uch_t**)value = hak->option.modlibdirs_u;
+			return 0;
+
 		case HAK_OPT_MODPREFIX:
 		case HAK_OPT_MODPOSTFIX:
-			*(const hak_ooch_t**)value = hak->option.mod[id - HAK_OPT_MODLIBDIRS].ptr;
+			*(const hak_ooch_t**)value = hak->option.mod[id - HAK_OPT_MODPREFIX].ptr;
 			return 0;
 
 		case HAK_OPT_MODINCTX:
 			*(void**)value = hak->option.mod_inctx;
 			return 0;
 
-		case HAK_OPT_INCDIRS:
-			*(const hak_ooch_t**)value = hak->option.incdirs.ptr;
+		case HAK_OPT_INCDIRS_BCSTR:
+			*(const hak_bch_t**)value = hak->option.incdirs_b;
+			return 0;
+
+		case HAK_OPT_INCDIRS_UCSTR:
+			*(const hak_uch_t**)value = hak->option.incdirs_u;
 			return 0;
 	};
 

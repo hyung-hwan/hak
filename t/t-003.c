@@ -115,18 +115,7 @@ static int on_cnode (hak_t* hak, hak_cnode_t* obj)
 static int set_modlibdirs (hak_t* hak)
 {
 #if defined(HAK_TEST_MODLIBDIRS)
-#	if defined(HAK_OOCH_IS_UCH)
-	hak_ooch_t* tmp;
-	int n;
-
-	tmp = hak_dupbtoucstr(hak, HAK_TEST_MODLIBDIRS, HAK_NULL);
-	if (HAK_UNLIKELY(!tmp)) return -1;
-	n = hak_setoption(hak, HAK_OPT_MODLIBDIRS, tmp);
-	hak_freemem(hak, tmp);
-	return n;
-#	else
-	return hak_setoption(hak, HAK_OPT_MODLIBDIRS, HAK_TEST_MODLIBDIRS);
-#	endif
+	return hak_setoption(hak, HAK_OPT_MODLIBDIRS_BCSTR, HAK_TEST_MODLIBDIRS);
 #else
 	return 0;
 #endif
