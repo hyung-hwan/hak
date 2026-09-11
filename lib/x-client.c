@@ -212,7 +212,7 @@ hak_client_t* hak_client_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_client_p
 	/* the dummy hak is used for this client to perform primitive operations
 	 * such as getting system time or logging. so the heap size doesn't
 	 * need to be changed from the tiny value set above. */
-	hak_setoption (client->dummy_hak, HAK_LOG_MASK, &client->cfg.logmask);
+	hak_setoption (client->dummy_hak, HAK_OPT_LOG_MASK, &client->cfg.logmask);
 	hak_setcmgr (client->dummy_hak, client->_cmgr);
 
 	return client;
@@ -258,7 +258,7 @@ int hak_client_setoption (hak_client_t* client, hak_client_option_t id, const vo
 				 * existing hak instances inside worker threads won't get
 				 * affected. new hak instances to be created later
 				 * is supposed to use the new value */
-				hak_setoption (client->dummy_hak, HAK_LOG_MASK, value);
+				hak_setoption (client->dummy_hak, HAK_OPT_LOG_MASK, value);
 			}
 			return 0;
 	}

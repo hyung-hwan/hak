@@ -142,7 +142,7 @@ func (hak *Hak) GetTrait() BitMask {
 	var x C.int
 	var log_mask BitMask = 0
 
-	x = C.hak_getoption(hak.c, C.HAK_TRAIT, unsafe.Pointer(&log_mask))
+	x = C.hak_getoption(hak.c, C.HAK_OPT_TRAIT, unsafe.Pointer(&log_mask))
 	if x <= -1 {
 		// this must not happen
 		panic(fmt.Errorf("unable to get log mask - %s", hak.get_errmsg()))
@@ -154,7 +154,7 @@ func (hak *Hak) GetTrait() BitMask {
 func (hak *Hak) SetTrait(log_mask BitMask) {
 	var x C.int
 
-	x = C.hak_setoption(hak.c, C.HAK_TRAIT, unsafe.Pointer(&log_mask))
+	x = C.hak_setoption(hak.c, C.HAK_OPT_TRAIT, unsafe.Pointer(&log_mask))
 	if x <= -1 {
 		// this must not happen
 		panic(fmt.Errorf("unable to set log mask - %s", hak.get_errmsg()))
@@ -165,7 +165,7 @@ func (hak *Hak) GetLogMask() BitMask {
 	var x C.int
 	var log_mask BitMask = 0
 
-	x = C.hak_getoption(hak.c, C.HAK_LOG_MASK, unsafe.Pointer(&log_mask))
+	x = C.hak_getoption(hak.c, C.HAK_OPT_LOG_MASK, unsafe.Pointer(&log_mask))
 	if x <= -1 {
 		// this must not happen
 		panic(fmt.Errorf("unable to get log mask - %s", hak.get_errmsg()))
@@ -177,7 +177,7 @@ func (hak *Hak) GetLogMask() BitMask {
 func (hak *Hak) SetLogMask(log_mask BitMask) {
 	var x C.int
 
-	x = C.hak_setoption(hak.c, C.HAK_LOG_MASK, unsafe.Pointer(&log_mask))
+	x = C.hak_setoption(hak.c, C.HAK_OPT_LOG_MASK, unsafe.Pointer(&log_mask))
 	if x <= -1 {
 		// this must not happen
 		panic(fmt.Errorf("unable to set log mask - %s", hak.get_errmsg()))
@@ -188,7 +188,7 @@ func (hak *Hak) GetLogTarget() string {
 	var x C.int
 	var tgt *C.char
 
-	x = C.hak_getoption(hak.c, C.HAK_LOG_TARGET_BCSTR, unsafe.Pointer(&tgt))
+	x = C.hak_getoption(hak.c, C.HAK_OPT_LOG_TARGET_BCSTR, unsafe.Pointer(&tgt))
 	if x <= -1 {
 		// this must not happen
 		panic(fmt.Errorf("unable to get log target - %s", hak.get_errmsg()))
@@ -204,7 +204,7 @@ func (hak *Hak) SetLogTarget(target string) error {
 	tgt = C.CString(target) // TODO: need error check?
 	defer C.free(unsafe.Pointer(tgt))
 
-	x = C.hak_setoption(hak.c, C.HAK_LOG_TARGET_BCSTR, unsafe.Pointer(tgt))
+	x = C.hak_setoption(hak.c, C.HAK_OPT_LOG_TARGET_BCSTR, unsafe.Pointer(tgt))
 	if x <= -1 { return hak.make_errinfo() }
 
 	return nil
@@ -243,7 +243,7 @@ func (hak *Hak) GetModLibDirs() string {
 	var tgt *C.char
 
 // TODO: THIS IS WRONG. must be BCH/UCH aware
-	x = C.hak_getoption(hak.c, C.HAK_OPT_MOD_LIBDIRS, unsafe.Pointer(&tgt))
+	x = C.hak_getoption(hak.c, C.HAK_OPT_MODLIBDIRS, unsafe.Pointer(&tgt))
 	if x <= -1 {
 		// this must not happen
 		panic(fmt.Errorf("unable to get module library directories - %s", hak.get_errmsg()))
@@ -260,7 +260,7 @@ func (hak *Hak) SetModLibDirs(target string) error {
 	defer C.free(unsafe.Pointer(tgt))
 
 // TODO: THIS IS WRONG. must be BCH/UCH aware
-	x = C.hak_setoption(hak.c, C.HAK_OPT_MOD_LIBDIRS, unsafe.Pointer(tgt))
+	x = C.hak_setoption(hak.c, C.HAK_OPT_MODLIBDIRS, unsafe.Pointer(tgt))
 	if x <= -1 { return hak.make_errinfo() }
 
 	return nil

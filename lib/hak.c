@@ -468,22 +468,22 @@ int hak_setoption (hak_t* hak, hak_option_t id, const void* value)
 
 	switch (id)
 	{
-		case HAK_TRAIT:
+		case HAK_OPT_TRAIT:
 			hak->option.trait = *(const hak_bitmask_t*)value;
 		#if defined(HAK_BUILD_DEBUG)
 			hak->option.karatsuba_cutoff = ((hak->option.trait & HAK_TRAIT_DEBUG_BIGINT)? HAK_KARATSUBA_CUTOFF_DEBUG: HAK_KARATSUBA_CUTOFF);
 		#endif
 			break;
 
-		case HAK_LOG_MASK:
+		case HAK_OPT_LOG_MASK:
 			hak->option.log_mask = *(const hak_bitmask_t*)value;
 			break;
 
-		case HAK_LOG_MAXCAPA:
+		case HAK_OPT_LOG_MAXCAPA:
 			hak->option.log_maxcapa = *(hak_oow_t*)value;
 			break;
 
-		case HAK_LOG_TARGET_BCSTR:
+		case HAK_OPT_LOG_TARGET_BCSTR:
 		{
 			hak_bch_t* v1;
 			hak_uch_t* v2;
@@ -503,7 +503,7 @@ int hak_setoption (hak_t* hak, hak_option_t id, const void* value)
 			break;
 		}
 
-		case HAK_LOG_TARGET_UCSTR:
+		case HAK_OPT_LOG_TARGET_UCSTR:
 		{
 			hak_uch_t* v1;
 			hak_bch_t* v2;
@@ -523,7 +523,7 @@ int hak_setoption (hak_t* hak, hak_option_t id, const void* value)
 			break;
 		}
 
-		case HAK_LOG_TARGET_BCS:
+		case HAK_OPT_LOG_TARGET_BCS:
 		{
 			hak_bch_t* v1;
 			hak_uch_t* v2;
@@ -544,7 +544,7 @@ int hak_setoption (hak_t* hak, hak_option_t id, const void* value)
 			break;
 		}
 
-		case HAK_LOG_TARGET_UCS:
+		case HAK_OPT_LOG_TARGET_UCS:
 		{
 			hak_uch_t* v1;
 			hak_bch_t* v2;
@@ -565,7 +565,7 @@ int hak_setoption (hak_t* hak, hak_option_t id, const void* value)
 			break;
 		}
 
-		case HAK_SYMTAB_SIZE:
+		case HAK_OPT_SYMTAB_SIZE:
 		{
 			hak_oow_t w;
 
@@ -576,7 +576,7 @@ int hak_setoption (hak_t* hak, hak_option_t id, const void* value)
 			break;
 		}
 
-		case HAK_SYSDIC_SIZE:
+		case HAK_OPT_SYSDIC_SIZE:
 		{
 			hak_oow_t w;
 
@@ -587,7 +587,7 @@ int hak_setoption (hak_t* hak, hak_option_t id, const void* value)
 			break;
 		}
 
-		case HAK_PROCSTK_SIZE:
+		case HAK_OPT_PROCSTK_SIZE:
 		{
 			hak_oow_t w;
 
@@ -598,7 +598,7 @@ int hak_setoption (hak_t* hak, hak_option_t id, const void* value)
 			break;
 		}
 
-		case HAK_EXSTK_SIZE:
+		case HAK_OPT_EXSTK_SIZE:
 		{
 			hak_oow_t w;
 
@@ -609,7 +609,7 @@ int hak_setoption (hak_t* hak, hak_option_t id, const void* value)
 			break;
 		}
 
-		case HAK_CLSTK_SIZE:
+		case HAK_OPT_CLSTK_SIZE:
 		{
 			hak_oow_t w;
 
@@ -620,23 +620,23 @@ int hak_setoption (hak_t* hak, hak_option_t id, const void* value)
 			break;
 		}
 
-		case HAK_OPT_MOD_LIBDIRS:
-		case HAK_OPT_MOD_PREFIX:
-		case HAK_OPT_MOD_POSTFIX:
+		case HAK_OPT_MODLIBDIRS:
+		case HAK_OPT_MODPREFIX:
+		case HAK_OPT_MODPOSTFIX:
 		{
 			hak_oocs_t tmp;
 			int idx;
 
 			if (dup_str_opt(hak, (const hak_ooch_t*)value, &tmp) <= -1) return -1;
 
-			idx = id - HAK_OPT_MOD_LIBDIRS;
+			idx = id - HAK_OPT_MODLIBDIRS;
 			if (hak->option.mod[idx].ptr) hak_freemem(hak, hak->option.mod[idx].ptr);
 
 			hak->option.mod[idx] = tmp;
 			return 0;
 		}
 
-		case HAK_OPT_MOD_INCTX:
+		case HAK_OPT_MODINCTX:
 			hak->option.mod_inctx = *(void**)value;
 			break;
 
@@ -669,63 +669,63 @@ int hak_getoption (hak_t* hak, hak_option_t id, void* value)
 {
 	switch  (id)
 	{
-		case HAK_TRAIT:
+		case HAK_OPT_TRAIT:
 			*(hak_bitmask_t*)value = hak->option.trait;
 			return 0;
 
-		case HAK_LOG_MASK:
+		case HAK_OPT_LOG_MASK:
 			*(hak_bitmask_t*)value = hak->option.log_mask;
 			return 0;
 
-		case HAK_LOG_MAXCAPA:
+		case HAK_OPT_LOG_MAXCAPA:
 			*(hak_oow_t*)value = hak->option.log_maxcapa;
 			return 0;
 
-		case HAK_LOG_TARGET_BCSTR:
+		case HAK_OPT_LOG_TARGET_BCSTR:
 			*(hak_bch_t**)value = hak->option.log_target_b;
 			return 0;
 
-		case HAK_LOG_TARGET_UCSTR:
+		case HAK_OPT_LOG_TARGET_UCSTR:
 			*(hak_uch_t**)value = hak->option.log_target_u;
 			return 0;
 
-		case HAK_LOG_TARGET_BCS:
+		case HAK_OPT_LOG_TARGET_BCS:
 			((hak_bcs_t*)value)->ptr = hak->option.log_target_b;
 			((hak_bcs_t*)value)->len = hak_count_bcstr(hak->option.log_target_b);
 			return 0;
 
-		case HAK_LOG_TARGET_UCS:
+		case HAK_OPT_LOG_TARGET_UCS:
 			((hak_ucs_t*)value)->ptr = hak->option.log_target_u;
 			((hak_ucs_t*)value)->len = hak_count_ucstr(hak->option.log_target_u);
 			return 0;
 
-		case HAK_SYMTAB_SIZE:
+		case HAK_OPT_SYMTAB_SIZE:
 			*(hak_oow_t*)value = hak->option.dfl_symtab_size;
 			return 0;
 
-		case HAK_SYSDIC_SIZE:
+		case HAK_OPT_SYSDIC_SIZE:
 			*(hak_oow_t*)value = hak->option.dfl_sysdic_size;
 			return 0;
 
-		case HAK_PROCSTK_SIZE:
+		case HAK_OPT_PROCSTK_SIZE:
 			*(hak_oow_t*)value = hak->option.dfl_procstk_size;
 			return 0;
 
-		case HAK_EXSTK_SIZE:
+		case HAK_OPT_EXSTK_SIZE:
 			*(hak_oow_t*)value = hak->option.dfl_exstk_size;
 			return 0;
 
-		case HAK_CLSTK_SIZE:
+		case HAK_OPT_CLSTK_SIZE:
 			*(hak_oow_t*)value = hak->option.dfl_clstk_size;
 			return 0;
 
-		case HAK_OPT_MOD_LIBDIRS:
-		case HAK_OPT_MOD_PREFIX:
-		case HAK_OPT_MOD_POSTFIX:
-			*(const hak_ooch_t**)value = hak->option.mod[id - HAK_OPT_MOD_LIBDIRS].ptr;
+		case HAK_OPT_MODLIBDIRS:
+		case HAK_OPT_MODPREFIX:
+		case HAK_OPT_MODPOSTFIX:
+			*(const hak_ooch_t**)value = hak->option.mod[id - HAK_OPT_MODLIBDIRS].ptr;
 			return 0;
 
-		case HAK_OPT_MOD_INCTX:
+		case HAK_OPT_MODINCTX:
 			*(void**)value = hak->option.mod_inctx;
 			return 0;
 

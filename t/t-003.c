@@ -121,11 +121,11 @@ static int set_modlibdirs (hak_t* hak)
 
 	tmp = hak_dupbtoucstr(hak, HAK_TEST_MODLIBDIRS, HAK_NULL);
 	if (HAK_UNLIKELY(!tmp)) return -1;
-	n = hak_setoption(hak, HAK_MOD_LIBDIRS, tmp);
+	n = hak_setoption(hak, HAK_OPT_MODLIBDIRS, tmp);
 	hak_freemem(hak, tmp);
 	return n;
 #	else
-	return hak_setoption(hak, HAK_MOD_LIBDIRS, HAK_TEST_MODLIBDIRS);
+	return hak_setoption(hak, HAK_OPT_MODLIBDIRS, HAK_TEST_MODLIBDIRS);
 #	endif
 #else
 	return 0;
@@ -144,9 +144,9 @@ static void preempts_a_spinner (void)
 	OK (hak != HAK_NULL, "instantiation");
 	if (!hak) return;
 
-	hak_getoption(hak, HAK_TRAIT, &trait);
+	hak_getoption(hak, HAK_OPT_TRAIT, &trait);
 	trait |= HAK_TRAIT_AWAIT_PROCS | HAK_TRAIT_LANG_ENABLE_EOL;
-	hak_setoption(hak, HAK_TRAIT, &trait);
+	hak_setoption(hak, HAK_OPT_TRAIT, &trait);
 
 	OK (set_modlibdirs(hak) == 0, "module search path");
 

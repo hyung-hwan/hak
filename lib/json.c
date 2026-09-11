@@ -952,7 +952,7 @@ hak_json_t* hak_json_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_json_prim_t*
 	/* the dummy hak is used for this json to perform primitive operations
 	 * such as getting system time or logging. so the heap size doesn't
 	 * need to be changed from the tiny value set above. */
-	hak_setoption(json->dummy_hak, HAK_LOG_MASK, &json->cfg.logmask);
+	hak_setoption(json->dummy_hak, HAK_OPT_LOG_MASK, &json->cfg.logmask);
 	hak_setcmgr(json->dummy_hak, json->cmgr);
 
 
@@ -987,7 +987,7 @@ int hak_json_setoption (hak_json_t* json, hak_json_option_t id, const void* valu
 				 * existing hak instances inside worker threads won't get
 				 * affected. new hak instances to be created later
 				 * is supposed to use the new value */
-				hak_setoption(json->dummy_hak, HAK_LOG_MASK, value);
+				hak_setoption(json->dummy_hak, HAK_OPT_LOG_MASK, value);
 			}
 			return 0;
 	}

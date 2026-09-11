@@ -249,8 +249,8 @@ static int handle_logopt (hak_t* hak, const hak_bch_t* logstr)
 	}
 
 	fname.ptr = (hak_bch_t*)logstr;
-	hak_setoption (hak, HAK_LOG_TARGET_BCS, &fname);
-	hak_setoption (hak, HAK_LOG_MASK, &logmask);
+	hak_setoption (hak, HAK_OPT_LOG_TARGET_BCS, &fname);
+	hak_setoption (hak, HAK_OPT_LOG_MASK, &logmask);
 	return 0;
 }
 
@@ -280,9 +280,9 @@ static int handle_dbgopt (hak_t* hak, const hak_bch_t* str)
 	}
 	while (cm);
 
-	hak_getoption(hak, HAK_TRAIT, &trait);
+	hak_getoption(hak, HAK_OPT_TRAIT, &trait);
 	trait |= dbgopt;
-	hak_setoption(hak, HAK_TRAIT, &trait);
+	hak_setoption(hak, HAK_OPT_TRAIT, &trait);
 	return 0;
 }
 #endif
@@ -865,7 +865,7 @@ int main (int argc, char* argv[])
 		{ ":debug",       '\0' },
 #endif
 		{ ":heapsize",    '\0' },
-		{ ":incdirs",     '\0' },
+		{ ":incdirs",     'I' },
 		{ ":log",         'l'  },
 		{ "info",         '\0' },
 		{ ":modlibdirs",  '\0' },
@@ -940,11 +940,6 @@ int main (int argc, char* argv[])
 					show_info = 1;
 					break;
 				}
-				else if (hak_comp_bcstr(opt.lngopt, "incdirs") == 0)
-				{
-					incdirs = opt.arg;
-					break;
-				}
 				else if (hak_comp_bcstr(opt.lngopt, "modlibdirs") == 0)
 				{
 					modlibdirs = opt.arg;
@@ -992,15 +987,15 @@ int main (int argc, char* argv[])
 	{
 		hak_oow_t tab_size;
 		tab_size = HAK_DFL_SYMTAB_SIZE;
-		hak_setoption (hak, HAK_SYMTAB_SIZE, &tab_size);
+		hak_setoption (hak, HAK_OPT_SYMTAB_SIZE, &tab_size);
 		tab_size = HAK_DFL_SYSDIC_SIZE;
-		hak_setoption (hak, HAK_SYSDIC_SIZE, &tab_size);
+		hak_setoption (hak, HAK_OPT_SYSDIC_SIZE, &tab_size);
 		tab_size = HAK_DFL_PROCSTK_SIZE; /* TODO: choose a better stack size or make this user specifiable */
-		hak_setoption (hak, HAK_PROCSTK_SIZE, &tab_size);
+		hak_setoption (hak, HAK_OPT_PROCSTK_SIZE, &tab_size);
 		tab_size = HAK_DFL_EXSTK_SIZE; /* TODO: choose a better stack size or make this user specifiable */
-		hak_setoption (hak, HAK_EXSTK_SIZE, &tab_size);
+		hak_setoption (hak, HAK_OPT_EXSTK_SIZE, &tab_size);
 		tab_size = HAK_DFL_CLSTK_SIZE; /* TODO: choose a better stack size or make this user specifiable */
-		hak_setoption (hak, HAK_CLSTK_SIZE, &tab_size);
+		hak_setoption (hak, HAK_OPT_CLSTK_SIZE, &tab_size);
 	}
 
 	{
@@ -1009,7 +1004,7 @@ int main (int argc, char* argv[])
 		/*trait |= HAK_TRAIT_NOGC;*/
 		trait |= HAK_TRAIT_AWAIT_PROCS;
 		trait |= HAK_TRAIT_LANG_ENABLE_EOL;
-		hak_setoption (hak, HAK_TRAIT, &trait);
+		hak_setoption (hak, HAK_OPT_TRAIT, &trait);
 	}
 
 	if (incdirs)
@@ -1050,7 +1045,7 @@ int main (int argc, char* argv[])
 			goto oops;
 		}
 
-		if (hak_setoption(hak, HAK_OPT_MOD_LIBDIRS, tmp) <= -1)
+		if (hak_setoption(hak, HAK_OPT_MODLIBDIRS, tmp) <= -1)
 		{
 			hak_logbfmt(hak, HAK_LOG_STDERR,"ERROR: cannot set modlibdirs - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
 			hak_freemem(hak, tmp);
@@ -1058,7 +1053,7 @@ int main (int argc, char* argv[])
 		}
 		hak_freemem(hak, tmp);
 	#else
-		if (hak_setoption(hak, HAK_OPT_MOD_LIBDIRS, modlibdirs) <= -1)
+		if (hak_setoption(hak, HAK_OPT_MODLIBDIRS, modlibdirs) <= -1)
 		{
 			hak_logbfmt(hak, HAK_LOG_STDERR,"ERROR: cannot set modlibdirs - [%d] %js\n", hak_geterrnum(hak), hak_geterrmsg(hak));
 			goto oops;
@@ -1134,9 +1129,9 @@ int main (int argc, char* argv[])
 // in the non-INTERACTIVE mode, the compiler generates MAKE_BLOCK for lambda functions.
 {
 	hak_bitmask_t trait;
-	hak_getoption(hak, HAK_TRAIT, &trait);
+	hak_getoption(hak, HAK_OPT_TRAIT, &trait);
 	trait |= HAK_TRAIT_INTERACTIVE;
-	hak_setoption(hak, HAK_TRAIT, &trait);
+	hak_setoption(hak, HAK_OPT_TRAIT, &trait);
 }
 #endif
 

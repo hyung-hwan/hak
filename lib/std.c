@@ -3877,7 +3877,7 @@ static void* dl_open (hak_t* hak, const hak_ooch_t* name, int flags)
 
 	if (hak->option.mod[0].len > 0)
 	{
-		/* multiple directories separated by a colon can be specified for HAK_OPT_MOD_LIBDIRS
+		/* multiple directories separated by a colon can be specified for HAK_OPT_MODLIBDIRS
 		 * however, use the total length to secure space just for simplicity */
 		ucslen = hak->option.mod[0].len;
 		if (hak_convootobchars(hak, hak->option.mod[0].ptr, &ucslen, HAK_NULL, &bcslen) <= -1) return HAK_NULL;
@@ -4109,8 +4109,8 @@ static void cb_on_option (hak_t* hak, hak_option_t id, const void* value)
 	xtn_t* xtn = GET_XTN(hak);
 	int fd;
 
-	if (id != HAK_LOG_TARGET_BCSTR && id != HAK_LOG_TARGET_UCSTR &&
-	    id != HAK_LOG_TARGET_BCS && id != HAK_LOG_TARGET_UCS) return; /* return success. not interested */
+	if (id != HAK_OPT_LOG_TARGET_BCSTR && id != HAK_OPT_LOG_TARGET_UCSTR &&
+	    id != HAK_OPT_LOG_TARGET_BCS && id != HAK_OPT_LOG_TARGET_UCS) return; /* return success. not interested */
 
 #if defined(_WIN32)
 	#if defined(HAK_OOCH_IS_UCH) && (HAK_SIZEOF_UCH_T == HAK_SIZEOF_WCHAR_T)

@@ -1177,14 +1177,14 @@ hak_server_t* hak_server_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_server_p
 	/* the dummy hak is used for this server to perform primitive operations
 	 * such as getting system time or logging. so the heap size doesn't
 	 * need to be changed from the tiny value set above. */
-	hak_setoption (server->dummy_hak, HAK_LOG_MASK, &server->cfg.logmask);
+	hak_setoption (server->dummy_hak, HAK_OPT_LOG_MASK, &server->cfg.logmask);
 	hak_setcmgr (server->dummy_hak, hak_server_getcmgr(server));
-	hak_getoption (server->dummy_hak, HAK_TRAIT, &trait);
+	hak_getoption (server->dummy_hak, HAK_OPT_TRAIT, &trait);
 #if defined(HAK_BUILD_DEBUG)
 	if (server->cfg.trait & HAK_SERVER_TRAIT_DEBUG_GC) trait |= HAK_TRAIT_DEBUG_GC;
 	if (server->cfg.trait & HAK_SERVER_TRAIT_DEBUG_BIGINT) trait |= HAK_TRAIT_DEBUG_BIGINT;
 #endif
-	hak_setoption (server->dummy_hak, HAK_TRAIT, &trait);
+	hak_setoption (server->dummy_hak, HAK_OPT_TRAIT, &trait);
 
 	return server;
 
@@ -1517,17 +1517,17 @@ static int init_worker_hak (hak_server_worker_t* worker)
 	xtn = (worker_hak_xtn_t*)hak_getxtn(hak);
 	xtn->worker = worker;
 
-	hak_setoption(hak, HAK_OPT_MOD_INCTX, &server->cfg.module_inctx);
-	hak_setoption(hak, HAK_LOG_MASK, &server->cfg.logmask);
+	hak_setoption(hak, HAK_OPT_MODINCTX, &server->cfg.module_inctx);
+	hak_setoption(hak, HAK_OPT_LOG_MASK, &server->cfg.logmask);
 	hak_setcmgr(hak, hak_server_getcmgr(server));
 
-	hak_getoption(hak, HAK_TRAIT, &trait);
+	hak_getoption(hak, HAK_OPT_TRAIT, &trait);
 #if defined(HAK_BUILD_DEBUG)
 	if (server->cfg.trait & HAK_SERVER_TRAIT_DEBUG_GC) trait |= HAK_TRAIT_DEBUG_GC;
 	if (server->cfg.trait & HAK_SERVER_TRAIT_DEBUG_BIGINT) trait |= HAK_TRAIT_DEBUG_BIGINT;
 #endif
 	trait |= HAK_TRAIT_LANG_ENABLE_EOL;
-	hak_setoption(hak, HAK_TRAIT, &trait);
+	hak_setoption(hak, HAK_OPT_TRAIT, &trait);
 
 	HAK_MEMSET(&hakcb, 0, HAK_SIZEOF(hakcb));
 	/*hakcb.fini = fini_hak;
@@ -2050,12 +2050,12 @@ int hak_server_setoption (hak_server_t* server, hak_server_option_t id, const vo
 				 * is supposed to use the new value */
 				hak_bitmask_t trait;
 
-				hak_getoption (server->dummy_hak, HAK_TRAIT, &trait);
+				hak_getoption (server->dummy_hak, HAK_OPT_TRAIT, &trait);
 			#if defined(HAK_BUILD_DEBUG)
 				if (server->cfg.trait & HAK_SERVER_TRAIT_DEBUG_GC) trait |= HAK_TRAIT_DEBUG_GC;
 				if (server->cfg.trait & HAK_SERVER_TRAIT_DEBUG_BIGINT) trait |= HAK_TRAIT_DEBUG_BIGINT;
 			#endif
-				hak_setoption (server->dummy_hak, HAK_TRAIT, &trait);
+				hak_setoption (server->dummy_hak, HAK_OPT_TRAIT, &trait);
 			}
 			return 0;
 
@@ -2067,7 +2067,7 @@ int hak_server_setoption (hak_server_t* server, hak_server_option_t id, const vo
 				 * existing hak instances inside worker threads won't get
 				 * affected. new hak instances to be created later
 				 * is supposed to use the new value */
-				hak_setoption (server->dummy_hak, HAK_LOG_MASK, value);
+				hak_setoption (server->dummy_hak, HAK_OPT_LOG_MASK, value);
 			}
 			return 0;
 

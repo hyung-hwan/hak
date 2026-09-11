@@ -79,12 +79,12 @@ static int run_at_depth (int depth, int expect_overflow)
 	OK (hak != HAK_NULL, "instantiation");
 	if (!hak) goto done;
 
-	hak_getoption(hak, HAK_TRAIT, &trait);
+	hak_getoption(hak, HAK_OPT_TRAIT, &trait);
 	trait |= HAK_TRAIT_LANG_ENABLE_EOL;
-	hak_setoption(hak, HAK_TRAIT, &trait);
+	hak_setoption(hak, HAK_OPT_TRAIT, &trait);
 
 	stksize = STK_SLOTS;
-	OK (hak_setoption(hak, HAK_PROCSTK_SIZE, &stksize) == 0, "process stack size");
+	OK (hak_setoption(hak, HAK_OPT_PROCSTK_SIZE, &stksize) == 0, "process stack size");
 
 	OK (hak_ignite(hak, 0) == 0, "ignition");
 	OK (hak_addbuiltinprims(hak) == 0, "builtin primitives");
