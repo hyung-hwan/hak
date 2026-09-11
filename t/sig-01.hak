@@ -27,17 +27,17 @@ sys.close (core.basicAt q 0)
 sys.close (core.basicAt q 1)
 
 ## --- catch and uncatch are idempotent ---
-chk (= (system-catch-sig sys.SIGUSR1) sys.SIGUSR1) "system-catch-sig returns the signal number"
-chk (= (system-catch-sig sys.SIGUSR1) sys.SIGUSR1) "catching an already caught signal is fine"
-chk (= (system-uncatch-sig sys.SIGUSR1) sys.SIGUSR1) "system-uncatch-sig returns the signal number"
-chk (= (system-uncatch-sig sys.SIGUSR1) sys.SIGUSR1) "uncatching an uncaught signal is fine"
+chk (= (sys.sig-catch sys.SIGUSR1) sys.SIGUSR1) "sys.sig-catch returns the signal number"
+chk (= (sys.sig-catch sys.SIGUSR1) sys.SIGUSR1) "catching an already caught signal is fine"
+chk (= (sys.sig-uncatch sys.SIGUSR1) sys.SIGUSR1) "sys.sig-uncatch returns the signal number"
+chk (= (sys.sig-uncatch sys.SIGUSR1) sys.SIGUSR1) "uncatching an uncaught signal is fine"
 
 ## --- a real signal reaches hak code, without stalling the coprocesses ---
 ## SIGCHLD is used because a child exiting is something this test can arrange
 ## on its own, with no outside help.
-system-catch-sig sys.SIGCHLD
+sys.sig-catch sys.SIGCHLD
 
-h     := (system-get-sigfd)
+h     := (sys.sig-getfd)
 s     := (core.sem-new)
 tmo   := (core.sem-new)
 sg    := (core.semgr-new)
@@ -58,7 +58,7 @@ fun waiter() {
 	core.sem-unsignal s
 	core.sem-unsignal tmo
 	if (eqv? w tmo) { signo := -2 } \
-	else { signo := (system-get-sig) }
+	else { signo := (sys.sig-get) }
 	core.sem-signal fin
 	return 0
 }
@@ -79,4 +79,4 @@ chk (= ticks 4) "coprocesses ran while a coprocess waited on a signal"
 chk (= signo sys.SIGCHLD) "the signal number came through the signal descriptor"
 chk (= (sys.pwait proc) 4) "and the child's exit status is readable"
 sys.pclose proc
-system-uncatch-sig sys.SIGCHLD
+sys.sig-uncatch sys.SIGCHLD

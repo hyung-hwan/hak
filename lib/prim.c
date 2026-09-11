@@ -1256,7 +1256,7 @@ hak_pfrc_t hak_pf_object_new (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 
 /* ------------------------------------------------------------------------- */
 
-static hak_pfrc_t pf_system_get_sigfd (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_system_get_sigfd (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_ooi_t fd;
 	hak_hnd_t* hnd;
@@ -1275,7 +1275,7 @@ static hak_pfrc_t pf_system_get_sigfd (hak_t* hak, hak_mod_t* mod, hak_ooi_t nar
 	return HAK_PF_SUCCESS;
 }
 
-static hak_pfrc_t pf_system_get_sig (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_system_get_sig (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_uint8_t sig;
 	int n;
@@ -1289,12 +1289,12 @@ static hak_pfrc_t pf_system_get_sig (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs
 	return HAK_PF_SUCCESS;
 }
 
-/* (system-catch-sig signo)   - route an operating system signal into the
- *                              signal descriptor, where hak code can wait for
- *                              it with core.sem-signal-on-input
- * (system-uncatch-sig signo) - release it again
+/* (sys.sig-catch signo)   - route an operating system signal into the signal
+ *                           descriptor, where hak code can wait for it with
+ *                           core.sem-signal-on-input
+ * (sys.sig-uncatch signo) - release it again
  *
- * Note the difference from system-set-sig, which does not touch the operating
+ * Note the difference from sys.sig-set, which does not touch the operating
  * system at all: that one injects a number into the descriptor directly, as a
  * way for hak code to post a synthetic signal to itself.
  */
@@ -1323,17 +1323,17 @@ static hak_pfrc_t __system_catch_sig (hak_t* hak, hak_ooi_t nargs, int enable)
 	return HAK_PF_SUCCESS;
 }
 
-static hak_pfrc_t pf_system_catch_sig (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_system_catch_sig (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	return __system_catch_sig(hak, nargs, 1);
 }
 
-static hak_pfrc_t pf_system_uncatch_sig (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_system_uncatch_sig (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	return __system_catch_sig(hak, nargs, 0);
 }
 
-static hak_pfrc_t pf_system_set_sig (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_system_set_sig (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_oop_t tmp;
 	hak_uint8_t sig;
@@ -1366,11 +1366,10 @@ static pf_t builtin_prims[] =
 	{ 1, HAK_TYPE_MAX(hak_oow_t), pf_scanf,           5,  { 's','c','a','n','f' } },
 	{ 1, HAK_TYPE_MAX(hak_oow_t), pf_sprintf,         7,  { 's','p','r','i','n','t','f' } },
 
-	{ 0, 0,                       pf_system_get_sigfd,   16, { 's','y','s','t','e','m','-','g','e','t','-','s','i','g','f','d' } },
-	{ 0, 0,                       pf_system_get_sig,     14,  { 's','y','s','t','e','m','-','g','e','t','-','s','i','g' } },
-	{ 1, 1,                       pf_system_set_sig,     14,  { 's','y','s','t','e','m','-','s','e','t','-','s','i','g' } },
-	{ 1, 1,                       pf_system_catch_sig,   16, { 's','y','s','t','e','m','-','c','a','t','c','h','-','s','i','g' } },
-	{ 1, 1,                       pf_system_uncatch_sig, 18, { 's','y','s','t','e','m','-','u','n','c','a','t','c','h','-','s','i','g' } },
+	/* the signal primitives are registered by the sys module instead - see
+	 * pfinfos[] in mod/sys.c. they are reached as sys.sig-getfd, sys.sig-get,
+	 * sys.sig-set, sys.sig-catch and sys.sig-uncatch. the implementations stay
+	 * here and are declared in lib/hak-prv.h. */
 
 	{ 0, 0,                       pf_gc,              2,  { 'g','c' } },
 

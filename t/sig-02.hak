@@ -54,8 +54,8 @@ chk (== sys.SIGTERM 15) "SIGTERM is 15"
 
 ## and the constants behave: a routable one can be caught, an unroutable one
 ## cannot, whatever the numbers happen to be here
-chk (== (system-catch-sig sys.SIGUSR1) sys.SIGUSR1) "SIGUSR1 is catchable"
-chk (== (system-uncatch-sig sys.SIGUSR1) sys.SIGUSR1) "SIGUSR1 is uncatchable again"
+chk (== (sys.sig-catch sys.SIGUSR1) sys.SIGUSR1) "SIGUSR1 is catchable"
+chk (== (sys.sig-uncatch sys.SIGUSR1) sys.SIGUSR1) "SIGUSR1 is uncatchable again"
 raised := false
-try { system-catch-sig sys.SIGKILL } catch (e) { raised := true }
+try { sys.sig-catch sys.SIGKILL } catch (e) { raised := true }
 chk raised "SIGKILL is refused"

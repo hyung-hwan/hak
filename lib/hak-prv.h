@@ -2272,6 +2272,15 @@ hak_pfrc_t hak_pf_semaphore_group_add_semaphore (hak_t* hak, hak_mod_t* mod, hak
 hak_pfrc_t hak_pf_semaphore_group_remove_semaphore (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
 hak_pfrc_t hak_pf_semaphore_group_wait (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
 
+/* the signal primitives live in prim.c but are registered by the sys module,
+ * which reaches them as sys.sig-getfd, sys.sig-get, sys.sig-set, sys.sig-catch
+ * and sys.sig-uncatch */
+hak_pfrc_t hak_pf_system_get_sigfd (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_system_get_sig (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_system_set_sig (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_system_catch_sig (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_system_uncatch_sig (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+
 /* ========================================================================= */
 /* std.c                                                                    */
 /* ========================================================================= */

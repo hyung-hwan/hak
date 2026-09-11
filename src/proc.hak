@@ -107,10 +107,10 @@ class ChildGroup(
 			## semaphore on the signal descriptor for the whole group, once.
 			if (not self.shared) {
 				set shared true
-				system-catch-sig sys.SIGCHLD
+				sys.sig-catch sys.SIGCHLD
 				set sigsem (core.sem-new)
 				core.semgr-add self.sg self.sigsem
-				core.sem-signal-on-input self.sigsem (system-get-sigfd)
+				core.sem-signal-on-input self.sigsem (sys.sig-getfd)
 			}
 		} else {
 			## A handle of its own, so a wakeup identifies this child directly.
@@ -180,7 +180,7 @@ class ChildGroup(
 			if self.shared {
 				## the signal descriptor spoke: take the byte, then look at
 				## everyone, since one SIGCHLD may stand for several exits
-				system-get-sig
+				sys.sig-get
 				kid := (self:finished)
 				if (not (nil? kid)) { return kid }
 				## otherwise it was a SIGCHLD for a child of the host
@@ -228,7 +228,7 @@ class ChildGroup(
 		}
 		if self.shared {
 			core.sem-unsignal self.sigsem
-			system-uncatch-sig sys.SIGCHLD
+			sys.sig-uncatch sys.SIGCHLD
 			set shared false
 		}
 	}
