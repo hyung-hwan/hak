@@ -17,23 +17,23 @@ class[#uncopyable] Semaphore: Object(
 	}
 
 	fun signalAfter(secs nsecs) {
-		core.sem-signal self secs nsecs
+		return (core.sem-signal self secs nsecs)
 	}
 
 	fun signalOnInput(handle) {
-		core.sem-signal-on-input self handle
+		return (core.sem-signal-on-input self handle)
 	}
 
 	fun signalOnOutput(handle) {
-		core.sem-signal-on-output self handle
+		return (core.sem-signal-on-output self handle)
 	}
 
 	fun unsignal() {
-		core.sem-unsignal self
+		return (core.sem-unsignal self)
 	}
 
 	fun wait() {
-		core.sem-wait self
+		return (core.sem-wait self)
 	}
 }
 
@@ -52,14 +52,14 @@ class[#uncopyable] SemaphoreGroup: Object(
 	}
 
 	fun add(sem) {
-		core.semgr-add self sem
+		return (core.semgr-add self sem)
 	}
 
 	fun remove(sem) {
-		core.semgr-remove self sem
+		return (core.semgr-remove self sem)
 	}
 
 	fun wait() {
-		core.semgr-wait self
+		return (core.semgr-wait self)
 	}
 }

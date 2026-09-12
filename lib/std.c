@@ -356,7 +356,7 @@
  * about async-signal-safety - the spinlock is built out of atomics and is safe
  * by that measure - but about reentrancy: a signal delivered to the thread
  * that already holds the lock would spin, or block, on a lock that thread can
- * no longer reach the end of. post_sig_to_all_haks() therefore walk the chain without it.
+ * no longer reach the end of. post_sig_to_all_haks() therefore walks the chain without it.
  * -------------------------------------------------------------------------- */
 
 #if defined(USE_THREAD)
@@ -2835,6 +2835,7 @@ static void dispatch_siginfo (int sig, siginfo_t* si, void* ctx)
 	if (g_sig_state[sig].handler != (hak_uintptr_t)SIG_IGN &&
 	    g_sig_state[sig].handler != (hak_uintptr_t)SIG_DFL)
 	{
+		/* execute the current handler */
 		((sig_handler_t)g_sig_state[sig].handler)(sig);
 	}
 
@@ -2842,6 +2843,9 @@ static void dispatch_siginfo (int sig, siginfo_t* si, void* ctx)
 	    g_sig_state[sig].old_handler != (hak_uintptr_t)SIG_IGN &&
 	    g_sig_state[sig].old_handler != (hak_uintptr_t)SIG_DFL)
 	{
+		/* execute the original remembered handler */
+/* TODO: if the runtime has installed its own signal handler, proably this one must not be called.
+ *       when the runtime registers a single handler, it may optionally request that the previous one should also be invoked? */
 		((void(*)(int, siginfo_t*, void*))g_sig_state[sig].old_handler)(sig, si, ctx);
 	}
 }
@@ -3108,9 +3112,9 @@ static HAK_INLINE void post_sig_to_all_haks (int signo)
 		{
 			xtn_t* xtn = GET_XTN(hak);
 			hak_uint8_t u8;
-			/*hak_abortstd(hak);*/
+
 			u8 = signo & 0xFF;
-			/* write a byte of signal number. the vm_getsig() reads this when
+			/* write a byte of signal number. vm_getsig() reads this when
 			 * it's invoked by the vm */
 			write(xtn->sigfd.p[1], &u8, HAK_SIZEOF(u8));
 			hak = xtn->next;

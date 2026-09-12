@@ -303,19 +303,19 @@ typedef void(*signal_handler_t)(int);
 #if defined(_WIN32) || defined(__DOS__) || defined(__OS2__)
 static void handle_sigint (int sig)
 {
-	if (g_hak) hak_abort (g_hak);
+	if (g_hak) hak_abort(g_hak);
 }
 #elif defined(macintosh)
 /* TODO */
 #elif defined(SA_SIGINFO)
 static void handle_sigint (int sig, siginfo_t* siginfo, void* ctx)
 {
-	if (g_hak) hak_abort (g_hak);
+	if (g_hak) hak_abort(g_hak);
 }
 #else
 static void handle_sigint (int sig)
 {
-	if (g_hak) hak_abort (g_hak);
+	if (g_hak) hak_abort(g_hak);
 }
 #endif
 
@@ -328,7 +328,7 @@ static void set_signal (int sig, signal_handler_t handler)
 #else
 	struct sigaction sa;
 
-	memset (&sa, 0, sizeof(sa));
+	memset(&sa, 0, sizeof(sa));
 	/*sa.sa_handler = handler;*/
 #if defined(SA_SIGINFO)
 	sa.sa_flags = SA_SIGINFO;
@@ -336,16 +336,16 @@ static void set_signal (int sig, signal_handler_t handler)
 #else
 	sa.sa_handler = handler;
 #endif
-	sigemptyset (&sa.sa_mask);
+	sigemptyset(&sa.sa_mask);
 
-	sigaction (sig, &sa, NULL);
+	sigaction(sig, &sa, NULL);
 #endif
 }
 
 static void set_signal_to_default (int sig)
 {
 #if defined(_WIN32) || defined(__DOS__) || defined(__OS2__)
-	signal (sig, SIG_DFL);
+	signal(sig, SIG_DFL);
 #elif defined(macintosh)
 	/* TODO: implement this */
 #else
@@ -354,27 +354,27 @@ static void set_signal_to_default (int sig)
 	memset (&sa, 0, sizeof(sa));
 	sa.sa_handler = SIG_DFL;
 	sa.sa_flags = 0;
-	sigemptyset (&sa.sa_mask);
+	sigemptyset(&sa.sa_mask);
 
-	sigaction (sig, &sa, NULL);
+	sigaction(sig, &sa, NULL);
 #endif
 }
 
 static void set_signal_to_ignore (int sig)
 {
 #if defined(_WIN32) || defined(__DOS__) || defined(__OS2__)
-	signal (sig, SIG_IGN);
+	signal(sig, SIG_IGN);
 #elif defined(macintosh)
 	/* TODO: implement this */
 #else
 	struct sigaction sa;
 
-	memset (&sa, 0, sizeof(sa));
+	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = SIG_IGN;
 	sa.sa_flags = 0;
 	sigemptyset (&sa.sa_mask);
 
-	sigaction (sig, &sa, NULL);
+	sigaction(sig, &sa, NULL);
 #endif
 }
 
