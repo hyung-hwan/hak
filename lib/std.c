@@ -2104,6 +2104,8 @@ kqueue_syserr:
 #elif defined(USE_SELECT)
 #	define MUXEVT_FD(e)   ((e).fd)
 #	define MUXEVT_MASK(e) ((e).events)
+#else
+#	error UNSUPPORTED
 #endif
 
 /* Drop multiplexer events already sitting in the buffer for this descriptor.
@@ -2453,20 +2455,7 @@ static void vm_muxwait (hak_t* hak, const hak_ntime_t* dur, hak_vmprim_muxwait_c
 		{
 			--n;
 
-		#if defined(USE_DEVPOLL)
-			if (xtn->ev.buf[n].fd == xtn->iothr.p[0])
-		#elif defined(USE_KQUEUE)
-			if (xtn->ev.buf[n].ident == xtn->iothr.p[0])
-		#elif defined(USE_EPOLL)
-			/*if (xtn->ev.buf[n].data.ptr == (void*)HAK_TYPE_MAX(hak_oow_t))*/
-			if (xtn->ev.buf[n].data.fd == xtn->iothr.p[0])
-		#elif defined(USE_POLL)
-			if (xtn->ev.buf[n].fd == xtn->iothr.p[0])
-		#elif defined(USE_SELECT)
-			if (xtn->ev.buf[n].fd == xtn->iothr.p[0])
-		#else
-		#	error UNSUPPORTED
-		#endif
+			if (MUXEVT_FD(xtn->ev.buf[n]) == xtn->iothr.p[0])
 			{
 				hak_uint8_t u8;
 				while (read(xtn->iothr.p[0], &u8, HAK_SIZEOF(u8)) > 0)
@@ -2480,21 +2469,15 @@ static void vm_muxwait (hak_t* hak, const hak_ntime_t* dur, hak_vmprim_muxwait_c
 				int revents;
 				hak_ooi_t mask;
 
-			#if defined(USE_DEVPOLL)
-				revents = xtn->ev.buf[n].revents;
-			#elif defined(USE_KQUEUE)
+			#if defined(USE_KQUEUE)
 				revents = 0;
 				/* it's "if .. else if" because kqueue filter is either READ or WRITE. */
 				if (xtn->ev.buf[n].filter == EVFILT_READ) revents |= XPOLLIN;
 				else if (xtn->ev.buf[n].filter == EVFILT_WRITE) revents |= XPOLLOUT;
 				if (xtn->ev.buf[n].flags & EV_EOF) revents |= XPOLLHUP;
 				if (xtn->ev.buf[n].flags & EV_ERROR) revents |= XPOLLERR;
-			#elif defined(USE_EPOLL)
-				revents = xtn->ev.buf[n].events;
-			#elif defined(USE_POLL)
-				revents = xtn->ev.buf[n].revents;
-			#elif defined(USE_SELECT)
-				revents = xtn->ev.buf[n].events;
+			#else
+				revents = MUXEVT_MASK(xtn->ev.buf[n]);
 			#endif
 
 				mask = 0;
@@ -2503,19 +2486,7 @@ static void vm_muxwait (hak_t* hak, const hak_ntime_t* dur, hak_vmprim_muxwait_c
 				if (revents & XPOLLERR) mask |= HAK_SEMAPHORE_IO_MASK_ERROR;
 				if (revents & XPOLLHUP) mask |= HAK_SEMAPHORE_IO_MASK_HANGUP;
 
-			#if defined(USE_DEVPOLL)
-				muxwcb(hak, xtn->ev.buf[n].fd, mask);
-			#elif defined(USE_KQUEUE)
-				muxwcb(hak, xtn->ev.buf[n].ident, mask);
-			#elif defined(USE_EPOLL)
-				muxwcb(hak, xtn->ev.buf[n].data.fd, mask);
-			#elif defined(USE_POLL)
-				muxwcb(hak, xtn->ev.buf[n].fd, mask);
-			#elif defined(USE_SELECT)
-				muxwcb(hak, xtn->ev.buf[n].fd, mask);
-			#else
-			#	error UNSUPPORTED
-			#endif
+				muxwcb(hak, MUXEVT_FD(xtn->ev.buf[n]), mask);
 			}
 		}
 		while (n > 0);
@@ -3139,6 +3110,8 @@ static HAK_INLINE void post_sig_to_all_haks (int signo)
 			hak_uint8_t u8;
 			/*hak_abortstd(hak);*/
 			u8 = signo & 0xFF;
+			/* write a byte of signal number. the vm_getsig() reads this when
+			 * it's invoked by the vm */
 			write(xtn->sigfd.p[1], &u8, HAK_SIZEOF(u8));
 			hak = xtn->next;
 		}
