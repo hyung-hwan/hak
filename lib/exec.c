@@ -835,7 +835,7 @@ static void switch_to_process (hak_t* hak, hak_oop_process_t proc, int new_state
 
 	/* the new process must be in the runnable state */
 	HAK_ASSERT(hak, proc->state == HAK_SMOOI_TO_OOP(HAK_PROCESS_STATE_RUNNABLE) ||
-	                 proc->state == HAK_SMOOI_TO_OOP(HAK_PROCESS_STATE_WAITING));
+	                proc->state == HAK_SMOOI_TO_OOP(HAK_PROCESS_STATE_WAITING));
 
 	sleep_active_process(hak, new_state_for_old_active);
 	wake_process(hak, proc);
@@ -1340,7 +1340,6 @@ static void yield_process (hak_t* hak, hak_oop_process_t proc)
 		}
 	}
 }
-
 
 static int async_signal_semaphore (hak_t* hak, hak_oop_semaphore_t sem)
 {
@@ -5640,8 +5639,13 @@ hak_pfrc_t hak_pf_process_resume (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		return HAK_PF_FAILURE;
 	}
 
+	/* [SPECIAL CASE]
+	 * resume_process changes the the active process.
+	 * calling this after resume_process() pollutes a wrong stack. place it here */
+	HAK_STACK_SETRET(hak, nargs, prc);
+
 	resume_process(hak, prc);
-	return  HAK_PF_SUCCESS;
+	return HAK_PF_SUCCESS;
 }
 
 hak_pfrc_t hak_pf_process_suspend (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
@@ -5662,8 +5666,13 @@ hak_pfrc_t hak_pf_process_suspend (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		prc = hak->processor->active;
 	}
 
+	/* [SPECIAL CASE]
+	 * suspend_process changes the the active process.
+	 * calling this after suspend_process() pollutes a wrong stack. place it here */
+	HAK_STACK_SETRET(hak, nargs, prc);
+
 	suspend_process(hak, prc);
-	return  HAK_PF_SUCCESS;
+	return HAK_PF_SUCCESS;
 }
 
 hak_pfrc_t hak_pf_process_terminate (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
@@ -5684,20 +5693,35 @@ hak_pfrc_t hak_pf_process_terminate (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs
 		prc = hak->processor->active;
 	}
 
+	/* [SPECIAL CASE]
+	 * terminate_process changes the the active process.
+	 * calling this after terminate_process() pollutes a wrong stack. place it here */
+	HAK_STACK_SETRET(hak, nargs, prc);
+
 	terminate_process(hak, prc);
 	return  HAK_PF_SUCCESS;
 }
 
 hak_pfrc_t hak_pf_process_terminate_all (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
+	/* [SPECIAL CASE]
+	 * terminate_all_processes changes the the active process.
+	 * calling this after terminate_all_processes() pollutes a wrong stack. place it here */
+	HAK_STACK_SETRET(hak, nargs, hak->_nil);
+
 	terminate_all_processes(hak);
-	return  HAK_PF_SUCCESS;
+	return HAK_PF_SUCCESS;
 }
 
 hak_pfrc_t hak_pf_process_yield (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
+	/* [SPECIAL CASE]
+	 * yield_process changes the the active process.
+	 * calling this after yield_process() pollutes a wrong stack. place it here */
+	HAK_STACK_SETRET(hak, nargs, hak->_nil);
+
 	yield_process(hak, hak->processor->active);
-	return  HAK_PF_SUCCESS;
+	return HAK_PF_SUCCESS;
 }
 
 /* ------------------------------------------------------------------ */
@@ -5715,7 +5739,22 @@ hak_pfrc_t hak_pf_semaphore_new (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		return HAK_PF_FAILURE;
 	}
 
-	sem->count = HAK_SMOOI_TO_OOP(0);
+	if (nargs >= 1)
+	{
+		hak_oop_t tmp;
+		tmp = (hak_oop_semaphore_t)HAK_STACK_GETARG(hak, nargs, 0);
+		if (!HAK_OOP_IS_SMOOI(tmp))
+		{
+			hak_seterrbfmt(hak, HAK_EINVAL, "invalid semaphore count - %O", tmp);
+			return HAK_PF_FAILURE;
+		}
+		sem->count = tmp;
+	}
+	else
+	{
+		sem->count = HAK_SMOOI_TO_OOP(0);
+	}
+
 /* TODO: sem->signal_action? */
 	/* other fields are all set to nil */
 

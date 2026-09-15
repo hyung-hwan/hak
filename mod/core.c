@@ -606,6 +606,7 @@ static hak_pfinfo_t pfinfos[] =
 	{ "cons",               { HAK_PFBASE_FUNC, pf_core_cons,                  2,  2 } },
 
 	{ "current-process",    { HAK_PFBASE_FUNC, hak_pf_process_current,        0,  0 } },
+
 	{ "eqk?",               { HAK_PFBASE_FUNC, hak_pf_eqk,                    2,  2 } },
 	{ "eql?",               { HAK_PFBASE_FUNC, hak_pf_eql,                    2,  2 } },
 	{ "eqv?",               { HAK_PFBASE_FUNC, hak_pf_eqv,                    2,  2 } },
@@ -621,8 +622,10 @@ static hak_pfinfo_t pfinfos[] =
 
 	{ "primAt",             { HAK_PFBASE_FUNC, pf_core_prim_at,               2,  2 } },
 	{ "primAtPut",          { HAK_PFBASE_FUNC, pf_core_prim_at_put,           3,  3 } },
+
 	{ "resume",             { HAK_PFBASE_FUNC, hak_pf_process_resume,         1,  1 } },
-	{ "sem-new",            { HAK_PFBASE_FUNC, hak_pf_semaphore_new,          0,  0 } },
+
+	{ "sem-new",            { HAK_PFBASE_FUNC, hak_pf_semaphore_new,          0,  1 } },
 	{ "sem-signal",         { HAK_PFBASE_FUNC, hak_pf_semaphore_signal,       1,  3 } },
 	{ "sem-signal-on-input",  { HAK_PFBASE_FUNC, hak_pf_semaphore_signal_on_input,  2,  2 } },
 	{ "sem-signal-on-output", { HAK_PFBASE_FUNC, hak_pf_semaphore_signal_on_output, 2,  2 } },
@@ -632,13 +635,16 @@ static hak_pfinfo_t pfinfos[] =
 	{ "semgr-new",          { HAK_PFBASE_FUNC, hak_pf_semaphore_group_new,              0,  0 } },
 	{ "semgr-remove",       { HAK_PFBASE_FUNC, hak_pf_semaphore_group_remove_semaphore, 1,  2 } },
 	{ "semgr-wait",         { HAK_PFBASE_FUNC, hak_pf_semaphore_group_wait,             1,  1 } },
+
 	{ "slice",              { HAK_PFBASE_FUNC, pf_core_slice,                 3,  3 } },
 	{ "smooiToChar",        { HAK_PFBASE_FUNC, pf_core_smooi_to_char,         1,  1 } },
 	{ "sqrt",               { HAK_PFBASE_FUNC, hak_pf_number_sqrt,            1,  1 } },
+
 	{ "suspend",            { HAK_PFBASE_FUNC, hak_pf_process_suspend,        0,  1 } },
 	{ "terminate",          { HAK_PFBASE_FUNC, hak_pf_process_terminate,      0,  1 } },
 	{ "terminate-all",      { HAK_PFBASE_FUNC, hak_pf_process_terminate_all,  0,  0 } },
 	{ "yield",              { HAK_PFBASE_FUNC, hak_pf_process_yield,          0,  0 } },
+
 	{ "~=",                 { HAK_PFBASE_FUNC, hak_pf_number_ne,              2,  2 } },
 };
 

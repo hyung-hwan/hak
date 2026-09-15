@@ -13,7 +13,15 @@ class[#uncopyable] Semaphore: Object(
 	_grm_next
 ) {
 	fun[#class] new() {
-		return (core.sem-new)
+		return (core.sem-new 0)
+	}
+
+	fun[#class] forMutex() {
+		return (core.sem-new 1)
+	}
+
+	fun signal() {
+		return (core.sem-signal self 0 0)
 	}
 
 	fun signalAfter(secs nsecs) {
