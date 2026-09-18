@@ -723,7 +723,7 @@ struct hak_block_t
 /* the fields of hak_context_t must be mirroed to hak_stack_context_t
  * in hak-prv.h. there are functions affected by the layout change
  * of these structures:
- * - hak_reify_stack_context() in lib/exec.
+ * - hak_reifystackcontext() in lib/exec.
  * - make_stack_context() in lib/exec.c
  */
 struct hak_context_t

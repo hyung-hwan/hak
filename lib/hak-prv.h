@@ -59,6 +59,7 @@
 typedef struct hak_stack_context_t hak_stack_context_t;
 struct hak_stack_context_t
 {
+	/* mirrored fields of hak_context_t defined in hak.h */
 	hak_oop_t req_nrets;
 	hak_oop_t attr_mask;
 	hak_oop_t name;
@@ -71,16 +72,18 @@ struct hak_stack_context_t
 	hak_oop_t ivaroff;
 	hak_oop_t owner;
 
+	/* extra fields for house-keeping */
 	hak_oop_t slot_count;
 	hak_oop_t stack_base;
 	hak_oop_t frame_base;
-	hak_oop_t heap_ctx;
+	hak_oop_t heap_ctx; /* set to non-nil if reified */
 
-	hak_oop_t slot_base[1];
+	/* space for arguments, local variables, return variables, etc after the fixed fields like in hak_context_t */
+	hak_oop_t slot[1];
 };
 
 /*#define HAK_STACK_CONTEXT_NAMED_SLOTS (HAK_SIZEOF(hak_stack_context_t) / HAK_SIZEOF(hak_oop_t))*/
-#define HAK_STACK_CONTEXT_NAMED_SLOTS (15) /* excludes slot_base */
+#define HAK_STACK_CONTEXT_NAMED_SLOTS (15) /* excludes slot */
 
 #if defined(__cplusplus)
 extern "C" {
@@ -96,31 +99,18 @@ hak_oop_context_t hak_reifystackcontext (hak_t* hak, hak_stack_context_t* sctx);
 #define HAK_CTX_TO_STACK(ctx) ((hak_stack_context_t*)HAK_OOP_TO_SMPTR(ctx))
 #define HAK_CTX_TO_OOP(hak, ctx) (HAK_CTX_IS_STACK(ctx)? hak_reifystackcontext((hak), HAK_CTX_TO_STACK(ctx)): (hak_oop_context_t)(ctx))
 
-#if 0
-#define HAK_CTX_SLOT(hak, ctx) (HAK_CTX_IS_STACK(ctx)? (hak_oop_t*)HAK_OOP_TO_SMPTR(HAK_CTX_TO_STACK(ctx)->slot_base) : ((hak_oop_context_t)(ctx))->slot)
-#define HAK_CTX_SLOT_AT(hak, ctx, idx) (HAK_CTX_IS_STACK(ctx)? ((hak_oop_t*)HAK_OOP_TO_SMPTR(HAK_CTX_TO_STACK(ctx)->slot_base))[idx] : ((hak_oop_context_t)(ctx))->slot[idx])
-#define HAK_CTX_SLOT_AT_PUT(hak, ctx, idx, val) \
-do { \
-	if (HAK_CTX_IS_STACK(ctx)) \
-		((hak_oop_t*)HAK_OOP_TO_SMPTR(HAK_CTX_TO_STACK(ctx)->slot_base))[idx] = (val); \
-	else \
-		((hak_oop_context_t)(ctx))->slot[idx] = (val); \
-} while(0)
-#else
-
-#define HAK_CTX_SLOT(hak, ctx) (HAK_CTX_IS_STACK(ctx)? HAK_CTX_TO_STACK(ctx)->slot_base : ((hak_oop_context_t)(ctx))->slot)
+#define HAK_CTX_SLOT(hak, ctx) (HAK_CTX_IS_STACK(ctx)? HAK_CTX_TO_STACK(ctx)->slot: ((hak_oop_context_t)(ctx))->slot)
 
 #define HAK_CTX_SLOT_AT(hak, ctx, idx) \
-	(HAK_CTX_IS_STACK(ctx)? HAK_CTX_TO_STACK(ctx)->slot_base[idx]: ((hak_oop_context_t)(ctx))->slot[idx])
+	(HAK_CTX_IS_STACK(ctx)? HAK_CTX_TO_STACK(ctx)->slot[idx]: ((hak_oop_context_t)(ctx))->slot[idx])
 
 #define HAK_CTX_SLOT_AT_PUT(hak, ctx, idx, val) \
 do { \
 	if (HAK_CTX_IS_STACK(ctx)) \
-		HAK_CTX_TO_STACK(ctx)->slot_base[idx] = (val); \
+		HAK_CTX_TO_STACK(ctx)->slot[idx] = (val); \
 	else \
 		((hak_oop_context_t)(ctx))->slot[idx] = (val); \
 } while(0)
-#endif
 
 #define HAK_CTX_GET_REQNRETS(hak, ctx) (HAK_CTX_IS_STACK(ctx)? HAK_CTX_TO_STACK(ctx)->req_nrets : ((hak_oop_context_t)(ctx))->req_nrets)
 #define HAK_CTX_SET_REQNRETS(hak, ctx, v) do { if (HAK_CTX_IS_STACK(ctx)) HAK_CTX_TO_STACK(ctx)->req_nrets = (v); else ((hak_oop_context_t)(ctx))->req_nrets = (v); } while (0)

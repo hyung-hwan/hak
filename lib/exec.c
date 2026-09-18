@@ -402,8 +402,6 @@ static HAK_INLINE hak_oop_context_t make_context (hak_t* hak, hak_ooi_t ntmprs)
 }
 
 #if defined(HAK_ENABLE_STACK_CONTEXT)
-#define HAK_USE_STACK_CONTEXT_FOR_FUNCTION 1
-#define HAK_USE_STACK_CONTEXT_FOR_BLOCK 1
 
 static HAK_INLINE hak_oop_t* alloc_frame_slots (hak_t* hak, hak_oop_process_t proc, hak_oow_t nslots)
 {
@@ -456,19 +454,11 @@ static HAK_INLINE hak_oop_context_t make_stack_context (hak_t* hak, hak_oop_proc
 	sctx->slot_count = HAK_SMOOI_TO_OOP(ntmprs);
 	sctx->stack_base = HAK_SMOOI_TO_OOP(hak->sp);
 	sctx->frame_base = HAK_SMOOI_TO_OOP(frame_base);
-	sctx->heap_ctx = hak->_nil;
-	for (i = 0; i < ntmprs; i++) sctx->slot_base[i] = hak->_nil;
+	sctx->heap_ctx = hak->_nil; /* not reified yet. set to nil */
+	for (i = 0; i < ntmprs; i++) sctx->slot[i] = hak->_nil;
 	/* end of extra fields */
 
 	return (hak_oop_context_t)HAK_SMPTR_TO_OOP(sctx);
-}
-
-static HAK_INLINE hak_oop_context_t make_context_for_activation (hak_t* hak, hak_oop_process_t proc, hak_ooi_t ntmprs, int use_stack)
-{
-	/* make_context create a heap context all the time.
-	 * but this variant attempts to create a context on the frame stack are
-	 * inside the processs object pointed to by 'proc' if use_stack is true */
-	return use_stack? make_stack_context(hak, proc, ntmprs): make_context(hak, ntmprs);
 }
 
 static HAK_INLINE hak_oop_context_t reify_context_ref (hak_t* hak, hak_oop_t ctx)
@@ -494,6 +484,7 @@ hak_oop_context_t hak_reifystackcontext (hak_t* hak, hak_stack_context_t* sctx)
 	hak_ooi_t slot_count;
 	hak_ooi_t i;
 
+	/* check if already reified */
 	heap_ctx = sctx->heap_ctx;
 	if ((hak_oop_t)heap_ctx != hak->_nil) return (hak_oop_context_t)heap_ctx;
 
@@ -501,6 +492,7 @@ hak_oop_context_t hak_reifystackcontext (hak_t* hak, hak_stack_context_t* sctx)
 	ctx = make_context(hak, slot_count);
 	if (HAK_UNLIKELY(!ctx)) return HAK_NULL;
 
+	/* cache it */
 	sctx->heap_ctx = (hak_oop_t)ctx;
 
 	/* main fields */
@@ -523,22 +515,10 @@ hak_oop_context_t hak_reifystackcontext (hak_t* hak, hak_stack_context_t* sctx)
 	if (HAK_UNLIKELY(!ctx->mthhome)) return HAK_NULL;
 	/* end of main fields */
 
-	for (i = 0; i < slot_count; i++) ctx->slot[i] = sctx->slot_base[i];
+	for (i = 0; i < slot_count; i++) ctx->slot[i] = sctx->slot[i];
 
 	return ctx;
 }
-#else
-
-#define HAK_USE_STACK_CONTEXT_FOR_FUNCTION 0
-#define HAK_USE_STACK_CONTEXT_FOR_BLOCK 0
-
-static HAK_INLINE hak_oop_context_t make_context_for_activation (hak_t* hak, hak_oop_process_t proc, hak_ooi_t ntmprs, int use_stack)
-{
-	(void)proc;
-	(void)use_stack;
-	return make_context(hak, ntmprs);
-}
-
 #endif
 
 static HAK_INLINE hak_oop_function_t make_function (hak_t* hak, hak_oow_t lfsize, const hak_oob_t* bptr, hak_oow_t blen, hak_dbgi_t* dbgi)
@@ -2198,7 +2178,11 @@ static int prepare_new_context (hak_t* hak, hak_oop_process_t proc, hak_oop_bloc
 
 	/* create a new block context to clone op_blk */
 	hak_pushvolat(hak, (hak_oop_t*)&op_blk);
-	blkctx = make_context_for_activation(hak, proc, fixed_nargs + fblk_nrvars + fblk_nlvars + excess_nargs, HAK_USE_STACK_CONTEXT_FOR_BLOCK);
+#if defined(HAK_ENABLE_STACK_CONTEXT)
+	blkctx = make_stack_context(hak, proc, fixed_nargs + fblk_nrvars + fblk_nlvars + excess_nargs);
+#else
+	blkctx = make_context(hak, fixed_nargs + fblk_nrvars + fblk_nlvars + excess_nargs);
+#endif
 	hak_popvolat(hak);
 	if (HAK_UNLIKELY(!blkctx)) return -1;
 
@@ -2338,7 +2322,11 @@ static int __activate_function (hak_t* hak, hak_oop_function_t op_func, hak_ooi_
 
 	/* create a new block context to clone op_func */
 	hak_pushvolat(hak, (hak_oop_t*)&op_func);
-	functx = make_context_for_activation(hak, hak->processor->active, fixed_nargs + nrvars + nlvars + excess_nargs, HAK_USE_STACK_CONTEXT_FOR_FUNCTION);
+#if defined(HAK_ENABLE_STACK_CONTEXT)
+	functx = make_stack_context(hak, hak->processor->active, fixed_nargs + nrvars + nlvars + excess_nargs);
+#else
+	functx = make_context(hak, fixed_nargs + nrvars + nlvars + excess_nargs);
+#endif
 	hak_popvolat(hak);
 	if (HAK_UNLIKELY(!functx)) return -1;
 
@@ -5436,7 +5424,7 @@ hak_logbfmt(hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncv
 					homectx = hak_reifystackcontext(hak, HAK_CTX_TO_STACK(homectx));
 					hak_popvolat(hak);
 					if (HAK_UNLIKELY(!homectx)) goto oops;
-					hak->active_context = homectx; /* because homectx is reified of hak->active_context) */
+					hak->active_context = homectx; /* because homectx is reified of hak->active_context */
 					hak->processor->active->current_context = homectx;
 				}
 			#endif
