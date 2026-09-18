@@ -1,0 +1,31 @@
+##$include-once "Object.hak"
+
+class[#uncopyable #final #limited #varying] Process: Object(
+	_initial_context
+     _current_context
+     _id
+     _state
+	_sp
+	_st
+	_exsp
+	_exst
+	_clsp
+	_clst
+	_fsp
+	_fst
+	_sched_prev
+	_sched_next
+	_sem_wawit_prev
+	_sem_wait_next
+	_sem
+) {
+
+	## TODO: add many read-only methods
+	fun id() {
+		return self._id
+	}
+
+	fun state() {
+		return self._state
+	}
+}

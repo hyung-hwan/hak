@@ -1,0 +1,36 @@
+##$include-once "Semaphore.hak"
+
+class[#uncopyable] Mutex: Object(
+	_sem
+	_owner	
+) {
+	fun[#ci] new() {
+		self._sem := (Semaphore:forMutex)
+		self._owner := nil
+		return self
+	}
+
+	## TODO: support relay of variable arguments to (fnc args...)
+	##fun critical(fnc args...) {
+	fun critical(fnc) {
+		| p ex r |
+
+		p := (core.active-process)
+
+		## already the owner: just run the body. the outermost critical
+		## is the one that releases, so nesting needs no bookkeeping.
+		if (eqv? p self._owner) { return (fnc) }
+
+		self._sem:wait
+		self._owner := p
+
+		## TODO: update code to use 'finally' if 'finally' is implemented...
+		try { r := (fnc) } catch (e) { ex := e }
+
+		self._owner := nil
+		self._sem:signal
+
+		if (nqv? ex nil) { throw ex }
+		return r
+	}
+}

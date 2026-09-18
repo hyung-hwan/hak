@@ -880,10 +880,12 @@ static HAK_INLINE void gc_ms_scan_stack (hak_t* hak)
 				HAK_ASSERT(hak, ll < (hak_ooi_t)(HAK_OBJ_GET_SIZE(oop) - HAK_PROCESS_NAMED_INSTVARS));
 				for (i = HAK_OOP_TO_SMOOI(proc->exst) + 1; i <= ll; i++) gc_ms_mark_object(hak, proc->slot[i]);
 
+			#if defined(HAK_ENABLE_STACK_CONTEXT)
 				/* frame stack */
 				ll = HAK_OOP_TO_SMOOI(proc->fsp);
 				HAK_ASSERT(hak, ll < (hak_ooi_t)(HAK_OBJ_GET_SIZE(oop) - HAK_PROCESS_NAMED_INSTVARS));
 				for (i = HAK_OOP_TO_SMOOI(proc->clst) + 1; i <= ll; i++) gc_ms_mark_object(hak, proc->slot[i]);
+			#endif
 			}
 			else
 			{

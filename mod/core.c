@@ -584,6 +584,9 @@ static hak_pfinfo_t pfinfos[] =
 
 /* TODO: add more builtin primitives here... */
 	{ "abs",                { HAK_PFBASE_FUNC, hak_pf_number_abs,             1,  1 } },
+
+	{ "active-process",     { HAK_PFBASE_FUNC, hak_pf_process_current,        0,  0 } },
+
 	{ "basicAt",            { HAK_PFBASE_FUNC, pf_core_basic_at,              2,  2 } },
 	{ "basicAtPut",         { HAK_PFBASE_FUNC, pf_core_basic_at_put,          3,  3 } },
 	{ "basicNew",           { HAK_PFBASE_FUNC, pf_core_basic_new,             1,  2 } },
@@ -604,8 +607,6 @@ static hak_pfinfo_t pfinfos[] =
 	{ "classOf",            { HAK_PFBASE_FUNC, pf_core_class_of,              1,  1 } },
 	{ "classRespondsTo",    { HAK_PFBASE_FUNC, pf_core_class_responds_to,     2,  2 } },
 	{ "cons",               { HAK_PFBASE_FUNC, pf_core_cons,                  2,  2 } },
-
-	{ "current-process",    { HAK_PFBASE_FUNC, hak_pf_process_current,        0,  0 } },
 
 	{ "eqk?",               { HAK_PFBASE_FUNC, hak_pf_eqk,                    2,  2 } },
 	{ "eql?",               { HAK_PFBASE_FUNC, hak_pf_eql,                    2,  2 } },

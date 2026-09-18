@@ -826,6 +826,8 @@ struct hak_process_t
 	hak_oop_t         clsp; /* class stack pointer */
 	hak_oop_t         clst; /* class stack  top */
 
+	/* frame stack store the context objects when the stack context feature is enabled.
+	 * if both fsp and fst are to clst, the stack context feature is disabled */
 	hak_oop_t         fsp;  /* frame stack pointer */
 	hak_oop_t         fst;  /* frame stack top */
 

@@ -35,12 +35,13 @@
 static struct voca_t
 {
 	hak_oow_t len;
-	hak_ooch_t str[11];
+	hak_ooch_t str[15];
 } vocas[] =
 {
 /* TODO: change $include and $pragma to #\include or #\pragma or use some other prefix like #^ -> $ to use really for variable reference or something...
  * TODO: change #\ to something else... */
 	{  8, { '$','i','n','c','l','u','d','e'                               } },
+	{ 13, { '$','i','n','c','l','u','d','e','-','o','n','c','e'           } },
 	{  7, { '$','p','r','a','g','m','a'                                   } },
 
 	{ 11, { '#','\\','b','a','c','k','s','p','a','c','e'                  } },
@@ -110,6 +111,7 @@ static struct voca_t
 enum voca_id_t
 {
 	VOCA_INCLUDE,
+	VOCA_INCLUDE_ONCE,
 	VOCA_PRAGMA,
 
 	VOCA_CHAR_BACKSPACE,
@@ -398,6 +400,11 @@ static int get_directive_token_type (hak_t* hak, hak_tok_type_t* tok_type)
 	if (does_token_name_match(hak, VOCA_INCLUDE))
 	{
 		*tok_type = HAK_TOK_INCLUDE;
+		return 0;
+	}
+	else if (does_token_name_match(hak, VOCA_INCLUDE_ONCE))
+	{
+		*tok_type = HAK_TOK_INCLUDE_ONCE;
 		return 0;
 	}
 	else if (does_token_name_match(hak, VOCA_PRAGMA))
@@ -1440,11 +1447,12 @@ static void init_feed (hak_t* hak)
 
 /* ------------------------------------------------------------------------ */
 
-static int feed_begin_include (hak_t* hak)
+static int feed_begin_include (hak_t* hak, int once)
 {
 	hak_io_cciarg_t* arg;
 	const hak_ooch_t* io_name;
 
+/* TODO: handle once... */
 	io_name = add_sr_name(hak, TOKEN_NAME(hak));
 	if (HAK_UNLIKELY(!io_name))
 	{
@@ -1761,12 +1769,12 @@ static int feed_process_token (hak_t* hak)
 			goto oops;
 		}
 
-		frd->expect_include_file = 0;
 
 		/* indicate that the file inclusion should be performed soon.
 		 * don't perform actual inclusion here so that the return value of
 		 * feed_char() advances the input pointers properly. */
-		frd->do_include_file = 1;
+		frd->do_include_file = frd->expect_include_file;
+		frd->expect_include_file = 0;
 
 		goto ok;
 	}
@@ -1805,6 +1813,10 @@ static int feed_process_token (hak_t* hak)
 			/* TODO: should i limit where #include can be specified?
 			 *       disallow it inside a list literal or an array literal? */
 			frd->expect_include_file = 1;
+			goto ok;
+
+		case HAK_TOK_INCLUDE_ONCE:
+			frd->expect_include_file = 2;
 			goto ok;
 
 		case HAK_TOK_PRAGMA:
@@ -3916,8 +3928,9 @@ static int feed_from_includee (hak_t* hak)
 			 * directive, sets hak->c->feed.rd.do_include_file to 1 instead of attepmting
 			 * to include the file. the file inclusion is attempted here after the return
 			 * value of feed_char() is used to advance the hak->c->curinp->b.pos pointer. */
+			int incmod = hak->c->feed.rd.do_include_file;
 			hak->c->feed.rd.do_include_file = 0; /* clear this regardless of inclusion result */
-			if (feed_begin_include(hak) <= -1) goto oops;
+			if (feed_begin_include(hak, incmod == 2) <= -1) goto oops;
 			curinp = hak->c->curinp;
 		}
 	}
@@ -4012,8 +4025,9 @@ int hak_feed (hak_t* hak, const hak_ooch_t* data, hak_oow_t len)
 
 			if (hak->c->feed.rd.do_include_file)
 			{
+				int incmod = hak->c->feed.rd.do_include_file;
 				hak->c->feed.rd.do_include_file = 0; /* done regardless of inclusion result */
-				if (feed_begin_include(hak) <= -1) goto oops;
+				if (feed_begin_include(hak, incmod == 2) <= -1) goto oops;
 			}
 
 			if (hak->c->curinp && hak->c->curinp != &hak->c->cci_arg && feed_from_includee(hak) <= -1)

@@ -559,12 +559,16 @@ check_SCRIPTS = \
 	cons-01.hak \
 	dic-01.hak \
 	feed-01.hak \
+	fork-01.hak \
+	fork-02.hak \
 	fun-01.hak \
 	hnd-01.hak \
 	hnd-02.hak \
 	hnd-03.hak \
 	insta-01.hak \
 	insta-02.hak \
+	mutex-01.hak \
+	mutex-02.hak \
 	mux-01.hak \
 	mux-02.hak \
 	mux-03.hak \

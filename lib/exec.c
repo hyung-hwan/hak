@@ -389,6 +389,7 @@ static HAK_INLINE hak_oop_context_t make_context (hak_t* hak, hak_ooi_t ntmprs)
 	hak_oop_context_t ctx;
 
 	HAK_ASSERT(hak, ntmprs >= 0);
+
 	/*return (hak_oop_context_t)hak_allocoopobj(hak, HAK_BRAND_CONTEXT, HAK_CONTEXT_NAMED_INSTVARS + (hak_oow_t)ntmprs);*/
 	ctx = (hak_oop_context_t)hak_instantiate(hak, hak->c_block_context, HAK_NULL, ntmprs);
 
@@ -404,12 +405,10 @@ static HAK_INLINE hak_oop_context_t make_context (hak_t* hak, hak_ooi_t ntmprs)
 #define HAK_USE_STACK_CONTEXT_FOR_FUNCTION 1
 #define HAK_USE_STACK_CONTEXT_FOR_BLOCK 1
 
-static HAK_INLINE hak_oop_t* alloc_frame_slots (hak_t* hak, hak_oow_t nslots)
+static HAK_INLINE hak_oop_t* alloc_frame_slots (hak_t* hak, hak_oop_process_t proc, hak_oow_t nslots)
 {
-	hak_oop_process_t proc;
 	hak_ooi_t sp, st;
 
-	proc = hak->processor->active;
 	HAK_ASSERT(hak, proc != hak->nil_process);
 
 	sp = HAK_OOP_TO_SMOOI(proc->fsp);
@@ -424,7 +423,7 @@ static HAK_INLINE hak_oop_t* alloc_frame_slots (hak_t* hak, hak_oow_t nslots)
 	return &proc->slot[sp + 1];
 }
 
-static HAK_INLINE hak_oop_context_t make_stack_context (hak_t* hak, hak_ooi_t ntmprs)
+static HAK_INLINE hak_oop_context_t make_stack_context (hak_t* hak, hak_oop_process_t proc, hak_ooi_t ntmprs)
 {
 	hak_oop_t* base;
 	hak_stack_context_t* sctx;
@@ -433,8 +432,8 @@ static HAK_INLINE hak_oop_context_t make_stack_context (hak_t* hak, hak_ooi_t nt
 
 	HAK_ASSERT(hak, ntmprs >= 0);
 
-	frame_base = HAK_OOP_TO_SMOOI(hak->processor->active->fsp);
-	base = alloc_frame_slots(hak, HAK_STACK_CONTEXT_NAMED_SLOTS + (hak_oow_t)ntmprs);
+	frame_base = HAK_OOP_TO_SMOOI(proc->fsp);
+	base = alloc_frame_slots(hak, proc, HAK_STACK_CONTEXT_NAMED_SLOTS + (hak_oow_t)ntmprs);
 	if (HAK_UNLIKELY(!base)) return HAK_NULL;
 
 	sctx = (hak_stack_context_t*)base;
@@ -464,23 +463,19 @@ static HAK_INLINE hak_oop_context_t make_stack_context (hak_t* hak, hak_ooi_t nt
 	return (hak_oop_context_t)HAK_SMPTR_TO_OOP(sctx);
 }
 
-static HAK_INLINE hak_oop_context_t make_context_for_activation (hak_t* hak, hak_ooi_t ntmprs, int use_stack)
+static HAK_INLINE hak_oop_context_t make_context_for_activation (hak_t* hak, hak_oop_process_t proc, hak_ooi_t ntmprs, int use_stack)
 {
-	if (use_stack)
-	{
-		hak_oop_context_t ctx = make_stack_context(hak, ntmprs);
-		if (HAK_UNLIKELY(!ctx)) return HAK_NULL;
-		return ctx;
-	}
-
-	return make_context(hak, ntmprs);
+	/* make_context create a heap context all the time.
+	 * but this variant attempts to create a context on the frame stack are
+	 * inside the processs object pointed to by 'proc' if use_stack is true */
+	return use_stack? make_stack_context(hak, proc, ntmprs): make_context(hak, ntmprs);
 }
 
 static HAK_INLINE hak_oop_context_t reify_context_ref (hak_t* hak, hak_oop_t ctx)
 {
 	if ((hak_oop_t)ctx == hak->_nil) return (hak_oop_context_t)ctx;
 	if (!HAK_CTX_IS_STACK(ctx)) return (hak_oop_context_t)ctx;
-	return hak_reify_stack_context(hak, HAK_CTX_TO_STACK(ctx));
+	return hak_reifystackcontext(hak, HAK_CTX_TO_STACK(ctx));
 }
 
 static HAK_INLINE void release_stack_context (hak_t* hak, hak_oop_t ctx)
@@ -492,7 +487,7 @@ static HAK_INLINE void release_stack_context (hak_t* hak, hak_oop_t ctx)
 	}
 }
 
-hak_oop_context_t hak_reify_stack_context (hak_t* hak, hak_stack_context_t* sctx)
+hak_oop_context_t hak_reifystackcontext (hak_t* hak, hak_stack_context_t* sctx)
 {
 	hak_oop_context_t ctx;
 	hak_oop_t heap_ctx;
@@ -537,17 +532,13 @@ hak_oop_context_t hak_reify_stack_context (hak_t* hak, hak_stack_context_t* sctx
 #define HAK_USE_STACK_CONTEXT_FOR_FUNCTION 0
 #define HAK_USE_STACK_CONTEXT_FOR_BLOCK 0
 
-static HAK_INLINE hak_oop_context_t make_context_for_activation (hak_t* hak, hak_ooi_t ntmprs, int use_stack)
+static HAK_INLINE hak_oop_context_t make_context_for_activation (hak_t* hak, hak_oop_process_t proc, hak_ooi_t ntmprs, int use_stack)
 {
+	(void)proc;
 	(void)use_stack;
 	return make_context(hak, ntmprs);
 }
 
-static HAK_INLINE void release_stack_context (hak_t* hak, hak_oop_t ctx)
-{
-	(void)hak;
-	(void)ctx;
-}
 #endif
 
 static HAK_INLINE hak_oop_function_t make_function (hak_t* hak, hak_oow_t lfsize, const hak_oob_t* bptr, hak_oow_t blen, hak_dbgi_t* dbgi)
@@ -699,7 +690,7 @@ static HAK_INLINE void free_pid (hak_t* hak, hak_oop_process_t proc)
 	hak->proc_map_used--;
 }
 
-static hak_oop_process_t make_process (hak_t* hak, hak_oop_context_t c)
+static hak_oop_process_t make_process (hak_t* hak, hak_oop_context_t ctx)
 {
 	hak_oop_process_t proc;
 	hak_oow_t stksize, exstksize, clstksize, fstksize, maxsize;
@@ -734,17 +725,20 @@ static hak_oop_process_t make_process (hak_t* hak, hak_oop_context_t c)
 	if (clstksize > maxsize) clstksize = maxsize;
 	else if (clstksize < HAK_MIN_CLSTK_SIZE) clstksize = HAK_MIN_CLSTK_SIZE;
 
+#if defined(HAK_ENABLE_STACK_CONTEXT)
 	if (fstksize > maxsize) fstksize = maxsize;
 	else if (fstksize < HAK_MIN_FSTK_SIZE) fstksize = HAK_MIN_FSTK_SIZE;
+#else
+	fstksize = 0;
+#endif
 
-	hak_pushvolat(hak, (hak_oop_t*)&c);
+	hak_pushvolat(hak, (hak_oop_t*)&ctx);
 	proc = (hak_oop_process_t)hak_instantiate(hak, hak->c_process, HAK_NULL, stksize + exstksize + clstksize + fstksize);
 	hak_popvolat(hak);
 	if (HAK_UNLIKELY(!proc))
 	{
 		const hak_ooch_t* oldmsg = hak_backuperrmsg(hak);
-		hak_seterrbfmt(hak, hak->errnum,
-			"unable to instantiate %O - %js", hak->c_process->name, oldmsg);
+		hak_seterrbfmt(hak, hak->errnum, "unable to instantiate %O - %js", hak->c_process->name, oldmsg);
 		return HAK_NULL;
 	}
 
@@ -754,8 +748,11 @@ static hak_oop_process_t make_process (hak_t* hak, hak_oop_context_t c)
 	/* assign a process id to the process */
 	alloc_pid(hak, proc);
 
-	proc->initial_context = c;
-	proc->current_context = c;
+	/* [NIL CONTEXT]
+	 * if you pass hak->_nil for ctx since you don't have the context ready,
+	 * you must patch it after this function is over */
+	proc->initial_context = ctx;
+	proc->current_context = proc->initial_context;
 
 	/* stack */
 	proc->sp = HAK_SMOOI_TO_OOP(-1); /* no item */
@@ -772,8 +769,14 @@ static hak_oop_process_t make_process (hak_t* hak, hak_oop_context_t c)
 	/* frame stack */
 	proc->fsp = proc->clst; /* no item pushed yet */
 	proc->fst = HAK_SMOOI_TO_OOP(stksize + exstksize + clstksize + fstksize - 1);
+	/* the frame stack is not used when HAK_ENABLE_STACK_CONTEXT not defined.
+	 * but initialize it without the guard. fstksize is 0 anyways. */
 
-	HAK_ASSERT(hak, (hak_oop_t)HAK_CTX_GET_SENDER(hak, c) == hak->_nil);
+	/* [NIL CONTEXT]
+	 * this function allows hak->_nil for ctx but it puts the process object
+	 * in inconsistent state. the caller must patch the initial_context and
+	 * current_context fields as soon as possible */
+	HAK_ASSERT(hak, (hak_oop_t)ctx == hak->_nil || (hak_oop_t)HAK_CTX_GET_SENDER(hak, ctx) == hak->_nil);
 
 #if defined(HAK_DEBUG_VM_PROCESSOR)
 	HAK_LOG2(hak, HAK_LOG_IC | HAK_LOG_DEBUG, "Processor - process[%zd] **CREATED**->%hs\n", HAK_OOP_TO_SMOOI(proc->id), proc_state_to_string(HAK_OOP_TO_SMOOI(proc->state)));
@@ -1106,7 +1109,8 @@ static HAK_INLINE void reset_process_stack_pointers (hak_t* hak, hak_oop_process
 
 	proc->sp = HAK_SMOOI_TO_OOP(-1); /* invalidate the process stack */
 	proc->exsp = proc->st;
-	proc->clsp = proc->clst;
+	proc->clsp = proc->exst;
+	proc->fsp = proc->clst;
 }
 
 static void terminate_process (hak_t* hak, hak_oop_process_t proc)
@@ -2153,7 +2157,7 @@ void hak_releaseiohandle (hak_t* hak, hak_ooi_t io_handle)
 
 /* ------------------------------------------------------------------------- */
 
-static int prepare_new_context (hak_t* hak, hak_oop_block_t op_blk, hak_ooi_t nargs, int nargs_offset, hak_ooi_t req_nrvars, int copy_args, int is_msgsend, hak_ooi_t msg_ivaroff, hak_oop_context_t* pnewctx)
+static int prepare_new_context (hak_t* hak, hak_oop_process_t proc, hak_oop_block_t op_blk, hak_ooi_t nargs, int nargs_offset, hak_ooi_t req_nrvars, int copy_args, int is_msgsend, hak_ooi_t msg_ivaroff, hak_oop_context_t* pnewctx)
 {
 	/* prepare a new block context for activation.
 	 * the passed block context becomes the base for a new block context. */
@@ -2194,7 +2198,7 @@ static int prepare_new_context (hak_t* hak, hak_oop_block_t op_blk, hak_ooi_t na
 
 	/* create a new block context to clone op_blk */
 	hak_pushvolat(hak, (hak_oop_t*)&op_blk);
-	blkctx = make_context_for_activation(hak, fixed_nargs + fblk_nrvars + fblk_nlvars + excess_nargs, HAK_USE_STACK_CONTEXT_FOR_BLOCK);
+	blkctx = make_context_for_activation(hak, proc, fixed_nargs + fblk_nrvars + fblk_nlvars + excess_nargs, HAK_USE_STACK_CONTEXT_FOR_BLOCK);
 	hak_popvolat(hak);
 	if (HAK_UNLIKELY(!blkctx)) return -1;
 
@@ -2262,6 +2266,7 @@ static HAK_INLINE int __activate_block (hak_t* hak, hak_oop_block_t op_blk, hak_
 
 	x = prepare_new_context(
 		hak,
+		hak->processor->active,
 		op_blk,
 		nargs, /* nargs */
 		0, /* nargs_offset */
@@ -2333,7 +2338,7 @@ static int __activate_function (hak_t* hak, hak_oop_function_t op_func, hak_ooi_
 
 	/* create a new block context to clone op_func */
 	hak_pushvolat(hak, (hak_oop_t*)&op_func);
-	functx = make_context_for_activation(hak, fixed_nargs + nrvars + nlvars + excess_nargs, HAK_USE_STACK_CONTEXT_FOR_FUNCTION);
+	functx = make_context_for_activation(hak, hak->processor->active, fixed_nargs + nrvars + nlvars + excess_nargs, HAK_USE_STACK_CONTEXT_FOR_FUNCTION);
 	hak_popvolat(hak);
 	if (HAK_UNLIKELY(!functx)) return -1;
 
@@ -2721,9 +2726,11 @@ static HAK_INLINE int do_throw (hak_t* hak, hak_oop_t val, hak_ooi_t ip)
 
 	/* the below code is similar to do_return_from_block() */
 	hak->ip = -1; /* mark context dead. saved into hak->active_context->ip in SWITCH_ACTIVE_CONTEXT */
+
+#if defined(HAK_ENABLE_STACK_CONTEXT)
+	/* rewind the context stack */
 	{
 		hak_oop_context_t xctx;
-
 		xctx = hak->active_context;
 		while ((hak_oop_t)xctx != (hak_oop_t)catch_ctx && (hak_oop_t)xctx != hak->_nil)
 		{
@@ -2731,6 +2738,8 @@ static HAK_INLINE int do_throw (hak_t* hak, hak_oop_t val, hak_ooi_t ip)
 			xctx = (hak_oop_context_t)HAK_CTX_GET_SENDER(hak, xctx);
 		}
 	}
+#endif
+
 	SWITCH_ACTIVE_CONTEXT(hak, catch_ctx);
 	hak->ip = catch_ip; /* override the instruction pointer */
 
@@ -3436,7 +3445,9 @@ static HAK_INLINE int do_return_from_block (hak_t* hak)
 		/* it is a normal block return as the active block context
 		 * is not the initial context of a process */
 		hak->ip = -1; /* mark context dead. saved into hak->active_context->ip in SWITCH_ACTIVE_CONTEXT */
+	#if defined(HAK_ENABLE_STACK_CONTEXT)
 		release_stack_context(hak, (hak_oop_t)hak->active_context);
+	#endif
 		SWITCH_ACTIVE_CONTEXT(hak, (hak_oop_context_t)HAK_CTX_GET_SENDER(hak, hak->active_context));
 		return 0; /* normal return */
 	}
@@ -3602,7 +3613,9 @@ static HAK_INLINE int do_return_from_home (hak_t* hak, hak_oop_t return_value, h
 		while ((hak_oop_t)hak->active_context != (hak_oop_t)home)
 		{
 			hak->ip = -1; /* mark context dead. saved into hak->active_context->ip in SWITCH_ACTIVE_CONTEXT */
+		#if defined(HAK_ENABLE_STACK_CONTEXT)
 			release_stack_context(hak, (hak_oop_t)hak->active_context);
+		#endif
 			SWITCH_ACTIVE_CONTEXT(hak, (hak_oop_context_t)HAK_CTX_GET_SENDER(hak, hak->active_context));
 		}
 
@@ -3631,7 +3644,9 @@ static HAK_INLINE int do_return_from_home (hak_t* hak, hak_oop_t return_value, h
 
 		HAK_ASSERT(hak, (hak_oop_t)HAK_CTX_GET_SENDER(hak, hak->active_context) == (hak_oop_t)sender);
 		hak->ip = -1; /* mark context dead. saved into hak->active_context->ip in SWITCH_ACTIVE_CONTEXT */
+	#if defined(HAK_ENABLE_STACK_CONTEXT)
 		release_stack_context(hak, (hak_oop_t)hak->active_context);
+	#endif
 		SWITCH_ACTIVE_CONTEXT(hak, (hak_oop_context_t)HAK_CTX_GET_SENDER(hak, hak->active_context));
 		HAK_STACK_PUSH(hak, return_value);
 	}
@@ -4944,6 +4959,7 @@ hak_logbfmt(hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncv
 
 			case HAK_CODE_PUSH_CONTEXT:
 				LOG_INST_0(hak, "push_context");
+/* TODO: error check? on HAK_CTX_TO_OOP? */
 				HAK_STACK_PUSH(hak, (hak_oop_t)HAK_CTX_TO_OOP(hak, hak->active_context));
 				break;
 
@@ -5364,7 +5380,7 @@ hak_logbfmt(hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncv
 				if (HAK_CTX_IS_STACK(homectx))
 				{
 					hak_pushvolat(hak, (hak_oop_t*)&funcobj);
-					homectx = hak_reify_stack_context(hak, HAK_CTX_TO_STACK(homectx));
+					homectx = hak_reifystackcontext(hak, HAK_CTX_TO_STACK(homectx));
 					hak_popvolat(hak);
 					if (HAK_UNLIKELY(!homectx)) goto oops;
 					hak->active_context = homectx; /* because homectx is reified of hak->active_context */
@@ -5417,7 +5433,7 @@ hak_logbfmt(hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncv
 				if (HAK_CTX_IS_STACK(homectx))
 				{
 					hak_pushvolat(hak, (hak_oop_t*)&blkobj);
-					homectx = hak_reify_stack_context(hak, HAK_CTX_TO_STACK(homectx));
+					homectx = hak_reifystackcontext(hak, HAK_CTX_TO_STACK(homectx));
 					hak_popvolat(hak);
 					if (HAK_UNLIKELY(!homectx)) goto oops;
 					hak->active_context = homectx; /* because homectx is reified of hak->active_context) */
@@ -5596,6 +5612,46 @@ hak_pfrc_t hak_pf_process_fork (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		return HAK_PF_FAILURE;
 	}
 
+#if defined(HAK_ENABLE_STACK_CONTEXT)
+	/* a process requires a context to start with but create a new process first
+	 * to have a new context on the frame stack of the new process */
+	newprc = make_process(hak, (hak_oop_context_t)hak->_nil);
+	if (HAK_UNLIKELY(!newprc)) return HAK_PF_FAILURE;
+
+	hak_pushvolat(hak, (hak_oop_t*)&newprc);
+	x = prepare_new_context(
+		hak,
+		newprc,
+		blk,
+		nargs, /* nargs */
+		1, /* nargs_offset */
+		0, /* number of return variables expected */
+		1, /* copy_args */
+		0, /* is_msgsend */
+		0, /* msg_ivaroff */
+		&newctx);
+	hak_popvolat(hak);
+	if (HAK_UNLIKELY(x <= -1))
+	{
+		/* is it safe to terminate the process which doesn't have a proper context value
+		 * in initial_context and current_context? */
+		terminate_process(hak, newprc);
+		return HAK_PF_FAILURE;
+	}
+
+	HAK_ASSERT(hak, (hak_oop_t)HAK_CTX_GET_SENDER(hak, newctx) == hak->_nil);
+	HAK_CTX_SET_HOME(hak, newctx, (hak_oop_t)hak->_nil); /* the new context is the initial context in the new process. so reset it to nil */
+
+	HAK_ASSERT(hak, newprc->initial_context == (hak_oop_t)hak->_nil);
+	HAK_ASSERT(hak, newprc->initial_context == newprc->current_context);
+	newprc->initial_context = newctx;
+	newprc->current_context = newctx;
+#else
+	/* when stack context is disabled, create the context before
+	 * the process. so we put the process in consitent state
+	 * upon creation and also avoid the chance of making the process
+	 * stuck in some suspended state. */
+
 	/* (defun x(a b) ...)
 	 * (fork x 1 2)
 	 * among three arguments to fork, the first is the function block.
@@ -5604,6 +5660,7 @@ hak_pfrc_t hak_pf_process_fork (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	 */
 	x = prepare_new_context(
 		hak,
+		hak->processor->active,
 		blk,
 		nargs, /* nargs */
 		1, /* nargs_offset */
@@ -5621,6 +5678,7 @@ hak_pfrc_t hak_pf_process_fork (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	newprc = make_process(hak, newctx);
 	hak_popvolat(hak);
 	if (HAK_UNLIKELY(!newprc)) return HAK_PF_FAILURE;
+#endif
 
 	chain_into_processor(hak, newprc, HAK_PROCESS_STATE_RUNNABLE);
 
@@ -5642,7 +5700,7 @@ hak_pfrc_t hak_pf_process_resume (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	/* [SPECIAL CASE]
 	 * resume_process changes the the active process.
 	 * calling this after resume_process() pollutes a wrong stack. place it here */
-	HAK_STACK_SETRET(hak, nargs, prc);
+	HAK_STACK_SETRET(hak, nargs, (hak_oop_t)prc);
 
 	resume_process(hak, prc);
 	return HAK_PF_SUCCESS;
@@ -5669,7 +5727,7 @@ hak_pfrc_t hak_pf_process_suspend (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	/* [SPECIAL CASE]
 	 * suspend_process changes the the active process.
 	 * calling this after suspend_process() pollutes a wrong stack. place it here */
-	HAK_STACK_SETRET(hak, nargs, prc);
+	HAK_STACK_SETRET(hak, nargs, (hak_oop_t)prc);
 
 	suspend_process(hak, prc);
 	return HAK_PF_SUCCESS;
@@ -5696,7 +5754,7 @@ hak_pfrc_t hak_pf_process_terminate (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs
 	/* [SPECIAL CASE]
 	 * terminate_process changes the the active process.
 	 * calling this after terminate_process() pollutes a wrong stack. place it here */
-	HAK_STACK_SETRET(hak, nargs, prc);
+	HAK_STACK_SETRET(hak, nargs, (hak_oop_t)prc);
 
 	terminate_process(hak, prc);
 	return  HAK_PF_SUCCESS;
@@ -5742,7 +5800,7 @@ hak_pfrc_t hak_pf_semaphore_new (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	if (nargs >= 1)
 	{
 		hak_oop_t tmp;
-		tmp = (hak_oop_semaphore_t)HAK_STACK_GETARG(hak, nargs, 0);
+		tmp = HAK_STACK_GETARG(hak, nargs, 0);
 		if (!HAK_OOP_IS_SMOOI(tmp))
 		{
 			hak_seterrbfmt(hak, HAK_EINVAL, "invalid semaphore count - %O", tmp);

@@ -1,8 +1,11 @@
 $include "Object.hak"
 $include "Magnitude.hak"
 $include "Collection.hak"
-$include "Semaphore.hak"
 
+$include "Semaphore.hak"
+$include "Mutex.hak"
+
+$include "Process.hak"
 ##$include "System.hak"
 
 ## ---------------------------------------------------------------------------------

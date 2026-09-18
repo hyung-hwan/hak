@@ -1,0 +1,95 @@
+## a semaphore used as a mutex must give mutual exclusion across coprocesses.
+##
+## Semaphore:forMutex is (core.sem-new 1) - a counting semaphore that starts at
+## one, so the first waiter takes it and every other one blocks until the
+## holder signals. What makes this worth a test is that the holder gives up the
+## CPU inside the critical section: core.yield lets the other processes run
+## while the lock is held, which is exactly the window a broken mutex would
+## leak through.
+##
+## Both phases run the same worker. The only difference is the semaphore's
+## initial count, so a failure cannot be blamed on the two paths differing:
+##
+##   count 4 -> four processes may hold it at once, so the overlap counter
+##              must actually see them overlapping. this is the control: if it
+##              reported 1, the workers would not be interleaving at all and
+##              the mutex phase below would pass for the wrong reason.
+##   count 1 -> a mutex. the overlap counter must never exceed one.
+##
+## [NOTE] the spin counts are deliberately small - enough interleaving to
+## expose an overlap, without making the test slow. What matters is that the
+## holder yields at all, not how often.
+
+$include "../src/kernel.hak"
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+WORKERS := 4
+SPINS   := 20
+
+inside := 0   ## processes inside the critical section right now
+maxin  := 0   ## high-water mark of the above
+rounds := 0   ## completed critical sections
+done   := (Semaphore:new)
+
+fun worker(lock n) {
+	| i |
+	lock:wait                       ## lock
+
+	inside := (+ inside 1)
+	if (> inside maxin) { maxin := inside }
+
+	## hold the lock while yielding, so any other process that can enter will
+	i := 0
+	while (< i n) {
+		i := (+ i 1)
+		core.yield
+	}
+
+	inside := (- inside 1)
+	rounds := (+ rounds 1)
+	lock:signal                     ## unlock
+	done:signal
+}
+
+fun waitall(n) {
+	| i |
+	i := 0
+	while (< i n) {
+		done:wait
+		i := (+ i 1)
+	}
+}
+
+fun spawn(lock) {
+	| i |
+	i := 0
+	while (< i WORKERS) {
+		core.fork worker lock SPINS
+		i := (+ i 1)
+	}
+	waitall WORKERS
+}
+
+## --- control: a count of WORKERS lets everyone in at once ---
+inside := 0
+maxin  := 0
+rounds := 0
+spawn (core.sem-new WORKERS)
+
+chk (= rounds WORKERS) "every process finishes when the semaphore admits them all"
+chk (= inside 0) "the occupancy counter is balanced afterwards"
+chk (> maxin 1) "the processes really do interleave, so an overlap is detectable"
+
+## --- the mutex proper ---
+inside := 0
+maxin  := 0
+rounds := 0
+spawn (Semaphore:forMutex)
+
+chk (= rounds WORKERS) "every process finishes through the mutex too"
+chk (= inside 0) "the occupancy counter is balanced afterwards"
+chk (= maxin 1) "only one process is ever inside the critical section"

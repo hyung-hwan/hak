@@ -1,0 +1,74 @@
+## fork must not leak a frame in the CALLER's frame stack.
+##
+## A stack context is carved out of a process's frame stack by alloc_frame_slots
+## bumping that process's fsp, and it is popped again by release_stack_context
+## when the owning process returns through it. fork has to build a context for
+## the process it is creating, and it used to allocate that context out of the
+## CALLER's frame stack. The caller never returns through it, so nothing ever
+## popped it: every fork permanently consumed a frame of the forking process.
+##
+## That is the same one-line defect t/fork-01.hak covers, but it shows up as a
+## completely different symptom, so it is worth pinning separately. fork-01
+## catches the dangling context (a segfault once the parent is collected); this
+## one catches the slow exhaustion, which is what a long-lived process that
+## forks in a loop - a server accepting connections, say - would actually hit.
+## Neither symptom implies the other on inspection.
+##
+## Sizing: one leaked context is HAK_STACK_CONTEXT_NAMED_SLOTS (15) slots plus
+## the block's temporaries, and the frame stack is HAK_DFL_PROCSTK_SIZE slots
+## (8192 by default, or the HAK_MIN_FSTK_SIZE floor of 1024 under HAK_SMALL_
+## MEMORY_FOOTPRINT). So the old behaviour ran out after roughly 546 forks on a
+## default build and far sooner on a small one. 600 clears both. The count only
+## has to sit above the threshold and never needs retuning, because a correct
+## fork does not grow the caller's frame stack at all - measured flat at 5000.
+##
+## [NOTE] the loop is inside a function on purpose. The leak is charged to the
+## process running it, so that process has to stay alive across all 600 forks
+## for the frames to pile up.
+
+$include "../src/kernel.hak"
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+FORKS := 600
+
+forked := 0
+failed := 0
+ran    := 0
+done   := (Semaphore:new)
+
+fun noop() {
+	ran := (+ ran 1)
+	done:signal
+}
+
+## catch rather than let the overflow abort the script, so a regression is
+## reported as a failed assertion instead of an unhandled exception
+fun spawner() {
+	| i |
+	i := 0
+	while (< i FORKS) {
+		try { core.fork noop ; forked := (+ forked 1) } catch (e) { failed := (+ failed 1) }
+		i := (+ i 1)
+	}
+}
+
+fun waitall(n) {
+	| i |
+	i := 0
+	while (< i n) {
+		done:wait
+		i := (+ i 1)
+	}
+}
+
+spawner
+
+chk (= failed 0) "600 forks from one function all succeed"
+chk (= forked FORKS) "every fork answered a process"
+
+waitall forked
+chk (= ran FORKS) "all 600 forked processes actually ran"

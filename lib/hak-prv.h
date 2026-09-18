@@ -48,7 +48,9 @@
 /* enable floating-pointer number support in the basic formatting functions */
 #define HAK_ENABLE_FLTFMT
 
+#if !defined(HAK_DISABLE_STACK_CONTEXT)
 #define HAK_ENABLE_STACK_CONTEXT
+#endif
 
 #if defined(HAK_ENABLE_STACK_CONTEXT)
 
@@ -84,7 +86,7 @@ struct hak_stack_context_t
 extern "C" {
 #endif
 
-hak_oop_context_t hak_reify_stack_context (hak_t* hak, hak_stack_context_t* sctx);
+hak_oop_context_t hak_reifystackcontext (hak_t* hak, hak_stack_context_t* sctx);
 
 #if defined(__cplusplus)
 }
@@ -92,7 +94,7 @@ hak_oop_context_t hak_reify_stack_context (hak_t* hak, hak_stack_context_t* sctx
 
 #define HAK_CTX_IS_STACK(ctx) (HAK_OOP_IS_SMPTR(ctx))
 #define HAK_CTX_TO_STACK(ctx) ((hak_stack_context_t*)HAK_OOP_TO_SMPTR(ctx))
-#define HAK_CTX_TO_OOP(hak, ctx) (HAK_CTX_IS_STACK(ctx)? hak_reify_stack_context((hak), HAK_CTX_TO_STACK(ctx)): (hak_oop_context_t)(ctx))
+#define HAK_CTX_TO_OOP(hak, ctx) (HAK_CTX_IS_STACK(ctx)? hak_reifystackcontext((hak), HAK_CTX_TO_STACK(ctx)): (hak_oop_context_t)(ctx))
 
 #if 0
 #define HAK_CTX_SLOT(hak, ctx) (HAK_CTX_IS_STACK(ctx)? (hak_oop_t*)HAK_OOP_TO_SMPTR(HAK_CTX_TO_STACK(ctx)->slot_base) : ((hak_oop_context_t)(ctx))->slot)
@@ -517,6 +519,7 @@ enum hak_tok_type_t
 	HAK_TOK_EOL,       /* end of line */
 
 	HAK_TOK_INCLUDE,
+	HAK_TOK_INCLUDE_ONCE,
 	HAK_TOK_PRAGMA
 };
 typedef enum hak_tok_type_t hak_tok_type_t;

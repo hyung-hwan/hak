@@ -1,0 +1,73 @@
+## fork must build the new process's initial context in the NEW process.
+##
+## A context normally lives on the frame stack of the process that owns it.
+## fork has to create one before the new process runs, and it used to carve it
+## out of the CALLER's frame stack instead of the callee's. Nothing goes wrong
+## while the caller is alive, so this is only observable once the caller has
+## terminated and its process object has been collected: the child is then left
+## with initial_context/current_context pointing into freed memory.
+##
+## Two things below are what make that observable, and neither is incidental:
+##
+##   - the main process forks and then simply ENDS. It does not wait for the
+##     workers. HAK_TRAIT_AWAIT_PROCS keeps the vm running the children after
+##     the main process is gone, so the creator really is dead and collected
+##     while its children are still running.
+##
+##   - each worker builds a block literal INSIDE itself and runs it. MAKE_BLOCK
+##     reifies the home context, which is the dereference that reads the freed
+##     stack context. Without a block literal the dangling pointer is merely
+##     held, not followed.
+##
+## So the test is the run itself: reaching the OK lines means the children
+## outlived their creator and still found their own contexts. Against the old
+## behaviour this segfaults instead, and run.sh reports the non-zero exit.
+##
+## [NOTE] keep this file free of anything that is not part of the above. Extra
+## phases beforehand change the heap enough that the freed memory is no longer
+## recycled under the child, and the crash stops reproducing - which is exactly
+## why this does not live at the end of t/mutex-02.hak. When HAK_ENABLE_STACK_
+## CONTEXT is undefined there are no stack contexts and no bug to trip over;
+## the file still runs clean, it just is not testing anything.
+
+$include "../src/kernel.hak"
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+WORKERS := 5
+SPINS   := 100
+
+mux := (Mutex:new)
+
+fun orphan() {
+	| body |
+
+	## built here, in the forked process, so MAKE_BLOCK runs against the
+	## context fork created for this process
+	body := (fun() {
+		| i |
+		i := 0
+		while (< i SPINS) {
+			i := (+ i 1)
+			core.yield        ## give the other workers a turn while holding it
+		}
+	})
+
+	mux:critical body
+	chk true "a forked process still runs after its creator is gone"
+}
+
+fun spawn() {
+	| i |
+	i := 0
+	while (< i WORKERS) {
+		core.fork orphan
+		i := (+ i 1)
+	}
+}
+
+## no wait, on purpose - see the header
+spawn

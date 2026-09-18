@@ -1,0 +1,124 @@
+## the Mutex class.
+##
+## t/mutex-01.hak covers mutual exclusion over a raw counting semaphore, with
+## the lock taken and released by hand. This one goes through Mutex:critical,
+## which adds:
+##
+##   - the critical section is a block literal built INSIDE a forked process,
+##     so each worker runs MAKE_BLOCK against its own context rather than
+##     sharing one made by the parent.
+##
+##   - a throw out of the critical section must still release the lock, since
+##     Mutex:critical catches, unlocks, and rethrows.
+##
+## Every phase here waits for its workers, so the parent outlives them all.
+## That deliberately keeps this file away from the fork stack-context lifetime
+## question, which needs the parent to die first and is tested on its own in
+## t/fork-01.hak.
+##
+## [NOTE] reentrancy (the same process calling critical again while holding it)
+## is deliberately not exercised here - see the comment at the bottom.
+
+$include "../src/kernel.hak"
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+WORKERS := 5
+SPINS   := 20
+
+inside := 0   ## processes inside the critical section right now
+maxin  := 0   ## high-water mark of the above
+rounds := 0   ## completed critical sections
+done   := (Semaphore:new)
+
+## the body is built inside the forked process, so every worker runs MAKE_BLOCK
+## against its own context - the path that used to reference the parent's.
+fun worker(m locked) {
+	| body |
+
+	body := (fun() {
+		| i |
+		inside := (+ inside 1)
+		if (> inside maxin) { maxin := inside }
+		i := 0
+		while (< i SPINS) {
+			i := (+ i 1)
+			core.yield
+		}
+		inside := (- inside 1)
+		rounds := (+ rounds 1)
+	})
+
+	if locked { m:critical body } else { body }
+	done:signal
+}
+
+fun waitall(n) {
+	| i |
+	i := 0
+	while (< i n) {
+		done:wait
+		i := (+ i 1)
+	}
+}
+
+fun spawn(m locked) {
+	| i |
+	i := 0
+	while (< i WORKERS) {
+		core.fork worker m locked
+		i := (+ i 1)
+	}
+	waitall WORKERS
+}
+
+mux := (Mutex:new)
+
+## --- control: same workers, same block, no locking ---
+inside := 0
+maxin  := 0
+rounds := 0
+spawn mux false
+
+chk (= rounds WORKERS) "every unlocked process finishes"
+chk (= inside 0) "the occupancy counter is balanced afterwards"
+chk (> maxin 1) "the processes really do interleave, so an overlap is detectable"
+
+## --- the same thing through Mutex:critical ---
+inside := 0
+maxin  := 0
+rounds := 0
+spawn mux true
+
+chk (= rounds WORKERS) "every process finishes through Mutex:critical too"
+chk (= inside 0) "the occupancy counter is balanced afterwards"
+chk (= maxin 1) "only one process is ever inside the critical section"
+
+## --- a throw out of the critical section unlocks and propagates ---
+caught := 0
+try { mux:critical (fun() { throw 5 }) } catch (e) { caught := e }
+chk (= caught 5) "an exception raised inside a critical section propagates"
+
+reused := 0
+mux:critical (fun() { reused := 1 })
+chk (= reused 1) "the mutex is still usable after an exception unwound it"
+
+## --- each process has its own identity ---
+main_id := ((core.active-process):id)
+other_id := 0
+fun idjob() { other_id := ((core.active-process):id) ; done:signal }
+core.fork idjob
+waitall 1
+chk (>= main_id 0) "the main process has an id"
+chk (> other_id main_id) "a forked process gets a later id"
+chk (nqv? main_id other_id) "a forked process has an id of its own"
+
+## [NOTE] Mutex:critical is reentrant by design - it tracks _owner and
+## _nest_count so the holder may re-enter - but the nested path returns from
+## inside the 'if' without undoing its own increment, so _nest_count never
+## falls back to 0 and the semaphore is never signalled. A process that nests
+## once holds the mutex forever. No case below exercises nesting for that
+## reason; add one when the counting is fixed.

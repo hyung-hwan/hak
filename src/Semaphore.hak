@@ -1,3 +1,4 @@
+##$include-once "Object.hak"
 
 class[#uncopyable] Semaphore: Object(
 	_waiting_first
