@@ -569,6 +569,7 @@ check_SCRIPTS = \
 	insta-02.hak \
 	mutex-01.hak \
 	mutex-02.hak \
+	mutex-03.hak \
 	mux-01.hak \
 	mux-02.hak \
 	mux-03.hak \

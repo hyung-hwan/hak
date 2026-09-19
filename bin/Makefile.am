@@ -121,14 +121,27 @@ CGO_CFLAGS_EXTRA=""
 CGO_LDFLAGS_EXTRA=""
 endif
 
+if WIN32
+# go does not infer the target from CC, so a cross build needs GOOS/GOARCH set
+# explicitly - otherwise it runs the host toolchain against the mingw compiler.
+# GOARCH is mapped from $(host_cpu) at recipe time. windows has no libdl, and
+# libhak pulls in winsock, so the system libraries differ from the posix case.
+CGO_TARGET_ENV = GOOS=windows CGO_ENABLED=1 GOARCH=`case "$(host_cpu)" in i?86) echo 386;; x86_64|amd64) echo amd64;; aarch64|arm64) echo arm64;; *) echo "$(host_cpu)";; esac`
+CGO_SYS_LIBS = -lws2_32
+else
+CGO_TARGET_ENV =
+CGO_SYS_LIBS = -ldl
+endif
+
 hakgo$(EXEEXT): ../lib/libhak.la $(hakgo_OBJECTS)
 	##cp -pf $(top_srcdir)/go.mod $(builddir)/go.mod >/dev/null 2>&1 || true
 	##chmod u+w $(builddir)/go.mod ## with `make distcheck`, the echo's redirection to the file fails without this permission change
 	[ -f $(srcdir)/go.sum ] && cp -pf $(srcdir)/go.sum $(builddir)/go.sum >/dev/null 2>&1 || true
 	## ---------------------------------------------------------------
 	CC=$(CC) \
+	$(CGO_TARGET_ENV) \
 	CGO_CFLAGS="-I$(abs_top_srcdir)/lib -I$(abs_top_builddir)/lib $(CFLAGS) $(CGO_CFLAGS_EXTRA)" \
-	CGO_LDFLAGS="-L$(abs_top_builddir)/lib -L$(abs_top_builddir)/lib/.libs -lhak -ldl $(LIBM) $(CGO_LDFLAGS_EXTRA)"  \
+	CGO_LDFLAGS="-L$(abs_top_builddir)/lib -L$(abs_top_builddir)/lib/.libs -lhak $(CGO_SYS_LIBS) $(LIBM) $(CGO_LDFLAGS_EXTRA)"  \
 	go build -C $(srcdir) -ldflags "-X 'main.BINDIR=$(bindir)' -X 'main.SBINDIR=$(sbindir)' -X 'main.LIBDIR=$(libdir)' -X 'main.SYSCONFDIR=$(sysconfdir)'" -x -o $(abs_builddir)/$@ -modfile $(abs_top_srcdir)/go.mod  $(abs_srcdir)/main.go
 	## ---------------------------------------------------------------
 	go clean -C $(srcdir) -x -modfile $(abs_top_srcdir)/go.mod

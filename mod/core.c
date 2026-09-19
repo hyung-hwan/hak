@@ -630,6 +630,7 @@ static hak_pfinfo_t pfinfos[] =
 	{ "sem-signal",         { HAK_PFBASE_FUNC, hak_pf_semaphore_signal,       1,  3 } },
 	{ "sem-signal-on-input",  { HAK_PFBASE_FUNC, hak_pf_semaphore_signal_on_input,  2,  2 } },
 	{ "sem-signal-on-output", { HAK_PFBASE_FUNC, hak_pf_semaphore_signal_on_output, 2,  2 } },
+	{ "sem-trywait",        { HAK_PFBASE_FUNC, hak_pf_semaphore_trywait,      1,  1 } },
 	{ "sem-unsignal",       { HAK_PFBASE_FUNC, hak_pf_semaphore_unsignal,     1,  1 } },
 	{ "sem-wait",           { HAK_PFBASE_FUNC, hak_pf_semaphore_wait,         1,  1 } },
 	{ "semgr-add",          { HAK_PFBASE_FUNC, hak_pf_semaphore_group_add_semaphore,    1,  2 } },

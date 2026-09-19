@@ -395,20 +395,25 @@ static file_type_t os_get_filetype(const char* cpath) {
 
 
 #define dir_cursor intptr_t
-#define dir_entry  struct __finddata64_t
+/* [hak] _findfirsti64/_findnexti64 do not pair with struct __finddata64_t on
+ * mingw-w64: there they resolve to _findfirst32i64/_findnext32i64, which take
+ * a struct _finddata32i64_t. the plain _findfirst/_findnext and _finddata_t
+ * are macro-mapped to each other consistently by both msvc and mingw-w64, and
+ * only entry->name is ever read here, so the 64-bit file size is not needed. */
+#define dir_entry  struct _finddata_t
 
 static bool os_findfirst(alloc_t* mem, const char* path, dir_cursor* d, dir_entry* entry) {
   stringbuf_t* spath = sbuf_new(mem);
   if (spath == NULL) return false;
   sbuf_append(spath, path);
   sbuf_append(spath, "\\*");
-  *d = _findfirsti64(sbuf_string(spath), entry);
+  *d = _findfirst(sbuf_string(spath), entry);
   mem_free(mem,spath);
   return (*d != -1);
 }
 
 static bool os_findnext(dir_cursor d, dir_entry* entry) {
-  return (_findnexti64(d, entry) == 0);  
+  return (_findnext(d, entry) == 0);
 }
 
 static void os_findclose(dir_cursor d) {

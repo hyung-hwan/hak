@@ -37,6 +37,12 @@ class[#uncopyable] Semaphore: Object(
 		return (core.sem-signal-on-output self handle)
 	}
 
+	## acquire without ever blocking. answers true if acquired, false if the
+	## semaphore was unsignalled and waiting would have been necessary.
+	fun tryWait() {
+		return (core.sem-trywait self)
+	}
+
 	fun unsignal() {
 		return (core.sem-unsignal self)
 	}

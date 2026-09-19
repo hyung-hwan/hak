@@ -2253,6 +2253,7 @@ hak_pfrc_t hak_pf_process_yield (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
 
 hak_pfrc_t hak_pf_semaphore_new (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
 hak_pfrc_t hak_pf_semaphore_wait (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_semaphore_trywait (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
 hak_pfrc_t hak_pf_semaphore_signal (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
 hak_pfrc_t hak_pf_semaphore_signal_timed (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
 hak_pfrc_t hak_pf_semaphore_signal_on_input (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);

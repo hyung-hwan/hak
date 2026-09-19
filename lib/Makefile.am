@@ -31,6 +31,9 @@ LIBADD_LIB_COMMON += $(UNWIND_LIBS)
 endif
 
 if WIN32
+# poll-msw.c and std.c call into winsock (WSAEventSelect, select, recv, ...)
+LIBADD_LIB_COMMON += -lws2_32
+
 # you must adjust the value of DEFAULT_MODPOSTFIX according 
 # to the first number in -version-info above
 CPPFLAGS_PFMOD = -DHAK_DEFAULT_PFMODPREFIX=\"libhak-\" -DHAK_DEFAULT_PFMODPOSTFIX=\"-1.dll\"
@@ -104,6 +107,13 @@ libhak_la_SOURCES = \
 	utl.c \
 	xchg.c \
 	xma.c 
+if WIN32
+# windows has no poll(). poll-msw.c implements it over WSAPoll/WaitForMultipleObjects.
+libhak_la_SOURCES += \
+	poll-msw.c \
+	poll-msw.h
+endif
+
 libhak_la_CPPFLAGS = $(CPPFLAGS_LIB_COMMON)
 libhak_la_LDFLAGS = $(LDFLAGS_LIB_COMMON)
 libhak_la_LIBADD = $(LIBADD_LIB_COMMON)

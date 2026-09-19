@@ -92,13 +92,21 @@ host_triplet = @host@
 @ENABLE_LIBLTDL_TRUE@am__append_1 = $(LTDL_LIBS)
 @ENABLE_LIBLTDL_FALSE@am__append_2 = $(DL_LIBS)
 @ENABLE_LIBUNWIND_TRUE@am__append_3 = $(UNWIND_LIBS)
-@MACOSX_TRUE@@WIN32_FALSE@am__append_4 = -DHAK_DEFAULT_PFMODPOSTFIX=\".dylib\"
-@MACOSX_FALSE@@WIN32_FALSE@am__append_5 = -DHAK_DEFAULT_PFMODPOSTFIX=\".so\"
-@ENABLE_STATIC_MODULE_TRUE@am__append_6 = ../mod/libhak-core.la \
+
+# poll-msw.c and std.c call into winsock (WSAEventSelect, select, recv, ...)
+@WIN32_TRUE@am__append_4 = -lws2_32
+@MACOSX_TRUE@@WIN32_FALSE@am__append_5 = -DHAK_DEFAULT_PFMODPOSTFIX=\".dylib\"
+@MACOSX_FALSE@@WIN32_FALSE@am__append_6 = -DHAK_DEFAULT_PFMODPOSTFIX=\".so\"
+# windows has no poll(). poll-msw.c implements it over WSAPoll/WaitForMultipleObjects.
+@WIN32_TRUE@am__append_7 = \
+@WIN32_TRUE@	poll-msw.c \
+@WIN32_TRUE@	poll-msw.h
+
+@ENABLE_STATIC_MODULE_TRUE@am__append_8 = ../mod/libhak-core.la \
 @ENABLE_STATIC_MODULE_TRUE@	../mod/libhak-dic.la \
 @ENABLE_STATIC_MODULE_TRUE@	../mod/libhak-sys.la
-@ENABLE_HAKX_TRUE@am__append_7 = libhakx.la
-@ENABLE_HAKX_TRUE@am__append_8 = hak-x.h hak-tmr.h hak-json.h
+@ENABLE_HAKX_TRUE@am__append_9 = libhakx.la
+@ENABLE_HAKX_TRUE@am__append_10 = hak-x.h hak-tmr.h hak-json.h
 subdir = lib
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_check_sign.m4 \
@@ -148,8 +156,16 @@ am__DEPENDENCIES_1 =
 @ENABLE_LIBLTDL_FALSE@am__DEPENDENCIES_3 = $(am__DEPENDENCIES_1)
 @ENABLE_LIBUNWIND_TRUE@am__DEPENDENCIES_4 = $(am__DEPENDENCIES_1)
 am__DEPENDENCIES_5 = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_2) \
-	$(am__DEPENDENCIES_3) $(am__DEPENDENCIES_4)
-libhak_la_DEPENDENCIES = $(am__DEPENDENCIES_5) $(am__append_6)
+	$(am__DEPENDENCIES_3) $(am__DEPENDENCIES_4) \
+	$(am__DEPENDENCIES_1)
+libhak_la_DEPENDENCIES = $(am__DEPENDENCIES_5) $(am__append_8)
+am__libhak_la_SOURCES_DIST = hak-prv.h bigint.c chr.c cmgr.c cnode.c \
+	comp.c debug.c decode.c dic.c err.c exec.c fmt-imp.h fmt.c \
+	gc.c hak.c heap.c hnd.c htb.c mb8.c number.c obj.c opt-impl.h \
+	opt.c pio.c prim.c print.c rbt.c read.c std.c str.c sym.c \
+	uch-case.h uch-prop.h utf16.c utf8.c utl.c xchg.c xma.c \
+	poll-msw.c poll-msw.h
+@WIN32_TRUE@am__objects_1 = libhak_la-poll-msw.lo
 am_libhak_la_OBJECTS = libhak_la-bigint.lo libhak_la-chr.lo \
 	libhak_la-cmgr.lo libhak_la-cnode.lo libhak_la-comp.lo \
 	libhak_la-debug.lo libhak_la-decode.lo libhak_la-dic.lo \
@@ -161,7 +177,7 @@ am_libhak_la_OBJECTS = libhak_la-bigint.lo libhak_la-chr.lo \
 	libhak_la-rbt.lo libhak_la-read.lo libhak_la-std.lo \
 	libhak_la-str.lo libhak_la-sym.lo libhak_la-utf16.lo \
 	libhak_la-utf8.lo libhak_la-utl.lo libhak_la-xchg.lo \
-	libhak_la-xma.lo
+	libhak_la-xma.lo $(am__objects_1)
 libhak_la_OBJECTS = $(am_libhak_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -210,14 +226,15 @@ am__depfiles_remade = ./$(DEPDIR)/libhak_la-bigint.Plo \
 	./$(DEPDIR)/libhak_la-hnd.Plo ./$(DEPDIR)/libhak_la-htb.Plo \
 	./$(DEPDIR)/libhak_la-mb8.Plo ./$(DEPDIR)/libhak_la-number.Plo \
 	./$(DEPDIR)/libhak_la-obj.Plo ./$(DEPDIR)/libhak_la-opt.Plo \
-	./$(DEPDIR)/libhak_la-pio.Plo ./$(DEPDIR)/libhak_la-prim.Plo \
-	./$(DEPDIR)/libhak_la-print.Plo ./$(DEPDIR)/libhak_la-rbt.Plo \
-	./$(DEPDIR)/libhak_la-read.Plo ./$(DEPDIR)/libhak_la-std.Plo \
-	./$(DEPDIR)/libhak_la-str.Plo ./$(DEPDIR)/libhak_la-sym.Plo \
-	./$(DEPDIR)/libhak_la-utf16.Plo ./$(DEPDIR)/libhak_la-utf8.Plo \
-	./$(DEPDIR)/libhak_la-utl.Plo ./$(DEPDIR)/libhak_la-xchg.Plo \
-	./$(DEPDIR)/libhak_la-xma.Plo ./$(DEPDIR)/libhakx_la-json.Plo \
-	./$(DEPDIR)/libhakx_la-tmr.Plo \
+	./$(DEPDIR)/libhak_la-pio.Plo \
+	./$(DEPDIR)/libhak_la-poll-msw.Plo \
+	./$(DEPDIR)/libhak_la-prim.Plo ./$(DEPDIR)/libhak_la-print.Plo \
+	./$(DEPDIR)/libhak_la-rbt.Plo ./$(DEPDIR)/libhak_la-read.Plo \
+	./$(DEPDIR)/libhak_la-std.Plo ./$(DEPDIR)/libhak_la-str.Plo \
+	./$(DEPDIR)/libhak_la-sym.Plo ./$(DEPDIR)/libhak_la-utf16.Plo \
+	./$(DEPDIR)/libhak_la-utf8.Plo ./$(DEPDIR)/libhak_la-utl.Plo \
+	./$(DEPDIR)/libhak_la-xchg.Plo ./$(DEPDIR)/libhak_la-xma.Plo \
+	./$(DEPDIR)/libhakx_la-json.Plo ./$(DEPDIR)/libhakx_la-tmr.Plo \
 	./$(DEPDIR)/libhakx_la-x-client.Plo \
 	./$(DEPDIR)/libhakx_la-x-proto.Plo \
 	./$(DEPDIR)/libhakx_la-x-server.Plo \
@@ -243,7 +260,8 @@ am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
 SOURCES = $(libhak_la_SOURCES) $(libhakx_la_SOURCES)
-DIST_SOURCES = $(libhak_la_SOURCES) $(am__libhakx_la_SOURCES_DIST)
+DIST_SOURCES = $(am__libhak_la_SOURCES_DIST) \
+	$(am__libhakx_la_SOURCES_DIST)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -433,64 +451,29 @@ CPPFLAGS_ALL_COMMON = \
 CPPFLAGS_LIB_COMMON = $(CPPFLAGS_ALL_COMMON)
 LDFLAGS_LIB_COMMON = $(LDFLAGS_ALL_COMMON) -version-info 1:0:0 -no-undefined
 LIBADD_LIB_COMMON = $(LIBM) $(am__append_1) $(am__append_2) \
-	$(am__append_3)
+	$(am__append_3) $(am__append_4)
 @WIN32_FALSE@CPPFLAGS_PFMOD =  \
 @WIN32_FALSE@	-DHAK_DEFAULT_PFMODPREFIX=\"$(libdir)/libhak-\" \
-@WIN32_FALSE@	$(am__append_4) $(am__append_5)
+@WIN32_FALSE@	$(am__append_5) $(am__append_6)
 
 # you must adjust the value of DEFAULT_MODPOSTFIX according 
 # to the first number in -version-info above
 @WIN32_TRUE@CPPFLAGS_PFMOD = -DHAK_DEFAULT_PFMODPREFIX=\"libhak-\" \
 @WIN32_TRUE@	-DHAK_DEFAULT_PFMODPOSTFIX=\"-1.dll\" \
-@WIN32_TRUE@	$(am__append_4) $(am__append_5)
+@WIN32_TRUE@	$(am__append_5) $(am__append_6)
 pkginclude_HEADERS = hak.h hak-chr.h hak-cmgr.h hak-cmn.h hak-fmt.h \
 	hak-htb.h hak-opt.h hak-pac1.h hak-hnd.h hak-pio.h hak-spl.h \
 	hak-rbt.h hak-str.h hak-upac.h hak-utl.h hak-xma.h \
-	$(am__append_8)
-pkglib_LTLIBRARIES = libhak.la $(am__append_7)
-libhak_la_SOURCES = \
-	hak-prv.h \
-	bigint.c \
-	chr.c \
-	cmgr.c \
-	cnode.c \
-	comp.c \
-	debug.c \
-	decode.c \
-	dic.c \
-	err.c \
-	exec.c \
-	fmt-imp.h \
-	fmt.c \
-	gc.c \
-	hak.c \
-	heap.c \
-	hnd.c \
-	htb.c \
-	mb8.c \
-	number.c \
-	obj.c \
-	opt-impl.h \
-	opt.c \
-	pio.c \
-	prim.c \
-	print.c \
-	rbt.c \
-	read.c \
-	std.c \
-	str.c \
-	sym.c \
-	uch-case.h \
-	uch-prop.h \
-	utf16.c \
-	utf8.c \
-	utl.c \
-	xchg.c \
-	xma.c 
-
+	$(am__append_10)
+pkglib_LTLIBRARIES = libhak.la $(am__append_9)
+libhak_la_SOURCES = hak-prv.h bigint.c chr.c cmgr.c cnode.c comp.c \
+	debug.c decode.c dic.c err.c exec.c fmt-imp.h fmt.c gc.c hak.c \
+	heap.c hnd.c htb.c mb8.c number.c obj.c opt-impl.h opt.c pio.c \
+	prim.c print.c rbt.c read.c std.c str.c sym.c uch-case.h \
+	uch-prop.h utf16.c utf8.c utl.c xchg.c xma.c $(am__append_7)
 libhak_la_CPPFLAGS = $(CPPFLAGS_LIB_COMMON)
 libhak_la_LDFLAGS = $(LDFLAGS_LIB_COMMON)
-libhak_la_LIBADD = $(LIBADD_LIB_COMMON) $(am__append_6)
+libhak_la_LIBADD = $(LIBADD_LIB_COMMON) $(am__append_8)
 @ENABLE_HAKX_TRUE@libhakx_la_SOURCES = \
 @ENABLE_HAKX_TRUE@	hak-json.h \
 @ENABLE_HAKX_TRUE@	hak-tmr.h \
@@ -623,6 +606,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhak_la-obj.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhak_la-opt.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhak_la-pio.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhak_la-poll-msw.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhak_la-prim.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhak_la-print.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhak_la-rbt.Plo@am__quote@ # am--include-marker
@@ -904,6 +888,13 @@ libhak_la-xma.lo: xma.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhak_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libhak_la-xma.lo `test -f 'xma.c' || echo '$(srcdir)/'`xma.c
 
+libhak_la-poll-msw.lo: poll-msw.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhak_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libhak_la-poll-msw.lo -MD -MP -MF $(DEPDIR)/libhak_la-poll-msw.Tpo -c -o libhak_la-poll-msw.lo `test -f 'poll-msw.c' || echo '$(srcdir)/'`poll-msw.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libhak_la-poll-msw.Tpo $(DEPDIR)/libhak_la-poll-msw.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='poll-msw.c' object='libhak_la-poll-msw.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhak_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libhak_la-poll-msw.lo `test -f 'poll-msw.c' || echo '$(srcdir)/'`poll-msw.c
+
 libhakx_la-json.lo: json.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhakx_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libhakx_la-json.lo -MD -MP -MF $(DEPDIR)/libhakx_la-json.Tpo -c -o libhakx_la-json.lo `test -f 'json.c' || echo '$(srcdir)/'`json.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libhakx_la-json.Tpo $(DEPDIR)/libhakx_la-json.Plo
@@ -1129,6 +1120,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/libhak_la-obj.Plo
 	-rm -f ./$(DEPDIR)/libhak_la-opt.Plo
 	-rm -f ./$(DEPDIR)/libhak_la-pio.Plo
+	-rm -f ./$(DEPDIR)/libhak_la-poll-msw.Plo
 	-rm -f ./$(DEPDIR)/libhak_la-prim.Plo
 	-rm -f ./$(DEPDIR)/libhak_la-print.Plo
 	-rm -f ./$(DEPDIR)/libhak_la-rbt.Plo
@@ -1215,6 +1207,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/libhak_la-obj.Plo
 	-rm -f ./$(DEPDIR)/libhak_la-opt.Plo
 	-rm -f ./$(DEPDIR)/libhak_la-pio.Plo
+	-rm -f ./$(DEPDIR)/libhak_la-poll-msw.Plo
 	-rm -f ./$(DEPDIR)/libhak_la-prim.Plo
 	-rm -f ./$(DEPDIR)/libhak_la-print.Plo
 	-rm -f ./$(DEPDIR)/libhak_la-rbt.Plo

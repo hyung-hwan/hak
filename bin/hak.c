@@ -689,7 +689,7 @@ static int feed_loop (hak_t* hak, xtn_t* xtn, int verbose)
 	FILE* fp = HAK_NULL;
 	int is_tty;
 
-#if defined(_WIN32) && defined(__STDC_WANT_SECURE_LIB__)
+#if defined(_WIN32) && defined(__STDC_WANT_SECURE_LIB__) && (__STDC_WANT_SECURE_LIB__ > 0)
 	errno_t err = fopen_s(&fp, xtn->cci_path, FOPEN_R_FLAGS);
 	if (err != 0)
 	{

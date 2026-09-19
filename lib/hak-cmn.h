@@ -690,6 +690,9 @@ typedef struct hak_obj_t*          hak_oop_t;
 #define HAK_MSEC_TO_NSEC(msec) ((msec) * HAK_NSECS_PER_MSEC)
 #define HAK_NSEC_TO_MSEC(nsec) ((nsec) / HAK_NSECS_PER_MSEC)
 
+#define HAK_MSEC_TO_USEC(msec) ((msec) * HAK_USECS_PER_MSEC)
+#define HAK_USEC_TO_MSEC(usec) ((usec) / HAK_USECS_PER_MSEC)
+
 #define HAK_SEC_TO_NSEC(sec) ((sec) * HAK_NSECS_PER_SEC)
 #define HAK_NSEC_TO_SEC(nsec) ((nsec) / HAK_NSECS_PER_SEC)
 

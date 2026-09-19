@@ -23,7 +23,7 @@ class FixedSizedCollection: IndexedCollection {
 	fun[#class] new(size) {
 		| obj iv |
 		obj := (core.basicNew self size)
-		if (self:respondsTo "initValue") { ## TODO: change "initValue" to a symbol once supported
+		if (self:respondsTo #initValue) {
 			i := 0
 			iv := (self:initValue)
 			while (< i size) { ## TODO: change to i < size after having implemented these methods on integer/smallintger

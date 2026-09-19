@@ -36,7 +36,17 @@
 #include <stdlib.h>
 #include <signal.h>
 
-#if !defined(_WIN32)
+#if defined(_WIN32)
+#	if !defined(_WIN32_WINNT)
+#		define _WIN32_WINNT 0x0400
+#	endif
+#	define WIN32_LEAN_AND_MEAN
+#	include <windows.h>
+#	include <io.h>      /* close() */
+#	include <fcntl.h>
+#	include <errno.h>
+#	include <time.h>
+#else
 #	include <sys/types.h>
 #	include <sys/stat.h>
 #	include <unistd.h>
@@ -110,6 +120,28 @@ static hak_pfrc_t pf_sys_stime (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		_dos_setdate(&dd);
 		_dos_settime(&dt);
 	}
+#elif defined(_WIN32)
+	{
+		time_t tv = (time_t)ti;
+		struct tm* tm;
+
+		/* SetSystemTime() takes UTC, so break the epoch value down with
+		 * gmtime() rather than localtime() */
+		tm = gmtime(&tv);
+		if (tm)
+		{
+			SYSTEMTIME st;
+			st.wYear = (WORD)(tm->tm_year + 1900);
+			st.wMonth = (WORD)(tm->tm_mon + 1); /* 1-12, unlike tm_mon */
+			st.wDayOfWeek = (WORD)tm->tm_wday;
+			st.wDay = (WORD)tm->tm_mday;
+			st.wHour = (WORD)tm->tm_hour;
+			st.wMinute = (WORD)tm->tm_min;
+			st.wSecond = (WORD)tm->tm_sec;
+			st.wMilliseconds = 0;
+			SetSystemTime(&st);
+		}
+	}
 #else
 	{
 		time_t tv;
@@ -136,7 +168,7 @@ static hak_pfrc_t pf_sys_srandom (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		return HAK_PF_FAILURE;
 	}
 
-#if defined(__DOS__)
+#if defined(__DOS__) || defined(_WIN32)
 	srand (seedw);
 #else
 	srandom (seedw);
@@ -151,7 +183,7 @@ static hak_pfrc_t pf_sys_random (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	long int r;
 	hak_ooi_t rv;
 
-#if defined(__DOS__)
+#if defined(__DOS__) || defined(_WIN32)
 	r = rand();
 #else
 	r = random();

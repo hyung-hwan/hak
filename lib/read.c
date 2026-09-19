@@ -32,6 +32,10 @@
 #define SALIT_BUFFER_ALIGN 128
 #define ARLIT_BUFFER_ALIGN 128
 
+#define INCLUDE_FILE_NONE   (0)
+#define INCLUDE_FILE_NORMAL (1)
+#define INCLUDE_FILE_ONCE   (2)
+
 static struct voca_t
 {
 	hak_oow_t len;
@@ -1453,6 +1457,9 @@ static int feed_begin_include (hak_t* hak, int once)
 	const hak_ooch_t* io_name;
 
 /* TODO: handle once... */
+/* how to handle uniqueness of the io_name?
+ * purely based on this io_name????
+ * or the real path? or the name io_name, the real_path can still be different depending on the source... */
 	io_name = add_sr_name(hak, TOKEN_NAME(hak));
 	if (HAK_UNLIKELY(!io_name))
 	{
@@ -1460,6 +1467,14 @@ static int feed_begin_include (hak_t* hak, int once)
 		hak_seterrbfmt(hak, HAK_ERRNUM(hak), "unable to include %.*js for name registration failure - %js", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak), orgmsg);
 		return -1;
 	}
+
+/*
+hak_logbfmt(hak, HAK_LOG_STDERR, "io_name = [%js]\n", io_name);
+if (hak->c->curinp == &hak->c->cci_arg) 
+	hak_logbfmt(hak, HAK_LOG_STDERR, "PAR = TOP\n");
+else
+	hak_logbfmt(hak, HAK_LOG_STDERR, "PAR = [%js]\n", hak->c->curinp->name);
+*/
 
 	arg = (hak_io_cciarg_t*)hak_callocmem(hak, HAK_SIZEOF(*arg));
 	if (HAK_UNLIKELY(!arg))
@@ -1774,7 +1789,7 @@ static int feed_process_token (hak_t* hak)
 		 * don't perform actual inclusion here so that the return value of
 		 * feed_char() advances the input pointers properly. */
 		frd->do_include_file = frd->expect_include_file;
-		frd->expect_include_file = 0;
+		frd->expect_include_file = INCLUDE_FILE_NONE;
 
 		goto ok;
 	}
@@ -1812,11 +1827,11 @@ static int feed_process_token (hak_t* hak)
 		case HAK_TOK_INCLUDE:
 			/* TODO: should i limit where #include can be specified?
 			 *       disallow it inside a list literal or an array literal? */
-			frd->expect_include_file = 1;
+			frd->expect_include_file = INCLUDE_FILE_NORMAL;
 			goto ok;
 
 		case HAK_TOK_INCLUDE_ONCE:
-			frd->expect_include_file = 2;
+			frd->expect_include_file = INCLUDE_FILE_ONCE;
 			goto ok;
 
 		case HAK_TOK_PRAGMA:
@@ -3929,8 +3944,8 @@ static int feed_from_includee (hak_t* hak)
 			 * to include the file. the file inclusion is attempted here after the return
 			 * value of feed_char() is used to advance the hak->c->curinp->b.pos pointer. */
 			int incmod = hak->c->feed.rd.do_include_file;
-			hak->c->feed.rd.do_include_file = 0; /* clear this regardless of inclusion result */
-			if (feed_begin_include(hak, incmod == 2) <= -1) goto oops;
+			hak->c->feed.rd.do_include_file = INCLUDE_FILE_NONE; /* clear this regardless of inclusion result */
+			if (feed_begin_include(hak, incmod == INCLUDE_FILE_ONCE) <= -1) goto oops;
 			curinp = hak->c->curinp;
 		}
 	}
@@ -4026,8 +4041,8 @@ int hak_feed (hak_t* hak, const hak_ooch_t* data, hak_oow_t len)
 			if (hak->c->feed.rd.do_include_file)
 			{
 				int incmod = hak->c->feed.rd.do_include_file;
-				hak->c->feed.rd.do_include_file = 0; /* done regardless of inclusion result */
-				if (feed_begin_include(hak, incmod == 2) <= -1) goto oops;
+				hak->c->feed.rd.do_include_file = INCLUDE_FILE_NONE; /* done regardless of inclusion result */
+				if (feed_begin_include(hak, incmod == INCLUDE_FILE_ONCE) <= -1) goto oops;
 			}
 
 			if (hak->c->curinp && hak->c->curinp != &hak->c->cci_arg && feed_from_includee(hak) <= -1)

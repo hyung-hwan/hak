@@ -115,10 +115,3 @@ waitall 1
 chk (>= main_id 0) "the main process has an id"
 chk (> other_id main_id) "a forked process gets a later id"
 chk (nqv? main_id other_id) "a forked process has an id of its own"
-
-## [NOTE] Mutex:critical is reentrant by design - it tracks _owner and
-## _nest_count so the holder may re-enter - but the nested path returns from
-## inside the 'if' without undoing its own increment, so _nest_count never
-## falls back to 0 and the semaphore is never signalled. A process that nests
-## once holds the mutex forever. No case below exercises nesting for that
-## reason; add one when the counting is fixed.

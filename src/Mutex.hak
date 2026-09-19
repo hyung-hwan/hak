@@ -21,6 +21,9 @@ class[#uncopyable] Mutex: Object(
 		## is the one that releases, so nesting needs no bookkeeping.
 		if (eqv? p self._owner) { return (fnc) }
 
+		## the function must never terminate the process.
+		## if it does, the owner will get stuck to that terminated process
+		## process forever. for now, there is no automatic clean-up.
 		self._sem:wait
 		self._owner := p
 
@@ -32,5 +35,41 @@ class[#uncopyable] Mutex: Object(
 
 		if (nqv? ex nil) { throw ex }
 		return r
+	}
+
+	## the non-blocking form of critical. runs fnc and answers true if the
+	## mutex was free - or already held by this very process - and answers
+	## false at once, without running fnc, if another process holds it.
+	##
+	## note this answers true/false rather than the body's value, unlike
+	## critical: there would otherwise be no way to tell "the body answered
+	## nil" from "the body never ran". have fnc assign to a captured variable
+	## if it needs to report something back.
+	fun tryCritical(fnc) {
+		| p ex |
+
+		p := (core.active-process)
+
+		## already the owner. same reasoning as critical: the outermost
+		## critical is the one that releases, so nesting needs no bookkeeping
+		if (eqv? p self._owner) { fnc ; return true }
+
+		## core.sem-trywait either takes the semaphore or answers false. it
+		## never suspends, so there is no window where another process could
+		## slip in between testing the mutex and claiming it.
+		if (self._sem:tryWait) {
+			self._owner := p
+
+			## TODO: update code to use 'finally' if 'finally' is implemented...
+			try { fnc } catch (e) { ex := e }
+
+			self._owner := nil
+			self._sem:signal
+
+			if (nqv? ex nil) { throw ex }
+			return true
+		}
+
+		return false
 	}
 }

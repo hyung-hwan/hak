@@ -89,6 +89,13 @@
 #	define SIZE_T unsigned long int
 #endif
 
+#if defined(_WIN32_WINNT) && (_WIN32_WINNT <= 0x0600) && (defined(_MSC_VER) || defined(__BORLANDC__))
+	/* windows xp(0x0501)/vista(0x0600) has some calls in psapi.dll.
+	 * windows 7(0x0601) or later moved them to kernel32.dll.
+	 * this pragma works with ms visual c/c++. */
+#	pragma comment(lib, "psapi.lib")
+#endif
+
 #elif defined(__OS2__)
 #	define INCL_DOSMODULEMGR
 #	define INCL_DOSPROCESS
@@ -417,6 +424,8 @@ struct xtn_t
 	HANDLE waitable_timer;
 	DWORD tc_last;
 	DWORD tc_overflow;
+	WINAPI SIZE_T (*get_large_page_minimum)(void);
+	WINAPI ULONGLONG (*get_tick_count64)(void);
 	#elif defined(__OS2__)
 	ULONG tc_last;
 	ULONG tc_overflow;
@@ -586,22 +595,26 @@ static void* alloc_heap (hak_t* hak, hak_oow_t* size)
 #if defined(_WIN32)
 	hak_oow_t* ptr;
 	hak_oow_t req_size, align, aligned_size;
+#if 0
 	HINSTANCE k32;
 	SIZE_T (*k32_GetLargePageMinimum) (void);
+#endif
 	HANDLE token = HAK_NULL;
 	TOKEN_PRIVILEGES new_state, prev_state;
 	TOKEN_PRIVILEGES* prev_state_ptr;
 	DWORD prev_state_reqsize = 0;
 	int token_adjusted = 0;
+	xtn_t* xtn = GET_XTN(hak);
 
 	align = 2 * 1024 * 1024; /* default 2MB */
 
+#if 0
 	k32 = LoadLibrary(TEXT("kernel32.dll"));
 	if (k32)
 	{
-		k32_GetLargePageMinimum = (SIZE_T(*)(void))GetProcAddress (k32, "GetLargePageMinimum");
+		k32_GetLargePageMinimum = (SIZE_T(*)(void))GetProcAddress(k32, "GetLargePageMinimum");
 		if (k32_GetLargePageMinimum) align = k32_GetLargePageMinimum();
-		FreeLibrary (k32);
+		FreeLibrary(k32);
 	}
 	/* the standard page size shouldn't help. so let me comment out this part.
 	else
@@ -610,8 +623,11 @@ static void* alloc_heap (hak_t* hak, hak_oow_t* size)
 		GetSystemInfo (&si);
 		align = si.dwPageSize;
 	}*/
+#else
+	if (xtn->get_large_page_minimum) align = xtn->get_large_page_minimum();
+#endif
 
-	req_size = HAK_SIZEOF(hak_oow_t) + size;
+	req_size = HAK_SIZEOF(hak_oow_t) + *size;
 	aligned_size = HAK_ALIGN(req_size, align);
 
 	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &token)) goto oops;
@@ -860,6 +876,10 @@ static size_t sprintf_timestamp (char* ts, struct tm* tmp)
 
 #if defined(__DOS__)
 	off_m = _timezone / 60;
+#elif defined(_WIN32)
+	/* _timezone is seconds WEST of utc, whereas tm_gmtoff is seconds EAST of
+	 * it, so negate to keep the sign convention of the branch below */
+	off_m = -_timezone / 60;
 #else
 	off_m = tmp->tm_gmtoff / 60;
 #endif
@@ -904,21 +924,24 @@ static void log_write (hak_t* hak, hak_bitmask_t mask, const hak_ooch_t* msg, ha
  *       do classification based on mask. */
 	if (!(mask & (HAK_LOG_STDOUT | HAK_LOG_STDERR)))
 	{
-		time_t now;
 		char ts[64];
 		size_t tslen;
+	#if defined(_WIN32)
+		/* win32 reads the clock as a SYSTEMTIME rather than through time()/
+		 * localtime(), so it needs neither a time_t nor a struct tm */
+		SYSTEMTIME st;
+		TIME_ZONE_INFORMATION tzi;
+	#else
+		time_t now;
 		struct tm tm, *tmp;
 
 		now = time(HAK_NULL);
+	#endif
+
 	#if defined(_WIN32)
-		#if 0
-		tmp = localtime(&now);
-		tslen = strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S %z ", tmp);
-		if (tslen == 0) tslen = sprintf_timestamp(ts, tmp);
-		#else
 		/* %z for strftime() in win32 seems to produce a long non-numeric timezone name.
 		 * i don't use strftime() for time formatting. */
-		GetLocalTime (&now);
+		GetLocalTime (&st);
 		if (GetTimeZoneInformation(&tzi) != TIME_ZONE_ID_INVALID)
 		{
 			LONG min;
@@ -926,17 +949,16 @@ static void log_write (hak_t* hak, hak_bitmask_t mask, const hak_ooch_t* msg, ha
 			min = tzi.Bias % 60;
 			if (min < 0) min = -min;
 			tslen = sprintf(ts, "%04d-%02d-%02d %02d:%02d:%02d %+03d%02d ",
-				(int)now.wYear, (int)now.wMonth, (int)now.wDay,
-				(int)now.wHour, (int)now.wMinute, (int)now.wSecond,
+				(int)st.wYear, (int)st.wMonth, (int)st.wDay,
+				(int)st.wHour, (int)st.wMinute, (int)st.wSecond,
 				(int)(tzi.Bias / 60), (int)min);
 		}
 		else
 		{
 			tslen = sprintf(ts, "%04d-%02d-%02d %02d:%02d:%02d ",
-				(int)now.wYear, (int)now.wMonth, (int)now.wDay,
-				(int)now.wHour, (int)now.wMinute, (int)now.wSecond);
+				(int)st.wYear, (int)st.wMonth, (int)st.wDay,
+				(int)st.wHour, (int)st.wMinute, (int)st.wSecond);
 		}
-		#endif
 	#elif defined(__OS2__)
 		#if defined(__WATCOMC__)
 		tmp = _localtime(&now, &tm);
@@ -1259,7 +1281,7 @@ hak_errnum_t hak_syserrstrb (hak_t* hak, int syserr_type, int syserr_code, hak_b
 					NULL, syserr_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
 					buf, len, HAK_NULL
 				);
-				while (rc > 0 && buf[rc - 1] == '\r' || buf[rc - 1] == '\n') buf[--rc] = '\0';
+				while (rc > 0 && (buf[rc - 1] == '\r' || buf[rc - 1] == '\n')) buf[--rc] = '\0';
 			}
 			return winerr_to_errnum(syserr_code);
 		#elif defined(__OS2__)
@@ -1280,7 +1302,7 @@ hak_errnum_t hak_syserrstrb (hak_t* hak, int syserr_type, int syserr_code, hak_b
 		#endif
 
 		case 0:
-		#if defined(_WIN32) && defined(__STDC_WANT_SECURE_LIB__)
+		#if defined(_WIN32) && defined(__STDC_WANT_SECURE_LIB__) && (__STDC_WANT_SECURE_LIB__ > 0)
 			if (buf && len > 0) strerror_s (buf, len, syserr_code);
 		#elif defined(HAVE_STRERROR_R)
 			if (buf && len > 0)
@@ -1424,25 +1446,31 @@ static void _assertfail (hak_t* hak, const hak_bch_t* expr, const hak_bch_t* fil
 static void vm_gettime (hak_t* hak, hak_ntime_t* now)
 {
 #if defined(_WIN32)
-
-	#if defined(_WIN64) || (defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0600))
-	hak_uint64_t bigsec, bigmsec;
-	bigmsec = GetTickCount64();
-	#else
 	xtn_t* xtn = GET_XTN(hak);
 	hak_uint64_t bigsec, bigmsec;
-	DWORD msec;
 
-	msec = GetTickCount(); /* this can sustain for 49.7 days */
-	if (msec < xtn->tc_last)
+	#if defined(_WIN64) || (defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0600))
+	if (xtn->get_tick_count64)
 	{
-		/* i assume the difference is never bigger than 49.7 days */
-		/*diff = (HAK_TYPE_MAX(DWORD) - xtn->tc_last) + 1 + msec;*/
-		xtn->tc_overflow++;
-		bigmsec = ((hak_uint64_t)HAK_TYPE_MAX(DWORD) * xtn->tc_overflow) + msec;
+		bigmsec = xtn->get_tick_count64();
 	}
-	else bigmsec = msec;
-	xtn->tc_last = msec;
+	else
+	{
+	#endif
+		DWORD msec;
+
+		msec = GetTickCount(); /* this can sustain for 49.7 days */
+		if (msec < xtn->tc_last)
+		{
+			/* i assume the difference is never bigger than 49.7 days */
+			/*diff = (HAK_TYPE_MAX(DWORD) - xtn->tc_last) + 1 + msec;*/
+			xtn->tc_overflow++;
+			bigmsec = ((hak_uint64_t)HAK_TYPE_MAX(DWORD) * xtn->tc_overflow) + msec;
+		}
+		else bigmsec = msec;
+		xtn->tc_last = msec;
+	#if defined(_WIN64) || (defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0600))
+	}
 	#endif
 
 	bigsec = HAK_MSEC_TO_SEC(bigmsec);
@@ -2776,7 +2804,7 @@ static int vm_getsig (hak_t* hak, hak_uint8_t* u8)
 #if defined(_WIN32)
 	/* TODO: can i make the pipe non-block in win32? */
 	DWORD navail;
-	if (PeekNamedPipe(_get_osfhandle(xtn->sigfd.p[0]), HAK_NULL, 0, HAK_NULL, &navail, HAK_NULL) == 0)
+	if (PeekNamedPipe((HANDLE)_get_osfhandle(xtn->sigfd.p[0]), HAK_NULL, 0, HAK_NULL, &navail, HAK_NULL) == 0)
 	{
 		hak_seterrwithsyserr(hak, 1, GetLastError());
 		return -1;
@@ -3600,7 +3628,7 @@ static const char* msw_dlerror (void)
 		NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
 		buf, HAK_COUNTOF(buf), HAK_NULL
 	);
-	while (rc > 0 && buf[rc - 1] == '\r' || buf[rc - 1] == '\n')
+	while (rc > 0 && (buf[rc - 1] == '\r' || buf[rc - 1] == '\n'))
 	{
 		buf[--rc] = '\0';
 	}
@@ -4516,10 +4544,14 @@ static LONG WINAPI msw_exception_filter (struct _EXCEPTION_POINTERS* exinfo)
 	static wchar_t exmsg[256];
 	static wchar_t expath[128];
 
-#if defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0501)
+#if defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0601)
 	GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, exinfo->ExceptionRecord->ExceptionAddress, &mod);
 	/*GetModuleInformation (GetCurrentProcess(), mod, &modinfo, HAK_SIZEOF(modinfo));*/
 	GetModuleFileNameExW(GetCurrentProcess(), mod, expath, HAK_SIZEOF(expath));
+
+	/* on windows 7 or later GetModuleFileNameExW is actually K32GetModuleFileNameExW residing in kernel32.dll.
+	 * on windows xp/vista, it's inside psapi.dll. i don't want to care to selectively link psapi.lib or load psapi.dll.
+	 * if you set _WIN32_WINNT <= 0x0600, it just fall back to GetModuleFileNameW */
 #else
 	GetModuleFileNameW(HAK_NULL, expath, HAK_SIZEOF(expath));
 #endif
@@ -4559,6 +4591,9 @@ hak_t* hak_openstdwithmmgr (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_errinf_t* e
 	hak_t* hak;
 	hak_vmprim_t vmprim;
 	hak_cb_t cb;
+#if defined(_WIN32)
+	HINSTANCE k32;
+#endif
 
 	HAK_MEMSET(&vmprim, 0, HAK_SIZEOF(vmprim));
 	vmprim.alloc_heap = alloc_heap;
@@ -4607,6 +4642,15 @@ hak_t* hak_openstdwithmmgr (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_errinf_t* e
 
 #if defined(_WIN32)
 	SetUnhandledExceptionFilter(msw_exception_filter);
+
+	k32 = LoadLibrary(TEXT("kernel32.dll"));
+	if (k32)
+	{
+		xtn_t* xtn = GET_XTN(hak);
+		xtn->get_large_page_minimum = (WINAPI SIZE_T (*)(void))GetProcAddress(k32, "GetLargePageMinimum");
+		xtn->get_tick_count64 = (WINAPI ULONGLONG (*)(void))GetProcAddress(k32, "GetTickCount64");
+		FreeLibrary(k32);
+	}
 #endif
 
 	return hak;

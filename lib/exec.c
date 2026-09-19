@@ -24,7 +24,12 @@
 
 #include "hak-prv.h"
 
-#define ENABLE_SYSCMD
+/* exec_syscmd() is built on fork(), execve() and waitpid(), none of which
+ * exist on windows. without this, calling a string or a symbol falls through
+ * to the ordinary "cannot call" runtime error. */
+#if !defined(_WIN32)
+#	define ENABLE_SYSCMD
+#endif
 
 static const char* io_type_str[] =
 {
@@ -1480,9 +1485,11 @@ static HAK_INLINE void drop_unawaited_io_signal_count_in_semaphore (hak_t* hak, 
 		hak->sem_io_tuple[index].unawaited[io_type]--;
 }
 
-static HAK_INLINE void await_semaphore (hak_t* hak, hak_oop_semaphore_t sem)
+/* attempt to acquire a semaphore without ever blocking. returns 1 if it has
+ * been acquired, 0 if acquiring it would have required waiting. the caller
+ * must ensure the semaphore doesn't belong to a group. */
+static HAK_INLINE int try_acquire_semaphore (hak_t* hak, hak_oop_semaphore_t sem)
 {
-	hak_oop_process_t proc;
 	hak_ooi_t count;
 	hak_oop_semaphore_group_t semgrp;
 
@@ -1492,45 +1499,51 @@ static HAK_INLINE void await_semaphore (hak_t* hak, hak_oop_semaphore_t sem)
 	HAK_ASSERT(hak, (hak_oop_t)semgrp == hak->_nil);
 
 	count = HAK_OOP_TO_SMOOI(sem->count);
-	if (count > 0)
+	if (count <= 0) return 0; /* not signaled. the caller waits or gives up */
+
+	/* it's already signaled */
+	count--;
+	sem->count = HAK_SMOOI_TO_OOP(count);
+	drop_unawaited_io_signal_count_in_semaphore(hak, sem);
+
+	if ((hak_oop_t)semgrp != hak->_nil && count == 0)
 	{
-		/* it's already signaled */
-		count--;
-		sem->count = HAK_SMOOI_TO_OOP(count);
-		drop_unawaited_io_signal_count_in_semaphore(hak, sem);
-
-		if ((hak_oop_t)semgrp != hak->_nil && count == 0)
-		{
-			int sems_idx;
-			/* TODO: if i disallow individual wait on a semaphore in a group,
-			 *       this membership manipulation is redundant */
-			HAK_DELETE_FROM_OOP_LIST(hak, &semgrp->sems[HAK_SEMAPHORE_GROUP_SEMS_SIG], sem, grm);
-			sems_idx = count > 0? HAK_SEMAPHORE_GROUP_SEMS_SIG: HAK_SEMAPHORE_GROUP_SEMS_UNSIG;
-			HAK_APPEND_TO_OOP_LIST(hak, &semgrp->sems[sems_idx], hak_oop_semaphore_t, sem, grm);
-		}
+		int sems_idx;
+		/* TODO: if i disallow individual wait on a semaphore in a group,
+		 *       this membership manipulation is redundant */
+		HAK_DELETE_FROM_OOP_LIST(hak, &semgrp->sems[HAK_SEMAPHORE_GROUP_SEMS_SIG], sem, grm);
+		sems_idx = count > 0? HAK_SEMAPHORE_GROUP_SEMS_SIG: HAK_SEMAPHORE_GROUP_SEMS_UNSIG;
+		HAK_APPEND_TO_OOP_LIST(hak, &semgrp->sems[sems_idx], hak_oop_semaphore_t, sem, grm);
 	}
-	else
+
+	return 1;
+}
+
+static HAK_INLINE void await_semaphore (hak_t* hak, hak_oop_semaphore_t sem)
+{
+	hak_oop_process_t proc;
+
+	if (try_acquire_semaphore(hak, sem)) return; /* signaled already. no waiting needed */
+
+	/* not signaled. need to wait */
+	proc = hak->processor->active;
+
+	/* suspend the active process */
+	suspend_process(hak, proc);
+
+	/* link the suspended process to the semaphore's process list */
+	chain_into_semaphore(hak, proc, sem);
+
+	HAK_ASSERT(hak, sem->waiting.last == proc);
+
+	if (sem->subtype == HAK_SMOOI_TO_OOP(HAK_SEMAPHORE_SUBTYPE_IO))
 	{
-		/* not signaled. need to wait */
-		proc = hak->processor->active;
-
-		/* suspend the active process */
-		suspend_process(hak, proc);
-
-		/* link the suspended process to the semaphore's process list */
-		chain_into_semaphore(hak, proc, sem);
-
-		HAK_ASSERT(hak, sem->waiting.last == proc);
-
-		if (sem->subtype == HAK_SMOOI_TO_OOP(HAK_SEMAPHORE_SUBTYPE_IO))
-		{
-			hak->sem_io_wait_count++;
-			HAK_DEBUG3 (hak, "await_semaphore - raised sem_io_wait_count to %zu for IO semaphore at index %zd handle %zd\n",
-				hak->sem_io_wait_count, HAK_OOP_TO_SMOOI(sem->u.io.index), HAK_OOP_TO_SMOOI(sem->u.io.handle));
-		}
-
-		HAK_ASSERT(hak, hak->processor->active != proc);
+		hak->sem_io_wait_count++;
+		HAK_DEBUG3 (hak, "await_semaphore - raised sem_io_wait_count to %zu for IO semaphore at index %zd handle %zd\n",
+			hak->sem_io_wait_count, HAK_OOP_TO_SMOOI(sem->u.io.index), HAK_OOP_TO_SMOOI(sem->u.io.handle));
 	}
+
+	HAK_ASSERT(hak, hak->processor->active != proc);
 }
 
 static HAK_INLINE hak_oop_t await_semaphore_group (hak_t* hak, hak_oop_semaphore_group_t semgrp)
@@ -5630,7 +5643,7 @@ hak_pfrc_t hak_pf_process_fork (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	HAK_ASSERT(hak, (hak_oop_t)HAK_CTX_GET_SENDER(hak, newctx) == hak->_nil);
 	HAK_CTX_SET_HOME(hak, newctx, (hak_oop_t)hak->_nil); /* the new context is the initial context in the new process. so reset it to nil */
 
-	HAK_ASSERT(hak, newprc->initial_context == (hak_oop_t)hak->_nil);
+	HAK_ASSERT(hak, (hak_oop_t)newprc->initial_context == hak->_nil);
 	HAK_ASSERT(hak, newprc->initial_context == newprc->current_context);
 	newprc->initial_context = newctx;
 	newprc->current_context = newctx;
@@ -6035,6 +6048,29 @@ hak_pfrc_t hak_pf_semaphore_wait (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	return HAK_PF_SUCCESS;
 }
 
+hak_pfrc_t hak_pf_semaphore_trywait (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+{
+	hak_oop_semaphore_t sem;
+
+	sem = (hak_oop_semaphore_t)HAK_STACK_GETARG(hak, nargs, 0);
+	if (!HAK_IS_SEMAPHORE(hak, sem))
+	{
+		hak_seterrbfmt(hak, HAK_EINVAL, "parameter not semaphore - %O", sem);
+		return HAK_PF_FAILURE;
+	}
+
+	if (!can_await_semaphore(hak, sem))
+	{
+		hak_seterrbfmt(hak, HAK_EPERM, "not allowed to wait on a semaphore that belongs to a semaphore group");
+		return HAK_PF_FAILURE;
+	}
+
+	/* unlike hak_pf_semaphore_wait(), this never suspends the caller, so the
+	 * active process and its stack cannot change under us. it is therefore
+	 * safe to set the return value after the attempt rather than before. */
+	HAK_STACK_SETRET(hak, nargs, try_acquire_semaphore(hak, sem)? hak->_true: hak->_false);
+	return HAK_PF_SUCCESS;
+}
 
 hak_pfrc_t hak_pf_semaphore_unsignal (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {

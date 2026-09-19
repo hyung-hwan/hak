@@ -1,0 +1,79 @@
+## Mutex:tryCritical - the non-blocking form of critical.
+##
+## t/mutex-01.hak covers a raw semaphore as a mutex and t/mutex-02.hak covers
+## Mutex:critical. This one covers the try form, whose whole contract is what
+## it does when the mutex is NOT available: answer false, leave the body
+## unrun, and - the part that is easy to get wrong - come back immediately
+## rather than waiting.
+##
+## That last point is why core.sem-trywait had to exist. Testing _owner and
+## then calling _sem:wait would be a check-then-act, and process switching is
+## tick-driven (switch_process_if_needed -> switch_to_next_runnable_process),
+## so two processes could both find the mutex free and the second would block
+## inside a call that promised not to. core.sem-trywait claims the semaphore
+## or refuses in one primitive, with no suspension point in between.
+##
+## [NOTE] the non-blocking assertion is made by watching the holder rather
+## than by timing: main runs tryCritical while a forked holder is still
+## spinning inside its own critical section, so if tryCritical had waited for
+## the mutex the holder would necessarily have finished first. A blocking
+## implementation fails three of the assertions below.
+
+$include "../src/kernel.hak"
+fun chk(ok msg) { if ok { printf "OK: %s\n" msg } else { printf "ERROR: %s\n" msg } }
+
+## --- uncontended: it runs and answers true ---
+m := (Mutex:new)
+ran := 0
+chk (m:tryCritical (fun() { ran := 1 })) "tryCritical answers true when the mutex is free"
+chk (= ran 1) "and it actually runs the body"
+
+## --- the mutex is released afterwards ---
+chk (m:tryCritical (fun() { })) "the mutex is free again after tryCritical"
+
+## --- reentrant: the owner may re-enter ---
+nested := 0
+inner := 0
+m:critical (fun() { nested := (m:tryCritical (fun() { inner := 1 })) })
+chk nested "the holder can re-enter through tryCritical"
+chk (= inner 1) "and the nested body runs"
+
+## --- contended: answers false WITHOUT running the body and WITHOUT blocking ---
+held  := (Mutex:new)
+done  := (Semaphore:new)
+entered := (Semaphore:new)
+tried := nil
+body_ran := 0
+holder_done := 0
+
+fun holder() {
+	held:critical (fun() {
+		| i |
+		entered:signal                       ## tell main we are inside
+		i := 0
+		while (< i 200) { i := (+ i 1) ; core.yield }
+	})
+	holder_done := 1                         ## only set once it has left
+	done:signal
+}
+
+core.fork holder
+entered:wait                                  ## now the mutex is definitely held
+
+tried := (held:tryCritical (fun() { body_ran := 1 }))
+
+chk (nqv? tried true) "tryCritical answers false while another process holds it"
+chk (= body_ran 0) "and it does not run the body"
+## the holder is still spinning inside its critical section. had tryCritical
+## waited for the mutex, the holder would necessarily have finished first.
+chk (= holder_done 0) "and it returned while the holder was still inside, so it did not block"
+
+done:wait
+chk (held:tryCritical (fun() { })) "the mutex is acquirable once the holder leaves"
+
+## --- a throw from the body still unlocks ---
+mx := (Mutex:new)
+caught := 0
+try { mx:tryCritical (fun() { throw 7 }) } catch (e) { caught := e }
+chk (= caught 7) "an exception from a tryCritical body propagates"
+chk (mx:tryCritical (fun() { })) "and the mutex is released when it throws"

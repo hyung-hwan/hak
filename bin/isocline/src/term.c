@@ -17,6 +17,7 @@
 
 #if defined(_WIN32)
 #include <windows.h>
+#include <io.h>       // [hak] isatty() lives here on windows, not in <unistd.h>
 #define STDOUT_FILENO 1
 #else
 #include <unistd.h>

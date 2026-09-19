@@ -28,6 +28,20 @@
 
 #include <hak-cmn.h>
 
+#if defined(_WIN32)
+	/* HAK_SPL_RELAX() below calls Sleep(). this header is included before
+	 * <windows.h> in some translation units, so pull the declaration in here
+	 * rather than relying on the includer. WIN32_LEAN_AND_MEAN keeps winsock.h
+	 * out, so a later <winsock2.h> still works. */
+#	if !defined(_WIN32_WINNT)
+#		define _WIN32_WINNT 0x0400
+#	endif
+#	if !defined(WIN32_LEAN_AND_MEAN)
+#		define WIN32_LEAN_AND_MEAN
+#	endif
+#	include <windows.h>
+#endif
+
 /** \file
  * This file provides a spinlock.
  *
