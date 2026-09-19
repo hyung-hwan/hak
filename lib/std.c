@@ -177,6 +177,48 @@
 #	include <Dialogs.h>
 #	include <TextUtils.h>
 
+#elif defined(__VMS)
+
+	/* OpenVMS.
+	 *
+	 * the generic posix arm below is driven by the HAVE_xxx macros configure
+	 * would define, and there is no configure here, so this arm states what
+	 * the platform has outright. the values were probed on OpenVMS VAX V7.3
+	 * with Compaq C V6.4-005 - see vms/README and vms/feat/.
+	 *
+	 * present: dlopen(), select(), sleep()/usleep(), gettimeofday(), pipe(),
+	 *          fcntl()/O_NONBLOCK, isatty(), strerror(), pthreads.
+	 * absent:  poll(), nanosleep(), sigaction(), snprintf(). */
+
+#	include <sys/types.h>
+#	include <unistd.h>
+#	include <fcntl.h>
+#	include <errno.h>
+#	include <time.h>
+#	include <signal.h>
+#	include <socket.h> /* fd_set and select() come from the tcpip services */
+
+#	include <ssdef.h>        /* SS$_xxx */
+#	include <starlet.h>      /* sys$xxx */
+#	include <lib$routines.h> /* lib$xxx */
+
+#	include <dlfcn.h>
+#	define USE_DLFCN
+
+	/* there is no poll() on this platform, so select() is the multiplexer */
+#	define USE_SELECT
+	/* fake XPOLLXXX values */
+#	define XPOLLIN  (1 << 0)
+#	define XPOLLOUT (1 << 1)
+#	define XPOLLERR (1 << 2)
+#	define XPOLLHUP (1 << 3)
+
+#	define HAVE_TIME_H
+#	define HAVE_SIGNAL_H
+#	define HAVE_USLEEP
+#	define HAVE_ISATTY
+#	define HAVE_SETITIMER
+
 #else
 
 #	include <sys/types.h>
@@ -407,6 +449,20 @@ struct xtn_t
 
 	hak_cmgr_t* input_cmgr;
 	hak_cmgr_t* log_cmgr;
+
+#if defined(__VMS)
+	/* OpenVMS writes one record per fwrite() to a terminal - setvbuf() does
+	 * not change that, in any buffering mode - and hak's formatter calls the
+	 * output handler a character at a time for literal text. Left alone, every
+	 * character of a script's output lands on a line of its own. So the udo
+	 * stream is assembled into whole lines here and written out one record per
+	 * newline. */
+	struct
+	{
+		hak_bch_t buf[256];
+		hak_oow_t len;
+	} udo_rec;
+#endif
 
 	struct
 	{
@@ -1407,33 +1463,33 @@ static void _assertfail (hak_t* hak, const hak_bch_t* expr, const hak_bch_t* fil
 	backtrace_stack_frames(hak);
 
 #if defined(_WIN32)
-	ExitProcess (249);
+	ExitProcess(249);
 #elif defined(__OS2__)
-	DosExit (EXIT_PROCESS, 249);
+	DosExit(EXIT_PROCESS, 249);
 #elif defined(__DOS__)
 	#if defined(__BORLANDC__) && defined(__DPMI32__)
-	_exit (249);
+	_exit(249);
 	#else
 	{
 		union REGS regs;
 		regs.h.ah = DOS_EXIT;
 		regs.h.al = 249;
-		intdos (&regs, &regs);
+		intdos(&regs, &regs);
 	}
 	#endif
 #elif defined(vms) || defined(__vms)
-	lib$stop (SS$_ABORT); /* use SS$_OPCCUS instead? */
+	lib$stop(SS$_ABORT); /* use SS$_OPCCUS instead? */
 	/* this won't be reached since lib$stop() terminates the process */
-	sys$exit (SS$_ABORT); /* this condition code can be shown with
+	sys$exit(SS$_ABORT); /* this condition code can be shown with
 	                       * 'show symbol $status' from the command-line. */
 #elif defined(macintosh)
 
-	ExitToShell ();
+	ExitToShell();
 
 #else
 
-	kill (getpid(), SIGABRT);
-	_exit (1);
+	kill(getpid(), SIGABRT);
+	_exit(1);
 #endif
 }
 
@@ -1485,7 +1541,7 @@ static void vm_gettime (hak_t* hak, hak_ntime_t* now)
 	hak_uint64_t bigsec, bigmsec;
 
 /* TODO: use DosTmrQueryTime() and DosTmrQueryFreq()? */
-	DosQuerySysInfo (QSV_MS_COUNT, QSV_MS_COUNT, &msec, HAK_SIZEOF(msec)); /* milliseconds */
+	DosQuerySysInfo(QSV_MS_COUNT, QSV_MS_COUNT, &msec, HAK_SIZEOF(msec)); /* milliseconds */
 	/* it must return NO_ERROR */
 	if (msec < xtn->tc_last)
 	{
@@ -1497,11 +1553,11 @@ static void vm_gettime (hak_t* hak, hak_ntime_t* now)
 
 	bigsec = HAK_MSEC_TO_SEC(bigmsec);
 	bigmsec -= HAK_SEC_TO_MSEC(bigsec);
-	HAK_INIT_NTIME (now, bigsec, HAK_MSEC_TO_NSEC(bigmsec));
+	HAK_INIT_NTIME(now, bigsec, HAK_MSEC_TO_NSEC(bigmsec));
 	#else
 	hak_uint32_t bigsec, bigmsec;
 
-	DosQuerySysInfo (QSV_MS_COUNT, QSV_MS_COUNT, &msec, HAK_SIZEOF(msec));
+	DosQuerySysInfo(QSV_MS_COUNT, QSV_MS_COUNT, &msec, HAK_SIZEOF(msec));
 	bigsec = HAK_MSEC_TO_SEC(msec);
 	bigmsec = msec - HAK_SEC_TO_MSEC(bigsec);
 	if (msec < xtn->tc_last)
@@ -1522,7 +1578,7 @@ static void vm_gettime (hak_t* hak, hak_ntime_t* now)
 			bigsec += inc;
 		}
 	}
-	HAK_INIT_NTIME (now, bigsec, HAK_MSEC_TO_NSEC(bigmsec));
+	HAK_INIT_NTIME(now, bigsec, HAK_MSEC_TO_NSEC(bigmsec));
     #endif
 
 #elif defined(__DOS__)
@@ -1547,7 +1603,7 @@ static void vm_gettime (hak_t* hak, hak_ntime_t* now)
 	#	error UNSUPPORTED CLOCKS_PER_SEC
 	#endif
 
-	HAK_ADD_NTIME (&xtn->tc_last_ret, &xtn->tc_last_ret, &et);
+	HAK_ADD_NTIME(&xtn->tc_last_ret, &xtn->tc_last_ret, &et);
 	*now = xtn->tc_last_ret;
 
 #elif defined(macintosh)
@@ -1555,7 +1611,7 @@ static void vm_gettime (hak_t* hak, hak_ntime_t* now)
 	hak_uint64_t tick64;
 	Microseconds (&tick);
 	tick64 = *(hak_uint64_t*)&tick;
-	HAK_INIT_NTIME (now, HAK_USEC_TO_SEC(tick64), HAK_USEC_TO_NSEC(tick64));
+	HAK_INIT_NTIME(now, HAK_USEC_TO_SEC(tick64), HAK_USEC_TO_NSEC(tick64));
 #elif defined(HAVE_CLOCK_GETTIME) && defined(CLOCK_MONOTONIC)
 	struct timespec ts;
 	clock_gettime (CLOCK_MONOTONIC, &ts);
@@ -2732,7 +2788,7 @@ static int vm_sleep (hak_t* hak, const hak_ntime_t* dur)
 
 	/* TODO: in gui mode, this is not a desirable method???
 	 *       this must be made event-driven coupled with the main event loop */
-	DosSleep (HAK_SECNSEC_TO_MSEC(dur->sec,dur->nsec));
+	DosSleep(HAK_SECNSEC_TO_MSEC(dur->sec,dur->nsec));
 
 #elif defined(macintosh)
 
@@ -3107,6 +3163,199 @@ static int unset_signal_handler (int sig)
 	return rc;
 }
 
+#elif defined(__VMS)
+
+/* OpenVMS has ansi signal() but no sigaction(). three things follow from that,
+ * and they are the whole of the difference from the arm above:
+ *
+ *   - a disposition cannot be queried without also installing one, so the
+ *     previous handler is whatever signal() hands back from the installing
+ *     call rather than something read beforehand.
+ *   - there is no SA_SIGINFO form, so only the plain (int) handler shape is
+ *     ever chained. dispatch_siginfo() has no counterpart here.
+ *   - there is no SA_RESTART. extra_sig_flags is accepted and ignored, which
+ *     is why the callers pass it unconditionally and still work.
+ *
+ * The registry and its claim protocol are deliberately identical to the
+ * sigaction arm so that callers need not know which one they were given. */
+
+typedef struct sig_state_t sig_state_t;
+struct sig_state_t
+{
+	hak_uintptr_t handler;
+	hak_uintptr_t old_handler;
+	int       busy; /* a thread is between claiming this signal and publishing it */
+};
+
+typedef void (*sig_handler_t) (int sig);
+
+static sig_state_t g_sig_state[NSIG];
+
+static void dispatch_signal (int sig)
+{
+	/* the ansi model resets the disposition to SIG_DFL on delivery, so put it
+	 * back before running anything or the second signal is lost. */
+	signal(sig, dispatch_signal);
+
+	/* run the current handler */
+	if (g_sig_state[sig].handler != (hak_uintptr_t)SIG_IGN &&
+	    g_sig_state[sig].handler != (hak_uintptr_t)SIG_DFL)
+	{
+		((sig_handler_t)g_sig_state[sig].handler)(sig);
+	}
+
+	/* run the previous handler remembered */
+	if (g_sig_state[sig].old_handler &&
+	    g_sig_state[sig].old_handler != (hak_uintptr_t)SIG_IGN &&
+	    g_sig_state[sig].old_handler != (hak_uintptr_t)SIG_DFL)
+	{
+		((sig_handler_t)g_sig_state[sig].old_handler)(sig);
+	}
+}
+
+#define SH_HOW_INSERT       (1)
+#define SH_HOW_MUST_INSERT  (2)
+#define SH_HOW_UPDATE       (3)
+#define SH_HOW_MUST_UPDATE  (4)
+#define SH_HOW_UPSERT       (5)
+
+static int set_signal_handler (int sig, int sh_how, sig_handler_t handler, int extra_sig_flags)
+{
+	sig_handler_t oldh;
+	int rc = 0;
+	int claimed = 0;
+
+	(void)extra_sig_flags; /* no SA_xxx flags on this platform */
+
+	while (1) /* loop until it can acquire the lock successfully with the busy flag of 0 */
+	{
+		GLOBAL_LOCK();
+		if (!g_sig_state[sig].busy) break; /* kept locked on the way out */
+		GLOBAL_UNLOCK();
+		HAK_SPL_RELAX();
+	}
+
+	switch (sh_how)
+	{
+		case SH_HOW_INSERT:
+		case SH_HOW_MUST_INSERT:
+			if (g_sig_state[sig].handler)
+			{
+				if (sh_how == SH_HOW_MUST_INSERT) rc = -1; /* already set */
+			}
+			else
+			{
+				g_sig_state[sig].busy = 1;
+				claimed = 1;
+				rc = 1;
+			}
+			break;
+
+		case SH_HOW_UPDATE:
+		case SH_HOW_MUST_UPDATE:
+			if (g_sig_state[sig].handler)
+			{
+				if (g_sig_state[sig].handler != (hak_uintptr_t)handler)
+				{
+					g_sig_state[sig].handler = (hak_uintptr_t)handler;
+					rc = 1; /* updated */
+				}
+			}
+			else
+			{
+				if (sh_how == SH_HOW_MUST_UPDATE) rc = -1; /* not set */
+			}
+			break;
+
+		case SH_HOW_UPSERT:
+			if (g_sig_state[sig].handler)
+			{
+				if (g_sig_state[sig].handler != (hak_uintptr_t)handler)
+				{
+					g_sig_state[sig].handler = (hak_uintptr_t)handler;
+					rc = 1; /* updated */
+				}
+			}
+			else
+			{
+				g_sig_state[sig].busy = 1;
+				claimed = 1;
+				rc = 1;
+			}
+			break;
+
+		default:
+			rc = -1; /* invalid method */
+	}
+	GLOBAL_UNLOCK();
+
+	if (!claimed) return rc;
+
+	/* publish before installing, for the reason the sigaction arm gives: a
+	 * delivery arriving the instant signal() returns must find the registry
+	 * already complete. old_handler cannot be filled in until signal() has
+	 * answered it, so a signal caught in that window runs the new handler and
+	 * not the displaced one - which is the price of having no way to read a
+	 * disposition without replacing it. */
+	GLOBAL_LOCK();
+	g_sig_state[sig].handler = (hak_uintptr_t)handler;
+	GLOBAL_UNLOCK();
+
+	oldh = signal(sig, dispatch_signal);
+
+	GLOBAL_LOCK();
+	if (oldh == SIG_ERR)
+	{
+		g_sig_state[sig].handler = 0; /* nothing got installed - undo the publish */
+		rc = -1;
+	}
+	else
+	{
+		g_sig_state[sig].old_handler = (hak_uintptr_t)oldh;
+	}
+	g_sig_state[sig].busy = 0;
+	GLOBAL_UNLOCK();
+	return rc;
+}
+
+/* same claim-then-syscall shape as above. */
+static int unset_signal_handler (int sig)
+{
+	sig_handler_t oldh = SIG_DFL;
+	int rc = 0;
+	int claimed = 0;
+
+	while (1)
+	{
+		GLOBAL_LOCK();
+		if (!g_sig_state[sig].busy) break;
+		GLOBAL_UNLOCK();
+		HAK_SPL_RELAX();
+	}
+
+	if (g_sig_state[sig].handler)
+	{
+		/* read the saved disposition out while the lock is held, so the call
+		 * below needs nothing shared. */
+		if (g_sig_state[sig].old_handler) oldh = (sig_handler_t)g_sig_state[sig].old_handler;
+		g_sig_state[sig].busy = 1;
+		claimed = 1;
+		rc = 1; /* to indicate successful unset */
+	}
+	GLOBAL_UNLOCK();
+
+	if (!claimed) return rc;
+
+	if (signal(sig, oldh) == SIG_ERR) rc = -1;
+
+	GLOBAL_LOCK();
+	if (rc >= 1) g_sig_state[sig].handler = 0; /* keep other fields untouched */
+	g_sig_state[sig].busy = 0;
+	GLOBAL_UNLOCK();
+
+	return rc;
+}
+
 #if 0
 static int is_signal_handler_set (int sig)
 {
@@ -3117,6 +3366,14 @@ static int is_signal_handler_set (int sig)
 	return rc;
 }
 #endif
+#endif
+
+#if !defined(SA_RESTART)
+	/* there are no SA_xxx flags where set_signal_handler() is built on ansi
+	 * signal() rather than sigaction() - openvms is the case in hand. the
+	 * callers pass SA_RESTART unconditionally and that implementation ignores
+	 * the argument, so zero is both harmless and accurate. */
+#	define SA_RESTART 0
 #endif
 
 /* post a signal number into every hak instance's signal descriptor, so that
@@ -3332,7 +3589,7 @@ static void EXPENTRY os2_wait_for_timer_event (ULONG x)
 	rc = DosStartTimer(HAK_USEC_TO_MSEC(HAK_TICKER_INTERVAL_USECS), (HSEM)os2_tick_sem, &os2_tick_timer);
 	if (rc != NO_ERROR)
 	{
-		DosCloseEventSem (os2_tick_sem);
+		DosCloseEventSem(os2_tick_sem);
 		goto done;
 	}
 
@@ -3341,7 +3598,7 @@ static void EXPENTRY os2_wait_for_timer_event (ULONG x)
 		rc = DosWaitEventSem(os2_tick_sem, 5000L);
 	#if 0
 		hak_raise_gtick(0);
-		DosResetEventSem (os2_tick_sem, &count);
+		DosResetEventSem(os2_tick_sem, &count);
 	#else
 		DosResetEventSem(os2_tick_sem, &count);
 		hak_raise_gtick(0);
@@ -3440,13 +3697,15 @@ static HAK_INLINE void stop_ticker (void)
 	/*DisposeTimerProc (mac_tmtask.tmAddr);*/
 }
 
-#elif defined(HAVE_SETITIMER) && defined(SIGVTALRM) && defined(ITIMER_VIRTUAL)
+#elif defined(HAVE_SETITIMER) && ((defined(SIGVTALRM) && defined(ITIMER_VIRTUAL)) || (defined(SIGALRM) && defined(ITIMER_REAL)))
 
 static HAK_INLINE int start_ticker (void)
 {
-#if !defined(ITIMER_VIRTUAL_NOT_WORKING)
+#if defined(SIGVTALRM) && defined(ITIMER_VIRTUAL) && !defined(ITIMER_VIRTUAL_NOT_WORKING)
 	/* a cpu-time timer only fires while the vm is actually computing, which is
-	 * exactly when a process needs preempting, so prefer it where it works. */
+	 * exactly when a process needs preempting, so prefer it where it works.
+	 * openvms has ITIMER_VIRTUAL but no SIGVTALRM to deliver it, so the test
+	 * has to name both rather than assume one implies the other. */
 	if (set_signal_handler(SIGVTALRM, SH_HOW_UPSERT, hak_raise_gtick, SA_RESTART) >= 0)
 	{
 		struct itimerval itv;
@@ -3488,6 +3747,7 @@ static HAK_INLINE int start_ticker (void)
 
 static HAK_INLINE void stop_ticker (void)
 {
+	#if defined(SIGVTALRM) && defined(ITIMER_VIRTUAL)
 	/* ignore the signal fired by the activated timer.
 	 * unsetting the signal may cause the program to terminate(default action) */
 	if (set_signal_handler(SIGVTALRM, SH_HOW_UPDATE, SIG_IGN, 0) >= 1)
@@ -3499,6 +3759,7 @@ static HAK_INLINE void stop_ticker (void)
 		itv.it_value.tv_usec = 0;
 		setitimer(ITIMER_VIRTUAL, &itv, HAK_NULL);
 	}
+	#endif
 
 	#if defined(SIGALRM) && defined(ITIMER_REAL)
 	if (set_signal_handler(SIGALRM, SH_HOW_UPDATE, SIG_IGN, 0) >= 1)
@@ -4160,7 +4421,7 @@ static int os2_socket_pair (int p[2])
 	ULONG msec, idx;
 
 	DosGetInfoBlocks(&tib, &pib);
-	DosQuerySysInfo (QSV_MS_COUNT, QSV_MS_COUNT, &msec, HAK_SIZEOF(msec));
+	DosQuerySysInfo(QSV_MS_COUNT, QSV_MS_COUNT, &msec, HAK_SIZEOF(msec));
 
 	x = socket(PF_OS2, SOCK_STREAM, 0);
 	if (x <= -1) goto oops;
@@ -5143,6 +5404,10 @@ static HAK_INLINE int open_udo_stream (hak_t* hak, hak_io_udoarg_t* arg)
 		return -1;
 	}
 
+#if defined(__VMS)
+	xtn->udo_rec.len = 0; /* see write_udo_stream() */
+#endif
+
 	arg->handle = fp;
 	return 0;
 }
@@ -5154,10 +5419,65 @@ static HAK_INLINE int close_udo_stream (hak_t* hak, hak_io_udoarg_t* arg)
 
 	fp = (FILE*)arg->handle;
 	HAK_ASSERT(hak, fp != HAK_NULL);
+#if defined(__VMS)
+	flush_udo_rec(hak, fp); /* do not lose a line that has no trailing newline */
+#endif
 	if (fp != stdout) fclose(fp);
 	arg->handle = HAK_NULL;
 	return 0;
 }
+
+#if defined(__VMS)
+/* push whatever has been gathered so far out as one record.
+ *
+ * [IMPORTANT] the argument order is not the usual fwrite(ptr, 1, len, fp).
+ * this c rtl turns each ITEM into its own record on a record oriented stream,
+ * so writing len items of one byte produces len separate lines, while writing
+ * one item of len bytes produces the single line that is wanted. */
+static int flush_udo_rec (hak_t* hak, FILE* fp)
+{
+	xtn_t* xtn = GET_XTN(hak);
+
+	if (xtn->udo_rec.len <= 0) return 0;
+
+	if (fwrite(xtn->udo_rec.buf, xtn->udo_rec.len, 1, fp) < 1)
+	{
+		xtn->udo_rec.len = 0; /* drop it rather than write it twice */
+		hak_seterrbfmtwithsyserr(hak, 0, errno, "unable to write udo stream");
+		return -1;
+	}
+
+	xtn->udo_rec.len = 0;
+	return 0;
+}
+
+/* gather bytes until a newline or until the buffer is full, then emit. the
+ * newline itself goes out with the record it terminates, because the c rtl
+ * supplies the record separator. */
+static int put_udo_rec (hak_t* hak, FILE* fp, const hak_bch_t* ptr, hak_oow_t len)
+{
+	xtn_t* xtn = GET_XTN(hak);
+	hak_oow_t i;
+
+	for (i = 0; i < len; i++)
+	{
+		if (ptr[i] == '\n')
+		{
+			if (flush_udo_rec(hak, fp) <= -1) return -1;
+			continue;
+		}
+
+		xtn->udo_rec.buf[xtn->udo_rec.len++] = ptr[i];
+		if (xtn->udo_rec.len >= HAK_COUNTOF(xtn->udo_rec.buf))
+		{
+			/* a line longer than the buffer simply spans several records */
+			if (flush_udo_rec(hak, fp) <= -1) return -1;
+		}
+	}
+
+	return 0;
+}
+#endif
 
 static HAK_INLINE int write_udo_stream (hak_t* hak, hak_io_udoarg_t* arg)
 {
@@ -5185,11 +5505,15 @@ static HAK_INLINE int write_udo_stream (hak_t* hak, hak_io_udoarg_t* arg)
 		hak_copy_bchars(bcsbuf, &ptr[donelen], bcslen);
 	#endif
 
+#if defined(__VMS)
+		if (put_udo_rec(hak, (FILE*)arg->handle, bcsbuf, bcslen) <= -1) return -1;
+#else
 		if (fwrite(bcsbuf, HAK_SIZEOF(bcsbuf[0]), bcslen, (FILE*)arg->handle) < bcslen)
 		{
 			hak_seterrbfmtwithsyserr(hak, 0, errno, "unable to write udo stream");
 			return -1;
 		}
+#endif
 
 		donelen += ucslen;
 	}
@@ -5206,11 +5530,15 @@ static HAK_INLINE int write_udo_stream_bytes (hak_t* hak, hak_io_udoarg_t* arg)
 
 	ptr = (const hak_uint8_t*)arg->ptr; /* take the buffer as a byte series */
 
+#if defined(__VMS)
+	if (put_udo_rec(hak, (FILE*)arg->handle, (const hak_bch_t*)ptr, arg->len) <= -1) return -1;
+#else
 	if (fwrite(ptr, HAK_SIZEOF(*ptr), arg->len, (FILE*)arg->handle) < arg->len)
 	{
 		hak_seterrbfmtwithsyserr(hak, 0, errno, "unable to write udo stream");
 		return -1;
 	}
+#endif
 
 	arg->xlen = arg->len;
 	return 0;
@@ -5222,6 +5550,10 @@ static HAK_INLINE int flush_udo_stream (hak_t* hak, hak_io_udoarg_t* arg)
 
 	fp = (FILE*)arg->handle;
 	HAK_ASSERT(hak, fp != HAK_NULL);
+
+#if defined(__VMS)
+	if (flush_udo_rec(hak, fp) <= -1) return -1;
+#endif
 
 	fflush (fp);
 	return 0;

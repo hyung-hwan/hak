@@ -24,10 +24,10 @@
 
 #include "hak-prv.h"
 
-/* exec_syscmd() is built on fork(), execve() and waitpid(), none of which
- * exist on windows. without this, calling a string or a symbol falls through
- * to the ordinary "cannot call" runtime error. */
-#if !defined(_WIN32)
+/* exec_syscmd() is built on fork(), execve() and waitpid(). neither windows
+ * nor openvms has them. without this, calling a string or a symbol falls
+ * through to the ordinary "cannot call" runtime error. */
+#if !defined(_WIN32) && !defined(__VMS)
 #	define ENABLE_SYSCMD
 #endif
 

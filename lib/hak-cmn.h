@@ -42,6 +42,8 @@
 #	include <hak-dos.h>
 #elif defined(macintosh)
 #	include <hak-mac.h> /* classic mac os */
+#elif defined(__VMS)
+#	include <hak-vms.h>
 #else
 #	error UNSUPPORTED SYSTEM
 #endif
