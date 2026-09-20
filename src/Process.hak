@@ -1,4 +1,4 @@
-##$include-once "Object.hak"
+$include-once "Object.hak"
 
 class[#uncopyable #final #limited #varying] Process: Object(
 	_initial_context

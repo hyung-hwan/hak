@@ -1412,6 +1412,12 @@ struct hak_io_cciarg_t
 	void* handle;
 
 	/**
+	 * [OUT] unique identity key set by a handler implementation
+	 * Used for one-time file inclusion check
+	 */
+	hak_uint8_t unique_id[HAK_SIZEOF_INTPTR_T * 2];
+
+	/**
 	 * [OUT] set this to non-zero in HAK_IO_OPEN if the handler fills the buffer with bytes.
 	 *       the caller issues HAK_IO_READ_BYTES if it's set to non-zero, expecting bytes.
 	 *       otherwise it issues HAK_IO_READ expecting characters.

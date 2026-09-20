@@ -1451,6 +1451,36 @@ static void init_feed (hak_t* hak)
 
 /* ------------------------------------------------------------------------ */
 
+static int ever_included (hak_t* hak, hak_io_cciarg_t* arg)
+{
+	hak_oow_t i;
+	for (i = 0; i < hak->c->incl_hist.count; i++)
+	{
+		if (HAK_MEMCMP(&hak->c->incl_hist.ptr[i * HAK_SIZEOF(arg->unique_id)], arg->unique_id, HAK_SIZEOF(arg->unique_id)) == 0) return 1;
+	}
+	return 0;
+}
+
+static int record_ever_included (hak_t* hak, hak_io_cciarg_t* arg)
+{
+	if (hak->c->incl_hist.count >= hak->c->incl_hist.capa)
+	{
+		hak_uint8_t* tmp;
+		hak_oow_t newcapa;
+
+		newcapa = hak->c->incl_hist.capa + 128;
+		tmp = (hak_uint8_t*)hak_reallocmem(hak, hak->c->incl_hist.ptr, newcapa * HAK_SIZEOF(arg->unique_id));
+		if (HAK_UNLIKELY(!tmp)) return -1;
+
+		hak->c->incl_hist.ptr = tmp;
+		hak->c->incl_hist.capa = newcapa;
+	}
+
+	HAK_MEMCPY(&hak->c->incl_hist.ptr[hak->c->incl_hist.count * HAK_SIZEOF(arg->unique_id)], arg->unique_id, HAK_SIZEOF(arg->unique_id));
+	hak->c->incl_hist.count++;
+	return 0;
+}
+
 static int feed_begin_include (hak_t* hak, int once)
 {
 	hak_io_cciarg_t* arg;
@@ -1498,6 +1528,21 @@ else
 		goto oops;
 	}
 
+	if (ever_included(hak, arg))
+	{
+		hak->c->cci_rdr(hak, HAK_IO_CLOSE, arg); /* ignore this error. no good way to report this close failure */
+		hak_freemem(hak, arg);
+		return 0;
+	}
+
+	if (HAK_UNLIKELY(record_ever_included(hak, arg) <= -1))
+	{
+		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
+		hak->c->cci_rdr(hak, HAK_IO_CLOSE, arg); /* ignore this error. no good way to report this close failure */
+		hak_setsynerrbfmt(hak, HAK_SYNERR_INCLUDE, TOKEN_LOC(hak), "unable to include %js - %js", io_name, orgmsg);
+		goto oops;
+	}
+
 	if (arg->includer == &hak->c->cci_arg) /* top-level include */
 	{
 		/* TODO: remove hak_readbasesrchar() and clean up this part.
@@ -1523,10 +1568,7 @@ else
 	return 0;
 
 oops:
-	if (arg)
-	{
-		hak_freemem(hak, arg);
-	}
+	if (arg) hak_freemem(hak, arg);
 	return -1;
 }
 
@@ -4302,6 +4344,7 @@ static void fini_compiler_cb (hak_t* hak)
 			hak->c->funblk.depth = -1;
 		}
 
+		if (hak->c->incl_hist.ptr) hak_freemem(hak, hak->c->incl_hist.ptr);
 		clear_sr_names(hak);
 		if (hak->c->tok.name.ptr) hak_freemem(hak, hak->c->tok.name.ptr);
 
@@ -4404,6 +4447,7 @@ int hak_attachccio (hak_t* hak, hak_io_impl_t cci_rdr)
 
 		/* clear unneeded source stream names */
 		/*clear_sr_names(hak); <---- TODO: tricky to clean up here */
+		/* TODO: also tricky. need to clear hak->c->incl_hist? */
 
 		/* initialize some other key fields */
 		hak->c->nungots = 0;

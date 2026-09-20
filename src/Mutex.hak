@@ -1,4 +1,4 @@
-##$include-once "Semaphore.hak"
+$include-once "Semaphore.hak"
 
 class[#uncopyable] Mutex: Object(
 	_sem

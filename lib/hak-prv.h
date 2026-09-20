@@ -1077,6 +1077,13 @@ struct hak_compiler_t
 	hak_tok_t   tok;
 	hak_link_t* sr_names;
 
+	struct
+	{
+		hak_uint8_t* ptr;
+		hak_oow_t count;
+		hak_oow_t capa;
+	} incl_hist;
+
 	hak_synerr_t synerr;
 
 	/* temporary space to handle an illegal character */

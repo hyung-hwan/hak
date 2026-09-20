@@ -225,6 +225,7 @@
 #else
 
 #	include <sys/types.h>
+#	include <sys/stat.h>
 #	include <unistd.h>
 #	include <fcntl.h>
 #	include <errno.h>
@@ -4966,6 +4967,52 @@ struct bb_t
 #define FOPEN_R_FLAGS "r"
 #endif
 
+static int fill_cciarg_unique_id (hak_t* hak, hak_io_cciarg_t* arg, const hak_bch_t* path)
+{
+#if defined(_WIN32)
+	hak_seterrnum(hak, HAK_ENOIMPL);
+	return -1;
+
+#elif defined(__OS2__)
+	hak_seterrnum(hak, HAK_ENOIMPL);
+	return -1;
+
+#elif defined(__DOS__)
+	hak_seterrnum(hak, HAK_ENOIMPL);
+	return -1;
+
+#elif defined(__VMS)
+	hak_seterrnum(hak, HAK_ENOIMPL);
+	return -1;
+
+#else
+	struct stat st;
+	int x;
+	struct
+	{
+		hak_uintptr_t ino;
+		hak_uintptr_t dev;
+	} tmp;
+
+	x = stat(path, &st);
+	if (x <= -1) return -1;
+
+	tmp.ino = st.st_ino;
+	tmp.dev = st.st_dev;
+
+	if (HAK_SIZEOF(tmp) >= HAK_SIZEOF(arg->unique_id))
+	{
+		HAK_MEMCPY(arg->unique_id, &tmp, HAK_SIZEOF(arg->unique_id));
+	}
+	else
+	{
+		HAK_MEMCPY(arg->unique_id, &tmp, HAK_SIZEOF(tmp));
+		HAK_MEMSET(&arg->unique_id[HAK_SIZEOF(tmp)], 0, HAK_SIZEOF(arg->unique_id) - HAK_SIZEOF(tmp));
+	}
+	return 0;
+#endif
+}
+
 static HAK_INLINE int open_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 {
 	xtn_t* xtn = GET_XTN(hak);
@@ -5118,6 +5165,7 @@ retry:
 	}
 
 	arg->handle = bb;
+	fill_cciarg_unique_id(hak, arg, bb->fn); /* ignore error */
 	return 0;
 
 oops:
