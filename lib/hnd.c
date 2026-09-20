@@ -315,6 +315,20 @@ static int set_nonblock (hak_t* hak, int fd)
 #if defined(_WIN32)
 	hak_seterrnum(hak, HAK_ENOIMPL);
 	return -1;
+#elif defined(__VMS)
+	/* fcntl(F_SETFL) is not implemented on OpenVMS - it answers ENOSYS - so a
+	 * descriptor cannot be made non-blocking there.
+	 *
+	 * This answers success rather than failure, because on that platform the
+	 * multiplexer reports readiness before anything is read: lib/poll-vms.c
+	 * asks $GETDVI for the queued message count, so a read issued after a
+	 * readiness notification has data waiting and does not block. What the
+	 * caller loses is the "the primitive returns -1 instead of blocking"
+	 * contract - code that reads speculatively, without waiting on a
+	 * semaphore bound to the handle first, blocks instead of being told to
+	 * come back later. */
+	(void)fd;
+	return 0;
 #elif defined(O_NONBLOCK)
 	int fl;
 

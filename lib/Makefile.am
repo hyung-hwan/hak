@@ -114,6 +114,12 @@ libhak_la_SOURCES += \
 	poll-msw.h
 endif
 
+# OpenVMS is built with vms/build.com rather than through configure, so
+# poll-vms.c is never compiled here. It still has to ship in the tarball.
+EXTRA_DIST = \
+	poll-vms.c \
+	poll-vms.h
+
 libhak_la_CPPFLAGS = $(CPPFLAGS_LIB_COMMON)
 libhak_la_LDFLAGS = $(LDFLAGS_LIB_COMMON)
 libhak_la_LIBADD = $(LIBADD_LIB_COMMON)

@@ -393,10 +393,60 @@ static void set_signal_to_ignore (int sig)
 
 static void print_info (void)
 {
+#if defined(__x86_64) || defined(__x86_64__) || defined(_M_X64)
+	const char *arch = "x86_64";
+#elif defined(__ia64) || defined(__ia64__) || defined(__ia64)
+	const char *arch = "IA-64";
+#elif defined(__alpha) || defined(__ALPHA) || defined(__alpha__)
+	const char *arch = "Alpha";
+#elif defined(__vax) || defined(__VAX)
+	const char *arch = "VAX";
+#elif defined(__aarch64__) || defined(_M_ARM64)
+	const char *arch = "AArch64/ARM64";
+#elif defined(__arm__) || defined(_M_ARM)
+	const char *arch = "AArch32/ARM32";
+#elif defined(__i386) || defined(__i386__) || defined(_M_IX86)
+	const char *arch = "x86";
+#elif defined(__powerpc) || defined(__powerpc__) || defined(__ppc__)
+	const char *arch = "PowerPC";
+#elif defined(__sparc) || defined(__sparc__)
+	const char *arch = "SPARC";
+#elif defined(__mips__) || defined(__mips)
+	const char *arch = "MIPS";
+#elif defined(__riscv)
+	const char *arch = "RISC-V";
+#elif defined(__s390x__) || defined(__s390__)
+	const char *arch = "IBM z/Architecture";
+#else
+	const char *arch = "Unknown Architecture";
+#endif
+
+#if defined(HAK_PACKAGE_NAME) && defined(HAK_PACKAGE_VERSION)
+	printf("%s %s (%s)\n", HAK_PACKAGE_NAME, HAK_PACKAGE_VERSION, arch);
+#endif
+
 #if defined(HAK_CONFIGURE_CMD) && defined(HAK_CONFIGURE_ARGS)
-	printf("Configured with: %s %s\n", HAK_CONFIGURE_CMD, HAK_CONFIGURE_ARGS);
+	printf("configured with: %s %s\n", HAK_CONFIGURE_CMD, HAK_CONFIGURE_ARGS);
 #elif defined(_WIN32)
-	printf("Built for windows\n");
+	printf("built for windows\n");
+#elif defined(__VMS)
+	{
+	/* __VMS_VERSION yields strings like "V8.4    " */
+	#if defined(__VMS_VERSION)
+		const char *vms_ver = __VMS_VERSION;
+	#else
+		const char *vms_ver = "Unknown Version";
+	#endif
+		printf("built for OpenVMS %s\n", vms_ver);
+
+	#if defined(__DECC_VER)
+		{
+			/* __DECC_VER converts an integer like 70390022 into a readable version */
+			int ver = __DECC_VER;
+			printf("Compiler: VSI/DEC C V%d.%d-%03d\n", ver / 10000000, (ver % 10000000) / 100000, ver % 1000);
+		}
+	#endif
+	}
 #else
 	/* TODO: improve this part */
 #endif

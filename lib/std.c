@@ -205,13 +205,16 @@
 #	include <dlfcn.h>
 #	define USE_DLFCN
 
-	/* there is no poll() on this platform, so select() is the multiplexer */
-#	define USE_SELECT
-	/* fake XPOLLXXX values */
-#	define XPOLLIN  (1 << 0)
-#	define XPOLLOUT (1 << 1)
-#	define XPOLLERR (1 << 2)
-#	define XPOLLHUP (1 << 3)
+	/* OpenVMS has no poll(), and its select() comes from the tcpip services
+	 * and handles sockets only - it answers ENOTSOCK for a pipe. lib/poll-vms.c
+	 * supplies a poll() built on $QIO, so the USE_POLL multiplexer below works
+	 * unchanged. This is the same arrangement windows uses with poll-msw.c. */
+#	include "poll-vms.h"
+#	define USE_POLL
+#	define XPOLLIN POLLIN
+#	define XPOLLOUT POLLOUT
+#	define XPOLLERR POLLERR
+#	define XPOLLHUP POLLHUP
 
 #	define HAVE_TIME_H
 #	define HAVE_SIGNAL_H
