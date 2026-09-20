@@ -68,6 +68,17 @@
 #	include <signal.h>
 #elif defined(macintosh)
 #	include <Timer.h>
+
+#elif defined(__VMS)
+	/* the posix arm below guards these behind the HAVE_xxx macros configure
+	 * would define, and there is no configure on OpenVMS - see vms/README. */
+#	include <sys/types.h>
+#	include <errno.h>
+#	include <unistd.h>
+#	include <fcntl.h>
+#	include <time.h>
+#	include <signal.h>
+
 #else
 
 #	include <sys/types.h>

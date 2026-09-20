@@ -26,7 +26,11 @@
 
 
 #include "_core.h"
+#if defined(__VMS)
+#include "[-.lib]hak-prv.h"
+#else
 #include "../lib/hak-prv.h"
+#endif
 
 static hak_pfrc_t pf_core_basic_new (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {

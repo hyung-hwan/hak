@@ -331,6 +331,17 @@
 #	endif
 #endif
 
+/* the character that separates one directory from the next in an incdirs or
+ * modlibdirs list. a VMS file spec contains colons of its own ("dnfs1:[hak.src]")
+ * so a colon cannot delimit the list there. */
+#if defined(__DOS__) || defined(_WIN32) || defined(__OS2__)
+#	define INCDIR_SEP ';'
+#elif defined(__VMS)
+#	define INCDIR_SEP ','
+#else
+#	define INCDIR_SEP ':'
+#endif
+
 #if !defined(HAK_DEFAULT_PFMODDIR)
 #	define HAK_DEFAULT_PFMODDIR ""
 #endif
@@ -5001,7 +5012,7 @@ retry:
 
 				/* incdirs is kept in the byte form as well, so the directory part
 				 * needs no conversion here - only the include name does. */
-				colon = hak_find_bchar_in_bcstr(incdirs_ptr, ':');
+				colon = hak_find_bchar_in_bcstr(incdirs_ptr, INCDIR_SEP);
 				incdir_bcslen = colon? (hak_oow_t)(colon - incdirs_ptr): hak_count_bcstr(incdirs_ptr);
 
 				bb = (bb_t*)hak_callocmem(hak, HAK_SIZEOF(*bb) + (HAK_SIZEOF(hak_bch_t) * (incdir_bcslen + bcslen + 2)));
@@ -5009,9 +5020,16 @@ retry:
 
 				bb->fn = (hak_bch_t*)(bb + 1);
 
-/* TODO: i need to support different directory separator */
 				hak_copy_bchars(bb->fn, incdirs_ptr, incdir_bcslen);
+#if defined(__VMS)
+				/* a VMS directory spec already ends with ']' or ':', so the
+				 * name follows it directly - "dnfs1:[hak.src]" + "kernel.hak"
+				 * is the complete file spec. inserting a separator would make
+				 * it "dnfs1:[hak.src]/kernel.hak", which RMS cannot parse. */
+#else
+/* TODO: i need to support different directory separator */
 				if (incdir_bcslen > 0 && bb->fn[incdir_bcslen - 1] != '/') bb->fn[incdir_bcslen++] = '/';
+#endif
 			#if defined(HAK_OOCH_IS_UCH)
 				hak_convootobcstr(hak, arg->name, &ucslen, &bb->fn[incdir_bcslen], &bcslen);
 			#else
@@ -5461,14 +5479,8 @@ static int put_udo_rec (hak_t* hak, FILE* fp, const hak_bch_t* ptr, hak_oow_t le
 
 	for (i = 0; i < len; i++)
 	{
-		if (ptr[i] == '\n')
-		{
-			if (flush_udo_rec(hak, fp) <= -1) return -1;
-			continue;
-		}
-
 		xtn->udo_rec.buf[xtn->udo_rec.len++] = ptr[i];
-		if (xtn->udo_rec.len >= HAK_COUNTOF(xtn->udo_rec.buf))
+		if (ptr[i] == '\n' || xtn->udo_rec.len >= HAK_COUNTOF(xtn->udo_rec.buf))
 		{
 			/* a line longer than the buffer simply spans several records */
 			if (flush_udo_rec(hak, fp) <= -1) return -1;

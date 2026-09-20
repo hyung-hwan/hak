@@ -900,9 +900,15 @@ void hak_freemem (hak_t* hak, void* ptr)
 
 #if defined(HAK_ENABLE_STATIC_MODULE)
 
+#if defined(__VMS)
+#include "[-.mod]_core.h"
+#include "[-.mod]_dic.h"
+#include "[-.mod]_sys.h"
+#else
 #include "../mod/_core.h"
 #include "../mod/_dic.h"
 #include "../mod/_sys.h"
+#endif
 
 static struct
 {

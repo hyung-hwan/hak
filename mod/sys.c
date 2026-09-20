@@ -31,7 +31,11 @@
 #endif
 
 #include "_sys.h"
+#if defined(__VMS)
+#include "[-.lib]hak-prv.h"
+#else
 #include "../lib/hak-prv.h"
+#endif
 #include <hak-pio.h>
 #include <stdlib.h>
 #include <signal.h>
@@ -46,6 +50,18 @@
 #	include <fcntl.h>
 #	include <errno.h>
 #	include <time.h>
+#elif defined(__VMS)
+	/* the posix headers this platform does have, plus what pf_sys_stime()
+	 * needs to set the clock through the system services. */
+#	include <sys/types.h>
+#	include <sys/stat.h>
+#	include <unistd.h>
+#	include <fcntl.h>
+#	include <errno.h>
+#	include <time.h>
+#	include <string.h>
+#	include <descrip.h>  /* dsc$descriptor_s */
+#	include <starlet.h>  /* sys$bintim, sys$setime */
 #else
 #	include <sys/types.h>
 #	include <sys/stat.h>
@@ -140,6 +156,34 @@ static hak_pfrc_t pf_sys_stime (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 			st.wSecond = (WORD)tm->tm_sec;
 			st.wMilliseconds = 0;
 			SetSystemTime(&st);
+		}
+	}
+#elif defined(__VMS)
+	{
+		/* there is no stime(). the system service takes a 64-bit VMS binary
+		 * time, which is 100ns units since 17-NOV-1858, so the unix epoch
+		 * value has to be converted with lib$cvt_from_internal_time's
+		 * counterpart. sys$setime also needs CMKRNL/OPER privilege. */
+		unsigned int vmstime[2];
+		struct dsc$descriptor_s d;
+		hak_bch_t buf[32];
+		time_t tv = (time_t)ti;
+		struct tm* tm;
+
+		tm = gmtime(&tv);
+		if (tm)
+		{
+			/* "dd-mmm-yyyy hh:mm:ss.cc" is what sys$bintim parses */
+			static const char* mon[] = { "JAN","FEB","MAR","APR","MAY","JUN",
+			                             "JUL","AUG","SEP","OCT","NOV","DEC" };
+			sprintf(buf, "%02d-%s-%04d %02d:%02d:%02d.00",
+				tm->tm_mday, mon[tm->tm_mon], tm->tm_year + 1900,
+				tm->tm_hour, tm->tm_min, tm->tm_sec);
+			d.dsc$w_length = (unsigned short)strlen(buf);
+			d.dsc$b_dtype = DSC$K_DTYPE_T;
+			d.dsc$b_class = DSC$K_CLASS_S;
+			d.dsc$a_pointer = buf;
+			if ((sys$bintim(&d, vmstime) & 1)) sys$setime(vmstime);
 		}
 	}
 #else
@@ -477,6 +521,12 @@ oops:
 /* ------------------------------------------------------------------------ *
  * CHILD PROCESSES
  *
+ * [OpenVMS] this whole section is compiled out. It is built on lib/pio.c,
+ * which spawns with fork() - absent from the OpenVMS run-time library. The
+ * rest of the module (time, random, the signal primitives) has no such
+ * dependency and is built normally, so sys.* exists there, only without the
+ * popen family. See vms/README.
+ *
  * A child is represented as a group of handles: one HAK_HND_TYPE_PROC node
  * holding the hak_pio_t, plus one HAK_HND_TYPE_PIPE node per requested stream.
  * The pipe nodes are owned by the proc node, so tearing the proc node down
@@ -511,6 +561,8 @@ struct proc_xtn_t
 	int status;  /* ...and what did it exit with */
 };
 typedef struct proc_xtn_t proc_xtn_t;
+
+#if !defined(__VMS)
 
 static void proc_dtor (hak_t* hak, hak_hnd_t* hnd)
 {
@@ -763,6 +815,8 @@ static hak_pfrc_t pf_sys_pclose (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	return HAK_PF_SUCCESS;
 }
 
+#endif /* !defined(__VMS) */
+
 static hak_pfinfo_t pfinfos[] =
 {
 #if defined(SIGABRT)
@@ -837,11 +891,15 @@ static hak_pfinfo_t pfinfos[] =
 
 	{ "close",         { HAK_PFBASE_FUNC,        pf_sys_close,        1,  1 } },
 	{ "open",          { HAK_PFBASE_FUNC,        pf_sys_open,         2,  3 } },
+#if !defined(__VMS)
 	{ "pclose",        { HAK_PFBASE_FUNC,        pf_sys_pclose,       1,  1 } },
+#endif
 	{ "pipe",          { HAK_PFBASE_FUNC,        pf_sys_pipe,         0,  0 } },
+#if !defined(__VMS)
 	{ "pkill",         { HAK_PFBASE_FUNC,        pf_sys_pkill,        1,  1 } },
 	{ "popen",         { HAK_PFBASE_FUNC,        pf_sys_popen,        1,  2 } },
 	{ "pwait",         { HAK_PFBASE_FUNC,        pf_sys_pwait,        1,  1 } },
+#endif
 	{ "random",        { HAK_PFBASE_FUNC,        pf_sys_random,       0,  0 } },
 	{ "read",          { HAK_PFBASE_FUNC,        pf_sys_read,         2,  4 } },
 

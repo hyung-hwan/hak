@@ -22,7 +22,7 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/* OpenVMS.
+/* OpenVMS
  *
  * the values below were probed on OpenVMS VAX V7.3 with Compaq C V6.4-005
  * (__DECC_VER 60490005). alpha and itanium differ - most importantly they do
@@ -61,7 +61,7 @@
 #	define HAK_SIZEOF_SOCKLEN_T 4
 
 #else
-	/* vax.
+	/* vax
 	 *
 	 * [IMPORTANT] the vax compiler rejects both 'long long' and '__int64'
 	 * outright - it answers %CC-E-NOLONGLONG, 64-bit integral types are not
