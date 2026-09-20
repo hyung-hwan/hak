@@ -48,6 +48,14 @@
 #	error UNSUPPORTED SYSTEM
 #endif
 
+#if !defined(HAK_PACKAGE_NAME)
+#	define HAK_PACKAGE_NAME "hak"
+#endif
+
+#if !defined(HAK_PACKAGE_VERSION)
+#	define HAK_PACKAGE_VERSION "0.0.0"
+#endif
+
 /* =========================================================================
  * ARCHITECTURE/COMPILER TWEAKS
  * ========================================================================= */

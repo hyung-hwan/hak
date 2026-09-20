@@ -426,9 +426,9 @@ static void print_info (void)
 #endif
 
 #if defined(HAK_CONFIGURE_CMD) && defined(HAK_CONFIGURE_ARGS)
-	printf("configured with: %s %s\n", HAK_CONFIGURE_CMD, HAK_CONFIGURE_ARGS);
+	printf("Configured with: %s %s\n", HAK_CONFIGURE_CMD, HAK_CONFIGURE_ARGS);
 #elif defined(_WIN32)
-	printf("built for windows\n");
+	printf("Built for windows\n");
 #elif defined(__VMS)
 	{
 	/* __VMS_VERSION yields strings like "V8.4    " */
@@ -437,7 +437,7 @@ static void print_info (void)
 	#else
 		const char *vms_ver = "Unknown Version";
 	#endif
-		printf("built for OpenVMS %s\n", vms_ver);
+		printf("Built for OpenVMS %s\n", vms_ver);
 
 	#if defined(__DECC_VER)
 		{
