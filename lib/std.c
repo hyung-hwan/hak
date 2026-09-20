@@ -192,6 +192,7 @@
 	 * absent:  poll(), nanosleep(), sigaction(), snprintf(). */
 
 #	include <sys/types.h>
+#	include <sys/stat.h>
 #	include <unistd.h>
 #	include <fcntl.h>
 #	include <errno.h>
@@ -4971,20 +4972,98 @@ struct bb_t
 static int fill_cciarg_unique_id (hak_t* hak, hak_io_cciarg_t* arg, const hak_bch_t* path)
 {
 #if defined(_WIN32)
-	hak_seterrnum(hak, HAK_ENOIMPL);
-	return -1;
+	/* the volume serial number plus the file index is what windows offers in
+	 * place of dev+ino. it is the same for every spelling of a path and for
+	 * every hard link to one file, which is exactly the property wanted. */
+	HANDLE h;
+	BY_HANDLE_FILE_INFORMATION bhfi;
+	struct
+	{
+		DWORD vol;
+		DWORD idxhi;
+		DWORD idxlo;
+	} tmp;
 
-#elif defined(__OS2__)
-	hak_seterrnum(hak, HAK_ENOIMPL);
-	return -1;
+	/* zero desired-access asks for metadata only, so this succeeds on a file
+	 * already open for reading elsewhere. FILE_FLAG_BACKUP_SEMANTICS lets a
+	 * directory be opened too, harmlessly. */
+	h = CreateFileA(path, 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+	                HAK_NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, HAK_NULL);
+	if (h == INVALID_HANDLE_VALUE)
+	{
+		hak_seterrwithsyserr(hak, 1, GetLastError());
+		return -1;
+	}
 
-#elif defined(__DOS__)
-	hak_seterrnum(hak, HAK_ENOIMPL);
-	return -1;
+	if (!GetFileInformationByHandle(h, &bhfi))
+	{
+		hak_seterrwithsyserr(hak, 1, GetLastError());
+		CloseHandle(h);
+		return -1;
+	}
+	CloseHandle(h);
+
+	tmp.vol = bhfi.dwVolumeSerialNumber;
+	tmp.idxhi = bhfi.nFileIndexHigh;
+	tmp.idxlo = bhfi.nFileIndexLow;
+
+	if (HAK_SIZEOF(tmp) > HAK_SIZEOF(arg->unique_id))
+	{
+		HAK_ASSERT(hak, HAK_SIZEOF(arg->unique_id) >= HAK_SHA256_DIGEST_LEN);
+		hak_sha256_digest(arg->unique_id, &tmp, HAK_SIZEOF(tmp));
+		arg->unique_id_len = HAK_SHA256_DIGEST_LEN;
+	}
+	else
+	{
+		HAK_MEMCPY(arg->unique_id, &tmp, HAK_SIZEOF(tmp));
+		arg->unique_id_len = HAK_SIZEOF(tmp);
+	}
+	return 0;
 
 #elif defined(__VMS)
-	hak_seterrnum(hak, HAK_ENOIMPL);
-	return -1;
+	/* st_dev is a POINTER to the device name here, not an inline array, and
+	 * st_ino is the three-word file id. The two together identify the file
+	 * exactly, but the device name is variable length, so the pair is hashed
+	 * rather than stored raw. */
+	struct stat st;
+	hak_sha256_ctx_t ctx;
+
+	if (stat(path, &st) <= -1)
+	{
+		hak_seterrwithsyserr(hak, 0, errno);
+		return -1;
+	}
+
+	hak_sha256_init(&ctx);
+	if (st.st_dev) hak_sha256_update(&ctx, st.st_dev, hak_count_bcstr(st.st_dev));
+	hak_sha256_update(&ctx, &st.st_ino, HAK_SIZEOF(st.st_ino));
+	hak_sha256_final(&ctx, arg->unique_id);
+	arg->unique_id_len = HAK_SHA256_DIGEST_LEN;
+	return 0;
+
+#elif defined(__OS2__) || defined(__DOS__)
+	/* These file systems offer no usable inode, so the path itself has to be
+	 * the identity. It is upper-cased and its separators normalised first,
+	 * because the file systems are case insensitive and accept either slash.
+	 *
+	 * [NOTE] this cannot tell that two different paths name the same file, so
+	 * such a file is included more than once. That is the safe direction to
+	 * be wrong in - it never reports two DIFFERENT files as the same, which
+	 * would silently drop one of them. */
+	hak_sha256_ctx_t ctx;
+	const hak_bch_t* p;
+
+	hak_sha256_init(&ctx);
+	for (p = path; *p != '\0'; p++)
+	{
+		hak_bch_t c;
+		c = HAK_IS_PATH_SEP(*p)? HAK_DFL_PATH_SEP: hak_to_bch_upper(*p);
+		hak_sha256_update(&ctx, &c, 1);
+	}
+	HAK_ASSERT(hak, HAK_SIZEOF(arg->unique_id) >= HAK_SHA256_DIGEST_LEN);
+	hak_sha256_final(&ctx, arg->unique_id);
+	arg->unique_id_len = HAK_SHA256_DIGEST_LEN;
+	return 0;
 
 #else
 	struct stat st;
@@ -5001,22 +5080,17 @@ static int fill_cciarg_unique_id (hak_t* hak, hak_io_cciarg_t* arg, const hak_bc
 	tmp.ino = st.st_ino;
 	tmp.dev = st.st_dev;
 
-#if 0
-	if (HAK_SIZEOF(tmp) >= HAK_SIZEOF(arg->unique_id))
+	if (HAK_SIZEOF(tmp) > HAK_SIZEOF(arg->unique_id))
 	{
-		HAK_MEMCPY(arg->unique_id, &tmp, HAK_SIZEOF(arg->unique_id));
-		arg->unique_id_len = HAK_SIZEOF(arg->unique_id);
+		HAK_ASSERT(hak, HAK_SIZEOF(arg->unique_id) >= HAK_SHA256_DIGEST_LEN);
+		hak_sha256_digest(arg->unique_id, &tmp, HAK_SIZEOF(tmp));
+		arg->unique_id_len = HAK_SHA256_DIGEST_LEN;
 	}
 	else
 	{
 		HAK_MEMCPY(arg->unique_id, &tmp, HAK_SIZEOF(tmp));
 		arg->unique_id_len = HAK_SIZEOF(tmp);
 	}
-#else
-	HAK_ASSERT(hak, HAK_SIZEOF(arg->unique_id) >= HAK_SHA256_DIGEST_LEN);
-	hak_sha256_digest(arg->unique_id, &tmp, HAK_SIZEOF(tmp));
-	arg->unique_id_len = HAK_SHA256_DIGEST_LEN;
-#endif
 
 	return 0;
 #endif
