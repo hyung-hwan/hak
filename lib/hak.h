@@ -1415,7 +1415,8 @@ struct hak_io_cciarg_t
 	 * [OUT] unique identity key set by a handler implementation
 	 * Used for one-time file inclusion check
 	 */
-	hak_uint8_t unique_id[HAK_SIZEOF_INTPTR_T * 2];
+	hak_uint8_t unique_id[32];
+	hak_oow_t unique_id_len;
 
 	/**
 	 * [OUT] set this to non-zero in HAK_IO_OPEN if the handler fills the buffer with bytes.

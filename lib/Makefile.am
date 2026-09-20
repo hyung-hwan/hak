@@ -62,6 +62,7 @@ pkginclude_HEADERS = \
 	hak-pio.h \
 	hak-spl.h \
 	hak-rbt.h \
+	hak-sha256.h \
 	hak-str.h \
 	hak-upac.h \
 	hak-utl.h \
@@ -97,6 +98,7 @@ libhak_la_SOURCES = \
 	print.c \
 	rbt.c \
 	read.c \
+	sha256.c \
 	std.c \
 	str.c \
 	sym.c \

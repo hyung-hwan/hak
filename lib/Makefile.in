@@ -162,8 +162,8 @@ libhak_la_DEPENDENCIES = $(am__DEPENDENCIES_5) $(am__append_8)
 am__libhak_la_SOURCES_DIST = hak-prv.h bigint.c chr.c cmgr.c cnode.c \
 	comp.c debug.c decode.c dic.c err.c exec.c fmt-imp.h fmt.c \
 	gc.c hak.c heap.c hnd.c htb.c mb8.c number.c obj.c opt-impl.h \
-	opt.c pio.c prim.c print.c rbt.c read.c std.c str.c sym.c \
-	uch-case.h uch-prop.h utf16.c utf8.c utl.c xchg.c xma.c \
+	opt.c pio.c prim.c print.c rbt.c read.c sha256.c std.c str.c \
+	sym.c uch-case.h uch-prop.h utf16.c utf8.c utl.c xchg.c xma.c \
 	poll-msw.c poll-msw.h
 @WIN32_TRUE@am__objects_1 = libhak_la-poll-msw.lo
 am_libhak_la_OBJECTS = libhak_la-bigint.lo libhak_la-chr.lo \
@@ -174,10 +174,10 @@ am_libhak_la_OBJECTS = libhak_la-bigint.lo libhak_la-chr.lo \
 	libhak_la-hnd.lo libhak_la-htb.lo libhak_la-mb8.lo \
 	libhak_la-number.lo libhak_la-obj.lo libhak_la-opt.lo \
 	libhak_la-pio.lo libhak_la-prim.lo libhak_la-print.lo \
-	libhak_la-rbt.lo libhak_la-read.lo libhak_la-std.lo \
-	libhak_la-str.lo libhak_la-sym.lo libhak_la-utf16.lo \
-	libhak_la-utf8.lo libhak_la-utl.lo libhak_la-xchg.lo \
-	libhak_la-xma.lo $(am__objects_1)
+	libhak_la-rbt.lo libhak_la-read.lo libhak_la-sha256.lo \
+	libhak_la-std.lo libhak_la-str.lo libhak_la-sym.lo \
+	libhak_la-utf16.lo libhak_la-utf8.lo libhak_la-utl.lo \
+	libhak_la-xchg.lo libhak_la-xma.lo $(am__objects_1)
 libhak_la_OBJECTS = $(am_libhak_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -230,11 +230,12 @@ am__depfiles_remade = ./$(DEPDIR)/libhak_la-bigint.Plo \
 	./$(DEPDIR)/libhak_la-poll-msw.Plo \
 	./$(DEPDIR)/libhak_la-prim.Plo ./$(DEPDIR)/libhak_la-print.Plo \
 	./$(DEPDIR)/libhak_la-rbt.Plo ./$(DEPDIR)/libhak_la-read.Plo \
-	./$(DEPDIR)/libhak_la-std.Plo ./$(DEPDIR)/libhak_la-str.Plo \
-	./$(DEPDIR)/libhak_la-sym.Plo ./$(DEPDIR)/libhak_la-utf16.Plo \
-	./$(DEPDIR)/libhak_la-utf8.Plo ./$(DEPDIR)/libhak_la-utl.Plo \
-	./$(DEPDIR)/libhak_la-xchg.Plo ./$(DEPDIR)/libhak_la-xma.Plo \
-	./$(DEPDIR)/libhakx_la-json.Plo ./$(DEPDIR)/libhakx_la-tmr.Plo \
+	./$(DEPDIR)/libhak_la-sha256.Plo ./$(DEPDIR)/libhak_la-std.Plo \
+	./$(DEPDIR)/libhak_la-str.Plo ./$(DEPDIR)/libhak_la-sym.Plo \
+	./$(DEPDIR)/libhak_la-utf16.Plo ./$(DEPDIR)/libhak_la-utf8.Plo \
+	./$(DEPDIR)/libhak_la-utl.Plo ./$(DEPDIR)/libhak_la-xchg.Plo \
+	./$(DEPDIR)/libhak_la-xma.Plo ./$(DEPDIR)/libhakx_la-json.Plo \
+	./$(DEPDIR)/libhakx_la-tmr.Plo \
 	./$(DEPDIR)/libhakx_la-x-client.Plo \
 	./$(DEPDIR)/libhakx_la-x-proto.Plo \
 	./$(DEPDIR)/libhakx_la-x-server.Plo \
@@ -269,8 +270,8 @@ am__can_run_installinfo = \
   esac
 am__pkginclude_HEADERS_DIST = hak.h hak-chr.h hak-cmgr.h hak-cmn.h \
 	hak-fmt.h hak-htb.h hak-opt.h hak-pac1.h hak-hnd.h hak-pio.h \
-	hak-spl.h hak-rbt.h hak-str.h hak-upac.h hak-utl.h hak-xma.h \
-	hak-x.h hak-tmr.h hak-json.h
+	hak-spl.h hak-rbt.h hak-sha256.h hak-str.h hak-upac.h \
+	hak-utl.h hak-xma.h hak-x.h hak-tmr.h hak-json.h
 HEADERS = $(pkginclude_HEADERS)
 am__tagged_files = $(HEADERS) $(SOURCES) $(TAGS_FILES) $(LISP) \
 	hak-cfg.h.in
@@ -463,14 +464,15 @@ LIBADD_LIB_COMMON = $(LIBM) $(am__append_1) $(am__append_2) \
 @WIN32_TRUE@	$(am__append_5) $(am__append_6)
 pkginclude_HEADERS = hak.h hak-chr.h hak-cmgr.h hak-cmn.h hak-fmt.h \
 	hak-htb.h hak-opt.h hak-pac1.h hak-hnd.h hak-pio.h hak-spl.h \
-	hak-rbt.h hak-str.h hak-upac.h hak-utl.h hak-xma.h \
-	$(am__append_10)
+	hak-rbt.h hak-sha256.h hak-str.h hak-upac.h hak-utl.h \
+	hak-xma.h $(am__append_10)
 pkglib_LTLIBRARIES = libhak.la $(am__append_9)
 libhak_la_SOURCES = hak-prv.h bigint.c chr.c cmgr.c cnode.c comp.c \
 	debug.c decode.c dic.c err.c exec.c fmt-imp.h fmt.c gc.c hak.c \
 	heap.c hnd.c htb.c mb8.c number.c obj.c opt-impl.h opt.c pio.c \
-	prim.c print.c rbt.c read.c std.c str.c sym.c uch-case.h \
-	uch-prop.h utf16.c utf8.c utl.c xchg.c xma.c $(am__append_7)
+	prim.c print.c rbt.c read.c sha256.c std.c str.c sym.c \
+	uch-case.h uch-prop.h utf16.c utf8.c utl.c xchg.c xma.c \
+	$(am__append_7)
 
 # OpenVMS is built with vms/build.com rather than through configure, so
 # poll-vms.c is never compiled here. It still has to ship in the tarball.
@@ -618,6 +620,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhak_la-print.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhak_la-rbt.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhak_la-read.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhak_la-sha256.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhak_la-std.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhak_la-str.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libhak_la-sym.Plo@am__quote@ # am--include-marker
@@ -838,6 +841,13 @@ libhak_la-read.lo: read.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='read.c' object='libhak_la-read.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhak_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libhak_la-read.lo `test -f 'read.c' || echo '$(srcdir)/'`read.c
+
+libhak_la-sha256.lo: sha256.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhak_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libhak_la-sha256.lo -MD -MP -MF $(DEPDIR)/libhak_la-sha256.Tpo -c -o libhak_la-sha256.lo `test -f 'sha256.c' || echo '$(srcdir)/'`sha256.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libhak_la-sha256.Tpo $(DEPDIR)/libhak_la-sha256.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='sha256.c' object='libhak_la-sha256.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhak_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libhak_la-sha256.lo `test -f 'sha256.c' || echo '$(srcdir)/'`sha256.c
 
 libhak_la-std.lo: std.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libhak_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libhak_la-std.lo -MD -MP -MF $(DEPDIR)/libhak_la-std.Tpo -c -o libhak_la-std.lo `test -f 'std.c' || echo '$(srcdir)/'`std.c
@@ -1132,6 +1142,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/libhak_la-print.Plo
 	-rm -f ./$(DEPDIR)/libhak_la-rbt.Plo
 	-rm -f ./$(DEPDIR)/libhak_la-read.Plo
+	-rm -f ./$(DEPDIR)/libhak_la-sha256.Plo
 	-rm -f ./$(DEPDIR)/libhak_la-std.Plo
 	-rm -f ./$(DEPDIR)/libhak_la-str.Plo
 	-rm -f ./$(DEPDIR)/libhak_la-sym.Plo
@@ -1219,6 +1230,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/libhak_la-print.Plo
 	-rm -f ./$(DEPDIR)/libhak_la-rbt.Plo
 	-rm -f ./$(DEPDIR)/libhak_la-read.Plo
+	-rm -f ./$(DEPDIR)/libhak_la-sha256.Plo
 	-rm -f ./$(DEPDIR)/libhak_la-std.Plo
 	-rm -f ./$(DEPDIR)/libhak_la-str.Plo
 	-rm -f ./$(DEPDIR)/libhak_la-sym.Plo

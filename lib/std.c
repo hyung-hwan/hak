@@ -29,6 +29,7 @@
 #include "hak-prv.h"
 #include <hak-utl.h>
 #include <hak-spl.h>
+#include <hak-sha256.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -5000,15 +5001,23 @@ static int fill_cciarg_unique_id (hak_t* hak, hak_io_cciarg_t* arg, const hak_bc
 	tmp.ino = st.st_ino;
 	tmp.dev = st.st_dev;
 
+#if 0
 	if (HAK_SIZEOF(tmp) >= HAK_SIZEOF(arg->unique_id))
 	{
 		HAK_MEMCPY(arg->unique_id, &tmp, HAK_SIZEOF(arg->unique_id));
+		arg->unique_id_len = HAK_SIZEOF(arg->unique_id);
 	}
 	else
 	{
 		HAK_MEMCPY(arg->unique_id, &tmp, HAK_SIZEOF(tmp));
-		HAK_MEMSET(&arg->unique_id[HAK_SIZEOF(tmp)], 0, HAK_SIZEOF(arg->unique_id) - HAK_SIZEOF(tmp));
+		arg->unique_id_len = HAK_SIZEOF(tmp);
 	}
+#else
+	HAK_ASSERT(hak, HAK_SIZEOF(arg->unique_id) >= HAK_SHA256_DIGEST_LEN);
+	hak_sha256_digest(arg->unique_id, &tmp, HAK_SIZEOF(tmp));
+	arg->unique_id_len = HAK_SHA256_DIGEST_LEN;
+#endif
+
 	return 0;
 #endif
 }

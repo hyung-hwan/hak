@@ -1456,7 +1456,7 @@ static int ever_included (hak_t* hak, hak_io_cciarg_t* arg)
 	hak_oow_t i;
 	for (i = 0; i < hak->c->incl_hist.count; i++)
 	{
-		if (HAK_MEMCMP(&hak->c->incl_hist.ptr[i * HAK_SIZEOF(arg->unique_id)], arg->unique_id, HAK_SIZEOF(arg->unique_id)) == 0) return 1;
+		if (HAK_MEMCMP(&hak->c->incl_hist.ptr[i * HAK_SIZEOF(arg->unique_id)], arg->unique_id, arg->unique_id_len) == 0) return 1;
 	}
 	return 0;
 }

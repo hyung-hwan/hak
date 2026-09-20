@@ -1006,12 +1006,12 @@ static HAK_INLINE void patch_long_jump (hak_t* hak, hak_ooi_t jip, hak_ooi_t jum
 		HAK_ASSERT(hak, jump_offset <= MAX_CODE_JUMP * 2);
 
 		HAK_ASSERT(hak, hak->code.bc.ptr[jip] == HAK_CODE_JUMP_FORWARD_X ||
-		                 hak->code.bc.ptr[jip] == HAK_CODE_JUMP_FORWARD_IF_TRUE ||
-		                 hak->code.bc.ptr[jip] == HAK_CODE_JUMP_FORWARD_IF_FALSE ||
-		                 hak->code.bc.ptr[jip] == HAK_CODE_JUMP_BACKWARD_X ||
-		                 hak->code.bc.ptr[jip] == HAK_CODE_JUMP_BACKWARD_IF_TRUE ||
-		                 hak->code.bc.ptr[jip] == HAK_CODE_JUMP_BACKWARD_IF_FALSE ||
-		                 hak->code.bc.ptr[jip] == HAK_CODE_TRY_ENTER);
+		                hak->code.bc.ptr[jip] == HAK_CODE_JUMP_FORWARD_IF_TRUE ||
+		                hak->code.bc.ptr[jip] == HAK_CODE_JUMP_FORWARD_IF_FALSE ||
+		                hak->code.bc.ptr[jip] == HAK_CODE_JUMP_BACKWARD_X ||
+		                hak->code.bc.ptr[jip] == HAK_CODE_JUMP_BACKWARD_IF_TRUE ||
+		                hak->code.bc.ptr[jip] == HAK_CODE_JUMP_BACKWARD_IF_FALSE ||
+		                hak->code.bc.ptr[jip] == HAK_CODE_TRY_ENTER);
 
 		/* JUMP2 instructions are chosen to be greater than its JUMP counterpart by 1 */
 		patch_instruction(hak, jip, hak->code.bc.ptr[jip] + 1);
