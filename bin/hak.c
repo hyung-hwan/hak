@@ -909,8 +909,10 @@ int main (int argc, char* argv[])
 		fprintf(stderr, "Usage: %s [options] script-filename [output-filename]\n", argv[0]);
 		fprintf(stderr, "Options are:\n");
 		fprintf(stderr, " --info                show build information\n");
+/* TODO: show the separator info? how to retrieve the internal separator character? just hard-code the same knowledge here?? */
 		fprintf(stderr, " -I, --incdirs string  specify the list of include directories\n");
 		fprintf(stderr, " -l, --log     string  specify the log file path and options\n");
+/* TODO: show the separator info? how to retrieve the internal separator character? just hard-code the same knowledge here?? */
 		fprintf(stderr, " --modlibdirs  string  specify directories to load modules from\n");
 		fprintf(stderr, " -v                    show verbose messages\n");
 

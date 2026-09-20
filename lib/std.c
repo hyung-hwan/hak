@@ -331,15 +331,18 @@
 #	endif
 #endif
 
+#if defined(__DOS__) || defined(_WIN32) || defined(__OS2__)
+#	define INCDIR_SEP ';'
+#	define MODDIR_SEP ';'
+#elif defined(__VMS)
 /* the character that separates one directory from the next in an incdirs or
  * modlibdirs list. a VMS file spec contains colons of its own ("dnfs1:[hak.src]")
  * so a colon cannot delimit the list there. */
-#if defined(__DOS__) || defined(_WIN32) || defined(__OS2__)
-#	define INCDIR_SEP ';'
-#elif defined(__VMS)
 #	define INCDIR_SEP ','
+#	define MODDIR_SEP ','
 #else
 #	define INCDIR_SEP ':'
+#	define MODDIR_SEP ':'
 #endif
 
 #if !defined(HAK_DEFAULT_PFMODDIR)
@@ -4011,16 +4014,23 @@ static void* dlopen_pfmod (hak_t* hak, const hak_ooch_t* name, const hak_bch_t* 
 	{
 		dlen = hak_copy_bchars_to_bcstr(bufptr, bufcapa, dirptr, dirlen);
 
-		if (dlen > 0 && bufptr[dlen - 1] != HAK_DFL_PATH_SEP)
+		if (dlen > 0)
 		{
-		#if defined(HAK_HAVE_ALT_PATH_SEP)
+		#if defined(__VMS)
+			/* do nothing */
+		#elif defined(HAK_HAVE_ALT_PATH_SEP)
 			if (hak_find_bchar(bufptr, dlen, HAK_ALT_PATH_SEP) &&
 			    !hak_find_bchar(bufptr, dlen, HAK_DFL_PATH_SEP))
-				bufptr[dlen++] = HAK_ALT_PATH_SEP;
+			{
+				if (bufptr[dlen - 1] != HAK_ALT_PATH_SEP) bufptr[dlen++] = HAK_ALT_PATH_SEP;
+			}
 			else
-				bufptr[dlen++] = HAK_DFL_PATH_SEP;
+			{
+				if (bufptr[dlen - 1] != HAK_DFL_PATH_SEP) bufptr[dlen++] = HAK_DFL_PATH_SEP;
+			}
+		#else
+			if (bufptr[dlen - 1] != HAK_DFL_PATH_SEP) bufptr[dlen++] = HAK_DFL_PATH_SEP;
 		#endif
-			bufptr[dlen++] = HAK_DFL_PATH_SEP;
 		}
 		len = hak_copy_bcstr(&bufptr[dlen], bufcapa - dlen, HAK_DEFAULT_PFMODPREFIX);
 		len += dlen;
@@ -4190,7 +4200,7 @@ static void* dl_open (hak_t* hak, const hak_ooch_t* name, int flags)
 
 			while (ptr <= end)
 			{
-				if (ptr == end || *ptr == ':')
+				if (ptr == end || *ptr == MODDIR_SEP)
 				{
 					if (ptr - seg > 0)
 					{
@@ -5021,15 +5031,33 @@ retry:
 				bb->fn = (hak_bch_t*)(bb + 1);
 
 				hak_copy_bchars(bb->fn, incdirs_ptr, incdir_bcslen);
-#if defined(__VMS)
-				/* a VMS directory spec already ends with ']' or ':', so the
-				 * name follows it directly - "dnfs1:[hak.src]" + "kernel.hak"
-				 * is the complete file spec. inserting a separator would make
-				 * it "dnfs1:[hak.src]/kernel.hak", which RMS cannot parse. */
-#else
-/* TODO: i need to support different directory separator */
-				if (incdir_bcslen > 0 && bb->fn[incdir_bcslen - 1] != '/') bb->fn[incdir_bcslen++] = '/';
-#endif
+
+				if (incdir_bcslen > 0)
+				{
+				#if defined(__VMS)
+					/* do nothing */
+					/* a VMS directory spec already ends with ']' or ':', so the
+					 * name follows it directly - "dnfs1:[hak.src]" + "kernel.hak"
+					 * is the complete file spec. inserting a separator would make
+					 * it "dnfs1:[hak.src]/kernel.hak", which RMS cannot parse. */
+				#elif defined(HAK_HAVE_ALT_PATH_SEP)
+					if (hak_find_bchar(bb->fn, incdir_bcslen, HAK_ALT_PATH_SEP) &&
+					    !hak_find_bchar(bb->fn, incdir_bcslen, HAK_DFL_PATH_SEP))
+					{
+						if (bb->fn[incdir_bcslen - 1] != HAK_ALT_PATH_SEP)
+							bb->fn[incdir_bcslen++] = HAK_ALT_PATH_SEP;
+					}
+					else
+					{
+						if (bb->fn[incdir_bcslen - 1] != HAK_DFL_PATH_SEP)
+							bb->fn[incdir_bcslen++] = HAK_DFL_PATH_SEP;
+					}
+				#else
+					if (bb->fn[incdir_bcslen - 1] != HAK_DFL_PATH_SEP)
+						bb->fn[incdir_bcslen++] = HAK_DFL_PATH_SEP;
+				#endif
+				}
+
 			#if defined(HAK_OOCH_IS_UCH)
 				hak_convootobcstr(hak, arg->name, &ucslen, &bb->fn[incdir_bcslen], &bcslen);
 			#else

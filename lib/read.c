@@ -1470,7 +1470,7 @@ static int feed_begin_include (hak_t* hak, int once)
 
 /*
 hak_logbfmt(hak, HAK_LOG_STDERR, "io_name = [%js]\n", io_name);
-if (hak->c->curinp == &hak->c->cci_arg) 
+if (hak->c->curinp == &hak->c->cci_arg)
 	hak_logbfmt(hak, HAK_LOG_STDERR, "PAR = TOP\n");
 else
 	hak_logbfmt(hak, HAK_LOG_STDERR, "PAR = [%js]\n", hak->c->curinp->name);
