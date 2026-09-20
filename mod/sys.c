@@ -521,12 +521,6 @@ oops:
 /* ------------------------------------------------------------------------ *
  * CHILD PROCESSES
  *
- * [OpenVMS] this whole section is compiled out. It is built on lib/pio.c,
- * which spawns with fork() - absent from the OpenVMS run-time library. The
- * rest of the module (time, random, the signal primitives) has no such
- * dependency and is built normally, so sys.* exists there, only without the
- * popen family. See vms/README.
- *
  * A child is represented as a group of handles: one HAK_HND_TYPE_PROC node
  * holding the hak_pio_t, plus one HAK_HND_TYPE_PIPE node per requested stream.
  * The pipe nodes are owned by the proc node, so tearing the proc node down
@@ -561,8 +555,6 @@ struct proc_xtn_t
 	int status;  /* ...and what did it exit with */
 };
 typedef struct proc_xtn_t proc_xtn_t;
-
-#if !defined(__VMS)
 
 static void proc_dtor (hak_t* hak, hak_hnd_t* hnd)
 {
@@ -815,8 +807,6 @@ static hak_pfrc_t pf_sys_pclose (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	return HAK_PF_SUCCESS;
 }
 
-#endif /* !defined(__VMS) */
-
 static hak_pfinfo_t pfinfos[] =
 {
 #if defined(SIGABRT)
@@ -891,15 +881,11 @@ static hak_pfinfo_t pfinfos[] =
 
 	{ "close",         { HAK_PFBASE_FUNC,        pf_sys_close,        1,  1 } },
 	{ "open",          { HAK_PFBASE_FUNC,        pf_sys_open,         2,  3 } },
-#if !defined(__VMS)
 	{ "pclose",        { HAK_PFBASE_FUNC,        pf_sys_pclose,       1,  1 } },
-#endif
 	{ "pipe",          { HAK_PFBASE_FUNC,        pf_sys_pipe,         0,  0 } },
-#if !defined(__VMS)
 	{ "pkill",         { HAK_PFBASE_FUNC,        pf_sys_pkill,        1,  1 } },
 	{ "popen",         { HAK_PFBASE_FUNC,        pf_sys_popen,        1,  2 } },
 	{ "pwait",         { HAK_PFBASE_FUNC,        pf_sys_pwait,        1,  1 } },
-#endif
 	{ "random",        { HAK_PFBASE_FUNC,        pf_sys_random,       0,  0 } },
 	{ "read",          { HAK_PFBASE_FUNC,        pf_sys_read,         2,  4 } },
 

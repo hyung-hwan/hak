@@ -93,6 +93,42 @@
 
 	/* neither backend was carried over into this module */
 
+#elif defined(__VMS)
+
+	/* OpenVMS. The posix arm below is driven by the HAVE_xxx macros configure
+	 * would define, and there is no configure here - see vms/README.
+	 *
+	 * The shape of the port: pipe() on this platform is built out of a
+	 * mailbox, so the pipes hak_pio_init() creates need no change at all -
+	 * fstat() names the mailbox device and lib$spawn() can be told to use it
+	 * as SYS$OUTPUT. A DCL command therefore writes straight into the pipe the
+	 * parent already holds, and lib/poll-vms.c can watch the read end. */
+#	include <sys/types.h>
+#	include <sys/stat.h>
+#	include <sys/wait.h>
+#	include <unistd.h>
+#	include <fcntl.h>
+#	include <signal.h>
+#	include <errno.h>
+
+#	include <descrip.h>
+#	include <starlet.h>
+#	include <lib$routines.h>
+#	include <ssdef.h>
+#	include <jpidef.h>
+#	include <clidef.h>
+
+	typedef struct stat pio_stat_t;
+
+	/* decc$set_child_standard_streams() is how a child's stdin/stdout/stderr
+	 * are chosen here. dup2() cannot be used for it: vfork() does not create
+	 * a process on OpenVMS, so the "child" branch runs in the parent and
+	 * dup2() there would rearrange the caller's own descriptors. */
+	int decc$set_child_standard_streams (int, int, int);
+
+#	define PIO_ENVIRON environ
+	extern char** environ;
+
 #else
 
 #	include <sys/types.h>
@@ -149,6 +185,12 @@
 #if !defined(_WIN32) && !defined(__OS2__) && !defined(__DOS__)
 
 /* parse a decimal file descriptor number as found under /proc/self/fd */
+#if !defined(__VMS)
+/* These three exist to close descriptors the child would otherwise inherit,
+ * by reading /proc/self/fd. OpenVMS has no /proc, no dirfd(), and no need:
+ * what a subprocess inherits there is decided by what is named to lib$spawn()
+ * or decc$set_child_standard_streams(), not by descriptor rules. They are
+ * also only ever called from the posix spawn paths, which are compiled out. */
 static int parse_fd (const hak_bch_t* str, int* out)
 {
 	const hak_bch_t* p = str;
@@ -282,6 +324,8 @@ static int close_open_fds_using_proc (hak_pio_t* pio, hak_pio_hnd_t* excepts, ha
 
 	return -1;
 }
+
+#endif /* !defined(__VMS) */
 
 struct param_t
 {
@@ -457,6 +501,15 @@ static int assert_executable (hak_pio_t* pio, const hak_bch_t* path)
 {
 	pio_stat_t st;
 
+#if defined(__VMS)
+	/* In shell mode the caller has put "/bin/sh" at argv[0], which does not
+	 * exist here - the command is run by lib$spawn() as DCL instead, and the
+	 * argv vector is never executed. Checking it would fail every shell
+	 * command before it started. Whether the DCL command itself is valid is
+	 * for DCL to say. */
+	if (pio->flags & HAK_PIO_SHELL) return 0;
+#endif
+
 	if (access(path, X_OK) <= -1)
 	{
 		hak_seterrbfmtwithsyserr(pio->hak, 0, errno, "cannot execute %hs", path);
@@ -497,6 +550,147 @@ static int is_fd_valid_and_nocloexec (int fd)
 }
 
 #endif
+
+#if defined(__VMS)
+
+/* the mailbox device a pipe descriptor is built on, for naming to lib$spawn */
+static int vms_mbxnam (hak_pio_t* pio, hak_pio_hnd_t fd, char* buf, hak_oow_t bufsz)
+{
+	struct stat st;
+	if (fstat(fd, &st) == -1 || st.st_dev[0] == '\0')
+	{
+		hak_seterrbfmt(pio->hak, HAK_ESYSERR, "unable to name the device behind handle %d", (int)fd);
+		return -1;
+	}
+	hak_copy_bcstr(buf, bufsz, st.st_dev);
+	return 0;
+}
+
+static void vms_mkdsc (struct dsc$descriptor_s* d, char* s)
+{
+	d->dsc$w_length = (unsigned short)hak_count_bcstr(s);
+	d->dsc$b_dtype = DSC$K_DTYPE_T;
+	d->dsc$b_class = DSC$K_CLASS_S;
+	d->dsc$a_pointer = s;
+}
+
+/* Start the child. There is no fork() and no /bin/sh here, so this splits in
+ * two according to what was asked for:
+ *
+ *   HAK_PIO_SHELL - lib$spawn() runs the string as a DCL command. The pipes
+ *     are named to it as SYS$INPUT/SYS$OUTPUT by their mailbox device names,
+ *     so the subprocess writes into the pipe the parent already holds.
+ *     CLI$M_NOWAIT is essential: without it lib$spawn waits for the
+ *     subprocess while the subprocess blocks writing into a mailbox nobody
+ *     is draining, and the two deadlock.
+ *
+ *   otherwise - vfork() then execv(). Note that vfork() does NOT create a
+ *     process on OpenVMS: it records the caller's context and returns 0, exec
+ *     creates the subprocess, and control then returns to the vfork() call a
+ *     second time with the pid. So the pid==0 branch runs in the PARENT, and
+ *     a failed exec must return an error rather than _exit(), which would
+ *     terminate the caller. decc$set_child_standard_streams() stands in for
+ *     the dup2() the posix path does for the same reason.
+ *
+ * HAK_PIO_FNCCMD cannot be supported either way: there is no child process in
+ * which to run a function pointer. */
+static hak_pio_pid_t standard_fork_and_exec (hak_pio_t* pio, hak_pio_hnd_t pipes[], param_t* param, hak_pio_fnc_t* fnc, char* const* envp)
+{
+	hak_pio_pid_t pid;
+
+	if (fnc)
+	{
+		hak_seterrbmsg(pio->hak, HAK_ENOIMPL, "running a function in a child is not supported on this platform");
+		return -1;
+	}
+
+	if (pio->flags & HAK_PIO_SHELL)
+	{
+		char inmbx[64], outmbx[64];
+		struct dsc$descriptor_s cmddsc, indsc, outdsc;
+		unsigned int sts, vmspid = 0, flags = CLI$M_NOWAIT;
+		struct dsc$descriptor_s* inp = HAK_NULL;
+		struct dsc$descriptor_s* outp = HAK_NULL;
+
+		/* make_param() put the command string at argv[2], behind the
+		 * "/bin/sh" "-c" that the posix path would have used. */
+		if (!param || !param->argv || !param->argv[2])
+		{
+			hak_seterrbmsg(pio->hak, HAK_EINVAL, "no command to run");
+			return -1;
+		}
+
+		if (pio->flags & HAK_PIO_WRITEIN)
+		{
+			if (vms_mbxnam(pio, pipes[0], inmbx, HAK_COUNTOF(inmbx)) <= -1) return -1;
+			vms_mkdsc(&indsc, inmbx);
+			inp = &indsc;
+		}
+
+		/* SYS$ERROR follows SYS$OUTPUT unless told otherwise, and lib$spawn
+		 * takes no separate error spec, so a distinct HAK_PIO_READERR stream
+		 * cannot be offered here - only HAK_PIO_ERRTOOUT behaviour. */
+		if (pio->flags & HAK_PIO_READOUT)
+		{
+			if (vms_mbxnam(pio, pipes[3], outmbx, HAK_COUNTOF(outmbx)) <= -1) return -1;
+			vms_mkdsc(&outdsc, outmbx);
+			outp = &outdsc;
+		}
+		else if (pio->flags & HAK_PIO_READERR)
+		{
+			if (vms_mbxnam(pio, pipes[5], outmbx, HAK_COUNTOF(outmbx)) <= -1) return -1;
+			vms_mkdsc(&outdsc, outmbx);
+			outp = &outdsc;
+		}
+
+		vms_mkdsc(&cmddsc, (char*)param->argv[2]);
+
+		sts = lib$spawn(&cmddsc, inp, outp, &flags, 0, &vmspid, 0, 0, 0, 0, 0, 0);
+		if (!(sts & 1))
+		{
+			hak_seterrbfmt(pio->hak, HAK_ESYSERR, "unable to spawn a subprocess - status %u", sts);
+			return -1;
+		}
+
+		return (hak_pio_pid_t)vmspid;
+	}
+	else
+	{
+		int cin = -1, cout = -1, cerr = -1;
+
+		if (pio->flags & HAK_PIO_WRITEIN) cin = pipes[0];
+		if (pio->flags & HAK_PIO_READOUT) cout = pipes[3];
+		if (pio->flags & HAK_PIO_READERR) cerr = pipes[5];
+		if (pio->flags & HAK_PIO_ERRTOOUT) cerr = cout;
+		if (pio->flags & HAK_PIO_OUTTOERR) cout = cerr;
+
+		if (decc$set_child_standard_streams(cin, cout, cerr) == -1)
+		{
+			hak_seterrwithsyserr(pio->hak, 0, errno);
+			return -1;
+		}
+
+		pid = vfork();
+		if (pid <= -1)
+		{
+			hak_seterrwithsyserr(pio->hak, 0, errno);
+			return -1;
+		}
+
+		if (pid == 0)
+		{
+			execve(param->argv[0], param->argv, envp);
+			/* Still the parent - see the note above. Report the failure
+			 * instead of _exit()ing, which would kill the caller. */
+			hak_seterrwithsyserr(pio->hak, 0, errno);
+			return -1;
+		}
+
+		return pid;
+	}
+}
+
+#else
 
 /**
  * fork() and exec() the child. exactly one of \a param and \a fnc is non-NULL:
@@ -639,6 +833,8 @@ static hak_pio_pid_t standard_fork_and_exec (hak_pio_t* pio, hak_pio_hnd_t pipes
 	return pid;
 }
 
+#endif /* defined(__VMS) */
+
 #endif /* !_WIN32 && !__OS2__ && !__DOS__ */
 
 /* ========================================================================= *
@@ -693,6 +889,15 @@ static int set_pipe_nonblock (hak_pio_t* pio, hak_pio_hnd_t fd, int enabled)
 #elif defined(__OS2__) || defined(__DOS__)
 	hak_seterrnum(pio->hak, HAK_ENOIMPL);
 	return -1;
+#elif defined(__VMS)
+	/* fcntl(F_SETFL) answers ENOSYS here, so a descriptor cannot be switched
+	 * to non-blocking. Report success rather than failure, for the reason
+	 * set_nonblock() in lib/hnd.c gives: the multiplexer reports readiness
+	 * before anything is read, so a read that follows a wakeup has data
+	 * waiting. What the caller loses is the "returns -1 instead of blocking"
+	 * contract, so reading without waiting first blocks. */
+	(void)fd; (void)enabled;
+	return 0;
 #elif defined(O_NONBLOCK)
 	int flag = fcntl(fd, F_GETFL, 0);
 	if (flag >= 0) flag = fcntl(fd, F_SETFL, (enabled? (flag | O_NONBLOCK): (flag & ~O_NONBLOCK)));
@@ -1583,6 +1788,60 @@ int hak_pio_wait (hak_pio_t* pio)
 	hak_seterrnum(pio->hak, HAK_ENOIMPL);
 	return -1;
 
+#elif defined(__VMS)
+
+	/* The child came from lib$spawn(), so it is a VMS subprocess and its id is
+	 * a VMS process id - waitpid() knows nothing about it. Liveness is asked
+	 * of $GETJPI instead: SS$_NONEXPR means the subprocess is gone.
+	 *
+	 * The exit status is not recovered. lib$spawn()'s completion-status
+	 * argument is filled asynchronously and cannot be read reliably by
+	 * polling, so a finished child is reported as exit status 0 rather than
+	 * something invented. sys.pwait's "still running" answer, which is what
+	 * src/proc.hak actually keys on, is exact. */
+	{
+		unsigned int sts;
+		int state = 0;
+		struct
+		{
+			unsigned short buflen, itmcod;
+			void* bufadr;
+			void* retlen;
+		} itm[2];
+
+		if (pio->child == HAK_PIO_PID_NIL)
+		{
+			hak_seterrbfmt(pio->hak, HAK_ENOENT, "no child process to wait for");
+			return -1;
+		}
+
+		itm[0].buflen = sizeof(state);
+		itm[0].itmcod = JPI$_STATE;
+		itm[0].bufadr = &state;
+		itm[0].retlen = 0;
+		itm[1].buflen = 0;
+		itm[1].itmcod = 0;
+		itm[1].bufadr = 0;
+		itm[1].retlen = 0;
+
+		sts = sys$getjpiw(0, (unsigned int*)&pio->child, 0, itm, 0, 0, 0);
+		if (sts == SS$_NONEXPR)
+		{
+			pio->child = HAK_PIO_PID_NIL;
+			return 0; /* finished - see the note above about the status */
+		}
+		if (!(sts & 1))
+		{
+			hak_seterrbfmt(pio->hak, HAK_ESYSERR, "unable to query subprocess - status %u", sts);
+			return -1;
+		}
+
+		/* still alive. a blocking wait is not offered: there is nothing to
+		 * block on without an AST, and every caller here asks for
+		 * HAK_PIO_WAITNOBLOCK anyway. */
+		return 255 + 1;
+	}
+
 #else
 
 	int opt = 0;
@@ -1660,6 +1919,8 @@ int hak_pio_kill (hak_pio_t* pio)
 	DWORD n;
 #elif defined(__OS2__) || defined(__DOS__)
 	/* nothing */
+#elif defined(__VMS)
+	unsigned int n;
 #else
 	int n;
 #endif
@@ -1684,6 +1945,17 @@ int hak_pio_kill (hak_pio_t* pio)
 
 	hak_seterrnum(pio->hak, HAK_ENOIMPL);
 	return -1;
+
+#elif defined(__VMS)
+	/* kill() has nothing to act on: the child is a VMS subprocess, not a unix
+	 * one. $DELPRC is the equivalent of kill -KILL. */
+	n = sys$delprc((unsigned int*)&pio->child, 0);
+	if (!(n & 1))
+	{
+		hak_seterrbfmt(pio->hak, HAK_ESYSERR, "unable to delete subprocess - status %u", n);
+		return -1;
+	}
+	return 0;
 
 #else
 	n = kill(pio->child, SIGKILL);
