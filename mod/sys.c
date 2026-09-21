@@ -539,13 +539,14 @@ oops:
  * for "would block", which is what makes a child usable from a coprocess
  * without stalling the VM.
  *
- * Where the platform provides pidfd_open(), the group also carries an exit
- * handle: a descriptor that becomes readable when the child terminates. It is
- * an ordinary muxable handle, so waiting for a child costs nothing more than
- * waiting for a pipe - no signal handler, no shared signal stream, and none of
- * the coalescing that makes SIGCHLD awkward, since the handle is per child and
- * stays readable once set. Without it the exit handle is nil and a caller has
- * to poll sys.pwait.
+ * Where the platform can produce one, the group also carries an exit handle: a
+ * descriptor that becomes readable when the child terminates - pidfd_open() on
+ * linux, and on OpenVMS a mailbox that the lib$spawn completion AST writes to.
+ * It is an ordinary muxable handle, so waiting for a child costs nothing more
+ * than waiting for a pipe - no signal handler, no shared signal stream, and
+ * none of the coalescing that makes SIGCHLD awkward, since the handle is per
+ * child and stays readable once set. Without it the exit handle is nil and a
+ * caller has to poll sys.pwait.
  * ------------------------------------------------------------------------ */
 
 /* kept in the pio extension area, so no separate allocation is needed */
@@ -708,6 +709,25 @@ static hak_pfrc_t pf_sys_popen (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 		}
 		/* a failure here is not fatal: an older kernel simply means no exit
 		 * handle, and the caller polls sys.pwait instead. */
+	}
+#elif defined(__VMS) && !defined(HAK_SYS_NO_EXITHND)
+	{
+		/* pio builds this one out of a mailbox that the lib$spawn completion
+		 * AST writes to, so it behaves like a pidfd: readable once the child
+		 * is gone, and readable from then on. It is taken from pio rather
+		 * than borrowed, because from here on it is the handle node that
+		 * owns it. */
+		hak_pio_hnd_t xfd = hak_pio_takeexithnd(pio);
+		if (xfd != HAK_PIO_HND_NIL)
+		{
+			xh = hak_wrapfd(hak, xfd, 0, HAK_HND_OPEN_MUXABLE);
+			if (HAK_UNLIKELY(!xh))
+			{
+				close(xfd);
+				goto oops;
+			}
+			hak_ownhnd(hak, xh, ph);
+		}
 	}
 #endif
 

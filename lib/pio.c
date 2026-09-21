@@ -111,12 +111,14 @@
 #	include <signal.h>
 #	include <errno.h>
 
+#	include <stdlib.h>
 #	include <descrip.h>
 #	include <starlet.h>
 #	include <lib$routines.h>
 #	include <ssdef.h>
 #	include <jpidef.h>
 #	include <clidef.h>
+#	include <iodef.h>
 
 	typedef struct stat pio_stat_t;
 
@@ -574,6 +576,176 @@ static void vms_mkdsc (struct dsc$descriptor_s* d, char* s)
 	d->dsc$a_pointer = s;
 }
 
+/* ------------------------------------------------------------------------ *
+ * COMPLETION AST
+ *
+ * lib$spawn() with CLI$M_NOWAIT returns as soon as the subprocess exists, so
+ * on its own it says nothing about when the subprocess ends. Telling it to
+ * declare a completion AST closes that gap and buys three things:
+ *
+ *   - the subprocess's final $STATUS. lib$spawn() fills its completion-status
+ *     argument asynchronously, and the AST is the only reliable signal that
+ *     the longword now holds something. Without it a finished child had to be
+ *     reported as exit status 0 whatever it really did.
+ *
+ *   - a blocking hak_pio_wait(). There was nothing to block on before; now
+ *     the AST wakes a hibernating caller.
+ *
+ *   - an exit handle. The AST drops one byte into a mailbox, which makes the
+ *     read end of that mailbox readable and keeps it readable, exactly like
+ *     the pidfd the linux arm hands out. A child can then be waited for
+ *     through the ordinary multiplexer instead of by polling.
+ *
+ * [IMPORTANT] the AST interrupts this process at an arbitrary instruction,
+ * and the OpenVMS C run-time - including malloc() and free() - is not
+ * AST-reentrant. So the AST calls system services only, and touches nothing
+ * but its own context block. Every allocation, deallocation and list walk
+ * below happens at mainline level.
+ * ------------------------------------------------------------------------ */
+
+typedef struct vms_spawn_ctx_t vms_spawn_ctx_t;
+struct vms_spawn_ctx_t
+{
+	unsigned int      compsts;  /* the subprocess's $STATUS - lib$spawn fills it */
+	volatile int      done;     /* set by the AST, once its write is queued */
+	unsigned short    notchan;  /* channel to the exit mailbox, 0 if there is none */
+	unsigned char     notbyte;  /* what the AST writes. must outlive the AST, as */
+	unsigned short    iosb[4];  /* must the iosb of the write it queues */
+	vms_spawn_ctx_t*  next;     /* orphan list link */
+};
+
+/* Contexts whose hak_pio_t is gone but whose AST may still be pending. A
+ * context cannot simply be freed with the pio: the AST holds a pointer to it
+ * and would write into freed memory. It is parked here instead and reclaimed
+ * once the AST has run and the byte it queued has been taken - both of which
+ * the mainline can see without stopping AST delivery, since the AST only ever
+ * moves these fields in one direction. */
+static vms_spawn_ctx_t* g_vms_orphans = HAK_NULL;
+
+static void vms_spawn_reap_orphans (void)
+{
+	vms_spawn_ctx_t** pp = &g_vms_orphans;
+
+	while (*pp)
+	{
+		vms_spawn_ctx_t* c = *pp;
+
+		if (c->done && (c->notchan == 0 || c->iosb[0] != 0))
+		{
+			*pp = c->next;
+			if (c->notchan != 0) sys$dassgn(c->notchan);
+			free(c);
+		}
+		else pp = &c->next;
+	}
+}
+
+/* [IMPORTANT] AST level. system services only - see the note above. */
+static void vms_spawn_ast (vms_spawn_ctx_t* ctx)
+{
+	if (ctx->notchan != 0)
+	{
+		ctx->notbyte = 1;
+		/* IO$M_NOW because a plain mailbox write waits for a reader, and an
+		 * AST must never wait; sys$qio rather than sys$qiow for the same
+		 * reason. The buffer and the iosb live in the context, not on this
+		 * stack, because the write outlives this routine. */
+		sys$qio(0, ctx->notchan, IO$_WRITEVBLK | IO$M_NOW, ctx->iosb,
+		        0, 0, &ctx->notbyte, 1, 0, 0, 0, 0);
+	}
+
+	/* after the write is queued, so that the orphan sweep - which frees on
+	 * done plus a completed iosb - can never see this block as finished
+	 * before the write that references it has even been issued */
+	ctx->done = 1;
+
+	/* and only then wake a hak_pio_wait() hibernating on this child: it
+	 * re-tests done after every wake, so waking first would just send it
+	 * back to sleep for another timer tick */
+	sys$wake(0, 0);
+}
+
+/* The exit mailbox. pipe() is used to make it because that is the only way to
+ * get a descriptor for the read end, and a descriptor is what the multiplexer
+ * watches. The AST cannot write through the write descriptor - that would be
+ * the C run-time - so a channel is assigned to the same mailbox for it. The
+ * write descriptor is kept open all the same rather than closed here, so that
+ * the mailbox's lifetime does not depend on how the run-time implements
+ * close() on a pipe end.
+ *
+ * A failure is not fatal and is not reported as an error: it only means no
+ * exit handle, and the caller falls back to polling hak_pio_wait(), just as
+ * it does on a linux kernel without pidfd_open(). */
+static int vms_make_exitmbx (hak_pio_t* pio, vms_spawn_ctx_t* ctx)
+{
+	int fds[2];
+	char dev[64];
+	struct dsc$descriptor_s d;
+	unsigned int sts;
+
+	if (pipe(fds) <= -1) return -1;
+
+	if (vms_mbxnam(pio, fds[1], dev, HAK_COUNTOF(dev)) <= -1) goto oops;
+
+	vms_mkdsc(&d, dev);
+	sts = sys$assign(&d, &ctx->notchan, 0, 0);
+	if (!(sts & 1))
+	{
+		ctx->notchan = 0;
+		goto oops;
+	}
+
+	pio->exithnd = fds[0];
+	pio->exitwrhnd = fds[1];
+	return 0;
+
+oops:
+	close(fds[0]);
+	close(fds[1]);
+	return -1;
+}
+
+/* hand the context over to the orphan list and sweep. in the ordinary case -
+ * the child has been reaped, so the AST has already run - the sweep frees it
+ * on the spot and nothing is left behind. */
+static void vms_spawn_detach (hak_pio_t* pio)
+{
+	vms_spawn_ctx_t* ctx = (vms_spawn_ctx_t*)pio->spawn_ctx;
+
+	if (pio->exithnd != HAK_PIO_HND_NIL)
+	{
+		close(pio->exithnd);
+		pio->exithnd = HAK_PIO_HND_NIL;
+	}
+	if (pio->exitwrhnd != HAK_PIO_HND_NIL)
+	{
+		close(pio->exitwrhnd);
+		pio->exitwrhnd = HAK_PIO_HND_NIL;
+	}
+
+	if (!ctx) return;
+	pio->spawn_ctx = HAK_NULL;
+	ctx->next = g_vms_orphans;
+	g_vms_orphans = ctx;
+	vms_spawn_reap_orphans();
+}
+
+/* A subprocess's $STATUS turned into the 0-255 exit code the rest of hak
+ * speaks. The two are not the same currency and cannot be made so: DCL puts a
+ * severity in the low three bits, and the C run-time's exit() passes its
+ * argument through as a status, so a program that exits 1 arrives here as
+ * SS$_NORMAL and is indistinguishable from success. What can be said exactly
+ * is success-or-not, and that is what this preserves - a status whose low bit
+ * is set (success or informational) becomes 0, and anything else becomes a
+ * non-zero code taken from the status itself. */
+static int vms_exit_code (unsigned int sts)
+{
+	int n;
+	if (sts & 1) return 0;
+	n = (int)(sts & 0xFF);
+	return n? n: 1;
+}
+
 /* Start the child. There is no fork() and no /bin/sh here, so this splits in
  * two according to what was asked for:
  *
@@ -611,6 +783,7 @@ static hak_pio_pid_t standard_fork_and_exec (hak_pio_t* pio, hak_pio_hnd_t pipes
 		unsigned int sts, vmspid = 0, flags = CLI$M_NOWAIT;
 		struct dsc$descriptor_s* inp = HAK_NULL;
 		struct dsc$descriptor_s* outp = HAK_NULL;
+		vms_spawn_ctx_t* ctx;
 
 		/* make_param() put the command string at argv[2], behind the
 		 * "/bin/sh" "-c" that the posix path would have used. */
@@ -645,13 +818,44 @@ static hak_pio_pid_t standard_fork_and_exec (hak_pio_t* pio, hak_pio_hnd_t pipes
 
 		vms_mkdsc(&cmddsc, (char*)param->argv[2]);
 
-		sts = lib$spawn(&cmddsc, inp, outp, &flags, 0, &vmspid, 0, 0, 0, 0, 0, 0);
+		/* anything left over from an earlier child that outlived its pio */
+		vms_spawn_reap_orphans();
+
+		/* the completion status and the AST context must outlive this frame -
+		 * lib$spawn writes into them when the subprocess ends, which may be
+		 * long after this function has returned. */
+		ctx = (vms_spawn_ctx_t*)calloc(1, HAK_SIZEOF(*ctx));
+		if (!ctx)
+		{
+			hak_seterrnum(pio->hak, HAK_ESYSMEM);
+			return -1;
+		}
+
+		if (vms_make_exitmbx(pio, ctx) <= -1)
+		{
+			/* no exit handle, which is not an error - see vms_make_exitmbx() */
+			hak_seterrnum(pio->hak, HAK_ENOERR);
+		}
+
+		sts = lib$spawn(&cmddsc, inp, outp, &flags, 0, &vmspid,
+		                &ctx->compsts, 0, vms_spawn_ast, ctx, 0, 0);
 		if (!(sts & 1))
 		{
+			/* nothing was armed, so the context can go back directly */
+			if (pio->exithnd != HAK_PIO_HND_NIL)
+			{
+				close(pio->exithnd);
+				close(pio->exitwrhnd);
+				pio->exithnd = HAK_PIO_HND_NIL;
+				pio->exitwrhnd = HAK_PIO_HND_NIL;
+			}
+			if (ctx->notchan != 0) sys$dassgn(ctx->notchan);
+			free(ctx);
 			hak_seterrbfmt(pio->hak, HAK_ESYSERR, "unable to spawn a subprocess - status %u", sts);
 			return -1;
 		}
 
+		pio->spawn_ctx = ctx;
 		return (hak_pio_pid_t)vmspid;
 	}
 	else
@@ -969,6 +1173,12 @@ int hak_pio_init (hak_pio_t* pio, hak_t* hak, const void* cmd, int flags, hak_pi
 	 * pio whose init failed would call waitpid(0, ...) and reap an arbitrary
 	 * child of the calling application. */
 	pio->child = HAK_PIO_PID_NIL;
+
+#if defined(__VMS)
+	/* likewise, HAK_PIO_HND_NIL is -1 here, not the 0 the memset left */
+	pio->exithnd = HAK_PIO_HND_NIL;
+	pio->exitwrhnd = HAK_PIO_HND_NIL;
+#endif
 
 	handle[0] = HAK_PIO_HND_NIL;
 	handle[1] = HAK_PIO_HND_NIL;
@@ -1548,6 +1758,10 @@ void hak_pio_fini (hak_pio_t* pio)
 	pio->flags &= ~HAK_PIO_WAITNOBLOCK;
 	pio->flags &= ~HAK_PIO_WAITNORETRY;
 	hak_pio_wait(pio);
+
+#if defined(__VMS)
+	vms_spawn_detach(pio);
+#endif
 }
 
 void hak_pio_free (hak_pio_t* pio)
@@ -1582,6 +1796,12 @@ void hak_pio_free (hak_pio_t* pio)
 		}
 	}
 
+#if defined(__VMS)
+	/* after the wait above, so that the AST has normally run by now and the
+	 * context is freed here rather than parked */
+	vms_spawn_detach(pio);
+#endif
+
 	hak_freemem(hak, pio);
 	hak_seterrnum(hak, errnum);
 }
@@ -1594,6 +1814,28 @@ hak_pio_hnd_t hak_pio_gethnd (const hak_pio_t* pio, hak_pio_hid_t hid)
 hak_pio_pid_t hak_pio_getchild (const hak_pio_t* pio)
 {
 	return pio->child;
+}
+
+hak_pio_hnd_t hak_pio_getexithnd (const hak_pio_t* pio)
+{
+#if defined(__VMS)
+	return pio->exithnd;
+#else
+	/* linux builds one out of pidfd_open() in the caller, since it needs no
+	 * state here; no other platform offers anything of the kind */
+	return HAK_PIO_HND_NIL;
+#endif
+}
+
+hak_pio_hnd_t hak_pio_takeexithnd (hak_pio_t* pio)
+{
+#if defined(__VMS)
+	hak_pio_hnd_t h = pio->exithnd;
+	pio->exithnd = HAK_PIO_HND_NIL;
+	return h;
+#else
+	return HAK_PIO_HND_NIL;
+#endif
 }
 
 hak_ooi_t hak_pio_read (hak_pio_t* pio, hak_pio_hid_t hid, void* buf, hak_oow_t size)
@@ -1790,16 +2032,22 @@ int hak_pio_wait (hak_pio_t* pio)
 
 #elif defined(__VMS)
 
-	/* The child came from lib$spawn(), so it is a VMS subprocess and its id is
-	 * a VMS process id - waitpid() knows nothing about it. Liveness is asked
-	 * of $GETJPI instead: SS$_NONEXPR means the subprocess is gone.
+	/* The child is a VMS subprocess, not a unix one, so waitpid() knows
+	 * nothing about it. There are two shapes of child here and they are
+	 * asked different questions:
 	 *
-	 * The exit status is not recovered. lib$spawn()'s completion-status
-	 * argument is filled asynchronously and cannot be read reliably by
-	 * polling, so a finished child is reported as exit status 0 rather than
-	 * something invented. sys.pwait's "still running" answer, which is what
-	 * src/proc.hak actually keys on, is exact. */
+	 *   lib$spawn() - a completion AST was declared, so termination is
+	 *     reported rather than polled for, and the subprocess's real $STATUS
+	 *     is available. This is the authoritative answer: the AST having run
+	 *     is what "finished" means, and blocking is a hibernation it ends.
+	 *
+	 *   vfork()/execve() - the C run-time made this one and there is no AST
+	 *     to hang anything on, so liveness is asked of $GETJPI, where
+	 *     SS$_NONEXPR means the subprocess is gone. The exit status cannot be
+	 *     recovered this way and is reported as 0 rather than invented.
+	 */
 	{
+		vms_spawn_ctx_t* ctx;
 		unsigned int sts;
 		int state = 0;
 		struct
@@ -1813,6 +2061,45 @@ int hak_pio_wait (hak_pio_t* pio)
 		{
 			hak_seterrbfmt(pio->hak, HAK_ENOENT, "no child process to wait for");
 			return -1;
+		}
+
+		ctx = (vms_spawn_ctx_t*)pio->spawn_ctx;
+		if (ctx)
+		{
+			if (!ctx->done && !(pio->flags & HAK_PIO_WAITNOBLOCK))
+			{
+				/* 100ms as a delta time: a negative quadword in 100ns units.
+				 * This platform has no 64-bit integer type at all - see
+				 * lib/hak-vms.h - so the two halves are written out by hand.
+				 * 1000000 == 0x000F4240, negated across the pair. */
+				static unsigned int dt[2] = { 0xFFF0BDC0u, 0xFFFFFFFFu };
+				int spin;
+
+				/* $SETIMR with no AST address wakes this process when it
+				 * expires, so the hibernation is bounded however the
+				 * subprocess behaves - and a $WAKE issued before the $HIBER
+				 * is remembered by it, so the AST cannot be missed by
+				 * arriving too early. The timer carries the context as its
+				 * request id so that cancelling it cannot disturb the one
+				 * lib/poll-vms.c sets.
+				 *
+				 * The spin count bounds the whole wait at about a minute.
+				 * hak_pio_free() reaches here after $DELPRC, so the AST is
+				 * imminent; giving up regardless means a lost AST cannot
+				 * wedge the vm, and the context is then parked on the orphan
+				 * list instead of being freed. */
+				for (spin = 0; !ctx->done && spin < 600; spin++)
+				{
+					sys$setimr(0, dt, 0, ctx, 0);
+					sys$hiber();
+					sys$cantim(ctx, 0);
+				}
+			}
+
+			if (!ctx->done) return 255 + 1; /* still running */
+
+			pio->child = HAK_PIO_PID_NIL;
+			return vms_exit_code(ctx->compsts);
 		}
 
 		itm[0].buflen = sizeof(state);
@@ -1836,9 +2123,8 @@ int hak_pio_wait (hak_pio_t* pio)
 			return -1;
 		}
 
-		/* still alive. a blocking wait is not offered: there is nothing to
-		 * block on without an AST, and every caller here asks for
-		 * HAK_PIO_WAITNOBLOCK anyway. */
+		/* still alive, and with no AST there is nothing to block on. every
+		 * caller of this arm asks for HAK_PIO_WAITNOBLOCK anyway. */
 		return 255 + 1;
 	}
 

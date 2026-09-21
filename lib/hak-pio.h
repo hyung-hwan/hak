@@ -220,6 +220,11 @@ struct hak_pio_t
 	int           flags;      /**< options */
 	hak_pio_pid_t child;      /**< handle to a child process */
 	hak_pio_hnd_t handle[3];  /**< pipe handles indexed by #hak_pio_hid_t */
+#if defined(__VMS)
+	void*         spawn_ctx;  /**< lib$spawn() completion-AST context */
+	hak_pio_hnd_t exithnd;    /**< read end of the exit mailbox */
+	hak_pio_hnd_t exitwrhnd;  /**< write end, held only to keep the mailbox */
+#endif
 };
 
 /** access the \a child field of the #hak_pio_t structure */
@@ -324,6 +329,30 @@ HAK_EXPORT hak_pio_hnd_t hak_pio_gethnd (
  */
 HAK_EXPORT hak_pio_pid_t hak_pio_getchild (
 	const hak_pio_t* pio /**< pio object */
+);
+
+/**
+ * The hak_pio_getexithnd() function gets a handle that becomes readable once
+ * the child has terminated, or #HAK_PIO_HND_NIL if the platform offers no
+ * such thing. It is meant to be multiplexed on, so that waiting for a child
+ * costs no more than waiting for a pipe. Nothing need ever be read from it.
+ *
+ * \return exit handle, #HAK_PIO_HND_NIL if there is none
+ */
+HAK_EXPORT hak_pio_hnd_t hak_pio_getexithnd (
+	const hak_pio_t* pio
+);
+
+/**
+ * The hak_pio_takeexithnd() function is hak_pio_getexithnd() with ownership:
+ * the handle is handed to the caller, who must close it, and #hak_pio_t stops
+ * knowing about it. This is how a caller that wraps the handle in something
+ * with its own lifetime avoids a double close.
+ *
+ * \return exit handle, #HAK_PIO_HND_NIL if there is none
+ */
+HAK_EXPORT hak_pio_hnd_t hak_pio_takeexithnd (
+	hak_pio_t* pio
 );
 
 /**
