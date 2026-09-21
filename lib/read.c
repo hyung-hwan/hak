@@ -1454,29 +1454,43 @@ static void init_feed (hak_t* hak)
 static int ever_included (hak_t* hak, hak_io_cciarg_t* arg)
 {
 	hak_oow_t i;
+	hak_oow_t rec_size;
+	hak_uint8_t id_len;
+
+	HAK_ASSERT(hak, HAK_SIZEOF(id_len) == HAK_SIZEOF(arg->unique_id_len));
+	rec_size = HAK_SIZEOF(arg->unique_id) + HAK_SIZEOF(arg->unique_id_len);
+
 	for (i = 0; i < hak->c->incl_hist.count; i++)
 	{
-		if (HAK_MEMCMP(&hak->c->incl_hist.ptr[i * HAK_SIZEOF(arg->unique_id)], arg->unique_id, arg->unique_id_len) == 0) return 1;
+		HAK_MEMCPY(&id_len, &hak->c->incl_hist.ptr[i * rec_size + HAK_SIZEOF(arg->unique_id)], HAK_SIZEOF(arg->unique_id_len));
+		if (id_len == arg->unique_id_len &&
+		    HAK_MEMCMP(&hak->c->incl_hist.ptr[i * rec_size], arg->unique_id, arg->unique_id_len) == 0) return 1;
 	}
 	return 0;
 }
 
 static int record_ever_included (hak_t* hak, hak_io_cciarg_t* arg)
 {
+	hak_oow_t rec_size;
+
+	rec_size = HAK_SIZEOF(arg->unique_id) + HAK_SIZEOF(arg->unique_id_len);
+
 	if (hak->c->incl_hist.count >= hak->c->incl_hist.capa)
 	{
 		hak_uint8_t* tmp;
 		hak_oow_t newcapa;
 
 		newcapa = hak->c->incl_hist.capa + 128;
-		tmp = (hak_uint8_t*)hak_reallocmem(hak, hak->c->incl_hist.ptr, newcapa * HAK_SIZEOF(arg->unique_id));
+		tmp = (hak_uint8_t*)hak_reallocmem(hak, hak->c->incl_hist.ptr, newcapa * rec_size);
 		if (HAK_UNLIKELY(!tmp)) return -1;
 
 		hak->c->incl_hist.ptr = tmp;
 		hak->c->incl_hist.capa = newcapa;
 	}
 
-	HAK_MEMCPY(&hak->c->incl_hist.ptr[hak->c->incl_hist.count * HAK_SIZEOF(arg->unique_id)], arg->unique_id, HAK_SIZEOF(arg->unique_id));
+	/* | unique_id ....    | unique_id_len | */
+	HAK_MEMCPY(&hak->c->incl_hist.ptr[hak->c->incl_hist.count * rec_size], arg->unique_id, HAK_SIZEOF(arg->unique_id));
+	HAK_MEMCPY(&hak->c->incl_hist.ptr[hak->c->incl_hist.count * rec_size + HAK_SIZEOF(arg->unique_id)], &arg->unique_id_len, HAK_SIZEOF(arg->unique_id_len));
 	hak->c->incl_hist.count++;
 	return 0;
 }
@@ -1530,17 +1544,22 @@ else
 
 	if (ever_included(hak, arg))
 	{
-		hak->c->cci_rdr(hak, HAK_IO_CLOSE, arg); /* ignore this error. no good way to report this close failure */
-		hak_freemem(hak, arg);
-		return 0;
+		if (once)
+		{
+			hak->c->cci_rdr(hak, HAK_IO_CLOSE, arg); /* ignore this error. no good way to report this close failure */
+			hak_freemem(hak, arg);
+			return 0;
+		}
 	}
-
-	if (HAK_UNLIKELY(record_ever_included(hak, arg) <= -1))
+	else
 	{
-		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
-		hak->c->cci_rdr(hak, HAK_IO_CLOSE, arg); /* ignore this error. no good way to report this close failure */
-		hak_setsynerrbfmt(hak, HAK_SYNERR_INCLUDE, TOKEN_LOC(hak), "unable to include %js - %js", io_name, orgmsg);
-		goto oops;
+		if (HAK_UNLIKELY(record_ever_included(hak, arg) <= -1))
+		{
+			const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
+			hak->c->cci_rdr(hak, HAK_IO_CLOSE, arg); /* ignore this error. no good way to report this close failure */
+			hak_setsynerrbfmt(hak, HAK_SYNERR_INCLUDE, TOKEN_LOC(hak), "unable to record inclusion of %js - %js", io_name, orgmsg);
+			goto oops;
+		}
 	}
 
 	if (arg->includer == &hak->c->cci_arg) /* top-level include */

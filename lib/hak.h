@@ -1416,7 +1416,7 @@ struct hak_io_cciarg_t
 	 * Used for one-time file inclusion check
 	 */
 	hak_uint8_t unique_id[32];
-	hak_oow_t unique_id_len;
+	hak_uint8_t unique_id_len; /* the max length can't exceed HAWK_SIZEOF(unique_id). */
 
 	/**
 	 * [OUT] set this to non-zero in HAK_IO_OPEN if the handler fills the buffer with bytes.

@@ -5169,6 +5169,7 @@ static HAK_INLINE int open_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 
 		fn = ((bb_t*)arg->includer->handle)->fn;
 
+/* TODO: openvms - map unix path to openvms native path: e.g. .. to [-] */
 		if (arg->name[0] == '/')  /* TODO: change the code to check if it's an absolute path */
 		{
 			fb = HAK_NULL;
