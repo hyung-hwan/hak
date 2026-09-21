@@ -1,11 +1,11 @@
-$include "Object.hak"
-$include "Magnitude.hak"
-$include "Collection.hak"
+$include-once "object.hak"
+$include-once "magnitude.hak"
+$include-once "collection.hak"
 
-$include "Semaphore.hak"
-$include "Mutex.hak"
+$include-once "semaphore.hak"
+$include-once "mutex.hak"
 
-$include "Process.hak"
-##$include "System.hak"
+$include-once "process.hak"
+##$include-once "system.hak"
 
 ## ---------------------------------------------------------------------------------

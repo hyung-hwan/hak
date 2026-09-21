@@ -23,23 +23,32 @@ fun setter() { flag := 1 }
 ## the CPU - and this process never calls yield.
 p := (core.fork setter)
 
+## Keeps the test from going vacuous if fork() ever switches to the new process
+## immediately: setter would then have run already and the loop below would
+## prove nothing about preemption. Asked here, before anything has had a chance
+## to yield, this is an exact question with no dependence on how fast the
+## machine is.
+##
+## [NOTE] this used to be inferred after the fact from the iteration count -
+## a small count was read as "fork must have switched eagerly". An early tick
+## produces a small count too, so on a slow enough machine the test failed
+## while preemption was working perfectly. An OpenVMS VAX reaches a few hundred
+## iterations per 40ms tick where a modern machine reaches a hundred thousand.
+chk (== flag 0) "core.fork did not switch to the new process immediately"
+
 i := 0
 while (< i 3000000) {
 	if (== flag 1) { break }
 	i := (+ i 1)
 }
 
-## Without preemption the loop runs to its bound with flag still 0. With the
-## bound at 3000000 that takes well under a second, so a broken tick path
-## fails quickly rather than hanging.
+## Without preemption the loop runs to its bound with flag still 0.
+## [NOTE] the bound is reached in well under a second on a modern machine, but
+## it is minutes on something as slow as a VAX. A broken tick path therefore
+## fails quickly on the machines most likely to be running this, and looks
+## like a hang on the slowest ones.
 chk (== flag 1) "a process that never yields is preempted so another can run"
 
-## Guards against this test going vacuous if fork() ever switches to the new
-## process immediately: then setter would have run before the loop started and
-## i would be ~0, proving nothing about preemption. One tick is 20ms, which is
-## a great many iterations.
-chk (> i 1000) "the switch came from the ticker, not from an eager core.fork"
-
-## The preempted process must be resumed, not abandoned - reaching here at all
-## means the scheduler came back to it.
+## The preempted process must be resumed, not abandoned - and the loop must
+## have left through the break rather than by exhausting its bound.
 chk (< i 3000000) "the preempted process resumes and runs to completion"

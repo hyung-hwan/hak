@@ -1,4 +1,4 @@
-$include-once "Object.hak"
+$include-once "object.hak"
 
 class[#uncopyable] Semaphore: Object(
 	_waiting_first

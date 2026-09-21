@@ -1,3 +1,5 @@
+$include-once "object.hak"
+
 class Magnitude: Object {
 	##fun <  (oprnd) { self subclassResponsibility: #< }
 	fun <  (oprnd) { return (self:subclassResponsibility #<) }

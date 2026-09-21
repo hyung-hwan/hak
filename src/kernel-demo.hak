@@ -9,7 +9,7 @@
 ## Run it directly:   hak src/kernel-demo.hak
 ## ---------------------------------------------------------------------------------
 
-$include "kernel.hak"
+$include-once "kernel.hak"
 
 k := "abcdefghijklmn"
 printf "string length %d\n" ("aaaa":length)
