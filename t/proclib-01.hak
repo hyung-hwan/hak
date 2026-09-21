@@ -1,6 +1,6 @@
 ## the child supervision layer in src/proc.hak
 
-$include "../src/proc.hak"
+$include-once "proc.hak"
 
 fun chk(ok msg) {
 	if ok { printf "OK: %s\n" msg } \

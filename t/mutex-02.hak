@@ -19,7 +19,7 @@
 ## [NOTE] reentrancy (the same process calling critical again while holding it)
 ## is deliberately not exercised here - see the comment at the bottom.
 
-$include "../src/kernel.hak"
+$include-once "kernel.hak"
 
 fun chk(ok msg) {
 	if ok { printf "OK: %s\n" msg } \

@@ -26,7 +26,7 @@
 ## process running it, so that process has to stay alive across all 600 forks
 ## for the frames to pile up.
 
-$include "../src/kernel.hak"
+$include-once "kernel.hak"
 
 fun chk(ok msg) {
 	if ok { printf "OK: %s\n" msg } \

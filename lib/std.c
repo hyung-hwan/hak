@@ -2918,6 +2918,13 @@ static int vm_setsig (hak_t* hak, hak_uint8_t u8)
 }
 
 
+/* set_signal_handler()/unset_signal_handler() are provided by the two arms
+ * below - sigaction() where there is one, ansi signal() on OpenVMS. Code that
+ * needs them should test for this rather than for sigaction specifically. */
+#if defined(HAVE_SIGACTION) || defined(__VMS)
+#	define HAK_HAVE_SIG_HANDLER
+#endif
+
 #if defined(HAVE_SIGACTION)
 
 typedef struct sig_state_t sig_state_t;
@@ -3469,7 +3476,7 @@ static int sig_is_routable (hak_t* hak, int signo)
 
 static int vm_catchsig (hak_t* hak, int signo, int enable)
 {
-#if defined(HAVE_SIGACTION)
+#if defined(HAK_HAVE_SIG_HANDLER)
 	if (!sig_is_routable(hak, signo))
 	{
 		hak_seterrbfmt(hak, HAK_EINVAL, "signal %d not routable", signo);

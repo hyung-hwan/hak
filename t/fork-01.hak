@@ -30,7 +30,7 @@
 ## CONTEXT is undefined there are no stack contexts and no bug to trip over;
 ## the file still runs clean, it just is not testing anything.
 
-$include "../src/kernel.hak"
+$include-once "kernel.hak"
 
 fun chk(ok msg) {
 	if ok { printf "OK: %s\n" msg } \

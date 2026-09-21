@@ -2774,7 +2774,17 @@ static int do_throw_with_internal_errmsg (hak_t* hak, hak_ooi_t ip)
 {
 	hak_oop_t ex;
 /* TODO: consider throwing an exception object instead of a string? */
-	ex = hak_makestring(hak, hak->errmsg.buf, hak->errmsg.len); /* TODO: include error location in the message? */
+	if (hak->errmsg.len <= 0)
+	{
+		/* this is the same logic as in hak_geterrmsg() */
+		const hak_ooch_t* msg = hak_errnum_to_errstr(hak->errnum);
+		ex = hak_makestring(hak, msg, hak_count_oocstr(msg));
+	}
+	else
+	{
+		HAK_ASSERT(hak, hak->errnum != HAK_ENOERR);
+		ex = hak_makestring(hak, hak->errmsg.buf, hak->errmsg.len); /* TODO: include error location in the message? */
+	}
 	if (HAK_UNLIKELY(!ex)) return -1;
 	if (do_throw(hak, ex, ip) <= -1) return -1;
 	return 0;

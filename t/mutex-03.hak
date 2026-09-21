@@ -19,7 +19,7 @@
 ## the mutex the holder would necessarily have finished first. A blocking
 ## implementation fails three of the assertions below.
 
-$include "../src/kernel.hak"
+$include-once "kernel.hak"
 fun chk(ok msg) { if ok { printf "OK: %s\n" msg } else { printf "ERROR: %s\n" msg } }
 
 ## --- uncontended: it runs and answers true ---

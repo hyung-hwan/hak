@@ -75,8 +75,8 @@ TEST_EXTENSIONS = .hak .err
 
 HAKBIN = $(top_builddir)/bin/hak
 
-HAK_LOG_COMPILER = $(SHELL) $(abs_srcdir)/run.sh $(HAKBIN) --modlibdirs="@abs_top_builddir@/mod:@abs_top_builddir@/mod/.libs" --heapsize=0
+HAK_LOG_COMPILER = $(SHELL) $(abs_srcdir)/run.sh $(HAKBIN) --incdirs="@abs_top_srcdir@/src" --modlibdirs="@abs_top_builddir@/mod:@abs_top_builddir@/mod/.libs" --heapsize=0
 AM_HAK_LOG_FLAGS =
 
-ERR_LOG_COMPILER = $(SHELL) $(abs_srcdir)/err.sh $(HAKBIN) --modlibdirs="@abs_top_builddir@/mod:@abs_top_builddir@/mod/.libs" --heapsize=0
+ERR_LOG_COMPILER = $(SHELL) $(abs_srcdir)/err.sh $(HAKBIN) --incdirs="@abs_top_srcdir@/src" --modlibdirs="@abs_top_builddir@/mod:@abs_top_builddir@/mod/.libs" --heapsize=0
 AM_ERR_LOG_FLAGS =
