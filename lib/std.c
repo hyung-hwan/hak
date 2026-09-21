@@ -4951,16 +4951,51 @@ hak_t* hak_openstd (hak_oow_t xtnsize, hak_errinf_t* errinf)
 
 /* --------------------------------------------------------------------- */
 
+/* The type a file name is held in.
+ *
+ * Windows' narrow entry points convert a path through the process ANSI code
+ * page, so a name outside that code page cannot be opened at all. On a wide
+ * build hak_uch_t is UTF-16 there, which is what the W entry points want, so
+ * the name is kept in that form and handed to them unconverted. Everywhere
+ * else a byte string is what the platform takes.
+ *
+ * The FN_xxx macros below let the body of open_cci_stream() be written once
+ * rather than twice. */
+#if defined(HAK_OOCH_IS_UCH) && defined(_WIN32)
+typedef hak_uch_t fn_char_t;
+#	define FN_COUNT(p)           hak_count_ucstr(p)
+#	define FN_COPY_CHARS(d,s,l)  hak_copy_uchars(d,s,l)
+#	define FN_COPY_NAME(d,c,s)   hak_copy_ucstr(d,c,s)
+#	define FN_FIND_CHAR(p,l,c)   hak_find_uchar(p,l,c)
+#	define FN_FIND_CHAR_IN_STR(p,c) hak_find_uchar_in_ucstr(p,c)
+#	define FN_BASE_NAME(p)       hak_get_base_name_from_ucstr_path(p)
+#	define FN_INCDIRS(hak)       ((hak)->option.incdirs_u)
+	/* the mode string has to be wide for _wfopen() as well. this arm is
+	 * windows only, so it matches the "rb" FOPEN_R_FLAGS uses there. */
+#	define FN_FOPEN(p)           _wfopen(p, L"rb")
+#	define FN_FMT                "%ls"
+#else
+typedef hak_bch_t fn_char_t;
+#	define FN_COUNT(p)           hak_count_bcstr(p)
+#	define FN_COPY_CHARS(d,s,l)  hak_copy_bchars(d,s,l)
+#	define FN_COPY_NAME(d,c,s)   hak_copy_bcstr(d,c,s)
+#	define FN_FIND_CHAR(p,l,c)   hak_find_bchar(p,l,c)
+#	define FN_FIND_CHAR_IN_STR(p,c) hak_find_bchar_in_bcstr(p,c)
+#	define FN_BASE_NAME(p)       hak_get_base_name_from_bcstr_path(p)
+#	define FN_INCDIRS(hak)       ((hak)->option.incdirs_b)
+#	define FN_FOPEN(p)           fopen(p, FOPEN_R_FLAGS)
+#	define FN_FMT                "%hs"
+#endif
 
 typedef struct bb_t bb_t;
 struct bb_t
 {
-	char buf[4096];
+	char buf[4096]; /* read buffer */
 	hak_oow_t pos;
 	hak_oow_t len;
 
 	FILE* fp;
-	hak_bch_t* fn;
+	fn_char_t* fn;
 };
 
 #if defined(__DOS__) || defined(_WIN32) || defined(__OS2__)
@@ -4969,7 +5004,7 @@ struct bb_t
 #define FOPEN_R_FLAGS "r"
 #endif
 
-static int fill_cciarg_unique_id (hak_t* hak, hak_io_cciarg_t* arg, const hak_bch_t* path)
+static int fill_cciarg_unique_id (hak_t* hak, hak_io_cciarg_t* arg, const fn_char_t* path)
 {
 #if defined(_WIN32)
 	/* the volume serial number plus the file index is what windows offers in
@@ -4987,8 +5022,15 @@ static int fill_cciarg_unique_id (hak_t* hak, hak_io_cciarg_t* arg, const hak_bc
 	/* zero desired-access asks for metadata only, so this succeeds on a file
 	 * already open for reading elsewhere. FILE_FLAG_BACKUP_SEMANTICS lets a
 	 * directory be opened too, harmlessly. */
+#if defined(HAK_OOCH_IS_UCH)
+	/* fn_char_t is UTF-16 here, so the name reaches the file system without
+	 * passing through the ANSI code page - which cannot represent every name. */
+	h = CreateFileW(path, 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+	                HAK_NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, HAK_NULL);
+#else
 	h = CreateFileA(path, 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
 	                HAK_NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, HAK_NULL);
+#endif
 	if (h == INVALID_HANDLE_VALUE)
 	{
 		hak_seterrwithsyserr(hak, 1, GetLastError());
@@ -5051,14 +5093,14 @@ static int fill_cciarg_unique_id (hak_t* hak, hak_io_cciarg_t* arg, const hak_bc
 	 * be wrong in - it never reports two DIFFERENT files as the same, which
 	 * would silently drop one of them. */
 	hak_sha256_ctx_t ctx;
-	const hak_bch_t* p;
+	const fn_char_t* p;
 
 	hak_sha256_init(&ctx);
 	for (p = path; *p != '\0'; p++)
 	{
-		hak_bch_t c;
-		c = HAK_IS_PATH_SEP(*p)? HAK_DFL_PATH_SEP: hak_to_bch_upper(*p);
-		hak_sha256_update(&ctx, &c, 1);
+		fn_char_t c;
+		c = HAK_IS_PATH_SEP(*p)? HAK_DFL_PATH_SEP: ((*p >= 'a' && *p <= 'z')? (*p - 'a' + 'A'): *p);
+		hak_sha256_update(&ctx, &c, HAK_SIZEOF(c));
 	}
 	HAK_ASSERT(hak, HAK_SIZEOF(arg->unique_id) >= HAK_SHA256_DIGEST_LEN);
 	hak_sha256_final(&ctx, arg->unique_id);
@@ -5104,68 +5146,74 @@ static HAK_INLINE int open_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 	if (arg->includer)
 	{
 		/* includee */
-		hak_oow_t ucslen, bcslen, parlen;
-		const hak_bch_t* fn, * fb;
+		hak_oow_t ucslen, namelen, parlen;
+		const fn_char_t* fn, * fb;
 		int attempt_incdirs;
-		const hak_bch_t* incdirs_ptr;
+		const fn_char_t* incdirs_ptr;
 
-	#if defined(HAK_OOCH_IS_UCH)
-		if (hak_convootobcstr(hak, arg->name, &ucslen, HAK_NULL, &bcslen) <= -1) goto oops;
+	#if defined(HAK_OOCH_IS_UCH) && defined(_WIN32)
+		/* the name is already in the form the file system wants */
+		namelen = hak_count_ucstr(arg->name);
+	#elif defined(HAK_OOCH_IS_UCH)
+		if (hak_convootobcstr(hak, arg->name, &ucslen, HAK_NULL, &namelen) <= -1) goto oops;
 	#else
-		bcslen = hak_count_bcstr(arg->name);
+		namelen = hak_count_bcstr(arg->name);
 	#endif
 
 		fn = ((bb_t*)arg->includer->handle)->fn;
 
 		if (arg->name[0] == '/')  /* TODO: change the code to check if it's an absolute path */
 		{
-			fb = "";
+			fb = HAK_NULL;
 			parlen = 0;
 			attempt_incdirs = 0;
 		}
 		else
 		{
-			fb = hak_get_base_name_from_bcstr_path(fn);
+			fb = FN_BASE_NAME(fn);
 			parlen = fb - fn;
 			attempt_incdirs = !((arg->name[0] == '.' && arg->name[1] == '/') || (arg->name[0] == '.' && arg->name[1] == '.' && arg->name[2] == '/'));
 		}
 
-		bb = (bb_t*)hak_callocmem(hak, HAK_SIZEOF(*bb) + (HAK_SIZEOF(hak_bch_t) * (parlen + bcslen + 1)));
+		bb = (bb_t*)hak_callocmem(hak, HAK_SIZEOF(*bb) + (HAK_SIZEOF(fn_char_t) * (parlen + namelen + 1)));
 		if (HAK_UNLIKELY(!bb)) goto oops;
 
-		bb->fn = (hak_bch_t*)(bb + 1);
-		hak_copy_bchars(bb->fn, fn, parlen);
-	#if defined(HAK_OOCH_IS_UCH)
-		hak_convootobcstr(hak, arg->name, &ucslen, &bb->fn[parlen], &bcslen);
+		bb->fn = (fn_char_t*)(bb + 1);
+		FN_COPY_CHARS(bb->fn, fn, parlen);
+	#if defined(HAK_OOCH_IS_UCH) && defined(_WIN32)
+		FN_COPY_NAME(&bb->fn[parlen], namelen + 1, arg->name);
+	#elif defined(HAK_OOCH_IS_UCH)
+		hak_convootobcstr(hak, arg->name, &ucslen, &bb->fn[parlen], &namelen);
 	#else
-		hak_copy_bcstr(&bb->fn[parlen], bcslen + 1, arg->name);
+		FN_COPY_NAME(&bb->fn[parlen], namelen + 1, arg->name);
 	#endif
 
-		incdirs_ptr = hak->option.incdirs_b;
+		incdirs_ptr = FN_INCDIRS(hak);
 retry:
-		bb->fp = fopen(bb->fn, FOPEN_R_FLAGS);
+		bb->fp = FN_FOPEN(bb->fn);
 		if (!bb->fp)
 		{
 			if ((errno == ENOENT || errno == ENOTDIR) && attempt_incdirs && incdirs_ptr && incdirs_ptr[0] != '\0')
 			{
-				hak_oow_t incdir_bcslen;
-				const hak_bch_t* colon;
+				hak_oow_t incdir_len;
+				const fn_char_t* sep;
 
 				hak_freemem(hak, bb); bb = HAK_NULL;
 
-				/* incdirs is kept in the byte form as well, so the directory part
-				 * needs no conversion here - only the include name does. */
-				colon = hak_find_bchar_in_bcstr(incdirs_ptr, INCDIR_SEP);
-				incdir_bcslen = colon? (hak_oow_t)(colon - incdirs_ptr): hak_count_bcstr(incdirs_ptr);
+				/* incdirs is kept in the same form as the name, so the
+				 * directory part needs no conversion here - only the include
+				 * name does, and only where the two forms differ. */
+				sep = FN_FIND_CHAR_IN_STR(incdirs_ptr, INCDIR_SEP);
+				incdir_len = sep? (hak_oow_t)(sep - incdirs_ptr): FN_COUNT(incdirs_ptr);
 
-				bb = (bb_t*)hak_callocmem(hak, HAK_SIZEOF(*bb) + (HAK_SIZEOF(hak_bch_t) * (incdir_bcslen + bcslen + 2)));
+				bb = (bb_t*)hak_callocmem(hak, HAK_SIZEOF(*bb) + (HAK_SIZEOF(fn_char_t) * (incdir_len + namelen + 2)));
 				if (HAK_UNLIKELY(!bb)) goto oops;
 
-				bb->fn = (hak_bch_t*)(bb + 1);
+				bb->fn = (fn_char_t*)(bb + 1);
 
-				hak_copy_bchars(bb->fn, incdirs_ptr, incdir_bcslen);
+				FN_COPY_CHARS(bb->fn, incdirs_ptr, incdir_len);
 
-				if (incdir_bcslen > 0)
+				if (incdir_len > 0)
 				{
 				#if defined(__VMS)
 					/* do nothing */
@@ -5174,36 +5222,38 @@ retry:
 					 * is the complete file spec. inserting a separator would make
 					 * it "dnfs1:[hak.src]/kernel.hak", which RMS cannot parse. */
 				#elif defined(HAK_HAVE_ALT_PATH_SEP)
-					if (hak_find_bchar(bb->fn, incdir_bcslen, HAK_ALT_PATH_SEP) &&
-					    !hak_find_bchar(bb->fn, incdir_bcslen, HAK_DFL_PATH_SEP))
+					if (FN_FIND_CHAR(bb->fn, incdir_len, HAK_ALT_PATH_SEP) &&
+					    !FN_FIND_CHAR(bb->fn, incdir_len, HAK_DFL_PATH_SEP))
 					{
-						if (bb->fn[incdir_bcslen - 1] != HAK_ALT_PATH_SEP)
-							bb->fn[incdir_bcslen++] = HAK_ALT_PATH_SEP;
+						if (bb->fn[incdir_len - 1] != HAK_ALT_PATH_SEP)
+							bb->fn[incdir_len++] = HAK_ALT_PATH_SEP;
 					}
 					else
 					{
-						if (bb->fn[incdir_bcslen - 1] != HAK_DFL_PATH_SEP)
-							bb->fn[incdir_bcslen++] = HAK_DFL_PATH_SEP;
+						if (bb->fn[incdir_len - 1] != HAK_DFL_PATH_SEP)
+							bb->fn[incdir_len++] = HAK_DFL_PATH_SEP;
 					}
 				#else
-					if (bb->fn[incdir_bcslen - 1] != HAK_DFL_PATH_SEP)
-						bb->fn[incdir_bcslen++] = HAK_DFL_PATH_SEP;
+					if (bb->fn[incdir_len - 1] != HAK_DFL_PATH_SEP)
+						bb->fn[incdir_len++] = HAK_DFL_PATH_SEP;
 				#endif
 				}
 
-			#if defined(HAK_OOCH_IS_UCH)
-				hak_convootobcstr(hak, arg->name, &ucslen, &bb->fn[incdir_bcslen], &bcslen);
+			#if defined(HAK_OOCH_IS_UCH) && defined(_WIN32)
+				FN_COPY_NAME(&bb->fn[incdir_len], namelen + 1, arg->name);
+			#elif defined(HAK_OOCH_IS_UCH)
+				hak_convootobcstr(hak, arg->name, &ucslen, &bb->fn[incdir_len], &namelen);
 			#else
-				hak_copy_bcstr(&bb->fn[incdir_bcslen], bcslen + 1, arg->name);
+				FN_COPY_NAME(&bb->fn[incdir_len], namelen + 1, arg->name);
 			#endif
 
-				incdirs_ptr = colon? colon + 1: HAK_NULL;
+				incdirs_ptr = sep? sep + 1: HAK_NULL;
 
 /*printf("RETRYING bb->fn [%s]\n", bb->fn);*/
 				goto retry;
 			}
 
-			hak_seterrbfmt(hak, HAK_EIOERR, "unable to open %hs", bb->fn);
+			hak_seterrbfmt(hak, HAK_EIOERR, "unable to open " FN_FMT, bb->fn);
 			goto oops;
 		}
 	}
@@ -5221,16 +5271,25 @@ retry:
 		 *       if it's not used, it can open it as usual as xtn->cci_path point to the file name anyways */
 		hak_oow_t pathlen;
 
+		/* xtn->cci_path is a byte string however fn_char_t is defined, so it
+		 * is converted where the two forms differ. */
 		pathlen = xtn->cci_path? hak_count_bcstr(xtn->cci_path): 0;
 
-		bb = (bb_t*)hak_callocmem(hak, HAK_SIZEOF(*bb) + (HAK_SIZEOF(hak_bch_t) * (pathlen + 1)));
+		bb = (bb_t*)hak_callocmem(hak, HAK_SIZEOF(*bb) + (HAK_SIZEOF(fn_char_t) * (pathlen + 1)));
 		if (!bb) goto oops;
 
-		bb->fn = (hak_bch_t*)(bb + 1);
+		bb->fn = (fn_char_t*)(bb + 1);
 		if (pathlen > 0 && xtn->cci_path)
 		{
-			hak_copy_bcstr(bb->fn, pathlen + 1, xtn->cci_path);
-			/*bb->fp = fopen(bb->fn, FOPEN_R_FLAGS);*/
+		#if defined(HAK_OOCH_IS_UCH) && defined(_WIN32)
+			hak_oow_t bl, ul;
+			bl = pathlen;
+			ul = pathlen + 1;
+			if (hak_conv_bcstr_to_ucstr_with_cmgr(xtn->cci_path, &bl, bb->fn, &ul, hak_getcmgr(hak), 1) <= -1) goto oops;
+		#else
+			FN_COPY_NAME(bb->fn, pathlen + 1, xtn->cci_path);
+		#endif
+			/*bb->fp = FN_FOPEN(bb->fn);*/
 		}
 		else
 		{
@@ -5240,7 +5299,12 @@ retry:
 
 	/* HACK */
 		HAK_ASSERT(hak, arg->name == HAK_NULL);
+	#if defined(HAK_OOCH_IS_UCH) && defined(_WIN32)
+		/* fn_char_t is already the ooch type here */
+		arg->name = hak_dupoocstr(hak, bb->fn, HAK_NULL);
+	#else
 		arg->name = hak_dupbtooocstr(hak, bb->fn, HAK_NULL);
+	#endif
 		/* ignore duplication failure */
 /* TODO: change the type of arg->name from const hak_ooch_t* to hak_ooch_t*.
  *       change its specification from [IN] only to [INOUT] in hak_io_cciarg_t. */
@@ -5378,16 +5442,25 @@ static HAK_INLINE int open_udi_stream (hak_t* hak, hak_io_udiarg_t* arg)
 
 	hak_oow_t pathlen;
 
+	/* udi_path is a byte string however fn_char_t is defined, so it is
+	 * converted where the two forms differ - same as the main cci stream. */
 	pathlen = xtn->udi_path? hak_count_bcstr(xtn->udi_path): 0;
 
-	bb = (bb_t*)hak_callocmem(hak, HAK_SIZEOF(*bb) + (HAK_SIZEOF(hak_bch_t) * (pathlen + 1)));
+	bb = (bb_t*)hak_callocmem(hak, HAK_SIZEOF(*bb) + (HAK_SIZEOF(fn_char_t) * (pathlen + 1)));
 	if (!bb) goto oops;
 
-	bb->fn = (hak_bch_t*)(bb + 1);
+	bb->fn = (fn_char_t*)(bb + 1);
 	if (pathlen > 0 && xtn->udi_path)
 	{
-		hak_copy_bcstr(bb->fn, pathlen + 1, xtn->udi_path);
-		bb->fp = fopen(bb->fn, FOPEN_R_FLAGS);
+	#if defined(HAK_OOCH_IS_UCH) && defined(_WIN32)
+		hak_oow_t bl, ul;
+		bl = pathlen;
+		ul = pathlen + 1;
+		if (hak_conv_bcstr_to_ucstr_with_cmgr(xtn->udi_path, &bl, bb->fn, &ul, hak_getcmgr(hak), 1) <= -1) goto oops;
+	#else
+		FN_COPY_NAME(bb->fn, pathlen + 1, xtn->udi_path);
+	#endif
+		bb->fp = FN_FOPEN(bb->fn);
 	}
 	else
 	{
