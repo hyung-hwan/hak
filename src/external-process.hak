@@ -1,0 +1,287 @@
+## ---------------------------------------------------------------------------
+## External process supervision.
+##
+## A Process is hak's own - a green process, scheduled by the virtual machine.
+## An ExternalProcess is the operating system's: something sys.popen started,
+## with its own streams and its own exit status.
+##
+## sys.popen hands back a group of handles and sys.pwait never blocks, which
+## leaves every caller to invent its own way of learning that one has
+## finished. This layer supplies one. An ExternalProcess answers for itself;
+## an ExternalProcessGroup watches several of them together, so a coprocess
+## can wait for whichever finishes first without stalling the rest of the
+## virtual machine.
+##
+## Two mechanisms can report an exit, and they have different shapes:
+##
+##   - An exit handle (a pidfd on linux, a mailbox fed by the lib$spawn
+##     completion AST on openvms) belongs to one process and stays readable
+##     once that process is gone. Each one gets its own semaphore in the
+##     group, so a wakeup names exactly the process that finished.
+##
+##   - SIGCHLD is a single system-wide event. Only one semaphore may be bound
+##     to a descriptor, so the whole group shares one semaphore on the signal
+##     descriptor; and because standard signals coalesce - three processes
+##     exiting can produce one SIGCHLD - a wakeup must examine every member
+##     rather than just one.
+##
+## Which of the two is in use is the group's business. An ExternalProcess
+## only exposes the exit handle it was given, and does not know that SIGCHLD
+## exists.
+## ---------------------------------------------------------------------------
+
+$include-once "object.hak"
+
+## ---------------------------------------------------------------------------
+## One process started by sys.popen.
+##
+## Usable on its own - open it, read it, ask it for its status, close it - or
+## handed to an ExternalProcessGroup to be waited on alongside others.
+## ---------------------------------------------------------------------------
+class[#uncopyable] ExternalProcess: Object(
+	_proc   ## the process handle sys.pwait and sys.pclose take
+	_in     ## the streams that were asked for; nil for those that were not
+	_out
+	_err
+	_exit   ## exit handle, or nil where the platform offers none
+	_sem    ## semaphore bound to _exit; nil until a group binds one
+) {
+	## Open a command. mode is as sys.popen takes it.
+	fun[#ci] open(cmd mode) {
+		| p |
+		p := (sys.popen cmd mode)
+		self._proc := (core.basicAt p 0)
+		self._in   := (core.basicAt p 1)
+		self._out  := (core.basicAt p 2)
+		self._err  := (core.basicAt p 3)
+		self._exit := (core.basicAt p 4)
+		self._sem  := nil
+		return self
+	}
+
+	fun proc() { return self._proc }
+	fun in()   { return self._in }
+	fun out()  { return self._out }
+	fun err()  { return self._err }
+
+	## The handle that becomes readable once this process is gone, or nil
+	## where the platform offers none. A group reads this to decide whether
+	## it can watch this process on a semaphore of its own.
+	fun exitHandle() { return self._exit }
+
+	## The semaphore a group has bound to the exit handle, or nil. Only a
+	## group sets this; it is how a wakeup is traced back to its process.
+	fun sem() { return self._sem }
+	fun setSem(sem) { self._sem := sem }
+
+	## 0-255 for a normal exit, 256 + signo when a signal ended it, and 256
+	## while it is still running. Never blocks.
+	fun status() { return (sys.pwait self._proc) }
+
+	fun isRunning?() { return (= (sys.pwait self._proc) 256) }
+
+	## Release the streams and the process handle. A member of a group is
+	## closed through the group instead, which detaches it first.
+	fun close() { return (sys.pclose self._proc) }
+}
+
+## ---------------------------------------------------------------------------
+## A set of external processes waited on together.
+## ---------------------------------------------------------------------------
+class[#uncopyable] ExternalProcessGroup: Object(
+	_sg      ## semaphore group: the per-process semaphores or the shared
+	         ## one, plus _tmo
+	_tmo     ## timeout semaphore, always a member of _sg
+	_procs   ## array of members, nil in a freed slot
+	_capa
+	_nprocs
+	_shared  ## true when exit handles are unavailable and SIGCHLD is in use
+	_sigsem  ## the shared semaphore; only in shared mode
+) {
+	fun[#ci] new() {
+		self._sg := (core.semgr-new)
+		self._tmo := (core.sem-new)
+		core.semgr-add self._sg self._tmo
+		self._capa := 8
+		self._procs := (core.basicNew Array 8)
+		self._nprocs := 0
+		self._shared := false
+		self._sigsem := nil
+		return self
+	}
+
+	fun count() { return self._nprocs }
+
+	## --- registry ------------------------------------------------------
+
+	## Take an ExternalProcess into the group and start watching it. Answers
+	## the process. spawn() goes through here, and so does a caller that
+	## opened one itself.
+	fun watch(p) {
+		| sem |
+		if (nil? (p:exitHandle)) {
+			## No exit handle on this platform. Establish one shared semaphore
+			## on the signal descriptor for the whole group, once.
+			if (not self._shared) {
+				self._shared := true
+				sys.sig-catch sys.SIGCHLD
+				self._sigsem := (core.sem-new)
+				core.semgr-add self._sg self._sigsem
+				core.sem-signal-on-input self._sigsem (sys.sig-getfd)
+			}
+		} else {
+			## A handle of its own, so a wakeup identifies this one directly.
+			sem := (core.sem-new)
+			core.semgr-add self._sg sem
+			core.sem-signal-on-input sem (p:exitHandle)
+			p:setSem sem
+		}
+		return (self:remember p)
+	}
+
+	fun remember(p) {
+		| i n bigger |
+		i := 0
+		while (< i self._capa) {
+			if (nil? (core.basicAt self._procs i)) {
+				core.basicAtPut self._procs i p
+				self._nprocs := (+ self._nprocs 1)
+				return p
+			}
+			i := (+ i 1)
+		}
+		## no free slot: widen the array and retry
+		n := (* self._capa 2)
+		bigger := (core.basicNew Array n)
+		i := 0
+		while (< i self._capa) {
+			core.basicAtPut bigger i (core.basicAt self._procs i)
+			i := (+ i 1)
+		}
+		self._procs := bigger
+		self._capa := n
+		return (self:remember p)
+	}
+
+	fun forget(p) {
+		| i |
+		i := 0
+		while (< i self._capa) {
+			if (eqv? (core.basicAt self._procs i) p) {
+				core.basicAtPut self._procs i nil
+				self._nprocs := (- self._nprocs 1)
+				return p
+			}
+			i := (+ i 1)
+		}
+		return nil
+	}
+
+	## --- spawning ------------------------------------------------------
+
+	## Open a command and watch it. mode is as sys.popen takes it.
+	## Answers the ExternalProcess.
+	fun spawn(cmd mode) {
+		return (self:watch (ExternalProcess:open cmd mode))
+	}
+
+	## --- waiting -------------------------------------------------------
+
+	## The first member that has already finished, or nil.
+	## Scanning every member is what makes SIGCHLD coalescing harmless: one
+	## signal covering three exits loses nothing.
+	fun finished() {
+		| i p |
+		i := 0
+		while (< i self._capa) {
+			p := (core.basicAt self._procs i)
+			if (not (nil? p)) {
+				if (not (p:isRunning?)) { return p }
+			}
+			i := (+ i 1)
+		}
+		return nil
+	}
+
+	fun procOfSem(sem) {
+		| i p |
+		i := 0
+		while (< i self._capa) {
+			p := (core.basicAt self._procs i)
+			if (not (nil? p)) {
+				if (eqv? (p:sem) sem) { return p }
+			}
+			i := (+ i 1)
+		}
+		return nil
+	}
+
+	## Wait for one of the watched processes to finish, or for secs to
+	## elapse. Answers the ExternalProcess, or nil on timeout. Other
+	## coprocesses keep running throughout: the wait is on a semaphore, not
+	## on a system call.
+	fun wait(secs) {
+		| w p |
+
+		## one may have finished before we were asked
+		p := (self:finished)
+		if (not (nil? p)) { return p }
+
+		while true {
+			core.sem-signal self._tmo secs 0
+			w := (core.semgr-wait self._sg)
+			core.sem-unsignal self._tmo
+
+			if (eqv? w self._tmo) { return nil }
+
+			if self._shared {
+				## the signal descriptor spoke: take the byte, then look at
+				## everyone, since one SIGCHLD may stand for several exits
+				sys.sig-get
+				p := (self:finished)
+				if (not (nil? p)) { return p }
+				## otherwise it was a SIGCHLD for a child of the host
+				## application, or one already reaped. keep waiting.
+			} else {
+				p := (self:procOfSem w)
+				if (not (nil? p)) {
+					core.sem-unsignal w
+					return p
+				}
+			}
+		}
+	}
+
+	## --- teardown ------------------------------------------------------
+
+	## Stop watching a process and release everything it holds. The group
+	## takes its semaphore back first, then the process releases its own
+	## handles.
+	fun close(p) {
+		| sem |
+		sem := (p:sem)
+		if (not (nil? sem)) {
+			core.sem-unsignal sem
+			core.semgr-remove self._sg sem
+			p:setSem nil
+		}
+		self:forget p
+		return (p:close)
+	}
+
+	## Release the group. Any members still in it are torn down.
+	fun done() {
+		| i p |
+		i := 0
+		while (< i self._capa) {
+			p := (core.basicAt self._procs i)
+			if (not (nil? p)) { self:close p }
+			i := (+ i 1)
+		}
+		if self._shared {
+			core.sem-unsignal self._sigsem
+			sys.sig-uncatch sys.SIGCHLD
+			self._shared := false
+		}
+	}
+}
