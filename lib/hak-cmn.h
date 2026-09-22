@@ -412,6 +412,34 @@ typedef hak_fltbas_t hak_flt_t;
 #endif
 
 /* =========================================================================
+ * FILE OFFSET
+ * ========================================================================= */
+/**
+ * The #hak_foff_t type defines an integer that can represent a file offset.
+ * Depending on your system, it's defined to one of #hak_int64_t, #hak_int32_t,
+ * and #hak_int16_t.
+ */
+#if defined(HAK_HAVE_INT64_T) && (HAK_SIZEOF_OFF64_T==8)
+	typedef hak_int64_t hak_foff_t;
+#	define HAK_SIZEOF_FOFF_T HAK_SIZEOF_INT64_T
+#elif defined(HAK_HAVE_INT64_T) && (HAK_SIZEOF_OFF_T==8)
+	typedef hak_int64_t hak_foff_t;
+#	define HAK_SIZEOF_FOFF_T HAK_SIZEOF_INT64_T
+#elif defined(HAK_HAVE_INT32_T) && (HAK_SIZEOF_OFF_T==4)
+	typedef hak_int32_t hak_foff_t;
+#	define HAK_SIZEOF_FOFF_T HAK_SIZEOF_INT32_T
+#elif defined(HAK_HAVE_INT16_T) && (HAK_SIZEOF_OFF_T==2)
+	typedef hak_int16_t hak_foff_t;
+#	define HAK_SIZEOF_FOFF_T HAK_SIZEOF_INT16_T
+#elif defined(HAK_HAVE_INT8_T) && (HAK_SIZEOF_OFF_T==1)
+	typedef hak_int8_t hak_foff_t;
+#	define HAK_SIZEOF_FOFF_T HAK_SIZEOF_INT8_T
+#else
+	typedef hak_int32_t hak_foff_t; /* this line is for doxygen */
+#	error Unsupported platform
+#endif
+
+/* =========================================================================
  * BASIC HARD-CODED DEFINES
  * ========================================================================= */
 #define HAK_BITS_PER_BYTE (8)

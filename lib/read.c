@@ -1460,6 +1460,11 @@ static int ever_included (hak_t* hak, hak_io_cciarg_t* arg)
 	HAK_ASSERT(hak, HAK_SIZEOF(id_len) == HAK_SIZEOF(arg->unique_id_len));
 	rec_size = HAK_SIZEOF(arg->unique_id) + HAK_SIZEOF(arg->unique_id_len);
 
+	/* [NOTE]
+	 *   the loop here treats unique_id_len 0 as a valid length.
+	 *   if one of the files are set with the unique_id_len 0, all files will match it.
+	 *   the callback function for cci stream must set this to a proper value.
+	 */
 	for (i = 0; i < hak->c->incl_hist.count; i++)
 	{
 		HAK_MEMCPY(&id_len, &hak->c->incl_hist.ptr[i * rec_size + HAK_SIZEOF(arg->unique_id)], HAK_SIZEOF(arg->unique_id_len));
@@ -1541,6 +1546,7 @@ else
 		hak_setsynerrbfmt(hak, HAK_SYNERR_INCLUDE, TOKEN_LOC(hak), "unable to include %js - %js", io_name, orgmsg);
 		goto oops;
 	}
+	if (arg->unique_id_len > HAK_SIZEOF(arg->unique_id)) arg->unique_id_len = HAK_SIZEOF(arg->unique_id);
 
 	if (ever_included(hak, arg))
 	{
@@ -4455,6 +4461,7 @@ int hak_attachccio (hak_t* hak, hak_io_impl_t cci_rdr)
 		/* open the top-level source input stream */
 		n = cci_rdr(hak, HAK_IO_OPEN, &new_cciarg);
 		if (n <= -1) goto oops;
+		if (new_cciarg.unique_id_len > HAK_SIZEOF(new_cciarg.unique_id)) new_cciarg.unique_id_len = HAK_SIZEOF(new_cciarg.unique_id);
 
 		if (hak->c->cci_rdr)
 		{

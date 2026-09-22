@@ -5011,63 +5011,58 @@ struct bb_t
 #define FOPEN_R_FLAGS "r"
 #endif
 
-static int fill_cciarg_unique_id (hak_t* hak, hak_io_cciarg_t* arg, const fn_char_t* path)
+static HAK_INLINE void _fill_cciarg_unique_id (hak_t* hak, hak_io_cciarg_t* arg, const void* dptr, hak_oow_t dlen)
+{
+	if (dlen > HAK_SIZEOF(arg->unique_id))
+	{
+		HAK_ASSERT(hak, HAK_SIZEOF(arg->unique_id) >= HAK_SHA256_DIGEST_LEN);
+		hak_sha256_digest(arg->unique_id, dptr, dlen);
+		arg->unique_id_len = HAK_SHA256_DIGEST_LEN;
+	}
+	else
+	{
+		HAK_MEMCPY(arg->unique_id, dptr, dlen);
+		arg->unique_id_len = dlen;
+	}
+}
+
+static void fill_cciarg_unique_id (hak_t* hak, hak_io_cciarg_t* arg, const fn_char_t* path)
 {
 #if defined(_WIN32)
 	/* the volume serial number plus the file index is what windows offers in
 	 * place of dev+ino. it is the same for every spelling of a path and for
 	 * every hard link to one file, which is exactly the property wanted. */
 	HANDLE h;
-	BY_HANDLE_FILE_INFORMATION bhfi;
-	struct
-	{
-		DWORD vol;
-		DWORD idxhi;
-		DWORD idxlo;
-	} tmp;
+	bb_t* bb;
 
-	/* zero desired-access asks for metadata only, so this succeeds on a file
-	 * already open for reading elsewhere. FILE_FLAG_BACKUP_SEMANTICS lets a
-	 * directory be opened too, harmlessly. */
-#if defined(HAK_OOCH_IS_UCH)
-	/* fn_char_t is UTF-16 here, so the name reaches the file system without
-	 * passing through the ANSI code page - which cannot represent every name. */
-	h = CreateFileW(path, 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-	                HAK_NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, HAK_NULL);
-#else
-	h = CreateFileA(path, 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-	                HAK_NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, HAK_NULL);
-#endif
-	if (h == INVALID_HANDLE_VALUE)
+	bb = (bb_t*)arg->handle;
+	if (bb->fp)
 	{
-		hak_seterrwithsyserr(hak, 1, GetLastError());
-		return -1;
+		int fd = fileno(bb->fp);
+		if (fd >= 0)
+		{
+			h = (HANDLE)_get_osfhandle(fd);
+			if (h != INVALID_HANDLE_VALUE && h != (HANDLE)-2)
+			{
+				BY_HANDLE_FILE_INFORMATION bhfi;
+				struct
+				{
+					DWORD vol;
+					DWORD idxhi;
+					DWORD idxlo;
+				} tmp;
+				if (GetFileInformationByHandle(h, &bhfi))
+				{
+					HAK_MEMSET(&tmp, 0, HAK_SIZEOF(tmp));
+					tmp.vol = bhfi.dwVolumeSerialNumber;
+					tmp.idxhi = bhfi.nFileIndexHigh;
+					tmp.idxlo = bhfi.nFileIndexLow;
+					_fill_cciarg_unique_id(hak, arg, &tmp, HAK_SIZEOF(tmp));
+					return;
+				}
+			}
+		}
 	}
-
-	if (!GetFileInformationByHandle(h, &bhfi))
-	{
-		hak_seterrwithsyserr(hak, 1, GetLastError());
-		CloseHandle(h);
-		return -1;
-	}
-	CloseHandle(h);
-
-	tmp.vol = bhfi.dwVolumeSerialNumber;
-	tmp.idxhi = bhfi.nFileIndexHigh;
-	tmp.idxlo = bhfi.nFileIndexLow;
-
-	if (HAK_SIZEOF(tmp) > HAK_SIZEOF(arg->unique_id))
-	{
-		HAK_ASSERT(hak, HAK_SIZEOF(arg->unique_id) >= HAK_SHA256_DIGEST_LEN);
-		hak_sha256_digest(arg->unique_id, &tmp, HAK_SIZEOF(tmp));
-		arg->unique_id_len = HAK_SHA256_DIGEST_LEN;
-	}
-	else
-	{
-		HAK_MEMCPY(arg->unique_id, &tmp, HAK_SIZEOF(tmp));
-		arg->unique_id_len = HAK_SIZEOF(tmp);
-	}
-	return 0;
 
 #elif defined(__VMS)
 	/* st_dev is a POINTER to the device name here, not an inline array, and
@@ -5075,20 +5070,16 @@ static int fill_cciarg_unique_id (hak_t* hak, hak_io_cciarg_t* arg, const fn_cha
 	 * exactly, but the device name is variable length, so the pair is hashed
 	 * rather than stored raw. */
 	struct stat st;
-	hak_sha256_ctx_t ctx;
-
-	if (stat(path, &st) <= -1)
+	if (stat(path, &st) >= 0)
 	{
-		hak_seterrwithsyserr(hak, 0, errno);
-		return -1;
+		hak_sha256_ctx_t ctx;
+		hak_sha256_init(&ctx);
+		if (st.st_dev) hak_sha256_update(&ctx, st.st_dev, hak_count_bcstr(st.st_dev));
+		hak_sha256_update(&ctx, &st.st_ino, HAK_SIZEOF(st.st_ino));
+		hak_sha256_final(&ctx, arg->unique_id);
+		arg->unique_id_len = HAK_SHA256_DIGEST_LEN;
+		return;
 	}
-
-	hak_sha256_init(&ctx);
-	if (st.st_dev) hak_sha256_update(&ctx, st.st_dev, hak_count_bcstr(st.st_dev));
-	hak_sha256_update(&ctx, &st.st_ino, HAK_SIZEOF(st.st_ino));
-	hak_sha256_final(&ctx, arg->unique_id);
-	arg->unique_id_len = HAK_SHA256_DIGEST_LEN;
-	return 0;
 
 #elif defined(__OS2__) || defined(__DOS__)
 	/* These file systems offer no usable inode, so the path itself has to be
@@ -5112,37 +5103,52 @@ static int fill_cciarg_unique_id (hak_t* hak, hak_io_cciarg_t* arg, const fn_cha
 	HAK_ASSERT(hak, HAK_SIZEOF(arg->unique_id) >= HAK_SHA256_DIGEST_LEN);
 	hak_sha256_final(&ctx, arg->unique_id);
 	arg->unique_id_len = HAK_SHA256_DIGEST_LEN;
-	return 0;
+	return;
 
 #else
 	struct stat st;
 	int x;
 	struct
 	{
-		hak_uintptr_t ino;
-		hak_uintptr_t dev;
+		hak_foff_t ino; /* note hak_foff_t is usually signed while ino_t or dev_t are unsigned */
+		hak_foff_t dev; /* it should not cause practical problems as we care about equality */
 	} tmp;
+	bb_t* bb;
+
+	bb = (bb_t*)arg->handle;
+	if (bb->fp)
+	{
+		x = fileno(bb->fp);
+		if (x >= 0)
+		{
+			x = fstat(x, &st);
+			if (x >= 0) goto stat_ok;
+		}
+	}
 
 	x = stat(path, &st);
-	if (x <= -1) return -1;
-
-	tmp.ino = st.st_ino;
-	tmp.dev = st.st_dev;
-
-	if (HAK_SIZEOF(tmp) > HAK_SIZEOF(arg->unique_id))
+	if (x >= 0)
 	{
-		HAK_ASSERT(hak, HAK_SIZEOF(arg->unique_id) >= HAK_SHA256_DIGEST_LEN);
-		hak_sha256_digest(arg->unique_id, &tmp, HAK_SIZEOF(tmp));
-		arg->unique_id_len = HAK_SHA256_DIGEST_LEN;
-	}
-	else
-	{
-		HAK_MEMCPY(arg->unique_id, &tmp, HAK_SIZEOF(tmp));
-		arg->unique_id_len = HAK_SIZEOF(tmp);
-	}
+		HAK_STATIC_ASSERT(HAK_SIZEOF(tmp.ino) >= HAK_SIZEOF(st.st_ino));
+		HAK_STATIC_ASSERT(HAK_SIZEOF(tmp.dev) >= HAK_SIZEOF(st.st_dev));
 
-	return 0;
+	stat_ok:
+		/* [NOTE]
+		 *   i move ino and dev to a struct because _fill_cciarg_unique_id()
+		 *   uses the entire value without message digestion if it's small enough.
+		 *   this is different implementation from the VMS path above where
+		 *   individual fiels are hashed in. */
+		HAK_MEMSET(&tmp, 0, HAK_SIZEOF(tmp));
+		tmp.ino = st.st_ino;
+		tmp.dev = st.st_dev;
+		_fill_cciarg_unique_id(hak, arg, &tmp, HAK_SIZEOF(tmp));
+		return;
+	}
 #endif
+
+	/* fallback */
+	hak_sha256_digest(arg->unique_id, path, FN_COUNT(path) * HAK_SIZEOF(fn_char_t));
+	arg->unique_id_len = HAK_SHA256_DIGEST_LEN;
 }
 
 static HAK_INLINE int open_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
@@ -5320,7 +5326,7 @@ retry:
 	}
 
 	arg->handle = bb;
-	fill_cciarg_unique_id(hak, arg, bb->fn); /* ignore error */
+	fill_cciarg_unique_id(hak, arg, bb->fn);
 	return 0;
 
 oops:
