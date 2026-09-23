@@ -6,6 +6,7 @@ $include-once "semaphore.hak"
 $include-once "mutex.hak"
 
 $include-once "process.hak"
+$include-once "external-process.hak"
 ##$include-once "system.hak"
 
 ## ---------------------------------------------------------------------------------

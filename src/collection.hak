@@ -44,12 +44,30 @@ class[#varying] Array: FixedSizedCollection {
 }
 
 class[#byte #varying] ByteArray: FixedSizedCollection {
+	## Decode as many COMPLETE characters as this range holds, answering
+	## #[String bytesConsumed]. A character cut short at the end stops the
+	## decoding rather than failing it, and the bytes it started with are
+	## left uncounted - which is what lets a reader decode out of its own
+	## buffer and keep the tail for the next refill.
+	##
+	## codec names an encoding - "utf8", "utf16", "mb8" - or is nil for the
+	## one the virtual machine itself uses.
+	fun decodeChars(index count codec) {
+		return (core.decode-chars self index count codec)
+	}
 }
 
 class[#char #varying] String: FixedSizedCollection {
 	fun[#class] initValue() {
 		##return '\0'
 		return ' '
+	}
+
+	## The other direction, answering a ByteArray. Encoding cannot stop
+	## halfway the way decoding can, since every string is representable, so
+	## there is no count to answer alongside it.
+	fun encodeChars(index count codec) {
+		return (core.encode-chars self index count codec)
 	}
 }
 

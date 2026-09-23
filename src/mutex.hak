@@ -1,4 +1,5 @@
 $include-once "semaphore.hak"
+$include-once "process.hak"
 
 class[#uncopyable] Mutex: Object(
 	_sem
@@ -15,7 +16,7 @@ class[#uncopyable] Mutex: Object(
 	fun critical(fnc) {
 		| p ex r |
 
-		p := (core.active-process)
+		p := (Process:active)
 
 		## already the owner: just run the body. the outermost critical
 		## is the one that releases, so nesting needs no bookkeeping.
@@ -48,13 +49,13 @@ class[#uncopyable] Mutex: Object(
 	fun tryCritical(fnc) {
 		| p ex |
 
-		p := (core.active-process)
+		p := (Process:active)
 
 		## already the owner. same reasoning as critical: the outermost
 		## critical is the one that releases, so nesting needs no bookkeeping
 		if (eqv? p self._owner) { fnc ; return true }
 
-		## core.sem-trywait either takes the semaphore or answers false. it
+		## Semaphore:tryWait either takes the semaphore or answers false. it
 		## never suspends, so there is no window where another process could
 		## slip in between testing the mutex and claiming it.
 		if (self._sem:tryWait) {

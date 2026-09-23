@@ -1,0 +1,178 @@
+## ---------------------------------------------------------------------------
+## Characters over bytes.
+##
+## A TextStream is a view onto any Stream - a pipe, a child's output, bytes
+## already in memory. It is not a Stream itself: a Stream answers bytes and
+## this answers characters, and pretending the two are the same protocol is
+## how a library ends up with a read() whose element type depends on which
+## object you happen to be holding.
+##
+## IT KEEPS NO STATE
+##
+## Decoding happens straight out of the byte stream's own buffer, and only
+## the bytes that formed whole characters are consumed. A character cut in
+## half by a buffer boundary simply stays there until the next refill brings
+## the rest. So a TextStream holds nothing: byte reads and text reads on the
+## same source can be interleaved without either losing anything, and a text
+## view may be made and dropped around a byte stream freely. This is what
+## TextIOWrapper's detach() exists to work around elsewhere.
+##
+## ByteArray:decodeChars is what makes it possible - it answers both the string
+## and the number of bytes that went into it, and stops at a truncated
+## character instead of failing on one.
+## ---------------------------------------------------------------------------
+
+$include-once "stream.hak"
+
+LF := 10
+CR := 13
+
+class[#uncopyable] TextStream: Object(
+	_base    ## the byte Stream underneath
+	_codec   ## a codec name, or nil for the vm's own
+	_owned   ## close _base when this is closed?
+) {
+	## mode is a codec name - "utf8", "utf16", "mb8" - or nil for the vm's.
+	fun[#ci] on(base codec) {
+		self._base := base
+		self._codec := codec
+		self._owned := true
+		return self
+	}
+
+	fun base() { return self._base }
+	fun codec() { return self._codec }
+
+	## Whether closing this closes the byte stream underneath. It does by
+	## default: the usual case is a text view made over a stream that nothing
+	## else holds, and a view that did not close would leak the handle.
+	fun setOwned(v) { self._owned := v }
+
+	fun atEnd?() { return (self._base:atEnd?) }
+
+	## --- reading -------------------------------------------------------
+
+	## Up to n characters, or nil at the end of input. Answers fewer than n
+	## rather than waiting for the rest.
+	fun readText(n) {
+		| r s |
+		if (not (self._base:fillIfEmpty)) { return nil }
+
+		## decode what is buffered; a truncated character at the end is left
+		## for the next refill
+		r := ((self._base:buffer):decodeChars (self._base:position) (self._base:buffered) self._codec)
+		s := (r:at 0)
+
+		if (= (s:length) 0) {
+			## the buffer holds only part of one character. pull more in and
+			## decode again - unless there is no more, which makes it garbage.
+			if (= (self._base:fill) 0) { throw "truncated character at the end of input" }
+			return (self:readText n)
+		}
+
+		if (and (nqv? n nil) (< n (s:length))) {
+			## the caller wants fewer characters than were decoded. keep that
+			## many and re-encode just those, which is how many bytes they
+			## took out of the buffer.
+			s := (s:slice 0 n)
+			self._base:consume ((s:encodeChars 0 n self._codec):length)
+			return s
+		}
+
+		self._base:consume (r:at 1)
+		return s
+	}
+
+	## One line without its terminator, or nil at the end of input. A final
+	## line with no terminator is answered too.
+	##
+	## The newline is looked for in the BYTES rather than in decoded text, so
+	## that only the bytes of the line itself are ever consumed. That is safe
+	## for utf8 - a 0x0A byte can only be U+000A, since every continuation
+	## byte is >= 0x80 - and for the multibyte encodings mb8 covers, whose
+	## trail bytes never fall as low as 0x0A. It is NOT safe for utf16 over a
+	## byte stream, which is why that combination is refused.
+	fun readLine() {
+		| i n buf pos avail r s nb |
+
+		if (nqv? self._codec nil) {
+			if (or (eql? self._codec "utf16") (eql? self._codec "utf-16")) {
+				throw "readLine cannot scan utf16 over a byte stream"
+			}
+		}
+
+		while true {
+			buf := (self._base:buffer)
+			pos := (self._base:position)
+			avail := (self._base:buffered)
+
+			i := 0
+			while (< i avail) {
+				if (= (buf:at (+ pos i)) LF) {
+					## the line, with its terminator, is bytes [pos, pos+i]
+					nb := (+ i 1)
+					n := i
+					if (and (> n 0) (= (buf:at (+ pos (- n 1))) CR)) { n := (- n 1) }
+					r := (buf:decodeChars pos n self._codec)
+					s := (r:at 0)
+					self._base:consume nb
+					return s
+				}
+				i := (+ i 1)
+			}
+
+			## no newline in what is buffered - get more
+			if (= (self._base:fill) 0) {
+				## end of input. whatever is left is the last line.
+				avail := (self._base:buffered)
+				if (= avail 0) { return nil }
+				buf := (self._base:buffer)
+				pos := (self._base:position)
+				n := avail
+				if (= (buf:at (+ pos (- n 1))) CR) { n := (- n 1) }
+				r := (buf:decodeChars pos n self._codec)
+				s := (r:at 0)
+				self._base:consume avail
+				return s
+			}
+		}
+	}
+
+	## Everything left, as one string.
+	fun readAll() {
+		| b r |
+		b := (self._base:readAll)
+		r := (b:decodeChars 0 (b:length) self._codec)
+		if (< (r:at 1) (b:length)) {
+			throw "truncated character at the end of input"
+		}
+		return (r:at 0)
+	}
+
+	## --- writing -------------------------------------------------------
+
+	## Encoding never stops halfway the way decoding does - every string is
+	## representable - so this needs none of the care the read side takes.
+	fun write(s) {
+		| b |
+		b := (s:encodeChars 0 (s:length) self._codec)
+		self._base:write b 0 (b:length)
+		return s
+	}
+
+	fun writeLine(s) {
+		| b |
+		self:write s
+		b := (ByteArray:basicNew 1)
+		b:atPut 0 LF
+		self._base:write b 0 1
+		return s
+	}
+
+	fun flush() { self._base:flush ; return self }
+
+	fun close() {
+		if self._owned { self._base:close }
+		return self
+	}
+}

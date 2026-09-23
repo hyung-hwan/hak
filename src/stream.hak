@@ -1,0 +1,339 @@
+## ---------------------------------------------------------------------------
+## Byte streams.
+##
+## Everything here is bytes. Text is a separate layer - see text-stream.hak -
+## which decodes straight out of the buffer a Stream exposes. That split is
+## what lets one text implementation serve every kind of byte source, and it
+## is also the only way the same script behaves alike on a wide-character
+## build and a byte-character one.
+##
+## READING LOOKS SYNCHRONOUS AND IS
+##
+## A read blocks the calling green process, not the virtual machine: the
+## scheduler keeps every other process running while this one waits on a
+## semaphore bound to the handle. So s:readBytes really does block its caller,
+## and costs nothing to anyone else. No caller ever sees the -1 that means
+## "would block", nor a semaphore.
+##
+## WHAT A SUBCLASS SUPPLIES
+##
+## One method each way:
+##
+##   fillBuffer(buf off len)  -> bytes read, 0 at end of input. May block.
+##   writeBuffer(buf off len) -> bytes written, or -1 to say "wait and retry".
+##
+## Everything else - buffering, growth, compaction, readBytes, readAll, the
+## write-until-all-of-it-is-out loop - is here and is inherited.
+## ---------------------------------------------------------------------------
+
+$include-once "object.hak"
+$include-once "collection.hak"
+$include-once "semaphore.hak"
+
+STREAM-BUFSIZE := 4096
+
+class[#uncopyable] Stream: Object(
+	_buf     ## the read buffer
+	_pos     ## read cursor into _buf
+	_len     ## bytes valid in _buf; _pos .. _len is what is unread
+	_eof     ## true once fillBuffer has reported the end
+	_closed
+) {
+	## An ordinary method rather than the constructor, so a subclass's own
+	## constructor can run it - a class-side #ci method cannot be reached
+	## through self once self is already an instance.
+	fun initStream() {
+		self._buf := (ByteArray:basicNew STREAM-BUFSIZE)
+		self._pos := 0
+		self._len := 0
+		self._eof := false
+		self._closed := false
+		return self
+	}
+
+	fun[#ci] new() { return (self:initStream) }
+
+	## --- what a subclass must answer -----------------------------------
+
+	fun fillBuffer(buf off len) {
+		throw "fillBuffer must be implemented by a subclass"
+	}
+
+	fun writeBuffer(buf off len) {
+		throw "writeBuffer must be implemented by a subclass"
+	}
+
+	## --- the buffer, for a text layer reading straight out of it --------
+	##
+	## A TextStream decodes from here and consumes only the bytes that made
+	## whole characters, so it keeps no state of its own and byte reads and
+	## text reads can be interleaved without either losing anything.
+
+	fun buffer() { return self._buf }
+	fun position() { return self._pos }
+
+	## return the number of buffered bytes
+	fun buffered() { return (- self._len self._pos) }
+
+	fun consume(n) {
+		if (> n (self:buffered)) { throw "consuming more than is buffered" }
+		self._pos := (+ self._pos n)
+		return n
+	}
+
+	fun isClosed?() { return self._closed }
+
+	## --- filling -------------------------------------------------------
+
+	## Read more into the buffer, blocking until there is something or the
+	## input ends. Answers how many bytes were added, 0 at the end.
+	fun fill() {
+		| capa n |
+
+		if self._eof { return 0 }
+
+		capa := (self._buf:basicSize)
+
+		## reclaim what has been read before asking for room
+		if (> self._pos 0) {
+			| i j |
+			i := 0
+			j := self._pos
+			while (< j self._len) {
+				self._buf:basicAtPut i (self._buf:basicAt j)
+				i := (+ i 1)
+				j := (+ j 1)
+			}
+			self._len := i
+			self._pos := 0
+		}
+
+		## still full: the caller wants more than one bufferful held at once,
+		## which readAll does. grow rather than refuse.
+		if (>= self._len capa) {
+			| bigger i |
+			bigger := (ByteArray:basicNew (* capa 2))
+			i := 0
+			while (< i self._len) {
+				bigger:basicAtPut i (self._buf:basicAt i)
+				i := (+ i 1)
+			}
+			self._buf := bigger
+			capa := (* capa 2)
+		}
+
+		n := (self:fillBuffer self._buf self._len (- capa self._len))
+		if (<= n 0) {
+			self._eof := true
+			return 0
+		}
+		self._len := (+ self._len n)
+		return n
+	}
+
+	## Make sure something is buffered. Answers false at the end of input.
+	fun fillIfEmpty() {
+		while (and (= (self:buffered) 0) (not self._eof)) { self:fill }
+		return (> (self:buffered) 0)
+	}
+
+	## true when nothing is buffered and nothing more will arrive. This
+	## blocks, because it cannot be answered without looking.
+	fun atEnd?() { return (not (self:fillIfEmpty)) }
+
+	## --- reading -------------------------------------------------------
+
+	## Up to n bytes as a ByteArray, or nil at the end of input. Answers
+	## fewer than n rather than waiting for the rest. n nil means "whatever
+	## is there", after waiting for the first byte.
+	fun readBytes(n) {
+		| avail out |
+		if (not (self:fillIfEmpty)) { return nil }
+		avail := (self:buffered)
+		if (nil? n) { n := avail } \
+		else { if (> n avail) { n := avail } }
+		out := (self._buf:slice self._pos n)
+		self._pos := (+ self._pos n)
+		return out
+	}
+
+	## Everything up to the end of input, as one ByteArray. Answers an empty
+	## one rather than nil when there was nothing left.
+	fun readAll() {
+		| out |
+		while (not self._eof) { self:fill }
+		out := (self._buf:slice self._pos (self:buffered))
+		self._pos := self._len
+		return out
+	}
+
+	## --- writing -------------------------------------------------------
+
+	## Write all of it. Answers the count. Unlike the primitive this never
+	## answers a short count - it waits and continues instead.
+	fun write(buf off len) {
+		| done n |
+		if (nil? off) { off := 0 }
+		if (nil? len) { len := (- (buf:basicSize) off) }
+		done := 0
+		while (< done len) {
+			n := (self:writeBuffer buf (+ off done) (- len done))
+			if (> n 0) { done := (+ done n) }
+		}
+		return done
+	}
+
+	## There is no write buffering, so this is here for the protocol alone.
+	fun flush() { return self }
+
+	## Set the closed flag. A subclass calls this rather than super:close,
+	## because super in hak resolves against the receiver's class rather than
+	## the defining one, so a super: call in a class that itself has a
+	## subclass re-enters itself instead of reaching the parent.
+	fun markClosedFlag() {
+		self._closed := true
+		return self
+	}
+
+	fun close() { return (self:markClosedFlag) }
+}
+
+## ---------------------------------------------------------------------------
+## A stream over a system handle - a pipe, a file, a child's stream.
+##
+## This is the only class that knows a semaphore exists.
+## ---------------------------------------------------------------------------
+class[#uncopyable] HandleStream: Stream(
+	_hnd
+	_insem   ## bound to _hnd for input; made on the first block
+	_outsem  ## ...and for output
+	_owned   ## close the handle when this stream is closed?
+) {
+	## An ordinary method, as initStream is and for the same reason: a
+	## subclass cannot reach a #ci constructor through self, and cannot touch
+	## an inherited instance variable directly either.
+	fun initHandleStream(hnd) {
+		self:initStream
+		self._hnd := hnd
+		self._insem := nil
+		self._outsem := nil
+		self._owned := true
+		return self
+	}
+
+	fun[#ci] on(hnd) { return (self:initHandleStream hnd) }
+
+	fun handle() { return self._hnd }
+
+	## Whether closing this closes the handle. A stream whose handle belongs
+	## to something else - a process that will close the whole group at once -
+	## sets this false.
+	fun setOwned(v) { self._owned := v }
+
+	## The semaphore this stream waits on for input, made if it does not
+	## exist yet. A caller that must wait for whichever of several streams
+	## speaks first adds these to a semaphore group - which is the one thing
+	## a synchronous interface cannot express on its own.
+	fun inputSemaphore() {
+		if (nil? self._insem) {
+			self._insem := (Semaphore:new)
+			self._insem:signalOnInput self._hnd
+		}
+		return self._insem
+	}
+
+	fun outputSemaphore() {
+		if (nil? self._outsem) {
+			self._outsem := (Semaphore:new)
+			self._outsem:signalOnOutput self._hnd
+		}
+		return self._outsem
+	}
+
+	## -1 from the primitive means the handle would have blocked. Wait on the
+	## semaphore - which suspends this process only - and ask again.
+	fun fillBuffer(buf off len) {
+		| n |
+		while true {
+			n := (sys.read self._hnd buf off len)
+			if (>= n 0) { return n }
+			(self:inputSemaphore):wait
+		}
+	}
+
+	fun writeBuffer(buf off len) {
+		| n |
+		while true {
+			n := (sys.write self._hnd buf off len)
+			if (>= n 0) { return n }
+			(self:outputSemaphore):wait
+		}
+	}
+
+	## Let go of the semaphores without touching the handle. This is what a
+	## stream whose descriptor is about to be closed by its owner needs -
+	## sys.pclose takes a process's whole group of handles at once, so the
+	## streams must unbind from the multiplexer but must not close anything.
+	fun markClosed() {
+		if (not (self:isClosed?)) {
+			if (nqv? self._insem nil) { self._insem:unsignal ; self._insem := nil }
+			if (nqv? self._outsem nil) { self._outsem:unsignal ; self._outsem := nil }
+			self:markClosedFlag
+		}
+		return self
+	}
+
+	fun close() {
+		| owned |
+		if (not (self:isClosed?)) {
+			owned := self._owned
+			self:markClosed
+			if owned { sys.close self._hnd }
+		}
+		return self
+	}
+}
+
+class[#uncopyable] FileStream: HandleStream {
+	fun[#ci] on(path mode) {
+		| hnd |
+		hnd := (sys.open path mode)
+		return (self:initHandleStream hnd)
+	}
+}
+
+## ---------------------------------------------------------------------------
+## A stream over a ByteArray already in memory.
+##
+## It exists so the text layer can be tested without spawning anything, and
+## so a caller can hand bytes to something that expects a Stream.
+## ---------------------------------------------------------------------------
+class[#uncopyable] ByteArrayStream: Stream(
+	_src
+	_srcpos
+) {
+	fun[#ci] on(bytes) {
+		self:initStream
+		self._src := bytes
+		self._srcpos := 0
+		return self
+	}
+
+	fun fillBuffer(buf off len) {
+		| avail i |
+		avail := (- (self._src:basicSize) self._srcpos)
+		if (<= avail 0) { return 0 }
+		if (> len avail) { len := avail }
+		i := 0
+		while (< i len) {
+			buf:basicAtPut (+ off i) (self._src:basicAt (+ self._srcpos i))
+			i := (+ i 1)
+		}
+		self._srcpos := (+ self._srcpos len)
+		return len
+	}
+
+	fun writeBuffer(buf off len) {
+		throw "a ByteArrayStream is not writable"
+	}
+}

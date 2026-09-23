@@ -51,7 +51,7 @@ fun spawner() {
 	| i |
 	i := 0
 	while (< i FORKS) {
-		try { core.fork noop ; forked := (+ forked 1) } catch (e) { failed := (+ failed 1) }
+		try { Process:fork noop ; forked := (+ forked 1) } catch (e) { failed := (+ failed 1) }
 		i := (+ i 1)
 	}
 }

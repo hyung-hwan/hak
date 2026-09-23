@@ -39,6 +39,7 @@ hak_cmgr_t* hak_get_cmgr_by_id (hak_cmgr_id_t id)
 	return &builtin_cmgr[id];
 }
 
+/* [NOTE] when adding a new cmgr entry, you must update get_cmgr_arg() in mod/core.c */
 static struct
 {
 	const hak_bch_t* name;

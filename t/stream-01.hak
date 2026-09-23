@@ -1,0 +1,116 @@
+## byte streams and the text layer over them
+##
+## The point of the split is that one TextStream serves every byte source, so
+## most of this runs over a ByteArrayStream - no process, no descriptor - and
+## only the last section needs a real handle.
+
+$include-once "text-stream.hak"
+$include-once "external-process.hak"
+$include-once "process.hak"
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+fun bytesOf(s) { return (s:encodeChars 0 (s:length) nil) }
+
+## --- the byte layer ---------------------------------------------------------
+
+b := (ByteArrayStream:on (bytesOf "abcdefghij"))
+chk (eql? (b:readBytes 3) (bytesOf "abc")) "readBytes answers what was asked for"
+chk (eql? (b:readBytes 4) (bytesOf "defg")) "...and picks up where it left off"
+chk (eql? (b:readAll) (bytesOf "hij")) "readAll answers the remainder"
+chk (nil? (b:readBytes 1)) "nil past the end"
+chk (b:atEnd?) "atEnd? agrees"
+
+## a read larger than what is left answers what is there rather than waiting
+b := (ByteArrayStream:on (bytesOf "xy"))
+chk (eql? (b:readBytes 100) (bytesOf "xy")) "a short read is not padded out"
+
+## --- the text layer ---------------------------------------------------------
+
+t := (TextStream:on (ByteArrayStream:on (bytesOf "one\ntwo\nthree")) nil)
+chk (eql? (t:readLine) "one") "readLine strips the terminator"
+chk (eql? (t:readLine) "two") "...and continues"
+chk (eql? (t:readLine) "three") "...and answers a final line with no terminator"
+chk (nil? (t:readLine)) "...then nil"
+
+## crlf, and an empty line
+t := (TextStream:on (ByteArrayStream:on (bytesOf "a\r\n\r\nb\r\n")) nil)
+chk (eql? (t:readLine) "a") "a crlf terminator is stripped too"
+chk (eql? (t:readLine) "") "an empty line is a line"
+chk (eql? (t:readLine) "b") "...and the one after it"
+chk (nil? (t:readLine)) "...then nil"
+
+t := (TextStream:on (ByteArrayStream:on (bytesOf "hello")) nil)
+chk (eql? (t:readAll) "hello") "readAll answers text"
+
+t := (TextStream:on (ByteArrayStream:on (bytesOf "hello")) nil)
+chk (eql? (t:readText 2) "he") "readText answers the count asked for"
+chk (eql? (t:readText 99) "llo") "...and no more than is there"
+chk (nil? (t:readText 1)) "...then nil"
+
+## --- multi-byte characters --------------------------------------------------
+##
+## "héllo" is six bytes and five characters in utf8. The two-byte character in
+## the middle is what a decoder gets wrong if it works a fixed number of bytes
+## at a time.
+
+t := (TextStream:on (ByteArrayStream:on (bytesOf "héllo")) "utf8")
+chk (eql? (t:readAll) "héllo") "a multi-byte character survives the round trip"
+
+## --- interleaving bytes and text --------------------------------------------
+##
+## The text layer consumes only the bytes that made whole characters and keeps
+## no state of its own, so a byte read after a text read sees exactly what the
+## text read left. This is the property that makes the two layers composable
+## rather than one-way.
+
+b := (ByteArrayStream:on (bytesOf "name\nrest-as-bytes"))
+t := (TextStream:on b nil)
+chk (eql? (t:readLine) "name") "a line read through the text view"
+chk (eql? (b:readAll) (bytesOf "rest-as-bytes")) "...leaves the rest readable as bytes"
+
+## --- over a real handle -----------------------------------------------------
+##
+## The same TextStream, now over a pipe rather than memory. The child writes
+## more than one line, and reading blocks the calling process rather than the
+## vm - the coprocess below keeps running throughout.
+
+ticks := 0
+fun ticker() { while (< ticks 3) { ticks := (+ ticks 1) ; Process:yield } }
+Process:fork ticker
+
+x := (ExternalProcess:open "printf 'alpha\\nbeta\\ngamma\\n'" "r")
+chk (nqv? (x:out) nil) "a process answers a stream, not a descriptor"
+chk (eqv? ((x:out):process) x) "...which knows the process it belongs to"
+
+xt := (TextStream:on (x:out) nil)
+lines := (Array:basicNew 3)
+n := 0
+while (< n 3) {
+	lines:atPut n (xt:readLine)
+	n := (+ n 1)
+}
+chk (eql? (lines:at 0) "alpha") "first line off the pipe"
+chk (eql? (lines:at 1) "beta") "second"
+chk (eql? (lines:at 2) "gamma") "third"
+chk (nil? (xt:readLine)) "nil at end of the pipe"
+chk (= ticks 3) "a coprocess ran while the reader blocked"
+x:close
+
+## --- writing ----------------------------------------------------------------
+##
+## Down a pipe to a child and back again, which also exercises the write side
+## waiting rather than answering a short count.
+
+y := (ExternalProcess:open "cat" "rw")
+yt := (TextStream:on (y:in) nil)
+yt:writeLine "round"
+(y:in):close          ## end of file is how cat is told to finish
+yr := (TextStream:on (y:out) nil)
+chk (eql? (yr:readLine) "round") "written down one pipe and read back off the other"
+y:close
+
+printf "done\n"

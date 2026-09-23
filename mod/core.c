@@ -463,6 +463,231 @@ static hak_pfrc_t pf_core_inst_responds_to (hak_t* hak, hak_mod_t* mod, hak_ooi_
 	return HAK_PF_SUCCESS;
 }
 
+/* ------------------------------------------------------------------------ *
+ * CHARACTER ENCODING
+ *
+ * The bridge between a byte stream and a text stream. Both directions take an
+ * explicit range so a caller can work straight out of its own buffer, and the
+ * codec is named per call rather than taken from the vm, so two streams may
+ * read two different encodings at once.
+ * ------------------------------------------------------------------------ */
+
+/* the codec named by an optional argument, or the vm's own when it is absent */
+static hak_cmgr_t* get_cmgr_arg (hak_t* hak, hak_ooi_t nargs, hak_ooi_t argidx)
+{
+	hak_oop_t t;
+	const hak_ooch_t* p;
+	hak_oow_t len;
+
+	if (nargs <= argidx) return HAK_CMGR(hak);
+
+	t = HAK_STACK_GETARG(hak, nargs, argidx);
+	if (t == hak->_nil) return HAK_CMGR(hak);
+
+	if (!HAK_OBJ_IS_CHAR_POINTER(t))
+	{
+		hak_seterrbfmt(hak, HAK_EINVAL, "codec not a string - %O", t);
+		return HAK_NULL;
+	}
+
+	p = HAK_OBJ_GET_CHAR_SLOT(t);
+	len = HAK_OBJ_GET_SIZE(t);
+
+	/* compared here rather than through hak_get_cmgr_by_name() so that no
+	 * conversion of the name itself is needed - which would be circular. */
+	if ((len == 4 && p[0] == 'u' && p[1] == 't' && p[2] == 'f' && p[3] == '8') ||
+	    (len == 5 && p[0] == 'u' && p[1] == 't' && p[2] == 'f' && p[3] == '-' && p[4] == '8'))
+		return hak_get_cmgr_by_id(HAK_CMGR_UTF8);
+	if ((len == 5 && p[0] == 'u' && p[1] == 't' && p[2] == 'f' && p[3] == '1' && p[4] == '6') ||
+	    (len == 6 && p[0] == 'u' && p[1] == 't' && p[2] == 'f' && p[3] == '-' && p[4] == '1' && p[5] == '6'))
+		return hak_get_cmgr_by_id(HAK_CMGR_UTF16);
+	if (len == 3 && p[0] == 'm' && p[1] == 'b' && p[2] == '8')
+		return hak_get_cmgr_by_id(HAK_CMGR_MB8);
+
+	hak_seterrbfmt(hak, HAK_EINVAL, "unknown codec - %O", t);
+	return HAK_NULL;
+}
+
+/* the byte range an argument triple(object, offset, length) names, clamped to the object. */
+static int get_range_args (hak_t* hak, hak_ooi_t nargs, hak_oop_t obj, hak_ooi_t* offp, hak_ooi_t* lenp)
+{
+	hak_oop_t a;
+	hak_ooi_t size, off = 0, len;
+
+	size = HAK_OBJ_GET_SIZE(obj);
+	len = size;
+
+	if (nargs >= 2)
+	{
+		a = HAK_STACK_GETARG(hak, nargs, 1);
+		if (!HAK_OOP_IS_SMOOI(a))
+		{
+			hak_seterrbfmt(hak, HAK_EINVAL, "offset not numeric - %O", a);
+			return -1;
+		}
+		off = HAK_OOP_TO_SMOOI(a);
+		if (off < 0) off = 0;
+		else if (off > size) off = size;
+		len = size - off;
+
+		if (nargs >= 3)
+		{
+			a = HAK_STACK_GETARG(hak, nargs, 2);
+			if (!HAK_OOP_IS_SMOOI(a))
+			{
+				hak_seterrbfmt(hak, HAK_EINVAL, "length not numeric - %O", a);
+				return -1;
+			}
+			if (HAK_OOP_TO_SMOOI(a) < len) len = HAK_OOP_TO_SMOOI(a);
+			if (len < 0) len = 0;
+		}
+	}
+
+	*offp = off;
+	*lenp = len;
+	return 0;
+}
+
+/* (core.decode-chars bytes [offset [length [codec]]]) -> #[String consumed]
+ *
+ * Decodes as many COMPLETE characters as the range holds and answers both the
+ * string and the number of bytes that went into it. A partial character at
+ * the end stops the decoding instead of failing it, which is what lets a
+ * reader decode straight out of its own input buffer and leave the tail there
+ * for the next refill - so no decoder state need be kept anywhere. An illegal
+ * byte, as opposed to a truncated one, is an error.
+ */
+static hak_pfrc_t pf_core_decode_chars (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+{
+	hak_oop_t src, str, arr;
+	hak_ooi_t off, len;
+	hak_cmgr_t* cmgr;
+	hak_oow_t bcslen, oocslen;
+
+	src = HAK_STACK_GETARG(hak, nargs, 0);
+	if (!HAK_OBJ_IS_BYTE_POINTER(src))
+	{
+		hak_seterrbfmt(hak, HAK_EINVAL, "source not a byte array - %O", src);
+		return HAK_PF_FAILURE;
+	}
+
+	if (get_range_args(hak, nargs, src, &off, &len) <= -1) return HAK_PF_FAILURE; /* invalid arguments */
+
+	cmgr = get_cmgr_arg(hak, nargs, 3);
+	if (!cmgr) return HAK_PF_FAILURE; /* unknown codec */
+
+#if defined(HAK_OOCH_IS_BCH)
+	/* a character IS a byte in this build, so there is nothing to decode and
+	 * the codec cannot come into it */
+	bcslen = len;
+	oocslen = len;
+#else
+	{
+		int n;
+		bcslen = len;
+		oocslen = 0;
+		/* a first pass for the count. 'all' is 0, so a truncated character at
+		 * the end simply ends the conversion and bcslen reports where. */
+		n = hak_conv_bchars_to_uchars_with_cmgr(
+			(const hak_bch_t*)&HAK_OBJ_GET_BYTE_SLOT(src)[off], &bcslen, HAK_NULL, &oocslen, cmgr, 0);
+		if (n <= -1 && n != -2 && n != -3)
+		{
+			hak_seterrbfmt(hak, HAK_EECERR, "undecodable byte in the source");
+			return HAK_PF_FAILURE;
+		}
+	}
+#endif
+
+	str = hak_instantiate(hak, hak->c_string, HAK_NULL, oocslen);
+	if (HAK_UNLIKELY(!str)) return HAK_PF_FAILURE;
+
+	if (oocslen > 0)
+	{
+#if defined(HAK_OOCH_IS_BCH)
+		HAK_MEMCPY(HAK_OBJ_GET_CHAR_SLOT(str), &HAK_OBJ_GET_BYTE_SLOT(src)[off], oocslen);
+#else
+		hak_oow_t b2 = bcslen, o2 = oocslen;
+		hak_pushvolat(hak, &str);
+		hak_conv_bchars_to_uchars_with_cmgr(
+			(const hak_bch_t*)&HAK_OBJ_GET_BYTE_SLOT(src)[off], &b2,
+			HAK_OBJ_GET_CHAR_SLOT(str), &o2, cmgr, 0);
+		hak_popvolat(hak);
+#endif
+	}
+
+	hak_pushvolat(hak, &str);
+	arr = hak_makearray(hak, 2);
+	hak_popvolat(hak);
+	if (HAK_UNLIKELY(!arr)) return HAK_PF_FAILURE;
+
+	HAK_OBJ_SET_OOP_VAL(arr, 0, str);
+	HAK_OBJ_SET_OOP_VAL(arr, 1, HAK_SMOOI_TO_OOP((hak_ooi_t)bcslen));
+
+	HAK_STACK_SETRET(hak, nargs, arr);
+	return HAK_PF_SUCCESS;
+}
+
+/* (core.encode-chars string [offset [length [codec]]]) -> ByteArray
+ *
+ * The other direction. Encoding cannot be truncated the way decoding can -
+ * a whole string is always representable - so this answers the bytes alone.
+ */
+static hak_pfrc_t pf_core_encode_chars (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+{
+	hak_oop_t src, ba;
+	hak_ooi_t off, len;
+	hak_cmgr_t* cmgr;
+	hak_oow_t oocslen, bcslen;
+
+	src = HAK_STACK_GETARG(hak, nargs, 0);
+	if (!HAK_OBJ_IS_CHAR_POINTER(src))
+	{
+		hak_seterrbfmt(hak, HAK_EINVAL, "source not a string - %O", src);
+		return HAK_PF_FAILURE;
+	}
+
+	if (get_range_args(hak, nargs, src, &off, &len) <= -1) return HAK_PF_FAILURE; /* invalid arguments */
+
+	cmgr = get_cmgr_arg(hak, nargs, 3);
+	if (!cmgr) return HAK_PF_FAILURE; /* unknown codec */
+
+#if defined(HAK_OOCH_IS_BCH)
+	oocslen = len;
+	bcslen = len;
+#else
+	{
+		int n;
+		oocslen = len;
+		bcslen = 0;
+		n = hak_conv_uchars_to_bchars_with_cmgr(
+			&HAK_OBJ_GET_CHAR_SLOT(src)[off], &oocslen, HAK_NULL, &bcslen, cmgr);
+		if (n <= -1 && n != -2)
+		{
+			hak_seterrbfmt(hak, HAK_EECERR, "unencodable character in the source");
+			return HAK_PF_FAILURE;
+		}
+	}
+#endif
+
+	ba = hak_instantiate(hak, hak->c_byte_array, HAK_NULL, bcslen);
+	if (HAK_UNLIKELY(!ba)) return HAK_PF_FAILURE;
+
+	if (bcslen > 0)
+	{
+#if defined(HAK_OOCH_IS_BCH)
+		HAK_MEMCPY(HAK_OBJ_GET_BYTE_SLOT(ba), &HAK_OBJ_GET_CHAR_SLOT(src)[off], bcslen);
+#else
+		hak_oow_t o2 = (hak_oow_t)len, b2 = bcslen;
+		hak_conv_uchars_to_bchars_with_cmgr(
+			&HAK_OBJ_GET_CHAR_SLOT(src)[off], &o2,
+			(hak_bch_t*)HAK_OBJ_GET_BYTE_SLOT(ba), &b2, cmgr);
+#endif
+	}
+
+	HAK_STACK_SETRET(hak, nargs, ba);
+	return HAK_PF_SUCCESS;
+}
+
 static hak_pfrc_t pf_core_slice (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_oop_t src, slice, a1, a2;
@@ -611,6 +836,9 @@ static hak_pfinfo_t pfinfos[] =
 	{ "classOf",            { HAK_PFBASE_FUNC, pf_core_class_of,              1,  1 } },
 	{ "classRespondsTo",    { HAK_PFBASE_FUNC, pf_core_class_responds_to,     2,  2 } },
 	{ "cons",               { HAK_PFBASE_FUNC, pf_core_cons,                  2,  2 } },
+
+	{ "decode-chars",       { HAK_PFBASE_FUNC, pf_core_decode_chars,          1,  4 } },
+	{ "encode-chars",       { HAK_PFBASE_FUNC, pf_core_encode_chars,          1,  4 } },
 
 	{ "eqk?",               { HAK_PFBASE_FUNC, hak_pf_eqk,                    2,  2 } },
 	{ "eql?",               { HAK_PFBASE_FUNC, hak_pf_eql,                    2,  2 } },

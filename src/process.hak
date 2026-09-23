@@ -20,6 +20,32 @@ class[#uncopyable #final #limited #varying] Process: Object(
 	_sem
 ) {
 
+	## The process this code is running in.
+	fun[#class] active() {
+		return (core.active-process)
+	}
+
+	## Start fnc in a new process and answer it. The new process is made
+	## runnable but is not switched to here - this call returns first, and
+	## the new one runs when the scheduler next gets the chance. t/tick-01.hak
+	## depends on that and says so.
+	##
+	## [TODO] core.fork relays further arguments to fnc and this cannot, so a
+	## caller that needs to pass any still goes to the primitive - see
+	## t/mutex-01.hak. A '...' parameter would let this ACCEPT them, but
+	## nothing in the language can then pass them on, so they would be
+	## dropped in silence; taking exactly one argument at least makes the
+	## attempt fail where it is made. The same gap Mutex:critical notes.
+	fun[#class] fork(fnc) {
+		return (core.fork fnc)
+	}
+
+	## Give the scheduler a chance to run somebody else. Answers when this
+	## process is next scheduled.
+	fun[#class] yield() {
+		return (core.yield)
+	}
+
 	## TODO: add many read-only methods
 	fun id() {
 		return self._id

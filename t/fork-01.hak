@@ -52,7 +52,7 @@ fun orphan() {
 		i := 0
 		while (< i SPINS) {
 			i := (+ i 1)
-			core.yield        ## give the other workers a turn while holding it
+			Process:yield        ## give the other workers a turn while holding it
 		}
 	})
 
@@ -64,7 +64,7 @@ fun spawn() {
 	| i |
 	i := 0
 	while (< i WORKERS) {
-		core.fork orphan
+		Process:fork orphan
 		i := (+ i 1)
 	}
 }

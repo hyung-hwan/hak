@@ -46,7 +46,7 @@ fun worker(m locked) {
 		i := 0
 		while (< i SPINS) {
 			i := (+ i 1)
-			core.yield
+			Process:yield
 		}
 		inside := (- inside 1)
 		rounds := (+ rounds 1)
@@ -69,7 +69,7 @@ fun spawn(m locked) {
 	| i |
 	i := 0
 	while (< i WORKERS) {
-		core.fork worker m locked
+		core.fork worker m locked  ## the primitive: Process:fork relays no arguments
 		i := (+ i 1)
 	}
 	waitall WORKERS
@@ -110,7 +110,7 @@ chk (= reused 1) "the mutex is still usable after an exception unwound it"
 main_id := ((core.active-process):id)
 other_id := 0
 fun idjob() { other_id := ((core.active-process):id) ; done:signal }
-core.fork idjob
+Process:fork idjob
 waitall 1
 chk (>= main_id 0) "the main process has an id"
 chk (> other_id main_id) "a forked process gets a later id"

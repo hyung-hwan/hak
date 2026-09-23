@@ -1,6 +1,7 @@
 ## the external process supervision layer in src/external-process.hak
 
 $include-once "external-process.hak"
+$include-once "process.hak"
 
 fun chk(ok msg) {
 	if ok { printf "OK: %s\n" msg } \
@@ -15,7 +16,7 @@ b := (g:spawn "sleep 1; exit 22" "r")
 c := (g:spawn "sleep 2; exit 33" "r")
 chk (= (g:count) 3) "spawn adds to the group"
 chk (integer? (a:proc)) "the process carries a process handle"
-chk (integer? (a:out)) "...and the requested stream"
+chk (nqv? (a:out) nil) "...and the requested stream"
 chk (nil? (a:in)) "...and nil for one not requested"
 chk (a:isRunning?) "...and reports itself still running"
 
@@ -23,10 +24,10 @@ ticks := 0
 fun ticker() {
 	while (< ticks 5) {
 		ticks := (+ ticks 1)
-		core.yield
+		Process:yield
 	}
 }
-core.fork ticker
+Process:fork ticker
 
 order := (core.basicNew Array 3)
 n := 0
@@ -92,15 +93,9 @@ p1 := (ExternalProcess:open "echo hello; exit 5" "r")
 chk (integer? (p1:proc)) "an ungrouped process carries a process handle"
 chk (nil? (p1:sem)) "...and no semaphore, since no group bound one"
 
-## the raw primitives rather than the Semaphore class, so that this file
-## needs nothing from the standard library beyond proc.hak itself
-s1 := (core.sem-new)
-core.sem-signal-on-input s1 (p1:out)
-core.sem-wait s1
-core.sem-unsignal s1
-buf := (core.basicNew ByteArray 32)
-nr := (sys.read (p1:out) buf)
-chk (> nr 0) "...and its output can be read directly"
+## reading is plainly synchronous - no semaphore, no would-block, no retry.
+## the process blocks; the vm does not.
+chk (eql? ((p1:out):readBytes 5) (core.encode-chars "hello")) "...and its output reads back as bytes"
 
 ## an ungrouped process has no semaphore to be woken by, so this polls -
 ## which is exactly the cost the group exists to avoid. a timed semaphore

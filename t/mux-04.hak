@@ -1,0 +1,92 @@
+## level-triggered readiness: one read per wakeup, with more left in the pipe
+##
+## A multiplexer here must report a descriptor ready for as long as it HAS
+## data, not once when the data arrives. Under edge triggering a reader that
+## takes one bufferful per wakeup is told "ready" once, leaves the rest in the
+## pipe, waits again and is never woken - the remaining bytes are already
+## there, so no new edge is ever raised. The VM does not crash or report
+## anything; it simply stops, which is why this went unnoticed.
+##
+## lib/std.c's epoll arm set EPOLLET and behaved exactly that way, while the
+## kqueue, poll, select and devpoll arms did not. So this test also pins down
+## that the backends agree with each other.
+##
+## The read buffer is deliberately much smaller than what is written, so the
+## loop below cannot finish in one read however the multiplexer behaves.
+##
+## [NOTE] the wait is on a semaphore group with a timeout rather than on the
+## io semaphore alone. A regression here is a hang, and a hang in the suite
+## tells nobody anything - this way it fails instead.
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+TOTAL := 4096   ## comfortably inside every pipe buffer, so the write
+CHUNK := 256    ## never blocks and no writer coprocess is needed
+
+p := (sys.pipe)
+r := (core.basicAt p 0)
+w := (core.basicAt p 1)
+
+## --- fill the pipe in one go ---
+wbuf := (core.basicNew ByteArray TOTAL)
+i := 0
+while (< i TOTAL) {
+	core.basicAtPut wbuf i (mod i 251)   ## a pattern, so order can be checked
+	i := (+ i 1)
+}
+
+written := 0
+while (< written TOTAL) {
+	| n |
+	n := (sys.write w wbuf written (- TOTAL written))
+	if (<= n 0) { written := TOTAL } \
+	else { written := (+ written n) }
+}
+chk (= written TOTAL) "the pipe took the whole write"
+
+## --- read it back, one small bufferful per wakeup ---
+iosem := (core.sem-new)
+tmo   := (core.sem-new)
+sg    := (core.semgr-new)
+core.semgr-add sg iosem
+core.semgr-add sg tmo
+core.sem-signal-on-input iosem r
+
+rbuf   := (core.basicNew ByteArray CHUNK)
+got    := 0
+stalled := false
+bad    := 0
+
+while (and (< got TOTAL) (not stalled)) {
+	| s n j |
+	core.sem-signal tmo 5 0
+	s := (core.semgr-wait sg)
+	core.sem-unsignal tmo
+
+	if (eqv? s tmo) { stalled := true } \
+	else {
+		## exactly one read per wakeup - the whole point of the test
+		n := (sys.read r rbuf)
+		if (<= n 0) { stalled := true } \
+		else {
+			j := 0
+			while (< j n) {
+				if (nqv? (core.basicAt rbuf j) (mod (+ got j) 251)) { bad := (+ bad 1) }
+				j := (+ j 1)
+			}
+			got := (+ got n)
+		}
+	}
+}
+
+core.sem-unsignal iosem
+sys.close r
+sys.close w
+
+chk (not stalled) "readiness was reported again while data remained unread"
+chk (= got TOTAL) "every byte written came back"
+chk (= bad 0) "...and in the order it was written"
+printf "read %d of %d bytes\n" got TOTAL

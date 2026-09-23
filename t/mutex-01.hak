@@ -3,7 +3,7 @@
 ## Semaphore:forMutex is (core.sem-new 1) - a counting semaphore that starts at
 ## one, so the first waiter takes it and every other one blocks until the
 ## holder signals. What makes this worth a test is that the holder gives up the
-## CPU inside the critical section: core.yield lets the other processes run
+## CPU inside the critical section: Process:yield lets the other processes run
 ## while the lock is held, which is exactly the window a broken mutex would
 ## leak through.
 ##
@@ -46,7 +46,7 @@ fun worker(lock n) {
 	i := 0
 	while (< i n) {
 		i := (+ i 1)
-		core.yield
+		Process:yield
 	}
 
 	inside := (- inside 1)
@@ -68,7 +68,7 @@ fun spawn(lock) {
 	| i |
 	i := 0
 	while (< i WORKERS) {
-		core.fork worker lock SPINS
+		core.fork worker lock SPINS  ## the primitive: Process:fork relays no arguments
 		i := (+ i 1)
 	}
 	waitall WORKERS

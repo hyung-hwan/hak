@@ -30,7 +30,8 @@
 ## exists.
 ## ---------------------------------------------------------------------------
 
-$include-once "object.hak"
+$include-once "stream.hak"
+$include-once "semaphore.hak"
 
 ## ---------------------------------------------------------------------------
 ## One process started by sys.popen.
@@ -38,6 +39,29 @@ $include-once "object.hak"
 ## Usable on its own - open it, read it, ask it for its status, close it - or
 ## handed to an ExternalProcessGroup to be waited on alongside others.
 ## ---------------------------------------------------------------------------
+## ---------------------------------------------------------------------------
+## One end of an external process, as a byte stream.
+##
+## It differs from a plain HandleStream only in what closing means, and that
+## is worth a class of its own: closing a process's INPUT sends end-of-file to
+## it, which is how a filter is told to flush and finish. sys.close on one of
+## these goes through pio rather than close(2), so pio stops believing it owns
+## the descriptor and cannot close it a second time when the process is
+## reaped - closing here is safe as well as meaningful.
+## ---------------------------------------------------------------------------
+class[#uncopyable] ExternalProcessStream: HandleStream(
+	_process
+) {
+	fun[#ci] on(hnd proc) {
+		self:initHandleStream hnd
+		self._process := proc
+		return self
+	}
+
+	## the ExternalProcess this stream belongs to
+	fun process() { return self._process }
+}
+
 class[#uncopyable] ExternalProcess: Object(
 	_proc   ## the process handle sys.pwait and sys.pclose take
 	_in     ## the streams that were asked for; nil for those that were not
@@ -48,18 +72,24 @@ class[#uncopyable] ExternalProcess: Object(
 ) {
 	## Open a command. mode is as sys.popen takes it.
 	fun[#ci] open(cmd mode) {
-		| p |
+		| p h |
 		p := (sys.popen cmd mode)
-		self._proc := (core.basicAt p 0)
-		self._in   := (core.basicAt p 1)
-		self._out  := (core.basicAt p 2)
-		self._err  := (core.basicAt p 3)
-		self._exit := (core.basicAt p 4)
+		self._proc := (p:at 0)
+		h := (p:at 1)
+		if (nqv? h nil) { self._in := (ExternalProcessStream:on h self) }
+		h := (p:at 2)
+		if (nqv? h nil) { self._out := (ExternalProcessStream:on h self) }
+		h := (p:at 3)
+		if (nqv? h nil) { self._err := (ExternalProcessStream:on h self) }
+		self._exit := (p:at 4)
 		self._sem  := nil
 		return self
 	}
 
 	fun proc() { return self._proc }
+
+	## the requested streams, as ExternalProcessStream; nil for those that
+	## were not asked for
 	fun in()   { return self._in }
 	fun out()  { return self._out }
 	fun err()  { return self._err }
@@ -82,7 +112,16 @@ class[#uncopyable] ExternalProcess: Object(
 
 	## Release the streams and the process handle. A member of a group is
 	## closed through the group instead, which detaches it first.
-	fun close() { return (sys.pclose self._proc) }
+	##
+	## sys.pclose takes the whole group of handles with it, so the streams are
+	## marked closed rather than closed one by one - closing them here would
+	## have pio end each descriptor and then find nothing left to do.
+	fun close() {
+		if (nqv? self._in nil) { self._in:markClosed }
+		if (nqv? self._out nil) { self._out:markClosed }
+		if (nqv? self._err nil) { self._err:markClosed }
+		return (sys.pclose self._proc)
+	}
 }
 
 ## ---------------------------------------------------------------------------
@@ -99,11 +138,11 @@ class[#uncopyable] ExternalProcessGroup: Object(
 	_sigsem  ## the shared semaphore; only in shared mode
 ) {
 	fun[#ci] new() {
-		self._sg := (core.semgr-new)
-		self._tmo := (core.sem-new)
-		core.semgr-add self._sg self._tmo
+		self._sg := (SemaphoreGroup:new)
+		self._tmo := (Semaphore:new)
+		self._sg:add self._tmo
 		self._capa := 8
-		self._procs := (core.basicNew Array 8)
+		self._procs := (Array:basicNew 8)
 		self._nprocs := 0
 		self._shared := false
 		self._sigsem := nil
@@ -125,15 +164,15 @@ class[#uncopyable] ExternalProcessGroup: Object(
 			if (not self._shared) {
 				self._shared := true
 				sys.sig-catch sys.SIGCHLD
-				self._sigsem := (core.sem-new)
-				core.semgr-add self._sg self._sigsem
-				core.sem-signal-on-input self._sigsem (sys.sig-getfd)
+				self._sigsem := (Semaphore:new)
+				self._sg:add self._sigsem
+				self._sigsem:signalOnInput (sys.sig-getfd)
 			}
 		} else {
 			## A handle of its own, so a wakeup identifies this one directly.
-			sem := (core.sem-new)
-			core.semgr-add self._sg sem
-			core.sem-signal-on-input sem (p:exitHandle)
+			sem := (Semaphore:new)
+			self._sg:add sem
+			sem:signalOnInput (p:exitHandle)
 			p:setSem sem
 		}
 		return (self:remember p)
@@ -143,8 +182,8 @@ class[#uncopyable] ExternalProcessGroup: Object(
 		| i n bigger |
 		i := 0
 		while (< i self._capa) {
-			if (nil? (core.basicAt self._procs i)) {
-				core.basicAtPut self._procs i p
+			if (nil? (self._procs:at i)) {
+				self._procs:atPut i p
 				self._nprocs := (+ self._nprocs 1)
 				return p
 			}
@@ -152,10 +191,10 @@ class[#uncopyable] ExternalProcessGroup: Object(
 		}
 		## no free slot: widen the array and retry
 		n := (* self._capa 2)
-		bigger := (core.basicNew Array n)
+		bigger := (Array:basicNew n)
 		i := 0
 		while (< i self._capa) {
-			core.basicAtPut bigger i (core.basicAt self._procs i)
+			bigger:atPut i (self._procs:at i)
 			i := (+ i 1)
 		}
 		self._procs := bigger
@@ -167,8 +206,8 @@ class[#uncopyable] ExternalProcessGroup: Object(
 		| i |
 		i := 0
 		while (< i self._capa) {
-			if (eqv? (core.basicAt self._procs i) p) {
-				core.basicAtPut self._procs i nil
+			if (eqv? (self._procs:at i) p) {
+				self._procs:atPut i nil
 				self._nprocs := (- self._nprocs 1)
 				return p
 			}
@@ -194,7 +233,7 @@ class[#uncopyable] ExternalProcessGroup: Object(
 		| i p |
 		i := 0
 		while (< i self._capa) {
-			p := (core.basicAt self._procs i)
+			p := (self._procs:at i)
 			if (not (nil? p)) {
 				if (not (p:isRunning?)) { return p }
 			}
@@ -207,7 +246,7 @@ class[#uncopyable] ExternalProcessGroup: Object(
 		| i p |
 		i := 0
 		while (< i self._capa) {
-			p := (core.basicAt self._procs i)
+			p := (self._procs:at i)
 			if (not (nil? p)) {
 				if (eqv? (p:sem) sem) { return p }
 			}
@@ -228,9 +267,9 @@ class[#uncopyable] ExternalProcessGroup: Object(
 		if (not (nil? p)) { return p }
 
 		while true {
-			core.sem-signal self._tmo secs 0
-			w := (core.semgr-wait self._sg)
-			core.sem-unsignal self._tmo
+			self._tmo:signalAfter secs 0
+			w := (self._sg:wait)
+			self._tmo:unsignal
 
 			if (eqv? w self._tmo) { return nil }
 
@@ -245,7 +284,7 @@ class[#uncopyable] ExternalProcessGroup: Object(
 			} else {
 				p := (self:procOfSem w)
 				if (not (nil? p)) {
-					core.sem-unsignal w
+					w:unsignal
 					return p
 				}
 			}
@@ -261,8 +300,8 @@ class[#uncopyable] ExternalProcessGroup: Object(
 		| sem |
 		sem := (p:sem)
 		if (not (nil? sem)) {
-			core.sem-unsignal sem
-			core.semgr-remove self._sg sem
+			sem:unsignal
+			self._sg:remove sem
 			p:setSem nil
 		}
 		self:forget p
@@ -274,12 +313,12 @@ class[#uncopyable] ExternalProcessGroup: Object(
 		| i p |
 		i := 0
 		while (< i self._capa) {
-			p := (core.basicAt self._procs i)
+			p := (self._procs:at i)
 			if (not (nil? p)) { self:close p }
 			i := (+ i 1)
 		}
 		if self._shared {
-			core.sem-unsignal self._sigsem
+			self._sigsem:unsignal
 			sys.sig-uncatch sys.SIGCHLD
 			self._shared := false
 		}

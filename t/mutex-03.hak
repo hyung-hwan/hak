@@ -51,13 +51,13 @@ fun holder() {
 		| i |
 		entered:signal                       ## tell main we are inside
 		i := 0
-		while (< i 200) { i := (+ i 1) ; core.yield }
+		while (< i 200) { i := (+ i 1) ; Process:yield }
 	})
 	holder_done := 1                         ## only set once it has left
 	done:signal
 }
 
-core.fork holder
+Process:fork holder
 entered:wait                                  ## now the mutex is definitely held
 
 tried := (held:tryCritical (fun() { body_ran := 1 }))
