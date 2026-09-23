@@ -1,0 +1,64 @@
+## Process:suspend, Process:resume and Process:terminate.
+##
+## t/proc-01.hak covers forking and yielding at the primitive level, but its
+## suspend and resume calls are commented out, so until now nothing in the
+## suite ran them at all.
+##
+## Each assertion is made by watching a counter the worker increments rather
+## than by asking the process what state it claims to be in: a suspended
+## process cannot move the counter whatever it says about itself, and that
+## holds however the scheduler is feeling.
+
+$include-once "process.hak"
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+n := 0
+fun worker() {
+	while true {
+		n := (+ n 1)
+		Process:yield
+	}
+}
+
+## --- it runs once forked ----------------------------------------------------
+p := (Process:fork worker)
+chk (nqv? p nil) "fork answers the new process"
+Process:yield
+Process:yield
+chk (> n 0) "the forked process runs"
+
+## --- suspended, it stops ----------------------------------------------------
+## the counter is read AFTER suspending, so whatever the worker managed before
+## the call is already accounted for and only a genuine later run shows up.
+p:suspend
+before := n
+Process:yield
+Process:yield
+Process:yield
+chk (= n before) "a suspended process does not run"
+
+## --- resumed, it goes again -------------------------------------------------
+p:resume
+Process:yield
+Process:yield
+chk (> n before) "a resumed process runs again"
+
+## --- terminated, it stops for good ------------------------------------------
+p:terminate
+final := n
+Process:yield
+Process:yield
+Process:yield
+chk (= n final) "a terminated process does not run"
+
+## --- and resuming a terminated one does not bring it back -------------------
+p:resume
+Process:yield
+Process:yield
+chk (= n final) "a terminated process cannot be resumed"
+
+printf "counter ended at %d\n" n

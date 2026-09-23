@@ -31,6 +31,7 @@ check_SCRIPTS = \
 	mux-04.hak \
 	prim-01.hak \
 	proc-01.hak \
+	proc-02.hak \
 	proclib-01.hak \
 	stream-01.hak \
 	ret-01.hak \

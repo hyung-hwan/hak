@@ -54,4 +54,27 @@ class[#uncopyable #final #limited #varying] Process: Object(
 	fun state() {
 		return self._state
 	}
+
+	## --- scheduling ----------------------------------------------------
+	##
+	## Each answers the process, and each may change which process is the
+	## active one - suspending or terminating the caller's own process hands
+	## control to somebody else before the call appears to return.
+
+	## Make a suspended process runnable again.
+	fun resume() {
+		return (core.resume self)
+	}
+
+	## Take it out of the run queue until resumed. Applied to the active
+	## process - (Process:active):suspend - this is the primitive's
+	## no-argument form.
+	fun suspend() {
+		return (core.suspend self)
+	}
+
+	## Stop it for good.
+	fun terminate() {
+		return (core.terminate self)
+	}
 }
