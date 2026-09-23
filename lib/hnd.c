@@ -479,7 +479,7 @@ int hak_closehnd (hak_t* hak, hak_hnd_t* hnd)
 	int n = 0;
 
 	/* 1. handles this one owns go first. a child process must not outlive the
-	 *    node that represents it. */
+	 *    node that represents it. close the handles of all subordinates */
 	for (p = tab->used.next; p != &tab->used; p = next)
 	{
 		next = p->next;

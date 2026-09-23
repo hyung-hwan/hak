@@ -1,4 +1,4 @@
-## the external process supervision layer in src/proc.hak
+## the external process supervision layer in src/external-process.hak
 
 $include-once "external-process.hak"
 

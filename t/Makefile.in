@@ -573,6 +573,7 @@ check_SCRIPTS = \
 	mux-01.hak \
 	mux-02.hak \
 	mux-03.hak \
+	mux-04.hak \
 	prim-01.hak \
 	proc-01.hak \
 	proclib-01.hak \

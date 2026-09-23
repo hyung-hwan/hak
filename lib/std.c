@@ -1786,13 +1786,18 @@ static int _add_poll_fd (hak_t* hak, int fd, int event_mask)
 
 	HAK_ASSERT(hak, xtn->ep >= 0);
 	HAK_MEMSET(&ev, 0, HAK_SIZEOF(ev));
+	/* [IMPORTANT] level-triggered, which is epoll's default and is what every
+	 * other backend here does. Edge-triggered would oblige every reader to
+	 * drain a descriptor to EAGAIN before waiting again, because no further
+	 * event is raised while data it left behind simply sits there - a reader
+	 * that takes one bufferful per wakeup stops being woken and hangs with
+	 * the rest of the data still queued.
+	 *
+	 * The io thread cannot spin on the repeated reports that level-triggering
+	 * brings: iothr_main() only polls when xtn->ev.len <= 0, and otherwise
+	 * waits on xtn->ev.cnd until the vm has drained the batch. USE_POLL and
+	 * USE_SELECT are level-triggered and run under that same discipline. */
 	ev.events = event_mask;
-	#if defined(USE_THREAD) && defined(EPOLLET)
-	/* epoll_wait may return again if the worker thread consumes events.
-	 * switch to level-trigger. */
-	/* TODO: verify if EPOLLLET is desired */
-	ev.events |= EPOLLET/*  | EPOLLRDHUP | EPOLLHUP */;
-	#endif
 	/*ev.data.ptr = (void*)event_data;*/
 	ev.data.fd = fd;
 	if (epoll_ctl(xtn->ep, EPOLL_CTL_ADD, fd, &ev) == -1)
@@ -2115,13 +2120,8 @@ kqueue_syserr:
 
 	HAK_ASSERT(hak, xtn->ep >= 0);
 	HAK_MEMSET(&ev, 0, HAK_SIZEOF(ev));
+	/* level-triggered, to match the registration above */
 	ev.events = event_mask;
-	#if defined(USE_THREAD) && defined(EPOLLET)
-	/* epoll_wait may return again if the worker thread consumes events.
-	 * switch to level-trigger. */
-	/* TODO: verify if EPOLLLET is desired */
-	ev.events |= EPOLLET;
-	#endif
 	ev.data.fd = fd;
 	if (epoll_ctl(xtn->ep, EPOLL_CTL_MOD, fd, &ev) == -1)
 	{

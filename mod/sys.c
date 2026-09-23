@@ -68,6 +68,13 @@
 #	include <unistd.h>
 #	include <fcntl.h>
 #	include <errno.h>
+#	if defined(__linux__)
+		/* SYS_pidfd_open, for the exit handle below. syscall() itself comes
+		 * from unistd.h, so leaving this out costs no diagnostic - the guard
+		 * on SYS_pidfd_open simply never holds and the exit handle silently
+		 * ceases to exist. */
+#		include <sys/syscall.h>
+#	endif
 #endif
 
 #if defined(HAVE_SYS_TIME_H)
@@ -732,6 +739,7 @@ static hak_pfrc_t pf_sys_popen (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 #endif
 
 	/* this may collect, but handle nodes live outside the object heap */
+/* TODO: instantiate the right class... instead of using a normal array */
 	arr = hak_makearray(hak, 5);
 	if (HAK_UNLIKELY(!arr)) goto oops;
 
