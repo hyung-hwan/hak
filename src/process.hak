@@ -46,6 +46,16 @@ class[#uncopyable #final #limited #varying] Process: Object(
 		return (core.yield)
 	}
 
+	## Terminate every process there is.
+	##
+	## [IMPORTANT] that includes the one making the call. There is no active
+	## process left afterwards, so this does not return and nothing written
+	## after it runs - it is a way to stop, not a way to tidy up before
+	## carrying on. Suspended processes go too, not just runnable ones.
+	fun[#class] terminateAll() {
+		return (core.terminate-all)
+	}
+
 	## TODO: add many read-only methods
 	fun id() {
 		return self._id

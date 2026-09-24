@@ -1,0 +1,51 @@
+## Process:terminateAll
+##
+## It terminates every process including the one that calls it, so there is no
+## "after" in which to assert anything. The test is written the other way
+## round: everything that must NOT happen prints an ERROR line, and t/run.sh
+## fails on exactly those. A working terminateAll therefore produces the OK
+## lines below and then silence.
+##
+## The workers count to a bound rather than looping forever. If terminateAll
+## ever stops terminating them, they are left as the only runnable processes,
+## reach the bound at once and say so - a failure rather than a hung suite.
+## The bound is far beyond what they could reach beforehand: the main process
+## never yields before the call, so a worker only runs if the ticker preempts,
+## and a thousand preemptions is twenty seconds of ticks against the handful
+## of statements above.
+
+$include-once "process.hak"
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+fun worker() {
+	| i |
+	i := 0
+	while (< i 1000) {
+		i := (+ i 1)
+		Process:yield
+	}
+	printf "ERROR: a worker outlived terminateAll\n"
+}
+
+a := (Process:fork worker)
+b := (Process:fork worker)
+chk (nqv? a nil) "a runnable worker was forked"
+chk (nqv? b nil) "...and a second one"
+
+## a suspended one too. terminate_all_processes drains the suspended list
+## before the runnable one, so a process parked here is the case that would
+## otherwise be left behind.
+c := (Process:fork worker)
+c:suspend
+chk (nqv? c nil) "...and a third, suspended"
+
+chk true "reached the call with three processes to clear up"
+Process:terminateAll
+
+## Two ways for this line to be reached: terminateAll returned, or it left the
+## calling process alive. Either is a failure and both look the same from here.
+printf "ERROR: execution continued past terminateAll\n"
