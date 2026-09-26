@@ -1,0 +1,122 @@
+## dynamic method selection - recv:(expr)
+##
+## The method name need not be written at the call site. recv:(expr) evaluates
+## the parenthesised part and sends whatever symbol it answers, so a selector
+## can come out of a lookup table, a variable or a computation. The receiver
+## may be computed the same way.
+##
+## There is no special syntax at work here. () is a call everywhere in hak,
+## as in lisp, and the name after ':' is one of the few places taken literally
+## instead - the same way the (a b) of 'fun x(a b)' is a parameter list rather
+## than a call. Put those two together and the whole of it follows:
+##
+##     p:twice        'twice' is a name, so this sends twice
+##     p:sel          ...and so does this send sel - the contents of a
+##                    variable of that name never come into it
+##     p:(pick)       () is a call, so pick runs and what it answers is sent
+##     p:(id sel)     any call will do, which is how a variable gets in
+##     p:(#twice)     () is a call here too - so it tries to CALL #twice,
+##                    which is not a callable, and never reaches a send
+##
+## The last two lines of that are asserted below. Neither is a quirk of the
+## feature, but both are what a reader expecting an expression slot after ':'
+## would get wrong, and a rule nobody wrote down is one that gets rediscovered
+## by accident.
+
+$include-once "object.hak"
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+## the call that lets any expression reach a selector position
+fun id(x) { return x }
+
+class Base: Object (_v) {
+	fun[#ci] new(v) { self._v := v ; return self }
+	fun twice() { return (* self._v 2) }
+	fun plus(n) { return (+ self._v n) }
+	fun tag() { return "base" }
+	fun shared() { return "from-base" }
+	fun[#c] which() { return "Base-class" }
+	fun[#c] selectorForTag() { return #tag }
+}
+
+class Derived: Base {
+	fun tag() { return "derived" }
+}
+
+b := (Base:new 5)
+
+## --- the selector comes from a call -----------------------------------------
+
+fun pickTwice() { return #twice }
+fun pickPlus() { return #plus }
+
+chk (= (b:(pickTwice)) 10) "a computed selector is sent"
+chk (= (b:(pickPlus) 7) 12) "...and its arguments go with it"
+chk (= (+ (b:(pickTwice)) 1) 11) "...and its answer is an ordinary value"
+
+## --- the receiver may be computed too ---------------------------------------
+
+fun receiver() { return b }
+chk (= ((receiver):(pickTwice)) 10) "receiver and selector both computed"
+
+## --- class-side -------------------------------------------------------------
+
+fun pickWhich() { return #which }
+chk (eql? (Base:(pickWhich)) "Base-class") "a class-side method answers to a computed selector"
+
+## the selector itself produced by a class-side call, which is the shape
+## bld/z1.hak used
+chk (eql? (b:(Base:selectorForTag)) "base") "the selector may come from a class-side call"
+
+## --- a selector held in data ------------------------------------------------
+
+sel := #twice
+chk (= (b:(id sel)) 10) "a selector in a variable, reached through a call"
+
+## the point of the whole feature: choosing behaviour from data
+fun opFor(name) {
+	if (eql? name "double") { return #twice } \
+	else { return #plus }
+}
+chk (= (b:(opFor "double")) 10) "a selector chosen from a lookup"
+chk (= (b:(opFor "add") 3) 8) "...and a different one from the same lookup"
+
+## --- dispatch still follows the receiver's class ----------------------------
+
+d := (Derived:new 5)
+chk (eql? (b:(id #tag)) "base") "a computed send finds the receiver's own method"
+chk (eql? (d:(id #tag)) "derived") "...and an override rather than the parent's"
+chk (eql? (d:(id #shared)) "from-base") "...while an inherited method is still reached"
+
+## --- asking first -----------------------------------------------------------
+
+chk (b:respondsTo (id #twice)) "respondsTo answers for a computed selector"
+chk (not (b:respondsTo (id #nosuch))) "...and denies one that does not exist"
+
+## --- the general rule, showing through -------------------------------------
+
+## The messages are compared in full rather than merely checked for being
+## non-nil, because each has to fail for ITS own reason: the first sends a
+## method that does not exist, while the second never gets as far as a send.
+
+caught := nil
+try { b:sel } catch (e) { caught := e }
+chk (eql? caught "unable to send sel to #INSTANCE OF Base - 'sel' not found in Base") \
+    "an unparenthesised name is the selector itself, not the variable"
+
+caught := nil
+try { b:(#tag) } catch (e) { caught := e }
+chk (eql? caught "callable tag not found") \
+    "a parenthesised symbol is called, not sent"
+
+## --- an unknown selector throws and is catchable ----------------------------
+
+caught := nil
+try { b:(id #nosuch) } catch (e) { caught := e }
+chk (eql? caught "unable to send nosuch to #INSTANCE OF Base - 'nosuch' not found in Base") \
+    "an unknown computed selector throws"
+chk (= (b:(pickTwice)) 10) "...and the vm carries on afterwards"

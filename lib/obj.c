@@ -136,7 +136,7 @@ static HAK_INLINE hak_oop_t alloc_oop_array (hak_t* hak, hak_oow_t size, int ngc
 
 	hdr->_flags = HAK_OBJ_MAKE_FLAGS(HAK_OBJ_TYPE_OOP, HAK_SIZEOF(hak_oop_t), 0, 0, 0, ngc, 0);
 	HAK_OBJ_SET_SIZE (hdr, size);
-	/*HAK_OBJ_SET_CLASS (hdr, hak->_nil);*/
+	/*HAK_OBJ_SET_CLASS(hdr, hak->_nil);*/
 
 	while (size > 0) hdr->slot[--size] = hak->_nil;
 
@@ -164,7 +164,7 @@ hak_oop_t hak_allocoopobjwithtrailer (hak_t* hak, hak_oow_t size, const hak_oob_
 
 	hdr->_flags = HAK_OBJ_MAKE_FLAGS(HAK_OBJ_TYPE_OOP, HAK_SIZEOF(hak_oop_t), 0, 0, 0, 0, 1);
 	HAK_OBJ_SET_SIZE (hdr, size);
-	/*HAK_OBJ_SET_CLASS (hdr, hak->_nil);*/
+	/*HAK_OBJ_SET_CLASS(hdr, hak->_nil);*/
 
 	for (i = 0; i < size; i++) hdr->slot[i] = hak->_nil;
 
@@ -209,7 +209,7 @@ static HAK_INLINE hak_oop_t alloc_numeric_array (hak_t* hak, const void* ptr, ha
 		hdr->_flags = HAK_OBJ_MAKE_FLAGS(type, unit, extra, 0, 0, ngc, 0);
 		hdr->_size = len;
 		HAK_OBJ_SET_SIZE (hdr, len);
-		/*HAK_OBJ_SET_CLASS (hdr, hak->_nil);*/
+		/*HAK_OBJ_SET_CLASS(hdr, hak->_nil);*/
 
 		if (ptr)
 		{
@@ -303,7 +303,7 @@ hak_oop_t hak_makecons (hak_t* hak, hak_oop_t car, hak_oop_t cdr)
 	{
 		cons->car = car;
 		cons->cdr = cdr;
-		HAK_OBJ_SET_CLASS (cons, (hak_oop_t)hak->c_cons);
+		HAK_OBJ_SET_CLASS(cons, (hak_oop_t)hak->c_cons);
 	}
 
 	hak_popvolats(hak, 2);
@@ -334,7 +334,7 @@ hak_oop_t hak_makearray (hak_t* hak, hak_oow_t len)
 #if 0
 	hak_oop_t v;
 	v = hak_allocoopobj(hak, HAK_BRAND_ARRAY, size);
-	if (HAK_LIKELY(v)) HAK_OBJ_SET_CLASS (v, (hak_oop_t)hak->c_array);
+	if (HAK_LIKELY(v)) HAK_OBJ_SET_CLASS(v, (hak_oop_t)hak->c_array);
 	return v;
 #else
 	hak_oop_t v;
@@ -367,7 +367,7 @@ hak_oop_t hak_makebytearray (hak_t* hak, const hak_oob_t* ptr, hak_oow_t len)
 #if 0
 	hak_oop_t v;
 	v = hak_allocbyteobj(hak, HAK_BRAND_BYTE_ARRAY, ptr, size);
-	if (HAK_LIKELY(v)) HAK_OBJ_SET_CLASS (v, (hak_oop_t)hak->c_byte_array);
+	if (HAK_LIKELY(v)) HAK_OBJ_SET_CLASS(v, (hak_oop_t)hak->c_byte_array);
 	return v;
 #else
 	hak_oop_t v;
@@ -728,7 +728,7 @@ hak_oop_t hak_instantiate (hak_t* hak, hak_oop_class_t _class, const void* vptr,
 	if (HAK_LIKELY(oop))
 	{
 		hak_ooi_t spec;
-		HAK_OBJ_SET_CLASS (oop, (hak_oop_t)_class);
+		HAK_OBJ_SET_CLASS(oop, (hak_oop_t)_class);
 		spec = HAK_OOP_TO_SMOOI(_class->spec);
 		if (HAK_CLASS_SPEC_IS_IMMUTABLE(spec)) HAK_OBJ_SET_FLAGS_RDONLY (oop, 1);
 	#if 0 /* TODO: revive this part */
@@ -796,7 +796,7 @@ hak_oop_t hak_instantiatewithtrailer (hak_t* hak, hak_oop_class_t _class, hak_oo
 	if (HAK_LIKELY(oop))
 	{
 		hak_ooi_t spec;
-		HAK_OBJ_SET_CLASS (oop, (hak_oop_t)_class);
+		HAK_OBJ_SET_CLASS(oop, (hak_oop_t)_class);
 		spec = HAK_OOP_TO_SMOOI(_class->spec);
 		if (HAK_CLASS_SPEC_IS_IMMUTABLE(spec)) HAK_OBJ_SET_FLAGS_RDONLY (oop, 1);
 	#if 0 /* TODO: revive this part */

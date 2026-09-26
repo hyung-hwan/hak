@@ -4919,7 +4919,7 @@ sys.run_noret "ls -laF" input
 out := (sys.run_noret "ls -laF")
 */
 
-//	HAK_ASSERT(hak, HAK_CNODE_IS_SYMBOL(var) || HAK_CNODE_IS_DSYMBOL_CLA(var) || HAK_CNODE_IS_CONS_CONCODED(var, HAK_CONCODE_TUPLE));
+/*	HAK_ASSERT(hak, HAK_CNODE_IS_SYMBOL(var) || HAK_CNODE_IS_DSYMBOL_CLA(var) || HAK_CNODE_IS_CONS_CONCODED(var, HAK_CONCODE_TUPLE));*/
 	HAK_ASSERT(hak, obj && HAK_CNODE_IS_CONS(obj)); /* reader guaranteed */
 
 	c2 = HAK_CNODE_CONS_CAR(obj);
@@ -5159,6 +5159,7 @@ static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 		}
 
 		/* redundant cdr check is performed inside compile_object_list() */
+		/* argument to a function call or binary operators */
 		PUSH_SUBCFRAME(hak, COP_COMPILE_ARGUMENT_LIST, cdr); /* <3> */
 
 		/* patch the argument count in the operand field of the COP_EMIT_CALL frame */
@@ -5251,6 +5252,21 @@ static int compile_cons_mlist_expression (hak_t* hak, hak_cnode_t* obj, hak_ooi_
 	{
 		PUSH_CFRAME(hak, COP_COMPILE_OBJECT, car);
 	}
+	else if (HAK_CNODE_IS_CONS(car) && (HAK_CNODE_CONS_CONCODE(car) == HAK_CONCODE_XLIST || HAK_CNODE_CONS_CONCODE(car) == HAK_CONCODE_MLIST))
+	{
+		/*
+		 * class XX {
+		 *   fun[#c] new() { printf "hello, world\n" }
+		 *   fun[#c] newx() { printf "hello, world %d\n" 20 }
+		 *   fun[#c] zz() { return #newx }
+		 * }
+		 * fun xx() { return XX }
+		 * fun zz() { return #new }
+		 * (xx):(zz)             ## car's concode is XLIST for (zz)
+		 * (xx):(XX:zz)          ## car's concode is MLIST for (XX:zz)
+		*/
+		PUSH_CFRAME(hak, COP_COMPILE_OBJECT, car);
+	}
 	else
 	{
 		hak_setsynerrbfmt(hak, HAK_SYNERR_MESSAGE, HAK_CNODE_GET_LOC(car),
@@ -5285,6 +5301,7 @@ static int compile_cons_mlist_expression (hak_t* hak, hak_cnode_t* obj, hak_ooi_
 	}
 
 	/* redundant cdr check is performed inside compile_object_list() */
+	/* arguments to a method call */
 	PUSH_SUBCFRAME(hak, COP_COMPILE_ARGUMENT_LIST, cdr);
 
 	/* patch the argument count in the operand field of the COP_EMIT_CALL frame */
@@ -7251,7 +7268,6 @@ int hak_compile (hak_t* hak, hak_cnode_t* obj, int flags)
 
 		cf = GET_TOP_CFRAME(hak);
 
-/* TODO: tabulate this switch-based dispatch */
 		switch (cf->opcode)
 		{
 			case COP_COMPILE_OBJECT:

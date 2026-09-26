@@ -275,10 +275,17 @@ int hak_fmt_object (hak_t* hak, hak_fmtout_t* fmtout, hak_oop_t obj)
 	int word_index;
 	int json;
 
+	/* [NOTE]
+	 *   In the table below, the opening parenthesis for HAK_CONCODE_XLIST is set to "#(".
+	 *   "#(" is for QLIST and is for notational purpose in the compiling source.
+	 *   When a qlist is compiled, make_cons is used during run-time. the data list(QLIST)
+	 *   is in the same format as XLIST. since the actual excutable list is never printable,
+	 *   treat QLIST like XLIST for printing. The HAK_CONCODE_QLIST entry in the table
+	 *   will never be used */
 	static const hak_bch_t *opening_parens[][2] =
 	{
 		                            /* navtive   json */
-		HAK_AID(HAK_CONCODE_XLIST)     { "(",     "(" },
+		HAK_AID(HAK_CONCODE_XLIST)     { "#(",    "(" },
 		HAK_AID(HAK_CONCODE_DLIST)     { "$(",    "(" },
 		HAK_AID(HAK_CONCODE_MLIST)     { "(",     "(" },
 		HAK_AID(HAK_CONCODE_ALIST)     { "(",     "(" },
@@ -828,6 +835,7 @@ next:
 		}
 
 		case HAK_BRAND_INSTANCE:
+		case 0: /* TODO: not set? verify this */
 		{
 			hak_oop_class_t _class = (hak_oop_class_t)HAK_CLASSOF(hak, obj);
 			HAK_ASSERT(hak, HAK_IS_CLASS(hak, _class));
@@ -842,7 +850,7 @@ next:
 		}
 
 		default:
-			HAK_DEBUG3 (hak, "Internal error - unknown object brand %d at %s:%d\n", (int)brand, __FILE__, __LINE__);
+			HAK_DEBUG3(hak, "Internal error - unknown object brand %d at %s:%d\n", (int)brand, __FILE__, __LINE__);
 			HAK_ASSERT(hak, "Unknown object brand" == HAK_NULL);
 			hak_seterrbfmt(hak, HAK_EINTERN, "unknown object brand %d", (int)brand);
 			return -1;
@@ -877,7 +885,7 @@ done:
 				break;
 
 			default:
-				HAK_DEBUG3 (hak, "Internal error - unknown print stack type %d at %s:%d\n", (int)ps.type, __FILE__, __LINE__);
+				HAK_DEBUG3(hak, "Internal error - unknown print stack type %d at %s:%d\n", (int)ps.type, __FILE__, __LINE__);
 				hak_seterrbfmt(hak, HAK_EINTERN, "internal error - unknown print stack type %d", (int)ps.type);
 				return -1;
 		}
