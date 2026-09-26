@@ -523,7 +523,6 @@ struct hak_tok_t
 	hak_loc_t loc;
 };
 
-
 typedef struct hak_link_t hak_link_t;
 struct hak_link_t
 {
@@ -1013,6 +1012,7 @@ struct hak_flx_bcp_t
 enum hak_flx_state_t
 {
 	HAK_FLX_START,
+	HAK_FLX_STARTED,
 	HAK_FLX_BACKSLASHED,
 	HAK_FLX_COMMENT,
 	HAK_FLX_COLON_TOKEN,    /* token beginning with : */
@@ -1075,6 +1075,7 @@ struct hak_compiler_t
 
 	/* the last token read */
 	hak_tok_t   tok;
+	hak_tok_t   ptok; /* previous token */
 	hak_link_t* sr_names;
 
 	struct
@@ -1114,7 +1115,8 @@ struct hak_compiler_t
 		{
 			hak_flx_state_t state;
 			hak_loc_t loc;
-			hak_loc_t _oloc;
+			hak_loc_t _oloc; /* used for file inclusion. remember the location before including another file */
+			hak_oow_t gap;
 
 			union
 			{

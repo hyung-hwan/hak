@@ -236,6 +236,7 @@ static struct
 
 static int init_compiler (hak_t* hak);
 static void feed_continue (hak_t* hak, hak_flx_state_t state);
+static void feed_continue_with_gap (hak_t* hak);
 static int is_at_block_beginning (hak_t* hak);
 static int flx_plain_ident (hak_t* hak, hak_ooci_t c);
 
@@ -1590,6 +1591,14 @@ else
 	hak->c->curinp = arg;
 	/* hak->c->depth.incl++; */
 
+	/* the first token of the included file must not look glued to the last
+	 * token of the includer - they are not adjacent in any sense that matters,
+	 * and without this a file beginning with '(' reads as a call of whatever
+	 * preceded the $include.
+	 * [NOTE] the function rather than FEED_CONTINUE_WITH_GAP(), which is not
+	 * defined until the lexer section below */
+	feed_continue_with_gap(hak);
+
 	return 0;
 
 oops:
@@ -1638,6 +1647,10 @@ static int feed_end_include (hak_t* hak)
 	}
 
 	hak->c->lxc = hak->c->curinp->lxc;
+	/* likewise on the way back out - the token following the $include must
+	 * not look glued to the last token of the file just left */
+	feed_continue_with_gap(hak);
+
 	return 1; /* ended the included file successfully */
 }
 
@@ -1997,7 +2010,79 @@ static int feed_process_token (hak_t* hak)
 
 		case HAK_TOK_DPAREN: /* $( */
 		case HAK_TOK_LPAREN: /* ( */
-#if defined(HAK_LANG_AUTO_FORGE_XLIST_ALWAYS)
+#if 0
+			if (TOKEN_TYPE(hak) == HAK_TOK_LPAREN &&
+			    hak->c->r.st && hak->c->r.st->count >= 1 &&
+			    hak->c->feed.lx.gap == 0) /* not sure if the condition is good enough */
+			{
+/* TODO:  check further .. at function declaration, class declaration part.
+ * this rule must not apply */
+				/* [EXPERIMENTAL]
+				 * there is a preceding token and the left parenthesis is following.
+				 * if there is no space between them, treat it like a function call
+				 * and convert it to xlist.
+				 *   a(1 2 3) -> (a 1 2 3) */
+				hak_rstl_t* new_rstl;
+				hak_rstl_t* old_rstl;
+				hak_cnode_t* old_tail;
+
+/*printf("r.st->count %d GAP %d\n", (int)hak->c->r.st->count, (int)hak->c->feed.lx.gap);*/
+				frd->flagv = 0;
+				//frd->flagv = AUTO_FORGED; /* it's kind of auto-forged */
+				LIST_FLAG_SET_CONCODE(frd->flagv, HAK_CONCODE_XLIST);
+				if (frd->level >= HAK_TYPE_MAX(int))
+				{
+					/* the nesting level has become too deep */
+					hak_setsynerrbfmt(hak, HAK_SYNERR_NESTING, TOKEN_LOC(hak),
+						"nesting level too deep around '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
+					goto oops;
+				}
+
+				/* enter_list pushes a new list */
+				old_rstl = hak->c->r.st;  /* get the current list before the push */
+				if (enter_list(hak, TOKEN_LOC(hak), frd->flagv) <= -1) goto oops;
+
+				/* delete the last item from the old list
+				 * and move it to the new list */
+				old_tail = old_rstl->tail;
+				if (old_rstl->head != old_rstl->tail)
+				{
+					/* there is more than 1 item in the old list */
+					/* TODO:
+					 *   switchng to a doubly linked list for faster lookup could
+					 *   be too heavy for this purpose? simply remember one item
+					 *   before the last */
+					hak_cnode_t* node;
+					for (node = old_rstl->head; ; node = node->u.cons.cdr)
+					{
+						HAK_ASSERT(hak, node->cn_type == HAK_CNODE_CONS);
+						if (node->u.cons.cdr == old_rstl->tail)
+						{
+							node->u.cons.cdr = HAK_NULL;
+							old_rstl->tail = node;
+							break;
+						}
+					}
+				}
+				else
+				{
+					old_rstl->head = HAK_NULL;
+					old_rstl->tail = HAK_NULL;
+				}
+				old_rstl->count--;
+
+				new_rstl = hak->c->r.st;
+				new_rstl->head = old_tail;
+				new_rstl->tail = old_tail;
+				new_rstl->count++;
+
+				frd->level++;
+				/* don't set AT_BEGINNING in frd->flagv */
+				goto ok;
+			}
+#endif
+
+		#if defined(HAK_LANG_AUTO_FORGE_XLIST_ALWAYS)
 			/* with this feature on, you must not enclose an expression with ()
 			 * at the beginning of the top-level or at the beginning of a the block level.
 			 * If you do enclose an expression with an outer () there, it is interpreted as
@@ -2014,7 +2099,7 @@ static int feed_process_token (hak_t* hak)
 			 *   }
 			 */
 			if (auto_forge_xlist_if_at_block_beginning(hak, frd) <= -1) goto oops;
-#endif
+		#endif
 			frd->flagv = 0;
 			if (TOKEN_TYPE(hak) == HAK_TOK_DPAREN)
 				LIST_FLAG_SET_CONCODE(frd->flagv, HAK_CONCODE_DLIST);
@@ -2558,10 +2643,12 @@ static HAK_INLINE int feed_wrap_up (hak_t* hak, hak_tok_type_t type)
 {
 	int n;
 	SET_TOKEN_TYPE(hak, type);
-
 	n = feed_process_token(hak);
-
 	hak->c->feed.lx.state = HAK_FLX_START;
+	/* a token has just ended, so the separator count starts afresh for the
+	 * next one. without this, gap would keep whatever the token just emitted
+	 * had, and every place that adds to it would be adding to a stale value */
+	hak->c->feed.lx.gap = 0;
 	return n;
 }
 
@@ -2582,6 +2669,28 @@ static void feed_continue (hak_t* hak, hak_flx_state_t state)
 	hak->c->feed.lx.state = state;
 }
 
+/* Continue into HAK_FLX_STARTED, counting one more thing that separated two
+ * tokens.
+ *
+ * feed.lx.gap is the number of separators seen since the last token ended -
+ * feed_wrap_up() clears it, and everything that separates adds one. Ordinary
+ * spacing is counted by flx_start()/flx_started(), but separation is also
+ * consumed elsewhere: a linebreak taken as an EOL token, the newline ending a
+ * comment, a backslash line continuation, and the switch into or out of an
+ * included file. Each has to come through here, or the next token arrives in
+ * the START state and is recorded with gap 0, which reads as "juxtaposed to
+ * the previous token". For a token at column 1 that would be every line.
+ *
+ * Continuing into STARTED rather than START is the other half of it:
+ * flx_started() carries gap forward, where flx_start() zeroes it for a
+ * non-space character.
+ */
+static void feed_continue_with_gap (hak_t* hak)
+{
+	hak->c->feed.lx.gap++;
+	feed_continue(hak, HAK_FLX_STARTED);
+}
+
 static int feed_continue_with_char (hak_t* hak, hak_ooci_t c, hak_flx_state_t state)
 {
 	ADD_TOKEN_CHAR(hak, c);
@@ -2593,6 +2702,7 @@ static int feed_continue_with_char (hak_t* hak, hak_ooci_t c, hak_flx_state_t st
 #define FEED_WRAP_UP_WITH_CHAR(hak, c, type) do { if (feed_wrap_up_with_char(hak, c, type) <= -1) return -1; } while (0)
 #define FEED_WRAP_UP_WITH_CHARS(hak, str, len, type) do { if (feed_wrap_up_with_str(hak, str, len, type) <= -1) return -1; } while (0)
 #define FEED_CONTINUE(hak, state) (feed_continue(hak, state))
+#define FEED_CONTINUE_WITH_GAP(hak) (feed_continue_with_gap(hak))
 #define FEED_CONTINUE_WITH_CHAR(hak, c, state) do { if (feed_continue_with_char(hak, c, state) <= -1) return -1; } while (0)
 
 /* ------------------------------------------------------------------------ */
@@ -2676,29 +2786,17 @@ static HAK_INLINE void init_flx_bcp (hak_flx_bcp_t* bcp, hak_ooch_t start_c)
 
 static void reset_flx_token (hak_t* hak)
 {
+	/* store the current token to ptok */
+	hak->c->ptok = hak->c->tok;
+
 	/* clear the token name, reset its location */
 	SET_TOKEN_TYPE(hak, HAK_TOK_EOF); /* is it correct? */
 	CLEAR_TOKEN_NAME(hak);
 	SET_TOKEN_LOC(hak, &hak->c->feed.lx.loc);
 }
 
-static int flx_start (hak_t* hak, hak_ooci_t c)
+static int _flx_start (hak_t* hak, hak_ooci_t c)
 {
-	HAK_ASSERT(hak, FLX_STATE(hak) == HAK_FLX_START);
-
-	if (is_spacechar(c))
-	{
-		if ((hak->option.trait & HAK_TRAIT_LANG_ENABLE_EOL) && is_linebreak(c))
-		{
-			reset_flx_token(hak);
-			FEED_WRAP_UP_WITH_CHAR(hak, c, HAK_TOK_EOL);
-		}
-
-		goto consumed; /* skip spaces */
-	}
-
-	reset_flx_token(hak);
-
 	if (c == ':')
 	{
 		FEED_CONTINUE_WITH_CHAR(hak, c, HAK_FLX_COLON_TOKEN);
@@ -2811,11 +2909,58 @@ not_consumed:
 	return 0;
 }
 
+static int flx_start (hak_t* hak, hak_ooci_t c)
+{
+	HAK_ASSERT(hak, FLX_STATE(hak) == HAK_FLX_START);
+
+	if (is_spacechar(c))
+	{
+		/* a linebreak may become a token of its own, but either way it is one
+		 * separator and the state must end up STARTED - so both arms want the
+		 * same thing and only the wrap-up differs */
+		if ((hak->option.trait & HAK_TRAIT_LANG_ENABLE_EOL) && is_linebreak(c))
+		{
+			reset_flx_token(hak);
+			FEED_WRAP_UP_WITH_CHAR(hak, c, HAK_TOK_EOL);
+		}
+		FEED_CONTINUE_WITH_GAP(hak); /* after any wrap-up, which resets the state  - switch to the started state */
+		return 1; /* skip spaces */
+	}
+
+	/* no space befor the token. switch to the STARTED state immediately.
+	 * gap is already 0 - feed_wrap_up() cleared it when the last token ended -
+	 * but say so, since START is also reached by the reset paths */
+	FEED_CONTINUE(hak, HAK_FLX_STARTED);
+	hak->c->feed.lx.gap = 0;
+	reset_flx_token(hak);
+	return _flx_start(hak, c);
+}
+
+static int flx_started (hak_t* hak, hak_ooci_t c)
+{
+	HAK_ASSERT(hak, FLX_STATE(hak) == HAK_FLX_STARTED);
+
+	if (is_spacechar(c))
+	{
+		if ((hak->option.trait & HAK_TRAIT_LANG_ENABLE_EOL) && is_linebreak(c))
+		{
+			reset_flx_token(hak);
+			FEED_WRAP_UP_WITH_CHAR(hak, c, HAK_TOK_EOL);
+		}
+		FEED_CONTINUE_WITH_GAP(hak); /* after any wrap-up, which resets the state */
+		return 1; /* skip spaces */
+	}
+
+	reset_flx_token(hak);
+	return _flx_start(hak, c);
+}
+
 static int flx_backslashed (hak_t* hak, hak_ooci_t c)
 {
 	if (is_linebreak(c))
 	{
-		FEED_CONTINUE(hak, HAK_FLX_START);
+		/* a continued line separates just as a plain one does */
+		FEED_CONTINUE_WITH_GAP(hak);
 		return 1; /* consumed */
 	}
 
@@ -2828,7 +2973,9 @@ static int flx_comment (hak_t* hak, hak_ooci_t c)
 {
 	if (is_linebreak(c))
 	{
-		FEED_CONTINUE(hak, HAK_FLX_START);
+		/* a comment is separation in its own right, and in the mode that
+		 * consumes the linebreak here nothing else would record it */
+		FEED_CONTINUE_WITH_GAP(hak);
 		/* don't consume the line break together with the comment text
 		 * if a comment text is located at the back of the line in the
 		 * LANG_ENABLE_EOL mode.
@@ -3812,6 +3959,7 @@ static int feed_char (hak_t* hak, hak_ooci_t c)
 	switch (FLX_STATE(hak))
 	{
 		case HAK_FLX_START:            return flx_start(hak, c);
+		case HAK_FLX_STARTED:          return flx_started(hak, c);
 		case HAK_FLX_BACKSLASHED:      return flx_backslashed(hak, c);
 		case HAK_FLX_COMMENT:          return flx_comment(hak, c);
 		case HAK_FLX_COLON_TOKEN:      return flx_colon_token(hak, c);
@@ -4047,7 +4195,7 @@ int hak_endfeed (hak_t* hak)
 
 int hak_feedpending (hak_t* hak)
 {
-	return !(hak->c->r.st == HAK_NULL && FLX_STATE(hak) == HAK_FLX_START);
+	return !(hak->c->r.st == HAK_NULL && (FLX_STATE(hak) == HAK_FLX_START || FLX_STATE(hak) == HAK_FLX_STARTED));
 }
 
 void hak_getfeedloc (hak_t* hak, hak_loc_t* loc)
