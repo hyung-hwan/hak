@@ -151,7 +151,7 @@ class[#uncopyable] Stream: Object(
 		if (not (self:fillIfEmpty)) { return nil }
 		avail := (self:buffered)
 		if (nil? n) { n := avail } \
-		else { if (> n avail) { n := avail } }
+		elif (> n avail) { n := avail }
 		out := (self._buf:slice self._pos n)
 		self._pos := (+ self._pos n)
 		return out
