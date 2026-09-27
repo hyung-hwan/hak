@@ -4,29 +4,42 @@
 
 ## Language Syntax
 
-A HAK program is composed of expressions.
+A HAK program is composed of expressions. `( )` is a call, as in lisp, and that
+holds everywhere except in the few declaration positions listed under
+[Calls and message sends](#calls-and-message-sends).
 
-## Keywords
-- nil
-- true
-- false
+## Reserved words
 
-## Special Form Expression
-- and
-- break
-- class
-- fun
-- do
-- elif
-- else
-- fun
-- if
-- lambda
-- or
-- return
-- set
-- until
-- while
+Values:
+
+- `nil`
+- `true`
+- `false`
+- `self`
+- `super`
+
+Special form expressions:
+
+- `and`
+- `break`
+- `catch`
+- `class`
+- `continue`
+- `do`
+- `elif`
+- `else`
+- `fun`
+- `if`
+- `or`
+- `return`
+- `revert`
+- `set`
+- `set-r`
+- `throw`
+- `try`
+- `until`
+- `var`
+- `while`
 
 ### do
 
@@ -37,54 +50,188 @@ do { | k | set k 20; printf "k=%d\n" k; };
 ```
 
 ## Literals
-- integer
-- character `'c'`
-- small pointer
-- error
+
+- integer `123`, `-45`
+- radixed integer `16r1F`, `2r1011`
+- floating point `1.25`
+- character `'c'`, `#\a`
+- named character `#\space`, `#\tab`, `#\newline`, `#\linefeed`, `#\return`,
+  `#\backspace`, `#\page`, `#\rubout`, `#\vtab`, `#\nul`
+- byte character `b'c'`
 - string `"string"`
-- byte-string `b"string"`
-- symbol `#"symbol"`
+- byte string `b"string"`
+- symbol `#"symbol"`, `#symbol`
+- small pointer `0p1234`
+- error `0e1`
 
 ## Basic Expressions
-- dictionary `#{ }`
+
+- function call `(f arg1 ...)` or `f(arg1 ...)`
+- message send `(rcv:msg arg1 ...)` or `rcv:msg(arg1 ...)`
+- dictionary `#{ "a": 1, "b": 2 }` - the pairs are comma-separated
 - array `#[ ]`
 - byte array `#b[ ]`
-- character array `#c[ ]`
+- character array `#c[ ]` - the elements are characters, as in `#c['a' 'b']`
 - list `#( )`
-- function calls `( )`
-- message sends `(rcv:msg arg1 ...)`
-- variable declaration `| |`
-- class variable delcarations `:: [ v1 [cv1 cv2 ...] v2 ... ] `
-- assignment `var :=  value`
+- attribute list `[ ]`, as in `class[#b]` and `fun[#ci]`
+- variable declaration `| |` at the start of a block, or `var a b c`
+- assignment `var := value`
+- return variables `::` in a parameter list, collected with `set-r`
+
+The elements of `#[ ]`, `#b[ ]`, `#c[ ]` and `#( )` are compiled, so an
+expression may stand in any of them:
+
+```
+printf "%O\n" #[(+ 1 2) 4]        ## #[3 4]
+```
+
+## Calls and message sends
+
+`( )` is a call everywhere but the declaration positions - the parameter list
+of `fun x(a b)`, the attribute list of `class[#b]` and `fun[#ci]`, and the
+instance/class variable list of a class header. Nothing else is taken
+literally.
+
+A `(` written against what precedes it, with no space between, is a call of it,
+which is what gives the conventional shape:
+
+```
+printf("%d\n" 10)        ## the same as (printf "%d\n" 10)
+f()                      ## the same as (f)
+```
+
+At statement level the outermost parentheses may be dropped:
+
+```
+printf "%d\n" 10
+```
+
+### Sending a message
+
+`rcv:msg` binds a message to a receiver and is read as a *single item*. It is
+sent once its arguments arrive, which happens in one of two ways - a glued `(`
+carries them, or the list it heads does:
+
+```
+b:twice()                ## no arguments
+b:plus(7)                ## one argument
+(b:plus 7)               ## the same, with the enclosing list as the argument list
+(b:twice)                ## no arguments again
+```
+
+Because the binding is one item, a send needs no parentheses of its own and
+goes wherever a value goes:
+
+```
+r := b:twice()                   ## on the right of an assignment
+printf "%d\n" (+ b:plus(1) 2)    ## in an argument
+b:itself():tag()                 ## as the receiver of the next send
+```
+
+A receiver may be computed, and so may the selector. `rcv:(expr)` evaluates the
+parenthesised part and sends whatever symbol it answers:
+
+```
+fun pick() { return #twice }
+(b:(pick))               ## sends twice
+b:(pick)()               ## the same
+b:(pick())               ## calls pick, then calls its ANSWER as well - not the form you want
+```
+
+The parentheses in `(b:(pick))` are the send's own argument list, exactly as in
+`(b:twice)`. Without them the binding heads nothing when it sits in an argument
+position, and is refused.
+
+Two shapes are refused rather than guessed at:
+
+```
+a:b:c                    ## a message that was never sent cannot receive another.
+                         ## write (a:b):c, or a:b():c
+r := a:b                 ## a binding that heads nothing is never sent.
+                         ## write (a:b) or a:b()
+```
+
+Parentheses around a send that already carries its own glued argument list are
+an extra call, for the same reason `(f(1))` calls what `f(1)` answers:
+
+```
+K:make(4)(9)             ## send, then call what it answered
+(K:make 4)(9)            ## the same
+(K:make(4))(9)           ## NOT the same - calls the answer with no arguments
+```
+
+### Binary operators
+
+A binary operator between two operands is a message send, so it works for a
+receiver whose class defines that selector:
+
+```
+class Money: Object (_amt) {
+    fun[#ci] new(a) { self._amt := a ; return self }
+    fun +(other) { return (Money:new (core.+ self._amt other:amt())) }
+    fun amt() { return self._amt }
+}
+
+a := (Money:new 10)
+b := (Money:new 5)
+printf "%O\n" ((a + b):amt)      ## 15, the same as ((a:#+ b):amt)
+```
 
 ## Builtin functions
 
-* not
-* _and
-* _or
-* eqv?
-* eql?
-* eqk?
-* nqv?
-* nql?
-* nqk?
-* sprintf
-* printf
-* _+_
-* _-_
-* _*_
-* mlt
-* /
-* quo
-* mod
-* sqrt
-* bit-and
-* bit-or
-* bit-xor
-* bit-not
-* bit-shift
-* bit-left-shift
-* bit-right-shift
+Arithmetic and comparison:
+
+```
++  -  *  mlt  /  div  rem  mdiv  mod  sqrt  abs
+<  <=  >  >=  =  ==  !=
+bit-and  bit-or  bit-xor  bit-not  bit-shift  bit-left-shift  bit-right-shift
+```
+
+Logic and equality - `and` and `or` are short-circuit special forms, while
+`_and` and `_or` are ordinary functions that evaluate every argument:
+
+```
+not  _and  _or
+eqv?  eql?  eqk?  nqv?  nql?  nqk?
+```
+
+Type predicates:
+
+```
+nil?  boolean?  character?  error?  smptr?  integer?  numeric?  string?
+array?  bytearray?  dictionary?  fun?  class?  object?
+```
+
+Input, output and the rest:
+
+```
+printf  sprintf  scanf  getbyte  getch  gets  log  logf  gc
+va-context  va-count  va-get
+```
+
+Further functions live in modules and are reached through a prefix: `core.` for
+the object primitives (`core.basicNew`, `core.classOf`, `core.+`, the process
+and semaphore primitives), `dic.` for dictionaries (`dic.get`, `dic.put`,
+`dic.size`, `dic.has?`) and `sys.` for the operating system.
+
+## Class library
+
+The classes written in HAK itself live in `src/` and are pulled in with
+`$include-once`:
+
+```
+$include-once "object.hak"
+```
+
+- `object.hak` - `Object` and the root of the hierarchy
+- `collection.hak` - `String`, `Array`, `ByteArray`, `Dictionary`
+- `magnitude.hak` - `Magnitude`, `Character`, `Number`
+- `stream.hak` - `Stream`, `HandleStream`, `StringStream`
+- `text-stream.hak` - `TextStream`, a text layer over any byte stream
+- `process.hak` - `Process`, the green process
+- `semaphore.hak`, `mutex.hak` - `Semaphore`, `Mutex`
+- `external-process.hak` - `ExternalProcess`, `ExternalProcessGroup`
+- `kernel.hak` - everything above in one include
 
 ## Defining a function
 
@@ -106,11 +253,6 @@ set function-name (fun(arguments) {
 
 ```
 class[attributes] Name: Superclass (ivars (cvars)) {
-    ivar ivar1
-    cvar cvar1
-
-    set cvar1 20
-
     fun[attributes] name(arguments) {
         | local variables |
         function body
@@ -118,6 +260,19 @@ class[attributes] Name: Superclass (ivars (cvars)) {
 }
 ```
 
+An instance variable is reached through `self.`, a class variable by its bare
+name:
+
+```
+class A (x y (cv1)) {
+    fun[#ci] new() { self.x := 1 ; self.y := 2 ; return self }
+    fun[#c] setcv() { cv1 := 99 ; return cv1 }
+    fun show() { printf "x=%O y=%O\n" self.x self.y }
+}
+```
+
+`#ci` marks a class method that instantiates, `#c` a plain class method; a
+method with no attribute is an instance method.
 
 ```
 class[#b] B (a b) {
@@ -153,7 +308,7 @@ x:print
 ```
 fun + (a b) {
 	core.+ a b 9999
-)
+}
 printf "%d\n" (+ 10 20)
 ```
 
@@ -194,6 +349,9 @@ printf "--------------------------\n"
 set q (set-r a b c (x 10 20 30 40 50))
 printf "--------------------------\n"
 ```
+
+The `...` takes the extra arguments and `::` names the return variables, which
+`set-r` collects at the call site.
 
 ## HAK Exchange Protocol
 
