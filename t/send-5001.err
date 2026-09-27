@@ -1,0 +1,83 @@
+## a message that was never sent cannot receive another one
+##
+## 'a:b' folds into a single item as it is read - a receiver bound to a message,
+## not yet sent. Binding a further message to that would leave the order of the
+## two sends unsaid, so it is refused, and the message names a spelling that
+## says it: (a:b):c, or equally a:b():c.
+
+(a:b:c) ##ERROR: syntax error - bound message not usable as a receiver - send it first, as in (a:b):c
+
+---
+
+## the gap around ':' does not enter into it. what is refused is the fold, not
+## a way of writing it
+
+(a : b : c) ##ERROR: syntax error - bound message not usable as a receiver - send it first, as in (a:b):c
+
+---
+
+## the arguments that would have followed make no difference either - the
+## receiver is settled before them
+
+(a:b:c 1 2) ##ERROR: syntax error - bound message not usable as a receiver - send it first, as in (a:b):c
+
+---
+
+## at statement level, where the enclosing parenthesis is the one hak supplies
+
+a:b:c ##ERROR: syntax error - bound message not usable as a receiver - send it first, as in (a:b):c
+
+---
+
+## a send that HAS been completed is a perfectly good receiver, so only the
+## trailing ':d' is refused here - 'a:b():c' on its own is allowed
+
+(a:b():c:d) ##ERROR: syntax error - bound message not usable as a receiver - send it first, as in (a:b):c
+
+---
+
+## a bound message that nothing sends
+##
+## A send takes its arguments from a glued list - x:greet() - or from the list
+## it heads - (x:greet). This one heads neither, so it reaches the compiler in
+## a value position with no way to run. Both spellings are named.
+
+printf "%O\n" x:greet ##ERROR: syntax error - message 'greet' bound but not sent - write (x:greet) or x:greet()
+
+---
+
+## the same on the right of an assignment
+
+r := x:greet ##ERROR: syntax error - message 'greet' bound but not sent - write (x:greet) or x:greet()
+
+---
+
+## and as an element of an array literal, whose elements are compiled
+
+a := #[x:greet] ##ERROR: syntax error - message 'greet' bound but not sent - write (x:greet) or x:greet()
+
+---
+
+## when the receiver is itself a computed expression it has no token text, so
+## it is described by shape rather than quoted as nothing
+
+printf "%O\n" (x:greet()):hello ##ERROR: syntax error - message 'hello' bound but not sent - write (( ):hello) or ( ):hello()
+
+---
+
+## a send that already carries its own argument list, wrapped in parentheses
+##
+## (Maker:make(4)) calls what the send ANSWERED - the ordinary meaning of
+## (f(1)) - so the function runs with no arguments and complains about the one
+## it wanted. The send was already complete without them; write
+## Maker:make(4)(9), or (Maker:make 4)(9).
+##
+## This one is here rather than in t/send-01.hak because an argument-count
+## mismatch on a function block is not catchable - try/catch does not see it
+## and the script ends.
+
+class Maker {
+	fun[#c] make(x) { return (fun(j) { return (+ (* x 10) j) }) }
+}
+
+(Maker:make(4))(9) ##ERROR: wrong number of argument passed to function block - 1 expected, 0 passed

@@ -1018,6 +1018,13 @@ void hak_dumpcnode (hak_t* hak, hak_cnode_t* cnode, int newline)
 				hak_logbfmt(hak, HAK_LOG_FATAL, " () ", HAK_CNODE_GET_TOKLEN(cnode), HAK_CNODE_GET_TOKPTR(cnode));
 				break;
 
+			case HAK_CNODE_BOUNDMSG:
+				/* a receiver bound to a message - print it the way it was written */
+				hak_dumpcnode(hak, HAK_CNODE_BOUNDMSG_OBJ(cnode), 0);
+				hak_logbfmt(hak, HAK_LOG_FATAL, ":");
+				hak_dumpcnode(hak, HAK_CNODE_BOUNDMSG_MSG(cnode), 0);
+				break;
+
 			case HAK_CNODE_SHELL:
 				hak_logbfmt(hak, HAK_LOG_FATAL, " () ", HAK_CNODE_GET_TOKLEN(cnode), HAK_CNODE_GET_TOKPTR(cnode));
 				break;

@@ -103,6 +103,7 @@ static struct voca_t
 	{  4, { '#','(',' ',')' /* QLIST */                                   } },
 	{  3, { '[',' ',']' /* TUPLE */                                       } },
 	{  3, { '|',' ','|' /* VLIST */                                       } },
+	{  3, { 'a',':','b' /* BOUNDMSG - a folded receiver:message pair */  } },
 
 	{  7, { 'l','i','b','e','r','a','l'                                   } },
 	{  2, { 'o','n'                                                       } },
@@ -173,6 +174,7 @@ enum voca_id_t
 	VOCA_QLIST,
 	VOCA_TUPLE,
 	VOCA_VLIST,
+	VOCA_BOUNDMSG, /* TODO: not sure if it's really needed. currenly it's used by hak_getcnodedesc() */
 
 	VOCA_PRG_LIBERAL,
 	VOCA_PRG_ON,
@@ -765,12 +767,22 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 	if (fv & (COMMAED | COLONED | COLONEQED | BINOPED | PIPOPED))
 	{
 		/* no item after , : := or various binary operators */
-		if (concode == HAK_CONCODE_MLIST)
+		if (concode == HAK_CONCODE_MLIST ||
+		    ((fv & COLONED) && concode != HAK_CONCODE_DIC))
 		{
+			/* a receiver with nothing after its colon - '(1:)' or '(a b:)'.
+			 * the colon of a dictionary separates a key from its value and
+			 * is reported by the generic branch further down instead.
+			 *
+			 * the receiver need not be a single token - '((a b):)' names a
+			 * list - so it is described rather than quoted directly. */
 			hak_cnode_t* tmp;
+			const hak_ooch_t* ptr;
+			hak_oow_t len;
 			tmp = HAK_CNODE_CONS_CAR(tail);
+			ptr = hak_getcnodedesc(hak, tmp, &len);
 			hak_setsynerrbfmt(hak, HAK_SYNERR_CALLABLE, TOKEN_LOC(hak),
-				"missing message for '%.*js'", HAK_CNODE_GET_TOKLEN(tmp), HAK_CNODE_GET_TOKPTR(tmp));
+				"missing message for '%.*js'", len, ptr);
 		}
 		else if (concode == HAK_CONCODE_ALIST)
 		{
@@ -1072,13 +1084,52 @@ static HAK_INLINE int can_colon_list (hak_t* hak)
 	if (rstl->count <= 0) return 0; /* not allowed at the list beginning  */
 
 	/* mark the state that a colon has appeared in the list */
-	if (cc == HAK_CONCODE_XLIST && HAK_CNODE_IS_FOR_LANG(HAK_CNODE_CONS_CAR(rstl->head)))
+	if (cc == HAK_CONCODE_XLIST &&
+	    (HAK_CNODE_IS_TYPED(HAK_CNODE_CONS_CAR(rstl->head), HAK_CNODE_CLASS) ||
+	     HAK_CNODE_IS_TYPED(HAK_CNODE_CONS_CAR(rstl->head), HAK_CNODE_FUN)))
 	{
-		/* allow a colon if the first element is 'class', 'fun', or some other keywords:
+		/* allow a colon if the first element is 'class' or 'fun':
 		 *   class :superclassame ...
 		 *   class name:superclassname ...
-		 *   fun X:abc ... */
+		 *   fun X:abc ...
+		 *
+		 * only these two spell a colon at their own list level. every other
+		 * keyword takes ordinary expressions, and a colon in one of those is
+		 * a message send to be folded below - 'if a:b() { ... }'. */
 		return 2;
+	}
+
+	/* multiple single-colons - e.g. a::b outside a dictionary */
+	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED | PIPOPED)) return 0;
+
+	if (cc != HAK_CONCODE_DIC)
+	{
+		hak_cnode_t* recv;
+
+		/* outside a dictionary a colon folds the item before it together with
+		 * the item after it into one HAK_CNODE_BOUNDMSG - see chain_to_list().
+		 * The enclosing list is left alone, so the fold is an ordinary item
+		 * and may sit anywhere a value may sit. */
+		recv = HAK_CNODE_CONS_CAR(rstl->tail);
+
+		if (HAK_CNODE_IS_BOUNDMSG(recv))
+		{
+			/* a:b:c - the receiver would be a message that has not been sent.
+			 * refuse rather than guess, and say how to ask for either reading. */
+			hak_setsynerrbfmt(hak, HAK_SYNERR_COLONBANNED, TOKEN_LOC(hak),
+				"bound message not usable as a receiver - send it first, as in (a:b):c");
+			return -1;
+		}
+
+		if (!HAK_CNODE_IS_FOR_DATA(recv))
+		{
+			/* the thing before the colon cannot denote an object.
+			 * e.g. 'class:xxx {}' is an unnamed class, not a message send */
+			return 0;
+		}
+
+		rstl->flagv |= COLONED;
+		return 1;
 	}
 
 	if (rstl->count == 1) rstl->flagv |= JSON; /* mark that the first key is colon-delimited */
@@ -1121,34 +1172,6 @@ static HAK_INLINE int can_colon_list (hak_t* hak)
 
 		return 0; /* the first key is not colon-delimited. so not allowed to colon-delimit other keys  */
 	}
-
-	/* multiple single-colons  - e.g. #{ "abc": : 20 } */
-	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED | PIPOPED)) return 0;
-
-	if (cc == HAK_CONCODE_XLIST)
-	{
-		hak_cnode_t* tmp;
-
-		/* method defintion with fun  - e.g. fun String:length()
-		 * ugly that this reader must know about the meaning of fun */
-		if (rstl->count > 1) return 0;
-
-		/* ugly dual use of a colon sign. switch to MLIST if the first element
-		 * is delimited by a colon. e.g. (obj:new 10 20 30)  */
-		tmp = HAK_CNODE_CONS_CAR(rstl->head);
-		if (!HAK_CNODE_IS_FOR_DATA(tmp))
-		{
-			/* check if the first element can refer to or represent an object.
-			 * for example, '#[1 2 3]:at 1' is proper message send.
-			 * while 'class:xxx {}' is not a method call. it is unamed class
-			 * that inherits from xxx */
-			return 0;
-		}
-
-		LIST_FLAG_SET_CONCODE(rstl->flagv, HAK_CONCODE_MLIST);
-		rstl->flagv &= ~JSON;
-	}
-	else if (cc != HAK_CONCODE_DIC) return 0; /* no allowed if not in a dictionary */
 
 	/* dictionary */
 	if (!(rstl->count & 1)) return 0; /* not allwed after the value in a dictionary */
@@ -1346,6 +1369,29 @@ static int chain_to_list (hak_t* hak, hak_cnode_t* obj, hak_loc_t* loc)
 		hak_setsynerrbfmt(hak, HAK_SYNERR_RPAREN, TOKEN_LOC(hak),
 			") expected around '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 		return -1;
+	}
+	else if ((flagv & COLONED) && LIST_FLAG_GET_CONCODE(flagv) != HAK_CONCODE_DIC)
+	{
+		/* a colon is pending outside a dictionary, so this item is the message
+		 * and the one already at the tail is its receiver. fold the two into a
+		 * single HAK_CNODE_BOUNDMSG in place, rather than appending. 'a:b' is
+		 * one boundmsg item.
+		 *
+		 * that is what lets a glued '(' afterwards mean the send's arguments
+		 * with no rule of its own - a(1) and a:b(1) take the same path. */
+		hak_cnode_t* rcv;
+		hak_cnode_t* bm;
+
+		/* the last item in the list must be a receiver as the message(obj) has not
+ 		 * been chained yet */
+		HAK_ASSERT(hak, rstl->tail != HAK_NULL);
+		rcv = HAK_CNODE_CONS_CAR(rstl->tail);
+
+		bm = hak_makecnodeboundmsg(hak, 0, HAK_CNODE_GET_LOC(rcv), rcv, obj);
+		if (HAK_UNLIKELY(!bm)) return -1;
+
+		HAK_CNODE_CONS_CAR(rstl->tail) = bm;
+		rstl->flagv &= ~COLONED; /* the fold consumed it */
 	}
 	else if (flagv & DOTTED)
 	{
@@ -2201,7 +2247,9 @@ static int feed_process_token (hak_t* hak)
 		case HAK_TOK_COLON:
 		{
 			int n;
-			if (frd->level <= 0 || !(n = can_colon_list(hak)))
+			n = (frd->level <= 0)? 0: can_colon_list(hak);
+			if (n < 0) goto oops;
+			if (n == 0)
 			{
 				hak_setsynerrbfmt(hak, HAK_SYNERR_COLONBANNED, TOKEN_LOC(hak),
 					"prohibited colon around '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
@@ -4840,6 +4888,15 @@ hak_lxc_t* hak_readbasesrchar (hak_t* hak)
 
 const hak_ooch_t* hak_getcnodedesc (hak_t* hak, hak_cnode_t* cn, hak_oow_t* len)
 {
+	if (HAK_CNODE_IS_BOUNDMSG(cn))
+	{
+		/* a folded receiver:message pair carries no token text of its own.
+		 * describing it by shape beats quoting nothing at all. */
+		struct voca_t* v = &vocas[VOCA_BOUNDMSG];
+		if (len) *len = v->len;
+		return v->str;
+	}
+
 	if (HAK_CNODE_IS_CONS(cn) || HAK_CNODE_IS_ELIST(cn))
 	{
 		struct voca_t* v;

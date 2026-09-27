@@ -4963,6 +4963,7 @@ out := (sys.run_noret "ls -laF")
 }
 
 static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nrets);
+static int compile_cons_mlist_expression (hak_t* hak, hak_cnode_t* obj, hak_ooi_t nrets);
 
 static int compile_cons_dlist_expression (hak_t* hak, hak_cnode_t* obj, int nrets)
 {
@@ -4985,6 +4986,15 @@ static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 	HAK_ASSERT(hak, HAK_CNODE_IS_CONS_CONCODED(obj, HAK_CONCODE_XLIST));
 
 	car = HAK_CNODE_CONS_CAR(obj);
+
+	if (HAK_CNODE_IS_BOUNDMSG(car))
+	{
+		/* (a:b arg...) - the head is a receiver bound to a message, so this
+		 * list is a send and everything after the head is an argument. The
+		 * reader folded 'a:b' into one item, which is what let the ordinary
+		 * glued-call rule produce this shape from a:b(arg). */
+		return compile_cons_mlist_expression(hak, obj, nrets);
+	}
 
 	/* check if the first element inside () is a special word */
 	switch (HAK_CNODE_GET_TYPE(car))
@@ -5199,16 +5209,19 @@ static int compile_cons_mlist_expression (hak_t* hak, hak_cnode_t* obj, hak_ooi_
 	hak_ooi_t nargs;
 	hak_ooi_t oldtop;
 	hak_cframe_t* cf;
+	int folded;
 
 	/* message sending
 	 *  (:<receiver> <operator> <operand1> ...)
 	 *  (<receiver>:<operator> <operand1> ...)
 	 *  (<receiver> <binop> <operand>
 	 */
-	HAK_ASSERT(hak, HAK_CNODE_IS_CONS_CONCODED(obj, HAK_CONCODE_BLIST) ||
-	                HAK_CNODE_IS_CONS_CONCODED(obj, HAK_CONCODE_MLIST));
+	HAK_ASSERT(hak, HAK_CNODE_IS_CONS_CONCODED(obj, HAK_CONCODE_BLIST) || /* binary operator */
+	                HAK_CNODE_IS_CONS_CONCODED(obj, HAK_CONCODE_MLIST) ||
+	                HAK_CNODE_IS_CONS_CONCODED(obj, HAK_CONCODE_XLIST));  /* the head must be BOUNDMSG */
 
 	car = HAK_CNODE_CONS_CAR(obj);
+	folded = HAK_CNODE_IS_BOUNDMSG(car);
 
 	/* store the position of COP_EMIT_CALL to be produced with
 	 * SWITCH_TOP_CFRAME() in oldtop for argument count patching
@@ -5216,27 +5229,41 @@ static int compile_cons_mlist_expression (hak_t* hak, hak_cnode_t* obj, hak_ooi_
 	oldtop = GET_TOP_CFRAME_INDEX(hak);
 	HAK_ASSERT(hak, oldtop >= 0);
 
-	/* compile <receiver> */
-	rcv = car; /* remember the receiver node to to push it later */
-	SWITCH_TOP_CFRAME(hak, COP_EMIT_SEND, rcv);
+	if (folded)
+	{
+		/* (a:b arg...) - the receiver and the message both come out of the
+		 * head, and every remaining item is an argument */
+		rcv = HAK_CNODE_BOUNDMSG_OBJ(car); /* <receiver> */
+		SWITCH_TOP_CFRAME(hak, COP_EMIT_SEND, rcv);
+		car = HAK_CNODE_BOUNDMSG_MSG(car); /* <message> */
+		cdr = HAK_NULL; /* unused - the arguments are read off obj below */
+	}
+	else
+	{
+		/* compile <receiver> */
+		rcv = car; /* remember the receiver node to to push it later */
+		SWITCH_TOP_CFRAME(hak, COP_EMIT_SEND, rcv);
 
-	/* compile <operator> */
-	cdr = HAK_CNODE_CONS_CDR(obj);
-	if (!cdr)
-	{
-		/* thie part may never be reached as the reader ensures this doesn't happen */
-		hak_setsynerrbfmt(hak, HAK_SYNERR_CALLABLE, HAK_CNODE_GET_LOC(car),
-			"missing message for '%.*js'", HAK_CNODE_GET_TOKLEN(car), HAK_CNODE_GET_TOKPTR(car));
-		return -1;
+		/* compile <operator>/<message> */
+		cdr = HAK_CNODE_CONS_CDR(obj);
+		if (!cdr)
+		{
+			/* thie part may never be reached as the reader ensures this doesn't happen */
+			hak_setsynerrbfmt(hak, HAK_SYNERR_CALLABLE, HAK_CNODE_GET_LOC(car),
+				"missing message for '%.*js'", HAK_CNODE_GET_TOKLEN(car), HAK_CNODE_GET_TOKPTR(car));
+			return -1;
+		}
+		if (!HAK_CNODE_IS_CONS(cdr))
+		{
+			/* (<receiver> . 10) */
+			hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(cdr),
+				"redundant cdr in message send around '%.*js'", HAK_CNODE_GET_TOKLEN(cdr), HAK_CNODE_GET_TOKPTR(cdr));
+			return -1;
+		}
+		car = HAK_CNODE_CONS_CAR(cdr);
 	}
-	if (!HAK_CNODE_IS_CONS(cdr))
-	{
-		/* (<receiver> . 10) */
-		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(cdr),
-			"redundant cdr in message send around '%.*js'", HAK_CNODE_GET_TOKLEN(cdr), HAK_CNODE_GET_TOKPTR(cdr));
-		return -1;
-	}
-	car = HAK_CNODE_CONS_CAR(cdr);
+
+	/* handle the actual <message>/<operator> part */
 	if (HAK_CNODE_IS_SYMBOL(car) || HAK_CNODE_IS_BINOP(car))
 	{
 		/* do not resolve the message itself to an associated value.
@@ -5260,7 +5287,7 @@ static int compile_cons_mlist_expression (hak_t* hak, hak_cnode_t* obj, hak_ooi_
 	{
 		PUSH_CFRAME(hak, COP_COMPILE_OBJECT, car);
 	}
-	else if (HAK_CNODE_IS_CONS(car) && (HAK_CNODE_CONS_CONCODE(car) == HAK_CONCODE_XLIST || HAK_CNODE_CONS_CONCODE(car) == HAK_CONCODE_MLIST))
+	else if (HAK_CNODE_IS_CONS(car) && (HAK_CNODE_CONS_CONCODE(car) == HAK_CONCODE_XLIST || HAK_CNODE_CONS_CONCODE(car) == HAK_CONCODE_MLIST) || HAK_CNODE_CONS_CONCODE(car) == HAK_CONCODE_BLIST)
 	{
 		/*
 		 * class XX {
@@ -5270,9 +5297,10 @@ static int compile_cons_mlist_expression (hak_t* hak, hak_cnode_t* obj, hak_ooi_
 		 * }
 		 * fun xx() { return XX }
 		 * fun zz() { return #new }
-		 * (xx):(zz)             ## car's concode is XLIST for (zz)
-		 * (xx):(XX:zz)          ## car's concode is MLIST for (XX:zz)
-		*/
+		 * (xx):(zz)     ## car's concode is XLIST for (zz)
+		 * (xx):(XX:zz)  ## car's concode is MLIST for (XX:zz)
+		 * (xx):(1 + 2)  ## car's concode is BLIST for (1 + 2). for + to work, SmallInteger is needed. actual send will fail anyways
+		 */
 		PUSH_CFRAME(hak, COP_COMPILE_OBJECT, car);
 	}
 	else
@@ -5283,7 +5311,7 @@ static int compile_cons_mlist_expression (hak_t* hak, hak_cnode_t* obj, hak_ooi_
 	}
 
 	/* compile <operand1> ... etc */
-	cdr = HAK_CNODE_CONS_CDR(cdr);
+	cdr = folded? HAK_CNODE_CONS_CDR(obj): HAK_CNODE_CONS_CDR(cdr);
 	if (!cdr)
 	{
 		nargs = 0;
@@ -5965,6 +5993,22 @@ redo:
 			/* a shell node is just a wrapper of an actual node */
 			oprnd = oprnd->u.shell.obj;
 			goto redo;
+
+		case HAK_CNODE_BOUNDMSG:
+		{
+			/* 'a:b' folded into a bound message but nothing sent it. a send
+			 * takes its arguments either from a glued list - a:b() - or from
+			 * the list it heads - (a:b) - and this one heads neither, so it
+			 * sits in a value position with no way to run. */
+			const hak_ooch_t* rptr, * mptr;
+			hak_oow_t rlen, mlen;
+			rptr = hak_getcnodedesc(hak, HAK_CNODE_BOUNDMSG_OBJ(oprnd), &rlen);
+			mptr = hak_getcnodedesc(hak, HAK_CNODE_BOUNDMSG_MSG(oprnd), &mlen);
+			hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(oprnd),
+				"message '%.*js' bound but not sent - write (%.*js:%.*js) or %.*js:%.*js()",
+				mlen, mptr, rlen, rptr, mlen, mptr, rlen, rptr, mlen, mptr);
+			return -1;
+		}
 
 		case HAK_CNODE_ELLIPSIS:
 		case HAK_CNODE_TRPCOLONS:

@@ -38,6 +38,7 @@ class Base: Object (_v) {
 	fun twice() { return (* self._v 2) }
 	fun plus(n) { return (+ self._v n) }
 	fun tag() { return "base" }
+	fun itself() { return self }
 	fun shared() { return "from-base" }
 	fun[#c] which() { return "Base-class" }
 	fun[#c] selectorForTag() { return #tag }
@@ -91,6 +92,192 @@ d := (Derived:new 5)
 chk (eql? (b:(id #tag)) "base") "a computed send finds the receiver's own method"
 chk (eql? (d:(id #tag)) "derived") "...and an override rather than the parent's"
 chk (eql? (d:(id #shared)) "from-base") "...while an inherited method is still reached"
+
+## --- a glued parenthesis after the selector carries the arguments -----------
+##
+## b:twice() and b:plus(7) are the conventional shapes. The parenthesis is the
+## SEND's argument list, not a call of the selector - the glued-call rule that
+## turns pick(1) into (pick 1) would otherwise claim it first and evaluate the
+## selector name as a variable.
+##
+## What tells the two apart is what the '(' touches. Against the colon it is
+## still the computed-selector form; against the name it is the argument list.
+## So nothing is lost - the asserts below have it both ways.
+
+chk (= b:twice() 10) "a glued parenthesis after the selector sends with no arguments"
+chk (= b:plus(7) 12) "...and carries an argument"
+chk (= b:plus(3) 8) "...and a different one"
+chk (= (+ b:twice() 1) 11) "...and the send's answer is an ordinary value"
+
+## the spaced form still means what it always did
+chk (= (b:plus 7) 12) "the spaced send is unchanged"
+
+## the computed selector survives, because its '(' touches the colon
+chk (= (b:(pickTwice)) 10) "a '(' against the colon is still the computed selector"
+chk (= (b:(id sel)) 10) "...including one that computes it from a variable"
+
+## --- a send is a complete expression -----------------------------------------
+##
+## 'b:twice' is folded into a single item as it is read - a receiver bound to a
+## message, not yet sent. Where its arguments come from is what sends it: a
+## glued '(' is one argument list, and heading a list is the other, which is
+## all (b:twice) is. A fold that does neither is refused rather than sent with
+## nothing - see the last section.
+##
+## The consequence is that a send needs no parentheses of its own. It goes
+## wherever a value goes: in an argument, on the right of ':=', as the receiver
+## of the next send.
+
+chk (= (+ b:plus(1) b:plus(2)) 13) "a send stands in an argument position"
+
+r := b:twice()
+chk (= r 10) "...and on the right of an assignment"
+
+chk (eql? b:itself():tag() "base") "...and as the receiver of the next send"
+chk (eql? b:itself():itself():tag() "base") "...however many times over"
+
+## Parentheses around a BARE receiver:message are that send's own list, so the
+## two spellings below mean the same thing. This is the form to reach for when
+## a receiver must be computed before the colon.
+chk (= (b:twice) 10) "parentheses around a bare send are the send itself"
+chk (eql? ((b:itself):tag) "base") "...which is what makes (a:b):c work"
+chk (eql? (b:itself):tag() "base") "...with the arguments glued on as usual"
+
+## [NOTE] but parentheses around a send that ALREADY carries a glued argument
+## list are an extra call, exactly as (f(1)) calls what f(1) answers. There is
+## no colon rule at work here - it is the general meaning of '(' - yet it is
+## the shape someone reaches for after learning the one above, so it is pinned
+## down rather than described.
+caught := nil
+try { (b:itself()):tag() } catch (e) { caught := e }
+chk (eql? caught "cannot call #INSTANCE OF Base") \
+    "(a:b()) calls the answer - write a:b():c instead"
+
+## [NOTE] the two forms do not nest. b:(f()) is the computed-selector form
+## wrapped around a glued call, so f runs, its ANSWER is called as well, and
+## only then is the result sent. Write b:(f) - the parentheses of the computed
+## form already do the calling. This is asserted rather than described because
+## it is the shape someone reaches for first.
+caught := nil
+try { b:(pickTwice()) } catch (e) { caught := e }
+chk (eql? caught "callable twice not found") "b:(f()) calls twice over - b:(f) is the form"
+
+## --- a send inside a statement that opens with a keyword --------------------
+##
+## 'if', 'while', 'return' and the rest take ordinary expressions, so a send
+## reaches them the way it reaches anywhere else. Only 'class' and 'fun' spell
+## a colon at their own level, and there it names a superclass or an
+## out-of-class method rather than a send - which is why those two are the
+## exception and the others are not.
+
+hits := 0
+if b:respondsTo(#twice) { hits := (+ hits 1) }
+chk (= hits 1) "a send is the condition of 'if'"
+
+fun viaReturn() { return b:twice() }
+chk (= viaReturn() 10) "...and the operand of 'return'"
+
+class Counter: Object (_n) {
+	fun[#ci] new() { self._n := 0 ; return self }
+	fun more?() { return (< self._n 3) }
+	fun bump() { self._n := (+ self._n 1) ; return self._n }
+}
+
+c := (Counter:new)
+laps := 0
+while c:more?() { c:bump() ; laps := (+ laps 1) }
+chk (= laps 3) "...and the condition of 'while', with one driving the body"
+
+## the two keywords that DO own a colon still do. 'class Derived: Base' above
+## is the one; this is the other.
+fun Base:thrice() { return 6 }
+chk (= b:thrice() 6) "'fun X:name' still declares an out-of-class method"
+
+## --- a send whose answer is itself callable ---------------------------------
+##
+## A method may answer a function, and running THAT function is a second call.
+## Which parentheses belong to the send and which to the call is the whole
+## question, and the spellings below are the answers to it.
+##
+## The fold is what makes the first one work: Maker:make(4) is one complete
+## send, so a further glued '(' has nothing left to attach to but its answer.
+## Before the fold, the '(9)' was read as a call of its own and the send never
+## took it.
+
+last := 0
+
+class Maker: Object {
+	fun[#c] make(x) { return (fun(j) { last := (+ (* x 10) j) ; return last }) }
+}
+
+chk (= Maker:make(4)(9) 49) "a glued call runs the function a send answered"
+chk (= (Maker:make 4)(9) 49) "...and so does one glued to a parenthesised send"
+chk (= ((Maker:make 4) 9) 49) "...and the two may be written as a single list"
+
+## the call's parentheses come off at statement level, as they do anywhere else
+last := 0
+(Maker:make 4) 9
+chk (= last 49) "at statement level the outer call needs no parentheses"
+
+## [NOTE] that last line is a STATEMENT-level spelling, and parenthesising it
+## there means something else: hak supplies the outer call at statement level,
+## so ((Maker:make 4) 9) runs and then ITS answer is called as well. No colon
+## rule is involved - ((g 4) 9) does the same with no send anywhere in it - but
+## it is the shape reached for after learning the line above.
+caught := nil
+try { ((Maker:make 4) 9) } catch (e) { caught := e }
+chk (eql? caught "cannot call 49") \
+    "...while parenthesising it at statement level calls the answer again"
+
+## A send that already carries its own glued argument list behaves the other
+## way round when wrapped: (Maker:make(4)) calls what the send answered, so the
+## function runs with no arguments at all. That one cannot be caught here - it
+## ends the script - so t/send-5001.err holds it.
+
+## --- self and super reach the fold unchanged --------------------------------
+##
+## The receiver of a folded send is compiled like any other receiver, so a send
+## to 'super' still starts its lookup above the DEFINING class rather than at
+## the receiver's own. Without that, super:tag() below would find Sub's tag and
+## answer "sub" - the same value self:tag() gives, which is why both are
+## asserted rather than only the one.
+
+class Sup: Object {
+	fun[#ci] new() { return self }
+	fun tag() { return "sup" }
+	fun plus100(n) { return (+ n 100) }
+}
+
+class Sub: Sup {
+	fun tag() { return "sub" }
+	fun viaSuper() { return super:tag() }
+	fun viaSuperSpaced() { return (super:tag) }
+	fun viaSuperArg() { return super:plus100(5) }
+	fun viaSelf() { return self:tag() }
+}
+
+sb := (Sub:new)
+chk (eql? sb:viaSuper() "sup") "a glued send to super still goes up"
+chk (eql? sb:viaSuperSpaced() "sup") "...and so does the parenthesised one"
+chk (= sb:viaSuperArg() 105) "...carrying its arguments with it"
+chk (eql? sb:viaSelf() "sub") "...while self stays with the receiver's class"
+
+## --- a bound message has to be sent -----------------------------------------
+##
+## A send takes its arguments from a glued list - b:twice() - or from the list
+## it heads - (b:twice). A receiver:message that heads neither sits in a value
+## position with no way to run, and saying so beats compiling something that
+## was not asked for. t/send-5001.err holds the message.
+
+## --- a receiver may not be a message that was never sent ---------------------
+##
+## a:b:c is refused. 'a:b' folds into a bound message, and binding a further
+## message to something not yet sent has no meaning - the reader cannot tell
+## which of the two was meant to run first. One of the forms above says it
+## without the ambiguity: (a:b):c, or a:b():c.
+##
+## This is a syntax error, so it cannot be provoked from here with try/catch.
+## t/send-5001.err holds it.
 
 ## --- asking first -----------------------------------------------------------
 

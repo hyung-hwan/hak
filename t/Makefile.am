@@ -56,6 +56,7 @@ check_ERRORS = \
 	fun-5001.err \
 	hnd-5001.err \
 	mlist-5001.err \
+	send-5001.err \
 	sig-5001.err \
 	var-5001.err \
 	var-5002.err \

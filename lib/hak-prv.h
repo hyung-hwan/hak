@@ -553,6 +553,7 @@ enum hak_cnode_type_t
 
 	HAK_CNODE_CONS,
 	HAK_CNODE_ELIST, /* empty list */
+	HAK_CNODE_BOUNDMSG, /* obj:msg - a message bound to a receiver, not yet sent */
 	HAK_CNODE_SHELL, /* pseudo-node to hold another actual node */
 
 	/* If HAK_CNODE_SHELL is not the last item before the horizontal line,
@@ -634,6 +635,10 @@ typedef enum hak_cnode_flag_t hak_cnode_flag_t;
 #define HAK_CNODE_CONS_CAR(x) ((x)->u.cons.car)
 #define HAK_CNODE_CONS_CDR(x) ((x)->u.cons.cdr)
 
+#define HAK_CNODE_IS_BOUNDMSG(x) ((x)->cn_type == HAK_CNODE_BOUNDMSG)
+#define HAK_CNODE_BOUNDMSG_OBJ(x) ((x)->u.boundmsg.obj)
+#define HAK_CNODE_BOUNDMSG_MSG(x) ((x)->u.boundmsg.msg)
+
 #define HAK_CNODE_IS_ELIST(x) ((x)->cn_type == HAK_CNODE_ELIST)
 #define HAK_CNODE_IS_ELIST_CONCODED(x, code) ((x)->cn_type == HAK_CNODE_ELIST && (x)->u.elist.concode == (code))
 #define HAK_CNODE_ELIST_CONCODE(x) ((x)->u.elist.concode)
@@ -679,6 +684,11 @@ struct hak_cnode_t
 		{
 			hak_concode_t concode;
 		} elist;
+		struct
+		{
+			hak_cnode_t* obj; /* the receiver */
+			hak_cnode_t* msg; /* the message - a symbol, or an expression answering one */
+		} boundmsg;
 		struct
 		{
 			hak_cnode_t* obj;
@@ -2204,6 +2214,14 @@ hak_cnode_t* hak_makecnodesmptrlit (hak_t* hak, int flags, const hak_loc_t* loc,
 hak_cnode_t* hak_makecnodeerrlit (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok, hak_ooi_t v);
 hak_cnode_t* hak_makecnodecons (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok, hak_cnode_t* car, hak_cnode_t* cdr);
 hak_cnode_t* hak_makecnodeelist (hak_t* hak, int flags, const hak_loc_t* loc, hak_concode_t type);
+hak_cnode_t* hak_makecnodeboundmsg (
+	hak_t*             hak,
+	int                flags,
+	const hak_loc_t*   loc,
+	hak_cnode_t*       obj,
+	hak_cnode_t*       msg
+);
+
 hak_cnode_t* hak_makecnodeshell (hak_t* hak, int flags, const hak_loc_t* loc, hak_cnode_t* obj);
 void hak_freesinglecnode (hak_t* hak, hak_cnode_t* c);
 hak_oow_t hak_countcnodecons (hak_t* hak, hak_cnode_t* cons);

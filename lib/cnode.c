@@ -193,6 +193,17 @@ hak_cnode_t* hak_makecnodeelist (hak_t* hak, int flags, const hak_loc_t* loc, ha
 	return c;
 }
 
+/* obj:msg - the receiver and the message it is bound to. Nothing is sent
+ * until this lands in the head position of a xlist; see the compiler. */
+hak_cnode_t* hak_makecnodeboundmsg (hak_t* hak, int flags, const hak_loc_t* loc, hak_cnode_t* obj, hak_cnode_t* msg)
+{
+	hak_cnode_t* c = hak_makecnode(hak, HAK_CNODE_BOUNDMSG, flags, loc, HAK_NULL);
+	if (HAK_UNLIKELY(!c)) return HAK_NULL;
+	c->u.boundmsg.obj = obj;
+	c->u.boundmsg.msg = msg;
+	return c;
+}
+
 hak_cnode_t* hak_makecnodeshell (hak_t* hak, int flags, const hak_loc_t* loc, hak_cnode_t* obj)
 {
 	hak_cnode_t* c = hak_makecnode(hak, HAK_CNODE_SHELL, flags, loc, HAK_NULL);
@@ -224,7 +235,24 @@ redo:
 			if (tmp2)
 			{
 				c = tmp2;
-				goto redo;
+				goto redo; /* avoid recursion */
+			}
+
+			break;
+		}
+
+		case HAK_CNODE_BOUNDMSG:
+		{
+			hak_cnode_t* tmp1, * tmp2;
+
+			tmp1 = c->u.boundmsg.obj;
+			tmp2 = c->u.boundmsg.msg;
+			hak_freemem(hak, c);
+			if (tmp1) hak_freecnode(hak, tmp1); /* TODO: remove recursion */
+			if (tmp2)
+			{
+				c = tmp2;
+				goto redo; /* avoid recursion */
 			}
 
 			break;
@@ -235,11 +263,11 @@ redo:
 			hak_cnode_t* tmp;
 
 			tmp = c->u.shell.obj;
-			hak_freemem(hak, c);
+			hak_freemem(hak, c); /* TODO: remove recursion */
 			if (tmp)
 			{
 				c = tmp;
-				goto redo;
+				goto redo; /* avoid recursion */
 			}
 
 			break;
