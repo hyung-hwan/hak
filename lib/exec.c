@@ -4542,7 +4542,7 @@ hak_logbfmt(hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncv
 					else
 					{
 						/*HAK_ASSERT(hak, HAK_IS_NIL(hak, (hak_oop_t)class_obj));*/
-						if (!HAK_IS_NIL(hak, (hak_oop_t)class_obj))
+						if (!HAK_IS_NIL(hak, (hak_oop_t)class_obj) && !HAK_IS_UNDEF(hak, (hak_oop_t)class_obj))
 						{
 							/* K := 20
 							 * class K {}  ## this will be "prohibited redefinition of K"
