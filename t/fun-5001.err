@@ -1,0 +1,37 @@
+## error messages for a bad function name in a 'fun' declaration
+##
+## Both the plain form and the 'fun Class:name' form quote the offending node.
+## A list has no token text of its own, so quoting it used to produce nothing
+## at all - 'invalid function name ''' - and the message named no culprit. The
+## description now comes from the concode, through hak_getcnodedesc().
+
+fun #(1 2)() {} ##ERROR: syntax error - invalid function name '#( )' for 'fun'
+
+---
+
+fun #[1 2]() {} ##ERROR: syntax error - invalid function name '#[ ]' for 'fun'
+
+---
+
+fun #{1 2}() {} ##ERROR: syntax error - invalid function name '#{ }' for 'fun'
+
+---
+
+## the same, in the position after a class name and a colon
+
+fun X:#(1 2)() {} ##ERROR: syntax error - invalid function name '#( )' after 'X:' for 'fun'
+
+---
+
+fun X:#[1 2]() {} ##ERROR: syntax error - invalid function name '#[ ]' after 'X:' for 'fun'
+
+---
+
+## a name that IS a single token still reports its own text, so the fallback
+## path through the same helper is covered as well
+
+fun 5() {} ##ERROR: syntax error - invalid function name '5' for 'fun'
+
+---
+
+fun X:5() {} ##ERROR: syntax error - invalid function name '5' after 'X:' for 'fun'

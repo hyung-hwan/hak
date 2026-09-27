@@ -3405,9 +3405,12 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 				tmp = HAK_CNODE_CONS_CAR(next);
 				if (!is_cnode_eligible_for_fun_name_after_colon(tmp))
 				{
+					const hak_ooch_t* ptr;
+					hak_oow_t len;
+					ptr = hak_getcnodedesc(hak, tmp, &len);
 					hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(tmp),
 						"invalid function name '%.*js' after '%.*js:' for '%.*js'",
-						HAK_CNODE_GET_TOKLEN(tmp), HAK_CNODE_GET_TOKPTR(tmp),
+						len, ptr,
 						HAK_CNODE_GET_TOKLEN(class_name), HAK_CNODE_GET_TOKPTR(class_name),
 						HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 					return -1;
@@ -3518,9 +3521,12 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 			}
 			else
 			{
+				const hak_ooch_t* ptr;
+				hak_oow_t len;
+				ptr = hak_getcnodedesc(hak, tmp, &len);
 				hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(tmp),
 					"invalid function name '%.*js' for '%.*js'",
-					HAK_CNODE_GET_TOKLEN(tmp), HAK_CNODE_GET_TOKPTR(tmp),
+					len, ptr,
 					HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 			}
 			return -1;
@@ -5175,9 +5181,11 @@ static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 	}
 	else
 	{
+		const hak_ooch_t* ptr;
+		hak_oow_t len;
+		ptr = hak_getcnodedesc(hak, car, &len);
 		hak_setsynerrbfmt(hak, HAK_SYNERR_CALLABLE, HAK_CNODE_GET_LOC(car),
-			"invalid callable '%.*js' in function call",
-			HAK_CNODE_GET_TOKLEN(car), HAK_CNODE_GET_TOKPTR(car));
+			"invalid callable '%.*js' in function call", len, ptr);
 		return -1;
 	}
 

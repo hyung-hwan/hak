@@ -198,7 +198,8 @@ enum list_flag_t
 	JSON         = (1 << 8),
 	DATA_LIST    = (1 << 9),
 	AUTO_FORGED  = (1 << 10),  /* automatically added list. only applicable to XLIST */
-	AT_BEGINNING = (1 << 11)
+	AT_BEGINNING = (1 << 11),
+	GLUED_CALL   = (1 << 12)   /* a glued '(' turned an item of this list into a call - e.g. printf("hello\n") */
 
 	/* TOTAL 16 items are allowed for LIST_FLAG_GET_CONCODE() and LIST_FLAG_SET_CONCODE().
 	 * they reserve lower 16 bits as flag bits.*/
@@ -241,6 +242,28 @@ static int is_at_block_beginning (hak_t* hak);
 static int flx_plain_ident (hak_t* hak, hak_ooci_t c);
 
 /* ----------------------------------------------------------------- */
+
+/* Tokens after which a glued '(' can only be a call, because the token ends a
+ * value. Everything else - an opener, an operator, a keyword, a literal - has
+ * nothing to call, so the parenthesis is an ordinary group there.
+ *
+ * Testing the TOKEN rather than the last item of the list is what keeps
+ * 'f((g 1))' right: the inner '(' is glued to the outer one, not to f. */
+static HAK_INLINE int tok_ends_a_value (hak_tok_type_t t)
+{
+	switch (t)
+	{
+		case HAK_TOK_IDENT:
+		case HAK_TOK_IDENT_DOTTED:
+		case HAK_TOK_IDENT_DOTTED_CLA:
+		case HAK_TOK_RPAREN:
+		case HAK_TOK_RBRACK:
+		case HAK_TOK_RBRACE:
+			return 1;
+		default:
+			return 0;
+	}
+}
 
 static HAK_INLINE int is_spacechar (hak_ooci_t c)
 {
@@ -2010,25 +2033,56 @@ static int feed_process_token (hak_t* hak)
 
 		case HAK_TOK_DPAREN: /* $( */
 		case HAK_TOK_LPAREN: /* ( */
-#if 0
+			/* A '(' glued to whatever precedes it is a call:
+			 *
+			 *   a(1 2 3)     -> (a 1 2 3)
+			 *   a(1 2 3)(9)  -> ((a 1 2 3) 9)   the ')' is an item like any other
+			 *   f()          -> (f)
+			 *
+			 * "Glued" is feed.lx.gap == 0, which counts the separators since
+			 * the last token ended - see feed_continue_with_gap().
+			 *
+			 * It takes the preceding ITEM rather than the preceding token, so
+			 * a parenthesised list works as the callee without extra effort.
+			 *
+			 * Two positions must be left alone, both of which are decided by
+			 * looking at the list being built rather than by lookahead:
+			 *
+			 *   - after a keyword. 'if(c)', 'while(c)', 'until(c)', 'catch(e)'
+			 *     and an anonymous 'fun(x)' all place a '(' right after a word
+			 *     that is not a value, so there is nothing to call. A keyword
+			 *     has its own token type, so tok_ends_a_value() says no.
+			 *
+			 *   - the name in a declaration. In 'fun a(x y)' and 'class X(a b)'
+			 *     the parentheses hold parameters, not arguments. The head of
+			 *     the list under construction says which case this is, exactly
+			 *     as a C parser distinguishes 'int f(int a)' from 'f(a)'.
+			 *
+			 *   - an operator is pending. After ':=', ':', ',' or a binary
+			 *     selector the parenthesis is that operator's right operand,
+			 *     so 'self.b:=(a + 10)' must not become a call of self.b and
+			 *     'b:(pick)' must stay the computed-selector send it is. The
+			 *     token test below already covers these, since an operator
+			 *     does not end a value; the flag is checked too because it
+			 *     states the same thing about the list rather than the token.
+			 */
 			if (TOKEN_TYPE(hak) == HAK_TOK_LPAREN &&
 			    hak->c->r.st && hak->c->r.st->count >= 1 &&
-			    hak->c->feed.lx.gap == 0) /* not sure if the condition is good enough */
+			    hak->c->feed.lx.gap == 0 &&
+			    tok_ends_a_value(hak->c->ptok.type) &&
+			    !(hak->c->r.st->flagv & (COMMAED | COLONED | COLONEQED | BINOPED | PIPOPED)) &&
+			    !HAK_CNODE_IS_TYPED(hak->c->r.st->head->u.cons.car, HAK_CNODE_FUN) &&
+			    !HAK_CNODE_IS_TYPED(hak->c->r.st->head->u.cons.car, HAK_CNODE_CLASS))
 			{
-/* TODO:  check further .. at function declaration, class declaration part.
- * this rule must not apply */
-				/* [EXPERIMENTAL]
-				 * there is a preceding token and the left parenthesis is following.
-				 * if there is no space between them, treat it like a function call
-				 * and convert it to xlist.
-				 *   a(1 2 3) -> (a 1 2 3) */
 				hak_rstl_t* new_rstl;
 				hak_rstl_t* old_rstl;
 				hak_cnode_t* old_tail;
 
-/*printf("r.st->count %d GAP %d\n", (int)hak->c->r.st->count, (int)hak->c->feed.lx.gap);*/
+			#if 0
+				frd->flagv = AUTO_FORGED; /* it's kind of auto-forged */
+			#else
 				frd->flagv = 0;
-				//frd->flagv = AUTO_FORGED; /* it's kind of auto-forged */
+			#endif
 				LIST_FLAG_SET_CONCODE(frd->flagv, HAK_CONCODE_XLIST);
 				if (frd->level >= HAK_TYPE_MAX(int))
 				{
@@ -2076,11 +2130,19 @@ static int feed_process_token (hak_t* hak)
 				new_rstl->tail = old_tail;
 				new_rstl->count++;
 
+				/* Remember that a call was forged inside this list. If the
+				 * list is the one auto_forge_xlist_if_at_block_beginning()
+				 * made for a statement, and the call turns out to be all the
+				 * statement holds, the wrapper has to go - see the collapse
+				 * at the semicolon label. Without it a statement reading
+				 *   f(1 2)
+				 * would come out as ((f 1 2)) and call the ANSWER of f. */
+				old_rstl->flagv |= GLUED_CALL;
+
 				frd->level++;
 				/* don't set AT_BEGINNING in frd->flagv */
 				goto ok;
 			}
-#endif
 
 		#if defined(HAK_LANG_AUTO_FORGE_XLIST_ALWAYS)
 			/* with this feature on, you must not enclose an expression with ()
@@ -2233,9 +2295,26 @@ static int feed_process_token (hak_t* hak)
 			}
 
 			/* if auto-forged */
-			HAK_ASSERT(hak, concode == HAK_CONCODE_XLIST || concode == HAK_CONCODE_MLIST || concode == HAK_CONCODE_ALIST || concode == HAK_CONCODE_BLIST || concode == HAK_CONCODE_PLIST);
+			HAK_ASSERT(hak, concode == HAK_CONCODE_XLIST || concode == HAK_CONCODE_MLIST ||
+			                concode == HAK_CONCODE_ALIST || concode == HAK_CONCODE_BLIST || concode == HAK_CONCODE_PLIST);
 
 			frd->obj = leave_list(hak, &frd->list_loc, &frd->flagv, &oldflagv);
+
+			if (frd->obj && (oldflagv & GLUED_CALL) && HAK_CNODE_IS_CONS(frd->obj) && !HAK_CNODE_CONS_CDR(frd->obj))
+			{
+				/* the statement was a single glued call and nothing else,
+				 * so the forged wrapper would call what the call answered:
+				 *   f(1 2)     -> ((f 1 2))  wrong, becomes (f 1 2)
+				 *   f(1 2) 3   -> ((f 1 2) 3)  left alone - more than one item,
+				 *                 and calling the answer is what was written.
+				 *
+				 * remove the wrapping forged cons cell.
+				 */
+				hak_cnode_t* inner = HAK_CNODE_CONS_CAR(frd->obj); /* get the inner glued call */
+				hak_freemem(hak, frd->obj); /* delete the auto-forged outer wrapper. if not, it becomes a double call */
+				frd->obj = inner; /* keep the inner glued call only */
+			}
+
 			frd->level--;
 			frd->flagv |= AT_BEGINNING; /* the current one is over. move on the beginning for the next expression */
 			list_loc = &frd->list_loc;
@@ -2678,7 +2757,7 @@ static void feed_continue (hak_t* hak, hak_flx_state_t state)
  * consumed elsewhere: a linebreak taken as an EOL token, the newline ending a
  * comment, a backslash line continuation, and the switch into or out of an
  * included file. Each has to come through here, or the next token arrives in
- * the START state and is recorded with gap 0, which reads as "juxtaposed to
+ * the START state and is recorded with gap 0, which reads as "glued to
  * the previous token". For a token at column 1 that would be every line.
  *
  * Continuing into STARTED rather than START is the other half of it:
@@ -2923,7 +3002,7 @@ static int flx_start (hak_t* hak, hak_ooci_t c)
 			reset_flx_token(hak);
 			FEED_WRAP_UP_WITH_CHAR(hak, c, HAK_TOK_EOL);
 		}
-		FEED_CONTINUE_WITH_GAP(hak); /* after any wrap-up, which resets the state  - switch to the started state */
+		FEED_CONTINUE_WITH_GAP(hak); /* must follow the wrap-up, which resets the state */
 		return 1; /* skip spaces */
 	}
 
@@ -2947,7 +3026,7 @@ static int flx_started (hak_t* hak, hak_ooci_t c)
 			reset_flx_token(hak);
 			FEED_WRAP_UP_WITH_CHAR(hak, c, HAK_TOK_EOL);
 		}
-		FEED_CONTINUE_WITH_GAP(hak); /* after any wrap-up, which resets the state */
+		FEED_CONTINUE_WITH_GAP(hak); /* must follow the wrap-up, which resets the state */
 		return 1; /* skip spaces */
 	}
 
@@ -4757,4 +4836,25 @@ hak_lxc_t* hak_readbasesrchar (hak_t* hak)
 	int n = _get_char(hak, &hak->c->cci_arg);
 	if (n <= -1) return HAK_NULL;
 	return &hak->c->cci_arg.lxc;
+}
+
+const hak_ooch_t* hak_getcnodedesc (hak_t* hak, hak_cnode_t* cn, hak_oow_t* len)
+{
+	if (HAK_CNODE_IS_CONS(cn) || HAK_CNODE_IS_ELIST(cn))
+	{
+		struct voca_t* v;
+		int concode;
+		voca_id_t vid;
+
+		concode = HAK_CNODE_IS_ELIST(cn)? HAK_CNODE_ELIST_CONCODE(cn): HAK_CNODE_CONS_CONCODE(cn);
+		HAK_ASSERT(hak, concode >= 0 && concode < HAK_COUNTOF(cons_info));
+		vid = cons_info[concode].voca_id;
+		HAK_ASSERT(hak, vid >= 0 && vid < HAK_COUNTOF(vocas));
+		v = &vocas[vid];
+		if (len) *len = v->len;
+		return v->str;
+	}
+
+	if (len) *len = HAK_CNODE_GET_TOKLEN(cn);
+	return HAK_CNODE_GET_TOKPTR(cn);
 }

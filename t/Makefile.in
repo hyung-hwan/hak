@@ -598,6 +598,7 @@ check_ERRORS = \
 	call-5001.err \
 	class-5001.err \
 	feed-5001.err \
+	fun-5001.err \
 	hnd-5001.err \
 	mlist-5001.err \
 	sig-5001.err \

@@ -4104,7 +4104,7 @@ static int execute (hak_t* hak)
 						/* the existing value is a class.
 						 * the class name is the same as the key value of the pair.
 						 * disallow re-definition if the new value is not itself. */
-						hak_seterrbfmt(hak, HAK_EPERM, "prohibited redefintion of %.*js", HAK_OBJ_GET_SIZE(ass->car), HAK_OBJ_GET_CHAR_SLOT(ass->car));
+						hak_seterrbfmt(hak, HAK_EPERM, "prohibited redefinition of %.*js", HAK_OBJ_GET_SIZE(ass->car), HAK_OBJ_GET_CHAR_SLOT(ass->car));
 						if (do_throw_with_internal_errmsg(hak, fetched_instruction_pointer) >= 0) break;
 						goto oops_with_errmsg_supplement;
 					}
@@ -4527,21 +4527,32 @@ hak_logbfmt(hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncv
 							    expected_selfspec != selfspec ||
 							    nivars_super != nivars_super_real)
 							{
-								hak_seterrbfmt(hak, HAK_EPERM, "incompatible redefintion of %.*js", HAK_OBJ_GET_SIZE(class_name), HAK_OBJ_GET_CHAR_SLOT(class_name));
+								hak_seterrbfmt(hak, HAK_EPERM, "incompatible redefinition of %.*js", HAK_OBJ_GET_SIZE(class_name), HAK_OBJ_GET_CHAR_SLOT(class_name));
 								if (do_throw_with_internal_errmsg(hak, fetched_instruction_pointer) >= 0) break;
 								goto oops_with_errmsg_supplement;
 							}
 						}
 						else
 						{
-							hak_seterrbfmt(hak, HAK_EPERM, "prohibited redefintion of %.*js", HAK_OBJ_GET_SIZE(class_name), HAK_OBJ_GET_CHAR_SLOT(class_name));
+							hak_seterrbfmt(hak, HAK_EPERM, "prohibited redefinition of %.*js", HAK_OBJ_GET_SIZE(class_name), HAK_OBJ_GET_CHAR_SLOT(class_name));
 							if (do_throw_with_internal_errmsg(hak, fetched_instruction_pointer) >= 0) break;
 							goto oops_with_errmsg_supplement;
 						}
 					}
 					else
 					{
-						HAK_ASSERT(hak, HAK_IS_NIL(hak, (hak_oop_t)class_obj));
+						/*HAK_ASSERT(hak, HAK_IS_NIL(hak, (hak_oop_t)class_obj));*/
+						if (!HAK_IS_NIL(hak, (hak_oop_t)class_obj))
+						{
+							/* K := 20
+							 * class K {}  ## this will be "prohibited redefinition of K"
+							 */
+							/* TODO: should this be allowed instead? */
+							hak_seterrbfmt(hak, HAK_EPERM, "prohibited redefinition of %.*js", HAK_OBJ_GET_SIZE(class_name), HAK_OBJ_GET_CHAR_SLOT(class_name));
+							if (do_throw_with_internal_errmsg(hak, fetched_instruction_pointer) >= 0) break;
+							goto oops_with_errmsg_supplement;
+						}
+
 						goto make_class;
 					}
 				}

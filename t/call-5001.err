@@ -165,3 +165,39 @@ class X {
      fun +(c d) { printf "jjj\n" } ##ERROR: syntax error - only one argument expected for '+'
 }
 
+
+---
+
+## A list carries no token text of its own, so a message that quoted it used
+## to come out blank. These show the description taken from the concode - the
+## same table the reader uses to match closers. See hak_getcnodedesc().
+
+#(1 2 3)() ##ERROR: syntax error - invalid callable '#( )' in function call
+
+---
+
+#[1 2](3) ##ERROR: syntax error - invalid callable '#[ ]' in function call
+
+---
+
+#{1 2}() ##ERROR: syntax error - invalid callable '#{ }' in function call
+
+---
+
+## an empty list has no elements to describe it either, and reaches the same
+## table through the ELIST branch rather than the CONS one
+()() ##ERROR: syntax error - invalid callable '( )' in function call
+
+---
+
+#()() ##ERROR: syntax error - invalid callable '#( )' in function call
+
+---
+
+## a block is a list too
+({ } 1) ##ERROR: syntax error - invalid callable '{ }' in function call
+
+---
+
+## and a node that DOES have token text still shows it
+5() ##ERROR: syntax error - invalid callable '5' in function call

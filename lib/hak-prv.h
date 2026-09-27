@@ -2214,6 +2214,7 @@ void hak_dumpcnode (hak_t* hak,  hak_cnode_t* c, int newline);
 /* read.c                                                                    */
 /* ========================================================================= */
 int hak_is_binop_string (const hak_oocs_t* v);
+const hak_ooch_t* hak_getcnodedesc (hak_t* hak, hak_cnode_t* cn, hak_oow_t* len);
 
 /* ========================================================================= */
 /* exec.c                                                                    */
