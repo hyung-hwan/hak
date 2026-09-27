@@ -97,7 +97,10 @@ chk (eql? (lines:at 0) "alpha") "first line off the pipe"
 chk (eql? (lines:at 1) "beta") "second"
 chk (eql? (lines:at 2) "gamma") "third"
 chk (nil? (xt:readLine)) "nil at end of the pipe"
-chk (= ticks 3) "a coprocess ran while the reader blocked"
+## how many times the reader actually blocks depends on how the child's
+## output is chunked - one fill may deliver all three lines - so the count is
+## not fixed. That a coprocess got to run at all is the property being tested.
+chk (> ticks 0) "a coprocess ran while the reader blocked"
 x:close
 
 ## --- writing ----------------------------------------------------------------
