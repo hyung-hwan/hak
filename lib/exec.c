@@ -2404,7 +2404,7 @@ static HAK_INLINE int call_primitive (hak_t* hak, hak_ooi_t nargs)
 	HAK_ASSERT(hak, HAK_IS_PRIM(hak, op_prim));
 	HAK_ASSERT(hak, HAK_OBJ_GET_SIZE(op_prim) == HAK_PRIM_NAMED_INSTVARS);
 
-	if (nargs < op_prim->min_nargs && nargs > op_prim->max_nargs)
+	if (nargs < op_prim->min_nargs || nargs > op_prim->max_nargs)
 	{
 /* TODO: include a primitive name... */
 		HAK_LOG3(hak, HAK_LOG_IC | HAK_LOG_ERROR,

@@ -2846,9 +2846,9 @@ int hak_logfmtcallstack (hak_t* hak, hak_ooi_t nargs)
 
 static int read_bcs (hak_t* hak, hak_fmtin_t* fmtout, hak_bch_t* buf, hak_oow_t len)
 {
-	if (HAK_UNLIKELY(!hak->io.udo_wrtr))
+	if (HAK_UNLIKELY(!hak->io.udi_rdr))
 	{
-		hak_seterrbmsg(hak, HAK_EINVAL, "no user-defined output handler");
+		hak_seterrbmsg(hak, HAK_EINVAL, "no user-defined input handler");
 		return -1;
 	}
 
@@ -2857,9 +2857,9 @@ static int read_bcs (hak_t* hak, hak_fmtin_t* fmtout, hak_bch_t* buf, hak_oow_t 
 
 static int read_ucs (hak_t* hak, hak_fmtin_t* fmtin, hak_uch_t* buf, hak_oow_t len)
 {
-	if (HAK_UNLIKELY(!hak->io.udo_wrtr))
+	if (HAK_UNLIKELY(!hak->io.udi_rdr))
 	{
-		hak_seterrbmsg(hak, HAK_EINVAL, "no user-defined output handler");
+		hak_seterrbmsg(hak, HAK_EINVAL, "no user-defined input handler");
 		return -1;
 	}
 
