@@ -393,7 +393,6 @@ static hak_pfrc_t pf_core_cons (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 static hak_pfrc_t pf_core_class_of (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_oop_t obj;
-
 	obj = HAK_STACK_GETARG(hak, nargs, 0);
 	HAK_STACK_SETRET(hak, nargs, (hak_oop_t)HAK_CLASSOF(hak, obj));
 	return HAK_PF_SUCCESS;
@@ -845,6 +844,7 @@ static hak_pfinfo_t pfinfos[] =
 	{ "eqv?",               { HAK_PFBASE_FUNC, hak_pf_eqv,                    2,  2 } },
 
 	{ "fork",               { HAK_PFBASE_FUNC, hak_pf_process_fork,           1,  HAK_TYPE_MAX(hak_oow_t) } },
+	{ "gc",                 { HAK_PFBASE_FUNC, hak_pf_gc,                     0,  0 } },
 	{ "instRespondsTo",     { HAK_PFBASE_FUNC, pf_core_inst_responds_to,      2,  2 } },
 
 	{ "nqk?",               { HAK_PFBASE_FUNC, hak_pf_nqk,                    2,  2 } },

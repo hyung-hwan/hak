@@ -73,7 +73,7 @@ while (< i n) {
 	dic.put h i (* i 3)
 	i := (+ i 1)
 }
-gc
+core.gc
 bad := 0
 hk := (dic.keys h)
 hv := (dic.values h)

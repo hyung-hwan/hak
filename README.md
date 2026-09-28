@@ -207,14 +207,14 @@ array?  bytearray?  dictionary?  fun?  class?  object?
 Input, output and the rest:
 
 ```
-printf  sprintf  scanf  getbyte  getch  gets  log  logf  gc
+printf  sprintf  scanf  getbyte  getch  gets  log  logf
 va-context  va-count  va-get
 ```
 
 Further functions live in modules and are reached through a prefix: `core.` for
-the object primitives (`core.basicNew`, `core.classOf`, `core.+`, the process
-and semaphore primitives), `dic.` for dictionaries (`dic.get`, `dic.put`,
-`dic.size`, `dic.has?`) and `sys.` for the operating system.
+the object primitives (`core.basicNew`, `core.classOf`, `core.+`, `core.gc`, the
+process and semaphore primitives), `dic.` for dictionaries (`dic.get`,
+`dic.put`, `dic.size`, `dic.has?`) and `sys.` for the operating system.
 
 ## Class library
 

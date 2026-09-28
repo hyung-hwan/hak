@@ -5210,6 +5210,8 @@ static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 		if (!va && (HAK_CNODE_IS_SYMBOL(car) || HAK_CNODE_IS_DSYMBOL(car) || HAK_CNODE_IS_BINOP(car)))
 		{
 			hak_oop_cons_t sdc;
+			hak_oow_t minargs = 0;
+			hak_oow_t maxargs = HAK_TYPE_MAX(hak_oow_t);
 
 			/* only symbols are added to the system dictionary.
 			 * perform this lookup only if car is a symbol */
@@ -5220,14 +5222,36 @@ static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 				sdv = (hak_oop_word_t)HAK_CONS_CDR(sdc);
 				if (HAK_IS_PRIM(hak, sdv))
 				{
-					if (nargs < sdv->slot[1] || nargs > sdv->slot[2])
-					{
-						hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(car),
-							"parameters count(%zd) mismatch in function call - %.*js - expecting %zu-%zu parameters",
-							nargs, HAK_CNODE_GET_TOKLEN(car), HAK_CNODE_GET_TOKPTR(car), sdv->slot[1], sdv->slot[2]);
-						return -1;
-					}
+					minargs = sdv->slot[1];
+					maxargs = sdv->slot[2];
 				}
+			}
+			else if (HAK_CNODE_IS_DSYMBOL(car))
+			{
+				/* [HACK]
+				 * a module function is only put into the system dictionary when
+				 * the dotted symbol itself is compiled, which happens after this
+				 * check. on the first occurrence the lookup above therefore finds
+				 * nothing - ask the module directly so the first call is checked
+				 * like every later one. this reads the arity only and registers
+				 * nothing. the registration still happens when the symbol compiles.
+				 * TODO: create a common funciton that registers a module symbol and call it from here... */
+				hak_pfbase_t* pfbase;
+				hak_mod_t* mod;
+				pfbase = hak_querymod(hak, HAK_CNODE_GET_TOKPTR(car), HAK_CNODE_GET_TOKLEN(car), &mod);
+				if (pfbase && pfbase->type == HAK_PFBASE_FUNC)
+				{
+					minargs = pfbase->minargs;
+					maxargs = pfbase->maxargs;
+				}
+			}
+
+			if (nargs < minargs || nargs > maxargs)
+			{
+				hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(car),
+					"parameters count(%zd) mismatch in function call - %.*js - expecting %zu-%zu parameters",
+					nargs, HAK_CNODE_GET_TOKLEN(car), HAK_CNODE_GET_TOKPTR(car), minargs, maxargs);
+				return -1;
 			}
 		}
 

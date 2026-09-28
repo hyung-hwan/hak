@@ -520,7 +520,8 @@ static hak_pfrc_t pf_scanf (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 
 /* ------------------------------------------------------------------------- */
 
-static hak_pfrc_t pf_gc (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+/* registered by the core module as core.gc - see pfinfos[] in mod/core.c */
+hak_pfrc_t hak_pf_gc (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_gc(hak, 1);
 	HAK_STACK_SETRET(hak, nargs, hak->_nil);
@@ -1369,8 +1370,6 @@ static pf_t builtin_prims[] =
 	 * pfinfos[] in mod/sys.c. they are reached as sys.sig-getfd, sys.sig-get,
 	 * sys.sig-set, sys.sig-catch and sys.sig-uncatch. the implementations stay
 	 * here and are declared in lib/hak-prv.h. */
-
-	{ 0, 0,                       pf_gc,              2,  { 'g','c' } },
 
 	{ 1, 1,                       pf_not,             3,  { 'n','o','t' } },
 	/* this is a long-circuit logical and the short-curcuit 'and' is treated as a special form */
