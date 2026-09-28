@@ -874,6 +874,9 @@ static int emit_two_param_instruction (hak_t* hak, int cmd, hak_oow_t param_1, h
 		case HAK_CODE_MAKE_BLOCK:
 		case HAK_CODE_CALL_R:
 		case HAK_CODE_SEND_R:
+		case HAK_CODE_CALL_V:
+		case HAK_CODE_SEND_V:
+		case HAK_CODE_SEND_TO_SUPER_V:
 			bc = cmd;
 			goto write_long;
 	}
@@ -4965,6 +4968,51 @@ out := (sys.run_noret "ls -laF")
 static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nrets);
 static int compile_cons_mlist_expression (hak_t* hak, hak_cnode_t* obj, hak_ooi_t nrets);
 
+/* an argument list may end with '...', which relays the arguments this function
+ * itself received beyond its fixed parameters - see HAK_CODE_SPREAD.
+ *
+ *   fun f(a b ...) { g(a ...) }   ## g gets a, then everything f got past a and b
+ *
+ * it is accepted only as the LAST argument, which keeps the stack discipline
+ * simple: every static argument is pushed first, then one dynamic tail. It is
+ * also accepted only where there is something to relay, so a '...' inside a
+ * function that declared no '...' parameter is refused rather than silently
+ * relaying nothing.
+ *
+ * answers 1 if the list ends with '...', 0 if not, -1 on error. */
+static int check_va_spread (hak_t* hak, hak_cnode_t* arg_list)
+{
+	hak_cnode_t* c;
+	hak_cnode_t* ell = HAK_NULL;
+
+	for (c = arg_list; c && HAK_CNODE_IS_CONS(c); c = HAK_CNODE_CONS_CDR(c))
+	{
+		hak_cnode_t* a;
+		a = HAK_CNODE_CONS_CAR(c);
+		if (!HAK_CNODE_IS_ELLIPSIS(a)) continue;
+
+		if (HAK_CNODE_CONS_CDR(c))
+		{
+			hak_setsynerrbfmt(hak, HAK_SYNERR_CNODE, HAK_CNODE_GET_LOC(a),
+				"'...' allowed only as the last argument");
+			return -1;
+		}
+		ell = a;
+	}
+
+	if (!ell) return 0;
+
+	if (hak->c->funblk.depth < 0 ||
+	    !hak->c->funblk.info[hak->c->funblk.depth].tmpr_va)
+	{
+		hak_setsynerrbfmt(hak, HAK_SYNERR_CNODE, HAK_CNODE_GET_LOC(ell),
+			"'...' not usable in a function that has no '...' parameter");
+		return -1;
+	}
+
+	return 1;
+}
+
 static int compile_cons_dlist_expression (hak_t* hak, hak_cnode_t* obj, int nrets)
 {
 /* TODO: */
@@ -5108,6 +5156,7 @@ static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 		hak_ooi_t oldtop;
 		hak_cframe_t* cf;
 		hak_cnode_t* cdr;
+		int va;
 
 		/* NOTE: cframe management functions don't use the object memory.
 		 *       many operations can be performed without taking GC into account */
@@ -5126,6 +5175,11 @@ static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 		/* compile <operand1> ... etc */
 		cdr = HAK_CNODE_CONS_CDR(obj);
 
+		/* pre-check the argument list to ensure an ellipsis is the last argument and
+		 * used inside a variadic function/method only  */
+		va = check_va_spread(hak, cdr);
+		if (va <= -1) return -1;
+
 		if (!cdr)
 		{
 			nargs = 0;
@@ -5142,6 +5196,7 @@ static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 			}
 
 			nargs = hak_countcnodecons(hak, cdr);
+			if (va) nargs--; /* '...' is not an argument of its own */
 			if (nargs > MAX_CODE_PARAM)
 			{
 				hak_setsynerrbfmt(hak, HAK_SYNERR_ARGFLOOD, HAK_CNODE_GET_LOC(cdr),
@@ -5150,7 +5205,9 @@ static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 			}
 		}
 
-		if (HAK_CNODE_IS_SYMBOL(car) || HAK_CNODE_IS_DSYMBOL(car) || HAK_CNODE_IS_BINOP(car))
+		/* a spread makes the final count a run-time value, so the fixed-arity
+		 * check below cannot be applied - activate_function() catches it instead */
+		if (!va && (HAK_CNODE_IS_SYMBOL(car) || HAK_CNODE_IS_DSYMBOL(car) || HAK_CNODE_IS_BINOP(car)))
 		{
 			hak_oop_cons_t sdc;
 
@@ -5183,6 +5240,7 @@ static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 		HAK_ASSERT(hak, cf->opcode == COP_EMIT_CALL);
 		cf->u.call.index = nargs;
 		cf->u.call.nrets = nrets;
+		cf->u.call.va = va;
 
 		/* arrange to push a dummy receiver to make the call look like a message send.
 		 * if you change the dummy receiver instruction to something else, you must change
@@ -5210,6 +5268,7 @@ static int compile_cons_mlist_expression (hak_t* hak, hak_cnode_t* obj, hak_ooi_
 	hak_ooi_t oldtop;
 	hak_cframe_t* cf;
 	int folded;
+	int va;
 
 	/* message sending
 	 *  (:<receiver> <operator> <operand1> ...)
@@ -5287,7 +5346,7 @@ static int compile_cons_mlist_expression (hak_t* hak, hak_cnode_t* obj, hak_ooi_
 	{
 		PUSH_CFRAME(hak, COP_COMPILE_OBJECT, car);
 	}
-	else if (HAK_CNODE_IS_CONS(car) && (HAK_CNODE_CONS_CONCODE(car) == HAK_CONCODE_XLIST || HAK_CNODE_CONS_CONCODE(car) == HAK_CONCODE_MLIST) || HAK_CNODE_CONS_CONCODE(car) == HAK_CONCODE_BLIST)
+	else if (HAK_CNODE_IS_CONS(car) && (HAK_CNODE_CONS_CONCODE(car) == HAK_CONCODE_XLIST || HAK_CNODE_CONS_CONCODE(car) == HAK_CONCODE_MLIST || HAK_CNODE_CONS_CONCODE(car) == HAK_CONCODE_BLIST))
 	{
 		/*
 		 * class XX {
@@ -5312,6 +5371,12 @@ static int compile_cons_mlist_expression (hak_t* hak, hak_cnode_t* obj, hak_ooi_
 
 	/* compile <operand1> ... etc */
 	cdr = folded? HAK_CNODE_CONS_CDR(obj): HAK_CNODE_CONS_CDR(cdr);
+
+	/* pre-check the argument list to ensure an ellipsis is the last argument and
+	 * used inside a variadic function/method only  */
+	va = check_va_spread(hak, cdr);
+	if (va <= -1) return -1;
+
 	if (!cdr)
 	{
 		nargs = 0;
@@ -5328,6 +5393,7 @@ static int compile_cons_mlist_expression (hak_t* hak, hak_cnode_t* obj, hak_ooi_
 		}
 
 		nargs = hak_countcnodecons(hak, cdr);
+		if (va) nargs--; /* '...' is not an argument of its own */
 		if (nargs > MAX_CODE_PARAM)
 		{
 			hak_setsynerrbfmt(hak, HAK_SYNERR_ARGFLOOD, HAK_CNODE_GET_LOC(cdr),
@@ -5346,6 +5412,7 @@ static int compile_cons_mlist_expression (hak_t* hak, hak_cnode_t* obj, hak_ooi_
 	cf->u.sendmsg.nargs = nargs;
 	cf->u.sendmsg.nrets = nrets;
 	cf->u.sendmsg.to_super = (HAK_CNODE_GET_TYPE(rcv) == HAK_CNODE_SUPER);
+	cf->u.sendmsg.va = va;
 
 	PUSH_CFRAME(hak, COP_COMPILE_OBJECT, rcv);
 	return 0;
@@ -6164,8 +6231,6 @@ static int compile_object_list (hak_t* hak)
 			}
 		}
 
-		SWITCH_TOP_CFRAME(hak, COP_COMPILE_OBJECT, car);
-
 		if (cdr)
 		{
 			/* there is a next statement to compile
@@ -6181,10 +6246,33 @@ static int compile_object_list (hak_t* hak)
 			 * except the last.
 			 */
 			int nextcop;
+			/* [NOTE]
+			 *  COP_COMPILE_ARGUMENT_LIST doesn't have the corresponding LIST_TAIL because
+			 *  the argument must not be popped off unlike actual statements. LIST_TAIL is
+			 *  used to produce POP_STACKTOP around the bottom of this function. nextcop leaves
+			 *  ARGUMENT_LIST unchanged, and the trailing POP_STACKTOP block fires only for
+			 *  the *_TAIL opcodes, so arguments are never popped between pushes. */
 			nextcop = (cop == COP_COMPILE_OBJECT_LIST)?     COP_COMPILE_OBJECT_LIST_TAIL:
 			          (cop == COP_COMPILE_IF_OBJECT_LIST)?  COP_COMPILE_IF_OBJECT_LIST_TAIL:
 			          (cop == COP_COMPILE_TRY_OBJECT_LIST)? COP_COMPILE_TRY_OBJECT_LIST_TAIL: cop;
-			PUSH_SUBCFRAME(hak, nextcop, cdr);
+			SWITCH_TOP_CFRAME(hak, COP_COMPILE_OBJECT, car); /* <1> */
+			PUSH_SUBCFRAME(hak, nextcop, cdr); /* <2> */
+		}
+		else
+		{
+			/* car is the last item. no more at the back */
+			if (cop == COP_COMPILE_ARGUMENT_LIST && HAK_CNODE_IS_ELLIPSIS(car))
+			{
+				/* the last argument is '...'. push the active context and let
+				 * SPREAD replace it with this function's variadic arguments plus
+				 * the count of them. */
+				if (emit_byte_instruction(hak, HAK_CODE_PUSH_CONTEXT, HAK_CNODE_GET_LOC(car)) <= -1 ||
+				    emit_byte_instruction(hak, HAK_CODE_SPREAD, HAK_CNODE_GET_LOC(car)) <= -1) return -1;
+				POP_CFRAME(hak);
+				goto done;
+			}
+
+			SWITCH_TOP_CFRAME(hak, COP_COMPILE_OBJECT, car);
 		}
 
 		if (cop == COP_COMPILE_OBJECT_LIST_TAIL ||
@@ -6604,7 +6692,13 @@ static HAK_INLINE int emit_call (hak_t* hak)
 	HAK_ASSERT(hak, cf->opcode == COP_EMIT_CALL);
 	HAK_ASSERT(hak, cf->operand != HAK_NULL);
 
-	if (cf->u.call.nrets > 0)
+	if (cf->u.call.va)
+	{
+		/* CALL_V handles both va and nrets. there is no split.
+		 * the argument count is only known at run time - see HAK_CODE_SPREAD */
+		n = emit_two_param_instruction(hak, HAK_CODE_CALL_V, cf->u.call.index, cf->u.call.nrets, HAK_CNODE_GET_LOC(cf->operand));
+	}
+	else if (cf->u.call.nrets > 0)
 	{
 		n = emit_two_param_instruction(hak, HAK_CODE_CALL_R, cf->u.call.index, cf->u.call.nrets, HAK_CNODE_GET_LOC(cf->operand));
 	}
@@ -6657,7 +6751,13 @@ static HAK_INLINE int emit_send (hak_t* hak)
 	HAK_ASSERT(hak, cf->opcode == COP_EMIT_SEND);
 	HAK_ASSERT(hak, cf->operand != HAK_NULL);
 
-	if (cf->u.sendmsg.nrets > 0)
+	if (cf->u.sendmsg.va)
+	{
+		/* SEND_V/SEND_TO_SUPER_V can handle both va and nrets. there is not split.
+		 * the argument count is only known at run time - see HAK_CODE_SPREAD */
+		n = emit_two_param_instruction(hak, (cf->u.sendmsg.to_super? HAK_CODE_SEND_TO_SUPER_V: HAK_CODE_SEND_V), cf->u.sendmsg.nargs, cf->u.sendmsg.nrets, HAK_CNODE_GET_LOC(cf->operand));
+	}
+	else if (cf->u.sendmsg.nrets > 0)
 	{
 		n = emit_two_param_instruction(hak, (cf->u.sendmsg.to_super? HAK_CODE_SEND_TO_SUPER_R: HAK_CODE_SEND_R), cf->u.sendmsg.nargs, cf->u.sendmsg.nrets, HAK_CNODE_GET_LOC(cf->operand));
 	}

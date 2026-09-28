@@ -342,6 +342,16 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 				LOG_INST_2 (hak, "call %zu %zu", b1, b2);
 				break;
 
+			case HAK_CODE_SPREAD:
+				LOG_INST_0 (hak, "spread");
+				break;
+
+			case HAK_CODE_CALL_V:
+				FETCH_PARAM_CODE_TO(hak, b1); /* static nargs */
+				FETCH_PARAM_CODE_TO(hak, b2); /* nrvars */
+				LOG_INST_2 (hak, "call_v %zu %zu", b1, b2);
+				break;
+
 			case HAK_CODE_CALL_X:
 				FETCH_PARAM_CODE_TO(hak, b1);
 				goto handle_call;
@@ -513,6 +523,17 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 				FETCH_PARAM_CODE_TO(hak, b1); /* nargs */
 				FETCH_PARAM_CODE_TO(hak, b2); /* nrvars */
 				LOG_INST_2 (hak, "send_to_super_r %zu %zu", b1, b2);
+				break;
+
+			case HAK_CODE_SEND_V:
+				FETCH_PARAM_CODE_TO(hak, b1); /* static nargs */
+				FETCH_PARAM_CODE_TO(hak, b2); /* nrvars */
+				LOG_INST_2 (hak, "send_v %zu %zu", b1, b2);
+				break;
+			case HAK_CODE_SEND_TO_SUPER_V:
+				FETCH_PARAM_CODE_TO(hak, b1); /* static nargs */
+				FETCH_PARAM_CODE_TO(hak, b2); /* nrvars */
+				LOG_INST_2 (hak, "send_to_super_v %zu %zu", b1, b2);
 				break;
 
 			case HAK_CODE_SEND_X:

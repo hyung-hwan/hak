@@ -45,6 +45,7 @@ check_SCRIPTS = \
 	tick-01.hak \
 	try-01.hak \
 	va-01.hak \
+	va-02.hak \
 	var-01.hak \
 	var-02.hak \
 	var-03.hak
@@ -58,6 +59,7 @@ check_ERRORS = \
 	mlist-5001.err \
 	send-5001.err \
 	sig-5001.err \
+	va-5001.err \
 	var-5001.err \
 	var-5002.err \
 	var-5004.err

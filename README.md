@@ -74,6 +74,8 @@ do { | k | set k 20; printf "k=%d\n" k; };
 - character array `#c[ ]` - the elements are characters, as in `#c['a' 'b']`
 - list `#( )`
 - attribute list `[ ]`, as in `class[#b]` and `fun[#ci]`
+- destructuring assignment `[a b c] := (f 5)`, which takes the return variables
+  of a call - see [Variadic arguments](#variadic-arguments)
 - variable declaration `| |` at the start of a block, or `var a b c`
 - assignment `varname := value` or `set varname value`
 - return variables `::` in a parameter list, collected with `set-r`
@@ -400,8 +402,96 @@ set q (set-r a b c (x 10 20 30 40 50))
 printf "--------------------------\n"
 ```
 
-The `...` takes the extra arguments and `::` names the return variables, which
-`set-r` collects at the call site.
+The `...` takes the extra arguments and `::` names the return variables. At the
+call site those are collected either with `set-r` or by destructuring:
+
+```
+set-r p q (f 10)          ## p and q take the first two return variables
+t := ([a b c] := (f 10))  ## the same, and t takes the first one
+```
+
+### Relaying the extra arguments
+
+Writing `...` as the **last argument of a call** passes on everything this
+function itself received beyond its fixed parameters:
+
+```
+fun three(a b c) { printf "%O %O %O\n" a b c }
+
+fun relay(x ...) {
+    three(x ...)          ## three gets x, then everything relay got past x
+}
+
+relay 1 2 3               ## 1 2 3
+```
+
+The two uses of `...` are inverses and never share a position - one is a
+parameter list, the other an argument list - so there is no ambiguity between
+collecting and relaying.
+
+A relayed argument is an ordinary argument, so the callee needs to know nothing
+about how it was called. If the callee is itself variadic, what it receives
+becomes *its* pack, and `va-count` inside it sees the full number - which is
+what lets relays chain:
+
+```
+fun counter(...) { return (va-count) }
+fun once(...) { return counter(...) }
+fun twice(...) { return once(...) }
+
+printf "%O\n" (twice 1 2 3 4 5)    ## 5
+```
+
+It works the same in a message send, including one to `super`, and alongside
+return variables. An empty pack relays nothing, so relaying into a fixed-arity
+function is fine when there is nothing extra to pass and raises the ordinary
+arity error when there is.
+
+Two forms are refused. `...` anywhere but last is an error, which keeps the
+argument order unambiguous; and `...` inside a function that declared no `...`
+parameter is an error rather than a silent relay of nothing.
+
+#### The pack belongs to the function that declared it
+
+`...` reaches the pack of the function **directly** containing it. A nested
+function does not inherit the pack of the one around it, even when that outer
+function is variadic:
+
+```
+fun x(a b ...) {
+    return (fun() {
+        printf "%d %d %d\n" a b ...    ## refused
+    })
+}
+```
+
+```
+syntax error - '...' not usable in a function that has no '...' parameter
+```
+
+The inner function declares no `...` of its own, so it has no pack to relay.
+This is not a rule of its own - `va-count` and `va-get` already answer for the
+function directly containing them, so an inner function sees a count of zero
+where the outer one sees three:
+
+```
+fun x(a b ...) {
+    | g |
+    g := (fun() { return (va-count) })
+    printf "outer va-count = %d\n" (va-count)    ## 3
+    printf "inner va-count = %d\n" g()           ## 0
+}
+
+x 1 2 3 4 5
+```
+
+Relaying is refused at compile time rather than quietly passing nothing, which
+is what the same code would do if it were allowed. Where an inner function does
+need the outer arguments, name them or pass them in explicitly.
+
+The older way - passing `(va-context)` explicitly and reading it with
+`(va-count ctx)` and `(va-get i ctx)` - still works. It is no longer the only
+way, and unlike a relay it requires the callee to be written for it.
 
 ## HAK Exchange Protocol
 

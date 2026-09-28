@@ -1,0 +1,122 @@
+## relaying variadic arguments with '...'
+##
+## A function that declares '...' collects everything passed beyond its fixed
+## parameters. Writing '...' as the LAST argument of a call relays that whole
+## collection to the callee as ordinary arguments:
+##
+##     fun f(a b ...) { g(a ...) }    ## g gets a, then everything f got past a and b
+##
+## The two uses are inverses of each other and never occupy the same position -
+## one is a parameter list, the other an argument list - so the reader tells
+## them apart with no rule of its own.
+##
+## What this replaces is passing (va-context) by hand, which worked only when
+## the callee had been written to accept a context and index it with va-get.
+## A relayed argument is an ordinary argument, so the callee needs to know
+## nothing about how it was called.
+
+$include-once "object.hak"
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+## --- order, and mixing with fixed arguments ---------------------------------
+
+fun three(a b c) { return (sprintf "%O-%O-%O" a b c) }
+fun relayOrder(x ...) { return three(x ...) }
+
+chk (eql? (relayOrder 1 2 3) "1-2-3") "the fixed argument goes first, then the pack in order"
+
+## --- the relayed pack becomes the callee's own pack --------------------------
+##
+## This is what makes relaying compose: a function that relays to another
+## relayer does not flatten or lose anything on the way.
+
+fun counter(...) { return (va-count) }
+fun once(...) { return counter(...) }
+fun twice(...) { return once(...) }
+
+chk (= (once 1 2 3 4 5) 5) "a relayed pack is the callee's own variadic pack"
+chk (= (twice 1 2 3 4 5) 5) "...however many relays it passes through"
+
+## --- an empty pack relays nothing -------------------------------------------
+##
+## So relaying into a fixed-arity function is fine when there is nothing extra
+## to relay, and fails with the ordinary arity error when there is. The error
+## is about arity, not about relaying.
+
+fun one(a) { return a }
+fun relayEmpty(a ...) { return one(a ...) }
+
+chk (= (relayEmpty 7) 7) "an empty pack relays nothing at all"
+
+## --- va-get still reaches the relayed values ---------------------------------
+
+fun getSecond(...) { return (va-get 1) }
+fun relayGet(...) { return getSecond(...) }
+
+chk (= (relayGet 10 20 30) 20) "va-get indexes the relayed pack"
+
+## --- a spread reaches primitives too -----------------------------------------
+
+fun viaSprintf(fmt ...) { return sprintf(fmt ...) }
+
+chk (eql? (viaSprintf "%d/%d" 4 5) "4/5") "a spread reaches a primitive"
+
+## --- message sends ------------------------------------------------------------
+
+class Acc: Object (_t) {
+	fun[#ci] new() { self._t := 0 ; return self }
+	fun add3(p q r) { self._t := (+ self._t p q r) ; return self._t }
+}
+
+fun sendRelay(o ...) { return o:add3(...) }
+
+chk (= (sendRelay (Acc:new) 1 2 3) 6) "a spread works in a message send"
+
+## --- and in a send to super ---------------------------------------------------
+
+class Sup: Object {
+	fun[#ci] new() { return self }
+	fun sum3(p q r) { return (+ p q r) }
+}
+
+class Sub: Sup {
+	fun sum3(p q r) { return 0 }               ## would win without 'super'
+	fun viaSuper(...) { return super:sum3(...) }
+}
+
+chk (= ((Sub:new):viaSuper 1 2 3) 6) "a spread works in a send to super"
+
+## --- with return variables ----------------------------------------------------
+##
+## A spread changes how many arguments go in, never how many values come out,
+## so the two are independent.
+
+fun multi(x ... :: r1 r2) { r1 := x ; r2 := (va-count) ; return }
+fun relayMulti(...) { set-r p q multi(...) ; return (sprintf "%O/%O" p q) }
+
+chk (eql? (relayMulti 9 8 7) "9/2") "a spread works alongside return variables"
+
+## --- a larger pack -------------------------------------------------------------
+##
+## Nothing above uses enough arguments to leave the small-count encodings, so
+## one case goes past them.
+
+fun sink(...) { return (va-count) }
+fun relayMany(...) { return sink(...) }
+
+chk (= (relayMany 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20) 20) \
+    "a pack larger than the short argument encodings relays intact"
+
+## --- the old way still works ---------------------------------------------------
+##
+## Passing (va-context) explicitly is unchanged - it is simply no longer the
+## only way to reach another function's arguments.
+
+fun viaContext(t ctx) { return (va-count ctx) }
+fun oldWay(...) { return (viaContext "tag" (va-context)) }
+
+chk (= (oldWay 1 2 3) 3) "passing (va-context) by hand still works"

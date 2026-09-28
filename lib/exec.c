@@ -4291,6 +4291,109 @@ static int execute (hak_t* hak)
 				break;
 			}
 
+			case HAK_CODE_SPREAD:
+			{
+				/* pop a value, push its elements, then push how many were
+				 * pushed. the CALL_V/SEND_V that follows pops that count and
+				 * adds it to its own static argument count. */
+				hak_oop_t src;
+				hak_oop_t* vp;
+				hak_ooi_t nspread, i, base;
+
+				LOG_INST_0(hak, "spread");
+				HAK_STACK_POP_TO(hak, src);
+
+				base = 0;
+				vp = HAK_NULL;
+				if (HAK_IS_CONTEXT(hak, src))
+				{
+					/* the variadic arguments sit past the fixed arguments,
+					 * the return variables and the local variables */
+					hak_oop_context_t c;
+					hak_ooi_t attr_mask;
+
+					c = (hak_oop_context_t)src;
+					attr_mask = HAK_OOP_TO_SMOOI(c->attr_mask);
+					base = GET_BLK_MASK_NARGS(attr_mask) +
+					       GET_BLK_MASK_NRVARS(attr_mask) +
+					       GET_BLK_MASK_NLVARS(attr_mask);
+					nspread = (hak_ooi_t)HAK_OBJ_GET_SIZE(c) - base - HAK_CONTEXT_NAMED_INSTVARS;
+					if (nspread < 0) nspread = 0;
+					/* a context's slot[] begins AFTER its named instance
+					 * variables, so it is indexed from the fixed arguments
+					 * onwards - the same way pf_va_get() reaches them */
+					vp = &c->slot[base];
+				}
+				else if (HAK_IS_ARRAY(hak, src))
+				{
+					nspread = (hak_ooi_t)HAK_OBJ_GET_SIZE(src);
+					vp = &((hak_oop_oop_t)src)->slot[0];
+				}
+				/* TODO: can we support the spread of other types? byte-array, dictionary?  */
+				else
+				{
+					hak_seterrbfmt(hak, HAK_ECALL, "cannot spread %O", src);
+					if (do_throw_with_internal_errmsg(hak, fetched_instruction_pointer) >= 0) break;
+					goto oops_with_errmsg_supplement;
+				}
+
+				if (nspread > MAX_CODE_PARAM)
+				{
+					hak_seterrbfmt(hak, HAK_ERANGE, "too many(%zd) arguments to spread", nspread);
+					if (do_throw_with_internal_errmsg(hak, fetched_instruction_pointer) >= 0) break;
+					goto oops_with_errmsg_supplement;
+				}
+
+				/* HAK_STACK_PUSH() only flags an overflow after the fact, so
+				 * make room for the whole spread plus the count up front */
+				if (hak->sp + nspread + 1 >= HAK_OOP_TO_SMOOI(hak->processor->active->st))
+				{
+					hak_seterrbfmt(hak, HAK_ESTKOVRFLW, "process stack overflow on spreading %zd arguments", nspread);
+					if (do_throw_with_internal_errmsg(hak, fetched_instruction_pointer) >= 0) break;
+					goto oops_with_errmsg_supplement;
+				}
+
+				/* [NOTE] src has been popped and the first push below
+				 * overwrites the slot it came from, so vp is only kept alive
+				 * by the absence of a collection. that holds because pushing
+				 * allocates nothing - do not introduce an allocation into this
+				 * loop without rooting src first. */
+				for (i = 0; i < nspread; i++)
+				{
+					HAK_STACK_PUSH(hak, vp[i]);
+				}
+
+				/* push the spread count to the stack top for CALL_V/SEND_V/SEND_TO_SUPER_V */
+				HAK_STACK_PUSH(hak, HAK_SMOOI_TO_OOP(nspread));
+				break;
+			}
+
+			case HAK_CODE_CALL_V:
+			{
+				hak_oop_t nspread;
+				hak_oop_t rcv;
+
+				FETCH_PARAM_CODE_TO(hak, b1); /* static nargs */
+				FETCH_PARAM_CODE_TO(hak, b2); /* nrvars */
+				LOG_INST_2(hak, "call_v %zu %zu", b1, b2); /* the decoded instruction must not include the spread count */
+
+				HAK_STACK_POP_TO(hak, nspread); /* the count left by SPREAD. the stack top must have this coun because this instruction must follow SPREAD immediately */
+				b1 += HAK_OOP_TO_SMOOI(nspread); /* adjust the number of arguments with the spread count */
+
+				if (b2 > 0)
+				{
+					rcv = HAK_STACK_GETOP(hak, b1);
+					if (HAK_IS_COMPILED_BLOCK(hak, rcv))
+					{
+						if (activate_block(hak, b1, b2) <= -1) goto oops_with_errmsg_supplement;
+						break;
+					}
+					hak_seterrbfmt(hak, HAK_ECALL, "cannot call %O", rcv);
+					goto oops_with_errmsg_supplement;
+				}
+				goto handle_call;
+			}
+
 			case HAK_CODE_CALL_X:
 				FETCH_PARAM_CODE_TO(hak, b1);
 				goto handle_call;
@@ -4799,13 +4902,23 @@ hak_logbfmt(hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncv
 			/* -------------------------------------------------------- */
 			case HAK_CODE_SEND_R: /* send message with return variables */
 			case HAK_CODE_SEND_TO_SUPER_R:
-
 				FETCH_PARAM_CODE_TO(hak, b1); /* nargs */
 				FETCH_PARAM_CODE_TO(hak, b2); /* nrvars */
-
 				LOG_INST_3(hak, "send%hs %zu %zu", (((bcode >> 2) & 1)? "_to_super": ""), b1, b2);
 				goto handle_send_2;
 
+
+			case HAK_CODE_SEND_V:
+			case HAK_CODE_SEND_TO_SUPER_V:
+			{
+				hak_oop_t nspread;
+				FETCH_PARAM_CODE_TO(hak, b1); /* static nargs */
+				FETCH_PARAM_CODE_TO(hak, b2); /* nrvars */
+				LOG_INST_3(hak, "send_v%hs %zu %zu", (((bcode >> 2) & 1)? "_to_super": ""), b1, b2);
+				HAK_STACK_POP_TO(hak, nspread); /* the count left by SPREAD */
+				b1 += HAK_OOP_TO_SMOOI(nspread);
+				goto handle_send_2;
+			}
 
 			case HAK_CODE_SEND_X:
 			case HAK_CODE_SEND_TO_SUPER_X:

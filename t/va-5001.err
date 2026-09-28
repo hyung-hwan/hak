@@ -1,0 +1,48 @@
+## '...' in an argument list
+
+fun g(x y) { return x }
+
+fun f(a ...) { g(... a) } ##ERROR: syntax error - '...' allowed only as the last argument
+
+---
+
+## the same when it is buried among other arguments
+
+fun g(x y z) { return x }
+
+fun f(a ...) { g(a ... a) } ##ERROR: syntax error - '...' allowed only as the last argument
+
+---
+
+## twice in one call - the first one is not last, so it is caught the same way
+
+fun g(x y) { return x }
+
+fun f(...) { g(... ...) } ##ERROR: syntax error - '...' allowed only as the last argument
+
+---
+
+## relaying from a function that collects nothing
+##
+## Refusing this beats relaying an empty pack silently: the '...' says the
+## author believed there was something to pass on.
+
+fun g(x) { return x }
+
+fun f(a) { g(a ...) } ##ERROR: syntax error - '...' not usable in a function that has no '...' parameter
+
+---
+
+## and outside any function at all
+
+fun g(x) { return x }
+
+g(1 ...) ##ERROR: syntax error - '...' not usable in a function that has no '...' parameter
+
+---
+
+## a message send argument list is checked the same way
+
+class K { fun[#c] m(a b) { return a } }
+
+fun f(...) { return K:m(... 1) } ##ERROR: syntax error - '...' allowed only as the last argument

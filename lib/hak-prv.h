@@ -729,6 +729,7 @@ struct hak_cframe_t
 		{
 			hak_ooi_t index;
 			hak_ooi_t nrets;
+			int va; /* the argument list ends with '...' - see HAK_CODE_SPREAD */
 		} call;
 
 		/* COP_EMIT_SEND_MESSAGE */
@@ -737,6 +738,7 @@ struct hak_cframe_t
 			hak_ooi_t nargs;
 			hak_ooi_t nrets;
 			int to_super;
+			int va; /* the argument list ends with '...' - see HAK_CODE_SPREAD */
 		} sendmsg;
 
 		/* COP_EMIT_SET */
@@ -1521,12 +1523,23 @@ enum hak_bcode_t
 	HAK_CODE_POP_INTO_OBJECT_X        = 0xBC, /* 188 ## */
 	HAK_CODE_PUSH_OBJECT_X            = 0xC0, /* 192 ## */
 
-	/* UNUSED - 0xC1 - 0xC3 */
+	/* SPREAD pops a value and pushes its elements, then pushes the number
+	 * of elements pushed. the xxx_V instructions that follow it pop that
+	 * number and add it to their own static argument count, which is how a
+	 * call gets an argument count that is not known until run time. */
+	HAK_CODE_SPREAD                   = 0xC1, /* 193 */
+
+	/* [NOTE] SEND_V and SEND_TO_SUPER_V must differ in bit 2 only, because
+	 *        the executor reads to_super out of ((code >> 2) & 1) */
+	HAK_CODE_SEND_V                   = 0xC2, /* 194 ## ## - bit 2 off */
+	HAK_CODE_CALL_V                   = 0xC3, /* 195 ## ## */
 
 	HAK_CODE_JUMP_FORWARD_X           = 0xC4, /* 196 ## */
 	HAK_CODE_JUMP2_FORWARD            = 0xC5, /* 197 */
 
-	/* UNUSED - 0xC6 - 0xC7 */
+	HAK_CODE_SEND_TO_SUPER_V          = 0xC6, /* 198 ## ## - bit 2 on */
+
+	/* UNUSED - 0xC7 */
 
 	HAK_CODE_JUMP_BACKWARD_X          = 0xC8, /* 200 ## */
 	HAK_CODE_JUMP2_BACKWARD           = 0xC9, /* 201 */
