@@ -1,0 +1,126 @@
+## 'super' resolves against the class that DEFINES the running method
+##
+## A send to 'super' must start its lookup above the class where the currently
+## executing method is defined - not above the receiver's class. The two agree
+## only when the receiver's class happens to be exactly the defining class, so
+## using the receiver's class works for a method called on its own class and
+## loops forever for the same method called on a subclass:
+##
+##     class A: Base { fun greet() { return (super:greet) } }
+##     class B: A { }                  ## B adds nothing at all
+##
+## With the receiver's class as the base, an instance of B finds greet in A,
+## then looks up from B's superclass - which is A again - and finds the same
+## method, forever. Subclassing A without touching it broke it.
+##
+## Every case below therefore comes in pairs: the receiver whose class defines
+## the method, and a receiver one level further down that inherits it. The
+## second of each pair is what used to exhaust the process stack.
+
+$include-once "object.hak"
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+## --- instance methods ---------------------------------------------------------
+
+class Base: Object {
+	fun[#ci] new() { return self }
+	fun greet() { return "Base" }
+}
+
+class A: Base {
+	fun greet() { return (super:greet) }
+}
+
+class B: A { }              ## adds nothing - the point of the test
+
+chk (eql? ((A:new):greet) "Base") "super from the class that defines the method"
+chk (eql? ((B:new):greet) "Base") "...and from a subclass that inherits it"
+
+## one level further down again, to show the lookup keeps climbing rather than
+## restarting wherever the receiver happens to sit
+class C: B { }
+
+chk (eql? ((C:new):greet) "Base") "...and from two levels below the definition"
+
+## --- the search climbs past intermediate classes that do not define it --------
+
+class D: Base {
+	fun greet() { return (super:greet) }
+}
+class E: D {
+	fun greet() { return (super:greet) }   ## reaches D's, which reaches Base's
+}
+
+chk (eql? ((E:new):greet) "Base") "chained super calls each climb one level"
+
+## --- class-side methods --------------------------------------------------------
+##
+## The class-method path has its own lookup routine and had the same defect.
+
+class Base2: Object {
+	fun[#c] tag() { return "Base2" }
+}
+class A2: Base2 {
+	fun[#c] tag() { return (super:tag) }
+}
+class B2: A2 { }
+
+chk (eql? (A2:tag) "Base2") "class-side super from the defining class"
+chk (eql? (B2:tag) "Base2") "...and from a subclass that inherits it"
+
+## --- super inside a block nested in a method ------------------------------------
+##
+## A block gets a context of its own and records no owner, so the owner has to
+## be found by walking the lexical home chain out to the enclosing method.
+
+class F: Base {
+	fun greet() {
+		| f |
+		f := (fun() { return (super:greet) })
+		return f()
+	}
+}
+class G: F { }
+
+chk (eql? ((F:new):greet) "Base") "super inside a nested block"
+chk (eql? ((G:new):greet) "Base") "...and when that method is inherited"
+
+## --- super:new must instantiate the RECEIVER's class ----------------------------
+##
+## A '#ci' method instantiates before running. The class to instantiate is the
+## one the message was sent to, not the one the method was found in - otherwise
+## 'super:new' would quietly hand back an instance of the parent.
+
+class P: Object {
+	fun[#ci] new() { return self }
+	fun kind() { return "P" }
+}
+class Q: P {
+	fun kind() { return "Q" }
+	fun[#c] make() { return (super:new) }
+}
+
+chk (eql? (Q:make):kind() "Q") "super:new instantiates the receiver's class"
+
+## the case that tells the two apart: 'make' is inherited, so the method's owner
+## (Q) and the receiver (R) differ. Resolving the lookup base from the owner must
+## not also change what gets instantiated.
+class R: Q {
+	fun kind() { return "R" }
+}
+
+chk (eql? (R:make):kind() "R") "...even when the class method itself is inherited"
+
+## --- super outside a method -----------------------------------------------------
+##
+## There is no defining class to resolve against, so it is refused rather than
+## falling back to some other base.
+
+caught := nil
+try { (super:foo) } catch (e) { caught := e }
+chk (eql? caught "unable to send foo to nil - 'super' not usable outside a method") \
+    "super outside a method is refused"

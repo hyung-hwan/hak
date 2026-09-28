@@ -764,8 +764,11 @@ struct hak_context_t
 	 * an activated block context copies this field from the base block context. */
 	hak_oop_context_t  home; /* context or nil */
 
-	/* it is set to itself for a method context, nil for other contexts.
-	 * TODO: this field may not be needed.. mthhome access has been commented out.. so remove this field */
+	/* the method context this context is lexically inside.
+	 * a method context is its own mthhome(mthhome is set to the method context
+	 * itself). any other context copies it from its home, so a block created
+	 * inside a method points at that method's context. nil when there is no
+	 * enclosing method - the initial context, or a function defined outside any method. */
 	hak_oop_context_t mthhome;
 
 	/* instance variable access instructions hold the index to a variable within

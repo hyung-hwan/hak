@@ -2223,7 +2223,15 @@ static int prepare_new_context (hak_t* hak, hak_oop_process_t proc, hak_oop_bloc
 	else
 	{
 		HAK_CTX_SET_HOME(hak, blkctx, (hak_oop_t)op_blk->home);
+	#if 0
 		HAK_CTX_SET_MTHHOME(hak, blkctx, (hak_oop_t)hak->_nil);
+	#else
+		/* a block is lexically inside whatever method created it, so it shares
+		 * that method's context. this is what lets 'super:' inside a block
+		 * resolve against the class defining the enclosing method. nil stays
+		 * nil for a block created outside any method. */
+		HAK_CTX_SET_MTHHOME(hak, blkctx, HAK_CTX_GET_MTHHOME(hak, op_blk->home));
+	#endif
 		HAK_CTX_SET_RECEIVER(hak, blkctx, HAK_CTX_GET_RECEIVER(hak, op_blk->home));
 	#if 0 /* filled by make_context() already */
 		HAK_CTX_SET_IVAROFF(hak, blkctx, HAK_SMOOI_TO_OOP(0)); /* not useful if it's not message send */
@@ -2562,11 +2570,58 @@ int hak_inst_responds_to (hak_t* hak, hak_oop_t rcv, hak_oop_t msg)
 	return mth_blk != HAK_NULL;
 }
 
+/*
+class Top {}
+class Base: Top { fun greet() { printf("Base:greet\n"); return "Base" } }
+class A: Base   { fun greet() { return super:greet() } }
+class B: A      { }
+## --------------------------------------
+##B:basicNew(0):greet()
+core.basicNew(B):greet()
+
+if i pass the class of the receiver to find_cmethod_noseterr() or find_imethod_noseterr(),
+and if the receiver doesn't define the function, there can be endless recursion.
+As in the example above, the greet message is sent to an instance of B. It attempts to
+find the method in the chain. It finds it in the class A. class A attempts to find it in
+the chain beginning from B. so it comes back to A:greet() and hits super:greet() there.
+*/
+static hak_oop_class_t get_class_of_running_method (hak_t* hak, hak_oop_t ctx)
+{
+#if 0
+	/* the class that owns the method currently running. 'super' resolves against
+	 * this, never against the receiver's class - see send_message(). A block gets
+	 * a context of its own and records no owner, so walk out along the lexical
+	 * home chain to the method enclosing it. */
+	hak_oop_t prev;
+
+	while (!HAK_IS_NIL(hak, ctx))
+	{
+		hak_oop_t owner;
+		owner = HAK_CTX_GET_OWNER(hak, ctx);
+		if (!HAK_IS_NIL(hak, owner) && HAK_IS_CLASS(hak, owner)) return (hak_oop_class_t)owner;
+
+		prev = ctx;
+		ctx = HAK_CTX_GET_HOME(hak, ctx);
+		if (ctx == prev) break;  /* defensive - a self-referential home */
+	}
+
+	return HAK_NULL;
+#else
+	hak_oop_t mth, owner;
+	mth = HAK_CTX_GET_MTHHOME(hak, ctx);
+	if (HAK_IS_NIL(hak, mth)) return HAK_NULL;   /* not inside a method */
+	owner = HAK_CTX_GET_OWNER(hak, mth);
+	HAK_ASSERT(hak, !HAK_IS_NIL(hak, owner));
+	HAK_ASSERT(hak, HAK_IS_CLASS(hak, owner));
+	return (hak_oop_class_t)owner;
+#endif
+}
+
 static HAK_INLINE int send_message (hak_t* hak, hak_oop_t rcv, hak_oop_t msg, int to_super, hak_ooi_t nargs, hak_ooi_t nrvars)
 {
 	hak_oop_block_t mth_blk;
 	hak_oop_context_t newctx;
-	hak_oop_class_t _class, owner;
+	hak_oop_class_t _class, owner, super_base;
 	hak_ooi_t ivaroff;
 	int x;
 
@@ -2576,10 +2631,22 @@ static HAK_INLINE int send_message (hak_t* hak, hak_oop_t rcv, hak_oop_t msg, in
 /* ============================= */
 /* TODO: implement methods cache */
 /* ============================= */
+	if (to_super)
+	{
+		/* 'rcv' decides which object receives; the class to start looking from
+		 * comes from where this code is written, not from the receiver. */
+		super_base = get_class_of_running_method(hak, (hak_oop_t)hak->active_context);
+		if (!super_base)
+		{
+			hak_seterrbfmt(hak, HAK_ECALL, "'super' not usable outside a method");
+			return -1;
+		}
+	}
+
 	if (HAK_IS_CLASS(hak, rcv))
 	{
 		_class = (hak_oop_class_t)rcv;
-		mth_blk = find_cmethod_noseterr(hak, _class, msg, to_super, &ivaroff, &owner);
+		mth_blk = find_cmethod_noseterr(hak, (to_super? super_base: _class), msg, to_super, &ivaroff, &owner);
 		if (!mth_blk) goto msg_not_found;
 
 		if (GET_BLK_MASK_INSTA(HAK_OOP_TO_SMOOI(mth_blk->attr_mask))) /* #ci method */
@@ -2602,7 +2669,7 @@ static HAK_INLINE int send_message (hak_t* hak, hak_oop_t rcv, hak_oop_t msg, in
 		_class = (hak_oop_class_t)HAK_CLASSOF(hak, rcv);
 		HAK_ASSERT(hak, _class != HAK_NULL);
 		HAK_ASSERT(hak, HAK_IS_CLASS(hak, _class));
-		mth_blk = find_imethod_noseterr(hak, _class, msg, to_super, &ivaroff, &owner);
+		mth_blk = find_imethod_noseterr(hak, (to_super? super_base: _class), msg, to_super, &ivaroff, &owner);
 		if (!mth_blk)
 		{
 		msg_not_found:

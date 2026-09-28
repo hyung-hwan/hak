@@ -40,6 +40,7 @@ check_SCRIPTS = \
 	sig-01.hak \
 	sig-02.hak \
 	stream-01.hak \
+	super-01.hak \
 	sysproc-01.hak \
 	sysproc-02.hak \
 	tick-01.hak \
