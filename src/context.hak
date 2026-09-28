@@ -1,0 +1,58 @@
+$include-once "object.hak"
+
+
+## hak_context_t
+class[#final #limited #varying] BlockContext: Object(
+	_req_nret	## small integers
+
+	_attr_mask ## small integerk
+	_name ## symbol or nil
+
+	_ip ## small integer	
+	_base ## function object
+
+	_sender ## context or nil	
+	_receiver
+
+	_home ## context or nil
+	_mthhome ## context or nil
+
+	_ivaroff ## small integer
+	_owner ## class or nil
+) {
+	fun home() {
+		return self._home
+	}
+
+	fun ip() {
+		return self._ip
+	}
+
+	fun receiver() {
+		return self._receiver
+	}
+
+	fun sender() {
+		return self._sender
+	}
+
+	fun owner() {
+		return self._owner
+	}
+}
+
+## hak_block_t
+class CompiledBlock: Object(
+	_attr_mask ## small integerk
+	_name ## symbol or nil
+	_home ## context or nil
+	_ip ## small integer
+) {
+	fun home() {
+		return self._home
+	}
+
+	fun ip() {
+		return self._ip
+	}
+}

@@ -274,6 +274,56 @@ class A (x y (cv1)) {
 `#ci` marks a class method that instantiates, `#c` a plain class method; a
 method with no attribute is an instance method.
 
+### Class variable initialization
+
+A class body is not only a list of methods. Statements written in it run once,
+when the class is defined, which is where a class variable gets its value - next
+to the declaration rather than in a separate method somebody has to remember to
+call:
+
+```
+class Counter ((count limit)) {
+    count := 0
+    set limit 100
+
+    fun[#ci] new() { count := (+ count 1) ; return self }
+    fun[#c] howMany() { return count }
+    fun[#c] getLimit() { return limit }
+}
+
+a := (Counter:new)
+b := (Counter:new)
+printf "%O of %O\n" (Counter:howMany) (Counter:getLimit)    ## 2 of 100
+```
+
+The initializer is an ordinary expression, so it may compute and may use
+classes defined before this one:
+
+```
+class P ((base)) {
+    base := 100
+    fun[#c] getBase() { return base }
+}
+
+class Q ((derived)) {
+    derived := (+ (P:getBase) 1)
+    fun[#c] get() { return derived }
+}
+
+printf "%O\n" (Q:get)    ## 101
+```
+
+Three things the body cannot do, all following from when it runs:
+
+- It cannot touch an instance variable. The body runs once and there is no
+  instance yet, so `x := 5` against an ivar is refused with *prohibited access
+  to instance variable*. Instance variables are set in a `#ci` method.
+- It cannot send to the class being defined. The name is not bound until the
+  definition completes, so calling one of its own class methods from the body
+  reaches `nil`.
+- A class variable and a method may not share a name - the second is reported
+  as a *duplicate method name*.
+
 ```
 class[#b] B (a b) {
     fun[#ci] new() {
