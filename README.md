@@ -75,7 +75,7 @@ do { | k | set k 20; printf "k=%d\n" k; };
 - list `#( )`
 - attribute list `[ ]`, as in `class[#b]` and `fun[#ci]`
 - variable declaration `| |` at the start of a block, or `var a b c`
-- assignment `var := value`
+- assignment `varname := value` or `set varname value`
 - return variables `::` in a parameter list, collected with `set-r`
 
 The elements of `#[ ]`, `#b[ ]`, `#c[ ]` and `#( )` are compiled, so an

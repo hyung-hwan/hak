@@ -535,7 +535,6 @@ hak_pfrc_t hak_pf_eqv (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 
 	a0 = HAK_STACK_GETARG(hak, nargs, 0);
 	a1 = HAK_STACK_GETARG(hak, nargs, 1);
-
 	rv = (a0 == a1? hak->_true: hak->_false);
 
 	HAK_STACK_SETRET(hak, nargs, rv);

@@ -1441,7 +1441,7 @@ static int ignite_1 (hak_t* hak)
 		}
 
 		HAK_ASSERT(hak, HAK_OBJ_GET_CLASS(hak->c_class) == HAK_NULL);
-		HAK_OBJ_SET_CLASS (hak->c_class, (hak_oop_t)hak->c_class);
+		HAK_OBJ_SET_CLASS(hak->c_class, (hak_oop_t)hak->c_class);
 	}
 
 	/* create class objects except Class */
@@ -1730,8 +1730,8 @@ static int make_kernel_objs (hak_t* hak)
 	if (ignite_1(hak) <= -1) goto oops;
 
 	/* ready to set the class of object created prior to class creation in ignite_1() */
-	HAK_OBJ_SET_CLASS (hak->_nil, (hak_oop_t)hak->c_undefobj);
-	HAK_OBJ_SET_CLASS (hak->_undef, (hak_oop_t)hak->c_undefobj);
+	HAK_OBJ_SET_CLASS(hak->_nil, (hak_oop_t)hak->c_nilobj);
+	HAK_OBJ_SET_CLASS(hak->_undef, (hak_oop_t)hak->c_undefobj);
 
 	if (ignite_2(hak) <= -1) goto oops;
 

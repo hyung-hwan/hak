@@ -677,15 +677,15 @@ struct hak_fpdec_t
 #define HAK_FUNCTION_GET_CODE_BYTE(m) HAK_OBJ_GET_TRAILER_BYTE(m)
 #define HAK_FUNCTION_GET_CODE_SIZE(m) HAK_OBJ_GET_TRAILER_SIZE(m)
 
-#define HAK_FUNCTION_NAMED_INSTVARS 5   /* this excludes literal frames and byte codes */
+#define HAK_FUNCTION_NAMED_INSTVARS (5)   /* this excludes literal frames and byte codes */
 typedef struct hak_function_t hak_function_t;
 typedef struct hak_function_t* hak_oop_function_t;
 
-#define HAK_BLOCK_NAMED_INSTVARS 4
+#define HAK_BLOCK_NAMED_INSTVARS (4)
 typedef struct hak_block_t hak_block_t;
 typedef struct hak_block_t* hak_oop_block_t;
 
-#define HAK_CONTEXT_NAMED_INSTVARS 11 /* exclude the slot field, which is the beginning of the variable part */
+#define HAK_CONTEXT_NAMED_INSTVARS (11) /* exclude the slot field, which is the beginning of the variable part */
 typedef struct hak_context_t hak_context_t;
 typedef struct hak_context_t* hak_oop_context_t;
 
@@ -2234,7 +2234,8 @@ typedef enum hak_concode_t hak_concode_t;
 #define HAK_IS_FUNCTION(hak,v) (HAK_CLASSOF(hak,v) == (hak_oop_t)(hak)->c_function)
 #define HAK_IS_COMPILED_BLOCK(hak,v) (HAK_CLASSOF(hak,v) == (hak_oop_t)(hak)->c_compiled_block)
 #define HAK_IS_CLASS(hak,v) (HAK_CLASSOF(hak,v) == (hak_oop_t)(hak)->c_class)
-#define HAK_IS_INSTANCE(hak,v) (HAK_OOP_IS_POINTER(v) && HAK_OBJ_GET_FLAGS_BRAND(v) == HAK_BRAND_INSTANCE)
+/* TODO: remove HAK_IS_INSTNACE(). everything is supposed to be an instance now...
+#define HAK_IS_INSTANCE(hak,v) (HAK_OOP_IS_POINTER(v) && HAK_OBJ_GET_FLAGS_BRAND(v) == HAK_BRAND_INSTANCE)*/
 #define HAK_IS_CONS(hak,v) (HAK_CLASSOF(hak,v) == (hak_oop_t)(hak)->c_cons)
 #define HAK_IS_CONS_CONCODED(hak,v,concode) (HAK_IS_CONS(hak,v) && HAK_OBJ_GET_FLAGS_CONCODE(v) == (concode))
 #define HAK_IS_ARRAY(hak,v) (HAK_CLASSOF(hak,v) == (hak_oop_t)(hak)->c_array)
