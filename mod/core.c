@@ -845,8 +845,13 @@ static hak_pfinfo_t pfinfos[] =
 
 	{ "fork",               { HAK_PFBASE_FUNC, hak_pf_process_fork,           1,  HAK_TYPE_MAX(hak_oow_t) } },
 	{ "gc",                 { HAK_PFBASE_FUNC, hak_pf_gc,                     0,  0 } },
+	{ "getb",               { HAK_PFBASE_FUNC, hak_pf_getb,                   0,  0 } },
+	{ "getc",               { HAK_PFBASE_FUNC, hak_pf_getc,                   0,  0 } },
+	{ "gets",               { HAK_PFBASE_FUNC, hak_pf_gets,                   0,  0 } },
 	{ "instRespondsTo",     { HAK_PFBASE_FUNC, pf_core_inst_responds_to,      2,  2 } },
 
+	{ "log",                { HAK_PFBASE_FUNC, hak_pf_log,                    0,  HAK_TYPE_MAX(hak_oow_t) } },
+	{ "logf",               { HAK_PFBASE_FUNC, hak_pf_logf,                   1,  HAK_TYPE_MAX(hak_oow_t) } },
 	{ "nqk?",               { HAK_PFBASE_FUNC, hak_pf_nqk,                    2,  2 } },
 	{ "nql?",               { HAK_PFBASE_FUNC, hak_pf_nql,                    2,  2 } },
 	{ "nqv?",               { HAK_PFBASE_FUNC, hak_pf_nqv,                    2,  2 } },
@@ -856,8 +861,13 @@ static hak_pfinfo_t pfinfos[] =
 	{ "primAt",             { HAK_PFBASE_FUNC, pf_core_prim_at,               2,  2 } },
 	{ "primAtPut",          { HAK_PFBASE_FUNC, pf_core_prim_at_put,           3,  3 } },
 
+	{ "printf",             { HAK_PFBASE_FUNC, hak_pf_printf,                 1,  HAK_TYPE_MAX(hak_oow_t) } },
+	{ "putb",               { HAK_PFBASE_FUNC, hak_pf_putb,                   1,  1 } },
+	{ "putc",               { HAK_PFBASE_FUNC, hak_pf_putc,                   1,  1 } },
+	{ "puts",               { HAK_PFBASE_FUNC, hak_pf_puts,                   1,  1 } },
 	{ "resume",             { HAK_PFBASE_FUNC, hak_pf_process_resume,         1,  1 } },
 
+	{ "scanf",              { HAK_PFBASE_FUNC, hak_pf_scanf,                  1,  1 } },
 	{ "sem-new",            { HAK_PFBASE_FUNC, hak_pf_semaphore_new,          0,  1 } },
 	{ "sem-signal",         { HAK_PFBASE_FUNC, hak_pf_semaphore_signal,       1,  3 } },
 	{ "sem-signal-on-input",  { HAK_PFBASE_FUNC, hak_pf_semaphore_signal_on_input,  2,  2 } },
@@ -872,8 +882,10 @@ static hak_pfinfo_t pfinfos[] =
 
 	{ "slice",              { HAK_PFBASE_FUNC, pf_core_slice,                 3,  3 } },
 	{ "smooiToChar",        { HAK_PFBASE_FUNC, pf_core_smooi_to_char,         1,  1 } },
+	{ "sprintf",             { HAK_PFBASE_FUNC, hak_pf_sprintf,                1,  HAK_TYPE_MAX(hak_oow_t) } },
 	{ "sqrt",               { HAK_PFBASE_FUNC, hak_pf_number_sqrt,            1,  1 } },
 
+	{ "sscanf",              { HAK_PFBASE_FUNC, hak_pf_sscanf,                 2,  2 } },
 	{ "suspend",            { HAK_PFBASE_FUNC, hak_pf_process_suspend,        0,  1 } },
 	{ "terminate",          { HAK_PFBASE_FUNC, hak_pf_process_terminate,      0,  1 } },
 	{ "terminate-all",      { HAK_PFBASE_FUNC, hak_pf_process_terminate_all,  0,  0 } },

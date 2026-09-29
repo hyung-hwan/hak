@@ -1,0 +1,94 @@
+## puts, putc, putb - the output counterparts of gets, getc and getb
+##
+## These write to the user-defined output handler, the same channel printf uses,
+## and pair one for one with the reading trio:
+##
+##     getc   <-> putc      one character
+##     getb <-> putb    one byte
+##     gets    <-> puts       a string
+##
+## Each answers how many characters or bytes it wrote, or nil if the stream has
+## ended. The count is what makes them assertable from inside a test: a count
+## equal to the length of the argument shows the whole of it went out and that
+## nothing was added to it.
+##
+## [NOTE] unlike C's puts, no newline is appended. The assertions below rely on
+## that - (puts "ab") answering 2 rather than 3 is the proof.
+##
+## This file writes to standard output on purpose, so its log carries the
+## written text alongside the OK lines. t/run.sh only fails on a line that
+## begins with ERROR:, which none of the written text does.
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+## --- puts --------------------------------------------------------------------
+##
+## [NOTE] every write below is finished with a newline BEFORE the assertion is
+## printed. Without that the written text and the OK/ERROR line share a line -
+## "abERROR: ..." - and t/run.sh matches ERROR: only at the start of a line, so
+## a real failure would slip through unnoticed.
+
+n := (puts "[puts wrote this]\n")
+chk (= n 18) "puts answers the number of characters written"
+
+n := (puts "ab")
+puts "\n"
+chk (= n 2) "...counting exactly the string, with no newline appended"
+
+n := (puts "")
+chk (= n 0) "an empty string writes nothing and answers zero"
+
+## a byte array goes out as bytes, which is what pairs puts with putb
+n := (puts b"[puts wrote bytes]\n")
+chk (= n 19) "puts writes a byte array as bytes"
+
+## --- putc --------------------------------------------------------------------
+
+n := (putc 'x')
+putc '\n'
+chk (= n 1) "putc writes one character"
+
+n := (putc '\n')
+chk (= n 1) "...including a newline"
+
+## --- putb ------------------------------------------------------------------
+
+n := (putb 121)
+putc '\n'
+chk (= n 1) "putb writes one byte"
+
+n := (putb 10)
+chk (= n 1) "...including a newline byte"
+
+## [NOTE] the ends of the byte range are not written here on purpose. A 0 or a
+## 255 byte makes the log binary, and grep then reports "Binary file matches"
+## instead of the offending line - which would still fail the run, but would
+## hide which assertion failed. The range is pinned by the rejections below.
+
+## --- what they refuse ----------------------------------------------------------
+##
+## The argument types mirror what the reading side answers: putc takes what
+## getc gives back, putb what getb gives back.
+
+caught := nil
+try { putc "str" } catch (e) { caught := e }
+chk (eql? caught "not a character - \"str\"") "putc refuses a string"
+
+caught := nil
+try { putb 300 } catch (e) { caught := e }
+chk (eql? caught "not a byte - 300") "putb refuses a value above 255"
+
+caught := nil
+try { putb -1 } catch (e) { caught := e }
+chk (eql? caught "not a byte - -1") "...and below 0"
+
+caught := nil
+try { putb 'a' } catch (e) { caught := e }
+chk (eql? caught "not a byte - 'a'") "...and a character"
+
+caught := nil
+try { puts 5 } catch (e) { caught := e }
+chk (eql? caught "not a string or a byte array - 5") "puts refuses a non-string"

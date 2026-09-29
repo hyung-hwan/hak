@@ -551,7 +551,7 @@ static hak_oop_t execute_in_interactive_mode (hak_t* hak)
 	retv = hak_execute(hak);
 
 	/* flush pending output data in the interactive mode(e.g. printf without a newline) */
-	hak_flushudio (hak);
+	hak_flushudio(hak);
 
 	if (!retv)
 	{
@@ -614,7 +614,7 @@ static hak_oop_t execute_in_batch_mode(hak_t* hak, int verbose)
 /* END TESTING */
 
 	retv = hak_execute(hak);
-	hak_flushudio (hak);
+	hak_flushudio(hak);
 
 	if (!retv) print_error(hak, "execute");
 	else if (verbose) hak_logbfmt(hak, HAK_LOG_STDERR, "EXECUTION OK - EXITED WITH %O\n", retv);

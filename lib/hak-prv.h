@@ -2180,6 +2180,18 @@ int hak_strfmtcallstack (
 	hak_ooi_t nargs
 );
 
+/* scan 'inp' according to 'fmt' and answer an Array of the values parsed.
+ * the array holds only what actually matched, so its size reports how far the
+ * scan got - see the notes above hak_scanchars() in fmt.c */
+int hak_scanchars (
+	hak_t*            hak,
+	const hak_ooch_t* fmt,
+	hak_oow_t         fmtlen,
+	const hak_ooch_t* inp,
+	hak_oow_t         inplen,
+	hak_oop_t*        result
+);
+
 int hak_scfmtcallstack (
 	hak_t*    hak,
 	hak_ooi_t nargs
@@ -2310,9 +2322,24 @@ hak_pfrc_t hak_pf_semaphore_group_add_semaphore (hak_t* hak, hak_mod_t* mod, hak
 hak_pfrc_t hak_pf_semaphore_group_remove_semaphore (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
 hak_pfrc_t hak_pf_semaphore_group_wait (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
 
-/* pf_gc lives in prim.c but is registered by the core module, which reaches
- * it as core.gc */
+/* these live in prim.c and are registered twice - once as a plain name and
+ * once by the core module, which reaches them as core.printf, core.gets and so
+ * on. the same arrangement as core.+ against +: the short name is the one to
+ * type, the core. name is the one the class library uses because a script may
+ * shadow the short one. */
 hak_pfrc_t hak_pf_gc (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_printf (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_sprintf (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_scanf (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_sscanf (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_getb (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_getc (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_gets (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_putb (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_putc (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_puts (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_log (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
+hak_pfrc_t hak_pf_logf (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs);
 
 /* the signal primitives live in prim.c but are registered by the sys module,
  * which reaches them as sys.sig-getfd, sys.sig-get, sys.sig-set, sys.sig-catch

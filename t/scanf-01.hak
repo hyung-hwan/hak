@@ -1,0 +1,101 @@
+## sscanf - formatted input
+##
+## sscanf parses a string and answers an Array of the values it read. It does
+## not write through pointers the way C's scanf does, because hak has none, and
+## it cannot return several values either - a primitive has no return variables.
+## An array covers both: the values are in order, and its size says how many
+## conversions matched, which is what C's return count reports.
+##
+##     (sscanf "%d %d" "12 34")    ## #[12 34]
+##
+## Scanning stops at the first thing that does not match and answers what was
+## read up to there, so a short array is a partial match rather than an error.
+##
+## scanf is the same scanner over a line read from the input handler, so
+## everything asserted here holds for it too.
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+fun sz(a) { return (core.basicSize a) }
+
+## --- integers ----------------------------------------------------------------
+
+v := (sscanf "%d %d" "12 34")
+chk (= (sz v) 2) "two integers are read"
+chk (= (core.basicAt v 0) 12) "...the first is right"
+chk (= (core.basicAt v 1) 34) "...and the second"
+
+chk (= (core.basicAt (sscanf "%d" "-42") 0) -42) "a leading sign is read"
+
+## an integer too large for a small integer becomes a bigint, as everywhere else
+v := (sscanf "%d" "123456789012345678901234567890")
+chk (= (core.basicAt v 0) 123456789012345678901234567890) "an oversized integer is read as a bigint"
+
+## --- other radices ------------------------------------------------------------
+
+v := (sscanf "%x %o %b" "ff 17 1011")
+chk (= (core.basicAt v 0) 255) "%x reads hexadecimal"
+chk (= (core.basicAt v 1) 15) "%o reads octal"
+chk (= (core.basicAt v 2) 11) "%b reads binary"
+
+## --- strings and characters ----------------------------------------------------
+
+v := (sscanf "%s %s" "hello world")
+chk (eql? (core.basicAt v 0) "hello") "%s reads up to whitespace"
+chk (eql? (core.basicAt v 1) "world") "...and again for the next one"
+
+## %s skips leading whitespace, like every conversion except %c
+chk (eql? (core.basicAt (sscanf "%s" "   spaced") 0) "spaced") "%s skips leading whitespace"
+
+## %c takes exactly one character, whitespace included
+v := (sscanf "%c%c" "ab")
+chk (eqv? (core.basicAt v 0) 'a') "%c reads one character"
+chk (eqv? (core.basicAt v 1) 'b') "...and the next one"
+chk (eqv? (core.basicAt (sscanf "%c" " x") 0) ' ') "%c does not skip whitespace"
+
+## --- fixed-point decimals --------------------------------------------------------
+
+v := (sscanf "%f %f" "-0.5 12.125")
+chk (= (core.basicAt v 0) -0.5) "%f reads a signed decimal"
+chk (= (core.basicAt v 1) 12.125) "...keeping the scale of the input"
+chk (= (core.basicAt (sscanf "%f" "3") 0) 3) "%f with no point reads a whole number"
+
+## --- literals in the format ------------------------------------------------------
+
+v := (sscanf "%d-%d" "7-8")
+chk (= (sz v) 2) "a literal between conversions must match"
+chk (= (core.basicAt v 0) 7) "...and the values around it are read"
+
+chk (= (core.basicAt (sscanf "%d%%" "50%") 0) 50) "%% matches a literal percent"
+
+## whitespace in the format matches any run of it, including none
+chk (= (core.basicAt (sscanf "  %d  " "   77   ") 0) 77) "whitespace in the format is flexible"
+
+## a literal that does not match stops the scan
+chk (= (sz (sscanf "%d-%d" "7+8")) 1) "a failed literal stops the scan after what matched"
+
+## --- widths and suppression --------------------------------------------------------
+
+chk (= (core.basicAt (sscanf "%3d" "12345") 0) 123) "a field width limits how much is read"
+
+v := (sscanf "%*d %d" "9 5")
+chk (= (sz v) 1) "a suppressed conversion contributes no value"
+chk (= (core.basicAt v 0) 5) "...but still consumes its input"
+
+## --- partial and empty matches -------------------------------------------------------
+
+chk (= (sz (sscanf "%d %d %d" "1 2")) 2) "running out of input answers what matched"
+chk (= (sz (sscanf "%d" "abc")) 0) "matching nothing answers an empty array"
+chk (= (sz (sscanf "" "anything")) 0) "an empty format reads nothing"
+
+## --- malformed formats ---------------------------------------------------------------
+##
+## A format the scanner cannot make sense of is a different thing from input
+## that does not match, and is reported as an error rather than an empty array.
+
+chk (error? (sscanf "%q" "x")) "an unknown conversion is an error"
+chk (error? (sscanf "%" "x")) "a trailing percent is an error"
+chk (error? (sscanf "%d" 5)) "a non-string input is an error"

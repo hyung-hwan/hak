@@ -35,8 +35,10 @@ check_SCRIPTS = \
 	proc-02.hak \
 	proc-03.hak \
 	proclib-01.hak \
+	putio-01.hak \
 	ret-01.hak \
 	retvar-01.hak \
+	scanf-01.hak \
 	send-01.hak \
 	sig-01.hak \
 	sig-02.hak \

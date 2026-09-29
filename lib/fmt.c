@@ -2844,46 +2844,311 @@ int hak_logfmtcallstack (hak_t* hak, hak_ooi_t nargs)
  * -------------------------------------------------------------------------- */
 
 
-static int read_bcs (hak_t* hak, hak_fmtin_t* fmtout, hak_bch_t* buf, hak_oow_t len)
+/* Formatted input. The scanner works on a string; hak_scanchars() is the whole
+ * of it. 'scanf' reads a line and hands it here, so there is one scanner and
+ * only the source of the string differs.
+ *
+ * Conversions answer hak objects rather than writing through pointers, which
+ * hak does not have:
+ *
+ *   %d       integer, optionally signed - a bigint if it does not fit
+ *   %x %o %b integer in base 16, 8 or 2
+ *   %f       fixed-point decimal
+ *   %s       a run of non-whitespace characters, as a string
+ *   %c       exactly one character, whitespace included
+ *   %%       matches a literal '%'
+ *
+ * A directive may carry a field width (%5d) and may be suppressed with '*'
+ * (%*d), which consumes input without contributing a value. Whitespace in the
+ * format matches any run of whitespace in the input, including none. Any other
+ * character must match itself.
+ *
+ * Scanning stops at the first thing that does not match, and the values parsed
+ * up to that point are answered - so the size of the result says how far it
+ * got, the way scanf's return count does. */
+
+static hak_oow_t count_conversions (const hak_ooch_t* p, const hak_ooch_t* e)
 {
-	if (HAK_UNLIKELY(!hak->io.udi_rdr))
+	hak_oow_t n = 0;
+
+	while (p < e)
 	{
-		hak_seterrbmsg(hak, HAK_EINVAL, "no user-defined input handler");
-		return -1;
+		if (*p != '%') { p++; continue; }
+
+		p++;
+		if (p >= e) break;
+		if (*p == '%') { p++; continue; }
+
+		if (*p == '*')
+		{
+			/* suppressed - consumes input but yields no value */
+			p++;
+			while (p < e && *p >= '0' && *p <= '9') p++;
+			if (p < e) p++;
+			continue;
+		}
+
+		while (p < e && *p >= '0' && *p <= '9') p++;
+		if (p < e) { n++; p++; }
 	}
 
-	return 0;
+	return n;
 }
 
-static int read_ucs (hak_t* hak, hak_fmtin_t* fmtin, hak_uch_t* buf, hak_oow_t len)
+static HAK_INLINE int is_digit_of (hak_ooci_t c, int radix)
 {
-	if (HAK_UNLIKELY(!hak->io.udi_rdr))
+	int v;
+	if (c >= '0' && c <= '9') v = c - '0';
+	else if (c >= 'a' && c <= 'z') v = c - 'a' + 10;
+	else if (c >= 'A' && c <= 'Z') v = c - 'A' + 10;
+	else return 0;
+	return v < radix;
+}
+
+int hak_scanchars (hak_t* hak, const hak_ooch_t* fmt, hak_oow_t fmtlen, const hak_ooch_t* inp, hak_oow_t inplen, hak_oop_t* result)
+{
+	const hak_ooch_t* fp, * fe, * ip, * ie;
+	hak_oop_t arr;
+	hak_oow_t nconv, nmatched;
+
+	fp = fmt; fe = fmt + fmtlen;
+	ip = inp; ie = inp + inplen;
+
+	nconv = count_conversions(fp, fe);
+
+	/* the array is made up front and rooted once. every value parsed goes
+	 * into it immediately, so nothing parsed so far can be collected while
+	 * the rest is being parsed. */
+	arr = hak_makearray(hak, nconv);
+	if (HAK_UNLIKELY(!arr)) return -1;
+	hak_pushvolat(hak, &arr);
+
+	nmatched = 0;
+	while (fp < fe)
 	{
-		hak_seterrbmsg(hak, HAK_EINVAL, "no user-defined input handler");
-		return -1;
+		hak_ooch_t conv;
+		hak_oow_t width;
+		int suppress;
+
+		if (hak_is_ooch_space(*fp))
+		{
+			/* any run of whitespace in the format matches any run in the
+			 * input, including an empty one */
+			while (fp < fe && hak_is_ooch_space(*fp)) fp++;
+			while (ip < ie && hak_is_ooch_space(*ip)) ip++;
+			continue;
+		}
+
+		if (*fp != '%')
+		{
+			if (ip >= ie || *ip != *fp) goto done; /* a literal that did not match */
+			fp++; ip++;
+			continue;
+		}
+
+		fp++;
+		if (fp >= fe) /* no character after % */
+		{
+			hak_seterrbfmt(hak, HAK_EINVAL, "incomplete conversion at the end of the scan format");
+			goto oops;
+		}
+
+		if (*fp == '%') /* %% */
+		{
+			if (ip >= ie || *ip != '%') goto done;
+			fp++; ip++;
+			continue;
+		}
+
+		suppress = 0;
+		if (*fp == '*') { suppress = 1; fp++; } /* starting with %*... -  read but don't store */
+
+		width = 0;
+		while (fp < fe && *fp >= '0' && *fp <= '9') width = width * 10 + (*fp++ - '0');
+		if (width <= 0) width = HAK_TYPE_MAX(hak_oow_t);
+
+		if (fp >= fe)
+		{
+			hak_seterrbfmt(hak, HAK_EINVAL, "incomplete conversion at the end of the scan format");
+			goto oops;
+		}
+		conv = *fp++;
+
+		if (conv != 'c')
+		{
+			/* every conversion but %c skips leading whitespace */
+			while (ip < ie && hak_is_ooch_space(*ip)) ip++;
+		}
+
+		if (ip >= ie) goto done; /* nothing left to convert */
+
+		switch (conv)
+		{
+			case 'd':
+			case 'x':
+			case 'o':
+			case 'b':
+			{
+				const hak_ooch_t* ds;
+				hak_oow_t dlen, taken;
+				hak_oop_t v;
+				int radix, neg = 0;
+
+				radix = (conv == 'd')? 10: (conv == 'x')? 16: (conv == 'o')? 8: 2;
+
+				taken = 0;
+				if (ip < ie && (*ip == '+' || *ip == '-'))
+				{
+					neg = (*ip == '-');
+					ip++; taken++;
+				}
+
+				ds = ip;
+				while (ip < ie && taken < width && is_digit_of(*ip, radix)) { ip++; taken++; }
+				dlen = ip - ds;
+				if (dlen <= 0) goto done; /* a sign with no digits is not a match */
+
+				/* hak_strtoint() takes a negative radix to mean a negative value */
+				v = hak_strtoint(hak, ds, dlen, (neg? -radix: radix));
+				if (HAK_UNLIKELY(!v)) goto oops;
+				if (!suppress) HAK_OBJ_GET_OOP_SLOT(arr)[nmatched++] = v;
+				break;
+			}
+
+			case 'f':
+			{
+				const hak_ooch_t* ds;
+				hak_oow_t taken, ndigits, nfrac;
+				hak_ooch_t* tmp;
+				hak_oop_t iv, v;
+				hak_oow_t i;
+				int neg = 0, seen_dot = 0;
+
+				taken = 0;
+				if (ip < ie && (*ip == '+' || *ip == '-'))
+				{
+					neg = (*ip == '-');
+					ip++; taken++;
+				}
+
+				/* gather the digits either side of the point into one integer
+				 * and remember how many of them were fractional - that count
+				 * is the scale of the resulting fixed-point decimal */
+				ds = ip;
+				ndigits = 0; nfrac = 0;
+				while (ip < ie && taken < width)
+				{
+					if (*ip >= '0' && *ip <= '9')
+					{
+						ndigits++;
+						if (seen_dot) nfrac++;
+					}
+					else if (*ip == '.' && !seen_dot) seen_dot = 1;
+					else break;
+					ip++; taken++;
+				}
+				if (ndigits <= 0) goto done;
+
+				tmp = (hak_ooch_t*)hak_allocmem(hak, HAK_SIZEOF(*tmp) * ndigits);
+				if (HAK_UNLIKELY(!tmp)) goto oops;
+				for (i = 0, ndigits = 0; ds + i < ip; i++)
+				{
+					if (ds[i] >= '0' && ds[i] <= '9') tmp[ndigits++] = ds[i];
+				}
+
+				iv = hak_strtoint(hak, tmp, ndigits, (neg? -10: 10));
+				hak_freemem(hak, tmp);
+				if (HAK_UNLIKELY(!iv)) goto oops;
+
+				hak_pushvolat(hak, &iv);
+				v = hak_makefpdec(hak, iv, nfrac);
+				hak_popvolat(hak);
+				if (HAK_UNLIKELY(!v)) goto oops;
+
+				if (!suppress) HAK_OBJ_GET_OOP_SLOT(arr)[nmatched++] = v;
+				break;
+			}
+
+			case 's':
+			{
+				const hak_ooch_t* ss;
+				hak_oow_t taken;
+				hak_oop_t v;
+
+				ss = ip;
+				taken = 0;
+				while (ip < ie && taken < width && !hak_is_ooch_space(*ip)) { ip++; taken++; }
+				if (ip == ss) goto done;
+
+				v = hak_makestring(hak, ss, ip - ss);
+				if (HAK_UNLIKELY(!v)) goto oops;
+				if (!suppress) HAK_OBJ_GET_OOP_SLOT(arr)[nmatched++] = v;
+				break;
+			}
+
+			case 'c':
+			{
+				/* exactly one character, whatever it is - no whitespace was
+				 * skipped above for this conversion */
+				if (!suppress) HAK_OBJ_GET_OOP_SLOT(arr)[nmatched++] = HAK_CHAR_TO_OOP(*ip);
+				ip++;
+				break;
+			}
+
+			default:
+				hak_seterrbfmt(hak, HAK_EINVAL, "unknown scan conversion '%jc'", conv);
+				goto oops;
+		}
 	}
 
-	return 0;
-}
+done:
+	if (nmatched < nconv)
+	{
+		/* fewer conversions matched than the format asked for - answer an
+		 * array of exactly what was parsed */
+		hak_oop_t sub;
+		hak_oow_t i;
 
-static HAK_INLINE int fmtin_stack_args (hak_t* hak, hak_fmtin_t* fmtin, hak_ooi_t nargs, int rcv_is_fmtstr)
-{
-	/* TODO: */
+		sub = hak_makearray(hak, nmatched);
+		if (HAK_UNLIKELY(!sub)) goto oops;
+		for (i = 0; i < nmatched; i++) HAK_OBJ_GET_OOP_SLOT(sub)[i] = HAK_OBJ_GET_OOP_SLOT(arr)[i];
+		arr = sub;
+	}
+
+	hak_popvolat(hak);
+	*result = arr;
 	return 0;
+
+oops:
+	hak_popvolat(hak);
+	return -1;
 }
 
 int hak_scfmtcallstack (hak_t* hak, hak_ooi_t nargs)
 {
-	hak_fmtin_t fi;
+	/* scan a string using the format and the input string on the stack */
+	hak_oop_t fmt, inp, res;
 
-	HAK_MEMSET(&fi, 0, HAK_SIZEOF(fi));
-	/*
-	 * TODO:
-	fi.getbchars =
-	fi.getuchars =
-	*/
+	fmt = HAK_STACK_GETARG(hak, nargs, 0);
+	inp = HAK_STACK_GETARG(hak, nargs, 1);
 
-	return fmtin_stack_args(hak, &fi, nargs, 0);
+	if (!HAK_OOP_IS_POINTER(fmt) || HAK_OBJ_GET_FLAGS_TYPE(fmt) != HAK_OBJ_TYPE_CHAR)
+	{
+		hak_seterrbfmt(hak, HAK_EINVAL, "scan format not a string - %O", fmt);
+		return -1;
+	}
+	if (!HAK_OOP_IS_POINTER(inp) || HAK_OBJ_GET_FLAGS_TYPE(inp) != HAK_OBJ_TYPE_CHAR)
+	{
+		hak_seterrbfmt(hak, HAK_EINVAL, "scan input not a string - %O", inp);
+		return -1;
+	}
+
+	if (hak_scanchars(hak,
+		HAK_OBJ_GET_CHAR_SLOT(fmt), HAK_OBJ_GET_SIZE(fmt),
+		HAK_OBJ_GET_CHAR_SLOT(inp), HAK_OBJ_GET_SIZE(inp), &res) <= -1) return -1;
+
+	HAK_STACK_SETRET(hak, nargs, res);
+	return 0;
 }
 
 /* --------------------------------------------------------------------------

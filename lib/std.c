@@ -5816,7 +5816,7 @@ static HAK_INLINE int flush_udo_stream (hak_t* hak, hak_io_udoarg_t* arg)
 	if (flush_udo_rec(hak, fp) <= -1) return -1;
 #endif
 
-	fflush (fp);
+	fflush(fp);
 	return 0;
 }
 

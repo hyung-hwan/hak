@@ -100,7 +100,7 @@ start_over:
 	}
 }
 
-static hak_pfrc_t pf_log (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_log (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 /* TODO: accept log level */
 	hak_oop_t msg;
@@ -170,7 +170,7 @@ static hak_pfrc_t pf_log (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	return HAK_PF_SUCCESS;
 }
 
-static hak_pfrc_t pf_logf (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_p f_logf (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	if (hak_logfmtcallstack(hak, nargs) <= -1)
 	{
@@ -185,7 +185,7 @@ static hak_pfrc_t pf_logf (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	return HAK_PF_SUCCESS;
 }
 
-static hak_pfrc_t pf_printf (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_printf (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	if (hak_prfmtcallstack(hak, nargs) <= -1)
 	{
@@ -200,7 +200,7 @@ static hak_pfrc_t pf_printf (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	return HAK_PF_SUCCESS;
 }
 
-static hak_pfrc_t pf_sprintf (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_sprintf (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	if (hak_strfmtcallstack(hak, nargs) <= -1)
 	{
@@ -399,7 +399,7 @@ static int get_udi_byte (hak_t* hak, hak_uint8_t* bt)
 	return 1;
 }
 
-static hak_pfrc_t pf_getbyte (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_getb (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_oop_t v;
 	hak_uint8_t bt;
@@ -414,7 +414,7 @@ static hak_pfrc_t pf_getbyte (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	return HAK_PF_SUCCESS;
 }
 
-static hak_pfrc_t pf_getch (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_getc (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_oop_t v;
 	hak_ooch_t ch;
@@ -429,92 +429,295 @@ static hak_pfrc_t pf_getch (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	return HAK_PF_SUCCESS;
 }
 
-static hak_pfrc_t pf_gets (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+/* read one line from the user-defined input handler. answers 0 with ln->ptr
+ * set to an allocated buffer the caller must free, or 0 with ln->ptr NULL at
+ * end of input. gets and scanf share this so there is one line reader. */
+static int read_udi_line (hak_t* hak, hak_oocs_t* ln)
 {
 	hak_io_udiarg_t* curinp;
-	hak_oop_t v;
+	int n;
+	hak_ooch_t ch;
+	hak_ooch_t* ptr;
+	hak_oow_t len, capa;
+
+	ln->ptr = HAK_NULL;
+	ln->len = 0;
 
 	curinp = &hak->io.udi_arg;
-	if (curinp->eof_reached)
+	if (curinp->eof_reached) return 0;
+
+	capa = 16;
+	ptr = (hak_ooch_t*)hak_allocmem(hak, HAK_SIZEOF(*ptr) * capa);
+	if (HAK_UNLIKELY(!ptr)) return -1;
+
+	len = 0;
+	while (1)
+	{
+		n = get_udi_char(hak, &ch);
+		if (n <= -1) { hak_freemem(hak, ptr); return -1; }
+		if (n == 0) break;
+
+		if (len >= capa)
+		{
+			hak_ooch_t* tmp;
+			hak_oow_t newcapa;
+
+			newcapa = capa * 2;
+			tmp = (hak_ooch_t*)hak_reallocmem(hak, ptr, HAK_SIZEOF(*ptr) * newcapa);
+			if (HAK_UNLIKELY(!tmp)) { hak_freemem(hak, ptr); return -1; }
+			ptr = tmp;
+			capa = newcapa;
+		}
+		ptr[len++] = ch;
+		if (ch == '\n') break; /* TODO: don't hardcode EOL */
+	}
+
+	if (len <= 0)
+	{
+		hak_freemem(hak, ptr);
+		return 0; /* nothing read - ln->ptr stays NULL */
+	}
+
+	ln->ptr = ptr;
+	ln->len = len;
+	return 0;
+}
+
+/* Writing to the user-defined output handler. These mirror get_udi_char() and
+ * get_udi_byte() above: they answer 1 on success, 0 when the stream has ended
+ * and -1 on failure, and they loop because a handler may take fewer than it
+ * was given. Like the reading side, this goes straight to the handler without
+ * the multiplexer - see the note on hak_pf_scanf(). */
+static int put_udo_chars (hak_t* hak, const hak_ooch_t* ptr, hak_oow_t len, hak_oow_t* nwritten)
+{
+	hak_ooch_t* optr;
+	hak_oow_t rem;
+
+	if (HAK_UNLIKELY(!hak->io.udo_wrtr))
+	{
+		hak_seterrbmsg(hak, HAK_EINVAL, "no user-defined output handler");
+		return -1;
+	}
+
+	optr = (hak_ooch_t*)ptr;
+	rem = len;
+	while (rem > 0)
+	{
+		hak->io.udo_arg.ptr = optr;
+		hak->io.udo_arg.len = rem;
+
+		if (hak->io.udo_wrtr(hak, HAK_IO_WRITE, &hak->io.udo_arg) <= -1) return -1;
+		if (hak->io.udo_arg.xlen <= 0) break; /* end of stream - not a failure */
+
+		HAK_ASSERT(hak, hak->io.udo_arg.xlen <= rem);
+		optr += hak->io.udo_arg.xlen;
+		rem -= hak->io.udo_arg.xlen;
+	}
+
+	*nwritten = len - rem;
+	return (rem > 0 && len > 0)? 0: 1;
+}
+
+static int put_udo_bytes (hak_t* hak, const hak_uint8_t* ptr, hak_oow_t len, hak_oow_t* nwritten)
+{
+	hak_uint8_t* optr;
+	hak_oow_t rem;
+
+	if (HAK_UNLIKELY(!hak->io.udo_wrtr))
+	{
+		hak_seterrbmsg(hak, HAK_EINVAL, "no user-defined output handler");
+		return -1;
+	}
+
+	optr = (hak_uint8_t*)ptr;
+	rem = len;
+	while (rem > 0)
+	{
+		hak->io.udo_arg.ptr = optr;
+		hak->io.udo_arg.len = rem;
+
+		if (hak->io.udo_wrtr(hak, HAK_IO_WRITE_BYTES, &hak->io.udo_arg) <= -1) return -1;
+		if (hak->io.udo_arg.xlen <= 0) break; /* end of stream - not a failure */
+
+		HAK_ASSERT(hak, hak->io.udo_arg.xlen <= rem);
+		optr += hak->io.udo_arg.xlen;
+		rem -= hak->io.udo_arg.xlen;
+	}
+
+	*nwritten = len - rem;
+	return (rem > 0 && len > 0)? 0: 1;
+}
+
+hak_pfrc_t hak_pf_putc (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+{
+	/* (putch c) - write one character. the counterpart of getch. */
+	hak_oop_t arg;
+	hak_ooch_t ch;
+	hak_oow_t nw;
+	int n;
+
+	arg = HAK_STACK_GETARG(hak, nargs, 0);
+	if (!HAK_OOP_IS_CHAR(arg))
+	{
+		hak_seterrbfmt(hak, HAK_EINVAL, "not a character - %O", arg);
+		return HAK_PF_FAILURE;
+	}
+
+	ch = HAK_OOP_TO_CHAR(arg);
+	n = put_udo_chars(hak, &ch, 1, &nw);
+	if (n <= -1) return HAK_PF_FAILURE;
+
+	/* nil when the stream has ended, the count written otherwise */
+	HAK_STACK_SETRET(hak, nargs, (n == 0)? hak->_nil: HAK_SMOOI_TO_OOP((hak_ooi_t)nw));
+	return HAK_PF_SUCCESS;
+}
+
+hak_pfrc_t hak_pf_putb (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+{
+	/* (putb b) - write one byte. the counterpart of getb. */
+	hak_oop_t arg;
+	hak_ooi_t v;
+	hak_uint8_t bt;
+	hak_oow_t nw;
+	int n;
+
+	arg = HAK_STACK_GETARG(hak, nargs, 0);
+	if (!HAK_OOP_IS_SMOOI(arg))
+	{
+		hak_seterrbfmt(hak, HAK_EINVAL, "not a byte - %O", arg);
+		return HAK_PF_FAILURE;
+	}
+
+	v = HAK_OOP_TO_SMOOI(arg);
+	if (v < 0 || v > 255)
+	{
+		hak_seterrbfmt(hak, HAK_ERANGE, "not a byte - %O", arg);
+		return HAK_PF_FAILURE;
+	}
+
+	bt = (hak_uint8_t)v;
+	n = put_udo_bytes(hak, &bt, 1, &nw);
+	if (n <= -1) return HAK_PF_FAILURE;
+
+	HAK_STACK_SETRET(hak, nargs, (n == 0)? hak->_nil: HAK_SMOOI_TO_OOP((hak_ooi_t)nw));
+	return HAK_PF_SUCCESS;
+}
+
+hak_pfrc_t hak_pf_puts (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+{
+	/* (putc s) - write a string. the counterpart of getc.
+	 * a character string goes out as characters, a byte array as bytes, which
+	 * keeps the pairing with putc and putb. nothing is appended - unlike
+	 * C's puts, no newline is added. */
+	hak_oop_t arg;
+	hak_oow_t nw;
+	int n;
+
+	arg = HAK_STACK_GETARG(hak, nargs, 0);
+	if (!HAK_OOP_IS_POINTER(arg))
+	{
+		hak_seterrbfmt(hak, HAK_EINVAL, "not a string or a byte array - %O", arg);
+		return HAK_PF_FAILURE;
+	}
+
+/* TODO: can we support arrays of other types?
+ *       normal array composed of characters or strings?
+ *       word array? treat element value as character code? */
+	switch (HAK_OBJ_GET_FLAGS_TYPE(arg))
+	{
+		case HAK_OBJ_TYPE_CHAR:
+			n = put_udo_chars(hak, HAK_OBJ_GET_CHAR_SLOT(arg), HAK_OBJ_GET_SIZE(arg), &nw);
+			break;
+
+		case HAK_OBJ_TYPE_BYTE:
+			n = put_udo_bytes(hak, HAK_OBJ_GET_BYTE_SLOT(arg), HAK_OBJ_GET_SIZE(arg), &nw);
+			break;
+
+		default:
+			hak_seterrbfmt(hak, HAK_EINVAL, "not a string or a byte array - %O", arg);
+			return HAK_PF_FAILURE;
+	}
+
+	if (n <= -1) return HAK_PF_FAILURE;
+
+	HAK_STACK_SETRET(hak, nargs, (n == 0)? hak->_nil: HAK_SMOOI_TO_OOP((hak_ooi_t)nw));
+	return HAK_PF_SUCCESS;
+}
+
+hak_pfrc_t hak_pf_gets (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+{
+	hak_oop_t v;
+	hak_oocs_t ln;
+
+	if (read_udi_line(hak, &ln) <= -1) return HAK_PF_FAILURE;
+
+	if (!ln.ptr)
 	{
 		v = hak->_nil;
 	}
 	else
 	{
-		int n;
-		hak_ooch_t ch;
-		hak_ooch_t buf[10];
-		hak_ooch_t* ptr;
-		hak_oow_t len, capa;
-
-		ptr = buf;
-		len = 0;
-		capa = HAK_COUNTOF(buf);
-		while (1)
-		{
-			n = get_udi_char(hak, &ch);
-			if (n <= -1) return HAK_PF_FAILURE;
-			if (n == 0) break;
-
-			if (len >= capa)
-			{
-				hak_ooch_t* tmp;
-				hak_oow_t newcapa;
-
-				newcapa = capa + HAK_COUNTOF(buf);
-				if (ptr == buf)
-				{
-					tmp = (hak_ooch_t*)hak_allocmem(hak, HAK_SIZEOF(*ptr) * newcapa);
-					if (HAK_UNLIKELY(!tmp)) return HAK_PF_FAILURE;
-					HAK_MEMCPY(tmp, buf, HAK_SIZEOF(buf));
-				}
-				else
-				{
-					tmp = (hak_ooch_t*)hak_reallocmem(hak, ptr, HAK_SIZEOF(*ptr) * newcapa);
-					if (HAK_UNLIKELY(!tmp))
-					{
-						hak_freemem(hak, ptr);
-						return HAK_PF_FAILURE;
-					}
-				}
-
-				ptr = tmp;
-				capa = newcapa;
-			}
-			ptr[len++] = ch;
-			if (ch == '\n') break; /* TODO: don't hardcode EOL */
-		}
-
-		if (len <= 0)
-		{
-			HAK_ASSERT(hak, ptr == buf);
-			v = hak->_nil;
-		}
-		else
-		{
-			v = hak_makestring(hak, ptr, len);
-			if (ptr != buf) hak_freemem(hak, ptr);
-			if (HAK_UNLIKELY(!v)) return HAK_PF_FAILURE;
-		}
-
+		v = hak_makestring(hak, ln.ptr, ln.len);
+		hak_freemem(hak, ln.ptr);
+		if (HAK_UNLIKELY(!v)) return HAK_PF_FAILURE;
 	}
 
 	HAK_STACK_SETRET(hak, nargs, v);
 	return HAK_PF_SUCCESS;
 }
 
-static hak_pfrc_t pf_scanf (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_sscanf (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	if (hak_scfmtcallstack(hak, nargs) <= -1)
+	/* (sscanf fmt str) - scan a string. no i/o is involved, so this is the
+	 * part that carries the whole scanner; 'scanf' below reads a line and
+	 * hands it to the same code. */
+	if (hak_scfmtcallstack(hak, nargs) <= -1) HAK_STACK_SETRETTOERRNUM(hak, nargs);
+	return HAK_PF_SUCCESS;
+}
+
+hak_pfrc_t hak_pf_scanf (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+{
+	/* (scanf fmt) - read one line from the user-defined input handler and scan
+	 * it. this reads through udi like gets does, so it does not go through the
+	 * multiplexer and blocks the vm until the line arrives. that is the point
+	 * of the udi tier - a stream from the class library is the way to read
+	 * without stopping other processes. */
+	hak_oop_t fmt, line, res;
+	hak_oocs_t ln;
+
+	fmt = HAK_STACK_GETARG(hak, nargs, 0);
+	if (!HAK_OOP_IS_POINTER(fmt) || HAK_OBJ_GET_FLAGS_TYPE(fmt) != HAK_OBJ_TYPE_CHAR)
 	{
+		hak_seterrbfmt(hak, HAK_EINVAL, "scan format not a string - %O", fmt);
 		HAK_STACK_SETRETTOERRNUM(hak, nargs);
-	}
-	else
-	{
-/* TODO: better return code? */
-		HAK_STACK_SETRET(hak, nargs, hak->_nil);
+		return HAK_PF_SUCCESS;
 	}
 
+	if (read_udi_line(hak, &ln) <= -1) return HAK_PF_FAILURE;
+	if (!ln.ptr)
+	{
+		/* end of input before anything was read */
+		HAK_STACK_SETRET(hak, nargs, hak->_nil);
+		return HAK_PF_SUCCESS;
+	}
+
+	line = hak_makestring(hak, ln.ptr, ln.len);
+	hak_freemem(hak, ln.ptr);
+	if (HAK_UNLIKELY(!line)) return HAK_PF_FAILURE;
+
+	hak_pushvolat(hak, &line);
+	hak_pushvolat(hak, &fmt);
+	if (hak_scanchars(hak,
+		HAK_OBJ_GET_CHAR_SLOT(fmt), HAK_OBJ_GET_SIZE(fmt),
+		HAK_OBJ_GET_CHAR_SLOT(line), HAK_OBJ_GET_SIZE(line), &res) <= -1)
+	{
+		hak_popvolats(hak, 2);
+		HAK_STACK_SETRETTOERRNUM(hak, nargs);
+		return HAK_PF_SUCCESS;
+	}
+	hak_popvolats(hak, 2);
+
+	HAK_STACK_SETRET(hak, nargs, res);
 	return HAK_PF_SUCCESS;
 }
 
@@ -1357,14 +1560,16 @@ static pf_t builtin_prims[] =
 {
 	/* TODO: move these primitives to modules... */
 
-	{ 0, 0,                       pf_getbyte,         7,  { 'g','e','t','b','y','t','e' } },
-	{ 0, 0,                       pf_getch,           5,  { 'g','e','t','c','h' } },
-	{ 0, 0,                       pf_gets,            4,  { 'g','e','t','s' } },
-	{ 0, HAK_TYPE_MAX(hak_oow_t), pf_log,             3,  { 'l','o','g' } },
-	{ 1, HAK_TYPE_MAX(hak_oow_t), pf_logf,            4,  { 'l','o','g','f' } },
-	{ 1, HAK_TYPE_MAX(hak_oow_t), pf_printf,          6,  { 'p','r','i','n','t','f' } },
-	{ 1, HAK_TYPE_MAX(hak_oow_t), pf_scanf,           5,  { 's','c','a','n','f' } },
-	{ 1, HAK_TYPE_MAX(hak_oow_t), pf_sprintf,         7,  { 's','p','r','i','n','t','f' } },
+	{ 0, 0,                       hak_pf_getb,            4,  { 'g','e','t','b' } },
+	{ 0, 0,                       hak_pf_getc,            4,  { 'g','e','t','c' } },
+	{ 0, 0,                       hak_pf_gets,            4,  { 'g','e','t','s' } },
+	{ 1, 1,                       hak_pf_putb,            4,  { 'p','u','t','b' } },
+	{ 1, 1,                       hak_pf_putc,            4,  { 'p','u','t','c' } },
+	{ 1, 1,                       hak_pf_puts,            4,  { 'p','u','t','s' } },
+	{ 1, HAK_TYPE_MAX(hak_oow_t), hak_pf_printf,          6,  { 'p','r','i','n','t','f' } },
+	{ 1, 1,                       hak_pf_scanf,           5,  { 's','c','a','n','f' } },
+	{ 2, 2,                       hak_pf_sscanf,          6,  { 's','s','c','a','n','f' } },
+	{ 1, HAK_TYPE_MAX(hak_oow_t), hak_pf_sprintf,         7,  { 's','p','r','i','n','t','f' } },
 
 	/* the signal primitives are registered by the sys module instead - see
 	 * pfinfos[] in mod/sys.c. they are reached as sys.sig-getfd, sys.sig-get,

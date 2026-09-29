@@ -207,9 +207,37 @@ array?  bytearray?  dictionary?  fun?  class?  object?
 Input, output and the rest:
 
 ```
-printf  sprintf  scanf  getbyte  getch  gets  log  logf
+printf  sprintf  scanf  sscanf
+getb  getc  gets  putb  putc  puts
 va-context  va-count  va-get
 ```
+
+`sscanf` parses a string against a format and answers an `Array` of the values
+it read; `scanf` is the same scanner over one line from the input handler. The
+array holds only what matched, so its size reports how far the scan got:
+
+```
+printf "%O\n" (sscanf "%d %d" "12 34")    ## #[12 34]
+printf "%O\n" (sscanf "%d %d" "12 xy")    ## #[12]
+```
+
+The conversions are `%d` for an integer (a bigint if it does not fit), `%x`,
+`%o` and `%b` for other radices, `%f` for a fixed-point decimal, `%s` for a run
+of non-whitespace, `%c` for exactly one character and `%%` for a literal
+percent. A width limits how much is read (`%3d`) and `*` suppresses a
+conversion (`%*d`), which consumes input without contributing a value.
+Whitespace in the format matches any run of it, including none.
+
+The `get`/`put` pairs read and write the input and output handlers:
+`getc`/`putc` one character, `getb`/`putb` one byte, and `gets`/`puts` a
+string - a line when reading. Reading answers `nil` at end of input; writing
+answers how many characters or bytes went out, or `nil` if the stream has
+ended. `puts` appends nothing, and writes a byte array as bytes rather than
+characters.
+
+Writing to the log channel rather than to the output handler is `core.log` and
+`core.logf`. These have no plain names - `log` is left free for a program to
+use as it likes.
 
 Further functions live in modules and are reached through a prefix: `core.` for
 the object primitives (`core.basicNew`, `core.classOf`, `core.+`, `core.gc`, the
