@@ -162,8 +162,8 @@ am__uninstall_files_from_dir = { \
   || { echo " ( cd '$$dir' && rm -f" $$files ")"; \
        $(am__cd) "$$dir" && echo $$files | $(am__xargs_n) 40 $(am__rm_f); }; \
   }
-am__installdirs = "$(DESTDIR)$(gosrcdir)"
-DATA = $(gosrc_DATA)
+am__installdirs = "$(DESTDIR)$(gosrcdir)" "$(DESTDIR)$(haksrcdir)"
+DATA = $(gosrc_DATA) $(haksrc_DATA)
 RECURSIVE_CLEAN_TARGETS = mostlyclean-recursive clean-recursive	\
   distclean-recursive maintainer-clean-recursive
 am__recursive_targets = \
@@ -384,6 +384,21 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AUTOMAKE_OPTION = foreign
 ACLOCAL_AMFLAGS = -I m4
+haksrcdir = $(datadir)/hak
+haksrc_DATA = \
+	src/collection.hak \
+	src/external-process.hak  \
+	src/kernel.hak  \
+	src/mutex.hak \
+	src/process.hak \
+	src/stream.hak  \
+	src/text-stream.hak \
+	src/context.hak \
+	src/magnitude.hak \
+	src/object.hak \
+	src/semaphore.hak \
+	src/system.hak
+
 gosrcdir = $(datadir)/hak/go
 gosrc_DATA = go.mod hak.go hak-inst.go hak-cb.go
 EXTRA_DIST = t t/test-bi.hak src
@@ -455,6 +470,27 @@ uninstall-gosrcDATA:
 	@list='$(gosrc_DATA)'; test -n "$(gosrcdir)" || list=; \
 	files=`for p in $$list; do echo $$p; done | sed -e 's|^.*/||'`; \
 	dir='$(DESTDIR)$(gosrcdir)'; $(am__uninstall_files_from_dir)
+install-haksrcDATA: $(haksrc_DATA)
+	@$(NORMAL_INSTALL)
+	@list='$(haksrc_DATA)'; test -n "$(haksrcdir)" || list=; \
+	if test -n "$$list"; then \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(haksrcdir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(haksrcdir)" || exit 1; \
+	fi; \
+	for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  echo "$$d$$p"; \
+	done | $(am__base_list) | \
+	while read files; do \
+	  echo " $(INSTALL_DATA) $$files '$(DESTDIR)$(haksrcdir)'"; \
+	  $(INSTALL_DATA) $$files "$(DESTDIR)$(haksrcdir)" || exit $$?; \
+	done
+
+uninstall-haksrcDATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(haksrc_DATA)'; test -n "$(haksrcdir)" || list=; \
+	files=`for p in $$list; do echo $$p; done | sed -e 's|^.*/||'`; \
+	dir='$(DESTDIR)$(haksrcdir)'; $(am__uninstall_files_from_dir)
 
 # This directory's subdirectories are mostly independent; you can cd
 # into them and run 'make' without going through this Makefile.
@@ -770,7 +806,7 @@ check: check-recursive
 all-am: Makefile $(DATA)
 installdirs: installdirs-recursive
 installdirs-am:
-	for dir in "$(DESTDIR)$(gosrcdir)"; do \
+	for dir in "$(DESTDIR)$(gosrcdir)" "$(DESTDIR)$(haksrcdir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: install-recursive
@@ -825,7 +861,7 @@ info: info-recursive
 
 info-am:
 
-install-data-am: install-gosrcDATA
+install-data-am: install-gosrcDATA install-haksrcDATA
 
 install-dvi: install-dvi-recursive
 
@@ -871,7 +907,7 @@ ps: ps-recursive
 
 ps-am:
 
-uninstall-am: uninstall-gosrcDATA
+uninstall-am: uninstall-gosrcDATA uninstall-haksrcDATA
 
 .MAKE: $(am__recursive_targets) install-am install-strip
 
@@ -884,14 +920,14 @@ uninstall-am: uninstall-gosrcDATA
 	distclean-tags distcleancheck distdir distuninstallcheck dvi \
 	dvi-am html html-am info info-am install install-am \
 	install-data install-data-am install-dvi install-dvi-am \
-	install-exec install-exec-am install-gosrcDATA install-html \
-	install-html-am install-info install-info-am install-man \
-	install-pdf install-pdf-am install-ps install-ps-am \
-	install-strip installcheck installcheck-am installdirs \
-	installdirs-am maintainer-clean maintainer-clean-generic \
-	mostlyclean mostlyclean-generic mostlyclean-libtool pdf pdf-am \
-	ps ps-am tags tags-am uninstall uninstall-am \
-	uninstall-gosrcDATA
+	install-exec install-exec-am install-gosrcDATA \
+	install-haksrcDATA install-html install-html-am install-info \
+	install-info-am install-man install-pdf install-pdf-am \
+	install-ps install-ps-am install-strip installcheck \
+	installcheck-am installdirs installdirs-am maintainer-clean \
+	maintainer-clean-generic mostlyclean mostlyclean-generic \
+	mostlyclean-libtool pdf pdf-am ps ps-am tags tags-am uninstall \
+	uninstall-am uninstall-gosrcDATA uninstall-haksrcDATA
 
 .PRECIOUS: Makefile
 
