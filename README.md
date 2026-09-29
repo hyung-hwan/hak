@@ -144,7 +144,7 @@ The parentheses in `(b:(pick))` are the send's own argument list, exactly as in
 `(b:twice)`. Without them the binding heads nothing when it sits in an argument
 position, and is refused.
 
-Two shapes are refused rather than guessed at:
+The following forms are refused:
 
 ```
 a:b:c                    ## a message that was never sent cannot receive another.

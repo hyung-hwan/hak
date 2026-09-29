@@ -257,7 +257,8 @@ static HAK_INLINE int tok_ends_a_value (hak_tok_type_t t)
 	{
 		case HAK_TOK_IDENT:
 		case HAK_TOK_IDENT_DOTTED:
-		case HAK_TOK_IDENT_DOTTED_CLA:
+		case HAK_TOK_IDENT_DOTTED_CLA_SELF:
+		case HAK_TOK_IDENT_DOTTED_CLA_SUPER:
 		case HAK_TOK_RPAREN:
 		case HAK_TOK_RBRACK:
 		case HAK_TOK_RBRACE:
@@ -2606,8 +2607,12 @@ static int feed_process_token (hak_t* hak)
 			frd->obj = hak_makecnodedsymbol(hak, 0, TOKEN_LOC(hak), TOKEN_NAME(hak), 0);
 			goto auto_xlist;
 
-		case HAK_TOK_IDENT_DOTTED_CLA:
+		case HAK_TOK_IDENT_DOTTED_CLA_SELF:
 			frd->obj = hak_makecnodedsymbol(hak, 0, TOKEN_LOC(hak), TOKEN_NAME(hak), 1);
+			goto auto_xlist;
+
+		case HAK_TOK_IDENT_DOTTED_CLA_SUPER:
+			frd->obj = hak_makecnodedsymbol(hak, 0, TOKEN_LOC(hak), TOKEN_NAME(hak), 2);
 			goto auto_xlist;
 
 		auto_xlist:
@@ -3598,7 +3603,7 @@ static int flx_plain_ident (hak_t* hak, hak_ooci_t c) /* identifier */
 			if (pi->seg_count == 0 && (tok_type == HAK_TOK_SELF || tok_type == HAK_TOK_SUPER))
 			{
 				/* allowed if it begins with self. or super. */
-				pi->is_cla = 1; /* mark that it's prefixed with self or super */
+				pi->is_cla = (tok_type == HAK_TOK_SELF? 1: 2); /* mark that it's prefixed with self or super */
 			}
 			else
 			{
@@ -3650,7 +3655,8 @@ static int flx_plain_ident (hak_t* hak, hak_ooci_t c) /* identifier */
 		}
 		else
 		{
-			tok_type = pi->is_cla? HAK_TOK_IDENT_DOTTED_CLA: HAK_TOK_IDENT_DOTTED;
+			tok_type = pi->is_cla == 2? HAK_TOK_IDENT_DOTTED_CLA_SUPER:
+			           pi->is_cla == 1? HAK_TOK_IDENT_DOTTED_CLA_SELF: HAK_TOK_IDENT_DOTTED;
 		}
 		FEED_WRAP_UP(hak, tok_type);
 		goto not_consumed;

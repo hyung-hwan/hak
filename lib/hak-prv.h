@@ -473,7 +473,8 @@ enum hak_tok_type_t
 	HAK_TOK_PIPOP,     /* -> */
 	HAK_TOK_IDENT,
 	HAK_TOK_IDENT_DOTTED,
-	HAK_TOK_IDENT_DOTTED_CLA,
+	HAK_TOK_IDENT_DOTTED_CLA_SELF,
+	HAK_TOK_IDENT_DOTTED_CLA_SUPER,
 	HAK_TOK_DOT,       /* . */
 	HAK_TOK_DBLDOTS,   /* .. */
 	HAK_TOK_ELLIPSIS,  /* ... */
@@ -628,6 +629,8 @@ typedef enum hak_cnode_flag_t hak_cnode_flag_t;
 
 #define HAK_CNODE_IS_DSYMBOL(x) ((x)->cn_type == HAK_CNODE_DSYMBOL)
 #define HAK_CNODE_IS_DSYMBOL_CLA(x) ((x)->cn_type == HAK_CNODE_DSYMBOL && (x)->u.dsymbol.is_cla)
+#define HAK_CNODE_IS_DSYMBOL_CLA_SELF(x) ((x)->cn_type == HAK_CNODE_DSYMBOL && (x)->u.dsymbol.is_cla == 1)
+#define HAK_CNODE_IS_DSYMBOL_CLA_SUPER(x) ((x)->cn_type == HAK_CNODE_DSYMBOL && (x)->u.dsymbol.is_cla == 2)
 
 #define HAK_CNODE_IS_CONS(x) ((x)->cn_type == HAK_CNODE_CONS)
 #define HAK_CNODE_IS_CONS_CONCODED(x, code) ((x)->cn_type == HAK_CNODE_CONS && (x)->u.cons.concode == (code))

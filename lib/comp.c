@@ -5013,6 +5013,77 @@ static int check_va_spread (hak_t* hak, hak_cnode_t* arg_list)
 	return 1;
 }
 
+static hak_oop_cons_t query_mod_for_dsymbol(hak_t* hak, hak_cnode_t* obj)
+{
+	/* query the module for information if it is the first time
+	 * when the dotted symbol is seen */
+
+	hak_pfbase_t* pfbase;
+	hak_mod_t* mod;
+	hak_oop_t sym, val;
+	unsigned int kernel_bits;
+	hak_oop_cons_t cons;
+
+	/* [NOTE]
+	 *   the caller of this function must ensure that the symbol has not been registered
+	 *   in the systme dictionary yet. this function registers the symbol in the system dictionary
+	 *   if the query returns success */
+
+	pfbase = hak_querymod(hak, HAK_CNODE_GET_TOKPTR(obj), HAK_CNODE_GET_TOKLEN(obj), &mod);
+	if (!pfbase)
+	{
+		hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(obj),
+			"unknown dotted symbol '%.*js'", HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
+		return HAK_NULL;
+	}
+
+	sym = hak_makesymbol(hak, HAK_CNODE_GET_TOKPTR(obj), HAK_CNODE_GET_TOKLEN(obj));
+	if (HAK_UNLIKELY(!sym)) return HAK_NULL;
+
+	hak_pushvolat(hak, &sym);
+	switch (pfbase->type)
+	{
+		case HAK_PFBASE_FUNC:
+			kernel_bits = 2;
+			val = hak_makeprim(hak, pfbase->handler, pfbase->minargs, pfbase->maxargs, mod);
+			break;
+
+		case HAK_PFBASE_VAR:
+			kernel_bits = 1;
+			val = hak->_nil;
+			break;
+
+		case HAK_PFBASE_CONST_SMOOI:
+		{
+			/* TODO: create a value from the pfbase information. it needs to get extended first
+			 * can i make use of pfbase->handler type-cast to a differnt type? */
+			/* maxarg -> actual value cast to (hak_oow_t)(hak_ooi_t) */
+			hak_ooi_t v = (hak_ooi_t)pfbase->maxargs;
+			HAK_ASSERT(hak, HAK_IN_SMOOI_RANGE(v));
+			kernel_bits = 2;
+			val = HAK_SMOOI_TO_OOP(v);
+			break;
+		}
+
+		default:
+			hak_popvolat(hak);
+			hak_seterrbfmt(hak, HAK_EINVAL, "invalid pfbase type - %d\n", pfbase->type);
+			return HAK_NULL;
+	}
+
+	if (!val || !(cons = hak_putatsysdic(hak, sym, val)))
+	{
+		hak_popvolat(hak);
+		return HAK_NULL;
+	}
+	hak_popvolat(hak);
+
+	/* make this dotted symbol special that it can't get changed
+	 * to a different value */
+	HAK_OBJ_SET_FLAGS_KERNEL(sym, kernel_bits);
+	return cons;
+}
+
 static int compile_cons_dlist_expression (hak_t* hak, hak_cnode_t* obj, int nrets)
 {
 /* TODO: */
@@ -5210,6 +5281,7 @@ static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 		if (!va && (HAK_CNODE_IS_SYMBOL(car) || HAK_CNODE_IS_DSYMBOL(car) || HAK_CNODE_IS_BINOP(car)))
 		{
 			hak_oop_cons_t sdc;
+			hak_oop_word_t sdv;
 			hak_oow_t minargs = 0;
 			hak_oow_t maxargs = HAK_TYPE_MAX(hak_oow_t);
 
@@ -5218,7 +5290,6 @@ static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 			sdc = hak_lookupsysdicforsymbol_noseterr(hak, HAK_CNODE_GET_TOK(car));
 			if (sdc)
 			{
-				hak_oop_word_t sdv;
 				sdv = (hak_oop_word_t)HAK_CONS_CDR(sdc);
 				if (HAK_IS_PRIM(hak, sdv))
 				{
@@ -5226,23 +5297,21 @@ static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 					maxargs = sdv->slot[2];
 				}
 			}
-			else if (HAK_CNODE_IS_DSYMBOL(car))
+			else if (HAK_CNODE_IS_DSYMBOL(car) && !HAK_CNODE_IS_DSYMBOL_CLA(car))
 			{
-				/* [HACK]
-				 * a module function is only put into the system dictionary when
+				/* a module function is usually put into the system dictionary when
 				 * the dotted symbol itself is compiled, which happens after this
 				 * check. on the first occurrence the lookup above therefore finds
-				 * nothing - ask the module directly so the first call is checked
-				 * like every later one. this reads the arity only and registers
-				 * nothing. the registration still happens when the symbol compiles.
-				 * TODO: create a common funciton that registers a module symbol and call it from here... */
-				hak_pfbase_t* pfbase;
-				hak_mod_t* mod;
-				pfbase = hak_querymod(hak, HAK_CNODE_GET_TOKPTR(car), HAK_CNODE_GET_TOKLEN(car), &mod);
-				if (pfbase && pfbase->type == HAK_PFBASE_FUNC)
+				 * nothing - perform the module query so the first call is checked
+				 * like every later one. */
+				sdc = query_mod_for_dsymbol(hak, car);
+				if (!sdc) return -1;
+
+				sdv = (hak_oop_word_t)HAK_CONS_CDR(sdc);
+				if (HAK_IS_PRIM(hak, sdv))
 				{
-					minargs = pfbase->minargs;
-					maxargs = pfbase->maxargs;
+					minargs = sdv->slot[1];
+					maxargs = sdv->slot[2];
 				}
 			}
 
@@ -5500,7 +5569,6 @@ static HAK_INLINE int compile_dsymbol (hak_t* hak, hak_cnode_t* obj)
 	/* the dot notation collides with car/cdr separator? no. dotted symbols don't contains space.
 	 * the car cdr separator must be a single character */
 	{ /* HACK FOR NOW */
-		const hak_ooch_t* sep;
 		hak_oocs_t name;
 		int x = 0;
 		hak_var_info_t vi;
@@ -5509,9 +5577,7 @@ static HAK_INLINE int compile_dsymbol (hak_t* hak, hak_cnode_t* obj)
 		name = *HAK_CNODE_GET_TOK(obj);
 		fbi = &hak->c->funblk.info[hak->c->funblk.depth];
 
-		sep = hak_find_oochar(name.ptr, name.len, '.');
-		HAK_ASSERT(hak, sep != HAK_NULL);
-		if (hak_comp_oochars_bcstr(name.ptr, (sep - (const hak_ooch_t*)name.ptr), "self") == 0)
+		if (HAK_CNODE_IS_DSYMBOL_CLA_SELF(obj))
 		{
 			/* instance variable?  or instance method? */
 			if (fbi->fun_type >> 8)
@@ -5534,11 +5600,11 @@ static HAK_INLINE int compile_dsymbol (hak_t* hak, hak_cnode_t* obj)
 					HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
 				return -1;
 			}
-			name.ptr = (hak_ooch_t*)(sep + 1);
+			name.ptr += 5; /* skip self. */
 			name.len -= 5;
 			x = find_variable_backward_with_word(hak, &name, HAK_CNODE_GET_LOC(obj), 1, &vi);
 		}
-		else if (hak_comp_oochars_bcstr(name.ptr, sep - (const hak_ooch_t*)name.ptr, "super") == 0)
+		else if (HAK_CNODE_IS_DSYMBOL_CLA_SUPER(obj))
 		{
 			if (fbi->fun_type >> 8) /* if defined using A:xxx syntax */
 			{
@@ -5547,7 +5613,7 @@ static HAK_INLINE int compile_dsymbol (hak_t* hak, hak_cnode_t* obj)
 					HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
 				return -1;
 			}
-			name.ptr = (hak_ooch_t*)(sep + 1);
+			name.ptr += 6; /* skip super. */
 			name.len -= 6;
 			x = find_variable_backward_with_word(hak, &name, HAK_CNODE_GET_LOC(obj), 2, &vi); /* TODO: arrange to skip the current class */
 		}
@@ -5568,66 +5634,8 @@ static HAK_INLINE int compile_dsymbol (hak_t* hak, hak_cnode_t* obj)
 	cons = (hak_oop_t)hak_lookupsysdicforsymbol_noseterr(hak, HAK_CNODE_GET_TOK(obj));
 	if (!cons)
 	{
-		/* query the module for information if it is the first time
-		 * when the dotted symbol is seen */
-
-		hak_pfbase_t* pfbase;
-		hak_mod_t* mod;
-		hak_oop_t sym, val;
-		unsigned int kernel_bits;
-
-		pfbase = hak_querymod(hak, HAK_CNODE_GET_TOKPTR(obj), HAK_CNODE_GET_TOKLEN(obj), &mod);
-		if (!pfbase)
-		{
-			hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(obj),
-				"unknown dotted symbol '%.*js'", HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj));
-			return -1;
-		}
-
-		sym = hak_makesymbol(hak, HAK_CNODE_GET_TOKPTR(obj), HAK_CNODE_GET_TOKLEN(obj));
-		if (HAK_UNLIKELY(!sym)) return -1;
-
-		hak_pushvolat(hak, &sym);
-		switch (pfbase->type)
-		{
-			case HAK_PFBASE_FUNC:
-				kernel_bits = 2;
-				val = hak_makeprim(hak, pfbase->handler, pfbase->minargs, pfbase->maxargs, mod);
-				break;
-
-			case HAK_PFBASE_VAR:
-				kernel_bits = 1;
-				val = hak->_nil;
-				break;
-
-			case HAK_PFBASE_CONST_SMOOI:
-			{
-				/* TODO: create a value from the pfbase information. it needs to get extended first
-				 * can i make use of pfbase->handler type-cast to a differnt type? */
-				/* maxarg -> actual value cast to (hak_oow_t)(hak_ooi_t) */
-				hak_ooi_t v = (hak_ooi_t)pfbase->maxargs;
-				HAK_ASSERT(hak, HAK_IN_SMOOI_RANGE(v));
-				kernel_bits = 2;
-				val = HAK_SMOOI_TO_OOP(v);
-				break;
-			}
-
-			default:
-				hak_popvolat(hak);
-				hak_seterrbfmt(hak, HAK_EINVAL, "invalid pfbase type - %d\n", pfbase->type);
-				return -1;
-		}
-
-		if (!val || !(cons = (hak_oop_t)hak_putatsysdic(hak, sym, val)))
-		{
-			hak_popvolat(hak);
-			return -1;
-		}
-		hak_popvolat(hak);
-
-		/* make this dotted symbol special that it can't get changed
-		 * to a different value */
-		HAK_OBJ_SET_FLAGS_KERNEL(sym, kernel_bits);
+		cons = (hak_oop_t)query_mod_for_dsymbol(hak, obj);
+		if (!cons) return -1;
 	}
 
 	if (add_literal(hak, cons, &index) <= -1 ||
@@ -6289,7 +6297,7 @@ static int compile_object_list (hak_t* hak)
 			{
 				/* the last argument is '...'. push the active context and let
 				 * SPREAD replace it with this function's variadic arguments plus
-				 * the count of them. */
+				 * the count of them. SPREAD is be followed by CALL_V/SEND_V/SEND_TO_SUPER_V. */
 				if (emit_byte_instruction(hak, HAK_CODE_PUSH_CONTEXT, HAK_CNODE_GET_LOC(car)) <= -1 ||
 				    emit_byte_instruction(hak, HAK_CODE_SPREAD, HAK_CNODE_GET_LOC(car)) <= -1) return -1;
 				POP_CFRAME(hak);

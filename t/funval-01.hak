@@ -1,0 +1,110 @@
+## calling a function held in a variable
+##
+## A function is an ordinary value in hak, so it can be stored and called back
+## through whatever holds it. The call site names the holder, not the function:
+##
+##     self.cb(1 2)      ## an instance variable
+##     handler(1 2)      ## a class variable, or a local, or a global
+##
+## The instance-variable form is the one worth guarding. 'self.cb' is a dotted
+## symbol, and dotted symbols are also how module functions are written
+## (core.gc, dic.put), so anything that resolves a dotted symbol has to keep the
+## 'self.' and 'super.' prefixes apart from a module name. Getting that wrong
+## turns a stored callback into "unknown dotted symbol 'self.cb'".
+##
+## This is the shape a class library reaches for when it stores a callback, so
+## it is asserted here rather than left to be discovered.
+
+$include-once "object.hak"
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+## --- an instance variable holding a function --------------------------------
+
+class Holder: Object (cb tag) {
+	fun[#ci] new() {
+		self.cb := (fun(a b) { return (+ a b) })
+		self.tag := "holder"
+		return self
+	}
+
+	fun callIt(x y) { return self.cb(x y) }
+
+	## no arguments at all
+	fun[#ci] newNoArg() {
+		self.cb := (fun() { return 99 })
+		return self
+	}
+	fun callNoArg() { return self.cb() }
+
+	## the ivar may also be read without calling it
+	fun peek() { return self.cb }
+}
+
+chk (= ((Holder:new):callIt 3 4) 7) "a function in an instance variable is callable through self."
+chk (= ((Holder:newNoArg):callNoArg) 99) "...with no arguments too"
+
+## reading the ivar gives the function itself, which is then callable
+h := (Holder:new)
+f := h:peek()
+chk (fun? f) "reading the instance variable yields the function"
+chk (= (f 5 6) 11) "...and it is callable once held elsewhere"
+
+## --- a class variable holding a function ------------------------------------
+##
+## A class variable is reached by its bare name, so this exercises the plain
+## symbol path rather than the dotted one.
+
+## a class body may not create an unnamed function, so the initial value is a
+## named one defined above it
+
+fun tenTimes(n) { return (* n 10) }
+
+class CVHolder: Object ((handler)) {
+	handler := tenTimes
+	fun[#c] run(n) { return handler(n) }
+	fun[#c] setIt(f) { handler := f ; return handler }
+}
+
+chk (= (CVHolder:run 4) 40) "a function in a class variable is callable by name"
+
+CVHolder:setIt (fun(n) { return (+ n 100) })
+chk (= (CVHolder:run 4) 104) "...and replacing it changes what the call reaches"
+
+## --- a local and a global ----------------------------------------------------
+
+fun viaLocal() {
+	| g |
+	g := (fun(n) { return (+ n 1) })
+	return g(41)
+}
+
+chk (= (viaLocal) 42) "a function in a local variable is callable by name"
+
+gfun := (fun(n) { return (- n 1) })
+chk (= gfun(43) 42) "a function in a global variable is callable by name"
+
+## --- the callback shape, end to end ------------------------------------------
+##
+## What the above is really for: handing an object a function and having it call
+## back later, which is how a stream or a process group would report completion.
+
+class Notifier: Object (onDone calls) {
+	fun[#ci] new(f) { self.onDone := f ; self.calls := 0 ; return self }
+	fun fire(v) {
+		self.calls := (+ self.calls 1)
+		return self.onDone(v)
+	}
+	fun count() { return self.calls }
+}
+
+seen := 0
+n := (Notifier:new (fun(v) { seen := (+ seen v) ; return v }))
+chk (= (n:fire 5) 5) "a stored callback runs and answers"
+chk (= seen 5) "...and its side effect reaches the enclosing scope"
+chk (= (n:fire 7) 7) "...and it can be called again"
+chk (= seen 12) "...accumulating across calls"
+chk (= n:count() 2) "the holder saw both calls"

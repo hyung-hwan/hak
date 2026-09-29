@@ -17,6 +17,7 @@ check_SCRIPTS = \
 	fork-01.hak \
 	fork-02.hak \
 	fun-01.hak \
+	funval-01.hak \
 	hnd-01.hak \
 	hnd-02.hak \
 	hnd-03.hak \
