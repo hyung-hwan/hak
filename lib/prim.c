@@ -170,7 +170,7 @@ hak_pfrc_t hak_pf_log (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	return HAK_PF_SUCCESS;
 }
 
-hak_pfrc_t hak_p f_logf (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+hak_pfrc_t hak_pf_logf (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	if (hak_logfmtcallstack(hak, nargs) <= -1)
 	{

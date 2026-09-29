@@ -60,6 +60,7 @@
 #	include <errno.h>
 #	include <time.h>
 #	include <string.h>
+#	include <stdio.h>    /* sprintf */
 #	include <descrip.h>  /* dsc$descriptor_s */
 #	include <starlet.h>  /* sys$bintim, sys$setime */
 #else
