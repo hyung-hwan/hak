@@ -37,6 +37,57 @@ type
 		LANG_ENABLE_EOL = (BitMask(1) shl 14)
 	);
 
+	ErrNum = ( (* this enum must follow hak_errnum_t in hak.h *)
+
+		ENOERR,
+		EGENERIC,
+		ENOIMPL,
+		ESYSERR,
+		EINTERN,
+
+		ESYSMEM,
+		EOOMEM,
+		ETYPE,
+		EINVAL,
+		ENOENT,
+
+		EEXIST,
+		EBUSY,
+		EACCES,
+		EPERM,
+		ENOTDIR,
+
+		EINTR,
+		EPIPE,
+		EAGAIN,
+		EBADHND,
+		EFRMFLOOD,
+
+		EMSGRCV,
+		EMSGSND,
+		ENUMARGS,
+		ERANGE,
+		EBCFULL,
+
+		EDFULL,
+		EPFULL,
+		EFINIS,
+		EFLOOD,
+		EDIVBY0,
+
+		EIOERR,
+		EECERR,
+		EBUFFULL,
+		ESYNERR,
+		ECALL,
+		ECALLARG,
+		ECALLRET,
+		ESEMFLOOD,
+		EEXCEPT,
+		ESTKOVRFLW,
+		ESTKUNDFLW
+	);
+
 	Option = ( (* this enum must follow hak_option_t in hak.h *)
 		TRAIT,
 		LOG_MASK,
@@ -128,6 +179,7 @@ type
 	public
 		constructor Create(x: integer);
 		destructor Destroy(); override;
+		function GetIncDirs(): System.RawByteString;
 		procedure SetIncDirs(dirs: System.PAnsiChar);
 		procedure SetIncDirs(dirs: PUchar);
 		procedure SetModLibDirs(dirs: System.PAnsiChar);
@@ -359,6 +411,18 @@ begin
 	end;
 end;
 
+function Interp.GetIncDirs(): System.RawByteString;
+var
+	p: System.PAnsiChar;
+begin
+	(* the option holds a pointer to the interpreter's own copy, so nothing is
+	 * freed here. it is empty unless SetIncDirs() has been called. *)
+	p := nil;
+	if hak_getoption(self.handle, Option.INCDIRS_BCSTR, @p) <= -1 then exit('');
+	if p = nil then exit('');
+	exit(System.RawByteString(p));
+end;
+
 procedure Interp.SetIncDirs(dirs: System.PAnsiChar);
 begin
 	if hak_setoption(self.handle, Option.INCDIRS_BCSTR, dirs) <= -1 then
@@ -415,19 +479,51 @@ begin
 	exit(ext^.self);
 end;
 
+(* report why an open failed.
+ *
+ * errno cannot be trusted on its own here. FileOpen() rejects a directory on
+ * its own account, without any syscall failing, so it neither sets errno nor
+ * clears it - the value left over from an earlier failed attempt is still
+ * there, and the include search makes earlier failed attempts the norm. Asking
+ * whether the name is a directory is therefore the reliable test, and it has
+ * to come first; errno is only consulted once that is ruled out.
+ *
+ * (when errno has never been set at all it reads 0, and SysErrorMessage(0)
+ * says "Success", which is the other way this used to mislead.) *)
+procedure set_open_error(handle: pointer; const name: System.RawByteString);
+var
+	err: System.Integer;
+begin
+	err := SysUtils.GetLastOSError();
+	if SysUtils.DirectoryExists(name) then
+		hak_seterrbmsg(handle, System.Ord(ErrNum.EIOERR), PBchar('Is a directory'))
+	else if err <> 0 then
+		hak_seterrbmsg(handle, hak_syserrstrb(handle, 0, err, nil, 0), PBchar(SysUtils.SysErrorMessage(err)))
+	else
+		hak_seterrbmsg(handle, System.Ord(ErrNum.EIOERR), PBchar('cannot open file'));
+end;
+
 function cci_handler(handle: pointer; cmd: IoCmd; arg: CciArgPtr): integer; cdecl;
 var
 	nf: NamedHandlePtr;
 	len: System.LongInt;
 	err: System.Integer;
 	name: System.RawByteString;
+	raw: System.RawByteString;
 	basedir: System.RawByteString;
+	cand: System.RawByteString;
+	rest: System.RawByteString;
+	dir: System.RawByteString;
+	sep: System.Integer;
+	try_incdirs: System.Boolean;
 	self: Interp;
 	dgst: Sha1.TSHA1Digest;
 begin
 	case cmd of
 		IO_OPEN: begin
 			self := handle_to_self(handle);
+
+			try_incdirs := false;
 
 			if arg^.includer = nil then begin
 				(* main stream *)
@@ -437,9 +533,25 @@ begin
 				(* included file *)
 				nf := NamedHandlePtr(arg^.includer^.handle);
 				basedir := SysUtils.ExtractFilePath(nf^.name);
-				name := System.UTF8Encode(WideString(arg^.name));
+				raw := System.UTF8Encode(WideString(arg^.name));
+				name := raw;
 				if SysUtils.CompareStr(basedir, '') <> 0 then
 					name := SysUtils.ConcatPaths([basedir, name]);
+
+				(* a name the author anchored - absolute, or written with an
+				 * explicit ./ or ../ - is meant to resolve against the includer
+				 * alone. anything else may fall back to the include directories.
+				 * this mirrors open_cci_stream() in lib/std.c and the go
+				 * handler in hak-cb.go.
+				 *
+				 * [NOTE] a windows drive-qualified name such as c:\x.hak is not
+				 * recognised as absolute here. lib/std.c carries the same
+				 * limitation and the same TODO, so the two stay in step. *)
+				try_incdirs :=
+					(System.Copy(raw, 1, 1) <> '/') and
+					(System.Copy(raw, 1, 1) <> PathDelim) and
+					(System.Copy(raw, 1, 2) <> './') and
+					(System.Copy(raw, 1, 3) <> '../');
 			end;
 
 			System.New(nf);
@@ -449,13 +561,42 @@ begin
 				exit(-1);
 			end;
 
-(* TODO: support incdirs *)
 			if arg^.includer <> nil then begin
 				(* included file *)
 				nf^.handle := SysUtils.FileOpen(name, SysUtils.fmOpenRead);
+
+				if (nf^.handle = System.THandle(-1)) and try_incdirs then begin
+					(* walk the include directories in turn. PathSep is ':' on
+					 * unix and ';' on windows, matching INCDIR_SEP in lib/std.c.
+					 * an empty entry means the current directory. *)
+					rest := self.GetIncDirs();
+					while (nf^.handle = System.THandle(-1)) and (rest <> '') do begin
+						sep := System.Pos(SysUtils.PathSep, rest);
+						if sep > 0 then begin
+							dir := System.Copy(rest, 1, sep - 1);
+							rest := System.Copy(rest, sep + 1, System.Length(rest));
+						end
+						else begin
+							dir := rest;
+							rest := '';
+						end;
+
+						if dir = '' then cand := raw
+						else cand := SysUtils.ConcatPaths([dir, raw]);
+
+						(* record every attempt, not just a successful one. on
+						 * success this is the path that opened, and it becomes
+						 * the includer path for anything this file includes in
+						 * turn. on final failure it is the last candidate tried,
+						 * which is what the error should name - open_cci_stream()
+						 * in lib/std.c reports its last candidate too. *)
+						name := cand;
+						nf^.handle := SysUtils.FileOpen(cand, SysUtils.fmOpenRead);
+					end;
+				end;
+
 				if nf^.handle = System.THandle(-1) then begin
-					err := SysUtils.GetLastOSError();
-					hak_seterrbmsg(handle, hak_syserrstrb(handle, 0, err, nil, 0), PBchar(SysUtils.SysErrorMessage(err)));
+					set_open_error(handle, name);
 					System.Dispose(nf);
 					exit(-1);
 				end;
@@ -482,6 +623,7 @@ begin
 			nf := NamedHandlePtr(arg^.handle);
 			len := SysUtils.FileRead(nf^.handle, arg^.buf, System.SizeOf(arg^.buf)); (* use SizeOf a Uchar buffer as it needs to fill it with bytes *)
 			if len <= -1 then begin
+				err := SysUtils.GetLastOSError(); (* must be read before anything else can overwrite it *)
 				hak_seterrbmsg(handle, hak_syserrstrb(handle, 0, err, nil, 0), PBchar(SysUtils.SysErrorMessage(err)));
 				exit(-1);
 			end;
