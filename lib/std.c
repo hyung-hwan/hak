@@ -5176,7 +5176,7 @@ static HAK_INLINE int open_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 		fn = ((bb_t*)arg->includer->handle)->fn;
 
 /* TODO: openvms - map unix path to openvms native path: e.g. .. to [-] */
-		if (arg->name[0] == '/')  /* TODO: change the code to check if it's an absolute path */
+		if (HAK_IS_PATH_ABSOLUTE(arg->name))
 		{
 			fb = HAK_NULL;
 			parlen = 0;
@@ -5186,7 +5186,13 @@ static HAK_INLINE int open_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 		{
 			fb = FN_BASE_NAME(fn);
 			parlen = fb - fn;
-			attempt_incdirs = !((arg->name[0] == '.' && arg->name[1] == '/') || (arg->name[0] == '.' && arg->name[1] == '.' && arg->name[2] == '/'));
+		#if defined(HAK_HAVE_ALT_PATH_SEP)
+			attempt_incdirs = !((arg->name[0] == '.' && (arg->name[1] == HAK_DFL_PATH_SEP || arg->name[1] == HAK_ALT_PATH_SEP)) ||
+			                    (arg->name[0] == '.' && arg->name[1] == '.' && (arg->name[2] == HAK_DFL_PATH_SEP || arg->name[2] == HAK_ALT_PATH_SEP)));
+		#else
+			attempt_incdirs = !((arg->name[0] == '.' && arg->name[1] == HAK_DFL_PATH_SEP) ||
+			                    (arg->name[0] == '.' && arg->name[1] == '.' && arg->name[2] == HAK_DFL_PATH_SEP));
+		#endif
 		}
 
 		bb = (bb_t*)hak_callocmem(hak, HAK_SIZEOF(*bb) + (HAK_SIZEOF(fn_char_t) * (parlen + namelen + 1)));

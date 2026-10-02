@@ -272,6 +272,19 @@ function hak_attachudiostdwithbcstr(handle: pointer; udi: PBchar; udo: PBchar): 
 procedure hak_detachudio(handle: pointer); cdecl; external;
 function hak_compile(handle: pointer; cnode: pointer; flags: integer): integer; cdecl; external;
 function hak_execute(handle: pointer): pointer; cdecl; external;
+
+(* process switching is driven by a global tick counter that only advances
+ * while the ticker runs. without it a process that never yields is never
+ * preempted - see t/tick-01.hak. these are process-global, so they are
+ * started and stopped around each execution, as bin/hak.c does. *)
+function hak_start_ticker(): integer; cdecl; external;
+procedure hak_stop_ticker(); cdecl; external;
+procedure hak_catch_termreq(); cdecl; external;
+procedure hak_uncatch_termreq(); cdecl; external;
+
+(* the ticker is process-global, but reception is per instance: an instance
+ * ignores every tick until hak_rcvtick(handle, 1) has been called on it. *)
+procedure hak_rcvtick(handle: pointer; enabled: integer); cdecl; external;
 procedure hak_abort(handle: pointer) cdecl; external;
 
 procedure hak_getsynerrb(handle: pointer; synerr: SynerrBPtr) cdecl; external;
@@ -820,12 +833,25 @@ begin
 		excpt := self.FetchException('failed to attach udio handlers');
 		raise excpt;
 	end;
+
+	(* same order as bin/hak.c: install the ticker, then let this instance
+	 * receive from it, and unwind in reverse *)
+	hak_catch_termreq();
+	hak_start_ticker();
+	hak_rcvtick(self.handle, 1);
+
 	if hak_execute(self.handle) = nil then begin
 		excpt := self.FetchException(''); (* no header message used to make the error format the same as bin/hak *)
+		hak_rcvtick(self.handle, 0);
+		hak_stop_ticker();
+		hak_uncatch_termreq();
 		hak_detachudio(self.handle);
 		raise excpt;
 	end;
 
+	hak_rcvtick(self.handle, 0);
+	hak_stop_ticker();
+	hak_uncatch_termreq();
 	hak_detachudio(self.handle);
 end;
 

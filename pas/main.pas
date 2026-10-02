@@ -2,7 +2,11 @@ program main;
 
 {$mode objfpc}{$H+}
 
-uses Hak, SysUtils, GetOpts;
+uses Hak, SysUtils, GetOpts
+{$ifdef unix}
+	, BaseUnix
+{$endif}
+	;
 
 var
 
@@ -24,6 +28,19 @@ var
 	end;
 
 begin
+{$ifdef unix}
+	(* Writing to a pipe whose reader has gone - `hakpas foo.hak | head -1', or a
+	 * child spawned by sys.popen exiting early - raises SIGPIPE, which kills the
+	 * process by default before write() ever returns EPIPE. Ignore it so the
+	 * failing write reports an error the script can act on instead. See
+	 * t/sig-01.hak, and the matching note in bin/hak.c.
+	 *
+	 * This belongs to the application rather than to the Hak unit: the
+	 * disposition is process-wide, and a program that would rather die quietly
+	 * on a broken pipe is making a legitimate choice. *)
+	BaseUnix.fpSignal(BaseUnix.SIGPIPE, BaseUnix.SignalHandler(BaseUnix.SIG_IGN));
+{$endif}
+
 	(* System.ParamCount() returns only the number of argumetns except System.ParamStr(0). It is the upper bound to System.ParamStr(). *)
 
 	opts[0].name := 'heapsize';
