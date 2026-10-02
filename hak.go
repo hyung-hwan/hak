@@ -21,14 +21,12 @@ int hak_udo_handler_for_go (hak_t* hak, hak_io_cmd_t cmd, void* arg) {
 */
 import "C"
 
-import (
-	"bufio"
-	"fmt"
-	"io"
-	"os"
-	"runtime"
-	"unsafe"
-)
+import "bufio"
+import "fmt"
+import "io"
+import "os"
+import "runtime"
+import "unsafe"
 
 type CciImpl interface {
 	Open(g *Hak, name string) (int, error)

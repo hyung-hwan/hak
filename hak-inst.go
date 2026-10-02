@@ -4,6 +4,7 @@ package hak
 #include <hak.h>
 */
 import "C"
+
 import "sync"
 import "weak"
 

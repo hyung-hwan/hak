@@ -13,7 +13,7 @@ unit Hak;
 
 interface
 
-uses SysUtils;
+uses SysUtils, Sha1;
 
 type
 	BitMask = longword; (* this must match hak_bitmask_t in hak.h *)
@@ -40,7 +40,27 @@ type
 	Option = ( (* this enum must follow hak_option_t in hak.h *)
 		TRAIT,
 		LOG_MASK,
-		LOG_MAXCAPA
+		LOG_MAXCAPA,
+
+		LOG_TARGET_BCSTR,
+		LOG_TARGET_UCSTR,
+		LOG_TARGET_BCS,
+		LOG_TARGET_UCS,
+
+		SYMTAB_SIZE,
+		SYSDIC_SIZE,
+		PROCSTK_SIZE,
+		EXSTK_SZIE,
+		CLSTK_SIZE,
+
+		MODLIBDIRS_BCSTR,
+		MODLIBDIRS_UCSTR,
+		MODPREFIX,
+		MODPOSTFIX,
+		MODINCTX,
+
+		INCDIRS_BCSTR,
+		INCDIRS_UCSTR
 	);
 
 	IoCmd = ( (* this enum must follow hak_io_cmd_t in hak.h *)
@@ -91,6 +111,8 @@ type
 	CciArg = record (* this record must follow the public part of hak_io_cciarg_t in hak.h *)
 		name: PUchar;
 		handle: pointer;
+		unique_id: array[0..31] of Byte;
+		unique_id_len: Byte;
 		byte_oriented: integer;
 		buf: array[0..(HAK_CCI_BUF_LEN - 1)] of Uchar;
 		xlen: System.SizeUint;
@@ -106,6 +128,10 @@ type
 	public
 		constructor Create(x: integer);
 		destructor Destroy(); override;
+		procedure SetIncDirs(dirs: System.PAnsiChar);
+		procedure SetIncDirs(dirs: PUchar);
+		procedure SetModLibDirs(dirs: System.PAnsiChar);
+		procedure SetModLibDirs(dirs: PUchar);
 		procedure Ignite(heapsize: System.SizeUint);
 		procedure AddBuiltinPrims();
 		procedure CompileFile(filename: System.PAnsiChar);
@@ -246,7 +272,7 @@ begin
 	*)
 
 	SetLength(arr, len + 1);
-	Move(p^, arr[0], len * SizeOf(UCS4Char));
+	System.Move(p^, arr[0], len * SizeOf(UCS4Char));
 
 	exit(UCS4StringToWideString(arr));
 end;
@@ -265,7 +291,7 @@ begin
 	self.error_colm := col;
 end;
 
-constructor Interp.Create (x: integer);
+constructor Interp.Create(x: integer);
 var
 	h: pointer;
 	ei: Errinf;
@@ -333,6 +359,38 @@ begin
 	end;
 end;
 
+procedure Interp.SetIncDirs(dirs: System.PAnsiChar);
+begin
+	if hak_setoption(self.handle, Option.INCDIRS_BCSTR, dirs) <= -1 then
+	begin
+		raise self.FetchException('failed to set incdirs');
+	end;
+end;
+
+procedure Interp.SetIncDirs(dirs: PUchar);
+begin
+	if hak_setoption(self.handle, Option.INCDIRS_UCSTR, dirs) <= -1 then
+	begin
+		raise self.FetchException('failed to set incdirs');
+	end;
+end;
+
+procedure Interp.SetModLibDirs(dirs: System.PAnsiChar);
+begin
+	if hak_setoption(self.handle, Option.MODLIBDIRS_BCSTR, dirs) <= -1 then
+	begin
+		raise self.FetchException('failed to set modlibdirs');
+	end;
+end;
+
+procedure Interp.SetModLibDirs(dirs: PUchar);
+begin
+	if hak_setoption(self.handle, Option.MODLIBDIRS_UCSTR, dirs) <= -1 then
+	begin
+		raise self.FetchException('failed to set modlibdirs');
+	end;
+end;
+
 procedure Interp.Ignite(heapsize: System.SizeUint);
 begin
 	if hak_ignite(self.handle, heapsize) <= -1 then
@@ -365,6 +423,7 @@ var
 	name: System.RawByteString;
 	basedir: System.RawByteString;
 	self: Interp;
+	dgst: Sha1.TSHA1Digest;
 begin
 	case cmd of
 		IO_OPEN: begin
@@ -390,6 +449,7 @@ begin
 				exit(-1);
 			end;
 
+(* TODO: support incdirs *)
 			if arg^.includer <> nil then begin
 				(* included file *)
 				nf^.handle := SysUtils.FileOpen(name, SysUtils.fmOpenRead);
@@ -406,6 +466,9 @@ begin
 
 			nf^.name := name;
 			arg^.handle := pointer(nf);
+			dgst := Sha1.SHA1String(SysUtils.ExpandFileName(name));
+			System.Move(dgst, arg^.unique_id, System.SizeOf(dgst));
+			arg^.unique_id_len := System.SizeOf(dgst);
 			arg^.byte_oriented := 1;
 		end;
 

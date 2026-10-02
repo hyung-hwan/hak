@@ -82,7 +82,7 @@ endif
 if ENABLE_HAKX
 
 bin_PROGRAMS += hakx
-hakx_SOURCES = hakx.c
+hakx_SOURCES = hak-x.c
 hakx_CPPFLAGS = $(CPPFLAGS_COMMON)
 hakx_LDFLAGS = $(LDFLAGS_COMMON)
 hakx_LDADD = ../lib/libhakx.la $(LIBADD_COMMON)
@@ -142,7 +142,7 @@ hakgo$(EXEEXT): ../lib/libhak.la $(hakgo_OBJECTS)
 	$(CGO_TARGET_ENV) \
 	CGO_CFLAGS="-I$(abs_top_srcdir)/lib -I$(abs_top_builddir)/lib $(CFLAGS) $(CGO_CFLAGS_EXTRA)" \
 	CGO_LDFLAGS="-L$(abs_top_builddir)/lib -L$(abs_top_builddir)/lib/.libs -lhak $(CGO_SYS_LIBS) $(LIBM) $(CGO_LDFLAGS_EXTRA)"  \
-	go build -C $(srcdir) -ldflags "-X 'main.BINDIR=$(bindir)' -X 'main.SBINDIR=$(sbindir)' -X 'main.LIBDIR=$(libdir)' -X 'main.SYSCONFDIR=$(sysconfdir)'" -x -o $(abs_builddir)/$@ -modfile $(abs_top_srcdir)/go.mod  $(abs_srcdir)/main.go
+	go build -C $(srcdir) -ldflags "-X 'main.PACKAGE_NAME=$(PACKAGE_NAME)go' -X 'main.PACKAGE_VERSION=$(PACKAGE_VERSION)' -X 'main.BINDIR=$(bindir)' -X 'main.SBINDIR=$(sbindir)' -X 'main.LIBDIR=$(libdir)' -X 'main.SYSCONFDIR=$(sysconfdir)'" -x -o $(abs_builddir)/$@ -modfile $(abs_top_srcdir)/go.mod  $(abs_srcdir)/main.go
 	## ---------------------------------------------------------------
 	go clean -C $(srcdir) -x -modfile $(abs_top_srcdir)/go.mod
 

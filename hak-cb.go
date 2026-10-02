@@ -7,19 +7,16 @@ package hak
 */
 import "C"
 
-import (
-	"bufio"
-	"io"
-	"os"
-	"path"
-	"strings"
-	"path/filepath"
-	"reflect"
-	"sync"
-	"unsafe"
-)
-
-//import "fmt"
+import "bufio"
+import "crypto/sha1"
+import "io"
+import "os"
+import "path"
+import "strings"
+import "path/filepath"
+import "reflect"
+import "sync"
+import "unsafe"
 
 type IOHandle struct {
 	file *os.File
@@ -32,63 +29,61 @@ type IOHandleTable struct {
 	free_slots []int
 }
 
-func (io *IOHandleTable) add_io_handle(f *os.File, ioif interface{}) int {
-	io.mtx.Lock()
-	defer io.mtx.Unlock()
+func (iot *IOHandleTable) add_io_handle(f *os.File, ioif interface{}) int {
+	iot.mtx.Lock()
+	defer iot.mtx.Unlock()
 
-	var n int = len(io.free_slots)
+	var n int = len(iot.free_slots)
 
 	if n <= 0 { // no free slots
-		io.handles = append(io.handles, IOHandle{file: f, ioif: ioif})
-		return len(io.handles) - 1
+		iot.handles = append(iot.handles, IOHandle{file: f, ioif: ioif})
+		return len(iot.handles) - 1
 	} else {
 		var slot int
 		n--
-		slot = io.free_slots[n]
-		io.free_slots = io.free_slots[:n]
-		io.handles[slot].file = f
-		io.handles[slot].ioif = ioif
+		slot = iot.free_slots[n]
+		iot.free_slots = iot.free_slots[:n]
+		iot.handles[slot].file = f
+		iot.handles[slot].ioif = ioif
 		return slot
 	}
 }
 
-func (io *IOHandleTable) del_io_handle(slot int) IOHandle {
+func (iot *IOHandleTable) del_io_handle(slot int) IOHandle {
 	var (
 		h IOHandle
 		n int
 	)
 
-	io.mtx.Lock()
-	defer io.mtx.Unlock()
+	iot.mtx.Lock()
+	defer iot.mtx.Unlock()
 
-	h = io.handles[slot]
-	io.handles[slot].file = nil
-	io.handles[slot].ioif = nil
+	h = iot.handles[slot]
+	iot.handles[slot].file = nil
+	iot.handles[slot].ioif = nil
 
-	n = len(io.handles)
+	n = len(iot.handles)
 	if slot == n-1 {
-		io.handles = io.handles[:n-1]
+		iot.handles = iot.handles[:n-1]
 	} else {
-		io.free_slots = append(io.free_slots, slot)
+		iot.free_slots = append(iot.free_slots, slot)
 	}
 
 	return h
 }
 
-func (io *IOHandleTable) slot_to_io_handle(slot int) IOHandle {
-	io.mtx.Lock()
-	defer io.mtx.Unlock()
-	return io.handles[slot]
+func (iot *IOHandleTable) slot_to_io_handle(slot int) IOHandle {
+	iot.mtx.Lock()
+	defer iot.mtx.Unlock()
+	return iot.handles[slot]
 }
 
 var io_tab IOHandleTable = IOHandleTable{}
 
 //export hak_go_cci_handler
 func hak_go_cci_handler(c *C.hak_t, cmd C.hak_io_cmd_t, arg unsafe.Pointer) C.int {
-	var (
-		g   *Hak
-		err error
-	)
+	var g   *Hak
+	var err error
 
 	g = c_to_go(c)
 
@@ -118,15 +113,14 @@ func hak_go_cci_handler(c *C.hak_t, cmd C.hak_io_cmd_t, arg unsafe.Pointer) C.in
 			tptr = ioarg.includer.handle
 			tlen = *(*C.size_t)(unsafe.Pointer(uintptr(tptr) + unsafe.Sizeof(fd)))
 
-			includer_name = C.GoStringN((*C.char)(unsafe.Pointer(uintptr(tptr)+unsafe.Sizeof(fd)+unsafe.Sizeof(tlen))), C.int(tlen))
+			includer_name = C.GoStringN((*C.char)(unsafe.Pointer(uintptr(tptr) + unsafe.Sizeof(fd) + unsafe.Sizeof(tlen))), C.int(tlen))
 			name = filepath.Join(path.Dir(includer_name), raw)
 
 			// a name anchored by the author - absolute, or explicitly ./ or
 			// ../ - is meant to resolve against the includer alone. anything
 			// else may fall back to the include directories. this mirrors
 			// what open_cci_stream() does in lib/std.c.
-			try_incdirs = !filepath.IsAbs(raw) &&
-				!strings.HasPrefix(raw, "./") && !strings.HasPrefix(raw, "../")
+			try_incdirs = !filepath.IsAbs(raw) && !strings.HasPrefix(raw, "./") && !strings.HasPrefix(raw, "../")
 		}
 
 		// [NOTE] the open has to happen before the allocation below, because
@@ -140,7 +134,7 @@ func hak_go_cci_handler(c *C.hak_t, cmd C.hak_io_cmd_t, arg unsafe.Pointer) C.in
 			if err != nil && try_incdirs {
 				// walk the colon-separated include directories, as the C
 				// reader does. an empty entry means the current directory.
-				for _, dir := range strings.Split(g.GetIncDirs(), ":") {
+				for _, dir := range strings.Split(g.GetIncDirs(), string(os.PathListSeparator)) {
 					var cand string = filepath.Join(dir, raw)
 					var fd2 int
 					var err2 error
@@ -173,24 +167,35 @@ func hak_go_cci_handler(c *C.hak_t, cmd C.hak_io_cmd_t, arg unsafe.Pointer) C.in
 
 		// | fd | length | name bytes of the length |
 		*(*int)(tptr) = fd;
-		*(*C.size_t)(unsafe.Pointer(uintptr(tptr)+unsafe.Sizeof(fd))) = tlen;
+		*(*C.size_t)(unsafe.Pointer(uintptr(tptr) + unsafe.Sizeof(fd))) = tlen;
 
 		// C.CString() allocates a memory block. Use a SliceHeader to avoid extra memory allocation
 		// for the string conversion. Create a fake slice header that can be used with copy() instead.
 		var dsthdr reflect.SliceHeader
-		dsthdr.Data = uintptr(tptr)+unsafe.Sizeof(fd)+unsafe.Sizeof(tlen)
+		dsthdr.Data = uintptr(tptr) + unsafe.Sizeof(fd) + unsafe.Sizeof(tlen)
 		dsthdr.Len = int(tlen)
 		dsthdr.Cap = int(tlen)
 		copy(*(*[]byte)(unsafe.Pointer(&dsthdr)), name);
+
+		var x string
+		var y string
+		var sum [20]byte
+		x = name
+		y, err = filepath.EvalSymlinks(x)
+		if err == nil {
+			y, err  = filepath.Abs(y)
+			if err == nil { x = y }
+		}
+		sum = sha1.Sum([]byte(x))
+		copy(unsafe.Slice((*byte)(unsafe.Pointer(&ioarg.unique_id[0])), 32), sum[:])
+		ioarg.unique_id_len = C.hak_uint8_t(len(sum))
 
 		ioarg.handle = tptr
 		return 0
 
 	case C.HAK_IO_CLOSE:
-		var (
-			fd    int
-			ioarg *C.hak_io_cciarg_t
-		)
+		var fd    int
+		var ioarg *C.hak_io_cciarg_t
 
 		ioarg = (*C.hak_io_cciarg_t)(arg)
 		fd = *(*int)(ioarg.handle) // the descriptor at the beginning
@@ -202,14 +207,13 @@ func hak_go_cci_handler(c *C.hak_t, cmd C.hak_io_cmd_t, arg unsafe.Pointer) C.in
 		return 0
 
 	case C.HAK_IO_READ:
-		var (
-			ioarg *C.hak_io_cciarg_t
-			n     int
-			i     int
-			buf   []rune
-			dummy C.hak_uch_t
-			fd    int
-		)
+		var ioarg *C.hak_io_cciarg_t
+		var n     int
+		var i     int
+		var buf   []rune
+		var dummy C.hak_uch_t
+		var fd    int
+
 		ioarg = (*C.hak_io_cciarg_t)(arg)
 
 		fd = *(*int)(ioarg.handle) // the descriptor at the beginning
@@ -249,10 +253,8 @@ func hak_go_cci_handler(c *C.hak_t, cmd C.hak_io_cmd_t, arg unsafe.Pointer) C.in
 
 //export hak_go_udi_handler
 func hak_go_udi_handler(c *C.hak_t, cmd C.hak_io_cmd_t, arg unsafe.Pointer) C.int {
-	var (
-		g   *Hak
-		err error
-	)
+	var g   *Hak
+	var err error
 
 	g = c_to_go(c)
 
@@ -273,12 +275,11 @@ func hak_go_udi_handler(c *C.hak_t, cmd C.hak_io_cmd_t, arg unsafe.Pointer) C.in
 		return 0
 
 	case C.HAK_IO_READ:
-		var (
-			ioarg *C.hak_io_udiarg_t
-			n     int
-			err   error
-			buf   []rune
-		)
+		var ioarg *C.hak_io_udiarg_t
+		var n     int
+		var err   error
+		var buf   []rune
+
 		ioarg = (*C.hak_io_udiarg_t)(arg)
 
 		buf = make([]rune, 1024) // TODO:  different size...
@@ -297,10 +298,8 @@ func hak_go_udi_handler(c *C.hak_t, cmd C.hak_io_cmd_t, arg unsafe.Pointer) C.in
 
 //export hak_go_udo_handler
 func hak_go_udo_handler(c *C.hak_t, cmd C.hak_io_cmd_t, arg unsafe.Pointer) C.int {
-	var (
-		g   *Hak
-		err error
-	)
+	var g   *Hak
+	var err error
 
 	g = c_to_go(c)
 
@@ -321,11 +320,10 @@ func hak_go_udo_handler(c *C.hak_t, cmd C.hak_io_cmd_t, arg unsafe.Pointer) C.in
 		return 0
 
 	case C.HAK_IO_WRITE:
-		var (
-			ioarg *C.hak_io_udoarg_t
-			data  []rune
-			err   error
-		)
+		var ioarg *C.hak_io_udoarg_t
+		var data  []rune
+		var err   error
+
 		ioarg = (*C.hak_io_udoarg_t)(arg)
 		data = uchars_to_rune_slice((*C.hak_uch_t)(ioarg.ptr), uintptr(ioarg.len))
 		err = g.io.udo.Write(data)
@@ -337,11 +335,10 @@ func hak_go_udo_handler(c *C.hak_t, cmd C.hak_io_cmd_t, arg unsafe.Pointer) C.in
 		return 0
 
 	case C.HAK_IO_WRITE_BYTES:
-		var (
-			ioarg *C.hak_io_udoarg_t
-			data  []byte
-			err   error
-		)
+		var ioarg *C.hak_io_udoarg_t
+		var data  []byte
+		var err   error
+
 		ioarg = (*C.hak_io_udoarg_t)(arg)
 		data = unsafe.Slice((*byte)(ioarg.ptr), ioarg.len)
 		err = g.io.udo.WriteBytes(data)
@@ -371,12 +368,10 @@ type CciFileHandler struct {
 }
 
 func (p *CciFileHandler) Open(g *Hak, name string) (int, error) {
-	var (
-		f   *os.File
-		r   *bufio.Reader
-		fd  int
-		err error
-	)
+	var f   *os.File
+	var r   *bufio.Reader
+	var fd  int
+	var err error
 
 	if name == "" {
 		f = os.Stdin
@@ -406,13 +401,11 @@ func (p *CciFileHandler) Close(fd int) {
 }
 
 func (p *CciFileHandler) Read(fd int, buf []rune) (int, error) {
-	var (
-		hnd IOHandle
-		i   int
-		c   rune
-		r   *bufio.Reader
-		err error
-	)
+	var hnd IOHandle
+	var i   int
+	var c   rune
+	var r   *bufio.Reader
+	var err error
 
 	hnd = io_tab.slot_to_io_handle(fd)
 	r, _ = hnd.ioif.(*bufio.Reader)
@@ -438,10 +431,8 @@ type UdiFileHandler struct {
 }
 
 func (p *UdiFileHandler) Open(g *Hak) error {
-	var (
-		f *os.File
-	//	err error
-	)
+	var f *os.File
+	//var err error
 
 	f = os.Stdin
 	//f, err = os.Open("/dev/stdin")
@@ -467,11 +458,9 @@ func (p *UdiFileHandler) Close() {
 }
 
 func (p *UdiFileHandler) Read(buf []rune) (int, error) {
-	var (
-		i   int
-		c   rune
-		err error
-	)
+	var i   int
+	var c   rune
+	var err error
 
 	// flush all pending print out before reading
 	p.g.io.udo.Flush()
@@ -498,10 +487,8 @@ type UdoFileHandler struct {
 }
 
 func (p *UdoFileHandler) Open(g *Hak) error {
-	var (
-		f *os.File
-	//	err error
-	)
+	var  f *os.File
+	//var err error
 
 	//		f, err = os.OpenFile("/dev/stdout", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	//		if err != nil {

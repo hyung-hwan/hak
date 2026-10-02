@@ -108,6 +108,7 @@ void hak_xproto_seteof (hak_xproto_t* proto, int v)
 
 void hak_xproto_advbuf (hak_xproto_t* proto, hak_oow_t inc)
 {
+	/* advance the receive buffer pointer */
 	proto->rcv.len += inc;
 }
 

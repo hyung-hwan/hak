@@ -253,7 +253,7 @@ static void log_write (server_xtn_t* xtn, hak_oow_t wid, hak_bitmask_t mask, con
 		if (wid != HAK_SERVER_WID_INVALID)
 		{
 			/* TODO: check if the underlying snprintf support %zd */
-			tslen = snprintf (ts, sizeof(ts), "[%zu] ", wid);
+			tslen = snprintf(ts, sizeof(ts), "[%zu] ", wid);
 			write_log (xtn, logfd, ts, tslen);
 		}
 	}
@@ -400,7 +400,7 @@ static int handle_logopt (server_xtn_t* xtn, const hak_bch_t* str)
 		xstr = strdup(str);
 		if (!xstr)
 		{
-			fprintf (stderr, "ERROR: out of memory in duplicating %s\n", str);
+			fprintf(stderr, "ERROR: out of memory in duplicating %s\n", str);
 			return -1;
 		}
 
@@ -437,7 +437,7 @@ static int handle_logopt (server_xtn_t* xtn, const hak_bch_t* str)
 
 			else
 			{
-				fprintf (stderr, "ERROR: unknown log option value - %s\n", flt);
+				fprintf(stderr, "ERROR: unknown log option value - %s\n", flt);
 				if (str != xstr) free (xstr);
 				return -1;
 			}
@@ -455,7 +455,7 @@ static int handle_logopt (server_xtn_t* xtn, const hak_bch_t* str)
 	xtn->logfd = open(xstr, O_CREAT | O_WRONLY | O_APPEND , 0644);
 	if (xtn->logfd == -1)
 	{
-		fprintf (stderr, "ERROR: cannot open a log file %s\n", xstr);
+		fprintf(stderr, "ERROR: cannot open a log file %s\n", xstr);
 		if (str != xstr) free (xstr);
 		return -1;
 	}
@@ -499,7 +499,7 @@ static int handle_dbgopt (hak_server_t* server, const char* str)
 		else if (hak_comp_bchars_bcstr(flt, len, "bigint") == 0)  trait |= HAK_SERVER_TRAIT_DEBUG_BIGINT;
 		else
 		{
-			fprintf (stderr, "ERROR: unknown debug option value - %.*s\n", (int)len, flt);
+			fprintf(stderr, "ERROR: unknown debug option value - %.*s\n", (int)len, flt);
 			return -1;
 		}
 	}
@@ -571,7 +571,7 @@ static int server_main (const char* outer, int argc, char* argv[])
 	if (argc < 2)
 	{
 	print_usage:
-		fprintf (stderr, "Usage: %s %s bind-address:port\n", outer, argv[0]);
+		fprintf(stderr, "Usage: %s %s bind-address:port\n", outer, argv[0]);
 		return -1;
 	}
 
@@ -621,9 +621,9 @@ static int server_main (const char* outer, int argc, char* argv[])
 
 			case ':':
 				if (opt.lngopt)
-					fprintf (stderr, "bad argument for '%s'\n", opt.lngopt);
+					fprintf(stderr, "bad argument for '%s'\n", opt.lngopt);
 				else
-					fprintf (stderr, "bad argument for '%c'\n", opt.opt);
+					fprintf(stderr, "bad argument for '%c'\n", opt.opt);
 
 				return -1;
 
@@ -640,7 +640,7 @@ static int server_main (const char* outer, int argc, char* argv[])
 	server = hak_server_open(&sys_mmgr, HAK_SIZEOF(server_xtn_t), &server_prim, HAK_NULL);
 	if (!server)
 	{
-		fprintf (stderr, "cannot open server\n");
+		fprintf(stderr, "cannot open server\n");
 		return -1;
 	}
 
@@ -688,21 +688,21 @@ static int server_main (const char* outer, int argc, char* argv[])
 
 	if (n <= -1)
 	{
-		hak_server_logbfmt (server, HAK_LOG_APP | HAK_LOG_FATAL, "server error[%d] - %js\n", hak_server_geterrnum(server), hak_server_geterrmsg(server));
+		hak_server_logbfmt(server, HAK_LOG_APP | HAK_LOG_FATAL, "server error[%d] - %js\n", hak_server_geterrnum(server), hak_server_geterrmsg(server));
 	}
 
 	if (xtn->logfd >= 0)
 	{
-		close (xtn->logfd);
+		close(xtn->logfd);
 		xtn->logfd = -1;
 		xtn->logfd_istty = 0;
 	}
 
-	hak_server_close (server);
+	hak_server_close(server);
 	return n;
 
 oops:
-	if (server) hak_server_close (server);
+	if (server) hak_server_close(server);
 	return -1;
 }
 
@@ -711,20 +711,20 @@ static int client_on_packet (hak_client_t* client, hak_xpkt_type_t type, const v
 {
 	if (type == HAK_XPKT_STDOUT)
 	{
-		if (len > 0) fprintf (stdout, "%.*s", (int)len, data);
+		if (len > 0) fprintf(stdout, "%.*s", (int)len, data);
 	}
 	else if (type == HAK_XPKT_STDERR)
 	{
-		if (len > 0) fprintf (stderr, "%.*s", (int)len, data);
+		if (len > 0) fprintf(stderr, "%.*s", (int)len, data);
 	}
 	else if (type == HAK_XPKT_ERROR)
 	{
 		/* error notification */
-		if (len > 0) fprintf (stderr, "ERROR: %.*s\n", (int)len, data);
+		if (len > 0) fprintf(stderr, "ERROR: %.*s\n", (int)len, data);
 	}
 	else if (type == HAK_XPKT_RETVAL)
 	{
-		if (len > 0) fprintf (stderr, "RETURN VALUE: %.*s\n", (int)len, data);
+		if (len > 0) fprintf(stderr, "RETURN VALUE: %.*s\n", (int)len, data);
 		hak_client_stop (client);
 	}
 	return 1;
@@ -757,10 +757,10 @@ static int client_main (const char* outer, int argc, char* argv[])
 	if (argc < 2)
 	{
 	print_usage:
-		fprintf (stderr, "Usage: %s %s [options] bind-address:port script-to-run\n", outer, argv[0]);
-		fprintf (stderr, "Options are:\n");
-		fprintf (stderr, " -l/--log log-options\n");
-		fprintf (stderr, " --shutwr\n");
+		fprintf(stderr, "Usage: %s %s [options] bind-address:port script-to-run\n", outer, argv[0]);
+		fprintf(stderr, "Options are:\n");
+		fprintf(stderr, " -l/--log log-options\n");
+		fprintf(stderr, " --shutwr\n");
 		return -1;
 	}
 
@@ -785,9 +785,9 @@ static int client_main (const char* outer, int argc, char* argv[])
 
 			case ':':
 				if (opt.lngopt)
-					fprintf (stderr, "bad argument for '%s'\n", opt.lngopt);
+					fprintf(stderr, "bad argument for '%s'\n", opt.lngopt);
 				else
-					fprintf (stderr, "bad argument for '%c'\n", opt.opt);
+					fprintf(stderr, "bad argument for '%c'\n", opt.opt);
 
 				return -1;
 
@@ -799,14 +799,14 @@ static int client_main (const char* outer, int argc, char* argv[])
 	/* needs 2 fixed arguments */
 	if (opt.ind + 1 >= argc) goto print_usage;
 
-	memset (&client_prim, 0, HAK_SIZEOF(client_prim));
+	memset(&client_prim, 0, HAK_SIZEOF(client_prim));
 	client_prim.log_write = client_log_write;
 	client_prim.on_packet = client_on_packet;
 
 	client = hak_client_open(&sys_mmgr, HAK_SIZEOF(client_xtn_t), &client_prim, HAK_NULL);
 	if (!client)
 	{
-		fprintf (stderr, "cannot open client\n");
+		fprintf(stderr, "cannot open client\n");
 		return -1;
 	}
 
@@ -825,32 +825,32 @@ static int client_main (const char* outer, int argc, char* argv[])
 	}
 
 	g_client = client;
-	set_signal (SIGINT, handle_sigint);
-	set_signal_to_ignore (SIGPIPE);
+	set_signal(SIGINT, handle_sigint);
+	set_signal_to_ignore(SIGPIPE);
 
-	n = hak_client_start(client, argv[opt.ind], /*argv[opt.ind + 1],*/ shut_wr_after_req);
+	n = hak_client_start(client, argv[opt.ind], argv[opt.ind + 1], shut_wr_after_req);
 	if (n <= -1)
 	{
-		fprintf (stderr, "ERROR: %s\n", hak_client_geterrbmsg(client));
+		fprintf(stderr, "ERROR: %s\n", hak_client_geterrbmsg(client));
 		goto oops;
 	}
 
-	set_signal_to_default (SIGINT);
-	set_signal_to_default (SIGPIPE);
+	set_signal_to_default(SIGINT);
+	set_signal_to_default(SIGPIPE);
 	g_client = NULL;
 
 	if (xtn->logfd >= 0)
 	{
-		close (xtn->logfd);
+		close(xtn->logfd);
 		xtn->logfd = -1;
 		xtn->logfd_istty = 0;
 	}
 
-	hak_client_close (client);
+	hak_client_close(client);
 	return n;
 
 oops:
-	if (client) hak_client_close (client);
+	if (client) hak_client_close(client);
 	return -1;
 }
 
@@ -864,23 +864,23 @@ static int json_inst_cb (hak_json_t* json, hak_json_inst_t it, const hak_oocs_t*
 	{
 		case HAK_JSON_INST_START_ARRAY:
 			json_xtn->json_depth++;
-			hak_json_logbfmt (json, HAK_LOG_INFO | HAK_LOG_APP,  "[\n");
+			hak_json_logbfmt(json, HAK_LOG_INFO | HAK_LOG_APP,  "[\n");
 			break;
 		case HAK_JSON_INST_END_ARRAY:
 			json_xtn->json_depth--;
-			hak_json_logbfmt (json, HAK_LOG_INFO | HAK_LOG_APP,  "]\n");
+			hak_json_logbfmt(json, HAK_LOG_INFO | HAK_LOG_APP,  "]\n");
 			break;
 		case HAK_JSON_INST_START_DIC:
 			json_xtn->json_depth++;
-			hak_json_logbfmt (json, HAK_LOG_INFO | HAK_LOG_APP,  "{\n");
+			hak_json_logbfmt(json, HAK_LOG_INFO | HAK_LOG_APP,  "{\n");
 			break;
 		case HAK_JSON_INST_END_DIC:
 			json_xtn->json_depth--;
-			hak_json_logbfmt (json, HAK_LOG_INFO | HAK_LOG_APP,  "}\n");
+			hak_json_logbfmt(json, HAK_LOG_INFO | HAK_LOG_APP,  "}\n");
 			break;
 
 		case HAK_JSON_INST_KEY:
-			hak_json_logbfmt (json, HAK_LOG_INFO | HAK_LOG_APP,  "%.*js: ", str->len, str->ptr);
+			hak_json_logbfmt(json, HAK_LOG_INFO | HAK_LOG_APP,  "%.*js: ", str->len, str->ptr);
 			break;
 
 		case HAK_JSON_INST_CHARACTER:
@@ -889,7 +889,7 @@ static int json_inst_cb (hak_json_t* json, hak_json_inst_t it, const hak_oocs_t*
 		case HAK_JSON_INST_TRUE:
 		case HAK_JSON_INST_FALSE:
 		case HAK_JSON_INST_NIL:
-			hak_json_logbfmt (json, HAK_LOG_INFO | HAK_LOG_APP,  "%.*js\n", str->len, str->ptr);
+			hak_json_logbfmt(json, HAK_LOG_INFO | HAK_LOG_APP,  "%.*js\n", str->len, str->ptr);
 			break;
 	}
 
@@ -906,11 +906,11 @@ int json_main (const char* outer, int argc, char* argv[])
 
 /* TODO: enhance this to accept parameters from  command line */
 
-	memset (&json_prim, 0, HAK_SIZEOF(json_prim));
+	memset(&json_prim, 0, HAK_SIZEOF(json_prim));
 	json_prim.log_write = json_log_write;
 	json_prim.instcb = json_inst_cb;
 
-	json = hak_json_open (&sys_mmgr, HAK_SIZEOF(json_xtn_t), &json_prim, NULL);
+	json = hak_json_open(&sys_mmgr, HAK_SIZEOF(json_xtn_t), &json_prim, NULL);
 
 	json_xtn = (json_xtn_t*)hak_json_getxtn(json);
 	json_xtn->logmask = HAK_LOG_ALL_LEVELS | HAK_LOG_ALL_TYPES;
@@ -920,14 +920,14 @@ int json_main (const char* outer, int argc, char* argv[])
 
 	if (hak_json_feed(json, p, strlen(p), &xlen) <= -1)
 	{
-		hak_json_logbfmt (json, HAK_LOG_FATAL | HAK_LOG_APP, "ERROR: unable to process - %js\n", hak_json_geterrmsg(json));
+		hak_json_logbfmt(json, HAK_LOG_FATAL | HAK_LOG_APP, "ERROR: unable to process - %js\n", hak_json_geterrmsg(json));
 	}
 	else if (json_xtn->json_depth != 0)
 	{
-		hak_json_logbfmt (json, HAK_LOG_FATAL | HAK_LOG_APP, "ERROR: incomplete input\n");
+		hak_json_logbfmt(json, HAK_LOG_FATAL | HAK_LOG_APP, "ERROR: incomplete input\n");
 	}
 
-	hak_json_close (json);
+	hak_json_close(json);
 	return 0;
 }
 
@@ -935,7 +935,7 @@ int json_main (const char* outer, int argc, char* argv[])
 
 static void print_main_usage (const char* argv0)
 {
-	fprintf (stderr, "Usage: %s server|client|json\n", argv0);
+	fprintf(stderr, "Usage: %s server|client|json\n", argv0);
 }
 
 int main (int argc, char* argv[])
@@ -947,7 +947,7 @@ int main (int argc, char* argv[])
 
 	if (argc < 2)
 	{
-		print_main_usage (argv0);
+		print_main_usage(argv0);
 		n = -1;	
 	}
 	else if (strcmp(argv[1], "server") == 0)
@@ -964,7 +964,7 @@ int main (int argc, char* argv[])
 	}
 	else
 	{
-		print_main_usage (argv[0]);
+		print_main_usage(argv[0]);
 		n = -1;
 	}
 

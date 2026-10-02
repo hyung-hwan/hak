@@ -346,7 +346,7 @@ static HAK_INLINE int open_read_stream (hak_t* hak, hak_io_cciarg_t* arg)
 oops:
 	if (bb)
 	{
-		if (bb->fd >= 0 && bb->fd != xtn->worker->sck) close (bb->fd);
+		if (bb->fd >= 0 && bb->fd != xtn->worker->sck) close(bb->fd);
 		hak_freemem(hak, bb);
 	}
 	return -1;
@@ -360,7 +360,7 @@ static HAK_INLINE int close_read_stream (hak_t* hak, hak_io_cciarg_t* arg)
 	bb = (bb_t*)arg->handle;
 	HAK_ASSERT(hak, bb != HAK_NULL && bb->fd >= 0);
 
-	if (bb->fd != xtn->worker->sck) close (bb->fd);
+	if (bb->fd != xtn->worker->sck) close(bb->fd);
 	hak_freemem(hak, bb);
 
 	arg->handle = HAK_NULL;
@@ -600,9 +600,9 @@ static void server_log_write (hak_t* hak, hak_bitmask_t mask, const hak_ooch_t* 
 	hak_server_t* server;
 
 	server = xtn->worker->server;
-	pthread_mutex_lock (&server->log_mutex);
-	server->prim.log_write (server, xtn->worker->wid, mask, msg, len);
-	pthread_mutex_unlock (&server->log_mutex);
+	pthread_mutex_lock(&server->log_mutex);
+	server->prim.log_write(server, xtn->worker->wid, mask, msg, len);
+	pthread_mutex_unlock(&server->log_mutex);
 }
 
 static void server_log_write_for_dummy (hak_t* hak, hak_bitmask_t mask, const hak_ooch_t* msg, hak_oow_t len)
@@ -611,9 +611,9 @@ static void server_log_write_for_dummy (hak_t* hak, hak_bitmask_t mask, const ha
 	hak_server_t* server;
 
 	server = xtn->server;
-	pthread_mutex_lock (&server->log_mutex);
-	server->prim.log_write (server, HAK_SERVER_WID_INVALID, mask, msg, len);
-	pthread_mutex_unlock (&server->log_mutex);
+	pthread_mutex_lock(&server->log_mutex);
+	server->prim.log_write(server, HAK_SERVER_WID_INVALID, mask, msg, len);
+	pthread_mutex_unlock(&server->log_mutex);
 }
 
 /* ========================================================================= */
@@ -698,7 +698,7 @@ static void exec_runtime_handler (hak_tmr_t* tmr, const hak_ntime_t* now, hak_tm
 
 	worker = proto_to_worker((hak_xproto_t*)evt->ctx);
 /* TODO: can we use worker->hak for logging before abort?? */
-	HAK_LOG1 (worker->server->dummy_hak, SERVER_LOGMASK_INFO, "Aborting script execution for max_actor_runtime exceeded [%zu]\n", worker->wid);
+	HAK_LOG1(worker->server->dummy_hak, SERVER_LOGMASK_INFO, "Aborting script execution for max_actor_runtime exceeded [%zu]\n", worker->wid);
 	hak_abort (worker->hak);
 }
 
@@ -739,15 +739,15 @@ static int insert_exec_timer (hak_xproto_t* proto, const hak_ntime_t* tmout)
 	event.handler = exec_runtime_handler;
 	event.updater = exec_runtime_updater;
 
-	pthread_mutex_lock (&server->tmr_mutex);
+	pthread_mutex_lock(&server->tmr_mutex);
 	index = hak_tmr_insert(server->tmr, &event);
 	worker->exec_runtime_event_index = index;
 	if (index != HAK_TMR_INVALID_INDEX)
 	{
 		/* inform the server of timer event change */
-		write (server->mux_pipe[1], "X", 1); /* don't care even if it fails */
+		write(server->mux_pipe[1], "X", 1); /* don't care even if it fails */
 	}
-	pthread_mutex_unlock (&server->tmr_mutex);
+	pthread_mutex_unlock(&server->tmr_mutex);
 
 	return (index == HAK_TMR_INVALID_INDEX)? -1: 0;
 }
@@ -763,7 +763,7 @@ static void delete_exec_timer (hak_xproto_t* proto)
 	worker = proto_to_worker(proto);
 	server = worker->server;
 
-	pthread_mutex_lock (&server->tmr_mutex);
+	pthread_mutex_lock(&server->tmr_mutex);
 	if (worker->exec_runtime_event_index != HAK_TMR_INVALID_INDEX)
 	{
 		/* the event has not been fired yet. let's delete it
@@ -773,7 +773,7 @@ static void delete_exec_timer (hak_xproto_t* proto)
 		HAK_ASSERT(worker->hak, worker->exec_runtime_event_index == HAK_TMR_INVALID_INDEX);
 		/*worker->exec_runtime_event_index = HAK_TMR_INVALID_INDEX;	*/
 	}
-	pthread_mutex_unlock (&server->tmr_mutex);
+	pthread_mutex_unlock(&server->tmr_mutex);
 }
 
 static int execute_script (hak_xproto_t* proto, const hak_bch_t* trigger)
@@ -799,7 +799,7 @@ static int execute_script (hak_xproto_t* proto, const hak_bch_t* trigger)
 		if (insert_exec_timer(proto, &server->cfg.actor_max_runtime) <= -1)
 		{
 			HAK_LOG0 (worker->hak, SERVER_LOGMASK_ERROR, "Cannot start execution timer\n");
-			hak_seterrbfmt (worker->hak, HAK_ESYSMEM, "cannot start execution timer");  /* i do this just to compose the error message  */
+			hak_seterrbfmt(worker->hak, HAK_ESYSMEM, "cannot start execution timer");  /* i do this just to compose the error message  */
 			failmsg = hak_geterrmsg(worker->hak);
 		}
 		else
@@ -813,7 +813,7 @@ static int execute_script (hak_xproto_t* proto, const hak_bch_t* trigger)
 #if 0
 	if (hak_xproto_end_reply(proto, failmsg) <= -1)
 	{
-		HAK_LOG1 (worker->hak, SERVER_LOGMASK_ERROR, "Cannot finalize reply for %hs\n", trigger);
+		HAK_LOG1(worker->hak, SERVER_LOGMASK_ERROR, "Cannot finalize reply for %hs\n", trigger);
 		return -1;
 	}
 #endif
@@ -828,7 +828,7 @@ static void send_error_message (hak_xproto_t* proto, const hak_ooch_t* errmsg)
 	hak_xproto_start_reply (proto);
 	if (hak_xproto_end_reply(proto, errmsg) <= -1)
 	{
-		HAK_LOG1 (proto->hak, SERVER_LOGMASK_ERROR, "Unable to send error message - %s\n", errmsg);
+		HAK_LOG1(proto->hak, SERVER_LOGMASK_ERROR, "Unable to send error message - %s\n", errmsg);
 	}
 #endif
 }
@@ -842,7 +842,7 @@ static void reformat_synerr (hak_t* hak)
 	hak_getsynerr(hak, &synerr);
 
 	orgmsg = hak_backuperrmsg(hak);
-	hak_seterrbfmt (
+	hak_seterrbfmt(
 		hak, HAK_ESYNERR,
 		"%js at %js%hsline %zu column %zu",
 		orgmsg,
@@ -868,13 +868,13 @@ static void show_server_workers (hak_xproto_t* proto)
 	worker = proto_to_worker(proto);
 	server = worker->server;
 
-	pthread_mutex_lock (&server->worker_mutex);
+	pthread_mutex_lock(&server->worker_mutex);
 	for (w = server->worker_list[HAK_SERVER_WORKER_STATE_ALIVE].head; w; w = w->next_worker)
 	{
 		/* TODO: implement this better... */
-		hak_prbfmt (worker->hak, "%zu %d %d\n", w->wid, w->sck, 1000);
+		hak_prbfmt(worker->hak, "%zu %d %d\n", w->wid, w->sck, 1000);
 	}
-	pthread_mutex_unlock (&server->worker_mutex);
+	pthread_mutex_unlock(&server->worker_mutex);
 }
 
 static int kill_server_worker (hak_xproto_t* proto, hak_oow_t wid)
@@ -1190,7 +1190,7 @@ hak_server_t* hak_server_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_server_p
 
 oops:
 	/* NOTE: pipe should be closed if jump to here is made after pipe() above */
-	if (tmr) hak_tmr_close (tmr);
+	if (tmr) hak_tmr_close(tmr);
 	if (hak) hak_close(hak);
 	if (server) HAK_MMGR_FREE(mmgr, server);
 	return HAK_NULL;
@@ -1210,14 +1210,14 @@ void hak_server_close (hak_server_t* server)
 		server->wid_map.free_last = HAK_SERVER_WID_INVALID;
 	}
 
-	pthread_mutex_destroy (&server->log_mutex);
-	pthread_mutex_destroy (&server->tmr_mutex);
-	pthread_mutex_destroy (&server->worker_mutex);
+	pthread_mutex_destroy(&server->log_mutex);
+	pthread_mutex_destroy(&server->tmr_mutex);
+	pthread_mutex_destroy(&server->worker_mutex);
 
-	hak_sys_close_pipes (server->mux_pipe);
+	hak_sys_close_pipes(server->mux_pipe);
 
-	hak_tmr_close (server->tmr);
-	hak_close (server->dummy_hak);
+	hak_tmr_close(server->tmr);
+	hak_close(server->dummy_hak);
 
 	HAK_MMGR_FREE(server->_mmgr, server);
 }
@@ -1313,15 +1313,15 @@ static hak_server_worker_t* alloc_worker (hak_server_t* server, int cli_sck, con
 	worker->server = server;
 	worker->exec_runtime_event_index = HAK_TMR_INVALID_INDEX;
 
-	server->dummy_hak->vmprim.vm_gettime (server->dummy_hak, &worker->alloc_time); /* TODO: the callback may return monotonic time. find a way to guarantee it is realtime??? */
+	server->dummy_hak->vmprim.vm_gettime(server->dummy_hak, &worker->alloc_time); /* TODO: the callback may return monotonic time. find a way to guarantee it is realtime??? */
 
 	if (server->wid_map.free_first == HAK_SERVER_WID_INVALID && prepare_to_acquire_wid(server) <= -1)
 	{
-		hak_server_freemem (server, worker);
+		hak_server_freemem(server, worker);
 		return HAK_NULL;
 	}
 
-	acquire_wid (server, worker);
+	acquire_wid(server, worker);
 	return worker;
 }
 
@@ -1331,14 +1331,14 @@ static void fini_worker_socket (hak_server_worker_t* worker)
 	{
 		if (worker->hak)
 		{
-			HAK_LOG2 (worker->hak, SERVER_LOGMASK_INFO, "Closing worker socket %d [%zu]\n", worker->sck, worker->wid);
+			HAK_LOG2(worker->hak, SERVER_LOGMASK_INFO, "Closing worker socket %d [%zu]\n", worker->sck, worker->wid);
 		}
 		else
 		{
 			/* this should be in the main server thread. i use dummy_hak for logging */
-			HAK_LOG2 (worker->server->dummy_hak, SERVER_LOGMASK_INFO, "Closing worker socket %d [%zu]\n", worker->sck, worker->wid);
+			HAK_LOG2(worker->server->dummy_hak, SERVER_LOGMASK_INFO, "Closing worker socket %d [%zu]\n", worker->sck, worker->wid);
 		}
-		close (worker->sck);
+		close(worker->sck);
 		worker->sck = -1;
 	}
 }
@@ -1349,16 +1349,16 @@ static void free_worker (hak_server_worker_t* worker)
 
 	if (worker->hak)
 	{
-		HAK_LOG1 (worker->hak, SERVER_LOGMASK_INFO, "Killing worker [%zu]\n", worker->wid);
+		HAK_LOG1(worker->hak, SERVER_LOGMASK_INFO, "Killing worker [%zu]\n", worker->wid);
 	}
 	else
 	{
 		/* this should be in the main server thread. i use dummy_hak for logging */
-		HAK_LOG1 (worker->server->dummy_hak, SERVER_LOGMASK_INFO, "Killing worker [%zu]\n", worker->wid);
+		HAK_LOG1(worker->server->dummy_hak, SERVER_LOGMASK_INFO, "Killing worker [%zu]\n", worker->wid);
 	}
 
-	release_wid (worker->server, worker);
-	hak_server_freemem (worker->server, worker);
+	release_wid(worker->server, worker);
+	hak_server_freemem(worker->server, worker);
 }
 
 static void add_worker_to_server (hak_server_t* server, hak_server_worker_state_t wstate, hak_server_worker_t* worker)
@@ -1477,7 +1477,7 @@ static int worker_step (hak_server_worker_t* worker)
 			}
 
 			if (x == 0) hak_xproto_seteof(proto, 1);
-			hak_xproto_advbuf (proto, x);
+			hak_xproto_advbuf(proto, x);
 		}
 	}
 
@@ -1558,8 +1558,8 @@ static void fini_worker_hak (hak_server_worker_t* worker)
 {
 	if (HAK_LIKELY(worker->hak))
 	{
-		hak_endfeed (worker->hak);
-		hak_close (worker->hak);
+		hak_endfeed(worker->hak);
+		hak_close(worker->hak);
 		worker->hak = HAK_NULL;
 	}
 }
@@ -1588,7 +1588,7 @@ static void fini_worker_proto (hak_server_worker_t* worker)
 {
 	if (HAK_LIKELY(worker->proto))
 	{
-		hak_xproto_close (worker->proto);
+		hak_xproto_close(worker->proto);
 		worker->proto = HAK_NULL;
 	}
 }
@@ -1600,8 +1600,8 @@ static void* worker_main (void* ctx)
 	sigset_t set;
 	int n;
 
-	sigfillset (&set);
-	pthread_sigmask (SIG_BLOCK, &set, HAK_NULL);
+	sigfillset(&set);
+	pthread_sigmask(SIG_BLOCK, &set, HAK_NULL);
 
 	worker->thr = pthread_self();
 
@@ -1615,13 +1615,13 @@ static void* worker_main (void* ctx)
 	n = init_worker_proto(worker);
 	if (HAK_UNLIKELY(n <= -1))
 	{
-		fini_worker_hak (worker);
+		fini_worker_hak(worker);
 		return HAK_NULL;
 	}
 
-	pthread_mutex_lock (&server->worker_mutex);
-	add_worker_to_server (server, HAK_SERVER_WORKER_STATE_ALIVE, worker);
-	pthread_mutex_unlock (&server->worker_mutex);
+	pthread_mutex_lock(&server->worker_mutex);
+	add_worker_to_server(server, HAK_SERVER_WORKER_STATE_ALIVE, worker);
+	pthread_mutex_unlock(&server->worker_mutex);
 
 	/* the worker loop */
 	while (!server->stopreq)
@@ -1636,19 +1636,19 @@ static void* worker_main (void* ctx)
 		}
 	}
 
-	hak_xproto_close (worker->proto);
+	hak_xproto_close(worker->proto);
 	worker->proto = HAK_NULL;
 
-	fini_worker_hak (worker);
+	fini_worker_hak(worker);
 
-	pthread_mutex_lock (&server->worker_mutex);
-	fini_worker_socket (worker);
+	pthread_mutex_lock(&server->worker_mutex);
+	fini_worker_socket(worker);
 	if (!worker->claimed)
 	{
-		zap_worker_in_server (server, worker);
-		add_worker_to_server (server, HAK_SERVER_WORKER_STATE_DEAD, worker);
+		zap_worker_in_server(server, worker);
+		add_worker_to_server(server, HAK_SERVER_WORKER_STATE_DEAD, worker);
 	}
-	pthread_mutex_unlock (&server->worker_mutex);
+	pthread_mutex_unlock(&server->worker_mutex);
 
 	return HAK_NULL;
 }
@@ -1659,36 +1659,36 @@ static void purge_all_workers (hak_server_t* server, hak_server_worker_state_t w
 
 	while (1)
 	{
-		pthread_mutex_lock (&server->worker_mutex);
+		pthread_mutex_lock(&server->worker_mutex);
 		worker = server->worker_list[wstate].head;
 		if (worker)
 		{
-			zap_worker_in_server (server, worker);
+			zap_worker_in_server(server, worker);
 			worker->claimed = 1;
-			if (worker->sck >= 0) shutdown (worker->sck, SHUT_RDWR);
+			if (worker->sck >= 0) shutdown(worker->sck, SHUT_RDWR);
 		}
-		pthread_mutex_unlock (&server->worker_mutex);
+		pthread_mutex_unlock(&server->worker_mutex);
 		if (!worker) break;
 
-		pthread_join (worker->thr, HAK_NULL);
-		free_worker (worker);
+		pthread_join(worker->thr, HAK_NULL);
+		free_worker(worker);
 	}
 }
 
 void hak_server_logbfmt (hak_server_t* server, hak_bitmask_t mask, const hak_bch_t* fmt, ...)
 {
 	va_list ap;
-	va_start (ap, fmt);
-	hak_logbfmtv (server->dummy_hak, mask, fmt, ap);
-	va_end (ap);
+	va_start(ap, fmt);
+	hak_logbfmtv(server->dummy_hak, mask, fmt, ap);
+	va_end(ap);
 }
 
 void hak_server_logufmt (hak_server_t* server, hak_bitmask_t mask, const hak_uch_t* fmt, ...)
 {
 	va_list ap;
-	va_start (ap, fmt);
-	hak_logufmtv (server->dummy_hak, mask, fmt, ap);
-	va_end (ap);
+	va_start(ap, fmt);
+	hak_logufmtv(server->dummy_hak, mask, fmt, ap);
+	va_end(ap);
 }
 
 static void set_err_with_syserr (hak_server_t* server, int syserr_type, int syserr_code, const char* bfmt, ...)
@@ -1707,9 +1707,9 @@ static void set_err_with_syserr (hak_server_t* server, int syserr_type, int syse
 	{
 		errnum = hak->vmprim.syserrstrb(hak, syserr_type, syserr_code, hak->errmsg.tmpbuf.bch, HAK_COUNTOF(hak->errmsg.tmpbuf.bch));
 
-		va_start (ap, bfmt);
+		va_start(ap, bfmt);
 		hak_seterrbfmtv(hak, errnum, bfmt, ap);
-		va_end (ap);
+		va_end(ap);
 
 	#if defined(HAK_OOCH_IS_UCH)
 		hak->errmsg.len += hak_copy_ucstr(&hak->errmsg.buf[hak->errmsg.len], HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len, u_dash);
@@ -1728,9 +1728,9 @@ static void set_err_with_syserr (hak_server_t* server, int syserr_type, int syse
 
 		errnum = hak->vmprim.syserrstru(hak, syserr_type, syserr_code, hak->errmsg.tmpbuf.uch, HAK_COUNTOF(hak->errmsg.tmpbuf.uch));
 
-		va_start (ap, bfmt);
+		va_start(ap, bfmt);
 		hak_seterrbfmtv(hak, errnum, bfmt, ap);
-		va_end (ap);
+		va_end(ap);
 
 	#if defined(HAK_OOCH_IS_UCH)
 		hak->errmsg.len += hak_copy_ucstr(&hak->errmsg.buf[hak->errmsg.len], HAK_COUNTOF(hak->errmsg.buf) - hak->errmsg.len, u_dash);
@@ -1744,7 +1744,7 @@ static void set_err_with_syserr (hak_server_t* server, int syserr_type, int syse
 	}
 
 	server->errnum = errnum;
-	hak_copy_oochars (server->errmsg.buf, server->dummy_hak->errmsg.buf, HAK_COUNTOF(server->errmsg.buf));
+	hak_copy_oochars(server->errmsg.buf, server->dummy_hak->errmsg.buf, HAK_COUNTOF(server->errmsg.buf));
 	server->errmsg.len = server->dummy_hak->errmsg.len;
 }
 
@@ -1764,15 +1764,15 @@ static void free_all_listeners (hak_server_t* server)
 		server->listener.count--;
 
 #if defined(USE_EPOLL)
-		epoll_ctl (server->listener.ep_fd, EPOLL_CTL_DEL, lp->sck, &dummy_ev);
+		epoll_ctl(server->listener.ep_fd, EPOLL_CTL_DEL, lp->sck, &dummy_ev);
 #endif
-		close (lp->sck);
-		hak_server_freemem (server, lp);
+		close(lp->sck);
+		hak_server_freemem(server, lp);
 	}
 
 #if defined(USE_EPOLL)
 	HAK_ASSERT(server->dummy_hak, server->listener.ep_fd >= 0);
-	close (server->listener.ep_fd);
+	close(server->listener.ep_fd);
 	server->listener.ep_fd = -1;
 #endif
 }
@@ -1787,8 +1787,8 @@ static int setup_listeners (hak_server_t* server, const hak_bch_t* addrs)
 	ep_fd = epoll_create(1024);
 	if (ep_fd <= -1)
 	{
-		set_err_with_syserr (server, 0, errno, "unable to create multiplexer");
-		HAK_LOG1 (server->dummy_hak, SERVER_LOGMASK_ERROR, "%js\n", hak_server_geterrmsg(server));
+		set_err_with_syserr(server, 0, errno, "unable to create multiplexer");
+		HAK_LOG1(server->dummy_hak, SERVER_LOGMASK_ERROR, "%js\n", hak_server_geterrmsg(server));
 		return -1;
 	}
 
@@ -1799,9 +1799,9 @@ static int setup_listeners (hak_server_t* server, const hak_bch_t* addrs)
 	ev.data.fd = server->mux_pipe[0];
 	if (epoll_ctl(ep_fd, EPOLL_CTL_ADD, server->mux_pipe[0], &ev) <= -1)
 	{
-		set_err_with_syserr (server, 0, errno, "unable to register pipe %d to multiplexer", server->mux_pipe[0]);
-		HAK_LOG1 (server->dummy_hak, SERVER_LOGMASK_ERROR, "%js\n", hak_server_geterrmsg(server));
-		close (ep_fd);
+		set_err_with_syserr(server, 0, errno, "unable to register pipe %d to multiplexer", server->mux_pipe[0]);
+		HAK_LOG1(server->dummy_hak, SERVER_LOGMASK_ERROR, "%js\n", hak_server_geterrmsg(server));
+		close(ep_fd);
 		return -1;
 	}
 
@@ -1823,37 +1823,37 @@ static int setup_listeners (hak_server_t* server, const hak_bch_t* addrs)
 		sck_fam = hak_bchars_to_sckaddr(addr_ptr, addr_len, &srv_addr, &srv_len);
 		if (sck_fam <= -1)
 		{
-			hak_server_seterrbfmt (server, HAK_EINVAL, "unable to convert address - %.*hs", addr_len, addr_ptr);
-			HAK_LOG1 (server->dummy_hak, SERVER_LOGMASK_ERROR, "%js\n", hak_server_geterrmsg(server));
+			hak_server_seterrbfmt(server, HAK_EINVAL, "unable to convert address - %.*hs", addr_len, addr_ptr);
+			HAK_LOG1(server->dummy_hak, SERVER_LOGMASK_ERROR, "%js\n", hak_server_geterrmsg(server));
 			goto next_segment;
 		}
 
 		srv_fd = socket(sck_fam, SOCK_STREAM, 0);
 		if (srv_fd <= -1)
 		{
-			set_err_with_syserr (server, 0, errno, "unable to open server socket for %.*hs", addr_len, addr_ptr);
-			HAK_LOG1 (server->dummy_hak, SERVER_LOGMASK_ERROR, "%js\n", hak_server_geterrmsg(server));
+			set_err_with_syserr(server, 0, errno, "unable to open server socket for %.*hs", addr_len, addr_ptr);
+			HAK_LOG1(server->dummy_hak, SERVER_LOGMASK_ERROR, "%js\n", hak_server_geterrmsg(server));
 			goto next_segment;
 		}
 
 		optval = 1;
-		setsockopt (srv_fd, SOL_SOCKET, SO_REUSEADDR, &optval, HAK_SIZEOF(int));
-		hak_sys_set_nonblock (srv_fd, 1); /* the listening socket is non-blocking unlike accepted sockets */
-		hak_sys_set_cloexec (srv_fd, 1);
+		setsockopt(srv_fd, SOL_SOCKET, SO_REUSEADDR, &optval, HAK_SIZEOF(int));
+		hak_sys_set_nonblock(srv_fd, 1); /* the listening socket is non-blocking unlike accepted sockets */
+		hak_sys_set_cloexec(srv_fd, 1);
 
 		if (bind(srv_fd, (struct sockaddr*)&srv_addr, srv_len) == -1)
 		{
-			set_err_with_syserr (server, 0, errno, "unable to bind server socket %d for %.*hs", srv_fd, addr_len, addr_ptr);
-			HAK_LOG1 (server->dummy_hak, SERVER_LOGMASK_ERROR, "%js\n", hak_server_geterrmsg(server));
-			close (srv_fd);
+			set_err_with_syserr(server, 0, errno, "unable to bind server socket %d for %.*hs", srv_fd, addr_len, addr_ptr);
+			HAK_LOG1(server->dummy_hak, SERVER_LOGMASK_ERROR, "%js\n", hak_server_geterrmsg(server));
+			close(srv_fd);
 			goto next_segment;
 		}
 
 		if (listen(srv_fd, 128) <= -1)
 		{
-			set_err_with_syserr (server, 0, errno, "unable to listen on server socket %d for %.*hs", srv_fd, addr_len, addr_ptr);
-			HAK_LOG1 (server->dummy_hak, SERVER_LOGMASK_ERROR, "%js\n", hak_server_geterrmsg(server));
-			close (srv_fd);
+			set_err_with_syserr(server, 0, errno, "unable to listen on server socket %d for %.*hs", srv_fd, addr_len, addr_ptr);
+			HAK_LOG1(server->dummy_hak, SERVER_LOGMASK_ERROR, "%js\n", hak_server_geterrmsg(server));
+			close(srv_fd);
 			goto next_segment;
 		}
 
@@ -1864,9 +1864,9 @@ static int setup_listeners (hak_server_t* server, const hak_bch_t* addrs)
 		ev.data.fd = srv_fd;
 		if (epoll_ctl(ep_fd, EPOLL_CTL_ADD, srv_fd, &ev) <= -1)
 		{
-			set_err_with_syserr (server, 0, errno, "unable to register server socket %d to multiplexer for %.*hs", srv_fd, addr_len, addr_ptr);
-			HAK_LOG1 (server->dummy_hak, SERVER_LOGMASK_ERROR, "%js\n", hak_server_geterrmsg(server));
-			close (srv_fd);
+			set_err_with_syserr(server, 0, errno, "unable to register server socket %d to multiplexer for %.*hs", srv_fd, addr_len, addr_ptr);
+			HAK_LOG1(server->dummy_hak, SERVER_LOGMASK_ERROR, "%js\n", hak_server_geterrmsg(server));
+			close(srv_fd);
 			goto next_segment;
 		}
 #endif
@@ -1894,8 +1894,8 @@ static int setup_listeners (hak_server_t* server, const hak_bch_t* addrs)
 	if (!server->listener.head)
 	{
 		/* no valid server has been configured */
-		hak_server_seterrbfmt (server, HAK_EINVAL, "unable to set up listeners with %hs", addrs);
-		free_all_listeners (server);
+		hak_server_seterrbfmt(server, HAK_EINVAL, "unable to set up listeners with %hs", addrs);
+		free_all_listeners(server);
 		return -1;
 	}
 
@@ -1909,8 +1909,8 @@ int hak_server_start (hak_server_t* server, const hak_bch_t* addrs)
 
 	if (setup_listeners(server, addrs) <= -1) return -1;
 
-	pthread_attr_init (&thr_attr);
-	pthread_attr_setstacksize (&thr_attr, server->cfg.worker_stack_size);
+	pthread_attr_init(&thr_attr);
+	pthread_attr_setstacksize(&thr_attr, server->cfg.worker_stack_size);
 
 	server->stopreq = 0;
 	while (!server->stopreq)
@@ -1923,10 +1923,10 @@ int hak_server_start (hak_server_t* server, const hak_bch_t* addrs)
 		hak_server_worker_t* worker;
 		int n;
 
-		pthread_mutex_lock (&server->tmr_mutex);
+		pthread_mutex_lock(&server->tmr_mutex);
 		n = hak_tmr_gettmout(server->tmr,  HAK_NULL, &tmout);
-		pthread_mutex_unlock (&server->tmr_mutex);
-		if (n <= -1) HAK_INIT_NTIME (&tmout, 10, 0);
+		pthread_mutex_unlock(&server->tmr_mutex);
+		if (n <= -1) HAK_INIT_NTIME(&tmout, 10, 0);
 
 #if defined(USE_EPOLL)
 		n = epoll_wait(server->listener.ep_fd, server->listener.ev_buf, HAK_COUNTOF(server->listener.ev_buf), HAK_SECNSEC_TO_MSEC(tmout.sec, tmout.nsec));
@@ -1934,20 +1934,20 @@ int hak_server_start (hak_server_t* server, const hak_bch_t* addrs)
 		n = poll(); /* TODO: */
 #endif
 
-		purge_all_workers (server, HAK_SERVER_WORKER_STATE_DEAD);
+		purge_all_workers(server, HAK_SERVER_WORKER_STATE_DEAD);
 		if (n <= -1)
 		{
 			if (server->stopreq) break; /* normal termination requested */
 			if (errno == EINTR) continue; /* interrupted but not termination requested */
 
-			set_err_with_syserr (server, 0, errno, "unable to poll for events in server");
+			set_err_with_syserr(server, 0, errno, "unable to poll for events in server");
 			xret = -1;
 			break;
 		}
 
-		pthread_mutex_lock (&server->tmr_mutex);
-		hak_tmr_fire (server->tmr, HAK_NULL, HAK_NULL);
-		pthread_mutex_unlock (&server->tmr_mutex);
+		pthread_mutex_lock(&server->tmr_mutex);
+		hak_tmr_fire(server->tmr, HAK_NULL, HAK_NULL);
+		pthread_mutex_unlock(&server->tmr_mutex);
 
 		while (n > 0)
 		{
@@ -1981,23 +1981,23 @@ int hak_server_start (hak_server_t* server, const hak_bch_t* addrs)
 					if (server->stopreq) break; /* normal termination requested */
 					if (errno == EINTR) continue; /* interrupted but no termination requested */
 					if (hak_sys_is_errno_wb(errno)) continue;
-					set_err_with_syserr (server, 0, errno, "unable to accept worker on server socket %d", evp->data.fd);
+					set_err_with_syserr(server, 0, errno, "unable to accept worker on server socket %d", evp->data.fd);
 					xret = -1;
 					break;
 				}
 
-				hak_sys_set_nonblock (cli_fd, 0); /* force the accepted socket to be blocking */
-				hak_sys_set_cloexec (cli_fd, 1);
+				hak_sys_set_nonblock(cli_fd, 0); /* force the accepted socket to be blocking */
+				hak_sys_set_cloexec(cli_fd, 1);
 
 				if (server->cfg.worker_max_count > 0)
 				{
 					int flood;
-					pthread_mutex_lock (&server->worker_mutex);
+					pthread_mutex_lock(&server->worker_mutex);
 					flood = (server->worker_list[HAK_SERVER_WORKER_STATE_ALIVE].count >= server->cfg.worker_max_count);
-					pthread_mutex_unlock (&server->worker_mutex);
+					pthread_mutex_unlock(&server->worker_mutex);
 					if (flood)
 					{
-						HAK_LOG1 (server->dummy_hak, SERVER_LOGMASK_ERROR, "Not accepting connection for too many workers - socket %d\n", cli_fd);
+						HAK_LOG1(server->dummy_hak, SERVER_LOGMASK_ERROR, "Not accepting connection for too many workers - socket %d\n", cli_fd);
 						goto drop_connection;
 					}
 				}
@@ -2005,35 +2005,35 @@ int hak_server_start (hak_server_t* server, const hak_bch_t* addrs)
 				worker = alloc_worker(server, cli_fd, &cli_addr);
 				if (!worker)
 				{
-					HAK_LOG1 (server->dummy_hak, SERVER_LOGMASK_ERROR, "Unable to accomodate worker - socket %d\n", cli_fd);
+					HAK_LOG1(server->dummy_hak, SERVER_LOGMASK_ERROR, "Unable to accomodate worker - socket %d\n", cli_fd);
 				drop_connection:
-					close (cli_fd);
+					close(cli_fd);
 				}
 				else
 				{
-					HAK_LOG2 (server->dummy_hak, SERVER_LOGMASK_INFO, "Accomodated worker [%zu] - socket %d\n", worker->wid, cli_fd);
+					HAK_LOG2(server->dummy_hak, SERVER_LOGMASK_INFO, "Accomodated worker [%zu] - socket %d\n", worker->wid, cli_fd);
 					if (pthread_create(&thr, &thr_attr, worker_main, worker) != 0)
 					{
-						free_worker (worker);
+						free_worker(worker);
 					}
 				}
 			}
 		}
 	}
 
-	purge_all_workers (server, HAK_SERVER_WORKER_STATE_ALIVE);
-	purge_all_workers (server, HAK_SERVER_WORKER_STATE_DEAD);
+	purge_all_workers(server, HAK_SERVER_WORKER_STATE_ALIVE);
+	purge_all_workers(server, HAK_SERVER_WORKER_STATE_DEAD);
 
-	pthread_attr_destroy (&thr_attr);
+	pthread_attr_destroy(&thr_attr);
 
-	free_all_listeners (server);
+	free_all_listeners(server);
 	return xret;
 }
 
 void hak_server_stop (hak_server_t* server)
 {
 	server->stopreq = 1;
-	write (server->mux_pipe[1], "Q", 1); /* don't care about failure */
+	write(server->mux_pipe[1], "Q", 1); /* don't care about failure */
 }
 
 int hak_server_setoption (hak_server_t* server, hak_server_option_t id, const void* value)
@@ -2050,12 +2050,12 @@ int hak_server_setoption (hak_server_t* server, hak_server_option_t id, const vo
 				 * is supposed to use the new value */
 				hak_bitmask_t trait;
 
-				hak_getoption (server->dummy_hak, HAK_OPT_TRAIT, &trait);
+				hak_getoption(server->dummy_hak, HAK_OPT_TRAIT, &trait);
 			#if defined(HAK_BUILD_DEBUG)
 				if (server->cfg.trait & HAK_SERVER_TRAIT_DEBUG_GC) trait |= HAK_TRAIT_DEBUG_GC;
 				if (server->cfg.trait & HAK_SERVER_TRAIT_DEBUG_BIGINT) trait |= HAK_TRAIT_DEBUG_BIGINT;
 			#endif
-				hak_setoption (server->dummy_hak, HAK_OPT_TRAIT, &trait);
+				hak_setoption(server->dummy_hak, HAK_OPT_TRAIT, &trait);
 			}
 			return 0;
 
@@ -2067,7 +2067,7 @@ int hak_server_setoption (hak_server_t* server, hak_server_option_t id, const vo
 				 * existing hak instances inside worker threads won't get
 				 * affected. new hak instances to be created later
 				 * is supposed to use the new value */
-				hak_setoption (server->dummy_hak, HAK_OPT_LOG_MASK, value);
+				hak_setoption(server->dummy_hak, HAK_OPT_LOG_MASK, value);
 			}
 			return 0;
 
@@ -2092,7 +2092,7 @@ int hak_server_setoption (hak_server_t* server, hak_server_option_t id, const vo
 			return 0;
 
 		case HAK_SERVER_SCRIPT_INCLUDE_PATH:
-			hak_copy_oocstr (server->cfg.script_include_path, HAK_COUNTOF(server->cfg.script_include_path), (const hak_ooch_t*)value);
+			hak_copy_oocstr(server->cfg.script_include_path, HAK_COUNTOF(server->cfg.script_include_path), (const hak_ooch_t*)value);
 			return 0;
 
 		case HAK_SERVER_MODULE_INCTX:
@@ -2196,13 +2196,13 @@ void hak_server_seterrbfmt (hak_server_t* server, hak_errnum_t errnum, const hak
 {
 	va_list ap;
 
-	va_start (ap, fmt);
-	hak_seterrbfmtv (server->dummy_hak, errnum, fmt, ap);
-	va_end (ap);
+	va_start(ap, fmt);
+	hak_seterrbfmtv(server->dummy_hak, errnum, fmt, ap);
+	va_end(ap);
 
 	HAK_ASSERT(server->dummy_hak, HAK_COUNTOF(server->errmsg.buf) == HAK_COUNTOF(server->dummy_hak->errmsg.buf));
 	server->errnum = errnum;
-	hak_copy_oochars (server->errmsg.buf, server->dummy_hak->errmsg.buf, HAK_COUNTOF(server->errmsg.buf));
+	hak_copy_oochars(server->errmsg.buf, server->dummy_hak->errmsg.buf, HAK_COUNTOF(server->errmsg.buf));
 	server->errmsg.len = server->dummy_hak->errmsg.len;
 }
 
@@ -2210,14 +2210,14 @@ void hak_server_seterrufmt (hak_server_t* server, hak_errnum_t errnum, const hak
 {
 	va_list ap;
 
-	va_start (ap, fmt);
-	hak_seterrufmtv (server->dummy_hak, errnum, fmt, ap);
-	va_end (ap);
+	va_start(ap, fmt);
+	hak_seterrufmtv(server->dummy_hak, errnum, fmt, ap);
+	va_end(ap);
 
 	HAK_ASSERT(server->dummy_hak, HAK_COUNTOF(server->errmsg.buf) == HAK_COUNTOF(server->dummy_hak->errmsg.buf));
 	server->errnum = errnum;
 	server->errnum = errnum;
-	hak_copy_oochars (server->errmsg.buf, server->dummy_hak->errmsg.buf, HAK_COUNTOF(server->errmsg.buf));
+	hak_copy_oochars(server->errmsg.buf, server->dummy_hak->errmsg.buf, HAK_COUNTOF(server->errmsg.buf));
 	server->errmsg.len = server->dummy_hak->errmsg.len;
 }
 

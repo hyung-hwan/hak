@@ -9,10 +9,13 @@ var
 	(*c: System.AnsiChar;*)
 	c: Char;
 	optind: System.LongInt;
-	opts: array[0..2] of GetOpts.TOption;
+	opts: array[0..3] of GetOpts.TOption;
 
 	source_file: string;
 	x: Hak.Interp = nil;
+
+	incdirs: string;
+	modlibdirs: string;
 
 	procedure print_usage_and_halt();
 	begin
@@ -27,14 +30,21 @@ begin
 	opts[0].has_arg := 1;
 	opts[0].value := #0;
 	opts[0].flag := nil;
-	opts[1].name := 'modlibdirs';
+
+	opts[1].name := 'incdirs';
 	opts[1].has_arg := 1;
-	opts[1].value := #0;
+	opts[1].value := #1;
 	opts[1].flag := nil;
-	opts[2].name := ''; (* marker for the last item *)
-	opts[2].has_arg := 0;
-	opts[2].value := #0;
+
+	opts[2].name := 'modlibdirs';
+	opts[2].has_arg := 1;
+	opts[2].value := #2;
 	opts[2].flag := nil;
+
+	opts[3].name := ''; (* marker for the last item *)
+	opts[3].has_arg := 0;
+	opts[3].value := #3;
+	opts[3].flag := nil;
 
 (* TODO: proper command-line options handling *)
 	c := #0;
@@ -42,11 +52,24 @@ begin
 	repeat
 		c := GetOpts.GetLongOpts(':', @opts[0], optind);
 		case c of
-		#0:
+		#0: (* --heapsize *)
 			begin
-				(*TODO: process options.. *)
-				(*opts[optind].name*)
-				(*GetOpts.OptArg is the value *)
+				(* TODO *)
+			end;
+
+		#1: (* --incdirs *)
+			begin
+				incdirs := GetOpts.OptArg;
+			end;
+
+		#2: (* --modlibdirs *)
+			begin
+				modlibdirs := GetOpts.OptArg;
+			end;
+
+		#3:
+			(* this must not be reached *)
+			begin
 			end;
 
 		'?', ':':
@@ -61,6 +84,10 @@ begin
 	source_file := System.ParamStr(GetOpts.OptInd);
 	try
 		x := Hak.Interp.Create(100);
+
+		if incdirs <> '' then x.SetIncDirs(pansichar(incdirs));
+		if modlibdirs <> '' then x.SetModLibDirs(pansichar(modlibdirs));
+
 		x.Ignite(0);
 
 		x.AddBuiltinPrims();

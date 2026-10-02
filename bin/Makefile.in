@@ -179,8 +179,8 @@ am__hakgo_SOURCES_DIST = ../go.mod ../hak.go ../hak-cb.go \
 @ENABLE_HAKGO_TRUE@	main.$(OBJEXT)
 hakgo_OBJECTS = $(am_hakgo_OBJECTS)
 hakgo_LDADD = $(LDADD)
-am__hakx_SOURCES_DIST = hakx.c
-@ENABLE_HAKX_TRUE@am_hakx_OBJECTS = hakx-hakx.$(OBJEXT)
+am__hakx_SOURCES_DIST = hak-x.c
+@ENABLE_HAKX_TRUE@am_hakx_OBJECTS = hakx-hak-x.$(OBJEXT)
 hakx_OBJECTS = $(am_hakx_OBJECTS)
 hakx_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
@@ -200,7 +200,7 @@ am__v_at_1 =
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/ac/depcomp
 am__maybe_remake_depfiles = depfiles
-am__depfiles_remade = ./$(DEPDIR)/hak-hak.Po ./$(DEPDIR)/hakx-hakx.Po \
+am__depfiles_remade = ./$(DEPDIR)/hak-hak.Po ./$(DEPDIR)/hakx-hak-x.Po \
 	isocline/src/$(DEPDIR)/attr.Po \
 	isocline/src/$(DEPDIR)/bbcode.Po \
 	isocline/src/$(DEPDIR)/bbcode_colors.Po \
@@ -473,7 +473,7 @@ hak_CPPFLAGS = $(CPPFLAGS_COMMON) $(am__append_3)
 hak_LDFLAGS = $(LDFLAGS_COMMON)
 hak_LDADD = ../lib/libhak.la $(LIBADD_COMMON) $(am__append_4)
 hak_DEPENDENCIES = ../lib/libhak.la $(am__append_5)
-@ENABLE_HAKX_TRUE@hakx_SOURCES = hakx.c
+@ENABLE_HAKX_TRUE@hakx_SOURCES = hak-x.c
 @ENABLE_HAKX_TRUE@hakx_CPPFLAGS = $(CPPFLAGS_COMMON)
 @ENABLE_HAKX_TRUE@hakx_LDFLAGS = $(LDFLAGS_COMMON)
 @ENABLE_HAKX_TRUE@hakx_LDADD = ../lib/libhakx.la $(LIBADD_COMMON)
@@ -654,7 +654,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hak-hak.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hakx-hakx.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hakx-hak-x.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/attr.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/bbcode.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/bbcode_colors.Po@am__quote@ # am--include-marker
@@ -716,19 +716,19 @@ hak-hak.obj: hak.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hak_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o hak-hak.obj `if test -f 'hak.c'; then $(CYGPATH_W) 'hak.c'; else $(CYGPATH_W) '$(srcdir)/hak.c'; fi`
 
-hakx-hakx.o: hakx.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hakx_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT hakx-hakx.o -MD -MP -MF $(DEPDIR)/hakx-hakx.Tpo -c -o hakx-hakx.o `test -f 'hakx.c' || echo '$(srcdir)/'`hakx.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/hakx-hakx.Tpo $(DEPDIR)/hakx-hakx.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='hakx.c' object='hakx-hakx.o' libtool=no @AMDEPBACKSLASH@
+hakx-hak-x.o: hak-x.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hakx_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT hakx-hak-x.o -MD -MP -MF $(DEPDIR)/hakx-hak-x.Tpo -c -o hakx-hak-x.o `test -f 'hak-x.c' || echo '$(srcdir)/'`hak-x.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/hakx-hak-x.Tpo $(DEPDIR)/hakx-hak-x.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='hak-x.c' object='hakx-hak-x.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hakx_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o hakx-hakx.o `test -f 'hakx.c' || echo '$(srcdir)/'`hakx.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hakx_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o hakx-hak-x.o `test -f 'hak-x.c' || echo '$(srcdir)/'`hak-x.c
 
-hakx-hakx.obj: hakx.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hakx_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT hakx-hakx.obj -MD -MP -MF $(DEPDIR)/hakx-hakx.Tpo -c -o hakx-hakx.obj `if test -f 'hakx.c'; then $(CYGPATH_W) 'hakx.c'; else $(CYGPATH_W) '$(srcdir)/hakx.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/hakx-hakx.Tpo $(DEPDIR)/hakx-hakx.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='hakx.c' object='hakx-hakx.obj' libtool=no @AMDEPBACKSLASH@
+hakx-hak-x.obj: hak-x.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hakx_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT hakx-hak-x.obj -MD -MP -MF $(DEPDIR)/hakx-hak-x.Tpo -c -o hakx-hak-x.obj `if test -f 'hak-x.c'; then $(CYGPATH_W) 'hak-x.c'; else $(CYGPATH_W) '$(srcdir)/hak-x.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/hakx-hak-x.Tpo $(DEPDIR)/hakx-hak-x.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='hak-x.c' object='hakx-hak-x.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hakx_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o hakx-hakx.obj `if test -f 'hakx.c'; then $(CYGPATH_W) 'hakx.c'; else $(CYGPATH_W) '$(srcdir)/hakx.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hakx_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o hakx-hak-x.obj `if test -f 'hak-x.c'; then $(CYGPATH_W) 'hak-x.c'; else $(CYGPATH_W) '$(srcdir)/hak-x.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -869,7 +869,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-libtool \
 
 distclean: distclean-am
 	-rm -f ./$(DEPDIR)/hak-hak.Po
-	-rm -f ./$(DEPDIR)/hakx-hakx.Po
+	-rm -f ./$(DEPDIR)/hakx-hak-x.Po
 	-rm -f isocline/src/$(DEPDIR)/attr.Po
 	-rm -f isocline/src/$(DEPDIR)/bbcode.Po
 	-rm -f isocline/src/$(DEPDIR)/bbcode_colors.Po
@@ -932,7 +932,7 @@ installcheck-am:
 
 maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/hak-hak.Po
-	-rm -f ./$(DEPDIR)/hakx-hakx.Po
+	-rm -f ./$(DEPDIR)/hakx-hak-x.Po
 	-rm -f isocline/src/$(DEPDIR)/attr.Po
 	-rm -f isocline/src/$(DEPDIR)/bbcode.Po
 	-rm -f isocline/src/$(DEPDIR)/bbcode_colors.Po
@@ -993,7 +993,7 @@ uninstall-am: uninstall-binPROGRAMS
 @ENABLE_HAKGO_TRUE@	$(CGO_TARGET_ENV) \
 @ENABLE_HAKGO_TRUE@	CGO_CFLAGS="-I$(abs_top_srcdir)/lib -I$(abs_top_builddir)/lib $(CFLAGS) $(CGO_CFLAGS_EXTRA)" \
 @ENABLE_HAKGO_TRUE@	CGO_LDFLAGS="-L$(abs_top_builddir)/lib -L$(abs_top_builddir)/lib/.libs -lhak $(CGO_SYS_LIBS) $(LIBM) $(CGO_LDFLAGS_EXTRA)"  \
-@ENABLE_HAKGO_TRUE@	go build -C $(srcdir) -ldflags "-X 'main.BINDIR=$(bindir)' -X 'main.SBINDIR=$(sbindir)' -X 'main.LIBDIR=$(libdir)' -X 'main.SYSCONFDIR=$(sysconfdir)'" -x -o $(abs_builddir)/$@ -modfile $(abs_top_srcdir)/go.mod  $(abs_srcdir)/main.go
+@ENABLE_HAKGO_TRUE@	go build -C $(srcdir) -ldflags "-X 'main.PACKAGE_NAME=$(PACKAGE_NAME)go' -X 'main.PACKAGE_VERSION=$(PACKAGE_VERSION)' -X 'main.BINDIR=$(bindir)' -X 'main.SBINDIR=$(sbindir)' -X 'main.LIBDIR=$(libdir)' -X 'main.SYSCONFDIR=$(sysconfdir)'" -x -o $(abs_builddir)/$@ -modfile $(abs_top_srcdir)/go.mod  $(abs_srcdir)/main.go
 @ENABLE_HAKGO_TRUE@	go clean -C $(srcdir) -x -modfile $(abs_top_srcdir)/go.mod
 
 @ENABLE_HAKGO_TRUE@.go.o:

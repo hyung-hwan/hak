@@ -382,6 +382,7 @@ HAK_EXPORT void hak_client_close (
 HAK_EXPORT int hak_client_start (
 	hak_client_t* client,
 	const char*   ipaddr,
+	const char*   infile,
 	int           shut_wr_after_req
 );
 

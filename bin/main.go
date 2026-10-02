@@ -6,6 +6,7 @@ import (
 	"hak"
 	"io"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -24,6 +25,9 @@ import (
 const DEFAULT_HEAPSIZE uint = 0
 
 /* to be set in build time */
+var PACKAGE_NAME = "hakgo"
+var PACKAGE_VERSION = "0.0.0"
+
 var BINDIR = "."
 var SBINDIR = "."
 var LIBDIR = "."
@@ -285,6 +289,7 @@ func main() {
 	}
 
 	if param.show_info {
+		fmt.Printf("%s %s (%s,%s)\n", PACKAGE_NAME, PACKAGE_VERSION, runtime.GOARCH, runtime.GOOS);
 		fmt.Println(hak.BuildInfo())
 		os.Exit(0)
 	}

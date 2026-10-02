@@ -113,8 +113,8 @@ int hak_sys_send_iov (int sck, hak_iovec_t* iov, int count)
 
 		while (index < count && (size_t)nwritten >= iov[index].iov_len)
 		{
-			iov[index].iov_len = 0; /* this slot has been fully written */
-			nwritten -= iov[index++].iov_len;
+			nwritten -= iov[index].iov_len;
+			iov[index++].iov_len = 0; /* this slot has been fully written */
 		}
 
 		if (index == count) break;

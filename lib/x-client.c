@@ -65,6 +65,7 @@
 #	include <pthread.h>
 #	include <poll.h>
 #	include <unistd.h>
+#	include <fcntl.h>
 #endif
 
 struct client_hak_xtn_t
@@ -212,13 +213,13 @@ hak_client_t* hak_client_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_client_p
 	/* the dummy hak is used for this client to perform primitive operations
 	 * such as getting system time or logging. so the heap size doesn't
 	 * need to be changed from the tiny value set above. */
-	hak_setoption (client->dummy_hak, HAK_OPT_LOG_MASK, &client->cfg.logmask);
-	hak_setcmgr (client->dummy_hak, client->_cmgr);
+	hak_setoption(client->dummy_hak, HAK_OPT_LOG_MASK, &client->cfg.logmask);
+	hak_setcmgr(client->dummy_hak, client->_cmgr);
 
 	return client;
 
 oops:
-	/* NOTE: pipe should be closed if jump to here is made after pipe() above */
+	/* NOTE: pipe should be closed if jump to here is made after hak_sys_open_pipes() above */
 	if (hak) hak_close(hak);
 	if (client) HAK_MMGR_FREE(mmgr, client);
 	return HAK_NULL;
@@ -231,14 +232,14 @@ static int is_stdio_fd (int fd)
 
 void hak_client_close (hak_client_t* client)
 {
-	if (client->remote.proto) hak_xproto_close (client->remote.proto);
-	if (client->remote.sck >= 0) close (client->remote.sck);
-	if (client->local.in >= 0 && is_stdio_fd(client->local.in)) close (client->local.in);
-	if (client->local.out >= 0 && is_stdio_fd(client->local.out)) close (client->local.out);
-	if (client->local.err >= 0 && is_stdio_fd(client->local.err)) close (client->local.err);
+	if (client->remote.proto) hak_xproto_close(client->remote.proto);
+	if (client->remote.sck >= 0) close(client->remote.sck);
+	if (client->local.in >= 0 && !is_stdio_fd(client->local.in)) close(client->local.in);
+	if (client->local.out >= 0 && !is_stdio_fd(client->local.out)) close(client->local.out);
+	if (client->local.err >= 0 && !is_stdio_fd(client->local.err)) close(client->local.err);
 
 	hak_sys_close_pipes(client->mux_pipe);
-	hak_close (client->dummy_hak);
+	hak_close(client->dummy_hak);
 	HAK_MMGR_FREE(client->_mmgr, client);
 }
 
@@ -366,13 +367,13 @@ void hak_client_seterrbfmt (hak_client_t* client, hak_errnum_t errnum, const hak
 {
 	va_list ap;
 
-	va_start (ap, fmt);
-	hak_seterrbfmtv (client->dummy_hak, errnum, fmt, ap);
-	va_end (ap);
+	va_start(ap, fmt);
+	hak_seterrbfmtv(client->dummy_hak, errnum, fmt, ap);
+	va_end(ap);
 
 	HAK_ASSERT(client->dummy_hak, HAK_COUNTOF(client->errmsg.buf) == HAK_COUNTOF(client->dummy_hak->errmsg.buf));
 	client->errnum = errnum;
-	hak_copy_oochars (client->errmsg.buf, client->dummy_hak->errmsg.buf, HAK_COUNTOF(client->errmsg.buf));
+	hak_copy_oochars(client->errmsg.buf, client->dummy_hak->errmsg.buf, HAK_COUNTOF(client->errmsg.buf));
 	client->errmsg.len = client->dummy_hak->errmsg.len;
 }
 
@@ -380,9 +381,9 @@ void hak_client_seterrufmt (hak_client_t* client, hak_errnum_t errnum, const hak
 {
 	va_list ap;
 
-	va_start (ap, fmt);
-	hak_seterrufmtv (client->dummy_hak, errnum, fmt, ap);
-	va_end (ap);
+	va_start(ap, fmt);
+	hak_seterrufmtv(client->dummy_hak, errnum, fmt, ap);
+	va_end(ap);
 
 	HAK_ASSERT(client->dummy_hak, HAK_COUNTOF(client->errmsg.buf) == HAK_COUNTOF(client->dummy_hak->errmsg.buf));
 	client->errnum = errnum;
@@ -395,17 +396,17 @@ void hak_client_seterrufmt (hak_client_t* client, hak_errnum_t errnum, const hak
 void hak_client_logbfmt (hak_client_t* client, hak_bitmask_t mask, const hak_bch_t* fmt, ...)
 {
 	va_list ap;
-	va_start (ap, fmt);
-	hak_logbfmtv (client->dummy_hak, mask, fmt, ap);
-	va_end (ap);
+	va_start(ap, fmt);
+	hak_logbfmtv(client->dummy_hak, mask, fmt, ap);
+	va_end(ap);
 }
 
 void hak_client_logufmt (hak_client_t* client, hak_bitmask_t mask, const hak_uch_t* fmt, ...)
 {
 	va_list ap;
-	va_start (ap, fmt);
-	hak_logufmtv (client->dummy_hak, mask, fmt, ap);
-	va_end (ap);
+	va_start(ap, fmt);
+	hak_logufmtv(client->dummy_hak, mask, fmt, ap);
+	va_end(ap);
 }
 
 /* ========================================================================= */
@@ -472,14 +473,14 @@ static int client_connect_to_server (hak_client_t* client, const char* ipaddr)
 	sckfam = hak_bchars_to_sckaddr(ipaddr, strlen(ipaddr), &sckaddr, &scklen);
 	if (sckfam <= -1)
 	{
-		hak_client_seterrbfmt (client, HAK_EINVAL, "cannot convert ip address - %hs", ipaddr);
+		hak_client_seterrbfmt(client, HAK_EINVAL, "cannot convert ip address - %hs", ipaddr);
 		goto oops;
 	}
 
 	sck = socket(sckfam, SOCK_STREAM, 0);
 	if (sck <= -1)
 	{
-		hak_client_seterrbfmt (client, HAK_ESYSERR, "cannot create socket - %hs", strerror(errno));
+		hak_client_seterrbfmt(client, HAK_ESYSERR, "cannot create socket - %hs", strerror(errno));
 		goto oops;
 	}
 
@@ -495,7 +496,7 @@ static int client_connect_to_server (hak_client_t* client, const char* ipaddr)
 		anyaddr.sin_family = sckfam;
 		if (bind(sck, (struct sockaddr *)&anyaddr, scklen) <= -1)
 		{
-			hak_client_seterrbfmt (client, HAK_ESYSERR,
+			hak_client_seterrbfmt(client, HAK_ESYSERR,
 				"cannot bind socket %d - %hs", sck, strerror(errno));
 			goto oops;
 		}
@@ -509,7 +510,7 @@ static int client_connect_to_server (hak_client_t* client, const char* ipaddr)
 		anyaddr.sin6_family = sckfam;
 		if (bind(sck, (struct sockaddr *)&anyaddr, scklen) <= -1)
 		{
-			hak_client_seterrbfmt (client, HAK_ESYSERR,
+			hak_client_seterrbfmt(client, HAK_ESYSERR,
 				"cannot bind socket %d - %hs", sck, strerror(errno));
 			goto oops;
 		}
@@ -520,7 +521,7 @@ static int client_connect_to_server (hak_client_t* client, const char* ipaddr)
 /* TODO: connect timeout */
 	if (connect(sck, (struct sockaddr*)&sckaddr, scklen) <= -1)
 	{
-		hak_client_seterrbfmt (client, HAK_ESYSERR,
+		hak_client_seterrbfmt(client, HAK_ESYSERR,
 			"cannot connect socket %d to %hs - %hs", sck, ipaddr, strerror(errno));
 		goto oops;
 	}
@@ -533,7 +534,7 @@ static int client_connect_to_server (hak_client_t* client, const char* ipaddr)
 	proto = hak_xproto_open(hak_client_getmmgr(client), &proto_cb, HAK_SIZEOF(*proto_xtn));
 	if (HAK_UNLIKELY(!proto))
 	{
-		hak_client_seterrbfmt (client, HAK_ESYSERR, "cannot open protocol to %s", ipaddr);
+		hak_client_seterrbfmt(client, HAK_ESYSERR, "cannot open protocol to %s", ipaddr);
 		goto oops;
 	}
 	proto_xtn = hak_xproto_getxtn(proto);
@@ -544,8 +545,8 @@ static int client_connect_to_server (hak_client_t* client, const char* ipaddr)
 	return 0;
 
 oops:
-	if (proto) hak_xproto_close (proto);
-	if (sck >= 0) close (sck);
+	if (proto) hak_xproto_close(proto);
+	if (sck >= 0) close(sck);
 	return -1;
 }
 
@@ -554,13 +555,13 @@ static void client_close (hak_client_t* client)
 {
 	if (client->remote.proto)
 	{
-		hak_xproto_close (client->remote.proto);
+		hak_xproto_close(client->remote.proto);
 		client->remote.proto = HAK_NULL;
 	}
 
 	if (client->remote.sck >= 0)
 	{
-		close (client->remote.sck);
+		close(client->remote.sck);
 		client->remote.sck = -1;
 	}
 }
@@ -590,32 +591,35 @@ static int client_send_to_remote (hak_client_t* client, hak_xpkt_type_t pktype, 
 	hak_xpkt_hdr_t hdr;
 	struct iovec iov[2];
 	hak_uint16_t seglen;
-	int n, i;
+	int n, c;
 
 	do
 	{
 		seglen = (len > HAK_XPKT_MAX_PLD_LEN)? HAK_XPKT_MAX_PLD_LEN: len;
 
 		hdr.id = 1; /* TODO: */
+		/* actual type in low 4 bit, top 4 bits out of 12-bit length store in upper 4 bit of the type field */
 		hdr.type = pktype | (((seglen >> 8) & 0x0F) << 4);
 		hdr.len = seglen & 0xFF;
 
-		i = 0;
-		iov[i].iov_base = &hdr;
-		iov[i++].iov_len = HAK_SIZEOF(hdr);
+		c = 0;
+		iov[c].iov_base = &hdr;
+		iov[c++].iov_len = HAK_SIZEOF(hdr);
 		if (seglen > 0)
 		{
-			iov[i].iov_base = ptr;
-			iov[i++].iov_len = seglen;
+			iov[c].iov_base = ptr;
+			iov[c++].iov_len = seglen;
 		}
 
-		n = hak_sys_send_iov(client->remote.sck, iov, i);
+		n = hak_sys_send_iov(client->remote.sck, iov, c);
 		if (n <= -1) return -1;
 
-		if (n < i || iov[n - 1].iov_len > 0)
+		if (n < c || (n > 0 && iov[n - 1].iov_len > 0))
 		{
 			/* the write isn't completed. */
-			for (i = n; i < 2 ; i++)
+			int i;
+
+			for (i = n; i < c ; i++)
 			{
 				if (iov[i].iov_len > 0)
 				{
@@ -640,14 +644,14 @@ static int client_send_to_remote (hak_client_t* client, hak_xpkt_type_t pktype, 
 static void on_control_event (hak_client_t* client, struct pollfd* pfd)
 {
 	char tmp[128];
-hak_client_logbfmt(client, HAK_LOG_STDERR, "ON CONTROL EVENT \n");
+/*hak_client_logbfmt(client, HAK_LOG_STDERR, "ON CONTROL EVENT \n");*/
 	while (read(client->mux_pipe[0], tmp, HAK_SIZEOF(tmp)) > 0) /* nothing */;
 /* TODO: handle different command? */
 }
 
 static void on_remote_event (hak_client_t* client, struct pollfd* pfd, int shut_wr_after_req)
 {
-//hak_client_logbfmt(client, HAK_LOG_STDERR, "ON REMOTE EVENT \n");
+/*hak_client_logbfmt(client, HAK_LOG_STDERR, "ON REMOTE EVENT \n");*/
 
 	if (pfd->revents & POLLOUT)
 	{
@@ -689,13 +693,13 @@ hak_client_logbfmt(client, HAK_LOG_STDERR, "recv error from remote - %hs", strer
 			goto reqstop;
 		}
 		if (x == 0) hak_xproto_seteof(client->remote.proto, 1);
-		hak_xproto_advbuf (client->remote.proto, x);
+		hak_xproto_advbuf(client->remote.proto, x);
 	}
 
 
 carry_on:
 	/* handle the data received from the remote side */
-	while (hak_xproto_ready(client->remote.proto))
+	while (!client->stopreq && hak_xproto_ready(client->remote.proto))
 	{
 		int n;
 
@@ -730,24 +734,24 @@ static void on_local_in_event (hak_client_t* client, struct pollfd* pfd)
 	ssize_t n;
 	hak_uint8_t buf[128];
 
-//hak_client_logbfmt(client, HAK_LOG_STDERR, "local in on %d\n", pfd->fd);
+/*hak_client_logbfmt(client, HAK_LOG_STDERR, "local in on %d\n", pfd->fd);*/
 	n = read(pfd->fd, buf, HAK_SIZEOF(buf));
 	if (n <= -1)
 	{
-		//if (hak_sys_is_errno_wb(errno)) ...
-hak_client_logbfmt(client, HAK_LOG_STDERR, "local in read error - %hs\n", strerror(errno));
+		/*if (hak_sys_is_errno_wb(errno)) ...*/
+		hak_client_logbfmt(client, HAK_LOG_STDERR, "local in read error - %hs\n", strerror(errno));
 		client->stopreq = 1;
 	}
 	else if (n == 0)
 	{
 /*hak_client_logbfmt(client, HAK_LOG_STDERR, "local in eof\n");*/
 /* TODO ARRANGE TO FINISH.. AFTER EXUCTION OF REMAINING STUFF... */
-		//client->stopreq = 1;
+		/*client->stopreq = 1;*/
 		client->state |= STATE_LOCAL_IN_CLOSED;
 		n = client_send_to_remote(client, HAK_XPKT_EXECUTE, HAK_NULL, 0);
 		if (n <= -1)
 		{
-hak_client_logbfmt(client, HAK_LOG_STDERR, "local to remote  (execute)- %hs\n", strerror(errno));
+			hak_client_logbfmt(client, HAK_LOG_STDERR, "local to remote  error (execute) - %hs\n", strerror(errno));
 		}
 	}
 	else
@@ -756,30 +760,45 @@ hak_client_logbfmt(client, HAK_LOG_STDERR, "local to remote  (execute)- %hs\n", 
 		n = client_send_to_remote(client, HAK_XPKT_CODE, buf, n);
 		if (n <= -1)
 		{
-hak_client_logbfmt(client, HAK_LOG_STDERR, "local to remote (code)- %hs\n", strerror(errno));
+			hak_client_logbfmt(client, HAK_LOG_STDERR, "local to remote  error (code)- %hs\n", strerror(errno));
 		}
 	}
 }
 
-static int client_setup_local(hak_client_t* client)
+static int client_setup_local(hak_client_t* client, const char* infile)
 {
-	client->local.in = STDIN_FILENO;
+	if (infile && *infile != '\0')
+	{
+		int fd;
+		fd = open(infile, O_RDONLY);
+		if (fd <= -1)
+		{
+			hak_client_seterrbfmt(client, HAK_ESYSERR, "cannot open file %hs - %hs", infile, strerror(errno));
+			return -1;
+		}
+		client->local.in = fd;
+	}
+	else
+	{
+		client->local.in = STDIN_FILENO;
+	}
+
 	client->local.out = STDOUT_FILENO;
 	client->local.err = STDERR_FILENO;
 	return 0;
 }
 
-int hak_client_start (hak_client_t* client, const char* ipaddr, int shut_wr_after_req)
+int hak_client_start (hak_client_t* client, const char* ipaddr, const char* infile, int shut_wr_after_req)
 {
 	/*  TODO: cin, cout, cerr could be actual files or something other than the console.
 	          the actual loop won't begin until all these file descriptors are ready */
 
 	client->stopreq = 0;
-	if (client_setup_local(client) <= -1) return -1;
-hak_client_logbfmt(client, HAK_LOG_STDERR, "staritg XXXXXXXXXXX loop... ...\n");
+	if (client_setup_local(client, infile) <= -1) return -1;
+/*hak_client_logbfmt(client, HAK_LOG_STDERR, "client connecting  to server... ...\n");*/
 	if (client_connect_to_server(client, ipaddr) <= -1) return -1; /* TODO: support time out or abort while connecting... */
 
-hak_client_logbfmt(client, HAK_LOG_STDERR, "staritg client loop... ...\n");
+/*hak_client_logbfmt(client, HAK_LOG_STDERR, "starting client loop... ...\n");*/
 	while (!client->stopreq)
 	{
 		int nfds, i;
@@ -808,11 +827,11 @@ hak_client_logbfmt(client, HAK_LOG_STDERR, "staritg client loop... ...\n");
 
 		/* TODO: client->local.in and client->local.out can be equal.
 		 *       handle this? */
-		if (client->local.in >= 0)
+		if (client->local.in >= 0 && !(client->state & STATE_LOCAL_IN_CLOSED))
 		{
 			if (client->local.pw2r.pos >= client->local.pw2r.len)
 			{
-//hak_client_logbfmt(client, HAK_LOG_STDERR, "ADDING LOCAL IN TO MULTIPLEX...\n");
+/*hak_client_logbfmt(client, HAK_LOG_STDERR, "ADDING LOCAL IN TO MULTIPLEX...\n");*/
 				pfd[nfds].fd = client->local.in;
 				pfd[nfds].events = POLLIN;
 				pfd[nfds++].revents = 0;
@@ -820,10 +839,10 @@ hak_client_logbfmt(client, HAK_LOG_STDERR, "staritg client loop... ...\n");
 		}
 
 		i = poll(pfd, nfds, 1000);
-//hak_client_logbfmt(client, HAK_LOG_STDERR, "poll returned %d\n", i);
+/*hak_client_logbfmt(client, HAK_LOG_STDERR, "poll returned %d\n", i);*/
 		if (i <= -1)
 		{
-			hak_client_seterrbfmt (client, HAK_ESYSERR, "poll error - %hs", strerror(errno));
+			hak_client_seterrbfmt(client, HAK_ESYSERR, "poll error - %hs", strerror(errno));
 			goto oops;
 		}
 
@@ -837,25 +856,24 @@ hak_client_logbfmt(client, HAK_LOG_STDERR, "staritg client loop... ...\n");
 		{
 			if (!pfd[i].revents) continue;
 
-//hak_client_logbfmt(client, HAK_LOG_STDERR, "EVENT ON %d mux[%d], remote[%d], local[%d]\n", pfd[i].fd, client->mux_pipe[0], client->remote.sck, client->local.in);
+/*hak_client_logbfmt(client, HAK_LOG_STDERR, "EVENT ON %d mux[%d], remote[%d], local[%d]\n", pfd[i].fd, client->mux_pipe[0], client->remote.sck, client->local.in);*/
 			if (pfd[i].fd == client->mux_pipe[0])
 			{
-				on_control_event (client, &pfd[i]);
+				on_control_event(client, &pfd[i]);
 			}
 			else if (pfd[i].fd == client->remote.sck)
 			{
 				/* event from the server */
-				on_remote_event (client, &pfd[i], shut_wr_after_req);
+				on_remote_event(client, &pfd[i], shut_wr_after_req);
 			}
 			else if (pfd[i].fd == client->local.in)
 			{
 				/*if (pfd[i].revents & POLLIN)*/
-					on_local_in_event (client, &pfd[i]);
+					on_local_in_event(client, &pfd[i]);
 			}
 		}
 	}
 
-done:
 /* TODO: we can check if the buffer has all been consumed. if not, there is trailing garbage.. */
 	/*{
 		struct linger linger;
@@ -864,11 +882,11 @@ done:
 		setsockopt (client->remote.sck, SOL_SOCKET, SO_LINGER, (char *) &linger, sizeof(linger));
 	}*/
 
-	client_close (client);
+	client_close(client);
 	return 0;
 
 oops:
-	client_close (client);
+	client_close(client);
 	return -1;
 }
 
