@@ -369,16 +369,34 @@
 #	define HAK_ALT_PATH_SEP ('/')
 #	define HAK_IS_PATH_SEP(c) ((c) == HAK_DFL_PATH_SEP || (c) == HAK_ALT_PATH_SEP)
 #	define HAK_HAVE_ALT_PATH_SEP 1
+#	define HAK_HAVE_PATH_DRIVE 1
+	/* a drive qualifier - the "c:" of "c:\\dir\\file" */
+#	define HAK_IS_PATH_DRIVE(x) \
+		(((((x)[0] >= 'A' && (x)[0] <= 'Z') || ((x)[0] >= 'a' && (x)[0] <= 'z'))) && (x)[1] == ':')
 #else
 #	define HAK_DFL_PATH_SEP ('/')
 #	define HAK_ALT_PATH_SEP ('/')
 #	define HAK_IS_PATH_SEP(c) ((c) == HAK_DFL_PATH_SEP)
 #	undef HAK_HAVE_ALT_PATH_SEP
+#	undef HAK_HAVE_PATH_DRIVE
+#	define HAK_IS_PATH_DRIVE(x) (0)
 #endif
 
 
-/* TODO: handle path with a drive letter or in the UNC notation */
-#define HAK_IS_PATH_ABSOLUTE(x) HAK_IS_PATH_SEP(x[0])
+/* Is the path rooted, so that it needs no directory prepended to it?
+ *
+ * The answer is platform-shaped enough to need a function - openvms in
+ * particular has to look past the start of the string - so the macro only
+ * picks the variant that matches the character type. See
+ * hak_is_bcstr_path_absolute() in utl.c for what each platform counts.
+ *
+ * [NOTE] use the bcstr/ucstr form directly where the string's type is fixed
+ * regardless of HAK_OOCH_IS_UCH, as a plain char literal is. */
+#if defined(HAK_OOCH_IS_UCH)
+#	define HAK_IS_PATH_ABSOLUTE(x) hak_is_ucstr_path_absolute(x)
+#else
+#	define HAK_IS_PATH_ABSOLUTE(x) hak_is_bcstr_path_absolute(x)
+#endif
 
 
 #if defined(__cplusplus)
@@ -485,6 +503,19 @@ const hak_uch_t* hak_get_base_name_from_ucstr_path (
 #else
 #define hak_get_base_name_from_path(x) hak_get_base_name_from_bcstr_path(x)
 #endif
+
+/**
+ * The hak_is_bcstr_path_absolute() function answers whether \a path is rooted,
+ * meaning it resolves on its own and needs no directory prepended to it.
+ * HAK_IS_PATH_ABSOLUTE() picks between this and the ucstr twin.
+ */
+HAK_EXPORT int hak_is_bcstr_path_absolute (
+	const hak_bch_t* path
+);
+
+HAK_EXPORT int hak_is_ucstr_path_absolute (
+	const hak_uch_t* path
+);
 
 /* =========================================================================
  * BIT SWAP

@@ -412,3 +412,68 @@ const hak_uch_t* hak_get_base_name_from_ucstr_path (const hak_uch_t* path)
 
 	return (last == HAK_NULL)? path: (last + 1);
 }
+
+/* Is the path rooted?
+ *
+ * unix and the like
+ *   a leading separator, and nothing else.
+ *
+ * windows, os/2, dos
+ *   a leading separator - which covers "\dir\file" and the UNC
+ *   "\\server\share" alike - or a drive followed by one, as in "c:\dir\file".
+ *   "c:file" is NOT rooted: a drive without a separator names the current
+ *   directory OF THAT DRIVE, so it still has to be resolved against something.
+ *
+ * openvms
+ *   a file spec reads "node::device:[dir.sub]name.type;ver". It is rooted when
+ *   it names a node or a device - everything up to the first ':' - or when it
+ *   opens with a directory that is not itself relative:
+ *
+ *     dnfs1:[hak.src]x.hak   rooted (device named)
+ *     [hak.src]x.hak         rooted (from the top of the current device)
+ *     [.src]x.hak            relative (below the current directory)
+ *     [-]x.hak               relative (above it)
+ *     x.hak                  relative
+ *
+ *   '<' and '>' serve as alternatives to '[' and ']'. a leading '/' counts too,
+ *   since dec c accepts unix-style paths.
+ */
+int hak_is_bcstr_path_absolute (const hak_bch_t* path)
+{
+	if (HAK_IS_PATH_SEP(path[0])) return 1;
+
+#if defined(__VMS)
+	{
+		const hak_bch_t* p;
+		for (p = path; *p != '\0'; p++)
+		{
+			if (*p == ':') return 1; /* a node or device qualifier precedes any directory */
+			if (*p == '[' || *p == '<') return !(p[1] == '.' || p[1] == '-');
+		}
+	}
+#elif defined(HAK_HAVE_PATH_DRIVE)
+	if (HAK_IS_PATH_DRIVE(path) && HAK_IS_PATH_SEP(path[2])) return 1;
+#endif
+
+	return 0;
+}
+
+int hak_is_ucstr_path_absolute (const hak_uch_t* path)
+{
+	if (HAK_IS_PATH_SEP(path[0])) return 1;
+
+#if defined(__VMS)
+	{
+		const hak_uch_t* p;
+		for (p = path; *p != '\0'; p++)
+		{
+			if (*p == ':') return 1;
+			if (*p == '[' || *p == '<') return !(p[1] == '.' || p[1] == '-');
+		}
+	}
+#elif defined(HAK_HAVE_PATH_DRIVE)
+	if (HAK_IS_PATH_DRIVE(path) && HAK_IS_PATH_SEP(path[2])) return 1;
+#endif
+
+	return 0;
+}

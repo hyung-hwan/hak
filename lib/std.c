@@ -4018,7 +4018,9 @@ static void* dlopen_pfmod (hak_t* hak, const hak_ooch_t* name, const hak_bch_t* 
 
 	/* opening a primitive function module - mostly libhak-xxxx.
 	 * if PFMODPREFIX is absolute, never use PFMODDIR */
-	if (HAK_IS_PATH_ABSOLUTE(HAK_DEFAULT_PFMODPREFIX))
+	/* the prefix is a plain char literal whatever HAK_OOCH_IS_UCH says, so the
+	 * bcstr form is named outright rather than through HAK_IS_PATH_ABSOLUTE() */
+	if (hak_is_bcstr_path_absolute(HAK_DEFAULT_PFMODPREFIX))
 	{
 		dlen = 0;
 		len = hak_copy_bcstr(&bufptr[dlen], bufcapa - dlen, HAK_DEFAULT_PFMODPREFIX);
@@ -5176,6 +5178,9 @@ static HAK_INLINE int open_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 		fn = ((bb_t*)arg->includer->handle)->fn;
 
 /* TODO: openvms - map unix path to openvms native path: e.g. .. to [-] */
+		/* arg->name is an ooch string, not fn_char_t - the conversion to the
+		 * file-system form happens further down - so this is the ooch-dispatching
+		 * macro rather than an FN_ one */
 		if (HAK_IS_PATH_ABSOLUTE(arg->name))
 		{
 			fb = HAK_NULL;
