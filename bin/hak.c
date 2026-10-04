@@ -926,7 +926,8 @@ int main (int argc, char* argv[])
 		{ ":debug",       '\0' },
 #endif
 		{ ":heapsize",    '\0' },
-		{ ":incdirs",     'I' },
+		{ ":incdirs",     'I'  },
+		{ ":includedirs", 'I'  },
 		{ ":log",         'l'  },
 		{ "info",         '\0' },
 		{ ":modlibdirs",  '\0' },

@@ -440,19 +440,25 @@ const hak_uch_t* hak_get_base_name_from_ucstr_path (const hak_uch_t* path)
  */
 int hak_is_bcstr_path_absolute (const hak_bch_t* path)
 {
-	if (HAK_IS_PATH_SEP(path[0])) return 1;
-
 #if defined(__VMS)
 	{
 		const hak_bch_t* p;
+		/* HAK_IS_PATH_SEP() is of no use for the leading character here. on VMS it
+		 * recognises what ENDS a directory part, and a spec never begins with one
+		 * of those. only the unix-style spelling that dec c accepts is rooted by a
+		 * leading character. */
+		if (path[0] == '/') return 1;
 		for (p = path; *p != '\0'; p++)
 		{
 			if (*p == ':') return 1; /* a node or device qualifier precedes any directory */
 			if (*p == '[' || *p == '<') return !(p[1] == '.' || p[1] == '-');
 		}
 	}
-#elif defined(HAK_HAVE_PATH_DRIVE)
+#else
+	if (HAK_IS_PATH_SEP(path[0])) return 1;
+#	if defined(HAK_HAVE_PATH_DRIVE)
 	if (HAK_IS_PATH_DRIVE(path) && HAK_IS_PATH_SEP(path[2])) return 1;
+#	endif
 #endif
 
 	return 0;
@@ -460,19 +466,21 @@ int hak_is_bcstr_path_absolute (const hak_bch_t* path)
 
 int hak_is_ucstr_path_absolute (const hak_uch_t* path)
 {
-	if (HAK_IS_PATH_SEP(path[0])) return 1;
-
 #if defined(__VMS)
 	{
 		const hak_uch_t* p;
+		if (path[0] == '/') return 1;
 		for (p = path; *p != '\0'; p++)
 		{
 			if (*p == ':') return 1;
 			if (*p == '[' || *p == '<') return !(p[1] == '.' || p[1] == '-');
 		}
 	}
-#elif defined(HAK_HAVE_PATH_DRIVE)
+#else
+	if (HAK_IS_PATH_SEP(path[0])) return 1;
+#	if defined(HAK_HAVE_PATH_DRIVE)
 	if (HAK_IS_PATH_DRIVE(path) && HAK_IS_PATH_SEP(path[2])) return 1;
+#	endif
 #endif
 
 	return 0;

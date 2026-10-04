@@ -337,19 +337,11 @@
 #	endif
 #endif
 
-#if defined(__DOS__) || defined(_WIN32) || defined(__OS2__)
-#	define INCDIR_SEP ';'
-#	define MODDIR_SEP ';'
-#elif defined(__VMS)
 /* the character that separates one directory from the next in an incdirs or
- * modlibdirs list. a VMS file spec contains colons of its own ("dnfs1:[hak.src]")
- * so a colon cannot delimit the list there. */
-#	define INCDIR_SEP ','
-#	define MODDIR_SEP ','
-#else
-#	define INCDIR_SEP ':'
-#	define MODDIR_SEP ':'
-#endif
+ * modlibdirs list. it is ',' on VMS rather than the ':' used elsewhere, because
+ * a VMS file spec contains colons of its own ("dnfs1:[hak.src]"). */
+#define INCDIR_SEP HAK_DFL_PATH_LIST_SEP
+#define MODDIR_SEP HAK_DFL_PATH_LIST_SEP
 
 #if !defined(HAK_DEFAULT_PFMODDIR)
 #	define HAK_DEFAULT_PFMODDIR ""
@@ -5099,7 +5091,16 @@ static void fill_cciarg_unique_id (hak_t* hak, hak_io_cciarg_t* arg, const fn_ch
 	for (p = path; *p != '\0'; p++)
 	{
 		fn_char_t c;
+	#if defined(__VMS)
+		/* only the bracket forms may be folded together. '<' and '>' are
+		 * interchangeable with '[' and ']', but ':' is interchangeable with
+		 * neither - "dnfs1:x.hak" and "[dnfs1]x.hak" are different files, so
+		 * mapping them onto one character would give two files one id and let
+		 * include-once silently drop one of them. */
+		c = (*p == '<')? '[': ((*p == '>')? ']': ((*p >= 'a' && *p <= 'z')? (*p - 'a' + 'A'): *p));
+	#else
 		c = HAK_IS_PATH_SEP(*p)? HAK_DFL_PATH_SEP: ((*p >= 'a' && *p <= 'z')? (*p - 'a' + 'A'): *p);
+	#endif
 		hak_sha256_update(&ctx, &c, HAK_SIZEOF(c));
 	}
 	HAK_ASSERT(hak, HAK_SIZEOF(arg->unique_id) >= HAK_SHA256_DIGEST_LEN);
@@ -5153,6 +5154,50 @@ static void fill_cciarg_unique_id (hak_t* hak, hak_io_cciarg_t* arg, const fn_ch
 	arg->unique_id_len = HAK_SHA256_DIGEST_LEN;
 }
 
+#if defined(__VMS)
+static void merge_vms_dir_spec (fn_char_t* fn, hak_oow_t parlen)
+{
+	/* "dnfs1:[hak.vms]" and "[.obj]x.hak" do not concatenate - RMS cannot parse
+	 * two bracketed groups in a row. the two directory parts have to be spliced
+	 * into one:
+	 *
+	 *   "dnfs1:[hak.vms]" + "[.obj]x.hak"   -> "dnfs1:[hak.vms.obj]x.hak"
+	 *   "dnfs1:[hak.vms]" + "[-]x.hak"      -> "dnfs1:[hak.vms.-]x.hak"
+	 *   "dnfs1:[hak.vms]" + "[-.sib]x.hak"  -> "dnfs1:[hak.vms.-.sib]x.hak"
+	 *
+	 * "[a.b.-]" is how VMS spells the parent of "[a.b]", so the '-' forms need a
+	 * '.' put in where the brackets are taken out. the result is never longer
+	 * than the input, so this rewrites in place.
+	 *
+	 * nothing happens unless the two parts really do meet bracket to bracket -
+	 * "dnfs1:" + "[.obj]x.hak" is already a valid spec, and a rooted "[hak.src]"
+	 * name never reaches here because it counts as absolute. */
+	fn_char_t* j;
+	hak_oow_t drop;
+
+	if (parlen == 0) return;
+	if (fn[parlen - 1] != ']' && fn[parlen - 1] != '>') return;
+	if (fn[parlen] != '[' && fn[parlen] != '<') return;
+
+	if (fn[parlen + 1] == '.')
+	{
+		/* the name brings its own '.', so both brackets simply go away */
+		j = &fn[parlen - 1];
+		drop = 2;
+	}
+	else if (fn[parlen + 1] == '-')
+	{
+		/* no '.' in the name - the closing bracket becomes the joint */
+		fn[parlen - 1] = '.';
+		j = &fn[parlen];
+		drop = 1;
+	}
+	else return;
+
+	while ((j[0] = j[drop]) != '\0') j++;
+}
+#endif
+
 static HAK_INLINE int open_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 {
 	xtn_t* xtn = GET_XTN(hak);
@@ -5177,7 +5222,9 @@ static HAK_INLINE int open_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 
 		fn = ((bb_t*)arg->includer->handle)->fn;
 
-/* TODO: openvms - map unix path to openvms native path: e.g. .. to [-] */
+/* TODO: openvms - map a unix-style path to the native form: e.g. ".." to "[-]".
+ *       a name already written the native way ("[.sub]x.hak") is handled - see
+ *       merge_vms_dir_spec() - but a unix-style one is not translated. */
 		/* arg->name is an ooch string, not fn_char_t - the conversion to the
 		 * file-system form happens further down - so this is the ooch-dispatching
 		 * macro rather than an FN_ one */
@@ -5191,7 +5238,13 @@ static HAK_INLINE int open_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 		{
 			fb = FN_BASE_NAME(fn);
 			parlen = fb - fn;
-		#if defined(HAK_HAVE_ALT_PATH_SEP)
+		#if defined(__VMS)
+			/* "[.sub]x.hak" and "[-]x.hak" are what "./x.hak" and "../x.hak" are
+			 * elsewhere - explicitly relative to the includer, so the include
+			 * directories must not be consulted. '<' is an accepted spelling of '['. */
+			attempt_incdirs = !((arg->name[0] == '[' || arg->name[0] == '<') &&
+			                    (arg->name[1] == '.' || arg->name[1] == '-'));
+		#elif defined(HAK_HAVE_ALT_PATH_SEP)
 			attempt_incdirs = !((arg->name[0] == '.' && (arg->name[1] == HAK_DFL_PATH_SEP || arg->name[1] == HAK_ALT_PATH_SEP)) ||
 			                    (arg->name[0] == '.' && arg->name[1] == '.' && (arg->name[2] == HAK_DFL_PATH_SEP || arg->name[2] == HAK_ALT_PATH_SEP)));
 		#else
@@ -5211,6 +5264,11 @@ static HAK_INLINE int open_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 		hak_convootobcstr(hak, arg->name, &ucslen, &bb->fn[parlen], &namelen);
 	#else
 		FN_COPY_NAME(&bb->fn[parlen], namelen + 1, arg->name);
+	#endif
+	#if defined(__VMS)
+		/* only the first attempt can need this. the incdirs retry below is reached
+		 * only when attempt_incdirs is set, which a "[.sub]" or "[-]" name clears. */
+		merge_vms_dir_spec(bb->fn, parlen);
 	#endif
 
 		incdirs_ptr = FN_INCDIRS(hak);

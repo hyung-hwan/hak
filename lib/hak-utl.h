@@ -368,11 +368,37 @@
 #	define HAK_DFL_PATH_SEP ('\\')
 #	define HAK_ALT_PATH_SEP ('/')
 #	define HAK_IS_PATH_SEP(c) ((c) == HAK_DFL_PATH_SEP || (c) == HAK_ALT_PATH_SEP)
-#	define HAK_HAVE_ALT_PATH_SEP 1
-#	define HAK_HAVE_PATH_DRIVE 1
+#	define HAK_HAVE_ALT_PATH_SEP (1)
+#	define HAK_HAVE_PATH_DRIVE (1)
 	/* a drive qualifier - the "c:" of "c:\\dir\\file" */
 #	define HAK_IS_PATH_DRIVE(x) \
 		(((((x)[0] >= 'A' && (x)[0] <= 'Z') || ((x)[0] >= 'a' && (x)[0] <= 'z'))) && (x)[1] == ':')
+#	define HAK_DFL_PATH_LIST_SEP (';')
+#elif defined(__VMS)
+	/* a file spec reads "node::device:[dir.subdir]name.type;version". no character
+	 * joins a directory to a name - the ']' terminates the directory part and the
+	 * name follows it directly, as in "dnfs1:[hak.src]" + "kernel.hak". so
+	 * HAK_DFL_PATH_SEP here is NOT a character to insert; it is only the canonical
+	 * spelling that HAK_ALT_PATH_SEP normalises to. every site that APPENDS a
+	 * separator must stay guarded with #if defined(__VMS). */
+#	define HAK_DFL_PATH_SEP (']')
+#	define HAK_ALT_PATH_SEP ('>')
+	/* what ENDS the part of a spec that precedes a base name. ']' and '>' are
+	 * interchangeable spellings of the directory terminator; ':' ends a node or
+	 * device qualifier, as in "dnfs1:kernel.hak", which has no bracketed
+	 * directory; '/' is there because dec c also accepts a unix-style path. */
+#	define HAK_IS_PATH_SEP(c) ((c) == ']' || (c) == '>' || (c) == ':' || (c) == '/')
+	/* HAK_HAVE_ALT_PATH_SEP is left undefined on purpose. it gates the code that
+	 * appends a separator, which must never run here, even though an alternate
+	 * spelling does exist. */
+#	undef HAK_HAVE_ALT_PATH_SEP
+	/* "dnfs1:" is the true analogue of a drive qualifier, but nothing needs to
+	 * recognise it on its own - hak_is_bcstr_path_absolute() scans for the ':'
+	 * itself, and the "sep sits at [2]" assumption of the DOS form does not hold
+	 * for a device name of any length. */
+#	undef HAK_HAVE_PATH_DRIVE
+#	define HAK_IS_PATH_DRIVE(x) (0)
+#	define HAK_DFL_PATH_LIST_SEP (',')
 #else
 #	define HAK_DFL_PATH_SEP ('/')
 #	define HAK_ALT_PATH_SEP ('/')
@@ -380,8 +406,8 @@
 #	undef HAK_HAVE_ALT_PATH_SEP
 #	undef HAK_HAVE_PATH_DRIVE
 #	define HAK_IS_PATH_DRIVE(x) (0)
+#	define HAK_DFL_PATH_LIST_SEP (':')
 #endif
-
 
 /* Is the path rooted, so that it needs no directory prepended to it?
  *

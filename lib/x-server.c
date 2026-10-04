@@ -304,7 +304,13 @@ static HAK_INLINE int open_read_stream (hak_t* hak, hak_io_cciarg_t* arg)
 		#else
 			hak_copy_bchars (bb->fn, server->cfg.script_include_path, parlen);
 		#endif
+		#if defined(__VMS)
+			/* a VMS directory spec already ends with ']' or ':' and the name follows
+			 * it directly, so nothing is inserted - see the PATH-RELATED MACROS block
+			 * in hak-utl.h. the +2 in hak_callocmem() simply goes unused here. */
+		#else
 			if (!HAK_IS_PATH_SEP(bb->fn[parlen])) bb->fn[parlen++] = HAK_DFL_PATH_SEP; /* +2 was used in hak_callocmem() for this (+1 for this, +1 for '\0' */
+		#endif
 		}
 		else
 		{
