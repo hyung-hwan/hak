@@ -1,0 +1,107 @@
+## Liberal mode - a bare word is a string, a $word is a name.
+##
+## The mode is shell-shaped: `x := 5` writes and `$x` reads, and a word that
+## names nothing is just text. It is turned on by --liberal for the top-level
+## file, or by `$pragma liberal on` from that point in the file onward.
+##
+## The mode is FILE-SCOPED. It lives on the input stream rather than on the vm,
+## so a file that turns it on cannot change how its includer or its includees
+## are read. That is what makes it safe to use in a program that pulls in the
+## ordinary class library, every line of which is written the normal way.
+##
+## [NOTE] this file is driven by t/run.sh, which does not pass --liberal, so
+## everything below goes through the pragma. The two are the same bit - see
+## hak_attachccio() for the flag and feed_process_token() for the pragma.
+
+## [NOTE] chk is defined up here, BEFORE any pragma, so its body compiles in
+## the ordinary mode. Were it defined inside a liberal region its parameters
+## would compile to the strings "ok" and "msg" - and a non-empty string is
+## truthy, so every assertion would report OK and this file would pass no
+## matter what broke. A helper used by a liberal test has to be compiled
+## strict, or it stops being able to fail.
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+## --- the two readings of a word ----------------------------------------------
+
+x := 5
+
+$pragma liberal on
+
+chk (eql? x "x") "a bare word is a string literal"
+chk (eqv? $x 5) "a $-prefixed word is a variable reference"
+## [NOTE] core.className answers a Symbol, not a String, so the comparison is
+## against a symbol literal rather than a quoted one.
+chk (eqv? (core.className (core.classOf x)) #String) "...and the bare word really is a String"
+
+## assignment still takes a bare name on the left, as in a shell
+y := 7
+chk (eqv? $y 7) "assignment names its target without the sigil"
+
+$pragma liberal off
+
+chk (eqv? x 5) "with the pragma off a bare word is a variable again"
+chk (eqv? y 7) "...and the variable the liberal half assigned is the same one"
+
+## --- the positions where a name is required ----------------------------------
+##
+## A bare word stays a name where nothing else would make sense: the callee of
+## a call, and the superclass of a class. Everything else is text.
+
+$pragma liberal on
+
+## the callee keeps its ordinary meaning - this would answer the string "idf"
+## rather than calling anything if the rule applied there too.
+fun idf(v) { return $v }
+chk (eqv? (idf 42) 42) "the callee of a call resolves as a name"
+
+## ...while the very same word is text one position to the right
+chk (eql? (idf idf) "idf") "...and is text anywhere else"
+
+class K: Object { }
+chk (eqv? (core.className $K) #K) "a class may name its superclass"
+
+class L { }
+chk (eqv? (core.className $L) #L) "...and a class without one still works"
+
+class M: K { }
+chk (eqv? (core.className $M) #M) "...and the superclass may be a user class"
+
+## a dotted name is always a reference - it never needs the sigil
+chk (eqv? (core.basicSize "abc") 3) "a dotted name needs no sigil"
+
+## a message send to a $-variable
+s := "abc"
+chk (eqv? (core.basicSize $s) 3) "a $-variable can be passed along"
+
+$pragma liberal off
+
+## --- the mode does not cross an include --------------------------------------
+##
+## Both directions matter. A liberal file must not reinterpret what it pulls
+## in, and a file that turns the mode on must not change its includer.
+
+$pragma liberal on
+
+$include "liberal-inc.hak"
+chk (eqv? (libfn 9) 9) "an included file is read in its own mode, not the includer's"
+
+$pragma liberal off
+
+z := 11
+$include "liberal-inc2.hak"
+chk (eqv? z 11) "a pragma inside an include does not leak back out"
+
+## --- what the mode does not change -------------------------------------------
+
+$pragma liberal on
+
+chk (eqv? nil nil) "a keyword is still a keyword"
+k := 0
+if true { k := 1 } else { k := 2 }
+chk (eqv? $k 1) "...and still drives the syntax"
+chk (eql? "a string literal" "a string literal") "a quoted string is unaffected"
+chk (eqv? 12 12) "a number is unaffected"
+chk (eqv? 'c' 'c') "a character is unaffected"

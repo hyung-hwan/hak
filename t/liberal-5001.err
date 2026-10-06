@@ -1,0 +1,53 @@
+## $-prefixed words outside liberal mode
+
+printf "%d\n" $foo;  ##ERROR: syntax error - invalid dollar-prefixed identifier '$foo'
+
+---
+
+## the pragma having been turned back off again
+
+$pragma liberal on
+$pragma liberal off
+printf "%d\n" $foo;  ##ERROR: syntax error - invalid dollar-prefixed identifier '$foo'
+
+---
+
+## the sigil is for referring to a name, not for introducing one - a function
+## declares its name bare
+
+$pragma liberal on
+fun $f() { return 1 };  ##ERROR: syntax error - invalid function name '$f' for 'fun'
+
+---
+
+## ...and so does a variable declaration
+
+$pragma liberal on
+do { | $a | $a := 1 };  ##ERROR: syntax error - invalid variable name '$a'
+
+---
+
+## the superclass position takes a bare name. it is exempt from the bare-word
+## rule, so the sigil is neither needed nor accepted there.
+
+$pragma liberal on
+class K: $Object { };  ##ERROR: syntax error - invalid superclass name '$Object' after ':' for 'class'
+
+---
+
+## a word that is not a pure identifier cannot carry the sigil either
+
+$pragma liberal on
+printf "%d\n" $a+b;  ##ERROR: syntax error - invalid dollar-prefixed identifier
+
+---
+
+## the pragma takes 'on' or 'off' and nothing else
+
+$pragma liberal maybe;  ##ERROR: syntax error - invalid pragma value 'maybe'
+
+---
+
+## an unknown pragma name is refused
+
+$pragma nosuchpragma on;  ##ERROR: syntax error - invalid pragma name 'nosuchpragma'

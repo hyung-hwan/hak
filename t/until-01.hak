@@ -1,0 +1,165 @@
+## until - the loop that runs while its condition is FALSE.
+##
+## It shares its implementation with 'while' (compile_while() in lib/comp.c,
+## reached with COP_POST_UNTIL_COND) and differs in one instruction: the
+## condition compiles to JUMP_FORWARD_IF_TRUE rather than JUMP_FORWARD_IF_FALSE.
+## So it is a PRE-test loop like 'while', not a do-until that always runs once -
+## the assertions below pin that down, because the name invites the other
+## reading.
+##
+## [NOTE] every loop here is bounded by its own condition, including the ones
+## whose point is 'break'. A loop written 'until false' would hang the whole
+## suite if 'break' ever regressed, instead of reporting a failure. The bound is
+## set far above the expected count so it never interferes.
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+## --- the basic shape ---------------------------------------------------------
+
+i := 0
+until (>= i 3) { i := (+ i 1) }
+chk (eqv? i 3) "the body runs until the condition becomes true"
+
+## pre-test: a condition already true means the body never runs at all
+n := 0
+until true { n := (+ n 1) }
+chk (eqv? n 0) "a condition true at entry runs the body zero times"
+
+## the condition is tested once more than the body runs
+evals := 0
+j := 0
+fun cond() {
+	evals := (+ evals 1)
+	return (>= j 2)
+}
+until (cond) { j := (+ j 1) }
+chk (eqv? j 2) "...and the body ran twice"
+chk (eqv? evals 3) "the condition is evaluated once more than the body runs"
+
+## --- break and continue ------------------------------------------------------
+
+b := 0
+until (>= b 100) {
+	b := (+ b 1)
+	if (>= b 2) { break }
+}
+chk (eqv? b 2) "break leaves the loop early"
+
+## continue skips the rest of the body, not the iteration
+m := 0
+c := 0
+until (>= m 4) {
+	m := (+ m 1)
+	if (eqv? m 2) { continue }
+	c := (+ c 1)
+}
+chk (eqv? m 4) "continue does not disturb the loop condition"
+chk (eqv? c 3) "...and skips the rest of the body for that one pass"
+
+## --- nesting -----------------------------------------------------------------
+
+## [NOTE] a loop body takes its own variable declarations, but they have to
+## LEAD the block - a '| |' after a statement is 'variable declaration
+## disallowed'. That is not an until rule: 'while' and a plain 'do' block
+## refuse the same shape.
+o := 0
+a := 0
+until (>= a 3) {
+	| bb |
+	a := (+ a 1)
+	bb := 0
+	until (>= bb 2) {
+		bb := (+ bb 1)
+		o := (+ o 1)
+	}
+}
+chk (eqv? o 6) "a nested until runs its own course each pass"
+## the declaration really is scoped to the body - naming it outside is an error,
+## not a nil
+caught := nil
+try { printf "%O" bb } catch (e) { caught := e }
+chk (nqv? caught nil) "...and a variable declared in the body is local to it"
+
+## break belongs to the innermost loop.
+## [NOTE] the inner body advances its own counter before breaking, so the loop
+## is bounded on its own terms - a broken 'break' ends it at 100 and fails the
+## assertion rather than hanging the suite.
+p := 0
+q := 0
+r := 0
+until (>= p 3) {
+	p := (+ p 1)
+	r := 0
+	until (>= r 100) {
+		r := (+ r 1)
+		break
+	}
+	q := (+ q 1)
+}
+chk (eqv? q 3) "break leaves the innermost loop only"
+chk (eqv? r 1) "...after a single pass of the inner body"
+
+## --- inside a function -------------------------------------------------------
+
+fun countdown(limit) {
+	| c |
+	c := 0
+	until (>= c limit) { c := (+ c 1) }
+	return c
+}
+chk (eqv? (countdown 5) 5) "until works over a function's own locals"
+
+fun firstAtLeast(limit) {
+	| c |
+	c := 0
+	until (>= c 100) {
+		c := (+ c 1)
+		if (>= c limit) { return c }
+	}
+	return 0
+}
+chk (eqv? (firstAtLeast 3) 3) "return leaves the function from inside the loop"
+
+## --- what the loop itself answers --------------------------------------------
+##
+## [NOTE] a loop that ends because its condition came true answers that
+## condition's value; one cut short by break answers nil. Neither is obvious
+## from the syntax, which is why they are pinned here.
+
+k := 0
+v := (until (>= k 3) { k := (+ k 1) })
+chk (eqv? v true) "a loop that ends normally answers its condition"
+
+k2 := 0
+v2 := (until (>= k2 100) {
+	k2 := (+ k2 1)
+	if (>= k2 2) { break }
+})
+chk (eqv? v2 nil) "a loop cut short by break answers nil"
+
+## --- the condition is tested for truth, not for 'true' -----------------------
+
+t := 0
+until 1 { t := (+ t 1) }
+chk (eqv? t 0) "any truthy value ends the loop, not just true"
+
+## --- counting down -----------------------------------------------------------
+##
+## Every loop above counts up, which hides a reading error: 'until (>= i 3)'
+## could be mistaken for a bound rather than an exit test. Counting down makes
+## the inverted sense plain - the loop runs while (< i 5) is false.
+
+d := 20
+until (< d 5) { d := (- d 1) }
+chk (eqv? d 4) "a decrementing loop stops on the first value that satisfies it"
+
+## --- the mirror of while -----------------------------------------------------
+
+ua := 0
+wa := 0
+until (>= ua 4) { ua := (+ ua 1) }
+while (< wa 4) { wa := (+ wa 1) }
+chk (eqv? ua wa) "until c is while (not c) - the two agree"

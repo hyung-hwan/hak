@@ -1,0 +1,36 @@
+## 'until' needs a condition
+
+until;  ##ERROR: syntax error - no loop condition specified in until
+
+---
+
+## ...and a body. a condition on its own is not a loop.
+##
+## [NOTE] only a MISSING body is refused. A bare expression is accepted as one -
+## "until (>= i 1) i" compiles and spins forever - so there is no error case to
+## assert for that shape, and writing one here would hang the suite.
+
+i := 0
+until (>= i 1);  ##ERROR: syntax error - block expression expected as 'until' body
+
+---
+
+## 'break' carries no value out of the loop - the loop answers nil instead
+
+i := 0
+until (>= i 9) {
+	i := (+ i 1)
+	break 99;  ##ERROR: syntax error - excessive argument to 'break' around '99'
+}
+
+---
+
+## 'break' needs a loop to leave
+
+break;  ##ERROR: syntax error - break outside loop
+
+---
+
+## ...and so does 'continue'
+
+continue;  ##ERROR: syntax error - continue outside loop

@@ -727,7 +727,8 @@ struct hak_cframe_t
 		/* COP_COMPILE_OBJECT */
 		struct
 		{
-			int callee; /* this object is compiled as a callee */
+			hak_uint8_t callee; /* this object is compiled as a callee */
+			hak_uint8_t superclass; /* this object is compiled as the superclass of a class */
 		} obj;
 
 		/* COP_COMPILE_OBJECT_R */

@@ -269,7 +269,7 @@ $include-once "object.hak"
 - `object.hak` - `Object` and the root of the hierarchy
 - `collection.hak` - `String`, `Array`, `ByteArray`, `Dictionary`
 - `magnitude.hak` - `Magnitude`, `Character`, `Number`
-- `stream.hak` - `Stream`, `HandleStream`, `StringStream`
+- `stream.hak` - `Stream`, `HandleStream`, `ByteArrayStream`, `FileStream`
 - `text-stream.hak` - `TextStream`, a text layer over any byte stream
 - `process.hak` - `Process`, the green process
 - `semaphore.hak`, `mutex.hak` - `Semaphore`, `Mutex`

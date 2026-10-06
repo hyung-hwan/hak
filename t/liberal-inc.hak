@@ -1,0 +1,11 @@
+## Helper for liberal-01.hak - deliberately NOT liberal.
+##
+## This file is pulled in while the includer is in liberal mode. Its body
+## references a bare parameter, which would compile to the string "a" if the
+## includer's mode reached here. Answering the argument instead is what proves
+## the mode is scoped to the file that sets it.
+##
+## [NOTE] not listed in check_SCRIPTS - it is a fixture, not a test. It carries
+## no assertions of its own and is shipped through EXTRA_DIST.
+
+fun libfn(a) { return a }

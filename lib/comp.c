@@ -2958,6 +2958,7 @@ static int compile_class (hak_t* hak, hak_cnode_t* src)
 
 		/* superclass part */
 		superclass = HAK_CNODE_CONS_CAR(obj);
+		/* [THINK] should HAK_CNODE_IS_RSYMBOL(sperclass) also be allowed in the liberal mode? */
 		if (!HAK_CNODE_IS_SYMBOL(superclass))
 		{
 			if (HAK_CNODE_IS_FOR_DATA_SIMPLE(superclass) || HAK_CNODE_IS_FOR_LANG(superclass))
@@ -3039,7 +3040,12 @@ static int compile_class (hak_t* hak, hak_cnode_t* src)
 	cf->u._class.cmd_cnode = cmd;
 	cf->u._class.class_name_cnode = class_name;
 
-	if (superclass) PUSH_CFRAME(hak, COP_COMPILE_OBJECT, superclass); /* 1 - superclass expression */
+	if (superclass)
+	{
+		PUSH_CFRAME(hak, COP_COMPILE_OBJECT, superclass); /* 1 - superclass expression */
+		cf = GET_TOP_CFRAME(hak);
+		cf->u.obj.superclass = 1; /* a name is required here, like the callee of a call */
+	}
 	return 0;
 }
 
@@ -5973,9 +5979,12 @@ redo:
 			goto done;
 
 		case HAK_CNODE_SYMBOL: /* symbol. but not a literal. usually a variable */
-			if ((hak->c->curinp->trait & HAK_TRAIT_LANG_LIBERAL) && !cf->u.obj.callee)
+			if ((hak->c->curinp->trait & HAK_TRAIT_LANG_LIBERAL) && !cf->u.obj.callee && !cf->u.obj.superclass)
 			{
-				/* liberal mode. not at the called position. it's a normal bare word string */
+				/* liberal mode. a bare word is a string except where a name is required -
+				 * the callee of a call, and the superclass of a class. without the
+				 * superclass exemption "class K: Object {}" hands the string "Object"
+				 * to CLASS_ENTER, which fails at run time with "invalid superclass". */
 				lit = hak_makestring(hak, HAK_CNODE_GET_TOKPTR(oprnd), HAK_CNODE_GET_TOKLEN(oprnd));
 				if (HAK_UNLIKELY(!lit)) return -1;
 				goto literal;

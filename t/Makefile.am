@@ -24,6 +24,7 @@ check_SCRIPTS = \
 	hnd-03.hak \
 	insta-01.hak \
 	insta-02.hak \
+	liberal-01.hak \
 	mutex-01.hak \
 	mutex-02.hak \
 	mutex-03.hak \
@@ -49,6 +50,7 @@ check_SCRIPTS = \
 	sysproc-02.hak \
 	tick-01.hak \
 	try-01.hak \
+	until-01.hak \
 	va-01.hak \
 	va-02.hak \
 	var-01.hak \
@@ -61,9 +63,11 @@ check_ERRORS = \
 	feed-5001.err \
 	fun-5001.err \
 	hnd-5001.err \
+	liberal-5001.err \
 	mlist-5001.err \
 	send-5001.err \
 	sig-5001.err \
+	until-5001.err \
 	va-5001.err \
 	var-5001.err \
 	var-5002.err \
@@ -81,7 +85,13 @@ t_003_SOURCES = t-003.c tap.h
 t_004_SOURCES = t-004.c tap.h
 
 ##noinst_SCRIPTS = $(check_SCRIPTS)
-EXTRA_DIST = $(check_SCRIPTS) $(check_ERRORS)
+## files pulled in by a test with $include. they carry no assertions of their
+## own, so they are shipped but deliberately kept out of TESTS.
+check_FIXTURES = \
+	liberal-inc.hak \
+	liberal-inc2.hak
+
+EXTRA_DIST = $(check_SCRIPTS) $(check_ERRORS) $(check_FIXTURES)
 
 TESTS = $(check_PROGRAMS) $(check_SCRIPTS) $(check_ERRORS)
 

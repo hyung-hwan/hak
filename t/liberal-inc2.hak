@@ -1,0 +1,8 @@
+## Helper for liberal-01.hak - turns liberal mode on and does nothing else.
+##
+## The includer must come back unaffected. Before the mode became file-scoped,
+## this bit leaked out and silently reinterpreted the rest of the includer.
+##
+## [NOTE] a fixture, not a test - see liberal-inc.hak.
+
+$pragma liberal on
