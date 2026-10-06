@@ -1,0 +1,26 @@
+## a binop character other than '-' or '+' glued to ':=' starts a token that
+## is not a valid identifier
+
+x :=*2;  ##ERROR: syntax error - illegal identifier '*2'
+
+---
+
+## '=' glued to ':=' is the one case the lexer splits - the ':' is taken as a
+## send colon, so what follows has to be a usable selector. '==1' is not one.
+
+x :==1;  ##ERROR: syntax error - illegal identifier '==1'
+
+---
+
+## '|' opens a variable declaration once it is a token of its own
+
+x :=|1;  ##ERROR: syntax error - invalid variable name '1'
+
+---
+
+## a method named '=' cannot be defined out of tree. ':=' is the assignment
+## token, so 'K:=' is read as an assignment to K before anything else can look
+## at it. 'K:==' works - see t/assign-01.hak - but a lone '=' does not.
+
+class K: Object { }
+fun K:=(a) { return 9 };  ##ERROR: syntax error - prohibited assignment around ':='

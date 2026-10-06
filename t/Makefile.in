@@ -555,6 +555,7 @@ AM_CPPFLAGS = \
 
 LDADD = ../lib/libhak.la
 check_SCRIPTS = \
+	assign-01.hak \
 	char-01.hak \
 	classof-01.hak \
 	cons-01.hak \
@@ -603,6 +604,7 @@ check_SCRIPTS = \
 	var-03.hak
 
 check_ERRORS = \
+	assign-5001.err \
 	call-5001.err \
 	class-5001.err \
 	feed-5001.err \

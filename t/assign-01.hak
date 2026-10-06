@@ -1,0 +1,63 @@
+## The ':=' token, and what may be glued to it.
+##
+## ':=' is lexed by flx_coloneq_token() in lib/read.c, which has to undo itself
+## when what follows means the ':' was a message-send colon rather than the head
+## of an assignment. It splits only when an '=' follows, because 'fun X:==(a)'
+## has to stay a method definition - every other binop character is left to
+## start its own token.
+##
+## That split is the whole reason 'x :=-1' is a legal assignment of -1 rather
+## than a lexing accident, which is what the glued cases below pin down.
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+## --- the ordinary spacings ---------------------------------------------------
+
+a := 5
+chk (eqv? a 5) "an assignment with spaces around :="
+
+b:=6
+chk (eqv? b 6) "...with no space on either side"
+
+c := -1
+chk (eqv? c -1) "...with a signed value held off by a space"
+
+## --- glued to the value ------------------------------------------------------
+##
+## [NOTE] these are the shapes flx_coloneq_token() decides. A '-' or '+' touching
+## the ':=' belongs to the value, not to the token - the lexer must NOT split
+## ':=-1' into ':' and '=-1', which is what it used to do and what made these
+## three a syntax error rather than an assignment.
+
+d :=-1
+chk (eqv? d -1) "a minus glued to := belongs to the value"
+
+e :=+1
+chk (eqv? e 1) "...and so does a plus"
+
+f :=-0
+chk (eqv? f 0) "...including when the value is zero"
+
+## the same through the 'set' form, which does not go through that token at all
+set g -1
+chk (eqv? g -1) "set reaches the same value without the token"
+
+## --- the split that must still happen ----------------------------------------
+##
+## An '=' after ':=' means the ':' was a send colon: 'fun X:==(a)' defines the
+## '==' method out of tree. If the lexer stopped splitting there, this would
+## read as an assignment and the definition would be a syntax error.
+
+class K: Object { }
+fun K:==(other) { return 42 }
+chk (eqv? (core.className K) #K) "a method named == can be defined out of tree"
+
+## --- assignment answers the value it stored ----------------------------------
+
+h := 0
+i := (h := 7)
+chk (eqv? i 7) "an assignment answers what it assigned"
+chk (eqv? h 7) "...and the variable holds it"

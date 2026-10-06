@@ -3149,9 +3149,14 @@ not_consumed:
 
 static int flx_coloneq_token (hak_t* hak, hak_ooci_t c)
 {
-	if (is_binop_char(c))
+	if (c == '=') /* this is less aggressive than is_binop_char(c). :== becomes : and ==, :=+ becomes := and + */
 	{
-		/* := followed by another binop char */
+		/* this additional check is mostly caters for out-of-tree method definition with binary operators:
+		 *   fun X:==(a) {}
+		 * How to distinguish := followed by = from : followed by ==?
+		 */
+
+		/* := followed by another = */
 		TOKEN_NAME_LEN(hak)--; /* as if = after : is not in the token buffer */
 		FEED_WRAP_UP(hak, HAK_TOK_COLON);
 
