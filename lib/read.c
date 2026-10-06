@@ -874,7 +874,7 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 					/* check in advance if the array members are all plain symbols */
 					hak_cnode_t* lcar;
 					lcar = HAK_CNODE_CONS_CAR(tmp);
-					if (!HAK_CNODE_IS_SYMBOL(lcar) && !HAK_CNODE_IS_DSYMBOL_CLA(lcar))
+					if (!HAK_CNODE_IS_SIMPLE_LVALUE(lcar))
 					{
 						hak_setsynerrbfmt(hak, HAK_SYNERR_LVALUE, HAK_CNODE_GET_LOC(lcar),
 							"bad lvalue - invalid token%hs%.*js in tuple",
@@ -903,7 +903,7 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 			}
 			else
 			{
-				if (!HAK_CNODE_IS_SYMBOL(lval) && !HAK_CNODE_IS_DSYMBOL_CLA(lval))
+				if (!HAK_CNODE_IS_SIMPLE_LVALUE(lval))
 				{
 					/* for example, 1 := 20 */
 					hak_setsynerrbfmt(hak, HAK_SYNERR_LVALUE, HAK_CNODE_GET_LOC(lval),

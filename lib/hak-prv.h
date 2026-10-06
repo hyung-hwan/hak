@@ -635,6 +635,21 @@ typedef enum hak_cnode_flag_t hak_cnode_flag_t;
 #define HAK_CNODE_IS_DSYMBOL_CLA_SELF(x) ((x)->cn_type == HAK_CNODE_DSYMBOL && (x)->u.dsymbol.is_cla == 1)
 #define HAK_CNODE_IS_DSYMBOL_CLA_SUPER(x) ((x)->cn_type == HAK_CNODE_DSYMBOL && (x)->u.dsymbol.is_cla == 2)
 
+/* What may stand on the left of ':=', and inside the [ ] of a multi-assignment.
+ *
+ * A plain symbol (x) or a class-level dotted one (self.x, super.x). NOT a
+ * general dotted symbol - core.basicSize names something owned elsewhere and is
+ * not assignable - and NOT an RSYMBOL, because $x is the liberal-mode spelling
+ * of a REFERENCE; an assignment names its target bare, as in a shell.
+ *
+ * SIMPLE because a TUPLE is a legal assignment target too ([a, b] := (f 9)),
+ * but it is recognised one level up and its members are then checked with this.
+ *
+ * [NOTE] the reader enforces this in leave_list(), which is what lets the
+ * compiler asserts downstream say 'reader guaranteed' rather than diagnose it
+ * again. The two have to agree, so they share this one definition. */
+#define HAK_CNODE_IS_SIMPLE_LVALUE(x) (HAK_CNODE_IS_SYMBOL(x) || HAK_CNODE_IS_DSYMBOL_CLA(x))
+
 #define HAK_CNODE_IS_CONS(x) ((x)->cn_type == HAK_CNODE_CONS)
 #define HAK_CNODE_IS_CONS_CONCODED(x, code) ((x)->cn_type == HAK_CNODE_CONS && (x)->u.cons.concode == (code))
 #define HAK_CNODE_CONS_CONCODE(x) ((x)->u.cons.concode)

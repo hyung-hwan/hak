@@ -4125,7 +4125,7 @@ static int compile_set (hak_t* hak, hak_cnode_t* src)
 	}
 
 	var = HAK_CNODE_CONS_CAR(obj);
-	if (!HAK_CNODE_IS_SYMBOL(var) && !HAK_CNODE_IS_DSYMBOL_CLA(var))
+	if (!HAK_CNODE_IS_SIMPLE_LVALUE(var))
 	{
 		hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(var),
 			"variable name not symbol in %.*js around %.*js",
@@ -4794,6 +4794,7 @@ static int compile_cons_alist_expression (hak_t* hak, hak_cnode_t* cmd)
 	/* assignment expression */
 	/* (a := 20)
 	 * ([a,b] := (xxx 20))
+	 * ([a b] := (xxx 20))
 	 */
 
 	hak_cframe_t* cf;
@@ -4806,7 +4807,7 @@ static int compile_cons_alist_expression (hak_t* hak, hak_cnode_t* cmd)
 	var = HAK_CNODE_CONS_CAR(cmd);
 	obj = HAK_CNODE_CONS_CDR(cmd);
 
-	HAK_ASSERT(hak, HAK_CNODE_IS_SYMBOL(var) || HAK_CNODE_IS_DSYMBOL_CLA(var) || HAK_CNODE_IS_CONS_CONCODED(var, HAK_CONCODE_TUPLE));
+	HAK_ASSERT(hak, HAK_CNODE_IS_SIMPLE_LVALUE(var) || HAK_CNODE_IS_CONS_CONCODED(var, HAK_CONCODE_TUPLE));
 	HAK_ASSERT(hak, obj && HAK_CNODE_IS_CONS(obj)); /* reader guaranteed */
 
 	val = HAK_CNODE_CONS_CAR(obj);
@@ -4831,7 +4832,7 @@ static int compile_cons_alist_expression (hak_t* hak, hak_cnode_t* cmd)
 
 			var = HAK_CNODE_CONS_CAR(obj);
 
-			HAK_ASSERT(hak, HAK_CNODE_IS_SYMBOL(var) || HAK_CNODE_IS_DSYMBOL_CLA(var)); /* reader guaranteed */
+			HAK_ASSERT(hak, HAK_CNODE_IS_SIMPLE_LVALUE(var)); /* reader guaranteed */
 
 			x = find_variable_backward_with_token(hak, var, &vi, 0);
 			if (x <= -1) return -1;
@@ -4945,7 +4946,7 @@ sys.run_noret "ls -laF" input
 out := (sys.run_noret "ls -laF")
 */
 
-/*	HAK_ASSERT(hak, HAK_CNODE_IS_SYMBOL(var) || HAK_CNODE_IS_DSYMBOL_CLA(var) || HAK_CNODE_IS_CONS_CONCODED(var, HAK_CONCODE_TUPLE));*/
+/*	HAK_ASSERT(hak, HAK_CNODE_IS_SIMPLE_LVALUE(var) || HAK_CNODE_IS_CONS_CONCODED(var, HAK_CONCODE_TUPLE));*/
 	HAK_ASSERT(hak, obj && HAK_CNODE_IS_CONS(obj)); /* reader guaranteed */
 
 	c2 = HAK_CNODE_CONS_CAR(obj);
