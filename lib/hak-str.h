@@ -73,6 +73,18 @@ HAK_EXPORT int hak_comp_bcstr (
 	const hak_bch_t* str2
 );
 
+HAK_EXPORT int hak_comp_ucstr_limited (
+	const hak_uch_t* str1,
+	const hak_uch_t* str2,
+	hak_oow_t        maxlen
+);
+
+HAK_EXPORT int hak_comp_bcstr_limited (
+	const hak_bch_t* str1,
+	const hak_bch_t* str2,
+	hak_oow_t        maxlen
+);
+
 HAK_EXPORT int hak_comp_ucstr_bcstr (
 	const hak_uch_t* str1,
 	const hak_bch_t* str2

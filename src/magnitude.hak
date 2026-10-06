@@ -18,5 +18,11 @@ class[#limited] Number: Magnitude {
 	##fun < (oprnd) { return (< self oprnd) }
 	##fun >= (oprnd) { return (>= self oprnd) }
 	##fun <= (oprnd) { return (<= self oprnd) }
+
+	fun toCharacter() { return (core.smooi-to-char self) }
+}
+
+class[#limited] Character: Magnitude {
+	fun toCode() { return (core.char-to-smooi self) }
 }
 

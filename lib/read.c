@@ -645,13 +645,13 @@ static int classify_ident_token (hak_t* hak, const hak_oocs_t* v, const hak_loc_
 		return 0;
 	}
 
-	if (binop_char_count > 0 && !(hak->option.trait & HAK_TRAIT_LANG_LIBERAL))
+	if (binop_char_count > 0 && !(hak->c->curinp->trait & HAK_TRAIT_LANG_LIBERAL))
 	{
-		hak_setsynerrbfmt(hak, HAK_SYNERR_ILTOK, errloc,
-			"illegal identifier '%.*js'", v->len, v->ptr);
+		hak_setsynerrbfmt(hak, HAK_SYNERR_ILTOK, errloc, "illegal identifier '%.*js'", v->len, v->ptr);
 		return -1;
 	}
 
+	/* treat it as a bare literal word string */
 	/**tok_type = HAK_TOK_SYMLIT;*/
 	*tok_type = HAK_TOK_STRLIT;
 	return 0;
@@ -1008,7 +1008,7 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 	else if (concode == HAK_CONCODE_PLIST)
 	{
 /* TODO */
-hak_logbfmt(hak, HAK_LOG_STDERR, "PLIST %hs:%d", __FILE__, __LINE__);
+/*hak_logbfmt(hak, HAK_LOG_STDERR, "PLIST %hs:%d", __FILE__, __LINE__);*/
 	}
 	else
 	{
@@ -1894,11 +1894,11 @@ static int feed_process_token (hak_t* hak)
 			{
 				if (does_token_name_match(hak, VOCA_PRG_ON))
 				{
-					hak->option.trait |= HAK_TRAIT_LANG_LIBERAL;
+					hak->c->curinp->trait |= HAK_TRAIT_LANG_LIBERAL;
 				}
 				else if (does_token_name_match(hak, VOCA_PRG_OFF))
 				{
-					hak->option.trait &= ~HAK_TRAIT_LANG_LIBERAL;
+					hak->c->curinp->trait &= ~HAK_TRAIT_LANG_LIBERAL;
 				}
 				else
 				{
@@ -2113,14 +2113,16 @@ static int feed_process_token (hak_t* hak)
 			 *     does not end a value; the flag is checked too because it
 			 *     states the same thing about the list rather than the token.
 			 */
-			if (TOKEN_TYPE(hak) == HAK_TOK_LPAREN &&
-			    hak->c->r.st && hak->c->r.st->count >= 1 &&
-			    hak->c->feed.lx.gap == 0 &&
-			    tok_ends_a_value(hak->c->ptok.type) &&
+			if (TOKEN_TYPE(hak) == HAK_TOK_LPAREN && /* the current token is ( */
+			    hak->c->r.st && hak->c->r.st->count >= 1 && /* it read at least one item in the current list */
+			    hak->c->feed.lx.gap == 0 && /* no gap */
+			    tok_ends_a_value(hak->c->ptok.type) && /* the previous token was a proper callable item */
 			    !(hak->c->r.st->flagv & (COMMAED | COLONED | COLONEQED | BINOPED | PIPOPED)) &&
 			    !HAK_CNODE_IS_TYPED(hak->c->r.st->head->u.cons.car, HAK_CNODE_FUN) &&
 			    !HAK_CNODE_IS_TYPED(hak->c->r.st->head->u.cons.car, HAK_CNODE_CLASS))
 			{
+				/* it's in the glued call form */
+
 				hak_rstl_t* new_rstl;
 				hak_rstl_t* old_rstl;
 				hak_cnode_t* old_tail;
@@ -2613,6 +2615,11 @@ static int feed_process_token (hak_t* hak)
 
 		case HAK_TOK_IDENT_DOTTED_CLA_SUPER:
 			frd->obj = hak_makecnodedsymbol(hak, 0, TOKEN_LOC(hak), TOKEN_NAME(hak), 2);
+			goto auto_xlist;
+
+		case HAK_TOK_IDENT_DOLLARED:
+			/* this reader doesn't strip the leading dollar prefix. the compiler will. */
+			frd->obj = hak_makecnodersymbol(hak, 0, TOKEN_LOC(hak), TOKEN_NAME(hak));
 			goto auto_xlist;
 
 		auto_xlist:
@@ -3226,9 +3233,29 @@ static int flx_dollared_ident (hak_t* hak, hak_ooci_t c)
 
 		if (get_directive_token_type(hak, &tok_type) <= -1)
 		{
-			hak_setsynerrbfmt(hak, HAK_SYNERR_ILTOK, TOKEN_LOC(hak),
-				"invalid dollar-prefixed identifier '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
-			return -1;
+			if (hak->c->curinp->trait & HAK_TRAIT_LANG_LIBERAL)
+			{
+				hak_oocs_t tmp;
+				tmp.ptr = TOKEN_NAME_PTR(hak) + 1;
+				tmp.len = TOKEN_NAME_LEN(hak) - 1;
+				if (is_pure_ident(hak, &tmp))
+				{
+					/* the dollar-prefixed pure word becomes a normal identifier */
+					FEED_WRAP_UP(hak, HAK_TOK_IDENT_DOLLARED); /* i don't remove $ from the token itself */
+					goto not_consumed;
+				}
+				else
+				{
+					goto invalid_dollared_ident;
+				}
+			}
+			else
+			{
+			invalid_dollared_ident:
+				hak_setsynerrbfmt(hak, HAK_SYNERR_ILTOK, TOKEN_LOC(hak),
+					"invalid dollar-prefixed identifier '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
+				return -1;
+			}
 		}
 		else
 		{
@@ -4696,6 +4723,16 @@ static int init_compiler (hak_t* hak)
 	hak->c->ilchr_ucs.ptr = &hak->c->ilchr;
 	hak->c->ilchr_ucs.len = 1;
 
+	/* point the current input stream at the main stream before any source is
+	 * attached. hak_attachccio() sets this too, but it is optional - feeding
+	 * source that contains no $include needs no ccio handler, and that path
+	 * would otherwise leave this HAK_NULL for code that reads curinp, such as
+	 * the file-scoped trait in classify_ident_token() and compile_object().
+	 * &hak->c->cci_arg is already the "not inside an include" sentinel that
+	 * leave_include() and friends compare against, and it is zeroed here, so
+	 * its trait starts out clear. */
+	hak->c->curinp = &hak->c->cci_arg;
+
 	hak->c->r.s = hak->_nil;
 	hak->c->r.e = hak->_nil;
 
@@ -4760,6 +4797,9 @@ int hak_attachccio (hak_t* hak, hak_io_impl_t cci_rdr)
 		hak->c->nungots = 0;
 		/* the source stream is open. set it as the current input stream */
 		hak->c->curinp = &hak->c->cci_arg;
+
+		/* list file-scoped options for the top level input stream here */
+		hak->c->curinp->trait = hak->option.trait & (HAK_TRAIT_LANG_LIBERAL);
 	}
 
 	return 0;

@@ -10,6 +10,7 @@ AM_CPPFLAGS = \
 LDADD = ../lib/libhak.la
 
 check_SCRIPTS = \
+	char-01.hak \
 	classof-01.hak \
 	cons-01.hak \
 	dic-01.hak \

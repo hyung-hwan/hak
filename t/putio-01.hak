@@ -7,10 +7,16 @@
 ##     getb <-> putb    one byte
 ##     gets    <-> puts       a string
 ##
-## Each answers how many characters or bytes it wrote, or nil if the stream has
-## ended. The count is what makes them assertable from inside a test: a count
+## Each takes any number of arguments and answers how many characters or bytes it
+## wrote. The count is what makes them assertable from inside a test: a count
 ## equal to the length of the argument shows the whole of it went out and that
 ## nothing was added to it.
+##
+## nil comes back only when the stream ended before anything went out at all; a
+## stream that ends part way answers the short count instead, so a caller knows
+## where to resume. Nothing below exercises either case: write_udo_stream() in
+## lib/std.c writes the whole buffer or fails outright, so it never reports a
+## short write. Only an embedder's own output handler can produce one.
 ##
 ## [NOTE] unlike C's puts, no newline is appended. The assertions below rely on
 ## that - (puts "ab") answering 2 rather than 3 is the proof.
@@ -90,5 +96,37 @@ try { putb 'a' } catch (e) { caught := e }
 chk (eql? caught "not a byte - 'a'") "...and a character"
 
 caught := nil
-try { puts 5 } catch (e) { caught := e }
-chk (eql? caught "not a string or a byte array - 5") "puts refuses a non-string"
+try { puts 'a' } catch (e) { caught := e }
+puts "\n"
+chk (eqv? caught nil) "puts accepts a character"
+
+caught := nil
+try { putc "str" } catch (e) { caught := e }
+chk (eql? caught "not a character - \"str\"") "putc still refuses a string"
+
+## --- several arguments at once -------------------------------------------------
+##
+## [NOTE] as above, each write is closed with a newline BEFORE its assertion is
+## printed. t/run.sh matches ERROR: only at the start of a line, so text left
+## sitting in front of a failure marker would hide the failure completely.
+
+n := (putc 'a' 'b' 'c')
+puts "\n"
+chk (= n 3) "putc writes every argument and answers the total"
+
+n := (putb 120 121 122)
+puts "\n"
+chk (= n 3) "putb writes every argument and answers the total"
+
+n := (puts "ab" 'c' 12)
+puts "\n"
+chk (= n 5) "puts mixes a string, a character and an integer"
+
+## an integer goes out in its decimal spelling, so the count is its digit count
+n := (puts 12)
+puts "\n"
+chk (= n 2) "...the integer written as decimal digits"
+
+n := (puts -5)
+puts "\n"
+chk (= n 2) "...the sign counting toward the total"

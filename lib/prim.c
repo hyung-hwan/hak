@@ -550,97 +550,156 @@ static int put_udo_bytes (hak_t* hak, const hak_uint8_t* ptr, hak_oow_t len, hak
 
 hak_pfrc_t hak_pf_putc (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	/* (putch c) - write one character. the counterpart of getch. */
+	/* (putc c ...) - write one or more characters. the counterpart of getc. */
 	hak_oop_t arg;
 	hak_ooch_t ch;
 	hak_oow_t nw;
+	hak_oow_t tnw;
+	hak_oow_t i;
 	int n;
 
-	arg = HAK_STACK_GETARG(hak, nargs, 0);
-	if (!HAK_OOP_IS_CHAR(arg))
+	tnw = 0;
+	n = 1;
+	for (i = 0; i < nargs; i++)
 	{
-		hak_seterrbfmt(hak, HAK_EINVAL, "not a character - %O", arg);
-		return HAK_PF_FAILURE;
+		arg = HAK_STACK_GETARG(hak, nargs, i);
+		if (!HAK_OOP_IS_CHAR(arg))
+		{
+			hak_seterrbfmt(hak, HAK_EINVAL, "not a character - %O", arg);
+			return HAK_PF_FAILURE;
+		}
+
+		ch = HAK_OOP_TO_CHAR(arg);
+		n = put_udo_chars(hak, &ch, 1, &nw);
+		if (n <= -1) return HAK_PF_FAILURE;
+
+		tnw += nw;
+		if (n == 0) break; /* the stream ended - stop rather than push at a dead stream */
 	}
 
-	ch = HAK_OOP_TO_CHAR(arg);
-	n = put_udo_chars(hak, &ch, 1, &nw);
-	if (n <= -1) return HAK_PF_FAILURE;
-
-	/* nil when the stream has ended, the count written otherwise */
-	HAK_STACK_SETRET(hak, nargs, (n == 0)? hak->_nil: HAK_SMOOI_TO_OOP((hak_ooi_t)nw));
+	/* the number of characters or bytes that went out, or nil only when the stream
+	 * ended before anything did. a short count is how a caller learns where to
+	 * resume, so it is never thrown away - unlike a read, a write cannot just be
+	 * retried from the start without repeating whatever already landed. */
+	HAK_STACK_SETRET(hak, nargs, (n == 0 && tnw == 0)? hak->_nil: HAK_SMOOI_TO_OOP((hak_ooi_t)tnw));
 	return HAK_PF_SUCCESS;
 }
 
 hak_pfrc_t hak_pf_putb (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	/* (putb b) - write one byte. the counterpart of getb. */
+	/* (putb b ...) - write one or more bytes. the counterpart of getb. */
 	hak_oop_t arg;
 	hak_ooi_t v;
 	hak_uint8_t bt;
 	hak_oow_t nw;
+	hak_oow_t tnw;
+	hak_oow_t i;
 	int n;
 
-	arg = HAK_STACK_GETARG(hak, nargs, 0);
-	if (!HAK_OOP_IS_SMOOI(arg))
+	tnw = 0;
+	n = 1;
+	for (i = 0; i < nargs; i++)
 	{
-		hak_seterrbfmt(hak, HAK_EINVAL, "not a byte - %O", arg);
-		return HAK_PF_FAILURE;
+		arg = HAK_STACK_GETARG(hak, nargs, i);
+		if (!HAK_OOP_IS_SMOOI(arg))
+		{
+			hak_seterrbfmt(hak, HAK_EINVAL, "not a byte - %O", arg);
+			return HAK_PF_FAILURE;
+		}
+
+		v = HAK_OOP_TO_SMOOI(arg);
+		if (v < 0 || v > 255)
+		{
+			hak_seterrbfmt(hak, HAK_ERANGE, "not a byte - %O", arg);
+			return HAK_PF_FAILURE;
+		}
+
+		bt = (hak_uint8_t)v;
+		n = put_udo_bytes(hak, &bt, 1, &nw);
+		if (n <= -1) return HAK_PF_FAILURE;
+
+		tnw += nw;
+		if (n == 0) break; /* the stream ended - stop rather than push at a dead stream */
 	}
 
-	v = HAK_OOP_TO_SMOOI(arg);
-	if (v < 0 || v > 255)
-	{
-		hak_seterrbfmt(hak, HAK_ERANGE, "not a byte - %O", arg);
-		return HAK_PF_FAILURE;
-	}
-
-	bt = (hak_uint8_t)v;
-	n = put_udo_bytes(hak, &bt, 1, &nw);
-	if (n <= -1) return HAK_PF_FAILURE;
-
-	HAK_STACK_SETRET(hak, nargs, (n == 0)? hak->_nil: HAK_SMOOI_TO_OOP((hak_ooi_t)nw));
+	/* the number of characters or bytes that went out, or nil only when the stream
+	 * ended before anything did. a short count is how a caller learns where to
+	 * resume, so it is never thrown away - unlike a read, a write cannot just be
+	 * retried from the start without repeating whatever already landed. */
+	HAK_STACK_SETRET(hak, nargs, (n == 0 && tnw == 0)? hak->_nil: HAK_SMOOI_TO_OOP((hak_ooi_t)tnw));
 	return HAK_PF_SUCCESS;
 }
 
 hak_pfrc_t hak_pf_puts (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	/* (putc s) - write a string. the counterpart of getc.
+	/* (puts s ...) - write one or more values. the counterpart of gets.
 	 * a character string goes out as characters, a byte array as bytes, which
-	 * keeps the pairing with putc and putb. nothing is appended - unlike
+	 * keeps the pairing with putc and putb. a character is accepted too, and a
+	 * small integer in its decimal spelling. nothing is appended - unlike
 	 * C's puts, no newline is added. */
 	hak_oop_t arg;
 	hak_oow_t nw;
+	hak_oow_t tnw;
+	hak_oow_t i;
 	int n;
 
-	arg = HAK_STACK_GETARG(hak, nargs, 0);
-	if (!HAK_OOP_IS_POINTER(arg))
+	tnw = 0;
+	n = 1;
+	for (i = 0; i < nargs; i++)
 	{
-		hak_seterrbfmt(hak, HAK_EINVAL, "not a string or a byte array - %O", arg);
-		return HAK_PF_FAILURE;
-	}
+		arg = HAK_STACK_GETARG(hak, nargs, i);
+		if (HAK_OOP_IS_SMOOI(arg))
+		{
+			hak_bch_t buf[HAK_INT_DEC_STR_SIZE(hak_ooi_t)];
+			n = hak_fmt_intmax_to_bcstr(buf, HAK_COUNTOF(buf), HAK_OOP_TO_SMOOI(arg), 10, 0, '\0', HAK_NULL);
+			HAK_ASSERT(hak, n >= 0);
+			n = put_udo_bytes(hak, (const hak_uint8_t*)buf, n, &nw);
+			goto written;
+		}
+		else if (HAK_OOP_IS_CHAR(arg))
+		{
+			hak_ooch_t ch;
+			ch = HAK_OOP_TO_CHAR(arg);
+			n = put_udo_chars(hak, &ch, 1, &nw);
+			goto written;
+		}
+		else if (!HAK_OOP_IS_POINTER(arg))
+		{
+			hak_seterrbfmt(hak, HAK_EINVAL, "not a string or a byte array - %O", arg);
+			return HAK_PF_FAILURE;
+		}
 
 /* TODO: can we support arrays of other types?
  *       normal array composed of characters or strings?
  *       word array? treat element value as character code? */
-	switch (HAK_OBJ_GET_FLAGS_TYPE(arg))
-	{
-		case HAK_OBJ_TYPE_CHAR:
-			n = put_udo_chars(hak, HAK_OBJ_GET_CHAR_SLOT(arg), HAK_OBJ_GET_SIZE(arg), &nw);
-			break;
+		switch (HAK_OBJ_GET_FLAGS_TYPE(arg))
+		{
+			case HAK_OBJ_TYPE_CHAR:
+				n = put_udo_chars(hak, HAK_OBJ_GET_CHAR_SLOT(arg), HAK_OBJ_GET_SIZE(arg), &nw);
+				break;
 
-		case HAK_OBJ_TYPE_BYTE:
-			n = put_udo_bytes(hak, HAK_OBJ_GET_BYTE_SLOT(arg), HAK_OBJ_GET_SIZE(arg), &nw);
-			break;
+			case HAK_OBJ_TYPE_BYTE:
+				n = put_udo_bytes(hak, HAK_OBJ_GET_BYTE_SLOT(arg), HAK_OBJ_GET_SIZE(arg), &nw);
+				break;
 
-		default:
-			hak_seterrbfmt(hak, HAK_EINVAL, "not a string or a byte array - %O", arg);
-			return HAK_PF_FAILURE;
+/* TODO: support large integer, fpdec, */
+
+			default:
+				hak_seterrbfmt(hak, HAK_EINVAL, "not a string or a byte array - %O", arg);
+				return HAK_PF_FAILURE;
+		}
+
+	written:
+		if (n <= -1) return HAK_PF_FAILURE;
+		tnw += nw;
+		if (n == 0) break; /* the stream ended - stop rather than push at a dead stream */
 	}
 
-	if (n <= -1) return HAK_PF_FAILURE;
-
-	HAK_STACK_SETRET(hak, nargs, (n == 0)? hak->_nil: HAK_SMOOI_TO_OOP((hak_ooi_t)nw));
+	/* the number of characters or bytes that went out, or nil only when the stream
+	 * ended before anything did. a short count is how a caller learns where to
+	 * resume, so it is never thrown away - unlike a read, a write cannot just be
+	 * retried from the start without repeating whatever already landed. */
+	HAK_STACK_SETRET(hak, nargs, (n == 0 && tnw == 0)? hak->_nil: HAK_SMOOI_TO_OOP((hak_ooi_t)tnw));
 	return HAK_PF_SUCCESS;
 }
 
@@ -1563,9 +1622,9 @@ static pf_t builtin_prims[] =
 	{ 0, 0,                       hak_pf_getb,            4,  { 'g','e','t','b' } },
 	{ 0, 0,                       hak_pf_getc,            4,  { 'g','e','t','c' } },
 	{ 0, 0,                       hak_pf_gets,            4,  { 'g','e','t','s' } },
-	{ 1, 1,                       hak_pf_putb,            4,  { 'p','u','t','b' } },
-	{ 1, 1,                       hak_pf_putc,            4,  { 'p','u','t','c' } },
-	{ 1, 1,                       hak_pf_puts,            4,  { 'p','u','t','s' } },
+	{ 1, HAK_TYPE_MAX(hak_oow_t), hak_pf_putb,            4,  { 'p','u','t','b' } },
+	{ 1, HAK_TYPE_MAX(hak_oow_t), hak_pf_putc,            4,  { 'p','u','t','c' } },
+	{ 1, HAK_TYPE_MAX(hak_oow_t), hak_pf_puts,            4,  { 'p','u','t','s' } },
 	{ 1, HAK_TYPE_MAX(hak_oow_t), hak_pf_printf,          6,  { 'p','r','i','n','t','f' } },
 	{ 1, 1,                       hak_pf_scanf,           5,  { 's','c','a','n','f' } },
 	{ 2, 2,                       hak_pf_sscanf,          6,  { 's','s','c','a','n','f' } },

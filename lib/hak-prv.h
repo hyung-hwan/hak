@@ -475,6 +475,7 @@ enum hak_tok_type_t
 	HAK_TOK_IDENT_DOTTED,
 	HAK_TOK_IDENT_DOTTED_CLA_SELF,
 	HAK_TOK_IDENT_DOTTED_CLA_SUPER,
+	HAK_TOK_IDENT_DOLLARED,
 	HAK_TOK_DOT,       /* . */
 	HAK_TOK_DBLDOTS,   /* .. */
 	HAK_TOK_ELLIPSIS,  /* ... */
@@ -536,6 +537,7 @@ enum hak_cnode_type_t
 	HAK_CNODE_BCHRLIT,
 	HAK_CNODE_SYMBOL,
 	HAK_CNODE_DSYMBOL, /* dotted symbol */
+	HAK_CNODE_RSYMBOL, /* $symbol */
 	HAK_CNODE_BINOP,
 	HAK_CNODE_STRLIT,
 	HAK_CNODE_BSTRLIT,
@@ -623,6 +625,7 @@ typedef enum hak_cnode_flag_t hak_cnode_flag_t;
 #define HAK_CNODE_IS_COLON(x) ((x)->cn_type == HAK_CNODE_COLON)
 
 #define HAK_CNODE_IS_SYMBOL(x) ((x)->cn_type == HAK_CNODE_SYMBOL)
+#define HAK_CNODE_IS_RSYMBOL(x) ((x)->cn_type == HAK_CNODE_RSYMBOL)
 #define HAK_CNODE_IS_BINOP(x) ((x)->cn_type == HAK_CNODE_BINOP)
 #define HAK_CNODE_IS_STRLIT(x) ((x)->cn_type == HAK_CNODE_STRLIT)
 #define HAK_CNODE_IS_SYMLIT(x) ((x)->cn_type == HAK_CNODE_SYMLIT)
@@ -721,6 +724,12 @@ struct hak_cframe_t
 
 	union
 	{
+		/* COP_COMPILE_OBJECT */
+		struct
+		{
+			int callee; /* this object is compiled as a callee */
+		} obj;
+
 		/* COP_COMPILE_OBJECT_R */
 		struct
 		{
@@ -2231,6 +2240,7 @@ hak_cnode_t* hak_makecnodecharlit (hak_t* hak, int flags, const hak_loc_t* loc, 
 hak_cnode_t* hak_makecnodebchrlit (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok, hak_oob_t v);
 hak_cnode_t* hak_makecnodesymbol (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok);
 hak_cnode_t* hak_makecnodedsymbol (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok, int is_cla);
+hak_cnode_t* hak_makecnodersymbol (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok);
 hak_cnode_t* hak_makecnodebinop (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok);
 hak_cnode_t* hak_makecnodestrlit (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok);
 hak_cnode_t* hak_makecnodebstrlit (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok);

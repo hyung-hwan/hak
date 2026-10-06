@@ -783,6 +783,7 @@ static hak_pfrc_t pf_core_smooi_to_char (hak_t* hak, hak_mod_t* mod, hak_ooi_t n
 {
 	hak_oop_t rcv, out;
 	hak_ooi_t code;
+	hak_oow_t maxcode;
 
 	rcv = HAK_STACK_GETARG(hak, nargs, 0);
 	if (!HAK_OOP_IS_SMOOI(rcv))
@@ -791,7 +792,25 @@ static hak_pfrc_t pf_core_smooi_to_char (hak_t* hak, hak_mod_t* mod, hak_ooi_t n
 		return HAK_PF_FAILURE;
 	}
 
+	/* a code has to survive two separate limits: what hak_ooch_t can store, and
+	 * what the character tag leaves room for in an oop. the storage type is the
+	 * smaller one on the usual builds, but a 32-bit wide-character build has only
+	 * HAK_CHAR_BITS of oop payload against a 32-bit hak_ooch_t, so take whichever
+	 * is tighter instead of assuming either.
+	 *
+	 * [NOTE] HAK_CHAR_TO_OOP() shifts the value up and lets whatever falls off
+	 * the top go. without this check -1 came back as the last character of the
+	 * range and 0x110000 came back as '\0', neither of them reported. */
+	maxcode = (hak_oow_t)HAK_TYPE_MAX(hak_oochu_t);
+	if (maxcode > HAK_CHAR_MAX) maxcode = HAK_CHAR_MAX;
+
 	code = HAK_OOP_TO_SMOOI(rcv);
+	if (code < HAK_CHAR_MIN || (hak_oow_t)code > maxcode)
+	{
+		hak_seterrbfmt(hak, HAK_ERANGE, "character code out of range - %O", rcv);
+		return HAK_PF_FAILURE;
+	}
+
 	out = HAK_CHAR_TO_OOP(code);
 	HAK_STACK_SETRET(hak, nargs, out);
 	return HAK_PF_SUCCESS;
@@ -830,7 +849,7 @@ static hak_pfinfo_t pfinfos[] =
 
 	{ "car",                { HAK_PFBASE_FUNC, pf_core_car,                   1,  1 } },
 	{ "cdr",                { HAK_PFBASE_FUNC, pf_core_cdr,                   1,  1 } },
-	{ "charToSmooi",        { HAK_PFBASE_FUNC, pf_core_char_to_smooi,         1,  1 } },
+	{ "char-to-smooi",      { HAK_PFBASE_FUNC, pf_core_char_to_smooi,         1,  1 } },
 	{ "className",          { HAK_PFBASE_FUNC, pf_core_class_name,            1,  1 } },
 	{ "classOf",            { HAK_PFBASE_FUNC, pf_core_class_of,              1,  1 } },
 	{ "classRespondsTo",    { HAK_PFBASE_FUNC, pf_core_class_responds_to,     2,  2 } },
@@ -862,9 +881,9 @@ static hak_pfinfo_t pfinfos[] =
 	{ "primAtPut",          { HAK_PFBASE_FUNC, pf_core_prim_at_put,           3,  3 } },
 
 	{ "printf",             { HAK_PFBASE_FUNC, hak_pf_printf,                 1,  HAK_TYPE_MAX(hak_oow_t) } },
-	{ "putb",               { HAK_PFBASE_FUNC, hak_pf_putb,                   1,  1 } },
-	{ "putc",               { HAK_PFBASE_FUNC, hak_pf_putc,                   1,  1 } },
-	{ "puts",               { HAK_PFBASE_FUNC, hak_pf_puts,                   1,  1 } },
+	{ "putb",               { HAK_PFBASE_FUNC, hak_pf_putb,                   1,  HAK_TYPE_MAX(hak_oow_t) } },
+	{ "putc",               { HAK_PFBASE_FUNC, hak_pf_putc,                   1,  HAK_TYPE_MAX(hak_oow_t) } },
+	{ "puts",               { HAK_PFBASE_FUNC, hak_pf_puts,                   1,  HAK_TYPE_MAX(hak_oow_t) } },
 	{ "resume",             { HAK_PFBASE_FUNC, hak_pf_process_resume,         1,  1 } },
 
 	{ "scanf",              { HAK_PFBASE_FUNC, hak_pf_scanf,                  1,  1 } },
@@ -881,8 +900,8 @@ static hak_pfinfo_t pfinfos[] =
 	{ "semgr-wait",         { HAK_PFBASE_FUNC, hak_pf_semaphore_group_wait,             1,  1 } },
 
 	{ "slice",              { HAK_PFBASE_FUNC, pf_core_slice,                 3,  3 } },
-	{ "smooiToChar",        { HAK_PFBASE_FUNC, pf_core_smooi_to_char,         1,  1 } },
-	{ "sprintf",             { HAK_PFBASE_FUNC, hak_pf_sprintf,                1,  HAK_TYPE_MAX(hak_oow_t) } },
+	{ "smooi-to-char",      { HAK_PFBASE_FUNC, pf_core_smooi_to_char,         1,  1 } },
+	{ "sprintf",            { HAK_PFBASE_FUNC, hak_pf_sprintf,                1,  HAK_TYPE_MAX(hak_oow_t) } },
 	{ "sqrt",               { HAK_PFBASE_FUNC, hak_pf_number_sqrt,            1,  1 } },
 
 	{ "sscanf",              { HAK_PFBASE_FUNC, hak_pf_sscanf,                 2,  2 } },

@@ -230,10 +230,23 @@ Whitespace in the format matches any run of it, including none.
 
 The `get`/`put` pairs read and write the input and output handlers:
 `getc`/`putc` one character, `getb`/`putb` one byte, and `gets`/`puts` a
-string - a line when reading. Reading answers `nil` at end of input; writing
-answers how many characters or bytes went out, or `nil` if the stream has
-ended. `puts` appends nothing, and writes a byte array as bytes rather than
-characters.
+string - a line when reading. Reading answers `nil` at end of input.
+
+The writing side takes any number of arguments and answers how many characters
+or bytes went out:
+
+	(putc 'a' 'b' 'c')           ## 3
+	(puts "ab" 'c' 12)           ## 5 - writes abc12
+
+It answers `nil` only when the stream ended before anything went out at all. A
+stream that ends part way answers the short count rather than `nil`, because
+that count is what says where to resume - a write, unlike a read, cannot be
+retried from the start without repeating whatever already landed. Writing stops
+at the first argument the stream refuses.
+
+`puts` appends nothing, writes a byte array as bytes rather than characters, and
+accepts a character or a small integer as well as a string - an integer in its
+decimal spelling, so `(puts 12)` writes `12` and answers 2.
 
 Writing to the log channel rather than to the output handler is `core.log` and
 `core.logf`. These have no plain names - `log` is left free for a program to

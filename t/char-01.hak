@@ -1,0 +1,71 @@
+## Character <-> code conversion.
+##
+## core.smooi-to-char and core.char-to-smooi are the primitives; Number:toCharacter
+## and Character:toCode in src/magnitude.hak are the class-library face of them.
+##
+## [NOTE] a character code has to fit two separate limits - what hak_ooch_t can
+## store, and what the character tag leaves room for in an oop. Which of the two
+## is tighter depends on HAK_WIDE_CHAR_SIZE and the word size, so every value
+## asserted below stays inside ASCII and the rejections avoid naming a boundary.
+
+$include "magnitude.hak"
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+## --- the conversions ---------------------------------------------------------
+
+chk (eqv? (65:toCharacter) 'A') "a code becomes the character it names"
+chk (eqv? ('A':toCode) 65) "a character becomes its code"
+chk (eqv? (0x41:toCharacter) 'A') "the code may be written in any base"
+
+## round trip, both directions
+chk (eqv? (('z':toCode):toCharacter) 'z') "char -> code -> char is the identity"
+chk (eqv? ((97:toCharacter):toCode) 97) "code -> char -> code is the identity"
+
+## the primitives directly, not through the class library
+chk (eqv? (core.smooi-to-char 66) 'B') "core.smooi-to-char converts a code"
+chk (eqv? (core.char-to-smooi 'B') 66) "core.char-to-smooi converts a character"
+
+## arithmetic on codes is the point of having them
+chk (eqv? ((('z':toCode) - 32):toCharacter) 'Z') "a code can be computed with"
+
+## --- the ends of the range ---------------------------------------------------
+
+chk (eqv? (0:toCharacter) '\0') "zero is a character, not an absence"
+chk (eqv? ('\0':toCode) 0) "...and converts back"
+
+## --- what is refused ---------------------------------------------------------
+##
+## [NOTE] HAK_CHAR_TO_OOP() shifts the code up and discards whatever falls off
+## the top, so without a range check these answered a character rather than
+## raising - -1 gave the last character of the range and 0x110000 gave '\0'.
+
+caught := nil
+try { -1:toCharacter } catch (e) { caught := e }
+chk (eql? caught "character code out of range - -1") "a negative code is refused"
+
+caught := nil
+try { core.smooi-to-char -2 } catch (e) { caught := e }
+chk (eql? caught "character code out of range - -2") "...by the primitive too"
+
+## [NOTE] no single literal is above the limit on every build. The limit is
+## whatever hak_ooch_t can hold - 0xFFFF where HAK_WIDE_CHAR_SIZE picks 16-bit
+## code units, 0xFFFFFFFF where it picks 32-bit, 0xFF in a byte-character build -
+## capped again by HAK_CHAR_MAX, the room the character tag leaves in an oop. A
+## literal past the limit may also be a LargeInteger rather than a SmallInteger,
+## which is refused by a different branch. So this asserts only that a wildly
+## out-of-range code is refused, not which check catches it.
+caught := nil
+try { 99999999999999999999:toCharacter } catch (e) { caught := e }
+chk (nqv? caught nil) "a code far past the limit is refused"
+
+caught := nil
+try { core.char-to-smooi 65 } catch (e) { caught := e }
+chk (eql? caught "receiver not Character - 65") "char-to-smooi refuses a non-character"
+
+caught := nil
+try { core.smooi-to-char 'A' } catch (e) { caught := e }
+chk (eql? caught "receiver not SmallInteger - 'A'") "smooi-to-char refuses a non-integer"

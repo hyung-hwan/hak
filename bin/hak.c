@@ -930,6 +930,7 @@ int main (int argc, char* argv[])
 		{ ":includedirs", 'I'  },
 		{ ":log",         'l'  },
 		{ "info",         '\0' },
+		{ "liberal",      '\0' },
 		{ ":modlibdirs",  '\0' },
 
 		{ HAK_NULL,       '\0' }
@@ -944,6 +945,7 @@ int main (int argc, char* argv[])
 	hak_oow_t heapsize = DEFAULT_HEAPSIZE;
 	int verbose = 0;
 	int show_info = 0;
+	int be_liberal = 0;
 	const char* modlibdirs = HAK_NULL;
 	const char* incdirs = HAK_NULL;
 
@@ -1002,6 +1004,11 @@ int main (int argc, char* argv[])
 				else if (hak_comp_bcstr(opt.lngopt, "info") == 0)
 				{
 					show_info = 1;
+					break;
+				}
+				else if (hak_comp_bcstr(opt.lngopt, "liberal") == 0)
+				{
+					be_liberal = 1;
 					break;
 				}
 				else if (hak_comp_bcstr(opt.lngopt, "modlibdirs") == 0)
@@ -1068,6 +1075,7 @@ int main (int argc, char* argv[])
 		/*trait |= HAK_TRAIT_NOGC;*/
 		trait |= HAK_TRAIT_AWAIT_PROCS;
 		trait |= HAK_TRAIT_LANG_ENABLE_EOL;
+		if (be_liberal) trait |= HAK_TRAIT_LANG_LIBERAL;
 		hak_setoption (hak, HAK_OPT_TRAIT, &trait);
 	}
 

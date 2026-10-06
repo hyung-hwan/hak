@@ -937,6 +937,7 @@ void hak_dumpcnode (hak_t* hak, hak_cnode_t* cnode, int newline)
 			case HAK_CNODE_BCHRLIT:
 			case HAK_CNODE_SYMBOL:
 			case HAK_CNODE_DSYMBOL:
+			case HAK_CNODE_RSYMBOL:
 			case HAK_CNODE_STRLIT:
 			case HAK_CNODE_BSTRLIT:
 			case HAK_CNODE_SYMLIT:

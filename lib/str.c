@@ -120,6 +120,32 @@ int hak_comp_bcstr (const hak_bch_t* str1, const hak_bch_t* str2)
 	return ((hak_bchu_t)*str1 > (hak_bchu_t)*str2)? 1: -1;
 }
 
+int hak_comp_ucstr_limited (const hak_uch_t* str1, const hak_uch_t* str2, hak_oow_t maxlen)
+{
+	if (maxlen == 0) return 0;
+
+	while (*str1 == *str2)
+	{
+		 if (*str1 == '\0' || maxlen == 1) return 0;
+		 str1++; str2++; maxlen--;
+	}
+
+	return ((hak_uchu_t)*str1 > (hak_uchu_t)*str2)? 1: -1;
+}
+
+int hak_comp_bcstr_limited (const hak_bch_t* str1, const hak_bch_t* str2, hak_oow_t maxlen)
+{
+	if (maxlen == 0) return 0;
+
+	while (*str1 == *str2)
+	{
+		 if (*str1 == '\0' || maxlen == 1) return 0;
+		 str1++; str2++; maxlen--;
+	}
+
+	return ((hak_bchu_t)*str1 > (hak_bchu_t)*str2)? 1: -1;
+}
+
 int hak_comp_ucstr_bcstr (const hak_uch_t* str1, const hak_bch_t* str2)
 {
 	while (*str1 == *str2)

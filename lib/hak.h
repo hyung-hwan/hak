@@ -1467,6 +1467,7 @@ struct hak_io_cciarg_t
 	hak_ooci_t nl;
 
 	hak_lxc_t lxc;
+	hak_bitmask_t trait;
 	/*-----------------------------------------------------------------*/
 };
 /**/

@@ -4964,6 +4964,7 @@ hak_t* hak_openstd (hak_oow_t xtnsize, hak_errinf_t* errinf)
  * rather than twice. */
 #if defined(HAK_OOCH_IS_UCH) && defined(_WIN32)
 typedef hak_uch_t fn_char_t;
+#	define FN_CHAR_IS_UCH        (1)
 #	define FN_COUNT(p)           hak_count_ucstr(p)
 #	define FN_COPY_CHARS(d,s,l)  hak_copy_uchars(d,s,l)
 #	define FN_COPY_NAME(d,c,s)   hak_copy_ucstr(d,c,s)
@@ -4977,6 +4978,7 @@ typedef hak_uch_t fn_char_t;
 #	define FN_FMT                "%ls"
 #else
 typedef hak_bch_t fn_char_t;
+#	define FN_CHAR_IS_BCH        (1)
 #	define FN_COUNT(p)           hak_count_bcstr(p)
 #	define FN_COPY_CHARS(d,s,l)  hak_copy_bchars(d,s,l)
 #	define FN_COPY_NAME(d,c,s)   hak_copy_bcstr(d,c,s)
@@ -4997,6 +4999,7 @@ struct bb_t
 
 	FILE* fp;
 	fn_char_t* fn;
+	int no_dir; /* fn carries no directory to resolve an include against */
 };
 
 #if defined(__DOS__) || defined(_WIN32) || defined(__OS2__)
@@ -5198,6 +5201,54 @@ static void merge_vms_dir_spec (fn_char_t* fn, hak_oow_t parlen)
 }
 #endif
 
+/* Does this name carry no directory for a relative include to resolve against?
+ *
+ * The question is about the NAME, not about the file at the other end of it.
+ * "/dev/stdin" is shaped like a directory plus a file, but "/dev/" is not a
+ * place: $include "../inc/x.hak" from it would build "/dev/../inc/x.hak", which
+ * names nothing. Such a name is treated as having no directory part at all, so
+ * the include resolves against the current directory and --incdirs instead.
+ *
+ * [NOTE] asking the FILE what it is - stat() plus S_ISCHR/S_ISBLK - cannot
+ * answer this. stat() follows /dev/stdin through to whatever standard input is
+ * attached to, so it reports a regular file under a redirection and a fifo
+ * under a pipe, and only a terminal comes back as a character device.
+ */
+static int path_has_no_dir (const hak_bch_t* path)
+{
+#if defined(_WIN32) || defined(__OS2__) || defined(__DOS__)
+	/* the device namespace - "\\.\pipe\x", "\\.\CON". everything below it is a
+	 * device rather than a directory.
+	 *
+	 * [NOTE] the test is for "\\.\" exactly, NOT for a leading "\\". a UNC path
+	 * ("\\server\share\dir\x.hak") and an extended-length path ("\\?\C:\dir\x.hak")
+	 * also begin with two separators but are real paths whose directory part is
+	 * meaningful - matching "\\" would break them to fix the device case. */
+	if ((path[0] == '\\' || path[0] == '/') &&
+	    (path[1] == '\\' || path[1] == '/') &&
+	    path[2] == '.' &&
+	    (path[3] == '\\' || path[3] == '/')) return 1;
+#elif !defined(__VMS)
+	/* the names a program carries when its source arrived on a stream rather
+	 * than from a file sitting somewhere. */
+	if (hak_comp_bcstr(path, "/dev/stdin") == 0) return 1;
+	if (hak_comp_bcstr_limited(path, "/dev/fd/", 8) == 0) return 1;
+	if (hak_comp_bcstr_limited(path, "/proc/self/fd/", 14) == 0) return 1;
+	if (hak_comp_bcstr_limited(path, "/proc/", 6) == 0)
+	{
+		/* "/proc/<pid>/fd/..." - what a shell writes for a process substitution
+		 * when it has no /dev/fd */
+		const hak_bch_t* p = path + 6;
+		if (*p >= '0' && *p <= '9')
+		{
+			while (*p >= '0' && *p <= '9') p++;
+			if (hak_comp_bcstr_limited(p, "/fd/", 4) == 0) return 1;
+		}
+	}
+#endif
+	return 0;
+}
+
 static HAK_INLINE int open_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 {
 	xtn_t* xtn = GET_XTN(hak);
@@ -5236,8 +5287,21 @@ static HAK_INLINE int open_cci_stream (hak_t* hak, hak_io_cciarg_t* arg)
 		}
 		else
 		{
-			fb = FN_BASE_NAME(fn);
-			parlen = fb - fn;
+			if (((bb_t*)arg->includer->handle)->no_dir)
+			{
+				/* the includer has no directory of its own - see path_has_no_dir().
+				 * the name resolves as if written against the current directory. */
+				fb = HAK_NULL;
+				parlen = 0;
+			}
+			else
+			{
+				fb = FN_BASE_NAME(fn);
+				parlen = fb - fn;
+			}
+
+			/* an explicitly relative name still bypasses --incdirs whether or not the
+			 * includer had a directory, so this is shared by both cases above. */
 		#if defined(__VMS)
 			/* "[.sub]x.hak" and "[-]x.hak" are what "./x.hak" and "../x.hak" are
 			 * elsewhere - explicitly relative to the includer, so the include
@@ -5362,6 +5426,13 @@ retry:
 		if (!bb) goto oops;
 
 		bb->fn = (fn_char_t*)(bb + 1);
+
+		/* decided once, here, from the name the program was given - every include
+		 * below reads the answer off the stream instead of working it out again.
+		 * an included file always has a real path of its own, so the bb_t made for
+		 * one keeps the zero that hak_callocmem() left. */
+		bb->no_dir = (pathlen <= 0 || !xtn->cci_path || path_has_no_dir(xtn->cci_path));
+
 		if (pathlen > 0 && xtn->cci_path)
 		{
 		#if defined(HAK_OOCH_IS_UCH) && defined(_WIN32)

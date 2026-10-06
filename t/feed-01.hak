@@ -64,11 +64,11 @@ fun CharacterArray:at(pos) {
 }
 
 fun SmallInteger:toCharacter() {
-	return (core.smooiToChar self)
+	return (core.smooi-to-char self)
 }
 
 fun Character:toCode() {
-	return (core.charToSmooi self)
+	return (core.char-to-smooi self)
 }
 
 ba := #B[1 2 3 4 5 6 7 8 9 10 11 12 13 14 15]

@@ -512,13 +512,18 @@ HAK_INFO2(hak, "CLASS NAMED VAR [%.*js]\n", name->len, name->ptr);
 	return 0; /* not found */
 }
 
-static int find_variable_backward_with_token (hak_t* hak, const hak_cnode_t* cnode, hak_var_info_t* vi)
+static int find_variable_backward_with_token (hak_t* hak, const hak_cnode_t* cnode, hak_var_info_t* vi, int skip)
 {
+	hak_oocs_t newtok;
+
+	newtok = *HAK_CNODE_GET_TOK(cnode);
 	if (HAK_CNODE_IS_DSYMBOL_CLA(cnode))
 	{
 		/* prefixed with self or super. remove the first segment */
-		hak_oocs_t newtok;
-		newtok = *HAK_CNODE_GET_TOK(cnode);
+
+		/* 'skip' won't be respected for DSYMBOL_CLA as it's intended to skip the leading dollar sign
+		 * and CLA always begins with self. or super. the name "skip" could have been more specific. */
+
 		while (*newtok.ptr != '.')
 		{
 			newtok.ptr++;
@@ -529,7 +534,11 @@ static int find_variable_backward_with_token (hak_t* hak, const hak_cnode_t* cno
 		return find_variable_backward_with_word(hak, &newtok, HAK_CNODE_GET_LOC(cnode), 1, vi);
 	}
 
-	return find_variable_backward_with_word(hak, HAK_CNODE_GET_TOK(cnode), HAK_CNODE_GET_LOC(cnode), HAK_CNODE_IS_DSYMBOL_CLA(cnode), vi);
+	/* [HACK] skip is used to skip '$' before an identifier in the liberal mode */
+	newtok.ptr += skip;
+	newtok.len -= skip;
+
+	return find_variable_backward_with_word(hak, &newtok, HAK_CNODE_GET_LOC(cnode), HAK_CNODE_IS_DSYMBOL_CLA(cnode), vi);
 }
 
 /* ========================================================================= */
@@ -1450,6 +1459,7 @@ static HAK_INLINE void pop_cframe (hak_t* hak)
 		hak_cframe_t* _cf = GET_TOP_CFRAME(hak); \
 		_cf->opcode = _opcode; \
 		_cf->operand = _operand; \
+		HAK_MEMSET(&_cf->u, 0, HAK_SIZEOF(_cf->u)); \
 	} while (0)
 
 #define SWITCH_CFRAME(hak,_index,_opcode,_operand) \
@@ -1457,6 +1467,7 @@ static HAK_INLINE void pop_cframe (hak_t* hak)
 		hak_cframe_t* _cf = GET_CFRAME(hak,_index); \
 		_cf->opcode = _opcode; \
 		_cf->operand = _operand; \
+		HAK_MEMSET(&_cf->u, 0, HAK_SIZEOF(_cf->u)); \
 	} while (0)
 
 static int push_subcframe (hak_t* hak, int opcode, hak_cnode_t* operand)
@@ -4151,7 +4162,7 @@ static int compile_set (hak_t* hak, hak_cnode_t* src)
 
 	SWITCH_TOP_CFRAME(hak, COP_COMPILE_OBJECT, val);
 
-	x = find_variable_backward_with_token(hak, var, &vi);
+	x = find_variable_backward_with_token(hak, var, &vi, 0);
 	if (x <= -1) return -1;
 
 	if (x == 0)
@@ -4271,7 +4282,7 @@ static int compile_set_r (hak_t* hak, hak_cnode_t* src)
 
 		var = HAK_CNODE_CONS_CAR(obj);
 
-		x = find_variable_backward_with_token(hak, var, &vi);
+		x = find_variable_backward_with_token(hak, var, &vi, 0);
 		if (x <= -1) return -1;
 
 		if (x == 0)
@@ -4816,7 +4827,7 @@ static int compile_cons_alist_expression (hak_t* hak, hak_cnode_t* cmd)
 
 			HAK_ASSERT(hak, HAK_CNODE_IS_SYMBOL(var) || HAK_CNODE_IS_DSYMBOL_CLA(var)); /* reader guaranteed */
 
-			x = find_variable_backward_with_token(hak, var, &vi);
+			x = find_variable_backward_with_token(hak, var, &vi, 0);
 			if (x <= -1) return -1;
 
 			if (x == 0)
@@ -4867,7 +4878,7 @@ static int compile_cons_alist_expression (hak_t* hak, hak_cnode_t* cmd)
 
 		SWITCH_TOP_CFRAME(hak, COP_COMPILE_OBJECT, val);
 
-		x = find_variable_backward_with_token(hak, var, &vi);
+		x = find_variable_backward_with_token(hak, var, &vi, 0);
 		if (x <= -1) return -1;
 
 		if (x == 0)
@@ -5211,7 +5222,7 @@ static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 	}
 
 	/* the first word is not a special word */
-	if (HAK_CNODE_IS_SYMBOL(car)  || HAK_CNODE_IS_DSYMBOL(car) || HAK_CNODE_IS_BINOP(car) ||
+	if (HAK_CNODE_IS_SYMBOL(car)  || HAK_CNODE_IS_DSYMBOL(car) || HAK_CNODE_IS_RSYMBOL(car) || HAK_CNODE_IS_BINOP(car) ||
 	    HAK_CNODE_IS_STRLIT(car) || /* this condition to represent an external program TODO: change this to a dedicated cnode */
 	    HAK_CNODE_IS_SYMLIT(car) || /* this condition to represent an external program TODO: change this to a dedicated cnode */
 	    HAK_CNODE_IS_CONS_CONCODED(car, HAK_CONCODE_XLIST) || /* () is nested */
@@ -5242,6 +5253,8 @@ static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 
 		/* compile <operator> */
 		PUSH_CFRAME(hak, COP_COMPILE_OBJECT, car); /* <2> */
+		cf = GET_TOP_CFRAME(hak);
+		cf->u.obj.callee = 1; /* indicate that this is a callee. e.g funtion name in a function call */
 
 		/* compile <operand1> ... etc */
 		cdr = HAK_CNODE_CONS_CDR(obj);
@@ -5516,25 +5529,32 @@ static int compile_cons_block_expression (hak_t* hak, hak_cnode_t* obj)
 	return compile_expression_block(hak, obj, "block", CEB_IS_BLOCK);
 }
 
-static HAK_INLINE int compile_symbol (hak_t* hak, hak_cnode_t* obj)
+static HAK_INLINE int compile_symbol (hak_t* hak, hak_cnode_t* obj, int skip)
 {
 	hak_var_info_t vi;
 	int x;
 
-	HAK_ASSERT(hak, HAK_CNODE_IS_SYMBOL(obj) || HAK_CNODE_IS_BINOP(obj));
+	HAK_ASSERT(hak, HAK_CNODE_IS_SYMBOL(obj) || HAK_CNODE_IS_BINOP(obj) || HAK_CNODE_IS_RSYMBOL(obj));
 
 	/* check if a symbol is a local variable */
-	x = find_variable_backward_with_token(hak, obj, &vi);
+	x = find_variable_backward_with_token(hak, obj, &vi, skip);
 	if (x <= -1) return -1;
 
 	if (x == 0)
 	{
 		hak_oop_t sym, cons;
 		hak_oow_t index;
+
+		hak_oocs_t tmp;
+
+		tmp = *HAK_CNODE_GET_TOK(obj);
+		tmp.ptr += skip;
+		tmp.len -= skip;
+
 /* TODO: if i require all variables to be declared, this part is not needed and should handle it as an error */
 /* TODO: change the scheme... allow declaration??? */
 		/* global variable */
-		sym = hak_makesymbol(hak, HAK_CNODE_GET_TOKPTR(obj), HAK_CNODE_GET_TOKLEN(obj));
+		sym = hak_makesymbol(hak, tmp.ptr, tmp.len);
 		if (HAK_UNLIKELY(!sym)) return -1;
 
 		cons = (hak_oop_t)hak_getatsysdic(hak, sym);
@@ -5949,11 +5969,33 @@ redo:
 			goto literal;
 
 		case HAK_CNODE_BINOP: /* binop symbol. treat it like a normal symbol in the object context */
-		case HAK_CNODE_SYMBOL: /* symbol. but not a literal. usually a variable */
-			if (compile_symbol(hak, oprnd) <= -1) return -1;
+			if (compile_symbol(hak, oprnd, 0) <= -1) return -1;
 			goto done;
 
-		case  HAK_CNODE_DSYMBOL:
+		case HAK_CNODE_SYMBOL: /* symbol. but not a literal. usually a variable */
+			if ((hak->c->curinp->trait & HAK_TRAIT_LANG_LIBERAL) && !cf->u.obj.callee)
+			{
+				/* liberal mode. not at the called position. it's a normal bare word string */
+				lit = hak_makestring(hak, HAK_CNODE_GET_TOKPTR(oprnd), HAK_CNODE_GET_TOKLEN(oprnd));
+				if (HAK_UNLIKELY(!lit)) return -1;
+				goto literal;
+			}
+			else
+			{
+				if (compile_symbol(hak, oprnd, 0) <= -1) return -1;
+				goto done;
+			}
+
+		case HAK_CNODE_RSYMBOL: /* $word. it's always a name/variable reference */
+			/* a word begining with a dollar is definitely an identifier for reference.
+			 * pass 1 to compile_symbol to skip the leading $ prefix.
+			 * [NOTE]
+			 *   this part will never be reached in the non-liberal mode because
+			 *   the reader disallows the $-notation in the non-liberal mode. */
+			if (compile_symbol(hak, oprnd, 1) <= -1) return -1;
+			goto done;
+
+		case HAK_CNODE_DSYMBOL:
 			if (compile_dsymbol(hak, oprnd) <= -1) return -1;
 			goto done;
 
@@ -7065,7 +7107,7 @@ static HAK_INLINE int post_fun (hak_t* hak)
 				return -1;
 			}
 
-			x = find_variable_backward_with_token(hak, fun_name, &vi);
+			x = find_variable_backward_with_token(hak, fun_name, &vi, 0);
 			if (x <= -1) return -1;
 			if (x == 0)
 			{
@@ -7103,7 +7145,7 @@ static HAK_INLINE int post_fun (hak_t* hak)
 		{
 			/* the function name must be global or module-wide.(no module implemented yet. so only global) */
 		#if 0
-			x = find_variable_backward_with_token(hak, fun_name, &vi);
+			x = find_variable_backward_with_token(hak, fun_name, &vi, 0);
 			if (x <= -1) return -1;
 			if (x == 0)
 			{
@@ -7129,7 +7171,7 @@ static HAK_INLINE int post_fun (hak_t* hak)
 
 				/* treat the class name part as a normal variable.
 				 * it can be a global variable like 'String' or a local variable declared */
-				if (compile_symbol(hak, class_name) <= -1) return -1;
+				if (compile_symbol(hak, class_name, 0) <= -1) return -1;
 
 				if (emit_byte_instruction(hak, HAK_CODE_CLASS_LOAD, HAK_CNODE_GET_LOC(class_name)) <= -1) return -1;
 
