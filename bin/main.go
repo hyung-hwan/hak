@@ -34,16 +34,18 @@ var LIBDIR = "."
 var SYSCONFDIR = "."
 
 type Param struct {
-	log_target string
-	log_mask   hak.BitMask
-	input_file string
-	heapsize   uint
-	modlibdirs string
-	incdirs    string
-	verbose    bool
-	show_info  bool
-	fs_usage   func()
+	log_target     string
+	log_mask       hak.BitMask
+	input_file     string
+	input_is_stdin bool
+	heapsize       uint
+	modlibdirs     string
+	incdirs        string
+	verbose        bool
+	show_info      bool
+	fs_usage       func()
 }
+
 
 func empty_usage() {
 
@@ -213,7 +215,14 @@ func handle_arguments(param *Param) error {
 	}
 
 	if fs.NArg() < 1 {
-		return fmt.Errorf("no input file specified")
+		/* no script file given - read the program from the standard input,
+		 * as bin/hak.c does. the name is only a label here: it is what the
+		 * error messages show and what an #include resolves against, and
+		 * having no directory part in it makes a relative include resolve
+		 * against the current directory. */
+		param.input_file = "<stdin>"
+		param.input_is_stdin = true
+		return nil
 	} else if fs.NArg() > 1 {
 		/* bin/hak.c also takes an optional output file as the second
 		 * argument, but the go binding attaches the user data streams
@@ -350,7 +359,11 @@ func main() {
 		goto oops
 	}
 
-	err = x.FeedFromFile(param.input_file)
+	if param.input_is_stdin {
+		err = x.FeedFromReader(os.Stdin)
+	} else {
+		err = x.FeedFromFile(param.input_file)
+	}
 	//err = x.FeedString(`(printf ">>>>>>>>> [%d]\n" (+ 30 455))
 	//   (printf ">>>>>>>>> [%d]\n" (+ 11 455))
 	//   #include "a.hak"

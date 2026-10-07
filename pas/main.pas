@@ -23,7 +23,7 @@ var
 
 	procedure print_usage_and_halt();
 	begin
-		writeln(System.Stderr, SysUtils.Format('Usage: %s <filename>', [SysUtils.ExtractFileName(System.ParamStr(0))]));
+		writeln(System.Stderr, SysUtils.Format('Usage: %s [options] [script-filename]', [SysUtils.ExtractFileName(System.ParamStr(0))]));
 		System.Halt(-1);
 	end;
 
@@ -94,11 +94,18 @@ begin
 		end;
 	until c = GetOpts.EndOfOptions;
 
-	if GetOpts.OptInd <> System.ParamCount() then begin
+	if GetOpts.OptInd > System.ParamCount() then begin
+		(* no script file given. read the program from the standard input,
+		 * as bin/hak.c does. an empty name tells CompileFile to do that. *)
+		source_file := '';
+	end
+	else if GetOpts.OptInd = System.ParamCount() then begin
+		source_file := System.ParamStr(GetOpts.OptInd);
+	end
+	else begin
 		print_usage_and_halt;
 	end;
 
-	source_file := System.ParamStr(GetOpts.OptInd);
 	try
 		x := Hak.Interp.Create(100);
 
@@ -124,7 +131,8 @@ begin
 		x.Execute(); // check if exception...
 	except
 		on e: Hak.ErrorException do begin
-			if e.FileName <> '' then source_file := e.FileName;
+			if e.FileName <> '' then source_file := e.FileName
+			else if source_file = '' then source_file := '<stdin>';
 			writeln('ERROR: ', SysUtils.Format('%s[%u,%u] %s', [source_file, e.Line, e.Column, e.Message]));
 		end;
 		on e: Exception do

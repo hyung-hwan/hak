@@ -661,9 +661,15 @@ begin
 	exit(0);
 end;
 
+(* a nil or empty filename means the standard input, mirroring bin/hak.c when
+ * it is given no script file. '<stdin>' is only a label: it is what an error
+ * message names, and what an #include resolves against - carrying no directory
+ * part, it makes a relative include resolve against the current directory. *)
 procedure Interp.CompileFile(filename: System.PAnsiChar);
 var
 	f: System.THandle = -1;
+	is_stdin: boolean = false;
+	name: string;
 	attached: boolean = false;
 	feed_ongoing: boolean = false;
 	buf: array[0..1023] of System.AnsiChar;
@@ -672,13 +678,21 @@ var
 label
 	oops;
 begin
-	f := SysUtils.FileOpen(filename, SysUtils.fmOpenRead);
-	if f = System.THandle(-1) then begin
-		excpt := Exception.Create('failed to open ' + filename + ' - ' +  SysUtils.SysErrorMessage(SysUtils.GetLastOSError()));
-		goto oops;
+	if (filename = nil) or (filename^ = #0) then begin
+		is_stdin := true;
+		name := '<stdin>';
+		f := System.StdInputHandle;
+	end
+	else begin
+		name := filename;
+		f := SysUtils.FileOpen(filename, SysUtils.fmOpenRead);
+		if f = System.THandle(-1) then begin
+			excpt := Exception.Create('failed to open ' + name + ' - ' +  SysUtils.SysErrorMessage(SysUtils.GetLastOSError()));
+			goto oops;
+		end;
 	end;
 
-	self.basefile := filename;
+	self.basefile := name;
 	if hak_attachccio(self.handle, @cci_handler) <= -1 then begin
 		excpt := self.FetchException('failed to attach ccio handler');
 		goto oops;
@@ -694,7 +708,7 @@ begin
 	while true do begin
 		len := SysUtils.FileRead(f, buf, System.SizeOf(buf));
 		if len <= -1 then begin
-			excpt := Exception.Create('failed to read ' + filename + ' - ' +  SysUtils.SysErrorMessage(SysUtils.GetLastOSError()));
+			excpt := Exception.Create('failed to read ' + name + ' - ' +  SysUtils.SysErrorMessage(SysUtils.GetLastOSError()));
 			goto oops;
 		end;
 		if len = 0 then break;
@@ -713,14 +727,14 @@ begin
 
 	hak_detachccio(self.handle);
 	self.basefile := '';
-	SysUtils.FileClose(f);
+	if not is_stdin then SysUtils.FileClose(f);
 	exit();
 
 oops:
 	if feed_ongoing then hak_endfeed(self.handle);
 	if attached then hak_detachccio(self.handle);
 	self.basefile := '';
-	if f <> System.THandle(-1) then SysUtils.FileClose(f);
+	if (not is_stdin) and (f <> System.THandle(-1)) then SysUtils.FileClose(f);
 	raise excpt;
 end;
 

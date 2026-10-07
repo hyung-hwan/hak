@@ -964,7 +964,7 @@ int main (int argc, char* argv[])
 	setlocale(LC_ALL, "");
 
 #if !defined(macintosh)
-	if (argc < 2)
+	if (argc < 1)
 	{
 	print_usage:
 		fprintf(stderr, "Usage: %s [options] [script-filename [output-filename]]\n", argv[0]);
