@@ -107,6 +107,7 @@ typedef struct xtn_t xtn_t;
 struct xtn_t
 {
 	const char* cci_path; /* main source file */
+	int cci_is_stdin;
 	/*const char* udi_path; */ /* not implemented as of snow */
 	const char* udo_path;
 
@@ -750,21 +751,28 @@ static int feed_loop (hak_t* hak, xtn_t* xtn, int verbose)
 	FILE* fp = HAK_NULL;
 	int is_tty;
 
+	if (xtn->cci_is_stdin)
+	{
+		fp = stdin;
+	}
+	else
+	{
 #if defined(_WIN32) && defined(__STDC_WANT_SECURE_LIB__) && (__STDC_WANT_SECURE_LIB__ > 0)
-	errno_t err = fopen_s(&fp, xtn->cci_path, FOPEN_R_FLAGS);
-	if (err != 0)
-	{
-		hak_logbfmt(hak, HAK_LOG_STDERR, "ERROR: failed to open - %hs - %hs\n", xtn->cci_path, strerror(err));
-		goto oops;
-	}
+		errno_t err = fopen_s(&fp, xtn->cci_path, FOPEN_R_FLAGS);
+		if (err != 0)
+		{
+			hak_logbfmt(hak, HAK_LOG_STDERR, "ERROR: failed to open - %hs - %hs\n", xtn->cci_path, strerror(err));
+			goto oops;
+		}
 #else
-	fp = fopen(xtn->cci_path, FOPEN_R_FLAGS);
-	if (!fp)
-	{
-		hak_logbfmt(hak, HAK_LOG_STDERR, "ERROR: failed to open - %hs - %hs\n", xtn->cci_path, strerror(errno));
-		goto oops;
-	}
+		fp = fopen(xtn->cci_path, FOPEN_R_FLAGS);
+		if (!fp)
+		{
+			hak_logbfmt(hak, HAK_LOG_STDERR, "ERROR: failed to open - %hs - %hs\n", xtn->cci_path, strerror(errno));
+			goto oops;
+		}
 #endif
+	}
 
 #if defined(_WIN32)
 	is_tty = _isatty(_fileno(fp));
@@ -899,13 +907,13 @@ static int feed_loop (hak_t* hak, xtn_t* xtn, int verbose)
 		print_error(hak, "endfeed");
 		goto oops; /* TODO: proceed or just exit? */
 	}
-	fclose (fp);
+	if (fp != stdin) fclose(fp);
 
 	if (!is_tty && hak_getbclen(hak) > 0) execute_in_batch_mode(hak, verbose);
 	return 0;
 
 oops:
-	if (fp) fclose (fp);
+	if (fp && fp != stdin) fclose(fp);
 	return -1;
 }
 
@@ -959,7 +967,7 @@ int main (int argc, char* argv[])
 	if (argc < 2)
 	{
 	print_usage:
-		fprintf(stderr, "Usage: %s [options] script-filename [output-filename]\n", argv[0]);
+		fprintf(stderr, "Usage: %s [options] [script-filename [output-filename]]\n", argv[0]);
 		fprintf(stderr, "Options are:\n");
 		fprintf(stderr, " --info                show build information\n");
 /* TODO: show the separator info? how to retrieve the internal separator character? just hard-code the same knowledge here?? */
@@ -1032,7 +1040,7 @@ int main (int argc, char* argv[])
 		}
 	}
 
-	if ((opt.ind + 1) != argc && (opt.ind + 2) != argc && !show_info) goto print_usage;
+	if (opt.ind != argc && (opt.ind + 1) != argc && (opt.ind + 2) != argc && !show_info) goto print_usage;
 #endif
 
 	hak = hak_openstd(HAK_SIZEOF(xtn_t), &errinf);
@@ -1132,8 +1140,16 @@ int main (int argc, char* argv[])
 		goto oops;
 	}
 
-	xtn->cci_path = argv[opt.ind++]; /* input source code file */
-	if (opt.ind < argc) xtn->udo_path = argv[opt.ind++];
+	if (opt.ind < argc)
+	{
+		xtn->cci_path = argv[opt.ind++]; /* input source code file */
+		if (opt.ind < argc) xtn->udo_path = argv[opt.ind++];
+	}
+	else
+	{
+		xtn->cci_path = "<stdin>";
+		xtn->cci_is_stdin = 1;
+	}
 
 	if (hak_attachcciostdwithbcstr(hak, xtn->cci_path) <= -1)
 	{
