@@ -16,13 +16,14 @@
 
 
 //-------------------------------------------------------------
-// Word completion 
+// Word completion
 //-------------------------------------------------------------
 
 // free variables for word completion
 typedef struct word_closure_s {
   long                  delete_before_adjust;
   void*                 prev_env;
+  const char*           postfix;          // content after the cursor
   ic_completion_fun_t*  prev_complete;
 } word_closure_t;
 
@@ -31,36 +32,38 @@ typedef struct word_closure_s {
 static bool token_add_completion_ex(ic_env_t* env, void* closure, const char* replacement, const char* display, const char* help, long delete_before, long delete_after) {
   word_closure_t* wenv = (word_closure_t*)(closure);
   // call the previous completer with an adjusted delete-before
-  return (*wenv->prev_complete)(env, wenv->prev_env, replacement, display, help, wenv->delete_before_adjust + delete_before, delete_after);
+  const long delete_after_adjust = (long)ic_count_end_overlap(replacement, wenv->postfix);
+  return (*wenv->prev_complete)(env, wenv->prev_env, replacement, display, help, wenv->delete_before_adjust + delete_before, delete_after_adjust + delete_after);
 }
 
 
 ic_public void ic_complete_word(ic_completion_env_t* cenv, const char* prefix, ic_completer_fun_t* fun,
-                                    ic_is_char_class_fun_t* is_word_char) 
+                                    ic_is_char_class_fun_t* is_word_char)
 {
   if (is_word_char == NULL) is_word_char = &ic_char_is_nonseparator;
-  
+
   ssize_t len = ic_strlen(prefix);
   ssize_t pos = len; // will be start of the 'word' (excluding a potential start quote)
   while (pos > 0) {
     // go back one code point
     ssize_t ofs = str_prev_ofs(prefix, pos, NULL);
     if (ofs <= 0) break;
-    if (!(*is_word_char)(prefix + (pos - ofs), (long)ofs)) { 
+    if (!(*is_word_char)(prefix + (pos - ofs), (long)ofs)) {
       break;
     }
     pos -= ofs;
   }
   if (pos < 0) { pos = 0; }
-  
+
   // stop if empty word
   // if (len == pos) return;
-  
+
   // set up the closure
   word_closure_t wenv;
   wenv.delete_before_adjust = (long)(len - pos);
   wenv.prev_complete = cenv->complete;
   wenv.prev_env = cenv->env;
+  wenv.postfix = cenv->input + cenv->cursor;
   cenv->complete = &token_add_completion_ex;
   cenv->closure = &wenv;
 
@@ -77,6 +80,8 @@ ic_public void ic_complete_word(ic_completion_env_t* cenv, const char* prefix, i
 // Quoted word completion (with escape characters)
 //-------------------------------------------------------------
 
+
+
 // free variables for word completion
 typedef struct qword_closure_s {
   char         escape_char;
@@ -84,16 +89,17 @@ typedef struct qword_closure_s {
   long         delete_before_adjust;
   stringbuf_t* sbuf;
   void*        prev_env;
+  const char*  postfix;      // follows the current input position
   ic_is_char_class_fun_t* is_word_char;
   ic_completion_fun_t*    prev_complete;
 } qword_closure_t;
 
 
 // word completion callback
-static bool qword_add_completion_ex(ic_env_t* env, void* closure, const char* replacement, const char* display, const char* help, 
+static bool qword_add_completion_ex(ic_env_t* env, void* closure, const char* replacement, const char* display, const char* help,
                                        long delete_before, long delete_after) {
   qword_closure_t* wenv = (qword_closure_t*)(closure);
-  sbuf_replace( wenv->sbuf, replacement );   
+  sbuf_replace( wenv->sbuf, replacement );
   if (wenv->quote != 0) {
     // add end quote
     sbuf_append_char( wenv->sbuf, wenv->quote);
@@ -102,7 +108,7 @@ static bool qword_add_completion_ex(ic_env_t* env, void* closure, const char* re
     // escape non-word characters if it was not quoted
     ssize_t pos = 0;
     ssize_t next;
-    while ( (next = sbuf_next_ofs(wenv->sbuf, pos, NULL)) > 0 ) 
+    while ( (next = sbuf_next_ofs(wenv->sbuf, pos, NULL)) > 0 )
     {
       if (!(*wenv->is_word_char)(sbuf_string(wenv->sbuf) + pos, (long)next)) { // strchr(wenv->non_word_char, sbuf_char_at( wenv->sbuf, pos )) != NULL) {
         sbuf_insert_char_at( wenv->sbuf, wenv->escape_char, pos);
@@ -112,7 +118,8 @@ static bool qword_add_completion_ex(ic_env_t* env, void* closure, const char* re
     }
   }
   // and call the previous completion function
-  return (*wenv->prev_complete)( env, wenv->prev_env, sbuf_string(wenv->sbuf), display, help, wenv->delete_before_adjust + delete_before, delete_after );  
+  const long delete_after_adjust = (long)ic_count_end_overlap(sbuf_string(wenv->sbuf), wenv->postfix);
+  return (*wenv->prev_complete)( env, wenv->prev_env, sbuf_string(wenv->sbuf), display, help, wenv->delete_before_adjust + delete_before, delete_after_adjust + delete_after );
 }
 
 
@@ -121,31 +128,31 @@ ic_public void ic_complete_qword( ic_completion_env_t* cenv, const char* prefix,
 }
 
 
-ic_public void ic_complete_qword_ex( ic_completion_env_t* cenv, const char* prefix, ic_completer_fun_t* fun, 
+ic_public void ic_complete_qword_ex( ic_completion_env_t* cenv, const char* prefix, ic_completer_fun_t* fun,
                                         ic_is_char_class_fun_t* is_word_char, char escape_char, const char* quote_chars ) {
-  if (is_word_char == NULL) is_word_char = &ic_char_is_nonseparator ;  
+  if (is_word_char == NULL) is_word_char = &ic_char_is_nonseparator ;
   if (quote_chars == NULL) quote_chars = "'\"";
 
   ssize_t len = ic_strlen(prefix);
   ssize_t pos; // will be start of the 'word' (excluding a potential start quote)
   char quote = 0;
   ssize_t quote_len = 0;
-  
+
   // 1. look for a starting quote
   if (quote_chars[0] != 0) {
     // we go forward and count all quotes; if it is uneven, we need to complete quoted.
     ssize_t qpos_open = -1;
     ssize_t qpos_close = -1;
     ssize_t qcount = 0;
-    pos = 0; 
+    pos = 0;
     while(pos < len) {
-      if (prefix[pos] == escape_char && prefix[pos+1] != 0 && 
+      if (prefix[pos] == escape_char && prefix[pos+1] != 0 &&
            !(*is_word_char)(prefix + pos + 1, 1)) // strchr(non_word_char, prefix[pos+1]) != NULL
-      {       
+      {
         pos++; // skip escape and next char
       }
       else if (qcount % 2 == 0 && strchr(quote_chars, prefix[pos]) != NULL) {
-        // open quote 
+        // open quote
         qpos_open = pos;
         quote = prefix[pos];
         qcount++;
@@ -161,7 +168,7 @@ ic_public void ic_complete_qword_ex( ic_completion_env_t* cenv, const char* pref
       ssize_t ofs = str_next_ofs( prefix, len, pos, NULL );
       if (ofs <= 0) break;
       pos += ofs;
-    }    
+    }
     if ((qcount % 2 == 0 && qpos_close >= 0) || // if the last quote is only followed by word chars, we still complete it
         (qcount % 2 == 1))                     // opening quote found
     {
@@ -182,7 +189,7 @@ ic_public void ic_complete_qword_ex( ic_completion_env_t* cenv, const char* pref
       if (ofs <= 0) break;
       if (!(*is_word_char)(prefix + (pos - ofs), (long)ofs)) { // strchr(non_word_char, prefix[pos - ofs]) != NULL) {
         // non word char, break if it is not escaped
-        if (pos <= ofs || prefix[pos - ofs - 1] != escape_char) break; 
+        if (pos <= ofs || prefix[pos - ofs - 1] != escape_char) break;
         // otherwise go on
         pos--; // skip escaped char
       }
@@ -236,7 +243,8 @@ ic_public void ic_complete_qword_ex( ic_completion_env_t* cenv, const char* pref
   wenv.escape_char    = escape_char;
   wenv.delete_before_adjust = (long)(len - pos);
   wenv.prev_complete  = cenv->complete;
-  wenv.prev_env       =  cenv->env;
+  wenv.prev_env       = cenv->env;
+  wenv.postfix        = cenv->input + cenv->cursor;
   wenv.sbuf = sbuf_new(cenv->env->mem);
   if (wenv.sbuf == NULL) { mem_free(cenv->env->mem, word); return; }
   cenv->complete = &qword_add_completion_ex;
@@ -250,7 +258,7 @@ ic_public void ic_complete_qword_ex( ic_completion_env_t* cenv, const char* pref
   cenv->closure = wenv.prev_env;
 
   sbuf_free(wenv.sbuf);
-  mem_free(cenv->env->mem, word);  
+  mem_free(cenv->env->mem, word);
 }
 
 
@@ -297,7 +305,7 @@ static bool ls_colors_init(void) {
   s = getenv("LS_COLORS");
   if (s != NULL) { ls_colors = s;  }
   s = getenv("LSCOLORS");
-  if (s != NULL) { lscolors = s; }  
+  if (s != NULL) { lscolors = s; }
   return true;
 }
 
@@ -348,7 +356,7 @@ static bool ls_colors_append(stringbuf_t* sb, file_type_t ft, const char* ext) {
       // then a filetype match
       const char* key = ls_colors_names[ft];
       if (ls_colors_from_key(sb, key)) return true;
-    }    
+    }
   }
   else if (lscolors != NULL) {
     // BSD style
@@ -395,25 +403,20 @@ static file_type_t os_get_filetype(const char* cpath) {
 
 
 #define dir_cursor intptr_t
-/* [hak] _findfirsti64/_findnexti64 do not pair with struct __finddata64_t on
- * mingw-w64: there they resolve to _findfirst32i64/_findnext32i64, which take
- * a struct _finddata32i64_t. the plain _findfirst/_findnext and _finddata_t
- * are macro-mapped to each other consistently by both msvc and mingw-w64, and
- * only entry->name is ever read here, so the 64-bit file size is not needed. */
-#define dir_entry  struct _finddata_t
+#define dir_entry  struct __finddata64_t
 
 static bool os_findfirst(alloc_t* mem, const char* path, dir_cursor* d, dir_entry* entry) {
   stringbuf_t* spath = sbuf_new(mem);
   if (spath == NULL) return false;
   sbuf_append(spath, path);
   sbuf_append(spath, "\\*");
-  *d = _findfirst(sbuf_string(spath), entry);
+  *d = _findfirsti64(sbuf_string(spath), entry);
   mem_free(mem,spath);
   return (*d != -1);
 }
 
 static bool os_findnext(dir_cursor d, dir_entry* entry) {
-  return (_findnext(d, entry) == 0);
+  return (_findnexti64(d, entry) == 0);
 }
 
 static void os_findclose(dir_cursor d) {
@@ -421,7 +424,7 @@ static void os_findclose(dir_cursor d) {
 }
 
 static const char* os_direntry_name(dir_entry* entry) {
-  return entry->name;  
+  return entry->name;
 }
 
 static bool os_path_is_absolute( const char* path ) {
@@ -474,7 +477,7 @@ static file_type_t os_get_filetype(const char* cpath) {
       if ((st.st_mode & S_IXUSR) != 0) return FT_EXE;
       return FT_DEFAULT;
     }
-  }  
+  }
 }
 
 
@@ -502,7 +505,7 @@ static void os_findclose(dir_cursor d) {
 }
 
 static const char* os_direntry_name(dir_entry* entry) {
-  return (*entry)->d_name;  
+  return (*entry)->d_name;
 }
 
 static bool os_path_is_absolute( const char* path ) {
@@ -517,7 +520,7 @@ ic_private char ic_dirsep(void) {
 
 
 //-------------------------------------------------------------
-// File completion 
+// File completion
 //-------------------------------------------------------------
 
 static bool ends_with_n(const char* name, ssize_t name_len, const char* ending, ssize_t len) {
@@ -540,7 +543,7 @@ static bool match_extension(const char* name, const char* extensions) {
   if (name == NULL) return false;
   ssize_t name_len = ic_strlen(name);
   ssize_t len = ic_strlen(extensions);
-  ssize_t cur = 0;  
+  ssize_t cur = 0;
   //debug_msg("match extensions: %s ~ %s", name, extensions);
   for (ssize_t end = 0; end <= len; end++) {
     if (extensions[end] == ';' || extensions[end] == 0) {
@@ -553,10 +556,10 @@ static bool match_extension(const char* name, const char* extensions) {
   return false;
 }
 
-static bool filename_complete_indir( ic_completion_env_t* cenv, stringbuf_t* dir, 
+static bool filename_complete_indir( ic_completion_env_t* cenv, stringbuf_t* dir,
                                       stringbuf_t* dir_prefix, stringbuf_t* display,
-                                       const char* base_prefix, 
-                                        char dir_sep, const char* extensions ) 
+                                       const char* base_prefix,
+                                        char dir_sep, const char* extensions )
 {
   dir_cursor d = 0;
   dir_entry entry;
@@ -564,7 +567,7 @@ static bool filename_complete_indir( ic_completion_env_t* cenv, stringbuf_t* dir
   if (os_findfirst(cenv->env->mem, sbuf_string(dir), &d, &entry)) {
     do {
       const char* name = os_direntry_name(&entry);
-      if (name != NULL && strcmp(name, ".") != 0 && strcmp(name, "..") != 0 && 
+      if (name != NULL && strcmp(name, ".") != 0 && strcmp(name, "..") != 0 &&
           ic_istarts_with(name, base_prefix))
       {
         // possible match, first check if it is a directory
@@ -579,7 +582,7 @@ static bool filename_complete_indir( ic_completion_env_t* cenv, stringbuf_t* dir
           ft = os_get_filetype(sbuf_string(dir));
           isdir = os_is_dir(sbuf_string(dir));
           if (isdir && dir_sep != 0) {
-            sbuf_append_char(dir_prefix,dir_sep); 
+            sbuf_append_char(dir_prefix,dir_sep);
           }
           sbuf_delete_from(dir,dlen);  // restore dir
         }
@@ -605,11 +608,11 @@ typedef struct filename_closure_s {
 
 static void filename_completer( ic_completion_env_t* cenv, const char* prefix ) {
   if (prefix == NULL) return;
-  filename_closure_t* fclosure = (filename_closure_t*)cenv->arg;  
+  filename_closure_t* fclosure = (filename_closure_t*)cenv->arg;
   stringbuf_t* root_dir   = sbuf_new(cenv->env->mem);
   stringbuf_t* dir_prefix = sbuf_new(cenv->env->mem);
-  stringbuf_t* display    = sbuf_new(cenv->env->mem);  
-  if (root_dir!=NULL && dir_prefix != NULL && display != NULL) 
+  stringbuf_t* display    = sbuf_new(cenv->env->mem);
+  if (root_dir!=NULL && dir_prefix != NULL && display != NULL)
   {
     // split prefix in dir_prefix / base.
     const char* base = strrchr(prefix,'/');
@@ -618,7 +621,7 @@ static void filename_completer( ic_completion_env_t* cenv, const char* prefix ) 
     if (base == NULL || base2 > base) base = base2;
     #endif
     if (base != NULL) {
-      base++; 
+      base++;
       sbuf_append_n(dir_prefix, prefix, base - prefix ); // includes dir separator
     }
 
@@ -628,9 +631,9 @@ static void filename_completer( ic_completion_env_t* cenv, const char* prefix ) 
       if (base != NULL) {
         sbuf_append_n( root_dir, prefix, (base - prefix));  // include dir separator
       }
-      filename_complete_indir( cenv, root_dir, dir_prefix, display,  
-                                (base != NULL ? base : prefix), 
-                                 fclosure->dir_sep, fclosure->extensions );   
+      filename_complete_indir( cenv, root_dir, dir_prefix, display,
+                                (base != NULL ? base : prefix),
+                                 fclosure->dir_sep, fclosure->extensions );
     }
     else {
       // relative path, complete with respect to every root.
@@ -647,17 +650,17 @@ static void filename_completer( ic_completion_env_t* cenv, const char* prefix ) 
         else {
           sbuf_append_n( root_dir, root, next - root );
           root = next + 1;
-        }      
+        }
         sbuf_append_char( root_dir, ic_dirsep());
-          
+
         // add the dir_prefix to the root
         if (base != NULL) {
           sbuf_append_n( root_dir, prefix, (base - prefix) - 1);
         }
 
-        // and complete in this directory    
+        // and complete in this directory
         filename_complete_indir( cenv, root_dir, dir_prefix, display,
-                                  (base != NULL ? base : prefix), 
+                                  (base != NULL ? base : prefix),
                                    fclosure->dir_sep, fclosure->extensions);
       }
     }
@@ -673,8 +676,8 @@ ic_public void ic_complete_filename( ic_completion_env_t* cenv, const char* pref
   if (dir_sep == 0) dir_sep = ic_dirsep();
   filename_closure_t fclosure;
   fclosure.dir_sep = dir_sep;
-  fclosure.roots = roots; 
+  fclosure.roots = roots;
   fclosure.extensions = extensions;
   cenv->arg = &fclosure;
-  ic_complete_qword_ex( cenv, prefix, &filename_completer, &ic_char_is_filename_letter, '\\', "'\"");  
+  ic_complete_qword_ex( cenv, prefix, &filename_completer, &ic_char_is_filename_letter, '\\', "'\"");
 }

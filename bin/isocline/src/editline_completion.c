@@ -9,33 +9,47 @@
 // Completion menu: this file is included in editline.c
 //-------------------------------------------------------------
 
+// return true iff the buffer or cursor position was actually changed;
+// clean up any dirtiness in the undo stack. update eb->pos if appropriate
+static bool edit_completion_commit(editor_t* eb, ssize_t newpos) {
+  if (newpos == IC_COMP_APPLY_FAIL) {
+    editor_undo_restore(eb, false);
+    return false;
+  }
+  if (newpos == IC_COMP_APPLY_NOOP) {
+    editor_undo_forget(eb);
+    return false;
+  }
+
+  eb->pos = newpos;
+  return true;
+}
+
 // return true if anything changed
 static bool edit_complete(ic_env_t* env, editor_t* eb, ssize_t idx) {
   editor_start_modify(eb);
   ssize_t newpos = completions_apply(env->completions, idx, eb->input, eb->pos);
-  if (newpos < 0) {
-    editor_undo_restore(eb,false);
-    return false;
-  }
-  eb->pos = newpos;
-  edit_refresh(env,eb);  
-  return true;
+  bool buf_or_pos_changed = edit_completion_commit(eb, newpos);
+
+  // trigger a refresh if the buffer or cursor position changed
+  if (buf_or_pos_changed)
+    edit_refresh(env, eb);
+  // or when choosing between menu items, even if the current item is the same
+  // as the buffer, because we need to highlight that item
+  else if (newpos == IC_COMP_APPLY_NOOP && completions_count(env->completions) > 1)
+    edit_refresh(env, eb);
+
+  return buf_or_pos_changed;
 }
 
-static bool edit_complete_longest_prefix(ic_env_t* env, editor_t* eb ) {
+static void edit_complete_longest_prefix(ic_env_t* env, editor_t* eb ) {
   editor_start_modify(eb);
   ssize_t newpos = completions_apply_longest_prefix( env->completions, eb->input, eb->pos );
-  if (newpos < 0) {
-    editor_undo_restore(eb,false);
-    return false;
-  }
-  eb->pos = newpos;
-  edit_refresh(env,eb);
-  return true;
+  edit_completion_commit(eb, newpos);
 }
 
 ic_private void sbuf_append_tagged( stringbuf_t* sb, const char* tag, const char* content ) {
-  sbuf_appendf(sb, "[%s]", tag);  
+  sbuf_appendf(sb, "[%s]", tag);
   sbuf_append(sb,content);
   sbuf_append(sb,"[/]");
 }
@@ -59,9 +73,9 @@ static void editor_append_completion(ic_env_t* env, editor_t* eb, ssize_t idx, s
   if (selected) { sbuf_append(eb->extra,"[/ic-emphasis]"); }
   if (help != NULL) {
     sbuf_append(eb->extra, "  ");
-    sbuf_append_tagged(eb->extra, "ic-info", help );      
+    sbuf_append_tagged(eb->extra, "ic-info", help );
   }
-  if (width > 0) { sbuf_append(eb->extra,"[/width]"); }  
+  if (width > 0) { sbuf_append(eb->extra,"[/width]"); }
 }
 
 // 2 and 3 column output up to 80 wide
@@ -73,13 +87,13 @@ static void editor_append_completion(ic_env_t* env, editor_t* eb, ssize_t idx, s
 #define IC_DISPLAY3_COL    (3+IC_DISPLAY3_MAX)
 #define IC_DISPLAY3_WIDTH  (3*IC_DISPLAY3_COL + 2*2)  // 76
 
-static void editor_append_completion2(ic_env_t* env, editor_t* eb, ssize_t col_width, ssize_t idx1, ssize_t idx2, ssize_t selected ) {  
+static void editor_append_completion2(ic_env_t* env, editor_t* eb, ssize_t col_width, ssize_t idx1, ssize_t idx2, ssize_t selected ) {
   editor_append_completion(env, eb, idx1, col_width, true, (idx1 == selected) );
   sbuf_append( eb->extra, "  ");
   editor_append_completion(env, eb, idx2, col_width, true, (idx2 == selected) );
 }
 
-static void editor_append_completion3(ic_env_t* env, editor_t* eb, ssize_t col_width, ssize_t idx1, ssize_t idx2, ssize_t idx3, ssize_t selected ) {  
+static void editor_append_completion3(ic_env_t* env, editor_t* eb, ssize_t col_width, ssize_t idx1, ssize_t idx2, ssize_t idx3, ssize_t selected ) {
   editor_append_completion(env, eb, idx1, col_width, true, (idx1 == selected) );
   sbuf_append( eb->extra, "  ");
   editor_append_completion(env, eb, idx2, col_width, true, (idx2 == selected));
@@ -150,8 +164,8 @@ again:
     }
   }
   if (!env->complete_nopreview && selected >= 0 && selected <= count_displayed) {
-    edit_complete(env,eb,selected);
-    editor_undo_restore(eb,false);
+    if (edit_complete(env,eb,selected))
+      editor_undo_restore(eb,false);
   }
   else {
     edit_refresh(env, eb);
@@ -163,7 +177,7 @@ again:
     edit_resize(env, eb);
   }
   sbuf_clear(eb->extra);
-  
+
   // direct selection?
   if (c >= '1' && c <= '9') {
     ssize_t i = (c - '1');
@@ -199,19 +213,18 @@ again:
     edit_refresh(env,eb);
     c = 0; // ignore and return
   }
-  else if (selected >= 0 && (c == KEY_ENTER || c == KEY_RIGHT || c == KEY_END)) /* || c == KEY_TAB*/ {  
+  else if (selected >= 0 && (c == KEY_ENTER || c == KEY_RIGHT || c == KEY_END)) /* || c == KEY_TAB*/ {
     // select the current entry
     assert(selected < count);
-    c = 0;      
-    edit_complete(env, eb, selected);    
-    if (env->complete_autotab) {
-      tty_code_pushback(env->tty,KEY_EVENT_AUTOTAB); // immediately try to complete again        
+    c = 0;
+    if (edit_complete(env, eb, selected) && env->complete_autotab) {
+      tty_code_pushback(env->tty,KEY_EVENT_AUTOTAB); // immediately try to complete again
     }
   }
   else if (!env->complete_nopreview && !code_is_virt_key(c)) {
     // if in preview mode, select the current entry and exit the menu
     assert(selected < count);
-    edit_complete(env, eb, selected); 
+    edit_complete(env, eb, selected);
   }
   else if ((c == KEY_PAGEDOWN || c == KEY_LINEFEED) && count > 9) {
     // show all completions
@@ -241,13 +254,13 @@ again:
       term_write(env->term, " \n");
     }
     eb->cur_rows = 0;
-    edit_refresh(env,eb);      
+    edit_refresh(env,eb);
   }
   else {
     edit_refresh(env,eb);
   }
   // done
-  completions_clear(env->completions);      
+  completions_clear(env->completions);
   if (c != 0) tty_code_pushback(env->tty,c);
 }
 
@@ -261,17 +274,17 @@ static void edit_generate_completions(ic_env_t* env, editor_t* eb, bool autotab)
     if (!autotab) { term_beep(env->term); }
   }
   else if (count == 1) {
-    // complete if only one match    
+    // complete if only one match
     if (edit_complete(env,eb,0 /*idx*/) && env->complete_autotab) {
       tty_code_pushback(env->tty,KEY_EVENT_AUTOTAB);
-    }    
+    }
   }
   else {
-    //term_beep(env->term); 
-    if (!more_available) { 
+    //term_beep(env->term);
+    if (!more_available) {
       edit_complete_longest_prefix(env,eb);
-    }    
+    }
     completions_sort(env->completions);
-    edit_completion_menu( env, eb, more_available);    
+    edit_completion_menu( env, eb, more_available);
   }
 }

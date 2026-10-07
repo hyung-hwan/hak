@@ -12,6 +12,7 @@ option(IC_DEBUG_UBSAN       "Build with undefined behaviour sanitizer" OFF)
 option(IC_DEBUG_ASAN        "Build with address sanitizer" OFF)
 option(IC_DEBUG_MSG         "Enable printing debug messages stderr (only if also ISOCLINE_DEBUG=1 is set in the environment)" ON)
 option(IC_SEPARATE_OBJS     "Compile with separate object files instead of one (warning: exports internal symbols)" OFF)
+option(IC_BUILD_TESTS       "Build test binaries (example & test_colors)" ON)
 
 set(ic_version "0.1")
 set(ic_sources          src/isocline.c)    
@@ -151,12 +152,50 @@ target_include_directories(isocline PUBLIC
     $<INSTALL_INTERFACE:${ic_install_dir}/include>
 )
 
-add_executable(example test/example.c)
-target_compile_options(example PRIVATE ${ic_cflags})
-target_include_directories(example PRIVATE include)
-target_link_libraries(example PRIVATE isocline)
+if (IC_BUILD_TESTS)
+  add_executable(example test/example.c)
+  target_compile_options(example PRIVATE ${ic_cflags})
+  target_include_directories(example PRIVATE include)
+  target_link_libraries(example PRIVATE isocline)
 
-add_executable(test_colors test/test_colors.c)
-target_compile_options(test_colors PRIVATE ${ic_cflags})
-target_include_directories(test_colors PRIVATE include)
-target_link_libraries(test_colors PRIVATE isocline)
+  add_executable(test_colors test/test_colors.c)
+  target_compile_options(test_colors PRIVATE ${ic_cflags})
+  target_include_directories(test_colors PRIVATE include)
+  target_link_libraries(test_colors PRIVATE isocline)
+endif()
+
+# -----------------------------------------------------------------------------
+# Shared library (libisocline.so)
+# -----------------------------------------------------------------------------
+
+add_library(isocline_shared SHARED ${ic_sources})
+set_target_properties(isocline_shared PROPERTIES
+    OUTPUT_NAME isocline
+    VERSION 1.0.9
+    SOVERSION 1
+)
+target_compile_options(isocline_shared PRIVATE ${ic_cflags})
+target_compile_definitions(isocline_shared PRIVATE ${ic_cdefs})
+target_include_directories(isocline_shared PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+
+
+# -----------------------------------------------------------------------------
+# Install rules
+# -----------------------------------------------------------------------------
+
+include(GNUInstallDirs)
+
+install(TARGETS isocline isocline_shared
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
+install(FILES include/isocline.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+configure_file(isocline.pc.in isocline.pc @ONLY)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/isocline.pc
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
+)

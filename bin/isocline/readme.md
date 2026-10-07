@@ -4,7 +4,7 @@
 
 # Isocline: a portable readline alternative.
  
-Isocline is a pure C library that can be used as an alternative to the GNU readline library (latest release v1.0.9, 2022-01-15).
+Isocline is a pure C library that can be used as an alternative to the GNU readline library (latest release v1.1.0, 2026-04-21).
 
 - Small: less than 8k lines and can be compiled as a single C file without 
   any dependencies or configuration (e.g. `gcc -c src/isocline.c`).
@@ -42,7 +42,7 @@ Include the isocline header in your C or C++ source:
 and call `ic_readline` to get user input with rich editing abilities:
 ```C
 char* input;
-while( (input = ic_readline("prompt")) != NULL ) { // ctrl+d/c or errors return NULL
+while( (input = ic_readline("prompt")) != NULL ) { // ctrl+d or errors return NULL
   printf("you typed:\n%s\n", input); // use the input
   free(input);  
 }
@@ -444,6 +444,7 @@ Contact me if you are interested in doing any of these :-)
 
 # Releases
 
+* `2026-04-21`: v1.1.0: various bug fixes.
 * `2022-01-15`: v1.0.9: fix missing `ic_completion_arg` (issue #6), 
    fix null ptr check in ic_print (issue #7), fix crash when using /dev/null as both input and output.
 * `2021-09-05`: v1.0.5: use our own wcwidth for consistency; 
