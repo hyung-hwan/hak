@@ -517,9 +517,12 @@ static bool os_findfirst(alloc_t* mem, const char* cpath, dir_cursor* d, dir_ent
   if (*d == NULL) {
     return false;
   }
-  else {
-    return os_findnext(*d, entry);
+  else if (!os_findnext(*d, entry)) {
+    closedir(*d);  /* no entries (e.g. deleted directory) */
+    *d = NULL;
+    return false;
   }
+  return true;
 }
 
 static void os_findclose(dir_cursor d) {

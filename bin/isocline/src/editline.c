@@ -930,6 +930,7 @@ static char* edit_line( ic_env_t* env, const char* prompt_text )
 
   while(true) {
     bool had_hint;
+
     /* read a character */
     term_flush(env->term);
     if (env->hint_delay <= 0 || sbuf_len(eb.hint) == 0) {
