@@ -53,6 +53,7 @@ libisocline_a_SOURCES = \
 	isocline/src/tty_esc.c \
 	isocline/src/undo.c \
 	isocline/src/wcwidth.c
+libisocline_a_CPPFLAGS = $(CPPFLAGS_COMMON)
 endif
 
 ##################################################

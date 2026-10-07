@@ -29,6 +29,8 @@
 #include "common.h"
 #include "stringbuf.h"
 
+#include "../../../lib/hak-prv.h" /* va_copy on old systems */
+
 /*------------------------------------------------------------- */
 /* In place growable utf-8 strings */
 /*------------------------------------------------------------- */

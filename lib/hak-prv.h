@@ -275,6 +275,34 @@ do { \
 
 #endif
 
+/* ========================================================================= */
+/* VA COPY                                                                   */
+/* ========================================================================= */
+
+#if !defined(HAK_HAVE_CONFIG_H)
+#	if defined(_WIN32) || defined(__OS2__) || defined(__DOS__)
+#		if (defined(__WATCOMC__) && (__WATCOMC__ < 1200)) || defined(__BORLANDC__)
+#			undef HAVE_VA_COPY
+#			undef HAVE___VA_COPY
+#		else
+#			define HAVE_VA_COPY
+#			define HAVE___VA_COPY
+#		endif
+#	endif
+#endif
+
+#if !defined(HAVE_VA_COPY)
+#	if defined(HAVE___VA_COPY)
+#		define va_copy(dst,src) __va_copy((dst),(src))
+#	else
+#		define va_copy(dst,src) HAK_MEMCPY(&(dst),&(src),HAK_SIZEOF(va_list))
+#	endif
+#endif
+
+/* ========================================================================= */
+/* OBJECT SIZE CONSTANTS                                                     */
+/* ========================================================================= */
+
 #if defined(HAK_LIMIT_OBJ_SIZE)
 /* limit the maximum object size such that:
  *   1. an index to an object field can be represented in a small integer.

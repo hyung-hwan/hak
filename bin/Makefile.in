@@ -141,23 +141,22 @@ am__libisocline_a_SOURCES_DIST = isocline/src/attr.c \
 	isocline/src/term.c isocline/src/tty.c isocline/src/tty_esc.c \
 	isocline/src/undo.c isocline/src/wcwidth.c
 am__dirstamp = $(am__leading_dot)dirstamp
-@ENABLE_ISOCLINE_TRUE@am_libisocline_a_OBJECTS =  \
-@ENABLE_ISOCLINE_TRUE@	isocline/src/attr.$(OBJEXT) \
-@ENABLE_ISOCLINE_TRUE@	isocline/src/bbcode.$(OBJEXT) \
-@ENABLE_ISOCLINE_TRUE@	isocline/src/bbcode_colors.$(OBJEXT) \
-@ENABLE_ISOCLINE_TRUE@	isocline/src/common.$(OBJEXT) \
-@ENABLE_ISOCLINE_TRUE@	isocline/src/completers.$(OBJEXT) \
-@ENABLE_ISOCLINE_TRUE@	isocline/src/completions.$(OBJEXT) \
-@ENABLE_ISOCLINE_TRUE@	isocline/src/editline.$(OBJEXT) \
-@ENABLE_ISOCLINE_TRUE@	isocline/src/highlight.$(OBJEXT) \
-@ENABLE_ISOCLINE_TRUE@	isocline/src/history.$(OBJEXT) \
-@ENABLE_ISOCLINE_TRUE@	isocline/src/isocline.$(OBJEXT) \
-@ENABLE_ISOCLINE_TRUE@	isocline/src/stringbuf.$(OBJEXT) \
-@ENABLE_ISOCLINE_TRUE@	isocline/src/term.$(OBJEXT) \
-@ENABLE_ISOCLINE_TRUE@	isocline/src/tty.$(OBJEXT) \
-@ENABLE_ISOCLINE_TRUE@	isocline/src/tty_esc.$(OBJEXT) \
-@ENABLE_ISOCLINE_TRUE@	isocline/src/undo.$(OBJEXT) \
-@ENABLE_ISOCLINE_TRUE@	isocline/src/wcwidth.$(OBJEXT)
+@ENABLE_ISOCLINE_TRUE@am_libisocline_a_OBJECTS = isocline/src/libisocline_a-attr.$(OBJEXT) \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/libisocline_a-bbcode.$(OBJEXT) \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/libisocline_a-bbcode_colors.$(OBJEXT) \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/libisocline_a-common.$(OBJEXT) \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/libisocline_a-completers.$(OBJEXT) \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/libisocline_a-completions.$(OBJEXT) \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/libisocline_a-editline.$(OBJEXT) \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/libisocline_a-highlight.$(OBJEXT) \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/libisocline_a-history.$(OBJEXT) \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/libisocline_a-isocline.$(OBJEXT) \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/libisocline_a-stringbuf.$(OBJEXT) \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/libisocline_a-term.$(OBJEXT) \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/libisocline_a-tty.$(OBJEXT) \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/libisocline_a-tty_esc.$(OBJEXT) \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/libisocline_a-undo.$(OBJEXT) \
+@ENABLE_ISOCLINE_TRUE@	isocline/src/libisocline_a-wcwidth.$(OBJEXT)
 libisocline_a_OBJECTS = $(am_libisocline_a_OBJECTS)
 am_hak_OBJECTS = hak-hak.$(OBJEXT)
 hak_OBJECTS = $(am_hak_OBJECTS)
@@ -201,21 +200,22 @@ DEFAULT_INCLUDES =
 depcomp = $(SHELL) $(top_srcdir)/ac/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ./$(DEPDIR)/hak-hak.Po ./$(DEPDIR)/hakx-hak-x.Po \
-	isocline/src/$(DEPDIR)/attr.Po \
-	isocline/src/$(DEPDIR)/bbcode.Po \
-	isocline/src/$(DEPDIR)/bbcode_colors.Po \
-	isocline/src/$(DEPDIR)/common.Po \
-	isocline/src/$(DEPDIR)/completers.Po \
-	isocline/src/$(DEPDIR)/completions.Po \
-	isocline/src/$(DEPDIR)/editline.Po \
-	isocline/src/$(DEPDIR)/highlight.Po \
-	isocline/src/$(DEPDIR)/history.Po \
-	isocline/src/$(DEPDIR)/isocline.Po \
-	isocline/src/$(DEPDIR)/stringbuf.Po \
-	isocline/src/$(DEPDIR)/term.Po isocline/src/$(DEPDIR)/tty.Po \
-	isocline/src/$(DEPDIR)/tty_esc.Po \
-	isocline/src/$(DEPDIR)/undo.Po \
-	isocline/src/$(DEPDIR)/wcwidth.Po
+	isocline/src/$(DEPDIR)/libisocline_a-attr.Po \
+	isocline/src/$(DEPDIR)/libisocline_a-bbcode.Po \
+	isocline/src/$(DEPDIR)/libisocline_a-bbcode_colors.Po \
+	isocline/src/$(DEPDIR)/libisocline_a-common.Po \
+	isocline/src/$(DEPDIR)/libisocline_a-completers.Po \
+	isocline/src/$(DEPDIR)/libisocline_a-completions.Po \
+	isocline/src/$(DEPDIR)/libisocline_a-editline.Po \
+	isocline/src/$(DEPDIR)/libisocline_a-highlight.Po \
+	isocline/src/$(DEPDIR)/libisocline_a-history.Po \
+	isocline/src/$(DEPDIR)/libisocline_a-isocline.Po \
+	isocline/src/$(DEPDIR)/libisocline_a-stringbuf.Po \
+	isocline/src/$(DEPDIR)/libisocline_a-term.Po \
+	isocline/src/$(DEPDIR)/libisocline_a-tty.Po \
+	isocline/src/$(DEPDIR)/libisocline_a-tty_esc.Po \
+	isocline/src/$(DEPDIR)/libisocline_a-undo.Po \
+	isocline/src/$(DEPDIR)/libisocline_a-wcwidth.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -468,6 +468,7 @@ LIBADD_COMMON = $(am__append_1) $(am__append_2)
 @ENABLE_ISOCLINE_TRUE@	isocline/src/undo.c \
 @ENABLE_ISOCLINE_TRUE@	isocline/src/wcwidth.c
 
+@ENABLE_ISOCLINE_TRUE@libisocline_a_CPPFLAGS = $(CPPFLAGS_COMMON)
 hak_SOURCES = hak.c
 hak_CPPFLAGS = $(CPPFLAGS_COMMON) $(am__append_3)
 hak_LDFLAGS = $(LDFLAGS_COMMON)
@@ -585,37 +586,53 @@ isocline/src/$(am__dirstamp):
 isocline/src/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) isocline/src/$(DEPDIR)
 	@: >>isocline/src/$(DEPDIR)/$(am__dirstamp)
-isocline/src/attr.$(OBJEXT): isocline/src/$(am__dirstamp) \
+isocline/src/libisocline_a-attr.$(OBJEXT):  \
+	isocline/src/$(am__dirstamp) \
 	isocline/src/$(DEPDIR)/$(am__dirstamp)
-isocline/src/bbcode.$(OBJEXT): isocline/src/$(am__dirstamp) \
+isocline/src/libisocline_a-bbcode.$(OBJEXT):  \
+	isocline/src/$(am__dirstamp) \
 	isocline/src/$(DEPDIR)/$(am__dirstamp)
-isocline/src/bbcode_colors.$(OBJEXT): isocline/src/$(am__dirstamp) \
+isocline/src/libisocline_a-bbcode_colors.$(OBJEXT):  \
+	isocline/src/$(am__dirstamp) \
 	isocline/src/$(DEPDIR)/$(am__dirstamp)
-isocline/src/common.$(OBJEXT): isocline/src/$(am__dirstamp) \
+isocline/src/libisocline_a-common.$(OBJEXT):  \
+	isocline/src/$(am__dirstamp) \
 	isocline/src/$(DEPDIR)/$(am__dirstamp)
-isocline/src/completers.$(OBJEXT): isocline/src/$(am__dirstamp) \
+isocline/src/libisocline_a-completers.$(OBJEXT):  \
+	isocline/src/$(am__dirstamp) \
 	isocline/src/$(DEPDIR)/$(am__dirstamp)
-isocline/src/completions.$(OBJEXT): isocline/src/$(am__dirstamp) \
+isocline/src/libisocline_a-completions.$(OBJEXT):  \
+	isocline/src/$(am__dirstamp) \
 	isocline/src/$(DEPDIR)/$(am__dirstamp)
-isocline/src/editline.$(OBJEXT): isocline/src/$(am__dirstamp) \
+isocline/src/libisocline_a-editline.$(OBJEXT):  \
+	isocline/src/$(am__dirstamp) \
 	isocline/src/$(DEPDIR)/$(am__dirstamp)
-isocline/src/highlight.$(OBJEXT): isocline/src/$(am__dirstamp) \
+isocline/src/libisocline_a-highlight.$(OBJEXT):  \
+	isocline/src/$(am__dirstamp) \
 	isocline/src/$(DEPDIR)/$(am__dirstamp)
-isocline/src/history.$(OBJEXT): isocline/src/$(am__dirstamp) \
+isocline/src/libisocline_a-history.$(OBJEXT):  \
+	isocline/src/$(am__dirstamp) \
 	isocline/src/$(DEPDIR)/$(am__dirstamp)
-isocline/src/isocline.$(OBJEXT): isocline/src/$(am__dirstamp) \
+isocline/src/libisocline_a-isocline.$(OBJEXT):  \
+	isocline/src/$(am__dirstamp) \
 	isocline/src/$(DEPDIR)/$(am__dirstamp)
-isocline/src/stringbuf.$(OBJEXT): isocline/src/$(am__dirstamp) \
+isocline/src/libisocline_a-stringbuf.$(OBJEXT):  \
+	isocline/src/$(am__dirstamp) \
 	isocline/src/$(DEPDIR)/$(am__dirstamp)
-isocline/src/term.$(OBJEXT): isocline/src/$(am__dirstamp) \
+isocline/src/libisocline_a-term.$(OBJEXT):  \
+	isocline/src/$(am__dirstamp) \
 	isocline/src/$(DEPDIR)/$(am__dirstamp)
-isocline/src/tty.$(OBJEXT): isocline/src/$(am__dirstamp) \
+isocline/src/libisocline_a-tty.$(OBJEXT):  \
+	isocline/src/$(am__dirstamp) \
 	isocline/src/$(DEPDIR)/$(am__dirstamp)
-isocline/src/tty_esc.$(OBJEXT): isocline/src/$(am__dirstamp) \
+isocline/src/libisocline_a-tty_esc.$(OBJEXT):  \
+	isocline/src/$(am__dirstamp) \
 	isocline/src/$(DEPDIR)/$(am__dirstamp)
-isocline/src/undo.$(OBJEXT): isocline/src/$(am__dirstamp) \
+isocline/src/libisocline_a-undo.$(OBJEXT):  \
+	isocline/src/$(am__dirstamp) \
 	isocline/src/$(DEPDIR)/$(am__dirstamp)
-isocline/src/wcwidth.$(OBJEXT): isocline/src/$(am__dirstamp) \
+isocline/src/libisocline_a-wcwidth.$(OBJEXT):  \
+	isocline/src/$(am__dirstamp) \
 	isocline/src/$(DEPDIR)/$(am__dirstamp)
 
 libisocline.a: $(libisocline_a_OBJECTS) $(libisocline_a_DEPENDENCIES) $(EXTRA_libisocline_a_DEPENDENCIES) 
@@ -655,22 +672,22 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hak-hak.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hakx-hak-x.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/attr.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/bbcode.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/bbcode_colors.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/common.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/completers.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/completions.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/editline.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/highlight.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/history.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/isocline.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/stringbuf.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/term.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/tty.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/tty_esc.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/undo.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/wcwidth.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/libisocline_a-attr.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/libisocline_a-bbcode.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/libisocline_a-bbcode_colors.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/libisocline_a-common.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/libisocline_a-completers.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/libisocline_a-completions.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/libisocline_a-editline.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/libisocline_a-highlight.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/libisocline_a-history.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/libisocline_a-isocline.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/libisocline_a-stringbuf.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/libisocline_a-term.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/libisocline_a-tty.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/libisocline_a-tty_esc.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/libisocline_a-undo.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@isocline/src/$(DEPDIR)/libisocline_a-wcwidth.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
 	@$(MKDIR_P) $(@D)
@@ -701,6 +718,230 @@ am--depfiles: $(am__depfiles_remade)
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LTCOMPILE) -c -o $@ $<
+
+isocline/src/libisocline_a-attr.o: isocline/src/attr.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-attr.o -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-attr.Tpo -c -o isocline/src/libisocline_a-attr.o `test -f 'isocline/src/attr.c' || echo '$(srcdir)/'`isocline/src/attr.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-attr.Tpo isocline/src/$(DEPDIR)/libisocline_a-attr.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/attr.c' object='isocline/src/libisocline_a-attr.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-attr.o `test -f 'isocline/src/attr.c' || echo '$(srcdir)/'`isocline/src/attr.c
+
+isocline/src/libisocline_a-attr.obj: isocline/src/attr.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-attr.obj -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-attr.Tpo -c -o isocline/src/libisocline_a-attr.obj `if test -f 'isocline/src/attr.c'; then $(CYGPATH_W) 'isocline/src/attr.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/attr.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-attr.Tpo isocline/src/$(DEPDIR)/libisocline_a-attr.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/attr.c' object='isocline/src/libisocline_a-attr.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-attr.obj `if test -f 'isocline/src/attr.c'; then $(CYGPATH_W) 'isocline/src/attr.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/attr.c'; fi`
+
+isocline/src/libisocline_a-bbcode.o: isocline/src/bbcode.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-bbcode.o -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-bbcode.Tpo -c -o isocline/src/libisocline_a-bbcode.o `test -f 'isocline/src/bbcode.c' || echo '$(srcdir)/'`isocline/src/bbcode.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-bbcode.Tpo isocline/src/$(DEPDIR)/libisocline_a-bbcode.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/bbcode.c' object='isocline/src/libisocline_a-bbcode.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-bbcode.o `test -f 'isocline/src/bbcode.c' || echo '$(srcdir)/'`isocline/src/bbcode.c
+
+isocline/src/libisocline_a-bbcode.obj: isocline/src/bbcode.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-bbcode.obj -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-bbcode.Tpo -c -o isocline/src/libisocline_a-bbcode.obj `if test -f 'isocline/src/bbcode.c'; then $(CYGPATH_W) 'isocline/src/bbcode.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/bbcode.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-bbcode.Tpo isocline/src/$(DEPDIR)/libisocline_a-bbcode.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/bbcode.c' object='isocline/src/libisocline_a-bbcode.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-bbcode.obj `if test -f 'isocline/src/bbcode.c'; then $(CYGPATH_W) 'isocline/src/bbcode.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/bbcode.c'; fi`
+
+isocline/src/libisocline_a-bbcode_colors.o: isocline/src/bbcode_colors.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-bbcode_colors.o -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-bbcode_colors.Tpo -c -o isocline/src/libisocline_a-bbcode_colors.o `test -f 'isocline/src/bbcode_colors.c' || echo '$(srcdir)/'`isocline/src/bbcode_colors.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-bbcode_colors.Tpo isocline/src/$(DEPDIR)/libisocline_a-bbcode_colors.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/bbcode_colors.c' object='isocline/src/libisocline_a-bbcode_colors.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-bbcode_colors.o `test -f 'isocline/src/bbcode_colors.c' || echo '$(srcdir)/'`isocline/src/bbcode_colors.c
+
+isocline/src/libisocline_a-bbcode_colors.obj: isocline/src/bbcode_colors.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-bbcode_colors.obj -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-bbcode_colors.Tpo -c -o isocline/src/libisocline_a-bbcode_colors.obj `if test -f 'isocline/src/bbcode_colors.c'; then $(CYGPATH_W) 'isocline/src/bbcode_colors.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/bbcode_colors.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-bbcode_colors.Tpo isocline/src/$(DEPDIR)/libisocline_a-bbcode_colors.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/bbcode_colors.c' object='isocline/src/libisocline_a-bbcode_colors.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-bbcode_colors.obj `if test -f 'isocline/src/bbcode_colors.c'; then $(CYGPATH_W) 'isocline/src/bbcode_colors.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/bbcode_colors.c'; fi`
+
+isocline/src/libisocline_a-common.o: isocline/src/common.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-common.o -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-common.Tpo -c -o isocline/src/libisocline_a-common.o `test -f 'isocline/src/common.c' || echo '$(srcdir)/'`isocline/src/common.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-common.Tpo isocline/src/$(DEPDIR)/libisocline_a-common.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/common.c' object='isocline/src/libisocline_a-common.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-common.o `test -f 'isocline/src/common.c' || echo '$(srcdir)/'`isocline/src/common.c
+
+isocline/src/libisocline_a-common.obj: isocline/src/common.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-common.obj -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-common.Tpo -c -o isocline/src/libisocline_a-common.obj `if test -f 'isocline/src/common.c'; then $(CYGPATH_W) 'isocline/src/common.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/common.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-common.Tpo isocline/src/$(DEPDIR)/libisocline_a-common.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/common.c' object='isocline/src/libisocline_a-common.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-common.obj `if test -f 'isocline/src/common.c'; then $(CYGPATH_W) 'isocline/src/common.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/common.c'; fi`
+
+isocline/src/libisocline_a-completers.o: isocline/src/completers.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-completers.o -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-completers.Tpo -c -o isocline/src/libisocline_a-completers.o `test -f 'isocline/src/completers.c' || echo '$(srcdir)/'`isocline/src/completers.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-completers.Tpo isocline/src/$(DEPDIR)/libisocline_a-completers.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/completers.c' object='isocline/src/libisocline_a-completers.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-completers.o `test -f 'isocline/src/completers.c' || echo '$(srcdir)/'`isocline/src/completers.c
+
+isocline/src/libisocline_a-completers.obj: isocline/src/completers.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-completers.obj -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-completers.Tpo -c -o isocline/src/libisocline_a-completers.obj `if test -f 'isocline/src/completers.c'; then $(CYGPATH_W) 'isocline/src/completers.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/completers.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-completers.Tpo isocline/src/$(DEPDIR)/libisocline_a-completers.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/completers.c' object='isocline/src/libisocline_a-completers.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-completers.obj `if test -f 'isocline/src/completers.c'; then $(CYGPATH_W) 'isocline/src/completers.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/completers.c'; fi`
+
+isocline/src/libisocline_a-completions.o: isocline/src/completions.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-completions.o -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-completions.Tpo -c -o isocline/src/libisocline_a-completions.o `test -f 'isocline/src/completions.c' || echo '$(srcdir)/'`isocline/src/completions.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-completions.Tpo isocline/src/$(DEPDIR)/libisocline_a-completions.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/completions.c' object='isocline/src/libisocline_a-completions.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-completions.o `test -f 'isocline/src/completions.c' || echo '$(srcdir)/'`isocline/src/completions.c
+
+isocline/src/libisocline_a-completions.obj: isocline/src/completions.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-completions.obj -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-completions.Tpo -c -o isocline/src/libisocline_a-completions.obj `if test -f 'isocline/src/completions.c'; then $(CYGPATH_W) 'isocline/src/completions.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/completions.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-completions.Tpo isocline/src/$(DEPDIR)/libisocline_a-completions.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/completions.c' object='isocline/src/libisocline_a-completions.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-completions.obj `if test -f 'isocline/src/completions.c'; then $(CYGPATH_W) 'isocline/src/completions.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/completions.c'; fi`
+
+isocline/src/libisocline_a-editline.o: isocline/src/editline.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-editline.o -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-editline.Tpo -c -o isocline/src/libisocline_a-editline.o `test -f 'isocline/src/editline.c' || echo '$(srcdir)/'`isocline/src/editline.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-editline.Tpo isocline/src/$(DEPDIR)/libisocline_a-editline.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/editline.c' object='isocline/src/libisocline_a-editline.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-editline.o `test -f 'isocline/src/editline.c' || echo '$(srcdir)/'`isocline/src/editline.c
+
+isocline/src/libisocline_a-editline.obj: isocline/src/editline.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-editline.obj -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-editline.Tpo -c -o isocline/src/libisocline_a-editline.obj `if test -f 'isocline/src/editline.c'; then $(CYGPATH_W) 'isocline/src/editline.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/editline.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-editline.Tpo isocline/src/$(DEPDIR)/libisocline_a-editline.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/editline.c' object='isocline/src/libisocline_a-editline.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-editline.obj `if test -f 'isocline/src/editline.c'; then $(CYGPATH_W) 'isocline/src/editline.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/editline.c'; fi`
+
+isocline/src/libisocline_a-highlight.o: isocline/src/highlight.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-highlight.o -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-highlight.Tpo -c -o isocline/src/libisocline_a-highlight.o `test -f 'isocline/src/highlight.c' || echo '$(srcdir)/'`isocline/src/highlight.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-highlight.Tpo isocline/src/$(DEPDIR)/libisocline_a-highlight.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/highlight.c' object='isocline/src/libisocline_a-highlight.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-highlight.o `test -f 'isocline/src/highlight.c' || echo '$(srcdir)/'`isocline/src/highlight.c
+
+isocline/src/libisocline_a-highlight.obj: isocline/src/highlight.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-highlight.obj -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-highlight.Tpo -c -o isocline/src/libisocline_a-highlight.obj `if test -f 'isocline/src/highlight.c'; then $(CYGPATH_W) 'isocline/src/highlight.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/highlight.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-highlight.Tpo isocline/src/$(DEPDIR)/libisocline_a-highlight.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/highlight.c' object='isocline/src/libisocline_a-highlight.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-highlight.obj `if test -f 'isocline/src/highlight.c'; then $(CYGPATH_W) 'isocline/src/highlight.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/highlight.c'; fi`
+
+isocline/src/libisocline_a-history.o: isocline/src/history.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-history.o -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-history.Tpo -c -o isocline/src/libisocline_a-history.o `test -f 'isocline/src/history.c' || echo '$(srcdir)/'`isocline/src/history.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-history.Tpo isocline/src/$(DEPDIR)/libisocline_a-history.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/history.c' object='isocline/src/libisocline_a-history.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-history.o `test -f 'isocline/src/history.c' || echo '$(srcdir)/'`isocline/src/history.c
+
+isocline/src/libisocline_a-history.obj: isocline/src/history.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-history.obj -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-history.Tpo -c -o isocline/src/libisocline_a-history.obj `if test -f 'isocline/src/history.c'; then $(CYGPATH_W) 'isocline/src/history.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/history.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-history.Tpo isocline/src/$(DEPDIR)/libisocline_a-history.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/history.c' object='isocline/src/libisocline_a-history.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-history.obj `if test -f 'isocline/src/history.c'; then $(CYGPATH_W) 'isocline/src/history.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/history.c'; fi`
+
+isocline/src/libisocline_a-isocline.o: isocline/src/isocline.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-isocline.o -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-isocline.Tpo -c -o isocline/src/libisocline_a-isocline.o `test -f 'isocline/src/isocline.c' || echo '$(srcdir)/'`isocline/src/isocline.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-isocline.Tpo isocline/src/$(DEPDIR)/libisocline_a-isocline.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/isocline.c' object='isocline/src/libisocline_a-isocline.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-isocline.o `test -f 'isocline/src/isocline.c' || echo '$(srcdir)/'`isocline/src/isocline.c
+
+isocline/src/libisocline_a-isocline.obj: isocline/src/isocline.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-isocline.obj -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-isocline.Tpo -c -o isocline/src/libisocline_a-isocline.obj `if test -f 'isocline/src/isocline.c'; then $(CYGPATH_W) 'isocline/src/isocline.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/isocline.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-isocline.Tpo isocline/src/$(DEPDIR)/libisocline_a-isocline.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/isocline.c' object='isocline/src/libisocline_a-isocline.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-isocline.obj `if test -f 'isocline/src/isocline.c'; then $(CYGPATH_W) 'isocline/src/isocline.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/isocline.c'; fi`
+
+isocline/src/libisocline_a-stringbuf.o: isocline/src/stringbuf.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-stringbuf.o -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-stringbuf.Tpo -c -o isocline/src/libisocline_a-stringbuf.o `test -f 'isocline/src/stringbuf.c' || echo '$(srcdir)/'`isocline/src/stringbuf.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-stringbuf.Tpo isocline/src/$(DEPDIR)/libisocline_a-stringbuf.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/stringbuf.c' object='isocline/src/libisocline_a-stringbuf.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-stringbuf.o `test -f 'isocline/src/stringbuf.c' || echo '$(srcdir)/'`isocline/src/stringbuf.c
+
+isocline/src/libisocline_a-stringbuf.obj: isocline/src/stringbuf.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-stringbuf.obj -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-stringbuf.Tpo -c -o isocline/src/libisocline_a-stringbuf.obj `if test -f 'isocline/src/stringbuf.c'; then $(CYGPATH_W) 'isocline/src/stringbuf.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/stringbuf.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-stringbuf.Tpo isocline/src/$(DEPDIR)/libisocline_a-stringbuf.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/stringbuf.c' object='isocline/src/libisocline_a-stringbuf.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-stringbuf.obj `if test -f 'isocline/src/stringbuf.c'; then $(CYGPATH_W) 'isocline/src/stringbuf.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/stringbuf.c'; fi`
+
+isocline/src/libisocline_a-term.o: isocline/src/term.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-term.o -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-term.Tpo -c -o isocline/src/libisocline_a-term.o `test -f 'isocline/src/term.c' || echo '$(srcdir)/'`isocline/src/term.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-term.Tpo isocline/src/$(DEPDIR)/libisocline_a-term.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/term.c' object='isocline/src/libisocline_a-term.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-term.o `test -f 'isocline/src/term.c' || echo '$(srcdir)/'`isocline/src/term.c
+
+isocline/src/libisocline_a-term.obj: isocline/src/term.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-term.obj -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-term.Tpo -c -o isocline/src/libisocline_a-term.obj `if test -f 'isocline/src/term.c'; then $(CYGPATH_W) 'isocline/src/term.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/term.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-term.Tpo isocline/src/$(DEPDIR)/libisocline_a-term.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/term.c' object='isocline/src/libisocline_a-term.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-term.obj `if test -f 'isocline/src/term.c'; then $(CYGPATH_W) 'isocline/src/term.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/term.c'; fi`
+
+isocline/src/libisocline_a-tty.o: isocline/src/tty.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-tty.o -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-tty.Tpo -c -o isocline/src/libisocline_a-tty.o `test -f 'isocline/src/tty.c' || echo '$(srcdir)/'`isocline/src/tty.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-tty.Tpo isocline/src/$(DEPDIR)/libisocline_a-tty.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/tty.c' object='isocline/src/libisocline_a-tty.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-tty.o `test -f 'isocline/src/tty.c' || echo '$(srcdir)/'`isocline/src/tty.c
+
+isocline/src/libisocline_a-tty.obj: isocline/src/tty.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-tty.obj -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-tty.Tpo -c -o isocline/src/libisocline_a-tty.obj `if test -f 'isocline/src/tty.c'; then $(CYGPATH_W) 'isocline/src/tty.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/tty.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-tty.Tpo isocline/src/$(DEPDIR)/libisocline_a-tty.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/tty.c' object='isocline/src/libisocline_a-tty.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-tty.obj `if test -f 'isocline/src/tty.c'; then $(CYGPATH_W) 'isocline/src/tty.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/tty.c'; fi`
+
+isocline/src/libisocline_a-tty_esc.o: isocline/src/tty_esc.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-tty_esc.o -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-tty_esc.Tpo -c -o isocline/src/libisocline_a-tty_esc.o `test -f 'isocline/src/tty_esc.c' || echo '$(srcdir)/'`isocline/src/tty_esc.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-tty_esc.Tpo isocline/src/$(DEPDIR)/libisocline_a-tty_esc.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/tty_esc.c' object='isocline/src/libisocline_a-tty_esc.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-tty_esc.o `test -f 'isocline/src/tty_esc.c' || echo '$(srcdir)/'`isocline/src/tty_esc.c
+
+isocline/src/libisocline_a-tty_esc.obj: isocline/src/tty_esc.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-tty_esc.obj -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-tty_esc.Tpo -c -o isocline/src/libisocline_a-tty_esc.obj `if test -f 'isocline/src/tty_esc.c'; then $(CYGPATH_W) 'isocline/src/tty_esc.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/tty_esc.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-tty_esc.Tpo isocline/src/$(DEPDIR)/libisocline_a-tty_esc.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/tty_esc.c' object='isocline/src/libisocline_a-tty_esc.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-tty_esc.obj `if test -f 'isocline/src/tty_esc.c'; then $(CYGPATH_W) 'isocline/src/tty_esc.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/tty_esc.c'; fi`
+
+isocline/src/libisocline_a-undo.o: isocline/src/undo.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-undo.o -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-undo.Tpo -c -o isocline/src/libisocline_a-undo.o `test -f 'isocline/src/undo.c' || echo '$(srcdir)/'`isocline/src/undo.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-undo.Tpo isocline/src/$(DEPDIR)/libisocline_a-undo.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/undo.c' object='isocline/src/libisocline_a-undo.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-undo.o `test -f 'isocline/src/undo.c' || echo '$(srcdir)/'`isocline/src/undo.c
+
+isocline/src/libisocline_a-undo.obj: isocline/src/undo.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-undo.obj -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-undo.Tpo -c -o isocline/src/libisocline_a-undo.obj `if test -f 'isocline/src/undo.c'; then $(CYGPATH_W) 'isocline/src/undo.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/undo.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-undo.Tpo isocline/src/$(DEPDIR)/libisocline_a-undo.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/undo.c' object='isocline/src/libisocline_a-undo.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-undo.obj `if test -f 'isocline/src/undo.c'; then $(CYGPATH_W) 'isocline/src/undo.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/undo.c'; fi`
+
+isocline/src/libisocline_a-wcwidth.o: isocline/src/wcwidth.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-wcwidth.o -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-wcwidth.Tpo -c -o isocline/src/libisocline_a-wcwidth.o `test -f 'isocline/src/wcwidth.c' || echo '$(srcdir)/'`isocline/src/wcwidth.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-wcwidth.Tpo isocline/src/$(DEPDIR)/libisocline_a-wcwidth.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/wcwidth.c' object='isocline/src/libisocline_a-wcwidth.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-wcwidth.o `test -f 'isocline/src/wcwidth.c' || echo '$(srcdir)/'`isocline/src/wcwidth.c
+
+isocline/src/libisocline_a-wcwidth.obj: isocline/src/wcwidth.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT isocline/src/libisocline_a-wcwidth.obj -MD -MP -MF isocline/src/$(DEPDIR)/libisocline_a-wcwidth.Tpo -c -o isocline/src/libisocline_a-wcwidth.obj `if test -f 'isocline/src/wcwidth.c'; then $(CYGPATH_W) 'isocline/src/wcwidth.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/wcwidth.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) isocline/src/$(DEPDIR)/libisocline_a-wcwidth.Tpo isocline/src/$(DEPDIR)/libisocline_a-wcwidth.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='isocline/src/wcwidth.c' object='isocline/src/libisocline_a-wcwidth.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisocline_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o isocline/src/libisocline_a-wcwidth.obj `if test -f 'isocline/src/wcwidth.c'; then $(CYGPATH_W) 'isocline/src/wcwidth.c'; else $(CYGPATH_W) '$(srcdir)/isocline/src/wcwidth.c'; fi`
 
 hak-hak.o: hak.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(hak_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT hak-hak.o -MD -MP -MF $(DEPDIR)/hak-hak.Tpo -c -o hak-hak.o `test -f 'hak.c' || echo '$(srcdir)/'`hak.c
@@ -870,22 +1111,22 @@ clean-am: clean-binPROGRAMS clean-generic clean-libtool \
 distclean: distclean-am
 	-rm -f ./$(DEPDIR)/hak-hak.Po
 	-rm -f ./$(DEPDIR)/hakx-hak-x.Po
-	-rm -f isocline/src/$(DEPDIR)/attr.Po
-	-rm -f isocline/src/$(DEPDIR)/bbcode.Po
-	-rm -f isocline/src/$(DEPDIR)/bbcode_colors.Po
-	-rm -f isocline/src/$(DEPDIR)/common.Po
-	-rm -f isocline/src/$(DEPDIR)/completers.Po
-	-rm -f isocline/src/$(DEPDIR)/completions.Po
-	-rm -f isocline/src/$(DEPDIR)/editline.Po
-	-rm -f isocline/src/$(DEPDIR)/highlight.Po
-	-rm -f isocline/src/$(DEPDIR)/history.Po
-	-rm -f isocline/src/$(DEPDIR)/isocline.Po
-	-rm -f isocline/src/$(DEPDIR)/stringbuf.Po
-	-rm -f isocline/src/$(DEPDIR)/term.Po
-	-rm -f isocline/src/$(DEPDIR)/tty.Po
-	-rm -f isocline/src/$(DEPDIR)/tty_esc.Po
-	-rm -f isocline/src/$(DEPDIR)/undo.Po
-	-rm -f isocline/src/$(DEPDIR)/wcwidth.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-attr.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-bbcode.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-bbcode_colors.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-common.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-completers.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-completions.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-editline.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-highlight.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-history.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-isocline.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-stringbuf.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-term.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-tty.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-tty_esc.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-undo.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-wcwidth.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -933,22 +1174,22 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/hak-hak.Po
 	-rm -f ./$(DEPDIR)/hakx-hak-x.Po
-	-rm -f isocline/src/$(DEPDIR)/attr.Po
-	-rm -f isocline/src/$(DEPDIR)/bbcode.Po
-	-rm -f isocline/src/$(DEPDIR)/bbcode_colors.Po
-	-rm -f isocline/src/$(DEPDIR)/common.Po
-	-rm -f isocline/src/$(DEPDIR)/completers.Po
-	-rm -f isocline/src/$(DEPDIR)/completions.Po
-	-rm -f isocline/src/$(DEPDIR)/editline.Po
-	-rm -f isocline/src/$(DEPDIR)/highlight.Po
-	-rm -f isocline/src/$(DEPDIR)/history.Po
-	-rm -f isocline/src/$(DEPDIR)/isocline.Po
-	-rm -f isocline/src/$(DEPDIR)/stringbuf.Po
-	-rm -f isocline/src/$(DEPDIR)/term.Po
-	-rm -f isocline/src/$(DEPDIR)/tty.Po
-	-rm -f isocline/src/$(DEPDIR)/tty_esc.Po
-	-rm -f isocline/src/$(DEPDIR)/undo.Po
-	-rm -f isocline/src/$(DEPDIR)/wcwidth.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-attr.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-bbcode.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-bbcode_colors.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-common.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-completers.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-completions.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-editline.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-highlight.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-history.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-isocline.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-stringbuf.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-term.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-tty.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-tty_esc.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-undo.Po
+	-rm -f isocline/src/$(DEPDIR)/libisocline_a-wcwidth.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
