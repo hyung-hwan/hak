@@ -10,9 +10,9 @@
 
 #include "common.h"
 
-//-------------------------------------------------------------
-// History
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* History */
+/*------------------------------------------------------------- */
 
 struct history_s;
 typedef struct history_s history_t;
@@ -35,4 +35,4 @@ ic_private void     history_remove_last(history_t* h);
 ic_private bool     history_search( const history_t* h, ssize_t from, const char* search, bool backward, ssize_t* hidx, ssize_t* hpos);
 
 
-#endif // IC_HISTORY_H
+#endif /* IC_HISTORY_H */

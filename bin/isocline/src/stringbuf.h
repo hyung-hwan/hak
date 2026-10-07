@@ -11,13 +11,13 @@
 #include <stdarg.h>
 #include "common.h"
 
-//-------------------------------------------------------------
-// string buffer
-// in-place modified buffer with edit operations
-// that grows on demand.
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* string buffer */
+/* in-place modified buffer with edit operations */
+/* that grows on demand. */
+/*------------------------------------------------------------- */
 
-// abstract string buffer
+/* abstract string buffer */
 struct stringbuf_s;
 typedef struct stringbuf_s stringbuf_t;
 
@@ -31,7 +31,7 @@ ic_private const char* sbuf_string( stringbuf_t* sbuf );
 ic_private char    sbuf_char_at(stringbuf_t* sbuf, ssize_t pos);
 ic_private char*   sbuf_strdup_at( stringbuf_t* sbuf, ssize_t pos );
 ic_private char*   sbuf_strdup( stringbuf_t* sbuf );
-ic_private char*   sbuf_strdup_from_utf8(stringbuf_t* sbuf);  // decode to locale
+ic_private char*   sbuf_strdup_from_utf8(stringbuf_t* sbuf);  /* decode to locale */
 
 
 ic_private ssize_t sbuf_appendf(stringbuf_t* sb, const char* fmt, ...);
@@ -39,7 +39,7 @@ ic_private ssize_t sbuf_append_vprintf(stringbuf_t* sb, const char* fmt, va_list
 
 ic_private stringbuf_t* sbuf_split_at( stringbuf_t* sb, ssize_t pos );
 
-// primitive edit operations (inserts return the new position)
+/* primitive edit operations (inserts return the new position) */
 ic_private void    sbuf_clear(stringbuf_t* sbuf);
 ic_private void    sbuf_replace(stringbuf_t* sbuf, const char* s);
 ic_private void    sbuf_delete_at(stringbuf_t* sbuf, ssize_t pos, ssize_t count);
@@ -53,7 +53,7 @@ ic_private ssize_t sbuf_append_n(stringbuf_t* sbuf, const char* s, ssize_t n);
 ic_private ssize_t sbuf_append(stringbuf_t* sbuf, const char* s);
 ic_private ssize_t sbuf_append_char(stringbuf_t* sbuf, char c);
 
-// high level edit operations (return the new position)
+/* high level edit operations (return the new position) */
 ic_private ssize_t sbuf_next( stringbuf_t* sbuf, ssize_t pos, ssize_t* cwidth );
 ic_private ssize_t sbuf_prev( stringbuf_t* sbuf, ssize_t pos, ssize_t* cwidth );
 ic_private ssize_t sbuf_next_ofs(stringbuf_t* sbuf, ssize_t pos, ssize_t* cwidth);
@@ -71,13 +71,13 @@ ic_private ssize_t sbuf_find_ws_word_end( stringbuf_t* sbuf, ssize_t pos );
 
 ic_private ssize_t ic_count_end_overlap(const char* s, const char* postfix);
 
-// parse a decimal
+/* parse a decimal */
 ic_private bool ic_atoz(const char* s, ssize_t* i);
-// parse two decimals separated by a semicolon
+/* parse two decimals separated by a semicolon */
 ic_private bool ic_atoz2(const char* s, ssize_t* i, ssize_t* j);
 ic_private bool ic_atou32(const char* s, uint32_t* pu);
 
-// row/column info
+/* row/column info */
 typedef struct rowcol_s {
   ssize_t row;
   ssize_t col;
@@ -87,37 +87,37 @@ typedef struct rowcol_s {
   bool    last_on_row;
 } rowcol_t;
 
-// find row/col position
+/* find row/col position */
 ic_private ssize_t sbuf_get_pos_at_rc( stringbuf_t* sbuf, ssize_t termw, ssize_t promptw, ssize_t cpromptw,
                                        ssize_t row, ssize_t col );
-// get row/col for a given position
+/* get row/col for a given position */
 ic_private ssize_t sbuf_get_rc_at_pos( stringbuf_t* sbuf, ssize_t termw, ssize_t promptw, ssize_t cpromptw,
                                        ssize_t pos, rowcol_t* rc );
 
 ic_private ssize_t sbuf_get_wrapped_rc_at_pos( stringbuf_t* sbuf, ssize_t termw, ssize_t newtermw, ssize_t promptw, ssize_t cpromptw,
                                        ssize_t pos, rowcol_t* rc );
 
-// row iteration
+/* row iteration */
 typedef bool (row_fun_t)(const char* s,
                           ssize_t row, ssize_t row_start, ssize_t row_len,
-                          ssize_t startw, // prompt width
+                          ssize_t startw, /* prompt width */
                           bool is_wrap, const void* arg, void* res);
 
 ic_private ssize_t sbuf_for_each_row( stringbuf_t* sbuf, ssize_t termw, ssize_t promptw, ssize_t cpromptw,
                                       row_fun_t* fun, void* arg, void* res );
 
 
-//-------------------------------------------------------------
-// Strings
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* Strings */
+/*------------------------------------------------------------- */
 
-// skip a single CSI sequence (ESC [ ...)
-ic_private bool    skip_csi_esc( const char* s, ssize_t len, ssize_t* esclen ); // used in term.c
+/* skip a single CSI sequence (ESC [ ...) */
+ic_private bool    skip_csi_esc( const char* s, ssize_t len, ssize_t* esclen ); /* used in term.c */
 
 ic_private ssize_t str_column_width( const char* s );
 ic_private ssize_t str_prev_ofs( const char* s, ssize_t pos, ssize_t* cwidth );
 ic_private ssize_t str_next_ofs( const char* s, ssize_t len, ssize_t pos, ssize_t* cwidth );
-ic_private ssize_t str_skip_until_fit( const char* s, ssize_t max_width);  // tail that fits
-ic_private ssize_t str_take_while_fit( const char* s, ssize_t max_width);  // prefix that fits
+ic_private ssize_t str_skip_until_fit( const char* s, ssize_t max_width);  /* tail that fits */
+ic_private ssize_t str_take_while_fit( const char* s, ssize_t max_width);  /* prefix that fits */
 
-#endif // IC_STRINGBUF_H
+#endif /* IC_STRINGBUF_H */

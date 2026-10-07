@@ -5,12 +5,12 @@
   found in the "LICENSE" file at the root of this distribution.
 -----------------------------------------------------------------------------*/
 
-//-------------------------------------------------------------
-// Completion menu: this file is included in editline.c
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* Completion menu: this file is included in editline.c */
+/*------------------------------------------------------------- */
 
-// return true iff the buffer or cursor position was actually changed;
-// clean up any dirtiness in the undo stack. update eb->pos if appropriate
+/* return true iff the buffer or cursor position was actually changed; */
+/* clean up any dirtiness in the undo stack. update eb->pos if appropriate */
 static bool edit_completion_commit(editor_t* eb, ssize_t newpos) {
   if (newpos == IC_COMP_APPLY_FAIL) {
     editor_undo_restore(eb, false);
@@ -25,17 +25,19 @@ static bool edit_completion_commit(editor_t* eb, ssize_t newpos) {
   return true;
 }
 
-// return true if anything changed
+/* return true if anything changed */
 static bool edit_complete(ic_env_t* env, editor_t* eb, ssize_t idx) {
+  bool buf_or_pos_changed;
+  ssize_t newpos;
   editor_start_modify(eb);
-  ssize_t newpos = completions_apply(env->completions, idx, eb->input, eb->pos);
-  bool buf_or_pos_changed = edit_completion_commit(eb, newpos);
+  newpos = completions_apply(env->completions, idx, eb->input, eb->pos);
+  buf_or_pos_changed = edit_completion_commit(eb, newpos);
 
-  // trigger a refresh if the buffer or cursor position changed
+  /* trigger a refresh if the buffer or cursor position changed */
   if (buf_or_pos_changed)
     edit_refresh(env, eb);
-  // or when choosing between menu items, even if the current item is the same
-  // as the buffer, because we need to highlight that item
+  /* or when choosing between menu items, even if the current item is the same */
+  /* as the buffer, because we need to highlight that item */
   else if (newpos == IC_COMP_APPLY_NOOP && completions_count(env->completions) > 1)
     edit_refresh(env, eb);
 
@@ -43,8 +45,9 @@ static bool edit_complete(ic_env_t* env, editor_t* eb, ssize_t idx) {
 }
 
 static void edit_complete_longest_prefix(ic_env_t* env, editor_t* eb ) {
+  ssize_t newpos;
   editor_start_modify(eb);
-  ssize_t newpos = completions_apply_longest_prefix( env->completions, eb->input, eb->pos );
+  newpos = completions_apply_longest_prefix( env->completions, eb->input, eb->pos );
   edit_completion_commit(eb, newpos);
 }
 
@@ -78,14 +81,14 @@ static void editor_append_completion(ic_env_t* env, editor_t* eb, ssize_t idx, s
   if (width > 0) { sbuf_append(eb->extra,"[/width]"); }
 }
 
-// 2 and 3 column output up to 80 wide
+/* 2 and 3 column output up to 80 wide */
 #define IC_DISPLAY2_MAX    34
 #define IC_DISPLAY2_COL    (3+IC_DISPLAY2_MAX)
-#define IC_DISPLAY2_WIDTH  (2*IC_DISPLAY2_COL + 2)    // 75
+#define IC_DISPLAY2_WIDTH  (2*IC_DISPLAY2_COL + 2)    /* 75 */
 
 #define IC_DISPLAY3_MAX    21
 #define IC_DISPLAY3_COL    (3+IC_DISPLAY3_MAX)
-#define IC_DISPLAY3_WIDTH  (3*IC_DISPLAY3_COL + 2*2)  // 76
+#define IC_DISPLAY3_WIDTH  (3*IC_DISPLAY3_COL + 2*2)  /* 76 */
 
 static void editor_append_completion2(ic_env_t* env, editor_t* eb, ssize_t col_width, ssize_t idx1, ssize_t idx2, ssize_t selected ) {
   editor_append_completion(env, eb, idx1, col_width, true, (idx1 == selected) );
@@ -103,7 +106,7 @@ static void editor_append_completion3(ic_env_t* env, editor_t* eb, ssize_t col_w
 
 static ssize_t edit_completions_max_width( ic_env_t* env, ssize_t count ) {
   ssize_t max_width = 0;
-  for( ssize_t i = 0; i < count; i++) {
+  { ssize_t i; for( i = 0; i < count; i++) {
     const char* help = NULL;
     ssize_t w = bbcode_column_width(env->bbcode, completions_get_display(env->completions, i, &help));
     if (help != NULL) {
@@ -112,48 +115,53 @@ static ssize_t edit_completions_max_width( ic_env_t* env, ssize_t count ) {
     if (w > max_width) {
       max_width = w;
     }
-  }
+  } }
   return max_width;
 }
 
 static void edit_completion_menu(ic_env_t* env, editor_t* eb, bool more_available) {
+  ssize_t colwidth;
+  ssize_t percolumn;
+  code_t c;
+  ssize_t twidth;
+  ssize_t selected;
   ssize_t count = completions_count(env->completions);
   ssize_t count_displayed = count;
   assert(count > 1);
-  ssize_t selected = (env->complete_nopreview ? 0 : -1); // select first or none
-  ssize_t percolumn = count;
+  selected = (env->complete_nopreview ? 0 : -1); /* select first or none */
+  percolumn = count;
 
 again:
-  // show first 9 (or 8) completions
+  /* show first 9 (or 8) completions */
   sbuf_clear(eb->extra);
-  ssize_t twidth = term_get_width(env->term) - 1;
-  ssize_t colwidth;
+  twidth = term_get_width(env->term) - 1;
+
   if (count > 3 && ((colwidth = 3 + edit_completions_max_width(env, 9))*3 + 2*2) < twidth) {
-    // display as a 3 column block
+    /* display as a 3 column block */
     count_displayed = (count > 9 ? 9 : count);
     percolumn = 3;
-    for (ssize_t rw = 0; rw < percolumn; rw++) {
+    { ssize_t rw; for (rw = 0; rw < percolumn; rw++) {
       if (rw > 0) sbuf_append(eb->extra, "\n");
       editor_append_completion3(env, eb, colwidth, rw, percolumn+rw, (2*percolumn)+rw, selected);
-    }
+    } }
   }
   else if (count > 4 && ((colwidth = 3 + edit_completions_max_width(env, 8))*2 + 2) < twidth) {
-    // display as a 2 column block if some entries are too wide for three columns
+    /* display as a 2 column block if some entries are too wide for three columns */
     count_displayed = (count > 8 ? 8 : count);
     percolumn = (count_displayed <= 6 ? 3 : 4);
-    for (ssize_t rw = 0; rw < percolumn; rw++) {
+    { ssize_t rw; for (rw = 0; rw < percolumn; rw++) {
       if (rw > 0) sbuf_append(eb->extra, "\n");
       editor_append_completion2(env, eb, colwidth, rw, percolumn+rw, selected);
-    }
+    } }
   }
   else {
-    // display as a list
+    /* display as a list */
     count_displayed = (count > 9 ? 9 : count);
     percolumn = count_displayed;
-    for (ssize_t i = 0; i < count_displayed; i++) {
+    { ssize_t i; for (i = 0; i < count_displayed; i++) {
       if (i > 0) sbuf_append(eb->extra, "\n");
       editor_append_completion(env, eb, i, -1, true /* numbered */, selected == i);
-    }
+    } }
   }
   if (count > count_displayed) {
     if (more_available) {
@@ -171,14 +179,14 @@ again:
     edit_refresh(env, eb);
   }
 
-  // read here; if not a valid key, push it back and return to main event loop
-  code_t c = tty_read(env->tty);
+  /* read here; if not a valid key, push it back and return to main event loop */
+  c = tty_read(env->tty);
   if (tty_term_resize_event(env->tty)) {
     edit_resize(env, eb);
   }
   sbuf_clear(eb->extra);
 
-  // direct selection?
+  /* direct selection? */
   if (c >= '1' && c <= '9') {
     ssize_t i = (c - '1');
     if (i < count) {
@@ -187,11 +195,11 @@ again:
     }
   }
 
-  // process commands
+  /* process commands */
   if (c == KEY_DOWN || c == KEY_TAB) {
     selected++;
     if (selected >= count_displayed) {
-      //term_beep(env->term);
+      /*term_beep(env->term); */
       selected = 0;
     }
     goto again;
@@ -200,7 +208,7 @@ again:
     selected--;
     if (selected < 0) {
       selected = count_displayed - 1;
-      //term_beep(env->term);
+      /*term_beep(env->term); */
     }
     goto again;
   }
@@ -211,76 +219,79 @@ again:
   else if (c == KEY_ESC) {
     completions_clear(env->completions);
     edit_refresh(env,eb);
-    c = 0; // ignore and return
+    c = 0; /* ignore and return */
   }
   else if (selected >= 0 && (c == KEY_ENTER || c == KEY_RIGHT || c == KEY_END)) /* || c == KEY_TAB*/ {
-    // select the current entry
+    /* select the current entry */
     assert(selected < count);
     c = 0;
     if (edit_complete(env, eb, selected) && env->complete_autotab) {
-      tty_code_pushback(env->tty,KEY_EVENT_AUTOTAB); // immediately try to complete again
+      tty_code_pushback(env->tty,KEY_EVENT_AUTOTAB); /* immediately try to complete again */
     }
   }
   else if (!env->complete_nopreview && !code_is_virt_key(c)) {
-    // if in preview mode, select the current entry and exit the menu
+    /* if in preview mode, select the current entry and exit the menu */
     assert(selected < count);
     edit_complete(env, eb, selected);
   }
   else if ((c == KEY_PAGEDOWN || c == KEY_LINEFEED) && count > 9) {
-    // show all completions
+    rowcol_t rc;
+    /* show all completions */
     c = 0;
     if (more_available) {
-      // generate all entries (up to the max (= 1000))
+      /* generate all entries (up to the max (= 1000)) */
       count = completions_generate(env, env->completions, sbuf_string(eb->input), eb->pos, IC_MAX_COMPLETIONS_TO_SHOW);
     }
-    rowcol_t rc;
+
     edit_get_rowcol(env,eb,&rc);
     edit_clear(env,eb);
     edit_write_prompt(env,eb,0,false);
     term_writeln(env->term, "");
-    for(ssize_t i = 0; i < count; i++) {
+    { ssize_t i; for(i = 0; i < count; i++) {
       const char* display = completions_get_display(env->completions, i, NULL);
       if (display != NULL) {
         bbcode_println(env->bbcode, display);
       }
-    }
+    } }
     if (count >= IC_MAX_COMPLETIONS_TO_SHOW) {
       bbcode_println(env->bbcode, "[ic-info]... and more.[/]");
     }
     else {
       bbcode_printf(env->bbcode, "[ic-info](%zd possible completions)[/]\n", count );
     }
-    for(ssize_t i = 0; i < rc.row+1; i++) {
+    { ssize_t i; for(i = 0; i < rc.row+1; i++) {
       term_write(env->term, " \n");
-    }
+    } }
     eb->cur_rows = 0;
     edit_refresh(env,eb);
   }
   else {
     edit_refresh(env,eb);
   }
-  // done
+  /* done */
   completions_clear(env->completions);
   if (c != 0) tty_code_pushback(env->tty,c);
 }
 
 static void edit_generate_completions(ic_env_t* env, editor_t* eb, bool autotab) {
+  bool more_available;
+  ssize_t count;
   debug_msg( "edit: complete: %zd: %s\n", eb->pos, sbuf_string(eb->input) );
   if (eb->pos < 0) return;
-  ssize_t count = completions_generate(env, env->completions, sbuf_string(eb->input), eb->pos, IC_MAX_COMPLETIONS_TO_TRY);
-  bool more_available = (count >= IC_MAX_COMPLETIONS_TO_TRY);
+  count = completions_generate(env, env->completions, sbuf_string(eb->input), eb->pos, IC_MAX_COMPLETIONS_TO_TRY);
+  more_available = (count >= IC_MAX_COMPLETIONS_TO_TRY);
   if (count <= 0) {
-    // no completions
+    /* no completions */
     if (!autotab) { term_beep(env->term); }
   }
   else if (count == 1) {
-    // complete if only one match
+    /* complete if only one match */
     if (edit_complete(env,eb,0 /*idx*/) && env->complete_autotab) {
       tty_code_pushback(env->tty,KEY_EVENT_AUTOTAB);
     }
   }
   else {
-    //term_beep(env->term);
+    /*term_beep(env->term); */
     if (!more_available) {
       edit_complete_longest_prefix(env,eb);
     }

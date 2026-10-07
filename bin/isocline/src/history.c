@@ -16,12 +16,12 @@
 #define IC_MAX_HISTORY (200)
 
 struct history_s {
-  ssize_t  count;              // current number of entries in use
-  ssize_t  len;                // size of elems
-  const char** elems;         // history items (up to count)
-  const char*  fname;         // history file
+  ssize_t  count;              /* current number of entries in use */
+  ssize_t  len;                /* size of elems */
+  const char** elems;         /* history items (up to count) */
+  const char*  fname;         /* history file */
   alloc_t* mem;
-  bool     allow_duplicates;   // allow duplicate entries?
+  bool     allow_duplicates;   /* allow duplicate entries? */
 };
 
 ic_private history_t* history_new(alloc_t* mem) {
@@ -40,7 +40,7 @@ ic_private void history_free(history_t* h) {
   }
   mem_free(h->mem, h->fname);
   h->fname = NULL;
-  mem_free(h->mem, h); // free ourselves
+  mem_free(h->mem, h); /* free ourselves */
 }
 
 ic_private bool history_enable_duplicates( history_t* h, bool enable ) {
@@ -53,40 +53,40 @@ ic_private ssize_t  history_count(const history_t* h) {
   return h->count;
 }
 
-//-------------------------------------------------------------
-// push/clear
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* push/clear */
+/*------------------------------------------------------------- */
 
 ic_private bool history_update( history_t* h, const char* entry ) {
   if (entry==NULL) return false;
   history_remove_last(h);
   history_push(h,entry);
-  //debug_msg("history: update: with %s; now at %s\n", entry, history_get(h,0));
+  /*debug_msg("history: update: with %s; now at %s\n", entry, history_get(h,0)); */
   return true;
 }
 
 static void history_delete_at( history_t* h, ssize_t idx ) {
   if (idx < 0 || idx >= h->count) return;
   mem_free(h->mem, h->elems[idx]);
-  for(ssize_t i = idx+1; i < h->count; i++) {
+  { ssize_t i; for(i = idx+1; i < h->count; i++) {
     h->elems[i-1] = h->elems[i];
-  }
+  } }
   h->count--;
 }
 
 ic_private bool history_push( history_t* h, const char* entry ) {
   if (h->len <= 0 || entry==NULL)  return false;
-  // remove any older duplicate
+  /* remove any older duplicate */
   if (!h->allow_duplicates) {
-    for( int i = 0; i < h->count; i++) {
+    { int i; for( i = 0; i < h->count; i++) {
       if (strcmp(h->elems[i],entry) == 0) {
         history_delete_at(h,i);
       }
-    }
+    } }
   }
-  // insert at front
+  /* insert at front */
   if (h->count == h->len) {
-    // delete oldest entry
+    /* delete oldest entry */
     history_delete_at(h,0);
   }
   assert(h->count < h->len);
@@ -99,9 +99,9 @@ ic_private bool history_push( history_t* h, const char* entry ) {
 static void history_remove_last_n( history_t* h, ssize_t n ) {
   if (n <= 0) return;
   if (n > h->count) n = h->count;
-  for( ssize_t i = h->count - n; i < h->count; i++) {
+  { ssize_t i; for( i = h->count - n; i < h->count; i++) {
     mem_free( h->mem, h->elems[i] );
-  }
+  } }
   h->count -= n;
   assert(h->count >= 0);
 }
@@ -140,9 +140,9 @@ ic_private bool history_search( const history_t* h, ssize_t from /*including*/, 
   return true;
 }
 
-//-------------------------------------------------------------
-//
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* */
+/*------------------------------------------------------------- */
 
 ic_private void history_load_from(history_t* h, const char* fname, long max_entries ) {
   history_clear(h);
@@ -161,9 +161,9 @@ ic_private void history_load_from(history_t* h, const char* fname, long max_entr
 
 
 
-//-------------------------------------------------------------
-// save/load history to file
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* save/load history to file */
+/*------------------------------------------------------------- */
 
 static char from_xdigit( int c ) {
   if (c >= '0' && c <= '9') return (char)(c - '0');
@@ -190,7 +190,7 @@ static bool history_read_entry( history_t* h, FILE* f, stringbuf_t* sbuf ) {
     if (c == '\\') {
       c = fgetc(f);
       if (c == 'n')       { sbuf_append(sbuf,"\n"); }
-      else if (c == 'r')  { /* ignore */ }  // sbuf_append(sbuf,"\r");
+      else if (c == 'r')  { /* ignore */ }  /* sbuf_append(sbuf,"\r"); */
       else if (c == 't')  { sbuf_append(sbuf,"\t"); }
       else if (c == '\\') { sbuf_append(sbuf,"\\"); }
       else if (c == 'x') {
@@ -215,12 +215,12 @@ static bool history_read_entry( history_t* h, FILE* f, stringbuf_t* sbuf ) {
 
 static bool history_write_entry( const char* entry, FILE* f, stringbuf_t* sbuf ) {
   sbuf_clear(sbuf);
-  //debug_msg("history: write: %s\n", entry);
+  /*debug_msg("history: write: %s\n", entry); */
   while( entry != NULL && *entry != 0 ) {
     char c = *entry++;
     if (c == '\\')      { sbuf_append(sbuf,"\\\\"); }
     else if (c == '\n') { sbuf_append(sbuf,"\\n"); }
-    else if (c == '\r') { /* ignore */ } // sbuf_append(sbuf,"\\r"); }
+    else if (c == '\r') { /* ignore */ } /* sbuf_append(sbuf,"\\r"); } */
     else if (c == '\t') { sbuf_append(sbuf,"\\t"); }
     else if (c < ' ' || c > '~' || c == '#') {
       char c1 = to_xdigit( (uint8_t)c / 16 );
@@ -231,7 +231,7 @@ static bool history_write_entry( const char* entry, FILE* f, stringbuf_t* sbuf )
     }
     else sbuf_append_char(sbuf,c);
   }
-  //debug_msg("history: write buf: %s\n", sbuf_string(sbuf));
+  /*debug_msg("history: write buf: %s\n", sbuf_string(sbuf)); */
 
   if (sbuf_len(sbuf) > 0) {
     sbuf_append(sbuf,"\n");
@@ -241,13 +241,15 @@ static bool history_write_entry( const char* entry, FILE* f, stringbuf_t* sbuf )
 }
 
 ic_private void history_load( history_t* h ) {
+  stringbuf_t* sbuf;
+  FILE* f;
   if (h->fname == NULL) return;
-  FILE* f = fopen(h->fname, "r");
+  f = fopen(h->fname, "r");
   if (f == NULL) return;
-  stringbuf_t* sbuf = sbuf_new(h->mem);
+  sbuf = sbuf_new(h->mem);
   if (sbuf != NULL) {
     while (!feof(f)) {
-      if (!history_read_entry(h,f,sbuf)) break; // error
+      if (!history_read_entry(h,f,sbuf)) break; /* error */
     }
     sbuf_free(sbuf);
   }
@@ -255,17 +257,19 @@ ic_private void history_load( history_t* h ) {
 }
 
 ic_private void history_save( const history_t* h ) {
+  stringbuf_t* sbuf;
+  FILE* f;
   if (h->fname == NULL) return;
-  FILE* f = fopen(h->fname, "w");
+  f = fopen(h->fname, "w");
   if (f == NULL) return;
   #ifndef _WIN32
   chmod(h->fname,S_IRUSR|S_IWUSR);
   #endif
-  stringbuf_t* sbuf = sbuf_new(h->mem);
+  sbuf = sbuf_new(h->mem);
   if (sbuf != NULL) {
-    for( int i = 0; i < h->count; i++ )  {
-      if (!history_write_entry(h->elems[i],f,sbuf)) break;  // error
-    }
+    { int i; for( i = 0; i < h->count; i++ )  {
+      if (!history_write_entry(h->elems[i],f,sbuf)) break;  /* error */
+    } }
     sbuf_free(sbuf);
   }
   fclose(f);

@@ -5,9 +5,9 @@
   found in the "LICENSE" file at the root of this distribution.
 -----------------------------------------------------------------------------*/
 
-//-------------------------------------------------------------
-// Help: this is included into editline.c
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* Help: this is included into editline.c */
+/*------------------------------------------------------------- */
 
 static const char* help[] = {
   "","Navigation:",
@@ -63,13 +63,13 @@ static const char* help[] = {
   "shift-tab,^j",
   #endif
                 "create a new line for multi-line input",
-  //" ",          "(or type '\\' followed by enter)",
+  /*" ",          "(or type '\\' followed by enter)", */
   "^l",         "clear screen",
   "^t",         "swap with previous character (move character backward)",
   "^z,^_",      "undo",
   "^y",         "redo",
-  //"^C",         "done with empty input",
-  //"F1",         "show this help",
+  /*"^C",         "done with empty input", */
+  /*"F1",         "show this help", */
   "tab",        "try to complete the current input",
   "","",
   "","In the completion menu:",
@@ -105,7 +105,7 @@ static const char* help_initial =
   "\n[ansi-lightgray]"
   "       home,ctrl-a      cursor     end,ctrl-e\n"
   "         ┌────────────────┼───────────────┐    (navigate)\n"
-  //"       │                │               │\n"
+  /*"       │                │               │\n" */
   #ifndef __APPLE__
   "         │    ctrl-left   │  ctrl-right   │\n"
   #else
@@ -117,7 +117,7 @@ static const char* help_initial =
   "         ▲        ▲              ▲        ▲    esc      : delete input, done\n"
   "         │        └──────────────┘        │    ctrl-z   : undo\n"
   "         │   alt-backsp        alt-d      │\n"
-  //"       │                │               │\n"
+  /*"       │                │               │\n" */
   "         └────────────────────────────────┘    (delete)\n"
   "       ctrl-u                          ctrl-k\n"
   "[/ansi-lightgray][/ic-info]\n";
@@ -125,14 +125,14 @@ static const char* help_initial =
 static void edit_show_help(ic_env_t* env, editor_t* eb) {
   edit_clear(env, eb);
   bbcode_println(env->bbcode, help_initial);
-  for (ssize_t i = 0; help[i] != NULL && help[i+1] != NULL; i += 2) {
+  { ssize_t i; for (i = 0; help[i] != NULL && help[i+1] != NULL; i += 2) {
     if (help[i][0] == 0) {
       bbcode_printf(env->bbcode, "[ic-info]%s[/]\n", help[i+1]);
     }
     else {
       bbcode_printf(env->bbcode, "  [ic-emphasis]%-13s[/][ansi-lightgray]%s%s[/]\n", help[i], (help[i+1][0] == 0 ? "" : ": "), help[i+1]);
     }
-  }
+  } }
 
   eb->cur_rows = 0;
   eb->cur_row = 0;

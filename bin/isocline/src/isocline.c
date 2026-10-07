@@ -5,22 +5,22 @@
   found in the "LICENSE" file at the root of this distribution.
 -----------------------------------------------------------------------------*/
 
-//-------------------------------------------------------------
-// Usually we include all sources one file so no internal
-// symbols are public in the libray.
-//
-// You can compile the entire library just as:
-// $ gcc -c src/isocline.c
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* Usually we include all sources one file so no internal */
+/* symbols are public in the libray. */
+/* */
+/* You can compile the entire library just as: */
+/* $ gcc -c src/isocline.c */
+/*------------------------------------------------------------- */
 #if !defined(IC_SEPARATE_OBJS)
 # ifndef _CRT_NONSTDC_NO_WARNINGS
-#  define _CRT_NONSTDC_NO_WARNINGS // for msvc
+#  define _CRT_NONSTDC_NO_WARNINGS /* for msvc */
 # endif
 # ifndef _CRT_SECURE_NO_WARNINGS
-#  define _CRT_SECURE_NO_WARNINGS  // for msvc
+#  define _CRT_SECURE_NO_WARNINGS  /* for msvc */
 # endif
-# define _XOPEN_SOURCE   700      // for wcwidth
-# define _DEFAULT_SOURCE          // ensure usleep stays visible with _XOPEN_SOURCE >= 700
+# define _XOPEN_SOURCE   700      /* for wcwidth */
+# define _DEFAULT_SOURCE          /* ensure usleep stays visible with _XOPEN_SOURCE >= 700 */
 # include "attr.c"
 # include "bbcode.c"
 # include "editline.c"
@@ -36,9 +36,9 @@
 # include "common.c"
 #endif
 
-//-------------------------------------------------------------
-// includes
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* includes */
+/*------------------------------------------------------------- */
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -49,9 +49,9 @@
 #include "env.h"
 
 
-//-------------------------------------------------------------
-// Readline
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* Readline */
+/*------------------------------------------------------------- */
 
 static char*  ic_getline( alloc_t* mem );
 
@@ -60,34 +60,34 @@ ic_public char* ic_readline(const char* prompt_text)
   ic_env_t* env = ic_get_env();
   if (env == NULL) return NULL;
   if (!env->noedit) {
-    // terminal editing enabled
-    return ic_editline(env, prompt_text);   // in editline.c
+    /* terminal editing enabled */
+    return ic_editline(env, prompt_text);   /* in editline.c */
   }
   else {
-    // no editing capability (pipe, dumb terminal, etc)
+    /* no editing capability (pipe, dumb terminal, etc) */
     if (env->tty != NULL && env->term != NULL) {
-      // if the terminal is not interactive, but we are reading from the tty (keyboard), we display a prompt
-      term_start_raw(env->term);  // set utf8 mode on windows
+      /* if the terminal is not interactive, but we are reading from the tty (keyboard), we display a prompt */
+      term_start_raw(env->term);  /* set utf8 mode on windows */
       if (prompt_text != NULL) {
         term_write(env->term, prompt_text);
       }
       term_write(env->term, env->prompt_marker);
       term_end_raw(env->term, false);
     }
-    // read directly from stdin
+    /* read directly from stdin */
     return ic_getline(env->mem);
   }
 }
 
 
-//-------------------------------------------------------------
-// Read a line from the stdin stream if there is no editing
-// support (like from a pipe, file, or dumb terminal).
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* Read a line from the stdin stream if there is no editing */
+/* support (like from a pipe, file, or dumb terminal). */
+/*------------------------------------------------------------- */
 
 static char* ic_getline(alloc_t* mem)
 {
-  // read until eof or newline
+  /* read until eof or newline */
   stringbuf_t* sb = sbuf_new(mem);
   int c;
   while (true) {
@@ -103,9 +103,9 @@ static char* ic_getline(alloc_t* mem)
 }
 
 
-//-------------------------------------------------------------
-// Formatted output
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* Formatted output */
+/*------------------------------------------------------------- */
 
 
 ic_public void ic_printf(const char* fmt, ...) {
@@ -146,9 +146,9 @@ void ic_style_close(void) {
 }
 
 
-//-------------------------------------------------------------
-// Interface
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* Interface */
+/*------------------------------------------------------------- */
 
 ic_public bool ic_async_stop(void) {
   ic_env_t* env = ic_get_env(); if (env==NULL) return false;
@@ -181,8 +181,9 @@ ic_public void ic_set_prompt_marker( const char* prompt_marker, const char* cpro
 }
 
 ic_public bool ic_enable_multiline( bool enable ) {
+  bool prev;
   ic_env_t* env = ic_get_env(); if (env==NULL) return false;
-  bool prev = env->singleline_only;
+  prev = env->singleline_only;
   env->singleline_only = !enable;
   return !prev;
 }
@@ -223,36 +224,41 @@ ic_public void ic_history_clear(void) {
 }
 
 ic_public bool ic_enable_auto_tab( bool enable ) {
+  bool prev;
   ic_env_t* env = ic_get_env(); if (env==NULL) return false;
-  bool prev = env->complete_autotab;
+  prev = env->complete_autotab;
   env->complete_autotab = enable;
   return prev;
 }
 
 ic_public bool ic_enable_completion_preview( bool enable ) {
+  bool prev;
   ic_env_t* env = ic_get_env(); if (env==NULL) return false;
-  bool prev = env->complete_nopreview;
+  prev = env->complete_nopreview;
   env->complete_nopreview = !enable;
   return !prev;
 }
 
 ic_public bool ic_enable_multiline_indent(bool enable) {
+  bool prev;
   ic_env_t* env = ic_get_env(); if (env==NULL) return false;
-  bool prev = env->no_multiline_indent;
+  prev = env->no_multiline_indent;
   env->no_multiline_indent = !enable;
   return !prev;
 }
 
 ic_public bool ic_enable_hint(bool enable) {
+  bool prev;
   ic_env_t* env = ic_get_env(); if (env==NULL) return false;
-  bool prev = env->no_hint;
+  prev = env->no_hint;
   env->no_hint = !enable;
   return !prev;
 }
 
 ic_public long ic_set_hint_delay(long delay_ms) {
+  long prev;
   ic_env_t* env = ic_get_env(); if (env==NULL) return false;
-  long prev = env->hint_delay;
+  prev = env->hint_delay;
   env->hint_delay = (delay_ms < 0 ? 0 : (delay_ms > 5000 ? 5000 : delay_ms));
   return prev;
 }
@@ -265,22 +271,25 @@ ic_public void ic_set_tty_esc_delay(long initial_delay_ms, long followup_delay_m
 
 
 ic_public bool ic_enable_highlight(bool enable) {
+  bool prev;
   ic_env_t* env = ic_get_env(); if (env==NULL) return false;
-  bool prev = env->no_highlight;
+  prev = env->no_highlight;
   env->no_highlight = !enable;
   return !prev;
 }
 
 ic_public bool ic_enable_inline_help(bool enable) {
+  bool prev;
   ic_env_t* env = ic_get_env(); if (env==NULL) return false;
-  bool prev = env->no_help;
+  prev = env->no_help;
   env->no_help = !enable;
   return !prev;
 }
 
 ic_public bool ic_enable_brace_matching(bool enable) {
+  bool prev;
   ic_env_t* env = ic_get_env(); if (env==NULL) return false;
-  bool prev = env->no_bracematch;
+  prev = env->no_bracematch;
   env->no_bracematch = !enable;
   return !prev;
 }
@@ -298,8 +307,9 @@ ic_public void ic_set_matching_braces(const char* brace_pairs) {
 }
 
 ic_public bool ic_enable_brace_insertion(bool enable) {
+  bool prev;
   ic_env_t* env = ic_get_env(); if (env==NULL) return false;
-  bool prev = env->no_autobrace;
+  prev = env->no_autobrace;
   env->no_autobrace = !enable;
   return !prev;
 }
@@ -342,23 +352,27 @@ ic_public void* ic_malloc(size_t sz) {
 }
 
 ic_public const char* ic_strdup( const char* s ) {
+  char* p;
+  ssize_t len;
+  ic_env_t* env;
   if (s==NULL) return NULL;
-  ic_env_t* env = ic_get_env(); if (env==NULL) return NULL;
-  ssize_t len = ic_strlen(s);
-  char* p = mem_malloc_tp_n( env->mem, char, len + 1 );
+  env = ic_get_env(); if (env==NULL) return NULL;
+  len = ic_strlen(s);
+  p = mem_malloc_tp_n( env->mem, char, len + 1 );
   if (p == NULL) return NULL;
   ic_memcpy( p, s, len );
   p[len] = 0;
   return p;
 }
 
-//-------------------------------------------------------------
-// Terminal
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* Terminal */
+/*------------------------------------------------------------- */
 
 ic_public void ic_term_init_ex(bool use_std_err) {
+  ic_env_t* env;
   ic_init(use_std_err);
-  ic_env_t* env = ic_get_env(); if (env==NULL) return;
+  env = ic_get_env(); if (env==NULL) return;
   if (env->term==NULL) return;
   term_start_raw(env->term);
 }
@@ -443,53 +457,61 @@ ic_public void ic_term_reverse(bool enable) {
 }
 
 ic_public void ic_term_color_ansi(bool foreground, int ansi_color) {
+  ic_color_t color;
   ic_env_t* env = ic_get_env(); if (env==NULL || env->term==NULL) return;
-  ic_color_t color = color_from_ansi256(ansi_color);
+  color = color_from_ansi256(ansi_color);
   if (foreground) { term_color(env->term, color); }
              else { term_bgcolor(env->term, color); }
 }
 
 ic_public void ic_term_color_rgb(bool foreground, uint32_t hcolor) {
+  ic_color_t color;
   ic_env_t* env = ic_get_env(); if (env==NULL || env->term==NULL) return;
-  ic_color_t color = ic_rgb(hcolor);
+  color = ic_rgb(hcolor);
   if (foreground) { term_color(env->term, color); }
              else { term_bgcolor(env->term, color); }
 }
 
 
-//-------------------------------------------------------------
-// Readline with temporary completer and highlighter
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* Readline with temporary completer and highlighter */
+/*------------------------------------------------------------- */
 
 ic_public char* ic_readline_ex(const char* prompt_text,
                                 ic_completer_fun_t* completer, void* completer_arg,
                                  ic_highlight_fun_t* highlighter, void* highlighter_arg )
 {
-  ic_env_t* env = ic_get_env(); if (env == NULL) return NULL;
-  // save previous
-  ic_completer_fun_t* prev_completer;
+  void* prev_highlighter_arg;
   void* prev_completer_arg;
+  char* res;
+  ic_highlight_fun_t* prev_highlighter;
+  ic_completer_fun_t* prev_completer;
+  ic_env_t* env = ic_get_env(); if (env == NULL) return NULL;
+  /* save previous */
+
+
   completions_get_completer(env->completions, &prev_completer, &prev_completer_arg);
-  ic_highlight_fun_t* prev_highlighter = env->highlighter;
-  void* prev_highlighter_arg = env->highlighter_arg;
-  // call with current
+  prev_highlighter = env->highlighter;
+  prev_highlighter_arg = env->highlighter_arg;
+  /* call with current */
   if (completer != NULL)   { ic_set_default_completer(completer, completer_arg); }
   if (highlighter != NULL) { ic_set_default_highlighter(highlighter, highlighter_arg); }
-  char* res = ic_readline(prompt_text);
-  // restore previous
+  res = ic_readline(prompt_text);
+  /* restore previous */
   ic_set_default_completer(prev_completer, prev_completer_arg);
   ic_set_default_highlighter(prev_highlighter, prev_highlighter_arg);
   return res;
 }
 
 
-//-------------------------------------------------------------
-// Initialize
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* Initialize */
+/*------------------------------------------------------------- */
 
 static void ic_atexit(void);
 
 static void ic_env_free(ic_env_t* env) {
+  alloc_t* mem;
   if (env == NULL) return;
   history_save(env->history);
   history_free(env->history);
@@ -503,35 +525,37 @@ static void ic_env_free(ic_env_t* env) {
   mem_free(env->mem, env->auto_braces);
   env->prompt_marker = NULL;
 
-  // and deallocate ourselves
-  alloc_t* mem = env->mem;
+  /* and deallocate ourselves */
+  mem = env->mem;
   mem_free(mem, env);
 
-  // and finally the custom memory allocation structure
+  /* and finally the custom memory allocation structure */
   mem_free(mem, mem);
 }
 
 
 static ic_env_t* ic_env_create( ic_malloc_fun_t* _malloc, ic_realloc_fun_t* _realloc, ic_free_fun_t* _free, int fd_in, int fd_out )
 {
+  ic_env_t* env;
+  alloc_t* mem;
   if (_malloc == NULL)  _malloc = &malloc;
   if (_realloc == NULL) _realloc = &realloc;
   if (_free == NULL)    _free = &free;
-  // allocate
-  alloc_t* mem = (alloc_t*)_malloc(sizeof(alloc_t));
+  /* allocate */
+  mem = (alloc_t*)_malloc(sizeof(alloc_t));
   if (mem == NULL) return NULL;
   mem->malloc = _malloc;
   mem->realloc = _realloc;
   mem->free = _free;
-  ic_env_t* env = mem_zalloc_tp(mem, ic_env_t);
+  env = mem_zalloc_tp(mem, ic_env_t);
   if (env==NULL) {
     mem->free(mem);
     return NULL;
   }
   env->mem = mem;
 
-  // Initialize
-  env->tty         = tty_new(env->mem, fd_in);  // can return NULL
+  /* Initialize */
+  env->tty         = tty_new(env->mem, fd_in);  /* can return NULL */
   env->term        = term_new(env->mem, env->tty, false, false, fd_out );
   env->history     = history_new(env->mem);
   env->completions = completions_new(env->mem);
@@ -552,7 +576,7 @@ static ic_env_t* ic_env_create( ic_malloc_fun_t* _malloc, ic_realloc_fun_t* _rea
   bbcode_style_def(env->bbcode, "ic-emphasis",  "#ffffd7" );
   bbcode_style_def(env->bbcode, "ic-hint",      "ansi-darkgray" );
   bbcode_style_def(env->bbcode, "ic-error",     "#d70000" );
-  bbcode_style_def(env->bbcode, "ic-bracematch","ansi-white"); //  color = #F7DC6F" );
+  bbcode_style_def(env->bbcode, "ic-bracematch","ansi-white"); /*  color = #F7DC6F" ); */
 
   bbcode_style_def(env->bbcode, "keyword",  "#569cd6" );
   bbcode_style_def(env->bbcode, "control",  "#c586c0" );
@@ -588,8 +612,9 @@ ic_private ic_env_t* ic_get_env(void) {
 #endif
 
 ic_public void ic_init_custom_malloc_ex( ic_malloc_fun_t* _malloc, ic_realloc_fun_t* _realloc, ic_free_fun_t* _free, bool use_std_err ) {
+  int fd_out;
   assert(rpenv == NULL);
-  const int fd_out = (use_std_err ? STDERR_FILENO : -1 /* default = stdout */ );
+  fd_out = (use_std_err ? STDERR_FILENO : -1 /* default = stdout */ );
   if (rpenv != NULL) {
     ic_env_free(rpenv);
     rpenv = ic_env_create( _malloc, _realloc, _free, -1, fd_out );

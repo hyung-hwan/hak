@@ -16,13 +16,13 @@
 
 
 
-//-------------------------------------------------------------
-// edit state
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* edit state */
+/*------------------------------------------------------------- */
 struct editstate_s {
   struct editstate_s* next;
-  const char* input;          // input
-  ssize_t     pos;            // cursor position
+  const char* input;          /* input */
+  ssize_t     pos;            /* cursor position */
 };
 
 ic_private void editstate_init( editstate_t** es ) {
@@ -40,24 +40,26 @@ ic_private void editstate_done( alloc_t* mem, editstate_t** es ) {
 }
 
 ic_private void editstate_capture( alloc_t* mem, editstate_t** es, const char* input, ssize_t pos) {
+  editstate_t* entry;
   if (input==NULL) input = "";
-  // alloc
-  editstate_t* entry = mem_zalloc_tp(mem, editstate_t);
+  /* alloc */
+  entry = mem_zalloc_tp(mem, editstate_t);
   if (entry == NULL) return;
-  // initialize
+  /* initialize */
   entry->input = mem_strdup( mem, input);
   entry->pos   = pos;
   if (entry->input == NULL) { mem_free(mem, entry); return; }
-  // and push
+  /* and push */
   entry->next = *es;
   *es = entry;
 }
 
-// caller should free *input
+/* caller should free *input */
 ic_private bool editstate_restore( alloc_t* mem, editstate_t** es, const char** input, ssize_t* pos ) {
+  editstate_t* entry;
   if (*es == NULL) return false;
-  // pop
-  editstate_t* entry = *es;
+  /* pop */
+  entry = *es;
   *es = entry->next;
   *input = entry->input;
   *pos = entry->pos;

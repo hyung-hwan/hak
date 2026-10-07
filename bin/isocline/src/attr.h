@@ -11,17 +11,17 @@
 #include "common.h"
 #include "stringbuf.h"
 
-//-------------------------------------------------------------
-// text attributes
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* text attributes */
+/*------------------------------------------------------------- */
 
 #define IC_ON   (1)
 #define IC_OFF  (-1)
 #define IC_NONE (0)
 
-// try to fit in 64 bits
-// note: order is important for some compilers
-// note: each color can actually be 25 bits
+/* try to fit in 64 bits */
+/* note: order is important for some compilers */
+/* note: each color can actually be 25 bits */
 typedef union attr_s {
   struct {
     unsigned int  color:28;
@@ -46,17 +46,17 @@ ic_private attr_t attr_update_with( attr_t attr, attr_t newattr );
 ic_private attr_t attr_from_sgr( const char* s, ssize_t len);
 ic_private attr_t attr_from_esc_sgr( const char* s, ssize_t len);
 
-//-------------------------------------------------------------
-// attribute buffer used for rich rendering
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* attribute buffer used for rich rendering */
+/*------------------------------------------------------------- */
 
 struct attrbuf_s;
 typedef struct attrbuf_s attrbuf_t;
 
 ic_private attrbuf_t*     attrbuf_new( alloc_t* mem );
-ic_private void           attrbuf_free( attrbuf_t* ab );  // ab can be NULL
-ic_private void           attrbuf_clear( attrbuf_t* ab ); // ab can be NULL
-ic_private ssize_t        attrbuf_len( attrbuf_t* ab);    // ab can be NULL
+ic_private void           attrbuf_free( attrbuf_t* ab );  /* ab can be NULL */
+ic_private void           attrbuf_clear( attrbuf_t* ab ); /* ab can be NULL */
+ic_private ssize_t        attrbuf_len( attrbuf_t* ab);    /* ab can be NULL */
 ic_private const attr_t*  attrbuf_attrs( attrbuf_t* ab, ssize_t expected_len );
 ic_private ssize_t        attrbuf_append_n( stringbuf_t* sb, attrbuf_t* ab, const char* s, ssize_t len, attr_t attr );
 
@@ -67,4 +67,4 @@ ic_private void           attrbuf_insert_at( attrbuf_t* ab, ssize_t pos, ssize_t
 ic_private attr_t         attrbuf_attr_at( attrbuf_t* ab, ssize_t pos );
 ic_private void           attrbuf_delete_at( attrbuf_t* ab, ssize_t pos, ssize_t count );
 
-#endif // IC_ATTR_H
+#endif /* IC_ATTR_H */

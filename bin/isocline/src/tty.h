@@ -10,14 +10,14 @@
 
 #include "common.h"
 
-//-------------------------------------------------------------
-// TTY/Keyboard input
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* TTY/Keyboard input */
+/*------------------------------------------------------------- */
 
-// Key code
+/* Key code */
 typedef uint32_t  code_t;
 
-// TTY interface
+/* TTY interface */
 struct tty_s;
 typedef struct tty_s tty_t;
 
@@ -36,35 +36,35 @@ ic_private bool   code_is_ascii_char(code_t c, char* chr );
 ic_private bool   code_is_unicode(code_t c, unicode_t* uchr);
 ic_private bool   code_is_virt_key(code_t c );
 
-ic_private bool   tty_term_resize_event(tty_t* tty); // did the terminal resize?
-ic_private bool   tty_async_stop(const tty_t* tty);  // unblock the read asynchronously
+ic_private bool   tty_term_resize_event(tty_t* tty); /* did the terminal resize? */
+ic_private bool   tty_async_stop(const tty_t* tty);  /* unblock the read asynchronously */
 ic_private void   tty_set_esc_delay(tty_t* tty, long initial_delay_ms, long followup_delay_ms);
 
-// shared between tty.c and tty_esc.c: low level character push
+/* shared between tty.c and tty_esc.c: low level character push */
 ic_private void   tty_cpush_char(tty_t* tty, uint8_t c);
 ic_private bool   tty_cpop(tty_t* tty, uint8_t* c);
 ic_private bool   tty_readc_noblock(tty_t* tty, uint8_t* c, long timeout_ms);
-ic_private code_t tty_read_esc(tty_t* tty, long esc_initial_timeout, long esc_timeout); // in tty_esc.c
+ic_private code_t tty_read_esc(tty_t* tty, long esc_initial_timeout, long esc_timeout); /* in tty_esc.c */
 
-// used by term.c to read back ANSI escape responses
+/* used by term.c to read back ANSI escape responses */
 ic_private bool   tty_read_esc_response(tty_t* tty, char esc_start, bool final_st, char* buf, ssize_t buflen );
 
 ic_private bool   tty_is_atty(int fd);
 
-//-------------------------------------------------------------
-// Key codes: a code_t is 32 bits.
-// we use the bottom 24 (nah, 21) bits for unicode (up to x0010FFFF)
-// The codes after x01000000 are for virtual keys
-// and events use  x02000000.
-// The top 4 bits are used for modifiers.
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* Key codes: a code_t is 32 bits. */
+/* we use the bottom 24 (nah, 21) bits for unicode (up to x0010FFFF) */
+/* The codes after x01000000 are for virtual keys */
+/* and events use  x02000000. */
+/* The top 4 bits are used for modifiers. */
+/*------------------------------------------------------------- */
 
-static inline code_t key_char( char c ) {
-  // careful about signed character conversion (negative char ~> 0x80 - 0xFF)
+static ic_inline code_t key_char( char c ) {
+  /* careful about signed character conversion (negative char ~> 0x80 - 0xFF) */
   return ((uint8_t)c);
 }
 
-static inline code_t key_unicode( unicode_t u ) {
+static ic_inline code_t key_unicode( unicode_t u ) {
   return u;
 }
 
@@ -90,7 +90,7 @@ static inline code_t key_unicode( unicode_t u ) {
 #define KEY_BELL          (7)
 #define KEY_BACKSP        (8)
 #define KEY_TAB           (9)
-#define KEY_LINEFEED      (10)   // ctrl/shift + enter is considered KEY_LINEFEED
+#define KEY_LINEFEED      (10)   /* ctrl/shift + enter is considered KEY_LINEFEED */
 #define KEY_CTRL_K        (11)
 #define KEY_CTRL_L        (12)
 #define KEY_ENTER         (13)
@@ -109,7 +109,7 @@ static inline code_t key_unicode( unicode_t u ) {
 #define KEY_CTRL_Z        (26)
 #define KEY_ESC           (27)
 #define KEY_SPACE         (32)
-#define KEY_RUBOUT        (127)  // always translated to KEY_BACKSP
+#define KEY_RUBOUT        (127)  /* always translated to KEY_BACKSP */
 #define KEY_UNICODE_MAX   (0x0010FFFFU)
 
 
@@ -144,7 +144,7 @@ static inline code_t key_unicode( unicode_t u ) {
 #define KEY_EVENT_AUTOTAB (KEY_EVENT_BASE+2)
 #define KEY_EVENT_STOP    (KEY_EVENT_BASE+3)
 
-// Convenience
+/* Convenience */
 #define KEY_CTRL_UP       (WITH_CTRL(KEY_UP))
 #define KEY_CTRL_DOWN     (WITH_CTRL(KEY_DOWN))
 #define KEY_CTRL_LEFT     (WITH_CTRL(KEY_LEFT))
@@ -158,4 +158,4 @@ static inline code_t key_unicode( unicode_t u ) {
 
 #define KEY_SHIFT_TAB     (WITH_SHIFT(KEY_TAB))
 
-#endif // IC_TTY_H
+#endif /* IC_TTY_H */

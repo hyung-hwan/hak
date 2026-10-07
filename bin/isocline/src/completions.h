@@ -12,18 +12,18 @@
 #include "stringbuf.h"
 
 
-//-------------------------------------------------------------
-// Completions
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* Completions */
+/*------------------------------------------------------------- */
 #define IC_MAX_COMPLETIONS_TO_SHOW  (1000)
 #define IC_MAX_COMPLETIONS_TO_TRY   (IC_MAX_COMPLETIONS_TO_SHOW/4)
 
-//-------------------------------------------------------------
-// Magic return values for completion application functions
-//-------------------------------------------------------------
-// completion couldn't complete
+/*------------------------------------------------------------- */
+/* Magic return values for completion application functions */
+/*------------------------------------------------------------- */
+/* completion couldn't complete */
 #define IC_COMP_APPLY_FAIL -1
-// completion didn't end up modifying the buffer or cursor position
+/* completion didn't end up modifying the buffer or cursor position */
 #define IC_COMP_APPLY_NOOP -2
 
 typedef struct completions_s completions_t;
@@ -43,18 +43,18 @@ ic_private void        completions_get_completer(completions_t* cms, ic_complete
 ic_private ssize_t     completions_apply(completions_t* cms, ssize_t index, stringbuf_t* sbuf, ssize_t pos);
 ic_private ssize_t     completions_apply_longest_prefix(completions_t* cms, stringbuf_t* sbuf, ssize_t pos);
 
-//-------------------------------------------------------------
-// Completion environment
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* Completion environment */
+/*------------------------------------------------------------- */
 typedef bool (ic_completion_fun_t)( ic_env_t* env, void* funenv, const char* replacement, const char* display, const char* help, long delete_before, long delete_after );
 
 struct ic_completion_env_s {
-  ic_env_t*   env;       // the isocline environment
-  const char* input;     // current full input
-  long        cursor;    // current cursor position
-  void*       arg;       // argument given to `ic_set_completer`
-  void*       closure;   // free variables for function composition
-  ic_completion_fun_t* complete;  // function that adds a completion
+  ic_env_t*   env;       /* the isocline environment */
+  const char* input;     /* current full input */
+  long        cursor;    /* current cursor position */
+  void*       arg;       /* argument given to `ic_set_completer` */
+  void*       closure;   /* free variables for function composition */
+  ic_completion_fun_t* complete;  /* function that adds a completion */
 };
 
-#endif // IC_COMPLETIONS_H
+#endif /* IC_COMPLETIONS_H */

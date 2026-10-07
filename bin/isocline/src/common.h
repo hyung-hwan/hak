@@ -9,17 +9,17 @@
 #ifndef IC_COMMON_H
 #define IC_COMMON_H
 
-//-------------------------------------------------------------
-// Headers and defines
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* Headers and defines */
+/*------------------------------------------------------------- */
 
-#include <sys/types.h>  // ssize_t
+#include <sys/types.h>  /* ssize_t */
 #include <limits.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <assert.h>
-#include "../include/isocline.h"  // ic_malloc_fun_t, ic_color_t etc.
+#include "../include/isocline.h"  /* ic_malloc_fun_t, ic_color_t etc. */
 
 # ifdef __cplusplus
 #  define ic_extern_c   extern "C"
@@ -29,7 +29,7 @@
 
 #if defined(IC_SEPARATE_OBJS)
 #  define ic_public     ic_extern_c
-# if defined(__GNUC__) // includes clang and icc
+# if defined(__GNUC__) /* includes clang and icc */
 #  define ic_private    __attribute__((visibility("hidden")))
 # else
 #  define ic_private
@@ -42,17 +42,30 @@
 #define ic_unused(x)    (void)(x)
 
 
-//-------------------------------------------------------------
-// ssize_t
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* ssize_t */
+/*------------------------------------------------------------- */
 
 #if defined(_MSC_VER)
 typedef intptr_t ssize_t;
 #endif
 
+/* 'inline' is C99. where it is unavailable these stay plain static functions -
+ * the compiler may still inline them, and where it cannot the cost is a call.
+ * gcc and msvc offer a spelling of their own even in C89 mode. */
+#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
+#  define ic_inline  inline
+#elif defined(__GNUC__)
+#  define ic_inline  __inline__
+#elif defined(_MSC_VER)
+#  define ic_inline  __inline
+#else
+#  define ic_inline
+#endif
+
 #define ssizeof(tp)   (ssize_t)(sizeof(tp))
-static inline size_t  to_size_t(ssize_t sz) { return (sz >= 0 ? (size_t)sz : 0); }
-static inline ssize_t to_ssize_t(size_t sz) { return (sz <= SIZE_MAX/2 ? (ssize_t)sz : 0); }
+static ic_inline size_t  to_size_t(ssize_t sz) { return (sz >= 0 ? (size_t)sz : 0); }
+static ic_inline ssize_t to_ssize_t(size_t sz) { return (sz <= SIZE_MAX/2 ? (ssize_t)sz : 0); }
 
 ic_private void    ic_memmove(void* dest, const void* src, ssize_t n);
 ic_private void    ic_memcpy(void* dest, const void* src, ssize_t n);
@@ -72,21 +85,21 @@ ic_private int     ic_strnicmp(const char* s1, const char* s2, ssize_t n);
 
 
 
-//---------------------------------------------------------------------
-// Unicode
-//
-// We use "qutf-8" (quite like utf-8) encoding and decoding.
-// Internally we always use valid utf-8. If we encounter invalid
-// utf-8 bytes (or bytes >= 0x80 from any other encoding) we encode
-// these as special code points in the "raw plane" (0xEE000 - 0xEE0FF).
-// When decoding we are then able to restore such raw bytes as-is.
-// See <https://github.com/koka-lang/koka/blob/master/kklib/include/kklib/string.h>
-//---------------------------------------------------------------------
+/*--------------------------------------------------------------------- */
+/* Unicode */
+/* */
+/* We use "qutf-8" (quite like utf-8) encoding and decoding. */
+/* Internally we always use valid utf-8. If we encounter invalid */
+/* utf-8 bytes (or bytes >= 0x80 from any other encoding) we encode */
+/* these as special code points in the "raw plane" (0xEE000 - 0xEE0FF). */
+/* When decoding we are then able to restore such raw bytes as-is. */
+/* See <https://github.com/koka-lang/koka/blob/master/kklib/include/kklib/string.h> */
+/*--------------------------------------------------------------------- */
 
 typedef uint32_t  unicode_t;
 
 ic_private void      unicode_to_qutf8(unicode_t u, uint8_t buf[5]);
-ic_private unicode_t unicode_from_qutf8(const uint8_t* s, ssize_t len, ssize_t* nread); // validating
+ic_private unicode_t unicode_from_qutf8(const uint8_t* s, ssize_t len, ssize_t* nread); /* validating */
 
 ic_private unicode_t unicode_from_raw(uint8_t c);
 ic_private bool      unicode_is_raw(unicode_t u, uint8_t* c);
@@ -94,28 +107,28 @@ ic_private bool      unicode_is_raw(unicode_t u, uint8_t* c);
 ic_private bool      utf8_is_cont(uint8_t c);
 
 
-//-------------------------------------------------------------
-// Colors
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* Colors */
+/*------------------------------------------------------------- */
 
-// A color is either RGB or an ANSI code.
-// (RGB colors have bit 24 set to distinguish them from the ANSI color palette colors.)
-// (Isocline will automatically convert from RGB on terminals that do not support full colors)
+/* A color is either RGB or an ANSI code. */
+/* (RGB colors have bit 24 set to distinguish them from the ANSI color palette colors.) */
+/* (Isocline will automatically convert from RGB on terminals that do not support full colors) */
 typedef uint32_t ic_color_t;
 
-// Create a color from a 24-bit color value.
+/* Create a color from a 24-bit color value. */
 ic_private ic_color_t ic_rgb(uint32_t hex);
 
-// Create a color from a 8-bit red/green/blue components.
-// The value of each component is capped between 0 and 255.
+/* Create a color from a 8-bit red/green/blue components. */
+/* The value of each component is capped between 0 and 255. */
 ic_private ic_color_t ic_rgbx(ssize_t r, ssize_t g, ssize_t b);
 
 #define IC_COLOR_NONE     (0)
-#define IC_RGB(rgb)       (0x1000000 | (uint32_t)(rgb)) // ic_rgb(rgb)  // define to it can be used as a constant
+#define IC_RGB(rgb)       (0x1000000 | (uint32_t)(rgb)) /* ic_rgb(rgb)  // define to it can be used as a constant */
 
-// ANSI colors.
-// The actual colors used is usually determined by the terminal theme
-// See <https://en.wikipedia.org/wiki/ANSI_escape_code#3-bit_and_4-bit>
+/* ANSI colors. */
+/* The actual colors used is usually determined by the terminal theme */
+/* See <https://en.wikipedia.org/wiki/ANSI_escape_code#3-bit_and_4-bit> */
 #define IC_ANSI_BLACK     (30)
 #define IC_ANSI_MAROON    (31)
 #define IC_ANSI_GREEN     (32)
@@ -142,9 +155,9 @@ ic_private ic_color_t ic_rgbx(ssize_t r, ssize_t g, ssize_t b);
 
 
 
-//-------------------------------------------------------------
-// Debug
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* Debug */
+/*------------------------------------------------------------- */
 
 #if defined(IC_NO_DEBUG_MSG)
 #define debug_msg(fmt,...)   (void)(0)
@@ -153,16 +166,16 @@ ic_private void debug_msg( const char* fmt, ... );
 #endif
 
 
-//-------------------------------------------------------------
-// Abstract environment
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* Abstract environment */
+/*------------------------------------------------------------- */
 struct ic_env_s;
 typedef struct ic_env_s ic_env_t;
 
 
-//-------------------------------------------------------------
-// Allocation
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* Allocation */
+/*------------------------------------------------------------- */
 
 typedef struct alloc_s {
   ic_malloc_fun_t*  malloc;
@@ -184,4 +197,4 @@ ic_private char* mem_strndup( alloc_t* mem, const char* s, ssize_t n);
 #define mem_realloc_tp(mem,tp,p,n)   (tp*)mem_realloc(mem,p,(n)*ssizeof(tp))
 
 
-#endif // IC_COMMON_H
+#endif /* IC_COMMON_H */

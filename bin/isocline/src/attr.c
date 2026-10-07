@@ -7,13 +7,13 @@
 #include <string.h>
 
 #include "common.h"
-#include "stringbuf.h" // str_next_ofs
+#include "stringbuf.h" /* str_next_ofs */
 #include "attr.h"
-#include "term.h"      // color_from_ansi256
+#include "term.h"      /* color_from_ansi256 */
 
-//-------------------------------------------------------------
-// Attributes
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* Attributes */
+/*------------------------------------------------------------- */
 
 ic_private attr_t attr_none(void) {
   attr_t attr;
@@ -100,7 +100,7 @@ static bool sgr_next_par3(const char* s, ssize_t* pi, ssize_t* p1, ssize_t* p2, 
 
 ic_private attr_t attr_from_sgr( const char* s, ssize_t len) {
   attr_t attr = attr_none();
-  for( ssize_t i = 0; i < len && s[i] != 0; i++) {
+  { ssize_t i; for( i = 0; i < len && s[i] != 0; i++) {
     ssize_t cmd = 0;
     if (!sgr_next_par(s,&i,&cmd)) continue;
     switch(cmd) {
@@ -129,12 +129,12 @@ ic_private attr_t attr_from_sgr( const char* s, ssize_t len) {
           attr.x.bgcolor = IC_ANSI_DARKGRAY + (unsigned)(cmd - 100);
         }
         else if ((cmd == 38 || cmd == 48) && sgr_is_sep(s[i])) {
-          // non-associative SGR :-(
+          /* non-associative SGR :-( */
           ssize_t par = 0;
           i++;
           if (sgr_next_par(s, &i, &par)) {
             if (par==5 && sgr_is_sep(s[i])) {
-              // ansi 256 index
+              /* ansi 256 index */
               i++;
               if (sgr_next_par(s, &i, &par) && par >= 0 && par <= 0xFF) {
                 ic_color_t color = color_from_ansi256(par);
@@ -143,9 +143,10 @@ ic_private attr_t attr_from_sgr( const char* s, ssize_t len) {
               }
             }
             else if (par == 2 && sgr_is_sep(s[i])) {
-              // rgb value
-              i++;
               ssize_t r,g,b;
+              /* rgb value */
+              i++;
+
               if (sgr_next_par3(s, &i, &r,&g,&b)) {
                 ic_color_t color = ic_rgbx(r,g,b);
                 if (cmd==38) { attr.x.color = color; }
@@ -159,7 +160,7 @@ ic_private attr_t attr_from_sgr( const char* s, ssize_t len) {
         }
       }
     }
-  }
+  } }
   return attr;
 }
 
@@ -169,9 +170,9 @@ ic_private attr_t attr_from_esc_sgr( const char* s, ssize_t len) {
 }
 
 
-//-------------------------------------------------------------
-// Attribute buffer
-//-------------------------------------------------------------
+/*------------------------------------------------------------- */
+/* Attribute buffer */
+/*------------------------------------------------------------- */
 struct attrbuf_s {
   attr_t*  attrs;
   ssize_t  capacity;
@@ -180,10 +181,12 @@ struct attrbuf_s {
 };
 
 static bool attrbuf_ensure_capacity( attrbuf_t* ab, ssize_t needed ) {
+  attr_t* newattrs;
+  ssize_t newcap;
   if (needed <= ab->capacity) return true;
-  ssize_t newcap = (ab->capacity <= 0 ? 240 : (ab->capacity > 1000 ? ab->capacity + 1000 : 2*ab->capacity));
+  newcap = (ab->capacity <= 0 ? 240 : (ab->capacity > 1000 ? ab->capacity + 1000 : 2*ab->capacity));
   if (needed > newcap) { newcap = needed; }
-  attr_t* newattrs = mem_realloc_tp( ab->mem, attr_t, ab->attrs, newcap );
+  newattrs = mem_realloc_tp( ab->mem, attr_t, ab->attrs, newcap );
   if (newattrs == NULL) return false;
   ab->attrs = newattrs;
   ab->capacity = newcap;
@@ -222,12 +225,12 @@ ic_private ssize_t attrbuf_len( attrbuf_t* ab ) {
 
 ic_private const attr_t* attrbuf_attrs( attrbuf_t* ab, ssize_t expected_len ) {
   assert(expected_len <= ab->count );
-  // expand if needed
+  /* expand if needed */
   if (ab->count < expected_len) {
     if (!attrbuf_ensure_capacity(ab,expected_len)) return NULL;
-    for(ssize_t i = ab->count; i < expected_len; i++) {
+    { ssize_t i; for(i = ab->count; i < expected_len; i++) {
       ab->attrs[i] = attr_none();
-    }
+    } }
     ab->count = expected_len;
   }
   return ab->attrs;
@@ -236,17 +239,18 @@ ic_private const attr_t* attrbuf_attrs( attrbuf_t* ab, ssize_t expected_len ) {
 
 
 static void attrbuf_update_set_at( attrbuf_t* ab, ssize_t pos, ssize_t count, attr_t attr, bool update ) {
+  ssize_t i;
   const ssize_t end = pos + count;
   if (!attrbuf_ensure_capacity(ab, end)) return;
-  ssize_t i;
-  // initialize if end is beyond the count (todo: avoid duplicate init and set if update==false?)
+
+  /* initialize if end is beyond the count (todo: avoid duplicate init and set if update==false?) */
   if (ab->count < end) {
     for(i = ab->count; i < end; i++) {
       ab->attrs[i] = attr_none();
     }
     ab->count = end;
   }
-  // fill pos to end with attr
+  /* fill pos to end with attr */
   for(i = pos; i < end; i++) {
     ab->attrs[i] = (update ? attr_update_with(ab->attrs[i],attr) : attr);
   }
@@ -269,7 +273,7 @@ ic_private void attrbuf_insert_at( attrbuf_t* ab, ssize_t pos, ssize_t count, at
 }
 
 
-// note: must allow ab == NULL!
+/* note: must allow ab == NULL! */
 ic_private ssize_t attrbuf_append_n( stringbuf_t* sb, attrbuf_t* ab, const char* s, ssize_t len, attr_t attr ) {
   if (s == NULL || len == 0) return sbuf_len(sb);
   if (ab != NULL) {

@@ -5,7 +5,7 @@
   found in the "LICENSE" file at the root of this distribution.
 -----------------------------------------------------------------------------*/
 
-// This file is included from "bbcode.c" and contains html color names
+/* This file is included from "bbcode.c" and contains html color names */
 
 #include "common.h"
 
@@ -16,7 +16,7 @@ typedef struct style_color_s {
 
 #define IC_HTML_COLOR_COUNT (172)
 
-// ordered list of HTML color names (so we can use binary search)
+/* ordered list of HTML color names (so we can use binary search) */
 static style_color_t html_colors[IC_HTML_COLOR_COUNT+1] = {
   { "aliceblue",      IC_RGB(0xf0f8ff) },
   { "ansi-aqua",      IC_ANSI_AQUA },
