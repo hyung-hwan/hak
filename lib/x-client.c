@@ -531,7 +531,7 @@ static int client_connect_to_server (hak_client_t* client, const char* ipaddr)
 
 	hak_sys_set_nonblock(sck, 1); /* make it nonblocking after connection has been established */
 
-	HAK_MEMSET(&proto, 0, HAK_SIZEOF(proto_cb));
+	HAK_MEMSET(&proto_cb, 0, HAK_SIZEOF(proto_cb));
 	proto_cb.on_packet = proto_on_packet;
 
 	proto = hak_xproto_open(hak_client_getmmgr(client), &proto_cb, HAK_SIZEOF(*proto_xtn));

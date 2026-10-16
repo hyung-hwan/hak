@@ -827,17 +827,16 @@ static int client_main (const char* outer, int argc, char* argv[])
 	g_client = client;
 	set_signal(SIGINT, handle_sigint);
 	set_signal_to_ignore(SIGPIPE);
-
 	n = hak_client_start(client, argv[opt.ind], argv[opt.ind + 1], shut_wr_after_req);
+	set_signal_to_default(SIGINT);
+	set_signal_to_default(SIGPIPE);
+	g_client = NULL;
+
 	if (n <= -1)
 	{
 		fprintf(stderr, "ERROR: %s\n", hak_client_geterrbmsg(client));
 		goto oops;
 	}
-
-	set_signal_to_default(SIGINT);
-	set_signal_to_default(SIGPIPE);
-	g_client = NULL;
 
 	if (xtn->logfd >= 0)
 	{
@@ -918,7 +917,7 @@ int json_main (const char* outer, int argc, char* argv[])
 	p = "[ \"ab\\xab\\uC88B\\uC544\\uC6A9c\", \"kaden\", \"iron\", true, { \"null\": \"a\\1bc\", \"123\": \"AA20AA\", \"10\": -0.123, \"way\": '\\uC88A' } ]";
 	/*p = "{ \"result\": \"SUCCESS\", \"message\": \"1 clients\", \"sessions\": [] }";*/
 
-	if (hak_json_feed(json, p, strlen(p), &xlen) <= -1)
+	if (hak_json_feedbchars(json, p, strlen(p), &xlen) <= -1)
 	{
 		hak_json_logbfmt(json, HAK_LOG_FATAL | HAK_LOG_APP, "ERROR: unable to process - %js\n", hak_json_geterrmsg(json));
 	}

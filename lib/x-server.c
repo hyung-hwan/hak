@@ -308,14 +308,14 @@ static HAK_INLINE int open_read_stream (hak_t* hak, hak_io_cciarg_t* arg)
 		#if defined(HAK_OOCH_IS_UCH)
 			hak_convootobcstr(hak, server->cfg.script_include_path, &ucslen, bb->fn, &parlen);
 		#else
-			hak_copy_bchars (bb->fn, server->cfg.script_include_path, parlen);
+			hak_copy_bchars(bb->fn, server->cfg.script_include_path, parlen);
 		#endif
 		#if defined(__VMS)
 			/* a VMS directory spec already ends with ']' or ':' and the name follows
 			 * it directly, so nothing is inserted - see the PATH-RELATED MACROS block
 			 * in hak-utl.h. the +2 in hak_callocmem() simply goes unused here. */
 		#else
-			if (!HAK_IS_PATH_SEP(bb->fn[parlen])) bb->fn[parlen++] = HAK_DFL_PATH_SEP; /* +2 was used in hak_callocmem() for this (+1 for this, +1 for '\0' */
+			if (!HAK_IS_PATH_SEP(bb->fn[parlen - 1])) bb->fn[parlen++] = HAK_DFL_PATH_SEP; /* +2 was used in hak_callocmem() for this (+1 for this, +1 for '\0' */
 		#endif
 		}
 		else
@@ -801,7 +801,7 @@ static int execute_script (hak_xproto_t* proto, const hak_bch_t* trigger)
 #if 0
 	hak_xproto_start_reply (proto);
 #endif
-	if (server->cfg.actor_max_runtime.sec <= 0 && server->cfg.actor_max_runtime.sec <= 0)
+	if (server->cfg.actor_max_runtime.sec <= 0 && server->cfg.actor_max_runtime.nsec <= 0)
 	{
 		obj = hak_execute(worker->hak);
 		if (!obj) failmsg = hak_geterrmsg(worker->hak);
@@ -923,7 +923,7 @@ static int kill_server_worker (hak_xproto_t* proto, hak_oow_t wid)
 			}
 			else
 			{
-				if (worker->sck) shutdown(worker->sck, SHUT_RDWR);
+				if (worker->sck >= 0) shutdown(worker->sck, SHUT_RDWR);
 				if (worker->hak) hak_abort(worker->hak);
 			}
 		}
@@ -1013,9 +1013,11 @@ printf ("EXECUTING hak_executing......\n");
 			break;
 
 		case HAK_XPKT_LIST_WORKERS:
+			/* not yet implemented */
 			break;
 
 		case HAK_XPKT_KILL_WORKER:
+			/* not yet implemented */
 			break;
 
 		case HAK_XPKT_DISCONNECT:
@@ -1660,6 +1662,12 @@ static void* worker_main (void* ctx)
 	}
 
 	pthread_mutex_lock(&server->worker_mutex);
+	/* closing the socket here is needed for timeliness and not for correctness.
+	 * without this, the socket stays open until the next purge cycle is reached
+	 * and purge_all_workers(DEAD) is called. it must stay inside worker_mutex.
+	 * purge_all_workers() reads worker->sck under the same mutex to shutdown()
+	 * it, so closing outside the lock would let a recycled descriptor get shut
+	 * down in its place. */
 	fini_worker_socket(worker);
 	if (!worker->claimed)
 	{
@@ -1667,6 +1675,11 @@ static void* worker_main (void* ctx)
 		add_worker_to_server(server, HAK_SERVER_WORKER_STATE_DEAD, worker);
 	}
 	pthread_mutex_unlock(&server->worker_mutex);
+
+	/* nudge the main loop so purge_all_workers(DEAD) runs now rather than
+	 * after the next epoll_wait timeout - the worker still holds its hak,
+	 * its actor heap and, if fini_worker_socket() did not run, its socket. */
+	write(server->mux_pipe[1], "X", 1); /* don't care even if it fails */
 
 	return HAK_NULL;
 }
