@@ -302,11 +302,16 @@ static HAK_INLINE int open_read_stream (hak_t* hak, hak_io_cciarg_t* arg)
 		bb = (bb_t*)hak_callocmem(hak, HAK_SIZEOF(*bb) + (HAK_SIZEOF(hak_bch_t) * (parlen + bcslen + 2)));
 		if (HAK_UNLIKELY(!bb)) goto oops;
 
+		bb->fd = -1;
 		bb->fn = (hak_bch_t*)(bb + 1);
 		if (fn[0] == '\0' && server->cfg.script_include_path[0] != '\0')
 		{
 		#if defined(HAK_OOCH_IS_UCH)
+			parlen++; /* capacity to cater for the terminating null */
 			hak_convootobcstr(hak, server->cfg.script_include_path, &ucslen, bb->fn, &parlen);
+			HAK_ASSERT(hak, bb->fn[parlen] == '\0');
+			/* no error check. this must succeed as the warm-up call has already succeeded for length calculation */
+			/* parlen is decremented back to become the length without the terminating null by the above function */
 		#else
 			hak_copy_bchars(bb->fn, server->cfg.script_include_path, parlen);
 		#endif
@@ -324,9 +329,12 @@ static HAK_INLINE int open_read_stream (hak_t* hak, hak_io_cciarg_t* arg)
 		}
 
 	#if defined(HAK_OOCH_IS_UCH)
+		bcslen++; /* capacity to cater for the terminating null */
 		hak_convootobcstr(hak, arg->name, &ucslen, &bb->fn[parlen], &bcslen);
+		/* no error check. this must succeed as the warm-up call has already succeeded for length calculation */
+		/* bcslen is decremented back to become the length without the terminating null by the above function */
 	#else
-		hak_copy_bcstr (&bb->fn[parlen], bcslen + 1, arg->name);
+		hak_copy_bcstr(&bb->fn[parlen], bcslen + 1, arg->name);
 	#endif
 		bb->fd = open(bb->fn, O_RDONLY, 0);
 

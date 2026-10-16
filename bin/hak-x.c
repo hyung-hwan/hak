@@ -910,6 +910,11 @@ int json_main (const char* outer, int argc, char* argv[])
 	json_prim.instcb = json_inst_cb;
 
 	json = hak_json_open(&sys_mmgr, HAK_SIZEOF(json_xtn_t), &json_prim, NULL);
+	if (HAK_UNLIKELY(json))
+	{
+		fprintf(stderr, "cannot open json processor\n");
+		return -1;
+	}
 
 	json_xtn = (json_xtn_t*)hak_json_getxtn(json);
 	json_xtn->logmask = HAK_LOG_ALL_LEVELS | HAK_LOG_ALL_TYPES;
