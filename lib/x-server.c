@@ -1060,7 +1060,7 @@ static int send_bytes (hak_xproto_t* proto, hak_xpkt_type_t xpkt_type, const hak
 /*printf ("SENDING BYTES [%.*s]\n", (int)len, data);*/
 	do
 	{
-		int nv;
+		int nv, nw;
 
 		while (cur != end && cur - ptr < HAK_XPKT_MAX_PLD_LEN) cur++;
 
@@ -1079,11 +1079,28 @@ static int send_bytes (hak_xproto_t* proto, hak_xpkt_type_t xpkt_type, const hak
 			iov[nv++].iov_len = seglen;
 		}
 
-		if (hak_sys_send_iov(worker->sck, iov, nv) <= -1)
+		nw = 0;
+		while (nw < nv)
 		{
-			/* TODO: error message */
+			int n;
+
+			n = hak_sys_send_iov(worker->sck, &iov[nw], nv - nw);
+			if (n <= -1)
+			{
+				/* TODO: error message */
 fprintf (stderr, "Unable to sendmsg on %d - %s\n", worker->sck, strerror(errno));
-			return -1;
+				return -1;
+			}
+
+			/* hak_sys_send_iov() returns the number of slots it wrote in full,
+			 * having advanced iov_base/iov_len on the one it stopped inside, so
+			 * the next round resumes from there. it falls short of the count
+			 * only when the socket would block, and hak_server_start() makes the
+			 * accepted socket blocking, so this loop is a safeguard rather than
+			 * the usual path. it is still needed: taking a short write for a
+			 * complete one drops payload and desynchronises the packet stream
+			 * the client is parsing. */
+			nw += n;
 		}
 
 		ptr = cur;
@@ -1311,7 +1328,7 @@ static HAK_INLINE void release_wid (hak_server_t* server, hak_server_worker_t* w
 	server->wid_map.ptr[wid].u.next = HAK_SERVER_WID_INVALID;
 	if (server->wid_map.free_last == HAK_SERVER_WID_INVALID)
 	{
-		HAK_ASSERT(server->dummy_hak, server->wid_map.free_first <= HAK_SERVER_WID_INVALID);
+		HAK_ASSERT(server->dummy_hak, server->wid_map.free_first == HAK_SERVER_WID_INVALID);
 		server->wid_map.free_first = wid;
 	}
 	else
@@ -2273,7 +2290,6 @@ void hak_server_seterrufmt (hak_server_t* server, hak_errnum_t errnum, const hak
 	va_end(ap);
 
 	HAK_ASSERT(server->dummy_hak, HAK_COUNTOF(server->errmsg.buf) == HAK_COUNTOF(server->dummy_hak->errmsg.buf));
-	server->errnum = errnum;
 	server->errnum = errnum;
 	hak_copy_oochars(server->errmsg.buf, server->dummy_hak->errmsg.buf, HAK_COUNTOF(server->errmsg.buf));
 	server->errmsg.len = server->dummy_hak->errmsg.len;

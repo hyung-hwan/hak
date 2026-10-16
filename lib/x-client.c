@@ -355,7 +355,7 @@ const hak_uch_t* hak_client_geterrumsg (hak_client_t* client)
 
 	return client->errmsg.xerrmsg;
 #else
-	return (client->errmsg.len == '\0')? hak_errnum_to_errstr(client->errnum): client->errmsg.buf;
+	return (client->errmsg.len == 0)? hak_errnum_to_errstr(client->errnum): client->errmsg.buf;
 #endif
 }
 
@@ -598,6 +598,12 @@ static int client_send_to_remote (hak_client_t* client, hak_xpkt_type_t pktype, 
 	hak_uint16_t seglen;
 	int n, c;
 
+	/* once the socket backs up, every remaining byte - the tail of the segment
+	 * that fell short, and all segments after it - goes to the pending buffer
+	 * in order, for on_remote_event() to drain on POLLOUT. returning early
+	 * here instead is what used to drop everything past the current segment. */
+	int pending = 0;
+
 	do
 	{
 		seglen = (len > HAK_XPKT_MAX_PLD_LEN)? HAK_XPKT_MAX_PLD_LEN: len;
@@ -616,24 +622,32 @@ static int client_send_to_remote (hak_client_t* client, hak_xpkt_type_t pktype, 
 			iov[c++].iov_len = seglen;
 		}
 
-		n = hak_sys_send_iov(client->remote.sck, iov, c);
-		if (n <= -1) return -1;
-
-		if (n < c || (n > 0 && iov[n - 1].iov_len > 0))
+		if (!pending)
 		{
-			/* the write isn't completed. */
-			int i;
-
-			for (i = n; i < c ; i++)
+			n = hak_sys_send_iov(client->remote.sck, iov, c);
+			if (n <= -1) return -1;
+			/* hak_sys_send_iov() returns the number of slots written in full,
+			 * having zeroed their iov_len and advanced iov_base/iov_len on the
+			 * one it stopped inside. anything short of the count means the
+			 * socket would block. */
+			if (n < c)
 			{
-				if (iov[i].iov_len > 0)
+				int i;
+				for (i = n; i < c; i++)
 				{
-					/* pending write... */
 					if (client_add_to_local_pw2r(client, iov[i].iov_base, iov[i].iov_len) <= -1) return -1;
 				}
+				pending = 1;
 			}
-
-			break;
+		}
+		else
+		{
+			/* the socket has already backed up, so this whole segment is queued */
+			int i;
+			for (i = 0; i < c; i++)
+			{
+				if (client_add_to_local_pw2r(client, iov[i].iov_base, iov[i].iov_len) <= -1) return -1;
+			}
 		}
 
 		ptr += seglen;

@@ -561,7 +561,7 @@ static int server_main (const char* outer, int argc, char* argv[])
 	const char* dbgopt = HAK_NULL;
 	const char* incpath = HAK_NULL;
 	hak_oow_t worker_max_count = 0;
-	hak_oow_t worker_stack_size = MIN_ACTOR_HEAP_SIZE;
+	hak_oow_t worker_stack_size = MIN_WORKER_STACK_SIZE;
 	hak_ntime_t worker_idle_timeout = { 0, 0 };
 	hak_oow_t actor_heap_size = MIN_ACTOR_HEAP_SIZE;
 	hak_ntime_t actor_max_runtime = { 0, 0 };
@@ -960,11 +960,11 @@ int main (int argc, char* argv[])
 	}
 	else if (strcmp(argv[1], "client") == 0)
 	{
-		n = client_main(argv[0], argc -1, &argv[1]);
+		n = client_main(argv0, argc -1, &argv[1]);
 	}
 	else if (strcmp(argv[1], "json") == 0)
 	{
-		n = json_main(argv[0], argc -1, &argv[1]);
+		n = json_main(argv0, argc -1, &argv[1]);
 	}
 	else
 	{
