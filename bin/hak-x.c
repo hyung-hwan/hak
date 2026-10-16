@@ -149,7 +149,7 @@ static int write_log (server_xtn_t* xtn, int fd, const hak_bch_t* ptr, hak_oow_t
 			rcapa = HAK_COUNTOF(xtn->logbuf.buf) - xtn->logbuf.len;
 			cplen = (len >= rcapa)? rcapa: len;
 
-			memcpy (&xtn->logbuf.buf[xtn->logbuf.len], ptr, cplen);
+			memcpy(&xtn->logbuf.buf[xtn->logbuf.len], ptr, cplen);
 			xtn->logbuf.len += cplen;
 			ptr += cplen;
 			len -= cplen;
@@ -173,7 +173,7 @@ static int write_log (server_xtn_t* xtn, int fd, const hak_bch_t* ptr, hak_oow_t
 			}
 			else
 			{
-				memcpy (xtn->logbuf.buf, ptr, len);
+				memcpy(xtn->logbuf.buf, ptr, len);
 				xtn->logbuf.len += len;
 				ptr += len;
 				len -= len;
@@ -248,21 +248,21 @@ static void log_write (server_xtn_t* xtn, hak_oow_t wid, hak_bitmask_t mask, con
 			tslen = 25;
 		}
 
-		write_log (xtn, logfd, ts, tslen);
+		write_log(xtn, logfd, ts, tslen);
 
 		if (wid != HAK_SERVER_WID_INVALID)
 		{
 			/* TODO: check if the underlying snprintf support %zd */
 			tslen = snprintf(ts, sizeof(ts), "[%zu] ", wid);
-			write_log (xtn, logfd, ts, tslen);
+			write_log(xtn, logfd, ts, tslen);
 		}
 	}
 
 	if (logfd == xtn->logfd && xtn->logfd_istty)
 	{
-		if (mask & HAK_LOG_FATAL) write_log (xtn, logfd, "\x1B[1;31m", 7);
-		else if (mask & HAK_LOG_ERROR) write_log (xtn, logfd, "\x1B[1;32m", 7);
-		else if (mask & HAK_LOG_WARN) write_log (xtn, logfd, "\x1B[1;33m", 7);
+		if (mask & HAK_LOG_FATAL) write_log(xtn, logfd, "\x1B[1;31m", 7);
+		else if (mask & HAK_LOG_ERROR) write_log(xtn, logfd, "\x1B[1;32m", 7);
+		else if (mask & HAK_LOG_WARN) write_log(xtn, logfd, "\x1B[1;33m", 7);
 	}
 
 #if defined(HAK_OOCH_IS_UCH)
@@ -304,12 +304,12 @@ static void log_write (server_xtn_t* xtn, hak_oow_t wid, hak_bitmask_t mask, con
 		}
 	}
 #else
-	write_log (xtn, logfd, msg, len);
+	write_log(xtn, logfd, msg, len);
 #endif
 
 	if (logfd == xtn->logfd && xtn->logfd_istty)
 	{
-		if (mask & (HAK_LOG_FATAL | HAK_LOG_ERROR | HAK_LOG_WARN)) write_log (xtn, logfd, "\x1B[0m", 4);
+		if (mask & (HAK_LOG_FATAL | HAK_LOG_ERROR | HAK_LOG_WARN)) write_log(xtn, logfd, "\x1B[0m", 4);
 	}
 
 	flush_log (xtn, logfd);
@@ -351,7 +351,7 @@ static void set_signal (int sig, signal_handler_t handler)
 {
 	struct sigaction sa;
 
-	memset (&sa, 0, sizeof(sa));
+	memset(&sa, 0, sizeof(sa));
 	/*sa.sa_handler = handler;*/
 	sa.sa_flags = SA_SIGINFO;
 	sa.sa_sigaction = handler;
@@ -364,7 +364,7 @@ static void set_signal_to_ignore (int sig)
 {
 	struct sigaction sa;
 
-	memset (&sa, 0, sizeof(sa));
+	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = SIG_IGN;
 	sa.sa_flags = 0;
 	sigemptyset (&sa.sa_mask);
@@ -376,7 +376,7 @@ static void set_signal_to_default (int sig)
 {
 	struct sigaction sa;
 
-	memset (&sa, 0, sizeof(sa));
+	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = SIG_DFL;
 	sa.sa_flags = 0;
 	sigemptyset (&sa.sa_mask);
@@ -634,7 +634,7 @@ static int server_main (const char* outer, int argc, char* argv[])
 
 	if (opt.ind >= argc) goto print_usage;
 
-	memset (&server_prim, 0, HAK_SIZEOF(server_prim));
+	memset(&server_prim, 0, HAK_SIZEOF(server_prim));
 	server_prim.log_write = server_log_write;
 
 	server = hak_server_open(&sys_mmgr, HAK_SIZEOF(server_xtn_t), &server_prim, HAK_NULL);

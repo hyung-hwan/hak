@@ -183,7 +183,9 @@ hak_client_t* hak_client_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_client_p
 	{
 		if (errinf)
 		{
-			hak_seterrbfmtwithsyserr(hak, 0, errno, HAK_NULL, 0);
+			/* set the error on the hak object */
+			hak_seterrbfmtwithsyserr(hak, 0, errno, "unable to open pipes for multiplexer");
+			/* extract it to errinf */
 			hak_geterrinf(hak, errinf);
 		}
 		goto oops;
@@ -237,6 +239,7 @@ void hak_client_close (hak_client_t* client)
 	if (client->local.in >= 0 && !is_stdio_fd(client->local.in)) close(client->local.in);
 	if (client->local.out >= 0 && !is_stdio_fd(client->local.out)) close(client->local.out);
 	if (client->local.err >= 0 && !is_stdio_fd(client->local.err)) close(client->local.err);
+	if (client->local.pw2r.ptr) hak_client_freemem(client, client->local.pw2r.ptr);
 
 	hak_sys_close_pipes(client->mux_pipe);
 	hak_close(client->dummy_hak);
@@ -568,16 +571,18 @@ static void client_close (hak_client_t* client)
 
 static int client_add_to_local_pw2r (hak_client_t* client, const hak_uint8_t* ptr, hak_oow_t len)
 {
-	if (client->local.pw2r.len >= client->local.pw2r.capa)
+	hak_oow_t reqcapa;
+
+	reqcapa = client->local.pw2r.len + len;
+	if (reqcapa > client->local.pw2r.capa)
 	{
 		hak_uint8_t* tmp;
-		hak_oow_t newcapa;
 
-		newcapa = HAK_ALIGN_POW2(client->local.pw2r.capa + len, 128);
-		tmp = hak_client_reallocmem(client, client->local.pw2r.ptr, newcapa * HAK_SIZEOF(*client->local.pw2r.ptr));
+		reqcapa = HAK_ALIGN_POW2(reqcapa, 128);
+		tmp = hak_client_reallocmem(client, client->local.pw2r.ptr, reqcapa * HAK_SIZEOF(*client->local.pw2r.ptr));
 		if (HAK_UNLIKELY(!tmp)) return -1;
 
-		client->local.pw2r.capa = newcapa;
+		client->local.pw2r.capa = reqcapa;
 		client->local.pw2r.ptr = tmp;
 	}
 

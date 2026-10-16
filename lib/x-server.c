@@ -246,6 +246,11 @@ struct hak_server_t
 };
 
 /* ========================================================================= */
+static int init_worker_hak (hak_server_worker_t* worker);
+static void fini_worker_hak (hak_server_worker_t* worker);
+static int init_worker_proto (hak_server_worker_t* worker);
+static void fini_worker_proto (hak_server_worker_t* worker);
+
 static int send_bytes (hak_xproto_t* proto, hak_xpkt_type_t xpkt_code, const hak_bch_t* data, hak_oow_t len);
 
 #if defined(HAK_OOCH_IS_UCH)
@@ -253,6 +258,7 @@ static int send_chars (hak_xproto_t* proto, hak_xpkt_type_t xpkt_code, const hak
 #else
 #define send_chars(proto,xpkt_code,data,len) send_bytes(proto,xpkt_code,data,len)
 #endif
+
 
 /* ========================================================================= */
 
@@ -314,7 +320,7 @@ static HAK_INLINE int open_read_stream (hak_t* hak, hak_io_cciarg_t* arg)
 		}
 		else
 		{
-			hak_copy_bchars (bb->fn, fn, parlen);
+			hak_copy_bchars(bb->fn, fn, parlen);
 		}
 
 	#if defined(HAK_OOCH_IS_UCH)
@@ -1119,7 +1125,7 @@ hak_server_t* hak_server_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_server_p
 	hak_bitmask_t trait;
 
 	server = (hak_server_t*)HAK_MMGR_ALLOC(mmgr, HAK_SIZEOF(*server) + xtnsize);
-	if (!server)
+	if (HAK_UNLIKELY(!server))
 	{
 	esysmem:
 		if (errinf)
@@ -1132,19 +1138,21 @@ hak_server_t* hak_server_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_server_p
 	}
 
 	hak = hak_openstdwithmmgr(mmgr, HAK_SIZEOF(*xtn), errinf);
-	if (!hak) goto oops;
+	if (HAK_UNLIKELY(!hak)) goto oops;
 
 	/* replace the vmprim.log_write function */
 	hak->vmprim.log_write = server_log_write_for_dummy;
 
 	tmr = hak_tmr_open(hak, 0, 1024); /* TOOD: make the timer's default size configurable */
-	if (!tmr) goto esysmem;
+	if (HAK_UNLIKELY(!tmr)) goto esysmem;
 
 	if (hak_sys_open_pipes(pfd, 1) <= -1)
 	{
 		if (errinf)
 		{
-			hak_seterrbfmtwithsyserr(hak, 0, errno, HAK_NULL, 0);
+			/* set the error on the hak object */
+			hak_seterrbfmtwithsyserr(hak, 0, errno, "unable to open pipes for multiplexer");
+			/* extract it to errinf  */
 			hak_geterrinf(hak, errinf);
 		}
 		goto oops;
@@ -1250,7 +1258,7 @@ static HAK_INLINE int prepare_to_acquire_wid (hak_server_t* server)
 	}
 
 	tmp = (hak_server_wid_map_data_t*)hak_server_reallocmem(server, server->wid_map.ptr, HAK_SIZEOF(*tmp) * new_capa);
-	if (!tmp) return -1;
+	if (HAK_UNLIKELY(!tmp)) return -1;
 
 	server->wid_map.free_first = server->wid_map.capa;
 	for (i = server->wid_map.capa, j = server->wid_map.capa + 1; j < new_capa; i++, j++)
@@ -1328,6 +1336,32 @@ static hak_server_worker_t* alloc_worker (hak_server_t* server, int cli_sck, con
 	}
 
 	acquire_wid(server, worker);
+
+	/* initialize the worker->hak field at the allocation time to ensure
+	 * that worker->hak is valid for every worker object allocated. some
+	 * other fields(e.g. worker->proto) are allocated/initialized in worker_main().
+	 *
+	 * acquire_wid() puts the wid in place first: init_worker_hak() installs
+	 * server_log_write(), which labels every line with worker->wid.
+	 *
+	 * keeping init_worker_hak() and init_worker_proto() here means
+	 * these operations are not spread across worker threads.
+	 * under high load,  it can be a performance bottleneck. */
+	if (init_worker_hak(worker) <= -1)
+	{
+		release_wid(server, worker);
+		hak_server_freemem(server, worker);
+		return HAK_NULL;
+	}
+
+	if (init_worker_proto(worker) <= -1)
+	{
+		fini_worker_hak(worker);
+		release_wid(server, worker);
+		hak_server_freemem(server, worker);
+		return HAK_NULL;
+	}
+
 	return worker;
 }
 
@@ -1335,15 +1369,8 @@ static void fini_worker_socket (hak_server_worker_t* worker)
 {
 	if (worker->sck >= 0)
 	{
-		if (worker->hak)
-		{
-			HAK_LOG2(worker->hak, SERVER_LOGMASK_INFO, "Closing worker socket %d [%zu]\n", worker->sck, worker->wid);
-		}
-		else
-		{
-			/* this should be in the main server thread. i use dummy_hak for logging */
-			HAK_LOG2(worker->server->dummy_hak, SERVER_LOGMASK_INFO, "Closing worker socket %d [%zu]\n", worker->sck, worker->wid);
-		}
+		/* worker->hak must not be NULL by contract */
+		HAK_LOG2(worker->hak, SERVER_LOGMASK_INFO, "Closing worker socket %d [%zu]\n", worker->sck, worker->wid);
 		close(worker->sck);
 		worker->sck = -1;
 	}
@@ -1351,17 +1378,14 @@ static void fini_worker_socket (hak_server_worker_t* worker)
 
 static void free_worker (hak_server_worker_t* worker)
 {
-	fini_worker_socket (worker);
+	fini_worker_socket(worker);
 
-	if (worker->hak)
-	{
-		HAK_LOG1(worker->hak, SERVER_LOGMASK_INFO, "Killing worker [%zu]\n", worker->wid);
-	}
-	else
-	{
-		/* this should be in the main server thread. i use dummy_hak for logging */
-		HAK_LOG1(worker->server->dummy_hak, SERVER_LOGMASK_INFO, "Killing worker [%zu]\n", worker->wid);
-	}
+	HAK_LOG1(worker->hak, SERVER_LOGMASK_INFO, "Killing worker [%zu]\n", worker->wid);
+
+	/* free hak first: fini_worker_hak() calls hak_endfeed(), which can still
+	 * run on_fed_cnode(), and that writes through worker->proto. */
+	fini_worker_hak(worker);
+	fini_worker_proto(worker);
 
 	release_wid(worker->server, worker);
 	hak_server_freemem(worker->server, worker);
@@ -1397,6 +1421,12 @@ static void zap_worker_in_server (hak_server_t* server, hak_server_worker_t* wor
 	HAK_ASSERT(server->dummy_hak, worker->server == server);
 
 	wstate = worker->state;
+	/* worker_list has slots for DEAD and ALIVE only - a ZOMBIE was never
+	 * chained, and indexing it here runs off the end into wid_map. */
+	HAK_ASSERT(server->dummy_hak, wstate == HAK_SERVER_WORKER_STATE_ALIVE || wstate == HAK_SERVER_WORKER_STATE_DEAD);
+	if (wstate == HAK_SERVER_WORKER_STATE_ZOMBIE) return; /* for run-time defense only */
+
+	/* detach it from the server's worker list */
 	if (worker->prev_worker) worker->prev_worker->next_worker = worker->next_worker;
 	else server->worker_list[wstate].head = worker->next_worker;
 	if (worker->next_worker) worker->next_worker->prev_worker = worker->prev_worker;
@@ -1404,7 +1434,7 @@ static void zap_worker_in_server (hak_server_t* server, hak_server_worker_t* wor
 
 	HAK_ASSERT(server->dummy_hak, server->worker_list[wstate].count > 0);
 	server->worker_list[wstate].count--;
-	worker->state = HAK_SERVER_WORKER_STATE_ZOMBIE;
+	worker->state = HAK_SERVER_WORKER_STATE_ZOMBIE; /* detached */
 	worker->prev_worker = HAK_NULL;
 	worker->next_worker = HAK_NULL;
 }
@@ -1497,7 +1527,7 @@ static int worker_step (hak_server_worker_t* worker)
 		}
 		if (n == 0)
 		{
-			/* TODO: chceck if there is remaining data in the buffer...?? */
+			/* TODO: check if there is remaining data in the buffer...?? */
 			return 0; /* tell the caller to break the step loop */
 		}
 	}
@@ -1570,7 +1600,6 @@ static void fini_worker_hak (hak_server_worker_t* worker)
 	}
 }
 
-
 static int init_worker_proto (hak_server_worker_t* worker)
 {
 	hak_xproto_t* proto;
@@ -1604,30 +1633,18 @@ static void* worker_main (void* ctx)
 	hak_server_worker_t* worker = (hak_server_worker_t*)ctx;
 	hak_server_t* server = worker->server;
 	sigset_t set;
-	int n;
 
 	sigfillset(&set);
 	pthread_sigmask(SIG_BLOCK, &set, HAK_NULL);
 
+	/* the worker->thr field is set by pthread_create itself
+	 * because it's passed to it as the first parameter.
+	 * no self-assignment like below is needed here.
 	worker->thr = pthread_self();
+	 */
 
-	n = init_worker_hak(worker);
-	if (HAK_UNLIKELY(n <= -1))
-	{
-		/* TODO: capture error ... */
-		return HAK_NULL;
-	}
-
-	n = init_worker_proto(worker);
-	if (HAK_UNLIKELY(n <= -1))
-	{
-		fini_worker_hak(worker);
-		return HAK_NULL;
-	}
-
-	pthread_mutex_lock(&server->worker_mutex);
-	add_worker_to_server(server, HAK_SERVER_WORKER_STATE_ALIVE, worker);
-	pthread_mutex_unlock(&server->worker_mutex);
+	/* it's supposed to be chained before pthread_create() with this function */
+	HAK_ASSERT(server->dummy_hak, worker->state == HAK_SERVER_WORKER_STATE_ALIVE);
 
 	/* the worker loop */
 	while (!server->stopreq)
@@ -1641,11 +1658,6 @@ static void* worker_main (void* ctx)
 			break;
 		}
 	}
-
-	hak_xproto_close(worker->proto);
-	worker->proto = HAK_NULL;
-
-	fini_worker_hak(worker);
 
 	pthread_mutex_lock(&server->worker_mutex);
 	fini_worker_socket(worker);
@@ -1924,7 +1936,6 @@ int hak_server_start (hak_server_t* server, const hak_bch_t* addrs)
 		hak_sckaddr_t cli_addr;
 		hak_scklen_t cli_len;
 		int cli_fd;
-		pthread_t thr;
 		hak_ntime_t tmout;
 		hak_server_worker_t* worker;
 		int n;
@@ -2018,8 +2029,28 @@ int hak_server_start (hak_server_t* server, const hak_bch_t* addrs)
 				else
 				{
 					HAK_LOG2(server->dummy_hak, SERVER_LOGMASK_INFO, "Accomodated worker [%zu] - socket %d\n", worker->wid, cli_fd);
-					if (pthread_create(&thr, &thr_attr, worker_main, worker) != 0)
+
+					/* the allocated worker is in the zombie state initially.
+					 * that means, it's not chained to any management list(e.g. purge).
+					 *
+					 * chain the worker before its thread exists. if the thread
+					 * chained itself, the worker would be invisible to
+					 * purge_all_workers() until it got that far, and a stop
+					 * request landing in that window would free the server
+					 * from under the running thread.
+					 *
+					 * pthread_create() fills in worker->thr before it returns,
+					 * and only this thread reaches purge_all_workers(), so the
+					 * handle is always set by the time anything joins on it. */
+					pthread_mutex_lock(&server->worker_mutex);
+					add_worker_to_server(server, HAK_SERVER_WORKER_STATE_ALIVE, worker);
+					pthread_mutex_unlock(&server->worker_mutex);
+
+					if (pthread_create(&worker->thr, &thr_attr, worker_main, worker) != 0)
 					{
+						pthread_mutex_lock(&server->worker_mutex);
+						zap_worker_in_server(server, worker);
+						pthread_mutex_unlock(&server->worker_mutex);
 						free_worker(worker);
 					}
 				}
