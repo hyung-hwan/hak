@@ -2865,16 +2865,42 @@ static int vm_sleep (hak_t* hak, const hak_ntime_t* dur)
 	 * when USE_THREAD is true */
 	vm_muxwait(hak, dur, HAK_NULL);
 
+#elif defined(__VMS)
+	/* The duration is split because usleep() has a cutoff here: measured on
+	 * VAX V7.3 with Compaq C V6.4, it honours anything under 1000000 us and
+	 * returns IMMEDIATELY at 1000000 and above.
+	 *
+	 *     usleep(900000)  -> slept
+	 *     usleep(1000000) -> returned at once
+	 *
+	 * POSIX leaves usleep() unspecified for >= 1000000, so the RTL is within
+	 * its rights. But handing it the whole duration, as the HAVE_USLEEP arm
+	 * below does, turns every sleep of a second or more into immdiate return:
+	 * the call returns at once, the scheduler in exec.c re-reads the clock
+	 * and calls back, and that repeats without pause until the deadline.
+	 *
+	 * sleep() takes the whole seconds and usleep() only the sub-second
+	 * remainder, which by construction can never reach the cutoff.
+	 *
+	 * [NOTE] both can still return early if a stray sys$wake() is pending -
+	 * see the note in lib/poll-vms.h, and note that a wake issued while
+	 * nobody is hibernating is remembered and satisfies the next wait.
+	 * the caller in exec.c re-reads the clock and sleeps out the remainder.
+	 * wrapping this in a deadline loop would absorb it, at the cost of
+	 * no longer honouring xtn->ev.halting promptly. */
+	if (dur->sec > 0) sleep((unsigned int)dur->sec);
+	if (dur->nsec > 0) usleep((unsigned int)HAK_NSEC_TO_USEC(dur->nsec));
+
 #elif defined(HAVE_NANOSLEEP)
 	{
 		struct timespec ts;
 		ts.tv_sec = dur->sec;
 		ts.tv_nsec = dur->nsec;
-		nanosleep (&ts, HAK_NULL);
+		nanosleep(&ts, HAK_NULL);
 	}
 
 #elif defined(HAVE_USLEEP)
-	usleep (HAK_SECNSEC_TO_USEC(dur->sec, dur->nsec));
+	usleep(HAK_SECNSEC_TO_USEC(dur->sec, dur->nsec));
 
 #else
 #	error UNSUPPORT SLEEP
@@ -3584,7 +3610,7 @@ static DWORD WINAPI msw_wait_for_timer_event (LPVOID ctx)
 	}
 
 	msw_tick_done = 0;
-	/*ExitThread (0);*/
+	/*ExitThread(0);*/
 	return 0;
 }
 
@@ -3611,7 +3637,7 @@ static HAK_INLINE int start_ticker (void)
 
 static HAK_INLINE void stop_ticker (void)
 {
-	if (msw_tick_timer) CancelWaitableTimer (msw_tick_timer);
+	if (msw_tick_timer) CancelWaitableTimer(msw_tick_timer);
 	msw_tick_done = 1;
 }
 
@@ -4012,14 +4038,14 @@ static const char* mach_dlerror (void)
 static void dl_startup (hak_t* hak)
 {
 #if defined(USE_LTDL)
-	lt_dlinit ();
+	lt_dlinit();
 #endif
 }
 
 static void dl_cleanup (hak_t* hak)
 {
 #if defined(USE_LTDL)
-	lt_dlexit ();
+	lt_dlexit();
 #endif
 }
 
@@ -4561,15 +4587,15 @@ static int open_pipes (hak_t* hak, int p[2])
 	{
 		u_long flags;
 		flags = 1;
-		ioctl (p[0], FIONBIO, &flags);
-		ioctl (p[1], FIONBIO, &flags);
+		ioctl(p[0], FIONBIO, &flags);
+		ioctl(p[1], FIONBIO, &flags);
 	}
 	*/
 #elif defined(__OS2__)
 	{
 		int flags = 1; /* don't block */
-		ioctl (p[0], FIONBIO, (char*)&flags, HAK_SIZEOF(flags));
-		ioctl (p[1], FIONBIO, (char*)&flags, HAK_SIZEOF(flags));
+		ioctl(p[0], FIONBIO, (char*)&flags, HAK_SIZEOF(flags));
+		ioctl(p[1], FIONBIO, (char*)&flags, HAK_SIZEOF(flags));
 	}
 #elif defined(HAVE_PIPE2) && defined(O_CLOEXEC) && defined(O_NONBLOCK)
 	/* do nothing */
@@ -4578,15 +4604,15 @@ static int open_pipes (hak_t* hak, int p[2])
 		int flags;
 	#if defined(FD_CLOEXEC) && defined(F_GETFD) && defined(F_SETFD)
 		flags = fcntl(p[0], F_GETFD);
-		if (flags >= 0) fcntl (p[0], F_SETFD, flags | FD_CLOEXEC);
+		if (flags >= 0) fnctl(p[0], F_SETFD, flags | FD_CLOEXEC);
 		flags = fcntl(p[1], F_GETFD);
-		if (flags >= 0) fcntl (p[1], F_SETFD, flags | FD_CLOEXEC);
+		if (flags >= 0) fnctl(p[1], F_SETFD, flags | FD_CLOEXEC);
 	#endif
 	#if defined(O_NONBLOCK) && defined(F_GETFL) && defined(F_SETFL)
 		flags = fcntl(p[0], F_GETFL);
-		if (flags >= 0) fcntl (p[0], F_SETFL, flags | O_NONBLOCK);
+		if (flags >= 0) fnctl(p[0], F_SETFL, flags | O_NONBLOCK);
 		flags = fcntl(p[1], F_GETFL);
-		if (flags >= 0) fcntl (p[1], F_SETFL, flags | O_NONBLOCK);
+		if (flags >= 0) fnctl(p[1], F_SETFL, flags | O_NONBLOCK);
 	#endif
 	}
 #endif
