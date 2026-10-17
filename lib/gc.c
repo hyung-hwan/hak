@@ -942,7 +942,6 @@ static HAK_INLINE void gc_ms_mark_roots (hak_t* hak)
 	gc_ms_mark(hak, (hak_oop_t)hak->processor);
 	gc_ms_mark(hak, (hak_oop_t)hak->nil_process);
 
-
 	for (i = 0; i < hak->code.lit.len; i++)
 	{
 		/* the literal array ia a NGC object. but the literal objects

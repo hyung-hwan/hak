@@ -95,10 +95,13 @@ static volatile hak_uint32_t gtick = 0;
 #define STORE_ACTIVE_SP(hak) STORE_SP(hak, (hak)->processor->active)
 
 
+/* the outgoing context is HAK_NULL if the process that owned it has terminated
+ * leaving nothing runnable behind. see terminate_process(). there is no
+ * instruction pointer to commit in that case. */
 #define SWITCH_ACTIVE_CONTEXT(hak, v_ctx) \
 	do \
 	{ \
-		STORE_ACTIVE_IP(hak); \
+		if (HAK_LIKELY((hak)->active_context)) STORE_ACTIVE_IP(hak); \
 		(hak)->active_context = (v_ctx); \
 		(hak)->active_function = HAK_CTX_GET_BASE(hak, (hak)->active_context); \
 		(hak)->active_code = HAK_FUNCTION_GET_CODE_BYTE((hak)->active_function); \
@@ -363,7 +366,7 @@ static HAK_INLINE void vm_gettime (hak_t* hak, hak_ntime_t* now)
 	 * thus becomes relative to it. this way, it is kept small such that it
 	 * can be represented in a small integer with leaving almost zero chance
 	 * of overflow. */
-	HAK_SUB_NTIME (now, now, &hak->exec_start_time);  /* now = now - exec_start_time */
+	HAK_SUB_NTIME(now, now, &hak->exec_start_time);  /* now = now - exec_start_time */
 }
 
 static HAK_INLINE int vm_sleep (hak_t* hak, const hak_ntime_t* dur)
@@ -923,7 +926,18 @@ static HAK_INLINE void unchain_from_processor (hak_t* hak, hak_oop_process_t pro
 		HAK_DELETE_FROM_OOP_LIST(hak, &hak->processor->runnable, proc, ps);
 		runnable_count--;
 		hak->processor->runnable.count = HAK_SMOOI_TO_OOP(runnable_count);
-		if (runnable_count == 0) hak->processor->active = hak->nil_process;
+		if (runnable_count == 0)
+		{
+			hak->processor->active = hak->nil_process;
+			/* nil_process carries no stack slots. leaving hak->sp at the
+			 * departing process's value lets gc_ms_mark_roots() commit a
+			 * meaningless number into nil_process->sp - harmless only while
+			 * nil_process lacks the PROC flag, since a flagged process is
+			 * scanned for NAMED_INSTVARS + sp + 1 slots. keep hak->sp in step
+			 * with the active process instead, as hak_execute() does once the
+			 * run is over. */
+			LOAD_ACTIVE_SP(hak);
+		}
 	}
 
 	if (new_state == HAK_PROCESS_STATE_TERMINATED)
@@ -1105,7 +1119,10 @@ static void terminate_process (hak_t* hak, hak_oop_process_t proc)
 	{
 		/* RUNNING/RUNNABLE ---> TERMINATED */
 	#if defined(HAK_DEBUG_VM_PROCESSOR)
-		HAK_LOG2(hak, HAK_LOG_IC | HAK_LOG_DEBUG, "Processor - process[%zd] %hs->TERMINATED in terminate_process\n", HAK_OOP_TO_SMOOI(proc->id), proc_state_to_string(HAK_OOP_TO_SMOOI(proc->state)));
+		HAK_LOG2(hak, HAK_LOG_IC | HAK_LOG_DEBUG,
+			"Processor - process[%zd] %hs->TERMINATED in terminate_process\n",
+			HAK_OOP_TO_SMOOI(proc->id),
+			proc_state_to_string(HAK_OOP_TO_SMOOI(proc->state)));
 	#endif
 
 		if (proc == hak->processor->active)
@@ -1119,6 +1136,7 @@ static void terminate_process (hak_t* hak, hak_oop_process_t proc)
 
 			STORE_ACTIVE_SP(hak); /* commit the stack pointer before termination */
 
+			/* unchain it from the processor and set the process state to TERMINATED */
 			unchain_from_processor(hak, proc, HAK_PROCESS_STATE_TERMINATED);
 			reset_process_stack_pointers(hak, proc); /* invalidate the process stack */
 			proc->current_context = proc->initial_context; /* not needed but just in case */
@@ -1130,6 +1148,34 @@ static void terminate_process (hak_t* hak, hak_oop_process_t proc)
 			{
 				/* no runnable process after termination */
 				HAK_ASSERT(hak, hak->processor->active == hak->nil_process);
+
+				/* drop the references to the dead process's execution state.
+				 * nothing takes over the context, so hak->active_context would
+				 * keep pointing into an object that is now garbage. the next
+				 * SWITCH_ACTIVE_CONTEXT() commits the instruction pointer to the
+				 * outgoing context, and with a stack context that write lands
+				 * inside the process object itself - freed by the time another
+				 * process gets woken up from nil. */
+
+				/* if HAK_ENABLE_STACK_CONTEXT is off, the reset of the following
+				 * three fields are not necessary. it just retain dead context
+				 * longer than needed, until the next SWITCH_ACTIVE_CONTEXT is called.
+				 * SWITCH_ACTIVE_CONTEXT changes all these fields to new values.
+				 * but regardless of HAK_ENABLE_STACK_CONTEXT, it's clearner to
+				 * clear these fields.
+				 *
+				 * if HAK_ENABLE_STCK_CONTEXT is on, hak->active_context is SMPTR
+				 * which is not an OOP pointer, gc marking skips it. but it's a pointer
+				 * encoded as SMPTR into the process object's payload. The process
+				 * itself could be garbage collected. if STORE_ACTIVE_IP() is invoked
+				 * on the hak->active_context from SWITCH_ACTIVE_CONTEXT(), it writes
+				 * to the payload of a garbaged-collected process object. so nullify
+				 * it so that SWITCH_ACTIVE_CONTEXT() skips commiting the active ip
+				 * to the former active context. */
+				hak->active_context = HAK_NULL; /* must reset it */
+				hak->active_function = HAK_NULL; /* no need to reset it. but in case */
+				hak->active_code = HAK_NULL; /* no need to reset it. but in case */
+
 				if (HAK_LOG_ENABLED(hak, HAK_LOG_IC | HAK_LOG_DEBUG))
 				{
 					HAK_LOG5(hak, HAK_LOG_IC | HAK_LOG_DEBUG,
@@ -2048,13 +2094,7 @@ static hak_oop_process_t _signal_io_semaphore (hak_t* hak, hak_oop_semaphore_t s
 		 * process at this moment */
 		HAK_ASSERT(hak, proc->state == HAK_SMOOI_TO_OOP(HAK_PROCESS_STATE_RUNNABLE));
 		HAK_ASSERT(hak, proc == hak->processor->runnable.first);
-
-	#if 0
-		wake_process(hak, proc); /* switch to running */
-		hak->proc_switched = 1;
-	#else
 		switch_to_process_from_nil(hak, proc);
-	#endif
 	}
 
 	return proc;
@@ -3128,6 +3168,32 @@ static int start_initial_process_and_context (hak_t* hak, hak_ooi_t initial_ip, 
 
 /* ------------------------------------------------------------------------- */
 
+/* the allocator collects every 100000 bytes (see hak_allocbytes). the idle
+ * collector uses the same step so that it runs at a comparable rate. */
+#define HAK_IDLE_GC_MIN_GROWTH (100000)
+
+/* collect while the VM has nothing to run.
+ *
+ * idling is the cheapest moment to mark - no process is mid-instruction, so
+ * the pause costs nothing a running program would notice. but the vm can idle
+ * briefly and very often: a server that answers a request and goes back to
+ * waiting passes through here every time, and one of the call sites below re-enters
+ * on every* muxwait that returns without waking anyone. collecting unconditionally
+ * would mark the whole heap per round trip, so only collect once the heap has grown
+ * since the last time.
+ *
+ * full=1 on purpose: idle is exactly when the sweep is affordable, and doing
+ * it now leaves the allocator less to do later. pass 0 instead if the longer
+ * idle pause matters more than the later allocation cost. */
+static HAK_INLINE void full_gc_while_idle (hak_t* hak)
+{
+	if (hak->gci.bsz > hak->gci.idle_bsz + HAK_IDLE_GC_MIN_GROWTH)
+	{
+		hak_gc(hak, 1);
+		hak->gci.idle_bsz = hak->gci.bsz;
+	}
+}
+
 static HAK_INLINE int switch_process_if_needed (hak_t* hak)
 {
 	if (hak->sem_heap_count > 0)
@@ -3143,7 +3209,7 @@ static HAK_INLINE int switch_process_if_needed (hak_t* hak)
 			HAK_ASSERT(hak, HAK_OOP_IS_SMOOI(hak->sem_heap[0]->u.timed.ftime_sec));
 			HAK_ASSERT(hak, HAK_OOP_IS_SMOOI(hak->sem_heap[0]->u.timed.ftime_nsec));
 
-			HAK_INIT_NTIME (&ft,
+			HAK_INIT_NTIME(&ft,
 				HAK_OOP_TO_SMOOI(hak->sem_heap[0]->u.timed.ftime_sec),
 				HAK_OOP_TO_SMOOI(hak->sem_heap[0]->u.timed.ftime_nsec)
 			);
@@ -3178,18 +3244,21 @@ static HAK_INLINE int switch_process_if_needed (hak_t* hak)
 
 					HAK_ASSERT(hak, proc->state == HAK_SMOOI_TO_OOP(HAK_PROCESS_STATE_RUNNABLE));
 					HAK_ASSERT(hak, proc == hak->processor->runnable.last); /* resume_process() appends to the runnable list */
-				#if 0
-					wake_process(hak, proc); /* switch to running */
-					hak->proc_switched = 1;
-				#else
 					switch_to_process_from_nil(hak, proc);
-				#endif
 				}
 			}
 			else if (hak->processor->active == hak->nil_process)
 			{
 				/* no running process. before firing time. */
-				HAK_SUB_NTIME (&ft, &ft, (hak_ntime_t*)&now);
+				full_gc_while_idle(hak);
+
+				/* the collection above consumed real time, and `now` was read
+				 * before the loop. subtracting the stale value would make the
+				 * wait below too long by however long the mark took, firing
+				 * the timed semaphore late. every other wait in this function
+				 * re-reads the clock afterwards; do the same here. */
+				vm_gettime(hak, &now);
+				HAK_SUB_NTIME(&ft, &ft, (hak_ntime_t*)&now);
 
 				if (hak->sem_io_wait_count > 0)
 				{
@@ -3252,9 +3321,11 @@ static HAK_INLINE int switch_process_if_needed (hak_t* hak)
 			}
 			else
 			{
+				/* all processes are suspended and waiting for some io events */
+				full_gc_while_idle(hak);
 				do
 				{
-					HAK_INIT_NTIME (&ft, 3, 0); /* TODO: use a configured time */
+					HAK_INIT_NTIME(&ft, 3, 0); /* TODO: use a configured time */
 					vm_muxwait(hak, &ft);
 				}
 				while (hak->processor->active == hak->nil_process && !hak->abort_req);
@@ -3826,9 +3897,9 @@ static int execute (hak_t* hak)
 	hak->proc_switched = 0;
 
 	hak->gci.lazy_sweep = 1; /* TODO: make it configurable?? */
-	HAK_INIT_NTIME (&hak->gci.stat.alloc, 0, 0);
-	HAK_INIT_NTIME (&hak->gci.stat.mark, 0, 0);
-	HAK_INIT_NTIME (&hak->gci.stat.sweep, 0, 0);
+	HAK_INIT_NTIME(&hak->gci.stat.alloc, 0, 0);
+	HAK_INIT_NTIME(&hak->gci.stat.mark, 0, 0);
+	HAK_INIT_NTIME(&hak->gci.stat.sweep, 0, 0);
 
 	fetched_instruction_pointer = -1;
 

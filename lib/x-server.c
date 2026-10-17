@@ -1676,10 +1676,16 @@ static void* worker_main (void* ctx)
 {
 	hak_server_worker_t* worker = (hak_server_worker_t*)ctx;
 	hak_server_t* server = worker->server;
+#if !defined(HAK_NO_PTHREAD_SIGMASK)
 	sigset_t set;
 
 	sigfillset(&set);
 	pthread_sigmask(SIG_BLOCK, &set, HAK_NULL);
+#else
+	/* no pthread_sigmask() here - see hak-vms.h. sigprocmask() is not a
+	 * substitute: with user-mode threads it would block the signal for every
+	 * thread, the one that handles SIGINT included. */
+#endif
 
 	/* the worker->thr field is set by pthread_create itself
 	 * because it's passed to it as the first parameter.

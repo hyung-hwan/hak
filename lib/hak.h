@@ -2051,6 +2051,7 @@ struct hak_t
 		} ls;
 		hak_oow_t bsz; /* total size of object blocks allocated */
 		hak_oow_t threshold;
+		hak_oow_t idle_bsz; /* gci.bsz as of the last idle-time collection */
 		int lazy_sweep;
 
 		struct

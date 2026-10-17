@@ -252,8 +252,15 @@ static void log_write (server_xtn_t* xtn, hak_oow_t wid, hak_bitmask_t mask, con
 
 		if (wid != HAK_SERVER_WID_INVALID)
 		{
+		#if defined(HAVE_SNPRINTF)
 			/* TODO: check if the underlying snprintf support %zd */
 			tslen = snprintf(ts, sizeof(ts), "[%zu] ", wid);
+		#else
+			/* DEC C V6.4 on VAX predates both snprintf and %zu. the widest
+			 * value is 20 digits, so with the brackets and the trailing
+			 * space it cannot overrun ts[32]. */
+			tslen = sprintf(ts, "[%lu] ", (unsigned long)wid);
+		#endif
 			write_log(xtn, logfd, ts, tslen);
 		}
 	}
@@ -339,9 +346,19 @@ static hak_client_t* g_client = HAK_NULL;
 
 /* ========================================================================= */
 
+#if defined(SA_SIGINFO)
 typedef void (*signal_handler_t) (int, siginfo_t*, void*);
+#else
+/* OpenVMS VAX has no SA_SIGINFO, so sigaction carries the classic sa_handler
+ * only. the handler ignores the extra arguments in either case. */
+typedef void (*signal_handler_t) (int);
+#endif
 
+#if defined(SA_SIGINFO)
 static void handle_sigint (int sig, siginfo_t* siginfo, void* ctx)
+#else
+static void handle_sigint (int sig)
+#endif
 {
 	if (g_server) hak_server_stop (g_server);
 	if (g_client) hak_client_stop (g_client);
@@ -352,9 +369,13 @@ static void set_signal (int sig, signal_handler_t handler)
 	struct sigaction sa;
 
 	memset(&sa, 0, sizeof(sa));
-	/*sa.sa_handler = handler;*/
+#if defined(SA_SIGINFO)
 	sa.sa_flags = SA_SIGINFO;
 	sa.sa_sigaction = handler;
+#else
+	sa.sa_flags = 0;
+	sa.sa_handler = handler;
+#endif
 	sigemptyset (&sa.sa_mask);
 
 	sigaction (sig, &sa, NULL);

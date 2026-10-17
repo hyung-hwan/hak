@@ -114,8 +114,9 @@ enum hak_server_trait_t
 {
 #if defined(HAK_BUILD_DEBUG)
 	HAK_SERVER_TRAIT_DEBUG_GC         = (1 << 0),
-	HAK_SERVER_TRAIT_DEBUG_BIGINT     = (1 << 1)
+	HAK_SERVER_TRAIT_DEBUG_BIGINT     = (1 << 1),
 #endif
+	HAK_SERVER_TRAIT_UNUSED           = (1 << 2)
 };
 typedef enum hak_server_trait_t hak_server_trait_t;
 

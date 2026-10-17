@@ -4587,15 +4587,15 @@ static int open_pipes (hak_t* hak, int p[2])
 		int flags;
 	#if defined(FD_CLOEXEC) && defined(F_GETFD) && defined(F_SETFD)
 		flags = fcntl(p[0], F_GETFD);
-		if (flags >= 0) fnctl(p[0], F_SETFD, flags | FD_CLOEXEC);
+		if (flags >= 0) fcntl(p[0], F_SETFD, flags | FD_CLOEXEC);
 		flags = fcntl(p[1], F_GETFD);
-		if (flags >= 0) fnctl(p[1], F_SETFD, flags | FD_CLOEXEC);
+		if (flags >= 0) fcntl(p[1], F_SETFD, flags | FD_CLOEXEC);
 	#endif
 	#if defined(O_NONBLOCK) && defined(F_GETFL) && defined(F_SETFL)
 		flags = fcntl(p[0], F_GETFL);
-		if (flags >= 0) fnctl(p[0], F_SETFL, flags | O_NONBLOCK);
+		if (flags >= 0) fcntl(p[0], F_SETFL, flags | O_NONBLOCK);
 		flags = fcntl(p[1], F_GETFL);
-		if (flags >= 0) fnctl(p[1], F_SETFL, flags | O_NONBLOCK);
+		if (flags >= 0) fcntl(p[1], F_SETFL, flags | O_NONBLOCK);
 	#endif
 	}
 #endif

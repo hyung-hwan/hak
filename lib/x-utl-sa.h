@@ -64,6 +64,15 @@ static int str_to_ipv4 (const ooch_t* str, hak_oow_t len, struct in_addr* inaddr
 
 }
 
+/* RFC 2553 added sin6_scope_id; a stack that predates it has no such member.
+ * The scope id is still parsed and validated - there is simply nowhere to
+ * store it. See HAK_SOCKADDR_IN6_HAS_NO_SCOPE_ID in hak-vms.h. */
+#if defined(HAK_SOCKADDR_IN6_HAS_NO_SCOPE_ID)
+#	define HAK_SET_SIN6_SCOPE_ID(nwad,v) ((void)(v))
+#else
+#	define HAK_SET_SIN6_SCOPE_ID(nwad,v) ((nwad)->in6.sin6_scope_id = (v))
+#endif
+
 #if (HAK_SIZEOF_STRUCT_SOCKADDR_IN6 > 0)
 static int str_to_ipv6 (const ooch_t* src, hak_oow_t len, struct in6_addr* inaddr)
 {
@@ -288,7 +297,7 @@ int str_to_sockaddr (hak_t* hak, const ooch_t* str, hak_oow_t len, hak_sckaddr_t
 					p++;
 				}
 				while (p < end && *p >= '0' && *p <= '9');
-				nwad->in6.sin6_scope_id = y;
+				HAK_SET_SIN6_SCOPE_ID(nwad, y);
 			}
 			else
 			{
@@ -297,7 +306,7 @@ int str_to_sockaddr (hak_t* hak, const ooch_t* str, hak_oow_t len, hak_sckaddr_t
 				unsigned int index;
 				do p++; while (p < end && *p != ']');
 				if (str_to_ifindex(hak, stmp, p - stmp, &index) <= -1) return -1;
-				nwad->in6.sin6_scope_id = index;
+				HAK_SET_SIN6_SCOPE_ID(nwad, index);
 			}
 
 			if (p >= end || *p != ']') goto no_rbrack;
@@ -361,7 +370,7 @@ int str_to_sockaddr (hak_t* hak, const ooch_t* str, hak_oow_t len, hak_sckaddr_t
 						p++;
 					}
 					while (p < end && *p >= '0' && *p <= '9');
-					nwad->in6.sin6_scope_id = y;
+					HAK_SET_SIN6_SCOPE_ID(nwad, y);
 				}
 				else
 				{
@@ -370,7 +379,7 @@ int str_to_sockaddr (hak_t* hak, const ooch_t* str, hak_oow_t len, hak_sckaddr_t
 					unsigned int index;
 					do p++; while (p < end);
 					if (str_to_ifindex(hak, stmp, p - stmp, &index) <= -1) return -1;
-					nwad->in6.sin6_scope_id = index;
+					HAK_SET_SIN6_SCOPE_ID(nwad, index);
 				}
 			}
 

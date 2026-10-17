@@ -97,3 +97,26 @@
 #	define HAK_SIZEOF_STRUCT_SOCKADDR_IN6 64
 #	define HAK_SIZEOF_SOCKLEN_T 4
 #endif
+
+/* configure does not run on this platform, so the few macros the sources
+ * normally take from hak-cfg.h are stated here instead. lib/std.c states some
+ * of them in its own __VMS arm too, hence the guards. */
+#if !defined(HAK_PATH_MAX)
+#	define HAK_PATH_MAX 256 /* PATH_MAX in <limits.h> on VAX V7.3 */
+#endif
+#if !defined(HAVE_TIME_H)
+#	define HAVE_TIME_H
+#endif
+#if !defined(HAVE_SIGNAL_H)
+#	define HAVE_SIGNAL_H
+#endif
+
+/* DECthreads on VAX provides pthread_create() and the mutex family, but not
+ * pthread_sigmask() - it is neither declared by <pthread.h> nor present at
+ * link time. */
+#define HAK_NO_PTHREAD_SIGMASK
+
+/* TCP/IP Services V5.1 predates RFC 2553: its struct sockaddr_in6 is 24 bytes
+ * and carries no sin6_scope_id. lib/x-utl-sa.h still parses a scope id, it
+ * just has nowhere to put it. */
+#define HAK_SOCKADDR_IN6_HAS_NO_SCOPE_ID
