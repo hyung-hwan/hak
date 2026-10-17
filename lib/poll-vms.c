@@ -22,8 +22,6 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/* [NOTE] THIS IMPLEMENTATION IS NOT MULTI-THREAD SAFE */
-
 /* poll() for OpenVMS, over $QIO.
  *
  * HOW READINESS IS TESTED
@@ -83,26 +81,19 @@
  * That check is a $GETDVI-free fstat() and is what makes the cache safe.
  * ------------------------------------------------------------------------ */
 
-#define VP_DEVNAM_LEN 64
-#define VP_CACHE_SIZE 64
+/* the cache and its dimensions now live in hak_sys_poll_ctx_t. these keep the
+ * old spellings so the body below reads as it did. */
+#define VP_DEVNAM_LEN HAK_SYS_POLL_DEVNAM_LEN
+#define VP_CACHE_SIZE HAK_SYS_POLL_MAX_FDS
+typedef hak_sys_poll_chan_t vp_chan_t;
 
-typedef struct vp_chan_t vp_chan_t;
-struct vp_chan_t
-{
-	int fd;                      /* -1 when the slot is free */
-	unsigned short chan;
-	char dev[VP_DEVNAM_LEN];
-};
-
-static vp_chan_t g_chan[VP_CACHE_SIZE];
-static int g_chan_inited = 0;
-
-static void vp_init_cache (void)
+static void vp_init_cache (hak_sys_poll_ctx_t* ctx)
 {
 	int i;
-	if (g_chan_inited) return;
-	for (i = 0; i < VP_CACHE_SIZE; i++) g_chan[i].fd = -1;
-	g_chan_inited = 1;
+	if (ctx->inited) return;
+	for (i = 0; i < VP_CACHE_SIZE; i++) ctx->chan[i].fd = -1;
+	ctx->woken = 0;
+	ctx->inited = 1;
 }
 
 static void vp_drop (vp_chan_t* c)
@@ -116,11 +107,19 @@ static void vp_drop (vp_chan_t* c)
 	}
 }
 
-void poll_vms_cleanup (void)
+int hak_sys_poll_ctx_init (hak_sys_poll_ctx_t* ctx)
+{
+	ctx->inited = 0;
+	vp_init_cache(ctx);
+	return 0;
+}
+
+void hak_sys_poll_ctx_fini (hak_sys_poll_ctx_t* ctx)
 {
 	int i;
-	if (!g_chan_inited) return;
-	for (i = 0; i < VP_CACHE_SIZE; i++) vp_drop(&g_chan[i]);
+	if (!ctx->inited) return;
+	for (i = 0; i < VP_CACHE_SIZE; i++) vp_drop(&ctx->chan[i]);
+	ctx->inited = 0;
 }
 
 /* the device a descriptor is attached to, or -1 if it has none */
@@ -136,33 +135,33 @@ static int vp_devnam (int fd, char* buf, size_t bufsz)
 
 /* the channel for a descriptor, assigning and caching one if needed.
  * answers 0 on success, -1 if the descriptor names no device. */
-static int vp_chan_for (int fd, unsigned short* chanp)
+static int vp_chan_for (hak_sys_poll_ctx_t* ctx, int fd, unsigned short* chanp)
 {
 	char dev[VP_DEVNAM_LEN];
 	struct dsc$descriptor_s d;
 	unsigned int sts;
 	int i, free_slot = -1;
 
-	vp_init_cache();
+	vp_init_cache(ctx);
 
 	if (vp_devnam(fd, dev, sizeof(dev)) <= -1) return -1;
 
 	for (i = 0; i < VP_CACHE_SIZE; i++)
 	{
-		if (g_chan[i].fd == fd)
+		if (ctx->chan[i].fd == fd)
 		{
 			/* the descriptor number may have been closed and handed out
 			 * again for something else. the device name settles it. */
-			if (strcmp(g_chan[i].dev, dev) == 0)
+			if (strcmp(ctx->chan[i].dev, dev) == 0)
 			{
-				*chanp = g_chan[i].chan;
+				*chanp = ctx->chan[i].chan;
 				return 0;
 			}
-			vp_drop(&g_chan[i]);
+			vp_drop(&ctx->chan[i]);
 			free_slot = i;
 			break;
 		}
-		if (g_chan[i].fd < 0 && free_slot < 0) free_slot = i;
+		if (ctx->chan[i].fd < 0 && free_slot < 0) free_slot = i;
 	}
 
 	d.dsc$w_length = (unsigned short)strlen(dev);
@@ -175,12 +174,12 @@ static int vp_chan_for (int fd, unsigned short* chanp)
 
 	if (free_slot >= 0)
 	{
-		g_chan[free_slot].fd = fd;
-		g_chan[free_slot].chan = *chanp;
-		strcpy(g_chan[free_slot].dev, dev);
+		ctx->chan[free_slot].fd = fd;
+		ctx->chan[free_slot].chan = *chanp;
+		strcpy(ctx->chan[free_slot].dev, dev);
 	}
 	/* if the cache is full the channel is still usable, it just is not kept.
-	 * it leaks until poll_vms_cleanup(), which is why the cache is sized
+	 * it leaks until hak_sys_poll_ctx_fini(), which is why the cache is sized
 	 * well above the number of handles a vm realistically multiplexes. */
 
 	return 0;
@@ -250,15 +249,17 @@ static int vp_is_mbx (unsigned short chan)
  * WAITING
  * ------------------------------------------------------------------------ */
 
-static volatile int g_woken = 0;
-
 /* [IMPORTANT] this runs as an AST, which interrupts the caller at an
  * arbitrary instruction. It does the least it possibly can - set a flag and
- * wake the process - for the same reason a signal handler does. */
-static void vp_ast (int prm)
+ * wake the process - for the same reason a signal handler does.
+ *
+ * The context arrives as the AST parameter: P2 of the IO$M_WRTATTN $QIO, and
+ * the request id of $SETIMR. The signature stays a longword so that the
+ * $QIO/$SETIMR prototypes see exactly the function type they always have. */
+static void vp_ast (hak_uintptr_t prm)
 {
-	(void)prm;
-	g_woken = 1;
+	hak_sys_poll_ctx_t* ctx = (hak_sys_poll_ctx_t*)prm;
+	ctx->woken = 1;
 	sys$wake(0, 0); /* zero for both arguments means the calling process */
 }
 
@@ -295,7 +296,7 @@ static int vp_scan (struct pollfd* pfd, nfds_t nfd, unsigned short* chans)
 	return nready;
 }
 
-int poll (struct pollfd* pfd, nfds_t nfd, int timeout)
+int hak_sys_poll (hak_sys_poll_ctx_t* ctx, struct pollfd* pfd, nfds_t nfd, int timeout)
 {
 	unsigned short chans[VP_CACHE_SIZE];
 	unsigned int timbuf[2];
@@ -303,6 +304,14 @@ int poll (struct pollfd* pfd, nfds_t nfd, int timeout)
 	int nready;
 	int armed = 0;
 	int timer_set = 0;
+
+	if (!ctx)
+	{
+		errno = EINVAL;
+		return -1;
+	}
+
+	vp_init_cache(ctx);
 
 	if (nfd > VP_CACHE_SIZE)
 	{
@@ -317,7 +326,7 @@ int poll (struct pollfd* pfd, nfds_t nfd, int timeout)
 	{
 		chans[i] = 0;
 		if (pfd[i].fd < 0) continue;
-		if (vp_chan_for(pfd[i].fd, &chans[i]) <= -1) { chans[i] = 0; continue; }
+		if (vp_chan_for(ctx, pfd[i].fd, &chans[i]) <= -1) { chans[i] = 0; continue; }
 		if (!vp_is_mbx(chans[i])) chans[i] = 0; /* reported POLLNVAL by vp_scan */
 	}
 
@@ -325,13 +334,14 @@ int poll (struct pollfd* pfd, nfds_t nfd, int timeout)
 	if (nready > 0 || timeout == 0) return nready;
 
 	/* nothing yet and the caller is prepared to wait. */
-	g_woken = 0;
+	ctx->woken = 0;
 
 	for (i = 0; i < nfd; i++)
 	{
 		if (chans[i] == 0 || !(pfd[i].events & POLLIN)) continue;
+		/* P1 is the AST routine, P2 the parameter it is handed */
 		if (sys$qio(0, chans[i], IO$_SETMODE | IO$M_WRTATTN,
-		            0, 0, 0, vp_ast, 0, 0, 0, 0, 0) & 1) armed++;
+		            0, 0, 0, vp_ast, (hak_uintptr_t)ctx, 0, 0, 0, 0) & 1) armed++;
 	}
 
 	if (timeout > 0)
@@ -357,7 +367,10 @@ int poll (struct pollfd* pfd, nfds_t nfd, int timeout)
 
 		timbuf[0] = lo;
 		timbuf[1] = hi;
-		if (sys$setimr(0, timbuf, vp_ast, 0, 0) & 1) timer_set = 1;
+		/* the request id doubles as the AST parameter, and lets the
+		 * cancellation below name this timer rather than every timer the
+		 * process has outstanding. */
+		if (sys$setimr(0, timbuf, vp_ast, (hak_uintptr_t)ctx, 0) & 1) timer_set = 1;
 	}
 
 	/* An attention AST fires on the NEXT write, so anything queued between
@@ -369,7 +382,7 @@ int poll (struct pollfd* pfd, nfds_t nfd, int timeout)
 
 	if (nready <= 0 && (armed > 0 || timer_set))
 	{
-		while (!g_woken) sys$hiber();
+		while (!ctx->woken) sys$hiber();
 		nready = vp_scan(pfd, nfd, chans);
 	}
 
@@ -379,7 +392,22 @@ int poll (struct pollfd* pfd, nfds_t nfd, int timeout)
 		if (chans[i] == 0 || !(pfd[i].events & POLLIN)) continue;
 		sys$cancel(chans[i]);
 	}
-	if (timer_set) sys$cantim(0, 0);
+	if (timer_set) sys$cantim((hak_uintptr_t)ctx, 0); /* only ours, not every timer */
 
 	return nready;
+}
+
+/* The original entry points, kept for callers that predate the context -
+ * std.c among them. They drive one shared context and so carry the same
+ * single-threaded restriction they always had. */
+static hak_sys_poll_ctx_t g_poll_ctx;
+
+int poll (struct pollfd* pfd, nfds_t nfd, int timeout)
+{
+	return hak_sys_poll(&g_poll_ctx, pfd, nfd, timeout);
+}
+
+void poll_vms_cleanup (void)
+{
+	hak_sys_poll_ctx_fini(&g_poll_ctx);
 }

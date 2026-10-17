@@ -59,11 +59,45 @@ struct pollfd
 
 typedef unsigned long nfds_t;
 
+/* Per-caller polling state.
+ *
+ * The emulation needs an auto-reset event to wait on, and WSAEventSelect()
+ * binds every polled socket to it. A single process-wide event therefore
+ * cannot serve two pollers at once: their sockets would signal the same
+ * object, and an auto-reset event released by one waiter is not seen by the
+ * other. Giving each caller its own context is what makes concurrent polling
+ * possible - one context per thread, never shared. */
+typedef struct hak_sys_poll_ctx_t hak_sys_poll_ctx_t;
+struct hak_sys_poll_ctx_t
+{
+	/* a HANDLE to an auto-reset event. kept as void* so that this header
+	 * need not include <windows.h>, whose ordering against <winsock2.h>
+	 * matters to every file that includes us. */
+	void* ev;
+};
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
+/* Prepare a context. Answers 0, or -1 with errno set. */
+int hak_sys_poll_ctx_init (hak_sys_poll_ctx_t* ctx);
+
+/* Release what the context holds. Safe on an already finalized context. */
+void hak_sys_poll_ctx_fini (hak_sys_poll_ctx_t* ctx);
+
+/* poll() against a caller-owned context. */
+int hak_sys_poll (hak_sys_poll_ctx_t* ctx, struct pollfd *pfd, nfds_t nfd, int timeout);
+
+/* Poll the file descriptors described by the NFDS structures starting at
+   FDS.  If TIMEOUT is nonzero and not -1, allow TIMEOUT milliseconds for
+   an event to occur; if TIMEOUT is -1, block until an event occurs.
+   Returns the number of file descriptors with events, zero if timed out,
+   or -1 for errors.
+
+   [NOTE] this uses one shared context and is therefore not multi-thread
+   safe, exactly as it has always been. Call it from a single thread, or
+   give each thread a context of its own and call hak_sys_poll(). */
 int poll (struct pollfd *pfd, nfds_t nfd, int timeout);
 
 #if defined(__cplusplus)

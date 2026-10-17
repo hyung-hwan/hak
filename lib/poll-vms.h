@@ -61,20 +61,69 @@ struct pollfd
 
 typedef unsigned long nfds_t;
 
+/* The cache holds one assigned channel per descriptor, and doubles as the
+ * ceiling on how many descriptors a single call may watch. */
+#define HAK_SYS_POLL_MAX_FDS 64
+#define HAK_SYS_POLL_DEVNAM_LEN 64
+
+typedef struct hak_sys_poll_chan_t hak_sys_poll_chan_t;
+struct hak_sys_poll_chan_t
+{
+	int fd;                              /* -1 when the slot is free */
+	unsigned short chan;
+	char dev[HAK_SYS_POLL_DEVNAM_LEN];
+};
+
+/* Per-caller polling state.
+ *
+ * Two things here cannot be shared. The channel cache is mutable - a caller
+ * may sys$dassgn a slot another one is in the middle of a sys$qio on. And the
+ * wake flag pairs with sys$hiber(): a caller clears it, arms its ASTs, then
+ * sleeps until its own AST sets it. One flag between two sleepers loses
+ * wakeups. One context per thread, never shared.
+ *
+ * [NOTE] a context makes the state private, but sys$wake(0,0) still wakes the
+ * process rather than a thread, so a second sleeper can consume the wake meant
+ * for the first. Concurrent pollers need a per-thread wait primitive - an event
+ * flag with sys$waitfr, say - before that is fully solved. Until then this is
+ * sound for one poller at a time, which is what hak does. */
+typedef struct hak_sys_poll_ctx_t hak_sys_poll_ctx_t;
+
+struct hak_sys_poll_ctx_t
+{
+	hak_sys_poll_chan_t chan[HAK_SYS_POLL_MAX_FDS];
+	int inited;
+	volatile int woken;
+};
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
+
+/* Prepare a context. Answers 0, or -1 with errno set. */
+int hak_sys_poll_ctx_init (hak_sys_poll_ctx_t* ctx);
+
+/* Release the channels the context has assigned. Safe to call more than once,
+   and safe on a context that was only zeroed. */
+void hak_sys_poll_ctx_fini (hak_sys_poll_ctx_t* ctx);
+
+/* poll() against a caller-owned context. */
+int hak_sys_poll (hak_sys_poll_ctx_t* ctx, struct pollfd* pfd, nfds_t nfd, int timeout);
 
 /* Poll the file descriptors described by the NFDS structures starting at
    FDS.  If TIMEOUT is nonzero and not -1, allow TIMEOUT milliseconds for
    an event to occur; if TIMEOUT is -1, block until an event occurs.
    Returns the number of file descriptors with events, zero if timed out,
-   or -1 for errors.  */
+   or -1 for errors.
+
+   [NOTE] this drives one shared context and is therefore single-threaded,
+   exactly as it has always been. Give each thread a context of its own and
+   call hak_sys_poll() instead. */
 int poll (struct pollfd* pfd, nfds_t nfd, int timeout);
 
-/* Release the channels this module has assigned. Optional - the channels go
-   away when the image exits - but hak calls it from its cleanup so that a
-   long-lived embedder does not accumulate them. */
+/* Release the channels the shared context behind poll() has assigned.
+   Optional - the channels go away when the image exits - but hak calls it
+   from its cleanup so that a long-lived embedder does not accumulate them. */
 void poll_vms_cleanup (void);
 
 #if defined(__cplusplus)

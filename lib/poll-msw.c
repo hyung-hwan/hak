@@ -42,7 +42,17 @@
    You should have received a copy of the GNU General Public License along
    with this program; if not, see <http://www.gnu.org/licenses/>.  */
 
-/* [NOTE] THIS IMPLEMENTATION IS NOT MULTI-THREAD SAFE */
+/* [NOTE] hak_sys_poll() is safe to call from several threads provided each
+ * one owns its hak_sys_poll_ctx_t. The plain poll() below shares a single
+ * context and stays single-threaded, which is what std.c has always used.
+ *
+ * windows_compute_revents() still caches the NtQueryInformationFile entry
+ * point in a function-level static. That one is genuinely process-wide - the
+ * same ntdll export address for every caller - and the use site guards with
+ * "if (!NtQueryInformationFile || ...)", so a thread that raced the lazy
+ * resolution just takes the documented optimistic path. It is left alone
+ * deliberately; moving it into the context would re-run GetProcAddress()
+ * once per poller for no gain. */
 
 /* Tell gcc not to warn about the (nfd < 0) tests, below.  */
 #if (__GNUC__ == 4 && 3 <= __GNUC_MINOR__) || 4 < __GNUC__
@@ -277,10 +287,32 @@ static int windows_compute_revents_socket (SOCKET h, int sought, long lNetworkEv
 }
 
 
-int poll (struct pollfd *pfd, nfds_t nfd, int timeout)
+int hak_sys_poll_ctx_init (hak_sys_poll_ctx_t* ctx)
 {
-	static struct timeval tv0;
-	static HANDLE hEvent;
+	ctx->ev = (void*)CreateEvent(NULL, FALSE, FALSE, NULL);
+	if (!ctx->ev)
+	{
+		errno = ENOMEM;
+		return -1;
+	}
+	return 0;
+}
+
+void hak_sys_poll_ctx_fini (hak_sys_poll_ctx_t* ctx)
+{
+	if (ctx->ev)
+	{
+		CloseHandle((HANDLE)ctx->ev);
+		ctx->ev = NULL;
+	}
+}
+
+int hak_sys_poll (hak_sys_poll_ctx_t* ctx, struct pollfd *pfd, nfds_t nfd, int timeout)
+{
+	/* a zero timeout turns select() into a non-blocking probe. winsock does
+	 * not write back through this pointer, unlike some unix select()s. */
+	struct timeval tv0 = { 0, 0 };
+	HANDLE hEvent;
 	WSANETWORKEVENTS ev;
 	HANDLE h, handle_array[FD_SETSIZE + 2];
 	DWORD ret, wait_timeout, nhandles;
@@ -290,14 +322,13 @@ int poll (struct pollfd *pfd, nfds_t nfd, int timeout)
 	int rc = 0;
 	nfds_t i;
 
-	if (nfd < 0 || timeout < -1)
+	if (nfd < 0 || timeout < -1 || !ctx || !ctx->ev)
 	{
 		errno = EINVAL;
 		return -1;
 	}
 
-	if (!hEvent)
-		hEvent = CreateEvent (NULL, FALSE, FALSE, NULL);
+	hEvent = (HANDLE)ctx->ev;
 
 restart:
 	handle_array[0] = hEvent;
@@ -436,4 +467,15 @@ restart:
 	}
 
 	return rc;
+}
+
+/* The original entry point, kept for callers that predate the context - std.c
+ * among them. It drives one shared context, created on first use, and so
+ * carries the same single-threaded restriction it always had. */
+static hak_sys_poll_ctx_t g_poll_ctx = { NULL };
+
+int poll (struct pollfd *pfd, nfds_t nfd, int timeout)
+{
+	if (!g_poll_ctx.ev && hak_sys_poll_ctx_init(&g_poll_ctx) <= -1) return -1;
+	return hak_sys_poll(&g_poll_ctx, pfd, nfd, timeout);
 }

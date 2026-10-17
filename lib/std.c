@@ -337,6 +337,27 @@
 #	endif
 #endif
 
+#if defined(USE_POLL) && !defined(_WIN32) && !defined(__VMS)
+/* poll-msw.h and poll-vms.h carry a per-caller context because their
+ * emulations hold state - an auto-reset event on windows, a channel cache and
+ * a wake flag on VMS - that two callers cannot share. A platform with a real
+ * poll() needs none of it, so the context collapses to nothing here and
+ * hak_sys_poll() is the system call. Spelling it the same way on every
+ * platform keeps the two call sites below free of conditionals. */
+
+typedef struct hak_sys_poll_ctx_t hak_sys_poll_ctx_t;
+
+struct hak_sys_poll_ctx_t
+{
+	int unused_;
+};
+
+#	define hak_sys_poll_ctx_init(ctx) (0)
+#	define hak_sys_poll_ctx_fini(ctx) ((void)0)
+#	define hak_sys_poll(ctx,pfd,nfd,tmout) poll(pfd,nfd,tmout)
+
+#endif
+
 /* the character that separates one directory from the next in an incdirs or
  * modlibdirs list. it is ',' on VMS rather than the ':' used elsewhere, because
  * a VMS file spec contains colons of its own ("dnfs1:[hak.src]"). */
@@ -510,7 +531,9 @@ struct xtn_t
 	#elif defined(USE_EPOLL)
 	int ep; /* epoll */
 	#elif defined(USE_POLL)
-	/* nothing */
+	/* the multiplexer is this instance's own, so its polling state has to be
+	 * too: several hak_t in one process each run an io thread of their own. */
+	hak_sys_poll_ctx_t pollctx;
 	#elif defined(USE_SELECT)
 	/* nothing */
 	#endif
@@ -597,6 +620,10 @@ struct xtn_t
 #define GET_XTN(hak) ((xtn_t*)((hak_uint8_t*)HAK_XTN(hak) - HAK_SIZEOF(xtn_t)))
 
 static hak_t* g_hak = HAK_NULL;
+
+#if defined(__VMS)
+static int flush_udo_rec (hak_t* hak, FILE* fp);
+#endif
 
 /* -----------------------------------------------------------------
  * BASIC MEMORY MANAGER
@@ -2372,7 +2399,7 @@ static void* iothr_main (void* arg)
 			epoch = xtn->ev.reg.epoch;
 			MUTEX_UNLOCK(&xtn->ev.reg.pmtx);
 
-			n = poll(xtn->ev.buf, nfds, 10000);
+			n = hak_sys_poll(&xtn->pollctx, xtn->ev.buf, nfds, 10000);
 
 			/* poll() worked on the copy taken above, so unregistering a
 			 * descriptor while it was blocked could not withdraw it from the
@@ -2642,7 +2669,7 @@ static void vm_muxwait (hak_t* hak, const hak_ntime_t* dur, hak_vmprim_muxwait_c
 	#elif defined(USE_POLL)
 	tmout = dur? HAK_SECNSEC_TO_MSEC(dur->sec, dur->nsec): 0;
 	HAK_MEMCPY(xtn->ev.buf, xtn->ev.reg.ptr, xtn->ev.reg.len * HAK_SIZEOF(*xtn->ev.buf));
-	n = poll(xtn->ev.buf, xtn->ev.reg.len, tmout);
+	n = hak_sys_poll(&xtn->pollctx, xtn->ev.buf, xtn->ev.reg.len, tmout);
 	if (n > 0)
 	{
 		/* compact the return buffer as poll() doesn't */
@@ -4588,6 +4615,9 @@ static int cb_vm_startup (hak_t* hak)
 	xtn_t* xtn = GET_XTN(hak);
 	int sigfd_pcount = 0;
 	int iothr_pcount = 0, flags;
+#if defined(USE_POLL)
+	int pollctx_inited = 0;
+#endif
 
 #if defined(_WIN32)
 	xtn->waitable_timer = CreateWaitableTimer(HAK_NULL, TRUE, HAK_NULL);
@@ -4647,6 +4677,14 @@ static int cb_vm_startup (hak_t* hak)
 
 #elif defined(USE_POLL)
 
+	if (hak_sys_poll_ctx_init(&xtn->pollctx) <= -1)
+	{
+		hak_seterrwithsyserr(hak, 0, errno);
+		HAK_DEBUG1(hak, "Cannot create poll context - %hs\n", strerror(errno));
+		goto oops;
+	}
+	pollctx_inited = 1;
+
 	MUTEX_INIT(&xtn->ev.reg.pmtx);
 
 #elif defined(USE_SELECT)
@@ -4701,6 +4739,9 @@ oops:
 		close(xtn->ep);
 		xtn->ep = -1;
 	}
+#endif
+#if defined(USE_POLL)
+	if (pollctx_inited) hak_sys_poll_ctx_fini(&xtn->pollctx);
 #endif
 
 	return -1;
@@ -4773,6 +4814,7 @@ static void cb_vm_cleanup (hak_t* hak)
 	}
 	/*destroy_poll_data_space(hak);*/
 	MUTEX_DESTROY(&xtn->ev.reg.pmtx);
+	hak_sys_poll_ctx_fini(&xtn->pollctx);
 #elif defined(USE_SELECT)
 	FD_ZERO(&xtn->ev.reg.rfds);
 	FD_ZERO(&xtn->ev.reg.wfds);
