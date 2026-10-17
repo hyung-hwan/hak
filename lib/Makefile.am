@@ -94,6 +94,7 @@ libhak_la_SOURCES = \
 	opt-impl.h \
 	opt.c \
 	pio.c \
+	poll-prv.h \
 	prim.c \
 	print.c \
 	rbt.c \

@@ -337,25 +337,8 @@
 #	endif
 #endif
 
-#if defined(USE_POLL) && !defined(_WIN32) && !defined(__VMS)
-/* poll-msw.h and poll-vms.h carry a per-caller context because their
- * emulations hold state - an auto-reset event on windows, a channel cache and
- * a wake flag on VMS - that two callers cannot share. A platform with a real
- * poll() needs none of it, so the context collapses to nothing here and
- * hak_sys_poll() is the system call. Spelling it the same way on every
- * platform keeps the two call sites below free of conditionals. */
-
-typedef struct hak_sys_poll_ctx_t hak_sys_poll_ctx_t;
-
-struct hak_sys_poll_ctx_t
-{
-	int unused_;
-};
-
-#	define hak_sys_poll_ctx_init(ctx) (0)
-#	define hak_sys_poll_ctx_fini(ctx) ((void)0)
-#	define hak_sys_poll(ctx,pfd,nfd,tmout) poll(pfd,nfd,tmout)
-
+#if defined(USE_POLL)
+#	include "poll-prv.h"
 #endif
 
 /* the character that separates one directory from the next in an incdirs or

@@ -65,10 +65,6 @@
 #	if defined(HAVE_SYS_UIO_H)
 #		include <sys/uio.h>
 #	endif
-#	if defined(HAVE_SYS_EPOLL_H)
-#		include <sys/epoll.h>
-#		define USE_EPOLL
-#	endif
 
 #	include <unistd.h>
 #	include <fcntl.h>
@@ -76,8 +72,9 @@
 #	include <sys/socket.h>
 #	include <netinet/in.h>
 #	include <pthread.h>
-#	include <poll.h>
 #endif
+
+#include "poll-prv.h"
 
 struct bb_t
 {
@@ -145,6 +142,7 @@ struct hak_server_worker_t
 	hak_tmr_index_t exec_runtime_event_index;
 	hak_xproto_t* proto;
 	hak_t* hak;
+	hak_sys_poll_ctx_t pollctx; /* the worker waits on its own socket */
 
 	hak_server_t* server;
 	hak_server_worker_t* prev_worker;
@@ -215,12 +213,19 @@ struct hak_server_t
 
 	struct
 	{
-	#if defined(USE_EPOLL)
-		int ep_fd;
-		struct epoll_event ev_buf[128];
-	#endif
 		hak_server_listener_t* head;
 		hak_oow_t count;
+
+		/* The poll set: the wake pipe, then one entry per listening socket.
+		 * An accepted socket never joins it - each goes to a worker thread of
+		 * its own - so this stays at 1 + count and is built once, when the
+		 * listeners are. That is why poll() is used rather than epoll: the set
+		 * is tiny and static, which is precisely where epoll's advantages -
+		 * O(1) waiting as the set grows, no re-copying of registrations -
+		 * do not apply. */
+		struct pollfd* pfd;
+		hak_oow_t pfd_len;
+		hak_sys_poll_ctx_t pollctx;
 	} listener;
 
 	struct
@@ -446,7 +451,8 @@ start_over:
 
 			pfd.fd = bb->fd;
 			pfd.events = POLLIN; /* POLLERR/POLLHUP are reported regardless - see poll(2) */
-			n = poll(&pfd, 1, actual_tmout);
+			pfd.revents = 0;
+			n = hak_sys_poll(&worker->pollctx, &pfd, 1, actual_tmout);
 			if (n <= -1)
 			{
 				if (errno == EINTR) goto start_over;
@@ -1209,7 +1215,6 @@ hak_server_t* hak_server_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_server_p
 	server->wid_map.free_first = HAK_SERVER_WID_INVALID;
 	server->wid_map.free_last = HAK_SERVER_WID_INVALID;
 
-	server->listener.ep_fd = -1;
 
 	pthread_mutex_init (&server->worker_mutex, HAK_NULL);
 	pthread_mutex_init (&server->tmr_mutex, HAK_NULL);
@@ -1241,7 +1246,6 @@ void hak_server_close (hak_server_t* server)
 {
 	HAK_ASSERT(server->dummy_hak, server->listener.head == HAK_NULL);
 	HAK_ASSERT(server->dummy_hak, server->listener.count == 0);
-	HAK_ASSERT(server->dummy_hak, server->listener.ep_fd == -1);
 
 	if (server->wid_map.ptr)
 	{
@@ -1389,6 +1393,17 @@ static hak_server_worker_t* alloc_worker (hak_server_t* server, int cli_sck, con
 		return HAK_NULL;
 	}
 
+	/* the worker waits on its own socket in read_read_stream() and
+	 * worker_step(), so it needs a polling context of its own. */
+	if (hak_sys_poll_ctx_init(&worker->pollctx) <= -1)
+	{
+		fini_worker_proto(worker);
+		fini_worker_hak(worker);
+		release_wid(server, worker);
+		hak_server_freemem(server, worker);
+		return HAK_NULL;
+	}
+
 	return worker;
 }
 
@@ -1413,6 +1428,7 @@ static void free_worker (hak_server_worker_t* worker)
 	 * run on_fed_cnode(), and that writes through worker->proto. */
 	fini_worker_hak(worker);
 	fini_worker_proto(worker);
+	hak_sys_poll_ctx_fini(&worker->pollctx);
 
 	release_wid(worker->server, worker);
 	hak_server_freemem(worker->server, worker);
@@ -1495,7 +1511,8 @@ static int worker_step (hak_server_worker_t* worker)
 
 	if (pfd.events)
 	{
-		n = poll(&pfd, 1, actual_tmout);
+		pfd.revents = 0;
+		n = hak_sys_poll(&worker->pollctx, &pfd, 1, actual_tmout);
 		if (n <= -1)
 		{
 			if (errno == EINTR) return 0;
@@ -1702,7 +1719,7 @@ static void* worker_main (void* ctx)
 	pthread_mutex_unlock(&server->worker_mutex);
 
 	/* nudge the main loop so purge_all_workers(DEAD) runs now rather than
-	 * after the next epoll_wait timeout - the worker still holds its hak,
+	 * after the next poll timeout - the worker still holds its hak,
 	 * its actor heap and, if fini_worker_socket() did not run, its socket. */
 	write(server->mux_pipe[1], "X", 1); /* don't care even if it fails */
 
@@ -1807,11 +1824,6 @@ static void set_err_with_syserr (hak_server_t* server, int syserr_type, int syse
 static void free_all_listeners (hak_server_t* server)
 {
 	hak_server_listener_t* lp;
-#if defined(USE_EPOLL)
-	struct epoll_event dummy_ev;
-
-	epoll_ctl (server->listener.ep_fd, EPOLL_CTL_DEL, server->mux_pipe[0], &dummy_ev);
-#endif
 
 	while (server->listener.head)
 	{
@@ -1819,50 +1831,32 @@ static void free_all_listeners (hak_server_t* server)
 		server->listener.head = lp->next_listener;
 		server->listener.count--;
 
-#if defined(USE_EPOLL)
-		epoll_ctl(server->listener.ep_fd, EPOLL_CTL_DEL, lp->sck, &dummy_ev);
-#endif
 		close(lp->sck);
 		hak_server_freemem(server, lp);
 	}
 
-#if defined(USE_EPOLL)
-	HAK_ASSERT(server->dummy_hak, server->listener.ep_fd >= 0);
-	close(server->listener.ep_fd);
-	server->listener.ep_fd = -1;
-#endif
+	if (server->listener.pfd)
+	{
+		hak_server_freemem(server, server->listener.pfd);
+		server->listener.pfd = HAK_NULL;
+	}
+	server->listener.pfd_len = 0;
+	hak_sys_poll_ctx_fini(&server->listener.pollctx);
 }
 
 static int setup_listeners (hak_server_t* server, const hak_bch_t* addrs)
 {
 	const hak_bch_t* addr_ptr, * comma;
-	int ep_fd, fcv;
-#if defined(USE_EPOLL)
-	struct epoll_event ev;
+	hak_server_listener_t* lp;
+	hak_oow_t i;
 
-	ep_fd = epoll_create(1024);
-	if (ep_fd <= -1)
+	if (hak_sys_poll_ctx_init(&server->listener.pollctx) <= -1)
 	{
 		set_err_with_syserr(server, 0, errno, "unable to create multiplexer");
 		HAK_LOG1(server->dummy_hak, SERVER_LOGMASK_ERROR, "%js\n", hak_server_geterrmsg(server));
 		return -1;
 	}
 
-	hak_sys_set_cloexec(ep_fd, 1);
-
-	HAK_MEMSET(&ev, 0, HAK_SIZEOF(ev));
-	ev.events = EPOLLIN | EPOLLHUP | EPOLLERR;
-	ev.data.fd = server->mux_pipe[0];
-	if (epoll_ctl(ep_fd, EPOLL_CTL_ADD, server->mux_pipe[0], &ev) <= -1)
-	{
-		set_err_with_syserr(server, 0, errno, "unable to register pipe %d to multiplexer", server->mux_pipe[0]);
-		HAK_LOG1(server->dummy_hak, SERVER_LOGMASK_ERROR, "%js\n", hak_server_geterrmsg(server));
-		close(ep_fd);
-		return -1;
-	}
-
-	server->listener.ep_fd = ep_fd;
-#endif
 	addr_ptr = addrs;
 	while (1)
 	{
@@ -1914,19 +1908,6 @@ static int setup_listeners (hak_server_t* server, const hak_bch_t* addrs)
 		}
 
 
-#if defined(USE_EPOLL)
-		HAK_MEMSET(&ev, 0, HAK_SIZEOF(ev));
-		ev.events = EPOLLIN | EPOLLHUP | EPOLLERR;
-		ev.data.fd = srv_fd;
-		if (epoll_ctl(ep_fd, EPOLL_CTL_ADD, srv_fd, &ev) <= -1)
-		{
-			set_err_with_syserr(server, 0, errno, "unable to register server socket %d to multiplexer for %.*hs", srv_fd, addr_len, addr_ptr);
-			HAK_LOG1(server->dummy_hak, SERVER_LOGMASK_ERROR, "%js\n", hak_server_geterrmsg(server));
-			close(srv_fd);
-			goto next_segment;
-		}
-#endif
-
 		listener = (hak_server_listener_t*)hak_server_allocmem(server, HAK_SIZEOF(*listener));
 		if (!listener)
 		{
@@ -1955,6 +1936,30 @@ static int setup_listeners (hak_server_t* server, const hak_bch_t* addrs)
 		return -1;
 	}
 
+	/* the wake pipe plus one slot per listener. nothing is added to this set
+	 * later, so it is built once here and left alone until teardown. */
+	server->listener.pfd = (struct pollfd*)hak_server_allocmem(server, HAK_SIZEOF(*server->listener.pfd) * (server->listener.count + 1));
+	if (!server->listener.pfd)
+	{
+		HAK_LOG1(server->dummy_hak, SERVER_LOGMASK_ERROR, "%js\n", hak_server_geterrmsg(server));
+		free_all_listeners(server);
+		return -1;
+	}
+
+	i = 0;
+	server->listener.pfd[i].fd = server->mux_pipe[0];
+	server->listener.pfd[i].events = POLLIN; /* POLLERR/POLLHUP are reported regardless - see poll(2) */
+	server->listener.pfd[i].revents = 0;
+	i++;
+	for (lp = server->listener.head; lp; lp = lp->next_listener)
+	{
+		server->listener.pfd[i].fd = lp->sck;
+		server->listener.pfd[i].events = POLLIN;
+		server->listener.pfd[i].revents = 0;
+		i++;
+	}
+	server->listener.pfd_len = i;
+
 	return 0;
 }
 
@@ -1976,6 +1981,7 @@ int hak_server_start (hak_server_t* server, const hak_bch_t* addrs)
 		int cli_fd;
 		hak_ntime_t tmout;
 		hak_server_worker_t* worker;
+		hak_oow_t i;
 		int n;
 
 		pthread_mutex_lock(&server->tmr_mutex);
@@ -1983,11 +1989,7 @@ int hak_server_start (hak_server_t* server, const hak_bch_t* addrs)
 		pthread_mutex_unlock(&server->tmr_mutex);
 		if (n <= -1) HAK_INIT_NTIME(&tmout, 10, 0);
 
-#if defined(USE_EPOLL)
-		n = epoll_wait(server->listener.ep_fd, server->listener.ev_buf, HAK_COUNTOF(server->listener.ev_buf), HAK_SECNSEC_TO_MSEC(tmout.sec, tmout.nsec));
-#else
-		n = poll(); /* TODO: */
-#endif
+		n = hak_sys_poll(&server->listener.pollctx, server->listener.pfd, server->listener.pfd_len, HAK_SECNSEC_TO_MSEC(tmout.sec, tmout.nsec));
 
 		purge_all_workers(server, HAK_SERVER_WORKER_STATE_DEAD);
 		if (n <= -1)
@@ -2004,23 +2006,17 @@ int hak_server_start (hak_server_t* server, const hak_bch_t* addrs)
 		hak_tmr_fire(server->tmr, HAK_NULL, HAK_NULL);
 		pthread_mutex_unlock(&server->tmr_mutex);
 
-		while (n > 0)
+		/* unlike epoll_wait(), poll() leaves the ready slots where they are
+		 * and only answers how many there were, so walk the set and count
+		 * them off. */
+		for (i = 0; i < server->listener.pfd_len && n > 0; i++)
 		{
-#if defined(USE_EPOLL)
-			struct epoll_event* evp;
-#endif
+			struct pollfd* evp = &server->listener.pfd[i];
 
-			--n;
+			if (!evp->revents) continue;
+			n--;
 
-#if defined(USE_EPOLL)
-			evp = &server->listener.ev_buf[n];
-			if (!evp->events /*& (POLLIN | POLLHUP | POLLERR) */) continue;
-#else
-
-			/* TODO: */
-#endif
-
-			if (evp->data.fd == server->mux_pipe[0])
+			if (evp->fd == server->mux_pipe[0])
 			{
 				char tmp[128];
 				while (read(server->mux_pipe[0], tmp, HAK_SIZEOF(tmp)) > 0) /* nothing */;
@@ -2030,13 +2026,13 @@ int hak_server_start (hak_server_t* server, const hak_bch_t* addrs)
 				/* the reset should be the listener's socket */
 
 				cli_len = HAK_SIZEOF(cli_addr);
-				cli_fd = accept(evp->data.fd, (struct sockaddr*)&cli_addr, &cli_len);
+				cli_fd = accept(evp->fd, (struct sockaddr*)&cli_addr, &cli_len);
 				if (cli_fd == -1)
 				{
 					if (server->stopreq) break; /* normal termination requested */
 					if (errno == EINTR) continue; /* interrupted but no termination requested */
 					if (hak_sys_is_errno_wb(errno)) continue;
-					set_err_with_syserr(server, 0, errno, "unable to accept worker on server socket %d", evp->data.fd);
+					set_err_with_syserr(server, 0, errno, "unable to accept worker on server socket %d", evp->fd);
 					xret = -1;
 					break;
 				}

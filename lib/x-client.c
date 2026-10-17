@@ -63,10 +63,11 @@
 #	include <sys/types.h>
 #	include <sys/socket.h>
 #	include <pthread.h>
-#	include <poll.h>
 #	include <unistd.h>
 #	include <fcntl.h>
 #endif
+
+#include "poll-prv.h"
 
 struct client_hak_xtn_t
 {
@@ -113,6 +114,7 @@ struct hak_client_t
 	} cfg;
 
 	int mux_pipe[2]; /* pipe to break the blocking multiplexer in the main server loop */
+	hak_sys_poll_ctx_t pollctx;
 	int state;
 
 	struct
@@ -212,6 +214,16 @@ hak_client_t* hak_client_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_client_p
 
 	client->cfg.logmask = ~(hak_bitmask_t)0;
 
+	if (hak_sys_poll_ctx_init(&client->pollctx) <= -1)
+	{
+		if (errinf)
+		{
+			hak_seterrbfmtwithsyserr(hak, 0, errno, "unable to create multiplexer");
+			hak_geterrinf(hak, errinf);
+		}
+		goto oops;
+	}
+
 	/* the dummy hak is used for this client to perform primitive operations
 	 * such as getting system time or logging. so the heap size doesn't
 	 * need to be changed from the tiny value set above. */
@@ -240,6 +252,7 @@ void hak_client_close (hak_client_t* client)
 	if (client->local.out >= 0 && !is_stdio_fd(client->local.out)) close(client->local.out);
 	if (client->local.err >= 0 && !is_stdio_fd(client->local.err)) close(client->local.err);
 	if (client->local.pw2r.ptr) hak_client_freemem(client, client->local.pw2r.ptr);
+	hak_sys_poll_ctx_fini(&client->pollctx);
 
 	hak_sys_close_pipes(client->mux_pipe);
 	hak_close(client->dummy_hak);
@@ -857,7 +870,7 @@ int hak_client_start (hak_client_t* client, const char* ipaddr, const char* infi
 			}
 		}
 
-		i = poll(pfd, nfds, 1000);
+		i = hak_sys_poll(&client->pollctx, pfd, nfds, 1000);
 /*hak_client_logbfmt(client, HAK_LOG_STDERR, "poll returned %d\n", i);*/
 		if (i <= -1)
 		{

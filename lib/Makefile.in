@@ -162,9 +162,9 @@ libhak_la_DEPENDENCIES = $(am__DEPENDENCIES_5) $(am__append_8)
 am__libhak_la_SOURCES_DIST = hak-prv.h bigint.c chr.c cmgr.c cnode.c \
 	comp.c debug.c decode.c dic.c err.c exec.c fmt-imp.h fmt.c \
 	gc.c hak.c heap.c hnd.c htb.c mb8.c number.c obj.c opt-impl.h \
-	opt.c pio.c prim.c print.c rbt.c read.c sha256.c std.c str.c \
-	sym.c uch-case.h uch-prop.h utf16.c utf8.c utl.c xchg.c xma.c \
-	poll-msw.c poll-msw.h
+	opt.c pio.c poll-prv.h prim.c print.c rbt.c read.c sha256.c \
+	std.c str.c sym.c uch-case.h uch-prop.h utf16.c utf8.c utl.c \
+	xchg.c xma.c poll-msw.c poll-msw.h
 @WIN32_TRUE@am__objects_1 = libhak_la-poll-msw.lo
 am_libhak_la_OBJECTS = libhak_la-bigint.lo libhak_la-chr.lo \
 	libhak_la-cmgr.lo libhak_la-cnode.lo libhak_la-comp.lo \
@@ -470,8 +470,8 @@ pkglib_LTLIBRARIES = libhak.la $(am__append_9)
 libhak_la_SOURCES = hak-prv.h bigint.c chr.c cmgr.c cnode.c comp.c \
 	debug.c decode.c dic.c err.c exec.c fmt-imp.h fmt.c gc.c hak.c \
 	heap.c hnd.c htb.c mb8.c number.c obj.c opt-impl.h opt.c pio.c \
-	prim.c print.c rbt.c read.c sha256.c std.c str.c sym.c \
-	uch-case.h uch-prop.h utf16.c utf8.c utl.c xchg.c xma.c \
+	poll-prv.h prim.c print.c rbt.c read.c sha256.c std.c str.c \
+	sym.c uch-case.h uch-prop.h utf16.c utf8.c utl.c xchg.c xma.c \
 	$(am__append_7)
 
 # OpenVMS is built with vms/build.com rather than through configure, so
