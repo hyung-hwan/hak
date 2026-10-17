@@ -445,7 +445,7 @@ start_over:
 			actual_tmout = (tmout <= 0)? 10000: tmout;
 
 			pfd.fd = bb->fd;
-			pfd.events = POLLIN | POLLERR;
+			pfd.events = POLLIN; /* POLLERR/POLLHUP are reported regardless - see poll(2) */
 			n = poll(&pfd, 1, actual_tmout);
 			if (n <= -1)
 			{

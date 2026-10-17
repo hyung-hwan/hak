@@ -459,8 +459,8 @@ found:
 	#endif
 
 		/* move an element if necesary */
-		if ((y > x && (z <= x || z > y)) ||
-		    (y < x && (z <= x && z > y)))
+		if ((y > x && (z <= x || z > y)) ||    /*  z .. x .. y  or x .. y .. z */
+		    (y < x && (z <= x && z > y)))      /*  y .. z .. x */
 		{
 			dic->bucket->slot[x] = dic->bucket->slot[y];
 			x = y;
