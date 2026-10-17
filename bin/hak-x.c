@@ -931,7 +931,7 @@ int json_main (const char* outer, int argc, char* argv[])
 	json_prim.instcb = json_inst_cb;
 
 	json = hak_json_open(&sys_mmgr, HAK_SIZEOF(json_xtn_t), &json_prim, NULL);
-	if (HAK_UNLIKELY(json))
+	if (HAK_UNLIKELY(!json))
 	{
 		fprintf(stderr, "cannot open json processor\n");
 		return -1;
