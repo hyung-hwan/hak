@@ -37,6 +37,11 @@
 #	include <unistd.h>
 #	include <fcntl.h>
 #	include <errno.h>
+#	if defined(__VMS)
+		/* FIONBIO, and decc$get_sdc() for telling a socket from anything else */
+#		include <sys/socket.h>
+#		include <sys/ioctl.h>
+#	endif
 #endif
 
 /* how much the id map and the descriptor reverse map grow by */
@@ -316,18 +321,32 @@ static int set_nonblock (hak_t* hak, int fd)
 	hak_seterrnum(hak, HAK_ENOIMPL);
 	return -1;
 #elif defined(__VMS)
-	/* fcntl(F_SETFL) is not implemented on OpenVMS - it answers ENOSYS - so a
-	 * descriptor cannot be made non-blocking there.
+	/* fcntl(F_SETFL) is not implemented on OpenVMS - it answers ENOSYS - so
+	 * what can be done here depends on what the descriptor is.
 	 *
-	 * This answers success rather than failure, because on that platform the
-	 * multiplexer reports readiness before anything is read: lib/poll-vms.c
-	 * asks $GETDVI for the queued message count, so a read issued after a
-	 * readiness notification has data waiting and does not block. What the
-	 * caller loses is the "the primitive returns -1 instead of blocking"
-	 * contract - code that reads speculatively, without waiting on a
-	 * semaphore bound to the handle first, blocks instead of being told to
-	 * come back later. */
-	(void)fd;
+	 * A socket has FIONBIO, which the TCP/IP services do implement, and it
+	 * must be used: lib/poll-vms.c answers POLLIN for a socket from select(),
+	 * which is exact, but a socket left blocking would still stall the whole
+	 * vm on any read the multiplexer did not sanction.
+	 *
+	 * Anything else - a mailbox, in practice, since that is what pipe() is
+	 * built from - has no non-blocking mode at all. That answers success
+	 * rather than failure, because for a mailbox the multiplexer reports
+	 * readiness before anything is read: lib/poll-vms.c asks $GETDVI for the
+	 * queued message count, so a read issued after a readiness notification
+	 * has data waiting and does not block. What the caller loses is the "the
+	 * primitive returns -1 instead of blocking" contract - code that reads
+	 * speculatively, without waiting on a semaphore bound to the handle
+	 * first, blocks instead of being told to come back later. */
+	if (decc$get_sdc(fd) != 0)
+	{
+		int on = 1;
+		if (ioctl(fd, FIONBIO, &on) == -1)
+		{
+			hak_seterrbfmtwithsyserr(hak, 0, errno, "unable to set socket %d non-blocking", fd);
+			return -1;
+		}
+	}
 	return 0;
 #elif defined(O_NONBLOCK)
 	int fl;

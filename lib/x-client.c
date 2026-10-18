@@ -676,7 +676,13 @@ static int client_send_to_remote (hak_client_t* client, hak_xpkt_type_t pktype, 
 static void on_control_event (hak_client_t* client, struct pollfd* pfd)
 {
 	char tmp[128];
+
 /*hak_client_logbfmt(client, HAK_LOG_STDERR, "ON CONTROL EVENT \n");*/
+	/* one read per readiness notification - see the matching comment in
+	 * hak_server_start(). the multiplexer is level triggered, so draining in
+	 * a loop buys nothing and costs a deadlock wherever the wake channel
+	 * cannot be made non-blocking. */
+	/*fcv = read(client->mux_pipe[0], tmp, HAK_SIZEOF(tmp));*/
 	while (read(client->mux_pipe[0], tmp, HAK_SIZEOF(tmp)) > 0) /* nothing */;
 /* TODO: handle different command? */
 }

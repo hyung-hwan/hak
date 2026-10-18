@@ -27,15 +27,23 @@
 
 #include <hak.h>
 
-/* OpenVMS has no poll(), and its select() comes from the TCP/IP services and
- * understands sockets only - it answers ENOTSOCK for anything else. This
- * supplies a poll() over $QIO so that std.c's USE_POLL multiplexer works
- * unchanged, the same arrangement lib/poll-msw.h uses for windows.
+/* OpenVMS has no poll(). This supplies one so that std.c's USE_POLL
+ * multiplexer works unchanged, the same arrangement lib/poll-msw.h uses for
+ * windows.
  *
- * It covers mailbox devices. That is the useful case rather than a limitation:
- * the C run-time implements pipe() with a mailbox, so a pipe descriptor - the
- * signal self-pipe in std.c, anything from sys.pipe - is exactly what this
- * handles. A descriptor that is not a mailbox is reported POLLNVAL. */
+ * It covers three kinds of descriptor, because hak multiplexes all three in
+ * one set - the server watches its listening sockets alongside the wake pipe,
+ * and the client watches the remote socket alongside the wake pipe and the
+ * script file:
+ *
+ *   socket  (a BG device of the TCP/IP services)
+ *   mailbox (the C run-time implements pipe() with one, so a pipe descriptor
+ *            and anything from sys.pipe lands here)
+ *   regular file (always ready, which is what poll() reports for one anyway)
+ *
+ * Anything else - a terminal, say - is reported POLLNVAL rather than guessed
+ * at. See lib/poll-vms.c for how the three are told apart and why neither of
+ * the two primitives OpenVMS offers could have covered the set on its own. */
 
 /* Event types that can be polled for.  These bits may be set in `events'
    to indicate the interesting event types; they will appear in `revents'
@@ -61,8 +69,8 @@ struct pollfd
 
 typedef unsigned long nfds_t;
 
-/* The cache holds one assigned channel per descriptor, and doubles as the
- * ceiling on how many descriptors a single call may watch. */
+/* The cache holds one assigned channel per mailbox descriptor, and doubles as
+ * the ceiling on how many descriptors a single call may watch. */
 #define HAK_SYS_POLL_MAX_FDS 64
 #define HAK_SYS_POLL_DEVNAM_LEN 64
 
@@ -76,24 +84,30 @@ struct hak_sys_poll_chan_t
 
 /* Per-caller polling state.
  *
- * Two things here cannot be shared. The channel cache is mutable - a caller
- * may sys$dassgn a slot another one is in the middle of a sys$qio on. And the
- * wake flag pairs with sys$hiber(): a caller clears it, arms its ASTs, then
- * sleeps until its own AST sets it. One flag between two sleepers loses
- * wakeups. One context per thread, never shared.
+ * The channel cache is mutable - a caller may sys$dassgn a slot another one is
+ * in the middle of a sys$qio on - so it cannot be shared. Only mailbox
+ * channels are cached: a socket's channel comes from decc$get_sdc() on every
+ * pass, which is a C run-time lookup rather than a system service, and is
+ * owned by the run-time rather than by us.
  *
- * [NOTE] a context makes the state private, but sys$wake(0,0) still wakes the
- * process rather than a thread, so a second sleeper can consume the wake meant
- * for the first. Concurrent pollers need a per-thread wait primitive - an event
- * flag with sys$waitfr, say - before that is fully solved. Until then this is
- * sound for one poller at a time, which is what hak does. */
+ * The event flag is private too. A caller clears it, arms its attention ASTs,
+ * then blocks on sys$waitfr() until one of its own ASTs sets it. Because the
+ * flag is allocated per context with lib$get_ef(), two contexts cannot steal
+ * each other's wakeups - which the earlier sys$wake(0,0)/sys$hiber() pairing
+ * could not promise, since sys$wake wakes the process and not a thread.
+ *
+ * [NOTE] on VAX, DECthreads are user mode only, so sys$waitfr() still suspends
+ * every thread in the process while it waits. That is a property of the thread
+ * library rather than of this code, and it is no worse than the sys$hiber()
+ * that came before, but it does mean a thread-per-connection design gains
+ * nothing on that hardware. */
 typedef struct hak_sys_poll_ctx_t hak_sys_poll_ctx_t;
 
 struct hak_sys_poll_ctx_t
 {
 	hak_sys_poll_chan_t chan[HAK_SYS_POLL_MAX_FDS];
+	unsigned int efn;                    /* from lib$get_ef(), 0 when unset */
 	int inited;
-	volatile int woken;
 };
 
 #if defined(__cplusplus)

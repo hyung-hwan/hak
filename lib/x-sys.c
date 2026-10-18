@@ -60,6 +60,12 @@
 #	include <fcntl.h>
 #	include <sys/types.h>
 #	include <sys/socket.h>
+#	if defined(__VMS)
+		/* FIONBIO, decc$get_sdc() for telling a socket from anything else,
+		 * and the loopback pair that stands in for socketpair() */
+#		include <sys/ioctl.h>
+#		include <netinet/in.h>
+#	endif
 #endif
 
 int hak_sys_send (int sck, const void* data, hak_oow_t* size)
@@ -127,11 +133,81 @@ int hak_sys_send_iov (int sck, hak_iovec_t* iov, int count)
 }
 
 
+#if defined(__VMS)
+/* A socket pair for the wake channel, since OpenVMS offers no other way to
+ * get one that behaves.
+ *
+ * pipe() here is built from a mailbox, and a mailbox has no non-blocking
+ * mode - fcntl() is not implemented for it and FIONBIO is a socket call - so
+ * a wake channel made from pipe() cannot be read without the risk of
+ * blocking, and it is a different device class from the sockets it sits
+ * beside in the poll set. socketpair() is no help: the symbol links but
+ * faults at address 0, so it is not implemented.
+ *
+ * A loopback connection gives what is wanted - FIONBIO works, an empty read
+ * answers EWOULDBLOCK, and select() sees it alongside the listening sockets.
+ *
+ * [NOTE] the listener is bound to 127.0.0.1 on a port the stack picks, takes
+ * a backlog of one, and is closed the moment the pair is up, so the window in
+ * which anything else could connect is as small as it can be made. It is
+ * still a window: on a host running untrusted local code, a racing connect()
+ * could be accepted in our place. That is the same trade the equivalent trick
+ * makes on windows. */
+static int vms_socket_pair (int pfd[2])
+{
+	int lsck = -1, csck = -1, asck = -1, on = 1;
+	struct sockaddr_in sa;
+	hak_scklen_t slen;
+
+	lsck = socket(AF_INET, SOCK_STREAM, 0);
+	if (lsck <= -1) goto oops;
+
+	HAK_MEMSET(&sa, 0, HAK_SIZEOF(sa));
+	sa.sin_family = AF_INET;
+	sa.sin_port = 0; /* the stack picks a free one */
+	sa.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+	setsockopt(lsck, SOL_SOCKET, SO_REUSEADDR, &on, HAK_SIZEOF(on));
+
+	if (bind(lsck, (struct sockaddr*)&sa, HAK_SIZEOF(sa)) <= -1) goto oops;
+
+	/* read the port back - bind() was given 0 */
+	slen = HAK_SIZEOF(sa);
+	if (getsockname(lsck, (struct sockaddr*)&sa, &slen) <= -1) goto oops;
+
+	if (listen(lsck, 1) <= -1) goto oops;
+
+	csck = socket(AF_INET, SOCK_STREAM, 0);
+	if (csck <= -1) goto oops;
+	if (connect(csck, (struct sockaddr*)&sa, HAK_SIZEOF(sa)) <= -1) goto oops;
+
+	/* the length must match the family exactly - OpenVMS rejects a buffer
+	 * larger than the family's own sockaddr */
+	slen = HAK_SIZEOF(sa);
+	asck = accept(lsck, (struct sockaddr*)&sa, &slen);
+	if (asck <= -1) goto oops;
+
+	close(lsck);
+	pfd[0] = asck; /* read end  - the one the poll set watches */
+	pfd[1] = csck; /* write end - the one a nudge is written to */
+	return 0;
+
+oops:
+	if (asck >= 0) close(asck);
+	if (csck >= 0) close(csck);
+	if (lsck >= 0) close(lsck);
+	return -1;
+}
+#endif
+
 int hak_sys_open_pipes (int pfd[2], int nonblock)
 {
 	/* TODO: mimic open_pipes() in std.c */
 
+#if defined(__VMS)
+	if (vms_socket_pair(pfd) <= -1) return -1;
+#else
 	if (pipe(pfd) <= -1) return -1;
+#endif
 
 	hak_sys_set_nonblock(pfd[0], nonblock);
 	hak_sys_set_nonblock(pfd[1], nonblock);
@@ -157,7 +233,28 @@ void hak_sys_close_pipes (int pfd[2])
 
 int hak_sys_set_nonblock (int fd, int v)
 {
-#if defined(F_GETFL) && defined(F_SETFL) && defined(O_NONBLOCK)
+#if defined(__VMS)
+	/* fcntl() does not work on an OpenVMS socket. F_GETFL answers -1/EINVAL
+	 * and F_SETFL answers -1/ENOSYS, so the fcntl arm below would leave the
+	 * descriptor blocking while reporting nothing wrong - which is how the
+	 * listening socket in hak_server_start() came to block in accept() before
+	 * this new vms arm was implemented. FIONBIO is the call the TCP/IP services
+	 * do implement.
+	 *
+	 * a non-socket descriptor has no equivalent here: the run-time has no
+	 * non-blocking mode for a mailbox. that is reported as a failure. */
+	int on = !!v;
+
+	if (decc$get_sdc(fd) == 0)
+	{
+		errno = ENOTSOCK;
+		return -1;
+	}
+
+	if (ioctl(fd, FIONBIO, &on) == -1) return -1;
+
+	return 0;
+#elif defined(F_GETFL) && defined(F_SETFL) && defined(O_NONBLOCK)
 	int flags;
 
 	if ((flags = fcntl(fd, F_GETFL, 0)) <= -1) return -1;

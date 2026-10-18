@@ -165,6 +165,7 @@ struct hak_server_listener_t
 {
 	int sck;
 	hak_sckaddr_t sckaddr;
+	hak_scklen_t scklen; /* the length that belongs to sckaddr's family */
 	hak_server_listener_t* next_listener;
 };
 
@@ -1154,7 +1155,7 @@ hak_server_t* hak_server_open (hak_mmgr_t* mmgr, hak_oow_t xtnsize, hak_server_p
 	hak_t* hak = HAK_NULL;
 	hak_tmr_t* tmr = HAK_NULL;
 	server_hak_xtn_t* xtn;
-	int pfd[2], fcv;
+	int pfd[2];
 	hak_bitmask_t trait;
 
 	server = (hak_server_t*)HAK_MMGR_ALLOC(mmgr, HAK_SIZEOF(*server) + xtnsize);
@@ -1924,6 +1925,7 @@ static int setup_listeners (hak_server_t* server, const hak_bch_t* addrs)
 		HAK_MEMSET(listener, 0, HAK_SIZEOF(*listener));
 		listener->sck = srv_fd;
 		listener->sckaddr = srv_addr;
+		listener->scklen = srv_len;
 		listener->next_listener = server->listener.head;
 		server->listener.head = listener;
 		server->listener.count++;
@@ -1971,7 +1973,7 @@ static int setup_listeners (hak_server_t* server, const hak_bch_t* addrs)
 
 int hak_server_start (hak_server_t* server, const hak_bch_t* addrs)
 {
-	int xret = 0, fcv;
+	int xret = 0;
 	pthread_attr_t thr_attr;
 
 	if (setup_listeners(server, addrs) <= -1) return -1;
@@ -2025,13 +2027,44 @@ int hak_server_start (hak_server_t* server, const hak_bch_t* addrs)
 			if (evp->fd == server->mux_pipe[0])
 			{
 				char tmp[128];
+				/* one read per readiness notification, not a loop that
+				 * drains the pipe until it would block.
+				 *
+				 * reading once is enough because every multiplexer behind
+				 * hak_sys_poll() is level triggered: anything still in the
+				 * pipe is reported again on the next pass. It is also the
+				 * only shape that does not depend on the wake channel being
+				 * non-blocking, and that dependency is worth not having -
+				 * when the channel was a mailbox on OpenVMS, where nothing
+				 * can be made non-blocking, the second read of the drain
+				 * loop never returned and the accept loop was lost the first
+				 * time any worker finished and nudged it. */
+				/*fcv = read(server->mux_pipe[0], tmp, HAK_SIZEOF(tmp));*/
 				while (read(server->mux_pipe[0], tmp, HAK_SIZEOF(tmp)) > 0) /* nothing */;
 			}
 			else
 			{
+				hak_server_listener_t* lp;
+
 				/* the reset should be the listener's socket */
 
+				/* offer accept() the length that belongs to this listener's
+				 * address family rather than the size of the hak_sckaddr_t
+				 * union. OpenVMS refuses a buffer larger than the family's
+				 * own sockaddr - accept() answers -1 and sets an errno that
+				 * maps to nothing, so the loop would retry for ever - and
+				 * the exact length is correct everywhere else, so this is not
+				 * made conditional. */
 				cli_len = HAK_SIZEOF(cli_addr);
+				for (lp = server->listener.head; lp; lp = lp->next_listener)
+				{
+					if (lp->sck == evp->fd)
+					{
+						cli_len = lp->scklen;
+						break;
+					}
+				}
+
 				cli_fd = accept(evp->fd, (struct sockaddr*)&cli_addr, &cli_len);
 				if (cli_fd == -1)
 				{
@@ -2039,7 +2072,14 @@ int hak_server_start (hak_server_t* server, const hak_bch_t* addrs)
 					if (errno == EINTR) continue; /* interrupted but no termination requested */
 					if (hak_sys_is_errno_wb(errno)) continue;
 					set_err_with_syserr(server, 0, errno, "unable to accept worker on server socket %d", evp->fd);
+					HAK_LOG1(server->dummy_hak, SERVER_LOGMASK_ERROR, "%js\n", hak_server_geterrmsg(server));
 					xret = -1;
+					/* this break leaves the loop over the ready descriptors
+					 * only. without stopping the server too, an accept()
+					 * that fails every time - rather than transiently -
+					 * turns into a busy loop that never terminates and
+					 * never reports anything. */
+					server->stopreq = 1;
 					break;
 				}
 
