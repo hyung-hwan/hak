@@ -300,8 +300,7 @@ static void vm_cleanup (hak_t* hak)
 			(hak_ooi_t)HAK_OOP_TO_SMOOI(hak->processor->total_count),
 			(hak_ooi_t)HAK_OOP_TO_SMOOI(hak->processor->runnable.count),
 			(hak_ooi_t)HAK_OOP_TO_SMOOI(hak->processor->suspended.count));
-
-		HAK_LOG0 (hak, HAK_LOG_WARN, "Warning - terminating all residue processes\n");
+		HAK_LOG0(hak, HAK_LOG_WARN, "Warning - terminating all residue processes\n");
 		terminate_all_processes(hak);
 	}
 
@@ -796,7 +795,7 @@ static HAK_INLINE int prepare_to_alloc_pid (hak_t* hak)
 		if (hak->proc_map_capa >= HAK_SMOOI_MAX)
 		{
 		#if defined(HAK_DEBUG_VM_PROCESSOR)
-			HAK_LOG0 (hak, HAK_LOG_IC | HAK_LOG_FATAL, "Processor - too many processes\n");
+			HAK_LOG0(hak, HAK_LOG_IC | HAK_LOG_FATAL, "Processor - too many processes\n");
 		#endif
 			hak_seterrbfmt(hak, HAK_EPFULL, "maximum number(%zd) of processes reached", HAK_SMOOI_MAX);
 			return -1;
@@ -868,7 +867,7 @@ static hak_oop_process_t make_process (hak_t* hak, hak_oop_context_t ctx)
 	if (total_count >= HAK_SMOOI_MAX)
 	{
 	#if defined(HAK_DEBUG_VM_PROCESSOR)
-		HAK_LOG0 (hak, HAK_LOG_IC | HAK_LOG_FATAL, "Processor - too many processes\n");
+		HAK_LOG0(hak, HAK_LOG_IC | HAK_LOG_FATAL, "Processor - too many processes\n");
 	#endif
 		hak_seterrbfmt(hak, HAK_EPFULL, "maximum number(%zd) of processes reached", HAK_SMOOI_MAX);
 		return HAK_NULL;
@@ -1194,7 +1193,7 @@ static void dump_process_info (hak_t* hak, hak_bitmask_t log_mask)
 	if (HAK_OOP_TO_SMOOI(hak->processor->runnable.count) > 0)
 	{
 		hak_oop_process_t p;
-		HAK_LOG0 (hak, log_mask, "> Runnable:");
+		HAK_LOG0(hak, log_mask, "> Runnable:");
 		p = hak->processor->runnable.first;
 		while (p)
 		{
@@ -1202,12 +1201,12 @@ static void dump_process_info (hak_t* hak, hak_bitmask_t log_mask)
 			if (p == hak->processor->runnable.last) break;
 			p = p->ps.next;
 		}
-		HAK_LOG0 (hak, log_mask, "\n");
+		HAK_LOG0(hak, log_mask, "\n");
 	}
 	if (HAK_OOP_TO_SMOOI(hak->processor->suspended.count) > 0)
 	{
 		hak_oop_process_t p;
-		HAK_LOG0 (hak, log_mask, "> Suspended:");
+		HAK_LOG0(hak, log_mask, "> Suspended:");
 		p = hak->processor->suspended.first;
 		while (p)
 		{
@@ -1215,13 +1214,13 @@ static void dump_process_info (hak_t* hak, hak_bitmask_t log_mask)
 			if (p == hak->processor->suspended.last) break;
 			p = p->ps.next;
 		}
-		HAK_LOG0 (hak, log_mask, "\n");
+		HAK_LOG0(hak, log_mask, "\n");
 	}
 	if (hak->sem_io_wait_count > 0)
 	{
 		hak_ooi_t io_handle;
 
-		HAK_LOG0 (hak, log_mask, "> IO semaphores:");
+		HAK_LOG0(hak, log_mask, "> IO semaphores:");
 		for (io_handle = 0; io_handle < hak->sem_io_map_capa; io_handle++)
 		{
 			hak_ooi_t index;
@@ -1234,7 +1233,7 @@ static void dump_process_info (hak_t* hak, hak_bitmask_t log_mask)
 				HAK_LOG1(hak, log_mask, " h=%zd", io_handle);
 
 				/* dump process IDs waiting for input signaling */
-				HAK_LOG0 (hak, log_mask, "(wpi");
+				HAK_LOG0(hak, log_mask, "(wpi");
 				sem = hak->sem_io_tuple[index].sem[HAK_SEMAPHORE_IO_TYPE_INPUT];
 				if (sem)
 				{
@@ -1246,11 +1245,11 @@ static void dump_process_info (hak_t* hak, hak_bitmask_t log_mask)
 				}
 				else
 				{
-					HAK_LOG0 (hak, log_mask, ":none");
+					HAK_LOG0(hak, log_mask, ":none");
 				}
 
 				/* dump process IDs waitingt for output signaling */
-				HAK_LOG0 (hak, log_mask, ",wpo");
+				HAK_LOG0(hak, log_mask, ",wpo");
 				sem = hak->sem_io_tuple[index].sem[HAK_SEMAPHORE_IO_TYPE_OUTPUT];
 				if (sem)
 				{
@@ -1262,13 +1261,13 @@ static void dump_process_info (hak_t* hak, hak_bitmask_t log_mask)
 				}
 				else
 				{
-					HAK_LOG0 (hak, log_mask, ":none");
+					HAK_LOG0(hak, log_mask, ":none");
 				}
 
-				HAK_LOG0 (hak, log_mask, ")");
+				HAK_LOG0(hak, log_mask, ")");
 			}
 		}
-		HAK_LOG0 (hak, log_mask, "\n");
+		HAK_LOG0(hak, log_mask, "\n");
 	}
 }
 
@@ -3523,7 +3522,7 @@ static HAK_INLINE int switch_process_if_needed (hak_t* hak)
 		if (hak->sem_gcfin_sigreq)
 		{
 		signal_sem_gcfin:
-			HAK_LOG0 (hak, HAK_LOG_IC | HAK_LOG_DEBUG, "Signaled GCFIN semaphore\n");
+			HAK_LOG0(hak, HAK_LOG_IC | HAK_LOG_DEBUG, "Signaled GCFIN semaphore\n");
 			proc = signal_semaphore(hak, hak->sem_gcfin);
 
 			if (hak->processor->active == hak->nil_process && (hak_oop_t)proc != hak->_nil)
@@ -3604,7 +3603,7 @@ static HAK_INLINE int switch_process_if_needed (hak_t* hak)
 	{
 		/* no more waiting semaphore and no more process */
 		HAK_ASSERT(hak, hak->processor->runnable.count = HAK_SMOOI_TO_OOP(0));
-		HAK_LOG0 (hak, HAK_LOG_IC | HAK_LOG_DEBUG, "No more runnable process\n");
+		HAK_LOG0(hak, HAK_LOG_IC | HAK_LOG_DEBUG, "No more runnable process\n");
 
 		if (HAK_OOP_TO_SMOOI(hak->processor->suspended.count) > 0)
 		{
@@ -3756,7 +3755,7 @@ static HAK_INLINE int do_return_from_block (hak_t* hak)
 		HAK_ASSERT(hak, (hak_oop_t)HAK_CTX_GET_SENDER(hak, hak->active_context) != hak->_nil);
 		if (HAK_UNLIKELY(HAK_CTX_GET_IP(hak, HAK_CTX_GET_SENDER(hak, hak->active_context)) == HAK_SMOOI_TO_OOP(-1)))
 		{
-			HAK_LOG0 (hak, HAK_LOG_IC | HAK_LOG_ERROR, "Error - cannot return to dead context\n");
+			HAK_LOG0(hak, HAK_LOG_IC | HAK_LOG_ERROR, "Error - cannot return to dead context\n");
 			hak_seterrbfmt(hak, HAK_EINTERN, "unable to return to dead context"); /* TODO: can i make this error catchable at the hak level? */
 			return -1;
 		}
@@ -3842,7 +3841,7 @@ static HAK_INLINE int do_return_from_home (hak_t* hak, hak_oop_t return_value, h
 
 		if (hak->active_context->home->ip == HAK_SMOOI_TO_OOP(-1))
 		{
-			HAK_LOG0 (hak, HAK_LOG_IC | HAK_LOG_ERROR, "Error - cannot return from dead context\n");
+			HAK_LOG0(hak, HAK_LOG_IC | HAK_LOG_ERROR, "Error - cannot return from dead context\n");
 			hak_seterrbfmt(hak, HAK_EINTERN, "unable to return from dead context"); /* TODO: can i make this error catchable at the hak level? */
 			return -1;
 		}
@@ -3918,7 +3917,7 @@ static HAK_INLINE int do_return_from_home (hak_t* hak, hak_oop_t return_value, h
 
 		if (get_ip_dbgi(hak, hak->active_function, ip, &dbgi) <= -1)
 		{
-			HAK_LOG0 (hak, HAK_LOG_IC | HAK_LOG_ERROR, "Error - cannot return from dead context - throwing an exception\n");
+			HAK_LOG0(hak, HAK_LOG_IC | HAK_LOG_ERROR, "Error - cannot return from dead context - throwing an exception\n");
 		}
 		else
 		{
@@ -4063,7 +4062,26 @@ static int execute (hak_t* hak)
 	HAK_ASSERT(hak, hak->active_context != HAK_NULL);
 
 	hak->abort_req = 0;
-	if (vm_startup(hak) <= -1) return -1;
+	if (vm_startup(hak) <= -1)
+	{
+		/* the initial process was created by start_initial_process_and_context()
+		 * before this point and is RUNNING, and hak_execute() asserts on return
+		 * that nothing is left running. every other way out of this function
+		 * goes through done: or oops:, and both call vm_cleanup(), which
+		 * terminates whatever processes remain. this one returned without it,
+		 * so a failure here turned a reportable error into an assertion
+		 * failure, and abort() took the whole process down.
+		 *
+		 * vm_cleanup() must not be used here. vm_startup() has already run the
+		 * cleanup callback of each callback it managed to start.
+		 *
+		 * the processes need unwinding. if hak_execute() is called again without
+		 * this unwinding, it will encounter some assertion failures. for example,
+		 *      HAK_ASSERT(hak, hak->processor->active == hak->nil_process);
+		 */
+		terminate_all_processes(hak);
+		return -1;
+	}
 	hak->proc_switched = 0;
 
 	hak->gci.lazy_sweep = 1; /* TODO: make it configurable?? */
@@ -6245,7 +6263,6 @@ hak_pfrc_t hak_pf_process_terminate_all (hak_t* hak, hak_mod_t* mod, hak_ooi_t n
 	 * terminate_all_processes changes the the active process.
 	 * calling this after terminate_all_processes() pollutes a wrong stack. place it here */
 	HAK_STACK_SETRET(hak, nargs, hak->_nil);
-
 	terminate_all_processes(hak);
 	return HAK_PF_SUCCESS;
 }
