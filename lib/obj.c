@@ -937,6 +937,19 @@ hak_oop_t hak_reversecons (hak_t* hak, hak_oop_t cons)
 /* ------------------------------------------------------------------------ *
  * OBJECT HASHING
  * ------------------------------------------------------------------------ */
+int hak_identityhashobj (hak_t* hak, hak_oop_t obj, hak_oow_t* xhv)
+{
+	/* an immediate value is its own identity. its hash must agree with
+	 * hak_hashobj() so that Object>>hash and the content hash meet there */
+	if (!HAK_OOP_IS_POINTER(obj)) return hak_hashobj(hak, obj, xhv);
+
+	/* the collector never moves an object, so its address is a stable
+	 * identity for the life of the object. revisit this when objects can
+	 * move or survive an image save and load. */
+	*xhv = ((hak_oow_t)obj / HAK_SIZEOF(hak_oop_t)) & HAK_SMOOI_MAX;
+	return 0;
+}
+
 int hak_hashobj (hak_t* hak, hak_oop_t obj, hak_oow_t* xhv)
 {
 	hak_oow_t hv;

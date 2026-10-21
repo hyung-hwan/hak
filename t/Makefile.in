@@ -396,10 +396,14 @@ am__test_logs3 = $(am__test_logs2:.hak.log=.log)
 HAK_LOG_DRIVER = $(SHELL) $(top_srcdir)/ac/test-driver
 HAK_LOG_COMPILE = $(HAK_LOG_COMPILER) $(AM_HAK_LOG_FLAGS) \
 	$(HAK_LOG_FLAGS)
-TEST_LOGS = $(am__test_logs3:.err.log=.log)
+am__test_logs4 = $(am__test_logs3:.err.log=.log)
 ERR_LOG_DRIVER = $(SHELL) $(top_srcdir)/ac/test-driver
 ERR_LOG_COMPILE = $(ERR_LOG_COMPILER) $(AM_ERR_LOG_FLAGS) \
 	$(ERR_LOG_FLAGS)
+TEST_LOGS = $(am__test_logs4:.hakx.log=.log)
+HAKX_LOG_DRIVER = $(SHELL) $(top_srcdir)/ac/test-driver
+HAKX_LOG_COMPILE = $(HAKX_LOG_COMPILER) $(AM_HAKX_LOG_FLAGS) \
+	$(HAKX_LOG_FLAGS)
 am__DIST_COMMON = $(srcdir)/Makefile.in $(top_srcdir)/ac/depcomp \
 	$(top_srcdir)/ac/test-driver
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -558,6 +562,8 @@ check_SCRIPTS = \
 	assign-01.hak \
 	char-01.hak \
 	classof-01.hak \
+	coll-01.hak \
+	coll-02.hak \
 	cons-01.hak \
 	dic-01.hak \
 	feed-01.hak \
@@ -628,18 +634,29 @@ check_FIXTURES = \
 	liberal-inc.hak \
 	liberal-inc2.hak
 
-EXTRA_DIST = $(check_SCRIPTS) $(check_ERRORS) $(check_FIXTURES)
-TESTS = $(check_PROGRAMS) $(check_SCRIPTS) $(check_ERRORS)
-TEST_EXTENSIONS = .hak .err
+check_XTESTS = \
+	x-basic-01.hakx \
+	x-output-01.hakx \
+	x-proc-01.hakx
+
+EXTRA_DIST = $(check_SCRIPTS) $(check_ERRORS) $(check_FIXTURES) $(check_XTESTS) \
+	run.sh err.sh xrun.sh
+
+@ENABLE_HAKX_FALSE@TESTS = $(check_PROGRAMS) $(check_SCRIPTS) $(check_ERRORS)
+@ENABLE_HAKX_TRUE@TESTS = $(check_PROGRAMS) $(check_SCRIPTS) $(check_ERRORS) $(check_XTESTS)
+TEST_EXTENSIONS = .hak .err .hakx
 HAKBIN = $(top_builddir)/bin/hak
+HAKXBIN = $(top_builddir)/bin/hakx
 HAK_LOG_COMPILER = $(SHELL) $(abs_srcdir)/run.sh $(HAKBIN) --incdirs="@abs_top_srcdir@/src" --modlibdirs="@abs_top_builddir@/mod:@abs_top_builddir@/mod/.libs" --heapsize=0
 AM_HAK_LOG_FLAGS = 
 ERR_LOG_COMPILER = $(SHELL) $(abs_srcdir)/err.sh $(HAKBIN) --incdirs="@abs_top_srcdir@/src" --modlibdirs="@abs_top_builddir@/mod:@abs_top_builddir@/mod/.libs" --heapsize=0
 AM_ERR_LOG_FLAGS = 
+HAKX_LOG_COMPILER = $(SHELL) $(abs_srcdir)/xrun.sh $(HAKXBIN) "@abs_top_srcdir@/src"
+AM_HAKX_LOG_FLAGS = 
 all: all-am
 
 .SUFFIXES:
-.SUFFIXES: .c .err .err$(EXEEXT) .hak .hak$(EXEEXT) .lo .log .o .obj .trs
+.SUFFIXES: .c .err .err$(EXEEXT) .hak .hak$(EXEEXT) .hakx .hakx$(EXEEXT) .lo .log .o .obj .trs
 $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
@@ -1010,6 +1027,20 @@ t-004.log: t-004$(EXEEXT)
 @am__EXEEXT_TRUE@	$(am__check_pre) $(ERR_LOG_DRIVER) --test-name "$$f" \
 @am__EXEEXT_TRUE@	--log-file $$b.log --trs-file $$b.trs \
 @am__EXEEXT_TRUE@	$(am__common_driver_flags) $(AM_ERR_LOG_DRIVER_FLAGS) $(ERR_LOG_DRIVER_FLAGS) -- $(ERR_LOG_COMPILE) \
+@am__EXEEXT_TRUE@	"$$tst" $(AM_TESTS_FD_REDIRECT)
+.hakx.log:
+	@p='$<'; \
+	$(am__set_b); \
+	$(am__check_pre) $(HAKX_LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_HAKX_LOG_DRIVER_FLAGS) $(HAKX_LOG_DRIVER_FLAGS) -- $(HAKX_LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+@am__EXEEXT_TRUE@.hakx$(EXEEXT).log:
+@am__EXEEXT_TRUE@	@p='$<'; \
+@am__EXEEXT_TRUE@	$(am__set_b); \
+@am__EXEEXT_TRUE@	$(am__check_pre) $(HAKX_LOG_DRIVER) --test-name "$$f" \
+@am__EXEEXT_TRUE@	--log-file $$b.log --trs-file $$b.trs \
+@am__EXEEXT_TRUE@	$(am__common_driver_flags) $(AM_HAKX_LOG_DRIVER_FLAGS) $(HAKX_LOG_DRIVER_FLAGS) -- $(HAKX_LOG_COMPILE) \
 @am__EXEEXT_TRUE@	"$$tst" $(AM_TESTS_FD_REDIRECT)
 
 distdir: $(BUILT_SOURCES)

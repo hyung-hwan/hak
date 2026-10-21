@@ -1,0 +1,21 @@
+## Output large enough to be split.
+##
+## A reply does not go back in one piece: hak_xproto_start_reply() and the
+## send paths in x-server.c and x-client.c cut it into packets, and both ends
+## have had bugs where a partial write was taken for a complete one. A reply
+## of a few bytes never reaches those paths; this one does.
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+## 200 lines of 40 characters is comfortably past any single packet
+i := 0
+while (< i 200) {
+	printf "%04d 0123456789012345678901234567890123\n" i
+	i := (+ i 1)
+}
+
+chk (eqv? i 200) "every line was emitted"
+printf "DONE output\n"

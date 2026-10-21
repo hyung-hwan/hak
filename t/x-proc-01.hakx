@@ -1,0 +1,31 @@
+## Green processes inside a worker.
+##
+## A worker runs a full vm, so the scheduler, yielding and semaphores must all
+## work there. This also keeps a worker busy for a while rather than answering
+## instantly, which is what makes the concurrent phase of xrun.sh overlap two
+## live workers instead of serialising them by accident.
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+s := (core.sem-new)
+z := 0
+
+fun counter() {
+	| k |
+	k := 0
+	while (< k 50) {
+		k := (+ k 1)
+		core.yield
+	}
+	z := k
+	core.sem-signal s
+}
+
+core.fork counter
+core.sem-wait s
+
+chk (eqv? z 50) "a green process ran to completion in the worker"
+printf "DONE proc\n"

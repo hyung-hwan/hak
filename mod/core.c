@@ -816,6 +816,27 @@ static hak_pfrc_t pf_core_smooi_to_char (hak_t* hak, hak_mod_t* mod, hak_ooi_t n
 	return HAK_PF_SUCCESS;
 }
 
+
+/* (core.hash obj) - the content hash the vm's dictionaries use. fails for an
+ * object it cannot hash; String, Symbol, ByteArray and the numbers answer it
+ * from their hash method so that hak code and C code probe the same slot. */
+static hak_pfrc_t pf_core_hash (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+{
+	hak_oow_t hv;
+	if (hak_hashobj(hak, HAK_STACK_GETARG(hak, nargs, 0), &hv) <= -1) return HAK_PF_FAILURE;
+	HAK_STACK_SETRET(hak, nargs, HAK_SMOOI_TO_OOP((hak_ooi_t)hv));
+	return HAK_PF_SUCCESS;
+}
+
+/* (core.identityHash obj) - Object>>hash and IdentityDictionary */
+static hak_pfrc_t pf_core_identity_hash (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+{
+	hak_oow_t hv;
+	if (hak_identityhashobj(hak, HAK_STACK_GETARG(hak, nargs, 0), &hv) <= -1) return HAK_PF_FAILURE;
+	HAK_STACK_SETRET(hak, nargs, HAK_SMOOI_TO_OOP((hak_ooi_t)hv));
+	return HAK_PF_SUCCESS;
+}
+
 static hak_pfinfo_t pfinfos[] =
 {
 	{ "*",                  { HAK_PFBASE_FUNC, hak_pf_number_mul,             1, HAK_TYPE_MAX(hak_oow_t) } },
@@ -867,6 +888,8 @@ static hak_pfinfo_t pfinfos[] =
 	{ "getb",               { HAK_PFBASE_FUNC, hak_pf_getb,                   0,  0 } },
 	{ "getc",               { HAK_PFBASE_FUNC, hak_pf_getc,                   0,  0 } },
 	{ "gets",               { HAK_PFBASE_FUNC, hak_pf_gets,                   0,  0 } },
+	{ "hash",               { HAK_PFBASE_FUNC, pf_core_hash,                  1,  1 } },
+	{ "identityHash",       { HAK_PFBASE_FUNC, pf_core_identity_hash,         1,  1 } },
 	{ "instRespondsTo",     { HAK_PFBASE_FUNC, pf_core_inst_responds_to,      2,  2 } },
 
 	{ "log",                { HAK_PFBASE_FUNC, hak_pf_log,                    0,  HAK_TYPE_MAX(hak_oow_t) } },

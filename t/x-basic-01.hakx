@@ -1,0 +1,25 @@
+## A script sent to a hakx server runs in a worker and its output travels back
+## over the protocol. This pins down that the round trip works at all, and that
+## the worker gets a real vm rather than a crippled one.
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+chk (eqv? (+ 1 2) 3) "arithmetic survives the round trip"
+chk (eqv? (* 6 7) 42) "...and so does multiplication"
+
+a := 5
+a := (+ a 1)
+chk (eqv? a 6) "assignment inside the worker"
+
+fun twice(x) { return (* x 2) }
+chk (eqv? (twice 21) 42) "a function defined and called in the worker"
+
+chk (eqv? (+ (* 2 3) 4) 10) "nested arithmetic"
+
+## the marker below is a string, so reaching it proves text travels back over
+## the protocol as well as numbers. no class library is included here, so
+## nothing calls a method on it.
+printf "DONE basic\n"

@@ -34,9 +34,35 @@ class Apex {
 		return (core.basicSize self)
 	}
 
-	## TODO: ...
-	fun == (oprnd) { return (== self oprnd) }
-	fun != (oprnd) { return (!= self oprnd) }
+	## --- identity and equality -------------------------------------------
+	##
+	## == and != are identity. = and ~= are equality, which is identity
+	## unless a class says otherwise; a class that redefines = must redefine
+	## hash so that equal objects hash alike.
+	##
+	## hash must also agree with the virtual machine for the values it hashes
+	## itself (nil, true, false, small integers, characters, strings, symbols,
+	## byte arrays, big integers): a Dictionary built by C code for a #{ }
+	## literal is read by the hak code in collection.hak and the other way
+	## round, and both must probe the same slot.
+	fun == (oprnd) { return (eqv? self oprnd) }
+	fun != (oprnd) { return (nqv? self oprnd) }
+	fun = (oprnd) { return (eqv? self oprnd) }
+	fun ~= (oprnd) { return (not (self = oprnd)) }
+
+	fun hash() {
+		## nil, true and false are objects but the vm hashes them by value
+		if (or (nil? self) (boolean? self)) { return (core.hash self) }
+		return (core.identityHash self)
+	}
+
+	fun identityHash() { return (core.identityHash self) }
+
+	## --- errors ----------------------------------------------------------
+
+	fun error(msg) { throw msg }
+	fun subclassResponsibility(name) { throw (sprintf "%O must implement %O" (core.classOf self) name) }
+
 	## TODO: fun perform(name ...) {}
 }
  
@@ -68,6 +94,12 @@ class[#uncopyable #varying #limited #final] Class: Apex (
 }
 
 class UndefinedObject: Apex {
+	fun isNil?() { return true }
+	fun notNil?() { return false }
+}
+
+## nil itself is an instance of NilObject, not of UndefinedObject.
+class NilObject: Apex {
 	fun isNil?() { return true }
 	fun notNil?() { return false }
 }

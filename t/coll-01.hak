@@ -1,0 +1,139 @@
+## indexed collections - Array, String, OrderedCollection, SortedCollection, Interval
+
+$include-once "kernel.hak"
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+fun fails(block) {
+	try { block; return false } catch (e) { return true }
+}
+
+## --- comparison and hashing of the basic values -------------------------------
+
+chk (1 = 1) "1 = 1"
+chk (not (1 = 2)) "1 = 2 is false"
+chk (not (1 = "1")) "a number is not equal to a string"
+chk (3 < 4) "3 < 4"
+chk (4 >= 4) "4 >= 4"
+chk ('a' < 'b') "characters compare by code"
+chk ("abc" = "abc") "strings with the same characters are equal"
+chk (not ("abc" = #abc)) "a string is not equal to a symbol"
+chk ("abc" < "abd") "strings compare character by character"
+chk ("ab" < "abc") "a prefix comes first"
+chk (= ("abc":hash) (core.hash "abc")) "String>>hash is the vm's hash"
+chk (= (5:hash) (core.hash 5)) "Number>>hash is the vm's hash"
+chk (= (nil:hash) (core.hash nil)) "nil hashes as the vm does"
+chk nil:isNil?() "nil isNil?"
+chk ((Object:basicNew 0) ~= (Object:basicNew 0)) "two objects are not equal by default"
+
+## --- Array ------------------------------------------------------------------
+
+a := (Array:with 3 1 2)
+chk (= (a:size) 3) "Array:with makes the array"
+chk (= (a:first) 3) "first"
+chk (= (a:last) 2) "last"
+chk (= (a:indexOf 2) 2) "indexOf finds an element"
+chk (= (a:indexOf 9) -1) "indexOf answers -1 when absent"
+chk (a:includes? 1) "includes?"
+chk (not (a:includes? 9)) "not includes?"
+chk ((a:collect (fun(x) { return (* x 10) })) = (Array:with 30 10 20)) "collect"
+chk ((a:select (fun(x) { return (> x 1) })) = (Array:with 3 2)) "select"
+chk ((a:reject (fun(x) { return (> x 1) })) = (Array:with 1)) "reject"
+chk (= (a:detect (fun(x) { return (< x 3) })) 1) "detect"
+chk (eqv? (a:detectIfNone (fun(x) { return (> x 5) }) (fun() { return #none })) #none) "detectIfNone"
+chk (= (a:injectInto 0 (fun(acc x) { return (+ acc x) })) 6) "injectInto"
+chk (= (a:count (fun(x) { return (> x 1) })) 2) "count"
+chk (a:anySatisfy? (fun(x) { return (= x 2) })) "anySatisfy?"
+chk (not (a:allSatisfy? (fun(x) { return (= x 2) }))) "allSatisfy?"
+chk ((a:reverse) = (Array:with 2 1 3)) "reverse"
+chk ((a:concat (Array:with 7 8)) = (Array:with 3 1 2 7 8)) "concat"
+chk ((a:copyFromTo 1 2) = (Array:with 1 2)) "copyFromTo"
+chk ((a:copyWith 4) = (Array:with 3 1 2 4)) "copyWith"
+chk ((a:toSortedCollection):toArray() = (Array:with 1 2 3)) "toSortedCollection"
+chk (fails (fun() { a:add 4 })) "an Array cannot grow"
+
+s := ""
+a:iterateWithIndex (fun(x i) { s := (s:concat (sprintf "%d:%d " i x)) })
+chk (s = "0:3 1:1 2:2 ") "iterateWithIndex passes element and index"
+s := ""
+a:reverseDo (fun(x) { s := (s:concat (sprintf "%d" x)) })
+chk (s = "213") "reverseDo"
+
+## --- String -----------------------------------------------------------------
+
+s := "Hello"
+chk ((s:concat " World") = "Hello World") "String concat answers a String"
+chk ((s:toUppercase) = "HELLO") "toUppercase"
+chk ((s:toLowercase) = "hello") "toLowercase"
+chk ((s:reverse) = "olleH") "reverse of a string is a string"
+chk ((s:copyFromTo 1 3) = "ell") "copyFromTo on a string"
+chk ((s:select (fun(c) { return (c:isLowercase?) })) = "ello") "select on a string"
+chk ((#abc:concat "d") = "abcd") "what is made from a Symbol is a String"
+chk (= (s:occurrencesOf 'l') 2) "occurrencesOf"
+
+## --- OrderedCollection ------------------------------------------------------
+
+oc := (OrderedCollection:new)
+chk (oc:isEmpty?) "a new OrderedCollection is empty"
+oc:add 2
+oc:add 3
+oc:addFirst 1
+oc:addLast 4
+chk ((oc:toArray) = (Array:with 1 2 3 4)) "add, addFirst and addLast keep the order"
+chk (= (oc:removeFirst) 1) "removeFirst"
+chk (= (oc:removeLast) 4) "removeLast"
+chk ((oc:toArray) = (Array:with 2 3)) "...leaving the middle"
+oc:addBeforeIndex 9 1
+chk ((oc:toArray) = (Array:with 2 9 3)) "addBeforeIndex"
+chk (= (oc:removeIndex 1) 9) "removeIndex answers the element"
+oc:remove 3
+chk ((oc:toArray) = (Array:with 2)) "remove"
+chk (fails (fun() { oc:remove 99 })) "remove fails for an absent element"
+chk (eqv? (oc:removeIfAbsent 99 (fun() { return #absent })) #absent) "removeIfAbsent"
+chk (fails (fun() { oc:at 5 })) "at checks the index"
+
+## growing at both ends past the initial capacity
+oc := (OrderedCollection:withCapacity 4)
+0:toDo 49 (fun(i) { oc:addLast i; oc:addFirst (- 0 i) })
+chk (= (oc:size) 100) "an OrderedCollection grows at both ends"
+chk (= (oc:first) -49) "...with the first added first at the front"
+chk (= (oc:last) 49) "...and the last added last at the back"
+chk (= (oc:at 50) 0) "...and the middle where it should be"
+
+oc := ((Array:with 5 6 7):toOrderedCollection)
+chk ((oc:collect (fun(x) { return (* x 2) })):toArray() = (Array:with 10 12 14)) "collect on an OrderedCollection"
+chk (eqv? (core.classOf (oc:select (fun(x) { return (> x 5) }))) OrderedCollection) "select keeps the kind"
+chk ((oc:copyFromTo 1 2):toArray() = (Array:with 6 7)) "copyFromTo on an OrderedCollection"
+
+## --- SortedCollection -------------------------------------------------------
+
+sc := (SortedCollection:new)
+sc:addAll (Array:with 5 3 9 1 7)
+chk ((sc:toArray) = (Array:with 1 3 5 7 9)) "a SortedCollection keeps its elements in order"
+chk (= (sc:first) 1) "first is the least"
+chk (= (sc:last) 9) "last is the greatest"
+sc:remove 5
+chk ((sc:toArray) = (Array:with 1 3 7 9)) "remove keeps the order"
+chk (fails (fun() { sc:addFirst 0 })) "addFirst is refused"
+
+sc := (SortedCollection:sortBlock (fun(a b) { return (a >= b) }))
+sc:addAll (Array:with 2 8 4)
+chk ((sc:toArray) = (Array:with 8 4 2)) "a sort block decides the order"
+
+sc := ((Array:with "pear" "apple" "fig"):toSortedCollection)
+chk ((sc:toArray) = (Array:with "apple" "fig" "pear")) "strings sort"
+
+## --- Interval ---------------------------------------------------------------
+
+iv := (1:to 5)
+chk (= (iv:size) 5) "1 to 5 has five elements"
+chk ((iv:toArray) = (Array:with 1 2 3 4 5)) "...which are 1 .. 5"
+chk (= (iv:injectInto 0 (fun(a b) { return (+ a b) })) 15) "iterating an Interval"
+chk ((iv:collect (fun(x) { return (* x x) })) = (Array:with 1 4 9 16 25)) "collect on an Interval answers an Array"
+chk (((10:toBy 0 -5):toArray) = (Array:with 10 5 0)) "a negative step"
+chk (= ((5:to 1):size) 0) "an empty Interval"
+chk ((iv:reverse) = (Array:with 5 4 3 2 1)) "reverse of an Interval"
+chk (fails (fun() { iv:atPut 0 9 })) "an Interval cannot be changed"

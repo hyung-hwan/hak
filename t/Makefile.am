@@ -13,6 +13,8 @@ check_SCRIPTS = \
 	assign-01.hak \
 	char-01.hak \
 	classof-01.hak \
+	coll-01.hak \
+	coll-02.hak \
 	cons-01.hak \
 	dic-01.hak \
 	feed-01.hak \
@@ -93,16 +95,34 @@ check_FIXTURES = \
 	liberal-inc.hak \
 	liberal-inc2.hak
 
-EXTRA_DIST = $(check_SCRIPTS) $(check_ERRORS) $(check_FIXTURES)
+## scripts driven through hakx rather than hak: xrun.sh starts a server, runs
+## the client against it several times over and insists the server is still
+## accepting afterwards. they are only built - and only meaningful - when
+## libhakx and the hakx driver were configured in.
+check_XTESTS = \
+	x-basic-01.hakx \
+	x-output-01.hakx \
+	x-proc-01.hakx
 
+EXTRA_DIST = $(check_SCRIPTS) $(check_ERRORS) $(check_FIXTURES) $(check_XTESTS) \
+	run.sh err.sh xrun.sh
+
+if ENABLE_HAKX
+TESTS = $(check_PROGRAMS) $(check_SCRIPTS) $(check_ERRORS) $(check_XTESTS)
+else
 TESTS = $(check_PROGRAMS) $(check_SCRIPTS) $(check_ERRORS)
+endif
 
-TEST_EXTENSIONS = .hak .err
+TEST_EXTENSIONS = .hak .err .hakx
 
 HAKBIN = $(top_builddir)/bin/hak
+HAKXBIN = $(top_builddir)/bin/hakx
 
 HAK_LOG_COMPILER = $(SHELL) $(abs_srcdir)/run.sh $(HAKBIN) --incdirs="@abs_top_srcdir@/src" --modlibdirs="@abs_top_builddir@/mod:@abs_top_builddir@/mod/.libs" --heapsize=0
 AM_HAK_LOG_FLAGS =
 
 ERR_LOG_COMPILER = $(SHELL) $(abs_srcdir)/err.sh $(HAKBIN) --incdirs="@abs_top_srcdir@/src" --modlibdirs="@abs_top_builddir@/mod:@abs_top_builddir@/mod/.libs" --heapsize=0
 AM_ERR_LOG_FLAGS =
+
+HAKX_LOG_COMPILER = $(SHELL) $(abs_srcdir)/xrun.sh $(HAKXBIN) "@abs_top_srcdir@/src"
+AM_HAKX_LOG_FLAGS =

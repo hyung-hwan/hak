@@ -105,8 +105,10 @@ enum {
 	KCI_ARRAY,
 	KCI_CHARACTER_ARRAY,
 	KCI_BYTE_ARRAY,
+	KCI_SET,
 	KCI_SYMBOL_TABLE,
 	KCI_DICTIONARY,
+	KCI_SYSTEM_DICTIONARY,
 	KCI_CONS,
 	KCI_METHOD_DICTIONARY,
 	KCI_FUNCTION,
@@ -328,16 +330,28 @@ static kernel_class_info_t kernel_classes[__KCI_MAX__] =
 		HAK_OFFSETOF(hak_t, c_byte_array)
 	},
 
+	KCI(KCI_SET) {
+		"Set",
+		KCI_COLLECTION,
+		0, /* brand - a Set is managed by hak code only */
+		0,
+		0,
+		HAK_DIC_NAMED_INSTVARS, /* tally bucket */
+		0,
+		HAK_OBJ_TYPE_OOP,
+		HAK_OFFSETOF(hak_t, c_set)
+	},
+
 	/* A special incarnation of a dictionary that allows only a symbol as a value.
 	 * The value in bucket is a symbol while the value in a normal dictionary is a
 	 * pair(cons) that contains a key and a value. */
 	KCI(KCI_SYMBOL_TABLE) {
 		"SymbolTable",
-		KCI_COLLECTION,
-		HAK_BRAND_DIC, /* TODO: make this a special child class of Dictionary?? */
+		KCI_SET,
+		0, /* the bucket holds symbols, not pairs. don't set HAK_BRAND_DIC */
 		0,
 		0,
-		HAK_DIC_NAMED_INSTVARS,
+		0,
 		0,
 		HAK_OBJ_TYPE_OOP,
 		HAK_OFFSETOF(hak_t, c_symtab)
@@ -345,14 +359,26 @@ static kernel_class_info_t kernel_classes[__KCI_MAX__] =
 
 	KCI(KCI_DICTIONARY) {
 		"Dictionary",
-		KCI_COLLECTION,
+		KCI_SET,
 		HAK_BRAND_DIC,
 		0,
 		0,
-		HAK_DIC_NAMED_INSTVARS,
+		0, /* tally and bucket are inherited from Set */
 		0,
 		HAK_OBJ_TYPE_OOP,
 		HAK_OFFSETOF(hak_t, c_dictionary)
+	},
+
+	KCI(KCI_SYSTEM_DICTIONARY) {
+		"SystemDictionary",
+		KCI_DICTIONARY,
+		HAK_BRAND_DIC,
+		0,
+		0,
+		0, /* tally and bucket are inherited from Set/Dictionary */
+		0,
+		HAK_OBJ_TYPE_OOP,
+		HAK_OFFSETOF(hak_t, c_system_dictionary)
 	},
 
 	KCI(KCI_CONS) {
@@ -388,10 +414,10 @@ static kernel_class_info_t kernel_classes[__KCI_MAX__] =
 	KCI(KCI_METHOD_DICTIONARY) {
 		"MethodDictionary",
 		KCI_DICTIONARY,
+		HAK_BRAND_DIC,
 		0,
 		0,
-		0,
-		HAK_DIC_NAMED_INSTVARS,
+		0, /* tally and bucket are inherited from Set/Dictionary */
 		0,
 		HAK_OBJ_TYPE_OOP,
 		HAK_OFFSETOF(hak_t, c_method_dictionary)
@@ -942,6 +968,8 @@ static HAK_INLINE void gc_ms_mark_roots (hak_t* hak)
 	gc_ms_mark(hak, (hak_oop_t)hak->processor);
 	gc_ms_mark(hak, (hak_oop_t)hak->nil_process);
 
+	gc_ms_mark(hak, hak->sym_at_put_literal);
+
 	for (i = 0; i < hak->code.lit.len; i++)
 	{
 		/* the literal array ia a NGC object. but the literal objects
@@ -1218,6 +1246,8 @@ void hak_gc (hak_t* hak)
 	hak->processor = (hak_oop_process_scheduler_t)hak_moveoop(hak, (hak_oop_t)hak->processor);
 	hak->nil_process = (hak_oop_process_t)hak_moveoop(hak, (hak_oop_t)hak->nil_process);
 
+	hak->sym_at_put_literal = hak_moveoop(hak, hak->sym_at_put_literal);
+
 	for (i = 0; i < hak->code.lit.len; i++)
 	{
 		/* the literal array ia a NGC object. but the literal objects
@@ -1403,6 +1433,18 @@ static hak_oop_class_t alloc_kernel_class (hak_t* hak, int class_flags, hak_oow_
 	return c;
 }
 
+static hak_ooi_t kernel_nivars_super (int kci)
+{
+	int s;
+	hak_ooi_t n = 0;
+
+	/* sum up the number of instance variables in the whole superclass chain */
+	for (s = kernel_classes[kci].superclass_kci; s >= 0; s = kernel_classes[s].superclass_kci)
+		n += kernel_classes[s].class_spec_nivars;
+
+	return n;
+}
+
 static int ignite_1 (hak_t* hak)
 {
 	hak_oow_t i;
@@ -1430,7 +1472,11 @@ static int ignite_1 (hak_t* hak)
 			HAK_CLASS_SPEC_MAKE(kernel_classes[KCI_CLASS].class_spec_nivars,
 			                    kernel_classes[KCI_CLASS].class_spec_flags,
 			                    kernel_classes[KCI_CLASS].class_spec_indexed_type),
+#if 0
 			kernel_classes[kernel_classes[KCI_CLASS].superclass_kci].class_spec_nivars,
+#else
+			kernel_nivars_super(KCI_CLASS),
+#endif
 			kernel_classes[KCI_CLASS].class_brand);
 		if (HAK_UNLIKELY(!hak->c_class))
 		{
@@ -1448,12 +1494,18 @@ static int ignite_1 (hak_t* hak)
 	{
 		hak_oop_class_t tmp;
 		hak_ooi_t nivars_super;
+#if 0
 		int superclass_kci;
+#endif
 
 		if (i == KCI_CLASS) continue; /* skip Class as it's created above */
 
+#if 0
 		superclass_kci = kernel_classes[i].superclass_kci;
 		nivars_super = superclass_kci <= -1? 0: kernel_classes[superclass_kci].class_spec_nivars;
+#else
+		nivars_super = kernel_nivars_super(i);
+#endif
 		tmp = alloc_kernel_class(
 			hak,
 			kernel_classes[i].class_flags,
@@ -1571,7 +1623,7 @@ static int ignite_2 (hak_t* hak)
 #else
 	if (HAK_LIKELY(!hak->sysdic))
 	{
-		tmp = hak_instantiate(hak, hak->c_dictionary, HAK_NULL, 0);
+		tmp = hak_instantiate(hak, hak->c_system_dictionary, HAK_NULL, 0);
 		if (HAK_UNLIKELY(!tmp)) goto oops;
 		hak->sysdic = (hak_oop_dic_t)tmp;
 		hak->sysdic->tally = HAK_SMOOI_TO_OOP(0);
@@ -1701,6 +1753,10 @@ static int ignite_3 (hak_t* hak)
 	hak->unwindto_return_sym = (hak_oop_char_t)sym;
 #endif
 
+	sym = hak_makesymbolwithbcstr(hak, "_atPutLiteral");
+	if (HAK_UNLIKELY(!sym)) return -1;
+	hak->sym_at_put_literal = sym;
+
 	return 0;
 }
 
@@ -1771,7 +1827,7 @@ int hak_ignite (hak_t* hak, hak_oow_t heapsize)
 
 	if (!hak->sysdic)
 	{
-		hak->sysdic = (hak_oop_dic_t)hak_makedic(hak, hak->option.dfl_sysdic_size);
+		hak->sysdic = (hak_oop_dic_t)hak_makedicwithclass(hak, hak->c_system_dictionary, hak->option.dfl_sysdic_size);
 		if (HAK_UNLIKELY(!hak->sysdic)) goto oops;
 	}
 

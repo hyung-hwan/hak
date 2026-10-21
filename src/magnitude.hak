@@ -1,11 +1,15 @@
 $include-once "object.hak"
 
+## A Magnitude only has to answer < - the other comparisons follow from it.
 class Magnitude: Object {
-	##fun <  (oprnd) { self subclassResponsibility: #< }
 	fun <  (oprnd) { return (self:subclassResponsibility #<) }
 	fun >  (oprnd) { return (oprnd < self) }
-	fun <= (oprnd) { return ((oprnd < self):not) }
-	fun >= (oprnd) { return ((self < oprnd):not) }
+	fun <= (oprnd) { return (not (oprnd < self)) }
+	fun >= (oprnd) { return (not (self < oprnd)) }
+
+	fun between?(min max) { return (and (min <= self) (self <= max)) }
+	fun max(oprnd) { if (self < oprnd) { return oprnd }; return self }
+	fun min(oprnd) { if (oprnd < self) { return oprnd }; return self }
 }
 
 class[#limited] Number: Magnitude {
@@ -14,15 +18,63 @@ class[#limited] Number: Magnitude {
 	fun * (oprnd) { return (* self oprnd) }
 	fun / (oprnd) { return (/ self oprnd) }
 
-	##fun > (oprnd) { return (> self oprnd) }
-	##fun < (oprnd) { return (< self oprnd) }
-	##fun >= (oprnd) { return (>= self oprnd) }
-	##fun <= (oprnd) { return (<= self oprnd) }
+	## the comparison primitives refuse a non-number, so = answers false for
+	## one rather than failing - 1 = "1" is a question with an answer.
+	fun =  (oprnd) { return (and (numeric? oprnd) (= self oprnd)) }
+	fun <  (oprnd) { return (< self oprnd) }
+	fun >  (oprnd) { return (> self oprnd) }
+	fun <= (oprnd) { return (<= self oprnd) }
+	fun >= (oprnd) { return (>= self oprnd) }
+
+	## the vm hashes small and big integers itself. a FixedPointDecimal is not
+	## hashable by the vm, so it cannot be a dictionary key yet.
+	fun hash() { return (core.hash self) }
+
+	fun abs() { return (abs self) }
+	fun negated() { return (- 0 self) }
+
+	## (1:to 5) and (1:toBy 9 2) answer an Interval - see collection.hak
+	fun to(stop) { return (Interval:fromTo self stop) }
+	fun toBy(stop step) { return (Interval:fromToBy self stop step) }
+
+	fun toDo(stop block) {
+		| i |
+		i := self
+		while (<= i stop) { block i; i := (+ i 1) }
+		return self
+	}
+
+	fun timesRepeat(block) {
+		| i |
+		i := 0
+		while (< i self) { block; i := (+ i 1) }
+		return self
+	}
 
 	fun toCharacter() { return (core.smooi-to-char self) }
 }
 
 class[#limited] Character: Magnitude {
-	fun toCode() { return (core.char-to-smooi self) }
-}
+	fun = (oprnd) { return (eqv? self oprnd) }
+	fun < (oprnd) { return (< (core.char-to-smooi self) (core.char-to-smooi oprnd)) }
+	fun hash() { return (core.hash self) }
 
+	fun toCode() { return (core.char-to-smooi self) }
+
+	## ASCII only for now - Unicode classification needs vm primitives
+	fun isDigit?() { return (self:between? '0' '9') }
+	fun isUppercase?() { return (self:between? 'A' 'Z') }
+	fun isLowercase?() { return (self:between? 'a' 'z') }
+	fun isLetter?() { return (or (self:isUppercase?) (self:isLowercase?)) }
+	fun isSpace?() { return (or (eqv? self ' ') (eqv? self '\t') (eqv? self '\n') (eqv? self '\r')) }
+
+	fun toUppercase() {
+		if (self:isLowercase?) { return (core.smooi-to-char (- (core.char-to-smooi self) 32)) }
+		return self
+	}
+
+	fun toLowercase() {
+		if (self:isUppercase?) { return (core.smooi-to-char (+ (core.char-to-smooi self) 32)) }
+		return self
+	}
+}

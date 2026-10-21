@@ -84,7 +84,7 @@ static hak_oop_oop_t expand_bucket (hak_t* hak, hak_oop_oop_t oldbuc)
 			int n;
 			HAK_ASSERT(hak, HAK_IS_CONS(hak,ass));
 			n = hak_hashobj(hak, ass->car, &index);
-			HAK_ASSERT(hak, n == 0); /* since it's expanding, the existing one in the bucket should always be hashable */
+			if (n <= -1) return HAK_NULL; /* if the key is put by hak, hak_hashobj() may fail */ /* TODO: for rehashing, how to invoke the hak's hash function  */
 			index %= newsz;
 		#endif
 			while (newbuc->slot[index] != hak->_nil) index = (index + 1) % newsz;
@@ -440,6 +440,15 @@ int hak_zapatdic (hak_t* hak, hak_oop_dic_t dic, hak_oop_t key)
 	return -1;
 
 found:
+	/* every entry that compaction may move must be hashable by the vm.
+	 * check them all first so that a failure changes nothing. */
+	for (i = 0, y = index; i < tally; i++)
+	{
+		y = (y + 1) % bs;
+		if (dic->bucket->slot[y] == hak->_nil) break;
+		if (hak_hashobj(hak, ((hak_oop_cons_t)dic->bucket->slot[y])->car, &z) <= -1) return -1;
+	}
+
 	/* compact the cluster */
 	for (i = 0, x = index, y = index; i < tally; i++)
 	{
@@ -475,7 +484,7 @@ found:
 	return 0;
 }
 
-hak_oop_t hak_makedic (hak_t* hak, hak_oow_t inisize)
+hak_oop_t hak_makedicwithclass (hak_t* hak, hak_oop_class_t _class, hak_oow_t inisize)
 {
 #if 0
 	hak_oop_dic_t obj;
@@ -499,12 +508,12 @@ hak_oop_t hak_makedic (hak_t* hak, hak_oow_t inisize)
 #else
 	hak_oop_dic_t v;
 
-	v = (hak_oop_dic_t)hak_instantiate(hak, hak->c_dictionary, HAK_NULL, 0);
+	v = (hak_oop_dic_t)hak_instantiate(hak, _class, HAK_NULL, 0);
 	if (HAK_UNLIKELY(!v))
 	{
 		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
 		hak_seterrbfmt(hak, HAK_ERRNUM(hak),
-			"unable to instantiate %O - %js", hak->c_dictionary->name, orgmsg);
+			"unable to instantiate %O - %js", _class->name, orgmsg);
 	}
 	else
 	{
@@ -528,6 +537,11 @@ hak_oop_t hak_makedic (hak_t* hak, hak_oow_t inisize)
 
 	return (hak_oop_t)v;
 #endif
+}
+
+hak_oop_t hak_makedic (hak_t* hak, hak_oow_t inisize)
+{
+	return hak_makedicwithclass(hak, hak->c_dictionary, inisize);
 }
 
 int hak_walkdic (hak_t* hak, hak_oop_dic_t dic, hak_dic_walker_t walker, void* ctx)

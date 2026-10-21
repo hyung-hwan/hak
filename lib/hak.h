@@ -1888,7 +1888,9 @@ struct hak_t
 	hak_oop_class_t c_character_array; /* CharacterArray */
 	hak_oop_class_t c_byte_array; /* ByteArray */
 	hak_oop_class_t c_symtab; /* SymbolTable */
-	hak_oop_class_t c_dictionary;
+	hak_oop_class_t c_set; /* Set - tally + bucket; elements hasbed by hak code */
+	hak_oop_class_t c_dictionary; /* Dictionary - hak semantics, C-compatible table */
+	hak_oop_class_t c_system_dictionary; /* SystemDictionary - sysdic */
 	hak_oop_class_t c_cons; /* Cons */
 
 #if 0
@@ -1925,6 +1927,9 @@ struct hak_t
 	hak_oop_class_t c_small_pointer;
 	hak_oop_class_t c_large_pointer;
 	hak_oop_class_t c_system;
+
+	/* ============================================================================= */
+	hak_oop_t sym_at_put_literal;
 
 	/* ============================================================================= */
 
@@ -2245,7 +2250,14 @@ typedef enum hak_concode_t hak_concode_t;
 #define HAK_IS_CONS_CONCODED(hak,v,concode) (HAK_IS_CONS(hak,v) && HAK_OBJ_GET_FLAGS_CONCODE(v) == (concode))
 #define HAK_IS_ARRAY(hak,v) (HAK_CLASSOF(hak,v) == (hak_oop_t)(hak)->c_array)
 #define HAK_IS_BYTEARRAY(hak,v) (HAK_CLASSOF(hak,v) == (hak_oop_t)(hak)->c_byte_array)
-#define HAK_IS_DIC(hak,v) (HAK_CLASSOF(hak,v) == (hak_oop_t)(hak)->c_dictionary)
+
+/*#define HAK_IS_DIC(hak,v) (HAK_CLASSOF(hak,v) == (hak_oop_t)(hak)->c_dictionary)*/
+/* the brand comes from the kernel class table and is not inherited by classes
+ * defined in hak code, so a hak subclass such as IdentityDictionary is never
+ * touched by the C functions. */
+#define HAK_IS_DIC(hak,v) (HAK_OOP_IS_POINTER(v) && \
+	HAK_OOP_TO_SMOOI(((hak_oop_class_t)HAK_OBJ_GET_CLASS(v))->ibrand) == HAK_BRAND_DIC)
+
 #define HAK_IS_PRIM(hak,v) (HAK_CLASSOF(hak,v) == (hak_oop_t)(hak)->c_primitive)
 #define HAK_IS_PBIGINT(hak,v) (HAK_CLASSOF(hak,v) == (hak_oop_t)(hak)->c_large_positive_integer)
 #define HAK_IS_NBIGINT(hak,v) (HAK_CLASSOF(hak,v) == (hak_oop_t)(hak)->c_large_negative_integer)
@@ -3158,6 +3170,12 @@ HAK_EXPORT hak_oop_t hak_makedic (
 	hak_oow_t         inisize /* initial bucket size */
 );
 
+HAK_EXPORT hak_oop_t hak_makedicwithclass (
+	hak_t*            hak,
+	hak_oop_class_t   _class,
+	hak_oow_t         inisize /* initial bucket size */
+);
+
 HAK_EXPORT hak_oop_t hak_makeclass (
 	hak_t*            hak,
 	hak_oop_t         name,
@@ -3404,6 +3422,12 @@ HAK_EXPORT int hak_walkdic (
 /* =========================================================================
  * OBJECT HASHING AND COMPARISION
  * ========================================================================= */
+
+HAK_EXPORT int hak_identityhashobj (
+	hak_t*     hak,
+	hak_oop_t  obj,
+	hak_oow_t* xhv
+);
 
 HAK_EXPORT int hak_hashobj (
 	hak_t*     hak,

@@ -1,0 +1,166 @@
+## hashed collections - Set, IdentitySet, Bag, Dictionary, IdentityDictionary
+##
+## A Dictionary is shared by the vm and hak code: C builds #{ } literals and
+## runs dic.*, collection.hak runs the methods. The second half checks that
+## each side finds what the other put, including after removals that compact
+## a cluster of colliding keys, and that a key the vm cannot hash reaches hak
+## code through _atPutLiteral.
+
+$include-once "kernel.hak"
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+fun fails(block) {
+	try { block; return false } catch (e) { return true }
+}
+
+## a class with its own equality - equal points must find each other
+class Pt: Object (x y) {
+	fun[#ci] make(px py) { self.x := px; self.y := py; return self }
+	fun px() { return self.x }
+	fun py() { return self.y }
+	fun = (o) { return (and (eqv? (core.classOf o) Pt) (= self.x o:px()) (= self.y o:py())) }
+	fun hash() { return (+ (* self.x 31) self.y) }
+}
+
+## --- Set --------------------------------------------------------------------
+
+s := (Set:new)
+chk (s:isEmpty?) "a new Set is empty"
+s:add 1
+s:add 2
+s:add 2
+s:add "two"
+s:add "two"
+chk (= (s:size) 3) "a Set holds each element once"
+chk (s:includes? 2) "includes? a number"
+chk (s:includes? (sprintf "t%s" "wo")) "includes? an equal string, not the same one"
+s:remove 2
+chk (not (s:includes? 2)) "remove"
+chk (= (s:size) 2) "...and the size follows"
+chk (fails (fun() { s:remove 99 })) "remove fails for an absent element"
+chk (fails (fun() { s:add nil })) "nil is refused"
+
+s := (Set:new)
+s:add (Pt:make 1 2)
+s:add (Pt:make 1 2)
+chk (= (s:size) 1) "equal objects are one element"
+chk (s:includes? (Pt:make 1 2)) "...found by an equal object"
+
+## grow well past the initial capacity, then remove every other element
+s := (Set:new)
+0:toDo 299 (fun(i) { s:add i })
+chk (= (s:size) 300) "a Set grows"
+0:toDo 149 (fun(i) { s:remove (* i 2) })
+chk (= (s:size) 150) "removing half"
+chk ((0:to 299):allSatisfy? (fun(i) { return (eqv? (s:includes? i) (== (rem i 2) 1)) })) "...leaves exactly the odd numbers"
+
+## --- IdentitySet --------------------------------------------------------------
+
+s := (IdentitySet:new)
+a := "same"
+s:add a
+s:add (sprintf "%s" "same")
+chk (= (s:size) 2) "an IdentitySet keeps equal but distinct strings apart"
+chk (s:includes? a) "...and finds the one it was given"
+
+## --- Bag --------------------------------------------------------------------
+
+b := (Bag:new)
+b:add "x"
+b:add "x"
+b:add "y"
+b:addWithOccurrences "z" 3
+chk (= (b:size) 6) "a Bag counts every addition"
+chk (= (b:occurrencesOf "x") 2) "occurrencesOf"
+b:remove "x"
+chk (= (b:occurrencesOf "x") 1) "remove takes one occurrence"
+chk (= ((b:select (fun(e) { return (e = "z") })):size) 3) "select on a Bag"
+
+## --- Dictionary from hak code ---------------------------------------------------
+
+d := (Dictionary:new)
+d:atPut "one" 1
+d:atPut "two" 2
+d:atPut 3 "three"
+chk (= (d:size) 3) "atPut"
+chk (= (d:at "one") 1) "at"
+chk (= (d:atIfAbsent "nine" (fun() { return 9 })) 9) "atIfAbsent"
+chk (fails (fun() { d:at "nine" })) "at fails for an absent key"
+d:atPut "one" 11
+chk (= (d:at "one") 11) "atPut replaces"
+chk (= (d:size) 3) "...without growing"
+chk (d:includesKey? 3) "includesKey?"
+chk (d:includes? 2) "includes? looks at the values"
+chk ((d:keyAtValue 2) = "two") "keyAtValue"
+chk (= (d:removeKey "two") 2) "removeKey answers the value"
+chk (not (d:includesKey? "two")) "...and the key is gone"
+chk (= (d:removeKeyIfAbsent "two" (fun() { return 0 })) 0) "removeKeyIfAbsent"
+chk (= (d:keys):size() 2) "keys"
+chk (= (d:injectInto 0 (fun(acc v) { if (numeric? v) { return (+ acc v) }; return acc })) 11) "iterate sees the values"
+n := 0
+d:keysAndValuesDo (fun(k v) { n := (+ n 1) })
+chk (= n 2) "keysAndValuesDo"
+chk (= ((d:select (fun(v) { return (numeric? v) })):size) 1) "select answers a dictionary"
+chk (dictionary? (d:select (fun(v) { return true }))) "...that is a Dictionary"
+
+d := (Dictionary:new)
+d:atPut (Pt:make 3 4) "p"
+chk ((d:at (Pt:make 3 4)) = "p") "a key with its own = and hash"
+
+d := (Dictionary:new)
+0:toDo 299 (fun(i) { d:atPut i (* i i) })
+0:toDo 149 (fun(i) { d:removeKey (* i 2) })
+chk ((0:to 299):allSatisfy? (fun(i) { return (eqv? (d:includesKey? i) (== (rem i 2) 1)) })) "a Dictionary grows and shrinks"
+chk (= (d:at 299) 89401) "...and keeps the values"
+
+## --- IdentityDictionary -------------------------------------------------------
+
+d := (IdentityDictionary:new)
+a := "k"
+d:atPut a 1
+d:atPut (sprintf "%s" "k") 2
+chk (= (d:size) 2) "an IdentityDictionary keeps equal but distinct keys apart"
+chk (= (d:at a) 1) "...and finds a key by identity"
+
+## --- the vm and hak code on one Dictionary --------------------------------------
+
+d := #{ "a": 1, 2: "two", 'c': 3, #sym: 4 }
+chk (= (d:at "a") 1) "hak finds a string key the vm put"
+chk ((d:at 2) = "two") "...a number key"
+chk (= (d:at 'c') 3) "...a character key"
+chk (= (d:at #sym) 4) "...a symbol key"
+
+d:atPut "z" 26
+chk (= (dic.get d "z") 26) "the vm finds a key hak put"
+dic.put d "y" 25
+chk (= (d:at "y") 25) "hak finds a key the vm put after it"
+
+## small integers hash to themselves, so i and i + size collide - fill one
+## dictionary from both sides, remove half from each, check from each
+d := #{}
+0:toDo 99 (fun(i) { dic.put d i i })
+100:toDo 199 (fun(i) { d:atPut i i })
+0:toDo 49 (fun(i) { d:removeKey (* i 4) })
+0:toDo 49 (fun(i) { dic.delete d (+ (* i 4) 2) })
+chk ((0:to 199):allSatisfy? (fun(i) { return (eqv? (d:includesKey? i) (== (rem i 2) 1)) })) "hak sees the result of removals on both sides"
+chk ((0:to 199):allSatisfy? (fun(i) { return (eqv? (dic.has? d i) (== (rem i 2) 1)) })) "...and so does the vm"
+chk (= (d:size) (dic.size d)) "...and they agree on the size"
+
+## a key the vm cannot hash goes to _atPutLiteral
+k1 := (Pt:make 1 1)
+f := (fun() { return 0 })
+d := #{ k1: "point", "s": 2, f: "function" }
+chk ((d:at (Pt:make 1 1)) = "point") "an object key in a literal, through _atPutLiteral"
+chk ((d:at f) = "function") "a function as a key"
+chk (= (d:at "s") 2) "...beside a key the vm put"
+chk (= (dic.get d "s") 2) "...which the vm still finds"
+
+## the vm grows the bucket past an object key put by hak code
+d := #{ k1: 0, "a": 1, "b": 2, "c": 3, "d": 4, "e": 5, "f": 6, "g": 7, "h": 8, "i": 9, "j": 10, "k": 11, "l": 12, "m": 13, "n": 14 }
+chk (= (d:size) 15) "a literal grows past an object key"
+chk (= (d:at (Pt:make 1 1)) 0) "...keeping the object key"
+chk (= (d:at "n") 14) "...and the rest"

@@ -959,10 +959,18 @@ static hak_pfrc_t pf_is_bytearray (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 
 static hak_pfrc_t pf_is_dictionary (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	hak_oop_t rv, x;
+	hak_oop_t x, c;
+
 	x = HAK_STACK_GETARG(hak, nargs, 0);
-	rv = (HAK_IS_DIC(hak, x))? hak->_true: hak->_false;
-	HAK_STACK_SETRET(hak, nargs, rv);
+	for (c = HAK_CLASSOF(hak, x); HAK_IS_CLASS(hak, c); c = ((hak_oop_class_t)c)->superclass)
+	{
+		if (c == (hak_oop_t)hak->c_dictionary)
+		{
+			HAK_STACK_SETRET(hak, nargs, hak->_true);
+			return HAK_PF_SUCCESS;
+		}
+	}
+	HAK_STACK_SETRET(hak, nargs, hak->_false);
 	return HAK_PF_SUCCESS;
 }
 

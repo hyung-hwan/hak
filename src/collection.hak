@@ -1,49 +1,419 @@
+## ---------------------------------------------------------------------------
+## Collections.
+##
+## The structure follows Smalltalk-80/Smalltalk-X. The kernel fixes part of
+## the hierarchy, so IndexedCollection plays the part of SequenceableCollection
+## and FixedSizedCollection that of ArrayedCollection:
+##
+##   Collection
+##     IndexedCollection          at atPut first last indexOf copyFromTo ...
+##       FixedSizedCollection     Array ByteArray String (Symbol)
+##       OrderedCollection        add addFirst removeFirst removeLast ...
+##         SortedCollection       kept in order by a sort block
+##       Interval                 (1:to 10) (0:toBy 20 5)
+##     Set                        hashed with hash and =
+##       IdentitySet              hashed with identityHash and ==
+##       Dictionary               key -> value pairs (Cons cells)
+##         IdentityDictionary
+##         SystemDictionary       the globals - kernel
+##         MethodDictionary       the methods of a class - kernel, read only
+##     Bag                        counts its elements
+##
+## Indices start at 0. Iteration is iterate (do is a reserved word), and
+## concatenation is concat (a comma cannot name a method).
+##
+## SET AND DICTIONARY ARE SHARED WITH THE VIRTUAL MACHINE
+##
+## A #{ } literal is built by C code, the system dictionary is maintained by
+## the compiler, and both are read and changed here. That works because both
+## sides follow the same rules (see lib/dic.c):
+##
+##   - the bucket is an Array; a Dictionary keeps a Cons (key . value) per slot
+##   - an element's home slot is (hash % bucket size), probed linearly
+##   - removal compacts the cluster rather than leaving a marker
+##   - the bucket never fills up - a probe stops at the first empty slot
+##   - hash agrees with the vm wherever the vm can hash - see object.hak
+##
+## The vm hands a key it cannot hash to _atPutLiteral rather than failing.
+##
+## KNOWN VM BUG - VARIADIC CALLS (stack contexts only)
+##
+## With stack contexts enabled (the default; not with -DHAK_DISABLE_STACK_CONTEXT),
+## a variable assigned the answer of a call to a variadic function that uses
+## va-count or va-get becomes nil if the calling function creates a closure
+## after that call:
+##
+##   fun vf(...) { return (va-count) }
+##   fun g() { | k | k := (vf 1 2); (fun() { return 0 }); return k }   ## nil
+##
+## So the constructors here are not variadic - new and withCapacity rather
+## than new(...). Array:with is variadic by nature; until the bug is fixed,
+## assign its answer after the closures of the function it is called from,
+## or call it from a function that creates none.
+## ---------------------------------------------------------------------------
+
 $include-once "object.hak"
+$include-once "magnitude.hak"
 
+## A Cons serves as the association of a Dictionary.
+class Cons: Object (car cdr) {
+	fun key() { return self.car }
+	fun value() { return self.cdr }
+	fun setValue(v) { self.cdr := v; return v }
+}
+
+## ---------------------------------------------------------------------------
 class Collection: Object {
-	fun length() {
-		return (core.basicSize self)
+	fun iterate(block) { return (self:subclassResponsibility #iterate) }
+	fun add(obj) { return (self:subclassResponsibility #add) }
+	fun removeIfAbsent(obj block) { return (self:subclassResponsibility #removeIfAbsent) }
+
+	fun size() {
+		| n |
+		n := 0
+		self:iterate (fun(e) { n := (+ n 1) })
+		return n
 	}
+
+	fun length() { return (self:size) }
+	fun isEmpty?() { return (== (self:size) 0) }
+	fun notEmpty?() { return (> (self:size) 0) }
+
+	fun includes?(obj) {
+		self:iterate (fun(e) { if (e = obj) { revert true } })
+		return false
+	}
+
+	fun occurrencesOf(obj) {
+		| n |
+		n := 0
+		self:iterate (fun(e) { if (e = obj) { n := (+ n 1) } })
+		return n
+	}
+
+	fun remove(obj) {
+		return (self:removeIfAbsent obj (fun() { throw (sprintf "%O not found" obj) }))
+	}
+
+	fun addAll(coll) {
+		coll:iterate (fun(e) { self:add e })
+		return coll
+	}
+
+	fun removeAll(coll) {
+		coll:iterate (fun(e) { self:remove e })
+		return coll
+	}
+
+	fun detect(block) {
+		return (self:detectIfNone block (fun() { throw "no element satisfies the condition" }))
+	}
+
+	fun detectIfNone(block none) {
+		self:iterate (fun(e) { if (block e) { revert e } })
+		return (none)
+	}
+
+	fun injectInto(acc block) {
+		self:iterate (fun(e) { acc := (block acc e) })
+		return acc
+	}
+
+	fun count(block) {
+		| n |
+		n := 0
+		self:iterate (fun(e) { if (block e) { n := (+ n 1) } })
+		return n
+	}
+
+	fun anySatisfy?(block) {
+		self:iterate (fun(e) { if (block e) { revert true } })
+		return false
+	}
+
+	fun allSatisfy?(block) {
+		self:iterate (fun(e) { if (not (block e)) { revert false } })
+		return true
+	}
+
+	## an empty collection of the same kind, for collect, select and reject.
+	## a collection that cannot grow overrides these.
+	fun _emptyCopy() { return ((core.classOf self):new) }
+
+	fun collect(block) {
+		| r |
+		r := (self:_emptyCopy)
+		self:iterate (fun(e) { r:add (block e) })
+		return r
+	}
+
+	fun select(block) {
+		| r |
+		r := (self:_emptyCopy)
+		self:iterate (fun(e) { if (block e) { r:add e } })
+		return r
+	}
+
+	fun reject(block) {
+		| r |
+		r := (self:_emptyCopy)
+		self:iterate (fun(e) { if (not (block e)) { r:add e } })
+		return r
+	}
+
+	fun toArray() {
+		| a i |
+		a := (core.basicNew Array (self:size))
+		i := 0
+		self:iterate (fun(e) { core.basicAtPut a i e; i := (+ i 1) })
+		return a
+	}
+
+	fun toOrderedCollection() { | r | r := (OrderedCollection:new); r:addAll self; return r }
+	fun toSortedCollection() { | r | r := (SortedCollection:new); r:addAll self; return r }
+	fun toSet() { | r | r := (Set:new); r:addAll self; return r }
+	fun toBag() { | r | r := (Bag:new); r:addAll self; return r }
 }
 
+## ---------------------------------------------------------------------------
+## A collection whose elements are at the indices 0 .. size - 1. The methods
+## here reach the elements through at and atPut only, so a subclass that keeps
+## them elsewhere (OrderedCollection, Interval) needs to provide just those,
+## size and _newOfSize.
 class IndexedCollection: Collection {
-	fun slice(index count) {
-		return (core.slice self index count)
+	fun size() { return (core.basicSize self) }
+	fun at(index) { return (core.basicAt self index) }
+	fun atPut(index value) { return (core.basicAtPut self index value) }
+
+	## index and count, not start and stop - see copyFromTo for the latter
+	fun slice(index count) { return (core.slice self index count) }
+
+	## a new collection of the same kind that holds n elements. a Symbol is
+	## immutable, so what is made from one is a String.
+	fun _newOfSize(n) {
+		| c |
+		c := (core.classOf self)
+		if (eqv? c Symbol) { c := String }
+		return (core.basicNew c n)
 	}
 
-	fun at(index) {
-		return (core.basicAt self index)
+	fun iterate(block) {
+		| i n |
+		i := 0
+		n := (self:size)
+		while (< i n) { block (self:at i); i := (+ i 1) }
+		return self
 	}
 
-	fun atPut(index value) {
-		return (core.basicAtPut self index value)
+	## (block element index)
+	fun iterateWithIndex(block) {
+		| i n |
+		i := 0
+		n := (self:size)
+		while (< i n) { block (self:at i) i; i := (+ i 1) }
+		return self
+	}
+
+	## (block index element)
+	fun keysAndValuesDo(block) {
+		| i n |
+		i := 0
+		n := (self:size)
+		while (< i n) { block i (self:at i); i := (+ i 1) }
+		return self
+	}
+
+	fun reverseDo(block) {
+		| i |
+		i := (- (self:size) 1)
+		while (>= i 0) { block (self:at i); i := (- i 1) }
+		return self
+	}
+
+	fun first() {
+		if (== (self:size) 0) { throw "first of an empty collection" }
+		return (self:at 0)
+	}
+
+	fun last() {
+		if (== (self:size) 0) { throw "last of an empty collection" }
+		return (self:at (- (self:size) 1))
+	}
+
+	## -1 when absent
+	fun indexOf(obj) {
+		| i n |
+		i := 0
+		n := (self:size)
+		while (< i n) {
+			if ((self:at i) = obj) { return i }
+			i := (+ i 1)
+		}
+		return -1
+	}
+
+	fun atAllPut(value) {
+		| i n |
+		i := 0
+		n := (self:size)
+		while (< i n) { self:atPut i value; i := (+ i 1) }
+		return self
+	}
+
+	## the elements start .. stop of this collection become those of coll,
+	## taken from its index 0 onward
+	fun replaceFromToWith(start stop coll) {
+		| i |
+		i := start
+		while (<= i stop) { self:atPut i (coll:at (- i start)); i := (+ i 1) }
+		return self
+	}
+
+	## start and stop inclusive
+	fun copyFromTo(start stop) {
+		| n r i |
+		n := (+ (- stop start) 1)
+		if (< n 0) { n := 0 }
+		r := (self:_newOfSize n)
+		i := 0
+		while (< i n) { r:atPut i (self:at (+ start i)); i := (+ i 1) }
+		return r
+	}
+
+	fun concat(other) {
+		| n m r |
+		n := (self:size)
+		m := (other:size)
+		r := (self:_newOfSize (+ n m))
+		if (> n 0) { r:replaceFromToWith 0 (- n 1) self }
+		if (> m 0) { r:replaceFromToWith n (- (+ n m) 1) other }
+		return r
+	}
+
+	fun copyWith(obj) {
+		| n r |
+		n := (self:size)
+		r := (self:_newOfSize (+ n 1))
+		if (> n 0) { r:replaceFromToWith 0 (- n 1) self }
+		r:atPut n obj
+		return r
+	}
+
+	fun reverse() {
+		| n r i |
+		n := (self:size)
+		r := (self:_newOfSize n)
+		i := 0
+		while (< i n) { r:atPut i (self:at (- (- n 1) i)); i := (+ i 1) }
+		return r
+	}
+
+	fun collect(block) {
+		| n r i |
+		n := (self:size)
+		r := (self:_newOfSize n)
+		i := 0
+		while (< i n) { r:atPut i (block (self:at i)); i := (+ i 1) }
+		return r
+	}
+
+	fun select(block) {
+		| kept |
+		kept := (OrderedCollection:new)
+		self:iterate (fun(e) { if (block e) { kept:addLast e } })
+		return (self:_fromOrdered kept)
+	}
+
+	fun reject(block) {
+		| kept |
+		kept := (OrderedCollection:new)
+		self:iterate (fun(e) { if (not (block e)) { kept:addLast e } })
+		return (self:_fromOrdered kept)
+	}
+
+	fun _fromOrdered(oc) {
+		| r i n |
+		n := (oc:size)
+		r := (self:_newOfSize n)
+		i := 0
+		while (< i n) { r:atPut i (oc:at i); i := (+ i 1) }
+		return r
+	}
+
+	## equal when of the same class with equal elements
+	fun = (other) {
+		| i n |
+		if (eqv? self other) { return true }
+		if (nqv? (core.classOf self) (core.classOf other)) { return false }
+		n := (self:size)
+		if (nqv? n (other:size)) { return false }
+		i := 0
+		while (< i n) {
+			if (not ((self:at i) = (other:at i))) { return false }
+			i := (+ i 1)
+		}
+		return true
+	}
+
+	## must agree with = - the size and the first few elements
+	fun hash() {
+		| h i n |
+		n := (self:size)
+		h := n
+		i := 0
+		while (and (< i n) (< i 4)) {
+			h := (bit-and (+ (* h 31) ((self:at i):hash)) 16r3FFFFFFF)
+			i := (+ i 1)
+		}
+		return h
 	}
 }
 
+## ---------------------------------------------------------------------------
 class FixedSizedCollection: IndexedCollection {
 	fun[#class] new(size) {
-		| obj iv |
+		| obj iv i |
 		obj := (core.basicNew self size)
 		if (self:respondsTo #initValue) {
-			i := 0
 			iv := (self:initValue)
-			while (< i size) { ## TODO: change to i < size after having implemented these methods on integer/smallintger
+			i := 0
+			while (< i size) {
 				core.basicAtPut obj i iv
-				i := (i + 1) ## TODO: change to i + 1 ## TODO: change to i < size after having implemented these methods on integer/smallintger
+				i := (+ i 1)
 			}
 		}
 		return obj
 	}
 
-	##fun[#class] initValue() {
-	##	return nil
-	##}
+	## (Array:with 1 2 3)
+	fun[#class] with(...) {
+		| obj i |
+		obj := (core.basicNew self (va-count))
+		i := 0
+		while (< i (va-count)) { core.basicAtPut obj i (va-get i); i := (+ i 1) }
+		return obj
+	}
+
+	fun[#class] withAll(coll) {
+		| obj i |
+		obj := (core.basicNew self (coll:size))
+		i := 0
+		coll:iterate (fun(e) { core.basicAtPut obj i e; i := (+ i 1) })
+		return obj
+	}
+
+	fun add(obj) { throw (sprintf "%O cannot grow" (core.classOf self)) }
+	fun removeIfAbsent(obj block) { throw (sprintf "%O cannot shrink" (core.classOf self)) }
 }
 
 class[#varying] Array: FixedSizedCollection {
 }
 
 class[#byte #varying] ByteArray: FixedSizedCollection {
+	## the vm hashes and compares byte arrays itself - agree with it
+	fun = (other) { return (eql? self other) }
+	fun hash() { return (core.hash self) }
+
 	## Decode as many COMPLETE characters as this range holds, answering
 	## #[String bytesConsumed]. A character cut short at the end stops the
 	## decoding rather than failing it, and the bytes it started with are
@@ -63,6 +433,33 @@ class[#char #varying] String: FixedSizedCollection {
 		return ' '
 	}
 
+	## the vm hashes and compares strings and symbols itself - agree with it.
+	## a String and a Symbol with the same characters are not equal.
+	fun = (other) { return (eql? self other) }
+	fun hash() { return (core.hash self) }
+
+	## character by character, a shorter prefix first
+	fun < (other) {
+		| i n m a b |
+		n := (self:size)
+		m := (other:size)
+		i := 0
+		while (and (< i n) (< i m)) {
+			a := (core.char-to-smooi (self:at i))
+			b := (core.char-to-smooi (other:at i))
+			if (< a b) { return true }
+			if (> a b) { return false }
+			i := (+ i 1)
+		}
+		return (< n m)
+	}
+	fun >  (other) { return (other < self) }
+	fun <= (other) { return (not (other < self)) }
+	fun >= (other) { return (not (self < other)) }
+
+	fun toUppercase() { return (self:collect (fun(c) { return (c:toUppercase) })) }
+	fun toLowercase() { return (self:collect (fun(c) { return (c:toLowercase) })) }
+
 	## The other direction, answering a ByteArray. Encoding cannot stop
 	## halfway the way decoding can, since every string is representable, so
 	## there is no count to answer alongside it.
@@ -71,13 +468,685 @@ class[#char #varying] String: FixedSizedCollection {
 	}
 }
 
-class SequenceableCollection: Collection {
-	fun iterate(action) {
-		| i x |
-		i := 0; x := (self:size)
-		while (i < x) {
-			action:value (self:at i)
-			i := (i + 1)
+## ---------------------------------------------------------------------------
+## The elements live in _items from _first up to, not including, _last, with
+## room left at both ends so that adding at either end is cheap.
+class OrderedCollection: IndexedCollection (_items _first _last) {
+	## (OrderedCollection:new), or (OrderedCollection:withCapacity 100) to
+	## start with room for 100. not a variadic new: a variadic call in a
+	## function that creates a closure after it loses the value it answers -
+	## see the note at the top of this file.
+	fun[#ci] new() { return (self:_initItems 16) }
+	fun[#ci] withCapacity(n) { return (self:_initItems n) }
+
+	fun _initItems(n) {
+		if (< n 4) { n := 4 }
+		self._items := (core.basicNew Array n)
+		self._first := (div n 4)
+		self._last := self._first
+		return self
+	}
+
+	fun _emptyCopy() { return (OrderedCollection:new) }
+
+	fun _newOfSize(n) {
+		| r |
+		r := (OrderedCollection:withCapacity n)
+		n:timesRepeat (fun() { r:addLast nil })
+		return r
+	}
+
+	fun size() { return (- self._last self._first) }
+
+	fun _checkIndex(index) {
+		if (or (< index 0) (>= index (- self._last self._first))) {
+			throw (sprintf "index %O out of range" index)
 		}
+	}
+
+	fun at(index) {
+		self:_checkIndex index
+		return (core.basicAt self._items (+ self._first index))
+	}
+
+	fun atPut(index value) {
+		self:_checkIndex index
+		return (core.basicAtPut self._items (+ self._first index) value)
+	}
+
+	fun slice(index count) { return (self:copyFromTo index (- (+ index count) 1)) }
+
+	fun iterate(block) {
+		| i |
+		i := self._first
+		while (< i self._last) { block (core.basicAt self._items i); i := (+ i 1) }
+		return self
+	}
+
+	## move the elements into a bigger array, leaving extra room at the front
+	## and at the end
+	fun _grow() {
+		| old n cap i |
+		old := self._items
+		n := (- self._last self._first)
+		cap := (* (core.basicSize old) 2)
+		self._items := (core.basicNew Array cap)
+		i := 0
+		while (< i n) {
+			core.basicAtPut self._items (+ (div cap 4) i) (core.basicAt old (+ self._first i))
+			i := (+ i 1)
+		}
+		self._first := (div cap 4)
+		self._last := (+ self._first n)
+	}
+
+	fun add(obj) { return (self:addLast obj) }
+
+	fun addLast(obj) {
+		if (== self._last (core.basicSize self._items)) { self:_grow }
+		core.basicAtPut self._items self._last obj
+		self._last := (+ self._last 1)
+		return obj
+	}
+
+	fun addFirst(obj) {
+		if (== self._first 0) { self:_grow }
+		self._first := (- self._first 1)
+		core.basicAtPut self._items self._first obj
+		return obj
+	}
+
+	## index may be size, to add at the end
+	fun addBeforeIndex(obj index) { return (self:_insertAt index obj) }
+
+	fun _insertAt(index obj) {
+		| i |
+		if (or (< index 0) (> index (- self._last self._first))) {
+			throw (sprintf "index %O out of range" index)
+		}
+		if (== self._last (core.basicSize self._items)) { self:_grow }
+		i := self._last
+		while (> i (+ self._first index)) {
+			core.basicAtPut self._items i (core.basicAt self._items (- i 1))
+			i := (- i 1)
+		}
+		core.basicAtPut self._items (+ self._first index) obj
+		self._last := (+ self._last 1)
+		return obj
+	}
+
+	fun removeFirst() {
+		| v |
+		if (== self._first self._last) { throw "removeFirst of an empty collection" }
+		v := (core.basicAt self._items self._first)
+		core.basicAtPut self._items self._first nil
+		self._first := (+ self._first 1)
+		return v
+	}
+
+	fun removeLast() {
+		| v |
+		if (== self._first self._last) { throw "removeLast of an empty collection" }
+		self._last := (- self._last 1)
+		v := (core.basicAt self._items self._last)
+		core.basicAtPut self._items self._last nil
+		return v
+	}
+
+	fun removeIndex(index) {
+		| v i |
+		self:_checkIndex index
+		i := (+ self._first index)
+		v := (core.basicAt self._items i)
+		while (< i (- self._last 1)) {
+			core.basicAtPut self._items i (core.basicAt self._items (+ i 1))
+			i := (+ i 1)
+		}
+		self._last := (- self._last 1)
+		core.basicAtPut self._items self._last nil
+		return v
+	}
+
+	fun removeIfAbsent(obj block) {
+		| i |
+		i := (self:indexOf obj)
+		if (< i 0) { return (block) }
+		self:removeIndex i
+		return obj
+	}
+
+	fun remove(obj) {
+		| i |
+		i := (self:indexOf obj)
+		if (< i 0) { throw (sprintf "%O not found" obj) }
+		self:removeIndex i
+		return obj
+	}
+}
+
+## ---------------------------------------------------------------------------
+## Kept in the order given by a sort block, which answers true when its first
+## argument may come before its second. The default is (a <= b), which also
+## keeps equal elements in the order they were added.
+class SortedCollection: OrderedCollection (_sortBlock) {
+	fun[#ci] new() {
+		self:_initItems 16
+		self._sortBlock := (fun(a b) { return (a <= b) })
+		return self
+	}
+
+	fun[#ci] withCapacity(n) {
+		self:_initItems n
+		self._sortBlock := (fun(a b) { return (a <= b) })
+		return self
+	}
+
+	fun[#ci] sortBlock(block) {
+		self:_initItems 16
+		self._sortBlock := block
+		return self
+	}
+
+	fun _emptyCopy() { return (SortedCollection:sortBlock self._sortBlock) }
+
+	## binary search for the first element that must come after obj
+	fun add(obj) {
+		| lo hi mid |
+		lo := 0
+		hi := (self:size)
+		while (< lo hi) {
+			mid := (div (+ lo hi) 2)
+			if (self._sortBlock (self:at mid) obj) { lo := (+ mid 1) } else { hi := mid }
+		}
+		self:_insertAt lo obj
+		return obj
+	}
+
+	fun addFirst(obj) { throw "a SortedCollection decides where an element goes - use add" }
+	fun addLast(obj) { throw "a SortedCollection decides where an element goes - use add" }
+	fun addBeforeIndex(obj index) { throw "a SortedCollection decides where an element goes - use add" }
+	fun atPut(index value) { throw "a SortedCollection decides where an element goes - use add" }
+
+	## what collect answers need not sort - answer an OrderedCollection
+	fun collect(block) {
+		| r |
+		r := (OrderedCollection:new)
+		self:iterate (fun(e) { r:addLast (block e) })
+		return r
+	}
+
+	fun select(block) {
+		| r |
+		r := (self:_emptyCopy)
+		self:iterate (fun(e) { if (block e) { r:add e } })
+		return r
+	}
+
+	fun reject(block) {
+		| r |
+		r := (self:_emptyCopy)
+		self:iterate (fun(e) { if (not (block e)) { r:add e } })
+		return r
+	}
+
+	fun _newOfSize(n) {
+		| r |
+		r := (OrderedCollection:withCapacity n)
+		n:timesRepeat (fun() { r:addLast nil })
+		return r
+	}
+}
+
+## ---------------------------------------------------------------------------
+## The numbers from start to stop in steps of step - (1:to 5), (10:toBy 0 -2)
+class Interval: IndexedCollection (_start _stop _step) {
+	fun[#class] fromTo(start stop) { return (self:fromToBy start stop 1) }
+
+	fun[#ci] fromToBy(start stop step) {
+		if (= step 0) { throw "the step of an Interval cannot be zero" }
+		self._start := start
+		self._stop := stop
+		self._step := step
+		return self
+	}
+
+	fun size() {
+		if (> self._step 0) {
+			if (< self._stop self._start) { return 0 }
+			return (+ (div (- self._stop self._start) self._step) 1)
+		}
+		if (> self._stop self._start) { return 0 }
+		return (+ (div (- self._start self._stop) (- 0 self._step)) 1)
+	}
+
+	fun at(index) {
+		if (or (< index 0) (>= index (self:size))) { throw (sprintf "index %O out of range" index) }
+		return (+ self._start (* index self._step))
+	}
+
+	fun atPut(index value) { throw "an Interval cannot be changed" }
+	fun add(obj) { throw "an Interval cannot grow" }
+	fun removeIfAbsent(obj block) { throw "an Interval cannot shrink" }
+
+	fun slice(index count) { return (self:copyFromTo index (- (+ index count) 1)) }
+	fun _newOfSize(n) { return (core.basicNew Array n) }
+
+	fun iterate(block) {
+		| i n |
+		i := 0
+		n := (self:size)
+		while (< i n) { block (+ self._start (* i self._step)); i := (+ i 1) }
+		return self
+	}
+}
+
+## ---------------------------------------------------------------------------
+## A hashed collection. The entries live in _bucket, an Array whose empty
+## slots hold nil, so nil cannot be an element.
+##
+## Everything that touches _tally and _bucket is here, because a subclass
+## cannot reach the instance variables of its superclass. A subclass changes
+## what an entry is with _keyOf, and how keys are hashed and compared with
+## _hashOf and _match.
+class Set: Collection (_tally _bucket) {
+	## (Set:new), or (Set:withCapacity 100) to start with room for 100
+	fun[#ci] new() { return (self:_initTable 32) }
+	fun[#ci] withCapacity(n) { return (self:_initTable (div (* n 4) 3)) }
+
+	fun _initTable(n) {
+		if (< n 4) { n := 4 }
+		self._tally := 0
+		self._bucket := (core.basicNew Array n)
+		return self
+	}
+
+	## --- what a subclass may change ------------------------------------
+
+	fun _keyOf(entry) { return entry }
+	fun _hashOf(key) { return (key:hash) }
+	fun _match(key other) { return (key = other) }
+
+	## --- the table -----------------------------------------------------
+
+	## the slot holding key, or the empty slot that ends its probe
+	fun _findIndex(key) {
+		| b n i e |
+		b := self._bucket
+		n := (core.basicSize b)
+		i := (rem (self:_hashOf key) n)
+		while true {
+			e := (core.basicAt b i)
+			if (nil? e) { return i }
+			if (self:_match key (self:_keyOf e)) { return i }
+			i := (+ i 1)
+			if (== i n) { i := 0 }
+		}
+	}
+
+	## the empty slot where an entry for key would go - for a key known not to
+	## be present, so no comparison is needed
+	fun _findEmpty(key) {
+		| b n i |
+		b := self._bucket
+		n := (core.basicSize b)
+		i := (rem (self:_hashOf key) n)
+		while (nqv? (core.basicAt b i) nil) {
+			i := (+ i 1)
+			if (== i n) { i := 0 }
+		}
+		return i
+	}
+
+	fun _capacity() { return (core.basicSize self._bucket) }
+	fun _entryAt(index) { return (core.basicAt self._bucket index) }
+	fun _entryAtPut(index entry) { return (core.basicAtPut self._bucket index entry) }
+
+	## the entry for key, or nil
+	fun _lookup(key) { return (core.basicAt self._bucket (self:_findIndex key)) }
+
+	## add an entry whose key is known not to be present. grow at three
+	## quarters full - the vm only needs one empty slot, but long probes are slow
+	fun _insertNew(key entry) {
+		if (> (* (+ self._tally 1) 4) (* (core.basicSize self._bucket) 3)) { self:_grow }
+		core.basicAtPut self._bucket (self:_findEmpty key) entry
+		self._tally := (+ self._tally 1)
+		return entry
+	}
+
+	fun _grow() {
+		| old n i e |
+		old := self._bucket
+		n := (core.basicSize old)
+		self._bucket := (core.basicNew Array (* n 2))
+		i := 0
+		while (< i n) {
+			e := (core.basicAt old i)
+			if (nqv? e nil) { core.basicAtPut self._bucket (self:_findEmpty (self:_keyOf e)) e }
+			i := (+ i 1)
+		}
+	}
+
+	## empty the slot, then move every entry after it in the same cluster to
+	## where a probe for it now ends - no probe may cross an empty slot to
+	## reach its entry
+	fun _removeAt(index) {
+		| b n j e |
+		b := self._bucket
+		n := (core.basicSize b)
+		core.basicAtPut b index nil
+		self._tally := (- self._tally 1)
+		j := index
+		while true {
+			j := (+ j 1)
+			if (== j n) { j := 0 }
+			e := (core.basicAt b j)
+			if (nil? e) { break }
+			core.basicAtPut b j nil
+			core.basicAtPut b (self:_findEmpty (self:_keyOf e)) e
+		}
+	}
+
+	## (block entry) for every entry
+	fun _entriesDo(block) {
+		| b n i e |
+		b := self._bucket
+		n := (core.basicSize b)
+		i := 0
+		while (< i n) {
+			e := (core.basicAt b i)
+			if (nqv? e nil) { block e }
+			i := (+ i 1)
+		}
+		return self
+	}
+
+	## --- the protocol --------------------------------------------------
+
+	fun size() { return self._tally }
+
+	fun iterate(block) { return (self:_entriesDo block) }
+
+	fun add(obj) {
+		if (nil? obj) { throw "nil cannot be an element of a Set" }
+		if (nil? (self:_lookup obj)) { self:_insertNew obj obj }
+		return obj
+	}
+
+	fun includes?(obj) {
+		if (nil? obj) { return false }
+		return (nqv? (self:_lookup obj) nil)
+	}
+
+	## the common operations create no closure - a closure made on every call
+	## costs an allocation, and with stack contexts it also leaks a frame
+	fun remove(obj) {
+		| i |
+		if (nil? obj) { throw "nil is not an element of a Set" }
+		i := (self:_findIndex obj)
+		if (nil? (core.basicAt self._bucket i)) { throw (sprintf "%O not found" obj) }
+		self:_removeAt i
+		return obj
+	}
+
+	fun removeIfAbsent(obj block) {
+		| i |
+		if (nil? obj) { return (block) }
+		i := (self:_findIndex obj)
+		if (nil? (core.basicAt self._bucket i)) { return (block) }
+		self:_removeAt i
+		return obj
+	}
+}
+
+class IdentitySet: Set {
+	fun _hashOf(key) { return (core.identityHash key) }
+	fun _match(key other) { return (eqv? key other) }
+}
+
+## ---------------------------------------------------------------------------
+## A Set of Cons cells, each holding a key and its value.
+class Dictionary: Set {
+	fun _keyOf(entry) { return (core.car entry) }
+
+	fun at(key) {
+		| a |
+		a := (self:_lookup key)
+		if (nil? a) { throw (sprintf "key not found - %O" key) }
+		return (core.cdr a)
+	}
+
+	fun atIfAbsent(key block) {
+		| a |
+		a := (self:_lookup key)
+		if (nil? a) { return (block) }
+		return (core.cdr a)
+	}
+
+	fun atPut(key value) {
+		| a |
+		a := (self:_lookup key)
+		if (nil? a) { self:_insertNew key (core.cons key value) } else { a:setValue value }
+		return value
+	}
+
+	## the vm sends this while building a #{ } literal, for a key it cannot
+	## hash itself. it must answer the dictionary.
+	fun _atPutLiteral(key value) {
+		self:atPut key value
+		return self
+	}
+
+	## add a Cons, keeping it as the association for its key
+	fun add(assoc) {
+		| i |
+		i := (self:_findIndex (core.car assoc))
+		if (nil? (self:_entryAt i)) { self:_insertNew (core.car assoc) assoc } else { self:_entryAtPut i assoc }
+		return assoc
+	}
+
+	fun associationAt(key) {
+		| a |
+		a := (self:_lookup key)
+		if (nil? a) { throw (sprintf "key not found - %O" key) }
+		return a
+	}
+
+	fun removeKey(key) {
+		| i a |
+		i := (self:_findIndex key)
+		a := (self:_entryAt i)
+		if (nil? a) { throw (sprintf "key not found - %O" key) }
+		self:_removeAt i
+		return (core.cdr a)
+	}
+
+	fun remove(key) { return (self:removeKey key) }
+
+	fun removeKeyIfAbsent(key block) {
+		| i a |
+		i := (self:_findIndex key)
+		a := (self:_entryAt i)
+		if (nil? a) { return (block) }
+		self:_removeAt i
+		return (core.cdr a)
+	}
+
+	## a Dictionary removes by key, not by value
+	fun removeIfAbsent(key block) { return (self:removeKeyIfAbsent key block) }
+
+	fun includesKey?(key) { return (nqv? (self:_lookup key) nil) }
+
+	## the walks below loop over the slots directly rather than wrapping the
+	## caller's block in another closure on every call
+	fun includes?(value) {
+		| i n a |
+		i := 0
+		n := (self:_capacity)
+		while (< i n) {
+			a := (self:_entryAt i)
+			if (and (nqv? a nil) ((core.cdr a) = value)) { return true }
+			i := (+ i 1)
+		}
+		return false
+	}
+
+	## the first key found whose value equals value, or nil
+	fun keyAtValue(value) {
+		| i n a |
+		i := 0
+		n := (self:_capacity)
+		while (< i n) {
+			a := (self:_entryAt i)
+			if (and (nqv? a nil) ((core.cdr a) = value)) { return (core.car a) }
+			i := (+ i 1)
+		}
+		return nil
+	}
+
+	## iterate, collect, select and the rest see the values
+	fun iterate(block) {
+		| i n a |
+		i := 0
+		n := (self:_capacity)
+		while (< i n) {
+			a := (self:_entryAt i)
+			if (nqv? a nil) { block (core.cdr a) }
+			i := (+ i 1)
+		}
+		return self
+	}
+
+	fun valuesDo(block) { return (self:iterate block) }
+
+	fun keysDo(block) {
+		| i n a |
+		i := 0
+		n := (self:_capacity)
+		while (< i n) {
+			a := (self:_entryAt i)
+			if (nqv? a nil) { block (core.car a) }
+			i := (+ i 1)
+		}
+		return self
+	}
+
+	fun associationsDo(block) { return (self:_entriesDo block) }
+
+	## (block key value)
+	fun keysAndValuesDo(block) {
+		| i n a |
+		i := 0
+		n := (self:_capacity)
+		while (< i n) {
+			a := (self:_entryAt i)
+			if (nqv? a nil) { block (core.car a) (core.cdr a) }
+			i := (+ i 1)
+		}
+		return self
+	}
+
+	fun keys() { return (self:_slotsAnswering 0) }
+	fun values() { return (self:_slotsAnswering 1) }
+	fun associations() { return (self:_slotsAnswering 2) }
+
+	## an Array of the keys (0), the values (1) or the associations (2)
+	fun _slotsAnswering(what) {
+		| r i j n a |
+		r := (core.basicNew Array (self:size))
+		i := 0
+		j := 0
+		n := (self:_capacity)
+		while (< i n) {
+			a := (self:_entryAt i)
+			if (nqv? a nil) {
+				if (== what 0) { core.basicAtPut r j (core.car a) } \
+				elif (== what 1) { core.basicAtPut r j (core.cdr a) } \
+				else { core.basicAtPut r j a }
+				j := (+ j 1)
+			}
+			i := (+ i 1)
+		}
+		return r
+	}
+
+	## the values answered by block, in a Bag - two keys may give one value
+	fun collect(block) {
+		| r |
+		r := (Bag:new)
+		self:iterate (fun(v) { r:add (block v) })
+		return r
+	}
+
+	## the pairs whose values satisfy block, in a new dictionary of this kind
+	fun select(block) {
+		| r |
+		r := ((core.classOf self):new)
+		self:keysAndValuesDo (fun(k v) { if (block v) { r:atPut k v } })
+		return r
+	}
+
+	fun reject(block) {
+		| r |
+		r := ((core.classOf self):new)
+		self:keysAndValuesDo (fun(k v) { if (not (block v)) { r:atPut k v } })
+		return r
+	}
+}
+
+class IdentityDictionary: Dictionary {
+	fun _hashOf(key) { return (core.identityHash key) }
+	fun _match(key other) { return (eqv? key other) }
+}
+
+## The global variables. Its keys are symbols and the compiler binds code to
+## the Cons cells themselves, so a value changes in place, never its Cons.
+class SystemDictionary: Dictionary {
+}
+
+## The methods of a class. Each value is a Cons of the class method and the
+## instance method under that name. The compiler and the vm maintain it.
+class MethodDictionary: Dictionary {
+	fun atPut(key value) { throw "methods are added by the compiler" }
+	fun add(assoc) { throw "methods are added by the compiler" }
+	fun removeKeyIfAbsent(key block) { throw "methods are removed by the compiler" }
+}
+
+## ---------------------------------------------------------------------------
+## Counts how many times each element was added.
+class Bag: Collection (_counts) {
+	fun[#ci] new() {
+		self._counts := (Dictionary:new)
+		return self
+	}
+
+	fun _emptyCopy() { return (Bag:new) }
+
+	fun add(obj) { return (self:addWithOccurrences obj 1) }
+
+	fun addWithOccurrences(obj n) {
+		if (nil? obj) { throw "nil cannot be an element of a Bag" }
+		self._counts:atPut(obj (+ (self:occurrencesOf obj) n))
+		return obj
+	}
+
+	fun occurrencesOf(obj) {
+		if (self._counts:includesKey? obj) { return (self._counts:at obj) }
+		return 0
+	}
+	fun includes?(obj) { return (self._counts:includesKey? obj) }
+
+	fun removeIfAbsent(obj block) {
+		| c |
+		c := (self:occurrencesOf obj)
+		if (== c 0) { return (block) }
+		if (== c 1) { self._counts:removeKey(obj) } else { self._counts:atPut(obj (- c 1)) }
+		return obj
+	}
+
+	fun size() { return (self._counts:injectInto 0 (fun(acc c) { return (+ acc c) })) }
+
+	fun iterate(block) {
+		self._counts:keysAndValuesDo (fun(k c) { c:timesRepeat (fun() { block k }) })
+		return self
 	}
 }

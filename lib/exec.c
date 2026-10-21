@@ -4759,7 +4759,8 @@ static int execute (hak_t* hak)
 							spec = HAK_OOP_TO_SMOOI(class_obj->spec);
 							selfspec = HAK_OOP_TO_SMOOI(class_obj->selfspec);
 							nivars_super = HAK_OOP_TO_SMOOI(class_obj->nivars_super);
-							nivars_super_real = HAK_IS_NIL(hak, superclass)? 0: HAK_OOP_TO_SMOOI(((hak_oop_class_t)superclass)->nivars_super);
+							nivars_super_real = HAK_IS_NIL(hak, superclass)? 0: HAK_OOP_TO_SMOOI(((hak_oop_class_t)superclass)->nivars_super) +
+							                                                    HAK_CLASS_SPEC_NAMED_INSTVARS(HAK_OOP_TO_SMOOI(((hak_oop_class_t)superclass)->spec));
 #if 0
 hak_logbfmt(hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncvars=%d<<<\n", class_obj, class_obj->superclass, superclass, b2, b3, (int)HAK_CLASS_SPEC_NAMED_INSTVARS(spec), (int)HAK_CLASS_SELFSPEC_CLASSVARS(spec));
 #endif
@@ -4870,7 +4871,7 @@ hak_logbfmt(hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncv
 				if (HAK_IS_NIL(hak, mdic))
 				{
 					hak_pushvolat(hak, (hak_oop_t*)&_class);
-					mdic = hak_makedic(hak, 16); /* TODO: configurable initial size? */
+					mdic = hak_makedicwithclass(hak, hak->c_method_dictionary, 16); /* TODO: configurable initial size? */
 					hak_popvolat(hak);
 					if (HAK_UNLIKELY(!mdic)) goto oops_with_errmsg_supplement;
 					((hak_oop_class_t)_class)->mdic = mdic;
@@ -5418,15 +5419,48 @@ hak_logbfmt(hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncv
 
 			case HAK_CODE_POP_INTO_DIC:
 			{
-				hak_oop_t t1, t2, t3;
+				hak_oop_t t1, t2, t3, sel;
+				hak_oow_t hv;
 
 				LOG_INST_0(hak, "pop_into_dic");
 				t1 = HAK_STACK_GETTOP(hak); /* value */
-				HAK_STACK_POP(hak);
-				t2 = HAK_STACK_GETTOP(hak); /* key */
-				HAK_STACK_POP(hak);
-				t3 = HAK_STACK_GETTOP(hak); /* dictionary */
-				if (!hak_putatdic(hak, (hak_oop_dic_t)t3, t2, t1)) goto oops_with_errmsg_supplement;
+				t2 = HAK_STACK_GET(hak, hak->sp - 1); /* key */
+				t3 = HAK_STACK_GET(hak, hak->sp - 2); /* dictionary */
+
+				if (HAK_IS_DIC(hak, t3) && hak_hashobj(hak, t2, &hv) >= 0)
+				{
+					if (!hak_putatdic(hak, (hak_oop_dic_t)t3, t2, t1))
+					{
+						if (hak_geterrnum(hak) != HAK_ENOIMPL)
+							goto oops_with_errmsg_supplement;
+						/* fall through to message send of atPutLiteral */
+					}
+					else
+					{
+						HAK_STACK_POPS(hak, 2); /* leave the dictionary */
+						break;
+					}
+				}
+
+				sel = hak->sym_at_put_literal;
+
+				/* re-read - the allocation above may have run the gc */
+				t1 = HAK_STACK_GETTOP(hak); /* value */
+				t2 = HAK_STACK_GET(hak, hak->sp - 1); /* key */
+				t3 = HAK_STACK_GET(hak, hak->sp - 2); /* dictionary */
+
+				HAK_STACK_PUSH(hak, t1);              /* [dict key value value] */
+				HAK_STACK_SET(hak, hak->sp - 1, t2);  /* [dict key key value] */
+				HAK_STACK_SET(hak, hak->sp - 2, sel); /* [dict sel key value] */
+
+				if (send_message(hak, t3, sel, 0, 2, 0) <= -1)
+				{
+					const hak_ooch_t* msg = hak_backuperrmsg(hak);
+					hak_seterrbfmt(hak, HAK_ECALL, "unable to send %O to %O - %js", sel, t3, msg);
+					if (do_throw_with_internal_errmsg(hak, fetched_instruction_pointer) >= 0) break;
+					goto oops_with_errmsg_supplement;
+				}
+
 				break;
 			}
 
