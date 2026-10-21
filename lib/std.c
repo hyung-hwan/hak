@@ -4729,18 +4729,10 @@ static int cb_vm_startup (hak_t* hak)
 
 oops:
 #if defined(USE_THREAD)
-	if (iothr_pcount > 0)
-	{
-		close(xtn->iothr.p[0]);
-		close(xtn->iothr.p[1]);
-	}
+	if (iothr_pcount > 0) close_pipes(hak, xtn->iothr.p);
 #endif
 
-	if (sigfd_pcount > 0)
-	{
-		close(xtn->sigfd.p[0]);
-		close(xtn->sigfd.p[1]);
-	}
+	if (sigfd_pcount > 0) close_pipes(hak, xtn->sigfd.p);
 
 #if defined(USE_DEVPOLL) || defined(USE_EPOLL)
 	if (xtn->ep >= 0)

@@ -82,6 +82,17 @@ struct bb_t
 	hak_oow_t pos;
 	hak_oow_t len;
 	int fd;
+	/* whether fd belongs to this stream and must be closed with it.
+	 *
+	 * an included script is opened here and owned. the main stream borrows
+	 * the worker's socket, which the worker closes itself.
+	 *
+	 * fini_worker_socket() sets worker->sck to -1 when it closes the socket,
+	 * and free_worker() does that before it frees the hak. the comparison then
+	 * no longer matches and the descriptor is closed a second time - by which
+	 * point the number may have been handed to another thread, whose epoll
+	 * descriptor or pipe is then yanked away. */
+	int owned;
 	hak_bch_t* fn;
 };
 typedef struct bb_t bb_t;
@@ -343,12 +354,12 @@ static HAK_INLINE int open_read_stream (hak_t* hak, hak_io_cciarg_t* arg)
 		hak_copy_bcstr(&bb->fn[parlen], bcslen + 1, arg->name);
 	#endif
 		bb->fd = open(bb->fn, O_RDONLY, 0);
-
 		if (bb->fd <= -1)
 		{
 			hak_seterrnum(hak, HAK_EIOERR);
 			goto oops;
 		}
+		bb->owned = 1; /* opened here, so closed here */
 	}
 	else
 	{
@@ -362,6 +373,9 @@ static HAK_INLINE int open_read_stream (hak_t* hak, hak_io_cciarg_t* arg)
 		hak_copy_bcstr (bb->fn, pathlen + 1, "");
 
 		bb->fd = xtn->worker->sck;
+		bb->owned = 0; /* borrowed from the worker - calloc already did this,
+		                * stated here so the pairing with close_read_stream()
+		                * is visible at the point the descriptor is taken */
 	}
 
 	HAK_ASSERT(hak, bb->fd >= 0);
@@ -372,7 +386,7 @@ static HAK_INLINE int open_read_stream (hak_t* hak, hak_io_cciarg_t* arg)
 oops:
 	if (bb)
 	{
-		if (bb->fd >= 0 && bb->fd != xtn->worker->sck) close(bb->fd);
+		if (bb->owned && bb->fd >= 0) close(bb->fd);
 		hak_freemem(hak, bb);
 	}
 	return -1;
@@ -380,13 +394,12 @@ oops:
 
 static HAK_INLINE int close_read_stream (hak_t* hak, hak_io_cciarg_t* arg)
 {
-	worker_hak_xtn_t* xtn = (worker_hak_xtn_t*)hak_getxtn(hak);
 	bb_t* bb;
 
 	bb = (bb_t*)arg->handle;
 	HAK_ASSERT(hak, bb != HAK_NULL && bb->fd >= 0);
 
-	if (bb->fd != xtn->worker->sck) close(bb->fd);
+	if (bb->owned) close(bb->fd);
 	hak_freemem(hak, bb);
 
 	arg->handle = HAK_NULL;
