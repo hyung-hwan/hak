@@ -476,15 +476,144 @@ static HAK_INLINE hak_oop_context_t reify_context_ref (hak_t* hak, hak_oop_t ctx
 	return hak_reifystackcontext(hak, HAK_CTX_TO_STACK(ctx));
 }
 
-static HAK_INLINE void release_stack_context (hak_t* hak, hak_oop_t ctx)
+/* ctx is about to become the active context of the active process - on a
+ * return or when an exception unwinds to a handler. no frame above it is in
+ * use any more.
+ *
+ * a heap context has no frame in use below it either. under stack contexts a
+ * heap context is either the initial context of a process, at the bottom, or
+ * a copy made by hak_reifyactivecontext(), which copies every context in use
+ * at the time and leaves the frame stack empty. so returning into one empties
+ * the frame stack.
+ *
+ * deciding from the context returned to, not the one returned from, matters:
+ * a context that was reified on the way has lost its frame_base, and the
+ * frames of a stack context it had called would never be given back.
+ *
+ * this sequence cause problems:
+ *    release_stack_context(hak, hak->active_context);
+ *    SWITCH_ACTIVE_CONTEXT(hak, (hak_oop_context_t)HAK_CTX_GET_SENDER(hak, hak->active_context));
+ * where relase_stack_context as defined as
+ *     void release_stack_context (hak_t* hak, hak_oop_t ctx) {
+ *         if (HAK_CTX_IS_STACK(ctx)) {
+ *              hak_stack_context_t* sctx = HAK_CTX_TO_STACK(ctx);
+ *              hak->processor->active->fsp = sctx->frame_base;
+ *         }
+ *     }
+ * it didn't care whether it returns to a stack context or a heap context.
+ *
+ * the revised sequence is like this:
+ *    release_frames_above(hak, HAK_CTX_GET_SENDER(hak->active_context));
+ *    SWITCH_ACTIVE_CONTEXT(hak, (hak_oop_context_t)HAK_CTX_GET_SENDER(hak, hak->active_context));
+ * where relase_frames_above() is called with the return target context.
+ */
+static HAK_INLINE void release_frames_above (hak_t* hak, hak_oop_t ctx)
 {
+	hak_oop_process_t proc = hak->processor->active;
+
+	/*
+	 * for a context with ntmprs temporaries, allocated when fsp was frame_base:
+	 * proc->slot[]:
+	 *   ... | frame_base | frame_base+1 ... frame_base+15 | frame_base+16 ... frame_base+15+ntmprs | ...
+	 *         last slot    15 named slots: req_nrets,        slot[0 .. ntmprs-1]: arguments,
+	 *         of the       attr_mask, name, ip, base,         return variables, locals,
+	 *         frame        sender, receiver, home, mthhome,   variadic arguments
+	 *         below        ivaroff, owner, slot_count,
+	 *                      stack_base, frame_base, heap_ctx
+	 *
+	 * - frame_base is the last slot of whatever lies below this frame: the previous frame,
+	 *   or the end of the class stack region (clst) for the first frame. that's why an
+	 *   empty frame stack is fsp == clst.
+	 * - slot_count is ntmprs, the variable part.
+	 */
 	if (HAK_CTX_IS_STACK(ctx))
 	{
+		/* returning to a stack context */
 		hak_stack_context_t* sctx = HAK_CTX_TO_STACK(ctx);
-		hak->processor->active->fsp = sctx->frame_base;
+		hak_ooi_t n = HAK_OOP_TO_SMOOI(sctx->frame_base) +
+		              HAK_STACK_CONTEXT_NAMED_SLOTS +
+		              HAK_OOP_TO_SMOOI(sctx->slot_count);
+		/* "n" must be equal to the returning context's frame_base.
+		 * this function is given the return target, not the returning context.
+		 * so is the calculation based on the size of target context's size */
+		proc->fsp = HAK_SMOOI_TO_OOP(n); /* update frame stack pointer */
+	}
+	else
+	{
+		/* returning to a heap context: there is no frame under it to keep,
+		 * so the whole frame stack is free */
+		proc->fsp = proc->clst;
 	}
 }
 
+/*
+ * the frame stack is the area where hak keeps its contexts (activation records: one per running function,
+ * method or block call) while they're running. the point is to avoid allocating a heap object for every call.
+ * it's a region of each process object's slots, and it exists only when stack contexts are enabled (the default).
+ *
+ * each hak process is one heap object. after its named fields come stksize + exstksize + clstksize + fstksize
+ * slots (see make_process()), divided into four stacks laid end to end:
+ *
+ *   proc->slot[]
+ *    0                st      exst     clst                         fst
+ *    |  value stack   |  exception |  class  |        frame stack      |
+ *    |  8192 slots    |  stack     |  stack  |   8192 slots (= value   |
+ *    |                |  2048      |  64     |   stack size)           |
+ *    ^ sp grows ->      ^ exsp ->    ^ clsp ->  ^ fsp grows ->
+ *
+ *  these are the default sizes (HAK_DFL_* in lib/hak.h); the small-memory build uses 1024/256/16.
+ *  each region has a pointer and a limit:
+ *  -----------------------------------------------------------------------------------------------------
+ *  | value stack  | sp / st    | operands and temporary values while bytecodes evaluate expressions;   |
+ *  |              |            | arguments being passed                                                |
+ *  -----------------------------------------------------------------------------------------------------
+ *  | exception    | exsp /     | one entry per active try: the handler's context, its instruction      |
+ *  | stack        | exst       | pointer, class stack pointer and value stack pointer                  |
+ *  -----------------------------------------------------------------------------------------------------
+ *  | class stack  | clsp /     | classes whose definition is in progress (class X { … } running its    |
+ *  |              | clst       | body)                                                                 |
+ *  -----------------------------------------------------------------------------------------------------
+ *  | frame stack  | fsp / fst  | the contexts themselves: one frame per active call                    |
+ *  -----------------------------------------------------------------------------------------------------
+ *
+ * every pointer is the index of the last used slot, so a stack is empty when its pointer equals the top of
+ * the region before it. the frame stack is empty when fsp == clst.
+ *
+ * when a function, method or block is called, make_stack_context() allocates a frame at slot[fsp + 1] and moves
+ * fsp past it. A frame has the same fields a heap BlockContext has, plus four of its own (hak_stack_context_t
+ * in lib/hak-prv.h):
+ *
+ * - the 11 context fields:
+ *   - req_nrets, attr_mask, name, ip, base (the function), sender (the caller's context),
+ *   - receiver, home, mthhome, ivaroff, owner.
+ * - bookkeeping:
+ *   - slot_count: the size of the variable part
+ *   - stack_base
+ *   - frame_base: the value of fsp before this frame, i.e. where it starts
+ *   - heap_ctx: the heap copy, once one exists
+ * - the variable part:
+ *   - arguments, return variables, locals and variadic arguments.
+ *
+ * a pointer to a frame is passed around as a tagged raw pointer (HAK_SMPTR_TO_OOP), not as an object.
+ * HAK_CTX_IS_STACK() distinguishes it from a heap context, and the HAK_CTX_GET_XXX and HAWK_CTX_SET_XXX
+ * macros read either kind.
+ *
+ * without stack contexts (-DHAK_DISABLE_STACK_CONTEXT), every call allocates a BlockContext object
+ * on the heap, and the GC collects it after the call returns. That's simple but costly: an allocation
+ * and later garbage per call.
+ *
+ * with the frame stack, a call costs only moving fsp forward, and returning moves it back. nothing is
+ * allocated, and the GC only has to scan the live part of the stack (gc.c marks up to fsp).
+ *
+ * a frame can be reused as soon as its call returns, so nothing may keep a reference to it beyond that.
+ * when something needs the context to outlive the call, the frame is reified: copied into a real
+ * BlockContext on the heap. the triggers are:
+ *  - a closure (fun, MAKE_FUNCTION/MAKE_BLOCK): it captures its defining context as its home,
+ *    which must stay alive as long as the closure does
+ *  - va-context or PUSH_CONTEXT: they hand the context to hak code as a value
+ *
+ * reifying the active frame also copies its callers, since the copy's sender must be an object too.
+ */
 hak_oop_context_t hak_reifystackcontext (hak_t* hak, hak_stack_context_t* sctx)
 {
 	hak_oop_context_t ctx;
@@ -527,6 +656,56 @@ hak_oop_context_t hak_reifystackcontext (hak_t* hak, hak_stack_context_t* sctx)
 
 	return ctx;
 }
+
+/* reify the active context - and with it every stack context it reaches,
+ * which is every one in use - and carry on executing in the copies.
+ *
+ * a stack context must never run on after it has been reified: the copy is a
+ * snapshot, and a variable changed in the frame afterwards would be lost the
+ * next time the copy is used. so the active context switches to its copy,
+ * which reaches only copies, and the stack contexts are given up:
+ *
+ *   - references to them on the exception stack are pointed at the copies
+ *   - the frame stack is emptied, as nothing in use lives there any more
+ *
+ * every place that needs the active context as an object goes through here,
+ * never through hak_reifystackcontext() directly. */
+hak_oop_context_t hak_reifyactivecontext (hak_t* hak)
+{
+	hak_oop_context_t ctx;
+	hak_oop_process_t proc;
+	hak_ooi_t i, exsp;
+
+	if (!HAK_CTX_IS_STACK(hak->active_context)) return hak->active_context;
+
+	ctx = hak_reifystackcontext(hak, HAK_CTX_TO_STACK(hak->active_context));
+	if (HAK_UNLIKELY(!ctx)) return HAK_NULL;
+
+	proc = hak->processor->active;
+
+	/* each exception stack entry is a context, an ip, a class stack pointer
+	 * and a stack pointer, the context pushed first. see HAK_EXSTACK_PUSH() */
+	exsp = HAK_OOP_TO_SMOOI(proc->exsp);
+	for (i = HAK_OOP_TO_SMOOI(proc->st) + 1; i <= exsp; i += 4)
+	{
+		hak_oop_t x = proc->slot[i];
+		if (HAK_CTX_IS_STACK(x))
+		{
+			/* a handler belongs to a context in the call chain, all of
+			 * which were reified above */
+			HAK_ASSERT(hak, HAK_CTX_TO_STACK(x)->heap_ctx != hak->_nil);
+			proc->slot[i] = HAK_CTX_TO_STACK(x)->heap_ctx;
+		}
+	}
+
+	/* the instruction pointer stays in hak->ip and is committed to the copy
+	 * by the next SWITCH_ACTIVE_CONTEXT() */
+	hak->active_context = ctx;
+	proc->current_context = ctx;
+	proc->fsp = proc->clst;
+
+	return ctx;
+}
 #endif
 
 static HAK_INLINE hak_oop_function_t make_function (hak_t* hak, hak_oow_t lfsize, const hak_oob_t* bptr, hak_oow_t blen, hak_dbgi_t* dbgi)
@@ -554,7 +733,7 @@ static HAK_INLINE hak_oop_function_t make_function (hak_t* hak, hak_oow_t lfsize
 
 static HAK_INLINE void fill_function_data (hak_t* hak, hak_oop_function_t func, hak_ooi_t attr_mask, hak_oow_t name_lfindex, hak_oop_context_t homectx, const hak_oop_t* lfptr, hak_oow_t lfsize)
 {
-	/* Although this function could be integrated into make_function(),
+	/* although this function could be integrated into make_function(),
 	 * this function has been separated from make_function() to make GC handling simpler */
 	hak_oow_t i;
 
@@ -1166,7 +1345,7 @@ static void terminate_process (hak_t* hak, hak_oop_process_t proc)
 				 *
 				 * if HAK_ENABLE_STCK_CONTEXT is on, hak->active_context is SMPTR
 				 * which is not an OOP pointer, gc marking skips it. but it's a pointer
-				 * encoded as SMPTR into the process object's payload. The process
+				 * encoded as SMPTR into the process object's payload. the process
 				 * itself could be garbage collected. if STORE_ACTIVE_IP() is invoked
 				 * on the hak->active_context from SWITCH_ACTIVE_CONTEXT(), it writes
 				 * to the payload of a garbaged-collected process object. so nullify
@@ -2836,18 +3015,9 @@ static HAK_INLINE int do_throw (hak_t* hak, hak_oop_t val, hak_ooi_t ip)
 	hak->ip = -1; /* mark context dead. saved into hak->active_context->ip in SWITCH_ACTIVE_CONTEXT */
 
 #if defined(HAK_ENABLE_STACK_CONTEXT)
-	/* rewind the context stack */
-	{
-		hak_oop_context_t xctx;
-		xctx = hak->active_context;
-		while ((hak_oop_t)xctx != (hak_oop_t)catch_ctx && (hak_oop_t)xctx != hak->_nil)
-		{
-			release_stack_context(hak, (hak_oop_t)xctx);
-			xctx = (hak_oop_context_t)HAK_CTX_GET_SENDER(hak, xctx);
-		}
-	}
+	/* rewind the frame stack to the handler's context */
+	release_frames_above(hak, (hak_oop_t)catch_ctx);
 #endif
-
 	SWITCH_ACTIVE_CONTEXT(hak, catch_ctx);
 	hak->ip = catch_ip; /* override the instruction pointer */
 
@@ -3519,7 +3689,7 @@ static HAK_INLINE int do_return_from_block (hak_t* hak)
 	}
 	else
 	{
-		/* The compiler produces the class_exit instruction and the try_exit instruction
+		/* the compiler produces the class_exit instruction and the try_exit instruction
 		 * for return, break, continue in a class defintion scope and in a try-catch scope
 		 * respectively.
 
@@ -3595,7 +3765,7 @@ static HAK_INLINE int do_return_from_block (hak_t* hak)
 		 * is not the initial context of a process */
 		hak->ip = -1; /* mark context dead. saved into hak->active_context->ip in SWITCH_ACTIVE_CONTEXT */
 	#if defined(HAK_ENABLE_STACK_CONTEXT)
-		release_stack_context(hak, (hak_oop_t)hak->active_context);
+		release_frames_above(hak, HAK_CTX_GET_SENDER(hak, hak->active_context));
 	#endif
 		SWITCH_ACTIVE_CONTEXT(hak, (hak_oop_context_t)HAK_CTX_GET_SENDER(hak, hak->active_context));
 		return 0; /* normal return */
@@ -3763,7 +3933,7 @@ static HAK_INLINE int do_return_from_home (hak_t* hak, hak_oop_t return_value, h
 		{
 			hak->ip = -1; /* mark context dead. saved into hak->active_context->ip in SWITCH_ACTIVE_CONTEXT */
 		#if defined(HAK_ENABLE_STACK_CONTEXT)
-			release_stack_context(hak, (hak_oop_t)hak->active_context);
+			release_frames_above(hak, HAK_CTX_GET_SENDER(hak, hak->active_context));
 		#endif
 			SWITCH_ACTIVE_CONTEXT(hak, (hak_oop_context_t)HAK_CTX_GET_SENDER(hak, hak->active_context));
 		}
@@ -3794,7 +3964,7 @@ static HAK_INLINE int do_return_from_home (hak_t* hak, hak_oop_t return_value, h
 		HAK_ASSERT(hak, (hak_oop_t)HAK_CTX_GET_SENDER(hak, hak->active_context) == (hak_oop_t)sender);
 		hak->ip = -1; /* mark context dead. saved into hak->active_context->ip in SWITCH_ACTIVE_CONTEXT */
 	#if defined(HAK_ENABLE_STACK_CONTEXT)
-		release_stack_context(hak, (hak_oop_t)hak->active_context);
+		release_frames_above(hak, HAK_CTX_GET_SENDER(hak, hak->active_context));
 	#endif
 		SWITCH_ACTIVE_CONTEXT(hak, (hak_oop_context_t)HAK_CTX_GET_SENDER(hak, hak->active_context));
 		HAK_STACK_PUSH(hak, return_value);
@@ -5232,10 +5402,14 @@ hak_logbfmt(hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncv
 				break;
 
 			case HAK_CODE_PUSH_CONTEXT:
+			{
+				hak_oop_context_t ctx;
 				LOG_INST_0(hak, "push_context");
-/* TODO: error check? on HAK_CTX_TO_OOP? */
-				HAK_STACK_PUSH(hak, (hak_oop_t)HAK_CTX_TO_OOP(hak, hak->active_context));
+				ctx = HAK_ACTIVE_CTX_TO_OOP(hak);
+				if (HAK_UNLIKELY(!ctx)) goto oops;
+				HAK_STACK_PUSH(hak, (hak_oop_t)ctx);
 				break;
+			}
 
 			case HAK_CODE_PUSH_PROCESS:
 				LOG_INST_0(hak, "push_process");
@@ -5686,12 +5860,11 @@ hak_logbfmt(hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncv
 			#if defined(HAK_ENABLE_STACK_CONTEXT)
 				if (HAK_CTX_IS_STACK(homectx))
 				{
+					/* the function captures its home - the active context carries on in the copy */
 					hak_pushvolat(hak, (hak_oop_t*)&funcobj);
-					homectx = hak_reifystackcontext(hak, HAK_CTX_TO_STACK(homectx));
+					homectx = hak_reifyactivecontext(hak);
 					hak_popvolat(hak);
 					if (HAK_UNLIKELY(!homectx)) goto oops;
-					hak->active_context = homectx; /* because homectx is reified of hak->active_context */
-					hak->processor->active->current_context = homectx;
 				}
 			#endif
 				fill_function_data(hak, funcobj, b1, b2, homectx, &hak->active_function->literal_frame[b3], b4);
@@ -5739,12 +5912,11 @@ hak_logbfmt(hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncv
 			#if defined(HAK_ENABLE_STACK_CONTEXT)
 				if (HAK_CTX_IS_STACK(homectx))
 				{
+					/* the block captures its home - the active context carries on in the copy */
 					hak_pushvolat(hak, (hak_oop_t*)&blkobj);
-					homectx = hak_reifystackcontext(hak, HAK_CTX_TO_STACK(homectx));
+					homectx = hak_reifyactivecontext(hak);
 					hak_popvolat(hak);
 					if (HAK_UNLIKELY(!homectx)) goto oops;
-					hak->active_context = homectx; /* because homectx is reified of hak->active_context */
-					hak->processor->active->current_context = homectx;
 				}
 			#endif
 				fill_block_data(hak, blkobj, b1, b2, hak->ip + HAK_CODE_LONG_PARAM_SIZE + 1, homectx);

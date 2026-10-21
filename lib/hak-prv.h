@@ -90,6 +90,7 @@ extern "C" {
 #endif
 
 hak_oop_context_t hak_reifystackcontext (hak_t* hak, hak_stack_context_t* sctx);
+hak_oop_context_t hak_reifyactivecontext (hak_t* hak);
 
 #if defined(__cplusplus)
 }
@@ -98,6 +99,11 @@ hak_oop_context_t hak_reifystackcontext (hak_t* hak, hak_stack_context_t* sctx);
 #define HAK_CTX_IS_STACK(ctx) (HAK_OOP_IS_SMPTR(ctx))
 #define HAK_CTX_TO_STACK(ctx) ((hak_stack_context_t*)HAK_OOP_TO_SMPTR(ctx))
 #define HAK_CTX_TO_OOP(hak, ctx) (HAK_CTX_IS_STACK(ctx)? hak_reifystackcontext((hak), HAK_CTX_TO_STACK(ctx)): (hak_oop_context_t)(ctx))
+
+/* the active context as a heap object. a stack context is reified and the
+ * process carries on in the reified copy - see hak_reifyactivecontext().
+ * HAK_NULL on failure. */
+#define HAK_ACTIVE_CTX_TO_OOP(hak) (HAK_CTX_IS_STACK((hak)->active_context)? hak_reifyactivecontext(hak): (hak)->active_context)
 
 #define HAK_CTX_SLOT(hak, ctx) (HAK_CTX_IS_STACK(ctx)? HAK_CTX_TO_STACK(ctx)->slot: ((hak_oop_context_t)(ctx))->slot)
 
@@ -149,6 +155,7 @@ do { \
 
 #define HAK_CTX_IS_STACK(ctx) (0)
 #define HAK_CTX_TO_OOP(hak, ctx) ((hak_oop_context_t)(ctx))
+#define HAK_ACTIVE_CTX_TO_OOP(hak) ((hak)->active_context)
 #define HAK_CTX_SLOT(hak, ctx) (((hak_oop_context_t)(ctx))->slot)
 #define HAK_CTX_SLOT_AT(hak, ctx, idx) (((hak_oop_context_t)(ctx))->slot[idx])
 #define HAK_CTX_SLOT_AT_PUT(hak, ctx, idx, val) do { ((hak_oop_context_t)(ctx))->slot[idx] = (val); } while(0)

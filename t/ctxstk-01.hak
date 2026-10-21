@@ -1,0 +1,119 @@
+## stack contexts and their reification
+##
+## A context lives in a frame of the process's frame stack until something
+## needs it as an object - a closure capturing it, va-context, push_context.
+## Then it is reified into the heap and the process carries on in the copy.
+## Two ways this went wrong:
+##
+##   - the frame of a reified context was never given back, so a function
+##     that makes a closure leaked a frame per call until the frame stack
+##     overflowed
+##   - va-count and va-get reified the context without carrying on in the
+##     copy, so the copy went stale and a later closure brought the stale
+##     variables back
+##
+## and an exception handler kept pointing at the frame rather than the copy.
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+## 1. a closure made inside a try, an exception thrown from deeper calls,
+##    caught; the handler's frame was reified while the try was active
+fun thrower(n) { if (> n 0) { return (thrower (- n 1)) }; throw "boom" }
+fun tryer(n) {
+	| a f r |
+	a := 1
+	try {
+		f := (fun() { a := (+ a 10); return a })
+		f
+		a := (+ a 100)
+		thrower n
+		a := -1
+	} catch (e) {
+		r := a
+	}
+	return r
+}
+i := 0
+ok := true
+while (< i 3000) {
+	if (nqv? (tryer (rem i 7)) 111) { ok := false }
+	i := (+ i 1)
+}
+chk ok "exceptions through reified frames keep the handler's variables"
+
+## 2. non-local return from a block called deep below its home
+fun each(n blk) { | i | i := 0; while (< i n) { blk i; i := (+ i 1) }; return -1 }
+fun deep(d blk) { if (> d 0) { return (deep (- d 1) blk) }; return (each 10 blk) }
+fun finder(target) {
+	| hits |
+	hits := 0
+	deep 5 (fun(x) { hits := (+ hits 1); if (== x target) { revert (+ (* x 100) hits) } })
+	return -99
+}
+i := 0
+ok := true
+while (< i 3000) {
+	if (nqv? (finder 7) 708) { ok := false }
+	i := (+ i 1)
+}
+chk ok "revert through frames below a reified home"
+
+## 3. recursion mixing closures and plain calls
+fun fibc(n) {
+	| r f |
+	if (< n 2) { return n }
+	f := (fun(k) { return (fibc k) })
+	r := (+ (f (- n 1)) (fibc (- n 2)))
+	return r
+}
+chk (== (fibc 18) 2584) "recursion that makes closures"
+i := 0
+while (< i 50) { fibc 12; i := (+ i 1) }
+chk (== (fibc 15) 610) "...repeatedly"
+
+## 4. a closure and its home share variables after reification
+fun shared() {
+	| x inc get |
+	x := 1
+	inc := (fun() { x := (+ x 1) })
+	x := (+ x 10)
+	inc
+	get := (fun() { return x })
+	x := (+ x 100)
+	inc
+	return (+ (* (get) 1000) x)
+}
+chk (== (shared) 113113) "home and closure see one set of variables"
+
+## 5. variadic calls before and after closures
+fun vf(...) { return (va-count) }
+fun vg(...) { return (va-get 1) }
+fun mix() {
+	| a b c f |
+	a := (vf 1 2 3)
+	f := (fun() { return a })
+	b := (vg 7 8 9)
+	c := (vf)
+	return (+ (* (f) 100) (* b 10) c)
+}
+chk (== (mix) 380) "va-count and va-get around closures"
+
+fun ctxuser(p q ...) {
+	| c n |
+	c := (va-context)
+	p := (+ p 1)
+	n := (va-count c)
+	return (+ (* p 10) n)
+}
+chk (== (ctxuser 4 0 9 9 9) 53) "va-context reifies and the function carries on in the copy"
+
+## 6. many calls that each reify, interleaved with plain recursion
+fun plain(n) { if (> n 0) { return (+ 1 (plain (- n 1))) }; return 0 }
+fun makes(n) { | f | f := (fun() { return n }); return (+ (f) (plain 20)) }
+i := 0
+s := 0
+while (< i 20000) { s := (+ s (makes 1)); i := (+ i 1) }
+chk (== s 420000) "reifying calls interleaved with stack recursion"

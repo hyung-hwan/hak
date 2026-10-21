@@ -2065,6 +2065,7 @@ struct hak_t
 			hak_oow_t capa;
 			hak_oow_t len;
 			hak_oow_t max;
+			int overflow; /* an object was marked without being pushed - see gc_ms_scan_stack() */
 		} stack;
 
 		struct

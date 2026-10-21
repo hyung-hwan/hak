@@ -1,0 +1,97 @@
+## marking past the capacity of the gc mark stack
+##
+## Scanning an object pushes every unmarked object it refers to, so an object
+## with more references than the mark stack holds (1024 entries) fills it in
+## one go. Marking must not run off the end of the stack, and must not skip
+## what did not fit: such an object is marked but left unscanned and found
+## again by a pass over the heap - see gc_ms_scan_stack() in lib/gc.c. If it
+## were skipped, what it refers to would be swept while still in use.
+##
+## Only vm primitives are used so that this exercises the collector alone.
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+## garbage, so that a collection has something to free around the live data
+fun churn(n) {
+	| i |
+	i := 0
+	while (< i n) { core.cons i (sprintf "garbage %d" i); i := (+ i 1) }
+}
+
+N := 5000
+
+## a wide array of strings - each a separate object
+strs := (core.basicNew Array N)
+i := 0
+while (< i N) { core.basicAtPut strs i (sprintf "s%d" i); i := (+ i 1) }
+
+## a wide array of cons cells, each referring to a further object, so that
+## what does not fit on the stack has unmarked referents of its own
+pairs := (core.basicNew Array N)
+i := 0
+while (< i N) { core.basicAtPut pairs i (core.cons i (sprintf "v%d" i)); i := (+ i 1) }
+
+## wide arrays inside a wide array
+outer := (core.basicNew Array 4)
+i := 0
+while (< i 4) {
+	| inner j |
+	inner := (core.basicNew Array 2000)
+	j := 0
+	while (< j 2000) { core.basicAtPut inner j (sprintf "%d.%d" i j); j := (+ j 1) }
+	core.basicAtPut outer i inner
+	i := (+ i 1)
+}
+
+## a vm dictionary with a bucket far wider than the mark stack
+d := #{}
+i := 0
+while (< i 20000) { dic.put d i (sprintf "d%d" i); i := (+ i 1) }
+
+churn 20000
+core.gc
+churn 20000
+core.gc
+
+ok := true
+i := 0
+while (< i N) {
+	if (not (eql? (core.basicAt strs i) (sprintf "s%d" i))) { ok := false }
+	i := (+ i 1)
+}
+chk ok "every string of a wide array survives"
+
+ok := true
+i := 0
+while (< i N) {
+	| p |
+	p := (core.basicAt pairs i)
+	if (or (nqv? (core.car p) i) (not (eql? (core.cdr p) (sprintf "v%d" i)))) { ok := false }
+	i := (+ i 1)
+}
+chk ok "every cons of a wide array survives with what it refers to"
+
+ok := true
+i := 0
+while (< i 4) {
+	| inner j |
+	inner := (core.basicAt outer i)
+	j := 0
+	while (< j 2000) {
+		if (not (eql? (core.basicAt inner j) (sprintf "%d.%d" i j))) { ok := false }
+		j := (+ j 1)
+	}
+	i := (+ i 1)
+}
+chk ok "wide arrays inside a wide array survive"
+
+ok := (= (dic.size d) 20000)
+i := 0
+while (< i 20000) {
+	if (not (eql? (dic.get d i) (sprintf "d%d" i))) { ok := false }
+	i := (+ i 1)
+}
+chk ok "every value of a wide dictionary survives"

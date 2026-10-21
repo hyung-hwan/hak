@@ -848,6 +848,33 @@ static HAK_INLINE void gc_ms_mark (hak_t* hak, hak_oop_t oop)
 	}
 }
 #else
+
+/*
+for each root reference r:
+    if (r is an object and NOT yet marked) {
+        mark r as alive;
+        push r onto the mark stack;
+    }
+
+while (stack is not empty) {
+	1. pop an object reference from the stack.
+	2. scan that object to find all pointers/references it holds.
+	3. for each referenced object:
+       if (object is NOT yet marked) {
+           mark it as alive;
+           push it onto the mark stack;
+       }
+}
+
+- while (stack is not empty) and step 1:
+  gc_ms_drain_stack pops hak->gci.stack.ptr[--len] until len is 0.
+- Step 2: gc_ms_scan_object finds the references the popped object holds.
+- Step 3: gc_ms_mark_object runs for each reference. if the reference
+  is not a pointer (a SmallInteger, Character and so on) or is already marked,
+  it returns. otherwise it marks the object (HAK_OBJ_SET_FLAGS_MOVED) and
+  pushes it.
+*/
+
 static HAK_INLINE void gc_ms_mark_object (hak_t* hak, hak_oop_t oop)
 {
 #if defined(HAK_SUPPORT_GC_DURING_IGNITION)
@@ -856,67 +883,161 @@ static HAK_INLINE void gc_ms_mark_object (hak_t* hak, hak_oop_t oop)
 	if (!HAK_OOP_IS_POINTER(oop) || HAK_OBJ_GET_FLAGS_MOVED(oop)) return; /* non-pointer or already marked */
 
 	HAK_OBJ_SET_FLAGS_MOVED(oop, 1); /* mark */
-	HAK_ASSERT(hak, hak->gci.stack.len < hak->gci.stack.capa);
+
+	if (HAK_UNLIKELY(hak->gci.stack.len >= hak->gci.stack.capa))
+	{
+		/* the mark stack is full. leave the object marked but unscanned -
+		 * gc_ms_scan_stack() rescans the heap for such objects once the stack
+		 * has drained. growing the stack instead would need memory, which may
+		 * not be there in the middle of a collection, and marking cannot fail. */
+		hak->gci.stack.overflow = 1;
+		return;
+	}
+
 	hak->gci.stack.ptr[hak->gci.stack.len++] = oop; /* push */
 	if (hak->gci.stack.len > hak->gci.stack.max) hak->gci.stack.max = hak->gci.stack.len;
 }
 
-static HAK_INLINE void gc_ms_scan_stack (hak_t* hak)
+/* mark what a marked object refers to: its class and, for an object of
+ * pointers, its fields */
+static HAK_INLINE void gc_ms_scan_object (hak_t* hak, hak_oop_t oop)
 {
-	hak_oop_t oop;
+	gc_ms_mark_object(hak, (hak_oop_t)HAK_OBJ_GET_CLASS(oop));
 
+	if (HAK_OBJ_GET_FLAGS_TYPE(oop) == HAK_OBJ_TYPE_OOP)
+	{
+		hak_ooi_t i, ll;
+
+		/* is it really better to use a flag bit in the header to
+		 * determine that it is an instance of process? */
+		if (HAK_UNLIKELY(HAK_OBJ_GET_FLAGS_PROC(oop)))
+		{
+			hak_oop_process_t proc;
+
+			HAK_ASSERT(hak, HAK_IS_PROCESS(hak, oop));
+			/* the stack in a process object doesn't need to be
+			 * scanned in full. the slots above the stack pointer
+			 * are garbages. */
+			proc = (hak_oop_process_t)oop;
+
+			/* the fixed part */
+			ll = HAK_PROCESS_NAMED_INSTVARS;
+			for (i = 0; i < ll; i++) gc_ms_mark_object(hak, HAK_OBJ_GET_OOP_VAL(oop, i));
+
+			/* stack */
+			ll = HAK_OOP_TO_SMOOI(proc->sp);
+			HAK_ASSERT(hak, ll < (hak_ooi_t)(HAK_OBJ_GET_SIZE(oop) - HAK_PROCESS_NAMED_INSTVARS));
+			for (i = 0; i <= ll; i++) gc_ms_mark_object(hak, proc->slot[i]);
+
+			/* exception stack */
+			ll = HAK_OOP_TO_SMOOI(proc->exsp);
+			HAK_ASSERT(hak, ll < (hak_ooi_t)(HAK_OBJ_GET_SIZE(oop) - HAK_PROCESS_NAMED_INSTVARS));
+			for (i = HAK_OOP_TO_SMOOI(proc->st) + 1; i <= ll; i++) gc_ms_mark_object(hak, proc->slot[i]);
+
+			/* class stack */
+			ll = HAK_OOP_TO_SMOOI(proc->clsp);
+			HAK_ASSERT(hak, ll < (hak_ooi_t)(HAK_OBJ_GET_SIZE(oop) - HAK_PROCESS_NAMED_INSTVARS));
+			for (i = HAK_OOP_TO_SMOOI(proc->exst) + 1; i <= ll; i++) gc_ms_mark_object(hak, proc->slot[i]);
+
+		#if defined(HAK_ENABLE_STACK_CONTEXT)
+			/* frame stack */
+			ll = HAK_OOP_TO_SMOOI(proc->fsp);
+			HAK_ASSERT(hak, ll < (hak_ooi_t)(HAK_OBJ_GET_SIZE(oop) - HAK_PROCESS_NAMED_INSTVARS));
+			for (i = HAK_OOP_TO_SMOOI(proc->clst) + 1; i <= ll; i++) gc_ms_mark_object(hak, proc->slot[i]);
+		#endif
+		}
+		else
+		{
+			ll = HAK_OBJ_GET_SIZE(oop);
+			for (i = 0; i < ll; i++) gc_ms_mark_object(hak, HAK_OBJ_GET_OOP_VAL(oop, i));
+		}
+	}
+}
+
+static HAK_INLINE void gc_ms_drain_stack (hak_t* hak)
+{
 	while (hak->gci.stack.len > 0)
 	{
-		oop = hak->gci.stack.ptr[--hak->gci.stack.len];
+		gc_ms_scan_object(hak, hak->gci.stack.ptr[--hak->gci.stack.len]);
+	}
+}
 
-		gc_ms_mark_object(hak, (hak_oop_t)HAK_OBJ_GET_CLASS(oop));
+static HAK_INLINE void gc_ms_scan_stack (hak_t* hak)
+{
+	gc_ms_drain_stack(hak);
 
-		if (HAK_OBJ_GET_FLAGS_TYPE(oop) == HAK_OBJ_TYPE_OOP)
+	/* objects marked while the stack was full were not pushed, so their
+	 * fields may refer to unmarked objects. every object is on the gci.b
+	 * list, so a pass over it scanning each marked object reaches them. an
+	 * object scanned twice finds its referents marked already, which costs
+	 * time but changes nothing. a pass that overflows again marks something
+	 * new each time, so passes are repeated until one does not. the
+	 * literal array of the compiler is not on the list, but its elements are
+	 * marked as roots one by one and the array itself never is. */
+
+	/*
+	 * The objects
+	 *
+	 * A  refers to  B, C, D
+	 * B  refers to  E
+	 * D  refers to  F
+	 * C, E, F refer to nothing
+	 * X  is garbage (nothing refers to it)
+	 *
+	 * the heap list (gci.b) contains all of them: A, B, C, D, E, F, X.
+	 *
+	 * each object has one mark bit. Marked means "alive, keep it". At the end,
+	 * anything unmarked gets freed.
+	 *
+	 * normal marking until the stack fills up
+	 *
+	 * 1. root A: mark A, push A. stack: [A]
+	 * 2. pop A and look at its references:
+	 *   - B: not marked, so mark it and push it. stack: [B]
+	 *   - C: not marked, so mark it and push it. stack: [B, C] (now full)
+	 *   - D: not marked, so mark it, but the stack is full,
+	 *     so D is not pushed. The overflow flag is set.
+	 * 3. pop C: it refers to nothing. stack: [B]
+	 * 4. pop B: it refers to E. mark E, push E. stack: [E]
+	 * 5. pop E: it refers to nothing. stack: [], empty.
+	 *
+	 * now the marks are:
+	 *  A[v]    B[v]    C[v]    D[v]    E[v]    F[x]   X[x]
+	 *
+	 * the problem is: F is alive, because D refers to it, but F is not marked.
+	 * D was marked but never pushed, so nobody ever looked inside D.
+	 * if the sweep ran now, it would free F while D still points at it.
+	 * that's the bug the overflow handling has to prevent.
+	 *
+	 * since the overflow flag is set, the collector walks the whole heap
+	 * list and, for every marked object, looks inside it again:
+	 *
+	 * | A | yes            | look inside: B, C, D are already marked, so nothing new  |
+	 * | B | yes            | look inside: E is already marked, so nothing new         |
+	 * | C | yes            | refers to nothing                                        |
+	 * | E | yes            | refers to nothing                                        |
+	 * | F | yes (just now) | refers to nothing                                        |
+	 * | X | no             | skipped: it's garbage, so its contents don't matter      |
+	 *
+	 * now F is marked. only X is unmarked, so only X gets freed, which is correct.
+	 *
+	 *  with the current implementation every overflow pass rescans all objects marked
+	 *  so far, so repeated overflows mean scanning the same live objects again and again.
+	 *  it stays correct, but in bad cases the cost multiplies: roughly,
+	 *     the number of passes * the size of the live heap.
+	 */
+	while (HAK_UNLIKELY(hak->gci.stack.overflow))
+	{
+		hak_gchdr_t* curr;
+
+		hak->gci.stack.overflow = 0;
+		for (curr = hak->gci.b; curr; curr = curr->next)
 		{
-			hak_ooi_t i, ll;
-
-			/* is it really better to use a flag bit in the header to
-			 * determine that it is an instance of process? */
-			if (HAK_UNLIKELY(HAK_OBJ_GET_FLAGS_PROC(oop)))
+			hak_oop_t obj = (hak_oop_t)(curr + 1);
+			if (HAK_OBJ_GET_FLAGS_MOVED(obj))
 			{
-				hak_oop_process_t proc;
-
-				HAK_ASSERT(hak, HAK_IS_PROCESS(hak, oop));
-				/* the stack in a process object doesn't need to be
-				 * scanned in full. the slots above the stack pointer
-				 * are garbages. */
-				proc = (hak_oop_process_t)oop;
-
-				/* the fixed part */
-				ll = HAK_PROCESS_NAMED_INSTVARS;
-				for (i = 0; i < ll; i++) gc_ms_mark_object(hak, HAK_OBJ_GET_OOP_VAL(oop, i));
-
-				/* stack */
-				ll = HAK_OOP_TO_SMOOI(proc->sp);
-				HAK_ASSERT(hak, ll < (hak_ooi_t)(HAK_OBJ_GET_SIZE(oop) - HAK_PROCESS_NAMED_INSTVARS));
-				for (i = 0; i <= ll; i++) gc_ms_mark_object(hak, proc->slot[i]);
-
-				/* exception stack */
-				ll = HAK_OOP_TO_SMOOI(proc->exsp);
-				HAK_ASSERT(hak, ll < (hak_ooi_t)(HAK_OBJ_GET_SIZE(oop) - HAK_PROCESS_NAMED_INSTVARS));
-				for (i = HAK_OOP_TO_SMOOI(proc->st) + 1; i <= ll; i++) gc_ms_mark_object(hak, proc->slot[i]);
-
-				/* class stack */
-				ll = HAK_OOP_TO_SMOOI(proc->clsp);
-				HAK_ASSERT(hak, ll < (hak_ooi_t)(HAK_OBJ_GET_SIZE(oop) - HAK_PROCESS_NAMED_INSTVARS));
-				for (i = HAK_OOP_TO_SMOOI(proc->exst) + 1; i <= ll; i++) gc_ms_mark_object(hak, proc->slot[i]);
-
-			#if defined(HAK_ENABLE_STACK_CONTEXT)
-				/* frame stack */
-				ll = HAK_OOP_TO_SMOOI(proc->fsp);
-				HAK_ASSERT(hak, ll < (hak_ooi_t)(HAK_OBJ_GET_SIZE(oop) - HAK_PROCESS_NAMED_INSTVARS));
-				for (i = HAK_OOP_TO_SMOOI(proc->clst) + 1; i <= ll; i++) gc_ms_mark_object(hak, proc->slot[i]);
-			#endif
-			}
-			else
-			{
-				ll = HAK_OBJ_GET_SIZE(oop);
-				for (i = 0; i < ll; i++) gc_ms_mark_object(hak, HAK_OBJ_GET_OOP_VAL(oop, i));
+				gc_ms_scan_object(hak, obj);
+				gc_ms_drain_stack(hak);
 			}
 		}
 	}

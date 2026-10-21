@@ -1398,18 +1398,27 @@ hak_pfrc_t hak_pf_integer_brshift (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 /* ------------------------------------------------------------------------- */
 static hak_pfrc_t pf_va_context (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	HAK_STACK_SETRET(hak, nargs, (hak_oop_t)HAK_CTX_TO_OOP(hak, hak->active_context));
+	hak_oop_context_t ctx;
+
+	/* the context escapes as an object, so a stack context is reified and
+	 * the function carries on in the copy */
+	ctx = HAK_ACTIVE_CTX_TO_OOP(hak);
+	if (HAK_UNLIKELY(!ctx)) return HAK_PF_FAILURE;
+	HAK_STACK_SETRET(hak, nargs, (hak_oop_t)ctx);
 	return HAK_PF_SUCCESS;
 }
 
+/* va-count and va-get read the active context where it is - in a stack frame
+ * or in the heap - rather than reifying it. a reified copy of a frame that
+ * carries on running would go stale. */
 static hak_pfrc_t pf_va_count (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	hak_oop_context_t ctx;
+	hak_oop_t ctx;
 	hak_ooi_t attr_mask, /*va,*/ fixed_nargs, nrvars, nlvars, nvaargs;
 
 	if (nargs >= 1)
 	{
-		ctx = (hak_oop_context_t)HAK_STACK_GETARG(hak, nargs, 0);
+		ctx = HAK_STACK_GETARG(hak, nargs, 0);
 		if (!HAK_IS_CONTEXT(hak, ctx))
 		{
 			hak_seterrbfmt(hak, HAK_EINVAL, "not a proper va context - %O", ctx);
@@ -1418,10 +1427,10 @@ static hak_pfrc_t pf_va_count (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	}
 	else
 	{
-		ctx = HAK_CTX_TO_OOP(hak, hak->active_context);
+		ctx = (hak_oop_t)hak->active_context;
 	}
 
-	attr_mask = HAK_OOP_TO_SMOOI(ctx->attr_mask);
+	attr_mask = HAK_OOP_TO_SMOOI(HAK_CTX_GET_ATTR_MASK(hak, ctx));
 
 	/*va = GET_BLK_MASK_VA(attr_mask);*/
 	fixed_nargs = GET_BLK_MASK_NARGS(attr_mask);
@@ -1432,14 +1441,14 @@ static hak_pfrc_t pf_va_count (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	{
 	}*/
 
-	nvaargs = HAK_OBJ_GET_SIZE(ctx) - fixed_nargs - nrvars - nlvars - HAK_CONTEXT_NAMED_INSTVARS;
+	nvaargs = HAK_OOP_TO_SMOOI(HAK_CTX_GET_SLOT_COUNT(hak, ctx)) - fixed_nargs - nrvars - nlvars;
 	HAK_STACK_SETRET(hak, nargs, HAK_SMOOI_TO_OOP(nvaargs));
 	return HAK_PF_SUCCESS;
 }
 
 static hak_pfrc_t pf_va_get (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
-	hak_oop_context_t ctx;
+	hak_oop_t ctx;
 	hak_ooi_t attr_mask, /*va,*/ fixed_nargs, nrvars, nlvars, nvaargs;
 	hak_oow_t index;
 	hak_oop_t idx;
@@ -1447,7 +1456,7 @@ static hak_pfrc_t pf_va_get (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 
 	if (nargs >= 2)
 	{
-		ctx = (hak_oop_context_t)HAK_STACK_GETARG(hak, nargs, 1);
+		ctx = HAK_STACK_GETARG(hak, nargs, 1);
 		if (!HAK_IS_CONTEXT(hak, ctx))
 		{
 			hak_seterrbfmt(hak, HAK_EINVAL, "not a proper va context - %O", ctx);
@@ -1456,9 +1465,9 @@ static hak_pfrc_t pf_va_get (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	}
 	else
 	{
-		ctx = HAK_CTX_TO_OOP(hak, hak->active_context);
+		ctx = (hak_oop_t)hak->active_context;
 	}
-	attr_mask = HAK_OOP_TO_SMOOI(ctx->attr_mask);
+	attr_mask = HAK_OOP_TO_SMOOI(HAK_CTX_GET_ATTR_MASK(hak, ctx));
 
 	/*va = GET_BLK_MASK_VA(attr_mask);*/
 	fixed_nargs = GET_BLK_MASK_NARGS(attr_mask);
@@ -1478,14 +1487,14 @@ static hak_pfrc_t pf_va_get (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	{
 	}*/
 
-	nvaargs = HAK_OBJ_GET_SIZE(ctx) - fixed_nargs - nrvars - nlvars - HAK_CONTEXT_NAMED_INSTVARS;
+	nvaargs = HAK_OOP_TO_SMOOI(HAK_CTX_GET_SLOT_COUNT(hak, ctx)) - fixed_nargs - nrvars - nlvars;
 	if (index >= nvaargs)
 	{
 		hak_seterrbfmt(hak, HAK_EINVAL, "va index(%zu) out of bounds for va of size %zd", index, nvaargs);
 		return HAK_PF_FAILURE;
 	}
 
-	HAK_STACK_SETRET(hak, nargs, ctx->slot[fixed_nargs + nrvars + nlvars + index]);
+	HAK_STACK_SETRET(hak, nargs, HAK_CTX_SLOT_AT(hak, ctx, fixed_nargs + nrvars + nlvars + index));
 	return HAK_PF_SUCCESS;
 }
 

@@ -35,21 +35,6 @@
 ##   - hash agrees with the vm wherever the vm can hash - see object.hak
 ##
 ## The vm hands a key it cannot hash to _atPutLiteral rather than failing.
-##
-## KNOWN VM BUG - VARIADIC CALLS (stack contexts only)
-##
-## With stack contexts enabled (the default; not with -DHAK_DISABLE_STACK_CONTEXT),
-## a variable assigned the answer of a call to a variadic function that uses
-## va-count or va-get becomes nil if the calling function creates a closure
-## after that call:
-##
-##   fun vf(...) { return (va-count) }
-##   fun g() { | k | k := (vf 1 2); (fun() { return 0 }); return k }   ## nil
-##
-## So the constructors here are not variadic - new and withCapacity rather
-## than new(...). Array:with is variadic by nature; until the bug is fixed,
-## assign its answer after the closures of the function it is called from,
-## or call it from a function that creates none.
 ## ---------------------------------------------------------------------------
 
 $include-once "object.hak"
@@ -473,9 +458,7 @@ class[#char #varying] String: FixedSizedCollection {
 ## room left at both ends so that adding at either end is cheap.
 class OrderedCollection: IndexedCollection (_items _first _last) {
 	## (OrderedCollection:new), or (OrderedCollection:withCapacity 100) to
-	## start with room for 100. not a variadic new: a variadic call in a
-	## function that creates a closure after it loses the value it answers -
-	## see the note at the top of this file.
+	## start with room for 100
 	fun[#ci] new() { return (self:_initItems 16) }
 	fun[#ci] withCapacity(n) { return (self:_initItems n) }
 
@@ -878,7 +861,7 @@ class Set: Collection (_tally _bucket) {
 	}
 
 	## the common operations create no closure - a closure made on every call
-	## costs an allocation, and with stack contexts it also leaks a frame
+	## costs an allocation and a reified context
 	fun remove(obj) {
 		| i |
 		if (nil? obj) { throw "nil is not an element of a Set" }
