@@ -1,0 +1,20 @@
+## 'loop' needs a body. Unlike while and until it takes no condition, so the
+## body is the only thing it can be missing.
+##
+## [NOTE] only a MISSING body is refused. A bare expression is accepted as one
+## - "loop (+ 1 2)" compiles and then spins forever - so there is no error
+## case to assert for that shape, and writing one here hangs the suite.
+
+loop;  ##ERROR: syntax error - no loop body specified in loop
+
+---
+
+## break belongs to a loop
+
+break;  ##ERROR: syntax error - break outside loop
+
+---
+
+## and so does continue
+
+continue;  ##ERROR: syntax error - continue outside loop

@@ -836,6 +836,12 @@ struct hak_cframe_t
 
 		struct
 		{
+			hak_ooi_t body_pos;
+			hak_loc_t start_loc;
+		} post_loop;
+
+		struct
+		{
 			hak_ooi_t cond_pos;
 			hak_ooi_t body_pos;
 			hak_ooi_t jump_inst_pos;

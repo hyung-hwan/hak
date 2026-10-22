@@ -964,6 +964,7 @@ void hak_dumpcnode (hak_t* hak, hak_cnode_t* cnode, int newline)
 			case HAK_CNODE_CATCH:
 			case HAK_CNODE_BREAK:
 			case HAK_CNODE_CONTINUE:
+			case HAK_CNODE_LOOP:
 			case HAK_CNODE_UNTIL:
 			case HAK_CNODE_WHILE:
 			case HAK_CNODE_RETURN:

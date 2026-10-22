@@ -1,0 +1,116 @@
+## 'loop' - repeat a body with no condition of its own.
+##
+## The only way out is break (or return, or a throw), so the position after
+## the loop is reachable only from a break - which pushes nil before jumping.
+## That is why the loop emits nothing for its own value, and why a loop used
+## as an expression yields nil.
+##
+## continue restarts at the top of the body rather than at a condition, since
+## there is none. The assertions below pin down both of those, the stack
+## balance across many iterations, and the interaction with try blocks.
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+## --- the basics ------------------------------------------------------------
+
+i := 0
+loop {
+	i := (+ i 1)
+	if (>= i 5) { break }
+}
+chk (eqv? i 5) "a loop runs until break"
+
+j := 0
+k := 0
+loop {
+	j := (+ j 1)
+	if (< j 10) { continue }
+	k := 99
+	break
+}
+chk (eqv? j 10) "continue restarts the body"
+chk (eqv? k 99) "statements after continue run on the pass that falls through"
+
+chk (nil? (loop { break })) "a loop expression yields the nil that break leaves"
+
+## --- nesting ---------------------------------------------------------------
+
+outer := 0
+inner := 0
+loop {
+	outer := (+ outer 1)
+	loop {
+		inner := (+ inner 1)
+		break
+	}
+	if (>= outer 3) { break }
+}
+chk (eqv? outer 3) "break in an inner loop leaves the outer one running"
+chk (eqv? inner 3) "the inner loop ran once per outer iteration"
+
+w := 0
+n := 0
+while (< w 3) {
+	w := (+ w 1)
+	loop { n := (+ n 1) ; break }
+}
+chk (eqv? w 3) "a loop nested in a while"
+chk (eqv? n 3) "...and its body ran once per while iteration"
+
+a := 0
+loop {
+	b := 0
+	while (< b 4) { b := (+ b 1) }
+	a := (+ a b)
+	if (>= a 8) { break }
+}
+chk (eqv? a 8) "a while nested in a loop"
+
+## --- leaving by other means ------------------------------------------------
+
+fun first_over(limit) {
+	| c |
+	c := 0
+	loop {
+		c := (+ c 1)
+		if (> c limit) { return c }
+	}
+}
+chk (eqv? (first_over 5) 6) "return leaves a loop"
+
+u := 0
+try { loop { u := (+ u 1) ; if (>= u 2) { throw "out" } } } catch (e) { u := (+ u 100) }
+chk (eqv? u 102) "a throw escapes a loop"
+
+## --- control blocks that need unwinding ------------------------------------
+
+r := 0
+loop {
+	try { r := (+ r 1) ; if (>= r 3) { break } } catch (e) { r := -1 }
+}
+chk (eqv? r 3) "break unwinds an enclosing try"
+
+s := 0
+t := 0
+loop {
+	try { s := (+ s 1) ; if (< s 4) { continue } } catch (e) { s := -1 }
+	t := 1
+	break
+}
+chk (eqv? s 4) "continue unwinds an enclosing try"
+chk (eqv? t 1) "the loop carries on normally afterwards"
+
+## --- stack balance ---------------------------------------------------------
+## an iteration that failed to drop its body value would grow the stack until
+## it overflowed, so the count here is the point of the test.
+
+m := 0
+loop {
+	m := (+ m 1)
+	if (< m 20000) { continue }
+	break
+}
+chk (eqv? m 20000) "20000 iterations through continue stay balanced"

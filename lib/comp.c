@@ -1828,6 +1828,7 @@ enum
 	COP_POST_IF_COND,
 	COP_POST_IF_BODY,
 
+	COP_POST_LOOP,
 	COP_POST_UNTIL_BODY,
 	COP_POST_UNTIL_COND,
 	COP_POST_WHILE_BODY,
@@ -2202,7 +2203,8 @@ static int compile_break (hak_t* hak, hak_cnode_t* src)
 
 		if (tcf->opcode == COP_EMIT_FUN) break; /* seems to cross function boundary */
 
-		if (tcf->opcode == COP_POST_UNTIL_BODY || tcf->opcode == COP_POST_WHILE_BODY)
+		if (tcf->opcode == COP_POST_UNTIL_BODY || tcf->opcode == COP_POST_WHILE_BODY ||
+		    tcf->opcode == COP_POST_LOOP)
 		{
 			hak_ooi_t jump_inst_pos;
 			hak_cframe_t* cf;
@@ -2228,7 +2230,8 @@ static int compile_break (hak_t* hak, hak_cnode_t* src)
 	}
 
 	/* this part must no be reached. if a loop control block is found,
-	 * there must exist a COP_POST_UNTIL_BODY or COP_POST_WHILE_BODY frame */
+	 * there must exist a COP_POST_UNTIL_BODY, COP_POST_WHILE_BODY or
+	 * COP_POST_LOOP frame */
 	hak_setsynerrbfmt(hak, HAK_SYNERR_INTERN, HAK_CNODE_GET_LOC(src),
 		"internal error in compiling %.*js", HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 	return -1;
@@ -2309,12 +2312,18 @@ static int compile_continue (hak_t* hak, hak_cnode_t* src)
 
 		if (tcf->opcode == COP_EMIT_FUN) break; /* seems to cross function boundary */
 
-		if (tcf->opcode == COP_POST_UNTIL_BODY || tcf->opcode == COP_POST_WHILE_BODY)
+		if (tcf->opcode == COP_POST_UNTIL_BODY || tcf->opcode == COP_POST_WHILE_BODY ||
+		    tcf->opcode == COP_POST_LOOP)
 		{
-			hak_ooi_t jump_offset;
+			hak_ooi_t jump_offset, cont_pos;
+
+			/* while and until restart at the condition. a loop has none, so
+			 * it restarts at the top of the body instead. */
+			cont_pos = (tcf->opcode == COP_POST_LOOP)?
+				tcf->u.post_loop.body_pos: tcf->u.post_while.cond_pos;
 
 			HAK_ASSERT(hak, hak->code.bc.len < HAK_SMOOI_MAX);
-			jump_offset = hak->code.bc.len - tcf->u.post_while.cond_pos + 1;
+			jump_offset = hak->code.bc.len - cont_pos + 1;
 			if (jump_offset > 3) jump_offset += HAK_CODE_LONG_PARAM_SIZE;
 			if (emit_one_param_instruction(hak, HAK_CODE_JUMP_BACKWARD_0, jump_offset, HAK_CNODE_GET_LOC(cmd)) <= -1) return -1;
 
@@ -2324,7 +2333,8 @@ static int compile_continue (hak_t* hak, hak_cnode_t* src)
 	}
 
 	/* this part must no be reached. if a loop control block is found,
-	 * there must exist a COP_POST_UNTIL_BODY or COP_POST_WHILE_BODY frame */
+	 * there must exist a COP_POST_UNTIL_BODY, COP_POST_WHILE_BODY or
+	 * COP_POST_LOOP frame */
 	hak_setsynerrbfmt(hak, HAK_SYNERR_INTERN, HAK_CNODE_GET_LOC(src),
 		"internal error in compiling %.*js", HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 	return -1;
@@ -4646,6 +4656,52 @@ static int compile_throw (hak_t* hak, hak_cnode_t* src)
 
 /* ========================================================================= */
 
+static int compile_loop (hak_t* hak, hak_cnode_t* src)
+{
+	/* (loop ... ) */
+	hak_cnode_t* cmd, * obj;
+	hak_oow_t body_pos;
+	hak_cframe_t* cf;
+
+	HAK_ASSERT(hak, HAK_CNODE_IS_CONS(src));
+	HAK_ASSERT(hak, HAK_CNODE_IS_TYPED(HAK_CNODE_CONS_CAR(src), HAK_CNODE_LOOP));
+
+	cmd = HAK_CNODE_CONS_CAR(src); /* loop  */
+	obj = HAK_CNODE_CONS_CDR(src); /* body */
+
+	if (!obj)
+	{
+		/* no value */
+		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(src),
+			"no loop body specified in %.*js", HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
+		return -1;
+	}
+	else if (!HAK_CNODE_IS_CONS(obj))
+	{
+		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj),
+			"redundant cdr around '%.*js' in '%.%js'",
+			HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj),
+			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
+		return -1;
+	}
+
+	if (push_ctlblk(hak, HAK_CNODE_GET_LOC(src), HAK_CTLBLK_TYPE_LOOP) <= -1) return -1;
+
+	HAK_ASSERT(hak, hak->code.bc.len < HAK_SMOOI_MAX);
+	body_pos = hak->code.bc.len;
+
+	if (check_block_expression_as_body(hak, obj, cmd, FOR_NONE) <= -1) return -1;
+
+	SWITCH_TOP_CFRAME(hak, COP_COMPILE_OBJECT_LIST, obj); /* 1 */
+
+	PUSH_SUBCFRAME(hak, COP_POST_LOOP, obj); /* 2 */
+	cf = GET_SUBCFRAME(hak);
+	cf->u.post_loop.body_pos = body_pos;
+	cf->u.post_loop.start_loc = *HAK_CNODE_GET_LOC(src);
+
+	return 0;
+}
+
 static int compile_while (hak_t* hak, hak_cnode_t* src, int next_cop)
 {
 	/* (while (xxxx) ... )
@@ -5185,6 +5241,10 @@ static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 
 		case HAK_CNODE_CONTINUE:
 			if (compile_continue(hak, obj) <= -1) return -1;
+			goto done;
+
+		case HAK_CNODE_LOOP:
+			if (compile_loop(hak, obj) <= -1) return -1;
 			goto done;
 
 		case HAK_CNODE_UNTIL:
@@ -6655,6 +6715,47 @@ static HAK_INLINE int post_if_body (hak_t* hak)
 }
 
 /* ========================================================================= */
+static HAK_INLINE int post_loop (hak_t* hak)
+{
+	hak_cframe_t* cf;
+	hak_ooi_t jump_offset;
+
+	cf = GET_TOP_CFRAME(hak);
+	HAK_ASSERT(hak, cf->opcode == COP_POST_LOOP);
+	HAK_ASSERT(hak, cf->operand != HAK_NULL);
+
+	/* (loop ...) has no condition, so there is nothing to test and nothing to
+	 * jump over. the body is followed by an unconditional jump back to its
+	 * own start, and the only way out is (break) - which pushes nil and jumps
+	 * forward past this instruction, exactly as it does for while and until.
+	 *
+	 * that is also why nothing is pushed here for the value of the loop
+	 * expression: the position after the jump below is reachable only from a
+	 * break, which has already left its nil on the stack. */
+
+	HAK_ASSERT(hak, hak->code.bc.len >= cf->u.post_loop.body_pos);
+	if (hak->code.bc.len > cf->u.post_loop.body_pos)
+	{
+		/* the body emitted something, and its last expression left a value
+		 * behind. drop it so that every iteration begins with the stack as
+		 * it found it. see the same step in post_while_body(). */
+		if (emit_byte_instruction(hak, HAK_CODE_POP_STACKTOP, HAK_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+	}
+
+	HAK_ASSERT(hak, hak->code.bc.len < HAK_SMOOI_MAX);
+	jump_offset = hak->code.bc.len - cf->u.post_loop.body_pos + 1;
+	if (jump_offset > 3) jump_offset += HAK_CODE_LONG_PARAM_SIZE;
+	if (emit_one_param_instruction(hak, HAK_CODE_JUMP_BACKWARD_0, jump_offset, HAK_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+
+	POP_CFRAME(hak);
+
+	HAK_ASSERT(hak, hak->c->ctlblk.info[hak->c->ctlblk.depth]._type == HAK_CTLBLK_TYPE_LOOP);
+	pop_ctlblk(hak);
+
+	return 0;
+}
+
+/* ========================================================================= */
 static HAK_INLINE int post_while_cond (hak_t* hak)
 {
 	hak_cframe_t* cf;
@@ -7688,6 +7789,10 @@ int hak_compile (hak_t* hak, hak_cnode_t* obj, int flags)
 
 			case COP_POST_IF_BODY:
 				if (post_if_body(hak) <= -1) goto oops;
+				break;
+
+			case COP_POST_LOOP:
+				if (post_loop(hak) <= -1) goto oops;
 				break;
 
 			case COP_POST_UNTIL_BODY:

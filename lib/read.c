@@ -2480,6 +2480,7 @@ static int feed_process_token (hak_t* hak)
 		case HAK_TOK_CATCH:
 		case HAK_TOK_BREAK:
 		case HAK_TOK_CONTINUE:
+		case HAK_TOK_LOOP:
 		case HAK_TOK_UNTIL:
 		case HAK_TOK_WHILE:
 		case HAK_TOK_RETURN:
