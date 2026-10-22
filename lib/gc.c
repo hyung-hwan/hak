@@ -817,7 +817,7 @@ static HAK_INLINE void gc_ms_mark (hak_t* hak, hak_oop_t oop)
 	if (!HAK_OOP_IS_POINTER(oop)) return;
 	if (HAK_OBJ_GET_FLAGS_MOVED(oop)) return; /* already marked */
 
-	HAK_OBJ_SET_FLAGS_MOVED(oop, 1); /* mark */
+	HAK_OBJ_SET_FLAGS_MOVED(oop, HAK_GC_MARKED); /* mark */
 
 	/*gc_ms_mark(hak, (hak_oop_t)HAK_OBJ_GET_CLASS(oop));*/ /* TODO: remove recursion */
 
@@ -882,18 +882,18 @@ static HAK_INLINE void gc_ms_mark_object (hak_t* hak, hak_oop_t oop)
 #endif
 	if (!HAK_OOP_IS_POINTER(oop) || HAK_OBJ_GET_FLAGS_MOVED(oop)) return; /* non-pointer or already marked */
 
-	HAK_OBJ_SET_FLAGS_MOVED(oop, 1); /* mark */
-
 	if (HAK_UNLIKELY(hak->gci.stack.len >= hak->gci.stack.capa))
 	{
 		/* the mark stack is full. leave the object marked but unscanned -
 		 * gc_ms_scan_stack() rescans the heap for such objects once the stack
 		 * has drained. growing the stack instead would need memory, which may
 		 * not be there in the middle of a collection, and marking cannot fail. */
+		HAK_OBJ_SET_FLAGS_MOVED(oop, HAK_GC_PENDING); /* mark but couldn't push to the mark stack */
 		hak->gci.stack.overflow = 1;
 		return;
 	}
 
+	HAK_OBJ_SET_FLAGS_MOVED(oop, HAK_GC_MARKED); /* mark */
 	hak->gci.stack.ptr[hak->gci.stack.len++] = oop; /* push */
 	if (hak->gci.stack.len > hak->gci.stack.max) hak->gci.stack.max = hak->gci.stack.len;
 }
@@ -966,15 +966,6 @@ static HAK_INLINE void gc_ms_scan_stack (hak_t* hak)
 {
 	gc_ms_drain_stack(hak);
 
-	/* objects marked while the stack was full were not pushed, so their
-	 * fields may refer to unmarked objects. every object is on the gci.b
-	 * list, so a pass over it scanning each marked object reaches them. an
-	 * object scanned twice finds its referents marked already, which costs
-	 * time but changes nothing. a pass that overflows again marks something
-	 * new each time, so passes are repeated until one does not. the
-	 * literal array of the compiler is not on the list, but its elements are
-	 * marked as roots one by one and the array itself never is. */
-
 	/*
 	 * The objects
 	 *
@@ -986,8 +977,9 @@ static HAK_INLINE void gc_ms_scan_stack (hak_t* hak)
 	 *
 	 * the heap list (gci.b) contains all of them: A, B, C, D, E, F, X.
 	 *
-	 * each object has one mark bit. Marked means "alive, keep it". At the end,
-	 * anything unmarked gets freed.
+	 * each object has mark bits. Marked means "alive, keep it". at the end,
+	 * anything unmarked gets freed. this description text doesn't consider
+	 * HAK_GC_PENDING for simplicity.
 	 *
 	 * normal marking until the stack fills up
 	 *
@@ -1021,10 +1013,18 @@ static HAK_INLINE void gc_ms_scan_stack (hak_t* hak)
 	 *
 	 * now F is marked. only X is unmarked, so only X gets freed, which is correct.
 	 *
-	 *  with the current implementation every overflow pass rescans all objects marked
-	 *  so far, so repeated overflows mean scanning the same live objects again and again.
-	 *  it stays correct, but in bad cases the cost multiplies: roughly,
-	 *     the number of passes * the size of the live heap.
+	 * without HAK_GC_PENDING, every overflow pass rescans all objects marked so far,
+	 * so repeated overflows mean scanning the same live objects again and again.
+	 * it stays correct, but in bad cases the cost multiplies: roughly,
+	 *    the number of passes * the size of the live heap.
+	 *
+	 * with HAK_GC_PENDING, it prevents repeated scanning to a certain degree.
+	 *
+	 * the rescan is only correct because every object that can be marked is
+	 * on the gci.b list. the compiler's literal array(hak->code.lit.arr) is
+	 * the one exception, and that's fine because only its elements are marked,
+	 * never the array itself. hak->code.lit.arr is a ngc data and each element
+	 * is treated as an individual root and marked individually.
 	 */
 	while (HAK_UNLIKELY(hak->gci.stack.overflow))
 	{
@@ -1034,8 +1034,9 @@ static HAK_INLINE void gc_ms_scan_stack (hak_t* hak)
 		for (curr = hak->gci.b; curr; curr = curr->next)
 		{
 			hak_oop_t obj = (hak_oop_t)(curr + 1);
-			if (HAK_OBJ_GET_FLAGS_MOVED(obj))
+			if (HAK_OBJ_GET_FLAGS_MOVED(obj) == HAK_GC_PENDING)
 			{
+				HAK_OBJ_SET_FLAGS_MOVED(obj, HAK_GC_MARKED);
 				gc_ms_scan_object(hak, obj);
 				gc_ms_drain_stack(hak);
 			}
@@ -1155,8 +1156,8 @@ static HAK_INLINE void gc_ms_mark_roots (hak_t* hak)
 	#if 0
 		gc_ms_mark(hak, (hak_oop_t)hak->symtab); /* mark the symbol table */
 	#else
-		HAK_OBJ_SET_FLAGS_MOVED(hak->symtab, 1); /* mark */
-		HAK_OBJ_SET_FLAGS_MOVED(hak->symtab->bucket, 1); /* mark */
+		HAK_OBJ_SET_FLAGS_MOVED(hak->symtab, HAK_GC_MARKED); /* mark */
+		HAK_OBJ_SET_FLAGS_MOVED(hak->symtab->bucket, HAK_GC_MARKED); /* mark */
 	#endif
 	}
 
@@ -1200,7 +1201,7 @@ void hak_gc_ms_sweep_lazy (hak_t* hak, hak_oow_t allocsize)
 
 		if (HAK_OBJ_GET_FLAGS_MOVED(obj)) /* if marked */
 		{
-			HAK_OBJ_SET_FLAGS_MOVED(obj, 0); /* unmark */
+			HAK_OBJ_SET_FLAGS_MOVED(obj, HAK_GC_UNMARKED); /* unmark */
 			prev = curr;
 		}
 		else
@@ -1259,7 +1260,7 @@ static HAK_INLINE void gc_ms_sweep (hak_t* hak)
 
 		if (HAK_OBJ_GET_FLAGS_MOVED(obj)) /* if marked */
 		{
-			HAK_OBJ_SET_FLAGS_MOVED(obj, 0); 	/* unmark */
+			HAK_OBJ_SET_FLAGS_MOVED(obj, HAK_GC_UNMARKED); 	/* unmark */
 			prev = curr;
 		}
 		else
@@ -1841,7 +1842,7 @@ static int ignite_3 (hak_t* hak)
 	}
 
 #if 0
-	/* Attach the system dictionary to the nsdic field of the System class */
+	/* attach the system dictionary to the nsdic field of the System class */
 	HAK_STORE_OOP(hak, (hak_oop_t*)&hak->_system->nsdic, (hak_oop_t)hak->sysdic);
 	/* Set the name field of the system dictionary */
 	HAK_STORE_OOP(hak, (hak_oop_t*)&hak->sysdic->name, (hak_oop_t)hak->_system->name);

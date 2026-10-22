@@ -52,6 +52,30 @@
 #define HAK_ENABLE_STACK_CONTEXT
 #endif
 
+#define HAK_GC_UNMARKED (0)
+#define HAK_GC_MARKED   (1)
+#define HAK_GC_PENDING  (3)
+
+#if defined(HAK_BUILD_DEBUG)
+/*#define HAK_DEBUG_LEXER 1*/
+#define HAK_DEBUG_VM_PROCESSOR 1
+#define HAK_DEBUG_VM_EXEC 1
+/*#define HAK_PROFILE_VM 1*/
+#endif
+
+/* limit the maximum object size such that:
+ *   1. an index to an object field can be represented in a small integer.
+ *   2. the maximum number of bits including bit-shifts can be represented
+ *      in the hak_oow_t type.
+ */
+#define HAK_LIMIT_OBJ_SIZE
+
+#define HAK_BC_BUFFER_INIT  10240
+#define HAK_BC_BUFFER_ALIGN 10240
+
+#define HAK_LIT_BUFFER_INIT 1024
+#define HAK_LIT_BUFFER_ALIGN 1024
+
 #if defined(HAK_ENABLE_STACK_CONTEXT)
 
 /* hak_stack_context_t must mirror hak_context_t except the header.
@@ -84,17 +108,6 @@ struct hak_stack_context_t
 
 /*#define HAK_STACK_CONTEXT_NAMED_SLOTS (HAK_SIZEOF(hak_stack_context_t) / HAK_SIZEOF(hak_oop_t))*/
 #define HAK_STACK_CONTEXT_NAMED_SLOTS (15) /* excludes slot */
-
-#if defined(__cplusplus)
-extern "C" {
-#endif
-
-hak_oop_context_t hak_reifystackcontext (hak_t* hak, hak_stack_context_t* sctx);
-hak_oop_context_t hak_reifyactivecontext (hak_t* hak);
-
-#if defined(__cplusplus)
-}
-#endif
 
 #define HAK_CTX_IS_STACK(ctx) (HAK_OOP_IS_SMPTR(ctx))
 #define HAK_CTX_TO_STACK(ctx) ((hak_stack_context_t*)HAK_OOP_TO_SMPTR(ctx))
@@ -189,30 +202,10 @@ do { \
 #define HAK_CTX_SET_FRAME_BASE(hak, ctx, v)
 #define HAK_CTX_GET_HEAP_CTX(hak, ctx) ((hak_oop_t)(ctx))
 #define HAK_CTX_SET_HEAP_CTX(hak, ctx, v)
+
 #endif
 
 #define HAK_CTX_IS_CONTEXT(hak, ctx) (HAK_CTX_IS_STACK(ctx) || HAK_IS_CONTEXT(hak, ctx))
-
-#if defined(HAK_BUILD_DEBUG)
-/*#define HAK_DEBUG_LEXER 1*/
-#define HAK_DEBUG_VM_PROCESSOR 1
-#define HAK_DEBUG_VM_EXEC 1
-/*#define HAK_PROFILE_VM 1*/
-#endif
-
-/* limit the maximum object size such that:
- *   1. an index to an object field can be represented in a small integer.
- *   2. the maximum number of bits including bit-shifts can be represented
- *      in the hak_oow_t type.
- */
-#define HAK_LIMIT_OBJ_SIZE
-
-
-#define HAK_BC_BUFFER_INIT  10240
-#define HAK_BC_BUFFER_ALIGN 10240
-
-#define HAK_LIT_BUFFER_INIT 1024
-#define HAK_LIT_BUFFER_ALIGN 1024
 
 #if defined(__has_builtin)
 
@@ -1740,19 +1733,6 @@ hak_heap_t* hak_makeheap (
 /**
  * The hak_killheap() function destroys the heap pointed to by \a heap.
  */
-/* --------------------------------------------------------------------------
- * IO SEMAPHORE TUPLES (exec.c)
- * -------------------------------------------------------------------------- */
-
-/* hak_bindhnd() in hnd.c is the only intended caller. binding is kept behind
- * the handle table so that a raw descriptor can never be named from hak code. */
-int hak_add_sem_to_sem_io_tuple (
-	hak_t*                  hak,
-	hak_oop_semaphore_t     sem,
-	hak_ooi_t               io_handle,
-	hak_semaphore_io_type_t io_type
-);
-
 void hak_killheap (
 	hak_t*      hak,
 	hak_heap_t* heap
@@ -1779,6 +1759,35 @@ void hak_freeheapmem (
 	hak_heap_t*  heap,
 	void*        ptr
 );
+
+/* ========================================================================= */
+/* IO SEMAPHORE TUPLES (exec.c)                                              */
+/* ========================================================================= */
+
+/* hak_bindhnd() in hnd.c is the only intended caller. binding is kept behind
+ * the handle table so that a raw descriptor can never be named from hak code. */
+int hak_add_sem_to_sem_io_tuple (
+	hak_t*                  hak,
+	hak_oop_semaphore_t     sem,
+	hak_ooi_t               io_handle,
+	hak_semaphore_io_type_t io_type
+);
+
+/* ========================================================================= */
+/* stack context (exec.c)                                                    */
+/* ========================================================================= */
+#if defined(HAK_ENABLE_STACK_CONTEXT)
+
+hak_oop_context_t hak_reifystackcontext (
+	hak_t*               hak,
+	hak_stack_context_t* sctx
+);
+
+hak_oop_context_t hak_reifyactivecontext (
+	hak_t*               hak
+);
+
+#endif
 
 /* ========================================================================= */
 /* obj.c                                                                     */
