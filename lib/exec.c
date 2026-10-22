@@ -492,7 +492,7 @@ static HAK_INLINE hak_oop_context_t reify_context_ref (hak_t* hak, hak_oop_t ctx
  * this sequence cause problems:
  *    release_stack_context(hak, hak->active_context);
  *    SWITCH_ACTIVE_CONTEXT(hak, (hak_oop_context_t)HAK_CTX_GET_SENDER(hak, hak->active_context));
- * where relase_stack_context as defined as
+ * where release_stack_context as defined as
  *     void release_stack_context (hak_t* hak, hak_oop_t ctx) {
  *         if (HAK_CTX_IS_STACK(ctx)) {
  *              hak_stack_context_t* sctx = HAK_CTX_TO_STACK(ctx);
@@ -502,13 +502,15 @@ static HAK_INLINE hak_oop_context_t reify_context_ref (hak_t* hak, hak_oop_t ctx
  * it didn't care whether it returns to a stack context or a heap context.
  *
  * the revised sequence is like this:
- *    release_frames_above(hak, HAK_CTX_GET_SENDER(hak->active_context));
+ *    unwind_frame_stack_to(hak, HAK_CTX_GET_SENDER(hak->active_context));
  *    SWITCH_ACTIVE_CONTEXT(hak, (hak_oop_context_t)HAK_CTX_GET_SENDER(hak, hak->active_context));
- * where relase_frames_above() is called with the return target context.
+ * where unwind_frame_stack_to() is called with the return target context.
  */
-static HAK_INLINE void release_frames_above (hak_t* hak, hak_oop_t ctx)
+static HAK_INLINE void unwind_frame_stack_to (hak_t* hak, hak_oop_t from, hak_oop_t to)
 {
 	hak_oop_process_t proc = hak->processor->active;
+
+	(void)from; /* unused */
 
 	/*
 	 * for a context with ntmprs temporaries, allocated when fsp was frame_base:
@@ -525,10 +527,11 @@ static HAK_INLINE void release_frames_above (hak_t* hak, hak_oop_t ctx)
 	 *   empty frame stack is fsp == clst.
 	 * - slot_count is ntmprs, the variable part.
 	 */
-	if (HAK_CTX_IS_STACK(ctx))
+	if (HAK_CTX_IS_STACK(to))
 	{
+	#if 1
 		/* returning to a stack context */
-		hak_stack_context_t* sctx = HAK_CTX_TO_STACK(ctx);
+		hak_stack_context_t* sctx = HAK_CTX_TO_STACK(to);
 		hak_ooi_t n = HAK_OOP_TO_SMOOI(sctx->frame_base) +
 		              HAK_STACK_CONTEXT_NAMED_SLOTS +
 		              HAK_OOP_TO_SMOOI(sctx->slot_count);
@@ -536,6 +539,28 @@ static HAK_INLINE void release_frames_above (hak_t* hak, hak_oop_t ctx)
 		 * this function is given the return target, not the returning context.
 		 * so is the calculation based on the size of target context's size */
 		proc->fsp = HAK_SMOOI_TO_OOP(n); /* update frame stack pointer */
+	#else
+		/* assume call-x calls call-y, call-y calls call-z, call-z throws.
+		 * if call-x is called inside the exception handler like this:
+		 *   fun f() { try { call-x } catch (e) { ... } }
+		 *
+		 * ---------------- <-- fsp
+           * | call-z frame |   from = active context (the thrower)
+           * |--------------| <-- call-z's frame_base
+           * | call-y frame |
+           * |--------------|
+           * | call-x frame |
+           * |--------------| <-- end of f's frame
+           * |   f frame    |   to = catch_ctx (the context with the try)
+           * |--------------|
+           * |     ...      |
+           *
+           * the following two lines, seemingly faster, don't work becuase
+           * it only unwindws the call-z frame in the case shown above.
+           */
+		hak_stack_context_t* sctx = HAK_CTX_TO_STACK(from);
+		proc->fsp = sctx->frame_base;
+	#endif
 	}
 	else
 	{
@@ -3015,7 +3040,7 @@ static HAK_INLINE int do_throw (hak_t* hak, hak_oop_t val, hak_ooi_t ip)
 
 #if defined(HAK_ENABLE_STACK_CONTEXT)
 	/* rewind the frame stack to the handler's context */
-	release_frames_above(hak, (hak_oop_t)catch_ctx);
+	unwind_frame_stack_to(hak, hak->active_context, (hak_oop_t)catch_ctx);
 #endif
 	SWITCH_ACTIVE_CONTEXT(hak, catch_ctx);
 	hak->ip = catch_ip; /* override the instruction pointer */
@@ -3764,7 +3789,7 @@ static HAK_INLINE int do_return_from_block (hak_t* hak)
 		 * is not the initial context of a process */
 		hak->ip = -1; /* mark context dead. saved into hak->active_context->ip in SWITCH_ACTIVE_CONTEXT */
 	#if defined(HAK_ENABLE_STACK_CONTEXT)
-		release_frames_above(hak, HAK_CTX_GET_SENDER(hak, hak->active_context));
+		unwind_frame_stack_to(hak, hak->active_context, HAK_CTX_GET_SENDER(hak, hak->active_context));
 	#endif
 		SWITCH_ACTIVE_CONTEXT(hak, (hak_oop_context_t)HAK_CTX_GET_SENDER(hak, hak->active_context));
 		return 0; /* normal return */
@@ -3932,7 +3957,7 @@ static HAK_INLINE int do_return_from_home (hak_t* hak, hak_oop_t return_value, h
 		{
 			hak->ip = -1; /* mark context dead. saved into hak->active_context->ip in SWITCH_ACTIVE_CONTEXT */
 		#if defined(HAK_ENABLE_STACK_CONTEXT)
-			release_frames_above(hak, HAK_CTX_GET_SENDER(hak, hak->active_context));
+			unwind_frame_stack_to(hak, hak->active_context, HAK_CTX_GET_SENDER(hak, hak->active_context));
 		#endif
 			SWITCH_ACTIVE_CONTEXT(hak, (hak_oop_context_t)HAK_CTX_GET_SENDER(hak, hak->active_context));
 		}
@@ -3963,7 +3988,7 @@ static HAK_INLINE int do_return_from_home (hak_t* hak, hak_oop_t return_value, h
 		HAK_ASSERT(hak, (hak_oop_t)HAK_CTX_GET_SENDER(hak, hak->active_context) == (hak_oop_t)sender);
 		hak->ip = -1; /* mark context dead. saved into hak->active_context->ip in SWITCH_ACTIVE_CONTEXT */
 	#if defined(HAK_ENABLE_STACK_CONTEXT)
-		release_frames_above(hak, HAK_CTX_GET_SENDER(hak, hak->active_context));
+		unwind_frame_stack_to(hak, hak->active_context, HAK_CTX_GET_SENDER(hak, hak->active_context));
 	#endif
 		SWITCH_ACTIVE_CONTEXT(hak, (hak_oop_context_t)HAK_CTX_GET_SENDER(hak, hak->active_context));
 		HAK_STACK_PUSH(hak, return_value);

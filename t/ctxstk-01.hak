@@ -13,6 +13,13 @@
 ##     variables back
 ##
 ## and an exception handler kept pointing at the frame rather than the copy.
+##
+## When control moves to a context - a return, or an exception reaching its
+## handler - every frame above that context's own is given back. An exception
+## can unwind many frames at once, so what is given back must be decided from
+## the context returned to, not from the one that threw: freeing only the
+## thrower's frame leaves the frames in between allocated, and a handler that
+## keeps on catching overflows the frame stack - see section 7.
 
 fun chk(ok msg) {
 	if ok { printf "OK: %s\n" msg } \
@@ -117,3 +124,47 @@ i := 0
 s := 0
 while (< i 20000) { s := (+ s (makes 1)); i := (+ i 1) }
 chk (== s 420000) "reifying calls interleaved with stack recursion"
+
+## 7. an exception unwinding many frames into a handler whose context is a
+##    stack frame that keeps running. the frames between the thrower and the
+##    handler must be given back on every catch, or they pile up until the
+##    frame stack overflows. the handler must be in a function, not at the top
+##    level, and that function must not return in between - a return to a
+##    heap context empties the frame stack and would hide the leak.
+fun deep(n) { if (> n 0) { return (+ 1 (deep (- n 1))) }; throw "bottom" }
+
+fun catcher(times) {
+	| i r |
+	i := 0
+	r := 0
+	while (< i times) {
+		try { deep 10 } catch (e) { r := (+ r 1) }
+		i := (+ i 1)
+	}
+	return r
+}
+chk (== (catcher 20000) 20000) "exceptions unwinding many frames into a running stack handler"
+
+## a handler in the middle of the frame stack: the inner handler rethrows to
+## the outer one in the same function, each throw crossing several frames
+fun rethrower(n) {
+	try { deep n } catch (e) { throw "again" }
+}
+
+fun nested(times) {
+	| i inner outer |
+	i := 0
+	outer := 0
+	while (< i times) {
+		try {
+			inner := 0
+			try { deep 5 } catch (e) { inner := 1 }
+			rethrower 5
+		} catch (e) {
+			outer := (+ outer inner)
+		}
+		i := (+ i 1)
+	}
+	return outer
+}
+chk (== (nested 10000) 10000) "nested handlers and a rethrow across frames"
