@@ -52,6 +52,34 @@
 #define HAK_ENABLE_STACK_CONTEXT
 #endif
 
+/* a pointer object with more fields than this is scanned a chunk at a time.
+ *
+ * scanning pushes every unmarked object a field refers to, so a large array
+ * scanned in one go fills the mark stack at once. scanned a chunk at a time,
+ * it costs the stack one chunk of entries plus a continuation for the rest,
+ * which is pushed first so that what the chunk refers to is marked before the
+ * next chunk is scanned.
+ *
+ * a continuation takes two entries: the object, then its next field index as
+ * a small integer on top. only pointers are pushed otherwise, so a small
+ * integer on top of the stack always means a continuation.
+ *
+ * a process is not chunked - only the used parts of its stacks are scanned,
+ * and those are usually small.
+ *
+ * 0 or less turns chunking off: every object is scanned in one go, as before
+ * chunking was added, and a large one is left to the overflow handling in
+ * gc_ms_scan_stack(). the value can be set at build time with
+ * -DHAK_GC_SCAN_CHUNK=n.
+ *
+ * keep it well below the capacity of the mark stack (1024 entries - see
+ * hak_init()). a chunk and its continuation must fit with room to spare for
+ * chunking to help; a larger value is still correct, since what does not fit
+ * falls back to the overflow handling, but it gains nothing. */
+#if !defined(HAK_GC_SCAN_CHUNK)
+#define HAK_GC_SCAN_CHUNK (128)
+#endif
+
 #define HAK_GC_UNMARKED (0)
 #define HAK_GC_MARKED   (1)
 #define HAK_GC_PENDING  (3)

@@ -884,6 +884,9 @@ static HAK_INLINE void gc_ms_mark_object (hak_t* hak, hak_oop_t oop)
 
 	if (HAK_UNLIKELY(hak->gci.stack.len >= hak->gci.stack.capa))
 	{
+		/* TODO: grow the gci.stack.ptr dynamically within the configured certain limit? */
+		/* TODO: adjust the initial gci.stack size? hak->gci.stack.capa = HAK_ALIGN_POW2(1, 1024) in lib/hak.h */
+
 		/* the mark stack is full. leave the object marked but unscanned -
 		 * gc_ms_scan_stack() rescans the heap for such objects once the stack
 		 * has drained. growing the stack instead would need memory, which may
@@ -899,10 +902,20 @@ static HAK_INLINE void gc_ms_mark_object (hak_t* hak, hak_oop_t oop)
 }
 
 /* mark what a marked object refers to: its class and, for an object of
- * pointers, its fields */
+ * pointers, its fields. with chunking on (HAK_GC_SCAN_CHUNK > 0), the scan
+ * starts at field 'start' and covers at most one chunk of fields, and the
+ * class is marked only on the first chunk, where 'start' is 0. */
+#if (HAK_GC_SCAN_CHUNK <= 0)
 static HAK_INLINE void gc_ms_scan_object (hak_t* hak, hak_oop_t oop)
+#else
+static HAK_INLINE void gc_ms_scan_object_from (hak_t* hak, hak_oop_t oop, hak_ooi_t start)
+#endif
 {
+#if (HAK_GC_SCAN_CHUNK <= 0)
 	gc_ms_mark_object(hak, (hak_oop_t)HAK_OBJ_GET_CLASS(oop));
+#else
+	if (start == 0) gc_ms_mark_object(hak, (hak_oop_t)HAK_OBJ_GET_CLASS(oop));
+#endif
 
 	if (HAK_OBJ_GET_FLAGS_TYPE(oop) == HAK_OBJ_TYPE_OOP)
 	{
@@ -915,6 +928,11 @@ static HAK_INLINE void gc_ms_scan_object (hak_t* hak, hak_oop_t oop)
 			hak_oop_process_t proc;
 
 			HAK_ASSERT(hak, HAK_IS_PROCESS(hak, oop));
+		#if (HAK_GC_SCAN_CHUNK <= 0)
+			/* nothing extra */
+		#else
+			HAK_ASSERT(hak, start == 0); /* never continued */
+		#endif
 			/* the stack in a process object doesn't need to be
 			 * scanned in full. the slots above the stack pointer
 			 * are garbages. */
@@ -949,17 +967,68 @@ static HAK_INLINE void gc_ms_scan_object (hak_t* hak, hak_oop_t oop)
 		else
 		{
 			ll = HAK_OBJ_GET_SIZE(oop);
+		#if (HAK_GC_SCAN_CHUNK <= 0)
 			for (i = 0; i < ll; i++) gc_ms_mark_object(hak, HAK_OBJ_GET_OOP_VAL(oop, i));
+		#else
+			if (ll - start > HAK_GC_SCAN_CHUNK)
+			{
+				hak_ooi_t end = start + HAK_GC_SCAN_CHUNK;
+
+				if (HAK_LIKELY(hak->gci.stack.len + 2 <= hak->gci.stack.capa))
+				{
+					/* come back for the rest after what this chunk refers to */
+					hak->gci.stack.ptr[hak->gci.stack.len++] = oop;
+					hak->gci.stack.ptr[hak->gci.stack.len++] = HAK_SMOOI_TO_OOP(end);
+					if (hak->gci.stack.len > hak->gci.stack.max) hak->gci.stack.max = hak->gci.stack.len;
+				}
+				else
+				{
+					/* no room to come back. the object is left for the rescan
+					 * in gc_ms_scan_stack(), which scans it all again */
+					HAK_OBJ_SET_FLAGS_MOVED(oop, HAK_GC_PENDING);
+					hak->gci.stack.overflow = 1;
+				}
+
+				ll = end;
+			}
+			for (i = start; i < ll; i++) gc_ms_mark_object(hak, HAK_OBJ_GET_OOP_VAL(oop, i));
+		#endif
 		}
 	}
 }
 
+#if (HAK_GC_SCAN_CHUNK <= 0)
+/* nothing extra */
+#else
+static HAK_INLINE void gc_ms_scan_object (hak_t* hak, hak_oop_t oop)
+{
+	gc_ms_scan_object_from(hak, oop, 0);
+}
+#endif
+
 static HAK_INLINE void gc_ms_drain_stack (hak_t* hak)
 {
+#if (HAK_GC_SCAN_CHUNK <= 0)
+	while (hak->gci.stack.len > 0)
+		gc_ms_scan_object(hak, hak->gci.stack.ptr[--hak->gci.stack.len]);
+#else
+	hak_oop_t x;
+
 	while (hak->gci.stack.len > 0)
 	{
-		gc_ms_scan_object(hak, hak->gci.stack.ptr[--hak->gci.stack.len]);
+		x = hak->gci.stack.ptr[--hak->gci.stack.len];
+		if (HAK_OOP_IS_SMOOI(x))
+		{
+			/* a continuation - the object below it resumes at field x */
+			HAK_ASSERT(hak, hak->gci.stack.len > 0);
+			gc_ms_scan_object_from(hak, hak->gci.stack.ptr[--hak->gci.stack.len], HAK_OOP_TO_SMOOI(x));
+		}
+		else
+		{
+			gc_ms_scan_object_from(hak, x, 0);
+		}
 	}
+#endif
 }
 
 static HAK_INLINE void gc_ms_scan_stack (hak_t* hak)
