@@ -964,6 +964,7 @@ void hak_dumpcnode (hak_t* hak, hak_cnode_t* cnode, int newline)
 			case HAK_CNODE_CATCH:
 			case HAK_CNODE_BREAK:
 			case HAK_CNODE_CONTINUE:
+			case HAK_CNODE_FOR:
 			case HAK_CNODE_LOOP:
 			case HAK_CNODE_UNTIL:
 			case HAK_CNODE_WHILE:
@@ -981,6 +982,7 @@ void hak_dumpcnode (hak_t* hak, hak_cnode_t* cnode, int newline)
 			case HAK_CNODE_TRPCOLONS:
 			case HAK_CNODE_DBLCOLONS:
 			case HAK_CNODE_COLON:
+			case HAK_CNODE_RANGE:
 				hak_logbfmt(hak, HAK_LOG_FATAL, " %.*js ", HAK_CNODE_GET_TOKLEN(cnode), HAK_CNODE_GET_TOKPTR(cnode));
 				break;
 

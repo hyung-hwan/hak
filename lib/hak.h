@@ -2222,6 +2222,7 @@ enum hak_concode_t
 	HAK_CONCODE_MLIST,      /* (obj:message) - message send list */
 	HAK_CONCODE_ALIST,      /* (a := 20) assignment list */
 	HAK_CONCODE_BLIST,      /* (10 + 20) expression with binary operator */
+	HAK_CONCODE_RANGE,      /* (10 .< 20) or (10 .<= 20 .. 2) - see hak_cnode_range_kind_t */
 	HAK_CONCODE_PLIST,      /* (in -> .. -> out) piping list */
 	HAK_CONCODE_BLOCK,      /* { } */
 	HAK_CONCODE_ARRAY,      /* #[ ] */

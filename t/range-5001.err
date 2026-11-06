@@ -1,0 +1,41 @@
+## A range is ( from MARKER to ) or ( from MARKER to .. step ) where MARKER is
+## one of .< .<= .> .>= - the comparison the loop it stands for will perform.
+## '..' introduces the step only, so it is never a range marker on its own.
+
+(1 .. 10);  ##ERROR: syntax error - prohibited range operator around '..'
+
+---
+
+## only one comparison marker per range
+
+(1 .< 2 .< 3);  ##ERROR: syntax error - prohibited range operator around '.<'
+
+---
+
+## and only one step
+
+(1 .< 2 .. 3 .. 4);  ##ERROR: syntax error - prohibited range operator around '..'
+
+---
+
+## a marker is allowed after the first item only
+
+(.< 1 2);  ##ERROR: syntax error - prohibited range operator around '.<'
+
+---
+
+## the end of the range is missing
+
+(1 .<);  ##ERROR: syntax error - no operand after range operator '.<'
+
+---
+
+## so is the step
+
+(1 .< 2 ..);  ##ERROR: syntax error - no operand after range operator '..'
+
+---
+
+## a range holds nothing beyond its end, or beyond its step
+
+(1 .< 2 3);  ##ERROR: syntax error - redundant operand '3'

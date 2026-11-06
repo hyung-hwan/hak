@@ -512,6 +512,7 @@ enum hak_tok_type_t
 	HAK_TOK_CATCH,
 	HAK_TOK_BREAK,
 	HAK_TOK_CONTINUE,
+	HAK_TOK_FOR,
 	HAK_TOK_LOOP,
 	HAK_TOK_UNTIL,
 	HAK_TOK_WHILE,
@@ -536,6 +537,10 @@ enum hak_tok_type_t
 	HAK_TOK_DOT,       /* . */
 	HAK_TOK_DBLDOTS,   /* .. */
 	HAK_TOK_ELLIPSIS,  /* ... */
+	HAK_TOK_DOTLT,     /* .< */
+	HAK_TOK_DOTLE,     /* .<= */
+	HAK_TOK_DOTGT,     /* .> */
+	HAK_TOK_DOTGE,     /* .>= */
 	HAK_TOK_COLON,     /* : */
 	HAK_TOK_DBLCOLONS, /* :: */
 	HAK_TOK_TRPCOLONS, /* ::: */
@@ -634,6 +639,7 @@ enum hak_cnode_type_t
 	HAK_CNODE_CATCH,
 	HAK_CNODE_BREAK,
 	HAK_CNODE_CONTINUE,
+	HAK_CNODE_FOR,
 	HAK_CNODE_LOOP,
 	HAK_CNODE_UNTIL,
 	HAK_CNODE_WHILE,
@@ -651,8 +657,21 @@ enum hak_cnode_type_t
 	HAK_CNODE_TRPCOLONS, /* ::: */
 	HAK_CNODE_DBLCOLONS, /* :: */
 	HAK_CNODE_COLON, /* : */
+	HAK_CNODE_RANGE, /* .< .<= .> .>= .. */
 };
 typedef enum hak_cnode_type_t hak_cnode_type_t;
+
+/* the marker of a range expression - (from MARKER to) or (from MARKER to .. step).
+ * the comparison markers double as the loop continuation test the range stands for. */
+enum hak_cnode_range_kind_t
+{
+	HAK_CNODE_RANGE_LT,  /* .<  - ascending, exclusive end */
+	HAK_CNODE_RANGE_LE,  /* .<= - ascending, inclusive end */
+	HAK_CNODE_RANGE_GT,  /* .>  - descending, exclusive end */
+	HAK_CNODE_RANGE_GE,  /* .>= - descending, inclusive end */
+	HAK_CNODE_RANGE_STEP /* ..  - the step that follows a complete range */
+};
+typedef enum hak_cnode_range_kind_t hak_cnode_range_kind_t;
 
 enum hak_cnode_flag_t
 {
@@ -681,6 +700,9 @@ typedef enum hak_cnode_flag_t hak_cnode_flag_t;
 #define HAK_CNODE_IS_TRPCOLONS(x) ((x)->cn_type == HAK_CNODE_TRPCOLONS)
 #define HAK_CNODE_IS_DBLCOLONS(x) ((x)->cn_type == HAK_CNODE_DBLCOLONS)
 #define HAK_CNODE_IS_COLON(x) ((x)->cn_type == HAK_CNODE_COLON)
+#define HAK_CNODE_IS_RANGE(x) ((x)->cn_type == HAK_CNODE_RANGE)
+#define HAK_CNODE_RANGE_KIND(x) ((x)->u.range.kind)
+#define HAK_CNODE_IS_RANGE_STEP(x) ((x)->cn_type == HAK_CNODE_RANGE && (x)->u.range.kind == HAK_CNODE_RANGE_STEP)
 
 #define HAK_CNODE_IS_SYMBOL(x) ((x)->cn_type == HAK_CNODE_SYMBOL)
 #define HAK_CNODE_IS_RSYMBOL(x) ((x)->cn_type == HAK_CNODE_RSYMBOL)
@@ -745,6 +767,10 @@ struct hak_cnode_t
 		{
 			int is_cla; /* class-level accessor. prefixed with self or super */
 		} dsymbol;
+		struct
+		{
+			int kind; /* hak_cnode_range_kind_t */
+		} range;
 		struct
 		{
 			hak_oow_t v;
@@ -1011,6 +1037,7 @@ struct hak_rstl_t
 	hak_loc_t loc;
 	int flagv;
 	hak_oow_t count;
+	hak_oow_t opcount; /* used for PIPOP only */
 	hak_rstl_t* prev;
 };
 
@@ -2338,6 +2365,7 @@ hak_cnode_t* hak_makecnodesymbol (hak_t* hak, int flags, const hak_loc_t* loc, c
 hak_cnode_t* hak_makecnodedsymbol (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok, int is_cla);
 hak_cnode_t* hak_makecnodersymbol (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok);
 hak_cnode_t* hak_makecnodebinop (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok);
+hak_cnode_t* hak_makecnoderange (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok, int kind);
 hak_cnode_t* hak_makecnodestrlit (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok);
 hak_cnode_t* hak_makecnodebstrlit (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok);
 hak_cnode_t* hak_makecnodesymlit (hak_t* hak, int flags, const hak_loc_t* loc, const hak_oocs_t* tok);

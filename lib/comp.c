@@ -4971,6 +4971,14 @@ static int compile_cons_alist_expression (hak_t* hak, hak_cnode_t* cmd)
 	return 0;
 }
 
+static int compile_cons_range_expression (hak_t* hak, hak_cnode_t* obj, int nrets)
+{
+	HAK_ASSERT(hak, HAK_CNODE_IS_CONS_CONCODED(obj, HAK_CONCODE_RANGE));
+
+	hak_setsynerrbfmt(hak, HAK_SYNERR_INTERN, HAK_CNODE_GET_LOC(obj), "internal error - range expression not implemented");
+	return -1;
+}
+
 static int compile_cons_plist_expression (hak_t* hak, hak_cnode_t* obj, int nrets)
 {
 	hak_cframe_t* cf;
@@ -5015,8 +5023,6 @@ out := (sys.run_noret "ls -laF")
 		c3 = HAK_CNODE_CONS_CAR(obj);
 	}
 
-	HAK_ASSERT(hak, HAK_CNODE_CONS_CDR(obj) ==  HAK_NULL); /* reader guaranteed */
-
 	if (c3)
 	{
 		SWITCH_TOP_CFRAME(hak, COP_COMPILE_OBJECT, c1); /* 1 */
@@ -5035,7 +5041,7 @@ out := (sys.run_noret "ls -laF")
 	}
 */
 
-	hak_setsynerrbfmt(hak, HAK_SYNERR_INTERN, HAK_CNODE_GET_LOC(obj), "internal error - piping expression not implemented");
+	hak_setsynerrbfmt(hak, HAK_SYNERR_INTERN, HAK_CNODE_GET_LOC(c1), "internal error - piping expression not implemented");
 	return -1;
 }
 
@@ -5243,6 +5249,12 @@ static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 			if (compile_continue(hak, obj) <= -1) return -1;
 			goto done;
 
+#if 0   /* TODO */
+		case HAK_CNODE_FOR:
+			if (compile_for(hak, obj) <= -1) return -1;
+			goto done;
+#endif
+
 		case HAK_CNODE_LOOP:
 			if (compile_loop(hak, obj) <= -1) return -1;
 			goto done;
@@ -5294,6 +5306,7 @@ static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 	    HAK_CNODE_IS_SYMLIT(car) || /* this condition to represent an external program TODO: change this to a dedicated cnode */
 	    HAK_CNODE_IS_CONS_CONCODED(car, HAK_CONCODE_XLIST) || /* () is nested */
 	    HAK_CNODE_IS_CONS_CONCODED(car, HAK_CONCODE_DLIST) || /* $() is nested */
+	    HAK_CNODE_IS_CONS_CONCODED(car, HAK_CONCODE_RANGE) ||
 	    HAK_CNODE_IS_CONS_CONCODED(car, HAK_CONCODE_PLIST) ||
 	    HAK_CNODE_IS_CONS_CONCODED(car, HAK_CONCODE_MLIST) ||
 	    HAK_CNODE_IS_CONS_CONCODED(car, HAK_CONCODE_BLIST) ||
@@ -6090,6 +6103,10 @@ redo:
 					if (compile_cons_mlist_expression(hak, oprnd, 0) <= -1) return -1;
 					break;
 
+				case HAK_CONCODE_RANGE:
+					if (compile_cons_range_expression(hak, oprnd, 0) <= -1) return -1;
+					break;
+
 				case HAK_CONCODE_PLIST: /* piping expression: in -> @{} -> out */
 					if (compile_cons_plist_expression(hak, oprnd, 0) <= -1) return -1;
 					break;
@@ -6152,6 +6169,10 @@ redo:
 
 				case HAK_CONCODE_MLIST:
 					hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(oprnd), "empty message send list");
+					return -1;
+
+				case HAK_CONCODE_RANGE:
+					hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(oprnd), "empty range expression");
 					return -1;
 
 				case HAK_CONCODE_PLIST:
@@ -6225,6 +6246,7 @@ redo:
 		case HAK_CNODE_TRPCOLONS:
 		case HAK_CNODE_DBLCOLONS:
 		case HAK_CNODE_COLON:
+		case HAK_CNODE_RANGE:
 		default:
 			hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(oprnd),
 				"'%.*js' prohibited in this context",
@@ -6267,6 +6289,9 @@ static int compile_object_r (hak_t* hak)
 
 			case HAK_CONCODE_DLIST:
 				return compile_cons_dlist_expression(hak, oprnd, cf->u.obj_r.nrets);
+
+			case HAK_CONCODE_RANGE:
+				return compile_cons_range_expression(hak, oprnd, cf->u.obj_r.nrets);
 
 			case HAK_CONCODE_PLIST:
 				return compile_cons_plist_expression(hak, oprnd, cf->u.obj_r.nrets);

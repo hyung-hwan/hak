@@ -72,6 +72,7 @@ check_ERRORS = \
 	hnd-5001.err \
 	liberal-5001.err \
 	loop-5001.err \
+	range-5001.err \
 	mlist-5001.err \
 	send-5001.err \
 	sig-5001.err \

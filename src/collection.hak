@@ -683,10 +683,15 @@ class SortedCollection: OrderedCollection (_sortBlock) {
 ## ---------------------------------------------------------------------------
 ## The numbers from start to stop in steps of step - (1:to 5), (10:toBy 0 -2)
 class Interval: IndexedCollection (_start _stop _step) {
-	fun[#class] fromTo(start stop) { return (self:fromToBy start stop 1) }
+
+	fun[#class] fromTo(start stop) {
+		return (self:fromToBy start stop 1)
+	}
 
 	fun[#ci] fromToBy(start stop step) {
-		if (= step 0) { throw "the step of an Interval cannot be zero" }
+		if (= step 0) {
+			throw "the step of an Interval cannot be zero"
+		}
 		self._start := start
 		self._stop := stop
 		self._step := step
@@ -703,22 +708,40 @@ class Interval: IndexedCollection (_start _stop _step) {
 	}
 
 	fun at(index) {
-		if (or (< index 0) (>= index (self:size))) { throw (sprintf "index %O out of range" index) }
+		if (or (< index 0) (>= index (self:size))) {
+			throw (sprintf "index %O out of range" index)
+		}
 		return (+ self._start (* index self._step))
 	}
 
-	fun atPut(index value) { throw "an Interval cannot be changed" }
-	fun add(obj) { throw "an Interval cannot grow" }
-	fun removeIfAbsent(obj block) { throw "an Interval cannot shrink" }
+	fun atPut(index value) {
+		throw "an Interval cannot be changed"
+	}
 
-	fun slice(index count) { return (self:copyFromTo index (- (+ index count) 1)) }
-	fun _newOfSize(n) { return (core.basicNew Array n) }
+	fun add(obj) {
+		throw "an Interval cannot grow"
+	}
+
+	fun removeIfAbsent(obj block) {
+		throw "an Interval cannot shrink"
+	}
+
+	fun slice(index count) {
+		return (self:copyFromTo index (- (+ index count) 1))
+	}
+
+	fun _newOfSize(n) {
+		return (core.basicNew Array n)
+	}
 
 	fun iterate(block) {
 		| i n |
 		i := 0
 		n := (self:size)
-		while (< i n) { block (+ self._start (* i self._step)); i := (+ i 1) }
+		while (< i n) {
+			block (+ self._start (* i self._step))
+			i := (+ i 1)
+		}
 		return self
 	}
 }

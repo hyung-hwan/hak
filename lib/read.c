@@ -77,6 +77,7 @@ static struct voca_t
 	{  5, { 'c','a','t','c','h'                                           } },
 	{  5, { 'b','r','e','a','k'                                           } },
 	{  8, { 'c','o','n','t','i','n','u','e'                               } },
+	{  3, { 'f','o','r'                                                   } },
 	{  4, { 'l','o','o','p'                                               } },
 	{  5, { 'u','n','t','i','l'                                           } },
 	{  5, { 'w','h','i','l','e'                                           } },
@@ -95,6 +96,7 @@ static struct voca_t
 	{  4, { '(',':',' ',')'  /* MLIST */                                  } },
 	{  4, { '(',':','=',')'  /* ALIST - x := y */                         } },
 	{  4, { '(','B','O',')'  /* BLIST - x binop y */                      } },
+	{  4, { '(','.','<',')'  /* RANGE - from .< to */                     } },
 	{  4, { '(','-','>',')'  /* PLIST - in -> .. -> out */                } },
 	{  3, { '{',' ','}'      /* BLOCK */                                  } },
 	{  4, { '#','[',' ',']'  /* ARRAY */                                  } },
@@ -149,6 +151,7 @@ enum voca_id_t
 	VOCA_KW_CATCH,
 	VOCA_KW_BREAK,
 	VOCA_KW_CONTINUE,
+	VOCA_KW_FOR,
 	VOCA_KW_LOOP,
 	VOCA_KW_UNTIL,
 	VOCA_KW_WHILE,
@@ -167,6 +170,7 @@ enum voca_id_t
 	VOCA_MLIST,
 	VOCA_ALIST, /* assignment list */
 	VOCA_BLIST, /* just fake entry */
+	VOCA_RANGE, /* range list */
 	VOCA_PLIST, /* piping list */
 	VOCA_BLOCK,
 	VOCA_ARRAY,
@@ -196,14 +200,15 @@ enum list_flag_t
 	COLONED      = (1 << 3),
 	COLONEQED    = (1 << 4),
 	BINOPED      = (1 << 5),
-	PIPOPED      = (1 << 6),
+	RANGED       = (1 << 6),
+	PIPOPED      = (1 << 7),
 
-	CLOSED       = (1 << 7),
-	JSON         = (1 << 8),
-	DATA_LIST    = (1 << 9),
-	AUTO_FORGED  = (1 << 10),  /* automatically added list. only applicable to XLIST */
-	AT_BEGINNING = (1 << 11),
-	GLUED_CALL   = (1 << 12)   /* a glued '(' turned an item of this list into a call - e.g. printf("hello\n") */
+	CLOSED       = (1 << 8),
+	JSON         = (1 << 9),
+	DATA_LIST    = (1 << 10),
+	AUTO_FORGED  = (1 << 11),  /* automatically added list. only applicable to XLIST */
+	AT_BEGINNING = (1 << 12),
+	GLUED_CALL   = (1 << 13)   /* a glued '(' turned an item of this list into a call - e.g. printf("hello\n") */
 
 	/* TOTAL 16 items are allowed for LIST_FLAG_GET_CONCODE() and LIST_FLAG_SET_CONCODE().
 	 * they reserve lower 16 bits as flag bits.*/
@@ -224,6 +229,7 @@ static struct
 	HAK_AID(HAK_CONCODE_MLIST)     { HAK_TOK_RPAREN, HAK_SYNERR_RPAREN, VOCA_MLIST }, /* MLIST     (obj:message) */
 	HAK_AID(HAK_CONCODE_ALIST)     { HAK_TOK_RPAREN, HAK_SYNERR_RPAREN, VOCA_ALIST }, /* ALIST     (var:=value) */
 	HAK_AID(HAK_CONCODE_BLIST)     { HAK_TOK_RPAREN, HAK_SYNERR_RPAREN, VOCA_BLIST }, /* BLIST     (x + y) */
+	HAK_AID(HAK_CONCODE_RANGE)     { HAK_TOK_RPAREN, HAK_SYNERR_RPAREN, VOCA_RANGE }, /* RANGE     (x .< y) */
 	HAK_AID(HAK_CONCODE_PLIST)     { HAK_TOK_RPAREN, HAK_SYNERR_RPAREN, VOCA_PLIST }, /* PLIST     (x -> .. -> y) */
 	HAK_AID(HAK_CONCODE_BLOCK)     { HAK_TOK_RBRACE, HAK_SYNERR_RBRACE, VOCA_BLOCK }, /* BLOCK     { } */
 	HAK_AID(HAK_CONCODE_ARRAY)     { HAK_TOK_RBRACK, HAK_SYNERR_RBRACK, VOCA_ARRAY }, /* ARRAY     #[ ] */
@@ -599,7 +605,8 @@ static int classify_ident_token (hak_t* hak, const hak_oocs_t* v, const hak_loc_
 		{ VOCA_KW_CATCH,    HAK_TOK_CATCH    },
 		{ VOCA_KW_BREAK,    HAK_TOK_BREAK    },
 		{ VOCA_KW_CONTINUE, HAK_TOK_CONTINUE },
-		{ VOCA_KW_LOOP,     HAK_TOK_LOOP    },
+		{ VOCA_KW_FOR,      HAK_TOK_FOR      },
+		{ VOCA_KW_LOOP,     HAK_TOK_LOOP     },
 		{ VOCA_KW_UNTIL,    HAK_TOK_UNTIL    },
 		{ VOCA_KW_WHILE,    HAK_TOK_WHILE    },
 		{ VOCA_KW_RETURN,   HAK_TOK_RETURN   },
@@ -637,12 +644,14 @@ static int classify_ident_token (hak_t* hak, const hak_oocs_t* v, const hak_loc_
 
 	if (binop_char_count == v->len)
 	{
+#if 1
 		if (binop_char_count == 2 && v->ptr[0] == '-' && v->ptr[1] == '>')
 		{
 			/* "->" - special operator for piping */
 			*tok_type = HAK_TOK_PIPOP;
 			return 0;
 		}
+#endif
 
 		*tok_type = HAK_TOK_BINOP;
 		return 0;
@@ -750,6 +759,7 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 	hak_rstl_t* rstl;
 	hak_cnode_t* head, * tail;
 	hak_oow_t count;
+	hak_oow_t opcount;
 	hak_loc_t loc;
 	int fv;
 	hak_concode_t concode;
@@ -761,6 +771,7 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 	head = rstl->head;
 	tail = rstl->tail;
 	count = rstl->count;
+	opcount = rstl->opcount;
 	fv = rstl->flagv;
 	loc = rstl->loc;
 	concode = (hak_concode_t)LIST_FLAG_GET_CONCODE(fv);
@@ -768,7 +779,7 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 	hak->c->r.st = rstl->prev; /* pop off  */
 	hak_freemem(hak, rstl); /* dispose of the stack node */
 
-	if (fv & (COMMAED | COLONED | COLONEQED | BINOPED | PIPOPED))
+	if (fv & (COMMAED | COLONED | COLONEQED | BINOPED | RANGED | PIPOPED))
 	{
 		/* no item after , : := or various binary operators */
 		if (concode == HAK_CONCODE_MLIST ||
@@ -816,6 +827,17 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 			else
 				hak_setsynerrbfmt(hak, HAK_SYNERR_COMMANOVALUE, TOKEN_LOC(hak), "no valid token after colon");
 		}
+		goto oops;
+	}
+	else if (concode == HAK_CONCODE_PLIST && count != opcount + 1)
+	{
+		/* a -> b c
+		 * a b -> c */
+		hak_cnode_t* tmp;
+		tmp = HAK_CNODE_CONS_CAR(tail);
+		/* TODO: this error message isn't accurate for the second case */
+		hak_setsynerrbfmt(hak, HAK_SYNERR_NOVALUE, TOKEN_LOC(hak),
+			"redundant operand without piping operator around '%.*js'", HAK_CNODE_GET_TOKLEN(tmp), HAK_CNODE_GET_TOKPTR(tmp));
 		goto oops;
 	}
 
@@ -1004,14 +1026,48 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 			concode = HAK_CONCODE_XLIST;
 		#endif
 		}
+		else if (concode == HAK_CONCODE_PLIST)
+		{
+			hak_cnode_t* x;
+
+			if (count > 3)
+			{
+				x = HAK_CNODE_CONS_CAR(tail);
+				hak_setsynerrbfmt(hak, HAK_SYNERR_NOVALUE, HAK_CNODE_GET_LOC(x),
+					"redundant operand '%.*js'", HAK_CNODE_GET_TOKLEN(x), HAK_CNODE_GET_TOKPTR(x));
+				goto oops;
+			}
+		}
+		else if (concode == HAK_CONCODE_RANGE)
+		{
+			/* the markers are kept in the list, so a complete range is
+			 *   from MARKER to          - 3 items
+			 *   from MARKER to .. step  - 5 items
+			 * can_range_list() has already ensured a marker sits at each of the
+			 * even positions. only the trailing operand may be missing. */
+			hak_cnode_t* x;
+
+			if (count != 3 && count != 5)
+			{
+				x = HAK_CNODE_CONS_CAR(tail);
+				if (HAK_CNODE_IS_RANGE(x))
+				{
+					/* for example, (1 .< 10 ..) */
+					hak_setsynerrbfmt(hak, HAK_SYNERR_NOVALUE, HAK_CNODE_GET_LOC(x),
+						"no operand after range operator '%.*js'", HAK_CNODE_GET_TOKLEN(x), HAK_CNODE_GET_TOKPTR(x));
+				}
+				else
+				{
+					/* for example, (1 .< 10 20) */
+					hak_setsynerrbfmt(hak, HAK_SYNERR_NOVALUE, HAK_CNODE_GET_LOC(x),
+						"redundant operand '%.*js'", HAK_CNODE_GET_TOKLEN(x), HAK_CNODE_GET_TOKPTR(x));
+				}
+				goto oops;
+			}
+		}
 
 		HAK_CNODE_CONS_CONCODE(head) = concode;
 		if (fv & AUTO_FORGED) HAK_CNODE_GET_FLAGS(head) |= HAK_CNODE_AUTO_FORGED;
-	}
-	else if (concode == HAK_CONCODE_PLIST)
-	{
-/* TODO */
-/*hak_logbfmt(hak, HAK_LOG_STDERR, "PLIST %hs:%d", __FILE__, __LINE__);*/
 	}
 	else
 	{
@@ -1059,7 +1115,7 @@ static HAK_INLINE int can_comma_list (hak_t* hak)
 	if (rstl->count == 1) rstl->flagv |= JSON;
 	else if (!(rstl->flagv & JSON)) return 0;
 
-	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED | PIPOPED)) return 0;
+	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED | RANGED | PIPOPED)) return 0;
 
 	cc = (hak_concode_t)LIST_FLAG_GET_CONCODE(rstl->flagv);
 	if (cc == HAK_CONCODE_DIC)
@@ -1104,7 +1160,7 @@ static HAK_INLINE int can_colon_list (hak_t* hak)
 	}
 
 	/* multiple single-colons - e.g. a::b outside a dictionary */
-	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED | PIPOPED)) return 0;
+	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED | RANGED | PIPOPED)) return 0;
 
 	if (cc != HAK_CONCODE_DIC)
 	{
@@ -1196,7 +1252,7 @@ static HAK_INLINE int can_coloneq_list (hak_t* hak)
 	if (rstl->count <= 0 || rstl->count >= 2) return 0; /* allowed after the first item only */
 
 	/* repeated delimiters - e.g (a := := ...)   (a : := ... )  */
-	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED | PIPOPED)) return 0;
+	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED | RANGED | PIPOPED)) return 0;
 
 	cc = (hak_concode_t)LIST_FLAG_GET_CONCODE(rstl->flagv);
 
@@ -1245,7 +1301,7 @@ static HAK_INLINE int can_binop_list (hak_t* hak)
 	}
 
 	/* repeated delimiters - e.g (a ++ ++ ...)   (a : := ... )  */
-	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED | PIPOPED)) return 0;
+	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED | RANGED | PIPOPED)) return 0;
 
 	if (cc == HAK_CONCODE_BLIST)
 	{
@@ -1307,6 +1363,52 @@ static HAK_INLINE int can_binop_list (hak_t* hak)
 	return 2;
 }
 
+static HAK_INLINE int tok_to_range_kind (hak_tok_type_t tt)
+{
+	switch (tt)
+	{
+		case HAK_TOK_DOTLT: return HAK_CNODE_RANGE_LT;
+		case HAK_TOK_DOTLE: return HAK_CNODE_RANGE_LE;
+		case HAK_TOK_DOTGT: return HAK_CNODE_RANGE_GT;
+		case HAK_TOK_DOTGE: return HAK_CNODE_RANGE_GE;
+		default:            return HAK_CNODE_RANGE_STEP;
+	}
+}
+
+/* a range is ( from MARKER to ) or ( from MARKER to .. step ) where MARKER is
+ * one of .< .<= .> .>= - the comparison the loop it describes will perform.
+ * the markers are chained into the list the way a binary selector is, so a
+ * complete range holds 3 or 5 items. leave_list() checks that arity. */
+static HAK_INLINE int can_range_list (hak_t* hak, hak_tok_type_t tt)
+{
+	hak_rstl_t* rstl;
+	hak_concode_t cc;
+
+	HAK_ASSERT(hak, hak->c->r.st != HAK_NULL);
+	rstl = hak->c->r.st;
+	cc = (hak_concode_t)LIST_FLAG_GET_CONCODE(rstl->flagv);
+
+	/* repeated delimiters - e.g. (a : .< ...) */
+	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED | RANGED | PIPOPED)) return 0;
+
+	if (tt == HAK_TOK_DBLDOTS)
+	{
+		/* the step marker is allowed only after a complete range. this is also
+		 * what rejects a bare (10 .. 20) - that list is still an XLIST. */
+		if (cc != HAK_CONCODE_RANGE || rstl->count != 3) return 0;
+	}
+	else
+	{
+		/* a comparison marker turns a plain list into a range.
+		 * allowed after the first item only. */
+		if (cc != HAK_CONCODE_XLIST || rstl->count != 1) return 0;
+		LIST_FLAG_SET_CONCODE(rstl->flagv, HAK_CONCODE_RANGE);
+	}
+
+	rstl->flagv |= RANGED;
+	return 1;
+}
+
 static HAK_INLINE int can_pipop_list (hak_t* hak)
 {
 	hak_rstl_t* rstl;
@@ -1331,7 +1433,7 @@ static HAK_INLINE int can_pipop_list (hak_t* hak)
 	 * the state transition is:
 	 *   the first "->" is seen: cc must be XLIST. flags set with POPOPED, concode set to PLIST
 	 *   the second "->" is seen: cc must be PLIST. */
-	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED /*| PIPOPED*/)) return 0;
+	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED | RANGED /*| PIPOPED*/)) return 0;
 
 	cc = (hak_concode_t)LIST_FLAG_GET_CONCODE(rstl->flagv);
 
@@ -1348,7 +1450,7 @@ static HAK_INLINE void clear_comma_colon_binop_flag (hak_t* hak)
 	hak_rstl_t* rstl;
 	HAK_ASSERT(hak, hak->c->r.st != HAK_NULL);
 	rstl = hak->c->r.st;
-	rstl->flagv &= ~(COMMAED | COLONED | COLONEQED | BINOPED | PIPOPED);
+	rstl->flagv &= ~(COMMAED | COLONED | COLONEQED | BINOPED | RANGED | PIPOPED);
 }
 
 static int chain_to_list (hak_t* hak, hak_cnode_t* obj, hak_loc_t* loc)
@@ -1815,6 +1917,7 @@ static hak_cnode_type_t kw_to_cnode_type (int tok_type)
 		HAK_CNODE_CATCH,
 		HAK_CNODE_BREAK,
 		HAK_CNODE_CONTINUE,
+		HAK_CNODE_FOR,
 		HAK_CNODE_LOOP,
 		HAK_CNODE_UNTIL,
 		HAK_CNODE_WHILE,
@@ -2121,7 +2224,7 @@ static int feed_process_token (hak_t* hak)
 			    hak->c->r.st && hak->c->r.st->count >= 1 && /* it read at least one item in the current list */
 			    hak->c->feed.lx.gap == 0 && /* no gap */
 			    tok_ends_a_value(hak->c->ptok.type) && /* the previous token was a proper callable item */
-			    !(hak->c->r.st->flagv & (COMMAED | COLONED | COLONEQED | BINOPED | PIPOPED)) &&
+			    !(hak->c->r.st->flagv & (COMMAED | COLONED | COLONEQED | BINOPED | RANGED | PIPOPED)) &&
 			    !HAK_CNODE_IS_TYPED(hak->c->r.st->head->u.cons.car, HAK_CNODE_FUN) &&
 			    !HAK_CNODE_IS_TYPED(hak->c->r.st->head->u.cons.car, HAK_CNODE_CLASS))
 			{
@@ -2306,7 +2409,23 @@ static int feed_process_token (hak_t* hak)
 			goto auto_xlist;
 		}
 
+		case HAK_TOK_DOTLT:
+		case HAK_TOK_DOTLE:
+		case HAK_TOK_DOTGT:
+		case HAK_TOK_DOTGE:
+		case HAK_TOK_DBLDOTS:
+			if (frd->level <= 0 || !can_range_list(hak, TOKEN_TYPE(hak)))
+			{
+				hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, TOKEN_LOC(hak),
+					"prohibited range operator around '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
+				goto oops;
+			}
+			frd->obj = hak_makecnoderange(hak, 0, TOKEN_LOC(hak), TOKEN_NAME(hak), tok_to_range_kind(TOKEN_TYPE(hak)));
+			goto auto_xlist;
+
 		case HAK_TOK_PIPOP:
+		{
+			hak_rstl_t* rstl;
 			if (frd->level <= 0 || !can_pipop_list(hak))
 			{
 				/* TODO: new error code HAK_SYNERR_PIPOPBANNED? */
@@ -2314,7 +2433,11 @@ static int feed_process_token (hak_t* hak)
 					"prohibited piping operator around '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 				goto oops;
 			}
+
+			rstl = hak->c->r.st;
+			rstl->opcount++;
 			goto ok;
+		}
 
 		case HAK_TOK_COMMA:
 			if (frd->level <= 0 || !can_comma_list(hak))
@@ -2351,7 +2474,8 @@ static int feed_process_token (hak_t* hak)
 
 			/* if auto-forged */
 			HAK_ASSERT(hak, concode == HAK_CONCODE_XLIST || concode == HAK_CONCODE_MLIST ||
-			                concode == HAK_CONCODE_ALIST || concode == HAK_CONCODE_BLIST || concode == HAK_CONCODE_PLIST);
+			                concode == HAK_CONCODE_ALIST || concode == HAK_CONCODE_BLIST ||
+			                concode == HAK_CONCODE_RANGE || concode == HAK_CONCODE_PLIST);
 
 			frd->obj = leave_list(hak, &frd->list_loc, &frd->flagv, &oldflagv);
 
@@ -2480,6 +2604,7 @@ static int feed_process_token (hak_t* hak)
 		case HAK_TOK_CATCH:
 		case HAK_TOK_BREAK:
 		case HAK_TOK_CONTINUE:
+		case HAK_TOK_FOR:
 		case HAK_TOK_LOOP:
 		case HAK_TOK_UNTIL:
 		case HAK_TOK_WHILE:
@@ -2749,8 +2874,18 @@ static delim_token_t delim_token_tab[] =
 	{ ",",        1, HAK_TOK_COMMA },
 
 	{ ".",        1, HAK_TOK_DOT },
-	{ "..",       2, HAK_TOK_DBLDOTS },
+	{ "..",       2, HAK_TOK_DBLDOTS }, /* the step marker of a range expression */
 	{ "...",      3, HAK_TOK_ELLIPSIS }, /* for variable arguments */
+
+	/* the range markers. rows sharing a prefix must stay adjacent because
+	 * find_delim_token_char() stops at the first row that fails to match once
+	 * one has matched. every prefix must itself be a row too - the no-match
+	 * branch of flx_delim_token() wraps up with whatever row_start points at,
+	 * without checking that row is complete. */
+	{ ".<",       2, HAK_TOK_DOTLT }, /* ascending, exclusive end */
+	{ ".<=",      3, HAK_TOK_DOTLE }, /* ascending, inclusive end */
+	{ ".>",       2, HAK_TOK_DOTGT }, /* descending, exclusive end */
+	{ ".>=",      3, HAK_TOK_DOTGE }, /* descending, inclusive end */
 
 	/* the tokens beginning with a colon must be handled separately in flx_colon_token()
 	 * becuase some characters(= only as of now) after the colon are binop charaters, i

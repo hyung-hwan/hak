@@ -3040,7 +3040,7 @@ static HAK_INLINE int do_throw (hak_t* hak, hak_oop_t val, hak_ooi_t ip)
 
 #if defined(HAK_ENABLE_STACK_CONTEXT)
 	/* rewind the frame stack to the handler's context */
-	unwind_frame_stack_to(hak, hak->active_context, (hak_oop_t)catch_ctx);
+	unwind_frame_stack_to(hak, (hak_oop_t)hak->active_context, (hak_oop_t)catch_ctx);
 #endif
 	SWITCH_ACTIVE_CONTEXT(hak, catch_ctx);
 	hak->ip = catch_ip; /* override the instruction pointer */
@@ -3789,7 +3789,7 @@ static HAK_INLINE int do_return_from_block (hak_t* hak)
 		 * is not the initial context of a process */
 		hak->ip = -1; /* mark context dead. saved into hak->active_context->ip in SWITCH_ACTIVE_CONTEXT */
 	#if defined(HAK_ENABLE_STACK_CONTEXT)
-		unwind_frame_stack_to(hak, hak->active_context, HAK_CTX_GET_SENDER(hak, hak->active_context));
+		unwind_frame_stack_to(hak, (hak_oop_t)hak->active_context, HAK_CTX_GET_SENDER(hak, hak->active_context));
 	#endif
 		SWITCH_ACTIVE_CONTEXT(hak, (hak_oop_context_t)HAK_CTX_GET_SENDER(hak, hak->active_context));
 		return 0; /* normal return */
@@ -3957,7 +3957,7 @@ static HAK_INLINE int do_return_from_home (hak_t* hak, hak_oop_t return_value, h
 		{
 			hak->ip = -1; /* mark context dead. saved into hak->active_context->ip in SWITCH_ACTIVE_CONTEXT */
 		#if defined(HAK_ENABLE_STACK_CONTEXT)
-			unwind_frame_stack_to(hak, hak->active_context, HAK_CTX_GET_SENDER(hak, hak->active_context));
+			unwind_frame_stack_to(hak, (hak_oop_t)hak->active_context, HAK_CTX_GET_SENDER(hak, hak->active_context));
 		#endif
 			SWITCH_ACTIVE_CONTEXT(hak, (hak_oop_context_t)HAK_CTX_GET_SENDER(hak, hak->active_context));
 		}
@@ -3988,7 +3988,7 @@ static HAK_INLINE int do_return_from_home (hak_t* hak, hak_oop_t return_value, h
 		HAK_ASSERT(hak, (hak_oop_t)HAK_CTX_GET_SENDER(hak, hak->active_context) == (hak_oop_t)sender);
 		hak->ip = -1; /* mark context dead. saved into hak->active_context->ip in SWITCH_ACTIVE_CONTEXT */
 	#if defined(HAK_ENABLE_STACK_CONTEXT)
-		unwind_frame_stack_to(hak, hak->active_context, HAK_CTX_GET_SENDER(hak, hak->active_context));
+		unwind_frame_stack_to(hak, (hak_oop_t)hak->active_context, HAK_CTX_GET_SENDER(hak, hak->active_context));
 	#endif
 		SWITCH_ACTIVE_CONTEXT(hak, (hak_oop_context_t)HAK_CTX_GET_SENDER(hak, hak->active_context));
 		HAK_STACK_PUSH(hak, return_value);

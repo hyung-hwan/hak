@@ -96,6 +96,14 @@ hak_cnode_t* hak_makecnodecolon (hak_t* hak, int flags, const hak_loc_t* loc, co
 	return hak_makecnode(hak, HAK_CNODE_COLON, flags, loc, tok);
 }
 
+hak_cnode_t* hak_makecnoderange (hak_t* hak, int flags, const hak_loc_t* loc, const  hak_oocs_t* tok, int kind)
+{
+	hak_cnode_t* c = hak_makecnode(hak, HAK_CNODE_RANGE, flags, loc, tok);
+	if (HAK_UNLIKELY(!c)) return HAK_NULL;
+	c->u.range.kind = kind;
+	return c;
+}
+
 hak_cnode_t* hak_makecnodecharlit (hak_t* hak, int flags, const hak_loc_t* loc, const  hak_oocs_t* tok, hak_ooch_t v)
 {
 	hak_cnode_t* c = hak_makecnode(hak, HAK_CNODE_CHARLIT, flags, loc, tok);
