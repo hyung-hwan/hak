@@ -59,3 +59,46 @@ chk (= caught 1) "and so is a negative one - the step is a magnitude"
 
 chk (= ((Interval:fromTo 1 5):size) 5) "fromTo still includes its end"
 chk (= ((Interval:fromToBy 10 0 -2):size) 6) "fromToBy still takes a signed step"
+
+## --- the markers need no surrounding space ---------------------------------
+##
+## a decimal point is part of a number only when a digit follows it, so the
+## point that opens a marker ends the number before it.
+
+chk (= ((1.<5):size) 4) "an exclusive marker needs no space"
+chk (= ((1.<=5):size) 5) "nor does an inclusive one"
+chk (= ((5.>1):size) 4) "nor a descending one"
+chk (= ((5.>=1):size) 5) "nor a descending inclusive one"
+chk (= ((0.<10..2):size) 5) "and the step marker needs none either"
+
+chk (= ((0x1.<0x10):size) 15) "a radixed number never takes a decimal point"
+chk (= ((16rFF.<16r1FF):size) 256) "whatever the radix is"
+
+## a digit after the point still makes a floating-point number
+
+chk (= 1.5 (+ 1 0.5)) "a digit after the point still builds a float"
+chk (eqv? (core.classOf (1.5.<4.5)) Interval) "and such a float can open a range too"
+
+## --- a decimal range counts and walks like an integer one -------------------
+##
+## div and mod take integers only, so size() brackets the quotient by doubling
+## and bisects it when either the span or the step is a decimal. hak's decimals
+## are fixed-point, so (0.0 .< 1.0 .. 0.1) lands on exactly ten elements rather
+## than the nine or eleven a binary float would drift into.
+
+chk (= ((1.5 .< 4.5):size) 3) "a decimal range has a size"
+chk (= ((1.5 .<= 4.5):size) 4) "and an inclusive end still adds one"
+chk (= ((1.5 .< 4.5 .. 0.7):size) 5) "a decimal step divides the span"
+chk (= ((4.5 .> 1.5 .. 0.7):size) 5) "and does so descending too"
+chk (= ((0.0 .< 1.0 .. 0.1):size) 10) "a tenth step divides one exactly"
+chk (= ((0.0 .<= 1.0 .. 0.1):size) 11) "and takes the end in when asked"
+chk (= ((5.0 .< 5.0):size) 0) "an empty decimal range is empty"
+chk (= ((2.5 .<= 2.5 .. 0.5):size) 1) "a single-element one holds just the start"
+
+chk (= ((1.5 .< 4.5):at 2) 3.5) "at reaches a decimal element"
+
+s := 0
+(1.5 .< 4.5 .. 0.7):iterate (fun(e) { s := (+ s e) })
+chk (= s 14.5) "iterate visits 1.5 2.2 2.9 3.6 4.3"
+
+chk (= (((0.0 .< 1.0 .. 0.25):toOrderedCollection):size) 4) "and it converts like any collection"

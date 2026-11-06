@@ -1180,6 +1180,7 @@ enum hak_flx_state_t
 	HAK_FLX_HMARKED_IDENT,  /* literal symbol */
 	HAK_FLX_PLAIN_IDENT,    /* plain identifier */
 	HAK_FLX_PLAIN_NUMBER,   /* plain number */
+	HAK_FLX_PLAIN_NUMBER_DOT, /* plain number followed by an uncommitted decimal point */
 	HAK_FLX_QUOTED_TOKEN,   /* string, character */
 	HAK_FLX_SIGNED_TOKEN,   /* prefixed with + or - */
 	HAK_FLX_BC_PREFIX       /* b or C prefix before " or ' */

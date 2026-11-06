@@ -717,6 +717,27 @@ class Interval: IndexedCollection (_start _stop _step _kind) {
 	fun descending() { return (>= self._kind 2) }
 	fun inclusive() { return (= (mod self._kind 2) 1) }
 
+	## the largest n with (* n step) <= span. div takes integers only, so a
+	## decimal span or step is bracketed by doubling and then bisected - every
+	## value in the search is an integer and only the comparison sees the
+	## decimal. _step is positive by construction, which is what terminates
+	## the doubling.
+	fun _floorquo(span step) {
+		| lo hi mid |
+		if (and (integer? span) (integer? step)) { return (div span step) }
+		lo := 0
+		hi := 1
+		while (<= (* hi step) span) {
+			lo := hi
+			hi := (* hi 2)
+		}
+		while (< (+ lo 1) hi) {
+			mid := (div (+ lo hi) 2)
+			if (<= (* mid step) span) { lo := mid } else { hi := mid }
+		}
+		return lo
+	}
+
 	fun size() {
 		| span n |
 		if (self:descending) {
@@ -725,10 +746,11 @@ class Interval: IndexedCollection (_start _stop _step _kind) {
 			span := (- self._stop self._start)
 		}
 		if (< span 0) { return 0 }
-		n := (div span self._step)
+		n := (self:_floorquo span self._step)
 		if (self:inclusive) { return (+ n 1) }
 		## an exclusive end is skipped only when the step lands on it exactly
-		if (= (mod span self._step) 0) { return n }
+		## - with a decimal step that is a multiplication, not a remainder
+		if (= (* n self._step) span) { return n }
 		return (+ n 1)
 	}
 

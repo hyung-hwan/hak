@@ -3886,16 +3886,10 @@ static int flx_plain_number (hak_t* hak, hak_ooci_t c) /* number */
 	{
 		if (!pn->fpdec && c == '.')
 		{
-			if (pn->radix != 10)
-			{
-				hak_setsynerrbfmt(hak, HAK_SYNERR_NUMLIT, FLX_LOC(hak),
-					"invalid use of decimal point after radixed number '%.*js'",
-					TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
-				return -1;
-			}
-			pn->fpdec = 1;
-			pn->tok_type = HAK_TOK_FPDECLIT;
-			ADD_TOKEN_CHAR(hak, c);
+			/* don't commit the decimal point to the token yet. whether it
+			 * belongs to this number depends on the character that follows.
+			 * see flx_plain_number_dot(). */
+			FEED_CONTINUE(hak, HAK_FLX_PLAIN_NUMBER_DOT);
 			goto consumed;
 		}
 
@@ -3903,13 +3897,6 @@ static int flx_plain_number (hak_t* hak, hak_ooci_t c) /* number */
 		{
 			hak_setsynerrbfmt(hak, HAK_SYNERR_NUMLIT, TOKEN_LOC(hak),
 				"invalid numeric literal with no digit after '%.*js'",
-				TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
-			return -1;
-		}
-		else if (pn->fpdec && pn->digit_count[1] == 0)
-		{
-			hak_setsynerrbfmt(hak, HAK_SYNERR_NUMLIT, TOKEN_LOC(hak),
-				"invalid numeric literal with no digit after decimal point '%.*js'",
 				TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 			return -1;
 		}
@@ -3987,6 +3974,41 @@ consumed:
 	return 1;
 
 not_consumed:
+	return 0;
+}
+
+static int flx_plain_number_dot (hak_t* hak, hak_ooci_t c) /* number with a pending decimal point */
+{
+	hak_flx_pn_t* pn = FLX_PN(hak);
+
+	/* a decimal point has been read but not added to the token yet. the number
+	 * continues through it only if a decimal digit follows. a radixed number
+	 * never takes a decimal point, so it always ends here. this is what makes
+	 * (1.<2) lex like (1 .< 2) instead of failing on '1.' */
+	if (pn->radix == 10 && is_radixed_digit_char(c, 10))
+	{
+		pn->fpdec = 1;
+		pn->tok_type = HAK_TOK_FPDECLIT;
+		ADD_TOKEN_CHAR(hak, '.');
+		FEED_CONTINUE(hak, HAK_FLX_PLAIN_NUMBER);
+		return flx_plain_number(hak, c); /* let the normal state count the digit */
+	}
+
+	if (pn->digit_count[0] == 0)
+	{
+		hak_setsynerrbfmt(hak, HAK_SYNERR_NUMLIT, TOKEN_LOC(hak),
+			"invalid numeric literal with no digit after '%.*js'",
+			TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
+		return -1;
+	}
+
+	/* the number ends before the decimal point, and the point begins the next
+	 * token. restart the lexer at it as if feed_char('.') had been called, and
+	 * report c as not consumed so that it gets fed into the new state. */
+	FEED_WRAP_UP(hak, pn->tok_type);
+	reset_flx_token(hak);
+	TOKEN_LOC(hak)->colm--; /* the decimal point is one character before c */
+	if (_flx_start(hak, '.') <= -1) return -1;
 	return 0;
 }
 
@@ -4279,6 +4301,7 @@ static int feed_char (hak_t* hak, hak_ooci_t c)
 
 		case HAK_FLX_PLAIN_IDENT:      return flx_plain_ident(hak, c);
 		case HAK_FLX_PLAIN_NUMBER:     return flx_plain_number(hak, c);
+		case HAK_FLX_PLAIN_NUMBER_DOT: return flx_plain_number_dot(hak, c);
 		case HAK_FLX_QUOTED_TOKEN:     return flx_quoted_token(hak, c);
 		case HAK_FLX_SIGNED_TOKEN:     return flx_signed_token(hak, c);
 		case HAK_FLX_BC_PREFIX:        return flx_bc_prefix(hak, c);

@@ -26,7 +26,19 @@ $include 10    ##ERROR: syntax error - '$include' target expected in place of '1
 
 ---
 
-0x12.34   ##ERROR: syntax error - invalid use of decimal point after radixed number '0x12'
+## a radixed number never takes a decimal point. the point ends the number
+## and begins the next token, so this reads as 0x12 . 34
+0x12.34   ##ERROR: syntax error - prohibited dot around '.'
+
+---
+
+## likewise, a decimal point not followed by a digit is not part of the number
+1.   ##ERROR: syntax error - prohibited dot around '.'
+
+---
+
+## the digit check still applies when the number ends at the point
+0x.5   ##ERROR: syntax error - invalid numeric literal with no digit after '0x'
 
 ---
 
