@@ -5634,6 +5634,32 @@ hak_logbfmt(hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncv
 				break;
 			}
 
+			case HAK_CODE_MAKE_INTERVAL:
+			{
+				hak_oop_t t, from, to, step;
+
+				FETCH_PARAM_CODE_TO(hak, b1); /* the range marker */
+				LOG_INST_1(hak, "make_interval %zu", b1);
+
+				step = HAK_STACK_GETTOP(hak);
+				HAK_STACK_POP(hak);
+				to = HAK_STACK_GETTOP(hak);
+				HAK_STACK_POP(hak);
+				from = HAK_STACK_GETTOP(hak);
+				HAK_STACK_POP(hak);
+
+				t = hak_makeinterval(hak, from, to, step, b1);
+				if (HAK_UNLIKELY(!t))
+				{
+					/* a step that cannot carry the range is refused the way a
+					 * division by zero is - catchable, not fatal */
+					if (do_throw_with_internal_errmsg(hak, fetched_instruction_pointer) >= 0) break;
+					goto oops_with_errmsg_supplement;
+				}
+				HAK_STACK_PUSH(hak, t);
+				break;
+			}
+
 			case HAK_CODE_POP_INTO_DIC:
 			{
 				hak_oop_t t1, t2, t3, sel;

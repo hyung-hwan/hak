@@ -874,6 +874,29 @@ struct hak_cframe_t
 			hak_loc_t start_loc;
 		} post_while;
 
+		/* COP_EMIT_MAKE_INTERVAL */
+		struct
+		{
+			int kind; /* hak_cnode_range_kind_t of the marker */
+			int step_given;
+		} interval;
+
+		/* COP_POST_FOR_FROM, COP_POST_FOR_TO, COP_POST_FOR_STEP, COP_POST_FOR_BODY */
+		struct
+		{
+			hak_cnode_t* range; /* ( from MARKER to [ .. step ] ) */
+			hak_var_info_t var_vi; /* the loop variable */
+			hak_var_info_t to_vi; /* hidden - the end of the range */
+			hak_var_info_t step_vi; /* hidden - the step */
+			int kind; /* hak_cnode_range_kind_t of the marker */
+			int step_given; /* a step was written, so it must be checked */
+			hak_ooi_t incr_pos;
+			hak_ooi_t body_pos;
+			hak_ooi_t jump_inst_pos;
+			hak_oow_t var_offset;
+			hak_loc_t start_loc;
+		} post_for;
+
 		struct
 		{
 			hak_ooi_t body_pos;
@@ -1616,6 +1639,8 @@ enum hak_bcode_t
 	/* UNUSED 0x87 */
 
 	HAK_CODE_POP_INTO_IVAR_X          = 0x88, /* 136 ## */
+
+	HAK_CODE_MAKE_INTERVAL            = 0x8D, /* 141 ## - from, to and step are on the stack; the parameter is the range marker */
 
 	HAK_CODE_PUSH_NEGONE              = 0x89, /* 137 */
 	HAK_CODE_PUSH_ZERO                = 0x8A, /* 138 */

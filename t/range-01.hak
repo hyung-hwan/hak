@@ -1,0 +1,61 @@
+## A range written outside a for header builds an Interval.
+##
+## The same notation means the same thing in both places: the marker decides
+## the direction and whether the end belongs to the range, and the step is the
+## magnitude as written. A for loop inlines it and allocates nothing; here it
+## becomes an object that answers the IndexedCollection protocol.
+
+$include-once "kernel.hak"
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+## --- size agrees with what the matching for loop visits -------------------
+
+chk (= ((1 .< 10):size) 9) ".< leaves the end out"
+chk (= ((1 .<= 10):size) 10) ".<= takes the end in"
+chk (= ((10 .> 1):size) 9) ".> counts down without the end"
+chk (= ((10 .>= 1):size) 10) ".>= counts down through the end"
+chk (= ((0 .< 10 .. 2):size) 5) "a step divides the span"
+chk (= ((10 .> 0 .. 3):size) 4) "a descending step does too - 10 7 4 1"
+chk (= ((0 .<= 10 .. 5):size) 3) "an inclusive end is counted when the step lands on it"
+chk (= ((0 .< 5 .. 2):size) 3) "an exclusive end that the step misses is not skipped"
+chk (= ((0 .< 0):size) 0) "an empty range has no elements"
+chk (= ((5 .< 0):size) 0) "a marker pointing the wrong way has none either"
+
+## --- at and iterate --------------------------------------------------------
+
+chk (= ((0 .< 10 .. 2):at 0) 0) "at 0 is the start"
+chk (= ((0 .< 10 .. 2):at 2) 4) "at walks by the step"
+chk (= ((10 .> 0 .. 3):at 2) 4) "and the other way for a descending marker"
+
+s := 0
+(0 .< 5):iterate (fun(e) { s := (+ s e) })
+chk (= s 10) "iterate visits every element"
+
+s := 0
+(10 .> 0 .. 3):iterate (fun(e) { s := (+ s e) })
+chk (= s 22) "iterate descends too - the same 10 7 4 1 the for loop walks"
+
+## --- it really is a collection ---------------------------------------------
+
+chk (= ((1 .<= 5):size) 5) "an Interval answers size"
+chk (eqv? (core.classOf (1 .< 5)) Interval) "a range builds an Interval"
+chk (= (((1 .<= 5):toOrderedCollection):size) 5) "and converts like any collection"
+
+## --- a step that cannot carry the range ------------------------------------
+
+caught := 0
+try { v := (1 .< 10 .. 0) } catch (e) { caught := 1 }
+chk (= caught 1) "a zero step is refused, as it is in a for loop"
+
+caught := 0
+try { v := (1 .< 10 .. -2) } catch (e) { caught := 1 }
+chk (= caught 1) "and so is a negative one - the step is a magnitude"
+
+## --- the older constructors still work -------------------------------------
+
+chk (= ((Interval:fromTo 1 5):size) 5) "fromTo still includes its end"
+chk (= ((Interval:fromToBy 10 0 -2):size) 6) "fromToBy still takes a signed step"

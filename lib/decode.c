@@ -682,6 +682,11 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 				LOG_INST_1 (hak, "make_dic %zu", b1);
 				break;
 
+			case HAK_CODE_MAKE_INTERVAL:
+				FETCH_PARAM_CODE_TO(hak, b1);
+				LOG_INST_1 (hak, "make_interval %zu", b1);
+				break;
+
 			case HAK_CODE_POP_INTO_DIC:
 				LOG_INST_0 (hak, "pop_into_dic");
 				break;

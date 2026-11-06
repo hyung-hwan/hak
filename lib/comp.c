@@ -795,6 +795,7 @@ static int emit_one_param_instruction (hak_t* hak, int cmd, hak_oow_t param_1, c
 		case HAK_CODE_PUSH_NEGINTLIT:
 		case HAK_CODE_PUSH_CHARLIT:
 
+		case HAK_CODE_MAKE_INTERVAL:
 		case HAK_CODE_MAKE_DIC: /* TODO: don't these need write_long2? */
 		case HAK_CODE_MAKE_ARRAY:
 		case HAK_CODE_MAKE_BYTEARRAY:
@@ -1828,7 +1829,13 @@ enum
 	COP_POST_IF_COND,
 	COP_POST_IF_BODY,
 
+	COP_EMIT_MAKE_INTERVAL,
+
 	COP_POST_LOOP,
+	COP_POST_FOR_FROM,
+	COP_POST_FOR_TO,
+	COP_POST_FOR_STEP,
+	COP_POST_FOR_BODY,
 	COP_POST_UNTIL_BODY,
 	COP_POST_UNTIL_COND,
 	COP_POST_WHILE_BODY,
@@ -2204,7 +2211,7 @@ static int compile_break (hak_t* hak, hak_cnode_t* src)
 		if (tcf->opcode == COP_EMIT_FUN) break; /* seems to cross function boundary */
 
 		if (tcf->opcode == COP_POST_UNTIL_BODY || tcf->opcode == COP_POST_WHILE_BODY ||
-		    tcf->opcode == COP_POST_LOOP)
+		    tcf->opcode == COP_POST_LOOP || tcf->opcode == COP_POST_FOR_BODY)
 		{
 			hak_ooi_t jump_inst_pos;
 			hak_cframe_t* cf;
@@ -2313,14 +2320,17 @@ static int compile_continue (hak_t* hak, hak_cnode_t* src)
 		if (tcf->opcode == COP_EMIT_FUN) break; /* seems to cross function boundary */
 
 		if (tcf->opcode == COP_POST_UNTIL_BODY || tcf->opcode == COP_POST_WHILE_BODY ||
-		    tcf->opcode == COP_POST_LOOP)
+		    tcf->opcode == COP_POST_LOOP || tcf->opcode == COP_POST_FOR_BODY)
 		{
 			hak_ooi_t jump_offset, cont_pos;
 
 			/* while and until restart at the condition. a loop has none, so
-			 * it restarts at the top of the body instead. */
-			cont_pos = (tcf->opcode == COP_POST_LOOP)?
-				tcf->u.post_loop.body_pos: tcf->u.post_while.cond_pos;
+			 * it restarts at the top of the body instead. a for restarts at
+			 * the increment, which falls through into the condition - skipping
+			 * it would leave the loop variable where it was. */
+			if (tcf->opcode == COP_POST_LOOP) cont_pos = tcf->u.post_loop.body_pos;
+			else if (tcf->opcode == COP_POST_FOR_BODY) cont_pos = tcf->u.post_for.incr_pos;
+			else cont_pos = tcf->u.post_while.cond_pos;
 
 			HAK_ASSERT(hak, hak->code.bc.len < HAK_SMOOI_MAX);
 			jump_offset = hak->code.bc.len - cont_pos + 1;
@@ -4757,6 +4767,216 @@ static int compile_while (hak_t* hak, hak_cnode_t* src, int next_cop)
 	return 0;
 }
 
+
+/* -------------------------------------------------------------------------
+ * for VAR ( from MARKER to [ .. step ] ) { body }
+ *
+ * MARKER is the comparison the loop performs, so a range in a for header
+ * compiles to the loop itself rather than to an object:
+ *
+ *       <from>;  pop_into VAR
+ *       <to>;    pop_into T_TO
+ *       <step>;  pop_into T_STEP
+ *       [ raise unless T_STEP > 0 ]
+ *       jump_forward ------------------+     skip the increment on entry
+ *  INCR:                               |
+ *       VAR := VAR +/- T_STEP          |
+ *  COND: <----------------------------+
+ *       push VAR; push T_TO; call MARKER
+ *       jump_forward_if_false ------+
+ *       pop_stacktop                |
+ *  BODY:                            |
+ *       <body>                      |
+ *       pop_stacktop                |
+ *       jump_backward to INCR       |
+ *  END: <-------------------------+
+ *
+ * the increment sits ahead of the condition rather than after the body so
+ * that continue has somewhere to jump back to. continue must run the
+ * increment, and at the point the body is compiled a forward target is not
+ * known yet. the extra jump is paid once, on entry.
+ *
+ * the end and the step go into hidden slots, so every part of the range is
+ * evaluated exactly once. the loop variable and the two hidden slots are
+ * ordinary temporaries of the enclosing function.
+ * ------------------------------------------------------------------------- */
+
+/* lay down the head of a call to a named primitive - the dummy receiver and
+ * the callee. a call pops nargs + 2 (see HAK_STACK_POPS() in activate_block()),
+ * so the receiver slot has to be there even when nothing is being sent to. the
+ * callee itself is reached by name, the way compile_symbol() reaches a global. */
+static int emit_prim_callee (hak_t* hak, const hak_bch_t* name, const hak_loc_t* srcloc)
+{
+	hak_oop_t sym, cons;
+	hak_oow_t index;
+
+	if (emit_byte_instruction(hak, HAK_CODE_PUSH_NIL, srcloc) <= -1) return -1;
+
+	sym = hak_makesymbolwithbcstr(hak, name);
+	if (HAK_UNLIKELY(!sym)) return -1;
+
+	cons = (hak_oop_t)hak_getatsysdic(hak, sym);
+	if (!cons)
+	{
+		cons = (hak_oop_t)hak_putatsysdic(hak, sym, hak->_undef);
+		if (HAK_UNLIKELY(!cons)) return -1;
+	}
+
+	if (add_literal(hak, cons, &index) <= -1) return -1;
+	return emit_one_param_instruction(hak, HAK_CODE_PUSH_OBJECT_0, index, srcloc);
+}
+
+static const hak_bch_t* range_cmp_name (int kind)
+{
+	switch (kind)
+	{
+		case HAK_CNODE_RANGE_LT: return "<";
+		case HAK_CNODE_RANGE_LE: return "<=";
+		case HAK_CNODE_RANGE_GT: return ">";
+		default:                 return ">=";
+	}
+}
+
+/* the step is a magnitude - the marker says which way the loop travels */
+static int range_kind_descends (int kind)
+{
+	return kind == HAK_CNODE_RANGE_GT || kind == HAK_CNODE_RANGE_GE;
+}
+
+/* add a temporary to the enclosing function, as compile_catch() does for its
+ * exception variable. the variable is known to be the last one added, so its
+ * position is computed rather than searched for. */
+static int add_loop_variable (hak_t* hak, const hak_cnode_t* var, const hak_bch_t* desc, hak_var_info_t* vi, hak_oow_t* offset)
+{
+	hak_funblk_info_t* fbi;
+	hak_oow_t par_tmprcnt;
+
+	*offset = hak->c->tv.s.len;
+	if (hak->c->tv.s.len > 0) (*offset)++; /* every variable but the first has a space before it */
+
+	par_tmprcnt = (hak->c->funblk.depth > 0)?
+		hak->c->funblk.info[hak->c->funblk.depth - 1].tmprcnt: 0;
+
+	vi->type = VAR_INDEXED;
+	vi->ctx_offset = 0;
+	vi->index_in_ctx = hak->c->tv.wcount - par_tmprcnt;
+	if (add_temporary_variable(hak, var, hak->c->tv.s.len, desc, HAK_NULL) <= -1) return -1;
+
+	fbi = &hak->c->funblk.info[hak->c->funblk.depth];
+	fbi->tmprlen = hak->c->tv.s.len;
+	fbi->tmprcnt = hak->c->tv.wcount;
+	fbi->tmpr_nlvars = fbi->tmpr_nlvars + 1;
+
+	return 0;
+}
+
+static int compile_for (hak_t* hak, hak_cnode_t* src)
+{
+	/* (for i (1 .< 10 .. 2) ... ) */
+	hak_cnode_t* cmd, * obj, * var, * range, * body, * from, * marker, * tmp;
+	hak_cframe_t* cf;
+	hak_var_info_t var_vi, to_vi, step_vi;
+	hak_oow_t var_offset, to_offset, step_offset;
+
+	HAK_ASSERT(hak, HAK_CNODE_IS_CONS(src));
+	HAK_ASSERT(hak, HAK_CNODE_IS_TYPED(HAK_CNODE_CONS_CAR(src), HAK_CNODE_FOR));
+
+	cmd = HAK_CNODE_CONS_CAR(src); /* for */
+	obj = HAK_CNODE_CONS_CDR(src);
+
+	if (!obj)
+	{
+		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(src),
+			"no loop variable specified in %.*js", HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
+		return -1;
+	}
+	else if (!HAK_CNODE_IS_CONS(obj))
+	{
+		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj),
+			"redundant cdr around '%.*js' in '%.*js'",
+			HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj),
+			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
+		return -1;
+	}
+
+	var = HAK_CNODE_CONS_CAR(obj);
+	if (!HAK_CNODE_IS_SYMBOL(var))
+	{
+		/* a list carries no token text of its own - describe it by shape */
+		const hak_ooch_t* ptr;
+		hak_oow_t len;
+		ptr = hak_getcnodedesc(hak, var, &len);
+		hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(var),
+			"invalid loop variable name '%.*js' for '%.*js'",
+			len, ptr, HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
+		return -1;
+	}
+
+	obj = HAK_CNODE_CONS_CDR(obj);
+	if (!obj)
+	{
+		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(var),
+			"no range specified after '%.*js' in '%.*js'",
+			HAK_CNODE_GET_TOKLEN(var), HAK_CNODE_GET_TOKPTR(var),
+			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
+		return -1;
+	}
+	else if (!HAK_CNODE_IS_CONS(obj))
+	{
+		hak_setsynerrbfmt(hak, HAK_SYNERR_DOTBANNED, HAK_CNODE_GET_LOC(obj),
+			"redundant cdr around '%.*js' in '%.*js'",
+			HAK_CNODE_GET_TOKLEN(obj), HAK_CNODE_GET_TOKPTR(obj),
+			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
+		return -1;
+	}
+
+	range = HAK_CNODE_CONS_CAR(obj);
+	if (!HAK_CNODE_IS_CONS_CONCODED(range, HAK_CONCODE_RANGE))
+	{
+		/* a for header takes the range notation, never a value that happens to
+		 * be a range - otherwise the loop would have to dispatch */
+		hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(range),
+			"range expression expected after '%.*js' in '%.*js'",
+			HAK_CNODE_GET_TOKLEN(var), HAK_CNODE_GET_TOKPTR(var),
+			HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
+		return -1;
+	}
+
+	body = HAK_CNODE_CONS_CDR(obj);
+	if (check_block_expression_as_body(hak, body, cmd, FOR_NONE) <= -1) return -1;
+
+	/* leave_list() has already guaranteed 3 or 5 items with a marker between */
+	from = HAK_CNODE_CONS_CAR(range);
+	tmp = HAK_CNODE_CONS_CDR(range);
+	marker = HAK_CNODE_CONS_CAR(tmp);
+	HAK_ASSERT(hak, HAK_CNODE_IS_RANGE(marker));
+
+	if (push_ctlblk(hak, HAK_CNODE_GET_LOC(src), HAK_CTLBLK_TYPE_LOOP) <= -1) return -1;
+
+	/* the loop variable is visible to the body under its own name. the end and
+	 * the step get slots of their own, named after the marker - which is not a
+	 * name anyone can write - and killed at once so that a nested for can use
+	 * the same marker again without tripping the duplicate check. */
+	if (add_loop_variable(hak, var, "loop variable", &var_vi, &var_offset) <= -1) return -1;
+	if (add_loop_variable(hak, marker, "range limit", &to_vi, &to_offset) <= -1) return -1;
+	kill_temporary_variable_at_offset(hak, to_offset);
+	if (add_loop_variable(hak, marker, "range step", &step_vi, &step_offset) <= -1) return -1;
+	kill_temporary_variable_at_offset(hak, step_offset);
+
+	SWITCH_TOP_CFRAME(hak, COP_COMPILE_OBJECT, from); /* 1 */
+	PUSH_SUBCFRAME(hak, COP_POST_FOR_FROM, src); /* 2 */
+	cf = GET_SUBCFRAME(hak);
+	cf->u.post_for.range = range;
+	cf->u.post_for.var_vi = var_vi;
+	cf->u.post_for.to_vi = to_vi;
+	cf->u.post_for.step_vi = step_vi;
+	cf->u.post_for.kind = HAK_CNODE_RANGE_KIND(marker);
+	cf->u.post_for.var_offset = var_offset;
+	cf->u.post_for.start_loc = *HAK_CNODE_GET_LOC(src);
+
+	return 0;
+}
+
 /* ========================================================================= */
 
 static int compile_cons_array_expression (hak_t* hak, hak_cnode_t* obj)
@@ -4971,12 +5191,45 @@ static int compile_cons_alist_expression (hak_t* hak, hak_cnode_t* cmd)
 	return 0;
 }
 
+/* ( from MARKER to [ .. step ] ) outside a for header builds an Interval.
+ * a for header never reaches here - compile_for() reads the notation and
+ * inlines the loop, so a counted loop allocates nothing and dispatches to
+ * nothing. */
 static int compile_cons_range_expression (hak_t* hak, hak_cnode_t* obj, int nrets)
 {
+	hak_cnode_t* from, * marker, * to, * step, * tmp;
+	hak_cframe_t* cf;
+
 	HAK_ASSERT(hak, HAK_CNODE_IS_CONS_CONCODED(obj, HAK_CONCODE_RANGE));
 
-	hak_setsynerrbfmt(hak, HAK_SYNERR_INTERN, HAK_CNODE_GET_LOC(obj), "internal error - range expression not implemented");
-	return -1;
+	/* leave_list() has already guaranteed 3 or 5 items with a marker between */
+	from = HAK_CNODE_CONS_CAR(obj);
+	tmp = HAK_CNODE_CONS_CDR(obj);
+	marker = HAK_CNODE_CONS_CAR(tmp);
+	tmp = HAK_CNODE_CONS_CDR(tmp);
+	to = HAK_CNODE_CONS_CAR(tmp);
+	tmp = HAK_CNODE_CONS_CDR(tmp);
+	step = HAK_NULL;
+	if (tmp)
+	{
+		tmp = HAK_CNODE_CONS_CDR(tmp); /* skip the '..' marker */
+		step = HAK_CNODE_CONS_CAR(tmp);
+	}
+
+	HAK_ASSERT(hak, HAK_CNODE_IS_RANGE(marker));
+
+	/* frames run from the top down, so the instruction that consumes the three
+	 * values sits deepest and 'from' - pushed last - is compiled first */
+	SWITCH_TOP_CFRAME(hak, COP_EMIT_MAKE_INTERVAL, obj);
+	cf = GET_TOP_CFRAME(hak);
+	cf->u.interval.kind = HAK_CNODE_RANGE_KIND(marker);
+	cf->u.interval.step_given = (step != HAK_NULL);
+
+	if (step) PUSH_CFRAME(hak, COP_COMPILE_OBJECT, step);
+	PUSH_CFRAME(hak, COP_COMPILE_OBJECT, to);
+	PUSH_CFRAME(hak, COP_COMPILE_OBJECT, from);
+
+	return 0;
 }
 
 static int compile_cons_plist_expression (hak_t* hak, hak_cnode_t* obj, int nrets)
@@ -5249,11 +5502,9 @@ static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 			if (compile_continue(hak, obj) <= -1) return -1;
 			goto done;
 
-#if 0   /* TODO */
 		case HAK_CNODE_FOR:
 			if (compile_for(hak, obj) <= -1) return -1;
 			goto done;
-#endif
 
 		case HAK_CNODE_LOOP:
 			if (compile_loop(hak, obj) <= -1) return -1;
@@ -6893,6 +7144,233 @@ static HAK_INLINE int post_while_body (hak_t* hak)
 
 /* ========================================================================= */
 
+static HAK_INLINE int post_for_from (hak_t* hak)
+{
+	hak_cframe_t* cf, saved;
+	hak_cnode_t* to, * tmp;
+
+	cf = GET_TOP_CFRAME(hak);
+	HAK_ASSERT(hak, cf->opcode == COP_POST_FOR_FROM);
+	saved = *cf;
+
+	/* the start of the range is the loop variable's first value */
+	if (emit_variable_access(hak, VAR_ACCESS_POP, &saved.u.post_for.var_vi, &saved.u.post_for.start_loc) <= -1) return -1;
+
+	tmp = HAK_CNODE_CONS_CDR(saved.u.post_for.range); /* marker */
+	tmp = HAK_CNODE_CONS_CDR(tmp);
+	to = HAK_CNODE_CONS_CAR(tmp);
+
+	SWITCH_TOP_CFRAME(hak, COP_COMPILE_OBJECT, to); /* 1 */
+	PUSH_SUBCFRAME(hak, COP_POST_FOR_TO, saved.operand); /* 2 */
+	cf = GET_SUBCFRAME(hak);
+	cf->u.post_for = saved.u.post_for;
+
+	return 0;
+}
+
+static HAK_INLINE int post_for_to (hak_t* hak)
+{
+	hak_cframe_t* cf, saved;
+	hak_cnode_t* step, * tmp;
+
+	cf = GET_TOP_CFRAME(hak);
+	HAK_ASSERT(hak, cf->opcode == COP_POST_FOR_TO);
+	saved = *cf;
+
+	if (emit_variable_access(hak, VAR_ACCESS_POP, &saved.u.post_for.to_vi, &saved.u.post_for.start_loc) <= -1) return -1;
+
+	tmp = HAK_CNODE_CONS_CDR(saved.u.post_for.range); /* marker */
+	tmp = HAK_CNODE_CONS_CDR(tmp); /* to */
+	tmp = HAK_CNODE_CONS_CDR(tmp); /* the '..' marker, or nothing */
+	step = HAK_NULL;
+	if (tmp)
+	{
+		tmp = HAK_CNODE_CONS_CDR(tmp);
+		step = HAK_CNODE_CONS_CAR(tmp);
+	}
+
+	if (step)
+	{
+		SWITCH_TOP_CFRAME(hak, COP_COMPILE_OBJECT, step); /* 1 */
+		PUSH_SUBCFRAME(hak, COP_POST_FOR_STEP, saved.operand); /* 2 */
+		cf = GET_SUBCFRAME(hak);
+		cf->u.post_for = saved.u.post_for;
+		cf->u.post_for.step_given = 1;
+	}
+	else
+	{
+		/* no step written - one, which needs no checking */
+		if (emit_byte_instruction(hak, HAK_CODE_PUSH_ONE, &saved.u.post_for.start_loc) <= -1) return -1;
+		SWITCH_TOP_CFRAME(hak, COP_POST_FOR_STEP, saved.operand);
+		cf = GET_TOP_CFRAME(hak);
+		cf->u.post_for = saved.u.post_for;
+		cf->u.post_for.step_given = 0;
+	}
+
+	return 0;
+}
+
+static HAK_INLINE int post_for_step (hak_t* hak)
+{
+	hak_cframe_t* cf, saved;
+	hak_cnode_t* body;
+	hak_loc_t* loc;
+	hak_ooi_t entry_jump_pos, incr_pos, cond_pos, body_pos, jump_inst_pos;
+
+	cf = GET_TOP_CFRAME(hak);
+	HAK_ASSERT(hak, cf->opcode == COP_POST_FOR_STEP);
+	saved = *cf;
+	loc = &saved.u.post_for.start_loc;
+
+	if (emit_variable_access(hak, VAR_ACCESS_POP, &saved.u.post_for.step_vi, loc) <= -1) return -1;
+
+	if (saved.u.post_for.step_given)
+	{
+		/* a step that cannot carry the loop towards its end is the divide-by-
+		 * zero of ranges, and Interval refuses it for the same reason. the step
+		 * is a magnitude, so a negative one is as wrong as zero and the one
+		 * test covers both. it runs once, on entry. */
+		hak_ooi_t ok_jump_pos;
+		hak_oop_t msg;
+		static const hak_bch_t errmsg[] = "range step not positive";
+
+		if (emit_prim_callee(hak, ">", loc) <= -1) return -1;
+		if (emit_variable_access(hak, VAR_ACCESS_PUSH, &saved.u.post_for.step_vi, loc) <= -1) return -1;
+		if (emit_byte_instruction(hak, HAK_CODE_PUSH_ZERO, loc) <= -1) return -1;
+		if (emit_one_param_instruction(hak, HAK_CODE_CALL_0, 2, loc) <= -1) return -1;
+
+		ok_jump_pos = hak->code.bc.len;
+		if (emit_one_param_instruction(hak, HAK_CODE_JUMP_FORWARD_IF_TRUE, MAX_CODE_JUMP, loc) <= -1) return -1;
+		if (emit_byte_instruction(hak, HAK_CODE_POP_STACKTOP, loc) <= -1) return -1;
+
+		msg = hak_makestringwithbchars(hak, errmsg, HAK_COUNTOF(errmsg) - 1);
+		if (HAK_UNLIKELY(!msg)) return -1;
+		if (emit_push_literal(hak, msg, loc) <= -1) return -1;
+		if (emit_byte_instruction(hak, HAK_CODE_THROW, loc) <= -1) return -1;
+
+		patch_long_jump(hak, ok_jump_pos, hak->code.bc.len - ok_jump_pos - (HAK_CODE_LONG_PARAM_SIZE + 1));
+		if (emit_byte_instruction(hak, HAK_CODE_POP_STACKTOP, loc) <= -1) return -1;
+	}
+
+	/* skip the increment on the way in - see the diagram above compile_for() */
+	entry_jump_pos = hak->code.bc.len;
+	if (emit_one_param_instruction(hak, HAK_CODE_JUMP_FORWARD_0, MAX_CODE_JUMP, loc) <= -1) return -1;
+
+	HAK_ASSERT(hak, hak->code.bc.len < HAK_SMOOI_MAX);
+	incr_pos = hak->code.bc.len;
+	if (emit_prim_callee(hak, (range_kind_descends(saved.u.post_for.kind)? "-": "+"), loc) <= -1) return -1;
+	if (emit_variable_access(hak, VAR_ACCESS_PUSH, &saved.u.post_for.var_vi, loc) <= -1) return -1;
+	if (emit_variable_access(hak, VAR_ACCESS_PUSH, &saved.u.post_for.step_vi, loc) <= -1) return -1;
+	if (emit_one_param_instruction(hak, HAK_CODE_CALL_0, 2, loc) <= -1) return -1;
+	if (emit_variable_access(hak, VAR_ACCESS_POP, &saved.u.post_for.var_vi, loc) <= -1) return -1;
+
+	patch_long_jump(hak, entry_jump_pos, hak->code.bc.len - entry_jump_pos - (HAK_CODE_LONG_PARAM_SIZE + 1));
+
+	/* the marker is the test, so it is emitted as written */
+	cond_pos = hak->code.bc.len;
+	if (emit_prim_callee(hak, range_cmp_name(saved.u.post_for.kind), loc) <= -1) return -1;
+	if (emit_variable_access(hak, VAR_ACCESS_PUSH, &saved.u.post_for.var_vi, loc) <= -1) return -1;
+	if (emit_variable_access(hak, VAR_ACCESS_PUSH, &saved.u.post_for.to_vi, loc) <= -1) return -1;
+	if (emit_one_param_instruction(hak, HAK_CODE_CALL_0, 2, loc) <= -1) return -1;
+
+	jump_inst_pos = hak->code.bc.len;
+	if (emit_one_param_instruction(hak, HAK_CODE_JUMP_FORWARD_IF_FALSE, MAX_CODE_JUMP, loc) <= -1) return -1;
+	if (emit_byte_instruction(hak, HAK_CODE_POP_STACKTOP, loc) <= -1) return -1;
+
+	HAK_ASSERT(hak, hak->code.bc.len < HAK_SMOOI_MAX);
+	body_pos = hak->code.bc.len;
+
+	/* the operand of the body frame is the whole for expression - it carries
+	 * the location every instruction emitted after the body is blamed on */
+	body = HAK_CNODE_CONS_CDR(HAK_CNODE_CONS_CDR(HAK_CNODE_CONS_CDR(saved.operand)));
+	if (body)
+	{
+		SWITCH_TOP_CFRAME(hak, COP_COMPILE_OBJECT_LIST, body); /* 1 */
+		PUSH_SUBCFRAME(hak, COP_POST_FOR_BODY, saved.operand); /* 2 */
+		cf = GET_SUBCFRAME(hak);
+	}
+	else
+	{
+		SWITCH_TOP_CFRAME(hak, COP_POST_FOR_BODY, saved.operand);
+		cf = GET_TOP_CFRAME(hak);
+	}
+	cf->u.post_for = saved.u.post_for;
+	cf->u.post_for.incr_pos = incr_pos;
+	cf->u.post_for.body_pos = body_pos;
+	cf->u.post_for.jump_inst_pos = jump_inst_pos;
+
+	(void)cond_pos; /* the loop restarts at the increment, which falls into the condition */
+
+	return 0;
+}
+
+static HAK_INLINE int post_for_body (hak_t* hak)
+{
+	hak_cframe_t* cf;
+	hak_ooi_t jip, jump_offset;
+
+	cf = GET_TOP_CFRAME(hak);
+	HAK_ASSERT(hak, cf->opcode == COP_POST_FOR_BODY);
+	HAK_ASSERT(hak, cf->operand != HAK_NULL);
+
+	if (hak->code.bc.len > cf->u.post_for.body_pos)
+	{
+		/* drop what the body's last expression left, so that every iteration
+		 * begins with the stack as it found it - as post_while_body() does */
+		if (emit_byte_instruction(hak, HAK_CODE_POP_STACKTOP, HAK_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+	}
+
+	HAK_ASSERT(hak, hak->code.bc.len < HAK_SMOOI_MAX);
+	jump_offset = hak->code.bc.len - cf->u.post_for.incr_pos + 1;
+	if (jump_offset > 3) jump_offset += HAK_CODE_LONG_PARAM_SIZE;
+	if (emit_one_param_instruction(hak, HAK_CODE_JUMP_BACKWARD_0, jump_offset, HAK_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+
+	jip = cf->u.post_for.jump_inst_pos;
+	jump_offset = hak->code.bc.len - jip - (HAK_CODE_LONG_PARAM_SIZE + 1);
+	if (jump_offset > MAX_CODE_JUMP * 2)
+	{
+		hak_setsynerrbfmt(hak, HAK_SYNERR_BLKFLOOD, &cf->u.post_for.start_loc, "code too big - size %zu", jump_offset);
+		return -1;
+	}
+	patch_long_jump(hak, jip, jump_offset);
+
+	/* the loop variable belongs to the loop. its slot stays accounted for,
+	 * but the name goes out of reach - as the exception variable does. */
+	kill_temporary_variable_at_offset(hak, cf->u.post_for.var_offset);
+
+	POP_CFRAME(hak);
+
+	HAK_ASSERT(hak, hak->c->ctlblk.info[hak->c->ctlblk.depth]._type == HAK_CTLBLK_TYPE_LOOP);
+	pop_ctlblk(hak);
+
+	return 0;
+}
+
+/* ========================================================================= */
+
+static HAK_INLINE int emit_make_interval (hak_t* hak)
+{
+	hak_cframe_t* cf;
+
+	cf = GET_TOP_CFRAME(hak);
+	HAK_ASSERT(hak, cf->opcode == COP_EMIT_MAKE_INTERVAL);
+	HAK_ASSERT(hak, cf->operand != HAK_NULL);
+
+	/* no step written means one. the marker still decides the direction, so
+	 * the step stays a magnitude here as it is everywhere else. */
+	if (!cf->u.interval.step_given)
+	{
+		if (emit_byte_instruction(hak, HAK_CODE_PUSH_ONE, HAK_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+	}
+
+	if (emit_one_param_instruction(hak, HAK_CODE_MAKE_INTERVAL, cf->u.interval.kind, HAK_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+
+	POP_CFRAME(hak);
+	return 0;
+}
+
+/* ========================================================================= */
+
 static HAK_INLINE int emit_call (hak_t* hak)
 {
 	hak_cframe_t* cf;
@@ -7816,8 +8294,28 @@ int hak_compile (hak_t* hak, hak_cnode_t* obj, int flags)
 				if (post_if_body(hak) <= -1) goto oops;
 				break;
 
+			case COP_EMIT_MAKE_INTERVAL:
+				if (emit_make_interval(hak) <= -1) goto oops;
+				break;
+
 			case COP_POST_LOOP:
 				if (post_loop(hak) <= -1) goto oops;
+				break;
+
+			case COP_POST_FOR_FROM:
+				if (post_for_from(hak) <= -1) goto oops;
+				break;
+
+			case COP_POST_FOR_TO:
+				if (post_for_to(hak) <= -1) goto oops;
+				break;
+
+			case COP_POST_FOR_STEP:
+				if (post_for_step(hak) <= -1) goto oops;
+				break;
+
+			case COP_POST_FOR_BODY:
+				if (post_for_body(hak) <= -1) goto oops;
 				break;
 
 			case COP_POST_UNTIL_BODY:

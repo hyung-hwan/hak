@@ -1,0 +1,31 @@
+## 'for' takes a loop variable, then the range notation, then a body.
+##
+## The range must be written out in the header. A for never consumes a value
+## that happens to be a range - if it did, the loop would have to dispatch on
+## it, and break and continue could not reach across that.
+
+for (0 .< 3) { };  ##ERROR: syntax error - invalid loop variable name '(.<)' for 'for'
+
+---
+
+## the loop variable has to be a name
+
+for 5 (0 .< 3) { };  ##ERROR: syntax error - invalid loop variable name '5' for 'for'
+
+---
+
+## a plain list is not a range
+
+for i (0 1 2) { };  ##ERROR: syntax error - range expression expected after 'i' in 'for'
+
+---
+
+## nor is nothing at all
+
+for i { };  ##ERROR: syntax error - range expression expected after 'i' in 'for'
+
+---
+
+## the body is not optional
+
+for i (0 .< 3);  ##ERROR: syntax error - block expression expected as 'for' body

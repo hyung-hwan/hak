@@ -110,6 +110,7 @@ enum {
 	KCI_DICTIONARY,
 	KCI_SYSTEM_DICTIONARY,
 	KCI_CONS,
+	KCI_INTERVAL,
 	KCI_METHOD_DICTIONARY,
 	KCI_FUNCTION,
 	KCI_PRIMITIVE,
@@ -391,6 +392,18 @@ static kernel_class_info_t kernel_classes[__KCI_MAX__] =
 		0,
 		HAK_OBJ_TYPE_OOP,
 		HAK_OFFSETOF(hak_t, c_cons)
+	},
+
+	KCI(KCI_INTERVAL) {
+		"Interval",
+		KCI_INDEXED_COLLECTION,
+		HAK_BRAND_INTERVAL,
+		0,
+		0,
+		HAK_INTERVAL_NAMED_INSTVARS,
+		0,
+		HAK_OBJ_TYPE_OOP,
+		HAK_OFFSETOF(hak_t, c_interval)
 	},
 
 #if 0

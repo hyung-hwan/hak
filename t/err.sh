@@ -23,6 +23,19 @@ run_partfile() {
 	l_partfile="$1"
 	l_cmd="$l_cmd $l_partfile"
 
+	## a part may request an optional build capability with ##REQUIRE:.
+	## it is skipped if the capability is missing from this build.
+	for l_req in $(sed -n -e 's/^##REQUIRE:[[:space:]]*//p' "$l_partfile" 2>/dev/null)
+	do
+		case " $caps " in
+			*" $l_req "*) ;;
+			*)
+				echo "SKIP: $l_script(part=$l_partno,line=$l_partstartlineno) requires $l_req"
+				return 0
+				;;
+		esac
+	done
+
 	l_expected_errinfo=$(grep -n -o -E "##ERROR: .+" "$l_partfile" 2>/dev/null)
 	[ -z "$l_expected_errinfo" ] && {
 		echo "ERROR: INVALID TESTER - $l_script(part=$l_partno,line=$l_l_partstartlineno) contains no ERROR information"
@@ -52,6 +65,26 @@ run_partfile() {
 	return 0
 }
 
+
+## probe this build for the optional capabilities that ##REQUIRE: can name.
+## $@ is the command followed by the script, so drop the script to get the command.
+base_cmd=""
+base_nargs=$#
+base_i=1
+for base_arg in "$@"
+do
+	[ $base_i -lt $base_nargs ] && base_cmd="$base_cmd $base_arg"
+	base_i=`expr $base_i + 1`
+done
+
+caps=""
+probefile=`mktemp`
+## u+2605 is written in octal so that this script stays pure ascii.
+## it is a single character where the build is wide, and 3 bytes where it is not.
+probestar=`printf '\342\230\205'`
+printf '%s\n' "printf \"%d\\n\" '$probestar';" > "$probefile"
+[ "`$base_cmd "$probefile" 2>/dev/null`" = "9733" ] && caps="$caps wide-char"
+rm -f "$probefile"
 
 ever_failed=0
 partfile=`mktemp`

@@ -96,6 +96,7 @@ k := #[10 ; 20 ]; ##ERROR: syntax error - unexpected semicolon
 ---
 
 ## a code point greater than 255 is illegal in the character literal prefix fixed with b.
+##REQUIRE: wide-char
 
 printf "[%c] [0x%x] [%d]\n" '★' '★' 0x2605;
 printf "[%c]\n" b'★';  ##ERROR: syntax error - wrong character literal

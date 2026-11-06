@@ -33,6 +33,8 @@ enum
 	PRINT_STACK_CONS,
 	PRINT_STACK_ARRAY,
 	PRINT_STACK_ARRAY_END,
+	PRINT_STACK_INTERVAL,
+	PRINT_STACK_INTERVAL_END,
 	PRINT_STACK_DIC,
 	PRINT_STACK_DIC_END
 };
@@ -657,6 +659,58 @@ next:
 			break;
 		}
 
+		case HAK_BRAND_INTERVAL:
+		{
+			/* print the notation back - ( from MARKER to [ .. step ] ).
+			 * the marker is kept as written, and a step of one is left out
+			 * just as it is in the source. */
+			static const hak_bch_t* markers[] = { " .< ", " .<= ", " .> ", " .>= " };
+			hak_oop_interval_t iv = (hak_oop_interval_t)obj;
+			hak_oow_t ividx, nslots;
+			int mk;
+
+			mk = HAK_OOP_TO_SMOOI(iv->kind);
+			if (mk < 0 || mk >= (int)HAK_COUNTOF(markers)) mk = 0;
+			nslots = (iv->step == HAK_SMOOI_TO_OOP(1))? 2: 3;
+
+			if (hak_bfmt_out(hak, fmtout, "(") <= -1) return -1;
+
+			ividx = 0;
+			ps.type = PRINT_STACK_INTERVAL;
+
+			do
+			{
+				int x;
+
+				ps.idx = ividx + 1;
+				if (ps.idx >= nslots) ps.type = PRINT_STACK_INTERVAL_END;
+				else ps.obj = obj;
+
+				x = push(hak, &ps);
+				if (x <= -1) return -1;
+
+				if (ividx == 1)
+				{
+					if (hak_bfmt_out(hak, fmtout, markers[mk]) <= -1) return -1;
+				}
+				else if (ividx > 1)
+				{
+					if (hak_bfmt_out(hak, fmtout, " .. ") <= -1) return -1;
+				}
+
+				obj = (ividx == 0)? iv->from: ((ividx == 1)? iv->to: iv->step);
+				goto next;
+
+			resume_interval:
+				HAK_ASSERT(hak, ps.type == PRINT_STACK_INTERVAL);
+				ividx = ps.idx;
+				obj = ps.obj;
+				iv = (hak_oop_interval_t)obj;
+			}
+			while (1);
+			break;
+		}
+
 		case HAK_BRAND_BYTE_ARRAY:
 		{
 			hak_oow_t i;
@@ -875,6 +929,13 @@ done:
 
 			case PRINT_STACK_ARRAY_END:
 				if (hak_bfmt_out(hak, fmtout, closing_parens[HAK_CONCODE_ARRAY][json]) <= -1) return -1;
+				break;
+
+			case PRINT_STACK_INTERVAL:
+				goto resume_interval;
+
+			case PRINT_STACK_INTERVAL_END:
+				if (hak_bfmt_out(hak, fmtout, ")") <= -1) return -1;
 				break;
 
 			case PRINT_STACK_DIC:

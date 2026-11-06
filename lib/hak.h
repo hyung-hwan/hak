@@ -648,6 +648,22 @@ struct hak_cons_t
 	hak_oop_t cdr;
 };
 
+/* an Interval holds no elements - at() computes them from the start and the
+ * step. the marker is kept as written rather than folded into the sign of the
+ * step, so the step stays the magnitude the source gave and the notation can
+ * be printed back exactly. */
+#define HAK_INTERVAL_NAMED_INSTVARS 4
+typedef struct hak_interval_t hak_interval_t;
+typedef struct hak_interval_t* hak_oop_interval_t;
+struct hak_interval_t
+{
+	HAK_OBJ_HEADER;
+	hak_oop_t from;
+	hak_oop_t to;
+	hak_oop_t step; /* a magnitude - the marker says which way to travel */
+	hak_oop_t kind; /* SmallInteger - hak_cnode_range_kind_t of the marker */
+};
+
 #define HAK_DIC_NAMED_INSTVARS 2
 typedef struct hak_dic_t hak_dic_t;
 typedef struct hak_dic_t* hak_oop_dic_t;
@@ -1892,6 +1908,7 @@ struct hak_t
 	hak_oop_class_t c_dictionary; /* Dictionary - hak semantics, C-compatible table */
 	hak_oop_class_t c_system_dictionary; /* SystemDictionary - sysdic */
 	hak_oop_class_t c_cons; /* Cons */
+	hak_oop_class_t c_interval; /* Interval */
 
 #if 0
 	hak_oop_class_t c_namespace; /* Namespace */
@@ -2184,6 +2201,7 @@ enum hak_brand_t
 	HAK_BRAND_PBIGINT, /* positive big integer */
 	HAK_BRAND_NBIGINT, /* negative big integer */
 	HAK_BRAND_CONS,
+	HAK_BRAND_INTERVAL,
 	HAK_BRAND_ARRAY,
 	HAK_BRAND_BYTE_ARRAY,
 	HAK_BRAND_CHARACTER_ARRAY,
@@ -3112,6 +3130,18 @@ HAK_EXPORT hak_oop_t hak_makecons (
 	hak_t*     hak,
 	hak_oop_t  car,
 	hak_oop_t  cdr
+);
+
+/* 'step' is the magnitude written in the source; 'kind' is the range marker
+ * (hak_cnode_range_kind_t) and decides the direction and the end. a step that
+ * cannot carry the range towards its end is refused here - it is the
+ * divide-by-zero of ranges, and the for loop refuses it for the same reason. */
+HAK_EXPORT hak_oop_t hak_makeinterval (
+	hak_t*     hak,
+	hak_oop_t  from,
+	hak_oop_t  to,
+	hak_oop_t  step,
+	int        kind
 );
 
 HAK_EXPORT hak_oop_t hak_makearray (

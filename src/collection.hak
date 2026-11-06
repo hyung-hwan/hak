@@ -681,37 +681,65 @@ class SortedCollection: OrderedCollection (_sortBlock) {
 }
 
 ## ---------------------------------------------------------------------------
-## The numbers from start to stop in steps of step - (1:to 5), (10:toBy 0 -2)
-class Interval: IndexedCollection (_start _stop _step) {
+## The numbers from start to stop in steps of step - (1 .<= 5), (10 .>= 0 .. 2)
+##
+## The range notation builds these: the marker in (from .< to .. step) is kept
+## in _kind rather than folded into the sign of the step, so _step is always
+## the magnitude that was written and the notation prints back as given. The
+## marker alone says which way the interval travels and whether _stop belongs
+## to it. The layout is shared with the virtual machine - see hak_interval_t.
+##
+##   _kind   0 = .<    1 = .<=    2 = .>    3 = .>=
+class Interval: IndexedCollection (_start _stop _step _kind) {
 
 	fun[#class] fromTo(start stop) {
 		return (self:fromToBy start stop 1)
 	}
 
+	## the older entry point takes a signed step and always includes the end,
+	## so it lands on the inclusive markers
 	fun[#ci] fromToBy(start stop step) {
 		if (= step 0) {
 			throw "the step of an Interval cannot be zero"
 		}
 		self._start := start
 		self._stop := stop
-		self._step := step
+		if (> step 0) {
+			self._step := step
+			self._kind := 1
+		} else {
+			self._step := (- 0 step)
+			self._kind := 3
+		}
 		return self
 	}
 
+	fun descending() { return (>= self._kind 2) }
+	fun inclusive() { return (= (mod self._kind 2) 1) }
+
 	fun size() {
-		if (> self._step 0) {
-			if (< self._stop self._start) { return 0 }
-			return (+ (div (- self._stop self._start) self._step) 1)
+		| span n |
+		if (self:descending) {
+			span := (- self._start self._stop)
+		} else {
+			span := (- self._stop self._start)
 		}
-		if (> self._stop self._start) { return 0 }
-		return (+ (div (- self._start self._stop) (- 0 self._step)) 1)
+		if (< span 0) { return 0 }
+		n := (div span self._step)
+		if (self:inclusive) { return (+ n 1) }
+		## an exclusive end is skipped only when the step lands on it exactly
+		if (= (mod span self._step) 0) { return n }
+		return (+ n 1)
 	}
 
 	fun at(index) {
+		| off |
 		if (or (< index 0) (>= index (self:size))) {
 			throw (sprintf "index %O out of range" index)
 		}
-		return (+ self._start (* index self._step))
+		off := (* index self._step)
+		if (self:descending) { return (- self._start off) }
+		return (+ self._start off)
 	}
 
 	fun atPut(index value) {
@@ -735,11 +763,13 @@ class Interval: IndexedCollection (_start _stop _step) {
 	}
 
 	fun iterate(block) {
-		| i n |
+		| i n off |
 		i := 0
 		n := (self:size)
 		while (< i n) {
-			block (+ self._start (* i self._step))
+			off := (* i self._step)
+			if (self:descending) { block (- self._start off) } \
+			else { block (+ self._start off) }
 			i := (+ i 1)
 		}
 		return self
@@ -1149,10 +1179,14 @@ class Bag: Collection (_counts) {
 		return obj
 	}
 
-	fun size() { return (self._counts:injectInto 0 (fun(acc c) { return (+ acc c) })) }
+	fun size() {
+		return (self._counts:injectInto 0 (fun(acc c) { return (+ acc c) }))
+	}
 
 	fun iterate(block) {
-		self._counts:keysAndValuesDo (fun(k c) { c:timesRepeat (fun() { block k }) })
+		self._counts:keysAndValuesDo (
+			fun(k c) { c:timesRepeat (fun() { block k }) }
+		)
 		return self
 	}
 }

@@ -329,6 +329,45 @@ hak_oop_t hak_makecons (hak_t* hak, hak_oop_t car, hak_oop_t cdr)
 #endif
 }
 
+hak_oop_t hak_makeinterval (hak_t* hak, hak_oop_t from, hak_oop_t to, hak_oop_t step, int kind)
+{
+	hak_oop_interval_t v;
+	hak_oop_t positive;
+
+	/* the step is a magnitude - the marker already says which way to travel,
+	 * so a step that is not positive states a second, contradictory direction
+	 * and leaves the range with no finite size. refuse it here rather than
+	 * divide by it later: it is the divide-by-zero of ranges, and the for
+	 * loop refuses it at its entry for the same reason. */
+	hak_pushvolat(hak, &from);
+	hak_pushvolat(hak, &to);
+	hak_pushvolat(hak, &step);
+	positive = hak_gtnums(hak, step, HAK_SMOOI_TO_OOP(0));
+	if (HAK_UNLIKELY(!positive)) { hak_popvolats(hak, 3); return HAK_NULL; }
+	if (positive != hak->_true)
+	{
+		hak_popvolats(hak, 3);
+		hak_seterrbfmt(hak, HAK_EINVAL, "range step not positive - %O", step);
+		return HAK_NULL;
+	}
+
+	v = (hak_oop_interval_t)hak_instantiate(hak, hak->c_interval, HAK_NULL, 0);
+	hak_popvolats(hak, 3);
+	if (HAK_UNLIKELY(!v))
+	{
+		const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
+		hak_seterrbfmt(hak, HAK_ERRNUM(hak), "unable to instantiate %O - %js", hak->c_interval->name, orgmsg);
+		return HAK_NULL;
+	}
+
+	v->from = from;
+	v->to = to;
+	v->step = step;
+	v->kind = HAK_SMOOI_TO_OOP(kind);
+
+	return (hak_oop_t)v;
+}
+
 hak_oop_t hak_makearray (hak_t* hak, hak_oow_t len)
 {
 #if 0
