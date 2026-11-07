@@ -14,45 +14,45 @@ fun chk(ok msg) {
 
 ## --- size agrees with what the matching for loop visits -------------------
 
-chk (= ((1 .< 10):size) 9) ".< leaves the end out"
-chk (= ((1 .<= 10):size) 10) ".<= takes the end in"
-chk (= ((10 .> 1):size) 9) ".> counts down without the end"
-chk (= ((10 .>= 1):size) 10) ".>= counts down through the end"
-chk (= ((0 .< 10 .. 2):size) 5) "a step divides the span"
-chk (= ((10 .> 0 .. 3):size) 4) "a descending step does too - 10 7 4 1"
-chk (= ((0 .<= 10 .. 5):size) 3) "an inclusive end is counted when the step lands on it"
-chk (= ((0 .< 5 .. 2):size) 3) "an exclusive end that the step misses is not skipped"
-chk (= ((0 .< 0):size) 0) "an empty range has no elements"
-chk (= ((5 .< 0):size) 0) "a marker pointing the wrong way has none either"
+chk (= ((1 ..< 10):size) 9) "..< leaves the end out"
+chk (= ((1 ..<= 10):size) 10) "..<= takes the end in"
+chk (= ((10 ..> 1):size) 9) "..> counts down without the end"
+chk (= ((10 ..>= 1):size) 10) "..>= counts down through the end"
+chk (= ((0 ..< 10 .. 2):size) 5) "a step divides the span"
+chk (= ((10 ..> 0 .. 3):size) 4) "a descending step does too - 10 7 4 1"
+chk (= ((0 ..<= 10 .. 5):size) 3) "an inclusive end is counted when the step lands on it"
+chk (= ((0 ..< 5 .. 2):size) 3) "an exclusive end that the step misses is not skipped"
+chk (= ((0 ..< 0):size) 0) "an empty range has no elements"
+chk (= ((5 ..< 0):size) 0) "a marker pointing the wrong way has none either"
 
 ## --- at and iterate --------------------------------------------------------
 
-chk (= ((0 .< 10 .. 2):at 0) 0) "at 0 is the start"
-chk (= ((0 .< 10 .. 2):at 2) 4) "at walks by the step"
-chk (= ((10 .> 0 .. 3):at 2) 4) "and the other way for a descending marker"
+chk (= ((0 ..< 10 .. 2):at 0) 0) "at 0 is the start"
+chk (= ((0 ..< 10 .. 2):at 2) 4) "at walks by the step"
+chk (= ((10 ..> 0 .. 3):at 2) 4) "and the other way for a descending marker"
 
 s := 0
-(0 .< 5):iterate (fun(e) { s := (+ s e) })
+(0 ..< 5):iterate (fun(e) { s := (+ s e) })
 chk (= s 10) "iterate visits every element"
 
 s := 0
-(10 .> 0 .. 3):iterate (fun(e) { s := (+ s e) })
+(10 ..> 0 .. 3):iterate (fun(e) { s := (+ s e) })
 chk (= s 22) "iterate descends too - the same 10 7 4 1 the for loop walks"
 
 ## --- it really is a collection ---------------------------------------------
 
-chk (= ((1 .<= 5):size) 5) "an Interval answers size"
-chk (eqv? (core.classOf (1 .< 5)) Interval) "a range builds an Interval"
-chk (= (((1 .<= 5):toOrderedCollection):size) 5) "and converts like any collection"
+chk (= ((1 ..<= 5):size) 5) "an Interval answers size"
+chk (eqv? (core.classOf (1 ..< 5)) Interval) "a range builds an Interval"
+chk (= (((1 ..<= 5):toOrderedCollection):size) 5) "and converts like any collection"
 
 ## --- a step that cannot carry the range ------------------------------------
 
 caught := 0
-try { v := (1 .< 10 .. 0) } catch (e) { caught := 1 }
+try { v := (1 ..< 10 .. 0) } catch (e) { caught := 1 }
 chk (= caught 1) "a zero step is refused, as it is in a for loop"
 
 caught := 0
-try { v := (1 .< 10 .. -2) } catch (e) { caught := 1 }
+try { v := (1 ..< 10 .. -2) } catch (e) { caught := 1 }
 chk (= caught 1) "and so is a negative one - the step is a magnitude"
 
 ## --- the older constructors still work -------------------------------------
@@ -65,40 +65,54 @@ chk (= ((Interval:fromToBy 10 0 -2):size) 6) "fromToBy still takes a signed step
 ## a decimal point is part of a number only when a digit follows it, so the
 ## point that opens a marker ends the number before it.
 
-chk (= ((1.<5):size) 4) "an exclusive marker needs no space"
-chk (= ((1.<=5):size) 5) "nor does an inclusive one"
-chk (= ((5.>1):size) 4) "nor a descending one"
-chk (= ((5.>=1):size) 5) "nor a descending inclusive one"
-chk (= ((0.<10..2):size) 5) "and the step marker needs none either"
+chk (= ((1..<5):size) 4) "an exclusive marker needs no space"
+chk (= ((1..<=5):size) 5) "nor does an inclusive one"
+chk (= ((5..>1):size) 4) "nor a descending one"
+chk (= ((5..>=1):size) 5) "nor a descending inclusive one"
+chk (= ((0..<10..2):size) 5) "and the step marker needs none either"
 
-chk (= ((0x1.<0x10):size) 15) "a radixed number never takes a decimal point"
-chk (= ((16rFF.<16r1FF):size) 256) "whatever the radix is"
+chk (= ((0x1..<0x10):size) 15) "a radixed number never takes a decimal point"
+chk (= ((16rFF..<16r1FF):size) 256) "whatever the radix is"
 
 ## a digit after the point still makes a floating-point number
 
 chk (= 1.5 (+ 1 0.5)) "a digit after the point still builds a float"
-chk (eqv? (core.classOf (1.5.<4.5)) Interval) "and such a float can open a range too"
+chk (eqv? (core.classOf (1.5..<4.5)) Interval) "and such a float can open a range too"
 
 ## --- a decimal range counts and walks like an integer one -------------------
 ##
 ## div and mod take integers only, so size() brackets the quotient by doubling
 ## and bisects it when either the span or the step is a decimal. hak's decimals
-## are fixed-point, so (0.0 .< 1.0 .. 0.1) lands on exactly ten elements rather
+## are fixed-point, so (0.0 ..< 1.0 .. 0.1) lands on exactly ten elements rather
 ## than the nine or eleven a binary float would drift into.
 
-chk (= ((1.5 .< 4.5):size) 3) "a decimal range has a size"
-chk (= ((1.5 .<= 4.5):size) 4) "and an inclusive end still adds one"
-chk (= ((1.5 .< 4.5 .. 0.7):size) 5) "a decimal step divides the span"
-chk (= ((4.5 .> 1.5 .. 0.7):size) 5) "and does so descending too"
-chk (= ((0.0 .< 1.0 .. 0.1):size) 10) "a tenth step divides one exactly"
-chk (= ((0.0 .<= 1.0 .. 0.1):size) 11) "and takes the end in when asked"
-chk (= ((5.0 .< 5.0):size) 0) "an empty decimal range is empty"
-chk (= ((2.5 .<= 2.5 .. 0.5):size) 1) "a single-element one holds just the start"
+chk (= ((1.5 ..< 4.5):size) 3) "a decimal range has a size"
+chk (= ((1.5 ..<= 4.5):size) 4) "and an inclusive end still adds one"
+chk (= ((1.5 ..< 4.5 .. 0.7):size) 5) "a decimal step divides the span"
+chk (= ((4.5 ..> 1.5 .. 0.7):size) 5) "and does so descending too"
+chk (= ((0.0 ..< 1.0 .. 0.1):size) 10) "a tenth step divides one exactly"
+chk (= ((0.0 ..<= 1.0 .. 0.1):size) 11) "and takes the end in when asked"
+chk (= ((5.0 ..< 5.0):size) 0) "an empty decimal range is empty"
+chk (= ((2.5 ..<= 2.5 .. 0.5):size) 1) "a single-element one holds just the start"
 
-chk (= ((1.5 .< 4.5):at 2) 3.5) "at reaches a decimal element"
+chk (= ((1.5 ..< 4.5):at 2) 3.5) "at reaches a decimal element"
 
 s := 0
-(1.5 .< 4.5 .. 0.7):iterate (fun(e) { s := (+ s e) })
+(1.5 ..< 4.5 .. 0.7):iterate (fun(e) { s := (+ s e) })
 chk (= s 14.5) "iterate visits 1.5 2.2 2.9 3.6 4.3"
 
-chk (= (((0.0 .< 1.0 .. 0.25):toOrderedCollection):size) 4) "and it converts like any collection"
+chk (= (((0.0 ..< 1.0 .. 0.25):toOrderedCollection):size) 4) "and it converts like any collection"
+
+## --- the markers glue to identifiers as well as to numbers -----------------
+##
+## .< could never do this: after a name, .< is indistinguishable from a
+## namespace separator followed by the binop <, which is how core.< is written.
+## .. cannot start an identifier segment, so ..< has no such ambiguity.
+
+lo := 1
+hi := 5
+chk (= ((lo..<hi):size) 4) "a marker glues to identifier bounds"
+chk (= ((lo..<=hi):size) 5) "inclusive too"
+chk (= ((hi..>lo):size) 4) "and descending"
+chk (= ((lo..<hi..2):size) 2) "with a step as well"
+chk (core.< lo hi) "and core.< is still one qualified name"

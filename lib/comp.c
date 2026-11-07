@@ -4872,7 +4872,7 @@ static int add_loop_variable (hak_t* hak, const hak_cnode_t* var, const hak_bch_
 
 static int compile_for (hak_t* hak, hak_cnode_t* src)
 {
-	/* (for i (1 .< 10 .. 2) ... ) */
+	/* (for i (1 ..< 10 .. 2) ... ) */
 	hak_cnode_t* cmd, * obj, * var, * range, * body, * from, * marker, * tmp;
 	hak_cframe_t* cf;
 	hak_var_info_t var_vi, to_vi, step_vi;

@@ -681,15 +681,15 @@ class SortedCollection: OrderedCollection (_sortBlock) {
 }
 
 ## ---------------------------------------------------------------------------
-## The numbers from start to stop in steps of step - (1 .<= 5), (10 .>= 0 .. 2)
+## The numbers from start to stop in steps of step - (1 ..<= 5), (10 ..>= 0 .. 2)
 ##
-## The range notation builds these: the marker in (from .< to .. step) is kept
+## The range notation builds these: the marker in (from ..< to .. step) is kept
 ## in _kind rather than folded into the sign of the step, so _step is always
 ## the magnitude that was written and the notation prints back as given. The
 ## marker alone says which way the interval travels and whether _stop belongs
 ## to it. The layout is shared with the virtual machine - see hak_interval_t.
 ##
-##   _kind   0 = .<    1 = .<=    2 = .>    3 = .>=
+##   _kind   0 = ..<    1 = ..<=    2 = ..>    3 = ..>=
 class Interval: IndexedCollection (_start _stop _step _kind) {
 
 	fun[#class] fromTo(start stop) {

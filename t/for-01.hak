@@ -2,7 +2,7 @@
 ##
 ##   for VAR ( from MARKER to [ .. step ] ) { body }
 ##
-## MARKER is one of .< .<= .> .>= and is the comparison the loop performs, so
+## MARKER is one of ..< ..<= ..> ..>= and is the comparison the loop performs, so
 ## the direction and whether the end is included are both visible in the
 ## source rather than inferred from the sign of the step. The step is a
 ## magnitude; the marker alone decides which way the variable travels.
@@ -23,47 +23,47 @@ fun collect(n) { ## sum 0 + 1 + ... as a cheap way to pin down what was visited
 ## --- the four markers ------------------------------------------------------
 
 s := 0
-for i (0 .< 5) { s := (+ s i) }
-chk (eqv? s 10) ".< stops before the end"
+for i (0 ..< 5) { s := (+ s i) }
+chk (eqv? s 10) "..< stops before the end"
 
 s := 0
-for i (0 .<= 5) { s := (+ s i) }
-chk (eqv? s 15) ".<= includes the end"
+for i (0 ..<= 5) { s := (+ s i) }
+chk (eqv? s 15) "..<= includes the end"
 
 s := 0
-for i (5 .> 0) { s := (+ s i) }
-chk (eqv? s 15) ".> counts down and stops before the end"
+for i (5 ..> 0) { s := (+ s i) }
+chk (eqv? s 15) "..> counts down and stops before the end"
 
 s := 0
-for i (5 .>= 0) { s := (+ s i) }
-chk (eqv? s 15) ".>= counts down through the end"
+for i (5 ..>= 0) { s := (+ s i) }
+chk (eqv? s 15) "..>= counts down through the end"
 
 ## --- the step --------------------------------------------------------------
 
 s := 0
-for i (0 .< 10 .. 2) { s := (+ s i) }
+for i (0 ..< 10 .. 2) { s := (+ s i) }
 chk (eqv? s 20) "an ascending step visits 0 2 4 6 8"
 
 s := 0
-for i (10 .> 0 .. 3) { s := (+ s i) }
+for i (10 ..> 0 .. 3) { s := (+ s i) }
 chk (eqv? s 22) "a descending step visits 10 7 4 1 - the step is a magnitude"
 
 n := 0
-for i (0 .<= 10 .. 5) { n := (+ n 1) }
+for i (0 ..<= 10 .. 5) { n := (+ n 1) }
 chk (eqv? n 3) "an inclusive end is hit exactly when the step lands on it"
 
 ## --- ranges that run no iterations -----------------------------------------
 
 n := 0
-for i (0 .< 0) { n := (+ n 1) }
+for i (0 ..< 0) { n := (+ n 1) }
 chk (eqv? n 0) "an empty range runs no iteration"
 
 n := 0
-for i (5 .< 0) { n := (+ n 1) }
+for i (5 ..< 0) { n := (+ n 1) }
 chk (eqv? n 0) "a marker pointing the wrong way runs no iteration, never forever"
 
 n := 0
-for i (0 .> 5) { n := (+ n 1) }
+for i (0 ..> 5) { n := (+ n 1) }
 chk (eqv? n 0) "and the same the other way round"
 
 ## --- everything is evaluated once, on entry --------------------------------
@@ -72,7 +72,7 @@ fun once_limit() {
 	| lim c |
 	lim := 3
 	c := 0
-	for i (0 .< lim .. 1) { lim := 99; c := (+ c 1) }
+	for i (0 ..< lim .. 1) { lim := 99; c := (+ c 1) }
 	return c
 }
 chk (eqv? (once_limit) 3) "the end is evaluated once, not retested each turn"
@@ -81,7 +81,7 @@ fun once_step() {
 	| st c |
 	st := 2
 	c := 0
-	for i (0 .< 10 .. st) { st := 1; c := (+ c 1) }
+	for i (0 ..< 10 .. st) { st := 1; c := (+ c 1) }
 	return c
 }
 chk (eqv? (once_step) 5) "the step is evaluated once too"
@@ -89,25 +89,25 @@ chk (eqv? (once_step) 5) "the step is evaluated once too"
 ## --- break and continue ----------------------------------------------------
 
 s := 0
-for i (0 .< 10) { if (> i 3) { break }; s := (+ s i) }
+for i (0 ..< 10) { if (> i 3) { break }; s := (+ s i) }
 chk (eqv? s 6) "break leaves the loop"
 
 s := 0
-for i (0 .< 6) { if (eqv? (mod i 2) 0) { continue }; s := (+ s i) }
+for i (0 ..< 6) { if (eqv? (mod i 2) 0) { continue }; s := (+ s i) }
 chk (eqv? s 9) "continue runs the increment, so it reaches the end"
 
 s := 0
-for i (10 .> 0 .. 2) { if (< i 5) { break }; s := (+ s i) }
+for i (10 ..> 0 .. 2) { if (< i 5) { break }; s := (+ s i) }
 chk (eqv? s 24) "break works in a descending stepped loop"
 
 ## --- nesting ---------------------------------------------------------------
 
 s := 0
-for i (0 .< 3) { for j (0 .< 3) { s := (+ s (* i j)) } }
+for i (0 ..< 3) { for j (0 ..< 3) { s := (+ s (* i j)) } }
 chk (eqv? s 9) "a for nests inside a for, sharing a marker"
 
 s := 0
-for i (0 .< 3) { for j (0 .< 3) { if (eqv? j 1) { break }; s := (+ s 1) } }
+for i (0 ..< 3) { for j (0 ..< 3) { if (eqv? j 1) { break }; s := (+ s 1) } }
 chk (eqv? s 3) "break leaves the inner loop only"
 
 ## --- the loop variable -----------------------------------------------------
@@ -115,33 +115,33 @@ chk (eqv? s 3) "break leaves the inner loop only"
 ## the loop variable is an ordinary variable - the increment reads back
 ## whatever the body left in it rather than keeping a count of its own.
 s := 0
-for i (1 .<= 3) { i := (* i 10); s := (+ s i) }
+for i (1 ..<= 3) { i := (* i 10); s := (+ s i) }
 chk (eqv? s 10) "the body may assign the loop variable"
 
 n := 0
-for i (1 .<= 3) { i := 99; n := (+ n 1) }
+for i (1 ..<= 3) { i := 99; n := (+ n 1) }
 chk (eqv? n 1) "and the increment carries on from what the body left"
 
 ## --- a step that cannot carry the loop -------------------------------------
 
 caught := 0
-try { for i (0 .< 3 .. 0) { caught := 99 } } catch (e) { caught := 1 }
+try { for i (0 ..< 3 .. 0) { caught := 99 } } catch (e) { caught := 1 }
 chk (eqv? caught 1) "a zero step is refused, not run forever"
 
 caught := 0
-try { for i (0 .< 3 .. -1) { caught := 99 } } catch (e) { caught := 1 }
+try { for i (0 ..< 3 .. -1) { caught := 99 } } catch (e) { caught := 1 }
 chk (eqv? caught 1) "a negative step is refused - the step is a magnitude"
 
 caught := 0
-try { for i (3 .> 0 .. 0) { caught := 99 } } catch (e) { caught := 1 }
+try { for i (3 ..> 0 .. 0) { caught := 99 } } catch (e) { caught := 1 }
 chk (eqv? caught 1) "and the same when counting down"
 
 ## --- computed bounds -------------------------------------------------------
 
 s := 0
-for i ((+ 1 1) .< (* 2 3)) { s := (+ s i) }
+for i ((+ 1 1) ..< (* 2 3)) { s := (+ s i) }
 chk (eqv? s 14) "the ends may be expressions"
 
 s := 0
-for i (0 .< 10 .. (+ 1 2)) { s := (+ s i) }
+for i (0 ..< 10 .. (+ 1 2)) { s := (+ s i) }
 chk (eqv? s 18) "so may the step"

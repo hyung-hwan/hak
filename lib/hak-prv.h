@@ -537,10 +537,10 @@ enum hak_tok_type_t
 	HAK_TOK_DOT,       /* . */
 	HAK_TOK_DBLDOTS,   /* .. */
 	HAK_TOK_ELLIPSIS,  /* ... */
-	HAK_TOK_DOTLT,     /* .< */
-	HAK_TOK_DOTLE,     /* .<= */
-	HAK_TOK_DOTGT,     /* .> */
-	HAK_TOK_DOTGE,     /* .>= */
+	HAK_TOK_DBLDOTSLT, /* ..< */
+	HAK_TOK_DBLDOTSLE, /* ..<= */
+	HAK_TOK_DBLDOTSGT, /* ..> */
+	HAK_TOK_DBLDOTSGE, /* ..>= */
 	HAK_TOK_COLON,     /* : */
 	HAK_TOK_DBLCOLONS, /* :: */
 	HAK_TOK_TRPCOLONS, /* ::: */
@@ -657,7 +657,7 @@ enum hak_cnode_type_t
 	HAK_CNODE_TRPCOLONS, /* ::: */
 	HAK_CNODE_DBLCOLONS, /* :: */
 	HAK_CNODE_COLON, /* : */
-	HAK_CNODE_RANGE, /* .< .<= .> .>= .. */
+	HAK_CNODE_RANGE, /* ..< ..<= ..> ..>= .. */
 };
 typedef enum hak_cnode_type_t hak_cnode_type_t;
 
@@ -665,10 +665,10 @@ typedef enum hak_cnode_type_t hak_cnode_type_t;
  * the comparison markers double as the loop continuation test the range stands for. */
 enum hak_cnode_range_kind_t
 {
-	HAK_CNODE_RANGE_LT,  /* .<  - ascending, exclusive end */
-	HAK_CNODE_RANGE_LE,  /* .<= - ascending, inclusive end */
-	HAK_CNODE_RANGE_GT,  /* .>  - descending, exclusive end */
-	HAK_CNODE_RANGE_GE,  /* .>= - descending, inclusive end */
+	HAK_CNODE_RANGE_LT,  /* ..<  - ascending, exclusive end */
+	HAK_CNODE_RANGE_LE,  /* ..<= - ascending, inclusive end */
+	HAK_CNODE_RANGE_GT,  /* ..>  - descending, exclusive end */
+	HAK_CNODE_RANGE_GE,  /* ..>= - descending, inclusive end */
 	HAK_CNODE_RANGE_STEP /* ..  - the step that follows a complete range */
 };
 typedef enum hak_cnode_range_kind_t hak_cnode_range_kind_t;
@@ -1179,6 +1179,7 @@ enum hak_flx_state_t
 	HAK_FLX_HMARKED_CHAR,   /* hash-marked character that begins with #\ */
 	HAK_FLX_HMARKED_IDENT,  /* literal symbol */
 	HAK_FLX_PLAIN_IDENT,    /* plain identifier */
+	HAK_FLX_PLAIN_IDENT_DOT, /* plain identifier followed by an uncommitted segment separator */
 	HAK_FLX_PLAIN_NUMBER,   /* plain number */
 	HAK_FLX_PLAIN_NUMBER_DOT, /* plain number followed by an uncommitted decimal point */
 	HAK_FLX_QUOTED_TOKEN,   /* string, character */

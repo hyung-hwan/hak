@@ -664,7 +664,7 @@ next:
 			/* print the notation back - ( from MARKER to [ .. step ] ).
 			 * the marker is kept as written, and a step of one is left out
 			 * just as it is in the source. */
-			static const hak_bch_t* markers[] = { " .< ", " .<= ", " .> ", " .>= " };
+			static const hak_bch_t* markers[] = { " ..< ", " ..<= ", " ..> ", " ..>= " };
 			hak_oop_interval_t iv = (hak_oop_interval_t)obj;
 			hak_oow_t ividx, nslots;
 			int mk;

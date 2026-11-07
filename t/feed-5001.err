@@ -187,7 +187,9 @@ if.abc := 20 ##ERROR: syntax error - wrong multi-segment identifier
 
 ---
 
-abc. := 20 ##ERROR: syntax error - blank segment after 'abc.'
+## the segment separator is not committed until a segment follows it, so the
+## name ends at abc and the dot is left over - see flx_plain_ident_dot()
+abc. := 20 ##ERROR: syntax error - prohibited dot around '.'
 
 ---
 

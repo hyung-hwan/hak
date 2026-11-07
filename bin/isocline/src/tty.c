@@ -756,7 +756,7 @@ static void tty_waitc_console(tty_t* tty, long timeout_ms)
 #else
               /*
               ULONGLONG now_ms = GetTickCount();
-              ULONGLONG waited_ms = (now_ms >= start_ms)? (now_ms - start_ms): (0xFFFFFFFFu - start_ms + now_ms - 1);
+              ULONGLONG waited_ms = (now_ms >= start_ms)? (now_ms - start_ms): (0xFFFFFFFFu - start_ms + now_ms + 1);
               */
               ULONGLONG waited_ms = (DWORD)(GetTickCount() - (DWORD)start_ms); /* let unsigned arithmetic handle overflow */
 #endif

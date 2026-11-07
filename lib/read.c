@@ -96,7 +96,7 @@ static struct voca_t
 	{  4, { '(',':',' ',')'  /* MLIST */                                  } },
 	{  4, { '(',':','=',')'  /* ALIST - x := y */                         } },
 	{  4, { '(','B','O',')'  /* BLIST - x binop y */                      } },
-	{  4, { '(','.','<',')'  /* RANGE - from .< to */                     } },
+	{  5, { '(','.','.','<',')' /* RANGE - from ..< to */                 } },
 	{  4, { '(','-','>',')'  /* PLIST - in -> .. -> out */                } },
 	{  3, { '{',' ','}'      /* BLOCK */                                  } },
 	{  4, { '#','[',' ',']'  /* ARRAY */                                  } },
@@ -229,7 +229,7 @@ static struct
 	HAK_AID(HAK_CONCODE_MLIST)     { HAK_TOK_RPAREN, HAK_SYNERR_RPAREN, VOCA_MLIST }, /* MLIST     (obj:message) */
 	HAK_AID(HAK_CONCODE_ALIST)     { HAK_TOK_RPAREN, HAK_SYNERR_RPAREN, VOCA_ALIST }, /* ALIST     (var:=value) */
 	HAK_AID(HAK_CONCODE_BLIST)     { HAK_TOK_RPAREN, HAK_SYNERR_RPAREN, VOCA_BLIST }, /* BLIST     (x + y) */
-	HAK_AID(HAK_CONCODE_RANGE)     { HAK_TOK_RPAREN, HAK_SYNERR_RPAREN, VOCA_RANGE }, /* RANGE     (x .< y) */
+	HAK_AID(HAK_CONCODE_RANGE)     { HAK_TOK_RPAREN, HAK_SYNERR_RPAREN, VOCA_RANGE }, /* RANGE     (x ..< y) */
 	HAK_AID(HAK_CONCODE_PLIST)     { HAK_TOK_RPAREN, HAK_SYNERR_RPAREN, VOCA_PLIST }, /* PLIST     (x -> .. -> y) */
 	HAK_AID(HAK_CONCODE_BLOCK)     { HAK_TOK_RBRACE, HAK_SYNERR_RBRACE, VOCA_BLOCK }, /* BLOCK     { } */
 	HAK_AID(HAK_CONCODE_ARRAY)     { HAK_TOK_RBRACK, HAK_SYNERR_RBRACK, VOCA_ARRAY }, /* ARRAY     #[ ] */
@@ -1052,13 +1052,13 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 				x = HAK_CNODE_CONS_CAR(tail);
 				if (HAK_CNODE_IS_RANGE(x))
 				{
-					/* for example, (1 .< 10 ..) */
+					/* for example, (1 ..< 10 ..) */
 					hak_setsynerrbfmt(hak, HAK_SYNERR_NOVALUE, HAK_CNODE_GET_LOC(x),
 						"no operand after range operator '%.*js'", HAK_CNODE_GET_TOKLEN(x), HAK_CNODE_GET_TOKPTR(x));
 				}
 				else
 				{
-					/* for example, (1 .< 10 20) */
+					/* for example, (1 ..< 10 20) */
 					hak_setsynerrbfmt(hak, HAK_SYNERR_NOVALUE, HAK_CNODE_GET_LOC(x),
 						"redundant operand '%.*js'", HAK_CNODE_GET_TOKLEN(x), HAK_CNODE_GET_TOKPTR(x));
 				}
@@ -1367,16 +1367,16 @@ static HAK_INLINE int tok_to_range_kind (hak_tok_type_t tt)
 {
 	switch (tt)
 	{
-		case HAK_TOK_DOTLT: return HAK_CNODE_RANGE_LT;
-		case HAK_TOK_DOTLE: return HAK_CNODE_RANGE_LE;
-		case HAK_TOK_DOTGT: return HAK_CNODE_RANGE_GT;
-		case HAK_TOK_DOTGE: return HAK_CNODE_RANGE_GE;
+		case HAK_TOK_DBLDOTSLT: return HAK_CNODE_RANGE_LT;
+		case HAK_TOK_DBLDOTSLE: return HAK_CNODE_RANGE_LE;
+		case HAK_TOK_DBLDOTSGT: return HAK_CNODE_RANGE_GT;
+		case HAK_TOK_DBLDOTSGE: return HAK_CNODE_RANGE_GE;
 		default:            return HAK_CNODE_RANGE_STEP;
 	}
 }
 
 /* a range is ( from MARKER to ) or ( from MARKER to .. step ) where MARKER is
- * one of .< .<= .> .>= - the comparison the loop it describes will perform.
+ * one of ..< ..<= ..> ..>= - the comparison the loop it describes will perform.
  * the markers are chained into the list the way a binary selector is, so a
  * complete range holds 3 or 5 items. leave_list() checks that arity. */
 static HAK_INLINE int can_range_list (hak_t* hak, hak_tok_type_t tt)
@@ -1388,7 +1388,7 @@ static HAK_INLINE int can_range_list (hak_t* hak, hak_tok_type_t tt)
 	rstl = hak->c->r.st;
 	cc = (hak_concode_t)LIST_FLAG_GET_CONCODE(rstl->flagv);
 
-	/* repeated delimiters - e.g. (a : .< ...) */
+	/* repeated delimiters - e.g. (a : ..< ...) */
 	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED | RANGED | PIPOPED)) return 0;
 
 	if (tt == HAK_TOK_DBLDOTS)
@@ -2409,10 +2409,10 @@ static int feed_process_token (hak_t* hak)
 			goto auto_xlist;
 		}
 
-		case HAK_TOK_DOTLT:
-		case HAK_TOK_DOTLE:
-		case HAK_TOK_DOTGT:
-		case HAK_TOK_DOTGE:
+		case HAK_TOK_DBLDOTSLT:
+		case HAK_TOK_DBLDOTSLE:
+		case HAK_TOK_DBLDOTSGT:
+		case HAK_TOK_DBLDOTSGE:
 		case HAK_TOK_DBLDOTS:
 			if (frd->level <= 0 || !can_range_list(hak, TOKEN_TYPE(hak)))
 			{
@@ -2882,10 +2882,10 @@ static delim_token_t delim_token_tab[] =
 	 * one has matched. every prefix must itself be a row too - the no-match
 	 * branch of flx_delim_token() wraps up with whatever row_start points at,
 	 * without checking that row is complete. */
-	{ ".<",       2, HAK_TOK_DOTLT }, /* ascending, exclusive end */
-	{ ".<=",      3, HAK_TOK_DOTLE }, /* ascending, inclusive end */
-	{ ".>",       2, HAK_TOK_DOTGT }, /* descending, exclusive end */
-	{ ".>=",      3, HAK_TOK_DOTGE }, /* descending, inclusive end */
+	{ "..<",      3, HAK_TOK_DBLDOTSLT }, /* ascending, exclusive end */
+	{ "..<=",     4, HAK_TOK_DBLDOTSLE }, /* ascending, inclusive end */
+	{ "..>",      3, HAK_TOK_DBLDOTSGT }, /* descending, exclusive end */
+	{ "..>=",     4, HAK_TOK_DBLDOTSGE }, /* descending, inclusive end */
 
 	/* the tokens beginning with a colon must be handled separately in flx_colon_token()
 	 * becuase some characters(= only as of now) after the colon are binop charaters, i
@@ -3749,6 +3749,50 @@ not_consumed:
 	return 0;
 }
 
+/* wrap up the identifier accumulated so far. the caller must have closed the
+ * last segment already. split out of flx_plain_ident() so that
+ * flx_plain_ident_dot() can end a name at a separator it decides not to keep. */
+static int wrap_up_plain_ident (hak_t* hak)
+{
+	hak_flx_pi_t* pi = FLX_PI(hak);
+	hak_tok_type_t tok_type;
+
+	if (pi->non_ident_seg_count > 0)
+	{
+		if (pi->seg_count == 1)
+		{
+			FEED_WRAP_UP(hak, pi->last_non_ident_type);
+			return 0;
+		}
+		else if (!pi->is_cla && pi->seg_count == pi->last_non_ident_seg + 1 && pi->last_non_ident_type == HAK_TOK_BINOP)
+		{
+			/* allow it if the last segment is binop and not prefixed with self. or super. */
+			/* for example, core.+ */
+			/* do nothing */
+		}
+		else
+		{
+			hak_setsynerrbfmt(hak, HAK_SYNERR_ILTOK, TOKEN_LOC(hak),
+				"wrong multi-segment identifier '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
+			return -1;
+		}
+	}
+
+	/* if single-segmented, perform classification(call classify_ident_token()) again
+	 * because self and super as the first segment have not been marked as a non-identifier above */
+	if (pi->seg_count == 1)
+	{
+		if (classify_ident_token(hak, TOKEN_NAME(hak), TOKEN_LOC(hak), &tok_type) <= -1) return -1;
+	}
+	else
+	{
+		tok_type = pi->is_cla == 2? HAK_TOK_IDENT_DOTTED_CLA_SUPER:
+		           pi->is_cla == 1? HAK_TOK_IDENT_DOTTED_CLA_SELF: HAK_TOK_IDENT_DOTTED;
+	}
+	FEED_WRAP_UP(hak, tok_type);
+	return 0;
+}
+
 static int flx_plain_ident (hak_t* hak, hak_ooci_t c) /* identifier */
 {
 	hak_flx_pi_t* pi = FLX_PI(hak);
@@ -3791,46 +3835,14 @@ static int flx_plain_ident (hak_t* hak, hak_ooci_t c) /* identifier */
 
 		if (c == '.')
 		{
-			/* move on to the next segment */
-			ADD_TOKEN_CHAR(hak, c);
-			pi->char_count++;
+			/* don't commit the separator yet. it joins the name only if a
+			 * segment actually follows. see flx_plain_ident_dot(). */
+			FEED_CONTINUE(hak, HAK_FLX_PLAIN_IDENT_DOT);
 			goto consumed;
 		}
 
 		/* finish */
-		if (pi->non_ident_seg_count > 0)
-		{
-			if (pi->seg_count == 1)
-			{
-				FEED_WRAP_UP(hak, pi->last_non_ident_type);
-				goto not_consumed;
-			}
-			else if (!pi->is_cla && pi->seg_count == pi->last_non_ident_seg + 1 && pi->last_non_ident_type == HAK_TOK_BINOP)
-			{
-				/* allow it if the last segment is binop and not prefixed with self. or super. */
-				/* for example, core.+ */
-				/* do nothing */
-			}
-			else
-			{
-				hak_setsynerrbfmt(hak, HAK_SYNERR_ILTOK, TOKEN_LOC(hak),
-					"wrong multi-segment identifier '%.*js'", TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
-				return -1;
-			}
-		}
-
-		/* if single-segmented, perform classification(call classify_ident_token()) again
-		 * because self and super as the first segment have not been marked as a non-identifier above */
-		if (pi->seg_count == 1)
-		{
-			if (classify_ident_token(hak, TOKEN_NAME(hak), TOKEN_LOC(hak), &tok_type) <= -1) return -1;
-		}
-		else
-		{
-			tok_type = pi->is_cla == 2? HAK_TOK_IDENT_DOTTED_CLA_SUPER:
-			           pi->is_cla == 1? HAK_TOK_IDENT_DOTTED_CLA_SELF: HAK_TOK_IDENT_DOTTED;
-		}
-		FEED_WRAP_UP(hak, tok_type);
+		if (wrap_up_plain_ident(hak) <= -1) return -1;
 		goto not_consumed;
 	}
 	else if (is_ident_char(c))
@@ -3863,6 +3875,30 @@ consumed:
 	return 1;
 
 not_consumed:
+	return 0;
+}
+
+static int flx_plain_ident_dot (hak_t* hak, hak_ooci_t c) /* identifier with a pending segment separator */
+{
+	hak_flx_pi_t* pi = FLX_PI(hak);
+
+	if (!is_delim_char(c))
+	{
+		/* a segment follows, so the separator belongs to the name. this is what
+		 * keeps core.< a single qualified identifier. */
+		ADD_TOKEN_CHAR(hak, '.');
+		pi->char_count++;
+		FEED_CONTINUE(hak, HAK_FLX_PLAIN_IDENT);
+		return flx_plain_ident(hak, c); /* let the normal state take the segment */
+	}
+
+	/* nothing can follow, so the name ended before the separator and the
+	 * separator begins the next token. this is what lets a..<b split into
+	 * a, ..< and b while core.< stays one name. */
+	if (wrap_up_plain_ident(hak) <= -1) return -1;
+	reset_flx_token(hak);
+	TOKEN_LOC(hak)->colm--; /* the separator is one character before c */
+	if (_flx_start(hak, '.') <= -1) return -1;
 	return 0;
 }
 
@@ -3984,7 +4020,7 @@ static int flx_plain_number_dot (hak_t* hak, hak_ooci_t c) /* number with a pend
 	/* a decimal point has been read but not added to the token yet. the number
 	 * continues through it only if a decimal digit follows. a radixed number
 	 * never takes a decimal point, so it always ends here. this is what makes
-	 * (1.<2) lex like (1 .< 2) instead of failing on '1.' */
+	 * (1..<2) lex like (1 ..< 2) instead of failing on '1.' */
 	if (pn->radix == 10 && is_radixed_digit_char(c, 10))
 	{
 		pn->fpdec = 1;
@@ -4300,6 +4336,7 @@ static int feed_char (hak_t* hak, hak_ooci_t c)
 		case HAK_FLX_HMARKED_IDENT:    return flx_hmarked_ident(hak, c);
 
 		case HAK_FLX_PLAIN_IDENT:      return flx_plain_ident(hak, c);
+		case HAK_FLX_PLAIN_IDENT_DOT:  return flx_plain_ident_dot(hak, c);
 		case HAK_FLX_PLAIN_NUMBER:     return flx_plain_number(hak, c);
 		case HAK_FLX_PLAIN_NUMBER_DOT: return flx_plain_number_dot(hak, c);
 		case HAK_FLX_QUOTED_TOKEN:     return flx_quoted_token(hak, c);
