@@ -13,6 +13,7 @@ check_SCRIPTS = \
 	assign-01.hak \
 	char-01.hak \
 	classof-01.hak \
+	comma-01.hak \
 	coll-01.hak \
 	coll-02.hak \
 	cons-01.hak \

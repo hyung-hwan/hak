@@ -208,7 +208,8 @@ enum list_flag_t
 	DATA_LIST    = (1 << 10),
 	AUTO_FORGED  = (1 << 11),  /* automatically added list. only applicable to XLIST */
 	AT_BEGINNING = (1 << 12),
-	GLUED_CALL   = (1 << 13)   /* a glued '(' turned an item of this list into a call - e.g. printf("hello\n") */
+	GLUED_CALL   = (1 << 13),  /* a glued '(' turned an item of this list into a call - e.g. printf("hello\n") */
+	CALL_ARGS    = (1 << 14)   /* this XLIST IS such a call - its head is the callee - e.g. the list printf("hello\n") became */
 
 	/* TOTAL 16 items are allowed for LIST_FLAG_GET_CONCODE() and LIST_FLAG_SET_CONCODE().
 	 * they reserve lower 16 bits as flag bits.*/
@@ -754,6 +755,97 @@ static HAK_INLINE int enter_list (hak_t* hak, const hak_loc_t* loc, int flagv)
 	return 0;
 }
 
+/* The lists in which a comma delimits elements and a run of more than one item
+ * between two commas is one element - folded into a call.
+ *
+ * The dictionary is left out. Its items alternate between keys and values and
+ * the colon already carries that structure, which a run has no way to express.
+ * A plain XLIST is left out too: a comma is only taken in the glued call form,
+ * so '(f a, b)' stays the error it is today while 'f(a, b)' works. */
+static HAK_INLINE int takes_comma_runs (int flagv)
+{
+	hak_concode_t cc = (hak_concode_t)LIST_FLAG_GET_CONCODE(flagv);
+	if (cc == HAK_CONCODE_XLIST) return !!(flagv & CALL_ARGS);
+	return cc == HAK_CONCODE_ARRAY || cc == HAK_CONCODE_BYTEARRAY ||
+	       cc == HAK_CONCODE_CHARARRAY || cc == HAK_CONCODE_TUPLE;
+}
+
+/* Fold each run of items between two commas into a list of its own, so that a
+ * comma-delimited list holds one cell per element:
+ *
+ *   f(a, b)                 -> (f a b)                 runs of one, untouched
+ *   f(a, b c)               -> (f a (b c))
+ *   f(if (c) 1 else 2, 3)   -> (f (if (c) 1 else 2) 3)
+ *   #[ fun(x){x}, 1 ]       -> #[ (fun (x) {x}) 1 ]
+ *
+ * A run of one item is left alone, exactly as the rvalue of := is, or 'f(a, b)'
+ * would become 'f((a) (b))' and call a and b.
+ *
+ * `skip_head` is set for a glued call, whose head is the callee rather than an
+ * argument - the first comma of 'f(a, b)' comes after the second cell, and
+ * without this the callee would be folded together with the first argument. */
+static int fold_comma_runs (hak_t* hak, hak_cnode_t** headp, hak_cnode_t** tailp, hak_oow_t* countp, int skip_head)
+{
+	hak_cnode_t* newhead = HAK_NULL, * prev = HAK_NULL, * run;
+	hak_oow_t nelems = 0;
+	hak_oocs_t tok;
+
+	tok.ptr = vocas[VOCA_XLIST].str;
+	tok.len = vocas[VOCA_XLIST].len;
+
+	run = *headp;
+	if (skip_head && run)
+	{
+		/* the callee is an element of its own */
+		newhead = prev = run;
+		nelems++;
+		run = HAK_CNODE_CONS_CDR(run);
+	}
+
+	while (run)
+	{
+		hak_cnode_t* last = run, * nxt;
+
+		/* the run reaches up to the cell before the next one a comma preceded */
+		while (HAK_CNODE_CONS_CDR(last) &&
+		       !(HAK_CNODE_GET_FLAGS(HAK_CNODE_CONS_CDR(last)) & HAK_CNODE_COMMA_BEFORE))
+		{
+			last = HAK_CNODE_CONS_CDR(last);
+		}
+		nxt = HAK_CNODE_CONS_CDR(last);
+
+		HAK_CNODE_GET_FLAGS(run) &= ~HAK_CNODE_COMMA_BEFORE;
+
+		if (run != last)
+		{
+			hak_cnode_t* wrap;
+
+			HAK_CNODE_CONS_CDR(last) = HAK_NULL; /* detach the run */
+			HAK_CNODE_CONS_CONCODE(run) = HAK_CONCODE_XLIST;
+			wrap = hak_makecnodecons(hak, 0, HAK_CNODE_GET_LOC(run), &tok, run, nxt);
+			if (HAK_UNLIKELY(!wrap))
+			{
+				const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
+				HAK_CNODE_CONS_CDR(last) = nxt; /* put it back so the chain stays freeable */
+				hak_seterrbfmt(hak, HAK_ERRNUM(hak), "failed to create cons cnode for a comma-delimited element - %js", orgmsg);
+				return -1;
+			}
+			run = wrap;
+		}
+
+		if (prev) HAK_CNODE_CONS_CDR(prev) = run;
+		else newhead = run;
+		prev = run;
+		nelems++;
+		run = nxt;
+	}
+
+	*headp = newhead;
+	*tailp = prev;
+	*countp = nelems;
+	return 0;
+}
+
 static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int* flagv, int* oldflagv)
 {
 	hak_rstl_t* rstl;
@@ -778,6 +870,22 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 
 	hak->c->r.st = rstl->prev; /* pop off  */
 	hak_freemem(hak, rstl); /* dispose of the stack node */
+
+	if ((fv & COMMAED) && !(fv & (COLONED | COLONEQED | BINOPED | RANGED | PIPOPED)))
+	{
+		/* a comma right before the closer terminates the last element instead
+		 * of separating it from a missing one. this holds wherever a comma is
+		 * accepted at all - can_comma_list() has already refused it anywhere
+		 * else, so no further test is needed here:
+		 *   f(a, b,)       the same as f(a, b)
+		 *   #[ 1, 2, ]     the same as #[ 1, 2 ]
+		 *   #{ 1:2, }      the same as #{ 1:2 }
+		 * in a list that folds comma runs it is also the only way to mark a
+		 * single element that spans several items, as there is no other comma
+		 * to delimit it:
+		 *   f(a b c,)      one argument, the call (f (a b c)) */
+		fv &= ~COMMAED;
+	}
 
 	if (fv & (COMMAED | COLONED | COLONEQED | BINOPED | RANGED | PIPOPED))
 	{
@@ -859,6 +967,13 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 	if (head)
 	{
 		HAK_ASSERT(hak, HAK_CNODE_IS_CONS(head));
+
+		if ((fv & JSON) && takes_comma_runs(fv))
+		{
+			/* this list used commas. fold each run between two of them into one
+			 * element before anything below looks at the chain. */
+			if (fold_comma_runs(hak, &head, &tail, &count, !!(fv & CALL_ARGS)) <= -1) goto oops;
+		}
 
 		if (concode == HAK_CONCODE_ALIST) /* assignment list */
 		{
@@ -1140,18 +1255,30 @@ static HAK_INLINE int can_comma_list (hak_t* hak)
 
 	if (rstl->count <= 0) return 0;
 
-	if (rstl->count == 1) rstl->flagv |= JSON;
-	else if (!(rstl->flagv & JSON)) return 0;
+	cc = (hak_concode_t)LIST_FLAG_GET_CONCODE(rstl->flagv);
+
+	if (takes_comma_runs(rstl->flagv))
+	{
+		/* an element may span several items, so the position of the first comma
+		 * says nothing about whether this list is comma-delimited. just record
+		 * that it is from here on - once a comma has been used, every element
+		 * boundary is a comma, which is the all-or-nothing rule. */
+		if ((rstl->flagv & CALL_ARGS) && rstl->count < 2) return 0; /* f(, a) - the head is the callee */
+		rstl->flagv |= JSON;
+	}
+	else
+	{
+		if (rstl->count == 1) rstl->flagv |= JSON;
+		else if (!(rstl->flagv & JSON)) return 0;
+	}
 
 	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED | RANGED | PIPOPED)) return 0;
 
-	cc = (hak_concode_t)LIST_FLAG_GET_CONCODE(rstl->flagv);
 	if (cc == HAK_CONCODE_DIC)
 	{
 		if (rstl->count & 1) return 0;
 	}
-	else if (cc != HAK_CONCODE_ARRAY && cc != HAK_CONCODE_BYTEARRAY &&
-	         cc != HAK_CONCODE_CHARARRAY && cc != HAK_CONCODE_TUPLE)
+	else if (!takes_comma_runs(rstl->flagv))
 	{
 		return 0;
 	}
@@ -1485,12 +1612,18 @@ static int chain_to_list (hak_t* hak, hak_cnode_t* obj, hak_loc_t* loc)
 {
 	hak_rstl_t* rstl;
 	int flagv;
+	int glued_call;
 	/*int list_concode;*/
 
 	HAK_ASSERT(hak, hak->c->r.st != HAK_NULL);
 	rstl = hak->c->r.st;
 	flagv = rstl->flagv;
 	/*list_concode = (hak_concode_t)LIST_FLAG_GET_CONCODE(flagv);*/
+
+	/* is this a call that took its callee out of this very list? the mark is
+	 * only meaningful on the way back in, so consume it here. */
+	glued_call = HAK_CNODE_IS_CONS(obj) && (HAK_CNODE_GET_FLAGS(obj) & HAK_CNODE_GLUED_CALL);
+	if (glued_call) HAK_CNODE_GET_FLAGS(obj) &= ~HAK_CNODE_GLUED_CALL;
 
 	if (flagv & CLOSED)
 	{
@@ -1570,10 +1703,17 @@ static int chain_to_list (hak_t* hak, hak_cnode_t* obj, hak_loc_t* loc)
 		hak_oocs_t fake_tok, * fake_tok_ptr = HAK_NULL;
 		int concode;
 
-		if ((flagv & JSON) && rstl->count > 0 && !(flagv & (COMMAED | COLONED)))
+		if ((flagv & JSON) && !takes_comma_runs(flagv) && rstl->count > 0 && !glued_call &&
+		    !(flagv & (COMMAED | COLONED)))
 		{
 			/* there is no separator between array/dictionary elements
-			 * for instance, #{10:20, 30:40 40:50} */
+			 * for instance, #{10:20, 30:40 40:50}
+			 *
+			 * a glued call is let through. it is not a new element but the one
+			 * that was already here: '#{ 1: g(2) }' chained 'g' while the colon
+			 * was pending, and the '(' then took that cell away to build the
+			 * call. what comes back now replaces it, so the separator that
+			 * admitted it has already been seen and consumed. */
 			hak_setsynerrbfmt(hak, HAK_SYNERR_NOSEP, TOKEN_LOC(hak),
 				"no separator between array/dictionary elements around '%.*js",
 				TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
@@ -1595,6 +1735,24 @@ static int chain_to_list (hak_t* hak, hak_cnode_t* obj, hak_loc_t* loc)
 
 		cons = hak_makecnodecons(hak, 0, (loc? loc: HAK_CNODE_GET_LOC(obj)), fake_tok_ptr, obj, HAK_NULL);
 		if (HAK_UNLIKELY(!cons)) return -1;
+
+		/* remember that a comma came right before this item. leave_list() reads
+		 * these marks back to find where one element ends and the next begins. */
+		if (flagv & COMMAED)
+		{
+			HAK_CNODE_GET_FLAGS(cons) |= HAK_CNODE_COMMA_BEFORE;
+		}
+		else if (HAK_CNODE_IS_CONS(obj) && (HAK_CNODE_GET_FLAGS(obj) & HAK_CNODE_COMMA_BEFORE))
+		{
+			/* the mark is carried by the cons CELL, and a glued '(' moves the
+			 * cell it is on out of this list and into the call it opens, where
+			 * it becomes the head:
+			 *   f(1, g(2))   the cell holding 'g' is marked, then moved
+			 * the call is coming back now, so move the mark onto the cell that
+			 * holds it here - the one the fold will look at. */
+			HAK_CNODE_GET_FLAGS(obj) &= ~HAK_CNODE_COMMA_BEFORE;
+			HAK_CNODE_GET_FLAGS(cons) |= HAK_CNODE_COMMA_BEFORE;
+		}
 
 		if (rstl->count <= 0)
 		{
@@ -2268,6 +2426,7 @@ static int feed_process_token (hak_t* hak)
 				frd->flagv = 0;
 			#endif
 				LIST_FLAG_SET_CONCODE(frd->flagv, HAK_CONCODE_XLIST);
+				frd->flagv |= CALL_ARGS; /* the head of this list is the callee - see takes_comma_runs() */
 				if (frd->level >= HAK_TYPE_MAX(int))
 				{
 					/* the nesting level has become too deep */
@@ -2313,6 +2472,13 @@ static int feed_process_token (hak_t* hak)
 				new_rstl->head = old_tail;
 				new_rstl->tail = old_tail;
 				new_rstl->count++;
+				/* note on the cell itself that it left this list this way.
+				 * leave_list() answers with the head cell, so this very cnode
+				 * comes back to chain_to_list() when the call is complete,
+				 * carrying both this mark and, if a comma preceded the callee,
+				 * its HAK_CNODE_COMMA_BEFORE. fold_comma_runs() leaves the head
+				 * of a CALL_ARGS list alone, so both survive the trip. */
+				HAK_CNODE_GET_FLAGS(old_tail) |= HAK_CNODE_GLUED_CALL;
 
 				/* Remember that a call was forged inside this list. If the
 				 * list is the one auto_forge_xlist_if_at_block_beginning()

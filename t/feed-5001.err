@@ -254,3 +254,36 @@ do | k | {set k 10;}; ##ERROR: syntax error - variable declaration disallowed in
 
 ---
 k := (do | k | {set k 10;}) ##ERROR: syntax error - variable declaration disallowed in 'do' context
+
+---
+
+## a comma delimits elements in a glued call and in a data list only.
+## '(f a, b)' is not the glued call form, so the comma has nothing to delimit.
+fun f(a b) { return a }
+k := (f 1, 2) ##ERROR: syntax error - prohibited comma around ','
+
+---
+
+fun f(a b) { return a }
+k := f(1,, 2) ##ERROR: syntax error - prohibited comma around ','
+
+---
+
+## a trailing comma terminates the last element and is accepted wherever a
+## comma is accepted, the dictionary included. it still has to sit at an
+## element boundary - in a dictionary that means after a value, not a key.
+k := #{10:20, 30,} ##ERROR: syntax error - prohibited comma around ','
+
+---
+
+## a glued call is let past the missing-separator check because it replaces the
+## cell the '(' took away. the exemption is spent on that one item, so a real
+## missing separator after it is still caught.
+fun g(x) { return x }
+k := #{ 1: g(2) 3: 4 } ##ERROR: syntax error - no separator between array/dictionary elements
+
+---
+
+## the dictionary stays out of the run model, so its missing-separator check
+## still applies - see takes_comma_runs() in lib/read.c
+k := #{10:20, 30:40 40:50} ##ERROR: syntax error - no separator between array/dictionary elements

@@ -1,0 +1,107 @@
+## The comma as an element separator in glued calls and data lists.
+##
+## Without a comma a list reads exactly as it always did: the items of a glued
+## call are its callee and arguments, and the items of an array are its
+## elements. A comma switches the list to element-at-a-time reading, where each
+## run of items between two commas is one element and a run longer than one item
+## folds into a call - fold_comma_runs() in lib/read.c.
+##
+## That fold is what gives a keyword form an extent in a position where it had
+## none before, which is the point of the whole exercise: 'fun' and 'if' can be
+## written as an argument without a pair of parentheses around them.
+##
+## The two styles are all-or-nothing per list. A list that has seen a comma is
+## comma-delimited from then on; one that has not is read the old way.
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+fun add2(x y) { return (+ x y) }
+
+## --- glued calls ------------------------------------------------------------
+
+chk (eqv? add2(1 2) 3) "a glued call without commas is unchanged"
+chk (eqv? add2(1, 2) 3) "...and means the same with commas"
+chk (eqv? add2(add2(1 2), 4) 7) "a nested glued call can be an element"
+
+## a glued '(' moves the cell holding the callee into the call it opens, and
+## the comma mark that cell carries has to come back with the result.
+chk (eqv? add2(1, add2(2 3)) 6) "...and so can one that FOLLOWS a comma"
+chk (eqv? add2(add2(1 2), add2(3 4)) 10) "...on both sides of the comma"
+chk (eqv? add2(1, add2(2 add2(3 4))) 10) "...nested two deep after a comma"
+j := #[ 1, add2(2 3) ]
+chk (eqv? (core.basicSize j) 2) "a data list keeps the comma before a call"
+chk (eqv? (core.basicAt j 1) 5) "...and the call answered into it"
+
+## a run of more than one item between commas is a call, so the parentheses
+## that used to be needed around it may be left out
+
+chk (eqv? add2(1, add2 2 3) 6) "a multi-item run folds into a call"
+chk (eqv? add2(add2 1 2, 3) 6) "...in the first element too"
+
+## --- the keyword forms that could not be written here before ----------------
+
+chk (eqv? add2(if (> 1 2) 10 else 20, 5) 25) "'if' is usable as an argument"
+chk (eqv? add2(if (> 2 1) { do 10 } else { do 20 }, 5) 15) "...with block bodies too"
+
+fun ap(f v) { return (f v) }
+chk (eqv? ap(fun(q) { return (* q 7) }, 6) 42) "'fun' is usable as an argument"
+
+## --- data lists -------------------------------------------------------------
+
+a := #[ 1 2 3 ]
+chk (eqv? (core.basicSize a) 3) "an array without commas is unchanged"
+b := #[ 1, 2, 3 ]
+chk (eqv? (core.basicSize b) 3) "...and holds the same three elements with commas"
+
+c := #[ if (> 1 2) 10 else 20, 3 ]
+chk (eqv? (core.basicSize c) 2) "a keyword form is one array element"
+chk (eqv? (core.basicAt c 0) 20) "...and it was evaluated"
+chk (eqv? (core.basicAt c 1) 3) "...with the element after it intact"
+
+d := #b[ 1, 2, 3 ]
+chk (eqv? (core.basicSize d) 3) "a byte array takes commas"
+
+## --- what stays as it was ---------------------------------------------------
+##
+## the dictionary is left out of the run model. its items alternate between
+## keys and values, which a run has no way to express, so its commas and its
+## missing-separator check work exactly as before.
+
+e := #{ 1:2, 3:4 }
+chk (= (dic.size e) 2) "a dictionary takes commas as it always did"
+chk (= (dic.get e 1) 2) "...with its first pair intact"
+chk (= (dic.get e 3) 4) "...and its second"
+
+## a comma is taken in the glued call form only. '(f a, b)' is still an error,
+## which is what keeps the change additive.
+
+## --- the trailing comma -----------------------------------------------------
+##
+## a single argument has no second comma to delimit it, so a trailing one
+## marks it. 'f(a b c)' is still the three-argument call it always was;
+## 'f(a b c,)' is one argument.
+
+fun id(v) { return v }
+fun ap1(f) { return (f 7) }
+
+chk (eqv? id(add2 1 2,) 3) "a trailing comma makes one argument of a whole run"
+chk (eqv? id(if (> 2 1) 10 else 20,) 10) "...including a keyword form"
+chk (eqv? ap1(fun(q) { return (* q 3) },) 21) "...and a function definition"
+chk (eqv? id(5,) 5) "a trailing comma after a single item changes nothing"
+chk (eqv? add2(1, 2,) 3) "a trailing comma is allowed after the last argument"
+
+g := #[ if (> 1 2) 10 else 20, ]
+chk (eqv? (core.basicSize g) 1) "a data list takes a trailing comma too"
+chk (eqv? (core.basicAt g 0) 20) "...and folds the run before it"
+
+## the trailing comma is accepted wherever a comma is accepted. the dictionary
+## stays out of the run model, so there it only terminates the last value.
+
+h := #{ 1:2, }
+chk (= (dic.size h) 1) "a dictionary takes a trailing comma"
+chk (= (dic.get h 1) 2) "...with the pair before it intact"
+i := #{ 1:2, 3:4, }
+chk (= (dic.size i) 2) "...after the last of several pairs too"
