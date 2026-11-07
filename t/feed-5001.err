@@ -51,7 +51,10 @@ $include 10    ##ERROR: syntax error - '$include' target expected in place of '1
 
 ##
 
-x := (+ 10 20) "aaaa"; ##ERROR: syntax error - too many rvalues
+## everything after := is now folded into one rvalue list by leave_list(), so
+## 'x := (+ 10 20) "aaaa"' is a call of what (+ 10 20) answers and no longer a
+## syntax error. a non-callable head of that folded list is still caught.
+x := 1 2; ##ERROR: syntax error - invalid callable '1' in function call
 
 ---
 

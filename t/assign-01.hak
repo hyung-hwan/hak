@@ -61,3 +61,33 @@ h := 0
 i := (h := 7)
 chk (eqv? i 7) "an assignment answers what it assigned"
 chk (eqv? h 7) "...and the variable holds it"
+
+## --- the rvalue takes everything after ':=' ----------------------------------
+##
+## leave_list() folds a multi-item rvalue into a list of its own, so the
+## parentheses around a call are optional and both spellings build the same
+## tree. a single item is left alone - wrapping it would turn 'l := 7' into
+## 'l := (7)' and call 7.
+
+fun add2(x y) { return (+ x y) }
+
+j := add2 3 4
+chk (eqv? j 7) "a bare call as the rvalue needs no parentheses"
+k := (add2 3 4)
+chk (eqv? k 7) "...and the parenthesised form means the same"
+
+l := 7
+chk (eqv? l 7) "a single-item rvalue is not wrapped into a call"
+
+## the fold is what lets a keyword form sit in the rvalue position at all.
+## without it the reader leaves 'if' and 'fun' splayed out as siblings of the
+## lvalue and the compiler rejects them.
+
+m := if (> 1 2) 10 else 20
+chk (eqv? m 20) "'if' is usable as an rvalue without parentheses"
+
+n := fun(x) { return (* x 3) }
+chk (eqv? (n 5) 15) "'fun' is usable as an rvalue without parentheses"
+
+o := if (> 2 1) { do 10 } else { do 20 }
+chk (eqv? o 10) "a block-bodied 'if' works the same way"

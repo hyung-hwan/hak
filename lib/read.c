@@ -870,6 +870,44 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 			hak_oocs_t fake_tok, * fake_tok_ptr = HAK_NULL;
 		#endif
 
+			if (count > 2)
+			{
+				/* everything after := is the rvalue. fold it into a list of its
+				 * own so that an assignment always holds exactly two items:
+				 *   a := f 1 2    ->  (a := (f 1 2))
+				 *   a := (f 1 2)  ->  (a := (f 1 2))   the same tree
+				 *
+				 * a single item is left alone. wrapping it would turn
+				 * (a := 20) into (a := (20)) and call 20, and it would also
+				 * make the parenthesised form mean something different from
+				 * the bare one.
+				 *
+				 * this is the same rule the auto-forged statement list follows,
+				 * where 'f 1 2' is a call of f. it must happen before anything
+				 * else in this branch, as the TRANSFORM_ALIST path below
+				 * splices the tuple members into this very chain. */
+				hak_cnode_t* rvals, * wrap;
+				hak_oocs_t rval_tok;
+
+				rvals = HAK_CNODE_CONS_CDR(head);
+				HAK_ASSERT(hak, rvals != HAK_NULL && HAK_CNODE_IS_CONS(rvals));
+
+				rval_tok.ptr = vocas[VOCA_XLIST].str;
+				rval_tok.len = vocas[VOCA_XLIST].len;
+
+				HAK_CNODE_CONS_CONCODE(rvals) = HAK_CONCODE_XLIST;
+				wrap = hak_makecnodecons(hak, 0, HAK_CNODE_GET_LOC(rvals), &rval_tok, rvals, HAK_NULL);
+				if (HAK_UNLIKELY(!wrap))
+				{
+					const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
+					hak_seterrbfmt(hak, HAK_ERRNUM(hak), "failed to create cons cnode for the rvalue of := - %js", orgmsg);
+					goto oops;
+				}
+
+				HAK_CNODE_CONS_CDR(head) = wrap;
+				count = 2;
+			}
+
 			lval = HAK_CNODE_CONS_CAR(head);
 			if (lval && HAK_CNODE_IS_ELIST(lval))
 			{
@@ -943,19 +981,9 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 		#endif
 			}
 
-			HAK_ASSERT(hak, count >= 2); /* the missing rvalue check has been done above */
-			if (count != 2)
-			{
-				hak_cnode_t* rval;
-				rval = HAK_CNODE_CONS_CDR(head);
-				rval = HAK_CNODE_CONS_CDR(rval);
-				rval = HAK_CNODE_CONS_CAR(rval);
-
-				hak_setsynerrbfmt(hak, HAK_SYNERR_RVALUE, HAK_CNODE_GET_LOC(rval),
-					"too many rvalues after := around '%.*js'",
-					HAK_CNODE_GET_TOKLEN(rval), HAK_CNODE_GET_TOKPTR(rval));
-				goto oops;
-			}
+			/* the missing rvalue check has been done above and the fold at the
+			 * top of this branch has reduced any longer rvalue to one item */
+			HAK_ASSERT(hak, count == 2);
 
 		#if defined(TRANSFORM_ALIST)
 			sym = hak_makecnodesymbol(hak, 0, &loc, fake_tok_ptr);
