@@ -332,6 +332,7 @@ static void term_check_flush(term_t* term, bool contains_nl) {
 /*------------------------------------------------------------- */
 
 static void term_init_raw(term_t* term);
+static void term_done_raw(term_t* term);
 
 ic_private term_t* term_new(alloc_t* mem, tty_t* tty, bool nocolor, bool silent, int fd_out )
 {
@@ -442,6 +443,7 @@ ic_private void term_free(term_t* term) {
   if (term == NULL) return;
   term_flush(term);
   term_end_raw(term, true);
+  term_done_raw(term);
   sbuf_free(term->buf); term->buf = NULL;
   mem_free(term->mem, term);
 }
@@ -1069,6 +1071,10 @@ static void term_init_raw(term_t* term) {
   }
 }
 
+static void term_done_raw(term_t* term) {
+  ic_unused(term);
+}
+
 #else
 
 ic_private void term_start_raw(term_t* term) {
@@ -1077,11 +1083,10 @@ ic_private void term_start_raw(term_t* term) {
   if (GetConsoleScreenBufferInfo(term->hcon, &info)) {
     term->hcon_orig_attr = info.wAttributes;
   }
-  term->hcon_orig_cp = GetConsoleOutputCP();
-  SetConsoleOutputCP(CP_UTF8);
   if (term->hcon_mode == 0) {
     /* first time initialization */
-    DWORD mode = ENABLE_PROCESSED_OUTPUT | ENABLE_WRAP_AT_EOL_OUTPUT | ENABLE_LVB_GRID_WORLDWIDE;   /* for \r \n and \b */
+    DWORD basemode = ENABLE_PROCESSED_OUTPUT | ENABLE_WRAP_AT_EOL_OUTPUT;   /* for \r \n and \b */
+    DWORD mode = basemode | ENABLE_LVB_GRID_WORLDWIDE;
     /* use escape sequence handling if available and the terminal supports it (so we can use rgb colors in Windows terminal) */
     /* Unfortunately, in plain powershell, we can successfully enable terminal processing */
     /* but it still fails to render correctly; so we require the palette be large enough (like in Windows Terminal) */
@@ -1092,6 +1097,13 @@ ic_private void term_start_raw(term_t* term) {
     /* no virtual terminal processing, emulate instead */
     else if (SetConsoleMode(term->hcon, mode)) {
       term->hcon_mode = mode;
+      term->palette = ANSI16;
+    }
+    /* windows xp and the like reject ENABLE_LVB_GRID_WORLDWIDE outright. without
+       this fallback both calls above fail, hcon_mode stays 0, and every later
+       term_start_raw() runs this probe again instead of just setting the mode. */
+    else if (SetConsoleMode(term->hcon, basemode)) {
+      term->hcon_mode = basemode;
       term->palette = ANSI16;
     }
     GetConsoleMode(term->hcon, &mode);
@@ -1110,36 +1122,74 @@ ic_private void term_end_raw(term_t* term, bool force) {
   else {
     term->raw_enabled = 0;
     SetConsoleMode(term->hcon, term->hcon_orig_mode);
-    SetConsoleOutputCP(term->hcon_orig_cp);
     SetConsoleTextAttribute(term->hcon, term->hcon_orig_attr);
   }
 }
 
 static void term_init_raw(term_t* term) {
+  typedef BOOL(WINAPI* LPFN_GetConsoleScreenBufferInfo)(
+    HANDLE hConsoleOutput,
+    PCONSOLE_SCREEN_BUFFER_INFOEX lpConsoleScreenBufferInfoEx
+  );
+  LPFN_GetConsoleScreenBufferInfo gcbi;
+  BOOL ret;
+
   term->hcon = GetStdHandle( term->fd_out == STDERR_FILENO ? STD_ERROR_HANDLE : STD_OUTPUT_HANDLE );
   GetConsoleMode(term->hcon, &term->hcon_orig_mode);
-  CONSOLE_SCREEN_BUFFER_INFOEX info;
-  memset(&info, 0, sizeof(info));
-  info.cbSize = sizeof(info);
-  if (GetConsoleScreenBufferInfoEx(term->hcon, &info)) {
-    /* store default attributes */
-    term->hcon_default_attr = info.wAttributes;
-    /* update our color table with the actual colors used. */
-    { unsigned i; for (i = 0; i < 16; i++) {
-      COLORREF cr = info.ColorTable[i];
-      uint32_t color = (ic_cap8(GetRValue(cr))<<16) | (ic_cap8(GetGValue(cr))<<8) | ic_cap8(GetBValue(cr)); /* COLORREF = BGR */
-      /* index is also in reverse in the bits 0 and 2 */
-      unsigned j = (i&0x08) | ((i&0x04)>>2) | (i&0x02) | (i&0x01)<<2;
-      debug_msg("term: ansi color %d is 0x%06x\n", j, color);
-      ansi256[j] = color;
-    } }
+
+  /* the code page belongs to the console, not to raw mode. changing it makes
+     windows re-pick the console font - on xp a raster font cannot render utf-8,
+     so the host switches to a truetype one, which resizes and repaints the
+     window. doing that in term_start_raw()/term_end_raw() meant two font
+     switches for every line edited, so set it once here and restore it once in
+     term_done_raw(). */
+  term->hcon_orig_cp = GetConsoleOutputCP();
+  SetConsoleOutputCP(CP_UTF8);
+
+  gcbi = (LPFN_GetConsoleScreenBufferInfo)GetProcAddress(GetModuleHandle(TEXT("kernel32.dll")), "GetConsoleScreenBufferInfoEx");
+  if (gcbi) {
+      CONSOLE_SCREEN_BUFFER_INFOEX info;
+      memset(&info, 0, sizeof(info));
+      info.cbSize = sizeof(info);
+
+      ret = gcbi(term->hcon, &info);
+      if (ret) {
+        /* store default attributes */
+        term->hcon_default_attr = info.wAttributes;
+        /* update our color table with the actual colors used. */
+        { unsigned i; for (i = 0; i < 16; i++) {
+          COLORREF cr = info.ColorTable[i];
+          uint32_t color = (ic_cap8(GetRValue(cr))<<16) | (ic_cap8(GetGValue(cr))<<8) | ic_cap8(GetBValue(cr)); /* COLORREF = BGR */
+          /* index is also in reverse in the bits 0 and 2 */
+          unsigned j = (i&0x08) | ((i&0x04)>>2) | (i&0x02) | (i&0x01)<<2;
+          debug_msg("term: ansi color %d is 0x%06x\n", j, color);
+          ansi256[j] = color;
+        } }
+     }
   }
   else {
+    CONSOLE_SCREEN_BUFFER_INFO info;
+    memset(&info, 0, sizeof(info));
+    ret = GetConsoleScreenBufferInfo(term->hcon, &info);
+    if (ret) {
+        term->hcon_default_attr = info.wAttributes;
+    }
+  }
+
+  if (!ret) {
     DWORD err = GetLastError();
     debug_msg("term: cannot get console screen buffer: %d %x", err, err);
   }
+
   term_start_raw(term); /* initialize the hcon_mode */
   term_end_raw(term,false);
+}
+
+static void term_done_raw(term_t* term) {
+  if (term->hcon_orig_cp != 0) {
+    SetConsoleOutputCP(term->hcon_orig_cp);
+    term->hcon_orig_cp = 0;
+  }
 }
 
 #endif

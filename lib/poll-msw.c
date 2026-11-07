@@ -168,7 +168,7 @@ static int windows_compute_revents (HANDLE h, int *p_sought)
 			if (!once_only)
 			{
 				NtQueryInformationFile = (PNtQueryInformationFile)
-					GetProcAddress (GetModuleHandle(TEXT("ntdll.dll")), "NtQueryInformationFile");
+					GetProcAddress(GetModuleHandle(TEXT("ntdll.dll")), "NtQueryInformationFile");
 				once_only = TRUE;
 			}
 

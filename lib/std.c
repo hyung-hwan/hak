@@ -4868,24 +4868,31 @@ static const wchar_t* msw_exception_opname (const ULONG opcode)
 
 static LONG WINAPI msw_exception_filter (struct _EXCEPTION_POINTERS* exinfo)
 {
-	HMODULE mod;
-#if defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0501)
-	MODULEINFO modinfo;
-#endif
 	DWORD excode;
 	static wchar_t exmsg[256];
 	static wchar_t expath[128];
 
+#if 0
 #if defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0601)
-	GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, exinfo->ExceptionRecord->ExceptionAddress, &mod);
-	/*GetModuleInformation (GetCurrentProcess(), mod, &modinfo, HAK_SIZEOF(modinfo));*/
-	GetModuleFileNameExW(GetCurrentProcess(), mod, expath, HAK_SIZEOF(expath));
+	{
+		HMODULE mod;
+	#if defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0501)
+		/*MODULEINFO modinfo;*/
+	#endif
+		GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, exinfo->ExceptionRecord->ExceptionAddress, &mod);
+		/*GetModuleInformation (GetCurrentProcess(), mod, &modinfo, HAK_SIZEOF(modinfo));*/
+		GetModuleFileNameExW(GetCurrentProcess(), mod, expath, HAK_COUNTOF(expath));
 
-	/* on windows 7 or later GetModuleFileNameExW is actually K32GetModuleFileNameExW residing in kernel32.dll.
-	 * on windows xp/vista, it's inside psapi.dll. i don't want to care to selectively link psapi.lib or load psapi.dll.
-	 * if you set _WIN32_WINNT <= 0x0600, it just fall back to GetModuleFileNameW */
+		/* on windows 7 or later GetModuleFileNameExW is actually K32GetModuleFileNameExW residing in kernel32.dll.
+		 * on windows xp/vista, it's inside psapi.dll. i don't want to care to selectively link psapi.lib or load psapi.dll.
+		 * if you set _WIN32_WINNT <= 0x0600, it just fall back to GetModuleFileNameW */
+	}
 #else
-	GetModuleFileNameW(HAK_NULL, expath, HAK_SIZEOF(expath));
+	GetModuleFileNameW(HAK_NULL, expath, HAK_COUNTOF(expath));
+#endif
+#else
+	/* never mind. just use the old GetMOduleFileNameW... */
+	GetModuleFileNameW(HAK_NULL, expath, HAK_COUNTOF(expath));
 #endif
 
 	excode = exinfo->ExceptionRecord->ExceptionCode;
