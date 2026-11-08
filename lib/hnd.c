@@ -275,32 +275,65 @@ static HAK_INLINE hak_ooi_t fd_to_id (hak_t* hak, int fd)
 /* ------------------------------------------------------------------------- */
 
 /**
- * Work out what kind of descriptor \a fd is and whether the multiplexer will
+ * work out what kind of descriptor \a fd is and whether the multiplexer will
  * take it. Doing this once here, at wrap time, is what keeps every caller
  * from discovering it later as an EPERM out of epoll_ctl - or, on a poll()
  * build, from never discovering it at all because poll() reports a regular
  * file as permanently ready.
+ *
+ * \a hint is what the caller says the descriptor is, or 0 when it does not
+ * know. It names a single kind only where the caller made the descriptor
+ * itself, and is used as a fallback for a system that will not describe one.
  */
-static int probe_fd (hak_t* hak, int fd, hak_hnd_type_t* type, int* muxable)
+static int probe_fd (hak_t* hak, int fd, hak_hnd_type_t hint, hak_hnd_type_t* type, int* muxable)
 {
 #if defined(_WIN32)
 	/* TODO: GetFileType() on the underlying HANDLE. until then a caller must
 	 *       state the type and nothing is muxable. */
-	*type = 0;
+	HAK_ASSERT(hak, hint == 0 || HAK_IS_ALIGNED_POW2(hint, hint)); /* ensure that zero value or the right bit field value was given */
+	*type = hint;
 	*muxable = 0;
 	return 0;
 #else
 	struct stat st;
 
+	HAK_ASSERT(hak, hint == 0 || HAK_IS_ALIGNED_POW2(hint, hint)); /* ensure that zero value or the right bit field value was given */
+
 	if (fstat(fd, &st) <= -1)
 	{
-		hak_seterrbfmtwithsyserr(hak, 0, errno, "unable to identify handle %d", fd);
+		int fstat_errno = errno;
+
+		/* a descriptor fstat() will not describe is not necessarily a bad one.
+		 * mac os x 10.4 answers EBADF for the write end of a pipe once the read
+		 * end is gone, which is exactly what sys.popen() holds whenever the
+		 * child exits at once. if fcntl() still accepts the descriptor, take
+		 * the given hint over fstat(). */
+		if (hint != 0 && fcntl(fd, F_GETFD, 0) >= 0)
+		{
+			*type = hint;
+			*muxable = !!(hint & HAK_HND_TYPE_ALL_MUXABLE);
+			return 0;
+		}
+
+		hak_seterrbfmtwithsyserr(hak, 0, fstat_errno, "unable to identify handle %d", fd);
 		return -1;
 	}
 
-	if (S_ISFIFO(st.st_mode))      { *type = HAK_HND_TYPE_PIPE; *muxable = 1; }
-	else if (S_ISSOCK(st.st_mode)) { *type = HAK_HND_TYPE_SCK;  *muxable = 1; }
-	else if (S_ISCHR(st.st_mode))  { *type = HAK_HND_TYPE_CHR;  *muxable = 1; }
+	if (S_ISFIFO(st.st_mode))
+	{
+		*type = HAK_HND_TYPE_PIPE;
+		*muxable = 1;
+	}
+	else if (S_ISSOCK(st.st_mode))
+	{
+		*type = HAK_HND_TYPE_SCK;
+		*muxable = 1;
+	}
+	else if (S_ISCHR(st.st_mode))
+	{
+		*type = HAK_HND_TYPE_CHR;
+		*muxable = 1;
+	}
 	else if ((st.st_mode & S_IFMT) == 0)
 	{
 		/* an anonymous inode. linux hands these out for pidfd, eventfd,
@@ -385,7 +418,7 @@ hak_hnd_t* hak_wrapfd (hak_t* hak, int fd, hak_hnd_type_t type_hint, int flags)
 		return HAK_NULL;
 	}
 
-	if (probe_fd(hak, fd, &type, &muxable) <= -1) return HAK_NULL;
+	if (probe_fd(hak, fd, type_hint, &type, &muxable) <= -1) return HAK_NULL;
 
 	if (type_hint && !(type_hint & type))
 	{

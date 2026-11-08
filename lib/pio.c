@@ -141,6 +141,9 @@
 #	if HAK_PIO_HAVE_GETRLIMIT
 #		include <sys/resource.h>
 #	endif
+#	if defined(HAVE_SYS_TIME_H)
+#		include <sys/time.h> /* setitimer(), struct itimerval */
+#	endif
 #	include <unistd.h>
 #	include <fcntl.h>
 #	include <signal.h>
@@ -897,6 +900,42 @@ static hak_pio_pid_t standard_fork_and_exec (hak_pio_t* pio, hak_pio_hnd_t pipes
 #else
 
 /**
+ * stop the parent's interval timers from running on in the child.
+ *
+ * fork() is supposed to reset them, but not every system does it - mac os x
+ * 10.4 hands the child a live copy. that matters here because the vm arms one
+ * for process switching (start_ticker() in lib/std.c) and execve() resets the
+ * handler for it to SIG_DFL: the child is then killed the moment the inherited
+ * timer first expires triggered by the system's default handler for that signal.
+ * a #HAK_PIO_FNCCMD child never execs and would instead run the vm's own tick
+ * handler.
+ *
+ * where fork() already did the right thing this is three cheap no-ops. the
+ * posix_spawn() path below cannot be covered this way, but a system new enough
+ * to have posix_spawn() is not one that leaks timers across a process start.
+ *
+ * [NOTE] this runs in the forked child, so it touches no hak state - see the
+ *        same note in get_highest_fd().
+ */
+static void disarm_inherited_itimers (void)
+{
+#if defined(HAVE_SETITIMER)
+	struct itimerval itv;
+
+	HAK_MEMSET(&itv, 0, HAK_SIZEOF(itv));
+#if defined(ITIMER_VIRTUAL)
+	setitimer(ITIMER_VIRTUAL, &itv, HAK_NULL);
+#endif
+#if defined(ITIMER_REAL)
+	setitimer(ITIMER_REAL, &itv, HAK_NULL);
+#endif
+#if defined(ITIMER_PROF)
+	setitimer(ITIMER_PROF, &itv, HAK_NULL);
+#endif
+#endif
+}
+
+/**
  * fork() and exec() the child. exactly one of \a param and \a fnc is non-NULL:
  * \a param carries an argv vector for execve(), \a fnc carries a function
  * pointer to run in the child (#HAK_PIO_FNCCMD).
@@ -916,6 +955,10 @@ static hak_pio_pid_t standard_fork_and_exec (hak_pio_t* pio, hak_pio_hnd_t pipes
 	{
 		/* child */
 		hak_pio_hnd_t devnull = -1;
+
+		/* before anything else - the descriptor sweep below is long enough to
+		 * trip an inherited cpu-time timer on its own */
+		disarm_inherited_itimers();
 
 		if (!(pio->flags & HAK_PIO_NOCLOEXEC))
 		{

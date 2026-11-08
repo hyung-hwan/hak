@@ -77,12 +77,18 @@ chk (eql? (b:readAll) (bytesOf "rest-as-bytes")) "...leaves the rest readable as
 ## The same TextStream, now over a pipe rather than memory. The child writes
 ## more than one line, and reading blocks the calling process rather than the
 ## vm - the coprocess below keeps running throughout.
+##
+## The child sleeps before it writes. Without that the whole output can
+## already be sitting in the pipe when the first read is issued - the read
+## then answers from the buffer, nothing ever blocks, and no coprocess gets a
+## turn. Which machine that happens on is a matter of timing, so the delay is
+## what makes the property below testable rather than incidental.
 
 ticks := 0
 fun ticker() { while (< ticks 3) { ticks := (+ ticks 1) ; Process:yield } }
 Process:fork ticker
 
-x := (ExternalProcess:open "printf 'alpha\\nbeta\\ngamma\\n'" "r")
+x := (ExternalProcess:open "sleep 1; printf 'alpha\\nbeta\\ngamma\\n'" "r")
 chk (nqv? (x:out) nil) "a process answers a stream, not a descriptor"
 chk (eqv? ((x:out):process) x) "...which knows the process it belongs to"
 
@@ -97,10 +103,11 @@ chk (eql? (lines:at 0) "alpha") "first line off the pipe"
 chk (eql? (lines:at 1) "beta") "second"
 chk (eql? (lines:at 2) "gamma") "third"
 chk (nil? (xt:readLine)) "nil at end of the pipe"
-## how many times the reader actually blocks depends on how the child's
-## output is chunked - one fill may deliver all three lines - so the count is
-## not fixed. That a coprocess got to run at all is the property being tested.
-chk (> ticks 0) "a coprocess ran while the reader blocked"
+## how many times the reader blocks after the first one depends on how the
+## child's output is chunked - one fill may deliver all three lines - but the
+## first read has to wait, and the ticker stops itself at 3, so that is what a
+## reader which blocked the calling process rather than the vm leaves behind.
+chk (= ticks 3) "a coprocess ran while the reader blocked"
 x:close
 
 ## --- writing ----------------------------------------------------------------
