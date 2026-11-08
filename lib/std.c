@@ -4038,15 +4038,14 @@ static void dl_cleanup (hak_t* hak)
 static void* dlopen_pfmod (hak_t* hak, const hak_ooch_t* name, const hak_bch_t* dirptr, const hak_oow_t dirlen, hak_bch_t* bufptr, hak_oow_t bufcapa)
 {
 	void* handle;
+	int shortened = 0;
 	hak_oow_t len, i, xlen, dlen;
 	hak_oow_t bcslen;
 #if defined(HAK_OOCH_IS_UCH)
 	hak_oow_t ucslen;
 #endif
 
-	/* the prefix is a plain char literal whatever HAK_OOCH_IS_UCH says, so the
-	 * bcstr form is named outright rather than through HAK_IS_PATH_ABSOLUTE() */
-	if (dirptr)
+	if (dirptr) /* explicitly given directory */
 	{
 		dlen = hak_copy_bchars_to_bcstr(bufptr, bufcapa, dirptr, dirlen);
 
@@ -4069,8 +4068,12 @@ static void* dlopen_pfmod (hak_t* hak, const hak_ooch_t* name, const hak_bch_t* 
 		#endif
 		}
 
+		/* the prefix is a plain char string literal whatever HAK_OOCH_IS_UCH says, so the
+		 * bcstr form is named outright rather than through HAK_IS_PATH_ABSOLUTE() */
 		if (hak_is_bcstr_path_absolute(HAK_DEFAULT_PFMODPREFIX))
 		{
+			/* the explicit directory wins. only the file name part of the prefix
+			 * is kept - the directory the prefix carries is dropped */
 			len = hak_copy_bcstr(&bufptr[dlen], bufcapa - dlen, hak_get_base_name_from_bcstr_path(HAK_DEFAULT_PFMODPREFIX));
 		}
 		else
@@ -4119,11 +4122,15 @@ retry:
 	{
 		HAK_DEBUG3(hak, "Unable to open(ext) PFMOD %hs[%js] - %hs\n", &bufptr[dlen], name, sys_dl_error());
 
-		if (dlen > 0)
+		if (dlen > 0 && !shortened)
 		{
-			handle = sys_dl_openext(&bufptr[0]);
+			/* try the prefixed name alone. holding no separator, it goes to the
+			 * search path of the dynamic loader instead of the file system.
+			 * [NOTE] the full name only. a shortened one may have decayed to the
+			 *        bare prefix, and libhak is this very library. */
+			handle = sys_dl_openext(&bufptr[dlen]);
 			if (handle) goto pfmod_open_ok;
-			HAK_DEBUG3(hak, "Unable to open(ext) PFMOD %hs[%js] - %hs\n", &bufptr[0], name, sys_dl_error());
+			HAK_DEBUG3(hak, "Unable to open(ext) PFMOD %hs[%js] - %hs\n", &bufptr[dlen], name, sys_dl_error());
 		}
 
 		/* try without prefix and postfix */
@@ -4137,7 +4144,10 @@ retry:
 			HAK_DEBUG3(hak, "Unable to open(ext) PFMOD %hs[%js] - %hs\n", &bufptr[len], name, dl_errstr);
 			hak_seterrbfmt(hak, HAK_ESYSERR, "unable to open(ext) PFMOD %js - %hs", name, dl_errstr);
 
-			dash = hak_rfind_bchar(bufptr, hak_count_bcstr(bufptr), '-');
+			/* only the name part is scanned. a dash in the directory or in the
+			 * prefix is no segment boundary - scanning the whole buffer would chop
+			 * the path itself and could reduce the name down to the bare prefix */
+			dash = hak_rfind_bchar(&bufptr[len], xlen - len, '-');
 			if (dash)
 			{
 				/* remove a segment at the back.
@@ -4145,6 +4155,7 @@ retry:
 				 *        period-to-dash transformation may cause extraneous/wrong
 				 *        loading reattempts. */
 				xlen = dash - bufptr;
+				shortened = 1;
 				goto retry;
 			}
 		}
