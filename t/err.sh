@@ -78,7 +78,7 @@ do
 done
 
 caps=""
-probefile=`mktemp`
+probefile=`mktemp /tmp/hak-err-sh-probe.XXXXXX`
 ## u+2605 is written in octal so that this script stays pure ascii.
 ## it is a single character where the build is wide, and 3 bytes where it is not.
 probestar=`printf '\342\230\205'`
@@ -87,7 +87,7 @@ printf '%s\n' "printf \"%d\\n\" '$probestar';" > "$probefile"
 rm -f "$probefile"
 
 ever_failed=0
-partfile=`mktemp`
+partfile=`mktemp /tmp/hak-err-sh-part.XXXXXX`
 partno=0
 partlines=0
 lineno=0
