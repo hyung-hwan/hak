@@ -991,6 +991,7 @@ hak_mod_data_t* hak_openmod (hak_t* hak, const hak_ooch_t* name, hak_oow_t namel
 	hak_mod_data_t* mdp;
 	hak_mod_data_t md;
 	hak_mod_load_t load = HAK_NULL;
+	int symmiss = 0;
 #if defined(HAK_ENABLE_STATIC_MODULE)
 	int n;
 #endif
@@ -1090,23 +1091,62 @@ hak_mod_data_t* hak_openmod (hak_t* hak, const hak_ooch_t* name, hak_oow_t namel
 	hak_copy_oochars((hak_ooch_t*)md.mod.name, name, namelen);
 	if (hak->vmprim.dl_open && hak->vmprim.dl_getsym && hak->vmprim.dl_close)
 	{
-		md.handle = hak->vmprim.dl_open(hak, &buf[MOD_PREFIX_LEN], HAK_VMPRIM_DLOPEN_PFMOD);
+		hak_ooch_t* modname = &buf[MOD_PREFIX_LEN];
+		hak_oow_t flen = namelen;
+
+		/* the library file may carry a shorter module id than the one looked up.
+		 * a library covering a parent id is allowed to host its children -
+		 * libhak-core.so may provide hak_mod_core_a for the module core.a.
+		 *
+		 * the shortening belongs here and not in dl_open() because the symbol is
+		 * only known here. a library opened under a shorter name but lacking the
+		 * symbol must not end the search - otherwise libhak-core.so in an early
+		 * module directory would shadow the real libhak-core-a.so in a later one.
+		 * the id is also cut at a period here, before the period-to-dash mapping
+		 * in dl_open(), so a dash inside a module id is never a cutting point. */
+		while (1)
+		{
+			hak_ooch_t* sep;
+			hak_ooch_t c;
+
+			c = modname[flen];
+			modname[flen] = '\0';
+			md.handle = hak->vmprim.dl_open(hak, modname, HAK_VMPRIM_DLOPEN_PFMOD);
+			modname[flen] = c;
+
+			if (md.handle)
+			{
+				/* attempt to get hak_mod_xxx where xxx is the full module name */
+				load = (hak_mod_load_t)hak->vmprim.dl_getsym(hak, md.handle, buf);
+				if (load) break;
+
+				HAK_DEBUG3(hak, "Cannot get a module symbol [%js] in [%.*js]\n", buf, flen, modname);
+				hak->vmprim.dl_close(hak, md.handle);
+				md.handle = HAK_NULL;
+				symmiss = 1;
+			}
+
+			/* drop the last segment and look for a library covering the parent id */
+			sep = hak_rfind_oochar(modname, flen, '.');
+			if (!sep) break;
+			flen = sep - modname;
+		}
 	}
 
-	if (md.handle == HAK_NULL)
-	{
-		HAK_DEBUG2(hak, "Cannot open a module [%.*js]\n", namelen, name);
-		hak_seterrbfmt(hak, HAK_ENOENT, "unable to open a module [%.*js]", namelen, name);
-		return HAK_NULL;
-	}
-
-	/* attempt to get hak_mod_xxx where xxx is the module name*/
-	load = (hak_mod_load_t)hak->vmprim.dl_getsym(hak, md.handle, buf);
 	if (!load)
 	{
-		hak_seterrbfmt(hak, HAK_ERRNUM(hak), "unable to get module symbol [%js] in [%.*js]", buf, namelen, name);
-		HAK_DEBUG3(hak, "Cannot get a module symbol [%js] in [%.*js]\n", buf, namelen, name);
-		hak->vmprim.dl_close(hak, md.handle);
+		HAK_ASSERT(hak, md.handle == HAK_NULL);
+		if (symmiss)
+		{
+			/* a library was found but none of the candidates exported the symbol */
+			HAK_DEBUG3(hak, "Cannot get a module symbol [%js] in [%.*js]\n", buf, namelen, name);
+			hak_seterrbfmt(hak, HAK_ENOENT, "unable to get module symbol [%js] in [%.*js]", buf, namelen, name);
+		}
+		else
+		{
+			HAK_DEBUG2(hak, "Cannot open a module [%.*js]\n", namelen, name);
+			hak_seterrbfmt(hak, HAK_ENOENT, "unable to open a module [%.*js]", namelen, name);
+		}
 		return HAK_NULL;
 	}
 

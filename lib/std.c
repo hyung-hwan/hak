@@ -4038,7 +4038,6 @@ static void dl_cleanup (hak_t* hak)
 static void* dlopen_pfmod (hak_t* hak, const hak_ooch_t* name, const hak_bch_t* dirptr, const hak_oow_t dirlen, hak_bch_t* bufptr, hak_oow_t bufcapa)
 {
 	void* handle;
-	int shortened = 0;
 	hak_oow_t len, i, xlen, dlen;
 	hak_oow_t bcslen;
 #if defined(HAK_OOCH_IS_UCH)
@@ -4112,7 +4111,6 @@ static void* dlopen_pfmod (hak_t* hak, const hak_ooch_t* name, const hak_bch_t* 
 		if (bufptr[i] == '.') bufptr[i] = '-';
 	}
 
-retry:
 	hak_copy_bcstr(&bufptr[xlen], bufcapa - xlen, HAK_DEFAULT_PFMODPOSTFIX);
 
 	/* both prefix and postfix attached. for instance, libhak-xxx */
@@ -4122,12 +4120,10 @@ retry:
 	{
 		HAK_DEBUG3(hak, "Unable to open(ext) PFMOD %hs[%js] - %hs\n", &bufptr[dlen], name, sys_dl_error());
 
-		if (dlen > 0 && !shortened)
+		if (dlen > 0)
 		{
 			/* try the prefixed name alone. holding no separator, it goes to the
-			 * search path of the dynamic loader instead of the file system.
-			 * [NOTE] the full name only. a shortened one may have decayed to the
-			 *        bare prefix, and libhak is this very library. */
+			 * search path of the dynamic loader instead of the file system. */
 			handle = sys_dl_openext(&bufptr[dlen]);
 			if (handle) goto pfmod_open_ok;
 			HAK_DEBUG3(hak, "Unable to open(ext) PFMOD %hs[%js] - %hs\n", &bufptr[dlen], name, sys_dl_error());
@@ -4138,26 +4134,15 @@ retry:
 		handle = sys_dl_openext(&bufptr[len]);
 		if (!handle)
 		{
-			hak_bch_t* dash;
 			const hak_bch_t* dl_errstr;
 			dl_errstr = sys_dl_error();
 			HAK_DEBUG3(hak, "Unable to open(ext) PFMOD %hs[%js] - %hs\n", &bufptr[len], name, dl_errstr);
 			hak_seterrbfmt(hak, HAK_ESYSERR, "unable to open(ext) PFMOD %js - %hs", name, dl_errstr);
 
-			/* only the name part is scanned. a dash in the directory or in the
-			 * prefix is no segment boundary - scanning the whole buffer would chop
-			 * the path itself and could reduce the name down to the bare prefix */
-			dash = hak_rfind_bchar(&bufptr[len], xlen - len, '-');
-			if (dash)
-			{
-				/* remove a segment at the back.
-				 * [NOTE] a dash contained in the original name before
-				 *        period-to-dash transformation may cause extraneous/wrong
-				 *        loading reattempts. */
-				xlen = dash - bufptr;
-				shortened = 1;
-				goto retry;
-			}
+			/* [NOTE] a shorter module id is tried by hak_openmod(), which cuts the
+			 *        id at a period and calls here again. nothing is shortened in
+			 *        this function - it would hide a library from the directories
+			 *        that are yet to be searched. */
 		}
 		else
 		{
