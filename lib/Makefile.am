@@ -123,7 +123,7 @@ EXTRA_DIST = \
 	poll-vms.c \
 	poll-vms.h
 
-libhak_la_CPPFLAGS = $(CPPFLAGS_LIB_COMMON)
+libhak_la_CPPFLAGS = $(CPPFLAGS_LIB_COMMON) $(CPPFLAGS_PFMOD)
 libhak_la_LDFLAGS = $(LDFLAGS_LIB_COMMON)
 libhak_la_LIBADD = $(LIBADD_LIB_COMMON)
 
