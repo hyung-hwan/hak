@@ -74,6 +74,6 @@ chk (= (core.car v) 1) "the original list is untouched"
 bad := 0
 try { core.car nil } catch (e) { bad := (+ bad 1) }
 try { core.cdr nil } catch (e) { bad := (+ bad 1) }
-try { core.car #[1 2] } catch (e) { bad := (+ bad 1) }
+try { core.car #[1, 2] } catch (e) { bad := (+ bad 1) }
 try { core.cdr "s" } catch (e) { bad := (+ bad 1) }
 chk (= bad 4) "car and cdr refuse anything that is not a cons"

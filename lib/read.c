@@ -204,7 +204,12 @@ enum list_flag_t
 	PIPOPED      = (1 << 7),
 
 	CLOSED       = (1 << 8),
-	JSON         = (1 << 9),
+
+	/*JSON        = (1 << 9),*/
+	/* (1 << 9) is free - it was JSON, which recorded that a comma had been
+	 * seen in the list. every list that accepts a comma is comma-delimited
+	 * from the moment it is opened now, so there is nothing to record. */
+
 	DATA_LIST    = (1 << 10),
 	AUTO_FORGED  = (1 << 11),  /* automatically added list. only applicable to XLIST */
 	AT_BEGINNING = (1 << 12),
@@ -254,11 +259,11 @@ static int flx_plain_ident (hak_t* hak, hak_ooci_t c);
 
 /* ----------------------------------------------------------------- */
 
-/* Tokens after which a glued '(' can only be a call, because the token ends a
- * value. Everything else - an opener, an operator, a keyword, a literal - has
+/* tokens after which a glued '(' can only be a call, because the token ends a
+ * value. everything else - an opener, an operator, a keyword, a literal - has
  * nothing to call, so the parenthesis is an ordinary group there.
  *
- * Testing the TOKEN rather than the last item of the list is what keeps
+ * testing the TOKEN rather than the last item of the list is what keeps
  * 'f((g 1))' right: the inner '(' is glued to the outer one, not to f. */
 static HAK_INLINE int tok_ends_a_value (hak_tok_type_t t)
 {
@@ -430,7 +435,7 @@ static HAK_INLINE int add_token_char (hak_t* hak, hak_ooch_t c)
 
 static HAK_INLINE void unget_char (hak_t* hak, const hak_lxc_t* c)
 {
-	/* Make sure that the unget buffer is large enough */
+	/* make sure that the unget buffer is large enough */
 	HAK_ASSERT(hak, hak->c->nungots < HAK_COUNTOF(hak->c->ungot));
 	hak->c->ungot[hak->c->nungots++] = *c;
 }
@@ -755,30 +760,65 @@ static HAK_INLINE int enter_list (hak_t* hak, const hak_loc_t* loc, int flagv)
 	return 0;
 }
 
-/* The lists in which a comma delimits elements and a run of more than one item
+/* the lists in which a comma delimits elements and a run of more than one item
  * between two commas is one element - folded into a call.
  *
- * The dictionary is left out. Its items alternate between keys and values and
+ * these lists are comma-delimited from the moment they are opened, so the
+ * comma is the ONLY element boundary in them. whitespace joins items into one
+ * element rather than separating two:
+ *
+ *   #[ 1, 2, 3 ]            three elements
+ *   #[ 1 2 3 ]              one element, the call (1 2 3)
+ *   f(a, b)                 two arguments
+ *   f(a b)                  one argument, the call (a b)
+ *
+ * the dictionary is left out. its items alternate between keys and values and
  * the colon already carries that structure, which a run has no way to express.
- * A plain XLIST is left out too: a comma is only taken in the glued call form,
- * so '(f a, b)' stays the error it is today while 'f(a, b)' works. */
-static HAK_INLINE int takes_comma_runs (int flagv)
+ * it is separator-delimited in its own way - see chain_to_list().
+ *
+ * a plain XLIST is left out too: a comma is only taken in the glued call form,
+ * so '(f a, b)' stays the error it is today while 'f(a, b)' works, and the
+ * whitespace form '(f a b)' keeps its items as separate operands.
+ *
+ * the parameter list of 'fun f(a b)' and the instance variable list of
+ * 'class X: Y (a b)' are NOT these lists. neither is identified by the opener
+ * - 'fun f (a b)' and 'class X: Y(a b)' are the same declarations - so they
+ * are positional, and they stay whitespace-separated.
+ *
+ * the TUPLE is not one either, though it does take a comma - see takes_comma().
+ */
+static HAK_INLINE int folds_comma_runs (int flagv)
 {
 	hak_concode_t cc = (hak_concode_t)LIST_FLAG_GET_CONCODE(flagv);
 	if (cc == HAK_CONCODE_XLIST) return !!(flagv & CALL_ARGS);
 	return cc == HAK_CONCODE_ARRAY || cc == HAK_CONCODE_BYTEARRAY ||
-	       cc == HAK_CONCODE_CHARARRAY || cc == HAK_CONCODE_TUPLE;
+	       cc == HAK_CONCODE_CHARARRAY;
 }
 
-/* Fold each run of items between two commas into a list of its own, so that a
+/* the lists in which a comma may appear at all. the TUPLE is the one that
+ * takes a comma without folding runs, because it holds names rather than
+ * expressions - the lvalues of '[a, b] := (f 1)' and the attribute lists of
+ * 'class[#final #varying] X ...' and 'fun[#ci] make(a b)'. a run of names has
+ * no second reading to fold into, so the comma there is optional punctuation
+ * and '[a b]' and '[a, b]' are the same two names. the attribute list is also
+ * a declaration decoration written after 'class' or 'fun', which is the same
+ * ground on which the parameter list above is left alone. */
+static HAK_INLINE int takes_comma (int flagv)
+{
+	hak_concode_t cc = (hak_concode_t)LIST_FLAG_GET_CONCODE(flagv);
+	return folds_comma_runs(flagv) || cc == HAK_CONCODE_TUPLE;
+}
+
+/* fold each run of items between two commas into a list of its own, so that a
  * comma-delimited list holds one cell per element:
  *
  *   f(a, b)                 -> (f a b)                 runs of one, untouched
  *   f(a, b c)               -> (f a (b c))
+ *   f(a b c)                -> (f (a b c))              no comma, so one run
  *   f(if (c) 1 else 2, 3)   -> (f (if (c) 1 else 2) 3)
  *   #[ fun(x){x}, 1 ]       -> #[ (fun (x) {x}) 1 ]
  *
- * A run of one item is left alone, exactly as the rvalue of := is, or 'f(a, b)'
+ * a run of one item is left alone, exactly as the rvalue of := is, or 'f(a, b)'
  * would become 'f((a) (b))' and call a and b.
  *
  * `skip_head` is set for a glued call, whose head is the callee rather than an
@@ -880,10 +920,9 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 		 *   f(a, b,)       the same as f(a, b)
 		 *   #[ 1, 2, ]     the same as #[ 1, 2 ]
 		 *   #{ 1:2, }      the same as #{ 1:2 }
-		 * in a list that folds comma runs it is also the only way to mark a
-		 * single element that spans several items, as there is no other comma
-		 * to delimit it:
-		 *   f(a b c,)      one argument, the call (f (a b c)) */
+		 * it used to carry a second job - marking a lone element that spanned
+		 * several items, as in 'f(a b c,)'. a comma-delimited list no longer
+		 * needs it: 'f(a b c)' is that one argument already. */
 		fv &= ~COMMAED;
 	}
 
@@ -968,10 +1007,11 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 	{
 		HAK_ASSERT(hak, HAK_CNODE_IS_CONS(head));
 
-		if ((fv & JSON) && takes_comma_runs(fv))
+		if (folds_comma_runs(fv))
 		{
-			/* this list used commas. fold each run between two of them into one
-			 * element before anything below looks at the chain. */
+			/* this list is comma-delimited. fold each run between two commas
+			 * into one element before anything below looks at the chain. a
+			 * list with no comma at all is one run, hence one element. */
 			if (fold_comma_runs(hak, &head, &tail, &count, !!(fv & CALL_ARGS)) <= -1) goto oops;
 		}
 
@@ -1064,7 +1104,7 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 
 		#if defined(TRANSFORM_ALIST)
 				/* move the array item up to the main list and join the original lval to the end of it
-				 * For [x, y] := (f 9), x and y must be in the same level as set-r after translation.
+				 * for [x, y] := (f 9), x and y must be in the same level as set-r after translation.
 				 * so make it 'x y (f 9)' first and place set-r in front of it later. */
 				rval = HAK_CNODE_CONS_CDR(head);
 				hak_freesinglecnode(hak, head);
@@ -1161,7 +1201,7 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 			 * alternatively, the compiler treats this as a message send expression
 			 * if the reader skips this transformation.
 			 *
-			 * We keep this part commented out to have this trated as a message
+			 * we keep this part commented out to have this trated as a message
 			 * send expression. */
 			HAK_CNODE_CONS_CDR(head) = HAK_CNODE_CONS_CDR(binop);
 			HAK_CNODE_CONS_CDR(binop) = head;
@@ -1257,15 +1297,9 @@ static HAK_INLINE int can_comma_list (hak_t* hak)
 
 	cc = (hak_concode_t)LIST_FLAG_GET_CONCODE(rstl->flagv);
 
-	if (takes_comma_runs(rstl->flagv))
-	{
-		/* an element may span several items, so the position of the first comma
-		 * says nothing about whether this list is comma-delimited. just record
-		 * that it is from here on - once a comma has been used, every element
-		 * boundary is a comma, which is the all-or-nothing rule. */
-		if ((rstl->flagv & CALL_ARGS) && rstl->count < 2) return 0; /* f(, a) - the head is the callee */
-		rstl->flagv |= JSON;
-	}
+	/* f(, a) - the head of a glued call is the callee, not an argument, so the
+	 * first comma cannot come before it */
+	if ((rstl->flagv & CALL_ARGS) && rstl->count < 2) return 0;
 
 	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED | RANGED | PIPOPED)) return 0;
 
@@ -1273,7 +1307,7 @@ static HAK_INLINE int can_comma_list (hak_t* hak)
 	{
 		if (rstl->count & 1) return 0;
 	}
-	else if (!takes_comma_runs(rstl->flagv))
+	else if (!takes_comma(rstl->flagv))
 	{
 		return 0;
 	}
@@ -1323,7 +1357,7 @@ static HAK_INLINE int can_colon_list (hak_t* hak)
 
 		/* outside a dictionary a colon folds the item before it together with
 		 * the item after it into one HAK_CNODE_BOUNDMSG - see chain_to_list().
-		 * The enclosing list is left alone, so the fold is an ordinary item
+		 * the enclosing list is left alone, so the fold is an ordinary item
 		 * and may sit anywhere a value may sit. */
 		recv = HAK_CNODE_CONS_CAR(rstl->tail);
 
@@ -1401,7 +1435,7 @@ static HAK_INLINE int can_binop_list (hak_t* hak)
 		 * when the expression is inside a block enclosed in {},
 		 * rstl->count is the number of preceding expression.
 		 * call is_at_block_begigging() separately to check if it is
-		 * at the beging of the sub-expression. For example,
+		 * at the beging of the sub-expression. for example,
 		 *  { a := 10; b := 20; + a b }
 		 * when this function is called for '+' above, rstl->count is 2.
 		 */
@@ -1667,11 +1701,16 @@ static int chain_to_list (hak_t* hak, hak_cnode_t* obj, hak_loc_t* loc)
 		hak_oocs_t fake_tok, * fake_tok_ptr = HAK_NULL;
 		int concode;
 
-		if ((flagv & JSON) && !takes_comma_runs(flagv) && rstl->count > 0 && !glued_call &&
+		if (LIST_FLAG_GET_CONCODE(flagv) == HAK_CONCODE_DIC && rstl->count > 0 && !glued_call &&
 		    !(flagv & (COMMAED | COLONED)))
 		{
-			/* there is no separator between array/dictionary elements
+			/* there is no separator between dictionary elements
 			 * for instance, #{10:20, 30:40 40:50}
+			 *
+			 * the dictionary is the only list that reports this. everywhere
+			 * else a comma is the sole element boundary, so an item with no
+			 * comma before it joins the element already under way instead of
+			 * starting a new one - see folds_comma_runs().
 			 *
 			 * a glued call is let through. it is not a new element but the one
 			 * that was already here: '#{ 1: g(2) }' chained 'g' while the colon
@@ -2318,11 +2357,10 @@ static int feed_process_token (hak_t* hak)
 
 		case HAK_TOK_DLPAREN: /* #{ */
 			if (auto_forge_xlist_if_at_block_beginning(hak, frd) <= -1) goto oops;
-			frd->flagv = DATA_LIST | JSON;
-			/* JSON here means 'every element needs a separator before it'.
-			 * a dictionary carries it from the start, so ',' or ':' is
-			 * mandatory between its elements - see chain_to_list(). the
-			 * colon-free spelling '#{1 2 3 4}' is not accepted. */
+			frd->flagv = DATA_LIST;
+			/* a dictionary needs a ':' or a ',' before every element after
+			 * the first - see chain_to_list(). the colon-free spelling
+			 * '#{1 2 3 4}' is not accepted. */
 			LIST_FLAG_SET_CONCODE(frd->flagv, HAK_CONCODE_DIC);
 			goto start_list;
 
@@ -2341,7 +2379,7 @@ static int feed_process_token (hak_t* hak)
 
 		case HAK_TOK_DPAREN: /* $( */
 		case HAK_TOK_LPAREN: /* ( */
-			/* A '(' glued to whatever precedes it is a call:
+			/* a '(' glued to whatever precedes it is a call:
 			 *
 			 *   a(1 2 3)     -> (a 1 2 3)
 			 *   a(1 2 3)(9)  -> ((a 1 2 3) 9)   the ')' is an item like any other
@@ -2350,26 +2388,26 @@ static int feed_process_token (hak_t* hak)
 			 * "Glued" is feed.lx.gap == 0, which counts the separators since
 			 * the last token ended - see feed_continue_with_gap().
 			 *
-			 * It takes the preceding ITEM rather than the preceding token, so
+			 * it takes the preceding ITEM rather than the preceding token, so
 			 * a parenthesised list works as the callee without extra effort.
 			 *
-			 * Two positions must be left alone, both of which are decided by
+			 * two positions must be left alone, both of which are decided by
 			 * looking at the list being built rather than by lookahead:
 			 *
 			 *   - after a keyword. 'if(c)', 'while(c)', 'until(c)', 'catch(e)'
 			 *     and an anonymous 'fun(x)' all place a '(' right after a word
-			 *     that is not a value, so there is nothing to call. A keyword
+			 *     that is not a value, so there is nothing to call. a keyword
 			 *     has its own token type, so tok_ends_a_value() says no.
 			 *
-			 *   - the name in a declaration. In 'fun a(x y)' and 'class X(a b)'
-			 *     the parentheses hold parameters, not arguments. The head of
+			 *   - the name in a declaration. in 'fun a(x y)' and 'class X(a b)'
+			 *     the parentheses hold parameters, not arguments. the head of
 			 *     the list under construction says which case this is, exactly
 			 *     as a C parser distinguishes 'int f(int a)' from 'f(a)'.
 			 *
-			 *   - an operator is pending. After ':=', ':', ',' or a binary
+			 *   - an operator is pending. after ':=', ':', ',' or a binary
 			 *     selector the parenthesis is that operator's right operand,
 			 *     so 'self.b:=(a + 10)' must not become a call of self.b and
-			 *     'b:(pick)' must stay the computed-selector send it is. The
+			 *     'b:(pick)' must stay the computed-selector send it is. the
 			 *     token test below already covers these, since an operator
 			 *     does not end a value; the flag is checked too because it
 			 *     states the same thing about the list rather than the token.
@@ -2394,7 +2432,7 @@ static int feed_process_token (hak_t* hak)
 				frd->flagv = 0;
 			#endif
 				LIST_FLAG_SET_CONCODE(frd->flagv, HAK_CONCODE_XLIST);
-				frd->flagv |= CALL_ARGS; /* the head of this list is the callee - see takes_comma_runs() */
+				frd->flagv |= CALL_ARGS; /* the head of this list is the callee - see folds_comma_runs() */
 				if (frd->level >= HAK_TYPE_MAX(int))
 				{
 					/* the nesting level has become too deep */
@@ -2448,11 +2486,11 @@ static int feed_process_token (hak_t* hak)
 				 * of a CALL_ARGS list alone, so both survive the trip. */
 				HAK_CNODE_GET_FLAGS(old_tail) |= HAK_CNODE_GLUED_CALL;
 
-				/* Remember that a call was forged inside this list. If the
+				/* remember that a call was forged inside this list. if the
 				 * list is the one auto_forge_xlist_if_at_block_beginning()
 				 * made for a statement, and the call turns out to be all the
 				 * statement holds, the wrapper has to go - see the collapse
-				 * at the semicolon label. Without it a statement reading
+				 * at the semicolon label. without it a statement reading
 				 *   f(1 2)
 				 * would come out as ((f 1 2)) and call the ANSWER of f. */
 				old_rstl->flagv |= GLUED_CALL;
@@ -2465,11 +2503,11 @@ static int feed_process_token (hak_t* hak)
 		#if defined(HAK_LANG_AUTO_FORGE_XLIST_ALWAYS)
 			/* with this feature on, you must not enclose an expression with ()
 			 * at the beginning of the top-level or at the beginning of a the block level.
-			 * If you do enclose an expression with an outer () there, it is interpreted as
+			 * if you do enclose an expression with an outer () there, it is interpreted as
 			 * double calls, meaning the return value of the expression is called again.
 			 * for example, '(+ 10 20)' as a leading expression is like '((+ 10 20))'.
 			 * -------------------------------------------------------------
-			 * It is useful but a bit confusing:
+			 * it is useful but a bit confusing:
 			 *   fun x(a) { return (fun(b) { return (+ a b) }) }
 			 *   printf "%d\n" ((x 10) 20)   ## excplicit outer () is required here
 			 *   (x 10) 30  ## explicit outer () must not be used here
@@ -2724,7 +2762,7 @@ static int feed_process_token (hak_t* hak)
 				 * so the right parenthesis can only pair up with
 				 * the left parenthesis for the normal list.
 				 *
-				 * For example, '(1 2 3 ') 5 6)
+				 * for example, '(1 2 3 ') 5 6)
 				 *
 				 * this condition is triggerred when the first ) is
 				 * met after the second quote.
@@ -3011,9 +3049,9 @@ static delim_token_t delim_token_tab[] =
 	 *  for the implementation limitation in find_delim_token_char(),
 	 *  the entries in this table must be laid out in a certain way.
 	 *
-	 *    Group the items with the same prefix together.
-	 *    List the shorter before the longer items in the same group.
-	 *    The length must not differ by greater than 1 between 2 items in the same group.
+	 *    group the items with the same prefix together.
+	 *    list the shorter before the longer items in the same group.
+	 *    the length must not differ by greater than 1 between 2 items in the same group.
 	 *
 	 * [NOTE 3]
 	 *  don't list #(, #[, #{ here because of overlapping use of # for various purposes.
@@ -3110,19 +3148,19 @@ static void feed_continue (hak_t* hak, hak_flx_state_t state)
 	hak->c->feed.lx.state = state;
 }
 
-/* Continue into HAK_FLX_STARTED, counting one more thing that separated two
+/* continue into HAK_FLX_STARTED, counting one more thing that separated two
  * tokens.
  *
  * feed.lx.gap is the number of separators seen since the last token ended -
- * feed_wrap_up() clears it, and everything that separates adds one. Ordinary
+ * feed_wrap_up() clears it, and everything that separates adds one. ordinary
  * spacing is counted by flx_start()/flx_started(), but separation is also
  * consumed elsewhere: a linebreak taken as an EOL token, the newline ending a
  * comment, a backslash line continuation, and the switch into or out of an
- * included file. Each has to come through here, or the next token arrives in
+ * included file. each has to come through here, or the next token arrives in
  * the START state and is recorded with gap 0, which reads as "glued to
- * the previous token". For a token at column 1 that would be every line.
+ * the previous token". for a token at column 1 that would be every line.
  *
- * Continuing into STARTED rather than START is the other half of it:
+ * continuing into STARTED rather than START is the other half of it:
  * flx_started() carries gap forward, where flx_start() zeroes it for a
  * non-space character.
  */
@@ -3420,7 +3458,7 @@ static int flx_comment (hak_t* hak, hak_ooci_t c)
 		/* don't consume the line break together with the comment text
 		 * if a comment text is located at the back of the line in the
 		 * LANG_ENABLE_EOL mode.
-		 * TODO: Consider removing this check because not consuming it
+		 * TODO: consider removing this check because not consuming it
 		 *       in another mode doesn't cause a problem. */
 		if (hak->option.trait & HAK_TRAIT_LANG_ENABLE_EOL) return 0; /* not consumed */
 	}
@@ -3455,7 +3493,7 @@ static int flx_coloneq_token (hak_t* hak, hak_ooci_t c)
 	{
 		/* this additional check is mostly caters for out-of-tree method definition with binary operators:
 		 *   fun X:==(a) {}
-		 * How to distinguish := followed by = from : followed by ==?
+		 * how to distinguish := followed by = from : followed by ==?
 		 */
 
 		/* := followed by another = */
@@ -5137,7 +5175,7 @@ int hak_attachccio (hak_t* hak, hak_io_impl_t cci_rdr)
 
 	if (cci_rdr)
 	{
-		/* The name field and the includer field are HAK_NULL
+		/* the name field and the includer field are HAK_NULL
 		 * for the main stream */
 		HAK_MEMSET(&new_cciarg, 0, HAK_SIZEOF(new_cciarg));
 		new_cciarg.line = 1;

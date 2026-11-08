@@ -120,7 +120,7 @@ printf "[%c]\n" b'★';  ##ERROR: syntax error - wrong character literal
 
 ## #b can be followed by [ or binary digits.
 
-printf "%O\n" #b[ 10 20 30 ];
+printf "%O\n" #b[ 10, 20, 30 ];
 printf "%010b\n" 0b0101;
 printf "%O\n" 0bxy; ##ERROR: syntax error - invalid numeric literal character 'x' after '0b'
 
@@ -304,3 +304,14 @@ k := #{1 2, 3 4} ##ERROR: syntax error - no separator between array/dictionary e
 
 ## a comma still cannot delimit a key from its value
 k := #{1,2,3,4} ##ERROR: syntax error - prohibited comma around ','
+
+---
+
+## a comma is the only element boundary in an array and in a glued call, so a
+## list with no comma in it at all is ONE element - the call its items make.
+k := #[1 2] ##ERROR: syntax error - invalid callable '1' in function call
+
+---
+
+fun g(x) { return x }
+k := g(1 2) ##ERROR: syntax error - invalid callable '1' in function call

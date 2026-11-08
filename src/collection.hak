@@ -1183,7 +1183,7 @@ class Bag: Collection (_counts) {
 
 	fun addWithOccurrences(obj n) {
 		if (nil? obj) { throw "nil cannot be an element of a Bag" }
-		self._counts:atPut(obj (+ (self:occurrencesOf obj) n))
+		self._counts:atPut(obj, (+ (self:occurrencesOf obj) n))
 		return obj
 	}
 
@@ -1197,7 +1197,7 @@ class Bag: Collection (_counts) {
 		| c |
 		c := (self:occurrencesOf obj)
 		if (== c 0) { return (block) }
-		if (== c 1) { self._counts:removeKey(obj) } else { self._counts:atPut(obj (- c 1)) }
+		if (== c 1) { self._counts:removeKey(obj) } else { self._counts:atPut(obj, (- c 1)) }
 		return obj
 	}
 

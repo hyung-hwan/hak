@@ -31,7 +31,7 @@ class Holder: Object (cb tag) {
 		return self
 	}
 
-	fun callIt(x y) { return self.cb(x y) }
+	fun callIt(x y) { return self.cb(x, y) }
 
 	## no arguments at all
 	fun[#ci] newNoArg() {

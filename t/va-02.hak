@@ -25,7 +25,7 @@ fun chk(ok msg) {
 ## --- order, and mixing with fixed arguments ---------------------------------
 
 fun three(a b c) { return (sprintf "%O-%O-%O" a b c) }
-fun relayOrder(x ...) { return three(x ...) }
+fun relayOrder(x ...) { return three(x, ...) }
 
 chk (eql? (relayOrder 1 2 3) "1-2-3") "the fixed argument goes first, then the pack in order"
 
@@ -48,7 +48,7 @@ chk (= (twice 1 2 3 4 5) 5) "...however many relays it passes through"
 ## is about arity, not about relaying.
 
 fun one(a) { return a }
-fun relayEmpty(a ...) { return one(a ...) }
+fun relayEmpty(a ...) { return one(a, ...) }
 
 chk (= (relayEmpty 7) 7) "an empty pack relays nothing at all"
 
@@ -61,7 +61,7 @@ chk (= (relayGet 10 20 30) 20) "va-get indexes the relayed pack"
 
 ## --- a spread reaches primitives too -----------------------------------------
 
-fun viaSprintf(fmt ...) { return sprintf(fmt ...) }
+fun viaSprintf(fmt ...) { return sprintf(fmt, ...) }
 
 chk (eql? (viaSprintf "%d/%d" 4 5) "4/5") "a spread reaches a primitive"
 

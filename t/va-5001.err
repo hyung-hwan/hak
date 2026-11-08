@@ -2,7 +2,7 @@
 
 fun g(x y) { return x }
 
-fun f(a ...) { g(... a) } ##ERROR: syntax error - '...' allowed only as the last argument
+fun f(a ...) { g(..., a) } ##ERROR: syntax error - '...' allowed only as the last argument
 
 ---
 
@@ -10,7 +10,7 @@ fun f(a ...) { g(... a) } ##ERROR: syntax error - '...' allowed only as the last
 
 fun g(x y z) { return x }
 
-fun f(a ...) { g(a ... a) } ##ERROR: syntax error - '...' allowed only as the last argument
+fun f(a ...) { g(a, ..., a) } ##ERROR: syntax error - '...' allowed only as the last argument
 
 ---
 
@@ -18,7 +18,7 @@ fun f(a ...) { g(a ... a) } ##ERROR: syntax error - '...' allowed only as the la
 
 fun g(x y) { return x }
 
-fun f(...) { g(... ...) } ##ERROR: syntax error - '...' allowed only as the last argument
+fun f(...) { g(..., ...) } ##ERROR: syntax error - '...' allowed only as the last argument
 
 ---
 
@@ -29,7 +29,7 @@ fun f(...) { g(... ...) } ##ERROR: syntax error - '...' allowed only as the last
 
 fun g(x) { return x }
 
-fun f(a) { g(a ...) } ##ERROR: syntax error - '...' not usable in a function that has no '...' parameter
+fun f(a) { g(a, ...) } ##ERROR: syntax error - '...' not usable in a function that has no '...' parameter
 
 ---
 
@@ -37,7 +37,7 @@ fun f(a) { g(a ...) } ##ERROR: syntax error - '...' not usable in a function tha
 
 fun g(x) { return x }
 
-g(1 ...) ##ERROR: syntax error - '...' not usable in a function that has no '...' parameter
+g(1, ...) ##ERROR: syntax error - '...' not usable in a function that has no '...' parameter
 
 ---
 
@@ -45,4 +45,4 @@ g(1 ...) ##ERROR: syntax error - '...' not usable in a function that has no '...
 
 class K { fun[#c] m(a b) { return a } }
 
-fun f(...) { return K:m(... 1) } ##ERROR: syntax error - '...' allowed only as the last argument
+fun f(...) { return K:m(..., 1) } ##ERROR: syntax error - '...' allowed only as the last argument
