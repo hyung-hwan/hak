@@ -1266,11 +1266,6 @@ static HAK_INLINE int can_comma_list (hak_t* hak)
 		if ((rstl->flagv & CALL_ARGS) && rstl->count < 2) return 0; /* f(, a) - the head is the callee */
 		rstl->flagv |= JSON;
 	}
-	else
-	{
-		if (rstl->count == 1) rstl->flagv |= JSON;
-		else if (!(rstl->flagv & JSON)) return 0;
-	}
 
 	if (rstl->flagv & (COMMAED | COLONED | COLONEQED | BINOPED | RANGED | PIPOPED)) return 0;
 
@@ -1310,7 +1305,12 @@ static HAK_INLINE int can_colon_list (hak_t* hak)
 		 *
 		 * only these two spell a colon at their own list level. every other
 		 * keyword takes ordinary expressions, and a colon in one of those is
-		 * a message send to be folded below - 'if a:b() { ... }'. */
+		 * a message send to be folded below - 'if a:b() { ... }'.
+		 *
+		 * TODO: inject a symbol ':' to differentiate from '::' or ':*' methods.
+		 *       these class methods and class instantiation methods are supposed
+		 *       to be implemented elsewhere because ':' has dual use while '::'
+		 *       or ':*' are independent tokens. */
 		return 2;
 	}
 
@@ -1347,46 +1347,10 @@ static HAK_INLINE int can_colon_list (hak_t* hak)
 		return 1;
 	}
 
-	if (rstl->count == 1) rstl->flagv |= JSON; /* mark that the first key is colon-delimited */
-	else if (!(rstl->flagv & JSON))
-	{
-#if 0
-
-/* this strict check is not needed as it returns 2 above if the first element is a language keyword element */
-		/* handling of a colon sign in out-of-class instance method definition.
-		 * e.g. fun String:length() { return (str.length self). }
-		 * TODO: inject a symbol ':' to differentiate form '::' or ':*' methods.
-		 *       these class methods and class instantiation methods are supposed to be
-		 *       implemented elsewhere because ':' has dual use while '::' or ':*' are
-		 *       independent tokens  */
-		if (HAK_CNODE_IS_TYPED(HAK_CNODE_CONS_CAR(rstl->head), HAK_CNODE_FUN))
-		{
-			hak_cnode_t* tmp, * next;
-			next = HAK_CNODE_CONS_CDR(rstl->head);
-			HAK_ASSERT(hak, next != HAK_NULL);
-			tmp = HAK_CNODE_CONS_CAR(next); /* second item */
-			if (rstl->count == 2)
-			{
-				/* fun class:name() *... */
-				if (HAK_CNODE_IS_SYMBOL(tmp)) return 2;
-			}
-			else if (rstl->count == 3)
-			{
-				/* fun(#c) class:name() ... */
-				if (HAK_CNODE_IS_CONS_CONCODED(tmp, HAK_CONCODE_XLIST) ||
-				    HAK_CNODE_IS_ELIST_CONCODED(tmp, HAK_CONCODE_XLIST))
-				{
-					next = HAK_CNODE_CONS_CDR(next);
-					HAK_ASSERT(hak, next != HAK_NULL);
-					tmp = HAK_CNODE_CONS_CAR(next); /* third item */
-					if (HAK_CNODE_IS_SYMBOL(tmp)) return 2;
-				}
-			}
-		}
-#endif
-
-		return 0; /* the first key is not colon-delimited. so not allowed to colon-delimit other keys  */
-	}
+	/* a dictionary is separator-delimited from the moment it is entered, so
+	 * there is no longer a colon-free spelling to tell this one apart from.
+	 * the test that used to ask whether the FIRST key was colon-delimited is
+	 * gone with it. */
 
 	/* dictionary */
 	if (!(rstl->count & 1)) return 0; /* not allwed after the value in a dictionary */
@@ -2354,7 +2318,11 @@ static int feed_process_token (hak_t* hak)
 
 		case HAK_TOK_DLPAREN: /* #{ */
 			if (auto_forge_xlist_if_at_block_beginning(hak, frd) <= -1) goto oops;
-			frd->flagv = DATA_LIST;
+			frd->flagv = DATA_LIST | JSON;
+			/* JSON here means 'every element needs a separator before it'.
+			 * a dictionary carries it from the start, so ',' or ':' is
+			 * mandatory between its elements - see chain_to_list(). the
+			 * colon-free spelling '#{1 2 3 4}' is not accepted. */
 			LIST_FLAG_SET_CONCODE(frd->flagv, HAK_CONCODE_DIC);
 			goto start_list;
 

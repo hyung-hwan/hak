@@ -174,7 +174,7 @@ class X {
 
 ---
 
-#{1 2}() ##ERROR: syntax error - invalid callable '#{ }' in function call
+#{1:2}() ##ERROR: syntax error - invalid callable '#{ }' in function call
 
 ---
 

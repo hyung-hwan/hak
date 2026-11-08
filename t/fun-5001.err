@@ -13,7 +13,7 @@ fun #[1 2]() {} ##ERROR: syntax error - invalid function name '#[ ]' for 'fun'
 
 ---
 
-fun #{1 2}() {} ##ERROR: syntax error - invalid function name '#{ }' for 'fun'
+fun #{1:2}() {} ##ERROR: syntax error - invalid function name '#{ }' for 'fun'
 
 ---
 

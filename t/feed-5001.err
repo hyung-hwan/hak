@@ -287,3 +287,20 @@ k := #{ 1: g(2) 3: 4 } ##ERROR: syntax error - no separator between array/dictio
 ## the dictionary stays out of the run model, so its missing-separator check
 ## still applies - see takes_comma_runs() in lib/read.c
 k := #{10:20, 30:40 40:50} ##ERROR: syntax error - no separator between array/dictionary elements
+
+---
+
+## a dictionary is separator-delimited from the moment it is opened, so the
+## colon-free spelling is no longer a second way to write one.
+k := #{1 2 3 4} ##ERROR: syntax error - no separator between array/dictionary elements
+
+---
+
+## and the comma alone cannot stand in for the colon, because a comma is only
+## legal at a pair boundary. so the colon is mandatory in a dictionary.
+k := #{1 2, 3 4} ##ERROR: syntax error - no separator between array/dictionary elements
+
+---
+
+## a comma still cannot delimit a key from its value
+k := #{1,2,3,4} ##ERROR: syntax error - prohibited comma around ','
