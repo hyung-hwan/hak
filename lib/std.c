@@ -4044,16 +4044,9 @@ static void* dlopen_pfmod (hak_t* hak, const hak_ooch_t* name, const hak_bch_t* 
 	hak_oow_t ucslen;
 #endif
 
-	/* opening a primitive function module - mostly libhak-xxxx.
-	 * if PFMODPREFIX is absolute, never use PFMODDIR */
 	/* the prefix is a plain char literal whatever HAK_OOCH_IS_UCH says, so the
 	 * bcstr form is named outright rather than through HAK_IS_PATH_ABSOLUTE() */
-	if (hak_is_bcstr_path_absolute(HAK_DEFAULT_PFMODPREFIX))
-	{
-		dlen = 0;
-		len = hak_copy_bcstr(&bufptr[dlen], bufcapa - dlen, HAK_DEFAULT_PFMODPREFIX);
-	}
-	else if (dirptr)
+	if (dirptr)
 	{
 		dlen = hak_copy_bchars_to_bcstr(bufptr, bufcapa, dirptr, dirlen);
 
@@ -4075,8 +4068,23 @@ static void* dlopen_pfmod (hak_t* hak, const hak_ooch_t* name, const hak_bch_t* 
 			if (bufptr[dlen - 1] != HAK_DFL_PATH_SEP) bufptr[dlen++] = HAK_DFL_PATH_SEP;
 		#endif
 		}
-		len = hak_copy_bcstr(&bufptr[dlen], bufcapa - dlen, HAK_DEFAULT_PFMODPREFIX);
+
+		if (hak_is_bcstr_path_absolute(HAK_DEFAULT_PFMODPREFIX))
+		{
+			len = hak_copy_bcstr(&bufptr[dlen], bufcapa - dlen, hak_get_base_name_from_bcstr_path(HAK_DEFAULT_PFMODPREFIX));
+		}
+		else
+		{
+			len = hak_copy_bcstr(&bufptr[dlen], bufcapa - dlen, HAK_DEFAULT_PFMODPREFIX);
+		}
 		len += dlen;
+	}
+	else if (hak_is_bcstr_path_absolute(HAK_DEFAULT_PFMODPREFIX))
+	{
+		/* opening a primitive function module - mostly libhak-xxxx.
+		 * if PFMODPREFIX is absolute, never use PFMODDIR */
+		dlen = 0;
+		len = hak_copy_bcstr(&bufptr[dlen], bufcapa - dlen, HAK_DEFAULT_PFMODPREFIX);
 	}
 	else
 	{
