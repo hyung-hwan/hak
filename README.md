@@ -536,153 +536,141 @@ way, and unlike a relay it requires the callee to be written for it.
 
 ## HAK Exchange Protocol
 
-The HAK library contains a simple server/client libraries that can exchange
-HAK scripts and results over network. The following describes the protocol
-briefly.
-
-### Request message
-TODO: fill here
-
-.BEGIN
-.SCRIPT
-.END
-.EXIT
-.KILL-WORKER
-.SHOW-WORKERS
-
-
-You can send a single-line script with a .SCRIPT command.
-
- .SCRIPT (printf "hello, world\n")
-
-If the script is long and contains line-breaks, enclose multiple .SCRIPT commands 
-with the .BEGIN and .END command.
-
-  .BEGIN
-  .SCRIPT (printf "hello ")
-  .SCRIPT (printf "world\n")
-  .END
-
-### Reponse message
-
-There are two types of response messages.
- - Short-form response
- - Long-form response
-
-A short-form response is useful when you reply with a single unit of data.
-A long-form response is useful when the actual data to return is more complex.
-
-#### Short-form response
-A short-form response is composed of a status line. The status line may span 
-across multiple line if the single response data item can span across multiple
-lines without ambiguity. A short-form response begins with a status word. 
-The status word gets followed by an single data item.
-
-There are 2 status word defined.
- - .OK
- - .ERROR
-
-The data must begin on the same line as the status word and there should be 
-as least 1 whitespace characters between the status word and the beginning of
-the data. The optional data must be processible as a single unit of data. The
-followings are accepted:
-
- * unquoted text line
-   ** The end of the data is denoted by a newline character. The newline
-      character also terminates the status line.
-   ** Leading and trailing spaces must be trimmed off
- * quoted text
-   ** If the first meaningful character of the option data is a double quote,
-      the option data ends when another ordinary double quote is encounted.
-   ** If a double quote is preceded by a backslash(\"), the double quote becomes
-      part of the data and doesn't end the data.
-   ** Not only the double quote, any character character escaped by a preceding
-      backslash is treated literally. (e.g. \\ -> a single back slash, \n -> n)
-   ** Trailing spaces after the ending quote must be ignored until a newline
-      character is encounted. The newline character terminates the status line.
-    
-Take note of the followings when parsing a short-form response message
- * Whitespace characters before the status word shall get ignored.
-
-See the following samples.
-
-  .OK authentication success
-
-  .ERROR double login attempt
-
-  .OK "authentication\twas\tsuccessful"
-
-  .OK "this is a multi-line
-    string message"
-
-
-#### Long-form response
-
-A long-form response begins with the status word line. The status line 
-should be composed of the status word and a new line. The status line must
-get followed by data format line and the actual response data. Optional 
-attribute lines may get inserted between the status line and the data format
-line.
-
-The data format line begins with .DATA and it can get followed by a data length
-or the word 'chunked'.
-
- * .DATA <NNN>
- * .DATA chunked
- 
-Use .DATA <NNN> where <NNN> indicates the length of data in bytes if the
-response data is length-bounded. For instance, .DATA 1234 indicates that
-the following data is 1234 bytes long.
-
-Use .DATA chunked if you don't know the length of response data in advance.
-
-The actual data begins at the next line to .DATA.
-
-The length-bounded response message looks like this. The response message 
-handler must consume exactly the number of bytes specifed on the .LENGTH line
-starting from the beginning of the next line to .DATA without ignoring any 
-characters.
+`lib/x-server.c` and `lib/x-client.c` implement a small server and client that
+let one process feed HAK source to an interpreter in another and read back what
+it prints and what it answers. The server accepts a connection, hands it to a
+worker thread and gives that worker an interpreter of its own. `bin/hak-x`
+drives both ends:
 
 ```
- .OK
- .DATA 10
- aaaaaaaaaa
+hak-x server bind-address:port
+hak-x client [options] address:port script-to-run
 ```
 
-The chunked data looks like this. Each chunk begins with the length and a colon.
-The 0 sized chunk indicates the end of data. A chunk size is in decimal and is
-followed by a colon. The actual data chunk starts immediately after the colon.
-The response processor must consume exactly the number of bytes specified in
-the chunk size part and attempt to read the size of the next chunk. 
+The wire format is binary. It is declared in `lib/hak-x.h` and parsed by
+`lib/x-proto.c`. Earlier revisions spoke a line-oriented `.SCRIPT`/`.OK`
+dialogue; that is gone.
 
-The whitespaces between the end of the previous chunk data and the next chunk
-size, if any, should get ignored.
+### Packet format
 
-```
- .OK
- .DATA chunked
- 4:xxxx10:abcdef
- ghi
- 0:
-```
-
-With the chunked data transfer format, you can revoke the ongoing response data
-and start a new response.
+Everything on the wire is a packet: a three-byte header and an optional
+payload.
 
 ```
- .OK
- .DATA chunked
- 4:xxxx-1:.ERROR "error has occurred"
+  byte 0   id          reserved packet identifier
+  byte 1   bits 7..4   the high 4 bits of the payload length
+           bits 3..0   the packet type
+  byte 2               the low 8 bits of the payload length
 ```
 
-An optional attribute line is composed of the attribute name and the attribute
-value delimited by a whitespace. There are no defined attributes but the attribute
-name must not be one of .OK, ERROR, .DATA. The attribute value follows the same
-format as the status data of the short-form response.
+Sending and receiving are the two halves of that packing:
+
+```c
+hdr.id   = 1;
+hdr.type = type | (((len >> 8) & 0x0F) << 4);
+hdr.len  = len & 0xFF;
+```
+
+```c
+type = hdr.type & 0x0F;
+len  = (hak_uint16_t)hdr.len | ((hak_uint16_t)(hdr.type >> 4) << 8);
+```
+
+The length is therefore 12 bits, and one packet carries at most 4095 bytes of
+payload - `HAK_XPKT_MAX_PLD_LEN`, which is also the size of the receive buffer.
+There is no byte-order question, since each half of the length has a named byte
+of its own.
+
+`id` is reserved. Both ends write 1 and neither reads it. It is where
+concurrent requests on one connection would be told apart.
+
+A sender with more than 4095 bytes to deliver splits them across consecutive
+packets of the same type. There is no continuation flag and no reassembly: the
+receiver passes each payload to its handler as it arrives, and every type is
+defined so that arriving in pieces means the same as arriving whole.
+
+### Packet types
+
+The type field is 4 bits, so sixteen are possible. Eleven are declared in
+`enum hak_xpkt_type_t`.
+
+| value | name | direction | payload |
+| ----- | ---- | --------- | ------- |
+| 0  | `CODE`         | C -> S | HAK source text, fed to the reader as it arrives |
+| 1  | `EXECUTE`      | C -> S | empty - run what has been fed so far |
+| 2  | `ERROR`        | S -> C | an error message as text |
+| 3  | `RETVAL`       | S -> C | the value the script answered, formatted with `[%O]` |
+| 4  | `STDIN`        | C -> S | accepted and discarded - not implemented |
+| 5  | `STDOUT`       | S -> C | whatever the running script wrote |
+| 6  | `STDERR`       | S -> C | declared, never sent |
+| 7  | `INFORM`       | both   | declared, never sent |
+| 8  | `LIST_WORKERS` | C -> S | accepted and ignored - not implemented |
+| 9  | `KILL_WORKER`  | C -> S | accepted and ignored - not implemented |
+| 10 | `DISCONNECT`   | both   | empty - the server ends the session on it |
+
+### A session
+
+The client reads its input - the file named on the command line, or standard
+input - and sends each read as a `CODE` packet. On end of input it sends
+`EXECUTE` with no payload.
+
+The server hands each `CODE` payload to `hak_feedbchars()`, the same
+feed-driven reader the REPL uses, so the script is compiled as it arrives
+rather than buffered whole. A compile error is answered with an `ERROR` packet
+and the feed carries on, so one bad expression does not end the session.
+
+`EXECUTE` has three outcomes:
+
+ * The feed is incomplete - `hak_feedpending()` is true, as after `k := (+ 1`.
+   The server answers `ERROR` with `feed more` and waits for the rest.
+ * `hak_execute()` fails. The server sends `ERROR` with the message and drops
+   the connection.
+ * It succeeds. The server sends `RETVAL` with the answer.
+
+Anything the script writes while it runs goes out as `STDOUT` packets as it is
+produced, ahead of the `RETVAL` or `ERROR` that ends the run.
+
+As a client, `bin/hak-x` writes `STDOUT` payloads to its own standard output,
+and `ERROR` and `RETVAL` to standard error as `ERROR: ...` and
+`RETURN VALUE: ...`. It stops when `RETVAL` arrives. It does not stop on
+`feed more`, so a truncated script leaves it waiting.
+
+### Example
+
+A whole session running the one-line script
 
 ```
- .OK
- .TYPE json/utf8
- .DATA chunked
- ....
+printf "hello, world\n"
 ```
+
+on the wire, captured between the two ends:
+
+```
+C->S  01 00 18  70 72 69 6e 74 66 20 22 ...      CODE,    24 bytes
+      |  |  |
+      |  |  `-- length 0x018 = 24
+      |  `----- type 0, and 0 for the high nibble of the length
+      `-------- id
+
+C->S  01 01 00                                   EXECUTE,  0 bytes
+
+S->C  01 05 0d  68 65 6c 6c 6f 2c 20 ...         STDOUT,  13 bytes  "hello, world\n"
+S->C  01 03 05  5b 6e 69 6c 5d                   RETVAL,   5 bytes  "[nil]"
+```
+
+A script that fails at run time ends with `ERROR` and no `RETVAL`:
+
+```
+C->S  01 00 0c  6e 6f 73 75 63 68 66 75 6e ...   CODE,    12 bytes  "nosuchfun 1\n"
+C->S  01 01 00                                   EXECUTE,  0 bytes
+S->C  01 02 49  65 78 63 65 70 74 69 6f 6e ...   ERROR,   73 bytes
+                "exception not handled - "nosuchfun accessed without
+                 initialization" (-:1)"
+```
+
+### Not yet implemented
+
+`STDIN`, `STDERR`, `INFORM`, `LIST_WORKERS` and `KILL_WORKER` are declared and
+reach the server's dispatcher, but none of them does anything there yet.
+`lib/hak-x.h` carries a note to fold `LIST_WORKERS` and `KILL_WORKER` into one
+`CONTROL` type with sub-commands rather than spending a type code on each.
