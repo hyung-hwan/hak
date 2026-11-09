@@ -17,7 +17,6 @@
 #include <limits.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdbool.h>
 #include <assert.h>
 #include "../include/isocline.h"  /* ic_malloc_fun_t, ic_color_t etc. */
 

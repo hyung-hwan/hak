@@ -176,20 +176,25 @@ asm int hak_spl_trylock (hak_spl_t* spl)
  * macro, so the loop lives in C instead. */
 #define hak_spl_lock(x) do { while (!hak_spl_trylock(x)) HAK_SPL_RELAX(); } while(0)
 
+/* a plain store is enough to release the lock: movl to an aligned word is
+ * atomic, and x86 never reorders a store ahead of the accesses before it, so
+ * the guarded region cannot leak past the release. this used to emit mfence as
+ * hand-assembled bytes (0F AE F0), which is an SSE2 instruction and faults with
+ * SIGILL on anything older than a pentium 4. the gcc x86 arm below draws the
+ * same line, fencing only on x86_64; this target is 32-bit x86 only. */
+
 asm void hak_spl_unlock (hak_spl_t* spl)
 {
-	/* don't need xchg as movl on an aligned data is atomic */
-	/* mfence is 0F AE F0 */
 %reg spl
-	.byte 0x0F
+	/*.byte 0x0F
 	.byte 0xAE
-	.byte 0xF0
+	.byte 0xF0*/
 	movl $0, (spl)
 
 %mem spl
-	.byte 0x0F
+	/*.byte 0x0F
 	.byte 0xAE
-	.byte 0xF0
+	.byte 0xF0*/
 	movl spl, %ecx
 	movl $0, (%ecx)
 }

@@ -42,6 +42,9 @@
 #		include <sys/socket.h>
 #		include <sys/ioctl.h>
 #	endif
+#	if !defined(S_ISSOCK) && defined(S_IFSOCK)
+#		define S_ISSOCK(mode) (((mode) & S_IFMT) == S_IFSOCK)
+#	endif
 #endif
 
 /* how much the id map and the descriptor reverse map grow by */
@@ -324,11 +327,23 @@ static int probe_fd (hak_t* hak, int fd, hak_hnd_type_t hint, hak_hnd_type_t* ty
 		*type = HAK_HND_TYPE_PIPE;
 		*muxable = 1;
 	}
+#if defined(S_ISSOCK)
 	else if (S_ISSOCK(st.st_mode))
 	{
 		*type = HAK_HND_TYPE_SCK;
 		*muxable = 1;
 	}
+#else
+	else if (hint == HAK_HND_TYPE_SCK)
+	{
+		/* sco openserver carries no socket file type at all - neither S_ISSOCK
+		 * nor S_IFSOCK - and its sockets are streams devices, so fstat() alone
+		 * cannot tell one from a character device. take the caller's word where
+		 * it gave one, and do so before the S_ISCHR arm below. */
+		*type = HAK_HND_TYPE_SCK;
+		*muxable = 1;
+	}
+#endif
 	else if (S_ISCHR(st.st_mode))
 	{
 		*type = HAK_HND_TYPE_CHR;

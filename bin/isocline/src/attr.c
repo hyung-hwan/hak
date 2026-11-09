@@ -17,7 +17,8 @@
 
 ic_private attr_t attr_none(void) {
   attr_t attr;
-  attr.value = 0;
+  attr.value[0] = 0;
+  attr.value[1] = 0;
   return attr;
 }
 
@@ -33,11 +34,11 @@ ic_private attr_t attr_default(void) {
 }
 
 ic_private bool attr_is_none(attr_t attr) {
-  return (attr.value == 0);
+  return (attr.value[0] == 0 && attr.value[1] == 0);
 }
 
 ic_private bool attr_is_eq(attr_t attr1, attr_t attr2) {
-  return (attr1.value == attr2.value);
+  return (attr1.value[0] == attr2.value[0] && attr1.value[1] == attr2.value[1]);
 }
 
 ic_private attr_t attr_from_color( ic_color_t color ) {

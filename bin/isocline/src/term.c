@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/ioctl.h>
+#include <termios.h>  /* [hak] struct winsize and TIOCGWINSZ live here on svr4 (sco openserver) */
 #if defined(__linux__)
 #include <linux/kd.h>
 #endif

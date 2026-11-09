@@ -31,7 +31,11 @@ typedef union attr_s {
     signed int    underline:2;
     signed int    italic:2;
   } x;
-  uint64_t        value;
+  /* the bitfields above fill exactly two 32-bit storage units. a single
+     uint64_t used to cover them, but a pre-c99 compiler may have no 64-bit
+     integer at all - sco openserver's cc, for one - and the member is only
+     ever tested for zero or compared for equality. */
+  uint32_t        value[2];
 } attr_t;
 
 ic_private attr_t attr_none(void);

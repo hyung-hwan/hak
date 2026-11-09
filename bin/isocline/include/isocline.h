@@ -13,7 +13,21 @@ extern "C" {
 #endif
 
 #include <stddef.h>    /* size_t */
+#if defined(__cplusplus)
+/* bool, true and false are part of the language */
+#elif (defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)) || defined(HAVE_STDBOOL_H)
 #include <stdbool.h>   /* bool */
+#else
+/* a pre-c99 compiler ships no <stdbool.h> - sco openserver's cc, for one.
+   __bool_true_false_are_defined is the guard <stdbool.h> itself sets, so this
+   block stays inert if the real header has already been pulled in. */
+#ifndef __bool_true_false_are_defined
+typedef int bool;
+#define true  1
+#define false 0
+#define __bool_true_false_are_defined 1
+#endif
+#endif
 #include <stdint.h>    /* uint32_t */
 #include <stdarg.h>    /* term_vprintf */
 

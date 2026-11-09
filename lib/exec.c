@@ -3110,6 +3110,10 @@ extern char **environ;
 
 #define _PATH_DEFPATH "/usr/bin:/bin"
 
+#if !defined(PATH_MAX)
+#define PATH_MAX (1024)
+#endif
+
 static int is_regular_executable_file_by_me(const char *path)
 {
 	struct stat st;

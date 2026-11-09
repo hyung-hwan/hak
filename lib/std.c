@@ -948,27 +948,73 @@ static void flush_log (hak_t* hak, int fd, int force)
 	}
 }
 
-static size_t sprintf_timestamp (char* ts, struct tm* tmp)
+/* work out the utc offset in minutes for the given instant by comparing its
+ * local and utc calendar representations. this covers dst without relying on
+ * tm_gmtoff, which is not in the c standard and is absent on some systems
+ * (sco openserver, for one), and without the timezone/altzone globals, which
+ * carry the standard offset only and are a function rather than a long on a
+ * few older platforms. */
+static int get_utc_offset_mins (const time_t* t, const struct tm* local, int* offset)
 {
+	struct tm utc, * ptr;
+	int days, year, seconds;
+
+#if defined(HAVE_GMTIME_R)
+	ptr = gmtime_r(t, &utc);
+#else
+	ptr = gmtime(t);
+#endif
+	if (!ptr) return -1;
+	if (ptr != &utc) utc = *ptr;
+
+	days = local->tm_yday - utc.tm_yday;
+	if (local->tm_year > utc.tm_year)
+	{
+		if (local->tm_year - 1 != utc.tm_year) return -1;
+		year = utc.tm_year % 400 + 1900; /* reduce before adding to avoid overflow */
+		days += 365 + (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0));
+	}
+	else if (local->tm_year < utc.tm_year)
+	{
+		if (utc.tm_year - 1 != local->tm_year) return -1;
+		year = local->tm_year % 400 + 1900;
+		days -= 365 + (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0));
+	}
+
+	seconds = days * 86400 + (local->tm_hour - utc.tm_hour) * 3600 +
+	          (local->tm_min - utc.tm_min) * 60 + local->tm_sec - utc.tm_sec;
+	if (seconds <= -86400 || seconds >= 86400) return -1;
+
+	*offset = seconds / 60;
+	return 0;
+}
+
+static size_t sprintf_timestamp (char* ts, const time_t* t, struct tm* tmp)
+{
+	struct tm local;
 	int off_h, off_m;
 
-#if defined(__DOS__)
-	off_m = _timezone / 60;
-#elif defined(_WIN32)
-	/* _timezone is seconds WEST of utc, whereas tm_gmtoff is seconds EAST of
-	 * it, so negate to keep the sign convention of the branch below */
-	off_m = -_timezone / 60;
-#else
-	off_m = tmp->tm_gmtoff / 60;
-#endif
+	/* gmtime() may hand back the same static storage as localtime(), so keep a
+	 * copy of the local calendar before get_utc_offset_mins() calls it. */
+	local = *tmp;
+
+	if (get_utc_offset_mins(t, &local, &off_m) <= -1)
+	{
+		/* the offset is not workable - emit the local time without it */
+		return (size_t)sprintf(ts,
+			"%04d-%02d-%02d %02d:%02d:%02d ",
+			local.tm_year + 1900, local.tm_mon + 1, local.tm_mday,
+			local.tm_hour, local.tm_min, local.tm_sec);
+	}
+
 	off_h = off_m / 60;
 	off_m = off_m % 60;
 	if (off_m < 0) off_m = -off_m;
 
 	return (size_t)sprintf(ts,
 		"%04d-%02d-%02d %02d:%02d:%02d %+03d%02d ",
-		tmp->tm_year + 1900, tmp->tm_mon + 1, tmp->tm_mday,
-		tmp->tm_hour, tmp->tm_min, tmp->tm_sec, off_h, off_m);
+		local.tm_year + 1900, local.tm_mon + 1, local.tm_mday,
+		local.tm_hour, local.tm_min, local.tm_sec, off_h, off_m);
 }
 
 static void log_write (hak_t* hak, hak_bitmask_t mask, const hak_ooch_t* msg, hak_oow_t len)
@@ -1051,12 +1097,12 @@ static void log_write (hak_t* hak, hak_bitmask_t mask, const hak_ooch_t* msg, ha
 		#else
 		tslen = strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S %z ", tmp);
 		#endif
-		if (HAK_UNLIKELY(tslen == 0)) tslen = sprintf_timestamp(ts, tmp);
+		if (HAK_UNLIKELY(tslen == 0)) tslen = sprintf_timestamp(ts, &now, tmp);
 
 	#elif defined(__DOS__)
 		tmp = localtime(&now);
 		/* since i know that %z/%Z is not available in strftime, i switch to sprintf immediately */
-		tslen = sprintf_timestamp(ts, tmp);
+		tslen = sprintf_timestamp(ts, &now, tmp);
 	#else
 		#if defined(HAVE_LOCALTIME_R)
 		tmp = localtime_r(&now, &tm);
@@ -1069,7 +1115,7 @@ static void log_write (hak_t* hak, hak_bitmask_t mask, const hak_ooch_t* msg, ha
 		#else
 		tslen = strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S %Z ", tmp);
 		#endif
-		if (HAK_UNLIKELY(tslen == 0)) tslen = sprintf_timestamp(ts, tmp);
+		if (HAK_UNLIKELY(tslen == 0)) tslen = sprintf_timestamp(ts, &now, tmp);
 	#endif
 
 	#if defined(HAK_OOCH_IS_UCH)

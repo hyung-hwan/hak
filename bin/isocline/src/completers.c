@@ -479,7 +479,10 @@ static file_type_t os_get_filetype(const char* cpath) {
   memset(&st, 0, sizeof(st));
   lstat(cpath, &st);
   switch ((st.st_mode)&S_IFMT) {
+    /* sco openserver has no S_IFSOCK at all */
+#if defined(S_IFSOCK)
     case S_IFSOCK: return FT_SOCK;
+#endif
     case S_IFLNK: {
       return FT_SYM;
     }
