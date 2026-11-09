@@ -82,7 +82,11 @@ chk (= (rd (core.basicAt p 3) buf) 4) "stderr has its own stream"
 sys.pclose (core.basicAt p 0)
 
 ## --- a signalled child reports 256 + signo ---
-p := (sys.popen "kill -TERM $$" "r")
+## 'exec kill' rather than plain 'kill': exec replaces the shell with the kill
+## binary, which keeps the same pid and so signals itself. a bare 'kill -TERM
+## $$' leaves the shell to handle the signal, and sco openserver's sh answers
+## that by exiting 208 rather than dying, so nothing is ever signalled.
+p := (sys.popen "exec kill -TERM $$" "r")
 chk (= (reap (core.basicAt p 0)) 271) "a signalled child reports 256 + SIGTERM"
 sys.pclose (core.basicAt p 0)
 

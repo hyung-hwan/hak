@@ -188,14 +188,17 @@ asm int hak_spl_trylock (hak_spl_t* spl)
  * SIGILL on anything older than a pentium 4. the gcc x86 arm below draws the
  * same line, fencing only on x86_64; this target is 32-bit x86 only. */
 
+/* injected mfence syntax that resulted in SIGILL was
+	.byte 0x0F
+	.byte 0xAE
+	.byte 0xF0
+*/
 asm void hak_spl_unlock (hak_spl_t* spl)
 {
 %reg spl
-	/ mfence (.byte 0x0F, 0xAE, 0xF0) stood here before it's commneted out
 	movl $0, (spl)
 
 %mem spl
-	/ mfence (.byte 0x0F, 0xAE, 0xF0) stood here before it's commneted out
 	movl spl, %ecx
 	movl $0, (%ecx)
 }

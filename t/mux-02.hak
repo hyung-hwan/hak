@@ -25,10 +25,16 @@ core.semgr-add sg sb
 core.semgr-add sg sc
 core.semgr-add sg tmo
 
-## staggered so the completion order is a, then b, then c
-pa := (sys.popen "sleep 0.2; echo aaa" "r")
-pb := (sys.popen "sleep 0.5; echo bbb" "r")
-pc := (sys.popen "sleep 0.8; echo ccc" "r")
+## staggered so the completion order is a, then b, then c. whole seconds only -
+## a fractional argument is not portable, and sco openserver's sleep rejects it
+## outright ("argument must be a non-negative integer"), which leaves all three
+## children finishing at once and the wake order arbitrary.
+##pa := (sys.popen "sleep 0.2; echo aaa" "r")
+##pb := (sys.popen "sleep 0.5; echo bbb" "r")
+##pc := (sys.popen "sleep 0.8; echo ccc" "r")
+pa := (sys.popen "sleep 1; echo aaa" "r")
+pb := (sys.popen "sleep 2; echo bbb" "r")
+pc := (sys.popen "sleep 3; echo ccc" "r")
 
 ha := (core.basicAt pa 2)
 hb := (core.basicAt pb 2)
