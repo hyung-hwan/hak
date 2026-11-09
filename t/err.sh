@@ -36,27 +36,34 @@ run_partfile() {
 		esac
 	done
 
-	l_expected_errinfo=$(grep -n -o -E "##ERROR: .+" "$l_partfile" 2>/dev/null)
+	## grep -o is not portable - sco openserver's grep rejects it outright. plain
+	## grep -n yields <lineno>:<whole line> instead, and sed then cuts out
+	## everything from that first colon up to and including the marker, leaving
+	## <lineno>:<message>. the trailing '.' in the pattern demands a non-empty
+	## message, as the -o form used to.
+	l_expected_errinfo=$(grep -n "##ERROR: ." "$l_partfile" 2>/dev/null | sed -e 's/:.*##ERROR: /:/')
 	[ -z "$l_expected_errinfo" ] && {
-		echo "ERROR: INVALID TESTER - $l_script(part=$l_partno,line=$l_l_partstartlineno) contains no ERROR information"
+		echo "ERROR: INVALID TESTER - $l_script(part=$l_partno,line=$l_partstartlineno) contains no ERROR information"
 		return 1
 	}
 
-	l_expected_errline=$(echo "$l_expected_errinfo" | cut -d: -f1)
-	l_xlen=$(echo "$l_expected_errline" | wc -c)
-	l_xlen=$(expr $l_xlen + 10)
-	l_expected_errmsg=$(echo "$l_expected_errinfo" | cut -c${l_xlen}-)
+	## printf rather than echo throughout: an xpg4 echo - sco openserver's, for
+	## one - expands backslash escapes with no -e, and both the expected message
+	## and hak's output can carry a backslash.
+	l_expected_errline=$(printf '%s\n' "$l_expected_errinfo" | cut -d: -f1)
+	## -f2- rather than -f2, so that a colon inside the message survives.
+	l_expected_errmsg=$(printf '%s\n' "$l_expected_errinfo" | cut -d: -f2-)
 	l_output=`$l_cmd 2>&1`
 
 	l_errlineno=$(expr $l_partstartlineno + $l_expected_errline - 1)
 
 	## the checks using grep may not be 100% accurate depending on message patterns.
 	## but it's unlikely such a case really happens
-	echo "$l_output" | grep -q -E "^ERROR:.+${l_partfile}\[${l_expected_errline},[[:digit:]]+\] .+" 2>&1 || {
+	printf '%s\n' "$l_output" | grep -q -E "^ERROR:.+${l_partfile}\[${l_expected_errline},[[:digit:]]+\] .+" 2>&1 || {
 		echo "ERROR: error not raised at line $l_expected_errline - $l_script(part=$l_partno,line=$l_errlineno) - $l_output"
 		return 1
 	}
-	echo "$l_output" | grep -q -F " ${l_expected_errmsg}" 2>&1 || {
+	printf '%s\n' "$l_output" | grep -q -F " ${l_expected_errmsg}" 2>&1 || {
 		echo "ERROR: error not raised at line $l_expected_errline - $l_script(part=$l_partno,line=$l_errlineno) - $l_output"
 		return 1
 	}
@@ -119,7 +126,10 @@ do
 		partstartlineno=`expr $lineno + 1`
 		> "$partfile"
 	else
-		echo "$line" >> "$partfile"
+		## echo would turn a \n written in the script text into a real newline on
+		## an xpg4 echo, splitting the line in two and shifting every ##ERROR:
+		## line number after it.
+		printf '%s\n' "$line" >> "$partfile"
 		partlines=`expr $partlines + 1`
 	fi
 done < "$script"

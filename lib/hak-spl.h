@@ -157,6 +157,11 @@ typedef volatile hak_uint32_t hak_spl_t;
  *
  *  NOTE: when the asm macros were indented, the compiler/linker ended up
  *        with undefined symbols. never indent hak_spl_xxx macros.
+ *
+ *  NOTE: the body of an asm macro reaches the assembler as written. its
+ *        comment character is a single slash running to end of line, as used
+ *        below. a C-style block comment is not stripped from it, and makes
+ *        the assembler fail with "syntax error at *".
  * ======================================================================= */
 asm int hak_spl_trylock (hak_spl_t* spl)
 {
@@ -186,15 +191,11 @@ asm int hak_spl_trylock (hak_spl_t* spl)
 asm void hak_spl_unlock (hak_spl_t* spl)
 {
 %reg spl
-	/*.byte 0x0F
-	.byte 0xAE
-	.byte 0xF0*/
+	/ mfence (.byte 0x0F, 0xAE, 0xF0) stood here before it's commneted out
 	movl $0, (spl)
 
 %mem spl
-	/*.byte 0x0F
-	.byte 0xAE
-	.byte 0xF0*/
+	/ mfence (.byte 0x0F, 0xAE, 0xF0) stood here before it's commneted out
 	movl spl, %ecx
 	movl $0, (%ecx)
 }
