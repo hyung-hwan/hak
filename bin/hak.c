@@ -392,7 +392,7 @@ static void set_signal_to_ignore (int sig)
 
 /* ========================================================================= */
 
-static void print_info (void)
+static void print_info (int info_level)
 {
 #if defined(__x86_64) || defined(__x86_64__) || defined(_M_X64)
 	const char *arch = "x86_64";
@@ -425,6 +425,8 @@ static void print_info (void)
 #if defined(HAK_PACKAGE_NAME) && defined(HAK_PACKAGE_VERSION)
 	printf("%s %s (%s)\n", HAK_PACKAGE_NAME, HAK_PACKAGE_VERSION, arch);
 #endif
+
+	if (info_level <= 1) return;
 
 #if defined(HAK_CONFIGURE_CMD) && defined(HAK_CONFIGURE_ARGS)
 	printf("Configured with: %s %s\n", HAK_CONFIGURE_CMD, HAK_CONFIGURE_ARGS);
@@ -940,6 +942,7 @@ int main (int argc, char* argv[])
 		{ "info",         '\0' },
 		{ "liberal",      '\0' },
 		{ ":modlibdirs",  '\0' },
+		{ "version",      '\0' },
 
 		{ HAK_NULL,       '\0' }
 	};
@@ -976,6 +979,7 @@ int main (int argc, char* argv[])
 /* TODO: show the separator info? how to retrieve the internal separator character? just hard-code the same knowledge here?? */
 		fprintf(stderr, " --modlibdirs  string  specify directories to load modules from\n");
 		fprintf(stderr, " -v                    show verbose messages\n");
+		fprintf(stderr, " --version             show version\n");
 
 		return -1;
 	}
@@ -1010,6 +1014,11 @@ int main (int argc, char* argv[])
 				}
 			#endif
 				else if (hak_comp_bcstr(opt.lngopt, "info") == 0)
+				{
+					show_info = 2;
+					break;
+				}
+				else if (hak_comp_bcstr(opt.lngopt, "version") == 0)
 				{
 					show_info = 1;
 					break;
@@ -1124,7 +1133,7 @@ int main (int argc, char* argv[])
 
 	if (show_info)
 	{
-		print_info();
+		print_info(show_info);
 		return 0;
 	}
 

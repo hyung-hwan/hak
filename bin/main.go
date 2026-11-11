@@ -42,7 +42,9 @@ type Param struct {
 	modlibdirs     string
 	incdirs        string
 	verbose        bool
-	show_info      bool
+	/* a level rather than a flag, as show_info is in bin/hak.c: 0 asks for
+	 * nothing, 1 the version line alone, 2 that plus the build information. */
+	show_info      int
 	fs_usage       func()
 }
 
@@ -170,6 +172,7 @@ func handle_arguments(param *Param) error {
 	var log *string
 	var verbose *bool
 	var show_info *bool
+	var show_version *bool
 	var err error
 
 	fs = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
@@ -185,6 +188,7 @@ func handle_arguments(param *Param) error {
 	modlibdirs = fs.String("modlibdirs", "", "specify directories to load modules from")
 	verbose = fs.Bool("v", false, "show verbose messages")
 	show_info = fs.Bool("info", false, "show build information")
+	show_version = fs.Bool("version", false, "show version information")
 
 	param.fs_usage = fs.Usage
 	fs.Usage = empty_usage  // i don't want fs.Parse() print the usage
@@ -200,7 +204,15 @@ func handle_arguments(param *Param) error {
 	param.incdirs = *incdirs
 	param.modlibdirs = *modlibdirs
 	param.verbose = *verbose
-	param.show_info = *show_info
+
+	/* --info implies --version and shows more, so it wins when both are given */
+	if *show_info {
+		param.show_info = 2
+	} else if *show_version {
+		param.show_info = 1
+	} else {
+		param.show_info = 0
+	}
 
 	if *log != "" {
 		param.log_target, param.log_mask, err = parse_logopt(*log)
@@ -209,8 +221,8 @@ func handle_arguments(param *Param) error {
 		}
 	}
 
-	/* --info answers on its own and needs no script */
-	if param.show_info {
+	/* --info and --version answer on their own and need no script */
+	if param.show_info > 0 {
 		return nil
 	}
 
@@ -297,9 +309,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	if param.show_info {
+	if param.show_info > 0 {
 		fmt.Printf("%s %s (%s,%s)\n", PACKAGE_NAME, PACKAGE_VERSION, runtime.GOARCH, runtime.GOOS);
-		fmt.Println(hak.BuildInfo())
+		if param.show_info > 1 {
+			fmt.Println(hak.BuildInfo())
+		}
 		os.Exit(0)
 	}
 
