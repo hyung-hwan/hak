@@ -1,0 +1,9 @@
+## Helper for liberal-01.hak - strict, and contributes one bare word.
+##
+## The mirror of liberal-inc3.hak: here the includer is the liberal one and the
+## form it opens closes around a word written in ordinary mode. The word must
+## stay a name and answer the variable the includer set.
+##
+## [NOTE] a fixture, not a test - see liberal-inc.hak.
+
+gv

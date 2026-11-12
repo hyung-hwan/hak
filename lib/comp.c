@@ -6304,12 +6304,16 @@ redo:
 			goto done;
 
 		case HAK_CNODE_SYMBOL: /* symbol. but not a literal. usually a variable */
-			if ((hak->c->curinp->trait & HAK_TRAIT_LANG_LIBERAL) && !cf->u.obj.callee && !cf->u.obj.superclass)
+			if ((HAK_CNODE_GET_FLAGS(oprnd) & HAK_CNODE_LIBERAL) && !cf->u.obj.callee && !cf->u.obj.superclass)
 			{
 				/* liberal mode. a bare word is a string except where a name is required -
 				 * the callee of a call, and the superclass of a class. without the
 				 * superclass exemption "class K: Object {}" hands the string "Object"
-				 * to CLASS_ENTER, which fails at run time with "invalid superclass". */
+				 * to CLASS_ENTER, which fails at run time with "invalid superclass".
+				 * the mode is read off the cnode, which the reader stamped from the
+				 * stream the word actually came from. hak->c->curinp is wrong here:
+				 * compilation of a form is deferred until the form closes, which may
+				 * be in a different file than the one the word was written in. */
 				lit = hak_makestring(hak, HAK_CNODE_GET_TOKPTR(oprnd), HAK_CNODE_GET_TOKLEN(oprnd));
 				if (HAK_UNLIKELY(!lit)) return -1;
 				goto literal;

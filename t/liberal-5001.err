@@ -42,6 +42,22 @@ printf "%d\n" $a+b;  ##ERROR: syntax error - invalid dollar-prefixed identifier
 
 ---
 
+## a word carrying an operator character is neither a pure identifier nor an
+## operator, so the lexer refuses it outright. turning it into a string is what
+## liberal mode is for - see t/liberal-01.hak for the accepting half.
+
+printf "%d\n" a+b;  ##ERROR: syntax error - illegal identifier 'a+b'
+
+---
+
+## ...and turning the pragma back off restores the refusal
+
+$pragma liberal on
+$pragma liberal off
+printf "%d\n" --force;  ##ERROR: syntax error - illegal identifier '--force'
+
+---
+
 ## the pragma takes 'on' or 'off' and nothing else
 
 $pragma liberal maybe;  ##ERROR: syntax error - invalid pragma value 'maybe'

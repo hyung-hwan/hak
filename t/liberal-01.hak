@@ -78,6 +78,74 @@ chk (eqv? (core.basicSize $s) 3) "a $-variable can be passed along"
 
 $pragma liberal off
 
+## --- words that are not identifiers at all -----------------------------------
+##
+## The rule above is the compiler's, and it only ever changes what a word that
+## could have been a name means. There is a second rule in the lexer, and it
+## reaches further: a word carrying an operator character - a+b, eth0=up,
+## --force - is neither a pure identifier nor an operator, so in ordinary mode
+## it is refused as an illegal identifier before anything asks what it means.
+## Liberal mode lexes it as a string literal instead. That is what lets
+## shell-shaped text be written unquoted.
+##
+## [NOTE] the refusal itself is in liberal-5001.err. It cannot be asserted here,
+## because a syntax error stops the file rather than failing one assertion.
+
+$pragma liberal on
+
+chk (eql? a+b "a+b") "a word with an operator character in it is text"
+chk (eql? eth0=up "eth0=up") "...so is one with an equals sign"
+chk (eql? x>1 "x>1") "...and one with an angle bracket"
+chk (eql? --force "--force") "...and one that looks like a command-line switch"
+chk (eqv? (core.className (core.classOf a+b)) #String) "the result really is a String"
+chk (eqv? (core.basicSize a+b) 3) "...an ordinary one, with a length of its own"
+
+## the exemptions above do not apply to this rule. the lexer has not yet been
+## told what position the word sits in, so a punctuated word is text even where
+## a pure word would have stayed a name. the two give different failures in
+## callee position, which is how they can be told apart: a pure word reports
+## "abc accessed without initialization" because it is still a name, while a
+## punctuated one reports "callable a+b not found" because a string got there.
+caught := 0
+try { (a+b 1) } catch (e) { caught := 1 }
+chk (eqv? $caught 1) "a punctuated word is text even in callee position"
+
+$pragma liberal off
+
+## --- the sigil ---------------------------------------------------------------
+##
+## $word is the other half of the trade. Once a bare word is text, a name has to
+## be marked, and the $ is the mark. It is settled in the reader - the token
+## becomes an RSYMBOL, which is a reference in every position and never text.
+##
+## [NOTE] outside liberal mode the $ introduces a directive and nothing else, so
+## $word there is a syntax error. That half is in liberal-5001.err too, along
+## with the positions that want a bare name and so refuse the sigil.
+
+$pragma liberal on
+
+p := 21
+chk (eqv? $p 21) "the sigil reaches a global"
+chk (eql? p "p") "...while bare it is only its own text"
+
+do {
+	| n |
+	n := 3
+	chk (eqv? $n 3) "it reaches a local declared with | | as well"
+	chk (eql? n "n") "...which bare is likewise just text"
+}
+
+## the consequence worth knowing about: inside a liberal region every local and
+## parameter read needs the sigil, including in a function whose body was
+## written without any idea it would be read this way. this is why the mode
+## being file-scoped matters - see the include section below.
+fun bare(v) { return v }
+chk (eql? (bare 42) "v") "a parameter read bare answers its own name, not the argument"
+fun sigil(v) { return $v }
+chk (eqv? (sigil 42) 42) "...and the sigil is what asks for the argument"
+
+$pragma liberal off
+
 ## --- the mode does not cross an include --------------------------------------
 ##
 ## Both directions matter. A liberal file must not reinterpret what it pulls
@@ -93,6 +161,24 @@ $pragma liberal off
 z := 11
 $include "liberal-inc2.hak"
 chk (eqv? z 11) "a pragma inside an include does not leak back out"
+
+## ...and it holds for a form that is only half written when the include ends.
+## A form is compiled once it closes, so asking the current input stream at that
+## moment answers for the file that happened to close the form rather than the
+## file the word was written in. Each word carries its own mode instead.
+
+arr1 := #[
+	$include "liberal-inc3.hak"
+]
+chk (eql? (core.basicAt arr1 0) "abc") "a word keeps the mode of the file that wrote it, not the one that closes the form"
+
+gv := 77
+$pragma liberal on
+arr2 := #[
+	$include "liberal-inc4.hak"
+]
+$pragma liberal off
+chk (eqv? (core.basicAt arr2 0) 77) "...and the same holds for a strict word closing inside a liberal form"
 
 ## --- what the mode does not change -------------------------------------------
 

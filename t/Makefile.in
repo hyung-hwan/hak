@@ -641,7 +641,9 @@ t_003_SOURCES = t-003.c tap.h
 t_004_SOURCES = t-004.c tap.h
 check_FIXTURES = \
 	liberal-inc.hak \
-	liberal-inc2.hak
+	liberal-inc2.hak \
+	liberal-inc3.hak \
+	liberal-inc4.hak
 
 check_XTESTS = \
 	x-basic-01.hakx \

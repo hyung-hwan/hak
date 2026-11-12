@@ -677,7 +677,8 @@ enum hak_cnode_flag_t
 {
 	HAK_CNODE_AUTO_FORGED = (1 << 0),
 	HAK_CNODE_COMMA_BEFORE = (1 << 1), /* a comma preceded this item - see fold_comma_runs() */
-	HAK_CNODE_GLUED_CALL   = (1 << 2)  /* a glued '(' took this cell out of the enclosing list - see chain_to_list() */
+	HAK_CNODE_GLUED_CALL   = (1 << 2), /* a glued '(' took this cell out of the enclosing list - see chain_to_list() */
+	HAK_CNODE_LIBERAL      = (1 << 3)  /* read from a stream that was in liberal mode - see HAK_TRAIT_LANG_LIBERAL */
 };
 typedef enum hak_cnode_flag_t hak_cnode_flag_t;
 

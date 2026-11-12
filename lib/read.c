@@ -2932,7 +2932,15 @@ static int feed_process_token (hak_t* hak)
 
 		case HAK_TOK_IDENT:
 		ident:
-			frd->obj = hak_makecnodesymbol(hak, 0, TOKEN_LOC(hak), TOKEN_NAME(hak));
+			/* stamp the stream's liberal setting onto the word here rather than
+			 * letting the compiler ask hak->c->curinp later. a form may open in
+			 * the includer and close only after the include has ended, and by
+			 * then curinp has swung back - which made a word mean whatever the
+			 * file that finished the form said, not what the file that wrote the
+			 * word said. see HAK_CNODE_SYMBOL in compile_object(). */
+			frd->obj = hak_makecnodesymbol(
+				hak, ((hak->c->curinp->trait & HAK_TRAIT_LANG_LIBERAL)? HAK_CNODE_LIBERAL: 0),
+				TOKEN_LOC(hak), TOKEN_NAME(hak));
 			goto auto_xlist;
 
 		case HAK_TOK_IDENT_DOTTED:

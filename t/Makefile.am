@@ -102,7 +102,9 @@ t_004_SOURCES = t-004.c tap.h
 ## own, so they are shipped but deliberately kept out of TESTS.
 check_FIXTURES = \
 	liberal-inc.hak \
-	liberal-inc2.hak
+	liberal-inc2.hak \
+	liberal-inc3.hak \
+	liberal-inc4.hak
 
 ## scripts driven through hakx rather than hak: xrun.sh starts a server, runs
 ## the client against it several times over and insists the server is still

@@ -1,0 +1,11 @@
+## Helper for liberal-01.hak - liberal, and contributes one bare word.
+##
+## The includer opens an array literal, this file supplies the single item, and
+## the includer closes it. Compilation of a form is deferred until the form
+## closes, so by then hak->c->curinp has already swung back to the includer.
+## The word must still be read in THIS file's mode.
+##
+## [NOTE] a fixture, not a test - see liberal-inc.hak.
+
+$pragma liberal on
+abc
