@@ -36,6 +36,8 @@
 #define INCLUDE_FILE_NORMAL (1)
 #define INCLUDE_FILE_ONCE   (2)
 
+/*#define TRANSFORM_ALIST*/
+
 static struct voca_t
 {
 	hak_oow_t len;
@@ -886,6 +888,47 @@ static int fold_comma_runs (hak_t* hak, hak_cnode_t** headp, hak_cnode_t** tailp
 	return 0;
 }
 
+static hak_cnode_type_t kw_to_cnode_type (int tok_type)
+{
+	/* this must match the keyword token enumerator order in hak_tok_type_t() in hak-prv.h */
+	static hak_cnode_type_t mapping[] = {
+		HAK_CNODE_NIL,
+		HAK_CNODE_TRUE,
+		HAK_CNODE_FALSE,
+		HAK_CNODE_SELF,
+		HAK_CNODE_SUPER,
+
+		HAK_CNODE_CLASS,
+		HAK_CNODE_FUN,
+		HAK_CNODE_VAR,
+		HAK_CNODE_DO,
+		HAK_CNODE_IF,
+		HAK_CNODE_ELIF,
+		HAK_CNODE_ELSE,
+		HAK_CNODE_THROW,
+		HAK_CNODE_TRY,
+		HAK_CNODE_CATCH,
+		HAK_CNODE_BREAK,
+		HAK_CNODE_CONTINUE,
+		HAK_CNODE_FOR,
+		HAK_CNODE_LOOP,
+		HAK_CNODE_UNTIL,
+		HAK_CNODE_WHILE,
+		HAK_CNODE_RETURN,
+		HAK_CNODE_REVERT,
+		HAK_CNODE_AND,
+		HAK_CNODE_OR,
+#if defined(USE_KW_PLUS)
+		HAK_CNODE_PLUS,
+#endif
+		HAK_CNODE_SET,
+		HAK_CNODE_SET_R
+	};
+
+	return mapping[tok_type - HAK_TOK_NIL];
+}
+
+
 static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int* flagv, int* oldflagv)
 {
 	hak_rstl_t* rstl;
@@ -1022,7 +1065,9 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 			hak_cnode_t* lval;
 		#if defined(TRANSFORM_ALIST)
 			hak_cnode_t* sym, * newhead;
-			hak_oocs_t fake_tok, * fake_tok_ptr = HAK_NULL;
+			hak_oocs_t fake_tok;
+			hak_oocs_t* fake_tok_ptr = HAK_NULL;
+			int fake_tok_type;
 		#endif
 
 			if (count > 2)
@@ -1082,9 +1127,10 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 		#endif
 
 		#if defined(TRANSFORM_ALIST)
-				fake_tok.ptr = vocas[VOCA_SYM_SET_R].str;
-				fake_tok.len = vocas[VOCA_SYM_SET_R].len;
+				fake_tok.ptr = vocas[VOCA_KW_SET_R].str;
+				fake_tok.len = vocas[VOCA_KW_SET_R].len;
 				fake_tok_ptr = &fake_tok;
+				fake_tok_type = HAK_TOK_SET_R;
 		#endif
 
 				for (tmp = lval; tmp && HAK_CNODE_IS_CONS(tmp); tmp = HAK_CNODE_CONS_CDR(tmp))
@@ -1130,9 +1176,10 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 					goto oops;
 				}
 		#if defined(TRANSFORM_ALIST)
-				fake_tok.ptr = vocas[VOCA_SYM_SET].str;
-				fake_tok.len = vocas[VOCA_SYM_SET].len;
+				fake_tok.ptr = vocas[VOCA_KW_SET].str;
+				fake_tok.len = vocas[VOCA_KW_SET].len;
 				fake_tok_ptr = &fake_tok;
+				fake_tok_type = HAK_TOK_SET;
 		#endif
 			}
 
@@ -1141,7 +1188,8 @@ static HAK_INLINE hak_cnode_t* leave_list (hak_t* hak, hak_loc_t* list_loc, int*
 			HAK_ASSERT(hak, count == 2);
 
 		#if defined(TRANSFORM_ALIST)
-			sym = hak_makecnodesymbol(hak, 0, &loc, fake_tok_ptr);
+			/*sym = hak_makecnodesymbol(hak, 0, &loc, fake_tok_ptr);*/
+			sym = hak_makecnode(hak, kw_to_cnode_type(fake_tok_type), 0, &loc, fake_tok_ptr);
 			if (HAK_UNLIKELY(!sym))
 			{
 				const hak_ooch_t* orgmsg = hak_backuperrmsg(hak);
@@ -2082,46 +2130,6 @@ static int auto_forge_xlist_if_at_block_beginning (hak_t* hak, hak_frd_t* frd)
 	}
 
 	return 0;
-}
-
-static hak_cnode_type_t kw_to_cnode_type (int tok_type)
-{
-	/* this must match the keyword token enumerator order in hak_tok_type_t() in hak-prv.h */
-	static hak_cnode_type_t mapping[] = {
-		HAK_CNODE_NIL,
-		HAK_CNODE_TRUE,
-		HAK_CNODE_FALSE,
-		HAK_CNODE_SELF,
-		HAK_CNODE_SUPER,
-
-		HAK_CNODE_CLASS,
-		HAK_CNODE_FUN,
-		HAK_CNODE_VAR,
-		HAK_CNODE_DO,
-		HAK_CNODE_IF,
-		HAK_CNODE_ELIF,
-		HAK_CNODE_ELSE,
-		HAK_CNODE_THROW,
-		HAK_CNODE_TRY,
-		HAK_CNODE_CATCH,
-		HAK_CNODE_BREAK,
-		HAK_CNODE_CONTINUE,
-		HAK_CNODE_FOR,
-		HAK_CNODE_LOOP,
-		HAK_CNODE_UNTIL,
-		HAK_CNODE_WHILE,
-		HAK_CNODE_RETURN,
-		HAK_CNODE_REVERT,
-		HAK_CNODE_AND,
-		HAK_CNODE_OR,
-#if defined(USE_KW_PLUS)
-		HAK_CNODE_PLUS,
-#endif
-		HAK_CNODE_SET,
-		HAK_CNODE_SET_R
-	};
-
-	return mapping[tok_type - HAK_TOK_NIL];
 }
 
 static int feed_process_token (hak_t* hak)
