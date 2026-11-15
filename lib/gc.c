@@ -1159,6 +1159,7 @@ static HAK_INLINE void gc_ms_mark_roots (hak_t* hak)
 	}
 
 	gc_ms_mark(hak, hak->_undef);
+	gc_ms_mark(hak, hak->_undcl);
 	gc_ms_mark(hak, hak->_nil);
 	gc_ms_mark(hak, hak->_true);
 	gc_ms_mark(hak, hak->_false);
@@ -1434,6 +1435,7 @@ void hak_gc (hak_t* hak)
 
 	/* move _nil and the root object table */
 	hak->_undef = hak_moveoop(hak, hak->_undef);
+	hak->_undcl = hak_moveoop(hak, hak->_undcl);
 	hak->_nil = hak_moveoop(hak, hak->_nil);
 	hak->_true = hak_moveoop(hak, hak->_true);
 	hak->_false = hak_moveoop(hak, hak->_false);
@@ -1980,6 +1982,12 @@ static int make_kernel_objs (hak_t* hak)
 		if (HAK_UNLIKELY(!hak->_undef)) goto oops;
 	}
 
+	if (HAK_LIKELY(!hak->_undcl))
+	{ /* TODO: create it as nogc */
+		hak->_undcl = hak_hatchundef(hak); /* just a different instance from _undef but using the same class */
+		if (HAK_UNLIKELY(!hak->_undcl)) goto oops;
+	}
+
 	if (HAK_LIKELY(!hak->_nil))
 	{ /* TODO: create it as nogc? */
 		hak->_nil = hak_hatchnil(hak);
@@ -1991,6 +1999,7 @@ static int make_kernel_objs (hak_t* hak)
 	/* ready to set the class of object created prior to class creation in ignite_1() */
 	HAK_OBJ_SET_CLASS(hak->_nil, (hak_oop_t)hak->c_nilobj);
 	HAK_OBJ_SET_CLASS(hak->_undef, (hak_oop_t)hak->c_undefobj);
+	HAK_OBJ_SET_CLASS(hak->_undcl, (hak_oop_t)hak->c_undefobj); /* use the same class as _undef */
 
 	if (ignite_2(hak) <= -1) goto oops;
 
@@ -2020,6 +2029,8 @@ int hak_ignite (hak_t* hak, hak_oow_t heapsize)
 
 	if (make_kernel_objs(hak) <= -1) return -1;
 
+	HAK_ASSERT(hak, hak->_undef != HAK_NULL);
+	HAK_ASSERT(hak, hak->_undcl != HAK_NULL);
 	HAK_ASSERT(hak, hak->_true != HAK_NULL);
 	HAK_ASSERT(hak, hak->_false != HAK_NULL);
 

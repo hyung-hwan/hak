@@ -312,15 +312,54 @@ static int add_class_level_variable (hak_t* hak, hak_oocsc_t* dst, hak_oocsc_t* 
 	return hak_copy_string_to(hak, name, (hak_oocs_t*)dst, &dst->capa, 1, ' ');
 }
 
+
+/* is the current position the outermost code of the compilation unit?
+ * that is, not inside a 'fun' body and not inside a class body. */
 static int is_in_top_scope (hak_t* hak)
 {
 	hak_funblk_info_t* fbi;
-/*printf (">>> ---- funblk.depth ....%d\n", (int)hak->c->funblk.depth);*/
+
+	/* depth 0 is the virtual function block hak_compile() pushes for the
+	 * top-level compilation unit. anything deeper is a 'fun' body, as
+	 * compile_fun() is the only other caller of push_funblk(). 'do', 'if'
+	 * and 'while' bodies push a control block instead and leave the depth
+	 * alone, so this does not distinguish them from bare top-level code. */
 	if (hak->c->funblk.depth > 0) return 0;
-	HAK_ASSERT(hak, hak->c->funblk.depth >= 0);
+
+	/* the depth is -1 only before that virtual block is pushed, which is
+	 * outside the compilation of any form. it can't be seen from here. */
+	HAK_ASSERT(hak, hak->c->funblk.depth == 0);
+
+	/* push_funblk() resets clsblk_top to -1 and it rises while a class body
+	 * is being compiled. a class block belongs to the function block that
+	 * opened it, so at depth 0 this asks whether we are inside a class
+	 * written at the outermost level - the exact complement of
+	 * is_in_class_init_scope(). */
 	fbi = &hak->c->funblk.info[hak->c->funblk.depth];
-/*printf ("fbi->clsblk_top....%d\n", (int)fbi->clsblk_top);*/
 	return fbi->clsblk_top < 0;
+}
+
+/* is this 'var' written at the outermost level of the compilation unit?
+ * that is the only place a global variable can be declared. stricter than
+ * is_in_top_scope(), which is also true inside a block at that level:
+ * 'do { var n }' and a bare 'var n' leave identical compiler state. */
+static int is_in_global_init_scope (hak_t* hak, hak_cnode_t* src)
+{
+	hak_funblk_info_t* fbi;
+
+	/* depth 0 is the virtual function block for the top-level unit;
+	 * deeper is a 'fun' body - see is_in_top_scope(). */
+	if (hak->c->funblk.depth > 0) return 0;
+	HAK_ASSERT(hak, hak->c->funblk.depth == 0);
+
+	/* the control block depth cannot answer this: push_ctlblk() is reached
+	 * only for HAK_CTLBLK_TYPE_CLASS, _TRY and _LOOP, so 'if' and 'do' leave
+	 * no trace in it. the list level the reader stamped on the cnode does -
+	 * it is 0 at the outermost level and grows with every enclosing block,
+	 * which is a fact about where the declaration was written rather than
+	 * about compiler state, hence the cnode parameter. */
+	fbi = &hak->c->funblk.info[hak->c->funblk.depth];
+	return fbi->clsblk_top < 0 && /*hak->c->ctlblk.depth <= fbi->ctlblk_base &&*/ HAK_CNODE_GET_LLVL(src) == 0;
 }
 
 static int is_in_top_fun_scope (hak_t* hak)
@@ -3021,11 +3060,38 @@ static int compile_class (hak_t* hak, hak_cnode_t* src)
 		sym = hak_makesymbol(hak, HAK_CNODE_GET_TOKPTR(class_name), HAK_CNODE_GET_TOKLEN(class_name));
 		if (HAK_UNLIKELY(!sym)) return -1;
 
+		/* check global */
 		cons = (hak_oop_t)hak_getatsysdic(hak, sym);
 		if (!cons)
 		{
-			cons = (hak_oop_t)hak_putatsysdic(hak, sym, hak->_nil);
+			/* not found, add global */
+			cons = (hak_oop_t)hak_putatsysdic(hak, sym, hak->_undef);
 			if (HAK_UNLIKELY(!cons)) return -1;
+		}
+		else /*if (!liberal) */
+		{
+			hak_oop_t val = HAK_CONS_CDR(cons);
+
+			HAK_ASSERT(hak, val != HAK_NULL);
+
+			if (HAK_IS_UNDCL(hak, val))
+			{
+				/* allow. nothing to block.
+				 * leave it to CLASS_ENTER at runtime */
+			}
+			else if (HAK_IS_CLASS(hak, val) && HAK_OBJ_GET_FLAGS_KERNEL(val) == 1) /* incomplete kernel class */
+			{
+				/* allow this as it the kernel class name being declared for the first time */
+				/* fall through */
+			}
+			else
+			{
+				/* HAK_IS_UNDEF(hak, val) -> duplicate - var/class/fun already claimed it.
+				 * HAK_IS_NIL(hak, val) and the rest -> collision - real value present */
+				hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(class_name),
+					"duplicate name '%.*js' for class", HAK_CNODE_GET_TOKLEN(class_name), HAK_CNODE_GET_TOKPTR(class_name));
+				return -1;
+			}
 		}
 
 		/* add an association in the system dictionary to the literal frame.
@@ -3908,6 +3974,51 @@ static int check_var_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned int
 	return 0;
 }
 
+/*
+ * upon variable declaration(var), set the value to undef for a new name (declare_global)
+ * unpon class declaration(class), set the value to undef for a new name (compile_class)
+ * upon mention/read, set the value to undcl for a new name (compile_symbol, emit_prim_callee)
+ * upon store/write, set the value to undef for a new name and upgrade undcl to undef for an existing value if it's undcl (emit_set)
+ *
+ * if the symbol value in sysdic is _undef, it's declared but not set to a useful value yet.
+ * if the symbol value in sysdic is _undcl, it's unsed without declaration (variable, class, function)
+ */
+static int declare_global (hak_t* hak, hak_cnode_t* var)
+{
+	hak_oop_t cons;
+	hak_oop_t sym;
+
+	sym = hak_makesymbol(hak, HAK_CNODE_GET_TOKPTR(var), HAK_CNODE_GET_TOKLEN(var));
+	if (HAK_UNLIKELY(!sym)) return -1;
+
+	cons = (hak_oop_t)hak_getatsysdic(hak, sym);
+	if (cons)
+	{
+		hak_oop_t val;
+		val = HAK_CONS_CDR(cons);
+
+		if (HAK_IS_UNDCL(hak, val))
+		{
+			/* already mentioned, now declared */
+			goto ok;
+		}
+		else
+		{
+			/* HAK_IS_UNDEF(hak, val) -> duplicate declaration
+			 * other values -> collision with a real value. */
+			hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(var),
+				"duplicate global variable '%.*js'", HAK_CNODE_GET_TOKLEN(var), HAK_CNODE_GET_TOKPTR(var));
+		}
+		return -1;
+	}
+
+ok:
+	cons = (hak_oop_t)hak_putatsysdic(hak, sym, hak->_undef);
+	if (HAK_UNLIKELY(!cons)) return -1;
+
+	return 0;
+}
+
 static int compile_var (hak_t* hak, hak_cnode_t* src)
 {
 	hak_cnode_t* cmd, * next, * tmp;
@@ -3920,9 +4031,6 @@ static int compile_var (hak_t* hak, hak_cnode_t* src)
 	cmd = HAK_CNODE_CONS_CAR(src);
 	next = HAK_CNODE_CONS_CDR(src);
 	attr_list = HAK_NULL;
-
-/*TODO: put some assertion regarding funblk to cslblk relaion */
-	cbi = &hak->c->clsblk.info[hak->c->clsblk.depth];
 
 	HAK_ASSERT(hak, HAK_CNODE_IS_TYPED(cmd, HAK_CNODE_VAR));
 
@@ -3938,7 +4046,24 @@ static int compile_var (hak_t* hak, hak_cnode_t* src)
 	 * and only the field of the last cons cell is NULL. */
 	HAK_ASSERT(hak, HAK_CNODE_IS_CONS(next));
 
-	if (!is_in_class_init_scope(hak))
+	if (is_in_global_init_scope(hak, src))
+	{
+		tmp = HAK_CNODE_CONS_CAR(next);
+		if (!HAK_CNODE_IS_SYMBOL(tmp)) goto not_ident;
+
+		while (1)
+		{
+			if (declare_global(hak, tmp) <= -1) goto oops;
+
+			next = HAK_CNODE_CONS_CDR(next);
+			if (!next) break;
+
+			tmp = HAK_CNODE_CONS_CAR(next);
+			if (!HAK_CNODE_IS_SYMBOL(tmp)) goto not_ident;
+		}
+		goto done;
+	}
+	else if (!is_in_class_init_scope(hak))
 	{
 		hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(cmd),
 			"'%.*js' prohibited in this context",
@@ -3946,11 +4071,16 @@ static int compile_var (hak_t* hak, hak_cnode_t* src)
 		goto oops;
 	}
 
+/*TODO: put some assertion regarding funblk to cslblk relaion */
+	cbi = &hak->c->clsblk.info[hak->c->clsblk.depth];
+
 	tmp = HAK_CNODE_CONS_CAR(next);
 	if (HAK_CNODE_IS_CONS_CONCODED(tmp, HAK_CONCODE_XLIST) ||
 	    HAK_CNODE_IS_ELIST_CONCODED(tmp, HAK_CONCODE_XLIST))
 	{
-		/* probably attribute list */
+		/* probably attribute list for class-level variables. for example,
+		 *  var x(#class)
+		 */
 		attr_list = tmp;
 
 		next = HAK_CNODE_CONS_CDR(next);
@@ -4017,6 +4147,7 @@ static int compile_var (hak_t* hak, hak_cnode_t* src)
 		goto oops;
 	}
 
+done:
 /* if there is assignment with expression, we can arragne to compile RHS. in that case
  * the explicit PUSH_NIL here isn't needed */
 	/* TODO: hack for POP_STACKPOP generated in compile_object_list().
@@ -4252,7 +4383,7 @@ static int compile_set_r (hak_t* hak, hak_cnode_t* src)
 	do
 	{
 		var = HAK_CNODE_CONS_CAR(obj);
-		if (!HAK_CNODE_IS_SYMBOL(var))
+		if (!HAK_CNODE_IS_SIMPLE_LVALUE(var))
 		{
 			if (nvars > 0) break;
 			hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(var),
@@ -4815,10 +4946,12 @@ static int emit_prim_callee (hak_t* hak, const hak_bch_t* name, const hak_loc_t*
 	sym = hak_makesymbolwithbcstr(hak, name);
 	if (HAK_UNLIKELY(!sym)) return -1;
 
+	/* check global - it's in the load/read/mention context. it emits PUSH. */
 	cons = (hak_oop_t)hak_getatsysdic(hak, sym);
 	if (!cons)
 	{
-		cons = (hak_oop_t)hak_putatsysdic(hak, sym, hak->_undef);
+		/* if not found, add global with the value of undcl instead of undef */
+		cons = (hak_oop_t)hak_putatsysdic(hak, sym, hak->_undcl);
 		if (HAK_UNLIKELY(!cons)) return -1;
 	}
 
@@ -5888,10 +6021,12 @@ static HAK_INLINE int compile_symbol (hak_t* hak, hak_cnode_t* obj, int skip)
 		sym = hak_makesymbol(hak, tmp.ptr, tmp.len);
 		if (HAK_UNLIKELY(!sym)) return -1;
 
+		/* check global - it's always in mention/read/load context as it never emits store instructions */
 		cons = (hak_oop_t)hak_getatsysdic(hak, sym);
 		if (!cons)
 		{
-			cons = (hak_oop_t)hak_putatsysdic(hak, sym, hak->_undef);
+			/* not found, add global */
+			cons = (hak_oop_t)hak_putatsysdic(hak, sym, hak->_undcl); /* store undcl instead of undef */
 			if (HAK_UNLIKELY(!cons)) return -1;
 		}
 
@@ -7895,11 +8030,20 @@ static HAK_INLINE int emit_set (hak_t* hak)
 		sym = hak_makesymbol(hak, HAK_CNODE_GET_TOKPTR(cf->operand), HAK_CNODE_GET_TOKLEN(cf->operand));
 		if (HAK_UNLIKELY(!sym)) return -1;
 
+		/* check global. it's in the write/store context. it emits STORE or POP_INTO */
 		cons = (hak_oop_t)hak_getatsysdic(hak, sym);
 		if (!cons)
 		{
-			cons = (hak_oop_t)hak_putatsysdic(hak, sym, hak->_nil);
+			/* not found, add global */
+			cons = (hak_oop_t)hak_putatsysdic(hak, sym, hak->_undef);
 			if (HAK_UNLIKELY(!cons)) return -1;
+		}
+		else
+		{
+			/* found */
+			hak_oop_t val;
+			val = HAK_CONS_CDR(cons);
+			if (HAK_IS_UNDCL(hak, val)) HAK_CONS_CDR(cons) = hak->_undef; /* upgrade undcl to undef */
 		}
 
 		if (add_literal(hak, cons, &index) <= -1) return -1;

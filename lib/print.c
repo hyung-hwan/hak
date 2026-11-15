@@ -80,6 +80,7 @@ static HAK_INLINE void pop (hak_t* hak, print_stack_t* info)
 enum
 {
 	WORD_UNDEF,
+	WORD_UNDCL,
 	WORD_NIL,
 	WORD_TRUE,
 	WORD_FALSE,
@@ -105,6 +106,7 @@ static struct
 } word[] =
 {
 	{  8,  { '#','<','U','N','D','E','F','>' } },
+	{  8,  { '#','<','U','N','D','C','L','>' } },
 	{  3,  { 'n','i','l' } },
 	{  4,  { 't','r','u','e' } },
 	{  5,  { 'f','a','l','s','e' } },
@@ -354,7 +356,7 @@ next:
 		}
 
 		case HAK_BRAND_UNDEF:
-			word_index = WORD_UNDEF;
+			word_index = (HAK_IS_UNDCL(hak, obj)? WORD_UNDCL: WORD_UNDEF);
 			goto print_word;
 
 		case HAK_BRAND_NIL:

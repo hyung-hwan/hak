@@ -253,7 +253,7 @@ hak_oop_t hak_allocwordobj (hak_t* hak, const hak_oow_t* ptr, hak_oow_t len)
 
 hak_oop_t hak_hatchundef (hak_t* hak)
 {
-	/* create the undef object for bootstrapping.
+	/* create the object to be used as undef/undcl for bootstrapping.
 	 * this function doesn't set the class field */
 
 	hak_oop_t v;

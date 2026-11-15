@@ -1871,6 +1871,7 @@ struct hak_t
 
 	/* ========================= */
 	hak_oop_t _undef; /* special internal value for uninitialized global variables */
+	hak_oop_t _undcl; /* special internal value for undeclared global variables */
 	hak_oop_t _nil;  /* pointer to the nil object */
 	hak_oop_t _true;
 	hak_oop_t _false;
@@ -2254,6 +2255,7 @@ enum hak_concode_t
 typedef enum hak_concode_t hak_concode_t;
 
 #define HAK_IS_UNDEF(hak,v) (v == (hak)->_undef)
+#define HAK_IS_UNDCL(hak,v) (v == (hak)->_undcl)
 #define HAK_IS_NIL(hak,v) (v == (hak)->_nil)
 #define HAK_IS_TRUE(hak,v) (v == (hak)->_true)
 #define HAK_IS_FALSE(hak,v) (v == (hak)->_false)

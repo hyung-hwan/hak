@@ -4486,6 +4486,13 @@ static int execute (hak_t* hak)
 						if (do_throw_with_internal_errmsg(hak, fetched_instruction_pointer) >= 0) break;
 						goto oops_with_errmsg_supplement;
 					}
+					else if (HAK_IS_UNDCL(hak, ass->cdr))
+					{
+						hak_seterrbfmt(hak, HAK_EUNDEFVAR, "%.*js is undeclared", HAK_OBJ_GET_SIZE(ass->car), HAK_OBJ_GET_CHAR_SLOT(ass->car));
+						if (do_throw_with_internal_errmsg(hak, fetched_instruction_pointer) >= 0) break;
+						goto oops_with_errmsg_supplement;
+					}
+
 					HAK_STACK_PUSH(hak, ass->cdr);
 				}
 				break;
@@ -5001,7 +5008,7 @@ hak_logbfmt(hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncv
 					else
 					{
 						/*HAK_ASSERT(hak, HAK_IS_NIL(hak, (hak_oop_t)class_obj));*/
-						if (!HAK_IS_NIL(hak, (hak_oop_t)class_obj) && !HAK_IS_UNDEF(hak, (hak_oop_t)class_obj))
+						if (!HAK_IS_NIL(hak, (hak_oop_t)class_obj) && !HAK_IS_UNDEF(hak, (hak_oop_t)class_obj) && !HAK_IS_UNDCL(hak, (hak_oop_t)class_obj))
 						{
 							/* K := 20
 							 * class K {}  ## this will be "prohibited redefinition of K"
