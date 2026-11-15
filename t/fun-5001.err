@@ -35,3 +35,49 @@ fun 5() {} ##ERROR: syntax error - invalid function name '5' for 'fun'
 ---
 
 fun X:5() {} ##ERROR: syntax error - invalid function name '5' after 'X:' for 'fun'
+
+---
+
+## a named function binds a global, so it is only accepted as a statement at
+## the outermost level of the compilation unit - the same rule a named class
+## follows. see class-5001.err for the class side of it.
+
+fun outer() {
+	fun inner() { ##ERROR: syntax error - prohibited definition of named function 'inner'
+		return 1
+	}
+}
+
+---
+
+## a block at the outermost level is not the outermost level
+
+do { fun h() { ##ERROR: syntax error - prohibited definition of named function 'h'
+} }
+
+---
+
+{ fun h() { ##ERROR: syntax error - prohibited definition of named function 'h'
+} }
+
+---
+
+if true { fun h() { ##ERROR: syntax error - prohibited definition of named function 'h'
+} }
+
+---
+
+## nor is a method body
+
+class A {
+	fun[#class] t() {
+		fun h() { ##ERROR: syntax error - prohibited definition of named function 'h'
+		}
+	}
+}
+
+---
+
+## a named function is a definition, not an expression
+
+k := (fun qq(t) (+ t 20)) ##ERROR: syntax error - prohibited definition of named function 'qq'

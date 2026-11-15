@@ -28,7 +28,8 @@ else {
 	ticks := 0
 	status := -2
 
-	fun waiter() {
+	## inside a block, so the ':=' form rather than a named 'fun'
+	waiter := (fun() {
 		| s |
 		core.sem-signal tmo 20 0
 		core.sem-signal-on-input iosem xh
@@ -39,16 +40,16 @@ else {
 		else { status := (sys.pwait proc) }
 		core.sem-signal fin
 		return 0
-	}
+	})
 
-	fun ticker() {
+	ticker := (fun() {
 		## the waiter is parked on the exit handle by now; these ticks only
 		## happen if the VM went on scheduling instead of blocking
 		while (< ticks 4) {
 			ticks := (+ ticks 1)
 			core.yield
 		}
-	}
+	})
 
 	chk (integer? xh) "sys.popen hands back an exit handle"
 	core.fork waiter

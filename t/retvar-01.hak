@@ -6,12 +6,14 @@
 
 	set i 100;
 
-	fun ff(a b :: x y z) {
+	## the whole file sits inside a lambda, so a named function is prohibited
+	## here - bind an anonymous one instead. see fun-5001.err.
+	ff := (fun(a b :: x y z) {
 		set x (+ a b i);
 		set y (+ x x);
 		set z (+ 999 i);
 		set i (* i 10);
-	};
+	});
 
 	set-r v1 v2 v3 (ff 10 20);
 	if (!= v1 130) { printf "ERROR: v1 must be 130\n" } \

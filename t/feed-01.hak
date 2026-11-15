@@ -4,7 +4,9 @@
 
 | J |
 
-fun xxx (x y z
+## a named function binds a global, so it is only accepted at the outermost
+## level. everything here sits inside the START block, hence the ':=' form.
+xxx := (fun (x y z
 	:: r ) {
 
 	| k
@@ -19,7 +21,7 @@ fun xxx (x y z
 
 	r := s
 	J := r
-}
+})
 
 
 [

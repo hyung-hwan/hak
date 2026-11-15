@@ -69,7 +69,9 @@ class T {
 			| x |
 			set x 1
 			while (< x j) {
-				fun Q() x
+				## a named function is only accepted at the outermost level, so
+				## bind an anonymous one. it still lands in a global.
+				Q := (fun() x)
 				set x (+ x 1)
 			}
 		}

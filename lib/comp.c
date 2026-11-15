@@ -3629,6 +3629,18 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 					HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 				return -1;
 			}
+
+			/* a plain named function binds a global, so it is restricted to the
+			 * outermost level just like a named class. a method ('fun' inside a
+			 * class body) and an out-of-class definition ('fun class:name')
+			 * bind no global of their own and are left alone here. */
+			if (fun_name && !class_name && !is_in_class_init_scope(hak) && !is_in_global_init_scope(hak, src))
+			{
+				hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(cmd),
+					"prohibited definition of named function '%.*js'",
+					HAK_CNODE_GET_TOKLEN(fun_name), HAK_CNODE_GET_TOKPTR(fun_name));
+				return -1;
+			}
 		}
 		else
 		{

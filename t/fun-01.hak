@@ -78,7 +78,10 @@ if (== y 29) {
 }
 
 ## --------------------------------------
-k := (fun qq(t) (+ t 20))
+## a named function is a definition, not an expression - it is only accepted
+## as a statement at the outermost level. its value is a global like any other.
+fun qq(t) (+ t 20)
+k := qq
 x := (k 8)
 y := (qq 9)
 
@@ -131,10 +134,12 @@ if (== v 40) { printf "OK - %d\n" v } else { printf "ERROR - %d, not 40\n" v };
 ## ----------------------------------------
 fun plus(x y) {
      ##printf "plus %d %d\n" x y
-     fun minus(x y) {
+     ## a named function is only accepted at the outermost level. an anonymous
+     ## one bound with ':=' still creates the global once 'plus' has run.
+     minus := (fun(x y) {
           ##printf "minus %d %d\n" x y
           - x y
-     }
+     })
      + x y
 }
 
