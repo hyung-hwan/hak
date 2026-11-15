@@ -829,6 +829,7 @@ static int emit_one_param_instruction (hak_t* hak, int cmd, hak_oow_t param_1, c
 		case HAK_CODE_CLASS_CIMSTORE:
 		case HAK_CODE_CLASS_IMSTORE:
 		case HAK_CODE_DEFINE_FUN:
+		case HAK_CODE_DEFINE_CLASS:
 		case HAK_CODE_TRY_ENTER:
 		case HAK_CODE_TRY_ENTER2:
 		case HAK_CODE_PUSH_INTLIT:
@@ -1861,6 +1862,7 @@ enum
 	COP_EMIT_POP_STACKTOP,
 	COP_EMIT_RETURN,
 	COP_EMIT_DEFINE_FUN,
+	COP_EMIT_DEFINE_CLASS,
 	COP_EMIT_SET,
 	COP_EMIT_CLASS_CMSTORE,
 	COP_EMIT_CLASS_CIMSTORE,
@@ -3299,11 +3301,18 @@ static HAK_INLINE int compile_class_p2 (hak_t* hak)
 
 	if (class_name)
 	{
+	#if 0
 		/* a class name is treated like a global variable */
 		SWITCH_TOP_CFRAME(hak, COP_EMIT_SET, class_name);
 		cf = GET_TOP_CFRAME(hak);
 		cf->u.set.vi.type = VAR_NAMED;
 		cf->u.set.mode = VAR_ACCESS_STORE;
+	#else
+		/* a class name is a global, but binding it is a definition rather
+		 * than an assignment. use the dedicate instruction to assign a value
+		 * to a global. see emit_define_global() */
+		SWITCH_TOP_CFRAME(hak, COP_EMIT_DEFINE_CLASS, class_name);
+	#endif
 	}
 	else
 	{
@@ -8066,21 +8075,18 @@ static HAK_INLINE int emit_set (hak_t* hak)
 	return 0;
 }
 
-/* bind the function on the stack top to its name in the system dictionary.
+/* bind the value on the stack top to 'name' in the system dictionary.
  * this is the definition counterpart of emit_set()'s VAR_NAMED branch: the
- * name of a 'fun' is not assigned to, it is defined, and DEFINE_FUN is
- * assignes the fun value to it at run time. */
-static HAK_INLINE int emit_define_fun (hak_t* hak)
+ * name of a 'fun' or of a named 'class' is not assigned to, it is defined,
+ * and DEFINE_FUN/DEFINE_CLASS assign the value to it at run time. */
+static int emit_define_global (hak_t* hak, hak_cnode_t* name, int inst)
 {
-	hak_cframe_t* cf;
 	hak_oow_t index;
 	hak_oop_t cons, sym;
 
-	cf = GET_TOP_CFRAME(hak);
-	HAK_ASSERT(hak, cf->opcode == COP_EMIT_DEFINE_FUN);
-	HAK_ASSERT(hak, HAK_CNODE_IS_SYMBOL(cf->operand) || HAK_CNODE_IS_BINOP(cf->operand));
+	HAK_ASSERT(hak, HAK_CNODE_IS_SYMBOL(name) || HAK_CNODE_IS_BINOP(name));
 
-	sym = hak_makesymbol(hak, HAK_CNODE_GET_TOKPTR(cf->operand), HAK_CNODE_GET_TOKLEN(cf->operand));
+	sym = hak_makesymbol(hak, HAK_CNODE_GET_TOKPTR(name), HAK_CNODE_GET_TOKLEN(name));
 	if (HAK_UNLIKELY(!sym)) return -1;
 
 	cons = (hak_oop_t)hak_getatsysdic(hak, sym);
@@ -8102,7 +8108,30 @@ static HAK_INLINE int emit_define_fun (hak_t* hak)
 	 * as it is for STORE_INTO_OBJECT. the executor then has both the name
 	 * and the current value in hand without touching the dictionary. */
 	if (add_literal(hak, cons, &index) <= -1) return -1;
-	if (emit_one_param_instruction(hak, HAK_CODE_DEFINE_FUN, index, HAK_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
+	return emit_one_param_instruction(hak, inst, index, HAK_CNODE_GET_LOC(name));
+}
+
+static HAK_INLINE int emit_define_fun (hak_t* hak)
+{
+	hak_cframe_t* cf;
+
+	cf = GET_TOP_CFRAME(hak);
+	HAK_ASSERT(hak, cf->opcode == COP_EMIT_DEFINE_FUN);
+
+	if (emit_define_global(hak, cf->operand, HAK_CODE_DEFINE_FUN) <= -1) return -1;
+
+	POP_CFRAME(hak);
+	return 0;
+}
+
+static HAK_INLINE int emit_define_class (hak_t* hak)
+{
+	hak_cframe_t* cf;
+
+	cf = GET_TOP_CFRAME(hak);
+	HAK_ASSERT(hak, cf->opcode == COP_EMIT_DEFINE_CLASS);
+
+	if (emit_define_global(hak, cf->operand, HAK_CODE_DEFINE_CLASS) <= -1) return -1;
 
 	POP_CFRAME(hak);
 	return 0;
@@ -8469,6 +8498,10 @@ int hak_compile (hak_t* hak, hak_cnode_t* obj, int flags)
 
 			case COP_EMIT_DEFINE_FUN:
 				if (emit_define_fun(hak) <= -1) goto oops;
+				break;
+
+			case COP_EMIT_DEFINE_CLASS:
+				if (emit_define_class(hak) <= -1) goto oops;
 				break;
 
 			case COP_EMIT_CLASS_CMSTORE:

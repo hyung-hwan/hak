@@ -5141,12 +5141,18 @@ hak_logbfmt(hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncv
 			}
 
 			case HAK_CODE_DEFINE_FUN:
+			case HAK_CODE_DEFINE_CLASS:
 			{
 				hak_oop_cons_t ass;
 				hak_oop_t v;
+				int kind;
+				static const hak_bch_t* what[] = { "fun", "class" };
 
+				/* kind => fun: 0, class: 1 */
+				kind = bcode - HAK_CODE_DEFINE_FUN;
+				HAK_ASSERT(hak, kind >= 0 && kind <= 1);
 				FETCH_PARAM_CODE_TO(hak, b1);
-				LOG_INST_1(hak, "define_fun @%zu", b1);
+				LOG_INST_2(hak, "define_%hs @%zu", what[kind], b1);
 
 				/* the literal frame holds the system dictionary association
 				 * itself, exactly as it does for PUSH_OBJECT and friends. */
@@ -5155,9 +5161,15 @@ hak_logbfmt(hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncv
 
 				v = HAK_STACK_GETTOP(hak);
 
-				/* [TODO] when 'class' gets DEFINE_CLASS, this guard belongs
-				 * there and in here only, and STORE_INTO_OBJECT/POP_INTO_OBJECT
-				 * can stop paying for it on every ordinary global assignment. */
+				/* refuse to bury a named class under a new definition. for
+				 * DEFINE_CLASS this is normally unreachable - CLASS_ENTER has
+				 * already passed judgement on the name by the time the class
+				 * object reaches here - but it costs nothing to be sure.
+				 *
+				 * [NOTE] STORE_INTO_OBJECT/POP_INTO_OBJECT keep a guard of
+				 *        their own. it is not this one made redundant: theirs
+				 *        covers plain assignment over a class ('class F {}'
+				 *        then 'F := 30'), which is not a definition at all. */
 				if (HAK_IS_CLASS(hak, ass->cdr) && ((hak_oop_class_t)ass->cdr)->name == ass->car && v != ass->cdr)
 				{
 					hak_seterrbfmt(hak, HAK_EPERM, "prohibited redefinition of %.*js", HAK_OBJ_GET_SIZE(ass->car), HAK_OBJ_GET_CHAR_SLOT(ass->car));
