@@ -3238,13 +3238,25 @@ static HAK_INLINE int compile_class_p2 (hak_t* hak)
 	class_name = cf->operand;
 	class_loc = class_name? *HAK_CNODE_GET_LOC(class_name): cf->u._class.start_loc;
 
-	if (hak->code.bc.len > hak->c->clsblk.info[hak->c->clsblk.depth].class_start_inst_pos)
+	cbi = &hak->c->clsblk.info[hak->c->clsblk.depth];
+
+	if (hak->code.bc.len == cbi->class_start_inst_pos + 1 &&
+	    hak->code.bc.ptr[cbi->class_start_inst_pos] == HAK_CODE_PUSH_NIL)
 	{
-		/* no instructions generated after the class_enter instruction */
+		/* an empty class body compiles to a lone PUSH_NIL. drop it rather than
+		 * emitting a POP_STACKTOP to undo it. emit_fun() does the same for an
+		 * empty method body. the byte code buffer can be rewound safely here
+		 * because nothing has been emitted past it yet and code.dbgi is indexed
+		 * by byte code position, so the next instruction reuses the slot. */
+		hak->code.bc.len--;
+	}
+	else if (hak->code.bc.len > cbi->class_start_inst_pos)
+	{
+		/* the class body generated instructions after class_enter.
+		 * discard the value the last one left on the stack. */
 		if (emit_byte_instruction(hak, HAK_CODE_POP_STACKTOP, &class_loc) <= -1) return -1;
 	}
 
-	cbi = &hak->c->clsblk.info[hak->c->clsblk.depth];
 	/* patch the CLASS_ENTER instruction with the final nicvars and ncvars values.
 	 * CLASS_ENTER nsuperclasses(lp)|nivars(lp)|ncvars(lp)|ivars_lfindex(elp)|cvars_lfindex(elp)|spec/selfspec(b)|index_type(b)
 	 *  (lp) = long param, (elp) = extended long param, (b) = byte */
