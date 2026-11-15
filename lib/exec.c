@@ -5145,14 +5145,19 @@ hak_logbfmt(hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncv
 			{
 				hak_oop_cons_t ass;
 				hak_oop_t v;
-				int kind;
-				static const hak_bch_t* what[] = { "fun", "class" };
 
-				/* kind => fun: 0, class: 1 */
-				kind = bcode - HAK_CODE_DEFINE_FUN;
-				HAK_ASSERT(hak, kind >= 0 && kind <= 1);
 				FETCH_PARAM_CODE_TO(hak, b1);
-				LOG_INST_2(hak, "define_%hs @%zu", what[kind], b1);
+
+			#if defined(HAK_DEBUG_VM_EXEC)
+				{
+					int kind;
+					static const hak_bch_t* what[] = { "fun", "class" };
+					/* kind => fun: 0, class: 1 */
+					kind = bcode - HAK_CODE_DEFINE_FUN;
+					HAK_ASSERT(hak, kind >= 0 && kind <= 1);
+					LOG_INST_2(hak, "define_%hs @%zu", what[kind], b1);
+				}
+			#endif
 
 				/* the literal frame holds the system dictionary association
 				 * itself, exactly as it does for PUSH_OBJECT and friends. */

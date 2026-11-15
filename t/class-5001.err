@@ -1,4 +1,4 @@
-class ##ERROR: syntax error - incomplete defintion of unnamed class for 'class'
+class ##ERROR: syntax error - incomplete definition of unnamed class for 'class'
 
 ---
 
@@ -250,18 +250,46 @@ F := (class { ##ERROR: exception not handled - "prohibited redefinition of F"
 
 ---
 
-## 'F :=' also puts _undef in the system dictionary at compile time - the store
-## itself has not run yet - so the named 'class F' that follows is a duplicate.
+## a named class is only accepted as a statement at the outermost level of the
+## compilation unit. inside an expression - even one written at that level -
+## only an anonymous class will do.
 F := (class {
 })
 
-F := (class F { ##ERROR: syntax error - duplicate name 'F' for class
+F := (class F { ##ERROR: syntax error - prohibited definition of named class 'F'
 })
 
-##  TDOO: do we need to allow this?
-##F := 30
-##class F { ##E R R O R: exception not handled - "prohibited redefinition of F"
-##}
+---
+
+## a method body is not the outermost level either
+class A {
+	fun[#class] t() {
+		class B { ##ERROR: syntax error - prohibited definition of named class 'B'
+		}
+	}
+}
+
+---
+
+## nor is a class body
+class A {
+	class B { ##ERROR: syntax error - prohibited definition of named class 'B'
+	}
+}
+
+---
+
+## nor is a block at the outermost level
+do { class C { ##ERROR: syntax error - prohibited definition of named class 'C'
+} }
+
+---
+
+## 'F :=' puts _undef in the system dictionary at compile time - the store
+## itself has not run yet - so the named 'class F' that follows is a duplicate.
+F := 30
+class F { ##ERROR: syntax error - duplicate name 'F' for class
+}
 
 
 ---

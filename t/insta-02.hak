@@ -142,15 +142,17 @@ if (nqv? v 35) { printf "ERROR: v is not 35 - %d\n" v } \
 else { printf "OK: value is %d\n" v }
 
 ## --------------------------------------------------------------
+## a named class is only accepted at the outermost level, so a class created
+## inside a method body has to be anonymous - see class-5001.err. without a
+## local of the same name in scope, ':=' makes it a global all the same.
 class X4 {
 	fun[#class] t() {
-		| X5 |
-		class X5 { ## this X5 isn't the local variable X4
+		X5 := (class {
 			fun[#class]  t() {
 				X6 := (class {
 					fun[#class] t() {
 						| X7 |
-						X7 := (class { ## this X4 is the local variable X4
+						X7 := (class { ## this X7 is the local variable X7
 							fun[#class] t() { return 60 }
 						})
 						return 40
@@ -158,7 +160,7 @@ class X4 {
 				})
 				return 20;
 			}
-		}
+		})
 		return 30
 	}
 }

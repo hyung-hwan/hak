@@ -30,8 +30,10 @@
 	else { printf "OK: v3=%d\n" v3 }
 
 
-	## test return variables in message sends
-	class B {
+	## test return variables in message sends.
+	## the whole file is wrapped in a lambda, so a named class is prohibited
+	## here - bind an anonymous one instead. see class-5001.err.
+	B := (class {
 		var(#class) X1 X2
 
 		set X1 999;
@@ -46,7 +48,7 @@
 			set x (+ X1 inc);
 			set y (+ X2 inc);
 		};
-	};
+	});
 
 	set-r a b (B:get);
 	set-r c d (B:get2 -100);
@@ -60,7 +62,7 @@
 	if (!= d 788) { printf "ERROR: d must be 788\n" } \
 	else { printf "OK: d=%d\n" d }
 
-	class X {
+	X := (class {
 		var x y
 
 		fun[#class] f(a :: b c) { b := (+ a 10); c := (+ a 20) }
@@ -73,7 +75,7 @@
 
 		fun getX() { return self.x }
 		fun getY() { return self.y }
-	}
+	})
 
 	z := (X:new 9)
 	if (!= (x := (z:getX)) 19) { printf "ERROR: z:getX must return 19\n" } \

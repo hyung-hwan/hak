@@ -1693,8 +1693,8 @@ enum hak_bcode_t
 	HAK_CODE_JUMP_BACKWARD_X          = 0xC8, /* 200 ## */
 	HAK_CODE_JUMP2_BACKWARD           = 0xC9, /* 201 */
 
-	/* [NOTE] DEFINE_FUN and DEFINE_CLASS must stay adjacent and in this order.
-	 *        the executor tells them apart with (bcode - HAK_CODE_DEFINE_FUN),
+	/* [NOTE] keep DEFINE_FUN and DEFINE_CLASS adjacent and in this order, so
+	 *        that a shared case block can tell them apart with a subtraction
 	 *        the way CLASS_CMSTORE and its siblings do. */
 	HAK_CODE_DEFINE_FUN               = 0xCA, /* 202 ## */
 	HAK_CODE_DEFINE_CLASS             = 0xCB, /* 203 ## */

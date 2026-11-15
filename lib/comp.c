@@ -2995,9 +2995,18 @@ static int compile_class (hak_t* hak, hak_cnode_t* src)
 		{
 			hak_setsynerrbfmt(
 				hak, HAK_SYNERR_CLASS, HAK_CNODE_GET_LOC(src),
-				"incomplete defintion of unnamed class for '%.*js'",
+				"incomplete definition of unnamed class for '%.*js'",
 				HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 		}
+		return -1;
+	}
+
+	if (class_name && !is_in_global_init_scope(hak, src))
+	{
+		hak_setsynerrbfmt(
+			hak, HAK_SYNERR_CLASS, HAK_CNODE_GET_LOC(src),
+			"prohibited definition of named class '%.*js'",
+			HAK_CNODE_GET_TOKLEN(class_name), HAK_CNODE_GET_TOKPTR(class_name));
 		return -1;
 	}
 
@@ -3309,7 +3318,7 @@ static HAK_INLINE int compile_class_p2 (hak_t* hak)
 		cf->u.set.mode = VAR_ACCESS_STORE;
 	#else
 		/* a class name is a global, but binding it is a definition rather
-		 * than an assignment. use the dedicate instruction to assign a value
+		 * than an assignment. use the dedicated instruction to assign a value
 		 * to a global. see emit_define_global() */
 		SWITCH_TOP_CFRAME(hak, COP_EMIT_DEFINE_CLASS, class_name);
 	#endif
@@ -7978,7 +7987,7 @@ static HAK_INLINE int post_fun (hak_t* hak)
 				cf->u.set.vi.type = VAR_NAMED;
 				cf->u.set.mode = VAR_ACCESS_STORE;
 			#else
-				/* use the dedicate instrution to set the fun value */
+				/* use the dedicated instruction to set the fun value */
 				SWITCH_TOP_CFRAME(hak, COP_EMIT_DEFINE_FUN, fun_name);
 			#endif
 			}
