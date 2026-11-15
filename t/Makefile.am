@@ -64,7 +64,8 @@ check_SCRIPTS = \
 	va-02.hak \
 	var-01.hak \
 	var-02.hak \
-	var-03.hak
+	var-03.hak \
+	var-04.hak
 
 check_ERRORS = \
 	assign-5001.err \
@@ -84,7 +85,8 @@ check_ERRORS = \
 	va-5001.err \
 	var-5001.err \
 	var-5002.err \
-	var-5004.err
+	var-5004.err \
+	var-5005.err
 
 check_PROGRAMS = \
 	t-001 \

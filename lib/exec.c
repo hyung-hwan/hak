@@ -5139,6 +5139,37 @@ hak_logbfmt(hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncv
 				}
 				break;
 			}
+
+			case HAK_CODE_DEFINE_FUN:
+			{
+				hak_oop_cons_t ass;
+				hak_oop_t v;
+
+				FETCH_PARAM_CODE_TO(hak, b1);
+				LOG_INST_1(hak, "define_fun @%zu", b1);
+
+				/* the literal frame holds the system dictionary association
+				 * itself, exactly as it does for PUSH_OBJECT and friends. */
+				ass = (hak_oop_cons_t)hak->active_function->literal_frame[b1];
+				HAK_ASSERT(hak, HAK_IS_CONS(hak, ass));
+
+				v = HAK_STACK_GETTOP(hak);
+
+				/* [TODO] when 'class' gets DEFINE_CLASS, this guard belongs
+				 * there and in here only, and STORE_INTO_OBJECT/POP_INTO_OBJECT
+				 * can stop paying for it on every ordinary global assignment. */
+				if (HAK_IS_CLASS(hak, ass->cdr) && ((hak_oop_class_t)ass->cdr)->name == ass->car && v != ass->cdr)
+				{
+					hak_seterrbfmt(hak, HAK_EPERM, "prohibited redefinition of %.*js", HAK_OBJ_GET_SIZE(ass->car), HAK_OBJ_GET_CHAR_SLOT(ass->car));
+					if (do_throw_with_internal_errmsg(hak, fetched_instruction_pointer) >= 0) break;
+					goto oops_with_errmsg_supplement;
+				}
+
+				/* a definition leaves its value on the stack - the statement
+				 * level pop disposes of it, as it did under STORE_INTO_OBJECT. */
+				ass->cdr = v;
+				break;
+			}
 			/* -------------------------------------------------------- */
 
 			case HAK_CODE_PUSH_CTXTEMPVAR_X:

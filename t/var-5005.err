@@ -1,0 +1,62 @@
+## 'var' at the outermost level of a compilation unit declares a global.
+## see var-04.hak for what it accepts. everything below is rejected.
+
+var a
+var a ##ERROR: syntax error - duplicate global variable 'a'
+
+---
+
+## a store claims the name at compile time even though it has not run yet
+a := 1
+var a ##ERROR: syntax error - duplicate global variable 'a'
+
+---
+
+class F {
+}
+var F ##ERROR: syntax error - duplicate global variable 'F'
+
+---
+
+fun h() { return 1 }
+var h ##ERROR: syntax error - duplicate global variable 'h'
+
+---
+
+## only the outermost level counts. 'do' and 'if' push no control block, so
+## the list level the reader stamped on the cnode is what rules this out.
+do { var n } ##ERROR: syntax error - 'var' prohibited in this context
+
+---
+
+if true { var n } ##ERROR: syntax error - 'var' prohibited in this context
+
+---
+
+while false { var n } ##ERROR: syntax error - 'var' prohibited in this context
+
+---
+
+{ var n } ##ERROR: syntax error - 'var' prohibited in this context
+
+---
+
+## a function body uses '| ... |' for its temporaries
+fun f() {
+	var s ##ERROR: syntax error - 'var' prohibited in this context
+}
+
+---
+
+var 20 ##ERROR: syntax error - invalid variable name '20' for 'var'
+
+---
+
+## declared but never assigned - the system dictionary holds _undef
+var x
+printf "%O\n" x ##ERROR: exception not handled - "x accessed without initialization"
+
+---
+
+## never declared at all - the mention left _undcl, a different complaint
+printf "%O\n" zz ##ERROR: exception not handled - "zz is undeclared"

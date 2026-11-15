@@ -1,0 +1,47 @@
+## top-level 'var' declares a global variable. the outermost level of a
+## compilation unit is the only place that is accepted - see var-5005.err
+## for every context that is not.
+
+var a
+a := 10
+if (!= a 10) { printf "ERROR: a is not 10\n" } \
+else { printf "OK: %d\n" a };
+
+## one declaration may name several variables
+var b c d
+b := 1
+c := 2
+d := 3
+if (!= (+ b c d) 6) { printf "ERROR: b + c + d is not 6\n" } \
+else { printf "OK: %d\n" (+ b c d) };
+
+## a function body may mention a global declared further down. the mention
+## alone must not count as a declaration, or the 'var g' below would be
+## rejected as a duplicate.
+fun f() { return g }
+var g
+g := 77
+if (!= (f) 77) { printf "ERROR: g read through f is not 77\n" } \
+else { printf "OK: %d\n" (f) };
+
+## a declared global and a block-local of the same name stay apart
+var s
+s := 100
+fun setter() {
+	| s |
+	s := 5
+	return s
+}
+if (!= (setter) 5) { printf "ERROR: local s is not 5\n" } \
+else { printf "OK: %d\n" (setter) };
+if (!= s 100) { printf "ERROR: global s is not 100\n" } \
+else { printf "OK: %d\n" s };
+
+## a declared global can be filled with a class
+var K
+K := (class {
+	fun[#ci] new() { return self }
+	fun who() { return 4242 }
+})
+if (!= ((K:new):who) 4242) { printf "ERROR: K:who is not 4242\n" } \
+else { printf "OK: %d\n" ((K:new):who) };

@@ -122,7 +122,9 @@ try { throw "1111"; } catch (e) {
 
 ---
 
-fun a:get_999() { ##ERROR: exception not handled - "a accessed without initialization"
+## a has never been declared. the mention leaves _undcl in the system
+## dictionary, which is distinct from the _undef a declaration would leave.
+fun a:get_999() { ##ERROR: exception not handled - "a is undeclared"
 	return  999;
 }
 

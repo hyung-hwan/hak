@@ -1693,7 +1693,10 @@ enum hak_bcode_t
 	HAK_CODE_JUMP_BACKWARD_X          = 0xC8, /* 200 ## */
 	HAK_CODE_JUMP2_BACKWARD           = 0xC9, /* 201 */
 
-	/* UNUSED - 0xCA - 0xCB */
+	HAK_CODE_DEFINE_FUN               = 0xCA, /* 202 ## */
+	/* UNUSED - 0xCB. reserved for HAK_CODE_DEFINE_CLASS. keep it adjacent so
+	 * that (bcode - HAK_CODE_DEFINE_FUN) can tell the two apart in a shared
+	 * case block, the way CLASS_CMSTORE does. */
 
 	HAK_CODE_JUMP_FORWARD_IF_TRUE     = 0xCC, /* 204 ## */
 	HAK_CODE_JUMP2_FORWARD_IF_TRUE    = 0xCD, /* 205 */

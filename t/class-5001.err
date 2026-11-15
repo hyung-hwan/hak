@@ -158,8 +158,9 @@ class X {
 	}
 }
 
-## this triggers a runtime error as J isn't a class name
-fun J:ccc()  { ##ERROR: exception not handled - "J accessed without initialization"
+## this triggers a runtime error as J has never been declared. a plain mention
+## leaves _undcl in the system dictionary, which reads back as 'is undeclared'.
+fun J:ccc()  { ##ERROR: exception not handled - "J is undeclared"
 	return 999
 }
 
@@ -223,10 +224,12 @@ class X {
 
 ---
 
+## the first 'class F' puts _undef in the system dictionary at compile time,
+## so the second one is caught before anything runs.
 class F {
 }
 
-class F { ##ERROR: exception not handled - "prohibited redefinition of F
+class F { ##ERROR: syntax error - duplicate name 'F' for class
 }
 
 ---
@@ -247,10 +250,12 @@ F := (class { ##ERROR: exception not handled - "prohibited redefinition of F"
 
 ---
 
+## 'F :=' also puts _undef in the system dictionary at compile time - the store
+## itself has not run yet - so the named 'class F' that follows is a duplicate.
 F := (class {
 })
 
-F := (class F { ##ERROR: exception not handled - "prohibited redefinition of F"
+F := (class F { ##ERROR: syntax error - duplicate name 'F' for class
 })
 
 ##  TDOO: do we need to allow this?
@@ -276,7 +281,8 @@ class X10 {
 X11 := (class:X10 {
 })
 
-class X11 { ##ERROR: exception not handled - "prohibited redefinition of X11"
+## as above - the name is already claimed at compile time by 'X11 :='.
+class X11 { ##ERROR: syntax error - duplicate name 'X11' for class
 }
 
 ---

@@ -828,6 +828,7 @@ static int emit_one_param_instruction (hak_t* hak, int cmd, hak_oow_t param_1, c
 		case HAK_CODE_CLASS_CMSTORE:
 		case HAK_CODE_CLASS_CIMSTORE:
 		case HAK_CODE_CLASS_IMSTORE:
+		case HAK_CODE_DEFINE_FUN:
 		case HAK_CODE_TRY_ENTER:
 		case HAK_CODE_TRY_ENTER2:
 		case HAK_CODE_PUSH_INTLIT:
@@ -1859,6 +1860,7 @@ enum
 #endif
 	COP_EMIT_POP_STACKTOP,
 	COP_EMIT_RETURN,
+	COP_EMIT_DEFINE_FUN,
 	COP_EMIT_SET,
 	COP_EMIT_CLASS_CMSTORE,
 	COP_EMIT_CLASS_CIMSTORE,
@@ -7960,11 +7962,16 @@ static HAK_INLINE int post_fun (hak_t* hak)
 			}
 			else
 			{
-				/* An explicitly named function is always global */
+				/* an explicitly named function is always global */
+			#if 0
 				SWITCH_TOP_CFRAME(hak, COP_EMIT_SET, fun_name);
 				cf = GET_TOP_CFRAME(hak);
 				cf->u.set.vi.type = VAR_NAMED;
 				cf->u.set.mode = VAR_ACCESS_STORE;
+			#else
+				/* use the dedicate instrution to set the fun value */
+				SWITCH_TOP_CFRAME(hak, COP_EMIT_DEFINE_FUN, fun_name);
+			#endif
 			}
 		#endif
 		}
@@ -8054,6 +8061,48 @@ static HAK_INLINE int emit_set (hak_t* hak)
 		HAK_ASSERT(hak, cf->operand != HAK_NULL);
 		if (emit_variable_access(hak, cf->u.set.mode, &cf->u.set.vi, HAK_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
 	}
+
+	POP_CFRAME(hak);
+	return 0;
+}
+
+/* bind the function on the stack top to its name in the system dictionary.
+ * this is the definition counterpart of emit_set()'s VAR_NAMED branch: the
+ * name of a 'fun' is not assigned to, it is defined, and DEFINE_FUN is
+ * assignes the fun value to it at run time. */
+static HAK_INLINE int emit_define_fun (hak_t* hak)
+{
+	hak_cframe_t* cf;
+	hak_oow_t index;
+	hak_oop_t cons, sym;
+
+	cf = GET_TOP_CFRAME(hak);
+	HAK_ASSERT(hak, cf->opcode == COP_EMIT_DEFINE_FUN);
+	HAK_ASSERT(hak, HAK_CNODE_IS_SYMBOL(cf->operand) || HAK_CNODE_IS_BINOP(cf->operand));
+
+	sym = hak_makesymbol(hak, HAK_CNODE_GET_TOKPTR(cf->operand), HAK_CNODE_GET_TOKLEN(cf->operand));
+	if (HAK_UNLIKELY(!sym)) return -1;
+
+	cons = (hak_oop_t)hak_getatsysdic(hak, sym);
+	if (!cons)
+	{
+		/* not found, add global */
+		cons = (hak_oop_t)hak_putatsysdic(hak, sym, hak->_undef);
+		if (HAK_UNLIKELY(!cons)) return -1;
+	}
+	else
+	{
+		/* found */
+		hak_oop_t val;
+		val = HAK_CONS_CDR(cons);
+		if (HAK_IS_UNDCL(hak, val)) HAK_CONS_CDR(cons) = hak->_undef; /* upgrade undcl to undef */
+	}
+
+	/* the parameter is the literal frame index of the association itself,
+	 * as it is for STORE_INTO_OBJECT. the executor then has both the name
+	 * and the current value in hand without touching the dictionary. */
+	if (add_literal(hak, cons, &index) <= -1) return -1;
+	if (emit_one_param_instruction(hak, HAK_CODE_DEFINE_FUN, index, HAK_CNODE_GET_LOC(cf->operand)) <= -1) return -1;
 
 	POP_CFRAME(hak);
 	return 0;
@@ -8416,6 +8465,10 @@ int hak_compile (hak_t* hak, hak_cnode_t* obj, int flags)
 
 			case COP_EMIT_SET:
 				if (emit_set(hak) <= -1) goto oops;
+				break;
+
+			case COP_EMIT_DEFINE_FUN:
+				if (emit_define_fun(hak) <= -1) goto oops;
 				break;
 
 			case COP_EMIT_CLASS_CMSTORE:

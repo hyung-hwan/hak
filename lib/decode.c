@@ -422,6 +422,11 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 				FETCH_PARAM_CODE_TO(hak, b1);
 				LOG_INST_1 (hak, "class_imstore @%zu", b1);
 				break;
+
+			case HAK_CODE_DEFINE_FUN:
+				FETCH_PARAM_CODE_TO(hak, b1);
+				LOG_INST_1 (hak, "define_fun @%zu", b1);
+				break;
 			/* -------------------------------------------------------- */
 
 			case HAK_CODE_PUSH_CTXTEMPVAR_X:
