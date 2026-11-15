@@ -390,13 +390,19 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 
 			case HAK_CODE_CLASS_ENTER:
 			{
-				hak_oow_t b3, b4, b5;
+				hak_oow_t b3, b4, b5, b6, b7, x;
 				FETCH_PARAM_CODE_TO(hak, b1);
 				FETCH_PARAM_CODE_TO(hak, b2);
 				FETCH_PARAM_CODE_TO(hak, b3);
+				FETCH_PARAM_CODE_TO(hak, b6);
+				FETCH_PARAM_CODE_TO(hak, x);
+				b6 = (b6 << (8 * HAK_CODE_LONG_PARAM_SIZE)) | x;
+				FETCH_PARAM_CODE_TO(hak, b7);
+				FETCH_PARAM_CODE_TO(hak, x);
+				b7 = (b7 << (8 * HAK_CODE_LONG_PARAM_SIZE)) | x;
 				FETCH_BYTE_CODE_TO(hak, b4); /* spec/selfspec */
 				FETCH_BYTE_CODE_TO(hak, b5); /* indexed_type */
-				LOG_INST_5 (hak, "class_enter %zu %zu %zu %#zx %zu", b1, b2, b3, b4, b5);
+				LOG_INST_7 (hak, "class_enter %zu %zu %zu @%zu @%zu %#zx %zu", b1, b2, b3, b6, b7, b4, b5);
 				break;
 			}
 

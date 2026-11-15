@@ -4908,26 +4908,37 @@ static int execute (hak_t* hak)
 				hak_oop_t superclass, ivars_str, cvars_str, class_name, v;
 				hak_ooi_t expected_spec, expected_selfspec;
 				hak_oop_class_t class_obj;
-				hak_oow_t b3, b4, b5;
+				hak_oow_t b3, b4, b5, b6, b7, x;
 
 				FETCH_PARAM_CODE_TO(hak, b1); /* nsuperclasses */
 				FETCH_PARAM_CODE_TO(hak, b2); /* nivars */
 				FETCH_PARAM_CODE_TO(hak, b3); /* ncvars */
+
+				/* literal frame index to the ivars string (extended long) */
+				FETCH_PARAM_CODE_TO(hak, b6);
+				FETCH_PARAM_CODE_TO(hak, x);
+				b6 = (b6 << (8 * HAK_CODE_LONG_PARAM_SIZE)) | x;
+
+				/* literal frame index to the cvars string (extended long) */
+				FETCH_PARAM_CODE_TO(hak, b7);
+				FETCH_PARAM_CODE_TO(hak, x);
+				b7 = (b7 << (8 * HAK_CODE_LONG_PARAM_SIZE)) | x;
+
 				FETCH_BYTE_CODE_TO(hak, b4); /* spec/selfspec */
 				FETCH_BYTE_CODE_TO(hak, b5); /* indexed_type */
 
-				LOG_INST_5(hak, "class_enter %zu %zu %zu %#zx %zu", b1, b2, b3, b4, b5);
+				LOG_INST_7(hak, "class_enter %zu %zu %zu @%zu @%zu %#zx %zu", b1, b2, b3, b6, b7, b4, b5);
 
-				if (b3 > 0)
+				if (b7 != MAX_CODE_PARAM2)
 				{
-					HAK_STACK_POP_TO(hak, cvars_str);
+					cvars_str = hak->active_function->literal_frame[b7];
 					HAK_ASSERT(hak, HAK_IS_STRING(hak, cvars_str));
 				}
 				else cvars_str = hak->_nil;
 
-				if (b2 > 0)
+				if (b6 != MAX_CODE_PARAM2)
 				{
-					HAK_STACK_POP_TO(hak, ivars_str);
+					ivars_str = hak->active_function->literal_frame[b6];
 					HAK_ASSERT(hak, HAK_IS_STRING(hak, ivars_str));
 				}
 				else ivars_str = hak->_nil;

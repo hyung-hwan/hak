@@ -3179,10 +3179,6 @@ static HAK_INLINE int compile_class_p1 (hak_t* hak)
 		}
 	}
 
-	/* emit placeholder instructions to be patched in compile_class_p2() */
-	if (emit_one_param_instruction(hak, HAK_CODE_PUSH_LITERAL_0, MAX_CODE_PARAM2, &cf->u._class.start_loc) <= -1) return -1;
-	if (emit_one_param_instruction(hak, HAK_CODE_PUSH_LITERAL_0, MAX_CODE_PARAM2, &cf->u._class.start_loc) <= -1) return -1;
-
 	if (check_block_expression_as_body(hak, obj, cf->u._class.cmd_cnode, FOR_CLASS) <= -1) return -1;
 
 	if (push_clsblk(hak, &cf->u._class.start_loc, cf->u._class.llvl,
@@ -3199,11 +3195,17 @@ static HAK_INLINE int compile_class_p1 (hak_t* hak)
 	/* the position of the CLASS_ENTER instruction */
 	hak->c->clsblk.info[hak->c->clsblk.depth].class_enter_inst_pos = hak->code.bc.len;
 
-	/* class_enter nsuperclasses, nivars, ncvars, spec/selfspec, indexed_type  */
+	/* class_enter nsuperclasses, nivars, ncvars, ivars_lfindex, cvars_lfindex, spec/selfspec, indexed_type */
 	if (emit_byte_instruction(hak, HAK_CODE_CLASS_ENTER, &cf->u._class.start_loc) <= -1) goto oops;
 	if (emit_long_param(hak, cf->u._class.nsuperclasses) <= -1) goto oops;
 	if (emit_long_param(hak, vardcl.nivars) <= -1) goto oops;
 	if (emit_long_param(hak, vardcl.ncvars) <= -1) goto oops;
+	/* the ivars/cvars strings are not known until the class body has been
+	 * compiled, so their literal frame indices go in as MAX_CODE_PARAM2 -
+	 * the 'no literal' marker, as MAKE_FUNCTION uses for an unnamed function -
+	 * and compile_class_p2() patches them in place. */
+	if (emit_extended_long_param(hak, MAX_CODE_PARAM2) <= -1) goto oops;
+	if (emit_extended_long_param(hak, MAX_CODE_PARAM2) <= -1) goto oops;
 	if (emit_byte_instruction(hak, (hak_oob_t)((cf->u._class.indexed_type >> 8) & 0xFF), &cf->u._class.start_loc) <= -1) goto oops;
 	if (emit_byte_instruction(hak, (hak_oob_t)(cf->u._class.indexed_type & 0xFF), &cf->u._class.start_loc) <= -1) goto oops;
 
@@ -3227,7 +3229,7 @@ static HAK_INLINE int compile_class_p2 (hak_t* hak)
 	hak_cnode_t* class_name;
 	hak_loc_t class_loc;
 	hak_clsblk_info_t* cbi;
-	hak_oow_t patch_pos, patch_end;
+	hak_oow_t patch_pos;
 
 	cf = GET_TOP_CFRAME(hak);
 	HAK_ASSERT(hak, cf->opcode == COP_COMPILE_CLASS_P2);
@@ -3244,25 +3246,19 @@ static HAK_INLINE int compile_class_p2 (hak_t* hak)
 
 	cbi = &hak->c->clsblk.info[hak->c->clsblk.depth];
 	/* patch the CLASS_ENTER instruction with the final nicvars and ncvars values.
-	 * CLASS_ENTER nsuperclasses(lp)|nivars(lp)|ncvars(lp)|spec/selfspec(b)|index_type(b)
-	 *  (lp) = long param, (b) = byte */
+	 * CLASS_ENTER nsuperclasses(lp)|nivars(lp)|ncvars(lp)|ivars_lfindex(elp)|cvars_lfindex(elp)|spec/selfspec(b)|index_type(b)
+	 *  (lp) = long param, (elp) = extended long param, (b) = byte */
 	patch_pos = cbi->class_enter_inst_pos + 1;
 	patch_pos += HAK_CODE_LONG_PARAM_SIZE; /* skip nsuperclasses */
 	patch_long_param(hak, patch_pos, cbi->nivars);
 	patch_pos += HAK_CODE_LONG_PARAM_SIZE; /* skip nivars */
 	patch_long_param(hak, patch_pos, cbi->ncvars);
+	patch_pos += HAK_CODE_LONG_PARAM_SIZE; /* skip ncvars */
 
-	/* two placeholder instructions have been pushed before push_clsblk()
-	 * in compile_class_p1().
-	 *   push_literal long-param long-param <-- (1) position of first long-param (extended long)
-	 *   push_literal long-param long-param <-- (2) position of first long-param (extended long)
-	 *   class_enter ...                    <-- class_enter_inst_pos
-	 */
-	patch_pos = cbi->class_enter_inst_pos - (HAK_CODE_LONG_PARAM_SIZE * 4 + 1); /* (1) */
+	/* compile_class_p1() left MAX_CODE_PARAM2 in both literal frame indices,
+	 * which stands for 'no string'. patch only the ones that have one. */
 	if (cbi->nivars > 0)
 	{
-		/* patch the PUSH_LITERAL instruction for ivars */
-		/* TODO: reduce space waste for fixed double-long param */
 		hak_oop_t obj;
 		hak_oow_t index;
 
@@ -3272,19 +3268,10 @@ static HAK_INLINE int compile_class_p2 (hak_t* hak)
 		if (add_literal(hak, obj, &index) <= -1) return -1;
 		patch_extended_long_param(hak, patch_pos, index);
 	}
-	else
-	{
-		/* TODO: reduce space waste for patched NOOP */
-		patch_end = (--patch_pos) + (HAK_CODE_LONG_PARAM_SIZE * 2) + 1;
-		for (; patch_pos < patch_end; patch_pos++)
-			patch_instruction(hak, patch_pos, HAK_CODE_NOOP);
-	}
+	patch_pos += HAK_CODE_LONG_PARAM_SIZE * 2; /* skip ivars_lfindex */
 
-	patch_pos = cbi->class_enter_inst_pos - (HAK_CODE_LONG_PARAM_SIZE * 2); /* (2) */
 	if (cbi->ncvars > 0)
 	{
-		/* patch the PUSH_LITERAL instruction for cvars */
-		/* TODO: reduce space waste for fixed extended long param */
 		hak_oop_t obj;
 		hak_oow_t index;
 
@@ -3293,14 +3280,6 @@ static HAK_INLINE int compile_class_p2 (hak_t* hak)
 		if (HAK_UNLIKELY(!obj)) return -1;
 		if (add_literal(hak, obj, &index) <= -1) return -1;
 		patch_extended_long_param(hak, patch_pos, index);
-	}
-	else
-	{
-		/* TODO: reduce space waste for patched NOOP */
-		patch_end = (--patch_pos) + (HAK_CODE_LONG_PARAM_SIZE * 2) + 1;
-		HAK_ASSERT(hak, patch_end == cbi->class_enter_inst_pos);
-		for (;patch_pos < patch_end; patch_pos++)
-			patch_instruction(hak, patch_pos, HAK_CODE_NOOP);
 	}
 
 	pop_ctlblk(hak);
@@ -5402,7 +5381,6 @@ static int compile_cons_plist_expression (hak_t* hak, hak_cnode_t* obj, int nret
 	hak_cframe_t* cf;
 	hak_cnode_t* c1, * c2, * c3;
 	hak_var_info_t vi;
-	int x;
 
 	HAK_ASSERT(hak, HAK_CNODE_IS_CONS_CONCODED(obj, HAK_CONCODE_PLIST));
 
