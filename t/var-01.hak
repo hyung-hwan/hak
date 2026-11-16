@@ -30,30 +30,30 @@ if (!= t 500) (printf "ERROR: t is not equal to 500\n") \
 else (printf "OK: %d\n" t)
 
 
-fun x () {
+fun xx () {
 
-	| x y |
+	| xx y |
 
-	set x 99
+	set xx 99
 	try {
-		| x |
-		set x 88
-		if (!= x 88) (printf "ERROR: x is not 88\n") \
-	  	else (printf "OK: %d\n" x)
+		| xx |
+		set xx 88
+		if (!= xx 88) (printf "ERROR: xx is not 88\n") \
+		else (printf "OK: %d\n" xx)
 		throw 1000
-	} catch (x) {
-		if (!= x 1000) (printf "ERROR: x is not 1000\n") \
-	 	else (printf "OK: %d\n" x)
-		set y x
+	} catch (xx) {
+		if (!= xx 1000) (printf "ERROR: xx is not 1000\n") \
+		else (printf "OK: %d\n" xx)
+		set y xx
 	}
 
-	if (!= x 99) (printf "ERROR: x is not 99\n") \
-	else (printf "OK: %d\n" x)
+	if (!= xx 99) (printf "ERROR: xx is not 99\n") \
+	else (printf "OK: %d\n" xx)
 	if (!= y 1000) (printf "ERROR: y is not 1000\n") \
 	else (printf "OK: %d\n" y)
 } 
 
-x
+xx
 
 
 class T {

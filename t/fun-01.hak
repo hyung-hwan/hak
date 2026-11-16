@@ -64,8 +64,8 @@ if (== k 80) {
 ## --------------------------------------
 
 ## multiple return values
-fun f(a :: b c) { b := (+ a 10); c := (+ a 20) }
-[x, y] := (f 9)
+fun f2(a :: b c) { b := (+ a 10); c := (+ a 20) }
+[x, y] := (f2 9)
 if (== x 19) {
 	printf "OK - %d\n" x
 } else {
@@ -126,8 +126,8 @@ v := (k 10)
 if (== v 30) { printf "OK - %d\n" v } else { printf "ERROR - %d, not 30\n" v };
 
 ## --------------------------------------
-fun k(x) (+ x 30)  ## (+ x 30) is valid function body
-v := (k 10)
+fun k2(x) (+ x 30)  ## (+ x 30) is valid function body
+v := (k2 10)
 if (== v 40) { printf "OK - %d\n" v } else { printf "ERROR - %d, not 40\n" v };
 
 

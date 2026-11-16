@@ -131,14 +131,14 @@ chk (== s 420000) "reifying calls interleaved with stack recursion"
 ##    frame stack overflows. the handler must be in a function, not at the top
 ##    level, and that function must not return in between - a return to a
 ##    heap context empties the frame stack and would hide the leak.
-fun deep(n) { if (> n 0) { return (+ 1 (deep (- n 1))) }; throw "bottom" }
+fun deep2(n) { if (> n 0) { return (+ 1 (deep2 (- n 1))) }; throw "bottom" }
 
 fun catcher(times) {
 	| i r |
 	i := 0
 	r := 0
 	while (< i times) {
-		try { deep 10 } catch (e) { r := (+ r 1) }
+		try { deep2 10 } catch (e) { r := (+ r 1) }
 		i := (+ i 1)
 	}
 	return r
@@ -148,7 +148,7 @@ chk (== (catcher 20000) 20000) "exceptions unwinding many frames into a running 
 ## a handler in the middle of the frame stack: the inner handler rethrows to
 ## the outer one in the same function, each throw crossing several frames
 fun rethrower(n) {
-	try { deep n } catch (e) { throw "again" }
+	try { deep2 n } catch (e) { throw "again" }
 }
 
 fun nested(times) {
@@ -158,7 +158,7 @@ fun nested(times) {
 	while (< i times) {
 		try {
 			inner := 0
-			try { deep 5 } catch (e) { inner := 1 }
+			try { deep2 5 } catch (e) { inner := 1 }
 			rethrower 5
 		} catch (e) {
 			outer := (+ outer inner)

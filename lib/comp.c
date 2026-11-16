@@ -8112,7 +8112,29 @@ static int emit_define_global (hak_t* hak, hak_cnode_t* name, int inst)
 		/* found */
 		hak_oop_t val;
 		val = HAK_CONS_CDR(cons);
-		if (HAK_IS_UNDCL(hak, val)) HAK_CONS_CDR(cons) = hak->_undef; /* upgrade undcl to undef */
+		if (HAK_IS_UNDCL(hak, val))
+		{
+			/* upgrade undcl to undef */
+			HAK_CONS_CDR(cons) = hak->_undef;
+		}
+		else if (inst == HAK_CODE_DEFINE_CLASS)
+		{
+			/* compile_class() claims the class name in the system dictionary
+			 * at the opening of the class, because CLASS_ENTER needs the
+			 * association pushed as the name before the body is compiled.
+			 * it passes judgement on the name there - duplicate, kernel class
+			 * being completed, and all - so the entry found here is the very
+			 * one it created and there is nothing left to decide.
+			 *
+			 * allow. do nothing here */
+		}
+		else
+		{
+			hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(name),
+				"duplicate definition of function '%.*js'",
+				HAK_CNODE_GET_TOKLEN(name), HAK_CNODE_GET_TOKPTR(name));
+			return -1;
+		}
 	}
 
 	/* the parameter is the literal frame index of the association itself,
