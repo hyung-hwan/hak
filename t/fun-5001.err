@@ -81,3 +81,27 @@ class A {
 ## a named function is a definition, not an expression
 
 k := (fun qq(t) (+ t 20)) ##ERROR: syntax error - prohibited definition of named function 'qq'
+
+---
+
+## '#rebind' takes over a name that is already bound, so it needs a name of its
+## own to take over. an unnamed function binds nothing.
+
+k := (fun[#rebind] (x) x) ##ERROR: syntax error - function attribute '#rebind' prohibited on an unnamed function
+
+---
+
+## a method lives in a class dictionary, which has a duplicate rule of its own
+
+class A {
+	fun[#rebind] m() { ##ERROR: syntax error - function attribute '#rebind' prohibited on a method
+	}
+}
+
+---
+
+## '#rebind' alone does not make a redefinition legal where the definition
+## itself is not. the scope check comes first.
+
+if true { fun[#rebind] h() { ##ERROR: syntax error - prohibited definition of named function 'h'
+} }

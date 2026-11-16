@@ -79,12 +79,12 @@ fun fun fun1() { ##ERROR: syntax error - invalid function name 'fun' for 'fun'
 
 ---
 
-fun[#ci] fun1() { ##ERROR: syntax error - attribute list prohibited on plain function 'fun1'
+fun[#ci] fun1() { ##ERROR: syntax error - function attribute '#ci' prohibited on a plain function
 }
 
 ---
 
-fun[] ()  { ##ERROR: syntax error - attribute list prohibited on unnamed function for 'fun'
+fun[] ()  { ##ERROR: syntax error - empty attribute list on unnamed function for 'fun'
 }
 
 ---

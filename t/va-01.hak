@@ -57,10 +57,12 @@ if (!= c 30) {
 
 ## Redefine the plus function. core.+ still can refer to the built-in
 ## numeric plus primitive.
+## '#rebind' is required to take over a name that is already bound. without it
+## the definition is rejected as a duplicate - see emit_define_global().
 ## [NOTE] Don't add other test cases below this test case
 ##        as the + function has been manipulated for testing purpose
 ##        Add new cases above here.
-fun + (a b ...) {
+fun[#rebind] + (a b ...) {
 	| sum vac i |
 	sum := (core.+  a b)
 	vac := (va-count)

@@ -55,15 +55,27 @@ enum
 
 enum
 {
-	/* these enumerators are stored in the lower 8 bits of
-	 * the fun_type field of hak_funblk_info_t.
-	 * the 9th bit of the field indicate a method is defined
-	 * out of a class */
+	/* the kind of a function. it occupies the low 8 bits of the fun_type
+	 * field of hak_funblk_info_t - see FUN_KIND_MASK */
 
 	FUN_PLAIN, /* plain function */
 	FUN_IM,    /* instance method */
 	FUN_CM,    /* class method */
 	FUN_CIM    /* class instantiation method */
+};
+
+enum
+{
+	/* the layout of the fun_type field. the kind above sits in the low 8
+	 * bits and the flags over them combine with it freely, so a flag must
+	 * never be read with a plain shift. */
+
+	FUN_KIND_MASK    = 0xFF,
+
+	FUN_OUT_OF_CLASS = (1 << 8), /* defined with the 'fun Class:name' syntax */
+	FUN_REBIND       = (1 << 9)  /* the '#rebind' attribute was given - it lets the
+	                              * definition take over a name that is already
+	                              * bound. see emit_define_global() */
 };
 
 #define TV_BUFFER_ALIGN 256
@@ -453,7 +465,7 @@ static int find_variable_backward_with_word (hak_t* hak, const hak_oocs_t* name,
 					for (fi = hak->c->funblk.depth + 1; fi > i; ) /* TOOD: review this loop for correctness */
 					{
 						/* 'i' is the function level that holds the class defintion block. the check must not go past it */
-						if ((hak->c->funblk.info[--fi].fun_type & 0xFF) == FUN_CM)
+						if ((hak->c->funblk.info[--fi].fun_type & FUN_KIND_MASK) == FUN_CM)
 						{
 							/* the function where this variable is defined is a class method or an plain function block within a class method*/
 							hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, loc,
@@ -463,7 +475,7 @@ static int find_variable_backward_with_word (hak_t* hak, const hak_oocs_t* name,
 						}
 
 						/* instance methods and instantiation methods can access instance variables */
-						if ((hak->c->funblk.info[fi].fun_type & 0xFF) != FUN_PLAIN) break;
+						if ((hak->c->funblk.info[fi].fun_type & FUN_KIND_MASK) != FUN_PLAIN) break;
 					}
 
 					vi->type = VAR_INST;
@@ -1406,7 +1418,7 @@ static void pop_funblk (hak_t* hak)
 		/* the temporaries mask is a bit-mask that encodes the counts of different temporary variables.
 		 * and it's split to two intruction parameters when used with MAKE_BLOCK and MAKE_FUNCTION.
 		 * the INSTA bit is on if fbi->fun_type == FUN_CIM */
-		attr_mask = ENCODE_BLK_MASK(((fbi->fun_type & 0xFF) == FUN_CIM), fbi->tmpr_va, fbi->tmpr_nargs, fbi->tmpr_nrvars, fbi->tmpr_nlvars);
+		attr_mask = ENCODE_BLK_MASK(((fbi->fun_type & FUN_KIND_MASK) == FUN_CIM), fbi->tmpr_va, fbi->tmpr_nargs, fbi->tmpr_nrvars, fbi->tmpr_nlvars);
 		patch_extended_long_param(hak, fbi->make_inst_pos + 1, attr_mask);
 	}
 }
@@ -3324,11 +3336,14 @@ static HAK_INLINE int compile_class_p2 (hak_t* hak)
 
 /* ========================================================================= */
 
-static int check_fun_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned int* fun_type, hak_cnode_t* cmd, hak_cnode_t* class_name, hak_cnode_t* fun_name)
+static int check_fun_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned int* fun_type, hak_cnode_t* cmd, hak_cnode_t* class_name, hak_cnode_t* fun_name, int in_method_ctx)
 {
 	unsigned int ft;
 
-	ft = FUN_IM;
+	/* '#class' and '#classinst' only make sense for a method and '#rebind'
+	 * only for a plain function, so the starting point differs and each
+	 * attribute checks the context it needs. */
+	ft = in_method_ctx? FUN_IM: FUN_PLAIN;
 
 	HAK_ASSERT(hak, attr_list != HAK_NULL);
 	HAK_ASSERT(hak, HAK_CNODE_IS_CONS_CONCODED(attr_list, HAK_CONCODE_TUPLE) ||
@@ -3385,7 +3400,14 @@ static int check_fun_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned int
 			if (hak_comp_oochars_bcstr(tokptr, toklen, "class") == 0 ||
 			    hak_comp_oochars_bcstr(tokptr, toklen, "c") == 0)
 			{
-				if (ft != FUN_IM)
+				if (!in_method_ctx)
+				{
+				method_only:
+					hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(a),
+						"function attribute '#%.*js' prohibited on a plain function", toklen, tokptr);
+					return -1;
+				}
+				if ((ft & FUN_KIND_MASK) != FUN_IM)
 				{
 				conflicting:
 					hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(a),
@@ -3397,8 +3419,34 @@ static int check_fun_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned int
 			else if (hak_comp_oochars_bcstr(tokptr, toklen, "classinst") == 0 ||
 			         hak_comp_oochars_bcstr(tokptr, toklen, "ci") == 0)
 			{
-				if (ft != FUN_IM) goto conflicting;
+				if (!in_method_ctx) goto method_only;
+				if ((ft & FUN_KIND_MASK) != FUN_IM) goto conflicting;
 				ft = FUN_CIM;
+			}
+			else if (hak_comp_oochars_bcstr(tokptr, toklen, "rebind") == 0)
+			{
+				/* a method is stored in a class dictionary, which has its own
+				 * duplicate rule, and an unnamed function binds no name at all.
+				 * neither has anything to rebind. */
+				if (in_method_ctx)
+				{
+					hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(a),
+						"function attribute '#%.*js' prohibited on a method", toklen, tokptr);
+					return -1;
+				}
+				if (!fun_name)
+				{
+					hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(a),
+						"function attribute '#%.*js' prohibited on an unnamed function", toklen, tokptr);
+					return -1;
+				}
+				if (ft & FUN_REBIND)
+				{
+					hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(a),
+						"duplicate function attribute name '#%.*js'", toklen, tokptr);
+					return -1;
+				}
+				ft |= FUN_REBIND;
 			}
 			else
 			{
@@ -3672,42 +3720,30 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 
 	if (attr_list)
 	{
-		if (is_in_class_init_scope(hak) || class_name)
-		{
-			/* NOTE
-			 *  checking simply with is_in_class_init_scope() isn't sufficient for code like this:
-			 *    class X {
-			 *      a := (fun[#ci] x(){})
-			 *    }
-			 * but the prior checks prevents the function definition itself in that context.
-			 * so the simple check is just ok.
-			 */
-			if (check_fun_attr_list(hak, attr_list, &fun_type, cmd, class_name, fun_name) <= -1) return -1;
-			if (class_name) fun_type |= 0x100; /* defined in `fun class:xxx` style outside class */
-		}
-		else
-		{
-			if (fun_name)
-			{
-				hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(attr_list),
-					"attribute list prohibited on plain function '%.*js'",
-					HAK_CNODE_GET_TOKLEN(fun_name), HAK_CNODE_GET_TOKPTR(fun_name));
-			}
-			else
-			{
-				hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(attr_list),
-					"attribute list prohibited on unnamed function for '%.*js'",
-					HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
-			}
-			return -1;
-		}
+		int in_method_ctx;
+
+		/* NOTE
+		 *  checking simply with is_in_class_init_scope() isn't sufficient for code like this:
+		 *    class X {
+		 *      a := (fun[#ci] x(){})
+		 *    }
+		 * but the prior checks prevents the function definition itself in that context.
+		 * so the simple check is just ok.
+		 */
+		in_method_ctx = (is_in_class_init_scope(hak) || class_name);
+
+		/* a plain function carries an attribute list too, now that '#rebind'
+		 * exists. check_fun_attr_list() turns away the method-only attributes
+		 * when the function is not a method, and '#rebind' when it is. */
+		if (check_fun_attr_list(hak, attr_list, &fun_type, cmd, class_name, fun_name, in_method_ctx) <= -1) return -1;
+		if (class_name) fun_type |= FUN_OUT_OF_CLASS;
 	}
 	else
 	{
 		if (is_in_class_init_scope(hak) || class_name)
 		{
 			fun_type = FUN_IM;
-			if (class_name) fun_type |= 0x100;
+			if (class_name) fun_type |= FUN_OUT_OF_CLASS;
 		}
 	}
 
@@ -3807,7 +3843,7 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 		while (1);
 	}
 
-	if ((fun_type & 0xFF) == FUN_IM && fun_name && HAK_CNODE_IS_BINOP(fun_name) && (is_in_class_init_scope(hak) || class_name) && nargs != 1)
+	if ((fun_type & FUN_KIND_MASK) == FUN_IM && fun_name && HAK_CNODE_IS_BINOP(fun_name) && (is_in_class_init_scope(hak) || class_name) && nargs != 1)
 	{
 		hak_setsynerrbfmt(hak, HAK_SYNERR_ARGCOUNT, HAK_CNODE_GET_LOC(arg_list),
 			"only one argument expected for '%.*js%hs%.*js'",
@@ -6088,7 +6124,7 @@ static HAK_INLINE int compile_dsymbol (hak_t* hak, hak_cnode_t* obj)
 		if (HAK_CNODE_IS_DSYMBOL_CLA_SELF(obj))
 		{
 			/* instance variable?  or instance method? */
-			if (fbi->fun_type >> 8)
+			if (fbi->fun_type & FUN_OUT_OF_CLASS)
 			{
 				/* if defined using A::xxx syntax, it's not possible to know the instance position of an instance variable.
 				 * class X [ a b ] {
@@ -6114,7 +6150,7 @@ static HAK_INLINE int compile_dsymbol (hak_t* hak, hak_cnode_t* obj)
 		}
 		else if (HAK_CNODE_IS_DSYMBOL_CLA_SUPER(obj))
 		{
-			if (fbi->fun_type >> 8) /* if defined using A:xxx syntax */
+			if (fbi->fun_type & FUN_OUT_OF_CLASS) /* if defined using A:xxx syntax */
 			{
 				hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAME, HAK_CNODE_GET_LOC(obj),
 					"not allowed to prefix with super in out-of-class method context around '%.*js'",
@@ -7783,7 +7819,7 @@ static HAK_INLINE int emit_fun (hak_t* hak)
 	else
 	{
 		/* single return value */
-		if ((cf->u.fun.fun_type & 0xFF) == FUN_PLAIN)
+		if ((cf->u.fun.fun_type & FUN_KIND_MASK) == FUN_PLAIN)
 		{
 			if (block_code_size == 0)
 			{
@@ -7887,7 +7923,7 @@ static HAK_INLINE int post_fun (hak_t* hak)
 			if (x == 0)
 			{
 				/* arrange to save to the method slot */
-				switch (cf->u.fun.fun_type & 0xFF)
+				switch (cf->u.fun.fun_type & FUN_KIND_MASK)
 				{
 					case FUN_CM: /* class method */
 						SWITCH_TOP_CFRAME(hak, COP_EMIT_CLASS_CMSTORE, fun_name);
@@ -7903,8 +7939,8 @@ static HAK_INLINE int post_fun (hak_t* hak)
 
 					default:
 						/* in the class initialization scope, the type must not be other than the listed above */
-						HAK_DEBUG1(hak, "Internal error - invalid method type %d\n", cf->u.fun.fun_type & 0xFF);
-						hak_seterrbfmt(hak, HAK_EINTERN, "internal error - invalid method type %d", cf->u.fun.fun_type & 0xFF);
+						HAK_DEBUG1(hak, "Internal error - invalid method type %d\n", cf->u.fun.fun_type & FUN_KIND_MASK);
+						hak_seterrbfmt(hak, HAK_EINTERN, "internal error - invalid method type %d", cf->u.fun.fun_type & FUN_KIND_MASK);
 						return -1;
 				}
 				cf = GET_TOP_CFRAME(hak);
@@ -7955,7 +7991,7 @@ static HAK_INLINE int post_fun (hak_t* hak)
 				if (HAK_UNLIKELY(!lit)) return -1;
 				if (add_literal(hak, lit, &index) <= -1) return -1;
 
-				switch (cf->u.fun.fun_type & 0xFF)
+				switch (cf->u.fun.fun_type & FUN_KIND_MASK)
 				{
 					case FUN_CM: /* class method */
 						inst =  HAK_CODE_CLASS_CMSTORE;
@@ -7971,8 +8007,8 @@ static HAK_INLINE int post_fun (hak_t* hak)
 
 					default:
 						/* in the class initialization scope, the type must not be other than the listed above */
-						HAK_DEBUG1(hak, "Internal error - invalid function type %d\n", cf->u.fun.fun_type & 0xFF);
-						hak_seterrbfmt(hak, HAK_EINTERN, "internal error - invalid function type %d", cf->u.fun.fun_type & 0xFF);
+						HAK_DEBUG1(hak, "Internal error - invalid function type %d\n", cf->u.fun.fun_type & FUN_KIND_MASK);
+						hak_seterrbfmt(hak, HAK_EINTERN, "internal error - invalid function type %d", cf->u.fun.fun_type & FUN_KIND_MASK);
 						return -1;
 				}
 
@@ -7983,6 +8019,8 @@ static HAK_INLINE int post_fun (hak_t* hak)
 			else
 			{
 				/* an explicitly named function is always global */
+				int rebind = !!(cf->u.fun.fun_type & FUN_REBIND);
+
 			#if 0
 				SWITCH_TOP_CFRAME(hak, COP_EMIT_SET, fun_name);
 				cf = GET_TOP_CFRAME(hak);
@@ -7991,6 +8029,10 @@ static HAK_INLINE int post_fun (hak_t* hak)
 			#else
 				/* use the dedicated instruction to set the fun value */
 				SWITCH_TOP_CFRAME(hak, COP_EMIT_DEFINE_FUN, fun_name);
+				/* SWITCH_TOP_CFRAME() wipes the union, so the attribute is read
+				 * off the fun frame before the switch and planted after it. */
+				cf = GET_TOP_CFRAME(hak);
+				cf->u.define.rebind = rebind;
 			#endif
 			}
 		#endif
@@ -8108,7 +8150,7 @@ static HAK_INLINE int emit_set (hak_t* hak)
  * this is the definition counterpart of emit_set()'s VAR_NAMED branch: the
  * name of a 'fun' or of a named 'class' is not assigned to, it is defined,
  * and DEFINE_FUN/DEFINE_CLASS assign the value to it at run time. */
-static int emit_define_global (hak_t* hak, hak_cnode_t* name, int inst)
+static int emit_define_global (hak_t* hak, hak_cnode_t* name, int inst, int rebind)
 {
 	hak_oow_t index;
 	hak_oop_t cons, sym;
@@ -8134,6 +8176,13 @@ static int emit_define_global (hak_t* hak, hak_cnode_t* name, int inst)
 		{
 			/* upgrade undcl to undef */
 			HAK_CONS_CDR(cons) = hak->_undef;
+		}
+		else if (rebind)
+		{
+			/* the '#rebind' attribute was given. the name is knowingly taken
+			 * over, so say nothing here and let DEFINE_FUN replace the value
+			 * at run time. a class still refuses to be buried - that guard
+			 * lives in the DEFINE_FUN case of the executor. */
 		}
 		else if (inst == HAK_CODE_DEFINE_CLASS)
 		{
@@ -8169,7 +8218,7 @@ static HAK_INLINE int emit_define_fun (hak_t* hak)
 	cf = GET_TOP_CFRAME(hak);
 	HAK_ASSERT(hak, cf->opcode == COP_EMIT_DEFINE_FUN);
 
-	if (emit_define_global(hak, cf->operand, HAK_CODE_DEFINE_FUN) <= -1) return -1;
+	if (emit_define_global(hak, cf->operand, HAK_CODE_DEFINE_FUN, cf->u.define.rebind) <= -1) return -1;
 
 	POP_CFRAME(hak);
 	return 0;
@@ -8182,7 +8231,7 @@ static HAK_INLINE int emit_define_class (hak_t* hak)
 	cf = GET_TOP_CFRAME(hak);
 	HAK_ASSERT(hak, cf->opcode == COP_EMIT_DEFINE_CLASS);
 
-	if (emit_define_global(hak, cf->operand, HAK_CODE_DEFINE_CLASS) <= -1) return -1;
+	if (emit_define_global(hak, cf->operand, HAK_CODE_DEFINE_CLASS, 0) <= -1) return -1;
 
 	POP_CFRAME(hak);
 	return 0;

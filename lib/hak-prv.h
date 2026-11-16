@@ -863,6 +863,12 @@ struct hak_cframe_t
 			hak_var_info_t vi;
 		} set;
 
+		/* COP_EMIT_DEFINE_FUN, COP_EMIT_DEFINE_CLASS */
+		struct
+		{
+			int rebind; /* the '#rebind' attribute was given - see check_fun_attr_list() */
+		} define;
+
 		struct
 		{
 			hak_ooi_t body_pos;
@@ -959,7 +965,7 @@ struct hak_cframe_t
 		/* COP_POST_FUN, COP_EMIT_FUN */
 		struct
 		{
-			unsigned int fun_type;
+			unsigned int fun_type; /* FUN_PLAIN/FUN_IM/... plus flags - see FUN_KIND_MASK in comp.c */
 			hak_ooi_t jump_inst_pos;
 			hak_ooi_t lfsize_pos;
 			hak_cnode_t* class_name; /* class name for out-of-class method definition */
@@ -1010,7 +1016,7 @@ typedef struct hak_ctlblk_info_t hak_ctlblk_info_t;
 /* function block information for the compiler */
 struct hak_funblk_info_t
 {
-	unsigned int fun_type;
+	unsigned int fun_type; /* FUN_PLAIN/FUN_IM/... plus flags - see FUN_KIND_MASK in comp.c */
 
 	hak_oow_t tmprlen; /* accumulated length of the temporaries string including outer blocks */
 	hak_oow_t tmprcnt; /* accumulated number of temporaries including outer blocks */
