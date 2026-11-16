@@ -8069,6 +8069,24 @@ static HAK_INLINE int emit_set (hak_t* hak)
 		{
 			/* found */
 			hak_oop_t val;
+
+			/* a builtin primitive is registered with the kernel bit set on its
+			 * symbol - see hak_addbuiltinprims(). a dotted name is rejected as
+			 * a bad lvalue before it ever reaches here, so on a plain name the
+			 * kernel bit can only mean a builtin primitive. refuse to bury it.
+			 *
+			 * [NOTE] this is the assignment counterpart of the duplicate check
+			 *        in emit_define_global(). without it 'printf := 5' replaces
+			 *        the primitive silently and the next call to it dies at run
+			 *        time with 'cannot call 5'. */
+			if (HAK_OBJ_GET_FLAGS_KERNEL(sym) != 0)
+			{
+				hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(cf->operand),
+					"prohibited assignment to primitive '%.*js'",
+					HAK_CNODE_GET_TOKLEN(cf->operand), HAK_CNODE_GET_TOKPTR(cf->operand));
+				return -1;
+			}
+
 			val = HAK_CONS_CDR(cons);
 			if (HAK_IS_UNDCL(hak, val)) HAK_CONS_CDR(cons) = hak->_undef; /* upgrade undcl to undef */
 		}
