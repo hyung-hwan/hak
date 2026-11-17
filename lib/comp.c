@@ -2917,6 +2917,25 @@ static int check_class_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned i
 	return 0;
 }
 
+/* a builtin primitive is registered under a plain name with the kernel bit
+ * turned on in its name symbol - see hak_addbuiltinprims(). the bit must be
+ * read off the symbol, not off the value, because the same bit on a class
+ * object means immature/mature instead - see HAK_OBJ_FLAGS_KERNEL_IMMATURE.
+ *
+ * such a name was taken before the first line of user code was read, so there
+ * is no earlier definition for the user to go and find. say so, rather than
+ * calling it a duplicate. this is the definition counterpart of the kernel bit
+ * check in emit_set(). */
+static int check_prim_redefinition (hak_t* hak, hak_oop_t sym, hak_cnode_t* name)
+{
+	if (HAK_OBJ_GET_FLAGS_KERNEL(sym) == 0) return 0;
+
+	hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(name),
+		"prohibited redefinition of primitive '%.*js'",
+		HAK_CNODE_GET_TOKLEN(name), HAK_CNODE_GET_TOKPTR(name));
+	return -1;
+}
+
 /*
 	class[#attr1 #attr2] Name: SuperclassName (ivar1 ivar2 (cvar1) ivar3) {
 		cvar1 := 20
@@ -3113,6 +3132,7 @@ static int compile_class (hak_t* hak, hak_cnode_t* src)
 			{
 				/* HAK_IS_UNDEF(hak, val) -> duplicate - var/class/fun already claimed it.
 				 * HAK_IS_NIL(hak, val) and the rest -> collision - real value present */
+				if (check_prim_redefinition(hak, sym, class_name) <= -1) return -1;
 				hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(class_name),
 					"duplicate name '%.*js' for class", HAK_CNODE_GET_TOKLEN(class_name), HAK_CNODE_GET_TOKPTR(class_name));
 				return -1;
@@ -4065,6 +4085,7 @@ static int declare_global (hak_t* hak, hak_cnode_t* var)
 		{
 			/* HAK_IS_UNDEF(hak, val) -> duplicate declaration
 			 * other values -> collision with a real value. */
+			if (check_prim_redefinition(hak, sym, var) <= -1) return -1;
 			hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(var),
 				"duplicate global variable '%.*js'", HAK_CNODE_GET_TOKLEN(var), HAK_CNODE_GET_TOKPTR(var));
 		}
@@ -8197,6 +8218,7 @@ static int emit_define_global (hak_t* hak, hak_cnode_t* name, int inst, int rebi
 		}
 		else
 		{
+			if (check_prim_redefinition(hak, sym, name) <= -1) return -1;
 			hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(name),
 				"duplicate definition of function '%.*js'",
 				HAK_CNODE_GET_TOKLEN(name), HAK_CNODE_GET_TOKPTR(name));

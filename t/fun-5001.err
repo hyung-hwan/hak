@@ -105,3 +105,12 @@ class A {
 
 if true { fun[#rebind] h() { ##ERROR: syntax error - prohibited definition of named function 'h'
 } }
+
+---
+
+## a builtin primitive is not a duplicate of anything the file declared. use
+## '#rebind' to take the name over knowingly - see t/va-01.hak.
+
+fun printf(a) { ##ERROR: syntax error - prohibited redefinition of primitive 'printf'
+	return a
+}

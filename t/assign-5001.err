@@ -24,3 +24,10 @@ x :=|1;  ##ERROR: syntax error - invalid variable name '1'
 
 class K: Object { }
 fun K:=(a) { return 9 };  ##ERROR: syntax error - prohibited assignment around ':='
+
+---
+
+## a store would bury a builtin primitive just as silently as a definition
+## would, and the next call to it would die at run time with 'cannot call 5'.
+
+printf := 5;  ##ERROR: syntax error - prohibited assignment to primitive 'printf'

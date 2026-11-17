@@ -60,3 +60,11 @@ printf "%O\n" x ##ERROR: exception not handled - "x accessed without initializat
 
 ## never declared at all - the mention left _undcl, a different complaint
 printf "%O\n" zz ##ERROR: exception not handled - "zz is undeclared"
+
+---
+
+## a builtin primitive holds its name from before the first line was read, so
+## there is no earlier declaration to go and find. the kernel bit on the name
+## symbol tells the two apart - see check_prim_redefinition() in comp.c.
+
+var printf ##ERROR: syntax error - prohibited redefinition of primitive 'printf'

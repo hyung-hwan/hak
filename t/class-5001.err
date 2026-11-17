@@ -395,3 +395,12 @@ class Y: X { ##ERROR: exception not handled - "incompatible byte superclass X wi
 
 fun Number:==(b) { return (core.+ self b) }
 20 :== 40  ##ERROR: syntax error - prohibited binary selector '=='
+
+---
+
+## a builtin primitive occupies the name already. a kernel class being
+## completed is a different case - the bit that marks a primitive sits on the
+## name symbol, not on the value.
+
+class printf { ##ERROR: syntax error - prohibited redefinition of primitive 'printf'
+}
