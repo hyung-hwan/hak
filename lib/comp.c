@@ -3209,6 +3209,16 @@ static HAK_INLINE int compile_class_p1 (hak_t* hak)
 		{
 			if (collect_vardcl_for_class(hak, obj, &obj, &vardcl) <= -1) return -1;
 		}
+		else if (HAK_CNODE_IS_ELIST_CONCODED(tmp, HAK_CONCODE_XLIST))
+		{
+			/* allow an empty class-level variable list after the class name
+			 * for a named class or after the class keyword itself for an unnamed
+			 * class.
+			 *   class x() {}
+			 *   class () {}
+			 */
+			obj = HAK_CNODE_CONS_CDR(obj);
+		}
 	}
 
 	if (check_block_expression_as_body(hak, obj, cf->u._class.cmd_cnode, FOR_CLASS) <= -1) return -1;
