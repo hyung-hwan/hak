@@ -2134,18 +2134,19 @@ static int auto_forge_xlist_if_at_block_beginning (hak_t* hak, hak_frd_t* frd)
 	return 0;
 }
 
-/* stamp the stream's language modes onto the word here rather than letting the
- * compiler ask hak->c->curinp later. a form may open in the includer and close
- * only after the include has ended, and by then curinp has swung back - which
- * made a word mean whatever the file that finished the form said, not what the
- * file that wrote the word said. see HAK_CNODE_SYMBOL in compile_object() for
- * the liberal half and emit_set() for the explicit half. */
-static HAK_INLINE int cnode_flags_for_curinp (hak_t* hak)
+/* stamp the stream's language modes onto the word. the previous implementation
+ * before the introduction of this function queried hak->c->curinp when the word
+ * was actually processed in the compiler code. a form may open in the includer
+ * and close only after the include has ended, and by then curinp has swung back.
+ * the feed processor below calls this function to store the info to each word read.
+ * see HAK_CNODE_SYMBOL in compile_object() for the liberal half and emit_set()
+ * for the explicit half. */
+static HAK_INLINE int cnode_flags_of_curinp (hak_t* hak)
 {
-	int f = 0;
-	if (hak->c->curinp->trait & HAK_TRAIT_LANG_LIBERAL) f |= HAK_CNODE_LIBERAL;
-	if (hak->c->curinp->trait & HAK_TRAIT_LANG_EXPLICIT) f |= HAK_CNODE_EXPLICIT;
-	return f;
+	int flags = 0;
+	if (hak->c->curinp->trait & HAK_TRAIT_LANG_LIBERAL) flags |= HAK_CNODE_LIBERAL;
+	if (hak->c->curinp->trait & HAK_TRAIT_LANG_EXPLICIT) flags |= HAK_CNODE_EXPLICIT;
+	return flags;
 }
 
 static int feed_process_token (hak_t* hak)
@@ -2179,6 +2180,7 @@ static int feed_process_token (hak_t* hak)
 		{
 			if (TOKEN_TYPE(hak) == HAK_TOK_EOL || TOKEN_TYPE(hak) == HAK_TOK_SEMICOLON)
 			{
+				/* pragma name or vale not specified */
 				hak_setsynerrbfmt(hak, HAK_SYNERR_IDENT, TOKEN_LOC(hak),
 					"'%.*js' %hs not specified",
 					vocas[VOCA_PRAGMA].len, vocas[VOCA_PRAGMA].str,
@@ -2187,6 +2189,7 @@ static int feed_process_token (hak_t* hak)
 			}
 			else if (TOKEN_TYPE(hak) != HAK_TOK_IDENT)
 			{
+				/* pragname name or value is not a proper identifier */
 				hak_setsynerrbfmt(hak, HAK_SYNERR_IDENT, TOKEN_LOC(hak),
 					"'%.*js' %hs expected in place of '%.*js'",
 					vocas[VOCA_PRAGMA].len, vocas[VOCA_PRAGMA].str,
@@ -2968,7 +2971,7 @@ static int feed_process_token (hak_t* hak)
 		case HAK_TOK_IDENT:
 		ident:
 			frd->obj = hak_makecnodesymbol(
-				hak, cnode_flags_for_curinp(hak),
+				hak, cnode_flags_of_curinp(hak),
 				TOKEN_LOC(hak), TOKEN_NAME(hak));
 			goto auto_xlist;
 

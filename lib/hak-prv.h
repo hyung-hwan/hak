@@ -1203,8 +1203,22 @@ struct hak_frd_t
 {
 	int level;
 	int flagv;
+
+	/* the state whether it's expect what else to expect in the $pragma line.
+	 *   0 no $pragma word met
+	 * when $pragma is seen, this value is set to 1.
+	 *   1 expect a name to come
+	 *   2 expect a value to come
+	 *  -1 expect a eof to come
+	 */
 	int expect_pragma_item;
-	hak_bitmask_t pragma_trait; /* the trait bit the pending pragma name selected - see feed_process_token() */
+
+	/* the trait bit the pending pragma name selected after $pragma - see feed_process_token().
+	 *  HAK_TRAIT_LANG_LIBERAL - $pragma liberal
+	 *  HAK_TRAIT_LANG_EXPLICIT - $pragma explicit
+	 */
+	hak_bitmask_t pragma_trait;
+
 	int expect_include_file;
 	int expect_vlist_item;
 	int do_include_file;
