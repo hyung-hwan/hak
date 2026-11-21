@@ -251,9 +251,12 @@
 #	elif defined(HAVE_DLFCN_H)
 #		include <dlfcn.h>
 #		define USE_DLFCN
+#	elif defined(HAVE_DL_H) && defined(HAVE_SHL_LOAD)
+#		include <dl.h>
+#		define USE_SHL
 #	elif defined(__APPLE__) || defined(__MACOSX__)
-#		define USE_MACH_O_DYLD
 #		include <mach-o/dyld.h>
+#		define USE_MACH_O_DYLD
 #	else
 #		error UNSUPPORTED DYNAMIC LINKER
 #	endif
@@ -373,6 +376,8 @@
 #	else
 #		if defined(USE_DLFCN)
 #			define HAK_DEFAULT_PFMODPOSTFIX ".so"
+#		elif defined(USE_SHL)
+#			define HAK_DEFAULT_PFMODPOSTFIX ".sl"
 #		elif defined(USE_MACH_O_DYLD)
 #			define HAK_DEFAULT_PFMODPOSTFIX ".dylib"
 #		else
@@ -767,6 +772,9 @@ oops:
 
 #if !defined(MAP_HUGETLB) && (defined(__amd64__) || defined(__x86_64__))
 #	define MAP_HUGETLB 0x40000
+#endif
+#if !defined(MAP_FAILED)
+#	define MAP_FAILED ((void *)-1)
 #endif
 
 	hak_oow_t* ptr;
@@ -3955,6 +3963,21 @@ static HAK_INLINE void stop_ticker (void)
 #	define sys_dl_close(x) dlclose(x)
 #	define sys_dl_getsym(x,n) dlsym(x,n)
 
+#elif defined(USE_SHL)
+#	define sys_dl_error() strerror(errno)
+#	define sys_dl_open(x) (void*)shl_load(x, BIND_IMMEDIATE | BIND_NONFATAL | DYNAMIC_PATH, 0L)
+#	define sys_dl_openext(x) (void*)shl_load(x, BIND_IMMEDIATE | BIND_NONFATAL | DYNAMIC_PATH, 0L)
+#	define sys_dl_close(x) shl_unload((shl_t)x)
+
+static void* sys_dl_getsym(void* x, const char* n)
+{
+	shl_t h = (shl_t)x;
+	void *sym = HAK_NULL;
+	/* TYPE_UNDEFINED finds both functions (TYPE_PROCEDURE) and data (TYPE_DATA) */
+	if (shl_findsym(&h, n, TYPE_UNDEFINED, &sym) == 0) return sym;
+	return NULL;
+}
+
 #elif defined(USE_WIN_DLL)
 #	define sys_dl_error() msw_dlerror()
 #	define sys_dl_open(x) LoadLibraryExA(x, HAK_NULL, 0)
@@ -4246,7 +4269,7 @@ static void* dlopen_raw (hak_t* hak, const hak_ooch_t* name, hak_bch_t* bufptr, 
 
 static void* dl_open (hak_t* hak, const hak_ooch_t* name, int flags)
 {
-#if defined(USE_LTDL) || defined(USE_DLFCN) || defined(USE_MACH_O_DYLD)
+#if defined(USE_LTDL) || defined(USE_DLFCN) || defined(USE_SHL) || defined(USE_MACH_O_DYLD)
 	hak_bch_t stabuf[128], * bufptr;
 	void* handle = HAK_NULL;
 	hak_oow_t bufcapa;
@@ -4332,7 +4355,7 @@ static void* dl_open (hak_t* hak, const hak_ooch_t* name, int flags)
 
 static void dl_close (hak_t* hak, void* handle)
 {
-#if defined(USE_LTDL) || defined(USE_DLFCN) || defined(USE_MACH_O_DYLD)
+#if defined(USE_LTDL) || defined(USE_DLFCN) || defined(USE_SHL) || defined(USE_MACH_O_DYLD)
 	HAK_DEBUG1(hak, "Closed DL handle %p\n", handle);
 	sys_dl_close(handle);
 
@@ -4344,7 +4367,7 @@ static void dl_close (hak_t* hak, void* handle)
 
 static void* dl_getsym (hak_t* hak, void* handle, const hak_ooch_t* name)
 {
-#if defined(USE_LTDL) || defined(USE_DLFCN) || defined(USE_MACH_O_DYLD)
+#if defined(USE_LTDL) || defined(USE_DLFCN) ||  defined(USE_SHL) ||defined(USE_MACH_O_DYLD)
 	hak_bch_t stabuf[64], * bufptr;
 	hak_oow_t bufcapa, ucslen, bcslen, i;
 	const hak_bch_t* symname;

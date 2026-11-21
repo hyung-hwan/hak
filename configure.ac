@@ -127,7 +127,7 @@ AC_PROG_EGREP
 
 AC_CHECK_HEADERS([stddef.h wchar.h wctype.h errno.h signal.h fcntl.h dirent.h])
 AC_CHECK_HEADERS([time.h sys/time.h utime.h spawn.h execinfo.h ucontext.h])
-AC_CHECK_HEADERS([dlfcn.h ltdl.h sys/mman.h sys/uio.h])
+AC_CHECK_HEADERS([dlfcn.h ltdl.h dl.h sys/mman.h sys/uio.h])
 AC_CHECK_HEADERS([sys/devpoll.h sys/event.h sys/epoll.h poll.h])
 AC_CHECK_HEADERS([libunwind.h quadmath.h])
 AC_CHECK_HEADERS([sys/ioctl.h net/if.h])
@@ -157,11 +157,17 @@ AC_CHECK_DECLS([dirfd],[],[],[[#include <dirent.h>]])
 
 save_LIBS="$LIBS"
 AC_SEARCH_LIBS([dlopen], [dl dld], [
-	DL_LIBS="$ac_cv_search_dlopen"
-	if test "x${DL_LIBS}" = "xnone required"
+	if test "x${ac_cv_search_dlopen}" != "xnone required"
 	then
-		DL_LIBS=""
+		DL_LIBS="$ac_cv_search_dlopen"
 	fi
+], [
+	AC_DEFINE([HAVE_SHL_LOAD], [1], [Define if shl_load is available.])
+	AC_SEARCH_LIBS([shl_load], [dld], [
+		if test "x$ac_cv_search_shl_load" != "xnone required"; then
+			DL_LIBS="$ac_cv_search_shl_load"
+		fi
+	])
 ])
 LIBS="$save_LIBS"
 AC_SUBST(DL_LIBS)

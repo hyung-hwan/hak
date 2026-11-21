@@ -1,0 +1,5 @@
+## pulled in by explicit-01.hak. no pragma of its own, so it is read in the
+## default mode even when the file that includes it is explicit.
+incv := 9
+
+fun incfn(v) { return v }

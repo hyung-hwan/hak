@@ -1,0 +1,124 @@
+## Explicit mode - a variable must be declared before it is assigned.
+##
+## By default a store brings a global into being: `x := 1` is the declaration
+## and the first assignment at once. With the pragma on, the name has to have
+## been claimed first - by `var`, by `fun` or by `class` - and a store to a name
+## nothing claimed is refused at compile time. It is turned on by --explicit for
+## the top-level file, or by `$pragma explicit on` from that point in the file
+## onward.
+##
+## The mode is FILE-SCOPED, like liberal. It lives on the input stream rather
+## than on the vm, so a file that turns it on changes neither its includer nor
+## its includees. That is what makes it usable in a program that pulls in the
+## ordinary class library, none of which is written this way.
+##
+## [NOTE] only the store half is in place. Mentioning a name that was never
+## declared is still a run-time complaint - see the tail of var-5005.err - so
+## nothing below asserts anything about a bare read.
+##
+## [NOTE] this file is driven by t/run.sh, which does not pass --explicit, so
+## everything goes through the pragma. The two set the same bit - see
+## hak_attachccio() for the flag and feed_process_token() for the pragma.
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+## --- the default -------------------------------------------------------------
+
+a := 1
+chk (eqv? a 1) "without the pragma a store brings the name into being"
+
+$pragma explicit on
+
+## --- what counts as a declaration --------------------------------------------
+
+var b
+b := 2
+chk (eqv? b 2) "'var' declares a name that may then be assigned"
+
+a := 3
+chk (eqv? a 3) "a name an earlier store brought into being is declared"
+
+fun f() { return 4 }
+f := (fun() { return 5 })
+chk (eqv? (f) 5) "'fun' declares the name it defines"
+
+## a class claims its name as well. the store below reaches the run time, which
+## is the proof - had the name not been declared, the compiler would have
+## stopped the file here and the try would never have run. what stops it instead
+## is the older rule that a class refuses to be buried, whatever the mode.
+class K { }
+var caught
+caught := 0
+try { K := 6 } catch (e) { caught := 1 }
+chk (eqv? caught 1) "'class' declares the name it defines, and a class still refuses to be buried"
+
+## --- what the mode does not reach --------------------------------------------
+##
+## The rule is about globals. Everything with a scope of its own already has a
+## declaration, and the compiler resolves it long before the system dictionary
+## is consulted.
+
+fun g() {
+	| n |
+	n := 7
+	return n
+}
+chk (eqv? (g) 7) "a local is declared by '| |' and needs nothing more"
+
+fun h(v) {
+	v := (+ v 1)
+	return v
+}
+chk (eqv? (h 7) 8) "a parameter is a declaration too"
+
+class L (iv) {
+	fun[#ci] new() {
+		self.iv := 9
+	}
+	fun get() { return self.iv }
+}
+var l
+l := (L:new)
+chk (eqv? (l:get) 9) "an instance variable is declared by the class header"
+
+## [NOTE] the refusals themselves are in explicit-5001.err. They cannot be
+## asserted here, because a syntax error stops the file rather than failing one
+## assertion.
+
+$pragma explicit off
+
+c := 10
+chk (eqv? c 10) "with the pragma off a store declares again"
+
+## --- the mode does not cross an include --------------------------------------
+##
+## Both directions matter. A strict file must not impose its rule on what it
+## pulls in, and a file that turns the mode on must not change its includer.
+
+$pragma explicit on
+
+$include "explicit-inc.hak"
+chk (eqv? incv 9) "an included file is read in its own mode, not the includer's"
+chk (eqv? (incfn 12) 12) "...and what it defines is usable from here"
+
+$pragma explicit off
+
+$include "explicit-inc2.hak"
+chk (eqv? incv2 10) "a pragma inside an include does not leak back out"
+d := 11
+chk (eqv? d 11) "...so a store out here still declares on its own"
+
+## ...and it holds for a form that is only half written when the include ends.
+## A form is compiled once it closes, so asking the current input stream at that
+## moment answers for the file that happened to close the form rather than the
+## file the word was written in. Each word carries its own mode instead.
+
+$pragma explicit on
+do {
+	$include "explicit-inc3.hak"
+}
+$pragma explicit off
+chk (eqv? incv3 33) "a store keeps the mode of the file that wrote it, not of the one that closes the form"

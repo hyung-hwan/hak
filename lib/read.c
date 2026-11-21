@@ -111,6 +111,7 @@ static struct voca_t
 	{  3, { 'a',':','b' /* BOUNDMSG - a folded receiver:message pair */  } },
 
 	{  7, { 'l','i','b','e','r','a','l'                                   } },
+	{  8, { 'e','x','p','l','i','c','i','t'                               } },
 	{  2, { 'o','n'                                                       } },
 	{  3, { 'o','f','f'                                                   } },
 
@@ -185,6 +186,7 @@ enum voca_id_t
 	VOCA_BOUNDMSG, /* TODO: not sure if it's really needed. currenly it's used by hak_getcnodedesc() */
 
 	VOCA_PRG_LIBERAL,
+	VOCA_PRG_EXPLICIT,
 	VOCA_PRG_ON,
 	VOCA_PRG_OFF,
 
@@ -2132,6 +2134,20 @@ static int auto_forge_xlist_if_at_block_beginning (hak_t* hak, hak_frd_t* frd)
 	return 0;
 }
 
+/* stamp the stream's language modes onto the word here rather than letting the
+ * compiler ask hak->c->curinp later. a form may open in the includer and close
+ * only after the include has ended, and by then curinp has swung back - which
+ * made a word mean whatever the file that finished the form said, not what the
+ * file that wrote the word said. see HAK_CNODE_SYMBOL in compile_object() for
+ * the liberal half and emit_set() for the explicit half. */
+static HAK_INLINE int cnode_flags_for_curinp (hak_t* hak)
+{
+	int f = 0;
+	if (hak->c->curinp->trait & HAK_TRAIT_LANG_LIBERAL) f |= HAK_CNODE_LIBERAL;
+	if (hak->c->curinp->trait & HAK_TRAIT_LANG_EXPLICIT) f |= HAK_CNODE_EXPLICIT;
+	return f;
+}
+
 static int feed_process_token (hak_t* hak)
 {
 	hak_frd_t* frd = &hak->c->feed.rd;
@@ -2173,7 +2189,7 @@ static int feed_process_token (hak_t* hak)
 			{
 				hak_setsynerrbfmt(hak, HAK_SYNERR_IDENT, TOKEN_LOC(hak),
 					"'%.*js' %hs expected in place of '%.*js'",
-					vocas[VOCA_INCLUDE].len, vocas[VOCA_INCLUDE].str,
+					vocas[VOCA_PRAGMA].len, vocas[VOCA_PRAGMA].str,
 					(frd->expect_pragma_item == 1? "name": "value"),
 					TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 				goto oops;
@@ -2181,9 +2197,16 @@ static int feed_process_token (hak_t* hak)
 
 			if (frd->expect_pragma_item == 1)
 			{
+				/* every pragma so far is a plain on/off switch over a single
+				 * trait bit, so the name only has to pick the bit. stash it and
+				 * let the value branch below decide which way it goes. */
 				if (does_token_name_match(hak, VOCA_PRG_LIBERAL))
 				{
-					frd->expect_pragma_item = 501; /* expect value */
+					frd->pragma_trait = HAK_TRAIT_LANG_LIBERAL;
+				}
+				else if (does_token_name_match(hak, VOCA_PRG_EXPLICIT))
+				{
+					frd->pragma_trait = HAK_TRAIT_LANG_EXPLICIT;
 				}
 				/* TODO: more pragmas */
 				else
@@ -2193,16 +2216,20 @@ static int feed_process_token (hak_t* hak)
 						TOKEN_NAME_LEN(hak), TOKEN_NAME_PTR(hak));
 					goto oops;
 				}
+
+				frd->expect_pragma_item = 2; /* expect value */
 			}
-			else if (frd->expect_pragma_item == 501)
+			else
 			{
+				HAK_ASSERT(hak, frd->expect_pragma_item == 2);
+
 				if (does_token_name_match(hak, VOCA_PRG_ON))
 				{
-					hak->c->curinp->trait |= HAK_TRAIT_LANG_LIBERAL;
+					hak->c->curinp->trait |= frd->pragma_trait;
 				}
 				else if (does_token_name_match(hak, VOCA_PRG_OFF))
 				{
-					hak->c->curinp->trait &= ~HAK_TRAIT_LANG_LIBERAL;
+					hak->c->curinp->trait &= ~frd->pragma_trait;
 				}
 				else
 				{
@@ -2940,14 +2967,8 @@ static int feed_process_token (hak_t* hak)
 
 		case HAK_TOK_IDENT:
 		ident:
-			/* stamp the stream's liberal setting onto the word here rather than
-			 * letting the compiler ask hak->c->curinp later. a form may open in
-			 * the includer and close only after the include has ended, and by
-			 * then curinp has swung back - which made a word mean whatever the
-			 * file that finished the form said, not what the file that wrote the
-			 * word said. see HAK_CNODE_SYMBOL in compile_object(). */
 			frd->obj = hak_makecnodesymbol(
-				hak, ((hak->c->curinp->trait & HAK_TRAIT_LANG_LIBERAL)? HAK_CNODE_LIBERAL: 0),
+				hak, cnode_flags_for_curinp(hak),
 				TOKEN_LOC(hak), TOKEN_NAME(hak));
 			goto auto_xlist;
 
@@ -5220,7 +5241,7 @@ int hak_attachccio (hak_t* hak, hak_io_impl_t cci_rdr)
 		hak->c->curinp = &hak->c->cci_arg;
 
 		/* list file-scoped options for the top level input stream here */
-		hak->c->curinp->trait = hak->option.trait & (HAK_TRAIT_LANG_LIBERAL);
+		hak->c->curinp->trait = hak->option.trait & (HAK_TRAIT_LANG_LIBERAL | HAK_TRAIT_LANG_EXPLICIT);
 	}
 
 	return 0;

@@ -19,6 +19,7 @@ check_SCRIPTS = \
 	cons-01.hak \
 	ctxstk-01.hak \
 	dic-01.hak \
+	explicit-01.hak \
 	feed-01.hak \
 	fork-01.hak \
 	fork-02.hak \
@@ -71,6 +72,7 @@ check_ERRORS = \
 	assign-5001.err \
 	call-5001.err \
 	class-5001.err \
+	explicit-5001.err \
 	feed-5001.err \
 	fun-5001.err \
 	hnd-5001.err \
@@ -103,6 +105,9 @@ t_004_SOURCES = t-004.c tap.h
 ## files pulled in by a test with $include. they carry no assertions of their
 ## own, so they are shipped but deliberately kept out of TESTS.
 check_FIXTURES = \
+	explicit-inc.hak \
+	explicit-inc2.hak \
+	explicit-inc3.hak \
 	liberal-inc.hak \
 	liberal-inc2.hak \
 	liberal-inc3.hak \

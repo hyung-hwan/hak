@@ -1,0 +1,67 @@
+## '$pragma explicit on' - a store is no longer a declaration. everything below
+## is refused. see explicit-01.hak for what it accepts.
+
+$pragma explicit on
+qq := 1 ##ERROR: syntax error - assignment to undeclared variable 'qq'
+
+---
+
+## a mention is not a declaration either. it leaves _undcl in the system
+## dictionary, which records that the name was seen, not that it was claimed.
+
+$pragma explicit on
+printf "%O\n" zz
+zz := 1 ##ERROR: syntax error - assignment to undeclared variable 'zz'
+
+---
+
+## the rule reaches a store wherever it is written, not just at the top level
+
+$pragma explicit on
+fun f() {
+	stray := 1 ##ERROR: syntax error - assignment to undeclared variable 'stray'
+}
+
+---
+
+## ...including the body of a method
+
+$pragma explicit on
+class K {
+	fun[#ci] new() {
+		stray := 1 ##ERROR: syntax error - assignment to undeclared variable 'stray'
+	}
+}
+
+---
+
+## the declaration has to come first. 'var' after the store is too late.
+
+$pragma explicit on
+qq := 1 ##ERROR: syntax error - assignment to undeclared variable 'qq'
+var qq
+
+---
+
+## --- the pragma itself -------------------------------------------------------
+
+$pragma bogus on ##ERROR: syntax error - invalid pragma name 'bogus'
+
+---
+
+$pragma explicit yes ##ERROR: syntax error - invalid pragma value 'yes'
+
+---
+
+$pragma explicit ##ERROR: syntax error - '$pragma' value not specified
+
+---
+
+$pragma explicit on off ##ERROR: syntax error - redundant token 'off' for '$pragma'
+
+---
+
+## the name and the value are both words. anything else is turned away before
+## the pragma is looked up at all.
+
+$pragma explicit 1 ##ERROR: syntax error - '$pragma' value expected in place of '1'

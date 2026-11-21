@@ -217,6 +217,9 @@
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
 
+/* Define to 1 if you have the <dl.h> header file. */
+#undef HAVE_DL_H
+
 /* Define to 1 if you have the 'epoll_create' function. */
 #undef HAVE_EPOLL_CREATE
 
@@ -336,6 +339,9 @@
 
 /* Define to 1 if you have the 'settimeofday' function. */
 #undef HAVE_SETTIMEOFDAY
+
+/* Define if shl_load is available. */
+#undef HAVE_SHL_LOAD
 
 /* Define to 1 if you have the 'sigaction' function. */
 #undef HAVE_SIGACTION

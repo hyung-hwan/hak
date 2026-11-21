@@ -79,17 +79,17 @@ class[#uncopyable #varying #limited #final] Class: Apex (
 ) {
 	fun name() {
 		##return (core.className self)
-		return _class
+		return self._name
 	}
 
 	fun instanceVariableNames() {
 		## TODO: this still returns nil as the acutal manipulation of the field has not been implemented
-		return _ivarnames
+		return self._ivarnames
 	}
 
 	fun classVariableNames() {
 		## TODO: this still returns nil as the acutal manipulation of the field has not been implemented
-		return _cvarnames
+		return self._cvarnames
 	}
 }
 

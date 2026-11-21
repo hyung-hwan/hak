@@ -8122,6 +8122,23 @@ static HAK_INLINE int emit_set (hak_t* hak)
 
 		/* check global. it's in the write/store context. it emits STORE or POP_INTO */
 		cons = (hak_oop_t)hak_getatsysdic(hak, sym);
+
+		/* '$pragma explicit on' - a store is not a declaration. the name must
+		 * have been claimed by 'var', 'fun' or 'class' first. an entry holding
+		 * _undcl is no better than no entry at all - it only records that the
+		 * name was mentioned somewhere, which is not a declaration either.
+		 *
+		 * the mode is read off the cnode, which the reader stamped from the
+		 * stream the word was actually written in - see HAK_CNODE_EXPLICIT. */
+		if ((HAK_CNODE_GET_FLAGS(cf->operand) & HAK_CNODE_EXPLICIT) &&
+		    (!cons || HAK_IS_UNDCL(hak, HAK_CONS_CDR(cons))))
+		{
+			hak_setsynerrbfmt(hak, HAK_SYNERR_VARNAMEUNKNOWN, HAK_CNODE_GET_LOC(cf->operand),
+				"assignment to undeclared variable '%.*js'",
+				HAK_CNODE_GET_TOKLEN(cf->operand), HAK_CNODE_GET_TOKPTR(cf->operand));
+			return -1;
+		}
+
 		if (!cons)
 		{
 			/* not found, add global */

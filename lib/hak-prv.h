@@ -678,7 +678,8 @@ enum hak_cnode_flag_t
 	HAK_CNODE_AUTO_FORGED = (1 << 0),
 	HAK_CNODE_COMMA_BEFORE = (1 << 1), /* a comma preceded this item - see fold_comma_runs() */
 	HAK_CNODE_GLUED_CALL   = (1 << 2), /* a glued '(' took this cell out of the enclosing list - see chain_to_list() */
-	HAK_CNODE_LIBERAL      = (1 << 3)  /* read from a stream that was in liberal mode - see HAK_TRAIT_LANG_LIBERAL */
+	HAK_CNODE_LIBERAL      = (1 << 3), /* read from a stream that was in liberal mode - see HAK_TRAIT_LANG_LIBERAL */
+	HAK_CNODE_EXPLICIT     = (1 << 4)  /* read from a stream that was in explicit mode - see HAK_TRAIT_LANG_EXPLICIT */
 };
 typedef enum hak_cnode_flag_t hak_cnode_flag_t;
 
@@ -1203,6 +1204,7 @@ struct hak_frd_t
 	int level;
 	int flagv;
 	int expect_pragma_item;
+	hak_bitmask_t pragma_trait; /* the trait bit the pending pragma name selected - see feed_process_token() */
 	int expect_include_file;
 	int expect_vlist_item;
 	int do_include_file;

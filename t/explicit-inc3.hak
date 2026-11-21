@@ -1,0 +1,4 @@
+## pulled in by explicit-01.hak from inside a form that the includer opened and
+## closes again after this file has ended. the store below is written here, in
+## the default mode, so it must be judged by this file's setting.
+incv3 := 33

@@ -1,0 +1,6 @@
+## pulled in by explicit-01.hak. this one turns the pragma on, which must not
+## reach back out into the file that included it.
+$pragma explicit on
+
+var incv2
+incv2 := 10

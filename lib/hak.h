@@ -336,7 +336,14 @@ enum hak_trait_t
 	HAK_TRAIT_LANG_ENABLE_EOL = (((hak_bitmask_t)1) << 14),
 
 	/* TODO: make this pragma controllable */
-	HAK_TRAIT_LANG_LIBERAL = ((hak_bitmask_t)1) << 15
+	HAK_TRAIT_LANG_LIBERAL = (((hak_bitmask_t)1) << 15),
+
+	/* '$pragma explicit on' - a variable must be declared before it is
+	 * assigned or mentioned. the bit marks the non-default state, so a clear
+	 * bit means a name may come into being by assignment, which is how the
+	 * language has always behaved. see HAK_CNODE_EXPLICIT for why the setting
+	 * is stamped onto each word rather than read back later. */
+	HAK_TRAIT_LANG_EXPLICIT = (((hak_bitmask_t)1) << 16)
 };
 typedef enum hak_trait_t hak_trait_t;
 
