@@ -4454,14 +4454,18 @@ static int execute (hak_t* hak)
 
 					/* store or pop */
 					v = HAK_STACK_GETTOP(hak);
-					if (HAK_IS_CLASS(hak, ass->cdr) && ((hak_oop_class_t)ass->cdr)->name == ass->car && v != ass->cdr)
+					if (v != ass->cdr)
 					{
-						/* the existing value is a class.
-						 * the class name is the same as the key value of the pair.
-						 * disallow re-definition if the new value is not itself. */
-						hak_seterrbfmt(hak, HAK_EPERM, "prohibited redefinition of %.*js", HAK_OBJ_GET_SIZE(ass->car), HAK_OBJ_GET_CHAR_SLOT(ass->car));
-						if (do_throw_with_internal_errmsg(hak, fetched_instruction_pointer) >= 0) break;
-						goto oops_with_errmsg_supplement;
+						if ((HAK_IS_CLASS(hak, ass->cdr) && ((hak_oop_class_t)ass->cdr)->name == ass->car) ||
+						    (HAK_IS_COMPILED_BLOCK(hak, ass->cdr) && ((hak_oop_block_t)ass->cdr)->name == ass->car))
+						{
+							/* the existing value is a class.
+							 * the class/fun name is the same as the key value of the pair.
+							 * disallow re-definition if the new value is not itself. */
+							hak_seterrbfmt(hak, HAK_EPERM, "prohibited redefinition of %.*js", HAK_OBJ_GET_SIZE(ass->car), HAK_OBJ_GET_CHAR_SLOT(ass->car));
+							if (do_throw_with_internal_errmsg(hak, fetched_instruction_pointer) >= 0) break;
+							goto oops_with_errmsg_supplement;
+						}
 					}
 
 					ass->cdr = v; /* update the value */
@@ -5186,11 +5190,16 @@ hak_logbfmt(hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncv
 				 *        their own. it is not this one made redundant: theirs
 				 *        covers plain assignment over a class ('class F {}'
 				 *        then 'F := 30'), which is not a definition at all. */
-				if (HAK_IS_CLASS(hak, ass->cdr) && ((hak_oop_class_t)ass->cdr)->name == ass->car && v != ass->cdr)
+				if (v != ass->cdr)
 				{
-					hak_seterrbfmt(hak, HAK_EPERM, "prohibited redefinition of %.*js", HAK_OBJ_GET_SIZE(ass->car), HAK_OBJ_GET_CHAR_SLOT(ass->car));
-					if (do_throw_with_internal_errmsg(hak, fetched_instruction_pointer) >= 0) break;
-					goto oops_with_errmsg_supplement;
+/* TODO: class check for DEFINE_CLASS, compiled block check for DEFINE_FUN? */
+					if ((HAK_IS_CLASS(hak, ass->cdr) && ((hak_oop_class_t)ass->cdr)->name == ass->car) ||
+					    (HAK_IS_COMPILED_BLOCK(hak, ass->cdr) && ((hak_oop_block_t)ass->cdr)->name == ass->car))
+					{
+						hak_seterrbfmt(hak, HAK_EPERM, "prohibited redefinition of %.*js", HAK_OBJ_GET_SIZE(ass->car), HAK_OBJ_GET_CHAR_SLOT(ass->car));
+						if (do_throw_with_internal_errmsg(hak, fetched_instruction_pointer) >= 0) break;
+						goto oops_with_errmsg_supplement;
+					}
 				}
 
 				/* a definition leaves its value on the stack - the statement
