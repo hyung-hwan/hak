@@ -473,3 +473,30 @@ class Kk {
 }
 class Kk { ##ERROR: syntax error - duplicate name 'Kk' for class
 }
+
+---
+
+## a 'var' declaration claims the name at compile time, so the class that
+## follows is a duplicate - the mirror of 'var F' after 'class F' in
+## t/var-5005.err.
+
+var Vc
+class Vc { ##ERROR: syntax error - duplicate name 'Vc' for class
+}
+
+---
+
+## and so does a function definition.
+
+fun Fc() { return 1 }
+class Fc { ##ERROR: syntax error - duplicate name 'Fc' for class
+}
+
+---
+
+## '#reopen' does not reach a primitive either. the kernel bit on the name
+## symbol is consulted before the declaring form, so the complaint names what
+## is actually in the way.
+
+class[#reopen] printf { ##ERROR: syntax error - prohibited redefinition of primitive 'printf'
+}

@@ -162,3 +162,47 @@ w := 5
 fun[#rebind] w() { ##ERROR: syntax error - prohibited rebinding of name 'w'
 	return 1
 }
+
+---
+
+## a plain 'fun' never takes a name that is already spoken for, whichever form
+## spoke for it. the four parts below are the 'fun' column of that rule; the
+## 'var' column is in t/var-5005.err and the 'class' column in t/class-5001.err.
+##
+## a 'var' declaration claims the name at compile time even though nothing has
+## been assigned to it yet.
+
+var z
+fun z() { ##ERROR: syntax error - duplicate definition of function 'z'
+	return 99
+}
+
+---
+
+## two definitions of the same function. the first leaves _undef behind at
+## compile time, so the second is caught before either of them runs.
+
+fun t() { return 99 }
+fun t() { ##ERROR: syntax error - duplicate definition of function 't'
+	return 99
+}
+
+---
+
+## a class occupies the name as firmly as a function does. '#rebind' does not
+## help here either - see the part above that refuses it.
+
+class K { }
+fun K() { ##ERROR: syntax error - duplicate definition of function 'K'
+	return 99
+}
+
+---
+
+## a store claims the name at compile time as well, even though the store
+## itself has not run - the same reason 'var w' after 'w := 5' is a duplicate.
+
+w := 5
+fun w() { ##ERROR: syntax error - duplicate definition of function 'w'
+	return 99
+}
