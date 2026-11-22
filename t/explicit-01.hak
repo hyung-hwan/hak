@@ -41,19 +41,23 @@ chk (eqv? b 2) "'var' declares a name that may then be assigned"
 a := 3
 chk (eqv? a 3) "a name an earlier store brought into being is declared"
 
-fun f() { return 4 }
-f := (fun() { return 5 })
-chk (eqv? (f) 5) "'fun' declares the name it defines"
-
-## a class claims its name as well. the store below reaches the run time, which
-## is the proof - had the name not been declared, the compiler would have
-## stopped the file here and the try would never have run. what stops it instead
-## is the older rule that a class refuses to be buried, whatever the mode.
-class K { }
+## 'fun' and 'class' claim their name too, though what they put there is then
+## protected: a store over a named definition is refused at run time, whatever
+## the mode. that the store gets as far as the run time is the proof the name
+## was declared - had it not been, the compiler would have stopped the file here
+## and the try would never have run.
 var caught
+
+fun f() { return 4 }
+caught := 0
+try { f := 5 } catch (e) { caught := 1 }
+chk (eqv? caught 1) "'fun' declares the name it defines, and a function refuses to be buried"
+chk (eqv? (f) 4) "...and the definition it made is still the one that answers"
+
+class K { }
 caught := 0
 try { K := 6 } catch (e) { caught := 1 }
-chk (eqv? caught 1) "'class' declares the name it defines, and a class still refuses to be buried"
+chk (eqv? caught 1) "'class' declares the name it defines, and a class refuses to be buried"
 
 ## --- what the mode does not reach --------------------------------------------
 ##

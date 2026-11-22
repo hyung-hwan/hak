@@ -5193,8 +5193,8 @@ hak_logbfmt(hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncv
 				if (v != ass->cdr)
 				{
 /* TODO: class check for DEFINE_CLASS, compiled block check for DEFINE_FUN? */
-					if ((HAK_IS_CLASS(hak, ass->cdr) && ((hak_oop_class_t)ass->cdr)->name == ass->car) ||
-					    (HAK_IS_COMPILED_BLOCK(hak, ass->cdr) && ((hak_oop_block_t)ass->cdr)->name == ass->car))
+					if ((HAK_IS_CLASS(hak, ass->cdr) && ((hak_oop_class_t)ass->cdr)->name == ass->car) /*||
+					    (HAK_IS_COMPILED_BLOCK(hak, ass->cdr) && ((hak_oop_block_t)ass->cdr)->name == ass->car)*/)
 					{
 						hak_seterrbfmt(hak, HAK_EPERM, "prohibited redefinition of %.*js", HAK_OBJ_GET_SIZE(ass->car), HAK_OBJ_GET_CHAR_SLOT(ass->car));
 						if (do_throw_with_internal_errmsg(hak, fetched_instruction_pointer) >= 0) break;
