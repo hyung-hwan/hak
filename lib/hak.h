@@ -475,6 +475,7 @@ typedef enum hak_obj_type_t hak_obj_type_t;
 #define HAK_OBJ_FLAGS_FLEXI_BITS     (1) /* 23 */
 #define HAK_OBJ_FLAGS_RDONLY_BITS    (1) /* 24 */
 #define HAK_OBJ_FLAGS_PROC_BITS      (1) /* 25 */
+#define HAK_OBJ_FLAGS_VARKIND_BITS   (2) /* 27 - declaring form of a global. meaningful on a system dictionary association only */
 
 /*
 #define HAK_OBJ_FLAGS_PERM_BITS       1
@@ -495,7 +496,8 @@ typedef enum hak_obj_type_t hak_obj_type_t;
 #define HAK_OBJ_FLAGS_CONCODE_SHIFT     (HAK_OBJ_FLAGS_FLEXI_BITS     + HAK_OBJ_FLAGS_FLEXI_SHIFT)
 #define HAK_OBJ_FLAGS_FLEXI_SHIFT       (HAK_OBJ_FLAGS_RDONLY_BITS    + HAK_OBJ_FLAGS_RDONLY_SHIFT)
 #define HAK_OBJ_FLAGS_RDONLY_SHIFT      (HAK_OBJ_FLAGS_PROC_BITS      + HAK_OBJ_FLAGS_PROC_SHIFT)
-#define HAK_OBJ_FLAGS_PROC_SHIFT        (0)
+#define HAK_OBJ_FLAGS_PROC_SHIFT        (HAK_OBJ_FLAGS_VARKIND_BITS   + HAK_OBJ_FLAGS_VARKIND_SHIFT)
+#define HAK_OBJ_FLAGS_VARKIND_SHIFT     (0)
 
 #define HAK_OBJ_GET_FLAGS_TYPE(oop)        HAK_GETBITS(hak_oow_t, (oop)->_flags, HAK_OBJ_FLAGS_TYPE_SHIFT,      HAK_OBJ_FLAGS_TYPE_BITS)
 #define HAK_OBJ_GET_FLAGS_UNIT(oop)        HAK_GETBITS(hak_oow_t, (oop)->_flags, HAK_OBJ_FLAGS_UNIT_SHIFT,      HAK_OBJ_FLAGS_UNIT_BITS)
@@ -508,6 +510,7 @@ typedef enum hak_obj_type_t hak_obj_type_t;
 #define HAK_OBJ_GET_FLAGS_FLEXI(oop)       HAK_GETBITS(hak_oow_t, (oop)->_flags, HAK_OBJ_FLAGS_FLEXI_SHIFT,     HAK_OBJ_FLAGS_FLEXI_BITS)
 #define HAK_OBJ_GET_FLAGS_RDONLY(oop)      HAK_GETBITS(hak_oow_t, (oop)->_flags, HAK_OBJ_FLAGS_RDONLY_SHIFT,    HAK_OBJ_FLAGS_RDONLY_BITS)
 #define HAK_OBJ_GET_FLAGS_PROC(oop)        HAK_GETBITS(hak_oow_t, (oop)->_flags, HAK_OBJ_FLAGS_PROC_SHIFT,      HAK_OBJ_FLAGS_PROC_BITS)
+#define HAK_OBJ_GET_FLAGS_VARKIND(oop)     HAK_GETBITS(hak_oow_t, (oop)->_flags, HAK_OBJ_FLAGS_VARKIND_SHIFT,   HAK_OBJ_FLAGS_VARKIND_BITS)
 
 #define HAK_OBJ_SET_FLAGS_TYPE(oop,v)      HAK_SETBITS(hak_oow_t, (oop)->_flags, HAK_OBJ_FLAGS_TYPE_SHIFT,      HAK_OBJ_FLAGS_TYPE_BITS,      v)
 #define HAK_OBJ_SET_FLAGS_UNIT(oop,v)      HAK_SETBITS(hak_oow_t, (oop)->_flags, HAK_OBJ_FLAGS_UNIT_SHIFT,      HAK_OBJ_FLAGS_UNIT_BITS,      v)
@@ -520,6 +523,7 @@ typedef enum hak_obj_type_t hak_obj_type_t;
 #define HAK_OBJ_SET_FLAGS_FLEXI(oop,v)     HAK_SETBITS(hak_oow_t, (oop)->_flags, HAK_OBJ_FLAGS_FLEXI_SHIFT,     HAK_OBJ_FLAGS_FLEXI_BITS, v)
 #define HAK_OBJ_SET_FLAGS_RDONLY(oop,v)    HAK_SETBITS(hak_oow_t, (oop)->_flags, HAK_OBJ_FLAGS_RDONLY_SHIFT,    HAK_OBJ_FLAGS_RDONLY_BITS, v)
 #define HAK_OBJ_SET_FLAGS_PROC(oop,v)      HAK_SETBITS(hak_oow_t, (oop)->_flags, HAK_OBJ_FLAGS_PROC_SHIFT,      HAK_OBJ_FLAGS_PROC_BITS, v)
+#define HAK_OBJ_SET_FLAGS_VARKIND(oop,v)   HAK_SETBITS(hak_oow_t, (oop)->_flags, HAK_OBJ_FLAGS_VARKIND_SHIFT,   HAK_OBJ_FLAGS_VARKIND_BITS, v)
 
 /* [NOTE] this macro doesn't check the range of the actual value.
  *        make sure that the value of each bit fields given falls within the
@@ -537,6 +541,26 @@ typedef enum hak_obj_type_t hak_obj_type_t;
 #define HAK_OBJ_FLAGS_KERNEL_USER     0  /* not a kernel object */
 #define HAK_OBJ_FLAGS_KERNEL_IMMATURE 1  /* incomplete kernel object. defined in gc.c for bootstrapping. but no complete class definition has been read */
 #define HAK_OBJ_FLAGS_KERNEL_MATURE   2  /* kernel  object with its full class defintion read in */
+
+/* the form that declared a global variable, recorded on its association in
+ * the system dictionary, not on the actual value object - see declare_global(),
+ * compile_class() and emit_define_global(). the bits mean nothing on any other
+ * cons, in the same way the concode bits mean nothing except on a cons the
+ * reader built.
+ *
+ * the record is kept beside the name rather than in the value because the
+ * value does not answer the question: within one compilation unit a name a
+ * 'fun' claimed still holds _undef until DEFINE_FUN runs, and a name a 'var'
+ * claimed stops saying anything at all once it is assigned.
+ *
+ * UNKNOWN covers a binding no declaration made - one a store or a bare
+ * mention created - so a rule asking for a particular form must read UNKNOWN
+ * as 'not that form'. a builtin primitive is deliberately not a value here:
+ * its name symbol carries the kernel bit instead - see check_prim_redefinition(). */
+#define HAK_OBJ_FLAGS_VARKIND_UNKNOWN 0  /* bound by a store or a mention, or not declared at all */
+#define HAK_OBJ_FLAGS_VARKIND_VAR     1  /* declared by 'var' */
+#define HAK_OBJ_FLAGS_VARKIND_FUN     2  /* defined by 'fun' */
+#define HAK_OBJ_FLAGS_VARKIND_CLASS   3  /* defined by 'class' */
 
 #define HAK_OBJ_GET_SIZE(oop) ((oop)->_size)
 #define HAK_OBJ_GET_CLASS(oop) ((oop)->_class)

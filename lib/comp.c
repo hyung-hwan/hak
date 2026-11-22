@@ -3139,6 +3139,11 @@ static int compile_class (hak_t* hak, hak_cnode_t* src)
 			}
 		}
 
+		/* record the declaring form. the entry may have existed already - as a
+		 * bare mention, or as an immature kernel class - so this is a stamp,
+		 * not an initialisation. see HAK_OBJ_FLAGS_VARKIND_CLASS. */
+		HAK_OBJ_SET_FLAGS_VARKIND(cons, HAK_OBJ_FLAGS_VARKIND_CLASS);
+
 		/* add an association in the system dictionary to the literal frame.
 		 * this provides performance advantage at the execution time because
 		 * the dictionary doesn't need to be searched for the object.  */
@@ -4064,10 +4069,22 @@ static int check_var_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned int
 }
 
 /*
- * upon variable declaration(var), set the value to undef for a new name (declare_global)
- * unpon class declaration(class), set the value to undef for a new name (compile_class)
- * upon mention/read, set the value to undcl for a new name (compile_symbol, emit_prim_callee)
- * upon store/write, set the value to undef for a new name and upgrade undcl to undef for an existing value if it's undcl (emit_set)
+ * upon variable declaration(var)
+ *  - set the value to undef for a new name (declare_global)
+ *  - set VARKIND_GLOBAL on the holding association
+ * upon class declaration(class)
+ *  - set the value to undef for a new name (compile_class)
+ *  - set VARKIND_CLASS on the holding association
+ * upon function defintion(fun)
+ *  - set the value to undef for a new name (compile_fun)
+ *  - set VARKIND_FUN on the the holding association
+ * upon mention/read
+ *  - set the value to undcl for a new name (compile_symbol, emit_prim_callee)
+ *  - VARKIND is UNKNOWN as it's not set explicitly on the holding association
+ * upon store/write
+ *  - set the value to undef for a new name
+ *  - upgrade undcl to undef for an existing value if it's undcl (emit_set)
+ *  - VARKIND is UNKNOWN as it's not set explicitly on the holding association
  *
  * if the symbol value in sysdic is _undef, it's declared but not set to a useful value yet.
  * if the symbol value in sysdic is _undcl, it's unsed without declaration (variable, class, function)
@@ -4105,6 +4122,9 @@ static int declare_global (hak_t* hak, hak_cnode_t* var)
 ok:
 	cons = (hak_oop_t)hak_putatsysdic(hak, sym, hak->_undef);
 	if (HAK_UNLIKELY(!cons)) return -1;
+
+	/* record the declaring form. see HAK_OBJ_FLAGS_VARKIND_VAR. */
+	HAK_OBJ_SET_FLAGS_VARKIND(cons, HAK_OBJ_FLAGS_VARKIND_VAR);
 
 	return 0;
 }
@@ -8211,6 +8231,15 @@ static int emit_define_global (hak_t* hak, hak_cnode_t* name, int inst, int rebi
 	cons = (hak_oop_t)hak_getatsysdic(hak, sym);
 	if (!cons)
 	{
+		if (rebind)
+		{
+			/* nothing is bound to the name, so there is nothing to overload */
+			hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(name),
+				"prohibited rebinding of undeclared name '%.*js'",
+				HAK_CNODE_GET_TOKLEN(name), HAK_CNODE_GET_TOKPTR(name));
+			return -1;
+		}
+
 		/* not found, add global */
 		cons = (hak_oop_t)hak_putatsysdic(hak, sym, hak->_undef);
 		if (HAK_UNLIKELY(!cons)) return -1;
@@ -8219,18 +8248,70 @@ static int emit_define_global (hak_t* hak, hak_cnode_t* name, int inst, int rebi
 	{
 		/* found */
 		hak_oop_t val;
+
 		val = HAK_CONS_CDR(cons);
-		if (HAK_IS_UNDCL(hak, val))
+		if (rebind)
+		{
+			/* the '#rebind' attribute was given. it overloads one callable with
+			 * another, so the name must already hold one: a builtin primitive,
+			 * or a global a previous 'fun' defined. a 'var', a 'class' and a
+			 * name only mentioned are none of those and have nothing to
+			 * overload - and letting a 'fun' bury a 'class' would make the load
+			 * order of two files decide what the name means.
+			 *
+			 * the declaring form is read off the association, not off the value.
+			 * if the previous compiled statement has not been executed, the value
+			 * isn't available. it may still hold _undef. DEFINE_FUN does not run
+			 * until the whole unit is compiled. see HAK_OBJ_FLAGS_VARKIND_FUN. */
+			const hak_bch_t* what;
+
+			/* #rebind is supported for 'fun' as of now */
+			HAK_ASSERT(hak, inst ==  HAK_CODE_DEFINE_FUN);
+
+			if (HAK_OBJ_GET_FLAGS_KERNEL(sym) != 0)
+			{
+				/* fun overriding a primitive - the case '#rebind' was made for */
+				what = HAK_NULL;
+			}
+			else if (HAK_IS_UNDCL(hak, val))
+			{
+				what = "undeclared name";
+			}
+			else
+			{
+				switch (HAK_OBJ_GET_FLAGS_VARKIND(cons))
+				{
+					case HAK_OBJ_FLAGS_VARKIND_FUN:
+						/* fun overloading fun - it's allowed */
+						what = HAK_NULL;
+						break;
+					case HAK_OBJ_FLAGS_VARKIND_VAR:
+						what = "variable";
+						break;
+					case HAK_OBJ_FLAGS_VARKIND_CLASS:
+						what = "class";
+						break;
+					default:
+						what = "name";
+						break; /* bound by a store */
+				}
+			}
+
+			if (what)
+			{
+				hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(name),
+					"prohibited rebinding of %hs '%.*js'", what,
+					HAK_CNODE_GET_TOKLEN(name), HAK_CNODE_GET_TOKPTR(name));
+				return -1;
+			}
+
+			/* the name is knowingly taken over. say nothing here and let
+			 * DEFINE_FUN replace the value at run time. */
+		}
+		else if (HAK_IS_UNDCL(hak, val))
 		{
 			/* upgrade undcl to undef */
 			HAK_CONS_CDR(cons) = hak->_undef;
-		}
-		else if (rebind)
-		{
-			/* the '#rebind' attribute was given. the name is knowingly taken
-			 * over, so say nothing here and let DEFINE_FUN replace the value
-			 * at run time. a class still refuses to be buried - that guard
-			 * lives in the DEFINE_FUN case of the executor. */
 		}
 		else if (inst == HAK_CODE_DEFINE_CLASS)
 		{
@@ -8252,6 +8333,11 @@ static int emit_define_global (hak_t* hak, hak_cnode_t* name, int inst, int rebi
 			return -1;
 		}
 	}
+
+	/* record the defining form, so that a later '#rebind' can tell a function
+	 * it may overload from a class or a variable it may not. see
+	 * HAK_OBJ_FLAGS_VARKIND_FUN. */
+	HAK_OBJ_SET_FLAGS_VARKIND(cons, ((inst == HAK_CODE_DEFINE_CLASS)? HAK_OBJ_FLAGS_VARKIND_CLASS: HAK_OBJ_FLAGS_VARKIND_FUN));
 
 	/* the parameter is the literal frame index of the association itself,
 	 * as it is for STORE_INTO_OBJECT. the executor then has both the name

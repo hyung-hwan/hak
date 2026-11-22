@@ -158,3 +158,17 @@ fun sum (x) {
 }
 v := (sum 10)
 if (== v 55) { printf "OK - %d\n" v } else { printf "ERROR - %d, not 55\n" v }
+
+
+## ----------------------------------------
+## '#rebind' takes over a name a previous 'fun' defined. the old definition is
+## gone, and the new one answers in its place. taking over a primitive is the
+## other half of the same rule - see t/va-01.hak.
+fun rb(x) {
+	core.+ x 1
+}
+fun[#rebind] rb(x) {
+	core.+ x 100
+}
+v := (rb 10)
+if (== v 110) { printf "OK - %d\n" v } else { printf "ERROR - %d, not 110\n" v }

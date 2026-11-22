@@ -114,3 +114,51 @@ if true { fun[#rebind] h() { ##ERROR: syntax error - prohibited definition of na
 fun printf(a) { ##ERROR: syntax error - prohibited redefinition of primitive 'printf'
 	return a
 }
+
+---
+
+## '#rebind' overloads one callable with another. a name 'var' declared holds
+## no callable, whatever value it was later given - see HAK_OBJ_FLAGS_VARKIND.
+
+var x
+fun[#rebind] x() { ##ERROR: syntax error - prohibited rebinding of variable 'x'
+	return 1
+}
+
+---
+
+## letting a function bury a class would make the load order of two files
+## decide what the name means.
+
+class K { }
+fun[#rebind] K() { ##ERROR: syntax error - prohibited rebinding of class 'K'
+	return 1
+}
+
+---
+
+## a name mentioned somewhere is not a definition, so there is nothing to
+## overload. the mention below is what puts 'm' in the system dictionary.
+
+fun t() { return (m) }
+fun[#rebind] m() { ##ERROR: syntax error - prohibited rebinding of undeclared name 'm'
+	return 1
+}
+
+---
+
+## nor is a name nothing has bound at all. '#rebind' says 'take over the
+## existing definition', not 'define, and never mind whether there was one'.
+
+fun[#rebind] zz() { ##ERROR: syntax error - prohibited rebinding of undeclared name 'zz'
+	return 1
+}
+
+---
+
+## a global a store created is a value, not a definition.
+
+w := 5
+fun[#rebind] w() { ##ERROR: syntax error - prohibited rebinding of name 'w'
+	return 1
+}
