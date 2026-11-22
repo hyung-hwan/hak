@@ -390,7 +390,7 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 
 			case HAK_CODE_CLASS_ENTER:
 			{
-				hak_oow_t b3, b4, b5, b6, b7, x;
+				hak_oow_t b3, b4, b5, b6, b7, b8, x;
 				FETCH_PARAM_CODE_TO(hak, b1);
 				FETCH_PARAM_CODE_TO(hak, b2);
 				FETCH_PARAM_CODE_TO(hak, b3);
@@ -402,7 +402,8 @@ int hak_decode (hak_t* hak, const hak_code_t* code, hak_oow_t start, hak_oow_t e
 				b7 = (b7 << (8 * HAK_CODE_LONG_PARAM_SIZE)) | x;
 				FETCH_BYTE_CODE_TO(hak, b4); /* spec/selfspec */
 				FETCH_BYTE_CODE_TO(hak, b5); /* indexed_type */
-				LOG_INST_7 (hak, "class_enter %zu %zu %zu @%zu @%zu %#zx %zu", b1, b2, b3, b6, b7, b4, b5);
+				FETCH_BYTE_CODE_TO(hak, b8); /* flags */
+				LOG_INST_8 (hak, "class_enter %zu %zu %zu @%zu @%zu %#zx %zu %#zx", b1, b2, b3, b6, b7, b4, b5, b8);
 				break;
 			}
 

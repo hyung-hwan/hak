@@ -468,6 +468,14 @@ do { \
 /* END OF CLASS SPEC ENCODING                                                */
 /* ========================================================================= */
 
+/* the trailing flags byte of the CLASS_ENTER instruction. it carries what the
+ * class definition wants done, as opposed to the spec/selfspec bytes which
+ * carry the shape of the instances. it is kept out of those bytes on purpose:
+ * they are stored in the class object itself and are compared field by field
+ * when a class is reopened, and a flag about the act of defining has no
+ * business being part of what gets compared. */
+#define HAK_CLASS_ENTER_FLAG_REOPEN (1 << 0) /* the '#reopen' attribute was given */
+
 
 
 #if defined(HAK_INCLUDE_COMPILER)
@@ -989,6 +997,7 @@ struct hak_cframe_t
 		{
 			hak_ooi_t nsuperclasses;
 			unsigned int indexed_type;
+			int reopen; /* the '#reopen' attribute was given */
 			hak_oow_t llvl; /* copied from cnode->cn_llvl */
 			hak_loc_t start_loc;
 			hak_cnode_t* cmd_cnode;

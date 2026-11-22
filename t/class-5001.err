@@ -404,3 +404,72 @@ fun Number:==(b) { return (core.+ self b) }
 
 class printf { ##ERROR: syntax error - prohibited redefinition of primitive 'printf'
 }
+
+---
+
+## '#reopen' adds to a class that is already there, so the name must hold one.
+## nothing has bound this name at all.
+
+class[#reopen] Zz { ##ERROR: syntax error - prohibited reopening of undeclared name 'Zz'
+}
+
+---
+
+## a name mentioned somewhere is not a definition either.
+
+fun t() { return (Mm) }
+class[#reopen] Mm { ##ERROR: syntax error - prohibited reopening of undeclared name 'Mm'
+}
+
+---
+
+## a variable holds a value, not a class - whatever value it was later given.
+## see HAK_OBJ_FLAGS_VARKIND.
+
+var Vv
+class[#reopen] Vv { ##ERROR: syntax error - prohibited reopening of variable 'Vv'
+}
+
+---
+
+## nor does a function. '#rebind' is the attribute for that side.
+
+fun Ff() { return 1 }
+class[#reopen] Ff { ##ERROR: syntax error - prohibited reopening of function 'Ff'
+}
+
+---
+
+## a global a store created is a value, not a definition.
+
+Ww := 5
+class[#reopen] Ww { ##ERROR: syntax error - prohibited reopening of name 'Ww'
+}
+
+---
+
+## an unnamed class binds no name and so has nothing to reopen.
+
+q := (class[#reopen] { ##ERROR: syntax error - class attribute '#reopen' prohibited on an unnamed class
+})
+
+---
+
+## a reopening keeps the class object the instances already made point at, so
+## it may not change the shape of an instance. CLASS_ENTER compares the
+## declaration against the class it found.
+
+class Kk (a) {
+}
+class[#reopen] Kk (a b) { ##ERROR: exception not handled - "incompatible reopening of Kk"
+}
+
+---
+
+## without '#reopen' the name is simply taken, and saying so at compile time is
+## better than letting the second definition quietly win.
+
+class Kk {
+}
+class Kk { ##ERROR: syntax error - duplicate name 'Kk' for class
+}

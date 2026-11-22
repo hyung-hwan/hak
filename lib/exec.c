@@ -4907,12 +4907,12 @@ static int execute (hak_t* hak)
 				   push superclass (only if nsuperclassses > 0)
 				   push ivars_string
 				   push cvars_string
-				   class_enter nsuperclasses nivars ncvars spec/selfspec, indexed_tye
+				   class_enter nsuperclasses nivars ncvars spec/selfspec, indexed_tye, flags
 				 */
 				hak_oop_t superclass, ivars_str, cvars_str, class_name, v;
 				hak_ooi_t expected_spec, expected_selfspec;
 				hak_oop_class_t class_obj;
-				hak_oow_t b3, b4, b5, b6, b7, x;
+				hak_oow_t b3, b4, b5, b6, b7, b8, x;
 
 				FETCH_PARAM_CODE_TO(hak, b1); /* nsuperclasses */
 				FETCH_PARAM_CODE_TO(hak, b2); /* nivars */
@@ -4930,8 +4930,9 @@ static int execute (hak_t* hak)
 
 				FETCH_BYTE_CODE_TO(hak, b4); /* spec/selfspec */
 				FETCH_BYTE_CODE_TO(hak, b5); /* indexed_type */
+				FETCH_BYTE_CODE_TO(hak, b8); /* flags */
 
-				LOG_INST_7(hak, "class_enter %zu %zu %zu @%zu @%zu %#zx %zu", b1, b2, b3, b6, b7, b4, b5);
+				LOG_INST_8(hak, "class_enter %zu %zu %zu @%zu @%zu %#zx %zu %#zx", b1, b2, b3, b6, b7, b4, b5, b8);
 
 				if (b7 != MAX_CODE_PARAM2)
 				{
@@ -4987,12 +4988,24 @@ static int execute (hak_t* hak)
 					class_obj = (hak_oop_class_t)HAK_CONS_CDR(v);
 					if (HAK_IS_CLASS(hak, class_obj))
 					{
-						/* the existing value must be a class. disallow re-definition */
+						/* the name already holds a class. a bare 'class' form may
+						 * only finish off an incomplete kernel class, the way
+						 * src/collection.hak completes Cons and Dictionary; any
+						 * other definition over the name must say '#reopen'.
+						 *
+						 * both take the same path on purpose. the existing class
+						 * object is kept rather than replaced, because instances
+						 * carry it in their brand and subclasses captured it as
+						 * their superclass when they were defined - a replacement
+						 * would leave both pointing at a class the name no longer
+						 * means. keeping it is only sound while the shape stays
+						 * put, which is what the comparison below insists on. */
 
 						/* 0(non-kernel object), 1(incomplete kernel object), 2(complete kernel object) */
-						if (HAK_OBJ_GET_FLAGS_KERNEL(class_obj) == 1)
+						if ((b8 & HAK_CLASS_ENTER_FLAG_REOPEN) ||
+						    HAK_OBJ_GET_FLAGS_KERNEL(class_obj) == HAK_OBJ_FLAGS_KERNEL_IMMATURE)
 						{
-							/* check if the new definition is compatible with kernel definition */
+							/* check if the new definition is compatible with the existing one */
 							hak_ooi_t spec, selfspec, nivars_super, nivars_super_real;
 
 							spec = HAK_OOP_TO_SMOOI(class_obj->spec);
@@ -5008,7 +5021,9 @@ hak_logbfmt(hak, HAK_LOG_STDERR, ">>>%O c->sc=%O sc=%O b2=%d b3=%d nivars=%d ncv
 							    expected_selfspec != selfspec ||
 							    nivars_super != nivars_super_real)
 							{
-								hak_seterrbfmt(hak, HAK_EPERM, "incompatible redefinition of %.*js", HAK_OBJ_GET_SIZE(class_name), HAK_OBJ_GET_CHAR_SLOT(class_name));
+								hak_seterrbfmt(hak, HAK_EPERM, "incompatible %hs of %.*js",
+									((b8 & HAK_CLASS_ENTER_FLAG_REOPEN)? "reopening": "redefinition"),
+									HAK_OBJ_GET_SIZE(class_name), HAK_OBJ_GET_CHAR_SLOT(class_name));
 								if (do_throw_with_internal_errmsg(hak, fetched_instruction_pointer) >= 0) break;
 								goto oops_with_errmsg_supplement;
 							}

@@ -34,6 +34,7 @@ check_SCRIPTS = \
 	liberal-01.hak \
 	for-01.hak \
 	range-01.hak \
+	reopen-01.hak \
 	loop-01.hak \
 	mutex-01.hak \
 	mutex-02.hak \

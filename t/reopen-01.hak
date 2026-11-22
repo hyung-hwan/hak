@@ -1,0 +1,72 @@
+## test class reopening with the '#reopen' attribute.
+##
+## '#reopen' is the class counterpart of '#rebind' on a function, and it
+## differs from it in the one way that matters. '#rebind' puts a new value in
+## the name; a reopening keeps the very class object that existing instances
+## carry in their brand and that subclasses captured as their superclass. so
+## everything made before the reopening sees what the reopening added.
+
+class K (a) {
+	fun[#ci] make(x) { set a x; return self }
+	fun one() { return 1 }
+}
+
+class L: K (b) {
+	fun[#ci] make(x y) { super:make x; set b y; return self }
+	fun elltwo() { return (+ self.b 1) }
+}
+
+i := (K:make 7)
+j := (L:make 1 2)
+
+v := (i:one)
+if (== v 1) { printf "OK - %d\n" v } else { printf "ERROR - %d, not 1\n" v }
+
+## ----------------------------------------
+## reopening adds to the class. the instance made before it answers the new
+## method, because it is still an instance of the same class object.
+##
+## the variable list is repeated as it stood. a reopening may not change the
+## shape of an instance - there is no way to reach the instances already made
+## and grow them - so CLASS_ENTER compares the declaration against the class it
+## found and refuses a mismatch.
+
+class[#reopen] K (a) {
+	fun two() { return (+ self.a 100) }
+}
+
+v := (i:two)
+if (== v 107) { printf "OK - %d\n" v } else { printf "ERROR - %d, not 107\n" v }
+
+## what was there before the reopening is still there.
+v := (i:one)
+if (== v 1) { printf "OK - %d\n" v } else { printf "ERROR - %d, not 1\n" v }
+
+## a subclass defined before the reopening inherits the added method, for the
+## same reason - it holds the class object, not a copy of what it contained.
+v := (j:two)
+if (== v 101) { printf "OK - %d\n" v } else { printf "ERROR - %d, not 101\n" v }
+
+v := (j:elltwo)
+if (== v 3) { printf "OK - %d\n" v } else { printf "ERROR - %d, not 3\n" v }
+
+## ----------------------------------------
+## reopening also replaces a method body, which is the point of it in an
+## interactive session.
+
+class[#reopen] K (a) {
+	fun one() { return 11 }
+}
+
+v := (i:one)
+if (== v 11) { printf "OK - %d\n" v } else { printf "ERROR - %d, not 11\n" v }
+
+v := (j:one)
+if (== v 11) { printf "OK - %d\n" v } else { printf "ERROR - %d, not 11\n" v }
+
+## ----------------------------------------
+## a new instance is no different from an old one.
+
+k := (K:make 7)
+v := (k:two)
+if (== v 107) { printf "OK - %d\n" v } else { printf "ERROR - %d, not 107\n" v }

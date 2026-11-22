@@ -2762,7 +2762,7 @@ static HAK_INLINE int compile_else (hak_t* hak)
 
 /* ========================================================================= */
 
-static int check_class_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned int* indexed_type, hak_cnode_t* cmd, hak_cnode_t* class_name)
+static int check_class_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned int* indexed_type, int* reopen, hak_cnode_t* cmd, hak_cnode_t* class_name)
 {
 	static struct
 	{
@@ -2807,8 +2807,10 @@ static int check_class_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned i
 		/* TODO: uint32 uint16 .. etc */
 	};
 	hak_obj_type_t ct;
+	int ro;
 
 	ct = HAK_OBJ_TYPE_OOP;
+	ro = 0;
 
 	HAK_ASSERT(hak, attr_list != HAK_NULL);
 	HAK_ASSERT(hak, HAK_CNODE_IS_CONS_CONCODED(attr_list, HAK_CONCODE_TUPLE) ||
@@ -2859,6 +2861,31 @@ static int check_class_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned i
 					hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(attr),
 					"invalid class attribute name '%.*js'", toklen, tokptr);
 				return -1;
+			}
+
+			if (hak_comp_oochars_bcstr(tokptr, toklen, "reopen") == 0)
+			{
+				/* '#reopen' says what is to be done with the name, not what an
+				 * instance is to look like, so it is handled here instead of
+				 * going through attr_tab - the table folds everything it holds
+				 * into the spec/selfspec/indexed_type triple. an unnamed class
+				 * binds no name and so has nothing to reopen. */
+				if (!class_name)
+				{
+					hak_setsynerrbfmt(
+						hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(attr),
+						"class attribute '#%.*js' prohibited on an unnamed class", toklen, tokptr);
+					return -1;
+				}
+				if (ro)
+				{
+					hak_setsynerrbfmt(
+						hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(attr),
+						"conflicting or duplicate class attribute name '#%.*js'", toklen, tokptr);
+					return -1;
+				}
+				ro = 1;
+				goto found;
 			}
 
 			/*
@@ -2914,6 +2941,7 @@ static int check_class_attr_list (hak_t* hak, hak_cnode_t* attr_list, unsigned i
 	}
 
 	*indexed_type = ct;
+	*reopen = ro;
 	return 0;
 }
 
@@ -2964,6 +2992,7 @@ static int compile_class (hak_t* hak, hak_cnode_t* src)
 	hak_cnode_t* class_name, * superclass;
 	int nsuperclasses;
 	unsigned int indexed_type;
+	int reopen;
 
 	cmd = HAK_CNODE_CONS_CAR(src);
 	obj = HAK_CNODE_CONS_CDR(src);
@@ -2971,6 +3000,7 @@ static int compile_class (hak_t* hak, hak_cnode_t* src)
 	attr_list = HAK_NULL;
 	class_name = HAK_NULL;
 	indexed_type = HAK_OBJ_TYPE_OOP;
+	reopen = 0;
 
 	HAK_ASSERT(hak, HAK_CNODE_IS_TYPED(cmd, HAK_CNODE_CLASS));
 
@@ -3041,7 +3071,7 @@ static int compile_class (hak_t* hak, hak_cnode_t* src)
 		return -1;
 	}
 
-	if (attr_list && check_class_attr_list(hak, attr_list, &indexed_type, cmd, class_name) <= -1) return -1;
+	if (attr_list && check_class_attr_list(hak, attr_list, &indexed_type, &reopen, cmd, class_name) <= -1) return -1;
 
 	tmp = HAK_CNODE_CONS_CAR(obj);
 	if (HAK_CNODE_IS_COLON(tmp)) /* check for superclass marker */
@@ -3108,6 +3138,15 @@ static int compile_class (hak_t* hak, hak_cnode_t* src)
 		cons = (hak_oop_t)hak_getatsysdic(hak, sym);
 		if (!cons)
 		{
+			if (reopen)
+			{
+				/* nothing is bound to the name, so there is no class to reopen */
+				hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(class_name),
+					"prohibited reopening of undeclared name '%.*js'",
+					HAK_CNODE_GET_TOKLEN(class_name), HAK_CNODE_GET_TOKPTR(class_name));
+				return -1;
+			}
+
 			/* not found, add global */
 			cons = (hak_oop_t)hak_putatsysdic(hak, sym, hak->_undef);
 			if (HAK_UNLIKELY(!cons)) return -1;
@@ -3118,7 +3157,68 @@ static int compile_class (hak_t* hak, hak_cnode_t* src)
 
 			HAK_ASSERT(hak, val != HAK_NULL);
 
-			if (HAK_IS_UNDCL(hak, val))
+			if (reopen)
+			{
+				/* '#reopen' adds to an existing class, so the name
+				 * must already hold one. it is the class counterpart of
+				 * '#rebind' on a function and differs from it in the one way:
+				 * '#rebind' puts a new value in the name, while a reopening
+				 * keeps the very class object that instances carry in
+				 * their brand and that subclasses captured as their superclass.
+				 * replacing it instead would leave both pointing at a class
+				 * that is no longer the one the name means.
+				 *
+				 * the value is consulted first and the declaring form only
+				 * after, because neither alone answers it: a kernel class was
+				 * put in the system dictionary before any 'class' form was read
+				 * and so carries no declaring form, while a name an earlier
+				 * 'class' claimed in this same compilation unit still holds
+				 * _undef, as CLASS_ENTER does not run until the whole unit is
+				 * compiled. see HAK_OBJ_FLAGS_VARKIND_CLASS. */
+				const hak_bch_t* what;
+
+				if (check_prim_redefinition(hak, sym, class_name) <= -1) return -1;
+
+				if (HAK_IS_CLASS(hak, val))
+				{
+					/* a class already - kernel or not */
+					what = HAK_NULL;
+				}
+				else if (HAK_IS_UNDCL(hak, val))
+				{
+					what = "undeclared name";
+				}
+				else
+				{
+					switch (HAK_OBJ_GET_FLAGS_VARKIND(cons))
+					{
+						case HAK_OBJ_FLAGS_VARKIND_CLASS:
+							what = HAK_NULL;
+							break; /* defined earlier in this unit */
+						case HAK_OBJ_FLAGS_VARKIND_VAR:
+							what = "variable";
+							break;
+						case HAK_OBJ_FLAGS_VARKIND_FUN:
+							what = "function";
+							break;
+						default:
+							what = "name";
+							break; /* bound by a store */
+					}
+				}
+
+				if (what)
+				{
+					hak_setsynerrbfmt(hak, HAK_SYNERR_BANNED, HAK_CNODE_GET_LOC(class_name),
+						"prohibited reopening of %hs '%.*js'", what,
+						HAK_CNODE_GET_TOKLEN(class_name), HAK_CNODE_GET_TOKPTR(class_name));
+					return -1;
+				}
+
+				/* the class is knowingly added to. say nothing here and let
+				 * CLASS_ENTER compare the shape at run time. */
+			}
+			else if (HAK_IS_UNDCL(hak, val))
 			{
 				/* allow. nothing to block.
 				 * leave it to CLASS_ENTER at runtime */
@@ -3162,6 +3262,7 @@ static int compile_class (hak_t* hak, hak_cnode_t* src)
 	cf = GET_TOP_CFRAME(hak);
 	cf->u._class.nsuperclasses = 0; /* unsed for CLASS_P2 */
 	cf->u._class.indexed_type = indexed_type;
+	cf->u._class.reopen = 0; /* unsed for CLASS_P2 */
 	cf->u._class.llvl = HAK_CNODE_GET_LLVL(src);
 	cf->u._class.start_loc = *HAK_CNODE_GET_LOC(src); /* TODO: use *HAK_CNODE_GET_LOC(cmd) instead? */
 	cf->u._class.cmd_cnode = cmd;
@@ -3171,6 +3272,7 @@ static int compile_class (hak_t* hak, hak_cnode_t* src)
 	cf = GET_TOP_CFRAME(hak);
 	cf->u._class.nsuperclasses = nsuperclasses; /* this needs to change if we support multiple superclasses... */
 	cf->u._class.indexed_type = indexed_type;
+	cf->u._class.reopen = reopen;
 	cf->u._class.llvl = HAK_CNODE_GET_LLVL(src);
 	cf->u._class.start_loc = *HAK_CNODE_GET_LOC(src); /* TODO: use *HAK_CNODE_GET_LOC(cmd) instead? */
 	cf->u._class.cmd_cnode = cmd;
@@ -3242,7 +3344,7 @@ static HAK_INLINE int compile_class_p1 (hak_t* hak)
 	/* the position of the CLASS_ENTER instruction */
 	hak->c->clsblk.info[hak->c->clsblk.depth].class_enter_inst_pos = hak->code.bc.len;
 
-	/* class_enter nsuperclasses, nivars, ncvars, ivars_lfindex, cvars_lfindex, spec/selfspec, indexed_type */
+	/* class_enter nsuperclasses, nivars, ncvars, ivars_lfindex, cvars_lfindex, spec/selfspec, indexed_type, flags */
 	if (emit_byte_instruction(hak, HAK_CODE_CLASS_ENTER, &cf->u._class.start_loc) <= -1) goto oops;
 	if (emit_long_param(hak, cf->u._class.nsuperclasses) <= -1) goto oops;
 	if (emit_long_param(hak, vardcl.nivars) <= -1) goto oops;
@@ -3255,6 +3357,9 @@ static HAK_INLINE int compile_class_p1 (hak_t* hak)
 	if (emit_extended_long_param(hak, MAX_CODE_PARAM2) <= -1) goto oops;
 	if (emit_byte_instruction(hak, (hak_oob_t)((cf->u._class.indexed_type >> 8) & 0xFF), &cf->u._class.start_loc) <= -1) goto oops;
 	if (emit_byte_instruction(hak, (hak_oob_t)(cf->u._class.indexed_type & 0xFF), &cf->u._class.start_loc) <= -1) goto oops;
+	/* the flags byte goes last so that the patch offsets computed in
+	 * compile_class_p2() from class_enter_inst_pos stay as they are. */
+	if (emit_byte_instruction(hak, (hak_oob_t)(cf->u._class.reopen? HAK_CLASS_ENTER_FLAG_REOPEN: 0), &cf->u._class.start_loc) <= -1) goto oops;
 
 	/* remember the first byte code position to be emitted for the body of
 	 * this class. this posistion is used for empty class body check at the
@@ -3305,7 +3410,7 @@ static HAK_INLINE int compile_class_p2 (hak_t* hak)
 	}
 
 	/* patch the CLASS_ENTER instruction with the final nicvars and ncvars values.
-	 * CLASS_ENTER nsuperclasses(lp)|nivars(lp)|ncvars(lp)|ivars_lfindex(elp)|cvars_lfindex(elp)|spec/selfspec(b)|index_type(b)
+	 * CLASS_ENTER nsuperclasses(lp)|nivars(lp)|ncvars(lp)|ivars_lfindex(elp)|cvars_lfindex(elp)|spec/selfspec(b)|index_type(b)|flags(b)
 	 *  (lp) = long param, (elp) = extended long param, (b) = byte */
 	patch_pos = cbi->class_enter_inst_pos + 1;
 	patch_pos += HAK_CODE_LONG_PARAM_SIZE; /* skip nsuperclasses */
