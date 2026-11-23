@@ -227,15 +227,15 @@ hak_oop_t hak_mulnums (hak_t* hak, hak_oop_t x, hak_oop_t y)
 	return mul_nums(hak, x, y, 0);
 }
 
-hak_oop_t hak_mltnums (hak_t* hak, hak_oop_t x, hak_oop_t y)
+hak_oop_t hak_tmulnums (hak_t* hak, hak_oop_t x, hak_oop_t y)
 {
-	/* mlt 1.00 12.123 =>  12.12, use the precision of the first operand */
+	/* ~* 1.00 12.123 =>  12.12, use the precision of the first operand */
 	return mul_nums(hak, x, y, 1);
 }
 
-hak_oop_t hak_divnums (hak_t* hak, hak_oop_t x, hak_oop_t y)
+static hak_oop_t div_nums (hak_t* hak, hak_oop_t x, hak_oop_t y, int trunc)
 {
-	hak_ooi_t xs, ys, i;
+	hak_ooi_t xs, ys, ns, i;
 	hak_oop_t nv;
 	hak_oop_t xv, yv;
 
@@ -265,10 +265,21 @@ hak_oop_t hak_divnums (hak_t* hak, hak_oop_t x, hak_oop_t y)
 		return HAK_NULL;
 	}
 
+	/* unlike a sum or a product, a quotient has no scale that falls out of
+	 * the operands - 1/3 does not terminate - so the scale of the result is
+	 * a choice. '/' takes the wider of the two, as '*' does, and '~/' keeps
+	 * the scale of the dividend.
+	 *
+	 * x / y is (xv / 10^xs) / (yv / 10^ys), which is xv * 10^ys / (yv * 10^xs).
+	 * to hold that at scale ns, the dividend is scaled by 10^(ys + ns - xs)
+	 * before the division. ns is never less than xs, so the exponent is never
+	 * negative. */
+	ns = (trunc || xs > ys)? xs: ys;
+
 	nv = xv;
 
 	hak_pushvolat(hak, &yv);
-	for (i = 0; i < ys; i++)
+	for (i = ys + ns - xs; i > 0; i--)
 	{
 		nv = hak_mulints(hak, nv, HAK_SMOOI_TO_OOP(10));
 		if (!nv)
@@ -282,7 +293,19 @@ hak_oop_t hak_divnums (hak_t* hak, hak_oop_t x, hak_oop_t y)
 	hak_popvolat(hak);
 	if (!nv) return HAK_NULL;
 
-	return hak_makefpdec(hak, nv, xs);
+	return hak_makefpdec(hak, nv, ns);
+}
+
+hak_oop_t hak_divnums (hak_t* hak, hak_oop_t x, hak_oop_t y)
+{
+	/* / 10 4.00 => 2.50, use the wider precision of the either operands */
+	return div_nums(hak, x, y, 0);
+}
+
+hak_oop_t hak_tdivnums (hak_t* hak, hak_oop_t x, hak_oop_t y)
+{
+	/* ~/ 10 4.00 => 2, use the precision of the first operand */
+	return div_nums(hak, x, y, 1);
 }
 
 static hak_oop_t comp_nums (hak_t* hak, hak_oop_t x, hak_oop_t y, hak_oop_t (*comper) (hak_t*, hak_oop_t, hak_oop_t))

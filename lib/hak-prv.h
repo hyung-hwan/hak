@@ -2262,13 +2262,19 @@ hak_oop_t hak_mulnums (
 	hak_oop_t    y
 );
 
-hak_oop_t hak_mltnums (
+hak_oop_t hak_tmulnums (
 	hak_t*       hak,
 	hak_oop_t    x,
 	hak_oop_t    y
 );
 
 hak_oop_t hak_divnums (
+	hak_t*       hak,
+	hak_oop_t    x,
+	hak_oop_t    y
+);
+
+hak_oop_t hak_tdivnums (
 	hak_t*       hak,
 	hak_oop_t    x,
 	hak_oop_t    y

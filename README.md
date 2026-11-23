@@ -184,10 +184,22 @@ printf "%O\n" ((a + b):amt)      ## 15, the same as ((a:#+ b):amt)
 Arithmetic and comparison:
 
 ```
-+  -  *  mlt  /  div  rem  mdiv  mod  sqrt  abs
++  -  *  ~*  /  ~/  div  rem  mdiv  mod  sqrt  abs
 <  <=  >  >=  =  ==  !=
 bit-and  bit-or  bit-xor  bit-not  bit-shift  bit-left-shift  bit-right-shift
 ```
+
+`*` and `/` give a fixed-point decimal result the wider of the two operand
+scales; `~*` and `~/` give it the scale of the first operand and truncate the
+rest away toward zero.
+
+```
+(* 1.00 12.123)   ## 12.123          (/ 10 4.00)    ## 2.50
+(~* 1.00 12.123)  ## 12.12           (~/ 10 4.00)   ## 2
+```
+
+`div` and `rem` are the truncating integer quotient and remainder; `mdiv` and
+`mod` are their floored counterparts.
 
 Logic and equality - `and` and `or` are short-circuit special forms, while
 `_and` and `_or` are ordinary functions that evaluate every argument:
