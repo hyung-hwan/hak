@@ -1779,6 +1779,18 @@ static HAK_INLINE void lshift_unsigned_array (hak_liw_t* x, hak_oow_t xs, hak_oo
 
 	/* get how many remaining bits to shift */
 	bit_shifts = bits % HAK_LIW_BITS;
+	if (bit_shifts == 0)
+	{
+		/* a whole number of words, with no bits left over. the loop below
+		 * cannot do this case: it would shift a word right by
+		 * HAK_LIW_BITS - bit_shifts, and a shift by the full width of the
+		 * type is undefined in C. the usual hardware takes the count modulo
+		 * the width and leaves the word untouched, so the neighbouring word
+		 * is merged in whole instead of contributing nothing. */
+		for (di = xs, si = xs - word_shifts; si > 0; ) x[--di] = x[--si];
+		HAK_MEMSET(x, 0, word_shifts * HAK_SIZEOF(hak_liw_t));
+		return;
+	}
 	bit_shifts_right = HAK_LIW_BITS - bit_shifts;
 
 	/* shift words and bits */
@@ -1814,9 +1826,16 @@ static HAK_INLINE void rshift_unsigned_array (hak_liw_t* x, hak_oow_t xs, hak_oo
 
 	/* get how many remaining bits to shift */
 	bit_shifts = bits % HAK_LIW_BITS;
+	if (bit_shifts == 0)
+	{
+		/* a whole number of words - see the same case in
+		 * lshift_unsigned_array() for why the loop below cannot do it. */
+		for (di = 0, si = word_shifts; si < xs; di++, si++) x[di] = x[si];
+		HAK_MEMSET(&x[xs - word_shifts], 0, word_shifts * HAK_SIZEOF(hak_liw_t));
+		return;
+	}
 	bit_shifts_left = HAK_LIW_BITS - bit_shifts;
 
-/* TODO: verify this function */
 	/* shift words and bits */
 	di = 0;
 	si = word_shifts;

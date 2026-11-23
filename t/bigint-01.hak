@@ -135,6 +135,35 @@ while (< round ROUNDS) {
 }
 
 ## ----------------------------------------------------------------------------
+## shifting by an exact multiple of the limb width.
+##
+## this is the case the shift helpers cannot reach with their general loop: the
+## bit part of the shift is zero, so the loop would shift a limb by the full
+## width of the type, which C leaves undefined and the usual hardware turns into
+## a shift by zero - merging the neighbouring limb in whole. every amount from 1
+## to just past three limbs is checked, so the boundaries are not taken on
+## trust, and 2^96 + 2 has a bit at each end to carry the evidence.
+
+var base acc k
+base := 79228162514264337593543950338   ## 2^96 + 2
+k := 1
+while (<= k 100) {
+	chk (== base (bit-shift (bit-shift base k) (- 0 k))) "a left shift undone by a right shift is the identity"
+	chk (== (bit-shift base k) (* base (bit-shift 1 k))) "a left shift is a multiplication by a power of two"
+	chk (== (bit-shift base (- 0 k)) (/ base (bit-shift 1 k))) "a right shift is a truncating division by a power of two"
+	k := (+ k 1)
+}
+
+## ----------------------------------------------------------------------------
+## a quotient that normalizes back down into a small integer while the signs
+## differ. the sign lives in the class of a large integer and in the value of a
+## small one, so the demotion has to carry it across.
+
+chk (== -768614336404564650 (/ -2305843009213693952 3)) "2^61 over a small divisor keeps its sign"
+chk (== -576460752303423488 (/ -18446744073709551616 32)) "2^64 over a small divisor keeps its sign"
+chk (< (/ -2305843009213693952 3) 0) "...and the result really is negative"
+
+## ----------------------------------------------------------------------------
 ## integer square root, where the contract is a pair of bounds rather than an
 ## identity: s*s must not exceed n, and (s+1)^2 must.
 
