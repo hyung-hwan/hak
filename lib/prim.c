@@ -1135,23 +1135,6 @@ hak_pfrc_t hak_pf_number_mul (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	return HAK_PF_SUCCESS;
 }
 
-static hak_pfrc_t pf_number_tmul (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
-{
-	hak_ooi_t i;
-	hak_oop_t arg, ret;
-
-	ret = HAK_STACK_GETARG(hak, nargs, 0);
-	for (i = 1; i < nargs; i++)
-	{
-		arg = HAK_STACK_GETARG(hak, nargs, i);
-		ret = hak_tmulnums(hak, ret, arg);
-		if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
-	}
-
-	HAK_STACK_SETRET(hak, nargs, ret);
-	return HAK_PF_SUCCESS;
-}
-
 hak_pfrc_t hak_pf_number_div (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_ooi_t i;
@@ -1162,23 +1145,6 @@ hak_pfrc_t hak_pf_number_div (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	{
 		arg = HAK_STACK_GETARG(hak, nargs, i);
 		ret = hak_divnums(hak, ret, arg);
-		if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
-	}
-
-	HAK_STACK_SETRET(hak, nargs, ret);
-	return HAK_PF_SUCCESS;
-}
-
-static hak_pfrc_t pf_number_tdiv (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
-{
-	hak_ooi_t i;
-	hak_oop_t arg, ret;
-
-	ret = HAK_STACK_GETARG(hak, nargs, 0);
-	for (i = 1; i < nargs; i++)
-	{
-		arg = HAK_STACK_GETARG(hak, nargs, i);
-		ret = hak_tdivnums(hak, ret, arg);
 		if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
 	}
 
@@ -1701,9 +1667,7 @@ static pf_t builtin_prims[] =
 	{ 1, HAK_TYPE_MAX(hak_oow_t), hak_pf_number_add,  1,  { '+' } },
 	{ 1, HAK_TYPE_MAX(hak_oow_t), hak_pf_number_sub,  1,  { '-' } },
 	{ 1, HAK_TYPE_MAX(hak_oow_t), hak_pf_number_mul,  1,  { '*' } },
-	{ 1, HAK_TYPE_MAX(hak_oow_t), pf_number_tmul,     2,  { '~','*' } },
 	{ 1, HAK_TYPE_MAX(hak_oow_t), hak_pf_number_div,  1,  { '/' } },
-	{ 1, HAK_TYPE_MAX(hak_oow_t), pf_number_tdiv,     2,  { '~','/' } },
 	{ 1, 1,                       hak_pf_number_sqrt, 4,  { 's','q','r','t' } },
 	{ 1, 1,                       hak_pf_number_abs,  3,  { 'a','b','s' } },
 

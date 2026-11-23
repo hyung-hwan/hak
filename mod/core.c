@@ -837,6 +837,48 @@ static hak_pfrc_t pf_core_identity_hash (hak_t* hak, hak_mod_t* mod, hak_ooi_t n
 	return HAK_PF_SUCCESS;
 }
 
+/* (core.~* x y ...) - multiply, giving a fixed-point decimal result the scale
+ * of the first operand rather than the wider of the two that '*' uses. the
+ * digits past that scale are truncated toward zero. */
+static hak_pfrc_t pf_number_tmul (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+{
+	hak_ooi_t i;
+	hak_oop_t arg, ret;
+
+	ret = HAK_STACK_GETARG(hak, nargs, 0);
+	for (i = 1; i < nargs; i++)
+	{
+		arg = HAK_STACK_GETARG(hak, nargs, i);
+		ret = hak_tmulnums(hak, ret, arg);
+		if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
+	}
+
+	HAK_STACK_SETRET(hak, nargs, ret);
+	return HAK_PF_SUCCESS;
+}
+
+/* (core.~/ x y ...) - divide, giving a fixed-point decimal result the scale of
+ * the dividend rather than the wider of the two that '/' uses. */
+static hak_pfrc_t pf_number_tdiv (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+{
+	hak_ooi_t i;
+	hak_oop_t arg, ret;
+
+	ret = HAK_STACK_GETARG(hak, nargs, 0);
+	for (i = 1; i < nargs; i++)
+	{
+		arg = HAK_STACK_GETARG(hak, nargs, i);
+		ret = hak_tdivnums(hak, ret, arg);
+		if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
+	}
+
+	HAK_STACK_SETRET(hak, nargs, ret);
+	return HAK_PF_SUCCESS;
+}
+
+/* [NOTE] query() finds an entry by binary search, so this table has to stay
+ *        sorted by name. '~' sorts after every letter, which is why the '~'
+ *        entries sit at the end. */
 static hak_pfinfo_t pfinfos[] =
 {
 	{ "*",                  { HAK_PFBASE_FUNC, hak_pf_number_mul,             1, HAK_TYPE_MAX(hak_oow_t) } },
@@ -933,6 +975,8 @@ static hak_pfinfo_t pfinfos[] =
 	{ "terminate-all",      { HAK_PFBASE_FUNC, hak_pf_process_terminate_all,  0,  0 } },
 	{ "yield",              { HAK_PFBASE_FUNC, hak_pf_process_yield,          0,  0 } },
 
+	{ "~*",                 { HAK_PFBASE_FUNC, pf_number_tmul,                1,  HAK_TYPE_MAX(hak_oow_t) } },
+	{ "~/",                 { HAK_PFBASE_FUNC, pf_number_tdiv,                1,  HAK_TYPE_MAX(hak_oow_t) } },
 	{ "~=",                 { HAK_PFBASE_FUNC, hak_pf_number_ne,              2,  2 } },
 };
 

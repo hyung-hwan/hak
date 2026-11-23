@@ -184,22 +184,38 @@ printf "%O\n" ((a + b):amt)      ## 15, the same as ((a:#+ b):amt)
 Arithmetic and comparison:
 
 ```
-+  -  *  ~*  /  ~/  div  rem  mdiv  mod  sqrt  abs
++  -  *  /  div  rem  mdiv  mod  sqrt  abs
 <  <=  >  >=  =  ==  !=
 bit-and  bit-or  bit-xor  bit-not  bit-shift  bit-left-shift  bit-right-shift
 ```
 
-`*` and `/` give a fixed-point decimal result the wider of the two operand
-scales; `~*` and `~/` give it the scale of the first operand and truncate the
-rest away toward zero.
+`/` between two integers is integer division. An integer carries no scale, the
+result takes the wider of the two scales, and the wider of none and none is
+none - so the fraction has nowhere to go and is truncated toward zero:
 
 ```
-(* 1.00 12.123)   ## 12.123          (/ 10 4.00)    ## 2.50
-(~* 1.00 12.123)  ## 12.12           (~/ 10 4.00)   ## 2
+(/ 1 3)      ## 0           (/ 7 2)      ## 3
+(/ 1 3.0)    ## 0.3         (/ -7 2)     ## -3, toward zero rather than down
+(/ 1.00 3)   ## 0.33
 ```
 
-`div` and `rem` are the truncating integer quotient and remainder; `mdiv` and
-`mod` are their floored counterparts.
+Give either side a scale and the fraction is kept. Where the intent is integer
+division, `div` says so and cannot be misread: `div` and `rem` are the
+truncating quotient and remainder, `mdiv` and `mod` their floored
+counterparts, so `(div -7 2)` is `-3` while `(mdiv -7 2)` is `-4`.
+
+For a fixed-point decimal, `*` and `/` give the result the wider of the two
+operand scales. `core.~*` and `core.~/` give it the scale of the first operand
+instead, truncating the rest away toward zero:
+
+```
+(* 1.00 12.123)        ## 12.123     (/ 10 4.00)        ## 2.50
+(core.~* 1.00 12.123)  ## 12.12      (core.~/ 10 4.00)  ## 2
+```
+
+A quotient is the one case where the scale is a choice rather than a
+consequence: `1/3` does not terminate, so unlike a sum or a product there is
+no scale that falls out of the operands.
 
 Logic and equality - `and` and `or` are short-circuit special forms, while
 `_and` and `_or` are ordinary functions that evaluate every argument:
