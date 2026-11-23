@@ -1485,9 +1485,9 @@ static HAK_INLINE hak_oow_t multiply_unsigned_array_karatsuba (hak_t* hak, const
 	hak_lidw_t nshifts;
 	hak_lidw_t ndigits_xh, ndigits_xl;
 	hak_lidw_t ndigits_yh, ndigits_yl;
-	hak_liw_t* tmp[2] = { HAK_NULL, HAK_NULL};
+	hak_liw_t* tmp[3] = { HAK_NULL, HAK_NULL, HAK_NULL };
 	hak_liw_t* zsp;
-	hak_oow_t tmplen[2];
+	hak_oow_t tmplen[3];
 	hak_oow_t xlen, zcapa;
 
 	zcapa = xs + ys; /* the caller ensures this capacity for z at the minimum*/
@@ -1555,16 +1555,28 @@ static HAK_INLINE hak_oow_t multiply_unsigned_array_karatsuba (hak_t* hak, const
 	/*HAK_DEBUG6 (hak, "karatsuba t %p u %p ndigits_xl %d ndigits_xh %d ndigits_yl %d ndigits_yh %d\n", tmp[0], tmp[1], (int)ndigits_xl, (int)ndigits_xh, (int)ndigits_yl, (int)ndigits_yh);*/
 	/*HAK_DEBUG5 (hak, "zcapa %d, tmplen[0] %d tmplen[1] %d nshifts %d total %d\n", (int)zcapa, (int)tmplen[0], (int)tmplen[1], (int)nshifts, (int)(tmplen[0] + tmplen[1] + nshifts));*/
 
-	/* place (a0 + a1) * (b0 + b1) at the shifted position */
-	zsp = z + nshifts;
+	/* tmp[2] = (a0 + a1) * (b0 + b1).
+	 *
+	 * this product gets a buffer of its own rather than being written
+	 * straight into 'z' at the shifted position. it takes up to
+	 * tmplen[0] + tmplen[1] words, and the shift puts it at
+	 * nshifts + tmplen[0] + tmplen[1] - up to two words beyond the
+	 * xs + ys words the caller has given for 'z', because each of the
+	 * two sums may carry into a word of its own. only after the two
+	 * subtractions below does it come back down to a0b1 + a1b0, which
+	 * is small enough for the room that is there. */
+	tmplen[2] = tmplen[0] + tmplen[1];
+	tmp[2] = (hak_liw_t*)hak_callocmem(hak, HAK_SIZEOF(hak_liw_t) * tmplen[2]);
+	if (HAK_UNLIKELY(!tmp[2])) goto oops;
+
 	if (CANNOT_KARATSUBA(hak, tmplen[0], tmplen[1]))
 	{
-		multiply_unsigned_array (tmp[0], tmplen[0], tmp[1], tmplen[1], zsp);
-		xlen = count_effective(zsp, tmplen[0] + tmplen[1]);
+		multiply_unsigned_array (tmp[0], tmplen[0], tmp[1], tmplen[1], tmp[2]);
+		xlen = count_effective(tmp[2], tmplen[2]);
 	}
 	else
 	{
-		xlen = multiply_unsigned_array_karatsuba(hak, tmp[0], tmplen[0], tmp[1], tmplen[1], zsp);
+		xlen = multiply_unsigned_array_karatsuba(hak, tmp[0], tmplen[0], tmp[1], tmplen[1], tmp[2]);
 		if (xlen == 0) goto oops;
 	}
 
@@ -1597,10 +1609,17 @@ static HAK_INLINE hak_oow_t multiply_unsigned_array_karatsuba (hak_t* hak, const
 	}
 
 	/* (a0+a1)*(b0+b1) -(a0*b0) */
-	xlen = subtract_unsigned_array(hak, zsp, xlen, tmp[0], tmplen[0], zsp);
+	xlen = subtract_unsigned_array(hak, tmp[2], xlen, tmp[0], tmplen[0], tmp[2]);
 
 	/* (a0+a1)*(b0+b1) - (a0*b0) - (a1*b1) */
-	xlen = subtract_unsigned_array(hak, zsp, xlen, tmp[1], tmplen[1], zsp);
+	xlen = subtract_unsigned_array(hak, tmp[2], xlen, tmp[1], tmplen[1], tmp[2]);
+
+	/* what is left is a0b1 + a1b0. add it to 'z' at the shifted position
+	 * for "* B^n". it needs no more than xs + 1 words and the room from
+	 * nshifts on is xs + ys - nshifts, which is at least that. */
+	zsp = z + nshifts;
+	add_unsigned_array(zsp, zcapa - nshifts, tmp[2], xlen, zsp);
+
 	/* a1b1 is in tmp[1]. add (a1b1 * B^2n) to the high part of 'z' */
 	zsp = z + (nshifts * 2); /* emulate shifting for "* B^2n". */
 	xlen = zcapa - (nshifts * 2);
@@ -1609,11 +1628,13 @@ static HAK_INLINE hak_oow_t multiply_unsigned_array_karatsuba (hak_t* hak, const
 	/* z = z + a0b0. a0b0 is in tmp[0] */
 	xlen = add_unsigned_array(z, zcapa, tmp[0], tmplen[0], z);
 
+	hak_freemem(hak, tmp[2]);
 	hak_freemem(hak, tmp[1]);
 	hak_freemem(hak, tmp[0]);
-	return count_effective(z, xlen);
+	return count_effective(z, zcapa);
 
 oops:
+	if (tmp[2]) hak_freemem(hak, tmp[2]);
 	if (tmp[1]) hak_freemem(hak, tmp[1]);
 	if (tmp[0]) hak_freemem(hak, tmp[0]);
 	return 0;
@@ -1657,7 +1678,7 @@ oops:
 		}
 
 		z[i] = carry;
-		return;
+		return count_effective(z, xs + 1);
 	}
 
 	/* calculate value of nshifts, that is 2^(HAK_LIW_BITS*nshifts) */

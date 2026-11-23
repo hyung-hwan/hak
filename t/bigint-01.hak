@@ -177,5 +177,32 @@ while (< round 100) {
 	round := (+ round 1)
 }
 
+## ----------------------------------------------------------------------------
+## karatsuba multiplication at the operand shapes that leave its recursion the
+## least room. the middle term (a0+a1)*(b0+b1) is up to two limbs wider than
+## the halves it is built from, so once shifted into place it reaches past the
+## xs+ys limbs a product is given and has to be built in a buffer of its own.
+## the shape that comes closest is an odd number of limbs against just over
+## half that many, with every bit set so that both sums carry.
+##
+## the limb width is not visible from here, so the sweep steps by 32 bits and
+## covers whatever it turns out to be. (2^a - 1) * (2^b - 1) is
+## 2^(a+b) - 2^a - 2^b + 1 and (2^a - 1)^2 is 2^2a - 2^(a+1) + 1, so the
+## expected value costs a few shifts rather than a thousand-digit literal.
+
+fun allones(bits) { return (- (bit-shift 1 bits) 1) }
+
+var ka kb
+ka := 1024
+while (<= ka 4224) {
+	kb := (+ (/ ka 2) 32)
+	while (<= kb (+ (/ ka 2) 96)) {
+		chk (== (* (allones ka) (allones kb)) (+ (- (- (bit-shift 1 (+ ka kb)) (bit-shift 1 ka)) (bit-shift 1 kb)) 1)) "a product of all-one-bit operands at a lopsided karatsuba shape"
+		kb := (+ kb 32)
+	}
+	chk (== (* (allones ka) (allones ka)) (+ (- (bit-shift 1 (* ka 2)) (bit-shift 1 (+ ka 1))) 1)) "a square of an all-one-bit operand"
+	ka := (+ ka 32)
+}
+
 if (== fails 0) { printf "OK: %d checks passed\n" checks } \
 else { printf "ERROR: %d of %d checks failed\n" fails checks }

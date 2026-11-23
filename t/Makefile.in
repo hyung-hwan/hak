@@ -571,6 +571,7 @@ check_SCRIPTS = \
 	dic-01.hak \
 	explicit-01.hak \
 	feed-01.hak \
+	fpdec-01.hak \
 	fork-01.hak \
 	fork-02.hak \
 	fun-01.hak \

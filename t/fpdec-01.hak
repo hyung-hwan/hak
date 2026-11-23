@@ -1,0 +1,112 @@
+## fixed-point decimal arithmetic.
+##
+## a fixed-point decimal is an integer and a scale: 1.250 is 1250 at scale 3.
+## the scale is part of the value and survives printing, so 1.5 and 1.50 are
+## equal in value and distinct in how they show.
+##
+## the rules the operators follow:
+##   +  -   the wider of the two scales, exactly
+##   *      the wider of the two scales, the extra digits of the full product
+##          truncated toward zero
+##   mlt    the scale of the first operand, truncated the same way
+##   compare  exact, after both sides are brought to a common scale
+## a result that lands at scale 0 is an ordinary integer again.
+
+var fails checks
+fails := 0
+checks := 0
+
+fun chk(ok msg) {
+	checks := (+ checks 1)
+	if (not ok) {
+		fails := (+ fails 1)
+		printf "ERROR: %s\n" msg
+	}
+}
+
+## 'eqv?' on a string is identity, and the printed form is a fresh object every
+## time, so the characters have to be walked.
+fun streq(a b) {
+	| i n |
+	n := (core.basicSize a)
+	if (!= n (core.basicSize b)) { return false }
+	i := 0
+	while (< i n) {
+		if (not (eqv? (core.basicAt a i) (core.basicAt b i))) { return false }
+		i := (+ i 1)
+	}
+	return true
+}
+
+## a scale is not a value, so == cannot see it. compare the printed form to
+## check that one was kept.
+fun chks(v want msg) {
+	checks := (+ checks 1)
+	if (not (streq (sprintf "%O" v) want)) {
+		fails := (+ fails 1)
+		printf "ERROR: %s - wanted %s, got %O\n" msg want v
+	}
+}
+
+## ----------------------------------------------------------------------------
+## the literal itself
+
+chks 1.5 "1.5" "a literal keeps its scale"
+chks 1.50 "1.50" "a trailing zero is part of the scale"
+chks 0.005 "0.005" "a value shorter than its scale is padded"
+chks -0.005 "-0.005" "...and so is a negative one"
+chk (== 1.5 1.50) "equal values at different scales are equal"
+chk (== 1.0 1) "a fixed-point decimal equals the integer it names"
+chk (not (< 1.5 1.50)) "...and is not less than it"
+
+## ----------------------------------------------------------------------------
+## addition and subtraction take the wider scale and lose nothing
+
+chks (+ 1.5 2.25) "3.75" "a sum takes the wider scale"
+chks (- 1.5 2.25) "-0.75" "a difference takes the wider scale"
+chks (+ 1.5 1) "2.5" "an integer operand counts as scale 0"
+chks (+ 1 1.5) "2.5" "...from either side"
+chks (- 1 1.5) "-0.5" "a difference may cross zero"
+chks (+ 0.001 0.004) "0.005" "a sum may be shorter than its scale"
+
+## ----------------------------------------------------------------------------
+## multiplication. '*' widens to the wider operand, 'mlt' stays at the first.
+
+chks (* 1.00 12.123) "12.123" "a product takes the wider scale"
+chks (mlt 1.00 12.123) "12.12" "mlt stays at the scale of the first operand"
+chks (* 10 4.00) "40.00" "an integer times a decimal keeps the decimal scale"
+chks (* 1.005 1.004) "1.009" "the digits past the wider scale are dropped"
+chks (* -1.005 1.004) "-1.009" "...toward zero, not downward"
+chks (mlt 1.5 1.5) "2.2" "mlt truncates to the first scale"
+chk (== (* 1.5 2) 3) "a product that lands on a whole number is still equal to it"
+
+## ----------------------------------------------------------------------------
+## comparison is exact once the scales are brought together
+
+chk (> 2.5 1.50) "greater across scales"
+chk (< 1.50 2.5) "less across scales"
+chk (>= 1.5 1.50) "greater or equal across scales"
+chk (<= 1.5 1.50) "less or equal across scales"
+chk (!= 1.5 1.51) "a digit past the shorter scale still counts"
+chk (< -1.5 -1.4) "negative values order the right way round"
+
+## ----------------------------------------------------------------------------
+## abs, negation and square root keep the scale
+
+chks (abs -1.25) "1.25" "abs keeps the scale"
+chks (abs 1.25) "1.25" "abs of a positive value is itself"
+chks (- 0 1.25) "-1.25" "negation keeps the scale"
+chks (core.sqrt 2.25) "1.50" "a square root keeps the scale"
+chks (core.sqrt 2.0000) "1.4142" "a square root is truncated to the scale"
+chk (<= (* (core.sqrt 2.0000) (core.sqrt 2.0000)) 2.0000) "a square root does not overshoot"
+
+## ----------------------------------------------------------------------------
+## a large value is still a fixed-point decimal
+
+var big
+big := 123456789012345678901234567890.25
+chks (+ big 0.75) "123456789012345678901234567891.00" "a sum carries across the point at any size"
+chks (* big 4) "493827156049382715604938271561.00" "a product carries across the point at any size"
+
+if (== fails 0) { printf "OK: %d checks passed\n" checks } \
+else { printf "ERROR: %d of %d checks failed\n" fails checks }

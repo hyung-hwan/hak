@@ -357,12 +357,11 @@ hak_oop_t hak_sqrtnum (hak_t* hak, hak_oop_t x)
 		v = ((hak_oop_fpdec_t)x)->value;
 		for (i = 0; i < scale ; i++)
 		{
+			/* v is replaced by the result on every turn, so it needs no
+			 * protection across the call, and nothing has been pushed here
+			 * to pop on the way out. */
 			v = hak_mulints(hak, v, HAK_SMOOI_TO_OOP(10));
-			if (!v)
-			{
-				hak_popvolat(hak);
-				return HAK_NULL;
-			}
+			if (HAK_UNLIKELY(!v)) return HAK_NULL;
 		}
 
 		v = hak_sqrtint(hak, v);
