@@ -1,70 +1,86 @@
-## test big integer operations
-## hak --log /dev/null,warn+ test-bi.hak
+## large integer soak test - not part of 'make check'.
+##
+## t/bigint-01.hak is the bounded, fixed-seed version that the suite runs. this
+## one is for leaving running: it draws fresh operands from a seed taken off the
+## clock and keeps going until it has done ROUNDS of them.
+##
+##     hak -I ../src t/test-bi.hak
+##
+## two things it does on purpose, both learned the hard way:
+##
+##   - it prints the seed before it starts. a failure found with a clock-derived
+##     seed cannot be reproduced otherwise, which makes the report useless.
+##
+##   - it is bounded, and it does not write to the terminal on every round. an
+##     unbounded loop with a per-round write pegs a core and never exits, so it
+##     cannot be run from a script, left in a build, or timed out politely.
+##     raise ROUNDS, or set it to 0 to run until stopped, deliberately.
+##
+## the division contract is checked in full. 'q * d + r == n' on its own is
+## satisfied by q = 0, r = n, so a division that answered that for every input
+## would pass an identity-only test - and because a divisor drawn independently
+## of the dividend is larger about half the time, half such a run would be
+## asserting nothing at all. the bound on the remainder is what gives the
+## identity its teeth, and the divisor is built no longer than the dividend.
 
-##(sys.srandom (sys.time))
-##(set count 0)
-##(while true
-##	(printf "%O\r" count)
-##	(set count (+ count 1))
-##
-##	(set limit (rem (sys.random) 30))
-##	(set dividend (sys.random))
-##	(set i 1)
-##	(while (< i limit)
-##		(set dividend (bit-or (bit-shift dividend 30) (sys.random)))
-##		(set i (+ i 1))
-##	)
-##
-##	(set limit (rem (sys.random) 30))
-##	(set divisor (sys.random))
-##	(set i 1)
-##	(while (< i limit)
-##		(set divisor (bit-or (bit-shift divisor 30) (sys.random)))
-##		(set i (+ i 1))
-##	)
-##
-##	(set quotient (/ dividend divisor))
-##	(set remainder (rem dividend divisor))
-##	(set derived_dividend (+ (* quotient divisor) remainder))
-##
-##	(if (!= dividend derived_dividend)
-##		(printf ">> dividend %O\n>> divisor %O\n>> quotient %O\n>> remainder %O\n>> derived_dividend %O\n"
-##			dividend divisor quotient remainder derived_dividend)
-##		(break)
-##	)
-##)
-##(printf "\n")
+var ROUNDS REPORT LIMB
+ROUNDS := 100000    ## 0 means run until interrupted
+REPORT := 10000     ## print a progress line every this many rounds, 0 for none
+LIMB := 1073741823  ## 2^30 - 1, the mask that keeps each draw inside one limb
 
-sys.srandom (sys.time)
-set count 0
-while true {
-	printf "%O\r" count
-	set count (+ count 1)
+var seed fails rounds
+seed := (sys.time)
+fails := 0
+rounds := 0
 
-	set limit (rem (sys.random) 30)
-	set dividend (sys.random)
-	set i 1
-	while (< i limit) {
-		set dividend (bit-or (bit-shift dividend 30) (sys.random))
-		set i (+ i 1)
+sys.srandom seed
+printf "seed %d, %d rounds\n" seed ROUNDS
+
+fun rndint(limbs) {
+	| v i |
+	v := 0
+	i := 0
+	while (< i limbs) {
+		v := (bit-or (bit-shift v 30) (bit-and (sys.random) LIMB))
+		i := (+ i 1)
 	}
+	return v
+}
 
-	set limit (rem (sys.random) 30)
-	set divisor (sys.random)
-	set i 1
-	while (< i limit) {
-		set divisor (bit-or (bit-shift divisor 30) (sys.random))
-		set i (+ i 1)
+fun report(n d q r why) {
+	fails := (+ fails 1)
+	printf "ERROR: %s\n>> seed      %d\n>> dividend  %O\n>> divisor   %O\n>> quotient  %O\n>> remainder %O\n" \
+		why seed n d q r
+}
+
+var n d q r nk
+while (or (== ROUNDS 0) (< rounds ROUNDS)) {
+	rounds := (+ rounds 1)
+
+	nk := (+ 1 (rem (sys.random) 30))
+	n := (rndint nk)
+	d := (rndint (+ 1 (rem (sys.random) nk)))
+	if (== d 0) { d := 1 }
+
+	## all four sign combinations, rotated so none is left out
+	if (>= (rem rounds 4) 2) { n := (- 0 n) }
+	if (== (rem rounds 2) 1) { d := (- 0 d) }
+
+	q := (/ n d)
+	r := (rem n d)
+
+	if (!= n (+ (* q d) r)) { report n d q r "q * d + r is not the dividend" }
+	if (>= (abs r) (abs d)) { report n d q r "the remainder is not smaller than the divisor" }
+	if (!= r 0) {
+		if (not (eqv? (< r 0) (< n 0))) { report n d q r "the remainder does not carry the sign of the dividend" }
 	}
+	if (>= (abs (mod n d)) (abs d)) { report n d q r "the floored remainder is not smaller than the divisor" }
+	if (!= n (core.basicAt (sscanf "%d" (sprintf "%d" n)) 0)) { report n d q r "the dividend does not survive a decimal round trip" }
 
-	set quotient (/ dividend divisor)
-	set remainder (rem dividend divisor)
-	set derived_dividend (+ (* quotient divisor) remainder)
-
-	if (!= dividend derived_dividend) {
-		printf ">> dividend %O\n>> divisor %O\n>> quotient %O\n>> remainder %O\n>> derived_dividend %O\n" \
-			dividend divisor quotient remainder derived_dividend
-		break
+	if (!= REPORT 0) {
+		if (== (rem rounds REPORT) 0) { printf "%d rounds, %d failures\n" rounds fails }
 	}
 }
-printf "\n"
+
+if (== fails 0) { printf "OK: %d rounds, no failures (seed %d)\n" rounds seed } \
+else { printf "ERROR: %d failures in %d rounds (seed %d)\n" fails rounds seed }

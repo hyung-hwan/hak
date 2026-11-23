@@ -2874,12 +2874,32 @@ hak_oop_t hak_divints (hak_t* hak, hak_oop_t x, hak_oop_t y, int modulo, hak_oop
 					ri = carry;
 					if (x_neg_sign) ri = -ri;
 
+					/* the class must be set before normalize_bigint(), which
+					 * answers a small integer once the result fits in one - and
+					 * a small integer is an immediate value with no class field
+					 * to write to. the general path below spells out the same
+					 * rule for the remainder. */
+					if (x_neg_sign != y_neg_sign)
+					{
+						/* OPTION[1] */
+						HAK_OBJ_SET_CLASS(z, (hak_oop_t)hak->c_large_negative_integer);
+						/* this could be done using OPTION[2] */
+					}
+
 					z = normalize_bigint(hak, z);
 					if (HAK_UNLIKELY(!z)) return HAK_NULL;
 
 					if (x_neg_sign != y_neg_sign)
 					{
-						HAK_OBJ_SET_CLASS (z, (hak_oop_t)hak->c_large_negative_integer);
+						/*
+						if (HAK_OOP_IS_POINTER(z))
+							HAK_OBJ_SET_CLASS(z, (hak_oop_t)hak->c_large_negative_integer);
+						else
+							z = HAK_SMOOI_TO_OOP(-HAK_OOP_TO_SMOOI(z));
+
+						OPTION[2] these 4 lines have been commented out because the same
+						          logic has been hoisted OPTION[1]
+						 */
 						if (ri && modulo)
 						{
 							z = hak_subints(hak, z, HAK_SMOOI_TO_OOP(1));

@@ -11,6 +11,7 @@ LDADD = ../lib/libhak.la
 
 check_SCRIPTS = \
 	assign-01.hak \
+	bigint-01.hak \
 	char-01.hak \
 	classof-01.hak \
 	comma-01.hak \

@@ -1,0 +1,152 @@
+## large integer arithmetic.
+##
+## the properties below are checked over a table of edge cases first and then
+## over generated operands. the generated part uses a fixed seed so that a
+## failure is reproducible - change SEED to (sys.time) to fuzz, and print it if
+## you do, or a failure cannot be reproduced.
+##
+## what makes a division test worth running is the whole contract, not just the
+## reconstruction identity. 'q * d + r == n' is satisfied by q = 0, r = n, so a
+## division that answered that for everything would pass an identity-only test.
+## the bound on the remainder is what rules it out.
+##
+## hak divides toward zero: (/ -7 3) is -2 and (rem -7 3) is -1, so the
+## remainder carries the sign of the dividend. 'mod' is the floored one and
+## carries the sign of the divisor - see the separate check below.
+
+var fails checks
+fails := 0
+checks := 0
+
+fun chk(ok msg) {
+	checks := (+ checks 1)
+	if (not ok) {
+		fails := (+ fails 1)
+		printf "ERROR: %s\n" msg
+	}
+}
+
+## ----------------------------------------------------------------------------
+## the division contract, asserted in one place so every caller agrees on it.
+
+fun chkdiv(n d msg) {
+	| q r |
+	q := (/ n d)
+	r := (rem n d)
+	chk (== n (+ (* q d) r)) msg
+	chk (< (abs r) (abs d)) msg
+	if (!= r 0) { chk (eqv? (< r 0) (< n 0)) msg }
+	## the floored counterpart never disagrees about the magnitude
+	chk (< (abs (mod n d)) (abs d)) msg
+}
+
+## ----------------------------------------------------------------------------
+## edge cases. these are the values a generator almost never produces, and they
+## sit exactly where the representation changes: this build keeps integers up to
+## 2^60 as a SmallInteger and promotes at 2^61, and the generator below builds
+## its operands 30 bits at a time, so 2^30 is a limb boundary too.
+
+var edges n i j
+edges := #[
+	1, 2, 3,
+	1073741823, 1073741824, 1073741825,            ## 2^30 - 1, 2^30, 2^30 + 1
+	1152921504606846975, 1152921504606846976,      ## 2^60 - 1, 2^60
+	1152921504606846977, 2305843009213693952,      ## 2^60 + 1, 2^61 - the promotion
+	123456789012345678901234567890,
+	99999999999999999999999999999999999999
+]
+
+n := (core.basicSize edges)
+i := 0
+while (< i n) {
+	j := 0
+	while (< j n) {
+		chkdiv (core.basicAt edges i) (core.basicAt edges j) "edge / edge"
+		chkdiv (- 0 (core.basicAt edges i)) (core.basicAt edges j) "-edge / edge"
+		chkdiv (core.basicAt edges i) (- 0 (core.basicAt edges j)) "edge / -edge"
+		chkdiv (- 0 (core.basicAt edges i)) (- 0 (core.basicAt edges j)) "-edge / -edge"
+		j := (+ j 1)
+	}
+	## zero divides cleanly by anything; nothing divides by zero
+	chkdiv 0 (core.basicAt edges i) "0 / edge"
+	i := (+ i 1)
+}
+
+var threw
+threw := false
+try { (/ 1 0) } catch (e) { threw := true }
+chk threw "division by zero is refused"
+
+## ----------------------------------------------------------------------------
+## generated operands.
+##
+## the divisor is built with no more limbs than the dividend. drawing the two
+## sizes independently - as a first cut naturally does - leaves the divisor
+## larger about half the time, and every one of those rounds asserts nothing
+## beyond 0 * d + n == n.
+
+var SEED ROUNDS LIMB
+SEED := 20240101
+ROUNDS := 400
+LIMB := 1073741823   ## 2^30 - 1, the mask that keeps each draw to one limb
+
+sys.srandom SEED
+
+fun rndint(limbs) {
+	| v i |
+	v := 0
+	i := 0
+	while (< i limbs) {
+		v := (bit-or (bit-shift v 30) (bit-and (sys.random) LIMB))
+		i := (+ i 1)
+	}
+	return v
+}
+
+var round dk vk a b sign
+round := 0
+while (< round ROUNDS) {
+	dk := (+ 1 (rem (sys.random) 20))
+	vk := (+ 1 (rem (sys.random) dk))
+	a := (rndint dk)
+	b := (rndint vk)
+	if (== b 0) { b := 1 }
+
+	## all four sign combinations, rotated so each is reached deterministically
+	sign := (rem round 4)
+	if (>= sign 2) { a := (- 0 a) }
+	if (== (rem sign 2) 1) { b := (- 0 b) }
+
+	chkdiv a b "generated / generated"
+
+	## round trips through the other operations
+	chk (== a (- (+ a b) b)) "add then subtract returns the original"
+	chk (== a (/ (* a b) b)) "multiply then divide returns the original"
+	chk (== (abs a) (abs (- 0 a))) "negation does not change the magnitude"
+
+	## printing and parsing are separate code paths from the arithmetic
+	chk (== a (core.basicAt (sscanf "%d" (sprintf "%d" a)) 0)) "decimal round trip"
+
+	## a left shift followed by the matching right shift is the identity on a
+	## non-negative value
+	chk (== (abs a) (bit-shift (bit-shift (abs a) 97) -97)) "shift round trip"
+
+	round := (+ round 1)
+}
+
+## ----------------------------------------------------------------------------
+## integer square root, where the contract is a pair of bounds rather than an
+## identity: s*s must not exceed n, and (s+1)^2 must.
+
+var s v
+round := 0
+while (< round 100) {
+	v := (rndint (+ 1 (rem (sys.random) 12)))
+	s := (core.sqrt v)
+	chk (<= (* s s) v) "isqrt does not overshoot"
+	chk (> (* (+ s 1) (+ s 1)) v) "isqrt is the largest such root"
+	round := (+ round 1)
+}
+
+if (== fails 0) { printf "OK: %d checks passed\n" checks } \
+else { printf "ERROR: %d of %d checks failed\n" fails checks }
