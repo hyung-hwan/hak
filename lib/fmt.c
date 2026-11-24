@@ -407,7 +407,7 @@ static int fmt_outv (hak_t* hak, hak_fmtout_t* fmtout, va_list ap)
 	hak_ooch_t padc;
 
 	int n, base, neg, sign;
-	hak_ooi_t tmp, width, precision;
+	hak_ooi_t tmp, width, precision, numarg;
 	int lm_flag, lm_dflag, flagc, numlen;
 
 	hak_uintmax_t num = 0;
@@ -617,9 +617,15 @@ static int fmt_outv (hak_t* hak, hak_fmtout_t* fmtout, va_list ap)
 		case '5': case '6': case '7': case '8': case '9':
 		{
 			if (flagc & FLAGC_LENMOD) goto invalid_format;
-			for (n = 0; ; fmtptr += fmtchsz)
+			/* the digits go into hak_ooi_t, the type 'width' and 'precision'
+			 * are held in. an int overflows at 2^31 and leaves a negative
+			 * width behind, which every padding test below then skips - the
+			 * field silently comes out unpadded. a count too large even for
+			 * hak_ooi_t is treated as a malformed specifier. */
+			for (numarg = 0; ; fmtptr += fmtchsz)
 			{
-				n = n * 10 + uch - '0';
+				if (numarg > (HAK_TYPE_MAX(hak_ooi_t) - (uch - '0')) / 10) goto invalid_format;
+				numarg = numarg * 10 + (uch - '0');
 				switch (fmtout->fmt_type)
 				{
 					case HAK_FMTOUT_FMT_TYPE_BCH:
@@ -634,13 +640,13 @@ static int fmt_outv (hak_t* hak, hak_fmtout_t* fmtout, va_list ap)
 			if (flagc & FLAGC_DOT)
 			{
 				if (flagc & FLAGC_STAR2) goto invalid_format;
-				precision = n;
+				precision = numarg;
 				flagc |= FLAGC_PRECISION;
 			}
 			else
 			{
 				if (flagc & FLAGC_STAR1) goto invalid_format;
-				width = n;
+				width = numarg;
 				flagc |= FLAGC_WIDTH;
 			}
 			goto reswitch;
@@ -2047,7 +2053,7 @@ static HAK_INLINE int format_stack_args (hak_t* hak, hak_fmtout_t* fmtout, hak_o
 	const hak_ooch_t* checkpoint, * percent;
 
 	int n, radix, neg, sign, radix_flags;
-	hak_ooi_t extra, width, precision;
+	hak_ooi_t extra, width, precision, numarg;
 	hak_ooch_t padc, ooch;
 	hak_ooci_t ch;
 	int flagc, lm_flag;
@@ -2212,22 +2218,25 @@ static HAK_INLINE int format_stack_args (hak_t* hak, hak_fmtout_t* fmtout, hak_o
 		case '1': case '2': case '3': case '4':
 		case '5': case '6': case '7': case '8': case '9':
 			if (flagc & FLAGC_LENMOD) goto invalid_format;
-			for (n = 0; ; ++fmtptr)
+			/* see the matching loop in fmt_outv() - an int accumulator
+			 * overflows at 2^31 and the padding is quietly lost. */
+			for (numarg = 0; ; ++fmtptr)
 			{
-				n = n * 10 + ch - '0';
+				if (numarg > (HAK_TYPE_MAX(hak_ooi_t) - (ch - '0')) / 10) goto invalid_format;
+				numarg = numarg * 10 + (ch - '0');
 				ch = *fmtptr;
 				if (ch < '0' || ch > '9') break;
 			}
 			if (flagc & FLAGC_DOT)
 			{
 				if (flagc & FLAGC_STAR2) goto invalid_format;
-				precision = n;
+				precision = numarg;
 				flagc |= FLAGC_PRECISION;
 			}
 			else
 			{
 				if (flagc & FLAGC_STAR1) goto invalid_format;
-				width = n;
+				width = numarg;
 				flagc |= FLAGC_WIDTH;
 			}
 			goto reswitch;

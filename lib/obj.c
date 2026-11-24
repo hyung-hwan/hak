@@ -493,6 +493,7 @@ hak_oop_t hak_makestringwithuchars (hak_t* hak, const hak_uch_t* ptr, hak_oow_t 
 #else
 	hak_oow_t xlen;
 	hak_ooch_t* xptr;
+	hak_oop_t v;
 
 	xptr = hak_duputooochars(hak, ptr, len, &xlen);
 	if (HAK_UNLIKELY(!xptr))
@@ -503,7 +504,12 @@ hak_oop_t hak_makestringwithuchars (hak_t* hak, const hak_uch_t* ptr, hak_oow_t 
 		return HAK_NULL;
 	}
 
-	return hak_makestring(hak, xptr, xlen);
+	/* hak_makestring() copies the characters into the new object, so the
+	 * converted buffer is only a staging area and is this function's to
+	 * release - as the symbol variants in sym.c do with theirs. */
+	v = hak_makestring(hak, xptr, xlen);
+	hak_freemem(hak, xptr);
+	return v;
 #endif
 }
 
@@ -512,6 +518,7 @@ hak_oop_t hak_makestringwithbchars (hak_t* hak, const hak_bch_t* ptr, hak_oow_t 
 #if defined(HAK_OOCH_IS_UCH)
 	hak_oow_t xlen;
 	hak_ooch_t* xptr;
+	hak_oop_t v;
 #endif
 	/* you must provide the payload when calling this variant. it can't figure out
 	 * the actual number of hak_ooch_t characters */
@@ -532,7 +539,11 @@ hak_oop_t hak_makestringwithbchars (hak_t* hak, const hak_bch_t* ptr, hak_oow_t 
 		return HAK_NULL;
 	}
 
-	return hak_makestring(hak, xptr, xlen);
+	/* see the note in hak_makestringwithuchars() - the converted buffer is
+	 * staging only and has to be released here. */
+	v = hak_makestring(hak, xptr, xlen);
+	hak_freemem(hak, xptr);
+	return v;
 #else
 	return hak_makestring(hak, ptr, len);
 #endif

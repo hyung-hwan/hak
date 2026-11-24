@@ -1,0 +1,94 @@
+## printf/sprintf - formatted output
+##
+## sprintf answers the formatted text as a String; printf writes the same text
+## to the output handler. Everything asserted here through sprintf therefore
+## holds for printf too.
+##
+## A specifier is % followed by flags, an optional field width, an optional
+## .precision, and the conversion letter. Width and precision may each be given
+## as * instead, taking the value from the next argument.
+##
+##     (sprintf "%10.5d" 42)   ## "     00042"
+##
+## A specifier the formatter cannot make sense of is copied through verbatim
+## rather than raising an error, so a malformed one shows up in the output.
+
+fun chk(ok msg) {
+	if ok { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s\n" msg }
+}
+
+## 'eqv?' on a string is identity and sprintf answers a fresh object every
+## time, so the characters have to be walked.
+fun streq(a b) {
+	| i n |
+	n := (core.basicSize a)
+	if (!= n (core.basicSize b)) { return false }
+	i := 0
+	while (< i n) {
+		if (not (eqv? (core.basicAt a i) (core.basicAt b i))) { return false }
+		i := (+ i 1)
+	}
+	return true
+}
+
+fun chks(got want msg) {
+	if (streq got want) { printf "OK: %s\n" msg } \
+	else { printf "ERROR: %s - wanted <%s>, got <%s>\n" msg want got }
+}
+
+## --- width and adjustment ----------------------------------------------------
+
+chks (sprintf "%d" 42) "42" "no width prints the digits alone"
+chks (sprintf "%10d" 42) "        42" "a width pads on the left"
+chks (sprintf "%-10d" 42) "42        " "'-' pads on the right"
+chks (sprintf "%010d" 42) "0000000042" "'0' pads with zeros"
+chks (sprintf "%*d" 8 42) "      42" "'*' takes the width from the argument"
+
+chks (sprintf "%10d" -42) "       -42" "a negative keeps its sign inside the padding"
+chks (sprintf "%-10d" -42) "-42       " "...left adjusted too"
+chks (sprintf "%010d" -42) "-000000042" "...and the sign leads the zero padding"
+
+## --- precision ---------------------------------------------------------------
+
+chks (sprintf "%.5d" 42) "00042" "a precision sets a minimum digit count"
+chks (sprintf "%10.5d" 42) "     00042" "width and precision apply together"
+chks (sprintf "%.*d" 6 42) "000042" "'*' takes the precision from the argument"
+chks (sprintf "%.1s" "abc") "a" "a precision truncates a string"
+
+## --- flags and radices -------------------------------------------------------
+
+chks (sprintf "%+d % d" 42 42) "+42  42" "'+' and ' ' place a sign on a positive"
+chks (sprintf "%x %X %o %b" 255 255 255 255) "ff FF 377 11111111" "the radix conversions"
+chks (sprintf "%#x %#o %#b" 255 255 255) "0xff 0o377 0b11111111" "'#' adds the radix prefix"
+chks (sprintf "%%") "%" "%% is a literal percent"
+
+## --- other conversions -------------------------------------------------------
+
+chks (sprintf "%s|%10s|%-10s" "ab" "ab" "ab") "ab|        ab|ab        " "strings pad like numbers"
+chks (sprintf "%c" 'z') "z" "a character"
+chks (sprintf "%O" 42) "42" "an object"
+chks (sprintf "%d" 123456789012345678901234567890) "123456789012345678901234567890" "a large integer"
+chks (sprintf "%20d" 1.25) "                   1" "a fixed-point decimal drops its fraction for %d"
+
+## --- out-of-range width and precision ----------------------------------------
+##
+## The digits of a width or a precision are accumulated in the same signed type
+## the formatter carries them in. A narrower accumulator wraps: a width just
+## past 2^31 used to come out negative, and every padding test then skipped it,
+## so the field was silently printed unpadded - while a longer run of digits
+## wrapped back to a large positive and emitted gigabytes of padding. A count
+## too large for the type is a malformed specifier instead.
+##
+## A width that does fit is honoured, so these cannot be checked by printing
+## one - the output would be gigabytes wide. The rejection is what is cheap to
+## assert, and it is what the wrapping used to hide.
+
+chks (sprintf "%99999999999999999999d" 7) "%99999999999999999999d" "a width too large for the counter is left verbatim"
+chks (sprintf "%9223372036854775808d" 7) "%9223372036854775808d" "...including one just past the signed maximum"
+chks (sprintf "%.99999999999999999999d" 7) "%.99999999999999999999d" "a precision too large is left verbatim too"
+
+## --- malformed specifiers ----------------------------------------------------
+
+chks (sprintf "%*d" -20 42) "%*d" "a negative '*' width is not a specifier hak accepts"
+chk (not (streq (sprintf "%10d" 42) (sprintf "%10d" 43))) "distinct values do not format alike"
