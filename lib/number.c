@@ -376,8 +376,18 @@ hak_oop_t hak_sqrtnum (hak_t* hak, hak_oop_t x)
 		hak_ooi_t i, scale;
 
 		scale = HAK_OOP_TO_SMOOI(((hak_oop_fpdec_t)x)->scale);
-
 		v = ((hak_oop_fpdec_t)x)->value;
+
+		/* reject a negative here rather than letting hak_sqrtint() do it. by the
+		 * time the value gets there it has been scaled up by 10^scale, and the
+		 * message would name that internal integer instead of the number the
+		 * caller passed - (sqrt -2.25) reporting '-22500'. */
+		if (HAK_OOP_IS_SMOOI(v)? (HAK_OOP_TO_SMOOI(v) < 0): HAK_IS_NBIGINT(hak, v))
+		{
+			hak_seterrbfmt(hak, HAK_EINVAL, "negative number - %O", x);
+			return HAK_NULL;
+		}
+
 		for (i = 0; i < scale ; i++)
 		{
 			/* v is replaced by the result on every turn, so it needs no
@@ -388,7 +398,7 @@ hak_oop_t hak_sqrtnum (hak_t* hak, hak_oop_t x)
 		}
 
 		v = hak_sqrtint(hak, v);
-		if (!v) return HAK_NULL;
+		if (HAK_UNLIKELY(!v)) return HAK_NULL;
 
 		return hak_makefpdec(hak, v, scale);
 	}
@@ -409,7 +419,7 @@ hak_oop_t hak_absnum (hak_t* hak, hak_oop_t x)
 		v = ((hak_oop_fpdec_t)x)->value;
 
 		v = hak_absint(hak, v);
-		if (!v) return HAK_NULL;
+		if (HAK_UNLIKELY(!v)) return HAK_NULL;
 
 		return hak_makefpdec(hak, v, scale);
 	}

@@ -426,88 +426,26 @@ int hak_inttoooi (hak_t* hak, hak_oop_t x, hak_ooi_t* i)
 #elif (HAK_SIZEOF_UINTMAX_T == HAK_SIZEOF_OOW_T * 2) || (HAK_SIZEOF_UINTMAX_T == HAK_SIZEOF_OOW_T * 4)
 static HAK_INLINE int bigint_to_uintmax_noseterr (hak_t* hak, hak_oop_t num, hak_uintmax_t* w)
 {
+	hak_oow_t i, sz;
+	hak_uintmax_t v;
+
 	HAK_ASSERT(hak, HAK_OOP_IS_POINTER(num));
 	HAK_ASSERT(hak, HAK_IS_PBIGINT(hak, num) || HAK_IS_NBIGINT(hak, num));
 
-#if (HAK_LIW_BITS == HAK_OOW_BITS)
-	HAK_ASSERT(hak, HAK_OBJ_GET_SIZE(num) >= 1);
+	sz = HAK_OBJ_GET_SIZE(num);
+	if (sz > HAK_SIZEOF_UINTMAX_T / HAK_SIZEOF_LIW_T) return 0; /* not convertable */
 
-	switch (HAK_OBJ_GET_SIZE(num))
+	/* word 0 is the least significant one, so the words are folded in from
+	 * the top down. this takes any word count that fits rather than the
+	 * handful the shifts used to be written out for. */
+	v = 0;
+	for (i = sz; i > 0; )
 	{
-		case 1:
-			*w = (hak_uintmax_t)HAK_OBJ_GET_WORD_VAL(num, 0);
-			goto done;
-
-		case 2:
-			*w = ((hak_uintmax_t)HAK_OBJ_GET_WORD_VAL(num, 0) << HAK_LIW_BITS) |
-			     ((hak_uintmax_t)HAK_OBJ_GET_WORD_VAL(num, 1));
-			goto done;
-
-	#if (HAK_SIZEOF_UINTMAX_T >= HAK_SIZEOF_OOW_T * 4)
-		case 3:
-			*w = ((hak_uintmax_t)HAK_OBJ_GET_WORD_VAL(num, 0) << (HAK_LIW_BITS * 2)) |
-			     ((hak_uintmax_t)HAK_OBJ_GET_WORD_VAL(num, 1) << (HAK_LIW_BITS * 1)) |
-			     ((hak_uintmax_t)HAK_OBJ_GET_WORD_VAL(num, 2))
-			goto done;
-
-		case 4:
-			*w = ((hak_uintmax_t)HAK_OBJ_GET_WORD_VAL(num, 0) << (HAK_LIW_BITS * 3)) |
-			     ((hak_uintmax_t)HAK_OBJ_GET_WORD_VAL(num, 1) << (HAK_LIW_BITS * 2)) |
-			     ((hak_uintmax_t)HAK_OBJ_GET_WORD_VAL(num, 2) << (HAK_LIW_BITS * 1)) |
-			     ((hak_uintmax_t)HAK_OBJ_GET_WORD_VAL(num, 3))
-			goto done;
-	#endif
-
-		default:
-			return 0; /* not convertable */
+		--i;
+		v = (v << HAK_LIW_BITS) | (hak_uintmax_t)HAK_OBJ_GET_LIWORD_VAL(num, i);
 	}
 
-#elif (HAK_LIW_BITS == HAK_OOHW_BITS)
-	HAK_ASSERT(hak, HAK_OBJ_GET_SIZE(num) >= 2);
-	switch (HAK_OBJ_GET_SIZE(num))
-	{
-		case 2:
-			*w = ((hak_uintmax_t)HAK_OBJ_GET_HALFWORD_VAL(num, 0) << HAK_LIW_BITS) |
-			     ((hak_uintmax_t)HAK_OBJ_GET_HALFWORD_VAL(num, 1));
-			goto done;
-
-		case 4:
-			*w = ((hak_uintmax_t)HAK_OBJ_GET_HALFWORD_VAL(num, 0) << (HAK_LIW_BITS * 3)) |
-			     ((hak_uintmax_t)HAK_OBJ_GET_HALFWORD_VAL(num, 1) << (HAK_LIW_BITS * 2)) |
-			     ((hak_uintmax_t)HAK_OBJ_GET_HALFWORD_VAL(num, 2) << (HAK_LIW_BITS * 1)) |
-			     ((hak_uintmax_t)HAK_OBJ_GET_HALFWORD_VAL(num, 3));
-			goto done;
-
-	#if (HAK_SIZEOF_UINTMAX_T >= HAK_SIZEOF_OOW_T * 4)
-		case 6:
-			*w = ((hak_uintmax_t)HAK_OBJ_GET_HALFWORD_VAL(num, 0) << (HAK_LIW_BITS * 5)) |
-			     ((hak_uintmax_t)HAK_OBJ_GET_HALFWORD_VAL(num, 1) << (HAK_LIW_BITS * 4)) |
-			     ((hak_uintmax_t)HAK_OBJ_GET_HALFWORD_VAL(num, 2) << (HAK_LIW_BITS * 3)) |
-			     ((hak_uintmax_t)HAK_OBJ_GET_HALFWORD_VAL(num, 3) << (HAK_LIW_BITS * 2)) |
-			     ((hak_uintmax_t)HAK_OBJ_GET_HALFWORD_VAL(num, 4) << (HAK_LIW_BITS * 1)) |
-			     ((hak_uintmax_t)HAK_OBJ_GET_HALFWORD_VAL(num, 5));
-			goto done;
-
-		case 8:
-			*w = ((hak_uintmax_t)HAK_OBJ_GET_HALFWORD_VAL(num, 0) << (HAK_LIW_BITS * 7)) |
-			     ((hak_uintmax_t)HAK_OBJ_GET_HALFWORD_VAL(num, 1) << (HAK_LIW_BITS * 6)) |
-			     ((hak_uintmax_t)HAK_OBJ_GET_HALFWORD_VAL(num, 2) << (HAK_LIW_BITS * 5)) |
-			     ((hak_uintmax_t)HAK_OBJ_GET_HALFWORD_VAL(num, 3) << (HAK_LIW_BITS * 4)) |
-			     ((hak_uintmax_t)HAK_OBJ_GET_HALFWORD_VAL(num, 4) << (HAK_LIW_BITS * 3)) |
-			     ((hak_uintmax_t)HAK_OBJ_GET_HALFWORD_VAL(num, 5) << (HAK_LIW_BITS * 2)) |
-			     ((hak_uintmax_t)HAK_OBJ_GET_HALFWORD_VAL(num, 6) << (HAK_LIW_BITS * 1)) |
-			     ((hak_uintmax_t)HAK_OBJ_GET_HALFWORD_VAL(num, 7));
-			goto done;
-	#endif
-
-		default:
-			return 0; /* not convertable */
-	}
-#else
-#	error UNSUPPORTED LIW BIT SIZE
-#endif
-
-done:
+	*w = v;
 	return (HAK_IS_NBIGINT(hak, num))? -1: 1;
 }
 
@@ -1802,12 +1740,12 @@ static HAK_INLINE void lshift_unsigned_array (hak_liw_t* x, hak_oow_t xs, hak_oo
 	bit_shifts = bits % HAK_LIW_BITS;
 	if (bit_shifts == 0)
 	{
-		/* a whole number of words, with no bits left over. the loop below
-		 * cannot do this case: it would shift a word right by
-		 * HAK_LIW_BITS - bit_shifts, and a shift by the full width of the
-		 * type is undefined in C. the usual hardware takes the count modulo
-		 * the width and leaves the word untouched, so the neighbouring word
-		 * is merged in whole instead of contributing nothing. */
+		/* a whole number of words with no leftover bits.
+		 * the normal loop far below would shift a word by
+		 * (HAK_LIW_BITS - bit_shifts). if bit_shifts is 0,
+		 * the sift size is the full word width and it's
+		 * undefined in C. let this loop copy words without
+		 * shifting within a word instead */
 		for (di = xs, si = xs - word_shifts; si > 0; ) x[--di] = x[--si];
 		HAK_MEMSET(x, 0, word_shifts * HAK_SIZEOF(hak_liw_t));
 		return;
