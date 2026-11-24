@@ -668,7 +668,7 @@ static HAK_INLINE hak_oop_t make_bigint_with_ooi (hak_t* hak, hak_ooi_t i)
 #if (HAK_LIW_BITS == HAK_OOW_BITS)
 	hak_oow_t w;
 
-	HAK_STATIC_ASSERT(hak, HAK_SIZEOF(hak_oow_t) == HAK_SIZEOF(hak_liw_t));
+	HAK_STATIC_ASSERT(HAK_SIZEOF(hak_oow_t) == HAK_SIZEOF(hak_liw_t));
 	if (i >= 0)
 	{
 		w = i;
@@ -710,7 +710,7 @@ static HAK_INLINE hak_oop_t make_bloated_bigint_with_ooi (hak_t* hak, hak_ooi_t 
 	hak_oop_t z;
 
 	HAK_ASSERT(hak, extra <= HAK_OBJ_SIZE_MAX - 1);
-	HAK_STATIC_ASSERT(hak, HAK_SIZEOF(hak_oow_t) == HAK_SIZEOF(hak_liw_t));
+	HAK_STATIC_ASSERT(HAK_SIZEOF(hak_oow_t) == HAK_SIZEOF(hak_liw_t));
 	if (i >= 0)
 	{
 		w = i;
@@ -3279,7 +3279,7 @@ hak_oop_t hak_bitandints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 		hak_pushvolat(hak, &x);
 		y = make_bigint_with_ooi(hak, v);
 		hak_popvolat(hak);
-		if (HAK_UNLIKELY(!x)) return HAK_NULL;
+		if (HAK_UNLIKELY(!y)) return HAK_NULL;
 
 		goto bigint_and_bigint;
 	}
@@ -3492,7 +3492,7 @@ hak_oop_t hak_bitorints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 		hak_pushvolat(hak, &x);
 		y = make_bigint_with_ooi(hak, v);
 		hak_popvolat(hak);
-		if (HAK_UNLIKELY(!x)) return HAK_NULL;
+		if (HAK_UNLIKELY(!y)) return HAK_NULL;
 
 		goto bigint_and_bigint;
 	}
@@ -3710,7 +3710,7 @@ hak_oop_t hak_bitxorints (hak_t* hak, hak_oop_t x, hak_oop_t y)
 		hak_pushvolat(hak, &x);
 		y = make_bigint_with_ooi(hak, v);
 		hak_popvolat(hak);
-		if (HAK_UNLIKELY(!x)) return HAK_NULL;
+		if (HAK_UNLIKELY(!y)) return HAK_NULL;
 
 		goto bigint_and_bigint;
 	}
@@ -4647,25 +4647,40 @@ hak_oop_t hak_strtoint (hak_t* hak, const hak_ooch_t* str, hak_oow_t len, int ra
 	{
 		w = hwp[0];
 		HAK_ASSERT(hak, -HAK_SMOOI_MAX == HAK_SMOOI_MIN);
-		if (w <= HAK_SMOOI_MAX) return HAK_SMOOI_TO_OOP((hak_ooi_t)w * sign);
+		if (w <= HAK_SMOOI_MAX)
+		{
+			res = HAK_SMOOI_TO_OOP((hak_ooi_t)w * sign);
+			goto done;
+		}
 	}
 #elif (HAK_LIW_BITS == HAK_OOHW_BITS)
 	if (hwlen == 1)
 	{
 		HAK_ASSERT(hak, hwp[0] <= HAK_SMOOI_MAX);
-		return HAK_SMOOI_TO_OOP((hak_ooi_t)hwp[0] * sign);
+		res = HAK_SMOOI_TO_OOP((hak_ooi_t)hwp[0] * sign);
+		goto done;
 	}
 	else if (hwlen == 2)
 	{
 		w = MAKE_WORD(hwp[0], hwp[1]);
 		HAK_ASSERT(hak, -HAK_SMOOI_MAX == HAK_SMOOI_MIN);
-		if (w <= HAK_SMOOI_MAX) return HAK_SMOOI_TO_OOP((hak_ooi_t)w * sign);
+		if (w <= HAK_SMOOI_MAX)
+		{
+			res = HAK_SMOOI_TO_OOP((hak_ooi_t)w * sign);
+			goto done;
+		}
 	}
 #else
 #	error UNSUPPORTED LIW BIT SIZE
 #endif
 
 	res = hak_instantiate(hak, (sign < 0? hak->c_large_negative_integer: hak->c_large_positive_integer), hwp, hwlen);
+
+done:
+	/* 'outlen' is worked out from the whole token - sign and leading zeros
+	 * included - while 'hwlen' counts the significant words only. a value
+	 * small enough to come back as a small integer may therefore still have
+	 * been given a heap buffer, so every exit from here has to release it. */
 	if (hwp && hw != hwp) hak_freemem(hak, hwp);
 
 	return res;
@@ -4910,7 +4925,7 @@ hak_oop_t hak_sqrtint (hak_t* hak, hak_oop_t x)
 	while (1)
 	{
 		t = hak_geints(hak, b, a);
-		if (HAK_UNLIKELY(!t)) return HAK_NULL;
+		if (HAK_UNLIKELY(!t)) goto oops;
 		if (t == hak->_false) break;
 
 		m = hak_addints(hak, a, b);
@@ -4920,7 +4935,7 @@ hak_oop_t hak_sqrtint (hak_t* hak, hak_oop_t x)
 		m2 = hak_mulints(hak, m, m);
 		if (HAK_UNLIKELY(!m2)) goto oops;
 		t = hak_gtints(hak, m2, x);
-		if (HAK_UNLIKELY(!t)) return HAK_NULL;
+		if (HAK_UNLIKELY(!t)) goto oops;
 		if (t == hak->_true)
 		{
 			b = hak_subints(hak, m, HAK_SMOOI_TO_OOP(1));
@@ -5068,8 +5083,11 @@ hak_oop_t hak_inttostr (hak_t* hak, hak_oop_t num, int flagged_radix)
 	}
 
 	if (hak->inttostr.t.capa < as)
- 	{
-		t = (hak_liw_t*)hak_reallocmem(hak, hak->inttostr.t.ptr, reqcapa * HAK_SIZEOF(*t));
+	{
+		/* this buffer holds a copy of the words of 'num', so it is 'as' words
+		 * long. 'reqcapa' is a count of digit characters and is larger by a
+		 * factor of HAK_LIW_BITS. */
+		t = (hak_liw_t*)hak_reallocmem(hak, hak->inttostr.t.ptr, as * HAK_SIZEOF(*t));
 		if (HAK_UNLIKELY(!t)) return HAK_NULL;
 		hak->inttostr.t.capa = as;
 		hak->inttostr.t.ptr = t;
