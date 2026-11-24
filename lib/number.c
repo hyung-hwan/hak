@@ -233,7 +233,7 @@ hak_oop_t hak_tmulnums (hak_t* hak, hak_oop_t x, hak_oop_t y)
 	return mul_nums(hak, x, y, 1);
 }
 
-static hak_oop_t div_nums (hak_t* hak, hak_oop_t x, hak_oop_t y, int trunc)
+static hak_oop_t div_nums (hak_t* hak, hak_oop_t x, hak_oop_t y, int trunc, int modulo)
 {
 	hak_ooi_t xs, ys, ns, i;
 	hak_oop_t nv;
@@ -289,23 +289,28 @@ static hak_oop_t div_nums (hak_t* hak, hak_oop_t x, hak_oop_t y, int trunc)
 		}
 	}
 
-	nv = hak_divints(hak, nv, yv, 0, HAK_NULL);
+	/* no remainder is asked for, so 'modulo' only picks which way the quotient
+	 * rounds - 0 truncates towards zero, 1 floors towards negative infinity.
+	 * the remainder that would pair with this quotient sits at scale 'ns' and
+	 * is a rounding residue, not a modulus; a fixed-point 'mdiv'/'mod' needs a
+	 * separate path over equalize_scale(), where the quotient is an integer. */
+	nv = hak_divints(hak, nv, yv, modulo, HAK_NULL);
 	hak_popvolat(hak);
 	if (!nv) return HAK_NULL;
 
 	return hak_makefpdec(hak, nv, ns);
 }
 
-hak_oop_t hak_divnums (hak_t* hak, hak_oop_t x, hak_oop_t y)
+hak_oop_t hak_divnums (hak_t* hak, hak_oop_t x, hak_oop_t y, int modulo)
 {
 	/* / 10 4.00 => 2.50, use the wider precision of the either operands */
-	return div_nums(hak, x, y, 0);
+	return div_nums(hak, x, y, 0, modulo);
 }
 
-hak_oop_t hak_tdivnums (hak_t* hak, hak_oop_t x, hak_oop_t y)
+hak_oop_t hak_tdivnums (hak_t* hak, hak_oop_t x, hak_oop_t y, int modulo)
 {
 	/* ~/ 10 4.00 => 2, use the precision of the first operand */
-	return div_nums(hak, x, y, 1);
+	return div_nums(hak, x, y, 1, modulo);
 }
 
 static hak_oop_t comp_nums (hak_t* hak, hak_oop_t x, hak_oop_t y, hak_oop_t (*comper) (hak_t*, hak_oop_t, hak_oop_t))
@@ -391,8 +396,7 @@ hak_oop_t hak_sqrtnum (hak_t* hak, hak_oop_t x)
 		for (i = 0; i < scale ; i++)
 		{
 			/* v is replaced by the result on every turn, so it needs no
-			 * protection across the call, and nothing has been pushed here
-			 * to pop on the way out. */
+			 * protection across the call. */
 			v = hak_mulints(hak, v, HAK_SMOOI_TO_OOP(10));
 			if (HAK_UNLIKELY(!v)) return HAK_NULL;
 		}

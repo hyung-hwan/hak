@@ -868,7 +868,7 @@ static hak_pfrc_t pf_number_tdiv (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	for (i = 1; i < nargs; i++)
 	{
 		arg = HAK_STACK_GETARG(hak, nargs, i);
-		ret = hak_tdivnums(hak, ret, arg);
+		ret = hak_tdivnums(hak, ret, arg, 0);
 		if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
 	}
 

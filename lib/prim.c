@@ -1144,7 +1144,7 @@ hak_pfrc_t hak_pf_number_div (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	for (i = 1; i < nargs; i++)
 	{
 		arg = HAK_STACK_GETARG(hak, nargs, i);
-		ret = hak_divnums(hak, ret, arg);
+		ret = hak_divnums(hak, ret, arg, 0);
 		if (HAK_UNLIKELY(!ret)) return HAK_PF_FAILURE;
 	}
 

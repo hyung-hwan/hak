@@ -984,7 +984,7 @@ static HAK_INLINE int is_less_unsigned_array (const hak_liw_t* x, hak_oow_t xs, 
 
 static HAK_INLINE int is_less_unsigned (hak_oop_t x, hak_oop_t y)
 {
-	return is_less_unsigned_array (
+	return is_less_unsigned_array(
 		((hak_oop_liword_t)x)->slot, HAK_OBJ_GET_SIZE(x),
 		((hak_oop_liword_t)y)->slot, HAK_OBJ_GET_SIZE(y));
 }
@@ -1012,7 +1012,7 @@ static HAK_INLINE int is_greater_unsigned_array (const hak_liw_t* x, hak_oow_t x
 
 static HAK_INLINE int is_greater_unsigned (hak_oop_t x, hak_oop_t y)
 {
-	return is_greater_unsigned_array (
+	return is_greater_unsigned_array(
 		((hak_oop_liword_t)x)->slot, HAK_OBJ_GET_SIZE(x),
 		((hak_oop_liword_t)y)->slot, HAK_OBJ_GET_SIZE(y));
 }
@@ -1495,8 +1495,7 @@ static HAK_INLINE hak_oow_t multiply_unsigned_array_karatsuba (hak_t* hak, const
 
 	/* tmp[2] = (a0 + a1) * (b0 + b1).
 	 *
-	 * this product gets a buffer of its own rather than being written
-	 * straight into 'z' at the shifted position. it takes up to
+	 * this product gets a buffer of its own. it takes up to
 	 * tmplen[0] + tmplen[1] words, and the shift puts it at
 	 * nshifts + tmplen[0] + tmplen[1] - up to two words beyond the
 	 * xs + ys words the caller has given for 'z', because each of the
@@ -1509,7 +1508,7 @@ static HAK_INLINE hak_oow_t multiply_unsigned_array_karatsuba (hak_t* hak, const
 
 	if (CANNOT_KARATSUBA(hak, tmplen[0], tmplen[1]))
 	{
-		multiply_unsigned_array (tmp[0], tmplen[0], tmp[1], tmplen[1], tmp[2]);
+		multiply_unsigned_array(tmp[0], tmplen[0], tmp[1], tmplen[1], tmp[2]);
 		xlen = count_effective(tmp[2], tmplen[2]);
 	}
 	else
@@ -1523,7 +1522,7 @@ static HAK_INLINE hak_oow_t multiply_unsigned_array_karatsuba (hak_t* hak, const
 	HAK_MEMSET(tmp[0], 0, sizeof(hak_liw_t) * tmplen[0]);
 	if (CANNOT_KARATSUBA(hak, ndigits_xl, ndigits_yl))
 	{
-		multiply_unsigned_array (x, ndigits_xl, y, ndigits_yl, tmp[0]);
+		multiply_unsigned_array(x, ndigits_xl, y, ndigits_yl, tmp[0]);
 		tmplen[0] = count_effective(tmp[0], tmplen[0]);
 	}
 	else
@@ -1537,7 +1536,7 @@ static HAK_INLINE hak_oow_t multiply_unsigned_array_karatsuba (hak_t* hak, const
 	HAK_MEMSET(tmp[1], 0, sizeof(hak_liw_t) * tmplen[1]);
 	if (CANNOT_KARATSUBA(hak, ndigits_xh, ndigits_yh))
 	{
-		multiply_unsigned_array (x + nshifts, ndigits_xh, y + nshifts, ndigits_yh, tmp[1]);
+		multiply_unsigned_array(x + nshifts, ndigits_xh, y + nshifts, ndigits_yh, tmp[1]);
 		tmplen[1] = count_effective(tmp[1], tmplen[1]);
 	}
 	else
@@ -1654,7 +1653,7 @@ oops:
 	if (!tmp[2]) goto oops;
 	if (CANNOT_KARATSUBA(hak, tmplen[0], tmplen[1]))
 	{
-		multiply_unsigned_array (tmp[0], tmplen[0], tmp[1], tmplen[1], tmp[2]);
+		multiply_unsigned_array(tmp[0], tmplen[0], tmp[1], tmplen[1], tmp[2]);
 		xlen = count_effective(tmp[2], tmplen[2]);
 	}
 	else
@@ -1668,7 +1667,7 @@ oops:
 	HAK_MEMSET(tmp[0], 0, sizeof(hak_liw_t) * tmplen[0]);
 	if (CANNOT_KARATSUBA(hak, ndigits_xl, ndigits_yl))
 	{
-		multiply_unsigned_array (x, ndigits_xl, y, ndigits_yl, tmp[0]);
+		multiply_unsigned_array(x, ndigits_xl, y, ndigits_yl, tmp[0]);
 		tmplen[0] = count_effective(tmp[0], tmplen[0]);
 	}
 	else
@@ -1682,7 +1681,7 @@ oops:
 	HAK_MEMSET(tmp[1], 0, sizeof(hak_liw_t) * tmplen[1]);
 	if (CANNOT_KARATSUBA(hak, ndigits_xh, ndigits_yh))
 	{
-		multiply_unsigned_array (x + nshifts, ndigits_xh, y + nshifts, ndigits_yh, tmp[1]);
+		multiply_unsigned_array(x + nshifts, ndigits_xh, y + nshifts, ndigits_yh, tmp[1]);
 		tmplen[1] = count_effective(tmp[1], tmplen[1]);
 	}
 	else
@@ -1853,14 +1852,14 @@ static void divide_unsigned_array (hak_t* hak, const hak_liw_t* x, hak_oow_t xs,
 			/* the value of the remainder 'r' may get bigger than the
 			 * divisor 'y' temporarily until subtraction is performed
 			 * below. so ys + 1(kept in rrs) is needed for shifting here. */
-			lshift_unsigned_array (r, rrs, 1);
-			HAK_SETBITS (hak_liw_t, r[0], 0, 1, HAK_GETBITS(hak_liw_t, x[i], j, 1));
+			lshift_unsigned_array(r, rrs, 1);
+			HAK_SETBITS(hak_liw_t, r[0], 0, 1, HAK_GETBITS(hak_liw_t, x[i], j, 1));
 
 			rs = count_effective(r, rrs);
 			if (!is_less_unsigned_array(r, rs, y, ys))
 			{
 				subtract_unsigned_array(hak, r, rs, y, ys, r);
-				HAK_SETBITS (hak_liw_t, q[i], j, 1, 1);
+				HAK_SETBITS(hak_liw_t, q[i], j, 1, 1);
 			}
 		}
 	}
@@ -2208,7 +2207,7 @@ static hak_oop_t add_unsigned_integers (hak_t* hak, hak_oop_t x, hak_oop_t y)
 	hak_popvolats(hak, 2);
 	if (HAK_UNLIKELY(!z)) return HAK_NULL;
 
-	add_unsigned_array (
+	add_unsigned_array(
 		((hak_oop_liword_t)x)->slot, as,
 		((hak_oop_liword_t)y)->slot, bs,
 		((hak_oop_liword_t)z)->slot
@@ -2260,7 +2259,7 @@ static hak_oop_t multiply_unsigned_integers (hak_t* hak, hak_oop_t x, hak_oop_t 
 	if (CANNOT_KARATSUBA(hak, xs, ys))
 	{
 #endif
-		multiply_unsigned_array (
+		multiply_unsigned_array(
 			((hak_oop_liword_t)x)->slot, HAK_OBJ_GET_SIZE(x),
 			((hak_oop_liword_t)y)->slot, HAK_OBJ_GET_SIZE(y),
 			((hak_oop_liword_t)z)->slot);
@@ -2340,9 +2339,9 @@ static hak_oop_t divide_unsigned_integers (hak_t* hak, hak_oop_t x, hak_oop_t y,
 	if (HAK_UNLIKELY(!rr)) return HAK_NULL;
 
 #if defined(USE_DIVIDE_UNSIGNED_ARRAY3)
-	divide_unsigned_array3 (hak,
+	divide_unsigned_array3(hak,
 #elif defined(USE_DIVIDE_UNSIGNED_ARRAY2)
-	divide_unsigned_array2 (hak,
+	divide_unsigned_array2(hak,
 #else
 	divide_unsigned_array(hak,
 #endif
@@ -3953,7 +3952,7 @@ static HAK_INLINE hak_oop_t rshift_negative_bigint (hak_t* hak, hak_oop_t x, hak
 	HAK_ASSERT(hak, carry == 0);
 
 	/* shift to the right */
-	rshift_unsigned_array (((hak_oop_liword_t)z)->slot, xs, shift);
+	rshift_unsigned_array(((hak_oop_liword_t)z)->slot, xs, shift);
 
 	/* the following lines roughly for 'z = hak_bitinv(hak, z)' */
 #if 0
@@ -4091,7 +4090,7 @@ static HAK_INLINE hak_oop_t rshift_positive_bigint_and_normalize (hak_t* hak, ha
 	shift = HAK_SMOOI_MAX;
 	do
 	{
-		rshift_unsigned_array (((hak_oop_liword_t)z)->slot, zs, shift);
+		rshift_unsigned_array(((hak_oop_liword_t)z)->slot, zs, shift);
 		if (count_effective(((hak_oop_liword_t)z)->slot, zs) == 1 &&
 		    HAK_OBJ_GET_LIWORD_VAL(z, 0) == 0)
 		{
@@ -4146,7 +4145,7 @@ static HAK_INLINE hak_oop_t lshift_bigint_and_normalize (hak_t* hak, hak_oop_t x
 		hak_popvolat(hak);
 		if (HAK_UNLIKELY(!z)) return HAK_NULL;
 
-		lshift_unsigned_array (((hak_oop_liword_t)z)->slot, HAK_OBJ_GET_SIZE(z), shift);
+		lshift_unsigned_array(((hak_oop_liword_t)z)->slot, HAK_OBJ_GET_SIZE(z), shift);
 
 		hak_pushvolat(hak, &y);
 		x = normalize_bigint(hak, z);
@@ -4209,7 +4208,7 @@ hak_oop_t hak_bitshiftint (hak_t* hak, hak_oop_t x, hak_oop_t y)
 			z = make_bloated_bigint_with_ooi(hak, v1, wshift);
 			if (HAK_UNLIKELY(!z)) return HAK_NULL;
 
-			lshift_unsigned_array (((hak_oop_liword_t)z)->slot, HAK_OBJ_GET_SIZE(z), v2);
+			lshift_unsigned_array(((hak_oop_liword_t)z)->slot, HAK_OBJ_GET_SIZE(z), v2);
 			return normalize_bigint(hak, z);
 		}
 		else
@@ -4367,7 +4366,7 @@ hak_oop_t hak_bitshiftint (hak_t* hak, hak_oop_t x, hak_oop_t y)
 				z = expand_bigint(hak, x, wshift);
 				if (HAK_UNLIKELY(!z)) return HAK_NULL;
 
-				lshift_unsigned_array (((hak_oop_liword_t)z)->slot, HAK_OBJ_GET_SIZE(z), shift);
+				lshift_unsigned_array(((hak_oop_liword_t)z)->slot, HAK_OBJ_GET_SIZE(z), shift);
 			}
 			else
 			{
@@ -4385,7 +4384,7 @@ hak_oop_t hak_bitshiftint (hak_t* hak, hak_oop_t x, hak_oop_t y)
 				{
 					z = clone_bigint(hak, x, HAK_OBJ_GET_SIZE(x));
 					if (HAK_UNLIKELY(!z)) return HAK_NULL;
-					rshift_unsigned_array (((hak_oop_liword_t)z)->slot, HAK_OBJ_GET_SIZE(z), shift);
+					rshift_unsigned_array(((hak_oop_liword_t)z)->slot, HAK_OBJ_GET_SIZE(z), shift);
 				}
 			}
 
@@ -5010,6 +5009,7 @@ hak_oop_t hak_inttostr (hak_t* hak, hak_oop_t num, int flagged_radix)
 	reqcapa = as * HAK_LIW_BITS + 1;
 	if (hak->inttostr.xbuf.capa < reqcapa)
 	{
+		/* this buffer hold the number of digit characters */
 		xbuf = (hak_ooch_t*)hak_reallocmem(hak, hak->inttostr.xbuf.ptr, reqcapa * HAK_SIZEOF(*xbuf));
 		if (HAK_UNLIKELY(!xbuf)) return HAK_NULL;
 		hak->inttostr.xbuf.capa = reqcapa;
@@ -5022,9 +5022,7 @@ hak_oop_t hak_inttostr (hak_t* hak, hak_oop_t num, int flagged_radix)
 
 	if (hak->inttostr.t.capa < as)
 	{
-		/* this buffer holds a copy of the words of 'num', so it is 'as' words
-		 * long. 'reqcapa' is a count of digit characters and is larger by a
-		 * factor of HAK_LIW_BITS. */
+		/* this buffer holds a copy of the words of 'num', so it is 'as' words * long */
 		t = (hak_liw_t*)hak_reallocmem(hak, hak->inttostr.t.ptr, as * HAK_SIZEOF(*t));
 		if (HAK_UNLIKELY(!t)) return HAK_NULL;
 		hak->inttostr.t.capa = as;
