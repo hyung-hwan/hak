@@ -206,3 +206,16 @@ w := 5
 fun w() { ##ERROR: syntax error - duplicate definition of function 'w'
 	return 99
 }
+
+---
+
+## an attribute list with nothing after it. the name is precisely what is
+## missing, so the error used to be located with 'fun_name' while it was still
+## HAK_NULL - a four-character source file that segfaulted the compiler in
+## both a debug and a release build. 'fun' itself carries the location now.
+
+fun[] ##ERROR: syntax error - no function name or arguments after attribute list for 'fun'
+
+---
+
+fun[#ci] ##ERROR: syntax error - no function name or arguments after attribute list for 'fun'

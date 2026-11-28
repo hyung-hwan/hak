@@ -3665,7 +3665,11 @@ static int compile_fun (hak_t* hak, hak_cnode_t* src)
 			next = HAK_CNODE_CONS_CDR(next);
 			if (!next)
 			{
-				hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(fun_name),
+				/* the name is what is missing here, so 'fun_name' is still
+				 * HAK_NULL at this point - every other error in this function
+				 * is raised after it has been set. blame 'fun' itself, which
+				 * is where the token text below comes from too. */
+				hak_setsynerrbfmt(hak, HAK_SYNERR_FUN, HAK_CNODE_GET_LOC(cmd),
 					"no function name or arguments after attribute list for '%.*js'",
 					HAK_CNODE_GET_TOKLEN(cmd), HAK_CNODE_GET_TOKPTR(cmd));
 				return -1;
@@ -5766,8 +5770,15 @@ static hak_oop_cons_t query_mod_for_dsymbol(hak_t* hak, hak_cnode_t* obj)
 
 static int compile_cons_dlist_expression (hak_t* hak, hak_cnode_t* obj, int nrets)
 {
-/* TODO: */
-	return compile_cons_xlist_expression(hak, obj, nrets);
+/* TODO: implement $( ) - capture the standard output/error of the enclosed
+ *       expression. until then say so rather than handing the node to
+ *       compile_cons_xlist_expression(), which asserts on the concode in a
+ *       debug build and, with the assertion compiled out, emits a plain call
+ *       whose result is then called again - '$(printf "x")' answering
+ *       'cannot call nil'. the piping expression above reports its own
+ *       absence the same way. */
+	hak_setsynerrbfmt(hak, HAK_SYNERR_INTERN, HAK_CNODE_GET_LOC(obj), "internal error - dollared list expression not implemented");
+	return -1;
 }
 
 static int compile_cons_xlist_expression (hak_t* hak, hak_cnode_t* obj, int nrets)

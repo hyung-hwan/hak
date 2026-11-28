@@ -2588,10 +2588,15 @@ static HAK_INLINE int format_stack_args (hak_t* hak, hak_fmtout_t* fmtout, hak_o
 			}
 			else n = usl;
 
+			/* the loop variable is the index here - 'n' is the bound. the
+			 * matching loop in fmt_outv() counts with 'n' itself, and this
+			 * copy kept its subscript, so every character was measured as
+			 * whichever one sits at usp[n] and the field came out the wrong
+			 * width. the %k loop above has it right with bsp[i]. */
 			for (i = 0; i < n; i++)
 			{
-				if ((lm_flag & LF_H) && BYTE_PRINTABLE(usp[n])) uwid = 1;
-				else if (!(lm_flag & LF_L) && usp[n] <= 0xFFFF) uwid = 6;
+				if ((lm_flag & LF_H) && BYTE_PRINTABLE(usp[i])) uwid = 1;
+				else if (!(lm_flag & LF_L) && usp[i] <= 0xFFFF) uwid = 6;
 				else uwid = 10;
 				width -= uwid;
 			}

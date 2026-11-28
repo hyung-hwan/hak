@@ -798,6 +798,90 @@ static hak_pfrc_t pf_sys_pwait (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 }
 
 /* (sys.pkill proc) - SIGKILL the child */
+/* (sys.getpid) -> the process id of this process */
+static hak_pfrc_t pf_sys_getpid (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+{
+#if defined(_WIN32)
+	hak_oop_t v;
+	v = hak_oowtoint(hak, (hak_oow_t)GetCurrentProcessId());
+	if (HAK_UNLIKELY(!v)) return HAK_PF_FAILURE;
+	HAK_STACK_SETRET(hak, nargs, v);
+	return HAK_PF_SUCCESS;
+#elif defined(__DOS__) || defined(__OS2__)
+	hak_seterrnum(hak, HAK_ENOIMPL);
+	return HAK_PF_FAILURE;
+#else
+	hak_oop_t v;
+	v = hak_ooitoint(hak, (hak_ooi_t)getpid());
+	if (HAK_UNLIKELY(!v)) return HAK_PF_FAILURE;
+	HAK_STACK_SETRET(hak, nargs, v);
+	return HAK_PF_SUCCESS;
+#endif
+}
+
+static hak_pfrc_t pf_sys_getppid (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+{
+#if defined(_WIN32)
+	hak_seterrnum(hak, HAK_ENOIMPL);
+	return HAK_PF_FAILURE;
+#elif defined(__DOS__) || defined(__OS2__)
+	hak_seterrnum(hak, HAK_ENOIMPL);
+	return HAK_PF_FAILURE;
+#else
+	hak_oop_t v;
+	v = hak_ooitoint(hak, (hak_ooi_t)getppid());
+	if (HAK_UNLIKELY(!v)) return HAK_PF_FAILURE;
+	HAK_STACK_SETRET(hak, nargs, v);
+	return HAK_PF_SUCCESS;
+#endif
+}
+
+/* (sys.kill pid signo) -> nil
+ *
+ * Send a signal to a process. This is the raw system call, so the usual
+ * conventions carry over - a pid of 0 addresses the process group and a
+ * signo of 0 only tests whether the process can be signalled.
+ *
+ * sys.pkill above is a different thing: it kills a process started by
+ * sys.popen, addressed by its handle rather than by number.
+ */
+static hak_pfrc_t pf_sys_kill (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
+{
+#if defined(_WIN32) || defined(__DOS__) || defined(__OS2__)
+	hak_seterrnum(hak, HAK_ENOIMPL);
+	return HAK_PF_FAILURE;
+#else
+	hak_oop_t a0, a1;
+	hak_ooi_t pid, signo;
+
+	a0 = HAK_STACK_GETARG(hak, nargs, 0);
+	a1 = HAK_STACK_GETARG(hak, nargs, 1);
+
+	if (!HAK_OOP_IS_SMOOI(a0))
+	{
+		hak_seterrbfmt(hak, HAK_EINVAL, "process id not a small integer - %O", a0);
+		return HAK_PF_FAILURE;
+	}
+	if (!HAK_OOP_IS_SMOOI(a1))
+	{
+		hak_seterrbfmt(hak, HAK_EINVAL, "signal number not a small integer - %O", a1);
+		return HAK_PF_FAILURE;
+	}
+
+	pid = HAK_OOP_TO_SMOOI(a0);
+	signo = HAK_OOP_TO_SMOOI(a1);
+
+	if (kill((pid_t)pid, (int)signo) == -1)
+	{
+		hak_seterrbfmtwithsyserr(hak, 0, errno, "unable to send signal %zd to process %zd", signo, pid);
+		return HAK_PF_FAILURE;
+	}
+
+	HAK_STACK_SETRET(hak, nargs, hak->_nil);
+	return HAK_PF_SUCCESS;
+#endif
+}
+
 static hak_pfrc_t pf_sys_pkill (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 {
 	hak_hnd_t* ph;
@@ -909,6 +993,9 @@ static hak_pfinfo_t pfinfos[] =
 #endif
 
 	{ "close",         { HAK_PFBASE_FUNC,        pf_sys_close,        1,  1 } },
+	{ "getpid",        { HAK_PFBASE_FUNC,        pf_sys_getpid,       0,  0 } },
+	{ "getppid",       { HAK_PFBASE_FUNC,        pf_sys_getppid,       0,  0 } },
+	{ "kill",          { HAK_PFBASE_FUNC,        pf_sys_kill,         2,  2 } },
 	{ "open",          { HAK_PFBASE_FUNC,        pf_sys_open,         2,  3 } },
 	{ "pclose",        { HAK_PFBASE_FUNC,        pf_sys_pclose,       1,  1 } },
 	{ "pipe",          { HAK_PFBASE_FUNC,        pf_sys_pipe,         0,  0 } },

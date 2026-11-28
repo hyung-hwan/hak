@@ -3017,6 +3017,7 @@ struct sig_state_t
 	sigset_t  old_sa_mask;
 	int       old_sa_flags;
 	int       busy; /* a thread is between claiming this signal and publishing it */
+	int       script_caught; /* hak code asked for this signal with sys.sig-catch */
 };
 
 typedef void (*sig_handler_t) (int sig);
@@ -3294,6 +3295,7 @@ struct sig_state_t
 	hak_uintptr_t handler;
 	hak_uintptr_t old_handler;
 	int       busy; /* a thread is between claiming this signal and publishing it */
+	int       script_caught; /* hak code asked for this signal with sys.sig-catch */
 };
 
 typedef void (*sig_handler_t) (int sig);
@@ -3511,6 +3513,20 @@ static HAK_INLINE void post_sig_to_all_haks (int signo)
 			/* write a byte of signal number. vm_getsig() reads this when
 			 * it's invoked by the vm */
 			write(xtn->sigfd.p[1], &u8, HAK_SIZEOF(u8));
+
+			/* hak_catch_termreq() routes SIGTERM and SIGHUP so that hak code
+			 * CAN wait on them, and in doing so replaces a disposition that
+			 * used to end the process. dispatch_signal() chains to whatever
+			 * was installed before, but skips SIG_DFL, so nothing stood in
+			 * for that default and an uncaught 'kill' did nothing at all.
+			 *
+			 * Ask the VM to stop when no script claimed the signal. One that
+			 * did claim it goes on handling the signal itself, as before.
+			 * hak_abort() only stores into a field, which is as much as may
+			 * be done from a handler - the same thing the SIGINT handler in
+			 * the hak command does. */
+			if (!g_sig_state[signo].script_caught) hak_abort(hak);
+
 			hak = xtn->next;
 		}
 		while (hak);
@@ -3572,9 +3588,15 @@ static int vm_catchsig (hak_t* hak, int signo, int enable)
 			hak_seterrbfmtwithsyserr(hak, 0, errno, "unable to catch signal %d", signo);
 			return -1;
 		}
+		/* the signal may already have been claimed for routing by
+		 * hak_catch_termreq(), in which case the call above is a no-op. this
+		 * flag is what records that hak code wants to see it, and it is what
+		 * holds post_sig_to_all_haks() back from ending the process. */
+		g_sig_state[signo].script_caught = 1;
 	}
 	else
 	{
+		g_sig_state[signo].script_caught = 0;
 		if (unset_signal_handler(signo) <= -1)
 		{
 			hak_seterrbfmtwithsyserr(hak, 0, errno, "unable to uncatch signal %d", signo);

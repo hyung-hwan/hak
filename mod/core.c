@@ -724,6 +724,11 @@ static hak_pfrc_t pf_core_slice (hak_t* hak, hak_mod_t* mod, hak_ooi_t nargs)
 	if (pos < 0) pos = 0;
 	else if (pos >= size) pos = size;
 	if (len >= size - pos) len = size - pos;
+	/* a length of its own can still be negative, and hak_instantiate() takes
+	 * an unsigned count - an unclamped -1 arrives there as 2^64-1 and comes
+	 * back as a complaint about flexi-fields rather than about the argument.
+	 * get_range_args() clamps the same way for decode-chars/encode-chars. */
+	if (len < 0) len = 0;
 
 /* TODO: check if the object is an indexable object from the class spec... */
 	/* use HAK_OBJ_GET_CLASS() instead of HAK_CLASSOF() as we know it's an object */

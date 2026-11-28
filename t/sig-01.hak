@@ -80,3 +80,58 @@ chk (= signo sys.SIGCHLD) "the signal number came through the signal descriptor"
 chk (= (sys.pwait proc) 4) "and the child's exit status is readable"
 sys.pclose proc
 sys.sig-uncatch sys.SIGCHLD
+
+## --- getpid and kill ---------------------------------------------------------
+
+chk (= (sys.getpid) (sys.getpid)) "sys.getpid answers the same id every time"
+chk (nqv? (sys.kill (sys.getpid) 0) 'x') "signal 0 probes a process without signalling it"
+
+raised := false
+try { sys.kill (sys.getpid) "x" } catch (e) { raised := true }
+chk raised "a non-integer signal number is refused"
+
+## --- a signal a script caught must not end the process -----------------------
+##
+## hak_catch_termreq() routes SIGTERM into the signal descriptor, which
+## replaces a disposition that used to end the process. The VM therefore has
+## to stand in for that default when nothing claimed the signal - otherwise
+## 'kill' does nothing at all - and must NOT when a script did claim it, which
+## is what this checks. Sending the signal to ourselves is only safe because
+## of the sig-catch above; without it this line would terminate the test.
+
+sys.sig-catch sys.SIGTERM
+
+h2   := (sys.sig-getfd)
+s2   := (core.sem-new)
+tmo2 := (core.sem-new)
+sg2  := (core.semgr-new)
+core.semgr-add sg2 s2
+core.semgr-add sg2 tmo2
+seen := -1
+
+fun termwaiter() {
+	| w |
+	core.sem-signal tmo2 20 0
+	core.sem-signal-on-input s2 h2
+	w := (core.semgr-wait sg2)
+	core.sem-unsignal s2
+	core.sem-unsignal tmo2
+	if (eqv? w tmo2) { seen := -2 } \
+	else { seen := (sys.sig-get) }
+	return 0
+}
+
+fun termsender() {
+	## let the waiter park on the descriptor first
+	core.yield
+	core.yield
+	sys.kill (sys.getpid) sys.SIGTERM
+}
+
+core.fork termwaiter
+core.fork termsender
+while (= seen -1) { core.yield }
+
+chk (= seen sys.SIGTERM) "a caught SIGTERM arrives through the signal descriptor"
+sys.sig-uncatch sys.SIGTERM
+printf "still alive after handling SIGTERM\n"

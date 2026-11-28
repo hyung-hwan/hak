@@ -197,3 +197,11 @@ class X {
 
 ## and a node that DOES have token text still shows it
 5() ##ERROR: syntax error - invalid callable '5' in function call
+
+---
+
+## $( ) is read as a dollared list but the compiler has no code for it yet.
+## it used to be handed to the plain-list compiler, which asserts on the
+## concode in a debug build and, with assertions off, emitted a call whose
+## result was then called again - answering "cannot call nil" at run time.
+$(printf "hi\n") ##ERROR: syntax error - internal error - dollared list expression not implemented

@@ -88,6 +88,29 @@ chks (sprintf "%99999999999999999999d" 7) "%99999999999999999999d" "a width too 
 chks (sprintf "%9223372036854775808d" 7) "%9223372036854775808d" "...including one just past the signed maximum"
 chks (sprintf "%.99999999999999999999d" 7) "%.99999999999999999999d" "a precision too large is left verbatim too"
 
+## --- escaped-string conversions ----------------------------------------------
+##
+## %w/%W (and %k/%K) write a string as escape sequences, so a character is not
+## one column wide: with 'h' a printable byte stays itself while anything else
+## becomes an escape. The padding therefore has to measure each character, and
+## the loop that does so used to subscript with the loop BOUND rather than the
+## loop variable - every character was measured as whichever one sat at that
+## index, and a mixed string came out the wrong width.
+##
+## How wide a character renders differs between a wide-char and a narrow-char
+## build, so the width of the whole field is what is asserted here rather than
+## its text. That is the part the bug got wrong, and it holds either way.
+
+fun flen(s) { return (core.basicSize s) }
+
+chk (= (flen (sprintf "%20hw" "abc")) 20) "a field of printable characters fills its width"
+chk (= (flen (sprintf "%20hw" "!!!")) 20) "...one of escaped characters too"
+chk (= (flen (sprintf "%20hw" "ab!")) 20) "...and a mixture of the two"
+chk (= (flen (sprintf "%20hw" "a!b!")) 20) "...whatever order they come in"
+chk (= (flen (sprintf "%20w" "abc")) 20) "without 'h' every character escapes, still to width"
+chk (= (flen (sprintf "%-20hw" "ab!")) 20) "...left adjusted as well"
+chk (= (flen (sprintf "%20hk" "ab!")) 20) "%k pads by the same rule"
+
 ## --- malformed specifiers ----------------------------------------------------
 
 chks (sprintf "%*d" -20 42) "%*d" "a negative '*' width is not a specifier hak accepts"

@@ -607,6 +607,7 @@ check_SCRIPTS = \
 	send-01.hak \
 	sig-01.hak \
 	sig-02.hak \
+	sig-03.hak \
 	stream-01.hak \
 	super-01.hak \
 	sysproc-01.hak \
